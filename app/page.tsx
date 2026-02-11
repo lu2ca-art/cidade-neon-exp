@@ -243,12 +243,10 @@ export default function CidadeNeonExperience() {
     if (step === "idle" || step === "incoming-call") return "incoming-call"
     if (step === "active-call") return "active-call"
     if (step === "hacker-takeover") return "hacker"
-    // After hacker, spotify, whatsapp etc - go to phone home
+    // All post-hacker steps now go to phone-home, since WhatsApp/Spotify/YouTube/TikTok/confirmations are separate pages
     if (step === "spotify-auto" || step === "whatsapp-notification") return "phone-home"
-    if (step === "whatsapp-group") return "whatsapp-group"
-    if (step === "confirmation-1") return "confirmation-1"
-    if (step === "confirmation-2") return "confirmation-2"
-    if (step === "confirmation-3") return "confirmation-3"
+    if (step === "whatsapp-group") return "phone-home"
+    if (step === "confirmation-1" || step === "confirmation-2" || step === "confirmation-3") return "phone-home"
     if (step === "private-notifications" || step === "tiktok-notification" || step === "tiktok-final") return "phone-home"
     if (step === "completed" || step === "sala-branca") return "phone-home"
     // Default: if flow has progressed past hacker, show phone-home
@@ -585,6 +583,24 @@ export default function CidadeNeonExperience() {
     postConfirmScriptSent.current = false
     setPhase("post-confirm-group")
   }
+
+  /* ─── NOTIFICATIONS BASED ON CONFIRM COUNT ── */
+  useEffect(() => {
+    if (phase !== "phone-home") return
+    const cc = gameFunnelState.confirmationCount
+    // After confirm 1 (returning from WhatsApp -> TikTok -> confirm 1/3), show YouTube notif
+    if (cc === 2 && !showYouTubeNotif && !showNotification) {
+      const t = setTimeout(() => {
+        setShowYouTubeNotif(true)
+        setAppBadges(p => ({ ...p, youtube: true }))
+      }, 1500)
+      return () => clearTimeout(t)
+    }
+    // After all 3 confirms done, show all badges
+    if (cc >= 3) {
+      setAppBadges({ youtube: true, instagram: true, tiktok: true, untitled: true, whatsapp: true, spotify: true })
+    }
+  }, [phase, gameFunnelState.confirmationCount, showYouTubeNotif, showNotification])
 
   /* ─── FINAL NOTIFICATIONS ──────────────────── */
   useEffect(() => {
@@ -1081,8 +1097,9 @@ export default function CidadeNeonExperience() {
             <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white"/><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4"/></svg>
           </div>
         </div>
+        {/* WhatsApp notification */}
         {showNotification && (
-          <button type="button" onClick={() => { setShowNotification(false); setPhase("whatsapp-group") }} className="relative z-30 mx-3 mt-1 animate-slide-down w-[calc(100%-1.5rem)]">
+          <button type="button" onClick={() => { setShowNotification(false); window.location.href = "/whatsapp/grupo" }} className="relative z-30 mx-3 mt-1 animate-slide-down w-[calc(100%-1.5rem)]">
             <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
               <div className="w-10 h-10 rounded-[10px] bg-[#25D366] flex items-center justify-center flex-shrink-0"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /></svg></div>
               <div className="flex-1 text-left min-w-0">
@@ -1092,6 +1109,21 @@ export default function CidadeNeonExperience() {
                 </div>
                 <p className="text-black font-medium text-xs">Cidade Neon</p>
                 <p className="text-[#8e8e93] text-xs truncate">D-Bee: Voce chegou.</p>
+              </div>
+            </div>
+          </button>
+        )}
+        {/* YouTube notification */}
+        {showYouTubeNotif && (
+          <button type="button" onClick={() => { setShowYouTubeNotif(false); window.location.href = "/youtube/cidade-neon" }} className="relative z-30 mx-3 mt-1 animate-slide-down w-[calc(100%-1.5rem)]">
+            <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
+              <div className="w-10 h-10 rounded-[10px] bg-[#FF0000] flex items-center justify-center flex-shrink-0"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-black font-semibold text-sm">YouTube</p>
+                  <span className="text-[#8e8e93] text-xs">agora</span>
+                </div>
+                <p className="text-[#8e8e93] text-xs">Novo video: LU2CA - Cidade Neon (Filme Oficial)</p>
               </div>
             </div>
           </button>
