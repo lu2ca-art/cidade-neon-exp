@@ -1,2 +1,0 @@
-# v0-1-pgk2ZL0OKU8qhYNymR1eJ8BT-JbqkIOM2u1R
-v0 chat JbqkIOM2u1R
