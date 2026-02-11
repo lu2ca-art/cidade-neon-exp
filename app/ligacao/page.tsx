@@ -75,6 +75,11 @@ export default function LigacaoPage() {
           paddingRight: "env(safe-area-inset-right, 0px)",
         }}
       >
+        {/* iPhone Notch */}
+        <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+        </div>
+
         {/* Status Bar */}
         <div className="h-[44px] flex items-center justify-between px-6 text-white text-sm">
           <span className="font-semibold">9:41</span>

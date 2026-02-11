@@ -101,6 +101,11 @@ export default function SalaBrancaPage() {
         />
       </div>
 
+      {/* iPhone Notch */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-full max-w-[100vw] md:max-w-[400px] h-[54px] flex items-center justify-center">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+      </div>
+
       {/* Main content */}
       <div 
         className={`relative z-10 w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 transition-all duration-1000 ${

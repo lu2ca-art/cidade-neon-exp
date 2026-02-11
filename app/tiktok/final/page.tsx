@@ -151,6 +151,11 @@ export default function TikTokFinalPage() {
           </div>
         </div>
 
+        {/* iPhone Notch */}
+        <div className="absolute top-0 left-0 right-0 z-30 h-[54px] flex items-center justify-center">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+        </div>
+
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
 

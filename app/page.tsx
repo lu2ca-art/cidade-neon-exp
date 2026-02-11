@@ -3,6 +3,7 @@
 import type { ReactElement } from "react"
 import { useState, useEffect, useRef, useCallback } from "react"
 import Image from "next/image"
+import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
@@ -112,8 +113,29 @@ const participants: Record<string, { color: string; avatar: string }> = {
 
 /* ─── COMPONENT ──────────────────────────────────────── */
 export default function CidadeNeonExperience() {
+  const { state: gameFunnelState } = useGameFunnel()
+
+  // Determine initial phase based on GameFunnel state
+  const getInitialPhase = (): Phase => {
+    const step = gameFunnelState.cinematicStep
+    if (step === "idle" || step === "incoming-call") return "incoming-call"
+    if (step === "active-call") return "active-call"
+    if (step === "hacker-takeover") return "hacker"
+    // After hacker, spotify, whatsapp etc - go to phone home
+    if (step === "spotify-auto" || step === "whatsapp-notification") return "phone-home"
+    if (step === "whatsapp-group") return "whatsapp-group"
+    if (step === "confirmation-1") return "confirmation-1"
+    if (step === "confirmation-2") return "confirmation-2"
+    if (step === "confirmation-3") return "confirmation-3"
+    if (step === "private-notifications" || step === "tiktok-notification" || step === "tiktok-final") return "phone-home"
+    if (step === "completed" || step === "sala-branca") return "phone-home"
+    // Default: if flow has progressed past hacker, show phone-home
+    if (gameFunnelState.perAppState.hacker.completed) return "phone-home"
+    return "incoming-call"
+  }
+
   /* ── Phase ────────── */
-  const [phase, setPhase] = useState<Phase>("incoming-call")
+  const [phase, setPhase] = useState<Phase>(getInitialPhase)
 
   /* ── Call ────────── */
   const [callDuration, setCallDuration] = useState(0)
@@ -236,7 +258,9 @@ export default function CidadeNeonExperience() {
 
   useEffect(() => {
     if (phase === "hacker" && hackerIdx >= HACKER_LINES.length) {
-      const t = setTimeout(() => setPhase("spotify"), 1500)
+      const t = setTimeout(() => {
+        window.location.href = "/spotify/auto-chuva"
+      }, 1500)
       return () => clearTimeout(t)
     }
   }, [phase, hackerIdx])
@@ -495,10 +519,9 @@ export default function CidadeNeonExperience() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col animate-vibrate" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
-          <div className="h-[54px] flex items-center justify-center">
-            <div className="w-[126px] h-[37px] bg-black rounded-b-[20px] relative">
-              <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-[12px] h-[12px] rounded-full bg-[#1C1C1E] border-2 border-[#2C2C2E]" />
-            </div>
+          {/* iPhone Notch */}
+          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
           </div>
           <div className="flex-1 flex flex-col items-center justify-start pt-12">
             <div className="relative">
@@ -540,10 +563,9 @@ export default function CidadeNeonExperience() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
-          <div className="h-[54px] flex items-center justify-center">
-            <div className="w-[126px] h-[37px] bg-black rounded-b-[20px] relative">
-              <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-[12px] h-[12px] rounded-full bg-[#1C1C1E] border-2 border-[#2C2C2E]" />
-            </div>
+          {/* iPhone Notch */}
+          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
           </div>
           <div className="flex-1 flex flex-col items-center justify-start pt-12">
             <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4">
@@ -572,6 +594,10 @@ export default function CidadeNeonExperience() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center font-mono">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-black flex flex-col relative overflow-hidden">
+          {/* iPhone Notch */}
+          <div className="relative z-30 h-[54px] flex items-center justify-center flex-shrink-0">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,0.1)" }} />
+          </div>
           <div className="absolute inset-0 pointer-events-none" style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.3) 2px,rgba(0,0,0,.3) 4px)" }} />
           <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 100px rgba(0,255,102,.1)" }} />
           {showMatrix && (
@@ -607,6 +633,10 @@ export default function CidadeNeonExperience() {
     return (
       <div className={`min-h-screen bg-[#121212] flex items-center justify-center ${isGlitching ? "animate-glitch" : ""}`}>
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#2A1F4E] via-[#1A1030] to-[#121212] flex flex-col">
+          {/* iPhone Notch */}
+          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
           <div className="flex items-center justify-between px-4 py-3">
             <button type="button" className="p-2"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg></button>
             <span className="text-white text-sm font-medium uppercase tracking-widest">TOCANDO DA PLAYLIST</span>
@@ -657,6 +687,10 @@ export default function CidadeNeonExperience() {
     return (
       <div className="min-h-screen bg-[#0B141A] flex items-center justify-center">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 80 80\"%3E%3Cpath fill=\"%23182229\" d=\"M0 0h80v80H0z\"/%3E%3C/svg%3E')" }}>
+          {/* iPhone Notch */}
+          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0 bg-[#1F2C34]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
           <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2">
             <button type="button" onClick={() => setPhase("phone-home")} className="p-2 text-[#AEBAC1]"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg></button>
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center"><svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg></div>
@@ -702,13 +736,17 @@ export default function CidadeNeonExperience() {
     )
   }
 
-  /* ─── RENDER: CONFIRMATION 1 - ARCHETYPES ────────── */
+  /* ─── RENDER: CONFIRMATION 1 - ARCHETYPES ────────��─ */
   if (phase === "confirmation-1") {
     if (c1Result) {
       return (
         <div className="min-h-screen bg-black flex items-center justify-center">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
             <div className="absolute inset-0 bg-gradient-to-b from-[#2D1B69]/20 via-black to-[#0E7490]/20" />
+            {/* iPhone Notch */}
+            <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+            </div>
             <div className="relative z-10 text-center">
               <p className="text-[#A78BFA] text-sm uppercase tracking-widest mb-4">SEU ARQUETIPO</p>
               <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center shadow-lg shadow-[#7C3AED]/50">
@@ -724,8 +762,12 @@ export default function CidadeNeonExperience() {
     }
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col p-6 relative">
+          <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col p-6 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
+          {/* iPhone Notch */}
+          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
           <div className="relative z-10 pt-8 mb-8">
             <div className="flex gap-2 mb-2">{ARCHETYPE_QUESTIONS.map((_, i) => (<div key={i} className={`flex-1 h-1 rounded-full transition-all duration-300 ${i < c1Question ? "bg-[#A78BFA]" : i === c1Question ? "bg-[#A78BFA]/50" : "bg-white/10"}`} />))}</div>
             <p className="text-white/40 text-xs text-center">CONFIRMACAO 1/3 - PERGUNTA {c1Question + 1}/{ARCHETYPE_QUESTIONS.length}</p>
@@ -752,6 +794,10 @@ export default function CidadeNeonExperience() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col relative">
           <div className="absolute inset-0" style={{ background: selectedTrack !== null ? `linear-gradient(180deg,${TRACKS[selectedTrack - 1]?.color}20 0%,#000 50%)` : "linear-gradient(180deg,#1a1a2e 0%,#0f0f23 100%)" }} />
+          {/* iPhone Notch */}
+          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
           <div className="relative z-10 pt-8 px-6 mb-4">
             <p className="text-white/40 text-xs text-center mb-2">CONFIRMACAO 2/3</p>
             <h1 className="text-white text-xl font-bold text-center mb-2">CONECTE MUSICA E EMOCAO</h1>
@@ -787,6 +833,10 @@ export default function CidadeNeonExperience() {
         <div className="min-h-screen bg-black flex items-center justify-center">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
             <div className="absolute inset-0" style={{ background: `linear-gradient(180deg,${t?.color}20 0%,#000 50%)` }} />
+            {/* iPhone Notch */}
+            <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+            </div>
             <div className="relative z-10 text-center">
               <p className="text-white/40 text-xs mb-4">CONFIRMACAO 3/3</p>
               <h1 className="text-3xl font-bold mb-2" style={{ color: t?.color, textShadow: `0 0 20px ${t?.color}50` }}>FAIXA DESBLOQUEADA</h1>
@@ -806,6 +856,10 @@ export default function CidadeNeonExperience() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col p-6 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
+          {/* iPhone Notch */}
+          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
           <div className="relative z-10 pt-8 mb-8 text-center">
             <p className="text-white/40 text-xs mb-2">CONFIRMACAO 3/3</p>
             <h1 className="text-white text-xl font-bold mb-2">ESCOLHA UMA FAIXA PARA DESBLOQUEAR</h1>
@@ -833,8 +887,12 @@ export default function CidadeNeonExperience() {
   if (phase === "final-notifications") {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
+          <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-black to-[#0f0f23]" />
+          {/* iPhone Notch */}
+          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
           <div className="relative z-10 w-full space-y-3">
             {finalNotifs.map((n, i) => (
               <div key={i} className="bg-white/95 backdrop-blur-lg rounded-2xl p-3 flex items-center gap-3 shadow-lg animate-notif-slide">
@@ -860,6 +918,10 @@ export default function CidadeNeonExperience() {
     return (
       <div className="min-h-screen flex items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg,#f8fafc 0%,#e0e7ff 30%,#f0fdfa 60%,#fdf2f8 100%)" }}>
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
+          {/* iPhone Notch */}
+          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
           {/* Aurora shimmer */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.1) 25%,transparent 50%,rgba(103,232,249,.1) 75%,transparent 100%)" }} />
@@ -896,6 +958,10 @@ export default function CidadeNeonExperience() {
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
+        {/* iPhone Notch */}
+        <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+        </div>
         <div className="relative z-10 h-[44px] flex items-center justify-between px-6 text-white text-sm pt-2">
           <span className="font-semibold">{currentTime}</span>
           <div className="flex items-center gap-1">
@@ -904,11 +970,17 @@ export default function CidadeNeonExperience() {
           </div>
         </div>
         {showNotification && (
-          <button type="button" onClick={() => { setShowNotification(false); setPhase("whatsapp-group") }} className="relative z-20 mx-4 mt-2 animate-slide-down w-[calc(100%-2rem)]">
-            <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-3 flex items-center gap-3 shadow-lg">
-              <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /></svg></div>
-              <div className="flex-1 text-left"><p className="text-black font-semibold text-sm">CIDADE NEON</p><p className="text-gray-600 text-xs">D-Bee: E AI CHEGOU</p></div>
-              <span className="text-gray-400 text-xs">agora</span>
+          <button type="button" onClick={() => { setShowNotification(false); setPhase("whatsapp-group") }} className="relative z-30 mx-3 mt-1 animate-slide-down w-[calc(100%-1.5rem)]">
+            <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
+              <div className="w-10 h-10 rounded-[10px] bg-[#25D366] flex items-center justify-center flex-shrink-0"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /></svg></div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-black font-semibold text-sm">WhatsApp</p>
+                  <span className="text-[#8e8e93] text-xs">agora</span>
+                </div>
+                <p className="text-black font-medium text-xs">Cidade Neon</p>
+                <p className="text-[#8e8e93] text-xs truncate">D-Bee: Voce chegou.</p>
+              </div>
             </div>
           </button>
         )}
@@ -919,7 +991,7 @@ export default function CidadeNeonExperience() {
                 if (app.link) { window.open(app.link, "_blank"); return }
                 if (app.id === "whatsapp") { setPhase("whatsapp-group"); return }
                 if (app.id === "aura") { setPhase("aura-login"); return }
-                if (app.id === "spotify") return // no-op in home
+                if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
               }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative">
                 {renderAppIcon(app.icon, app.color)}
                 {appBadges[app.id] && <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF3B30] rounded-full border-2 border-[#1a1a2e] flex items-center justify-center"><span className="text-white text-[8px] font-bold">!</span></div>}

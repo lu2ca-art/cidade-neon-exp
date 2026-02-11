@@ -162,7 +162,7 @@ export default function WhatsAppGrupoPage() {
         }, 3000)
       })
     }
-  }, [state.confirmationCount, state.perAppState.whatsapp.currentStep])
+  }, [state.confirmationCount, state.perAppState.whatsapp])
 
   const addMessagesSequentially = (msgs: Message[], onComplete?: () => void) => {
     let index = 0
@@ -229,8 +229,13 @@ export default function WhatsAppGrupoPage() {
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Cpath fill='%23182229' d='M0 0h80v80H0z'/%3E%3Cpath fill='%231F2C34' opacity='0.3' d='M20 20h2v2h-2zm40 0h2v2h-2zm-20 20h2v2h-2zm40 0h2v2h-2zm-60 20h2v2h-2zm40 0h2v2h-2z'/%3E%3C/svg%3E")` 
         }}
       >
+        {/* iPhone Notch */}
+        <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0 bg-[#1F2C34]">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+        </div>
+
         {/* Header */}
-        <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2" style={{ paddingTop: "env(safe-area-inset-top, 8px)" }}>
+        <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2">
           <button type="button" onClick={handleBack} className="p-2 text-[#AEBAC1] min-h-[44px] min-w-[44px] flex items-center justify-center">
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg>
           </button>
