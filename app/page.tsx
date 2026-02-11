@@ -50,8 +50,10 @@ const HACKER_LINES = [
   "> ..",
   "> ...",
   "",
-  "ACCESS GRANTED",
+  "ACESSO GARANTIDO",
 ]
+
+const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*!?<>{}[]|/\\~^"
 
 const TRACKS = [
   { id: 1, masked: "N**T**", full: "nectar", color: "#FF6B9D" },
@@ -109,6 +111,126 @@ const participants: Record<string, { color: string; avatar: string }> = {
   "D-Bee": { color: "#6B7FD7", avatar: "/images/avatar-dbee.jpg" },
   Nizzy: { color: "#FF6B6B", avatar: "/images/avatar-nizzy.jpg" },
   Alohan: { color: "#4ECDC4", avatar: "/images/avatar-alohan.jpg" },
+}
+
+/* ─── MATRIX RAIN COMPONENT ─────────────────────────── */
+function MatrixRain() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    
+    canvas.width = canvas.offsetWidth
+    canvas.height = canvas.offsetHeight
+    
+    const cols = Math.floor(canvas.width / 14)
+    const drops: number[] = Array(cols).fill(1).map(() => Math.random() * -50)
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*アイウエオカキクケコ"
+    
+    const draw = () => {
+      ctx.fillStyle = "rgba(0,0,0,0.05)"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = "#00FF66"
+      ctx.font = "12px monospace"
+      
+      for (let i = 0; i < drops.length; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)]
+        const x = i * 14
+        const y = drops[i] * 14
+        
+        ctx.globalAlpha = Math.random() * 0.5 + 0.5
+        ctx.fillText(char, x, y)
+        
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0
+        }
+        drops[i]++
+      }
+      ctx.globalAlpha = 1
+    }
+    
+    const interval = setInterval(draw, 33)
+    return () => clearInterval(interval)
+  }, [])
+  
+  return <canvas ref={canvasRef} className="w-full h-full" />
+}
+
+/* ─── HACKER LINE WITH SCRAMBLE EFFECT ──────────────── */
+function HackerLine({ text, delay, isFinal }: { text: string; delay: number; isFinal: boolean }) {
+  const [display, setDisplay] = useState("")
+  const [done, setDone] = useState(false)
+  
+  useEffect(() => {
+    if (!text) { setDisplay(""); setDone(true); return }
+    
+    const length = text.length
+    let iteration = 0
+    const maxIterations = isFinal ? length * 4 : length * 2
+    
+    const scramble = () => {
+      const revealed = Math.floor((iteration / maxIterations) * length)
+      let result = ""
+      for (let i = 0; i < length; i++) {
+        if (i < revealed) {
+          result += text[i]
+        } else if (text[i] === " ") {
+          result += " "
+        } else {
+          result += SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]
+        }
+      }
+      setDisplay(result)
+      iteration++
+      if (iteration > maxIterations) {
+        setDisplay(text)
+        setDone(true)
+      }
+    }
+    
+    const timer = setTimeout(() => {
+      const interval = setInterval(() => {
+        scramble()
+        if (iteration > maxIterations) clearInterval(interval)
+      }, isFinal ? 40 : 25)
+      return () => clearInterval(interval)
+    }, delay)
+    
+    return () => clearTimeout(timer)
+  }, [text, delay, isFinal])
+  
+  if (isFinal) {
+    return (
+      <div className="text-center py-6">
+        <span
+          className={`text-2xl font-bold tracking-[0.3em] transition-all duration-500 ${done ? "opacity-100" : "opacity-90"}`}
+          style={{
+            color: "#00FF66",
+            textShadow: done
+              ? "0 0 30px rgba(0,255,102,.9), 0 0 60px rgba(0,255,102,.6), 0 0 90px rgba(0,255,102,.3)"
+              : "0 0 10px rgba(0,255,102,.5)",
+          }}
+        >
+          {display}
+        </span>
+        {done && (
+          <div className="mt-2 h-[2px] mx-auto bg-gradient-to-r from-transparent via-[#00FF66] to-transparent animate-pulse" style={{ width: "60%" }} />
+        )}
+      </div>
+    )
+  }
+  
+  return (
+    <span
+      className="text-[13px] tracking-wide block"
+      style={{ color: "#00FF66", textShadow: "0 0 8px rgba(0,255,102,.4)" }}
+    >
+      {display}
+    </span>
+  )
 }
 
 /* ─── COMPONENT ──────────────────────────────────────── */
@@ -188,6 +310,8 @@ export default function CidadeNeonExperience() {
 
   /* ── Phone Home ────────── */
   const [showNotification, setShowNotification] = useState(false)
+  const [showYouTubeNotif, setShowYouTubeNotif] = useState(false)
+  const [showTikTokNotif, setShowTikTokNotif] = useState(false)
   const [appBadges, setAppBadges] = useState<Record<string, boolean>>({})
 
   /* ── Final Notifications ────────── */
@@ -493,7 +617,7 @@ export default function CidadeNeonExperience() {
   const renderAppIcon = (icon: string, color: string) => {
     const iconMap: Record<string, ReactElement> = {
       aura: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="aur" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#a78bfa" /><stop offset="50%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#a78bfa" /></linearGradient></defs><circle cx="12" cy="12" r="10" stroke="url(#aur)" strokeWidth="1.5" fill="none" /><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">A</text></svg>,
-      untitled: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>,
+      untitled: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.5"/></svg>,
       phone: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>,
       safari: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" /></svg>,
       whatsapp: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /></svg>,
@@ -518,12 +642,11 @@ export default function CidadeNeonExperience() {
   if (phase === "incoming-call") {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col animate-vibrate" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
-          {/* iPhone Notch */}
-          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-start pt-12">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col animate-vibrate relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
+          {/* iPhone Notch - floating pill */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          <div className="h-[50px] flex-shrink-0" />
+          <div className="flex-1 flex flex-col items-center justify-start pt-6">
             <div className="relative">
               <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4 animate-pulse-slow ring-4 ring-white/20">
                 <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={120} height={120} className="w-full h-full object-cover" />
@@ -562,12 +685,11 @@ export default function CidadeNeonExperience() {
   if (phase === "active-call") {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
-          {/* iPhone Notch */}
-          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-start pt-12">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
+          {/* iPhone Notch - floating pill */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          <div className="h-[50px] flex-shrink-0" />
+          <div className="flex-1 flex flex-col items-center justify-start pt-6">
             <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4">
               <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={120} height={120} className="w-full h-full object-cover" />
             </div>
@@ -594,36 +716,27 @@ export default function CidadeNeonExperience() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center font-mono">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-black flex flex-col relative overflow-hidden">
-          {/* iPhone Notch */}
-          <div className="relative z-30 h-[54px] flex items-center justify-center flex-shrink-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,0.1)" }} />
-          </div>
-          <div className="absolute inset-0 pointer-events-none" style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.3) 2px,rgba(0,0,0,.3) 4px)" }} />
-          <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 100px rgba(0,255,102,.1)" }} />
+          {/* Scanlines */}
+          <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.3) 2px,rgba(0,0,0,.3) 4px)" }} />
+          <div className="absolute inset-0 pointer-events-none z-10" style={{ boxShadow: "inset 0 0 100px rgba(0,255,102,.1)" }} />
+          {/* Matrix rain background */}
           {showMatrix && (
-            <div className={`absolute inset-0 flex flex-col items-center justify-center text-[#00FF66] text-xs overflow-hidden transition-opacity duration-1500 ${matrixFading ? "opacity-0" : "opacity-100"}`}>
-              {Array(20).fill(null).map((_, r) => (
-                <div key={r} className="flex">{Array(25).fill(null).map((_, c) => {
-                  const chars = "0123456789ABCDEF"
-                  return <span key={c} className="inline-block w-4" style={{ opacity: Math.random() * .7 + .3 }}>{chars[Math.floor(Math.random() * chars.length)]}</span>
-                })}</div>
-              ))}
+            <div className={`absolute inset-0 z-0 transition-opacity duration-1500 ${matrixFading ? "opacity-0" : "opacity-100"}`}>
+              <MatrixRain />
             </div>
           )}
+          {/* iPhone Notch - sits on top, content flows behind it on sides */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,0.1)" }} />
           {!showMatrix && (
-            <div ref={hackerScrollRef} className="flex-1 flex flex-col justify-end p-6 overflow-y-auto">
+            <div ref={hackerScrollRef} className="flex-1 flex flex-col justify-end px-4 pb-6 pt-[40px] overflow-y-auto relative z-20">
               {hackerLines.map((line, i) => (
-                <div key={i} className="mb-3 animate-hacker-fade">
-                  <span className={`tracking-wide ${line === "ACCESS GRANTED" ? "text-3xl font-bold block text-center py-4" : "text-base"}`} style={{ color: "#00FF66", textShadow: line === "ACCESS GRANTED" ? "0 0 20px rgba(0,255,102,.8),0 0 40px rgba(0,255,102,.6)" : "0 0 10px rgba(0,255,102,.5)" }}>{line}</span>
+                <div key={i} className="mb-2">
+                  <HackerLine text={line} delay={i * 50} isFinal={line === "ACESSO GARANTIDO"} />
                 </div>
               ))}
             </div>
           )}
         </div>
-        <style jsx>{`
-          @keyframes hacker-fade { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-          .animate-hacker-fade{animation:hacker-fade .3s ease-out forwards}
-        `}</style>
       </div>
     )
   }
@@ -958,15 +1071,14 @@ export default function CidadeNeonExperience() {
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
-        {/* iPhone Notch */}
-        <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-        </div>
-        <div className="relative z-10 h-[44px] flex items-center justify-between px-6 text-white text-sm pt-2">
-          <span className="font-semibold">{currentTime}</span>
+        {/* iPhone Notch - Apple style: floating pill, content behind sides */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+        {/* Status bar area - extends full width behind notch */}
+        <div className="relative z-20 h-[50px] flex items-end justify-between px-6 pb-1 text-white text-xs">
+          <span className="font-semibold w-12">{currentTime}</span>
           <div className="flex items-center gap-1">
-            <svg className="w-4 h-4" fill="white" viewBox="0 0 24 24"><path d="M2 17h2v4H2zm5-5h2v9H7zm5-5h2v14h-2zm5-5h2v19h-2z" /></svg>
-            <svg className="w-6 h-4" fill="white" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2" stroke="white" strokeWidth="1" fill="none" /><rect x="4" y="9" width="12" height="6" rx="1" fill="white" /></svg>
+            <svg className="w-4 h-3" fill="white" viewBox="0 0 16 12"><rect x="0" y="6" width="3" height="6" rx="0.5"/><rect x="4.5" y="4" width="3" height="8" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13" y="0" width="3" height="12" rx="0.5" opacity="0.3"/></svg>
+            <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white"/><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4"/></svg>
           </div>
         </div>
         {showNotification && (
@@ -988,8 +1100,10 @@ export default function CidadeNeonExperience() {
           <div className="grid grid-cols-4 gap-4">
             {phoneApps.map((app) => (
               <button key={app.id} onClick={() => {
+                if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
+                if (app.id === "tiktok") { window.location.href = "/tiktok/final"; return }
                 if (app.link) { window.open(app.link, "_blank"); return }
-                if (app.id === "whatsapp") { setPhase("whatsapp-group"); return }
+                if (app.id === "whatsapp") { window.location.href = "/whatsapp/grupo"; return }
                 if (app.id === "aura") { setPhase("aura-login"); return }
                 if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
               }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative">
