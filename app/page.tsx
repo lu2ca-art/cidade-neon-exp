@@ -311,6 +311,11 @@ export default function CidadeNeonExperience() {
   const [showYouTubeNotif, setShowYouTubeNotif] = useState(false)
   const [showTikTokNotif, setShowTikTokNotif] = useState(false)
   const [appBadges, setAppBadges] = useState<Record<string, boolean>>({})
+  const [showNotifCenter, setShowNotifCenter] = useState(false)
+  const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string } | null>(null)
+  const [completedMissions, setCompletedMissions] = useState<string[]>([])
+  const bannerTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const bannerIndexRef = useRef(0)
 
   /* ── Final Notifications ────────── */
   const [finalNotifs, setFinalNotifs] = useState<Array<{ app: string; text: string }>>([])
@@ -584,23 +589,85 @@ export default function CidadeNeonExperience() {
     setPhase("post-confirm-group")
   }
 
-  /* ─── NOTIFICATIONS BASED ON CONFIRM COUNT ── */
+  /* ─── MISSIONS PER CONFIRMATION STAGE ────── */
+  const getMissions = useCallback(() => {
+    const cc = gameFunnelState.confirmationCount
+    const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = []
+
+    if (cc === 0) {
+      missions.push(
+        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: Voce chegou.", action: "/whatsapp/grupo" },
+        { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
+      )
+    } else if (cc === 1) {
+      missions.push(
+        { id: "tiktok-1", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou um novo video", action: "/tiktok/final" },
+        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Nizzy: Bora pra proxima fase!", action: "/whatsapp/grupo" },
+      )
+    } else if (cc === 2) {
+      missions.push(
+        { id: "youtube-2", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video: Cidade Neon (Filme Oficial)", action: "/youtube/cidade-neon" },
+        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Alohan: Falta a ultima confirmacao!", action: "/whatsapp/grupo" },
+      )
+    } else {
+      missions.push(
+        { id: "youtube-final", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "CIDADE NEON (Filme Oficial)", action: "/youtube/cidade-neon" },
+        { id: "instagram-final", app: "Instagram", icon: "instagram", color: "#E1306C", title: "@lu2ca.mp3", body: "Publicou novos posts", action: "https://instagram.com/lu2ca.mp3/" },
+        { id: "tiktok-final", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "Publicou 5 novos videos", action: "https://tiktok.com/@lu2ca.mp3" },
+        { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+        { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvi de novo", action: "/spotify/auto-chuva" },
+      )
+    }
+
+    return missions.filter(m => !completedMissions.includes(m.id))
+  }, [gameFunnelState.confirmationCount, completedMissions])
+
+  /* ─── PERIODIC BANNER NOTIFICATIONS (every 6s) ── */
+  useEffect(() => {
+    if (phase !== "phone-home" || showNotifCenter) {
+      if (bannerTimerRef.current) clearInterval(bannerTimerRef.current)
+      return
+    }
+
+    // Show first notification after 2s, then every 6s
+    const showNext = () => {
+      const missions = getMissions()
+      if (missions.length === 0) { setBannerNotif(null); return }
+      const idx = bannerIndexRef.current % missions.length
+      setBannerNotif(missions[idx])
+      bannerIndexRef.current++
+      // Auto-dismiss after 4s
+      setTimeout(() => setBannerNotif(null), 4500)
+    }
+
+    const initialTimer = setTimeout(showNext, 2000)
+    bannerTimerRef.current = setInterval(showNext, 6000)
+
+    return () => {
+      clearTimeout(initialTimer)
+      if (bannerTimerRef.current) clearInterval(bannerTimerRef.current)
+    }
+  }, [phase, showNotifCenter, getMissions])
+
+  // Set badges based on confirmation count
   useEffect(() => {
     if (phase !== "phone-home") return
     const cc = gameFunnelState.confirmationCount
-    // After confirm 1 (returning from WhatsApp -> TikTok -> confirm 1/3), show YouTube notif
-    if (cc === 2 && !showYouTubeNotif && !showNotification) {
-      const t = setTimeout(() => {
-        setShowYouTubeNotif(true)
-        setAppBadges(p => ({ ...p, youtube: true }))
-      }, 1500)
-      return () => clearTimeout(t)
+    if (cc === 0) setAppBadges({ whatsapp: true, spotify: true })
+    else if (cc === 1) setAppBadges({ whatsapp: true, spotify: true, tiktok: true })
+    else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, tiktok: true, youtube: true })
+    else setAppBadges({ youtube: true, instagram: true, tiktok: true, untitled: true, whatsapp: true, spotify: true })
+  }, [phase, gameFunnelState.confirmationCount])
+
+  const handleMissionClick = (mission: { id: string; action: string }) => {
+    setCompletedMissions(prev => [...prev, mission.id])
+    setBannerNotif(null)
+    if (mission.action.startsWith("http")) {
+      window.open(mission.action, "_blank")
+    } else {
+      window.location.href = mission.action
     }
-    // After all 3 confirms done, show all badges
-    if (cc >= 3) {
-      setAppBadges({ youtube: true, instagram: true, tiktok: true, untitled: true, whatsapp: true, spotify: true })
-    }
-  }, [phase, gameFunnelState.confirmationCount, showYouTubeNotif, showNotification])
+  }
 
   /* ─── FINAL NOTIFICATIONS ──────────────────── */
   useEffect(() => {
@@ -630,6 +697,18 @@ export default function CidadeNeonExperience() {
   }, [phase])
 
   /* ─── ICON RENDERER ────────────────────────── */
+  const getIconSvg = (icon: string): ReactElement => {
+    const svgMap: Record<string, ReactElement> = {
+      whatsapp: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /></svg>,
+      spotify: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>,
+      youtube: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>,
+      tiktok: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" /></svg>,
+      instagram: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>,
+      untitled: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>,
+    }
+    return svgMap[icon] || <div className="w-6 h-6 bg-white/30 rounded" />
+  }
+
   const renderAppIcon = (icon: string, color: string) => {
     const iconMap: Record<string, ReactElement> = {
       aura: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="aur" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#a78bfa" /><stop offset="50%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#a78bfa" /></linearGradient></defs><circle cx="12" cy="12" r="10" stroke="url(#aur)" strokeWidth="1.5" fill="none" /><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">A</text></svg>,
@@ -1083,13 +1162,16 @@ export default function CidadeNeonExperience() {
   }
 
   /* ─── RENDER: PHONE HOME ─────────────────────────── */
+  const activeMissions = getMissions()
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
         {/* iPhone Notch - Apple style: floating pill, content behind sides */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-        {/* Status bar area - extends full width behind notch */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+
+        {/* Status bar area */}
         <div className="relative z-20 h-[50px] flex items-end justify-between px-6 pb-1 text-white text-xs">
           <span className="font-semibold w-12">{currentTime}</span>
           <div className="flex items-center gap-1">
@@ -1097,60 +1179,144 @@ export default function CidadeNeonExperience() {
             <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white"/><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4"/></svg>
           </div>
         </div>
-        {/* WhatsApp notification */}
-        {showNotification && (
-          <button type="button" onClick={() => { setShowNotification(false); window.location.href = "/whatsapp/grupo" }} className="relative z-30 mx-3 mt-1 animate-slide-down w-[calc(100%-1.5rem)]">
-            <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
-              <div className="w-10 h-10 rounded-[10px] bg-[#25D366] flex items-center justify-center flex-shrink-0"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /></svg></div>
+
+        {/* ── Banner notification (slides in from top) ── */}
+        {bannerNotif && !showNotifCenter && (
+          <button
+            type="button"
+            onClick={() => handleMissionClick(bannerNotif)}
+            className="absolute top-[52px] left-3 right-3 z-40 animate-notif-slide"
+          >
+            <div className="bg-[#1c1c1e]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl border border-white/5">
+              <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: bannerNotif.color }}>
+                {getIconSvg(bannerNotif.icon)}
+              </div>
               <div className="flex-1 text-left min-w-0">
                 <div className="flex items-center justify-between">
-                  <p className="text-black font-semibold text-sm">WhatsApp</p>
-                  <span className="text-[#8e8e93] text-xs">agora</span>
+                  <p className="text-white font-semibold text-sm">{bannerNotif.app}</p>
+                  <span className="text-white/40 text-xs">agora</span>
                 </div>
-                <p className="text-black font-medium text-xs">Cidade Neon</p>
-                <p className="text-[#8e8e93] text-xs truncate">D-Bee: Voce chegou.</p>
+                <p className="text-white/90 font-medium text-xs">{bannerNotif.title}</p>
+                <p className="text-white/50 text-xs truncate">{bannerNotif.body}</p>
               </div>
             </div>
           </button>
         )}
-        {/* YouTube notification */}
-        {showYouTubeNotif && (
-          <button type="button" onClick={() => { setShowYouTubeNotif(false); window.location.href = "/youtube/cidade-neon" }} className="relative z-30 mx-3 mt-1 animate-slide-down w-[calc(100%-1.5rem)]">
-            <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
-              <div className="w-10 h-10 rounded-[10px] bg-[#FF0000] flex items-center justify-center flex-shrink-0"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className="text-black font-semibold text-sm">YouTube</p>
-                  <span className="text-[#8e8e93] text-xs">agora</span>
-                </div>
-                <p className="text-[#8e8e93] text-xs">Novo video: LU2CA - Cidade Neon (Filme Oficial)</p>
+
+        {/* ── Notification Center (overlay) ── */}
+        {showNotifCenter && (
+          <div className="absolute inset-0 z-40 flex flex-col">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+            <div className="relative z-10 flex flex-col h-full">
+              {/* Header */}
+              <div className="pt-[56px] px-5 pb-3">
+                <h2 className="text-white text-lg font-bold">Central de Missoes</h2>
+                <p className="text-white/40 text-xs mt-0.5">{gameFunnelState.confirmationCount}/3 confirmacoes completas</p>
+              </div>
+
+              {/* Mission List */}
+              <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-24">
+                {activeMissions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center pt-20">
+                    <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                      <svg className="w-7 h-7 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <p className="text-white/30 text-sm">Nenhuma missao pendente</p>
+                  </div>
+                ) : (
+                  activeMissions.map((mission) => (
+                    <button
+                      key={mission.id}
+                      type="button"
+                      onClick={() => { setShowNotifCenter(false); handleMissionClick(mission) }}
+                      className="w-full text-left"
+                    >
+                      <div className="bg-white/5 hover:bg-white/10 active:bg-white/15 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 transition-colors border border-white/5">
+                        <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: mission.color }}>
+                          {getIconSvg(mission.icon)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <p className="text-white font-semibold text-sm">{mission.app}</p>
+                            <svg className="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                          </div>
+                          <p className="text-white/80 text-xs font-medium">{mission.title}</p>
+                          <p className="text-white/40 text-xs truncate">{mission.body}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Close / Home Button */}
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowNotifCenter(false)}
+                  className="bg-white/10 hover:bg-white/15 active:bg-white/20 backdrop-blur-md rounded-full px-8 py-3 flex items-center gap-2 transition-colors border border-white/10"
+                >
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                  <span className="text-white text-sm font-medium">Inicio</span>
+                </button>
               </div>
             </div>
-          </button>
-        )}
-        <div className="relative z-10 px-6 pt-8">
-          <div className="grid grid-cols-4 gap-4">
-            {phoneApps.map((app) => (
-              <button key={app.id} onClick={() => {
-                if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
-                if (app.id === "tiktok") { window.location.href = "/tiktok/final"; return }
-                if (app.link) { window.open(app.link, "_blank"); return }
-                if (app.id === "whatsapp") { window.location.href = "/whatsapp/grupo"; return }
-                if (app.id === "aura") { setPhase("aura-login"); return }
-                if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-              }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative">
-                {renderAppIcon(app.icon, app.color)}
-                {appBadges[app.id] && <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF3B30] rounded-full border-2 border-[#1a1a2e] flex items-center justify-center"><span className="text-white text-[8px] font-bold">!</span></div>}
-                <span className="text-white text-[10px]">{app.name}</span>
-              </button>
-            ))}
           </div>
-        </div>
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2"><div className="w-32 h-1 bg-white/30 rounded-full" /></div>
+        )}
+
+        {/* ── App Grid ── */}
+        {!showNotifCenter && (
+          <div className="relative z-10 px-6 pt-6">
+            <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+              {phoneApps.map((app) => (
+                <button key={app.id} onClick={() => {
+                  if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
+                  if (app.id === "tiktok") { window.location.href = "/tiktok/final"; return }
+                  if (app.link) { window.open(app.link, "_blank"); return }
+                  if (app.id === "whatsapp") { window.location.href = "/whatsapp/grupo"; return }
+                  if (app.id === "aura") { setPhase("aura-login"); return }
+                  if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
+                }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative" type="button">
+                  {renderAppIcon(app.icon, app.color)}
+                  {appBadges[app.id] && (
+                    <div className="absolute -top-1 -right-0 w-5 h-5 bg-[#FF3B30] rounded-full border-2 border-[#16213e] flex items-center justify-center">
+                      <span className="text-white text-[9px] font-bold">!</span>
+                    </div>
+                  )}
+                  <span className="text-white text-[10px] leading-tight text-center">{app.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Bottom Dock: Notification Center button + Home indicator ── */}
+        {!showNotifCenter && (
+          <div className="absolute bottom-0 left-0 right-0 z-20 pb-2 pt-3">
+            <div className="flex justify-center mb-3">
+              <button
+                type="button"
+                onClick={() => setShowNotifCenter(true)}
+                className="relative bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 transition-colors border border-white/10"
+              >
+                <svg className="w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+                <span className="text-white/70 text-xs font-medium">Missoes</span>
+                {activeMissions.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FF3B30] rounded-full flex items-center justify-center">
+                    <span className="text-white text-[10px] font-bold">{activeMissions.length}</span>
+                  </span>
+                )}
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <div className="w-32 h-1 bg-white/30 rounded-full" />
+            </div>
+          </div>
+        )}
       </div>
       <style jsx>{`
-        @keyframes slide-down { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
-        .animate-slide-down{animation:slide-down .3s ease-out}
+        @keyframes notif-slide { 0%{transform:translateY(-110%);opacity:0} 100%{transform:translateY(0);opacity:1} }
+        .animate-notif-slide{animation:notif-slide .35s cubic-bezier(0.22,1,0.36,1) forwards}
       `}</style>
     </div>
   )
