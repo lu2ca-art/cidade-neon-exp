@@ -14,7 +14,6 @@ type Phase =
   | "phone-home"
   | "whatsapp-group"
   | "post-confirm-group"
-  | "final-notifications"
   | "aura-login"
 
 interface Msg {
@@ -60,49 +59,7 @@ const TRACKS = [
   { id: 5, masked: "C***A", full: "chuva", color: "#9DFF6B" },
 ]
 
-const EMOTIONS = [
-  { id: 1, label: "DESEJO", color: "#FF6B9D" },
-  { id: 2, label: "EUFORIA", color: "#FF9D6B" },
-  { id: 3, label: "SAUDADE", color: "#6B9DFF" },
-  { id: 4, label: "DUVIDA", color: "#FFD93D" },
-  { id: 5, label: "MELANCOLIA", color: "#9DFF6B" },
-]
-
-const CORRECT_CONNECTIONS: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 }
-
-const ARCHETYPE_QUESTIONS = [
-  {
-    question: "QUANDO A CIDADE APAGA, VOCE...",
-    options: ["ACENDE POR DENTRO", "VIRA SOMBRA", "PROCURA O SINAL", "RI DO CAOS"],
-  },
-  {
-    question: "SEU INSTINTO TE PUXA PARA...",
-    options: ["DECIFRAR", "PROTEGER", "FUGIR", "PROVOCAR"],
-  },
-  {
-    question: "O QUE VOCE CONFIA PRIMEIRO?",
-    options: ["NO TOQUE", "NO SOM", "NO PADRAO", "NO SILENCIO"],
-  },
-]
-
-const ARCHETYPES = [
-  "O FIREWALL ERRANTE", "A SACERDOTISA DO RUIDO", "O MAGO DE NEON", "A TORRE EM LOOP",
-  "O HERMITAO DIGITAL", "O LOUCO DOS BECOS", "A IMPERATRIZ GLITCH", "O IMPERADOR SOMBRA",
-  "A RODA DO CODIGO", "A FORCA DO SINAL", "O ENFORCADO EM REDE", "A MORTE DO SISTEMA",
-  "A TEMPERANCA NEON", "O DIABO DE PIXELS", "A ESTRELA BINARIA", "A LUA EM ESTATICA",
-  "O SOL DE CIRCUITOS", "O JULGAMENTO FINAL", "O MUNDO VIRTUAL", "O GUARDIAO DO VOID",
-  "O HACKER SOLITARIO", "A BRUXA DO WI-FI", "O CAVALEIRO DE DADOS", "A RAINHA DO CAOS",
-  "O REI DAS SOMBRAS", "O BUFAO ELETRICO", "A SACERDOTISA NEON", "O ALQUIMISTA DIGITAL",
-  "O PROFETA DO GLITCH", "A SIBILA DOS BECOS", "O EREMITA DO CODIGO", "A JUSTICA HACKEADA",
-  "O AMANTE DE PIXELS", "O CARRO EM FUGA", "A FORCA OCULTA", "O PENDURADO EM LOOP",
-  "A MORTE RENASCIDA", "O ANJO DE NEON", "O DEMONIO DO SISTEMA", "A TORRE CAIDA",
-  "A ESTRELA CADENTE", "A LUA INVERTIDA", "O SOL ESCURO", "O MENSAGEIRO DO FIM",
-  "O CRIADOR DO VOID", "O DESTRUIDOR DE REDES", "O GUARDIAO DO PORTAL", "A VIDENTE DO CAOS",
-  "O FANTASMA DIGITAL", "A SOMBRA LUMINOSA", "O ECO DO PASSADO", "O FUTURO EM RUINAS",
-  "O PRESENTE ETERNO", "O VIAJANTE DO TEMPO", "O SONHADOR ACORDADO", "O PESADELO VIVO",
-  "A AURORA DE NEON", "O CREPUSCULO ETERNO", "O MEIO-DIA SOMBRIO", "A MEIA-NOITE CLARA",
-  "O INFINITO FINITO", "O ZERO ABSOLUTO", "O UM PRIMORDIAL", "O TODO E O NADA",
-]
+/* (Confirmation constants moved to their respective page files) */
 
 const participants: Record<string, { color: string; avatar: string }> = {
   "D-Bee": { color: "#6B7FD7", avatar: "/images/avatar-dbee.jpg" },
@@ -292,8 +249,6 @@ export default function CidadeNeonExperience() {
 
   /* ── Phone Home ────────── */
   const [showNotification, setShowNotification] = useState(false)
-  const [showYouTubeNotif, setShowYouTubeNotif] = useState(false)
-  const [showTikTokNotif, setShowTikTokNotif] = useState(false)
   const [appBadges, setAppBadges] = useState<Record<string, boolean>>({})
   const [showNotifCenter, setShowNotifCenter] = useState(false)
   const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string } | null>(null)
@@ -301,8 +256,7 @@ export default function CidadeNeonExperience() {
   const bannerTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bannerIndexRef = useRef(0)
 
-  /* ── Final Notifications ────────── */
-  const [finalNotifs, setFinalNotifs] = useState<Array<{ app: string; text: string }>>([])
+  /* ── (Final notifications now handled by missions system) ── */
 
   /* ── AURA ────────── */
   const [auraQuizStep, setAuraQuizStep] = useState(0)
@@ -376,7 +330,7 @@ export default function CidadeNeonExperience() {
     }
   }, [phase, hackerIdx])
 
-  /* ─── SPOTIFY LOGIC ────────────────────────── */
+  /* ─── SPOTIFY LOGIC ──────────────────���─────── */
   useEffect(() => {
     if (phase !== "spotify" || !isPlaying) return
     const interval = setInterval(() => {
@@ -458,7 +412,7 @@ export default function CidadeNeonExperience() {
         { id: 6, text: "VAMO ENTRAR EM CONTATO COM VOCE EM BREVE", sender: "Nizzy", time: currentTime },
         { id: 7, text: "ATE A PROXIMA! ALOHA!", sender: "Alohan", time: currentTime },
       ], () => {
-        setTimeout(() => setPhase("final-notifications"), 2000)
+        setTimeout(() => setPhase("phone-home"), 2000)
       })
     }
   }, [phase, confirmationsDone, addBotMessages, currentTime])
@@ -522,6 +476,7 @@ export default function CidadeNeonExperience() {
 
     if (cc === 0) {
       missions.push(
+        { id: "music-test", app: "Cidade Neon", icon: "spotify", color: "#1DB954", title: "Teste das Musicas", body: "Confirmacao 1/3: Conecte musica e emocao", action: "/confirmacao/1-arquetipos" },
         { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: Voce chegou.", action: "/whatsapp" },
         { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
       )
@@ -830,7 +785,7 @@ export default function CidadeNeonExperience() {
           {showConfirmBtn && confirmationsDone < 3 && (
             <div className="px-4 pb-2">
               <button type="button" onClick={handleConfirmation} className="w-full bg-gradient-to-r from-[#6B7FD7] to-[#4ECDC4] text-white font-bold py-3 rounded-xl text-sm active:scale-98 transition-transform">
-                CONFIRMACAO {confirmationsDone + 1}/3
+                {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE AURA (3/3)"}
               </button>
             </div>
           )}
@@ -847,182 +802,7 @@ export default function CidadeNeonExperience() {
     )
   }
 
-  /* ─── OLD CONFIRMATION RENDERS REMOVED ── */
-  if (false) {
-    if (c1Result) {
-      return (
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#2D1B69]/20 via-black to-[#0E7490]/20" />
-            {/* iPhone Notch */}
-            <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-            </div>
-            <div className="relative z-10 text-center">
-              <p className="text-[#A78BFA] text-sm uppercase tracking-widest mb-4">SEU ARQUETIPO</p>
-              <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] flex items-center justify-center shadow-lg shadow-[#7C3AED]/50">
-                <div className="w-28 h-28 rounded-full bg-black flex items-center justify-center"><svg className="w-12 h-12 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg></div>
-              </div>
-              <h1 className="text-white text-2xl font-bold mb-2 text-balance">{c1Result}</h1>
-              <p className="text-white/60 text-sm mb-8">A CIDADE NEON TE RECONHECE.</p>
-              <p className="text-[#A78BFA] text-xs">RETORNANDO AO GRUPO...</p>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col p-6 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
-          {/* iPhone Notch */}
-          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="relative z-10 pt-8 mb-8">
-            <div className="flex gap-2 mb-2">{ARCHETYPE_QUESTIONS.map((_, i) => (<div key={i} className={`flex-1 h-1 rounded-full transition-all duration-300 ${i < c1Question ? "bg-[#A78BFA]" : i === c1Question ? "bg-[#A78BFA]/50" : "bg-white/10"}`} />))}</div>
-            <p className="text-white/40 text-xs text-center">CONFIRMACAO 1/3 - PERGUNTA {c1Question + 1}/{ARCHETYPE_QUESTIONS.length}</p>
-          </div>
-          <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
-            <div className={`text-center transition-all duration-300 ${c1Animating ? "opacity-0 translate-y-4" : "opacity-100"}`}>
-              <h1 className="text-white text-xl font-medium mb-8 text-balance px-4">{ARCHETYPE_QUESTIONS[c1Question].question}</h1>
-              <div className="space-y-3 px-4">{ARCHETYPE_QUESTIONS[c1Question].options.map((opt, i) => (
-                <button key={opt} type="button" onClick={() => handleC1Answer(i)} disabled={c1Animating} className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#A78BFA]/50 text-white py-4 px-6 rounded-xl text-left transition-all">
-                  <span className="text-[#A78BFA] mr-2">{String.fromCharCode(65 + i)}.</span>{opt}
-                </button>
-              ))}</div>
-            </div>
-          </div>
-          <div className="relative z-10 pb-8"><p className="text-white/30 text-xs text-center">TODAS AS RESPOSTAS SAO VALIDAS</p></div>
-        </div>
-      </div>
-    )
-  }
-
-  /* ─── RENDER: CONFIRMATION 2 - COLUMNS ───────────── */
-  if (phase === "confirmation-2") {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col relative">
-          <div className="absolute inset-0" style={{ background: selectedTrack !== null ? `linear-gradient(180deg,${TRACKS[selectedTrack - 1]?.color}20 0%,#000 50%)` : "linear-gradient(180deg,#1a1a2e 0%,#0f0f23 100%)" }} />
-          {/* iPhone Notch */}
-          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="relative z-10 pt-8 px-6 mb-4">
-            <p className="text-white/40 text-xs text-center mb-2">CONFIRMACAO 2/3</p>
-            <h1 className="text-white text-xl font-bold text-center mb-2">CONECTE MUSICA E EMOCAO</h1>
-            <p className="text-white/60 text-sm text-center">CONEXOES: {Object.keys(connections).length}/5</p>
-          </div>
-          <div className="relative z-10 flex-1 flex gap-4 px-4 pb-6 overflow-hidden">
-            <div className="flex-1 flex flex-col">
-              <p className="text-white/40 text-xs mb-3 text-center">FAIXAS</p>
-              <div className="space-y-2">{TRACKS.map((t) => {
-                const connected = t.id in connections
-                const selected = selectedTrack === t.id
-                return <button key={t.id} type="button" onClick={() => handleTrackSelect(t.id)} disabled={connected} className={`w-full py-3 px-3 rounded-xl text-left text-sm transition-all ${connected ? "opacity-30" : selected ? "ring-2 bg-white/10" : "bg-white/5 hover:bg-white/10"}`} style={{ color: selected ? t.color : "#fff" }}><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} /><span className="font-medium truncate">{t.masked}</span></div></button>
-              })}</div>
-            </div>
-            <div className="flex-1 flex flex-col">
-              <p className="text-white/40 text-xs mb-3 text-center">EMOCOES</p>
-              <div className="space-y-2">{EMOTIONS.map((e) => {
-                const used = Object.values(connections).includes(e.id)
-                return <button key={e.id} type="button" onClick={() => handleEmotionConnect(e.id)} disabled={selectedTrack === null || used} className={`w-full py-3 px-3 rounded-xl text-left text-sm transition-all ${used ? "opacity-30" : selectedTrack !== null ? "bg-white/5 hover:bg-white/10" : "bg-white/5 opacity-50"}`} style={{ color: e.color }}>{e.label}</button>
-              })}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  /* ─── RENDER: CONFIRMATION 3 - UNLOCK ────────────── */
-  if (phase === "confirmation-3") {
-    if (c3SelectedTrack !== null && c3Password) {
-      const t = TRACKS.find((x) => x.id === c3SelectedTrack)
-      return (
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
-            <div className="absolute inset-0" style={{ background: `linear-gradient(180deg,${t?.color}20 0%,#000 50%)` }} />
-            {/* iPhone Notch */}
-            <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-            </div>
-            <div className="relative z-10 text-center">
-              <p className="text-white/40 text-xs mb-4">CONFIRMACAO 3/3</p>
-              <h1 className="text-3xl font-bold mb-2" style={{ color: t?.color, textShadow: `0 0 20px ${t?.color}50` }}>FAIXA DESBLOQUEADA</h1>
-              <div className="bg-white/5 rounded-2xl p-6 border border-white/10 mb-8 w-full max-w-[280px] mx-auto">
-                <p className="text-white/40 text-xs text-center mb-3">SUA SENHA</p>
-                <div className="flex justify-center gap-1 font-mono text-2xl">{c3Password.split("").map((ch, i) => (
-                  <span key={i} className={`transition-all duration-200 ${i < c3Revealed ? "opacity-100" : "opacity-0"}`} style={{ color: t?.color }}>{ch}</span>
-                ))}</div>
-              </div>
-              <button type="button" onClick={handleC3Complete} className="w-full max-w-[280px] mx-auto bg-gradient-to-r from-[#7C3AED] to-[#06B6D4] text-white font-bold py-4 rounded-xl">CONCLUIR</button>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col p-6 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
-          {/* iPhone Notch */}
-          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="relative z-10 pt-8 mb-8 text-center">
-            <p className="text-white/40 text-xs mb-2">CONFIRMACAO 3/3</p>
-            <h1 className="text-white text-xl font-bold mb-2">ESCOLHA UMA FAIXA PARA DESBLOQUEAR</h1>
-            <p className="text-white/60 text-sm">A SENHA E O NOME DA MUSICA</p>
-          </div>
-          <div className="relative z-10 flex-1 space-y-3">{TRACKS.map((t) => (
-            <button key={t.id} type="button" onClick={() => handleC3Select(t.id)} className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl p-4 text-left transition-all group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${t.color}20` }}>
-                    <svg className="w-5 h-5" style={{ color: t.color }} fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" /></svg>
-                  </div>
-                  <div><p className="text-white/50 text-xs font-mono mb-0.5">{t.masked}</p></div>
-                </div>
-                <svg className="w-5 h-5 text-white/30 group-hover:text-white/60 transition-colors" fill="currentColor" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z" /></svg>
-              </div>
-            </button>
-          ))}</div>
-        </div>
-      </div>
-    )
-  }
-
-  /* ─── RENDER: FINAL NOTIFICATIONS ────────────────── */
-  if (phase === "final-notifications") {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-black to-[#0f0f23]" />
-          {/* iPhone Notch */}
-          <div className="absolute top-0 left-0 right-0 z-20 h-[54px] flex items-center justify-center">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="relative z-10 w-full space-y-3">
-            {finalNotifs.map((n, i) => (
-              <div key={i} className="bg-white/95 backdrop-blur-lg rounded-2xl p-3 flex items-center gap-3 shadow-lg animate-notif-slide">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: phoneApps.find((a) => a.id === n.app)?.color }}>
-                  {renderAppIcon(n.app, "transparent")}
-                </div>
-                <div className="flex-1 text-left"><p className="text-black font-semibold text-sm">{n.app === "youtube" ? "YouTube" : n.app === "instagram" ? "Instagram" : n.app === "tiktok" ? "TikTok" : "[UNTITLED]"}</p><p className="text-gray-600 text-xs">{n.text}</p></div>
-                <span className="text-gray-400 text-xs">agora</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <style jsx>{`
-          @keyframes notif-slide { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
-          .animate-notif-slide{animation:notif-slide .3s ease-out}
-        `}</style>
-      </div>
-    )
-  }
+  /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
   /* ─── RENDER: AURA QUIZ ─────────────────────────── */
   if (phase === "aura-login") {
