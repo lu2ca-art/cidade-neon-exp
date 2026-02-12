@@ -24,20 +24,19 @@ export default function Confirmacao1Page() {
   const router = useRouter()
   const { completeConfirmation, updateCinematicStep, state } = useGameFunnel()
 
+  const alreadyDone = state.confirmations.c1.done
+  const savedData = state.confirmations.c1.data as Record<string, string> | undefined
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
-  const [matches, setMatches] = useState<Record<string, string>>({})
-  const [showResult, setShowResult] = useState(false)
+  const [matches, setMatches] = useState<Record<string, string>>(
+    alreadyDone && savedData ? (savedData.trackEmotions as unknown as Record<string, string>) || {} : {}
+  )
+  const [showResult, setShowResult] = useState(alreadyDone)
   const [animatingOut, setAnimatingOut] = useState(false)
+  const [isRevisit] = useState(alreadyDone)
 
   useEffect(() => {
     updateCinematicStep("confirmation-1")
   }, [updateCinematicStep])
-
-  useEffect(() => {
-    if (state.confirmations.c1.done) {
-      setShowResult(true)
-    }
-  }, [state.confirmations.c1.done])
 
   const matchedCount = Object.keys(matches).length
   const allMatched = matchedCount === 5
@@ -52,7 +51,9 @@ export default function Confirmacao1Page() {
       setTimeout(() => {
         setShowResult(true)
         completeConfirmation(1, { trackEmotions: newMatches })
-        setTimeout(() => router.push("/whatsapp"), 3000)
+        if (!isRevisit) {
+          setTimeout(() => router.push("/whatsapp"), 3000)
+        }
       }, 600)
     } else {
       // Auto-select next unmatched track

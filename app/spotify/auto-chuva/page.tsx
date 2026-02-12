@@ -87,7 +87,7 @@ export default function SpotifyAutoPage() {
 
   /* ── NOW PLAYING ─────────────────────────────── */
   const NowPlaying = () => (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
       {/* gradient bg from album art colors */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
@@ -100,8 +100,8 @@ export default function SpotifyAutoPage() {
           <p className="text-[10px] text-white/60 uppercase tracking-widest">Tocando do album</p>
           <p className="text-[12px] text-white font-medium">Cidade Neon</p>
         </div>
-        <button type="button" className="p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-          <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        <button type="button" onClick={() => router.push("/")} className="p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Voltar para inicio">
+          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
         </button>
       </div>
 
@@ -167,7 +167,7 @@ export default function SpotifyAutoPage() {
 
   /* ── ALBUM VIEW ──────────────────────────────── */
   const AlbumView = () => (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
       {/* top bar */}
@@ -191,7 +191,7 @@ export default function SpotifyAutoPage() {
       </div>
 
       {/* track list */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-24">
+      <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain px-4 pb-24" style={{ WebkitOverflowScrolling: "touch" }}>
         {TRACKS.map((t, i) => (
           <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!t.playable}
             className={`w-full flex items-center gap-3 py-3 px-2 rounded-md text-left ${i === trackIdx && playing ? "bg-white/5" : ""} ${!t.playable ? "opacity-40" : "active:bg-white/10"}`}
@@ -237,7 +237,7 @@ export default function SpotifyAutoPage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation select-none">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#121212] overflow-hidden">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#121212]">
         {/* notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
         {/* status bar */}
