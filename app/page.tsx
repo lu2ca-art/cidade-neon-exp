@@ -506,26 +506,32 @@ export default function CidadeNeonExperience() {
     return missions.filter(m => !completedMissions.includes(m.id))
   }, [gameFunnelState.confirmationCount, completedMissions])
 
-  /* ─── PERIODIC BANNER NOTIFICATIONS (every 6s) ── */
+  /* ─── BANNER NOTIFICATIONS (5s each, then bounces to Missoes) ── */
+  const [missionsBounce, setMissionsBounce] = useState(false)
+
   useEffect(() => {
     if (phase !== "phone-home" || showNotifCenter) {
       if (bannerTimerRef.current) clearInterval(bannerTimerRef.current)
       return
     }
 
-    // Show first notification after 2s, then every 6s
     const showNext = () => {
       const missions = getMissions()
       if (missions.length === 0) { setBannerNotif(null); return }
       const idx = bannerIndexRef.current % missions.length
       setBannerNotif(missions[idx])
       bannerIndexRef.current++
-      // Auto-dismiss after 4s
-      setTimeout(() => setBannerNotif(null), 4500)
+      // Auto-dismiss after 5 seconds, bounce the Missoes button
+      setTimeout(() => {
+        setBannerNotif(null)
+        setMissionsBounce(true)
+        setTimeout(() => setMissionsBounce(false), 600)
+      }, 5000)
     }
 
     const initialTimer = setTimeout(showNext, 2000)
-    bannerTimerRef.current = setInterval(showNext, 6000)
+    // Show next notification 2s after previous dismissed (5s visible + 2s gap = 7s cycle)
+    bannerTimerRef.current = setInterval(showNext, 7500)
 
     return () => {
       clearTimeout(initialTimer)
@@ -874,7 +880,7 @@ export default function CidadeNeonExperience() {
           setAuraShowResult(true)
           if (!auraAlreadyDone) {
             completeConfirmation(3, { auraAnswers: newAnswers })
-            setTimeout(() => { window.location.href = "/whatsapp" }, 4000)
+            setTimeout(() => { setPhase("phone-home") }, 4000)
           }
         }, 400)
       }
@@ -910,21 +916,35 @@ export default function CidadeNeonExperience() {
               <h1 className="text-xl font-bold mb-2" style={{ color: result.color }}>{result.name}</h1>
               <p className="text-white/50 text-sm mb-6 max-w-[260px] mx-auto leading-relaxed">{result.desc}</p>
 
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-6">
-                <p className="text-white/60 text-xs mb-2">Quer ir mais longe?</p>
-                <a href="mailto:contato@lu2ca.com?subject=Minha%20AURA%20-%20Cidade%20Neon" className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: `${result.color}20`, color: result.color, border: `1px solid ${result.color}30` }}>
-                  Enviar minha AURA
+              {/* Share by email */}
+              <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4">
+                <p className="text-white/60 text-xs mb-2">Compartilhe sua AURA</p>
+                <a href={`mailto:?subject=Minha%20AURA%20-%20${encodeURIComponent(result.name)}&body=Descobri%20minha%20aura%20na%20Cidade%20Neon%20de%20LU2CA.%20Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}%0A%0ADescubra%20a%20sua%3A%20https%3A%2F%2Flu2ca.me`} className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: `${result.color}20`, color: result.color, border: `1px solid ${result.color}30` }}>
+                  Enviar por email
                 </a>
               </div>
 
+              {/* Link to disc */}
+              <a
+                href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 mb-6"
+                style={{ background: `linear-gradient(135deg, ${result.color}30, ${result.color}10)`, color: result.color, border: `1px solid ${result.color}25` }}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                Eleve sua AURA com o Album
+              </a>
+
+              {/* Always go back to home */}
               {auraAlreadyDone ? (
-                <button type="button" onClick={() => setPhase("phone-home")} className="mt-4 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
+                <button type="button" onClick={() => setPhase("phone-home")} className="mt-2 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
                   Voltar ao Inicio
                 </button>
               ) : (
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 mt-2">
                   <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
-                  <p className="text-white/30 text-xs">Voltando ao WhatsApp...</p>
+                  <p className="text-white/30 text-xs">Voltando ao inicio...</p>
                   <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
                 </div>
               )}
@@ -1103,10 +1123,10 @@ export default function CidadeNeonExperience() {
           </div>
         )}
 
-        {/* ── App Grid ── */}
+        {/* ── App Grid (vertically centered) ── */}
         {!showNotifCenter && (
-          <div className="relative z-10 px-6 pt-16">
-            <div className="grid grid-cols-4 gap-x-4 gap-y-5">
+          <div className="absolute inset-0 z-10 flex items-center justify-center px-6 pt-[50px] pb-[80px]">
+            <div className="grid grid-cols-4 gap-x-4 gap-y-5 w-full">
               {phoneApps.map((app) => (
                 <button key={app.id} onClick={() => {
                   if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
@@ -1136,7 +1156,7 @@ export default function CidadeNeonExperience() {
               <button
                 type="button"
                 onClick={() => setShowNotifCenter(true)}
-                className="relative bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 transition-colors border border-white/10"
+                className={`relative bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 transition-all border border-white/10 ${missionsBounce ? "animate-missions-bounce" : ""}`}
               >
                 <svg className="w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
                 <span className="text-white/70 text-xs font-medium">Missoes</span>
@@ -1164,6 +1184,8 @@ export default function CidadeNeonExperience() {
       <style jsx>{`
         @keyframes notif-slide { 0%{transform:translateY(-110%);opacity:0} 100%{transform:translateY(0);opacity:1} }
         .animate-notif-slide{animation:notif-slide .35s cubic-bezier(0.22,1,0.36,1) forwards}
+        @keyframes missions-bounce { 0%{transform:translateY(0)} 30%{transform:translateY(-8px)} 50%{transform:translateY(2px)} 70%{transform:translateY(-3px)} 100%{transform:translateY(0)} }
+        .animate-missions-bounce{animation:missions-bounce .5s ease-out}
       `}</style>
     </div>
   )

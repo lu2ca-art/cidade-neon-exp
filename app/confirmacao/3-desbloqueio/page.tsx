@@ -366,7 +366,7 @@ export default function IQTestPage() {
             setShowResult(true)
             if (!isRevisit) {
               completeConfirmation(2, { iqScore: newScore, total: TOTAL_QUESTIONS, rank: getRank(newScore) })
-              setTimeout(() => router.push("/whatsapp"), 3500)
+              setTimeout(() => router.push("/"), 3500)
             }
           }
         }
@@ -428,7 +428,7 @@ export default function IQTestPage() {
             ) : (
               <div className="flex items-center justify-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                <p className="text-white/30 text-xs">Voltando ao WhatsApp...</p>
+                <p className="text-white/30 text-xs">Voltando ao inicio...</p>
                 <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
               </div>
             )}

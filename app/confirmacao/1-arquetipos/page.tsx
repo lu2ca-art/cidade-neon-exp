@@ -52,7 +52,7 @@ export default function Confirmacao1Page() {
         setShowResult(true)
         completeConfirmation(1, { trackEmotions: newMatches })
         if (!isRevisit) {
-          setTimeout(() => router.push("/whatsapp"), 3000)
+          setTimeout(() => router.push("/"), 3000)
         }
       }, 600)
     } else {
@@ -110,7 +110,7 @@ export default function Confirmacao1Page() {
             ) : (
               <div className="flex items-center justify-center gap-2 pt-4">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#FF6B9D] animate-pulse" />
-                <p className="text-white/40 text-xs">Voltando ao WhatsApp...</p>
+                <p className="text-white/40 text-xs">Voltando ao inicio...</p>
                 <div className="w-1.5 h-1.5 rounded-full bg-[#9DFF6B] animate-pulse" />
               </div>
             )}

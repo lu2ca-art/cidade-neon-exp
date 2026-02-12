@@ -54,10 +54,23 @@ export default function TikTokFinalPage() {
   const [liked, setLiked] = useState<Record<number, boolean>>({})
   const [showComments, setShowComments] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
+  const [showDiscPopup, setShowDiscPopup] = useState(false)
+  const [popupShown, setPopupShown] = useState(false)
 
   useEffect(() => {
     updateCinematicStep("tiktok-final")
   }, [updateCinematicStep])
+
+  // Auto-show disc purchase popup after 3s on the last video
+  useEffect(() => {
+    if (currentVideo === VIDEOS.length - 1 && !popupShown) {
+      const t = setTimeout(() => {
+        setShowDiscPopup(true)
+        setPopupShown(true)
+      }, 3000)
+      return () => clearTimeout(t)
+    }
+  }, [currentVideo, popupShown])
 
   const handleNext = () => {
     if (isAnimating) return
@@ -251,15 +264,61 @@ export default function TikTokFinalPage() {
         </div>
 
         {/* CTA Button for last video */}
-        {video.isCTA && (
+        {video.isCTA && !showDiscPopup && (
           <div className="absolute bottom-24 left-4 right-4 z-20">
             <button
               type="button"
-              onClick={handleGoToSalaBranca}
+              onClick={() => { setShowDiscPopup(true); setPopupShown(true) }}
               className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold py-4 px-6 rounded-full shadow-lg shadow-purple-500/30 transition-all hover:scale-105 min-h-[44px]"
             >
-              Ir para a Sala Branca
+              Garantir o Disco
             </button>
+          </div>
+        )}
+
+        {/* Disc Purchase Popup */}
+        {showDiscPopup && (
+          <div className="absolute inset-0 z-50 flex items-end justify-center">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowDiscPopup(false)} />
+            <div className="relative w-full bg-gradient-to-t from-[#0a0a0a] via-[#111] to-[#1a1a2e] rounded-t-3xl p-6 pb-10 animate-disc-popup border-t border-white/10">
+              {/* Close */}
+              <button type="button" onClick={() => setShowDiscPopup(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                <X className="w-4 h-4 text-white/60" />
+              </button>
+
+              {/* Disc icon */}
+              <div className="flex justify-center mb-4">
+                <div className="relative w-20 h-20">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/30 via-cyan-500/20 to-purple-500/30 animate-spin-slow" />
+                  <div className="absolute inset-2 rounded-full bg-[#111] flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-cyan-400" />
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-white text-xl font-bold text-center mb-1">CIDADE NEON</h3>
+              <p className="text-white/40 text-sm text-center mb-1">LU2CA</p>
+              <p className="text-white/60 text-xs text-center mb-6 max-w-[280px] mx-auto leading-relaxed">
+                Voce chegou ate aqui. O disco ta pronto. Agora so falta ser seu.
+              </p>
+
+              <a
+                href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-purple-500/20 active:scale-[0.97] transition-transform min-h-[44px]"
+              >
+                Comprar no [UNTITLED]
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setShowDiscPopup(false)}
+                className="block w-full text-center text-white/30 text-xs mt-3 py-2"
+              >
+                Agora nao
+              </button>
+            </div>
           </div>
         )}
 
@@ -303,6 +362,11 @@ export default function TikTokFinalPage() {
           to { transform: rotate(360deg); }
         }
         .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        @keyframes disc-popup {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-disc-popup { animation: disc-popup .4s cubic-bezier(0.22,1,0.36,1) forwards; }
       `}</style>
     </div>
   )
