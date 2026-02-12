@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { GameFunnelProvider } from './providers/GameFunnelProvider'
+import { AudioPlayerProvider } from './providers/AudioPlayerProvider'
 import './globals.css'
 
 const geistSans = Geist({ 
@@ -53,7 +54,9 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-black`}>
         <GameFunnelProvider>
-          {children}
+          <AudioPlayerProvider>
+            {children}
+          </AudioPlayerProvider>
         </GameFunnelProvider>
         <Analytics />
       </body>

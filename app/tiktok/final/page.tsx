@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 import { Heart, MessageCircle, Share2, Music2, ChevronUp, X } from "lucide-react"
 
 const VIDEOS = [
@@ -57,9 +58,12 @@ export default function TikTokFinalPage() {
   const [showDiscPopup, setShowDiscPopup] = useState(false)
   const [popupShown, setPopupShown] = useState(false)
 
+  const globalAudio = useAudioPlayer()
+
   useEffect(() => {
     updateCinematicStep("tiktok-final")
-  }, [updateCinematicStep])
+    globalAudio.pause()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-show disc purchase popup after 3s on the last video
   useEffect(() => {

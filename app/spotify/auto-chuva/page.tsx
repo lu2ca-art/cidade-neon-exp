@@ -4,52 +4,38 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-
-const TRACKS = [
-  { id: 1, title: "CHUVA", duration: "3:24", durationSec: 204, playable: true },
-  { id: 2, title: "Copo Americano", duration: "2:58", durationSec: 178, playable: true },
-  { id: 3, title: null, duration: "3:12", durationSec: 192, playable: false },
-  { id: 4, title: null, duration: "2:45", durationSec: 165, playable: false },
-  { id: 5, title: null, duration: "3:01", durationSec: 181, playable: false },
-]
+import { useAudioPlayer, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvider"
 
 export default function SpotifyAutoPage() {
   const router = useRouter()
   const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
+  const audio = useAudioPlayer()
 
   const [view, setView] = useState<"now-playing" | "album">("now-playing")
-  const [trackIdx, setTrackIdx] = useState(0)
-  const [playing, setPlaying] = useState(true)
-  const [elapsed, setElapsed] = useState(0)
   const [showNotif, setShowNotif] = useState(false)
   const [liked, setLiked] = useState(false)
   const notifSent = useRef(false)
   const isFirst = useRef(!state.perAppState.spotifyAuto.completed)
 
-  const track = TRACKS[trackIdx]
-  const progress = track.durationSec > 0 ? (elapsed / track.durationSec) * 100 : 0
+  const track = audio.currentTrack ?? ALBUM_TRACKS[0]
+  const progress = track.durationSec > 0 ? (audio.elapsed / track.durationSec) * 100 : 0
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
 
-  /* timer */
+  // Auto-play CHUVA (track 0) on mount if nothing is playing
   useEffect(() => {
-    if (!playing) return
-    const id = setInterval(() => {
-      setElapsed(p => {
-        const next = p + 1
-        if (next === 13 && isFirst.current && !notifSent.current) {
-          notifSent.current = true
-          setShowNotif(true)
-        }
-        if (next >= track.durationSec) {
-          setPlaying(false)
-          return track.durationSec
-        }
-        return next
-      })
-    }, 1000)
-    return () => clearInterval(id)
-  }, [playing, track.durationSec])
+    if (!audio.playing && audio.elapsed === 0) {
+      audio.play(0)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show WhatsApp notification at 13 seconds on first visit
+  useEffect(() => {
+    if (audio.elapsed >= 13 && isFirst.current && !notifSent.current) {
+      notifSent.current = true
+      setShowNotif(true)
+    }
+  }, [audio.elapsed])
 
   const fmt = (s: number) => {
     const m = Math.floor(s / 60)
@@ -70,25 +56,14 @@ export default function SpotifyAutoPage() {
   }, [view, router])
 
   const selectTrack = (i: number) => {
-    if (!TRACKS[i].playable) return
-    setTrackIdx(i)
-    setElapsed(0)
-    setPlaying(true)
+    if (!ALBUM_TRACKS[i].playable) return
+    audio.play(i)
     setView("now-playing")
   }
 
-  const prev = () => {
-    if (elapsed > 3) { setElapsed(0) }
-    else if (trackIdx > 0 && TRACKS[trackIdx - 1].playable) { setTrackIdx(i => i - 1); setElapsed(0) }
-  }
-  const next = () => {
-    if (trackIdx < TRACKS.length - 1 && TRACKS[trackIdx + 1].playable) { setTrackIdx(i => i + 1); setElapsed(0); setPlaying(true) }
-  }
-
-  /* ── NOW PLAYING ─────────────────────────────── */
+  /* -- NOW PLAYING VIEW -- */
   const NowPlaying = () => (
     <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
-      {/* gradient bg from album art colors */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
       {/* top bar */}
@@ -112,12 +87,11 @@ export default function SpotifyAutoPage() {
         </div>
       </div>
 
-      {/* controls section */}
+      {/* controls */}
       <div className="relative z-10 px-6 pb-6 pt-4">
-        {/* title row */}
         <div className="flex items-center justify-between mb-4">
           <div className="min-w-0 flex-1">
-            <h2 className="text-white text-lg font-bold truncate">{track.title ?? "Faixa bloqueada"}</h2>
+            <h2 className="text-white text-lg font-bold truncate">{track.title ?? (track.masked ?? "Faixa bloqueada")}</h2>
             <p className="text-white/60 text-sm">LU2CA</p>
           </div>
           <button type="button" onClick={() => setLiked(l => !l)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
@@ -131,11 +105,11 @@ export default function SpotifyAutoPage() {
         {/* progress */}
         <div className="mb-4">
           <div className="relative h-1 bg-white/20 rounded-full overflow-hidden">
-            <div className="absolute inset-y-0 left-0 bg-white rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${progress}%` }} />
-            <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md transition-[left] duration-1000 ease-linear" style={{ left: `calc(${progress}% - 6px)` }} />
+            <div className="absolute inset-y-0 left-0 bg-white rounded-full transition-[width] duration-300 ease-linear" style={{ width: `${Math.min(progress, 100)}%` }} />
+            <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md transition-[left] duration-300 ease-linear" style={{ left: `calc(${Math.min(progress, 100)}% - 6px)` }} />
           </div>
           <div className="flex justify-between mt-1">
-            <span className="text-[11px] text-white/50 tabular-nums">{fmt(elapsed)}</span>
+            <span className="text-[11px] text-white/50 tabular-nums">{fmt(audio.elapsed)}</span>
             <span className="text-[11px] text-white/50 tabular-nums">{track.duration}</span>
           </div>
         </div>
@@ -145,16 +119,16 @@ export default function SpotifyAutoPage() {
           <button type="button" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60">
             <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
           </button>
-          <button type="button" onClick={prev} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <button type="button" onClick={audio.prev} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
             <svg width="28" height="28" fill="white" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
           </button>
-          <button type="button" onClick={() => setPlaying(p => !p)} className="w-14 h-14 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform">
-            {playing
+          <button type="button" onClick={audio.toggle} className="w-14 h-14 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform">
+            {audio.playing
               ? <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
               : <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
             }
           </button>
-          <button type="button" onClick={next} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <button type="button" onClick={audio.next} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
             <svg width="28" height="28" fill="white" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
           </button>
           <button type="button" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60">
@@ -165,12 +139,11 @@ export default function SpotifyAutoPage() {
     </div>
   )
 
-  /* ── ALBUM VIEW ──────────────────────────────── */
+  /* -- ALBUM VIEW -- */
   const AlbumView = () => (
     <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
-      {/* top bar */}
       <div className="relative z-10 flex items-center px-4 py-3">
         <button type="button" onClick={() => router.push("/")} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
           <svg width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 19l-7-7 7-7"/></svg>
@@ -184,47 +157,56 @@ export default function SpotifyAutoPage() {
         </div>
         <h1 className="text-white text-xl font-bold">Cidade Neon</h1>
         <p className="text-white/60 text-sm">LU2CA</p>
-        <p className="text-white/40 text-xs mt-1">Album &middot; 2026 &middot; 5 faixas</p>
-        <button type="button" onClick={() => { setTrackIdx(0); setElapsed(0); setPlaying(true); setView("now-playing") }} className="mt-4 w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center active:scale-95 transition-transform">
+        <p className="text-white/40 text-xs mt-1">Album &middot; 2026 &middot; 9 faixas</p>
+        <button type="button" onClick={() => { audio.play(0); setView("now-playing") }} className="mt-4 w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center active:scale-95 transition-transform">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
         </button>
       </div>
 
       {/* track list */}
       <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain px-4 pb-24" style={{ WebkitOverflowScrolling: "touch" }}>
-        {TRACKS.map((t, i) => (
-          <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!t.playable}
-            className={`w-full flex items-center gap-3 py-3 px-2 rounded-md text-left ${i === trackIdx && playing ? "bg-white/5" : ""} ${!t.playable ? "opacity-40" : "active:bg-white/10"}`}
-          >
-            <span className="w-6 text-center text-sm text-white/40 flex-shrink-0">
-              {i === trackIdx && playing
-                ? <span className="inline-flex gap-[2px] items-end h-4">{[1,2,3].map(b=><span key={b} className="w-[3px] bg-[#1DB954] rounded-sm animate-bounce" style={{height:`${8+Math.random()*8}px`,animationDelay:`${b*0.15}s`}}/>)}</span>
-                : i + 1}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium truncate ${i === trackIdx && playing ? "text-[#1DB954]" : "text-white"}`}>
-                {t.playable ? t.title : <span className="flex items-center gap-2"><svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>Faixa bloqueada</span>}
-              </p>
-              <p className="text-xs text-white/40">LU2CA</p>
-            </div>
-            <span className="text-xs text-white/30 flex-shrink-0">{t.duration}</span>
-          </button>
-        ))}
+        {ALBUM_TRACKS.map((t, i) => {
+          const isActive = i === audio.trackIdx && audio.playing
+          return (
+            <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!t.playable}
+              className={`w-full flex items-center gap-3 py-3 px-2 rounded-md text-left ${isActive ? "bg-white/5" : ""} ${!t.playable ? "opacity-40" : "active:bg-white/10"}`}
+            >
+              <span className="w-6 text-center text-sm text-white/40 flex-shrink-0">
+                {isActive
+                  ? <span className="inline-flex gap-[2px] items-end h-4">{[1,2,3].map(b=><span key={b} className="w-[3px] bg-[#1DB954] rounded-sm animate-bounce" style={{height:`${8+Math.random()*8}px`,animationDelay:`${b*0.15}s`}}/>)}</span>
+                  : i + 1}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium truncate ${isActive ? "text-[#1DB954]" : "text-white"}`}>
+                  {t.playable
+                    ? t.title
+                    : <span className="flex items-center gap-2 font-mono opacity-70">
+                        <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+                        {t.masked}
+                      </span>
+                  }
+                </p>
+                <p className="text-xs text-white/40">LU2CA</p>
+              </div>
+              <span className="text-xs text-white/30 flex-shrink-0">{t.duration}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* mini player */}
-      {trackIdx >= 0 && (
+      {audio.currentTrack && (
         <div className="absolute bottom-0 left-0 right-0 z-20">
           <button type="button" onClick={() => setView("now-playing")} className="w-full bg-[#282828] border-t border-white/5 px-4 py-2 flex items-center gap-3">
             <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
               <Image src="/images/album-cover.jpg" alt="" width={40} height={40} className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-white text-sm font-medium truncate">{track.title ?? "Bloqueada"}</p>
+              <p className="text-white text-sm font-medium truncate">{audio.currentTrack.title ?? "Bloqueada"}</p>
               <p className="text-white/50 text-xs">LU2CA</p>
             </div>
-            <button type="button" onClick={e => { e.stopPropagation(); setPlaying(p => !p) }} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-              {playing
+            <button type="button" onClick={e => { e.stopPropagation(); audio.toggle() }} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+              {audio.playing
                 ? <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
                 : <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               }
@@ -237,7 +219,7 @@ export default function SpotifyAutoPage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation select-none">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#121212]">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#121212]">
         {/* notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
         {/* status bar */}

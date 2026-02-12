@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 
 const VIDEOS = [
   {
@@ -302,7 +303,11 @@ function VideoSlide({ video, isActive }: { video: typeof VIDEOS[0]; isActive: bo
 
 export default function TikTokFeedPage() {
   const router = useRouter()
+  const globalAudio = useAudioPlayer()
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Pause global Spotify audio on TikTok
+  useEffect(() => { globalAudio.pause() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [activeIdx, setActiveIdx] = useState(0)
 
   useEffect(() => {

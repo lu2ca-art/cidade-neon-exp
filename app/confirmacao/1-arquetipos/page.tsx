@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 
 const TRACKS = [
   { id: "nectar", name: "NECTAR", masked: "1. n**t**", color: "#FF6B9D", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/NECTAR%20%28INSTRUMENTAL%29-cpc97l75aiwhXeJ2h2qbZ0Lhos0GmK.mp3" },
@@ -36,9 +37,13 @@ export default function Confirmacao1Page() {
   const [playingTrack, setPlayingTrack] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  const globalAudio = useAudioPlayer()
+
   useEffect(() => {
     updateCinematicStep("confirmation-1")
-  }, [updateCinematicStep])
+    // Pause global Spotify audio on this page (it has its own track audio)
+    globalAudio.pause()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Play track audio instantly on selection
   const playTrack = (trackId: string) => {
