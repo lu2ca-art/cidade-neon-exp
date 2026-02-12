@@ -596,26 +596,25 @@ export default function CidadeNeonExperience() {
 
     if (cc === 0) {
       missions.push(
-        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: Voce chegou.", action: "/whatsapp/grupo" },
+        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: Voce chegou.", action: "/whatsapp" },
         { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
       )
     } else if (cc === 1) {
       missions.push(
-        { id: "tiktok-1", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou um novo video", action: "/tiktok/final" },
-        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Nizzy: Bora pra proxima fase!", action: "/whatsapp/grupo" },
+        { id: "iq-test", app: "Cidade Neon", icon: "untitled", color: "#8B5CF6", title: "Teste de QI", body: "Confirmacao 2/3: Prove sua inteligencia", action: "/confirmacao/3-desbloqueio" },
+        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Nizzy: Bora pro proximo teste!", action: "/whatsapp" },
       )
     } else if (cc === 2) {
       missions.push(
-        { id: "youtube-2", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video: Cidade Neon (Filme Oficial)", action: "/youtube/cidade-neon" },
-        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Alohan: Falta a ultima confirmacao!", action: "/whatsapp/grupo" },
+        { id: "aura-test", app: "AURA", icon: "aura", color: "#A78BFA", title: "Descubra sua AURA", body: "Confirmacao 3/3: Sua essencia", action: "aura" },
+        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Alohan: Ultima confirmacao!", action: "/whatsapp" },
       )
     } else {
       missions.push(
-        { id: "youtube-final", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "CIDADE NEON (Filme Oficial)", action: "/youtube/cidade-neon" },
-        { id: "instagram-final", app: "Instagram", icon: "instagram", color: "#E1306C", title: "@lu2ca.mp3", body: "Publicou novos posts", action: "https://instagram.com/lu2ca.mp3/" },
-        { id: "tiktok-final", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "Publicou 5 novos videos", action: "https://tiktok.com/@lu2ca.mp3" },
-        { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+        { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
+        { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Eleve sua AURA com o Album", action: "/final/sala-branca" },
         { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvi de novo", action: "/spotify/auto-chuva" },
+        { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
       )
     }
 
@@ -654,47 +653,24 @@ export default function CidadeNeonExperience() {
     if (phase !== "phone-home") return
     const cc = gameFunnelState.confirmationCount
     if (cc === 0) setAppBadges({ whatsapp: true, spotify: true })
-    else if (cc === 1) setAppBadges({ whatsapp: true, spotify: true, tiktok: true })
-    else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, tiktok: true, youtube: true })
-    else setAppBadges({ youtube: true, instagram: true, tiktok: true, untitled: true, whatsapp: true, spotify: true })
+    else if (cc === 1) setAppBadges({ whatsapp: true, spotify: true })
+    else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, aura: true })
+    else setAppBadges({ tiktok: true, aura: true, spotify: true, whatsapp: true, untitled: true })
   }, [phase, gameFunnelState.confirmationCount])
 
   const handleMissionClick = (mission: { id: string; action: string }) => {
     setCompletedMissions(prev => [...prev, mission.id])
     setBannerNotif(null)
-    if (mission.action.startsWith("http")) {
+    if (mission.action === "aura") {
+      setPhase("aura-login")
+    } else if (mission.action.startsWith("http")) {
       window.open(mission.action, "_blank")
     } else {
       window.location.href = mission.action
     }
   }
 
-  /* ─── FINAL NOTIFICATIONS ──────────────────── */
-  useEffect(() => {
-    if (phase !== "final-notifications") return
-    const notifs = [
-      { app: "youtube", text: "CIDADE NEON (FILME OFICIAL)" },
-      { app: "instagram", text: "@LU2CA.MP3 POSTOU UM NOVO REEL" },
-      { app: "tiktok", text: "LU2CA POSTOU 5 NOVOS VIDEOS" },
-      { app: "untitled", text: "ALBUM CIDADE NEON" },
-    ]
-    let i = 0
-    const show = () => {
-      if (i >= notifs.length) {
-        setTimeout(() => {
-          setAppBadges({ youtube: true, instagram: true, tiktok: true, untitled: true, whatsapp: true, spotify: true })
-          setPhase("phone-home")
-        }, 2000)
-        return
-      }
-      setTimeout(() => {
-        setFinalNotifs((p) => [...p, notifs[i]])
-        i++
-        show()
-      }, 1200)
-    }
-    show()
-  }, [phase])
+  /* ─── FINAL NOTIFICATIONS (now handled by missions system) ── */
 
   /* ─── ICON RENDERER ────────────────────────── */
   const getIconSvg = (icon: string): ReactElement => {
@@ -705,6 +681,7 @@ export default function CidadeNeonExperience() {
       tiktok: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" /></svg>,
       instagram: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>,
       untitled: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>,
+      aura: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1" opacity="0.7"/><circle cx="12" cy="12" r="5" stroke="white" strokeWidth="0.5" opacity="0.4"/><text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">A</text></svg>,
     }
     return svgMap[icon] || <div className="w-6 h-6 bg-white/30 rounded" />
   }
@@ -1414,10 +1391,10 @@ export default function CidadeNeonExperience() {
               {phoneApps.map((app) => (
                 <button key={app.id} onClick={() => {
                   if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
-                  if (app.id === "tiktok") { window.location.href = "/tiktok/final"; return }
+                  if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
                   if (app.link) { window.open(app.link, "_blank"); return }
-                  if (app.id === "whatsapp") { window.location.href = "/whatsapp/grupo"; return }
-                  if (app.id === "aura") { setPhase("aura-login"); return }
+                if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
+                if (app.id === "aura") { setPhase("aura-login"); return }
                   if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
                 }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative" type="button">
                   {renderAppIcon(app.icon, app.color)}
