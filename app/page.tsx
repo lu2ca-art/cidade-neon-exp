@@ -252,7 +252,7 @@ export default function CidadeNeonExperience() {
   const [showNotifCenter, setShowNotifCenter] = useState(false)
   const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string } | null>(null)
   const [completedMissions, setCompletedMissions] = useState<string[]>([])
-  const bannerTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bannerIndexRef = useRef(0)
 
   /* ── (Final notifications now handled by missions system) ── */
@@ -505,32 +505,33 @@ export default function CidadeNeonExperience() {
     return missions.filter(m => !completedMissions.includes(m.id))
   }, [gameFunnelState.confirmationCount, completedMissions])
 
-  /* ─── PERIODIC BANNER NOTIFICATIONS (every 6s) ── */
+  /* ─── BANNER NOTIFICATIONS (persist until clicked) ── */
   useEffect(() => {
     if (phase !== "phone-home" || showNotifCenter) {
-      if (bannerTimerRef.current) clearInterval(bannerTimerRef.current)
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current)
       return
     }
 
-    // Show first notification after 2s, then every 6s
-    const showNext = () => {
-      const missions = getMissions()
-      if (missions.length === 0) { setBannerNotif(null); return }
-      const idx = bannerIndexRef.current % missions.length
-      setBannerNotif(missions[idx])
-      bannerIndexRef.current++
-      // Auto-dismiss after 4s
-      setTimeout(() => setBannerNotif(null), 4500)
-    }
+    // Only show a banner if there is none currently displayed
+    if (bannerNotif) return
 
-    const initialTimer = setTimeout(showNext, 2000)
-    bannerTimerRef.current = setInterval(showNext, 6000)
+    const missions = getMissions()
+    if (missions.length === 0) return
+
+    // Show first notification after 2s, subsequent ones 3s after previous was clicked
+    const delay = bannerIndexRef.current === 0 ? 2000 : 3000
+    bannerTimerRef.current = setTimeout(() => {
+      const m = getMissions()
+      if (m.length === 0) return
+      const idx = bannerIndexRef.current % m.length
+      setBannerNotif(m[idx])
+      bannerIndexRef.current++
+    }, delay)
 
     return () => {
-      clearTimeout(initialTimer)
-      if (bannerTimerRef.current) clearInterval(bannerTimerRef.current)
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current)
     }
-  }, [phase, showNotifCenter, getMissions])
+  }, [phase, showNotifCenter, bannerNotif, getMissions])
 
   // Set badges based on confirmation count
   useEffect(() => {
