@@ -20,10 +20,12 @@ export default function DBeeCallPage() {
 
   // Auto-answer after 1.2s
   useEffect(() => {
+    console.log("[v0] DBeeCallPage mounted, hasStarted:", hasStarted.current)
     if (hasStarted.current) return
     hasStarted.current = true
 
     const t = setTimeout(() => {
+      console.log("[v0] Auto-answering call")
       setIsCallActive(true)
       updateCinematicStep("active-call")
       updateCallState({ answered: true })
@@ -34,12 +36,16 @@ export default function DBeeCallPage() {
 
   // Call timer -- 15s then go to hacker
   useEffect(() => {
+    console.log("[v0] isCallActive changed:", isCallActive)
     if (!isCallActive) return
 
+    console.log("[v0] Starting call timer for", CALL_DURATION, "seconds")
     timerRef.current = setInterval(() => {
       setCallDuration((prev) => {
         const next = prev + 1
+        console.log("[v0] Call duration:", next)
         if (next >= CALL_DURATION) {
+          console.log("[v0] Call ended, navigating to /hacker")
           if (timerRef.current) clearInterval(timerRef.current)
           updateCinematicStep("hacker-takeover")
           router.push("/hacker")

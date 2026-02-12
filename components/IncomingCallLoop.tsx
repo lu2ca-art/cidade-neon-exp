@@ -9,6 +9,8 @@ export function IncomingCallLoop({ onAccept }: { onAccept: () => void }) {
   const [callState, setCallState] = useState<CallState>("ringing")
   const [missedCount, setMissedCount] = useState(0)
 
+  console.log("[v0] IncomingCallLoop render, state:", callState, "missedCount:", missedCount)
+
   const handleDecline = useCallback(() => {
     setCallState("dismissed")
     setMissedCount(c => c + 1)
@@ -148,7 +150,7 @@ export function IncomingCallLoop({ onAccept }: { onAccept: () => void }) {
             </button>
 
             {/* Accept */}
-            <button type="button" onClick={onAccept} className="flex flex-col items-center gap-2">
+            <button type="button" onClick={() => { console.log("[v0] Accept clicked, calling onAccept"); onAccept() }} className="flex flex-col items-center gap-2">
               <div className="w-[72px] h-[72px] rounded-full bg-[#34C759] flex items-center justify-center active:scale-95 transition-transform">
                 <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
