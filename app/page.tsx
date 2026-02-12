@@ -485,17 +485,23 @@ export default function CidadeNeonExperience() {
         { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
       )
     } else if (cc === 1) {
+      // Reward from Phase 1
       missions.push(
+        { id: "reward-1", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Recompensa Desbloqueada", body: "SUBURBIO XENOM - Acesso liberado", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw" },
         { id: "iq-test", app: "Cidade Neon", icon: "untitled", color: "#8B5CF6", title: "Teste de QI", body: "Confirmacao 2/3: Prove sua inteligencia", action: "/confirmacao/3-desbloqueio" },
         { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Nizzy: Bora pro proximo teste!", action: "/whatsapp" },
       )
     } else if (cc === 2) {
+      // Reward from Phase 2
       missions.push(
+        { id: "reward-2", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Recompensa Desbloqueada", body: "CIDADE NEON 100VOX - Acesso liberado", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU" },
         { id: "aura-test", app: "AURA", icon: "aura", color: "#A78BFA", title: "Descubra sua AURA", body: "Confirmacao 3/3: Sua essencia", action: "aura" },
         { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Alohan: Ultima confirmacao!", action: "/whatsapp" },
       )
     } else {
+      // Reward from Phase 3
       missions.push(
+        { id: "reward-3", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Recompensa Desbloqueada", body: "LIVE NEON - Acesso liberado", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Eleve sua AURA com o Album", action: "/final/sala-branca" },
         { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvi de novo", action: "/spotify/auto-chuva" },

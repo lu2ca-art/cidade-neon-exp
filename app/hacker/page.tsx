@@ -37,6 +37,7 @@ export default function HackerPage() {
   const [showGlitch, setShowGlitch] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
   const [progress, setProgress] = useState(state.perAppState.hacker.progress)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const ranRef = useRef(false)
   useEffect(() => {
@@ -54,6 +55,13 @@ export default function HackerPage() {
     }, 800)
     return () => clearTimeout(timer)
   }, [isMounted])
+
+  // Auto-scroll to bottom when new lines appear
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
+    }
+  }, [lines])
 
   // Sequential text reveal - FAST
   useEffect(() => {
@@ -136,8 +144,8 @@ export default function HackerPage() {
         <div className="relative z-30 h-[54px] flex items-center justify-center flex-shrink-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,0.1)" }} />
         </div>
-        {/* Terminal Lines */}
-        <div className="flex-1 flex flex-col justify-center">
+        {/* Terminal Lines - auto-scrolling */}
+        <div ref={scrollRef} className="flex-1 flex flex-col justify-end overflow-y-auto">
           {lines.map((line, index) => (
             <div
               key={index}

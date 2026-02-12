@@ -9,7 +9,7 @@ const TRACKS = [
   { id: "nectar", name: "NECTAR", masked: "1. n**t**", color: "#FF6B9D", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/NECTAR%20%28INSTRUMENTAL%29-cpc97l75aiwhXeJ2h2qbZ0Lhos0GmK.mp3" },
   { id: "dopamina", name: "DOPAMINA", masked: "2. d******A", color: "#FF9D6B", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/DOPAMINA%20%28INSTRUMENTAL%29-RMoTXZGA59MUwGLVHT1MqGjNCeseSv.mp3" },
   { id: "ojala", name: "OJALA", masked: "4. *j**a", color: "#6B9DFF", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/OJALA%CC%81%20%28INSTRUMENTAL%29-JRyOmaJg7ZCx8wQLwBNcmq7kglrRvb.mp3" },
-  { id: "sabeontem", name: "SABE ONTEM?", masked: "7. s*** o****?", color: "#FFD93D", audio: null },
+  { id: "sabeontem", name: "SABE ONTEM?", masked: "7. s*** o****?", color: "#FFD93D", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SABE%20ONTEM_%20%28%29.mp3.mp3%20%28online-audio-converter.com%29%20%281%29-Gtqv09KgR46KXqPwl90P7MAYcfTLvG.mp3" },
   { id: "chuva", name: "CHUVA", masked: "9. C***A", color: "#9DFF6B", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28INSTRUMENTAL%29-vixjoBQT7YX5HzJKTUfrSULZeLY7vF.mp3" },
 ]
 
@@ -267,7 +267,7 @@ export default function Confirmacao1Page() {
             {selectedTrack && !isTrackMatched(selectedTrack) ? (
               <div className={`transition-all duration-300 ${animatingOut ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
                 <p className="text-white/50 text-[11px] uppercase tracking-wider mb-2">
-                  Qual emocao define <span style={{ color: activeTrack?.color }}>{activeTrack?.name}</span>?
+                  Qual emocao define <span className="font-mono" style={{ color: activeTrack?.color }}>{activeTrack?.masked}</span>?
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {activeEmotions.map((emotion) => {
