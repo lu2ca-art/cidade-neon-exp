@@ -1,14 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
-/* ────────────────────────────────────────────────────────
-   SELF-CONTAINED HACKER PAGE
-   No GameFunnel context dependency for rendering.
-   State updates via direct localStorage writes.
-   ──────────────────────────────────────────────────────── */
-
-const LINES = [
+const HACKER_LINES = [
   "> conexao estabelecida",
   "> interceptando stream...",
   "> [0x7F4E2D9A] bypass ativo",
@@ -32,128 +28,264 @@ const LINES = [
   "ACCESS GRANTED",
 ]
 
-function patchFunnel(fn: (s: Record<string, unknown>) => Record<string, unknown>) {
-  try {
-    const raw = localStorage.getItem("cidade-neon-funnel-v2")
-    if (!raw) return
-    const s = JSON.parse(raw)
-    localStorage.setItem("cidade-neon-funnel-v2", JSON.stringify({ ...fn(s), lastVisitedAt: Date.now() }))
-  } catch { /* noop */ }
-}
-
 export default function HackerPage() {
-  const [lines, setLines] = useState<string[]>([])
-  const [idx, setIdx] = useState(0)
+  const router = useRouter()
+  const { updateCinematicStep, updateHackerState, state } = useGameFunnel()
+  
+  const [lines, setLines] = useState<string[]>(state.perAppState.hacker.lines)
+  const [currentLineIndex, setCurrentLineIndex] = useState(state.perAppState.hacker.lines.length)
   const [showGlitch, setShowGlitch] = useState(true)
-  const [mounted, setMounted] = useState(false)
-  const ran = useRef(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const [progress, setProgress] = useState(state.perAppState.hacker.progress)
 
-  /* mark step on mount */
+  const ranRef = useRef(false)
   useEffect(() => {
-    if (ran.current) return
-    ran.current = true
-    setMounted(true)
-    patchFunnel((s) => ({ ...s, cinematicStep: "hacker-takeover" }))
-  }, [])
+    if (ranRef.current) return
+    ranRef.current = true
+    setIsMounted(true)
+    updateCinematicStep("hacker-takeover")
+  }, [updateCinematicStep])
 
-  /* initial glitch flash */
+  // Initial glitch effect
   useEffect(() => {
-    if (!mounted) return
-    const t = setTimeout(() => setShowGlitch(false), 800)
-    return () => clearTimeout(t)
-  }, [mounted])
+    if (!isMounted) return
+    const timer = setTimeout(() => {
+      setShowGlitch(false)
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [isMounted])
 
-  /* sequential line reveal */
+  // Sequential text reveal - FAST
   useEffect(() => {
-    if (showGlitch || idx >= LINES.length || !mounted) return
+    if (showGlitch || currentLineIndex >= HACKER_LINES.length || !isMounted) return
 
-    const delay = idx === LINES.length - 1 ? 1500 : 80 + Math.random() * 120
+    const delay = currentLineIndex === HACKER_LINES.length - 1 ? 1500 : 80 + Math.random() * 120
 
-    const t = setTimeout(() => {
-      const newLine = LINES[idx]
+    const timer = setTimeout(() => {
+      const newLine = HACKER_LINES[currentLineIndex]
       setLines((prev) => [...prev, newLine])
-      setIdx((prev) => prev + 1)
-
-      /* end -> mark completed, go to spotify */
-      if (idx === LINES.length - 1) {
+      setCurrentLineIndex((prev) => prev + 1)
+      
+      const newProgress = ((currentLineIndex + 1) / HACKER_LINES.length) * 100
+      setProgress(newProgress)
+      updateHackerState({ 
+        lines: [...lines, newLine], 
+        progress: newProgress 
+      })
+      
+      // End and transition to Spotify
+      if (currentLineIndex === HACKER_LINES.length - 1) {
         setTimeout(() => {
-          patchFunnel((s) => ({
-            ...s,
-            cinematicStep: "spotify-auto",
-            perAppState: {
-              ...(s.perAppState as Record<string, unknown>),
-              hacker: { progress: 100, lines: LINES, completed: true },
-            },
-          }))
-          window.location.href = "/spotify/auto-chuva"
+          updateHackerState({ completed: true })
+          updateCinematicStep("spotify-auto")
+          router.push("/spotify/auto-chuva")
         }, 1500)
       }
     }, delay)
 
-    return () => clearTimeout(t)
-  }, [idx, showGlitch, mounted])
+    return () => clearTimeout(timer)
+  }, [currentLineIndex, showGlitch, isMounted, lines, router, updateCinematicStep, updateHackerState])
 
-  if (!mounted) return <div className="min-h-screen bg-black" />
+  if (!isMounted) {
+    return <div className="min-h-screen bg-black" />
+  }
 
   return (
     <div className="min-h-screen bg-black text-[#00FF66] font-mono overflow-hidden relative">
-      {/* Glitch Entry */}
+      {/* Glitch Entry Effect */}
       {showGlitch && (
         <div className="fixed inset-0 z-50 bg-black">
-          <div className="absolute inset-0" style={{ animation: "glitchEntry .8s ease-out forwards" }}>
-            <div className="absolute inset-0" style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,102,.03) 2px,rgba(0,255,102,.03) 4px)" }} />
-            <div className="absolute inset-0 bg-[#00FF66] opacity-10" style={{ animation: "flicker .15s ease-in-out infinite" }} />
+          <div className="absolute inset-0 animate-glitch-entry">
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,102,0.03) 2px, rgba(0,255,102,0.03) 4px)",
+              }}
+            />
+            <div className="absolute inset-0 bg-[#00FF66] opacity-10 animate-flicker" />
           </div>
         </div>
       )}
 
-      {/* Scanlines */}
-      <div className="fixed inset-0 pointer-events-none z-10" style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.3) 2px,rgba(0,0,0,.3) 4px)" }} />
-      <div className="fixed inset-0 pointer-events-none z-[5]" style={{ boxShadow: "inset 0 0 100px rgba(0,255,102,.05)" }} />
+      {/* Scanlines Overlay */}
+      <div
+        className="fixed inset-0 pointer-events-none z-10"
+        style={{
+          background:
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)",
+        }}
+      />
 
-      {/* Content */}
-      <div className="w-full max-w-[100vw] md:max-w-[400px] mx-auto min-h-screen flex flex-col p-6 pt-0" style={{ paddingBottom: "env(safe-area-inset-bottom,24px)" }}>
-        {/* Notch */}
+      {/* CRT Glow Effect */}
+      <div
+        className="fixed inset-0 pointer-events-none z-5"
+        style={{
+          boxShadow: "inset 0 0 100px rgba(0,255,102,0.05)",
+        }}
+      />
+
+      {/* Main Content */}
+      <div
+        className="w-full max-w-[100vw] md:max-w-[400px] mx-auto min-h-screen flex flex-col p-6 pt-0"
+        style={{
+          paddingBottom: "env(safe-area-inset-bottom, 24px)",
+        }}
+      >
+        {/* iPhone Notch */}
         <div className="relative z-30 h-[54px] flex items-center justify-center flex-shrink-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,.1)" }} />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,0.1)" }} />
         </div>
-
-        {/* Terminal */}
+        {/* Terminal Lines */}
         <div className="flex-1 flex flex-col justify-center">
-          {lines.map((line, i) => (
-            <div key={i} className="mb-4" style={{ animation: "fadeIn .5s ease-out forwards", animationDelay: `${i * 100}ms`, opacity: 0 }}>
+          {lines.map((line, index) => (
+            <div
+              key={index}
+              className="mb-4 animate-fade-in"
+              style={{
+                animationDelay: `${index * 100}ms`,
+              }}
+            >
               <span
-                className={`text-lg md:text-xl tracking-wide ${line === "ACCESS GRANTED" ? "text-2xl font-bold tracking-[.3em]" : ""}`}
-                style={{ textShadow: line === "ACCESS GRANTED" ? "0 0 30px rgba(0,255,102,.9),0 0 60px rgba(0,255,102,.6)" : "0 0 10px rgba(0,255,102,.5)" }}
+                className={`text-lg md:text-xl tracking-wide ${
+                  line.startsWith("SENHA:") ? "text-[#00FF66] font-bold text-2xl" : ""
+                }`}
+                style={{
+                  textShadow: "0 0 10px rgba(0,255,102,0.5), 0 0 20px rgba(0,255,102,0.3)",
+                }}
               >
                 {line}
               </span>
-              {line === "ACCESS GRANTED" && (
-                <div className="mt-2 h-[2px] mx-auto bg-gradient-to-r from-transparent via-[#00FF66] to-transparent animate-pulse" style={{ width: "60%" }} />
-              )}
             </div>
           ))}
 
-          {/* Blinking cursor */}
-          {idx < LINES.length && lines.length > 0 && (
-            <div className="mt-2 flex items-center">
-              <span className="inline-block w-2 h-5 bg-[#00FF66]" style={{ animation: "blink 1s step-end infinite", boxShadow: "0 0 10px rgba(0,255,102,.8)" }} />
+          {/* Blinking Cursor */}
+          {currentLineIndex >= HACKER_LINES.length && (
+            <div className="mt-4">
+              <span
+                className="inline-block w-3 h-6 bg-[#00FF66] animate-blink"
+                style={{
+                  boxShadow: "0 0 10px rgba(0,255,102,0.8), 0 0 20px rgba(0,255,102,0.4)",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Typing indicator while showing lines */}
+          {currentLineIndex < HACKER_LINES.length && lines.length > 0 && (
+            <div className="mt-2 flex items-center gap-1">
+              <span
+                className="inline-block w-2 h-5 bg-[#00FF66] animate-blink"
+                style={{
+                  boxShadow: "0 0 10px rgba(0,255,102,0.8)",
+                }}
+              />
             </div>
           )}
         </div>
       </div>
 
-      {/* Scan line */}
+      {/* Random Glitch Effects */}
       <div className="fixed inset-0 pointer-events-none z-20">
-        <div className="absolute top-[20%] left-0 right-0 h-[2px] bg-[#00FF66] opacity-0" style={{ animation: "scanLine 4s linear infinite" }} />
+        <div className="absolute top-[20%] left-0 right-0 h-[2px] bg-[#00FF66] opacity-0 animate-scan-line" />
       </div>
 
       <style jsx>{`
-        @keyframes glitchEntry { 0%{transform:translateX(-100%);opacity:1} 20%{transform:translateX(0)} 40%{transform:translateX(10px) skewX(-5deg)} 60%{transform:translateX(-10px) skewX(5deg)} 80%{transform:translateX(5px);opacity:.8} 100%{transform:translateX(0);opacity:0} }
-        @keyframes flicker { 0%,100%{opacity:.1} 50%{opacity:.3} 75%{opacity:.05} }
-        @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
-        @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes scanLine { 0%{top:0;opacity:0} 10%{opacity:.5} 90%{opacity:.5} 100%{top:100%;opacity:0} }
+        @keyframes glitch-entry {
+          0% {
+            transform: translateX(-100%);
+            opacity: 1;
+          }
+          20% {
+            transform: translateX(0);
+          }
+          40% {
+            transform: translateX(10px) skewX(-5deg);
+          }
+          60% {
+            transform: translateX(-10px) skewX(5deg);
+          }
+          80% {
+            transform: translateX(5px);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translateX(0);
+            opacity: 0;
+          }
+        }
+
+        @keyframes flicker {
+          0%,
+          100% {
+            opacity: 0.1;
+          }
+          50% {
+            opacity: 0.3;
+          }
+          75% {
+            opacity: 0.05;
+          }
+        }
+
+        @keyframes blink {
+          0%,
+          50% {
+            opacity: 1;
+          }
+          51%,
+          100% {
+            opacity: 0;
+          }
+        }
+
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes scan-line {
+          0% {
+            top: 0;
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.5;
+          }
+          90% {
+            opacity: 0.5;
+          }
+          100% {
+            top: 100%;
+            opacity: 0;
+          }
+        }
+
+        .animate-glitch-entry {
+          animation: glitch-entry 0.8s ease-out forwards;
+        }
+
+        .animate-flicker {
+          animation: flicker 0.15s ease-in-out infinite;
+        }
+
+        .animate-blink {
+          animation: blink 1s step-end infinite;
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out forwards;
+        }
+
+        .animate-scan-line {
+          animation: scan-line 4s linear infinite;
+        }
       `}</style>
     </div>
   )

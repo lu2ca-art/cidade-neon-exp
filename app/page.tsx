@@ -8,12 +8,184 @@ import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
   | "incoming-call"
+  | "active-call"
+  | "hacker"
+  | "spotify"
   | "phone-home"
+  | "whatsapp-group"
+  | "post-confirm-group"
   | "aura-login"
 
-/* ─── CONSTANTS ──────────────────────────────────────── */
+interface Msg {
+  id: number
+  text: string
+  sender: string
+  time: string
+  isSystem?: boolean
+}
 
-/* ─── (MatrixRain/HackerLine components removed - now in /hacker page) ── */
+/* ─── CONSTANTS ──────────────────────────────────────── */
+const HACKER_LINES = [
+  "> conexao estabelecida",
+  "> interceptando stream...",
+  "> [0x7F4E2D9A] bypass ativo",
+  "> IP: 192.168.███.███",
+  "> PORT: 443 >> REDIRECT",
+  "> ssh root@cidade-neon",
+  "> AUTH_TOKEN: ██████████",
+  "> decrypting packets...",
+  "> kernel32.dll injected",
+  "> FIREWALL: DISABLED",
+  "> sudo rm -rf /system/security/*",
+  "> CHMOD 777 /all/access",
+  "> voce ta ouvindo?",
+  "> isso nao e aleatorio",
+  "> tem gente aqui",
+  "> procurando",
+  "> .",
+  "> ..",
+  "> ...",
+  "",
+  "ACESSO GARANTIDO",
+]
+
+const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*!?<>{}[]|/\\~^"
+
+const TRACKS = [
+  { id: 1, masked: "N**T**", full: "nectar", color: "#FF6B9D" },
+  { id: 2, masked: "D******A", full: "dopamina", color: "#FF9D6B" },
+  { id: 3, masked: "*J**A", full: "ojala", color: "#6B9DFF" },
+  { id: 4, masked: "S*** O****?", full: "sabe ontem?", color: "#FFD93D" },
+  { id: 5, masked: "C***A", full: "chuva", color: "#9DFF6B" },
+]
+
+/* (Confirmation constants moved to their respective page files) */
+
+const participants: Record<string, { color: string; avatar: string }> = {
+  "D-Bee": { color: "#6B7FD7", avatar: "/images/avatar-dbee.jpg" },
+  Nizzy: { color: "#FF6B6B", avatar: "/images/avatar-nizzy.jpg" },
+  Alohan: { color: "#4ECDC4", avatar: "/images/avatar-alohan.jpg" },
+}
+
+/* ─── MATRIX RAIN COMPONENT ─────────────────────────── */
+function MatrixRain() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    
+    canvas.width = canvas.offsetWidth
+    canvas.height = canvas.offsetHeight
+    
+    const cols = Math.floor(canvas.width / 14)
+    const drops: number[] = Array(cols).fill(1).map(() => Math.random() * -50)
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*アイウエオカキクケコ"
+    
+    const draw = () => {
+      ctx.fillStyle = "rgba(0,0,0,0.05)"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = "#00FF66"
+      ctx.font = "12px monospace"
+      
+      for (let i = 0; i < drops.length; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)]
+        const x = i * 14
+        const y = drops[i] * 14
+        
+        ctx.globalAlpha = Math.random() * 0.5 + 0.5
+        ctx.fillText(char, x, y)
+        
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0
+        }
+        drops[i]++
+      }
+      ctx.globalAlpha = 1
+    }
+    
+    const interval = setInterval(draw, 33)
+    return () => clearInterval(interval)
+  }, [])
+  
+  return <canvas ref={canvasRef} className="w-full h-full" />
+}
+
+/* ─── HACKER LINE WITH SCRAMBLE EFFECT ──────────────── */
+function HackerLine({ text, delay, isFinal }: { text: string; delay: number; isFinal: boolean }) {
+  const [display, setDisplay] = useState("")
+  const [done, setDone] = useState(false)
+  
+  useEffect(() => {
+    if (!text) { setDisplay(""); setDone(true); return }
+    
+    const length = text.length
+    let iteration = 0
+    const maxIterations = isFinal ? length * 4 : length * 2
+    
+    const scramble = () => {
+      const revealed = Math.floor((iteration / maxIterations) * length)
+      let result = ""
+      for (let i = 0; i < length; i++) {
+        if (i < revealed) {
+          result += text[i]
+        } else if (text[i] === " ") {
+          result += " "
+        } else {
+          result += SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]
+        }
+      }
+      setDisplay(result)
+      iteration++
+      if (iteration > maxIterations) {
+        setDisplay(text)
+        setDone(true)
+      }
+    }
+    
+    const timer = setTimeout(() => {
+      const interval = setInterval(() => {
+        scramble()
+        if (iteration > maxIterations) clearInterval(interval)
+      }, isFinal ? 40 : 25)
+      return () => clearInterval(interval)
+    }, delay)
+    
+    return () => clearTimeout(timer)
+  }, [text, delay, isFinal])
+  
+  if (isFinal) {
+    return (
+      <div className="text-center py-6">
+        <span
+          className={`text-2xl font-bold tracking-[0.3em] transition-all duration-500 ${done ? "opacity-100" : "opacity-90"}`}
+          style={{
+            color: "#00FF66",
+            textShadow: done
+              ? "0 0 30px rgba(0,255,102,.9), 0 0 60px rgba(0,255,102,.6), 0 0 90px rgba(0,255,102,.3)"
+              : "0 0 10px rgba(0,255,102,.5)",
+          }}
+        >
+          {display}
+        </span>
+        {done && (
+          <div className="mt-2 h-[2px] mx-auto bg-gradient-to-r from-transparent via-[#00FF66] to-transparent animate-pulse" style={{ width: "60%" }} />
+        )}
+      </div>
+    )
+  }
+  
+  return (
+    <span
+      className="text-[13px] tracking-wide block"
+      style={{ color: "#00FF66", textShadow: "0 0 8px rgba(0,255,102,.4)" }}
+    >
+      {display}
+    </span>
+  )
+}
 
 /* ─── COMPONENT ──────────────────────────────────────── */
 export default function CidadeNeonExperience() {
@@ -22,25 +194,66 @@ export default function CidadeNeonExperience() {
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
     const step = gameFunnelState.cinematicStep
-    // Fresh/idle users see the incoming call (start of experience)
     if (step === "idle" || step === "incoming-call") return "incoming-call"
-    // Everything else = phone-home (call/hacker/spotify/whatsapp are separate routes)
-    return "phone-home"
+    if (step === "active-call") return "active-call"
+    if (step === "hacker-takeover") return "hacker"
+    // All post-hacker steps now go to phone-home, since WhatsApp/Spotify/YouTube/TikTok/confirmations are separate pages
+    if (step === "spotify-auto" || step === "whatsapp-notification") return "phone-home"
+    if (step === "whatsapp-group") return "phone-home"
+    if (step === "confirmation-1" || step === "confirmation-2" || step === "confirmation-3") return "phone-home"
+    if (step === "private-notifications" || step === "tiktok-notification" || step === "tiktok-final") return "phone-home"
+    if (step === "completed" || step === "sala-branca") return "phone-home"
+    // Default: if flow has progressed past hacker, show phone-home
+    if (gameFunnelState.perAppState.hacker.completed) return "phone-home"
+    return "incoming-call"
   }
 
   /* ── Phase ────────── */
   const [phase, setPhase] = useState<Phase>(getInitialPhase)
 
-  /* ── Call ───────�����── */
-  /* ── (Call/Hacker/Spotify/WhatsApp = separate route pages) ── */
+  /* ── Call ───────���── */
+  const [callDuration, setCallDuration] = useState(0)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false)
+  const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  /* ── Hacker ────────── */
+  const [hackerLines, setHackerLines] = useState<string[]>([])
+  const [hackerIdx, setHackerIdx] = useState(0)
+  const [showMatrix, setShowMatrix] = useState(true)
+  const [matrixFading, setMatrixFading] = useState(false)
+  const hackerScrollRef = useRef<HTMLDivElement>(null)
+
+  /* ── Spotify ────────── */
+  const [spotifyProgress, setSpotifyProgress] = useState(0)
+  const [spotifyElapsed, setSpotifyElapsed] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [spotifyVolume, setSpotifyVolume] = useState(70)
+  const [showVolume, setShowVolume] = useState(false)
+  const [isGlitching] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  /* ── WhatsApp Group ────────── */
+  const [groupMessages, setGroupMessages] = useState<Msg[]>([])
+  const [isTyping, setIsTyping] = useState(false)
+  const [groupInteractions, setGroupInteractions] = useState(0)
+  const [inputValue, setInputValue] = useState("")
+  const [confirmationsDone, setConfirmationsDone] = useState(0)
+  const [showConfirmBtn, setShowConfirmBtn] = useState(false)
+  const [currentTime] = useState("21:47")
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const groupScriptSent = useRef(false)
+  const postConfirmScriptSent = useRef(false)
+
+  /* ── (Confirmations now handled by separate pages) ── */
 
   /* ── Phone Home ────────── */
-  const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  const [showNotification, setShowNotification] = useState(false)
   const [appBadges, setAppBadges] = useState<Record<string, boolean>>({})
   const [showNotifCenter, setShowNotifCenter] = useState(false)
   const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string } | null>(null)
   const [completedMissions, setCompletedMissions] = useState<string[]>([])
-  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bannerTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bannerIndexRef = useRef(0)
 
   /* ── (Final notifications now handled by missions system) ── */
@@ -69,7 +282,196 @@ export default function CidadeNeonExperience() {
     { id: "aura", name: "AURA", icon: "aura", color: "#E0E7FF" },
   ]
 
-  /* ─── (Call/Hacker/Spotify/WhatsApp = separate pages) ── */
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, "0")}`
+  }
+
+  /* ─── CALL LOGIC ───────────────────────────── */
+  useEffect(() => {
+    if (phase !== "active-call") return
+    callTimerRef.current = setInterval(() => {
+      setCallDuration((d) => {
+        if (d >= 14) {
+          if (callTimerRef.current) clearInterval(callTimerRef.current)
+          setPhase("hacker")
+          return d
+        }
+        return d + 1
+      })
+    }, 1000)
+    return () => { if (callTimerRef.current) clearInterval(callTimerRef.current) }
+  }, [phase])
+
+  /* ─── HACKER LOGIC ─────────────────────────── */
+  useEffect(() => {
+    if (phase !== "hacker") return
+    const t = setTimeout(() => { setMatrixFading(true); setTimeout(() => setShowMatrix(false), 1500) }, 2000)
+    return () => clearTimeout(t)
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== "hacker" || showMatrix || hackerIdx >= HACKER_LINES.length) return
+    const delay = hackerIdx === HACKER_LINES.length - 1 ? 1500 : 80 + Math.random() * 120
+    const t = setTimeout(() => {
+      setHackerLines((p) => [...p, HACKER_LINES[hackerIdx]])
+      setHackerIdx((i) => i + 1)
+    }, delay)
+    return () => clearTimeout(t)
+  }, [phase, showMatrix, hackerIdx])
+
+  useEffect(() => {
+    if (hackerScrollRef.current) hackerScrollRef.current.scrollTop = hackerScrollRef.current.scrollHeight
+  }, [hackerLines])
+
+  useEffect(() => {
+    if (phase === "hacker" && hackerIdx >= HACKER_LINES.length) {
+      const t = setTimeout(() => {
+        window.location.href = "/spotify/auto-chuva"
+      }, 1500)
+      return () => clearTimeout(t)
+    }
+  }, [phase, hackerIdx])
+
+  /* ─── SPOTIFY LOGIC ──────────────────���─────── */
+  useEffect(() => {
+    if (phase !== "spotify" || !isPlaying) return
+    const interval = setInterval(() => {
+      setSpotifyElapsed((p) => {
+        if (p >= 10) {
+          setPhase("phone-home")
+          setTimeout(() => setShowNotification(true), 2000)
+          return p
+        }
+        return p + 1
+      })
+      setSpotifyProgress((p) => Math.min(p + (100 / 204), 100))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [phase, isPlaying])
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = spotifyVolume / 100
+  }, [spotifyVolume])
+
+  /* ─── WHATSAPP GROUP LOGIC ─────────────────── */
+  const addBotMessages = useCallback((msgs: Msg[], onDone?: () => void) => {
+    let i = 0
+    const add = () => {
+      if (i >= msgs.length) { onDone?.(); return }
+      if (i > 0) setIsTyping(true)
+      setTimeout(() => {
+        setIsTyping(false)
+        setGroupMessages((p) => [...p, { ...msgs[i], id: Date.now() + i }])
+        i++
+        if (i < msgs.length) setTimeout(add, 1200 + Math.random() * 800)
+        else onDone?.()
+      }, 600 + Math.random() * 400)
+    }
+    add()
+  }, [])
+
+  // Initial group script
+  useEffect(() => {
+    if (phase !== "whatsapp-group" || groupScriptSent.current) return
+    groupScriptSent.current = true
+    const script: Msg[] = [
+      { id: 1, text: "Voce foi adicionado ao grupo", sender: "system", time: currentTime, isSystem: true },
+      { id: 2, text: "EAEEE CHEGOU O CONVIDADO!", sender: "D-Bee", time: currentTime },
+      { id: 3, text: "BEM VINDO A CIDADE MANO", sender: "Nizzy", time: currentTime },
+      { id: 4, text: "ALOHA! JA TAVA TE ESPERANDO", sender: "Alohan", time: currentTime },
+      { id: 5, text: "MANDA UMA MENSAGEM AI PRA GENTE TE CONHECER", sender: "D-Bee", time: currentTime },
+    ]
+    addBotMessages(script)
+  }, [phase, addBotMessages, currentTime])
+
+  // Post-confirmation return to group
+  useEffect(() => {
+    if (phase !== "post-confirm-group" || postConfirmScriptSent.current) return
+    postConfirmScriptSent.current = true
+    setGroupMessages([])
+    setGroupInteractions(0)
+
+    if (confirmationsDone === 1) {
+      addBotMessages([
+        { id: 1, text: "VOLTOUUU!", sender: "D-Bee", time: currentTime },
+        { id: 2, text: "E AI COMO FOI LA?", sender: "Nizzy", time: currentTime },
+        { id: 3, text: "SABIA QUE IA CONSEGUIR IRMAO", sender: "Alohan", time: currentTime },
+        { id: 4, text: "MANDA MAIS UMA AI", sender: "D-Bee", time: currentTime },
+      ], () => { setPhase("whatsapp-group") })
+    } else if (confirmationsDone === 2) {
+      addBotMessages([
+        { id: 1, text: "OLHA ISSOO PASSOUUU!", sender: "D-Bee", time: currentTime },
+        { id: 2, text: "MAIS UMA PERGUNTA E TU TA DENTRO", sender: "Nizzy", time: currentTime },
+        { id: 3, text: "FALTA POUQUINHO MANO", sender: "Alohan", time: currentTime },
+      ], () => { setPhase("whatsapp-group") })
+    } else if (confirmationsDone >= 3) {
+      addBotMessages([
+        { id: 1, text: "MANO TU PASSOU EM TUDO!", sender: "D-Bee", time: currentTime },
+        { id: 2, text: "AGORA VOCE E UM DE NOS", sender: "Nizzy", time: currentTime },
+        { id: 3, text: "PRONTO PRA PROXIMA FASE", sender: "Alohan", time: currentTime },
+        { id: 4, text: "LU2CA entrou no grupo", sender: "system", time: currentTime, isSystem: true },
+        { id: 5, text: "EAEEE MANO! BOA SORTE NA JORNADA", sender: "D-Bee", time: currentTime },
+        { id: 6, text: "VAMO ENTRAR EM CONTATO COM VOCE EM BREVE", sender: "Nizzy", time: currentTime },
+        { id: 7, text: "ATE A PROXIMA! ALOHA!", sender: "Alohan", time: currentTime },
+      ], () => {
+        setTimeout(() => setPhase("phone-home"), 2000)
+      })
+    }
+  }, [phase, confirmationsDone, addBotMessages, currentTime])
+
+  // Scroll to bottom on messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [groupMessages, isTyping])
+
+  // Track interactions to show confirmation button
+  const neededInteractions = confirmationsDone === 0 ? 3 : confirmationsDone === 1 ? 2 : 1
+
+  useEffect(() => {
+    if (phase === "whatsapp-group" && groupInteractions >= neededInteractions && confirmationsDone < 3) {
+      const t = setTimeout(() => setShowConfirmBtn(true), 1500)
+      return () => clearTimeout(t)
+    }
+  }, [phase, groupInteractions, neededInteractions, confirmationsDone])
+
+  const handleGroupSend = () => {
+    if (!inputValue.trim()) return
+    const userMsg: Msg = { id: Date.now(), text: inputValue, sender: "Voce", time: currentTime }
+    setGroupMessages((p) => [...p, userMsg])
+    setInputValue("")
+    setGroupInteractions((p) => p + 1)
+
+    // Bot response
+    const responses = [
+      ["KKKKK BOA MANO", "MANDA MAIS AI", "CONTA MAIS"],
+      ["SHOW DE BOLA", "E NOIS POW", "ISSO AI"],
+      ["CURTI ISSO", "MASSA DEMAIS", "TU E DAHORA"],
+      ["HAHAHA", "CERTEZA", "VALEU MANO"],
+      ["SIMMM", "TOTAL", "SAC0U"],
+    ]
+    const group = responses[Math.floor(Math.random() * responses.length)]
+    const responders = ["D-Bee", "Nizzy", "Alohan"]
+    const picked = responders[Math.floor(Math.random() * responders.length)]
+
+    setTimeout(() => {
+      setIsTyping(true)
+      setTimeout(() => {
+        setIsTyping(false)
+        setGroupMessages((p) => [...p, { id: Date.now() + 1, text: group[Math.floor(Math.random() * group.length)], sender: picked, time: currentTime }])
+      }, 600 + Math.random() * 400)
+    }, 800)
+  }
+
+  const handleConfirmation = () => {
+    setShowConfirmBtn(false)
+    if (confirmationsDone === 0) window.location.href = "/confirmacao/1-arquetipos"
+    else if (confirmationsDone === 1) window.location.href = "/confirmacao/3-desbloqueio"
+    else if (confirmationsDone === 2) { setPhase("aura-login") }
+  }
+
+  /* ─── (Old in-page confirmation handlers removed - now separate pages) ── */
 
   /* ─── MISSIONS PER CONFIRMATION STAGE ────── */
   const getMissions = useCallback(() => {
@@ -104,33 +506,32 @@ export default function CidadeNeonExperience() {
     return missions.filter(m => !completedMissions.includes(m.id))
   }, [gameFunnelState.confirmationCount, completedMissions])
 
-  /* ─── BANNER NOTIFICATIONS (persist until clicked) ── */
+  /* ─── PERIODIC BANNER NOTIFICATIONS (every 6s) ── */
   useEffect(() => {
     if (phase !== "phone-home" || showNotifCenter) {
-      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current)
+      if (bannerTimerRef.current) clearInterval(bannerTimerRef.current)
       return
     }
 
-    // Only show a banner if there is none currently displayed
-    if (bannerNotif) return
-
-    const missions = getMissions()
-    if (missions.length === 0) return
-
-    // Show first notification after 2s, subsequent ones 3s after previous was clicked
-    const delay = bannerIndexRef.current === 0 ? 2000 : 3000
-    bannerTimerRef.current = setTimeout(() => {
-      const m = getMissions()
-      if (m.length === 0) return
-      const idx = bannerIndexRef.current % m.length
-      setBannerNotif(m[idx])
+    // Show first notification after 2s, then every 6s
+    const showNext = () => {
+      const missions = getMissions()
+      if (missions.length === 0) { setBannerNotif(null); return }
+      const idx = bannerIndexRef.current % missions.length
+      setBannerNotif(missions[idx])
       bannerIndexRef.current++
-    }, delay)
+      // Auto-dismiss after 4s
+      setTimeout(() => setBannerNotif(null), 4500)
+    }
+
+    const initialTimer = setTimeout(showNext, 2000)
+    bannerTimerRef.current = setInterval(showNext, 6000)
 
     return () => {
-      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current)
+      clearTimeout(initialTimer)
+      if (bannerTimerRef.current) clearInterval(bannerTimerRef.current)
     }
-  }, [phase, showNotifCenter, bannerNotif, getMissions])
+  }, [phase, showNotifCenter, getMissions])
 
   // Set badges based on confirmation count
   useEffect(() => {
@@ -198,78 +599,37 @@ export default function CidadeNeonExperience() {
   if (phase === "incoming-call") {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
-        <div
-          className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col animate-vibrate"
-          style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}
-        >
-          {/* Dark gradient BG */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-black" />
-
-          {/* Notch */}
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col animate-vibrate relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
+          {/* iPhone Notch - floating pill */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-
-          {/* Status bar */}
-          <div className="relative z-20 h-[50px] flex items-end justify-between px-6 pb-1 text-white text-xs flex-shrink-0">
-            <span className="font-semibold w-12">{currentTime}</span>
-            <div className="flex items-center gap-1">
-              <svg className="w-4 h-3" fill="white" viewBox="0 0 16 12"><rect x="0" y="6" width="3" height="6" rx="0.5"/><rect x="4.5" y="4" width="3" height="8" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13" y="0" width="3" height="12" rx="0.5" opacity="0.3"/></svg>
-              <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white"/><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4"/></svg>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="relative z-20 flex-1 flex flex-col items-center justify-start pt-10">
-            {/* WhatsApp badge */}
-            <div className="flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm">
-              <svg className="w-4 h-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
-              <span className="text-white/70 text-xs font-medium">WhatsApp Audio</span>
-            </div>
-
-            {/* Avatar with pulse rings */}
-            <div className="relative mb-6">
-              <div className="absolute inset-[-12px] rounded-full border border-white/10 animate-ping-slow" />
-              <div className="absolute inset-[-24px] rounded-full border border-white/5 animate-ping-slow" style={{ animationDelay: "0.5s" }} />
-              <div className="w-28 h-28 rounded-full overflow-hidden ring-2 ring-[#25D366]/40 animate-pulse-slow shadow-lg shadow-[#25D366]/20">
-                <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={112} height={112} className="w-full h-full object-cover" priority />
+          <div className="h-[50px] flex-shrink-0" />
+          <div className="flex-1 flex flex-col items-center justify-start pt-6">
+            <div className="relative">
+              <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4 animate-pulse-slow ring-4 ring-white/20">
+                <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={120} height={120} className="w-full h-full object-cover" />
               </div>
+              <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping-slow" />
             </div>
-
-            <h1 className="text-white text-[28px] font-semibold mb-1">D-Bee</h1>
-            <p className="text-white/50 text-sm mb-1">Chamada de audio do WhatsApp</p>
-
-            {/* Ringing indicator */}
-            <div className="flex items-center gap-2 mt-3">
-              <div className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-              <p className="text-[#25D366] text-sm">Chamando...</p>
+            <h1 className="text-white text-[32px] font-semibold mb-1">D-Bee</h1>
+            <p className="text-[#A0A0A0] text-[18px]">mobile</p>
+            <p className="text-[#A0A0A0] text-[16px] mt-2">Chamada recebida...</p>
+          </div>
+          <div className="px-8 pb-12">
+            <div className="flex justify-center gap-12 mb-8">
+              <button type="button" className="flex flex-col items-center gap-2"><div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center"><svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 9.5c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5-2.5-1.12-2.5-2.5 1.12-2.5 2.5-2.5m0-2c-2.48 0-4.5 2.02-4.5 4.5s2.02 4.5 4.5 4.5 4.5-2.02 4.5-4.5-2.02-4.5-4.5-4.5z" /></svg></div><span className="text-white text-xs">Lembrar</span></button>
+              <button type="button" className="flex flex-col items-center gap-2"><div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center"><svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" /></svg></div><span className="text-white text-xs">Mensagem</span></button>
+            </div>
+            <div className="flex justify-center gap-16">
+              <button type="button" onClick={() => setTimeout(() => setPhase("incoming-call"), 800)} className="flex flex-col items-center gap-2"><div className="w-[72px] h-[72px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform"><svg className="w-8 h-8 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg></div><span className="text-white text-xs">Recusar</span></button>
+              <button type="button" onClick={() => { window.location.href = "/call/db-ee" }} className="flex flex-col items-center gap-2"><div className="w-[72px] h-[72px] rounded-full bg-[#34C759] flex items-center justify-center active:scale-95 transition-transform"><svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg></div><span className="text-white text-xs">Aceitar</span></button>
             </div>
           </div>
-
-          {/* Bottom buttons */}
-          <div className="relative z-20 px-8 pb-12">
-            <div className="flex justify-center gap-20">
-              <button type="button" onClick={() => setPhase("incoming-call")} className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-red-500/30">
-                  <svg className="w-7 h-7 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                </div>
-                <span className="text-white/60 text-xs">Recusar</span>
-              </button>
-              <button type="button" onClick={() => { window.location.href = "/call/db-ee" }} className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-[#25D366] flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-green-500/30">
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                </div>
-                <span className="text-white/60 text-xs">Aceitar</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Home indicator */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20"><div className="w-32 h-1 bg-white/20 rounded-full" /></div>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2"><div className="w-32 h-1 bg-white/30 rounded-full" /></div>
         </div>
-
         <style jsx>{`
           @keyframes vibrate { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-2px)} 20%,40%,60%,80%{transform:translateX(2px)} }
-          @keyframes pulse-slow { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.85;transform:scale(1.03)} }
-          @keyframes ping-slow { 0%{transform:scale(1);opacity:.4} 100%{transform:scale(1.6);opacity:0} }
+          @keyframes pulse-slow { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.8;transform:scale(1.02)} }
+          @keyframes ping-slow { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(1.5);opacity:0} }
           .animate-vibrate{animation:vibrate .3s linear infinite}
           .animate-pulse-slow{animation:pulse-slow 2s ease-in-out infinite}
           .animate-ping-slow{animation:ping-slow 2s ease-out infinite}
@@ -277,6 +637,176 @@ export default function CidadeNeonExperience() {
       </div>
     )
   }
+
+  /* ─── RENDER: ACTIVE CALL ────────────────────────── */
+  if (phase === "active-call") {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
+          {/* iPhone Notch - floating pill */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          <div className="h-[50px] flex-shrink-0" />
+          <div className="flex-1 flex flex-col items-center justify-start pt-6">
+            <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4">
+              <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={120} height={120} className="w-full h-full object-cover" />
+            </div>
+            <h1 className="text-white text-[32px] font-semibold mb-1">D-Bee</h1>
+            <p className="text-[#34C759] text-[18px] font-medium tabular-nums">{formatTime(callDuration)}</p>
+          </div>
+          <div className="px-8 pb-8">
+            <div className="flex justify-center gap-8 mb-8">
+              <button type="button" onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2"><div className={`w-16 h-16 rounded-full flex items-center justify-center ${isMuted ? "bg-white" : "bg-[#48484A]"}`}><svg className={`w-7 h-7 ${isMuted ? "text-black" : "text-white"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z" /></svg></div><span className="text-white text-xs">Mudo</span></button>
+              <button type="button" className="flex flex-col items-center gap-2"><div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center"><svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 19c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM6 1c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12-8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-6 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg></div><span className="text-white text-xs">Teclado</span></button>
+              <button type="button" onClick={() => setIsSpeakerOn(!isSpeakerOn)} className="flex flex-col items-center gap-2"><div className={`w-16 h-16 rounded-full flex items-center justify-center ${isSpeakerOn ? "bg-white" : "bg-[#48484A]"}`}><svg className={`w-7 h-7 ${isSpeakerOn ? "text-black" : "text-white"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg></div><span className="text-white text-xs">Audio</span></button>
+            </div>
+            <div className="flex justify-center">
+              <button type="button" onClick={() => setPhase("hacker")} className="w-[72px] h-[72px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform"><svg className="w-8 h-8 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ─── RENDER: HACKER ─────────────────────────────── */
+  if (phase === "hacker") {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center font-mono">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-black flex flex-col relative overflow-hidden">
+          {/* Scanlines */}
+          <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.3) 2px,rgba(0,0,0,.3) 4px)" }} />
+          <div className="absolute inset-0 pointer-events-none z-10" style={{ boxShadow: "inset 0 0 100px rgba(0,255,102,.1)" }} />
+          {/* Matrix rain background */}
+          {showMatrix && (
+            <div className={`absolute inset-0 z-0 transition-opacity duration-1500 ${matrixFading ? "opacity-0" : "opacity-100"}`}>
+              <MatrixRain />
+            </div>
+          )}
+          {/* iPhone Notch - sits on top, content flows behind it on sides */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,0.1)" }} />
+          {!showMatrix && (
+            <div ref={hackerScrollRef} className="flex-1 flex flex-col justify-end px-4 pb-6 pt-[40px] overflow-y-auto relative z-20">
+              {hackerLines.map((line, i) => (
+                <div key={i} className="mb-2">
+                  <HackerLine text={line} delay={i * 50} isFinal={line === "ACESSO GARANTIDO"} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  /* ─── RENDER: SPOTIFY ────────────────────────────── */
+  if (phase === "spotify") {
+    return (
+      <div className={`min-h-screen bg-[#121212] flex items-center justify-center ${isGlitching ? "animate-glitch" : ""}`}>
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#2A1F4E] via-[#1A1030] to-[#121212] flex flex-col">
+          {/* iPhone Notch */}
+          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
+          <div className="flex items-center justify-between px-4 py-3">
+            <button type="button" className="p-2"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg></button>
+            <span className="text-white text-sm font-medium uppercase tracking-widest">TOCANDO DA PLAYLIST</span>
+            <button type="button" className="p-2"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg></button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center px-8">
+            <div className="w-[280px] h-[280px] rounded-lg overflow-hidden shadow-2xl mb-8">
+              <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={280} height={280} className="w-full h-full object-cover" />
+            </div>
+            <div className="w-full flex items-center justify-between mb-4">
+              <div><h2 className="text-white text-xl font-bold">CHUVA</h2><p className="text-[#B3B3B3] text-sm">LU2CA</p></div>
+              <button type="button" className="p-2"><svg className="w-6 h-6 text-[#1DB954]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg></button>
+            </div>
+            <div className="w-full mb-4">
+              <div className="h-1 bg-[#4D4D4D] rounded-full overflow-hidden"><div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${spotifyProgress}%` }} /></div>
+              <div className="flex justify-between mt-2 text-[#B3B3B3] text-xs"><span>{formatTime(spotifyElapsed)}</span><span>3:24</span></div>
+            </div>
+            <div className="w-full flex items-center justify-between px-4">
+              <button type="button" className="p-2 text-white"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg></button>
+              <button type="button" className="p-2 text-white"><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg></button>
+              <button type="button" onClick={() => setIsPlaying(!isPlaying)} className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+                {isPlaying
+                  ? <svg className="w-8 h-8 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                  : <svg className="w-8 h-8 text-black ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>}
+              </button>
+              <button type="button" className="p-2 text-white"><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg></button>
+              <button type="button" className="p-2 text-white"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" /></svg></button>
+            </div>
+            {/* Volume slider */}
+            <div className="w-full mt-6 px-4">
+              <button type="button" onClick={() => setShowVolume(!showVolume)} className="text-[#B3B3B3] text-xs mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>
+                Volume
+              </button>
+              {showVolume && (
+                <input type="range" min="0" max="100" value={spotifyVolume} onChange={(e) => setSpotifyVolume(Number(e.target.value))} className="w-full h-1 bg-[#4D4D4D] rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white" />
+              )}
+            </div>
+          </div>
+          <audio ref={audioRef} src="/images/chuva-20final-20-28video.mp4" />
+        </div>
+      </div>
+    )
+  }
+
+  /* ─── RENDER: WHATSAPP GROUP ─────────────────────── */
+  if (phase === "whatsapp-group" || phase === "post-confirm-group") {
+    return (
+      <div className="min-h-screen bg-[#0B141A] flex items-center justify-center">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 80 80\"%3E%3Cpath fill=\"%23182229\" d=\"M0 0h80v80H0z\"/%3E%3C/svg%3E')" }}>
+          {/* iPhone Notch */}
+          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0 bg-[#1F2C34]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+          </div>
+          <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2">
+            <button type="button" onClick={() => setPhase("phone-home")} className="p-2 text-[#AEBAC1]"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg></button>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center"><svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg></div>
+            <div className="flex-1"><p className="text-white font-medium">CIDADE NEON</p><p className="text-[#8696A0] text-xs">D-Bee, Nizzy, Alohan</p></div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {groupMessages.map((msg) => (
+              <div key={msg.id} className={`mb-2 ${msg.isSystem ? "flex justify-center" : msg.sender === "Voce" ? "flex justify-end" : "flex justify-start"}`}>
+                {msg.isSystem ? (
+                  <div className="bg-[#182229] rounded-lg px-3 py-1"><p className="text-[#8696A0] text-xs text-center">{msg.text}</p></div>
+                ) : (
+                  <div className={`rounded-lg px-3 py-2 max-w-[80%] ${msg.sender === "Voce" ? "bg-[#005C4B]" : "bg-[#202C33]"}`}>
+                    {msg.sender !== "Voce" && <p className="text-xs font-medium mb-1" style={{ color: participants[msg.sender as keyof typeof participants]?.color || "#aaa" }}>{msg.sender}</p>}
+                    <p className="text-[#E9EDEF] text-sm">{msg.text}</p>
+                    <span className="text-[#8696A0] text-[10px] float-right mt-1">{msg.time}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isTyping && (
+              <div className="mb-2 flex justify-start"><div className="bg-[#202C33] rounded-lg px-4 py-3"><div className="flex gap-1"><div className="w-2 h-2 bg-[#8696A0] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} /><div className="w-2 h-2 bg-[#8696A0] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} /><div className="w-2 h-2 bg-[#8696A0] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} /></div></div></div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          {/* Confirmation button - positioned ABOVE input */}
+          {showConfirmBtn && confirmationsDone < 3 && (
+            <div className="px-4 pb-2">
+              <button type="button" onClick={handleConfirmation} className="w-full bg-gradient-to-r from-[#6B7FD7] to-[#4ECDC4] text-white font-bold py-3 rounded-xl text-sm active:scale-98 transition-transform">
+                {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE AURA (3/3)"}
+              </button>
+            </div>
+          )}
+          <div className="bg-[#1F2C34] p-2 flex items-center gap-2">
+            <div className="flex-1 bg-[#2A3942] rounded-full px-4 py-2">
+              <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleGroupSend()} placeholder="Mensagem" className="w-full bg-transparent text-white text-sm outline-none placeholder-[#8696A0]" />
+            </div>
+            <button type="button" onClick={handleGroupSend} className="w-10 h-10 bg-[#00A884] rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-[#111B21]" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
   /* ─── RENDER: AURA QUIZ ─────────────────────────── */
   const auraAlreadyDone = gameFunnelState.confirmations.c3.done
