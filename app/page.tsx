@@ -194,24 +194,23 @@ export default function CidadeNeonExperience() {
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
     const step = gameFunnelState.cinematicStep
+    // If idle or incoming-call, show the incoming call screen
     if (step === "idle" || step === "incoming-call") return "incoming-call"
-    if (step === "active-call") return "active-call"
-    if (step === "hacker-takeover") return "hacker"
-    // All post-hacker steps now go to phone-home, since WhatsApp/Spotify/YouTube/TikTok/confirmations are separate pages
-    if (step === "spotify-auto" || step === "whatsapp-notification") return "phone-home"
-    if (step === "whatsapp-group") return "phone-home"
+    // All post-incoming-call steps go to phone-home (separate pages handle the actual experiences)
+    // The call/hacker/spotify are now separate routes
+    if (gameFunnelState.perAppState.hacker.completed) return "phone-home"
+    if (step === "active-call" || step === "hacker-takeover" || step === "spotify-auto") return "phone-home"
+    if (step === "whatsapp-notification" || step === "whatsapp-group") return "phone-home"
     if (step === "confirmation-1" || step === "confirmation-2" || step === "confirmation-3") return "phone-home"
     if (step === "private-notifications" || step === "tiktok-notification" || step === "tiktok-final") return "phone-home"
     if (step === "completed" || step === "sala-branca") return "phone-home"
-    // Default: if flow has progressed past hacker, show phone-home
-    if (gameFunnelState.perAppState.hacker.completed) return "phone-home"
     return "incoming-call"
   }
 
   /* ── Phase ────────── */
   const [phase, setPhase] = useState<Phase>(getInitialPhase)
 
-  /* ── Call ───────���── */
+  /* ── Call ───────�����── */
   const [callDuration, setCallDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [isSpeakerOn, setIsSpeakerOn] = useState(false)

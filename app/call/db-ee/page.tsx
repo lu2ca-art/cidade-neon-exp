@@ -9,11 +9,12 @@ export default function DBeeCallPage() {
   const router = useRouter()
   const { state, updateCinematicStep, updateCallState } = useGameFunnel()
   
-  const [callDuration, setCallDuration] = useState(state.perAppState.call.duration)
-  const [isCallActive, setIsCallActive] = useState(state.perAppState.call.answered)
-  const [hackerProgress, setHackerProgress] = useState(state.perAppState.call.hackerProgress)
+  const [callDuration, setCallDuration] = useState(0)
+  const [isCallActive, setIsCallActive] = useState(false)
+  const [hackerProgress, setHackerProgress] = useState(0)
   const [hackerLines, setHackerLines] = useState<string[]>([])
   const [showGlitch, setShowGlitch] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   const CALL_DURATION = 15 // 15 seconds exact
   
@@ -39,6 +40,15 @@ export default function DBeeCallPage() {
   const handleDecline = useCallback(() => {
     router.push("/")
   }, [router])
+
+  // Auto-answer the call 1s after mount (arriving from incoming-call accept)
+  useEffect(() => {
+    setIsMounted(true)
+    const timer = setTimeout(() => {
+      handleAnswer()
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [handleAnswer])
 
   // Call timer and hacker takeover
   useEffect(() => {
@@ -103,7 +113,7 @@ export default function DBeeCallPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
       <div
-        className={`w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative flex flex-col ${!isCallActive ? "animate-vibrate" : ""}`}
+        className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative flex flex-col"
         style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}
       >
         {/* Background with hacker overlay */}
@@ -183,7 +193,7 @@ export default function DBeeCallPage() {
           {isCallActive ? (
             <p className="text-white text-[20px] font-light mt-2 tabular-nums">{formatTime(callDuration)}</p>
           ) : (
-            <p className="text-[#A0A0A0] text-[16px] font-normal mt-2">Chamada recebida...</p>
+            <p className="text-[#34C759] text-[16px] font-normal mt-2 animate-pulse">Conectando...</p>
           )}
         </div>
 
@@ -235,24 +245,16 @@ export default function DBeeCallPage() {
               </div>
             </>
           ) : (
-            /* Incoming call buttons */
-            <div className="flex justify-center gap-16">
-              <button type="button" onClick={handleDecline} className="flex flex-col items-center gap-2 min-h-[44px] min-w-[44px]">
-                <div className="w-[72px] h-[72px] rounded-full bg-[#FF3B30] flex items-center justify-center">
-                  <svg className="w-9 h-9 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                  </svg>
-                </div>
-                <span className="text-white text-xs">Recusar</span>
-              </button>
-              <button type="button" onClick={handleAnswer} className="flex flex-col items-center gap-2 min-h-[44px] min-w-[44px]">
-                <div className="w-[72px] h-[72px] rounded-full bg-[#34C759] flex items-center justify-center">
+            /* Connecting state - auto-answers in 1s */
+            <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-[72px] h-[72px] rounded-full bg-[#34C759] flex items-center justify-center animate-pulse">
                   <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                   </svg>
                 </div>
-                <span className="text-white text-xs">Aceitar</span>
-              </button>
+                <span className="text-[#34C759] text-sm font-medium">Conectando...</span>
+              </div>
             </div>
           )}
         </div>
