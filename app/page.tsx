@@ -189,7 +189,7 @@ function HackerLine({ text, delay, isFinal }: { text: string; delay: number; isF
 
 /* ─── COMPONENT ──────────────────────────────────────── */
 export default function CidadeNeonExperience() {
-  const { state: gameFunnelState, completeConfirmation } = useGameFunnel()
+  const { state: gameFunnelState, completeConfirmation, resetAll } = useGameFunnel()
 
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
@@ -1105,7 +1105,7 @@ export default function CidadeNeonExperience() {
 
         {/* ── App Grid ── */}
         {!showNotifCenter && (
-          <div className="relative z-10 px-6 pt-6">
+          <div className="relative z-10 px-6 pt-16">
             <div className="grid grid-cols-4 gap-x-4 gap-y-5">
               {phoneApps.map((app) => (
                 <button key={app.id} onClick={() => {
@@ -1129,10 +1129,10 @@ export default function CidadeNeonExperience() {
           </div>
         )}
 
-        {/* ── Bottom Dock: Notification Center button + Home indicator ── */}
+        {/* ── Bottom Dock: Notification Center button + Restart + Home indicator ── */}
         {!showNotifCenter && (
           <div className="absolute bottom-0 left-0 right-0 z-20 pb-2 pt-3">
-            <div className="flex justify-center mb-3">
+            <div className="flex justify-center items-center gap-3 mb-3">
               <button
                 type="button"
                 onClick={() => setShowNotifCenter(true)}
@@ -1145,6 +1145,14 @@ export default function CidadeNeonExperience() {
                     <span className="text-white text-[10px] font-bold">{activeMissions.length}</span>
                   </span>
                 )}
+              </button>
+              <button
+                type="button"
+                onClick={() => { resetAll(); setPhase("incoming-call") }}
+                className="w-10 h-10 bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full flex items-center justify-center transition-colors border border-white/10"
+                aria-label="Reiniciar experiencia"
+              >
+                <svg className="w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" /></svg>
               </button>
             </div>
             <div className="flex justify-center">
