@@ -1,9 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+
+/* ────────────────────────────────────────────────────────
+   SELF-CONTAINED SPOTIFY PAGE
+   No GameFunnel context dependency for rendering.
+   State updates via direct localStorage writes.
+   ──────────────────────────────────────────────────────── */
 
 const TRACKS = [
   { id: 1, title: "CHUVA", duration: "3:24", durationSec: 204, playable: true },
@@ -13,10 +17,26 @@ const TRACKS = [
   { id: 5, title: null, duration: "3:01", durationSec: 181, playable: false },
 ]
 
-export default function SpotifyAutoPage() {
-  const router = useRouter()
-  const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
+function patchFunnel(fn: (s: Record<string, unknown>) => Record<string, unknown>) {
+  try {
+    const raw = localStorage.getItem("cidade-neon-funnel-v2")
+    if (!raw) return
+    const s = JSON.parse(raw)
+    localStorage.setItem("cidade-neon-funnel-v2", JSON.stringify({ ...fn(s), lastVisitedAt: Date.now() }))
+  } catch { /* noop */ }
+}
 
+function readFunnelKey(path: string[]): unknown {
+  try {
+    const raw = localStorage.getItem("cidade-neon-funnel-v2")
+    if (!raw) return undefined
+    let obj: Record<string, unknown> = JSON.parse(raw)
+    for (const k of path) { obj = obj[k] as Record<string, unknown>; if (!obj) return undefined }
+    return obj
+  } catch { return undefined }
+}
+
+export default function SpotifyAutoPage() {
   const [view, setView] = useState<"now-playing" | "album">("now-playing")
   const [trackIdx, setTrackIdx] = useState(0)
   const [playing, setPlaying] = useState(true)
@@ -24,12 +44,20 @@ export default function SpotifyAutoPage() {
   const [showNotif, setShowNotif] = useState(false)
   const [liked, setLiked] = useState(false)
   const notifSent = useRef(false)
-  const isFirst = useRef(!state.perAppState.spotifyAuto.completed)
+  const isFirst = useRef(true)
+  const ranMount = useRef(false)
 
   const track = TRACKS[trackIdx]
   const progress = track.durationSec > 0 ? (elapsed / track.durationSec) * 100 : 0
 
-  useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
+  /* mount: set step + check if first visit */
+  useEffect(() => {
+    if (ranMount.current) return
+    ranMount.current = true
+    patchFunnel((s) => ({ ...s, cinematicStep: "spotify-auto" }))
+    const completed = readFunnelKey(["perAppState", "spotifyAuto", "completed"])
+    if (completed === true) isFirst.current = false
+  }, [])
 
   /* timer */
   useEffect(() => {
@@ -59,15 +87,21 @@ export default function SpotifyAutoPage() {
   const handleNotifClick = () => {
     setShowNotif(false)
     isFirst.current = false
-    updateSpotifyState({ completed: true })
-    updateCinematicStep("whatsapp-notification")
-    router.push("/whatsapp/grupo")
+    patchFunnel((s) => ({
+      ...s,
+      cinematicStep: "whatsapp-notification",
+      perAppState: {
+        ...(s.perAppState as Record<string, unknown>),
+        spotifyAuto: { currentTime: 0, completed: true },
+      },
+    }))
+    window.location.href = "/whatsapp/grupo"
   }
 
   const handleBack = useCallback(() => {
     if (view === "now-playing") setView("album")
-    else router.push("/")
-  }, [view, router])
+    else window.location.href = "/"
+  }, [view])
 
   const selectTrack = (i: number) => {
     if (!TRACKS[i].playable) return
@@ -88,10 +122,8 @@ export default function SpotifyAutoPage() {
   /* ── NOW PLAYING ─────────────────────────────── */
   const NowPlaying = () => (
     <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
-      {/* gradient bg from album art colors */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
-      {/* top bar */}
       <div className="relative z-10 flex items-center justify-between px-4 py-3">
         <button type="button" onClick={handleBack} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
           <svg width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 19l-7-7 7-7"/></svg>
@@ -100,21 +132,18 @@ export default function SpotifyAutoPage() {
           <p className="text-[10px] text-white/60 uppercase tracking-widest">Tocando do album</p>
           <p className="text-[12px] text-white font-medium">Cidade Neon</p>
         </div>
-        <button type="button" onClick={() => router.push("/")} className="p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Voltar para inicio">
+        <button type="button" onClick={() => { window.location.href = "/" }} className="p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Voltar para inicio">
           <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
         </button>
       </div>
 
-      {/* cover */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 min-h-0">
         <div className="w-full max-w-[300px] aspect-square rounded-lg overflow-hidden shadow-2xl">
           <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={300} height={300} className="w-full h-full object-cover" priority />
         </div>
       </div>
 
-      {/* controls section */}
       <div className="relative z-10 px-6 pb-6 pt-4">
-        {/* title row */}
         <div className="flex items-center justify-between mb-4">
           <div className="min-w-0 flex-1">
             <h2 className="text-white text-lg font-bold truncate">{track.title ?? "Faixa bloqueada"}</h2>
@@ -128,7 +157,6 @@ export default function SpotifyAutoPage() {
           </button>
         </div>
 
-        {/* progress */}
         <div className="mb-4">
           <div className="relative h-1 bg-white/20 rounded-full overflow-hidden">
             <div className="absolute inset-y-0 left-0 bg-white rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${progress}%` }} />
@@ -140,7 +168,6 @@ export default function SpotifyAutoPage() {
           </div>
         </div>
 
-        {/* playback buttons */}
         <div className="flex items-center justify-between">
           <button type="button" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60">
             <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
@@ -170,27 +197,24 @@ export default function SpotifyAutoPage() {
     <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
-      {/* top bar */}
       <div className="relative z-10 flex items-center px-4 py-3">
-        <button type="button" onClick={() => router.push("/")} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+        <button type="button" onClick={() => { window.location.href = "/" }} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
           <svg width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
       </div>
 
-      {/* album header */}
       <div className="relative z-10 px-6 pb-4 flex flex-col items-center">
         <div className="w-48 h-48 rounded-md overflow-hidden shadow-2xl mb-4">
           <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={192} height={192} className="w-full h-full object-cover" />
         </div>
         <h1 className="text-white text-xl font-bold">Cidade Neon</h1>
         <p className="text-white/60 text-sm">LU2CA</p>
-        <p className="text-white/40 text-xs mt-1">Album &middot; 2026 &middot; 5 faixas</p>
+        <p className="text-white/40 text-xs mt-1">{"Album \u00b7 2026 \u00b7 5 faixas"}</p>
         <button type="button" onClick={() => { setTrackIdx(0); setElapsed(0); setPlaying(true); setView("now-playing") }} className="mt-4 w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center active:scale-95 transition-transform">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
         </button>
       </div>
 
-      {/* track list */}
       <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain px-4 pb-24" style={{ WebkitOverflowScrolling: "touch" }}>
         {TRACKS.map((t, i) => (
           <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!t.playable}
@@ -212,7 +236,6 @@ export default function SpotifyAutoPage() {
         ))}
       </div>
 
-      {/* mini player */}
       {trackIdx >= 0 && (
         <div className="absolute bottom-0 left-0 right-0 z-20">
           <button type="button" onClick={() => setView("now-playing")} className="w-full bg-[#282828] border-t border-white/5 px-4 py-2 flex items-center gap-3">
@@ -237,7 +260,7 @@ export default function SpotifyAutoPage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation select-none">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#121212]">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#121212]">
         {/* notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
         {/* status bar */}
@@ -249,7 +272,7 @@ export default function SpotifyAutoPage() {
           </div>
         </div>
 
-        {/* WhatsApp notification */}
+        {/* WhatsApp notification banner */}
         {showNotif && (
           <button type="button" onClick={handleNotifClick} className="absolute top-[52px] left-2 right-2 z-50 animate-slide-down">
             <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
@@ -262,7 +285,7 @@ export default function SpotifyAutoPage() {
                   <span className="text-[#8e8e93] text-xs">agora</span>
                 </div>
                 <p className="text-black font-medium text-xs">Cidade Neon</p>
-                <p className="text-[#8e8e93] text-xs truncate">D-Bee: Voce chegou.</p>
+                <p className="text-[#8e8e93] text-xs truncate">{"D-Bee: Voce chegou."}</p>
               </div>
             </div>
           </button>
