@@ -198,37 +198,78 @@ export default function CidadeNeonExperience() {
   if (phase === "incoming-call") {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col animate-vibrate relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
-          {/* iPhone Notch - floating pill */}
+        <div
+          className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col animate-vibrate"
+          style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}
+        >
+          {/* Dark gradient BG */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-black" />
+
+          {/* Notch */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          <div className="h-[50px] flex-shrink-0" />
-          <div className="flex-1 flex flex-col items-center justify-start pt-6">
-            <div className="relative">
-              <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4 animate-pulse-slow ring-4 ring-white/20">
-                <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={120} height={120} className="w-full h-full object-cover" />
+
+          {/* Status bar */}
+          <div className="relative z-20 h-[50px] flex items-end justify-between px-6 pb-1 text-white text-xs flex-shrink-0">
+            <span className="font-semibold w-12">{currentTime}</span>
+            <div className="flex items-center gap-1">
+              <svg className="w-4 h-3" fill="white" viewBox="0 0 16 12"><rect x="0" y="6" width="3" height="6" rx="0.5"/><rect x="4.5" y="4" width="3" height="8" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13" y="0" width="3" height="12" rx="0.5" opacity="0.3"/></svg>
+              <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white"/><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4"/></svg>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="relative z-20 flex-1 flex flex-col items-center justify-start pt-10">
+            {/* WhatsApp badge */}
+            <div className="flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm">
+              <svg className="w-4 h-4 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+              <span className="text-white/70 text-xs font-medium">WhatsApp Audio</span>
+            </div>
+
+            {/* Avatar with pulse rings */}
+            <div className="relative mb-6">
+              <div className="absolute inset-[-12px] rounded-full border border-white/10 animate-ping-slow" />
+              <div className="absolute inset-[-24px] rounded-full border border-white/5 animate-ping-slow" style={{ animationDelay: "0.5s" }} />
+              <div className="w-28 h-28 rounded-full overflow-hidden ring-2 ring-[#25D366]/40 animate-pulse-slow shadow-lg shadow-[#25D366]/20">
+                <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={112} height={112} className="w-full h-full object-cover" priority />
               </div>
-              <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping-slow" />
             </div>
-            <h1 className="text-white text-[32px] font-semibold mb-1">D-Bee</h1>
-            <p className="text-[#A0A0A0] text-[18px]">mobile</p>
-            <p className="text-[#A0A0A0] text-[16px] mt-2">Chamada recebida...</p>
-          </div>
-          <div className="px-8 pb-12">
-            <div className="flex justify-center gap-12 mb-8">
-              <button type="button" className="flex flex-col items-center gap-2"><div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center"><svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 9.5c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5-2.5-1.12-2.5-2.5 1.12-2.5 2.5-2.5m0-2c-2.48 0-4.5 2.02-4.5 4.5s2.02 4.5 4.5 4.5 4.5-2.02 4.5-4.5-2.02-4.5-4.5-4.5z" /></svg></div><span className="text-white text-xs">Lembrar</span></button>
-              <button type="button" className="flex flex-col items-center gap-2"><div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center"><svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" /></svg></div><span className="text-white text-xs">Mensagem</span></button>
-            </div>
-            <div className="flex justify-center gap-16">
-              <button type="button" onClick={() => setTimeout(() => setPhase("incoming-call"), 800)} className="flex flex-col items-center gap-2"><div className="w-[72px] h-[72px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform"><svg className="w-8 h-8 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg></div><span className="text-white text-xs">Recusar</span></button>
-              <button type="button" onClick={() => { window.location.href = "/call/db-ee" }} className="flex flex-col items-center gap-2"><div className="w-[72px] h-[72px] rounded-full bg-[#34C759] flex items-center justify-center active:scale-95 transition-transform"><svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg></div><span className="text-white text-xs">Aceitar</span></button>
+
+            <h1 className="text-white text-[28px] font-semibold mb-1">D-Bee</h1>
+            <p className="text-white/50 text-sm mb-1">Chamada de audio do WhatsApp</p>
+
+            {/* Ringing indicator */}
+            <div className="flex items-center gap-2 mt-3">
+              <div className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
+              <p className="text-[#25D366] text-sm">Chamando...</p>
             </div>
           </div>
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2"><div className="w-32 h-1 bg-white/30 rounded-full" /></div>
+
+          {/* Bottom buttons */}
+          <div className="relative z-20 px-8 pb-12">
+            <div className="flex justify-center gap-20">
+              <button type="button" onClick={() => setPhase("incoming-call")} className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-red-500/30">
+                  <svg className="w-7 h-7 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                </div>
+                <span className="text-white/60 text-xs">Recusar</span>
+              </button>
+              <button type="button" onClick={() => { window.location.href = "/call/db-ee" }} className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-[#25D366] flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-green-500/30">
+                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                </div>
+                <span className="text-white/60 text-xs">Aceitar</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Home indicator */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20"><div className="w-32 h-1 bg-white/20 rounded-full" /></div>
         </div>
+
         <style jsx>{`
           @keyframes vibrate { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-2px)} 20%,40%,60%,80%{transform:translateX(2px)} }
-          @keyframes pulse-slow { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.8;transform:scale(1.02)} }
-          @keyframes ping-slow { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(1.5);opacity:0} }
+          @keyframes pulse-slow { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.85;transform:scale(1.03)} }
+          @keyframes ping-slow { 0%{transform:scale(1);opacity:.4} 100%{transform:scale(1.6);opacity:0} }
           .animate-vibrate{animation:vibrate .3s linear infinite}
           .animate-pulse-slow{animation:pulse-slow 2s ease-in-out infinite}
           .animate-ping-slow{animation:ping-slow 2s ease-out infinite}
