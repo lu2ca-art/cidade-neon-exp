@@ -136,22 +136,22 @@ export default function HackerPage() {
         <div className="relative z-30 h-[54px] flex items-center justify-center flex-shrink-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" style={{ boxShadow: "0 0 0 1px rgba(0,255,102,0.1)" }} />
         </div>
-        {/* Terminal Lines */}
-        <div className="flex-1 flex flex-col justify-center">
+        {/* Terminal Lines - no scroll, text fits screen */}
+        <div className="flex-1 flex flex-col justify-end pb-4">
           {lines.map((line, index) => (
             <div
               key={index}
-              className="mb-4 animate-fade-in"
+              className="mb-1 animate-fade-in"
               style={{
-                animationDelay: `${index * 100}ms`,
+                animationDelay: `${index * 80}ms`,
               }}
             >
               <span
-                className={`text-lg md:text-xl tracking-wide ${
-                  line.startsWith("SENHA:") ? "text-[#00FF66] font-bold text-2xl" : ""
+                className={`text-[11px] tracking-wide ${
+                  line === "ACCESS GRANTED" || line === "ACESSO GARANTIDO" ? "text-[#00FF66] font-bold text-base block text-center mt-2" : ""
                 }`}
                 style={{
-                  textShadow: "0 0 10px rgba(0,255,102,0.5), 0 0 20px rgba(0,255,102,0.3)",
+                  textShadow: "0 0 8px rgba(0,255,102,0.4)",
                 }}
               >
                 {line}

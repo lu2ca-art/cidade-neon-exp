@@ -14,15 +14,15 @@ export interface Track {
 }
 
 export const ALBUM_TRACKS: Track[] = [
-  { id: 1, title: "CHUVA", masked: "9. C***A", duration: "3:24", durationSec: 204, playable: true, audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28MASTER%29-gjxdvkaY9bF5PpjHELCGqT3NrahEsG.mp3" },
-  { id: 2, title: "COPO AMERICANO", masked: "8. C*** A*******", duration: "2:58", durationSec: 178, playable: true, audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/COPO%20AMERICANO%20%28MASTER%29-jPjZxju7Z5bxrhmi3XF7pgqkoZGajw.mp3" },
-  { id: 3, title: null, masked: "1. n**t**", duration: "3:12", durationSec: 192, playable: false, audioUrl: null, color: "#FF6B9D" },
-  { id: 4, title: null, masked: "2. d******A", duration: "2:45", durationSec: 165, playable: false, audioUrl: null, color: "#FF9D6B" },
-  { id: 5, title: null, masked: "3. *****a", duration: "3:01", durationSec: 181, playable: false, audioUrl: null },
-  { id: 6, title: null, masked: "4. *j**a", duration: "3:18", durationSec: 198, playable: false, audioUrl: null, color: "#6B9DFF" },
-  { id: 7, title: null, masked: "5. ******e", duration: "2:33", durationSec: 153, playable: false, audioUrl: null },
-  { id: 8, title: null, masked: "6. ****r", duration: "3:45", durationSec: 225, playable: false, audioUrl: null },
-  { id: 9, title: null, masked: "7. s*** o****?", duration: "2:50", durationSec: 170, playable: false, audioUrl: null, color: "#FFD93D" },
+  { id: 1, title: null, masked: "1. n**t**", duration: "3:12", durationSec: 192, playable: false, audioUrl: null, color: "#FF6B9D" },
+  { id: 2, title: null, masked: "2. d******A", duration: "2:45", durationSec: 165, playable: false, audioUrl: null, color: "#FF9D6B" },
+  { id: 3, title: "COPO AMERICANO", masked: "3. C*** A*******", duration: "2:58", durationSec: 178, playable: true, audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/COPO%20AMERICANO%20%28MASTER%29-jPjZxju7Z5bxrhmi3XF7pgqkoZGajw.mp3" },
+  { id: 4, title: null, masked: "4. *j**a", duration: "3:18", durationSec: 198, playable: false, audioUrl: null, color: "#6B9DFF" },
+  { id: 5, title: null, masked: "5. ******e", duration: "2:33", durationSec: 153, playable: false, audioUrl: null },
+  { id: 6, title: null, masked: "6. ****r", duration: "3:45", durationSec: 225, playable: false, audioUrl: null },
+  { id: 7, title: null, masked: "7. s*** o****?", duration: "2:50", durationSec: 170, playable: false, audioUrl: null, color: "#FFD93D" },
+  { id: 8, title: null, masked: "8. *****a", duration: "3:01", durationSec: 181, playable: false, audioUrl: null },
+  { id: 9, title: "CHUVA", masked: "9. C***A", duration: "3:24", durationSec: 204, playable: true, audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28MASTER%29-gjxdvkaY9bF5PpjHELCGqT3NrahEsG.mp3" },
 ]
 
 interface AudioPlayerContextType {

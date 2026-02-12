@@ -366,7 +366,6 @@ export default function IQTestPage() {
             setShowResult(true)
             if (!isRevisit) {
               completeConfirmation(2, { iqScore: newScore, total: TOTAL_QUESTIONS, rank: getRank(newScore) })
-              setTimeout(() => router.push("/"), 3500)
             }
           }
         }
@@ -421,17 +420,9 @@ export default function IQTestPage() {
             <p className="text-white/40 text-sm mb-2">{savedData?.iqScore ?? score}/{TOTAL_QUESTIONS} corretas</p>
             <p className="text-white/30 text-xs mb-6">Sua percepcao esta afiada para Cidade Neon.</p>
 
-            {isRevisit ? (
-              <button type="button" onClick={() => router.push("/")} className="px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
-                Voltar ao Inicio
-              </button>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                <p className="text-white/30 text-xs">Voltando ao inicio...</p>
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-              </div>
-            )}
+            <button type="button" onClick={() => router.push("/")} className="px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
+              Voltar ao Inicio
+            </button>
           </div>
         </div>
         <style jsx>{`

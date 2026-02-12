@@ -372,16 +372,18 @@ export default function CidadeNeonExperience() {
     add()
   }, [])
 
-  // Initial group script
+  // Initial group script - Phase 1: AI invasion verification
   useEffect(() => {
     if (phase !== "whatsapp-group" || groupScriptSent.current) return
     groupScriptSent.current = true
     const script: Msg[] = [
       { id: 1, text: "Voce foi adicionado ao grupo", sender: "system", time: currentTime, isSystem: true },
-      { id: 2, text: "EAEEE CHEGOU O CONVIDADO!", sender: "D-Bee", time: currentTime },
-      { id: 3, text: "BEM VINDO A CIDADE MANO", sender: "Nizzy", time: currentTime },
-      { id: 4, text: "ALOHA! JA TAVA TE ESPERANDO", sender: "Alohan", time: currentTime },
-      { id: 5, text: "MANDA UMA MENSAGEM AI PRA GENTE TE CONHECER", sender: "D-Bee", time: currentTime },
+      { id: 2, text: "eae mano, chegou", sender: "D-Bee", time: currentTime },
+      { id: 3, text: "salve! bom te ver aqui", sender: "Nizzy", time: currentTime },
+      { id: 4, text: "aloha! finalmente", sender: "Alohan", time: currentTime },
+      { id: 5, text: "olha so, a gente tem visto muita invasao de IA's por aqui ultimamente", sender: "D-Bee", time: currentTime },
+      { id: 6, text: "entao antes de tudo a gente precisa confirmar que voce e humano de verdade", sender: "Nizzy", time: currentTime },
+      { id: 7, text: "manda uma mensagem ai pra gente te conhecer", sender: "Alohan", time: currentTime },
     ]
     addBotMessages(script)
   }, [phase, addBotMessages, currentTime])
@@ -394,29 +396,34 @@ export default function CidadeNeonExperience() {
     setGroupInteractions(0)
 
     if (confirmationsDone === 1) {
+      // Phase 2: Real feelings are rare
       addBotMessages([
-        { id: 1, text: "VOLTOUUU!", sender: "D-Bee", time: currentTime },
-        { id: 2, text: "E AI COMO FOI LA?", sender: "Nizzy", time: currentTime },
-        { id: 3, text: "SABIA QUE IA CONSEGUIR IRMAO", sender: "Alohan", time: currentTime },
-        { id: 4, text: "MANDA MAIS UMA AI", sender: "D-Bee", time: currentTime },
+        { id: 1, text: "voltou! e ai como foi?", sender: "D-Bee", time: currentTime },
+        { id: 2, text: "mano hoje em dia sentimento real e a coisa mais rara que existe", sender: "Nizzy", time: currentTime },
+        { id: 3, text: "por isso a gente valoriza muito isso aqui", sender: "Alohan", time: currentTime },
+        { id: 4, text: "tipo, qual foi a ultima vez que voce sentiu algo de verdade ouvindo uma musica?", sender: "D-Bee", time: currentTime },
       ], () => { setPhase("whatsapp-group") })
     } else if (confirmationsDone === 2) {
+      // Phase 3: Final test - prove you can feel
       addBotMessages([
-        { id: 1, text: "OLHA ISSOO PASSOUUU!", sender: "D-Bee", time: currentTime },
-        { id: 2, text: "MAIS UMA PERGUNTA E TU TA DENTRO", sender: "Nizzy", time: currentTime },
-        { id: 3, text: "FALTA POUQUINHO MANO", sender: "Alohan", time: currentTime },
+        { id: 1, text: "mano ceeee passouuu", sender: "D-Bee", time: currentTime },
+        { id: 2, text: "agora vem o teste final", sender: "Nizzy", time: currentTime },
+        { id: 3, text: "a gente precisa ver se voce e capaz de sentir, ou se e so mais uma maquina", sender: "Alohan", time: currentTime },
+        { id: 4, text: "ninguem quer se sentir como uma maquina ne", sender: "D-Bee", time: currentTime },
+        { id: 5, text: "entao bora ate o final, vale a pena", sender: "Nizzy", time: currentTime },
       ], () => { setPhase("whatsapp-group") })
     } else if (confirmationsDone >= 3) {
+      // Final: Thanks, farewell, LU2CA enters
       addBotMessages([
-        { id: 1, text: "MANO TU PASSOU EM TUDO!", sender: "D-Bee", time: currentTime },
-        { id: 2, text: "AGORA VOCE E UM DE NOS", sender: "Nizzy", time: currentTime },
-        { id: 3, text: "PRONTO PRA PROXIMA FASE", sender: "Alohan", time: currentTime },
-        { id: 4, text: "LU2CA entrou no grupo", sender: "system", time: currentTime, isSystem: true },
-        { id: 5, text: "EAEEE MANO! BOA SORTE NA JORNADA", sender: "D-Bee", time: currentTime },
-        { id: 6, text: "VAMO ENTRAR EM CONTATO COM VOCE EM BREVE", sender: "Nizzy", time: currentTime },
-        { id: 7, text: "ATE A PROXIMA! ALOHA!", sender: "Alohan", time: currentTime },
+        { id: 1, text: "MANO TU PASSOU EM TUDO", sender: "D-Bee", time: currentTime },
+        { id: 2, text: "sabia que ia conseguir", sender: "Nizzy", time: currentTime },
+        { id: 3, text: "foi um prazer te ter aqui de verdade", sender: "Alohan", time: currentTime },
+        { id: 4, text: "valeu por tudo mano, ate a proxima", sender: "D-Bee", time: currentTime },
+        { id: 5, text: "se cuida! a gente se ve na cidade", sender: "Nizzy", time: currentTime },
+        { id: 6, text: "aloha! ate logo", sender: "Alohan", time: currentTime },
+        { id: 7, text: "LU2CA entrou no grupo", sender: "system", time: currentTime, isSystem: true },
       ], () => {
-        setTimeout(() => setPhase("phone-home"), 2000)
+        setTimeout(() => setPhase("phone-home"), 3000)
       })
     }
   }, [phase, confirmationsDone, addBotMessages, currentTime])
@@ -443,13 +450,14 @@ export default function CidadeNeonExperience() {
     setInputValue("")
     setGroupInteractions((p) => p + 1)
 
-    // Bot response
+    // Bot response - relaxed humor, no screaming
     const responses = [
-      ["KKKKK BOA MANO", "MANDA MAIS AI", "CONTA MAIS"],
-      ["SHOW DE BOLA", "E NOIS POW", "ISSO AI"],
-      ["CURTI ISSO", "MASSA DEMAIS", "TU E DAHORA"],
-      ["HAHAHA", "CERTEZA", "VALEU MANO"],
-      ["SIMMM", "TOTAL", "SAC0U"],
+      ["boa mano", "manda mais ai", "conta mais"],
+      ["show", "e nois", "isso ai"],
+      ["curti isso", "massa demais", "tu e gente boa"],
+      ["com certeza", "faz sentido", "valeu mano"],
+      ["sim sim", "total", "saquei"],
+      ["real", "exato", "concordo"],
     ]
     const group = responses[Math.floor(Math.random() * responses.length)]
     const responders = ["D-Bee", "Nizzy", "Alohan"]
@@ -593,7 +601,7 @@ export default function CidadeNeonExperience() {
       music: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>,
     }
     return (
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center relative" style={{ backgroundColor: color }}>
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center relative" style={{ backgroundColor: color }}>
         {iconMap[icon] || <div className="w-8 h-8 bg-white/20 rounded" />}
       </div>
     )
@@ -814,9 +822,43 @@ export default function CidadeNeonExperience() {
 
   /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
-  /* ─── RENDER: AURA QUIZ ─────────────────────────── */
+  /* ─── RENDER: AURA ───────────────────────────────── */
   const auraAlreadyDone = gameFunnelState.confirmations.c3.done
+  const auraUnlocked = gameFunnelState.confirmationCount >= 2
+
   if (phase === "aura-login") {
+    // LOCKED STATE: show before 2nd confirmation
+    if (!auraUnlocked && !auraAlreadyDone) {
+      return (
+        <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
+          <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
+            {/* Aurora skin - translucent aurora borealis */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.08) 15%,rgba(103,232,249,.06) 30%,transparent 45%,rgba(251,191,36,.06) 60%,rgba(239,68,68,.04) 75%,transparent 90%)" }} />
+              <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-20 blur-3xl animate-pulse" style={{ background: "radial-gradient(circle,#a78bfa,transparent 70%)" }} />
+              <div className="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full opacity-15 blur-3xl animate-pulse" style={{ background: "radial-gradient(circle,#67e8f9,transparent 70%)", animationDelay: "1s" }} />
+            </div>
+
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
+              <h1 className="text-4xl font-black tracking-[0.15em] text-black/80 mb-4" style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontStretch: "condensed" }}>AURA</h1>
+              <p className="text-black/30 text-sm text-center mb-10 max-w-[240px] leading-relaxed">Eleve sua AURA</p>
+              <a
+                href="mailto:lucca.c2c@gmail.com?subject=AURA%20-%20Cidade%20Neon"
+                className="px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 bg-black/5 text-black/50 border border-black/10"
+              >
+                {'send email to \'lucca.c2c@gmail.com\''}
+              </a>
+            </div>
+            <button type="button" onClick={() => setPhase("phone-home")} className="relative z-10 py-6 text-black/20 text-xs text-center">VOLTAR</button>
+          </div>
+          <style jsx>{`
+            @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
+          `}</style>
+        </div>
+      )
+    }
+
     const AURA_QUESTIONS = [
       { q: "Quando voce entra em um ambiente novo, o que sente primeiro?", opts: [
         { text: "A energia das pessoas", color: "#F59E0B" },
@@ -851,15 +893,14 @@ export default function CidadeNeonExperience() {
     ]
 
     const AURA_RESULTS = [
-      { name: "AURA SOLAR", color: "#F59E0B", bg: "from-amber-900/30 via-black to-amber-950/20", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
-      { name: "AURA OCEANO", color: "#06B6D4", bg: "from-cyan-900/30 via-black to-blue-950/20", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
-      { name: "AURA NEBULOSA", color: "#A78BFA", bg: "from-purple-900/30 via-black to-violet-950/20", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
-      { name: "AURA CRISTAL", color: "#10B981", bg: "from-emerald-900/30 via-black to-green-950/20", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
-      { name: "AURA FOGO", color: "#EF4444", bg: "from-red-900/30 via-black to-orange-950/20", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
-      { name: "AURA SOMBRA", color: "#6B7280", bg: "from-gray-900/30 via-black to-slate-950/20", desc: "Observacao e misterio. Sua forca esta no silencio." },
+      { name: "AURA SOLAR", color: "#F59E0B", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
+      { name: "AURA OCEANO", color: "#06B6D4", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
+      { name: "AURA NEBULOSA", color: "#A78BFA", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
+      { name: "AURA CRISTAL", color: "#10B981", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
+      { name: "AURA FOGO", color: "#EF4444", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
+      { name: "AURA SOMBRA", color: "#6B7280", desc: "Observacao e misterio. Sua forca esta no silencio." },
     ]
 
-    // Determine aura from most-chosen color
     const getAuraResult = () => {
       const colorCounts: Record<string, number> = {}
       auraAnswers.forEach((a, i) => {
@@ -880,141 +921,111 @@ export default function CidadeNeonExperience() {
           setAuraShowResult(true)
           if (!auraAlreadyDone) {
             completeConfirmation(3, { auraAnswers: newAnswers })
-            setTimeout(() => { setPhase("phone-home") }, 4000)
           }
         }, 400)
       }
     }
 
+    // RESULT STATE
     if (auraShowResult) {
       const result = getAuraResult()
       return (
-        <div className="min-h-screen flex items-center justify-center overflow-hidden bg-black">
-          <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
-            <div className={`absolute inset-0 bg-gradient-to-b ${result.bg}`} />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-
-            {/* Aura glow rings */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              {[80, 120, 160, 200].map((s, i) => (
-                <div key={i} className="absolute rounded-full animate-pulse" style={{ width: s, height: s, border: `1px solid ${result.color}${20 - i * 4}`, animationDelay: `${i * 0.3}s` }} />
-              ))}
+        <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
+          <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col items-center justify-center p-8 relative bg-white">
+            {/* Aurora skin */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: `conic-gradient(from 0deg,transparent 0%,${result.color}15 25%,transparent 50%,${result.color}10 75%,transparent 100%)` }} />
             </div>
 
             <div className="relative z-10 text-center animate-aura-in">
-              <p className="text-white/30 text-xs uppercase tracking-[0.3em] mb-6">Confirmacao 3/3 Completa</p>
+              <p className="text-black/30 text-[10px] uppercase tracking-[0.3em] mb-6" style={{ fontStretch: "condensed" }}>Confirmacao 3/3 Completa</p>
 
               {/* Aura orb */}
               <div className="relative w-28 h-28 mx-auto mb-6">
-                <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: `${result.color}20`, boxShadow: `0 0 60px ${result.color}40` }} />
-                <div className="absolute inset-2 rounded-full" style={{ backgroundColor: `${result.color}30` }} />
-                <div className="absolute inset-4 rounded-full flex items-center justify-center" style={{ backgroundColor: `${result.color}15` }}>
-                  <span className="text-3xl font-bold" style={{ color: result.color }}>A</span>
+                <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: `${result.color}15`, boxShadow: `0 0 60px ${result.color}30` }} />
+                <div className="absolute inset-3 rounded-full" style={{ backgroundColor: `${result.color}10` }} />
+                <div className="absolute inset-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${result.color}08` }}>
+                  <span className="text-2xl font-black" style={{ color: result.color, fontStretch: "condensed" }}>A</span>
                 </div>
               </div>
 
-              <h1 className="text-xl font-bold mb-2" style={{ color: result.color }}>{result.name}</h1>
-              <p className="text-white/50 text-sm mb-6 max-w-[260px] mx-auto leading-relaxed">{result.desc}</p>
+              <h1 className="text-xl font-black mb-2 tracking-wide" style={{ color: result.color, fontStretch: "condensed" }}>{result.name}</h1>
+              <p className="text-black/40 text-sm mb-8 max-w-[260px] mx-auto leading-relaxed">{result.desc}</p>
 
               {/* Share by email */}
-              <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4">
-                <p className="text-white/60 text-xs mb-2">Compartilhe sua AURA</p>
-                <a href={`mailto:?subject=Minha%20AURA%20-%20${encodeURIComponent(result.name)}&body=Descobri%20minha%20aura%20na%20Cidade%20Neon%20de%20LU2CA.%20Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}%0A%0ADescubra%20a%20sua%3A%20https%3A%2F%2Flu2ca.me`} className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: `${result.color}20`, color: result.color, border: `1px solid ${result.color}30` }}>
-                  Enviar por email
-                </a>
-              </div>
+              <a href={`mailto:lucca.c2c@gmail.com?subject=Minha%20AURA%20-%20${encodeURIComponent(result.name)}&body=Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}`} className="inline-block px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 mb-4" style={{ backgroundColor: `${result.color}12`, color: result.color, border: `1px solid ${result.color}20` }}>
+                Enviar minha AURA por email
+              </a>
 
               {/* Link to disc */}
-              <a
-                href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 mb-6"
-                style={{ background: `linear-gradient(135deg, ${result.color}30, ${result.color}10)`, color: result.color, border: `1px solid ${result.color}25` }}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+              <a href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" target="_blank" rel="noopener noreferrer" className="block px-6 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 mb-6" style={{ color: result.color }}>
                 Eleve sua AURA com o Album
               </a>
 
-              {/* Always go back to home */}
-              {auraAlreadyDone ? (
-                <button type="button" onClick={() => setPhase("phone-home")} className="mt-2 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
-                  Voltar ao Inicio
-                </button>
-              ) : (
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
-                  <p className="text-white/30 text-xs">Voltando ao inicio...</p>
-                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
-                </div>
-              )}
+              <button type="button" onClick={() => setPhase("phone-home")} className="px-8 py-3 rounded-2xl bg-black/5 text-black/40 text-sm font-medium active:scale-95 transition-transform">
+                Voltar ao Inicio
+              </button>
             </div>
           </div>
           <style jsx>{`
             @keyframes aura-in { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
             .animate-aura-in{animation:aura-in .6s ease-out forwards}
+            @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
           `}</style>
         </div>
       )
     }
 
+    // QUIZ STATE - white bg with aurora
     const currentAQ = AURA_QUESTIONS[auraQuizStep]
     return (
-      <div className="min-h-screen flex items-center justify-center overflow-hidden bg-black">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col relative">
-          <div className="absolute inset-0" style={{ background: "linear-gradient(135deg,#0f0a1e 0%,#0a0f1e 50%,#0f0a1e 100%)" }} />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-
-          {/* Aurora shimmer */}
+      <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
+          {/* Aurora skin */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.06) 25%,transparent 50%,rgba(103,232,249,.06) 75%,transparent 100%)" }} />
+            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.06) 15%,rgba(103,232,249,.05) 30%,transparent 45%,rgba(251,191,36,.04) 60%,transparent 75%)" }} />
+            <div className="absolute top-1/4 right-0 w-64 h-64 rounded-full opacity-10 blur-3xl" style={{ background: "radial-gradient(circle,#a78bfa,transparent 70%)" }} />
           </div>
 
           <div className="relative z-10 flex flex-col h-full pt-[56px] px-5">
             {/* Header */}
             <div className="text-center mb-2">
-              <h1 className="text-2xl font-bold text-white/90 tracking-[0.2em]">AURA</h1>
+              <h1 className="text-2xl font-black text-black/80 tracking-[0.15em]" style={{ fontStretch: "condensed" }}>AURA</h1>
               <div className="w-16 h-[2px] mx-auto mt-1 bg-gradient-to-r from-[#a78bfa] via-[#67e8f9] to-[#a78bfa]" />
             </div>
 
             {/* Progress */}
             <div className="flex gap-1.5 mb-6 mt-4">
               {AURA_QUESTIONS.map((_, i) => (
-                <div key={i} className="flex-1 h-1 rounded-full transition-all duration-500" style={{ backgroundColor: i < auraQuizStep ? "#A78BFA" : i === auraQuizStep ? "rgba(167,139,250,0.5)" : "rgba(255,255,255,0.06)" }} />
+                <div key={i} className="flex-1 h-1 rounded-full transition-all duration-500" style={{ backgroundColor: i < auraQuizStep ? "#A78BFA" : i === auraQuizStep ? "rgba(167,139,250,0.4)" : "rgba(0,0,0,0.06)" }} />
               ))}
             </div>
-            <p className="text-white/20 text-[11px] text-center mb-4">CONFIRMACAO 3/3 &middot; Pergunta {auraQuizStep + 1}/{AURA_QUESTIONS.length}</p>
+            <p className="text-black/20 text-[10px] text-center mb-4 tracking-wider">CONFIRMACAO 3/3 &middot; {auraQuizStep + 1}/{AURA_QUESTIONS.length}</p>
 
             {/* Question */}
             <div className="flex-1 flex flex-col justify-center">
-              <h2 className="text-white text-lg font-medium text-center mb-8 text-balance px-2">{currentAQ.q}</h2>
+              <h2 className="text-black/70 text-lg font-medium text-center mb-8 text-balance px-2">{currentAQ.q}</h2>
 
               <div className="space-y-3">
                 {currentAQ.opts.map((opt, i) => (
-                  <button
-                    key={opt.text}
-                    type="button"
-                    onClick={() => handleAuraAnswer(i)}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 active:scale-[0.97] text-left"
-                    style={{
-                      backgroundColor: `${opt.color}10`,
-                      border: `1px solid ${opt.color}25`,
-                    }}
+                  <button key={opt.text} type="button" onClick={() => handleAuraAnswer(i)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.97] text-left bg-white"
+                    style={{ border: `1px solid ${opt.color}25`, boxShadow: `0 1px 4px ${opt.color}08` }}
                   >
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
-                    <span className="text-white/80 text-sm">{opt.text}</span>
+                    <span className="text-black/60 text-sm">{opt.text}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Back */}
-            <button type="button" onClick={() => { setPhase("phone-home"); setAuraQuizStep(0); setAuraAnswers([]) }} className="py-4 text-white/20 text-xs text-center">VOLTAR</button>
+            <button type="button" onClick={() => { setPhase("phone-home"); setAuraQuizStep(0); setAuraAnswers([]) }} className="py-4 text-black/20 text-xs text-center">VOLTAR</button>
           </div>
         </div>
         <style jsx>{`
           @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-          .animate-aurora-spin{animation:aurora-spin 20s linear infinite}
+          .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
         `}</style>
       </div>
     )
@@ -1125,8 +1136,8 @@ export default function CidadeNeonExperience() {
 
         {/* ── App Grid (vertically centered) ── */}
         {!showNotifCenter && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center px-6 pt-[50px] pb-[80px]">
-            <div className="grid grid-cols-4 gap-x-4 gap-y-5 w-full">
+          <div className="absolute inset-0 z-10 flex items-center justify-center px-8 pt-[50px] pb-[80px]">
+            <div className="grid grid-cols-3 gap-x-6 gap-y-6 w-full">
               {phoneApps.map((app) => (
                 <button key={app.id} onClick={() => {
                   if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }

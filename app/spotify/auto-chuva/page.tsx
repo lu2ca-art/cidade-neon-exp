@@ -22,10 +22,10 @@ export default function SpotifyAutoPage() {
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
 
-  // Auto-play CHUVA (track 0) on mount if nothing is playing
+  // Auto-play CHUVA (track index 8 = position 9) on mount if nothing is playing
   useEffect(() => {
     if (!audio.playing && audio.elapsed === 0) {
-      audio.play(0)
+      audio.play(8)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -66,8 +66,8 @@ export default function SpotifyAutoPage() {
     <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
-      {/* top bar */}
-      <div className="relative z-10 flex items-center justify-between px-4 py-3">
+      {/* top bar - pushed down to clear notch */}
+      <div className="relative z-10 flex items-center justify-between px-4 py-3 mt-4">
         <button type="button" onClick={handleBack} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
           <svg width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
@@ -144,7 +144,7 @@ export default function SpotifyAutoPage() {
     <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
       <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
 
-      <div className="relative z-10 flex items-center px-4 py-3">
+      <div className="relative z-10 flex items-center px-4 py-3 mt-4">
         <button type="button" onClick={() => router.push("/")} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
           <svg width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
@@ -158,7 +158,7 @@ export default function SpotifyAutoPage() {
         <h1 className="text-white text-xl font-bold">Cidade Neon</h1>
         <p className="text-white/60 text-sm">LU2CA</p>
         <p className="text-white/40 text-xs mt-1">Album &middot; 2026 &middot; 9 faixas</p>
-        <button type="button" onClick={() => { audio.play(0); setView("now-playing") }} className="mt-4 w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center active:scale-95 transition-transform">
+        <button type="button" onClick={() => { audio.play(8); setView("now-playing") }} className="mt-4 w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center active:scale-95 transition-transform">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
         </button>
       </div>

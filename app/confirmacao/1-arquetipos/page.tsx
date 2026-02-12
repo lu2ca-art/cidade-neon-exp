@@ -9,7 +9,7 @@ const TRACKS = [
   { id: "nectar", name: "NECTAR", masked: "1. n**t**", color: "#FF6B9D", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/NECTAR%20%28INSTRUMENTAL%29-cpc97l75aiwhXeJ2h2qbZ0Lhos0GmK.mp3" },
   { id: "dopamina", name: "DOPAMINA", masked: "2. d******A", color: "#FF9D6B", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/DOPAMINA%20%28INSTRUMENTAL%29-RMoTXZGA59MUwGLVHT1MqGjNCeseSv.mp3" },
   { id: "ojala", name: "OJALA", masked: "4. *j**a", color: "#6B9DFF", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/OJALA%CC%81%20%28INSTRUMENTAL%29-JRyOmaJg7ZCx8wQLwBNcmq7kglrRvb.mp3" },
-  { id: "sabeontem", name: "SABE ONTEM?", masked: "7. s*** o****?", color: "#FFD93D", audio: null },
+  { id: "sabeontem", name: "SABE ONTEM?", masked: "7. s*** o****?", color: "#FFD93D", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/SABE%20ONTEM_%20%28%29.mp3.mp3%20%28online-audio-converter.com%29%20%281%29%20%281%29-mqjcc03wIYdjfEMqPZ2fXU1OOXOGD6.mp3" },
   { id: "chuva", name: "CHUVA", masked: "9. C***A", color: "#9DFF6B", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28INSTRUMENTAL%29-vixjoBQT7YX5HzJKTUfrSULZeLY7vF.mp3" },
 ]
 
@@ -89,9 +89,6 @@ export default function Confirmacao1Page() {
       setTimeout(() => {
         setShowResult(true)
         completeConfirmation(1, { trackEmotions: newMatches })
-        if (!isRevisit) {
-          setTimeout(() => router.push("/"), 3000)
-        }
       }, 600)
     } else {
       // Auto-select next unmatched track and play its audio
@@ -145,17 +142,9 @@ export default function Confirmacao1Page() {
               <p className="text-white font-bold text-sm uppercase tracking-widest">TIRE UM PRINT DO RESULTADO</p>
             </div>
 
-            {isRevisit ? (
-              <button type="button" onClick={() => router.push("/")} className="mt-6 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
-                Voltar ao Inicio
-              </button>
-            ) : (
-              <div className="flex items-center justify-center gap-2 pt-4">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#FF6B9D] animate-pulse" />
-                <p className="text-white/40 text-xs">Voltando ao inicio...</p>
-                <div className="w-1.5 h-1.5 rounded-full bg-[#9DFF6B] animate-pulse" />
-              </div>
-            )}
+            <button type="button" onClick={() => router.push("/")} className="mt-6 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
+              Voltar ao Inicio
+            </button>
           </div>
         </div>
         <style jsx>{`
@@ -203,9 +192,10 @@ export default function Confirmacao1Page() {
                 />
               ))}
             </div>
-            <p className="text-white/30 text-[11px] text-center">
-              CONFIRMACAO 1/3 &middot; Conecte cada faixa a uma emocao &middot; {matchedCount}/5
+            <p className="text-white/60 text-[12px] text-center font-bold tracking-wide">
+              Conecte cada faixa a uma emocao &middot; {matchedCount}/5
             </p>
+            <p className="text-white/25 text-[10px] text-center mt-1">CONFIRMACAO 1/3</p>
           </div>
 
           {/* Track list */}
@@ -267,7 +257,7 @@ export default function Confirmacao1Page() {
             {selectedTrack && !isTrackMatched(selectedTrack) ? (
               <div className={`transition-all duration-300 ${animatingOut ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
                 <p className="text-white/50 text-[11px] uppercase tracking-wider mb-2">
-                  Qual emocao define <span style={{ color: activeTrack?.color }}>{activeTrack?.name}</span>?
+                  Qual emocao define <span className="font-mono" style={{ color: activeTrack?.color }}>{activeTrack?.masked}</span>?
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {activeEmotions.map((emotion) => {
