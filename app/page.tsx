@@ -13,9 +13,6 @@ type Phase =
   | "spotify"
   | "phone-home"
   | "whatsapp-group"
-  | "confirmation-1"
-  | "confirmation-2"
-  | "confirmation-3"
   | "post-confirm-group"
   | "final-notifications"
   | "aura-login"
@@ -291,20 +288,7 @@ export default function CidadeNeonExperience() {
   const groupScriptSent = useRef(false)
   const postConfirmScriptSent = useRef(false)
 
-  /* ── Confirmation 1: Archetypes ────────── */
-  const [c1Question, setC1Question] = useState(0)
-  const [c1Answers, setC1Answers] = useState<number[]>([])
-  const [c1Result, setC1Result] = useState<string | null>(null)
-  const [c1Animating, setC1Animating] = useState(false)
-
-  /* ── Confirmation 2: Columns ────────── */
-  const [selectedTrack, setSelectedTrack] = useState<number | null>(null)
-  const [connections, setConnections] = useState<Record<number, number>>({})
-
-  /* ── Confirmation 3: Unlock ────────── */
-  const [c3SelectedTrack, setC3SelectedTrack] = useState<number | null>(null)
-  const [c3Password, setC3Password] = useState("")
-  const [c3Revealed, setC3Revealed] = useState(0)
+  /* ── (Confirmations now handled by separate pages) ── */
 
   /* ── Phone Home ────────── */
   const [showNotification, setShowNotification] = useState(false)
@@ -524,70 +508,12 @@ export default function CidadeNeonExperience() {
 
   const handleConfirmation = () => {
     setShowConfirmBtn(false)
-    if (confirmationsDone === 0) setPhase("confirmation-1")
-    else if (confirmationsDone === 1) setPhase("confirmation-2")
-    else if (confirmationsDone === 2) setPhase("confirmation-3")
+    if (confirmationsDone === 0) window.location.href = "/confirmacao/1-arquetipos"
+    else if (confirmationsDone === 1) window.location.href = "/confirmacao/3-desbloqueio"
+    else if (confirmationsDone === 2) { setPhase("aura-login") }
   }
 
-  /* ─── CONFIRMATION 1 ───────────────────────── */
-  const handleC1Answer = (idx: number) => {
-    if (c1Animating) return
-    setC1Animating(true)
-    const answers = [...c1Answers, idx]
-    setC1Answers(answers)
-    setTimeout(() => {
-      if (c1Question < ARCHETYPE_QUESTIONS.length - 1) {
-        setC1Question((q) => q + 1)
-        setC1Animating(false)
-      } else {
-        const archIdx = answers[0] * 16 + answers[1] * 4 + answers[2]
-        setC1Result(ARCHETYPES[archIdx])
-        setTimeout(() => {
-          setConfirmationsDone(1)
-          postConfirmScriptSent.current = false
-          setPhase("post-confirm-group")
-        }, 3000)
-      }
-    }, 300)
-  }
-
-  /* ─── CONFIRMATION 2 ───────────────────────── */
-  const handleTrackSelect = (trackId: number) => setSelectedTrack(trackId)
-
-  const handleEmotionConnect = (emotionId: number) => {
-    if (selectedTrack === null) return
-    const newConn = { ...connections, [selectedTrack]: emotionId }
-    setConnections(newConn)
-    setSelectedTrack(null)
-    if (Object.keys(newConn).length === 5) {
-      setTimeout(() => {
-        setConfirmationsDone(2)
-        postConfirmScriptSent.current = false
-        setPhase("post-confirm-group")
-      }, 1500)
-    }
-  }
-
-  /* ─── CONFIRMATION 3 ───────────────────────── */
-  const handleC3Select = (trackId: number) => {
-    const track = TRACKS.find((t) => t.id === trackId)
-    if (!track) return
-    setC3SelectedTrack(trackId)
-    const pwd = track.full
-    setC3Password(pwd)
-    let i = 0
-    const interval = setInterval(() => {
-      i++
-      setC3Revealed(i)
-      if (i >= pwd.length) clearInterval(interval)
-    }, 100)
-  }
-
-  const handleC3Complete = () => {
-    setConfirmationsDone(3)
-    postConfirmScriptSent.current = false
-    setPhase("post-confirm-group")
-  }
+  /* ─── (Old in-page confirmation handlers removed - now separate pages) ── */
 
   /* ─── MISSIONS PER CONFIRMATION STAGE ────── */
   const getMissions = useCallback(() => {
@@ -921,8 +847,8 @@ export default function CidadeNeonExperience() {
     )
   }
 
-  /* ─── RENDER: CONFIRMATION 1 - ARCHETYPES ────────��─ */
-  if (phase === "confirmation-1") {
+  /* ─── OLD CONFIRMATION RENDERS REMOVED ── */
+  if (false) {
     if (c1Result) {
       return (
         <div className="min-h-screen bg-black flex items-center justify-center">
