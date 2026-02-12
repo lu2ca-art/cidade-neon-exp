@@ -35,6 +35,7 @@ export default function CidadeNeonExperience() {
   /* ── (Call/Hacker/Spotify/WhatsApp = separate route pages) ── */
 
   /* ── Phone Home ────────── */
+  const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
   const [appBadges, setAppBadges] = useState<Record<string, boolean>>({})
   const [showNotifCenter, setShowNotifCenter] = useState(false)
   const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string } | null>(null)
@@ -236,15 +237,6 @@ export default function CidadeNeonExperience() {
     )
   }
 
-  /* ─── (Active-call, Hacker, Spotify, WhatsApp-group renders = separate route pages) ── */
-
-  /* ─── FALLBACK: redirect if someone hits an old inline phase ── */
-  if (phase === "hacker") { if (typeof window !== "undefined") window.location.href = "/hacker"; return null }
-  if (phase === "active-call") { if (typeof window !== "undefined") window.location.href = "/call/db-ee"; return null }
-  if (phase === "spotify") { if (typeof window !== "undefined") window.location.href = "/spotify/auto-chuva"; return null }
-  if (phase === "whatsapp-group" || phase === "post-confirm-group") { if (typeof window !== "undefined") window.location.href = "/whatsapp/grupo"; return null }
-
-  /* ─── All old inline renders removed (hacker/spotify/whatsapp = separate pages) ── */
   /* ─── RENDER: AURA QUIZ ─────────────────────────── */
   const auraAlreadyDone = gameFunnelState.confirmations.c3.done
   if (phase === "aura-login") {
