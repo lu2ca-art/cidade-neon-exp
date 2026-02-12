@@ -211,7 +211,7 @@ export default function CidadeNeonExperience() {
   /* ── Phase ────────── */
   const [phase, setPhase] = useState<Phase>(getInitialPhase)
 
-  /* ── Call ────────── */
+  /* ── Call ───────���── */
   const [callDuration, setCallDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [isSpeakerOn, setIsSpeakerOn] = useState(false)
@@ -260,8 +260,12 @@ export default function CidadeNeonExperience() {
 
   /* ── AURA ────────── */
   const [auraQuizStep, setAuraQuizStep] = useState(0)
-  const [auraAnswers, setAuraAnswers] = useState<number[]>([])
-  const [auraShowResult, setAuraShowResult] = useState(false)
+  const [auraAnswers, setAuraAnswers] = useState<number[]>(
+    gameFunnelState.confirmations.c3.done && gameFunnelState.confirmations.c3.data
+      ? (gameFunnelState.confirmations.c3.data as { auraAnswers?: number[] }).auraAnswers || [0, 0, 0, 0, 0]
+      : []
+  )
+  const [auraShowResult, setAuraShowResult] = useState(gameFunnelState.confirmations.c3.done)
 
   const phoneApps = [
     { id: "untitled", name: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
@@ -805,6 +809,7 @@ export default function CidadeNeonExperience() {
   /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
   /* ─── RENDER: AURA QUIZ ─────────────────────────── */
+  const auraAlreadyDone = gameFunnelState.confirmations.c3.done
   if (phase === "aura-login") {
     const AURA_QUESTIONS = [
       { q: "Quando voce entra em um ambiente novo, o que sente primeiro?", opts: [
@@ -867,8 +872,10 @@ export default function CidadeNeonExperience() {
       } else {
         setTimeout(() => {
           setAuraShowResult(true)
-          completeConfirmation(3, { auraAnswers: newAnswers })
-          setTimeout(() => { window.location.href = "/whatsapp" }, 4000)
+          if (!auraAlreadyDone) {
+            completeConfirmation(3, { auraAnswers: newAnswers })
+            setTimeout(() => { window.location.href = "/whatsapp" }, 4000)
+          }
         }, 400)
       }
     }
@@ -910,11 +917,17 @@ export default function CidadeNeonExperience() {
                 </a>
               </div>
 
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
-                <p className="text-white/30 text-xs">Voltando ao WhatsApp...</p>
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
-              </div>
+              {auraAlreadyDone ? (
+                <button type="button" onClick={() => setPhase("phone-home")} className="mt-4 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
+                  Voltar ao Inicio
+                </button>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
+                  <p className="text-white/30 text-xs">Voltando ao WhatsApp...</p>
+                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: result.color }} />
+                </div>
+              )}
             </div>
           </div>
           <style jsx>{`

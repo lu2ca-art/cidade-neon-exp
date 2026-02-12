@@ -103,11 +103,17 @@ export default function Confirmacao1Page() {
 
             <p className="text-white/50 text-sm">A musica reflete quem voce e.</p>
 
-            <div className="flex items-center justify-center gap-2 pt-4">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#FF6B9D] animate-pulse" />
-              <p className="text-white/40 text-xs">Voltando ao WhatsApp...</p>
-              <div className="w-1.5 h-1.5 rounded-full bg-[#9DFF6B] animate-pulse" />
-            </div>
+            {isRevisit ? (
+              <button type="button" onClick={() => router.push("/")} className="mt-6 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
+                Voltar ao Inicio
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 pt-4">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#FF6B9D] animate-pulse" />
+                <p className="text-white/40 text-xs">Voltando ao WhatsApp...</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#9DFF6B] animate-pulse" />
+              </div>
+            )}
           </div>
         </div>
         <style jsx>{`
