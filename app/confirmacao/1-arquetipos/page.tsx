@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
 const TRACKS = [
-  { id: "nectar", name: "NECTAR", color: "#FF6B9D" },
-  { id: "dopamina", name: "DOPAMINA", color: "#FF9D6B" },
-  { id: "ojala", name: "OJALA", color: "#6B9DFF" },
-  { id: "sabeontem", name: "SABE ONTEM?", color: "#FFD93D" },
-  { id: "chuva", name: "CHUVA", color: "#9DFF6B" },
+  { id: "nectar", name: "NECTAR", masked: "1. n**t**", color: "#FF6B9D", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/NECTAR%20%28INSTRUMENTAL%29-cpc97l75aiwhXeJ2h2qbZ0Lhos0GmK.mp3" },
+  { id: "dopamina", name: "DOPAMINA", masked: "2. d******A", color: "#FF9D6B", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/DOPAMINA%20%28INSTRUMENTAL%29-RMoTXZGA59MUwGLVHT1MqGjNCeseSv.mp3" },
+  { id: "ojala", name: "OJALA", masked: "4. *j**a", color: "#6B9DFF", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/OJALA%CC%81%20%28INSTRUMENTAL%29-JRyOmaJg7ZCx8wQLwBNcmq7kglrRvb.mp3" },
+  { id: "sabeontem", name: "SABE ONTEM?", masked: "7. s*** o****?", color: "#FFD93D", audio: null },
+  { id: "chuva", name: "CHUVA", masked: "9. C***A", color: "#9DFF6B", audio: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28INSTRUMENTAL%29-vixjoBQT7YX5HzJKTUfrSULZeLY7vF.mp3" },
 ]
 
 const EMOTIONS: Record<string, string[]> = {
@@ -33,10 +33,41 @@ export default function Confirmacao1Page() {
   const [showResult, setShowResult] = useState(alreadyDone)
   const [animatingOut, setAnimatingOut] = useState(false)
   const [isRevisit] = useState(alreadyDone)
+  const [playingTrack, setPlayingTrack] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     updateCinematicStep("confirmation-1")
   }, [updateCinematicStep])
+
+  // Play track audio instantly on selection
+  const playTrack = (trackId: string) => {
+    const track = TRACKS.find(t => t.id === trackId)
+    if (!track?.audio) return
+
+    // Stop current audio if playing
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+
+    const audio = new Audio(track.audio)
+    audio.volume = 0.6
+    audio.loop = true
+    audio.play().catch(() => {})
+    audioRef.current = audio
+    setPlayingTrack(trackId)
+  }
+
+  // Stop audio when leaving or showing result
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [])
 
   const matchedCount = Object.keys(matches).length
   const allMatched = matchedCount === 5
@@ -47,7 +78,9 @@ export default function Confirmacao1Page() {
     setMatches(newMatches)
 
     if (Object.keys(newMatches).length === 5) {
-      // All matched - show result
+      // All matched - stop audio, show result
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+      setPlayingTrack(null)
       setTimeout(() => {
         setShowResult(true)
         completeConfirmation(1, { trackEmotions: newMatches })
@@ -56,10 +89,10 @@ export default function Confirmacao1Page() {
         }
       }, 600)
     } else {
-      // Auto-select next unmatched track
+      // Auto-select next unmatched track and play its audio
       setTimeout(() => {
         const next = TRACKS.find(t => !newMatches[t.id])
-        if (next) setSelectedTrack(next.id)
+        if (next) { setSelectedTrack(next.id); playTrack(next.id) }
       }, 400)
     }
   }
@@ -103,6 +136,10 @@ export default function Confirmacao1Page() {
 
             <p className="text-white/50 text-sm">A musica reflete quem voce e.</p>
 
+            <div className="mt-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-white font-bold text-sm uppercase tracking-widest">TIRE UM PRINT DO RESULTADO</p>
+            </div>
+
             {isRevisit ? (
               <button type="button" onClick={() => router.push("/")} className="mt-6 px-8 py-3 rounded-xl bg-white/10 text-white text-sm font-medium active:scale-95 transition-transform">
                 Voltar ao Inicio
@@ -119,6 +156,12 @@ export default function Confirmacao1Page() {
         <style jsx>{`
           @keyframes fade-in { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
           .animate-fade-in{animation:fade-in .5s ease-out forwards}
+          @keyframes eq1 { 0%,100%{height:8px} 50%{height:14px} }
+          @keyframes eq2 { 0%,100%{height:14px} 50%{height:6px} }
+          @keyframes eq3 { 0%,100%{height:6px} 50%{height:12px} }
+          .animate-eq1{animation:eq1 .4s ease-in-out infinite}
+          .animate-eq2{animation:eq2 .5s ease-in-out infinite}
+          .animate-eq3{animation:eq3 .35s ease-in-out infinite}
         `}</style>
       </div>
     )
@@ -170,7 +213,7 @@ export default function Confirmacao1Page() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => { if (!matched) setSelectedTrack(t.id) }}
+                  onClick={() => { if (!matched) { setSelectedTrack(t.id); playTrack(t.id) } }}
                   disabled={matched}
                   className={`
                     w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-left
@@ -196,10 +239,17 @@ export default function Confirmacao1Page() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm" style={{ color: matched ? `${t.color}80` : t.color }}>{t.name}</p>
+                    <p className="font-bold text-sm font-mono tracking-wide" style={{ color: matched ? `${t.color}80` : t.color }}>{t.masked}</p>
                     {matched && <p className="text-[11px] mt-0.5" style={{ color: `${t.color}60` }}>{matches[t.id]}</p>}
                   </div>
-                  {active && !matched && (
+                  {playingTrack === t.id && !matched && (
+                    <div className="flex items-center gap-[2px]">
+                      <div className="w-[3px] h-3 rounded-full animate-eq1" style={{ backgroundColor: t.color }} />
+                      <div className="w-[3px] h-4 rounded-full animate-eq2" style={{ backgroundColor: t.color }} />
+                      <div className="w-[3px] h-2 rounded-full animate-eq3" style={{ backgroundColor: t.color }} />
+                    </div>
+                  )}
+                  {active && !matched && playingTrack !== t.id && (
                     <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: t.color }} />
                   )}
                 </button>
