@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
 interface Message {
@@ -12,6 +11,7 @@ interface Message {
   time: string
   isSystem?: boolean
   isUser?: boolean
+  isAudio?: boolean
 }
 
 interface ChoiceSet {
@@ -34,11 +34,7 @@ const INITIAL_SCRIPT: Message[] = [
 ]
 
 const CHOICE_1: ChoiceSet = {
-  options: [
-    "Quem sao voces?",
-    "O que aconteceu com o sistema?",
-    "O que voces querem de mim?",
-  ],
+  options: ["Quem sao voces?", "O que aconteceu com o sistema?", "O que voces querem de mim?"],
 }
 
 const AFTER_CHOICE_1: Record<string, Message[]> = {
@@ -58,14 +54,11 @@ const AFTER_CHOICE_1: Record<string, Message[]> = {
 
 const TRANSITION_TO_CONFIRM: Message[] = [
   { id: 20, text: "Antes de qualquer coisa, precisamos saber se voce e de verdade.", sender: "Alohan", time: "21:49" },
+  { id: 21, text: "Sao 3 confirmacoes. Cada uma te leva mais fundo.", sender: "D-Bee", time: "21:49" },
 ]
 
 const CHOICE_2: ChoiceSet = {
-  options: [
-    "To pronto. Bora.",
-    "Que tipo de prova?",
-    "E se eu recusar?",
-  ],
+  options: ["To pronto. Bora.", "Que tipo de prova?", "E se eu recusar?"],
 }
 
 const AFTER_CHOICE_2: Record<string, Message[]> = {
@@ -84,88 +77,102 @@ const AFTER_CHOICE_2: Record<string, Message[]> = {
 }
 
 const FINAL_PRE_CONFIRM: Message[] = [
-  { id: 40, text: "Primeira confirmacao. Vai.", sender: "Alohan", time: "21:50" },
+  { id: 40, text: "Primeira confirmacao: Conecta as faixas com as emocoes.", sender: "Alohan", time: "21:50" },
 ]
 
-const CHOICE_3: ChoiceSet = {
-  options: [
-    "Confirmar identidade",
-  ],
-}
-
-// After confirmation 0/3 returns: TikTok notif arrives
-const POST_CONFIRM_0: Message[] = [
-  { id: 100, text: "Passaste.", sender: "D-Bee", time: "21:53" },
-  { id: 101, text: "Primeiro teste feito.", sender: "Nizzy", time: "21:53" },
-  { id: 102, text: "A cidade ta de olho.", sender: "Alohan", time: "21:53" },
-]
-
-// After TikTok + confirm 1/3 returns
+// After C1 returns (confirmCount === 1)
 const POST_CONFIRM_1: Message[] = [
-  { id: 200, text: "Segundo teste confirmado.", sender: "D-Bee", time: "21:56" },
-  { id: 201, text: "Voce ta evoluindo.", sender: "Nizzy", time: "21:56" },
-  { id: 202, text: "Agora volta pro inicio. Tem algo te esperando.", sender: "Alohan", time: "21:57" },
+  { id: 100, text: "Passaste. 1/3 confirmado.", sender: "D-Bee", time: "21:53" },
+  { id: 101, text: "Voce sente a musica de verdade.", sender: "Nizzy", time: "21:53" },
+  { id: 102, text: "Proxima confirmacao: teste de QI. Volta pro inicio.", sender: "Alohan", time: "21:53" },
 ]
 
-// After YouTube + confirm 2/3 returns -> 2 more replies needed
-const POST_YOUTUBE: Message[] = [
-  { id: 300, text: "Viu o filme?", sender: "D-Bee", time: "22:00" },
-  { id: 301, text: "Pesado, ne.", sender: "Nizzy", time: "22:00" },
+// After C2 returns (confirmCount === 2)
+const POST_CONFIRM_2: Message[] = [
+  { id: 200, text: "2/3 confirmado. Mente afiada.", sender: "D-Bee", time: "21:56" },
+  { id: 201, text: "Falta a ultima.", sender: "Nizzy", time: "21:56" },
+  { id: 202, text: "Abre o AURA no inicio. Descobre quem voce e.", sender: "Alohan", time: "21:57" },
 ]
 
-const CHOICE_POST_YOUTUBE: ChoiceSet = {
-  options: [
-    "Foi insano.",
-    "Nao entendi tudo, mas senti.",
-    "Quero mais.",
-  ],
+// After C3 returns (confirmCount === 3) -> LU2CA enters
+const POST_CONFIRM_3: Message[] = [
+  { id: 300, text: "3/3 confirmado. Identidade validada.", sender: "D-Bee", time: "22:00" },
+  { id: 301, text: "Voce e real. Parabens.", sender: "Nizzy", time: "22:00" },
+  { id: 302, text: "Bem-vindo a Cidade Neon de verdade.", sender: "Alohan", time: "22:00" },
+]
+
+const MEMBERS_LEAVE: Message[] = [
+  { id: 310, text: "Nizzy saiu do grupo", sender: "system", time: "22:01", isSystem: true },
+  { id: 311, text: "Alohan saiu do grupo", sender: "system", time: "22:01", isSystem: true },
+  { id: 312, text: "D-Bee saiu do grupo", sender: "system", time: "22:01", isSystem: true },
+  { id: 313, text: "LU2CA entrou no grupo", sender: "system", time: "22:02", isSystem: true },
+]
+
+const LU2CA_MESSAGES: Message[] = [
+  { id: 320, text: "Eae. Cheguei.", sender: "LU2CA", time: "22:02" },
+  { id: 321, text: "Voce passou pelas 3 confirmacoes. Poucos chegam aqui.", sender: "LU2CA", time: "22:02" },
+  { id: 322, text: "Escuta isso.", sender: "LU2CA", time: "22:03" },
+  { id: 323, text: "", sender: "LU2CA", time: "22:03", isAudio: true },
+  { id: 324, text: "", sender: "LU2CA", time: "22:03", isAudio: true },
+  { id: 325, text: "A Cidade Neon e sua agora.", sender: "LU2CA", time: "22:04" },
+  { id: 326, text: "Fica de olho no celular. Tem mais vindo.", sender: "LU2CA", time: "22:04" },
+]
+
+type ConversationPhase =
+  | "initial" | "choice-1" | "after-choice-1" | "choice-2" | "after-choice-2" | "pre-confirm"
+  | "post-confirm-1" | "post-confirm-2" | "post-confirm-3"
+  | "members-leave" | "lu2ca-entry" | "lu2ca-audio" | "done"
+
+function AudioBubble({ sender }: { sender: string }) {
+  const [playing, setPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const bars = useRef(Array(28).fill(0).map(() => 0.15 + Math.random() * 0.85)).current
+
+  const toggle = () => {
+    if (playing) {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      setPlaying(false)
+    } else {
+      setPlaying(true)
+      intervalRef.current = setInterval(() => {
+        setProgress(p => {
+          if (p >= 100) { if (intervalRef.current) clearInterval(intervalRef.current); setPlaying(false); return 0 }
+          return p + 2
+        })
+      }, 80)
+    }
+  }
+
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current) }, [])
+
+  return (
+    <div className="bg-[#005C4B] rounded-lg rounded-tl-none px-3 py-2 max-w-[75%]">
+      <p className="text-[11px] font-medium mb-1" style={{ color: PARTICIPANTS[sender]?.color || "#8696A0" }}>{sender}</p>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={toggle} className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
+          {playing ? (
+            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+          ) : (
+            <svg className="w-3 h-3 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          )}
+        </button>
+        <div className="flex items-end gap-[1.5px] h-5 flex-1">
+          {bars.map((h, i) => (
+            <div key={i} className="flex-1 rounded-full transition-colors" style={{ height: `${h * 100}%`, backgroundColor: (i / bars.length) * 100 <= progress ? "#fff" : "rgba(255,255,255,0.25)" }} />
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-1 mt-0.5">
+        <span className="text-[#667781] text-[10px]">0:42</span>
+      </div>
+    </div>
+  )
 }
-
-const AFTER_CHOICE_POST_YOUTUBE: Record<string, Message[]> = {
-  "Foi insano.": [
-    { id: 310, text: "E so o comeco.", sender: "Alohan", time: "22:01" },
-  ],
-  "Nao entendi tudo, mas senti.": [
-    { id: 310, text: "Sentir e o bastante.", sender: "Alohan", time: "22:01" },
-  ],
-  "Quero mais.": [
-    { id: 310, text: "Calma. Ja vem.", sender: "Alohan", time: "22:01" },
-  ],
-}
-
-const PRE_UNLOCK: Message[] = [
-  { id: 320, text: "Pra terceira confirmacao, voce vai precisar de uma senha.", sender: "D-Bee", time: "22:02" },
-  { id: 321, text: "Desbloqueia uma faixa. O nome e a chave.", sender: "Nizzy", time: "22:02" },
-]
-
-const CHOICE_PRE_UNLOCK: ChoiceSet = {
-  options: ["Desbloquear faixa"],
-}
-
-// After unlock
-const POST_UNLOCK: Message[] = [
-  { id: 400, text: "3/3 confirmado. Identidade validada.", sender: "D-Bee", time: "22:05" },
-  { id: 401, text: "Voce e real. Parabens.", sender: "Nizzy", time: "22:05" },
-  { id: 402, text: "Bem-vindo a Cidade Neon de verdade.", sender: "Alohan", time: "22:05" },
-  { id: 403, text: "Nizzy saiu do grupo", sender: "system", time: "22:06", isSystem: true },
-  { id: 404, text: "Alohan saiu do grupo", sender: "system", time: "22:06", isSystem: true },
-  { id: 405, text: "LU2CA entrou no grupo", sender: "system", time: "22:06", isSystem: true },
-  { id: 406, text: "Eae. Cheguei.", sender: "LU2CA", time: "22:06" },
-  { id: 407, text: "A gente se ve na Cidade Neon.", sender: "LU2CA", time: "22:07" },
-  { id: 408, text: "Fica de olho no celular.", sender: "D-Bee", time: "22:07" },
-]
-
-type ConversationPhase = 
-  | "initial" | "choice-1" | "after-choice-1" | "choice-2" | "after-choice-2" | "choice-3"
-  | "confirming-0" | "post-confirm-0" | "tiktok-notif"
-  | "confirming-1" | "post-confirm-1" | "youtube-redirect"
-  | "post-youtube" | "choice-post-youtube" | "after-choice-post-youtube"
-  | "pre-unlock" | "choice-pre-unlock" | "confirming-2"
-  | "post-unlock" | "final-notifications" | "done"
 
 export default function WhatsAppGrupoPage() {
   const router = useRouter()
-  const { state, updateCinematicStep, updateWhatsAppState, completeConfirmation } = useGameFunnel()
+  const { state, updateCinematicStep, completeConfirmation } = useGameFunnel()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
 
@@ -174,86 +181,59 @@ export default function WhatsAppGrupoPage() {
   const [currentChoices, setCurrentChoices] = useState<string[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const [typingUser, setTypingUser] = useState<string | null>(null)
-  const [showTikTokNotif, setShowTikTokNotif] = useState(false)
-  const [showYouTubeNotif, setShowYouTubeNotif] = useState(false)
   const [showConfirmBtn, setShowConfirmBtn] = useState(false)
-  const [confirmNumber, setConfirmNumber] = useState(0)
 
-  useEffect(() => {
-    updateCinematicStep("whatsapp-group")
-  }, [updateCinematicStep])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, isTyping])
+  useEffect(() => { updateCinematicStep("whatsapp-group") }, [updateCinematicStep])
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, isTyping])
 
   const addMessages = useCallback((msgs: Message[], onDone?: () => void) => {
     let i = 0
     const next = () => {
       if (i >= msgs.length) { onDone?.(); return }
       const msg = msgs[i]
-      if (!msg.isSystem) {
-        setIsTyping(true)
-        setTypingUser(msg.sender)
-      }
+      if (!msg.isSystem) { setIsTyping(true); setTypingUser(msg.sender) }
       setTimeout(() => {
-        setIsTyping(false)
-        setTypingUser(null)
-        setMessages(prev => {
-          if (prev.some(m => m.id === msg.id)) return prev
-          return [...prev, msg]
-        })
+        setIsTyping(false); setTypingUser(null)
+        setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg])
         i++
-        if (i < msgs.length) setTimeout(next, 600 + Math.random() * 500)
+        if (i < msgs.length) setTimeout(next, msg.isAudio ? 1500 : 600 + Math.random() * 500)
         else onDone?.()
-      }, msg.isSystem ? 300 : 800 + Math.random() * 600)
+      }, msg.isSystem ? 300 : msg.isAudio ? 500 : 800 + Math.random() * 600)
     }
     setTimeout(next, 400)
   }, [])
 
-  // Initialize conversation
   useEffect(() => {
     if (hasInitialized.current) return
     hasInitialized.current = true
 
-    // Check state to resume if needed
-    const confirmCount = state.confirmationCount
+    const cc = state.confirmationCount
 
-    if (confirmCount === 0 && state.perAppState.whatsapp.currentStep === 0) {
-      // Fresh start
-      addMessages(INITIAL_SCRIPT, () => {
-        setCurrentChoices(CHOICE_1.options)
-        setConvPhase("choice-1")
-      })
-    } else if (confirmCount === 1) {
-      // Returning after confirm 0/3 + TikTok + confirm 1/3
+    if (cc === 0 && state.perAppState.whatsapp.currentStep === 0) {
+      addMessages(INITIAL_SCRIPT, () => { setCurrentChoices(CHOICE_1.options); setConvPhase("choice-1") })
+    } else if (cc === 1) {
       setConvPhase("post-confirm-1")
-      addMessages(POST_CONFIRM_1, () => {
-        // Go back to home for YouTube notification
-        setConvPhase("youtube-redirect")
-        setTimeout(() => router.push("/"), 2000)
-      })
-    } else if (confirmCount === 2) {
-      // Returning after YouTube
-      setConvPhase("post-youtube")
-      addMessages(POST_YOUTUBE, () => {
-        setCurrentChoices(CHOICE_POST_YOUTUBE.options)
-        setConvPhase("choice-post-youtube")
-      })
-    } else if (confirmCount >= 3) {
-      // After unlock
-      setConvPhase("post-unlock")
-      addMessages(POST_UNLOCK, () => {
-        setConvPhase("final-notifications")
-        // Trigger final notifications after delay
-        setTimeout(() => router.push("/"), 4000)
+      addMessages(POST_CONFIRM_1, () => { setTimeout(() => router.push("/"), 2000) })
+    } else if (cc === 2) {
+      setConvPhase("post-confirm-2")
+      addMessages(POST_CONFIRM_2, () => { setTimeout(() => router.push("/"), 2000) })
+    } else if (cc >= 3) {
+      setConvPhase("post-confirm-3")
+      addMessages(POST_CONFIRM_3, () => {
+        setTimeout(() => {
+          addMessages(MEMBERS_LEAVE, () => {
+            setConvPhase("lu2ca-entry")
+            setTimeout(() => {
+              addMessages(LU2CA_MESSAGES, () => {
+                setConvPhase("done")
+                setTimeout(() => router.push("/"), 3000)
+              })
+            }, 1000)
+          })
+        }, 1500)
       })
     } else {
-      // Default fresh start
-      addMessages(INITIAL_SCRIPT, () => {
-        setCurrentChoices(CHOICE_1.options)
-        setConvPhase("choice-1")
-      })
+      addMessages(INITIAL_SCRIPT, () => { setCurrentChoices(CHOICE_1.options); setConvPhase("choice-1") })
     }
   }, [addMessages, state.confirmationCount, state.perAppState.whatsapp.currentStep, router])
 
@@ -275,114 +255,48 @@ export default function WhatsAppGrupoPage() {
       addMessages(responses, () => {
         addMessages(FINAL_PRE_CONFIRM, () => {
           setShowConfirmBtn(true)
-          setConfirmNumber(0)
-          setConvPhase("choice-3")
+          setConvPhase("pre-confirm")
         })
       })
-    } else if (convPhase === "choice-3") {
-      // Go to confirmation 1 (0/3)
-      setShowConfirmBtn(false)
-      router.push("/confirmacao/1-arquetipos")
-    } else if (convPhase === "choice-post-youtube") {
-      const responses = AFTER_CHOICE_POST_YOUTUBE[choice] || AFTER_CHOICE_POST_YOUTUBE[CHOICE_POST_YOUTUBE.options[0]]
-      addMessages(responses, () => {
-        addMessages(PRE_UNLOCK, () => {
-          setShowConfirmBtn(true)
-          setConfirmNumber(2)
-          setConvPhase("choice-pre-unlock")
-          setCurrentChoices(CHOICE_PRE_UNLOCK.options)
-        })
-      })
-    } else if (convPhase === "choice-pre-unlock") {
-      // Go to unlock page
-      setShowConfirmBtn(false)
-      router.push("/confirmacao/3-desbloqueio")
     }
   }
 
   const handleConfirm = () => {
     setShowConfirmBtn(false)
-    if (confirmNumber === 0) {
-      router.push("/confirmacao/1-arquetipos")
-    } else if (confirmNumber === 1) {
-      router.push("/confirmacao/2-colunas")
-    } else if (confirmNumber === 2) {
-      router.push("/confirmacao/3-desbloqueio")
-    }
+    router.push("/confirmacao/1-arquetipos")
   }
 
-  const handleTikTokNotifClick = () => {
-    setShowTikTokNotif(false)
-    router.push("/tiktok/final")
-  }
-
-  const handleYouTubeNotifClick = () => {
-    setShowYouTubeNotif(false)
-    router.push("/youtube/cidade-neon")
-  }
-
-  const handleBack = () => {
-    router.push("/")
-  }
+  // Dynamic participants text
+  const cc = state.confirmationCount
+  const participantsText = cc >= 3 ? "LU2CA, Voce" : "D-Bee, Nizzy, Alohan"
 
   return (
     <div className="min-h-screen bg-[#0B141A] flex items-center justify-center touch-manipulation">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Cpath fill='%23182229' d='M0 0h80v80H0z'/%3E%3Cpath fill='%231F2C34' opacity='0.3' d='M20 20h2v2h-2zm40 0h2v2h-2zm-20 20h2v2h-2zm40 0h2v2h-2zm-60 20h2v2h-2zm40 0h2v2h-2z'/%3E%3C/svg%3E")` }}>
 
-        {/* Notch - Apple floating pill */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
 
         {/* Status bar */}
         <div className="relative z-20 h-[50px] flex items-end justify-between px-6 pb-1 text-white text-xs bg-[#1F2C34]">
           <span className="font-semibold w-12">9:41</span>
           <div className="flex items-center gap-1">
-            <svg className="w-4 h-3" fill="white" viewBox="0 0 16 12"><rect x="0" y="6" width="3" height="6" rx="0.5"/><rect x="4.5" y="4" width="3" height="8" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13" y="0" width="3" height="12" rx="0.5" opacity="0.3"/></svg>
-            <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white"/><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4"/></svg>
+            <svg className="w-4 h-3" fill="white" viewBox="0 0 16 12"><rect x="0" y="6" width="3" height="6" rx="0.5" /><rect x="4.5" y="4" width="3" height="8" rx="0.5" /><rect x="9" y="1" width="3" height="11" rx="0.5" /><rect x="13" y="0" width="3" height="12" rx="0.5" opacity="0.3" /></svg>
+            <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none" /><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white" /><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4" /></svg>
           </div>
         </div>
 
-        {/* TikTok Notification */}
-        {showTikTokNotif && (
-          <button type="button" onClick={handleTikTokNotifClick} className="absolute top-[50px] left-2 right-2 z-50 animate-slide-down">
-            <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
-              <div className="w-10 h-10 rounded-[10px] bg-black flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/></svg>
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="flex items-center justify-between"><p className="text-black font-semibold text-sm">TikTok</p><span className="text-[#8e8e93] text-xs">agora</span></div>
-                <p className="text-[#8e8e93] text-xs">LU2CA publicou um novo video</p>
-              </div>
-            </div>
-          </button>
-        )}
-
-        {/* YouTube Notification */}
-        {showYouTubeNotif && (
-          <button type="button" onClick={handleYouTubeNotifClick} className="absolute top-[50px] left-2 right-2 z-50 animate-slide-down">
-            <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
-              <div className="w-10 h-10 rounded-[10px] bg-[#FF0000] flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="flex items-center justify-between"><p className="text-black font-semibold text-sm">YouTube</p><span className="text-[#8e8e93] text-xs">agora</span></div>
-                <p className="text-[#8e8e93] text-xs">Novo video: LU2CA - Cidade Neon (Filme Oficial)</p>
-              </div>
-            </div>
-          </button>
-        )}
-
         {/* Header */}
         <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2">
-          <button type="button" onClick={handleBack} className="p-2 text-[#AEBAC1] min-h-[44px] min-w-[44px] flex items-center justify-center">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          <button type="button" onClick={() => router.push("/whatsapp")} className="p-2 text-[#AEBAC1] min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg>
           </button>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
           </div>
           <div className="flex-1">
             <h1 className="text-white font-medium text-sm">Cidade Neon</h1>
-            <p className="text-[#8696A0] text-xs">D-Bee, Nizzy, Alohan</p>
+            <p className="text-[#8696A0] text-xs">{participantsText}</p>
           </div>
         </div>
 
@@ -393,6 +307,8 @@ export default function WhatsAppGrupoPage() {
               <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
                 {msg.isSystem ? (
                   <div className="bg-[#182229] rounded-lg px-3 py-1 text-[11px] text-[#8696A0] mx-auto my-1">{msg.text}</div>
+                ) : msg.isAudio ? (
+                  <AudioBubble sender={msg.sender} />
                 ) : (
                   <div className={`max-w-[80%] rounded-lg px-3 py-1.5 ${msg.isUser ? "bg-[#005C4B] rounded-tr-none" : "bg-[#202C33] rounded-tl-none"}`}>
                     {!msg.isUser && (
@@ -402,7 +318,7 @@ export default function WhatsAppGrupoPage() {
                     <div className="flex items-center justify-end gap-1 mt-0.5">
                       <span className="text-[#667781] text-[10px]">{msg.time}</span>
                       {msg.isUser && (
-                        <svg className="w-4 h-3 text-[#53BDEB]" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/></svg>
+                        <svg className="w-4 h-3 text-[#53BDEB]" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" /></svg>
                       )}
                     </div>
                   </div>
@@ -429,12 +345,7 @@ export default function WhatsAppGrupoPage() {
         {currentChoices.length > 0 && (
           <div className="px-3 pb-2 space-y-1.5">
             {currentChoices.map(choice => (
-              <button
-                key={choice}
-                type="button"
-                onClick={() => handleChoice(choice)}
-                className="w-full bg-[#005C4B] hover:bg-[#006C5B] text-white text-sm py-3 px-4 rounded-full text-left transition-colors min-h-[44px] active:scale-[0.98]"
-              >
+              <button key={choice} type="button" onClick={() => handleChoice(choice)} className="w-full bg-[#005C4B] hover:bg-[#006C5B] text-white text-sm py-3 px-4 rounded-full text-left transition-colors min-h-[44px] active:scale-[0.98]">
                 {choice}
               </button>
             ))}
@@ -445,25 +356,21 @@ export default function WhatsAppGrupoPage() {
         {showConfirmBtn && (
           <div className="px-3 pb-2">
             <button type="button" onClick={handleConfirm} className="w-full bg-gradient-to-r from-[#6B7FD7] to-[#4ECDC4] text-white font-bold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform min-h-[44px]">
-              CONFIRMACAO {confirmNumber}/3
+              CONFIRMACAO 1/3
             </button>
           </div>
         )}
 
-        {/* Input bar (visual only) */}
+        {/* Input bar */}
         <div className="bg-[#1F2C34] px-3 py-2 flex items-center gap-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
           <div className="flex-1 bg-[#2A3942] rounded-full px-4 py-2">
             <input type="text" placeholder="Mensagem" className="w-full bg-transparent text-white text-sm outline-none placeholder-[#8696A0]" disabled />
           </div>
           <button type="button" className="p-2 text-[#8696A0]">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" /><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" /></svg>
           </button>
         </div>
       </div>
-      <style jsx>{`
-        @keyframes slide-down { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-slide-down { animation: slide-down 0.3s ease-out; }
-      `}</style>
     </div>
   )
 }

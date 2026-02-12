@@ -97,6 +97,7 @@ export interface GameFunnelState {
     tiktok: TikTokState
   }
   privateNotifications: PrivateNotification[]
+  rewardsViewed: string[]
   flowStarted: boolean
 }
 
@@ -128,6 +129,7 @@ const defaultState: GameFunnelState = {
     tiktok: { currentVideo: 0, videosWatched: [] },
   },
   privateNotifications: [],
+  rewardsViewed: [],
   flowStarted: false,
 }
 
@@ -143,6 +145,7 @@ interface GameFunnelContextType {
   updateTikTokState: (updates: Partial<TikTokState>) => void
   addPrivateNotification: (notification: PrivateNotification) => void
   markNotificationRead: (id: string) => void
+  markRewardViewed: (member: string) => void
   startFlow: () => void
   resetAll: () => void
   getNextConfirmation: () => 1 | 2 | 3 | null
@@ -303,6 +306,15 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
     }))
   }, [setState])
 
+  const markRewardViewed = useCallback((member: string) => {
+    setState((prev) => ({
+      ...prev,
+      rewardsViewed: prev.rewardsViewed.includes(member)
+        ? prev.rewardsViewed
+        : [...prev.rewardsViewed, member],
+    }))
+  }, [setState])
+
   const startFlow = useCallback(() => {
     setState((prev) => ({
       ...prev,
@@ -346,6 +358,7 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
         updateTikTokState,
         addPrivateNotification,
         markNotificationRead,
+        markRewardViewed,
         startFlow,
         resetAll,
         getNextConfirmation,
