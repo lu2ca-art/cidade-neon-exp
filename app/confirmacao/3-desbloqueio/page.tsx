@@ -2,89 +2,296 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
-/* ───────────── IMAGE-BASED PUZZLE BANKS ───────────── */
+/* ───────────── NEON PUZZLE DEFINITIONS ───────────── */
 
-// Puzzle 1: Hose tracing - which faucet fills the bucket?
-const HOSE_PUZZLE = {
-  type: "image" as const,
-  label: "Qual torneira enche o balde?",
-  imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Captura%20de%20Tela%202026-02-18%20a%CC%80s%2010.55.47-VQlnY6ZxyptPSvQw8guhmcTM1EOp9G.png",
-  options: ["Torneira 1", "Torneira 2", "Torneira 3", "Torneira 4"],
-  answer: 1, // Torneira 2 (B) fills the bucket
+interface NeonPuzzle {
+  type: "neon-pipes" | "neon-dots" | "neon-cube" | "logic"
+  label: string
+  options: string[]
+  answer: number
+  sequence?: string
 }
 
-// Puzzle 2: Purple dots grid - perception test
-const DOTS_PUZZLE = {
-  type: "image" as const,
-  label: "Quantas bolinhas de cor mais clara voce consegue contar?",
-  imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Captura%20de%20Tela%202026-02-18%20a%CC%80s%2010.53.29-UWGGGjl5nPq5zwfxO5Yu5raCPxywgX.png",
-  options: ["20", "24", "28", "32"],
-  answer: 1, // 24 lighter dots
-}
-
-// Puzzle 3: Cube pattern recognition
-const CUBE_PUZZLE = {
-  type: "image" as const,
-  label: "Qual cubo completa o padrao?",
-  imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Captura%20de%20Tela%202026-02-18%20a%CC%80s%2010.54.56-li540zFa6ZG45K42071zbTepywm9iN.png",
-  options: ["Cubo 1", "Cubo 2", "Cubo 3", "Cubo 4"],
-  answer: 0, // Cube 1 is correct
-}
-
-// Puzzle 4: Numeric sequence
-const SEQUENCE_PUZZLE = {
-  type: "logic" as const,
-  label: "Qual numero completa a sequencia?",
-  sequence: "2, 6, 12, 20, 30, ?",
-  options: ["36", "40", "42", "44"],
-  answer: 2, // 42 (differences: 4,6,8,10,12)
-}
-
-// Puzzle 5: Word logic
-const WORD_PUZZLE = {
-  type: "logic" as const,
-  label: "Se CIDADE = 36 e NEON = 24, quanto vale LUZ?",
-  sequence: "Cada letra = sua posicao no alfabeto (A=1, B=2...)",
-  options: ["39", "42", "45", "48"],
-  answer: 2, // L=12, U=21, Z=26 -> but trick: we can define rules. Let's use: C=3,I=9,D=4,A=1,D=4,E=5 = 26? Actually let me make the math work better.
-  // Actually: CIDADE letters count * 6 = 6*6=36, NEON = 4*6=24, LUZ = 3*6=18... nah
-  // Better: each letter's position summed: C(3)+I(9)+D(4)+A(1)+D(4)+E(5)=26 not 36
-  // Let's just make it simpler with multiplication: letters * 6: CIDADE=6 letters -> 6*6=36, NEON=4 letters -> 4*6=24, LUZ=3 letters -> 3*6=18 -> but 18 not in options
-  // Let me redefine: CIDADE has 6 letters, value=36 (6x6), NEON has 4 letters, value=24 (4x6). LUZ has 3 letters, value = 3x6 = 18... Let me adjust options
-}
-
-// Re-define puzzles with cleaner logic
-const ALL_PUZZLES = [
-  HOSE_PUZZLE,
-  DOTS_PUZZLE,
-  CUBE_PUZZLE,
+const ALL_PUZZLES: NeonPuzzle[] = [
   {
-    type: "logic" as const,
+    type: "neon-pipes",
+    label: "Qual torneira enche o balde?",
+    options: ["Torneira 1", "Torneira 2", "Torneira 3", "Torneira 4"],
+    answer: 1,
+  },
+  {
+    type: "neon-dots",
+    label: "Quantas bolinhas mais claras voce consegue contar?",
+    options: ["20", "24", "28", "32"],
+    answer: 1,
+  },
+  {
+    type: "neon-cube",
+    label: "Qual cubo completa o padrao?",
+    options: ["Cubo 1", "Cubo 2", "Cubo 3", "Cubo 4"],
+    answer: 0,
+  },
+  {
+    type: "logic",
     label: "Qual numero completa a sequencia?",
     sequence: "2, 6, 12, 20, 30, ?",
     options: ["36", "40", "42", "44"],
-    answer: 2, // differences: 4, 6, 8, 10, 12 -> next = 42
+    answer: 2,
   },
   {
-    type: "logic" as const,
+    type: "logic",
     label: "Se todos os A sao B, e alguns B sao C, qual afirmacao e verdadeira?",
-    sequence: "A -> B -> C (parcial)",
+    sequence: "A \u2192 B \u2192 C (parcial)",
     options: [
       "Todos os A sao C",
       "Alguns A podem ser C",
       "Nenhum A e C",
       "Todos os C sao A",
     ],
-    answer: 1, // Alguns A podem ser C
+    answer: 1,
   },
 ]
 
 const TIME_PER_Q = 25
 const MIN_SCORE = 3
 const TOTAL_QUESTIONS = 5
+
+/* ───── NEON PIPE PUZZLE SVG ───── */
+function NeonPipesPuzzle() {
+  const COLORS = ["#06B6D4", "#D946EF", "#22C55E", "#F59E0B"]
+  // Tangled paths: pipe 2 (magenta) reaches the bucket
+  // Layout: 4 nodes at top (y=20), bucket target at bottom-left (x=50, y=275)
+  // Other 3 drip to dead ends
+  const paths = [
+    // Pipe 1 (cyan) -> dead end bottom-right
+    "M 60 35 C 60 80, 200 60, 160 110 C 120 160, 260 150, 240 200 C 220 250, 280 270, 280 275",
+    // Pipe 2 (magenta) -> bucket at x=50
+    "M 140 35 C 140 70, 40 90, 100 130 C 160 170, 20 180, 60 220 C 100 260, 40 260, 50 275",
+    // Pipe 3 (green) -> dead end bottom-center
+    "M 220 35 C 220 80, 120 100, 180 140 C 240 180, 140 200, 170 240 C 200 270, 160 275, 165 275",
+    // Pipe 4 (amber) -> dead end far right
+    "M 300 35 C 300 70, 240 110, 280 150 C 320 190, 200 220, 250 250 C 300 270, 320 275, 325 275",
+  ]
+
+  return (
+    <div className="relative w-full rounded-2xl bg-[#0a1628] border border-cyan-500/10 overflow-hidden p-2">
+      <svg viewBox="0 0 360 310" className="w-full h-auto" style={{ maxHeight: "220px" }}>
+        <defs>
+          {COLORS.map((c, i) => (
+            <filter key={`glow-${i}`} id={`pipe-glow-${i}`}>
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          ))}
+          <filter id="bucket-glow">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+
+        {/* Subtle grid */}
+        {Array.from({ length: 18 }).map((_, i) => (
+          <line key={`vg-${i}`} x1={i * 20} y1="0" x2={i * 20} y2="310" stroke="rgba(6,182,212,0.04)" strokeWidth="0.5" />
+        ))}
+        {Array.from({ length: 16 }).map((_, i) => (
+          <line key={`hg-${i}`} x1="0" y1={i * 20} x2="360" y2={i * 20} stroke="rgba(6,182,212,0.04)" strokeWidth="0.5" />
+        ))}
+
+        {/* Pipe paths */}
+        {paths.map((d, i) => (
+          <g key={i}>
+            <path d={d} fill="none" stroke={COLORS[i]} strokeWidth="3" strokeLinecap="round" opacity="0.15" strokeDasharray="none" />
+            <path d={d} fill="none" stroke={COLORS[i]} strokeWidth="2" strokeLinecap="round" filter={`url(#pipe-glow-${i})`} />
+          </g>
+        ))}
+
+        {/* Top nodes (faucets) */}
+        {COLORS.map((c, i) => {
+          const x = 60 + i * 80
+          return (
+            <g key={`node-${i}`}>
+              <circle cx={x} cy="20" r="14" fill={c} opacity="0.15" />
+              <circle cx={x} cy="20" r="10" fill="transparent" stroke={c} strokeWidth="2" filter={`url(#pipe-glow-${i})`} />
+              <text x={x} y="24" textAnchor="middle" fill={c} fontSize="11" fontWeight="bold" fontFamily="monospace">{i + 1}</text>
+            </g>
+          )
+        })}
+
+        {/* Bucket at bottom (where pipe 2 leads) */}
+        <g filter="url(#bucket-glow)">
+          <rect x="32" y="270" width="36" height="28" rx="3" fill="transparent" stroke="#D946EF" strokeWidth="2" />
+          <rect x="28" y="266" width="44" height="6" rx="2" fill="transparent" stroke="#D946EF" strokeWidth="1.5" />
+          {/* Water inside bucket */}
+          <rect x="35" y="282" width="30" height="13" rx="2" fill="#D946EF" opacity="0.2" />
+        </g>
+
+        {/* Dead-end drip indicators */}
+        {[[280, 275], [165, 275], [325, 275]].map(([x, y], i) => (
+          <g key={`drip-${i}`} opacity="0.3">
+            <circle cx={x} cy={y} r="3" fill={[COLORS[0], COLORS[2], COLORS[3]][i]} />
+            <circle cx={x} cy={(y as number) + 8} r="1.5" fill={[COLORS[0], COLORS[2], COLORS[3]][i]} opacity="0.5" />
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+/* ───── NEON DOTS PUZZLE ───── */
+function NeonDotsPuzzle() {
+  // 10x10 grid, 24 lighter dots at specific positions
+  const LIGHTER_POSITIONS = new Set([
+    2, 7, 11, 15, 18, 23, 26, 30, 34, 39,
+    42, 46, 51, 55, 58, 63, 67, 71, 74, 79,
+    83, 88, 92, 97
+  ])
+
+  return (
+    <div className="relative w-full rounded-2xl bg-[#0a1628] border border-[#D946EF]/10 overflow-hidden p-3">
+      <div className="grid grid-cols-10 gap-[5px] mx-auto" style={{ maxWidth: "280px" }}>
+        {Array.from({ length: 100 }).map((_, i) => {
+          const isLight = LIGHTER_POSITIONS.has(i)
+          return (
+            <div
+              key={i}
+              className="aspect-square rounded-full transition-all"
+              style={{
+                backgroundColor: isLight ? "#E879F9" : "#7C3AED",
+                opacity: isLight ? 0.95 : 0.55,
+                boxShadow: isLight ? "0 0 6px 1px rgba(232,121,249,0.4)" : "none",
+              }}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ───── NEON CUBE PUZZLE ───── */
+function NeonCubePuzzle() {
+  // Isometric cube with 3 visible faces, each with a neon symbol
+  // Missing piece on the right face
+  // 4 answer options below the main cube
+
+  const FaceStar = ({ color }: { color: string }) => (
+    <svg viewBox="0 0 40 40" className="w-full h-full">
+      <path d="M20 5 L24 15 L35 15 L26 22 L29 33 L20 26 L11 33 L14 22 L5 15 L16 15 Z" fill="none" stroke={color} strokeWidth="1.5" />
+    </svg>
+  )
+  const FaceCross = ({ color }: { color: string }) => (
+    <svg viewBox="0 0 40 40" className="w-full h-full">
+      <line x1="10" y1="10" x2="30" y2="30" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <line x1="30" y1="10" x2="10" y2="30" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+  const FaceCircle = ({ color }: { color: string }) => (
+    <svg viewBox="0 0 40 40" className="w-full h-full">
+      <circle cx="20" cy="20" r="12" fill="none" stroke={color} strokeWidth="1.5" />
+      <circle cx="20" cy="20" r="4" fill={color} opacity="0.4" />
+    </svg>
+  )
+  const FaceTriangle = ({ color }: { color: string }) => (
+    <svg viewBox="0 0 40 40" className="w-full h-full">
+      <path d="M20 8 L33 32 L7 32 Z" fill="none" stroke={color} strokeWidth="1.5" />
+    </svg>
+  )
+  const FaceDiamond = ({ color }: { color: string }) => (
+    <svg viewBox="0 0 40 40" className="w-full h-full">
+      <path d="M20 6 L34 20 L20 34 L6 20 Z" fill="none" stroke={color} strokeWidth="1.5" />
+    </svg>
+  )
+  const FaceHash = ({ color }: { color: string }) => (
+    <svg viewBox="0 0 40 40" className="w-full h-full">
+      <line x1="15" y1="8" x2="15" y2="32" stroke={color} strokeWidth="1.5" />
+      <line x1="25" y1="8" x2="25" y2="32" stroke={color} strokeWidth="1.5" />
+      <line x1="8" y1="16" x2="32" y2="16" stroke={color} strokeWidth="1.5" />
+      <line x1="8" y1="24" x2="32" y2="24" stroke={color} strokeWidth="1.5" />
+    </svg>
+  )
+
+  // Main cube: top=star(cyan), left=cross(magenta), right=?(missing)
+  // Answer options: 1=circle(green) CORRECT, 2=triangle(amber), 3=diamond(cyan), 4=hash(magenta)
+
+  return (
+    <div className="relative w-full rounded-2xl bg-[#0a1628] border border-cyan-500/10 overflow-hidden py-4 px-2">
+      {/* Main isometric cube */}
+      <div className="flex justify-center mb-4">
+        <div className="relative" style={{ width: "160px", height: "160px" }}>
+          {/* Top face */}
+          <div className="absolute" style={{
+            width: "90px", height: "52px",
+            left: "35px", top: "10px",
+            transform: "rotateX(60deg) rotateZ(-45deg)",
+            transformOrigin: "center",
+            border: "1.5px solid #06B6D4",
+            background: "rgba(6,182,212,0.06)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <div style={{ width: "36px", height: "36px", transform: "rotateZ(45deg) rotateX(-60deg)" }}>
+              <FaceStar color="#06B6D4" />
+            </div>
+          </div>
+
+          {/* Left face */}
+          <div className="absolute" style={{
+            width: "80px", height: "80px",
+            left: "10px", top: "55px",
+            transform: "skewY(30deg)",
+            transformOrigin: "top left",
+            border: "1.5px solid #D946EF",
+            background: "rgba(217,70,239,0.06)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <div style={{ width: "36px", height: "36px" }}>
+              <FaceCross color="#D946EF" />
+            </div>
+          </div>
+
+          {/* Right face (missing piece) */}
+          <div className="absolute" style={{
+            width: "80px", height: "80px",
+            right: "10px", top: "55px",
+            transform: "skewY(-30deg)",
+            transformOrigin: "top right",
+            border: "1.5px dashed rgba(34,197,94,0.5)",
+            background: "rgba(34,197,94,0.03)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span className="text-[#22C55E]/40 text-2xl font-light">?</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Answer option cubes */}
+      <div className="grid grid-cols-4 gap-2 px-2">
+        {[
+          { Symbol: FaceCircle, color: "#22C55E", label: "1" },
+          { Symbol: FaceTriangle, color: "#F59E0B", label: "2" },
+          { Symbol: FaceDiamond, color: "#06B6D4", label: "3" },
+          { Symbol: FaceHash, color: "#D946EF", label: "4" },
+        ].map(({ Symbol, color, label }) => (
+          <div key={label} className="flex flex-col items-center gap-1">
+            <div className="w-full aspect-square rounded-lg flex items-center justify-center" style={{
+              border: `1px solid ${color}33`,
+              background: `${color}08`,
+            }}>
+              <div style={{ width: "28px", height: "28px" }}>
+                <Symbol color={color} />
+              </div>
+            </div>
+            <span className="text-white/30 text-[10px]">{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 /* ───── MAIN COMPONENT ───── */
 export default function IQTestPage() {
@@ -186,8 +393,8 @@ export default function IQTestPage() {
   /* --- RESULT SCREEN --- */
   if (showResult) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
+      <div className="min-h-[100dvh] bg-black flex items-center justify-center overflow-hidden">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col items-center justify-center p-8 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628] via-black to-[#0a1628]" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
 
@@ -225,8 +432,8 @@ export default function IQTestPage() {
   /* --- FAILED SCREEN --- */
   if (showFailed) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col items-center justify-center p-8 relative">
+      <div className="min-h-[100dvh] bg-black flex items-center justify-center overflow-hidden">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col items-center justify-center p-8 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#280a0a] via-black to-[#280a0a]" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
 
@@ -263,8 +470,8 @@ export default function IQTestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col relative">
+    <div className="min-h-[100dvh] bg-black flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628] via-[#0d1b2a] to-[#0a1628]" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
 
@@ -273,7 +480,7 @@ export default function IQTestPage() {
           <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
         </button>
 
-        <div className={`relative z-10 flex flex-col h-full pt-[50px] px-5 transition-all duration-300 ${transitioning ? "opacity-0 translate-x-4" : "opacity-100"}`}>
+        <div className={`relative z-10 flex flex-col h-full pt-[50px] px-5 pb-4 transition-all duration-300 ${transitioning ? "opacity-0 translate-x-4" : "opacity-100"}`}>
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex gap-1.5">
@@ -291,7 +498,7 @@ export default function IQTestPage() {
           </div>
 
           {/* Timer */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-1000 ease-linear"
                 style={{
@@ -303,42 +510,34 @@ export default function IQTestPage() {
             <span className={`text-xs font-mono w-6 text-right ${timeLeft <= 5 ? "text-red-400" : "text-white/40"}`}>{timeLeft}</span>
           </div>
 
-          <p className="text-white/50 text-[11px] uppercase tracking-wider mb-3">Exercicio {currentQ + 1}/{TOTAL_QUESTIONS}</p>
+          <p className="text-white/50 text-[11px] uppercase tracking-wider mb-2">Exercicio {currentQ + 1}/{TOTAL_QUESTIONS}</p>
 
           {/* Question label */}
-          <h2 className="text-white text-base font-semibold mb-4 text-balance leading-relaxed">{q.label}</h2>
+          <h2 className="text-white text-sm font-semibold mb-3 text-balance leading-relaxed">{q.label}</h2>
 
-          {/* Image or logic visual */}
-          {q.type === "image" && (
-            <div className="bg-white/5 rounded-2xl mb-4 border border-cyan-500/10 overflow-hidden flex-shrink-0">
-              <Image
-                src={(q as typeof HOSE_PUZZLE).imageUrl}
-                alt={q.label}
-                width={380}
-                height={300}
-                className="w-full h-auto object-contain max-h-[280px]"
-                unoptimized
-              />
-            </div>
-          )}
-
-          {q.type === "logic" && (
-            <div className="bg-white/5 rounded-2xl p-5 mb-4 border border-cyan-500/10 flex items-center justify-center">
-              <p className="text-cyan-400 text-lg font-mono text-center font-bold tracking-wider">
-                {(q as typeof ALL_PUZZLES[3]).sequence}
-              </p>
-            </div>
-          )}
+          {/* Puzzle visual */}
+          <div className="flex-shrink min-h-0 mb-3">
+            {q.type === "neon-pipes" && <NeonPipesPuzzle />}
+            {q.type === "neon-dots" && <NeonDotsPuzzle />}
+            {q.type === "neon-cube" && <NeonCubePuzzle />}
+            {q.type === "logic" && (
+              <div className="bg-[#0a1628] rounded-2xl p-5 border border-cyan-500/10 flex items-center justify-center">
+                <p className="text-cyan-400 text-lg font-mono text-center font-bold tracking-wider">
+                  {q.sequence}
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Options */}
-          <div className="grid grid-cols-2 gap-2.5 mt-auto mb-8">
+          <div className="grid grid-cols-2 gap-2 mt-auto">
             {q.options.map((opt, i) => (
               <button
                 key={opt}
                 type="button"
                 onClick={() => { if (!showFeedback) handleAnswer(i) }}
                 disabled={showFeedback}
-                className="py-4 px-3 rounded-xl text-center text-sm font-semibold transition-all active:scale-95"
+                className="py-3 px-3 rounded-xl text-center text-sm font-semibold transition-all active:scale-95"
                 style={getOptionStyle(i)}
               >
                 {opt}
