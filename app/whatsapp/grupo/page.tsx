@@ -11,7 +11,6 @@ interface Message {
   time: string
   isSystem?: boolean
   isUser?: boolean
-  isAudio?: boolean
 }
 
 interface ChoiceSet {
@@ -24,6 +23,8 @@ const PARTICIPANTS: Record<string, { color: string }> = {
   "Alohan": { color: "#4ECDC4" },
   "LU2CA": { color: "#1DB954" },
 }
+
+const STORAGE_KEY = "cidade-neon-grupo-msgs"
 
 // Phase 1: Initial conversation
 const INITIAL_SCRIPT: Message[] = [
@@ -80,18 +81,22 @@ const FINAL_PRE_CONFIRM: Message[] = [
   { id: 40, text: "Primeira confirmacao: Conecta as faixas com as emocoes.", sender: "Alohan", time: "21:50" },
 ]
 
-// After C1 returns (confirmCount === 1)
+// After C1 returns (confirmCount === 1) - talk about Cidade Neon, NO redirect
 const POST_CONFIRM_1: Message[] = [
   { id: 100, text: "Passaste. 1/3 confirmado.", sender: "D-Bee", time: "21:53" },
-  { id: 101, text: "Voce sente a musica de verdade.", sender: "Nizzy", time: "21:53" },
-  { id: 102, text: "Proxima confirmacao: teste de QI. Volta pro inicio.", sender: "Alohan", time: "21:53" },
+  { id: 101, text: "Voce sente a musica de verdade. Poucos chegam aqui sentindo assim.", sender: "Nizzy", time: "21:53" },
+  { id: 102, text: "mano a cidade neon ta ficando mais viva com gente como voce", sender: "Alohan", time: "21:54" },
+  { id: 103, text: "tipo, a gente tava falando aqui sobre como a musica conecta as pessoas nesse lugar", sender: "D-Bee", time: "21:54" },
+  { id: 104, text: "nem todo mundo que chega aqui consegue sentir de verdade sabe", sender: "Nizzy", time: "21:54" },
+  { id: 105, text: "por isso existe o segundo teste. pra gente ver se voce enxerga alem do obvio.", sender: "Alohan", time: "21:55" },
 ]
 
-// After C2 returns (confirmCount === 2)
+// After C2 returns (confirmCount === 2) - talk about going deeper
 const POST_CONFIRM_2: Message[] = [
   { id: 200, text: "2/3 confirmado. Mente afiada.", sender: "D-Bee", time: "21:56" },
-  { id: 201, text: "Falta a ultima.", sender: "Nizzy", time: "21:56" },
-  { id: 202, text: "Abre o AURA no inicio. Descobre quem voce e.", sender: "Alohan", time: "21:57" },
+  { id: 201, text: "a cidade neon so se revela pra quem tem coragem de ir ate o fundo", sender: "Nizzy", time: "21:56" },
+  { id: 202, text: "agora falta a ultima confirmacao. essa e sobre quem voce e de verdade.", sender: "Alohan", time: "21:57" },
+  { id: 203, text: "abre o AURA quando tiver pronto. e na tela inicial.", sender: "D-Bee", time: "21:57" },
 ]
 
 // After C3 returns (confirmCount === 3) -> LU2CA enters
@@ -111,70 +116,35 @@ const MEMBERS_LEAVE: Message[] = [
 const LU2CA_MESSAGES: Message[] = [
   { id: 320, text: "Eae. Cheguei.", sender: "LU2CA", time: "22:02" },
   { id: 321, text: "Voce passou pelas 3 confirmacoes. Poucos chegam aqui.", sender: "LU2CA", time: "22:02" },
-  { id: 322, text: "Escuta isso.", sender: "LU2CA", time: "22:03" },
-  { id: 323, text: "", sender: "LU2CA", time: "22:03", isAudio: true },
-  { id: 324, text: "", sender: "LU2CA", time: "22:03", isAudio: true },
-  { id: 325, text: "A Cidade Neon e sua agora.", sender: "LU2CA", time: "22:04" },
-  { id: 326, text: "Fica de olho no celular. Tem mais vindo.", sender: "LU2CA", time: "22:04" },
+  { id: 322, text: "A Cidade Neon e sua agora.", sender: "LU2CA", time: "22:03" },
+  { id: 323, text: "Fica de olho no celular. Tem mais vindo.", sender: "LU2CA", time: "22:03" },
 ]
 
 type ConversationPhase =
   | "initial" | "choice-1" | "after-choice-1" | "choice-2" | "after-choice-2" | "pre-confirm"
+  | "waiting-confirm-1" | "waiting-confirm-2" | "waiting-confirm-3"
   | "post-confirm-1" | "post-confirm-2" | "post-confirm-3"
-  | "members-leave" | "lu2ca-entry" | "lu2ca-audio" | "done"
+  | "members-leave" | "lu2ca-entry" | "done"
 
-function AudioBubble({ sender }: { sender: string }) {
-  const [playing, setPlaying] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const bars = useRef(Array(28).fill(0).map(() => 0.15 + Math.random() * 0.85)).current
+function saveMessages(msgs: Message[]) {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs)) } catch {}
+}
 
-  const toggle = () => {
-    if (playing) {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      setPlaying(false)
-    } else {
-      setPlaying(true)
-      intervalRef.current = setInterval(() => {
-        setProgress(p => {
-          if (p >= 100) { if (intervalRef.current) clearInterval(intervalRef.current); setPlaying(false); return 0 }
-          return p + 2
-        })
-      }, 80)
-    }
-  }
-
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current) }, [])
-
-  return (
-    <div className="bg-[#005C4B] rounded-lg rounded-tl-none px-3 py-2 max-w-[75%]">
-      <p className="text-[11px] font-medium mb-1" style={{ color: PARTICIPANTS[sender]?.color || "#8696A0" }}>{sender}</p>
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={toggle} className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
-          {playing ? (
-            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-          ) : (
-            <svg className="w-3 h-3 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-          )}
-        </button>
-        <div className="flex items-end gap-[1.5px] h-5 flex-1">
-          {bars.map((h, i) => (
-            <div key={i} className="flex-1 rounded-full transition-colors" style={{ height: `${h * 100}%`, backgroundColor: (i / bars.length) * 100 <= progress ? "#fff" : "rgba(255,255,255,0.25)" }} />
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center justify-end gap-1 mt-0.5">
-        <span className="text-[#667781] text-[10px]">0:42</span>
-      </div>
-    </div>
-  )
+function loadMessages(): Message[] {
+  if (typeof window === "undefined") return []
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch { return [] }
 }
 
 export default function WhatsAppGrupoPage() {
   const router = useRouter()
-  const { state, updateCinematicStep, completeConfirmation } = useGameFunnel()
+  const { state, updateCinematicStep } = useGameFunnel()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
+  const lastProcessedCC = useRef<number>(-1)
 
   const [messages, setMessages] = useState<Message[]>([])
   const [convPhase, setConvPhase] = useState<ConversationPhase>("initial")
@@ -186,6 +156,11 @@ export default function WhatsAppGrupoPage() {
   useEffect(() => { updateCinematicStep("whatsapp-group") }, [updateCinematicStep])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, isTyping])
 
+  // Save messages whenever they change
+  useEffect(() => {
+    if (messages.length > 0) saveMessages(messages)
+  }, [messages])
+
   const addMessages = useCallback((msgs: Message[], onDone?: () => void) => {
     let i = 0
     const next = () => {
@@ -194,48 +169,122 @@ export default function WhatsAppGrupoPage() {
       if (!msg.isSystem) { setIsTyping(true); setTypingUser(msg.sender) }
       setTimeout(() => {
         setIsTyping(false); setTypingUser(null)
-        setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg])
+        setMessages(prev => {
+          const exists = prev.some(m => m.id === msg.id)
+          return exists ? prev : [...prev, msg]
+        })
         i++
-        if (i < msgs.length) setTimeout(next, msg.isAudio ? 1500 : 600 + Math.random() * 500)
+        if (i < msgs.length) setTimeout(next, 600 + Math.random() * 500)
         else onDone?.()
-      }, msg.isSystem ? 300 : msg.isAudio ? 500 : 800 + Math.random() * 600)
+      }, msg.isSystem ? 300 : 800 + Math.random() * 600)
     }
     setTimeout(next, 400)
   }, [])
 
+  // Initialize conversation or resume from saved state
   useEffect(() => {
     if (hasInitialized.current) return
     hasInitialized.current = true
 
     const cc = state.confirmationCount
+    const saved = loadMessages()
 
-    if (cc === 0 && state.perAppState.whatsapp.currentStep === 0) {
-      addMessages(INITIAL_SCRIPT, () => { setCurrentChoices(CHOICE_1.options); setConvPhase("choice-1") })
-    } else if (cc === 1) {
-      setConvPhase("post-confirm-1")
-      addMessages(POST_CONFIRM_1, () => { setTimeout(() => router.push("/"), 2000) })
-    } else if (cc === 2) {
-      setConvPhase("post-confirm-2")
-      addMessages(POST_CONFIRM_2, () => { setTimeout(() => router.push("/"), 2000) })
-    } else if (cc >= 3) {
-      setConvPhase("post-confirm-3")
+    // If we have saved messages, load them first
+    if (saved.length > 0) {
+      setMessages(saved)
+      lastProcessedCC.current = cc
+
+      // Determine what state to be in based on cc
+      if (cc === 0) {
+        // Check if user was mid-conversation
+        const hasConfirmMsg = saved.some(m => m.id === 40)
+        if (hasConfirmMsg) {
+          setShowConfirmBtn(true)
+          setConvPhase("waiting-confirm-1")
+        }
+        // Otherwise user still needs to interact, but messages are loaded
+      } else if (cc === 1) {
+        const hasPostC1 = saved.some(m => m.id === 100)
+        if (!hasPostC1) {
+          addMessages(POST_CONFIRM_1, () => {
+            setConvPhase("waiting-confirm-2")
+            setTimeout(() => setShowConfirmBtn(true), 2000)
+          })
+        } else {
+          setShowConfirmBtn(true)
+          setConvPhase("waiting-confirm-2")
+        }
+      } else if (cc === 2) {
+        const hasPostC2 = saved.some(m => m.id === 200)
+        if (!hasPostC2) {
+          addMessages(POST_CONFIRM_2, () => {
+            setConvPhase("waiting-confirm-3")
+            setTimeout(() => setShowConfirmBtn(true), 2000)
+          })
+        } else {
+          setShowConfirmBtn(true)
+          setConvPhase("waiting-confirm-3")
+        }
+      } else if (cc >= 3) {
+        const hasPostC3 = saved.some(m => m.id === 300)
+        if (!hasPostC3) {
+          addMessages(POST_CONFIRM_3, () => {
+            setTimeout(() => {
+              addMessages(MEMBERS_LEAVE, () => {
+                setConvPhase("lu2ca-entry")
+                setTimeout(() => {
+                  addMessages(LU2CA_MESSAGES, () => { setConvPhase("done") })
+                }, 1000)
+              })
+            }, 1500)
+          })
+        } else {
+          setConvPhase("done")
+        }
+      }
+    } else {
+      // Fresh start
+      lastProcessedCC.current = 0
+      addMessages(INITIAL_SCRIPT, () => {
+        setCurrentChoices(CHOICE_1.options)
+        setConvPhase("choice-1")
+      })
+    }
+  }, [addMessages, state.confirmationCount])
+
+  // Watch for confirmationCount changes AFTER initial load (user returns from a test)
+  useEffect(() => {
+    if (!hasInitialized.current) return
+    const cc = state.confirmationCount
+    if (cc <= lastProcessedCC.current) return
+    lastProcessedCC.current = cc
+
+    if (cc === 1 && !messages.some(m => m.id === 100)) {
+      setShowConfirmBtn(false)
+      addMessages(POST_CONFIRM_1, () => {
+        setConvPhase("waiting-confirm-2")
+        setTimeout(() => setShowConfirmBtn(true), 2000)
+      })
+    } else if (cc === 2 && !messages.some(m => m.id === 200)) {
+      setShowConfirmBtn(false)
+      addMessages(POST_CONFIRM_2, () => {
+        setConvPhase("waiting-confirm-3")
+        setTimeout(() => setShowConfirmBtn(true), 2000)
+      })
+    } else if (cc >= 3 && !messages.some(m => m.id === 300)) {
+      setShowConfirmBtn(false)
       addMessages(POST_CONFIRM_3, () => {
         setTimeout(() => {
           addMessages(MEMBERS_LEAVE, () => {
             setConvPhase("lu2ca-entry")
             setTimeout(() => {
-              addMessages(LU2CA_MESSAGES, () => {
-                setConvPhase("done")
-                setTimeout(() => router.push("/"), 3000)
-              })
+              addMessages(LU2CA_MESSAGES, () => { setConvPhase("done") })
             }, 1000)
           })
         }, 1500)
       })
-    } else {
-      addMessages(INITIAL_SCRIPT, () => { setCurrentChoices(CHOICE_1.options); setConvPhase("choice-1") })
     }
-  }, [addMessages, state.confirmationCount, state.perAppState.whatsapp.currentStep, router])
+  }, [state.confirmationCount, addMessages, messages])
 
   const handleChoice = (choice: string) => {
     setCurrentChoices([])
@@ -255,7 +304,7 @@ export default function WhatsAppGrupoPage() {
       addMessages(responses, () => {
         addMessages(FINAL_PRE_CONFIRM, () => {
           setShowConfirmBtn(true)
-          setConvPhase("pre-confirm")
+          setConvPhase("waiting-confirm-1")
         })
       })
     }
@@ -263,12 +312,15 @@ export default function WhatsAppGrupoPage() {
 
   const handleConfirm = () => {
     setShowConfirmBtn(false)
-    router.push("/confirmacao/1-arquetipos")
+    const cc = state.confirmationCount
+    if (cc === 0) router.push("/confirmacao/1-arquetipos")
+    else if (cc === 1) router.push("/confirmacao/3-desbloqueio")
+    else if (cc === 2) router.push("/")  // AURA is on the home screen
   }
 
-  // Dynamic participants text
   const cc = state.confirmationCount
   const participantsText = cc >= 3 ? "LU2CA, Voce" : "D-Bee, Nizzy, Alohan"
+  const confirmLabel = cc === 0 ? "CONFIRMACAO 1/3 - TESTE DAS MUSICAS" : cc === 1 ? "CONFIRMACAO 2/3 - TESTE DE QI" : "CONFIRMACAO 3/3 - TESTE AURA"
 
   return (
     <div className="min-h-screen bg-[#0B141A] flex items-center justify-center touch-manipulation">
@@ -310,8 +362,6 @@ export default function WhatsAppGrupoPage() {
               <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
                 {msg.isSystem ? (
                   <div className="bg-[#182229] rounded-lg px-3 py-1 text-[11px] text-[#8696A0] mx-auto my-1">{msg.text}</div>
-                ) : msg.isAudio ? (
-                  <AudioBubble sender={msg.sender} />
                 ) : (
                   <div className={`max-w-[80%] rounded-lg px-3 py-1.5 ${msg.isUser ? "bg-[#005C4B] rounded-tr-none" : "bg-[#202C33] rounded-tl-none"}`}>
                     {!msg.isUser && (
@@ -355,11 +405,20 @@ export default function WhatsAppGrupoPage() {
           </div>
         )}
 
-        {/* Confirm button */}
-        {showConfirmBtn && (
+        {/* Confirm button - WhatsApp-style notification banner */}
+        {showConfirmBtn && cc < 3 && (
           <div className="px-3 pb-2">
-            <button type="button" onClick={handleConfirm} className="w-full bg-gradient-to-r from-[#6B7FD7] to-[#4ECDC4] text-white font-bold py-3 rounded-xl text-sm active:scale-[0.98] transition-transform min-h-[44px]">
-              CONFIRMACAO 1/3
+            <button type="button" onClick={handleConfirm} className="w-full">
+              <div className="bg-[#182229] rounded-xl p-3 flex items-center gap-3 border border-[#00A884]/30 shadow-lg">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-[#00A884] font-bold text-xs uppercase tracking-wider">{confirmLabel}</p>
+                  <p className="text-[#8696A0] text-[11px] mt-0.5">Toque para iniciar</p>
+                </div>
+                <svg className="w-5 h-5 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+              </div>
             </button>
           </div>
         )}

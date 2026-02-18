@@ -4,9 +4,9 @@ import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useRouter } from "next/navigation"
 
 const MEMBERS = {
-  nizzy: { name: "Nizzy", avatar: "N", color: "#F59E0B", reward: "Instrumentais do disco", lastMsg: "Tenho algo especial pra voce..." },
-  alohan: { name: "Alohan", avatar: "A", color: "#06B6D4", reward: "Suburbio Xenom", lastMsg: "Desbloqueei um material novo..." },
-  dbee: { name: "D-Bee", avatar: "D", color: "#A78BFA", reward: "Live Set completo", lastMsg: "Esse live set e exclusivo..." },
+  nizzy: { name: "Nizzy", avatar: "N", color: "#FF6B6B", reward: "Instrumental Cidade Neon", lastMsg: "a estrutura da cidade neon ta nas tuas maos agora..." },
+  dbee: { name: "D-Bee", avatar: "D", color: "#6B7FD7", reward: "Suburbio Xenom", lastMsg: "desbloqueei algo que tava escondido nas frequencias..." },
+  alohan: { name: "Alohan", avatar: "A", color: "#4ECDC4", reward: "Live Neon", lastMsg: "a energia daquela noite ficou gravada..." },
 }
 
 export default function WhatsAppHome() {
@@ -16,8 +16,8 @@ export default function WhatsAppHome() {
 
   const privateChats = [
     { key: "nizzy", visible: cc >= 1 },
-    { key: "alohan", visible: cc >= 2 },
-    { key: "dbee", visible: cc >= 3 },
+    { key: "dbee", visible: cc >= 2 },
+    { key: "alohan", visible: cc >= 3 },
   ].filter(c => c.visible)
 
   return (
@@ -61,7 +61,7 @@ export default function WhatsAppHome() {
                 <span className="text-[#00A884] text-xs">agora</span>
               </div>
               <p className="text-white/50 text-sm truncate">
-                {cc >= 3 ? "LU2CA entrou no grupo" : cc >= 1 ? "Proxima confirmacao disponivel" : "D-Bee: Voce chegou."}
+                {cc >= 3 ? "LU2CA entrou no grupo" : cc === 2 ? "Alohan: agora falta a ultima confirmacao" : cc === 1 ? "Nizzy: a cidade neon ta cada vez mais viva" : "D-Bee: Chegou."}
               </p>
             </div>
             <div className="w-5 h-5 rounded-full bg-[#00A884] flex items-center justify-center flex-shrink-0">

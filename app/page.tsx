@@ -253,10 +253,25 @@ export default function CidadeNeonExperience() {
   const [showNotification, setShowNotification] = useState(false)
   const [appBadges, setAppBadges] = useState<Record<string, boolean>>({})
   const [showNotifCenter, setShowNotifCenter] = useState(false)
-  const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string } | null>(null)
-  const [completedMissions, setCompletedMissions] = useState<string[]>([])
+  const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean } | null>(null)
+  const [completedMissions, setCompletedMissions] = useState<string[]>(() => {
+    if (typeof window === "undefined") return []
+    try { return JSON.parse(localStorage.getItem("cn-completed-missions") || "[]") } catch { return [] }
+  })
+  const [collectedRewards, setCollectedRewards] = useState<string[]>(() => {
+    if (typeof window === "undefined") return []
+    try { return JSON.parse(localStorage.getItem("cn-collected-rewards") || "[]") } catch { return [] }
+  })
   const bannerTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bannerIndexRef = useRef(0)
+
+  // Persist completed missions
+  useEffect(() => {
+    try { localStorage.setItem("cn-completed-missions", JSON.stringify(completedMissions)) } catch {}
+  }, [completedMissions])
+  useEffect(() => {
+    try { localStorage.setItem("cn-collected-rewards", JSON.stringify(collectedRewards)) } catch {}
+  }, [collectedRewards])
 
   /* ── (Final notifications now handled by missions system) ── */
 
@@ -498,7 +513,7 @@ export default function CidadeNeonExperience() {
   /* ─── (Old in-page confirmation handlers removed - now separate pages) ── */
 
   /* ─── MISSIONS PER CONFIRMATION STAGE ────── */
-  const [missionsTab, setMissionsTab] = useState<"active" | "completed">("active")
+  const [missionsTab, setMissionsTab] = useState<"active" | "completed" | "collected">("active")
 
   const getMissions = useCallback(() => {
     const cc = gameFunnelState.confirmationCount
@@ -529,16 +544,16 @@ export default function CidadeNeonExperience() {
       )
     }
 
-    return missions.filter(m => !completedMissions.includes(m.id))
-  }, [gameFunnelState.confirmationCount, completedMissions])
+    return missions.filter(m => !completedMissions.includes(m.id) && !collectedRewards.includes(m.id))
+  }, [gameFunnelState.confirmationCount, completedMissions, collectedRewards])
 
   const getCompletedMissions = useCallback(() => {
-    const all: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean }> = [
+    const all: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = [
       { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Grupo desbloqueado", action: "/whatsapp" },
+      { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Conversa no grupo", action: "/whatsapp" },
+      { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Teste final acessado", action: "/whatsapp" },
       { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Musica ouvida", action: "/spotify/auto-chuva" },
-      { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Recompensa de Nizzy", body: "Instrumental Cidade Neon", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
-      { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "Recompensa de D-Bee", body: "Suburbio Xenom", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
-      { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Recompensa de Alohan", body: "Live Neon", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+      { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "Videos assistidos", action: "/tiktok/feed" },
     ]
     return all.filter(m => completedMissions.includes(m.id))
   }, [completedMissions])
@@ -586,8 +601,13 @@ export default function CidadeNeonExperience() {
     else setAppBadges({ tiktok: true, aura: true, spotify: true, whatsapp: true, untitled: true })
   }, [phase, gameFunnelState.confirmationCount])
 
-  const handleMissionClick = (mission: { id: string; action: string }) => {
-    setCompletedMissions(prev => [...prev, mission.id])
+  const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
+    // Rewards go to "collected", regular missions go to "completed"
+    if (mission.isReward) {
+      setCollectedRewards(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
+    } else {
+      setCompletedMissions(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
+    }
     setBannerNotif(null)
     if (mission.action === "aura") {
       setPhase("aura-login")
@@ -1263,26 +1283,25 @@ export default function CidadeNeonExperience() {
               </div>
 
               {/* Tabs */}
-              <div className="flex px-5 gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setMissionsTab("active")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${missionsTab === "active" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}
-                >
+              <div className="flex px-5 gap-1.5 mb-3 overflow-x-auto">
+                <button type="button" onClick={() => setMissionsTab("active")}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${missionsTab === "active" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}>
                   Pendentes {activeMissions.length > 0 && `(${activeMissions.length})`}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setMissionsTab("completed")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${missionsTab === "completed" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}
-                >
+                <button type="button" onClick={() => setMissionsTab("completed")}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${missionsTab === "completed" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}>
                   Completas {getCompletedMissions().length > 0 && `(${getCompletedMissions().length})`}
+                </button>
+                <button type="button" onClick={() => setMissionsTab("collected")}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${missionsTab === "collected" ? "bg-[#FFD700]/20 text-[#FFD700]" : "bg-white/5 text-white/40"}`}>
+                  Coletadas {collectedRewards.length > 0 && `(${collectedRewards.length})`}
                 </button>
               </div>
 
               {/* Mission List */}
               <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-24">
-                {missionsTab === "active" ? (
+                {/* ACTIVE TAB */}
+                {missionsTab === "active" && (
                   activeMissions.length === 0 ? (
                     <div className="flex flex-col items-center justify-center pt-20">
                       <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-3">
@@ -1292,12 +1311,7 @@ export default function CidadeNeonExperience() {
                     </div>
                   ) : (
                     activeMissions.map((mission) => (
-                      <button
-                        key={mission.id}
-                        type="button"
-                        onClick={() => { setShowNotifCenter(false); handleMissionClick(mission) }}
-                        className="w-full text-left"
-                      >
+                      <button key={mission.id} type="button" onClick={() => { setShowNotifCenter(false); handleMissionClick(mission) }} className="w-full text-left">
                         <div className={`backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 transition-colors ${mission.isReward ? "bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/15" : "bg-white/5 border border-white/5 hover:bg-white/10"}`}>
                           <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: mission.color }}>
                             {getIconSvg(mission.icon)}
@@ -1319,23 +1333,21 @@ export default function CidadeNeonExperience() {
                       </button>
                     ))
                   )
-                ) : (
+                )}
+
+                {/* COMPLETED TAB */}
+                {missionsTab === "completed" && (
                   getCompletedMissions().length === 0 ? (
                     <div className="flex flex-col items-center justify-center pt-20">
                       <p className="text-white/30 text-sm">Nenhuma missao completa ainda</p>
                     </div>
                   ) : (
                     getCompletedMissions().map((mission) => (
-                      <button
-                        key={mission.id}
-                        type="button"
-                        onClick={() => {
-                          if (mission.action.startsWith("http")) window.open(mission.action, "_blank")
-                          else { setShowNotifCenter(false); window.location.href = mission.action }
-                        }}
-                        className="w-full text-left opacity-60"
-                      >
-                        <div className="bg-white/3 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 border border-white/3">
+                      <button key={mission.id} type="button" onClick={() => {
+                        if (mission.action.startsWith("http")) window.open(mission.action, "_blank")
+                        else { setShowNotifCenter(false); window.location.href = mission.action }
+                      }} className="w-full text-left opacity-60">
+                        <div className="bg-white/[0.03] backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 border border-white/[0.03]">
                           <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: mission.color }}>
                             {getIconSvg(mission.icon)}
                             <div className="absolute inset-0 rounded-[12px] bg-black/30 flex items-center justify-center">
@@ -1349,6 +1361,43 @@ export default function CidadeNeonExperience() {
                         </div>
                       </button>
                     ))
+                  )
+                )}
+
+                {/* COLLECTED REWARDS TAB */}
+                {missionsTab === "collected" && (
+                  collectedRewards.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center pt-20">
+                      <div className="w-14 h-14 rounded-full bg-[#FFD700]/5 flex items-center justify-center mb-3">
+                        <svg className="w-7 h-7 text-[#FFD700]/20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                      </div>
+                      <p className="text-white/30 text-sm">Nenhuma recompensa coletada</p>
+                    </div>
+                  ) : (
+                    (() => {
+                      const allRewards = [
+                        { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Recompensa de Nizzy", body: "Instrumental Cidade Neon", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
+                        { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "Recompensa de D-Bee", body: "Suburbio Xenom", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
+                        { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Recompensa de Alohan", body: "Live Neon", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+                      ]
+                      return allRewards.filter(r => collectedRewards.includes(r.id)).map((reward) => (
+                        <button key={reward.id} type="button" onClick={() => window.open(reward.action, "_blank")} className="w-full text-left">
+                          <div className="bg-[#FFD700]/5 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 border border-[#FFD700]/10">
+                            <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: reward.color }}>
+                              {getIconSvg(reward.icon)}
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FFD700] rounded-full flex items-center justify-center">
+                                <svg className="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M4.5 12.75l6 6 9-13.5" /></svg>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[#FFD700]/80 font-semibold text-sm">{reward.title}</p>
+                              <p className="text-white/40 text-xs">{reward.body}</p>
+                            </div>
+                            <svg className="w-4 h-4 text-[#FFD700]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                          </div>
+                        </button>
+                      ))
+                    })()
                   )
                 )}
               </div>
