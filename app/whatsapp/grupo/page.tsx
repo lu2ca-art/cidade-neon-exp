@@ -111,7 +111,7 @@ const POST_CONFIRM_2: Message[] = [
   { id: 200, text: "2/3 confirmado. Mente afiada.", sender: "D-Bee", time: "21:56" },
   { id: 201, text: "a cidade neon so se revela pra quem tem coragem de ir ate o fundo", sender: "Nizzy", time: "21:56" },
   { id: 202, text: "agora falta a ultima confirmacao. essa e sobre quem voce e de verdade.", sender: "Alohan", time: "21:57" },
-  { id: 203, text: "abre o AURA quando tiver pronto. e na tela inicial.", sender: "D-Bee", time: "21:57" },
+  { id: 203, text: "quando tiver pronto, confirma ai embaixo.", sender: "D-Bee", time: "21:57" },
 ]
 
 // After C3 returns (confirmCount === 3) -> LU2CA enters
@@ -391,7 +391,7 @@ export default function WhatsAppGrupoPage() {
     const cc = state.confirmationCount
     if (cc === 0) router.push("/confirmacao/1-arquetipos")
     else if (cc === 1) router.push("/confirmacao/3-desbloqueio")
-    else if (cc === 2) router.push("/")  // AURA is on the home screen
+    else if (cc === 2) router.push("/?openAura=1")  // Goes directly to AURA test
   }
 
   const cc = state.confirmationCount

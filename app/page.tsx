@@ -1,8 +1,9 @@
 "use client"
 
 import type { ReactElement } from "react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, Suspense } from "react"
 import Image from "next/image"
+import { useSearchParams } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
 /* ─── TYPES ──────────────────────────────────────────── */
@@ -188,9 +189,18 @@ function HackerLine({ text, delay, isFinal }: { text: string; delay: number; isF
 }
 
 /* ─── COMPONENT ──────────────────────────────────────── */
-export default function CidadeNeonExperience() {
-  const { state: gameFunnelState, completeConfirmation, resetAll } = useGameFunnel()
+export default function CidadeNeonWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <CidadeNeonExperience />
+    </Suspense>
+  )
+}
 
+function CidadeNeonExperience() {
+  const { state: gameFunnelState, completeConfirmation, resetAll } = useGameFunnel()
+  const searchParams = useSearchParams()
+  
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
     const step = gameFunnelState.cinematicStep
@@ -210,6 +220,14 @@ export default function CidadeNeonExperience() {
 
   /* ── Phase ────────── */
   const [phase, setPhase] = useState<Phase>(getInitialPhase)
+
+  // Auto-open AURA when redirected from WhatsApp grupo 3rd confirmation
+  useEffect(() => {
+    if (searchParams.get("openAura") === "1" && phase === "phone-home") {
+      setPhase("aura-login")
+      window.history.replaceState({}, "", "/")
+    }
+  }, [searchParams, phase])
 
   /* ── Call ───────���── */
   const [callState, setCallState] = useState<"ringing" | "dismissed" | "callback">("ringing")
@@ -525,18 +543,22 @@ export default function CidadeNeonExperience() {
         { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
       )
     } else if (cc === 1) {
+      // Reward comes FIRST, then the group callback
       missions.push(
-        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "o grupo ta te chamando de volta", action: "/whatsapp" },
         { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy enviou uma recompensa!", body: "Instrumental Cidade Neon desbloqueado", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
+        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "o grupo ta te chamando de volta", action: "/whatsapp" },
       )
     } else if (cc === 2) {
+      // Reward comes FIRST, then the group callback
       missions.push(
-        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "teste final te espera no grupo", action: "/whatsapp" },
         { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee enviou uma recompensa!", body: "Suburbio Xenom desbloqueado", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
+        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "teste final te espera no grupo", action: "/whatsapp" },
       )
     } else {
+      // After all 3 confirmations - rewards + final content persists
       missions.push(
         { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan enviou uma recompensa!", body: "Live Neon desbloqueado", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+        { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Envie sua AURA para fazer parte da rede", action: "aura" },
         { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvir de novo", action: "/spotify/auto-chuva" },
@@ -544,7 +566,11 @@ export default function CidadeNeonExperience() {
       )
     }
 
-    return missions.filter(m => !completedMissions.includes(m.id) && !collectedRewards.includes(m.id))
+    // Rewards only disappear from Novidades when collected, regular items when completed
+    return missions.filter(m => {
+      if (m.isReward) return !collectedRewards.includes(m.id)
+      return !completedMissions.includes(m.id)
+    })
   }, [gameFunnelState.confirmationCount, completedMissions, collectedRewards])
 
   const getCompletedConfirmations = useCallback(() => {
@@ -589,6 +615,11 @@ export default function CidadeNeonExperience() {
     }
   }, [phase, showNotifCenter, getMissions])
 
+  // Reset banner cycle when confirmation count changes so reward shows first
+  useEffect(() => {
+    bannerIndexRef.current = 0
+  }, [gameFunnelState.confirmationCount])
+
   // Set badges based on confirmation count
   useEffect(() => {
     if (phase !== "phone-home") return
@@ -596,21 +627,15 @@ export default function CidadeNeonExperience() {
     if (cc === 0) setAppBadges({ whatsapp: true, spotify: true })
     else if (cc === 1) setAppBadges({ whatsapp: true, spotify: true })
     else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, aura: true })
-    else setAppBadges({ tiktok: true, aura: true, spotify: true, whatsapp: true, untitled: true })
+    else setAppBadges({ tiktok: true, aura: true, spotify: true, whatsapp: true, untitled: true, youtube: true })
   }, [phase, gameFunnelState.confirmationCount])
 
   const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
-    // Rewards go to "collected"
     if (mission.isReward) {
+      // Rewards go to "collected" drawer only
       setCollectedRewards(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
-    }
-    // WhatsApp notifications just vanish (mark completed so they disappear from Novidades)
-    // but do NOT show in Completas tab - only confirmations show there
-    if (mission.id.startsWith("whatsapp-")) {
-      setCompletedMissions(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
-    }
-    // Non-whatsapp, non-reward missions just vanish from novidades too
-    if (!mission.isReward && !mission.id.startsWith("whatsapp-")) {
+    } else {
+      // All non-reward items vanish from novidades when clicked
       setCompletedMissions(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
     }
     setBannerNotif(null)
