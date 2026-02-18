@@ -11,10 +11,25 @@ interface Message {
   time: string
   isSystem?: boolean
   isUser?: boolean
+  isConfirmDivider?: boolean
+  confirmNum?: 1 | 2 | 3
+  confirmDone?: boolean
 }
 
 interface ChoiceSet {
   options: string[]
+}
+
+const CONFIRM_LABELS: Record<number, string> = {
+  1: "CONFIRMACAO 1/3 - TESTE DAS MUSICAS",
+  2: "CONFIRMACAO 2/3 - TESTE DE QI",
+  3: "CONFIRMACAO 3/3 - TESTE AURA",
+}
+
+const CONFIRM_DIVIDER_IDS: Record<number, number> = {
+  1: 9001,
+  2: 9002,
+  3: 9003,
 }
 
 const PARTICIPANTS: Record<string, { color: string }> = {
@@ -152,6 +167,7 @@ export default function WhatsAppGrupoPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [typingUser, setTypingUser] = useState<string | null>(null)
   const [showConfirmBtn, setShowConfirmBtn] = useState(false)
+  const [activeConfirmNum, setActiveConfirmNum] = useState<1 | 2 | 3>(1)
 
   useEffect(() => { updateCinematicStep("whatsapp-group") }, [updateCinematicStep])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, isTyping])
@@ -160,6 +176,34 @@ export default function WhatsAppGrupoPage() {
   useEffect(() => {
     if (messages.length > 0) saveMessages(messages)
   }, [messages])
+
+  // Insert a confirm divider into the message flow (active or done)
+  const insertConfirmDivider = useCallback((num: 1 | 2 | 3, done: boolean) => {
+    const dividerMsg: Message = {
+      id: CONFIRM_DIVIDER_IDS[num],
+      text: CONFIRM_LABELS[num],
+      sender: "system",
+      time: "",
+      isConfirmDivider: true,
+      confirmNum: num,
+      confirmDone: done,
+    }
+    setMessages(prev => {
+      const exists = prev.some(m => m.id === dividerMsg.id)
+      if (exists) {
+        // Update existing divider to done
+        return prev.map(m => m.id === dividerMsg.id ? { ...m, confirmDone: done } : m)
+      }
+      return [...prev, dividerMsg]
+    })
+  }, [])
+
+  // Mark a divider as completed (grayed out)
+  const markDividerDone = useCallback((num: 1 | 2 | 3) => {
+    setMessages(prev => prev.map(m =>
+      m.id === CONFIRM_DIVIDER_IDS[num] ? { ...m, confirmDone: true } : m
+    ))
+  }, [])
 
   const addMessages = useCallback((msgs: Message[], onDone?: () => void) => {
     let i = 0
@@ -199,33 +243,56 @@ export default function WhatsAppGrupoPage() {
         // Check if user was mid-conversation
         const hasConfirmMsg = saved.some(m => m.id === 40)
         if (hasConfirmMsg) {
+          setActiveConfirmNum(1)
+          // Re-insert divider if not present
+          if (!saved.some(m => m.id === CONFIRM_DIVIDER_IDS[1])) {
+            insertConfirmDivider(1, false)
+          }
           setShowConfirmBtn(true)
           setConvPhase("waiting-confirm-1")
         }
-        // Otherwise user still needs to interact, but messages are loaded
       } else if (cc === 1) {
+        // Mark C1 divider as done
+        markDividerDone(1)
         const hasPostC1 = saved.some(m => m.id === 100)
         if (!hasPostC1) {
           addMessages(POST_CONFIRM_1, () => {
+            setActiveConfirmNum(2)
+            insertConfirmDivider(2, false)
             setConvPhase("waiting-confirm-2")
             setTimeout(() => setShowConfirmBtn(true), 2000)
           })
         } else {
+          setActiveConfirmNum(2)
+          if (!saved.some(m => m.id === CONFIRM_DIVIDER_IDS[2])) {
+            insertConfirmDivider(2, false)
+          }
           setShowConfirmBtn(true)
           setConvPhase("waiting-confirm-2")
         }
       } else if (cc === 2) {
+        markDividerDone(1)
+        markDividerDone(2)
         const hasPostC2 = saved.some(m => m.id === 200)
         if (!hasPostC2) {
           addMessages(POST_CONFIRM_2, () => {
+            setActiveConfirmNum(3)
+            insertConfirmDivider(3, false)
             setConvPhase("waiting-confirm-3")
             setTimeout(() => setShowConfirmBtn(true), 2000)
           })
         } else {
+          setActiveConfirmNum(3)
+          if (!saved.some(m => m.id === CONFIRM_DIVIDER_IDS[3])) {
+            insertConfirmDivider(3, false)
+          }
           setShowConfirmBtn(true)
           setConvPhase("waiting-confirm-3")
         }
       } else if (cc >= 3) {
+        markDividerDone(1)
+        markDividerDone(2)
+        markDividerDone(3)
         const hasPostC3 = saved.some(m => m.id === 300)
         if (!hasPostC3) {
           addMessages(POST_CONFIRM_3, () => {
@@ -250,7 +317,7 @@ export default function WhatsAppGrupoPage() {
         setConvPhase("choice-1")
       })
     }
-  }, [addMessages, state.confirmationCount])
+  }, [addMessages, state.confirmationCount, insertConfirmDivider, markDividerDone])
 
   // Watch for confirmationCount changes AFTER initial load (user returns from a test)
   useEffect(() => {
@@ -261,18 +328,25 @@ export default function WhatsAppGrupoPage() {
 
     if (cc === 1 && !messages.some(m => m.id === 100)) {
       setShowConfirmBtn(false)
+      markDividerDone(1)
       addMessages(POST_CONFIRM_1, () => {
+        setActiveConfirmNum(2)
+        insertConfirmDivider(2, false)
         setConvPhase("waiting-confirm-2")
         setTimeout(() => setShowConfirmBtn(true), 2000)
       })
     } else if (cc === 2 && !messages.some(m => m.id === 200)) {
       setShowConfirmBtn(false)
+      markDividerDone(2)
       addMessages(POST_CONFIRM_2, () => {
+        setActiveConfirmNum(3)
+        insertConfirmDivider(3, false)
         setConvPhase("waiting-confirm-3")
         setTimeout(() => setShowConfirmBtn(true), 2000)
       })
     } else if (cc >= 3 && !messages.some(m => m.id === 300)) {
       setShowConfirmBtn(false)
+      markDividerDone(3)
       addMessages(POST_CONFIRM_3, () => {
         setTimeout(() => {
           addMessages(MEMBERS_LEAVE, () => {
@@ -284,7 +358,7 @@ export default function WhatsAppGrupoPage() {
         }, 1500)
       })
     }
-  }, [state.confirmationCount, addMessages, messages])
+  }, [state.confirmationCount, addMessages, messages, markDividerDone, insertConfirmDivider])
 
   const handleChoice = (choice: string) => {
     setCurrentChoices([])
@@ -303,6 +377,8 @@ export default function WhatsAppGrupoPage() {
       const responses = AFTER_CHOICE_2[choice] || AFTER_CHOICE_2[CHOICE_2.options[0]]
       addMessages(responses, () => {
         addMessages(FINAL_PRE_CONFIRM, () => {
+          setActiveConfirmNum(1)
+          insertConfirmDivider(1, false)
           setShowConfirmBtn(true)
           setConvPhase("waiting-confirm-1")
         })
@@ -320,7 +396,6 @@ export default function WhatsAppGrupoPage() {
 
   const cc = state.confirmationCount
   const participantsText = cc >= 3 ? "LU2CA, Voce" : "D-Bee, Nizzy, Alohan"
-  const confirmLabel = cc === 0 ? "CONFIRMACAO 1/3 - TESTE DAS MUSICAS" : cc === 1 ? "CONFIRMACAO 2/3 - TESTE DE QI" : "CONFIRMACAO 3/3 - TESTE AURA"
 
   return (
     <div className="min-h-screen bg-[#0B141A] flex items-center justify-center touch-manipulation">
@@ -358,26 +433,71 @@ export default function WhatsAppGrupoPage() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <div className="space-y-1.5">
-            {messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
-                {msg.isSystem ? (
-                  <div className="bg-[#182229] rounded-lg px-3 py-1 text-[11px] text-[#8696A0] mx-auto my-1">{msg.text}</div>
-                ) : (
-                  <div className={`max-w-[80%] rounded-lg px-3 py-1.5 ${msg.isUser ? "bg-[#005C4B] rounded-tr-none" : "bg-[#202C33] rounded-tl-none"}`}>
-                    {!msg.isUser && (
-                      <p className="text-[11px] font-medium mb-0.5" style={{ color: PARTICIPANTS[msg.sender]?.color || "#8696A0" }}>{msg.sender}</p>
+            {messages.map(msg => {
+              // Render confirm dividers inline
+              if (msg.isConfirmDivider) {
+                const isDone = msg.confirmDone
+                const isActive = !isDone && showConfirmBtn && msg.confirmNum === activeConfirmNum
+                return (
+                  <div key={msg.id} className="my-2">
+                    {isActive ? (
+                      <button type="button" onClick={handleConfirm} className="w-full text-left">
+                        <div className="rounded-xl p-3 flex items-center gap-3 border bg-[#182229] border-[#00A884]/30 shadow-lg animate-pulse">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[#00A884] font-bold text-xs uppercase tracking-wider">{msg.text}</p>
+                            <p className="text-[#8696A0] text-[11px] mt-0.5">Toque para iniciar</p>
+                          </div>
+                          <svg className="w-5 h-5 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                        </div>
+                      </button>
+                    ) : (
+                      <div className={`rounded-xl p-3 flex items-center gap-3 border ${isDone ? "bg-[#182229]/50 border-[#2A3942] opacity-50" : "bg-[#182229]/30 border-[#2A3942]/50 opacity-30"}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isDone ? "bg-[#2A3942]" : "bg-[#2A3942]/50"}`}>
+                          {isDone ? (
+                            <svg className="w-5 h-5 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                          ) : (
+                            <svg className="w-5 h-5 text-[#667781]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-bold text-xs uppercase tracking-wider ${isDone ? "text-[#667781] line-through" : "text-[#667781]"}`}>{msg.text}</p>
+                          <p className="text-[#667781] text-[11px] mt-0.5">
+                            {isDone ? "Completo" : "Aguardando..."}
+                          </p>
+                        </div>
+                        {isDone && (
+                          <svg className="w-5 h-5 text-[#00A884]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                        )}
+                      </div>
                     )}
-                    <p className="text-[#E9EDEF] text-[14px] leading-[1.4]">{msg.text}</p>
-                    <div className="flex items-center justify-end gap-1 mt-0.5">
-                      <span className="text-[#667781] text-[10px]">{msg.time}</span>
-                      {msg.isUser && (
-                        <svg className="w-4 h-3 text-[#53BDEB]" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" /></svg>
-                      )}
-                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                )
+              }
+
+              return (
+                <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
+                  {msg.isSystem ? (
+                    <div className="bg-[#182229] rounded-lg px-3 py-1 text-[11px] text-[#8696A0] mx-auto my-1">{msg.text}</div>
+                  ) : (
+                    <div className={`max-w-[80%] rounded-lg px-3 py-1.5 ${msg.isUser ? "bg-[#005C4B] rounded-tr-none" : "bg-[#202C33] rounded-tl-none"}`}>
+                      {!msg.isUser && (
+                        <p className="text-[11px] font-medium mb-0.5" style={{ color: PARTICIPANTS[msg.sender]?.color || "#8696A0" }}>{msg.sender}</p>
+                      )}
+                      <p className="text-[#E9EDEF] text-[14px] leading-[1.4]">{msg.text}</p>
+                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                        <span className="text-[#667781] text-[10px]">{msg.time}</span>
+                        {msg.isUser && (
+                          <svg className="w-4 h-3 text-[#53BDEB]" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" /></svg>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             {isTyping && typingUser && (
               <div className="flex justify-start">
                 <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2">
@@ -402,24 +522,6 @@ export default function WhatsAppGrupoPage() {
                 {choice}
               </button>
             ))}
-          </div>
-        )}
-
-        {/* Confirm button - WhatsApp-style notification banner */}
-        {showConfirmBtn && cc < 3 && (
-          <div className="px-3 pb-2">
-            <button type="button" onClick={handleConfirm} className="w-full">
-              <div className="bg-[#182229] rounded-xl p-3 flex items-center gap-3 border border-[#00A884]/30 shadow-lg">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-[#00A884] font-bold text-xs uppercase tracking-wider">{confirmLabel}</p>
-                  <p className="text-[#8696A0] text-[11px] mt-0.5">Toque para iniciar</p>
-                </div>
-                <svg className="w-5 h-5 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-              </div>
-            </button>
           </div>
         )}
 

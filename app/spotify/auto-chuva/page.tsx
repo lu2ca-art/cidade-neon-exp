@@ -141,7 +141,7 @@ export default function SpotifyAutoPage() {
 
   /* -- ALBUM VIEW -- */
   const AlbumView = () => (
-    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", minHeight: 0 }}>
+    <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
       <div className="fixed inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212] pointer-events-none" />
 
       <div className="relative z-10 flex items-center px-4 py-3 mt-4">
@@ -250,7 +250,8 @@ export default function SpotifyAutoPage() {
           </button>
         )}
 
-        {view === "now-playing" ? <NowPlaying /> : <AlbumView />}
+        <div style={{ display: view === "now-playing" ? "flex" : "none" }} className="flex-1 flex-col"><NowPlaying /></div>
+        <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-1 flex-col overflow-y-auto overscroll-contain" id="album-scroll-container"><AlbumView /></div>
       </div>
 
       <style jsx>{`

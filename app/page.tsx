@@ -547,16 +547,14 @@ export default function CidadeNeonExperience() {
     return missions.filter(m => !completedMissions.includes(m.id) && !collectedRewards.includes(m.id))
   }, [gameFunnelState.confirmationCount, completedMissions, collectedRewards])
 
-  const getCompletedMissions = useCallback(() => {
-    const all: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = [
-      { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Grupo desbloqueado", action: "/whatsapp" },
-      { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Conversa no grupo", action: "/whatsapp" },
-      { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Teste final acessado", action: "/whatsapp" },
-      { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Musica ouvida", action: "/spotify/auto-chuva" },
-      { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "Videos assistidos", action: "/tiktok/feed" },
-    ]
-    return all.filter(m => completedMissions.includes(m.id))
-  }, [completedMissions])
+  const getCompletedConfirmations = useCallback(() => {
+    const cc = gameFunnelState.confirmationCount
+    const confirmations: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = []
+    if (cc >= 1) confirmations.push({ id: "confirm-1", app: "Cidade Neon", icon: "spotify", color: "#1DB954", title: "Confirmacao 1/3", body: "Teste das Musicas concluido", action: "/confirmacao/1-arquetipos" })
+    if (cc >= 2) confirmations.push({ id: "confirm-2", app: "Cidade Neon", icon: "untitled", color: "#8B5CF6", title: "Confirmacao 2/3", body: "Teste de QI concluido", action: "/confirmacao/3-desbloqueio" })
+    if (cc >= 3) confirmations.push({ id: "confirm-3", app: "AURA", icon: "aura", color: "#A78BFA", title: "Confirmacao 3/3", body: "Teste AURA concluido", action: "aura" })
+    return confirmations
+  }, [gameFunnelState.confirmationCount])
 
   /* ─── BANNER NOTIFICATIONS (5s each, then bounces to Missoes) ── */
   const [missionsBounce, setMissionsBounce] = useState(false)
@@ -602,10 +600,17 @@ export default function CidadeNeonExperience() {
   }, [phase, gameFunnelState.confirmationCount])
 
   const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
-    // Rewards go to "collected", regular missions go to "completed"
+    // Rewards go to "collected"
     if (mission.isReward) {
       setCollectedRewards(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
-    } else {
+    }
+    // WhatsApp notifications just vanish (mark completed so they disappear from Novidades)
+    // but do NOT show in Completas tab - only confirmations show there
+    if (mission.id.startsWith("whatsapp-")) {
+      setCompletedMissions(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
+    }
+    // Non-whatsapp, non-reward missions just vanish from novidades too
+    if (!mission.isReward && !mission.id.startsWith("whatsapp-")) {
       setCompletedMissions(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
     }
     setBannerNotif(null)
@@ -1229,7 +1234,7 @@ export default function CidadeNeonExperience() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative overflow-hidden">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
         {/* iPhone Notch - Apple style: floating pill, content behind sides */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -1286,11 +1291,11 @@ export default function CidadeNeonExperience() {
               <div className="flex px-5 gap-1.5 mb-3 overflow-x-auto">
                 <button type="button" onClick={() => setMissionsTab("active")}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${missionsTab === "active" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}>
-                  Pendentes {activeMissions.length > 0 && `(${activeMissions.length})`}
+                  Novidades {activeMissions.length > 0 && `(${activeMissions.length})`}
                 </button>
                 <button type="button" onClick={() => setMissionsTab("completed")}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${missionsTab === "completed" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}>
-                  Completas {getCompletedMissions().length > 0 && `(${getCompletedMissions().length})`}
+                  Completas {getCompletedConfirmations().length > 0 && `(${getCompletedConfirmations().length})`}
                 </button>
                 <button type="button" onClick={() => setMissionsTab("collected")}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors flex-shrink-0 ${missionsTab === "collected" ? "bg-[#FFD700]/20 text-[#FFD700]" : "bg-white/5 text-white/40"}`}>
@@ -1307,7 +1312,7 @@ export default function CidadeNeonExperience() {
                       <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-3">
                         <svg className="w-7 h-7 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       </div>
-                      <p className="text-white/30 text-sm">Nenhuma missao pendente</p>
+                      <p className="text-white/30 text-sm">Sem novidades no momento</p>
                     </div>
                   ) : (
                     activeMissions.map((mission) => (
@@ -1335,31 +1340,28 @@ export default function CidadeNeonExperience() {
                   )
                 )}
 
-                {/* COMPLETED TAB */}
+                {/* COMPLETED TAB - only confirmations */}
                 {missionsTab === "completed" && (
-                  getCompletedMissions().length === 0 ? (
+                  getCompletedConfirmations().length === 0 ? (
                     <div className="flex flex-col items-center justify-center pt-20">
-                      <p className="text-white/30 text-sm">Nenhuma missao completa ainda</p>
+                      <p className="text-white/30 text-sm">Nenhuma confirmacao completa ainda</p>
                     </div>
                   ) : (
-                    getCompletedMissions().map((mission) => (
-                      <button key={mission.id} type="button" onClick={() => {
-                        if (mission.action.startsWith("http")) window.open(mission.action, "_blank")
-                        else { setShowNotifCenter(false); window.location.href = mission.action }
-                      }} className="w-full text-left opacity-60">
+                    getCompletedConfirmations().map((c) => (
+                      <div key={c.id} className="w-full text-left">
                         <div className="bg-white/[0.03] backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 border border-white/[0.03]">
-                          <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: mission.color }}>
-                            {getIconSvg(mission.icon)}
+                          <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: c.color }}>
+                            {getIconSvg(c.icon)}
                             <div className="absolute inset-0 rounded-[12px] bg-black/30 flex items-center justify-center">
-                              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                              <svg className="w-5 h-5 text-[#22C55E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white/60 font-semibold text-sm">{mission.title}</p>
-                            <p className="text-white/30 text-xs">{mission.body}</p>
+                            <p className="text-white/60 font-semibold text-sm">{c.title}</p>
+                            <p className="text-white/30 text-xs">{c.body}</p>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     ))
                   )
                 )}
@@ -1419,7 +1421,7 @@ export default function CidadeNeonExperience() {
 
         {/* ── App Grid (vertically centered) ── */}
         {!showNotifCenter && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center px-8 pt-[50px] pb-[80px]">
+          <div className="absolute inset-0 z-10 flex items-center justify-center px-8 pt-[56px] pb-[90px]">
             <div className="grid grid-cols-3 gap-x-6 gap-y-6 w-full">
               {phoneApps.map((app) => (
                 <button key={app.id} onClick={() => {
@@ -1462,7 +1464,17 @@ export default function CidadeNeonExperience() {
               </button>
               <button
                 type="button"
-                onClick={() => { resetAll(); setPhase("incoming-call") }}
+                onClick={() => {
+                  resetAll()
+                  // Clear ALL localStorage keys for complete reset
+                  try {
+                    localStorage.removeItem("cn-completed-missions")
+                    localStorage.removeItem("cn-collected-rewards")
+                    localStorage.removeItem("cidade-neon-grupo-msgs")
+                    localStorage.removeItem("cidade-neon-funnel-v2")
+                  } catch {}
+                  window.location.reload()
+                }}
                 className="w-10 h-10 bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full flex items-center justify-center transition-colors border border-white/10"
                 aria-label="Reiniciar experiencia"
               >
