@@ -796,7 +796,7 @@ export default function CidadeNeonExperience() {
             {/* Audio wave */}
             <div className="flex items-end gap-[3px] mt-8 h-6">
               {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((h, i) => (
-                <div key={i} className="w-[3px] rounded-full bg-[#34C759]" style={{ height: `${h * 4}px`, animation: `call-eq ${0.4 + Math.random() * 0.3}s ease-in-out infinite`, animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
+                <div key={i} className="w-[3px] rounded-full bg-[#34C759]" style={{ height: `${h * 4}px`, animationName: "call-eq", animationDuration: `${0.4 + Math.random() * 0.3}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
               ))}
             </div>
           </div>
