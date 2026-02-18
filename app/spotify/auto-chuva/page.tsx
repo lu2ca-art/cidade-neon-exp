@@ -141,8 +141,8 @@ export default function SpotifyAutoPage() {
 
   /* -- ALBUM VIEW -- */
   const AlbumView = () => (
-    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
+    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", minHeight: 0 }}>
+      <div className="fixed inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212] pointer-events-none" />
 
       <div className="relative z-10 flex items-center px-4 py-3 mt-4">
         <button type="button" onClick={() => router.push("/")} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
@@ -164,7 +164,7 @@ export default function SpotifyAutoPage() {
       </div>
 
       {/* track list */}
-      <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain px-4 pb-24" style={{ WebkitOverflowScrolling: "touch" }}>
+      <div className="relative z-10 px-4 pb-24">
         {ALBUM_TRACKS.map((t, i) => {
           const isActive = i === audio.trackIdx && audio.playing
           return (

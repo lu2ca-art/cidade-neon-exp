@@ -36,6 +36,8 @@ export default function Confirmacao1Page() {
   const [isRevisit] = useState(alreadyDone)
   const [playingTrack, setPlayingTrack] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [customInput, setCustomInput] = useState("")
+  const [showCustomInput, setShowCustomInput] = useState(false)
 
   const globalAudio = useAudioPlayer()
 
@@ -208,7 +210,7 @@ export default function Confirmacao1Page() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => { if (!matched) { setSelectedTrack(t.id); playTrack(t.id) } }}
+                  onClick={() => { if (!matched) { setSelectedTrack(t.id); playTrack(t.id); setShowCustomInput(false); setCustomInput("") } }}
                   disabled={matched}
                   className={`
                     w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-left
@@ -282,6 +284,55 @@ export default function Confirmacao1Page() {
                       </button>
                     )
                   })}
+                  {/* 6th option: custom text */}
+                  {!showCustomInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomInput(true)}
+                      className="py-3 px-3 rounded-xl text-sm font-semibold transition-all duration-200 active:scale-95 col-span-2"
+                      style={{
+                        backgroundColor: `${activeTrack?.color}08`,
+                        color: `${activeTrack?.color}90`,
+                        border: `1px dashed ${activeTrack?.color}30`,
+                      }}
+                    >
+                      + outra emocao
+                    </button>
+                  ) : (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        if (customInput.trim()) {
+                          handleEmotionPick(customInput.trim().toUpperCase())
+                          setCustomInput("")
+                          setShowCustomInput(false)
+                        }
+                      }}
+                      className="col-span-2 flex gap-2"
+                    >
+                      <input
+                        type="text"
+                        value={customInput}
+                        onChange={(e) => setCustomInput(e.target.value)}
+                        placeholder="sua emocao..."
+                        autoFocus
+                        maxLength={20}
+                        className="flex-1 px-3 py-2.5 rounded-xl text-sm font-semibold bg-transparent outline-none placeholder:opacity-40"
+                        style={{
+                          color: activeTrack?.color,
+                          border: `1px solid ${activeTrack?.color}40`,
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={!customInput.trim()}
+                        className="px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-30"
+                        style={{ backgroundColor: `${activeTrack?.color}30`, color: activeTrack?.color }}
+                      >
+                        OK
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
             ) : !allMatched ? (

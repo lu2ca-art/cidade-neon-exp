@@ -2,280 +2,89 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
-/* ───────────── VISUAL EXPERIMENT BANKS ───────────── */
+/* ───────────── IMAGE-BASED PUZZLE BANKS ───────────── */
 
-// Bank A: Pattern matrix - find the missing piece in a 3x3 grid
-const MATRIX_BANK = [
+// Puzzle 1: Hose tracing - which faucet fills the bucket?
+const HOSE_PUZZLE = {
+  type: "image" as const,
+  label: "Qual torneira enche o balde?",
+  imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Captura%20de%20Tela%202026-02-18%20a%CC%80s%2010.55.47-VQlnY6ZxyptPSvQw8guhmcTM1EOp9G.png",
+  options: ["Torneira 1", "Torneira 2", "Torneira 3", "Torneira 4"],
+  answer: 1, // Torneira 2 (B) fills the bucket
+}
+
+// Puzzle 2: Purple dots grid - perception test
+const DOTS_PUZZLE = {
+  type: "image" as const,
+  label: "Quantas bolinhas de cor mais clara voce consegue contar?",
+  imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Captura%20de%20Tela%202026-02-18%20a%CC%80s%2010.53.29-UWGGGjl5nPq5zwfxO5Yu5raCPxywgX.png",
+  options: ["20", "24", "28", "32"],
+  answer: 1, // 24 lighter dots
+}
+
+// Puzzle 3: Cube pattern recognition
+const CUBE_PUZZLE = {
+  type: "image" as const,
+  label: "Qual cubo completa o padrao?",
+  imageUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Captura%20de%20Tela%202026-02-18%20a%CC%80s%2010.54.56-li540zFa6ZG45K42071zbTepywm9iN.png",
+  options: ["Cubo 1", "Cubo 2", "Cubo 3", "Cubo 4"],
+  answer: 0, // Cube 1 is correct
+}
+
+// Puzzle 4: Numeric sequence
+const SEQUENCE_PUZZLE = {
+  type: "logic" as const,
+  label: "Qual numero completa a sequencia?",
+  sequence: "2, 6, 12, 20, 30, ?",
+  options: ["36", "40", "42", "44"],
+  answer: 2, // 42 (differences: 4,6,8,10,12)
+}
+
+// Puzzle 5: Word logic
+const WORD_PUZZLE = {
+  type: "logic" as const,
+  label: "Se CIDADE = 36 e NEON = 24, quanto vale LUZ?",
+  sequence: "Cada letra = sua posicao no alfabeto (A=1, B=2...)",
+  options: ["39", "42", "45", "48"],
+  answer: 2, // L=12, U=21, Z=26 -> but trick: we can define rules. Let's use: C=3,I=9,D=4,A=1,D=4,E=5 = 26? Actually let me make the math work better.
+  // Actually: CIDADE letters count * 6 = 6*6=36, NEON = 4*6=24, LUZ = 3*6=18... nah
+  // Better: each letter's position summed: C(3)+I(9)+D(4)+A(1)+D(4)+E(5)=26 not 36
+  // Let's just make it simpler with multiplication: letters * 6: CIDADE=6 letters -> 6*6=36, NEON=4 letters -> 4*6=24, LUZ=3 letters -> 3*6=18 -> but 18 not in options
+  // Let me redefine: CIDADE has 6 letters, value=36 (6x6), NEON has 4 letters, value=24 (4x6). LUZ has 3 letters, value = 3x6 = 18... Let me adjust options
+}
+
+// Re-define puzzles with cleaner logic
+const ALL_PUZZLES = [
+  HOSE_PUZZLE,
+  DOTS_PUZZLE,
+  CUBE_PUZZLE,
   {
-    // Shapes rotate 90deg each cell
-    label: "Qual padrao completa a matriz?",
-    grid: [
-      ["circle", "square", "triangle"],
-      ["square", "triangle", "circle"],
-      ["triangle", "circle", "?"],
-    ],
-    answer: 0, // square
-    options: ["square", "diamond", "circle", "triangle"],
+    type: "logic" as const,
+    label: "Qual numero completa a sequencia?",
+    sequence: "2, 6, 12, 20, 30, ?",
+    options: ["36", "40", "42", "44"],
+    answer: 2, // differences: 4, 6, 8, 10, 12 -> next = 42
   },
   {
-    label: "Qual figura falta?",
-    grid: [
-      ["filled-circle", "half-circle", "empty-circle"],
-      ["filled-square", "half-square", "empty-square"],
-      ["filled-triangle", "half-triangle", "?"],
+    type: "logic" as const,
+    label: "Se todos os A sao B, e alguns B sao C, qual afirmacao e verdadeira?",
+    sequence: "A -> B -> C (parcial)",
+    options: [
+      "Todos os A sao C",
+      "Alguns A podem ser C",
+      "Nenhum A e C",
+      "Todos os C sao A",
     ],
-    answer: 2, // empty-triangle
-    options: ["filled-triangle", "half-triangle", "empty-triangle", "empty-circle"],
-  },
-  {
-    label: "Complete o padrao visual.",
-    grid: [
-      ["1-dot", "2-dots", "3-dots"],
-      ["2-dots", "3-dots", "4-dots"],
-      ["3-dots", "4-dots", "?"],
-    ],
-    answer: 1, // 5-dots
-    options: ["4-dots", "5-dots", "6-dots", "3-dots"],
+    answer: 1, // Alguns A podem ser C
   },
 ]
 
-// Bank B: Visual sequence - what comes next
-const SEQUENCE_BANK = [
-  {
-    label: "O que vem a seguir?",
-    shapes: ["small-circle", "medium-circle", "large-circle", "small-square", "medium-square", "?"],
-    answer: 2, // large-square
-    options: ["small-square", "medium-circle", "large-square", "large-circle"],
-  },
-  {
-    label: "Qual e o proximo?",
-    shapes: ["rotate-0", "rotate-90", "rotate-180", "rotate-270", "?"],
-    answer: 0, // rotate-0 (cycle restarts)
-    options: ["rotate-0", "rotate-90", "rotate-360", "rotate-45"],
-  },
-  {
-    label: "Complete a sequencia.",
-    shapes: ["1-line", "2-lines-cross", "3-lines-star", "?"],
-    answer: 3, // 4-lines
-    options: ["2-lines-cross", "3-lines-star", "1-line", "4-lines"],
-  },
-]
-
-// Bank C: Odd one out
-const ODD_BANK = [
-  {
-    label: "Qual figura e diferente?",
-    items: [
-      { shape: "circle", color: "#06B6D4", size: 40 },
-      { shape: "circle", color: "#06B6D4", size: 40 },
-      { shape: "circle", color: "#06B6D4", size: 40 },
-      { shape: "circle", color: "#EF4444", size: 40 },
-    ],
-    answer: 3,
-  },
-  {
-    label: "Identifique o intruso.",
-    items: [
-      { shape: "square-rotated", color: "#A78BFA", size: 36 },
-      { shape: "square-rotated", color: "#A78BFA", size: 36 },
-      { shape: "square", color: "#A78BFA", size: 36 },
-      { shape: "square-rotated", color: "#A78BFA", size: 36 },
-    ],
-    answer: 2,
-  },
-  {
-    label: "Qual nao pertence?",
-    items: [
-      { shape: "triangle-up", color: "#F59E0B", size: 36 },
-      { shape: "triangle-up", color: "#F59E0B", size: 36 },
-      { shape: "triangle-down", color: "#F59E0B", size: 36 },
-      { shape: "triangle-up", color: "#F59E0B", size: 36 },
-    ],
-    answer: 2,
-  },
-]
-
-// Bank D: Mirror / Symmetry
-const MIRROR_BANK = [
-  {
-    label: "Qual e o reflexo correto?",
-    source: "L-shape",
-    answer: 1,
-    options: ["L-mirror-wrong", "L-mirror-correct", "L-rotated", "L-same"],
-  },
-  {
-    label: "Qual completa a simetria?",
-    source: "half-star",
-    answer: 0,
-    options: ["half-star-mirror", "half-star-rotated", "half-star-flipped", "half-circle"],
-  },
-  {
-    label: "Escolha o espelho.",
-    source: "arrow-right",
-    answer: 2,
-    options: ["arrow-right", "arrow-up", "arrow-left", "arrow-down"],
-  },
-]
-
-// Bank E: Count / Spatial
-const COUNT_BANK = [
-  {
-    label: "Quantos triangulos existem na figura?",
-    visual: "nested-triangles",
-    answer: 2, // 5
-    options: ["3", "4", "5", "6"],
-  },
-  {
-    label: "Quantos quadrados voce ve?",
-    visual: "overlapping-squares",
-    answer: 1, // 5
-    options: ["4", "5", "6", "3"],
-  },
-  {
-    label: "Quantos circulos se sobrepoem?",
-    visual: "venn-circles",
-    answer: 0, // 3
-    options: ["3", "4", "2", "5"],
-  },
-]
-
-const TIME_PER_Q = 20
+const TIME_PER_Q = 25
 const MIN_SCORE = 3
 const TOTAL_QUESTIONS = 5
-
-/* ───── SHAPE RENDERER ───── */
-function ShapeIcon({ shape, size = 32, color = "#06B6D4" }: { shape: string; size?: number; color?: string }) {
-  const s = size
-  const half = s / 2
-
-  switch (shape) {
-    case "circle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={half - 2} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "filled-circle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={half - 2} fill={color} /></svg>
-    case "half-circle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={half - 2} fill="none" stroke={color} strokeWidth="2" /><path d={`M${half},2 A${half - 2},${half - 2} 0 0,1 ${half},${s - 2}`} fill={color} /></svg>
-    case "empty-circle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={half - 2} fill="none" stroke={color} strokeWidth="1" strokeDasharray="3,3" /></svg>
-    case "square":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y="3" width={s - 6} height={s - 6} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "filled-square":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y="3" width={s - 6} height={s - 6} fill={color} /></svg>
-    case "half-square":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y="3" width={s - 6} height={s - 6} fill="none" stroke={color} strokeWidth="2" /><rect x="3" y="3" width={(s - 6) / 2} height={s - 6} fill={color} /></svg>
-    case "empty-square":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y="3" width={s - 6} height={s - 6} fill="none" stroke={color} strokeWidth="1" strokeDasharray="3,3" /></svg>
-    case "triangle":
-    case "triangle-up":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><polygon points={`${half},3 ${s - 3},${s - 3} 3,${s - 3}`} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "filled-triangle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><polygon points={`${half},3 ${s - 3},${s - 3} 3,${s - 3}`} fill={color} /></svg>
-    case "half-triangle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><polygon points={`${half},3 ${s - 3},${s - 3} 3,${s - 3}`} fill="none" stroke={color} strokeWidth="2" /><polygon points={`${half},3 ${half},${s - 3} 3,${s - 3}`} fill={color} /></svg>
-    case "empty-triangle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><polygon points={`${half},3 ${s - 3},${s - 3} 3,${s - 3}`} fill="none" stroke={color} strokeWidth="1" strokeDasharray="3,3" /></svg>
-    case "triangle-down":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><polygon points={`3,3 ${s - 3},3 ${half},${s - 3}`} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "diamond":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><polygon points={`${half},3 ${s - 3},${half} ${half},${s - 3} 3,${half}`} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "square-rotated":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y="3" width={s - 6} height={s - 6} fill="none" stroke={color} strokeWidth="2" transform={`rotate(45,${half},${half})`} /></svg>
-    case "small-circle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={6} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "medium-circle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={10} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "large-circle":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={14} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "small-square":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x={half - 6} y={half - 6} width={12} height={12} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "medium-square":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x={half - 10} y={half - 10} width={20} height={20} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "large-square":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x={half - 14} y={half - 14} width={28} height={28} fill="none" stroke={color} strokeWidth="2" /></svg>
-    case "rotate-0":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y={half - 4} width={s - 6} height="8" fill={color} rx="2" /><circle cx={s - 8} cy={half} r="3" fill={color} /></svg>
-    case "rotate-90":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x={half - 4} y="3" width="8" height={s - 6} fill={color} rx="2" /><circle cx={half} cy={s - 8} r="3" fill={color} /></svg>
-    case "rotate-180":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y={half - 4} width={s - 6} height="8" fill={color} rx="2" /><circle cx={8} cy={half} r="3" fill={color} /></svg>
-    case "rotate-270":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x={half - 4} y="3" width="8" height={s - 6} fill={color} rx="2" /><circle cx={half} cy={8} r="3" fill={color} /></svg>
-    case "rotate-360":
-    case "rotate-45":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><rect x="3" y={half - 4} width={s - 6} height="8" fill={color} rx="2" transform={`rotate(45,${half},${half})`} /><circle cx={half + 8} cy={half - 8} r="3" fill={color} /></svg>
-    case "arrow-right":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><path d={`M3,${half} L${s - 8},${half} L${s - 12},${half - 6} M${s - 8},${half} L${s - 12},${half + 6}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" /></svg>
-    case "arrow-left":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><path d={`M${s - 3},${half} L8,${half} L12,${half - 6} M8,${half} L12,${half + 6}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" /></svg>
-    case "arrow-up":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><path d={`M${half},${s - 3} L${half},8 L${half - 6},12 M${half},8 L${half + 6},12`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" /></svg>
-    case "arrow-down":
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><path d={`M${half},3 L${half},${s - 8} L${half - 6},${s - 12} M${half},${s - 8} L${half + 6},${s - 12}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" /></svg>
-    default:
-      // Dot patterns
-      if (shape.endsWith("-dot") || shape.endsWith("-dots")) {
-        const count = parseInt(shape) || 1
-        const positions: [number, number][] = []
-        for (let i = 0; i < count; i++) {
-          const angle = (i / count) * Math.PI * 2 - Math.PI / 2
-          const r = count === 1 ? 0 : Math.min(10, 4 + count)
-          positions.push([half + r * Math.cos(angle), half + r * Math.sin(angle)])
-        }
-        return (
-          <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
-            {positions.map(([cx, cy], i) => (
-              <circle key={i} cx={cx} cy={cy} r={3} fill={color} />
-            ))}
-          </svg>
-        )
-      }
-      // Mirror shapes
-      if (shape.startsWith("L-") || shape.startsWith("half-star")) {
-        return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><text x={half} y={half + 4} textAnchor="middle" fill={color} fontSize="10">?</text></svg>
-      }
-      return <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}><circle cx={half} cy={half} r={half - 4} fill="none" stroke={color} strokeWidth="1" strokeDasharray="2,2" /></svg>
-  }
-}
-
-/* ───── VISUAL QUESTION COMPONENTS ───── */
-
-function CountVisual({ visual }: { visual: string }) {
-  if (visual === "nested-triangles") {
-    return (
-      <div className="bg-white/5 rounded-2xl p-8 mb-4 border border-cyan-500/10 flex items-center justify-center">
-        <svg width="120" height="110" viewBox="0 0 120 110">
-          <polygon points="60,5 115,105 5,105" fill="none" stroke="#06B6D4" strokeWidth="2" />
-          <polygon points="60,35 90,90 30,90" fill="none" stroke="#06B6D4" strokeWidth="2" />
-          <line x1="35" y1="60" x2="85" y2="60" stroke="#06B6D4" strokeWidth="1.5" />
-          <line x1="60" y1="5" x2="60" y2="105" stroke="#06B6D4" strokeWidth="0.5" opacity="0.3" />
-        </svg>
-      </div>
-    )
-  }
-  if (visual === "overlapping-squares") {
-    return (
-      <div className="bg-white/5 rounded-2xl p-8 mb-4 border border-cyan-500/10 flex items-center justify-center">
-        <svg width="120" height="120" viewBox="0 0 120 120">
-          <rect x="10" y="10" width="50" height="50" fill="none" stroke="#06B6D4" strokeWidth="2" />
-          <rect x="35" y="35" width="50" height="50" fill="none" stroke="#06B6D4" strokeWidth="2" />
-          <rect x="60" y="60" width="50" height="50" fill="none" stroke="#06B6D4" strokeWidth="2" />
-        </svg>
-      </div>
-    )
-  }
-  // venn-circles
-  return (
-    <div className="bg-white/5 rounded-2xl p-8 mb-4 border border-cyan-500/10 flex items-center justify-center">
-      <svg width="140" height="100" viewBox="0 0 140 100">
-        <circle cx="45" cy="50" r="30" fill="none" stroke="#06B6D4" strokeWidth="2" />
-        <circle cx="75" cy="50" r="30" fill="none" stroke="#06B6D4" strokeWidth="2" />
-        <circle cx="95" cy="50" r="30" fill="none" stroke="#06B6D4" strokeWidth="2" />
-      </svg>
-    </div>
-  )
-}
 
 /* ───── MAIN COMPONENT ───── */
 export default function IQTestPage() {
@@ -286,19 +95,7 @@ export default function IQTestPage() {
   const savedData = state.confirmations.c2.data as { iqScore?: number; total?: number; rank?: string } | undefined
   const [isRevisit] = useState(alreadyDone)
 
-  // Build a randomized set of 5 questions from banks
-  const buildQuestions = useCallback(() => {
-    const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
-    return [
-      { type: "matrix" as const, data: pick(MATRIX_BANK) },
-      { type: "sequence" as const, data: pick(SEQUENCE_BANK) },
-      { type: "odd" as const, data: pick(ODD_BANK) },
-      { type: "mirror" as const, data: pick(MIRROR_BANK) },
-      { type: "count" as const, data: pick(COUNT_BANK) },
-    ]
-  }, [])
-
-  const [questions, setQuestions] = useState(() => buildQuestions())
+  const [questions] = useState(() => [...ALL_PUZZLES])
   const [currentQ, setCurrentQ] = useState(0)
   const [score, setScore] = useState(0)
   const [timeLeft, setTimeLeft] = useState(TIME_PER_Q)
@@ -339,14 +136,8 @@ export default function IQTestPage() {
     setShowFeedback(true)
 
     const q = questions[currentQ]
-    let isCorrect = false
-    if (q.type === "odd") {
-      isCorrect = idx === (q.data as typeof ODD_BANK[number]).answer
-    } else {
-      isCorrect = idx === (q.data as { answer: number }).answer
-    }
+    const isCorrect = idx === q.answer
     const newScore = isCorrect ? score + 1 : score
-
     if (isCorrect) setScore(s => s + 1)
 
     setTimeout(() => {
@@ -358,7 +149,6 @@ export default function IQTestPage() {
           setShowFeedback(false)
           setTransitioning(false)
         } else {
-          // Finished all 5 questions
           if (newScore < MIN_SCORE) {
             setShowFailed(true)
             setTransitioning(false)
@@ -370,7 +160,7 @@ export default function IQTestPage() {
           }
         }
       }, 300)
-    }, 1000)
+    }, 1200)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQ, showFeedback, score, questions])
 
@@ -380,7 +170,6 @@ export default function IQTestPage() {
   }
 
   const handleRestart = () => {
-    setQuestions(buildQuestions())
     setCurrentQ(0)
     setScore(0)
     setSelected(null)
@@ -394,7 +183,7 @@ export default function IQTestPage() {
   const finalIQ = useMemo(() => Math.round(80 + ((savedData?.iqScore ?? score) / TOTAL_QUESTIONS) * 55), [savedData, score])
   const finalRank = savedData?.rank || getRank(savedData?.iqScore ?? score)
 
-  /* ─── RESULT SCREEN ─── */
+  /* --- RESULT SCREEN --- */
   if (showResult) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
@@ -433,7 +222,7 @@ export default function IQTestPage() {
     )
   }
 
-  /* ─── FAILED SCREEN (score < 3) ─── */
+  /* --- FAILED SCREEN --- */
   if (showFailed) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
@@ -447,7 +236,7 @@ export default function IQTestPage() {
             </div>
             <h1 className="text-white text-xl font-bold mb-2">Percepcao Insuficiente</h1>
             <p className="text-white/40 text-sm mb-2">Voce acertou {score}/{TOTAL_QUESTIONS}</p>
-            <p className="text-white/30 text-xs mb-8">Minimo necessario: {MIN_SCORE} acertos. Novos exercicios serao gerados.</p>
+            <p className="text-white/30 text-xs mb-8">Minimo necessario: {MIN_SCORE} acertos.</p>
 
             <button type="button" onClick={handleRestart} className="px-8 py-3 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-sm font-medium active:scale-95 transition-transform">
               Tentar Novamente (Tentativa {attempt + 1})
@@ -458,162 +247,19 @@ export default function IQTestPage() {
     )
   }
 
-  /* ─── QUESTION SCREEN ─── */
+  /* --- QUESTION SCREEN --- */
   const q = questions[currentQ]
 
-  const renderQuestion = () => {
-    if (q.type === "matrix") {
-      const data = q.data as typeof MATRIX_BANK[number]
-      return (
-        <>
-          <h2 className="text-white text-lg font-semibold mb-4 text-balance">{data.label}</h2>
-          <div className="bg-white/5 rounded-2xl p-4 mb-4 border border-cyan-500/10">
-            <div className="grid grid-cols-3 gap-3 place-items-center">
-              {data.grid.flat().map((cell, i) => (
-                <div key={i} className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center">
-                  {cell === "?" ? (
-                    <span className="text-cyan-400 text-xl font-bold">?</span>
-                  ) : (
-                    <ShapeIcon shape={cell} size={32} color="#06B6D4" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5 mt-auto mb-8">
-            {data.options.map((opt, i) => renderOptionButton(i, <ShapeIcon shape={opt} size={36} color={getOptionColor(i)} />, data.answer))}
-          </div>
-        </>
-      )
-    }
-
-    if (q.type === "sequence") {
-      const data = q.data as typeof SEQUENCE_BANK[number]
-      return (
-        <>
-          <h2 className="text-white text-lg font-semibold mb-4 text-balance">{data.label}</h2>
-          <div className="bg-white/5 rounded-2xl p-4 mb-4 border border-cyan-500/10">
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              {data.shapes.map((s, i) => (
-                <div key={i} className="w-11 h-11 rounded-lg bg-white/5 flex items-center justify-center">
-                  {s === "?" ? (
-                    <span className="text-cyan-400 text-lg font-bold">?</span>
-                  ) : (
-                    <ShapeIcon shape={s} size={32} color="#06B6D4" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5 mt-auto mb-8">
-            {data.options.map((opt, i) => renderOptionButton(i, <ShapeIcon shape={opt} size={36} color={getOptionColor(i)} />, data.answer))}
-          </div>
-        </>
-      )
-    }
-
-    if (q.type === "odd") {
-      const data = q.data as typeof ODD_BANK[number]
-      return (
-        <>
-          <h2 className="text-white text-lg font-semibold mb-4 text-balance">{data.label}</h2>
-          <div className="grid grid-cols-2 gap-3 mt-auto mb-8">
-            {data.items.map((item, i) => {
-              let bg = "rgba(255,255,255,0.03)"
-              let border = "rgba(255,255,255,0.08)"
-              if (showFeedback) {
-                if (i === data.answer) {
-                  bg = "rgba(34,197,94,0.15)"
-                  border = "#22C55E"
-                } else if (i === selected && i !== data.answer) {
-                  bg = "rgba(239,68,68,0.15)"
-                  border = "#EF4444"
-                }
-              }
-              return (
-                <button key={i} type="button" onClick={() => { if (!showFeedback) handleAnswer(i) }} disabled={showFeedback}
-                  className="h-24 rounded-xl flex items-center justify-center transition-all active:scale-95"
-                  style={{ backgroundColor: bg, border: `1.5px solid ${border}` }}
-                >
-                  <ShapeIcon shape={item.shape} size={item.size} color={item.color} />
-                </button>
-              )
-            })}
-          </div>
-        </>
-      )
-    }
-
-    if (q.type === "mirror") {
-      const data = q.data as typeof MIRROR_BANK[number]
-      return (
-        <>
-          <h2 className="text-white text-lg font-semibold mb-4 text-balance">{data.label}</h2>
-          <div className="bg-white/5 rounded-2xl p-6 mb-4 border border-cyan-500/10 flex items-center justify-center">
-            <ShapeIcon shape={data.source} size={64} color="#06B6D4" />
-          </div>
-          <div className="grid grid-cols-2 gap-2.5 mt-auto mb-8">
-            {data.options.map((opt, i) => renderOptionButton(i, <ShapeIcon shape={opt} size={36} color={getOptionColor(i)} />, data.answer))}
-          </div>
-        </>
-      )
-    }
-
-    if (q.type === "count") {
-      const data = q.data as typeof COUNT_BANK[number]
-      return (
-        <>
-          <h2 className="text-white text-lg font-semibold mb-4 text-balance">{data.label}</h2>
-          <CountVisual visual={data.visual} />
-          <div className="grid grid-cols-2 gap-2.5 mt-auto mb-8">
-            {data.options.map((opt, i) => {
-              let bg = "rgba(255,255,255,0.03)"
-              let border = "rgba(255,255,255,0.08)"
-              let textColor = "rgba(255,255,255,0.8)"
-              if (showFeedback) {
-                if (i === data.answer) { bg = "rgba(34,197,94,0.15)"; border = "#22C55E"; textColor = "#22C55E" }
-                else if (i === selected && i !== data.answer) { bg = "rgba(239,68,68,0.15)"; border = "#EF4444"; textColor = "#EF4444" }
-              }
-              return (
-                <button key={opt} type="button" onClick={() => { if (!showFeedback) handleAnswer(i) }} disabled={showFeedback}
-                  className="py-4 rounded-xl text-center text-lg font-bold transition-all active:scale-95"
-                  style={{ backgroundColor: bg, border: `1.5px solid ${border}`, color: textColor }}
-                >
-                  {opt}
-                </button>
-              )
-            })}
-          </div>
-        </>
-      )
-    }
-
-    return null
-  }
-
-  const getOptionColor = (i: number) => {
-    if (!showFeedback) return "#06B6D4"
-    const correctIdx = (q.data as { answer: number }).answer
-    if (i === correctIdx) return "#22C55E"
-    if (i === selected && i !== correctIdx) return "#EF4444"
-    return "rgba(6,182,212,0.3)"
-  }
-
-  const renderOptionButton = (i: number, content: React.ReactNode, correctIdx: number) => {
-    let bg = "rgba(255,255,255,0.03)"
-    let border = "rgba(255,255,255,0.08)"
+  const getOptionStyle = (i: number) => {
+    let bg = "rgba(255,255,255,0.04)"
+    let border = "rgba(255,255,255,0.10)"
+    let textColor = "rgba(255,255,255,0.85)"
     if (showFeedback) {
-      if (i === correctIdx) { bg = "rgba(34,197,94,0.15)"; border = "#22C55E" }
-      else if (i === selected && i !== correctIdx) { bg = "rgba(239,68,68,0.15)"; border = "#EF4444" }
+      if (i === q.answer) { bg = "rgba(34,197,94,0.15)"; border = "#22C55E"; textColor = "#22C55E" }
+      else if (i === selected && i !== q.answer) { bg = "rgba(239,68,68,0.15)"; border = "#EF4444"; textColor = "#EF4444" }
+      else { bg = "rgba(255,255,255,0.02)"; textColor = "rgba(255,255,255,0.3)" }
     }
-    return (
-      <button key={i} type="button" onClick={() => { if (!showFeedback) handleAnswer(i) }} disabled={showFeedback}
-        className="h-20 rounded-xl flex items-center justify-center transition-all active:scale-95"
-        style={{ backgroundColor: bg, border: `1.5px solid ${border}` }}
-      >
-        {content}
-      </button>
-    )
+    return { backgroundColor: bg, border: `1.5px solid ${border}`, color: textColor }
   }
 
   return (
@@ -657,9 +303,48 @@ export default function IQTestPage() {
             <span className={`text-xs font-mono w-6 text-right ${timeLeft <= 5 ? "text-red-400" : "text-white/40"}`}>{timeLeft}</span>
           </div>
 
-          <p className="text-white/50 text-[11px] uppercase tracking-wider mb-2">Exercicio Visual {currentQ + 1}/{TOTAL_QUESTIONS}</p>
+          <p className="text-white/50 text-[11px] uppercase tracking-wider mb-3">Exercicio {currentQ + 1}/{TOTAL_QUESTIONS}</p>
 
-          {renderQuestion()}
+          {/* Question label */}
+          <h2 className="text-white text-base font-semibold mb-4 text-balance leading-relaxed">{q.label}</h2>
+
+          {/* Image or logic visual */}
+          {q.type === "image" && (
+            <div className="bg-white/5 rounded-2xl mb-4 border border-cyan-500/10 overflow-hidden flex-shrink-0">
+              <Image
+                src={(q as typeof HOSE_PUZZLE).imageUrl}
+                alt={q.label}
+                width={380}
+                height={300}
+                className="w-full h-auto object-contain max-h-[280px]"
+                unoptimized
+              />
+            </div>
+          )}
+
+          {q.type === "logic" && (
+            <div className="bg-white/5 rounded-2xl p-5 mb-4 border border-cyan-500/10 flex items-center justify-center">
+              <p className="text-cyan-400 text-lg font-mono text-center font-bold tracking-wider">
+                {(q as typeof ALL_PUZZLES[3]).sequence}
+              </p>
+            </div>
+          )}
+
+          {/* Options */}
+          <div className="grid grid-cols-2 gap-2.5 mt-auto mb-8">
+            {q.options.map((opt, i) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => { if (!showFeedback) handleAnswer(i) }}
+                disabled={showFeedback}
+                className="py-4 px-3 rounded-xl text-center text-sm font-semibold transition-all active:scale-95"
+                style={getOptionStyle(i)}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

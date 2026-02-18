@@ -411,12 +411,13 @@ export default function CidadeNeonExperience() {
     setGroupInteractions(0)
 
     if (confirmationsDone === 1) {
-      // Phase 2: Real feelings are rare
+      // Phase 2: Talk about cidade neon, no redirect
       addBotMessages([
-        { id: 1, text: "voltou! e ai como foi?", sender: "D-Bee", time: currentTime },
-        { id: 2, text: "mano hoje em dia sentimento real e a coisa mais rara que existe", sender: "Nizzy", time: currentTime },
-        { id: 3, text: "por isso a gente valoriza muito isso aqui", sender: "Alohan", time: currentTime },
-        { id: 4, text: "tipo, qual foi a ultima vez que voce sentiu algo de verdade ouvindo uma musica?", sender: "D-Bee", time: currentTime },
+        { id: 1, text: "eai voltou!", sender: "D-Bee", time: currentTime },
+        { id: 2, text: "mano a cidade neon ta cada vez mais viva", sender: "Nizzy", time: currentTime },
+        { id: 3, text: "tipo, a gente tava falando aqui sobre como a musica conecta as pessoas nesse lugar", sender: "Alohan", time: currentTime },
+        { id: 4, text: "e que nem todo mundo que chega aqui consegue sentir de verdade sabe", sender: "D-Bee", time: currentTime },
+        { id: 5, text: "por isso existe o segundo teste. pra gente ver se voce enxerga alem do obvio", sender: "Nizzy", time: currentTime },
       ], () => { setPhase("whatsapp-group") })
     } else if (confirmationsDone === 2) {
       // Phase 3: Final test - prove you can feel
@@ -497,37 +498,50 @@ export default function CidadeNeonExperience() {
   /* ─── (Old in-page confirmation handlers removed - now separate pages) ── */
 
   /* ─── MISSIONS PER CONFIRMATION STAGE ────── */
+  const [missionsTab, setMissionsTab] = useState<"active" | "completed">("active")
+
   const getMissions = useCallback(() => {
     const cc = gameFunnelState.confirmationCount
-    const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = []
+    const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean }> = []
 
     if (cc === 0) {
       missions.push(
-        { id: "music-test", app: "Cidade Neon", icon: "spotify", color: "#1DB954", title: "Teste das Musicas", body: "Confirmacao 1/3: Conecte musica e emocao", action: "/confirmacao/1-arquetipos" },
-        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: Voce chegou.", action: "/whatsapp" },
+        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: manda uma mensagem ai", action: "/whatsapp" },
         { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
       )
     } else if (cc === 1) {
       missions.push(
-        { id: "iq-test", app: "Cidade Neon", icon: "untitled", color: "#8B5CF6", title: "Teste de QI", body: "Confirmacao 2/3: Prove sua inteligencia", action: "/confirmacao/3-desbloqueio" },
-        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Nizzy: Bora pro proximo teste!", action: "/whatsapp" },
+        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "o grupo ta te chamando de volta", action: "/whatsapp" },
+        { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy enviou uma recompensa!", body: "Instrumental Cidade Neon desbloqueado", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
       )
     } else if (cc === 2) {
       missions.push(
-        { id: "aura-test", app: "AURA", icon: "aura", color: "#A78BFA", title: "Descubra sua AURA", body: "Confirmacao 3/3: Sua essencia", action: "aura" },
-        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Alohan: Ultima confirmacao!", action: "/whatsapp" },
+        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "teste final te espera no grupo", action: "/whatsapp" },
+        { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee enviou uma recompensa!", body: "Suburbio Xenom desbloqueado", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
       )
     } else {
       missions.push(
+        { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan enviou uma recompensa!", body: "Live Neon desbloqueado", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
-        { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Eleve sua AURA com o Album", action: "/final/sala-branca" },
-        { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvi de novo", action: "/spotify/auto-chuva" },
+        { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Envie sua AURA para fazer parte da rede", action: "aura" },
+        { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvir de novo", action: "/spotify/auto-chuva" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
       )
     }
 
     return missions.filter(m => !completedMissions.includes(m.id))
   }, [gameFunnelState.confirmationCount, completedMissions])
+
+  const getCompletedMissions = useCallback(() => {
+    const all: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean }> = [
+      { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "Grupo desbloqueado", action: "/whatsapp" },
+      { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Musica ouvida", action: "/spotify/auto-chuva" },
+      { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Recompensa de Nizzy", body: "Instrumental Cidade Neon", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
+      { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "Recompensa de D-Bee", body: "Suburbio Xenom", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
+      { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Recompensa de Alohan", body: "Live Neon", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+    ]
+    return all.filter(m => completedMissions.includes(m.id))
+  }, [completedMissions])
 
   /* ─── BANNER NOTIFICATIONS (5s each, then bounces to Missoes) ── */
   const [missionsBounce, setMissionsBounce] = useState(false)
@@ -947,11 +961,22 @@ export default function CidadeNeonExperience() {
             )}
             <div ref={messagesEndRef} />
           </div>
-          {/* Confirmation button - positioned ABOVE input */}
+          {/* Confirmation notification - appears as WhatsApp-style notification banner */}
           {showConfirmBtn && confirmationsDone < 3 && (
-            <div className="px-4 pb-2">
-              <button type="button" onClick={handleConfirmation} className="w-full bg-gradient-to-r from-[#6B7FD7] to-[#4ECDC4] text-white font-bold py-3 rounded-xl text-sm active:scale-98 transition-transform">
-                {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE AURA (3/3)"}
+            <div className="px-3 pb-2">
+              <button type="button" onClick={handleConfirmation} className="w-full animate-notif-slide-up">
+                <div className="bg-[#182229] rounded-xl p-3 flex items-center gap-3 border border-[#00A884]/30 shadow-lg">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[#00A884] font-bold text-xs uppercase tracking-wider">
+                      {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE AURA (3/3)"}
+                    </p>
+                    <p className="text-[#8696A0] text-[11px] mt-0.5">Toque para iniciar</p>
+                  </div>
+                  <svg className="w-5 h-5 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                </div>
               </button>
             </div>
           )}
@@ -1205,13 +1230,18 @@ export default function CidadeNeonExperience() {
             onClick={() => handleMissionClick(bannerNotif)}
             className="absolute top-[52px] left-3 right-3 z-40 animate-notif-slide"
           >
-            <div className="bg-[#1c1c1e]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl border border-white/5">
-              <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: bannerNotif.color }}>
+            <div className={`backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl ${bannerNotif.isReward ? "bg-gradient-to-r from-[#FFD700]/20 via-[#1c1c1e]/95 to-[#1c1c1e]/95 border border-[#FFD700]/30" : "bg-[#1c1c1e]/95 border border-white/5"}`}>
+              <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: bannerNotif.color }}>
                 {getIconSvg(bannerNotif.icon)}
+                {bannerNotif.isReward && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FFD700] rounded-full flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  </div>
+                )}
               </div>
               <div className="flex-1 text-left min-w-0">
                 <div className="flex items-center justify-between">
-                  <p className="text-white font-semibold text-sm">{bannerNotif.app}</p>
+                  <p className={`font-semibold text-sm ${bannerNotif.isReward ? "text-[#FFD700]" : "text-white"}`}>{bannerNotif.isReward ? "RECOMPENSA" : bannerNotif.app}</p>
                   <span className="text-white/40 text-xs">agora</span>
                 </div>
                 <p className="text-white/90 font-medium text-xs">{bannerNotif.title}</p>
@@ -1227,43 +1257,99 @@ export default function CidadeNeonExperience() {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
             <div className="relative z-10 flex flex-col h-full">
               {/* Header */}
-              <div className="pt-[56px] px-5 pb-3">
+              <div className="pt-[56px] px-5 pb-2">
                 <h2 className="text-white text-lg font-bold">Central de Missoes</h2>
                 <p className="text-white/40 text-xs mt-0.5">{gameFunnelState.confirmationCount}/3 confirmacoes completas</p>
               </div>
 
+              {/* Tabs */}
+              <div className="flex px-5 gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setMissionsTab("active")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${missionsTab === "active" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}
+                >
+                  Pendentes {activeMissions.length > 0 && `(${activeMissions.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMissionsTab("completed")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${missionsTab === "completed" ? "bg-white/15 text-white" : "bg-white/5 text-white/40"}`}
+                >
+                  Completas {getCompletedMissions().length > 0 && `(${getCompletedMissions().length})`}
+                </button>
+              </div>
+
               {/* Mission List */}
               <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-24">
-                {activeMissions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center pt-20">
-                    <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-3">
-                      <svg className="w-7 h-7 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </div>
-                    <p className="text-white/30 text-sm">Nenhuma missao pendente</p>
-                  </div>
-                ) : (
-                  activeMissions.map((mission) => (
-                    <button
-                      key={mission.id}
-                      type="button"
-                      onClick={() => { setShowNotifCenter(false); handleMissionClick(mission) }}
-                      className="w-full text-left"
-                    >
-                      <div className="bg-white/5 hover:bg-white/10 active:bg-white/15 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 transition-colors border border-white/5">
-                        <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: mission.color }}>
-                          {getIconSvg(mission.icon)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-0.5">
-                            <p className="text-white font-semibold text-sm">{mission.app}</p>
-                            <svg className="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                          </div>
-                          <p className="text-white/80 text-xs font-medium">{mission.title}</p>
-                          <p className="text-white/40 text-xs truncate">{mission.body}</p>
-                        </div>
+                {missionsTab === "active" ? (
+                  activeMissions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center pt-20">
+                      <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                        <svg className="w-7 h-7 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       </div>
-                    </button>
-                  ))
+                      <p className="text-white/30 text-sm">Nenhuma missao pendente</p>
+                    </div>
+                  ) : (
+                    activeMissions.map((mission) => (
+                      <button
+                        key={mission.id}
+                        type="button"
+                        onClick={() => { setShowNotifCenter(false); handleMissionClick(mission) }}
+                        className="w-full text-left"
+                      >
+                        <div className={`backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 transition-colors ${mission.isReward ? "bg-[#FFD700]/10 border border-[#FFD700]/20 hover:bg-[#FFD700]/15" : "bg-white/5 border border-white/5 hover:bg-white/10"}`}>
+                          <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: mission.color }}>
+                            {getIconSvg(mission.icon)}
+                            {mission.isReward && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FFD700] rounded-full flex items-center justify-center">
+                                <svg className="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <p className={`font-semibold text-sm ${mission.isReward ? "text-[#FFD700]" : "text-white"}`}>{mission.isReward ? "RECOMPENSA" : mission.app}</p>
+                              <svg className="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            </div>
+                            <p className="text-white/80 text-xs font-medium">{mission.title}</p>
+                            <p className="text-white/40 text-xs truncate">{mission.body}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )
+                ) : (
+                  getCompletedMissions().length === 0 ? (
+                    <div className="flex flex-col items-center justify-center pt-20">
+                      <p className="text-white/30 text-sm">Nenhuma missao completa ainda</p>
+                    </div>
+                  ) : (
+                    getCompletedMissions().map((mission) => (
+                      <button
+                        key={mission.id}
+                        type="button"
+                        onClick={() => {
+                          if (mission.action.startsWith("http")) window.open(mission.action, "_blank")
+                          else { setShowNotifCenter(false); window.location.href = mission.action }
+                        }}
+                        className="w-full text-left opacity-60"
+                      >
+                        <div className="bg-white/3 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 border border-white/3">
+                          <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: mission.color }}>
+                            {getIconSvg(mission.icon)}
+                            <div className="absolute inset-0 rounded-[12px] bg-black/30 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white/60 font-semibold text-sm">{mission.title}</p>
+                            <p className="text-white/30 text-xs">{mission.body}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )
                 )}
               </div>
 
@@ -1345,6 +1431,8 @@ export default function CidadeNeonExperience() {
         .animate-notif-slide{animation:notif-slide .35s cubic-bezier(0.22,1,0.36,1) forwards}
         @keyframes missions-bounce { 0%{transform:translateY(0)} 30%{transform:translateY(-8px)} 50%{transform:translateY(2px)} 70%{transform:translateY(-3px)} 100%{transform:translateY(0)} }
         .animate-missions-bounce{animation:missions-bounce .5s ease-out}
+        @keyframes notif-slide-up { 0%{transform:translateY(20px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+        .animate-notif-slide-up{animation:notif-slide-up .4s cubic-bezier(0.22,1,0.36,1) forwards}
       `}</style>
     </div>
   )
