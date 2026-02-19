@@ -197,9 +197,9 @@ export default function SpotifyAutoPage() {
       {/* mini player */}
       {audio.currentTrack && (
         <div className="absolute bottom-0 left-0 right-0 z-20">
-          <button type="button" onClick={() => setView("now-playing")} className="w-full bg-[#282828] border-t border-white/5 px-4 py-2 flex items-center gap-3">
+          <div role="button" tabIndex={0} onClick={() => setView("now-playing")} onKeyDown={e => { if (e.key === "Enter") setView("now-playing") }} className="w-full bg-[#282828] border-t border-white/5 px-4 py-2 flex items-center gap-3 cursor-pointer">
             <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
-              <Image src="/images/album-cover.jpg" alt="" width={40} height={40} className="w-full h-full object-cover" />
+              <Image src="/images/album-cover.jpg" alt="" width={40} height={40} loading="eager" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-white text-sm font-medium truncate">{audio.currentTrack.title ?? "Bloqueada"}</p>
@@ -211,7 +211,7 @@ export default function SpotifyAutoPage() {
                 : <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               }
             </button>
-          </button>
+          </div>
         </div>
       )}
     </div>
