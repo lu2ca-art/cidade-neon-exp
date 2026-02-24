@@ -391,6 +391,8 @@ function CidadeNeonExperience() {
   /* ─── HACKER LOGIC ─────────────────────────── */
   useEffect(() => {
     if (phase !== "hacker") return
+    // Stop disconnect tone once hacker phase begins
+    if (disconnectRef.current) { disconnectRef.current.pause(); disconnectRef.current = null }
     const t = setTimeout(() => { setMatrixFading(true); setTimeout(() => setShowMatrix(false), 1500) }, 2000)
     return () => clearTimeout(t)
   }, [phase])
