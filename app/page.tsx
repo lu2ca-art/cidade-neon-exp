@@ -245,6 +245,8 @@ function CidadeNeonExperience() {
   const [isSpeakerOn, setIsSpeakerOn] = useState(false)
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const callAudioRef = useRef<HTMLAudioElement | null>(null)
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null)
+  const disconnectRef = useRef<HTMLAudioElement | null>(null)
 
   /* ── Hacker ────────── */
   const [hackerLines, setHackerLines] = useState<string[]>([])
@@ -332,6 +334,29 @@ function CidadeNeonExperience() {
     return `${m}:${s.toString().padStart(2, "0")}`
   }
 
+  /* ─── RINGTONE: plays during incoming-call, stops on accept/phase change ─── */
+  useEffect(() => {
+    if (phase !== "incoming-call") {
+      if (ringtoneRef.current) { ringtoneRef.current.pause(); ringtoneRef.current = null }
+      return
+    }
+    const ring = new Audio("/audio/iphone-ringtone.mp3")
+    ring.loop = true
+    ring.volume = 0.7
+    ring.play().catch(() => {})
+    ringtoneRef.current = ring
+    return () => { ring.pause(); ringtoneRef.current = null }
+  }, [phase])
+
+  /* ─── DISCONNECT SOUND helper ─── */
+  const playDisconnect = useCallback(() => {
+    if (disconnectRef.current) { disconnectRef.current.pause() }
+    const snd = new Audio("/audio/phone-disconnect.mp3")
+    snd.volume = 0.8
+    snd.play().catch(() => {})
+    disconnectRef.current = snd
+  }, [])
+
   /* ─── CALL LOGIC: 19s timer + Upset Girl audio ─── */
   useEffect(() => {
     if (phase !== "active-call") return
@@ -348,7 +373,9 @@ function CidadeNeonExperience() {
         if (d >= 19) {
           if (callTimerRef.current) clearInterval(callTimerRef.current)
           if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null }
-          setPhase("hacker")
+          playDisconnect()
+          // Short delay so user hears the disconnect tone before transition
+          setTimeout(() => setPhase("hacker"), 2500)
           return d
         }
         return d + 1
@@ -888,7 +915,7 @@ function CidadeNeonExperience() {
             </div>
             {/* End call */}
             <div className="flex justify-center">
-              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); setPhase("hacker") }} className="w-[72px] h-[72px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
+              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); playDisconnect(); setTimeout(() => setPhase("hacker"), 2500) }} className="w-[72px] h-[72px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
                 <svg className="w-9 h-9 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
               </button>
             </div>
