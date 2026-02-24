@@ -156,7 +156,7 @@ function loadMessages(): Message[] {
 
 export default function WhatsAppGrupoPage() {
   const router = useRouter()
-  const { state, updateCinematicStep } = useGameFunnel()
+  const { state, setState, updateCinematicStep } = useGameFunnel()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
   const lastProcessedCC = useRef<number>(-1)
@@ -393,7 +393,7 @@ export default function WhatsAppGrupoPage() {
     else if (cc === 1) router.push("/confirmacao/3-desbloqueio")
     else if (cc === 2) {
       // Set flag to open AURA directly on home page, then navigate
-      state.setState({ shouldOpenAuraDirectly: true })
+      setState({ shouldOpenAuraDirectly: true })
       router.push("/")
     }
   }
