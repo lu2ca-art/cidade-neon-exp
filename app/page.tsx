@@ -855,71 +855,71 @@ function CidadeNeonExperience() {
           </div>
 
           {/* Caller info */}
-          <div className="flex-1 flex flex-col items-center justify-start pt-8">
-            <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4">
-              <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={120} height={120} className="w-full h-full object-cover" priority />
+          <div className="flex-1 flex flex-col items-center justify-start pt-4">
+            <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-3">
+              <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={100} height={100} className="w-full h-full object-cover" priority />
             </div>
-            <h1 className="text-white text-[32px] font-semibold mb-1">D-Bee</h1>
-            <p className="text-[#34C759] text-[20px] font-light tabular-nums">{formatTime(callDuration)}</p>
+            <h1 className="text-white text-[28px] font-semibold mb-1">D-Bee</h1>
+            <p className="text-[#34C759] text-[18px] font-light tabular-nums">{formatTime(callDuration)}</p>
 
             {/* Audio wave */}
-            <div className="flex items-end gap-[3px] mt-8 h-6">
+            <div className="flex items-end gap-[2px] mt-6 h-5">
               {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((h, i) => (
-                <div key={i} className="w-[3px] rounded-full bg-[#34C759]" style={{ height: `${h * 4}px`, animationName: "call-eq", animationDuration: `${0.4 + Math.random() * 0.3}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
+                <div key={i} className="w-[2px] rounded-full bg-[#34C759]" style={{ height: `${h * 3}px`, animationName: "call-eq", animationDuration: `${0.4 + Math.random() * 0.3}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
               ))}
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="px-6 pb-10">
-            <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="px-4 pb-6">
+            <div className="grid grid-cols-3 gap-2 mb-6">
               {/* Mute */}
-              <button type="button" onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-2">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isMuted ? "bg-white" : "bg-[#48484A]"}`}>
-                  <svg className={`w-7 h-7 ${isMuted ? "text-black" : "text-white"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z" /></svg>
+              <button type="button" onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-1">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isMuted ? "bg-white" : "bg-[#48484A]"}`}>
+                  <svg className={`w-5 h-5 ${isMuted ? "text-black" : "text-white"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z" /></svg>
                 </div>
-                <span className="text-white text-[11px]">mudo</span>
+                <span className="text-white text-[9px]">mudo</span>
               </button>
               {/* Keypad */}
-              <button type="button" className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center">
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 19c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM6 1c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12-8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-6 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
+              <button type="button" className="flex flex-col items-center gap-1">
+                <div className="w-12 h-12 rounded-full bg-[#48484A] flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 19c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM6 1c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12-8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-6 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                 </div>
-                <span className="text-white text-[11px]">teclado</span>
+                <span className="text-white text-[9px]">teclado</span>
               </button>
               {/* Speaker */}
-              <button type="button" onClick={() => setIsSpeakerOn(!isSpeakerOn)} className="flex flex-col items-center gap-2">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isSpeakerOn ? "bg-white" : "bg-[#48484A]"}`}>
-                  <svg className={`w-7 h-7 ${isSpeakerOn ? "text-black" : "text-white"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
+              <button type="button" onClick={() => setIsSpeakerOn(!isSpeakerOn)} className="flex flex-col items-center gap-1">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSpeakerOn ? "bg-white" : "bg-[#48484A]"}`}>
+                  <svg className={`w-5 h-5 ${isSpeakerOn ? "text-black" : "text-white"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
                 </div>
-                <span className="text-white text-[11px]">alto-falante</span>
+                <span className="text-white text-[9px]">alto-falante</span>
               </button>
               {/* Add call */}
-              <button type="button" className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" strokeLinecap="round"/></svg>
+              <button type="button" className="flex flex-col items-center gap-1">
+                <div className="w-12 h-12 rounded-full bg-[#48484A] flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" strokeLinecap="round"/></svg>
                 </div>
-                <span className="text-white text-[11px]">adicionar</span>
+                <span className="text-white text-[9px]">adicionar</span>
               </button>
               {/* FaceTime */}
-              <button type="button" className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center">
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+              <button type="button" className="flex flex-col items-center gap-1">
+                <div className="w-12 h-12 rounded-full bg-[#48484A] flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
                 </div>
-                <span className="text-white text-[11px]">FaceTime</span>
+                <span className="text-white text-[9px]">FaceTime</span>
               </button>
               {/* Contacts */}
-              <button type="button" className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 rounded-full bg-[#48484A] flex items-center justify-center">
-                  <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <button type="button" className="flex flex-col items-center gap-1">
+                <div className="w-12 h-12 rounded-full bg-[#48484A] flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                 </div>
-                <span className="text-white text-[11px]">contatos</span>
+                <span className="text-white text-[9px]">contatos</span>
               </button>
             </div>
             {/* End call */}
             <div className="flex justify-center">
-              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); playDisconnect(); setTimeout(() => setPhase("hacker"), 2500) }} className="w-[72px] h-[72px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
-                <svg className="w-9 h-9 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
+              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); playDisconnect(); setTimeout(() => setPhase("hacker"), 2500) }} className="w-[60px] h-[60px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
+                <svg className="w-7 h-7 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
               </button>
             </div>
           </div>
