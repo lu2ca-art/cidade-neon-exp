@@ -1300,8 +1300,17 @@ function CidadeNeonExperience() {
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
-        {/* iPhone Notch - Apple style: floating pill, content behind sides */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+        {/* iPhone Notch or Spotify marquee */}
+        {globalAudio.playing ? (
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[280px] h-[34px] bg-black/80 backdrop-blur rounded-b-[18px] flex items-center overflow-hidden px-2">
+            <div className="flex items-center gap-1 whitespace-nowrap animate-spotify-scroll">
+              <svg className="w-3 h-3 text-[#1DB954] flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.521 17.34c-.24.359-.659.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.08-.418.122-.779-.179-.899-.599-.12-.42.061-.799.48-.918 4.503-1.086 8.284-.722 11.4 1.258.42.257.86.076 1.08-.342.21-.423.052-.820-.391-1.04z"/></svg>
+              <span className="text-white text-xs font-medium text-[#1DB954]">{globalAudio.currentTrack.title || "CHUVA"}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
+        )}
 
         {/* Status bar area */}
         <div className="relative z-20 h-[50px] flex items-end justify-between px-6 pb-1 text-white text-xs">
@@ -1558,6 +1567,8 @@ function CidadeNeonExperience() {
         .animate-missions-bounce{animation:missions-bounce .5s ease-out}
         @keyframes notif-slide-up { 0%{transform:translateY(20px);opacity:0} 100%{transform:translateY(0);opacity:1} }
         .animate-notif-slide-up{animation:notif-slide-up .4s cubic-bezier(0.22,1,0.36,1) forwards}
+        @keyframes spotify-scroll { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
+        .animate-spotify-scroll{animation:spotify-scroll 8s linear infinite}
       `}</style>
     </div>
   )
