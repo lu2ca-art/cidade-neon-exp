@@ -22,11 +22,12 @@ export default function SpotifyAutoPage() {
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
 
-  // Auto-play CHUVA (track index 8 = position 9) on mount if nothing is playing
+  // Auto-play CHUVA (track index 8 = position 9) on mount only if nothing is playing
   useEffect(() => {
     if (!audio.playing && audio.elapsed === 0) {
       audio.play(8)
     }
+    // If already playing, just let it continue - don't restart
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show WhatsApp notification at 13 seconds on first visit

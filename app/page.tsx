@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react"
 import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
@@ -199,6 +200,7 @@ export default function CidadeNeonWrapper() {
 
 function CidadeNeonExperience() {
   const { state: gameFunnelState, completeConfirmation, resetAll } = useGameFunnel()
+  const globalAudio = useAudioPlayer()
   const searchParams = useSearchParams()
   
   // Determine initial phase based on GameFunnel state
@@ -220,6 +222,13 @@ function CidadeNeonExperience() {
 
   /* ── Phase ────────── */
   const [phase, setPhase] = useState<Phase>(getInitialPhase)
+
+  // Pause Spotify when entering phases that have their own audio
+  useEffect(() => {
+    if (phase === "active-call" || phase === "incoming-call" || phase === "aura-login") {
+      globalAudio.pause()
+    }
+  }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open AURA when redirected from WhatsApp grupo 3rd confirmation
   useEffect(() => {

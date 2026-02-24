@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 
 interface Connection {
   music: string
@@ -29,6 +30,7 @@ const WORD_SETS: Record<string, string[]> = {
 export default function Confirmacao2Page() {
   const router = useRouter()
   const { completeConfirmation, updateCinematicStep, state } = useGameFunnel()
+  const globalAudio = useAudioPlayer()
   const audioRef = useRef<HTMLAudioElement>(null)
   
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
@@ -39,7 +41,8 @@ export default function Confirmacao2Page() {
 
   useEffect(() => {
     updateCinematicStep("confirmation-2")
-  }, [updateCinematicStep])
+    globalAudio.pause()
+  }, [updateCinematicStep]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // If already completed, show result
   useEffect(() => {
