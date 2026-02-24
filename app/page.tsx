@@ -16,6 +16,7 @@ type Phase =
   | "phone-home"
   | "whatsapp-group"
   | "post-confirm-group"
+  | "aura-splash"
   | "aura-login"
 
 interface Msg {
@@ -225,7 +226,7 @@ function CidadeNeonExperience() {
 
   // Pause Spotify when entering phases that have their own audio
   useEffect(() => {
-    if (phase === "active-call" || phase === "incoming-call" || phase === "aura-login") {
+    if (phase === "active-call" || phase === "incoming-call") {
       globalAudio.pause()
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -233,8 +234,7 @@ function CidadeNeonExperience() {
   // Auto-open AURA when redirected from WhatsApp grupo 3rd confirmation
   useEffect(() => {
     if (gameFunnelState.shouldOpenAuraDirectly) {
-      setPhase("aura-login")
-      // Clear the flag after using it
+      setPhase("aura-splash")
       gameFunnelState.setState({ shouldOpenAuraDirectly: false })
     }
   }, [gameFunnelState.shouldOpenAuraDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -679,7 +679,7 @@ function CidadeNeonExperience() {
     }
     setBannerNotif(null)
     if (mission.action === "aura") {
-      setPhase("aura-login")
+      setPhase("aura-splash")
     } else if (mission.action.startsWith("http")) {
       window.open(mission.action, "_blank")
     } else {
@@ -1083,6 +1083,51 @@ function CidadeNeonExperience() {
   }
 
   /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
+
+  /* ─── RENDER: AURA SPLASH ───────────────────────────── */
+  if (phase === "aura-splash") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black overflow-hidden">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-black">
+          {/* Background glow layers */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(167,139,250,0.18) 0%, transparent 70%)" }} />
+            <div className="absolute bottom-0 left-0 right-0 h-64" style={{ background: "linear-gradient(to top, rgba(167,139,250,0.08), transparent)" }} />
+          </div>
+
+          {/* Center content */}
+          <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-10 px-10">
+            {/* AURA wordmark */}
+            <div className="flex flex-col items-center gap-3">
+              <h1
+                className="text-white font-black tracking-[0.35em] select-none"
+                style={{ fontSize: "clamp(56px, 18vw, 72px)", fontFamily: "system-ui, -apple-system, sans-serif", textShadow: "0 0 60px rgba(167,139,250,0.5), 0 0 120px rgba(167,139,250,0.2)" }}
+              >
+                AURA
+              </h1>
+              <div className="w-12 h-[1px] bg-white/20" />
+              <p className="text-white/30 text-xs tracking-[0.25em] uppercase">Cidade Neon</p>
+            </div>
+
+            {/* Enter button */}
+            <button
+              type="button"
+              onClick={() => setPhase("aura-login")}
+              className="w-full py-4 rounded-sm bg-[#A78BFA] text-white font-semibold tracking-widest uppercase text-sm active:scale-[0.98] transition-transform"
+              style={{ letterSpacing: "0.2em" }}
+            >
+              ENTRAR
+            </button>
+          </div>
+
+          {/* Bottom back */}
+          <button type="button" onClick={() => setPhase("phone-home")} className="relative z-10 py-6 text-white/15 text-xs text-center tracking-widest uppercase">
+            Voltar
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   /* ─── RENDER: AURA ───────────────────────────────── */
   const auraAlreadyDone = gameFunnelState.confirmations.c3.done
