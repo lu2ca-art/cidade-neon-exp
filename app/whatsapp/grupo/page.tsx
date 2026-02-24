@@ -391,7 +391,11 @@ export default function WhatsAppGrupoPage() {
     const cc = state.confirmationCount
     if (cc === 0) router.push("/confirmacao/1-arquetipos")
     else if (cc === 1) router.push("/confirmacao/3-desbloqueio")
-    else if (cc === 2) router.push("/?openAura=1")  // Goes directly to AURA test
+    else if (cc === 2) {
+      // Set flag to open AURA directly on home page, then navigate
+      state.setState({ shouldOpenAuraDirectly: true })
+      router.push("/")
+    }
   }
 
   const cc = state.confirmationCount

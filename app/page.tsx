@@ -232,11 +232,12 @@ function CidadeNeonExperience() {
 
   // Auto-open AURA when redirected from WhatsApp grupo 3rd confirmation
   useEffect(() => {
-    if (searchParams.get("openAura") === "1" && phase === "phone-home") {
+    if (gameFunnelState.shouldOpenAuraDirectly) {
       setPhase("aura-login")
-      window.history.replaceState({}, "", "/")
+      // Clear the flag after using it
+      gameFunnelState.setState({ shouldOpenAuraDirectly: false })
     }
-  }, [searchParams, phase])
+  }, [gameFunnelState.shouldOpenAuraDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Call ───────���── */
   const [callState, setCallState] = useState<"ringing" | "dismissed" | "callback">("ringing")
