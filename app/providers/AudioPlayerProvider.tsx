@@ -48,28 +48,27 @@ export function useAudioPlayer() {
   return ctx
 }
 
+// Module-level singleton — survives React re-renders and page navigations
+// Only created once in the browser, never on the server
+let _audioEl: HTMLAudioElement | null = null
+let _trackIdx = 0
+
+function getAudioEl(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null
+  if (!_audioEl) {
+    _audioEl = new Audio()
+    _audioEl.volume = 0.8
+    _audioEl.preload = "auto"
+  }
+  return _audioEl
+}
+
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
-  const [trackIdx, setTrackIdx] = useState(0)
+  const [trackIdx, setTrackIdx] = useState(_trackIdx)
   const [playing, setPlaying] = useState(false)
   const [elapsed, setElapsed] = useState(0)
 
-  // Single persistent audio element — never recreated, never removed from memory
-  const audioEl = useRef<HTMLAudioElement | null>(null)
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const trackIdxRef = useRef(0)
-
-  // Create the audio element once on the client
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const el = new Audio()
-    el.volume = 0.8
-    el.preload = "auto"
-    audioEl.current = el
-    return () => {
-      el.pause()
-      el.src = ""
-    }
-  }, [])
 
   const stopTick = useCallback(() => {
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null }
@@ -78,86 +77,111 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const startTick = useCallback(() => {
     stopTick()
     tickRef.current = setInterval(() => {
-      if (audioEl.current) setElapsed(Math.floor(audioEl.current.currentTime))
+      const el = getAudioEl()
+      if (el) setElapsed(Math.floor(el.currentTime))
     }, 250)
   }, [stopTick])
 
-  // Attach ended handler whenever trackIdx changes
+  // Sync playing state from singleton on mount (handles back-navigation)
   useEffect(() => {
-    const el = audioEl.current
+    const el = getAudioEl()
     if (!el) return
+    if (!el.paused) {
+      setPlaying(true)
+      setTrackIdx(_trackIdx)
+      setElapsed(Math.floor(el.currentTime))
+      startTick()
+    }
+  }, [startTick])
+
+  // Attach ended handler on mount, clean up on unmount
+  useEffect(() => {
+    const el = getAudioEl()
+    if (!el) return
+
     const handleEnded = () => {
       stopTick()
       setPlaying(false)
       // Auto-advance to next playable track
-      const nextIdx = ALBUM_TRACKS.findIndex((t, i) => i > trackIdxRef.current && t.playable)
+      const nextIdx = ALBUM_TRACKS.findIndex((t, i) => i > _trackIdx && t.playable)
       if (nextIdx >= 0) {
         const next = ALBUM_TRACKS[nextIdx]
         if (next?.audioUrl) {
           el.src = next.audioUrl
           el.currentTime = 0
-          trackIdxRef.current = nextIdx
+          _trackIdx = nextIdx
           setTrackIdx(nextIdx)
           setElapsed(0)
           el.play().then(() => { setPlaying(true); startTick() }).catch(() => {})
         }
       }
     }
+
     el.addEventListener("ended", handleEnded)
-    return () => el.removeEventListener("ended", handleEnded)
+    return () => {
+      el.removeEventListener("ended", handleEnded)
+      stopTick()
+    }
   }, [startTick, stopTick])
 
   const play = useCallback((index: number) => {
     const track = ALBUM_TRACKS[index]
     if (!track?.playable || !track.audioUrl) return
-    const el = audioEl.current
+    const el = getAudioEl()
     if (!el) return
 
     stopTick()
-    el.src = track.audioUrl
-    el.currentTime = 0
-    trackIdxRef.current = index
+    // Only change src if switching to a different track
+    if (_trackIdx !== index || el.src !== track.audioUrl) {
+      el.src = track.audioUrl
+      el.currentTime = 0
+    }
+    _trackIdx = index
     setTrackIdx(index)
-    setElapsed(0)
+    setElapsed(Math.floor(el.currentTime))
     el.play().then(() => { setPlaying(true); startTick() }).catch(() => {})
   }, [startTick, stopTick])
 
   const pause = useCallback(() => {
-    audioEl.current?.pause()
+    const el = getAudioEl()
+    if (el) el.pause()
     setPlaying(false)
     stopTick()
   }, [stopTick])
 
   const resume = useCallback(() => {
-    const el = audioEl.current
+    const el = getAudioEl()
     if (!el || !el.src) return
     el.play().then(() => { setPlaying(true); startTick() }).catch(() => {})
   }, [startTick])
 
   const toggle = useCallback(() => {
-    if (playing) pause()
+    const el = getAudioEl()
+    if (!el) return
+    if (!el.paused) pause()
     else resume()
-  }, [playing, pause, resume])
+  }, [pause, resume])
 
   const seekTo = useCallback((seconds: number) => {
-    if (audioEl.current) { audioEl.current.currentTime = seconds; setElapsed(seconds) }
+    const el = getAudioEl()
+    if (el) { el.currentTime = seconds; setElapsed(seconds) }
   }, [])
 
   const next = useCallback(() => {
-    const nextIdx = ALBUM_TRACKS.findIndex((t, i) => i > trackIdxRef.current && t.playable)
+    const nextIdx = ALBUM_TRACKS.findIndex((t, i) => i > _trackIdx && t.playable)
     if (nextIdx >= 0) play(nextIdx)
   }, [play])
 
   const prev = useCallback(() => {
-    const el = audioEl.current
+    const el = getAudioEl()
     if (el && el.currentTime > 3) { el.currentTime = 0; setElapsed(0); return }
-    for (let i = trackIdxRef.current - 1; i >= 0; i--) {
+    for (let i = _trackIdx - 1; i >= 0; i--) {
       if (ALBUM_TRACKS[i].playable) { play(i); return }
     }
   }, [play])
 
   const stopAndClear = useCallback(() => {
-    const el = audioEl.current
+    const el = getAudioEl()
     if (el) { el.pause(); el.src = "" }
     setPlaying(false)
     stopTick()

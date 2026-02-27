@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
-
 /* ───────────── NEON PUZZLE DEFINITIONS ───────────── */
 
 interface NeonPuzzle {
@@ -298,10 +296,6 @@ function NeonCubePuzzle() {
 export default function IQTestPage() {
   const router = useRouter()
   const { completeConfirmation, updateCinematicStep, state } = useGameFunnel()
-  const globalAudio = useAudioPlayer()
-
-  // Pause Spotify during IQ test for focus
-  useEffect(() => { globalAudio.pause() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const alreadyDone = state.confirmations.c2.done
   const savedData = state.confirmations.c2.data as { iqScore?: number; total?: number; rank?: string } | undefined

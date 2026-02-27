@@ -41,8 +41,7 @@ export default function Confirmacao2Page() {
 
   useEffect(() => {
     updateCinematicStep("confirmation-2")
-    globalAudio.pause()
-  }, [updateCinematicStep]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [updateCinematicStep])
 
   // If already completed, show result
   useEffect(() => {
@@ -59,9 +58,8 @@ export default function Confirmacao2Page() {
     setSelectedTrack(trackId)
     setCurrentWords(WORD_SETS[trackId] || [])
     setIsPlaying(true)
-    
-    // Simulate audio playing
-    // In production, would use actual audio files from /public/audio/c2/
+    // Pause Spotify only when local audio begins playing
+    globalAudio.pause()
   }
 
   const handleWordSelect = (word: string) => {
