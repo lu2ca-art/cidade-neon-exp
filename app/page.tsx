@@ -363,7 +363,7 @@ function CidadeNeonExperience() {
     if (phase !== "active-call") return
 
     // Play D-Bee audio
-    const audio = new Audio("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Upset%20Girl%20-%20Piercing%2CBright%2CMetallic_%20%7Bangry%7DAlo%CC%82%2C%20ta%CC%81%20...-AnG5Cp1ZxNz2PKUp8pcpcwCDrOeecu.mp3")
+    const audio = new Audio("/audio/dbee-call.mp3")
     audio.volume = 0.8
     audio.play().catch(() => {})
     callAudioRef.current = audio
