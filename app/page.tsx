@@ -389,7 +389,7 @@ function CidadeNeonExperience() {
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ─── HACKER LOGIC ─────────────────────────── */
+  /* ─── HACKER LOGIC ────────────────────────��── */
   useEffect(() => {
     if (phase !== "hacker") return
     // Stop disconnect tone once hacker phase begins
@@ -1084,7 +1084,7 @@ function CidadeNeonExperience() {
 
   /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
-  /* ─── RENDER: AURA SPLASH ───────────────────────────── */
+  /* ─── RENDER: AURA SPLASH ─────────────────────��─────── */
   if (phase === "aura-splash") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black overflow-hidden">
@@ -1285,7 +1285,7 @@ function CidadeNeonExperience() {
     }
 
     // QUIZ STATE - white bg with aurora
-    const currentAQ = AURA_QUESTIONS[auraQuizStep]
+    const currentAQ = AURA_QUESTIONS[auraQuizStep] || AURA_QUESTIONS[0]
     return (
       <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
@@ -1312,10 +1312,10 @@ function CidadeNeonExperience() {
 
             {/* Question */}
             <div className="flex-1 flex flex-col justify-center">
-              <h2 className="text-black/70 text-lg font-medium text-center mb-8 text-balance px-2">{currentAQ.q}</h2>
+              <h2 className="text-black/70 text-lg font-medium text-center mb-8 text-balance px-2">{currentAQ?.q || ""}</h2>
 
               <div className="space-y-3">
-                {currentAQ.opts.map((opt, i) => (
+                {(currentAQ?.opts || []).map((opt, i) => (
                   <button key={opt.text} type="button" onClick={() => handleAuraAnswer(i)}
                     className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.97] text-left bg-white"
                     style={{ border: `1px solid ${opt.color}25`, boxShadow: `0 1px 4px ${opt.color}08` }}
