@@ -70,6 +70,48 @@ const participants: Record<string, { color: string; avatar: string }> = {
   Alohan: { color: "#4ECDC4", avatar: "/images/avatar-alohan.jpg" },
 }
 
+const AURA_QUESTIONS = [
+  { q: "Quando voce entra em um ambiente novo, o que sente primeiro?", opts: [
+    { text: "A energia das pessoas", color: "#F59E0B" },
+    { text: "Se o lugar e seguro", color: "#06B6D4" },
+    { text: "Vontade de explorar", color: "#A78BFA" },
+    { text: "Nada, observo em silencio", color: "#6B7280" },
+  ]},
+  { q: "Qual cor te atrai mais neste momento?", opts: [
+    { text: "Dourado / Amarelo", color: "#F59E0B" },
+    { text: "Azul profundo", color: "#3B82F6" },
+    { text: "Violeta", color: "#A78BFA" },
+    { text: "Verde esmeralda", color: "#10B981" },
+  ]},
+  { q: "O que te move mais na musica?", opts: [
+    { text: "A batida, o ritmo", color: "#EF4444" },
+    { text: "A letra, a mensagem", color: "#06B6D4" },
+    { text: "A atmosfera, o clima", color: "#A78BFA" },
+    { text: "A melodia, a harmonia", color: "#F59E0B" },
+  ]},
+  { q: "Como voce recarrega sua energia?", opts: [
+    { text: "Ficando sozinho", color: "#6B7280" },
+    { text: "Saindo com pessoas", color: "#F59E0B" },
+    { text: "Criando algo novo", color: "#A78BFA" },
+    { text: "Na natureza", color: "#10B981" },
+  ]},
+  { q: "Qual frase ressoa mais com voce?", opts: [
+    { text: "Sinto tudo intensamente", color: "#EF4444" },
+    { text: "Penso antes de agir", color: "#06B6D4" },
+    { text: "Sigo minha intuicao", color: "#A78BFA" },
+    { text: "Busco equilibrio", color: "#10B981" },
+  ]},
+]
+
+const AURA_RESULTS = [
+  { name: "AURA SOLAR", color: "#F59E0B", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
+  { name: "AURA OCEANO", color: "#06B6D4", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
+  { name: "AURA NEBULOSA", color: "#A78BFA", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
+  { name: "AURA CRISTAL", color: "#10B981", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
+  { name: "AURA FOGO", color: "#EF4444", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
+  { name: "AURA SOMBRA", color: "#6B7280", desc: "Observacao e misterio. Sua forca esta no silencio." },
+]
+
 /* ─── MATRIX RAIN COMPONENT ─────────────────────────── */
 function MatrixRain() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -389,7 +431,7 @@ function CidadeNeonExperience() {
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ─── HACKER LOGIC ────────────────────────��── */
+  /* ─── HACKER LOGIC ────────────────────────���── */
   useEffect(() => {
     if (phase !== "hacker") return
     // Stop disconnect tone once hacker phase begins
@@ -689,7 +731,7 @@ function CidadeNeonExperience() {
 
   /* ─── FINAL NOTIFICATIONS (now handled by missions system) ── */
 
-  /* ─── ICON RENDERER ─────────���──────────────── */
+  /* ─── ICON RENDERER ─────────�����─────────────── */
   const getIconSvg = (icon: string): ReactElement => {
     const svgMap: Record<string, ReactElement> = {
       whatsapp: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /></svg>,
@@ -1084,7 +1126,7 @@ function CidadeNeonExperience() {
 
   /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
-  /* ─── RENDER: AURA SPLASH ─────────────────────��─────── */
+  /* ─── RENDER: AURA SPLASH ─────────────────────�����────── */
   if (phase === "aura-splash") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black overflow-hidden">
@@ -1165,48 +1207,6 @@ function CidadeNeonExperience() {
         </div>
       )
     }
-
-    const AURA_QUESTIONS = [
-      { q: "Quando voce entra em um ambiente novo, o que sente primeiro?", opts: [
-        { text: "A energia das pessoas", color: "#F59E0B" },
-        { text: "Se o lugar e seguro", color: "#06B6D4" },
-        { text: "Vontade de explorar", color: "#A78BFA" },
-        { text: "Nada, observo em silencio", color: "#6B7280" },
-      ]},
-      { q: "Qual cor te atrai mais neste momento?", opts: [
-        { text: "Dourado / Amarelo", color: "#F59E0B" },
-        { text: "Azul profundo", color: "#3B82F6" },
-        { text: "Violeta", color: "#A78BFA" },
-        { text: "Verde esmeralda", color: "#10B981" },
-      ]},
-      { q: "O que te move mais na musica?", opts: [
-        { text: "A batida, o ritmo", color: "#EF4444" },
-        { text: "A letra, a mensagem", color: "#06B6D4" },
-        { text: "A atmosfera, o clima", color: "#A78BFA" },
-        { text: "A melodia, a harmonia", color: "#F59E0B" },
-      ]},
-      { q: "Como voce recarrega sua energia?", opts: [
-        { text: "Ficando sozinho", color: "#6B7280" },
-        { text: "Saindo com pessoas", color: "#F59E0B" },
-        { text: "Criando algo novo", color: "#A78BFA" },
-        { text: "Na natureza", color: "#10B981" },
-      ]},
-      { q: "Qual frase ressoa mais com voce?", opts: [
-        { text: "Sinto tudo intensamente", color: "#EF4444" },
-        { text: "Penso antes de agir", color: "#06B6D4" },
-        { text: "Sigo minha intuicao", color: "#A78BFA" },
-        { text: "Busco equilibrio", color: "#10B981" },
-      ]},
-    ]
-
-    const AURA_RESULTS = [
-      { name: "AURA SOLAR", color: "#F59E0B", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
-      { name: "AURA OCEANO", color: "#06B6D4", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
-      { name: "AURA NEBULOSA", color: "#A78BFA", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
-      { name: "AURA CRISTAL", color: "#10B981", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
-      { name: "AURA FOGO", color: "#EF4444", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
-      { name: "AURA SOMBRA", color: "#6B7280", desc: "Observacao e misterio. Sua forca esta no silencio." },
-    ]
 
     const getAuraResult = () => {
       const colorCounts: Record<string, number> = {}
