@@ -242,7 +242,7 @@ export default function CidadeNeonWrapper() {
 }
 
 function CidadeNeonExperience() {
-  const { state: gameFunnelState, completeConfirmation, resetAll } = useGameFunnel()
+  const { state: gameFunnelState, setState, completeConfirmation, resetAll } = useGameFunnel()
   const globalAudio = useAudioPlayer()
   const searchParams = useSearchParams()
   
@@ -277,7 +277,7 @@ function CidadeNeonExperience() {
   useEffect(() => {
     if (gameFunnelState.shouldOpenAuraDirectly) {
       setPhase("aura-splash")
-      gameFunnelState.setState({ shouldOpenAuraDirectly: false })
+      setState({ shouldOpenAuraDirectly: false })
     }
   }, [gameFunnelState.shouldOpenAuraDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
 
