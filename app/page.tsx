@@ -799,7 +799,7 @@ function CidadeNeonExperience() {
                 <svg className="w-8 h-8 text-[#FF3B30] rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
               </div>
               <p className="text-white text-lg font-medium">Chamada perdida</p>
-              <p className="text-[#A0A0A0] text-sm mt-1">D-Bee</p>
+              <p className="text-[#A0A0A0] text-sm mt-1">LU2CA</p>
             </div>
           )}
 
@@ -807,9 +807,9 @@ function CidadeNeonExperience() {
           {callState === "callback" && (
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="w-16 h-16 rounded-full overflow-hidden mb-4 opacity-60">
-                <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={64} height={64} className="w-full h-full object-cover" priority />
+                <Image src="/images/avatar-dbee.jpg" alt="LU2CA" width={64} height={64} className="w-full h-full object-cover" priority />
               </div>
-              <p className="text-white/60 text-sm">D-Bee ligando de volta...</p>
+              <p className="text-white/60 text-sm">LU2CA ligando de volta...</p>
               <div className="flex gap-1 mt-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" />
                 <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: "0.2s" }} />
@@ -823,13 +823,13 @@ function CidadeNeonExperience() {
             <>
               <div className="flex-1 flex flex-col items-center justify-start pt-6">
                 <div className="relative">
-                  <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4 ring-4 ring-white/20" style={{ animation: "call-pulse 2s ease-in-out infinite" }}>
-                    <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={120} height={120} className="w-full h-full object-cover" priority />
+                  <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4 ring-4 ring-[#7C3AED]/40" style={{ animation: "call-pulse 2s ease-in-out infinite", boxShadow: "0 0 30px rgba(124,58,237,0.4)" }}>
+                    <Image src="/images/avatar-dbee.jpg" alt="LU2CA" width={120} height={120} className="w-full h-full object-cover" priority />
                   </div>
                   <div className="absolute inset-0 rounded-full border-2 border-white/20" style={{ animation: "call-ping 2s ease-out infinite" }} />
                 </div>
-                <h1 className="text-white text-[32px] font-semibold mb-1">D-Bee</h1>
-                <p className="text-[#A0A0A0] text-[18px]">mobile</p>
+                <h1 className="text-white text-[32px] font-semibold mb-1">LU2CA</h1>
+                <p className="text-[#A0A0A0] text-[18px]">cidade neon</p>
                 <p className="text-[#A0A0A0] text-[16px] mt-2">Chamada recebida...</p>
               </div>
               <div className="px-8 pb-12">
@@ -883,7 +883,7 @@ function CidadeNeonExperience() {
   if (phase === "active-call") {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif', backgroundImage: "radial-gradient(ellipse 80% 80% at 50% 30%, rgba(124,58,237,0.06) 0%, transparent 60%)" }}>
           {/* Notch */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
 
@@ -898,16 +898,16 @@ function CidadeNeonExperience() {
 
           {/* Caller info */}
           <div className="flex-1 flex flex-col items-center justify-start pt-4">
-            <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-3">
-              <Image src="/images/avatar-dbee.jpg" alt="D-Bee" width={100} height={100} className="w-full h-full object-cover" priority />
+            <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-3 ring-4 ring-[#7C3AED]/40" style={{ boxShadow: "0 0 30px rgba(124,58,237,0.4)" }}>
+              <Image src="/images/avatar-dbee.jpg" alt="LU2CA" width={100} height={100} className="w-full h-full object-cover" priority />
             </div>
-            <h1 className="text-white text-[28px] font-semibold mb-1">D-Bee</h1>
-            <p className="text-[#34C759] text-[18px] font-light tabular-nums">{formatTime(callDuration)}</p>
+            <h1 className="text-white text-[28px] font-semibold mb-1">LU2CA</h1>
+            <p className="text-[#7C3AED] text-[18px] font-light tabular-nums">{formatTime(callDuration)}</p>
 
             {/* Audio wave */}
             <div className="flex items-end gap-[2px] mt-6 h-5">
               {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((h, i) => (
-                <div key={i} className="w-[2px] rounded-full bg-[#34C759]" style={{ height: `${h * 3}px`, animationName: "call-eq", animationDuration: `${0.4 + Math.random() * 0.3}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
+                <div key={i} className="w-[2px] rounded-full bg-[#7C3AED]" style={{ height: `${h * 3}px`, animationName: "call-eq", animationDuration: `${0.4 + Math.random() * 0.3}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
               ))}
             </div>
           </div>
