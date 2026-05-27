@@ -1340,6 +1340,31 @@ function CidadeNeonExperience() {
 
   /* ─── RENDER: PHONE HOME ���────────────────────────── */
   const activeMissions = getMissions()
+  const [homePageIndex, setHomePageIndex] = useState(0)
+  const swipeTouchStartX = useRef<number | null>(null)
+  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
+    swipeTouchStartX.current = e.touches[0].clientX
+  }, [])
+  const handleSwipeTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (swipeTouchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - swipeTouchStartX.current
+    if (Math.abs(dx) > 50) setHomePageIndex(dx < 0 ? 1 : 0)
+    swipeTouchStartX.current = null
+  }, [])
+
+  const DEV_SHORTCUTS = [
+    { label: "Ligacao", color: "#7C3AED", action: () => { resetAll(); try { localStorage.removeItem("cn-completed-missions"); localStorage.removeItem("cn-collected-rewards"); localStorage.removeItem("cidade-neon-grupo-msgs"); localStorage.removeItem("cidade-neon-funnel-v2") } catch {} window.location.reload() } },
+    { label: "Hacker", color: "#00FF66", action: () => { window.location.href = "/hacker" } },
+    { label: "Spotify", color: "#1DB954", action: () => { window.location.href = "/spotify/auto-chuva" } },
+    { label: "WhatsApp Grupo", color: "#25D366", action: () => { window.location.href = "/whatsapp/grupo" } },
+    { label: "Confirmacao 1", color: "#F59E0B", action: () => { window.location.href = "/confirmacao/1-arquetipos" } },
+    { label: "Confirmacao 2", color: "#06B6D4", action: () => { window.location.href = "/confirmacao/2-colunas" } },
+    { label: "Neon Tiles", color: "#FF00A8", action: () => { window.location.href = "/neon-tiles" } },
+    { label: "TikTok", color: "#000000", action: () => { window.location.href = "/tiktok/feed" } },
+    { label: "YouTube", color: "#FF0000", action: () => { window.location.href = "/youtube/cidade-neon" } },
+    { label: "Sala Branca", color: "#E0E7FF", action: () => { window.location.href = "/final/sala-branca" } },
+    { label: "AURA", color: "#A78BFA", action: () => { setPhase("aura-splash") } },
+  ]
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
@@ -1537,35 +1562,88 @@ function CidadeNeonExperience() {
           </div>
         )}
 
-        {/* ── App Grid (vertically centered) ── */}
+        {/* ── Horizontal slide pages ── */}
         {!showNotifCenter && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center px-8 pt-[56px] pb-[90px]">
-            <div className="grid grid-cols-3 gap-x-6 gap-y-6 w-full">
-              {phoneApps.map((app) => (
-                <button key={app.id} onClick={() => {
-                  if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
-                  if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
-                  if (app.link) { window.open(app.link, "_blank"); return }
-                if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
-                if (app.id === "aura") { setPhase("aura-login"); return }
-                  if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative" type="button">
-                  {renderAppIcon(app.icon, app.color)}
-                  {appBadges[app.id] && (
-                    <div className="absolute -top-1 -right-0 w-5 h-5 bg-[#FF3B30] rounded-full border-2 border-[#16213e] flex items-center justify-center">
-                      <span className="text-white text-[9px] font-bold">!</span>
+          <div
+            className="absolute inset-0 z-10 flex transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${homePageIndex * 100}%)`, width: "200%" }}
+            onTouchStart={handleSwipeTouchStart}
+            onTouchEnd={handleSwipeTouchEnd}
+          >
+            {/* PAGE 0 — App Grid */}
+            <div className="w-1/2 h-full flex items-center justify-center px-8 pt-[56px] pb-[90px]">
+              <div className="grid grid-cols-3 gap-x-6 gap-y-6 w-full">
+                {phoneApps.map((app) => (
+                  <button key={app.id} onClick={() => {
+                    if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
+                    if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
+                    if (app.link) { window.open(app.link, "_blank"); return }
+                    if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
+                    if (app.id === "aura") { setPhase("aura-login"); return }
+                    if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
+                  }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative" type="button">
+                    {renderAppIcon(app.icon, app.color)}
+                    {appBadges[app.id] && (
+                      <div className="absolute -top-1 -right-0 w-5 h-5 bg-[#FF3B30] rounded-full border-2 border-[#16213e] flex items-center justify-center">
+                        <span className="text-white text-[9px] font-bold">!</span>
+                      </div>
+                    )}
+                    <span className="text-white text-[10px] leading-tight text-center">{app.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* PAGE 1 — Dev Panel */}
+            <div className="w-1/2 h-full pt-[56px] pb-[90px] flex flex-col">
+              <div className="px-5 mb-3">
+                <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] font-mono">Painel de Teste</p>
+                <p className="text-white/60 text-xs mt-0.5">Acesso direto a cada etapa</p>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-4">
+                {DEV_SHORTCUTS.map((btn, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={btn.action}
+                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl active:scale-[0.98] transition-transform text-left"
+                    style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${btn.color}30` }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-xl flex-shrink-0"
+                      style={{ background: btn.color + "25", border: `1px solid ${btn.color}50` }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium leading-tight">{btn.label}</p>
                     </div>
-                  )}
-                  <span className="text-white text-[10px] leading-tight text-center">{app.name}</span>
-                </button>
-              ))}
+                    <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* ── Bottom Dock: Notification Center button + Restart + Home indicator ── */}
+        {/* ── Bottom Dock ── */}
         {!showNotifCenter && (
           <div className="absolute bottom-0 left-0 right-0 z-20 pb-2 pt-3">
+            {/* Page dots */}
+            <div className="flex justify-center gap-1.5 mb-2">
+              {[0, 1].map((i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setHomePageIndex(i)}
+                  className="transition-all rounded-full"
+                  style={{
+                    width: homePageIndex === i ? 20 : 6,
+                    height: 6,
+                    background: homePageIndex === i ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)",
+                  }}
+                  aria-label={`Pagina ${i + 1}`}
+                />
+              ))}
+            </div>
             <div className="flex justify-center items-center gap-3 mb-3">
               <button
                 type="button"
@@ -1584,7 +1662,6 @@ function CidadeNeonExperience() {
                 type="button"
                 onClick={() => {
                   resetAll()
-                  // Clear ALL localStorage keys for complete reset
                   try {
                     localStorage.removeItem("cn-completed-missions")
                     localStorage.removeItem("cn-collected-rewards")
