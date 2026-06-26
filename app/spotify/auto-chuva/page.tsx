@@ -1,36 +1,34 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvider"
 
-export default function SpotifyAutoPage() {
+const ACCENT = "#E8FF3A" // untitled yellow playhead
+
+export default function UntitledPlayerPage() {
   const router = useRouter()
   const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
   const audio = useAudioPlayer()
 
   const [view, setView] = useState<"now-playing" | "album">("now-playing")
   const [showNotif, setShowNotif] = useState(false)
-  const [liked, setLiked] = useState(false)
   const notifSent = useRef(false)
   const isFirst = useRef(!state.perAppState.spotifyAuto.completed)
 
   const track = audio.currentTrack ?? ALBUM_TRACKS[0]
-  const progress = track.durationSec > 0 ? (audio.elapsed / track.durationSec) * 100 : 0
+  const progress = track.durationSec > 0 ? Math.min(audio.elapsed / track.durationSec, 1) : 0
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
 
-  // Auto-play CHUVA (track index 8 = position 9) on mount only if nothing is playing
+  // Auto-play CHUVA (index 8) on mount only if nothing is playing
   useEffect(() => {
-    if (!audio.playing && audio.elapsed === 0) {
-      audio.play(8)
-    }
-    // If already playing, just let it continue - don't restart
+    if (!audio.playing && audio.elapsed === 0) audio.play(8)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Show WhatsApp notification at 13 seconds on first visit
+  // WhatsApp notification at 13s on first visit
   useEffect(() => {
     if (audio.elapsed >= 13 && isFirst.current && !notifSent.current) {
       notifSent.current = true
@@ -62,158 +60,189 @@ export default function SpotifyAutoPage() {
     setView("now-playing")
   }
 
-  /* -- NOW PLAYING VIEW -- */
-  const NowPlaying = () => (
-    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212]" />
+  // Deterministic waveform bar heights
+  const bars = useMemo(() => {
+    const n = 72
+    return Array.from({ length: n }, (_, i) => {
+      const v = Math.abs(Math.sin(i * 0.7) * 0.6 + Math.sin(i * 1.9 + 1) * 0.4)
+      return 0.18 + v * 0.82
+    })
+  }, [])
 
-      {/* top bar - pushed down to clear notch */}
-      <div className="relative z-10 flex items-center justify-between px-4 py-3 mt-4">
-        <button type="button" onClick={handleBack} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-          <svg width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 19l-7-7 7-7"/></svg>
-        </button>
-        <div className="text-center">
-          <p className="text-[10px] text-white/60 uppercase tracking-widest">Tocando do album</p>
-          <p className="text-[12px] text-white font-medium">Cidade Neon</p>
-        </div>
-        <button type="button" onClick={() => router.push("/")} className="p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Voltar para inicio">
-          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
-        </button>
+  const seekFromRatio = (ratio: number) => {
+    audio.seekTo(Math.round(ratio * track.durationSec))
+  }
+
+  /* ---------- WAVEFORM ---------- */
+  const Waveform = ({ compact = false }: { compact?: boolean }) => {
+    const ref = useRef<HTMLDivElement>(null)
+    const onClick = (e: React.MouseEvent) => {
+      const el = ref.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      seekFromRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
+    }
+    const playedIdx = Math.floor(progress * bars.length)
+    return (
+      <div
+        ref={ref}
+        onClick={onClick}
+        className="relative flex items-center gap-[2px] cursor-pointer w-full"
+        style={{ height: compact ? 22 : 56 }}
+      >
+        {bars.map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-full"
+            style={{
+              height: `${h * 100}%`,
+              minWidth: 1,
+              background: i <= playedIdx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)",
+            }}
+          />
+        ))}
+        {/* yellow playhead */}
+        <div
+          className="absolute top-0 bottom-0 w-[2px] rounded-full"
+          style={{ left: `${progress * 100}%`, background: ACCENT, boxShadow: `0 0 6px ${ACCENT}` }}
+        />
+      </div>
+    )
+  }
+
+  /* ---------- NOW PLAYING ---------- */
+  const NowPlaying = () => (
+    <div className="flex-1 flex flex-col bg-[#161616]">
+      {/* title */}
+      <div className="px-6 pt-8 pb-2 text-center">
+        <h1 className="text-white text-2xl font-medium tracking-tight">{track.title ?? track.masked ?? "Faixa"}</h1>
+        <p className="text-white/45 text-sm mt-1 tracking-wide">CIDADE NEON &middot; LU2CA</p>
       </div>
 
-      {/* cover */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 min-h-0">
-        <div className="w-full max-w-[300px] aspect-square rounded-lg overflow-hidden shadow-2xl">
-          <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={300} height={300} className="w-full h-full object-cover" priority />
+      {/* circular cover */}
+      <div className="flex-1 flex items-center justify-center px-10 min-h-0">
+        <div className="aspect-square w-full max-w-[260px] rounded-full overflow-hidden ring-1 ring-white/10 shadow-2xl">
+          <Image src="/images/album-cover.jpg" alt={track.title ?? "Cidade Neon"} width={260} height={260} priority className="w-full h-full object-cover grayscale" />
         </div>
+      </div>
+
+      {/* waveform + time */}
+      <div className="px-7 pt-4">
+        <Waveform />
+        <p className="text-center text-white/50 text-sm tabular-nums mt-3">
+          {fmt(audio.elapsed)} <span className="text-white/25">/</span> {track.duration}
+        </p>
       </div>
 
       {/* controls */}
-      <div className="relative z-10 px-6 pb-6 pt-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-white text-lg font-bold truncate">{track.title ?? (track.masked ?? "Faixa bloqueada")}</h2>
-            <p className="text-white/60 text-sm">LU2CA</p>
-          </div>
-          <button type="button" onClick={() => setLiked(l => !l)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-            {liked
-              ? <svg width="24" height="24" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-              : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            }
-          </button>
-        </div>
+      <div className="px-8 pt-5 pb-5 flex items-center justify-between">
+        <button type="button" aria-label="Compartilhar" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        </button>
+        <button type="button" onClick={audio.prev} aria-label="Anterior" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
+          <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"} className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform">
+          {audio.playing
+            ? <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            : <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>}
+        </button>
+        <button type="button" onClick={audio.next} aria-label="Proxima" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
+          <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+        <button type="button" aria-label="Repetir" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+        </button>
+      </div>
 
-        {/* progress */}
-        <div className="mb-4">
-          <div className="relative h-1 bg-white/20 rounded-full overflow-hidden">
-            <div className="absolute inset-y-0 left-0 bg-white rounded-full transition-[width] duration-300 ease-linear" style={{ width: `${Math.min(progress, 100)}%` }} />
-            <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md transition-[left] duration-300 ease-linear" style={{ left: `calc(${Math.min(progress, 100)}% - 6px)` }} />
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[11px] text-white/50 tabular-nums">{fmt(audio.elapsed)}</span>
-            <span className="text-[11px] text-white/50 tabular-nums">{track.duration}</span>
-          </div>
-        </div>
-
-        {/* playback buttons */}
-        <div className="flex items-center justify-between">
-          <button type="button" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60">
-            <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-          </button>
-          <button type="button" onClick={audio.prev} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-            <svg width="28" height="28" fill="white" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-          </button>
-          <button type="button" onClick={audio.toggle} className="w-14 h-14 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform">
-            {audio.playing
-              ? <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-              : <svg width="28" height="28" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
-            }
-          </button>
-          <button type="button" onClick={audio.next} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-            <svg width="28" height="28" fill="white" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-          </button>
-          <button type="button" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60">
-            <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
-          </button>
-        </div>
+      {/* notes / edit footer */}
+      <div className="border-t border-white/8 flex">
+        <button type="button" onClick={handleBack} className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
+          <span className="text-[11px] tracking-wide">notes</span>
+        </button>
+        <button type="button" onClick={() => setView("album")} className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="9" cy="8" r="2" fill="#161616"/><circle cx="15" cy="16" r="2" fill="#161616"/></svg>
+          <span className="text-[11px] tracking-wide">edit</span>
+        </button>
       </div>
     </div>
   )
 
-  /* -- ALBUM VIEW -- */
+  /* ---------- ALBUM / TRACK LIST ---------- */
   const AlbumView = () => (
-    <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
-      <div className="fixed inset-0 bg-gradient-to-b from-[#4a2c6a] via-[#1a1030] to-[#121212] pointer-events-none" />
-
-      <div className="relative z-10 flex items-center px-4 py-3 mt-4">
-        <button type="button" onClick={() => router.push("/")} className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-          <svg width="24" height="24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M15 19l-7-7 7-7"/></svg>
+    <div className="flex-1 flex flex-col bg-[#161616] overflow-y-auto overscroll-contain">
+      {/* top bar */}
+      <div className="sticky top-0 z-10 bg-[#161616]/95 backdrop-blur flex items-center justify-between px-3 py-3">
+        <button type="button" onClick={() => router.push("/")} aria-label="Voltar" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white active:scale-90 transition-transform">
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
+        <div className="flex items-center gap-2">
+          <button type="button" aria-label="Link" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white/80"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
+          <button type="button" aria-label="Buscar" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white/80"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+          <button type="button" aria-label="Mais" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white/80"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        </div>
       </div>
 
-      {/* album header */}
-      <div className="relative z-10 px-6 pb-4 flex flex-col items-center">
-        <div className="w-48 h-48 rounded-md overflow-hidden shadow-2xl mb-4">
-          <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={192} height={192} className="w-full h-full object-cover" />
+      {/* header */}
+      <div className="px-5 pt-2 pb-4">
+        <div className="w-full aspect-square max-w-[280px] mx-auto rounded-xl overflow-hidden ring-1 ring-white/10 mb-5">
+          <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={280} height={280} className="w-full h-full object-cover grayscale" />
         </div>
-        <h1 className="text-white text-xl font-bold">Cidade Neon</h1>
-        <p className="text-white/60 text-sm">LU2CA</p>
-        <p className="text-white/40 text-xs mt-1">Album &middot; 2026 &middot; 9 faixas</p>
-        <button type="button" onClick={() => { audio.play(8); setView("now-playing") }} className="mt-4 w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center active:scale-95 transition-transform">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
-        </button>
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-white text-3xl font-bold tracking-tight">CIDADE NEON</h1>
+            <p className="text-white/45 text-sm mt-1">LU2CA &middot; 9 faixas</p>
+          </div>
+          <button type="button" onClick={() => { audio.play(8); setView("now-playing") }} aria-label="Tocar" className="w-14 h-14 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+        </div>
       </div>
 
       {/* track list */}
-      <div className="relative z-10 px-4 pb-24">
+      <div className="px-2 pb-28">
         {ALBUM_TRACKS.map((t, i) => {
           const isActive = i === audio.trackIdx && audio.playing
           return (
             <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!t.playable}
-              className={`w-full flex items-center gap-3 py-3 px-2 rounded-md text-left ${isActive ? "bg-white/5" : ""} ${!t.playable ? "opacity-40" : "active:bg-white/10"}`}
+              className={`w-full flex items-center gap-3 py-3 px-3 rounded-lg text-left ${!t.playable ? "opacity-45" : "active:bg-white/5"}`}
             >
-              <span className="w-6 text-center text-sm text-white/40 flex-shrink-0">
-                {isActive
-                  ? <span className="inline-flex gap-[2px] items-end h-4">{[1,2,3].map(b=><span key={b} className="w-[3px] bg-[#1DB954] rounded-sm animate-bounce" style={{height:`${8+Math.random()*8}px`,animationDelay:`${b*0.15}s`}}/>)}</span>
-                  : i + 1}
-              </span>
+              <span className="w-5 text-center text-sm text-white/35 flex-shrink-0 tabular-nums">{i + 1}</span>
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${isActive ? "text-[#1DB954]" : "text-white"}`}>
-                  {t.playable
-                    ? t.title
-                    : <span className="flex items-center gap-2 font-mono opacity-70">
-                        <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
-                        {t.masked}
-                      </span>
-                  }
+                <p className={`text-[15px] font-medium truncate ${isActive ? "" : "text-white"}`} style={isActive ? { color: ACCENT } : undefined}>
+                  {t.playable ? t.title : <span className="font-mono opacity-70">{t.masked}</span>}
                 </p>
-                <p className="text-xs text-white/40">LU2CA</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+                  <span className="text-xs text-white/35">{t.playable ? "21 Jan" : "bloqueada"}</span>
+                </div>
               </div>
-              <span className="text-xs text-white/30 flex-shrink-0">{t.duration}</span>
+              {!t.playable
+                ? <svg width="15" height="15" fill="rgba(255,255,255,0.35)" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-3.1 0H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>}
             </button>
           )
         })}
       </div>
 
-      {/* mini player */}
+      {/* mini player pill */}
       {audio.currentTrack && (
-        <div className="absolute bottom-0 left-0 right-0 z-20">
-          <div className="w-full bg-[#282828] border-t border-white/5 px-4 py-2 flex items-center gap-3 cursor-pointer">
-            <div className="flex-1 min-w-0 flex items-center gap-3" onClick={() => setView("now-playing")}>
-              <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                <Image src="/images/album-cover.jpg" alt="" width={40} height={40} loading="eager" className="w-full h-full object-cover" />
-              </div>
-              <div className="text-left">
-                <p className="text-white text-sm font-medium truncate">{audio.currentTrack.title ?? "Bloqueada"}</p>
-                <p className="text-white/50 text-xs">LU2CA</p>
-              </div>
-            </div>
-            <button type="button" onClick={() => audio.toggle()} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-              {audio.playing
-                ? <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-                : <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              }
+        <div className="absolute bottom-4 left-3 right-3 z-20">
+          <div className="bg-[#262626] rounded-2xl px-2 py-2 flex items-center gap-3 shadow-2xl ring-1 ring-white/8">
+            <button type="button" onClick={() => audio.toggle()} aria-label={audio.playing ? "Pausar" : "Tocar"} className="w-10 h-10 rounded-xl overflow-hidden relative flex-shrink-0">
+              <Image src="/images/album-cover.jpg" alt="" width={40} height={40} className="w-full h-full object-cover grayscale" />
+              <span className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                {audio.playing
+                  ? <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                  : <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>}
+              </span>
             </button>
+            <button type="button" onClick={() => setView("now-playing")} className="flex-1 min-w-0 text-left">
+              <p className="text-white text-sm font-medium truncate">{audio.currentTrack.title ?? "Bloqueada"}</p>
+              <p className="text-white/45 text-xs truncate">CIDADE NEON &middot; LU2CA</p>
+            </button>
+            <div className="w-16 flex-shrink-0 pr-1"><Waveform compact /></div>
           </div>
         </div>
       )}
@@ -222,7 +251,7 @@ export default function SpotifyAutoPage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation select-none">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#121212]">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#161616] overflow-hidden">
         {/* notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
         {/* status bar */}
@@ -253,8 +282,8 @@ export default function SpotifyAutoPage() {
           </button>
         )}
 
-        <div style={{ display: view === "now-playing" ? "flex" : "none" }} className="flex-1 flex-col"><NowPlaying /></div>
-        <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-1 flex-col overflow-y-auto overscroll-contain" id="album-scroll-container"><AlbumView /></div>
+        <div style={{ display: view === "now-playing" ? "flex" : "none" }} className="flex-1 flex-col min-h-0"><NowPlaying /></div>
+        <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-1 flex-col min-h-0"><AlbumView /></div>
       </div>
 
       <style jsx>{`
