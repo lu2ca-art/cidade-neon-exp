@@ -72,6 +72,82 @@ function generateRoad(): Segment[] {
   return segments
 }
 
+// ─── DRAW HELPERS ────────────────────────────────────────────────────────────
+function drawPalm(ctx: CanvasRenderingContext2D, x: number, baseY: number, h: number, color: string) {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = Math.max(2, h * 0.05)
+  ctx.lineCap = "round"
+  const topX = x - h * 0.06
+  const topY = baseY - h
+  ctx.beginPath()
+  ctx.moveTo(x, baseY)
+  ctx.quadraticCurveTo(x - h * 0.1, baseY - h * 0.5, topX, topY)
+  ctx.stroke()
+  ctx.lineWidth = Math.max(1.5, h * 0.03)
+  const fronds = 7
+  for (let i = 0; i < fronds; i++) {
+    const ang = Math.PI + (i / (fronds - 1)) * Math.PI
+    const fx = topX + Math.cos(ang) * h * 0.55
+    const fy = topY + Math.sin(ang) * h * 0.4 - h * 0.04
+    ctx.beginPath()
+    ctx.moveTo(topX, topY)
+    ctx.quadraticCurveTo((topX + fx) / 2, topY - h * 0.18, fx, fy)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawGauge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  frac: number,
+  color: string,
+  label: string,
+) {
+  ctx.fillStyle = "rgba(0,18,28,0.75)"
+  ctx.beginPath()
+  ctx.roundRect(x, y, w, h, 8)
+  ctx.fill()
+  ctx.strokeStyle = `${color}66`
+  ctx.lineWidth = 1
+  ctx.stroke()
+  ctx.strokeStyle = `${color}22`
+  for (let i = 1; i < 7; i++) {
+    const gx = x + (w / 7) * i
+    ctx.beginPath()
+    ctx.moveTo(gx, y + 4)
+    ctx.lineTo(gx, y + h - 4)
+    ctx.stroke()
+  }
+  for (let i = 1; i < 4; i++) {
+    const gy = y + (h / 4) * i
+    ctx.beginPath()
+    ctx.moveTo(x + 4, gy)
+    ctx.lineTo(x + w - 4, gy)
+    ctx.stroke()
+  }
+  const cx = x + w * 0.5
+  const cy = y + h * 0.92
+  const ang = Math.PI * 1.18 + frac * Math.PI * 0.64
+  ctx.strokeStyle = "#ff7a18"
+  ctx.lineWidth = 2.5
+  ctx.shadowColor = "#ff7a18"
+  ctx.shadowBlur = 10
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.cos(ang) * w * 0.4, cy + Math.sin(ang) * w * 0.4)
+  ctx.stroke()
+  ctx.shadowBlur = 0
+  ctx.fillStyle = `${color}cc`
+  ctx.font = `${Math.max(8, w * 0.12)}px monospace`
+  ctx.textAlign = "center"
+  ctx.fillText(label, cx, y + h - 4)
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function DrivePage() {
   const router = useRouter()
@@ -243,89 +319,152 @@ export default function DrivePage() {
       const totalLength = segments.length * SEGMENT_LENGTH
       positionRef.current = ((positionRef.current % totalLength) + totalLength) % totalLength
 
-      const horizonY = H * 0.42
+      const horizonY = H * 0.40
+      const dashTop = H * 0.66
+      const roadTop = horizonY
+      const roadBottom = dashTop
+      const roadH = roadBottom - roadTop
       const playerX = playerXRef.current
+      const t = timestamp * 0.001
+      const drift = -playerX * 30
 
       // ── Sky ──
       const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY)
-      skyGrad.addColorStop(0, SKY_TOP)
-      skyGrad.addColorStop(1, SKY_HORIZON)
+      skyGrad.addColorStop(0, "#05030f")
+      skyGrad.addColorStop(0.5, "#1a0a3e")
+      skyGrad.addColorStop(1, "#3d1259")
       ctx.fillStyle = skyGrad
       ctx.fillRect(0, 0, W, horizonY)
+
       // Stars
-      ctx.fillStyle = "rgba(255,255,255,0.6)"
-      for (let s = 0; s < 80; s++) {
+      ctx.fillStyle = "rgba(255,255,255,0.7)"
+      for (let s = 0; s < 90; s++) {
         const sx = (s * 137.5) % W
-        const sy = (s * 73.1) % horizonY
-        ctx.fillRect(sx, sy, 1, 1)
+        const sy = (s * 71.3) % (horizonY * 0.7)
+        ctx.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(s * 1.3 + t))
+        const size = s % 7 === 0 ? 2 : 1
+        ctx.fillRect(sx, sy, size, size)
       }
-      // Neon horizon glow
-      const horizonGrad = ctx.createLinearGradient(0, horizonY - 40, 0, horizonY + 20)
-      horizonGrad.addColorStop(0, "transparent")
-      horizonGrad.addColorStop(0.6, `${NEON.purple}66`)
-      horizonGrad.addColorStop(1, `${NEON.pink}33`)
-      ctx.fillStyle = horizonGrad
-      ctx.fillRect(0, horizonY - 40, W, 60)
+      ctx.globalAlpha = 1
+
+      // ── Retrowave sun ──
+      const sunR = Math.min(W, H) * 0.17
+      const sunX = W / 2 + drift * 0.5
+      const sunY = horizonY - sunR * 0.55
+      const sunGlow = ctx.createRadialGradient(sunX, sunY, sunR * 0.4, sunX, sunY, sunR * 2.4)
+      sunGlow.addColorStop(0, "rgba(255,80,160,0.45)")
+      sunGlow.addColorStop(0.5, "rgba(155,0,255,0.18)")
+      sunGlow.addColorStop(1, "transparent")
+      ctx.fillStyle = sunGlow
+      ctx.fillRect(0, 0, W, horizonY + sunR)
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2)
+      ctx.clip()
+      const discGrad = ctx.createLinearGradient(0, sunY - sunR, 0, sunY + sunR)
+      discGrad.addColorStop(0, "#ffe39a")
+      discGrad.addColorStop(0.45, "#ff5f9e")
+      discGrad.addColorStop(1, "#c0006e")
+      ctx.fillStyle = discGrad
+      ctx.fillRect(sunX - sunR, sunY - sunR, sunR * 2, sunR * 2)
+      // dark stripes on lower half
+      ctx.fillStyle = "#1a0a3e"
+      let sby = sunY + sunR * 0.05
+      let sbh = 3
+      let sgap = 7
+      while (sby < sunY + sunR) {
+        ctx.fillRect(sunX - sunR, sby, sunR * 2, sbh)
+        sby += sbh + sgap
+        sbh += 1.4
+        sgap += 0.6
+      }
+      ctx.restore()
+
+      // ── City skyline silhouette ──
+      const skyBase = horizonY + 1
+      for (let i = 0; i < 26; i++) {
+        const seed = Math.sin(i * 12.9898) * 43758.5453
+        const r = seed - Math.floor(seed)
+        const bw = W / 26
+        const bx = i * bw + drift * 0.5
+        const bh = horizonY * (0.1 + r * 0.4)
+        ctx.fillStyle = "#1a0b30"
+        ctx.fillRect(bx, skyBase - bh, bw + 1, bh)
+        ctx.fillStyle = i % 2 === 0 ? `${NEON.cyan}55` : `${NEON.pink}55`
+        for (let wy = skyBase - bh + 4; wy < skyBase - 2; wy += 7) {
+          if (Math.sin(wy * 3.1 + i) + 1 > 1.2) ctx.fillRect(bx + 3, wy, 2, 2)
+          if (Math.sin(wy * 1.7 + i) + 1 > 1.3) ctx.fillRect(bx + bw * 0.5, wy, 2, 2)
+        }
+      }
+      // horizon neon line
+      ctx.fillStyle = NEON.pink
+      ctx.shadowColor = NEON.pink
+      ctx.shadowBlur = 16
+      ctx.fillRect(0, horizonY - 1, W, 2)
+      ctx.shadowBlur = 0
+
+      // ── Palm trees ──
+      drawPalm(ctx, W * 0.1 + drift * 0.6, horizonY + 4, horizonY * 0.55, "#0d0420")
+      drawPalm(ctx, W * 0.9 + drift * 0.6, horizonY + 4, horizonY * 0.6, "#0d0420")
+      drawPalm(ctx, W * 0.78 + drift * 0.6, horizonY + 2, horizonY * 0.4, "#0d0420")
+
       // Ground base
-      ctx.fillStyle = "#0a0612"
-      ctx.fillRect(0, horizonY, W, H - horizonY)
+      ctx.fillStyle = "#0a0418"
+      ctx.fillRect(0, horizonY, W, dashTop - horizonY)
 
       // ── Scanline pseudo-3D road ──
-      // Determine current curve from segment under camera
-      const baseSeg = Math.floor(positionRef.current / SEGMENT_LENGTH) % segments.length
-      const roadHeight = H - horizonY
-      // Curve accumulation for current view
       let curveOffset = 0
       let curveSpeed = 0
       const carHits: Array<{ x: number; carX: number; rowY: number; w: number; color: string }> = []
 
-      for (let y = 0; y < roadHeight; y++) {
-        const screenY = H - 1 - y
-        // perspective: rows near bottom (y small) are close, near horizon (y large) are far
-        const perspective = (y + 1) / roadHeight // 0 at horizon-ish? invert
-        // Map screen row to road depth using 1/z perspective
-        const p = (roadHeight - y) / roadHeight // 1 at horizon, ~0 at bottom
-        const depth = 1 / (1 - p * 0.92) // grows toward horizon
+      for (let screenY = roadBottom - 1; screenY >= roadTop; screenY--) {
+        const p = (screenY - roadTop) / roadH // 0 at horizon, 1 at bottom (near)
+        const depth = 1 / (p * 0.92 + 0.08) // large near horizon, small near camera
         const z = depth * SEGMENT_LENGTH * 0.5 + positionRef.current
         const segIdx = Math.floor(z / SEGMENT_LENGTH) % segments.length
         const seg = segments[(segIdx + segments.length) % segments.length]
 
-        // accumulate curve (more effect far away)
-        curveSpeed += (seg.curve * 0.0015) * (1 - p)
+        // accumulate curve from near to far
+        curveSpeed += seg.curve * 0.0016 * (1 - p)
         curveOffset += curveSpeed
 
-        // Road width shrinks toward horizon
-        const roadW = (W * 0.92) * (1 - p * 0.82)
-        const centerX = W / 2 + curveOffset * 8 - playerX * roadW * 0.55
+        // Road widens toward camera
+        const roadW = W * 0.96 * Math.pow(p, 0.92)
+        const centerX = W / 2 + curveOffset * 8 + drift * 0.5 - playerX * roadW * 0.5
 
-        // Alternating colors by depth band for motion feel
+        // Alternating bands scrolling for motion
         const band = Math.floor((z * 0.02) % 2)
         const onRoadAlt = band === 0
-        const roadColor = onRoadAlt ? "#26263f" : "#1c1c30"
-        const grassColor = onRoadAlt ? "#140a22" : "#0d0616"
+        const roadColor = onRoadAlt ? "#241636" : "#1a0f2a"
 
-        // Grass
-        ctx.fillStyle = grassColor
+        // Shoulder / ground
+        ctx.fillStyle = onRoadAlt ? "#160a26" : "#10071c"
         ctx.fillRect(0, screenY, W, 1)
-        // Road
+        // Road surface
         ctx.fillStyle = roadColor
         ctx.fillRect(centerX - roadW / 2, screenY, roadW, 1)
-        // Edges (neon)
-        const edgeW = Math.max(2, roadW * 0.02)
-        ctx.fillStyle = onRoadAlt ? NEON.cyan : NEON.pink
+        // Wet neon reflection down the center (sun reflection)
+        const reflW = roadW * 0.34
+        const reflA = 0.22 * (1 - p) + 0.05
+        ctx.fillStyle = `rgba(255,70,150,${reflA})`
+        ctx.fillRect(centerX - reflW / 2, screenY, reflW, 1)
+        // Neon edges
+        const edgeW = Math.max(2, roadW * 0.025)
+        ctx.fillStyle = NEON.cyan
         ctx.fillRect(centerX - roadW / 2, screenY, edgeW, 1)
+        ctx.fillStyle = NEON.pink
         ctx.fillRect(centerX + roadW / 2 - edgeW, screenY, edgeW, 1)
         // Center dashes
         if (onRoadAlt) {
-          ctx.fillStyle = `${NEON.pink}cc`
-          ctx.fillRect(centerX - roadW * 0.01, screenY, roadW * 0.02, 1)
+          ctx.fillStyle = "rgba(255,255,255,0.5)"
+          ctx.fillRect(centerX - roadW * 0.012, screenY, roadW * 0.024, 1)
         }
 
-        // Obstacle cars: draw when a car's segment matches this row's depth band
-        if (y % 2 === 0) {
+        // Obstacle cars
+        if (Math.round(screenY) % 2 === 0) {
           for (const car of seg.cars) {
             if (Math.abs((car.z % totalLength) - (z % totalLength)) < SEGMENT_LENGTH * 0.5) {
-              const cw = roadW * 0.22
+              const cw = roadW * 0.2
               const cx = centerX + car.x * roadW * 0.4
               carHits.push({ x: cx, carX: car.x, rowY: screenY, w: cw, color: car.color })
             }
@@ -350,7 +489,7 @@ export default function DrivePage() {
         ctx.fillRect(hit.x + cw * 0.32, hit.rowY - ch * 0.35, cw * 0.18, ch * 0.25)
         ctx.shadowBlur = 0
         // Collision: car near bottom of screen and aligned with player lane
-        if (!crashedRef.current && hit.rowY > H * 0.78 && speedRef.current > 5) {
+        if (!crashedRef.current && hit.rowY > roadBottom - roadH * 0.14 && speedRef.current > 5) {
           if (Math.abs(hit.carX - playerX) < 0.4) {
             crashedRef.current = true
             setCollisionFlash(true)
@@ -364,32 +503,63 @@ export default function DrivePage() {
         }
       }
 
-      // ── Player car (bottom center) ──
-      const pcW = W * 0.22
-      const pcH = pcW * 0.45
-      const pcX = W / 2 + playerX * (W * 0.18) - pcW / 2
-      const pcY = H - pcH - H * 0.04
-      ctx.fillStyle = "rgba(0,0,0,0.4)"
+      // ── Cockpit dashboard ──
+      const dGrad = ctx.createLinearGradient(0, dashTop, 0, H)
+      dGrad.addColorStop(0, "#0c0718")
+      dGrad.addColorStop(1, "#040209")
+      ctx.fillStyle = dGrad
+      ctx.fillRect(0, dashTop, W, H - dashTop)
+      // dashboard top neon edge
+      ctx.fillStyle = NEON.cyan
+      ctx.shadowColor = NEON.cyan
+      ctx.shadowBlur = 14
+      ctx.fillRect(0, dashTop, W, 2)
+      ctx.shadowBlur = 0
+
+      // Gauge clusters
+      const dashAreaH = H - dashTop
+      const gaugeH = dashAreaH * 0.4
+      const gaugeW = W * 0.27
+      const gaugeY = dashTop + dashAreaH * 0.12
+      const spdFrac = Math.min(speedRef.current / MAX_SPEED, 1)
+      drawGauge(ctx, W * 0.3 - gaugeW / 2, gaugeY, gaugeW, gaugeH, spdFrac, NEON.cyan, `${Math.floor(speedRef.current * 2.5)}`)
+      drawGauge(ctx, W * 0.7 - gaugeW / 2, gaugeY, gaugeW, gaugeH, 0.25 + spdFrac * 0.6, NEON.cyan, "RPM")
+
+      // Steering wheel
+      const wheelCx = W / 2
+      const wheelCy = H + H * 0.1
+      const wheelR = W * 0.46
+      ctx.save()
+      ctx.translate(wheelCx, wheelCy)
+      ctx.rotate(playerX * 0.35)
+      ctx.strokeStyle = "#120c1f"
+      ctx.lineWidth = Math.max(10, W * 0.05)
       ctx.beginPath()
-      ctx.ellipse(pcX + pcW / 2, H - H * 0.04, pcW * 0.45, pcH * 0.15, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = "#e8e8f0"
-      ctx.fillRect(pcX, pcY, pcW, pcH)
-      ctx.fillStyle = "#c0c0d0"
-      ctx.fillRect(pcX + pcW * 0.2, pcY - pcH * 0.45, pcW * 0.6, pcH * 0.5)
-      ctx.fillStyle = `${NEON.cyan}55`
-      ctx.fillRect(pcX + pcW * 0.22, pcY - pcH * 0.38, pcW * 0.56, pcH * 0.38)
-      ctx.fillStyle = "#ffffff"
-      ctx.shadowColor = "#ffffff"
-      ctx.shadowBlur = 20
-      ctx.fillRect(pcX + pcW * 0.08, pcY + pcH * 0.1, pcW * 0.12, pcH * 0.15)
-      ctx.fillRect(pcX + pcW * 0.8, pcY + pcH * 0.1, pcW * 0.12, pcH * 0.15)
-      ctx.shadowBlur = 0
-      ctx.fillStyle = `${NEON.pink}33`
+      ctx.arc(0, 0, wheelR, Math.PI * 1.12, Math.PI * 1.88)
+      ctx.stroke()
+      ctx.strokeStyle = NEON.pink
+      ctx.lineWidth = Math.max(2, W * 0.008)
       ctx.shadowColor = NEON.pink
-      ctx.shadowBlur = 25
-      ctx.fillRect(pcX, pcY + pcH * 0.85, pcW, pcH * 0.15)
+      ctx.shadowBlur = 16
+      ctx.beginPath()
+      ctx.arc(0, 0, wheelR, Math.PI * 1.12, Math.PI * 1.88)
+      ctx.stroke()
+      ctx.strokeStyle = `${NEON.cyan}cc`
+      ctx.lineWidth = Math.max(2, W * 0.006)
+      ctx.shadowColor = NEON.cyan
+      ctx.shadowBlur = 8
+      for (const a of [Math.PI * 1.2, Math.PI * 1.5, Math.PI * 1.8]) {
+        ctx.beginPath()
+        ctx.moveTo(0, 0)
+        ctx.lineTo(Math.cos(a) * wheelR, Math.sin(a) * wheelR)
+        ctx.stroke()
+      }
       ctx.shadowBlur = 0
+      ctx.fillStyle = "#1a1228"
+      ctx.beginPath()
+      ctx.arc(0, 0, W * 0.05, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
 
       // Crash overlay
       if (crashedRef.current) {
