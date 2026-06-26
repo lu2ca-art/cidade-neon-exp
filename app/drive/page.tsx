@@ -9,10 +9,6 @@ const ACCELERATION = 0.4
 const MAX_SPEED = 280
 const FRICTION = 0.88
 const SEGMENT_LENGTH = 200
-const VISIBLE_SEGMENTS = 300
-const FIELD_OF_VIEW = 100
-const CAMERA_HEIGHT = 1500
-const CAMERA_DEPTH = 1 / Math.tan(((FIELD_OF_VIEW / 2) * Math.PI) / 180)
 
 // Neon palette
 const NEON = {
@@ -74,27 +70,6 @@ function generateRoad(): Segment[] {
   return segments
 }
 
-// ─── PROJECT POINT ────────────────────────────────────────────────────────────
-function project(
-  cameraX: number,
-  cameraY: number,
-  cameraZ: number,
-  worldX: number,
-  worldY: number,
-  worldZ: number,
-  width: number,
-  height: number,
-) {
-  const transX = worldX - cameraX
-  const transY = worldY - cameraY
-  const transZ = worldZ - cameraZ
-  const cameraScale = CAMERA_DEPTH / transZ
-  const screenX = Math.round((1 + cameraScale * transX) * (width / 2))
-  const screenY = Math.round((1 - cameraScale * transY) * (height / 2))
-  const screenW = Math.round(cameraScale * width * 0.55)
-  return { screenX, screenY, screenW, scale: cameraScale }
-}
-
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function DrivePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -104,7 +79,6 @@ export default function DrivePage() {
   // Game state
   const speedRef = useRef(0)
   const positionRef = useRef(0)
-  const xRef = useRef(0)
   const playerXRef = useRef(0)
   const isAcceleratingRef = useRef(false)
   const crashedRef = useRef(false)
@@ -151,51 +125,54 @@ export default function DrivePage() {
     [resetAutoHide],
   )
 
-  // Touch/mouse controls
+  // Accelerator (pointer events = mouse + touch unified)
   useEffect(() => {
-    const onStart = () => {
-      if (phoneMode === "fullscreen") return
+    const acceleratorEl = document.getElementById("accelerator")
+    if (!acceleratorEl) return
+    const onStart = (e: Event) => {
+      e.preventDefault()
       isAcceleratingRef.current = true
     }
     const onEnd = () => {
       isAcceleratingRef.current = false
     }
-    const acceleratorEl = document.getElementById("accelerator")
-    if (!acceleratorEl) return
-    acceleratorEl.addEventListener("touchstart", onStart, { passive: true })
-    acceleratorEl.addEventListener("touchend", onEnd)
-    acceleratorEl.addEventListener("mousedown", onStart)
-    acceleratorEl.addEventListener("mouseup", onEnd)
-
+    acceleratorEl.addEventListener("pointerdown", onStart)
+    window.addEventListener("pointerup", onEnd)
+    window.addEventListener("pointercancel", onEnd)
     return () => {
-      acceleratorEl.removeEventListener("touchstart", onStart)
-      acceleratorEl.removeEventListener("touchend", onEnd)
-      acceleratorEl.removeEventListener("mousedown", onStart)
-      acceleratorEl.removeEventListener("mouseup", onEnd)
+      acceleratorEl.removeEventListener("pointerdown", onStart)
+      window.removeEventListener("pointerup", onEnd)
+      window.removeEventListener("pointercancel", onEnd)
     }
   }, [phoneMode])
 
-  // Steering
+  // Steering (pointer events, with proper cleanup)
   useEffect(() => {
     const leftBtn = document.getElementById("steer-left")
     const rightBtn = document.getElementById("steer-right")
-    const onLeft = () => {
-      playerXRef.current = Math.max(-1, playerXRef.current - 0.05)
+    if (!leftBtn || !rightBtn) return
+    let leftId: ReturnType<typeof setInterval> | null = null
+    let rightId: ReturnType<typeof setInterval> | null = null
+    const onLeftStart = (e: Event) => {
+      e.preventDefault()
+      if (leftId) return
+      leftId = setInterval(() => { playerXRef.current = Math.max(-1, playerXRef.current - 0.04) }, 16)
     }
-    const onRight = () => {
-      playerXRef.current = Math.min(1, playerXRef.current + 0.05)
+    const onRightStart = (e: Event) => {
+      e.preventDefault()
+      if (rightId) return
+      rightId = setInterval(() => { playerXRef.current = Math.min(1, playerXRef.current + 0.04) }, 16)
     }
-    if (leftBtn && rightBtn) {
-      const leftInterval = { id: 0 as unknown as ReturnType<typeof setInterval> }
-      const rightInterval = { id: 0 as unknown as ReturnType<typeof setInterval> }
-      leftBtn.addEventListener("touchstart", () => { leftInterval.id = setInterval(onLeft, 50) }, { passive: true })
-      leftBtn.addEventListener("touchend", () => clearInterval(leftInterval.id))
-      leftBtn.addEventListener("mousedown", () => { leftInterval.id = setInterval(onLeft, 50) })
-      leftBtn.addEventListener("mouseup", () => clearInterval(leftInterval.id))
-      rightBtn.addEventListener("touchstart", () => { rightInterval.id = setInterval(onRight, 50) }, { passive: true })
-      rightBtn.addEventListener("touchend", () => clearInterval(rightInterval.id))
-      rightBtn.addEventListener("mousedown", () => { rightInterval.id = setInterval(onRight, 50) })
-      rightBtn.addEventListener("mouseup", () => clearInterval(rightInterval.id))
+    const stopLeft = () => { if (leftId) { clearInterval(leftId); leftId = null } }
+    const stopRight = () => { if (rightId) { clearInterval(rightId); rightId = null } }
+    leftBtn.addEventListener("pointerdown", onLeftStart)
+    rightBtn.addEventListener("pointerdown", onRightStart)
+    window.addEventListener("pointerup", () => { stopLeft(); stopRight() })
+    window.addEventListener("pointercancel", () => { stopLeft(); stopRight() })
+    return () => {
+      stopLeft(); stopRight()
+      leftBtn.removeEventListener("pointerdown", onLeftStart)
+      rightBtn.removeEventListener("pointerdown", onRightStart)
     }
   }, [])
 
@@ -223,6 +200,7 @@ export default function DrivePage() {
         animFrameRef.current = requestAnimationFrame(render)
         return
       }
+
       // ── Physics ──
       if (!crashedRef.current) {
         if (isAcceleratingRef.current) {
@@ -235,166 +213,155 @@ export default function DrivePage() {
       }
       const totalLength = segments.length * SEGMENT_LENGTH
       positionRef.current = ((positionRef.current % totalLength) + totalLength) % totalLength
+
+      const horizonY = H * 0.42
+      const playerX = playerXRef.current
+
       // ── Sky ──
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.55)
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY)
       skyGrad.addColorStop(0, SKY_TOP)
       skyGrad.addColorStop(1, SKY_HORIZON)
       ctx.fillStyle = skyGrad
-      ctx.fillRect(0, 0, W, H)
+      ctx.fillRect(0, 0, W, horizonY)
       // Stars
       ctx.fillStyle = "rgba(255,255,255,0.6)"
       for (let s = 0; s < 80; s++) {
-        const sx = (((s * 137.5 + positionRef.current * 0.01) % W) + W) % W
-        const sy = (s * 73.1) % (H * 0.45)
+        const sx = (s * 137.5) % W
+        const sy = (s * 73.1) % horizonY
         ctx.fillRect(sx, sy, 1, 1)
       }
       // Neon horizon glow
-      const horizonGrad = ctx.createLinearGradient(0, H * 0.48, 0, H * 0.58)
+      const horizonGrad = ctx.createLinearGradient(0, horizonY - 40, 0, horizonY + 20)
       horizonGrad.addColorStop(0, "transparent")
-      horizonGrad.addColorStop(0.5, `${NEON.purple}44`)
-      horizonGrad.addColorStop(1, "transparent")
+      horizonGrad.addColorStop(0.6, `${NEON.purple}66`)
+      horizonGrad.addColorStop(1, `${NEON.pink}33`)
       ctx.fillStyle = horizonGrad
-      ctx.fillRect(0, H * 0.45, W, H * 0.15)
-      // ── Road segments ──
-      const startPos = Math.floor(positionRef.current / SEGMENT_LENGTH)
-      let x = xRef.current
-      let dx = 0
-      let maxY = H
-      const drawCalls: Array<() => void> = []
-      for (let i = 0; i < VISIBLE_SEGMENTS; i++) {
-        const segIndex = (startPos + i) % segments.length
-        const seg = segments[segIndex]
-        const camZ = positionRef.current - startPos * SEGMENT_LENGTH
-        const worldZ = segIndex * SEGMENT_LENGTH - camZ + (segIndex < startPos ? totalLength : 0)
-        if (worldZ < CAMERA_DEPTH * SEGMENT_LENGTH) continue
-        const p1 = project(playerXRef.current * 800, CAMERA_HEIGHT, positionRef.current, x, 0, worldZ, W, H)
-        const p2 = project(
-          playerXRef.current * 800,
-          CAMERA_HEIGHT,
-          positionRef.current,
-          x + dx * SEGMENT_LENGTH,
-          0,
-          worldZ + SEGMENT_LENGTH,
-          W,
-          H,
-        )
-        x += dx
-        dx += seg.curve * 0.001
-        if (p1.screenY >= maxY) continue
-        maxY = p1.screenY
-        const isAlternate = Math.floor(segIndex / 2) % 2 === 0
-        const roadColor = isAlternate ? "#16162a" : "#1e1e3a"
-        const grassColor = isAlternate ? "#0a0a1a" : "#080810"
+      ctx.fillRect(0, horizonY - 40, W, 60)
+      // Ground base
+      ctx.fillStyle = "#0a0612"
+      ctx.fillRect(0, horizonY, W, H - horizonY)
+
+      // ── Scanline pseudo-3D road ──
+      // Determine current curve from segment under camera
+      const baseSeg = Math.floor(positionRef.current / SEGMENT_LENGTH) % segments.length
+      const roadHeight = H - horizonY
+      // Curve accumulation for current view
+      let curveOffset = 0
+      let curveSpeed = 0
+      const carHits: Array<{ x: number; carX: number; rowY: number; w: number; color: string }> = []
+
+      for (let y = 0; y < roadHeight; y++) {
+        const screenY = H - 1 - y
+        // perspective: rows near bottom (y small) are close, near horizon (y large) are far
+        const perspective = (y + 1) / roadHeight // 0 at horizon-ish? invert
+        // Map screen row to road depth using 1/z perspective
+        const p = (roadHeight - y) / roadHeight // 1 at horizon, ~0 at bottom
+        const depth = 1 / (1 - p * 0.92) // grows toward horizon
+        const z = depth * SEGMENT_LENGTH * 0.5 + positionRef.current
+        const segIdx = Math.floor(z / SEGMENT_LENGTH) % segments.length
+        const seg = segments[(segIdx + segments.length) % segments.length]
+
+        // accumulate curve (more effect far away)
+        curveSpeed += (seg.curve * 0.0015) * (1 - p)
+        curveOffset += curveSpeed
+
+        // Road width shrinks toward horizon
+        const roadW = (W * 0.92) * (1 - p * 0.82)
+        const centerX = W / 2 + curveOffset * 8 - playerX * roadW * 0.55
+
+        // Alternating colors by depth band for motion feel
+        const band = Math.floor((z * 0.02) % 2)
+        const onRoadAlt = band === 0
+        const roadColor = onRoadAlt ? "#26263f" : "#1c1c30"
+        const grassColor = onRoadAlt ? "#140a22" : "#0d0616"
+
         // Grass
         ctx.fillStyle = grassColor
-        ctx.fillRect(0, p2.screenY, W, p1.screenY - p2.screenY)
+        ctx.fillRect(0, screenY, W, 1)
         // Road
         ctx.fillStyle = roadColor
-        ctx.beginPath()
-        ctx.moveTo(p1.screenX - p1.screenW, p1.screenY)
-        ctx.lineTo(p1.screenX + p1.screenW, p1.screenY)
-        ctx.lineTo(p2.screenX + p2.screenW, p2.screenY)
-        ctx.lineTo(p2.screenX - p2.screenW, p2.screenY)
-        ctx.fill()
-        // Center line (neon pink glow)
-        if (isAlternate) {
-          ctx.strokeStyle = NEON.pink
-          ctx.lineWidth = Math.max(1, p1.scale * 8)
-          ctx.shadowColor = NEON.pink
-          ctx.shadowBlur = 8
-          ctx.beginPath()
-          ctx.moveTo(p1.screenX, p1.screenY)
-          ctx.lineTo(p2.screenX, p2.screenY)
-          ctx.stroke()
-          ctx.shadowBlur = 0
+        ctx.fillRect(centerX - roadW / 2, screenY, roadW, 1)
+        // Edges (neon)
+        const edgeW = Math.max(2, roadW * 0.02)
+        ctx.fillStyle = onRoadAlt ? NEON.cyan : NEON.pink
+        ctx.fillRect(centerX - roadW / 2, screenY, edgeW, 1)
+        ctx.fillRect(centerX + roadW / 2 - edgeW, screenY, edgeW, 1)
+        // Center dashes
+        if (onRoadAlt) {
+          ctx.fillStyle = `${NEON.pink}cc`
+          ctx.fillRect(centerX - roadW * 0.01, screenY, roadW * 0.02, 1)
         }
-        // Road edges (neon cyan)
-        ctx.strokeStyle = `${NEON.cyan}88`
-        ctx.lineWidth = Math.max(1, p1.scale * 4)
-        ctx.beginPath()
-        ctx.moveTo(p1.screenX - p1.screenW, p1.screenY)
-        ctx.lineTo(p2.screenX - p2.screenW, p2.screenY)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(p1.screenX + p1.screenW, p1.screenY)
-        ctx.lineTo(p2.screenX + p2.screenW, p2.screenY)
-        ctx.stroke()
-        // Obstacle cars
-        for (const car of seg.cars) {
-          const carScreenX = p1.screenX + car.x * p1.screenW
-          const carW = p1.scale * car.width * 2.5
-          const carH = carW * 0.6
-          const carY = p1.screenY - carH
-          if (carW < 3) continue
-          const speed = speedRef.current
-          const crashed = crashedRef.current
-          const pX = playerXRef.current
-          const segLoopIdx = i
-          drawCalls.push(() => {
-            // Car body
-            ctx.fillStyle = car.color
-            ctx.fillRect(carScreenX - carW / 2, carY, carW, carH)
-            // Windshield
-            ctx.fillStyle = `${NEON.cyan}66`
-            ctx.fillRect(carScreenX - carW * 0.3, carY + carH * 0.1, carW * 0.6, carH * 0.35)
-            // Brake lights
-            ctx.fillStyle = "#ff0000"
-            ctx.shadowColor = "#ff0000"
-            ctx.shadowBlur = carW * 0.3
-            ctx.fillRect(carScreenX - carW / 2, carY + carH * 0.6, carW * 0.15, carH * 0.2)
-            ctx.fillRect(carScreenX + carW * 0.35, carY + carH * 0.6, carW * 0.15, carH * 0.2)
-            ctx.shadowBlur = 0
-            // Collision check
-            if (!crashed && segLoopIdx < 5 && speed > 5) {
-              const distX = Math.abs(pX - car.x)
-              if (distX < 0.35) {
-                crashedRef.current = true
-                setCollisionFlash(true)
-                setTimeout(() => setCollisionFlash(false), 300)
-                if (crashTimerRef.current) clearTimeout(crashTimerRef.current)
-                crashTimerRef.current = setTimeout(() => {
-                  crashedRef.current = false
-                  speedRef.current = 0
-                }, 2000)
-              }
+
+        // Obstacle cars: draw when a car's segment matches this row's depth band
+        if (y % 2 === 0) {
+          for (const car of seg.cars) {
+            if (Math.abs((car.z % totalLength) - (z % totalLength)) < SEGMENT_LENGTH * 0.5) {
+              const cw = roadW * 0.22
+              const cx = centerX + car.x * roadW * 0.4
+              carHits.push({ x: cx, carX: car.x, rowY: screenY, w: cw, color: car.color })
             }
-          })
+          }
         }
       }
-      // Execute draw calls (sprites on top of road)
-      for (const call of drawCalls) call()
+
+      // Draw obstacle cars (use furthest collected positions as their on-screen spot)
+      const seen = new Set<string>()
+      for (const hit of carHits) {
+        const key = `${Math.round(hit.x)}_${Math.round(hit.rowY / 20)}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        const cw = Math.max(8, hit.w)
+        const ch = cw * 0.7
+        ctx.fillStyle = hit.color
+        ctx.fillRect(hit.x - cw / 2, hit.rowY - ch, cw, ch)
+        ctx.fillStyle = "#ff0000"
+        ctx.shadowColor = "#ff0000"
+        ctx.shadowBlur = cw * 0.25
+        ctx.fillRect(hit.x - cw / 2, hit.rowY - ch * 0.35, cw * 0.18, ch * 0.25)
+        ctx.fillRect(hit.x + cw * 0.32, hit.rowY - ch * 0.35, cw * 0.18, ch * 0.25)
+        ctx.shadowBlur = 0
+        // Collision: car near bottom of screen and aligned with player lane
+        if (!crashedRef.current && hit.rowY > H * 0.78 && speedRef.current > 5) {
+          if (Math.abs(hit.carX - playerX) < 0.4) {
+            crashedRef.current = true
+            setCollisionFlash(true)
+            setTimeout(() => setCollisionFlash(false), 300)
+            if (crashTimerRef.current) clearTimeout(crashTimerRef.current)
+            crashTimerRef.current = setTimeout(() => {
+              crashedRef.current = false
+              speedRef.current = 0
+            }, 2000)
+          }
+        }
+      }
+
       // ── Player car (bottom center) ──
-      const carW = W * 0.22
-      const carH = carW * 0.45
-      const carX = W / 2 - carW / 2
-      const carY = H - carH - H * 0.04
-      // Car shadow
+      const pcW = W * 0.22
+      const pcH = pcW * 0.45
+      const pcX = W / 2 + playerX * (W * 0.18) - pcW / 2
+      const pcY = H - pcH - H * 0.04
       ctx.fillStyle = "rgba(0,0,0,0.4)"
       ctx.beginPath()
-      ctx.ellipse(W / 2, H - H * 0.04, carW * 0.45, carH * 0.15, 0, 0, Math.PI * 2)
+      ctx.ellipse(pcX + pcW / 2, H - H * 0.04, pcW * 0.45, pcH * 0.15, 0, 0, Math.PI * 2)
       ctx.fill()
-      // Car body
       ctx.fillStyle = "#e8e8f0"
-      ctx.fillRect(carX, carY, carW, carH)
-      // Car roof
+      ctx.fillRect(pcX, pcY, pcW, pcH)
       ctx.fillStyle = "#c0c0d0"
-      ctx.fillRect(carX + carW * 0.2, carY - carH * 0.45, carW * 0.6, carH * 0.5)
-      // Windshield (neon tint)
+      ctx.fillRect(pcX + pcW * 0.2, pcY - pcH * 0.45, pcW * 0.6, pcH * 0.5)
       ctx.fillStyle = `${NEON.cyan}55`
-      ctx.fillRect(carX + carW * 0.22, carY - carH * 0.38, carW * 0.56, carH * 0.38)
-      // Headlights
+      ctx.fillRect(pcX + pcW * 0.22, pcY - pcH * 0.38, pcW * 0.56, pcH * 0.38)
       ctx.fillStyle = "#ffffff"
       ctx.shadowColor = "#ffffff"
       ctx.shadowBlur = 20
-      ctx.fillRect(carX + carW * 0.08, carY + carH * 0.1, carW * 0.12, carH * 0.15)
-      ctx.fillRect(carX + carW * 0.8, carY + carH * 0.1, carW * 0.12, carH * 0.15)
+      ctx.fillRect(pcX + pcW * 0.08, pcY + pcH * 0.1, pcW * 0.12, pcH * 0.15)
+      ctx.fillRect(pcX + pcW * 0.8, pcY + pcH * 0.1, pcW * 0.12, pcH * 0.15)
       ctx.shadowBlur = 0
-      // Pink underglow
       ctx.fillStyle = `${NEON.pink}33`
       ctx.shadowColor = NEON.pink
       ctx.shadowBlur = 25
-      ctx.fillRect(carX, carY + carH * 0.85, carW, carH * 0.15)
+      ctx.fillRect(pcX, pcY + pcH * 0.85, pcW, pcH * 0.15)
       ctx.shadowBlur = 0
+
       // Crash overlay
       if (crashedRef.current) {
         const crashAlpha = 0.3 + Math.sin(Date.now() * 0.01) * 0.1
@@ -405,7 +372,8 @@ export default function DrivePage() {
         ctx.textAlign = "center"
         ctx.fillText("BATEU! RECOMPONDO...", W / 2, H / 2)
       }
-      // Speed indicator (minimal)
+
+      // Speed indicator
       const spd = Math.floor(speedRef.current * 2.5)
       ctx.fillStyle = `${NEON.cyan}cc`
       ctx.font = `bold ${W * 0.04}px monospace`
