@@ -457,7 +457,7 @@ function CidadeNeonExperience() {
   useEffect(() => {
     if (phase === "hacker" && hackerIdx >= HACKER_LINES.length) {
       const t = setTimeout(() => {
-        window.location.href = "/spotify/auto-chuva"
+        window.location.href = "/drive"
       }, 1500)
       return () => clearTimeout(t)
     }
