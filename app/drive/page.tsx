@@ -1,5 +1,7 @@
 "use client"
 import { useEffect, useRef, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const ROAD_COLOR = "#1a1a2e"
@@ -72,6 +74,9 @@ function generateRoad(): Segment[] {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function DrivePage() {
+  const router = useRouter()
+  const { updateCinematicStep } = useGameFunnel()
+
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const phoneRef = useRef<HTMLDivElement>(null)
   const animFrameRef = useRef<number>(0)
@@ -84,6 +89,7 @@ export default function DrivePage() {
   const crashedRef = useRef(false)
   const crashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const segmentsRef = useRef<Segment[]>([])
+  const driveStartRef = useRef(Date.now())
 
   // Phone state
   const [phoneMode, setPhoneMode] = useState<"invisible" | "mini" | "fullscreen">("fullscreen")
@@ -92,6 +98,29 @@ export default function DrivePage() {
 
   // Collision flash
   const [collisionFlash, setCollisionFlash] = useState(false)
+
+  // Countdown to next phase
+  const [countdown, setCountdown] = useState(30)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearInterval(id); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Register cinematic step and advance circuit after 30s
+  useEffect(() => {
+    updateCinematicStep("spotify-auto")
+    driveStartRef.current = Date.now()
+    const exitTimer = setTimeout(() => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+      router.push("/spotify/auto-chuva")
+    }, 30000)
+    return () => clearTimeout(exitTimer)
+  }, [updateCinematicStep, router])
 
   // Initialize road
   useEffect(() => {
@@ -526,6 +555,40 @@ export default function DrivePage() {
           </button>
         </>
       )}
+      {/* ── HUD: countdown + skip ── */}
+      <div
+        className="absolute top-4 right-4 z-40 flex items-center gap-2"
+        style={{ pointerEvents: "auto" }}
+      >
+        <div
+          className="font-mono text-xs px-2 py-1 rounded-lg"
+          style={{
+            background: "rgba(0,0,0,0.5)",
+            border: `1px solid ${NEON.cyan}44`,
+            color: `${NEON.cyan}bb`,
+            letterSpacing: "2px",
+          }}
+        >
+          {countdown > 0 ? `${countdown}s` : "—"}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+            router.push("/spotify/auto-chuva")
+          }}
+          className="font-mono text-xs px-3 py-1 rounded-lg active:scale-95 transition-transform"
+          style={{
+            background: `${NEON.pink}22`,
+            border: `1px solid ${NEON.pink}55`,
+            color: NEON.pink,
+            letterSpacing: "2px",
+          }}
+        >
+          PULAR
+        </button>
+      </div>
+
       {/* ── PHONE OVERLAY ── */}
       <div
         ref={phoneRef}
