@@ -356,47 +356,89 @@ export default function DrivePage() {
       >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"/>
 
-      {/* CELULAR iframe */}
-      <div
-        onClick={()=>!phoneOpen&&setPhoneOpen(true)}
-        style={{
-          position:"absolute",
-          bottom: phoneOpen?0:100,
-          right:  phoneOpen?0:12,
-          width:  phoneOpen?"min(390px,100vw)":85,
-          height: phoneOpen?"min(844px,100vh)":150,
-          borderRadius: phoneOpen?0:14,
-          overflow:"hidden", zIndex:60,
-          border:`2px solid ${phoneOpen?C.neonPink:C.neonPink+"66"}`,
-          boxShadow:`0 0 16px ${C.neonPink}44`,
-          transition:"all 0.45s cubic-bezier(0.4,0,0.2,1)",
-          cursor:phoneOpen?"default":"pointer",
-          background:"#0a0014",
-        }}
-      >
-        <iframe
-          src="/"
+      {/* CELULAR — prévia miniatura (fechado) */}
+      {!phoneOpen&&(
+        <div
+          onClick={()=>setPhoneOpen(true)}
           style={{
-            width:"390px",height:"844px",border:"none",
-            transform: phoneOpen?"scale(1)":`scale(${85/390})`,
-            transformOrigin:"top left",
-            pointerEvents:phoneOpen?"auto":"none",
+            position:"absolute", bottom:100, right:12,
+            width:85, height:150,
+            borderRadius:14, overflow:"hidden", zIndex:60,
+            border:`2px solid ${C.neonPink}66`,
+            boxShadow:`0 0 16px ${C.neonPink}44`,
+            cursor:"pointer", background:"#0a0014",
           }}
-          title="Celular"
-        />
-        {phoneOpen&&(
-          <button
-            onClick={e=>{e.stopPropagation();setPhoneOpen(false)}}
+        >
+          <iframe
+            src="/?screen=home"
             style={{
-              position:"absolute",top:14,right:14,
-              background:C.neonPink+"22",
-              border:`1px solid ${C.neonPink}`,
-              borderRadius:8,padding:"4px 14px",
-              color:C.neonPink,fontSize:11,letterSpacing:2,cursor:"pointer",zIndex:10,
+              width:"390px", height:"844px", border:"none",
+              transform:`scale(${85/390})`, transformOrigin:"top left",
+              pointerEvents:"none",
             }}
-          >DIRIGIR</button>
-        )}
-      </div>
+            title="Celular"
+          />
+        </div>
+      )}
+
+      {/* CELULAR — moldura de iPhone simulada (aberto) */}
+      {phoneOpen&&(
+        <div
+          style={{
+            position:"absolute", inset:0, zIndex:60,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            background:"rgba(2,0,12,0.78)",
+            backdropFilter:"blur(2px)",
+          }}
+        >
+          {/* corpo do aparelho */}
+          <div
+            style={{
+              position:"relative",
+              height:"90%", aspectRatio:"9 / 19.5",
+              maxWidth:"86%",
+              background:"#0a0a0d",
+              borderRadius:44,
+              padding:9,                      // bezel preto ao redor da tela
+              border:"1px solid #2a2a30",
+              boxShadow:`0 0 0 2px #000, 0 18px 50px rgba(0,0,0,0.7), 0 0 26px ${C.neonPink}33`,
+            }}
+          >
+            {/* botões laterais */}
+            <div style={{position:"absolute",left:-2,top:"22%",width:3,height:46,borderRadius:3,background:"#1c1c20"}}/>
+            <div style={{position:"absolute",left:-2,top:"34%",width:3,height:70,borderRadius:3,background:"#1c1c20"}}/>
+            <div style={{position:"absolute",right:-2,top:"26%",width:3,height:90,borderRadius:3,background:"#1c1c20"}}/>
+
+            {/* tela */}
+            <div style={{position:"relative",width:"100%",height:"100%",borderRadius:36,overflow:"hidden",background:"#000"}}>
+              {/* dynamic island / notch */}
+              <div style={{
+                position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",
+                width:"34%",height:22,borderRadius:14,background:"#000",zIndex:5,
+              }}/>
+              <iframe
+                src="/?screen=home"
+                style={{width:"100%",height:"100%",border:"none"}}
+                title="Celular"
+              />
+            </div>
+
+            {/* botão voltar a dirigir */}
+            <button
+              onClick={()=>setPhoneOpen(false)}
+              style={{
+                position:"absolute",bottom:-46,left:"50%",transform:"translateX(-50%)",
+                background:C.neonPink+"22",
+                border:`1px solid ${C.neonPink}`,
+                borderRadius:10,padding:"7px 22px",
+                color:C.neonPink,fontSize:12,letterSpacing:2,cursor:"pointer",
+                whiteSpace:"nowrap",
+                boxShadow:`0 0 14px ${C.neonPink}44`,
+              }}
+            >DIRIGIR</button>
+          </div>
+        </div>
+      )}
 
       {/* CONTROLES — fixos no fundo */}
       {!phoneOpen&&(

@@ -248,6 +248,9 @@ function CidadeNeonExperience() {
   
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
+    // Allow forcing a starting screen via query param (used by the in-game phone iframe)
+    const forced = searchParams?.get("screen")
+    if (forced === "home") return "phone-home"
     const step = gameFunnelState.cinematicStep
     if (step === "idle" || step === "incoming-call") return "incoming-call"
     if (step === "active-call") return "active-call"
