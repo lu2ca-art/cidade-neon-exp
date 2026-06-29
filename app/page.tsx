@@ -278,11 +278,11 @@ function CidadeNeonExperience() {
 
   // Auto-open NECTAR when redirected from WhatsApp 3rd confirmation
   useEffect(() => {
-    if (gameFunnelState.shouldOpenAuraDirectly) {
+    if (gameFunnelState.shouldOpenNectarDirectly) {
       setPhase("nectar-splash")
-      setState({ shouldOpenAuraDirectly: false })
+      setState({ shouldOpenNectarDirectly: false })
     }
-  }, [gameFunnelState.shouldOpenAuraDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gameFunnelState.shouldOpenNectarDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Call ───────���── */
   const [callState, setCallState] = useState<"ringing" | "dismissed" | "callback">("ringing")
@@ -643,7 +643,7 @@ function CidadeNeonExperience() {
         { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan desbloqueou algo pra voce", body: "Live Neon — toque para ver", action: "/whatsapp/privado/alohan", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
-        { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Envie sua AURA para fazer parte da rede", action: "aura" },
+        { id: "nectar-sala", app: "NECTAR", icon: "nectar", color: "#A78BFA", title: "CIDADE NEON", body: "Envie seu NECTAR para fazer parte da rede", action: "nectar" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
       )
     }
@@ -660,7 +660,7 @@ function CidadeNeonExperience() {
     const confirmations: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = []
     if (cc >= 1) confirmations.push({ id: "confirm-1", app: "Cidade Neon", icon: "spotify", color: "#1DB954", title: "Confirmacao 1/3", body: "Teste das Musicas concluido", action: "/confirmacao/1-arquetipos" })
     if (cc >= 2) confirmations.push({ id: "confirm-2", app: "Cidade Neon", icon: "untitled", color: "#8B5CF6", title: "Confirmacao 2/3", body: "Teste de QI concluido", action: "/confirmacao/3-desbloqueio" })
-    if (cc >= 3) confirmations.push({ id: "confirm-3", app: "AURA", icon: "aura", color: "#A78BFA", title: "Confirmacao 3/3", body: "Teste AURA concluido", action: "aura" })
+    if (cc >= 3) confirmations.push({ id: "confirm-3", app: "NECTAR", icon: "nectar", color: "#A78BFA", title: "Confirmacao 3/3", body: "Teste NECTAR concluido", action: "nectar" })
     return confirmations
   }, [gameFunnelState.confirmationCount])
 
@@ -708,8 +708,8 @@ function CidadeNeonExperience() {
     const cc = gameFunnelState.confirmationCount
     if (cc === 0) setAppBadges({ whatsapp: true, spotify: true })
     else if (cc === 1) setAppBadges({ whatsapp: true, spotify: true })
-    else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, aura: true })
-    else setAppBadges({ tiktok: true, aura: true, spotify: true, whatsapp: true, untitled: true, youtube: true })
+    else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, nectar: true })
+    else setAppBadges({ tiktok: true, nectar: true, spotify: true, whatsapp: true, untitled: true, youtube: true })
   }, [phase, gameFunnelState.confirmationCount])
 
   const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
@@ -721,8 +721,8 @@ function CidadeNeonExperience() {
       setCompletedMissions(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
     }
     setBannerNotif(null)
-    if (mission.action === "aura") {
-      setPhase("aura-splash")
+      if (mission.action === "nectar") {
+        setPhase("nectar-splash")
     } else if (mission.action.startsWith("http")) {
       // recompensas com link externo: apenas abre no browser
       window.open(mission.action, "_blank")
@@ -743,7 +743,7 @@ function CidadeNeonExperience() {
       tiktok: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" /></svg>,
       instagram: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>,
       untitled: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>,
-      aura: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1" opacity="0.7"/><circle cx="12" cy="12" r="5" stroke="white" strokeWidth="0.5" opacity="0.4"/><text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">A</text></svg>,
+      nectar: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1" opacity="0.7"/><circle cx="12" cy="12" r="5" stroke="white" strokeWidth="0.5" opacity="0.4"/><text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">N</text></svg>,
       drive: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 3L3 19h18L12 3z" stroke="#ff5fae" strokeWidth="1.5" strokeLinejoin="round" fill="none"/><path d="M8 15l4-8 4 8" stroke="#00e5ff" strokeWidth="1" strokeLinejoin="round" fill="none" opacity="0.6"/><circle cx="12" cy="18" r="1.5" fill="#ff5fae"/></svg>,
     }
     return svgMap[icon] || <div className="w-6 h-6 bg-white/30 rounded" />
@@ -751,7 +751,7 @@ function CidadeNeonExperience() {
 
   const renderAppIcon = (icon: string, color: string) => {
     const iconMap: Record<string, ReactElement> = {
-      aura: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="aur" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#a78bfa" /><stop offset="50%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#a78bfa" /></linearGradient></defs><circle cx="12" cy="12" r="10" stroke="url(#aur)" strokeWidth="1.5" fill="none" /><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">A</text></svg>,
+      nectar: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="nect" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#a78bfa" /><stop offset="50%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#a78bfa" /></linearGradient></defs><circle cx="12" cy="12" r="10" stroke="url(#nect)" strokeWidth="1.5" fill="none" /><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">N</text></svg>,
       drive: <svg className="w-8 h-8" viewBox="0 0 26 26" fill="none"><defs><linearGradient id="drvg" x1="0" y1="0" x2="26" y2="26"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#ff5fae"/></linearGradient></defs><path d="M13 3L2 21h22L13 3z" stroke="url(#drvg)" strokeWidth="1.8" strokeLinejoin="round" fill="rgba(255,95,174,0.08)"/><line x1="13" y1="8" x2="13" y2="17" stroke="#ff5fae" strokeWidth="1.2" opacity="0.7"/><circle cx="13" cy="19.5" r="1.5" fill="#ff5fae"/><path d="M9 15l4-7 4 7" stroke="#00e5ff" strokeWidth="0.8" strokeLinejoin="round" opacity="0.5" fill="none"/></svg>,
       untitled: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.5"/></svg>,
       phone: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>,
@@ -1107,7 +1107,7 @@ function CidadeNeonExperience() {
                   </div>
                   <div className="flex-1 text-left min-w-0">
                     <p className="text-[#00A884] font-bold text-xs uppercase tracking-wider">
-                      {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE AURA (3/3)"}
+                      {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE NECTAR (3/3)"}
                     </p>
                     <p className="text-[#8696A0] text-[11px] mt-0.5">Toque para iniciar</p>
                   </div>
@@ -1131,43 +1131,35 @@ function CidadeNeonExperience() {
 
   /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
-  /* ─── RENDER: AURA SPLASH ─────────────────────�����────── */
-  if (phase === "aura-splash") {
+  /* ─── RENDER: NECTAR SPLASH ─────────────────────────────── */
+  if (phase === "nectar-splash") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black overflow-hidden">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-black">
-          {/* Background glow layers */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(167,139,250,0.18) 0%, transparent 70%)" }} />
             <div className="absolute bottom-0 left-0 right-0 h-64" style={{ background: "linear-gradient(to top, rgba(167,139,250,0.08), transparent)" }} />
           </div>
-
-          {/* Center content */}
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-10 px-10">
-            {/* AURA wordmark */}
             <div className="flex flex-col items-center gap-3">
               <h1
                 className="text-white font-black tracking-[0.35em] select-none"
                 style={{ fontSize: "clamp(56px, 18vw, 72px)", fontFamily: "system-ui, -apple-system, sans-serif", textShadow: "0 0 60px rgba(167,139,250,0.5), 0 0 120px rgba(167,139,250,0.2)" }}
               >
-                AURA
+                NECTAR
               </h1>
               <div className="w-12 h-[1px] bg-white/20" />
               <p className="text-white/30 text-xs tracking-[0.25em] uppercase">Cidade Neon</p>
             </div>
-
-            {/* Enter button */}
             <button
               type="button"
-              onClick={() => setPhase("aura-login")}
+              onClick={() => setPhase("nectar-login")}
               className="w-full py-4 rounded-sm bg-[#A78BFA] text-white font-semibold tracking-widest uppercase text-sm active:scale-[0.98] transition-transform"
               style={{ letterSpacing: "0.2em" }}
             >
               ENTRAR
             </button>
           </div>
-
-          {/* Bottom back */}
           <button type="button" onClick={() => setPhase("phone-home")} className="relative z-10 py-6 text-white/15 text-xs text-center tracking-widest uppercase">
             Voltar
           </button>
@@ -1176,28 +1168,25 @@ function CidadeNeonExperience() {
     )
   }
 
-  /* ─── RENDER: AURA ───────────────────────────────── */
-  const auraAlreadyDone = gameFunnelState.confirmations.c3.done
-  const auraUnlocked = gameFunnelState.confirmationCount >= 2
+  /* ─── RENDER: NECTAR ─────────────────────────────── */
+  const nectarAlreadyDone = gameFunnelState.confirmations.c3.done
+  const nectarUnlocked = gameFunnelState.confirmationCount >= 2
 
-  if (phase === "aura-login") {
-    // LOCKED STATE: show before 2nd confirmation
-    if (!auraUnlocked && !auraAlreadyDone) {
+  if (phase === "nectar-login") {
+    if (!nectarUnlocked && !nectarAlreadyDone) {
       return (
         <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
-            {/* Aurora skin - translucent aurora borealis */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.08) 15%,rgba(103,232,249,.06) 30%,transparent 45%,rgba(251,191,36,.06) 60%,rgba(239,68,68,.04) 75%,transparent 90%)" }} />
+              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.08) 15%,rgba(103,232,249,.06) 30%,transparent 45%,rgba(251,191,36,.06) 60%,rgba(239,68,68,.04) 75%,transparent 90%)" }} />
               <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-20 blur-3xl animate-pulse" style={{ background: "radial-gradient(circle,#a78bfa,transparent 70%)" }} />
               <div className="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full opacity-15 blur-3xl animate-pulse" style={{ background: "radial-gradient(circle,#67e8f9,transparent 70%)", animationDelay: "1s" }} />
             </div>
-
             <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
-              <h1 className="text-4xl font-black tracking-[0.15em] text-black/80 mb-4" style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontStretch: "condensed" }}>AURA</h1>
-              <p className="text-black/30 text-sm text-center mb-10 max-w-[240px] leading-relaxed">Eleve sua AURA</p>
+              <h1 className="text-4xl font-black tracking-[0.15em] text-black/80 mb-4" style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontStretch: "condensed" }}>NECTAR</h1>
+              <p className="text-black/30 text-sm text-center mb-10 max-w-[240px] leading-relaxed">Eleve seu NECTAR</p>
               <a
-                href="mailto:lucca.c2c@gmail.com?subject=AURA%20-%20Cidade%20Neon"
+                href="mailto:lucca.c2c@gmail.com?subject=NECTAR%20-%20Cidade%20Neon"
                 className="px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 bg-black/5 text-black/50 border border-black/10"
               >
                 {'send email to \'lucca.c2c@gmail.com\''}
@@ -1206,122 +1195,102 @@ function CidadeNeonExperience() {
             <button type="button" onClick={() => setPhase("phone-home")} className="relative z-10 py-6 text-black/20 text-xs text-center">VOLTAR</button>
           </div>
           <style jsx>{`
-            @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-            .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
+            @keyframes nectar-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            .animate-nectar-spin{animation:nectar-spin 25s linear infinite}
           `}</style>
         </div>
       )
     }
 
-    const getAuraResult = () => {
+    const getNectarResult = () => {
       const colorCounts: Record<string, number> = {}
-      auraAnswers.forEach((a, i) => {
-        const c = AURA_QUESTIONS[i]?.opts[a]?.color || ""
+      nectarAnswers.forEach((a, i) => {
+        const c = NECTAR_QUESTIONS[i]?.opts[a]?.color || ""
         colorCounts[c] = (colorCounts[c] || 0) + 1
       })
       const topColor = Object.entries(colorCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
-      return AURA_RESULTS.find(r => r.color === topColor) || AURA_RESULTS[2]
+      return NECTAR_RESULTS.find(r => r.color === topColor) || NECTAR_RESULTS[2]
     }
 
-    const handleAuraAnswer = (idx: number) => {
-      const newAnswers = [...auraAnswers, idx]
-      setAuraAnswers(newAnswers)
-      if (auraQuizStep < AURA_QUESTIONS.length - 1) {
-        setTimeout(() => setAuraQuizStep(s => s + 1), 300)
+    const handleNectarAnswer = (idx: number) => {
+      const newAnswers = [...nectarAnswers, idx]
+      setNectarAnswers(newAnswers)
+      if (nectarQuizStep < NECTAR_QUESTIONS.length - 1) {
+        setTimeout(() => setNectarQuizStep(s => s + 1), 300)
       } else {
         setTimeout(() => {
-          setAuraShowResult(true)
-          if (!auraAlreadyDone) {
-            completeConfirmation(3, { auraAnswers: newAnswers })
+          setNectarShowResult(true)
+          if (!nectarAlreadyDone) {
+            completeConfirmation(3, { nectarAnswers: newAnswers })
           }
         }, 400)
       }
     }
 
-    // RESULT STATE
-    if (auraShowResult) {
-      const result = getAuraResult()
+    if (nectarShowResult) {
+      const result = getNectarResult()
       return (
         <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col items-center justify-center p-8 relative bg-white">
-            {/* Aurora skin */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: `conic-gradient(from 0deg,transparent 0%,${result.color}15 25%,transparent 50%,${result.color}10 75%,transparent 100%)` }} />
+              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: `conic-gradient(from 0deg,transparent 0%,${result.color}15 25%,transparent 50%,${result.color}10 75%,transparent 100%)` }} />
             </div>
-
-            <div className="relative z-10 text-center animate-aura-in">
+            <div className="relative z-10 text-center animate-nectar-in">
               <p className="text-black/30 text-[10px] uppercase tracking-[0.3em] mb-6" style={{ fontStretch: "condensed" }}>Confirmacao 3/3 Completa</p>
-
-              {/* Aura orb */}
               <div className="relative w-28 h-28 mx-auto mb-6">
                 <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: `${result.color}15`, boxShadow: `0 0 60px ${result.color}30` }} />
                 <div className="absolute inset-3 rounded-full" style={{ backgroundColor: `${result.color}10` }} />
                 <div className="absolute inset-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${result.color}08` }}>
-                  <span className="text-2xl font-black" style={{ color: result.color, fontStretch: "condensed" }}>A</span>
+                  <span className="text-2xl font-black" style={{ color: result.color, fontStretch: "condensed" }}>N</span>
                 </div>
               </div>
-
               <h1 className="text-xl font-black mb-2 tracking-wide" style={{ color: result.color, fontStretch: "condensed" }}>{result.name}</h1>
               <p className="text-black/40 text-sm mb-8 max-w-[260px] mx-auto leading-relaxed">{result.desc}</p>
-
-              {/* Share by email */}
-              <a href={`mailto:lucca.c2c@gmail.com?subject=Minha%20AURA%20-%20${encodeURIComponent(result.name)}&body=Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}`} className="inline-block px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 mb-4" style={{ backgroundColor: `${result.color}12`, color: result.color, border: `1px solid ${result.color}20` }}>
-                Enviar minha AURA por email
+              <a href={`mailto:lucca.c2c@gmail.com?subject=Meu%20NECTAR%20-%20${encodeURIComponent(result.name)}&body=Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}`} className="inline-block px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 mb-4" style={{ backgroundColor: `${result.color}12`, color: result.color, border: `1px solid ${result.color}20` }}>
+                Enviar meu NECTAR por email
               </a>
-
-              {/* Link to disc */}
               <a href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" target="_blank" rel="noopener noreferrer" className="block px-6 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 mb-6" style={{ color: result.color }}>
-                Eleve sua AURA com o Album
+                Eleve seu NECTAR com o Album
               </a>
-
               <button type="button" onClick={() => setPhase("phone-home")} className="px-8 py-3 rounded-2xl bg-black/5 text-black/40 text-sm font-medium active:scale-95 transition-transform">
                 Voltar ao Inicio
               </button>
             </div>
           </div>
           <style jsx>{`
-            @keyframes aura-in { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
-            .animate-aura-in{animation:aura-in .6s ease-out forwards}
-            @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-            .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
+            @keyframes nectar-in { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+            .animate-nectar-in{animation:nectar-in .6s ease-out forwards}
+            @keyframes nectar-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            .animate-nectar-spin{animation:nectar-spin 25s linear infinite}
           `}</style>
         </div>
       )
     }
 
-    // QUIZ STATE - white bg with aurora
-    const currentAQ = AURA_QUESTIONS[auraQuizStep] || AURA_QUESTIONS[0]
+    const currentNQ = NECTAR_QUESTIONS[nectarQuizStep] || NECTAR_QUESTIONS[0]
     return (
       <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
-          {/* Aurora skin */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.06) 15%,rgba(103,232,249,.05) 30%,transparent 45%,rgba(251,191,36,.04) 60%,transparent 75%)" }} />
+            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.06) 15%,rgba(103,232,249,.05) 30%,transparent 45%,rgba(251,191,36,.04) 60%,transparent 75%)" }} />
             <div className="absolute top-1/4 right-0 w-64 h-64 rounded-full opacity-10 blur-3xl" style={{ background: "radial-gradient(circle,#a78bfa,transparent 70%)" }} />
           </div>
-
           <div className="relative z-10 flex flex-col h-full pt-[56px] px-5">
-            {/* Header */}
             <div className="text-center mb-2">
-              <h1 className="text-2xl font-black text-black/80 tracking-[0.15em]" style={{ fontStretch: "condensed" }}>AURA</h1>
+              <h1 className="text-2xl font-black text-black/80 tracking-[0.15em]" style={{ fontStretch: "condensed" }}>NECTAR</h1>
               <div className="w-16 h-[2px] mx-auto mt-1 bg-gradient-to-r from-[#a78bfa] via-[#67e8f9] to-[#a78bfa]" />
             </div>
-
-            {/* Progress */}
             <div className="flex gap-1.5 mb-6 mt-4">
-              {AURA_QUESTIONS.map((_, i) => (
-                <div key={i} className="flex-1 h-1 rounded-full transition-all duration-500" style={{ backgroundColor: i < auraQuizStep ? "#A78BFA" : i === auraQuizStep ? "rgba(167,139,250,0.4)" : "rgba(0,0,0,0.06)" }} />
+              {NECTAR_QUESTIONS.map((_, i) => (
+                <div key={i} className="flex-1 h-1 rounded-full transition-all duration-500" style={{ backgroundColor: i < nectarQuizStep ? "#A78BFA" : i === nectarQuizStep ? "rgba(167,139,250,0.4)" : "rgba(0,0,0,0.06)" }} />
               ))}
             </div>
-            <p className="text-black/20 text-[10px] text-center mb-4 tracking-wider">CONFIRMACAO 3/3 &middot; {auraQuizStep + 1}/{AURA_QUESTIONS.length}</p>
-
-            {/* Question */}
+            <p className="text-black/20 text-[10px] text-center mb-4 tracking-wider">CONFIRMACAO 3/3 &middot; {nectarQuizStep + 1}/{NECTAR_QUESTIONS.length}</p>
             <div className="flex-1 flex flex-col justify-center">
-              <h2 className="text-black/70 text-lg font-medium text-center mb-8 text-balance px-2">{currentAQ?.q || ""}</h2>
-
+              <h2 className="text-black/70 text-lg font-medium text-center mb-8 text-balance px-2">{currentNQ?.q || ""}</h2>
               <div className="space-y-3">
-                {(currentAQ?.opts || []).map((opt, i) => (
-                  <button key={opt.text} type="button" onClick={() => handleAuraAnswer(i)}
+                {(currentNQ?.opts || []).map((opt, i) => (
+                  <button key={opt.text} type="button" onClick={() => handleNectarAnswer(i)}
                     className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.97] text-left bg-white"
                     style={{ border: `1px solid ${opt.color}25`, boxShadow: `0 1px 4px ${opt.color}08` }}
                   >
@@ -1331,13 +1300,12 @@ function CidadeNeonExperience() {
                 ))}
               </div>
             </div>
-
-            <button type="button" onClick={() => { setPhase("phone-home"); setAuraQuizStep(0); setAuraAnswers([]) }} className="py-4 text-black/20 text-xs text-center">VOLTAR</button>
+            <button type="button" onClick={() => { setPhase("phone-home"); setNectarQuizStep(0); setNectarAnswers([]) }} className="py-4 text-black/20 text-xs text-center">VOLTAR</button>
           </div>
         </div>
         <style jsx>{`
-          @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-          .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
+          @keyframes nectar-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+          .animate-nectar-spin{animation:nectar-spin 25s linear infinite}
         `}</style>
       </div>
     )
@@ -1368,7 +1336,7 @@ function CidadeNeonExperience() {
     { label: "TikTok", color: "#000000", action: () => { window.location.href = "/tiktok/feed" } },
     { label: "YouTube", color: "#FF0000", action: () => { window.location.href = "/youtube/cidade-neon" } },
     { label: "Sala Branca", color: "#E0E7FF", action: () => { window.location.href = "/final/sala-branca" } },
-    { label: "AURA", color: "#A78BFA", action: () => { setPhase("aura-splash") } },
+      { label: "NECTAR", color: "#A78BFA", action: () => { setPhase("nectar-splash") } },
   ]
 
   return (
@@ -1601,7 +1569,7 @@ function CidadeNeonExperience() {
                     if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
                     if (app.link) { window.open(app.link, "_blank"); return }
                     if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
-                    if (app.id === "aura") { setPhase("aura-login"); return }
+                    if (app.id === "nectar") { setPhase("nectar-login"); return }
                     if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
                     if (app.id === "drive") { window.location.href = "/drive"; return }
                     if (app.id === "nectar") { window.location.href = "/neon-tiles"; return }

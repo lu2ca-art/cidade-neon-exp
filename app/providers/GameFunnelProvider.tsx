@@ -99,7 +99,7 @@ export interface GameFunnelState {
   privateNotifications: PrivateNotification[]
   rewardsViewed: string[]
   flowStarted: boolean
-  shouldOpenAuraDirectly: boolean
+  shouldOpenNectarDirectly: boolean
 }
 
 const STORAGE_KEY = "cidade-neon-funnel-v2"
@@ -132,7 +132,7 @@ const defaultState: GameFunnelState = {
   privateNotifications: [],
   rewardsViewed: [],
   flowStarted: false,
-  shouldOpenAuraDirectly: false,
+  shouldOpenNectarDirectly: false,
 }
 
 interface GameFunnelContextType {

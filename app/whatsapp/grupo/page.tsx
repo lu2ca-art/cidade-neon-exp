@@ -23,7 +23,7 @@ interface ChoiceSet {
 const CONFIRM_LABELS: Record<number, string> = {
   1: "CONFIRMACAO 1/3 - TESTE DAS MUSICAS",
   2: "CONFIRMACAO 2/3 - TESTE DE QI",
-  3: "CONFIRMACAO 3/3 - TESTE AURA",
+    3: "CONFIRMACAO 3/3 - TESTE NECTAR",
 }
 
 const CONFIRM_DIVIDER_IDS: Record<number, number> = {
@@ -392,8 +392,8 @@ export default function WhatsAppGrupoPage() {
     if (cc === 0) router.push("/confirmacao/1-arquetipos")
     else if (cc === 1) router.push("/confirmacao/3-desbloqueio")
     else if (cc === 2) {
-      // Set flag to open AURA directly on home page, then navigate
-      setState({ shouldOpenAuraDirectly: true })
+      // Set flag to open NECTAR directly on home page, then navigate
+      setState({ shouldOpenNectarDirectly: true })
       router.push("/")
     }
   }
