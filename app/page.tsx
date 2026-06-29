@@ -359,20 +359,24 @@ function CidadeNeonExperience() {
   )
   const [nectarShowResult, setNectarShowResult] = useState(gameFunnelState.confirmations.c3.done)
 
+  const { appsUnlocked } = gameFunnelState
+
   const phoneApps = [
-    { id: "untitled", name: "[UNTITLED]",  icon: "untitled",  color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
-    { id: "spotify",  name: "FR3Q_",       icon: "spotify",   color: "#14532D" },
-    { id: "tiktok",   name: "//LOOP",      icon: "tiktok",    color: "#1a0010",  link: "https://tiktok.com/@lu2ca.mp3" },
-    { id: "youtube",  name: "STR34M",      icon: "youtube",   color: "#7F1D1D",  link: "https://www.youtube.com/@LU222CA" },
-    { id: "instagram",name: "_IRIS.EXE",  icon: "instagram", color: "#3B0764",  link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr" },
-    { id: "whatsapp", name: "N3XO_",       icon: "whatsapp",  color: "#064E3B" },
-    { id: "notes",    name: "C0D3X",       icon: "notes",     color: "#1C1917" },
-    { id: "safari",   name: "ACC3SS",      icon: "safari",    color: "#0C4A6E",  link: "https://lu2ca.me" },
-    { id: "nectar",   name: "M3M_C4CH3",  icon: "music",     color: "#4C1D95" },
-    { id: "music",    name: "_W4VE",       icon: "music",     color: "#431407",  link: "https://lu2ca.me/musicaporlu2ca" },
-    { id: "phone",    name: "TR4NSM1T",    icon: "phone",     color: "#14532D",  link: "https://lu2ca.me/contacto-social" },
-    { id: "nectar",   name: "NECTAR",      icon: "nectar",    color: "#1E1B4B" },
-    { id: "drive",    name: "DRIVE",       icon: "drive",     color: "#0d0418" },
+    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+    { id: "spotify",       name: "FR3Q_",         icon: "spotify",       color: "#14532D" },
+    { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3" },
+    { id: "youtube",       name: "STR34M",        icon: "youtube",       color: "#7F1D1D", link: "https://www.youtube.com/@LU222CA" },
+    { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr" },
+    { id: "whatsapp",      name: "N3XO_",         icon: "whatsapp",      color: "#064E3B" },
+    { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
+    { id: "safari",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca.me" },
+    { id: "music",         name: "_W4VE",         icon: "music",         color: "#431407", link: "https://lu2ca.me/musicaporlu2ca" },
+    { id: "phone",         name: "TR4NSM1T",      icon: "phone",         color: "#14532D", link: "https://lu2ca.me/contacto-social" },
+    // Apps desbloqueados por missao
+    { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
+    { id: "feel-good-app", name: "FEEL.GOOD",     icon: "feelgood",      color: "#0F3460", locked: !appsUnlocked.feelGood },
+    { id: "guitar-driver", name: "GUITAR DRIVER", icon: "guitardriver",  color: "#1a0a00", locked: !appsUnlocked.guitarDriver },
+    { id: "drive",         name: "DRIVE",         icon: "drive",         color: "#0d0418" },
   ]
 
   const formatTime = (seconds: number) => {
@@ -623,27 +627,28 @@ function CidadeNeonExperience() {
     const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean }> = []
 
     if (cc === 0) {
+      // Missao 1: Alohan orienta abrir NECTAR
       missions.push(
-        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "D-Bee", body: "manda uma mensagem ai", action: "/whatsapp/privado/dbee" },
-        { id: "spotify-play", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
+        { id: "whatsapp-alohan-0", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/whatsapp/privado/alohan" },
       )
     } else if (cc === 1) {
+      // Missao 1 completa: Alohan envia SUBURBIO XENOM; Nizzy orienta abrir FEEL.GOOD
       missions.push(
-        { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy desbloqueou algo pra voce", body: "Instrumental Cidade Neon — toque para ver", action: "/whatsapp/privado/nizzy", isReward: true },
-        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Nizzy", body: "mensagem nova esperando", action: "/whatsapp/privado/nizzy" },
+        { id: "reward-alohan-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan desbloqueou algo pra voce", body: "SUBURBIO XENOM — toque para ver", action: "/whatsapp/privado/alohan", isReward: true },
+        { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy" },
       )
     } else if (cc === 2) {
+      // Missao 2 completa: Nizzy envia Instrumental; D-Bee orienta abrir GUITAR DRIVER
       missions.push(
-        { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Suburbio Xenom — toque para ver", action: "/whatsapp/privado/dbee", isReward: true },
-        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultimo teste te espera", action: "/whatsapp/privado/dbee" },
+        { id: "reward-nizzy-2", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy desbloqueou algo pra voce", body: "Instrumental Cidade Neon — toque para ver", action: "/whatsapp/privado/nizzy", isReward: true },
+        { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee" },
       )
     } else {
-      // Apos todas 3 confirmacoes
+      // Missao 3 completa: D-Bee envia Live Neon + conteudo final
       missions.push(
-        { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan desbloqueou algo pra voce", body: "Live Neon — toque para ver", action: "/whatsapp/privado/alohan", isReward: true },
+        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Live Neon — toque para ver", action: "/whatsapp/privado/dbee", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
-        { id: "nectar-sala", app: "NECTAR", icon: "nectar", color: "#A78BFA", title: "CIDADE NEON", body: "Envie seu NECTAR para fazer parte da rede", action: "nectar" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
       )
     }
@@ -745,6 +750,8 @@ function CidadeNeonExperience() {
       untitled: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>,
       nectar: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1" opacity="0.7"/><circle cx="12" cy="12" r="5" stroke="white" strokeWidth="0.5" opacity="0.4"/><text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">N</text></svg>,
       drive: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 3L3 19h18L12 3z" stroke="#ff5fae" strokeWidth="1.5" strokeLinejoin="round" fill="none"/><path d="M8 15l4-8 4 8" stroke="#00e5ff" strokeWidth="1" strokeLinejoin="round" fill="none" opacity="0.6"/><circle cx="12" cy="18" r="1.5" fill="#ff5fae"/></svg>,
+      feelgood: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#00e5ff" strokeWidth="1" opacity="0.8"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="#00e5ff" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+      guitardriver: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="#ff5fae" strokeWidth="1.2" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="#ff9000" strokeWidth="1.2" strokeLinecap="round"/></svg>,
     }
     return svgMap[icon] || <div className="w-6 h-6 bg-white/30 rounded" />
   }
@@ -764,6 +771,8 @@ function CidadeNeonExperience() {
       notes: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" /></svg>,
       photos: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" /></svg>,
       music: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>,
+      feelgood: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="fgg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#6B9DFF"/></linearGradient></defs><circle cx="12" cy="12" r="9" stroke="url(#fgg)" strokeWidth="1.5" fill="none"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="url(#fgg)" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+      guitardriver: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="gdg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#ff5fae"/><stop offset="100%" stopColor="#ff9000"/></linearGradient></defs><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="10" r="2" stroke="url(#gdg)" strokeWidth="1.2" fill="rgba(255,95,174,0.15)"/></svg>,
     }
     return (
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center relative" style={{ backgroundColor: color }}>
@@ -1563,26 +1572,41 @@ function CidadeNeonExperience() {
             {/* PAGE 0 — App Grid */}
             <div className="w-1/2 h-full flex items-center justify-center px-8 pt-[56px] pb-[90px]">
               <div className="grid grid-cols-3 gap-x-6 gap-y-6 w-full">
-                {phoneApps.map((app) => (
-                  <button key={app.id} onClick={() => {
-                    if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
-                    if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
-                    if (app.link) { window.open(app.link, "_blank"); return }
-                    if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
-                    if (app.id === "nectar") { setPhase("nectar-login"); return }
-                    if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                    if (app.id === "drive") { window.location.href = "/drive"; return }
-                    if (app.id === "nectar") { window.location.href = "/neon-tiles"; return }
-                  }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative" type="button">
-                    {renderAppIcon(app.icon, app.color)}
-                    {appBadges[app.id] && (
-                      <div className="absolute -top-1 -right-0 w-5 h-5 bg-[#FF3B30] rounded-full border-2 border-[#16213e] flex items-center justify-center">
-                        <span className="text-white text-[9px] font-bold">!</span>
+                {phoneApps.map((app) => {
+                  const isLocked = (app as { locked?: boolean }).locked === true
+                  return (
+                    <button key={app.id} type="button"
+                      onClick={() => {
+                        if (isLocked) return
+                        if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
+                        if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
+                        if (app.link) { window.open(app.link, "_blank"); return }
+                        if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
+                        if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
+                        if (app.id === "drive") { window.location.href = "/drive"; return }
+                        if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
+                        if (app.id === "feel-good-app") { window.location.href = "/feel-good"; return }
+                        if (app.id === "guitar-driver") { window.location.href = "/neon-tiles"; return }
+                      }}
+                      className={`flex flex-col items-center gap-1 transition-transform relative ${isLocked ? "opacity-40 cursor-default" : "active:scale-95"}`}
+                    >
+                      <div className="relative">
+                        {renderAppIcon(app.icon, app.color)}
+                        {isLocked && (
+                          <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                            <svg className="w-5 h-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="5" y="11" width="14" height="11" rx="2" /><path strokeLinecap="round" d="M8 11V7a4 4 0 018 0v4" /></svg>
+                          </div>
+                        )}
+                        {!isLocked && appBadges[app.id] && (
+                          <div className="absolute -top-1 -right-0 w-5 h-5 bg-[#FF3B30] rounded-full border-2 border-[#16213e] flex items-center justify-center">
+                            <span className="text-white text-[9px] font-bold">!</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <span className="text-white/60 text-[9px] leading-tight text-center font-mono tracking-tight">{app.name}</span>
-                  </button>
-                ))}
+                      <span className={`text-[9px] leading-tight text-center font-mono tracking-tight ${isLocked ? "text-white/30" : "text-white/60"}`}>{app.name}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 

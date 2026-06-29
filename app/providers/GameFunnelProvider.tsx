@@ -100,13 +100,18 @@ export interface GameFunnelState {
   rewardsViewed: string[]
   flowStarted: boolean
   shouldOpenNectarDirectly: boolean
+  appsUnlocked: {
+    nectar: boolean
+    feelGood: boolean
+    guitarDriver: boolean
+  }
 }
 
-const STORAGE_KEY = "cidade-neon-funnel-v2"
-const CURRENT_VERSION = 2
+const STORAGE_KEY = "cidade-neon-funnel-v3"
+const CURRENT_VERSION = 3
 
 const defaultState: GameFunnelState = {
-  version: CURRENT_VERSION,
+  version: 3,
   currentRoute: "/",
   lastVisitedAt: Date.now(),
   cinematicStep: "idle",
@@ -133,6 +138,11 @@ const defaultState: GameFunnelState = {
   rewardsViewed: [],
   flowStarted: false,
   shouldOpenNectarDirectly: false,
+  appsUnlocked: {
+    nectar: false,
+    feelGood: false,
+    guitarDriver: false,
+  },
 }
 
 interface GameFunnelContextType {

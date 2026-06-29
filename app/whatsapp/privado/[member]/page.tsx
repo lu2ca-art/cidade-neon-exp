@@ -2,57 +2,288 @@
 
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useRouter, useParams } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
-const REWARD_DATA: Record<string, {
+// ─── Dados por personagem ─────────────────────────────────────────────────────
+
+type MemberKey = "alohan" | "nizzy" | "dbee"
+
+interface MemberScript {
   name: string
   avatar: string
   color: string
-  reward: string
-  link: string
-  enigmaticMsg: string
-}> = {
+  // Estado 0: antes da missao ser aceita — orienta abrir o app
+  preMission: {
+    messages: string[]
+    appName: string      // nome do app a abrir
+    appRoute: string     // rota interna
+    appId: "nectar-app" | "feel-good-app" | "guitar-driver"
+    ctaLabel: string
+  }
+  // Estado 1: missao completa (confirmationCount avancou) — envia recompensa
+  reward: {
+    messages: string[]
+    rewardName: string
+    rewardLink: string
+  }
+  // Estado 2: missao seguinte disponivel (cc >= next) — apenas mensagem de espera
+  done: {
+    messages: string[]
+  }
+}
+
+const SCRIPTS: Record<MemberKey, MemberScript> = {
+  alohan: {
+    name: "Alohan",
+    avatar: "A",
+    color: "#4ECDC4",
+    preMission: {
+      messages: [
+        "ei.",
+        "antes de qualquer coisa, preciso saber se voce e real.",
+        "vai no app NECTAR e faz o teste la.",
+        "quando terminar, volta aqui.",
+      ],
+      appName: "NECTAR",
+      appRoute: "/nectar",
+      appId: "nectar-app",
+      ctaLabel: "Abrir NECTAR",
+    },
+    reward: {
+      messages: [
+        "voce passou.",
+        "descobriu seu NECTAR. isso diz muito.",
+        "aqui ta o que eu guardei pra quem chegasse ate aqui.",
+      ],
+      rewardName: "SUBURBIO XENOM",
+      rewardLink: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw",
+    },
+    done: {
+      messages: [
+        "missao cumprida.",
+        "agora tem mais gente esperando voce.",
+      ],
+    },
+  },
   nizzy: {
     name: "Nizzy",
     avatar: "N",
     color: "#FF6B6B",
-    reward: "Instrumental Cidade Neon",
-    link: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU",
-    enigmaticMsg: "a estrutura da cidade neon ta nas tuas maos agora. faz o que quiser com ela.",
+    preMission: {
+      messages: [
+        "oi.",
+        "Alohan me falou de voce.",
+        "mas eu preciso sentir antes de confiar.",
+        "abre o app FEEL.GOOD e me mostra o que voce sente.",
+      ],
+      appName: "FEEL.GOOD",
+      appRoute: "/feel-good",
+      appId: "feel-good-app",
+      ctaLabel: "Abrir FEEL.GOOD",
+    },
+    reward: {
+      messages: [
+        "voce sente de verdade.",
+        "eu sabia.",
+        "isso aqui e pra voce — Instrumental Cidade Neon.",
+        "a estrutura ta nas suas maos agora.",
+      ],
+      rewardName: "Instrumental Cidade Neon",
+      rewardLink: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU",
+    },
+    done: {
+      messages: [
+        "missao completa.",
+        "D-Bee vai querer te ver agora.",
+      ],
+    },
   },
   dbee: {
     name: "D-Bee",
     avatar: "D",
     color: "#6B7FD7",
-    reward: "Suburbio Xenom",
-    link: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw",
-    enigmaticMsg: "desbloqueei algo que tava escondido nas frequencias. so quem passou enxerga isso.",
-  },
-  alohan: {
-    name: "Alohan",
-    avatar: "A",
-    color: "#4ECDC4",
-    reward: "Live Neon",
-    link: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA",
-    enigmaticMsg: "a energia daquela noite ficou gravada. agora ela e sua pra sempre.",
+    preMission: {
+      messages: [
+        "hm.",
+        "Nizzy me disse que voce passou nos outros testes.",
+        "mas o meu e diferente.",
+        "abre o GUITAR DRIVER e toca as 4 faixas.",
+        "so quando terminar, volta aqui.",
+      ],
+      appName: "GUITAR DRIVER",
+      appRoute: "/neon-tiles",
+      appId: "guitar-driver",
+      ctaLabel: "Abrir GUITAR DRIVER",
+    },
+    reward: {
+      messages: [
+        "voce tocou.",
+        "sentiu cada batida.",
+        "isso e tudo que precisava provar.",
+        "desbloqueei algo que tava escondido nas frequencias.",
+      ],
+      rewardName: "Live Neon",
+      rewardLink: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA",
+    },
+    done: {
+      messages: [
+        "ciclo completo.",
+        "voce fez parte disso agora.",
+      ],
+    },
   },
 }
 
+// Qual cc marca o inicio da recompensa de cada personagem
+const REWARD_AT_CC: Record<MemberKey, number> = {
+  alohan: 1,
+  nizzy: 2,
+  dbee: 3,
+}
+
+// Qual cc indica que a missao seguinte (done state) esta ativa
+const DONE_AT_CC: Record<MemberKey, number> = {
+  alohan: 2,  // after nizzy mission started
+  nizzy: 3,   // after dbee mission started
+  dbee: 3,    // final
+}
+
+// ─── Componente ──────────────────────────────────────────────────────────────
+
+function ChatBubble({ text, color, name }: { text: string; color: string; name: string }) {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%]">
+        <p className="text-[11px] font-medium mb-1" style={{ color }}>{name}</p>
+        <p className="text-[#E9EDEF] text-sm leading-relaxed">{text}</p>
+        <p className="text-[#667781] text-[10px] text-right mt-1">agora</p>
+      </div>
+    </div>
+  )
+}
+
+function RewardCard({ rewardName, rewardLink, color, memberName }: { rewardName: string; rewardLink: string; color: string; memberName: string }) {
+  return (
+    <div className="flex justify-start">
+      <a
+        href={rewardLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] active:bg-[#2A363D] transition-colors"
+      >
+        <p className="text-[11px] font-medium mb-2" style={{ color }}>{memberName}</p>
+        <div className="bg-[#111B21] rounded-lg overflow-hidden border border-white/5">
+          <div className="h-16 flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${color}30` }}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+            </div>
+          </div>
+          <div className="px-3 py-2">
+            <p className="text-white text-sm font-medium">{rewardName}</p>
+            <p className="text-white/30 text-xs mt-0.5">untitled.stream</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 mt-1.5">
+          <svg className="w-3 h-3 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+          <span className="text-[#00A884] text-[11px]">Toque para acessar</span>
+        </div>
+        <p className="text-[#667781] text-[10px] text-right mt-0.5">agora</p>
+      </a>
+    </div>
+  )
+}
+
+function AppCTACard({ label, route, color }: { label: string; route: string; color: string }) {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%]">
+        <a
+          href={route}
+          className="flex items-center gap-3 bg-[#111B21] rounded-xl px-3 py-3 border border-white/5 active:bg-[#1c2a31] transition-colors"
+          style={{ borderColor: `${color}30` }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}25` }}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" /></svg>
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold">{label}</p>
+            <p className="text-white/40 text-xs mt-0.5">toque para abrir</p>
+          </div>
+          <svg className="w-4 h-4 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        </a>
+        <p className="text-[#667781] text-[10px] text-right mt-1">agora</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
 export default function PrivadoPage() {
-  const { state, markRewardViewed } = useGameFunnel()
+  const { state, setState, markRewardViewed } = useGameFunnel()
   const router = useRouter()
   const params = useParams()
   const member = params.member as string
-  const data = REWARD_DATA[member]
+  const script = SCRIPTS[member as MemberKey]
+  const cc = state.confirmationCount
+
+  const [visibleCount, setVisibleCount] = useState(1)
 
   useEffect(() => {
-    if (data) markRewardViewed(member)
-  }, [data, member, markRewardViewed])
+    if (!script) { router.push("/whatsapp"); return }
+    markRewardViewed(member)
+  }, [script, member, markRewardViewed, router])
 
-  if (!data) {
-    router.push("/whatsapp")
-    return null
+  // Unlock o app correto ao entrar na conversa (pre-missao)
+  useEffect(() => {
+    if (!script) return
+    const appId = script.preMission.appId
+    if (!state.appsUnlocked[appId === "nectar-app" ? "nectar" : appId === "feel-good-app" ? "feelGood" : "guitarDriver"]) {
+      const key = appId === "nectar-app" ? "nectar" : appId === "feel-good-app" ? "feelGood" : "guitarDriver"
+      setState(prev => ({ ...prev, appsUnlocked: { ...prev.appsUnlocked, [key]: true } }))
+    }
+  }, [script, state.appsUnlocked, setState])
+
+  // Animacao de digitacao: mostrar mensagens uma a uma
+  useEffect(() => {
+    if (!script) return
+    const totalInState = getMessagesToShow().length
+    if (visibleCount < totalInState) {
+      const t = setTimeout(() => setVisibleCount(v => v + 1), 700)
+      return () => clearTimeout(t)
+    }
+  })
+
+  if (!script) return null
+
+  const rewardAt = REWARD_AT_CC[member as MemberKey]
+  const doneAt = DONE_AT_CC[member as MemberKey]
+  const isRewardPhase = cc >= rewardAt
+  const isDonePhase = member !== "dbee" && cc >= doneAt
+
+  function getMessagesToShow(): Array<{ type: "msg" | "cta" | "reward" | "done-msg"; text?: string }> {
+    const items: Array<{ type: "msg" | "cta" | "reward" | "done-msg"; text?: string }> = []
+
+    if (!isRewardPhase) {
+      // Pre-missao: mensagens + CTA do app
+      script.preMission.messages.forEach(m => items.push({ type: "msg", text: m }))
+      items.push({ type: "cta" })
+    } else if (isDonePhase) {
+      // Done: recompensa + mensagens de encerramento
+      script.reward.messages.forEach(m => items.push({ type: "msg", text: m }))
+      items.push({ type: "reward" })
+      script.done.messages.forEach(m => items.push({ type: "done-msg", text: m }))
+    } else {
+      // Reward phase: mensagens + card de recompensa
+      script.reward.messages.forEach(m => items.push({ type: "msg", text: m }))
+      items.push({ type: "reward" })
+    }
+
+    return items
   }
+
+  const allItems = getMessagesToShow()
+  const shownItems = allItems.slice(0, visibleCount)
 
   return (
     <div className="min-h-screen bg-[#0B141A] flex items-center justify-center">
@@ -71,60 +302,43 @@ export default function PrivadoPage() {
 
         {/* Header */}
         <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2 flex-shrink-0">
-          <button type="button" onClick={() => router.push("/whatsapp")} className="p-1">
+          <button type="button" onClick={() => router.push("/")} className="p-1">
             <svg className="w-6 h-6 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
           </button>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: data.color }}>
-            <span className="text-white font-bold text-sm">{data.avatar}</span>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm" style={{ backgroundColor: script.color }}>
+            {script.avatar}
           </div>
           <div className="flex-1">
-            <p className="text-white font-semibold text-sm">{data.name}</p>
+            <p className="text-white font-semibold text-sm">{script.name}</p>
             <p className="text-white/40 text-xs">online</p>
           </div>
-          <button type="button" onClick={() => router.push("/")} className="p-2" aria-label="Voltar para inicio">
-            <svg className="w-5 h-5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
-          </button>
         </div>
 
         {/* Chat */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3" style={{ backgroundColor: "#0B141A" }}>
-          {/* Enigmatic message */}
-          <div className="flex justify-start">
-            <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%]">
-              <p className="text-[11px] font-medium mb-1" style={{ color: data.color }}>{data.name}</p>
-              <p className="text-[#E9EDEF] text-sm leading-relaxed">{data.enigmaticMsg}</p>
-              <p className="text-[#667781] text-[10px] text-right mt-1">agora</p>
-            </div>
-          </div>
+          {shownItems.map((item, i) => {
+            if (item.type === "msg" || item.type === "done-msg") {
+              return <ChatBubble key={i} text={item.text!} color={script.color} name={script.name} />
+            }
+            if (item.type === "cta") {
+              return <AppCTACard key={i} label={script.preMission.ctaLabel} route={script.preMission.appRoute} color={script.color} />
+            }
+            if (item.type === "reward") {
+              return <RewardCard key={i} rewardName={script.reward.rewardName} rewardLink={script.reward.rewardLink} color={script.color} memberName={script.name} />
+            }
+            return null
+          })}
 
-          {/* Reward card with link */}
-          <div className="flex justify-start">
-            <a
-              href={data.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] active:bg-[#2A363D] transition-colors"
-            >
-              <p className="text-[11px] font-medium mb-2" style={{ color: data.color }}>{data.name}</p>
-              {/* Reward preview card */}
-              <div className="bg-[#111B21] rounded-lg overflow-hidden border border-white/5">
-                <div className="h-16 flex items-center justify-center" style={{ backgroundColor: `${data.color}15` }}>
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${data.color}30` }}>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke={data.color} strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                  </div>
-                </div>
-                <div className="px-3 py-2">
-                  <p className="text-white text-sm font-medium">{data.reward}</p>
-                  <p className="text-white/30 text-xs mt-0.5">untitled.stream</p>
-                </div>
+          {/* Indicador de digitando */}
+          {visibleCount < allItems.length && (
+            <div className="flex justify-start">
+              <div className="bg-[#202C33] rounded-lg rounded-tl-none px-4 py-3 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
-              <div className="flex items-center gap-1 mt-1.5">
-                <svg className="w-3 h-3 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                <span className="text-[#00A884] text-[11px]">Toque para acessar</span>
-              </div>
-              <p className="text-[#667781] text-[10px] text-right mt-0.5">agora</p>
-            </a>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Input bar */}

@@ -619,7 +619,7 @@ export default function NeonTilesPage() {
         style={{ background: "radial-gradient(ellipse at center, #0d0d2b 0%, #000 100%)" }}
       >
         <p className="font-mono text-xs mb-2 tracking-widest" style={{ color: "rgba(0,255,240,0.5)" }}>
-          NECTAR — GAME
+          GUITAR DRIVER
         </p>
         <h1 className="font-mono font-bold text-3xl text-white mb-1">Escolha a faixa</h1>
         {completedSongs > 0 && (
