@@ -77,10 +77,8 @@ export default function DrivePage() {
   const rightRef  = useRef(false)
   const curveRef  = useRef(0)       // curva acumulada pra volante
 
-  const [displayKmh, setDisplayKmh] = useState(0)
-  const [displayRpm, setDisplayRpm] = useState(0)
-  const [zone, setZone]             = useState("SUBÚRBIO XÊNON")
   const [phoneOpen, setPhoneOpen]   = useState(false)
+  const stageRef  = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     roadRef.current = buildRoad()
@@ -109,8 +107,11 @@ export default function DrivePage() {
     const ctx    = canvas.getContext("2d")!
 
     const resize = ()=>{
-      canvas.width  = window.innerWidth
-      canvas.height = window.innerHeight
+      const stage = stageRef.current
+      const w = stage ? stage.clientWidth  : window.innerWidth
+      const h = stage ? stage.clientHeight : window.innerHeight
+      canvas.width  = w
+      canvas.height = h
     }
     resize()
     window.addEventListener("resize",resize)
@@ -121,9 +122,9 @@ export default function DrivePage() {
     // JOGO_H    = resto (topo)
     const BOTOES_H = 90
     const MAX_KMH  = 222
-    // aceleração: +10 km/h por segundo. travagem: -20 km/h por segundo
-    const ACCEL_RATE  = 10    // km/h por segundo
-    const BRAKE_RATE  = 20
+    // aceleração base; cresce com pressão acumulada (segurar). travagem ao soltar
+    const ACCEL_RATE  = 26    // km/h por segundo
+    const BRAKE_RATE  = 24
 
     let last = 0
     let frameCount = 0
@@ -158,20 +159,14 @@ export default function DrivePage() {
       if (!leftRef.current && !rightRef.current) playerXRef.current *= 0.96
 
       // avança na estrada proporcionalmente à velocidade
-      // 222 km/h = velocidade máxima → avança ~1 segmento por frame a 60fps
       const totalLen = ROAD_LEN * SEG_LEN
-      posRef.current = ((posRef.current + speedRef.current * dt * 2.8) % totalLen + totalLen) % totalLen
+      posRef.current = ((posRef.current + speedRef.current * dt * 3.6) % totalLen + totalLen) % totalLen
 
-      // zona
+      // zona + valores dos mostradores lidos direto dos refs (sem stale closure)
       const pct = posRef.current / totalLen
       const z   = pct<0.33?"SUBÚRBIO XÊNON":pct<0.66?"CIDADE NEON":"NOVA ONDA"
-
-      // atualiza display a cada 4 frames (evita flicker)
-      if (frameCount % 4 === 0) {
-        setDisplayKmh(Math.round(speedRef.current))
-        setDisplayRpm(Math.round((speedRef.current/MAX_KMH)*8))
-        setZone(z)
-      }
+      const kmhNow = Math.round(speedRef.current)
+      const rpmNow = Math.round((speedRef.current / MAX_KMH) * 80) / 10
 
       // ── Limpa canvas ──
       ctx.clearRect(0,0,W,H)
@@ -337,7 +332,7 @@ export default function DrivePage() {
       }
 
       // ── DASHBOARD ──
-      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,displayKmh,displayRpm,zone,camCurve)
+      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve)
 
       rafRef.current=requestAnimationFrame(frame)
     }
@@ -348,14 +343,24 @@ export default function DrivePage() {
   },[])
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black select-none">
+    <div className="fixed inset-0 flex items-center justify-center bg-black select-none">
+      <div
+        ref={stageRef}
+        className="relative overflow-hidden bg-black"
+        style={{
+          height: "100%",
+          aspectRatio: "9 / 19.5",
+          maxWidth: "100vw",
+          maxHeight: "100vh",
+        }}
+      >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"/>
 
       {/* CELULAR iframe */}
       <div
         onClick={()=>!phoneOpen&&setPhoneOpen(true)}
         style={{
-          position:"fixed",
+          position:"absolute",
           bottom: phoneOpen?0:100,
           right:  phoneOpen?0:12,
           width:  phoneOpen?"min(390px,100vw)":85,
@@ -396,7 +401,7 @@ export default function DrivePage() {
       {/* CONTROLES — fixos no fundo */}
       {!phoneOpen&&(
         <div style={{
-          position:"fixed",bottom:0,left:0,right:0,
+          position:"absolute",bottom:0,left:0,right:0,
           height:90,zIndex:50,
           display:"flex",alignItems:"center",
           justifyContent:"space-between",
@@ -434,6 +439,7 @@ export default function DrivePage() {
           >▲</button>
         </div>
       )}
+      </div>
     </div>
   )
 }
