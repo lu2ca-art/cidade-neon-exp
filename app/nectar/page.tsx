@@ -153,12 +153,18 @@ export default function NectarPage() {
               Voltar para Alohan
             </button>
 
+            {/* Botao Home — simula botao fisico do iPhone */}
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="mt-3 py-3 text-white/20 text-xs tracking-widest"
+              aria-label="Inicio"
+              className="mt-4 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto"
+              style={{ background: "rgba(255,255,255,0.06)", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
             >
-              INICIO
+              <svg className="w-5 h-5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
+              </svg>
             </button>
           </div>
         </div>
@@ -184,7 +190,18 @@ export default function NectarPage() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-5">
-              <button type="button" onClick={() => router.push("/")} className="text-white/20 text-xs tracking-widest uppercase">voltar</button>
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                aria-label="Inicio"
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1.5px solid rgba(255,255,255,0.12)" }}
+              >
+                <svg className="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
+                </svg>
+              </button>
               <p className="text-white/20 text-xs font-mono">{step + 1}/{QUESTIONS.length}</p>
             </div>
             {/* Barra de progresso */}

@@ -87,7 +87,7 @@ export default function FeelGoodPage() {
     setIsPlaying(true)
     globalAudio.pause()
 
-    // toca o audio real da faixa se disponivel
+    // toca o audio real da faixa se disponivel; se nao, continua sem audio
     const track = TRACKS.find(t => t.id === trackId)
     if (audioRef.current) {
       audioRef.current.pause()
@@ -99,6 +99,7 @@ export default function FeelGoodPage() {
       audioRef.current = audio
       audio.play().catch(() => {})
     }
+    // sem audio = apenas seleciona a faixa normalmente, palavras aparecem igual
   }
 
   const handleWordSelect = (word: string) => {
@@ -193,8 +194,17 @@ export default function FeelGoodPage() {
         />
 
         {/* Home button */}
-        <button type="button" onClick={() => router.push("/")} className="absolute top-[42px] left-3 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur flex items-center justify-center" aria-label="Voltar para inicio">
-          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          aria-label="Inicio"
+          className="absolute top-[42px] left-3 z-20 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+          style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.14)" }}
+        >
+          <svg className="w-4 h-4 text-white/35" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
+          </svg>
         </button>
 
         {/* Header */}
@@ -235,14 +245,16 @@ export default function FeelGoodPage() {
                     key={track.id}
                     type="button"
                     onClick={() => handleTrackSelect(track.id)}
-                    disabled={isConnected || !track.audioUrl}
-                    className={`w-full py-3 px-3 rounded-xl text-left transition-all min-h-[44px] text-sm ${isConnected || !track.audioUrl ? "opacity-30 cursor-not-allowed bg-white/5" : isSelected ? "ring-2 bg-white/10" : "bg-white/5 hover:bg-white/10"}`}
+                    disabled={isConnected}
+                    className={`w-full py-3 px-3 rounded-xl text-left transition-all min-h-[44px] text-sm ${isConnected ? "opacity-30 cursor-not-allowed bg-white/5" : isSelected ? "ring-2 bg-white/10" : "bg-white/5 hover:bg-white/10"}`}
                     style={{ outlineColor: isSelected ? track.color : "transparent", color: isSelected ? track.color : "#fff" }}
                   >
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: track.color }} />
                       <span className="font-mono font-medium truncate tracking-wider">{track.name}</span>
-                      {!track.audioUrl && <span className="text-[10px] opacity-30 ml-auto">— em breve</span>}
+                      {!track.audioUrl && (
+                        <svg className="w-3 h-3 ml-auto opacity-30 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.59-.79-1.59-1.77V6.77c0-.98.71-1.77 1.59-1.77h2.74z" /></svg>
+                      )}
                     </div>
                   </button>
                 )
