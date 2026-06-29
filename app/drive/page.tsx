@@ -157,10 +157,11 @@ export default function DrivePage() {
     // DASH_H    = 28% da altura total
     // JOGO_H    = resto (topo)
     const BOTOES_H = 90
-    const MAX_KMH  = 222
-    // aceleração base; cresce com pressão acumulada (segurar). travagem ao soltar
-    const ACCEL_RATE  = 26    // km/h por segundo
-    const BRAKE_RATE  = 24
+    const MAX_KMH  = 355   // +60% acima do original 222
+    const ACCEL_RATE  = 34    // km/h por segundo (ligeiramente maior para chegar mais rápido)
+    const BRAKE_RATE  = 30
+    // velocidade inicial: 30% de MAX_KMH → já começa em movimento
+    if (speedRef.current === 0) speedRef.current = MAX_KMH * 0.30
 
     let last = 0
     let frameCount = 0
@@ -197,7 +198,7 @@ export default function DrivePage() {
       // avança na estrada proporcionalmente à velocidade real do velocímetro
       // 222 km/h => sensação de alta velocidade; multiplicador maior = chão mais rápido
       const totalLen = ROAD_LEN * SEG_LEN
-      posRef.current = ((posRef.current + speedRef.current * dt * 15) % totalLen + totalLen) % totalLen
+      posRef.current = ((posRef.current + speedRef.current * dt * 20) % totalLen + totalLen) % totalLen
 
       // zona + valores dos mostradores lidos direto dos refs (sem stale closure)
       const pct = posRef.current / totalLen

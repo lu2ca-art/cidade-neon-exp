@@ -28,7 +28,7 @@ interface Song {
 }
 
 type Profile = "ULTRA CONECTADO" | "EM SINTONIA" | "OSCILANDO" | "DESCONECTADO"
-type Phase = "select" | "countdown" | "playing" | "result"
+type Phase = "select" | "countdown" | "playing" | "result" | "reward"
 
 // ─── MÚSICAS ─────────────────────────────────────────────────────────────────
 
@@ -170,6 +170,7 @@ export default function NeonTilesPage() {
   const [phase, setPhase]             = useState<Phase>("select")
   const [selectedSong, setSelectedSong] = useState<Song | null>(null)
   const [countdown, setCountdown]     = useState(3)
+  const [completedSongs, setCompletedSongs] = useState(0)
   const [tiles, setTiles]             = useState<Tile[]>([])
   const [score, setScore]             = useState(0)
   const [combo, setCombo]             = useState(0)
@@ -536,8 +537,17 @@ export default function NeonTilesPage() {
     const t = totalRef.current
     const acc = t > 0 ? Math.round((h / t) * 100) : 0
     const mc = maxComboRef.current
-    setAccuracy(acc); setFinalCombo(mc); setProfile(getProfile(acc, mc)); setPhase("result")
-    updateCinematicStep("neon-tiles-complete")
+    setAccuracy(acc); setFinalCombo(mc); setProfile(getProfile(acc, mc))
+    setCompletedSongs(prev => {
+      const next = prev + 1
+      if (next >= 4) {
+        updateCinematicStep("neon-tiles-complete")
+        setPhase("reward")
+      } else {
+        setPhase("result")
+      }
+      return next
+    })
   }, [updateCinematicStep])
 
   // ─── TAP ──────────────────────────────────────────────────────────────────
@@ -609,11 +619,19 @@ export default function NeonTilesPage() {
         style={{ background: "radial-gradient(ellipse at center, #0d0d2b 0%, #000 100%)" }}
       >
         <p className="font-mono text-xs mb-2 tracking-widest" style={{ color: "rgba(0,255,240,0.5)" }}>
-          NEON TILES — TESTE DE CONEXAO
+          NECTAR — GAME
         </p>
         <h1 className="font-mono font-bold text-3xl text-white mb-1">Escolha a faixa</h1>
+        {completedSongs > 0 && (
+          <div className="flex items-center gap-1.5 mb-3">
+            {[0,1,2,3].map(i => (
+              <div key={i} className="w-7 h-1.5 rounded-full" style={{ background: i < completedSongs ? "#7c3aed" : "rgba(255,255,255,0.08)", boxShadow: i < completedSongs ? "0 0 6px #7c3aed" : "none" }} />
+            ))}
+            <span className="font-mono text-xs ml-1" style={{ color: "rgba(255,255,255,0.3)" }}>{completedSongs}/4</span>
+          </div>
+        )}
         <p className="font-mono text-xs mb-10" style={{ color: "rgba(255,255,255,0.3)" }}>
-          seus reflexos definem seu perfil
+          complete 4 faixas para desbloquear a recompensa
         </p>
         <div className="w-full max-w-sm space-y-3">
           {SONGS.map(song => (
@@ -693,8 +711,16 @@ export default function NeonTilesPage() {
             ))}
           </div>
           <p className="font-mono text-xs mb-8" style={{ color: "rgba(255,255,255,0.3)" }}>{cfg.reward}</p>
-          <p className="font-mono text-xs italic mb-10" style={{ color: "rgba(255,255,255,0.2)" }}>
-            &quot;A cidade responde ao seu ritmo.<br/>Mas esse ritmo… e seu mesmo?&quot;
+          {/* Progresso de faixas */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            {[0,1,2,3].map(i => (
+              <div key={i} className="w-8 h-2 rounded-full transition-all"
+                style={{ background: i < completedSongs ? cfg.color : "rgba(255,255,255,0.08)", boxShadow: i < completedSongs ? `0 0 8px ${cfg.color}` : "none" }}
+              />
+            ))}
+          </div>
+          <p className="font-mono text-[11px] mb-10" style={{ color: "rgba(255,255,255,0.2)" }}>
+            {completedSongs}/4 faixas completadas
           </p>
           <div className="flex gap-3">
             <button onClick={() => { setPhase("select"); setProfile(null) }}
@@ -702,12 +728,67 @@ export default function NeonTilesPage() {
               style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}>
               Tentar de novo
             </button>
-            <button onClick={() => router.push("/whatsapp/grupo")}
+            <button onClick={() => { setPhase("select"); setProfile(null) }}
               className="flex-1 py-3 rounded-xl font-mono text-sm font-bold transition-all active:scale-95"
               style={{ background: cfg.color + "25", color: cfg.color, border: `1px solid ${cfg.color}50` }}>
-              Entrar na Cidade
+              Proxima faixa
             </button>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── TELA: RECOMPENSA (4 musicas completadas) ────────────────────────────
+
+  if (phase === "reward") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "radial-gradient(ellipse at 50% 30%, #1a003a 0%, #000 70%)" }}>
+        <div className="w-full max-w-sm text-center">
+          {/* Animacao de desbloqueio */}
+          <div className="relative flex items-center justify-center mb-8">
+            <div className="absolute w-32 h-32 rounded-full animate-ping" style={{ background: "rgba(139,92,246,0.12)" }} />
+            <div className="absolute w-24 h-24 rounded-full animate-pulse" style={{ background: "rgba(139,92,246,0.2)" }} />
+            <div className="w-20 h-20 rounded-full flex items-center justify-center relative z-10" style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)", boxShadow: "0 0 40px rgba(124,58,237,0.6)" }}>
+              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+            </div>
+          </div>
+
+          <p className="font-mono text-xs mb-2 tracking-[0.3em]" style={{ color: "rgba(139,92,246,0.7)" }}>RECOMPENSA DESBLOQUEADA</p>
+          <h1 className="font-mono font-bold text-2xl text-white mb-3 text-balance" style={{ textShadow: "0 0 30px rgba(139,92,246,0.8)" }}>
+            4 FAIXAS COMPLETAS
+          </h1>
+          <p className="font-mono text-sm mb-10" style={{ color: "rgba(255,255,255,0.5)" }}>
+            voce sentiu a cidade.<br/>Alohan tem algo guardado pra voce.
+          </p>
+
+          {/* Card de recompensa */}
+          <a
+            href="/whatsapp/privado/alohan"
+            className="block w-full rounded-2xl p-4 mb-4 text-left transition-all active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg,rgba(78,205,196,0.15),rgba(78,205,196,0.05))", border: "1px solid rgba(78,205,196,0.3)", boxShadow: "0 0 20px rgba(78,205,196,0.1)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(78,205,196,0.25)" }}>
+                <span className="text-[#4ECDC4] font-bold text-lg">A</span>
+              </div>
+              <div className="flex-1">
+                <p className="font-mono font-bold text-white text-sm">Alohan</p>
+                <p className="font-mono text-xs mt-0.5" style={{ color: "rgba(78,205,196,0.8)" }}>Live Neon — toque para ver</p>
+              </div>
+              <svg className="w-5 h-5 text-[#4ECDC4]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </div>
+          </a>
+
+          <button
+            onClick={() => { setPhase("select"); setProfile(null); setCompletedSongs(0) }}
+            className="w-full py-3 rounded-xl font-mono text-sm transition-all active:scale-95 mt-2"
+            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            jogar de novo
+          </button>
         </div>
       </div>
     )

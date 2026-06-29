@@ -88,7 +88,7 @@ export default function Confirmacao2Page() {
 
   const handleComplete = () => {
     completeConfirmation(2, { connections })
-    router.push("/whatsapp/grupo")
+    router.push("/whatsapp/privado/dbee")
   }
 
   const getTrackColor = (trackId: string) => {

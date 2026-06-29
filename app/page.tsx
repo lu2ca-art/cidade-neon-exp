@@ -16,8 +16,8 @@ type Phase =
   | "phone-home"
   | "whatsapp-group"
   | "post-confirm-group"
-  | "aura-splash"
-  | "aura-login"
+  | "nectar-splash"
+  | "nectar-login"
 
 interface Msg {
   id: number
@@ -70,7 +70,7 @@ const participants: Record<string, { color: string; avatar: string }> = {
   Alohan: { color: "#4ECDC4", avatar: "/images/avatar-alohan.jpg" },
 }
 
-const AURA_QUESTIONS = [
+const NECTAR_QUESTIONS = [
   { q: "Quando voce entra em um ambiente novo, o que sente primeiro?", opts: [
     { text: "A energia das pessoas", color: "#F59E0B" },
     { text: "Se o lugar e seguro", color: "#06B6D4" },
@@ -103,13 +103,13 @@ const AURA_QUESTIONS = [
   ]},
 ]
 
-const AURA_RESULTS = [
-  { name: "AURA SOLAR", color: "#F59E0B", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
-  { name: "AURA OCEANO", color: "#06B6D4", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
-  { name: "AURA NEBULOSA", color: "#A78BFA", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
-  { name: "AURA CRISTAL", color: "#10B981", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
-  { name: "AURA FOGO", color: "#EF4444", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
-  { name: "AURA SOMBRA", color: "#6B7280", desc: "Observacao e misterio. Sua forca esta no silencio." },
+const NECTAR_RESULTS = [
+  { name: "NECTAR SOLAR", color: "#F59E0B", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
+  { name: "NECTAR OCEANO", color: "#06B6D4", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
+  { name: "NECTAR NEBULOSA", color: "#A78BFA", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
+  { name: "NECTAR CRISTAL", color: "#10B981", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
+  { name: "NECTAR FOGO", color: "#EF4444", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
+  { name: "NECTAR SOMBRA", color: "#6B7280", desc: "Observacao e misterio. Sua forca esta no silencio." },
 ]
 
 /* ─── MATRIX RAIN COMPONENT ─────────────────────────── */
@@ -276,10 +276,10 @@ function CidadeNeonExperience() {
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-open AURA when redirected from WhatsApp grupo 3rd confirmation
+  // Auto-open NECTAR when redirected from WhatsApp 3rd confirmation
   useEffect(() => {
     if (gameFunnelState.shouldOpenAuraDirectly) {
-      setPhase("aura-splash")
+      setPhase("nectar-splash")
       setState({ shouldOpenAuraDirectly: false })
     }
   }, [gameFunnelState.shouldOpenAuraDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -350,29 +350,29 @@ function CidadeNeonExperience() {
 
   /* ── (Final notifications now handled by missions system) ── */
 
-  /* ── AURA ────────── */
-  const [auraQuizStep, setAuraQuizStep] = useState(0)
-  const [auraAnswers, setAuraAnswers] = useState<number[]>(
-    gameFunnelState.confirmations.c3.done && gameFunnelState.confirmations.c3.data
-      ? (gameFunnelState.confirmations.c3.data as { auraAnswers?: number[] }).auraAnswers || [0, 0, 0, 0, 0]
-      : []
+  /* ── NECTAR ────────── */
+  const [nectarQuizStep, setNectarQuizStep] = useState(0)
+  const [nectarAnswers, setNectarAnswers] = useState<number[]>(
+    gameFunnelState.confirmations.c3.done
+    ? (gameFunnelState.confirmations.c3.data as { nectarAnswers?: number[] }).nectarAnswers || [0, 0, 0, 0, 0]
+    : []
   )
-  const [auraShowResult, setAuraShowResult] = useState(gameFunnelState.confirmations.c3.done)
+  const [nectarShowResult, setNectarShowResult] = useState(gameFunnelState.confirmations.c3.done)
 
   const phoneApps = [
-    { id: "untitled", name: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
-    { id: "spotify", name: "Spotify", icon: "spotify", color: "#1DB954" },
-    { id: "tiktok", name: "TikTok", icon: "tiktok", color: "#000000", link: "https://tiktok.com/@lu2ca.mp3" },
-    { id: "youtube", name: "YouTube", icon: "youtube", color: "#FF0000", link: "https://www.youtube.com/@LU222CA" },
-    { id: "instagram", name: "Instagram", icon: "instagram", color: "#E1306C", link: "https://instagram.com/lu2ca.mp3/" },
-    { id: "whatsapp", name: "WhatsApp", icon: "whatsapp", color: "#25D366" },
-    { id: "notes", name: "BLOCO DE NOTAS", icon: "notes", color: "#FFCC00" },
-    { id: "safari", name: "Safari", icon: "safari", color: "#007AFF", link: "https://lu2ca.me" },
-    { id: "photos", name: "Fotos", icon: "photos", color: "#FF9500", link: "https://lu2ca.me/galeria" },
-    { id: "music", name: "Musica", icon: "music", color: "#FF2D55", link: "https://lu2ca.me/musicaporlu2ca" },
-    { id: "phone", name: "Telefone", icon: "phone", color: "#34C759", link: "https://lu2ca.me/contacto-social" },
-    { id: "aura", name: "AURA", icon: "aura", color: "#E0E7FF" },
-    { id: "drive", name: "DRIVE", icon: "drive", color: "#0d0418" },
+    { id: "untitled", name: "[UNTITLED]",  icon: "untitled",  color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+    { id: "spotify",  name: "FR3Q_",       icon: "spotify",   color: "#14532D" },
+    { id: "tiktok",   name: "//LOOP",      icon: "tiktok",    color: "#1a0010",  link: "https://tiktok.com/@lu2ca.mp3" },
+    { id: "youtube",  name: "STR34M",      icon: "youtube",   color: "#7F1D1D",  link: "https://www.youtube.com/@LU222CA" },
+    { id: "instagram",name: "_IRIS.EXE",  icon: "instagram", color: "#3B0764",  link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr" },
+    { id: "whatsapp", name: "N3XO_",       icon: "whatsapp",  color: "#064E3B" },
+    { id: "notes",    name: "C0D3X",       icon: "notes",     color: "#1C1917" },
+    { id: "safari",   name: "ACC3SS",      icon: "safari",    color: "#0C4A6E",  link: "https://lu2ca.me" },
+    { id: "nectar",   name: "M3M_C4CH3",  icon: "music",     color: "#4C1D95" },
+    { id: "music",    name: "_W4VE",       icon: "music",     color: "#431407",  link: "https://lu2ca.me/musicaporlu2ca" },
+    { id: "phone",    name: "TR4NSM1T",    icon: "phone",     color: "#14532D",  link: "https://lu2ca.me/contacto-social" },
+    { id: "nectar",   name: "NECTAR",      icon: "nectar",    color: "#1E1B4B" },
+    { id: "drive",    name: "DRIVE",       icon: "drive",     color: "#0d0418" },
   ]
 
   const formatTime = (seconds: number) => {
@@ -610,7 +610,7 @@ function CidadeNeonExperience() {
     setShowConfirmBtn(false)
     if (confirmationsDone === 0) window.location.href = "/confirmacao/1-arquetipos"
     else if (confirmationsDone === 1) window.location.href = "/confirmacao/3-desbloqueio"
-    else if (confirmationsDone === 2) { setPhase("aura-login") }
+    else if (confirmationsDone === 2) { setPhase("nectar-login") }
   }
 
   /* ─── (Old in-page confirmation handlers removed - now separate pages) ── */
@@ -624,29 +624,26 @@ function CidadeNeonExperience() {
 
     if (cc === 0) {
       missions.push(
-        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: manda uma mensagem ai", action: "/whatsapp" },
-        { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
+        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "D-Bee", body: "manda uma mensagem ai", action: "/whatsapp/privado/dbee" },
+        { id: "spotify-play", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
       )
     } else if (cc === 1) {
-      // Reward comes FIRST, then the group callback
       missions.push(
-        { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy enviou uma recompensa!", body: "Instrumental Cidade Neon desbloqueado", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
-        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "o grupo ta te chamando de volta", action: "/whatsapp" },
+        { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy desbloqueou algo pra voce", body: "Instrumental Cidade Neon — toque para ver", action: "/whatsapp/privado/nizzy", isReward: true },
+        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Nizzy", body: "mensagem nova esperando", action: "/whatsapp/privado/nizzy" },
       )
     } else if (cc === 2) {
-      // Reward comes FIRST, then the group callback
       missions.push(
-        { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee enviou uma recompensa!", body: "Suburbio Xenom desbloqueado", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
-        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "teste final te espera no grupo", action: "/whatsapp" },
+        { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Suburbio Xenom — toque para ver", action: "/whatsapp/privado/dbee", isReward: true },
+        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultimo teste te espera", action: "/whatsapp/privado/dbee" },
       )
     } else {
-      // After all 3 confirmations - rewards + final content persists
+      // Apos todas 3 confirmacoes
       missions.push(
-        { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan enviou uma recompensa!", body: "Live Neon desbloqueado", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+        { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan desbloqueou algo pra voce", body: "Live Neon — toque para ver", action: "/whatsapp/privado/alohan", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Envie sua AURA para fazer parte da rede", action: "aura" },
-        { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvir de novo", action: "/spotify/auto-chuva" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
       )
     }
@@ -727,8 +724,10 @@ function CidadeNeonExperience() {
     if (mission.action === "aura") {
       setPhase("aura-splash")
     } else if (mission.action.startsWith("http")) {
+      // recompensas com link externo: apenas abre no browser
       window.open(mission.action, "_blank")
     } else {
+      // rotas internas (inclusive privado/*)
       window.location.href = mission.action
     }
   }
@@ -1375,13 +1374,30 @@ function CidadeNeonExperience() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
+        {/* wallpaper: dark space-blue com pontos neon sutis */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 30% 20%, #1a0d2e 0%, #0d0d1a 45%, #080810 100%)" }} />
+        <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="gd1" cx="20%" cy="30%"><stop offset="0" stopColor="#6d28d9" stopOpacity=".18"/><stop offset="1" stopColor="transparent"/></radialGradient>
+            <radialGradient id="gd2" cx="80%" cy="70%"><stop offset="0" stopColor="#3b0764" stopOpacity=".22"/><stop offset="1" stopColor="transparent"/></radialGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#gd1)"/>
+          <rect width="100%" height="100%" fill="url(#gd2)"/>
+          {/* pontos neon dispersos */}
+          {[
+            [12,18],[55,8],[88,22],[33,42],[76,55],[18,65],[92,40],[44,80],[66,90],[7,88],
+            [50,30],[80,12],[25,72],[60,48],[38,95],[70,75],[15,50],[82,85],[48,15],[92,65],
+          ].map(([cx,cy],i)=>(
+            <circle key={i} cx={`${cx}%`} cy={`${cy}%`} r={i%3===0?"1.5":"1"} fill={["#7c3aed","#4f46e5","#6d28d9","#818cf8"][i%4]} opacity={0.5+i%3*0.15}/>
+          ))}
+        </svg>
         {/* iPhone Notch or Spotify marquee */}
         {globalAudio.playing ? (
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[280px] h-[34px] bg-black/80 backdrop-blur rounded-b-[18px] flex items-center overflow-hidden px-2">
-            <div className="flex items-center gap-1 whitespace-nowrap animate-spotify-scroll">
-              <svg className="w-3 h-3 text-[#1DB954] flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.521 17.34c-.24.359-.659.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.08-.418.122-.779-.179-.899-.599-.12-.42.061-.799.48-.918 4.503-1.086 8.284-.722 11.4 1.258.42.257.86.076 1.08-.342.21-.423.052-.820-.391-1.04z"/></svg>
-              <span className="text-white text-xs font-medium text-[#1DB954]">{globalAudio.currentTrack.title || "CHUVA"}</span>
+            <div className="flex items-center gap-1.5 whitespace-nowrap animate-spotify-scroll">
+              <span className="text-[#E8FF3A] text-[10px] font-mono font-bold">▶</span>
+              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack.title || "CHUVA"}</span>
+              <span className="text-white/30 text-[10px] font-mono">· LU2CA</span>
             </div>
           </div>
         ) : (
@@ -1404,7 +1420,7 @@ function CidadeNeonExperience() {
             onClick={() => handleMissionClick(bannerNotif)}
             className="absolute top-[52px] left-3 right-3 z-40 animate-notif-slide"
           >
-            <div className={`backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl ${bannerNotif.isReward ? "bg-gradient-to-r from-[#FFD700]/20 via-[#1c1c1e]/95 to-[#1c1c1e]/95 border border-[#FFD700]/30" : "bg-[#1c1c1e]/95 border border-white/5"}`}>
+            <div className={`backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl ${bannerNotif.isReward ? "border border-[#FFD700]/30" : "border border-[#6d28d9]/40"}`} style={{ background: bannerNotif.isReward ? "linear-gradient(135deg,rgba(109,40,217,0.55),rgba(28,28,30,0.97))" : "linear-gradient(135deg,rgba(59,7,100,0.92),rgba(13,13,26,0.97))" }}>
               <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: bannerNotif.color }}>
                 {getIconSvg(bannerNotif.icon)}
                 {bannerNotif.isReward && (
@@ -1588,6 +1604,7 @@ function CidadeNeonExperience() {
                     if (app.id === "aura") { setPhase("aura-login"); return }
                     if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
                     if (app.id === "drive") { window.location.href = "/drive"; return }
+                    if (app.id === "nectar") { window.location.href = "/neon-tiles"; return }
                   }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative" type="button">
                     {renderAppIcon(app.icon, app.color)}
                     {appBadges[app.id] && (
@@ -1595,7 +1612,7 @@ function CidadeNeonExperience() {
                         <span className="text-white text-[9px] font-bold">!</span>
                       </div>
                     )}
-                    <span className="text-white text-[10px] leading-tight text-center">{app.name}</span>
+                    <span className="text-white/60 text-[9px] leading-tight text-center font-mono tracking-tight">{app.name}</span>
                   </button>
                 ))}
               </div>
@@ -1655,10 +1672,11 @@ function CidadeNeonExperience() {
               <button
                 type="button"
                 onClick={() => setShowNotifCenter(true)}
-                className={`relative bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 transition-all border border-white/10 ${missionsBounce ? "animate-missions-bounce" : ""}`}
+                className={`relative backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 transition-all ${missionsBounce ? "animate-missions-bounce" : ""}`}
+                style={{ background: "rgba(88,28,135,0.55)", border: "1px solid rgba(139,92,246,0.35)" }}
               >
-                <svg className="w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
-                <span className="text-white/70 text-xs font-medium">Missoes</span>
+                <svg className="w-4 h-4 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+                <span className="text-violet-200 text-xs font-medium tracking-wide">Missoes</span>
                 {activeMissions.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FF3B30] rounded-full flex items-center justify-center">
                     <span className="text-white text-[10px] font-bold">{activeMissions.length}</span>
