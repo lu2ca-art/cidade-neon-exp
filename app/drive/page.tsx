@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
 import { sendStateToIframe } from "@/app/providers/AudioBridge"
 
@@ -83,9 +83,11 @@ export default function DrivePage() {
   const curveRef  = useRef(0)       // curva acumulada pra volante
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
+  const [volume, setVolume]         = useState(0.8)
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
+  const zoneRef   = useRef<string>("SUBÚRBIO XÊNON")
 
   useEffect(() => {
     roadRef.current = buildRoad()
@@ -157,11 +159,11 @@ export default function DrivePage() {
     // DASH_H    = 28% da altura total
     // JOGO_H    = resto (topo)
     const BOTOES_H = 90
-    const MAX_KMH  = 355   // +60% acima do original 222
-    const ACCEL_RATE  = 34    // km/h por segundo (ligeiramente maior para chegar mais rápido)
-    const BRAKE_RATE  = 30
-    // velocidade inicial: 30% de MAX_KMH → já começa em movimento
-    if (speedRef.current === 0) speedRef.current = MAX_KMH * 0.30
+    const MAX_KMH  = 222
+    const ACCEL_RATE  = 40
+    const BRAKE_RATE  = 28
+    // velocidade inicial: 40% de MAX_KMH → já começa em movimento
+    if (speedRef.current === 0) speedRef.current = MAX_KMH * 0.40
 
     let last = 0
     let frameCount = 0
@@ -198,11 +200,12 @@ export default function DrivePage() {
       // avança na estrada proporcionalmente à velocidade real do velocímetro
       // 222 km/h => sensação de alta velocidade; multiplicador maior = chão mais rápido
       const totalLen = ROAD_LEN * SEG_LEN
-      posRef.current = ((posRef.current + speedRef.current * dt * 20) % totalLen + totalLen) % totalLen
+      posRef.current = ((posRef.current + speedRef.current * dt * 38) % totalLen + totalLen) % totalLen
 
       // zona + valores dos mostradores lidos direto dos refs (sem stale closure)
       const pct = posRef.current / totalLen
       const z   = pct<0.33?"SUBÚRBIO XÊNON":pct<0.66?"CIDADE NEON":"NOVA ONDA"
+      if (z !== zoneRef.current) { zoneRef.current = z }
       const kmhNow = Math.round(speedRef.current)
       const rpmNow = Math.round((speedRef.current / MAX_KMH) * 80) / 10
 
@@ -409,7 +412,7 @@ export default function DrivePage() {
       }
 
       // ── DASHBOARD ──
-      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"CHUVA",audio.playing)
+      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing)
 
       rafRef.current=requestAnimationFrame(frame)
     }
@@ -419,21 +422,19 @@ export default function DrivePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
 
+  // Calcula altura do dash em % para posicionar o celular acima dele
+  const DASH_PCT = 0.26
+  const BOTOES_H_PCT = 90 // px fixos
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black select-none">
-      <div
-        ref={stageRef}
-        className="relative overflow-hidden bg-black"
-        style={{
-          height: "100%",
-          aspectRatio: "9 / 19.5",
-          maxWidth: "100vw",
-          maxHeight: "100vh",
-        }}
-      >
+    <div
+      ref={stageRef}
+      className="relative bg-black select-none overflow-hidden"
+      style={{ width:"100vw", height:"100dvh" }}
+    >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"/>
 
-      {/* BLUR LATERAL — motion blur do cenário conforme acelera */}
+      {/* BLUR LATERAL — motion blur */}
       {!phoneOpen&&(
         <>
           <div ref={blurLRef} style={{position:"absolute",top:0,bottom:0,left:0,width:"16%",zIndex:30,pointerEvents:"none",WebkitMaskImage:"linear-gradient(to right, black, transparent)",maskImage:"linear-gradient(to right, black, transparent)"}}/>
@@ -441,13 +442,15 @@ export default function DrivePage() {
         </>
       )}
 
-      {/* CELULAR — iframe PERSISTENTE (nunca desmonta: a música continua) */}
+      {/* OVERLAY para fechar celular */}
       {phoneOpen&&(
         <div
           onClick={()=>setPhoneOpen(false)}
           style={{position:"absolute",inset:0,zIndex:55,background:"rgba(2,0,12,0.78)"}}
         />
       )}
+
+      {/* CELULAR — posicionado no espaço do painel quando fechado, nunca sobrepõe nada */}
       <div
         onClick={()=>!phoneOpen&&setPhoneOpen(true)}
         style={{
@@ -463,23 +466,24 @@ export default function DrivePage() {
                 cursor:"default",
               }
             : {
-                bottom:100, right:12, width:85, height:150,
-                background:"#0a0014", borderRadius:14, padding:0,
-                border:`2px solid ${C.neonPink}66`,
-                boxShadow:`0 0 16px ${C.neonPink}44`,
+                // posicionado no canto inferior direito, dentro da área do painel
+                // acima dos botões de controle (BOTOES_H_PCT=90px)
+                bottom: 94,
+                right:10,
+                width:68, height:120,
+                background:"#0a0014", borderRadius:12, padding:0,
+                border:`1.5px solid ${C.neonPink}55`,
+                boxShadow:`0 0 12px ${C.neonPink}33`,
                 cursor:"pointer", overflow:"hidden",
               }),
         }}
       >
-        {/* botões laterais (só quando aberto) */}
         {phoneOpen&&(<>
           <div style={{position:"absolute",left:-2,top:"22%",width:3,height:46,borderRadius:3,background:"#1c1c20"}}/>
           <div style={{position:"absolute",left:-2,top:"34%",width:3,height:70,borderRadius:3,background:"#1c1c20"}}/>
           <div style={{position:"absolute",right:-2,top:"26%",width:3,height:90,borderRadius:3,background:"#1c1c20"}}/>
         </>)}
-
-        {/* tela */}
-        <div style={{position:"relative",width:"100%",height:"100%",borderRadius:phoneOpen?36:12,overflow:"hidden",background:"#000"}}>
+        <div style={{position:"relative",width:"100%",height:"100%",borderRadius:phoneOpen?36:10,overflow:"hidden",background:"#000"}}>
           {phoneOpen&&(
             <div style={{position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",width:"34%",height:22,borderRadius:14,background:"#000",zIndex:5}}/>
           )}
@@ -490,42 +494,92 @@ export default function DrivePage() {
               width: phoneOpen?"100%":"390px",
               height: phoneOpen?"100%":"844px",
               border:"none",
-              transform: phoneOpen?"none":`scale(${85/390})`,
+              transform: phoneOpen?"none":`scale(${72/390})`,
               transformOrigin:"top left",
               pointerEvents: phoneOpen?"auto":"none",
             }}
             title="Celular"
           />
         </div>
-
-        {/* botão voltar a dirigir */}
         {phoneOpen&&(
           <button
             onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
             style={{
               position:"absolute",bottom:-46,left:"50%",transform:"translateX(-50%)",
-              background:C.neonPink+"22",
-              border:`1px solid ${C.neonPink}`,
+              background:C.neonPink+"22",border:`1px solid ${C.neonPink}`,
               borderRadius:10,padding:"7px 22px",
               color:C.neonPink,fontSize:12,letterSpacing:2,cursor:"pointer",
-              whiteSpace:"nowrap",
-              boxShadow:`0 0 14px ${C.neonPink}44`,
+              whiteSpace:"nowrap",boxShadow:`0 0 14px ${C.neonPink}44`,
             }}
           >DIRIGIR</button>
         )}
       </div>
 
-      {/* CONTROLES — fixos no fundo */}
+      {/* CONTROLES DE RÁDIO — sobre o painel, centralizados */}
+      {!phoneOpen&&(
+        <div style={{
+          position:"absolute",
+          bottom: BOTOES_H_PCT + 4,
+          left:0, right:0,
+          height: `calc(${DASH_PCT*100}% - 4px)`,
+          zIndex:45,
+          display:"flex",
+          alignItems:"center",
+          justifyContent:"center",
+          gap:0,
+          pointerEvents:"none",
+        }}>
+          {/* controles rádio: prev, play/pause, next, volume */}
+          <div style={{
+            display:"flex",alignItems:"center",gap:10,
+            pointerEvents:"auto",
+            marginTop:"auto",
+            paddingBottom:8,
+          }}>
+            <button
+              onClick={()=>audio.prev()}
+              style={{...radioBtn(), fontSize:14}}
+              aria-label="Anterior"
+            >⏮</button>
+            <button
+              onClick={()=>audio.toggle()}
+              style={{...radioBtn(true), fontSize:18}}
+              aria-label={audio.playing?"Pausar":"Reproduzir"}
+            >{audio.playing?"⏸":"▶"}</button>
+            <button
+              onClick={()=>audio.next()}
+              style={{...radioBtn(), fontSize:14}}
+              aria-label="Proxima"
+            >⏭</button>
+            <input
+              type="range" min={0} max={1} step={0.05}
+              value={volume}
+              onChange={(e)=>{
+                const v=parseFloat(e.target.value)
+                setVolume(v)
+                const el = getAudioEl()
+                if(el) el.volume=v
+              }}
+              style={{
+                width:56, height:3, accentColor:C.neonOrange,
+                cursor:"pointer", opacity:0.7,
+              }}
+              aria-label="Volume"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* CONTROLES DE DIREÇÃO — fixos no fundo */}
       {!phoneOpen&&(
         <div style={{
           position:"absolute",bottom:0,left:0,right:0,
-          height:90,zIndex:50,
+          height:BOTOES_H_PCT,zIndex:50,
           display:"flex",alignItems:"center",
           justifyContent:"space-between",
           padding:"0 20px",
           background:"linear-gradient(to top, #05001a, transparent)",
         }}>
-          {/* Esquerda + Direita */}
           <div style={{display:"flex",gap:12}}>
             <button
               onTouchStart={()=>leftRef.current=true}  onTouchEnd={()=>leftRef.current=false}
@@ -538,8 +592,6 @@ export default function DrivePage() {
               style={ctrlBtn()}
             >▶</button>
           </div>
-
-          {/* Acelerador */}
           <button
             onTouchStart={()=>accelRef.current=true}  onTouchEnd={()=>accelRef.current=false}
             onMouseDown={()=>accelRef.current=true}   onMouseUp={()=>accelRef.current=false}
@@ -556,7 +608,6 @@ export default function DrivePage() {
           >▲</button>
         </div>
       )}
-      </div>
     </div>
   )
 }
@@ -570,6 +621,21 @@ function ctrlBtn(): React.CSSProperties {
     display:"flex",alignItems:"center",justifyContent:"center",
     WebkitTapHighlightColor:"transparent",
     cursor:"pointer",
+  }
+}
+
+function radioBtn(primary=false): React.CSSProperties {
+  return {
+    width: primary?46:36, height: primary?46:36,
+    borderRadius:"50%",
+    background: primary?"rgba(255,107,53,0.22)":"rgba(255,107,53,0.08)",
+    border: `1.5px solid ${primary?"#ff6b35bb":"#ff6b3566"}`,
+    color:"#ff6b35",
+    display:"flex",alignItems:"center",justifyContent:"center",
+    boxShadow: primary?"0 0 12px #ff6b3544":"none",
+    WebkitTapHighlightColor:"transparent",
+    cursor:"pointer",
+    transition:"transform .12s",
   }
 }
 
@@ -652,44 +718,81 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  const cy=y0+DH*0.56
-  const R =Math.min(DH*0.34,W*0.11)
+  // gauges menores — lado esquerdo e direito, mais baixas
+  const R = Math.min(DH*0.24, W*0.085)
+  const cy = y0 + DH*0.62
 
-  // velocímetro esq
-  gauge(ctx,W*0.19,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
+  // velocímetro esq (max 222)
+  gauge(ctx,W*0.14,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
   // rpm dir
-  gauge(ctx,W*0.81,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
+  gauge(ctx,W*0.86,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
 
-  // rádio — mostra música tocando
-  const rW=W*0.34,rH=DH*0.30
-  const rX=W/2-rW/2, rY=y0+DH*0.05
-  // fundo com glow
-  ctx.shadowColor=playing?C.neonOrange:"#333"; ctx.shadowBlur=playing?8:2
-  ctx.fillStyle="#06001a"; ctx.strokeStyle=playing?(C.neonOrange+"66"):"#33333366"; ctx.lineWidth=1
-  rRect(ctx,rX,rY,rW,rH,7); ctx.fill(); ctx.stroke()
+  // ── RÁDIO em destaque — ocupa centro com glow neon intenso ──
+  const rW=W*0.52, rH=DH*0.46
+  const rX=W/2-rW/2, rY=y0+DH*0.04
+
+  // halo exterior
+  ctx.shadowColor=playing?C.neonOrange:"#1a0040"; ctx.shadowBlur=playing?22:4
+  ctx.fillStyle=playing?"#0a0020":"#06001a"
+  ctx.strokeStyle=playing?C.neonOrange:"#2a1050"
+  ctx.lineWidth=playing?1.5:1
+  rRect(ctx,rX,rY,rW,rH,9); ctx.fill(); ctx.stroke()
   ctx.shadowBlur=0
-  // ícone play/pause
-  const iconColor=playing?C.neonOrange:"#555"
-  ctx.fillStyle=iconColor; ctx.font=`${rH*0.34}px monospace`
-  ctx.textAlign="left"; ctx.fillText(playing?"▶":"▐▐",rX+rW*0.05,rY+rH*0.65)
-  // nome da faixa (trunca se longo)
-  const maxChars = Math.floor(rW / (rH*0.22))
-  const displayName = (trackName||"—").toUpperCase().slice(0,maxChars)
-  ctx.fillStyle=playing?"#fff":"#666"; ctx.font=`bold ${rH*0.26}px monospace`
-  ctx.textAlign="left"; ctx.fillText(displayName,rX+rW*0.22,rY+rH*0.40)
-  ctx.fillStyle=(playing?C.neonOrange:"#555")+"99"; ctx.font=`${rH*0.18}px monospace`
-  ctx.fillText("LU2CA · UNTITLED",rX+rW*0.22,rY+rH*0.70)
-  // barra de progresso (simula)
-  ctx.fillStyle="#ffffff0e"; ctx.fillRect(rX+rW*0.05,rY+rH*0.86,rW*0.9,2.5)
+
+  // linha superior neon decorativa
   if(playing){
-    ctx.fillStyle=C.neonOrange; ctx.shadowColor=C.neonOrange; ctx.shadowBlur=4
-    ctx.fillRect(rX+rW*0.05,rY+rH*0.86,rW*0.9*0.35,2.5)
+    ctx.strokeStyle=C.neonOrange+"88"; ctx.lineWidth=1
+    ctx.shadowColor=C.neonOrange; ctx.shadowBlur=6
+    ctx.beginPath(); ctx.moveTo(rX+10,rY+1); ctx.lineTo(rX+rW-10,rY+1); ctx.stroke()
+    ctx.shadowBlur=0
+  }
+
+  // label RADIO
+  ctx.fillStyle=playing?C.neonOrange+"bb":"#333"
+  ctx.font=`${rH*0.13}px monospace`
+  ctx.textAlign="left"
+  ctx.fillText("RÁDIO",rX+rW*0.05,rY+rH*0.20)
+
+  // nome da faixa — grande e neon
+  const maxChars = Math.floor(rW*0.72/(rH*0.19))
+  const displayName = (trackName||"—").toUpperCase().slice(0,maxChars)
+  ctx.shadowColor=playing?C.neonOrange:"transparent"; ctx.shadowBlur=playing?6:0
+  ctx.fillStyle=playing?"#fff":"#444"
+  ctx.font=`bold ${rH*0.24}px monospace`
+  ctx.textAlign="left"
+  ctx.fillText(displayName,rX+rW*0.05,rY+rH*0.50)
+  ctx.shadowBlur=0
+
+  // artista
+  ctx.fillStyle=(playing?C.neonOrange:"#333")+"bb"
+  ctx.font=`${rH*0.15}px monospace`
+  ctx.fillText("LU2CA · UNTITLED",rX+rW*0.05,rY+rH*0.68)
+
+  // barra de progresso neon
+  ctx.fillStyle="#ffffff0a"; rRect(ctx,rX+rW*0.05,rY+rH*0.80,rW*0.90,3,2); ctx.fill()
+  if(playing){
+    ctx.shadowColor=C.neonOrange; ctx.shadowBlur=5
+    ctx.fillStyle=C.neonOrange
+    rRect(ctx,rX+rW*0.05,rY+rH*0.80,rW*0.90*0.40,3,2); ctx.fill()
+    ctx.shadowBlur=0
+  }
+
+  // equalizador animado (barras neon)
+  if(playing){
+    const barCount=8, barW=rW*0.035, barGap=rW*0.014
+    const barAreaX=rX+rW*0.60, barAreaY=rY+rH*0.22
+    for(let b=0;b<barCount;b++){
+      const bh = rH*(0.08+0.18*Math.abs(Math.sin(Date.now()*0.004+b*0.8)))
+      ctx.shadowColor=C.neonOrange; ctx.shadowBlur=4
+      ctx.fillStyle=C.neonOrange+"cc"
+      ctx.fillRect(barAreaX+b*(barW+barGap),barAreaY+rH*0.18-bh,barW,bh)
+    }
     ctx.shadowBlur=0
   }
 
   // zona
-  ctx.fillStyle="#ffffff44"; ctx.font=`${DH*0.10}px monospace`
-  ctx.textAlign="center"; ctx.fillText(zone,W/2,y0+DH*0.94)
+  ctx.fillStyle="#ffffff33"; ctx.font=`${DH*0.09}px monospace`
+  ctx.textAlign="center"; ctx.fillText(zone,W/2,y0+DH*0.95)
 }
 
 function gauge(

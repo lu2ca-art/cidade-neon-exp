@@ -13,16 +13,37 @@ export interface Track {
   color?: string
 }
 
+// --- CIDADE NEON (zona central do mapa) ---
+export const CIDADE_NEON_TRACKS: Track[] = [
+  { id: 101, title: "sextafeira",      masked: "s*****ira",     duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 102, title: "nectar",          masked: "n****r",        duration: "0:22", durationSec: 22, playable: false, audioUrl: null, color: "#FF6B9D" },
+  { id: 103, title: "copo americano",  masked: "c*** a*****no", duration: "0:22", durationSec: 22, playable: true,  audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/COPO%20AMERICANO%20%28MASTER%29-jPjZxju7Z5bxrhmi3XF7pgqkoZGajw.mp3" },
+  { id: 104, title: "dopaminA",        masked: "d*****nA",      duration: "0:22", durationSec: 22, playable: false, audioUrl: null, color: "#FF9D6B" },
+  { id: 105, title: "ojalá",           masked: "o***á",         duration: "0:22", durationSec: 22, playable: false, audioUrl: null, color: "#6B9DFF" },
+  { id: 106, title: "swav",            masked: "s**v",          duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 107, title: "cliche",          masked: "c****e",        duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 108, title: "sabe ontem?",     masked: "s*** o****?",   duration: "0:22", durationSec: 22, playable: false, audioUrl: null, color: "#FFD93D" },
+  { id: 109, title: "hollywood",       masked: "h*****ood",     duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 110, title: "stylist",         masked: "s*****t",       duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 111, title: "oasis",           masked: "o***s",         duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 112, title: "astronauta",      masked: "a*******a",     duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 113, title: "CHUVA",           masked: "C***A",         duration: "0:22", durationSec: 22, playable: true,  audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28MASTER%29-gjxdvkaY9bF5PpjHELCGqT3NrahEsG.mp3" },
+  { id: 114, title: "qm é vc?",        masked: "q* é v*?",      duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 115, title: "rollercoaster",   masked: "r*******ster",  duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+]
+
+// --- SUBÚRBIO XÊNON (primeira zona do mapa) ---
+export const SUBURBIO_XENON_TRACKS: Track[] = [
+  { id: 201, title: "tédio",           masked: "t***o",         duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 202, title: "faixa 2",         masked: "f**** 2",       duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 203, title: "faixa 3",         masked: "f**** 3",       duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+  { id: 204, title: "faixa 4",         masked: "f**** 4",       duration: "0:22", durationSec: 22, playable: false, audioUrl: null },
+]
+
+// Lista unificada para o AudioPlayer (Subúrbio primeiro, depois Cidade Neon)
 export const ALBUM_TRACKS: Track[] = [
-  { id: 1, title: null, masked: "1. n**t**", duration: "3:12", durationSec: 192, playable: false, audioUrl: null, color: "#FF6B9D" },
-  { id: 2, title: null, masked: "2. d******A", duration: "2:45", durationSec: 165, playable: false, audioUrl: null, color: "#FF9D6B" },
-  { id: 3, title: "COPO AMERICANO", masked: "3. C*** A*******", duration: "2:58", durationSec: 178, playable: true, audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/COPO%20AMERICANO%20%28MASTER%29-jPjZxju7Z5bxrhmi3XF7pgqkoZGajw.mp3" },
-  { id: 4, title: null, masked: "4. *j**a", duration: "3:18", durationSec: 198, playable: false, audioUrl: null, color: "#6B9DFF" },
-  { id: 5, title: null, masked: "5. ******e", duration: "2:33", durationSec: 153, playable: false, audioUrl: null },
-  { id: 6, title: null, masked: "6. ****r", duration: "3:45", durationSec: 225, playable: false, audioUrl: null },
-  { id: 7, title: null, masked: "7. s*** o****?", duration: "2:50", durationSec: 170, playable: false, audioUrl: null, color: "#FFD93D" },
-  { id: 8, title: null, masked: "8. *****a", duration: "3:01", durationSec: 181, playable: false, audioUrl: null },
-  { id: 9, title: "CHUVA", masked: "9. C***A", duration: "3:24", durationSec: 204, playable: true, audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28MASTER%29-gjxdvkaY9bF5PpjHELCGqT3NrahEsG.mp3" },
+  ...SUBURBIO_XENON_TRACKS,
+  ...CIDADE_NEON_TRACKS,
 ]
 
 interface AudioPlayerContextType {
@@ -53,7 +74,7 @@ export function useAudioPlayer() {
 let _audioEl: HTMLAudioElement | null = null
 let _trackIdx = 0
 
-function getAudioEl(): HTMLAudioElement | null {
+export function getAudioEl(): HTMLAudioElement | null {
   if (typeof window === "undefined") return null
   if (!_audioEl) {
     _audioEl = new Audio()
