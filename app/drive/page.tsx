@@ -374,8 +374,41 @@ export default function DrivePage() {
         }
       }
 
+      // ── BLUR LATERAL no canvas (mais intenso que CSS) ──
+      if (spdFrac > 0.05) {
+        const blurW = W * 0.18
+        const blurAlpha = spdFrac * spdFrac * 0.72
+        // esquerda
+        const blL = ctx.createLinearGradient(0,0,blurW,0)
+        blL.addColorStop(0, `rgba(10,0,30,${blurAlpha})`)
+        blL.addColorStop(1, "rgba(10,0,30,0)")
+        ctx.fillStyle = blL
+        ctx.fillRect(0,0,blurW,JOGO_H)
+        // direita
+        const blR = ctx.createLinearGradient(W,0,W-blurW,0)
+        blR.addColorStop(0, `rgba(10,0,30,${blurAlpha})`)
+        blR.addColorStop(1, "rgba(10,0,30,0)")
+        ctx.fillStyle = blR
+        ctx.fillRect(W-blurW,0,blurW,JOGO_H)
+        // streaks de luz (rastelado neon lateral)
+        if (spdFrac > 0.3) {
+          const streakAlpha = (spdFrac - 0.3) * 0.6
+          const streakColors = ["#ff2d7888","#00e5ff66","#cc00ff66"]
+          for (let sk=0;sk<6;sk++) {
+            const sy = JOGO_H * (0.25 + sk*0.1)
+            const sh = 1 + sk%3
+            const sw = blurW * (0.4 + spdFrac*0.6)
+            ctx.globalAlpha = streakAlpha * (0.4+Math.sin(frameCount*0.15+sk)*0.3)
+            ctx.fillStyle = streakColors[sk%3]
+            ctx.fillRect(0, sy, sw, sh)
+            ctx.fillRect(W-sw, sy+4, sw, sh)
+          }
+          ctx.globalAlpha = 1
+        }
+      }
+
       // ── DASHBOARD ──
-      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve)
+      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"CHUVA",audio.playing)
 
       rafRef.current=requestAnimationFrame(frame)
     }
@@ -565,16 +598,33 @@ function drawSprite(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number,
       break
     }
     case"post":{
-      ctx.fillStyle="#888"; ctx.fillRect(-h*0.03,-h,h*0.06,h)
-      ctx.fillStyle="#ffcc00"; ctx.shadowColor="#ffcc00"; ctx.shadowBlur=h*0.12
-      ctx.beginPath(); ctx.arc(0,-h,h*0.07,0,Math.PI*2); ctx.fill()
-      ctx.shadowBlur=0; break
+      // haste
+      ctx.fillStyle="#555"; ctx.fillRect(-h*0.025,-h,h*0.05,h)
+      // braço
+      ctx.fillStyle="#555"; ctx.fillRect(-h*0.025,-h,h*0.18,h*0.025)
+      // luz neon com halo duplo
+      const lc = ["#ff2d78","#00e5ff","#cc00ff"][Math.abs(Math.round(x/30))%3]
+      ctx.shadowColor=lc; ctx.shadowBlur=h*0.22
+      ctx.fillStyle=lc
+      ctx.beginPath(); ctx.arc(h*0.18,-h,h*0.055,0,Math.PI*2); ctx.fill()
+      ctx.shadowBlur=h*0.4
+      ctx.globalAlpha=0.35
+      ctx.beginPath(); ctx.arc(h*0.18,-h,h*0.14,0,Math.PI*2); ctx.fill()
+      ctx.globalAlpha=1; ctx.shadowBlur=0
+      break
     }
     case"sign":{
-      ctx.fillStyle="#cc0000"; ctx.fillRect(-h*0.26,-h*0.65,h*0.52,h*0.22)
-      ctx.fillStyle="#ffcc00"; ctx.font=`bold ${h*0.12}px monospace`
-      ctx.textAlign="center"; ctx.fillText("NEON",0,-h*0.48)
-      ctx.fillStyle="#666"; ctx.fillRect(-h*0.03,-h*0.43,h*0.06,h*0.43)
+      // poste
+      ctx.fillStyle="#555"; ctx.fillRect(-h*0.03,-h*0.43,h*0.06,h*0.43)
+      // placa com glow neon
+      ctx.shadowColor="#ff2d78"; ctx.shadowBlur=h*0.18
+      ctx.fillStyle="#1a0033"; ctx.strokeStyle="#ff2d78"; ctx.lineWidth=h*0.025
+      ctx.beginPath()
+      ctx.roundRect(-h*0.30,-h*0.75,h*0.60,h*0.34,h*0.04)
+      ctx.fill(); ctx.stroke()
+      ctx.shadowBlur=0
+      ctx.fillStyle="#ff2d78"; ctx.font=`bold ${h*0.11}px monospace`
+      ctx.textAlign="center"; ctx.fillText("@lu2ca.art",0,-h*0.52)
       break
     }
   }
@@ -585,7 +635,8 @@ function drawSprite(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number,
 function drawDashboard(
   ctx:CanvasRenderingContext2D,
   W:number,H:number,DH:number,BOTOES_H:number,
-  kmh:number,rpm:number,zone:string,curve:number
+  kmh:number,rpm:number,zone:string,curve:number,
+  trackName:string,playing:boolean
 ){
   const y0=H-DH-BOTOES_H
 
@@ -608,21 +659,32 @@ function drawDashboard(
   // rpm dir
   gauge(ctx,W*0.81,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
 
-  // rádio
-  const rW=W*0.25,rH=DH*0.26
-  const rX=W/2-rW/2, rY=y0+DH*0.08
-  ctx.fillStyle="#08001e"; ctx.strokeStyle=C.neonOrange+"44"; ctx.lineWidth=1
-  rRect(ctx,rX,rY,rW,rH,6); ctx.fill(); ctx.stroke()
-  ctx.fillStyle=C.neonOrange; ctx.font=`${rH*0.30}px monospace`
-  ctx.textAlign="left"; ctx.fillText("♫",rX+rW*0.07,rY+rH*0.60)
-  ctx.fillStyle="#fff"; ctx.font=`bold ${rH*0.27}px monospace`
-  ctx.fillText("CHUVA",rX+rW*0.22,rY+rH*0.38)
-  ctx.fillStyle=C.neonOrange+"99"; ctx.font=`${rH*0.19}px monospace`
-  ctx.fillText("LU2CA · UNTITLED",rX+rW*0.22,rY+rH*0.67)
-  ctx.fillStyle="#ffffff11"; ctx.fillRect(rX+rW*0.07,rY+rH*0.82,rW*0.86,2.5)
-  ctx.fillStyle=C.neonOrange; ctx.shadowColor=C.neonOrange; ctx.shadowBlur=4
-  ctx.fillRect(rX+rW*0.07,rY+rH*0.82,rW*0.86*0.35,2.5)
+  // rádio — mostra música tocando
+  const rW=W*0.34,rH=DH*0.30
+  const rX=W/2-rW/2, rY=y0+DH*0.05
+  // fundo com glow
+  ctx.shadowColor=playing?C.neonOrange:"#333"; ctx.shadowBlur=playing?8:2
+  ctx.fillStyle="#06001a"; ctx.strokeStyle=playing?(C.neonOrange+"66"):"#33333366"; ctx.lineWidth=1
+  rRect(ctx,rX,rY,rW,rH,7); ctx.fill(); ctx.stroke()
   ctx.shadowBlur=0
+  // ícone play/pause
+  const iconColor=playing?C.neonOrange:"#555"
+  ctx.fillStyle=iconColor; ctx.font=`${rH*0.34}px monospace`
+  ctx.textAlign="left"; ctx.fillText(playing?"▶":"▐▐",rX+rW*0.05,rY+rH*0.65)
+  // nome da faixa (trunca se longo)
+  const maxChars = Math.floor(rW / (rH*0.22))
+  const displayName = (trackName||"—").toUpperCase().slice(0,maxChars)
+  ctx.fillStyle=playing?"#fff":"#666"; ctx.font=`bold ${rH*0.26}px monospace`
+  ctx.textAlign="left"; ctx.fillText(displayName,rX+rW*0.22,rY+rH*0.40)
+  ctx.fillStyle=(playing?C.neonOrange:"#555")+"99"; ctx.font=`${rH*0.18}px monospace`
+  ctx.fillText("LU2CA · UNTITLED",rX+rW*0.22,rY+rH*0.70)
+  // barra de progresso (simula)
+  ctx.fillStyle="#ffffff0e"; ctx.fillRect(rX+rW*0.05,rY+rH*0.86,rW*0.9,2.5)
+  if(playing){
+    ctx.fillStyle=C.neonOrange; ctx.shadowColor=C.neonOrange; ctx.shadowBlur=4
+    ctx.fillRect(rX+rW*0.05,rY+rH*0.86,rW*0.9*0.35,2.5)
+    ctx.shadowBlur=0
+  }
 
   // zona
   ctx.fillStyle="#ffffff44"; ctx.font=`${DH*0.10}px monospace`
