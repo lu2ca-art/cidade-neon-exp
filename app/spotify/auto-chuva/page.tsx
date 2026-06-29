@@ -8,6 +8,52 @@ import { useAudioPlayer, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvide
 
 const ACCENT = "#E8FF3A" // untitled yellow playhead
 
+/* ---------- WAVEFORM (module-level: tipo estável, não remonta) ---------- */
+function Waveform({
+  bars,
+  progress,
+  seekFromRatio,
+  compact = false,
+}: {
+  bars: number[]
+  progress: number
+  seekFromRatio: (ratio: number) => void
+  compact?: boolean
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const onClick = (e: React.MouseEvent) => {
+    const el = ref.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    seekFromRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
+  }
+  const playedIdx = Math.floor(progress * bars.length)
+  return (
+    <div
+      ref={ref}
+      onClick={onClick}
+      className="relative flex items-center gap-[2px] cursor-pointer w-full"
+      style={{ height: compact ? 22 : 56 }}
+    >
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-full"
+          style={{
+            height: `${h * 100}%`,
+            minWidth: 1,
+            background: i <= playedIdx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)",
+          }}
+        />
+      ))}
+      <div
+        className="absolute top-0 bottom-0 w-[2px] rounded-full"
+        style={{ left: `${progress * 100}%`, background: ACCENT, boxShadow: `0 0 6px ${ACCENT}` }}
+      />
+    </div>
+  )
+}
+
 export default function UntitledPlayerPage() {
   const router = useRouter()
   const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
@@ -73,45 +119,8 @@ export default function UntitledPlayerPage() {
     audio.seekTo(Math.round(ratio * track.durationSec))
   }
 
-  /* ---------- WAVEFORM ---------- */
-  const Waveform = ({ compact = false }: { compact?: boolean }) => {
-    const ref = useRef<HTMLDivElement>(null)
-    const onClick = (e: React.MouseEvent) => {
-      const el = ref.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      seekFromRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
-    }
-    const playedIdx = Math.floor(progress * bars.length)
-    return (
-      <div
-        ref={ref}
-        onClick={onClick}
-        className="relative flex items-center gap-[2px] cursor-pointer w-full"
-        style={{ height: compact ? 22 : 56 }}
-      >
-        {bars.map((h, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-full"
-            style={{
-              height: `${h * 100}%`,
-              minWidth: 1,
-              background: i <= playedIdx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)",
-            }}
-          />
-        ))}
-        {/* yellow playhead */}
-        <div
-          className="absolute top-0 bottom-0 w-[2px] rounded-full"
-          style={{ left: `${progress * 100}%`, background: ACCENT, boxShadow: `0 0 6px ${ACCENT}` }}
-        />
-      </div>
-    )
-  }
-
   /* ---------- NOW PLAYING ---------- */
-  const NowPlaying = () => (
+  const nowPlaying = (
     <div className="flex-1 flex flex-col bg-[#161616]">
       {/* title */}
       <div className="px-6 pt-8 pb-2 text-center">
@@ -128,7 +137,7 @@ export default function UntitledPlayerPage() {
 
       {/* waveform + time */}
       <div className="px-7 pt-4">
-        <Waveform />
+        <Waveform bars={bars} progress={progress} seekFromRatio={seekFromRatio} />
         <p className="text-center text-white/50 text-sm tabular-nums mt-3">
           {fmt(audio.elapsed)} <span className="text-white/25">/</span> {track.duration}
         </p>
@@ -170,7 +179,7 @@ export default function UntitledPlayerPage() {
   )
 
   /* ---------- ALBUM / TRACK LIST ---------- */
-  const AlbumView = () => (
+  const albumView = (
     <div className="flex-1 flex flex-col bg-[#161616] overflow-y-auto overscroll-contain">
       {/* top bar */}
       <div className="sticky top-0 z-10 bg-[#161616]/95 backdrop-blur flex items-center justify-between px-3 py-3">
@@ -242,7 +251,7 @@ export default function UntitledPlayerPage() {
               <p className="text-white text-sm font-medium truncate">{audio.currentTrack.title ?? "Bloqueada"}</p>
               <p className="text-white/45 text-xs truncate">CIDADE NEON &middot; LU2CA</p>
             </button>
-            <div className="w-16 flex-shrink-0 pr-1"><Waveform compact /></div>
+            <div className="w-16 flex-shrink-0 pr-1"><Waveform compact bars={bars} progress={progress} seekFromRatio={seekFromRatio} /></div>
           </div>
         </div>
       )}
@@ -282,8 +291,8 @@ export default function UntitledPlayerPage() {
           </button>
         )}
 
-        <div style={{ display: view === "now-playing" ? "flex" : "none" }} className="flex-1 flex-col min-h-0"><NowPlaying /></div>
-        <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-1 flex-col min-h-0"><AlbumView /></div>
+        <div style={{ display: view === "now-playing" ? "flex" : "none" }} className="flex-1 flex-col min-h-0">{nowPlaying}</div>
+        <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-1 flex-col min-h-0">{albumView}</div>
       </div>
 
       <style jsx>{`
