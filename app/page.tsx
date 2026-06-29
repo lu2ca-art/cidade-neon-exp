@@ -16,8 +16,8 @@ type Phase =
   | "phone-home"
   | "whatsapp-group"
   | "post-confirm-group"
-  | "aura-splash"
-  | "aura-login"
+  | "nectar-splash"
+  | "nectar-login"
 
 interface Msg {
   id: number
@@ -70,7 +70,7 @@ const participants: Record<string, { color: string; avatar: string }> = {
   Alohan: { color: "#4ECDC4", avatar: "/images/avatar-alohan.jpg" },
 }
 
-const AURA_QUESTIONS = [
+const NECTAR_QUESTIONS = [
   { q: "Quando voce entra em um ambiente novo, o que sente primeiro?", opts: [
     { text: "A energia das pessoas", color: "#F59E0B" },
     { text: "Se o lugar e seguro", color: "#06B6D4" },
@@ -103,13 +103,13 @@ const AURA_QUESTIONS = [
   ]},
 ]
 
-const AURA_RESULTS = [
-  { name: "AURA SOLAR", color: "#F59E0B", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
-  { name: "AURA OCEANO", color: "#06B6D4", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
-  { name: "AURA NEBULOSA", color: "#A78BFA", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
-  { name: "AURA CRISTAL", color: "#10B981", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
-  { name: "AURA FOGO", color: "#EF4444", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
-  { name: "AURA SOMBRA", color: "#6B7280", desc: "Observacao e misterio. Sua forca esta no silencio." },
+const NECTAR_RESULTS = [
+  { name: "NECTAR SOLAR", color: "#F59E0B", desc: "Sua energia irradia calor e magnetismo. Voce ilumina qualquer ambiente." },
+  { name: "NECTAR OCEANO", color: "#06B6D4", desc: "Profundidade e calma. Voce e a ancora que estabiliza o caos." },
+  { name: "NECTAR NEBULOSA", color: "#A78BFA", desc: "Misterio e intuicao. Voce percebe o que os outros nao veem." },
+  { name: "NECTAR CRISTAL", color: "#10B981", desc: "Clareza e harmonia. Voce busca verdade em tudo." },
+  { name: "NECTAR FOGO", color: "#EF4444", desc: "Paixao e intensidade. Voce sente tudo com forca total." },
+  { name: "NECTAR SOMBRA", color: "#6B7280", desc: "Observacao e misterio. Sua forca esta no silencio." },
 ]
 
 /* ─── MATRIX RAIN COMPONENT ─────────────────────────── */
@@ -248,6 +248,9 @@ function CidadeNeonExperience() {
   
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
+    // Allow forcing a starting screen via query param (used by the in-game phone iframe)
+    const forced = searchParams?.get("screen")
+    if (forced === "home") return "phone-home"
     const step = gameFunnelState.cinematicStep
     if (step === "idle" || step === "incoming-call") return "incoming-call"
     if (step === "active-call") return "active-call"
@@ -273,13 +276,13 @@ function CidadeNeonExperience() {
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-open AURA when redirected from WhatsApp grupo 3rd confirmation
+  // Auto-open NECTAR when redirected from WhatsApp 3rd confirmation
   useEffect(() => {
-    if (gameFunnelState.shouldOpenAuraDirectly) {
-      setPhase("aura-splash")
-      setState({ shouldOpenAuraDirectly: false })
+    if (gameFunnelState.shouldOpenNectarDirectly) {
+      setPhase("nectar-splash")
+      setState({ shouldOpenNectarDirectly: false })
     }
-  }, [gameFunnelState.shouldOpenAuraDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gameFunnelState.shouldOpenNectarDirectly]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Call ───────���── */
   const [callState, setCallState] = useState<"ringing" | "dismissed" | "callback">("ringing")
@@ -347,28 +350,33 @@ function CidadeNeonExperience() {
 
   /* ── (Final notifications now handled by missions system) ── */
 
-  /* ── AURA ────────── */
-  const [auraQuizStep, setAuraQuizStep] = useState(0)
-  const [auraAnswers, setAuraAnswers] = useState<number[]>(
-    gameFunnelState.confirmations.c3.done && gameFunnelState.confirmations.c3.data
-      ? (gameFunnelState.confirmations.c3.data as { auraAnswers?: number[] }).auraAnswers || [0, 0, 0, 0, 0]
-      : []
+  /* ── NECTAR ────────── */
+  const [nectarQuizStep, setNectarQuizStep] = useState(0)
+  const [nectarAnswers, setNectarAnswers] = useState<number[]>(
+    gameFunnelState.confirmations.c3.done
+    ? (gameFunnelState.confirmations.c3.data as { nectarAnswers?: number[] }).nectarAnswers || [0, 0, 0, 0, 0]
+    : []
   )
-  const [auraShowResult, setAuraShowResult] = useState(gameFunnelState.confirmations.c3.done)
+  const [nectarShowResult, setNectarShowResult] = useState(gameFunnelState.confirmations.c3.done)
+
+  const { appsUnlocked } = gameFunnelState
 
   const phoneApps = [
-    { id: "untitled", name: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
-    { id: "spotify", name: "Spotify", icon: "spotify", color: "#1DB954" },
-    { id: "tiktok", name: "TikTok", icon: "tiktok", color: "#000000", link: "https://tiktok.com/@lu2ca.mp3" },
-    { id: "youtube", name: "YouTube", icon: "youtube", color: "#FF0000", link: "https://www.youtube.com/@LU222CA" },
-    { id: "instagram", name: "Instagram", icon: "instagram", color: "#E1306C", link: "https://instagram.com/lu2ca.mp3/" },
-    { id: "whatsapp", name: "WhatsApp", icon: "whatsapp", color: "#25D366" },
-    { id: "notes", name: "BLOCO DE NOTAS", icon: "notes", color: "#FFCC00" },
-    { id: "safari", name: "Safari", icon: "safari", color: "#007AFF", link: "https://lu2ca.me" },
-    { id: "photos", name: "Fotos", icon: "photos", color: "#FF9500", link: "https://lu2ca.me/galeria" },
-    { id: "music", name: "Musica", icon: "music", color: "#FF2D55", link: "https://lu2ca.me/musicaporlu2ca" },
-    { id: "phone", name: "Telefone", icon: "phone", color: "#34C759", link: "https://lu2ca.me/contacto-social" },
-    { id: "aura", name: "AURA", icon: "aura", color: "#E0E7FF" },
+    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+    { id: "spotify",       name: "FR3Q_",         icon: "spotify",       color: "#14532D" },
+    { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3" },
+    { id: "youtube",       name: "STR34M",        icon: "youtube",       color: "#7F1D1D", link: "https://www.youtube.com/@LU222CA" },
+    { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr" },
+    { id: "whatsapp",      name: "N3XO_",         icon: "whatsapp",      color: "#064E3B" },
+    { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
+    { id: "safari",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca.me" },
+    { id: "music",         name: "_W4VE",         icon: "music",         color: "#431407", link: "https://lu2ca.me/musicaporlu2ca" },
+    { id: "phone",         name: "TR4NSM1T",      icon: "phone",         color: "#14532D", link: "https://lu2ca.me/contacto-social" },
+    // Apps desbloqueados por missao
+    { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
+    { id: "feel-good-app", name: "FEEL.GOOD",     icon: "feelgood",      color: "#0F3460", locked: !appsUnlocked.feelGood },
+    { id: "guitar-driver", name: "GUITAR DRIVER", icon: "guitardriver",  color: "#1a0a00", locked: !appsUnlocked.guitarDriver },
+    { id: "drive",         name: "DRIVE",         icon: "drive",         color: "#0d0418" },
   ]
 
   const formatTime = (seconds: number) => {
@@ -457,7 +465,7 @@ function CidadeNeonExperience() {
   useEffect(() => {
     if (phase === "hacker" && hackerIdx >= HACKER_LINES.length) {
       const t = setTimeout(() => {
-        window.location.href = "/spotify/auto-chuva"
+        window.location.href = "/drive"
       }, 1500)
       return () => clearTimeout(t)
     }
@@ -606,7 +614,7 @@ function CidadeNeonExperience() {
     setShowConfirmBtn(false)
     if (confirmationsDone === 0) window.location.href = "/confirmacao/1-arquetipos"
     else if (confirmationsDone === 1) window.location.href = "/confirmacao/3-desbloqueio"
-    else if (confirmationsDone === 2) { setPhase("aura-login") }
+    else if (confirmationsDone === 2) { setPhase("nectar-login") }
   }
 
   /* ─── (Old in-page confirmation handlers removed - now separate pages) ── */
@@ -619,30 +627,28 @@ function CidadeNeonExperience() {
     const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean }> = []
 
     if (cc === 0) {
+      // Missao 1: Alohan orienta abrir NECTAR
       missions.push(
-        { id: "whatsapp-0", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "D-Bee: manda uma mensagem ai", action: "/whatsapp" },
-        { id: "spotify-play", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Nova musica disponivel para ouvir", action: "/spotify/auto-chuva" },
+        { id: "whatsapp-alohan-0", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/whatsapp/privado/alohan" },
       )
     } else if (cc === 1) {
-      // Reward comes FIRST, then the group callback
+      // Missao 1 completa: Alohan envia SUBURBIO XENOM; Nizzy orienta abrir FEEL.GOOD
       missions.push(
-        { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy enviou uma recompensa!", body: "Instrumental Cidade Neon desbloqueado", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
-        { id: "whatsapp-1", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "o grupo ta te chamando de volta", action: "/whatsapp" },
+        { id: "reward-alohan-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan desbloqueou algo pra voce", body: "SUBURBIO XENOM — toque para ver", action: "/whatsapp/privado/alohan", isReward: true },
+        { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy" },
       )
     } else if (cc === 2) {
-      // Reward comes FIRST, then the group callback
+      // Missao 2 completa: Nizzy envia Instrumental; D-Bee orienta abrir GUITAR DRIVER
       missions.push(
-        { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee enviou uma recompensa!", body: "Suburbio Xenom desbloqueado", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
-        { id: "whatsapp-2", app: "WhatsApp", icon: "whatsapp", color: "#25D366", title: "Cidade Neon", body: "teste final te espera no grupo", action: "/whatsapp" },
+        { id: "reward-nizzy-2", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy desbloqueou algo pra voce", body: "Instrumental Cidade Neon — toque para ver", action: "/whatsapp/privado/nizzy", isReward: true },
+        { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee" },
       )
     } else {
-      // After all 3 confirmations - rewards + final content persists
+      // Missao 3 completa: D-Bee envia Live Neon + conteudo final
       missions.push(
-        { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan enviou uma recompensa!", body: "Live Neon desbloqueado", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Live Neon — toque para ver", action: "/whatsapp/privado/dbee", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
-        { id: "aura-sala", app: "AURA", icon: "aura", color: "#A78BFA", title: "CIDADE NEON", body: "Envie sua AURA para fazer parte da rede", action: "aura" },
-        { id: "spotify-final", app: "Spotify", icon: "spotify", color: "#1DB954", title: "CHUVA", body: "Ouvir de novo", action: "/spotify/auto-chuva" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
       )
     }
@@ -659,7 +665,7 @@ function CidadeNeonExperience() {
     const confirmations: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = []
     if (cc >= 1) confirmations.push({ id: "confirm-1", app: "Cidade Neon", icon: "spotify", color: "#1DB954", title: "Confirmacao 1/3", body: "Teste das Musicas concluido", action: "/confirmacao/1-arquetipos" })
     if (cc >= 2) confirmations.push({ id: "confirm-2", app: "Cidade Neon", icon: "untitled", color: "#8B5CF6", title: "Confirmacao 2/3", body: "Teste de QI concluido", action: "/confirmacao/3-desbloqueio" })
-    if (cc >= 3) confirmations.push({ id: "confirm-3", app: "AURA", icon: "aura", color: "#A78BFA", title: "Confirmacao 3/3", body: "Teste AURA concluido", action: "aura" })
+    if (cc >= 3) confirmations.push({ id: "confirm-3", app: "NECTAR", icon: "nectar", color: "#A78BFA", title: "Confirmacao 3/3", body: "Teste NECTAR concluido", action: "nectar" })
     return confirmations
   }, [gameFunnelState.confirmationCount])
 
@@ -707,8 +713,8 @@ function CidadeNeonExperience() {
     const cc = gameFunnelState.confirmationCount
     if (cc === 0) setAppBadges({ whatsapp: true, spotify: true })
     else if (cc === 1) setAppBadges({ whatsapp: true, spotify: true })
-    else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, aura: true })
-    else setAppBadges({ tiktok: true, aura: true, spotify: true, whatsapp: true, untitled: true, youtube: true })
+    else if (cc === 2) setAppBadges({ whatsapp: true, spotify: true, nectar: true })
+    else setAppBadges({ tiktok: true, nectar: true, spotify: true, whatsapp: true, untitled: true, youtube: true })
   }, [phase, gameFunnelState.confirmationCount])
 
   const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
@@ -720,11 +726,13 @@ function CidadeNeonExperience() {
       setCompletedMissions(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
     }
     setBannerNotif(null)
-    if (mission.action === "aura") {
-      setPhase("aura-splash")
+      if (mission.action === "nectar") {
+        setPhase("nectar-splash")
     } else if (mission.action.startsWith("http")) {
+      // recompensas com link externo: apenas abre no browser
       window.open(mission.action, "_blank")
     } else {
+      // rotas internas (inclusive privado/*)
       window.location.href = mission.action
     }
   }
@@ -740,14 +748,18 @@ function CidadeNeonExperience() {
       tiktok: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" /></svg>,
       instagram: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>,
       untitled: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>,
-      aura: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1" opacity="0.7"/><circle cx="12" cy="12" r="5" stroke="white" strokeWidth="0.5" opacity="0.4"/><text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">A</text></svg>,
+      nectar: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1" opacity="0.7"/><circle cx="12" cy="12" r="5" stroke="white" strokeWidth="0.5" opacity="0.4"/><text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">N</text></svg>,
+      drive: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 3L3 19h18L12 3z" stroke="#ff5fae" strokeWidth="1.5" strokeLinejoin="round" fill="none"/><path d="M8 15l4-8 4 8" stroke="#00e5ff" strokeWidth="1" strokeLinejoin="round" fill="none" opacity="0.6"/><circle cx="12" cy="18" r="1.5" fill="#ff5fae"/></svg>,
+      feelgood: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#00e5ff" strokeWidth="1" opacity="0.8"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="#00e5ff" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+      guitardriver: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="#ff5fae" strokeWidth="1.2" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="#ff9000" strokeWidth="1.2" strokeLinecap="round"/></svg>,
     }
     return svgMap[icon] || <div className="w-6 h-6 bg-white/30 rounded" />
   }
 
   const renderAppIcon = (icon: string, color: string) => {
     const iconMap: Record<string, ReactElement> = {
-      aura: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="aur" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#a78bfa" /><stop offset="50%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#a78bfa" /></linearGradient></defs><circle cx="12" cy="12" r="10" stroke="url(#aur)" strokeWidth="1.5" fill="none" /><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">A</text></svg>,
+      nectar: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="nect" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#a78bfa" /><stop offset="50%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#a78bfa" /></linearGradient></defs><circle cx="12" cy="12" r="10" stroke="url(#nect)" strokeWidth="1.5" fill="none" /><text x="12" y="16" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">N</text></svg>,
+      drive: <svg className="w-8 h-8" viewBox="0 0 26 26" fill="none"><defs><linearGradient id="drvg" x1="0" y1="0" x2="26" y2="26"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#ff5fae"/></linearGradient></defs><path d="M13 3L2 21h22L13 3z" stroke="url(#drvg)" strokeWidth="1.8" strokeLinejoin="round" fill="rgba(255,95,174,0.08)"/><line x1="13" y1="8" x2="13" y2="17" stroke="#ff5fae" strokeWidth="1.2" opacity="0.7"/><circle cx="13" cy="19.5" r="1.5" fill="#ff5fae"/><path d="M9 15l4-7 4 7" stroke="#00e5ff" strokeWidth="0.8" strokeLinejoin="round" opacity="0.5" fill="none"/></svg>,
       untitled: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.5"/></svg>,
       phone: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>,
       safari: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" /></svg>,
@@ -759,6 +771,8 @@ function CidadeNeonExperience() {
       notes: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" /></svg>,
       photos: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" /></svg>,
       music: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>,
+      feelgood: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="fgg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#6B9DFF"/></linearGradient></defs><circle cx="12" cy="12" r="9" stroke="url(#fgg)" strokeWidth="1.5" fill="none"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="url(#fgg)" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+      guitardriver: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="gdg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#ff5fae"/><stop offset="100%" stopColor="#ff9000"/></linearGradient></defs><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="10" r="2" stroke="url(#gdg)" strokeWidth="1.2" fill="rgba(255,95,174,0.15)"/></svg>,
     }
     return (
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center relative" style={{ backgroundColor: color }}>
@@ -1102,7 +1116,7 @@ function CidadeNeonExperience() {
                   </div>
                   <div className="flex-1 text-left min-w-0">
                     <p className="text-[#00A884] font-bold text-xs uppercase tracking-wider">
-                      {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE AURA (3/3)"}
+                      {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE NECTAR (3/3)"}
                     </p>
                     <p className="text-[#8696A0] text-[11px] mt-0.5">Toque para iniciar</p>
                   </div>
@@ -1126,43 +1140,35 @@ function CidadeNeonExperience() {
 
   /* ─── (Old in-page confirmations and final-notifications removed - now separate pages + missions system) ── */
 
-  /* ─── RENDER: AURA SPLASH ─────────────────────�����────── */
-  if (phase === "aura-splash") {
+  /* ─── RENDER: NECTAR SPLASH ─────────────────────────────── */
+  if (phase === "nectar-splash") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black overflow-hidden">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-black">
-          {/* Background glow layers */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(167,139,250,0.18) 0%, transparent 70%)" }} />
             <div className="absolute bottom-0 left-0 right-0 h-64" style={{ background: "linear-gradient(to top, rgba(167,139,250,0.08), transparent)" }} />
           </div>
-
-          {/* Center content */}
           <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-10 px-10">
-            {/* AURA wordmark */}
             <div className="flex flex-col items-center gap-3">
               <h1
                 className="text-white font-black tracking-[0.35em] select-none"
                 style={{ fontSize: "clamp(56px, 18vw, 72px)", fontFamily: "system-ui, -apple-system, sans-serif", textShadow: "0 0 60px rgba(167,139,250,0.5), 0 0 120px rgba(167,139,250,0.2)" }}
               >
-                AURA
+                NECTAR
               </h1>
               <div className="w-12 h-[1px] bg-white/20" />
               <p className="text-white/30 text-xs tracking-[0.25em] uppercase">Cidade Neon</p>
             </div>
-
-            {/* Enter button */}
             <button
               type="button"
-              onClick={() => setPhase("aura-login")}
+              onClick={() => setPhase("nectar-login")}
               className="w-full py-4 rounded-sm bg-[#A78BFA] text-white font-semibold tracking-widest uppercase text-sm active:scale-[0.98] transition-transform"
               style={{ letterSpacing: "0.2em" }}
             >
               ENTRAR
             </button>
           </div>
-
-          {/* Bottom back */}
           <button type="button" onClick={() => setPhase("phone-home")} className="relative z-10 py-6 text-white/15 text-xs text-center tracking-widest uppercase">
             Voltar
           </button>
@@ -1171,28 +1177,25 @@ function CidadeNeonExperience() {
     )
   }
 
-  /* ─── RENDER: AURA ───────────────────────────────── */
-  const auraAlreadyDone = gameFunnelState.confirmations.c3.done
-  const auraUnlocked = gameFunnelState.confirmationCount >= 2
+  /* ─── RENDER: NECTAR ─────────────────────────────── */
+  const nectarAlreadyDone = gameFunnelState.confirmations.c3.done
+  const nectarUnlocked = gameFunnelState.confirmationCount >= 2
 
-  if (phase === "aura-login") {
-    // LOCKED STATE: show before 2nd confirmation
-    if (!auraUnlocked && !auraAlreadyDone) {
+  if (phase === "nectar-login") {
+    if (!nectarUnlocked && !nectarAlreadyDone) {
       return (
         <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
-            {/* Aurora skin - translucent aurora borealis */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.08) 15%,rgba(103,232,249,.06) 30%,transparent 45%,rgba(251,191,36,.06) 60%,rgba(239,68,68,.04) 75%,transparent 90%)" }} />
+              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.08) 15%,rgba(103,232,249,.06) 30%,transparent 45%,rgba(251,191,36,.06) 60%,rgba(239,68,68,.04) 75%,transparent 90%)" }} />
               <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-20 blur-3xl animate-pulse" style={{ background: "radial-gradient(circle,#a78bfa,transparent 70%)" }} />
               <div className="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full opacity-15 blur-3xl animate-pulse" style={{ background: "radial-gradient(circle,#67e8f9,transparent 70%)", animationDelay: "1s" }} />
             </div>
-
             <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
-              <h1 className="text-4xl font-black tracking-[0.15em] text-black/80 mb-4" style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontStretch: "condensed" }}>AURA</h1>
-              <p className="text-black/30 text-sm text-center mb-10 max-w-[240px] leading-relaxed">Eleve sua AURA</p>
+              <h1 className="text-4xl font-black tracking-[0.15em] text-black/80 mb-4" style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontStretch: "condensed" }}>NECTAR</h1>
+              <p className="text-black/30 text-sm text-center mb-10 max-w-[240px] leading-relaxed">Eleve seu NECTAR</p>
               <a
-                href="mailto:lucca.c2c@gmail.com?subject=AURA%20-%20Cidade%20Neon"
+                href="mailto:lucca.c2c@gmail.com?subject=NECTAR%20-%20Cidade%20Neon"
                 className="px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 bg-black/5 text-black/50 border border-black/10"
               >
                 {'send email to \'lucca.c2c@gmail.com\''}
@@ -1201,122 +1204,102 @@ function CidadeNeonExperience() {
             <button type="button" onClick={() => setPhase("phone-home")} className="relative z-10 py-6 text-black/20 text-xs text-center">VOLTAR</button>
           </div>
           <style jsx>{`
-            @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-            .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
+            @keyframes nectar-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            .animate-nectar-spin{animation:nectar-spin 25s linear infinite}
           `}</style>
         </div>
       )
     }
 
-    const getAuraResult = () => {
+    const getNectarResult = () => {
       const colorCounts: Record<string, number> = {}
-      auraAnswers.forEach((a, i) => {
-        const c = AURA_QUESTIONS[i]?.opts[a]?.color || ""
+      nectarAnswers.forEach((a, i) => {
+        const c = NECTAR_QUESTIONS[i]?.opts[a]?.color || ""
         colorCounts[c] = (colorCounts[c] || 0) + 1
       })
       const topColor = Object.entries(colorCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
-      return AURA_RESULTS.find(r => r.color === topColor) || AURA_RESULTS[2]
+      return NECTAR_RESULTS.find(r => r.color === topColor) || NECTAR_RESULTS[2]
     }
 
-    const handleAuraAnswer = (idx: number) => {
-      const newAnswers = [...auraAnswers, idx]
-      setAuraAnswers(newAnswers)
-      if (auraQuizStep < AURA_QUESTIONS.length - 1) {
-        setTimeout(() => setAuraQuizStep(s => s + 1), 300)
+    const handleNectarAnswer = (idx: number) => {
+      const newAnswers = [...nectarAnswers, idx]
+      setNectarAnswers(newAnswers)
+      if (nectarQuizStep < NECTAR_QUESTIONS.length - 1) {
+        setTimeout(() => setNectarQuizStep(s => s + 1), 300)
       } else {
         setTimeout(() => {
-          setAuraShowResult(true)
-          if (!auraAlreadyDone) {
-            completeConfirmation(3, { auraAnswers: newAnswers })
+          setNectarShowResult(true)
+          if (!nectarAlreadyDone) {
+            completeConfirmation(3, { nectarAnswers: newAnswers })
           }
         }, 400)
       }
     }
 
-    // RESULT STATE
-    if (auraShowResult) {
-      const result = getAuraResult()
+    if (nectarShowResult) {
+      const result = getNectarResult()
       return (
         <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col items-center justify-center p-8 relative bg-white">
-            {/* Aurora skin */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: `conic-gradient(from 0deg,transparent 0%,${result.color}15 25%,transparent 50%,${result.color}10 75%,transparent 100%)` }} />
+              <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: `conic-gradient(from 0deg,transparent 0%,${result.color}15 25%,transparent 50%,${result.color}10 75%,transparent 100%)` }} />
             </div>
-
-            <div className="relative z-10 text-center animate-aura-in">
+            <div className="relative z-10 text-center animate-nectar-in">
               <p className="text-black/30 text-[10px] uppercase tracking-[0.3em] mb-6" style={{ fontStretch: "condensed" }}>Confirmacao 3/3 Completa</p>
-
-              {/* Aura orb */}
               <div className="relative w-28 h-28 mx-auto mb-6">
                 <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: `${result.color}15`, boxShadow: `0 0 60px ${result.color}30` }} />
                 <div className="absolute inset-3 rounded-full" style={{ backgroundColor: `${result.color}10` }} />
                 <div className="absolute inset-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${result.color}08` }}>
-                  <span className="text-2xl font-black" style={{ color: result.color, fontStretch: "condensed" }}>A</span>
+                  <span className="text-2xl font-black" style={{ color: result.color, fontStretch: "condensed" }}>N</span>
                 </div>
               </div>
-
               <h1 className="text-xl font-black mb-2 tracking-wide" style={{ color: result.color, fontStretch: "condensed" }}>{result.name}</h1>
               <p className="text-black/40 text-sm mb-8 max-w-[260px] mx-auto leading-relaxed">{result.desc}</p>
-
-              {/* Share by email */}
-              <a href={`mailto:lucca.c2c@gmail.com?subject=Minha%20AURA%20-%20${encodeURIComponent(result.name)}&body=Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}`} className="inline-block px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 mb-4" style={{ backgroundColor: `${result.color}12`, color: result.color, border: `1px solid ${result.color}20` }}>
-                Enviar minha AURA por email
+              <a href={`mailto:lucca.c2c@gmail.com?subject=Meu%20NECTAR%20-%20${encodeURIComponent(result.name)}&body=Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}`} className="inline-block px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 mb-4" style={{ backgroundColor: `${result.color}12`, color: result.color, border: `1px solid ${result.color}20` }}>
+                Enviar meu NECTAR por email
               </a>
-
-              {/* Link to disc */}
               <a href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" target="_blank" rel="noopener noreferrer" className="block px-6 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 mb-6" style={{ color: result.color }}>
-                Eleve sua AURA com o Album
+                Eleve seu NECTAR com o Album
               </a>
-
               <button type="button" onClick={() => setPhase("phone-home")} className="px-8 py-3 rounded-2xl bg-black/5 text-black/40 text-sm font-medium active:scale-95 transition-transform">
                 Voltar ao Inicio
               </button>
             </div>
           </div>
           <style jsx>{`
-            @keyframes aura-in { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
-            .animate-aura-in{animation:aura-in .6s ease-out forwards}
-            @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-            .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
+            @keyframes nectar-in { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+            .animate-nectar-in{animation:nectar-in .6s ease-out forwards}
+            @keyframes nectar-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            .animate-nectar-spin{animation:nectar-spin 25s linear infinite}
           `}</style>
         </div>
       )
     }
 
-    // QUIZ STATE - white bg with aurora
-    const currentAQ = AURA_QUESTIONS[auraQuizStep] || AURA_QUESTIONS[0]
+    const currentNQ = NECTAR_QUESTIONS[nectarQuizStep] || NECTAR_QUESTIONS[0]
     return (
       <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
-          {/* Aurora skin */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-aurora-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.06) 15%,rgba(103,232,249,.05) 30%,transparent 45%,rgba(251,191,36,.04) 60%,transparent 75%)" }} />
+            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.06) 15%,rgba(103,232,249,.05) 30%,transparent 45%,rgba(251,191,36,.04) 60%,transparent 75%)" }} />
             <div className="absolute top-1/4 right-0 w-64 h-64 rounded-full opacity-10 blur-3xl" style={{ background: "radial-gradient(circle,#a78bfa,transparent 70%)" }} />
           </div>
-
           <div className="relative z-10 flex flex-col h-full pt-[56px] px-5">
-            {/* Header */}
             <div className="text-center mb-2">
-              <h1 className="text-2xl font-black text-black/80 tracking-[0.15em]" style={{ fontStretch: "condensed" }}>AURA</h1>
+              <h1 className="text-2xl font-black text-black/80 tracking-[0.15em]" style={{ fontStretch: "condensed" }}>NECTAR</h1>
               <div className="w-16 h-[2px] mx-auto mt-1 bg-gradient-to-r from-[#a78bfa] via-[#67e8f9] to-[#a78bfa]" />
             </div>
-
-            {/* Progress */}
             <div className="flex gap-1.5 mb-6 mt-4">
-              {AURA_QUESTIONS.map((_, i) => (
-                <div key={i} className="flex-1 h-1 rounded-full transition-all duration-500" style={{ backgroundColor: i < auraQuizStep ? "#A78BFA" : i === auraQuizStep ? "rgba(167,139,250,0.4)" : "rgba(0,0,0,0.06)" }} />
+              {NECTAR_QUESTIONS.map((_, i) => (
+                <div key={i} className="flex-1 h-1 rounded-full transition-all duration-500" style={{ backgroundColor: i < nectarQuizStep ? "#A78BFA" : i === nectarQuizStep ? "rgba(167,139,250,0.4)" : "rgba(0,0,0,0.06)" }} />
               ))}
             </div>
-            <p className="text-black/20 text-[10px] text-center mb-4 tracking-wider">CONFIRMACAO 3/3 &middot; {auraQuizStep + 1}/{AURA_QUESTIONS.length}</p>
-
-            {/* Question */}
+            <p className="text-black/20 text-[10px] text-center mb-4 tracking-wider">CONFIRMACAO 3/3 &middot; {nectarQuizStep + 1}/{NECTAR_QUESTIONS.length}</p>
             <div className="flex-1 flex flex-col justify-center">
-              <h2 className="text-black/70 text-lg font-medium text-center mb-8 text-balance px-2">{currentAQ?.q || ""}</h2>
-
+              <h2 className="text-black/70 text-lg font-medium text-center mb-8 text-balance px-2">{currentNQ?.q || ""}</h2>
               <div className="space-y-3">
-                {(currentAQ?.opts || []).map((opt, i) => (
-                  <button key={opt.text} type="button" onClick={() => handleAuraAnswer(i)}
+                {(currentNQ?.opts || []).map((opt, i) => (
+                  <button key={opt.text} type="button" onClick={() => handleNectarAnswer(i)}
                     className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.97] text-left bg-white"
                     style={{ border: `1px solid ${opt.color}25`, boxShadow: `0 1px 4px ${opt.color}08` }}
                   >
@@ -1326,13 +1309,12 @@ function CidadeNeonExperience() {
                 ))}
               </div>
             </div>
-
-            <button type="button" onClick={() => { setPhase("phone-home"); setAuraQuizStep(0); setAuraAnswers([]) }} className="py-4 text-black/20 text-xs text-center">VOLTAR</button>
+            <button type="button" onClick={() => { setPhase("phone-home"); setNectarQuizStep(0); setNectarAnswers([]) }} className="py-4 text-black/20 text-xs text-center">VOLTAR</button>
           </div>
         </div>
         <style jsx>{`
-          @keyframes aurora-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-          .animate-aurora-spin{animation:aurora-spin 25s linear infinite}
+          @keyframes nectar-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+          .animate-nectar-spin{animation:nectar-spin 25s linear infinite}
         `}</style>
       </div>
     )
@@ -1363,19 +1345,36 @@ function CidadeNeonExperience() {
     { label: "TikTok", color: "#000000", action: () => { window.location.href = "/tiktok/feed" } },
     { label: "YouTube", color: "#FF0000", action: () => { window.location.href = "/youtube/cidade-neon" } },
     { label: "Sala Branca", color: "#E0E7FF", action: () => { window.location.href = "/final/sala-branca" } },
-    { label: "AURA", color: "#A78BFA", action: () => { setPhase("aura-splash") } },
+      { label: "NECTAR", color: "#A78BFA", action: () => { setPhase("nectar-splash") } },
   ]
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
+        {/* wallpaper: dark space-blue com pontos neon sutis */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 30% 20%, #1a0d2e 0%, #0d0d1a 45%, #080810 100%)" }} />
+        <svg className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="gd1" cx="20%" cy="30%"><stop offset="0" stopColor="#6d28d9" stopOpacity=".18"/><stop offset="1" stopColor="transparent"/></radialGradient>
+            <radialGradient id="gd2" cx="80%" cy="70%"><stop offset="0" stopColor="#3b0764" stopOpacity=".22"/><stop offset="1" stopColor="transparent"/></radialGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#gd1)"/>
+          <rect width="100%" height="100%" fill="url(#gd2)"/>
+          {/* pontos neon dispersos */}
+          {[
+            [12,18],[55,8],[88,22],[33,42],[76,55],[18,65],[92,40],[44,80],[66,90],[7,88],
+            [50,30],[80,12],[25,72],[60,48],[38,95],[70,75],[15,50],[82,85],[48,15],[92,65],
+          ].map(([cx,cy],i)=>(
+            <circle key={i} cx={`${cx}%`} cy={`${cy}%`} r={i%3===0?"1.5":"1"} fill={["#7c3aed","#4f46e5","#6d28d9","#818cf8"][i%4]} opacity={0.5+i%3*0.15}/>
+          ))}
+        </svg>
         {/* iPhone Notch or Spotify marquee */}
         {globalAudio.playing ? (
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[280px] h-[34px] bg-black/80 backdrop-blur rounded-b-[18px] flex items-center overflow-hidden px-2">
-            <div className="flex items-center gap-1 whitespace-nowrap animate-spotify-scroll">
-              <svg className="w-3 h-3 text-[#1DB954] flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.521 17.34c-.24.359-.659.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.08-.418.122-.779-.179-.899-.599-.12-.42.061-.799.48-.918 4.503-1.086 8.284-.722 11.4 1.258.42.257.86.076 1.08-.342.21-.423.052-.820-.391-1.04z"/></svg>
-              <span className="text-white text-xs font-medium text-[#1DB954]">{globalAudio.currentTrack.title || "CHUVA"}</span>
+            <div className="flex items-center gap-1.5 whitespace-nowrap animate-spotify-scroll">
+              <span className="text-[#E8FF3A] text-[10px] font-mono font-bold">▶</span>
+              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack.title || "CHUVA"}</span>
+              <span className="text-white/30 text-[10px] font-mono">· LU2CA</span>
             </div>
           </div>
         ) : (
@@ -1398,7 +1397,7 @@ function CidadeNeonExperience() {
             onClick={() => handleMissionClick(bannerNotif)}
             className="absolute top-[52px] left-3 right-3 z-40 animate-notif-slide"
           >
-            <div className={`backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl ${bannerNotif.isReward ? "bg-gradient-to-r from-[#FFD700]/20 via-[#1c1c1e]/95 to-[#1c1c1e]/95 border border-[#FFD700]/30" : "bg-[#1c1c1e]/95 border border-white/5"}`}>
+            <div className={`backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl ${bannerNotif.isReward ? "border border-[#FFD700]/30" : "border border-[#6d28d9]/40"}`} style={{ background: bannerNotif.isReward ? "linear-gradient(135deg,rgba(109,40,217,0.55),rgba(28,28,30,0.97))" : "linear-gradient(135deg,rgba(59,7,100,0.92),rgba(13,13,26,0.97))" }}>
               <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: bannerNotif.color }}>
                 {getIconSvg(bannerNotif.icon)}
                 {bannerNotif.isReward && (
@@ -1573,24 +1572,41 @@ function CidadeNeonExperience() {
             {/* PAGE 0 — App Grid */}
             <div className="w-1/2 h-full flex items-center justify-center px-8 pt-[56px] pb-[90px]">
               <div className="grid grid-cols-3 gap-x-6 gap-y-6 w-full">
-                {phoneApps.map((app) => (
-                  <button key={app.id} onClick={() => {
-                    if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
-                    if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
-                    if (app.link) { window.open(app.link, "_blank"); return }
-                    if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
-                    if (app.id === "aura") { setPhase("aura-login"); return }
-                    if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                  }} className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative" type="button">
-                    {renderAppIcon(app.icon, app.color)}
-                    {appBadges[app.id] && (
-                      <div className="absolute -top-1 -right-0 w-5 h-5 bg-[#FF3B30] rounded-full border-2 border-[#16213e] flex items-center justify-center">
-                        <span className="text-white text-[9px] font-bold">!</span>
+                {phoneApps.map((app) => {
+                  const isLocked = (app as { locked?: boolean }).locked === true
+                  return (
+                    <button key={app.id} type="button"
+                      onClick={() => {
+                        if (isLocked) return
+                        if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
+                        if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
+                        if (app.link) { window.open(app.link, "_blank"); return }
+                        if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
+                        if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
+                        if (app.id === "drive") { window.location.href = "/drive"; return }
+                        if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
+                        if (app.id === "feel-good-app") { window.location.href = "/feel-good"; return }
+                        if (app.id === "guitar-driver") { window.location.href = "/neon-tiles"; return }
+                      }}
+                      className={`flex flex-col items-center gap-1 transition-transform relative ${isLocked ? "opacity-40 cursor-default" : "active:scale-95"}`}
+                    >
+                      <div className="relative">
+                        {renderAppIcon(app.icon, app.color)}
+                        {isLocked && (
+                          <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                            <svg className="w-5 h-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="5" y="11" width="14" height="11" rx="2" /><path strokeLinecap="round" d="M8 11V7a4 4 0 018 0v4" /></svg>
+                          </div>
+                        )}
+                        {!isLocked && appBadges[app.id] && (
+                          <div className="absolute -top-1 -right-0 w-5 h-5 bg-[#FF3B30] rounded-full border-2 border-[#16213e] flex items-center justify-center">
+                            <span className="text-white text-[9px] font-bold">!</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <span className="text-white text-[10px] leading-tight text-center">{app.name}</span>
-                  </button>
-                ))}
+                      <span className={`text-[9px] leading-tight text-center font-mono tracking-tight ${isLocked ? "text-white/30" : "text-white/60"}`}>{app.name}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -1648,10 +1664,11 @@ function CidadeNeonExperience() {
               <button
                 type="button"
                 onClick={() => setShowNotifCenter(true)}
-                className={`relative bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 transition-all border border-white/10 ${missionsBounce ? "animate-missions-bounce" : ""}`}
+                className={`relative backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 transition-all ${missionsBounce ? "animate-missions-bounce" : ""}`}
+                style={{ background: "rgba(88,28,135,0.55)", border: "1px solid rgba(139,92,246,0.35)" }}
               >
-                <svg className="w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
-                <span className="text-white/70 text-xs font-medium">Missoes</span>
+                <svg className="w-4 h-4 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+                <span className="text-violet-200 text-xs font-medium tracking-wide">Missoes</span>
                 {activeMissions.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FF3B30] rounded-full flex items-center justify-center">
                     <span className="text-white text-[10px] font-bold">{activeMissions.length}</span>

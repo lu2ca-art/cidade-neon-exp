@@ -78,7 +78,7 @@ export default function HackerPage() {
         setTimeout(() => {
           updateHackerState({ completed: true })
           updateCinematicStep("spotify-auto")
-          router.push("/spotify/auto-chuva")
+          router.push("/drive")
         }, 1500)
       }
     }, delay)
