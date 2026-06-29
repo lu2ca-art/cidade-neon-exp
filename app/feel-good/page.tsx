@@ -12,19 +12,49 @@ interface Connection {
 }
 
 const TRACKS = [
-  { id: "nectar",    name: "NECTAR",      color: "#FF6B9D" },
-  { id: "ojala",     name: "OJALA",       color: "#6B9DFF" },
-  { id: "chuva",     name: "CHUVA",       color: "#9DFF6B" },
-  { id: "sabeontem", name: "SABE ONTEM?", color: "#FFD93D" },
-  { id: "dopamina",  name: "DOPAMINA",    color: "#FF9D6B" },
+  {
+    id: "chuva",
+    name: "CH**A",
+    fullName: "CHUVA",
+    color: "#9DFF6B",
+    audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28MASTER%29-gjxdvkaY9bF5PpjHELCGqT3NrahEsG.mp3",
+  },
+  {
+    id: "copo",
+    name: "C*P* AM*R*C*N*",
+    fullName: "COPO AMERICANO",
+    color: "#FF6B9D",
+    audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/COPO%20AMERICANO%20%28MASTER%29-jPjZxju7Z5bxrhmi3XF7pgqkoZGajw.mp3",
+  },
+  {
+    id: "dopamina",
+    name: "D*P*M*N*",
+    fullName: "DOPAMINA",
+    color: "#FF9D6B",
+    audioUrl: "",
+  },
+  {
+    id: "ojala",
+    name: "OJ*L*",
+    fullName: "OJALA",
+    color: "#6B9DFF",
+    audioUrl: "",
+  },
+  {
+    id: "sabeontem",
+    name: "S*B* ONT*M?",
+    fullName: "SABE ONTEM?",
+    color: "#FFD93D",
+    audioUrl: "",
+  },
 ]
 
 const WORD_SETS: Record<string, string[]> = {
-  nectar:    ["DESEJO", "TENTACAO", "DOCE", "VICIO", "SEDE", "PELE"],
-  ojala:     ["SAUDADE", "ESPERANCA", "DISTANTE", "SONHO", "TALVEZ", "FE"],
   chuva:     ["MELANCOLIA", "LIMPEZA", "RENOVACAO", "LAGRIMA", "CINZA", "PAZ"],
-  sabeontem: ["DUVIDA", "MEMORIA", "PASSADO", "ARREPENDIMENTO", "CONFUSAO", "TEMPO"],
+  copo:      ["DESEJO", "TENTACAO", "DOCE", "VICIO", "SEDE", "PELE"],
   dopamina:  ["EUFORIA", "RUSH", "VICIO", "PRAZER", "INTENSO", "MAIS"],
+  ojala:     ["SAUDADE", "ESPERANCA", "DISTANTE", "SONHO", "TALVEZ", "FE"],
+  sabeontem: ["DUVIDA", "MEMORIA", "PASSADO", "ARREPENDIMENTO", "CONFUSAO", "TEMPO"],
 }
 
 export default function FeelGoodPage() {
@@ -56,6 +86,19 @@ export default function FeelGoodPage() {
     setCurrentWords(WORD_SETS[trackId] || [])
     setIsPlaying(true)
     globalAudio.pause()
+
+    // toca o audio real da faixa se disponivel
+    const track = TRACKS.find(t => t.id === trackId)
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ""
+    }
+    if (track?.audioUrl) {
+      const audio = new Audio(track.audioUrl)
+      audio.volume = 0.7
+      audioRef.current = audio
+      audio.play().catch(() => {})
+    }
   }
 
   const handleWordSelect = (word: string) => {
@@ -69,6 +112,7 @@ export default function FeelGoodPage() {
     setSelectedTrack(null)
     setCurrentWords([])
     setIsPlaying(false)
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = "" }
 
     if (newConnections.length >= 5) {
       setShowResult(true)
@@ -191,13 +235,14 @@ export default function FeelGoodPage() {
                     key={track.id}
                     type="button"
                     onClick={() => handleTrackSelect(track.id)}
-                    disabled={isConnected}
-                    className={`w-full py-3 px-3 rounded-xl text-left transition-all min-h-[44px] text-sm ${isConnected ? "opacity-30 cursor-not-allowed bg-white/5" : isSelected ? "ring-2 bg-white/10" : "bg-white/5 hover:bg-white/10"}`}
+                    disabled={isConnected || !track.audioUrl}
+                    className={`w-full py-3 px-3 rounded-xl text-left transition-all min-h-[44px] text-sm ${isConnected || !track.audioUrl ? "opacity-30 cursor-not-allowed bg-white/5" : isSelected ? "ring-2 bg-white/10" : "bg-white/5 hover:bg-white/10"}`}
                     style={{ outlineColor: isSelected ? track.color : "transparent", color: isSelected ? track.color : "#fff" }}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: track.color }} />
-                      <span className="font-medium truncate">{track.name}</span>
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: track.color }} />
+                      <span className="font-mono font-medium truncate tracking-wider">{track.name}</span>
+                      {!track.audioUrl && <span className="text-[10px] opacity-30 ml-auto">— em breve</span>}
                     </div>
                   </button>
                 )

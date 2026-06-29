@@ -40,8 +40,11 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
     preMission: {
       messages: [
         "ei.",
-        "antes de qualquer coisa, preciso saber se voce e real.",
-        "vai no app NECTAR e faz o teste la.",
+        "voce chegou aqui por um motivo.",
+        "nao sei ainda se voce e do tipo que sente ou do tipo que so observa.",
+        "tem um teste que vai deixar isso claro.",
+        "vai no app NECTAR. descobre o que e o seu nectar.",
+        "nao precisa ser rapido. so precisa ser verdadeiro.",
         "quando terminar, volta aqui.",
       ],
       appName: "NECTAR",
@@ -51,9 +54,11 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
     },
     reward: {
       messages: [
-        "voce passou.",
-        "descobriu seu NECTAR. isso diz muito.",
-        "aqui ta o que eu guardei pra quem chegasse ate aqui.",
+        "voltou.",
+        "eu vi o resultado.",
+        "faz sentido.",
+        "tem coisa que eu guardo so pra quem chega ate aqui.",
+        "isso aqui e seu.",
       ],
       rewardName: "SUBURBIO XENOM",
       rewardLink: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw",
@@ -61,7 +66,9 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
     done: {
       messages: [
         "missao cumprida.",
-        "agora tem mais gente esperando voce.",
+        "Nizzy vai querer te conhecer agora.",
+        "ela e diferente de mim. mais intensa.",
+        "vai la.",
       ],
     },
   },
@@ -73,8 +80,12 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
       messages: [
         "oi.",
         "Alohan me falou de voce.",
-        "mas eu preciso sentir antes de confiar.",
-        "abre o app FEEL.GOOD e me mostra o que voce sente.",
+        "mas eu preciso sentir antes de confiar, entende?",
+        "eu nao aceito qualquer um aqui.",
+        "abre o FEEL.GOOD.",
+        "vai ter umas musicas. voce escolhe o que cada uma faz em voce.",
+        "nao tem certo ou errado. so tem honesto ou mentira.",
+        "me mostra o que voce sente de verdade.",
       ],
       appName: "FEEL.GOOD",
       appRoute: "/feel-good",
@@ -85,16 +96,19 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
       messages: [
         "voce sente de verdade.",
         "eu sabia.",
-        "isso aqui e pra voce — Instrumental Cidade Neon.",
-        "a estrutura ta nas suas maos agora.",
+        "esse tipo de conexao com musica nao se finge.",
+        "guarda isso aqui. e o instrumental. a estrutura pura.",
+        "faz o que quiser com ela.",
       ],
       rewardName: "Instrumental Cidade Neon",
       rewardLink: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU",
     },
     done: {
       messages: [
-        "missao completa.",
-        "D-Bee vai querer te ver agora.",
+        "agora ta completo aqui comigo.",
+        "D-Bee vai te dar o ultimo teste.",
+        "ele e rigoroso. mas quando respeita, respeita de verdade.",
+        "boa sorte.",
       ],
     },
   },
@@ -105,10 +119,14 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
     preMission: {
       messages: [
         "hm.",
-        "Nizzy me disse que voce passou nos outros testes.",
-        "mas o meu e diferente.",
-        "abre o GUITAR DRIVER e toca as 4 faixas.",
-        "so quando terminar, volta aqui.",
+        "Alohan e Nizzy ja aprovaram voce.",
+        "mas isso nao significa nada pra mim ainda.",
+        "meu criterio e diferente.",
+        "eu preciso ver voce tocar.",
+        "abre o GUITAR DRIVER.",
+        "tem 4 faixas. toca todas.",
+        "nao precisa ser perfeito. precisa ser presente.",
+        "so volta aqui depois de terminar as 4.",
       ],
       appName: "GUITAR DRIVER",
       appRoute: "/neon-tiles",
@@ -118,9 +136,11 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
     reward: {
       messages: [
         "voce tocou.",
-        "sentiu cada batida.",
-        "isso e tudo que precisava provar.",
-        "desbloqueei algo que tava escondido nas frequencias.",
+        "cada faixa.",
+        "isso prova que voce nao ta so ouvindo. ta dentro.",
+        "tem algo que eu capturei ao vivo numa noite especifica.",
+        "nunca liberei pra ninguem fora do ciclo.",
+        "e seu agora.",
       ],
       rewardName: "Live Neon",
       rewardLink: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA",
@@ -128,7 +148,8 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
     done: {
       messages: [
         "ciclo completo.",
-        "voce fez parte disso agora.",
+        "voce chegou ate o fim.",
+        "poucos chegam.",
       ],
     },
   },
@@ -189,6 +210,45 @@ function RewardCard({ rewardName, rewardLink, color, memberName }: { rewardName:
         </div>
         <p className="text-[#667781] text-[10px] text-right mt-0.5">agora</p>
       </a>
+    </div>
+  )
+}
+
+function Lu2caFinalCard() {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-3 max-w-[90%]">
+        <p className="text-[11px] font-bold mb-2" style={{ color: "#A78BFA" }}>LU2CA</p>
+        <p className="text-[#E9EDEF] text-sm leading-relaxed mb-3">
+          voce chegou ate o fim do ciclo.
+        </p>
+        <p className="text-[#E9EDEF] text-sm leading-relaxed mb-3">
+          isso nao e pra todo mundo. a maioria desiste no meio.
+        </p>
+        <p className="text-[#E9EDEF] text-sm leading-relaxed mb-3">
+          CIDADE NEON existe completo agora. e voce fez parte de como ele chegou aqui.
+        </p>
+        <p className="text-[#E9EDEF] text-sm leading-relaxed mb-4">
+          se quiser levar o album completo com voce — todas as frequencias, cada faixa —
+        </p>
+        <a
+          href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 bg-[#111B21] rounded-xl px-3 py-3 border transition-colors active:bg-[#1c2a31]"
+          style={{ borderColor: "rgba(167,139,250,0.3)" }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(167,139,250,0.2)" }}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="#A78BFA" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" /></svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-white text-sm font-semibold">CIDADE NEON</p>
+            <p className="text-white/30 text-xs mt-0.5">Album completo · untitled.stream</p>
+          </div>
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="#A78BFA" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        </a>
+        <p className="text-[#667781] text-[10px] text-right mt-2">agora</p>
+      </div>
     </div>
   )
 }
@@ -261,8 +321,10 @@ export default function PrivadoPage() {
   const isRewardPhase = cc >= rewardAt
   const isDonePhase = member !== "dbee" && cc >= doneAt
 
-  function getMessagesToShow(): Array<{ type: "msg" | "cta" | "reward" | "done-msg"; text?: string }> {
-    const items: Array<{ type: "msg" | "cta" | "reward" | "done-msg"; text?: string }> = []
+  const showLu2caFinal = member === "dbee" && cc >= 3
+
+  function getMessagesToShow(): Array<{ type: "msg" | "cta" | "reward" | "done-msg" | "lu2ca"; text?: string }> {
+    const items: Array<{ type: "msg" | "cta" | "reward" | "done-msg" | "lu2ca"; text?: string }> = []
 
     if (!isRewardPhase) {
       // Pre-missao: mensagens + CTA do app
@@ -277,6 +339,11 @@ export default function PrivadoPage() {
       // Reward phase: mensagens + card de recompensa
       script.reward.messages.forEach(m => items.push({ type: "msg", text: m }))
       items.push({ type: "reward" })
+    }
+
+    // Apos ciclo completo (cc >= 3, em qualquer conversa privada) — mensagem do LU2CA
+    if (showLu2caFinal && isRewardPhase) {
+      items.push({ type: "lu2ca" })
     }
 
     return items
@@ -325,6 +392,9 @@ export default function PrivadoPage() {
             }
             if (item.type === "reward") {
               return <RewardCard key={i} rewardName={script.reward.rewardName} rewardLink={script.reward.rewardLink} color={script.color} memberName={script.name} />
+            }
+            if (item.type === "lu2ca") {
+              return <Lu2caFinalCard key={i} />
             }
             return null
           })}

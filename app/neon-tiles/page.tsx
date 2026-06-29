@@ -149,9 +149,9 @@ const PROFILE_CONFIG: Record<Profile, { color: string; message: string; reward: 
 
 const COLS = 4
 const TILE_H_BASE = 72        // altura base do tile normal (px no canvas)
-const HIT_ZONE_Y  = 0.82
-const HIT_WINDOW_MS = 160
-const TILE_SPEED_PX_MS = 0.28
+const HIT_ZONE_Y  = 0.78
+const HIT_WINDOW_MS = 200
+const TILE_SPEED_PX_MS = 0.38   // mais rápido → notas aparecem mais cedo na tela
 const CANVAS_H = 580
 
 // Paleta neon rica: rosa, ciano, roxo, amarelo
@@ -761,24 +761,24 @@ export default function NeonTilesPage() {
             4 FAIXAS COMPLETAS
           </h1>
           <p className="font-mono text-sm mb-10" style={{ color: "rgba(255,255,255,0.5)" }}>
-            voce sentiu a cidade.<br/>Alohan tem algo guardado pra voce.
+            voce tocou tudo.<br/>D-Bee tem algo guardado pra voce.
           </p>
 
           {/* Card de recompensa */}
           <a
-            href="/whatsapp/privado/alohan"
+            href="/whatsapp/privado/dbee"
             className="block w-full rounded-2xl p-4 mb-4 text-left transition-all active:scale-[0.98]"
-            style={{ background: "linear-gradient(135deg,rgba(78,205,196,0.15),rgba(78,205,196,0.05))", border: "1px solid rgba(78,205,196,0.3)", boxShadow: "0 0 20px rgba(78,205,196,0.1)" }}
+            style={{ background: "linear-gradient(135deg,rgba(107,127,215,0.15),rgba(107,127,215,0.05))", border: "1px solid rgba(107,127,215,0.3)", boxShadow: "0 0 20px rgba(107,127,215,0.1)" }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(78,205,196,0.25)" }}>
-                <span className="text-[#4ECDC4] font-bold text-lg">A</span>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(107,127,215,0.25)" }}>
+                <span className="text-[#6B7FD7] font-bold text-lg">D</span>
               </div>
               <div className="flex-1">
-                <p className="font-mono font-bold text-white text-sm">Alohan</p>
-                <p className="font-mono text-xs mt-0.5" style={{ color: "rgba(78,205,196,0.8)" }}>Live Neon — toque para ver</p>
+                <p className="font-mono font-bold text-white text-sm">D-Bee</p>
+                <p className="font-mono text-xs mt-0.5" style={{ color: "rgba(107,127,215,0.8)" }}>Live Neon — toque para ver</p>
               </div>
-              <svg className="w-5 h-5 text-[#4ECDC4]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+              <svg className="w-5 h-5 text-[#6B7FD7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
             </div>
           </a>
 
@@ -805,9 +805,20 @@ export default function NeonTilesPage() {
     >
       {/* Header */}
       <div className="w-full max-w-sm flex items-center justify-between px-4 pt-4 pb-2">
-        <div>
-          <p className="font-mono text-xs" style={{ color: song.color }}>{song.title}</p>
-          <p className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{song.bpm} BPM</p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => { cancelAnimationFrame(rafRef.current); audioRef.current?.pause(); setPhase("select"); setProfile(null) }}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+            aria-label="Sair da musica"
+          >
+            <svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+          </button>
+          <div>
+            <p className="font-mono text-xs" style={{ color: song.color }}>{song.title}</p>
+            <p className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{song.bpm} BPM</p>
+          </div>
         </div>
         <div className="flex gap-4 font-mono text-sm">
           <div className="text-right">
