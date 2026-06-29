@@ -4,16 +4,57 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import { useAudioPlayer, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvider"
+import { ALBUM_TRACKS, useAudioPlayer, type Track } from "@/app/providers/AudioPlayerProvider"
+import { sendToParent, type BridgeState } from "@/app/providers/AudioBridge"
 
-const ACCENT = "#E8FF3A" // untitled yellow playhead
+const ACCENT = "#E8FF3A"
 
-/* ---------- WAVEFORM (module-level: tipo estável, não remonta) ---------- */
+// Detecta se está dentro de um iframe do drive
+const isInIframe = () => typeof window !== "undefined" && window.self !== window.top
+
+// ─── Hook que unifica: usa bridge quando iframe, provider quando standalone ───
+function usePlayer() {
+  const direct = useAudioPlayer()
+  const [bridgeState, setBridgeState] = useState<{ trackIdx: number; playing: boolean; elapsed: number } | null>(null)
+  const inFrame = useRef(isInIframe())
+
+  useEffect(() => {
+    if (!inFrame.current) return
+    const handler = (e: MessageEvent) => {
+      const msg = e.data as BridgeState
+      if (msg?.type === "AUDIO_STATE") {
+        setBridgeState({ trackIdx: msg.trackIdx, playing: msg.playing, elapsed: msg.elapsed })
+      }
+    }
+    window.addEventListener("message", handler)
+    // pede estado inicial
+    sendToParent({ type: "REQUEST_STATE" })
+    return () => window.removeEventListener("message", handler)
+  }, [])
+
+  if (!inFrame.current) return direct
+
+  // API usando bridge para o pai
+  const bs = bridgeState ?? { trackIdx: direct.trackIdx, playing: direct.playing, elapsed: direct.elapsed }
+  return {
+    currentTrack: ALBUM_TRACKS[bs.trackIdx] ?? null,
+    trackIdx:     bs.trackIdx,
+    playing:      bs.playing,
+    elapsed:      bs.elapsed,
+    play:    (i: number)  => sendToParent({ type: "PLAY", index: i }),
+    pause:   ()           => sendToParent({ type: "PAUSE" }),
+    resume:  ()           => sendToParent({ type: "RESUME" }),
+    toggle:  ()           => sendToParent({ type: "TOGGLE" }),
+    seekTo:  (s: number)  => sendToParent({ type: "SEEK", seconds: s }),
+    next:    ()           => sendToParent({ type: "NEXT" }),
+    prev:    ()           => sendToParent({ type: "PREV" }),
+    stopAndClear: ()      => sendToParent({ type: "PAUSE" }),
+  }
+}
+
+// ─── WAVEFORM — escopo do módulo: tipo estável, nunca remonta ─────────────────
 function Waveform({
-  bars,
-  progress,
-  seekFromRatio,
-  compact = false,
+  bars, progress, seekFromRatio, compact = false,
 }: {
   bars: number[]
   progress: number
@@ -29,161 +70,129 @@ function Waveform({
   }
   const playedIdx = Math.floor(progress * bars.length)
   return (
-    <div
-      ref={ref}
-      onClick={onClick}
+    <div ref={ref} onClick={onClick}
       className="relative flex items-center gap-[2px] cursor-pointer w-full"
       style={{ height: compact ? 22 : 56 }}
     >
       {bars.map((h, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-full"
-          style={{
-            height: `${h * 100}%`,
-            minWidth: 1,
-            background: i <= playedIdx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)",
-          }}
-        />
+        <div key={i} className="flex-1 rounded-full" style={{
+          height: `${h * 100}%`, minWidth: 1,
+          background: i <= playedIdx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)",
+        }} />
       ))}
-      <div
-        className="absolute top-0 bottom-0 w-[2px] rounded-full"
-        style={{ left: `${progress * 100}%`, background: ACCENT, boxShadow: `0 0 6px ${ACCENT}` }}
+      <div className="absolute top-0 bottom-0 w-[2px] rounded-full"
+        style={{ left: `${progress * 100}%`, background: ACCENT, boxShadow: `0 0 6px ${ACCENT}` }} />
+    </div>
+  )
+}
+
+// ─── COVER — extraído para componente estável (elimina piscar) ─────────────────
+function AlbumCover({ circular, size }: { circular: boolean; size: number }) {
+  return (
+    <div className={`overflow-hidden ring-1 ring-white/10 shadow-2xl ${circular ? "rounded-full" : "rounded-xl"}`}
+      style={{ width: size, height: size }}
+    >
+      <Image
+        src="/images/album-cover.jpg"
+        alt="Cidade Neon"
+        width={size}
+        height={size}
+        priority
+        className="w-full h-full object-cover grayscale"
       />
     </div>
   )
 }
 
-export default function UntitledPlayerPage() {
-  const router = useRouter()
-  const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
-  const audio = useAudioPlayer()
-
-  const [view, setView] = useState<"now-playing" | "album">("now-playing")
-  const [showNotif, setShowNotif] = useState(false)
-  const notifSent = useRef(false)
-  const isFirst = useRef(!state.perAppState.spotifyAuto.completed)
-
-  const track = audio.currentTrack ?? ALBUM_TRACKS[0]
-  const progress = track.durationSec > 0 ? Math.min(audio.elapsed / track.durationSec, 1) : 0
-
-  useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
-
-  // Auto-play CHUVA (index 8) on mount only if nothing is playing
-  useEffect(() => {
-    if (!audio.playing && audio.elapsed === 0) audio.play(8)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // WhatsApp notification at 13s on first visit
-  useEffect(() => {
-    if (audio.elapsed >= 13 && isFirst.current && !notifSent.current) {
-      notifSent.current = true
-      setShowNotif(true)
-    }
-  }, [audio.elapsed])
-
-  const fmt = (s: number) => {
-    const m = Math.floor(s / 60)
-    return `${m}:${(s % 60).toString().padStart(2, "0")}`
-  }
-
-  const handleNotifClick = () => {
-    setShowNotif(false)
-    isFirst.current = false
-    updateSpotifyState({ completed: true })
-    updateCinematicStep("whatsapp-notification")
-    router.push("/whatsapp/grupo")
-  }
-
-  const handleBack = useCallback(() => {
-    if (view === "now-playing") setView("album")
-    else router.push("/")
-  }, [view, router])
-
-  const selectTrack = (i: number) => {
-    if (!ALBUM_TRACKS[i].playable) return
-    audio.play(i)
-    setView("now-playing")
-  }
-
-  // Deterministic waveform bar heights
-  const bars = useMemo(() => {
-    const n = 72
-    return Array.from({ length: n }, (_, i) => {
-      const v = Math.abs(Math.sin(i * 0.7) * 0.6 + Math.sin(i * 1.9 + 1) * 0.4)
-      return 0.18 + v * 0.82
-    })
-  }, [])
-
-  const seekFromRatio = (ratio: number) => {
-    audio.seekTo(Math.round(ratio * track.durationSec))
-  }
-
-  /* ---------- NOW PLAYING ---------- */
-  const nowPlaying = (
+// ─── TELA NOW PLAYING ─────────────────────────────────────────────────────────
+function NowPlayingView({
+  track, audio, bars, progress, seekFromRatio, onAlbum, onBack,
+}: {
+  track: Track
+  audio: ReturnType<typeof usePlayer>
+  bars: number[]
+  progress: number
+  seekFromRatio: (r: number) => void
+  onAlbum: () => void
+  onBack: () => void
+}) {
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`
+  return (
     <div className="flex-1 flex flex-col bg-[#161616]">
-      {/* title */}
       <div className="px-6 pt-8 pb-2 text-center">
         <h1 className="text-white text-2xl font-medium tracking-tight">{track.title ?? track.masked ?? "Faixa"}</h1>
         <p className="text-white/45 text-sm mt-1 tracking-wide">CIDADE NEON &middot; LU2CA</p>
       </div>
-
-      {/* circular cover */}
       <div className="flex-1 flex items-center justify-center px-10 min-h-0">
-        <div className="aspect-square w-full max-w-[260px] rounded-full overflow-hidden ring-1 ring-white/10 shadow-2xl">
-          <Image src="/images/album-cover.jpg" alt={track.title ?? "Cidade Neon"} width={260} height={260} priority className="w-full h-full object-cover grayscale" />
-        </div>
+        <AlbumCover circular size={260} />
       </div>
-
-      {/* waveform + time */}
       <div className="px-7 pt-4">
         <Waveform bars={bars} progress={progress} seekFromRatio={seekFromRatio} />
         <p className="text-center text-white/50 text-sm tabular-nums mt-3">
           {fmt(audio.elapsed)} <span className="text-white/25">/</span> {track.duration}
         </p>
       </div>
-
-      {/* controls */}
       <div className="px-8 pt-5 pb-5 flex items-center justify-between">
-        <button type="button" aria-label="Compartilhar" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
+        <button type="button" aria-label="Compartilhar"
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         </button>
-        <button type="button" onClick={audio.prev} aria-label="Anterior" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
+        <button type="button" onClick={audio.prev} aria-label="Anterior"
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
           <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         </button>
-        <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"} className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform">
+        <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"}
+          className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform">
           {audio.playing
             ? <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
             : <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>}
         </button>
-        <button type="button" onClick={audio.next} aria-label="Proxima" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
+        <button type="button" onClick={audio.next} aria-label="Proxima"
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
           <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
-        <button type="button" aria-label="Repetir" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
+        <button type="button" aria-label="Repetir"
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
         </button>
       </div>
-
-      {/* notes / edit footer */}
       <div className="border-t border-white/8 flex">
-        <button type="button" onClick={handleBack} className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
+        <button type="button" onClick={onBack}
+          className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
           <span className="text-[11px] tracking-wide">notes</span>
         </button>
-        <button type="button" onClick={() => setView("album")} className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
+        <button type="button" onClick={onAlbum}
+          className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="9" cy="8" r="2" fill="#161616"/><circle cx="15" cy="16" r="2" fill="#161616"/></svg>
           <span className="text-[11px] tracking-wide">edit</span>
         </button>
       </div>
     </div>
   )
+}
 
-  /* ---------- ALBUM / TRACK LIST ---------- */
-  const albumView = (
+// ─── TELA ALBUM ───────────────────────────────────────────────────────────────
+function AlbumView({
+  audio, bars, progress, seekFromRatio, onNowPlaying, onHome,
+}: {
+  audio: ReturnType<typeof usePlayer>
+  bars: number[]
+  progress: number
+  seekFromRatio: (r: number) => void
+  onNowPlaying: () => void
+  onHome: () => void
+}) {
+  const selectTrack = (i: number) => {
+    if (!ALBUM_TRACKS[i].playable) return
+    audio.play(i)
+    onNowPlaying()
+  }
+  return (
     <div className="flex-1 flex flex-col bg-[#161616] overflow-y-auto overscroll-contain">
-      {/* top bar */}
       <div className="sticky top-0 z-10 bg-[#161616]/95 backdrop-blur flex items-center justify-between px-3 py-3">
-        <button type="button" onClick={() => router.push("/")} aria-label="Voltar" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white active:scale-90 transition-transform">
+        <button type="button" onClick={onHome} aria-label="Voltar"
+          className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white active:scale-90 transition-transform">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
         <div className="flex items-center gap-2">
@@ -192,34 +201,30 @@ export default function UntitledPlayerPage() {
           <button type="button" aria-label="Mais" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white/80"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
         </div>
       </div>
-
-      {/* header */}
       <div className="px-5 pt-2 pb-4">
-        <div className="w-full aspect-square max-w-[280px] mx-auto rounded-xl overflow-hidden ring-1 ring-white/10 mb-5">
-          <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={280} height={280} className="w-full h-full object-cover grayscale" />
+        <div className="w-full max-w-[280px] mx-auto mb-5">
+          <AlbumCover circular={false} size={280} />
         </div>
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-white text-3xl font-bold tracking-tight">CIDADE NEON</h1>
             <p className="text-white/45 text-sm mt-1">LU2CA &middot; 9 faixas</p>
           </div>
-          <button type="button" onClick={() => { audio.play(8); setView("now-playing") }} aria-label="Tocar" className="w-14 h-14 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform">
+          <button type="button" onClick={() => { audio.play(8); onNowPlaying() }} aria-label="Tocar"
+            className="w-14 h-14 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
           </button>
         </div>
       </div>
-
-      {/* track list */}
       <div className="px-2 pb-28">
         {ALBUM_TRACKS.map((t, i) => {
           const isActive = i === audio.trackIdx && audio.playing
           return (
             <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!t.playable}
-              className={`w-full flex items-center gap-3 py-3 px-3 rounded-lg text-left ${!t.playable ? "opacity-45" : "active:bg-white/5"}`}
-            >
+              className={`w-full flex items-center gap-3 py-3 px-3 rounded-lg text-left ${!t.playable ? "opacity-45" : "active:bg-white/5"}`}>
               <span className="w-5 text-center text-sm text-white/35 flex-shrink-0 tabular-nums">{i + 1}</span>
               <div className="flex-1 min-w-0">
-                <p className={`text-[15px] font-medium truncate ${isActive ? "" : "text-white"}`} style={isActive ? { color: ACCENT } : undefined}>
+                <p className="text-[15px] font-medium truncate" style={{ color: isActive ? ACCENT : "white" }}>
                   {t.playable ? t.title : <span className="font-mono opacity-70">{t.masked}</span>}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -234,12 +239,11 @@ export default function UntitledPlayerPage() {
           )
         })}
       </div>
-
-      {/* mini player pill */}
       {audio.currentTrack && (
         <div className="absolute bottom-4 left-3 right-3 z-20">
           <div className="bg-[#262626] rounded-2xl px-2 py-2 flex items-center gap-3 shadow-2xl ring-1 ring-white/8">
-            <button type="button" onClick={() => audio.toggle()} aria-label={audio.playing ? "Pausar" : "Tocar"} className="w-10 h-10 rounded-xl overflow-hidden relative flex-shrink-0">
+            <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"}
+              className="w-10 h-10 rounded-xl overflow-hidden relative flex-shrink-0">
               <Image src="/images/album-cover.jpg" alt="" width={40} height={40} className="w-full h-full object-cover grayscale" />
               <span className="absolute inset-0 bg-black/40 flex items-center justify-center">
                 {audio.playing
@@ -247,16 +251,73 @@ export default function UntitledPlayerPage() {
                   : <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>}
               </span>
             </button>
-            <button type="button" onClick={() => setView("now-playing")} className="flex-1 min-w-0 text-left">
+            <button type="button" onClick={onNowPlaying} className="flex-1 min-w-0 text-left">
               <p className="text-white text-sm font-medium truncate">{audio.currentTrack.title ?? "Bloqueada"}</p>
               <p className="text-white/45 text-xs truncate">CIDADE NEON &middot; LU2CA</p>
             </button>
-            <div className="w-16 flex-shrink-0 pr-1"><Waveform compact bars={bars} progress={progress} seekFromRatio={seekFromRatio} /></div>
+            <div className="w-16 flex-shrink-0 pr-1">
+              <Waveform compact bars={bars} progress={progress} seekFromRatio={seekFromRatio} />
+            </div>
           </div>
         </div>
       )}
     </div>
   )
+}
+
+// ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
+export default function UntitledPlayerPage() {
+  const router = useRouter()
+  const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
+  const audio = usePlayer()
+
+  const [view, setView] = useState<"now-playing" | "album">("now-playing")
+  const [showNotif, setShowNotif] = useState(false)
+  const notifSent   = useRef(false)
+  const isFirst     = useRef(!state.perAppState.spotifyAuto.completed)
+
+  const track    = audio.currentTrack ?? ALBUM_TRACKS[0]
+  const progress = track.durationSec > 0 ? Math.min(audio.elapsed / track.durationSec, 1) : 0
+
+  useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
+
+  // Auto-play CHUVA (index 8) ao montar, só se nada estiver tocando
+  useEffect(() => {
+    if (!audio.playing && audio.elapsed === 0) audio.play(8)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Notificação WhatsApp aos 13s (primeira visita)
+  useEffect(() => {
+    if (audio.elapsed >= 13 && isFirst.current && !notifSent.current) {
+      notifSent.current = true
+      setShowNotif(true)
+    }
+  }, [audio.elapsed])
+
+  const handleNotifClick = () => {
+    setShowNotif(false)
+    isFirst.current = false
+    updateSpotifyState({ completed: true })
+    updateCinematicStep("whatsapp-notification")
+    router.push("/whatsapp/grupo")
+  }
+
+  const handleBack = useCallback(() => {
+    if (view === "now-playing") setView("album")
+    else router.push("/")
+  }, [view, router])
+
+  const bars = useMemo(() => {
+    const n = 72
+    return Array.from({ length: n }, (_, i) => {
+      const v = Math.abs(Math.sin(i * 0.7) * 0.6 + Math.sin(i * 1.9 + 1) * 0.4)
+      return 0.18 + v * 0.82
+    })
+  }, [])
+
+  const seekFromRatio = useCallback((ratio: number) => {
+    audio.seekTo(Math.round(ratio * track.durationSec))
+  }, [audio, track.durationSec])
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation select-none">
@@ -272,7 +333,7 @@ export default function UntitledPlayerPage() {
           </div>
         </div>
 
-        {/* WhatsApp notification */}
+        {/* notificação WhatsApp */}
         {showNotif && (
           <button type="button" onClick={handleNotifClick} className="absolute top-[52px] left-2 right-2 z-50 animate-slide-down">
             <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
@@ -291,13 +352,35 @@ export default function UntitledPlayerPage() {
           </button>
         )}
 
-        <div style={{ display: view === "now-playing" ? "flex" : "none" }} className="flex-1 flex-col min-h-0">{nowPlaying}</div>
-        <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-1 flex-col min-h-0">{albumView}</div>
+        {/* views — montadas uma vez, ocultadas com display */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div style={{ display: view === "now-playing" ? "flex" : "none" }} className="flex-col flex-1 min-h-0">
+            <NowPlayingView
+              track={track}
+              audio={audio}
+              bars={bars}
+              progress={progress}
+              seekFromRatio={seekFromRatio}
+              onAlbum={() => setView("album")}
+              onBack={handleBack}
+            />
+          </div>
+          <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-col flex-1 min-h-0 relative">
+            <AlbumView
+              audio={audio}
+              bars={bars}
+              progress={progress}
+              seekFromRatio={seekFromRatio}
+              onNowPlaying={() => setView("now-playing")}
+              onHome={() => router.push("/")}
+            />
+          </div>
+        </div>
       </div>
 
       <style jsx>{`
-        @keyframes slide-down{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
-        .animate-slide-down{animation:slide-down .35s ease-out forwards}
+        @keyframes slide-down { from { opacity:0; transform:translateY(-20px) } to { opacity:1; transform:translateY(0) } }
+        .animate-slide-down { animation: slide-down .35s ease-out forwards }
       `}</style>
     </div>
   )

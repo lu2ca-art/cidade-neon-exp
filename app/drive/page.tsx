@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
+import { sendStateToIframe } from "@/app/providers/AudioBridge"
 
 const C = {
   skyTop:     "#1a0533",
@@ -62,6 +65,8 @@ function buildCars(): Car[] {
 }
 
 export default function DrivePage() {
+  const audio    = useAudioPlayer()
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef    = useRef(0)
   const roadRef   = useRef<Seg[]>([])
@@ -86,6 +91,35 @@ export default function DrivePage() {
     roadRef.current = buildRoad()
     carsRef.current = buildCars()
   }, [])
+
+  // Escuta comandos do iframe e executa no AudioPlayer do pai
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const cmd = e.data as BridgeCommand
+      if (!cmd?.type) return
+      switch (cmd.type) {
+        case "PLAY":          audio.play(cmd.index); break
+        case "PAUSE":         audio.pause(); break
+        case "RESUME":        audio.resume(); break
+        case "TOGGLE":        audio.toggle(); break
+        case "SEEK":          audio.seekTo(cmd.seconds); break
+        case "NEXT":          audio.next(); break
+        case "PREV":          audio.prev(); break
+        case "REQUEST_STATE": break
+      }
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [audio])
+
+  // Envia estado atualizado ao iframe a cada tick de áudio
+  useEffect(() => {
+    sendStateToIframe(iframeRef.current, {
+      trackIdx: audio.trackIdx,
+      playing:  audio.playing,
+      elapsed:  audio.elapsed,
+    })
+  }, [audio.trackIdx, audio.playing, audio.elapsed])
 
   // teclado
   useEffect(() => {
@@ -416,6 +450,7 @@ export default function DrivePage() {
             <div style={{position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",width:"34%",height:22,borderRadius:14,background:"#000",zIndex:5}}/>
           )}
           <iframe
+            ref={iframeRef}
             src="/?screen=home"
             style={{
               width: phoneOpen?"100%":"390px",
