@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
+import { useAudioPlayer, getAudioEl, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvider"
 import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
 import { sendStateToIframe } from "@/app/providers/AudioBridge"
 
@@ -412,7 +412,10 @@ export default function DrivePage() {
       }
 
       // ── DASHBOARD ──
-      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing)
+      const trackTitle  = audio.currentTrack?.title  || "—"
+      const trackIdx    = audio.trackIdx
+      const totalTracks = ALBUM_TRACKS.length
+      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve,trackTitle,audio.playing,trackIdx,totalTracks)
 
       rafRef.current=requestAnimationFrame(frame)
     }
@@ -489,7 +492,7 @@ export default function DrivePage() {
           )}
           <iframe
             ref={iframeRef}
-            src="/?screen=home"
+            src="/?screen=home&inDrive=1"
             style={{
               width: phoneOpen?"100%":"390px",
               height: phoneOpen?"100%":"844px",
@@ -499,6 +502,7 @@ export default function DrivePage() {
               pointerEvents: phoneOpen?"auto":"none",
             }}
             title="Celular"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           />
         </div>
         {phoneOpen&&(
@@ -526,31 +530,41 @@ export default function DrivePage() {
           display:"flex",
           alignItems:"center",
           justifyContent:"center",
-          gap:0,
           pointerEvents:"none",
         }}>
-          {/* controles rádio: prev, play/pause, next, volume */}
           <div style={{
             display:"flex",alignItems:"center",gap:10,
             pointerEvents:"auto",
             marginTop:"auto",
             paddingBottom:8,
           }}>
-            <button
-              onClick={()=>audio.prev()}
-              style={{...radioBtn(), fontSize:14}}
-              aria-label="Anterior"
-            >⏮</button>
-            <button
-              onClick={()=>audio.toggle()}
-              style={{...radioBtn(true), fontSize:18}}
-              aria-label={audio.playing?"Pausar":"Reproduzir"}
-            >{audio.playing?"⏸":"▶"}</button>
-            <button
-              onClick={()=>audio.next()}
-              style={{...radioBtn(), fontSize:14}}
-              aria-label="Proxima"
-            >⏭</button>
+            {/* PREV */}
+            <button onClick={()=>audio.prev()} style={radioBtn()} aria-label="Anterior">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <polygon points="19,5 10,12 19,19" fill={C.neonOrange}/>
+                <rect x="5" y="5" width="3" height="14" rx="1" fill={C.neonOrange}/>
+              </svg>
+            </button>
+            {/* PLAY/PAUSE */}
+            <button onClick={()=>audio.toggle()} style={radioBtn(true)} aria-label={audio.playing?"Pausar":"Reproduzir"}>
+              {audio.playing
+                ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="6" y="4" width="4" height="16" rx="1.5" fill={C.neonOrange}/>
+                    <rect x="14" y="4" width="4" height="16" rx="1.5" fill={C.neonOrange}/>
+                  </svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <polygon points="6,3 20,12 6,21" fill={C.neonOrange}/>
+                  </svg>
+              }
+            </button>
+            {/* NEXT */}
+            <button onClick={()=>audio.next()} style={radioBtn()} aria-label="Proxima">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <polygon points="5,5 14,12 5,19" fill={C.neonOrange}/>
+                <rect x="16" y="5" width="3" height="14" rx="1" fill={C.neonOrange}/>
+              </svg>
+            </button>
+            {/* VOLUME */}
             <input
               type="range" min={0} max={1} step={0.05}
               value={volume}
@@ -560,10 +574,7 @@ export default function DrivePage() {
                 const el = getAudioEl()
                 if(el) el.volume=v
               }}
-              style={{
-                width:56, height:3, accentColor:C.neonOrange,
-                cursor:"pointer", opacity:0.7,
-              }}
+              style={{ width:52, height:3, accentColor:C.neonOrange, cursor:"pointer", opacity:0.7 }}
               aria-label="Volume"
             />
           </div>
@@ -581,17 +592,28 @@ export default function DrivePage() {
           background:"linear-gradient(to top, #05001a, transparent)",
         }}>
           <div style={{display:"flex",gap:12}}>
+            {/* ESQUERDA */}
             <button
               onTouchStart={()=>leftRef.current=true}  onTouchEnd={()=>leftRef.current=false}
               onMouseDown={()=>leftRef.current=true}    onMouseUp={()=>leftRef.current=false}
-              style={ctrlBtn()}
-            >◀</button>
+              style={ctrlBtn()} aria-label="Esquerda"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M15 5L8 12L15 19" stroke="#ff6b35" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {/* DIREITA */}
             <button
               onTouchStart={()=>rightRef.current=true} onTouchEnd={()=>rightRef.current=false}
               onMouseDown={()=>rightRef.current=true}  onMouseUp={()=>rightRef.current=false}
-              style={ctrlBtn()}
-            >▶</button>
+              style={ctrlBtn()} aria-label="Direita"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M9 5L16 12L9 19" stroke="#ff6b35" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
+          {/* ACELERADOR */}
           <button
             onTouchStart={()=>accelRef.current=true}  onTouchEnd={()=>accelRef.current=false}
             onMouseDown={()=>accelRef.current=true}   onMouseUp={()=>accelRef.current=false}
@@ -599,13 +621,17 @@ export default function DrivePage() {
               width:76,height:76,borderRadius:"50%",
               background:`radial-gradient(circle,${C.neonPink}33,${C.neonPink}11)`,
               border:`3px solid ${C.neonPink}`,
-              color:C.neonPink,fontSize:26,
               display:"flex",alignItems:"center",justifyContent:"center",
               boxShadow:`0 0 20px ${C.neonPink}55`,
               WebkitTapHighlightColor:"transparent",
               cursor:"pointer",
             }}
-          >▲</button>
+            aria-label="Acelerar"
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <path d="M12 4L20 20H4L12 4Z" fill={`${C.neonPink}cc`} stroke={C.neonPink} strokeWidth="1.5" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
       )}
     </div>
@@ -703,7 +729,8 @@ function drawDashboard(
   ctx:CanvasRenderingContext2D,
   W:number,H:number,DH:number,BOTOES_H:number,
   kmh:number,rpm:number,zone:string,curve:number,
-  trackName:string,playing:boolean
+  trackName:string,playing:boolean,
+  trackIdx:number,totalTracks:number,
 ){
   const y0=H-DH-BOTOES_H
 
@@ -718,80 +745,89 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // gauges menores — lado esquerdo e direito, mais baixas
+  // gauges — lado esquerdo e direito
   const R = Math.min(DH*0.24, W*0.085)
   const cy = y0 + DH*0.62
-
-  // velocímetro esq (max 222)
   gauge(ctx,W*0.14,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
-  // rpm dir
   gauge(ctx,W*0.86,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
 
-  // ── RÁDIO em destaque — ocupa centro com glow neon intenso ──
+  // ── RÁDIO — centro com display mais real ──
   const rW=W*0.52, rH=DH*0.46
   const rX=W/2-rW/2, rY=y0+DH*0.04
 
-  // halo exterior
-  ctx.shadowColor=playing?C.neonOrange:"#1a0040"; ctx.shadowBlur=playing?22:4
-  ctx.fillStyle=playing?"#0a0020":"#06001a"
-  ctx.strokeStyle=playing?C.neonOrange:"#2a1050"
+  // corpo do radio
+  ctx.shadowColor=playing?C.neonOrange:"#1a0040"; ctx.shadowBlur=playing?24:4
+  ctx.fillStyle=playing?"#080018":"#05000f"
+  ctx.strokeStyle=playing?C.neonOrange+"cc":"#2a1050"
   ctx.lineWidth=playing?1.5:1
   rRect(ctx,rX,rY,rW,rH,9); ctx.fill(); ctx.stroke()
   ctx.shadowBlur=0
 
-  // linha superior neon decorativa
-  if(playing){
-    ctx.strokeStyle=C.neonOrange+"88"; ctx.lineWidth=1
-    ctx.shadowColor=C.neonOrange; ctx.shadowBlur=6
-    ctx.beginPath(); ctx.moveTo(rX+10,rY+1); ctx.lineTo(rX+rW-10,rY+1); ctx.stroke()
-    ctx.shadowBlur=0
-  }
+  // faixa decorativa no topo do radio
+  ctx.fillStyle=playing?C.neonOrange+"44":"#ffffff08"
+  rRect(ctx,rX,rY,rW,2,0); ctx.fill()
 
-  // label RADIO
-  ctx.fillStyle=playing?C.neonOrange+"bb":"#333"
-  ctx.font=`${rH*0.13}px monospace`
+  // RADIO label + numero da faixa
   ctx.textAlign="left"
-  ctx.fillText("RÁDIO",rX+rW*0.05,rY+rH*0.20)
+  ctx.fillStyle=playing?C.neonOrange+"99":"#2a2a40"
+  ctx.font=`${rH*0.12}px monospace`
+  ctx.fillText("RADIO",rX+rW*0.05,rY+rH*0.20)
 
-  // nome da faixa — grande e neon
-  const maxChars = Math.floor(rW*0.72/(rH*0.19))
+  // numero da faixa
+  const trackNumStr = `${String(trackIdx+1).padStart(2,"0")}/${String(totalTracks).padStart(2,"0")}`
+  ctx.textAlign="right"
+  ctx.fillStyle=playing?C.neonOrange+"66":"#1a1a30"
+  ctx.font=`${rH*0.12}px monospace`
+  ctx.fillText(trackNumStr,rX+rW*0.96,rY+rH*0.20)
+
+  // nome da faixa — grande, neon
+  const maxChars = Math.floor(rW*0.76/(rH*0.21))
   const displayName = (trackName||"—").toUpperCase().slice(0,maxChars)
-  ctx.shadowColor=playing?C.neonOrange:"transparent"; ctx.shadowBlur=playing?6:0
-  ctx.fillStyle=playing?"#fff":"#444"
-  ctx.font=`bold ${rH*0.24}px monospace`
+  ctx.shadowColor=playing?C.neonOrange:"transparent"; ctx.shadowBlur=playing?8:0
+  ctx.fillStyle=playing?"#ffffff":"#383850"
+  ctx.font=`bold ${rH*0.26}px monospace`
   ctx.textAlign="left"
-  ctx.fillText(displayName,rX+rW*0.05,rY+rH*0.50)
+  ctx.fillText(displayName,rX+rW*0.05,rY+rH*0.52)
   ctx.shadowBlur=0
 
-  // artista
-  ctx.fillStyle=(playing?C.neonOrange:"#333")+"bb"
-  ctx.font=`${rH*0.15}px monospace`
-  ctx.fillText("LU2CA · UNTITLED",rX+rW*0.05,rY+rH*0.68)
+  // artista — LU2CA
+  ctx.fillStyle=playing?C.neonOrange+"aa":"#222240"
+  ctx.font=`${rH*0.14}px monospace`
+  ctx.fillText("LU2CA",rX+rW*0.05,rY+rH*0.70)
 
-  // barra de progresso neon
-  ctx.fillStyle="#ffffff0a"; rRect(ctx,rX+rW*0.05,rY+rH*0.80,rW*0.90,3,2); ctx.fill()
+  // dot separador + album
+  ctx.fillStyle=playing?"#ffffff33":"#111122"
+  ctx.font=`${rH*0.12}px monospace`
+  ctx.fillText("· CIDADE NEON",rX+rW*0.05+rH*0.75,rY+rH*0.70)
+
+  // barra de progresso
+  ctx.fillStyle="#ffffff08"
+  rRect(ctx,rX+rW*0.05,rY+rH*0.82,rW*0.90,2.5,2); ctx.fill()
   if(playing){
-    ctx.shadowColor=C.neonOrange; ctx.shadowBlur=5
+    const prog = ((Date.now()%30000)/30000)
+    ctx.shadowColor=C.neonOrange; ctx.shadowBlur=6
     ctx.fillStyle=C.neonOrange
-    rRect(ctx,rX+rW*0.05,rY+rH*0.80,rW*0.90*0.40,3,2); ctx.fill()
+    rRect(ctx,rX+rW*0.05,rY+rH*0.82,rW*0.90*prog,2.5,2); ctx.fill()
     ctx.shadowBlur=0
   }
 
-  // equalizador animado (barras neon)
+  // equalizador animado
   if(playing){
-    const barCount=8, barW=rW*0.035, barGap=rW*0.014
-    const barAreaX=rX+rW*0.60, barAreaY=rY+rH*0.22
+    const barCount=7, barW=rW*0.033, barGap=rW*0.012
+    const barAreaX=rX+rW*0.62, barAreaY=rY+rH*0.16
     for(let b=0;b<barCount;b++){
-      const bh = rH*(0.08+0.18*Math.abs(Math.sin(Date.now()*0.004+b*0.8)))
-      ctx.shadowColor=C.neonOrange; ctx.shadowBlur=4
-      ctx.fillStyle=C.neonOrange+"cc"
-      ctx.fillRect(barAreaX+b*(barW+barGap),barAreaY+rH*0.18-bh,barW,bh)
+      const bh = rH*(0.06+0.16*Math.abs(Math.sin(Date.now()*0.005+b*0.9)))
+      ctx.shadowColor=C.neonOrange; ctx.shadowBlur=3
+      ctx.fillStyle=b<4?C.neonOrange+"cc":C.neonOrange+"55"
+      ctx.beginPath()
+      ctx.roundRect(barAreaX+b*(barW+barGap),barAreaY+rH*0.22-bh,barW,bh,2)
+      ctx.fill()
     }
     ctx.shadowBlur=0
   }
 
   // zona
-  ctx.fillStyle="#ffffff33"; ctx.font=`${DH*0.09}px monospace`
+  ctx.fillStyle="#ffffff22"; ctx.font=`${DH*0.09}px monospace`
   ctx.textAlign="center"; ctx.fillText(zone,W/2,y0+DH*0.95)
 }
 
