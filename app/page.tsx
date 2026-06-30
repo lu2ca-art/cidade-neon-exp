@@ -248,10 +248,6 @@ function CidadeNeonExperience() {
   
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
-    // Se estamos dentro do iframe do carro, SEMPRE phone-home — nunca ligação
-    const inDrive = searchParams?.get("inDrive") === "1"
-    if (inDrive) return "phone-home"
-
     // Allow forcing a starting screen via query param (used by the in-game phone iframe)
     const forced = searchParams?.get("screen")
     if (forced === "home") return "phone-home"
@@ -271,14 +267,7 @@ function CidadeNeonExperience() {
   }
 
   /* ── Phase ────────── */
-  const isInDrive = searchParams?.get("inDrive") === "1"
-  const [phase, setPhaseRaw] = useState<Phase>(getInitialPhase)
-
-  // Quando dentro do iframe do carro, nunca permite voltar para ligação
-  const setPhase = useCallback((p: Phase) => {
-    if (isInDrive && (p === "incoming-call" || p === "active-call" || p === "hacker")) return
-    setPhaseRaw(p)
-  }, [isInDrive])
+  const [phase, setPhase] = useState<Phase>(getInitialPhase)
 
   // Pause Spotify when entering phases that have their own audio
   useEffect(() => {
@@ -792,7 +781,7 @@ function CidadeNeonExperience() {
     )
   }
 
-  /* ════════════════════════════��══════════════════════ */
+  /* ═══════════════════════════════════════════════════ */
   /* ─── RENDER: INCOMING CALL (loop until accept) ──── */
   /* ═══════════════════════════════════════════════════ */
   if (phase === "incoming-call") {

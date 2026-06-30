@@ -467,6 +467,8 @@ export default function NeonTilesPage() {
   // ─── INICIAR JOGO ─────────────────────────────────────────────────────────
 
   const startGame = useCallback((song: Song) => {
+    if (!song.audioUrl) return
+
     const generated = generateTiles(song)
     setTiles(generated)
     tilesRef.current = generated
@@ -476,13 +478,9 @@ export default function NeonTilesPage() {
     setScore(0); setCombo(0); setMaxCombo(0); setHits(0); setTimeLeft(song.duration)
     comboRef.current = 0; maxComboRef.current = 0; hitsRef.current = 0; totalRef.current = 0
 
-    if (song.audioUrl) {
-      const audio = new Audio(song.audioUrl)
-      audio.volume = 0.85
-      audioRef.current = audio
-    } else {
-      audioRef.current = null
-    }
+    const audio = new Audio(song.audioUrl)
+    audio.volume = 0.85
+    audioRef.current = audio
 
     setPhase("countdown"); setCountdown(3)
     let count = 3
@@ -491,7 +489,7 @@ export default function NeonTilesPage() {
       setCountdown(count)
       if (count <= 0) {
         clearInterval(cdInterval)
-        audioRef.current?.play().catch(() => {})
+        audio.play().catch(() => {})
         startTimeRef.current = Date.now()
         setPhase("playing")
         rafRef.current = requestAnimationFrame(renderFrame)
@@ -664,7 +662,7 @@ export default function NeonTilesPage() {
         </div>
         {/* Botao Home — simula botao fisico do iPhone */}
         <button
-          onClick={() => router.push("/?screen=home")}
+          onClick={() => router.push("/")}
           aria-label="Inicio"
           className="mt-10 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90"
           style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
@@ -881,19 +879,18 @@ export default function NeonTilesPage() {
             onPointerDown={() => handlePointerDown(col)}
             onPointerUp={() => handlePointerUp(col)}
             onPointerLeave={() => handlePointerUp(col)}
-            className="rounded-2xl transition-all select-none flex items-center justify-center"
+            className="rounded-2xl font-mono font-bold text-xl transition-all select-none"
             style={{
               height: 68,
               background: `${COL_COLORS[col]}12`,
               border: `2px solid ${COL_COLORS[col]}50`,
+              color: COL_COLORS[col],
               WebkitTapHighlightColor: "transparent",
               touchAction: "manipulation",
               boxShadow: `0 0 12px ${COL_COLORS[col]}30`,
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M3 5L9 13L15 5" stroke={COL_COLORS[col]} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            ▼
           </button>
         ))}
       </div>
