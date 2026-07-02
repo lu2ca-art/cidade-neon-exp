@@ -492,10 +492,23 @@ export default function NeonTilesPage() {
         audio.play().catch(() => {})
         startTimeRef.current = Date.now()
         setPhase("playing")
-        rafRef.current = requestAnimationFrame(renderFrame)
+        // NOTE: the render loop is started by the `phase === "playing"` effect
+        // below — not here — so the <canvas> is guaranteed to be committed to
+        // the DOM before requestAnimationFrame(renderFrame) first runs.
       }
     }, 1000)
-  }, [renderFrame])
+  }, [])
+
+  // ─── RENDER LOOP ────────────────────────────────────────────────────────────
+  // Start the requestAnimationFrame loop only once React has committed the
+  // canvas for the "playing" screen. Starting it synchronously right after
+  // setPhase("playing") raced ahead of the commit and left renderFrame with a
+  // null canvasRef on the first frame.
+  useEffect(() => {
+    if (phase !== "playing") return
+    rafRef.current = requestAnimationFrame(renderFrame)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [phase, renderFrame])
 
   // ─── TIMER ────────────────────────────────────────────────────────────────
 

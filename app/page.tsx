@@ -251,6 +251,10 @@ function CidadeNeonExperience() {
     // Allow forcing a starting screen via query param (used by the in-game phone iframe)
     const forced = searchParams?.get("screen")
     if (forced === "home") return "phone-home"
+    // Once the hacker takeover has completed, coming back to "/" must NEVER
+    // replay the incoming call or hacker sequence. Check this FIRST so the
+    // cinematic never repeats after the flow has moved past it.
+    if (gameFunnelState.perAppState.hacker.completed) return "phone-home"
     const step = gameFunnelState.cinematicStep
     if (step === "idle" || step === "incoming-call") return "incoming-call"
     if (step === "active-call") return "active-call"
@@ -261,8 +265,6 @@ function CidadeNeonExperience() {
     if (step === "confirmation-1" || step === "confirmation-2" || step === "confirmation-3") return "phone-home"
     if (step === "private-notifications" || step === "tiktok-notification" || step === "tiktok-final") return "phone-home"
     if (step === "completed" || step === "sala-branca") return "phone-home"
-    // Default: if flow has progressed past hacker, show phone-home
-    if (gameFunnelState.perAppState.hacker.completed) return "phone-home"
     return "incoming-call"
   }
 
@@ -370,7 +372,7 @@ function CidadeNeonExperience() {
     { id: "whatsapp",      name: "N3XO_",         icon: "whatsapp",      color: "#064E3B" },
     { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
     { id: "safari",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca.me" },
-    { id: "music",         name: "_W4VE",         icon: "music",         color: "#431407", link: "https://lu2ca.me/musicaporlu2ca" },
+    { id: "radio",         name: "R4D10_FM",      icon: "radio",         color: "#0a1a1a" },
     { id: "phone",         name: "TR4NSM1T",      icon: "phone",         color: "#14532D", link: "https://lu2ca.me/contacto-social" },
     // Apps desbloqueados por missao
     { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
@@ -769,8 +771,7 @@ function CidadeNeonExperience() {
       tiktok: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" /></svg>,
       spotify: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>,
       notes: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" /></svg>,
-      photos: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" /></svg>,
-      music: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>,
+      radio: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="rdg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#ff5fae"/></linearGradient></defs><rect x="3" y="8" width="18" height="12" rx="2" stroke="url(#rdg)" strokeWidth="1.5"/><path d="M7 4l9 4" stroke="url(#rdg)" strokeWidth="1.5" strokeLinecap="round"/><circle cx="16" cy="14" r="3" stroke="url(#rdg)" strokeWidth="1.2"/><line x1="7" y1="12" x2="7" y2="16" stroke="#00e5ff" strokeWidth="1.5" strokeLinecap="round"/></svg>,
       feelgood: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="fgg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#6B9DFF"/></linearGradient></defs><circle cx="12" cy="12" r="9" stroke="url(#fgg)" strokeWidth="1.5" fill="none"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="url(#fgg)" strokeWidth="1.5" strokeLinecap="round"/></svg>,
       guitardriver: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="gdg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#ff5fae"/><stop offset="100%" stopColor="#ff9000"/></linearGradient></defs><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="10" r="2" stroke="url(#gdg)" strokeWidth="1.2" fill="rgba(255,95,174,0.15)"/></svg>,
     }
@@ -1584,6 +1585,7 @@ function CidadeNeonExperience() {
                         if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
                         if (app.id === "drive") { window.location.href = "/drive"; return }
+                        if (app.id === "radio") { window.location.href = "/radio"; return }
                         if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
                         if (app.id === "feel-good-app") { window.location.href = "/feel-good"; return }
                         if (app.id === "guitar-driver") { window.location.href = "/neon-tiles"; return }
