@@ -23,6 +23,77 @@ const C = {
   neonPurple: "#cc00ff",
 }
 
+// ── MUNDO VISUAL: 3 cenários reais, um por bloco de frequências/missões
+// (a troca é uma "ilusão" disparada ao ACEITAR a missão da próxima
+// frequência — não tem relação com a posição literal na pista) ──
+// SUBÚRBIO XÊNON  → cidade tech destruída, sob controle da resistência
+// CIDADE NEON     → arranha-céus infinitos, publicidade neon por todo lado
+// HELIX           → sociedade solar/eólica (visão Tesla), dia claro, sem
+//                    neon, energia luminosa correndo pela pista
+type Scenario = "suburbio" | "cidadeneon" | "helix"
+
+function scenarioForTier(t: Tier): Scenario {
+  if (t === "suburbio") return "suburbio"
+  if (t === "crypto") return "cidadeneon"
+  return "helix" // live | full
+}
+
+type Palette = {
+  skyTop: string; skyMid: string; skyHorizon: string
+  sunInner: string; sunOuter: string
+  road1: string; road2: string
+  grass1: string; grass2: string
+  stripY: string; stripW: string
+  buildingBase: string
+  windowColors: string[]
+  neonA: string; neonB: string; neonC: string
+  isDaytime: boolean
+  hasStars: boolean
+}
+
+const PALETTES: Record<Scenario, Palette> = {
+  suburbio: {
+    // cidade tecnológica arrasada — céu de fumaça, ferrugem, néon quebrado
+    skyTop: "#170f0a", skyMid: "#3a2415", skyHorizon: "#5c2f14",
+    sunInner: "#aa7744", sunOuter: "#663311",
+    road1: "#2a2a28", road2: "#222220",
+    grass1: "#211a12", grass2: "#15100b",
+    stripY: "#8a7a3a", stripW: "#8f8f8a",
+    buildingBase: "#1c1712",
+    windowColors: ["#ff330033", "#ffaa0022", "#66000022"],
+    neonA: "#aa3322", neonB: "#cc5522", neonC: "#775533",
+    isDaytime: false, hasStars: true,
+  },
+  cidadeneon: {
+    // arranha-céus infinitos, publicidade neon em todo canto — versão
+    // intensificada do visual original do jogo
+    skyTop: "#0a0118", skyMid: "#3d0a5e", skyHorizon: "#ff2d78",
+    sunInner: "#00e5ff", sunOuter: "#a855f7",
+    road1: "#241b4d", road2: "#2f2166",
+    grass1: "#0a0a20", grass2: "#050512",
+    stripY: "#00e5ff", stripW: "#ffffff",
+    buildingBase: "#110033",
+    windowColors: ["#ff2d7866", "#00e5ff66", "#cc00ff55"],
+    neonA: "#ff2d78", neonB: "#00e5ff", neonC: "#cc00ff",
+    isDaytime: false, hasStars: true,
+  },
+  helix: {
+    // sociedade solar/eólica — dia claro, sem néon, energia luminosa na pista
+    skyTop: "#bfe8ff", skyMid: "#dff2ff", skyHorizon: "#fff4d6",
+    sunInner: "#fffde0", sunOuter: "#ffe066",
+    road1: "#3d4a52", road2: "#46545c",
+    grass1: "#2f8f4e", grass2: "#237a3e",
+    stripY: "#00ffaa", stripW: "#ffffff",
+    buildingBase: "#5a6a72",
+    windowColors: ["#bfefff55", "#ffffff33"],
+    neonA: "#00ffaa", neonB: "#33ccff", neonC: "#00e0ff",
+    isDaytime: true, hasStars: false,
+  },
+}
+
+// caracteres da chuva digital (transição estilo Matrix ao trocar de cenário)
+const MATRIX_CHARS = "アイウエオカキクケコサシスセソ0123456789ABCXYZ$#%&+-="
+
 // Duração fixa de cada faixa na rádio (prévia)
 const RADIO_SNIPPET_MS = 22000
 
@@ -239,6 +310,13 @@ export default function DrivePage() {
   const orderIdx       = ALL_TIERS.indexOf(currentTier)
   const nextTier: Tier | null = orderIdx < ALL_TIERS.length - 1 ? ALL_TIERS[orderIdx + 1] : null
   const nextTierReady  = nextTier ? testDone(nextTier) && !radioAccepted[nextTier as Exclude<Tier, "suburbio">] : false
+  // cenário visual do mundo (fora do painel) — segue o activeTier, lido pelo
+  // loop imperativo do canvas via ref (o efeito do canvas só roda 1x)
+  const activeTierRef = useRef<Tier>(activeTier)
+  useEffect(() => { activeTierRef.current = activeTier }, [activeTier])
+  const scenarioRef    = useRef<Scenario>(scenarioForTier(activeTier))
+  const transitionRef  = useRef<{ start: number; duration: number } | null>(null)
+  const matrixColsRef  = useRef<{ x: number; y: number; speed: number; len: number }[]>([])
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
@@ -550,47 +628,99 @@ export default function DrivePage() {
       if (blurLRef.current) blurLRef.current.style.backdropFilter = `blur(${blurPx}px)`
       if (blurRRef.current) blurRRef.current.style.backdropFilter = `blur(${blurPx}px)`
 
+      // ── CENÁRIO: a troca é uma "ilusão" disparada pela missão aceita (não
+      // pela posição na pista) — ao mudar o tier ativo, dispara a transição
+      // estilo Matrix e passa a desenhar a nova paleta/mundo ──
+      const scenario = scenarioForTier(activeTierRef.current)
+      if (scenario !== scenarioRef.current) {
+        scenarioRef.current = scenario
+        transitionRef.current = { start: ts, duration: 1300 }
+        const cols = Math.max(1, Math.ceil(W / 18))
+        matrixColsRef.current = Array.from({ length: cols }, (_, i) => ({
+          x: i * 18,
+          y: -Math.random() * H,
+          speed: 260 + Math.random() * 420,
+          len: 6 + Math.floor(Math.random() * 10),
+        }))
+      }
+      const palette = PALETTES[scenarioRef.current]
+
       // ── Limpa canvas ──
       ctx.clearRect(0,0,W,H)
 
       // ── SKY (ocupa JOGO_H do topo) ──
       const sky = ctx.createLinearGradient(0,0,0,JOGO_H)
-      sky.addColorStop(0,   C.skyTop)
-      sky.addColorStop(0.5, C.skyMid)
-      sky.addColorStop(1,   C.skyHorizon)
+      sky.addColorStop(0,   palette.skyTop)
+      sky.addColorStop(0.5, palette.skyMid)
+      sky.addColorStop(1,   palette.skyHorizon)
       ctx.fillStyle = sky
       ctx.fillRect(0,0,W,JOGO_H)
 
       // Sol
       const SX=W*0.5, SY=JOGO_H*0.38, SR=Math.min(W,JOGO_H)*0.09
       const sg=ctx.createRadialGradient(SX,SY,0,SX,SY,SR)
-      sg.addColorStop(0,C.sunInner); sg.addColorStop(0.6,C.sunOuter); sg.addColorStop(1,"transparent")
+      sg.addColorStop(0,palette.sunInner); sg.addColorStop(0.6,palette.sunOuter); sg.addColorStop(1,"transparent")
       ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(SX,SY,SR,0,Math.PI*2); ctx.fill()
-      ctx.fillStyle=C.skyMid
+      ctx.fillStyle=palette.skyMid
       for(let s=0;s<5;s++) ctx.fillRect(SX-SR, SY+SR*0.3+s*SR*0.15, SR*2, SR*0.07)
 
-      // Estrelas
-      ctx.fillStyle="rgba(255,255,255,0.7)"
-      for(let s=0;s<50;s++){
-        const sx=((s*179+posRef.current*0.003)%W+W)%W
-        const sy=(s*67)%(JOGO_H*0.32)
-        ctx.fillRect(sx,sy,s%4===0?2:1,s%4===0?2:1)
+      // Estrelas (só em cenários noturnos — HELIX é de dia, sem estrelas)
+      if (palette.hasStars) {
+        ctx.fillStyle="rgba(255,255,255,0.7)"
+        for(let s=0;s<50;s++){
+          const sx=((s*179+posRef.current*0.003)%W+W)%W
+          const sy=(s*67)%(JOGO_H*0.32)
+          ctx.fillRect(sx,sy,s%4===0?2:1,s%4===0?2:1)
+        }
       }
 
-      // Silhueta cidade
+      // Silhueta do horizonte
       const horizY = JOGO_H * 0.60
-      ctx.fillStyle="#0d0020"
-      const bxArr=[0.05,0.12,0.20,0.28,0.36,0.44,0.52,0.60,0.68,0.76,0.84,0.92]
-      const bhArr=[0.09,0.13,0.08,0.16,0.11,0.18,0.10,0.15,0.12,0.17,0.09,0.13]
-      for(let b=0;b<bxArr.length;b++){
-        const bW=W*0.075, bHH=bhArr[b]*JOGO_H*0.42, bXX=bxArr[b]*W
-        ctx.fillStyle="#0d0020"
-        ctx.fillRect(bXX-bW/2, horizY-bHH, bW, bHH)
-        const wc=["#ff990055","#ff660055","#ffcc0044"][b%3]
-        ctx.fillStyle=wc
-        for(let wy=4;wy<bHH-4;wy+=9)
-          for(let wx=4;wx<bW-4;wx+=8)
-            if((b*7+wy+wx)%3!==0) ctx.fillRect(bXX-bW/2+wx,horizY-bHH+wy,4,4)
+      if (scenarioRef.current === "helix") {
+        // parque eólico + fileira de painéis solares no lugar dos prédios
+        const turbineX=[0.08,0.22,0.38,0.58,0.74,0.90]
+        for(let t=0;t<turbineX.length;t++){
+          const tx=turbineX[t]*W, th=JOGO_H*0.30
+          const poleW=Math.max(2,W*0.004)
+          ctx.fillStyle=palette.buildingBase
+          ctx.fillRect(tx-poleW/2, horizY-th, poleW, th)
+          ctx.save()
+          ctx.translate(tx, horizY-th)
+          ctx.rotate(posRef.current*0.0015 + t)
+          ctx.strokeStyle=palette.buildingBase
+          ctx.lineWidth=Math.max(1.5,W*0.0025)
+          for(let bl=0;bl<3;bl++){
+            ctx.save(); ctx.rotate((bl/3)*Math.PI*2)
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-th*0.22); ctx.stroke()
+            ctx.restore()
+          }
+          ctx.restore()
+        }
+        ctx.fillStyle="#1c3a52"
+        for(let s=0;s<8;s++){
+          const sx=(s/8)*W+W*0.02, sw=W*0.09, sh=JOGO_H*0.045
+          ctx.save()
+          ctx.translate(sx, horizY-sh*0.6); ctx.rotate(-0.15)
+          ctx.fillRect(-sw/2,-sh/2,sw,sh)
+          ctx.strokeStyle="#3d6a8a"; ctx.lineWidth=1
+          ctx.strokeRect(-sw/2,-sh/2,sw,sh)
+          ctx.restore()
+        }
+      } else {
+        // prédios com janelas (Subúrbio: ferrugem apagada · Cidade Neon: néon intenso)
+        const bxArr=[0.05,0.12,0.20,0.28,0.36,0.44,0.52,0.60,0.68,0.76,0.84,0.92]
+        const bhArr=[0.09,0.13,0.08,0.16,0.11,0.18,0.10,0.15,0.12,0.17,0.09,0.13]
+        const bhScale = scenarioRef.current === "cidadeneon" ? 0.62 : 0.42 // "infinitos" — bem mais altos
+        for(let b=0;b<bxArr.length;b++){
+          const bW=W*0.075, bHH=bhArr[b]*JOGO_H*bhScale, bXX=bxArr[b]*W
+          ctx.fillStyle=palette.buildingBase
+          ctx.fillRect(bXX-bW/2, horizY-bHH, bW, bHH)
+          const wc=palette.windowColors[b%palette.windowColors.length]
+          ctx.fillStyle=wc
+          for(let wy=4;wy<bHH-4;wy+=9)
+            for(let wx=4;wx<bW-4;wx+=8)
+              if((b*7+wy+wx)%3!==0) ctx.fillRect(bXX-bW/2+wx,horizY-bHH+wy,4,4)
+        }
       }
 
       // ── ROAD pseudo-3D ──
@@ -654,21 +784,21 @@ export default function DrivePage() {
         const alt=(Math.floor(si/4)%2)===0
 
         // grass
-        ctx.fillStyle=alt?C.grass1:C.grass2
+        ctx.fillStyle=alt?palette.grass1:palette.grass2
         ctx.beginPath()
         ctx.moveTo(0,p.y2); ctx.lineTo(W,p.y2)
         ctx.lineTo(W,p.y1); ctx.lineTo(0,p.y1)
         ctx.fill()
 
         // road
-        ctx.fillStyle=alt?C.road1:C.road2
+        ctx.fillStyle=alt?palette.road1:palette.road2
         ctx.beginPath()
         ctx.moveTo(p.x1-p.w1,p.y1); ctx.lineTo(p.x1+p.w1,p.y1)
         ctx.lineTo(p.x2+p.w2,p.y2); ctx.lineTo(p.x2-p.w2,p.y2)
         ctx.fill()
 
         // borda branca esq
-        ctx.fillStyle=C.stripW
+        ctx.fillStyle=palette.stripW
         ctx.beginPath()
         ctx.moveTo(p.x1-p.w1,p.y1); ctx.lineTo(p.x1-p.w1+p.w1*0.06,p.y1)
         ctx.lineTo(p.x2-p.w2+p.w2*0.06,p.y2); ctx.lineTo(p.x2-p.w2,p.y2)
@@ -679,19 +809,21 @@ export default function DrivePage() {
         ctx.lineTo(p.x2+p.w2-p.w2*0.06,p.y2); ctx.lineTo(p.x2+p.w2,p.y2)
         ctx.fill()
 
-        // linha central amarela (alternada)
+        // linha central (alternada) — em HELIX é energia luminosa (com glow)
         if(alt){
-          ctx.fillStyle=C.stripY
+          if (scenarioRef.current === "helix") { ctx.shadowColor=palette.stripY; ctx.shadowBlur=8 }
+          ctx.fillStyle=palette.stripY
           ctx.beginPath()
           ctx.moveTo(p.x1-p.w1*0.03,p.y1); ctx.lineTo(p.x1+p.w1*0.03,p.y1)
           ctx.lineTo(p.x2+p.w2*0.03,p.y2); ctx.lineTo(p.x2-p.w2*0.03,p.y2)
           ctx.fill()
+          ctx.shadowBlur=0
         }
 
         // sprites laterais
         for(const sp of roadRef.current[si].sprites){
           const spX=p.x1+sp.x*p.w1
-          drawSprite(ctx,spX,p.y1,p.w1/ROAD_W,sp.type)
+          drawSprite(ctx,spX,p.y1,p.w1/ROAD_W,sp.type,scenarioRef.current,palette)
         }
 
         // carros tráfego
@@ -748,6 +880,35 @@ export default function DrivePage() {
 
       // ── DASHBOARD ──
       drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing)
+
+      // ── TRANSIÇÃO estilo Matrix (chuva digital) ao trocar de cenário ──
+      const tr = transitionRef.current
+      if (tr) {
+        const elapsed = ts - tr.start
+        const progress = Math.min(elapsed / tr.duration, 1)
+        if (progress >= 1) {
+          transitionRef.current = null
+        } else {
+          const fadeIn  = Math.min(progress / 0.25, 1)
+          const fadeOut = Math.max(0, (progress - 0.4) / 0.6)
+          const alpha   = Math.max(0, fadeIn - fadeOut)
+          ctx.fillStyle = `rgba(0,5,0,${(0.55*alpha).toFixed(3)})`
+          ctx.fillRect(0,0,W,H)
+          ctx.textAlign="left"
+          ctx.font="14px monospace"
+          for (const col of matrixColsRef.current) {
+            col.y += col.speed * dt
+            if (col.y - col.len*18 > H) col.y = -Math.random()*120
+            for (let k=0;k<col.len;k++){
+              const cy = col.y - k*18
+              if (cy<0 || cy>H) continue
+              const a = alpha * (1 - k/col.len)
+              ctx.fillStyle = k===0 ? `rgba(210,255,210,${a.toFixed(3)})` : `rgba(0,255,110,${(a*0.8).toFixed(3)})`
+              ctx.fillText(MATRIX_CHARS[Math.floor(Math.random()*MATRIX_CHARS.length)], col.x, cy)
+            }
+          }
+        }
+      }
 
       rafRef.current=requestAnimationFrame(frame)
     }
@@ -1173,7 +1334,10 @@ function radioBtn(primary=false): React.CSSProperties {
 }
 
 // ── SPRITE ──
-function drawSprite(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number,type:string){
+// tipo é genérico ("post"/"sign"/...) mas o DESENHO muda por cenário — o mesmo
+// slot da pista vira poste de néon quebrado (Subúrbio), poste neon vívido
+// (Cidade Neon) ou poste solar/eólico sem néon (Helix)
+function drawSprite(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number,type:string,scenario:Scenario,pal:Palette){
   const h=Math.max(8,scale*8000)
   ctx.save(); ctx.translate(x,y)
   switch(type){
@@ -1189,42 +1353,91 @@ function drawSprite(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number,
     }
     case"building":{
       const bw=h*0.55
-      ctx.fillStyle="#110033"; ctx.fillRect(-bw/2,-h,bw,h)
+      ctx.fillStyle=pal.buildingBase; ctx.fillRect(-bw/2,-h,bw,h)
       for(let wy=h*0.08;wy<h*0.9;wy+=h*0.1)
         for(let wx=bw*0.1;wx<bw*0.9;wx+=bw*0.22){
-          ctx.fillStyle=(wy+wx)%3===0?"#ff990055":"#ffcc0044"
+          ctx.fillStyle=pal.windowColors[(wy+wx)%pal.windowColors.length]
           ctx.fillRect(-bw/2+wx,-h+wy,bw*0.14,h*0.07)
         }
       break
     }
     case"post":{
-      // haste
-      ctx.fillStyle="#555"; ctx.fillRect(-h*0.025,-h,h*0.05,h)
-      // braço
-      ctx.fillStyle="#555"; ctx.fillRect(-h*0.025,-h,h*0.18,h*0.025)
-      // luz neon com halo duplo
-      const lc = ["#ff2d78","#00e5ff","#cc00ff"][Math.abs(Math.round(x/30))%3]
-      ctx.shadowColor=lc; ctx.shadowBlur=h*0.22
-      ctx.fillStyle=lc
-      ctx.beginPath(); ctx.arc(h*0.18,-h,h*0.055,0,Math.PI*2); ctx.fill()
-      ctx.shadowBlur=h*0.4
-      ctx.globalAlpha=0.35
-      ctx.beginPath(); ctx.arc(h*0.18,-h,h*0.14,0,Math.PI*2); ctx.fill()
-      ctx.globalAlpha=1; ctx.shadowBlur=0
+      if (scenario === "helix") {
+        // poste solar/eólico — sem néon, conduíte de energia brilhando
+        ctx.fillStyle="#6a7880"; ctx.fillRect(-h*0.03,-h,h*0.06,h)
+        ctx.shadowColor=pal.neonA; ctx.shadowBlur=h*0.12
+        ctx.strokeStyle=pal.neonA; ctx.lineWidth=h*0.02
+        ctx.beginPath(); ctx.moveTo(0,-h*0.05); ctx.lineTo(0,-h*0.9); ctx.stroke()
+        ctx.shadowBlur=0
+        // painel solar inclinado no topo
+        ctx.save(); ctx.translate(0,-h); ctx.rotate(-0.3)
+        ctx.fillStyle="#1c3a52"; ctx.fillRect(-h*0.14,-h*0.03,h*0.28,h*0.09)
+        ctx.strokeStyle="#3d6a8a"; ctx.lineWidth=h*0.006
+        ctx.strokeRect(-h*0.14,-h*0.03,h*0.28,h*0.09)
+        ctx.restore()
+      } else if (scenario === "suburbio") {
+        // poste quebrado — luz fraca, cintilante, parte apagada
+        const broken = Math.abs(Math.round(x/30))%3===0
+        ctx.fillStyle="#3a352d"; ctx.fillRect(-h*0.025,-h,h*0.05,h*(broken?0.7:1))
+        ctx.fillStyle="#3a352d"; ctx.fillRect(-h*0.025,-h*(broken?0.7:1),h*0.16,h*0.025)
+        if (!broken) {
+          const flicker = 0.35 + Math.abs(Math.sin(x*0.7))*0.35
+          ctx.shadowColor=pal.neonA; ctx.shadowBlur=h*0.14*flicker
+          ctx.fillStyle=pal.neonA; ctx.globalAlpha=flicker
+          ctx.beginPath(); ctx.arc(h*0.16,-h,h*0.045,0,Math.PI*2); ctx.fill()
+          ctx.globalAlpha=1; ctx.shadowBlur=0
+        }
+      } else {
+        // Cidade Neon — poste de néon vívido (cores do cenário, halo duplo)
+        const lc = [pal.neonA,pal.neonB,pal.neonC][Math.abs(Math.round(x/30))%3]
+        ctx.fillStyle="#555"; ctx.fillRect(-h*0.025,-h,h*0.05,h)
+        ctx.fillStyle="#555"; ctx.fillRect(-h*0.025,-h,h*0.18,h*0.025)
+        ctx.shadowColor=lc; ctx.shadowBlur=h*0.26
+        ctx.fillStyle=lc
+        ctx.beginPath(); ctx.arc(h*0.18,-h,h*0.06,0,Math.PI*2); ctx.fill()
+        ctx.shadowBlur=h*0.45
+        ctx.globalAlpha=0.4
+        ctx.beginPath(); ctx.arc(h*0.18,-h,h*0.15,0,Math.PI*2); ctx.fill()
+        ctx.globalAlpha=1; ctx.shadowBlur=0
+      }
       break
     }
     case"sign":{
-      // poste
-      ctx.fillStyle="#555"; ctx.fillRect(-h*0.03,-h*0.43,h*0.06,h*0.43)
-      // placa com glow neon
-      ctx.shadowColor="#ff2d78"; ctx.shadowBlur=h*0.18
-      ctx.fillStyle="#1a0033"; ctx.strokeStyle="#ff2d78"; ctx.lineWidth=h*0.025
-      ctx.beginPath()
-      ctx.roundRect(-h*0.30,-h*0.75,h*0.60,h*0.34,h*0.04)
-      ctx.fill(); ctx.stroke()
-      ctx.shadowBlur=0
-      ctx.fillStyle="#ff2d78"; ctx.font=`bold ${h*0.11}px monospace`
-      ctx.textAlign="center"; ctx.fillText("@lu2ca.art",0,-h*0.52)
+      if (scenario === "helix") {
+        // placa solar/informativa limpa — sem néon, texto discreto sobre painel claro
+        ctx.fillStyle="#556670"; ctx.fillRect(-h*0.03,-h*0.43,h*0.06,h*0.43)
+        ctx.fillStyle="#e8f4ff"; ctx.strokeStyle="#9fc4d8"; ctx.lineWidth=h*0.02
+        ctx.beginPath()
+        ctx.roundRect(-h*0.30,-h*0.75,h*0.60,h*0.34,h*0.04)
+        ctx.fill(); ctx.stroke()
+        ctx.fillStyle="#1c3a52"; ctx.font=`bold ${h*0.10}px monospace`
+        ctx.textAlign="center"; ctx.fillText("@lu2ca.art",0,-h*0.52)
+      } else if (scenario === "suburbio") {
+        // placa destruída/estática — rachada, néon quase morto
+        ctx.fillStyle="#3a352d"; ctx.fillRect(-h*0.03,-h*0.40,h*0.06,h*0.40)
+        ctx.shadowColor=pal.neonA; ctx.shadowBlur=h*0.06
+        ctx.fillStyle="#0e0c0a"; ctx.strokeStyle=pal.neonA; ctx.lineWidth=h*0.018
+        ctx.beginPath()
+        ctx.roundRect(-h*0.28,-h*0.72,h*0.56,h*0.30,h*0.03)
+        ctx.fill(); ctx.stroke()
+        // rachadura
+        ctx.beginPath(); ctx.moveTo(-h*0.10,-h*0.70); ctx.lineTo(h*0.02,-h*0.55); ctx.lineTo(-h*0.05,-h*0.45)
+        ctx.strokeStyle="#000"; ctx.lineWidth=h*0.012; ctx.stroke()
+        ctx.shadowBlur=0
+        ctx.fillStyle=pal.neonA+"aa"; ctx.font=`bold ${h*0.09}px monospace`
+        ctx.textAlign="center"; ctx.fillText("SINAL FRACO",0,-h*0.50)
+      } else {
+        // Cidade Neon — placa vívida, publicidade em toda parte
+        ctx.fillStyle="#555"; ctx.fillRect(-h*0.03,-h*0.43,h*0.06,h*0.43)
+        ctx.shadowColor=pal.neonA; ctx.shadowBlur=h*0.2
+        ctx.fillStyle="#1a0033"; ctx.strokeStyle=pal.neonA; ctx.lineWidth=h*0.025
+        ctx.beginPath()
+        ctx.roundRect(-h*0.30,-h*0.75,h*0.60,h*0.34,h*0.04)
+        ctx.fill(); ctx.stroke()
+        ctx.shadowBlur=0
+        ctx.fillStyle=pal.neonA; ctx.font=`bold ${h*0.11}px monospace`
+        ctx.textAlign="center"; ctx.fillText("@lu2ca.art",0,-h*0.52)
+      }
       break
     }
   }
