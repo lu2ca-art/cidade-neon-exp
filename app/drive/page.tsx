@@ -154,6 +154,28 @@ export default function DrivePage() {
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
   const [volume, setVolume]         = useState(0.8)
+  const volumeRingRef = useRef<HTMLDivElement>(null)
+  const volumeDraggingRef = useRef(false)
+  const updateVolumeFromPointer = useCallback((clientX: number, clientY: number) => {
+    const el = volumeRingRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const angleDeg = Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI)
+    // 0° = topo, cresce em sentido horário. Zona útil de 300°, com um "vão"
+    // morto de 60° na base (150°..210°) — como um botão giratório físico:
+    // extremo esquerdo da base = volume 0, sobe por cima, direita da base = 1
+    const deg = (angleDeg + 90 + 360) % 360
+    let position: number
+    if (deg >= 210) position = deg - 210
+    else if (deg <= 150) position = deg + 150
+    else position = deg < 180 ? 300 : 0 // dentro do vão: trava no extremo mais próximo
+    const v = Math.min(Math.max(position / 300, 0), 1)
+    setVolume(v)
+    const globalEl = getAudioEl(); if (globalEl) globalEl.volume = v
+    if (radioAudioRef.current) radioAudioRef.current.volume = v
+  }, [])
   // ── RÁDIO do painel: gira entre as frequências desbloqueadas, nessa ordem
   // fixa — SUBÚRBIO XENOM, CIDADENEON.CRYPTO, LIVE NEON, CIDADE NEON 222.4 FM.
   // Toca todas as prévias da frequência atual 1x, chia, silencia 5s (tempo da
@@ -163,22 +185,45 @@ export default function DrivePage() {
   const [currentTier, setCurrentTier] = useState<Tier>("suburbio")
   const [radioIdx, setRadioIdx]     = useState(0)
   const [snippetPct, setSnippetPct] = useState(0)
-  const [radioPhase, setRadioPhase] = useState<"playing" | "static" | "waiting">("playing")
+  // maquina da radio: toca a frequencia inteira 1x -> chia -> ESTACIONA (chega
+  // a missao, aceita ou recusa) -> se recusar/nao houver nada novo, volta a
+  // dirigir com o radio em silencio ate rodar a cidade inteira de novo
+  const [radioMachine, setRadioMachine] = useState<"playing" | "static" | "parked" | "silentLap">("playing")
   const [manualTier, setManualTier] = useState<Tier | null>(null)
   const radioAudioRef = useRef<HTMLAudioElement | null>(null)
   const staticCtxRef   = useRef<AudioContext | null>(null)
   const confirmCount    = funnel.state.confirmationCount
   const finalCompleted  = funnel.state.unlocked.finalCompleted
-  // refs sempre com o valor mais recente, lidos dentro do ciclo assincrono
-  // sem precisar reiniciar o efeito a cada missao concluida
+  const radioAccepted   = funnel.state.radioAccepted
+  // refs sempre com o valor mais recente, lidos dentro do ciclo assincrono e
+  // do loop imperativo do canvas, sem precisar reiniciar efeitos a cada render
   const confirmCountRef   = useRef(confirmCount)
   const finalCompletedRef = useRef(finalCompleted)
+  const radioMachineRef   = useRef(radioMachine)
+  const silentLapDistRef  = useRef(0)
   useEffect(() => { confirmCountRef.current = confirmCount }, [confirmCount])
   useEffect(() => { finalCompletedRef.current = finalCompleted }, [finalCompleted])
+  useEffect(() => { radioMachineRef.current = radioMachine }, [radioMachine])
+  const resumeAfterLapRef = useRef(() => setRadioMachine("playing"))
 
-  const activeTracks   = TRACKS_BY_TIER[currentTier]
+  // o teste correspondente aquela frequencia ja foi concluido no funil?
+  // (pre-requisito pra ELA poder ser oferecida no dialogo de missao)
+  const testDone = useCallback((tier: Tier): boolean => {
+    switch (tier) {
+      case "suburbio": return true
+      case "crypto":   return confirmCountRef.current >= 1
+      case "live":     return confirmCountRef.current >= 2
+      case "full":     return finalCompletedRef.current
+    }
+  }, [])
+
+  const activeTier     = manualTier ?? currentTier
+  const activeTracks   = TRACKS_BY_TIER[activeTier]
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
-  const radioActive    = radioPhase === "playing"
+  const radioActive    = radioMachine === "playing"
+  const orderIdx       = ALL_TIERS.indexOf(currentTier)
+  const nextTier: Tier | null = orderIdx < ALL_TIERS.length - 1 ? ALL_TIERS[orderIdx + 1] : null
+  const nextTierReady  = nextTier ? testDone(nextTier) && !radioAccepted[nextTier as Exclude<Tier, "suburbio">] : false
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
@@ -241,91 +286,98 @@ export default function DrivePage() {
     } catch { /* Web Audio indisponivel — silencioso */ }
   }, [])
 
-  const isTierUnlocked = useCallback((tier: Tier) => {
-    switch (tier) {
-      case "suburbio": return true
-      case "crypto":   return confirmCountRef.current >= 1
-      case "live":     return confirmCountRef.current >= 2
-      case "full":     return finalCompletedRef.current
-    }
-  }, [])
-
-  // próxima frequência desbloqueada na ordem fixa (suburbio -> crypto -> live ->
-  // full), pulando as que ainda não abriram; se nenhuma outra estiver disponível
-  // repete a mesma (ex.: só suburbio liberada ainda)
-  const nextUnlockedTier = useCallback((from: Tier): Tier => {
-    const i = ALL_TIERS.indexOf(from)
-    for (let step = 1; step <= ALL_TIERS.length; step++) {
-      const candidate = ALL_TIERS[(i + step) % ALL_TIERS.length]
-      if (isTierUnlocked(candidate)) return candidate
-    }
-    return from
-  }, [isTierUnlocked])
-
-  // ── CICLO DA RÁDIO: toca todas as prévias da frequência atual 1x (a
-  // "distância percorrida" = a soma dessas prévias), depois chia, silencia 5s
-  // (tempo de uma nova missão chegar no telefone) e passa pra PRÓXIMA
-  // frequência já desbloqueada, na ordem suburbio -> crypto -> live -> full.
-  // Sintonia manual (pós fim de jogo) trava numa frequência só, sem avançar. ──
+  // ── SINTONIA MANUAL (pós fim de jogo): só toca em loop simples a frequência
+  // escolhida, sem estacionar nem oferecer missão — a pessoa já desbloqueou tudo ──
   useEffect(() => {
+    if (!manualTier) return
     let cancelled = false
     const intervals: ReturnType<typeof setInterval>[] = []
     const timeouts: ReturnType<typeof setTimeout>[] = []
+    const tracks = TRACKS_BY_TIER[manualTier]
 
-    const playPass = (tier: Tier) => {
+    const stepThrough = (idx: number) => {
       if (cancelled) return
-      setCurrentTier(tier)
-      setRadioPhase("playing")
-      const tracks = TRACKS_BY_TIER[tier]
-      let idx = 0
-      setRadioIdx(0)
-
-      const stepThrough = () => {
+      setRadioMachine("playing")
+      setRadioIdx(idx)
+      const t0 = performance.now()
+      setSnippetPct(0)
+      const prog = setInterval(() => {
+        if (cancelled) { clearInterval(prog); return }
+        setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
+      }, 120)
+      intervals.push(prog)
+      const to = setTimeout(() => {
+        clearInterval(prog)
         if (cancelled) return
-        const t0 = performance.now()
-        setSnippetPct(0)
-        const prog = setInterval(() => {
-          if (cancelled) { clearInterval(prog); return }
-          setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
-        }, 120)
-        intervals.push(prog)
-        const to = setTimeout(() => {
-          clearInterval(prog)
-          if (cancelled) return
-          if (idx < tracks.length - 1) {
-            idx += 1
-            setRadioIdx(idx)
-            stepThrough()
-          } else {
-            // pass completa: chia, silencia, aguarda a nova missao, avança de frequência
-            setRadioPhase("static")
-            playStaticBurst()
-            const t1 = setTimeout(() => {
-              if (cancelled) return
-              setRadioPhase("waiting")
-              const t2 = setTimeout(() => {
-                if (cancelled) return
-                playPass(manualTier ?? nextUnlockedTier(tier))
-              }, 5000)
-              timeouts.push(t2)
-            }, 900)
-            timeouts.push(t1)
-          }
-        }, RADIO_SNIPPET_MS)
-        timeouts.push(to)
-      }
-      stepThrough()
+        if (idx < tracks.length - 1) { stepThrough(idx + 1); return }
+        setRadioMachine("static")
+        playStaticBurst()
+        const t1 = setTimeout(() => { if (!cancelled) stepThrough(0) }, 900)
+        timeouts.push(t1)
+      }, RADIO_SNIPPET_MS)
+      timeouts.push(to)
     }
+    stepThrough(0)
 
-    playPass(manualTier ?? "suburbio")
-
-    return () => {
-      cancelled = true
-      intervals.forEach(clearInterval)
-      timeouts.forEach(clearTimeout)
-    }
+    return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualTier, playStaticBurst, nextUnlockedTier])
+  }, [manualTier, playStaticBurst])
+
+  // ── CICLO DA RÁDIO (missão): toca todas as prévias da frequência atual 1x —
+  // a "distância percorrida" é a soma dessas prévias. Ao terminar, chia e o
+  // carro ESTACIONA: chega a missão da próxima frequência (se o teste dela já
+  // foi concluido). Aceitando, ela é liberada e passa a tocar; recusando (ou
+  // se não houver nada novo ainda), o carro volta a dirigir com o rádio em
+  // silêncio até completar uma volta inteira na cidade — só aí a frequência
+  // atual toca de novo do início. ──
+  useEffect(() => {
+    if (manualTier) return // sintonia manual assume o controle
+    if (radioMachine !== "playing") return
+    let cancelled = false
+    const intervals: ReturnType<typeof setInterval>[] = []
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+    const tracks = TRACKS_BY_TIER[currentTier]
+
+    const stepThrough = (idx: number) => {
+      if (cancelled) return
+      setRadioIdx(idx)
+      const t0 = performance.now()
+      setSnippetPct(0)
+      const prog = setInterval(() => {
+        if (cancelled) { clearInterval(prog); return }
+        setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
+      }, 120)
+      intervals.push(prog)
+      const to = setTimeout(() => {
+        clearInterval(prog)
+        if (cancelled) return
+        if (idx < tracks.length - 1) { stepThrough(idx + 1); return }
+        // pass completa: chia e estaciona (chega a missão)
+        setRadioMachine("static")
+        playStaticBurst()
+        const t1 = setTimeout(() => { if (!cancelled) setRadioMachine("parked") }, 900)
+        timeouts.push(t1)
+      }, RADIO_SNIPPET_MS)
+      timeouts.push(to)
+    }
+    stepThrough(0)
+
+    return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [radioMachine, currentTier, manualTier, playStaticBurst])
+
+  const handleAcceptMission = useCallback(() => {
+    if (!nextTier) return
+    funnel.setState(prev => ({ ...prev, radioAccepted: { ...prev.radioAccepted, [nextTier]: true } }))
+    setCurrentTier(nextTier)
+    setRadioMachine("playing")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextTier])
+
+  const handleDismissMission = useCallback(() => {
+    silentLapDistRef.current = 0
+    setRadioMachine("silentLap")
+  }, [])
 
   // toca o trecho atual (elemento próprio da rádio) ou silencia fora da fase "playing"
   useEffect(() => {
@@ -402,8 +454,16 @@ export default function DrivePage() {
       const JOGO_H  = H - DASH_H - BOTOES_H
 
       // ── Física natural ──
-      // física com pressão acumulada: aceleração cresce com o tempo segurando
-      if (accelRef.current) {
+      const parked = radioMachineRef.current === "parked"
+
+      if (parked) {
+        // ESTACIONADO no posto pra ver a missão: freia até parar e ignora os
+        // comandos de acelerar/virar até a pessoa aceitar ou recusar
+        accelPressRef.current = 0
+        speedRef.current = Math.max(speedRef.current - BRAKE_RATE * dt * 4, 0)
+        playerXRef.current *= 0.9
+      } else if (accelRef.current) {
+        // física com pressão acumulada: aceleração cresce com o tempo segurando
         accelPressRef.current = Math.min(accelPressRef.current + dt * 0.8, 3.0)
         const rate = ACCEL_RATE * (0.5 + accelPressRef.current * 0.5)
         speedRef.current = Math.min(speedRef.current + rate * dt, MAX_KMH)
@@ -412,16 +472,30 @@ export default function DrivePage() {
         speedRef.current = Math.max(speedRef.current - BRAKE_RATE * dt, 0)
       }
 
-      // direção
+      // direção (trava enquanto estacionado)
       const STEER = 1.6
-      if (leftRef.current)  playerXRef.current = Math.max(-1, playerXRef.current - STEER*dt)
-      if (rightRef.current) playerXRef.current = Math.min( 1, playerXRef.current + STEER*dt)
-      if (!leftRef.current && !rightRef.current) playerXRef.current *= 0.96
+      if (!parked) {
+        if (leftRef.current)  playerXRef.current = Math.max(-1, playerXRef.current - STEER*dt)
+        if (rightRef.current) playerXRef.current = Math.min( 1, playerXRef.current + STEER*dt)
+        if (!leftRef.current && !rightRef.current) playerXRef.current *= 0.96
+      }
 
       // avança na estrada proporcionalmente à velocidade real do velocímetro
       // 222 km/h => sensação de alta velocidade; multiplicador maior = chão mais rápido
       const totalLen = ROAD_LEN * SEG_LEN
-      posRef.current = ((posRef.current + speedRef.current * dt * 38) % totalLen + totalLen) % totalLen
+      const advance = speedRef.current * dt * 38
+      posRef.current = ((posRef.current + advance) % totalLen + totalLen) % totalLen
+
+      // rádio em silêncio (recusou/sem missão nova): conta a distância
+      // percorrida até completar uma volta inteira, então a frequência
+      // atual volta a tocar do início
+      if (radioMachineRef.current === "silentLap") {
+        silentLapDistRef.current += advance
+        if (silentLapDistRef.current >= totalLen) {
+          silentLapDistRef.current = 0
+          resumeAfterLapRef.current()
+        }
+      }
 
       // zona + valores dos mostradores lidos direto dos refs (sem stale closure)
       const pct = posRef.current / totalLen
@@ -746,31 +820,29 @@ export default function DrivePage() {
         )}
       </div>
 
-      {/* RÁDIO DO PAINEL — mostrador vintage-futurista; gira entre as
-          frequências desbloqueadas, então está sempre em uma delas */}
+      {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
+          nome da frequência e o número dela + um anel de volume ao lado */}
       {!phoneOpen&&(()=>{
         const active = radioActive
-        const isStatic  = radioPhase === "static"
-        const isWaiting = radioPhase === "waiting"
-        const meta = F[currentTier]
+        const isStatic = radioMachine === "static"
+        const meta = F[activeTier]
         const accent = meta.color
         const title = (radioTrack?.title ?? "—").toUpperCase()
-        const marquee = `♪ ${title}   ///   VERSÃO DIGITAL NO [UNTITLED]     `
         return (
         <div style={{
           position:"absolute",
           bottom: BOTOES_H_PCT + 6,
           left:"50%", transform:"translateX(-50%)",
-          width:"min(60%, 300px)",
+          width:"min(66%, 320px)",
           zIndex:46,
-          pointerEvents:"none",
+          display:"flex", alignItems:"center", gap:8,
         }}>
           <div style={{
-            position:"relative", borderRadius:12, padding:"8px 12px 9px",
+            position:"relative", flex:1, borderRadius:12, padding:"8px 12px 9px",
             background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
             border:`1px solid ${accent}55`,
             boxShadow:`0 0 18px ${accent}33, inset 0 0 14px ${accent}18`,
-            overflow:"hidden",
+            overflow:"hidden", pointerEvents:"none",
           }}>
             {/* scanlines */}
             <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
@@ -788,17 +860,17 @@ export default function DrivePage() {
                 ) : isStatic ? (
                   <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>INTERFERÊNCIA</span>
                 ) : (
-                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>AGUARDANDO</span>
+                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>SILÊNCIO</span>
                 )}
               </span>
             </div>
             {active ? (
               <>
-                {/* now playing (marquee) */}
+                {/* now playing (marquee) — só o nome da música */}
                 <div style={{position:"relative",height:18,overflow:"hidden"}}>
                   <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,
                     color:"#eafff8",textShadow:`0 0 8px ${accent}aa`,animation:"dash-marquee 11s linear infinite"}}>
-                    {marquee}{marquee}
+                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                 </div>
                 {/* barra dos 22s */}
@@ -813,17 +885,37 @@ export default function DrivePage() {
             ) : (
               <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
                 <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINAL EM SILÊNCIO ◌</span>
-                <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",marginTop:2}}>
-                  RETOMANDO TRANSMISSÃO...
-                </span>
               </div>
             )}
-            {/* rodapé */}
-            <div style={{position:"relative",marginTop:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>
-                {active ? "TRECHO · 0:22" : isStatic ? "..." : "5s"}
-              </span>
-              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>[UNTITLED] · ÁLBUM DIGITAL</span>
+          </div>
+
+          {/* ANEL DE VOLUME — arraste ao redor pra ajustar */}
+          <div style={{ position:"relative", flexShrink:0, width:40, height:40 }}>
+            <div
+              ref={volumeRingRef}
+              onPointerDown={(e) => {
+                e.stopPropagation()
+                volumeDraggingRef.current = true
+                ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+                updateVolumeFromPointer(e.clientX, e.clientY)
+              }}
+              onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
+              onPointerUp={() => { volumeDraggingRef.current = false }}
+              style={{
+                position:"absolute", inset:0, borderRadius:"50%",
+                cursor:"grab", touchAction:"none",
+                background:`conic-gradient(from -120deg, ${accent} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
+                WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px))",
+                mask:"radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px))",
+                boxShadow:`0 0 10px ${accent}44`,
+              }}
+            />
+            <div style={{
+              position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
+              pointerEvents:"none",
+              fontFamily:"monospace", fontSize:7, color:"rgba(255,255,255,0.55)", letterSpacing:0.5,
+            }}>
+              VOL
             </div>
           </div>
         </div>
@@ -878,6 +970,64 @@ export default function DrivePage() {
           </button>
         </div>
       )}
+
+      {/* CARRO ESTACIONADO — chegou uma missão. Aceitar libera e toca a
+          próxima frequência; recusar (ou não haver nada novo ainda) volta a
+          dirigir com o rádio atual em silêncio até rodar a cidade inteira */}
+      {radioMachine === "parked" && (()=>{
+        const meta = nextTier ? F[nextTier] : null
+        return (
+        <div style={{position:"absolute",inset:0,zIndex:70,background:"rgba(2,0,12,0.82)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{
+            width:"100%", maxWidth:320, borderRadius:20, padding:"22px 20px",
+            background:"linear-gradient(160deg, #12081f 0%, #06030d 100%)",
+            border:`1px solid ${meta ? meta.color+"66" : "rgba(255,255,255,0.15)"}`,
+            boxShadow:`0 0 30px ${meta ? meta.color+"33" : "rgba(255,255,255,0.1)"}`,
+            textAlign:"center",
+          }}>
+            <p style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:"rgba(255,255,255,0.4)",marginBottom:6}}>
+              🅿️ ESTACIONADO NO POSTO
+            </p>
+            {nextTierReady && meta ? (
+              <>
+                <p style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color:meta.color,textShadow:`0 0 10px ${meta.color}aa`,marginBottom:8}}>
+                  NOVA FREQUÊNCIA DETECTADA
+                </p>
+                <p style={{fontFamily:"monospace",fontSize:16,fontWeight:800,letterSpacing:1,color:"#fff",marginBottom:14}}>
+                  {meta.label} · {meta.freq} FM
+                </p>
+                <div style={{display:"flex",gap:10}}>
+                  <button type="button" onClick={handleDismissMission} style={{
+                    flex:1, padding:"11px 0", borderRadius:12,
+                    background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.18)",
+                    color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:12, letterSpacing:1.5, cursor:"pointer",
+                  }}>RECUSAR</button>
+                  <button type="button" onClick={handleAcceptMission} style={{
+                    flex:1, padding:"11px 0", borderRadius:12,
+                    background:`${meta.color}22`, border:`1.5px solid ${meta.color}`,
+                    color:meta.color, fontFamily:"monospace", fontWeight:700, fontSize:12, letterSpacing:1.5, cursor:"pointer",
+                  }}>ACEITAR</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,color:"#9aa0aa",marginBottom:8}}>
+                  NENHUM SINAL NOVO AINDA
+                </p>
+                <p style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)",marginBottom:14}}>
+                  continue a experiência pra liberar a próxima frequência
+                </p>
+                <button type="button" onClick={handleDismissMission} style={{
+                  width:"100%", padding:"11px 0", borderRadius:12,
+                  background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
+                  color:"#fff", fontFamily:"monospace", fontWeight:700, fontSize:12, letterSpacing:1.5, cursor:"pointer",
+                }}>CONTINUAR</button>
+              </>
+            )}
+          </div>
+        </div>
+        )
+      })()}
 
       {/* CONTROLES DE DIREÇÃO — fixos no fundo */}
       {!phoneOpen&&(

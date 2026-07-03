@@ -105,6 +105,14 @@ export interface GameFunnelState {
     feelGood: boolean
     guitarDriver: boolean
   }
+  // frequencias do radio do carro que a pessoa ja ACEITOU no dialogo de missao
+  // (o teste correspondente ja concluido eh pre-requisito, mas so libera de
+  // fato quando ela aceita — ver app/drive/page.tsx)
+  radioAccepted: {
+    crypto: boolean
+    live: boolean
+    full: boolean
+  }
 }
 
 const STORAGE_KEY = "cidade-neon-funnel-v3"
@@ -143,6 +151,11 @@ const defaultState: GameFunnelState = {
     feelGood: false,
     guitarDriver: false,
   },
+  radioAccepted: {
+    crypto: false,
+    live: false,
+    full: false,
+  },
 }
 
 interface GameFunnelContextType {
@@ -178,8 +191,15 @@ function loadState(): GameFunnelState {
     if (parsed.version !== CURRENT_VERSION) {
       return defaultState
     }
-    
-    return parsed
+
+    // Preenche campos novos que blobs salvos antes deles existirem nao tem,
+    // sem precisar de um reset de versao completo (evita apagar progresso)
+    return {
+      ...defaultState,
+      ...parsed,
+      appsUnlocked: { ...defaultState.appsUnlocked, ...parsed.appsUnlocked },
+      radioAccepted: { ...defaultState.radioAccepted, ...parsed.radioAccepted },
+    }
   } catch {
     return defaultState
   }

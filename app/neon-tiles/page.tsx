@@ -55,19 +55,22 @@ const SONGS: Song[] = [
     id: "dopamina",
     title: "DOPAMINA",
     bpm: 128,
-    audioUrl: "",
+    // só existe um trecho de 22s desta faixa (mesmo usado no radio do carro);
+    // duration reduzida de 60 pra 22 pra bater com o audio real disponivel
+    audioUrl: "/audio/tracks/dopamina.mp3",
     color: "#7C3AED",
     accentColor: "#FF00A8",
-    duration: 60,
+    duration: 22,
   },
   {
     id: "sexta",
     title: "SEXTA FEIRA",
     bpm: 105,
-    audioUrl: "",
+    // mesma observacao: só o trecho de 22s existe por enquanto
+    audioUrl: "/audio/tracks/sextafeira.mp3",
     color: "#FFD700",
     accentColor: "#FF6B00",
-    duration: 60,
+    duration: 22,
   },
 ]
 
