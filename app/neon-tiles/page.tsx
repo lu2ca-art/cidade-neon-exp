@@ -442,7 +442,7 @@ export default function NeonTilesPage() {
     rafRef.current = requestAnimationFrame(renderFrame)
   }, [])
 
-  // ─── PARTÍCULAS ao acertar ─────────────────────────────────────────────────
+  // ─── PARTÍCULAS ao acertar ──────────────────────────────��──────────────────
 
   const spawnParticles = useCallback((col: number) => {
     const canvas = canvasRef.current
@@ -637,36 +637,40 @@ export default function NeonTilesPage() {
           {SONGS.map(song => (
             <button
               key={song.id}
-              onClick={() => { if (!song.audioUrl) return; setSelectedSong(song); startGame(song) }}
-              disabled={!song.audioUrl}
+              onClick={() => { setSelectedSong(song); startGame(song) }}
               className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all active:scale-95"
               style={{
-                background: song.audioUrl ? `linear-gradient(135deg,${song.color}18 0%,${song.accentColor}10 100%)` : "rgba(255,255,255,0.03)",
-                border: `1.5px solid ${song.audioUrl ? song.color + "40" : "rgba(255,255,255,0.08)"}`,
-                opacity: song.audioUrl ? 1 : 0.4,
-                cursor: song.audioUrl ? "pointer" : "not-allowed",
+                background: `linear-gradient(135deg,${song.color}18 0%,${song.accentColor}10 100%)`,
+                border: `1.5px solid ${song.color}40`,
               }}
             >
               <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-mono text-xs font-bold"
-                style={{ background: song.audioUrl ? song.color + "25" : "rgba(255,255,255,0.05)", color: song.color }}>
+                style={{ background: song.color + "25", color: song.color }}>
                 {song.bpm}<br /><span className="text-[9px] opacity-60">BPM</span>
               </div>
               <div className="text-left flex-1">
                 <p className="font-mono font-bold text-white text-sm">{song.title}</p>
-                <p className="font-mono text-xs mt-0.5" style={{ color: song.audioUrl ? song.color : "rgba(255,255,255,0.2)" }}>
-                  {song.audioUrl ? "disponivel" : "em breve"}
+                <p className="font-mono text-xs mt-0.5" style={{ color: song.color }}>
+                  {song.audioUrl ? "com audio" : "modo visual"}
                 </p>
               </div>
-              {song.audioUrl && (
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-                  <path d="M9 18l6-6-6-6" stroke={song.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+                <path d="M9 18l6-6-6-6" stroke={song.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
           ))}
         </div>
-        <button onClick={() => router.push("/")} className="mt-10 font-mono text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
-          voltar ao inicio
+        {/* Botao Home — simula botao fisico do iPhone */}
+        <button
+          onClick={() => router.push("/")}
+          aria-label="Inicio"
+          className="mt-10 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90"
+          style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.25)" strokeWidth={1.5}>
+            <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="17" r="1.2" fill="rgba(255,255,255,0.25)" stroke="none" />
+          </svg>
         </button>
       </div>
     )
