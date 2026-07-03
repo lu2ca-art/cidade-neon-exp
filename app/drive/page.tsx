@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
@@ -90,6 +90,15 @@ const STATION_TRACKS: Record<string, RadioTrack[]> = {
   ],
 }
 
+// Pool isolado por frequência (usado na sintonia livre, apos finalCompleted)
+const TRACKS_BY_TIER: Record<Tier, RadioTrack[]> = {
+  suburbio: STATION_TRACKS["SUBÚRBIO XÊNON"],
+  crypto:   STATION_TRACKS["CIDADE NEON"],
+  live:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "live"),
+  full:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "full"),
+}
+const ALL_TIERS: Tier[] = ["suburbio", "crypto", "live", "full"]
+
 const ROAD_LEN  = 1600
 const SEG_LEN   = 200
 const DRAW_DIST = 100
@@ -153,22 +162,32 @@ export default function DrivePage() {
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
   const [volume, setVolume]         = useState(0.8)
-  // ── RÁDIO do painel: toca sem parar, 22s por faixa, estação = zona ──
+  // ── RÁDIO do painel: toca todas as prévias 1x, chia, espera 5s, recomeça ──
   const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON")
   const [radioIdx, setRadioIdx]     = useState(0)
   const [snippetPct, setSnippetPct] = useState(0)
+  const [radioPhase, setRadioPhase] = useState<"playing" | "static" | "waiting">("playing")
+  const [manualTier, setManualTier] = useState<Tier | null>(null)
   const radioAudioRef = useRef<HTMLAudioElement | null>(null)
+  const staticCtxRef   = useRef<AudioContext | null>(null)
   // estação atual = zona; liberada quando a confirmacao correspondente foi feita
   const confirmCount    = funnel.state.confirmationCount
   const finalCompleted  = funnel.state.unlocked.finalCompleted
-  const station         = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["SUBÚRBIO XÊNON"]
-  const stationUnlocked = confirmCount >= station.unlockAt
+  // depois que a experiencia acaba, a pessoa escolhe livremente qual frequencia ouvir
+  const freeChoice       = finalCompleted && manualTier !== null
+  const station          = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["SUBÚRBIO XÊNON"]
+  const stationUnlocked  = freeChoice || confirmCount >= station.unlockAt
   // a CIDADE NEON 222.4 FM (tier "full") só entra no ar no fim da experiencia;
   // as demais faixas do slot (ex.: LIVE NEON) tocam normalmente antes disso
-  const stationTracks   = (STATION_TRACKS[zoneName] ?? []).filter(t => t.tier !== "full" || finalCompleted)
+  const stationTracks   = freeChoice
+    ? TRACKS_BY_TIER[manualTier as Tier]
+    : (STATION_TRACKS[zoneName] ?? []).filter(t => t.tier !== "full" || finalCompleted)
+  const poolKey         = freeChoice ? `tier:${manualTier}` : `zone:${zoneName}`
   const radioTrack      = stationTracks.length ? stationTracks[radioIdx % stationTracks.length] : null
-  // a rádio só "toca" quando a estação está liberada E tem faixas disponiveis agora
-  const radioActive     = stationUnlocked && stationTracks.length > 0
+  // ha conteudo pra essa frequencia (liberada + com faixas), independente da fase atual
+  const hasContent      = stationUnlocked && stationTracks.length > 0
+  // a rádio só "toca" agora quando ha conteudo E o ciclo está na fase de reproducao
+  const radioActive     = hasContent && radioPhase === "playing"
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
@@ -208,25 +227,90 @@ export default function DrivePage() {
     })
   }, [audio.trackIdx, audio.playing, audio.elapsed])
 
-  // ao trocar de estação (zona), começa da 1ª faixa da nova estação
-  useEffect(() => { setRadioIdx(0) }, [zoneName])
+  // ── chiado curto sintetizado via Web Audio (sem depender de arquivo) ──
+  const playStaticBurst = useCallback(() => {
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      if (!Ctx) return
+      const ctx = staticCtxRef.current ?? (staticCtxRef.current = new Ctx())
+      const dur = 0.8
+      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6
+      const src = ctx.createBufferSource()
+      src.buffer = buffer
+      const gain = ctx.createGain()
+      const t = ctx.currentTime
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.5, t + 0.05)
+      gain.gain.linearRampToValueAtTime(0.5, t + dur - 0.2)
+      gain.gain.linearRampToValueAtTime(0, t + dur)
+      src.connect(gain).connect(ctx.destination)
+      src.start(t); src.stop(t + dur)
+    } catch { /* Web Audio indisponivel — silencioso */ }
+  }, [])
 
-  // ── RÁDIO: avança 22s por faixa dentro da estação liberada (loop infinito) ──
+  // ── CICLO DA RÁDIO: toca todas as prévias da frequência 1x (a "distância
+  // percorrida" = a soma dessas prévias), depois chia, para, espera 5s
+  // (tempo de uma nova missão chegar no telefone) e recomeça do início ──
   useEffect(() => {
-    if (!radioActive) { setSnippetPct(0); return }
-    setSnippetPct(0)
-    const t0 = performance.now()
-    const prog = setInterval(() => {
-      setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
-    }, 120)
-    const advance = setTimeout(() => {
-      setRadioIdx((i) => (i + 1) % Math.max(stationTracks.length, 1))
-    }, RADIO_SNIPPET_MS)
-    return () => { clearInterval(prog); clearTimeout(advance) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioIdx, radioActive, zoneName])
+    if (!hasContent) { setRadioPhase("playing"); setRadioIdx(0); setSnippetPct(0); return }
 
-  // toca o trecho atual (elemento próprio da rádio) ou silencia quando bloqueada
+    let cancelled = false
+    const intervals: ReturnType<typeof setInterval>[] = []
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+
+    const playPass = (fromIdx: number) => {
+      if (cancelled) return
+      setRadioPhase("playing")
+      let idx = fromIdx
+      setRadioIdx(idx)
+
+      const stepThrough = () => {
+        if (cancelled) return
+        const t0 = performance.now()
+        setSnippetPct(0)
+        const prog = setInterval(() => {
+          if (cancelled) { clearInterval(prog); return }
+          setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
+        }, 120)
+        intervals.push(prog)
+        const to = setTimeout(() => {
+          clearInterval(prog)
+          if (cancelled) return
+          if (idx < stationTracks.length - 1) {
+            idx += 1
+            setRadioIdx(idx)
+            stepThrough()
+          } else {
+            // pass completa: chia, silencia, aguarda a nova missao, recomeça
+            setRadioPhase("static")
+            playStaticBurst()
+            const t1 = setTimeout(() => {
+              if (cancelled) return
+              setRadioPhase("waiting")
+              const t2 = setTimeout(() => { if (!cancelled) playPass(0) }, 5000)
+              timeouts.push(t2)
+            }, 900)
+            timeouts.push(t1)
+          }
+        }, RADIO_SNIPPET_MS)
+        timeouts.push(to)
+      }
+      stepThrough()
+    }
+
+    playPass(0)
+
+    return () => {
+      cancelled = true
+      intervals.forEach(clearInterval)
+      timeouts.forEach(clearTimeout)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasContent, stationTracks.length, poolKey, playStaticBurst])
+
+  // toca o trecho atual (elemento próprio da rádio) ou silencia fora da fase "playing"
   useEffect(() => {
     const el = radioAudioRef.current ?? (radioAudioRef.current = new Audio())
     if (!radioActive || !radioTrack) { el.pause(); return }
@@ -234,7 +318,7 @@ export default function DrivePage() {
     el.volume = volume
     el.play().catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioIdx, radioActive, zoneName])
+  }, [radioIdx, radioActive, radioTrack, volume])
 
   // pausa o player global (evita áudio dobrado) ao entrar; pausa a rádio ao sair
   useEffect(() => {
@@ -542,9 +626,14 @@ export default function DrivePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
 
-  // Calcula altura do dash em % para posicionar o celular acima dele
   const DASH_PCT = 0.26
   const BOTOES_H_PCT = 90 // px fixos
+
+  // Celular fechado (docked): posicionado no topo do céu — área só decorativa
+  // do canvas — pra nunca cobrir o painel (velocímetro/RPM/rádio) nem os
+  // botões de direção, e ainda assim ficar bem mais visível que antes.
+  const DOCKED_W = 104
+  const DOCKED_H = Math.round(DOCKED_W * (844 / 390))
 
   return (
     <div
@@ -570,7 +659,8 @@ export default function DrivePage() {
         />
       )}
 
-      {/* CELULAR — posicionado no espaço do painel quando fechado, nunca sobrepõe nada */}
+      {/* CELULAR — fechado: no topo do céu (área decorativa), maior e bem
+          visível, sem cobrir painel/rádio/botões. Aberto: tela cheia central. */}
       <div
         onClick={()=>!phoneOpen&&setPhoneOpen(true)}
         style={{
@@ -586,14 +676,12 @@ export default function DrivePage() {
                 cursor:"default",
               }
             : {
-                // posicionado no canto inferior direito, dentro da área do painel
-                // acima dos botões de controle (BOTOES_H_PCT=90px)
-                bottom: 94,
-                right:10,
-                width:68, height:120,
-                background:"#0a0014", borderRadius:12, padding:0,
-                border:`1.5px solid ${C.neonPink}55`,
-                boxShadow:`0 0 12px ${C.neonPink}33`,
+                top:14,
+                right:14,
+                width:DOCKED_W, height:DOCKED_H,
+                background:"#0a0014", borderRadius:16, padding:0,
+                border:`1.5px solid ${C.neonPink}70`,
+                boxShadow:`0 0 20px ${C.neonPink}55, 0 0 4px ${C.neonPink}aa`,
                 cursor:"pointer", overflow:"hidden",
               }),
         }}
@@ -603,7 +691,7 @@ export default function DrivePage() {
           <div style={{position:"absolute",left:-2,top:"34%",width:3,height:70,borderRadius:3,background:"#1c1c20"}}/>
           <div style={{position:"absolute",right:-2,top:"26%",width:3,height:90,borderRadius:3,background:"#1c1c20"}}/>
         </>)}
-        <div style={{position:"relative",width:"100%",height:"100%",borderRadius:phoneOpen?36:10,overflow:"hidden",background:"#000"}}>
+        <div style={{position:"relative",width:"100%",height:"100%",borderRadius:phoneOpen?36:14,overflow:"hidden",background:"#000"}}>
           {phoneOpen&&(
             <div style={{position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",width:"34%",height:22,borderRadius:14,background:"#000",zIndex:5}}/>
           )}
@@ -614,7 +702,7 @@ export default function DrivePage() {
               width: phoneOpen?"100%":"390px",
               height: phoneOpen?"100%":"844px",
               border:"none",
-              transform: phoneOpen?"none":`scale(${72/390})`,
+              transform: phoneOpen?"none":`scale(${DOCKED_W/390})`,
               transformOrigin:"top left",
               pointerEvents: phoneOpen?"auto":"none",
             }}
@@ -646,11 +734,13 @@ export default function DrivePage() {
         const st = station
         const active = radioActive
         const emBreve = stationUnlocked && stationTracks.length === 0
+        const isStatic  = hasContent && radioPhase === "static"
+        const isWaiting = hasContent && radioPhase === "waiting"
         // quando bloqueada, mostra a primeira faixa da lista como preview do que existe ali
         const previewTrack = radioTrack ?? stationTracks[0] ?? null
         const label = previewTrack?.label ?? "SINAL DESCONHECIDO"
         const freq  = previewTrack?.freq ?? "—.—"
-        const accent = active ? (previewTrack?.color ?? "#6b7280") : "#6b7280"
+        const accent = (active || isStatic || isWaiting) ? (previewTrack?.color ?? "#6b7280") : "#6b7280"
         const title = (radioTrack?.title ?? "—").toUpperCase()
         const marquee = `♪ ${title}   ///   VERSÃO DIGITAL NO [UNTITLED]     `
         return (
@@ -682,6 +772,10 @@ export default function DrivePage() {
                     <span style={{width:6,height:6,borderRadius:6,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
                     NO AR
                   </span>
+                ) : isStatic ? (
+                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>INTERFERÊNCIA</span>
+                ) : isWaiting ? (
+                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>AGUARDANDO</span>
                 ) : emBreve ? (
                   <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>EM BREVE</span>
                 ) : (
@@ -706,6 +800,17 @@ export default function DrivePage() {
                   <div style={{height:"100%",borderRadius:3,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
                 </div>
               </>
+            ) : isStatic ? (
+              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓ ░▒▓</span>
+              </div>
+            ) : isWaiting ? (
+              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINAL EM SILÊNCIO ◌</span>
+                <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",marginTop:2}}>
+                  RETOMANDO TRANSMISSÃO...
+                </span>
+              </div>
             ) : emBreve ? (
               <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
                 <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINTONIA ABERTA ◌</span>
@@ -724,7 +829,7 @@ export default function DrivePage() {
             {/* rodapé */}
             <div style={{position:"relative",marginTop:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>
-                {active ? "TRECHO · 0:22" : emBreve ? "SEM FAIXAS" : `FREQUÊNCIA ${st.unlockAt}/3`}
+                {active ? "TRECHO · 0:22" : isStatic ? "..." : isWaiting ? "5s" : emBreve ? "SEM FAIXAS" : `FREQUÊNCIA ${st.unlockAt}/3`}
               </span>
               <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>[UNTITLED] · ÁLBUM DIGITAL</span>
             </div>
@@ -732,6 +837,41 @@ export default function DrivePage() {
         </div>
         )
       })()}
+
+      {/* SINTONIA LIVRE — só depois que a experiência inteira acaba, a pessoa
+          escolhe qual das 4 frequências quer ouvir, sem depender de missão */}
+      {!phoneOpen && finalCompleted && (
+        <div style={{
+          position:"absolute",
+          bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% + 4px)`,
+          left:"50%", transform:"translateX(-50%)",
+          width:"min(70%, 340px)",
+          zIndex:46,
+          display:"flex", gap:5, justifyContent:"center",
+        }}>
+          {ALL_TIERS.map((tier) => {
+            const meta = F[tier]
+            const isSelected = manualTier === tier
+            return (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => setManualTier(tier)}
+                style={{
+                  flex:1, padding:"5px 3px", borderRadius:8,
+                  background: isSelected ? `${meta.color}22` : "rgba(255,255,255,0.04)",
+                  border:`1px solid ${isSelected ? meta.color+"aa" : "rgba(255,255,255,0.12)"}`,
+                  color: isSelected ? meta.color : "rgba(255,255,255,0.5)",
+                  fontFamily:"monospace", fontSize:6.5, letterSpacing:0.5,
+                  lineHeight:1.3, cursor:"pointer",
+                }}
+              >
+                {meta.label}<br/>{meta.freq}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* CONTROLES DE DIREÇÃO — fixos no fundo */}
       {!phoneOpen&&(
