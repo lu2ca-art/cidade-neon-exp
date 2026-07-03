@@ -53,3 +53,13 @@ export function sendNotificationToParent(n: Omit<PhoneNotification, "type">) {
   const msg: PhoneNotification = { type: "PHONE_NOTIFICATION", ...n }
   window.parent.postMessage(msg, "*")
 }
+
+// Clique na barra do rádio (pai) -> executa a mesma ação da notificação
+// dentro do celular (iframe), igual a tocar nela lá dentro
+export type NotificationClick = { type: "NOTIFICATION_CLICK"; id: string }
+
+export function sendNotificationClickToIframe(iframe: HTMLIFrameElement | null, id: string) {
+  if (!iframe?.contentWindow) return
+  const msg: NotificationClick = { type: "NOTIFICATION_CLICK", id }
+  iframe.contentWindow.postMessage(msg, "*")
+}

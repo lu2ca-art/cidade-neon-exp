@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState, PhoneNotification } from "@/app/providers/AudioBridge"
-import { sendStateToIframe } from "@/app/providers/AudioBridge"
+import { sendStateToIframe, sendNotificationClickToIframe } from "@/app/providers/AudioBridge"
 
 const C = {
   skyTop:     "#1a0533",
@@ -863,7 +863,7 @@ export default function DrivePage() {
           position:"absolute",
           bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% * 0.24)`,
           left:"50%", transform:"translateX(-50%)",
-          width:"min(60%, 340px)",
+          width:"min(80%, 460px)",
           zIndex:46,
           display:"flex", alignItems:"center", gap:10,
         }}>
@@ -952,33 +952,35 @@ export default function DrivePage() {
         )
       })()}
 
-      {/* BARRA DE NOTIFICAÇÃO DO CELULAR — ecoa no rádio as notificações que
-          chegam no telefone (missões, recompensas), pra não precisar abrir o celular */}
+      {/* BARRA DE NOTIFICAÇÃO DO CELULAR — fininha, no topo, clicável (abre o
+          celular e executa a mesma ação de tocar nela lá dentro) */}
       {!phoneOpen && phoneNotif && (
-        <div style={{
-          position:"absolute",
-          bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% * 0.24 + 92px)`,
-          left:"50%", transform:"translateX(-50%)",
-          width:"min(74%, 380px)",
-          zIndex:47,
-          animation:"phone-notif-in 0.35s ease-out",
-        }}>
-          <div style={{
-            display:"flex", alignItems:"center", gap:10, borderRadius:14, padding:"10px 14px",
+        <button
+          type="button"
+          onClick={() => {
+            sendNotificationClickToIframe(iframeRef.current, phoneNotif.id)
+            setPhoneOpen(true)
+            setPhoneNotif(null)
+          }}
+          style={{
+            position:"absolute",
+            top: DOCKED_H + 26,
+            left:"50%", transform:"translateX(-50%)",
+            width:"min(80%, 340px)",
+            zIndex:62,
+            animation:"phone-notif-in 0.35s ease-out",
+            display:"flex", alignItems:"center", gap:8,
+            borderRadius:999, padding:"6px 14px 6px 6px",
             background:"linear-gradient(135deg, rgba(20,10,35,0.95), rgba(6,3,14,0.97))",
             border:`1px solid ${phoneNotif.color}66`,
-            boxShadow:`0 0 20px ${phoneNotif.color}44, 0 8px 24px rgba(0,0,0,0.5)`,
-          }}>
-            <div style={{width:34,height:34,borderRadius:10,flexShrink:0,background:phoneNotif.color,display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
-            </div>
-            <div style={{flex:1, minWidth:0}}>
-              <p style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:phoneNotif.color,marginBottom:1}}>{phoneNotif.app.toUpperCase()}</p>
-              <p style={{fontFamily:"monospace",fontSize:12,fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{phoneNotif.title}</p>
-              <p style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.5)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{phoneNotif.body}</p>
-            </div>
-          </div>
-        </div>
+            boxShadow:`0 0 14px ${phoneNotif.color}44, 0 6px 16px rgba(0,0,0,0.5)`,
+            cursor:"pointer",
+          }}
+        >
+          <span style={{width:8,height:8,borderRadius:8,flexShrink:0,background:phoneNotif.color,boxShadow:`0 0 6px ${phoneNotif.color}`}}/>
+          <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{phoneNotif.title}</span>
+          <span style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.45)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,textAlign:"left"}}>{phoneNotif.body}</span>
+        </button>
       )}
 
       {/* SINTONIA LIVRE — só depois que a experiência inteira acaba, a pessoa
@@ -1236,14 +1238,14 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // gauges — painel bem maior agora (DASH_FRACTION), gauges crescem junto
-  const R = Math.min(DH*0.28, W*0.13)
+  // gauges empurrados pras bordas — o rádio agora ocupa 80% do painel no centro
+  const R = Math.min(DH*0.26, W*0.10)
   const cy = y0 + DH*0.62
 
   // velocímetro esq (max 222)
-  gauge(ctx,W*0.13,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
+  gauge(ctx,W*0.09,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
   // rpm dir
-  gauge(ctx,W*0.87,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
+  gauge(ctx,W*0.91,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
 
   // (o RÁDIO agora é um visor HTML sobreposto ao centro do painel — ver JSX.
   //  o canvas desenha só os mostradores e a zona.)

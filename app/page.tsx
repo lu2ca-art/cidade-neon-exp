@@ -741,6 +741,20 @@ function CidadeNeonExperience() {
     }
   }
 
+  // Clique na barra de notificação do rádio (quando o celular roda dentro
+  // do iframe do /drive) -> executa a mesma ação de tocar a notificação aqui
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const data = e.data as { type?: string; id?: string }
+      if (data?.type !== "NOTIFICATION_CLICK" || !data.id) return
+      const mission = getMissions().find(m => m.id === data.id)
+      if (mission) handleMissionClick(mission)
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getMissions])
+
   /* ─── FINAL NOTIFICATIONS (now handled by missions system) ── */
 
   /* ─── ICON RENDERER ─────────�����─────────────── */
