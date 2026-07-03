@@ -192,6 +192,11 @@ export default function DrivePage() {
   const [manualTier, setManualTier] = useState<Tier | null>(null)
   const radioAudioRef = useRef<HTMLAudioElement | null>(null)
   const staticCtxRef   = useRef<AudioContext | null>(null)
+  // timer chiado->estacionado: fica FORA do array de timeouts do efeito de
+  // ciclo de propósito — esse efeito reinicia quando radioMachine muda pra
+  // "static" (está nas deps) e cancelaria esse timer antes de disparar
+  const parkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current) }, [])
   const confirmCount    = funnel.state.confirmationCount
   const finalCompleted  = funnel.state.unlocked.finalCompleted
   const radioAccepted   = funnel.state.radioAccepted
@@ -352,11 +357,17 @@ export default function DrivePage() {
         clearInterval(prog)
         if (cancelled) return
         if (idx < tracks.length - 1) { stepThrough(idx + 1); return }
-        // pass completa: chia e estaciona (chega a missão)
+        // pass completa: chia e estaciona (chega a missão). Usa o ref
+        // persistente (não o array local) pra sobreviver ao efeito reiniciar
+        // quando radioMachine vira "static" logo na linha de cima
         setRadioMachine("static")
         playStaticBurst()
-        const t1 = setTimeout(() => { if (!cancelled) setRadioMachine("parked") }, 900)
-        timeouts.push(t1)
+        if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
+        parkTimeoutRef.current = setTimeout(() => {
+          setRadioMachine("parked")
+          // vibra o celular pra avisar que a missão chegou
+          if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([160, 80, 160])
+        }, 900)
       }, RADIO_SNIPPET_MS)
       timeouts.push(to)
     }
@@ -723,7 +734,7 @@ export default function DrivePage() {
   // Celular fechado (docked): posicionado no topo do céu — área só decorativa
   // do canvas — pra nunca cobrir o painel (velocímetro/RPM/rádio) nem os
   // botões de direção, e ainda assim ficar bem mais visível que antes.
-  const DOCKED_W = 104
+  const DOCKED_W = 156 // 104 * 1.5 — 50% maior
   const DOCKED_H = Math.round(DOCKED_W * (844 / 390))
 
   return (
@@ -757,6 +768,9 @@ export default function DrivePage() {
         style={{
           position:"absolute", zIndex:60,
           transition:"all .45s cubic-bezier(.4,0,.2,1)",
+          // "vibra" visualmente o celular fechado quando uma missão chega —
+          // funciona em qualquer navegador, mesmo onde navigator.vibrate não existe
+          animation: (!phoneOpen && radioMachine === "parked") ? "phone-buzz 0.5s ease-in-out infinite" : "none",
           ...(phoneOpen
             ? {
                 top:"50%", left:"50%", transform:"translate(-50%,-50%)",
