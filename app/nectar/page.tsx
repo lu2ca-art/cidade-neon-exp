@@ -156,7 +156,7 @@ export default function NectarPage() {
             {/* Botao Home — simula botao fisico do iPhone */}
             <button
               type="button"
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/?screen=home")}
               aria-label="Inicio"
               className="mt-4 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto"
               style={{ background: "rgba(255,255,255,0.06)", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
@@ -192,7 +192,7 @@ export default function NectarPage() {
             <div className="flex items-center justify-between mb-5">
               <button
                 type="button"
-                onClick={() => router.push("/")}
+                onClick={() => router.push("/?screen=home")}
                 aria-label="Inicio"
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1.5px solid rgba(255,255,255,0.12)" }}

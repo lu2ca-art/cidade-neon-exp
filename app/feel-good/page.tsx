@@ -196,7 +196,7 @@ export default function FeelGoodPage() {
         {/* Home button */}
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/?screen=home")}
           aria-label="Inicio"
           className="absolute top-[42px] left-3 z-20 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
           style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.14)" }}

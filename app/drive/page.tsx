@@ -505,13 +505,19 @@ export default function DrivePage() {
           <button
             onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
             style={{
-              position:"absolute",bottom:-46,left:"50%",transform:"translateX(-50%)",
-              background:C.neonPink+"22",border:`1px solid ${C.neonPink}`,
-              borderRadius:10,padding:"7px 22px",
-              color:C.neonPink,fontSize:12,letterSpacing:2,cursor:"pointer",
-              whiteSpace:"nowrap",boxShadow:`0 0 14px ${C.neonPink}44`,
+              position:"absolute",bottom:-56,left:"50%",transform:"translateX(-50%)",
+              display:"flex",alignItems:"center",gap:9,
+              background:`linear-gradient(90deg, ${C.neonPink}, #ff6a3d)`,
+              border:`1.5px solid #ffb0cf`,
+              borderRadius:16,padding:"13px 40px",
+              color:"#12000a",fontSize:15,fontWeight:800,letterSpacing:3,
+              textTransform:"uppercase",whiteSpace:"nowrap",cursor:"pointer",
+              animation:"dirigir-pulse 1.6s ease-in-out infinite",
             }}
-          >DIRIGIR</button>
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#12000a" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/><path d="M12 3v6.6M4.2 16.5l5.7-3.3M19.8 16.5l-5.7-3.3"/></svg>
+            DIRIGIR
+          </button>
         )}
       </div>
 

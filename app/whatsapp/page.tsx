@@ -37,7 +37,7 @@ export default function WhatsAppHome() {
 
         {/* Header */}
         <div className="bg-[#1F2C34] px-4 py-3 flex items-center justify-between flex-shrink-0">
-          <button type="button" onClick={() => router.push("/")} className="text-[#00A884]">
+          <button type="button" onClick={() => router.push("/?screen=home")} className="text-[#00A884]">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
           </button>
           <h1 className="text-white text-xl font-bold flex-1 ml-4">WhatsApp</h1>

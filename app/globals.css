@@ -123,3 +123,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Pulso do botão DIRIGIR (tela /drive) */
+@keyframes dirigir-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255,45,120,0.55), 0 0 44px rgba(255,45,120,0.28);
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 34px rgba(255,45,120,0.95), 0 0 72px rgba(255,45,120,0.5);
+    transform: translateX(-50%) scale(1.05);
+  }
+}

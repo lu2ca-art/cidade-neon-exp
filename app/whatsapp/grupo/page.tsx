@@ -394,7 +394,7 @@ export default function WhatsAppGrupoPage() {
     else if (cc === 2) {
       // Set flag to open NECTAR directly on home page, then navigate
       setState({ shouldOpenNectarDirectly: true })
-      router.push("/")
+      router.push("/?screen=home")
     }
   }
 
@@ -429,7 +429,7 @@ export default function WhatsAppGrupoPage() {
             <h1 className="text-white font-medium text-sm">Cidade Neon</h1>
             <p className="text-[#8696A0] text-xs">{participantsText}</p>
           </div>
-          <button type="button" onClick={() => router.push("/")} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Voltar para inicio">
+          <button type="button" onClick={() => router.push("/?screen=home")} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Voltar para inicio">
             <svg className="w-5 h-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
           </button>
         </div>

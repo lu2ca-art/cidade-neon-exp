@@ -378,7 +378,6 @@ function CidadeNeonExperience() {
     { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
     { id: "feel-good-app", name: "FEEL.GOOD",     icon: "feelgood",      color: "#0F3460", locked: !appsUnlocked.feelGood },
     { id: "guitar-driver", name: "GUITAR DRIVER", icon: "guitardriver",  color: "#1a0a00", locked: !appsUnlocked.guitarDriver },
-    { id: "drive",         name: "DRIVE",         icon: "drive",         color: "#0d0418" },
   ]
 
   const formatTime = (seconds: number) => {
@@ -1584,7 +1583,6 @@ function CidadeNeonExperience() {
                         if (app.link) { window.open(app.link, "_blank"); return }
                         if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                        if (app.id === "drive") { window.location.href = "/drive"; return }
                         if (app.id === "radio") { window.location.href = "/radio"; return }
                         if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
                         if (app.id === "feel-good-app") { window.location.href = "/feel-good"; return }

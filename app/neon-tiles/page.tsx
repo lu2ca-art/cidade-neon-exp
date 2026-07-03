@@ -675,7 +675,7 @@ export default function NeonTilesPage() {
         </div>
         {/* Botao Home — simula botao fisico do iPhone */}
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/?screen=home")}
           aria-label="Inicio"
           className="mt-10 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90"
           style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
