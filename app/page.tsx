@@ -646,7 +646,7 @@ function CidadeNeonExperience() {
     } else {
       // Missao 3 completa: D-Bee envia Live Neon + conteudo final
       missions.push(
-        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee liberou uma frequencia", body: "Radio LIVE NEON liberada + versao digital no [untitled]", action: "/whatsapp/privado/dbee", isReward: true },
+        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee liberou tudo", body: "Radio LIVE NEON + CIDADE NEON 222.4 FM liberadas — agora voce pode acessar a Cidade Neon", action: "/whatsapp/privado/dbee", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },

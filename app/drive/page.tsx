@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useAudioPlayer, getAudioEl, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvider"
+import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
 import { sendStateToIframe } from "@/app/providers/AudioBridge"
@@ -23,41 +23,67 @@ const C = {
   neonPurple: "#cc00ff",
 }
 
-// Cada zona da estrada = uma "estação" de rádio. Cada estação é LIBERADA ao
-// completar a confirmacao correspondente (unlockAt = confirmationCount minimo).
-const RADIO_STATIONS: Record<string, { name: string; freq: string; color: string; unlockAt: number }> = {
-  "SUBÚRBIO XÊNON": { name: "SUBÚRBIO XENOM",    freq: "104.7", color: "#ff2d78", unlockAt: 1 },
-  "CIDADE NEON":    { name: "CIDADENEON.CRYPTO", freq: "88.5",  color: "#00e5ff", unlockAt: 2 },
-  "NOVA ONDA":      { name: "LIVE NEON",         freq: "96.3",  color: "#a855f7", unlockAt: 3 },
-}
 // Duração fixa de cada faixa na rádio (prévia)
 const RADIO_SNIPPET_MS = 22000
 
-// Faixas de cada estação (trechos de 22s em public/audio/tracks/)
-type RadioTrack = { title: string; src: string }
+// Faixa da rádio: title já vem no formato mascarado (com asteriscos), como o
+// resto do jogo, e cada uma carrega sua própria estação/cor (algumas zonas
+// tocam mais de uma frequência ao mesmo tempo, ex.: NOVA ONDA = LIVE NEON +
+// CIDADE NEON 222.4 FM, ambas liberadas junto no teste 3).
+type RadioTrack = { title: string; src: string; freq: string; color: string; label: string }
+
+const F = {
+  suburbio:  { label: "SUBÚRBIO XENOM",    freq: "104.7", color: "#ff2d78" },
+  crypto:    { label: "CIDADENEON.CRYPTO", freq: "88.5",  color: "#00e5ff" },
+  live:      { label: "LIVE NEON",         freq: "96.3",  color: "#a855f7" },
+  full:      { label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#ffd93d" },
+}
+
+// Cada zona da estrada = um "slot" do painel. unlockAt = confirmationCount minimo.
+const RADIO_STATIONS: Record<string, { unlockAt: number }> = {
+  "SUBÚRBIO XÊNON": { unlockAt: 0 },
+  "CIDADE NEON":    { unlockAt: 2 },
+  "NOVA ONDA":      { unlockAt: 3 },
+}
+
 const STATION_TRACKS: Record<string, RadioTrack[]> = {
   "SUBÚRBIO XÊNON": [
-    { title: "gata mia",     src: "/audio/tracks/gata-mia.mp3" },
-    { title: "tédio",        src: "/audio/tracks/tedio.mp3" },
-    { title: "boom boom k",  src: "/audio/tracks/boom-boom-k.mp3" },
-    { title: "10 de 10",     src: "/audio/tracks/10de10.mp3" },
+    { title: "g*** m**",   src: "/audio/tracks/gata-mia.mp3",     ...F.suburbio },
+    { title: "t***o",       src: "/audio/tracks/tedio.mp3",        ...F.suburbio },
+    { title: "b*** b*** k", src: "/audio/tracks/boom-boom-k.mp3",  ...F.suburbio },
+    { title: "10 D3 10",    src: "/audio/tracks/10de10.mp3",       ...F.suburbio },
   ],
+  // CIDADENEON.CRYPTO — os 5 instrumentais do jogo FEEL.GOOD
   "CIDADE NEON": [
-    { title: "astronauta",    src: "/audio/tracks/astronauta.mp3" },
-    { title: "cliché",        src: "/audio/tracks/cliche.mp3" },
-    { title: "dopamina",      src: "/audio/tracks/dopamina.mp3" },
-    { title: "hollywood",     src: "/audio/tracks/hollywood.mp3" },
-    { title: "nectar",        src: "/audio/tracks/nectar.mp3" },
-    { title: "oasis",         src: "/audio/tracks/oasis.mp3" },
-    { title: "ojalá",         src: "/audio/tracks/ojala.mp3" },
-    { title: "qm é vc?",      src: "/audio/tracks/qm-e-vc.mp3" },
-    { title: "rollercoaster", src: "/audio/tracks/rollercoaster.mp3" },
-    { title: "sabe ontem?",   src: "/audio/tracks/sabe-ontem.mp3" },
-    { title: "sextafeira",    src: "/audio/tracks/sextafeira.mp3" },
-    { title: "stylist",       src: "/audio/tracks/stylist.mp3" },
-    { title: "swav",          src: "/audio/tracks/swav.mp3" },
+    { title: "n****r",      src: "/audio/tracks/inst-nectar.mp3",      ...F.crypto },
+    { title: "d*****nA",    src: "/audio/tracks/inst-dopamina.mp3",    ...F.crypto },
+    { title: "o***á",       src: "/audio/tracks/inst-ojala.mp3",       ...F.crypto },
+    { title: "s*** o****?", src: "/audio/tracks/inst-sabe-ontem.mp3",  ...F.crypto },
+    { title: "C***A",       src: "/audio/tracks/inst-chuva.mp3",       ...F.crypto },
   ],
-  "NOVA ONDA": [], // LIVE NEON — faixas em breve
+  // NOVA ONDA — LIVE NEON (5 ao vivo) + CIDADE NEON 222.4 FM (15 prévias do álbum)
+  "NOVA ONDA": [
+    { title: "n****r",      src: "/audio/tracks/live-nectar.mp3",      ...F.live },
+    { title: "d*****nA",    src: "/audio/tracks/live-dopamina.mp3",    ...F.live },
+    { title: "o***á",       src: "/audio/tracks/live-ojala.mp3",       ...F.live },
+    { title: "s*** o****?", src: "/audio/tracks/live-sabe-ontem.mp3",  ...F.live },
+    { title: "C***A",       src: "/audio/tracks/live-chuva.mp3",       ...F.live },
+    { title: "s*****ira",       src: "/audio/tracks/sextafeira.mp3",     ...F.full },
+    { title: "n****r",          src: "/audio/tracks/nectar.mp3",         ...F.full },
+    { title: "c*** a*****no",   src: "/audio/tracks/222-copo-americano.mp3", ...F.full },
+    { title: "d*****nA",        src: "/audio/tracks/dopamina.mp3",       ...F.full },
+    { title: "o***á",           src: "/audio/tracks/ojala.mp3",          ...F.full },
+    { title: "s**v",            src: "/audio/tracks/swav.mp3",           ...F.full },
+    { title: "c****e",          src: "/audio/tracks/cliche.mp3",         ...F.full },
+    { title: "s*** o****?",     src: "/audio/tracks/sabe-ontem.mp3",     ...F.full },
+    { title: "h*****ood",       src: "/audio/tracks/hollywood.mp3",      ...F.full },
+    { title: "s*****t",         src: "/audio/tracks/stylist.mp3",        ...F.full },
+    { title: "o***s",           src: "/audio/tracks/oasis.mp3",          ...F.full },
+    { title: "a*******a",       src: "/audio/tracks/astronauta.mp3",     ...F.full },
+    { title: "C***A",           src: "/audio/tracks/222-chuva.mp3",      ...F.full },
+    { title: "q* é v*?",        src: "/audio/tracks/qm-e-vc.mp3",        ...F.full },
+    { title: "r*******ster",    src: "/audio/tracks/rollercoaster.mp3",  ...F.full },
+  ],
 }
 
 const ROAD_LEN  = 1600
@@ -613,7 +639,11 @@ export default function DrivePage() {
         const st = station
         const active = radioActive
         const emBreve = stationUnlocked && stationTracks.length === 0
-        const accent = active ? st.color : "#6b7280"
+        // quando bloqueada, mostra a primeira faixa da lista como preview do que existe ali
+        const previewTrack = radioTrack ?? stationTracks[0] ?? null
+        const label = previewTrack?.label ?? "SINAL DESCONHECIDO"
+        const freq  = previewTrack?.freq ?? "—.—"
+        const accent = active ? (previewTrack?.color ?? "#6b7280") : "#6b7280"
         const title = (radioTrack?.title ?? "—").toUpperCase()
         const marquee = `♪ ${title}   ///   VERSÃO DIGITAL NO [UNTITLED]     `
         return (
@@ -637,9 +667,9 @@ export default function DrivePage() {
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
             {/* estação + freq + status */}
             <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{st.name}</span>
+              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{label}</span>
               <span style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,opacity:0.85}}>{st.freq} FM</span>
+                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,opacity:0.85}}>{freq} FM</span>
                 {active ? (
                   <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
                     <span style={{width:6,height:6,borderRadius:6,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
