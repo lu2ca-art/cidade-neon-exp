@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import type { BridgeCommand, BridgeState, PhoneNotification } from "@/app/providers/AudioBridge"
+import type { BridgeCommand, BridgeState, PhoneNotification, CarRadioControl } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe } from "@/app/providers/AudioBridge"
 
 const C = {
@@ -318,7 +318,8 @@ export default function DrivePage() {
   const activeTier     = manualTier ?? currentTier
   const activeTracks   = TRACKS_BY_TIER[activeTier]
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
-  const radioActive    = radioMachine === "playing"
+  const [radioMuted, setRadioMuted] = useState(false)
+  const radioActive    = radioMachine === "playing" && !radioMuted
   const orderIdx       = ALL_TIERS.indexOf(currentTier)
   const nextTier: Tier | null = orderIdx < ALL_TIERS.length - 1 ? ALL_TIERS[orderIdx + 1] : null
   const nextTierReady  = nextTier ? testDone(nextTier) && !radioAccepted[nextTier as Exclude<Tier, "suburbio">] : false
@@ -342,7 +343,7 @@ export default function DrivePage() {
   // Escuta comandos do iframe e executa no AudioPlayer do pai
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const data = e.data as BridgeCommand | PhoneNotification
+      const data = e.data as BridgeCommand | PhoneNotification | CarRadioControl
       if (!data?.type) return
       switch (data.type) {
         case "PLAY":          audio.play(data.index); break
@@ -353,6 +354,8 @@ export default function DrivePage() {
         case "NEXT":          audio.next(); break
         case "PREV":          audio.prev(); break
         case "REQUEST_STATE": break
+        case "CAR_RADIO_MUTE":   setRadioMuted(true); break
+        case "CAR_RADIO_UNMUTE": setRadioMuted(false); break
         case "PHONE_NOTIFICATION": {
           const { id, app, icon, color, title, body } = data
           setPhoneNotif({ id, app, icon, color, title, body })

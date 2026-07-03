@@ -63,3 +63,15 @@ export function sendNotificationClickToIframe(iframe: HTMLIFrameElement | null, 
   const msg: NotificationClick = { type: "NOTIFICATION_CLICK", id }
   iframe.contentWindow.postMessage(msg, "*")
 }
+
+// Silencia o rádio do carro (painel de /drive) enquanto um teste com áudio
+// próprio está aberto dentro do celular (FEEL.GOOD, GUITAR DRIVER) — evita
+// as duas trilhas tocando ao mesmo tempo. Some no cancel, volta ao sair.
+export type CarRadioControl = { type: "CAR_RADIO_MUTE" } | { type: "CAR_RADIO_UNMUTE" }
+
+export function sendCarRadioMute(muted: boolean) {
+  if (typeof window === "undefined") return
+  if (window.self === window.top) return // não está dentro de um iframe (ex.: /feel-good aberto direto)
+  const msg: CarRadioControl = { type: muted ? "CAR_RADIO_MUTE" : "CAR_RADIO_UNMUTE" }
+  window.parent.postMessage(msg, "*")
+}

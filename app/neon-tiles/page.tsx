@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+import { sendCarRadioMute } from "@/app/providers/AudioBridge"
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 
@@ -201,6 +202,13 @@ export default function NeonTilesPage() {
   const bgPhaseRef        = useRef(0)
 
   useEffect(() => { tilesRef.current = tiles }, [tiles])
+
+  // silencia o rádio do carro (se o teste estiver aberto dentro de /drive)
+  // enquanto o GUITAR DRIVER toca suas próprias faixas — volta ao sair daqui
+  useEffect(() => {
+    sendCarRadioMute(true)
+    return () => sendCarRadioMute(false)
+  }, [])
 
   // ─── RENDER LOOP ─────────────────────────────────────────────────────────
 
