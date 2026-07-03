@@ -27,23 +27,27 @@ const C = {
 const RADIO_SNIPPET_MS = 22000
 
 // Faixa da rádio: title já vem no formato mascarado (com asteriscos), como o
-// resto do jogo, e cada uma carrega sua própria estação/cor (algumas zonas
-// tocam mais de uma frequência ao mesmo tempo, ex.: NOVA ONDA = LIVE NEON +
-// CIDADE NEON 222.4 FM, ambas liberadas junto no teste 3).
-type RadioTrack = { title: string; src: string; freq: string; color: string; label: string }
+// resto do jogo. Cada faixa carrega sua própria estação/cor e um "tier" — a
+// frequência é sempre anunciada/liberada ANTES da missão que a segue (vira o
+// gancho pra próxima etapa), exceto a CIDADE NEON 222.4 FM, que só entra no ar
+// no fim de toda a experiência (unlocked.finalCompleted), somando-se ao que já
+// toca na LIVE NEON.
+type Tier = "suburbio" | "crypto" | "live" | "full"
+type RadioTrack = { title: string; src: string; freq: string; color: string; label: string; tier: Tier }
 
 const F = {
-  suburbio:  { label: "SUBÚRBIO XENOM",    freq: "104.7", color: "#ff2d78" },
-  crypto:    { label: "CIDADENEON.CRYPTO", freq: "88.5",  color: "#00e5ff" },
-  live:      { label: "LIVE NEON",         freq: "96.3",  color: "#a855f7" },
-  full:      { label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#ffd93d" },
+  suburbio:  { label: "SUBÚRBIO XENOM",    freq: "104.7", color: "#ff2d78", tier: "suburbio" as Tier },
+  crypto:    { label: "CIDADENEON.CRYPTO", freq: "88.5",  color: "#00e5ff", tier: "crypto" as Tier },
+  live:      { label: "LIVE NEON",         freq: "96.3",  color: "#a855f7", tier: "live" as Tier },
+  full:      { label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#ffd93d", tier: "full" as Tier },
 }
 
-// Cada zona da estrada = um "slot" do painel. unlockAt = confirmationCount minimo.
+// Cada zona da estrada = um "slot" do painel. unlockAt = confirmationCount minimo
+// para a PRIMEIRA faixa daquele slot abrir (liberada logo apos a missao anterior).
 const RADIO_STATIONS: Record<string, { unlockAt: number }> = {
   "SUBÚRBIO XÊNON": { unlockAt: 0 },
-  "CIDADE NEON":    { unlockAt: 2 },
-  "NOVA ONDA":      { unlockAt: 3 },
+  "CIDADE NEON":    { unlockAt: 1 },
+  "NOVA ONDA":      { unlockAt: 2 },
 }
 
 const STATION_TRACKS: Record<string, RadioTrack[]> = {
@@ -156,11 +160,14 @@ export default function DrivePage() {
   const radioAudioRef = useRef<HTMLAudioElement | null>(null)
   // estação atual = zona; liberada quando a confirmacao correspondente foi feita
   const confirmCount    = funnel.state.confirmationCount
+  const finalCompleted  = funnel.state.unlocked.finalCompleted
   const station         = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["SUBÚRBIO XÊNON"]
   const stationUnlocked = confirmCount >= station.unlockAt
-  const stationTracks   = STATION_TRACKS[zoneName] ?? []
+  // a CIDADE NEON 222.4 FM (tier "full") só entra no ar no fim da experiencia;
+  // as demais faixas do slot (ex.: LIVE NEON) tocam normalmente antes disso
+  const stationTracks   = (STATION_TRACKS[zoneName] ?? []).filter(t => t.tier !== "full" || finalCompleted)
   const radioTrack      = stationTracks.length ? stationTracks[radioIdx % stationTracks.length] : null
-  // a rádio só "toca" quando a estação está liberada E tem faixas
+  // a rádio só "toca" quando a estação está liberada E tem faixas disponiveis agora
   const radioActive     = stationUnlocked && stationTracks.length > 0
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
