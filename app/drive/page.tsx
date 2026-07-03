@@ -162,6 +162,18 @@ const TRACKS_BY_TIER: Record<Tier, RadioTrack[]> = {
 }
 const ALL_TIERS: Tier[] = ["suburbio", "crypto", "live", "full"]
 
+// Deriva o tier "atual" a partir do que já foi ACEITO (persistido no funil) —
+// evita que reentrar em /drive (remount) reinicie a rádio em SUBÚRBIO XENOM
+// enquanto radioAccepted já marca tiers mais altos como aceitos, o que
+// travava a progressão pra sempre (nextTierReady exige !radioAccepted[tier],
+// então a frequência nunca avançava de novo depois de um reload)
+function highestAcceptedTier(accepted: { crypto: boolean; live: boolean; full: boolean }): Tier {
+  if (accepted.full) return "full"
+  if (accepted.live) return "live"
+  if (accepted.crypto) return "crypto"
+  return "suburbio"
+}
+
 const ROAD_LEN  = 1600
 const SEG_LEN   = 200
 const DRAW_DIST = 100
@@ -259,7 +271,7 @@ export default function DrivePage() {
   // próxima missão chegar no telefone) e passa pra PRÓXIMA frequência já
   // desbloqueada — nunca repete a mesma, a menos que seja a única disponível.
   const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON") // guardado p/ o cenário visual (Fase B)
-  const [currentTier, setCurrentTier] = useState<Tier>("suburbio")
+  const [currentTier, setCurrentTier] = useState<Tier>(() => highestAcceptedTier(funnel.state.radioAccepted))
   const [radioIdx, setRadioIdx]     = useState(0)
   const [snippetPct, setSnippetPct] = useState(0)
   // maquina da radio: toca a frequencia inteira 1x -> chia -> ESTACIONA (chega
