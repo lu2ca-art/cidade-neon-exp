@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import { sendNotificationToParent } from "@/app/providers/AudioBridge"
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
@@ -682,7 +683,10 @@ function CidadeNeonExperience() {
       const missions = getMissions()
       if (missions.length === 0) { setBannerNotif(null); return }
       const idx = bannerIndexRef.current % missions.length
-      setBannerNotif(missions[idx])
+      const next = missions[idx]
+      setBannerNotif(next)
+      // ecoa a notificação pro rádio do carro, se o celular estiver dentro do /drive
+      sendNotificationToParent({ id: next.id, app: next.app, icon: next.icon, color: next.color, title: next.title, body: next.body })
       bannerIndexRef.current++
       // Auto-dismiss after 5 seconds, bounce the Missoes button
       setTimeout(() => {

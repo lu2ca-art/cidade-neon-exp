@@ -34,3 +34,22 @@ export function sendStateToIframe(
   const msg: BridgeState = { type: "AUDIO_STATE", ...state }
   iframe.contentWindow.postMessage(msg, "*")
 }
+
+// ── Notificações do celular ecoadas na barra do rádio (quando o celular
+// roda dentro do iframe do /drive) ──
+export type PhoneNotification = {
+  type: "PHONE_NOTIFICATION"
+  id: string
+  app: string
+  icon: string
+  color: string
+  title: string
+  body: string
+}
+
+export function sendNotificationToParent(n: Omit<PhoneNotification, "type">) {
+  if (typeof window === "undefined") return
+  if (window.self === window.top) return // não está dentro de um iframe
+  const msg: PhoneNotification = { type: "PHONE_NOTIFICATION", ...n }
+  window.parent.postMessage(msg, "*")
+}

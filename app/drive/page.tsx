@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
+import type { BridgeCommand, BridgeState, PhoneNotification } from "@/app/providers/AudioBridge"
 import { sendStateToIframe } from "@/app/providers/AudioBridge"
 
 const C = {
@@ -133,6 +133,12 @@ function buildCars(): Car[] {
   return cars
 }
 
+// Altura do painel (velocímetro/RPM/rádio) como fração da tela — usada tanto
+// no loop imperativo do canvas quanto no JSX, pra nunca ficarem dessincronizados.
+// Aumentada bem além do que era (0.26) pra deixar o painel bem maior.
+const DASH_FRACTION = 0.42
+const BOTOES_H_PX = 90 // altura fixa dos botões de direção, no fundo
+
 export default function DrivePage() {
   const audio    = useAudioPlayer()
   const funnel   = useGameFunnel()
@@ -190,6 +196,9 @@ export default function DrivePage() {
   // dirigir com o radio em silencio ate rodar a cidade inteira de novo
   const [radioMachine, setRadioMachine] = useState<"playing" | "static" | "parked" | "silentLap">("playing")
   const [manualTier, setManualTier] = useState<Tier | null>(null)
+  // notificações do celular ecoadas numa barra no rádio (ver AudioBridge)
+  const [phoneNotif, setPhoneNotif] = useState<Omit<PhoneNotification, "type"> | null>(null)
+  const phoneNotifTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const radioAudioRef = useRef<HTMLAudioElement | null>(null)
   const staticCtxRef   = useRef<AudioContext | null>(null)
   // timer chiado->estacionado: fica FORA do array de timeouts do efeito de
@@ -242,21 +251,28 @@ export default function DrivePage() {
   // Escuta comandos do iframe e executa no AudioPlayer do pai
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const cmd = e.data as BridgeCommand
-      if (!cmd?.type) return
-      switch (cmd.type) {
-        case "PLAY":          audio.play(cmd.index); break
+      const data = e.data as BridgeCommand | PhoneNotification
+      if (!data?.type) return
+      switch (data.type) {
+        case "PLAY":          audio.play(data.index); break
         case "PAUSE":         audio.pause(); break
         case "RESUME":        audio.resume(); break
         case "TOGGLE":        audio.toggle(); break
-        case "SEEK":          audio.seekTo(cmd.seconds); break
+        case "SEEK":          audio.seekTo(data.seconds); break
         case "NEXT":          audio.next(); break
         case "PREV":          audio.prev(); break
         case "REQUEST_STATE": break
+        case "PHONE_NOTIFICATION": {
+          const { id, app, icon, color, title, body } = data
+          setPhoneNotif({ id, app, icon, color, title, body })
+          if (phoneNotifTimeoutRef.current) clearTimeout(phoneNotifTimeoutRef.current)
+          phoneNotifTimeoutRef.current = setTimeout(() => setPhoneNotif(null), 5000)
+          break
+        }
       }
     }
     window.addEventListener("message", handler)
-    return () => window.removeEventListener("message", handler)
+    return () => { window.removeEventListener("message", handler); if (phoneNotifTimeoutRef.current) clearTimeout(phoneNotifTimeoutRef.current) }
   }, [audio])
 
   // Envia estado atualizado ao iframe a cada tick de áudio
@@ -440,9 +456,9 @@ export default function DrivePage() {
 
     // Layout fixo em proporções:
     // BOTOES_H  = 90px fixo no fundo
-    // DASH_H    = 28% da altura total
+    // DASH_H    = DASH_FRACTION da altura total
     // JOGO_H    = resto (topo)
-    const BOTOES_H = 90
+    const BOTOES_H = BOTOES_H_PX
     const MAX_KMH  = 222
     const ACCEL_RATE  = 40
     const BRAKE_RATE  = 28
@@ -461,7 +477,7 @@ export default function DrivePage() {
 
       const W = canvas.width
       const H = canvas.height
-      const DASH_H  = Math.round(H * 0.26)
+      const DASH_H  = Math.round(H * DASH_FRACTION)
       const JOGO_H  = H - DASH_H - BOTOES_H
 
       // ── Física natural ──
@@ -728,8 +744,8 @@ export default function DrivePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
 
-  const DASH_PCT = 0.26
-  const BOTOES_H_PCT = 90 // px fixos
+  const DASH_PCT = DASH_FRACTION
+  const BOTOES_H_PCT = BOTOES_H_PX
 
   // Celular fechado (docked): posicionado no topo do céu — área só decorativa
   // do canvas — pra nunca cobrir o painel (velocímetro/RPM/rádio) nem os
@@ -845,66 +861,66 @@ export default function DrivePage() {
         return (
         <div style={{
           position:"absolute",
-          bottom: BOTOES_H_PCT + 6,
+          bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% * 0.24)`,
           left:"50%", transform:"translateX(-50%)",
-          width:"min(66%, 320px)",
+          width:"min(60%, 340px)",
           zIndex:46,
-          display:"flex", alignItems:"center", gap:8,
+          display:"flex", alignItems:"center", gap:10,
         }}>
           <div style={{
-            position:"relative", flex:1, borderRadius:12, padding:"8px 12px 9px",
+            position:"relative", flex:1, borderRadius:16, padding:"12px 16px 13px",
             background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
             border:`1px solid ${accent}55`,
-            boxShadow:`0 0 18px ${accent}33, inset 0 0 14px ${accent}18`,
+            boxShadow:`0 0 22px ${accent}33, inset 0 0 16px ${accent}18`,
             overflow:"hidden", pointerEvents:"none",
           }}>
             {/* scanlines */}
             <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
             {/* estação + freq + status */}
-            <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{meta.label}</span>
-              <span style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,opacity:0.85}}>{meta.freq} FM</span>
+            <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <span style={{fontFamily:"monospace",fontSize:12,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{meta.label}</span>
+              <span style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontFamily:"monospace",fontSize:12,letterSpacing:1,color:accent,opacity:0.85}}>{meta.freq} FM</span>
                 {active ? (
-                  <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
-                    <span style={{width:6,height:6,borderRadius:6,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4,fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>
+                    <span style={{width:7,height:7,borderRadius:7,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
                     NO AR
                   </span>
                 ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>INTERFERÊNCIA</span>
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>INTERFERÊNCIA</span>
                 ) : (
-                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>SILÊNCIO</span>
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>SILÊNCIO</span>
                 )}
               </span>
             </div>
             {active ? (
               <>
                 {/* now playing (marquee) — só o nome da música */}
-                <div style={{position:"relative",height:18,overflow:"hidden"}}>
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,
+                <div style={{position:"relative",height:24,overflow:"hidden"}}>
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:17,fontWeight:700,letterSpacing:1,
                     color:"#eafff8",textShadow:`0 0 8px ${accent}aa`,animation:"dash-marquee 11s linear infinite"}}>
                     ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                 </div>
                 {/* barra dos 22s */}
-                <div style={{position:"relative",marginTop:6,height:3,borderRadius:3,background:"rgba(255,255,255,0.1)"}}>
-                  <div style={{height:"100%",borderRadius:3,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
+                <div style={{position:"relative",marginTop:8,height:4,borderRadius:4,background:"rgba(255,255,255,0.1)"}}>
+                  <div style={{height:"100%",borderRadius:4,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
                 </div>
               </>
             ) : isStatic ? (
-              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓ ░▒▓</span>
+              <div style={{position:"relative",height:38,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓ ░▒▓</span>
               </div>
             ) : (
-              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINAL EM SILÊNCIO ◌</span>
+              <div style={{position:"relative",height:38,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINAL EM SILÊNCIO ◌</span>
               </div>
             )}
           </div>
 
           {/* ANEL DE VOLUME — arraste ao redor pra ajustar */}
-          <div style={{ position:"relative", flexShrink:0, width:40, height:40 }}>
+          <div style={{ position:"relative", flexShrink:0, width:56, height:56 }}>
             <div
               ref={volumeRingRef}
               onPointerDown={(e) => {
@@ -919,15 +935,15 @@ export default function DrivePage() {
                 position:"absolute", inset:0, borderRadius:"50%",
                 cursor:"grab", touchAction:"none",
                 background:`conic-gradient(from -120deg, ${accent} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
-                WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px))",
-                mask:"radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px))",
-                boxShadow:`0 0 10px ${accent}44`,
+                WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 9px))",
+                mask:"radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 9px))",
+                boxShadow:`0 0 12px ${accent}44`,
               }}
             />
             <div style={{
               position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
               pointerEvents:"none",
-              fontFamily:"monospace", fontSize:7, color:"rgba(255,255,255,0.55)", letterSpacing:0.5,
+              fontFamily:"monospace", fontSize:9, color:"rgba(255,255,255,0.55)", letterSpacing:0.5,
             }}>
               VOL
             </div>
@@ -935,6 +951,35 @@ export default function DrivePage() {
         </div>
         )
       })()}
+
+      {/* BARRA DE NOTIFICAÇÃO DO CELULAR — ecoa no rádio as notificações que
+          chegam no telefone (missões, recompensas), pra não precisar abrir o celular */}
+      {!phoneOpen && phoneNotif && (
+        <div style={{
+          position:"absolute",
+          bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% * 0.24 + 92px)`,
+          left:"50%", transform:"translateX(-50%)",
+          width:"min(74%, 380px)",
+          zIndex:47,
+          animation:"phone-notif-in 0.35s ease-out",
+        }}>
+          <div style={{
+            display:"flex", alignItems:"center", gap:10, borderRadius:14, padding:"10px 14px",
+            background:"linear-gradient(135deg, rgba(20,10,35,0.95), rgba(6,3,14,0.97))",
+            border:`1px solid ${phoneNotif.color}66`,
+            boxShadow:`0 0 20px ${phoneNotif.color}44, 0 8px 24px rgba(0,0,0,0.5)`,
+          }}>
+            <div style={{width:34,height:34,borderRadius:10,flexShrink:0,background:phoneNotif.color,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+            </div>
+            <div style={{flex:1, minWidth:0}}>
+              <p style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:phoneNotif.color,marginBottom:1}}>{phoneNotif.app.toUpperCase()}</p>
+              <p style={{fontFamily:"monospace",fontSize:12,fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{phoneNotif.title}</p>
+              <p style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.5)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{phoneNotif.body}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SINTONIA LIVRE — só depois que a experiência inteira acaba, a pessoa
           escolhe qual das 4 frequências quer ouvir, sem depender de missão */}
@@ -1191,14 +1236,14 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // gauges menores — lado esquerdo e direito, mais baixas
-  const R = Math.min(DH*0.24, W*0.085)
+  // gauges — painel bem maior agora (DASH_FRACTION), gauges crescem junto
+  const R = Math.min(DH*0.28, W*0.13)
   const cy = y0 + DH*0.62
 
   // velocímetro esq (max 222)
-  gauge(ctx,W*0.14,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
+  gauge(ctx,W*0.13,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
   // rpm dir
-  gauge(ctx,W*0.86,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
+  gauge(ctx,W*0.87,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
 
   // (o RÁDIO agora é um visor HTML sobreposto ao centro do painel — ver JSX.
   //  o canvas desenha só os mostradores e a zona.)

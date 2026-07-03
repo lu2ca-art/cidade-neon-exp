@@ -159,3 +159,8 @@
   80%      { transform: translate(2px, 0) rotate(1deg); }
   90%      { transform: translate(-1px, -1px) rotate(-0.5deg); }
 }
+/* Entrada da notificação do celular ecoada no rádio (tela /drive) */
+@keyframes phone-notif-in {
+  0%   { opacity: 0; transform: translate(-50%, -8px); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
+}
