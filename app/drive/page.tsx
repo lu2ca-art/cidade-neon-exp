@@ -200,6 +200,7 @@ export default function DrivePage() {
   const [phoneNotif, setPhoneNotif] = useState<Omit<PhoneNotification, "type"> | null>(null)
   const phoneNotifTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const radioAudioRef = useRef<HTMLAudioElement | null>(null)
+  const radioRetryPendingRef = useRef(false)
   const staticCtxRef   = useRef<AudioContext | null>(null)
   // timer chiado->estacionado: fica FORA do array de timeouts do efeito de
   // ciclo de propósito — esse efeito reinicia quando radioMachine muda pra
@@ -412,7 +413,19 @@ export default function DrivePage() {
     if (!radioActive || !radioTrack) { el.pause(); return }
     if (!el.src.endsWith(radioTrack.src)) { el.src = radioTrack.src; el.currentTime = 0 }
     el.volume = volume
-    el.play().catch(() => {})
+    el.play().catch(() => {
+      // autoplay bloqueado pelo navegador (ainda sem nenhum gesto do usuário
+      // nesta página, ex.: a 1ª faixa ao entrar em /drive) — tenta de novo
+      // assim que a pessoa interagir pela primeira vez (toque/clique/tecla)
+      if (radioRetryPendingRef.current) return
+      radioRetryPendingRef.current = true
+      const retry = () => {
+        radioRetryPendingRef.current = false
+        radioAudioRef.current?.play().catch(() => {})
+      }
+      window.addEventListener("pointerdown", retry, { once: true })
+      window.addEventListener("keydown", retry, { once: true })
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radioIdx, radioActive, radioTrack, volume])
 
