@@ -42,14 +42,6 @@ const F = {
   full:      { label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#ffd93d", tier: "full" as Tier },
 }
 
-// Cada zona da estrada = um "slot" do painel. unlockAt = confirmationCount minimo
-// para a PRIMEIRA faixa daquele slot abrir (liberada logo apos a missao anterior).
-const RADIO_STATIONS: Record<string, { unlockAt: number }> = {
-  "SUBÚRBIO XÊNON": { unlockAt: 0 },
-  "CIDADE NEON":    { unlockAt: 1 },
-  "NOVA ONDA":      { unlockAt: 2 },
-}
-
 const STATION_TRACKS: Record<string, RadioTrack[]> = {
   "SUBÚRBIO XÊNON": [
     { title: "g*** m**",   src: "/audio/tracks/gata-mia.mp3",     ...F.suburbio },
@@ -162,32 +154,31 @@ export default function DrivePage() {
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
   const [volume, setVolume]         = useState(0.8)
-  // ── RÁDIO do painel: toca todas as prévias 1x, chia, espera 5s, recomeça ──
-  const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON")
+  // ── RÁDIO do painel: gira entre as frequências desbloqueadas, nessa ordem
+  // fixa — SUBÚRBIO XENOM, CIDADENEON.CRYPTO, LIVE NEON, CIDADE NEON 222.4 FM.
+  // Toca todas as prévias da frequência atual 1x, chia, silencia 5s (tempo da
+  // próxima missão chegar no telefone) e passa pra PRÓXIMA frequência já
+  // desbloqueada — nunca repete a mesma, a menos que seja a única disponível.
+  const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON") // guardado p/ o cenário visual (Fase B)
+  const [currentTier, setCurrentTier] = useState<Tier>("suburbio")
   const [radioIdx, setRadioIdx]     = useState(0)
   const [snippetPct, setSnippetPct] = useState(0)
   const [radioPhase, setRadioPhase] = useState<"playing" | "static" | "waiting">("playing")
   const [manualTier, setManualTier] = useState<Tier | null>(null)
   const radioAudioRef = useRef<HTMLAudioElement | null>(null)
   const staticCtxRef   = useRef<AudioContext | null>(null)
-  // estação atual = zona; liberada quando a confirmacao correspondente foi feita
   const confirmCount    = funnel.state.confirmationCount
   const finalCompleted  = funnel.state.unlocked.finalCompleted
-  // depois que a experiencia acaba, a pessoa escolhe livremente qual frequencia ouvir
-  const freeChoice       = finalCompleted && manualTier !== null
-  const station          = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["SUBÚRBIO XÊNON"]
-  const stationUnlocked  = freeChoice || confirmCount >= station.unlockAt
-  // a CIDADE NEON 222.4 FM (tier "full") só entra no ar no fim da experiencia;
-  // as demais faixas do slot (ex.: LIVE NEON) tocam normalmente antes disso
-  const stationTracks   = freeChoice
-    ? TRACKS_BY_TIER[manualTier as Tier]
-    : (STATION_TRACKS[zoneName] ?? []).filter(t => t.tier !== "full" || finalCompleted)
-  const poolKey         = freeChoice ? `tier:${manualTier}` : `zone:${zoneName}`
-  const radioTrack      = stationTracks.length ? stationTracks[radioIdx % stationTracks.length] : null
-  // ha conteudo pra essa frequencia (liberada + com faixas), independente da fase atual
-  const hasContent      = stationUnlocked && stationTracks.length > 0
-  // a rádio só "toca" agora quando ha conteudo E o ciclo está na fase de reproducao
-  const radioActive     = hasContent && radioPhase === "playing"
+  // refs sempre com o valor mais recente, lidos dentro do ciclo assincrono
+  // sem precisar reiniciar o efeito a cada missao concluida
+  const confirmCountRef   = useRef(confirmCount)
+  const finalCompletedRef = useRef(finalCompleted)
+  useEffect(() => { confirmCountRef.current = confirmCount }, [confirmCount])
+  useEffect(() => { finalCompletedRef.current = finalCompleted }, [finalCompleted])
+
+  const activeTracks   = TRACKS_BY_TIER[currentTier]
+  const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
+  const radioActive    = radioPhase === "playing"
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
@@ -250,21 +241,44 @@ export default function DrivePage() {
     } catch { /* Web Audio indisponivel — silencioso */ }
   }, [])
 
-  // ── CICLO DA RÁDIO: toca todas as prévias da frequência 1x (a "distância
-  // percorrida" = a soma dessas prévias), depois chia, para, espera 5s
-  // (tempo de uma nova missão chegar no telefone) e recomeça do início ──
-  useEffect(() => {
-    if (!hasContent) { setRadioPhase("playing"); setRadioIdx(0); setSnippetPct(0); return }
+  const isTierUnlocked = useCallback((tier: Tier) => {
+    switch (tier) {
+      case "suburbio": return true
+      case "crypto":   return confirmCountRef.current >= 1
+      case "live":     return confirmCountRef.current >= 2
+      case "full":     return finalCompletedRef.current
+    }
+  }, [])
 
+  // próxima frequência desbloqueada na ordem fixa (suburbio -> crypto -> live ->
+  // full), pulando as que ainda não abriram; se nenhuma outra estiver disponível
+  // repete a mesma (ex.: só suburbio liberada ainda)
+  const nextUnlockedTier = useCallback((from: Tier): Tier => {
+    const i = ALL_TIERS.indexOf(from)
+    for (let step = 1; step <= ALL_TIERS.length; step++) {
+      const candidate = ALL_TIERS[(i + step) % ALL_TIERS.length]
+      if (isTierUnlocked(candidate)) return candidate
+    }
+    return from
+  }, [isTierUnlocked])
+
+  // ── CICLO DA RÁDIO: toca todas as prévias da frequência atual 1x (a
+  // "distância percorrida" = a soma dessas prévias), depois chia, silencia 5s
+  // (tempo de uma nova missão chegar no telefone) e passa pra PRÓXIMA
+  // frequência já desbloqueada, na ordem suburbio -> crypto -> live -> full.
+  // Sintonia manual (pós fim de jogo) trava numa frequência só, sem avançar. ──
+  useEffect(() => {
     let cancelled = false
     const intervals: ReturnType<typeof setInterval>[] = []
     const timeouts: ReturnType<typeof setTimeout>[] = []
 
-    const playPass = (fromIdx: number) => {
+    const playPass = (tier: Tier) => {
       if (cancelled) return
+      setCurrentTier(tier)
       setRadioPhase("playing")
-      let idx = fromIdx
-      setRadioIdx(idx)
+      const tracks = TRACKS_BY_TIER[tier]
+      let idx = 0
+      setRadioIdx(0)
 
       const stepThrough = () => {
         if (cancelled) return
@@ -278,18 +292,21 @@ export default function DrivePage() {
         const to = setTimeout(() => {
           clearInterval(prog)
           if (cancelled) return
-          if (idx < stationTracks.length - 1) {
+          if (idx < tracks.length - 1) {
             idx += 1
             setRadioIdx(idx)
             stepThrough()
           } else {
-            // pass completa: chia, silencia, aguarda a nova missao, recomeça
+            // pass completa: chia, silencia, aguarda a nova missao, avança de frequência
             setRadioPhase("static")
             playStaticBurst()
             const t1 = setTimeout(() => {
               if (cancelled) return
               setRadioPhase("waiting")
-              const t2 = setTimeout(() => { if (!cancelled) playPass(0) }, 5000)
+              const t2 = setTimeout(() => {
+                if (cancelled) return
+                playPass(manualTier ?? nextUnlockedTier(tier))
+              }, 5000)
               timeouts.push(t2)
             }, 900)
             timeouts.push(t1)
@@ -300,7 +317,7 @@ export default function DrivePage() {
       stepThrough()
     }
 
-    playPass(0)
+    playPass(manualTier ?? "suburbio")
 
     return () => {
       cancelled = true
@@ -308,7 +325,7 @@ export default function DrivePage() {
       timeouts.forEach(clearTimeout)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasContent, stationTracks.length, poolKey, playStaticBurst])
+  }, [manualTier, playStaticBurst, nextUnlockedTier])
 
   // toca o trecho atual (elemento próprio da rádio) ou silencia fora da fase "playing"
   useEffect(() => {
@@ -729,18 +746,14 @@ export default function DrivePage() {
         )}
       </div>
 
-      {/* RÁDIO DO PAINEL — mostrador vintage-futurista, frequências por missão */}
+      {/* RÁDIO DO PAINEL — mostrador vintage-futurista; gira entre as
+          frequências desbloqueadas, então está sempre em uma delas */}
       {!phoneOpen&&(()=>{
-        const st = station
         const active = radioActive
-        const emBreve = stationUnlocked && stationTracks.length === 0
-        const isStatic  = hasContent && radioPhase === "static"
-        const isWaiting = hasContent && radioPhase === "waiting"
-        // quando bloqueada, mostra a primeira faixa da lista como preview do que existe ali
-        const previewTrack = radioTrack ?? stationTracks[0] ?? null
-        const label = previewTrack?.label ?? "SINAL DESCONHECIDO"
-        const freq  = previewTrack?.freq ?? "—.—"
-        const accent = (active || isStatic || isWaiting) ? (previewTrack?.color ?? "#6b7280") : "#6b7280"
+        const isStatic  = radioPhase === "static"
+        const isWaiting = radioPhase === "waiting"
+        const meta = F[currentTier]
+        const accent = meta.color
         const title = (radioTrack?.title ?? "—").toUpperCase()
         const marquee = `♪ ${title}   ///   VERSÃO DIGITAL NO [UNTITLED]     `
         return (
@@ -764,9 +777,9 @@ export default function DrivePage() {
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
             {/* estação + freq + status */}
             <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{label}</span>
+              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{meta.label}</span>
               <span style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,opacity:0.85}}>{freq} FM</span>
+                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,opacity:0.85}}>{meta.freq} FM</span>
                 {active ? (
                   <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
                     <span style={{width:6,height:6,borderRadius:6,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
@@ -774,15 +787,8 @@ export default function DrivePage() {
                   </span>
                 ) : isStatic ? (
                   <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>INTERFERÊNCIA</span>
-                ) : isWaiting ? (
-                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>AGUARDANDO</span>
-                ) : emBreve ? (
-                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>EM BREVE</span>
                 ) : (
-                  <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth={2}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
-                    BLOQUEADA
-                  </span>
+                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>AGUARDANDO</span>
                 )}
               </span>
             </div>
@@ -804,32 +810,18 @@ export default function DrivePage() {
               <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
                 <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓ ░▒▓</span>
               </div>
-            ) : isWaiting ? (
+            ) : (
               <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
                 <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINAL EM SILÊNCIO ◌</span>
                 <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",marginTop:2}}>
                   RETOMANDO TRANSMISSÃO...
                 </span>
               </div>
-            ) : emBreve ? (
-              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINTONIA ABERTA ◌</span>
-                <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",marginTop:2}}>
-                  FAIXAS DESTA FREQUÊNCIA EM BREVE
-                </span>
-              </div>
-            ) : (
-              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>▓▒░ SINAL BLOQUEADO ░▒▓</span>
-                <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",marginTop:2}}>
-                  COMPLETE O TESTE {st.unlockAt} PARA LIBERAR ESTA FREQUÊNCIA
-                </span>
-              </div>
             )}
             {/* rodapé */}
             <div style={{position:"relative",marginTop:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>
-                {active ? "TRECHO · 0:22" : isStatic ? "..." : isWaiting ? "5s" : emBreve ? "SEM FAIXAS" : `FREQUÊNCIA ${st.unlockAt}/3`}
+                {active ? "TRECHO · 0:22" : isStatic ? "..." : "5s"}
               </span>
               <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>[UNTITLED] · ÁLBUM DIGITAL</span>
             </div>
@@ -870,6 +862,20 @@ export default function DrivePage() {
               </button>
             )
           })}
+          <button
+            type="button"
+            onClick={() => setManualTier(null)}
+            style={{
+              flex:"0 0 auto", padding:"5px 8px", borderRadius:8,
+              background: manualTier === null ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
+              border:`1px solid ${manualTier === null ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.12)"}`,
+              color: manualTier === null ? "#fff" : "rgba(255,255,255,0.5)",
+              fontFamily:"monospace", fontSize:6.5, letterSpacing:0.5,
+              lineHeight:1.3, cursor:"pointer",
+            }}
+          >
+            AUTO
+          </button>
         </div>
       )}
 
