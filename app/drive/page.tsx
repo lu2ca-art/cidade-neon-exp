@@ -33,6 +33,33 @@ const RADIO_STATIONS: Record<string, { name: string; freq: string; color: string
 // Duração fixa de cada faixa na rádio (prévia)
 const RADIO_SNIPPET_MS = 22000
 
+// Faixas de cada estação (trechos de 22s em public/audio/tracks/)
+type RadioTrack = { title: string; src: string }
+const STATION_TRACKS: Record<string, RadioTrack[]> = {
+  "SUBÚRBIO XÊNON": [
+    { title: "gata mia",     src: "/audio/tracks/gata-mia.mp3" },
+    { title: "tédio",        src: "/audio/tracks/tedio.mp3" },
+    { title: "boom boom k",  src: "/audio/tracks/boom-boom-k.mp3" },
+    { title: "10 de 10",     src: "/audio/tracks/10de10.mp3" },
+  ],
+  "CIDADE NEON": [
+    { title: "astronauta",    src: "/audio/tracks/astronauta.mp3" },
+    { title: "cliché",        src: "/audio/tracks/cliche.mp3" },
+    { title: "dopamina",      src: "/audio/tracks/dopamina.mp3" },
+    { title: "hollywood",     src: "/audio/tracks/hollywood.mp3" },
+    { title: "nectar",        src: "/audio/tracks/nectar.mp3" },
+    { title: "oasis",         src: "/audio/tracks/oasis.mp3" },
+    { title: "ojalá",         src: "/audio/tracks/ojala.mp3" },
+    { title: "qm é vc?",      src: "/audio/tracks/qm-e-vc.mp3" },
+    { title: "rollercoaster", src: "/audio/tracks/rollercoaster.mp3" },
+    { title: "sabe ontem?",   src: "/audio/tracks/sabe-ontem.mp3" },
+    { title: "sextafeira",    src: "/audio/tracks/sextafeira.mp3" },
+    { title: "stylist",       src: "/audio/tracks/stylist.mp3" },
+    { title: "swav",          src: "/audio/tracks/swav.mp3" },
+  ],
+  "NOVA ONDA": [], // LIVE NEON — faixas em breve
+}
+
 const ROAD_LEN  = 1600
 const SEG_LEN   = 200
 const DRAW_DIST = 100
@@ -100,10 +127,15 @@ export default function DrivePage() {
   const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON")
   const [radioIdx, setRadioIdx]     = useState(0)
   const [snippetPct, setSnippetPct] = useState(0)
+  const radioAudioRef = useRef<HTMLAudioElement | null>(null)
   // estação atual = zona; liberada quando a confirmacao correspondente foi feita
   const confirmCount    = funnel.state.confirmationCount
   const station         = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["SUBÚRBIO XÊNON"]
   const stationUnlocked = confirmCount >= station.unlockAt
+  const stationTracks   = STATION_TRACKS[zoneName] ?? []
+  const radioTrack      = stationTracks.length ? stationTracks[radioIdx % stationTracks.length] : null
+  // a rádio só "toca" quando a estação está liberada E tem faixas
+  const radioActive     = stationUnlocked && stationTracks.length > 0
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
@@ -143,27 +175,40 @@ export default function DrivePage() {
     })
   }, [audio.trackIdx, audio.playing, audio.elapsed])
 
-  // ── RÁDIO: avança 22s por faixa (só quando a estação atual está liberada) ──
+  // ao trocar de estação (zona), começa da 1ª faixa da nova estação
+  useEffect(() => { setRadioIdx(0) }, [zoneName])
+
+  // ── RÁDIO: avança 22s por faixa dentro da estação liberada (loop infinito) ──
   useEffect(() => {
-    if (!stationUnlocked) { setSnippetPct(0); return }
+    if (!radioActive) { setSnippetPct(0); return }
     setSnippetPct(0)
     const t0 = performance.now()
     const prog = setInterval(() => {
       setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
     }, 120)
     const advance = setTimeout(() => {
-      setRadioIdx((i) => (i + 1) % ALBUM_TRACKS.length)
+      setRadioIdx((i) => (i + 1) % Math.max(stationTracks.length, 1))
     }, RADIO_SNIPPET_MS)
     return () => { clearInterval(prog); clearTimeout(advance) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioIdx, stationUnlocked])
+  }, [radioIdx, radioActive, zoneName])
 
-  // toca a faixa atual quando a estação está liberada; silencia (estático) quando não
+  // toca o trecho atual (elemento próprio da rádio) ou silencia quando bloqueada
   useEffect(() => {
-    if (stationUnlocked) audio.play(radioIdx)
-    else audio.pause()
+    const el = radioAudioRef.current ?? (radioAudioRef.current = new Audio())
+    if (!radioActive || !radioTrack) { el.pause(); return }
+    if (!el.src.endsWith(radioTrack.src)) { el.src = radioTrack.src; el.currentTime = 0 }
+    el.volume = volume
+    el.play().catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioIdx, stationUnlocked])
+  }, [radioIdx, radioActive, zoneName])
+
+  // pausa o player global (evita áudio dobrado) ao entrar; pausa a rádio ao sair
+  useEffect(() => {
+    audio.pause()
+    return () => { radioAudioRef.current?.pause() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // teclado
   useEffect(() => {
@@ -566,9 +611,10 @@ export default function DrivePage() {
       {/* RÁDIO DO PAINEL — mostrador vintage-futurista, frequências por missão */}
       {!phoneOpen&&(()=>{
         const st = station
-        const unlocked = stationUnlocked
-        const accent = unlocked ? st.color : "#6b7280"
-        const title = (ALBUM_TRACKS[radioIdx]?.title ?? "—").toUpperCase()
+        const active = radioActive
+        const emBreve = stationUnlocked && stationTracks.length === 0
+        const accent = active ? st.color : "#6b7280"
+        const title = (radioTrack?.title ?? "—").toUpperCase()
         const marquee = `♪ ${title}   ///   VERSÃO DIGITAL NO [UNTITLED]     `
         return (
         <div style={{
@@ -594,11 +640,13 @@ export default function DrivePage() {
               <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{st.name}</span>
               <span style={{display:"flex",alignItems:"center",gap:6}}>
                 <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,opacity:0.85}}>{st.freq} FM</span>
-                {unlocked ? (
+                {active ? (
                   <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
                     <span style={{width:6,height:6,borderRadius:6,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
                     NO AR
                   </span>
+                ) : emBreve ? (
+                  <span style={{fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>EM BREVE</span>
                 ) : (
                   <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth={2}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
@@ -607,7 +655,7 @@ export default function DrivePage() {
                 )}
               </span>
             </div>
-            {unlocked ? (
+            {active ? (
               <>
                 {/* now playing (marquee) */}
                 <div style={{position:"relative",height:18,overflow:"hidden"}}>
@@ -621,6 +669,13 @@ export default function DrivePage() {
                   <div style={{height:"100%",borderRadius:3,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
                 </div>
               </>
+            ) : emBreve ? (
+              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINTONIA ABERTA ◌</span>
+                <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",marginTop:2}}>
+                  FAIXAS DESTA FREQUÊNCIA EM BREVE
+                </span>
+              </div>
             ) : (
               <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
                 <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>▓▒░ SINAL BLOQUEADO ░▒▓</span>
@@ -632,7 +687,7 @@ export default function DrivePage() {
             {/* rodapé */}
             <div style={{position:"relative",marginTop:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>
-                {unlocked ? "TRECHO · 0:22" : `FREQUÊNCIA ${st.unlockAt}/3`}
+                {active ? "TRECHO · 0:22" : emBreve ? "SEM FAIXAS" : `FREQUÊNCIA ${st.unlockAt}/3`}
               </span>
               <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>[UNTITLED] · ÁLBUM DIGITAL</span>
             </div>
@@ -798,68 +853,8 @@ function drawDashboard(
   // rpm dir
   gauge(ctx,W*0.86,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
 
-  // ── RÁDIO em destaque — ocupa centro com glow neon intenso ──
-  const rW=W*0.52, rH=DH*0.46
-  const rX=W/2-rW/2, rY=y0+DH*0.04
-
-  // halo exterior
-  ctx.shadowColor=playing?C.neonOrange:"#1a0040"; ctx.shadowBlur=playing?22:4
-  ctx.fillStyle=playing?"#0a0020":"#06001a"
-  ctx.strokeStyle=playing?C.neonOrange:"#2a1050"
-  ctx.lineWidth=playing?1.5:1
-  rRect(ctx,rX,rY,rW,rH,9); ctx.fill(); ctx.stroke()
-  ctx.shadowBlur=0
-
-  // linha superior neon decorativa
-  if(playing){
-    ctx.strokeStyle=C.neonOrange+"88"; ctx.lineWidth=1
-    ctx.shadowColor=C.neonOrange; ctx.shadowBlur=6
-    ctx.beginPath(); ctx.moveTo(rX+10,rY+1); ctx.lineTo(rX+rW-10,rY+1); ctx.stroke()
-    ctx.shadowBlur=0
-  }
-
-  // label RADIO
-  ctx.fillStyle=playing?C.neonOrange+"bb":"#333"
-  ctx.font=`${rH*0.13}px monospace`
-  ctx.textAlign="left"
-  ctx.fillText("RÁDIO",rX+rW*0.05,rY+rH*0.20)
-
-  // nome da faixa — grande e neon
-  const maxChars = Math.floor(rW*0.72/(rH*0.19))
-  const displayName = (trackName||"—").toUpperCase().slice(0,maxChars)
-  ctx.shadowColor=playing?C.neonOrange:"transparent"; ctx.shadowBlur=playing?6:0
-  ctx.fillStyle=playing?"#fff":"#444"
-  ctx.font=`bold ${rH*0.24}px monospace`
-  ctx.textAlign="left"
-  ctx.fillText(displayName,rX+rW*0.05,rY+rH*0.50)
-  ctx.shadowBlur=0
-
-  // artista
-  ctx.fillStyle=(playing?C.neonOrange:"#333")+"bb"
-  ctx.font=`${rH*0.15}px monospace`
-  ctx.fillText("LU2CA · UNTITLED",rX+rW*0.05,rY+rH*0.68)
-
-  // barra de progresso neon
-  ctx.fillStyle="#ffffff0a"; rRect(ctx,rX+rW*0.05,rY+rH*0.80,rW*0.90,3,2); ctx.fill()
-  if(playing){
-    ctx.shadowColor=C.neonOrange; ctx.shadowBlur=5
-    ctx.fillStyle=C.neonOrange
-    rRect(ctx,rX+rW*0.05,rY+rH*0.80,rW*0.90*0.40,3,2); ctx.fill()
-    ctx.shadowBlur=0
-  }
-
-  // equalizador animado (barras neon)
-  if(playing){
-    const barCount=8, barW=rW*0.035, barGap=rW*0.014
-    const barAreaX=rX+rW*0.60, barAreaY=rY+rH*0.22
-    for(let b=0;b<barCount;b++){
-      const bh = rH*(0.08+0.18*Math.abs(Math.sin(Date.now()*0.004+b*0.8)))
-      ctx.shadowColor=C.neonOrange; ctx.shadowBlur=4
-      ctx.fillStyle=C.neonOrange+"cc"
-      ctx.fillRect(barAreaX+b*(barW+barGap),barAreaY+rH*0.18-bh,barW,bh)
-    }
-    ctx.shadowBlur=0
-  }
+  // (o RÁDIO agora é um visor HTML sobreposto ao centro do painel — ver JSX.
+  //  o canvas desenha só os mostradores e a zona.)
 
   // zona
   ctx.fillStyle="#ffffff33"; ctx.font=`${DH*0.09}px monospace`
