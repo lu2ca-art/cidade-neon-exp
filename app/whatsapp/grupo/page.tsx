@@ -10,11 +10,7 @@ interface Message {
   sender: string
   time: string
   isSystem?: boolean
-  isUser?: boolean
-}
-
-interface ChoiceSet {
-  options: string[]
+  revealedAt?: number
 }
 
 const PARTICIPANTS: Record<string, { color: string }> = {
@@ -25,9 +21,10 @@ const PARTICIPANTS: Record<string, { color: string }> = {
 
 const STORAGE_KEY = "cidade-neon-grupo-msgs"
 
-// Conversa de abertura — puro registro/flavor. As missões e confirmações de
-// verdade acontecem nos apps do celular (NECTAR, FEEL.GOOD, GUITAR DRIVER) e
-// nas conversas privadas com Alohan/Nizzy/D-Bee, não aqui.
+// Conversa de abertura — um vazamento de sinal, não um chat: a pessoa só
+// intercepta, nunca responde. As missões e confirmações de verdade acontecem
+// nos apps do celular (NECTAR, FEEL.GOOD, GUITAR DRIVER) e nas conversas
+// privadas com Alohan/Nizzy/D-Bee, não aqui.
 const INITIAL_SCRIPT: Message[] = [
   { id: 1, text: "Voce foi adicionado ao grupo", sender: "system", time: "21:47", isSystem: true },
   { id: 2, text: "Chegou.", sender: "D-Bee", time: "21:47" },
@@ -35,55 +32,39 @@ const INITIAL_SCRIPT: Message[] = [
   { id: 4, text: "Fica aqui. Observa.", sender: "Alohan", time: "21:48" },
 ]
 
-const CHOICE_1: ChoiceSet = {
-  options: ["Quem sao voces?", "O que aconteceu com o sistema?", "O que voces querem de mim?"],
-}
-
-const AFTER_CHOICE_1: Record<string, Message[]> = {
-  "Quem sao voces?": [
-    { id: 10, text: "A gente faz parte da rede.", sender: "D-Bee", time: "21:48" },
-    { id: 11, text: "Nao importa quem somos. Importa o que voce vai fazer agora.", sender: "Nizzy", time: "21:48" },
-  ],
-  "O que aconteceu com o sistema?": [
-    { id: 10, text: "O sistema travou. E a gente encontrou voce no meio do ruido.", sender: "D-Bee", time: "21:48" },
-    { id: 11, text: "Sorte ou destino. Voce decide.", sender: "Nizzy", time: "21:48" },
-  ],
-  "O que voces querem de mim?": [
-    { id: 10, text: "Nada que voce nao queira dar.", sender: "D-Bee", time: "21:48" },
-    { id: 11, text: "Mas a Cidade Neon precisa de gente real.", sender: "Nizzy", time: "21:48" },
-  ],
-}
+const RESPONSE_1: Message[] = [
+  { id: 10, text: "voce ta vendo isso e nao devia.", sender: "Nizzy", time: "21:48" },
+  { id: 11, text: "a gente faz parte da rede. o sistema travou e te achamos no meio do ruido.", sender: "D-Bee", time: "21:48" },
+  { id: 12, text: "sorte ou destino. voce decide o que fazer com isso.", sender: "Alohan", time: "21:48" },
+]
 
 const PRE_CLOSING: Message[] = [
   { id: 20, text: "voce ta aqui. isso ja diz algo.", sender: "Alohan", time: "21:49" },
   { id: 21, text: "mas a gente nao confirma nada por aqui.", sender: "D-Bee", time: "21:49" },
 ]
 
-const CHOICE_2: ChoiceSet = {
-  options: ["To pronto. Bora.", "Que tipo de prova?", "E se eu recusar?"],
-}
-
-const AFTER_CHOICE_2: Record<string, Message[]> = {
-  "To pronto. Bora.": [
-    { id: 30, text: "Esse sim.", sender: "Nizzy", time: "21:49" },
-    { id: 31, text: "Entao vai. Ta tudo no teu celular.", sender: "D-Bee", time: "21:49" },
-  ],
-  "Que tipo de prova?": [
-    { id: 30, text: "Uma que so voce pode dar.", sender: "Alohan", time: "21:49" },
-    { id: 31, text: "Confia. Vai chegar por la.", sender: "D-Bee", time: "21:49" },
-  ],
-  "E se eu recusar?": [
-    { id: 30, text: "Voce nao chegou ate aqui pra voltar.", sender: "Nizzy", time: "21:49" },
-    { id: 31, text: "Vai la.", sender: "D-Bee", time: "21:49" },
-  ],
-}
+const RESPONSE_2: Message[] = [
+  { id: 30, text: "ta tudo no teu celular agora.", sender: "D-Bee", time: "21:49" },
+  { id: 31, text: "se voce chegou ate aqui, nao foi a toa.", sender: "Nizzy", time: "21:49" },
+]
 
 const CLOSING_SCRIPT: Message[] = [
   { id: 40, text: "fica de olho no celular a partir de agora.", sender: "Alohan", time: "21:50" },
   { id: 41, text: "vai chegar coisa por la.", sender: "D-Bee", time: "21:50" },
 ]
 
-type ConversationPhase = "initial" | "choice-1" | "choice-2" | "done"
+// Quanto tempo uma mensagem fica visível antes de começar a sumir, e quanto
+// tempo o fade em si dura — só se aplica ANTES do fim da experiência: depois
+// disso o vazamento vira registro histórico permanente (ver finalCompleted).
+const FADE_HOLD_MS = 6500
+const FADE_DUR_MS = 1600
+
+function fadeOpacity(revealedAt: number | undefined, now: number): number {
+  if (!revealedAt) return 1
+  const age = now - revealedAt
+  if (age <= FADE_HOLD_MS) return 1
+  return Math.max(0, 1 - (age - FADE_HOLD_MS) / FADE_DUR_MS)
+}
 
 function saveMessages(msgs: Message[]) {
   if (typeof window === "undefined") return
@@ -103,20 +84,28 @@ export default function WhatsAppGrupoPage() {
   const { state, updateCinematicStep } = useGameFunnel()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
+  const finalCompleted = state.unlocked.finalCompleted
 
   const [messages, setMessages] = useState<Message[]>([])
-  const [convPhase, setConvPhase] = useState<ConversationPhase>("initial")
-  const [currentChoices, setCurrentChoices] = useState<string[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const [typingUser, setTypingUser] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => { updateCinematicStep("whatsapp-group") }, [updateCinematicStep])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, isTyping])
 
-  // Save messages whenever they change
+  // Save messages whenever they change — essa é a única cópia completa da
+  // conversa; o que aparece na tela antes do fim é só um recorte passageiro
   useEffect(() => {
     if (messages.length > 0) saveMessages(messages)
   }, [messages])
+
+  // Relógio do desvanecimento — só roda enquanto a experiência não terminou
+  useEffect(() => {
+    if (finalCompleted) return
+    const t = setInterval(() => setNow(Date.now()), 300)
+    return () => clearInterval(t)
+  }, [finalCompleted])
 
   const addMessages = useCallback((msgs: Message[], onDone?: () => void) => {
     let i = 0
@@ -128,7 +117,7 @@ export default function WhatsAppGrupoPage() {
         setIsTyping(false); setTypingUser(null)
         setMessages(prev => {
           const exists = prev.some(m => m.id === msg.id)
-          return exists ? prev : [...prev, msg]
+          return exists ? prev : [...prev, { ...msg, revealedAt: Date.now() }]
         })
         i++
         if (i < msgs.length) setTimeout(next, 600 + Math.random() * 500)
@@ -138,47 +127,34 @@ export default function WhatsAppGrupoPage() {
     setTimeout(next, 400)
   }, [])
 
-  // Essa conversa é só o registro de abertura (flavor) — não guia mais o
-  // progresso do jogo. Se já foi conversada antes, só mostra o histórico.
+  // Essa conversa é só um vazamento de sinal (flavor) — não guia mais o
+  // progresso do jogo e não tem escolha nenhuma: a pessoa intercepta, não
+  // participa. Numa revisita antes do fim, o histórico volta a aparecer por
+  // instantes e desaparece de novo — só vira registro estável no final.
   useEffect(() => {
     if (hasInitialized.current) return
     hasInitialized.current = true
 
     const saved = loadMessages()
     if (saved.length > 0) {
-      setMessages(saved)
-      setConvPhase("done")
+      setMessages(finalCompleted ? saved : saved.map(m => ({ ...m, revealedAt: Date.now() })))
     } else {
       addMessages(INITIAL_SCRIPT, () => {
-        setCurrentChoices(CHOICE_1.options)
-        setConvPhase("choice-1")
-      })
-    }
-  }, [addMessages])
-
-  const handleChoice = (choice: string) => {
-    setCurrentChoices([])
-    const userMsg: Message = { id: Date.now(), text: choice, sender: "Voce", time: "21:49", isUser: true }
-    setMessages(prev => [...prev, userMsg])
-
-    if (convPhase === "choice-1") {
-      const responses = AFTER_CHOICE_1[choice] || AFTER_CHOICE_1[CHOICE_1.options[0]]
-      addMessages(responses, () => {
-        addMessages(PRE_CLOSING, () => {
-          setCurrentChoices(CHOICE_2.options)
-          setConvPhase("choice-2")
+        addMessages(RESPONSE_1, () => {
+          addMessages(PRE_CLOSING, () => {
+            addMessages(RESPONSE_2, () => {
+              addMessages(CLOSING_SCRIPT)
+            })
+          })
         })
       })
-    } else if (convPhase === "choice-2") {
-      const responses = AFTER_CHOICE_2[choice] || AFTER_CHOICE_2[CHOICE_2.options[0]]
-      addMessages(responses, () => {
-        addMessages(CLOSING_SCRIPT, () => { setConvPhase("done") })
-      })
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const cc = state.confirmationCount
   const participantsText = cc >= 3 ? "LU2CA, Voce" : "D-Bee, Nizzy, Alohan"
+  const visibleMessages = finalCompleted ? messages : messages.filter(m => fadeOpacity(m.revealedAt, now) > 0.02)
 
   return (
     <div className="min-h-screen bg-[#0B141A] flex items-center justify-center touch-manipulation">
@@ -206,7 +182,9 @@ export default function WhatsAppGrupoPage() {
           </div>
           <div className="flex-1">
             <h1 className="text-white font-medium text-sm">Cidade Neon</h1>
-            <p className="text-[#8696A0] text-xs">{participantsText}</p>
+            <p className="text-[#8696A0] text-xs">
+              {finalCompleted ? "registro completo · sinal estavel" : `${participantsText} · sinal instavel`}
+            </p>
           </div>
           <button type="button" onClick={() => router.push("/?screen=home")} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Voltar para inicio">
             <svg className="w-5 h-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
@@ -216,26 +194,24 @@ export default function WhatsAppGrupoPage() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <div className="space-y-1.5">
-            {messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
-                {msg.isSystem ? (
-                  <div className="bg-[#182229] rounded-lg px-3 py-1 text-[11px] text-[#8696A0] mx-auto my-1">{msg.text}</div>
-                ) : (
-                  <div className={`max-w-[80%] rounded-lg px-3 py-1.5 ${msg.isUser ? "bg-[#005C4B] rounded-tr-none" : "bg-[#202C33] rounded-tl-none"}`}>
-                    {!msg.isUser && (
+            {visibleMessages.map(msg => {
+              const opacity = finalCompleted ? 1 : fadeOpacity(msg.revealedAt, now)
+              return (
+                <div key={msg.id} className="flex justify-start" style={{ opacity, transition: "opacity 300ms linear" }}>
+                  {msg.isSystem ? (
+                    <div className="bg-[#182229] rounded-lg px-3 py-1 text-[11px] text-[#8696A0] mx-auto my-1">{msg.text}</div>
+                  ) : (
+                    <div className="max-w-[80%] rounded-lg px-3 py-1.5 bg-[#202C33] rounded-tl-none">
                       <p className="text-[11px] font-medium mb-0.5" style={{ color: PARTICIPANTS[msg.sender]?.color || "#8696A0" }}>{msg.sender}</p>
-                    )}
-                    <p className="text-[#E9EDEF] text-[14px] leading-[1.4]">{msg.text}</p>
-                    <div className="flex items-center justify-end gap-1 mt-0.5">
-                      <span className="text-[#667781] text-[10px]">{msg.time}</span>
-                      {msg.isUser && (
-                        <svg className="w-4 h-3 text-[#53BDEB]" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" /></svg>
-                      )}
+                      <p className="text-[#E9EDEF] text-[14px] leading-[1.4]">{msg.text}</p>
+                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                        <span className="text-[#667781] text-[10px]">{msg.time}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              )
+            })}
             {isTyping && typingUser && (
               <div className="flex justify-start">
                 <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2">
@@ -252,23 +228,12 @@ export default function WhatsAppGrupoPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Choice options */}
-        {currentChoices.length > 0 && (
-          <div className="px-3 pb-2 space-y-1.5">
-            {currentChoices.map(choice => (
-              <button key={choice} type="button" onClick={() => handleChoice(choice)} className="w-full bg-[#005C4B] hover:bg-[#006C5B] text-white text-sm py-3 px-4 rounded-full text-left transition-colors min-h-[44px] active:scale-[0.98]">
-                {choice}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Input bar */}
+        {/* Input bar — decorativo: essa conversa é só interceptada, nunca respondida */}
         <div className="bg-[#1F2C34] px-3 py-2 flex items-center gap-2" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
           <div className="flex-1 bg-[#2A3942] rounded-full px-4 py-2">
-            <input type="text" placeholder="Mensagem" className="w-full bg-transparent text-white text-sm outline-none placeholder-[#8696A0]" disabled />
+            <span className="text-white/30 text-sm">voce so pode observar</span>
           </div>
-          <button type="button" className="p-2 text-[#8696A0]">
+          <button type="button" className="p-2 text-[#8696A0]/40 cursor-default" tabIndex={-1} aria-hidden>
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" /><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" /></svg>
           </button>
         </div>
