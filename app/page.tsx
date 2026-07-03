@@ -364,16 +364,15 @@ function CidadeNeonExperience() {
   const { appsUnlocked } = gameFunnelState
 
   const phoneApps = [
-    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+    // [UNTITLED], //LOOP e _IRIS.EXE ficam bloqueados até a pessoa terminar as 3 confirmacoes (identityValidated)
+    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz", locked: !gameFunnelState.identityValidated },
     { id: "spotify",       name: "FR3Q_",         icon: "spotify",       color: "#14532D" },
-    { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3" },
+    { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3", locked: !gameFunnelState.identityValidated },
     { id: "youtube",       name: "STR34M",        icon: "youtube",       color: "#7F1D1D", link: "https://www.youtube.com/@LU222CA" },
-    { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr" },
+    { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr", locked: !gameFunnelState.identityValidated },
     { id: "whatsapp",      name: "N3XO_",         icon: "whatsapp",      color: "#064E3B" },
     { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
-    { id: "safari",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca.me" },
-    { id: "radio",         name: "R4D10_FM",      icon: "radio",         color: "#0a1a1a" },
-    { id: "phone",         name: "TR4NSM1T",      icon: "phone",         color: "#14532D", link: "https://lu2ca.me/contacto-social" },
+    { id: "phone",         name: "TR4NSM1T",      icon: "phone",         color: "#14532D", link: "https://lu2ca.art/contacto-social" },
     // Apps desbloqueados por missao
     { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
     { id: "feel-good-app", name: "FEEL.GOOD",     icon: "feelgood",      color: "#0F3460", locked: !appsUnlocked.feelGood },
@@ -1583,7 +1582,6 @@ function CidadeNeonExperience() {
                         if (app.link) { window.open(app.link, "_blank"); return }
                         if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                        if (app.id === "radio") { window.location.href = "/radio"; return }
                         if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
                         if (app.id === "feel-good-app") { window.location.href = "/feel-good"; return }
                         if (app.id === "guitar-driver") { window.location.href = "/neon-tiles"; return }

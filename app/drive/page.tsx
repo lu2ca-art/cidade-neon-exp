@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
+import { useAudioPlayer, getAudioEl, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvider"
 import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
 import { sendStateToIframe } from "@/app/providers/AudioBridge"
 
@@ -21,6 +21,15 @@ const C = {
   neonOrange: "#ff6b35",
   neonPurple: "#cc00ff",
 }
+
+// Cada zona da estrada = uma "estação" de rádio (muda ao atravessar a localidade)
+const RADIO_STATIONS: Record<string, { name: string; freq: string; color: string }> = {
+  "SUBÚRBIO XÊNON": { name: "SUBÚRBIO XENOM", freq: "104.7", color: "#ff2d78" },
+  "CIDADE NEON":    { name: "RÁDIO CIDADE NEON", freq: "88.5", color: "#00e5ff" },
+  "NOVA ONDA":      { name: "NOVA ONDA FM",   freq: "96.3",  color: "#cc00ff" },
+}
+// Duração fixa de cada faixa na rádio (prévia)
+const RADIO_SNIPPET_MS = 22000
 
 const ROAD_LEN  = 1600
 const SEG_LEN   = 200
@@ -84,6 +93,10 @@ export default function DrivePage() {
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
   const [volume, setVolume]         = useState(0.8)
+  // ── RÁDIO do painel: toca sem parar, 22s por faixa, estação = zona ──
+  const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON")
+  const [radioIdx, setRadioIdx]     = useState(0)
+  const [snippetPct, setSnippetPct] = useState(0)
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
@@ -122,6 +135,22 @@ export default function DrivePage() {
       elapsed:  audio.elapsed,
     })
   }, [audio.trackIdx, audio.playing, audio.elapsed])
+
+  // ── RÁDIO: toca a faixa atual e avança sozinha a cada 22s (loop infinito) ──
+  useEffect(() => {
+    // usa o player global; faixas ainda sem áudio ficam "no ar" só no visor
+    audio.play(radioIdx)
+    setSnippetPct(0)
+    const t0 = performance.now()
+    const prog = setInterval(() => {
+      setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
+    }, 120)
+    const advance = setTimeout(() => {
+      setRadioIdx((i) => (i + 1) % ALBUM_TRACKS.length)
+    }, RADIO_SNIPPET_MS)
+    return () => { clearInterval(prog); clearTimeout(advance) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [radioIdx])
 
   // teclado
   useEffect(() => {
@@ -205,7 +234,7 @@ export default function DrivePage() {
       // zona + valores dos mostradores lidos direto dos refs (sem stale closure)
       const pct = posRef.current / totalLen
       const z   = pct<0.33?"SUBÚRBIO XÊNON":pct<0.66?"CIDADE NEON":"NOVA ONDA"
-      if (z !== zoneRef.current) { zoneRef.current = z }
+      if (z !== zoneRef.current) { zoneRef.current = z; setZoneName(z) }
       const kmhNow = Math.round(speedRef.current)
       const rpmNow = Math.round((speedRef.current / MAX_KMH) * 80) / 10
 
@@ -521,60 +550,64 @@ export default function DrivePage() {
         )}
       </div>
 
-      {/* CONTROLES DE RÁDIO — sobre o painel, centralizados */}
-      {!phoneOpen&&(
+      {/* RÁDIO DO PAINEL — mostrador vintage-futurista, sem botões de player */}
+      {!phoneOpen&&(()=>{
+        const st = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["CIDADE NEON"]
+        const title = (ALBUM_TRACKS[radioIdx]?.title ?? "—").toUpperCase()
+        const marquee = `♪ ${title}   ///   LU2CA · CIDADE NEON     `
+        return (
         <div style={{
           position:"absolute",
-          bottom: BOTOES_H_PCT + 4,
-          left:0, right:0,
-          height: `calc(${DASH_PCT*100}% - 4px)`,
-          zIndex:45,
-          display:"flex",
-          alignItems:"center",
-          justifyContent:"center",
-          gap:0,
+          bottom: BOTOES_H_PCT + 6,
+          left:"50%", transform:"translateX(-50%)",
+          width:"min(60%, 300px)",
+          zIndex:46,
           pointerEvents:"none",
         }}>
-          {/* controles rádio: prev, play/pause, next, volume */}
           <div style={{
-            display:"flex",alignItems:"center",gap:10,
-            pointerEvents:"auto",
-            marginTop:"auto",
-            paddingBottom:8,
+            position:"relative", borderRadius:12, padding:"8px 12px 9px",
+            background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
+            border:`1px solid ${st.color}55`,
+            boxShadow:`0 0 18px ${st.color}33, inset 0 0 14px ${st.color}18`,
+            overflow:"hidden",
           }}>
-            <button
-              onClick={()=>audio.prev()}
-              style={{...radioBtn(), fontSize:14}}
-              aria-label="Anterior"
-            >⏮</button>
-            <button
-              onClick={()=>audio.toggle()}
-              style={{...radioBtn(true), fontSize:18}}
-              aria-label={audio.playing?"Pausar":"Reproduzir"}
-            >{audio.playing?"⏸":"▶"}</button>
-            <button
-              onClick={()=>audio.next()}
-              style={{...radioBtn(), fontSize:14}}
-              aria-label="Proxima"
-            >⏭</button>
-            <input
-              type="range" min={0} max={1} step={0.05}
-              value={volume}
-              onChange={(e)=>{
-                const v=parseFloat(e.target.value)
-                setVolume(v)
-                const el = getAudioEl()
-                if(el) el.volume=v
-              }}
-              style={{
-                width:56, height:3, accentColor:C.neonOrange,
-                cursor:"pointer", opacity:0.7,
-              }}
-              aria-label="Volume"
-            />
+            {/* scanlines */}
+            <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
+              backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
+            {/* estação + freq + NO AR */}
+            <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:st.color,textShadow:`0 0 6px ${st.color}`}}>{st.name}</span>
+              <span style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:st.color,opacity:0.85}}>{st.freq} FM</span>
+                <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:st.color}}>
+                  <span style={{width:6,height:6,borderRadius:6,background:st.color,boxShadow:`0 0 6px ${st.color}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
+                  NO AR
+                </span>
+              </span>
+            </div>
+            {/* now playing (marquee) */}
+            <div style={{position:"relative",height:18,overflow:"hidden"}}>
+              <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,
+                color:"#eafff8",textShadow:`0 0 8px ${st.color}aa`,animation:"dash-marquee 11s linear infinite"}}>
+                {marquee}{marquee}
+              </div>
+            </div>
+            {/* barra dos 22s */}
+            <div style={{position:"relative",marginTop:6,height:3,borderRadius:3,background:"rgba(255,255,255,0.1)"}}>
+              <div style={{height:"100%",borderRadius:3,width:`${snippetPct*100}%`,background:st.color,boxShadow:`0 0 8px ${st.color}`,transition:"width .12s linear"}}/>
+            </div>
+            {/* rodapé prévia */}
+            <div style={{position:"relative",marginTop:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>PRÉVIA · 0:22</span>
+              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",display:"flex",alignItems:"center",gap:3}}>
+                ÁLBUM COMPLETO
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={2}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+              </span>
+            </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* CONTROLES DE DIREÇÃO — fixos no fundo */}
       {!phoneOpen&&(

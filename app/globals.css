@@ -135,3 +135,13 @@
     transform: translateX(-50%) scale(1.05);
   }
 }
+
+/* Rádio do painel (tela /drive) */
+@keyframes dash-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes radio-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
