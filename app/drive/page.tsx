@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl, ALBUM_TRACKS } from "@/app/providers/AudioPlayerProvider"
+import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState } from "@/app/providers/AudioBridge"
 import { sendStateToIframe } from "@/app/providers/AudioBridge"
 
@@ -22,11 +23,12 @@ const C = {
   neonPurple: "#cc00ff",
 }
 
-// Cada zona da estrada = uma "estação" de rádio (muda ao atravessar a localidade)
-const RADIO_STATIONS: Record<string, { name: string; freq: string; color: string }> = {
-  "SUBÚRBIO XÊNON": { name: "SUBÚRBIO XENOM", freq: "104.7", color: "#ff2d78" },
-  "CIDADE NEON":    { name: "RÁDIO CIDADE NEON", freq: "88.5", color: "#00e5ff" },
-  "NOVA ONDA":      { name: "NOVA ONDA FM",   freq: "96.3",  color: "#cc00ff" },
+// Cada zona da estrada = uma "estação" de rádio. Cada estação é LIBERADA ao
+// completar a confirmacao correspondente (unlockAt = confirmationCount minimo).
+const RADIO_STATIONS: Record<string, { name: string; freq: string; color: string; unlockAt: number }> = {
+  "SUBÚRBIO XÊNON": { name: "SUBÚRBIO XENOM",    freq: "104.7", color: "#ff2d78", unlockAt: 1 },
+  "CIDADE NEON":    { name: "CIDADENEON.CRYPTO", freq: "88.5",  color: "#00e5ff", unlockAt: 2 },
+  "NOVA ONDA":      { name: "LIVE NEON",         freq: "96.3",  color: "#a855f7", unlockAt: 3 },
 }
 // Duração fixa de cada faixa na rádio (prévia)
 const RADIO_SNIPPET_MS = 22000
@@ -75,6 +77,7 @@ function buildCars(): Car[] {
 
 export default function DrivePage() {
   const audio    = useAudioPlayer()
+  const funnel   = useGameFunnel()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef    = useRef(0)
@@ -97,6 +100,10 @@ export default function DrivePage() {
   const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON")
   const [radioIdx, setRadioIdx]     = useState(0)
   const [snippetPct, setSnippetPct] = useState(0)
+  // estação atual = zona; liberada quando a confirmacao correspondente foi feita
+  const confirmCount    = funnel.state.confirmationCount
+  const station         = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["SUBÚRBIO XÊNON"]
+  const stationUnlocked = confirmCount >= station.unlockAt
   const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
@@ -136,10 +143,9 @@ export default function DrivePage() {
     })
   }, [audio.trackIdx, audio.playing, audio.elapsed])
 
-  // ── RÁDIO: toca a faixa atual e avança sozinha a cada 22s (loop infinito) ──
+  // ── RÁDIO: avança 22s por faixa (só quando a estação atual está liberada) ──
   useEffect(() => {
-    // usa o player global; faixas ainda sem áudio ficam "no ar" só no visor
-    audio.play(radioIdx)
+    if (!stationUnlocked) { setSnippetPct(0); return }
     setSnippetPct(0)
     const t0 = performance.now()
     const prog = setInterval(() => {
@@ -150,7 +156,14 @@ export default function DrivePage() {
     }, RADIO_SNIPPET_MS)
     return () => { clearInterval(prog); clearTimeout(advance) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioIdx])
+  }, [radioIdx, stationUnlocked])
+
+  // toca a faixa atual quando a estação está liberada; silencia (estático) quando não
+  useEffect(() => {
+    if (stationUnlocked) audio.play(radioIdx)
+    else audio.pause()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [radioIdx, stationUnlocked])
 
   // teclado
   useEffect(() => {
@@ -550,11 +563,13 @@ export default function DrivePage() {
         )}
       </div>
 
-      {/* RÁDIO DO PAINEL — mostrador vintage-futurista, sem botões de player */}
+      {/* RÁDIO DO PAINEL — mostrador vintage-futurista, frequências por missão */}
       {!phoneOpen&&(()=>{
-        const st = RADIO_STATIONS[zoneName] ?? RADIO_STATIONS["CIDADE NEON"]
+        const st = station
+        const unlocked = stationUnlocked
+        const accent = unlocked ? st.color : "#6b7280"
         const title = (ALBUM_TRACKS[radioIdx]?.title ?? "—").toUpperCase()
-        const marquee = `♪ ${title}   ///   LU2CA · CIDADE NEON     `
+        const marquee = `♪ ${title}   ///   VERSÃO DIGITAL NO [UNTITLED]     `
         return (
         <div style={{
           position:"absolute",
@@ -567,42 +582,59 @@ export default function DrivePage() {
           <div style={{
             position:"relative", borderRadius:12, padding:"8px 12px 9px",
             background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-            border:`1px solid ${st.color}55`,
-            boxShadow:`0 0 18px ${st.color}33, inset 0 0 14px ${st.color}18`,
+            border:`1px solid ${accent}55`,
+            boxShadow:`0 0 18px ${accent}33, inset 0 0 14px ${accent}18`,
             overflow:"hidden",
           }}>
             {/* scanlines */}
             <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
-            {/* estação + freq + NO AR */}
+            {/* estação + freq + status */}
             <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:st.color,textShadow:`0 0 6px ${st.color}`}}>{st.name}</span>
+              <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{st.name}</span>
               <span style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:st.color,opacity:0.85}}>{st.freq} FM</span>
-                <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:st.color}}>
-                  <span style={{width:6,height:6,borderRadius:6,background:st.color,boxShadow:`0 0 6px ${st.color}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
-                  NO AR
+                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,opacity:0.85}}>{st.freq} FM</span>
+                {unlocked ? (
+                  <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
+                    <span style={{width:6,height:6,borderRadius:6,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
+                    NO AR
+                  </span>
+                ) : (
+                  <span style={{display:"inline-flex",alignItems:"center",gap:3,fontFamily:"monospace",fontSize:8,letterSpacing:1,color:accent}}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth={2}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+                    BLOQUEADA
+                  </span>
+                )}
+              </span>
+            </div>
+            {unlocked ? (
+              <>
+                {/* now playing (marquee) */}
+                <div style={{position:"relative",height:18,overflow:"hidden"}}>
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,
+                    color:"#eafff8",textShadow:`0 0 8px ${accent}aa`,animation:"dash-marquee 11s linear infinite"}}>
+                    {marquee}{marquee}
+                  </div>
+                </div>
+                {/* barra dos 22s */}
+                <div style={{position:"relative",marginTop:6,height:3,borderRadius:3,background:"rgba(255,255,255,0.1)"}}>
+                  <div style={{height:"100%",borderRadius:3,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
+                </div>
+              </>
+            ) : (
+              <div style={{position:"relative",height:29,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>▓▒░ SINAL BLOQUEADO ░▒▓</span>
+                <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",marginTop:2}}>
+                  COMPLETE O TESTE {st.unlockAt} PARA LIBERAR ESTA FREQUÊNCIA
                 </span>
-              </span>
-            </div>
-            {/* now playing (marquee) */}
-            <div style={{position:"relative",height:18,overflow:"hidden"}}>
-              <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,
-                color:"#eafff8",textShadow:`0 0 8px ${st.color}aa`,animation:"dash-marquee 11s linear infinite"}}>
-                {marquee}{marquee}
               </div>
-            </div>
-            {/* barra dos 22s */}
-            <div style={{position:"relative",marginTop:6,height:3,borderRadius:3,background:"rgba(255,255,255,0.1)"}}>
-              <div style={{height:"100%",borderRadius:3,width:`${snippetPct*100}%`,background:st.color,boxShadow:`0 0 8px ${st.color}`,transition:"width .12s linear"}}/>
-            </div>
-            {/* rodapé prévia */}
+            )}
+            {/* rodapé */}
             <div style={{position:"relative",marginTop:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>PRÉVIA · 0:22</span>
-              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)",display:"flex",alignItems:"center",gap:3}}>
-                ÁLBUM COMPLETO
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={2}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>
+                {unlocked ? "TRECHO · 0:22" : `FREQUÊNCIA ${st.unlockAt}/3`}
               </span>
+              <span style={{fontFamily:"monospace",fontSize:7.5,letterSpacing:1,color:"rgba(255,255,255,0.4)"}}>[UNTITLED] · ÁLBUM DIGITAL</span>
             </div>
           </div>
         </div>

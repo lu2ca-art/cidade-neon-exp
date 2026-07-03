@@ -372,7 +372,7 @@ function CidadeNeonExperience() {
     { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr", locked: !gameFunnelState.identityValidated },
     { id: "whatsapp",      name: "N3XO_",         icon: "whatsapp",      color: "#064E3B" },
     { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
-    { id: "phone",         name: "TR4NSM1T",      icon: "phone",         color: "#14532D", link: "https://lu2ca.art/contacto-social" },
+    { id: "access",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca-xlvdjou.gamma.site/" },
     // Apps desbloqueados por missao
     { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
     { id: "feel-good-app", name: "FEEL.GOOD",     icon: "feelgood",      color: "#0F3460", locked: !appsUnlocked.feelGood },
@@ -634,19 +634,19 @@ function CidadeNeonExperience() {
     } else if (cc === 1) {
       // Missao 1 completa: Alohan envia SUBURBIO XENOM; Nizzy orienta abrir FEEL.GOOD
       missions.push(
-        { id: "reward-alohan-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan desbloqueou algo pra voce", body: "SUBURBIO XENOM — toque para ver", action: "/whatsapp/privado/alohan", isReward: true },
+        { id: "reward-alohan-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan liberou uma frequencia", body: "Radio SUBURBIO XENOM liberada + versao digital no [untitled]", action: "/whatsapp/privado/alohan", isReward: true },
         { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy" },
       )
     } else if (cc === 2) {
       // Missao 2 completa: Nizzy envia Instrumental; D-Bee orienta abrir GUITAR DRIVER
       missions.push(
-        { id: "reward-nizzy-2", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy desbloqueou algo pra voce", body: "Instrumental Cidade Neon — toque para ver", action: "/whatsapp/privado/nizzy", isReward: true },
+        { id: "reward-nizzy-2", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy liberou uma frequencia", body: "Radio CIDADENEON.CRYPTO liberada + versao digital no [untitled]", action: "/whatsapp/privado/nizzy", isReward: true },
         { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee" },
       )
     } else {
       // Missao 3 completa: D-Bee envia Live Neon + conteudo final
       missions.push(
-        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Live Neon — toque para ver", action: "/whatsapp/privado/dbee", isReward: true },
+        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee liberou uma frequencia", body: "Radio LIVE NEON liberada + versao digital no [untitled]", action: "/whatsapp/privado/dbee", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
