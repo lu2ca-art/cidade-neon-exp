@@ -328,7 +328,11 @@ export default function PrivadoPage() {
     }
   }, [script, state.appsUnlocked, setState])
 
-  // Animacao de digitacao: mostrar mensagens uma a uma
+  // Animacao de digitacao: mostrar mensagens uma a uma. Precisa de um array de
+  // deps correto — sem ele, o efeito reroda a cada render (inclusive os que o
+  // relógio do desvanecimento dispara a cada 300ms) e o setTimeout de 700ms
+  // nunca chega a disparar: é cancelado e reagendado antes da hora, travando
+  // visibleCount no 1 pra sempre.
   useEffect(() => {
     if (!script) return
     const totalInState = getMessagesToShow().length
@@ -336,7 +340,8 @@ export default function PrivadoPage() {
       const t = setTimeout(() => setVisibleCount(v => v + 1), 700)
       return () => clearTimeout(t)
     }
-  })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleCount, cc, script])
 
   if (!script) return null
 
