@@ -125,7 +125,7 @@ export default function RadioPage() {
         <div className="flex items-center gap-3 mb-6">
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/?screen=home")}
             aria-label="Voltar"
             className="p-2 -ml-2 text-white/70 active:scale-90 transition-transform"
           >

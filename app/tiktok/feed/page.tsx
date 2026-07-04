@@ -330,7 +330,7 @@ export default function TikTokFeedPage() {
         {/* Close button - goes back to phone home */}
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/?screen=home")}
           className="absolute top-[42px] left-3 z-30 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center active:bg-black/60 transition-colors"
           aria-label="Voltar para inicio"
         >
@@ -364,7 +364,7 @@ export default function TikTokFeedPage() {
 
         {/* Bottom nav bar */}
         <div className="absolute bottom-0 left-0 right-0 z-20 bg-black py-2 px-4 flex items-center justify-around">
-          <button type="button" onClick={() => router.push("/")} className="flex flex-col items-center gap-0.5">
+          <button type="button" onClick={() => router.push("/?screen=home")} className="flex flex-col items-center gap-0.5">
             <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
             <span className="text-white text-[9px] font-medium">Inicio</span>
           </button>

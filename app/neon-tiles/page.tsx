@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+import { sendCarRadioMute } from "@/app/providers/AudioBridge"
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 
@@ -33,41 +34,43 @@ type Phase = "select" | "countdown" | "playing" | "result" | "reward"
 // ─── MÚSICAS ─────────────────────────────────────────────────────────────────
 
 const SONGS: Song[] = [
+  // As 4 faixas usam o mesmo trecho de 22s tocado no rádio do carro (em vez
+  // das masters completas), pra manter tudo consistente com o que a rádio usa.
   {
     id: "chuva",
     title: "CHUVA",
     bpm: 95,
-    audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28MASTER%29-gjxdvkaY9bF5PpjHELCGqT3NrahEsG.mp3",
+    audioUrl: "/audio/tracks/222-chuva.mp3",
     color: "#00FFF0",
     accentColor: "#0077FF",
-    duration: 60,
+    duration: 22,
   },
   {
     id: "copo",
     title: "COPO AMERICANO",
     bpm: 110,
-    audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/COPO%20AMERICANO%20%28MASTER%29-jPjZxju7Z5bxrhmi3XF7pgqkoZGajw.mp3",
+    audioUrl: "/audio/tracks/222-copo-americano.mp3",
     color: "#FF00A8",
     accentColor: "#FF6B00",
-    duration: 60,
+    duration: 22,
   },
   {
     id: "dopamina",
     title: "DOPAMINA",
     bpm: 128,
-    audioUrl: "",
+    audioUrl: "/audio/tracks/dopamina.mp3",
     color: "#7C3AED",
     accentColor: "#FF00A8",
-    duration: 60,
+    duration: 22,
   },
   {
     id: "sexta",
     title: "SEXTA FEIRA",
     bpm: 105,
-    audioUrl: "",
+    audioUrl: "/audio/tracks/sextafeira.mp3",
     color: "#FFD700",
     accentColor: "#FF6B00",
-    duration: 60,
+    duration: 22,
   },
 ]
 
@@ -199,6 +202,13 @@ export default function NeonTilesPage() {
   const bgPhaseRef        = useRef(0)
 
   useEffect(() => { tilesRef.current = tiles }, [tiles])
+
+  // silencia o rádio do carro (se o teste estiver aberto dentro de /drive)
+  // enquanto o GUITAR DRIVER toca suas próprias faixas — volta ao sair daqui
+  useEffect(() => {
+    sendCarRadioMute(true)
+    return () => sendCarRadioMute(false)
+  }, [])
 
   // ─── RENDER LOOP ─────────────────────────────────────────────────────────
 
@@ -675,7 +685,7 @@ export default function NeonTilesPage() {
         </div>
         {/* Botao Home — simula botao fisico do iPhone */}
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/?screen=home")}
           aria-label="Inicio"
           className="mt-10 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90"
           style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}

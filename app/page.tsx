@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import { sendNotificationToParent } from "@/app/providers/AudioBridge"
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
@@ -364,21 +365,19 @@ function CidadeNeonExperience() {
   const { appsUnlocked } = gameFunnelState
 
   const phoneApps = [
-    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+    // [UNTITLED], //LOOP e _IRIS.EXE ficam bloqueados até a pessoa terminar as 3 confirmacoes (identityValidated)
+    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz", locked: !gameFunnelState.identityValidated },
     { id: "spotify",       name: "FR3Q_",         icon: "spotify",       color: "#14532D" },
-    { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3" },
+    { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3", locked: !gameFunnelState.identityValidated },
     { id: "youtube",       name: "STR34M",        icon: "youtube",       color: "#7F1D1D", link: "https://www.youtube.com/@LU222CA" },
-    { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr" },
+    { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr", locked: !gameFunnelState.identityValidated },
     { id: "whatsapp",      name: "N3XO_",         icon: "whatsapp",      color: "#064E3B" },
     { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
-    { id: "safari",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca.me" },
-    { id: "radio",         name: "R4D10_FM",      icon: "radio",         color: "#0a1a1a" },
-    { id: "phone",         name: "TR4NSM1T",      icon: "phone",         color: "#14532D", link: "https://lu2ca.me/contacto-social" },
+    { id: "access",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca-xlvdjou.gamma.site/" },
     // Apps desbloqueados por missao
     { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
     { id: "feel-good-app", name: "FEEL.GOOD",     icon: "feelgood",      color: "#0F3460", locked: !appsUnlocked.feelGood },
     { id: "guitar-driver", name: "GUITAR DRIVER", icon: "guitardriver",  color: "#1a0a00", locked: !appsUnlocked.guitarDriver },
-    { id: "drive",         name: "DRIVE",         icon: "drive",         color: "#0d0418" },
   ]
 
   const formatTime = (seconds: number) => {
@@ -636,19 +635,19 @@ function CidadeNeonExperience() {
     } else if (cc === 1) {
       // Missao 1 completa: Alohan envia SUBURBIO XENOM; Nizzy orienta abrir FEEL.GOOD
       missions.push(
-        { id: "reward-alohan-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan desbloqueou algo pra voce", body: "SUBURBIO XENOM — toque para ver", action: "/whatsapp/privado/alohan", isReward: true },
+        { id: "reward-alohan-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan liberou uma frequencia", body: "Radio CIDADENEON.CRYPTO liberada + versao digital no [untitled]", action: "/whatsapp/privado/alohan", isReward: true },
         { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy" },
       )
     } else if (cc === 2) {
       // Missao 2 completa: Nizzy envia Instrumental; D-Bee orienta abrir GUITAR DRIVER
       missions.push(
-        { id: "reward-nizzy-2", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy desbloqueou algo pra voce", body: "Instrumental Cidade Neon — toque para ver", action: "/whatsapp/privado/nizzy", isReward: true },
+        { id: "reward-nizzy-2", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy liberou uma frequencia", body: "Radio LIVE NEON liberada + versao digital no [untitled]", action: "/whatsapp/privado/nizzy", isReward: true },
         { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee" },
       )
     } else {
       // Missao 3 completa: D-Bee envia Live Neon + conteudo final
       missions.push(
-        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Live Neon — toque para ver", action: "/whatsapp/privado/dbee", isReward: true },
+        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Recompensa final + versao digital no [untitled]", action: "/whatsapp/privado/dbee", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
@@ -684,7 +683,10 @@ function CidadeNeonExperience() {
       const missions = getMissions()
       if (missions.length === 0) { setBannerNotif(null); return }
       const idx = bannerIndexRef.current % missions.length
-      setBannerNotif(missions[idx])
+      const next = missions[idx]
+      setBannerNotif(next)
+      // ecoa a notificação pro rádio do carro, se o celular estiver dentro do /drive
+      sendNotificationToParent({ id: next.id, app: next.app, icon: next.icon, color: next.color, title: next.title, body: next.body })
       bannerIndexRef.current++
       // Auto-dismiss after 5 seconds, bounce the Missoes button
       setTimeout(() => {
@@ -738,6 +740,20 @@ function CidadeNeonExperience() {
       window.location.href = mission.action
     }
   }
+
+  // Clique na barra de notificação do rádio (quando o celular roda dentro
+  // do iframe do /drive) -> executa a mesma ação de tocar a notificação aqui
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const data = e.data as { type?: string; id?: string }
+      if (data?.type !== "NOTIFICATION_CLICK" || !data.id) return
+      const mission = getMissions().find(m => m.id === data.id)
+      if (mission) handleMissionClick(mission)
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getMissions])
 
   /* ─── FINAL NOTIFICATIONS (now handled by missions system) ── */
 
@@ -1584,8 +1600,6 @@ function CidadeNeonExperience() {
                         if (app.link) { window.open(app.link, "_blank"); return }
                         if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                        if (app.id === "drive") { window.location.href = "/drive"; return }
-                        if (app.id === "radio") { window.location.href = "/radio"; return }
                         if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
                         if (app.id === "feel-good-app") { window.location.href = "/feel-good"; return }
                         if (app.id === "guitar-driver") { window.location.href = "/neon-tiles"; return }

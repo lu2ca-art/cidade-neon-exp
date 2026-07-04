@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import { sendCarRadioMute } from "@/app/providers/AudioBridge"
 
 interface Connection {
   music: string
@@ -72,6 +73,13 @@ export default function FeelGoodPage() {
   useEffect(() => {
     updateCinematicStep("confirmation-2")
   }, [updateCinematicStep])
+
+  // silencia o rádio do carro (se o teste estiver aberto dentro de /drive)
+  // enquanto o teste toca suas próprias faixas — volta ao sair daqui
+  useEffect(() => {
+    sendCarRadioMute(true)
+    return () => sendCarRadioMute(false)
+  }, [])
 
   useEffect(() => {
     if (state.confirmations.c2.done && state.confirmations.c2.connections) {
@@ -196,7 +204,7 @@ export default function FeelGoodPage() {
         {/* Home button */}
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/?screen=home")}
           aria-label="Inicio"
           className="absolute top-[42px] left-3 z-20 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
           style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.14)" }}

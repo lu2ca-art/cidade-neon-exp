@@ -2,7 +2,7 @@
 
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useRouter, useParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 // ─── Dados por personagem ─────────────────────────────────────────────────────
 
@@ -171,9 +171,23 @@ const DONE_AT_CC: Record<MemberKey, number> = {
 
 // ─── Componente ──────────────────────────────────────────────────────────────
 
-function ChatBubble({ text, color, name }: { text: string; color: string; name: string }) {
+// Tempo que uma fala fica visível antes de começar a sumir, e duração do
+// fade — o vazamento não é uma conversa: as falas do personagem aparecem e
+// somem sozinhas. As only ações reais (abrir o app da missão, pegar a
+// recompensa) ficam fixas na tela, porque são o que de fato move o jogo.
+const FADE_HOLD_MS = 6500
+const FADE_DUR_MS = 1600
+
+function fadeOpacity(revealedAt: number | undefined, now: number): number {
+  if (!revealedAt) return 1
+  const age = now - revealedAt
+  if (age <= FADE_HOLD_MS) return 1
+  return Math.max(0, 1 - (age - FADE_HOLD_MS) / FADE_DUR_MS)
+}
+
+function ChatBubble({ text, color, name, opacity }: { text: string; color: string; name: string; opacity: number }) {
   return (
-    <div className="flex justify-start">
+    <div className="flex justify-start" style={{ opacity, transition: "opacity 300ms linear" }}>
       <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%]">
         <p className="text-[11px] font-medium mb-1" style={{ color }}>{name}</p>
         <p className="text-[#E9EDEF] text-sm leading-relaxed">{text}</p>
@@ -286,8 +300,18 @@ export default function PrivadoPage() {
   const member = params.member as string
   const script = SCRIPTS[member as MemberKey]
   const cc = state.confirmationCount
+  const finalCompleted = state.unlocked.finalCompleted
 
   const [visibleCount, setVisibleCount] = useState(1)
+  const [now, setNow] = useState(() => Date.now())
+  const revealedAtRef = useRef<Record<number, number>>({})
+
+  // Relógio do desvanecimento — só roda enquanto a experiência não terminou
+  useEffect(() => {
+    if (finalCompleted) return
+    const t = setInterval(() => setNow(Date.now()), 300)
+    return () => clearInterval(t)
+  }, [finalCompleted])
 
   useEffect(() => {
     if (!script) { router.push("/whatsapp"); return }
@@ -369,7 +393,7 @@ export default function PrivadoPage() {
 
         {/* Header */}
         <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2 flex-shrink-0">
-          <button type="button" onClick={() => router.push("/")} className="p-1">
+          <button type="button" onClick={() => router.push("/?screen=home")} className="p-1">
             <svg className="w-6 h-6 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
           </button>
           <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm" style={{ backgroundColor: script.color }}>
@@ -377,7 +401,7 @@ export default function PrivadoPage() {
           </div>
           <div className="flex-1">
             <p className="text-white font-semibold text-sm">{script.name}</p>
-            <p className="text-white/40 text-xs">online</p>
+            <p className="text-white/40 text-xs">{finalCompleted ? "registro completo" : "sinal instavel"}</p>
           </div>
         </div>
 
@@ -385,7 +409,13 @@ export default function PrivadoPage() {
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3" style={{ backgroundColor: "#0B141A" }}>
           {shownItems.map((item, i) => {
             if (item.type === "msg" || item.type === "done-msg") {
-              return <ChatBubble key={i} text={item.text!} color={script.color} name={script.name} />
+              // falas do personagem são o vazamento em si: aparecem e somem
+              // sozinhas. os cards de ação (cta/reward/lu2ca) abaixo ficam
+              // fixos — são o que realmente move o jogo, não flavor.
+              if (!revealedAtRef.current[i]) revealedAtRef.current[i] = Date.now()
+              const opacity = finalCompleted ? 1 : fadeOpacity(revealedAtRef.current[i], now)
+              if (opacity <= 0.02 && !finalCompleted) return null
+              return <ChatBubble key={i} text={item.text!} color={script.color} name={script.name} opacity={opacity} />
             }
             if (item.type === "cta") {
               return <AppCTACard key={i} label={script.preMission.ctaLabel} route={script.preMission.appRoute} color={script.color} />

@@ -304,7 +304,7 @@ export default function UntitledPlayerPage() {
 
   const handleBack = useCallback(() => {
     if (view === "now-playing") setView("album")
-    else router.push("/")
+    else router.push("/?screen=home")
   }, [view, router])
 
   const bars = useMemo(() => {
@@ -372,7 +372,7 @@ export default function UntitledPlayerPage() {
               progress={progress}
               seekFromRatio={seekFromRatio}
               onNowPlaying={() => setView("now-playing")}
-              onHome={() => router.push("/")}
+              onHome={() => router.push("/?screen=home")}
             />
           </div>
         </div>
