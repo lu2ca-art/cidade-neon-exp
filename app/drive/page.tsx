@@ -242,6 +242,16 @@ export default function DrivePage() {
   const curveRef  = useRef(0)       // curva acumulada pra volante
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
+  // celular aberto ocupa menos tela em telas estreitas (mobile) — em desktop
+  // segue grande, já que sobra espaço em volta
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)")
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
   const [volume, setVolume]         = useState(0.8)
   const volumeRingRef = useRef<HTMLDivElement>(null)
   const volumeDraggingRef = useRef(false)
@@ -979,7 +989,9 @@ export default function DrivePage() {
           ...(phoneOpen
             ? {
                 top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-                height:"90%", aspectRatio:"9 / 19.5", maxWidth:"86%",
+                height: isMobile ? "68%" : "90%",
+                aspectRatio:"9 / 19.5",
+                maxWidth: isMobile ? "58%" : "86%",
                 background:"#0a0a0d", borderRadius:44, padding:9,
                 border:"1px solid #2a2a30",
                 boxShadow:`0 0 0 2px #000, 0 18px 50px rgba(0,0,0,0.7), 0 0 26px ${C.neonPink}33`,
