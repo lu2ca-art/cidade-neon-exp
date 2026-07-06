@@ -241,6 +241,13 @@ export default function DrivePage() {
   const rightRef  = useRef(false)
   const curveRef  = useRef(0)       // curva acumulada pra volante
 
+  // piloto automático — o carro acelera e desvia do tráfego sozinho, pra dar
+  // pra usar o console/celular maximizado enquanto "dirige" sem precisar
+  // segurar acelerador/direção o tempo todo
+  const [autoDrive, setAutoDrive] = useState(false)
+  const autoDriveRef = useRef(false)
+  useEffect(() => { autoDriveRef.current = autoDrive }, [autoDrive])
+
   const [phoneOpen, setPhoneOpen]   = useState(false)
   // celular aberto ocupa menos tela em telas estreitas (mobile) — em desktop
   // segue grande, já que sobra espaço em volta
@@ -604,6 +611,7 @@ export default function DrivePage() {
 
       // ── Física natural ──
       const parked = radioMachineRef.current === "parked"
+      const auto   = autoDriveRef.current && !parked
 
       if (parked) {
         // ESTACIONADO no posto pra ver a missão: freia até parar e ignora os
@@ -611,6 +619,16 @@ export default function DrivePage() {
         accelPressRef.current = 0
         speedRef.current = Math.max(speedRef.current - BRAKE_RATE * dt * 4, 0)
         playerXRef.current *= 0.9
+      } else if (auto) {
+        // piloto automático: acelera até uma velocidade de cruzeiro e mantém
+        const CRUISE = MAX_KMH * 0.62
+        if (speedRef.current < CRUISE) {
+          accelPressRef.current = Math.min(accelPressRef.current + dt * 0.8, 3.0)
+          const rate = ACCEL_RATE * (0.5 + accelPressRef.current * 0.5)
+          speedRef.current = Math.min(speedRef.current + rate * dt, CRUISE)
+        } else {
+          speedRef.current = Math.max(speedRef.current - BRAKE_RATE * 0.4 * dt, CRUISE)
+        }
       } else if (accelRef.current) {
         // física com pressão acumulada: aceleração cresce com o tempo segurando
         accelPressRef.current = Math.min(accelPressRef.current + dt * 0.8, 3.0)
@@ -623,7 +641,22 @@ export default function DrivePage() {
 
       // direção (trava enquanto estacionado)
       const STEER = 1.6
-      if (!parked) {
+      if (auto) {
+        // desvia do tráfego que está na mesma faixa logo à frente; sem nada
+        // no caminho, volta suavemente pro centro da pista
+        const autoSeg = Math.floor(posRef.current / SEG_LEN) % ROAD_LEN
+        let targetX = 0
+        let nearestDist = Infinity
+        for (const car of carsRef.current) {
+          let d = car.seg - autoSeg
+          if (d < 0) d += ROAD_LEN
+          if (d > 0 && d <= 16 && Math.abs(car.x) < 0.9 && d < nearestDist) {
+            nearestDist = d
+            targetX = car.x > 0 ? -0.65 : 0.65
+          }
+        }
+        playerXRef.current += (targetX - playerXRef.current) * Math.min(dt * 2.5, 1)
+      } else if (!parked) {
         if (leftRef.current)  playerXRef.current = Math.max(-1, playerXRef.current - STEER*dt)
         if (rightRef.current) playerXRef.current = Math.min( 1, playerXRef.current + STEER*dt)
         if (!leftRef.current && !rightRef.current) playerXRef.current *= 0.96
@@ -952,11 +985,10 @@ export default function DrivePage() {
   const DASH_PCT = DASH_FRACTION
   const BOTOES_H_PCT = BOTOES_H_PX
 
-  // Celular fechado (docked): posicionado no topo do céu — área só decorativa
-  // do canvas — pra nunca cobrir o painel (velocímetro/RPM/rádio) nem os
-  // botões de direção, e ainda assim ficar bem mais visível que antes.
-  const DOCKED_W = 156 // 104 * 1.5 — 50% maior
-  const DOCKED_H = Math.round(DOCKED_W * (844 / 390))
+  // CONSOLE do carro — o "celular" não existe mais como objeto flutuando na
+  // cena; é uma tela do próprio painel. Fechado: ícone compacto no canto.
+  // Maximizado: painel grande estilo HUD (não uma moldura de smartphone).
+  const CONSOLE_BTN = 60
 
   return (
     <div
@@ -982,31 +1014,31 @@ export default function DrivePage() {
         />
       )}
 
-      {/* CELULAR — fechado: no topo do céu (área decorativa), maior e bem
-          visível, sem cobrir painel/rádio/botões. Aberto: tela cheia central. */}
+      {/* CONSOLE — fechado: ícone compacto no dashboard (não finge ser um
+          celular flutuando). Maximizado: painel HUD do sistema do carro. */}
       <div
         onClick={()=>!phoneOpen&&setPhoneOpen(true)}
         style={{
           position:"absolute", zIndex:60,
           transition:"all .45s cubic-bezier(.4,0,.2,1)",
-          // "vibra" visualmente o celular fechado quando uma missão chega —
-          // funciona em qualquer navegador, mesmo onde navigator.vibrate não existe
+          // "vibra" visualmente quando uma missão chega — funciona em
+          // qualquer navegador, mesmo onde navigator.vibrate não existe
           animation: (!phoneOpen && radioMachine === "parked") ? "phone-buzz 0.5s ease-in-out infinite" : "none",
           ...(phoneOpen
             ? {
                 top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-                height: isMobile ? "68%" : "90%",
-                aspectRatio:"9 / 19.5",
-                maxWidth: isMobile ? "58%" : "86%",
-                background:"#0a0a0d", borderRadius:44, padding:9,
-                border:"1px solid #2a2a30",
-                boxShadow:`0 0 0 2px #000, 0 18px 50px rgba(0,0,0,0.7), 0 0 26px ${C.neonPink}33`,
-                cursor:"default",
+                height: isMobile ? "72%" : "88%",
+                width: "min(92%, 480px)",
+                background:"#0a0a12", borderRadius:22, padding:0,
+                border:`1px solid ${C.neonPink}55`,
+                boxShadow:`0 0 0 1px #000, 0 20px 60px rgba(0,0,0,0.7), 0 0 32px ${C.neonPink}33`,
+                cursor:"default", overflow:"hidden",
+                display:"flex", flexDirection:"column",
               }
             : {
                 top:14,
                 right:14,
-                width:DOCKED_W, height:DOCKED_H,
+                width:CONSOLE_BTN, height:CONSOLE_BTN,
                 background:"#0a0014", borderRadius:16, padding:0,
                 border:`1.5px solid ${C.neonPink}70`,
                 boxShadow:`0 0 20px ${C.neonPink}55, 0 0 4px ${C.neonPink}aa`,
@@ -1014,15 +1046,31 @@ export default function DrivePage() {
               }),
         }}
       >
-        {phoneOpen&&(<>
-          <div style={{position:"absolute",left:-2,top:"22%",width:3,height:46,borderRadius:3,background:"#1c1c20"}}/>
-          <div style={{position:"absolute",left:-2,top:"34%",width:3,height:70,borderRadius:3,background:"#1c1c20"}}/>
-          <div style={{position:"absolute",right:-2,top:"26%",width:3,height:90,borderRadius:3,background:"#1c1c20"}}/>
-        </>)}
-        <div style={{position:"relative",width:"100%",height:"100%",borderRadius:phoneOpen?36:14,overflow:"hidden",background:"#000"}}>
-          {phoneOpen&&(
-            <div style={{position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",width:"34%",height:22,borderRadius:14,background:"#000",zIndex:5}}/>
-          )}
+        {phoneOpen&&(
+          // barra superior do console — substitui a moldura/notch de celular
+          <div style={{
+            flexShrink:0, height:34, display:"flex", alignItems:"center", justifyContent:"space-between",
+            padding:"0 14px", borderBottom:`1px solid ${C.neonPink}33`,
+            background:"rgba(255,255,255,0.02)",
+          }}>
+            <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:2,color:`${C.neonPink}cc`}}>CONSOLE · N3XO</span>
+            <button
+              type="button"
+              onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
+              style={{
+                display:"flex",alignItems:"center",gap:5,
+                background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
+                borderRadius:999, padding:"4px 10px",
+                color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:9, letterSpacing:1,
+                cursor:"pointer",
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+              MINIMIZAR
+            </button>
+          </div>
+        )}
+        <div style={{position:"relative",flex:1,width:"100%",overflow:"hidden",background:"#000"}}>
           <iframe
             ref={iframeRef}
             src="/?screen=home"
@@ -1030,31 +1078,13 @@ export default function DrivePage() {
               width: phoneOpen?"100%":"390px",
               height: phoneOpen?"100%":"844px",
               border:"none",
-              transform: phoneOpen?"none":`scale(${DOCKED_W/390})`,
+              transform: phoneOpen?"none":`scale(${CONSOLE_BTN/390})`,
               transformOrigin:"top left",
               pointerEvents: phoneOpen?"auto":"none",
             }}
-            title="Celular"
+            title="Console"
           />
         </div>
-        {phoneOpen&&(
-          <button
-            onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
-            style={{
-              position:"absolute",bottom:-56,left:"50%",transform:"translateX(-50%)",
-              display:"flex",alignItems:"center",gap:9,
-              background:`linear-gradient(90deg, ${C.neonPink}, #ff6a3d)`,
-              border:`1.5px solid #ffb0cf`,
-              borderRadius:16,padding:"13px 40px",
-              color:"#12000a",fontSize:15,fontWeight:800,letterSpacing:3,
-              textTransform:"uppercase",whiteSpace:"nowrap",cursor:"pointer",
-              animation:"dirigir-pulse 1.6s ease-in-out infinite",
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#12000a" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/><path d="M12 3v6.6M4.2 16.5l5.7-3.3M19.8 16.5l-5.7-3.3"/></svg>
-            DIRIGIR
-          </button>
-        )}
       </div>
 
       {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
@@ -1196,7 +1226,7 @@ export default function DrivePage() {
           }}
           style={{
             position:"absolute",
-            top: DOCKED_H + 26,
+            top: 14 + CONSOLE_BTN + 14,
             left:"50%", transform:"translateX(-50%)",
             width:"min(80%, 340px)",
             zIndex:62,
@@ -1322,42 +1352,69 @@ export default function DrivePage() {
         )
       })()}
 
-      {/* CONTROLES DE DIREÇÃO — fixos no fundo */}
+      {/* CONTROLES DE DIREÇÃO — fixos no fundo. Com o piloto automático ligado,
+          o acelerador/direção somem e dá pra usar o console maximizado com o
+          carro se cuidando sozinho (acelera e desvia do tráfego) */}
       {!phoneOpen&&(
         <div style={{
           position:"absolute",bottom:0,left:0,right:0,
           height:BOTOES_H_PCT,zIndex:50,
           display:"flex",alignItems:"center",
-          justifyContent:"space-between",
+          justifyContent: autoDrive ? "center" : "space-between",
+          gap:16,
           padding:"0 20px",
           background:"linear-gradient(to top, #05001a, transparent)",
         }}>
-          <div style={{display:"flex",gap:12}}>
-            <button
-              onTouchStart={()=>leftRef.current=true}  onTouchEnd={()=>leftRef.current=false}
-              onMouseDown={()=>leftRef.current=true}    onMouseUp={()=>leftRef.current=false}
-              style={ctrlBtn()}
-            >◀</button>
-            <button
-              onTouchStart={()=>rightRef.current=true} onTouchEnd={()=>rightRef.current=false}
-              onMouseDown={()=>rightRef.current=true}  onMouseUp={()=>rightRef.current=false}
-              style={ctrlBtn()}
-            >▶</button>
-          </div>
+          {!autoDrive && (
+            <div style={{display:"flex",gap:12}}>
+              <button
+                onTouchStart={()=>leftRef.current=true}  onTouchEnd={()=>leftRef.current=false}
+                onMouseDown={()=>leftRef.current=true}    onMouseUp={()=>leftRef.current=false}
+                style={ctrlBtn()}
+              >◀</button>
+              <button
+                onTouchStart={()=>rightRef.current=true} onTouchEnd={()=>rightRef.current=false}
+                onMouseDown={()=>rightRef.current=true}  onMouseUp={()=>rightRef.current=false}
+                style={ctrlBtn()}
+              >▶</button>
+            </div>
+          )}
+
           <button
-            onTouchStart={()=>accelRef.current=true}  onTouchEnd={()=>accelRef.current=false}
-            onMouseDown={()=>accelRef.current=true}   onMouseUp={()=>accelRef.current=false}
+            type="button"
+            onClick={() => setAutoDrive(a => !a)}
             style={{
-              width:76,height:76,borderRadius:"50%",
-              background:`radial-gradient(circle,${C.neonPink}33,${C.neonPink}11)`,
-              border:`3px solid ${C.neonPink}`,
-              color:C.neonPink,fontSize:26,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 0 20px ${C.neonPink}55`,
-              WebkitTapHighlightColor:"transparent",
-              cursor:"pointer",
+              display:"flex", alignItems:"center", gap:8,
+              padding: autoDrive ? "10px 22px" : "8px 16px",
+              borderRadius:999,
+              background: autoDrive ? "rgba(0,255,170,0.14)" : "rgba(255,255,255,0.06)",
+              border: `1.5px solid ${autoDrive ? "#00ffaa" : "rgba(255,255,255,0.25)"}`,
+              color: autoDrive ? "#00ffaa" : "rgba(255,255,255,0.6)",
+              boxShadow: autoDrive ? "0 0 16px rgba(0,255,170,0.4)" : "none",
+              fontFamily:"monospace", fontSize:11, fontWeight:700, letterSpacing:1.5,
+              cursor:"pointer", WebkitTapHighlightColor:"transparent",
             }}
-          >▲</button>
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
+            {autoDrive ? "PILOTO AUTOMÁTICO" : "AUTO"}
+          </button>
+
+          {!autoDrive && (
+            <button
+              onTouchStart={()=>accelRef.current=true}  onTouchEnd={()=>accelRef.current=false}
+              onMouseDown={()=>accelRef.current=true}   onMouseUp={()=>accelRef.current=false}
+              style={{
+                width:76,height:76,borderRadius:"50%",
+                background:`radial-gradient(circle,${C.neonPink}33,${C.neonPink}11)`,
+                border:`3px solid ${C.neonPink}`,
+                color:C.neonPink,fontSize:26,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                boxShadow:`0 0 20px ${C.neonPink}55`,
+                WebkitTapHighlightColor:"transparent",
+                cursor:"pointer",
+              }}
+            >▲</button>
+          )}
         </div>
       )}
     </div>
