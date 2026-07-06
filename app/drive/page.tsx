@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import type { BridgeCommand, BridgeState, PhoneNotification, CarRadioControl } from "@/app/providers/AudioBridge"
+import type { BridgeCommand, BridgeState, PhoneNotification, CarRadioControl, MinimizeConsole } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe } from "@/app/providers/AudioBridge"
 
 const C = {
@@ -341,7 +341,10 @@ export default function DrivePage() {
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
   const [radioMuted, setRadioMuted] = useState(false)
   const radioActive    = radioOn && radioMachine === "playing" && !radioMuted
-  const orderIdx       = ALL_TIERS.indexOf(currentTier)
+  // baseado no tier mais alto já ACEITO — não no que tá tocando agora, que em
+  // modo aleatório (2+ frequências liberadas) pode estar numa mais baixa
+  const highestTier    = highestAcceptedTier(radioAccepted)
+  const orderIdx       = ALL_TIERS.indexOf(highestTier)
   const nextTier: Tier | null = orderIdx < ALL_TIERS.length - 1 ? ALL_TIERS[orderIdx + 1] : null
   const nextTierReady  = nextTier ? testDone(nextTier) && !radioAccepted[nextTier as Exclude<Tier, "suburbio">] : false
   // cenário visual do mundo (fora do painel) — segue o activeTier, lido pelo
@@ -364,7 +367,7 @@ export default function DrivePage() {
   // Escuta comandos do iframe e executa no AudioPlayer do pai
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const data = e.data as BridgeCommand | PhoneNotification | CarRadioControl
+      const data = e.data as BridgeCommand | PhoneNotification | CarRadioControl | MinimizeConsole
       if (!data?.type) return
       switch (data.type) {
         case "PLAY":          audio.play(data.index); break
@@ -377,6 +380,7 @@ export default function DrivePage() {
         case "REQUEST_STATE": break
         case "CAR_RADIO_MUTE":   setRadioMuted(true); break
         case "CAR_RADIO_UNMUTE": setRadioMuted(false); break
+        case "MINIMIZE_CONSOLE": setPhoneOpen(false); break
         case "PHONE_NOTIFICATION": {
           const { id, app, icon, color, title, body } = data
           setPhoneNotif({ id, app, icon, color, title, body })
@@ -460,13 +464,15 @@ export default function DrivePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualTier, radioOn, playStaticBurst])
 
-  // ── CICLO DA RÁDIO (missão): toca todas as prévias da frequência atual 1x —
-  // a "distância percorrida" é a soma dessas prévias. Ao terminar, chia e o
-  // carro ESTACIONA: chega a missão da próxima frequência (se o teste dela já
-  // foi concluido). Aceitando, ela é liberada e passa a tocar; recusando (ou
-  // se não houver nada novo ainda), o carro volta a dirigir com o rádio em
-  // silêncio até completar uma volta inteira na cidade — só aí a frequência
-  // atual toca de novo do início. ──
+  // ── CICLO DA RÁDIO (missão): com só 1 frequência liberada, toca todas as
+  // prévias dela 1x e ao terminar chia e o carro ESTACIONA (chega a missão
+  // da próxima, se o teste dela já foi concluído). Com 2+ frequências já
+  // liberadas, entra em MODO ALEATÓRIO: a cada prévia que termina, sorteia
+  // qual das frequências liberadas toca a seguir (pode repetir a mesma) — a
+  // troca de frequência também troca o cenário visual (efeito de várias
+  // cidades piscando entre si). Nesse modo quem decide estacionar pra
+  // oferecer a PRÓXIMA frequência é o efeito separado que observa
+  // nextTierReady, não esse aqui. ──
   useEffect(() => {
     if (manualTier) return // sintonia manual assume o controle
     if (!radioOn) return // desligada — nada progride até a pessoa ligar
@@ -489,10 +495,20 @@ export default function DrivePage() {
       const to = setTimeout(() => {
         clearInterval(prog)
         if (cancelled) return
+
+        const unlocked = ALL_TIERS.filter(t => t === "suburbio" || radioAccepted[t as Exclude<Tier, "suburbio">])
+        if (unlocked.length > 1) {
+          const nextT = unlocked[Math.floor(Math.random() * unlocked.length)]
+          if (nextT !== currentTier) { setCurrentTier(nextT); return }
+          stepThrough(idx < tracks.length - 1 ? idx + 1 : 0)
+          return
+        }
+
         if (idx < tracks.length - 1) { stepThrough(idx + 1); return }
-        // pass completa: chia e estaciona (chega a missão). Usa o ref
-        // persistente (não o array local) pra sobreviver ao efeito reiniciar
-        // quando radioMachine vira "static" logo na linha de cima
+        // só uma frequência liberada ainda: pass completa, chia e estaciona
+        // (chega a missão). Usa o ref persistente (não o array local) pra
+        // sobreviver ao efeito reiniciar quando radioMachine vira "static"
+        // logo na linha de cima
         setRadioMachine("static")
         playStaticBurst()
         if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
@@ -508,7 +524,30 @@ export default function DrivePage() {
 
     return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioMachine, currentTier, manualTier, radioOn, playStaticBurst])
+  }, [radioMachine, currentTier, manualTier, radioOn, radioAccepted, playStaticBurst])
+
+  // Assim que uma nova frequência fica pronta pra ser oferecida (acabou de
+  // concluir a missão correspondente), interrompe o que estiver tocando —
+  // inclusive em modo aleatório — e estaciona pra mostrar o diálogo, em vez
+  // de esperar a prévia atual terminar sozinha. Compara a condição INTEIRA
+  // (não só nextTierReady sozinho): se a missão já tava pronta ANTES da
+  // pessoa ligar o rádio, nextTierReady nunca "nasce" true→true de novo, e
+  // ligar o rádio tem que contar como a oportunidade de disparar o diálogo.
+  const missionOpportunityRef = useRef(false)
+  useEffect(() => {
+    const combined = radioOn && radioMachine === "playing" && nextTierReady
+    const was = missionOpportunityRef.current
+    missionOpportunityRef.current = combined
+    if (!was && combined) {
+      playStaticBurst()
+      setRadioMachine("static")
+      if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
+      parkTimeoutRef.current = setTimeout(() => {
+        setRadioMachine("parked")
+        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([160, 80, 160])
+      }, 900)
+    }
+  }, [nextTierReady, radioOn, radioMachine, playStaticBurst])
 
   const handleAcceptMission = useCallback(() => {
     if (!nextTier) return

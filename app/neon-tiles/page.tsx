@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import { sendCarRadioMute } from "@/app/providers/AudioBridge"
+import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 
@@ -168,7 +168,7 @@ const LANE_NEONS   = ["#FF00A830", "#00FFF030", "#A855F730", "#FFD70030"]
 
 export default function NeonTilesPage() {
   const router = useRouter()
-  const { updateCinematicStep } = useGameFunnel()
+  const { updateCinematicStep, completeConfirmation } = useGameFunnel()
 
   const [phase, setPhase]             = useState<Phase>("select")
   const [selectedSong, setSelectedSong] = useState<Song | null>(null)
@@ -565,13 +565,16 @@ export default function NeonTilesPage() {
       const next = prev + 1
       if (next >= 4) {
         updateCinematicStep("neon-tiles-complete")
+        // GUITAR DRIVER é a missão 3 (D-Bee) — sem isso confirmationCount
+        // nunca chegava a 3 e a frequência final/finalCompleted nunca liberava
+        completeConfirmation(3, { accuracy: acc, maxCombo: mc })
         setPhase("reward")
       } else {
         setPhase("result")
       }
       return next
     })
-  }, [updateCinematicStep])
+  }, [updateCinematicStep, completeConfirmation])
 
   // ─── TAP ──────────────────────────────────────────────────────────────────
 
@@ -787,31 +790,32 @@ export default function NeonTilesPage() {
           <h1 className="font-mono font-bold text-2xl text-white mb-3 text-balance" style={{ textShadow: "0 0 30px rgba(139,92,246,0.8)" }}>
             4 FAIXAS COMPLETAS
           </h1>
-          <p className="font-mono text-sm mb-10" style={{ color: "rgba(255,255,255,0.5)" }}>
-            voce tocou tudo.<br/>D-Bee tem algo guardado pra voce.
+          <p className="font-mono text-sm mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>
+            voce tocou tudo.
+          </p>
+          <p className="font-mono text-sm mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>
+            voce desbloqueou uma recompensa.
+          </p>
+          <p className="font-mono text-xs mb-10" style={{ color: "rgba(255,255,255,0.3)" }}>
+            descubra na conversa com D-Bee, pelo N3XO.
           </p>
 
-          {/* Card de recompensa */}
-          <a
-            href="/whatsapp/privado/dbee"
-            className="block w-full rounded-2xl p-4 mb-4 text-left transition-all active:scale-[0.98]"
-            style={{ background: "linear-gradient(135deg,rgba(107,127,215,0.15),rgba(107,127,215,0.05))", border: "1px solid rgba(107,127,215,0.3)", boxShadow: "0 0 20px rgba(107,127,215,0.1)" }}
+          {/* Botao Home — simula botao fisico do iPhone */}
+          <button
+            onClick={() => { sendMinimizeConsole(); router.push("/?screen=home") }}
+            aria-label="Inicio"
+            className="w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto"
+            style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(107,127,215,0.25)" }}>
-                <span className="text-[#6B7FD7] font-bold text-lg">D</span>
-              </div>
-              <div className="flex-1">
-                <p className="font-mono font-bold text-white text-sm">D-Bee</p>
-                <p className="font-mono text-xs mt-0.5" style={{ color: "rgba(107,127,215,0.8)" }}>Live Neon — toque para ver</p>
-              </div>
-              <svg className="w-5 h-5 text-[#6B7FD7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-            </div>
-          </a>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.25)" strokeWidth={1.5}>
+              <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="12" cy="17" r="1.2" fill="rgba(255,255,255,0.25)" stroke="none" />
+            </svg>
+          </button>
 
           <button
             onClick={() => { setPhase("select"); setProfile(null); setCompletedSongs(0) }}
-            className="w-full py-3 rounded-xl font-mono text-sm transition-all active:scale-95 mt-2"
+            className="w-full py-3 rounded-xl font-mono text-sm transition-all active:scale-95 mt-4"
             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             jogar de novo

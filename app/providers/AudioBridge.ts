@@ -75,3 +75,15 @@ export function sendCarRadioMute(muted: boolean) {
   const msg: CarRadioControl = { type: muted ? "CAR_RADIO_MUTE" : "CAR_RADIO_UNMUTE" }
   window.parent.postMessage(msg, "*")
 }
+
+// Pede pro /drive minimizar o console (fechar o painel maximizado) — usado
+// ao voltar de uma missão completa, pra a pessoa cair de volta na cena do
+// carro (e no diálogo de nova frequência) em vez de ficar presa no console
+export type MinimizeConsole = { type: "MINIMIZE_CONSOLE" }
+
+export function sendMinimizeConsole() {
+  if (typeof window === "undefined") return
+  if (window.self === window.top) return
+  const msg: MinimizeConsole = { type: "MINIMIZE_CONSOLE" }
+  window.parent.postMessage(msg, "*")
+}
