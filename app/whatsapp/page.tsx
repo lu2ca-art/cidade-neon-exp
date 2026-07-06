@@ -2,11 +2,17 @@
 
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useRouter } from "next/navigation"
+import { SCRIPTS, phaseFor, type MemberKey } from "@/app/whatsapp/privado/[member]/page"
 
-const MEMBERS = {
-  nizzy: { name: "Nizzy", avatar: "N", color: "#FF6B6B", reward: "Instrumental Cidade Neon", lastMsg: "a estrutura da cidade neon ta nas tuas maos agora..." },
-  dbee: { name: "D-Bee", avatar: "D", color: "#6B7FD7", reward: "Suburbio Xenom", lastMsg: "desbloqueei algo que tava escondido nas frequencias..." },
-  alohan: { name: "Alohan", avatar: "A", color: "#4ECDC4", reward: "Live Neon", lastMsg: "a energia daquela noite ficou gravada..." },
+// Ordem cronológica real da história — Alohan fala primeiro (desde cc=0),
+// Nizzy entra depois que o teste 1 termina, D-Bee depois do teste 2. Antes
+// disso o membro simplesmente não aparece: não tem nada esperando ainda.
+const MEMBER_ORDER: MemberKey[] = ["alohan", "nizzy", "dbee"]
+const VISIBLE_FROM_CC: Record<MemberKey, number> = { alohan: 0, nizzy: 1, dbee: 2 }
+const AVATARS: Record<MemberKey, { avatar: string; color: string }> = {
+  alohan: { avatar: "A", color: "#4ECDC4" },
+  nizzy: { avatar: "N", color: "#FF6B6B" },
+  dbee: { avatar: "D", color: "#6B7FD7" },
 }
 
 export default function WhatsAppHome() {
@@ -14,11 +20,19 @@ export default function WhatsAppHome() {
   const router = useRouter()
   const cc = state.confirmationCount
 
-  const privateChats = [
-    { key: "nizzy", visible: cc >= 1 },
-    { key: "dbee", visible: cc >= 2 },
-    { key: "alohan", visible: cc >= 3 },
-  ].filter(c => c.visible)
+  const privateChats = MEMBER_ORDER
+    .filter(key => cc >= VISIBLE_FROM_CC[key])
+    .map(key => {
+      const phase = phaseFor(key, cc)
+      const script = SCRIPTS[key]
+      const phaseMessages = phase === "pre" ? script.preMission.messages : phase === "reward" ? script.reward.messages : script.done.messages
+      return {
+        key,
+        name: script.name,
+        lastMsg: phaseMessages[phaseMessages.length - 1],
+        isNew: !state.rewardsViewed.includes(`${key}:${phase}`),
+      }
+    })
 
   return (
     <div className="min-h-screen bg-[#111B21] flex items-center justify-center">
@@ -61,7 +75,7 @@ export default function WhatsAppHome() {
                 <span className="text-[#00A884] text-xs">agora</span>
               </div>
               <p className="text-white/50 text-sm truncate">
-                {cc >= 3 ? "LU2CA entrou no grupo" : cc === 2 ? "Alohan: agora falta a ultima confirmacao" : cc === 1 ? "Nizzy: a cidade neon ta cada vez mais viva" : "D-Bee: Chegou."}
+                {state.unlocked.finalCompleted ? "registro completo — sinal estavel" : "sinal instavel — toque pra ver"}
               </p>
             </div>
             <div className="w-5 h-5 rounded-full bg-[#00A884] flex items-center justify-center flex-shrink-0">
@@ -70,9 +84,8 @@ export default function WhatsAppHome() {
           </button>
 
           {/* Private Chats (rewards) */}
-          {privateChats.map(({ key }) => {
-            const m = MEMBERS[key as keyof typeof MEMBERS]
-            const isViewed = state.rewardsViewed.includes(key)
+          {privateChats.map(({ key, name, lastMsg, isNew }) => {
+            const { avatar, color } = AVATARS[key]
             return (
               <button
                 key={key}
@@ -80,17 +93,17 @@ export default function WhatsAppHome() {
                 onClick={() => router.push(`/whatsapp/privado/${key}`)}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 active:bg-white/10 transition-colors border-b border-white/5"
               >
-                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: m.color }}>
-                  <span className="text-white font-bold text-lg">{m.avatar}</span>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
+                  <span className="text-white font-bold text-lg">{avatar}</span>
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex items-center justify-between">
-                    <span className="text-white font-semibold text-[15px]">{m.name}</span>
-                    <span className={`text-xs ${isViewed ? "text-white/30" : "text-[#00A884]"}`}>agora</span>
+                    <span className="text-white font-semibold text-[15px]">{name}</span>
+                    <span className={`text-xs ${isNew ? "text-[#00A884]" : "text-white/30"}`}>agora</span>
                   </div>
-                  <p className="text-white/50 text-sm truncate">{m.lastMsg}</p>
+                  <p className="text-white/50 text-sm truncate">{lastMsg}</p>
                 </div>
-                {!isViewed && (
+                {isNew && (
                   <div className="w-5 h-5 rounded-full bg-[#00A884] flex items-center justify-center flex-shrink-0">
                     <span className="text-[#111B21] text-[10px] font-bold">1</span>
                   </div>

@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from "react"
 
 // ─── Dados por personagem ─────────────────────────────────────────────────────
 
-type MemberKey = "alohan" | "nizzy" | "dbee"
+export type MemberKey = "alohan" | "nizzy" | "dbee"
 
 interface MemberScript {
   name: string
@@ -32,7 +32,7 @@ interface MemberScript {
   }
 }
 
-const SCRIPTS: Record<MemberKey, MemberScript> = {
+export const SCRIPTS: Record<MemberKey, MemberScript> = {
   alohan: {
     name: "Alohan",
     avatar: "A",
@@ -155,32 +155,46 @@ const SCRIPTS: Record<MemberKey, MemberScript> = {
   },
 }
 
-// Qual cc marca o inicio da recompensa de cada personagem
-const REWARD_AT_CC: Record<MemberKey, number> = {
+// Qual cc marca o inicio da recompensa de cada personagem — reexportado pro
+// /whatsapp (lista de conversas) usar os MESMOS limiares, em vez de duplicar
+// (e arriscar dessincronizar) esses números.
+export const REWARD_AT_CC: Record<MemberKey, number> = {
   alohan: 1,
   nizzy: 2,
   dbee: 3,
 }
 
 // Qual cc indica que a missao seguinte (done state) esta ativa
-const DONE_AT_CC: Record<MemberKey, number> = {
+export const DONE_AT_CC: Record<MemberKey, number> = {
   alohan: 2,  // after nizzy mission started
   nizzy: 3,   // after dbee mission started
   dbee: 3,    // final
 }
 
+// Fase atual da conversa com esse personagem — usada tanto aqui quanto na
+// lista de conversas (/whatsapp) pra decidir preview de texto e badge de não-lido
+export function phaseFor(member: MemberKey, cc: number): "pre" | "reward" | "done" {
+  if (member !== "dbee" && cc >= DONE_AT_CC[member]) return "done"
+  if (cc >= REWARD_AT_CC[member]) return "reward"
+  return "pre"
+}
+
 // ─── Componente ──────────────────────────────────────────────────────────────
 
-// Tempo que uma fala fica visível antes de começar a sumir, e duração do
-// fade — o vazamento não é uma conversa: as falas do personagem aparecem e
-// somem sozinhas. As only ações reais (abrir o app da missão, pegar a
-// recompensa) ficam fixas na tela, porque são o que de fato move o jogo.
-const FADE_HOLD_MS = 6500
-const FADE_DUR_MS = 1600
+// Tempo que a conversa fica visível DEPOIS de terminar de ser revelada, e
+// duração do fade — o vazamento não é uma conversa: as falas do personagem
+// somem sozinhas com o tempo. Mas só começam a contar esse tempo quando o
+// script INTEIRO já apareceu (settledAtRef), nunca enquanto ainda está sendo
+// digitado — senão a primeira fala pode sumir antes da pessoa terminar de ler
+// as últimas, o que parece quebrado em vez de intencional. Os cards de ação
+// (abrir o app da missão, pegar a recompensa) ficam fixos sempre, porque são
+// o que de fato move o jogo, não flavor.
+const FADE_HOLD_MS = 9000
+const FADE_DUR_MS = 2000
 
-function fadeOpacity(revealedAt: number | undefined, now: number): number {
-  if (!revealedAt) return 1
-  const age = now - revealedAt
+function fadeOpacity(settledAt: number | null, now: number): number {
+  if (!settledAt) return 1
+  const age = now - settledAt
   if (age <= FADE_HOLD_MS) return 1
   return Math.max(0, 1 - (age - FADE_HOLD_MS) / FADE_DUR_MS)
 }
@@ -204,7 +218,8 @@ function RewardCard({ rewardName, rewardLink, color, memberName }: { rewardName:
         href={rewardLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="block bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] active:bg-[#2A363D] transition-colors"
+        className="block bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] active:bg-[#2A363D] transition-colors cta-pulse"
+        style={{ ["--pulse-color" as string]: `${color}80` }}
       >
         <p className="text-[11px] font-medium mb-2" style={{ color }}>{memberName}</p>
         <div className="bg-[#111B21] rounded-lg overflow-hidden border border-white/5">
@@ -220,7 +235,7 @@ function RewardCard({ rewardName, rewardLink, color, memberName }: { rewardName:
         </div>
         <div className="flex items-center gap-1 mt-1.5">
           <svg className="w-3 h-3 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-          <span className="text-[#00A884] text-[11px]">Toque para acessar</span>
+          <span className="text-[#00A884] text-[11px] font-semibold">Toque para acessar</span>
         </div>
         <p className="text-[#667781] text-[10px] text-right mt-0.5">agora</p>
       </a>
@@ -273,15 +288,15 @@ function AppCTACard({ label, route, color }: { label: string; route: string; col
       <div className="bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%]">
         <a
           href={route}
-          className="flex items-center gap-3 bg-[#111B21] rounded-xl px-3 py-3 border border-white/5 active:bg-[#1c2a31] transition-colors"
-          style={{ borderColor: `${color}30` }}
+          className="flex items-center gap-3 bg-[#111B21] rounded-xl px-3 py-3 border-2 active:bg-[#1c2a31] transition-colors cta-pulse"
+          style={{ borderColor: `${color}55`, ["--pulse-color" as string]: `${color}90` }}
         >
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}25` }}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" /></svg>
           </div>
           <div>
             <p className="text-white text-sm font-semibold">{label}</p>
-            <p className="text-white/40 text-xs mt-0.5">toque para abrir</p>
+            <p className="text-white/50 text-xs mt-0.5 font-medium">toque aqui pra continuar →</p>
           </div>
           <svg className="w-4 h-4 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </a>
@@ -304,7 +319,7 @@ export default function PrivadoPage() {
 
   const [visibleCount, setVisibleCount] = useState(1)
   const [now, setNow] = useState(() => Date.now())
-  const revealedAtRef = useRef<Record<number, number>>({})
+  const settledAtRef = useRef<number | null>(null)
 
   // Relógio do desvanecimento — só roda enquanto a experiência não terminou
   useEffect(() => {
@@ -313,10 +328,13 @@ export default function PrivadoPage() {
     return () => clearInterval(t)
   }, [finalCompleted])
 
+  // Marca essa FASE específica da conversa (não só o contato) como vista —
+  // uma nova fase (ex.: a recompensa chegou) volta a contar como não-lida na
+  // lista de conversas, mesmo que a pessoa já tenha aberto esse chat antes.
   useEffect(() => {
     if (!script) { router.push("/whatsapp"); return }
-    markRewardViewed(member)
-  }, [script, member, markRewardViewed, router])
+    markRewardViewed(`${member}:${phaseFor(member as MemberKey, cc)}`)
+  }, [script, member, cc, markRewardViewed, router])
 
   // Unlock o app correto ao entrar na conversa (pre-missao)
   useEffect(() => {
@@ -340,6 +358,9 @@ export default function PrivadoPage() {
       const t = setTimeout(() => setVisibleCount(v => v + 1), 700)
       return () => clearTimeout(t)
     }
+    // script inteiro revelado — só agora começa a contar o tempo de vida da
+    // conversa antes dela sumir (ver FADE_HOLD_MS)
+    if (settledAtRef.current === null) settledAtRef.current = Date.now()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleCount, cc, script])
 
@@ -414,11 +435,11 @@ export default function PrivadoPage() {
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3" style={{ backgroundColor: "#0B141A" }}>
           {shownItems.map((item, i) => {
             if (item.type === "msg" || item.type === "done-msg") {
-              // falas do personagem são o vazamento em si: aparecem e somem
-              // sozinhas. os cards de ação (cta/reward/lu2ca) abaixo ficam
-              // fixos — são o que realmente move o jogo, não flavor.
-              if (!revealedAtRef.current[i]) revealedAtRef.current[i] = Date.now()
-              const opacity = finalCompleted ? 1 : fadeOpacity(revealedAtRef.current[i], now)
+              // falas do personagem são o vazamento em si: toda a conversa
+              // some junto, um tempo depois de terminar de ser revelada. os
+              // cards de ação (cta/reward/lu2ca) abaixo ficam fixos — são o
+              // que realmente move o jogo, não flavor.
+              const opacity = finalCompleted ? 1 : fadeOpacity(settledAtRef.current, now)
               if (opacity <= 0.02 && !finalCompleted) return null
               return <ChatBubble key={i} text={item.text!} color={script.color} name={script.name} opacity={opacity} />
             }
@@ -446,14 +467,14 @@ export default function PrivadoPage() {
           )}
         </div>
 
-        {/* Input bar */}
+        {/* Input bar — decorativo: essa conversa é só interceptada, nunca respondida */}
         <div className="bg-[#1F2C34] px-3 py-2 flex items-center gap-2 flex-shrink-0">
           <div className="flex-1 bg-[#2A3942] rounded-full px-4 py-2">
-            <span className="text-white/30 text-sm">Mensagem</span>
+            <span className="text-white/30 text-sm">voce so pode observar</span>
           </div>
-          <div className="w-10 h-10 rounded-full bg-[#00A884] flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
-          </div>
+          <button type="button" className="w-10 h-10 rounded-full bg-[#00A884]/30 flex items-center justify-center cursor-default" tabIndex={-1} aria-hidden>
+            <svg className="w-5 h-5 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
+          </button>
         </div>
         <div className="flex justify-center py-1 bg-[#1F2C34]"><div className="w-32 h-1 bg-white/20 rounded-full" /></div>
       </div>
