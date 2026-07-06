@@ -10,7 +10,6 @@ interface Message {
   sender: string
   time: string
   isSystem?: boolean
-  revealedAt?: number
 }
 
 const PARTICIPANTS: Record<string, { color: string }> = {
@@ -53,15 +52,19 @@ const CLOSING_SCRIPT: Message[] = [
   { id: 41, text: "vai chegar coisa por la.", sender: "D-Bee", time: "21:50" },
 ]
 
-// Quanto tempo uma mensagem fica visível antes de começar a sumir, e quanto
-// tempo o fade em si dura — só se aplica ANTES do fim da experiência: depois
-// disso o vazamento vira registro histórico permanente (ver finalCompleted).
-const FADE_HOLD_MS = 6500
-const FADE_DUR_MS = 1600
+// Quanto tempo a conversa fica visível DEPOIS de terminar de chegar por
+// inteiro, e quanto tempo o fade em si dura — só conta a partir do momento
+// em que o script todo já apareceu (settledAtRef), nunca mensagem por
+// mensagem: senão a primeira fala pode sumir antes da pessoa terminar de ler
+// as últimas, parecendo quebrado em vez de intencional. Só se aplica ANTES
+// do fim da experiência: depois disso o vazamento vira registro histórico
+// permanente (ver finalCompleted).
+const FADE_HOLD_MS = 9000
+const FADE_DUR_MS = 2000
 
-function fadeOpacity(revealedAt: number | undefined, now: number): number {
-  if (!revealedAt) return 1
-  const age = now - revealedAt
+function fadeOpacity(settledAt: number | null, now: number): number {
+  if (!settledAt) return 1
+  const age = now - settledAt
   if (age <= FADE_HOLD_MS) return 1
   return Math.max(0, 1 - (age - FADE_HOLD_MS) / FADE_DUR_MS)
 }
@@ -90,6 +93,7 @@ export default function WhatsAppGrupoPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [typingUser, setTypingUser] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const settledAtRef = useRef<number | null>(null)
 
   useEffect(() => { updateCinematicStep("whatsapp-group") }, [updateCinematicStep])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, isTyping])
@@ -117,7 +121,7 @@ export default function WhatsAppGrupoPage() {
         setIsTyping(false); setTypingUser(null)
         setMessages(prev => {
           const exists = prev.some(m => m.id === msg.id)
-          return exists ? prev : [...prev, { ...msg, revealedAt: Date.now() }]
+          return exists ? prev : [...prev, msg]
         })
         i++
         if (i < msgs.length) setTimeout(next, 600 + Math.random() * 500)
@@ -137,13 +141,16 @@ export default function WhatsAppGrupoPage() {
 
     const saved = loadMessages()
     if (saved.length > 0) {
-      setMessages(finalCompleted ? saved : saved.map(m => ({ ...m, revealedAt: Date.now() })))
+      setMessages(saved)
+      // revisita antes do fim: o histórico inteiro já "chegou" agora mesmo —
+      // começa a contar o tempo de vida antes de sumir de novo
+      if (!finalCompleted) settledAtRef.current = Date.now()
     } else {
       addMessages(INITIAL_SCRIPT, () => {
         addMessages(RESPONSE_1, () => {
           addMessages(PRE_CLOSING, () => {
             addMessages(RESPONSE_2, () => {
-              addMessages(CLOSING_SCRIPT)
+              addMessages(CLOSING_SCRIPT, () => { settledAtRef.current = Date.now() })
             })
           })
         })
@@ -154,7 +161,8 @@ export default function WhatsAppGrupoPage() {
 
   const cc = state.confirmationCount
   const participantsText = cc >= 3 ? "LU2CA, Voce" : "D-Bee, Nizzy, Alohan"
-  const visibleMessages = finalCompleted ? messages : messages.filter(m => fadeOpacity(m.revealedAt, now) > 0.02)
+  const groupOpacity = finalCompleted ? 1 : fadeOpacity(settledAtRef.current, now)
+  const visibleMessages = finalCompleted || groupOpacity > 0.02 ? messages : []
 
   return (
     <div className="min-h-screen bg-[#0B141A] flex items-center justify-center touch-manipulation">
@@ -195,9 +203,8 @@ export default function WhatsAppGrupoPage() {
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <div className="space-y-1.5">
             {visibleMessages.map(msg => {
-              const opacity = finalCompleted ? 1 : fadeOpacity(msg.revealedAt, now)
               return (
-                <div key={msg.id} className="flex justify-start" style={{ opacity, transition: "opacity 300ms linear" }}>
+                <div key={msg.id} className="flex justify-start" style={{ opacity: groupOpacity, transition: "opacity 300ms linear" }}>
                   {msg.isSystem ? (
                     <div className="bg-[#182229] rounded-lg px-3 py-1 text-[11px] text-[#8696A0] mx-auto my-1">{msg.text}</div>
                   ) : (

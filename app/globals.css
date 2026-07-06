@@ -164,3 +164,10 @@
   0%   { opacity: 0; transform: translate(-50%, -8px); }
   100% { opacity: 1; transform: translate(-50%, 0); }
 }
+/* Destaque pulsante no card de ação (NEXO) — deixa óbvio onde tocar pra
+   continuar o fluxo. Cor definida por instância via --pulse-color. */
+@keyframes cta-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--pulse-color, rgba(0,168,132,0.5)); }
+  50%      { box-shadow: 0 0 16px 3px var(--pulse-color, rgba(0,168,132,0.5)); }
+}
+.cta-pulse { animation: cta-pulse 1.8s ease-in-out infinite; }
