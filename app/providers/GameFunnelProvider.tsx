@@ -227,6 +227,23 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
     setIsHydrated(true)
   }, [])
 
+  // /drive e o hub do celular (dentro do iframe) são DUAS árvores React
+  // separadas, cada uma com sua própria instância deste provider — só
+  // compartilham dado via localStorage. Sem isso, uma missão concluída
+  // dentro do iframe (confirmationCount, radioAccepted etc.) nunca chegava
+  // ao /drive já montado, que ficava com o estado congelado no que era na
+  // hora em que ele entrou no carro. O evento "storage" dispara na OUTRA
+  // janela/iframe sempre que uma delas grava no localStorage — é assim que
+  // as duas ficam sincronizadas em tempo real.
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY) return
+      setStateInternal(loadState())
+    }
+    window.addEventListener("storage", handler)
+    return () => window.removeEventListener("storage", handler)
+  }, [])
+
   // Debounced save using ref (no state dependency)
   const debouncedSave = useCallback((newState: GameFunnelState) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
