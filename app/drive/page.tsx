@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import type { BridgeCommand, BridgeState, PhoneNotification, CarRadioControl } from "@/app/providers/AudioBridge"
+import type { BridgeCommand, BridgeState, PhoneNotification, CarRadioControl, MinimizeConsole } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe } from "@/app/providers/AudioBridge"
 
 const C = {
@@ -241,6 +241,13 @@ export default function DrivePage() {
   const rightRef  = useRef(false)
   const curveRef  = useRef(0)       // curva acumulada pra volante
 
+  // piloto automático — o carro acelera e desvia do tráfego sozinho, pra dar
+  // pra usar o console/celular maximizado enquanto "dirige" sem precisar
+  // segurar acelerador/direção o tempo todo
+  const [autoDrive, setAutoDrive] = useState(false)
+  const autoDriveRef = useRef(false)
+  useEffect(() => { autoDriveRef.current = autoDrive }, [autoDrive])
+
   const [phoneOpen, setPhoneOpen]   = useState(false)
   // celular aberto ocupa menos tela em telas estreitas (mobile) — em desktop
   // segue grande, já que sobra espaço em volta
@@ -289,6 +296,10 @@ export default function DrivePage() {
   // dirigir com o radio em silencio ate rodar a cidade inteira de novo
   const [radioMachine, setRadioMachine] = useState<"playing" | "static" | "parked" | "silentLap">("playing")
   const [manualTier, setManualTier] = useState<Tier | null>(null)
+  // a rádio começa DESLIGADA — só passa a tocar/ciclar frequências depois que
+  // a pessoa aperta o power. Enquanto desligada, nada progride (sem missão
+  // chegando), igual a um rádio de verdade
+  const [radioOn, setRadioOn] = useState(false)
   // notificações do celular ecoadas numa barra no rádio (ver AudioBridge)
   const [phoneNotif, setPhoneNotif] = useState<Omit<PhoneNotification, "type"> | null>(null)
   const phoneNotifTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -329,8 +340,11 @@ export default function DrivePage() {
   const activeTracks   = TRACKS_BY_TIER[activeTier]
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
   const [radioMuted, setRadioMuted] = useState(false)
-  const radioActive    = radioMachine === "playing" && !radioMuted
-  const orderIdx       = ALL_TIERS.indexOf(currentTier)
+  const radioActive    = radioOn && radioMachine === "playing" && !radioMuted
+  // baseado no tier mais alto já ACEITO — não no que tá tocando agora, que em
+  // modo aleatório (2+ frequências liberadas) pode estar numa mais baixa
+  const highestTier    = highestAcceptedTier(radioAccepted)
+  const orderIdx       = ALL_TIERS.indexOf(highestTier)
   const nextTier: Tier | null = orderIdx < ALL_TIERS.length - 1 ? ALL_TIERS[orderIdx + 1] : null
   const nextTierReady  = nextTier ? testDone(nextTier) && !radioAccepted[nextTier as Exclude<Tier, "suburbio">] : false
   // cenário visual do mundo (fora do painel) — segue o activeTier, lido pelo
@@ -353,7 +367,7 @@ export default function DrivePage() {
   // Escuta comandos do iframe e executa no AudioPlayer do pai
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const data = e.data as BridgeCommand | PhoneNotification | CarRadioControl
+      const data = e.data as BridgeCommand | PhoneNotification | CarRadioControl | MinimizeConsole
       if (!data?.type) return
       switch (data.type) {
         case "PLAY":          audio.play(data.index); break
@@ -366,6 +380,7 @@ export default function DrivePage() {
         case "REQUEST_STATE": break
         case "CAR_RADIO_MUTE":   setRadioMuted(true); break
         case "CAR_RADIO_UNMUTE": setRadioMuted(false); break
+        case "MINIMIZE_CONSOLE": setPhoneOpen(false); break
         case "PHONE_NOTIFICATION": {
           const { id, app, icon, color, title, body } = data
           setPhoneNotif({ id, app, icon, color, title, body })
@@ -415,6 +430,7 @@ export default function DrivePage() {
   // escolhida, sem estacionar nem oferecer missão — a pessoa já desbloqueou tudo ──
   useEffect(() => {
     if (!manualTier) return
+    if (!radioOn) return
     let cancelled = false
     const intervals: ReturnType<typeof setInterval>[] = []
     const timeouts: ReturnType<typeof setTimeout>[] = []
@@ -446,17 +462,20 @@ export default function DrivePage() {
 
     return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualTier, playStaticBurst])
+  }, [manualTier, radioOn, playStaticBurst])
 
-  // ── CICLO DA RÁDIO (missão): toca todas as prévias da frequência atual 1x —
-  // a "distância percorrida" é a soma dessas prévias. Ao terminar, chia e o
-  // carro ESTACIONA: chega a missão da próxima frequência (se o teste dela já
-  // foi concluido). Aceitando, ela é liberada e passa a tocar; recusando (ou
-  // se não houver nada novo ainda), o carro volta a dirigir com o rádio em
-  // silêncio até completar uma volta inteira na cidade — só aí a frequência
-  // atual toca de novo do início. ──
+  // ── CICLO DA RÁDIO (missão): com só 1 frequência liberada, toca todas as
+  // prévias dela 1x e ao terminar chia e o carro ESTACIONA (chega a missão
+  // da próxima, se o teste dela já foi concluído). Com 2+ frequências já
+  // liberadas, entra em MODO ALEATÓRIO: a cada prévia que termina, sorteia
+  // qual das frequências liberadas toca a seguir (pode repetir a mesma) — a
+  // troca de frequência também troca o cenário visual (efeito de várias
+  // cidades piscando entre si). Nesse modo quem decide estacionar pra
+  // oferecer a PRÓXIMA frequência é o efeito separado que observa
+  // nextTierReady, não esse aqui. ──
   useEffect(() => {
     if (manualTier) return // sintonia manual assume o controle
+    if (!radioOn) return // desligada — nada progride até a pessoa ligar
     if (radioMachine !== "playing") return
     let cancelled = false
     const intervals: ReturnType<typeof setInterval>[] = []
@@ -476,10 +495,20 @@ export default function DrivePage() {
       const to = setTimeout(() => {
         clearInterval(prog)
         if (cancelled) return
+
+        const unlocked = ALL_TIERS.filter(t => t === "suburbio" || radioAccepted[t as Exclude<Tier, "suburbio">])
+        if (unlocked.length > 1) {
+          const nextT = unlocked[Math.floor(Math.random() * unlocked.length)]
+          if (nextT !== currentTier) { setCurrentTier(nextT); return }
+          stepThrough(idx < tracks.length - 1 ? idx + 1 : 0)
+          return
+        }
+
         if (idx < tracks.length - 1) { stepThrough(idx + 1); return }
-        // pass completa: chia e estaciona (chega a missão). Usa o ref
-        // persistente (não o array local) pra sobreviver ao efeito reiniciar
-        // quando radioMachine vira "static" logo na linha de cima
+        // só uma frequência liberada ainda: pass completa, chia e estaciona
+        // (chega a missão). Usa o ref persistente (não o array local) pra
+        // sobreviver ao efeito reiniciar quando radioMachine vira "static"
+        // logo na linha de cima
         setRadioMachine("static")
         playStaticBurst()
         if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
@@ -495,7 +524,30 @@ export default function DrivePage() {
 
     return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioMachine, currentTier, manualTier, playStaticBurst])
+  }, [radioMachine, currentTier, manualTier, radioOn, radioAccepted, playStaticBurst])
+
+  // Assim que uma nova frequência fica pronta pra ser oferecida (acabou de
+  // concluir a missão correspondente), interrompe o que estiver tocando —
+  // inclusive em modo aleatório — e estaciona pra mostrar o diálogo, em vez
+  // de esperar a prévia atual terminar sozinha. Compara a condição INTEIRA
+  // (não só nextTierReady sozinho): se a missão já tava pronta ANTES da
+  // pessoa ligar o rádio, nextTierReady nunca "nasce" true→true de novo, e
+  // ligar o rádio tem que contar como a oportunidade de disparar o diálogo.
+  const missionOpportunityRef = useRef(false)
+  useEffect(() => {
+    const combined = radioOn && radioMachine === "playing" && nextTierReady
+    const was = missionOpportunityRef.current
+    missionOpportunityRef.current = combined
+    if (!was && combined) {
+      playStaticBurst()
+      setRadioMachine("static")
+      if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
+      parkTimeoutRef.current = setTimeout(() => {
+        setRadioMachine("parked")
+        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([160, 80, 160])
+      }, 900)
+    }
+  }, [nextTierReady, radioOn, radioMachine, playStaticBurst])
 
   const handleAcceptMission = useCallback(() => {
     if (!nextTier) return
@@ -598,6 +650,7 @@ export default function DrivePage() {
 
       // ── Física natural ──
       const parked = radioMachineRef.current === "parked"
+      const auto   = autoDriveRef.current && !parked
 
       if (parked) {
         // ESTACIONADO no posto pra ver a missão: freia até parar e ignora os
@@ -605,6 +658,16 @@ export default function DrivePage() {
         accelPressRef.current = 0
         speedRef.current = Math.max(speedRef.current - BRAKE_RATE * dt * 4, 0)
         playerXRef.current *= 0.9
+      } else if (auto) {
+        // piloto automático: acelera até uma velocidade de cruzeiro e mantém
+        const CRUISE = MAX_KMH * 0.62
+        if (speedRef.current < CRUISE) {
+          accelPressRef.current = Math.min(accelPressRef.current + dt * 0.8, 3.0)
+          const rate = ACCEL_RATE * (0.5 + accelPressRef.current * 0.5)
+          speedRef.current = Math.min(speedRef.current + rate * dt, CRUISE)
+        } else {
+          speedRef.current = Math.max(speedRef.current - BRAKE_RATE * 0.4 * dt, CRUISE)
+        }
       } else if (accelRef.current) {
         // física com pressão acumulada: aceleração cresce com o tempo segurando
         accelPressRef.current = Math.min(accelPressRef.current + dt * 0.8, 3.0)
@@ -617,7 +680,22 @@ export default function DrivePage() {
 
       // direção (trava enquanto estacionado)
       const STEER = 1.6
-      if (!parked) {
+      if (auto) {
+        // desvia do tráfego que está na mesma faixa logo à frente; sem nada
+        // no caminho, volta suavemente pro centro da pista
+        const autoSeg = Math.floor(posRef.current / SEG_LEN) % ROAD_LEN
+        let targetX = 0
+        let nearestDist = Infinity
+        for (const car of carsRef.current) {
+          let d = car.seg - autoSeg
+          if (d < 0) d += ROAD_LEN
+          if (d > 0 && d <= 16 && Math.abs(car.x) < 0.9 && d < nearestDist) {
+            nearestDist = d
+            targetX = car.x > 0 ? -0.65 : 0.65
+          }
+        }
+        playerXRef.current += (targetX - playerXRef.current) * Math.min(dt * 2.5, 1)
+      } else if (!parked) {
         if (leftRef.current)  playerXRef.current = Math.max(-1, playerXRef.current - STEER*dt)
         if (rightRef.current) playerXRef.current = Math.min( 1, playerXRef.current + STEER*dt)
         if (!leftRef.current && !rightRef.current) playerXRef.current *= 0.96
@@ -946,11 +1024,10 @@ export default function DrivePage() {
   const DASH_PCT = DASH_FRACTION
   const BOTOES_H_PCT = BOTOES_H_PX
 
-  // Celular fechado (docked): posicionado no topo do céu — área só decorativa
-  // do canvas — pra nunca cobrir o painel (velocímetro/RPM/rádio) nem os
-  // botões de direção, e ainda assim ficar bem mais visível que antes.
-  const DOCKED_W = 156 // 104 * 1.5 — 50% maior
-  const DOCKED_H = Math.round(DOCKED_W * (844 / 390))
+  // CONSOLE do carro — o "celular" não existe mais como objeto flutuando na
+  // cena; é uma tela do próprio painel. Fechado: ícone compacto no canto.
+  // Maximizado: painel grande estilo HUD (não uma moldura de smartphone).
+  const CONSOLE_BTN = 60
 
   return (
     <div
@@ -976,31 +1053,31 @@ export default function DrivePage() {
         />
       )}
 
-      {/* CELULAR — fechado: no topo do céu (área decorativa), maior e bem
-          visível, sem cobrir painel/rádio/botões. Aberto: tela cheia central. */}
+      {/* CONSOLE — fechado: ícone compacto no dashboard (não finge ser um
+          celular flutuando). Maximizado: painel HUD do sistema do carro. */}
       <div
         onClick={()=>!phoneOpen&&setPhoneOpen(true)}
         style={{
           position:"absolute", zIndex:60,
           transition:"all .45s cubic-bezier(.4,0,.2,1)",
-          // "vibra" visualmente o celular fechado quando uma missão chega —
-          // funciona em qualquer navegador, mesmo onde navigator.vibrate não existe
+          // "vibra" visualmente quando uma missão chega — funciona em
+          // qualquer navegador, mesmo onde navigator.vibrate não existe
           animation: (!phoneOpen && radioMachine === "parked") ? "phone-buzz 0.5s ease-in-out infinite" : "none",
           ...(phoneOpen
             ? {
                 top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-                height: isMobile ? "68%" : "90%",
-                aspectRatio:"9 / 19.5",
-                maxWidth: isMobile ? "58%" : "86%",
-                background:"#0a0a0d", borderRadius:44, padding:9,
-                border:"1px solid #2a2a30",
-                boxShadow:`0 0 0 2px #000, 0 18px 50px rgba(0,0,0,0.7), 0 0 26px ${C.neonPink}33`,
-                cursor:"default",
+                height: isMobile ? "72%" : "88%",
+                width: "min(92%, 480px)",
+                background:"#0a0a12", borderRadius:22, padding:0,
+                border:`1px solid ${C.neonPink}55`,
+                boxShadow:`0 0 0 1px #000, 0 20px 60px rgba(0,0,0,0.7), 0 0 32px ${C.neonPink}33`,
+                cursor:"default", overflow:"hidden",
+                display:"flex", flexDirection:"column",
               }
             : {
                 top:14,
                 right:14,
-                width:DOCKED_W, height:DOCKED_H,
+                width:CONSOLE_BTN, height:CONSOLE_BTN,
                 background:"#0a0014", borderRadius:16, padding:0,
                 border:`1.5px solid ${C.neonPink}70`,
                 boxShadow:`0 0 20px ${C.neonPink}55, 0 0 4px ${C.neonPink}aa`,
@@ -1008,15 +1085,31 @@ export default function DrivePage() {
               }),
         }}
       >
-        {phoneOpen&&(<>
-          <div style={{position:"absolute",left:-2,top:"22%",width:3,height:46,borderRadius:3,background:"#1c1c20"}}/>
-          <div style={{position:"absolute",left:-2,top:"34%",width:3,height:70,borderRadius:3,background:"#1c1c20"}}/>
-          <div style={{position:"absolute",right:-2,top:"26%",width:3,height:90,borderRadius:3,background:"#1c1c20"}}/>
-        </>)}
-        <div style={{position:"relative",width:"100%",height:"100%",borderRadius:phoneOpen?36:14,overflow:"hidden",background:"#000"}}>
-          {phoneOpen&&(
-            <div style={{position:"absolute",top:8,left:"50%",transform:"translateX(-50%)",width:"34%",height:22,borderRadius:14,background:"#000",zIndex:5}}/>
-          )}
+        {phoneOpen&&(
+          // barra superior do console — substitui a moldura/notch de celular
+          <div style={{
+            flexShrink:0, height:34, display:"flex", alignItems:"center", justifyContent:"space-between",
+            padding:"0 14px", borderBottom:`1px solid ${C.neonPink}33`,
+            background:"rgba(255,255,255,0.02)",
+          }}>
+            <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:2,color:`${C.neonPink}cc`}}>CONSOLE · N3XO</span>
+            <button
+              type="button"
+              onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
+              style={{
+                display:"flex",alignItems:"center",gap:5,
+                background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
+                borderRadius:999, padding:"4px 10px",
+                color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:9, letterSpacing:1,
+                cursor:"pointer",
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+              MINIMIZAR
+            </button>
+          </div>
+        )}
+        <div style={{position:"relative",flex:1,width:"100%",overflow:"hidden",background:"#000"}}>
           <iframe
             ref={iframeRef}
             src="/?screen=home"
@@ -1024,31 +1117,13 @@ export default function DrivePage() {
               width: phoneOpen?"100%":"390px",
               height: phoneOpen?"100%":"844px",
               border:"none",
-              transform: phoneOpen?"none":`scale(${DOCKED_W/390})`,
+              transform: phoneOpen?"none":`scale(${CONSOLE_BTN/390})`,
               transformOrigin:"top left",
               pointerEvents: phoneOpen?"auto":"none",
             }}
-            title="Celular"
+            title="Console"
           />
         </div>
-        {phoneOpen&&(
-          <button
-            onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
-            style={{
-              position:"absolute",bottom:-56,left:"50%",transform:"translateX(-50%)",
-              display:"flex",alignItems:"center",gap:9,
-              background:`linear-gradient(90deg, ${C.neonPink}, #ff6a3d)`,
-              border:`1.5px solid #ffb0cf`,
-              borderRadius:16,padding:"13px 40px",
-              color:"#12000a",fontSize:15,fontWeight:800,letterSpacing:3,
-              textTransform:"uppercase",whiteSpace:"nowrap",cursor:"pointer",
-              animation:"dirigir-pulse 1.6s ease-in-out infinite",
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#12000a" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/><path d="M12 3v6.6M4.2 16.5l5.7-3.3M19.8 16.5l-5.7-3.3"/></svg>
-            DIRIGIR
-          </button>
-        )}
       </div>
 
       {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
@@ -1057,7 +1132,7 @@ export default function DrivePage() {
         const active = radioActive
         const isStatic = radioMachine === "static"
         const meta = F[activeTier]
-        const accent = meta.color
+        const accent = radioOn ? meta.color : "#6b7280"
         const title = (radioTrack?.title ?? "—").toUpperCase()
         return (
         <div style={{
@@ -1068,22 +1143,43 @@ export default function DrivePage() {
           zIndex:46,
           display:"flex", alignItems:"center", gap:10,
         }}>
+          {/* POWER — a rádio começa desligada; nada progride até ligar */}
+          <button
+            type="button"
+            onClick={() => setRadioOn(o => !o)}
+            aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
+            style={{
+              flexShrink:0, width:44, height:44, borderRadius:"50%",
+              background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
+              border: `2px solid ${radioOn ? meta.color : "rgba(255,255,255,0.25)"}`,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              cursor:"pointer",
+              boxShadow: radioOn ? `0 0 12px ${meta.color}55` : "none",
+              WebkitTapHighlightColor:"transparent",
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.2} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
+          </button>
+
           <div style={{
             position:"relative", flex:1, borderRadius:16, padding:"12px 16px 13px",
             background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
             border:`1px solid ${accent}55`,
-            boxShadow:`0 0 22px ${accent}33, inset 0 0 16px ${accent}18`,
+            boxShadow: radioOn ? `0 0 22px ${accent}33, inset 0 0 16px ${accent}18` : "none",
             overflow:"hidden", pointerEvents:"none",
+            opacity: radioOn ? 1 : 0.7,
           }}>
             {/* scanlines */}
             <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
             {/* estação + freq + status */}
             <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <span style={{fontFamily:"monospace",fontSize:12,letterSpacing:2,color:accent,textShadow:`0 0 6px ${accent}`}}>{meta.label}</span>
+              <span style={{fontFamily:"monospace",fontSize:12,letterSpacing:2,color:accent,textShadow:radioOn?`0 0 6px ${accent}`:"none"}}>{meta.label}</span>
               <span style={{display:"flex",alignItems:"center",gap:8}}>
                 <span style={{fontFamily:"monospace",fontSize:12,letterSpacing:1,color:accent,opacity:0.85}}>{meta.freq} FM</span>
-                {active ? (
+                {!radioOn ? (
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>DESLIGADO</span>
+                ) : active ? (
                   <span style={{display:"inline-flex",alignItems:"center",gap:4,fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>
                     <span style={{width:7,height:7,borderRadius:7,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
                     NO AR
@@ -1095,7 +1191,11 @@ export default function DrivePage() {
                 )}
               </span>
             </div>
-            {active ? (
+            {!radioOn ? (
+              <div style={{position:"relative",height:38,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                <span style={{fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ APERTE O POWER PRA LIGAR ◌</span>
+              </div>
+            ) : active ? (
               <>
                 {/* now playing (marquee) — só o nome da música */}
                 <div style={{position:"relative",height:24,overflow:"hidden"}}>
@@ -1165,7 +1265,7 @@ export default function DrivePage() {
           }}
           style={{
             position:"absolute",
-            top: DOCKED_H + 26,
+            top: 14 + CONSOLE_BTN + 14,
             left:"50%", transform:"translateX(-50%)",
             width:"min(80%, 340px)",
             zIndex:62,
@@ -1202,7 +1302,7 @@ export default function DrivePage() {
               <button
                 key={tier}
                 type="button"
-                onClick={() => setManualTier(tier)}
+                onClick={() => { setManualTier(tier); setRadioOn(true) }}
                 style={{
                   flex:1, padding:"5px 3px", borderRadius:8,
                   background: isSelected ? `${meta.color}22` : "rgba(255,255,255,0.04)",
@@ -1291,42 +1391,69 @@ export default function DrivePage() {
         )
       })()}
 
-      {/* CONTROLES DE DIREÇÃO — fixos no fundo */}
+      {/* CONTROLES DE DIREÇÃO — fixos no fundo. Com o piloto automático ligado,
+          o acelerador/direção somem e dá pra usar o console maximizado com o
+          carro se cuidando sozinho (acelera e desvia do tráfego) */}
       {!phoneOpen&&(
         <div style={{
           position:"absolute",bottom:0,left:0,right:0,
           height:BOTOES_H_PCT,zIndex:50,
           display:"flex",alignItems:"center",
-          justifyContent:"space-between",
+          justifyContent: autoDrive ? "center" : "space-between",
+          gap:16,
           padding:"0 20px",
           background:"linear-gradient(to top, #05001a, transparent)",
         }}>
-          <div style={{display:"flex",gap:12}}>
-            <button
-              onTouchStart={()=>leftRef.current=true}  onTouchEnd={()=>leftRef.current=false}
-              onMouseDown={()=>leftRef.current=true}    onMouseUp={()=>leftRef.current=false}
-              style={ctrlBtn()}
-            >◀</button>
-            <button
-              onTouchStart={()=>rightRef.current=true} onTouchEnd={()=>rightRef.current=false}
-              onMouseDown={()=>rightRef.current=true}  onMouseUp={()=>rightRef.current=false}
-              style={ctrlBtn()}
-            >▶</button>
-          </div>
+          {!autoDrive && (
+            <div style={{display:"flex",gap:12}}>
+              <button
+                onTouchStart={()=>leftRef.current=true}  onTouchEnd={()=>leftRef.current=false}
+                onMouseDown={()=>leftRef.current=true}    onMouseUp={()=>leftRef.current=false}
+                style={ctrlBtn()}
+              >◀</button>
+              <button
+                onTouchStart={()=>rightRef.current=true} onTouchEnd={()=>rightRef.current=false}
+                onMouseDown={()=>rightRef.current=true}  onMouseUp={()=>rightRef.current=false}
+                style={ctrlBtn()}
+              >▶</button>
+            </div>
+          )}
+
           <button
-            onTouchStart={()=>accelRef.current=true}  onTouchEnd={()=>accelRef.current=false}
-            onMouseDown={()=>accelRef.current=true}   onMouseUp={()=>accelRef.current=false}
+            type="button"
+            onClick={() => setAutoDrive(a => !a)}
             style={{
-              width:76,height:76,borderRadius:"50%",
-              background:`radial-gradient(circle,${C.neonPink}33,${C.neonPink}11)`,
-              border:`3px solid ${C.neonPink}`,
-              color:C.neonPink,fontSize:26,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 0 20px ${C.neonPink}55`,
-              WebkitTapHighlightColor:"transparent",
-              cursor:"pointer",
+              display:"flex", alignItems:"center", gap:8,
+              padding: autoDrive ? "10px 22px" : "8px 16px",
+              borderRadius:999,
+              background: autoDrive ? "rgba(0,255,170,0.14)" : "rgba(255,255,255,0.06)",
+              border: `1.5px solid ${autoDrive ? "#00ffaa" : "rgba(255,255,255,0.25)"}`,
+              color: autoDrive ? "#00ffaa" : "rgba(255,255,255,0.6)",
+              boxShadow: autoDrive ? "0 0 16px rgba(0,255,170,0.4)" : "none",
+              fontFamily:"monospace", fontSize:11, fontWeight:700, letterSpacing:1.5,
+              cursor:"pointer", WebkitTapHighlightColor:"transparent",
             }}
-          >▲</button>
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
+            {autoDrive ? "PILOTO AUTOMÁTICO" : "AUTO"}
+          </button>
+
+          {!autoDrive && (
+            <button
+              onTouchStart={()=>accelRef.current=true}  onTouchEnd={()=>accelRef.current=false}
+              onMouseDown={()=>accelRef.current=true}   onMouseUp={()=>accelRef.current=false}
+              style={{
+                width:76,height:76,borderRadius:"50%",
+                background:`radial-gradient(circle,${C.neonPink}33,${C.neonPink}11)`,
+                border:`3px solid ${C.neonPink}`,
+                color:C.neonPink,fontSize:26,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                boxShadow:`0 0 20px ${C.neonPink}55`,
+                WebkitTapHighlightColor:"transparent",
+                cursor:"pointer",
+              }}
+            >▲</button>
+          )}
         </div>
       )}
     </div>

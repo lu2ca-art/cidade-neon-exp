@@ -22,104 +22,106 @@ export interface Track {
 // Convenção de nome de arquivo:  <TITULO_UPPERCASE_SEM_ACENTO>.mp3
 // Ex.: sextafeira → SEXTAFEIRA.mp3  |  qm é vc? → QM_E_VC.mp3
 // ─────────────────────────────────────────────────────────────────────────────
+// audioUrl aponta pros mesmos cortes de 22s já usados no rádio do carro
+// (public/audio/tracks/) — as prévias oficiais do álbum são as mesmas faixas,
+// só que aqui reunidas numa única lista completa (ver reward-gating em
+// /spotify/auto-chuva: só toca de verdade depois de unlocked.finalCompleted)
 export const ALBUM_TRACKS: Track[] = [
   {
     id: 1, title: "sextafeira",
     masked: "s*****ira",     duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: SEXTAFEIRA.mp3
+    audioUrl: "/audio/tracks/sextafeira.mp3",
   },
   {
     id: 2, title: "nectar",
     masked: "n****r",        duration: "0:22", durationSec: 22,
     playable: true, color: "#FF6B9D",
-    audioUrl: null, // arquivo: NECTAR.mp3
+    audioUrl: "/audio/tracks/nectar.mp3",
   },
   {
     id: 3, title: "copo americano",
     masked: "c*** a*****no", duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/COPO%20AMERICANO%20%28MASTER%29-jPjZxju7Z5bxrhmi3XF7pgqkoZGajw.mp3",
-    // arquivo: COPO_AMERICANO.mp3
+    audioUrl: "/audio/tracks/222-copo-americano.mp3",
   },
   {
     id: 4, title: "dopaminA",
     masked: "d*****nA",      duration: "0:22", durationSec: 22,
     playable: true, color: "#FF9D6B",
-    audioUrl: null, // arquivo: DOPAMINA.mp3
+    audioUrl: "/audio/tracks/dopamina.mp3",
   },
   {
     id: 5, title: "ojalá",
     masked: "o***á",         duration: "0:22", durationSec: 22,
     playable: true, color: "#6B9DFF",
-    audioUrl: null, // arquivo: OJALA.mp3
+    audioUrl: "/audio/tracks/ojala.mp3",
   },
   {
     id: 6, title: "swav",
     masked: "s**v",          duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: SWAV.mp3
+    audioUrl: "/audio/tracks/swav.mp3",
   },
   {
     id: 7, title: "cliche",
     masked: "c****e",        duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: CLICHE.mp3
+    audioUrl: "/audio/tracks/cliche.mp3",
   },
   {
     id: 8, title: "sabe ontem?",
     masked: "s*** o****?",   duration: "0:22", durationSec: 22,
     playable: true, color: "#FFD93D",
-    audioUrl: null, // arquivo: SABE_ONTEM.mp3
+    audioUrl: "/audio/tracks/sabe-ontem.mp3",
   },
   {
     id: 9, title: "hollywood",
     masked: "h*****ood",     duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: HOLLYWOOD.mp3
+    audioUrl: "/audio/tracks/hollywood.mp3",
   },
   {
     id: 10, title: "stylist",
     masked: "s*****t",       duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: STYLIST.mp3
+    audioUrl: "/audio/tracks/stylist.mp3",
   },
   {
     id: 11, title: "oasis",
     masked: "o***s",         duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: OASIS.mp3
+    audioUrl: "/audio/tracks/oasis.mp3",
   },
   {
     id: 12, title: "astronauta",
     masked: "a*******a",     duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: ASTRONAUTA.mp3
+    audioUrl: "/audio/tracks/astronauta.mp3",
   },
   {
     id: 13, title: "CHUVA",
     masked: "C***A",         duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/CHUVA%20%28MASTER%29-gjxdvkaY9bF5PpjHELCGqT3NrahEsG.mp3",
-    // arquivo: CHUVA.mp3
+    audioUrl: "/audio/tracks/222-chuva.mp3",
   },
   {
     id: 14, title: "qm é vc?",
     masked: "q* é v*?",      duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: QM_E_VC.mp3
+    audioUrl: "/audio/tracks/qm-e-vc.mp3",
   },
   {
     id: 15, title: "rollercoaster",
     masked: "r*******ster",  duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: ROLLERCOASTER.mp3
+    audioUrl: "/audio/tracks/rollercoaster.mp3",
   },
   {
     id: 16, title: "tédio",
     masked: "t***o",         duration: "0:22", durationSec: 22,
     playable: true,
-    audioUrl: null, // arquivo: TEDIO.mp3
+    audioUrl: "/audio/tracks/tedio.mp3",
   },
 ]
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
-import { sendCarRadioMute } from "@/app/providers/AudioBridge"
+import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
 
 interface Connection {
   music: string
@@ -130,7 +130,8 @@ export default function FeelGoodPage() {
 
   const handleComplete = () => {
     completeConfirmation(2, { connections })
-    router.push("/whatsapp/privado/nizzy")
+    sendMinimizeConsole()
+    router.push("/?screen=home")
   }
 
   const getTrackColor = (trackId: string) => TRACKS.find((t) => t.id === trackId)?.color || "#fff"
@@ -173,13 +174,15 @@ export default function FeelGoodPage() {
             </div>
 
             <div className="mt-8 text-center">
-              <p className="text-white/60 text-sm mb-6">Tira um print dessa tela</p>
+              <p className="text-white/60 text-sm mb-1">Tira um print dessa tela</p>
+              <p className="text-white/40 text-sm mb-1">voce desbloqueou uma recompensa.</p>
+              <p className="text-white/25 text-xs mb-6">descubra na conversa com Nizzy, pelo N3XO.</p>
               <button
                 type="button"
                 onClick={handleComplete}
                 className="w-full bg-gradient-to-r from-[#0F3460] to-[#6B9DFF] text-white font-bold py-4 px-6 rounded-xl transition-all hover:opacity-90 min-h-[44px]"
               >
-                Concluir — Voltar pra Nizzy
+                Concluir
               </button>
             </div>
           </div>

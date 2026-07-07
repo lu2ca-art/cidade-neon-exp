@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
+import { sendMinimizeConsole } from "@/app/providers/AudioBridge"
 
 // ─── Perguntas ───────────────────────────────────────────────────────────────
 
@@ -142,23 +143,15 @@ export default function NectarPage() {
             </h1>
             <p className="text-white/50 text-sm leading-relaxed mb-10 max-w-[260px]">{result.desc}</p>
 
-            <p className="text-white/20 text-xs mb-6">missao 1 completa — volta pra conversa do Alohan</p>
-
-            <button
-              type="button"
-              onClick={() => router.push("/whatsapp/privado/alohan")}
-              className="w-full py-4 rounded-2xl font-semibold text-sm transition-all active:scale-[0.98]"
-              style={{ background: `${result.color}22`, color: result.color, border: `1px solid ${result.color}40` }}
-            >
-              Voltar para Alohan
-            </button>
+            <p className="text-white/40 text-sm mb-1">voce desbloqueou uma recompensa.</p>
+            <p className="text-white/20 text-xs mb-6">descubra na conversa com Alohan, pelo N3XO.</p>
 
             {/* Botao Home — simula botao fisico do iPhone */}
             <button
               type="button"
-              onClick={() => router.push("/?screen=home")}
+              onClick={() => { sendMinimizeConsole(); router.push("/?screen=home") }}
               aria-label="Inicio"
-              className="mt-4 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto"
+              className="w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto"
               style={{ background: "rgba(255,255,255,0.06)", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
             >
               <svg className="w-5 h-5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -367,7 +367,7 @@ function CidadeNeonExperience() {
   const phoneApps = [
     // [UNTITLED], //LOOP e _IRIS.EXE ficam bloqueados até a pessoa terminar as 3 confirmacoes (identityValidated)
     { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz", locked: !gameFunnelState.identityValidated },
-    { id: "spotify",       name: "FR3Q_",         icon: "spotify",       color: "#14532D" },
+    { id: "spotify",       name: "FR3Q_",         icon: "heartbeat",     color: "#031a0f" },
     { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3", locked: !gameFunnelState.identityValidated },
     { id: "youtube",       name: "STR34M",        icon: "youtube",       color: "#7F1D1D", link: "https://www.youtube.com/@LU222CA" },
     { id: "instagram",     name: "_IRIS.EXE",     icon: "instagram",     color: "#3B0764", link: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr", locked: !gameFunnelState.identityValidated },
@@ -633,21 +633,22 @@ function CidadeNeonExperience() {
         { id: "whatsapp-alohan-0", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/whatsapp/privado/alohan" },
       )
     } else if (cc === 1) {
-      // Missao 1 completa: Alohan envia SUBURBIO XENOM; Nizzy orienta abrir FEEL.GOOD
+      // Missao 1 completa: rádio libera CIDADENEON.CRYPTO (não é a Alohan quem avisa,
+      // é o próprio sistema da rádio); Nizzy orienta abrir FEEL.GOOD
       missions.push(
-        { id: "reward-alohan-1", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan liberou uma frequencia", body: "Radio CIDADENEON.CRYPTO liberada + versao digital no [untitled]", action: "/whatsapp/privado/alohan", isReward: true },
+        { id: "reward-alohan-1", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Nova frequência no ar", body: "CIDADENEON.CRYPTO liberada — toque pra sintonizar", action: "/whatsapp/privado/alohan", isReward: true },
         { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy" },
       )
     } else if (cc === 2) {
-      // Missao 2 completa: Nizzy envia Instrumental; D-Bee orienta abrir GUITAR DRIVER
+      // Missao 2 completa: rádio libera LIVE NEON; D-Bee orienta abrir GUITAR DRIVER
       missions.push(
-        { id: "reward-nizzy-2", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy liberou uma frequencia", body: "Radio LIVE NEON liberada + versao digital no [untitled]", action: "/whatsapp/privado/nizzy", isReward: true },
+        { id: "reward-nizzy-2", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Nova frequência no ar", body: "LIVE NEON liberada — toque pra sintonizar", action: "/whatsapp/privado/nizzy", isReward: true },
         { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee" },
       )
     } else {
-      // Missao 3 completa: D-Bee envia Live Neon + conteudo final
+      // Missao 3 completa: rádio libera a transmissão final + conteudo final
       missions.push(
-        { id: "reward-dbee-3", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee desbloqueou algo pra voce", body: "Recompensa final + versao digital no [untitled]", action: "/whatsapp/privado/dbee", isReward: true },
+        { id: "reward-dbee-3", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Transmissão final no ar", body: "CIDADE NEON 222.4 FM liberada — toque pra sintonizar", action: "/whatsapp/privado/dbee", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
@@ -766,6 +767,8 @@ function CidadeNeonExperience() {
       tiktok: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" /></svg>,
       instagram: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>,
       untitled: <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>,
+      radio: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="18" height="12" rx="2" stroke="white" strokeWidth="1.5"/><path d="M7 4l9 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><circle cx="16" cy="14" r="3" stroke="white" strokeWidth="1.2"/><line x1="7" y1="12" x2="7" y2="16" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+      heartbeat: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M2 12h4l2-7 4 14 3-10 2 3h5" stroke="#00ff9c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
       nectar: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="white" strokeWidth="1" opacity="0.7"/><circle cx="12" cy="12" r="5" stroke="white" strokeWidth="0.5" opacity="0.4"/><text x="12" y="15" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">N</text></svg>,
       drive: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 3L3 19h18L12 3z" stroke="#ff5fae" strokeWidth="1.5" strokeLinejoin="round" fill="none"/><path d="M8 15l4-8 4 8" stroke="#00e5ff" strokeWidth="1" strokeLinejoin="round" fill="none" opacity="0.6"/><circle cx="12" cy="18" r="1.5" fill="#ff5fae"/></svg>,
       feelgood: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#00e5ff" strokeWidth="1" opacity="0.8"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="#00e5ff" strokeWidth="1.2" strokeLinecap="round"/></svg>,
@@ -788,6 +791,7 @@ function CidadeNeonExperience() {
       spotify: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" /></svg>,
       notes: <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" /></svg>,
       radio: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="rdg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#ff5fae"/></linearGradient></defs><rect x="3" y="8" width="18" height="12" rx="2" stroke="url(#rdg)" strokeWidth="1.5"/><path d="M7 4l9 4" stroke="url(#rdg)" strokeWidth="1.5" strokeLinecap="round"/><circle cx="16" cy="14" r="3" stroke="url(#rdg)" strokeWidth="1.2"/><line x1="7" y1="12" x2="7" y2="16" stroke="#00e5ff" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+      heartbeat: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="hbg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00ff9c"/><stop offset="100%" stopColor="#00c2ff"/></linearGradient></defs><path d="M2 12h4l2-7 4 14 3-10 2 3h5" stroke="url(#hbg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
       feelgood: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="fgg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#6B9DFF"/></linearGradient></defs><circle cx="12" cy="12" r="9" stroke="url(#fgg)" strokeWidth="1.5" fill="none"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="url(#fgg)" strokeWidth="1.5" strokeLinecap="round"/></svg>,
       guitardriver: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="gdg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#ff5fae"/><stop offset="100%" stopColor="#ff9000"/></linearGradient></defs><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="10" r="2" stroke="url(#gdg)" strokeWidth="1.2" fill="rgba(255,95,174,0.15)"/></svg>,
     }
@@ -1536,10 +1540,13 @@ function CidadeNeonExperience() {
                     </div>
                   ) : (
                     (() => {
+                      // ids têm que bater com os que handleMissionClick de fato empurra pra
+                      // collectedRewards (reward-alohan-1/reward-nizzy-2/reward-dbee-3) —
+                      // antes usavam ids sem sufixo e essa aba nunca mostrava nada
                       const allRewards = [
-                        { id: "reward-nizzy", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Recompensa de Nizzy", body: "Instrumental Cidade Neon", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
-                        { id: "reward-dbee", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "Recompensa de D-Bee", body: "Suburbio Xenom", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
-                        { id: "reward-alohan", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Recompensa de Alohan", body: "Live Neon", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+                        { id: "reward-alohan-1", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADENEON.CRYPTO", body: "Recompensa de Alohan", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
+                        { id: "reward-nizzy-2", app: "Rádio", icon: "radio", color: "#00e5ff", title: "LIVE NEON", body: "Recompensa de Nizzy", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
+                        { id: "reward-dbee-3", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADE NEON 222.4 FM", body: "Recompensa de D-Bee", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
                       ]
                       return allRewards.filter(r => collectedRewards.includes(r.id)).map((reward) => (
                         <button key={reward.id} type="button" onClick={() => window.open(reward.action, "_blank")} className="w-full text-left">

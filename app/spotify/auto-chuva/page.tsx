@@ -7,7 +7,13 @@ import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { ALBUM_TRACKS, useAudioPlayer, type Track } from "@/app/providers/AudioPlayerProvider"
 import { sendToParent, type BridgeState } from "@/app/providers/AudioBridge"
 
-const ACCENT = "#E8FF3A"
+// Painel de monitor vital, não um clone de Spotify: verde de EKG, não o
+// verde da marca. CHUVA (index 12) é a única prévia sempre liberada — o
+// resto do álbum só toca de verdade depois de unlocked.finalCompleted (a
+// recompensa por terminar toda a experiência no /drive: as 3 frequências +
+// chegar no final que libera a CIDADE NEON 222.4 FM).
+const ACCENT = "#00ff9c"
+const CHUVA_INDEX = 12
 
 // Detecta se está dentro de um iframe do drive
 const isInIframe = () => typeof window !== "undefined" && window.self !== window.top
@@ -71,35 +77,46 @@ function Waveform({
   const playedIdx = Math.floor(progress * bars.length)
   return (
     <div ref={ref} onClick={onClick}
-      className="relative flex items-center gap-[2px] cursor-pointer w-full"
+      className="relative flex items-center gap-[1px] cursor-pointer w-full"
       style={{ height: compact ? 22 : 56 }}
     >
       {bars.map((h, i) => (
         <div key={i} className="flex-1 rounded-full" style={{
           height: `${h * 100}%`, minWidth: 1,
-          background: i <= playedIdx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)",
+          background: i <= playedIdx ? ACCENT : "rgba(0,255,156,0.18)",
+          boxShadow: i <= playedIdx ? `0 0 3px ${ACCENT}99` : "none",
         }} />
       ))}
       <div className="absolute top-0 bottom-0 w-[2px] rounded-full"
-        style={{ left: `${progress * 100}%`, background: ACCENT, boxShadow: `0 0 6px ${ACCENT}` }} />
+        style={{ left: `${progress * 100}%`, background: "#fff", boxShadow: `0 0 8px ${ACCENT}` }} />
     </div>
   )
 }
 
-// ─── COVER — extraído para componente estável (elimina piscar) ─────────────────
+// ─── COVER — moldura de monitor (não a capinha redonda do Spotify): borda
+// verde de EKG, scanlines por cima da foto, brilho pulsante ao redor ────────
 function AlbumCover({ circular, size }: { circular: boolean; size: number }) {
   return (
-    <div className={`overflow-hidden ring-1 ring-white/10 shadow-2xl ${circular ? "rounded-full" : "rounded-xl"}`}
-      style={{ width: size, height: size }}
-    >
-      <Image
-        src="/images/album-cover.jpg"
-        alt="Cidade Neon"
-        width={size}
-        height={size}
-        priority
-        className="w-full h-full object-cover grayscale"
-      />
+    <div className="relative" style={{ width: size, height: size }}>
+      <div className={`absolute inset-0 ${circular ? "rounded-full" : "rounded-xl"}`}
+        style={{ boxShadow: `0 0 0 1px ${ACCENT}55, 0 0 30px ${ACCENT}33`, animation: "pulse-glow 1.8s ease-in-out infinite" }} />
+      <div className={`relative overflow-hidden ${circular ? "rounded-full" : "rounded-xl"}`}
+        style={{ width: size, height: size, border: `1px solid ${ACCENT}66` }}
+      >
+        <Image
+          src="/images/album-cover.jpg"
+          alt="Cidade Neon"
+          width={size}
+          height={size}
+          priority
+          className="w-full h-full object-cover grayscale"
+        />
+        <div className="absolute inset-0 pointer-events-none" style={{
+          opacity: 0.25,
+          backgroundImage: "repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.5) 2px 3px)",
+        }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: `${ACCENT}14` }} />
+      </div>
     </div>
   )
 }
@@ -118,23 +135,23 @@ function NowPlayingView({
 }) {
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`
   return (
-    <div className="flex-1 flex flex-col bg-[#161616]">
+    <div className="flex-1 flex flex-col" style={{ background: "#040a08" }}>
       <div className="px-6 pt-8 pb-2 text-center">
         <h1 className="text-white text-2xl font-medium tracking-tight">{track.title ?? track.masked ?? "Faixa"}</h1>
-        <p className="text-white/45 text-sm mt-1 tracking-wide">CIDADE NEON &middot; LU2CA</p>
+        <p className="text-sm mt-1 tracking-wide font-mono" style={{ color: `${ACCENT}99` }}>CIDADE NEON &middot; SINAL VITAL</p>
       </div>
       <div className="flex-1 flex items-center justify-center px-10 min-h-0">
         <AlbumCover circular size={260} />
       </div>
       <div className="px-7 pt-4">
         <Waveform bars={bars} progress={progress} seekFromRatio={seekFromRatio} />
-        <p className="text-center text-white/50 text-sm tabular-nums mt-3">
-          {fmt(audio.elapsed)} <span className="text-white/25">/</span> {track.duration}
+        <p className="text-center text-sm tabular-nums mt-3 font-mono" style={{ color: `${ACCENT}88` }}>
+          {fmt(audio.elapsed)} <span style={{ color: `${ACCENT}44` }}>/</span> {track.duration}
         </p>
       </div>
       <div className="px-8 pt-5 pb-5 flex items-center justify-between">
         <button type="button" aria-label="Compartilhar"
-          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-90 transition-transform" style={{ color: `${ACCENT}bb` }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         </button>
         <button type="button" onClick={audio.prev} aria-label="Anterior"
@@ -142,7 +159,8 @@ function NowPlayingView({
           <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         </button>
         <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"}
-          className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:scale-95 transition-transform">
+          className="w-16 h-16 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+          style={{ background: ACCENT, boxShadow: `0 0 24px ${ACCENT}66` }}>
           {audio.playing
             ? <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
             : <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>}
@@ -152,20 +170,20 @@ function NowPlayingView({
           <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
         <button type="button" aria-label="Repetir"
-          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white/80 active:scale-90 transition-transform">
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-90 transition-transform" style={{ color: `${ACCENT}bb` }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
         </button>
       </div>
-      <div className="border-t border-white/8 flex">
+      <div className="flex" style={{ borderTop: `1px solid ${ACCENT}22` }}>
         <button type="button" onClick={onBack}
-          className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
-          <span className="text-[11px] tracking-wide">notes</span>
+          className="flex-1 flex flex-col items-center gap-1 py-4 active:bg-white/5" style={{ color: `${ACCENT}bb` }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span className="text-[11px] tracking-wide font-mono">monitor</span>
         </button>
         <button type="button" onClick={onAlbum}
-          className="flex-1 flex flex-col items-center gap-1 py-4 text-white/70 active:bg-white/5">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="9" cy="8" r="2" fill="#161616"/><circle cx="15" cy="16" r="2" fill="#161616"/></svg>
-          <span className="text-[11px] tracking-wide">edit</span>
+          className="flex-1 flex flex-col items-center gap-1 py-4 active:bg-white/5" style={{ color: `${ACCENT}bb` }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span className="text-[11px] tracking-wide font-mono">faixas</span>
         </button>
       </div>
     </div>
@@ -174,7 +192,7 @@ function NowPlayingView({
 
 // ─── TELA ALBUM ───────────────────────────────────────────────────────────────
 function AlbumView({
-  audio, bars, progress, seekFromRatio, onNowPlaying, onHome,
+  audio, bars, progress, seekFromRatio, onNowPlaying, onHome, unlocked,
 }: {
   audio: ReturnType<typeof usePlayer>
   bars: number[]
@@ -182,24 +200,24 @@ function AlbumView({
   seekFromRatio: (r: number) => void
   onNowPlaying: () => void
   onHome: () => void
+  unlocked: boolean
 }) {
+  const isPlayable = (i: number) => unlocked || i === CHUVA_INDEX
   const selectTrack = (i: number) => {
-    if (!ALBUM_TRACKS[i].playable) return
+    if (!isPlayable(i)) return
     audio.play(i)
     onNowPlaying()
   }
   return (
-    <div className="flex-1 flex flex-col bg-[#161616] overflow-y-auto overscroll-contain">
-      <div className="sticky top-0 z-10 bg-[#161616]/95 backdrop-blur flex items-center justify-between px-3 py-3">
+    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain" style={{ background: "#040a08" }}>
+      <div className="sticky top-0 z-10 backdrop-blur flex items-center justify-between px-3 py-3" style={{ background: "#040a08f2" }}>
         <button type="button" onClick={onHome} aria-label="Voltar"
-          className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white active:scale-90 transition-transform">
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: `${ACCENT}14` }}>
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
-        <div className="flex items-center gap-2">
-          <button type="button" aria-label="Link" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white/80"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
-          <button type="button" aria-label="Buscar" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white/80"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-          <button type="button" aria-label="Mais" className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center text-white/80"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
-        </div>
+        <p className="font-mono text-xs tracking-[0.2em]" style={{ color: `${ACCENT}99` }}>
+          {unlocked ? "SINAL ESTÁVEL" : "MONITORANDO"}
+        </p>
       </div>
       <div className="px-5 pt-2 pb-4">
         <div className="w-full max-w-[280px] mx-auto mb-5">
@@ -208,10 +226,11 @@ function AlbumView({
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-white text-3xl font-bold tracking-tight">CIDADE NEON</h1>
-            <p className="text-white/45 text-sm mt-1">LU2CA &middot; 9 faixas</p>
+            <p className="text-sm mt-1 font-mono" style={{ color: `${ACCENT}88` }}>LU2CA &middot; {ALBUM_TRACKS.length} faixas</p>
           </div>
-          <button type="button" onClick={() => { audio.play(8); onNowPlaying() }} aria-label="Tocar"
-            className="w-14 h-14 rounded-full bg-white flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform">
+          <button type="button" onClick={() => { audio.play(unlocked ? 0 : CHUVA_INDEX); onNowPlaying() }} aria-label="Tocar"
+            className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
+            style={{ background: ACCENT, boxShadow: `0 0 20px ${ACCENT}55` }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
           </button>
         </div>
@@ -219,29 +238,32 @@ function AlbumView({
       <div className="px-2 pb-28">
         {ALBUM_TRACKS.map((t, i) => {
           const isActive = i === audio.trackIdx && audio.playing
+          const playable = isPlayable(i)
           return (
-            <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!t.playable}
-              className={`w-full flex items-center gap-3 py-3 px-3 rounded-lg text-left ${!t.playable ? "opacity-45" : "active:bg-white/5"}`}>
-              <span className="w-5 text-center text-sm text-white/35 flex-shrink-0 tabular-nums">{i + 1}</span>
+            <button key={t.id} type="button" onClick={() => selectTrack(i)} disabled={!playable}
+              className={`w-full flex items-center gap-3 py-3 px-3 rounded-lg text-left ${!playable ? "opacity-45" : "active:bg-white/5"}`}>
+              <span className="w-5 text-center text-sm flex-shrink-0 tabular-nums font-mono" style={{ color: `${ACCENT}55` }}>{i + 1}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-medium truncate" style={{ color: isActive ? ACCENT : "white" }}>
-                  {t.playable ? t.title : <span className="font-mono opacity-70">{t.masked}</span>}
+                  {playable ? t.title : <span className="font-mono opacity-70">{t.masked}</span>}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
-                  <span className="text-xs text-white/35">{t.playable ? "21 Jan" : "bloqueada"}</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={`${ACCENT}66`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 6-4-12-3 6H2"/></svg>
+                  <span className="text-xs font-mono" style={{ color: `${ACCENT}55` }}>
+                    {playable ? "prévia · 22s" : i === CHUVA_INDEX ? "prévia · 22s" : "libera no final do /drive"}
+                  </span>
                 </div>
               </div>
-              {!t.playable
-                ? <svg width="15" height="15" fill="rgba(255,255,255,0.35)" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-3.1 0H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
-                : <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>}
+              {!playable
+                ? <svg width="15" height="15" fill={`${ACCENT}55`} viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-3.1 0H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={`${ACCENT}88`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 5v14l11-7z"/></svg>}
             </button>
           )
         })}
       </div>
       {audio.currentTrack && (
         <div className="absolute bottom-4 left-3 right-3 z-20">
-          <div className="bg-[#262626] rounded-2xl px-2 py-2 flex items-center gap-3 shadow-2xl ring-1 ring-white/8">
+          <div className="rounded-2xl px-2 py-2 flex items-center gap-3 shadow-2xl" style={{ background: "#0a1512", border: `1px solid ${ACCENT}33` }}>
             <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"}
               className="w-10 h-10 rounded-xl overflow-hidden relative flex-shrink-0">
               <Image src="/images/album-cover.jpg" alt="" width={40} height={40} className="w-full h-full object-cover grayscale" />
@@ -253,7 +275,7 @@ function AlbumView({
             </button>
             <button type="button" onClick={onNowPlaying} className="flex-1 min-w-0 text-left">
               <p className="text-white text-sm font-medium truncate">{audio.currentTrack.title ?? "Bloqueada"}</p>
-              <p className="text-white/45 text-xs truncate">CIDADE NEON &middot; LU2CA</p>
+              <p className="text-xs truncate font-mono" style={{ color: `${ACCENT}77` }}>CIDADE NEON &middot; SINAL VITAL</p>
             </button>
             <div className="w-16 flex-shrink-0 pr-1">
               <Waveform compact bars={bars} progress={progress} seekFromRatio={seekFromRatio} />
@@ -276,14 +298,20 @@ export default function UntitledPlayerPage() {
   const notifSent   = useRef(false)
   const isFirst     = useRef(!state.perAppState.spotifyAuto.completed)
 
-  const track    = audio.currentTrack ?? ALBUM_TRACKS[0]
+  // recompensa por jogar o /drive: as 3 primeiras frequências + chegar no
+  // final liberam a CIDADE NEON 222.4 FM — esse é o mesmo gatilho que libera
+  // TODAS as prévias aqui. Antes disso, só CHUVA toca (a amostra oficial).
+  const unlocked = state.unlocked.finalCompleted
+
+  const track    = audio.currentTrack ?? ALBUM_TRACKS[CHUVA_INDEX]
   const progress = track.durationSec > 0 ? Math.min(audio.elapsed / track.durationSec, 1) : 0
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
 
-  // Auto-play CHUVA (index 8) ao montar, só se nada estiver tocando
+  // Auto-play CHUVA ao montar, só se nada estiver tocando — é a única prévia
+  // sempre liberada, antes mesmo do resto do álbum destravar
   useEffect(() => {
-    if (!audio.playing && audio.elapsed === 0) audio.play(8)
+    if (!audio.playing && audio.elapsed === 0) audio.play(CHUVA_INDEX)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Notificação WhatsApp aos 13s (primeira visita)
@@ -307,11 +335,14 @@ export default function UntitledPlayerPage() {
     else router.push("/?screen=home")
   }, [view, router])
 
+  // padrão de EKG: linha de base quase plana com um "complexo QRS" (o
+  // batimento) se repetindo — não é mais um equalizador de música genérico
   const bars = useMemo(() => {
     const n = 72
+    const cycle = [0.08, 0.09, 0.07, 0.1, 0.12, 0.22, 0.95, 0.15, 0.5, 0.28, 0.09, 0.08]
     return Array.from({ length: n }, (_, i) => {
-      const v = Math.abs(Math.sin(i * 0.7) * 0.6 + Math.sin(i * 1.9 + 1) * 0.4)
-      return 0.18 + v * 0.82
+      const base = cycle[i % cycle.length]
+      return Math.min(1, base + (Math.random() * 0.03))
     })
   }, [])
 
@@ -321,7 +352,7 @@ export default function UntitledPlayerPage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation select-none">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#161616] overflow-hidden">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col overflow-hidden" style={{ background: "#040a08" }}>
         {/* notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
         {/* status bar */}
@@ -373,6 +404,7 @@ export default function UntitledPlayerPage() {
               seekFromRatio={seekFromRatio}
               onNowPlaying={() => setView("now-playing")}
               onHome={() => router.push("/?screen=home")}
+              unlocked={unlocked}
             />
           </div>
         </div>

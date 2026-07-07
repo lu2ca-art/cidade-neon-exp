@@ -171,3 +171,10 @@
   50%      { box-shadow: 0 0 16px 3px var(--pulse-color, rgba(0,168,132,0.5)); }
 }
 .cta-pulse { animation: cta-pulse 1.8s ease-in-out infinite; }
+
+/* Brilho pulsante ao redor da capa do álbum no app FREQ (painel de
+   heartbeat) — simula um monitor de sinal vital ao vivo. */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
