@@ -65,7 +65,7 @@ export function sendNotificationClickToIframe(iframe: HTMLIFrameElement | null, 
 }
 
 // Silencia o rádio do carro (painel de /drive) enquanto um teste com áudio
-// próprio está aberto dentro do celular (FEEL.GOOD, GUITAR DRIVER) — evita
+// próprio está aberto dentro do celular (SINT0NIA, B4TIDA, GUITAR DRIVER) — evita
 // as duas trilhas tocando ao mesmo tempo. Some no cancel, volta ao sair.
 export type CarRadioControl = { type: "CAR_RADIO_MUTE" } | { type: "CAR_RADIO_UNMUTE" }
 

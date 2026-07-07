@@ -374,10 +374,17 @@ function CidadeNeonExperience() {
     { id: "whatsapp",      name: "N3XO_",         icon: "whatsapp",      color: "#064E3B" },
     { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
     { id: "access",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca-xlvdjou.gamma.site/" },
-    // Apps desbloqueados por missao
-    { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#4C1D95", locked: !appsUnlocked.nectar },
-    { id: "feel-good-app", name: "FEEL.GOOD",     icon: "feelgood",      color: "#0F3460", locked: !appsUnlocked.feelGood },
+    // Apps desbloqueados por missao — testes de confirmacao 1/2/3
+    { id: "nectar-app",    name: "SINT0NIA",      icon: "tuner",         color: "#052a33", locked: !appsUnlocked.nectar },
+    { id: "feel-good-app", name: "B4TIDA",        icon: "beatbuilder",   color: "#2a0505", locked: !appsUnlocked.feelGood },
     { id: "guitar-driver", name: "GUITAR DRIVER", icon: "guitardriver",  color: "#1a0a00", locked: !appsUnlocked.guitarDriver },
+  ]
+
+  // B-sides: as versoes antigas de NECTAR e FEEL.GOOD (quiz e conecta-palavras)
+  // saíram do fluxo principal — ficam aqui, sempre jogáveis, na segunda tela
+  const legacyApps = [
+    { id: "nectar-legacy",    name: "NECTAR",    icon: "nectar",   color: "#4C1D95" },
+    { id: "feelgood-legacy",  name: "FEEL.GOOD", icon: "feelgood", color: "#0F3460" },
   ]
 
   const formatTime = (seconds: number) => {
@@ -773,6 +780,8 @@ function CidadeNeonExperience() {
       drive: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 3L3 19h18L12 3z" stroke="#ff5fae" strokeWidth="1.5" strokeLinejoin="round" fill="none"/><path d="M8 15l4-8 4 8" stroke="#00e5ff" strokeWidth="1" strokeLinejoin="round" fill="none" opacity="0.6"/><circle cx="12" cy="18" r="1.5" fill="#ff5fae"/></svg>,
       feelgood: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#00e5ff" strokeWidth="1" opacity="0.8"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="#00e5ff" strokeWidth="1.2" strokeLinecap="round"/></svg>,
       guitardriver: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="#ff5fae" strokeWidth="1.2" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="#ff9000" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+      tuner: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><rect x="2" y="10" width="20" height="4" rx="2" stroke="#00E5FF" strokeWidth="1.2"/><circle cx="15" cy="12" r="3" fill="#00E5FF"/><path d="M4 6v2M8 5v3M12 4v4M16 5v3M20 6v2" stroke="#00E5FF" strokeWidth="1" strokeLinecap="round" opacity="0.5"/></svg>,
+      beatbuilder: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="#FF6B6B"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="#FF6B6B" strokeWidth="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="#FF6B6B" strokeWidth="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="#FF6B6B"/></svg>,
     }
     return svgMap[icon] || <div className="w-6 h-6 bg-white/30 rounded" />
   }
@@ -794,6 +803,8 @@ function CidadeNeonExperience() {
       heartbeat: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="hbg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00ff9c"/><stop offset="100%" stopColor="#00c2ff"/></linearGradient></defs><path d="M2 12h4l2-7 4 14 3-10 2 3h5" stroke="url(#hbg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
       feelgood: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="fgg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00e5ff"/><stop offset="100%" stopColor="#6B9DFF"/></linearGradient></defs><circle cx="12" cy="12" r="9" stroke="url(#fgg)" strokeWidth="1.5" fill="none"/><path d="M8 10h.01M16 10h.01M8.5 15c.83 1.2 2.17 2 3.5 2s2.67-.8 3.5-2" stroke="url(#fgg)" strokeWidth="1.5" strokeLinecap="round"/></svg>,
       guitardriver: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="gdg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#ff5fae"/><stop offset="100%" stopColor="#ff9000"/></linearGradient></defs><path d="M9 3h6M12 3v4M7 12a5 5 0 0010 0H7z" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><path d="M9 12v5a3 3 0 006 0v-5" stroke="url(#gdg)" strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="10" r="2" stroke="url(#gdg)" strokeWidth="1.2" fill="rgba(255,95,174,0.15)"/></svg>,
+      tuner: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="tng" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#00E5FF"/><stop offset="100%" stopColor="#5EEAD4"/></linearGradient></defs><rect x="2" y="10" width="20" height="4" rx="2" stroke="url(#tng)" strokeWidth="1.5"/><circle cx="15" cy="12" r="3.2" fill="url(#tng)"/><path d="M4 5v3M8 4v4M12 3v5M16 4v4M20 5v3" stroke="url(#tng)" strokeWidth="1.2" strokeLinecap="round" opacity="0.6"/></svg>,
+      beatbuilder: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="btg" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#FF6B6B"/><stop offset="100%" stopColor="#FFD93D"/></linearGradient></defs><rect x="2.5" y="2.5" width="8" height="8" rx="2" fill="url(#btg)"/><rect x="13.5" y="2.5" width="8" height="8" rx="2" stroke="url(#btg)" strokeWidth="1.5"/><rect x="2.5" y="13.5" width="8" height="8" rx="2" stroke="url(#btg)" strokeWidth="1.5"/><rect x="13.5" y="13.5" width="8" height="8" rx="2" fill="url(#btg)"/></svg>,
     }
     return (
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center relative" style={{ backgroundColor: color }}>
@@ -1344,15 +1355,17 @@ function CidadeNeonExperience() {
   /* ─── RENDER: PHONE HOME ���────────────────────────── */
   const activeMissions = getMissions()
   const [homePageIndex, setHomePageIndex] = useState(0)
-  const swipeTouchStartX = useRef<number | null>(null)
-  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
-    swipeTouchStartX.current = e.touches[0].clientX
+  const swipeStartX = useRef<number | null>(null)
+  // funciona com touch (celular) e pointer/mouse (desktop) — ambas as direcoes
+  const handleSwipeStart = useCallback((e: React.TouchEvent | React.PointerEvent) => {
+    swipeStartX.current = "touches" in e ? e.touches[0].clientX : e.clientX
   }, [])
-  const handleSwipeTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (swipeTouchStartX.current === null) return
-    const dx = e.changedTouches[0].clientX - swipeTouchStartX.current
+  const handleSwipeEnd = useCallback((e: React.TouchEvent | React.PointerEvent) => {
+    if (swipeStartX.current === null) return
+    const endX = "changedTouches" in e ? e.changedTouches[0].clientX : e.clientX
+    const dx = endX - swipeStartX.current
     if (Math.abs(dx) > 50) setHomePageIndex(dx < 0 ? 1 : 0)
-    swipeTouchStartX.current = null
+    swipeStartX.current = null
   }, [])
 
   const DEV_SHORTCUTS = [
@@ -1586,12 +1599,16 @@ function CidadeNeonExperience() {
         )}
 
         {/* ── Horizontal slide pages ── */}
+        {/* width:200% (duas paginas lado a lado) — a % do translateX e relativa a
+            esse proprio elemento, entao uma pagina de largura = 50%, nao 100% */}
         {!showNotifCenter && (
           <div
             className="absolute inset-0 z-10 flex transition-transform duration-300 ease-out"
-            style={{ transform: `translateX(-${homePageIndex * 100}%)`, width: "200%" }}
-            onTouchStart={handleSwipeTouchStart}
-            onTouchEnd={handleSwipeTouchEnd}
+            style={{ transform: `translateX(-${homePageIndex * 50}%)`, width: "200%" }}
+            onTouchStart={handleSwipeStart}
+            onTouchEnd={handleSwipeEnd}
+            onPointerDown={handleSwipeStart}
+            onPointerUp={handleSwipeEnd}
           >
             {/* PAGE 0 — App Grid */}
             <div className="w-1/2 h-full flex items-center justify-center px-8 pt-[56px] pb-[90px]">
@@ -1607,8 +1624,8 @@ function CidadeNeonExperience() {
                         if (app.link) { window.open(app.link, "_blank"); return }
                         if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                        if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
-                        if (app.id === "feel-good-app") { window.location.href = "/feel-good"; return }
+                        if (app.id === "nectar-app") { window.location.href = "/sintonizador"; return }
+                        if (app.id === "feel-good-app") { window.location.href = "/batida"; return }
                         if (app.id === "guitar-driver") { window.location.href = "/neon-tiles"; return }
                       }}
                       className={`flex flex-col items-center gap-1 transition-transform relative ${isLocked ? "opacity-40 cursor-default" : "active:scale-95"}`}
@@ -1633,13 +1650,33 @@ function CidadeNeonExperience() {
               </div>
             </div>
 
-            {/* PAGE 1 — Dev Panel */}
-            <div className="w-1/2 h-full pt-[56px] pb-[90px] flex flex-col">
+            {/* PAGE 1 — B-Sides + Dev Panel */}
+            <div className="w-1/2 h-full pt-[56px] pb-[90px] flex flex-col overflow-y-auto">
+              <div className="px-5 mb-3">
+                <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] font-mono">B-Sides</p>
+                <p className="text-white/60 text-xs mt-0.5">faixas bonus, fora do album principal</p>
+              </div>
+              <div className="px-8 mb-6">
+                <div className="grid grid-cols-3 gap-x-6 gap-y-6">
+                  {legacyApps.map((app) => (
+                    <button key={app.id} type="button"
+                      onClick={() => {
+                        if (app.id === "nectar-legacy") { window.location.href = "/nectar"; return }
+                        if (app.id === "feelgood-legacy") { window.location.href = "/feel-good"; return }
+                      }}
+                      className="flex flex-col items-center gap-1 transition-transform active:scale-95"
+                    >
+                      {renderAppIcon(app.icon, app.color)}
+                      <span className="text-[9px] leading-tight text-center font-mono tracking-tight text-white/60">{app.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="px-5 mb-3">
                 <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] font-mono">Painel de Teste</p>
                 <p className="text-white/60 text-xs mt-0.5">Acesso direto a cada etapa</p>
               </div>
-              <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-4">
+              <div className="px-4 space-y-2 pb-4">
                 {DEV_SHORTCUTS.map((btn, i) => (
                   <button
                     key={i}

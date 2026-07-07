@@ -22,8 +22,9 @@ const STORAGE_KEY = "cidade-neon-grupo-msgs"
 
 // Conversa de abertura — um vazamento de sinal, não um chat: a pessoa só
 // intercepta, nunca responde. As missões e confirmações de verdade acontecem
-// nos apps do celular (NECTAR, FEEL.GOOD, GUITAR DRIVER) e nas conversas
-// privadas com Alohan/Nizzy/D-Bee, não aqui.
+// nos apps do celular (SINT0NIA, B4TIDA, GUITAR DRIVER) e nas conversas
+// privadas com Alohan/Nizzy/D-Bee, não aqui. NECTAR e FEEL.GOOD (as versões
+// antigas dos dois primeiros testes) viraram b-sides opcionais, fora do fluxo.
 const INITIAL_SCRIPT: Message[] = [
   { id: 1, text: "Voce foi adicionado ao grupo", sender: "system", time: "21:47", isSystem: true },
   { id: 2, text: "Chegou.", sender: "D-Bee", time: "21:47" },

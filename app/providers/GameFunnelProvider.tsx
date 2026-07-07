@@ -63,8 +63,8 @@ export interface ConfirmationState {
 }
 
 export interface Confirmations {
-  c1: ConfirmationState & { archetype?: string; answers?: number[] }
-  c2: ConfirmationState & { connections?: Array<{ music: string; word: string; color: string }> }
+  c1: ConfirmationState & { archetype?: string; answers?: number[]; lockedFreq?: number }
+  c2: ConfirmationState & { connections?: Array<{ music: string; word: string; color: string }>; matchPercent?: number; attempts?: number }
   c3: ConfirmationState & { selectedTrack?: string; password?: string }
 }
 
