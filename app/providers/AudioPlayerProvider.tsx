@@ -117,12 +117,6 @@ export const ALBUM_TRACKS: Track[] = [
     playable: true,
     audioUrl: "/audio/tracks/rollercoaster.mp3",
   },
-  {
-    id: 16, title: "tédio",
-    masked: "t***o",         duration: "0:22", durationSec: 22,
-    playable: true,
-    audioUrl: "/audio/tracks/tedio.mp3",
-  },
 ]
 
 // Alias para compatibilidade com código legado que importava CIDADE_NEON_TRACKS
