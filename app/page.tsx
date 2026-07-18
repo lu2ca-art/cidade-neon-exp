@@ -263,7 +263,7 @@ function CidadeNeonExperience() {
     // All post-hacker steps now go to phone-home, since WhatsApp/Spotify/YouTube/TikTok/confirmations are separate pages
     if (step === "spotify-auto" || step === "whatsapp-notification") return "phone-home"
     if (step === "whatsapp-group") return "phone-home"
-    if (step === "confirmation-1" || step === "confirmation-2" || step === "confirmation-3") return "phone-home"
+    if (step === "confirmation-1" || step === "confirmation-2" || step === "confirmation-3" || step === "neon-tiles-complete") return "phone-home"
     if (step === "private-notifications" || step === "tiktok-notification" || step === "tiktok-final") return "phone-home"
     if (step === "completed" || step === "sala-branca") return "phone-home"
     return "incoming-call"
@@ -357,7 +357,7 @@ function CidadeNeonExperience() {
   const [nectarQuizStep, setNectarQuizStep] = useState(0)
   const [nectarAnswers, setNectarAnswers] = useState<number[]>(
     gameFunnelState.confirmations.c3.done
-    ? (gameFunnelState.confirmations.c3.data as { nectarAnswers?: number[] }).nectarAnswers || [0, 0, 0, 0, 0]
+    ? (gameFunnelState.confirmations.c3 as { nectarAnswers?: number[] }).nectarAnswers || [0, 0, 0, 0, 0]
     : []
   )
   const [nectarShowResult, setNectarShowResult] = useState(gameFunnelState.confirmations.c3.done)

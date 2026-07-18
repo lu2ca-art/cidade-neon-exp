@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { analyzeAudioForTiles, type AnalyzedTile } from "@/lib/audio-analysis"
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ interface Song {
 }
 
 type Profile = "ULTRA CONECTADO" | "EM SINTONIA" | "OSCILANDO" | "DESCONECTADO"
-type Phase = "select" | "countdown" | "playing" | "result" | "reward"
+type Phase = "select" | "analyzing" | "countdown" | "playing" | "result" | "reward"
 
 // ─── MÚSICAS ─────────────────────────────────────────────────────────────────
 
@@ -74,11 +75,12 @@ const SONGS: Song[] = [
   },
 ]
 
-// ─── GERADOR DE TILES (~1.5 nota/segundo, notas longas ocasionais) ────────────
+// ─── GERADOR DE TILES DE FALLBACK (usado só se a análise de áudio real falhar
+// ou vier rala demais) — mesmo assim deriva o intervalo do BPM real da faixa
+// (1 nota por tempo), em vez de um valor fixo que ignorava a música ─────────
 
 function generateTiles(song: Song): Tile[] {
-  // Intervalo fixo para 1.5 nota/segundo = 667ms entre notas
-  const interval = 667
+  const interval = 60000 / song.bpm
   const totalMs   = song.duration * 1000
   const tiles: Tile[] = []
   let id = 0
@@ -114,6 +116,21 @@ function generateTiles(song: Song): Tile[] {
   }
 
   return tiles.sort((a, b) => a.beatTime - b.beatTime)
+}
+
+// converte o resultado da análise de áudio real (lib/audio-analysis) pro
+// formato de Tile usado pelo jogo/render
+function toTiles(analyzed: AnalyzedTile[]): Tile[] {
+  return analyzed.map((t, i) => ({
+    id: i,
+    col: t.col,
+    beatTime: t.beatTime,
+    hit: false,
+    missed: false,
+    hold: t.hold,
+    holdDuration: t.holdDuration,
+    holdActive: false,
+  }))
 }
 
 // ─── PERFIL ───────────────────────────────────────────────────────────────────
@@ -174,6 +191,7 @@ export default function NeonTilesPage() {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null)
   const [countdown, setCountdown]     = useState(3)
   const [completedSongs, setCompletedSongs] = useState(0)
+  const completedSongsRef = useRef(0)
   const [tiles, setTiles]             = useState<Tile[]>([])
   const [score, setScore]             = useState(0)
   const [combo, setCombo]             = useState(0)
@@ -200,6 +218,14 @@ export default function NeonTilesPage() {
   const holdingRef        = useRef<boolean[]>([false,false,false,false])
   const particlesRef      = useRef<{x:number;y:number;vx:number;vy:number;r:number;color:string;life:number}[]>([])
   const bgPhaseRef        = useRef(0)
+  const audioCtxRef       = useRef<AudioContext | null>(null)
+  const gamepadButtonsRef = useRef<boolean[]>([false, false, false, false])
+  const [gamepadConnected, setGamepadConnected] = useState(false)
+  // refs indiretos pro renderFrame (useCallback com deps []) sempre chamar a
+  // versão mais atual de handlePointerDown/Up, sem closure obsoleta presa na
+  // fase em que o loop começou a rodar
+  const handlePointerDownRef = useRef<(col: number) => void>(() => {})
+  const handlePointerUpRef   = useRef<(col: number) => void>(() => {})
 
   useEffect(() => { tilesRef.current = tiles }, [tiles])
 
@@ -208,6 +234,19 @@ export default function NeonTilesPage() {
   useEffect(() => {
     sendCarRadioMute(true)
     return () => sendCarRadioMute(false)
+  }, [])
+
+  // controle (joystick/gamepad) conectado — só pra mostrar o indicador; a
+  // leitura dos botões acontece a cada frame dentro do renderFrame
+  useEffect(() => {
+    const onConnect = () => setGamepadConnected(true)
+    const onDisconnect = () => setGamepadConnected(false)
+    window.addEventListener("gamepadconnected", onConnect)
+    window.addEventListener("gamepaddisconnected", onDisconnect)
+    return () => {
+      window.removeEventListener("gamepadconnected", onConnect)
+      window.removeEventListener("gamepaddisconnected", onDisconnect)
+    }
   }, [])
 
   // ─── RENDER LOOP ─────────────────────────────────────────────────────────
@@ -225,6 +264,20 @@ export default function NeonTilesPage() {
     const elapsed = Date.now() - startTimeRef.current
     const song = songRef.current
     bgPhaseRef.current += 0.008
+
+    // controle: lê os 4 botões de face do primeiro gamepad conectado e
+    // dispara hit/release só na borda (evita repetir hit enquanto segura)
+    const pads = navigator.getGamepads ? navigator.getGamepads() : []
+    const pad = pads[0]
+    if (pad) {
+      for (let b = 0; b < 4; b++) {
+        const pressed = !!pad.buttons[b]?.pressed
+        const was = gamepadButtonsRef.current[b]
+        if (pressed && !was) handlePointerDownRef.current(b)
+        if (!pressed && was) handlePointerUpRef.current(b)
+        gamepadButtonsRef.current[b] = pressed
+      }
+    }
 
     // ── FUNDO animado com scanlines e gradiente pulsante ──
     const bgG = ctx.createLinearGradient(0, 0, 0, H)
@@ -479,34 +532,57 @@ export default function NeonTilesPage() {
   const startGame = useCallback((song: Song) => {
     if (!song.audioUrl) return
 
-    const generated = generateTiles(song)
-    setTiles(generated)
-    tilesRef.current = generated
     songRef.current = song
     particlesRef.current = []
+    holdingRef.current = [false, false, false, false]
 
     setScore(0); setCombo(0); setMaxCombo(0); setHits(0); setTimeLeft(song.duration)
     comboRef.current = 0; maxComboRef.current = 0; hitsRef.current = 0; totalRef.current = 0
 
-    const audio = new Audio(song.audioUrl)
-    audio.volume = 0.85
-    audioRef.current = audio
+    setPhase("analyzing")
 
-    setPhase("countdown"); setCountdown(3)
-    let count = 3
-    const cdInterval = setInterval(() => {
-      count--
-      setCountdown(count)
-      if (count <= 0) {
-        clearInterval(cdInterval)
-        audio.play().catch(() => {})
-        startTimeRef.current = Date.now()
-        setPhase("playing")
-        // NOTE: the render loop is started by the `phase === "playing"` effect
-        // below — not here — so the <canvas> is guaranteed to be committed to
-        // the DOM before requestAnimationFrame(renderFrame) first runs.
+    const beginCountdown = (generated: Tile[]) => {
+      setTiles(generated)
+      tilesRef.current = generated
+
+      const audio = new Audio(song.audioUrl)
+      audio.volume = 0.85
+      audioRef.current = audio
+
+      setPhase("countdown"); setCountdown(3)
+      let count = 3
+      const cdInterval = setInterval(() => {
+        count--
+        setCountdown(count)
+        if (count <= 0) {
+          clearInterval(cdInterval)
+          audio.play().catch(() => {})
+          startTimeRef.current = Date.now()
+          setPhase("playing")
+          // NOTE: the render loop is started by the `phase === "playing"` effect
+          // below — not here — so the <canvas> is guaranteed to be committed to
+          // the DOM before requestAnimationFrame(renderFrame) first runs.
+        }
+      }, 1000)
+    }
+
+    // analisa o áudio real da faixa (batida + timbre) pra gerar os tiles —
+    // se decode/análise falhar ou vier rala demais, cai no gerador procedural
+    // (que agora também deriva do BPM real, não mais um valor fixo)
+    void (async () => {
+      try {
+        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        const ctx = audioCtxRef.current ?? (audioCtxRef.current = new Ctx())
+        const res = await fetch(song.audioUrl)
+        const arrayBuffer = await res.arrayBuffer()
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+        const analyzed = analyzeAudioForTiles(audioBuffer, song.bpm, song.duration * 1000)
+        const density = analyzed.length / song.duration
+        beginCountdown(density >= 0.8 ? toTiles(analyzed) : generateTiles(song))
+      } catch {
+        beginCountdown(generateTiles(song))
       }
-    }, 1000)
+    })()
   }, [])
 
   // ─── RENDER LOOP ────────────────────────────────────────────────────────────
@@ -561,19 +637,24 @@ export default function NeonTilesPage() {
     const acc = t > 0 ? Math.round((h / t) * 100) : 0
     const mc = maxComboRef.current
     setAccuracy(acc); setFinalCombo(mc); setProfile(getProfile(acc, mc))
-    setCompletedSongs(prev => {
-      const next = prev + 1
-      if (next >= 4) {
-        updateCinematicStep("neon-tiles-complete")
-        // GUITAR DRIVER é a missão 3 (D-Bee) — sem isso confirmationCount
-        // nunca chegava a 3 e a frequência final/finalCompleted nunca liberava
-        completeConfirmation(3, { accuracy: acc, maxCombo: mc })
-        setPhase("reward")
-      } else {
-        setPhase("result")
-      }
-      return next
-    })
+
+    // os efeitos colaterais (funil/fase) ficam FORA do updater de
+    // setCompletedSongs — chamar setState de outro componente/contexto
+    // (GameFunnelProvider) de dentro de um updater funcional dispara "Cannot
+    // update a component while rendering a different component" e travava o
+    // fluxo ao completar a 4ª faixa
+    const next = completedSongsRef.current + 1
+    completedSongsRef.current = next
+    setCompletedSongs(next)
+    if (next >= 4) {
+      updateCinematicStep("neon-tiles-complete")
+      // GUITAR DRIVER é a missão 3 (D-Bee) — sem isso confirmationCount
+      // nunca chegava a 3 e a frequência final/finalCompleted nunca liberava
+      completeConfirmation(3, { accuracy: acc, maxCombo: mc })
+      setPhase("reward")
+    } else {
+      setPhase("result")
+    }
   }, [updateCinematicStep, completeConfirmation])
 
   // ─── TAP ──────────────────────────────────────────────────────────────────
@@ -632,6 +713,32 @@ export default function NeonTilesPage() {
     ))
   }, [])
 
+  // mantém os refs usados pelo renderFrame (controle) sempre com a versão
+  // mais atual de handlePointerDown/Up — renderFrame roda em useCallback com
+  // deps [], então uma referência direta ficaria presa na fase do 1º render
+  useEffect(() => { handlePointerDownRef.current = handlePointerDown }, [handlePointerDown])
+  useEffect(() => { handlePointerUpRef.current = handlePointerUp }, [handlePointerUp])
+
+  // teclado — D F J K mapeiam pras 4 colunas, mesma lógica de hit/miss do
+  // toque na tela (handlePointerDown já ignora tudo fora de phase "playing")
+  useEffect(() => {
+    const keyToCol: Record<string, number> = { d: 0, f: 1, j: 2, k: 3 }
+    const kd = (e: KeyboardEvent) => {
+      const col = keyToCol[e.key.toLowerCase()]
+      if (col === undefined || e.repeat) return
+      e.preventDefault()
+      handlePointerDown(col)
+    }
+    const ku = (e: KeyboardEvent) => {
+      const col = keyToCol[e.key.toLowerCase()]
+      if (col === undefined) return
+      handlePointerUp(col)
+    }
+    window.addEventListener("keydown", kd)
+    window.addEventListener("keyup", ku)
+    return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku) }
+  }, [handlePointerDown, handlePointerUp])
+
   useEffect(() => {
     return () => { cancelAnimationFrame(rafRef.current); audioRef.current?.pause() }
   }, [])
@@ -656,8 +763,11 @@ export default function NeonTilesPage() {
             <span className="font-mono text-xs ml-1" style={{ color: "rgba(255,255,255,0.3)" }}>{completedSongs}/4</span>
           </div>
         )}
-        <p className="font-mono text-xs mb-10" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <p className="font-mono text-xs mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>
           complete 4 faixas para desbloquear a recompensa
+        </p>
+        <p className="font-mono text-[11px] mb-10" style={{ color: "rgba(255,255,255,0.25)" }}>
+          jogue no toque, no teclado (D F J K) {gamepadConnected ? "ou no controle conectado" : "ou conectando um controle"}
         </p>
         <div className="w-full max-w-sm space-y-3">
           {SONGS.map(song => (
@@ -702,6 +812,24 @@ export default function NeonTilesPage() {
     )
   }
 
+  // ─── TELA: ANALISANDO ÁUDIO ──────────────────────────────────────────────
+
+  if (phase === "analyzing") {
+    const song = selectedSong || SONGS[0]
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "#000" }}>
+        <p className="font-mono text-xs mb-4 tracking-widest" style={{ color: song.color + "80" }}>{song.title}</p>
+        <div
+          className="w-10 h-10 rounded-full animate-spin mb-4"
+          style={{ border: `3px solid ${song.color}30`, borderTopColor: song.color }}
+        />
+        <p className="font-mono text-xs tracking-widest" style={{ color: "rgba(255,255,255,0.4)" }}>
+          ANALISANDO ÁUDIO...
+        </p>
+      </div>
+    )
+  }
+
   // ─── TELA: COUNTDOWN ─────────────────────────────────────────────────────
 
   if (phase === "countdown") {
@@ -712,7 +840,9 @@ export default function NeonTilesPage() {
         <p className="font-mono font-bold" style={{ fontSize: 96, color: song.color, textShadow: `0 0 40px ${song.color},0 0 80px ${song.color}66` }}>
           {countdown === 0 ? "GO" : countdown}
         </p>
-        <p className="font-mono text-xs mt-4" style={{ color: "rgba(255,255,255,0.3)" }}>toque nos tiles no ritmo</p>
+        <p className="font-mono text-xs mt-4" style={{ color: "rgba(255,255,255,0.3)" }}>
+          toque, tecle D F J K{gamepadConnected ? " ou use o controle" : ""} no ritmo
+        </p>
       </div>
     )
   }
@@ -814,7 +944,7 @@ export default function NeonTilesPage() {
           </button>
 
           <button
-            onClick={() => { setPhase("select"); setProfile(null); setCompletedSongs(0) }}
+            onClick={() => { setPhase("select"); setProfile(null); completedSongsRef.current = 0; setCompletedSongs(0) }}
             className="w-full py-3 rounded-xl font-mono text-sm transition-all active:scale-95 mt-4"
             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
@@ -850,6 +980,14 @@ export default function NeonTilesPage() {
             <p className="font-mono text-xs" style={{ color: song.color }}>{song.title}</p>
             <p className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{song.bpm} BPM</p>
           </div>
+          {gamepadConnected && (
+            <span
+              className="font-mono text-[9px] px-1.5 py-0.5 rounded-md"
+              style={{ color: "#00FFF0", background: "#00FFF018", border: "1px solid #00FFF040" }}
+            >
+              CONTROLE
+            </span>
+          )}
         </div>
         <div className="flex gap-4 font-mono text-sm">
           <div className="text-right">
@@ -898,7 +1036,7 @@ export default function NeonTilesPage() {
         </div>
       </div>
 
-      {/* Botoes de toque — overlay transparente sobre o canvas (toca no canvas) */}
+      {/* Botoes de toque — tambem jogaveis por teclado (D F J K) ou controle */}
       <div className="w-full max-w-sm grid grid-cols-4 gap-1.5 px-3 pb-6 pt-2">
         {[0, 1, 2, 3].map(col => (
           <button
@@ -906,7 +1044,7 @@ export default function NeonTilesPage() {
             onPointerDown={() => handlePointerDown(col)}
             onPointerUp={() => handlePointerUp(col)}
             onPointerLeave={() => handlePointerUp(col)}
-            className="rounded-2xl font-mono font-bold text-xl transition-all select-none"
+            className="rounded-2xl font-mono font-bold text-xl transition-all select-none flex flex-col items-center justify-center leading-none"
             style={{
               height: 68,
               background: `${COL_COLORS[col]}12`,
@@ -917,7 +1055,8 @@ export default function NeonTilesPage() {
               boxShadow: `0 0 12px ${COL_COLORS[col]}30`,
             }}
           >
-            ▼
+            <span>▼</span>
+            <span className="text-[10px] mt-1 opacity-60 tracking-widest">{["D", "F", "J", "K"][col]}</span>
           </button>
         ))}
       </div>

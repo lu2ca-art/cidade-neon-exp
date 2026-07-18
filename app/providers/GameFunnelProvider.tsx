@@ -14,6 +14,7 @@ export type CinematicStep =
   | "confirmation-1"
   | "confirmation-2"
   | "confirmation-3"
+  | "neon-tiles-complete"
   | "private-notifications"
   | "lu2ca-entry"
   | "lu2ca-call"

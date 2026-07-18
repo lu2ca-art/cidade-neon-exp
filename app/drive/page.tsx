@@ -646,7 +646,11 @@ export default function DrivePage() {
       const W = canvas.width
       const H = canvas.height
       const DASH_H  = Math.round(H * DASH_FRACTION)
-      const JOGO_H  = H - DASH_H - BOTOES_H
+      // barra inferior um pouco mais alta em telas estreitas de celular —
+      // dá espaço extra pros botões maiores/toque e cadência com o safe-area
+      // somado no HTML (ver BOTOES_H_PCT no JSX)
+      const BOTOES_H_NOW = W < 640 ? BOTOES_H + 14 : BOTOES_H
+      const JOGO_H  = H - DASH_H - BOTOES_H_NOW
 
       // ── Física natural ──
       const parked = radioMachineRef.current === "parked"
@@ -981,8 +985,13 @@ export default function DrivePage() {
         }
       }
 
+      // ── INTERIOR DO CARRO — colunas do para-brisa, moldura superior,
+      // retrovisor e o lábio de transição pro painel, pra dar a sensação de
+      // estar dentro do carro (não só vendo a pista solta na tela) ──
+      drawInteriorFrame(ctx,W,JOGO_H)
+
       // ── DASHBOARD ──
-      drawDashboard(ctx,W,H,DASH_H,BOTOES_H,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing)
+      drawDashboard(ctx,W,H,DASH_H,BOTOES_H_NOW,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing)
 
       // ── TRANSIÇÃO estilo Matrix (chuva digital) ao trocar de cenário ──
       const tr = transitionRef.current
@@ -1022,12 +1031,14 @@ export default function DrivePage() {
   },[])
 
   const DASH_PCT = DASH_FRACTION
-  const BOTOES_H_PCT = BOTOES_H_PX
+  const BOTOES_H_PCT = isMobile ? BOTOES_H_PX + 14 : BOTOES_H_PX
 
   // CONSOLE do carro — o "celular" não existe mais como objeto flutuando na
-  // cena; é uma tela do próprio painel. Fechado: ícone compacto no canto.
+  // cena; é uma tela do próprio painel. Fechado: encaixado no console central,
+  // abaixo do rádio, com a cara de um celular montado no suporte do carro.
   // Maximizado: painel grande estilo HUD (não uma moldura de smartphone).
-  const CONSOLE_BTN = 60
+  const CONSOLE_BTN_W = 46
+  const CONSOLE_BTN_H = 82
 
   return (
     <div
@@ -1053,6 +1064,18 @@ export default function DrivePage() {
         />
       )}
 
+      {/* suporte/clipe do celular no console — decorativo, fica atrás do
+          celular fechado, como um suporte de carro de verdade */}
+      {!phoneOpen && (
+        <div style={{
+          position:"absolute", zIndex:59,
+          bottom:`calc(${BOTOES_H_PCT}px + 4px)`,
+          left:"50%", transform:"translateX(-50%)",
+          width:CONSOLE_BTN_W+16, height:16, borderRadius:6,
+          background:"#0a0710", border:"1px solid rgba(255,255,255,0.1)",
+        }}/>
+      )}
+
       {/* CONSOLE — fechado: ícone compacto no dashboard (não finge ser um
           celular flutuando). Maximizado: painel HUD do sistema do carro. */}
       <div
@@ -1064,23 +1087,30 @@ export default function DrivePage() {
           // qualquer navegador, mesmo onde navigator.vibrate não existe
           animation: (!phoneOpen && radioMachine === "parked") ? "phone-buzz 0.5s ease-in-out infinite" : "none",
           ...(phoneOpen
-            ? {
+            ? ({
                 top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-                height: isMobile ? "72%" : "88%",
-                width: "min(92%, 480px)",
+                // mantém proporção 9:16 real de celular — a altura é limitada
+                // tanto por % da tela quanto pela largura máxima convertida
+                // pra 16:9, e a largura é sempre 9/16 dessa altura (nunca
+                // "achata" o celular pra um formato errado)
+                ["--phone-h" as string]: `min(${isMobile?72:88}dvh, calc(min(92vw, 480px) * 16 / 9))`,
+                height:"var(--phone-h)",
+                width:"calc(var(--phone-h) * 9 / 16)",
                 background:"#0a0a12", borderRadius:22, padding:0,
                 border:`1px solid ${C.neonPink}55`,
                 boxShadow:`0 0 0 1px #000, 0 20px 60px rgba(0,0,0,0.7), 0 0 32px ${C.neonPink}33`,
                 cursor:"default", overflow:"hidden",
                 display:"flex", flexDirection:"column",
-              }
+              } as React.CSSProperties)
             : {
-                top:14,
-                right:14,
-                width:CONSOLE_BTN, height:CONSOLE_BTN,
-                background:"#0a0014", borderRadius:16, padding:0,
+                // encaixado no console central, logo abaixo do rádio — como
+                // um celular de verdade preso num suporte do carro
+                bottom:`calc(${BOTOES_H_PCT}px + 10px)`,
+                left:"50%", transform:"translateX(-50%)",
+                width:CONSOLE_BTN_W, height:CONSOLE_BTN_H,
+                background:"#0a0014", borderRadius:10, padding:0,
                 border:`1.5px solid ${C.neonPink}70`,
-                boxShadow:`0 0 20px ${C.neonPink}55, 0 0 4px ${C.neonPink}aa`,
+                boxShadow:`0 0 16px ${C.neonPink}55, 0 0 4px ${C.neonPink}aa`,
                 cursor:"pointer", overflow:"hidden",
               }),
         }}
@@ -1117,7 +1147,7 @@ export default function DrivePage() {
               width: phoneOpen?"100%":"390px",
               height: phoneOpen?"100%":"844px",
               border:"none",
-              transform: phoneOpen?"none":`scale(${CONSOLE_BTN/390})`,
+              transform: phoneOpen?"none":`scale(${CONSOLE_BTN_W/390})`,
               transformOrigin:"top left",
               pointerEvents: phoneOpen?"auto":"none",
             }}
@@ -1125,6 +1155,42 @@ export default function DrivePage() {
           />
         </div>
       </div>
+
+      {/* RESET DA EXPERIÊNCIA — direto no painel do carro, fora do celular.
+          Mesmo efeito do botão "Ligacao" no Painel de Teste (celular): zera o
+          funil inteiro e recarrega — existe aqui pra funcionar mesmo se o
+          console/celular travar e não der pra abrir o painel de teste */}
+      {!phoneOpen && (
+        <button
+          type="button"
+          onClick={() => {
+            funnel.resetAll()
+            try {
+              localStorage.removeItem("cn-completed-missions")
+              localStorage.removeItem("cn-collected-rewards")
+              localStorage.removeItem("cidade-neon-grupo-msgs")
+            } catch {}
+            window.location.reload()
+          }}
+          aria-label="Resetar experiência"
+          title="Resetar experiência"
+          style={{
+            position:"absolute", zIndex:60,
+            top:"calc(14px + env(safe-area-inset-top))",
+            left:"calc(14px + env(safe-area-inset-left))",
+            width:48, height:48, borderRadius:14,
+            background:"#0a0014", padding:0,
+            border:"1.5px solid rgba(255,255,255,0.3)",
+            boxShadow:"0 0 12px rgba(255,255,255,0.15)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            cursor:"pointer", WebkitTapHighlightColor:"transparent",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 2.64-6.36M3 4v5h5"/>
+          </svg>
+        </button>
+      )}
 
       {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
           nome da frequência e o número dela + um anel de volume ao lado */}
@@ -1139,7 +1205,7 @@ export default function DrivePage() {
           position:"absolute",
           bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% * 0.24)`,
           left:"50%", transform:"translateX(-50%)",
-          width:"min(80%, 460px)",
+          width: isMobile ? "min(64%, 420px)" : "min(80%, 460px)",
           zIndex:46,
           display:"flex", alignItems:"center", gap:10,
         }}>
@@ -1265,7 +1331,7 @@ export default function DrivePage() {
           }}
           style={{
             position:"absolute",
-            top: 14 + CONSOLE_BTN + 14,
+            top:"calc(14px + env(safe-area-inset-top))",
             left:"50%", transform:"translateX(-50%)",
             width:"min(80%, 340px)",
             zIndex:62,
@@ -1400,12 +1466,13 @@ export default function DrivePage() {
           height:BOTOES_H_PCT,zIndex:50,
           display:"flex",alignItems:"center",
           justifyContent: autoDrive ? "center" : "space-between",
-          gap:16,
-          padding:"0 20px",
+          gap:"clamp(8px, 3vw, 16px)",
+          padding:"0 clamp(10px, 4vw, 20px)",
+          paddingBottom:"env(safe-area-inset-bottom)",
           background:"linear-gradient(to top, #05001a, transparent)",
         }}>
           {!autoDrive && (
-            <div style={{display:"flex",gap:12}}>
+            <div style={{display:"flex",gap:"clamp(6px, 2vw, 12px)",flexShrink:0}}>
               <button
                 onTouchStart={()=>leftRef.current=true}  onTouchEnd={()=>leftRef.current=false}
                 onMouseDown={()=>leftRef.current=true}    onMouseUp={()=>leftRef.current=false}
@@ -1423,18 +1490,18 @@ export default function DrivePage() {
             type="button"
             onClick={() => setAutoDrive(a => !a)}
             style={{
-              display:"flex", alignItems:"center", gap:8,
-              padding: autoDrive ? "10px 22px" : "8px 16px",
-              borderRadius:999,
+              display:"flex", alignItems:"center", gap:"clamp(5px, 1.5vw, 8px)",
+              padding: autoDrive ? "clamp(7px,2vw,10px) clamp(12px,4vw,22px)" : "clamp(6px,1.8vw,8px) clamp(10px,3vw,16px)",
+              borderRadius:999, minWidth:0, flexShrink:1,
               background: autoDrive ? "rgba(0,255,170,0.14)" : "rgba(255,255,255,0.06)",
               border: `1.5px solid ${autoDrive ? "#00ffaa" : "rgba(255,255,255,0.25)"}`,
               color: autoDrive ? "#00ffaa" : "rgba(255,255,255,0.6)",
               boxShadow: autoDrive ? "0 0 16px rgba(0,255,170,0.4)" : "none",
-              fontFamily:"monospace", fontSize:11, fontWeight:700, letterSpacing:1.5,
-              cursor:"pointer", WebkitTapHighlightColor:"transparent",
+              fontFamily:"monospace", fontSize:"clamp(8.5px, 2.4vw, 11px)", fontWeight:700, letterSpacing:1.5,
+              cursor:"pointer", WebkitTapHighlightColor:"transparent", whiteSpace:"nowrap",
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{flexShrink:0}}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
             {autoDrive ? "PILOTO AUTOMÁTICO" : "AUTO"}
           </button>
 
@@ -1443,14 +1510,15 @@ export default function DrivePage() {
               onTouchStart={()=>accelRef.current=true}  onTouchEnd={()=>accelRef.current=false}
               onMouseDown={()=>accelRef.current=true}   onMouseUp={()=>accelRef.current=false}
               style={{
-                width:76,height:76,borderRadius:"50%",
+                width:"clamp(56px, 16vw, 76px)",height:"clamp(56px, 16vw, 76px)",borderRadius:"50%",
                 background:`radial-gradient(circle,${C.neonPink}33,${C.neonPink}11)`,
                 border:`3px solid ${C.neonPink}`,
-                color:C.neonPink,fontSize:26,
+                color:C.neonPink,fontSize:"clamp(19px, 5vw, 26px)",
                 display:"flex",alignItems:"center",justifyContent:"center",
                 boxShadow:`0 0 20px ${C.neonPink}55`,
                 WebkitTapHighlightColor:"transparent",
                 cursor:"pointer",
+                flexShrink:0,
               }}
             >▲</button>
           )}
@@ -1462,10 +1530,11 @@ export default function DrivePage() {
 
 function ctrlBtn(): React.CSSProperties {
   return {
-    width:64,height:64,borderRadius:"50%",
+    width:"clamp(48px, 14vw, 64px)",height:"clamp(48px, 14vw, 64px)",borderRadius:"50%",
     background:"rgba(255,107,53,0.15)",
     border:"2px solid #ff6b35aa",
-    color:"#ff6b35",fontSize:22,
+    color:"#ff6b35",fontSize:"clamp(16px, 4.5vw, 22px)",
+    flexShrink:0,
     display:"flex",alignItems:"center",justifyContent:"center",
     WebkitTapHighlightColor:"transparent",
     cursor:"pointer",
@@ -1598,6 +1667,59 @@ function drawSprite(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number,
   ctx.restore()
 }
 
+// ── INTERIOR DO CARRO — colunas do para-brisa (mais estreitas no topo, mais
+// largas perto do painel, como a perspectiva real de um pilar A), moldura
+// superior, retrovisor central pendurado e o lábio de transição pro painel.
+// Desenhado por cima da pista/céu, só na área JOGO_H (a "vista pelo vidro") ──
+function drawInteriorFrame(ctx:CanvasRenderingContext2D, W:number, JOGO_H:number){
+  const topW = W*0.028
+  const botW = W*0.085
+  const pillarColor = "#050208"
+
+  ctx.save()
+
+  // coluna esquerda
+  ctx.fillStyle = pillarColor
+  ctx.beginPath()
+  ctx.moveTo(0,0); ctx.lineTo(topW,0); ctx.lineTo(botW,JOGO_H); ctx.lineTo(0,JOGO_H)
+  ctx.closePath(); ctx.fill()
+  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(topW,0); ctx.lineTo(botW,JOGO_H); ctx.stroke()
+
+  // coluna direita (espelhada)
+  ctx.fillStyle = pillarColor
+  ctx.beginPath()
+  ctx.moveTo(W,0); ctx.lineTo(W-topW,0); ctx.lineTo(W-botW,JOGO_H); ctx.lineTo(W,JOGO_H)
+  ctx.closePath(); ctx.fill()
+  ctx.beginPath(); ctx.moveTo(W-topW,0); ctx.lineTo(W-botW,JOGO_H); ctx.stroke()
+
+  // moldura superior do para-brisa
+  const topFrameH = JOGO_H*0.032
+  ctx.fillStyle = pillarColor
+  ctx.fillRect(0,0,W,topFrameH)
+
+  // retrovisor central, pendurado da moldura superior
+  const mw=W*0.10, mh=JOGO_H*0.04
+  const mx=W/2-mw/2, my=topFrameH
+  ctx.strokeStyle=pillarColor; ctx.lineWidth=Math.max(2,W*0.0025)
+  ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,my); ctx.stroke()
+  ctx.fillStyle="#0d0916"
+  ctx.beginPath(); ctx.roundRect(mx,my,mw,mh,4); ctx.fill()
+  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=1
+  ctx.beginPath(); ctx.roundRect(mx,my,mw,mh,4); ctx.stroke()
+
+  // lábio do painel — transição suave na base do para-brisa, conecta
+  // visualmente com o DASH_H logo abaixo
+  const lipH = JOGO_H*0.07
+  const lip = ctx.createLinearGradient(0,JOGO_H-lipH,0,JOGO_H)
+  lip.addColorStop(0,"rgba(5,2,8,0)")
+  lip.addColorStop(1,"rgba(5,2,8,0.95)")
+  ctx.fillStyle = lip
+  ctx.fillRect(0,JOGO_H-lipH,W,lipH)
+
+  ctx.restore()
+}
+
 // ── DASHBOARD ──
 function drawDashboard(
   ctx:CanvasRenderingContext2D,
@@ -1618,14 +1740,16 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // gauges empurrados pras bordas — o rádio agora ocupa 80% do painel no centro
-  const R = Math.min(DH*0.26, W*0.10)
+  // gauges empurrados pras bordas — o rádio ocupa o centro do painel. Raio
+  // baseado sobretudo na altura do painel (DH), não só na largura — em telas
+  // estreitas de celular W*0.10 sozinho deixava os mostradores minúsculos
+  const R = Math.min(DH*0.28, W*0.13)
   const cy = y0 + DH*0.62
 
   // velocímetro esq (max 222)
-  gauge(ctx,W*0.09,cy,R,kmh,222,"#00ff88","#ffcc00","#ff2d78",`${kmh}`,"KM/H")
+  gauge(ctx,W*0.12,cy,R,kmh,222,"#00e5ff",37,`${kmh}`,"KM/H")
   // rpm dir
-  gauge(ctx,W*0.91,cy,R,rpm,8,"#cc00ff","#ff6b35","#ff2d78",`${rpm}`,"RPM")
+  gauge(ctx,W*0.88,cy,R,rpm,8,"#ff6b35",2,`${rpm}`,"RPM")
 
   // (o RÁDIO agora é um visor HTML sobreposto ao centro do painel — ver JSX.
   //  o canvas desenha só os mostradores e a zona.)
@@ -1635,36 +1759,106 @@ function drawDashboard(
   ctx.textAlign="center"; ctx.fillText(zone,W/2,y0+DH*0.95)
 }
 
+// mostrador analógico realista: mostrador escuro com bezel, ticks maiores
+// (com numeral) e menores, faixa "redline" sutil só no fim da escala, ponteiro
+// fino afunilado com cubo central, e leitura digital pequena/secundária —
+// no lugar do arco arcade multicolor de antes
 function gauge(
   ctx:CanvasRenderingContext2D,
   x:number,y:number,r:number,
   val:number,max:number,
-  c1:string,c2:string,c3:string,
+  accent:string,majorStep:number,
   display:string,label:string
 ){
   const start=Math.PI*0.75, sweep=Math.PI*1.5
   const pct=Math.min(val/max,1)
   const angle=pct*sweep
-  // fundo
-  ctx.strokeStyle="#1a0040"; ctx.lineWidth=r*0.17
-  ctx.beginPath(); ctx.arc(x,y,r,start,start+sweep); ctx.stroke()
-  // arco
-  ctx.strokeStyle=pct<0.5?c1:pct<0.8?c2:c3
-  ctx.lineWidth=r*0.17
-  ctx.shadowColor=pct<0.5?c1:c2; ctx.shadowBlur=7
-  ctx.beginPath(); ctx.arc(x,y,r,start,start+angle); ctx.stroke()
+  const redlineStart=0.82
+  const ringR=r*0.86
+
+  ctx.save()
+  ctx.textAlign="center"; ctx.textBaseline="middle"
+
+  // face do mostrador
+  const face=ctx.createRadialGradient(x,y,r*0.15,x,y,r*1.02)
+  face.addColorStop(0,"#0d0a18"); face.addColorStop(0.75,"#120c22"); face.addColorStop(1,"#1c1430")
+  ctx.fillStyle=face
+  ctx.beginPath(); ctx.arc(x,y,r*1.02,0,Math.PI*2); ctx.fill()
+  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=r*0.03
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke()
+
+  // trilha de fundo
+  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=r*0.09
+  ctx.beginPath(); ctx.arc(x,y,ringR,start,start+sweep); ctx.stroke()
+
+  // faixa redline
+  const redStart=start+sweep*redlineStart
+  ctx.strokeStyle="rgba(255,60,80,0.5)"; ctx.lineWidth=r*0.09
+  ctx.beginPath(); ctx.arc(x,y,ringR,redStart,start+sweep); ctx.stroke()
+
+  // arco ativo — cor única de destaque, brilho só perto do redline
+  ctx.strokeStyle=accent; ctx.lineWidth=r*0.09
+  ctx.shadowColor=accent; ctx.shadowBlur=pct>redlineStart?10:3
+  ctx.beginPath(); ctx.arc(x,y,ringR,start,start+angle); ctx.stroke()
   ctx.shadowBlur=0
-  // agulha
+
+  // ticks maiores (com numeral) + 2 ticks menores entre cada par
+  const majorCount=Math.max(1,Math.round(max/majorStep))
+  for(let i=0;i<=majorCount;i++){
+    const v=i*majorStep
+    const p=Math.min(v/max,1)
+    const a=start+p*sweep
+    const isRed=p>=redlineStart
+    ctx.strokeStyle=isRed?"rgba(255,110,120,0.9)":"rgba(255,255,255,0.65)"
+    ctx.lineWidth=r*0.025
+    ctx.beginPath()
+    ctx.moveTo(x+Math.cos(a)*r*0.72,y+Math.sin(a)*r*0.72)
+    ctx.lineTo(x+Math.cos(a)*r*0.82,y+Math.sin(a)*r*0.82)
+    ctx.stroke()
+    ctx.fillStyle=isRed?"rgba(255,150,160,0.85)":"rgba(255,255,255,0.5)"
+    ctx.font=`${Math.max(8,r*0.13)}px monospace`
+    ctx.fillText(`${Math.round(v)}`,x+Math.cos(a)*r*0.58,y+Math.sin(a)*r*0.58)
+
+    if(i<majorCount){
+      for(let m=1;m<=2;m++){
+        const mp=Math.min((v+(majorStep*m)/3)/max,1)
+        const ma=start+mp*sweep
+        ctx.strokeStyle="rgba(255,255,255,0.28)"; ctx.lineWidth=r*0.014
+        ctx.beginPath()
+        ctx.moveTo(x+Math.cos(ma)*r*0.77,y+Math.sin(ma)*r*0.77)
+        ctx.lineTo(x+Math.cos(ma)*r*0.82,y+Math.sin(ma)*r*0.82)
+        ctx.stroke()
+      }
+    }
+  }
+
+  // ponteiro fino afunilado
   const na=start+angle
-  ctx.strokeStyle="#fff"; ctx.lineWidth=1.5
-  ctx.beginPath(); ctx.moveTo(x,y)
-  ctx.lineTo(x+Math.cos(na)*r*0.76,y+Math.sin(na)*r*0.76); ctx.stroke()
-  ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(x,y,r*0.07,0,Math.PI*2); ctx.fill()
-  // texto
-  ctx.fillStyle="#fff"; ctx.font=`bold ${r*0.34}px monospace`; ctx.textAlign="center"
-  ctx.fillText(display,x,y+r*0.14)
-  ctx.fillStyle="#ffffff66"; ctx.font=`${r*0.16}px monospace`
-  ctx.fillText(label,x,y+r*0.35)
+  const tipX=x+Math.cos(na)*r*0.68, tipY=y+Math.sin(na)*r*0.68
+  const backX=x-Math.cos(na)*r*0.14, backY=y-Math.sin(na)*r*0.14
+  const perp=na+Math.PI/2, baseW=r*0.045
+  ctx.fillStyle="#e8e8ef"
+  ctx.beginPath()
+  ctx.moveTo(backX+Math.cos(perp)*baseW,backY+Math.sin(perp)*baseW)
+  ctx.lineTo(backX-Math.cos(perp)*baseW,backY-Math.sin(perp)*baseW)
+  ctx.lineTo(tipX,tipY)
+  ctx.closePath(); ctx.fill()
+  ctx.fillStyle=pct>=redlineStart?"#ff4d5e":accent
+  ctx.beginPath(); ctx.arc(tipX,tipY,r*0.025,0,Math.PI*2); ctx.fill()
+
+  // cubo central
+  const hub=ctx.createRadialGradient(x-r*0.02,y-r*0.02,0,x,y,r*0.09)
+  hub.addColorStop(0,"#e8e8ef"); hub.addColorStop(1,"#3a3a48")
+  ctx.fillStyle=hub
+  ctx.beginPath(); ctx.arc(x,y,r*0.085,0,Math.PI*2); ctx.fill()
+
+  // leitura digital — pequena e secundária, abaixo do cubo
+  ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.font=`bold ${r*0.22}px monospace`
+  ctx.fillText(display,x,y+r*0.42)
+  ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.font=`${r*0.12}px monospace`
+  ctx.fillText(label,x,y+r*0.58)
+
+  ctx.restore()
 }
 
 function rRect(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,r:number){
