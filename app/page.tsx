@@ -243,7 +243,7 @@ export default function CidadeNeonWrapper() {
 }
 
 function CidadeNeonExperience() {
-  const { state: gameFunnelState, setState, completeConfirmation, resetAll } = useGameFunnel()
+  const { state: gameFunnelState, setState, completeConfirmation, resetExperience } = useGameFunnel()
   const globalAudio = useAudioPlayer()
   const searchParams = useSearchParams()
   
@@ -375,15 +375,18 @@ function CidadeNeonExperience() {
     { id: "notes",         name: "C0D3X",         icon: "notes",         color: "#1C1917" },
     { id: "access",        name: "ACC3SS",        icon: "safari",        color: "#0C4A6E", link: "https://lu2ca-xlvdjou.gamma.site/" },
     // Apps desbloqueados por missao — testes de confirmacao 1/2/3
-    { id: "nectar-app",    name: "SINT0NIA",      icon: "tuner",         color: "#052a33", locked: !appsUnlocked.nectar },
+    { id: "nectar-app",    name: "NECTAR",        icon: "nectar",        color: "#052a33", locked: !appsUnlocked.nectar },
     { id: "feel-good-app", name: "B4TIDA",        icon: "beatbuilder",   color: "#2a0505", locked: !appsUnlocked.feelGood },
     { id: "guitar-driver", name: "GUITAR DRIVER", icon: "guitardriver",  color: "#1a0a00", locked: !appsUnlocked.guitarDriver },
+    // SINT0NIA agora é o hub de rádio — libera depois que a confirmação 1
+    // (NECTAR) é concluída, não mais um teste em si
+    { id: "sintonia-app",  name: "SINT0NIA",      icon: "tuner",         color: "#052a33", locked: gameFunnelState.confirmationCount < 1 },
   ]
 
-  // B-sides: as versoes antigas de NECTAR e FEEL.GOOD (quiz e conecta-palavras)
-  // saíram do fluxo principal — ficam aqui, sempre jogáveis, na segunda tela
+  // B-sides: a versao antiga de FEEL.GOOD (conecta-palavras) saiu do fluxo
+  // principal — fica aqui, sempre jogável, na segunda tela. NECTAR voltou a
+  // ser a confirmação 1 de verdade, não é mais B-Sides (ver handleConfirmation)
   const legacyApps = [
-    { id: "nectar-legacy",    name: "NECTAR",    icon: "nectar",   color: "#4C1D95" },
     { id: "feelgood-legacy",  name: "FEEL.GOOD", icon: "feelgood", color: "#0F3460" },
   ]
 
@@ -620,7 +623,7 @@ function CidadeNeonExperience() {
 
   const handleConfirmation = () => {
     setShowConfirmBtn(false)
-    if (confirmationsDone === 0) window.location.href = "/confirmacao/1-arquetipos"
+    if (confirmationsDone === 0) window.location.href = "/nectar"
     else if (confirmationsDone === 1) window.location.href = "/confirmacao/3-desbloqueio"
     else if (confirmationsDone === 2) { setPhase("nectar-login") }
   }
@@ -632,25 +635,25 @@ function CidadeNeonExperience() {
 
   const getMissions = useCallback(() => {
     const cc = gameFunnelState.confirmationCount
-    const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean }> = []
+    const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean; isMission?: boolean }> = []
 
     if (cc === 0) {
       // Missao 1: Alohan orienta abrir NECTAR
       missions.push(
-        { id: "whatsapp-alohan-0", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/whatsapp/privado/alohan" },
+        { id: "whatsapp-alohan-0", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/whatsapp/privado/alohan", isMission: true },
       )
     } else if (cc === 1) {
       // Missao 1 completa: rádio libera CIDADENEON.CRYPTO (não é a Alohan quem avisa,
       // é o próprio sistema da rádio); Nizzy orienta abrir FEEL.GOOD
       missions.push(
         { id: "reward-alohan-1", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Nova frequência no ar", body: "CIDADENEON.CRYPTO liberada — toque pra sintonizar", action: "/whatsapp/privado/alohan", isReward: true },
-        { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy" },
+        { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy", isMission: true },
       )
     } else if (cc === 2) {
       // Missao 2 completa: rádio libera LIVE NEON; D-Bee orienta abrir GUITAR DRIVER
       missions.push(
         { id: "reward-nizzy-2", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Nova frequência no ar", body: "LIVE NEON liberada — toque pra sintonizar", action: "/whatsapp/privado/nizzy", isReward: true },
-        { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee" },
+        { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee", isMission: true },
       )
     } else {
       // Missao 3 completa: rádio libera a transmissão final + conteudo final
@@ -672,9 +675,9 @@ function CidadeNeonExperience() {
   const getCompletedConfirmations = useCallback(() => {
     const cc = gameFunnelState.confirmationCount
     const confirmations: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string }> = []
-    if (cc >= 1) confirmations.push({ id: "confirm-1", app: "Cidade Neon", icon: "spotify", color: "#1DB954", title: "Confirmacao 1/3", body: "Teste das Musicas concluido", action: "/confirmacao/1-arquetipos" })
-    if (cc >= 2) confirmations.push({ id: "confirm-2", app: "Cidade Neon", icon: "untitled", color: "#8B5CF6", title: "Confirmacao 2/3", body: "Teste de QI concluido", action: "/confirmacao/3-desbloqueio" })
-    if (cc >= 3) confirmations.push({ id: "confirm-3", app: "NECTAR", icon: "nectar", color: "#A78BFA", title: "Confirmacao 3/3", body: "Teste NECTAR concluido", action: "nectar" })
+    if (cc >= 1) confirmations.push({ id: "confirm-1", app: "NECTAR", icon: "nectar", color: "#A78BFA", title: "Confirmacao 1/3", body: "Teste NECTAR concluido", action: "/nectar" })
+    if (cc >= 2) confirmations.push({ id: "confirm-2", app: "Cidade Neon", icon: "beatbuilder", color: "#8B5CF6", title: "Confirmacao 2/3", body: "B4TIDA concluido", action: "/batida" })
+    if (cc >= 3) confirmations.push({ id: "confirm-3", app: "Cidade Neon", icon: "guitardriver", color: "#1DB954", title: "Confirmacao 3/3", body: "GUITAR DRIVER concluido", action: "/neon-tiles" })
     return confirmations
   }, [gameFunnelState.confirmationCount])
 
@@ -694,7 +697,7 @@ function CidadeNeonExperience() {
       const next = missions[idx]
       setBannerNotif(next)
       // ecoa a notificação pro rádio do carro, se o celular estiver dentro do /drive
-      sendNotificationToParent({ id: next.id, app: next.app, icon: next.icon, color: next.color, title: next.title, body: next.body })
+      sendNotificationToParent({ id: next.id, app: next.app, icon: next.icon, color: next.color, title: next.title, body: next.body, isMission: next.isMission })
       bannerIndexRef.current++
       // Auto-dismiss after 5 seconds, bounce the Missoes button
       setTimeout(() => {
@@ -1369,12 +1372,12 @@ function CidadeNeonExperience() {
   }, [])
 
   const DEV_SHORTCUTS = [
-    { label: "Ligacao", color: "#7C3AED", action: () => { resetAll(); try { localStorage.removeItem("cn-completed-missions"); localStorage.removeItem("cn-collected-rewards"); localStorage.removeItem("cidade-neon-grupo-msgs"); localStorage.removeItem("cidade-neon-funnel-v2") } catch {} window.location.reload() } },
+    { label: "Ligacao", color: "#7C3AED", action: () => resetExperience() },
     { label: "Hacker", color: "#00FF66", action: () => { window.location.href = "/hacker" } },
     { label: "Spotify", color: "#1DB954", action: () => { window.location.href = "/spotify/auto-chuva" } },
     { label: "WhatsApp Grupo", color: "#25D366", action: () => { window.location.href = "/whatsapp/grupo" } },
-    { label: "Confirmacao 1", color: "#F59E0B", action: () => { window.location.href = "/confirmacao/1-arquetipos" } },
-    { label: "Confirmacao 2", color: "#06B6D4", action: () => { window.location.href = "/confirmacao/2-colunas" } },
+    { label: "Nectar (c1)", color: "#F59E0B", action: () => { window.location.href = "/nectar" } },
+    { label: "Batida (c2)", color: "#06B6D4", action: () => { window.location.href = "/batida" } },
     { label: "Neon Tiles", color: "#FF00A8", action: () => { window.location.href = "/neon-tiles" } },
     { label: "TikTok", color: "#000000", action: () => { window.location.href = "/tiktok/feed" } },
     { label: "YouTube", color: "#FF0000", action: () => { window.location.href = "/youtube/cidade-neon" } },
@@ -1557,12 +1560,12 @@ function CidadeNeonExperience() {
                       // collectedRewards (reward-alohan-1/reward-nizzy-2/reward-dbee-3) —
                       // antes usavam ids sem sufixo e essa aba nunca mostrava nada
                       const allRewards = [
-                        { id: "reward-alohan-1", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADENEON.CRYPTO", body: "Recompensa de Alohan", action: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw", isReward: true },
-                        { id: "reward-nizzy-2", app: "Rádio", icon: "radio", color: "#00e5ff", title: "LIVE NEON", body: "Recompensa de Nizzy", action: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU", isReward: true },
-                        { id: "reward-dbee-3", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADE NEON 222.4 FM", body: "Recompensa de D-Bee", action: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA", isReward: true },
+                        { id: "reward-alohan-1", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADENEON.CRYPTO", body: "Recompensa de Alohan", action: "/spotify/auto-chuva?view=gallery", isReward: true },
+                        { id: "reward-nizzy-2", app: "Rádio", icon: "radio", color: "#00e5ff", title: "LIVE NEON", body: "Recompensa de Nizzy", action: "/spotify/auto-chuva?view=gallery", isReward: true },
+                        { id: "reward-dbee-3", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADE NEON 222.4 FM", body: "Recompensa de D-Bee", action: "/spotify/auto-chuva?view=gallery", isReward: true },
                       ]
                       return allRewards.filter(r => collectedRewards.includes(r.id)).map((reward) => (
-                        <button key={reward.id} type="button" onClick={() => window.open(reward.action, "_blank")} className="w-full text-left">
+                        <button key={reward.id} type="button" onClick={() => { window.location.href = reward.action }} className="w-full text-left">
                           <div className="bg-[#FFD700]/5 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 border border-[#FFD700]/10">
                             <div className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0 relative" style={{ backgroundColor: reward.color }}>
                               {getIconSvg(reward.icon)}
@@ -1624,9 +1627,10 @@ function CidadeNeonExperience() {
                         if (app.link) { window.open(app.link, "_blank"); return }
                         if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
-                        if (app.id === "nectar-app") { window.location.href = "/sintonizador"; return }
+                        if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
                         if (app.id === "feel-good-app") { window.location.href = "/batida"; return }
                         if (app.id === "guitar-driver") { window.location.href = "/neon-tiles"; return }
+                        if (app.id === "sintonia-app") { window.location.href = "/sintonizador"; return }
                       }}
                       className={`flex flex-col items-center gap-1 transition-transform relative ${isLocked ? "opacity-40 cursor-default" : "active:scale-95"}`}
                     >
@@ -1661,7 +1665,6 @@ function CidadeNeonExperience() {
                   {legacyApps.map((app) => (
                     <button key={app.id} type="button"
                       onClick={() => {
-                        if (app.id === "nectar-legacy") { window.location.href = "/nectar"; return }
                         if (app.id === "feelgood-legacy") { window.location.href = "/feel-good"; return }
                       }}
                       className="flex flex-col items-center gap-1 transition-transform active:scale-95"
@@ -1737,16 +1740,7 @@ function CidadeNeonExperience() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  resetAll()
-                  try {
-                    localStorage.removeItem("cn-completed-missions")
-                    localStorage.removeItem("cn-collected-rewards")
-                    localStorage.removeItem("cidade-neon-grupo-msgs")
-                    localStorage.removeItem("cidade-neon-funnel-v2")
-                  } catch {}
-                  window.location.reload()
-                }}
+                onClick={() => resetExperience()}
                 className="w-10 h-10 bg-white/8 hover:bg-white/12 active:bg-white/16 backdrop-blur-md rounded-full flex items-center justify-center transition-colors border border-white/10"
                 aria-label="Reiniciar experiencia"
               >

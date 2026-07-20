@@ -106,10 +106,14 @@ export interface GameFunnelState {
     feelGood: boolean
     guitarDriver: boolean
   }
-  // frequencias do radio do carro que a pessoa ja ACEITOU no dialogo de missao
-  // (o teste correspondente ja concluido eh pre-requisito, mas so libera de
-  // fato quando ela aceita — ver app/drive/page.tsx)
+  // frequencias do radio do carro que a pessoa ja SINTONIZOU no app SINT0NIA
+  // (a missao correspondente ja concluida eh pre-requisito, mas so fica
+  // disponivel de fato depois que ela vai la e sintoniza — ver
+  // app/sintonizador/page.tsx — sem dialogo de aceitar/recusar, ela pode
+  // sintonizar quando quiser depois que libera, e uma vez feito fica pra
+  // sempre)
   radioAccepted: {
+    suburbio: boolean
     crypto: boolean
     live: boolean
     full: boolean
@@ -153,6 +157,7 @@ const defaultState: GameFunnelState = {
     guitarDriver: false,
   },
   radioAccepted: {
+    suburbio: false,
     crypto: false,
     live: false,
     full: false,
@@ -174,6 +179,11 @@ interface GameFunnelContextType {
   markRewardViewed: (member: string) => void
   startFlow: () => void
   resetAll: () => void
+  // reset completo da experiência (funil + o resto do estado que vive fora
+  // dele em localStorage) + reload — mesma ação que existia duplicada em
+  // 3 lugares (dois botões em app/page.tsx e o do painel do carro), cada um
+  // com sua própria lista de chaves que podia (e já tinha) divergir
+  resetExperience: () => void
   getNextConfirmation: () => 1 | 2 | 3 | null
 }
 
@@ -282,7 +292,10 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
         confirmationCount: newCount,
         confirmations: {
           ...prev.confirmations,
-          [key]: { done: true, ...data },
+          // merge (não substitui) — c3 é escrito por mais de uma feature
+          // (NECTAR e GUITAR DRIVER); um replace completo apagava os campos
+          // da que completou primeiro
+          [key]: { ...prev.confirmations[key], done: true, ...data },
         },
         identityValidated: newCount === 3,
         lastVisitedAt: Date.now(),
@@ -378,6 +391,18 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
     saveState(defaultState)
   }, [])
 
+  const resetExperience = useCallback(() => {
+    setStateInternal(defaultState)
+    saveState(defaultState)
+    try {
+      localStorage.removeItem("cn-completed-missions")
+      localStorage.removeItem("cn-collected-rewards")
+      localStorage.removeItem("cidade-neon-grupo-msgs")
+      localStorage.removeItem("cidade-neon-funnel-v2")
+    } catch {}
+    window.location.reload()
+  }, [])
+
   const getNextConfirmation = useCallback((): 1 | 2 | 3 | null => {
     if (!state.confirmations.c1.done) return 1
     if (!state.confirmations.c2.done) return 2
@@ -411,6 +436,7 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
         markRewardViewed,
         startFlow,
         resetAll,
+        resetExperience,
         getNextConfirmation,
       }}
     >

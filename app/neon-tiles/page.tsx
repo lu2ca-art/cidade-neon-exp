@@ -17,6 +17,7 @@ interface Tile {
   hold: boolean      // nota longa?
   holdDuration: number // ms da duração do hold (0 se não for hold)
   holdActive: boolean  // está sendo segurado agora?
+  holdBroken: boolean  // soltou antes da hora (igual ao Guitar Hero original: quebra o combo)
 }
 
 interface Song {
@@ -108,6 +109,7 @@ function generateTiles(song: Song): Tile[] {
       hold: isHold,
       holdDuration: holdDur,
       holdActive: false,
+      holdBroken: false,
     })
 
     // variação de ritmo: às vezes chega mais rápido, às vezes pausa
@@ -130,6 +132,7 @@ function toTiles(analyzed: AnalyzedTile[]): Tile[] {
     hold: t.hold,
     holdDuration: t.holdDuration,
     holdActive: false,
+    holdBroken: false,
   }))
 }
 
@@ -197,7 +200,7 @@ export default function NeonTilesPage() {
   const [combo, setCombo]             = useState(0)
   const [maxCombo, setMaxCombo]       = useState(0)
   const [hits, setHits]               = useState(0)
-  const [feedback, setFeedback]       = useState<{ col: number; type: "hit"|"miss"|"hold"; id: number } | null>(null)
+  const [feedback, setFeedback]       = useState<{ col: number; type: "hit"|"miss"|"hold"|"holdbreak"; id: number } | null>(null)
   const [timeLeft, setTimeLeft]       = useState(60)
   const [profile, setProfile]         = useState<Profile | null>(null)
   const [accuracy, setAccuracy]       = useState(0)
@@ -220,6 +223,10 @@ export default function NeonTilesPage() {
   const bgPhaseRef        = useRef(0)
   const audioCtxRef       = useRef<AudioContext | null>(null)
   const gamepadButtonsRef = useRef<boolean[]>([false, false, false, false])
+  // evita que a análise assíncrona de áudio (fetch/decode/FFT) crie e toque
+  // um <Audio> depois que o componente já desmontou (ex.: usuário navegou
+  // pra fora de /neon-tiles enquanto a análise ainda estava em andamento)
+  const isMountedRef      = useRef(true)
   const [gamepadConnected, setGamepadConnected] = useState(false)
   // refs indiretos pro renderFrame (useCallback com deps []) sempre chamar a
   // versão mais atual de handlePointerDown/Up, sem closure obsoleta presa na
@@ -405,6 +412,42 @@ export default function NeonTilesPage() {
         ctx.roundRect(bx + 2, headY - TILE_H_BASE * 0.5 + 4, bw * 0.35, 3, 2)
         ctx.fill()
 
+      } else if (tile.hold && tile.hit && tile.holdActive) {
+        // ── NOTA LONGA sendo segurada AGORA ── igual ao Guitar Hero
+        // original: a barra "encolhe" na linha de acerto conforme o tempo
+        // passa, mostrando quanto ainda falta segurar (antes disso a nota
+        // ficava invisível assim que a cabeça era acertada)
+        const pad = 10
+        const bx = x + pad
+        const bw = tileW - pad * 2
+        const remainingMs = Math.max(0, (tile.beatTime + tile.holdDuration) - elapsed)
+        const tailY = hitY
+        const headY = hitY - remainingMs * TILE_SPEED_PX_MS
+
+        const hg = ctx.createLinearGradient(0, headY, 0, tailY)
+        hg.addColorStop(0, color + "ff")
+        hg.addColorStop(0.5, color + "cc")
+        hg.addColorStop(1, color + "44")
+        ctx.fillStyle = hg
+        ctx.shadowColor = color
+        ctx.shadowBlur = 20
+        ctx.beginPath()
+        ctx.roundRect(bx, headY, bw, Math.max(tailY - headY, 2), 8)
+        ctx.fill()
+
+        // ponta (o que ainda falta segurar)
+        ctx.shadowBlur = 26
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.roundRect(bx - 2, headY - TILE_H_BASE * 0.5, bw + 4, TILE_H_BASE * 0.5, 10)
+        ctx.fill()
+
+        // brilho na base — feedback de "segurando com sucesso"
+        ctx.fillStyle = "rgba(255,255,255,0.6)"
+        ctx.beginPath()
+        ctx.roundRect(bx, tailY - 6, bw, 6, 3)
+        ctx.fill()
+
       } else if (!tile.hold) {
         // ── NOTA NORMAL ──
         const pad = 5
@@ -567,20 +610,43 @@ export default function NeonTilesPage() {
     }
 
     // analisa o áudio real da faixa (batida + timbre) pra gerar os tiles —
-    // se decode/análise falhar ou vier rala demais, cai no gerador procedural
-    // (que agora também deriva do BPM real, não mais um valor fixo)
+    // se decode/análise falhar, vier rala demais, OU demorar demais (rede
+    // lenta, aba em segundo plano suspendendo o processamento, aparelho
+    // fraco), cai no gerador procedural — nunca fica travado em "ANALISANDO
+    // ÁUDIO..." pra sempre
     void (async () => {
+      let settled = false
+      const finish = (tiles: Tile[]) => {
+        if (settled || !isMountedRef.current) return
+        settled = true
+        clearTimeout(timeoutId)
+        beginCountdown(tiles)
+      }
+
+      const timeoutId = setTimeout(() => {
+        console.warn(`[GUITAR DRIVER] análise de "${song.title}" passou de 8s, usando fallback procedural`)
+        finish(generateTiles(song))
+      }, 8000)
+
       try {
         const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
         const ctx = audioCtxRef.current ?? (audioCtxRef.current = new Ctx())
         const res = await fetch(song.audioUrl)
         const arrayBuffer = await res.arrayBuffer()
         const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-        const analyzed = analyzeAudioForTiles(audioBuffer, song.bpm, song.duration * 1000)
-        const density = analyzed.length / song.duration
-        beginCountdown(density >= 0.8 ? toTiles(analyzed) : generateTiles(song))
-      } catch {
-        beginCountdown(generateTiles(song))
+        // usa a duração REAL do áudio decodificado (não o `duration` nominal
+        // do catálogo, que pode divergir alguns segundos do arquivo de
+        // verdade) — evita descartar batidas reais perto do fim da faixa
+        const realDurationMs = audioBuffer.duration * 1000
+        const analyzed = analyzeAudioForTiles(audioBuffer, song.bpm, realDurationMs)
+        const density = analyzed.length / audioBuffer.duration
+        if (density < 0.8) {
+          console.warn(`[GUITAR DRIVER] análise de "${song.title}" gerou poucos onsets (${analyzed.length}), usando fallback procedural`)
+        }
+        finish(density >= 0.8 ? toTiles(analyzed) : generateTiles(song))
+      } catch (err) {
+        console.error(`[GUITAR DRIVER] falha ao analisar áudio de "${song.title}", usando fallback procedural:`, err)
+        finish(generateTiles(song))
       }
     })()
   }, [])
@@ -608,18 +674,51 @@ export default function NeonTilesPage() {
       setTimeLeft(Math.ceil(left))
 
       const now = Date.now() - startTimeRef.current
-      setTiles(prev => {
-        const updated = prev.map(t => {
-          if (!t.hit && !t.missed && t.beatTime < now - HIT_WINDOW_MS) {
-            totalRef.current += 1
-            comboRef.current = 0
-            setCombo(0)
-            return { ...t, missed: true }
+      // efeitos colaterais (pontuação/combo) ficam fora do updater de
+      // setTiles e são aplicados depois, coletados durante o .map() — evita
+      // o mesmo problema de "setState de dentro de outro updater" já
+      // corrigido em endGame
+      let scoreDelta = 0
+      let comboBroke = false
+
+      setTiles(prev => prev.map(t => {
+        // nota nunca tocada, passou da janela de acerto — perdida
+        if (!t.hit && !t.missed && t.beatTime < now - HIT_WINDOW_MS) {
+          totalRef.current += 1
+          comboRef.current = 0
+          comboBroke = true
+          return { ...t, missed: true }
+        }
+
+        // hold em andamento — igual ao Guitar Hero original: precisa segurar
+        // o botão até o fim da nota longa pra pontuar por completo; soltar
+        // antes da hora quebra o combo, mesmo que já tenha acertado a cabeça
+        if (t.hit && t.hold && t.holdActive) {
+          const tailTime = t.beatTime + t.holdDuration
+          if (now >= tailTime) {
+            // segurou até o fim — bônus de conclusão
+            scoreDelta += 60
+            return { ...t, holdActive: false }
           }
+          if (!holdingRef.current[t.col]) {
+            // soltou antes da hora — rede de segurança (o release físico já
+            // é tratado na hora em handlePointerUp); aqui só cobre o caso
+            // do dedo ter saído sem disparar o evento de soltar
+            comboRef.current = 0
+            comboBroke = true
+            return { ...t, holdActive: false, holdBroken: true }
+          }
+          // ainda segurando, nota ainda não acabou — pontuação progressiva
+          // proporcional ao tempo segurado, como no jogo original
+          scoreDelta += 10 + Math.floor(comboRef.current / 2)
           return t
-        })
-        return updated
-      })
+        }
+
+        return t
+      }))
+
+      if (scoreDelta) setScore(s => s + scoreDelta)
+      if (comboBroke) setCombo(0)
 
       if (left <= 0) { clearInterval(interval); endGame() }
     }, 100)
@@ -707,10 +806,30 @@ export default function NeonTilesPage() {
 
   const handlePointerUp = useCallback((col: number) => {
     holdingRef.current[col] = false
-    // finaliza hold se estava ativo
-    setTiles(prev => prev.map(t =>
-      t.col === col && t.holdActive ? { ...t, holdActive: false } : t
-    ))
+
+    // igual ao Guitar Hero original: soltar o botão antes do fim da nota
+    // longa quebra o combo — só conta o hold completo como acerto de verdade
+    const now = Date.now() - startTimeRef.current
+    const activeTile = tilesRef.current.find(t => t.col === col && t.holdActive)
+    if (activeTile) {
+      const tailTime = activeTile.beatTime + activeTile.holdDuration
+      const releasedEarly = now < tailTime - 60 // pequena margem de tolerância
+
+      if (releasedEarly) {
+        comboRef.current = 0
+        setCombo(0)
+        const fid = ++feedbackIdRef.current
+        setFeedback({ col, type: "holdbreak", id: fid })
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+        feedbackTimeoutRef.current = setTimeout(() => {
+          setFeedback(f => (f?.id === fid ? null : f))
+        }, 300)
+      }
+
+      setTiles(prev => prev.map(t =>
+        t.id === activeTile.id ? { ...t, holdActive: false, holdBroken: releasedEarly } : t
+      ))
+    }
   }, [])
 
   // mantém os refs usados pelo renderFrame (controle) sempre com a versão
@@ -740,7 +859,7 @@ export default function NeonTilesPage() {
   }, [handlePointerDown, handlePointerUp])
 
   useEffect(() => {
-    return () => { cancelAnimationFrame(rafRef.current); audioRef.current?.pause() }
+    return () => { isMountedRef.current = false; cancelAnimationFrame(rafRef.current); audioRef.current?.pause() }
   }, [])
 
   // ─── TELA: SELEÇÃO ───────────────────────────────────────────────────────
@@ -1015,13 +1134,13 @@ export default function NeonTilesPage() {
               left: `${(feedback.col / COLS + 1 / COLS / 2) * 100}%`,
               bottom: "22%",
               transform: "translateX(-50%)",
-              color: feedback.type === "miss" ? "#FF0040" : COL_COLORS[feedback.col],
-              textShadow: `0 0 16px ${feedback.type === "miss" ? "#FF0040" : COL_COLORS[feedback.col]}`,
-              fontSize: feedback.type === "hold" ? "11px" : "13px",
+              color: feedback.type === "miss" || feedback.type === "holdbreak" ? "#FF0040" : COL_COLORS[feedback.col],
+              textShadow: `0 0 16px ${feedback.type === "miss" || feedback.type === "holdbreak" ? "#FF0040" : COL_COLORS[feedback.col]}`,
+              fontSize: feedback.type === "hold" || feedback.type === "holdbreak" ? "11px" : "13px",
               letterSpacing: 1,
             }}
           >
-            {feedback.type === "hit" ? "PERFECT" : feedback.type === "hold" ? "HOLD!" : "MISS"}
+            {feedback.type === "hit" ? "PERFECT" : feedback.type === "hold" ? "HOLD!" : feedback.type === "holdbreak" ? "SOLTOU CEDO!" : "MISS"}
           </div>
         )}
       </div>

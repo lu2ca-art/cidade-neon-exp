@@ -172,7 +172,10 @@ export function analyzeAudioForTiles(buffer: AudioBuffer, bpm: number, durationM
   const onsetFrames = pickOnsetFrames(flux, hopSeconds, bpm)
 
   const gridMs = 60000 / bpm / 8 // grid de 32ª nota — trava a batida real no compasso
-  const startMs = 300
+  // mesmo warm-up mínimo do gerador procedural (generateTiles começa em
+  // 2000ms) — um onset real logo no início da faixa dava tempo de reação
+  // quase nulo (~100-500ms), bem menor que o fallback
+  const startMs = 2000
   const endMs = durationMs - 400
 
   const tiles: AnalyzedTile[] = []

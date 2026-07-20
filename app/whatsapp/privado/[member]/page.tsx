@@ -43,14 +43,14 @@ export const SCRIPTS: Record<MemberKey, MemberScript> = {
         "voce chegou aqui por um motivo.",
         "nao sei ainda se voce e do tipo que sente ou do tipo que so observa.",
         "tem um teste que vai deixar isso claro.",
-        "vai no app SINT0NIA. acha a frequencia onde o sinal fica limpo.",
-        "nao precisa ser rapido. so precisa parar de girar no escuro.",
+        "vai no app NECTAR. responde o que vier na hora, sem pensar demais.",
+        "nao tem certo ou errado. so tem o que e voce de verdade.",
         "quando terminar, volta aqui.",
       ],
-      appName: "SINT0NIA",
-      appRoute: "/sintonizador",
+      appName: "NECTAR",
+      appRoute: "/nectar",
       appId: "nectar-app",
-      ctaLabel: "Abrir SINT0NIA",
+      ctaLabel: "Abrir NECTAR",
     },
     reward: {
       messages: [
@@ -211,13 +211,11 @@ function ChatBubble({ text, color, name, opacity }: { text: string; color: strin
   )
 }
 
-function RewardCard({ rewardName, rewardLink, color, memberName }: { rewardName: string; rewardLink: string; color: string; memberName: string }) {
+function RewardCard({ rewardName, color, memberName }: { rewardName: string; color: string; memberName: string }) {
   return (
     <div className="flex justify-start">
       <a
-        href={rewardLink}
-        target="_blank"
-        rel="noopener noreferrer"
+        href="/spotify/auto-chuva?view=gallery"
         className="block bg-[#202C33] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] active:bg-[#2A363D] transition-colors cta-pulse"
         style={{ ["--pulse-color" as string]: `${color}80` }}
       >
@@ -230,7 +228,7 @@ function RewardCard({ rewardName, rewardLink, color, memberName }: { rewardName:
           </div>
           <div className="px-3 py-2">
             <p className="text-white text-sm font-medium">{rewardName}</p>
-            <p className="text-white/30 text-xs mt-0.5">untitled.stream</p>
+            <p className="text-white/30 text-xs mt-0.5">disponivel no FREQUENCIA</p>
           </div>
         </div>
         <div className="flex items-center gap-1 mt-1.5">
@@ -261,9 +259,7 @@ function Lu2caFinalCard() {
           se quiser levar o album completo com voce — todas as frequencias, cada faixa —
         </p>
         <a
-          href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/spotify/auto-chuva?view=gallery"
           className="flex items-center gap-3 bg-[#111B21] rounded-xl px-3 py-3 border transition-colors active:bg-[#1c2a31]"
           style={{ borderColor: "rgba(167,139,250,0.3)" }}
         >
@@ -272,7 +268,7 @@ function Lu2caFinalCard() {
           </div>
           <div className="flex-1">
             <p className="text-white text-sm font-semibold">CIDADE NEON</p>
-            <p className="text-white/30 text-xs mt-0.5">Album completo · untitled.stream</p>
+            <p className="text-white/30 text-xs mt-0.5">Album completo · FREQUENCIA</p>
           </div>
           <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="#A78BFA" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </a>
@@ -447,7 +443,7 @@ export default function PrivadoPage() {
               return <AppCTACard key={i} label={script.preMission.ctaLabel} route={script.preMission.appRoute} color={script.color} />
             }
             if (item.type === "reward") {
-              return <RewardCard key={i} rewardName={script.reward.rewardName} rewardLink={script.reward.rewardLink} color={script.color} memberName={script.name} />
+              return <RewardCard key={i} rewardName={script.reward.rewardName} color={script.color} memberName={script.name} />
             }
             if (item.type === "lu2ca") {
               return <Lu2caFinalCard key={i} />

@@ -5,6 +5,9 @@ import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState, PhoneNotification, CarRadioControl, MinimizeConsole } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe } from "@/app/providers/AudioBridge"
+import SteeringWheel3D from "@/components/SteeringWheel3D"
+import CityMap from "@/components/CityMap"
+import { type Tier, ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
 
 const C = {
   skyTop:     "#1a0533",
@@ -103,15 +106,9 @@ const RADIO_SNIPPET_MS = 22000
 // gancho pra próxima etapa), exceto a CIDADE NEON 222.4 FM, que só entra no ar
 // no fim de toda a experiência (unlocked.finalCompleted), somando-se ao que já
 // toca na LIVE NEON.
-type Tier = "suburbio" | "crypto" | "live" | "full"
 type RadioTrack = { title: string; src: string; freq: string; color: string; label: string; tier: Tier }
 
-const F = {
-  suburbio:  { label: "SUBÚRBIO XENOM",    freq: "104.7", color: "#ff2d78", tier: "suburbio" as Tier },
-  crypto:    { label: "CIDADENEON.CRYPTO", freq: "88.5",  color: "#00e5ff", tier: "crypto" as Tier },
-  live:      { label: "LIVE NEON",         freq: "96.3",  color: "#a855f7", tier: "live" as Tier },
-  full:      { label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#ffd93d", tier: "full" as Tier },
-}
+const F = TIER_META
 
 const STATION_TRACKS: Record<string, RadioTrack[]> = {
   "SUBÚRBIO XÊNON": [
@@ -160,17 +157,14 @@ const TRACKS_BY_TIER: Record<Tier, RadioTrack[]> = {
   live:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "live"),
   full:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "full"),
 }
-const ALL_TIERS: Tier[] = ["suburbio", "crypto", "live", "full"]
-
-// Deriva o tier "atual" a partir do que já foi ACEITO (persistido no funil) —
-// evita que reentrar em /drive (remount) reinicie a rádio em SUBÚRBIO XENOM
-// enquanto radioAccepted já marca tiers mais altos como aceitos, o que
-// travava a progressão pra sempre (nextTierReady exige !radioAccepted[tier],
-// então a frequência nunca avançava de novo depois de um reload)
-function highestAcceptedTier(accepted: { crypto: boolean; live: boolean; full: boolean }): Tier {
-  if (accepted.full) return "full"
-  if (accepted.live) return "live"
-  if (accepted.crypto) return "crypto"
+// Deriva o tier "atual" a partir do que já foi SINTONIZADO (persistido no
+// funil) — evita que reentrar em /drive (remount) reinicie a rádio na
+// primeira frequência enquanto radioAccepted já marca tiers mais altos como
+// sintonizados
+function highestAcceptedTier(accepted: Record<Tier, boolean>): Tier {
+  for (let i = ALL_TIERS.length - 1; i >= 0; i--) {
+    if (accepted[ALL_TIERS[i]]) return ALL_TIERS[i]
+  }
   return "suburbio"
 }
 
@@ -180,6 +174,38 @@ const DRAW_DIST = 100
 const ROAD_W    = 2200
 const CAM_H     = 1500
 const CAM_DEPTH = 0.84
+const TOTAL_LEN = ROAD_LEN * SEG_LEN
+
+// ── MISSÕES no mapa — cada uma tem um contato/letra (estilo marcador de
+// missão de GTA), a rota que abre no celular, em que confirmationCount ela
+// aparece no mapa e conta como concluída, e a distância dirigida até
+// "chegar no local" (odômetro, mesma unidade de TOTAL_LEN — a primeira é
+// curta pra aprender a mecânica, as seguintes aumentam) ──
+interface MissionDef {
+  id: "nectar" | "batida" | "guitarDriver"
+  letter: string
+  name: string
+  route: string
+  visibleFromCC: number
+  doneAtCC: number
+  distance: number
+}
+
+const MISSIONS: MissionDef[] = [
+  { id: "nectar",       letter: "A", name: "NECTAR",       route: "/nectar",     visibleFromCC: 0, doneAtCC: 1, distance: TOTAL_LEN * 0.15 },
+  { id: "batida",       letter: "N", name: "B4TIDA",       route: "/batida",     visibleFromCC: 1, doneAtCC: 2, distance: TOTAL_LEN * 0.35 },
+  { id: "guitarDriver", letter: "D", name: "GUITAR DRIVER",route: "/neon-tiles", visibleFromCC: 2, doneAtCC: 3, distance: TOTAL_LEN * 0.6 },
+]
+
+function activeMission(confirmationCount: number): MissionDef | undefined {
+  return MISSIONS.find(m => m.doneAtCC > confirmationCount)
+}
+
+const MISSION_COLORS: Record<MissionDef["id"], string> = {
+  nectar: "#a78bfa",
+  batida: "#00e5ff",
+  guitarDriver: "#ff2d78",
+}
 
 interface Seg { curve: number; sprites: { x: number; type: string }[] }
 interface Car  { seg: number; x: number; color: string }
@@ -252,9 +278,15 @@ export default function DrivePage() {
   // celular aberto ocupa menos tela em telas estreitas (mobile) — em desktop
   // segue grande, já que sobra espaço em volta
   const [isMobile, setIsMobile] = useState(false)
+  // fonte única de verdade pro loop imperativo do canvas — antes o canvas
+  // recalculava "é mobile?" sozinho a partir de canvas.width < 640 (limite
+  // exclusivo), enquanto o JSX usava matchMedia (max-width:640px, inclusivo);
+  // em exatamente 640px os dois discordavam e o painel/gauges desalinhavam
+  // da barra de controles em HTML
+  const isMobileRef = useRef(false)
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 640px)")
-    const update = () => setIsMobile(mq.matches)
+    const update = () => { setIsMobile(mq.matches); isMobileRef.current = mq.matches }
     update()
     mq.addEventListener("change", update)
     return () => mq.removeEventListener("change", update)
@@ -320,33 +352,31 @@ export default function DrivePage() {
   const finalCompletedRef = useRef(finalCompleted)
   const radioMachineRef   = useRef(radioMachine)
   const silentLapDistRef  = useRef(0)
+  // distância dirigida em direção à missão ativa (odômetro) — zera quando
+  // recusa e precisa dar a volta inteira antes de oferecer de novo
+  const missionDistRef    = useRef(0)
   useEffect(() => { confirmCountRef.current = confirmCount }, [confirmCount])
   useEffect(() => { finalCompletedRef.current = finalCompleted }, [finalCompleted])
   useEffect(() => { radioMachineRef.current = radioMachine }, [radioMachine])
-  const resumeAfterLapRef = useRef(() => setRadioMachine("playing"))
-
-  // o teste correspondente aquela frequencia ja foi concluido no funil?
-  // (pre-requisito pra ELA poder ser oferecida no dialogo de missao)
-  const testDone = useCallback((tier: Tier): boolean => {
-    switch (tier) {
-      case "suburbio": return true
-      case "crypto":   return confirmCountRef.current >= 1
-      case "live":     return confirmCountRef.current >= 2
-      case "full":     return finalCompletedRef.current
-    }
-  }, [])
+  const resumeAfterLapRef = useRef(() => { missionDistRef.current = 0; setRadioMachine("playing") })
 
   const activeTier     = manualTier ?? currentTier
   const activeTracks   = TRACKS_BY_TIER[activeTier]
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
   const [radioMuted, setRadioMuted] = useState(false)
   const radioActive    = radioOn && radioMachine === "playing" && !radioMuted
-  // baseado no tier mais alto já ACEITO — não no que tá tocando agora, que em
-  // modo aleatório (2+ frequências liberadas) pode estar numa mais baixa
-  const highestTier    = highestAcceptedTier(radioAccepted)
-  const orderIdx       = ALL_TIERS.indexOf(highestTier)
-  const nextTier: Tier | null = orderIdx < ALL_TIERS.length - 1 ? ALL_TIERS[orderIdx + 1] : null
-  const nextTierReady  = nextTier ? testDone(nextTier) && !radioAccepted[nextTier as Exclude<Tier, "suburbio">] : false
+  // progresso de distância até a missão ativa (0..1) — só pro mini-mapa
+  // (CityMap) mostrar o indicador de posição; atualizado por polling leve,
+  // não precisa de precisão de frame
+  const [missionProgress, setMissionProgress] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => {
+      const mission = activeMission(confirmCountRef.current)
+      const p = mission ? Math.min(missionDistRef.current / mission.distance, 1) : 0
+      setMissionProgress(p)
+    }, 250)
+    return () => clearInterval(id)
+  }, [])
   // cenário visual do mundo (fora do painel) — segue o activeTier, lido pelo
   // loop imperativo do canvas via ref (o efeito do canvas só roda 1x)
   const activeTierRef = useRef<Tier>(activeTier)
@@ -382,10 +412,14 @@ export default function DrivePage() {
         case "CAR_RADIO_UNMUTE": setRadioMuted(false); break
         case "MINIMIZE_CONSOLE": setPhoneOpen(false); break
         case "PHONE_NOTIFICATION": {
-          const { id, app, icon, color, title, body } = data
-          setPhoneNotif({ id, app, icon, color, title, body })
+          const { id, app, icon, color, title, body, isMission } = data
+          setPhoneNotif({ id, app, icon, color, title, body, isMission })
           if (phoneNotifTimeoutRef.current) clearTimeout(phoneNotifTimeoutRef.current)
-          phoneNotifTimeoutRef.current = setTimeout(() => setPhoneNotif(null), 5000)
+          // "aceitar missão" não some sozinha — fica até a pessoa aceitar
+          // (botão na própria ilha) ou a missão ser resolvida de outra forma
+          if (!isMission) {
+            phoneNotifTimeoutRef.current = setTimeout(() => setPhoneNotif(null), 5000)
+          }
           break
         }
       }
@@ -464,15 +498,13 @@ export default function DrivePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualTier, radioOn, playStaticBurst])
 
-  // ── CICLO DA RÁDIO (missão): com só 1 frequência liberada, toca todas as
-  // prévias dela 1x e ao terminar chia e o carro ESTACIONA (chega a missão
-  // da próxima, se o teste dela já foi concluído). Com 2+ frequências já
-  // liberadas, entra em MODO ALEATÓRIO: a cada prévia que termina, sorteia
-  // qual das frequências liberadas toca a seguir (pode repetir a mesma) — a
-  // troca de frequência também troca o cenário visual (efeito de várias
-  // cidades piscando entre si). Nesse modo quem decide estacionar pra
-  // oferecer a PRÓXIMA frequência é o efeito separado que observa
-  // nextTierReady, não esse aqui. ──
+  // ── CICLO DA RÁDIO: toca as prévias da frequência atual em loop. Com 2+
+  // frequências já sintonizadas, a cada prévia que termina sorteia qual
+  // frequência toca a seguir (pode repetir a mesma) — a troca de frequência
+  // também troca o cenário visual (efeito de várias cidades piscando entre
+  // si). Não existe mais "estacionar pra aceitar rádio" — sintonizar é feito
+  // livremente no app SINT0NIA (ver app/sintonizador/page.tsx); esse ciclo só
+  // toca o que já foi sintonizado. ──
   useEffect(() => {
     if (manualTier) return // sintonia manual assume o controle
     if (!radioOn) return // desligada — nada progride até a pessoa ligar
@@ -496,27 +528,12 @@ export default function DrivePage() {
         clearInterval(prog)
         if (cancelled) return
 
-        const unlocked = ALL_TIERS.filter(t => t === "suburbio" || radioAccepted[t as Exclude<Tier, "suburbio">])
+        const unlocked = ALL_TIERS.filter(t => radioAccepted[t])
         if (unlocked.length > 1) {
           const nextT = unlocked[Math.floor(Math.random() * unlocked.length)]
           if (nextT !== currentTier) { setCurrentTier(nextT); return }
-          stepThrough(idx < tracks.length - 1 ? idx + 1 : 0)
-          return
         }
-
-        if (idx < tracks.length - 1) { stepThrough(idx + 1); return }
-        // só uma frequência liberada ainda: pass completa, chia e estaciona
-        // (chega a missão). Usa o ref persistente (não o array local) pra
-        // sobreviver ao efeito reiniciar quando radioMachine vira "static"
-        // logo na linha de cima
-        setRadioMachine("static")
-        playStaticBurst()
-        if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
-        parkTimeoutRef.current = setTimeout(() => {
-          setRadioMachine("parked")
-          // vibra o celular pra avisar que a missão chegou
-          if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([160, 80, 160])
-        }, 900)
+        stepThrough(idx < tracks.length - 1 ? idx + 1 : 0)
       }, RADIO_SNIPPET_MS)
       timeouts.push(to)
     }
@@ -524,43 +541,7 @@ export default function DrivePage() {
 
     return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioMachine, currentTier, manualTier, radioOn, radioAccepted, playStaticBurst])
-
-  // Assim que uma nova frequência fica pronta pra ser oferecida (acabou de
-  // concluir a missão correspondente), interrompe o que estiver tocando —
-  // inclusive em modo aleatório — e estaciona pra mostrar o diálogo, em vez
-  // de esperar a prévia atual terminar sozinha. Compara a condição INTEIRA
-  // (não só nextTierReady sozinho): se a missão já tava pronta ANTES da
-  // pessoa ligar o rádio, nextTierReady nunca "nasce" true→true de novo, e
-  // ligar o rádio tem que contar como a oportunidade de disparar o diálogo.
-  const missionOpportunityRef = useRef(false)
-  useEffect(() => {
-    const combined = radioOn && radioMachine === "playing" && nextTierReady
-    const was = missionOpportunityRef.current
-    missionOpportunityRef.current = combined
-    if (!was && combined) {
-      playStaticBurst()
-      setRadioMachine("static")
-      if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
-      parkTimeoutRef.current = setTimeout(() => {
-        setRadioMachine("parked")
-        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([160, 80, 160])
-      }, 900)
-    }
-  }, [nextTierReady, radioOn, radioMachine, playStaticBurst])
-
-  const handleAcceptMission = useCallback(() => {
-    if (!nextTier) return
-    funnel.setState(prev => ({ ...prev, radioAccepted: { ...prev.radioAccepted, [nextTier]: true } }))
-    setCurrentTier(nextTier)
-    setRadioMachine("playing")
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nextTier])
-
-  const handleDismissMission = useCallback(() => {
-    silentLapDistRef.current = 0
-    setRadioMachine("silentLap")
-  }, [])
+  }, [radioMachine, currentTier, manualTier, radioOn, radioAccepted])
 
   // toca o trecho atual (elemento próprio da rádio) ou silencia fora da fase "playing"
   useEffect(() => {
@@ -648,8 +629,10 @@ export default function DrivePage() {
       const DASH_H  = Math.round(H * DASH_FRACTION)
       // barra inferior um pouco mais alta em telas estreitas de celular —
       // dá espaço extra pros botões maiores/toque e cadência com o safe-area
-      // somado no HTML (ver BOTOES_H_PCT no JSX)
-      const BOTOES_H_NOW = W < 640 ? BOTOES_H + 14 : BOTOES_H
+      // somado no HTML (ver BOTOES_H_PCT no JSX). Usa isMobileRef (mesma
+      // fonte do JSX) em vez de recalcular por canvas.width, pra nunca
+      // discordar do valor usado pela barra de controles em HTML
+      const BOTOES_H_NOW = isMobileRef.current ? BOTOES_H + 14 : BOTOES_H
       const JOGO_H  = H - DASH_H - BOTOES_H_NOW
 
       // ── Física natural ──
@@ -719,6 +702,25 @@ export default function DrivePage() {
         if (silentLapDistRef.current >= totalLen) {
           silentLapDistRef.current = 0
           resumeAfterLapRef.current()
+        }
+      }
+
+      // dirigindo em direção à missão ativa: acumula distância até "chegar
+      // no local" — dispara o mesmo chiado→estacionado que antes servia pra
+      // aceitar rádio, agora pra chegar na missão
+      if (radioMachineRef.current === "playing") {
+        const mission = activeMission(confirmCountRef.current)
+        if (mission) {
+          missionDistRef.current += advance
+          if (missionDistRef.current >= mission.distance) {
+            setRadioMachine("static")
+            playStaticBurst()
+            if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current)
+            parkTimeoutRef.current = setTimeout(() => {
+              setRadioMachine("parked")
+              if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([160, 80, 160])
+            }, 900)
+          }
         }
       }
 
@@ -1039,6 +1041,32 @@ export default function DrivePage() {
   // Maximizado: painel grande estilo HUD (não uma moldura de smartphone).
   const CONSOLE_BTN_W = 46
   const CONSOLE_BTN_H = 82
+  // escala pelo menor dos dois eixos (não só a largura) — senão o preview
+  // (iframe real de 390x844) ficava mais alto que a caixinha do ícone e o
+  // overflow:hidden cortava a parte de baixo da tela do celular
+  const CONSOLE_SCALE = Math.min(CONSOLE_BTN_W / 390, CONSOLE_BTN_H / 844)
+  const CONSOLE_OFFSET_X = (CONSOLE_BTN_W - 390 * CONSOLE_SCALE) / 2
+  const CONSOLE_OFFSET_Y = (CONSOLE_BTN_H - 844 * CONSOLE_SCALE) / 2
+
+  // ACEITAR: abre o celular direto na página da missão, liga o piloto
+  // automático (a pessoa não precisa mais dirigir manualmente enquanto
+  // resolve a missão) — a própria página da missão muta o rádio sozinha ao
+  // montar (mesmo padrão que GUITAR DRIVER já usa)
+  const handleAcceptMission = useCallback(() => {
+    const mission = activeMission(confirmCountRef.current)
+    if (!mission) return
+    if (iframeRef.current) iframeRef.current.src = mission.route
+    setPhoneOpen(true)
+    setAutoDrive(true)
+    setRadioMachine("playing")
+  }, [])
+
+  // RECUSAR: volta a dirigir normalmente — só oferece essa mesma missão de
+  // novo depois de completar uma volta inteira no mapa
+  const handleDismissMission = useCallback(() => {
+    silentLapDistRef.current = 0
+    setRadioMachine("silentLap")
+  }, [])
 
   return (
     <div
@@ -1144,10 +1172,13 @@ export default function DrivePage() {
             ref={iframeRef}
             src="/?screen=home"
             style={{
+              position: phoneOpen?"static":"absolute",
+              left: phoneOpen?undefined:CONSOLE_OFFSET_X,
+              top: phoneOpen?undefined:CONSOLE_OFFSET_Y,
               width: phoneOpen?"100%":"390px",
               height: phoneOpen?"100%":"844px",
               border:"none",
-              transform: phoneOpen?"none":`scale(${CONSOLE_BTN_W/390})`,
+              transform: phoneOpen?"none":`scale(${CONSOLE_SCALE})`,
               transformOrigin:"top left",
               pointerEvents: phoneOpen?"auto":"none",
             }}
@@ -1163,15 +1194,7 @@ export default function DrivePage() {
       {!phoneOpen && (
         <button
           type="button"
-          onClick={() => {
-            funnel.resetAll()
-            try {
-              localStorage.removeItem("cn-completed-missions")
-              localStorage.removeItem("cn-collected-rewards")
-              localStorage.removeItem("cidade-neon-grupo-msgs")
-            } catch {}
-            window.location.reload()
-          }}
+          onClick={() => funnel.resetExperience()}
           aria-label="Resetar experiência"
           title="Resetar experiência"
           style={{
@@ -1191,6 +1214,25 @@ export default function DrivePage() {
           </svg>
         </button>
       )}
+
+      {/* MINI-MAPA — mostra a missão ativa (marcador com a letra do contato,
+          estilo GTA) e o progresso de distância dirigida até ela, mais os
+          pontos de interesse decorativos da cidade */}
+      {!phoneOpen && (() => {
+        const mission = activeMission(confirmCount)
+        return (
+          <div style={{
+            position:"absolute", zIndex:60,
+            top:"calc(14px + env(safe-area-inset-top))",
+            right:"calc(14px + env(safe-area-inset-right))",
+          }}>
+            <CityMap
+              mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
+              progress={missionProgress}
+            />
+          </div>
+        )
+      })()}
 
       {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
           nome da frequência e o número dela + um anel de volume ao lado */}
@@ -1320,10 +1362,16 @@ export default function DrivePage() {
       })()}
 
       {/* BARRA DE NOTIFICAÇÃO DO CELULAR — fininha, no topo, clicável (abre o
-          celular e executa a mesma ação de tocar nela lá dentro) */}
+          celular e executa a mesma ação de tocar nela lá dentro). Notificações
+          de "aceitar missão" (isMission) ganham um botão ACEITAR direto ali —
+          aceita sem precisar abrir o celular: o iframe já abre na página da
+          missão, liga o piloto automático, e a própria página muta o rádio
+          sozinha ao montar (mesmo padrão do GUITAR DRIVER) — e não somem
+          sozinhas depois de alguns segundos, só quando resolvidas */}
       {!phoneOpen && phoneNotif && (
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => {
             sendNotificationClickToIframe(iframeRef.current, phoneNotif.id)
             setPhoneOpen(true)
@@ -1335,19 +1383,39 @@ export default function DrivePage() {
             left:"50%", transform:"translateX(-50%)",
             width:"min(80%, 340px)",
             zIndex:62,
-            animation:"phone-notif-in 0.35s ease-out",
+            // phone-buzz anima "transform" e quebraria o translateX(-50%) de
+            // centralização abaixo — pulse-glow só anima opacity, seguro de combinar
+            animation: phoneNotif.isMission ? "phone-notif-in 0.35s ease-out, pulse-glow 1.4s ease-in-out infinite" : "phone-notif-in 0.35s ease-out",
             display:"flex", alignItems:"center", gap:8,
-            borderRadius:999, padding:"6px 14px 6px 6px",
+            borderRadius:999, padding:"6px 6px 6px 6px",
             background:"linear-gradient(135deg, rgba(20,10,35,0.95), rgba(6,3,14,0.97))",
             border:`1px solid ${phoneNotif.color}66`,
             boxShadow:`0 0 14px ${phoneNotif.color}44, 0 6px 16px rgba(0,0,0,0.5)`,
             cursor:"pointer",
           }}
         >
-          <span style={{width:8,height:8,borderRadius:8,flexShrink:0,background:phoneNotif.color,boxShadow:`0 0 6px ${phoneNotif.color}`}}/>
+          <span style={{width:8,height:8,borderRadius:8,flexShrink:0,marginLeft:8,background:phoneNotif.color,boxShadow:`0 0 6px ${phoneNotif.color}`}}/>
           <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{phoneNotif.title}</span>
           <span style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.45)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,textAlign:"left"}}>{phoneNotif.body}</span>
-        </button>
+          {phoneNotif.isMission && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleAcceptMission()
+                setPhoneNotif(null)
+              }}
+              style={{
+                flexShrink:0, borderRadius:999, padding:"5px 10px",
+                background:`${phoneNotif.color}22`, border:`1px solid ${phoneNotif.color}`,
+                color:phoneNotif.color, fontFamily:"monospace", fontSize:10, fontWeight:800,
+                letterSpacing:0.5, cursor:"pointer", WebkitTapHighlightColor:"transparent",
+              }}
+            >
+              ACEITAR
+            </button>
+          )}
+        </div>
       )}
 
       {/* SINTONIA LIVRE — só depois que a experiência inteira acaba, a pessoa
@@ -1399,63 +1467,70 @@ export default function DrivePage() {
         </div>
       )}
 
-      {/* CARRO ESTACIONADO — chegou uma missão. Aceitar libera e toca a
-          próxima frequência; recusar (ou não haver nada novo ainda) volta a
-          dirigir com o rádio atual em silêncio até rodar a cidade inteira */}
+      {/* CHEGOU NA MISSÃO — dirigiu a distância até o marcador do contato no
+          mapa. Aceitar abre o celular direto na missão, liga o piloto
+          automático (a página da missão já muta o rádio sozinha, igual o
+          GUITAR DRIVER já faz); recusar volta a dirigir e só oferece de novo
+          depois de dar a volta inteira no mapa */}
       {radioMachine === "parked" && (()=>{
-        const meta = nextTier ? F[nextTier] : null
+        const mission = activeMission(confirmCount)
+        if (!mission) return null
+        const color = MISSION_COLORS[mission.id]
         return (
         <div style={{position:"absolute",inset:0,zIndex:70,background:"rgba(2,0,12,0.82)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{
             width:"100%", maxWidth:320, borderRadius:20, padding:"22px 20px",
             background:"linear-gradient(160deg, #12081f 0%, #06030d 100%)",
-            border:`1px solid ${meta ? meta.color+"66" : "rgba(255,255,255,0.15)"}`,
-            boxShadow:`0 0 30px ${meta ? meta.color+"33" : "rgba(255,255,255,0.1)"}`,
+            border:`1px solid ${color}66`,
+            boxShadow:`0 0 30px ${color}33`,
             textAlign:"center",
           }}>
             <p style={{fontFamily:"monospace",fontSize:9,letterSpacing:2,color:"rgba(255,255,255,0.4)",marginBottom:6}}>
-              🅿️ ESTACIONADO NO POSTO
+              📍 VOCÊ CHEGOU
             </p>
-            {nextTierReady && meta ? (
-              <>
-                <p style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color:meta.color,textShadow:`0 0 10px ${meta.color}aa`,marginBottom:8}}>
-                  NOVA FREQUÊNCIA DETECTADA
-                </p>
-                <p style={{fontFamily:"monospace",fontSize:16,fontWeight:800,letterSpacing:1,color:"#fff",marginBottom:14}}>
-                  {meta.label} · {meta.freq} FM
-                </p>
-                <div style={{display:"flex",gap:10}}>
-                  <button type="button" onClick={handleDismissMission} style={{
-                    flex:1, padding:"11px 0", borderRadius:12,
-                    background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.18)",
-                    color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:12, letterSpacing:1.5, cursor:"pointer",
-                  }}>RECUSAR</button>
-                  <button type="button" onClick={handleAcceptMission} style={{
-                    flex:1, padding:"11px 0", borderRadius:12,
-                    background:`${meta.color}22`, border:`1.5px solid ${meta.color}`,
-                    color:meta.color, fontFamily:"monospace", fontWeight:700, fontSize:12, letterSpacing:1.5, cursor:"pointer",
-                  }}>ACEITAR</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p style={{fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,color:"#9aa0aa",marginBottom:8}}>
-                  NENHUM SINAL NOVO AINDA
-                </p>
-                <p style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)",marginBottom:14}}>
-                  continue a experiência pra liberar a próxima frequência
-                </p>
-                <button type="button" onClick={handleDismissMission} style={{
-                  width:"100%", padding:"11px 0", borderRadius:12,
-                  background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
-                  color:"#fff", fontFamily:"monospace", fontWeight:700, fontSize:12, letterSpacing:1.5, cursor:"pointer",
-                }}>CONTINUAR</button>
-              </>
-            )}
+            <div style={{
+              width:44, height:44, borderRadius:"50%", margin:"0 auto 10px",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              background:`${color}22`, border:`1.5px solid ${color}`,
+              fontFamily:"monospace", fontWeight:800, fontSize:20, color,
+            }}>{mission.letter}</div>
+            <p style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color,textShadow:`0 0 10px ${color}aa`,marginBottom:8}}>
+              MISSÃO DISPONÍVEL
+            </p>
+            <p style={{fontFamily:"monospace",fontSize:16,fontWeight:800,letterSpacing:1,color:"#fff",marginBottom:14}}>
+              {mission.name}
+            </p>
+            <div style={{display:"flex",gap:10}}>
+              <button type="button" onClick={handleDismissMission} style={{
+                flex:1, padding:"11px 0", borderRadius:12,
+                background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.18)",
+                color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:12, letterSpacing:1.5, cursor:"pointer",
+              }}>RECUSAR</button>
+              <button type="button" onClick={handleAcceptMission} style={{
+                flex:1, padding:"11px 0", borderRadius:12,
+                background:`${color}22`, border:`1.5px solid ${color}`,
+                color, fontFamily:"monospace", fontWeight:700, fontSize:12, letterSpacing:1.5, cursor:"pointer",
+              }}>ACEITAR</button>
+            </div>
           </div>
         </div>
         )
       })()}
+
+      {/* VOLANTE 3D — camada decorativa (não captura clique) sobre o canvas
+          2D, girando de verdade com o playerXRef do jogo. Placeholder
+          procedural até termos um modelo .glb real pra passar em modelUrl */}
+      {!phoneOpen && (
+        <div style={{
+          position:"absolute",
+          bottom:`calc(${BOTOES_H_PCT}px - 10px)`,
+          left:"50%", transform:"translateX(-50%)",
+          width:220, height:220,
+          zIndex:45,
+        }}>
+          <SteeringWheel3D steerRef={playerXRef} className="w-full h-full" />
+        </div>
+      )}
 
       {/* CONTROLES DE DIREÇÃO — fixos no fundo. Com o piloto automático ligado,
           o acelerador/direção somem e dá pra usar o console maximizado com o

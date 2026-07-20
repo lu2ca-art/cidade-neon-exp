@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { ALBUM_TRACKS, useAudioPlayer, type Track } from "@/app/providers/AudioPlayerProvider"
 import { sendToParent, type BridgeState } from "@/app/providers/AudioBridge"
+import { ALL_TIERS, TIER_META, missionDoneForTier } from "@/lib/radio-tiers"
 
 // Painel de monitor vital, não um clone de Spotify: verde de EKG, não o
 // verde da marca. CHUVA (index 12) é a única prévia sempre liberada — o
@@ -121,23 +122,50 @@ function AlbumCover({ circular, size }: { circular: boolean; size: number }) {
   )
 }
 
+// ─── NAV COMPARTILHADA — as 3 telas do app (now-playing/album/gallery) ────────
+type SpotifyView = "now-playing" | "album" | "gallery"
+
+function BottomNav({ active, onSelect }: { active: SpotifyView; onSelect: (v: SpotifyView) => void }) {
+  const items: Array<{ id: SpotifyView; label: string; icon: React.ReactNode }> = [
+    { id: "now-playing", label: "monitor", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
+    { id: "album", label: "faixas", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
+    { id: "gallery", label: "projetos", icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> },
+  ]
+  return (
+    <div className="flex flex-shrink-0" style={{ borderTop: `1px solid ${ACCENT}22`, background: "#040a08" }}>
+      {items.map(it => (
+        <button key={it.id} type="button" onClick={() => onSelect(it.id)}
+          className="flex-1 flex flex-col items-center gap-1 py-4 active:bg-white/5"
+          style={{ color: active === it.id ? ACCENT : `${ACCENT}bb` }}>
+          {it.icon}
+          <span className="text-[11px] tracking-wide font-mono">{it.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ─── TELA NOW PLAYING ─────────────────────────────────────────────────────────
 function NowPlayingView({
-  track, audio, bars, progress, seekFromRatio, onAlbum, onBack,
+  track, audio, bars, progress, seekFromRatio, onNav, unlocked,
 }: {
   track: Track
   audio: ReturnType<typeof usePlayer>
   bars: number[]
   progress: number
   seekFromRatio: (r: number) => void
-  onAlbum: () => void
-  onBack: () => void
+  onNav: (v: SpotifyView) => void
+  unlocked: boolean
 }) {
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`
+  // mesma regra da AlbumView: sem unlocked, só a faixa CHUVA é reproduzível —
+  // sem isso as setas aqui deixavam ouvir/ver qualquer faixa antes da hora
+  const playable = unlocked || audio.trackIdx === CHUVA_INDEX
+  const title = playable ? (track.title ?? track.masked ?? "Faixa") : (track.masked ?? "Faixa")
   return (
     <div className="flex-1 flex flex-col" style={{ background: "#040a08" }}>
       <div className="px-6 pt-8 pb-2 text-center">
-        <h1 className="text-white text-2xl font-medium tracking-tight">{track.title ?? track.masked ?? "Faixa"}</h1>
+        <h1 className="text-white text-2xl font-medium tracking-tight">{title}</h1>
         <p className="text-sm mt-1 tracking-wide font-mono" style={{ color: `${ACCENT}99` }}>CIDADE NEON &middot; SINAL VITAL</p>
       </div>
       <div className="flex-1 flex items-center justify-center px-10 min-h-0">
@@ -154,8 +182,8 @@ function NowPlayingView({
           className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-90 transition-transform" style={{ color: `${ACCENT}bb` }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         </button>
-        <button type="button" onClick={audio.prev} aria-label="Anterior"
-          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
+        <button type="button" onClick={audio.prev} disabled={!unlocked} aria-label="Anterior"
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform disabled:opacity-30">
           <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         </button>
         <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"}
@@ -165,8 +193,8 @@ function NowPlayingView({
             ? <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
             : <svg width="30" height="30" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>}
         </button>
-        <button type="button" onClick={audio.next} aria-label="Proxima"
-          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform">
+        <button type="button" onClick={audio.next} disabled={!unlocked} aria-label="Proxima"
+          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white active:scale-90 transition-transform disabled:opacity-30">
           <svg width="30" height="30" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
         <button type="button" aria-label="Repetir"
@@ -174,25 +202,14 @@ function NowPlayingView({
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
         </button>
       </div>
-      <div className="flex" style={{ borderTop: `1px solid ${ACCENT}22` }}>
-        <button type="button" onClick={onBack}
-          className="flex-1 flex flex-col items-center gap-1 py-4 active:bg-white/5" style={{ color: `${ACCENT}bb` }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          <span className="text-[11px] tracking-wide font-mono">monitor</span>
-        </button>
-        <button type="button" onClick={onAlbum}
-          className="flex-1 flex flex-col items-center gap-1 py-4 active:bg-white/5" style={{ color: `${ACCENT}bb` }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span className="text-[11px] tracking-wide font-mono">faixas</span>
-        </button>
-      </div>
+      <BottomNav active="now-playing" onSelect={onNav} />
     </div>
   )
 }
 
 // ─── TELA ALBUM ───────────────────────────────────────────────────────────────
 function AlbumView({
-  audio, bars, progress, seekFromRatio, onNowPlaying, onHome, unlocked,
+  audio, bars, progress, seekFromRatio, onNowPlaying, onHome, onNav, unlocked,
 }: {
   audio: ReturnType<typeof usePlayer>
   bars: number[]
@@ -200,6 +217,7 @@ function AlbumView({
   seekFromRatio: (r: number) => void
   onNowPlaying: () => void
   onHome: () => void
+  onNav: (v: SpotifyView) => void
   unlocked: boolean
 }) {
   const isPlayable = (i: number) => unlocked || i === CHUVA_INDEX
@@ -261,8 +279,11 @@ function AlbumView({
           )
         })}
       </div>
+      <div className="sticky bottom-0 z-10" style={{ background: "#040a08" }}>
+        <BottomNav active="album" onSelect={onNav} />
+      </div>
       {audio.currentTrack && (
-        <div className="absolute bottom-4 left-3 right-3 z-20">
+        <div className="absolute bottom-[88px] left-3 right-3 z-20">
           <div className="rounded-2xl px-2 py-2 flex items-center gap-3 shadow-2xl" style={{ background: "#0a1512", border: `1px solid ${ACCENT}33` }}>
             <button type="button" onClick={audio.toggle} aria-label={audio.playing ? "Pausar" : "Tocar"}
               className="w-10 h-10 rounded-xl overflow-hidden relative flex-shrink-0">
@@ -287,21 +308,104 @@ function AlbumView({
   )
 }
 
+// ─── TELA GALERIA — estilo UNTITLED: os 4 projetos que a missão libera ────────
+function GalleryView({
+  confirmationCount, finalCompleted, onHome, onNav,
+}: {
+  confirmationCount: number
+  finalCompleted: boolean
+  onHome: () => void
+  onNav: (v: SpotifyView) => void
+}) {
+  const nextLocked = ALL_TIERS.find(t => !missionDoneForTier(t, confirmationCount, finalCompleted))
+  return (
+    <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain" style={{ background: "#040a08" }}>
+      <div className="sticky top-0 z-10 backdrop-blur flex items-center justify-between px-3 py-3" style={{ background: "#040a08f2" }}>
+        <button type="button" onClick={onHome} aria-label="Voltar"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: `${ACCENT}14` }}>
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <p className="font-mono text-xs tracking-[0.2em]" style={{ color: `${ACCENT}99` }}>PROJETOS</p>
+        <div className="w-10" />
+      </div>
+      <div className="px-5 pt-4 pb-2">
+        <h1 className="text-white text-2xl font-bold tracking-tight">GALERIA</h1>
+        <p className="text-sm mt-1 font-mono" style={{ color: `${ACCENT}77` }}>
+          cada frequência sintonizada libera o projeto correspondente
+        </p>
+      </div>
+      <div className="px-4 pt-3 pb-8 flex flex-col gap-3">
+        {ALL_TIERS.map(tier => {
+          const meta = TIER_META[tier]
+          const unlockedTier = missionDoneForTier(tier, confirmationCount, finalCompleted)
+          return (
+            <div key={tier} className="rounded-2xl overflow-hidden border" style={{ borderColor: unlockedTier ? `${meta.color}55` : `${ACCENT}18`, background: "#0a1512" }}>
+              <div className="h-20 flex items-center justify-center relative" style={{ background: unlockedTier ? `${meta.color}18` : "rgba(255,255,255,0.02)" }}>
+                <span className="font-mono text-2xl font-bold tracking-tight" style={{ color: unlockedTier ? meta.color : `${ACCENT}33` }}>
+                  {meta.freq} FM
+                </span>
+                {!unlockedTier && (
+                  <div className="absolute top-2 right-3">
+                    <svg width="16" height="16" fill={`${ACCENT}55`} viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-3.1 0H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+                  </div>
+                )}
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-white text-[15px] font-semibold">{unlockedTier ? meta.projectName : "??????????"}</p>
+                <p className="text-xs font-mono mt-0.5" style={{ color: `${ACCENT}55` }}>
+                  {unlockedTier ? "untitled.stream" : tier === nextLocked ? "libera na próxima sintonia" : "bloqueado"}
+                </p>
+                {unlockedTier ? (
+                  <a href={meta.projectLink} target="_blank" rel="noopener noreferrer"
+                    className="mt-3 flex items-center gap-1.5 text-sm font-semibold" style={{ color: meta.color }}>
+                    {meta.projectKind === "buy" ? "comprar no [UNTITLED]" : "ouvir no [UNTITLED]"}
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                  </a>
+                ) : (
+                  <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: `${ACCENT}14` }}>
+                    <div className="h-full rounded-full" style={{ width: "0%", background: meta.color }} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="sticky bottom-0 z-10" style={{ background: "#040a08" }}>
+        <BottomNav active="gallery" onSelect={onNav} />
+      </div>
+    </div>
+  )
+}
+
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
 export default function UntitledPlayerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <FrequenciaPlayer />
+    </Suspense>
+  )
+}
+
+function FrequenciaPlayer() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
   const audio = usePlayer()
 
-  const [view, setView] = useState<"now-playing" | "album">("now-playing")
+  // ?view=gallery — usado pelas recompensas do NEXO, que agora abrem direto
+  // na galeria de projetos em vez de linkar pro untitled.stream externo
+  const initialView: SpotifyView = searchParams.get("view") === "gallery" ? "gallery" : "now-playing"
+  const [view, setView] = useState<SpotifyView>(initialView)
   const [showNotif, setShowNotif] = useState(false)
   const notifSent   = useRef(false)
   const isFirst     = useRef(!state.perAppState.spotifyAuto.completed)
 
-  // recompensa por jogar o /drive: as 3 primeiras frequências + chegar no
-  // final liberam a CIDADE NEON 222.4 FM — esse é o mesmo gatilho que libera
-  // TODAS as prévias aqui. Antes disso, só CHUVA toca (a amostra oficial).
-  const unlocked = state.unlocked.finalCompleted
+  // completar a missão 3 (GUITAR DRIVER) já libera todas as prévias aqui —
+  // antes disso, só CHUVA toca (a amostra oficial). Antes essa liberação
+  // dependia de finalCompleted (só depois do fim de TODA a experiência),
+  // deixando as prévias travadas pra sempre na prática
+  const unlocked = state.confirmationCount >= 3
 
   const track    = audio.currentTrack ?? ALBUM_TRACKS[CHUVA_INDEX]
   const progress = track.durationSec > 0 ? Math.min(audio.elapsed / track.durationSec, 1) : 0
@@ -329,11 +433,6 @@ export default function UntitledPlayerPage() {
     updateCinematicStep("whatsapp-notification")
     router.push("/whatsapp/grupo")
   }
-
-  const handleBack = useCallback(() => {
-    if (view === "now-playing") setView("album")
-    else router.push("/?screen=home")
-  }, [view, router])
 
   // padrão de EKG: linha de base quase plana com um "complexo QRS" (o
   // batimento) se repetindo — não é mais um equalizador de música genérico
@@ -392,8 +491,8 @@ export default function UntitledPlayerPage() {
               bars={bars}
               progress={progress}
               seekFromRatio={seekFromRatio}
-              onAlbum={() => setView("album")}
-              onBack={handleBack}
+              onNav={setView}
+              unlocked={unlocked}
             />
           </div>
           <div style={{ display: view === "album" ? "flex" : "none" }} className="flex-col flex-1 min-h-0 relative">
@@ -404,7 +503,16 @@ export default function UntitledPlayerPage() {
               seekFromRatio={seekFromRatio}
               onNowPlaying={() => setView("now-playing")}
               onHome={() => router.push("/?screen=home")}
+              onNav={setView}
               unlocked={unlocked}
+            />
+          </div>
+          <div style={{ display: view === "gallery" ? "flex" : "none" }} className="flex-col flex-1 min-h-0 relative">
+            <GalleryView
+              confirmationCount={state.confirmationCount}
+              finalCompleted={state.unlocked.finalCompleted}
+              onHome={() => router.push("/?screen=home")}
+              onNav={setView}
             />
           </div>
         </div>

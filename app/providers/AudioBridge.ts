@@ -45,6 +45,11 @@ export type PhoneNotification = {
   color: string
   title: string
   body: string
+  // true pra notificações de "entrar na missão" (NEXO orientando abrir o app
+  // da missão ativa) — únicas que ganham botão de aceitar direto na ilha de
+  // notificação do painel (sem precisar abrir o celular) e não somem sozinhas
+  // depois de alguns segundos, só quando a missão é resolvida
+  isMission?: boolean
 }
 
 export function sendNotificationToParent(n: Omit<PhoneNotification, "type">) {
