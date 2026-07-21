@@ -18,42 +18,56 @@ const MAX_WHEEL_RAD = Math.PI * 0.75 // quanto o volante gira nos extremos (-1..
 function buildPlaceholderWheel(): THREE.Group {
   const group = new THREE.Group()
 
+  // aro — perfil mais grosso e redondo (tipo revestimento de couro), mais
+  // segmentos pra suavizar (era 16/48, achatado e poligonal de perto)
+  // TorusGeometry já nasce de frente pra câmera no eixo Z por padrão.
   const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(1, 0.09, 16, 48),
-    new THREE.MeshStandardMaterial({ color: "#161616", roughness: 0.55, metalness: 0.3 })
+    new THREE.TorusGeometry(1, 0.11, 24, 64),
+    new THREE.MeshStandardMaterial({ color: "#151318", roughness: 0.5, metalness: 0.25 })
   )
-  // TorusGeometry já nasce de frente pra câmera no eixo Z por padrão — a
-  // rotação de 90° que existia aqui fazia o oposto do que o comentário
-  // antigo dizia: deitava o aro de perfil (só ficou invisível enquanto o
-  // volante era pequeno; no tamanho novo, maior, ficava uma barra fina)
   group.add(rim)
 
+  // friso neon embutido no topo do aro — faixa de LED integrada, não uma
+  // esfera boiando por cima (que não lia como parte do volante)
+  const trim = new THREE.Mesh(
+    new THREE.TorusGeometry(1, 0.018, 8, 32, Math.PI * 0.5),
+    new THREE.MeshStandardMaterial({ color: "#ff2d78", emissive: "#ff2d78", emissiveIntensity: 2, toneMapped: false })
+  )
+  trim.rotation.z = Math.PI * 0.75
+  trim.position.z = 0.09
+  group.add(trim)
+
+  // raios cônicos (mais largos perto do cubo, afinando pro aro) — não caixas
+  // retas genéricas. Um pra baixo (6h) e dois pra cima (~10h/2h), como um
+  // volante de verdade, não 3 raios espaçados igualmente a partir do topo
   const spokeCount = 3
   for (let i = 0; i < spokeCount; i++) {
-    const a = (i / spokeCount) * Math.PI * 2
+    const a = (i / spokeCount) * Math.PI * 2 - Math.PI / 2
     const spoke = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 0.12, 0.08),
-      new THREE.MeshStandardMaterial({ color: "#1c1c1c", roughness: 0.6, metalness: 0.25 })
+      new THREE.CylinderGeometry(0.05, 0.09, 0.72, 12),
+      new THREE.MeshStandardMaterial({ color: "#19171d", roughness: 0.55, metalness: 0.3 })
     )
-    spoke.position.set(Math.cos(a) * 0.5, Math.sin(a) * 0.5, 0)
-    spoke.rotation.z = a
+    spoke.position.set(Math.cos(a) * 0.6, Math.sin(a) * 0.6, 0)
+    spoke.rotation.z = a - Math.PI / 2
     group.add(spoke)
   }
 
-  const hub = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.22, 0.14, 24),
-    new THREE.MeshStandardMaterial({ color: "#2a2a2a", roughness: 0.4, metalness: 0.5 })
+  // cubo — base escura + emblema central mais claro, com um leve brilho
+  // ciano (era um cilindro único e liso)
+  const hubBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.24, 0.26, 0.16, 24),
+    new THREE.MeshStandardMaterial({ color: "#221f26", roughness: 0.4, metalness: 0.5 })
   )
-  hub.rotation.x = Math.PI / 2
-  group.add(hub)
+  hubBase.rotation.x = Math.PI / 2
+  group.add(hubBase)
 
-  // acento neon no topo do aro — referência visual da identidade do jogo
-  const accent = new THREE.Mesh(
-    new THREE.SphereGeometry(0.1, 16, 16),
-    new THREE.MeshStandardMaterial({ color: "#ff2d78", emissive: "#ff2d78", emissiveIntensity: 1.4, toneMapped: false })
+  const hubBadge = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.1, 0.02, 24),
+    new THREE.MeshStandardMaterial({ color: "#3a3745", roughness: 0.3, metalness: 0.6, emissive: "#00e5ff", emissiveIntensity: 0.3 })
   )
-  accent.position.set(0, 1, 0)
-  group.add(accent)
+  hubBadge.rotation.x = Math.PI / 2
+  hubBadge.position.z = 0.09
+  group.add(hubBadge)
 
   return group
 }

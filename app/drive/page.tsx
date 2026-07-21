@@ -251,9 +251,9 @@ function buildCars(): Car[] {
 const DASH_FRACTION = 0.46
 const BOTOES_H_PX = 90 // altura fixa dos botões de direção, no fundo
 
-// Tamanho do volante — mesma fórmula usada no JSX (CSS) e no canvas (gauge()
-// precisa saber o raio do volante em unidades de W pra encostar os
-// mostradores nele). O stage tem exatamente 100vw de largura (ver
+// Tamanho do volante — mesma fórmula usada no JSX (CSS) e no canvas
+// (drawInstrumentCluster() precisa saber o tamanho do volante em unidades
+// de W pra encostar o cluster nele). O stage tem exatamente 100vw de largura (ver
 // stageRef), então vw e W (canvas.width) são a mesma unidade.
 function wheelSizePx(W: number): number {
   return Math.min(W * 0.42, 460)
@@ -1107,7 +1107,29 @@ export default function DrivePage() {
         }}/>
       )}
 
-      {/* CONSOLE — fechado: ícone compacto no dashboard (não finge ser um
+      {/* BEZEL do console — moldura física atrás da tela fechada, como uma
+          tela embutida de verdade no painel (não um retângulo colado por
+          cima). A tela em si (iframe) fica encaixada por dentro, recuada. */}
+      {!phoneOpen && (
+        <div style={{
+          position:"absolute", zIndex:59,
+          bottom:`calc(${BOTOES_H_PCT}px + 26px - 9px)`,
+          left:`calc(50% + min(21vw, 230px) + 12px - 9px)`,
+          width:CONSOLE_BTN_W+18, height:CONSOLE_BTN_H+18,
+          borderRadius:16,
+          background:"linear-gradient(160deg, #211a2c 0%, #0d0912 100%)",
+          border:"1px solid rgba(255,255,255,0.08)",
+          boxShadow:"inset 0 1px 2px rgba(255,255,255,0.06), 0 6px 18px rgba(0,0,0,0.5)",
+        }}>
+          <div style={{
+            position:"absolute", top:6, left:"50%", transform:"translateX(-50%)",
+            width:5, height:5, borderRadius:"50%",
+            background:"rgba(255,255,255,0.15)",
+          }}/>
+        </div>
+      )}
+
+      {/* CONSOLE — fechado: tela embutida no bezel acima (não finge ser um
           celular flutuando). Maximizado: painel HUD do sistema do carro. */}
       <div
         onClick={()=>!phoneOpen&&setPhoneOpen(true)}
@@ -1521,8 +1543,8 @@ export default function DrivePage() {
           2D, girando de verdade com o playerXRef do jogo. Placeholder
           procedural até termos um modelo .glb real pra passar em modelUrl.
           Tamanho/posição seguem as fotos de referência (painel real de
-          carro): grande, dominando o centro-inferior — os mostradores do
-          canvas (gauge() em drawDashboard) usam a mesma fórmula de tamanho
+          carro): grande, dominando o centro-inferior — o cluster digital do
+          canvas (drawInstrumentCluster() em drawDashboard) usa a mesma fórmula de tamanho
           (wheelSizePx) pra encostar bem nas bordas dele. */}
       {!phoneOpen && (
         <div style={{
@@ -1808,10 +1830,19 @@ function drawDashboard(
 ){
   const y0=H-DH-BOTOES_H
 
-  // fundo
+  // fundo — material com profundidade (não mais um retângulo liso de 2
+  // cores): gradiente mais rico + veios sutis tipo alumínio escovado, pra
+  // parecer uma superfície de painel de verdade, não um cartão colorido
   const g=ctx.createLinearGradient(0,y0,0,H-BOTOES_H)
-  g.addColorStop(0,"#07001a"); g.addColorStop(1,"#0e0030")
+  g.addColorStop(0,"#0a0322"); g.addColorStop(0.45,"#0e0030"); g.addColorStop(1,"#050018")
   ctx.fillStyle=g; ctx.fillRect(0,y0,W,DH)
+  ctx.save()
+  ctx.globalAlpha=0.05
+  ctx.strokeStyle="#ffffff"; ctx.lineWidth=1
+  for(let ly=y0+6; ly<H-BOTOES_H; ly+=5){
+    ctx.beginPath(); ctx.moveTo(0,ly); ctx.lineTo(W,ly); ctx.stroke()
+  }
+  ctx.restore()
 
   // borda superior neon
   ctx.strokeStyle=C.neonOrange; ctx.lineWidth=2.5
@@ -1819,127 +1850,120 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // mostradores encostados no volante (não mais nas bordas da tela) — o
-  // volante (HTML, ver JSX/wheelSizePx) fica centralizado embaixo, então os
-  // dois ficam lado a lado, perto do centro, com o topo espiando por cima
-  // do aro dele, como nas fotos de referência de painel real
+  // cluster digital único encostado no volante — o volante (HTML, ver
+  // JSX/wheelSizePx) fica centralizado embaixo; o painel de vidro do
+  // cluster fica logo atrás/acima dele, como um instrumento digital
+  // moderno (referência: cluster semicircular da foto do Mercedes), não
+  // dois mostradores analógicos arcade isolados nas bordas
   const wheelSize = wheelSizePx(W)
-  const R = Math.min(DH*0.22, W*0.095)
-  const cy = y0 + Math.max(DH - wheelSize*0.90, DH*0.14)
-  const gx = wheelSize*0.33
+  const clusterCy = y0 + Math.max(DH - wheelSize*1.02, DH*0.12)
+  const clusterW = Math.min(wheelSize*1.05, W*0.62)
+  const clusterH = Math.min(DH*0.34, clusterW*0.36)
+  drawInstrumentCluster(ctx, W*0.5, clusterCy, clusterW, clusterH, kmh, rpm)
 
-  // velocímetro esq (max 222)
-  gauge(ctx,W*0.5-gx,cy,R,kmh,222,"#00e5ff",37,`${kmh}`,"KM/H")
-  // rpm dir
-  gauge(ctx,W*0.5+gx,cy,R,rpm,8,"#ff6b35",2,`${rpm}`,"RPM")
+  // grelhas de ventilação decorativas, uma de cada lado do cluster — dão
+  // profundidade de painel de carro de verdade, não fazem nada no jogo
+  drawVent(ctx, W*0.5-clusterW*0.72, clusterCy, clusterH*0.62)
+  drawVent(ctx, W*0.5+clusterW*0.72, clusterCy, clusterH*0.62)
 
   // (o RÁDIO agora é um visor HTML à direita do volante — ver JSX.
-  //  o canvas desenha só os mostradores e a zona.)
+  //  o canvas desenha só o cluster, as grelhas e a zona.)
 
   // zona
   ctx.fillStyle="#ffffff33"; ctx.font=`${DH*0.09}px monospace`
   ctx.textAlign="center"; ctx.fillText(zone,W/2,y0+DH*0.95)
 }
 
-// mostrador analógico realista: mostrador escuro com bezel, ticks maiores
-// (com numeral) e menores, faixa "redline" sutil só no fim da escala, ponteiro
-// fino afunilado com cubo central, e leitura digital pequena/secundária —
-// no lugar do arco arcade multicolor de antes
-function gauge(
+// ── CLUSTER DIGITAL — um único painel de vidro com leitura numérica grande
+// (velocidade) + secundária (RPM), cada uma com um arco fino de progresso
+// por trás, em vez de dois mostradores analógicos separados com ponteiro e
+// ticks numerados. Visual de instrumento digital moderno (referência: tela
+// semicircular do cluster na foto do Mercedes), não mostrador arcade.
+function drawInstrumentCluster(
   ctx:CanvasRenderingContext2D,
-  x:number,y:number,r:number,
-  val:number,max:number,
-  accent:string,majorStep:number,
-  display:string,label:string
+  cx:number,cy:number,w:number,h:number,
+  kmh:number,rpm:number
 ){
-  const start=Math.PI*0.75, sweep=Math.PI*1.5
-  const pct=Math.min(val/max,1)
-  const angle=pct*sweep
-  const redlineStart=0.82
-  const ringR=r*0.86
-
   ctx.save()
   ctx.textAlign="center"; ctx.textBaseline="middle"
 
-  // face do mostrador
-  const face=ctx.createRadialGradient(x,y,r*0.15,x,y,r*1.02)
-  face.addColorStop(0,"#0d0a18"); face.addColorStop(0.75,"#120c22"); face.addColorStop(1,"#1c1430")
-  ctx.fillStyle=face
-  ctx.beginPath(); ctx.arc(x,y,r*1.02,0,Math.PI*2); ctx.fill()
-  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=r*0.03
-  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke()
+  const x0=cx-w/2, y0=cy-h/2, rad=h*0.22
 
-  // trilha de fundo
-  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=r*0.09
-  ctx.beginPath(); ctx.arc(x,y,ringR,start,start+sweep); ctx.stroke()
-
-  // faixa redline
-  const redStart=start+sweep*redlineStart
-  ctx.strokeStyle="rgba(255,60,80,0.5)"; ctx.lineWidth=r*0.09
-  ctx.beginPath(); ctx.arc(x,y,ringR,redStart,start+sweep); ctx.stroke()
-
-  // arco ativo — cor única de destaque, brilho só perto do redline
-  ctx.strokeStyle=accent; ctx.lineWidth=r*0.09
-  ctx.shadowColor=accent; ctx.shadowBlur=pct>redlineStart?10:3
-  ctx.beginPath(); ctx.arc(x,y,ringR,start,start+angle); ctx.stroke()
+  // painel de vidro — bezel fino brilhando, fundo bem escuro (tela por trás
+  // do vidro), não uma face de mostrador colorida
+  rRect(ctx,x0,y0,w,h,rad)
+  const glass=ctx.createLinearGradient(0,y0,0,y0+h)
+  glass.addColorStop(0,"#0c0818"); glass.addColorStop(1,"#050310")
+  ctx.fillStyle=glass; ctx.fill()
+  ctx.lineWidth=Math.max(1.5,h*0.02)
+  ctx.strokeStyle="rgba(0,229,255,0.35)"
+  ctx.shadowColor="#00e5ff"; ctx.shadowBlur=8
+  ctx.stroke()
   ctx.shadowBlur=0
 
-  // ticks maiores (com numeral) + 2 ticks menores entre cada par
-  const majorCount=Math.max(1,Math.round(max/majorStep))
-  for(let i=0;i<=majorCount;i++){
-    const v=i*majorStep
-    const p=Math.min(v/max,1)
-    const a=start+p*sweep
-    const isRed=p>=redlineStart
-    ctx.strokeStyle=isRed?"rgba(255,110,120,0.9)":"rgba(255,255,255,0.65)"
-    ctx.lineWidth=r*0.025
-    ctx.beginPath()
-    ctx.moveTo(x+Math.cos(a)*r*0.72,y+Math.sin(a)*r*0.72)
-    ctx.lineTo(x+Math.cos(a)*r*0.82,y+Math.sin(a)*r*0.82)
-    ctx.stroke()
-    ctx.fillStyle=isRed?"rgba(255,150,160,0.85)":"rgba(255,255,255,0.5)"
-    ctx.font=`${Math.max(8,r*0.13)}px monospace`
-    ctx.fillText(`${Math.round(v)}`,x+Math.cos(a)*r*0.58,y+Math.sin(a)*r*0.58)
+  // reflexo sutil no topo do vidro
+  ctx.save()
+  rRect(ctx,x0,y0,w,h,rad); ctx.clip()
+  const sheen=ctx.createLinearGradient(0,y0,0,y0+h*0.5)
+  sheen.addColorStop(0,"rgba(255,255,255,0.06)"); sheen.addColorStop(1,"rgba(255,255,255,0)")
+  ctx.fillStyle=sheen; ctx.fillRect(x0,y0,w,h*0.5)
+  ctx.restore()
 
-    if(i<majorCount){
-      for(let m=1;m<=2;m++){
-        const mp=Math.min((v+(majorStep*m)/3)/max,1)
-        const ma=start+mp*sweep
-        ctx.strokeStyle="rgba(255,255,255,0.28)"; ctx.lineWidth=r*0.014
-        ctx.beginPath()
-        ctx.moveTo(x+Math.cos(ma)*r*0.77,y+Math.sin(ma)*r*0.77)
-        ctx.lineTo(x+Math.cos(ma)*r*0.82,y+Math.sin(ma)*r*0.82)
-        ctx.stroke()
-      }
-    }
+  // divisor fino entre velocidade e RPM
+  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=1
+  ctx.beginPath(); ctx.moveTo(cx+w*0.14,y0+h*0.16); ctx.lineTo(cx+w*0.14,y0+h*0.84); ctx.stroke()
+
+  // velocidade — leitura grande, setor esquerdo (maior)
+  const speedCx=cx-w*0.20, speedR=h*0.42
+  digitalArc(ctx,speedCx,cy,speedR,kmh/222,"#00e5ff")
+  ctx.fillStyle="#eafcff"; ctx.font=`700 ${h*0.34}px monospace`
+  ctx.shadowColor="#00e5ff"; ctx.shadowBlur=10
+  ctx.fillText(`${Math.round(kmh)}`,speedCx,cy-h*0.02)
+  ctx.shadowBlur=0
+  ctx.fillStyle="rgba(0,229,255,0.65)"; ctx.font=`${h*0.11}px monospace`
+  ctx.fillText("KM/H",speedCx,cy+h*0.30)
+
+  // RPM — leitura menor, setor direito
+  const rpmCx=cx+w*0.32, rpmR=h*0.26
+  digitalArc(ctx,rpmCx,cy,rpmR,rpm/8,"#ff6b35")
+  ctx.fillStyle="#fff1ea"; ctx.font=`700 ${h*0.20}px monospace`
+  ctx.fillText(rpm.toFixed(1),rpmCx,cy-h*0.02)
+  ctx.fillStyle="rgba(255,107,53,0.65)"; ctx.font=`${h*0.09}px monospace`
+  ctx.fillText("RPM",rpmCx,cy+h*0.20)
+
+  ctx.restore()
+}
+
+// arco fino de progresso (270° de varredura) — trilho translúcido + arco de
+// destaque com brilho, sem ticks numerados nem ponteiro físico
+function digitalArc(ctx:CanvasRenderingContext2D,x:number,y:number,r:number,pct01:number,accent:string){
+  const start=Math.PI*0.62, sweep=Math.PI*1.76
+  const pct=Math.min(Math.max(pct01,0),1)
+  ctx.lineCap="round"
+  ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=r*0.11
+  ctx.beginPath(); ctx.arc(x,y,r,start,start+sweep); ctx.stroke()
+  ctx.strokeStyle=accent; ctx.lineWidth=r*0.11
+  ctx.shadowColor=accent; ctx.shadowBlur=6
+  ctx.beginPath(); ctx.arc(x,y,r,start,start+sweep*pct); ctx.stroke()
+  ctx.shadowBlur=0
+  ctx.lineCap="butt"
+}
+
+// grelha de ventilação decorativa — só textura de painel (profundidade),
+// sem função nenhuma no jogo
+function drawVent(ctx:CanvasRenderingContext2D,cx:number,cy:number,size:number){
+  ctx.save()
+  rRect(ctx,cx-size*0.45,cy-size*0.5,size*0.9,size,size*0.15)
+  ctx.fillStyle="rgba(0,0,0,0.25)"; ctx.fill()
+  const slats=5
+  for(let i=0;i<slats;i++){
+    const sy=cy-size*0.5+(i+0.5)*(size/slats)
+    ctx.strokeStyle="rgba(255,255,255,0.07)"
+    ctx.lineWidth=Math.max(1,size*0.03)
+    ctx.beginPath(); ctx.moveTo(cx-size*0.36,sy); ctx.lineTo(cx+size*0.36,sy); ctx.stroke()
   }
-
-  // ponteiro fino afunilado
-  const na=start+angle
-  const tipX=x+Math.cos(na)*r*0.68, tipY=y+Math.sin(na)*r*0.68
-  const backX=x-Math.cos(na)*r*0.14, backY=y-Math.sin(na)*r*0.14
-  const perp=na+Math.PI/2, baseW=r*0.045
-  ctx.fillStyle="#e8e8ef"
-  ctx.beginPath()
-  ctx.moveTo(backX+Math.cos(perp)*baseW,backY+Math.sin(perp)*baseW)
-  ctx.lineTo(backX-Math.cos(perp)*baseW,backY-Math.sin(perp)*baseW)
-  ctx.lineTo(tipX,tipY)
-  ctx.closePath(); ctx.fill()
-  ctx.fillStyle=pct>=redlineStart?"#ff4d5e":accent
-  ctx.beginPath(); ctx.arc(tipX,tipY,r*0.025,0,Math.PI*2); ctx.fill()
-
-  // cubo central
-  const hub=ctx.createRadialGradient(x-r*0.02,y-r*0.02,0,x,y,r*0.09)
-  hub.addColorStop(0,"#e8e8ef"); hub.addColorStop(1,"#3a3a48")
-  ctx.fillStyle=hub
-  ctx.beginPath(); ctx.arc(x,y,r*0.085,0,Math.PI*2); ctx.fill()
-
-  // leitura digital — pequena e secundária, abaixo do cubo
-  ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.font=`bold ${r*0.22}px monospace`
-  ctx.fillText(display,x,y+r*0.42)
-  ctx.fillStyle="rgba(255,255,255,0.4)"; ctx.font=`${r*0.12}px monospace`
-  ctx.fillText(label,x,y+r*0.58)
-
+  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=1
+  rRect(ctx,cx-size*0.45,cy-size*0.5,size*0.9,size,size*0.15); ctx.stroke()
   ctx.restore()
 }
 
