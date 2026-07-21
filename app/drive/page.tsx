@@ -275,6 +275,10 @@ export default function DrivePage() {
   useEffect(() => { autoDriveRef.current = autoDrive }, [autoDrive])
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
+  // lido dentro do loop imperativo do canvas (frame()), sem precisar
+  // reiniciar o efeito do canvas a cada abre/fecha do celular
+  const phoneOpenRef = useRef(phoneOpen)
+  useEffect(() => { phoneOpenRef.current = phoneOpen }, [phoneOpen])
   // celular aberto ocupa menos tela em telas estreitas (mobile) — em desktop
   // segue grande, já que sobra espaço em volta
   const [isMobile, setIsMobile] = useState(false)
@@ -707,8 +711,10 @@ export default function DrivePage() {
 
       // dirigindo em direção à missão ativa: acumula distância até "chegar
       // no local" — dispara o mesmo chiado→estacionado que antes servia pra
-      // aceitar rádio, agora pra chegar na missão
-      if (radioMachineRef.current === "playing") {
+      // aceitar rádio, agora pra chegar na missão. Só checa com o celular
+      // fechado — com ele aberto a missão já foi aceita e está em andamento,
+      // não é pra reabrir o diálogo de chegada por cima dela
+      if (radioMachineRef.current === "playing" && !phoneOpenRef.current) {
         const mission = activeMission(confirmCountRef.current)
         if (mission) {
           missionDistRef.current += advance
@@ -1051,10 +1057,15 @@ export default function DrivePage() {
   // ACEITAR: abre o celular direto na página da missão, liga o piloto
   // automático (a pessoa não precisa mais dirigir manualmente enquanto
   // resolve a missão) — a própria página da missão muta o rádio sozinha ao
-  // montar (mesmo padrão que GUITAR DRIVER já usa)
+  // montar (mesmo padrão que GUITAR DRIVER já usa).
+  // Zera o odômetro da missão: sem isso, o carro seguia andando (autoDrive)
+  // com a MESMA distância que já tinha estourado o gatilho, então o diálogo
+  // de chegada (radioMachine==="parked") disparava de novo no frame seguinte
+  // — o botão ACEITAR nunca "sumia" de verdade, só reaparecia na hora.
   const handleAcceptMission = useCallback(() => {
     const mission = activeMission(confirmCountRef.current)
     if (!mission) return
+    missionDistRef.current = 0
     if (iframeRef.current) iframeRef.current.src = mission.route
     setPhoneOpen(true)
     setAutoDrive(true)
@@ -1066,6 +1077,15 @@ export default function DrivePage() {
   const handleDismissMission = useCallback(() => {
     silentLapDistRef.current = 0
     setRadioMachine("silentLap")
+  }, [])
+
+  // A telinha do rádio no painel É o seletor de estações/sintonia — não um
+  // app separado escondido atrás do celular. Tocar nela abre o SINT0NIA
+  // (menu de favoritos + busca de frequência); a própria página do SINT0NIA
+  // já muta o rádio do carro sozinha ao montar
+  const handleOpenSintonia = useCallback(() => {
+    if (iframeRef.current) iframeRef.current.src = "/sintonizador"
+    setPhoneOpen(true)
   }, [])
 
   return (
@@ -1269,14 +1289,19 @@ export default function DrivePage() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.2} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
           </button>
 
-          <div style={{
-            position:"relative", flex:1, borderRadius:16, padding:"12px 16px 13px",
-            background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-            border:`1px solid ${accent}55`,
-            boxShadow: radioOn ? `0 0 22px ${accent}33, inset 0 0 16px ${accent}18` : "none",
-            overflow:"hidden", pointerEvents:"none",
-            opacity: radioOn ? 1 : 0.7,
-          }}>
+          <button
+            type="button"
+            onClick={handleOpenSintonia}
+            aria-label="Abrir SINT0NIA — seletor de rádio e busca de frequência"
+            style={{
+              position:"relative", flex:1, borderRadius:16, padding:"12px 16px 13px",
+              background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
+              border:`1px solid ${accent}55`,
+              boxShadow: radioOn ? `0 0 22px ${accent}33, inset 0 0 16px ${accent}18` : "none",
+              overflow:"hidden", cursor:"pointer", textAlign:"left",
+              opacity: radioOn ? 1 : 0.7,
+              WebkitTapHighlightColor:"transparent",
+            }}>
             {/* scanlines */}
             <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
@@ -1326,7 +1351,7 @@ export default function DrivePage() {
                 <span style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINAL EM SILÊNCIO ◌</span>
               </div>
             )}
-          </div>
+          </button>
 
           {/* ANEL DE VOLUME — arraste ao redor pra ajustar */}
           <div style={{ position:"relative", flexShrink:0, width:56, height:56 }}>

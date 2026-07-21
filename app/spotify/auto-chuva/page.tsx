@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { ALBUM_TRACKS, useAudioPlayer, type Track } from "@/app/providers/AudioPlayerProvider"
-import { sendToParent, type BridgeState } from "@/app/providers/AudioBridge"
+import { sendToParent, sendCarRadioMute, type BridgeState } from "@/app/providers/AudioBridge"
 import { ALL_TIERS, TIER_META, missionDoneForTier } from "@/lib/radio-tiers"
 
 // Painel de monitor vital, não um clone de Spotify: verde de EKG, não o
@@ -411,6 +411,15 @@ function FrequenciaPlayer() {
   const progress = track.durationSec > 0 ? Math.min(audio.elapsed / track.durationSec, 1) : 0
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
+
+  // Silencia o rádio do carro (se aberto dentro de /drive) enquanto o
+  // FREQUÊNCIA toca suas próprias prévias — mesmo padrão que NECTAR/B4TIDA/
+  // GUITAR DRIVER/SINT0NIA já usam. Sem isso, tocar uma faixa aqui rodava por
+  // cima do que já estivesse tocando no rádio do painel ao mesmo tempo.
+  useEffect(() => {
+    sendCarRadioMute(true)
+    return () => sendCarRadioMute(false)
+  }, [])
 
   // Auto-play CHUVA ao montar, só se nada estiver tocando — é a única prévia
   // sempre liberada, antes mesmo do resto do álbum destravar
