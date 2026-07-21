@@ -22,7 +22,10 @@ function buildPlaceholderWheel(): THREE.Group {
     new THREE.TorusGeometry(1, 0.09, 16, 48),
     new THREE.MeshStandardMaterial({ color: "#161616", roughness: 0.55, metalness: 0.3 })
   )
-  rim.rotation.x = Math.PI / 2 // deita o aro de frente pra câmera (senão fica de perfil)
+  // TorusGeometry já nasce de frente pra câmera no eixo Z por padrão — a
+  // rotação de 90° que existia aqui fazia o oposto do que o comentário
+  // antigo dizia: deitava o aro de perfil (só ficou invisível enquanto o
+  // volante era pequeno; no tamanho novo, maior, ficava uma barra fina)
   group.add(rim)
 
   const spokeCount = 3

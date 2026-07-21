@@ -244,9 +244,20 @@ function buildCars(): Car[] {
 
 // Altura do painel (velocímetro/RPM/rádio) como fração da tela — usada tanto
 // no loop imperativo do canvas quanto no JSX, pra nunca ficarem dessincronizados.
-// Aumentada bem além do que era (0.26) pra deixar o painel bem maior.
-const DASH_FRACTION = 0.42
+// Aumentada bem além do que era (0.26) pra deixar o painel bem maior, e de
+// novo (0.42→0.46) pra caber o volante/cluster/console maiores do redesign
+// baseado nas fotos de referência (volante dominando o centro-inferior,
+// mostradores atrás dele, tela do console deslocada à direita).
+const DASH_FRACTION = 0.46
 const BOTOES_H_PX = 90 // altura fixa dos botões de direção, no fundo
+
+// Tamanho do volante — mesma fórmula usada no JSX (CSS) e no canvas (gauge()
+// precisa saber o raio do volante em unidades de W pra encostar os
+// mostradores nele). O stage tem exatamente 100vw de largura (ver
+// stageRef), então vw e W (canvas.width) são a mesma unidade.
+function wheelSizePx(W: number): number {
+  return Math.min(W * 0.42, 460)
+}
 
 export default function DrivePage() {
   const audio    = useAudioPlayer()
@@ -1011,11 +1022,12 @@ export default function DrivePage() {
   const BOTOES_H_PCT = isMobile ? BOTOES_H_PX + 14 : BOTOES_H_PX
 
   // CONSOLE do carro — o "celular" não existe mais como objeto flutuando na
-  // cena; é uma tela do próprio painel. Fechado: encaixado no console central,
-  // abaixo do rádio, com a cara de um celular montado no suporte do carro.
-  // Maximizado: painel grande estilo HUD (não uma moldura de smartphone).
-  const CONSOLE_BTN_W = 46
-  const CONSOLE_BTN_H = 82
+  // cena; é uma tela do próprio painel. Fechado: uma tela legível montada à
+  // direita do volante (como o celular preso no suporte da foto de
+  // referência), não mais minúscula no centro. Maximizado: painel grande
+  // estilo HUD (não uma moldura de smartphone).
+  const CONSOLE_BTN_W = 112
+  const CONSOLE_BTN_H = 198
   // escala pelo menor dos dois eixos (não só a largura) — senão o preview
   // (iframe real de 390x844) ficava mais alto que a caixinha do ícone e o
   // overflow:hidden cortava a parte de baixo da tela do celular
@@ -1082,12 +1094,14 @@ export default function DrivePage() {
       )}
 
       {/* suporte/clipe do celular no console — decorativo, fica atrás do
-          celular fechado, como um suporte de carro de verdade */}
+          celular fechado, como um suporte de carro de verdade. Alinhado com
+          a nova posição da tela, à direita do volante (ver fotos de
+          referência: a tela montada fica deslocada da coluna de direção) */}
       {!phoneOpen && (
         <div style={{
           position:"absolute", zIndex:59,
-          bottom:`calc(${BOTOES_H_PCT}px + 4px)`,
-          left:"50%", transform:"translateX(-50%)",
+          bottom:`calc(${BOTOES_H_PCT}px + 22px)`,
+          left:`calc(50% + min(21vw, 230px) + 12px)`,
           width:CONSOLE_BTN_W+16, height:16, borderRadius:6,
           background:"#0a0710", border:"1px solid rgba(255,255,255,0.1)",
         }}/>
@@ -1120,10 +1134,11 @@ export default function DrivePage() {
                 display:"flex", flexDirection:"column",
               } as React.CSSProperties)
             : {
-                // encaixado no console central, logo abaixo do rádio — como
-                // um celular de verdade preso num suporte do carro
-                bottom:`calc(${BOTOES_H_PCT}px + 10px)`,
-                left:"50%", transform:"translateX(-50%)",
+                // deslocado à direita do volante, na altura do topo do
+                // cluster — como o celular montado na foto de referência,
+                // não mais centralizado (o centro agora é do volante)
+                bottom:`calc(${BOTOES_H_PCT}px + 26px)`,
+                left:`calc(50% + min(21vw, 230px) + 12px)`,
                 width:CONSOLE_BTN_W, height:CONSOLE_BTN_H,
                 background:"#0a0014", borderRadius:10, padding:0,
                 border:`1.5px solid ${C.neonPink}70`,
@@ -1224,7 +1239,9 @@ export default function DrivePage() {
       })()}
 
       {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
-          nome da frequência e o número dela + um anel de volume ao lado */}
+          nome da frequência e o número dela + um anel de volume ao lado.
+          Empilhado por cima do console, à direita do volante — não mais
+          centralizado (o centro agora é do volante/mostradores) */}
       {!phoneOpen&&(()=>{
         const active = radioActive
         const isStatic = radioMachine === "static"
@@ -1234,9 +1251,9 @@ export default function DrivePage() {
         return (
         <div style={{
           position:"absolute",
-          bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% * 0.24)`,
-          left:"50%", transform:"translateX(-50%)",
-          width: isMobile ? "min(64%, 420px)" : "min(80%, 460px)",
+          bottom: `calc(${BOTOES_H_PCT}px + 234px)`,
+          left:`calc(50% + min(21vw, 230px) + 12px)`,
+          width: isMobile ? "min(66%, 340px)" : "min(40%, 400px)",
           zIndex:46,
           display:"flex", alignItems:"center", gap:10,
         }}>
@@ -1502,13 +1519,17 @@ export default function DrivePage() {
 
       {/* VOLANTE 3D — camada decorativa (não captura clique) sobre o canvas
           2D, girando de verdade com o playerXRef do jogo. Placeholder
-          procedural até termos um modelo .glb real pra passar em modelUrl */}
+          procedural até termos um modelo .glb real pra passar em modelUrl.
+          Tamanho/posição seguem as fotos de referência (painel real de
+          carro): grande, dominando o centro-inferior — os mostradores do
+          canvas (gauge() em drawDashboard) usam a mesma fórmula de tamanho
+          (wheelSizePx) pra encostar bem nas bordas dele. */}
       {!phoneOpen && (
         <div style={{
           position:"absolute",
           bottom:`calc(${BOTOES_H_PCT}px - 10px)`,
           left:"50%", transform:"translateX(-50%)",
-          width:220, height:220,
+          width:"min(42vw, 460px)", height:"min(42vw, 460px)",
           zIndex:45,
         }}>
           <SteeringWheel3D steerRef={playerXRef} className="w-full h-full" />
@@ -1798,18 +1819,21 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // gauges empurrados pras bordas — o rádio ocupa o centro do painel. Raio
-  // baseado sobretudo na altura do painel (DH), não só na largura — em telas
-  // estreitas de celular W*0.10 sozinho deixava os mostradores minúsculos
-  const R = Math.min(DH*0.28, W*0.13)
-  const cy = y0 + DH*0.62
+  // mostradores encostados no volante (não mais nas bordas da tela) — o
+  // volante (HTML, ver JSX/wheelSizePx) fica centralizado embaixo, então os
+  // dois ficam lado a lado, perto do centro, com o topo espiando por cima
+  // do aro dele, como nas fotos de referência de painel real
+  const wheelSize = wheelSizePx(W)
+  const R = Math.min(DH*0.22, W*0.095)
+  const cy = y0 + Math.max(DH - wheelSize*0.90, DH*0.14)
+  const gx = wheelSize*0.33
 
   // velocímetro esq (max 222)
-  gauge(ctx,W*0.12,cy,R,kmh,222,"#00e5ff",37,`${kmh}`,"KM/H")
+  gauge(ctx,W*0.5-gx,cy,R,kmh,222,"#00e5ff",37,`${kmh}`,"KM/H")
   // rpm dir
-  gauge(ctx,W*0.88,cy,R,rpm,8,"#ff6b35",2,`${rpm}`,"RPM")
+  gauge(ctx,W*0.5+gx,cy,R,rpm,8,"#ff6b35",2,`${rpm}`,"RPM")
 
-  // (o RÁDIO agora é um visor HTML sobreposto ao centro do painel — ver JSX.
+  // (o RÁDIO agora é um visor HTML à direita do volante — ver JSX.
   //  o canvas desenha só os mostradores e a zona.)
 
   // zona
