@@ -157,15 +157,15 @@ const TRACKS_BY_TIER: Record<Tier, RadioTrack[]> = {
   live:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "live"),
   full:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "full"),
 }
-// Deriva o tier "atual" a partir do que já foi SINTONIZADO (persistido no
-// funil) — evita que reentrar em /drive (remount) reinicie a rádio na
-// primeira frequência enquanto radioAccepted já marca tiers mais altos como
-// sintonizados
-function highestAcceptedTier(accepted: Record<Tier, boolean>): Tier {
+// Deriva a estação sintonizada por último a partir do que já foi SINTONIZADO
+// (persistido no funil) — evita que reentrar em /drive (remount) perca a
+// seleção da pessoa, e retorna null se nada foi sintonizado ainda (rádio de
+// verdade: sem nada sintonizado, não tem o que tocar)
+function highestAcceptedTier(accepted: Record<Tier, boolean>): Tier | null {
   for (let i = ALL_TIERS.length - 1; i >= 0; i--) {
     if (accepted[ALL_TIERS[i]]) return ALL_TIERS[i]
   }
-  return "suburbio"
+  return null
 }
 
 const ROAD_LEN  = 1600
@@ -318,20 +318,22 @@ export default function DrivePage() {
     const globalEl = getAudioEl(); if (globalEl) globalEl.volume = v
     if (radioAudioRef.current) radioAudioRef.current.volume = v
   }, [])
-  // ── RÁDIO do painel: gira entre as frequências desbloqueadas, nessa ordem
-  // fixa — SUBÚRBIO XENOM, CIDADENEON.CRYPTO, LIVE NEON, CIDADE NEON 222.4 FM.
-  // Toca todas as prévias da frequência atual 1x, chia, silencia 5s (tempo da
-  // próxima missão chegar no telefone) e passa pra PRÓXIMA frequência já
-  // desbloqueada — nunca repete a mesma, a menos que seja a única disponível.
+  // ── RÁDIO do painel: rádio de verdade, moda antiga — só toca a estação que
+  // a pessoa sintonizou e deixou selecionada, nunca troca ou pula sozinha.
+  // Sintonizar (SINT0NIA) é o que libera uma estação pra sempre; a partir daí
+  // ela fica selecionável aqui a qualquer momento, sem precisar sintonizar de
+  // novo — só ligar o power. Só uma estação toca por vez: selecionar outra
+  // troca na hora (mesmo elemento de áudio, então nunca toca duas juntas).
   const [zoneName, setZoneName]     = useState("SUBÚRBIO XÊNON") // guardado p/ o cenário visual (Fase B)
-  const [currentTier, setCurrentTier] = useState<Tier>(() => highestAcceptedTier(funnel.state.radioAccepted))
   const [radioIdx, setRadioIdx]     = useState(0)
   const [snippetPct, setSnippetPct] = useState(0)
   // maquina da radio: toca a frequencia inteira 1x -> chia -> ESTACIONA (chega
   // a missao, aceita ou recusa) -> se recusar/nao houver nada novo, volta a
   // dirigir com o radio em silencio ate rodar a cidade inteira de novo
   const [radioMachine, setRadioMachine] = useState<"playing" | "static" | "parked" | "silentLap">("playing")
-  const [manualTier, setManualTier] = useState<Tier | null>(null)
+  // estação selecionada pra tocar — null só antes de sintonizar a primeira
+  // (nada pra tocar ainda). Persiste entre power on/off e nunca troca sozinha.
+  const [manualTier, setManualTier] = useState<Tier | null>(() => highestAcceptedTier(funnel.state.radioAccepted))
   // a rádio começa DESLIGADA — só passa a tocar/ciclar frequências depois que
   // a pessoa aperta o power. Enquanto desligada, nada progride (sem missão
   // chegando), igual a um rádio de verdade
@@ -348,27 +350,37 @@ export default function DrivePage() {
   const parkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (parkTimeoutRef.current) clearTimeout(parkTimeoutRef.current) }, [])
   const confirmCount    = funnel.state.confirmationCount
-  const finalCompleted  = funnel.state.unlocked.finalCompleted
   const radioAccepted   = funnel.state.radioAccepted
   // refs sempre com o valor mais recente, lidos dentro do ciclo assincrono e
   // do loop imperativo do canvas, sem precisar reiniciar efeitos a cada render
   const confirmCountRef   = useRef(confirmCount)
-  const finalCompletedRef = useRef(finalCompleted)
   const radioMachineRef   = useRef(radioMachine)
   const silentLapDistRef  = useRef(0)
   // distância dirigida em direção à missão ativa (odômetro) — zera quando
   // recusa e precisa dar a volta inteira antes de oferecer de novo
   const missionDistRef    = useRef(0)
   useEffect(() => { confirmCountRef.current = confirmCount }, [confirmCount])
-  useEffect(() => { finalCompletedRef.current = finalCompleted }, [finalCompleted])
   useEffect(() => { radioMachineRef.current = radioMachine }, [radioMachine])
   const resumeAfterLapRef = useRef(() => { missionDistRef.current = 0; setRadioMachine("playing") })
 
-  const activeTier     = manualTier ?? currentTier
+  // primeira sintonia da experiência: nada selecionado ainda até aqui —
+  // assim que a 1ª estação é sintonizada no SINT0NIA, ela já fica selecionada
+  // sozinha (sem isso a pessoa sintonizava e o rádio continuava sem nada pra
+  // tocar até ela achar o seletor manualmente)
+  useEffect(() => {
+    if (manualTier !== null) return
+    const first = highestAcceptedTier(radioAccepted)
+    if (first) setManualTier(first)
+  }, [radioAccepted, manualTier])
+
+  const activeTier     = manualTier ?? "suburbio"
   const activeTracks   = TRACKS_BY_TIER[activeTier]
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
   const [radioMuted, setRadioMuted] = useState(false)
-  const radioActive    = radioOn && radioMachine === "playing" && !radioMuted
+  // só toca se tiver uma estação de fato sintonizada e selecionada — sem
+  // isso, ligar o power sem nada sintonizado tocaria a 1ª faixa de
+  // "suburbio" mesmo sem ela ter sido liberada ainda
+  const radioActive    = radioOn && radioMachine === "playing" && !radioMuted && manualTier !== null
   // progresso de distância até a missão ativa (0..1) — só pro mini-mapa
   // (CityMap) mostrar o indicador de posição; atualizado por polling leve,
   // não precisa de precisão de frame
@@ -464,8 +476,9 @@ export default function DrivePage() {
     } catch { /* Web Audio indisponivel — silencioso */ }
   }, [])
 
-  // ── SINTONIA MANUAL (pós fim de jogo): só toca em loop simples a frequência
-  // escolhida, sem estacionar nem oferecer missão — a pessoa já desbloqueou tudo ──
+  // ── ESTAÇÃO SELECIONADA: toca em loop simples a frequência escolhida,
+  // sem trocar sozinha pra outra — rádio de verdade, só toca o que você
+  // sintonizou e selecionou ──
   useEffect(() => {
     if (!manualTier) return
     if (!radioOn) return
@@ -502,50 +515,6 @@ export default function DrivePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualTier, radioOn, playStaticBurst])
 
-  // ── CICLO DA RÁDIO: toca as prévias da frequência atual em loop. Com 2+
-  // frequências já sintonizadas, a cada prévia que termina sorteia qual
-  // frequência toca a seguir (pode repetir a mesma) — a troca de frequência
-  // também troca o cenário visual (efeito de várias cidades piscando entre
-  // si). Não existe mais "estacionar pra aceitar rádio" — sintonizar é feito
-  // livremente no app SINT0NIA (ver app/sintonizador/page.tsx); esse ciclo só
-  // toca o que já foi sintonizado. ──
-  useEffect(() => {
-    if (manualTier) return // sintonia manual assume o controle
-    if (!radioOn) return // desligada — nada progride até a pessoa ligar
-    if (radioMachine !== "playing") return
-    let cancelled = false
-    const intervals: ReturnType<typeof setInterval>[] = []
-    const timeouts: ReturnType<typeof setTimeout>[] = []
-    const tracks = TRACKS_BY_TIER[currentTier]
-
-    const stepThrough = (idx: number) => {
-      if (cancelled) return
-      setRadioIdx(idx)
-      const t0 = performance.now()
-      setSnippetPct(0)
-      const prog = setInterval(() => {
-        if (cancelled) { clearInterval(prog); return }
-        setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
-      }, 120)
-      intervals.push(prog)
-      const to = setTimeout(() => {
-        clearInterval(prog)
-        if (cancelled) return
-
-        const unlocked = ALL_TIERS.filter(t => radioAccepted[t])
-        if (unlocked.length > 1) {
-          const nextT = unlocked[Math.floor(Math.random() * unlocked.length)]
-          if (nextT !== currentTier) { setCurrentTier(nextT); return }
-        }
-        stepThrough(idx < tracks.length - 1 ? idx + 1 : 0)
-      }, RADIO_SNIPPET_MS)
-      timeouts.push(to)
-    }
-    stepThrough(0)
-
-    return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [radioMachine, currentTier, manualTier, radioOn, radioAccepted])
 
   // toca o trecho atual (elemento próprio da rádio) ou silencia fora da fase "playing"
   useEffect(() => {
@@ -1443,9 +1412,12 @@ export default function DrivePage() {
         </div>
       )}
 
-      {/* SINTONIA LIVRE — só depois que a experiência inteira acaba, a pessoa
-          escolhe qual das 4 frequências quer ouvir, sem depender de missão */}
-      {!phoneOpen && finalCompleted && (
+      {/* SELETOR DE ESTAÇÃO — aparece assim que a primeira frequência é
+          sintonizada (não precisa terminar a experiência inteira). Só lista
+          as já sintonizadas; escolher uma troca a estação e liga o rádio —
+          pra voltar a uma que já estava selecionada, só ligar o power, sem
+          precisar escolher de novo */}
+      {!phoneOpen && ALL_TIERS.some(t => radioAccepted[t]) && (
         <div style={{
           position:"absolute",
           bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% + 4px)`,
@@ -1454,7 +1426,7 @@ export default function DrivePage() {
           zIndex:46,
           display:"flex", gap:5, justifyContent:"center",
         }}>
-          {ALL_TIERS.map((tier) => {
+          {ALL_TIERS.filter(t => radioAccepted[t]).map((tier) => {
             const meta = F[tier]
             const isSelected = manualTier === tier
             return (
@@ -1475,20 +1447,6 @@ export default function DrivePage() {
               </button>
             )
           })}
-          <button
-            type="button"
-            onClick={() => setManualTier(null)}
-            style={{
-              flex:"0 0 auto", padding:"5px 8px", borderRadius:8,
-              background: manualTier === null ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
-              border:`1px solid ${manualTier === null ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.12)"}`,
-              color: manualTier === null ? "#fff" : "rgba(255,255,255,0.5)",
-              fontFamily:"monospace", fontSize:6.5, letterSpacing:0.5,
-              lineHeight:1.3, cursor:"pointer",
-            }}
-          >
-            AUTO
-          </button>
         </div>
       )}
 

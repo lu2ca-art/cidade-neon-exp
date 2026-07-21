@@ -28,7 +28,7 @@ export const TIER_META: Record<Tier, TierMeta> = {
     projectLink: "https://untitled.stream/library/project/K4Sh04mZhmvSQmJGyW3yw",
   },
   crypto: {
-    label: "CIDADENEON.CRYPTO", freq: "88.7", color: "#00e5ff", tier: "crypto",
+    label: "CIDADENEON.CRYPTO", freq: "88.7", color: "#3b82f6", tier: "crypto",
     projectName: "CIDADENEON.CRYPTO", projectKind: "listen",
     projectLink: "https://untitled.stream/library/project/xss93AFmqBYaNqTMb5gDU",
   },
@@ -38,20 +38,25 @@ export const TIER_META: Record<Tier, TierMeta> = {
     projectLink: "https://untitled.stream/library/project/TcgmYSll5sI9VfDorJbNA",
   },
   full: {
-    label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#ffd93d", tier: "full",
+    label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#22ff88", tier: "full",
     projectName: "CIDADE NEON — álbum completo", projectKind: "buy",
     projectLink: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz",
   },
 }
 
 // missão-pré-requisito de cada tier já concluída? (não é o mesmo que "já
-// sintonizou" — isso é só se a pessoa JÁ PODE ir sintonizar aquele tier)
+// sintonizou" — isso é só se a pessoa JÁ PODE ir sintonizar aquele tier).
+// full (222.4 FM) libera junto com live, logo após o GUITAR DRIVER (cc>=3) —
+// são as 2 últimas frequências que o fim do 3º teste desbloqueia, não precisa
+// de nenhum passo além disso. finalCompleted continua existindo só pro
+// epílogo (sala branca), sem relação com a liberação do rádio.
 export function missionDoneForTier(tier: Tier, confirmationCount: number, finalCompleted: boolean): boolean {
+  void finalCompleted
   switch (tier) {
     case "suburbio": return confirmationCount >= 1
     case "crypto":   return confirmationCount >= 2
     case "live":     return confirmationCount >= 3
-    case "full":     return finalCompleted
+    case "full":     return confirmationCount >= 3
   }
 }
 

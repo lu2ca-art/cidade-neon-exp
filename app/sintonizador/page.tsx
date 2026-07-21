@@ -15,7 +15,6 @@ import { ALL_TIERS, TIER_META, PREVIEW_TRACK, nextTierToTune, type Tier } from "
 // sintonizada, uma estação fica disponível pra sempre — sem precisar
 // sintonizar de novo.
 
-const ACCENT = "#00E5FF"
 const FREQ_MIN = 60.0
 const FREQ_MAX = 230.0
 // faixa 60-230 MHz é bem mais larga que a antiga (88-108, só decorativa) —
@@ -135,7 +134,11 @@ export default function SintonizadorPage() {
   useEffect(() => {
     if (lockProgress >= 1 && !locked && pendingTier) {
       setLocked(true)
-      if (audioElRef.current) audioElRef.current.volume = 1
+      // Para o áudio da sintonia assim que trava — quem toca a estação de
+      // verdade dali em diante é só o rádio do painel (moda antiga), o
+      // celular não vira um player. Sem isso o preview continuava tocando
+      // no volume máximo na tela de resultado até a pessoa sair da tela.
+      if (audioElRef.current) audioElRef.current.pause()
       if (noiseGainRef.current) noiseGainRef.current.gain.value = 0
       setState(prev => ({ ...prev, radioAccepted: { ...prev.radioAccepted, [pendingTier]: true } }))
     }
@@ -309,7 +312,7 @@ export default function SintonizadorPage() {
             <div className="flex items-baseline gap-2 mb-2">
               <span
                 className="font-mono font-bold text-5xl tabular-nums"
-                style={{ color: ACCENT, textShadow: `0 0 18px ${ACCENT}80` }}
+                style={{ color: meta.color, textShadow: `0 0 18px ${meta.color}80` }}
               >
                 {freq.toFixed(1)}
               </span>
@@ -327,8 +330,8 @@ export default function SintonizadorPage() {
                     className="w-1.5 rounded-sm transition-all duration-150"
                     style={{
                       height: 6 + i * 1.4,
-                      background: active ? ACCENT : "rgba(255,255,255,0.08)",
-                      boxShadow: active ? `0 0 6px ${ACCENT}80` : "none",
+                      background: active ? meta.color : "rgba(255,255,255,0.08)",
+                      boxShadow: active ? `0 0 6px ${meta.color}80` : "none",
                     }}
                   />
                 )
@@ -356,8 +359,8 @@ export default function SintonizadorPage() {
                 className="absolute top-1 bottom-1 w-1 rounded-full transition-[left] duration-75"
                 style={{
                   left: `calc(${pct * 100}% - 2px)`,
-                  background: ACCENT,
-                  boxShadow: `0 0 12px ${ACCENT}`,
+                  background: meta.color,
+                  boxShadow: `0 0 12px ${meta.color}`,
                 }}
               />
             </div>
@@ -378,7 +381,7 @@ export default function SintonizadorPage() {
               <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                 <div
                   className="h-full rounded-full transition-[width] duration-100"
-                  style={{ width: `${lockProgress * 100}%`, background: ACCENT, boxShadow: `0 0 8px ${ACCENT}` }}
+                  style={{ width: `${lockProgress * 100}%`, background: meta.color, boxShadow: `0 0 8px ${meta.color}` }}
                 />
               </div>
             </div>

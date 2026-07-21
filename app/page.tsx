@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 import { sendNotificationToParent } from "@/app/providers/AudioBridge"
+import { TIER_META, ALL_TIERS, type Tier } from "@/lib/radio-tiers"
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
@@ -637,28 +638,40 @@ function CidadeNeonExperience() {
     const cc = gameFunnelState.confirmationCount
     const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean; isMission?: boolean }> = []
 
+    // Sem notificação de recompensa passando pelo NEXO — a única notificação
+    // desse momento é do próprio SINT0NIA avisando a frequência nova, e ela
+    // aparece no mesmo instante em que a estação já fica disponível pra
+    // sintonizar no painel (nada de esperar visita ao NEXO primeiro)
+    const pushSintonia = (tier: Tier) => {
+      const meta = TIER_META[tier]
+      missions.push({ id: `sintonia-${tier}`, app: "SINT0NIA", icon: "tuner", color: meta.color, title: "Nova frequência liberada", body: `${meta.label} · ${meta.freq} FM — vá sintonizar no rádio`, action: "/sintonizador", isReward: true })
+    }
+
     if (cc === 0) {
       // Missao 1: Alohan orienta abrir NECTAR
       missions.push(
         { id: "whatsapp-alohan-0", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/whatsapp/privado/alohan", isMission: true },
       )
     } else if (cc === 1) {
-      // Missao 1 completa: rádio libera CIDADENEON.CRYPTO (não é a Alohan quem avisa,
-      // é o próprio sistema da rádio); Nizzy orienta abrir FEEL.GOOD
+      // Missao 1 completa: cc>=1 libera SUBÚRBIO XÊNON (não CRYPTO, era o
+      // bug antes daqui)
+      pushSintonia("suburbio")
       missions.push(
-        { id: "reward-alohan-1", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Nova frequência no ar", body: "CIDADENEON.CRYPTO liberada — toque pra sintonizar", action: "/whatsapp/privado/alohan", isReward: true },
         { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy", isMission: true },
       )
     } else if (cc === 2) {
-      // Missao 2 completa: rádio libera LIVE NEON; D-Bee orienta abrir GUITAR DRIVER
+      // Missao 2 completa: cc>=2 libera CIDADENEON.CRYPTO (não LIVE, era o
+      // bug antes daqui)
+      pushSintonia("crypto")
       missions.push(
-        { id: "reward-nizzy-2", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Nova frequência no ar", body: "LIVE NEON liberada — toque pra sintonizar", action: "/whatsapp/privado/nizzy", isReward: true },
         { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee", isMission: true },
       )
     } else {
-      // Missao 3 completa: rádio libera a transmissão final + conteudo final
+      // Missao 3 (GUITAR DRIVER) completa: cc>=3 libera LIVE NEON e também
+      // CIDADE NEON 222.4 FM de uma vez (as duas últimas frequências)
+      pushSintonia("live")
+      pushSintonia("full")
       missions.push(
-        { id: "reward-dbee-3", app: "Rádio", icon: "radio", color: "#00e5ff", title: "Transmissão final no ar", body: "CIDADE NEON 222.4 FM liberada — toque pra sintonizar", action: "/whatsapp/privado/dbee", isReward: true },
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
         { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
@@ -1559,11 +1572,11 @@ function CidadeNeonExperience() {
                       // ids têm que bater com os que handleMissionClick de fato empurra pra
                       // collectedRewards (reward-alohan-1/reward-nizzy-2/reward-dbee-3) —
                       // antes usavam ids sem sufixo e essa aba nunca mostrava nada
-                      const allRewards = [
-                        { id: "reward-alohan-1", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADENEON.CRYPTO", body: "Recompensa de Alohan", action: "/spotify/auto-chuva?view=gallery", isReward: true },
-                        { id: "reward-nizzy-2", app: "Rádio", icon: "radio", color: "#00e5ff", title: "LIVE NEON", body: "Recompensa de Nizzy", action: "/spotify/auto-chuva?view=gallery", isReward: true },
-                        { id: "reward-dbee-3", app: "Rádio", icon: "radio", color: "#00e5ff", title: "CIDADE NEON 222.4 FM", body: "Recompensa de D-Bee", action: "/spotify/auto-chuva?view=gallery", isReward: true },
-                      ]
+                      const allRewards = ALL_TIERS.map(tier => ({
+                        id: `sintonia-${tier}`, app: "SINT0NIA", icon: "tuner", color: TIER_META[tier].color,
+                        title: `${TIER_META[tier].freq} FM`, body: "Frequência liberada pra sintonizar",
+                        action: "/sintonizador", isReward: true,
+                      }))
                       return allRewards.filter(r => collectedRewards.includes(r.id)).map((reward) => (
                         <button key={reward.id} type="button" onClick={() => { window.location.href = reward.action }} className="w-full text-left">
                           <div className="bg-[#FFD700]/5 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 border border-[#FFD700]/10">
