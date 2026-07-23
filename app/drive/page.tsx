@@ -242,21 +242,53 @@ function buildCars(): Car[] {
   return cars
 }
 
-// Altura do painel (velocímetro/RPM/rádio) como fração da tela — usada tanto
-// no loop imperativo do canvas quanto no JSX, pra nunca ficarem dessincronizados.
-// Aumentada bem além do que era (0.26) pra deixar o painel bem maior, e de
-// novo (0.42→0.46) pra caber o volante/cluster/console maiores do redesign
-// baseado nas fotos de referência (volante dominando o centro-inferior,
-// mostradores atrás dele, tela do console deslocada à direita).
-const DASH_FRACTION = 0.46
 const BOTOES_H_PX = 90 // altura fixa dos botões de direção, no fundo
 
-// Tamanho do volante — mesma fórmula usada no JSX (CSS) e no canvas
-// (drawInstrumentCluster() precisa saber o tamanho do volante em unidades
-// de W pra encostar o cluster nele). O stage tem exatamente 100vw de largura (ver
-// stageRef), então vw e W (canvas.width) são a mesma unidade.
-function wheelSizePx(W: number): number {
-  return Math.min(W * 0.42, 460)
+// ── SISTEMA DE COORDENADAS — "quadrado 1080 que revela, não recorta" ──
+// Blocking do interior definido em cima de um canvas de design quadrado
+// (1080x1080, mas só a proporção importa) — vem de um documento de blocking
+// preciso (zona por zona em %) que o usuário mediu de uma referência real.
+// O quadrado se encaixa no MENOR lado da tela, grudado embaixo: tela mais
+// larga que alta (paisagem) sobra largura → revela mais cenário nas laterais;
+// tela mais alta que larga (retrato) sobra altura → revela mais céu em cima.
+// Nunca corta o interior, só o cenário ganha mais quadro ao redor. Isso
+// substitui o DASH_FRACTION/wheelSizePx/WHEEL_CX_PCT soltos que existiam
+// antes (cada elemento com sua própria conta ad-hoc).
+function squarePx(W: number, H: number): number {
+  return Math.min(W, H)
+}
+function squareLeftPx(W: number, H: number): number {
+  return (W - squarePx(W, H)) / 2
+}
+function squareTopPx(W: number, H: number): number {
+  return H - squarePx(W, H)
+}
+
+interface Zone { x: number; y: number; w: number; h: number }
+
+// Ordem = profundidade do documento de blocking (z1 mais ao fundo, maior
+// mais perto da câmera) — a ordem de declaração aqui bate com a ordem de
+// desenho no canvas e de declaração no JSX (depois = mais na frente). z8
+// (banco/assento, 12 artefatos) fica de fora de propósito — fora de escopo
+// por enquanto, não é buraco por engano.
+const ZONES = {
+  windshield:    { x:0,    y:0,    w:100,  h:20   }, // z1  exterior
+  cluster:       { x:3.5,  y:23.5, w:30.5, h:6.5  }, // z2  painel
+  centerConsole: { x:37.5, y:46,   w:35,   h:18   }, // z3  painel
+  crt:           { x:35.5, y:17.5, w:38.5, h:20   }, // z4  interativo
+  gloveBox:      { x:79.5, y:24,   w:18,   h:25   }, // z5  interativo
+  phone:         { x:60,   y:54,   w:9.5,  h:11.5 }, // z6  painel
+  map:           { x:76.5, y:2,    w:20,   h:15   }, // z7  interativo
+  wheel:         { x:7,    y:26.5, w:24.5, h:20   }, // z9  painel
+  djDeck:        { x:41.5, y:66.5, w:24.5, h:31.5 }, // z10 interativo
+  radio:         { x:38.5, y:37,   w:33.5, h:10   }, // z11 interativo
+} satisfies Record<string, Zone>
+
+// Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
+// loop imperativo, ou o estado `viewport` no JSX — mesma conta nos dois)
+function zonePx(zone: Zone, W: number, H: number) {
+  const s = squarePx(W, H), left = squareLeftPx(W, H), top = squareTopPx(W, H)
+  return { x: left + zone.x / 100 * s, y: top + zone.y / 100 * s, w: zone.w / 100 * s, h: zone.h / 100 * s }
 }
 
 export default function DrivePage() {
@@ -305,6 +337,16 @@ export default function DrivePage() {
     update()
     mq.addEventListener("change", update)
     return () => mq.removeEventListener("change", update)
+  }, [])
+  // W/H reais da viewport, em estado React — usados pra converter as zonas
+  // do blocking (ZONES, em %) em px de verdade nos overlays HTML (zonePx),
+  // a mesma conta que o canvas já faz sozinho dentro do loop imperativo
+  const [viewport, setViewport] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const update = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
   }, [])
   const [volume, setVolume]         = useState(0.8)
   const volumeRingRef = useRef<HTMLDivElement>(null)
@@ -589,8 +631,8 @@ export default function DrivePage() {
 
     // Layout fixo em proporções:
     // BOTOES_H  = 90px fixo no fundo
-    // DASH_H    = DASH_FRACTION da altura total
-    // JOGO_H    = resto (topo)
+    // JOGO_H    = altura do para-brisa (zona windshield do blocking, dentro
+    //             do quadrado de design) — o resto até BOTOES_H é o painel
     const BOTOES_H = BOTOES_H_PX
     const MAX_KMH  = 222
     const ACCEL_RATE  = 40
@@ -610,14 +652,18 @@ export default function DrivePage() {
 
       const W = canvas.width
       const H = canvas.height
-      const DASH_H  = Math.round(H * DASH_FRACTION)
+      // JOGO_H = do topo da tela até o fim da zona windshield (dentro do
+      // quadrado de design) — squareTopPx já é 0 em telas panorâmicas
+      // (quadrado limitado pela altura) e >0 em telas em retrato (revela
+      // mais céu acima do quadrado)
+      const JOGO_H  = squareTopPx(W, H) + ZONES.windshield.h / 100 * squarePx(W, H)
       // barra inferior um pouco mais alta em telas estreitas de celular —
       // dá espaço extra pros botões maiores/toque e cadência com o safe-area
       // somado no HTML (ver BOTOES_H_PCT no JSX). Usa isMobileRef (mesma
       // fonte do JSX) em vez de recalcular por canvas.width, pra nunca
       // discordar do valor usado pela barra de controles em HTML
       const BOTOES_H_NOW = isMobileRef.current ? BOTOES_H + 14 : BOTOES_H
-      const JOGO_H  = H - DASH_H - BOTOES_H_NOW
+      const DASH_H  = H - JOGO_H - BOTOES_H_NOW
 
       // ── Física natural ──
       const parked = radioMachineRef.current === "parked"
@@ -1018,16 +1064,21 @@ export default function DrivePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
 
-  const DASH_PCT = DASH_FRACTION
   const BOTOES_H_PCT = isMobile ? BOTOES_H_PX + 14 : BOTOES_H_PX
+  // topo do painel em px (equivalente ao JOGO_H do canvas) — fim da zona
+  // windshield, onde o painel/interior começa. 0 até o viewport popular (ver
+  // estado `viewport`), então os elementos que dependem disso só renderizam
+  // depois que viewport.w/h > 0
+  const dashTopPx = squareTopPx(viewport.w, viewport.h) + ZONES.windshield.h / 100 * squarePx(viewport.w, viewport.h)
 
-  // CONSOLE do carro — o "celular" não existe mais como objeto flutuando na
-  // cena; é uma tela do próprio painel. Fechado: uma tela legível montada à
-  // direita do volante (como o celular preso no suporte da foto de
-  // referência), não mais minúscula no centro. Maximizado: painel grande
-  // estilo HUD (não uma moldura de smartphone).
-  const CONSOLE_BTN_W = 112
-  const CONSOLE_BTN_H = 198
+  // CONSOLE do carro — a Tela CRT (zona `crt` do blocking) é o gatilho de
+  // verdade: fechada, mostra o hub de missão com grid em perspectiva;
+  // clicando, abre o painel HUD completo (N3XO/NECTAR/FREQUENCIA/etc). O
+  // "celular" pequeno (zona `phone`) é um objeto à parte, só de notificação
+  // — ver bloco próprio mais abaixo.
+  const crtBox = zonePx(ZONES.crt, viewport.w, viewport.h)
+  const CONSOLE_BTN_W = crtBox.w
+  const CONSOLE_BTN_H = crtBox.h
   // escala pelo menor dos dois eixos (não só a largura) — senão o preview
   // (iframe real de 390x844) ficava mais alto que a caixinha do ícone e o
   // overflow:hidden cortava a parte de baixo da tela do celular
@@ -1069,6 +1120,18 @@ export default function DrivePage() {
     setPhoneOpen(true)
   }, [])
 
+  // Deck DJ — objeto interativo entre os bancos: clicar abre o B4TIDA direto
+  // no console, mesmo padrão do rádio abrindo o SINT0NIA
+  const handleOpenBatida = useCallback(() => {
+    if (iframeRef.current) iframeRef.current.src = "/batida"
+    setPhoneOpen(true)
+  }, [])
+
+  // Porta-luvas — "cartola de mágico": inventário dos itens absurdos
+  // coletados no jogo. Conteúdo ainda não definido — só a estrutura (lista
+  // vazia por enquanto) pra poder popular depois.
+  const [showGloveBox, setShowGloveBox] = useState(false)
+
   return (
     <div
       ref={stageRef}
@@ -1093,28 +1156,14 @@ export default function DrivePage() {
         />
       )}
 
-      {/* suporte/clipe do celular no console — decorativo, fica atrás do
-          celular fechado, como um suporte de carro de verdade. Alinhado com
-          a nova posição da tela, à direita do volante (ver fotos de
-          referência: a tela montada fica deslocada da coluna de direção) */}
-      {!phoneOpen && (
-        <div style={{
-          position:"absolute", zIndex:59,
-          bottom:`calc(${BOTOES_H_PCT}px + 22px)`,
-          left:`calc(50% + min(21vw, 230px) + 12px)`,
-          width:CONSOLE_BTN_W+16, height:16, borderRadius:6,
-          background:"#0a0710", border:"1px solid rgba(255,255,255,0.1)",
-        }}/>
-      )}
-
-      {/* BEZEL do console — moldura física atrás da tela fechada, como uma
+      {/* BEZEL da Tela CRT — moldura física atrás da tela fechada, como uma
           tela embutida de verdade no painel (não um retângulo colado por
-          cima). A tela em si (iframe) fica encaixada por dentro, recuada. */}
-      {!phoneOpen && (
+          cima). A tela em si (iframe) fica encaixada por dentro, recuada.
+          Zona `crt` do blocking. */}
+      {!phoneOpen && viewport.w > 0 && (
         <div style={{
-          position:"absolute", zIndex:59,
-          bottom:`calc(${BOTOES_H_PCT}px + 26px - 9px)`,
-          left:`calc(50% + min(21vw, 230px) + 12px - 9px)`,
+          position:"absolute", zIndex:46,
+          left:crtBox.x-9, top:crtBox.y-9,
           width:CONSOLE_BTN_W+18, height:CONSOLE_BTN_H+18,
           borderRadius:16,
           background:"linear-gradient(160deg, #211a2c 0%, #0d0912 100%)",
@@ -1129,12 +1178,17 @@ export default function DrivePage() {
         </div>
       )}
 
-      {/* CONSOLE — fechado: tela embutida no bezel acima (não finge ser um
-          celular flutuando). Maximizado: painel HUD do sistema do carro. */}
+      {/* TELA CRT / CONSOLE — fechada: fundo violeta com grid em
+          perspectiva + hub de missão (não mostra os apps até clicar).
+          Clicar abre o painel HUD completo (N3XO/NECTAR/FREQUENCIA/etc). */}
       <div
         onClick={()=>!phoneOpen&&setPhoneOpen(true)}
         style={{
-          position:"absolute", zIndex:60,
+          position:"absolute",
+          // fechada, fica atrás do rádio (zonas crt/radio se tocam por uma
+          // borda — z4 < z11 no blocking); aberta, precisa ficar acima de
+          // tudo (inclusive do backdrop escuro, zIndex 55)
+          zIndex: phoneOpen ? 60 : 47,
           transition:"all .45s cubic-bezier(.4,0,.2,1)",
           // "vibra" visualmente quando uma missão chega — funciona em
           // qualquer navegador, mesmo onde navigator.vibrate não existe
@@ -1156,19 +1210,50 @@ export default function DrivePage() {
                 display:"flex", flexDirection:"column",
               } as React.CSSProperties)
             : {
-                // deslocado à direita do volante, na altura do topo do
-                // cluster — como o celular montado na foto de referência,
-                // não mais centralizado (o centro agora é do volante)
-                bottom:`calc(${BOTOES_H_PCT}px + 26px)`,
-                left:`calc(50% + min(21vw, 230px) + 12px)`,
+                // zona crt do blocking — grande, entre o cluster e o console central
+                left:crtBox.x, top:crtBox.y,
                 width:CONSOLE_BTN_W, height:CONSOLE_BTN_H,
-                background:"#0a0014", borderRadius:10, padding:0,
-                border:`1.5px solid ${C.neonPink}70`,
-                boxShadow:`0 0 16px ${C.neonPink}55, 0 0 4px ${C.neonPink}aa`,
+                background:"#513156", borderRadius:10, padding:0,
+                border:"1.5px solid rgba(161,80,186,0.5)",
+                boxShadow:"0 0 16px rgba(161,80,186,0.35), 0 0 4px rgba(161,80,186,0.6)",
                 cursor:"pointer", overflow:"hidden",
               }),
         }}
       >
+        {/* hub de missão — só quando fechada; grid em perspectiva #a150ba
+            sobre fundo #513156 (paleta medida da referência) */}
+        {!phoneOpen && (() => {
+          const mission = activeMission(confirmCount)
+          const color = mission ? MISSION_COLORS[mission.id] : "#a150ba"
+          return (
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden" }}>
+              <svg width="100%" height="100%" style={{ position:"absolute", inset:0, opacity:0.5 }} viewBox="0 0 100 100" preserveAspectRatio="none">
+                {Array.from({length:6}, (_,i)=>{
+                  const x = (i+1)*100/7
+                  return <line key={"v"+i} x1={x} y1="0" x2={50+(x-50)*2.2} y2="100" stroke="#a150ba" strokeWidth="0.4"/>
+                })}
+                {Array.from({length:4}, (_,i)=>(
+                  <line key={"h"+i} x1="0" y1={20+i*20} x2="100" y2={20+i*20} stroke="#a150ba" strokeWidth="0.3" opacity={0.6}/>
+                ))}
+              </svg>
+              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <span style={{ fontFamily:"monospace", fontSize:10, letterSpacing:2, color:"rgba(255,255,255,0.4)" }}>
+                  {mission ? "MISSÃO ATIVA" : "HUB"}
+                </span>
+                {mission ? (
+                  <>
+                    <div style={{ width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:`${color}33`, border:`1.5px solid ${color}`, fontFamily:"monospace", fontWeight:800, fontSize:16, color, textShadow:`0 0 8px ${color}aa` }}>
+                      {mission.letter}
+                    </div>
+                    <span style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, letterSpacing:1, color:"#fff" }}>{mission.name}</span>
+                  </>
+                ) : (
+                  <span style={{ fontFamily:"monospace", fontSize:11, color:"rgba(255,255,255,0.5)" }}>toque pra abrir</span>
+                )}
+              </div>
+            </div>
+          )
+        })()}
         {phoneOpen&&(
           // barra superior do console — substitui a moldura/notch de celular
           <div style={{
@@ -1241,16 +1326,17 @@ export default function DrivePage() {
         </button>
       )}
 
-      {/* MINI-MAPA — mostra a missão ativa (marcador com a letra do contato,
-          estilo GTA) e o progresso de distância dirigida até ela, mais os
-          pontos de interesse decorativos da cidade */}
-      {!phoneOpen && (() => {
+      {/* MINI-MAPA — GPS embutido na zona `map` do blocking (canto superior
+          direito) — mostra a missão ativa (marcador com a letra do
+          contato, estilo GTA) e o progresso de distância dirigida até ela,
+          mais os pontos de interesse decorativos da cidade */}
+      {!phoneOpen && viewport.w > 0 && (() => {
         const mission = activeMission(confirmCount)
+        const mb = zonePx(ZONES.map, viewport.w, viewport.h)
         return (
           <div style={{
-            position:"absolute", zIndex:60,
-            top:"calc(14px + env(safe-area-inset-top))",
-            right:"calc(14px + env(safe-area-inset-right))",
+            position:"absolute", zIndex:47,
+            left:mb.x, top:mb.y,
           }}>
             <CityMap
               mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
@@ -1262,22 +1348,20 @@ export default function DrivePage() {
 
       {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
           nome da frequência e o número dela + um anel de volume ao lado.
-          Empilhado por cima do console, à direita do volante — não mais
-          centralizado (o centro agora é do volante/mostradores) */}
+          Zona radio própria do blocking (z11 — a mais na frente) */}
       {!phoneOpen&&(()=>{
         const active = radioActive
         const isStatic = radioMachine === "static"
         const meta = F[activeTier]
         const accent = radioOn ? meta.color : "#6b7280"
         const title = (radioTrack?.title ?? "—").toUpperCase()
+        const z = zonePx(ZONES.radio, viewport.w, viewport.h)
         return (
         <div style={{
           position:"absolute",
-          bottom: `calc(${BOTOES_H_PCT}px + 234px)`,
-          left:`calc(50% + min(21vw, 230px) + 12px)`,
-          width: isMobile ? "min(66%, 340px)" : "min(40%, 400px)",
-          zIndex:46,
-          display:"flex", alignItems:"center", gap:10,
+          left:z.x, top:z.y, width:z.w, height:z.h,
+          zIndex:48,
+          display:"flex", alignItems:"flex-start", gap:10,
         }}>
           {/* POWER — a rádio começa desligada; nada progride até ligar */}
           <button
@@ -1302,7 +1386,7 @@ export default function DrivePage() {
             onClick={handleOpenSintonia}
             aria-label="Abrir SINT0NIA — seletor de rádio e busca de frequência"
             style={{
-              position:"relative", flex:1, borderRadius:16, padding:"12px 16px 13px",
+              position:"relative", flex:1, minWidth:0, borderRadius:16, padding:"10px 12px 11px",
               background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
               border:`1px solid ${accent}55`,
               boxShadow: radioOn ? `0 0 22px ${accent}33, inset 0 0 16px ${accent}18` : "none",
@@ -1313,50 +1397,50 @@ export default function DrivePage() {
             {/* scanlines */}
             <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
-            {/* estação + freq + status */}
-            <div style={{position:"relative",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <span style={{fontFamily:"monospace",fontSize:12,letterSpacing:2,color:accent,textShadow:radioOn?`0 0 6px ${accent}`:"none"}}>{meta.label}</span>
-              <span style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontFamily:"monospace",fontSize:12,letterSpacing:1,color:accent,opacity:0.85}}>{meta.freq} FM</span>
+            {/* estação (linha própria, trunca em vez de quebrar) + freq/status */}
+            <div style={{position:"relative",marginBottom:4}}>
+              <div style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,textShadow:radioOn?`0 0 6px ${accent}`:"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{meta.label}</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
+                <span style={{fontFamily:"monospace",fontSize:11,letterSpacing:1,color:accent,opacity:0.85,whiteSpace:"nowrap",flexShrink:0}}>{meta.freq} FM</span>
                 {!radioOn ? (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>DESLIGADO</span>
+                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>DESLIGADO</span>
                 ) : active ? (
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4,fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4,fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>
                     <span style={{width:7,height:7,borderRadius:7,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
                     NO AR
                   </span>
                 ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>INTERFERÊNCIA</span>
+                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>INTERFERÊNCIA</span>
                 ) : (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent}}>SILÊNCIO</span>
+                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>SILÊNCIO</span>
                 )}
-              </span>
+              </div>
             </div>
             {!radioOn ? (
-              <div style={{position:"relative",height:38,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <span style={{fontFamily:"monospace",fontSize:13,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ APERTE O POWER PRA LIGAR ◌</span>
+              <div style={{position:"relative",height:28,display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ APERTE O POWER ◌</span>
               </div>
             ) : active ? (
               <>
                 {/* now playing (marquee) — só o nome da música */}
-                <div style={{position:"relative",height:24,overflow:"hidden"}}>
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:17,fontWeight:700,letterSpacing:1,
+                <div style={{position:"relative",height:20,overflow:"hidden"}}>
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,
                     color:"#eafff8",textShadow:`0 0 8px ${accent}aa`,animation:"dash-marquee 11s linear infinite"}}>
                     ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                 </div>
                 {/* barra dos 22s */}
-                <div style={{position:"relative",marginTop:8,height:4,borderRadius:4,background:"rgba(255,255,255,0.1)"}}>
+                <div style={{position:"relative",marginTop:6,height:4,borderRadius:4,background:"rgba(255,255,255,0.1)"}}>
                   <div style={{height:"100%",borderRadius:4,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
                 </div>
               </>
             ) : isStatic ? (
-              <div style={{position:"relative",height:38,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <span style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓ ░▒▓</span>
+              <div style={{position:"relative",height:28,display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
+                <span style={{fontFamily:"monospace",fontSize:12,fontWeight:700,letterSpacing:0.5,color:accent,whiteSpace:"nowrap",animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓</span>
               </div>
             ) : (
-              <div style={{position:"relative",height:38,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <span style={{fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,color:"#9aa0aa"}}>◌ SINAL EM SILÊNCIO ◌</span>
+              <div style={{position:"relative",height:28,display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ SILÊNCIO ◌</span>
               </div>
             )}
           </button>
@@ -1459,7 +1543,7 @@ export default function DrivePage() {
       {!phoneOpen && ALL_TIERS.some(t => radioAccepted[t]) && (
         <div style={{
           position:"absolute",
-          bottom: `calc(${BOTOES_H_PCT}px + ${DASH_PCT*100}% + 4px)`,
+          bottom: `${viewport.h - dashTopPx + 4}px`,
           left:"50%", transform:"translateX(-50%)",
           width:"min(70%, 340px)",
           zIndex:46,
@@ -1542,19 +1626,142 @@ export default function DrivePage() {
       {/* VOLANTE 3D — camada decorativa (não captura clique) sobre o canvas
           2D, girando de verdade com o playerXRef do jogo. Placeholder
           procedural até termos um modelo .glb real pra passar em modelUrl.
-          Tamanho/posição seguem as fotos de referência (painel real de
-          carro): grande, dominando o centro-inferior — o cluster digital do
-          canvas (drawInstrumentCluster() em drawDashboard) usa a mesma fórmula de tamanho
-          (wheelSizePx) pra encostar bem nas bordas dele. */}
-      {!phoneOpen && (
-        <div style={{
-          position:"absolute",
-          bottom:`calc(${BOTOES_H_PCT}px - 10px)`,
-          left:"50%", transform:"translateX(-50%)",
-          width:"min(42vw, 460px)", height:"min(42vw, 460px)",
-          zIndex:45,
-        }}>
-          <SteeringWheel3D steerRef={playerXRef} className="w-full h-full" />
+          Zona `wheel` exata do blocking (z9) — atrás do cluster (z2,
+          canvas) na conta de profundidade, mas visualmente por cima porque
+          é uma camada HTML separada acima do canvas; a intenção do
+          blocking (mostradores espiando por trás do aro) já é atendida
+          pelo cluster ocupar uma faixa mais alta e estreita que o volante. */}
+      {!phoneOpen && viewport.w > 0 && (() => {
+        const wb = zonePx(ZONES.wheel, viewport.w, viewport.h)
+        return (
+          <div style={{
+            position:"absolute",
+            left:wb.x, top:wb.y, width:wb.w, height:wb.h,
+            zIndex:45,
+          }}>
+            <SteeringWheel3D steerRef={playerXRef} className="w-full h-full" />
+          </div>
+        )
+      })()}
+
+      {/* CELULAR — objeto pequeno à parte da Tela CRT (zona `phone`, z6).
+          Apagado por padrão; acende/vibra igual o console já fazia quando
+          uma missão chega (mesmo `phoneNotif.isMission`), e tocar nele
+          aceita a missão direto — sem precisar abrir a Tela CRT. */}
+      {!phoneOpen && viewport.w > 0 && (() => {
+        const pb = zonePx(ZONES.phone, viewport.w, viewport.h)
+        const alert = !!phoneNotif?.isMission
+        return (
+          <button
+            type="button"
+            onClick={handleAcceptMission}
+            aria-label="Celular — aceitar missão"
+            style={{
+              position:"absolute", zIndex:49,
+              left:pb.x, top:pb.y, width:pb.w, height:pb.h,
+              borderRadius:8, padding:0, cursor:"pointer",
+              background: alert ? "linear-gradient(160deg, #3a2438 0%, #1a1018 100%)" : "linear-gradient(160deg, #1c1420 0%, #0d0910 100%)",
+              border: `1px solid ${alert ? "rgba(216,79,176,0.7)" : "rgba(255,255,255,0.08)"}`,
+              boxShadow: alert ? "0 0 14px rgba(216,79,176,0.5)" : "none",
+              animation: alert ? "phone-buzz 0.5s ease-in-out infinite" : "none",
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}
+          >
+            {alert && (
+              <span style={{ fontFamily:"monospace", fontSize:Math.max(7, pb.w*0.09), fontWeight:700, letterSpacing:0.5, color:"#f0a8de", textShadow:"0 0 6px rgba(216,79,176,0.8)", whiteSpace:"pre-line", textAlign:"center", lineHeight:1.2 }}>
+                {"NOVA\nMISSÃO"}
+              </span>
+            )}
+          </button>
+        )
+      })()}
+
+      {/* DECK DJ — objeto interativo entre os bancos (zona `djDeck`, z10).
+          Elipse de disco parado (1.97:1), tema B4TIDA. Clicar abre o
+          console direto no B4TIDA. */}
+      {!phoneOpen && viewport.w > 0 && (() => {
+        const db = zonePx(ZONES.djDeck, viewport.w, viewport.h)
+        const discH = Math.min(db.h, db.w/1.97)
+        const discW = discH*1.97
+        return (
+          <div style={{ position:"absolute", zIndex:44, left:db.x, top:db.y, width:db.w, height:db.h }}>
+            <button
+              type="button"
+              onClick={handleOpenBatida}
+              aria-label="Deck DJ — abrir B4TIDA"
+              style={{
+                position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)",
+                width:discW, height:discH, borderRadius:"50%", padding:0, cursor:"pointer",
+                background:"radial-gradient(ellipse at 50% 50%, #241925 0%, #0d0910 70%)",
+                border:"1.5px solid rgba(202,115,57,0.4)",
+                boxShadow:"0 0 18px rgba(202,115,57,0.25)",
+              }}
+            >
+              <span style={{
+                position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)",
+                width:"22%", height:"22%", borderRadius:"50%",
+                background:"#8a5220", boxShadow:"0 0 8px rgba(224,139,58,0.6)",
+              }}/>
+            </button>
+          </div>
+        )
+      })()}
+
+      {/* PORTA-LUVAS — inventário "cartola de mágico" (zona `gloveBox`,
+          z5). Blocos escuros, só os LEDs âmbar acendem. Clicar abre a tela
+          de inventário (sem itens reais ainda). */}
+      {!phoneOpen && viewport.w > 0 && (() => {
+        const gb = zonePx(ZONES.gloveBox, viewport.w, viewport.h)
+        return (
+          <button
+            type="button"
+            onClick={() => setShowGloveBox(true)}
+            aria-label="Porta-luvas — inventário"
+            style={{
+              position:"absolute", zIndex:44,
+              left:gb.x, top:gb.y, width:gb.w, height:gb.h,
+              borderRadius:8, padding:8, cursor:"pointer",
+              background:"linear-gradient(160deg, #1c1420 0%, #0d0910 100%)",
+              border:"1px solid rgba(255,255,255,0.06)",
+              display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, alignContent:"center", justifyItems:"center",
+            }}
+          >
+            {Array.from({length:4}, (_,i)=>(
+              <span key={i} style={{ width:"22%", aspectRatio:"1", borderRadius:"50%", background:"#8a5220", boxShadow:"0 0 6px rgba(224,139,58,0.5)" }}/>
+            ))}
+          </button>
+        )
+      })()}
+
+      {/* Tela do porta-luvas — overlay simples, sem itens reais ainda */}
+      {showGloveBox && (
+        <div
+          onClick={()=>setShowGloveBox(false)}
+          style={{ position:"absolute", inset:0, zIndex:65, background:"rgba(2,0,12,0.82)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}
+        >
+          <div
+            onClick={(e)=>e.stopPropagation()}
+            style={{
+              width:"100%", maxWidth:320, borderRadius:20, padding:"24px 20px",
+              background:"linear-gradient(160deg, #241925 0%, #0d0910 100%)",
+              border:"1px solid rgba(202,115,57,0.3)",
+              boxShadow:"0 0 30px rgba(202,115,57,0.15)",
+              textAlign:"center",
+            }}
+          >
+            <p style={{ fontFamily:"monospace", fontSize:10, letterSpacing:2, color:"rgba(255,255,255,0.4)", marginBottom:10 }}>PORTA-LUVAS</p>
+            <p style={{ fontFamily:"monospace", fontSize:13, color:"#f0c493", marginBottom:8 }}>uma cartola vazia, por enquanto.</p>
+            <p style={{ fontFamily:"monospace", fontSize:11, color:"rgba(255,255,255,0.4)", marginBottom:18 }}>os itens absurdos que você for coletando pela cidade aparecem aqui.</p>
+            <button
+              type="button"
+              onClick={()=>setShowGloveBox(false)}
+              style={{
+                background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.18)",
+                borderRadius:12, padding:"10px 24px", color:"rgba(255,255,255,0.7)",
+                fontFamily:"monospace", fontSize:11, letterSpacing:1, cursor:"pointer",
+              }}
+            >FECHAR</button>
+          </div>
         </div>
       )}
 
@@ -1830,44 +2037,40 @@ function drawDashboard(
 ){
   const y0=H-DH-BOTOES_H
 
-  // fundo — material com profundidade (não mais um retângulo liso de 2
-  // cores): gradiente mais rico + veios sutis tipo alumínio escovado, pra
-  // parecer uma superfície de painel de verdade, não um cartão colorido
+  // fundo — paleta medida da referência (quase sem ciano): quase-preto
+  // dominante (#080a17) + corpo do painel (#281d26) + penumbra (#473542),
+  // não mais o roxo/azul de antes. Veios sutis por cima, tipo alumínio
+  // escovado, pra parecer uma superfície de painel de verdade.
   const g=ctx.createLinearGradient(0,y0,0,H-BOTOES_H)
-  g.addColorStop(0,"#0a0322"); g.addColorStop(0.45,"#0e0030"); g.addColorStop(1,"#050018")
+  g.addColorStop(0,"#281d26"); g.addColorStop(0.55,"#241925"); g.addColorStop(1,"#080a17")
   ctx.fillStyle=g; ctx.fillRect(0,y0,W,DH)
   ctx.save()
   ctx.globalAlpha=0.05
-  ctx.strokeStyle="#ffffff"; ctx.lineWidth=1
+  ctx.strokeStyle="#473542"; ctx.lineWidth=1
   for(let ly=y0+6; ly<H-BOTOES_H; ly+=5){
     ctx.beginPath(); ctx.moveTo(0,ly); ctx.lineTo(W,ly); ctx.stroke()
   }
   ctx.restore()
 
-  // borda superior neon
-  ctx.strokeStyle=C.neonOrange; ctx.lineWidth=2.5
-  ctx.shadowColor=C.neonOrange; ctx.shadowBlur=10
+  // borda superior — âmbar em vez de laranja neon puro, mais de acordo com
+  // a paleta medida (acento âmbar #ca7339)
+  ctx.strokeStyle="#ca7339"; ctx.lineWidth=2.5
+  ctx.shadowColor="#ca7339"; ctx.shadowBlur=10
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // cluster digital único encostado no volante — o volante (HTML, ver
-  // JSX/wheelSizePx) fica centralizado embaixo; o painel de vidro do
-  // cluster fica logo atrás/acima dele, como um instrumento digital
-  // moderno (referência: cluster semicircular da foto do Mercedes), não
-  // dois mostradores analógicos arcade isolados nas bordas
-  const wheelSize = wheelSizePx(W)
-  const clusterCy = y0 + Math.max(DH - wheelSize*1.02, DH*0.12)
-  const clusterW = Math.min(wheelSize*1.05, W*0.62)
-  const clusterH = Math.min(DH*0.34, clusterW*0.36)
-  drawInstrumentCluster(ctx, W*0.5, clusterCy, clusterW, clusterH, kmh, rpm)
+  // console central — fundo decorativo (controles/botões), atrás do rádio
+  const cc = zonePx(ZONES.centerConsole, W, H)
+  drawCenterConsole(ctx, cc.x, cc.y, cc.w, cc.h)
 
-  // grelhas de ventilação decorativas, uma de cada lado do cluster — dão
-  // profundidade de painel de carro de verdade, não fazem nada no jogo
-  drawVent(ctx, W*0.5-clusterW*0.72, clusterCy, clusterH*0.62)
-  drawVent(ctx, W*0.5+clusterW*0.72, clusterCy, clusterH*0.62)
+  // cluster digital — zona própria do blocking, atrás do volante (HTML) —
+  // "módulos independentes, luz vermelha" (referência medida), não mais o
+  // vidro único ciano/laranja de antes
+  const cl = zonePx(ZONES.cluster, W, H)
+  drawInstrumentCluster(ctx, cl.x+cl.w/2, cl.y+cl.h/2, cl.w, cl.h, kmh, rpm)
 
-  // (o RÁDIO agora é um visor HTML à direita do volante — ver JSX.
-  //  o canvas desenha só o cluster, as grelhas e a zona.)
+  // (o RÁDIO agora é um visor HTML na zona radio própria — ver JSX.
+  //  o canvas desenha só o console central, o cluster e a zona.)
 
   // zona
   ctx.fillStyle="#ffffff33"; ctx.font=`${DH*0.09}px monospace`
@@ -1879,74 +2082,67 @@ function drawDashboard(
 // por trás, em vez de dois mostradores analógicos separados com ponteiro e
 // ticks numerados. Visual de instrumento digital moderno (referência: tela
 // semicircular do cluster na foto do Mercedes), não mostrador arcade.
+// "Módulos independentes, luz vermelha" (nota medida da referência) — dois
+// blocos separados (velocidade maior + RPM menor), cada um com seu próprio
+// bezel, não mais um vidro contínuo único em ciano/laranja
 function drawInstrumentCluster(
   ctx:CanvasRenderingContext2D,
   cx:number,cy:number,w:number,h:number,
   kmh:number,rpm:number
 ){
+  const gap=w*0.05
+  const speedW=(w-gap)*0.58, rpmW=(w-gap)*0.42
+  const x0=cx-w/2
+  drawClusterModule(ctx, x0, cy-h/2, speedW, h, `${Math.round(kmh)}`, "KM/H")
+  drawClusterModule(ctx, x0+speedW+gap, cy-h/2, rpmW, h, rpm.toFixed(1), "RPM")
+}
+
+function drawClusterModule(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number,value:string,label:string){
   ctx.save()
   ctx.textAlign="center"; ctx.textBaseline="middle"
-
-  const x0=cx-w/2, y0=cy-h/2, rad=h*0.22
-
-  // painel de vidro — bezel fino brilhando, fundo bem escuro (tela por trás
-  // do vidro), não uma face de mostrador colorida
-  rRect(ctx,x0,y0,w,h,rad)
-  const glass=ctx.createLinearGradient(0,y0,0,y0+h)
-  glass.addColorStop(0,"#0c0818"); glass.addColorStop(1,"#050310")
-  ctx.fillStyle=glass; ctx.fill()
-  ctx.lineWidth=Math.max(1.5,h*0.02)
-  ctx.strokeStyle="rgba(0,229,255,0.35)"
-  ctx.shadowColor="#00e5ff"; ctx.shadowBlur=8
+  const rad=h*0.2
+  rRect(ctx,x,y,w,h,rad)
+  const g=ctx.createLinearGradient(0,y,0,y+h)
+  g.addColorStop(0,"#241925"); g.addColorStop(1,"#0d0810")
+  ctx.fillStyle=g; ctx.fill()
+  ctx.lineWidth=Math.max(1,h*0.035)
+  ctx.strokeStyle="rgba(125,54,54,0.55)"
+  ctx.shadowColor="#7d3636"; ctx.shadowBlur=6
   ctx.stroke()
   ctx.shadowBlur=0
 
-  // reflexo sutil no topo do vidro
-  ctx.save()
-  rRect(ctx,x0,y0,w,h,rad); ctx.clip()
-  const sheen=ctx.createLinearGradient(0,y0,0,y0+h*0.5)
-  sheen.addColorStop(0,"rgba(255,255,255,0.06)"); sheen.addColorStop(1,"rgba(255,255,255,0)")
-  ctx.fillStyle=sheen; ctx.fillRect(x0,y0,w,h*0.5)
-  ctx.restore()
-
-  // divisor fino entre velocidade e RPM
-  ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.lineWidth=1
-  ctx.beginPath(); ctx.moveTo(cx+w*0.14,y0+h*0.16); ctx.lineTo(cx+w*0.14,y0+h*0.84); ctx.stroke()
-
-  // velocidade — leitura grande, setor esquerdo (maior)
-  const speedCx=cx-w*0.20, speedR=h*0.42
-  digitalArc(ctx,speedCx,cy,speedR,kmh/222,"#00e5ff")
-  ctx.fillStyle="#eafcff"; ctx.font=`700 ${h*0.34}px monospace`
-  ctx.shadowColor="#00e5ff"; ctx.shadowBlur=10
-  ctx.fillText(`${Math.round(kmh)}`,speedCx,cy-h*0.02)
+  ctx.fillStyle="#e8b9ac"; ctx.font=`700 ${h*0.42}px monospace`
+  ctx.shadowColor="#7e3228"; ctx.shadowBlur=6
+  ctx.fillText(value,x+w/2,y+h*0.42)
   ctx.shadowBlur=0
-  ctx.fillStyle="rgba(0,229,255,0.65)"; ctx.font=`${h*0.11}px monospace`
-  ctx.fillText("KM/H",speedCx,cy+h*0.30)
-
-  // RPM — leitura menor, setor direito
-  const rpmCx=cx+w*0.32, rpmR=h*0.26
-  digitalArc(ctx,rpmCx,cy,rpmR,rpm/8,"#ff6b35")
-  ctx.fillStyle="#fff1ea"; ctx.font=`700 ${h*0.20}px monospace`
-  ctx.fillText(rpm.toFixed(1),rpmCx,cy-h*0.02)
-  ctx.fillStyle="rgba(255,107,53,0.65)"; ctx.font=`${h*0.09}px monospace`
-  ctx.fillText("RPM",rpmCx,cy+h*0.20)
-
+  ctx.fillStyle="rgba(224,139,58,0.7)"; ctx.font=`${h*0.15}px monospace`
+  ctx.fillText(label,x+w/2,y+h*0.78)
   ctx.restore()
 }
 
-// arco fino de progresso (270° de varredura) — trilho translúcido + arco de
-// destaque com brilho, sem ticks numerados nem ponteiro físico
-function digitalArc(ctx:CanvasRenderingContext2D,x:number,y:number,r:number,pct01:number,accent:string){
-  const start=Math.PI*0.62, sweep=Math.PI*1.76
-  const pct=Math.min(Math.max(pct01,0),1)
-  ctx.lineCap="round"
-  ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=r*0.11
-  ctx.beginPath(); ctx.arc(x,y,r,start,start+sweep); ctx.stroke()
-  ctx.strokeStyle=accent; ctx.lineWidth=r*0.11
-  ctx.shadowColor=accent; ctx.shadowBlur=6
-  ctx.beginPath(); ctx.arc(x,y,r,start,start+sweep*pct); ctx.stroke()
-  ctx.shadowBlur=0
-  ctx.lineCap="butt"
+// console central — fundo decorativo de controles/botões (sem função),
+// atrás do rádio (HTML). Ventilação de cada lado, botões redondos no meio.
+function drawCenterConsole(ctx:CanvasRenderingContext2D,x:number,y:number,w:number,h:number){
+  ctx.save()
+  rRect(ctx,x,y,w,h,h*0.1)
+  const g=ctx.createLinearGradient(0,y,0,y+h)
+  g.addColorStop(0,"#1c1420"); g.addColorStop(1,"#0d0910")
+  ctx.fillStyle=g; ctx.fill()
+  ctx.strokeStyle="rgba(255,255,255,0.06)"; ctx.lineWidth=1; ctx.stroke()
+
+  drawVent(ctx, x+w*0.14, y+h*0.5, h*0.7)
+  drawVent(ctx, x+w*0.86, y+h*0.5, h*0.7)
+
+  // fileira de botões redondos decorativos no centro
+  const n=4, btnR=h*0.09
+  for(let i=0;i<n;i++){
+    const bx = x+w*0.38 + (i/(n-1))*w*0.24
+    const by = y+h*0.68
+    ctx.beginPath(); ctx.arc(bx,by,btnR,0,Math.PI*2)
+    ctx.fillStyle="#150f18"; ctx.fill()
+    ctx.strokeStyle="rgba(224,139,58,0.35)"; ctx.lineWidth=1; ctx.stroke()
+  }
+  ctx.restore()
 }
 
 // grelha de ventilação decorativa — só textura de painel (profundidade),

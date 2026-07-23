@@ -39,21 +39,23 @@ function buildPlaceholderWheel(): THREE.Group {
 
   // raios cônicos (mais largos perto do cubo, afinando pro aro) — não caixas
   // retas genéricas. Um pra baixo (6h) e dois pra cima (~10h/2h), como um
-  // volante de verdade, não 3 raios espaçados igualmente a partir do topo
+  // volante de verdade, não 3 raios espaçados igualmente a partir do topo.
+  // Cor creme (paleta medida da referência: "3 raios cônicos creme"), não
+  // mais escuros iguais ao aro.
   const spokeCount = 3
   for (let i = 0; i < spokeCount; i++) {
     const a = (i / spokeCount) * Math.PI * 2 - Math.PI / 2
     const spoke = new THREE.Mesh(
       new THREE.CylinderGeometry(0.05, 0.09, 0.72, 12),
-      new THREE.MeshStandardMaterial({ color: "#19171d", roughness: 0.55, metalness: 0.3 })
+      new THREE.MeshStandardMaterial({ color: "#d0b7ad", roughness: 0.5, metalness: 0.15 })
     )
     spoke.position.set(Math.cos(a) * 0.6, Math.sin(a) * 0.6, 0)
     spoke.rotation.z = a - Math.PI / 2
     group.add(spoke)
   }
 
-  // cubo — base escura + emblema central mais claro, com um leve brilho
-  // ciano (era um cilindro único e liso)
+  // cubo — base escura + emblema central magenta (paleta medida: "cubo com
+  // emblema magenta"), não mais ciano
   const hubBase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.24, 0.26, 0.16, 24),
     new THREE.MeshStandardMaterial({ color: "#221f26", roughness: 0.4, metalness: 0.5 })
@@ -63,7 +65,7 @@ function buildPlaceholderWheel(): THREE.Group {
 
   const hubBadge = new THREE.Mesh(
     new THREE.CylinderGeometry(0.1, 0.1, 0.02, 24),
-    new THREE.MeshStandardMaterial({ color: "#3a3745", roughness: 0.3, metalness: 0.6, emissive: "#00e5ff", emissiveIntensity: 0.3 })
+    new THREE.MeshStandardMaterial({ color: "#5c2c56", roughness: 0.3, metalness: 0.6, emissive: "#d84fb0", emissiveIntensity: 0.5 })
   )
   hubBadge.rotation.x = Math.PI / 2
   hubBadge.position.z = 0.09
