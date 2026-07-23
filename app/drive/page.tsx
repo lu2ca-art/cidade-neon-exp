@@ -271,17 +271,22 @@ interface Zone { x: number; y: number; w: number; h: number }
 // desenho no canvas e de declaração no JSX (depois = mais na frente). z8
 // (banco/assento, 12 artefatos) fica de fora de propósito — fora de escopo
 // por enquanto, não é buraco por engano.
+// Painel comprimido pra 65% da altura do quadrado (era 82.5%, de y:17.5 até
+// y:100) e empurrado pra baixo, começando só depois do novo para-brisa maior
+// (h:35, era h:20) — pedido do usuário pra ver mais estrada por enquanto,
+// sem terceira pessoa do carro. Mesma config/proporção relativa dos itens
+// entre si, só reescalada (fator 0.787879 = 65/82.5) e deslocada.
 const ZONES = {
-  windshield:    { x:0,    y:0,    w:100,  h:20   }, // z1  exterior
-  cluster:       { x:3.5,  y:23.5, w:30.5, h:6.5  }, // z2  painel
-  centerConsole: { x:37.5, y:46,   w:35,   h:18   }, // z3  painel
-  crt:           { x:35.5, y:17.5, w:38.5, h:20   }, // z4  interativo
-  gloveBox:      { x:79.5, y:24,   w:18,   h:25   }, // z5  interativo
-  phone:         { x:60,   y:54,   w:9.5,  h:11.5 }, // z6  painel
+  windshield:    { x:0,    y:0,    w:100,  h:35   }, // z1  exterior
+  cluster:       { x:3.5,  y:39.7, w:30.5, h:5.1  }, // z2  painel
+  centerConsole: { x:37.5, y:57.5, w:35,   h:14.2 }, // z3  painel
+  crt:           { x:35.5, y:35,   w:38.5, h:15.8 }, // z4  interativo
+  gloveBox:      { x:79.5, y:40.1, w:18,   h:19.7 }, // z5  interativo
+  phone:         { x:60,   y:63.8, w:9.5,  h:9.1  }, // z6  painel
   map:           { x:76.5, y:2,    w:20,   h:15   }, // z7  interativo
-  wheel:         { x:7,    y:26.5, w:24.5, h:20   }, // z9  painel
-  djDeck:        { x:41.5, y:66.5, w:24.5, h:31.5 }, // z10 interativo
-  radio:         { x:38.5, y:37,   w:33.5, h:10   }, // z11 interativo
+  wheel:         { x:7,    y:42.1, w:24.5, h:15.8 }, // z9  painel
+  djDeck:        { x:41.5, y:73.6, w:24.5, h:24.8 }, // z10 interativo
+  radio:         { x:38.5, y:50.4, w:33.5, h:7.9  }, // z11 interativo
 } satisfies Record<string, Zone>
 
 // Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
@@ -416,14 +421,26 @@ export default function DrivePage() {
   useEffect(() => { radioMachineRef.current = radioMachine }, [radioMachine])
   const resumeAfterLapRef = useRef(() => { missionDistRef.current = 0; setRadioMachine("playing") })
 
-  // primeira sintonia da experiência: nada selecionado ainda até aqui —
-  // assim que a 1ª estação é sintonizada no SINT0NIA, ela já fica selecionada
-  // sozinha (sem isso a pessoa sintonizava e o rádio continuava sem nada pra
-  // tocar até ela achar o seletor manualmente)
+  // toda vez que uma NOVA frequência é sintonizada no SINT0NIA (radioAccepted
+  // ganha uma entrada true que não tinha antes), ela já fica selecionada e
+  // tocando na hora — sem isso, sintonizar uma 2ª/3ª/4ª estação não tinha
+  // efeito nenhum no rádio do carro: o manualTier só era setado automaticamente
+  // na 1ª sintonia (guard "manualTier !== null"), então dali em diante era
+  // preciso achar sozinho o seletor de estação escondido embaixo do console
+  // pra trocar — o usuário via a rádio "ligada no sintonia" mas sem tocar nem
+  // reagir a nada
+  const prevRadioAcceptedRef = useRef(radioAccepted)
   useEffect(() => {
-    if (manualTier !== null) return
-    const first = highestAcceptedTier(radioAccepted)
-    if (first) setManualTier(first)
+    const prev = prevRadioAcceptedRef.current
+    const justTuned = ALL_TIERS.find((t) => radioAccepted[t] && !prev[t])
+    prevRadioAcceptedRef.current = radioAccepted
+    if (justTuned) {
+      setManualTier(justTuned)
+      setRadioOn(true)
+    } else if (manualTier === null) {
+      const first = highestAcceptedTier(radioAccepted)
+      if (first) setManualTier(first)
+    }
   }, [radioAccepted, manualTier])
 
   const activeTier     = manualTier ?? "suburbio"
@@ -1065,12 +1082,6 @@ export default function DrivePage() {
   },[])
 
   const BOTOES_H_PCT = isMobile ? BOTOES_H_PX + 14 : BOTOES_H_PX
-  // topo do painel em px (equivalente ao JOGO_H do canvas) — fim da zona
-  // windshield, onde o painel/interior começa. 0 até o viewport popular (ver
-  // estado `viewport`), então os elementos que dependem disso só renderizam
-  // depois que viewport.w/h > 0
-  const dashTopPx = squareTopPx(viewport.w, viewport.h) + ZONES.windshield.h / 100 * squarePx(viewport.w, viewport.h)
-
   // CONSOLE do carro — a Tela CRT (zona `crt` do blocking) é o gatilho de
   // verdade: fechada, mostra o hub de missão com grid em perspectiva;
   // clicando, abre o painel HUD completo (N3XO/NECTAR/FREQUENCIA/etc). O
@@ -1356,12 +1367,19 @@ export default function DrivePage() {
         const accent = radioOn ? meta.color : "#6b7280"
         const title = (radioTrack?.title ?? "—").toUpperCase()
         const z = zonePx(ZONES.radio, viewport.w, viewport.h)
+        // conteúdo desenhado pra caber numa zona de ~80px de altura — em telas
+        // onde o quadrado de design fica menor (ex.: retrato, ou paisagem bem
+        // baixa) a zona real encolhe e o texto/paddings fixos em px passavam
+        // da altura disponível e vazavam por cima do console. Escala tudo
+        // (fonte/padding/ícones) proporcional à altura real da zona.
+        const s = Math.min(1.15, Math.max(0.55, z.h / 80))
+        const px = (n: number) => Math.round(n * s)
         return (
         <div style={{
           position:"absolute",
           left:z.x, top:z.y, width:z.w, height:z.h,
           zIndex:48,
-          display:"flex", alignItems:"flex-start", gap:10,
+          display:"flex", alignItems:"flex-start", gap:px(10),
         }}>
           {/* POWER — a rádio começa desligada; nada progride até ligar */}
           <button
@@ -1369,7 +1387,7 @@ export default function DrivePage() {
             onClick={() => setRadioOn(o => !o)}
             aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
             style={{
-              flexShrink:0, width:44, height:44, borderRadius:"50%",
+              flexShrink:0, width:px(44), height:px(44), borderRadius:"50%",
               background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
               border: `2px solid ${radioOn ? meta.color : "rgba(255,255,255,0.25)"}`,
               display:"flex", alignItems:"center", justifyContent:"center",
@@ -1378,7 +1396,7 @@ export default function DrivePage() {
               WebkitTapHighlightColor:"transparent",
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.2} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
+            <svg width={px(20)} height={px(20)} viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.2} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
           </button>
 
           <button
@@ -1386,7 +1404,7 @@ export default function DrivePage() {
             onClick={handleOpenSintonia}
             aria-label="Abrir SINT0NIA — seletor de rádio e busca de frequência"
             style={{
-              position:"relative", flex:1, minWidth:0, borderRadius:16, padding:"10px 12px 11px",
+              position:"relative", flex:1, minWidth:0, borderRadius:16, padding:`${px(10)}px ${px(12)}px ${px(11)}px`,
               background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
               border:`1px solid ${accent}55`,
               boxShadow: radioOn ? `0 0 22px ${accent}33, inset 0 0 16px ${accent}18` : "none",
@@ -1398,55 +1416,55 @@ export default function DrivePage() {
             <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
               backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
             {/* estação (linha própria, trunca em vez de quebrar) + freq/status */}
-            <div style={{position:"relative",marginBottom:4}}>
-              <div style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,textShadow:radioOn?`0 0 6px ${accent}`:"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{meta.label}</div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2}}>
-                <span style={{fontFamily:"monospace",fontSize:11,letterSpacing:1,color:accent,opacity:0.85,whiteSpace:"nowrap",flexShrink:0}}>{meta.freq} FM</span>
+            <div style={{position:"relative",marginBottom:px(4)}}>
+              <div style={{fontFamily:"monospace",fontSize:px(10),letterSpacing:1,color:accent,textShadow:radioOn?`0 0 6px ${accent}`:"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{meta.label}</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:px(2),gap:px(6)}}>
+                <span style={{fontFamily:"monospace",fontSize:px(11),letterSpacing:1,color:accent,opacity:0.85,whiteSpace:"nowrap",flexShrink:0}}>{meta.freq} FM</span>
                 {!radioOn ? (
-                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>DESLIGADO</span>
+                  <span style={{fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>DESLIGADO</span>
                 ) : active ? (
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4,fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4,fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>
                     <span style={{width:7,height:7,borderRadius:7,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
                     NO AR
                   </span>
                 ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>INTERFERÊNCIA</span>
+                  <span style={{fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>INTERFERÊNCIA</span>
                 ) : (
-                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>SILÊNCIO</span>
+                  <span style={{fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>SILÊNCIO</span>
                 )}
               </div>
             </div>
             {!radioOn ? (
-              <div style={{position:"relative",height:28,display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
-                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ APERTE O POWER ◌</span>
+              <div style={{position:"relative",height:px(28),display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
+                <span style={{fontFamily:"monospace",fontSize:px(11),fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ APERTE O POWER ◌</span>
               </div>
             ) : active ? (
               <>
                 {/* now playing (marquee) — só o nome da música */}
-                <div style={{position:"relative",height:20,overflow:"hidden"}}>
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:14,fontWeight:700,letterSpacing:1,
+                <div style={{position:"relative",height:px(20),overflow:"hidden"}}>
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:px(14),fontWeight:700,letterSpacing:1,
                     color:"#eafff8",textShadow:`0 0 8px ${accent}aa`,animation:"dash-marquee 11s linear infinite"}}>
                     ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                 </div>
                 {/* barra dos 22s */}
-                <div style={{position:"relative",marginTop:6,height:4,borderRadius:4,background:"rgba(255,255,255,0.1)"}}>
+                <div style={{position:"relative",marginTop:px(6),height:4,borderRadius:4,background:"rgba(255,255,255,0.1)"}}>
                   <div style={{height:"100%",borderRadius:4,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
                 </div>
               </>
             ) : isStatic ? (
-              <div style={{position:"relative",height:28,display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
-                <span style={{fontFamily:"monospace",fontSize:12,fontWeight:700,letterSpacing:0.5,color:accent,whiteSpace:"nowrap",animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓</span>
+              <div style={{position:"relative",height:px(28),display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
+                <span style={{fontFamily:"monospace",fontSize:px(12),fontWeight:700,letterSpacing:0.5,color:accent,whiteSpace:"nowrap",animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓</span>
               </div>
             ) : (
-              <div style={{position:"relative",height:28,display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
-                <span style={{fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ SILÊNCIO ◌</span>
+              <div style={{position:"relative",height:px(28),display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
+                <span style={{fontFamily:"monospace",fontSize:px(11),fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ SILÊNCIO ◌</span>
               </div>
             )}
           </button>
 
           {/* ANEL DE VOLUME — arraste ao redor pra ajustar */}
-          <div style={{ position:"relative", flexShrink:0, width:56, height:56 }}>
+          <div style={{ position:"relative", flexShrink:0, width:px(56), height:px(56) }}>
             <div
               ref={volumeRingRef}
               onPointerDown={(e) => {
@@ -1469,7 +1487,7 @@ export default function DrivePage() {
             <div style={{
               position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
               pointerEvents:"none",
-              fontFamily:"monospace", fontSize:9, color:"rgba(255,255,255,0.55)", letterSpacing:0.5,
+              fontFamily:"monospace", fontSize:px(9), color:"rgba(255,255,255,0.55)", letterSpacing:0.5,
             }}>
               VOL
             </div>
@@ -1540,12 +1558,12 @@ export default function DrivePage() {
           as já sintonizadas; escolher uma troca a estação e liga o rádio —
           pra voltar a uma que já estava selecionada, só ligar o power, sem
           precisar escolher de novo */}
-      {!phoneOpen && ALL_TIERS.some(t => radioAccepted[t]) && (
+      {!phoneOpen && viewport.w > 0 && ALL_TIERS.some(t => radioAccepted[t]) && (() => {
+        const rz = zonePx(ZONES.radio, viewport.w, viewport.h)
+        return (
         <div style={{
           position:"absolute",
-          bottom: `${viewport.h - dashTopPx + 4}px`,
-          left:"50%", transform:"translateX(-50%)",
-          width:"min(70%, 340px)",
+          left:rz.x, top:rz.y + rz.h + 6, width:rz.w,
           zIndex:46,
           display:"flex", gap:5, justifyContent:"center",
         }}>
@@ -1571,7 +1589,8 @@ export default function DrivePage() {
             )
           })}
         </div>
-      )}
+        )
+      })()}
 
       {/* CHEGOU NA MISSÃO — dirigiu a distância até o marcador do contato no
           mapa. Aceitar abre o celular direto na missão, liga o piloto
