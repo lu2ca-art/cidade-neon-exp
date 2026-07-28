@@ -108,34 +108,6 @@ function generateTiles(song: Song): Tile[] {
       holdBroken: false,
     })
 
-    // notas longas atrapalhavam a jogabilidade — no lugar delas (mesma
-    // ~15% de chance de antes), uma rajada de 2-3 notas curtas extras
-    // preenche o mesmo intervalo de tempo, aumentando a densidade em vez
-    // de segurar o botão
-    if (Math.random() < 0.15) {
-      const burstCount = 2 + Math.floor(Math.random() * 2)
-      const burstSpacing = 120 + Math.random() * 80
-      let bt = t + burstSpacing
-      for (let i = 0; i < burstCount; i++) {
-        let bcol = cols[Math.floor(Math.random() * 4)]
-        while (bcol === lastCol) bcol = cols[Math.floor(Math.random() * 4)]
-        lastCol = bcol
-        tiles.push({
-          id: id++,
-          col: bcol,
-          beatTime: bt,
-          hit: false,
-          missed: false,
-          hold: false,
-          holdDuration: 0,
-          holdActive: false,
-          holdBroken: false,
-        })
-        bt += burstSpacing
-      }
-      t = bt
-    }
-
     // variação de ritmo: às vezes chega mais rápido, às vezes pausa
     const jitter = (Math.random() - 0.5) * 200
     t += interval + jitter

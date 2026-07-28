@@ -1459,12 +1459,14 @@ export default function DrivePage() {
         )
       })()}
 
-      {/* CELULAR — gatilho de abrir, agora no centro do console, onde antes
-          ficava o mostrador do rádio (zona `radio` do blocking). O rádio em
-          si virou a faixa fina no rodapé da tela, mais abaixo. */}
+      {/* BARRA DO RÁDIO — zona `radio` do blocking, centro do console. É o
+          rádio, não o celular: mostra o que está tocando (mascarado, na cor
+          da frequência) e, ao tocar, abre o SINT0NIA direto — SINT0NIA é uma
+          extensão do rádio dentro do celular, não o contrário, então não
+          passa pela tela inicial do N3XO. Acesso genérico ao celular (pra
+          ver mensagens/apps) continua sendo o HUB (zona crt), como sempre foi. */}
       {!phoneOpen && viewport.w > 0 && (() => {
         const z = zonePx(ZONES.radio, viewport.w, viewport.h)
-        const alert = radioMachine === "parked" || !!phoneNotif?.isMission
         // bloqueado: só fundo + horário, igual uma tela de bloqueio de
         // verdade — tocar de novo reabre o celular (limpa o bloqueio no
         // efeito que já observa phoneOpen)
@@ -1489,66 +1491,50 @@ export default function DrivePage() {
             </button>
           )
         }
-        return (
-          <button
-            type="button"
-            onClick={() => setPhoneOpen(true)}
-            aria-label="Abrir celular"
-            style={{
-              position:"absolute", zIndex:48,
-              left:z.x, top:z.y, width:z.w, height:z.h,
-              borderRadius:16, cursor:"pointer",
-              background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-              border:`1px solid ${C.neonPink}55`,
-              boxShadow: alert ? `0 0 20px ${C.neonPink}66, inset 0 0 16px ${C.neonPink}22` : "none",
-              animation: alert ? "phone-buzz 0.5s ease-in-out infinite" : "none",
-              display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-              WebkitTapHighlightColor:"transparent",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.neonPink} strokeWidth={2}><rect x="6" y="3" width="12" height="18" rx="2.5"/><path d="M10 18h4" strokeLinecap="round"/></svg>
-            <span style={{ fontFamily:"monospace", fontSize:11, letterSpacing:1.5, color:C.neonPink, textShadow:`0 0 6px ${C.neonPink}` }}>N3XO</span>
-          </button>
-        )
-      })()}
 
-      {/* RÁDIO — faixa fina no rodapé da tela inteira, edge-to-edge. Só o
-          título da faixa correndo da direita pra esquerda (marquee) e uma
-          linha de progresso — bem mais discreto que o mostrador antigo, que
-          ocupava uma zona própria do console. */}
-      {!phoneOpen && viewport.w > 0 && radioOn && (() => {
         const meta = F[activeTier]
+        const accent = radioOn ? meta.color : "rgba(255,255,255,0.4)"
         const title = (radioTrack?.title ?? "—").toUpperCase()
         const isStatic = radioMachine === "static"
         return (
-          <div style={{
-            position:"absolute", left:0, right:0, bottom:BOTOES_H_PCT,
-            zIndex:48, height:26,
-            background:"rgba(4,2,10,0.85)", borderTop:`1px solid ${meta.color}40`,
-            display:"flex", alignItems:"center", overflow:"hidden",
-          }}>
-            <div style={{position:"relative", flex:1, height:"100%", overflow:"hidden"}}>
-              {isStatic ? (
-                <div style={{position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:meta.color,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
-                </div>
-              ) : radioActive ? (
-                <div style={{position:"absolute", inset:0, display:"flex", alignItems:"center"}}>
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,letterSpacing:1,
-                    color:meta.color,textShadow:`0 0 6px ${meta.color}`,animation:"dash-marquee 14s linear infinite"}}>
-                    ♪ {meta.label} — {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {meta.label} — {title} &nbsp;&nbsp;&nbsp;&nbsp;
+          <button
+            type="button"
+            onClick={() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) }}
+            aria-label="Abrir SINT0NIA — sintonizar rádio"
+            style={{
+              position:"absolute", zIndex:48,
+              left:z.x, top:z.y, width:z.w, height:z.h,
+              borderRadius:16, cursor:"pointer", overflow:"hidden",
+              background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
+              border:`1px solid ${accent}55`,
+              boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              WebkitTapHighlightColor:"transparent",
+            }}
+          >
+            <div style={{position:"relative", width:"100%", height:"100%", display:"flex", flexDirection:"column", justifyContent:"center", padding:"0 12px"}}>
+              <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                {meta.label} · {meta.freq} FM
+              </div>
+              <div style={{position:"relative",height:16,overflow:"hidden",marginTop:2}}>
+                {!radioOn ? (
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
+                ) : isStatic ? (
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
+                ) : radioActive ? (
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,
+                    color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
+                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
-                </div>
-              ) : (
-                <div style={{position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
+                ) : (
                   <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
-              <div style={{height:"100%", width:`${snippetPct*100}%`, background:meta.color, boxShadow:`0 0 6px ${meta.color}`, transition:"width .12s linear"}} />
+              <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
             </div>
-          </div>
+          </button>
         )
       })()}
 
