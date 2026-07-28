@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import { sendCarRadioMute } from "@/app/providers/AudioBridge"
 
 // ─── B4TIDA — beat-maker livre, teste de confirmação #2 ─────────────────────
 // Sequenciador de 4 trilhas x 8 passos, tocando em loop constante. Sem
@@ -175,6 +176,9 @@ export default function BatidaPage() {
   const stepMs = 60000 / bpm / 2
 
   useEffect(() => { updateCinematicStep("confirmation-2") }, [updateCinematicStep])
+  // silencia o rádio do carro (se aberto dentro de /drive) enquanto o
+  // B4TIDA toca os próprios sons — volta ao normal ao sair
+  useEffect(() => { sendCarRadioMute(true); return () => sendCarRadioMute(false) }, [])
   useEffect(() => { patternRef.current = pattern }, [pattern])
   useEffect(() => { kitRef.current = kit }, [kit])
 
@@ -209,7 +213,6 @@ export default function BatidaPage() {
 
   const toggleCell = (rowId: RowId, stepIdx: number) => {
     setPattern((prev) => ({ ...prev, [rowId]: prev[rowId].map((v, i) => (i === stepIdx ? !v : v)) }))
-    if (ctxRef.current) triggerRow(ctxRef.current, rowId, kit)
   }
 
   const clearGrid = () => setPattern(emptyPattern())

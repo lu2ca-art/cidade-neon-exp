@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import { sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { sendMinimizeConsole, sendCarRadioMute } from "@/app/providers/AudioBridge"
 import { analyzeAudioForTiles, type AnalyzedTile } from "@/lib/audio-analysis"
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
@@ -231,6 +231,13 @@ export default function NeonTilesPage() {
   const handlePointerUpRef   = useRef<(col: number) => void>(() => {})
 
   useEffect(() => { tilesRef.current = tiles }, [tiles])
+
+  // silencia o rádio do carro (se aberto dentro de /drive) enquanto o
+  // GUITAR DRIVER toca suas próprias faixas — volta ao normal ao sair
+  useEffect(() => {
+    sendCarRadioMute(true)
+    return () => sendCarRadioMute(false)
+  }, [])
 
 
   // controle (joystick/gamepad) conectado — só pra mostrar o indicador; a
@@ -849,6 +856,12 @@ export default function NeonTilesPage() {
   }, [handlePointerDown, handlePointerUp])
 
   useEffect(() => {
+    // reafirma true a cada (re)montagem — em dev, o StrictMode roda esse
+    // efeito montar→desmontar→montar de novo pra detectar side effects; sem
+    // resetar aqui, a "desmontagem" fake do StrictMode deixava isMountedRef
+    // preso em false pra sempre, e finish() (usado na análise de áudio) nunca
+    // mais completava, travando em "ANALISANDO ÁUDIO..." só em desenvolvimento
+    isMountedRef.current = true
     return () => { isMountedRef.current = false; cancelAnimationFrame(rafRef.current); audioRef.current?.pause() }
   }, [])
 
@@ -1074,7 +1087,7 @@ export default function NeonTilesPage() {
       style={{ background: "#000", paddingBottom: "env(safe-area-inset-bottom)", userSelect: "none" }}
     >
       {/* Header */}
-      <div className="w-full max-w-sm flex items-center justify-between px-4 pt-4 pb-2">
+      <div className="w-full max-w-sm flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -1112,9 +1125,13 @@ export default function NeonTilesPage() {
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="relative w-full max-w-sm flex-1" style={{ maxHeight: CANVAS_H }}>
-        <canvas ref={canvasRef} width={360} height={CANVAS_H} className="w-full" style={{ display: "block" }} />
+      {/* Canvas — altura em CSS precisa acompanhar o espaço real disponível
+          (flex-1 do container pai): sem isso o canvas sempre ocupava
+          CANVAS_H cheio (a resolução interna do desenho), estourando telas
+          mais baixas e empurrando os botões de toque pra fora da área
+          visível/clicável do iframe */}
+      <div className="relative w-full max-w-sm flex-1 min-h-0" style={{ maxHeight: CANVAS_H }}>
+        <canvas ref={canvasRef} width={360} height={CANVAS_H} className="w-full" style={{ display: "block", height: "100%", maxHeight: CANVAS_H }} />
 
         {/* Feedback overlay */}
         {feedback && (
@@ -1136,7 +1153,7 @@ export default function NeonTilesPage() {
       </div>
 
       {/* Score bar */}
-      <div className="w-full max-w-sm px-4 py-1">
+      <div className="w-full max-w-sm px-4 py-1 flex-shrink-0">
         <div className="flex justify-between font-mono text-xs mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>
           <span>PONTOS</span><span style={{ color: "#FFD700" }}>{score.toLocaleString()}</span>
         </div>
@@ -1146,7 +1163,7 @@ export default function NeonTilesPage() {
       </div>
 
       {/* Botoes de toque — tambem jogaveis por teclado (D F J K) ou controle */}
-      <div className="w-full max-w-sm grid grid-cols-4 gap-1.5 px-3 pb-6 pt-2">
+      <div className="w-full max-w-sm grid grid-cols-4 gap-1.5 px-3 pb-6 pt-2 flex-shrink-0">
         {[0, 1, 2, 3].map(col => (
           <button
             key={col}

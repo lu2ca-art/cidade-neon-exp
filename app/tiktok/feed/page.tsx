@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import { sendCarRadioMute } from "@/app/providers/AudioBridge"
 
 const VIDEOS = [
   {
@@ -308,6 +309,9 @@ export default function TikTokFeedPage() {
 
   // Pause global Spotify audio on TikTok
   useEffect(() => { globalAudio.pause() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // silencia o rádio do carro (se aberto dentro de /drive) enquanto o
+  // //LOOP toca os vídeos com som próprio — volta ao normal ao sair
+  useEffect(() => { sendCarRadioMute(true); return () => sendCarRadioMute(false) }, [])
   const [activeIdx, setActiveIdx] = useState(0)
 
   useEffect(() => {

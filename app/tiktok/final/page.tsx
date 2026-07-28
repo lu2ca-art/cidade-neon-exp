@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
+import { sendCarRadioMute } from "@/app/providers/AudioBridge"
 import { Heart, MessageCircle, Share2, Music2, ChevronUp, X } from "lucide-react"
 
 const VIDEOS = [
@@ -64,6 +65,10 @@ export default function TikTokFinalPage() {
     updateCinematicStep("tiktok-final")
     globalAudio.pause()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // silencia o rádio do carro (se aberto dentro de /drive) enquanto o
+  // //LOOP toca os vídeos com som próprio — volta ao normal ao sair
+  useEffect(() => { sendCarRadioMute(true); return () => sendCarRadioMute(false) }, [])
 
   // Auto-show disc purchase popup after 3s on the last video
   useEffect(() => {

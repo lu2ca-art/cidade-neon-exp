@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, SelectRadioTier } from "@/app/providers/AudioBridge"
+import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, SelectRadioTier, CarRadioControl } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe, sendCarRadioState } from "@/app/providers/AudioBridge"
 import SteeringWheel3D from "@/components/SteeringWheel3D"
 import CityMap from "@/components/CityMap"
@@ -322,13 +322,6 @@ export default function DrivePage() {
   useEffect(() => { autoDriveRef.current = autoDrive }, [autoDrive])
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
-  // celular bloqueado (botão no canto superior direito do console, igual o
-  // lateral de um iPhone) — mostra só fundo + horário no lugar do HUB/N3XO
-  // normal, até a pessoa tocar de novo pra reabrir
-  const [phoneLocked, setPhoneLocked] = useState(false)
-  // reabrir o celular por qualquer caminho (tocar no gatilho, aceitar
-  // missão, notificação) sempre limpa o bloqueio — nunca reabre já bloqueado
-  useEffect(() => { if (phoneOpen) setPhoneLocked(false) }, [phoneOpen])
   // lido dentro do loop imperativo do canvas (frame()), sem precisar
   // reiniciar o efeito do canvas a cada abre/fecha do celular
   const phoneOpenRef = useRef(phoneOpen)
@@ -454,12 +447,12 @@ export default function DrivePage() {
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
   // só toca se tiver uma estação de fato sintonizada e selecionada — sem
   // isso, ligar o power sem nada sintonizado tocaria a 1ª faixa de
-  // "suburbio" mesmo sem ela ter sido liberada ainda. `!phoneOpen` é a ÚNICA
-  // regra de silêncio por sobreposição: qualquer página aberta dentro do
-  // celular (todas têm som próprio) silencia o rádio do painel; fechando o
-  // celular ele volta sozinho — substitui o antigo sistema de CAR_RADIO_MUTE
-  // espalhado por página, que dependia de cada teste lembrar de mutar/desmutar
-  const radioActive    = radioOn && radioMachine === "playing" && !phoneOpen && manualTier !== null
+  // "suburbio" mesmo sem ela ter sido liberada ainda. A sintonia continua
+  // tocando com o celular aberto (SINT0NIA é extensão do rádio, não motivo
+  // pra silenciar) — só os apps com som próprio que realmente colidem
+  // (GUITAR DRIVER, B4TIDA, //LOOP) mutam via CAR_RADIO_MUTE
+  const [radioMuted, setRadioMuted] = useState(false)
+  const radioActive    = radioOn && radioMachine === "playing" && !radioMuted && manualTier !== null
   // progresso de distância até a missão ativa (0..1) — só pro mini-mapa
   // (CityMap) mostrar o indicador de posição; atualizado por polling leve,
   // não precisa de precisão de frame
@@ -492,7 +485,7 @@ export default function DrivePage() {
   // Escuta comandos do iframe e executa no AudioPlayer do pai
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const data = e.data as BridgeCommand | PhoneNotification | MinimizeConsole | SelectRadioTier
+      const data = e.data as BridgeCommand | PhoneNotification | MinimizeConsole | SelectRadioTier | CarRadioControl
       if (!data?.type) return
       switch (data.type) {
         case "PLAY":          audio.play(data.index); break
@@ -503,6 +496,8 @@ export default function DrivePage() {
         case "NEXT":          audio.next(); break
         case "PREV":          audio.prev(); break
         case "REQUEST_STATE": break
+        case "CAR_RADIO_MUTE":   setRadioMuted(true); break
+        case "CAR_RADIO_UNMUTE": setRadioMuted(false); break
         case "MINIMIZE_CONSOLE": setPhoneOpen(false); break
         case "SELECT_RADIO_TIER":
           setManualTier(data.tier)
@@ -1294,38 +1289,20 @@ export default function DrivePage() {
             background:"rgba(255,255,255,0.02)",
           }}>
             <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:2,color:`${C.neonPink}cc`}}>CONSOLE · N3XO</span>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              {/* BLOQUEAR — canto superior direito, igual o botão lateral de
-                  um iPhone: fecha o celular e deixa ele "bloqueado" (fundo +
-                  horário) até tocar de novo pra reabrir */}
-              <button
-                type="button"
-                onClick={(e)=>{e.stopPropagation();setPhoneLocked(true);setPhoneOpen(false)}}
-                aria-label="Bloquear celular"
-                style={{
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  width:26,height:26,
-                  background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
-                  borderRadius:999, cursor:"pointer", color:"rgba(255,255,255,0.7)",
-                }}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
-              </button>
-              <button
-                type="button"
-                onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
-                style={{
-                  display:"flex",alignItems:"center",gap:5,
-                  background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
-                  borderRadius:999, padding:"4px 10px",
-                  color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:9, letterSpacing:1,
-                  cursor:"pointer",
-                }}
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
-                MINIMIZAR
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
+              style={{
+                display:"flex",alignItems:"center",gap:5,
+                background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
+                borderRadius:999, padding:"4px 10px",
+                color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:9, letterSpacing:1,
+                cursor:"pointer",
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+              MINIMIZAR
+            </button>
           </div>
         )}
         <div style={{position:"relative",flex:1,width:"100%",overflow:"hidden",background:"#000"}}>
@@ -1404,31 +1381,6 @@ export default function DrivePage() {
           ver mensagens/apps) continua sendo o HUB (zona crt), como sempre foi. */}
       {!phoneOpen && viewport.w > 0 && (() => {
         const z = zonePx(ZONES.radio, viewport.w, viewport.h)
-        // bloqueado: só fundo + horário, igual uma tela de bloqueio de
-        // verdade — tocar de novo reabre o celular (limpa o bloqueio no
-        // efeito que já observa phoneOpen)
-        if (phoneLocked) {
-          return (
-            <button
-              type="button"
-              onClick={() => setPhoneOpen(true)}
-              aria-label="Celular bloqueado — toque pra abrir"
-              style={{
-                position:"absolute", zIndex:48,
-                left:z.x, top:z.y, width:z.w, height:z.h,
-                borderRadius:16, cursor:"pointer",
-                background:"linear-gradient(160deg, #0d0a16 0%, #050308 100%)",
-                border:"1px solid rgba(255,255,255,0.1)",
-                display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-                WebkitTapHighlightColor:"transparent",
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={2}><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
-              <span style={{ fontFamily:"monospace", fontSize:12, letterSpacing:1, color:"rgba(255,255,255,0.5)" }}>21:47</span>
-            </button>
-          )
-        }
-
         const meta = F[activeTier]
         const accent = radioOn ? meta.color : "rgba(255,255,255,0.4)"
         const title = (radioTrack?.title ?? "—").toUpperCase()

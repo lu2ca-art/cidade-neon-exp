@@ -71,6 +71,19 @@ export function sendNotificationClickToIframe(iframe: HTMLIFrameElement | null, 
   iframe.contentWindow.postMessage(msg, "*")
 }
 
+// Silencia o rádio do carro (painel de /drive) enquanto um teste com áudio
+// próprio está aberto dentro do celular (GUITAR DRIVER, B4TIDA, //LOOP) — a
+// sintonia continua tocando normalmente em qualquer outro app do celular
+// (SINT0NIA, N3XO, FREQ etc.), só esses 3 têm som que realmente colide.
+export type CarRadioControl = { type: "CAR_RADIO_MUTE" } | { type: "CAR_RADIO_UNMUTE" }
+
+export function sendCarRadioMute(muted: boolean) {
+  if (typeof window === "undefined") return
+  if (window.self === window.top) return // não está dentro de um iframe
+  const msg: CarRadioControl = { type: muted ? "CAR_RADIO_MUTE" : "CAR_RADIO_UNMUTE" }
+  window.parent.postMessage(msg, "*")
+}
+
 // Pede pro /drive minimizar o console (fechar o painel maximizado) — usado
 // ao voltar de uma missão completa, pra a pessoa cair de volta na cena do
 // carro (e no diálogo de nova frequência) em vez de ficar presa no console
