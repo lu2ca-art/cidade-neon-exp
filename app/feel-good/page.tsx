@@ -60,26 +60,19 @@ const WORD_SETS: Record<string, string[]> = {
 
 export default function FeelGoodPage() {
   const router = useRouter()
-  const { completeConfirmation, updateCinematicStep, state } = useGameFunnel()
+  const { completeConfirmation, updateCinematicStep } = useGameFunnel()
   const globalAudio = useAudioPlayer()
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
   const [currentWords, setCurrentWords] = useState<string[]>([])
-  const [connections, setConnections] = useState<Connection[]>(state.confirmations.c2.connections || [])
+  const [connections, setConnections] = useState<Connection[]>([])
   const [showResult, setShowResult] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
 
   useEffect(() => {
     updateCinematicStep("confirmation-2")
   }, [updateCinematicStep])
-
-  useEffect(() => {
-    if (state.confirmations.c2.done && state.confirmations.c2.connections) {
-      setShowResult(true)
-      setConnections(state.confirmations.c2.connections)
-    }
-  }, [state.confirmations.c2])
 
   const handleTrackSelect = (trackId: string) => {
     if (connections.some((c) => c.music === trackId)) return

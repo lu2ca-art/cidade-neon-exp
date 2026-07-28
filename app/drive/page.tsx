@@ -282,11 +282,10 @@ const ZONES = {
   centerConsole: { x:37.5, y:57.5, w:35,   h:14.2 }, // z3  painel
   crt:           { x:35.5, y:35,   w:38.5, h:15.8 }, // z4  interativo
   gloveBox:      { x:79.5, y:40.1, w:18,   h:19.7 }, // z5  interativo
-  phone:         { x:60,   y:63.8, w:9.5,  h:9.1  }, // z6  painel
   map:           { x:76.5, y:2,    w:20,   h:15   }, // z7  interativo
   wheel:         { x:7,    y:42.1, w:24.5, h:15.8 }, // z9  painel
-  djDeck:        { x:41.5, y:73.6, w:24.5, h:24.8 }, // z10 interativo
-  radio:         { x:38.5, y:50.4, w:33.5, h:7.9  }, // z11 interativo
+  djDeck:        { x:41.5, y:66,   w:24.5, h:24.8 }, // z10 interativo
+  radio:         { x:38.5, y:47.6, w:33.5, h:12.7 }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
 } satisfies Record<string, Zone>
 
 // Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
@@ -1254,18 +1253,13 @@ export default function DrivePage() {
         }}
       >
         {/* hub de missão — só quando fechada; grid em perspectiva #a150ba
-            sobre fundo #513156 (paleta medida da referência). Sem missão
-            ativa, o HUB também é o console do rádio: power, volume e as
-            estações já sintonizadas — tudo encolhido pra caber aqui, sem
-            precisar abrir o SINT0NIA só pra trocar de estação */}
+            sobre fundo #513156 (paleta medida da referência) */}
         {!phoneOpen && (() => {
           const mission = activeMission(confirmCount)
           const color = mission ? MISSION_COLORS[mission.id] : "#a150ba"
-          const meta = F[activeTier]
-          const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
           return (
-            <div style={{ position:"absolute", inset:0, overflow:"hidden" }}>
-              <svg width="100%" height="100%" style={{ position:"absolute", inset:0, opacity:0.5, pointerEvents:"none" }} viewBox="0 0 100 100" preserveAspectRatio="none">
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden" }}>
+              <svg width="100%" height="100%" style={{ position:"absolute", inset:0, opacity:0.5 }} viewBox="0 0 100 100" preserveAspectRatio="none">
                 {Array.from({length:6}, (_,i)=>{
                   const x = (i+1)*100/7
                   return <line key={"v"+i} x1={x} y1="0" x2={50+(x-50)*2.2} y2="100" stroke="#a150ba" strokeWidth="0.4"/>
@@ -1274,8 +1268,8 @@ export default function DrivePage() {
                   <line key={"h"+i} x1="0" y1={20+i*20} x2="100" y2={20+i*20} stroke="#a150ba" strokeWidth="0.3" opacity={0.6}/>
                 ))}
               </svg>
-              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:5, pointerEvents:"none" }}>
-                <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:2, color:"rgba(255,255,255,0.4)" }}>
+              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <span style={{ fontFamily:"monospace", fontSize:10, letterSpacing:2, color:"rgba(255,255,255,0.4)" }}>
                   {mission ? "MISSÃO ATIVA" : "HUB"}
                 </span>
                 {mission ? (
@@ -1286,64 +1280,7 @@ export default function DrivePage() {
                     <span style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, letterSpacing:1, color:"#fff" }}>{mission.name}</span>
                   </>
                 ) : (
-                  <div style={{ display:"flex", alignItems:"center", gap:6, pointerEvents:"auto" }}>
-                    {/* power */}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setRadioOn(o => !o) }}
-                      aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
-                      style={{
-                        flexShrink:0, width:22, height:22, borderRadius:"50%",
-                        background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
-                        border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                        cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                      }}
-                    >
-                      <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.4} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
-                    </button>
-                    {/* estações já sintonizadas */}
-                    {tunedTiers.map(tier => {
-                      const tMeta = F[tier]
-                      const isSel = tier === activeTier
-                      return (
-                        <button
-                          key={tier}
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setManualTier(tier); setRadioOn(true) }}
-                          aria-label={`Tocar ${tMeta.label}`}
-                          style={{
-                            flexShrink:0, width:14, height:14, borderRadius:"50%",
-                            background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
-                            border: `1px solid ${tMeta.color}`,
-                            boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
-                            cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
-                          }}
-                        />
-                      )
-                    })}
-                    {/* volume */}
-                    <div style={{ position:"relative", flexShrink:0, width:24, height:24 }}>
-                      <div
-                        ref={volumeRingRef}
-                        onPointerDown={(e) => {
-                          e.stopPropagation()
-                          volumeDraggingRef.current = true
-                          ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-                          updateVolumeFromPointer(e.clientX, e.clientY)
-                        }}
-                        onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
-                        onPointerUp={() => { volumeDraggingRef.current = false }}
-                        style={{
-                          position:"absolute", inset:0, borderRadius:"50%",
-                          cursor:"grab", touchAction:"none",
-                          background:`conic-gradient(from -120deg, ${meta.color} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
-                          WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))",
-                          mask:"radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))",
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <span style={{ fontFamily:"monospace", fontSize:11, color:"rgba(255,255,255,0.5)" }}>toque pra abrir</span>
                 )}
               </div>
             </div>
@@ -1496,10 +1433,12 @@ export default function DrivePage() {
         const accent = radioOn ? meta.color : "rgba(255,255,255,0.4)"
         const title = (radioTrack?.title ?? "—").toUpperCase()
         const isStatic = radioMachine === "static"
+        const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
         return (
-          <button
-            type="button"
+          <div
             onClick={() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) }}
+            role="button"
+            tabIndex={0}
             aria-label="Abrir SINT0NIA — sintonizar rádio"
             style={{
               position:"absolute", zIndex:48,
@@ -1508,33 +1447,90 @@ export default function DrivePage() {
               background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
               border:`1px solid ${accent}55`,
               boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
-              display:"flex", alignItems:"center", justifyContent:"center",
+              display:"flex", flexDirection:"column", justifyContent:"center", padding:"6px 12px",
               WebkitTapHighlightColor:"transparent",
             }}
           >
-            <div style={{position:"relative", width:"100%", height:"100%", display:"flex", flexDirection:"column", justifyContent:"center", padding:"0 12px"}}>
-              <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                {meta.label} · {meta.freq} FM
+            {/* power + estações já sintonizadas + volume — tudo contido
+                dentro da própria barra do rádio */}
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setRadioOn(o => !o) }}
+                aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
+                style={{
+                  flexShrink:0, width:20, height:20, borderRadius:"50%",
+                  background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
+                  border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                }}
+              >
+                <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.4} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
+              </button>
+              {tunedTiers.map(tier => {
+                const tMeta = F[tier]
+                const isSel = tier === activeTier
+                return (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setManualTier(tier); setRadioOn(true) }}
+                    aria-label={`Tocar ${tMeta.label}`}
+                    style={{
+                      flexShrink:0, width:13, height:13, borderRadius:"50%",
+                      background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
+                      border: `1px solid ${tMeta.color}`,
+                      boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
+                      cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
+                    }}
+                  />
+                )
+              })}
+              <div style={{ flex:1 }} />
+              <div style={{ position:"relative", flexShrink:0, width:20, height:20 }}>
+                <div
+                  ref={volumeRingRef}
+                  onPointerDown={(e) => {
+                    e.stopPropagation()
+                    volumeDraggingRef.current = true
+                    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+                    updateVolumeFromPointer(e.clientX, e.clientY)
+                  }}
+                  onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
+                  onPointerUp={() => { volumeDraggingRef.current = false }}
+                  style={{
+                    position:"absolute", inset:0, borderRadius:"50%",
+                    cursor:"grab", touchAction:"none",
+                    background:`conic-gradient(from -120deg, ${meta.color} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
+                    WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
+                    mask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
+                  }}
+                />
               </div>
-              <div style={{position:"relative",height:16,overflow:"hidden",marginTop:2}}>
-                {!radioOn ? (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
-                ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
-                ) : radioActive ? (
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,
-                    color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
-                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
-                  </div>
-                ) : (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
-                )}
-              </div>
+            </div>
+
+            <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              {meta.label} · {meta.freq} FM
+            </div>
+            <div style={{position:"relative",height:16,overflow:"hidden",marginTop:2}}>
+              {!radioOn ? (
+                <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
+              ) : isStatic ? (
+                <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
+              ) : radioActive ? (
+                <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,
+                  color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
+                  ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
+                </div>
+              ) : (
+                <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
+              )}
             </div>
             <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
               <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
             </div>
-          </button>
+          </div>
         )
       })()}
 
@@ -1670,64 +1666,40 @@ export default function DrivePage() {
         )
       })()}
 
-      {/* CELULAR — objeto pequeno à parte da Tela CRT (zona `phone`, z6).
-          Apagado por padrão; acende/vibra igual o console já fazia quando
-          uma missão chega (mesmo `phoneNotif.isMission`), e tocar nele
-          aceita a missão direto — sem precisar abrir a Tela CRT. */}
-      {!phoneOpen && viewport.w > 0 && (() => {
-        const pb = zonePx(ZONES.phone, viewport.w, viewport.h)
-        const alert = !!phoneNotif?.isMission
-        return (
-          <button
-            type="button"
-            onClick={handleAcceptMission}
-            aria-label="Celular — aceitar missão"
-            style={{
-              position:"absolute", zIndex:49,
-              left:pb.x, top:pb.y, width:pb.w, height:pb.h,
-              borderRadius:8, padding:0, cursor:"pointer",
-              background: alert ? "linear-gradient(160deg, #3a2438 0%, #1a1018 100%)" : "linear-gradient(160deg, #1c1420 0%, #0d0910 100%)",
-              border: `1px solid ${alert ? "rgba(216,79,176,0.7)" : "rgba(255,255,255,0.08)"}`,
-              boxShadow: alert ? "0 0 14px rgba(216,79,176,0.5)" : "none",
-              animation: alert ? "phone-buzz 0.5s ease-in-out infinite" : "none",
-              display:"flex", alignItems:"center", justifyContent:"center",
-            }}
-          >
-            {alert && (
-              <span style={{ fontFamily:"monospace", fontSize:Math.max(7, pb.w*0.09), fontWeight:700, letterSpacing:0.5, color:"#f0a8de", textShadow:"0 0 6px rgba(216,79,176,0.8)", whiteSpace:"pre-line", textAlign:"center", lineHeight:1.2 }}>
-                {"NOVA\nMISSÃO"}
-              </span>
-            )}
-          </button>
-        )
-      })()}
-
-      {/* DECK DJ — objeto interativo entre os bancos (zona `djDeck`, z10).
-          Elipse de disco parado (1.97:1), tema B4TIDA. Clicar abre o
-          console direto no B4TIDA. */}
+      {/* DECK DJ — toca-discos de verdade (base + prato com sulcos + braço),
+          entre os bancos (zona `djDeck`, z10). Clicar abre o console direto
+          no B4TIDA. */}
       {!phoneOpen && viewport.w > 0 && (() => {
         const db = zonePx(ZONES.djDeck, viewport.w, viewport.h)
-        const discH = Math.min(db.h, db.w/1.97)
-        const discW = discH*1.97
+        const size = Math.min(db.w, db.h)
         return (
-          <div style={{ position:"absolute", zIndex:44, left:db.x, top:db.y, width:db.w, height:db.h }}>
+          <div style={{ position:"absolute", zIndex:44, left:db.x + (db.w - size) / 2, top:db.y + (db.h - size) / 2, width:size, height:size }}>
             <button
               type="button"
               onClick={handleOpenBatida}
-              aria-label="Deck DJ — abrir B4TIDA"
-              style={{
-                position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)",
-                width:discW, height:discH, borderRadius:"50%", padding:0, cursor:"pointer",
-                background:"radial-gradient(ellipse at 50% 50%, #241925 0%, #0d0910 70%)",
-                border:"1.5px solid rgba(202,115,57,0.4)",
-                boxShadow:"0 0 18px rgba(202,115,57,0.25)",
-              }}
+              aria-label="Toca-discos — abrir B4TIDA"
+              style={{ position:"absolute", inset:0, padding:0, cursor:"pointer", background:"none", border:"none" }}
             >
-              <span style={{
-                position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)",
-                width:"22%", height:"22%", borderRadius:"50%",
-                background:"#8a5220", boxShadow:"0 0 8px rgba(224,139,58,0.6)",
-              }}/>
+              <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter:"drop-shadow(0 0 10px rgba(202,115,57,0.3))" }}>
+                <defs>
+                  <radialGradient id="djPlatter" cx="45%" cy="40%" r="70%">
+                    <stop offset="0%" stopColor="#2c1f2c" />
+                    <stop offset="100%" stopColor="#0d0910" />
+                  </radialGradient>
+                </defs>
+                {/* base/plinth */}
+                <rect x="3" y="3" width="94" height="94" rx="12" fill="#1c1420" stroke="rgba(202,115,57,0.4)" strokeWidth="1.5" />
+                {/* prato + sulcos */}
+                <circle cx="41" cy="56" r="32" fill="url(#djPlatter)" stroke="rgba(202,115,57,0.55)" strokeWidth="1.5" />
+                <circle cx="41" cy="56" r="25" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+                <circle cx="41" cy="56" r="18" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                <circle cx="41" cy="56" r="11" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                <circle cx="41" cy="56" r="4" fill="#8a5220" />
+                {/* braço */}
+                <circle cx="80" cy="18" r="5" fill="rgba(202,115,57,0.65)" />
+                <line x1="80" y1="18" x2="53" y2="41" stroke="rgba(224,139,58,0.75)" strokeWidth="2.5" strokeLinecap="round" />
+                <circle cx="53" cy="41" r="3.5" fill="rgba(224,139,58,0.9)" />
+              </svg>
             </button>
           </div>
         )
