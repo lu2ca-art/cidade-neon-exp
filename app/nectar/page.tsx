@@ -120,7 +120,7 @@ export default function NectarPage() {
   // ── TELA DE RESULTADO ────────────────────────────────────────────────────
   if (showResult && result) {
     return (
-      <div className="min-h-screen flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0a" }}>
+      <div className="h-dvh flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0a" }}>
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
           {/* Glow de fundo */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -174,7 +174,7 @@ export default function NectarPage() {
   const q = QUESTIONS[step]
 
   return (
-    <div className="min-h-screen flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0a" }}>
+    <div className="h-dvh flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0a" }}>
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
         {/* Background sutil */}
         <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(167,139,250,0.07) 0%, transparent 60%)" }} />

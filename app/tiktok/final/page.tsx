@@ -116,7 +116,7 @@ export default function TikTokFinalPage() {
   const video = VIDEOS[currentVideo]
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
+    <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
       <div 
         className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative"
         onTouchStart={(e) => {

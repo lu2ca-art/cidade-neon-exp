@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
-import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { sendMinimizeConsole, sendSelectRadioTier } from "@/app/providers/AudioBridge"
 import { ALL_TIERS, TIER_META, PREVIEW_TRACK, nextTierToTune, type Tier } from "@/lib/radio-tiers"
 
 // ─── SINT0NIA — hub de rádio ─────────────────────────────────────────────────
@@ -54,13 +54,6 @@ export default function SintonizadorPage() {
   const lastTsRef = useRef(0)
   const freqRef = useRef(freq)
   freqRef.current = freq
-
-  // silencia o rádio do carro (se aberto dentro de /drive) enquanto o
-  // sintonizador toca seu próprio áudio — volta ao normal ao sair
-  useEffect(() => {
-    sendCarRadioMute(true)
-    return () => sendCarRadioMute(false)
-  }, [])
 
   // monta música (real, da estação sendo sintonizada) + estática (ruído
   // sintetizado via Web Audio) uma vez, só se tiver uma estação pendente
@@ -171,7 +164,7 @@ export default function SintonizadorPage() {
   if (locked && pendingTier) {
     const meta = TIER_META[pendingTier]
     return (
-      <div className="min-h-screen flex items-center justify-center overflow-hidden" style={{ background: "#020a0c" }}>
+      <div className="h-dvh flex items-center justify-center overflow-hidden" style={{ background: "#020a0c" }}>
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: meta.color }} />
@@ -212,7 +205,7 @@ export default function SintonizadorPage() {
   // liberar estação, ou tudo que já liberou já foi sintonizado) ───────────
   if (!pendingTier) {
     return (
-      <div className="min-h-screen flex items-center justify-center overflow-hidden" style={{ background: "#020a0c" }}>
+      <div className="h-dvh flex items-center justify-center overflow-hidden" style={{ background: "#020a0c" }}>
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
           <div className="relative z-10 flex flex-col h-full px-6 pt-14 pb-10">
             <div className="flex items-center justify-between mb-8">
@@ -236,21 +229,25 @@ export default function SintonizadorPage() {
             <p className="text-white/20 text-xs text-center mb-10 max-w-[260px] mx-auto">
               {confirmationCount === 0
                 ? "complete a primeira missão pra liberar a primeira frequência"
-                : "cada frequência liberada fica sintonizada pra sempre"}
+                : "toque numa já sintonizada pra tocar ela no rádio do painel"}
             </p>
 
             <div className="flex-1 flex flex-col gap-3">
               {ALL_TIERS.map((tier: Tier) => {
                 const meta = TIER_META[tier]
                 const unlocked = radioAccepted[tier]
+                const Tag = unlocked ? "button" : "div"
                 return (
-                  <div
+                  <Tag
                     key={tier}
-                    className="flex items-center gap-3 px-4 py-3.5 rounded-2xl"
+                    type={unlocked ? "button" : undefined}
+                    onClick={unlocked ? () => { sendSelectRadioTier(tier); sendMinimizeConsole() } : undefined}
+                    className="flex items-center gap-3 px-4 py-3.5 rounded-2xl w-full text-left transition-transform active:scale-[0.98]"
                     style={{
                       background: unlocked ? `${meta.color}12` : "rgba(255,255,255,0.03)",
                       border: `1px solid ${unlocked ? meta.color + "40" : "rgba(255,255,255,0.08)"}`,
                       opacity: unlocked ? 1 : 0.5,
+                      cursor: unlocked ? "pointer" : "default",
                     }}
                   >
                     <div
@@ -265,9 +262,9 @@ export default function SintonizadorPage() {
                     </div>
                     <div className="flex-1 min-w-0 text-left">
                       <p className="font-mono text-sm font-bold" style={{ color: unlocked ? meta.color : "rgba(255,255,255,0.5)" }}>{meta.label}</p>
-                      <p className="font-mono text-xs text-white/30">{meta.freq} FM · {unlocked ? "sintonizada" : "bloqueada"}</p>
+                      <p className="font-mono text-xs text-white/30">{meta.freq} FM · {unlocked ? "toque pra tocar" : "bloqueada"}</p>
                     </div>
-                  </div>
+                  </Tag>
                 )
               })}
             </div>
@@ -280,7 +277,7 @@ export default function SintonizadorPage() {
   // ── SINTONIZADOR — tem uma frequência nova pra sintonizar agora ─────────
   const meta = TIER_META[pendingTier]
   return (
-    <div className="min-h-screen flex items-center justify-center overflow-hidden select-none" style={{ background: "#020a0c" }}>
+    <div className="h-dvh flex items-center justify-center overflow-hidden select-none" style={{ background: "#020a0c" }}>
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
         <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% 0%, ${meta.color}12 0%, transparent 60%)` }} />
 

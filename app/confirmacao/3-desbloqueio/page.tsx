@@ -11,7 +11,7 @@ export default function ConfirmacaoDesbloqueioPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "#000" }}>
+    <div className="h-dvh flex items-center justify-center" style={{ background: "#000" }}>
       <p className="font-mono text-xs" style={{ color: "rgba(0,255,240,0.4)" }}>
         carregando...
       </p>

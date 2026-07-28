@@ -91,7 +91,7 @@ export default function HackerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-[#00FF66] font-mono overflow-hidden relative">
+    <div className="h-dvh bg-black text-[#00FF66] font-mono overflow-hidden relative">
       {/* Glitch Entry Effect */}
       {showGlitch && (
         <div className="fixed inset-0 z-50 bg-black">
@@ -127,7 +127,7 @@ export default function HackerPage() {
 
       {/* Main Content */}
       <div
-        className="w-full max-w-[100vw] md:max-w-[400px] mx-auto min-h-screen flex flex-col p-6 pt-0"
+        className="w-full max-w-[100vw] md:max-w-[400px] mx-auto h-full flex flex-col p-6 pt-0 overflow-y-auto"
         style={{
           paddingBottom: "env(safe-area-inset-bottom, 24px)",
         }}

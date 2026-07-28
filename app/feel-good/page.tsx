@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
-import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { sendMinimizeConsole } from "@/app/providers/AudioBridge"
 
 interface Connection {
   music: string
@@ -74,13 +74,6 @@ export default function FeelGoodPage() {
     updateCinematicStep("confirmation-2")
   }, [updateCinematicStep])
 
-  // silencia o rádio do carro (se o teste estiver aberto dentro de /drive)
-  // enquanto o teste toca suas próprias faixas — volta ao sair daqui
-  useEffect(() => {
-    sendCarRadioMute(true)
-    return () => sendCarRadioMute(false)
-  }, [])
-
   useEffect(() => {
     if (state.confirmations.c2.done && state.confirmations.c2.connections) {
       setShowResult(true)
@@ -139,7 +132,7 @@ export default function FeelGoodPage() {
   // ── RESULTADO ────────────────────────────────────────────────────────────
   if (showResult) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
+      <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col p-6 relative">
           <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] via-[#16213e] to-[#0f0f23]" />
 
@@ -193,7 +186,7 @@ export default function FeelGoodPage() {
 
   // ── GAME ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
+    <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col relative">
         <div
           className="absolute inset-0 transition-colors duration-500"

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import type { BridgeCommand, BridgeState, PhoneNotification, CarRadioControl, MinimizeConsole } from "@/app/providers/AudioBridge"
+import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, SelectRadioTier } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe } from "@/app/providers/AudioBridge"
 import SteeringWheel3D from "@/components/SteeringWheel3D"
 import CityMap from "@/components/CityMap"
@@ -446,11 +446,14 @@ export default function DrivePage() {
   const activeTier     = manualTier ?? "suburbio"
   const activeTracks   = TRACKS_BY_TIER[activeTier]
   const radioTrack     = activeTracks.length ? activeTracks[radioIdx % activeTracks.length] : null
-  const [radioMuted, setRadioMuted] = useState(false)
   // só toca se tiver uma estação de fato sintonizada e selecionada — sem
   // isso, ligar o power sem nada sintonizado tocaria a 1ª faixa de
-  // "suburbio" mesmo sem ela ter sido liberada ainda
-  const radioActive    = radioOn && radioMachine === "playing" && !radioMuted && manualTier !== null
+  // "suburbio" mesmo sem ela ter sido liberada ainda. `!phoneOpen` é a ÚNICA
+  // regra de silêncio por sobreposição: qualquer página aberta dentro do
+  // celular (todas têm som próprio) silencia o rádio do painel; fechando o
+  // celular ele volta sozinho — substitui o antigo sistema de CAR_RADIO_MUTE
+  // espalhado por página, que dependia de cada teste lembrar de mutar/desmutar
+  const radioActive    = radioOn && radioMachine === "playing" && !phoneOpen && manualTier !== null
   // progresso de distância até a missão ativa (0..1) — só pro mini-mapa
   // (CityMap) mostrar o indicador de posição; atualizado por polling leve,
   // não precisa de precisão de frame
@@ -483,7 +486,7 @@ export default function DrivePage() {
   // Escuta comandos do iframe e executa no AudioPlayer do pai
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const data = e.data as BridgeCommand | PhoneNotification | CarRadioControl | MinimizeConsole
+      const data = e.data as BridgeCommand | PhoneNotification | MinimizeConsole | SelectRadioTier
       if (!data?.type) return
       switch (data.type) {
         case "PLAY":          audio.play(data.index); break
@@ -494,9 +497,11 @@ export default function DrivePage() {
         case "NEXT":          audio.next(); break
         case "PREV":          audio.prev(); break
         case "REQUEST_STATE": break
-        case "CAR_RADIO_MUTE":   setRadioMuted(true); break
-        case "CAR_RADIO_UNMUTE": setRadioMuted(false); break
         case "MINIMIZE_CONSOLE": setPhoneOpen(false); break
+        case "SELECT_RADIO_TIER":
+          setManualTier(data.tier)
+          setRadioOn(true)
+          break
         case "PHONE_NOTIFICATION": {
           const { id, app, icon, color, title, body, isMission } = data
           setPhoneNotif({ id, app, icon, color, title, body, isMission })
@@ -1553,44 +1558,9 @@ export default function DrivePage() {
         </div>
       )}
 
-      {/* SELETOR DE ESTAÇÃO — aparece assim que a primeira frequência é
-          sintonizada (não precisa terminar a experiência inteira). Só lista
-          as já sintonizadas; escolher uma troca a estação e liga o rádio —
-          pra voltar a uma que já estava selecionada, só ligar o power, sem
-          precisar escolher de novo */}
-      {!phoneOpen && viewport.w > 0 && ALL_TIERS.some(t => radioAccepted[t]) && (() => {
-        const rz = zonePx(ZONES.radio, viewport.w, viewport.h)
-        return (
-        <div style={{
-          position:"absolute",
-          left:rz.x, top:rz.y + rz.h + 6, width:rz.w,
-          zIndex:46,
-          display:"flex", gap:5, justifyContent:"center",
-        }}>
-          {ALL_TIERS.filter(t => radioAccepted[t]).map((tier) => {
-            const meta = F[tier]
-            const isSelected = manualTier === tier
-            return (
-              <button
-                key={tier}
-                type="button"
-                onClick={() => { setManualTier(tier); setRadioOn(true) }}
-                style={{
-                  flex:1, padding:"5px 3px", borderRadius:8,
-                  background: isSelected ? `${meta.color}22` : "rgba(255,255,255,0.04)",
-                  border:`1px solid ${isSelected ? meta.color+"aa" : "rgba(255,255,255,0.12)"}`,
-                  color: isSelected ? meta.color : "rgba(255,255,255,0.5)",
-                  fontFamily:"monospace", fontSize:6.5, letterSpacing:0.5,
-                  lineHeight:1.3, cursor:"pointer",
-                }}
-              >
-                {meta.label}<br/>{meta.freq}
-              </button>
-            )
-          })}
-        </div>
-        )
-      })()}
+      {/* Trocar entre as frequências já sintonizadas agora é feito dentro do
+          próprio SINT0NIA (favoritos) — ver SELECT_RADIO_TIER no AudioBridge —
+          não fica mais um seletor solto aqui no painel */}
 
       {/* CHEGOU NA MISSÃO — dirigiu a distância até o marcador do contato no
           mapa. Aceitar abre o celular direto na missão, liga o piloto

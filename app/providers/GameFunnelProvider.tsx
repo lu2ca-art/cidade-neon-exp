@@ -413,7 +413,7 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
   // Don't render children until hydrated to avoid hydration mismatch
   if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="h-dvh bg-black flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     )

@@ -72,7 +72,7 @@ export default function SalaBrancaPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center overflow-hidden">
+    <div className="h-dvh flex items-center justify-center overflow-hidden">
       {/* Aurora background */}
       <div 
         className="absolute inset-0 transition-all duration-[10000ms] ease-linear"

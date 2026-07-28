@@ -3,6 +3,8 @@
  * O iframe envia comandos; o pai executa e devolve estado.
  */
 
+import type { Tier } from "@/lib/radio-tiers"
+
 export type BridgeCommand =
   | { type: "PLAY"; index: number }
   | { type: "PAUSE" }
@@ -69,18 +71,6 @@ export function sendNotificationClickToIframe(iframe: HTMLIFrameElement | null, 
   iframe.contentWindow.postMessage(msg, "*")
 }
 
-// Silencia o rádio do carro (painel de /drive) enquanto um teste com áudio
-// próprio está aberto dentro do celular (SINT0NIA, B4TIDA, GUITAR DRIVER) — evita
-// as duas trilhas tocando ao mesmo tempo. Some no cancel, volta ao sair.
-export type CarRadioControl = { type: "CAR_RADIO_MUTE" } | { type: "CAR_RADIO_UNMUTE" }
-
-export function sendCarRadioMute(muted: boolean) {
-  if (typeof window === "undefined") return
-  if (window.self === window.top) return // não está dentro de um iframe (ex.: /feel-good aberto direto)
-  const msg: CarRadioControl = { type: muted ? "CAR_RADIO_MUTE" : "CAR_RADIO_UNMUTE" }
-  window.parent.postMessage(msg, "*")
-}
-
 // Pede pro /drive minimizar o console (fechar o painel maximizado) — usado
 // ao voltar de uma missão completa, pra a pessoa cair de volta na cena do
 // carro (e no diálogo de nova frequência) em vez de ficar presa no console
@@ -90,5 +80,17 @@ export function sendMinimizeConsole() {
   if (typeof window === "undefined") return
   if (window.self === window.top) return
   const msg: MinimizeConsole = { type: "MINIMIZE_CONSOLE" }
+  window.parent.postMessage(msg, "*")
+}
+
+// Escolher, dentro do SINT0NIA (favoritos), qual das frequências já
+// sintonizadas o rádio do painel deve tocar — o seletor de estação não fica
+// mais solto no painel do carro, só dentro do próprio app de sintonia
+export type SelectRadioTier = { type: "SELECT_RADIO_TIER"; tier: Tier }
+
+export function sendSelectRadioTier(tier: Tier) {
+  if (typeof window === "undefined") return
+  if (window.self === window.top) return
+  const msg: SelectRadioTier = { type: "SELECT_RADIO_TIER", tier }
   window.parent.postMessage(msg, "*")
 }

@@ -83,7 +83,7 @@ function loadMessages(): Message[] {
   } catch { return [] }
 }
 
-export default function WhatsAppGrupoPage() {
+export default function N3xoGrupoPage() {
   const router = useRouter()
   const { state, updateCinematicStep } = useGameFunnel()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -166,8 +166,8 @@ export default function WhatsAppGrupoPage() {
   const visibleMessages = finalCompleted || groupOpacity > 0.02 ? messages : []
 
   return (
-    <div className="min-h-screen bg-[#0B141A] flex items-center justify-center touch-manipulation">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative"
+    <div className="h-dvh bg-[#0B141A] flex items-center justify-center touch-manipulation overflow-hidden">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative overflow-hidden"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Cpath fill='%23182229' d='M0 0h80v80H0z'/%3E%3Cpath fill='%231F2C34' opacity='0.3' d='M20 20h2v2h-2zm40 0h2v2h-2zm-20 20h2v2h-2zm40 0h2v2h-2zm-60 20h2v2h-2zm40 0h2v2h-2z'/%3E%3C/svg%3E")` }}>
 
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -183,7 +183,7 @@ export default function WhatsAppGrupoPage() {
 
         {/* Header */}
         <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2">
-          <button type="button" onClick={() => router.push("/whatsapp")} className="p-2 text-[#AEBAC1] min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <button type="button" onClick={() => router.push("/n3xo")} className="p-2 text-[#AEBAC1] min-h-[44px] min-w-[44px] flex items-center justify-center">
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg>
           </button>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center">

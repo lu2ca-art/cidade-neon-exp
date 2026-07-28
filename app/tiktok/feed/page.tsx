@@ -322,7 +322,7 @@ export default function TikTokFeedPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] relative overflow-hidden">
         {/* Notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />

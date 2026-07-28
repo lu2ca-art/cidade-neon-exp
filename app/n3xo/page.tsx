@@ -2,7 +2,7 @@
 
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useRouter } from "next/navigation"
-import { SCRIPTS, phaseFor, type MemberKey } from "@/app/whatsapp/privado/[member]/page"
+import { SCRIPTS, phaseFor, type MemberKey } from "@/app/n3xo/privado/[member]/page"
 
 // Ordem cronológica real da história — Alohan fala primeiro (desde cc=0),
 // Nizzy entra depois que o teste 1 termina, D-Bee depois do teste 2. Antes
@@ -15,7 +15,7 @@ const AVATARS: Record<MemberKey, { avatar: string; color: string }> = {
   dbee: { avatar: "D", color: "#6B7FD7" },
 }
 
-export default function WhatsAppHome() {
+export default function N3xoHome() {
   const { state } = useGameFunnel()
   const router = useRouter()
   const cc = state.confirmationCount
@@ -35,8 +35,8 @@ export default function WhatsAppHome() {
     })
 
   return (
-    <div className="min-h-screen bg-[#111B21] flex items-center justify-center">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col relative bg-[#111B21]">
+    <div className="h-dvh bg-[#111B21] flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col relative bg-[#111B21] overflow-hidden">
         {/* Notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
 
@@ -54,7 +54,7 @@ export default function WhatsAppHome() {
           <button type="button" onClick={() => router.push("/?screen=home")} className="text-[#00A884]">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
           </button>
-          <h1 className="text-white text-xl font-bold flex-1 ml-4">WhatsApp</h1>
+          <h1 className="text-white text-xl font-bold flex-1 ml-4">N3XO</h1>
           <svg className="w-5 h-5 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
         </div>
 
@@ -63,7 +63,7 @@ export default function WhatsAppHome() {
           {/* Group Chat */}
           <button
             type="button"
-            onClick={() => router.push("/whatsapp/grupo")}
+            onClick={() => router.push("/n3xo/grupo")}
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 active:bg-white/10 transition-colors border-b border-white/5"
           >
             <div className="w-12 h-12 rounded-full bg-[#00A884] flex items-center justify-center flex-shrink-0">
@@ -90,7 +90,7 @@ export default function WhatsAppHome() {
               <button
                 key={key}
                 type="button"
-                onClick={() => router.push(`/whatsapp/privado/${key}`)}
+                onClick={() => router.push(`/n3xo/privado/${key}`)}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 active:bg-white/10 transition-colors border-b border-white/5"
               >
                 <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>

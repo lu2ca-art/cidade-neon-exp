@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { sendMinimizeConsole } from "@/app/providers/AudioBridge"
 import { analyzeAudioForTiles, type AnalyzedTile } from "@/lib/audio-analysis"
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
@@ -96,25 +96,49 @@ function generateTiles(song: Song): Tile[] {
     while (col === lastCol) col = cols[Math.floor(Math.random() * 4)]
     lastCol = col
 
-    // ~15% de chance de nota longa; duração entre 600ms e 1500ms
-    const isHold = Math.random() < 0.15
-    const holdDur = isHold ? 600 + Math.floor(Math.random() * 900) : 0
-
     tiles.push({
       id: id++,
       col,
       beatTime: t,
       hit: false,
       missed: false,
-      hold: isHold,
-      holdDuration: holdDur,
+      hold: false,
+      holdDuration: 0,
       holdActive: false,
       holdBroken: false,
     })
 
+    // notas longas atrapalhavam a jogabilidade — no lugar delas (mesma
+    // ~15% de chance de antes), uma rajada de 2-3 notas curtas extras
+    // preenche o mesmo intervalo de tempo, aumentando a densidade em vez
+    // de segurar o botão
+    if (Math.random() < 0.15) {
+      const burstCount = 2 + Math.floor(Math.random() * 2)
+      const burstSpacing = 120 + Math.random() * 80
+      let bt = t + burstSpacing
+      for (let i = 0; i < burstCount; i++) {
+        let bcol = cols[Math.floor(Math.random() * 4)]
+        while (bcol === lastCol) bcol = cols[Math.floor(Math.random() * 4)]
+        lastCol = bcol
+        tiles.push({
+          id: id++,
+          col: bcol,
+          beatTime: bt,
+          hit: false,
+          missed: false,
+          hold: false,
+          holdDuration: 0,
+          holdActive: false,
+          holdBroken: false,
+        })
+        bt += burstSpacing
+      }
+      t = bt
+    }
+
     // variação de ritmo: às vezes chega mais rápido, às vezes pausa
     const jitter = (Math.random() - 0.5) * 200
-    t += interval + jitter + (isHold ? holdDur * 0.5 : 0)
+    t += interval + jitter
   }
 
   return tiles.sort((a, b) => a.beatTime - b.beatTime)
@@ -236,12 +260,6 @@ export default function NeonTilesPage() {
 
   useEffect(() => { tilesRef.current = tiles }, [tiles])
 
-  // silencia o rádio do carro (se o teste estiver aberto dentro de /drive)
-  // enquanto o GUITAR DRIVER toca suas próprias faixas — volta ao sair daqui
-  useEffect(() => {
-    sendCarRadioMute(true)
-    return () => sendCarRadioMute(false)
-  }, [])
 
   // controle (joystick/gamepad) conectado — só pra mostrar o indicador; a
   // leitura dos botões acontece a cada frame dentro do renderFrame
@@ -867,7 +885,7 @@ export default function NeonTilesPage() {
   if (phase === "select") {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center p-6"
+        className="h-dvh flex flex-col items-center justify-center p-6 overflow-hidden"
         style={{ background: "radial-gradient(ellipse at center, #0d0d2b 0%, #000 100%)" }}
       >
         <p className="font-mono text-xs mb-2 tracking-widest" style={{ color: "rgba(0,255,240,0.5)" }}>
@@ -885,15 +903,15 @@ export default function NeonTilesPage() {
         <p className="font-mono text-xs mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>
           complete 4 faixas para desbloquear a recompensa
         </p>
-        <p className="font-mono text-[11px] mb-10" style={{ color: "rgba(255,255,255,0.25)" }}>
+        <p className="font-mono text-[11px] mb-4" style={{ color: "rgba(255,255,255,0.25)" }}>
           jogue no toque, no teclado (D F J K) {gamepadConnected ? "ou no controle conectado" : "ou conectando um controle"}
         </p>
-        <div className="w-full max-w-sm space-y-3">
+        <div className="w-full max-w-sm space-y-2">
           {SONGS.map(song => (
             <button
               key={song.id}
               onClick={() => { setSelectedSong(song); startGame(song) }}
-              className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all active:scale-95"
+              className="w-full flex items-center gap-4 px-5 py-3 rounded-2xl transition-all active:scale-95"
               style={{
                 background: `linear-gradient(135deg,${song.color}18 0%,${song.accentColor}10 100%)`,
                 border: `1.5px solid ${song.color}40`,
@@ -919,7 +937,7 @@ export default function NeonTilesPage() {
         <button
           onClick={() => router.push("/?screen=home")}
           aria-label="Inicio"
-          className="mt-10 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90"
+          className="mt-4 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 flex-shrink-0"
           style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.25)" strokeWidth={1.5}>
@@ -936,7 +954,7 @@ export default function NeonTilesPage() {
   if (phase === "analyzing") {
     const song = selectedSong || SONGS[0]
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "#000" }}>
+      <div className="h-dvh flex flex-col items-center justify-center overflow-hidden" style={{ background: "#000" }}>
         <p className="font-mono text-xs mb-4 tracking-widest" style={{ color: song.color + "80" }}>{song.title}</p>
         <div
           className="w-10 h-10 rounded-full animate-spin mb-4"
@@ -954,7 +972,7 @@ export default function NeonTilesPage() {
   if (phase === "countdown") {
     const song = selectedSong || SONGS[0]
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "#000" }}>
+      <div className="h-dvh flex flex-col items-center justify-center overflow-hidden" style={{ background: "#000" }}>
         <p className="font-mono text-xs mb-4 tracking-widest" style={{ color: song.color + "80" }}>{song.title}</p>
         <p className="font-mono font-bold" style={{ fontSize: 96, color: song.color, textShadow: `0 0 40px ${song.color},0 0 80px ${song.color}66` }}>
           {countdown === 0 ? "GO" : countdown}
@@ -971,12 +989,12 @@ export default function NeonTilesPage() {
   if (phase === "result" && profile) {
     const cfg = PROFILE_CONFIG[profile]
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "#000" }}>
+      <div className="h-dvh flex flex-col items-center justify-center p-6 overflow-hidden" style={{ background: "#000" }}>
         <div className="w-full max-w-sm text-center">
-          <p className="font-mono text-xs mb-6 tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>RESULTADO</p>
-          <h1 className="font-mono font-bold text-3xl mb-3" style={{ color: cfg.color, textShadow: `0 0 30px ${cfg.color}` }}>{profile}</h1>
-          <p className="font-mono text-sm mb-8" style={{ color: "rgba(255,255,255,0.6)" }}>{cfg.message}</p>
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <p className="font-mono text-xs mb-3 tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>RESULTADO</p>
+          <h1 className="font-mono font-bold text-3xl mb-2" style={{ color: cfg.color, textShadow: `0 0 30px ${cfg.color}` }}>{profile}</h1>
+          <p className="font-mono text-sm mb-4" style={{ color: "rgba(255,255,255,0.6)" }}>{cfg.message}</p>
+          <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: "ACURACIA", value: `${accuracy}%`, color: cfg.color },
               { label: "MAX COMBO", value: finalCombo, color: "#FF00A8" },
@@ -989,16 +1007,16 @@ export default function NeonTilesPage() {
               </div>
             ))}
           </div>
-          <p className="font-mono text-xs mb-8" style={{ color: "rgba(255,255,255,0.3)" }}>{cfg.reward}</p>
+          <p className="font-mono text-xs mb-4" style={{ color: "rgba(255,255,255,0.3)" }}>{cfg.reward}</p>
           {/* Progresso de faixas */}
-          <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="flex items-center justify-center gap-2 mb-4">
             {[0,1,2,3].map(i => (
               <div key={i} className="w-8 h-2 rounded-full transition-all"
                 style={{ background: i < completedSongs ? cfg.color : "rgba(255,255,255,0.08)", boxShadow: i < completedSongs ? `0 0 8px ${cfg.color}` : "none" }}
               />
             ))}
           </div>
-          <p className="font-mono text-[11px] mb-10" style={{ color: "rgba(255,255,255,0.2)" }}>
+          <p className="font-mono text-[11px] mb-4" style={{ color: "rgba(255,255,255,0.2)" }}>
             {completedSongs}/4 faixas completadas
           </p>
           <div className="flex gap-3">
@@ -1022,10 +1040,10 @@ export default function NeonTilesPage() {
 
   if (phase === "reward") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "radial-gradient(ellipse at 50% 30%, #1a003a 0%, #000 70%)" }}>
+      <div className="h-dvh flex flex-col items-center justify-center p-6 overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 30%, #1a003a 0%, #000 70%)" }}>
         <div className="w-full max-w-sm text-center">
           {/* Animacao de desbloqueio */}
-          <div className="relative flex items-center justify-center mb-8">
+          <div className="relative flex items-center justify-center mb-4">
             <div className="absolute w-32 h-32 rounded-full animate-ping" style={{ background: "rgba(139,92,246,0.12)" }} />
             <div className="absolute w-24 h-24 rounded-full animate-pulse" style={{ background: "rgba(139,92,246,0.2)" }} />
             <div className="w-20 h-20 rounded-full flex items-center justify-center relative z-10" style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)", boxShadow: "0 0 40px rgba(124,58,237,0.6)" }}>
@@ -1045,7 +1063,7 @@ export default function NeonTilesPage() {
           <p className="font-mono text-sm mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>
             voce desbloqueou uma recompensa.
           </p>
-          <p className="font-mono text-xs mb-10" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <p className="font-mono text-xs mb-4" style={{ color: "rgba(255,255,255,0.3)" }}>
             descubra na conversa com D-Bee, pelo N3XO.
           </p>
 
@@ -1080,7 +1098,7 @@ export default function NeonTilesPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center"
+      className="h-dvh flex flex-col items-center overflow-hidden"
       style={{ background: "#000", paddingBottom: "env(safe-area-inset-bottom)", userSelect: "none" }}
     >
       {/* Header */}

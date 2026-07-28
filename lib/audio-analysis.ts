@@ -192,8 +192,21 @@ export function analyzeAudioForTiles(buffer: AudioBuffer, bpm: number, durationM
     const col = order[0] === lastCol ? order[1] : order[0]
     lastCol = col
 
-    const holdMs = holdDurationMs(rms, frame, hopSeconds)
-    tiles.push({ col, beatTime: timeMs, hold: holdMs > 0, holdDuration: holdMs })
+    // notas longas atrapalhavam a jogabilidade — trechos sustentados que
+    // antes viravam uma nota segurada agora viram uma rajada de notas
+    // curtas na mesma coluna, cobrindo a mesma janela de tempo
+    const sustainMs = holdDurationMs(rms, frame, hopSeconds)
+    if (sustainMs > 0) {
+      const noteSpacing = Math.max(90, gridMs)
+      const count = Math.max(2, Math.round(sustainMs / noteSpacing))
+      for (let i = 0; i < count; i++) {
+        const bt = timeMs + i * noteSpacing
+        if (bt > endMs) break
+        tiles.push({ col, beatTime: bt, hold: false, holdDuration: 0 })
+      }
+    } else {
+      tiles.push({ col, beatTime: timeMs, hold: false, holdDuration: 0 })
+    }
   }
 
   return tiles.sort((a, b) => a.beatTime - b.beatTime)

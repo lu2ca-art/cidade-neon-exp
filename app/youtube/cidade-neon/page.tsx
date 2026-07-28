@@ -69,8 +69,8 @@ export default function YouTubeCidadeNeonPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#0f0f0f]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", Roboto, sans-serif' }}>
+    <div className="h-dvh bg-black flex items-center justify-center touch-manipulation overflow-hidden">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col bg-[#0f0f0f] overflow-hidden" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", Roboto, sans-serif' }}>
         
   {/* Notch */}
   <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -296,7 +296,7 @@ export default function YouTubeCidadeNeonPage() {
                 </button>
               </div>
               <div className="flex gap-4 overflow-x-auto pb-2">
-                {["WhatsApp", "Instagram", "Twitter", "Copiar Link"].map(app => (
+                {["N3XO", "Instagram", "Twitter", "Copiar Link"].map(app => (
                   <button key={app} type="button" className="flex flex-col items-center gap-2 min-w-[60px]">
                     <div className="w-12 h-12 rounded-full bg-[#383838] flex items-center justify-center">
                       <span className="text-white text-xs font-bold">{app[0]}</span>

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { ALBUM_TRACKS, useAudioPlayer, type Track } from "@/app/providers/AudioPlayerProvider"
-import { sendToParent, sendCarRadioMute, type BridgeState } from "@/app/providers/AudioBridge"
+import { sendToParent, type BridgeState } from "@/app/providers/AudioBridge"
 import { ALL_TIERS, TIER_META, missionDoneForTier } from "@/lib/radio-tiers"
 
 // Painel de monitor vital, não um clone de Spotify: verde de EKG, não o
@@ -412,14 +412,6 @@ function FrequenciaPlayer() {
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
 
-  // Silencia o rádio do carro (se aberto dentro de /drive) enquanto o
-  // FREQUÊNCIA toca suas próprias prévias — mesmo padrão que NECTAR/B4TIDA/
-  // GUITAR DRIVER/SINT0NIA já usam. Sem isso, tocar uma faixa aqui rodava por
-  // cima do que já estivesse tocando no rádio do painel ao mesmo tempo.
-  useEffect(() => {
-    sendCarRadioMute(true)
-    return () => sendCarRadioMute(false)
-  }, [])
 
   // Auto-play CHUVA ao montar, só se nada estiver tocando — é a única prévia
   // sempre liberada, antes mesmo do resto do álbum destravar
@@ -440,7 +432,7 @@ function FrequenciaPlayer() {
     isFirst.current = false
     updateSpotifyState({ completed: true })
     updateCinematicStep("whatsapp-notification")
-    router.push("/whatsapp/grupo")
+    router.push("/n3xo/grupo")
   }
 
   // padrão de EKG: linha de base quase plana com um "complexo QRS" (o
@@ -459,7 +451,7 @@ function FrequenciaPlayer() {
   }, [audio, track.durationSec])
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center touch-manipulation select-none">
+    <div className="h-dvh bg-black flex items-center justify-center touch-manipulation select-none overflow-hidden">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative flex flex-col overflow-hidden" style={{ background: "#040a08" }}>
         {/* notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -481,7 +473,7 @@ function FrequenciaPlayer() {
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <div className="flex items-center justify-between">
-                  <p className="text-black font-semibold text-sm">WhatsApp</p>
+                  <p className="text-black font-semibold text-sm">N3XO</p>
                   <span className="text-[#8e8e93] text-xs">agora</span>
                 </div>
                 <p className="text-black font-medium text-xs">Cidade Neon</p>

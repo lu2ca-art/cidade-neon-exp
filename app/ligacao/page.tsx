@@ -57,16 +57,16 @@ export default function LigacaoPage() {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center overflow-x-hidden">
+    <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
       <div
-        className={`w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col transition-opacity duration-500 ${
+        className={`w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] overflow-hidden bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col transition-opacity duration-500 ${
           isEnding ? "opacity-0" : "opacity-100"
         }`}
         style={{

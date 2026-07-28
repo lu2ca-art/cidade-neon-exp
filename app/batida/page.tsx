@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
-import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { sendMinimizeConsole } from "@/app/providers/AudioBridge"
 
 // ─── B4TIDA — construtor de batida, teste de confirmação #2 ─────────────────
 // Sequenciador de 4 trilhas x 8 passos, tocando em loop constante. Existe uma
@@ -130,7 +130,6 @@ export default function BatidaPage() {
   const previewLeftStepsRef = useRef(0)
 
   useEffect(() => { updateCinematicStep("confirmation-2") }, [updateCinematicStep])
-  useEffect(() => { sendCarRadioMute(true); return () => sendCarRadioMute(false) }, [])
   useEffect(() => { patternRef.current = pattern }, [pattern])
 
   // monta o AudioContext compartilhado (bateria sintetizada) uma vez
@@ -204,7 +203,7 @@ export default function BatidaPage() {
   // ── RESULTADO ──────────────────────────────────────────────────────────
   if (locked || alreadyDone) {
     return (
-      <div className="min-h-screen flex items-center justify-center overflow-hidden" style={{ background: "#0a0206" }}>
+      <div className="h-dvh flex items-center justify-center overflow-hidden" style={{ background: "#0a0206" }}>
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: ACCENT }} />
@@ -248,7 +247,7 @@ export default function BatidaPage() {
 
   // ── SEQUENCIADOR ──────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center overflow-hidden select-none" style={{ background: "#0a0206" }}>
+    <div className="h-dvh flex items-center justify-center overflow-hidden select-none" style={{ background: "#0a0206" }}>
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
         <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% 0%, ${ACCENT}12 0%, transparent 60%)` }} />
 

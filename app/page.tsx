@@ -11,6 +11,7 @@ import { TIER_META, ALL_TIERS, type Tier } from "@/lib/radio-tiers"
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
+  | "start"
   | "incoming-call"
   | "active-call"
   | "hacker"
@@ -244,30 +245,21 @@ export default function CidadeNeonWrapper() {
 }
 
 function CidadeNeonExperience() {
-  const { state: gameFunnelState, setState, completeConfirmation, resetExperience } = useGameFunnel()
+  const { state: gameFunnelState, setState, completeConfirmation, resetExperience, updateCinematicStep, updateHackerState } = useGameFunnel()
   const globalAudio = useAudioPlayer()
   const searchParams = useSearchParams()
   
   // Determine initial phase based on GameFunnel state
   const getInitialPhase = (): Phase => {
-    // Allow forcing a starting screen via query param (used by the in-game phone iframe)
+    // Allow forcing a starting screen via query param (usado só pelo iframe
+    // do celular dentro de /drive — não é uma visita de verdade a lu2ca.art)
     const forced = searchParams?.get("screen")
     if (forced === "home") return "phone-home"
-    // Once the hacker takeover has completed, coming back to "/" must NEVER
-    // replay the incoming call or hacker sequence. Check this FIRST so the
-    // cinematic never repeats after the flow has moved past it.
-    if (gameFunnelState.perAppState.hacker.completed) return "phone-home"
-    const step = gameFunnelState.cinematicStep
-    if (step === "idle" || step === "incoming-call") return "incoming-call"
-    if (step === "active-call") return "active-call"
-    if (step === "hacker-takeover") return "hacker"
-    // All post-hacker steps now go to phone-home, since WhatsApp/Spotify/YouTube/TikTok/confirmations are separate pages
-    if (step === "spotify-auto" || step === "whatsapp-notification") return "phone-home"
-    if (step === "whatsapp-group") return "phone-home"
-    if (step === "confirmation-1" || step === "confirmation-2" || step === "confirmation-3" || step === "neon-tiles-complete") return "phone-home"
-    if (step === "private-notifications" || step === "tiktok-notification" || step === "tiktok-final") return "phone-home"
-    if (step === "completed" || step === "sala-branca") return "phone-home"
-    return "incoming-call"
+    // lu2ca.art é sempre a tela de início: visitar "/" direto no navegador
+    // nunca pula pro jogo, mesmo que a pessoa já tenha progresso salvo —
+    // retomar de onde parou acontece de dentro do jogo (/drive), nunca
+    // recarregando a raiz do site
+    return "start"
   }
 
   /* ── Phase ────────── */
@@ -437,8 +429,10 @@ function CidadeNeonExperience() {
           if (callTimerRef.current) clearInterval(callTimerRef.current)
           if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null }
           playDisconnect()
-          // Short delay so user hears the disconnect tone before transition
-          setTimeout(() => setPhase("hacker"), 2500)
+          // Short delay so user hears the disconnect tone before transition —
+          // hacker já aconteceu antes da ligação, então agora ela é o último
+          // passo do início: termina e cai direto no carro
+          setTimeout(() => { window.location.href = "/drive" }, 2500)
           return d
         }
         return d + 1
@@ -477,7 +471,12 @@ function CidadeNeonExperience() {
   useEffect(() => {
     if (phase === "hacker" && hackerIdx >= HACKER_LINES.length) {
       const t = setTimeout(() => {
-        window.location.href = "/drive"
+        // hacker termina de invadir e a ligação chega em seguida — a pessoa
+        // só vai pro carro (/drive) depois de atender e desligar a ligação
+        updateHackerState({ completed: true })
+        updateCinematicStep("incoming-call")
+        setCallState("ringing")
+        setPhase("incoming-call")
       }, 1500)
       return () => clearTimeout(t)
     }
@@ -650,21 +649,21 @@ function CidadeNeonExperience() {
     if (cc === 0) {
       // Missao 1: Alohan orienta abrir NECTAR
       missions.push(
-        { id: "whatsapp-alohan-0", app: "WhatsApp", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/whatsapp/privado/alohan", isMission: true },
+        { id: "whatsapp-alohan-0", app: "N3XO", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/n3xo/privado/alohan", isMission: true },
       )
     } else if (cc === 1) {
       // Missao 1 completa: cc>=1 libera SUBÚRBIO XÊNON (não CRYPTO, era o
       // bug antes daqui)
       pushSintonia("suburbio")
       missions.push(
-        { id: "whatsapp-nizzy-1", app: "WhatsApp", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/whatsapp/privado/nizzy", isMission: true },
+        { id: "whatsapp-nizzy-1", app: "N3XO", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/n3xo/privado/nizzy", isMission: true },
       )
     } else if (cc === 2) {
       // Missao 2 completa: cc>=2 libera CIDADENEON.CRYPTO (não LIVE, era o
       // bug antes daqui)
       pushSintonia("crypto")
       missions.push(
-        { id: "whatsapp-dbee-2", app: "WhatsApp", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/whatsapp/privado/dbee", isMission: true },
+        { id: "whatsapp-dbee-2", app: "N3XO", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/n3xo/privado/dbee", isMission: true },
       )
     } else {
       // Missao 3 (GUITAR DRIVER) completa: cc>=3 libera LIVE NEON e também
@@ -830,6 +829,97 @@ function CidadeNeonExperience() {
   }
 
   /* ═══════════════════════════════════════════════════ */
+  /* ─── RENDER: START (landing de lu2ca.art) ───────── */
+  /* ═══════════════════════════════════════════════════ */
+  if (phase === "start") {
+    const handlePlay = () => {
+      setState({ flowStarted: true })
+      updateCinematicStep("hacker-takeover")
+      setPhase("hacker")
+    }
+
+    return (
+      <div
+        className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center select-none"
+        style={{ background: "linear-gradient(180deg, #1a0533 0%, #4a0a6b 45%, #cc4400 78%, #ffb347 100%)" }}
+      >
+        {/* Sol/lua brilhando no horizonte */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: "38vmax", height: "38vmax",
+            left: "50%", top: "58%", transform: "translate(-50%,-50%)",
+            background: "radial-gradient(circle at 50% 50%, #fff6d8 0%, #ffd36b 35%, #ff7a3d 65%, transparent 75%)",
+            boxShadow: "0 0 120px 40px rgba(255,150,60,0.35)",
+          }}
+        />
+        {/* Estrelas */}
+        <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.6 }}>
+          {Array.from({ length: 40 }, (_, i) => (
+            <div key={i} className="absolute rounded-full bg-white" style={{
+              width: i % 5 === 0 ? 2 : 1, height: i % 5 === 0 ? 2 : 1,
+              left: `${(i * 37) % 100}%`, top: `${(i * 53) % 55}%`,
+              opacity: 0.3 + (i % 4) * 0.15,
+            }} />
+          ))}
+        </div>
+
+        {/* Estrada em perspectiva, some no horizonte */}
+        <div className="absolute left-0 right-0 bottom-0 overflow-hidden" style={{ height: "42vh" }}>
+          <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 0%, rgba(10,2,10,0.4) 60%, rgba(5,0,10,0.85) 100%)" }} />
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polygon points="42,0 58,0 92,100 8,100" fill="#1c0a2e" />
+            {[18, 34, 50, 66, 82].map((x, i) => (
+              <line key={i} x1={50} y1={0} x2={x} y2={100} stroke="#ff2fb0" strokeWidth={i === 2 ? 0.6 : 0.25} opacity={0.5} />
+            ))}
+            <line x1="50" y1="0" x2="50" y2="100" stroke="#00fff0" strokeWidth="0.35" opacity="0.7" />
+          </svg>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="relative z-10 flex flex-col items-center px-6 text-center">
+          <h1
+            className="font-mono font-black tracking-tight leading-[0.9]"
+            style={{
+              fontSize: "clamp(2.75rem, 10vw, 7.5rem)",
+              background: "linear-gradient(180deg, #f0d9ff 0%, #c77dff 40%, #7c3aed 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 26px rgba(124,58,237,0.65)) drop-shadow(0 0 60px rgba(255,0,168,0.35))",
+            }}
+          >
+            CIDADE NEON
+          </h1>
+          <p className="font-mono text-white/50 tracking-[0.3em] uppercase mt-3" style={{ fontSize: "clamp(0.6rem, 1.4vw, 0.85rem)" }}>
+            uma experiência interativa imersiva
+          </p>
+
+          <button
+            type="button"
+            onClick={handlePlay}
+            className="mt-12 flex items-center gap-3 px-8 py-4 rounded-xl transition-transform active:scale-95 hover:scale-105"
+            style={{
+              background: "rgba(0,0,0,0.35)",
+              border: "2px solid #00fff0",
+              boxShadow: "0 0 24px rgba(0,255,240,0.5), inset 0 0 16px rgba(0,255,240,0.15)",
+            }}
+          >
+            <span className="font-mono text-lg" aria-hidden>▞▚</span>
+            <span className="font-mono font-bold text-xl tracking-[0.3em]" style={{ color: "#00fff0", textShadow: "0 0 10px #00fff0" }}>
+              PLAY
+            </span>
+            <span className="font-mono text-lg" aria-hidden>▚▞</span>
+          </button>
+        </div>
+
+        <p className="absolute bottom-6 left-0 right-0 text-center font-mono text-white/25 text-[10px] tracking-[0.35em] uppercase">
+          lu2ca.art
+        </p>
+      </div>
+    )
+  }
+
+  /* ═══════════════════════════════════════════════════ */
   /* ─── RENDER: INCOMING CALL (loop until accept) ──── */
   /* ═══════════════════════════════════════════════════ */
   if (phase === "incoming-call") {
@@ -844,11 +934,12 @@ function CidadeNeonExperience() {
       setCallDuration(0)
       setIsMuted(false)
       setIsSpeakerOn(false)
+      updateCinematicStep("active-call")
       setPhase("active-call")
     }
 
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
+      <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
         <div className={`w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col relative ${callState === "ringing" ? "animate-call-vibrate" : ""}`} style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
           {/* Notch */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -944,7 +1035,7 @@ function CidadeNeonExperience() {
   /* ─── RENDER: ACTIVE CALL (25s with audio) ─────── */
   if (phase === "active-call") {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center overflow-hidden">
+      <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] bg-gradient-to-b from-[#1C1C1E] to-black flex flex-col relative" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif', backgroundImage: "radial-gradient(ellipse 80% 80% at 50% 30%, rgba(124,58,237,0.06) 0%, transparent 60%)" }}>
           {/* Notch */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -1022,7 +1113,7 @@ function CidadeNeonExperience() {
             </div>
             {/* End call */}
             <div className="flex justify-center">
-              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); playDisconnect(); setTimeout(() => setPhase("hacker"), 2500) }} className="w-[60px] h-[60px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
+              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); playDisconnect(); setTimeout(() => { window.location.href = "/drive" }, 2500) }} className="w-[60px] h-[60px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
                 <svg className="w-7 h-7 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
               </button>
             </div>
@@ -1040,7 +1131,7 @@ function CidadeNeonExperience() {
   /* ─── RENDER: HACKER ─────────────────────────────── */
   if (phase === "hacker") {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center font-mono">
+      <div className="h-dvh bg-black flex items-center justify-center font-mono">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-black flex flex-col relative overflow-hidden">
           {/* Scanlines */}
           <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.3) 2px,rgba(0,0,0,.3) 4px)" }} />
@@ -1070,8 +1161,8 @@ function CidadeNeonExperience() {
   /* ─── RENDER: SPOTIFY ────────────────────────────── */
   if (phase === "spotify") {
     return (
-      <div className={`min-h-screen bg-[#121212] flex items-center justify-center ${isGlitching ? "animate-glitch" : ""}`}>
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] bg-gradient-to-b from-[#2A1F4E] via-[#1A1030] to-[#121212] flex flex-col">
+      <div className={`h-dvh bg-[#121212] flex items-center justify-center overflow-hidden ${isGlitching ? "animate-glitch" : ""}`}>
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] overflow-hidden bg-gradient-to-b from-[#2A1F4E] via-[#1A1030] to-[#121212] flex flex-col">
           {/* iPhone Notch */}
           <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -1124,8 +1215,8 @@ function CidadeNeonExperience() {
   /* ─── RENDER: WHATSAPP GROUP ─────────────────────── */
   if (phase === "whatsapp-group" || phase === "post-confirm-group") {
     return (
-      <div className="min-h-screen bg-[#0B141A] flex items-center justify-center">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] flex flex-col" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 80 80\"%3E%3Cpath fill=\"%23182229\" d=\"M0 0h80v80H0z\"/%3E%3C/svg%3E')" }}>
+      <div className="h-dvh bg-[#0B141A] flex items-center justify-center overflow-hidden">
+        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] overflow-hidden flex flex-col" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 80 80\"%3E%3Cpath fill=\"%23182229\" d=\"M0 0h80v80H0z\"/%3E%3C/svg%3E')" }}>
           {/* iPhone Notch */}
           <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0 bg-[#1F2C34]">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
@@ -1154,7 +1245,7 @@ function CidadeNeonExperience() {
             )}
             <div ref={messagesEndRef} />
           </div>
-          {/* Confirmation notification - appears as WhatsApp-style notification banner */}
+          {/* Confirmation notification - appears as N3XO-style notification banner */}
           {showConfirmBtn && confirmationsDone < 3 && (
             <div className="px-3 pb-2">
               <button type="button" onClick={handleConfirmation} className="w-full animate-notif-slide-up">
@@ -1191,7 +1282,7 @@ function CidadeNeonExperience() {
   /* ─── RENDER: NECTAR SPLASH ─────────────────────────────── */
   if (phase === "nectar-splash") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black overflow-hidden">
+      <div className="h-dvh flex items-center justify-center bg-black overflow-hidden">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-black">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(167,139,250,0.18) 0%, transparent 70%)" }} />
@@ -1232,7 +1323,7 @@ function CidadeNeonExperience() {
   if (phase === "nectar-login") {
     if (!nectarUnlocked && !nectarAlreadyDone) {
       return (
-        <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
+        <div className="h-dvh flex items-center justify-center overflow-hidden bg-white">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.08) 15%,rgba(103,232,249,.06) 30%,transparent 45%,rgba(251,191,36,.06) 60%,rgba(239,68,68,.04) 75%,transparent 90%)" }} />
@@ -1287,7 +1378,7 @@ function CidadeNeonExperience() {
     if (nectarShowResult) {
       const result = getNectarResult()
       return (
-        <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
+        <div className="h-dvh flex items-center justify-center overflow-hidden bg-white">
           <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col items-center justify-center p-8 relative bg-white">
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: `conic-gradient(from 0deg,transparent 0%,${result.color}15 25%,transparent 50%,${result.color}10 75%,transparent 100%)` }} />
@@ -1326,7 +1417,7 @@ function CidadeNeonExperience() {
 
     const currentNQ = NECTAR_QUESTIONS[nectarQuizStep] || NECTAR_QUESTIONS[0]
     return (
-      <div className="min-h-screen flex items-center justify-center overflow-hidden bg-white">
+      <div className="h-dvh flex items-center justify-center overflow-hidden bg-white">
         <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative bg-white">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] animate-nectar-spin" style={{ background: "conic-gradient(from 0deg,transparent 0%,rgba(167,139,250,.06) 15%,rgba(103,232,249,.05) 30%,transparent 45%,rgba(251,191,36,.04) 60%,transparent 75%)" }} />
@@ -1384,11 +1475,33 @@ function CidadeNeonExperience() {
     swipeStartX.current = null
   }, [])
 
+  // Painel de Teste (atalhos de dev) fica atrás de senha — a experiência já
+  // está aberta ao público, então o acesso direto a cada etapa (sem passar
+  // pelo jogo) não pode ficar solto pra qualquer um que deslize até a página 2
+  const DEV_PANEL_PASSWORD = "bananadaterra"
+  const [devPanelUnlocked, setDevPanelUnlocked] = useState(false)
+  const [devPasswordInput, setDevPasswordInput] = useState("")
+  const [devPasswordError, setDevPasswordError] = useState(false)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("cn-dev-panel-unlocked") === "true") setDevPanelUnlocked(true)
+    } catch {}
+  }, [])
+  const submitDevPassword = useCallback(() => {
+    if (devPasswordInput.trim().toLowerCase() === DEV_PANEL_PASSWORD) {
+      setDevPanelUnlocked(true)
+      setDevPasswordError(false)
+      try { localStorage.setItem("cn-dev-panel-unlocked", "true") } catch {}
+    } else {
+      setDevPasswordError(true)
+    }
+  }, [devPasswordInput])
+
   const DEV_SHORTCUTS = [
     { label: "Ligacao", color: "#7C3AED", action: () => resetExperience() },
     { label: "Hacker", color: "#00FF66", action: () => { window.location.href = "/hacker" } },
     { label: "Spotify", color: "#1DB954", action: () => { window.location.href = "/spotify/auto-chuva" } },
-    { label: "WhatsApp Grupo", color: "#25D366", action: () => { window.location.href = "/whatsapp/grupo" } },
+    { label: "N3XO Grupo", color: "#25D366", action: () => { window.location.href = "/n3xo/grupo" } },
     { label: "Nectar (c1)", color: "#F59E0B", action: () => { window.location.href = "/nectar" } },
     { label: "Batida (c2)", color: "#06B6D4", action: () => { window.location.href = "/batida" } },
     { label: "Neon Tiles", color: "#FF00A8", action: () => { window.location.href = "/neon-tiles" } },
@@ -1399,7 +1512,7 @@ function CidadeNeonExperience() {
   ]
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative overflow-hidden">
         {/* wallpaper: dark space-blue com pontos neon sutis */}
         <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 30% 20%, #1a0d2e 0%, #0d0d1a 45%, #080810 100%)" }} />
@@ -1638,7 +1751,7 @@ function CidadeNeonExperience() {
                         if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
                         if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
                         if (app.link) { window.open(app.link, "_blank"); return }
-                        if (app.id === "whatsapp") { window.location.href = "/whatsapp"; return }
+                        if (app.id === "whatsapp") { window.location.href = "/n3xo"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
                         if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
                         if (app.id === "feel-good-app") { window.location.href = "/batida"; return }
@@ -1690,28 +1803,59 @@ function CidadeNeonExperience() {
               </div>
               <div className="px-5 mb-3">
                 <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] font-mono">Painel de Teste</p>
-                <p className="text-white/60 text-xs mt-0.5">Acesso direto a cada etapa</p>
+                <p className="text-white/60 text-xs mt-0.5">{devPanelUnlocked ? "Acesso direto a cada etapa" : "Protegido por senha"}</p>
               </div>
-              <div className="px-4 space-y-2 pb-4">
-                {DEV_SHORTCUTS.map((btn, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={btn.action}
-                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl active:scale-[0.98] transition-transform text-left"
-                    style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${btn.color}30` }}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-xl flex-shrink-0"
-                      style={{ background: btn.color + "25", border: `1px solid ${btn.color}50` }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium leading-tight">{btn.label}</p>
+              {devPanelUnlocked ? (
+                <div className="px-4 space-y-2 pb-4">
+                  {DEV_SHORTCUTS.map((btn, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={btn.action}
+                      className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl active:scale-[0.98] transition-transform text-left"
+                      style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${btn.color}30` }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-xl flex-shrink-0"
+                        style={{ background: btn.color + "25", border: `1px solid ${btn.color}50` }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium leading-tight">{btn.label}</p>
+                      </div>
+                      <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-5 pb-4">
+                  <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-4 h-4 text-white/30 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="5" y="11" width="14" height="9" rx="2" /><path strokeLinecap="round" d="M8 11V7a4 4 0 018 0v4" /></svg>
+                      <p className="text-white/40 text-xs">Digite a senha pra liberar</p>
                     </div>
-                    <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                  </button>
-                ))}
-              </div>
+                    <input
+                      type="password"
+                      value={devPasswordInput}
+                      onChange={(e) => { setDevPasswordInput(e.target.value); setDevPasswordError(false) }}
+                      onKeyDown={(e) => { if (e.key === "Enter") submitDevPassword() }}
+                      placeholder="senha"
+                      className="w-full px-3 py-2 rounded-xl text-white text-sm font-mono mb-2 outline-none"
+                      style={{ background: "rgba(0,0,0,0.3)", border: `1px solid ${devPasswordError ? "#FF3B30" : "rgba(255,255,255,0.12)"}` }}
+                    />
+                    {devPasswordError && (
+                      <p className="text-[#FF3B30] text-[10px] mb-2">senha incorreta</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={submitDevPassword}
+                      className="w-full py-2 rounded-xl text-xs font-medium text-white/70 active:scale-[0.98] transition-transform"
+                      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+                    >
+                      liberar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

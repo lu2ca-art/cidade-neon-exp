@@ -156,7 +156,7 @@ export const SCRIPTS: Record<MemberKey, MemberScript> = {
 }
 
 // Qual cc marca o inicio da recompensa de cada personagem — reexportado pro
-// /whatsapp (lista de conversas) usar os MESMOS limiares, em vez de duplicar
+// /n3xo (lista de conversas) usar os MESMOS limiares, em vez de duplicar
 // (e arriscar dessincronizar) esses números.
 export const REWARD_AT_CC: Record<MemberKey, number> = {
   alohan: 1,
@@ -172,7 +172,7 @@ export const DONE_AT_CC: Record<MemberKey, number> = {
 }
 
 // Fase atual da conversa com esse personagem — usada tanto aqui quanto na
-// lista de conversas (/whatsapp) pra decidir preview de texto e badge de não-lido
+// lista de conversas (/n3xo) pra decidir preview de texto e badge de não-lido
 export function phaseFor(member: MemberKey, cc: number): "pre" | "reward" | "done" {
   if (member !== "dbee" && cc >= DONE_AT_CC[member]) return "done"
   if (cc >= REWARD_AT_CC[member]) return "reward"
@@ -328,7 +328,7 @@ export default function PrivadoPage() {
   // uma nova fase (ex.: a recompensa chegou) volta a contar como não-lida na
   // lista de conversas, mesmo que a pessoa já tenha aberto esse chat antes.
   useEffect(() => {
-    if (!script) { router.push("/whatsapp"); return }
+    if (!script) { router.push("/n3xo"); return }
     markRewardViewed(`${member}:${phaseFor(member as MemberKey, cc)}`)
   }, [script, member, cc, markRewardViewed, router])
 
@@ -399,8 +399,8 @@ export default function PrivadoPage() {
   const shownItems = allItems.slice(0, visibleCount)
 
   return (
-    <div className="min-h-screen bg-[#0B141A] flex items-center justify-center">
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
+    <div className="h-dvh bg-[#0B141A] flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative overflow-hidden">
         {/* Notch */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
 
