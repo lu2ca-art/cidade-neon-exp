@@ -94,3 +94,27 @@ export function sendSelectRadioTier(tier: Tier) {
   const msg: SelectRadioTier = { type: "SELECT_RADIO_TIER", tier }
   window.parent.postMessage(msg, "*")
 }
+
+// Estado do rádio do carro (o pai) ecoado pro celular (iframe) — o SINT0NIA
+// usa isso pra mostrar um "tocando agora" sincronizado de verdade com o que
+// está no ar no painel, na cor da frequência atual, em vez de ter seu
+// próprio player desconectado.
+export type CarRadioState = {
+  type: "CAR_RADIO_STATE"
+  tier: Tier
+  label: string
+  color: string
+  title: string
+  elapsedMs: number
+  durationMs: number
+  playing: boolean
+}
+
+export function sendCarRadioState(
+  iframe: HTMLIFrameElement | null,
+  state: Omit<CarRadioState, "type">,
+) {
+  if (!iframe?.contentWindow) return
+  const msg: CarRadioState = { type: "CAR_RADIO_STATE", ...state }
+  iframe.contentWindow.postMessage(msg, "*")
+}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
-import { sendMinimizeConsole, sendSelectRadioTier } from "@/app/providers/AudioBridge"
+import { sendMinimizeConsole, sendSelectRadioTier, type CarRadioState } from "@/app/providers/AudioBridge"
 import { ALL_TIERS, TIER_META, PREVIEW_TRACK, nextTierToTune, type Tier } from "@/lib/radio-tiers"
 
 // ─── SINT0NIA — hub de rádio ─────────────────────────────────────────────────
@@ -45,6 +45,19 @@ export default function SintonizadorPage() {
   const [locked, setLocked] = useState(false)
   const [lockProgress, setLockProgress] = useState(0)
   const [dragging, setDragging] = useState(false)
+
+  // "tocando agora" sincronizado de verdade com o rádio do painel — o FREQ
+  // não é mais um player, então o now-playing (cor + faixa da frequência
+  // atual) vive aqui, no app do próprio rádio
+  const [carRadio, setCarRadio] = useState<Omit<CarRadioState, "type"> | null>(null)
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const data = e.data as CarRadioState
+      if (data?.type === "CAR_RADIO_STATE") setCarRadio(data)
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [])
 
   const barRef = useRef<HTMLDivElement>(null)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
@@ -224,6 +237,21 @@ export default function SintonizadorPage() {
               <p className="text-white/20 text-[9px] tracking-[0.3em] uppercase font-mono">SINT0NIA</p>
               <div className="w-9" />
             </div>
+
+            {carRadio?.playing && (
+              <div className="rounded-2xl p-3 flex items-center gap-3 mb-6" style={{ background: `${carRadio.color}14`, border: `1px solid ${carRadio.color}40` }}>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${carRadio.color}22`, border: `1.5px solid ${carRadio.color}` }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={carRadio.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-mono text-xs font-bold truncate" style={{ color: carRadio.color }}>{carRadio.title.toUpperCase()}</p>
+                  <p className="font-mono text-[10px] text-white/40 mt-0.5">{carRadio.label} · tocando no rádio</p>
+                  <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, (carRadio.elapsedMs / carRadio.durationMs) * 100)}%`, background: carRadio.color }} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <p className="text-white/40 text-sm text-center mb-1">favoritos</p>
             <p className="text-white/20 text-xs text-center mb-10 max-w-[260px] mx-auto">

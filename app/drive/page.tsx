@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, SelectRadioTier } from "@/app/providers/AudioBridge"
-import { sendStateToIframe, sendNotificationClickToIframe } from "@/app/providers/AudioBridge"
+import { sendStateToIframe, sendNotificationClickToIframe, sendCarRadioState } from "@/app/providers/AudioBridge"
 import SteeringWheel3D from "@/components/SteeringWheel3D"
 import CityMap from "@/components/CityMap"
 import { type Tier, ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
@@ -323,6 +323,13 @@ export default function DrivePage() {
   useEffect(() => { autoDriveRef.current = autoDrive }, [autoDrive])
 
   const [phoneOpen, setPhoneOpen]   = useState(false)
+  // celular bloqueado (botão no canto superior direito do console, igual o
+  // lateral de um iPhone) — mostra só fundo + horário no lugar do HUB/N3XO
+  // normal, até a pessoa tocar de novo pra reabrir
+  const [phoneLocked, setPhoneLocked] = useState(false)
+  // reabrir o celular por qualquer caminho (tocar no gatilho, aceitar
+  // missão, notificação) sempre limpa o bloqueio — nunca reabre já bloqueado
+  useEffect(() => { if (phoneOpen) setPhoneLocked(false) }, [phoneOpen])
   // lido dentro do loop imperativo do canvas (frame()), sem precisar
   // reiniciar o efeito do canvas a cada abre/fecha do celular
   const phoneOpenRef = useRef(phoneOpen)
@@ -527,6 +534,23 @@ export default function DrivePage() {
       elapsed:  audio.elapsed,
     })
   }, [audio.trackIdx, audio.playing, audio.elapsed])
+
+  // Ecoa o estado do rádio do carro pro celular (SINT0NIA mostra um "tocando
+  // agora" sincronizado de verdade, na cor da frequência atual) — continua
+  // "tocando" (visualmente) mesmo com o celular aberto/rádio mudo, porque a
+  // sintonia em si não pausa só porque a pessoa está no celular
+  useEffect(() => {
+    const tuned = radioOn && radioMachine === "playing" && manualTier !== null
+    sendCarRadioState(iframeRef.current, {
+      tier: activeTier,
+      label: F[activeTier].label,
+      color: F[activeTier].color,
+      title: radioTrack?.title ?? "",
+      elapsedMs: snippetPct * RADIO_SNIPPET_MS,
+      durationMs: RADIO_SNIPPET_MS,
+      playing: tuned,
+    })
+  }, [activeTier, radioTrack, snippetPct, radioOn, radioMachine, manualTier])
 
   // ── chiado curto sintetizado via Web Audio (sem depender de arquivo) ──
   const playStaticBurst = useCallback(() => {
@@ -1127,15 +1151,6 @@ export default function DrivePage() {
     setRadioMachine("silentLap")
   }, [])
 
-  // A telinha do rádio no painel É o seletor de estações/sintonia — não um
-  // app separado escondido atrás do celular. Tocar nela abre o SINT0NIA
-  // (menu de favoritos + busca de frequência); a própria página do SINT0NIA
-  // já muta o rádio do carro sozinha ao montar
-  const handleOpenSintonia = useCallback(() => {
-    if (iframeRef.current) iframeRef.current.src = "/sintonizador"
-    setPhoneOpen(true)
-  }, [])
-
   // Deck DJ — objeto interativo entre os bancos: clicar abre o B4TIDA direto
   // no console, mesmo padrão do rádio abrindo o SINT0NIA
   const handleOpenBatida = useCallback(() => {
@@ -1212,14 +1227,16 @@ export default function DrivePage() {
           ...(phoneOpen
             ? ({
                 top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-                // mantém proporção 9:16 real de celular — a altura é limitada
-                // tanto por % da tela quanto pela largura máxima convertida
-                // pra 16:9, e a largura é sempre 9/16 dessa altura (nunca
-                // "achata" o celular pra um formato errado)
-                ["--phone-h" as string]: `min(${isMobile?72:88}dvh, calc(min(92vw, 480px) * 16 / 9))`,
-                height:"var(--phone-h)",
-                width:"calc(var(--phone-h) * 9 / 16)",
-                background:"#0a0a12", borderRadius:22, padding:0,
+                // celular preenche quase a tela toda em retrato real (mesma
+                // regra que as próprias páginas do celular já assumem:
+                // w-full h-[100dvh]); em desktop vira um painel proporcional
+                // 400:844 — a MESMA razão que as páginas assumem via
+                // max-w-[400px] md:h-[844px], não mais 9:16, que deixava a
+                // caixa menor que a tela real em celular de verdade e
+                // forçava scroll pra alcançar botões
+                height: isMobile ? "100dvh" : "min(88dvh, 844px)",
+                width: isMobile ? "min(100vw, 480px)" : "calc(min(88dvh, 844px) * 400 / 844)",
+                background:"#0a0a12", borderRadius: isMobile ? 0 : 22, padding:0,
                 border:`1px solid ${C.neonPink}55`,
                 boxShadow:`0 0 0 1px #000, 0 20px 60px rgba(0,0,0,0.7), 0 0 32px ${C.neonPink}33`,
                 cursor:"default", overflow:"hidden",
@@ -1237,13 +1254,18 @@ export default function DrivePage() {
         }}
       >
         {/* hub de missão — só quando fechada; grid em perspectiva #a150ba
-            sobre fundo #513156 (paleta medida da referência) */}
+            sobre fundo #513156 (paleta medida da referência). Sem missão
+            ativa, o HUB também é o console do rádio: power, volume e as
+            estações já sintonizadas — tudo encolhido pra caber aqui, sem
+            precisar abrir o SINT0NIA só pra trocar de estação */}
         {!phoneOpen && (() => {
           const mission = activeMission(confirmCount)
           const color = mission ? MISSION_COLORS[mission.id] : "#a150ba"
+          const meta = F[activeTier]
+          const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
           return (
-            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden" }}>
-              <svg width="100%" height="100%" style={{ position:"absolute", inset:0, opacity:0.5 }} viewBox="0 0 100 100" preserveAspectRatio="none">
+            <div style={{ position:"absolute", inset:0, overflow:"hidden" }}>
+              <svg width="100%" height="100%" style={{ position:"absolute", inset:0, opacity:0.5, pointerEvents:"none" }} viewBox="0 0 100 100" preserveAspectRatio="none">
                 {Array.from({length:6}, (_,i)=>{
                   const x = (i+1)*100/7
                   return <line key={"v"+i} x1={x} y1="0" x2={50+(x-50)*2.2} y2="100" stroke="#a150ba" strokeWidth="0.4"/>
@@ -1252,8 +1274,8 @@ export default function DrivePage() {
                   <line key={"h"+i} x1="0" y1={20+i*20} x2="100" y2={20+i*20} stroke="#a150ba" strokeWidth="0.3" opacity={0.6}/>
                 ))}
               </svg>
-              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6 }}>
-                <span style={{ fontFamily:"monospace", fontSize:10, letterSpacing:2, color:"rgba(255,255,255,0.4)" }}>
+              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:5, pointerEvents:"none" }}>
+                <span style={{ fontFamily:"monospace", fontSize:9, letterSpacing:2, color:"rgba(255,255,255,0.4)" }}>
                   {mission ? "MISSÃO ATIVA" : "HUB"}
                 </span>
                 {mission ? (
@@ -1264,7 +1286,64 @@ export default function DrivePage() {
                     <span style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, letterSpacing:1, color:"#fff" }}>{mission.name}</span>
                   </>
                 ) : (
-                  <span style={{ fontFamily:"monospace", fontSize:11, color:"rgba(255,255,255,0.5)" }}>toque pra abrir</span>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, pointerEvents:"auto" }}>
+                    {/* power */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setRadioOn(o => !o) }}
+                      aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
+                      style={{
+                        flexShrink:0, width:22, height:22, borderRadius:"50%",
+                        background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
+                        border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                      }}
+                    >
+                      <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.4} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
+                    </button>
+                    {/* estações já sintonizadas */}
+                    {tunedTiers.map(tier => {
+                      const tMeta = F[tier]
+                      const isSel = tier === activeTier
+                      return (
+                        <button
+                          key={tier}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setManualTier(tier); setRadioOn(true) }}
+                          aria-label={`Tocar ${tMeta.label}`}
+                          style={{
+                            flexShrink:0, width:14, height:14, borderRadius:"50%",
+                            background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
+                            border: `1px solid ${tMeta.color}`,
+                            boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
+                            cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
+                          }}
+                        />
+                      )
+                    })}
+                    {/* volume */}
+                    <div style={{ position:"relative", flexShrink:0, width:24, height:24 }}>
+                      <div
+                        ref={volumeRingRef}
+                        onPointerDown={(e) => {
+                          e.stopPropagation()
+                          volumeDraggingRef.current = true
+                          ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+                          updateVolumeFromPointer(e.clientX, e.clientY)
+                        }}
+                        onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
+                        onPointerUp={() => { volumeDraggingRef.current = false }}
+                        style={{
+                          position:"absolute", inset:0, borderRadius:"50%",
+                          cursor:"grab", touchAction:"none",
+                          background:`conic-gradient(from -120deg, ${meta.color} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
+                          WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))",
+                          mask:"radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))",
+                        }}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -1278,20 +1357,38 @@ export default function DrivePage() {
             background:"rgba(255,255,255,0.02)",
           }}>
             <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:2,color:`${C.neonPink}cc`}}>CONSOLE · N3XO</span>
-            <button
-              type="button"
-              onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
-              style={{
-                display:"flex",alignItems:"center",gap:5,
-                background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
-                borderRadius:999, padding:"4px 10px",
-                color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:9, letterSpacing:1,
-                cursor:"pointer",
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
-              MINIMIZAR
-            </button>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              {/* BLOQUEAR — canto superior direito, igual o botão lateral de
+                  um iPhone: fecha o celular e deixa ele "bloqueado" (fundo +
+                  horário) até tocar de novo pra reabrir */}
+              <button
+                type="button"
+                onClick={(e)=>{e.stopPropagation();setPhoneLocked(true);setPhoneOpen(false)}}
+                aria-label="Bloquear celular"
+                style={{
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  width:26,height:26,
+                  background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
+                  borderRadius:999, cursor:"pointer", color:"rgba(255,255,255,0.7)",
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+              </button>
+              <button
+                type="button"
+                onClick={(e)=>{e.stopPropagation();setPhoneOpen(false)}}
+                style={{
+                  display:"flex",alignItems:"center",gap:5,
+                  background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)",
+                  borderRadius:999, padding:"4px 10px",
+                  color:"rgba(255,255,255,0.7)", fontFamily:"monospace", fontSize:9, letterSpacing:1,
+                  cursor:"pointer",
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+                MINIMIZAR
+              </button>
+            </div>
           </div>
         )}
         <div style={{position:"relative",flex:1,width:"100%",overflow:"hidden",background:"#000"}}>
@@ -1362,142 +1459,96 @@ export default function DrivePage() {
         )
       })()}
 
-      {/* RÁDIO DO PAINEL — mostrador vintage-futurista: só nome da música,
-          nome da frequência e o número dela + um anel de volume ao lado.
-          Zona radio própria do blocking (z11 — a mais na frente) */}
-      {!phoneOpen&&(()=>{
-        const active = radioActive
-        const isStatic = radioMachine === "static"
-        const meta = F[activeTier]
-        const accent = radioOn ? meta.color : "#6b7280"
-        const title = (radioTrack?.title ?? "—").toUpperCase()
+      {/* CELULAR — gatilho de abrir, agora no centro do console, onde antes
+          ficava o mostrador do rádio (zona `radio` do blocking). O rádio em
+          si virou a faixa fina no rodapé da tela, mais abaixo. */}
+      {!phoneOpen && viewport.w > 0 && (() => {
         const z = zonePx(ZONES.radio, viewport.w, viewport.h)
-        // conteúdo desenhado pra caber numa zona de ~80px de altura — em telas
-        // onde o quadrado de design fica menor (ex.: retrato, ou paisagem bem
-        // baixa) a zona real encolhe e o texto/paddings fixos em px passavam
-        // da altura disponível e vazavam por cima do console. Escala tudo
-        // (fonte/padding/ícones) proporcional à altura real da zona.
-        const s = Math.min(1.15, Math.max(0.55, z.h / 80))
-        const px = (n: number) => Math.round(n * s)
+        const alert = radioMachine === "parked" || !!phoneNotif?.isMission
+        // bloqueado: só fundo + horário, igual uma tela de bloqueio de
+        // verdade — tocar de novo reabre o celular (limpa o bloqueio no
+        // efeito que já observa phoneOpen)
+        if (phoneLocked) {
+          return (
+            <button
+              type="button"
+              onClick={() => setPhoneOpen(true)}
+              aria-label="Celular bloqueado — toque pra abrir"
+              style={{
+                position:"absolute", zIndex:48,
+                left:z.x, top:z.y, width:z.w, height:z.h,
+                borderRadius:16, cursor:"pointer",
+                background:"linear-gradient(160deg, #0d0a16 0%, #050308 100%)",
+                border:"1px solid rgba(255,255,255,0.1)",
+                display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                WebkitTapHighlightColor:"transparent",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={2}><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+              <span style={{ fontFamily:"monospace", fontSize:12, letterSpacing:1, color:"rgba(255,255,255,0.5)" }}>21:47</span>
+            </button>
+          )
+        }
         return (
-        <div style={{
-          position:"absolute",
-          left:z.x, top:z.y, width:z.w, height:z.h,
-          zIndex:48,
-          display:"flex", alignItems:"flex-start", gap:px(10),
-        }}>
-          {/* POWER — a rádio começa desligada; nada progride até ligar */}
           <button
             type="button"
-            onClick={() => setRadioOn(o => !o)}
-            aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
+            onClick={() => setPhoneOpen(true)}
+            aria-label="Abrir celular"
             style={{
-              flexShrink:0, width:px(44), height:px(44), borderRadius:"50%",
-              background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
-              border: `2px solid ${radioOn ? meta.color : "rgba(255,255,255,0.25)"}`,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              cursor:"pointer",
-              boxShadow: radioOn ? `0 0 12px ${meta.color}55` : "none",
+              position:"absolute", zIndex:48,
+              left:z.x, top:z.y, width:z.w, height:z.h,
+              borderRadius:16, cursor:"pointer",
+              background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
+              border:`1px solid ${C.neonPink}55`,
+              boxShadow: alert ? `0 0 20px ${C.neonPink}66, inset 0 0 16px ${C.neonPink}22` : "none",
+              animation: alert ? "phone-buzz 0.5s ease-in-out infinite" : "none",
+              display:"flex", alignItems:"center", justifyContent:"center", gap:8,
               WebkitTapHighlightColor:"transparent",
             }}
           >
-            <svg width={px(20)} height={px(20)} viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.2} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.neonPink} strokeWidth={2}><rect x="6" y="3" width="12" height="18" rx="2.5"/><path d="M10 18h4" strokeLinecap="round"/></svg>
+            <span style={{ fontFamily:"monospace", fontSize:11, letterSpacing:1.5, color:C.neonPink, textShadow:`0 0 6px ${C.neonPink}` }}>N3XO</span>
           </button>
+        )
+      })()}
 
-          <button
-            type="button"
-            onClick={handleOpenSintonia}
-            aria-label="Abrir SINT0NIA — seletor de rádio e busca de frequência"
-            style={{
-              position:"relative", flex:1, minWidth:0, borderRadius:16, padding:`${px(10)}px ${px(12)}px ${px(11)}px`,
-              background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-              border:`1px solid ${accent}55`,
-              boxShadow: radioOn ? `0 0 22px ${accent}33, inset 0 0 16px ${accent}18` : "none",
-              overflow:"hidden", cursor:"pointer", textAlign:"left",
-              opacity: radioOn ? 1 : 0.7,
-              WebkitTapHighlightColor:"transparent",
-            }}>
-            {/* scanlines */}
-            <div style={{position:"absolute",inset:0,opacity:0.22,pointerEvents:"none",
-              backgroundImage:"repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.45) 2px 3px)"}}/>
-            {/* estação (linha própria, trunca em vez de quebrar) + freq/status */}
-            <div style={{position:"relative",marginBottom:px(4)}}>
-              <div style={{fontFamily:"monospace",fontSize:px(10),letterSpacing:1,color:accent,textShadow:radioOn?`0 0 6px ${accent}`:"none",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{meta.label}</div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:px(2),gap:px(6)}}>
-                <span style={{fontFamily:"monospace",fontSize:px(11),letterSpacing:1,color:accent,opacity:0.85,whiteSpace:"nowrap",flexShrink:0}}>{meta.freq} FM</span>
-                {!radioOn ? (
-                  <span style={{fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>DESLIGADO</span>
-                ) : active ? (
-                  <span style={{display:"inline-flex",alignItems:"center",gap:4,fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>
-                    <span style={{width:7,height:7,borderRadius:7,background:accent,boxShadow:`0 0 6px ${accent}`,animation:"radio-blink 1.4s ease-in-out infinite"}}/>
-                    NO AR
-                  </span>
-                ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>INTERFERÊNCIA</span>
-                ) : (
-                  <span style={{fontFamily:"monospace",fontSize:px(9),letterSpacing:1,color:accent,whiteSpace:"nowrap"}}>SILÊNCIO</span>
-                )}
-              </div>
-            </div>
-            {!radioOn ? (
-              <div style={{position:"relative",height:px(28),display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
-                <span style={{fontFamily:"monospace",fontSize:px(11),fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ APERTE O POWER ◌</span>
-              </div>
-            ) : active ? (
-              <>
-                {/* now playing (marquee) — só o nome da música */}
-                <div style={{position:"relative",height:px(20),overflow:"hidden"}}>
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:px(14),fontWeight:700,letterSpacing:1,
-                    color:"#eafff8",textShadow:`0 0 8px ${accent}aa`,animation:"dash-marquee 11s linear infinite"}}>
-                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
+      {/* RÁDIO — faixa fina no rodapé da tela inteira, edge-to-edge. Só o
+          título da faixa correndo da direita pra esquerda (marquee) e uma
+          linha de progresso — bem mais discreto que o mostrador antigo, que
+          ocupava uma zona própria do console. */}
+      {!phoneOpen && viewport.w > 0 && radioOn && (() => {
+        const meta = F[activeTier]
+        const title = (radioTrack?.title ?? "—").toUpperCase()
+        const isStatic = radioMachine === "static"
+        return (
+          <div style={{
+            position:"absolute", left:0, right:0, bottom:BOTOES_H_PCT,
+            zIndex:48, height:26,
+            background:"rgba(4,2,10,0.85)", borderTop:`1px solid ${meta.color}40`,
+            display:"flex", alignItems:"center", overflow:"hidden",
+          }}>
+            <div style={{position:"relative", flex:1, height:"100%", overflow:"hidden"}}>
+              {isStatic ? (
+                <div style={{position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:meta.color,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
+                </div>
+              ) : radioActive ? (
+                <div style={{position:"absolute", inset:0, display:"flex", alignItems:"center"}}>
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,letterSpacing:1,
+                    color:meta.color,textShadow:`0 0 6px ${meta.color}`,animation:"dash-marquee 14s linear infinite"}}>
+                    ♪ {meta.label} — {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {meta.label} — {title} &nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                 </div>
-                {/* barra dos 22s */}
-                <div style={{position:"relative",marginTop:px(6),height:4,borderRadius:4,background:"rgba(255,255,255,0.1)"}}>
-                  <div style={{height:"100%",borderRadius:4,width:`${snippetPct*100}%`,background:accent,boxShadow:`0 0 8px ${accent}`,transition:"width .12s linear"}}/>
+              ) : (
+                <div style={{position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
                 </div>
-              </>
-            ) : isStatic ? (
-              <div style={{position:"relative",height:px(28),display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
-                <span style={{fontFamily:"monospace",fontSize:px(12),fontWeight:700,letterSpacing:0.5,color:accent,whiteSpace:"nowrap",animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ ▒▓░ ░▓▒ ▒░▓</span>
-              </div>
-            ) : (
-              <div style={{position:"relative",height:px(28),display:"flex",flexDirection:"column",justifyContent:"center",overflow:"hidden"}}>
-                <span style={{fontFamily:"monospace",fontSize:px(11),fontWeight:700,letterSpacing:0.5,color:"#9aa0aa",whiteSpace:"nowrap"}}>◌ SILÊNCIO ◌</span>
-              </div>
-            )}
-          </button>
-
-          {/* ANEL DE VOLUME — arraste ao redor pra ajustar */}
-          <div style={{ position:"relative", flexShrink:0, width:px(56), height:px(56) }}>
-            <div
-              ref={volumeRingRef}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                volumeDraggingRef.current = true
-                ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-                updateVolumeFromPointer(e.clientX, e.clientY)
-              }}
-              onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
-              onPointerUp={() => { volumeDraggingRef.current = false }}
-              style={{
-                position:"absolute", inset:0, borderRadius:"50%",
-                cursor:"grab", touchAction:"none",
-                background:`conic-gradient(from -120deg, ${accent} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
-                WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 9px))",
-                mask:"radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 9px))",
-                boxShadow:`0 0 12px ${accent}44`,
-              }}
-            />
-            <div style={{
-              position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
-              pointerEvents:"none",
-              fontFamily:"monospace", fontSize:px(9), color:"rgba(255,255,255,0.55)", letterSpacing:0.5,
-            }}>
-              VOL
+              )}
+            </div>
+            <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
+              <div style={{height:"100%", width:`${snippetPct*100}%`, background:meta.color, boxShadow:`0 0 6px ${meta.color}`, transition:"width .12s linear"}} />
             </div>
           </div>
-        </div>
         )
       })()}
 
