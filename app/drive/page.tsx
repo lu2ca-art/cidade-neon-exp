@@ -6,7 +6,7 @@ import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, SelectRadioTier, CarRadioControl } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe, sendCarRadioState } from "@/app/providers/AudioBridge"
 import SteeringWheel3D from "@/components/SteeringWheel3D"
-import CityMap from "@/components/CityMap"
+import { CityMapButton, CityMapModal } from "@/components/CityMap"
 import { type Tier, ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
 import { SCRIPTS, PREVIEW_SUMMARY, phaseFor, type MemberKey } from "@/app/n3xo/privado/[member]/page"
 
@@ -333,7 +333,12 @@ const ZONES = {
   // HUB (zona crt), estilo Apple CarPlay, não é mais um widget separado
   wheel:         { x:7,    y:46.554,  w:24.5, h:14.585  }, // z9  painel
   djDeck:        { x:41.5, y:68.615,  w:24.5, h:22.892  }, // z10 interativo
-  radio:         { x:38.5, y:51.631,  w:33.5, h:11.723  }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
+  // y ajustado pra não sobrepor o HUB (zona crt) — antes as duas zonas se
+  // tocavam por uma borda de propósito (quando o HUB só tinha um badge
+  // centralizado), mas agora o HUB usa a caixa inteira (mapa/mensagens/
+  // dock até a borda de baixo), então a sobreposição virou colisão visual
+  // de verdade entre os dois cartões
+  radio:         { x:38.5, y:55.1,     w:33.5, h:11.723  }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
   // z8 (banco/assento) — motorista/passageiro-placeholder tentados e
   // removidos (ficou bizarro); fora de escopo de novo por enquanto
 } satisfies Record<string, Zone>
@@ -1366,6 +1371,12 @@ export default function DrivePage() {
   // vazia por enquanto) pra poder popular depois.
   const [showGloveBox, setShowGloveBox] = useState(false)
 
+  // Modal expandido do mini-mapa (dentro do HUB) — estado erguido até aqui
+  // de propósito: o modal em si é renderizado como irmão de topo (fora da
+  // caixa do HUB/zona crt), senão o zIndex dele só venceria coisas dentro
+  // do HUB, e o rádio/DJ deck (irmãos de fora) continuariam por cima
+  const [mapExpanded, setMapExpanded] = useState(false)
+
   return (
     <div
       ref={stageRef}
@@ -1389,6 +1400,21 @@ export default function DrivePage() {
           style={{position:"absolute",inset:0,zIndex:55,background:"rgba(2,0,12,0.78)"}}
         />
       )}
+
+      {/* MODAL DO MINI-MAPA (mapa bidirecional) — irmão de topo de propósito,
+          nunca aninhado dentro do HUB: precisa ficar aqui pra seu
+          position:fixed/zIndex:80 realmente cobrir a tela toda (rádio, DJ
+          deck etc.), em vez de só vencer coisas dentro da caixa do HUB */}
+      {mapExpanded && (() => {
+        const mission = activeMission(confirmCount)
+        return (
+          <CityMapModal
+            mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
+            progress={missionProgress}
+            onClose={() => setMapExpanded(false)}
+          />
+        )
+      })()}
 
       {/* BEZEL da Tela CRT — moldura física atrás da tela fechada, como uma
           tela embutida de verdade no painel (não um retângulo colado por
@@ -1487,11 +1513,13 @@ export default function DrivePage() {
           const availableApps = HUB_APPS.filter((a) => a.unlocked(appState))
           return (
             <div style={{ position:"absolute", inset:0, display:"flex", gap:5, padding:6, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
-              {/* mini-mapa */}
+              {/* mini-mapa — só o botão aqui; o modal expandido é
+                  renderizado fora do HUB (ver CityMapModal mais abaixo) */}
               <div style={{ flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <CityMap
+                <CityMapButton
                   mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
                   progress={missionProgress}
+                  onOpen={() => setMapExpanded(true)}
                 />
               </div>
 

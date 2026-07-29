@@ -76,75 +76,97 @@ function MapSvg({ mission, progress, size }: { mission?: CityMapMission; progres
   )
 }
 
-export default function CityMap({ mission, progress }: { mission?: CityMapMission; progress: number }) {
-  const [expanded, setExpanded] = useState(false)
-
+// Botão do mini-mapa (thumbnail) — só o gatilho, sem o modal expandido
+// embutido. Precisa ficar assim (controlado por fora) porque o modal
+// expandido usa position:fixed com zIndex alto pra cobrir a tela toda, e
+// isso só funciona de verdade se ele for renderizado como um irmão de
+// topo no app/drive/page.tsx — se ficasse aninhado dentro da caixa do HUB
+// (que tem seu próprio zIndex/stacking context), o zIndex do modal só
+// venceria os outros elementos DENTRO do HUB, não o rádio/DJ deck que
+// ficam fora dele (foi exatamente esse bug que aconteceu antes).
+export function CityMapButton({ mission, progress, onOpen }: { mission?: CityMapMission; progress: number; onOpen: () => void }) {
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setExpanded(true)}
-        aria-label="Abrir mini-mapa"
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label="Abrir mini-mapa"
+      style={{
+        width: 64, height: 64, borderRadius: 14,
+        background: "rgba(10,0,20,0.8)", padding: 4,
+        border: "1.5px solid rgba(255,255,255,0.25)",
+        boxShadow: "0 0 12px rgba(255,255,255,0.12)",
+        cursor: "pointer", WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      <MapSvg mission={mission} progress={progress} size={56} />
+    </button>
+  )
+}
+
+// Modal expandido — renderizar como irmão de topo (fora de qualquer zona
+// do painel), nunca aninhado dentro de outra caixa posicionada.
+export function CityMapModal({ mission, progress, onClose }: { mission?: CityMapMission; progress: number; onClose: () => void }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(2,0,12,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
         style={{
-          width: 64, height: 64, borderRadius: 14,
-          background: "rgba(10,0,20,0.8)", padding: 4,
-          border: "1.5px solid rgba(255,255,255,0.25)",
-          boxShadow: "0 0 12px rgba(255,255,255,0.12)",
-          cursor: "pointer", WebkitTapHighlightColor: "transparent",
+          width: "100%", maxWidth: 340, borderRadius: 20, padding: "20px 18px",
+          background: "linear-gradient(160deg, #12081f 0%, #06030d 100%)",
+          border: "1px solid rgba(255,255,255,0.18)",
+          boxShadow: "0 0 30px rgba(0,0,0,0.5)",
         }}
       >
-        <MapSvg mission={mission} progress={progress} size={56} />
-      </button>
-
-      {expanded && (
-        <div
-          onClick={() => setExpanded(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(2,0,12,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%", maxWidth: 340, borderRadius: 20, padding: "20px 18px",
-              background: "linear-gradient(160deg, #12081f 0%, #06030d 100%)",
-              border: "1px solid rgba(255,255,255,0.18)",
-              boxShadow: "0 0 30px rgba(0,0,0,0.5)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <p style={{ fontFamily: "monospace", fontSize: 11, letterSpacing: 2, color: "rgba(255,255,255,0.5)" }}>MAPA DA CIDADE</p>
-              <button type="button" onClick={() => setExpanded(false)} aria-label="Fechar"
-                style={{ color: "rgba(255,255,255,0.6)", fontSize: 18, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}>×</button>
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-              <MapSvg mission={mission} progress={progress} size={220} />
-            </div>
-            {mission ? (
-              <div style={{ textAlign: "center", marginBottom: 14 }}>
-                <p style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: mission.color, letterSpacing: 1 }}>
-                  {mission.letter} · {mission.name}
-                </p>
-                <div style={{ height: 4, borderRadius: 4, background: "rgba(255,255,255,0.1)", marginTop: 8, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${Math.round(progress * 100)}%`, background: mission.color, transition: "width .3s" }} />
-                </div>
-                <p style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
-                  dirija até o marcador pra encontrar {mission.name}
-                </p>
-              </div>
-            ) : (
-              <p style={{ textAlign: "center", fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 14 }}>
-                nenhuma missão ativa no momento
-              </p>
-            )}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {POIS.map(poi => (
-                <div key={poi.id} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.55)" }}>
-                  <span>{poi.icon}</span><span>{poi.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <p style={{ fontFamily: "monospace", fontSize: 11, letterSpacing: 2, color: "rgba(255,255,255,0.5)" }}>MAPA DA CIDADE</p>
+          <button type="button" onClick={onClose} aria-label="Fechar"
+            style={{ color: "rgba(255,255,255,0.6)", fontSize: 18, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}>×</button>
         </div>
-      )}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <MapSvg mission={mission} progress={progress} size={220} />
+        </div>
+        {mission ? (
+          <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <p style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: mission.color, letterSpacing: 1 }}>
+              {mission.letter} · {mission.name}
+            </p>
+            <div style={{ height: 4, borderRadius: 4, background: "rgba(255,255,255,0.1)", marginTop: 8, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${Math.round(progress * 100)}%`, background: mission.color, transition: "width .3s" }} />
+            </div>
+            <p style={{ fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
+              dirija até o marcador pra encontrar {mission.name}
+            </p>
+          </div>
+        ) : (
+          <p style={{ textAlign: "center", fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 14 }}>
+            nenhuma missão ativa no momento
+          </p>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          {POIS.map(poi => (
+            <div key={poi.id} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, color: "rgba(255,255,255,0.55)" }}>
+              <span>{poi.icon}</span><span>{poi.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Wrapper não-controlado (mantém o próprio estado) — usar só quando o
+// modal expandido puder mesmo ficar no topo da árvore (sem nenhum
+// ancestro posicionado por perto). Pra casos aninhados (como o HUB do
+// carro), usar CityMapButton + CityMapModal controlados por fora.
+export default function CityMap({ mission, progress }: { mission?: CityMapMission; progress: number }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <>
+      <CityMapButton mission={mission} progress={progress} onOpen={() => setExpanded(true)} />
+      {expanded && <CityMapModal mission={mission} progress={progress} onClose={() => setExpanded(false)} />}
     </>
   )
 }
