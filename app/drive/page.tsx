@@ -276,16 +276,39 @@ interface Zone { x: number; y: number; w: number; h: number }
 // (h:35, era h:20) — pedido do usuário pra ver mais estrada por enquanto,
 // sem terceira pessoa do carro. Mesma config/proporção relativa dos itens
 // entre si, só reescalada (fator 0.787879 = 65/82.5) e deslocada.
+//
+// Para-brisa cresceu de novo (35 → 40) pra caber o sistema de profundidade
+// em camadas (céu/sol fixo, prédios/palmeiras em paralaxe lento, pista
+// rápida) com mais respiro vertical — o painel foi reescalado mais uma vez
+// pra caber no que sobrou (fator 0.923077 = 60/65), mesma técnica de antes:
+// todo mundo comprime proporcionalmente a partir do novo limite do
+// para-brisa, sem mudar posição relativa de nada no eixo x.
 const ZONES = {
-  windshield:    { x:0,    y:0,    w:100,  h:35   }, // z1  exterior
-  cluster:       { x:3.5,  y:39.7, w:30.5, h:5.1  }, // z2  painel
-  centerConsole: { x:37.5, y:57.5, w:35,   h:14.2 }, // z3  painel
-  crt:           { x:35.5, y:35,   w:38.5, h:15.8 }, // z4  interativo
-  gloveBox:      { x:79.5, y:40.1, w:18,   h:19.7 }, // z5  interativo
-  map:           { x:76.5, y:2,    w:20,   h:15   }, // z7  interativo
-  wheel:         { x:7,    y:42.1, w:24.5, h:15.8 }, // z9  painel
-  djDeck:        { x:41.5, y:66,   w:24.5, h:24.8 }, // z10 interativo
-  radio:         { x:38.5, y:47.6, w:33.5, h:12.7 }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
+  windshield:    { x:0,    y:0,       w:100,  h:40      }, // z1  exterior
+  cluster:       { x:3.5,  y:44.338,  w:30.5, h:4.708   }, // z2  painel
+  centerConsole: { x:37.5, y:60.769,  w:35,   h:13.108  }, // z3  painel
+  crt:           { x:35.5, y:40,      w:38.5, h:14.585  }, // z4  interativo
+  gloveBox:      { x:79.5, y:44.708,  w:18,   h:18.185  }, // z5  interativo
+  map:           { x:76.5, y:2,       w:20,   h:15      }, // z7  interativo — HUD sobre o para-brisa, não faz parte do painel, não reescala
+  wheel:         { x:7,    y:46.554,  w:24.5, h:14.585  }, // z9  painel
+  djDeck:        { x:41.5, y:68.615,  w:24.5, h:22.892  }, // z10 interativo
+  radio:         { x:38.5, y:51.631,  w:33.5, h:11.723  }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
+  // z8 (banco/assento) finalmente ocupado: motorista (placeholder do
+  // personagem que o player vai criar, sempre no lugar do motorista) e
+  // passageiro da missão ativa (muda conforme Alohan/Nizzy/D-Bee) — ambos
+  // decorativos, sem clique
+  driverSeat:    { x:1.5,  y:25.231,  w:19,   h:22.154  }, // z8  decorativo
+  // fica atrás do CRT de propósito (zIndex menor) — passageiro "sentado
+  // atrás" do console, mesma lógica do motorista atrás do volante; só uma
+  // fatia à direita do console fica visível, o resto é ocluído por ele
+  passengerSeat: { x:60,   y:31.692,  w:18,   h:20.308  }, // z8  decorativo
+  // corpo do motorista ao redor do volante (braços/perna/pé) — cápsulas
+  // alongadas (não blobs redondos) pra ler como membro, mesmo como
+  // placeholder sem arte final. Puramente visual (pointerEvents:none)
+  armL:          { x:1,    y:46.462,  w:6.5,  h:10.154  }, // z12 decorativo
+  armR:          { x:23.5, y:46,      w:6.5,  h:9.231   }, // z13 decorativo
+  legL:          { x:2.5,  y:61.231,  w:6.5,  h:14.769  }, // z14 decorativo
+  footR:         { x:16,   y:73.231,  w:9,    h:4.615   }, // z15 decorativo
 } satisfies Record<string, Zone>
 
 // Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
@@ -395,6 +418,11 @@ export default function DrivePage() {
   // a pessoa aperta o power. Enquanto desligada, nada progride (sem missão
   // chegando), igual a um rádio de verdade
   const [radioOn, setRadioOn] = useState(false)
+  // shuffle geral: alterna uma faixa de cada frequência já sintonizada (em
+  // vez de tocar só a frequência selecionada em sequência) — manualTier
+  // acompanha a faixa tocando, então cor/estação exibida sempre bate com o
+  // que está no ar. Selecionar uma frequência manualmente desliga isso.
+  const [shuffleMode, setShuffleMode] = useState(false)
   // notificações do celular ecoadas numa barra no rádio (ver AudioBridge)
   const [phoneNotif, setPhoneNotif] = useState<Omit<PhoneNotification, "type"> | null>(null)
   const phoneNotifTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -569,20 +597,78 @@ export default function DrivePage() {
     } catch { /* Web Audio indisponivel — silencioso */ }
   }, [])
 
-  // ── ESTAÇÃO SELECIONADA: toca em loop simples a frequência escolhida,
-  // sem trocar sozinha pra outra — rádio de verdade, só toca o que você
-  // sintonizou e selecionou ──
+  // ── ESTAÇÃO SELECIONADA: toca em loop a frequência escolhida, numa ordem
+  // embaralhada (Fisher-Yates) a cada vez que liga/troca de frequência e a
+  // cada volta completa — assim não começa sempre pela mesma faixa nem
+  // repete sempre a mesma sequência. Não roda enquanto o shuffle geral
+  // (entre frequências) está ativo — quem cuida da troca de faixa nesse
+  // caso é o efeito de SHUFFLE GERAL logo abaixo ──
   useEffect(() => {
     if (!manualTier) return
     if (!radioOn) return
+    if (shuffleMode) return
     let cancelled = false
     const intervals: ReturnType<typeof setInterval>[] = []
     const timeouts: ReturnType<typeof setTimeout>[] = []
     const tracks = TRACKS_BY_TIER[manualTier]
 
-    const stepThrough = (idx: number) => {
+    const shuffledOrder = () => {
+      const order = tracks.map((_, i) => i)
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[order[i], order[j]] = [order[j], order[i]]
+      }
+      return order
+    }
+
+    const stepThrough = (pos: number, order: number[]) => {
       if (cancelled) return
       setRadioMachine("playing")
+      setRadioIdx(order[pos])
+      const t0 = performance.now()
+      setSnippetPct(0)
+      const prog = setInterval(() => {
+        if (cancelled) { clearInterval(prog); return }
+        setSnippetPct(Math.min((performance.now() - t0) / RADIO_SNIPPET_MS, 1))
+      }, 120)
+      intervals.push(prog)
+      const to = setTimeout(() => {
+        clearInterval(prog)
+        if (cancelled) return
+        if (pos < order.length - 1) { stepThrough(pos + 1, order); return }
+        setRadioMachine("static")
+        playStaticBurst()
+        const t1 = setTimeout(() => { if (!cancelled) stepThrough(0, shuffledOrder()) }, 900)
+        timeouts.push(t1)
+      }, RADIO_SNIPPET_MS)
+      timeouts.push(to)
+    }
+    stepThrough(0, shuffledOrder())
+
+    return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualTier, radioOn, playStaticBurst, shuffleMode])
+
+  // ── SHUFFLE GERAL: alterna uma faixa de cada frequência já sintonizada
+  // (nessa ordem, repetindo do início), em vez de tocar só a frequência
+  // selecionada — cada passo também troca o manualTier, então a cor/estação
+  // mostrada no rádio sempre bate com a faixa que está tocando ──
+  useEffect(() => {
+    if (!shuffleMode) return
+    if (!radioOn) return
+    const tunedTiers = ALL_TIERS.filter((t) => radioAccepted[t])
+    if (tunedTiers.length === 0) { setShuffleMode(false); return }
+    let cancelled = false
+    const intervals: ReturnType<typeof setInterval>[] = []
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+
+    const stepQueue = (pos: number) => {
+      if (cancelled) return
+      const tier = tunedTiers[pos % tunedTiers.length]
+      const tracks = TRACKS_BY_TIER[tier]
+      const idx = tracks.length ? Math.floor(Math.random() * tracks.length) : 0
+      setRadioMachine("playing")
+      setManualTier(tier)
       setRadioIdx(idx)
       const t0 = performance.now()
       setSnippetPct(0)
@@ -594,19 +680,35 @@ export default function DrivePage() {
       const to = setTimeout(() => {
         clearInterval(prog)
         if (cancelled) return
-        if (idx < tracks.length - 1) { stepThrough(idx + 1); return }
-        setRadioMachine("static")
-        playStaticBurst()
-        const t1 = setTimeout(() => { if (!cancelled) stepThrough(0) }, 900)
-        timeouts.push(t1)
+        stepQueue(pos + 1)
       }, RADIO_SNIPPET_MS)
       timeouts.push(to)
     }
-    stepThrough(0)
+    stepQueue(0)
 
     return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualTier, radioOn, playStaticBurst])
+  }, [shuffleMode, radioOn, radioAccepted])
+
+  // avança manualTier para a próxima frequência já desbloqueada, em loop —
+  // não mexe em radioOn nem no shuffle geral (desliga-o, pra não brigar
+  // sobre quem escolhe a frequência)
+  const nextTier = useCallback(() => {
+    const tunedTiers = ALL_TIERS.filter((t) => radioAccepted[t])
+    if (tunedTiers.length === 0) return
+    setShuffleMode(false)
+    setManualTier((prev) => {
+      const cur = prev ?? tunedTiers[0]
+      const i = tunedTiers.indexOf(cur)
+      return tunedTiers[(i + 1) % tunedTiers.length]
+    })
+    setRadioOn(true)
+  }, [radioAccepted])
+
+  const toggleShuffle = useCallback(() => {
+    setShuffleMode((m) => !m)
+    setRadioOn(true)
+  }, [])
 
 
   // toca o trecho atual (elemento próprio da rádio) ou silencia fora da fase "playing"
@@ -855,52 +957,72 @@ export default function DrivePage() {
         }
       }
 
-      // Silhueta do horizonte
+      // ── SILHUETA DO HORIZONTE — camada de PARALAXE LENTA (plano
+      // intermediário do sistema de profundidade: céu/sol parados ao
+      // fundo, esta camada se move devagar, a pista embaixo se move
+      // rápido). midScroll é a fração [0,1) de uma volta de tela inteira
+      // já percorrida — pintamos o mesmo padrão 3x lado a lado (rep
+      // -1/0/+1) deslocado por ela, técnica clássica de scroll infinito,
+      // pra nunca aparecer uma borda de repetição ──
       const horizY = JOGO_H * 0.60
-      if (scenarioRef.current === "helix") {
-        // parque eólico + fileira de painéis solares no lugar dos prédios
-        const turbineX=[0.08,0.22,0.38,0.58,0.74,0.90]
-        for(let t=0;t<turbineX.length;t++){
-          const tx=turbineX[t]*W, th=JOGO_H*0.30
-          const poleW=Math.max(2,W*0.004)
-          ctx.fillStyle=palette.buildingBase
-          ctx.fillRect(tx-poleW/2, horizY-th, poleW, th)
-          ctx.save()
-          ctx.translate(tx, horizY-th)
-          ctx.rotate(posRef.current*0.0015 + t)
-          ctx.strokeStyle=palette.buildingBase
-          ctx.lineWidth=Math.max(1.5,W*0.0025)
-          for(let bl=0;bl<3;bl++){
-            ctx.save(); ctx.rotate((bl/3)*Math.PI*2)
-            ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-th*0.22); ctx.stroke()
+      const midScroll = ((posRef.current * 0.00003) % 1 + 1) % 1
+      for (const rep of [-1, 0, 1]) {
+        const repOffset = (rep - midScroll) * W
+        if (scenarioRef.current === "helix") {
+          // parque eólico + fileira de painéis solares no lugar dos prédios
+          const turbineX=[0.08,0.22,0.38,0.58,0.74,0.90]
+          for(let t=0;t<turbineX.length;t++){
+            const tx=turbineX[t]*W+repOffset, th=JOGO_H*0.30
+            const poleW=Math.max(2,W*0.004)
+            ctx.fillStyle=palette.buildingBase
+            ctx.fillRect(tx-poleW/2, horizY-th, poleW, th)
+            ctx.save()
+            ctx.translate(tx, horizY-th)
+            ctx.rotate(posRef.current*0.0015 + t)
+            ctx.strokeStyle=palette.buildingBase
+            ctx.lineWidth=Math.max(1.5,W*0.0025)
+            for(let bl=0;bl<3;bl++){
+              ctx.save(); ctx.rotate((bl/3)*Math.PI*2)
+              ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-th*0.22); ctx.stroke()
+              ctx.restore()
+            }
             ctx.restore()
           }
-          ctx.restore()
-        }
-        ctx.fillStyle="#1c3a52"
-        for(let s=0;s<8;s++){
-          const sx=(s/8)*W+W*0.02, sw=W*0.09, sh=JOGO_H*0.045
-          ctx.save()
-          ctx.translate(sx, horizY-sh*0.6); ctx.rotate(-0.15)
-          ctx.fillRect(-sw/2,-sh/2,sw,sh)
-          ctx.strokeStyle="#3d6a8a"; ctx.lineWidth=1
-          ctx.strokeRect(-sw/2,-sh/2,sw,sh)
-          ctx.restore()
-        }
-      } else {
-        // prédios com janelas (Subúrbio: ferrugem apagada · Cidade Neon: néon intenso)
-        const bxArr=[0.05,0.12,0.20,0.28,0.36,0.44,0.52,0.60,0.68,0.76,0.84,0.92]
-        const bhArr=[0.09,0.13,0.08,0.16,0.11,0.18,0.10,0.15,0.12,0.17,0.09,0.13]
-        const bhScale = scenarioRef.current === "cidadeneon" ? 0.62 : 0.42 // "infinitos" — bem mais altos
-        for(let b=0;b<bxArr.length;b++){
-          const bW=W*0.075, bHH=bhArr[b]*JOGO_H*bhScale, bXX=bxArr[b]*W
-          ctx.fillStyle=palette.buildingBase
-          ctx.fillRect(bXX-bW/2, horizY-bHH, bW, bHH)
-          const wc=palette.windowColors[b%palette.windowColors.length]
-          ctx.fillStyle=wc
-          for(let wy=4;wy<bHH-4;wy+=9)
-            for(let wx=4;wx<bW-4;wx+=8)
-              if((b*7+wy+wx)%3!==0) ctx.fillRect(bXX-bW/2+wx,horizY-bHH+wy,4,4)
+          ctx.fillStyle="#1c3a52"
+          for(let s=0;s<8;s++){
+            const sx=(s/8)*W+W*0.02+repOffset, sw=W*0.09, sh=JOGO_H*0.045
+            ctx.save()
+            ctx.translate(sx, horizY-sh*0.6); ctx.rotate(-0.15)
+            ctx.fillRect(-sw/2,-sh/2,sw,sh)
+            ctx.strokeStyle="#3d6a8a"; ctx.lineWidth=1
+            ctx.strokeRect(-sw/2,-sh/2,sw,sh)
+            ctx.restore()
+          }
+        } else {
+          // prédios com janelas (Subúrbio: ferrugem apagada · Cidade Neon: néon intenso)
+          const bxArr=[0.05,0.12,0.20,0.28,0.36,0.44,0.52,0.60,0.68,0.76,0.84,0.92]
+          const bhArr=[0.09,0.13,0.08,0.16,0.11,0.18,0.10,0.15,0.12,0.17,0.09,0.13]
+          const bhScale = scenarioRef.current === "cidadeneon" ? 0.62 : 0.42 // "infinitos" — bem mais altos
+          for(let b=0;b<bxArr.length;b++){
+            const bW=W*0.075, bHH=bhArr[b]*JOGO_H*bhScale, bXX=bxArr[b]*W+repOffset
+            ctx.fillStyle=palette.buildingBase
+            ctx.fillRect(bXX-bW/2, horizY-bHH, bW, bHH)
+            const wc=palette.windowColors[b%palette.windowColors.length]
+            ctx.fillStyle=wc
+            for(let wy=4;wy<bHH-4;wy+=9)
+              for(let wx=4;wx<bW-4;wx+=8)
+                if((b*7+wy+wx)%3!==0) ctx.fillRect(bXX-bW/2+wx,horizY-bHH+wy,4,4)
+          }
+          // palmeiras em silhueta, intercaladas entre os prédios — visual
+          // synthwave da referência (praia/pôr do sol), mesma camada de
+          // paralaxe lento dos prédios
+          const palmX=[0.0,0.16,0.335,0.5,0.665,0.83]
+          const palmScale=[0.85,1,0.75,0.95,0.8,1.05]
+          for(let p=0;p<palmX.length;p++){
+            const px=palmX[p]*W+repOffset
+            const ph=JOGO_H*0.30*palmScale[p]
+            drawPalmSilhouette(ctx, px, horizY+JOGO_H*0.01, ph, palette.buildingBase)
+          }
         }
       }
 
@@ -1024,6 +1146,21 @@ export default function DrivePage() {
             ctx.shadowBlur=0
           }
         }
+      }
+
+      // ── REFLEXO NA PISTA — faixa vertical sutil (estilo "asfalto molhado")
+      // alinhada com o sol/horizonte, sobre a pista já desenhada. Blend
+      // "lighter" pra só clarear, nunca escurecer o asfalto por baixo ──
+      {
+        const reflW = W * 0.22
+        const refl = ctx.createLinearGradient(0, horizY, 0, JOGO_H)
+        refl.addColorStop(0, `${palette.sunOuter}33`)
+        refl.addColorStop(1, "transparent")
+        ctx.save()
+        ctx.globalCompositeOperation = "lighter"
+        ctx.fillStyle = refl
+        ctx.fillRect(SX - reflW / 2, horizY, reflW, JOGO_H - horizY)
+        ctx.restore()
       }
 
       // ── BLUR LATERAL no canvas (mais intenso que CSS) ──
@@ -1387,60 +1524,141 @@ export default function DrivePage() {
         const isStatic = radioMachine === "static"
         const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
         return (
-          <div
-            onClick={() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) }}
-            role="button"
-            tabIndex={0}
-            aria-label="Abrir SINT0NIA — sintonizar rádio"
-            style={{
-              position:"absolute", zIndex:48,
-              left:z.x, top:z.y, width:z.w, height:z.h,
-              borderRadius:16, cursor:"pointer", overflow:"hidden",
-              background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-              border:`1px solid ${accent}55`,
-              boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
-              display:"flex", flexDirection:"column", justifyContent:"center", padding:"6px 12px",
-              WebkitTapHighlightColor:"transparent",
-            }}
-          >
-            {/* power + estações já sintonizadas + volume — tudo contido
-                dentro da própria barra do rádio */}
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+          <div style={{ position:"absolute", zIndex:48, left:z.x, top:z.y, width:z.w, height:z.h, display:"flex", flexDirection:"column", gap:4 }}>
+
+            {/* NOME ALBUM/FAIXA — pílula fina, só o título mascarado da faixa atual */}
+            <div style={{
+              flexShrink:0, borderRadius:999, padding:"1px 10px", textAlign:"center",
+              background:"rgba(8,4,20,0.85)", border:`1px solid ${accent}44`,
+              fontFamily:"monospace", fontSize:8, letterSpacing:1, color:accent,
+              whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+            }}>
+              {radioOn && radioActive ? title : "—"}
+            </div>
+
+            {/* TELA DO RÁDIO (ESTAÇÃO) — estação/frequência atual; tocar aqui
+                continua abrindo o SINT0NIA direto (extensão do rádio no
+                celular, função "sintonia" centralizada aqui) */}
+            <div
+              onClick={() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) }}
+              role="button"
+              tabIndex={0}
+              aria-label="Abrir SINT0NIA — sintonizar rádio"
+              style={{
+                flex:1, minHeight:0, position:"relative", borderRadius:14, cursor:"pointer", overflow:"hidden",
+                background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
+                border:`1px solid ${accent}55`,
+                boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
+                display:"flex", flexDirection:"column", justifyContent:"center", padding:"4px 10px",
+                WebkitTapHighlightColor:"transparent",
+              }}
+            >
+              <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                {meta.label} · {meta.freq} FM{shuffleMode && radioOn ? " · SHUFFLE" : ""}
+              </div>
+              <div style={{position:"relative",height:14,overflow:"hidden",marginTop:2}}>
+                {!radioOn ? (
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
+                ) : isStatic ? (
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
+                ) : radioActive ? (
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,
+                    color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
+                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
+                  </div>
+                ) : (
+                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
+                )}
+              </div>
+              <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
+                <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
+              </div>
+            </div>
+
+            {/* CONTROLES — Sintonia/Estações (bolinhas), Próxima rádio,
+                Play grande (= power, sem ícone separado), Shuffle e volume */}
+            <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ display:"flex", gap:4, flexShrink:0 }}>
+                {tunedTiers.map(tier => {
+                  const tMeta = F[tier]
+                  const isSel = tier === activeTier
+                  return (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => { setShuffleMode(false); setManualTier(tier); setRadioOn(true) }}
+                      aria-label={`Tocar ${tMeta.label}`}
+                      style={{
+                        flexShrink:0, width:11, height:11, borderRadius:"50%",
+                        background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
+                        border: `1px solid ${tMeta.color}`,
+                        boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
+                        cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
+                      }}
+                    />
+                  )
+                })}
+              </div>
+
+              <div style={{ flex:1 }} />
+
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setRadioOn(o => !o) }}
+                onClick={nextTier}
+                aria-label="Próxima rádio"
+                style={{
+                  flexShrink:0, width:18, height:18, borderRadius:"50%",
+                  background:"rgba(255,255,255,0.06)", border:"1.5px solid rgba(255,255,255,0.3)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                }}
+              >
+                <svg width={9} height={9} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRadioOn(o => !o)}
                 aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
                 style={{
-                  flexShrink:0, width:20, height:20, borderRadius:"50%",
+                  flexShrink:0, width:28, height:28, borderRadius:"50%",
                   background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
                   border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
                   display:"flex", alignItems:"center", justifyContent:"center",
                   cursor:"pointer", WebkitTapHighlightColor:"transparent",
                 }}
               >
-                <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={radioOn ? meta.color : "rgba(255,255,255,0.5)"} strokeWidth={2.4} strokeLinecap="round"><path d="M12 2v8"/><path d="M18.36 6.64a9 9 0 11-12.73 0"/></svg>
+                {radioOn ? (
+                  <svg width={11} height={11} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+                ) : (
+                  <svg width={11} height={11} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
+                )}
               </button>
-              {tunedTiers.map(tier => {
-                const tMeta = F[tier]
-                const isSel = tier === activeTier
-                return (
-                  <button
-                    key={tier}
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setManualTier(tier); setRadioOn(true) }}
-                    aria-label={`Tocar ${tMeta.label}`}
-                    style={{
-                      flexShrink:0, width:13, height:13, borderRadius:"50%",
-                      background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
-                      border: `1px solid ${tMeta.color}`,
-                      boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
-                      cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
-                    }}
-                  />
-                )
-              })}
+
+              <button
+                type="button"
+                onClick={toggleShuffle}
+                aria-label={shuffleMode ? "Desligar shuffle" : "Ligar shuffle geral"}
+                style={{
+                  flexShrink:0, width:18, height:18, borderRadius:"50%",
+                  background: shuffleMode ? `${meta.color}22` : "rgba(255,255,255,0.06)",
+                  border: `1.5px solid ${shuffleMode ? meta.color : "rgba(255,255,255,0.3)"}`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                }}
+              >
+                <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h3.5a4 4 0 013.2 1.6L14 12"/>
+                  <path d="M3 18h3.5a4 4 0 003.2-1.6L14 12"/>
+                  <path d="M17 6h4M17 18h4"/>
+                  <path d="M18.5 4.5L21 6l-2.5 1.5"/>
+                  <path d="M18.5 19.5L21 18l-2.5-1.5"/>
+                </svg>
+              </button>
+
               <div style={{ flex:1 }} />
-              <div style={{ position:"relative", flexShrink:0, width:20, height:20 }}>
+
+              <div style={{ position:"relative", flexShrink:0, width:18, height:18 }}>
                 <div
                   ref={volumeRingRef}
                   onPointerDown={(e) => {
@@ -1460,27 +1678,6 @@ export default function DrivePage() {
                   }}
                 />
               </div>
-            </div>
-
-            <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-              {meta.label} · {meta.freq} FM
-            </div>
-            <div style={{position:"relative",height:16,overflow:"hidden",marginTop:2}}>
-              {!radioOn ? (
-                <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
-              ) : isStatic ? (
-                <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
-              ) : radioActive ? (
-                <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,
-                  color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
-                  ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
-                </div>
-              ) : (
-                <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
-              )}
-            </div>
-            <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
-              <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
             </div>
           </div>
         )
@@ -1615,6 +1812,83 @@ export default function DrivePage() {
           }}>
             <SteeringWheel3D steerRef={playerXRef} className="w-full h-full" />
           </div>
+        )
+      })()}
+
+      {/* MOTORISTA + PASSAGEIRO DA MISSÃO — silhuetas-placeholder nos bancos
+          (zona z8, banco/assento, deixada de fora de propósito até agora).
+          O motorista é o personagem que o player vai criar (criação de
+          personagem fica pra depois — aqui só o placeholder, sempre no
+          lugar do motorista); o passageiro muda conforme a missão ativa
+          (Alohan/Nizzy/D-Bee), reaproveitando activeMission/MISSION_COLORS
+          — mesma fonte de dado que o HUB de missão já usa. Decorativo, sem
+          clique. */}
+      {!phoneOpen && viewport.w > 0 && (() => {
+        const mission = activeMission(confirmCount)
+        const passengerColor = mission ? MISSION_COLORS[mission.id] : "rgba(180,160,210,0.55)"
+        const seats: { key: string; zone: Zone; color: string; label: string; letter?: string }[] = [
+          { key: "driver",    zone: ZONES.driverSeat,    color: "rgba(180,160,210,0.55)", label: "MOTORISTA" },
+          { key: "passenger", zone: ZONES.passengerSeat, color: passengerColor,            label: mission ? mission.name : "—", letter: mission?.letter },
+        ]
+        return (
+          <>
+            {seats.map(({ key, zone, color, label, letter }) => {
+              const b = zonePx(zone, viewport.w, viewport.h)
+              return (
+                <div key={key} style={{
+                  position:"absolute", zIndex:43, pointerEvents:"none",
+                  left:b.x, top:b.y, width:b.w, height:b.h,
+                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end",
+                }}>
+                  <div style={{
+                    width:"34%", aspectRatio:"1", borderRadius:"50%", marginBottom:"-6%", position:"relative", zIndex:1,
+                    background:`${color}33`, border:`1.5px solid ${color}`,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    fontFamily:"monospace", fontWeight:800, fontSize:13, color,
+                  }}>{letter ?? ""}</div>
+                  <div style={{
+                    width:"78%", height:"58%", borderRadius:"46% 46% 18% 18%",
+                    background:`${color}22`, border:`1.5px solid ${color}66`,
+                    boxShadow:`0 0 14px ${color}22, inset 0 0 10px ${color}18`,
+                  }}/>
+                  <span style={{
+                    marginTop:4, fontFamily:"monospace", fontSize:8, letterSpacing:1,
+                    color:"rgba(255,255,255,0.4)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%",
+                  }}>{label}</span>
+                </div>
+              )
+            })}
+          </>
+        )
+      })()}
+
+      {/* CORPO DO MOTORISTA AO REDOR DO VOLANTE — braços/perna/pé, dando a
+          sensação de primeira pessoa dirigindo (mãos no volante, pernas nos
+          pedais). Puramente visual, sem clique. */}
+      {!phoneOpen && viewport.w > 0 && (() => {
+        const bodyBorder = "rgba(180,160,210,0.55)"
+        const bodyFill   = "rgba(180,160,210,0.16)"
+        const parts: { key: string; zone: Zone; radius: string; rotate: number }[] = [
+          { key:"armL",  zone: ZONES.armL,  radius:"999px", rotate:-30 },
+          { key:"armR",  zone: ZONES.armR,  radius:"999px", rotate: 30 },
+          { key:"legL",  zone: ZONES.legL,  radius:"999px", rotate:  5 },
+          { key:"footR", zone: ZONES.footR, radius:"999px", rotate: -8 },
+        ]
+        return (
+          <>
+            {parts.map(({ key, zone, radius, rotate }) => {
+              const b = zonePx(zone, viewport.w, viewport.h)
+              return (
+                <div key={key} style={{
+                  position:"absolute", zIndex:43, pointerEvents:"none",
+                  left:b.x, top:b.y, width:b.w, height:b.h,
+                  borderRadius:radius,
+                  background:bodyFill, border:`1.5px solid ${bodyBorder}`,
+                  transform:`rotate(${rotate}deg)`,
+                }}/>
+              )
+            })}
+          </>
         )
       })()}
 
@@ -1925,6 +2199,41 @@ function drawSprite(ctx:CanvasRenderingContext2D,x:number,y:number,scale:number,
   ctx.restore()
 }
 
+// ── PALMEIRA EM SILHUETA — camada intermediária de paralaxe (Subúrbio/
+// Cidade Neon), visual synthwave de praia/pôr do sol da referência.
+// Tronco levemente curvo + leque assimétrico de frondes, tudo silhueta
+// única (sem sprite externo) ──
+function drawPalmSilhouette(ctx: CanvasRenderingContext2D, x: number, groundY: number, h: number, color: string) {
+  const trunkW = h * 0.05
+  const trunkH = h * 0.6
+  ctx.fillStyle = color
+  ctx.save()
+  ctx.translate(x, groundY)
+  ctx.beginPath()
+  ctx.moveTo(-trunkW / 2, 0)
+  ctx.quadraticCurveTo(trunkW * 1.5, -trunkH * 0.55, trunkW * 0.8, -trunkH)
+  ctx.lineTo(trunkW * 1.8, -trunkH)
+  ctx.quadraticCurveTo(trunkW * 2.5, -trunkH * 0.55, trunkW / 2, 0)
+  ctx.closePath()
+  ctx.fill()
+  ctx.translate(trunkW * 1.1, -trunkH)
+  const frondAngles = [-150, -105, -70, -35, 10, -160]
+  for (const deg of frondAngles) {
+    const rad = (deg * Math.PI) / 180
+    const len = h * 0.42
+    ctx.save()
+    ctx.rotate(rad)
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.quadraticCurveTo(len * 0.5, -len * 0.12, len, len * 0.18)
+    ctx.quadraticCurveTo(len * 0.45, len * 0.05, 0, 0)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
 // ── INTERIOR DO CARRO — colunas do para-brisa (mais estreitas no topo, mais
 // largas perto do painel, como a perspectiva real de um pilar A), moldura
 // superior, retrovisor central pendurado e o lábio de transição pro painel.
@@ -1949,7 +2258,16 @@ function drawInteriorFrame(ctx:CanvasRenderingContext2D, W:number, JOGO_H:number
   ctx.beginPath()
   ctx.moveTo(W,0); ctx.lineTo(W-topW,0); ctx.lineTo(W-botW,JOGO_H); ctx.lineTo(W,JOGO_H)
   ctx.closePath(); ctx.fill()
+  ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 2
   ctx.beginPath(); ctx.moveTo(W-topW,0); ctx.lineTo(W-botW,JOGO_H); ctx.stroke()
+
+  // brilho quente sutil na borda interna dos pilares — acabamento
+  // avermelhado/pôr-do-sol lembrando a referência, por cima do traço branco
+  ctx.strokeStyle = "rgba(255,140,60,0.22)"; ctx.lineWidth = Math.max(2, W*0.003)
+  ctx.shadowColor = "rgba(255,120,50,0.6)"; ctx.shadowBlur = W*0.006
+  ctx.beginPath(); ctx.moveTo(topW,0); ctx.lineTo(botW,JOGO_H); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(W-topW,0); ctx.lineTo(W-botW,JOGO_H); ctx.stroke()
+  ctx.shadowBlur = 0
 
   // moldura superior do para-brisa
   const topFrameH = JOGO_H*0.032
