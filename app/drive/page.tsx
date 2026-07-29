@@ -7,6 +7,7 @@ import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, Se
 import { sendStateToIframe, sendNotificationClickToIframe, sendCarRadioState } from "@/app/providers/AudioBridge"
 import SteeringWheel3D from "@/components/SteeringWheel3D"
 import { CityMapButton, CityMapModal } from "@/components/CityMap"
+import { AppIcon } from "@/components/AppIcon"
 import { type Tier, ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
 import { SCRIPTS, PREVIEW_SUMMARY, phaseFor, type MemberKey } from "@/app/n3xo/privado/[member]/page"
 
@@ -226,18 +227,27 @@ const HUB_AVATARS: Record<MemberKey, { avatar: string; color: string }> = {
   dbee: { avatar: "D", color: "#6B7FD7" },
 }
 
-// Dock de apps clicáveis direto do HUB — não abre mais a tela inicial
-// genérica do celular, só os apps específicos (cada um com sua rota)
-interface HubApp { id: string; label: string; color: string; route: string; unlocked: (s: {
-  radioAnyAccepted: boolean; nectar: boolean; feelGood: boolean; guitarDriver: boolean
-}) => boolean }
+// Apps clicáveis direto do HUB — não abre mais a tela inicial genérica do
+// celular, só os apps específicos (cada um com sua rota). Miniatura do
+// ícone de verdade do app (AppIcon), não uma letra inicial.
+interface HubAppUnlockState { radioAnyAccepted: boolean; nectar: boolean; feelGood: boolean; guitarDriver: boolean }
+interface HubApp { id: string; label: string; icon: string; color: string; route: string; external?: boolean; unlocked: (s: HubAppUnlockState) => boolean }
+
+// Blocos grandes (estilo TikTok/Netflix da referência) — os 3 apps-jogo
+const HUB_TILES: HubApp[] = [
+  { id: "loop",   label: "//LOOP",       icon: "tiktok",       color: "#1a0010", route: "/tiktok/feed", unlocked: () => true },
+  { id: "batida", label: "B4TIDA",       icon: "beatbuilder",  color: "#2a0505", route: "/batida",      unlocked: (s) => s.feelGood },
+  { id: "guitar", label: "GUITAR DRIVER",icon: "guitardriver", color: "#1a0a00", route: "/neon-tiles",  unlocked: (s) => s.guitarDriver },
+]
+
+// Dock fino embaixo — utilitários + os apps externos do celular (YouTube/Instagram)
 const HUB_APPS: HubApp[] = [
-  { id: "sintonia", label: "SINT0NIA", color: "#22ff88", route: "/sintonizador", unlocked: (s) => s.radioAnyAccepted },
-  { id: "n3xo",     label: "N3XO",     color: "#00e5ff", route: "/n3xo",         unlocked: () => true },
-  { id: "freq",     label: "FR3Q_",    color: "#1DB954", route: "/spotify/auto-chuva", unlocked: (s) => s.radioAnyAccepted },
-  { id: "nectar",   label: "NECTAR",   color: "#a78bfa", route: "/nectar",       unlocked: (s) => s.nectar },
-  { id: "batida",   label: "B4TIDA",   color: "#ff6b35", route: "/batida",       unlocked: (s) => s.feelGood },
-  { id: "guitar",   label: "GUITAR",   color: "#ff2d78", route: "/neon-tiles",   unlocked: (s) => s.guitarDriver },
+  { id: "sintonia",  label: "SINT0NIA",  icon: "tuner",     color: "#22ff88", route: "/sintonizador",       unlocked: (s) => s.radioAnyAccepted },
+  { id: "n3xo",      label: "N3XO",      icon: "whatsapp",  color: "#00e5ff", route: "/n3xo",               unlocked: () => true },
+  { id: "freq",      label: "FR3Q_",     icon: "heartbeat", color: "#1DB954", route: "/spotify/auto-chuva", unlocked: (s) => s.radioAnyAccepted },
+  { id: "nectar",    label: "NECTAR",    icon: "nectar",    color: "#a78bfa", route: "/nectar",             unlocked: (s) => s.nectar },
+  { id: "youtube",   label: "STR34M",    icon: "youtube",   color: "#FF0000", route: "https://www.youtube.com/@LU222CA", external: true, unlocked: () => true },
+  { id: "instagram", label: "_IRIS.EXE", icon: "instagram", color: "#3B0764", route: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr", external: true, unlocked: () => true },
 ]
 
 interface Seg { curve: number; sprites: { x: number; type: string }[] }
@@ -816,6 +826,23 @@ export default function DrivePage() {
     return () => { radioAudioRef.current?.pause() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── ESCUTA ACUMULADA POR FREQUÊNCIA — soma tempo real com o rádio de
+  // verdade tocando aquele tier (radioActive, não só sintonizado), pra
+  // segurar a mensagem da próxima missão até a pessoa realmente aproveitar
+  // a rádio nova por um tempo (>=45s ~ 2 faixas) em vez de já chegar assim
+  // que ela aperta sintonizar (ver app/page.tsx getMissions()) ──
+  useEffect(() => {
+    if (!radioActive) return
+    const tier = activeTierRef.current
+    const id = setInterval(() => {
+      funnel.setState((prev) => ({
+        ...prev,
+        radioListenedMs: { ...prev.radioListenedMs, [tier]: (prev.radioListenedMs[tier] ?? 0) + 2000 },
+      }))
+    }, 2000)
+    return () => clearInterval(id)
+  }, [radioActive, activeTier, funnel.setState])
 
   // teclado
   useEffect(() => {
@@ -1483,108 +1510,118 @@ export default function DrivePage() {
               }),
         }}
       >
-        {/* HUB fechado — estilo Apple CarPlay: mini-mapa à esquerda,
-            tocando-agora + prévia de mensagens (foto/nome/última linha,
-            resumida por "IA do carro") + dock de apps à direita. Cada
-            pedaço abre sua própria coisa; não existe mais um clique
-            genérico pra "tela inicial do celular". */}
+        {/* HUB fechado — estilo Apple CarPlay/head-unit (referência: mapa no
+            canto superior esquerdo, blocos grandes dos apps-jogo com ícone
+            de verdade — não letra — no resto da grade, prévia de mensagens
+            no canto superior direito, dock fino embaixo). Cada pedaço abre
+            sua própria coisa; não existe mais um clique genérico pra "tela
+            inicial do celular". */}
         {!phoneOpen && (() => {
           const mission = activeMission(confirmCount)
-          const openApp = (route: string) => { if (iframeRef.current) iframeRef.current.src = route; setPhoneOpen(true) }
+          const openApp = (a: { route: string; external?: boolean }) => {
+            if (a.external) { window.open(a.route, "_blank"); return }
+            if (iframeRef.current) iframeRef.current.src = a.route
+            setPhoneOpen(true)
+          }
           const contacts = HUB_MEMBER_ORDER
             .filter((key) => confirmCount >= HUB_VISIBLE_FROM_CC[key])
             .map((key) => {
               const phase = phaseFor(key, confirmCount)
-              const summary = PREVIEW_SUMMARY[key][phase]
               return {
                 key,
                 name: SCRIPTS[key].name,
-                preview: summary[summary.length - 1],
                 isNew: !funnel.state.rewardsViewed.includes(`${key}:${phase}`),
                 ...HUB_AVATARS[key],
               }
             })
-          const appState = {
+          const appState: HubAppUnlockState = {
             radioAnyAccepted: ALL_TIERS.some((t) => radioAccepted[t]),
             nectar: funnel.state.appsUnlocked.nectar,
             feelGood: funnel.state.appsUnlocked.feelGood,
             guitarDriver: funnel.state.appsUnlocked.guitarDriver,
           }
-          const availableApps = HUB_APPS.filter((a) => a.unlocked(appState))
+          const tiles = HUB_TILES.filter((a) => a.unlocked(appState))
+          const dockApps = HUB_APPS.filter((a) => a.unlocked(appState))
           return (
-            <div style={{ position:"absolute", inset:0, display:"flex", gap:5, padding:6, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
-              {/* mini-mapa — só o botão aqui; o modal expandido é
-                  renderizado fora do HUB (ver CityMapModal mais abaixo) */}
-              <div style={{ flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <CityMapButton
-                  mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
-                  progress={missionProgress}
-                  onOpen={() => setMapExpanded(true)}
-                />
+            <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:4, padding:6, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
+              <div style={{ flex:1, minHeight:0, display:"flex", gap:4 }}>
+                {/* mini-mapa — canto superior esquerdo; só o botão aqui, o
+                    modal expandido é renderizado fora do HUB (CityMapModal) */}
+                <div style={{ flexShrink:0, display:"flex", alignItems:"flex-start" }}>
+                  <CityMapButton
+                    mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
+                    progress={missionProgress}
+                    onOpen={() => setMapExpanded(true)}
+                    size={94}
+                  />
+                </div>
+
+                {/* grade 2x2: blocos dos apps-jogo (ícone de verdade) +
+                    prévia de mensagens no canto superior direito */}
+                <div style={{ flex:1, minWidth:0, display:"grid", gridTemplateColumns:"1fr 1fr", gridTemplateRows:"1fr 1fr", gap:4 }}>
+                  {tiles.map((tile) => (
+                    <button
+                      key={tile.id}
+                      type="button"
+                      onClick={() => openApp(tile)}
+                      aria-label={`Abrir ${tile.label}`}
+                      style={{
+                        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2,
+                        background:tile.color, borderRadius:7, border:"1px solid rgba(255,255,255,0.1)",
+                        cursor:"pointer", WebkitTapHighlightColor:"transparent", padding:2, minWidth:0,
+                      }}
+                    >
+                      <AppIcon icon={tile.icon} size={16} className="text-white" />
+                      <span style={{ fontFamily:"monospace", fontSize:6, fontWeight:700, letterSpacing:0.3, color:"rgba(255,255,255,0.85)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%" }}>{tile.label}</span>
+                    </button>
+                  ))}
+
+                  {/* prévia de mensagens — canto superior direito da grade */}
+                  <div style={{
+                    display:"flex", flexDirection:"column", gap:1, overflow:"hidden",
+                    background:"rgba(255,255,255,0.04)", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", padding:3,
+                  }}>
+                    {contacts.length === 0 ? (
+                      <span style={{ fontFamily:"monospace", fontSize:6, color:"rgba(255,255,255,0.35)" }}>sem msgs</span>
+                    ) : contacts.map((c) => (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => openApp({ route: `/n3xo/privado/${c.key}` })}
+                        aria-label={`Abrir conversa com ${c.name}`}
+                        style={{
+                          flex:1, minHeight:0, display:"flex", alignItems:"center", gap:3, textAlign:"left",
+                          background:"none", border:"none", padding:0, cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                        }}
+                      >
+                        <span style={{ width:9, height:9, borderRadius:"50%", flexShrink:0, background:c.color, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontWeight:800, fontSize:5, color:"#fff" }}>{c.avatar}</span>
+                        <span style={{ fontFamily:"monospace", fontSize:6, fontWeight:700, letterSpacing:0.2, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{c.name}</span>
+                        {c.isNew && <span style={{ width:4, height:4, borderRadius:"50%", flexShrink:0, background:"#00e5ff", boxShadow:"0 0 4px #00e5ff" }}/>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
-                {/* tocando agora */}
-                <button
-                  type="button"
-                  onClick={() => openApp("/sintonizador")}
-                  aria-label="Abrir SINT0NIA"
-                  style={{
-                    flexShrink:0, display:"flex", alignItems:"center", gap:5, textAlign:"left",
-                    background:"rgba(255,255,255,0.05)", border:`1px solid ${F[activeTier].color}44`,
-                    borderRadius:8, padding:"3px 6px", cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                  }}
-                >
-                  <span style={{ width:6, height:6, borderRadius:"50%", flexShrink:0, background: radioOn ? F[activeTier].color : "rgba(255,255,255,0.3)", boxShadow: radioOn ? `0 0 5px ${F[activeTier].color}` : "none" }}/>
-                  <span style={{ fontFamily:"monospace", fontSize:8, letterSpacing:0.5, color:"rgba(255,255,255,0.85)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                    {radioOn && radioActive ? (radioTrack?.title ?? "—").toUpperCase() : "rádio em silêncio"}
-                  </span>
-                </button>
-
-                {/* prévia de mensagens */}
-                <div style={{ flex:1, minHeight:0, overflow:"hidden", display:"flex", flexDirection:"column", gap:2 }}>
-                  {contacts.length === 0 ? (
-                    <span style={{ fontFamily:"monospace", fontSize:8, color:"rgba(255,255,255,0.35)", padding:"2px 4px" }}>sem mensagens</span>
-                  ) : contacts.map((c) => (
-                    <button
-                      key={c.key}
-                      type="button"
-                      onClick={() => openApp(`/n3xo/privado/${c.key}`)}
-                      aria-label={`Abrir conversa com ${c.name}`}
-                      style={{
-                        flex:1, minHeight:0, display:"flex", alignItems:"center", gap:5, textAlign:"left",
-                        background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)",
-                        borderRadius:7, padding:"0 6px", cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                      }}
-                    >
-                      <span style={{ width:14, height:14, borderRadius:"50%", flexShrink:0, background:c.color, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontWeight:800, fontSize:7, color:"#fff" }}>{c.avatar}</span>
-                      <span style={{ fontFamily:"monospace", fontSize:7, fontWeight:700, letterSpacing:0.3, color:"#fff", flexShrink:0 }}>{c.name}</span>
-                      <span style={{ fontFamily:"monospace", fontSize:7, color:"rgba(255,255,255,0.45)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>{c.preview}</span>
-                      {c.isNew && <span style={{ width:5, height:5, borderRadius:"50%", flexShrink:0, background:"#00e5ff", boxShadow:"0 0 4px #00e5ff" }}/>}
-                    </button>
-                  ))}
-                </div>
-
-                {/* dock de apps — os outros apps do celular, direto do HUB */}
-                <div style={{ flexShrink:0, display:"flex", gap:3, overflowX:"auto" }}>
-                  {availableApps.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => openApp(a.route)}
-                      aria-label={`Abrir ${a.label}`}
-                      style={{
-                        flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-                        width:16, height:16, borderRadius:5,
-                        background:`${a.color}22`, border:`1px solid ${a.color}77`,
-                        fontFamily:"monospace", fontWeight:800, fontSize:6, color:a.color,
-                        cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                      }}
-                    >
-                      {a.label[0]}
-                    </button>
-                  ))}
-                </div>
+              {/* dock fino embaixo — utilitários + apps externos do celular
+                  (YouTube/Instagram), ícone de verdade de cada um */}
+              <div style={{ flexShrink:0, display:"flex", gap:4, overflowX:"auto" }}>
+                {dockApps.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => openApp(a)}
+                    aria-label={`Abrir ${a.label}`}
+                    style={{
+                      flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+                      width:16, height:16, borderRadius:5,
+                      background:`${a.color}33`, border:`1px solid ${a.color}88`,
+                      cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                    }}
+                  >
+                    <AppIcon icon={a.icon} size={10} className="text-white" />
+                  </button>
+                ))}
               </div>
             </div>
           )

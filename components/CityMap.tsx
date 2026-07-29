@@ -84,21 +84,21 @@ function MapSvg({ mission, progress, size }: { mission?: CityMapMission; progres
 // (que tem seu próprio zIndex/stacking context), o zIndex do modal só
 // venceria os outros elementos DENTRO do HUB, não o rádio/DJ deck que
 // ficam fora dele (foi exatamente esse bug que aconteceu antes).
-export function CityMapButton({ mission, progress, onOpen }: { mission?: CityMapMission; progress: number; onOpen: () => void }) {
+export function CityMapButton({ mission, progress, onOpen, size = 64 }: { mission?: CityMapMission; progress: number; onOpen: () => void; size?: number }) {
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-label="Abrir mini-mapa"
       style={{
-        width: 64, height: 64, borderRadius: 14,
+        width: size, height: size, borderRadius: 14,
         background: "rgba(10,0,20,0.8)", padding: 4,
         border: "1.5px solid rgba(255,255,255,0.25)",
         boxShadow: "0 0 12px rgba(255,255,255,0.12)",
         cursor: "pointer", WebkitTapHighlightColor: "transparent",
       }}
     >
-      <MapSvg mission={mission} progress={progress} size={56} />
+      <MapSvg mission={mission} progress={progress} size={size - 8} />
     </button>
   )
 }

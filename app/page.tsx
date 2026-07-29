@@ -324,7 +324,12 @@ function CidadeNeonExperience() {
   const [showNotification, setShowNotification] = useState(false)
   const [appBadges, setAppBadges] = useState<Record<string, boolean>>({})
   const [showNotifCenter, setShowNotifCenter] = useState(false)
-  const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean } | null>(null)
+  const [bannerNotif, setBannerNotif] = useState<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean; isMission?: boolean } | null>(null)
+  // lido dentro do setInterval de showNext (closure não vê o state mais
+  // recente sem isso) — pra saber se já tem uma notificação de missão
+  // fixada esperando resposta antes de trocar ou avançar o ciclo
+  const bannerNotifRef = useRef(bannerNotif)
+  useEffect(() => { bannerNotifRef.current = bannerNotif }, [bannerNotif])
   const [completedMissions, setCompletedMissions] = useState<string[]>(() => {
     if (typeof window === "undefined") return []
     try { return JSON.parse(localStorage.getItem("cn-completed-missions") || "[]") } catch { return [] }
@@ -633,6 +638,17 @@ function CidadeNeonExperience() {
   /* ─── MISSIONS PER CONFIRMATION STAGE ────── */
   const [missionsTab, setMissionsTab] = useState<"active" | "completed" | "collected">("active")
 
+  // tempo mínimo ouvindo de verdade a frequência recém-sintonizada (~2
+  // faixas, RADIO_SNIPPET_MS*2) antes da PRÓXIMA missão poder notificar —
+  // a missão em si já está disponível (o personagem já responde no N3XO/
+  // HUB se a pessoa for lá cedo), só a notificação que empurra é que
+  // espera, pra não atropelar a experiência de andar ouvindo a rádio nova
+  const MIN_LISTEN_MS = 45000
+  const radioReady = useCallback(
+    (tier: Tier) => gameFunnelState.radioAccepted[tier] && (gameFunnelState.radioListenedMs[tier] ?? 0) >= MIN_LISTEN_MS,
+    [gameFunnelState.radioAccepted, gameFunnelState.radioListenedMs],
+  )
+
   const getMissions = useCallback(() => {
     const cc = gameFunnelState.confirmationCount
     const missions: Array<{ id: string; app: string; icon: string; color: string; title: string; body: string; action: string; isReward?: boolean; isMission?: boolean }> = []
@@ -647,24 +663,31 @@ function CidadeNeonExperience() {
     }
 
     if (cc === 0) {
-      // Missao 1: Alohan orienta abrir NECTAR
+      // Missao 1: Alohan orienta abrir NECTAR — primeira mensagem, sem
+      // rádio anterior pra esperar
       missions.push(
         { id: "whatsapp-alohan-0", app: "N3XO", icon: "whatsapp", color: "#4ECDC4", title: "Alohan", body: "voce recebeu uma mensagem", action: "/n3xo/privado/alohan", isMission: true },
       )
     } else if (cc === 1) {
       // Missao 1 completa: cc>=1 libera SUBÚRBIO XÊNON (não CRYPTO, era o
-      // bug antes daqui)
+      // bug antes daqui). A notificação da Nizzy só chega depois que a
+      // pessoa sintoniza e curte a rádio nova por pelo menos 45s
       pushSintonia("suburbio")
-      missions.push(
-        { id: "whatsapp-nizzy-1", app: "N3XO", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/n3xo/privado/nizzy", isMission: true },
-      )
+      if (radioReady("suburbio")) {
+        missions.push(
+          { id: "whatsapp-nizzy-1", app: "N3XO", icon: "whatsapp", color: "#FF6B6B", title: "Nizzy", body: "nova mensagem esperando", action: "/n3xo/privado/nizzy", isMission: true },
+        )
+      }
     } else if (cc === 2) {
       // Missao 2 completa: cc>=2 libera CIDADENEON.CRYPTO (não LIVE, era o
-      // bug antes daqui)
+      // bug antes daqui). Mesma espera: D-Bee só notifica depois de 45s
+      // curtindo a frequência nova
       pushSintonia("crypto")
-      missions.push(
-        { id: "whatsapp-dbee-2", app: "N3XO", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/n3xo/privado/dbee", isMission: true },
-      )
+      if (radioReady("crypto")) {
+        missions.push(
+          { id: "whatsapp-dbee-2", app: "N3XO", icon: "whatsapp", color: "#6B7FD7", title: "D-Bee", body: "ultima mensagem esperando", action: "/n3xo/privado/dbee", isMission: true },
+        )
+      }
     } else {
       // Missao 3 (GUITAR DRIVER) completa: cc>=3 libera LIVE NEON e também
       // CIDADE NEON 222.4 FM de uma vez (as duas últimas frequências)
@@ -682,7 +705,7 @@ function CidadeNeonExperience() {
       if (m.isReward) return !collectedRewards.includes(m.id)
       return !completedMissions.includes(m.id)
     })
-  }, [gameFunnelState.confirmationCount, completedMissions, collectedRewards])
+  }, [gameFunnelState.confirmationCount, completedMissions, collectedRewards, radioReady])
 
   const getCompletedConfirmations = useCallback(() => {
     const cc = gameFunnelState.confirmationCount
@@ -705,18 +728,28 @@ function CidadeNeonExperience() {
     const showNext = () => {
       const missions = getMissions()
       if (missions.length === 0) { setBannerNotif(null); return }
+      // já tem uma notificação de missão fixada esperando resposta, e ela
+      // ainda está pendente (não foi resolvida/sumiu da lista) — persiste
+      // nela, não deixa o ciclo trocar por cima nem avançar sozinho;
+      // "ela persiste até eu clicar"
+      const pinned = bannerNotifRef.current
+      if (pinned?.isMission && missions.some((m) => m.id === pinned.id)) return
       const idx = bannerIndexRef.current % missions.length
       const next = missions[idx]
       setBannerNotif(next)
       // ecoa a notificação pro rádio do carro, se o celular estiver dentro do /drive
       sendNotificationToParent({ id: next.id, app: next.app, icon: next.icon, color: next.color, title: next.title, body: next.body, isMission: next.isMission })
       bannerIndexRef.current++
-      // Auto-dismiss after 5 seconds, bounce the Missoes button
-      setTimeout(() => {
-        setBannerNotif(null)
-        setMissionsBounce(true)
-        setTimeout(() => setMissionsBounce(false), 600)
-      }, 5000)
+      // notificações de missão não somem sozinhas — só quando resolvidas
+      // (mesmo padrão que o painel do carro já usa); as outras continuam
+      // com o auto-dismiss de 5s
+      if (!next.isMission) {
+        setTimeout(() => {
+          setBannerNotif(null)
+          setMissionsBounce(true)
+          setTimeout(() => setMissionsBounce(false), 600)
+        }, 5000)
+      }
     }
 
     const initialTimer = setTimeout(showNext, 2000)

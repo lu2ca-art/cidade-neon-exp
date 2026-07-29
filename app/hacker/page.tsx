@@ -4,6 +4,67 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 
+// ── MATRIZ EM PERSPECTIVA — mesma direção/ponto de fuga da "estrada em
+// perspectiva" da tela inicial (app/page.tsx, fase "start": ponto de fuga
+// no topo-centro, abrindo em leque até a base da tela). Em vez de chuva
+// vertical plana (colunas paralelas), os caracteres nascem pequenos perto
+// do ponto de fuga e crescem/se espalham em direção à base, dando a mesma
+// sensação de profundidade/direção do resto da experiência ──
+function MatrixPerspective() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
+    resize()
+    window.addEventListener("resize", resize)
+
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*アイウエオカキクケコ"
+    // ponto de fuga no topo-centro, leque abrindo até a base — mesma
+    // geometria de x1=50,y1=0 -> [18,34,50,66,82],y=100 da tela inicial
+    const VANISH_X = 0.5
+    const LANE_COUNT = 30
+    const lanes = Array.from({ length: LANE_COUNT }, (_, i) => ({
+      baseX: (i + 0.5) / LANE_COUNT,
+      t: Math.random(),
+      speed: 0.12 + Math.random() * 0.22,
+      char: chars[Math.floor(Math.random() * chars.length)],
+    }))
+
+    let raf = 0
+    const draw = () => {
+      const W = canvas.width, H = canvas.height
+      ctx.fillStyle = "rgba(0,0,0,0.14)"
+      ctx.fillRect(0, 0, W, H)
+      for (const lane of lanes) {
+        lane.t += lane.speed * 0.012
+        if (lane.t > 1) { lane.t = 0; lane.char = chars[Math.floor(Math.random() * chars.length)] }
+        else if (Math.random() > 0.94) lane.char = chars[Math.floor(Math.random() * chars.length)]
+        // interpola do ponto de fuga (topo-centro) até a posição da base —
+        // mesmo leque/direção da estrada da tela inicial
+        const x = (VANISH_X + (lane.baseX - VANISH_X) * lane.t) * W
+        const y = lane.t * H
+        const size = 8 + lane.t * 22
+        ctx.globalAlpha = 0.2 + lane.t * 0.6
+        ctx.fillStyle = "#00FF66"
+        ctx.font = `${size}px monospace`
+        ctx.fillText(lane.char, x, y)
+      }
+      ctx.globalAlpha = 1
+      raf = requestAnimationFrame(draw)
+    }
+    raf = requestAnimationFrame(draw)
+
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize) }
+  }, [])
+
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ opacity: 0.5 }} />
+}
+
 const HACKER_LINES = [
   "> conexao estabelecida",
   "> interceptando stream...",
@@ -92,6 +153,12 @@ export default function HackerPage() {
 
   return (
     <div className="h-dvh bg-black text-[#00FF66] font-mono overflow-hidden relative">
+      {/* Matriz em perspectiva — mesma direção/ponto de fuga da estrada da
+          tela inicial (app/page.tsx, fase "start"), atrás de tudo */}
+      <div className="fixed inset-0 z-0">
+        <MatrixPerspective />
+      </div>
+
       {/* Glitch Entry Effect */}
       {showGlitch && (
         <div className="fixed inset-0 z-50 bg-black">

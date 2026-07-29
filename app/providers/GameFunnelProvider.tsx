@@ -118,6 +118,18 @@ export interface GameFunnelState {
     live: boolean
     full: boolean
   }
+  // quanto tempo (ms) a pessoa já ouviu ATIVAMENTE cada frequência no rádio
+  // do carro desde que sintonizou (acumulado, só conta com o rádio de
+  // verdade tocando aquele tier) — usado pra segurar a mensagem da próxima
+  // missão até a pessoa realmente aproveitar a rádio nova por um tempo
+  // (>=45s ~ 2 faixas), em vez de já chegar assim que ela sintoniza (ver
+  // app/page.tsx getMissions() e o efeito que acumula isso em app/drive)
+  radioListenedMs: {
+    suburbio: number
+    crypto: number
+    live: number
+    full: number
+  }
 }
 
 const STORAGE_KEY = "cidade-neon-funnel-v3"
@@ -161,6 +173,12 @@ const defaultState: GameFunnelState = {
     crypto: false,
     live: false,
     full: false,
+  },
+  radioListenedMs: {
+    suburbio: 0,
+    crypto: 0,
+    live: 0,
+    full: 0,
   },
 }
 
@@ -210,6 +228,7 @@ function loadState(): GameFunnelState {
       ...parsed,
       appsUnlocked: { ...defaultState.appsUnlocked, ...parsed.appsUnlocked },
       radioAccepted: { ...defaultState.radioAccepted, ...parsed.radioAccepted },
+      radioListenedMs: { ...defaultState.radioListenedMs, ...parsed.radioListenedMs },
     }
   } catch {
     return defaultState
