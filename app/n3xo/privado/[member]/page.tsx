@@ -155,6 +155,28 @@ export const SCRIPTS: Record<MemberKey, MemberScript> = {
   },
 }
 
+// Resumo em 3 linhas de cada fase — o carro tem uma IA que já lê a
+// conversa inteira e resume no preview do HUB, pra não distrair o
+// motorista com o texto todo; a conversa completa (SCRIPTS acima) continua
+// intacta quando a pessoa abre o app de verdade.
+export const PREVIEW_SUMMARY: Record<MemberKey, Record<"pre" | "reward" | "done", string[]>> = {
+  alohan: {
+    pre: ["ei, bora começar.", "tem um teste esperando por você.", "abre o NECTAR e responde sem pensar demais."],
+    reward: ["voltou. eu vi o resultado.", "faz sentido pra mim.", "tem uma recompensa sua aqui."],
+    done: ["missão cumprida.", "Nizzy quer te conhecer agora.", "ela é mais intensa. vai lá."],
+  },
+  nizzy: {
+    pre: ["Alohan me falou de você.", "preciso sentir antes de confiar.", "abre o B4TIDA e monta a batida de novo."],
+    reward: ["você sente de verdade.", "essa conexão não se finge.", "guarda o instrumental. é seu."],
+    done: ["agora tá completo aqui comigo.", "D-Bee vai te dar o último teste.", "ele é rigoroso, mas justo."],
+  },
+  dbee: {
+    pre: ["Alohan e Nizzy já aprovaram você.", "mas meu critério é diferente.", "abre o GUITAR DRIVER e toca as 4 faixas."],
+    reward: ["você tocou. cada faixa.", "isso prova que você tá dentro.", "tem algo ao vivo que nunca liberei. é seu."],
+    done: ["ciclo completo.", "você chegou até o fim.", "poucos chegam."],
+  },
+}
+
 // Qual cc marca o inicio da recompensa de cada personagem — reexportado pro
 // /n3xo (lista de conversas) usar os MESMOS limiares, em vez de duplicar
 // (e arriscar dessincronizar) esses números.

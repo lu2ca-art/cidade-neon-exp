@@ -8,6 +8,7 @@ import { sendStateToIframe, sendNotificationClickToIframe, sendCarRadioState } f
 import SteeringWheel3D from "@/components/SteeringWheel3D"
 import CityMap from "@/components/CityMap"
 import { type Tier, ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
+import { SCRIPTS, PREVIEW_SUMMARY, phaseFor, type MemberKey } from "@/app/n3xo/privado/[member]/page"
 
 const C = {
   skyTop:     "#1a0533",
@@ -99,6 +100,14 @@ const MATRIX_CHARS = "アイウエオカキクケコサシスセソ0123456789ABC
 
 // Duração fixa de cada faixa na rádio (prévia)
 const RADIO_SNIPPET_MS = 22000
+
+// Sintonia manual (dial) — espectro de frequências reais das 4 estações
+// (69.9 a 222.4 FM), usado pra posicionar o ponteiro e as marcações no dial
+const FREQ_MIN = 69.9
+const FREQ_MAX = 222.4
+const FREQ_TOLERANCE = 6 // "passar pela frequência certinha" — janela de acerto em torno de cada marcação
+function freqOf(tier: Tier): number { return parseFloat(TIER_META[tier].freq) }
+function pctForFreq(freq: number): number { return Math.min(1, Math.max(0, (freq - FREQ_MIN) / (FREQ_MAX - FREQ_MIN))) }
 
 // Faixa da rádio: title já vem no formato mascarado (com asteriscos), como o
 // resto do jogo. Cada faixa carrega sua própria estação/cor e um "tier" — a
@@ -207,15 +216,46 @@ const MISSION_COLORS: Record<MissionDef["id"], string> = {
   guitarDriver: "#ff2d78",
 }
 
+// ── HUB (estilo Apple CarPlay) — mesma ordem/dados do N3XO (app/n3xo/page.tsx)
+// pra lista de mensagens recentes bater exatamente com o app de verdade ──
+const HUB_MEMBER_ORDER: MemberKey[] = ["alohan", "nizzy", "dbee"]
+const HUB_VISIBLE_FROM_CC: Record<MemberKey, number> = { alohan: 0, nizzy: 1, dbee: 2 }
+const HUB_AVATARS: Record<MemberKey, { avatar: string; color: string }> = {
+  alohan: { avatar: "A", color: "#4ECDC4" },
+  nizzy: { avatar: "N", color: "#FF6B6B" },
+  dbee: { avatar: "D", color: "#6B7FD7" },
+}
+
+// Dock de apps clicáveis direto do HUB — não abre mais a tela inicial
+// genérica do celular, só os apps específicos (cada um com sua rota)
+interface HubApp { id: string; label: string; color: string; route: string; unlocked: (s: {
+  radioAnyAccepted: boolean; nectar: boolean; feelGood: boolean; guitarDriver: boolean
+}) => boolean }
+const HUB_APPS: HubApp[] = [
+  { id: "sintonia", label: "SINT0NIA", color: "#22ff88", route: "/sintonizador", unlocked: (s) => s.radioAnyAccepted },
+  { id: "n3xo",     label: "N3XO",     color: "#00e5ff", route: "/n3xo",         unlocked: () => true },
+  { id: "freq",     label: "FR3Q_",    color: "#1DB954", route: "/spotify/auto-chuva", unlocked: (s) => s.radioAnyAccepted },
+  { id: "nectar",   label: "NECTAR",   color: "#a78bfa", route: "/nectar",       unlocked: (s) => s.nectar },
+  { id: "batida",   label: "B4TIDA",   color: "#ff6b35", route: "/batida",       unlocked: (s) => s.feelGood },
+  { id: "guitar",   label: "GUITAR",   color: "#ff2d78", route: "/neon-tiles",   unlocked: (s) => s.guitarDriver },
+]
+
 interface Seg { curve: number; sprites: { x: number; type: string }[] }
 interface Car  { seg: number; x: number; color: string }
 
 function buildRoad(): Seg[] {
   const road: Seg[] = []
+  // sempre reta -> curva -> reta, nunca duas curvas seguidas (pra poder
+  // trocar de direção) — 3 intensidades (leve/moderada/acentuada) alternando
+  // direita/esquerda. O cenário de fundo (paralaxe) segue essa mesma curva
+  // (camCurve), então essa variedade também é o que dá o balanço visual dele
   const pattern = [
-    {len:100,curve:0},{len:120,curve:2.2},{len:100,curve:0},
-    {len:130,curve:-1.8},{len:100,curve:0},{len:120,curve:2.8},
-    {len:100,curve:0},{len:130,curve:-2.5},
+    {len:110,curve:0},   {len:130,curve:1.4},  // leve direita
+    {len:110,curve:0},   {len:120,curve:-1.3}, // leve esquerda
+    {len:110,curve:0},   {len:120,curve:2.6},  // moderada direita
+    {len:100,curve:0},   {len:120,curve:-2.8}, // moderada esquerda
+    {len:110,curve:0},   {len:100,curve:4.2},  // acentuada direita
+    {len:110,curve:0},   {len:100,curve:-4.0}, // acentuada esquerda
   ]
   const types = ["post","sign","post","sign","post"]
   let i = 0
@@ -289,26 +329,13 @@ const ZONES = {
   centerConsole: { x:37.5, y:60.769,  w:35,   h:13.108  }, // z3  painel
   crt:           { x:35.5, y:40,      w:38.5, h:14.585  }, // z4  interativo
   gloveBox:      { x:79.5, y:44.708,  w:18,   h:18.185  }, // z5  interativo
-  map:           { x:76.5, y:2,       w:20,   h:15      }, // z7  interativo — HUD sobre o para-brisa, não faz parte do painel, não reescala
+  // z7 (mapa solto no canto) removido — o mini-mapa agora mora dentro do
+  // HUB (zona crt), estilo Apple CarPlay, não é mais um widget separado
   wheel:         { x:7,    y:46.554,  w:24.5, h:14.585  }, // z9  painel
   djDeck:        { x:41.5, y:68.615,  w:24.5, h:22.892  }, // z10 interativo
   radio:         { x:38.5, y:51.631,  w:33.5, h:11.723  }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
-  // z8 (banco/assento) finalmente ocupado: motorista (placeholder do
-  // personagem que o player vai criar, sempre no lugar do motorista) e
-  // passageiro da missão ativa (muda conforme Alohan/Nizzy/D-Bee) — ambos
-  // decorativos, sem clique
-  driverSeat:    { x:1.5,  y:25.231,  w:19,   h:22.154  }, // z8  decorativo
-  // fica atrás do CRT de propósito (zIndex menor) — passageiro "sentado
-  // atrás" do console, mesma lógica do motorista atrás do volante; só uma
-  // fatia à direita do console fica visível, o resto é ocluído por ele
-  passengerSeat: { x:60,   y:31.692,  w:18,   h:20.308  }, // z8  decorativo
-  // corpo do motorista ao redor do volante (braços/perna/pé) — cápsulas
-  // alongadas (não blobs redondos) pra ler como membro, mesmo como
-  // placeholder sem arte final. Puramente visual (pointerEvents:none)
-  armL:          { x:1,    y:46.462,  w:6.5,  h:10.154  }, // z12 decorativo
-  armR:          { x:23.5, y:46,      w:6.5,  h:9.231   }, // z13 decorativo
-  legL:          { x:2.5,  y:61.231,  w:6.5,  h:14.769  }, // z14 decorativo
-  footR:         { x:16,   y:73.231,  w:9,    h:4.615   }, // z15 decorativo
+  // z8 (banco/assento) — motorista/passageiro-placeholder tentados e
+  // removidos (ficou bizarro); fora de escopo de novo por enquanto
 } satisfies Record<string, Zone>
 
 // Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
@@ -649,10 +676,11 @@ export default function DrivePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualTier, radioOn, playStaticBurst, shuffleMode])
 
-  // ── SHUFFLE GERAL: alterna uma faixa de cada frequência já sintonizada
-  // (nessa ordem, repetindo do início), em vez de tocar só a frequência
-  // selecionada — cada passo também troca o manualTier, então a cor/estação
-  // mostrada no rádio sempre bate com a faixa que está tocando ──
+  // ── SHUFFLE GERAL: alterna entre as frequências já sintonizadas em ordem
+  // embaralhada (não sempre a mesma primeiro) — cada passo também troca o
+  // manualTier, então a cor/estação mostrada no rádio sempre bate com a
+  // faixa que está tocando. Reembaralha a cada volta completa, igual ao
+  // shuffle dentro de cada frequência ──
   useEffect(() => {
     if (!shuffleMode) return
     if (!radioOn) return
@@ -662,9 +690,18 @@ export default function DrivePage() {
     const intervals: ReturnType<typeof setInterval>[] = []
     const timeouts: ReturnType<typeof setTimeout>[] = []
 
-    const stepQueue = (pos: number) => {
+    const shuffledTiers = () => {
+      const order = [...tunedTiers]
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[order[i], order[j]] = [order[j], order[i]]
+      }
+      return order
+    }
+
+    const stepQueue = (pos: number, order: Tier[]) => {
       if (cancelled) return
-      const tier = tunedTiers[pos % tunedTiers.length]
+      const tier = order[pos]
       const tracks = TRACKS_BY_TIER[tier]
       const idx = tracks.length ? Math.floor(Math.random() * tracks.length) : 0
       setRadioMachine("playing")
@@ -680,11 +717,12 @@ export default function DrivePage() {
       const to = setTimeout(() => {
         clearInterval(prog)
         if (cancelled) return
-        stepQueue(pos + 1)
+        if (pos < order.length - 1) { stepQueue(pos + 1, order); return }
+        stepQueue(0, shuffledTiers())
       }, RADIO_SNIPPET_MS)
       timeouts.push(to)
     }
-    stepQueue(0)
+    stepQueue(0, shuffledTiers())
 
     return () => { cancelled = true; intervals.forEach(clearInterval); timeouts.forEach(clearTimeout) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -709,6 +747,40 @@ export default function DrivePage() {
     setShuffleMode((m) => !m)
     setRadioOn(true)
   }, [])
+
+  // ── SINTONIA MANUAL (dial): as bolinhas continuam sendo atalhos que
+  // pulam direto pra frequência exata, mas agora também dá pra arrastar um
+  // ponteiro pelo espectro — só toca quando ele passa bem em cima da
+  // frequência de uma estação já desbloqueada (tolerância), como um rádio
+  // analógico de verdade; nas outras posições fica em silêncio/estática, e
+  // todas as frequências continuam sintonizáveis a qualquer momento ──
+  const [tunerPct, setTunerPct] = useState(() => pctForFreq(freqOf(activeTier)))
+  const tunerDraggingRef = useRef(false)
+  const tunerTrackRef = useRef<HTMLDivElement>(null)
+  // segue a estação selecionada por qualquer outro caminho (bolinhas,
+  // próxima rádio, shuffle) sempre que não está sendo arrastado à mão
+  useEffect(() => {
+    if (!tunerDraggingRef.current) setTunerPct(pctForFreq(freqOf(activeTier)))
+  }, [activeTier])
+  const updateTunerFromPointer = useCallback((clientX: number) => {
+    const el = tunerTrackRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    setTunerPct(pct)
+    const freq = FREQ_MIN + pct * (FREQ_MAX - FREQ_MIN)
+    let nearest: Tier | null = null
+    let nearestDist = Infinity
+    for (const t of ALL_TIERS) {
+      const d = Math.abs(freq - freqOf(t))
+      if (d < nearestDist) { nearestDist = d; nearest = t }
+    }
+    if (nearest && nearestDist <= FREQ_TOLERANCE && radioAccepted[nearest] && (nearest !== manualTier || shuffleMode)) {
+      setShuffleMode(false)
+      setManualTier(nearest)
+      setRadioOn(true)
+    }
+  }, [radioAccepted, manualTier, shuffleMode])
 
 
   // toca o trecho atual (elemento próprio da rádio) ou silencia fora da fase "playing"
@@ -957,17 +1029,17 @@ export default function DrivePage() {
         }
       }
 
-      // ── SILHUETA DO HORIZONTE — camada de PARALAXE LENTA (plano
-      // intermediário do sistema de profundidade: céu/sol parados ao
-      // fundo, esta camada se move devagar, a pista embaixo se move
-      // rápido). midScroll é a fração [0,1) de uma volta de tela inteira
-      // já percorrida — pintamos o mesmo padrão 3x lado a lado (rep
-      // -1/0/+1) deslocado por ela, técnica clássica de scroll infinito,
-      // pra nunca aparecer uma borda de repetição ──
+      // ── SILHUETA DO HORIZONTE — camada de PARALAXE LIGADA À CURVA DA
+      // PISTA (plano intermediário do sistema de profundidade: céu/sol
+      // parados ao fundo, pista rápida embaixo). Não é esteira lateral
+      // infinita — o cenário balança pro lado igual à curva que vem pela
+      // frente (curveRef.current, mesmo valor que já move a estrada e o
+      // volante 3D), então volta ao centro nos trechos retos entre as
+      // curvas, como olhar de verdade pra fora enquanto o carro curva ──
       const horizY = JOGO_H * 0.60
-      const midScroll = ((posRef.current * 0.00003) % 1 + 1) % 1
-      for (const rep of [-1, 0, 1]) {
-        const repOffset = (rep - midScroll) * W
+      const MID_CURVE_MAX = W * 0.10
+      const repOffset = Math.max(-MID_CURVE_MAX, Math.min(MID_CURVE_MAX, curveRef.current * W * 0.0016))
+      {
         if (scenarioRef.current === "helix") {
           // parque eólico + fileira de painéis solares no lugar dos prédios
           const turbineX=[0.08,0.22,0.38,0.58,0.74,0.90]
@@ -1340,11 +1412,12 @@ export default function DrivePage() {
         </div>
       )}
 
-      {/* TELA CRT / CONSOLE — fechada: fundo violeta com grid em
-          perspectiva + hub de missão (não mostra os apps até clicar).
-          Clicar abre o painel HUD completo (N3XO/NECTAR/FREQUENCIA/etc). */}
+      {/* TELA CRT / CONSOLE — fechada: HUB estilo Apple CarPlay (mini-mapa +
+          tocando agora + prévia de mensagens + dock de apps), nada de
+          clique genérico "abre o celular inteiro" — cada pedaço tem sua
+          própria ação. Só quando aberta (por um desses gatilhos) que essa
+          mesma caixa vira o painel do celular de verdade. */}
       <div
-        onClick={()=>!phoneOpen&&setPhoneOpen(true)}
         style={{
           position:"absolute",
           // fechada, fica atrás do rádio (zonas crt/radio se tocam por uma
@@ -1380,40 +1453,110 @@ export default function DrivePage() {
                 background:"#513156", borderRadius:10, padding:0,
                 border:"1.5px solid rgba(161,80,186,0.5)",
                 boxShadow:"0 0 16px rgba(161,80,186,0.35), 0 0 4px rgba(161,80,186,0.6)",
-                cursor:"pointer", overflow:"hidden",
+                cursor:"default", overflow:"hidden",
               }),
         }}
       >
-        {/* hub de missão — só quando fechada; grid em perspectiva #a150ba
-            sobre fundo #513156 (paleta medida da referência) */}
+        {/* HUB fechado — estilo Apple CarPlay: mini-mapa à esquerda,
+            tocando-agora + prévia de mensagens (foto/nome/última linha,
+            resumida por "IA do carro") + dock de apps à direita. Cada
+            pedaço abre sua própria coisa; não existe mais um clique
+            genérico pra "tela inicial do celular". */}
         {!phoneOpen && (() => {
           const mission = activeMission(confirmCount)
-          const color = mission ? MISSION_COLORS[mission.id] : "#a150ba"
+          const openApp = (route: string) => { if (iframeRef.current) iframeRef.current.src = route; setPhoneOpen(true) }
+          const contacts = HUB_MEMBER_ORDER
+            .filter((key) => confirmCount >= HUB_VISIBLE_FROM_CC[key])
+            .map((key) => {
+              const phase = phaseFor(key, confirmCount)
+              const summary = PREVIEW_SUMMARY[key][phase]
+              return {
+                key,
+                name: SCRIPTS[key].name,
+                preview: summary[summary.length - 1],
+                isNew: !funnel.state.rewardsViewed.includes(`${key}:${phase}`),
+                ...HUB_AVATARS[key],
+              }
+            })
+          const appState = {
+            radioAnyAccepted: ALL_TIERS.some((t) => radioAccepted[t]),
+            nectar: funnel.state.appsUnlocked.nectar,
+            feelGood: funnel.state.appsUnlocked.feelGood,
+            guitarDriver: funnel.state.appsUnlocked.guitarDriver,
+          }
+          const availableApps = HUB_APPS.filter((a) => a.unlocked(appState))
           return (
-            <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden" }}>
-              <svg width="100%" height="100%" style={{ position:"absolute", inset:0, opacity:0.5 }} viewBox="0 0 100 100" preserveAspectRatio="none">
-                {Array.from({length:6}, (_,i)=>{
-                  const x = (i+1)*100/7
-                  return <line key={"v"+i} x1={x} y1="0" x2={50+(x-50)*2.2} y2="100" stroke="#a150ba" strokeWidth="0.4"/>
-                })}
-                {Array.from({length:4}, (_,i)=>(
-                  <line key={"h"+i} x1="0" y1={20+i*20} x2="100" y2={20+i*20} stroke="#a150ba" strokeWidth="0.3" opacity={0.6}/>
-                ))}
-              </svg>
-              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6 }}>
-                <span style={{ fontFamily:"monospace", fontSize:10, letterSpacing:2, color:"rgba(255,255,255,0.4)" }}>
-                  {mission ? "MISSÃO ATIVA" : "HUB"}
-                </span>
-                {mission ? (
-                  <>
-                    <div style={{ width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:`${color}33`, border:`1.5px solid ${color}`, fontFamily:"monospace", fontWeight:800, fontSize:16, color, textShadow:`0 0 8px ${color}aa` }}>
-                      {mission.letter}
-                    </div>
-                    <span style={{ fontFamily:"monospace", fontSize:12, fontWeight:700, letterSpacing:1, color:"#fff" }}>{mission.name}</span>
-                  </>
-                ) : (
-                  <span style={{ fontFamily:"monospace", fontSize:11, color:"rgba(255,255,255,0.5)" }}>toque pra abrir</span>
-                )}
+            <div style={{ position:"absolute", inset:0, display:"flex", gap:5, padding:6, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
+              {/* mini-mapa */}
+              <div style={{ flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <CityMap
+                  mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
+                  progress={missionProgress}
+                />
+              </div>
+
+              <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
+                {/* tocando agora */}
+                <button
+                  type="button"
+                  onClick={() => openApp("/sintonizador")}
+                  aria-label="Abrir SINT0NIA"
+                  style={{
+                    flexShrink:0, display:"flex", alignItems:"center", gap:5, textAlign:"left",
+                    background:"rgba(255,255,255,0.05)", border:`1px solid ${F[activeTier].color}44`,
+                    borderRadius:8, padding:"3px 6px", cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                  }}
+                >
+                  <span style={{ width:6, height:6, borderRadius:"50%", flexShrink:0, background: radioOn ? F[activeTier].color : "rgba(255,255,255,0.3)", boxShadow: radioOn ? `0 0 5px ${F[activeTier].color}` : "none" }}/>
+                  <span style={{ fontFamily:"monospace", fontSize:8, letterSpacing:0.5, color:"rgba(255,255,255,0.85)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    {radioOn && radioActive ? (radioTrack?.title ?? "—").toUpperCase() : "rádio em silêncio"}
+                  </span>
+                </button>
+
+                {/* prévia de mensagens */}
+                <div style={{ flex:1, minHeight:0, overflow:"hidden", display:"flex", flexDirection:"column", gap:2 }}>
+                  {contacts.length === 0 ? (
+                    <span style={{ fontFamily:"monospace", fontSize:8, color:"rgba(255,255,255,0.35)", padding:"2px 4px" }}>sem mensagens</span>
+                  ) : contacts.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => openApp(`/n3xo/privado/${c.key}`)}
+                      aria-label={`Abrir conversa com ${c.name}`}
+                      style={{
+                        flex:1, minHeight:0, display:"flex", alignItems:"center", gap:5, textAlign:"left",
+                        background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)",
+                        borderRadius:7, padding:"0 6px", cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                      }}
+                    >
+                      <span style={{ width:14, height:14, borderRadius:"50%", flexShrink:0, background:c.color, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontWeight:800, fontSize:7, color:"#fff" }}>{c.avatar}</span>
+                      <span style={{ fontFamily:"monospace", fontSize:7, fontWeight:700, letterSpacing:0.3, color:"#fff", flexShrink:0 }}>{c.name}</span>
+                      <span style={{ fontFamily:"monospace", fontSize:7, color:"rgba(255,255,255,0.45)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>{c.preview}</span>
+                      {c.isNew && <span style={{ width:5, height:5, borderRadius:"50%", flexShrink:0, background:"#00e5ff", boxShadow:"0 0 4px #00e5ff" }}/>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* dock de apps — os outros apps do celular, direto do HUB */}
+                <div style={{ flexShrink:0, display:"flex", gap:3, overflowX:"auto" }}>
+                  {availableApps.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => openApp(a.route)}
+                      aria-label={`Abrir ${a.label}`}
+                      style={{
+                        flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+                        width:16, height:16, borderRadius:5,
+                        background:`${a.color}22`, border:`1px solid ${a.color}77`,
+                        fontFamily:"monospace", fontWeight:800, fontSize:6, color:a.color,
+                        cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                      }}
+                    >
+                      {a.label[0]}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )
@@ -1490,26 +1633,6 @@ export default function DrivePage() {
         </button>
       )}
 
-      {/* MINI-MAPA — GPS embutido na zona `map` do blocking (canto superior
-          direito) — mostra a missão ativa (marcador com a letra do
-          contato, estilo GTA) e o progresso de distância dirigida até ela,
-          mais os pontos de interesse decorativos da cidade */}
-      {!phoneOpen && viewport.w > 0 && (() => {
-        const mission = activeMission(confirmCount)
-        const mb = zonePx(ZONES.map, viewport.w, viewport.h)
-        return (
-          <div style={{
-            position:"absolute", zIndex:47,
-            left:mb.x, top:mb.y,
-          }}>
-            <CityMap
-              mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
-              progress={missionProgress}
-            />
-          </div>
-        )
-      })()}
-
       {/* BARRA DO RÁDIO — zona `radio` do blocking, centro do console. É o
           rádio, não o celular: mostra o que está tocando (mascarado, na cor
           da frequência) e, ao tocar, abre o SINT0NIA direto — SINT0NIA é uma
@@ -1523,61 +1646,16 @@ export default function DrivePage() {
         const title = (radioTrack?.title ?? "—").toUpperCase()
         const isStatic = radioMachine === "static"
         const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
+        const tunerFreq = FREQ_MIN + tunerPct * (FREQ_MAX - FREQ_MIN)
+        const tunerLocked = ALL_TIERS.some(t => radioAccepted[t] && Math.abs(tunerFreq - freqOf(t)) <= FREQ_TOLERANCE)
         return (
           <div style={{ position:"absolute", zIndex:48, left:z.x, top:z.y, width:z.w, height:z.h, display:"flex", flexDirection:"column", gap:4 }}>
 
-            {/* NOME ALBUM/FAIXA — pílula fina, só o título mascarado da faixa atual */}
-            <div style={{
-              flexShrink:0, borderRadius:999, padding:"1px 10px", textAlign:"center",
-              background:"rgba(8,4,20,0.85)", border:`1px solid ${accent}44`,
-              fontFamily:"monospace", fontSize:8, letterSpacing:1, color:accent,
-              whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
-            }}>
-              {radioOn && radioActive ? title : "—"}
-            </div>
-
-            {/* TELA DO RÁDIO (ESTAÇÃO) — estação/frequência atual; tocar aqui
-                continua abrindo o SINT0NIA direto (extensão do rádio no
-                celular, função "sintonia" centralizada aqui) */}
-            <div
-              onClick={() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) }}
-              role="button"
-              tabIndex={0}
-              aria-label="Abrir SINT0NIA — sintonizar rádio"
-              style={{
-                flex:1, minHeight:0, position:"relative", borderRadius:14, cursor:"pointer", overflow:"hidden",
-                background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-                border:`1px solid ${accent}55`,
-                boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
-                display:"flex", flexDirection:"column", justifyContent:"center", padding:"4px 10px",
-                WebkitTapHighlightColor:"transparent",
-              }}
-            >
-              <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                {meta.label} · {meta.freq} FM{shuffleMode && radioOn ? " · SHUFFLE" : ""}
-              </div>
-              <div style={{position:"relative",height:14,overflow:"hidden",marginTop:2}}>
-                {!radioOn ? (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
-                ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
-                ) : radioActive ? (
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:11,fontWeight:700,letterSpacing:1,
-                    color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
-                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
-                  </div>
-                ) : (
-                  <span style={{fontFamily:"monospace",fontSize:10,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
-                )}
-              </div>
-              <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
-                <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
-              </div>
-            </div>
-
-            {/* CONTROLES — Sintonia/Estações (bolinhas), Próxima rádio,
-                Play grande (= power, sem ícone separado), Shuffle e volume */}
-            <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:6 }}>
+            {/* FITINHA FINA — era só o nome da faixa, agora é onde moram os
+                controles (bolinhas de estação, próxima rádio, play grande
+                = power, shuffle e volume); o nome da faixa já aparece na
+                tela do rádio logo abaixo */}
+            <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:5, padding:"0 2px" }}>
               <div style={{ display:"flex", gap:4, flexShrink:0 }}>
                 {tunedTiers.map(tier => {
                   const tMeta = F[tier]
@@ -1589,7 +1667,7 @@ export default function DrivePage() {
                       onClick={() => { setShuffleMode(false); setManualTier(tier); setRadioOn(true) }}
                       aria-label={`Tocar ${tMeta.label}`}
                       style={{
-                        flexShrink:0, width:11, height:11, borderRadius:"50%",
+                        flexShrink:0, width:10, height:10, borderRadius:"50%",
                         background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
                         border: `1px solid ${tMeta.color}`,
                         boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
@@ -1607,13 +1685,13 @@ export default function DrivePage() {
                 onClick={nextTier}
                 aria-label="Próxima rádio"
                 style={{
-                  flexShrink:0, width:18, height:18, borderRadius:"50%",
+                  flexShrink:0, width:16, height:16, borderRadius:"50%",
                   background:"rgba(255,255,255,0.06)", border:"1.5px solid rgba(255,255,255,0.3)",
                   display:"flex", alignItems:"center", justifyContent:"center",
                   cursor:"pointer", WebkitTapHighlightColor:"transparent",
                 }}
               >
-                <svg width={9} height={9} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
+                <svg width={8} height={8} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
               </button>
 
               <button
@@ -1621,7 +1699,7 @@ export default function DrivePage() {
                 onClick={() => setRadioOn(o => !o)}
                 aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
                 style={{
-                  flexShrink:0, width:28, height:28, borderRadius:"50%",
+                  flexShrink:0, width:22, height:22, borderRadius:"50%",
                   background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
                   border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
                   display:"flex", alignItems:"center", justifyContent:"center",
@@ -1629,9 +1707,9 @@ export default function DrivePage() {
                 }}
               >
                 {radioOn ? (
-                  <svg width={11} height={11} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+                  <svg width={9} height={9} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
                 ) : (
-                  <svg width={11} height={11} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
+                  <svg width={9} height={9} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
                 )}
               </button>
 
@@ -1640,14 +1718,14 @@ export default function DrivePage() {
                 onClick={toggleShuffle}
                 aria-label={shuffleMode ? "Desligar shuffle" : "Ligar shuffle geral"}
                 style={{
-                  flexShrink:0, width:18, height:18, borderRadius:"50%",
+                  flexShrink:0, width:16, height:16, borderRadius:"50%",
                   background: shuffleMode ? `${meta.color}22` : "rgba(255,255,255,0.06)",
                   border: `1.5px solid ${shuffleMode ? meta.color : "rgba(255,255,255,0.3)"}`,
                   display:"flex", alignItems:"center", justifyContent:"center",
                   cursor:"pointer", WebkitTapHighlightColor:"transparent",
                 }}
               >
-                <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 6h3.5a4 4 0 013.2 1.6L14 12"/>
                   <path d="M3 18h3.5a4 4 0 003.2-1.6L14 12"/>
                   <path d="M17 6h4M17 18h4"/>
@@ -1656,9 +1734,7 @@ export default function DrivePage() {
                 </svg>
               </button>
 
-              <div style={{ flex:1 }} />
-
-              <div style={{ position:"relative", flexShrink:0, width:18, height:18 }}>
+              <div style={{ position:"relative", flexShrink:0, width:16, height:16 }}>
                 <div
                   ref={volumeRingRef}
                   onPointerDown={(e) => {
@@ -1677,6 +1753,85 @@ export default function DrivePage() {
                     mask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
                   }}
                 />
+              </div>
+            </div>
+
+            {/* TELA DO RÁDIO (ESTAÇÃO) — estação/frequência atual + dial de
+                sintonia manual; tocar fora do dial continua abrindo o
+                SINT0NIA direto (extensão do rádio no celular, função
+                "sintonia" centralizada aqui) */}
+            <div
+              onClick={() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) }}
+              role="button"
+              tabIndex={0}
+              aria-label="Abrir SINT0NIA — sintonizar rádio"
+              style={{
+                flex:1, minHeight:0, position:"relative", borderRadius:14, cursor:"pointer", overflow:"hidden",
+                background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
+                border:`1px solid ${accent}55`,
+                boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
+                display:"flex", flexDirection:"column", justifyContent:"center", padding:"3px 10px",
+                WebkitTapHighlightColor:"transparent",
+              }}
+            >
+              <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                {meta.label} · {meta.freq} FM{shuffleMode && radioOn ? " · SHUFFLE" : ""}
+              </div>
+
+              {/* DIAL DE SINTONIA — arrasta pra "passar" pelas 4 frequências;
+                  só acerta (toca) quando passa bem em cima de uma já
+                  desbloqueada, as outras continuam sintonizáveis a
+                  qualquer momento. Bolinhas na fitinha acima continuam
+                  sendo o atalho que pula direto pra frequência exata. */}
+              <div
+                ref={tunerTrackRef}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  tunerDraggingRef.current = true
+                  ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+                  updateTunerFromPointer(e.clientX)
+                }}
+                onPointerMove={(e) => { if (tunerDraggingRef.current) updateTunerFromPointer(e.clientX) }}
+                onPointerUp={() => { tunerDraggingRef.current = false }}
+                style={{ position:"relative", height:10, marginTop:3, cursor:"grab", touchAction:"none" }}
+              >
+                <div style={{ position:"absolute", left:0, right:0, top:"50%", height:2, transform:"translateY(-50%)", background:"rgba(255,255,255,0.12)", borderRadius:2 }}/>
+                {ALL_TIERS.map(t => {
+                  const tMeta = F[t]
+                  const unlocked = radioAccepted[t]
+                  return (
+                    <div key={t} style={{
+                      position:"absolute", left:`${pctForFreq(freqOf(t))*100}%`, top:"50%",
+                      width:3, height:8, transform:"translate(-50%,-50%)", borderRadius:1,
+                      background: unlocked ? tMeta.color : "rgba(255,255,255,0.15)",
+                      boxShadow: unlocked ? `0 0 4px ${tMeta.color}` : "none",
+                    }}/>
+                  )
+                })}
+                <div style={{
+                  position:"absolute", left:`${tunerPct*100}%`, top:"50%", width:2, height:12,
+                  transform:"translate(-50%,-50%)", borderRadius:1, background:"#fff",
+                  boxShadow: tunerLocked ? `0 0 6px ${accent}` : "0 0 3px rgba(255,255,255,0.5)",
+                }}/>
+              </div>
+
+              <div style={{position:"relative",height:13,overflow:"hidden",marginTop:1}}>
+                {!radioOn ? (
+                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
+                ) : isStatic ? (
+                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
+                ) : radioActive ? (
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:10,fontWeight:700,letterSpacing:1,
+                    color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
+                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
+                  </div>
+                ) : (
+                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
+                )}
+              </div>
+              <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
+                <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
               </div>
             </div>
           </div>
@@ -1812,83 +1967,6 @@ export default function DrivePage() {
           }}>
             <SteeringWheel3D steerRef={playerXRef} className="w-full h-full" />
           </div>
-        )
-      })()}
-
-      {/* MOTORISTA + PASSAGEIRO DA MISSÃO — silhuetas-placeholder nos bancos
-          (zona z8, banco/assento, deixada de fora de propósito até agora).
-          O motorista é o personagem que o player vai criar (criação de
-          personagem fica pra depois — aqui só o placeholder, sempre no
-          lugar do motorista); o passageiro muda conforme a missão ativa
-          (Alohan/Nizzy/D-Bee), reaproveitando activeMission/MISSION_COLORS
-          — mesma fonte de dado que o HUB de missão já usa. Decorativo, sem
-          clique. */}
-      {!phoneOpen && viewport.w > 0 && (() => {
-        const mission = activeMission(confirmCount)
-        const passengerColor = mission ? MISSION_COLORS[mission.id] : "rgba(180,160,210,0.55)"
-        const seats: { key: string; zone: Zone; color: string; label: string; letter?: string }[] = [
-          { key: "driver",    zone: ZONES.driverSeat,    color: "rgba(180,160,210,0.55)", label: "MOTORISTA" },
-          { key: "passenger", zone: ZONES.passengerSeat, color: passengerColor,            label: mission ? mission.name : "—", letter: mission?.letter },
-        ]
-        return (
-          <>
-            {seats.map(({ key, zone, color, label, letter }) => {
-              const b = zonePx(zone, viewport.w, viewport.h)
-              return (
-                <div key={key} style={{
-                  position:"absolute", zIndex:43, pointerEvents:"none",
-                  left:b.x, top:b.y, width:b.w, height:b.h,
-                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end",
-                }}>
-                  <div style={{
-                    width:"34%", aspectRatio:"1", borderRadius:"50%", marginBottom:"-6%", position:"relative", zIndex:1,
-                    background:`${color}33`, border:`1.5px solid ${color}`,
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    fontFamily:"monospace", fontWeight:800, fontSize:13, color,
-                  }}>{letter ?? ""}</div>
-                  <div style={{
-                    width:"78%", height:"58%", borderRadius:"46% 46% 18% 18%",
-                    background:`${color}22`, border:`1.5px solid ${color}66`,
-                    boxShadow:`0 0 14px ${color}22, inset 0 0 10px ${color}18`,
-                  }}/>
-                  <span style={{
-                    marginTop:4, fontFamily:"monospace", fontSize:8, letterSpacing:1,
-                    color:"rgba(255,255,255,0.4)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%",
-                  }}>{label}</span>
-                </div>
-              )
-            })}
-          </>
-        )
-      })()}
-
-      {/* CORPO DO MOTORISTA AO REDOR DO VOLANTE — braços/perna/pé, dando a
-          sensação de primeira pessoa dirigindo (mãos no volante, pernas nos
-          pedais). Puramente visual, sem clique. */}
-      {!phoneOpen && viewport.w > 0 && (() => {
-        const bodyBorder = "rgba(180,160,210,0.55)"
-        const bodyFill   = "rgba(180,160,210,0.16)"
-        const parts: { key: string; zone: Zone; radius: string; rotate: number }[] = [
-          { key:"armL",  zone: ZONES.armL,  radius:"999px", rotate:-30 },
-          { key:"armR",  zone: ZONES.armR,  radius:"999px", rotate: 30 },
-          { key:"legL",  zone: ZONES.legL,  radius:"999px", rotate:  5 },
-          { key:"footR", zone: ZONES.footR, radius:"999px", rotate: -8 },
-        ]
-        return (
-          <>
-            {parts.map(({ key, zone, radius, rotate }) => {
-              const b = zonePx(zone, viewport.w, viewport.h)
-              return (
-                <div key={key} style={{
-                  position:"absolute", zIndex:43, pointerEvents:"none",
-                  left:b.x, top:b.y, width:b.w, height:b.h,
-                  borderRadius:radius,
-                  background:bodyFill, border:`1.5px solid ${bodyBorder}`,
-                  transform:`rotate(${rotate}deg)`,
-                }}/>
-              )
-            })}
-          </>
         )
       })()}
 
