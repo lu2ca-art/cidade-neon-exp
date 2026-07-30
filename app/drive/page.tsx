@@ -407,15 +407,25 @@ export default function DrivePage() {
     mq.addEventListener("change", update)
     return () => mq.removeEventListener("change", update)
   }, [])
-  // W/H reais da viewport, em estado React — usados pra converter as zonas
-  // do blocking (ZONES, em %) em px de verdade nos overlays HTML (zonePx),
-  // a mesma conta que o canvas já faz sozinho dentro do loop imperativo
+  const stageRef  = useRef<HTMLDivElement>(null)
+  // W/H reais do stage (o MESMO elemento que o canvas usa pra si mesmo —
+  // stage.clientWidth/Height, via 100dvh), usados pra converter as zonas do
+  // blocking (ZONES, em %) em px de verdade nos overlays HTML (zonePx).
+  // Antes lia window.innerWidth/innerHeight direto, que diverge do "100dvh"
+  // de verdade em mobile (a barra de endereço do Safari aparece/some,
+  // mudando a altura visível sem que os dois sempre concordem) — isso
+  // fazia os overlays em HTML (volante, rádio, HUB etc., todos via zonePx)
+  // ficarem desalinhados do quadrado que o canvas de fato desenha, só
+  // visível em telas de celular de verdade (nunca no desktop)
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
   useEffect(() => {
-    const update = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
+    const el = stageRef.current
+    if (!el) return
+    const update = () => setViewport({ w: el.clientWidth, h: el.clientHeight })
     update()
-    window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [])
   const [volume, setVolume]         = useState(0.8)
   const volumeRingRef = useRef<HTMLDivElement>(null)
@@ -542,7 +552,6 @@ export default function DrivePage() {
   const scenarioRef    = useRef<Scenario>(scenarioForTier(activeTier))
   const transitionRef  = useRef<{ start: number; duration: number } | null>(null)
   const matrixColsRef  = useRef<{ x: number; y: number; speed: number; len: number }[]>([])
-  const stageRef  = useRef<HTMLDivElement>(null)
   const blurLRef  = useRef<HTMLDivElement>(null)
   const blurRRef  = useRef<HTMLDivElement>(null)
   const zoneRef   = useRef<string>("SUBÚRBIO XÊNON")
