@@ -375,7 +375,19 @@ function rescaleForMobile<T extends Record<string, Zone>>(desktop: T, mobileWind
   }
   return out
 }
-const ZONES_MOBILE = rescaleForMobile(ZONES_DESKTOP, 26)
+// O rádio é o ponto mais reclamado de ilegível no celular (nome da faixa e
+// dial de sintonia minúsculos) — em vez de só reescalar tudo proporcional
+// ao desktop, o rádio ganha uma fatia MAIOR de propósito (22% em vez de
+// ~14.5%), roubada do DJ deck (decorativo, menos crítico) e um pouco do
+// HUB (que também fica com menos conteúdo — ver dock de apps reduzido no
+// celular), pra caber fonte/controles bem maiores de verdade.
+const ZONES_MOBILE: typeof ZONES_DESKTOP = {
+  ...rescaleForMobile(ZONES_DESKTOP, 24),
+  crt:    { x:35.5, y:25.9, w:38.5, h:20 },
+  wheel:  { x:7,    y:32.9, w:24.5, h:16 },
+  radio:  { x:38.5, y:48.4, w:33.5, h:24 },
+  djDeck: { x:41.5, y:74.4, w:24.5, h:8  },
+}
 
 // Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
 // loop imperativo, ou o estado `viewport` no JSX — mesma conta nos dois)
@@ -1591,7 +1603,81 @@ export default function DrivePage() {
             guitarDriver: funnel.state.appsUnlocked.guitarDriver,
           }
           const tiles = HUB_TILES.filter((a) => a.unlocked(appState))
-          const dockApps = HUB_APPS.filter((a) => a.unlocked(appState))
+          // no celular o dock fica só com o essencial (rádio/mensagens/
+          // galeria) — o resto (NECTAR, YouTube, Instagram) some daqui pra
+          // dar espaço de verdade pros ícones que sobram, por pedido
+          // explícito ("mesmo que tenha que retirar algum ícone")
+          const dockApps = HUB_APPS.filter((a) => a.unlocked(appState) && (!isMobile || !["nectar", "youtube", "instagram"].includes(a.id)))
+
+          // ── CELULAR: layout mais simples de propósito — uma grade 2x2 de
+          // blocos + mensagens + dock não cabe legível numa caixa tão menor
+          // (o quadrado do celular é bem menor em px que o do desktop,
+          // mesmo com % maiores). Em vez disso: mapa + mensagens lado a
+          // lado (ambos bem maiores) e um dock só embaixo, juntando os
+          // apps-jogo (loop/batida/guitar) com os utilitários — tudo cabe
+          // com ícone/fonte de verdade legíveis, só perde o "bloco grande"
+          // com o nome do app escrito por baixo. ──
+          if (isMobile) {
+            const allApps = [...tiles, ...dockApps]
+            return (
+              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:5, padding:5, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
+                <div style={{ flex:1, minHeight:0, display:"flex", gap:5 }}>
+                  <div style={{ flexShrink:0, display:"flex", alignItems:"flex-start" }}>
+                    <CityMapButton
+                      mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
+                      progress={missionProgress}
+                      onOpen={() => setMapExpanded(true)}
+                      size={44}
+                    />
+                  </div>
+                  <div style={{
+                    flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3, overflow:"hidden",
+                    background:"rgba(255,255,255,0.04)", borderRadius:8, border:"1px solid rgba(255,255,255,0.08)", padding:4,
+                  }}>
+                    {contacts.length === 0 ? (
+                      <span style={{ fontFamily:"monospace", fontSize:9, color:"rgba(255,255,255,0.35)" }}>sem mensagens</span>
+                    ) : contacts.map((c) => (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => openApp({ route: `/n3xo/privado/${c.key}` })}
+                        aria-label={`Abrir conversa com ${c.name}`}
+                        style={{
+                          flex:1, minHeight:0, display:"flex", alignItems:"center", gap:4, textAlign:"left",
+                          background:"none", border:"none", padding:0, cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                        }}
+                      >
+                        <span style={{ width:13, height:13, borderRadius:"50%", flexShrink:0, background:c.color, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontWeight:800, fontSize:7, color:"#fff" }}>{c.avatar}</span>
+                        <span style={{ fontFamily:"monospace", fontSize:9, fontWeight:700, letterSpacing:0.2, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{c.name}</span>
+                        {c.isNew && <span style={{ width:6, height:6, borderRadius:"50%", flexShrink:0, background:"#00e5ff", boxShadow:"0 0 4px #00e5ff" }}/>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* dock único — jogo + utilitários juntos, ícones grandes */}
+                <div style={{ flexShrink:0, display:"flex", flexWrap:"wrap", gap:4, justifyContent:"center" }}>
+                  {allApps.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => openApp(a)}
+                      aria-label={`Abrir ${a.label}`}
+                      style={{
+                        flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+                        width:22, height:22, borderRadius:6,
+                        background:`${a.color}44`, border:`1px solid ${a.color}99`,
+                        cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                      }}
+                    >
+                      <AppIcon icon={a.icon} size={13} className="text-white" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
           return (
             <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:4, padding:6, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
               <div style={{ flex:1, minHeight:0, display:"flex", gap:4 }}>
@@ -1653,8 +1739,8 @@ export default function DrivePage() {
                 </div>
               </div>
 
-              {/* dock fino embaixo — utilitários + apps externos do celular
-                  (YouTube/Instagram), ícone de verdade de cada um */}
+              {/* dock fino embaixo — utilitários + YouTube/Instagram, ícone
+                  de verdade de cada um */}
               <div style={{ flexShrink:0, display:"flex", gap:4, overflowX:"auto" }}>
                 {dockApps.map((a) => (
                   <button
@@ -1763,15 +1849,21 @@ export default function DrivePage() {
         const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
         const tunerFreq = FREQ_MIN + tunerPct * (FREQ_MAX - FREQ_MIN)
         const tunerLocked = ALL_TIERS.some(t => radioAccepted[t] && Math.abs(tunerFreq - freqOf(t)) <= FREQ_TOLERANCE)
+        // tokens de tamanho — no celular o rádio ganhou uma fatia bem maior
+        // da tela de propósito (ver ZONES_MOBILE.radio), especificamente pra
+        // caber fonte/dial grandes o bastante pra ler e arrastar de verdade
+        const R = isMobile
+          ? { dot:12, next:20, play:28, shuffle:20, vol:20, ribbonGap:6, stationFont:11, tunerH:13, tickW:4, tickH:11, needleW:3, needleH:15, statusFont:11, marqueeFont:13 }
+          : { dot:10, next:16, play:22, shuffle:16, vol:16, ribbonGap:5, stationFont:9,  tunerH:10, tickW:3, tickH:8,  needleW:2, needleH:12, statusFont:9,  marqueeFont:10 }
         return (
-          <div style={{ position:"absolute", zIndex:48, left:z.x, top:z.y, width:z.w, height:z.h, display:"flex", flexDirection:"column", gap:4 }}>
+          <div style={{ position:"absolute", zIndex:48, left:z.x, top:z.y, width:z.w, height:z.h, display:"flex", flexDirection:"column", gap:isMobile?6:4 }}>
 
             {/* FITINHA FINA — era só o nome da faixa, agora é onde moram os
                 controles (bolinhas de estação, próxima rádio, play grande
                 = power, shuffle e volume); o nome da faixa já aparece na
                 tela do rádio logo abaixo */}
-            <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:5, padding:"0 2px" }}>
-              <div style={{ display:"flex", gap:4, flexShrink:0 }}>
+            <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:R.ribbonGap, padding:"0 2px" }}>
+              <div style={{ display:"flex", gap:isMobile?6:4, flexShrink:0 }}>
                 {tunedTiers.map(tier => {
                   const tMeta = F[tier]
                   const isSel = tier === activeTier
@@ -1782,7 +1874,7 @@ export default function DrivePage() {
                       onClick={() => { setShuffleMode(false); setManualTier(tier); setRadioOn(true) }}
                       aria-label={`Tocar ${tMeta.label}`}
                       style={{
-                        flexShrink:0, width:10, height:10, borderRadius:"50%",
+                        flexShrink:0, width:R.dot, height:R.dot, borderRadius:"50%",
                         background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
                         border: `1px solid ${tMeta.color}`,
                         boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
@@ -1800,13 +1892,13 @@ export default function DrivePage() {
                 onClick={nextTier}
                 aria-label="Próxima rádio"
                 style={{
-                  flexShrink:0, width:16, height:16, borderRadius:"50%",
+                  flexShrink:0, width:R.next, height:R.next, borderRadius:"50%",
                   background:"rgba(255,255,255,0.06)", border:"1.5px solid rgba(255,255,255,0.3)",
                   display:"flex", alignItems:"center", justifyContent:"center",
                   cursor:"pointer", WebkitTapHighlightColor:"transparent",
                 }}
               >
-                <svg width={8} height={8} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
+                <svg width={R.next*0.45} height={R.next*0.45} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
               </button>
 
               <button
@@ -1814,7 +1906,7 @@ export default function DrivePage() {
                 onClick={() => setRadioOn(o => !o)}
                 aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
                 style={{
-                  flexShrink:0, width:22, height:22, borderRadius:"50%",
+                  flexShrink:0, width:R.play, height:R.play, borderRadius:"50%",
                   background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
                   border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
                   display:"flex", alignItems:"center", justifyContent:"center",
@@ -1822,9 +1914,9 @@ export default function DrivePage() {
                 }}
               >
                 {radioOn ? (
-                  <svg width={9} height={9} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+                  <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
                 ) : (
-                  <svg width={9} height={9} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
+                  <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
                 )}
               </button>
 
@@ -1833,14 +1925,14 @@ export default function DrivePage() {
                 onClick={toggleShuffle}
                 aria-label={shuffleMode ? "Desligar shuffle" : "Ligar shuffle geral"}
                 style={{
-                  flexShrink:0, width:16, height:16, borderRadius:"50%",
+                  flexShrink:0, width:R.shuffle, height:R.shuffle, borderRadius:"50%",
                   background: shuffleMode ? `${meta.color}22` : "rgba(255,255,255,0.06)",
                   border: `1.5px solid ${shuffleMode ? meta.color : "rgba(255,255,255,0.3)"}`,
                   display:"flex", alignItems:"center", justifyContent:"center",
                   cursor:"pointer", WebkitTapHighlightColor:"transparent",
                 }}
               >
-                <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                <svg width={R.shuffle*0.5} height={R.shuffle*0.5} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 6h3.5a4 4 0 013.2 1.6L14 12"/>
                   <path d="M3 18h3.5a4 4 0 003.2-1.6L14 12"/>
                   <path d="M17 6h4M17 18h4"/>
@@ -1849,7 +1941,7 @@ export default function DrivePage() {
                 </svg>
               </button>
 
-              <div style={{ position:"relative", flexShrink:0, width:16, height:16 }}>
+              <div style={{ position:"relative", flexShrink:0, width:R.vol, height:R.vol }}>
                 <div
                   ref={volumeRingRef}
                   onPointerDown={(e) => {
@@ -1885,11 +1977,11 @@ export default function DrivePage() {
                 background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
                 border:`1px solid ${accent}55`,
                 boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
-                display:"flex", flexDirection:"column", justifyContent:"center", padding:"3px 10px",
+                display:"flex", flexDirection:"column", justifyContent:"center", padding: isMobile ? "4px 10px" : "3px 10px",
                 WebkitTapHighlightColor:"transparent",
               }}
             >
-              <div style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              <div style={{fontFamily:"monospace",fontSize:R.stationFont,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                 {meta.label} · {meta.freq} FM{shuffleMode && radioOn ? " · SHUFFLE" : ""}
               </div>
 
@@ -1909,43 +2001,43 @@ export default function DrivePage() {
                 }}
                 onPointerMove={(e) => { if (tunerDraggingRef.current) updateTunerFromPointer(e.clientX) }}
                 onPointerUp={() => { tunerDraggingRef.current = false }}
-                style={{ position:"relative", height:10, marginTop:3, cursor:"grab", touchAction:"none" }}
+                style={{ position:"relative", height:R.tunerH, marginTop: isMobile?4:3, cursor:"grab", touchAction:"none" }}
               >
-                <div style={{ position:"absolute", left:0, right:0, top:"50%", height:2, transform:"translateY(-50%)", background:"rgba(255,255,255,0.12)", borderRadius:2 }}/>
+                <div style={{ position:"absolute", left:0, right:0, top:"50%", height:isMobile?3:2, transform:"translateY(-50%)", background:"rgba(255,255,255,0.12)", borderRadius:2 }}/>
                 {ALL_TIERS.map(t => {
                   const tMeta = F[t]
                   const unlocked = radioAccepted[t]
                   return (
                     <div key={t} style={{
                       position:"absolute", left:`${pctForFreq(freqOf(t))*100}%`, top:"50%",
-                      width:3, height:8, transform:"translate(-50%,-50%)", borderRadius:1,
+                      width:R.tickW, height:R.tickH, transform:"translate(-50%,-50%)", borderRadius:1,
                       background: unlocked ? tMeta.color : "rgba(255,255,255,0.15)",
                       boxShadow: unlocked ? `0 0 4px ${tMeta.color}` : "none",
                     }}/>
                   )
                 })}
                 <div style={{
-                  position:"absolute", left:`${tunerPct*100}%`, top:"50%", width:2, height:12,
+                  position:"absolute", left:`${tunerPct*100}%`, top:"50%", width:R.needleW, height:R.needleH,
                   transform:"translate(-50%,-50%)", borderRadius:1, background:"#fff",
                   boxShadow: tunerLocked ? `0 0 6px ${accent}` : "0 0 3px rgba(255,255,255,0.5)",
                 }}/>
               </div>
 
-              <div style={{position:"relative",height:13,overflow:"hidden",marginTop:1}}>
+              <div style={{position:"relative",height:R.marqueeFont+3,overflow:"hidden",marginTop: isMobile?2:1}}>
                 {!radioOn ? (
-                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
+                  <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
                 ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
+                  <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
                 ) : radioActive ? (
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:10,fontWeight:700,letterSpacing:1,
+                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:R.marqueeFont,fontWeight:700,letterSpacing:1,
                     color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
                     ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                 ) : (
-                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
+                  <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
                 )}
               </div>
-              <div style={{position:"absolute", left:0, right:0, bottom:0, height:2, background:"rgba(255,255,255,0.06)"}}>
+              <div style={{position:"absolute", left:0, right:0, bottom:0, height: isMobile?3:2, background:"rgba(255,255,255,0.06)"}}>
                 <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
               </div>
             </div>
