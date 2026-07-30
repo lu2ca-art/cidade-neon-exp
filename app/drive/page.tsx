@@ -339,7 +339,7 @@ interface Zone { x: number; y: number; w: number; h: number }
 // do quadrado) em vez de quase se tocar. cluster/volante também deixaram
 // de se sobrepor de propósito (o volante "por cima" do cluster) e passam
 // a ter sua própria faixa, mais fácil de ler como duas coisas separadas.
-const ZONES = {
+const ZONES_DESKTOP = {
   windshield:    { x:0,    y:0,       w:100,  h:40      }, // z1  exterior
   cluster:       { x:3.5,  y:41.5,    w:30.5, h:4.708   }, // z2  painel
   centerConsole: { x:37.5, y:58.285,  w:35,   h:13.108  }, // z3  painel
@@ -353,6 +353,29 @@ const ZONES = {
   // z8 (banco/assento) — motorista/passageiro-placeholder tentados e
   // removidos (ficou bizarro); fora de escopo de novo por enquanto
 } satisfies Record<string, Zone>
+
+// Celular (retrato) usa o mesmo quadrado (x/y/w/h em %), só com um
+// para-brisa mais baixo — no retrato o quadrado é limitado pela LARGURA
+// (bem menor em px absolutos que a altura do desktop), então dar 40% dele
+// pro para-brisa sobra pouco painel de verdade; reduzindo pra 26% o painel
+// ganha ~23% a mais de altura relativa (74% do quadrado em vez de 60%),
+// bem mais espaçoso. Reaproveita a MESMA técnica de reescala proporcional
+// já usada quando o para-brisa cresceu antes (só que agora calculada, não
+// à mão) — todo mundo comprime/expande a partir do novo limite do
+// para-brisa, sem mudar x nem a ordem relativa de nada.
+function rescaleForMobile<T extends Record<string, Zone>>(desktop: T, mobileWindshieldH: number): T {
+  const oldH = desktop.windshield.h
+  const scale = (100 - mobileWindshieldH) / (100 - oldH)
+  const out = {} as T
+  for (const key in desktop) {
+    const z = desktop[key]
+    out[key] = (key === "windshield"
+      ? { ...z, h: mobileWindshieldH }
+      : { x: z.x, y: mobileWindshieldH + (z.y - oldH) * scale, w: z.w, h: z.h * scale }) as T[Extract<keyof T, string>]
+  }
+  return out
+}
+const ZONES_MOBILE = rescaleForMobile(ZONES_DESKTOP, 26)
 
 // Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
 // loop imperativo, ou o estado `viewport` no JSX — mesma conta nos dois)
@@ -883,7 +906,17 @@ export default function DrivePage() {
       canvas.height = h
     }
     resize()
-    window.addEventListener("resize",resize)
+    // ResizeObserver no próprio stage em vez do evento "resize" da window —
+    // no Safari mobile, a barra de endereço aparecer/sumir muda a altura
+    // real (100dvh) sem sempre disparar "resize" na window (principalmente
+    // logo depois do carregamento, antes de qualquer interação), então o
+    // canvas ficava travado na 1ª medição (às vezes com a barra escondida,
+    // maior que o real) enquanto os overlays em HTML (que já usam
+    // ResizeObserver, ver o efeito do `viewport`) se atualizavam certinho —
+    // os dois passavam a discordar entre si (sinais/estrada do canvas
+    // cortados nas bordas, painel HTML por baixo em outra escala)
+    const ro = new ResizeObserver(resize)
+    if (stageRef.current) ro.observe(stageRef.current)
 
     // Layout fixo em proporções:
     // BOTOES_H  = 90px fixo no fundo
@@ -908,11 +941,15 @@ export default function DrivePage() {
 
       const W = canvas.width
       const H = canvas.height
+      // celular usa um painel mais espaçoso (para-brisa mais baixo — ver
+      // ZONES_MOBILE) — mesma fonte que o JSX usa (isMobileRef), nunca
+      // discorda de qual conjunto de zonas os overlays em HTML usam
+      const Z = isMobileRef.current ? ZONES_MOBILE : ZONES_DESKTOP
       // JOGO_H = do topo da tela até o fim da zona windshield (dentro do
       // quadrado de design) — squareTopPx já é 0 em telas panorâmicas
       // (quadrado limitado pela altura) e >0 em telas em retrato (revela
       // mais céu acima do quadrado)
-      const JOGO_H  = squareTopPx(W, H) + ZONES.windshield.h / 100 * squarePx(W, H)
+      const JOGO_H  = squareTopPx(W, H) + Z.windshield.h / 100 * squarePx(W, H)
       // barra inferior um pouco mais alta em telas estreitas de celular —
       // dá espaço extra pros botões maiores/toque e cadência com o safe-area
       // somado no HTML (ver BOTOES_H_PCT no JSX). Usa isMobileRef (mesma
@@ -1316,7 +1353,7 @@ export default function DrivePage() {
       drawInteriorFrame(ctx,W,JOGO_H)
 
       // ── DASHBOARD ──
-      drawDashboard(ctx,W,H,DASH_H,BOTOES_H_NOW,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing)
+      drawDashboard(ctx,W,H,DASH_H,BOTOES_H_NOW,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing,Z)
 
       // ── TRANSIÇÃO estilo Matrix (chuva digital) ao trocar de cenário ──
       const tr = transitionRef.current
@@ -1351,17 +1388,20 @@ export default function DrivePage() {
     }
 
     rafRef.current=requestAnimationFrame(frame)
-    return()=>{cancelAnimationFrame(rafRef.current);window.removeEventListener("resize",resize)}
+    return()=>{cancelAnimationFrame(rafRef.current);ro.disconnect()}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
 
   const BOTOES_H_PCT = isMobile ? BOTOES_H_PX + 14 : BOTOES_H_PX
+  // celular usa um painel mais espaçoso (para-brisa mais baixo, mais
+  // altura de verdade pro painel) — ver ZONES_MOBILE/rescaleForMobile
+  const Z = isMobile ? ZONES_MOBILE : ZONES_DESKTOP
   // CONSOLE do carro — a Tela CRT (zona `crt` do blocking) é o gatilho de
   // verdade: fechada, mostra o hub de missão com grid em perspectiva;
   // clicando, abre o painel HUD completo (N3XO/NECTAR/FREQUENCIA/etc). O
   // "celular" pequeno (zona `phone`) é um objeto à parte, só de notificação
   // — ver bloco próprio mais abaixo.
-  const crtBox = zonePx(ZONES.crt, viewport.w, viewport.h)
+  const crtBox = zonePx(Z.crt, viewport.w, viewport.h)
   const CONSOLE_BTN_W = crtBox.w
   const CONSOLE_BTN_H = crtBox.h
   // escala pelo menor dos dois eixos (não só a largura) — senão o preview
@@ -1715,7 +1755,7 @@ export default function DrivePage() {
           passa pela tela inicial do N3XO. Acesso genérico ao celular (pra
           ver mensagens/apps) continua sendo o HUB (zona crt), como sempre foi. */}
       {!phoneOpen && viewport.w > 0 && (() => {
-        const z = zonePx(ZONES.radio, viewport.w, viewport.h)
+        const z = zonePx(Z.radio, viewport.w, viewport.h)
         const meta = F[activeTier]
         const accent = radioOn ? meta.color : "rgba(255,255,255,0.4)"
         const title = (radioTrack?.title ?? "—").toUpperCase()
@@ -2033,7 +2073,7 @@ export default function DrivePage() {
           blocking (mostradores espiando por trás do aro) já é atendida
           pelo cluster ocupar uma faixa mais alta e estreita que o volante. */}
       {!phoneOpen && viewport.w > 0 && (() => {
-        const wb = zonePx(ZONES.wheel, viewport.w, viewport.h)
+        const wb = zonePx(Z.wheel, viewport.w, viewport.h)
         return (
           <div style={{
             position:"absolute",
@@ -2049,7 +2089,7 @@ export default function DrivePage() {
           entre os bancos (zona `djDeck`, z10). Clicar abre o console direto
           no B4TIDA. */}
       {!phoneOpen && viewport.w > 0 && (() => {
-        const db = zonePx(ZONES.djDeck, viewport.w, viewport.h)
+        const db = zonePx(Z.djDeck, viewport.w, viewport.h)
         const size = Math.min(db.w, db.h)
         return (
           <div style={{ position:"absolute", zIndex:44, left:db.x + (db.w - size) / 2, top:db.y + (db.h - size) / 2, width:size, height:size }}>
@@ -2088,7 +2128,7 @@ export default function DrivePage() {
           z5). Blocos escuros, só os LEDs âmbar acendem. Clicar abre a tela
           de inventário (sem itens reais ainda). */}
       {!phoneOpen && viewport.w > 0 && (() => {
-        const gb = zonePx(ZONES.gloveBox, viewport.w, viewport.h)
+        const gb = zonePx(Z.gloveBox, viewport.w, viewport.h)
         return (
           <button
             type="button"
@@ -2454,7 +2494,8 @@ function drawDashboard(
   ctx:CanvasRenderingContext2D,
   W:number,H:number,DH:number,BOTOES_H:number,
   kmh:number,rpm:number,zone:string,curve:number,
-  trackName:string,playing:boolean
+  trackName:string,playing:boolean,
+  zones: typeof ZONES_DESKTOP
 ){
   const y0=H-DH-BOTOES_H
 
@@ -2481,13 +2522,13 @@ function drawDashboard(
   ctx.shadowBlur=0
 
   // console central — fundo decorativo (controles/botões), atrás do rádio
-  const cc = zonePx(ZONES.centerConsole, W, H)
+  const cc = zonePx(zones.centerConsole, W, H)
   drawCenterConsole(ctx, cc.x, cc.y, cc.w, cc.h)
 
   // cluster digital — zona própria do blocking, atrás do volante (HTML) —
   // "módulos independentes, luz vermelha" (referência medida), não mais o
   // vidro único ciano/laranja de antes
-  const cl = zonePx(ZONES.cluster, W, H)
+  const cl = zonePx(zones.cluster, W, H)
   drawInstrumentCluster(ctx, cl.x+cl.w/2, cl.y+cl.h/2, cl.w, cl.h, kmh, rpm)
 
   // (o RÁDIO agora é um visor HTML na zona radio própria — ver JSX.
