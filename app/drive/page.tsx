@@ -333,22 +333,23 @@ interface Zone { x: number; y: number; w: number; h: number }
 // pra caber no que sobrou (fator 0.923077 = 60/65), mesma técnica de antes:
 // todo mundo comprime proporcionalmente a partir do novo limite do
 // para-brisa, sem mudar posição relativa de nada no eixo x.
+// Reespaçado (era tudo comprimido quase sem vão nenhum entre as caixas —
+// o HUB terminava a 0.5% do início do rádio, o rádio a 1.8% do início do
+// DJ deck) — agora todo mundo tem um respiro de verdade entre si (~1.5-2.2%
+// do quadrado) em vez de quase se tocar. cluster/volante também deixaram
+// de se sobrepor de propósito (o volante "por cima" do cluster) e passam
+// a ter sua própria faixa, mais fácil de ler como duas coisas separadas.
 const ZONES = {
   windshield:    { x:0,    y:0,       w:100,  h:40      }, // z1  exterior
-  cluster:       { x:3.5,  y:44.338,  w:30.5, h:4.708   }, // z2  painel
-  centerConsole: { x:37.5, y:60.769,  w:35,   h:13.108  }, // z3  painel
-  crt:           { x:35.5, y:40,      w:38.5, h:14.585  }, // z4  interativo
-  gloveBox:      { x:79.5, y:44.708,  w:18,   h:18.185  }, // z5  interativo
+  cluster:       { x:3.5,  y:41.5,    w:30.5, h:4.708   }, // z2  painel
+  centerConsole: { x:37.5, y:58.285,  w:35,   h:13.108  }, // z3  painel
+  crt:           { x:35.5, y:41.5,    w:38.5, h:14.585  }, // z4  interativo
+  gloveBox:      { x:79.5, y:41.5,    w:18,   h:18.185  }, // z5  interativo
   // z7 (mapa solto no canto) removido — o mini-mapa agora mora dentro do
   // HUB (zona crt), estilo Apple CarPlay, não é mais um widget separado
-  wheel:         { x:7,    y:46.554,  w:24.5, h:14.585  }, // z9  painel
-  djDeck:        { x:41.5, y:68.615,  w:24.5, h:22.892  }, // z10 interativo
-  // y ajustado pra não sobrepor o HUB (zona crt) — antes as duas zonas se
-  // tocavam por uma borda de propósito (quando o HUB só tinha um badge
-  // centralizado), mas agora o HUB usa a caixa inteira (mapa/mensagens/
-  // dock até a borda de baixo), então a sobreposição virou colisão visual
-  // de verdade entre os dois cartões
-  radio:         { x:38.5, y:55.1,     w:33.5, h:11.723  }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
+  wheel:         { x:7,    y:47.708,  w:24.5, h:14.585  }, // z9  painel
+  djDeck:        { x:41.5, y:72.208,  w:24.5, h:22.892  }, // z10 interativo
+  radio:         { x:38.5, y:58.285,  w:33.5, h:11.723  }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
   // z8 (banco/assento) — motorista/passageiro-placeholder tentados e
   // removidos (ficou bizarro); fora de escopo de novo por enquanto
 } satisfies Record<string, Zone>
