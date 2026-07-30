@@ -1655,8 +1655,10 @@ export default function DrivePage() {
                   </div>
                 </div>
 
-                {/* dock único — jogo + utilitários juntos, ícones grandes */}
-                <div style={{ flexShrink:0, display:"flex", flexWrap:"wrap", gap:4, justifyContent:"center" }}>
+                {/* dock único — jogo + utilitários juntos. Nunca quebra
+                    linha (isso espremia a linha de cima até sumir) — se
+                    não couber tudo numa linha só, rola pro lado */}
+                <div style={{ flexShrink:0, display:"flex", gap:3, overflowX:"auto", justifyContent:"center" }}>
                   {allApps.map((a) => (
                     <button
                       key={a.id}
@@ -1665,12 +1667,12 @@ export default function DrivePage() {
                       aria-label={`Abrir ${a.label}`}
                       style={{
                         flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-                        width:22, height:22, borderRadius:6,
+                        width:19, height:19, borderRadius:5,
                         background:`${a.color}44`, border:`1px solid ${a.color}99`,
                         cursor:"pointer", WebkitTapHighlightColor:"transparent",
                       }}
                     >
-                      <AppIcon icon={a.icon} size={13} className="text-white" />
+                      <AppIcon icon={a.icon} size={11} className="text-white" />
                     </button>
                   ))}
                 </div>
