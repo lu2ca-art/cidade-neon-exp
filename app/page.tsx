@@ -15,20 +15,9 @@ type Phase =
   | "incoming-call"
   | "active-call"
   | "hacker"
-  | "spotify"
   | "phone-home"
-  | "whatsapp-group"
-  | "post-confirm-group"
   | "nectar-splash"
   | "nectar-login"
-
-interface Msg {
-  id: number
-  text: string
-  sender: string
-  time: string
-  isSystem?: boolean
-}
 
 /* ─── CONSTANTS ──────────────────────────────────────── */
 const HACKER_LINES = [
@@ -66,12 +55,6 @@ const TRACKS = [
 ]
 
 /* (Confirmation constants moved to their respective page files) */
-
-const participants: Record<string, { color: string; avatar: string }> = {
-  "D-Bee": { color: "#6B7FD7", avatar: "/images/avatar-dbee.jpg" },
-  Nizzy: { color: "#FF6B6B", avatar: "/images/avatar-nizzy.jpg" },
-  Alohan: { color: "#4ECDC4", avatar: "/images/avatar-alohan.jpg" },
-}
 
 const NECTAR_QUESTIONS = [
   { q: "Quando voce entra em um ambiente novo, o que sente primeiro?", opts: [
@@ -297,26 +280,8 @@ function CidadeNeonExperience() {
   const [matrixFading, setMatrixFading] = useState(false)
   const hackerScrollRef = useRef<HTMLDivElement>(null)
 
-  /* ── Spotify ────────── */
-  const [spotifyProgress, setSpotifyProgress] = useState(0)
-  const [spotifyElapsed, setSpotifyElapsed] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(true)
-  const [spotifyVolume, setSpotifyVolume] = useState(70)
-  const [showVolume, setShowVolume] = useState(false)
-  const [isGlitching] = useState(false)
-  const audioRef = useRef<HTMLAudioElement>(null)
-
-  /* ── WhatsApp Group ────────── */
-  const [groupMessages, setGroupMessages] = useState<Msg[]>([])
-  const [isTyping, setIsTyping] = useState(false)
-  const [groupInteractions, setGroupInteractions] = useState(0)
-  const [inputValue, setInputValue] = useState("")
-  const [confirmationsDone, setConfirmationsDone] = useState(0)
-  const [showConfirmBtn, setShowConfirmBtn] = useState(false)
+  // usado só pelo status bar falso do celular (relógio fixo "21:47")
   const [currentTime] = useState("21:47")
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const groupScriptSent = useRef(false)
-  const postConfirmScriptSent = useRef(false)
 
   /* ── (Confirmations now handled by separate pages) ── */
 
@@ -486,154 +451,6 @@ function CidadeNeonExperience() {
       return () => clearTimeout(t)
     }
   }, [phase, hackerIdx])
-
-  /* ─── SPOTIFY LOGIC ──────────────────���─────── */
-  useEffect(() => {
-    if (phase !== "spotify" || !isPlaying) return
-    const interval = setInterval(() => {
-      setSpotifyElapsed((p) => {
-        if (p >= 10) {
-          setPhase("phone-home")
-          setTimeout(() => setShowNotification(true), 2000)
-          return p
-        }
-        return p + 1
-      })
-      setSpotifyProgress((p) => Math.min(p + (100 / 204), 100))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [phase, isPlaying])
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = spotifyVolume / 100
-  }, [spotifyVolume])
-
-  /* ─── WHATSAPP GROUP LOGIC ─────────────────── */
-  const addBotMessages = useCallback((msgs: Msg[], onDone?: () => void) => {
-    let i = 0
-    const add = () => {
-      if (i >= msgs.length) { onDone?.(); return }
-      if (i > 0) setIsTyping(true)
-      setTimeout(() => {
-        setIsTyping(false)
-        setGroupMessages((p) => [...p, { ...msgs[i], id: Date.now() + i }])
-        i++
-        if (i < msgs.length) setTimeout(add, 1200 + Math.random() * 800)
-        else onDone?.()
-      }, 600 + Math.random() * 400)
-    }
-    add()
-  }, [])
-
-  // Initial group script - Phase 1: AI invasion verification
-  useEffect(() => {
-    if (phase !== "whatsapp-group" || groupScriptSent.current) return
-    groupScriptSent.current = true
-    const script: Msg[] = [
-      { id: 1, text: "Voce foi adicionado ao grupo", sender: "system", time: currentTime, isSystem: true },
-      { id: 2, text: "eae mano, chegou", sender: "D-Bee", time: currentTime },
-      { id: 3, text: "salve! bom te ver aqui", sender: "Nizzy", time: currentTime },
-      { id: 4, text: "aloha! finalmente", sender: "Alohan", time: currentTime },
-      { id: 5, text: "olha so, a gente tem visto muita invasao de IA's por aqui ultimamente", sender: "D-Bee", time: currentTime },
-      { id: 6, text: "entao antes de tudo a gente precisa confirmar que voce e humano de verdade", sender: "Nizzy", time: currentTime },
-      { id: 7, text: "manda uma mensagem ai pra gente te conhecer", sender: "Alohan", time: currentTime },
-    ]
-    addBotMessages(script)
-  }, [phase, addBotMessages, currentTime])
-
-  // Post-confirmation return to group
-  useEffect(() => {
-    if (phase !== "post-confirm-group" || postConfirmScriptSent.current) return
-    postConfirmScriptSent.current = true
-    setGroupMessages([])
-    setGroupInteractions(0)
-
-    if (confirmationsDone === 1) {
-      // Phase 2: Talk about cidade neon, no redirect
-      addBotMessages([
-        { id: 1, text: "eai voltou!", sender: "D-Bee", time: currentTime },
-        { id: 2, text: "mano a cidade neon ta cada vez mais viva", sender: "Nizzy", time: currentTime },
-        { id: 3, text: "tipo, a gente tava falando aqui sobre como a musica conecta as pessoas nesse lugar", sender: "Alohan", time: currentTime },
-        { id: 4, text: "e que nem todo mundo que chega aqui consegue sentir de verdade sabe", sender: "D-Bee", time: currentTime },
-        { id: 5, text: "por isso existe o segundo teste. pra gente ver se voce enxerga alem do obvio", sender: "Nizzy", time: currentTime },
-      ], () => { setPhase("whatsapp-group") })
-    } else if (confirmationsDone === 2) {
-      // Phase 3: Final test - prove you can feel
-      addBotMessages([
-        { id: 1, text: "mano ceeee passouuu", sender: "D-Bee", time: currentTime },
-        { id: 2, text: "agora vem o teste final", sender: "Nizzy", time: currentTime },
-        { id: 3, text: "a gente precisa ver se voce e capaz de sentir, ou se e so mais uma maquina", sender: "Alohan", time: currentTime },
-        { id: 4, text: "ninguem quer se sentir como uma maquina ne", sender: "D-Bee", time: currentTime },
-        { id: 5, text: "entao bora ate o final, vale a pena", sender: "Nizzy", time: currentTime },
-      ], () => { setPhase("whatsapp-group") })
-    } else if (confirmationsDone >= 3) {
-      // Final: Thanks, farewell, LU2CA enters
-      addBotMessages([
-        { id: 1, text: "MANO TU PASSOU EM TUDO", sender: "D-Bee", time: currentTime },
-        { id: 2, text: "sabia que ia conseguir", sender: "Nizzy", time: currentTime },
-        { id: 3, text: "foi um prazer te ter aqui de verdade", sender: "Alohan", time: currentTime },
-        { id: 4, text: "valeu por tudo mano, ate a proxima", sender: "D-Bee", time: currentTime },
-        { id: 5, text: "se cuida! a gente se ve na cidade", sender: "Nizzy", time: currentTime },
-        { id: 6, text: "aloha! ate logo", sender: "Alohan", time: currentTime },
-        { id: 7, text: "LU2CA entrou no grupo", sender: "system", time: currentTime, isSystem: true },
-      ], () => {
-        setTimeout(() => setPhase("phone-home"), 3000)
-      })
-    }
-  }, [phase, confirmationsDone, addBotMessages, currentTime])
-
-  // Scroll to bottom on messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [groupMessages, isTyping])
-
-  // Track interactions to show confirmation button
-  const neededInteractions = confirmationsDone === 0 ? 3 : confirmationsDone === 1 ? 2 : 1
-
-  useEffect(() => {
-    if (phase === "whatsapp-group" && groupInteractions >= neededInteractions && confirmationsDone < 3) {
-      const t = setTimeout(() => setShowConfirmBtn(true), 1500)
-      return () => clearTimeout(t)
-    }
-  }, [phase, groupInteractions, neededInteractions, confirmationsDone])
-
-  const handleGroupSend = () => {
-    if (!inputValue.trim()) return
-    const userMsg: Msg = { id: Date.now(), text: inputValue, sender: "Voce", time: currentTime }
-    setGroupMessages((p) => [...p, userMsg])
-    setInputValue("")
-    setGroupInteractions((p) => p + 1)
-
-    // Bot response - relaxed humor, no screaming
-    const responses = [
-      ["boa mano", "manda mais ai", "conta mais"],
-      ["show", "e nois", "isso ai"],
-      ["curti isso", "massa demais", "tu e gente boa"],
-      ["com certeza", "faz sentido", "valeu mano"],
-      ["sim sim", "total", "saquei"],
-      ["real", "exato", "concordo"],
-    ]
-    const group = responses[Math.floor(Math.random() * responses.length)]
-    const responders = ["D-Bee", "Nizzy", "Alohan"]
-    const picked = responders[Math.floor(Math.random() * responders.length)]
-
-    setTimeout(() => {
-      setIsTyping(true)
-      setTimeout(() => {
-        setIsTyping(false)
-        setGroupMessages((p) => [...p, { id: Date.now() + 1, text: group[Math.floor(Math.random() * group.length)], sender: picked, time: currentTime }])
-      }, 600 + Math.random() * 400)
-    }, 800)
-  }
-
-  const handleConfirmation = () => {
-    setShowConfirmBtn(false)
-    if (confirmationsDone === 0) window.location.href = "/nectar"
-    else if (confirmationsDone === 1) window.location.href = "/confirmacao/3-desbloqueio"
-    else if (confirmationsDone === 2) { setPhase("nectar-login") }
-  }
-
-  /* ─── (Old in-page confirmation handlers removed - now separate pages) ── */
 
   /* ─── MISSIONS PER CONFIRMATION STAGE ────── */
   const [missionsTab, setMissionsTab] = useState<"active" | "completed" | "collected">("active")
@@ -1186,125 +1003,6 @@ function CidadeNeonExperience() {
               ))}
             </div>
           )}
-        </div>
-      </div>
-    )
-  }
-
-  /* ─── RENDER: SPOTIFY ────────────────────────────── */
-  if (phase === "spotify") {
-    return (
-      <div className={`h-dvh bg-[#121212] flex items-center justify-center overflow-hidden ${isGlitching ? "animate-glitch" : ""}`}>
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] overflow-hidden bg-gradient-to-b from-[#2A1F4E] via-[#1A1030] to-[#121212] flex flex-col">
-          {/* iPhone Notch */}
-          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="flex items-center justify-between px-4 py-3">
-            <button type="button" className="p-2"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg></button>
-            <span className="text-white text-sm font-medium uppercase tracking-widest">TOCANDO DA PLAYLIST</span>
-            <button type="button" className="p-2"><svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg></button>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center px-8">
-            <div className="w-[280px] h-[280px] rounded-lg overflow-hidden shadow-2xl mb-8">
-              <Image src="/images/album-cover.jpg" alt="Cidade Neon" width={280} height={280} className="w-full h-full object-cover" />
-            </div>
-            <div className="w-full flex items-center justify-between mb-4">
-              <div><h2 className="text-white text-xl font-bold">CHUVA</h2><p className="text-[#B3B3B3] text-sm">LU2CA</p></div>
-              <button type="button" className="p-2"><svg className="w-6 h-6 text-[#1DB954]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg></button>
-            </div>
-            <div className="w-full mb-4">
-              <div className="h-1 bg-[#4D4D4D] rounded-full overflow-hidden"><div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${spotifyProgress}%` }} /></div>
-              <div className="flex justify-between mt-2 text-[#B3B3B3] text-xs"><span>{formatTime(spotifyElapsed)}</span><span>3:24</span></div>
-            </div>
-            <div className="w-full flex items-center justify-between px-4">
-              <button type="button" className="p-2 text-white"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg></button>
-              <button type="button" className="p-2 text-white"><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg></button>
-              <button type="button" onClick={() => setIsPlaying(!isPlaying)} className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-                {isPlaying
-                  ? <svg className="w-8 h-8 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
-                  : <svg className="w-8 h-8 text-black ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>}
-              </button>
-              <button type="button" className="p-2 text-white"><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg></button>
-              <button type="button" className="p-2 text-white"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" /></svg></button>
-            </div>
-            {/* Volume slider */}
-            <div className="w-full mt-6 px-4">
-              <button type="button" onClick={() => setShowVolume(!showVolume)} className="text-[#B3B3B3] text-xs mb-2 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>
-                Volume
-              </button>
-              {showVolume && (
-                <input type="range" min="0" max="100" value={spotifyVolume} onChange={(e) => setSpotifyVolume(Number(e.target.value))} className="w-full h-1 bg-[#4D4D4D] rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white" />
-              )}
-            </div>
-          </div>
-          <audio ref={audioRef} src="/images/chuva-20final-20-28video.mp4" />
-        </div>
-      </div>
-    )
-  }
-
-  /* ─── RENDER: WHATSAPP GROUP ─────────────────────── */
-  if (phase === "whatsapp-group" || phase === "post-confirm-group") {
-    return (
-      <div className="h-dvh bg-[#0B141A] flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-screen md:h-[844px] overflow-hidden flex flex-col" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 80 80\"%3E%3Cpath fill=\"%23182229\" d=\"M0 0h80v80H0z\"/%3E%3C/svg%3E')" }}>
-          {/* iPhone Notch */}
-          <div className="relative z-20 h-[54px] flex items-center justify-center flex-shrink-0 bg-[#1F2C34]">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[126px] h-[34px] bg-black rounded-b-[18px]" />
-          </div>
-          <div className="bg-[#1F2C34] px-2 py-2 flex items-center gap-2">
-            <button type="button" onClick={() => setPhase("phone-home")} className="p-2 text-[#AEBAC1]"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg></button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center"><svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg></div>
-            <div className="flex-1"><p className="text-white font-medium">CIDADE NEON</p><p className="text-[#8696A0] text-xs">D-Bee, Nizzy, Alohan</p></div>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            {groupMessages.map((msg) => (
-              <div key={msg.id} className={`mb-2 ${msg.isSystem ? "flex justify-center" : msg.sender === "Voce" ? "flex justify-end" : "flex justify-start"}`}>
-                {msg.isSystem ? (
-                  <div className="bg-[#182229] rounded-lg px-3 py-1"><p className="text-[#8696A0] text-xs text-center">{msg.text}</p></div>
-                ) : (
-                  <div className={`rounded-lg px-3 py-2 max-w-[80%] ${msg.sender === "Voce" ? "bg-[#005C4B]" : "bg-[#202C33]"}`}>
-                    {msg.sender !== "Voce" && <p className="text-xs font-medium mb-1" style={{ color: participants[msg.sender as keyof typeof participants]?.color || "#aaa" }}>{msg.sender}</p>}
-                    <p className="text-[#E9EDEF] text-sm">{msg.text}</p>
-                    <span className="text-[#8696A0] text-[10px] float-right mt-1">{msg.time}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-            {isTyping && (
-              <div className="mb-2 flex justify-start"><div className="bg-[#202C33] rounded-lg px-4 py-3"><div className="flex gap-1"><div className="w-2 h-2 bg-[#8696A0] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} /><div className="w-2 h-2 bg-[#8696A0] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} /><div className="w-2 h-2 bg-[#8696A0] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} /></div></div></div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-          {/* Confirmation notification - appears as N3XO-style notification banner */}
-          {showConfirmBtn && confirmationsDone < 3 && (
-            <div className="px-3 pb-2">
-              <button type="button" onClick={handleConfirmation} className="w-full animate-notif-slide-up">
-                <div className="bg-[#182229] rounded-xl p-3 flex items-center gap-3 border border-[#00A884]/30 shadow-lg">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6B7FD7] to-[#4ECDC4] flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-[#00A884] font-bold text-xs uppercase tracking-wider">
-                      {confirmationsDone === 0 ? "TESTE DAS MUSICAS (1/3)" : confirmationsDone === 1 ? "TESTE DE QI (2/3)" : "TESTE NECTAR (3/3)"}
-                    </p>
-                    <p className="text-[#8696A0] text-[11px] mt-0.5">Toque para iniciar</p>
-                  </div>
-                  <svg className="w-5 h-5 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                </div>
-              </button>
-            </div>
-          )}
-          <div className="bg-[#1F2C34] p-2 flex items-center gap-2">
-            <div className="flex-1 bg-[#2A3942] rounded-full px-4 py-2">
-              <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleGroupSend()} placeholder="Mensagem" className="w-full bg-transparent text-white text-sm outline-none placeholder-[#8696A0]" />
-            </div>
-            <button type="button" onClick={handleGroupSend} className="w-10 h-10 bg-[#00A884] rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-[#111B21]" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
-            </button>
-          </div>
         </div>
       </div>
     )
