@@ -124,6 +124,22 @@
      de `app/page.tsx`, que está morta. Precisa de uma fonte única (mesmo
      padrão que `lib/radio-tiers.ts` já resolveu pras frequências).
 
+  **Decisão 1 resolvida (2026-08-05)**: `/final/sala-branca` foi apagada.
+  O usuário decidiu: se não tinha nada reaproveitável no código, apagar; se
+  desse pra aproveitar pra construção do C0D3X (bloco de notas 3D), manter.
+  Avaliação: é só um card de compra genérico com fundo claro (aurora
+  pastel), sem nenhuma estrutura de "página pra folhear" — não serve de
+  base pro C0D3X. Removida junto com as duas pontas soltas que deixaria
+  (atalho no painel de dev, função nunca chamada em `app/tiktok/final`).
+  Descoberta lateral: `app/tiktok/final/page.tsx` (a versão "//LOOP" com
+  vídeos verticais e popup de compra do disco) também é 100% inalcançável
+  hoje — o ícone TikTok do celular só abre `/tiktok/final` quando
+  `confirmationCount &lt; 3`, mas está bloqueado exatamente até
+  `confirmationCount === 3`, então essa condição nunca ocorre. Fica
+  registrado sem decisão: essa versão é mais completa/no tom certo do que
+  a `/tiktok/feed` hoje em uso — pode valer a pena revisitar qual delas é
+  o destino real do `//LOOP`, mas isso é decisão de produto separada.
+
   Achados acionáveis sem bloqueio (não implementados ainda, aguardando
   priorização):
   - Código morto/duplicado espalhado por `app/page.tsx` (fases
