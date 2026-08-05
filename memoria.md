@@ -15,6 +15,17 @@
   imersivo contido numa cidade com vários tipos de interação" — reforça que
   decisões de UX devem tratar cada tela como parte de um mundo jogável, não
   como seção de site.
+- Criado `specs/visao-produto.md` com a visão de longo prazo compartilhada
+  pelo usuário: plataforma multiplayer, mapa multi-artista (A–Z, hoje só
+  L/LU2CA), carro e personagem customizáveis, rádio como forma de descobrir
+  a obra de cada artista, e um pilar grande de criação musical (sampleamento,
+  remix, stems, gravador portátil, MPC via B4TIDA, Guitar Hero ligado ao
+  instrumental real). Regra de design central que o usuário deixou explícita:
+  cidade + missões são a única fonte de recursos do jogo, desbloqueio é
+  sempre gradual (nunca tudo de uma vez, mas também nunca zero — no início
+  já há acesso a tudo em quantidade reduzida), com itens colecionáveis
+  espalhados pelo mapa (estilo Crash Bandicoot/Mario Kart) sujeitos a regras
+  estritas de spawn. Isso é norte de produto, não trabalho já implementado.
 
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 

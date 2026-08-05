@@ -66,7 +66,19 @@ estão documentados em `specs/design.md`.
   só sincronizam via `localStorage` + evento `storage` — ver comentário em
   `GameFunnelProvider.tsx` antes de mexer nisso.
 
+## Visão de longo prazo
+
+O que está descrito acima é o que **já existe hoje**: o funil de lançamento
+de CIDADE NEON, single-player, um artista só (LU2CA). A visão de produto vai
+muito além disso — plataforma multiplayer, mapa multi-artista (A–Z), carro/
+personagem customizáveis, e um pilar grande de criação musical (sampleamento,
+remix, stems, MPC, Guitar Hero ligado ao instrumental real). Está tudo
+documentado em `specs/visao-produto.md` — **não é o estado atual do código**,
+é o norte. Só vira trabalho quando o usuário priorizar um pedaço específico.
+
 ## Arquivos de contexto
 
 - @specs/design.md — paleta, tipografia, tom (fonte da verdade de design)
+- @specs/visao-produto.md — visão de longo prazo do produto (norte, não é o
+  que já está implementado)
 - @memoria.md — decisões e aprendizados conforme o projeto avança
