@@ -43,6 +43,34 @@
   de multiplicidade de estímulo (carro + celular navegável + //LOOP como
   recompensa rara pra quem completa a jornada) que já está espalhada pela
   experiência atual.
+- Passe de "investigação de detalhes" no código pra achar ambiguidades reais
+  antes de continuar documentando. Achados e decisões:
+  - **C0D3X** (ícone "notes" no celular, `app/page.tsx:373`) não tinha
+    nenhum handler de clique — ícone morto. Esclarecido pelo usuário: é o
+    bloco de notas pessoal dele, a ideia é renderizar em 3D, como se desse
+    pra folhear e ler as páginas. Ainda não implementado — registrado aqui
+    pra não perder a intenção até entrar na fila de trabalho.
+  - **FR3Q_** (app id interno `spotify`, abre `/spotify/auto-chuva`) é
+    confirmado como **rádio 100% própria**, sem nenhuma integração real com
+    o Spotify — "Spotify" no código/pastas é só nomenclatura antiga que
+    sobrou. Não afeta o usuário final (o nome exibido já é FR3Q_), mas vale
+    lembrar disso ao mexer em `app/spotify/*` pra não achar que é uma
+    integração real.
+  - **Sistema de progressão/recursos** deixou de ser visão distante —
+    virou prioridade atual, movido de `specs/visao-produto.md` para
+    `specs/progressao.md`. Ainda não implementado (hoje o unlock é
+    binário), mas agora faz parte do escopo de "polir a experiência
+    single-player", não do norte de longo prazo.
+  - Confirmado: não existe marca/empresa separada por trás do projeto além
+    do próprio LU2CA — "empresa"/"nós" era forma de falar, não uma entidade
+    à parte. `CLAUDE.md` continua descrevendo o projeto como do artista
+    solo.
+  - Pendências registradas sem decisão ainda (não travam nada, só ficam
+    marcadas): futuro do FEEL.GOOD legado (B-side permanente ou conteúdo a
+    aposentar), status do conteúdo externo do ACC3SS
+    (`lu2ca-xlvdjou.gamma.site` — final ou placeholder), e se
+    untitled.stream (onde o álbum é vendido de verdade) tensiona ou reforça
+    o tema de independência do projeto.
 
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 

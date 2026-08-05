@@ -50,24 +50,12 @@ Foco forte em transformar a plataforma num criador de sons/samples, um
   instrumentos presentes e gerando linhas de combinação 100% fiéis ao áudio
   de cada instrumento, com a pessoa escolhendo qual instrumento vai tocar.
 
-## Sistema de progressão / recursos (regra de design central)
+## Sistema de progressão / recursos
 
-A cidade e as missões são a **única fonte de recursos** do jogo — isso
-precisa ficar claro e simples pra quem joga.
-
-- Nada é dado de uma vez só. Desbloqueio é sempre gradual.
-- No início, a pessoa já tem acesso a **tudo**, mas em **quantidade
-  reduzida** dentro de cada interação — ex: GUITAR DRIVER liberado, mas só
-  com 1 música; rádio liberada, mas só com 1 estação.
-- Recursos vão aparecendo aos poucos conforme ela explora/cumpre missões —
-  ex: rodar a cidade pra liberar um kit de bateria novo no B4TIDA, ir até um
-  lugar X pra receber uma rádio nova.
-- Itens colecionáveis espalhados pelo mapa (referência: power-ups de estilo
-  Crash Bandicoot / Mario Kart) — regras estritas de spawn; se a pessoa
-  perder o item de vista, tem que rodar a cidade de novo até achar.
-- Regras estritas valem também pra mapa, design, render e storytelling —
-  padrão de experiência **premium** pra nova geração (é um compromisso da
-  empresa, não só uma preferência estética).
+Movido pra `specs/progressao.md` — deixou de ser visão distante em
+2026-08-05: o usuário decidiu que é prioridade **atual**, dentro do foco de
+polir a experiência single-player (não depende de multiplayer nem
+multi-artista pra existir).
 
 ## Camada social futura
 
