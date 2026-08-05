@@ -77,9 +77,10 @@
   descreve o que sentiu. O som usado não são as músicas do LU2CA — são sons
   distintos desenhados pra gerar sensações diferentes. O `C0D3X` (bloco de
   notas em 3D, ver entrada anterior) mora dentro desse app, guardando tudo
-  que a pessoa descreveu sentir. **Ainda não decidido**: se o jogo antigo de
-  conectar palavras é substituído por completo ou convive junto — perguntei
-  direto e a resposta não resolveu isso, não presumir.
+  que a pessoa descreveu sentir. **Decidido**: o jogo antigo de conectar
+  palavras é substituído por completo (não convive como easter egg) — o
+  FEEL.GOOD "se transforma no que ele realmente deve ser": um **game de
+  sentir**, não só um app de saúde mental.
 
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 
