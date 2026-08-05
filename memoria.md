@@ -102,6 +102,56 @@
   specs já documentados, não só telas novas. Detalhes de cada agente estão
   nos próprios arquivos `.claude/agents/*.md`.
 
+- **Primeira auditoria completa** (`revisao-completa`, 5 agentes em paralelo:
+  design, narrativa, ux, movimento, sonora) rodada na experiência inteira.
+  4 decisões ficaram bloqueadas por esbarrar direto na regra do `CLAUDE.md`
+  ("se contradiz design.md, pare e avise") — nenhuma foi resolvida sozinha:
+  1. `/final/sala-branca` (tela de clímax, reachable de verdade) renderiza
+     em tema claro pastel, violando a regra "fundo sempre preto" de
+     `specs/design.md`. Intencional (metáfora de sair do neon) ou drift?
+  2. Existe uma segunda implementação de NECTAR dentro de `app/page.tsx`
+     (fase `nectar-login`, hoje código morto/inalcançável) com **fundo
+     branco**, rotulada "Confirmação 3/3" (contradiz a ordem real). Apagar
+     junto da limpeza de código morto, ou tinha intenção que virou produto?
+  3. O cluster do painel do carro (`/drive`) hoje é um instrumento físico
+     opaco estilo "cluster de Mercedes" (paleta marrom/âmbar não
+     documentada), divergindo do HUD translúcido-com-glow que `design.md`
+     define como direção. Decisão consciente (documentar exceção) ou
+     corrigir pro HUD flutuante?
+  4. A cor oficial de cada faixa do álbum diverge entre telas — ex.
+     "dopamina" é laranja em `ALBUM_TRACKS` e roxo em `SONGS` do GUITAR
+     DRIVER; a tabela de `specs/design.md` documenta a constante `TRACKS`
+     de `app/page.tsx`, que está morta. Precisa de uma fonte única (mesmo
+     padrão que `lib/radio-tiers.ts` já resolveu pras frequências).
+
+  Achados acionáveis sem bloqueio (não implementados ainda, aguardando
+  priorização):
+  - Código morto/duplicado espalhado por `app/page.tsx` (fases
+    `whatsapp-group`/`post-confirm-group`/`nectar-login`/`spotify`, nunca
+    alcançáveis) e rotas órfãs inteiras (`app/hacker/page.tsx` — que na
+    verdade tem uma versão *melhor* do efeito Matrix que a viva usa,
+    `app/ligacao/page.tsx`, `app/radio/page.tsx`) — risco real de
+    reintroduzir bug se alguém reconectar essas fases sem saber que
+    existem.
+  - Confirmado com evidência de código: rádio, B4TIDA e GUITAR DRIVER
+    liberam tudo de uma vez hoje (binário), exatamente os 3 pontos que
+    `specs/progressao.md` já pede pra tornar gradual — a prioridade já
+    combinada agora tem um mapa concreto de onde mexer primeiro.
+  - Botão de "resetar experiência" sem confirmação, em zona de toque
+    acidental (canto superior esquerdo), apaga progresso sem undo — em
+    `/drive` e no celular.
+  - Zero feedback tátil (scale/glow ao toque) nos controles mais usados
+    do jogo inteiro: acelerar/virar do carro e os 4 botões do GUITAR
+    DRIVER — mesmo padrão que o B4TIDA já acerta em quase todo botão.
+  - Sequência hacker é 100% muda (nenhum som) — reforça a pendência já
+    registrada em `specs/narrativa.md`.
+  - Bug de física real: retorno do volante ao centro (`app/drive/page.tsx`)
+    não usa `dt`, então roda ~2x mais devagar em 30fps que em 60fps — único
+    ponto da física do carro que não é frame-rate independent.
+  - Transição ligação→carro usa `window.location.href` (reload duro),
+    corta o som de desconexão no meio e entrega `/drive` mudo até o
+    primeiro toque — maior quebra de imersão técnica da jornada.
+
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 
 - `/drive` e o hub do celular (iframe) são duas árvores React separadas,
