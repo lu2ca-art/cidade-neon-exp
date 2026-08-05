@@ -79,6 +79,23 @@ multi-artista pra existir).
 - A cidade tem um tamanho limitado hoje e vai se expandir conforme mais
   pessoas e artistas passem a fazer parte do universo.
 
+## Economia dentro da cidade
+
+- **Loja de disco**: uma vitrine dentro do jogo onde qualquer artista que
+  fizer parte da plataforma pode colocar seu próprio disco/faixas à venda
+  — não é só a obra do LU2CA, é o começo de um mercado real de música
+  dentro da cidade.
+- **Outdoors**: espaços de propaganda dentro do mundo (painéis na cidade) pra
+  marcas anunciarem — mas com curadoria: **só marcas que combinam com a
+  identidade do projeto**, não qualquer anunciante.
+- **Festival dentro do jogo**: um evento ao vivo dentro da cidade — batizado
+  de "Festival NECTAR" — usando o conceito NECTAR já existente (hoje é o
+  quiz de arquétipo/confirmação 1) como marca do evento.
+
+Isso é a camada que transforma a cidade de "vitrine de um artista" pra
+"economia real de vários artistas" — depende do sistema multi-artista (A–Z)
+acima pra fazer sentido em escala.
+
 ## Como isso se relaciona com o que já existe
 
 | Peça da visão | Onde já tem uma semente no código hoje |
@@ -90,3 +107,4 @@ multi-artista pra existir).
 | Personagem/carro customizável | Não existe ainda — carro hoje é fixo (`app/drive/page.tsx`) |
 | Multiplayer / outras pessoas no mapa | Não existe ainda — hoje é single-player, sincronizado só via `localStorage` local |
 | Mapa multi-artista (A–Z) | Não existe ainda — hoje só tem a cidade de LU2CA (L) |
+| Loja de disco / outdoors / festival | Não existe ainda — depende do sistema multi-artista existir primeiro |

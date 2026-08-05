@@ -82,6 +82,26 @@
   FEEL.GOOD "se transforma no que ele realmente deve ser": um **game de
   sentir**, não só um app de saúde mental.
 
+- **Ideia concreta pro B4TIDA (4 fases)**, proposta pelo usuário como exemplo
+  de "pegar uma ideia existente e melhorar": hoje o B4TIDA é só uma MPC de
+  batidas. Proposta: fase 1 — criar o ritmo (bateria); fase 2 — criar o
+  baixo; fase 3 — melodia e harmonia ao mesmo tempo (piano = harmonia,
+  guitarra = melodia); fase 4 — a pessoa pode cantar por cima. Ainda não
+  avaliado tecnicamente nem priorizado — fica registrado pra não perder,
+  candidato natural pro agente de inovação (`.claude/agents/inovacao.md`)
+  aprofundar quando for a vez do B4TIDA.
+- **Economia da cidade** (movido pra `specs/visao-produto.md` → "Economia
+  dentro da cidade"): loja de disco pra outros artistas venderem discos
+  dentro da plataforma, outdoors de propaganda com curadoria de marca ("só
+  marcas que combinam com o projeto"), e um evento ao vivo dentro do jogo —
+  "Festival NECTAR". Tudo depende do sistema multi-artista existir primeiro,
+  é norte de longo prazo, não prioridade atual.
+- Criado o roster de subagentes de revisão em `.claude/agents/` (design,
+  narrativa, ux, movimento, sonora, inovação) — pedido explícito do usuário
+  pra que a experiência inteira seja revisada de forma contínua contra os
+  specs já documentados, não só telas novas. Detalhes de cada agente estão
+  nos próprios arquivos `.claude/agents/*.md`.
+
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 
 - `/drive` e o hub do celular (iframe) são duas árvores React separadas,

@@ -76,6 +76,16 @@ remix, stems, MPC, Guitar Hero ligado ao instrumental real). Está tudo
 documentado em `specs/visao-produto.md` — **não é o estado atual do código**,
 é o norte. Só vira trabalho quando o usuário priorizar um pedaço específico.
 
+## Agentes de revisão
+
+Existe um roster de subagentes em `.claude/agents/` (design-review,
+narrativa-review, ux-review, movimento-review, sonora-review, inovacao) que
+auditam a experiência inteira contra os specs abaixo — não só telas novas.
+Use o skill `.claude/skills/revisao-completa/` pra rodar os 5 de revisão
+juntos e receber um relatório único e priorizado. Nenhum deles edita código
+ou specs sozinho — todos reportam pra aprovação antes de qualquer mudança
+virar ação.
+
 ## Arquivos de contexto
 
 - @specs/design.md — paleta, tipografia, tom (fonte da verdade de design)
