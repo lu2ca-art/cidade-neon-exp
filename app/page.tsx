@@ -1540,7 +1540,6 @@ function CidadeNeonExperience() {
     { label: "Neon Tiles", color: "#FF00A8", action: () => { window.location.href = "/neon-tiles" } },
     { label: "TikTok", color: "#000000", action: () => { window.location.href = "/tiktok/feed" } },
     { label: "YouTube", color: "#FF0000", action: () => { window.location.href = "/youtube/cidade-neon" } },
-    { label: "Sala Branca", color: "#E0E7FF", action: () => { window.location.href = "/final/sala-branca" } },
       { label: "NECTAR", color: "#A78BFA", action: () => { setPhase("nectar-splash") } },
   ]
 

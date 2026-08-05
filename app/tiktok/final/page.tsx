@@ -109,11 +109,6 @@ export default function TikTokFinalPage() {
     setLiked((prev) => ({ ...prev, [videoId]: !prev[videoId] }))
   }
 
-  const handleGoToSalaBranca = () => {
-    updateCinematicStep("sala-branca")
-    router.push("/final/sala-branca")
-  }
-
   const handleClose = () => {
     router.push("/?screen=home")
   }
