@@ -66,11 +66,20 @@
     à parte. `CLAUDE.md` continua descrevendo o projeto como do artista
     solo.
   - Pendências registradas sem decisão ainda (não travam nada, só ficam
-    marcadas): futuro do FEEL.GOOD legado (B-side permanente ou conteúdo a
-    aposentar), status do conteúdo externo do ACC3SS
+    marcadas): status do conteúdo externo do ACC3SS
     (`lu2ca-xlvdjou.gamma.site` — final ou placeholder), e se
     untitled.stream (onde o álbum é vendido de verdade) tensiona ou reforça
     o tema de independência do projeto.
+- **FEEL.GOOD redefinido** (resolve a pendência do B-side legado, ver
+  `specs/feel-good.md`): deixa de ser só o joguinho de conectar palavras e
+  vira um app de saúde mental — "diálogos conscientes sobre sentir e o
+  mundo". A pessoa escuta um som e descreve a sensação, assiste algo e
+  descreve o que sentiu. O som usado não são as músicas do LU2CA — são sons
+  distintos desenhados pra gerar sensações diferentes. O `C0D3X` (bloco de
+  notas em 3D, ver entrada anterior) mora dentro desse app, guardando tudo
+  que a pessoa descreveu sentir. **Ainda não decidido**: se o jogo antigo de
+  conectar palavras é substituído por completo ou convive junto — perguntei
+  direto e a resposta não resolveu isso, não presumir.
 
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 

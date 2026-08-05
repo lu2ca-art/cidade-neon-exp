@@ -83,6 +83,8 @@ documentado em `specs/visao-produto.md` — **não é o estado atual do código*
   independência, por que o hacker existe, multiplicidade de estímulo)
 - @specs/progressao.md — sistema de recursos e desbloqueio gradual
   (prioridade atual, não implementado ainda)
+- @specs/feel-good.md — redefinição do FEEL.GOOD como app de saúde mental
+  (conceito novo, não implementado ainda)
 - @specs/visao-produto.md — visão de longo prazo do produto (norte, não é o
   que já está implementado)
 - @memoria.md — decisões e aprendizados conforme o projeto avança
