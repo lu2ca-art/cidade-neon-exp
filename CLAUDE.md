@@ -79,6 +79,8 @@ documentado em `specs/visao-produto.md` — **não é o estado atual do código*
 ## Arquivos de contexto
 
 - @specs/design.md — paleta, tipografia, tom (fonte da verdade de design)
+- @specs/narrativa.md — a história por trás da experiência (tema de
+  independência, por que o hacker existe, multiplicidade de estímulo)
 - @specs/visao-produto.md — visão de longo prazo do produto (norte, não é o
   que já está implementado)
 - @memoria.md — decisões e aprendizados conforme o projeto avança

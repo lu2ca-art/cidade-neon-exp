@@ -26,6 +26,23 @@
   já há acesso a tudo em quantidade reduzida), com itens colecionáveis
   espalhados pelo mapa (estilo Crash Bandicoot/Mario Kart) sujeitos a regras
   estritas de spawn. Isso é norte de produto, não trabalho já implementado.
+- Decisão de prioridade: por enquanto NÃO avançar em multiplayer/multi-
+  artista nem no pilar de produção musical além de single-player. Foco
+  atual é elevar o que já existe — função, textos, emoção, tom de voz,
+  diversidade de cenários e estímulo visual do funil single-artist do
+  LU2CA. Régua de qualidade registrada em `specs/design.md` →
+  "Prioridade atual".
+- Criado `specs/narrativa.md`: registra o tema central do projeto
+  (independência da indústria musical dominada por grandes empresas/gente
+  rica — LU2CA construindo um espaço próprio) e como isso deveria justificar
+  a sequência de hacker/invasão, que hoje é só estética sem essa história
+  por trás ("está muito do nada, só eu sei a história" — palavras do
+  usuário). Marcado como pendência em aberto: achar uma forma leve (não
+  didática) de a invasão carregar esse significado — ainda não decidido
+  como, não fazer sem validar direção primeiro. Também documentada a lógica
+  de multiplicidade de estímulo (carro + celular navegável + //LOOP como
+  recompensa rara pra quem completa a jornada) que já está espalhada pela
+  experiência atual.
 
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 

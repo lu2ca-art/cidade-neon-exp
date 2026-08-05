@@ -70,6 +70,27 @@ o fundo.
 - HUD de jogo (carro, rádio): translúcido, com glow — referência direta ao
   HUD do Horizon Drive
 
+## Prioridade atual: qualidade sobre escopo novo
+
+Decisão do usuário (2026-08-05): antes de multiplayer, multi-artista ou
+qualquer feature nova da visão de longo prazo (`specs/visao-produto.md`), o
+foco é elevar o que já existe — o site/experiência completo do LU2CA,
+single-player. Toda tela nova ou revisada deve passar por esta régua:
+
+- **Cinematográfica** — não parece formulário nem seção de site, parece
+  cena.
+- **Envolvente** — o texto carrega emoção de verdade, não só informação.
+- **No padrão visual do mercado hoje** — compete com o que a Gen Z já vê em
+  jogos/apps premium, não com landing page comum.
+- **Diversidade de cenários** — evitar repetir a mesma composição de tela
+  (mesmo enquadramento, mesmo tipo de fundo) em telas diferentes.
+- **Estímulo visual** — cada tela deve dar vontade de continuar explorando,
+  não só de "completar uma etapa".
+
+Ver também `specs/narrativa.md` — a história por trás da experiência (tema
+de independência) é o que dá peso emocional real a essa régua; sem ela, a
+estética fica bonita mas vazia.
+
 ## Onde a referência não resolve sozinha
 
 Perguntar antes de decidir paleta/tom para telas totalmente novas que não
