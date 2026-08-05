@@ -168,6 +168,25 @@
     corta o som de desconexão no meio e entrega `/drive` mudo até o
     primeiro toque — maior quebra de imersão técnica da jornada.
 
+- **Item 2 do Top 5 (limpeza de código morto), em andamento**: removidas as
+  fases `spotify`/`whatsapp-group`/`post-confirm-group` de `app/page.tsx`
+  (~700 linhas — nenhuma tinha um `setPhase(...)` alcançável de verdade,
+  confirmado rastreando cada chamada) e os arquivos 100% órfãos
+  `app/ligacao/page.tsx`, `app/radio/page.tsx` e
+  `components/ConfirmationOverlay.tsx` (zero referências em lugar nenhum).
+  Cada etapa validada com `tsc --noEmit` + `next build` completo antes de
+  commitar. Ainda restam 3 pontas do item 2, todas aguardando decisão do
+  usuário antes de mexer:
+  1. `app/hacker/page.tsx` — não apagada de propósito: tem o efeito
+     `MatrixPerspective` melhor que a versão viva usa hoje (`MatrixRain`).
+     Só apagar depois de decidir se vale portar o efeito antes.
+  2. `app/tiktok/final/page.tsx` — confirmado 100% inalcançável na prática
+     (mesmo achado do audit original), mas é uma versão mais completa/no
+     tom certo do `//LOOP` do que a `/tiktok/feed` em uso. Não é limpeza
+     pura, é decisão de produto: qual das duas é o destino real.
+  3. `nectar-splash`/`nectar-login` em `app/page.tsx` (fundo branco) —
+     ainda é a decisão bloqueada nº2 do audit original, não resolvida.
+
 ## Aprendizados técnicos (extraídos do código/histórico existente)
 
 - `/drive` e o hub do celular (iframe) são duas árvores React separadas,
