@@ -1,0 +1,250 @@
+"use client"
+
+// ─── braço de violão simulado, estilo Smart Guitar do GarageBand ───────────
+// Sem modelo 3D nem samples de corda — a "guitarra" aqui é pura simulação
+// harmônica: pega o acorde armado (grau + qualidade da tonalidade) e calcula
+// a pestana móvel correspondente (shape E, a mesma técnica que um violonista
+// usa pra tocar qualquer acorde em qualquer casa), desenha isso num braço em
+// canvas, e deixa a pessoa dedilhar (tap) ou dar rasgado (arrastar o dedo
+// cruzando as cordas) de verdade — cada corda tocada pulsa um brilho que
+// desvanece, animado quadro a quadro.
+
+import { useEffect, useRef } from "react"
+import type { ArmedChord, ChordQuality } from "../lib/theory"
+
+// afinação padrão, corda 6 (Mi grave) -> corda 1 (Mi agudo), em MIDI
+const OPEN_STRING_MIDI = [40, 45, 50, 55, 59, 64]
+const STRING_LABELS = ["E", "A", "D", "G", "B", "e"]
+const VISIBLE_FRETS = 5
+const FLASH_MS = 260
+
+export function computeBarreShape(rootPc: number, quality: ChordQuality): number[] {
+  // casa da pestana: distância em semitons da corda Mi grave (classe 4) até a
+  // tônica do acorde — isso é o que torna a forma "móvel" pra qualquer tom
+  const barre = ((rootPc - 4) % 12 + 12) % 12
+  if (quality === "maj") return [barre, barre + 2, barre + 2, barre + 1, barre, barre]
+  if (quality === "min") return [barre, barre + 2, barre + 2, barre, barre, barre]
+  return [barre, barre + 1, barre + 2, barre, barre + 2, barre] // dim, aproximado
+}
+
+export function GuitarFretboard({
+  chord,
+  accent,
+  onNote,
+}: {
+  chord: ArmedChord | null
+  accent: string
+  onNote: (midi: number) => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const fretsRef = useRef<number[]>([0, 0, 0, 0, 0, 0])
+  const chordRef = useRef(chord)
+  const accentRef = useRef(accent)
+  const sizeRef = useRef({ w: 320, h: 168, dpr: 1 })
+  const flashRef = useRef<number[]>([0, 0, 0, 0, 0, 0])
+  const strokeRef = useRef<{ active: boolean; lastString: number | null }>({ active: false, lastString: null })
+  const rafRef = useRef<number | null>(null)
+
+  const frets = chord ? computeBarreShape(chord.rootPc, chord.quality) : [0, 0, 0, 0, 0, 0]
+  fretsRef.current = frets
+  chordRef.current = chord
+  accentRef.current = accent
+
+  const baseFret = (() => {
+    const played = frets.filter((f) => f > 0)
+    const minFret = played.length ? Math.min(...played) : 0
+    return minFret <= 1 ? 0 : minFret - 1
+  })()
+
+  function draw() {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext("2d")
+    if (!canvas || !ctx) return
+    const { w, h, dpr } = sizeRef.current
+    const accentColor = accentRef.current
+    const activeChord = chordRef.current
+    const currentFrets = fretsRef.current
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+
+    const padL = 34
+    const padR = 16
+    const padT = 18
+    const padB = 22
+    const boardW = w - padL - padR
+    const boardH = h - padT - padB
+    const stringGap = boardH / 5
+    const fretGap = boardW / VISIBLE_FRETS
+    const now = performance.now()
+
+    ctx.fillStyle = "rgba(255,255,255,0.02)"
+    ctx.fillRect(padL, padT, boardW, boardH)
+
+    ctx.strokeStyle = "rgba(255,255,255,0.18)"
+    ctx.lineWidth = 1
+    for (let i = 0; i <= VISIBLE_FRETS; i++) {
+      const x = padL + i * fretGap
+      ctx.beginPath()
+      ctx.moveTo(x, padT)
+      ctx.lineTo(x, padT + boardH)
+      ctx.stroke()
+    }
+    if (baseFret === 0) {
+      ctx.strokeStyle = "rgba(255,255,255,0.55)"
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(padL, padT)
+      ctx.lineTo(padL, padT + boardH)
+      ctx.stroke()
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.35)"
+      ctx.font = "10px monospace"
+      ctx.textAlign = "left"
+      ctx.fillText(`${baseFret + 1}ª`, 3, padT - 5)
+    }
+
+    // barra da pestana (translúcida, cobre as 6 cordas na casa em questão)
+    if (activeChord) {
+      const barre = Math.min(...currentFrets)
+      if (barre > 0) {
+        const rel = barre - baseFret
+        if (rel >= 1 && rel <= VISIBLE_FRETS) {
+          const x = padL + (rel - 0.5) * fretGap
+          ctx.fillStyle = `${accentColor}1c`
+          ctx.beginPath()
+          ctx.roundRect(x - fretGap * 0.42, padT - 4, fretGap * 0.84, boardH + 8, 8)
+          ctx.fill()
+        }
+      }
+    }
+
+    for (let s = 0; s < 6; s++) {
+      const y = padT + s * stringGap
+      const flashAge = now - flashRef.current[s]
+      const flashT = flashAge < FLASH_MS ? 1 - flashAge / FLASH_MS : 0
+      ctx.strokeStyle = flashT > 0 ? accentColor : "rgba(255,255,255,0.4)"
+      ctx.lineWidth = (0.6 + (5 - s) * 0.35) * (1 + flashT * 1.5)
+      if (flashT > 0) { ctx.shadowColor = accentColor; ctx.shadowBlur = 8 * flashT }
+      ctx.beginPath()
+      ctx.moveTo(padL, y)
+      ctx.lineTo(padL + boardW, y)
+      ctx.stroke()
+      ctx.shadowBlur = 0
+      ctx.fillStyle = "rgba(255,255,255,0.3)"
+      ctx.font = "8px monospace"
+      ctx.textAlign = "right"
+      ctx.fillText(STRING_LABELS[s], padL - 6, y + 3)
+    }
+
+    if (activeChord) {
+      currentFrets.forEach((f, s) => {
+        const y = padT + s * stringGap
+        const flashAge = now - flashRef.current[s]
+        const flashT = flashAge < FLASH_MS ? 1 - flashAge / FLASH_MS : 0
+        if (f === 0) {
+          // corda solta — anel vazado logo acima da pestana
+          ctx.strokeStyle = flashT > 0 ? accentColor : "rgba(255,255,255,0.5)"
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.arc(padL + 8, y, 5, 0, Math.PI * 2)
+          ctx.stroke()
+          return
+        }
+        const rel = f - baseFret
+        if (rel < 1 || rel > VISIBLE_FRETS) return
+        const x = padL + (rel - 0.5) * fretGap
+        ctx.shadowColor = accentColor
+        ctx.shadowBlur = 10 + flashT * 14
+        ctx.fillStyle = accentColor
+        ctx.beginPath()
+        ctx.arc(x, y, 6.5 + flashT * 2.5, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+      })
+    }
+
+    if (flashRef.current.some((t) => now - t < FLASH_MS)) {
+      rafRef.current = requestAnimationFrame(draw)
+    } else {
+      rafRef.current = null
+    }
+  }
+
+  function requestDraw() {
+    if (rafRef.current === null) rafRef.current = requestAnimationFrame(draw)
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const wrap = wrapRef.current
+    if (!canvas || !wrap) return
+    const resize = () => {
+      const rect = wrap.getBoundingClientRect()
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      sizeRef.current = { w: rect.width, h: rect.height, dpr }
+      canvas.width = rect.width * dpr
+      canvas.height = rect.height * dpr
+      draw()
+    }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(wrap)
+    return () => { ro.disconnect(); if (rafRef.current !== null) cancelAnimationFrame(rafRef.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => { draw() })
+
+  function stringAt(clientY: number): number | null {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const rect = canvas.getBoundingClientRect()
+    const { h } = sizeRef.current
+    const padT = 18
+    const padB = 22
+    const boardH = h - padT - padB
+    const stringGap = boardH / 5
+    const localY = clientY - rect.top
+    const idx = Math.round((localY - padT) / stringGap)
+    return idx >= 0 && idx <= 5 ? idx : null
+  }
+
+  function playString(s: number) {
+    if (!chordRef.current) return
+    const midi = OPEN_STRING_MIDI[s] + fretsRef.current[s]
+    flashRef.current[s] = performance.now()
+    requestDraw()
+    onNote(midi)
+  }
+
+  return (
+    <div
+      ref={wrapRef}
+      className="w-full rounded-xl relative touch-none select-none"
+      style={{ height: 168, background: "rgba(255,255,255,0.03)", border: `1px solid ${accent}30` }}
+      onPointerDown={(e) => {
+        const s = stringAt(e.clientY)
+        strokeRef.current = { active: true, lastString: s }
+        if (s !== null) playString(s)
+      }}
+      onPointerMove={(e) => {
+        if (!strokeRef.current.active) return
+        const s = stringAt(e.clientY)
+        if (s !== null && s !== strokeRef.current.lastString) {
+          strokeRef.current.lastString = s
+          playString(s)
+        }
+      }}
+      onPointerUp={() => { strokeRef.current.active = false }}
+      onPointerLeave={() => { strokeRef.current.active = false }}
+    >
+      <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
+      {!chord && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-white/25 text-[10px] font-mono">escolha um acorde abaixo</span>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -48,9 +48,17 @@ export const DRUM_ROWS: { id: DrumRow; label: string; color: string }[] = [
   { id: "perc", label: "PERC", color: "#A78BFA" },
 ]
 
+// quantos compassos cada instrumento sequenciado pode ter — cada faixa
+// escolhe o próprio tamanho (como a voz já fazia), em vez de ficar travada
+// em 1 compasso só. cells/steps tem bars * STEPS_PER_INSTRUMENT[instrumento]
+// posições no total.
+export const BAR_LENGTH_CHOICES = [1, 2, 4] as const
+export type BarLength = (typeof BAR_LENGTH_CHOICES)[number]
+
 export interface DrumPattern {
   kind: "drum"
   timbre: DrumTimbre
+  bars: BarLength
   cells: Record<DrumRow, boolean[]>
 }
 
@@ -58,7 +66,8 @@ export interface DrumPattern {
 export interface BassPattern {
   kind: "bass"
   timbre: MelodicTimbre
-  cells: boolean[][] // [grau 0-6][passo] — 7 x 16
+  bars: BarLength
+  cells: boolean[][] // [grau 0-6][passo] — 7 x (16 * bars)
 }
 
 // guitarra/piano: 1 acorde (ou vazio) por passo, escolhido entre os acordes
@@ -66,6 +75,7 @@ export interface BassPattern {
 export interface ChordPattern {
   kind: "chord"
   timbre: MelodicTimbre
+  bars: BarLength
   steps: (number | null)[] // grau da escala (0-6) ocupando aquele passo, ou null
 }
 

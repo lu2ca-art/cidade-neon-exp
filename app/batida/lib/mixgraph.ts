@@ -81,16 +81,23 @@ export function secPerTick(bpm: number) { return secPerBar(bpm) / TICKS_PER_BAR 
 interface SongCtx { bpm: number; rootNote: number; mode: MusicMode }
 
 // agenda os disparos de UMA faixa sequenciada (bateria/baixo/acorde) num tick
-// específico — não cobre faixas de voz (essas usam AudioBufferSource com
-// loop nativo, montado à parte)
-export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: SongCtx, track: Track, tick: number, time: number) {
+// GLOBAL (contínuo, nunca reinicia em 0 a cada compasso) — não cobre faixas
+// de voz (essas usam AudioBufferSource com loop nativo, montado à parte).
+// Cada faixa pode ter seu próprio número de compassos (data.bars): o tick
+// global é reduzido módulo o tamanho do PADRÃO daquela faixa, não do
+// compasso — assim uma progressão de acordes de 4 compassos não fica
+// espremida dentro de 1 compasso só, e continua alinhada com faixas de 1
+// compasso (drum/baixo) porque todas compartilham o mesmo tick 0 de origem.
+export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: SongCtx, track: Track, globalTick: number, time: number) {
   if (track.fx.muted) return
   const data = track.data
   const dur = secPerTick(song.bpm)
 
   if (data.kind === "drum") {
-    if (tick % 2 !== 0) return
-    const stepIdx = tick / 2
+    const patternTicks = (data.bars ?? 1) * TICKS_PER_BAR
+    const localTick = globalTick % patternTicks
+    if (localTick % 2 !== 0) return
+    const stepIdx = localTick / 2
     const out = buildOneShotChain(ctx, bus, track.fx)
     DRUM_ROWS.forEach((row) => {
       if (data.cells[row.id][stepIdx]) triggerDrum(ctx, out, time, row.id, data.timbre)
@@ -99,8 +106,10 @@ export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: Song
   }
 
   if (data.kind === "bass") {
+    const patternTicks = (data.bars ?? 1) * TICKS_PER_BAR
+    const stepIdx = globalTick % patternTicks
     for (let degree = 0; degree < 7; degree++) {
-      if (data.cells[degree]?.[tick]) {
+      if (data.cells[degree]?.[stepIdx]) {
         const out = buildOneShotChain(ctx, bus, track.fx)
         const midi = degreeToMidi(song.rootNote, song.mode, degree, 2)
         triggerBassNote(ctx, out, time, midiToFreq(midi), dur * 0.9, data.timbre)
@@ -110,7 +119,9 @@ export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: Song
   }
 
   if (data.kind === "chord") {
-    const degree = data.steps[tick]
+    const patternTicks = (data.bars ?? 1) * TICKS_PER_BAR
+    const stepIdx = globalTick % patternTicks
+    const degree = data.steps[stepIdx]
     if (degree === null || degree === undefined) return
     const out = buildOneShotChain(ctx, bus, track.fx)
     const octave = track.instrument === "guitarra" ? 3 : 4

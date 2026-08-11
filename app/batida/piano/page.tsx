@@ -12,7 +12,7 @@ export default function PianoPage() {
       accent={INSTRUMENT_COLOR.piano}
       timbreLabels={PIANO_TIMBRE_LABEL}
       timbreEffects={PIANO_TIMBRE_EFFECT}
-      intro="monte uma progressão com os acordes da tonalidade da música."
+      intro="escolha um acorde, toque nas teclas destacadas, e toque no trilho pra colocar na música."
     />
   )
 }

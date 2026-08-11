@@ -3,14 +3,23 @@
 // OfflineAudioContext (render pro export) — nunca lemos ctx.currentTime,
 // sempre recebemos o tempo absoluto como parâmetro.
 
+// curva de distorção é pura função de `amount` — cara de gerar (2048 pontos
+// com seno/divisão) e idêntica toda vez, então cacheamos por valor em vez de
+// recalcular a cada nota disparada (isso rodava em CADA hit de 808/distorção,
+// era o principal suspeito do travamento/"buffer" que a pessoa sentiu)
+const curveCache = new Map<number, Float32Array<ArrayBuffer>>()
+
 export function makeDistortionCurve(amount: number): Float32Array<ArrayBuffer> {
+  const cached = curveCache.get(amount)
+  if (cached) return cached
   const n = 2048
-  const curve = new Float32Array(n)
+  const curve = new Float32Array(n) as Float32Array<ArrayBuffer>
   const k = amount * 100
   for (let i = 0; i < n; i++) {
     const x = (i * 2) / n - 1
     curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x))
   }
+  curveCache.set(amount, curve)
   return curve
 }
 
@@ -22,8 +31,20 @@ export function createDistortion(ctx: BaseAudioContext, amount: number): WaveSha
 }
 
 // impulso de reverb algorítmico (ruído branco com decaimento exponencial) —
-// não depende de nenhum arquivo de áudio externo
+// não depende de nenhum arquivo de áudio externo. Gerar isso é PESADO
+// (segundos de áudio estéreo, amostra por amostra) — cacheado por contexto
+// (AudioContext ao vivo x OfflineAudioContext do export têm sample rates
+// diferentes) + parâmetros, porque antes rodava a cada hit de bateria
+// "acústico" e a cada corda de violão "acústica", travando a thread de áudio
+const impulseCache = new WeakMap<BaseAudioContext, Map<string, AudioBuffer>>()
+
 export function createImpulseResponse(ctx: BaseAudioContext, seconds: number, decay: number): AudioBuffer {
+  let byCtx = impulseCache.get(ctx)
+  if (!byCtx) { byCtx = new Map(); impulseCache.set(ctx, byCtx) }
+  const key = `${seconds}:${decay}`
+  const cached = byCtx.get(key)
+  if (cached) return cached
+
   const rate = ctx.sampleRate
   const length = Math.max(1, Math.floor(rate * seconds))
   const impulse = ctx.createBuffer(2, length, rate)
@@ -33,6 +54,7 @@ export function createImpulseResponse(ctx: BaseAudioContext, seconds: number, de
       data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay)
     }
   }
+  byCtx.set(key, impulse)
   return impulse
 }
 

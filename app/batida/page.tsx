@@ -8,15 +8,16 @@ import { PhoneShell } from "./components/PhoneShell"
 import { keyDegrees, NOTE_NAMES } from "./lib/theory"
 import { INSTRUMENT_COLOR, INSTRUMENT_LABEL, MAX_SLOTS, MAX_TRACKS, type InstrumentId } from "./lib/types"
 import { timbreLabel } from "./lib/format"
+import { InstrumentIcon } from "./components/InstrumentIcon"
 
 const ACCENT = "#FF6B6B"
 
-const INSTRUMENT_ROUTES: { id: InstrumentId; href: string; icon: string }[] = [
-  { id: "bateria", href: "/batida/bateria", icon: "🥁" },
-  { id: "baixo", href: "/batida/baixo", icon: "🎸" },
-  { id: "guitarra", href: "/batida/guitarra", icon: "🎼" },
-  { id: "piano", href: "/batida/piano", icon: "🎹" },
-  { id: "voz", href: "/batida/voz", icon: "🎤" },
+const INSTRUMENT_ROUTES: { id: InstrumentId; href: string }[] = [
+  { id: "bateria", href: "/batida/bateria" },
+  { id: "baixo", href: "/batida/baixo" },
+  { id: "guitarra", href: "/batida/guitarra" },
+  { id: "piano", href: "/batida/piano" },
+  { id: "voz", href: "/batida/voz" },
 ]
 
 export default function BatidaHubPage() {
@@ -175,7 +176,7 @@ export default function BatidaHubPage() {
                 className="py-3 rounded-xl flex flex-col items-center gap-1 transition-all active:scale-95"
                 style={{ background: `${INSTRUMENT_COLOR[r.id]}14`, border: `1px solid ${INSTRUMENT_COLOR[r.id]}40` }}
               >
-                <span className="text-base">{r.icon}</span>
+                <InstrumentIcon icon={r.id} style={{ color: INSTRUMENT_COLOR[r.id] }} />
                 <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: INSTRUMENT_COLOR[r.id] }}>{INSTRUMENT_LABEL[r.id]}</span>
               </button>
             ))}
@@ -185,7 +186,7 @@ export default function BatidaHubPage() {
               className="py-3 rounded-xl flex flex-col items-center gap-1 transition-all active:scale-95"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.18)" }}
             >
-              <span className="text-base">🎚️</span>
+              <InstrumentIcon icon="mixagem" style={{ color: "rgba(255,255,255,0.6)" }} />
               <span className="text-[9px] font-mono uppercase tracking-widest text-white/60">MIXAGEM</span>
             </button>
           </div>

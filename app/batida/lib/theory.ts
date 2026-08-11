@@ -26,6 +26,14 @@ const TRIAD_QUALITY_SEMITONES: Record<string, number[]> = {
 
 export type ChordQuality = "maj" | "min" | "dim"
 
+// acorde "armado" nas telas Smart Guitar / Smart Piano — o que o braço/
+// teclado desenha e o que os toques no trilho de passos colocam na música
+export interface ArmedChord {
+  rootPc: number
+  quality: ChordQuality
+  chordName: string
+}
+
 export interface DegreeInfo {
   degree: number // 0-6 (I..VII)
   rootPc: number // pitch-class 0-11

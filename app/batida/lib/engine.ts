@@ -162,9 +162,13 @@ export class BatidaEngine {
   private schedulerTick() {
     if (!this.playing) return
     while (this.nextTickTime < this.ctx.currentTime + LOOKAHEAD_SEC) {
+      // tick GLOBAL (nunca reseta em 0 a cada compasso) — cada faixa reduz
+      // esse valor módulo o próprio tamanho de padrão em mixgraph.ts, então
+      // faixas de 1, 2 ou 4 compassos ficam todas alinhadas na mesma origem
+      const globalTick = this.barIndex * TICKS_PER_BAR + this.tickIndex
       for (const track of this.tracks) {
         if (track.data.kind === "voice") continue
-        scheduleTrackTick(this.ctx, this.bus, this.song, track, this.tickIndex, this.nextTickTime)
+        scheduleTrackTick(this.ctx, this.bus, this.song, track, globalTick, this.nextTickTime)
       }
       const tick = this.tickIndex
       const bar = this.barIndex
@@ -194,5 +198,16 @@ export class BatidaEngine {
     const time = this.ctx.currentTime + 0.01
     if (instrument === "guitarra") triggerGuitarChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
     else triggerPianoChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
+  }
+
+  // uma corda só (fretboard Smart Guitar) ou uma tecla só (Smart Piano) —
+  // usadas pelas telas com o instrumento "tocável" de verdade, nota a nota
+  previewGuitarNote(midi: number, timbre: number) {
+    void this.ctx.resume()
+    triggerGuitarChord(this.ctx, this.bus.master, this.ctx.currentTime + 0.004, [midiToFreq(midi)], 0.9, timbre)
+  }
+  previewPianoNote(midi: number, timbre: number) {
+    void this.ctx.resume()
+    triggerPianoChord(this.ctx, this.bus.master, this.ctx.currentTime + 0.004, [midiToFreq(midi)], 1.1, timbre)
   }
 }

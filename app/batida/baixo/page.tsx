@@ -5,36 +5,42 @@ import { useCurrentSong } from "../lib/CurrentSongContext"
 import { PhoneShell } from "../components/PhoneShell"
 import { InstrumentHeader } from "../components/InstrumentHeader"
 import { TimbrePicker } from "../components/TimbrePicker"
+import { BarLengthPicker } from "../components/BarLengthPicker"
+import { BarPager } from "../components/BarPager"
 import { StepGrid, type StepGridRow } from "../components/StepGrid"
 import { AddTrackBar } from "../components/AddTrackBar"
 import { keyDegrees, NOTE_NAMES } from "../lib/theory"
 import { BASS_TIMBRE_LABEL, BASS_TIMBRE_EFFECT } from "../lib/synths"
-import { INSTRUMENT_COLOR, MAX_TRACKS, defaultFx, newTrackId, type MusicMode } from "../lib/types"
+import { INSTRUMENT_COLOR, MAX_TRACKS, defaultFx, newTrackId, type BarLength, type MusicMode } from "../lib/types"
 
 const ACCENT = INSTRUMENT_COLOR.baixo
-const STEPS = 16
+const STEPS_PER_BAR = 16
 
-function emptyCells(): boolean[][] { return Array.from({ length: 7 }, () => Array(STEPS).fill(false)) }
-function cellsToRecord(cells: boolean[][]): Record<string, boolean[]> {
+function emptyCells(bars: number): boolean[][] { return Array.from({ length: 7 }, () => Array(bars * STEPS_PER_BAR).fill(false)) }
+function sliceBarToRecord(cells: boolean[][], bar: number): Record<string, boolean[]> {
+  const start = bar * STEPS_PER_BAR
   const rec: Record<string, boolean[]> = {}
-  cells.forEach((row, i) => { rec[String(i)] = row })
+  cells.forEach((row, i) => { rec[String(i)] = row.slice(start, start + STEPS_PER_BAR) })
   return rec
 }
 
 export default function BaixoPage() {
   const { song, engine, addTrack, patchSong } = useCurrentSong()
   const [timbreIdx, setTimbreIdx] = useState(0)
-  const [cells, setCells] = useState<boolean[][]>(emptyCells)
+  const [bars, setBars] = useState<BarLength>(1)
+  const [activeBar, setActiveBar] = useState(0)
+  const [cells, setCells] = useState<boolean[][]>(() => emptyCells(1))
   const [playing, setPlaying] = useState(false)
   const [currentStep, setCurrentStep] = useState<number | null>(null)
+  const [playingBar, setPlayingBar] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
 
   useEffect(() => { if (engine) setPlaying(engine.isPlaying) }, [engine])
   useEffect(() => {
     if (!engine) return
-    engine.setOnTick((tick) => setCurrentStep(tick))
+    engine.setOnTick((tick, bar) => { setCurrentStep(tick); setPlayingBar(bar % bars) })
     return () => engine.setOnTick(undefined)
-  }, [engine])
+  }, [engine, bars])
 
   const degrees = keyDegrees(song.rootNote, song.mode)
   const rows: StepGridRow[] = degrees.map((d) => ({ id: String(d.degree), label: `${d.romanNumeral} ${d.rootName}`, color: ACCENT }))
@@ -43,8 +49,8 @@ export default function BaixoPage() {
     id: "draft-baixo",
     instrument: "baixo" as const,
     fx: defaultFx(),
-    data: { kind: "bass" as const, timbre: timbreIdx as 0 | 1 | 2 | 3, cells },
-  }), [timbreIdx, cells])
+    data: { kind: "bass" as const, timbre: timbreIdx as 0 | 1 | 2 | 3, bars, cells },
+  }), [timbreIdx, bars, cells])
 
   useEffect(() => { engine?.setTracks([...song.tracks, draftTrack]) }, [engine, song.tracks, draftTrack])
 
@@ -54,9 +60,16 @@ export default function BaixoPage() {
     setPlaying(!playing)
   }, [engine, playing])
 
-  const toggleCell = (rowId: string, stepIdx: number) => {
+  const changeBars = (n: BarLength) => {
+    setBars(n)
+    setActiveBar(0)
+    setCells(emptyCells(n))
+  }
+
+  const toggleCell = (rowId: string, localIdx: number) => {
     const degree = Number(rowId)
-    setCells((prev) => prev.map((row, i) => (i === degree ? row.map((v, s) => (s === stepIdx ? !v : v)) : row)))
+    const abs = activeBar * STEPS_PER_BAR + localIdx
+    setCells((prev) => prev.map((row, i) => (i === degree ? row.map((v, s) => (s === abs ? !v : v)) : row)))
   }
 
   const setRoot = (root: number) => patchSong((prev) => ({ ...prev, rootNote: root, keySetBy: "baixo" }))
@@ -67,8 +80,8 @@ export default function BaixoPage() {
   const handleAdd = async () => {
     const hasNotes = cells.some((row) => row.some(Boolean))
     if (!hasNotes) { setFeedback("marque pelo menos uma nota antes de adicionar"); return }
-    const ok = await addTrack({ id: newTrackId(), instrument: "baixo", fx: defaultFx(), data: { kind: "bass", timbre: timbreIdx as 0 | 1 | 2 | 3, cells } })
-    if (ok) { setCells(emptyCells()); setFeedback("faixa de baixo adicionada — os acordes dela já valem pra guitarra/piano") }
+    const ok = await addTrack({ id: newTrackId(), instrument: "baixo", fx: defaultFx(), data: { kind: "bass", timbre: timbreIdx as 0 | 1 | 2 | 3, bars, cells } })
+    if (ok) { setCells(emptyCells(bars)); setFeedback("faixa de baixo adicionada — os acordes dela já valem pra guitarra/piano") }
     else setFeedback("limite de 5 faixas atingido")
     window.setTimeout(() => setFeedback(null), 3200)
   }
@@ -124,13 +137,15 @@ export default function BaixoPage() {
         onChange={setTimbreIdx}
         accent={ACCENT}
       />
+      <BarLengthPicker value={bars} onChange={changeBars} accent={ACCENT} />
+      <BarPager bars={bars} activeBar={activeBar} onChange={setActiveBar} playingBar={playing ? playingBar : null} accent={ACCENT} />
 
       <StepGrid
         rows={rows}
-        steps={STEPS}
-        cells={cellsToRecord(cells)}
+        steps={STEPS_PER_BAR}
+        cells={sliceBarToRecord(cells, activeBar)}
         currentStep={currentStep}
-        playing={playing}
+        playing={playing && playingBar === activeBar}
         onToggle={toggleCell}
         onPreviewRow={(rowId) => engine?.previewBass(Number(rowId), timbreIdx)}
         accent={ACCENT}
@@ -138,7 +153,7 @@ export default function BaixoPage() {
 
       <button
         type="button"
-        onClick={() => setCells(emptyCells())}
+        onClick={() => setCells(emptyCells(bars))}
         className="mt-2 py-2 rounded-xl text-[10px] font-mono uppercase tracking-widest transition-all active:scale-[0.97] flex-shrink-0"
         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.4)" }}
       >

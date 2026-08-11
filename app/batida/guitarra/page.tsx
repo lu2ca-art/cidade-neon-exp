@@ -12,7 +12,7 @@ export default function GuitarraPage() {
       accent={INSTRUMENT_COLOR.guitarra}
       timbreLabels={GUITAR_TIMBRE_LABEL}
       timbreEffects={GUITAR_TIMBRE_EFFECT}
-      intro="monte uma progressão com os acordes da tonalidade da música."
+      intro="escolha um acorde, dedilhe ou dê um rasgado no braço, e toque no trilho pra colocar na música."
     />
   )
 }

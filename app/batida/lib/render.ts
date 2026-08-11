@@ -13,8 +13,17 @@ export async function renderSongOffline(song: Song): Promise<AudioBuffer> {
   const voiceTracks = song.tracks.filter((t): t is Track & { data: VoiceClip } => t.data.kind === "voice")
   const patternTracks = song.tracks.filter((t) => t.data.kind !== "voice")
 
-  const barsList = voiceTracks.map((t) => t.data.bars)
-  const cycleBars = Math.min(barsList.length ? lcmAll(barsList) : 1, 32)
+  // ciclo completo = mínimo múltiplo comum de TODOS os tamanhos de padrão em
+  // jogo (voz + bateria/baixo/acordes agora que cada faixa pode ter seu
+  // próprio número de compassos) — assim o loop exportado fecha sem cortar
+  // nenhuma faixa no meio. Todas as opções são potências de 2 (1/2/4/8/16),
+  // então o mmc nunca passa do maior valor usado — não precisa de um teto
+  // artificial alto pra manter o render leve.
+  const barsList = [
+    ...voiceTracks.map((t) => t.data.bars),
+    ...patternTracks.map((t) => ("bars" in t.data ? t.data.bars ?? 1 : 1)),
+  ]
+  const cycleBars = Math.min(barsList.length ? lcmAll(barsList) : 1, 16)
   const spb = secPerBar(song.bpm)
   const totalSec = cycleBars * spb + 1.4 // cauda pro reverb/delay não cortar
 
@@ -39,11 +48,10 @@ export async function renderSongOffline(song: Song): Promise<AudioBuffer> {
   }
 
   const totalTicks = cycleBars * TICKS_PER_BAR
-  for (let i = 0; i < totalTicks; i++) {
-    const tick = i % TICKS_PER_BAR
-    const time = i * secPerTick(song.bpm)
+  for (let globalTick = 0; globalTick < totalTicks; globalTick++) {
+    const time = globalTick * secPerTick(song.bpm)
     for (const track of patternTracks) {
-      scheduleTrackTick(offlineCtx, bus, songCtx, track, tick, time)
+      scheduleTrackTick(offlineCtx, bus, songCtx, track, globalTick, time)
     }
   }
 
