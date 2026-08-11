@@ -417,27 +417,30 @@ function CidadeNeonExperience() {
     disconnectRef.current = snd
   }, [])
 
-  /* ─── CALL LOGIC: 25s timer + D-Bee audio ─── */
+  /* ─── CALL LOGIC: 22s timer + D-Bee audio ─── */
   useEffect(() => {
     if (phase !== "active-call") return
 
-    // Play D-Bee audio
+    // Play D-Bee audio acelerado pra caber em exatamente 22s (o arquivo
+    // original é mais longo que isso) — ajusta o playbackRate assim que
+    // sabe a duração real, em vez de simplesmente cortar o áudio no meio
     const audio = new Audio("/audio/dbee-call.mp3")
     audio.volume = 0.8
+    audio.addEventListener("loadedmetadata", () => {
+      if (audio.duration && isFinite(audio.duration)) audio.playbackRate = audio.duration / 22
+    })
     audio.play().catch(() => {})
     callAudioRef.current = audio
 
-    // 25 second timer
+    // 22 second timer
     callTimerRef.current = setInterval(() => {
       setCallDuration((d) => {
-        if (d >= 25) {
+        if (d >= 22) {
           if (callTimerRef.current) clearInterval(callTimerRef.current)
           if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null }
           playDisconnect()
-          // Short delay so user hears the disconnect tone before transition —
-          // hacker já aconteceu antes da ligação, então agora ela é o último
-          // passo do início: termina e cai direto no carro
-          setTimeout(() => { window.location.href = "/drive" }, 2500)
+          // sem delay — termina e cai direto no carro
+          window.location.href = "/drive"
           return d
         }
         return d + 1
@@ -450,23 +453,22 @@ function CidadeNeonExperience() {
     }
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ─── HACKER LOGIC ────────────────────────���── */
+  /* ─── HACKER LOGIC — tela inteira dura só 1,1s (500ms matrix + 300ms fade
+     + linhas reveladas de uma vez + 300ms de leitura antes de avançar) ─── */
   useEffect(() => {
     if (phase !== "hacker") return
     // Stop disconnect tone once hacker phase begins
     if (disconnectRef.current) { disconnectRef.current.pause(); disconnectRef.current = null }
-    const t = setTimeout(() => { setMatrixFading(true); setTimeout(() => setShowMatrix(false), 1500) }, 2000)
+    const t = setTimeout(() => { setMatrixFading(true); setTimeout(() => setShowMatrix(false), 300) }, 500)
     return () => clearTimeout(t)
   }, [phase])
 
   useEffect(() => {
     if (phase !== "hacker" || showMatrix || hackerIdx >= HACKER_LINES.length) return
-    const delay = hackerIdx === HACKER_LINES.length - 1 ? 1500 : 80 + Math.random() * 120
-    const t = setTimeout(() => {
-      setHackerLines((p) => [...p, HACKER_LINES[hackerIdx]])
-      setHackerIdx((i) => i + 1)
-    }, delay)
-    return () => clearTimeout(t)
+    // sem stagger linha a linha — a tela é rápida demais pra isso, todas as
+    // linhas aparecem juntas assim que o matrix some
+    setHackerLines(HACKER_LINES)
+    setHackerIdx(HACKER_LINES.length)
   }, [phase, showMatrix, hackerIdx])
 
   useEffect(() => {
@@ -482,7 +484,7 @@ function CidadeNeonExperience() {
         updateCinematicStep("incoming-call")
         setCallState("ringing")
         setPhase("incoming-call")
-      }, 1500)
+      }, 300)
       return () => clearTimeout(t)
     }
   }, [phase, hackerIdx])
@@ -985,7 +987,7 @@ function CidadeNeonExperience() {
                 <svg className="w-8 h-8 text-[#FF3B30] rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
               </div>
               <p className="text-white text-lg font-medium">Chamada perdida</p>
-              <p className="text-[#A0A0A0] text-sm mt-1">[UNTITLED]</p>
+              <p className="text-[#A0A0A0] text-sm mt-1">[desconhecido]</p>
             </div>
           )}
 
@@ -993,9 +995,9 @@ function CidadeNeonExperience() {
           {callState === "callback" && (
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="w-16 h-16 rounded-full overflow-hidden mb-4 opacity-60">
-                <Image src="/images/avatar-dbee.jpg" alt="[UNTITLED]" width={64} height={64} className="w-full h-full object-cover" priority />
+                <Image src="/images/avatar-dbee.jpg" alt="[desconhecido]" width={64} height={64} className="w-full h-full object-cover" priority />
               </div>
-              <p className="text-white/60 text-sm">[UNTITLED] ligando de volta...</p>
+              <p className="text-white/60 text-sm">[desconhecido] ligando de volta...</p>
               <div className="flex gap-1 mt-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" />
                 <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: "0.2s" }} />
@@ -1010,11 +1012,11 @@ function CidadeNeonExperience() {
               <div className="flex-1 flex flex-col items-center justify-start pt-6">
                 <div className="relative">
                   <div className="w-[120px] h-[120px] rounded-full overflow-hidden mb-4 ring-4 ring-[#7C3AED]/40" style={{ animation: "call-pulse 2s ease-in-out infinite", boxShadow: "0 0 30px rgba(124,58,237,0.4)" }}>
-                    <Image src="/images/avatar-dbee.jpg" alt="[UNTITLED]" width={120} height={120} className="w-full h-full object-cover" priority />
+                    <Image src="/images/avatar-dbee.jpg" alt="[desconhecido]" width={120} height={120} className="w-full h-full object-cover" priority />
                   </div>
                   <div className="absolute inset-0 rounded-full border-2 border-white/20" style={{ animation: "call-ping 2s ease-out infinite" }} />
                 </div>
-                <h1 className="text-white text-[32px] font-semibold mb-1">[UNTITLED]</h1>
+                <h1 className="text-white text-[32px] font-semibold mb-1">[desconhecido]</h1>
                 <p className="text-[#A0A0A0] text-[18px]">cidade neon</p>
                 <p className="text-[#A0A0A0] text-[16px] mt-2">Chamada recebida...</p>
               </div>
@@ -1085,9 +1087,9 @@ function CidadeNeonExperience() {
           {/* Caller info */}
           <div className="flex-1 flex flex-col items-center justify-start pt-4">
             <div className="w-[100px] h-[100px] rounded-full overflow-hidden mb-3 ring-4 ring-[#7C3AED]/40" style={{ boxShadow: "0 0 30px rgba(124,58,237,0.4)" }}>
-              <Image src="/images/avatar-dbee.jpg" alt="[UNTITLED]" width={100} height={100} className="w-full h-full object-cover" priority />
+              <Image src="/images/avatar-dbee.jpg" alt="[desconhecido]" width={100} height={100} className="w-full h-full object-cover" priority />
             </div>
-            <h1 className="text-white text-[28px] font-semibold mb-1">[UNTITLED]</h1>
+            <h1 className="text-white text-[28px] font-semibold mb-1">[desconhecido]</h1>
             <p className="text-[#7C3AED] text-[18px] font-light tabular-nums">{formatTime(callDuration)}</p>
 
             {/* Audio wave */}
@@ -1146,7 +1148,7 @@ function CidadeNeonExperience() {
             </div>
             {/* End call */}
             <div className="flex justify-center">
-              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); playDisconnect(); setTimeout(() => { window.location.href = "/drive" }, 2500) }} className="w-[60px] h-[60px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
+              <button type="button" onClick={() => { if (callAudioRef.current) { callAudioRef.current.pause(); callAudioRef.current = null } if (callTimerRef.current) clearInterval(callTimerRef.current); playDisconnect(); window.location.href = "/drive" }} className="w-[60px] h-[60px] rounded-full bg-[#FF3B30] flex items-center justify-center active:scale-95 transition-transform">
                 <svg className="w-7 h-7 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
               </button>
             </div>

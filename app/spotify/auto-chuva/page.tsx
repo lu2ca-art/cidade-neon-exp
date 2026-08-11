@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
@@ -14,31 +14,26 @@ export default function FrequenciaPage() {
   const router = useRouter()
   const { updateCinematicStep, updateSpotifyState, state } = useGameFunnel()
 
-  const [showNotif, setShowNotif] = useState(false)
-  const notifSent = useRef(false)
+  const advanced = useRef(false)
   const isFirst = useRef(!state.perAppState.spotifyAuto.completed)
 
   useEffect(() => { updateCinematicStep("spotify-auto") }, [updateCinematicStep])
 
-  // Notificação N3XO — mesma janela de 13s que já existia quando isso era um
-  // player (antes contava a partir do elapsed da faixa tocando; agora é só
-  // um atraso simples, já que não há mais reprodução nesta tela)
+  // avança sozinho pro N3XO depois de um tempo navegando a galeria — sem
+  // notificação falsa de WhatsApp aparecendo em cima da tela (não fazia
+  // sentido uma notificação de mensagem surgir enquanto a pessoa tá numa
+  // galeria de projetos; a transição em si continua a mesma)
   useEffect(() => {
-    if (!isFirst.current || notifSent.current) return
+    if (!isFirst.current || advanced.current) return
     const t = setTimeout(() => {
-      notifSent.current = true
-      setShowNotif(true)
+      advanced.current = true
+      isFirst.current = false
+      updateSpotifyState({ completed: true })
+      updateCinematicStep("whatsapp-notification")
+      router.push("/n3xo/grupo")
     }, 13000)
     return () => clearTimeout(t)
-  }, [])
-
-  const handleNotifClick = () => {
-    setShowNotif(false)
-    isFirst.current = false
-    updateSpotifyState({ completed: true })
-    updateCinematicStep("whatsapp-notification")
-    router.push("/n3xo/grupo")
-  }
+  }, [router, updateCinematicStep, updateSpotifyState])
 
   const nextLocked = ALL_TIERS.find(t => !state.radioAccepted[t])
 
@@ -55,25 +50,6 @@ export default function FrequenciaPage() {
             <svg className="w-6 h-3" fill="white" viewBox="0 0 25 12"><rect x="0" y="1" width="22" height="10" rx="2" stroke="white" strokeWidth="1" fill="none"/><rect x="1.5" y="2.5" width="16" height="7" rx="1" fill="white"/><rect x="23" y="4" width="2" height="4" rx="0.5" fill="white" opacity="0.4"/></svg>
           </div>
         </div>
-
-        {/* notificação N3XO */}
-        {showNotif && (
-          <button type="button" onClick={handleNotifClick} className="absolute top-[52px] left-2 right-2 z-50 animate-slide-down">
-            <div className="bg-[#f2f2f7]/95 backdrop-blur-xl rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
-              <div className="w-10 h-10 rounded-[10px] bg-[#25D366] flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <div className="flex items-center justify-between">
-                  <p className="text-black font-semibold text-sm">N3XO</p>
-                  <span className="text-[#8e8e93] text-xs">agora</span>
-                </div>
-                <p className="text-black font-medium text-xs">Cidade Neon</p>
-                <p className="text-[#8e8e93] text-xs truncate">D-Bee: Voce chegou.</p>
-              </div>
-            </div>
-          </button>
-        )}
 
         {/* GALERIA — os 4 projetos que a sintonia libera */}
         <div className="flex-1 flex flex-col overflow-y-auto overscroll-contain">
@@ -130,11 +106,6 @@ export default function FrequenciaPage() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes slide-down { from { opacity:0; transform:translateY(-20px) } to { opacity:1; transform:translateY(0) } }
-        .animate-slide-down { animation: slide-down .35s ease-out forwards }
-      `}</style>
     </div>
   )
 }
