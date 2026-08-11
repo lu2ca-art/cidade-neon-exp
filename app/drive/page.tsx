@@ -6,7 +6,7 @@ import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, SelectRadioTier, CarRadioControl } from "@/app/providers/AudioBridge"
 import { sendStateToIframe, sendNotificationClickToIframe, sendCarRadioState } from "@/app/providers/AudioBridge"
 import SteeringWheel3D from "@/components/SteeringWheel3D"
-import { CityMapButton, CityMapModal } from "@/components/CityMap"
+import { DriveRouteMap } from "@/components/DriveMap"
 import { AppIcon } from "@/components/AppIcon"
 import { type Tier, ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
 import { SCRIPTS, PREVIEW_SUMMARY, phaseFor, type MemberKey } from "@/app/n3xo/privado/[member]/page"
@@ -339,19 +339,22 @@ interface Zone { x: number; y: number; w: number; h: number }
 // do quadrado) em vez de quase se tocar. cluster/volante também deixaram
 // de se sobrepor de propósito (o volante "por cima" do cluster) e passam
 // a ter sua própria faixa, mais fácil de ler como duas coisas separadas.
+// O painel `crt` deixou de ser só o HUB fechado — agora é a tela do carro
+// inteira, com 3 páginas por scroll lateral (rádio/apps/mapa). Isso engoliu
+// a zona `radio` separada (que era pequena e ficava "espremida" — reclamação
+// direta) e cresceu bastante (14.585 -> 25 de altura) pra caber as 3 páginas
+// com respiro de verdade. O DJ deck sobe pro lugar que sobrou (onde era o
+// painelzinho do rádio) e também cresce — era 22.892, agora tem mais altura
+// E largura, ficando visivelmente maior. `centerConsole` (a "bancada"
+// desenhada no canvas atrás do rádio) segue o DJ deck agora, não mais uma
+// zona própria (ver drawDashboard) — ele que decorava aquele espaço.
 const ZONES_DESKTOP = {
   windshield:    { x:0,    y:0,       w:100,  h:40      }, // z1  exterior
   cluster:       { x:3.5,  y:41.5,    w:30.5, h:4.708   }, // z2  painel
-  centerConsole: { x:37.5, y:58.285,  w:35,   h:13.108  }, // z3  painel
-  crt:           { x:35.5, y:41.5,    w:38.5, h:14.585  }, // z4  interativo
+  crt:           { x:33.5, y:41.5,    w:42.5, h:25       }, // z4  interativo — painel de 3 páginas (rádio/apps/mapa)
   gloveBox:      { x:79.5, y:41.5,    w:18,   h:18.185  }, // z5  interativo
-  // z7 (mapa solto no canto) removido — o mini-mapa agora mora dentro do
-  // HUB (zona crt), estilo Apple CarPlay, não é mais um widget separado
   wheel:         { x:7,    y:47.708,  w:24.5, h:14.585  }, // z9  painel
-  djDeck:        { x:41.5, y:72.208,  w:24.5, h:22.892  }, // z10 interativo
-  radio:         { x:38.5, y:58.285,  w:33.5, h:11.723  }, // z11 interativo — cresceu pra caber power/estações/volume dentro dela
-  // z8 (banco/assento) — motorista/passageiro-placeholder tentados e
-  // removidos (ficou bizarro); fora de escopo de novo por enquanto
+  djDeck:        { x:36.5, y:68.5,    w:32,   h:26.6    }, // z10 interativo — maior e mais pra cima, no lugar do painelzinho do rádio
 } satisfies Record<string, Zone>
 
 // Celular (retrato) usa o mesmo quadrado (x/y/w/h em %), só com um
@@ -383,10 +386,9 @@ function rescaleForMobile<T extends Record<string, Zone>>(desktop: T, mobileWind
 // celular), pra caber fonte/controles bem maiores de verdade.
 const ZONES_MOBILE: typeof ZONES_DESKTOP = {
   ...rescaleForMobile(ZONES_DESKTOP, 24),
-  crt:    { x:35.5, y:25.9, w:38.5, h:20 },
+  crt:    { x:33.5, y:25.9, w:42.5, h:32 },
   wheel:  { x:7,    y:32.9, w:24.5, h:16 },
-  radio:  { x:38.5, y:48.4, w:33.5, h:24 },
-  djDeck: { x:41.5, y:74.4, w:24.5, h:8  },
+  djDeck: { x:36.5, y:60,   w:32,   h:22 },
 }
 
 // Zona -> px absolutos, dado o W/H reais da tela (canvas.width/height no
@@ -1423,6 +1425,65 @@ export default function DrivePage() {
   const CONSOLE_OFFSET_X = (CONSOLE_BTN_W - 390 * CONSOLE_SCALE) / 2
   const CONSOLE_OFFSET_Y = (CONSOLE_BTN_H - 844 * CONSOLE_SCALE) / 2
 
+  // PAINEL DE 3 PÁGINAS (rádio / apps / mapa) — a tela fechada agora é um
+  // carrossel horizontal, mesma técnica de arrastar-por-pointer-events que o
+  // dial de sintonia já usa (ver updateTunerFromPointer), só que aqui
+  // arrasta a PÁGINA inteira e resolve por snap em vez de posição contínua.
+  // Sai da página do rádio (0) sozinho depois de 5s sem interação nas
+  // outras — ela é a "página de repouso" do painel.
+  const [panelPage, setPanelPage] = useState<0 | 1 | 2>(0)
+  const [panelDragPx, setPanelDragPx] = useState(0)
+  const panelDraggingRef = useRef(false)
+  const panelDragStartXRef = useRef(0)
+  // se o pointer se moveu de verdade durante o gesto, o clique sintético que
+  // o navegador dispara no pointerup (mesmo depois de um arrasto) precisa
+  // ser ignorado — senão arrastar pra trocar de página também "sem querer"
+  // abre o SINT0NIA ou um app, porque mousedown/mouseup caem no mesmo
+  // elemento por baixo do painel
+  const panelDragMovedRef = useRef(false)
+  const panelIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const noteUserOnPanel = useCallback(() => {
+    if (panelIdleTimerRef.current) clearTimeout(panelIdleTimerRef.current)
+    panelIdleTimerRef.current = setTimeout(() => setPanelPage(0), 5000)
+  }, [])
+
+  useEffect(() => {
+    if (panelPage === 0) {
+      if (panelIdleTimerRef.current) { clearTimeout(panelIdleTimerRef.current); panelIdleTimerRef.current = null }
+      return
+    }
+    noteUserOnPanel()
+    return () => { if (panelIdleTimerRef.current) clearTimeout(panelIdleTimerRef.current) }
+  }, [panelPage, noteUserOnPanel])
+
+  const handlePanelPointerDown = (e: React.PointerEvent) => {
+    panelDraggingRef.current = true
+    panelDragMovedRef.current = false
+    panelDragStartXRef.current = e.clientX
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    noteUserOnPanel()
+  }
+  const handlePanelPointerMove = (e: React.PointerEvent) => {
+    if (!panelDraggingRef.current) return
+    const dx = e.clientX - panelDragStartXRef.current
+    if (Math.abs(dx) > 8) panelDragMovedRef.current = true
+    setPanelDragPx(dx)
+  }
+  const handlePanelPointerUp = () => {
+    if (!panelDraggingRef.current) return
+    panelDraggingRef.current = false
+    const dx = panelDragPx
+    const threshold = (crtBox.w || 1) * 0.18
+    if (dx < -threshold) setPanelPage((p) => Math.min(2, p + 1) as 0 | 1 | 2)
+    else if (dx > threshold) setPanelPage((p) => Math.max(0, p - 1) as 0 | 1 | 2)
+    setPanelDragPx(0)
+    noteUserOnPanel()
+  }
+  // usado pelos onClick de dentro do painel (abrir SINT0NIA, abrir um app) —
+  // um clique sintético depois de um arrasto real não deve navegar
+  const guardPanelClick = (fn: () => void) => () => { if (!panelDragMovedRef.current) fn() }
+
   // ACEITAR: abre o celular direto na página da missão, liga o piloto
   // automático (a pessoa não precisa mais dirigir manualmente enquanto
   // resolve a missão) — a própria página da missão muta o rádio sozinha ao
@@ -1460,12 +1521,6 @@ export default function DrivePage() {
   // vazia por enquanto) pra poder popular depois.
   const [showGloveBox, setShowGloveBox] = useState(false)
 
-  // Modal expandido do mini-mapa (dentro do HUB) — estado erguido até aqui
-  // de propósito: o modal em si é renderizado como irmão de topo (fora da
-  // caixa do HUB/zona crt), senão o zIndex dele só venceria coisas dentro
-  // do HUB, e o rádio/DJ deck (irmãos de fora) continuariam por cima
-  const [mapExpanded, setMapExpanded] = useState(false)
-
   return (
     <div
       ref={stageRef}
@@ -1490,20 +1545,6 @@ export default function DrivePage() {
         />
       )}
 
-      {/* MODAL DO MINI-MAPA (mapa bidirecional) — irmão de topo de propósito,
-          nunca aninhado dentro do HUB: precisa ficar aqui pra seu
-          position:fixed/zIndex:80 realmente cobrir a tela toda (rádio, DJ
-          deck etc.), em vez de só vencer coisas dentro da caixa do HUB */}
-      {mapExpanded && (() => {
-        const mission = activeMission(confirmCount)
-        return (
-          <CityMapModal
-            mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
-            progress={missionProgress}
-            onClose={() => setMapExpanded(false)}
-          />
-        )
-      })()}
 
       {/* BEZEL da Tela CRT — moldura física atrás da tela fechada, como uma
           tela embutida de verdade no painel (não um retângulo colado por
@@ -1580,7 +1621,11 @@ export default function DrivePage() {
             inicial do celular". */}
         {!phoneOpen && (() => {
           const mission = activeMission(confirmCount)
+          const missionForMap = mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined
           const openApp = (a: { route: string; external?: boolean }) => {
+            // clique sintético depois de um arrasto (trocar de página) não
+            // deve abrir nada — ver guardPanelClick
+            if (panelDragMovedRef.current) return
             if (a.external) { window.open(a.route, "_blank"); return }
             if (iframeRef.current) iframeRef.current.src = a.route
             setPhoneOpen(true)
@@ -1608,157 +1653,302 @@ export default function DrivePage() {
           // dar espaço de verdade pros ícones que sobram, por pedido
           // explícito ("mesmo que tenha que retirar algum ícone")
           const dockApps = HUB_APPS.filter((a) => a.unlocked(appState) && (!isMobile || !["nectar", "youtube", "instagram"].includes(a.id)))
+          const allMobileApps = [...tiles, ...dockApps]
 
-          // ── CELULAR: layout mais simples de propósito — uma grade 2x2 de
-          // blocos + mensagens + dock não cabe legível numa caixa tão menor
-          // (o quadrado do celular é bem menor em px que o do desktop,
-          // mesmo com % maiores). Em vez disso: mapa + mensagens lado a
-          // lado (ambos bem maiores) e um dock só embaixo, juntando os
-          // apps-jogo (loop/batida/guitar) com os utilitários — tudo cabe
-          // com ícone/fonte de verdade legíveis, só perde o "bloco grande"
-          // com o nome do app escrito por baixo. ──
-          if (isMobile) {
-            const allApps = [...tiles, ...dockApps]
-            return (
-              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:5, padding:5, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
-                <div style={{ flex:1, minHeight:0, display:"flex", gap:5 }}>
-                  <div style={{ flexShrink:0, display:"flex", alignItems:"flex-start" }}>
-                    <CityMapButton
-                      mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
-                      progress={missionProgress}
-                      onOpen={() => setMapExpanded(true)}
-                      size={44}
-                    />
-                  </div>
-                  <div style={{
-                    flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3, overflow:"hidden",
-                    background:"rgba(255,255,255,0.04)", borderRadius:8, border:"1px solid rgba(255,255,255,0.08)", padding:4,
-                  }}>
-                    {contacts.length === 0 ? (
-                      <span style={{ fontFamily:"monospace", fontSize:9, color:"rgba(255,255,255,0.35)" }}>sem mensagens</span>
-                    ) : contacts.map((c) => (
-                      <button
-                        key={c.key}
-                        type="button"
-                        onClick={() => openApp({ route: `/n3xo/privado/${c.key}` })}
-                        aria-label={`Abrir conversa com ${c.name}`}
-                        style={{
-                          flex:1, minHeight:0, display:"flex", alignItems:"center", gap:4, textAlign:"left",
-                          background:"none", border:"none", padding:0, cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                        }}
-                      >
-                        <span style={{ width:13, height:13, borderRadius:"50%", flexShrink:0, background:c.color, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontWeight:800, fontSize:7, color:"#fff" }}>{c.avatar}</span>
-                        <span style={{ fontFamily:"monospace", fontSize:9, fontWeight:700, letterSpacing:0.2, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{c.name}</span>
-                        {c.isNew && <span style={{ width:6, height:6, borderRadius:"50%", flexShrink:0, background:"#00e5ff", boxShadow:"0 0 4px #00e5ff" }}/>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+          // ── dados do rádio (página 0 do painel) — mesma lógica que já
+          // existia na barra do rádio separada, só que agora com bem mais
+          // espaço de verdade pra respirar ──
+          const meta = F[activeTier]
+          const accent = radioOn ? meta.color : "rgba(255,255,255,0.4)"
+          const title = (radioTrack?.title ?? "—").toUpperCase()
+          const isStatic = radioMachine === "static"
+          const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
+          const tunerFreq = FREQ_MIN + tunerPct * (FREQ_MAX - FREQ_MIN)
+          const tunerLocked = ALL_TIERS.some(t => radioAccepted[t] && Math.abs(tunerFreq - freqOf(t)) <= FREQ_TOLERANCE)
+          const R = isMobile
+            ? { dot:13, next:22, play:30, shuffle:22, vol:22, ribbonGap:7, stationFont:12, tunerH:14, tickW:4, tickH:12, needleW:3, needleH:16, marqueeFont:14 }
+            : { dot:11, next:18, play:26, shuffle:18, vol:18, ribbonGap:6, stationFont:10, tunerH:11, tickW:3, tickH:9,  needleW:2, needleH:13, marqueeFont:11 }
 
-                {/* dock único — jogo + utilitários juntos. Nunca quebra
-                    linha (isso espremia a linha de cima até sumir) — se
-                    não couber tudo numa linha só, rola pro lado */}
-                <div style={{ flexShrink:0, display:"flex", gap:3, overflowX:"auto", justifyContent:"center" }}>
-                  {allApps.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => openApp(a)}
-                      aria-label={`Abrir ${a.label}`}
-                      style={{
-                        flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-                        width:19, height:19, borderRadius:5,
-                        background:`${a.color}44`, border:`1px solid ${a.color}99`,
-                        cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                      }}
-                    >
-                      <AppIcon icon={a.icon} size={11} className="text-white" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )
-          }
+          const dotStyle = (active: boolean): React.CSSProperties => ({
+            width:6, height:6, borderRadius:"50%",
+            background: active ? "#fff" : "rgba(255,255,255,0.25)",
+            border:"none", padding:0, cursor:"pointer", WebkitTapHighlightColor:"transparent",
+          })
 
           return (
-            <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:4, padding:6, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
-              <div style={{ flex:1, minHeight:0, display:"flex", gap:4 }}>
-                {/* mini-mapa — canto superior esquerdo; só o botão aqui, o
-                    modal expandido é renderizado fora do HUB (CityMapModal) */}
-                <div style={{ flexShrink:0, display:"flex", alignItems:"flex-start" }}>
-                  <CityMapButton
-                    mission={mission ? { id: mission.id, letter: mission.letter, name: mission.name, color: MISSION_COLORS[mission.id] } : undefined}
-                    progress={missionProgress}
-                    onOpen={() => setMapExpanded(true)}
-                    size={94}
-                  />
-                </div>
+            <div
+              onPointerDown={handlePanelPointerDown}
+              onPointerMove={handlePanelPointerMove}
+              onPointerUp={handlePanelPointerUp}
+              onPointerCancel={handlePanelPointerUp}
+              style={{ position:"absolute", inset:0, overflow:"hidden", touchAction:"pan-y" }}
+            >
+              <div style={{
+                display:"flex", width:"300%", height:"100%",
+                transform:`translateX(calc(${-panelPage * (100 / 3)}% + ${panelDragPx}px))`,
+                transition: panelDraggingRef.current ? "none" : "transform .32s cubic-bezier(.4,0,.2,1)",
+              }}>
+                {/* PÁGINA 0 — RÁDIO (tudo que já existia na barra separada,
+                    agora com o painel inteiro pra si) */}
+                <div style={{ width:`${100/3}%`, height:"100%", flexShrink:0, position:"relative" }}>
+                  <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:isMobile?8:6, padding:isMobile?10:8, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
+                    <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:R.ribbonGap, padding:"0 2px" }}>
+                      <div style={{ display:"flex", gap:isMobile?6:4, flexShrink:0 }}>
+                        {tunedTiers.map(tier => {
+                          const tMeta = F[tier]
+                          const isSel = tier === activeTier
+                          return (
+                            <button
+                              key={tier}
+                              type="button"
+                              onClick={() => { setShuffleMode(false); setManualTier(tier); setRadioOn(true) }}
+                              aria-label={`Tocar ${tMeta.label}`}
+                              style={{
+                                flexShrink:0, width:R.dot, height:R.dot, borderRadius:"50%",
+                                background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
+                                border: `1px solid ${tMeta.color}`,
+                                boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
+                                cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
+                              }}
+                            />
+                          )
+                        })}
+                      </div>
 
-                {/* grade 2x2: blocos dos apps-jogo (ícone de verdade) +
-                    prévia de mensagens no canto superior direito */}
-                <div style={{ flex:1, minWidth:0, display:"grid", gridTemplateColumns:"1fr 1fr", gridTemplateRows:"1fr 1fr", gap:4 }}>
-                  {tiles.map((tile) => (
-                    <button
-                      key={tile.id}
-                      type="button"
-                      onClick={() => openApp(tile)}
-                      aria-label={`Abrir ${tile.label}`}
-                      style={{
-                        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2,
-                        background:tile.color, borderRadius:7, border:"1px solid rgba(255,255,255,0.1)",
-                        cursor:"pointer", WebkitTapHighlightColor:"transparent", padding:2, minWidth:0,
-                      }}
-                    >
-                      <AppIcon icon={tile.icon} size={16} className="text-white" />
-                      <span style={{ fontFamily:"monospace", fontSize:6, fontWeight:700, letterSpacing:0.3, color:"rgba(255,255,255,0.85)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%" }}>{tile.label}</span>
-                    </button>
-                  ))}
+                      <div style={{ flex:1 }} />
 
-                  {/* prévia de mensagens — canto superior direito da grade */}
-                  <div style={{
-                    display:"flex", flexDirection:"column", gap:1, overflow:"hidden",
-                    background:"rgba(255,255,255,0.04)", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", padding:3,
-                  }}>
-                    {contacts.length === 0 ? (
-                      <span style={{ fontFamily:"monospace", fontSize:6, color:"rgba(255,255,255,0.35)" }}>sem msgs</span>
-                    ) : contacts.map((c) => (
                       <button
-                        key={c.key}
                         type="button"
-                        onClick={() => openApp({ route: `/n3xo/privado/${c.key}` })}
-                        aria-label={`Abrir conversa com ${c.name}`}
+                        onClick={nextTier}
+                        aria-label="Próxima rádio"
                         style={{
-                          flex:1, minHeight:0, display:"flex", alignItems:"center", gap:3, textAlign:"left",
-                          background:"none", border:"none", padding:0, cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                          flexShrink:0, width:R.next, height:R.next, borderRadius:"50%",
+                          background:"rgba(255,255,255,0.06)", border:"1.5px solid rgba(255,255,255,0.3)",
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          cursor:"pointer", WebkitTapHighlightColor:"transparent",
                         }}
                       >
-                        <span style={{ width:9, height:9, borderRadius:"50%", flexShrink:0, background:c.color, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontWeight:800, fontSize:5, color:"#fff" }}>{c.avatar}</span>
-                        <span style={{ fontFamily:"monospace", fontSize:6, fontWeight:700, letterSpacing:0.2, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{c.name}</span>
-                        {c.isNew && <span style={{ width:4, height:4, borderRadius:"50%", flexShrink:0, background:"#00e5ff", boxShadow:"0 0 4px #00e5ff" }}/>}
+                        <svg width={R.next*0.45} height={R.next*0.45} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
                       </button>
-                    ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setRadioOn(o => !o)}
+                        aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
+                        style={{
+                          flexShrink:0, width:R.play, height:R.play, borderRadius:"50%",
+                          background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
+                          border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                        }}
+                      >
+                        {radioOn ? (
+                          <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+                        ) : (
+                          <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={toggleShuffle}
+                        aria-label={shuffleMode ? "Desligar shuffle" : "Ligar shuffle geral"}
+                        style={{
+                          flexShrink:0, width:R.shuffle, height:R.shuffle, borderRadius:"50%",
+                          background: shuffleMode ? `${meta.color}22` : "rgba(255,255,255,0.06)",
+                          border: `1.5px solid ${shuffleMode ? meta.color : "rgba(255,255,255,0.3)"}`,
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                        }}
+                      >
+                        <svg width={R.shuffle*0.5} height={R.shuffle*0.5} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h3.5a4 4 0 013.2 1.6L14 12"/>
+                          <path d="M3 18h3.5a4 4 0 003.2-1.6L14 12"/>
+                          <path d="M17 6h4M17 18h4"/>
+                          <path d="M18.5 4.5L21 6l-2.5 1.5"/>
+                          <path d="M18.5 19.5L21 18l-2.5-1.5"/>
+                        </svg>
+                      </button>
+
+                      <div style={{ position:"relative", flexShrink:0, width:R.vol, height:R.vol }}>
+                        <div
+                          ref={volumeRingRef}
+                          onPointerDown={(e) => {
+                            e.stopPropagation()
+                            volumeDraggingRef.current = true
+                            ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+                            updateVolumeFromPointer(e.clientX, e.clientY)
+                          }}
+                          onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
+                          onPointerUp={() => { volumeDraggingRef.current = false }}
+                          style={{
+                            position:"absolute", inset:0, borderRadius:"50%",
+                            cursor:"grab", touchAction:"none",
+                            background:`conic-gradient(from -120deg, ${meta.color} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
+                            WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
+                            mask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div
+                      onClick={guardPanelClick(() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) })}
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Abrir SINT0NIA — sintonizar rádio"
+                      style={{
+                        flex:1, minHeight:0, position:"relative", borderRadius:14, cursor:"pointer", overflow:"hidden",
+                        background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
+                        border:`1px solid ${accent}55`,
+                        boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
+                        display:"flex", flexDirection:"column", justifyContent:"center", padding: isMobile ? "6px 12px" : "5px 12px",
+                        WebkitTapHighlightColor:"transparent",
+                      }}
+                    >
+                      <div style={{fontFamily:"monospace",fontSize:R.stationFont,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                        {meta.label} · {meta.freq} FM{shuffleMode && radioOn ? " · SHUFFLE" : ""}
+                      </div>
+
+                      <div
+                        ref={tunerTrackRef}
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => {
+                          e.stopPropagation()
+                          tunerDraggingRef.current = true
+                          ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+                          updateTunerFromPointer(e.clientX)
+                        }}
+                        onPointerMove={(e) => { if (tunerDraggingRef.current) updateTunerFromPointer(e.clientX) }}
+                        onPointerUp={() => { tunerDraggingRef.current = false }}
+                        style={{ position:"relative", height:R.tunerH, marginTop: isMobile?6:4, cursor:"grab", touchAction:"none" }}
+                      >
+                        <div style={{ position:"absolute", left:0, right:0, top:"50%", height:isMobile?3:2, transform:"translateY(-50%)", background:"rgba(255,255,255,0.12)", borderRadius:2 }}/>
+                        {ALL_TIERS.map(t => {
+                          const tMeta = F[t]
+                          const unlocked = radioAccepted[t]
+                          return (
+                            <div key={t} style={{
+                              position:"absolute", left:`${pctForFreq(freqOf(t))*100}%`, top:"50%",
+                              width:R.tickW, height:R.tickH, transform:"translate(-50%,-50%)", borderRadius:1,
+                              background: unlocked ? tMeta.color : "rgba(255,255,255,0.15)",
+                              boxShadow: unlocked ? `0 0 4px ${tMeta.color}` : "none",
+                            }}/>
+                          )
+                        })}
+                        <div style={{
+                          position:"absolute", left:`${tunerPct*100}%`, top:"50%", width:R.needleW, height:R.needleH,
+                          transform:"translate(-50%,-50%)", borderRadius:1, background:"#fff",
+                          boxShadow: tunerLocked ? `0 0 6px ${accent}` : "0 0 3px rgba(255,255,255,0.5)",
+                        }}/>
+                      </div>
+
+                      <div style={{position:"relative",height:R.marqueeFont+3,overflow:"hidden",marginTop: isMobile?3:2}}>
+                        {!radioOn ? (
+                          <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
+                        ) : isStatic ? (
+                          <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
+                        ) : radioActive ? (
+                          <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:R.marqueeFont,fontWeight:700,letterSpacing:1,
+                            color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
+                            ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
+                          </div>
+                        ) : (
+                          <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
+                        )}
+                      </div>
+                      <div style={{position:"absolute", left:0, right:0, bottom:0, height: isMobile?3:2, background:"rgba(255,255,255,0.06)"}}>
+                        <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                {/* PÁGINA 1 — APPS (blocos dos apps-jogo + mensagens + dock,
+                    o mini-mapa saiu daqui — agora tem página própria) */}
+                <div style={{ width:`${100/3}%`, height:"100%", flexShrink:0, position:"relative" }}>
+                  <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:8, padding:10, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6, flexShrink:0 }}>
+                      {tiles.map((tile) => (
+                        <button
+                          key={tile.id}
+                          type="button"
+                          onClick={() => openApp(tile)}
+                          aria-label={`Abrir ${tile.label}`}
+                          style={{
+                            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3,
+                            width:isMobile?56:66, height:isMobile?56:66,
+                            background:tile.color, borderRadius:10, border:"1px solid rgba(255,255,255,0.12)",
+                            cursor:"pointer", WebkitTapHighlightColor:"transparent", padding:2,
+                          }}
+                        >
+                          <AppIcon icon={tile.icon} size={isMobile?20:24} className="text-white" />
+                          <span style={{ fontFamily:"monospace", fontSize:8, fontWeight:700, letterSpacing:0.3, color:"rgba(255,255,255,0.85)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%" }}>{tile.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{
+                      flex:1, minHeight:0, display:"flex", flexDirection:"column", gap:2, overflowY:"auto",
+                      background:"rgba(255,255,255,0.04)", borderRadius:10, border:"1px solid rgba(255,255,255,0.08)", padding:8,
+                    }}>
+                      {contacts.length === 0 ? (
+                        <span style={{ fontFamily:"monospace", fontSize:10, color:"rgba(255,255,255,0.35)" }}>sem mensagens</span>
+                      ) : contacts.map((c) => (
+                        <button
+                          key={c.key}
+                          type="button"
+                          onClick={() => openApp({ route: `/n3xo/privado/${c.key}` })}
+                          aria-label={`Abrir conversa com ${c.name}`}
+                          style={{
+                            flexShrink:0, display:"flex", alignItems:"center", gap:8, textAlign:"left", padding:"5px 2px",
+                            background:"none", border:"none", cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                          }}
+                        >
+                          <span style={{ width:20, height:20, borderRadius:"50%", flexShrink:0, background:c.color, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontWeight:800, fontSize:9, color:"#fff" }}>{c.avatar}</span>
+                          <span style={{ fontFamily:"monospace", fontSize:11, fontWeight:700, letterSpacing:0.2, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{c.name}</span>
+                          {c.isNew && <span style={{ width:6, height:6, borderRadius:"50%", flexShrink:0, background:"#00e5ff", boxShadow:"0 0 4px #00e5ff" }}/>}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ flexShrink:0, display:"flex", gap:6, overflowX:"auto" }}>
+                      {(isMobile ? allMobileApps : dockApps).map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => openApp(a)}
+                          aria-label={`Abrir ${a.label}`}
+                          style={{
+                            flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
+                            width:isMobile?24:20, height:isMobile?24:20, borderRadius:6,
+                            background:`${a.color}44`, border:`1px solid ${a.color}99`,
+                            cursor:"pointer", WebkitTapHighlightColor:"transparent",
+                          }}
+                        >
+                          <AppIcon icon={a.icon} size={isMobile?13:11} className="text-white" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* PÁGINA 2 — MAPA (rota com curvas + relógio de chegada) */}
+                <div style={{ width:`${100/3}%`, height:"100%", flexShrink:0, position:"relative" }}>
+                  <DriveRouteMap
+                    mission={missionForMap}
+                    progress={missionProgress}
+                    listenedMs={funnel.state.radioListenedMs[activeTier] ?? 0}
+                    requiredMs={45000}
+                  />
                 </div>
               </div>
 
-              {/* dock fino embaixo — utilitários + YouTube/Instagram, ícone
-                  de verdade de cada um */}
-              <div style={{ flexShrink:0, display:"flex", gap:4, overflowX:"auto" }}>
-                {dockApps.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => openApp(a)}
-                    aria-label={`Abrir ${a.label}`}
-                    style={{
-                      flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center",
-                      width:16, height:16, borderRadius:5,
-                      background:`${a.color}33`, border:`1px solid ${a.color}88`,
-                      cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                    }}
-                  >
-                    <AppIcon icon={a.icon} size={10} className="text-white" />
-                  </button>
+              {/* pontinhos de página — tocáveis, pulam direto */}
+              <div style={{ position:"absolute", bottom:6, left:"50%", transform:"translateX(-50%)", display:"flex", gap:6, zIndex:5 }}>
+                {[0, 1, 2].map((i) => (
+                  <button key={i} type="button" aria-label={`Página ${i + 1}`} onClick={() => { setPanelPage(i as 0 | 1 | 2); noteUserOnPanel() }} style={dotStyle(panelPage === i)} />
                 ))}
               </div>
             </div>
@@ -1835,217 +2025,6 @@ export default function DrivePage() {
           </svg>
         </button>
       )}
-
-      {/* BARRA DO RÁDIO — zona `radio` do blocking, centro do console. É o
-          rádio, não o celular: mostra o que está tocando (mascarado, na cor
-          da frequência) e, ao tocar, abre o SINT0NIA direto — SINT0NIA é uma
-          extensão do rádio dentro do celular, não o contrário, então não
-          passa pela tela inicial do N3XO. Acesso genérico ao celular (pra
-          ver mensagens/apps) continua sendo o HUB (zona crt), como sempre foi. */}
-      {!phoneOpen && viewport.w > 0 && (() => {
-        const z = zonePx(Z.radio, viewport.w, viewport.h)
-        const meta = F[activeTier]
-        const accent = radioOn ? meta.color : "rgba(255,255,255,0.4)"
-        const title = (radioTrack?.title ?? "—").toUpperCase()
-        const isStatic = radioMachine === "static"
-        const tunedTiers = ALL_TIERS.filter(t => radioAccepted[t])
-        const tunerFreq = FREQ_MIN + tunerPct * (FREQ_MAX - FREQ_MIN)
-        const tunerLocked = ALL_TIERS.some(t => radioAccepted[t] && Math.abs(tunerFreq - freqOf(t)) <= FREQ_TOLERANCE)
-        // tokens de tamanho — no celular o rádio ganhou uma fatia bem maior
-        // da tela de propósito (ver ZONES_MOBILE.radio), especificamente pra
-        // caber fonte/dial grandes o bastante pra ler e arrastar de verdade
-        const R = isMobile
-          ? { dot:12, next:20, play:28, shuffle:20, vol:20, ribbonGap:6, stationFont:11, tunerH:13, tickW:4, tickH:11, needleW:3, needleH:15, statusFont:11, marqueeFont:13 }
-          : { dot:10, next:16, play:22, shuffle:16, vol:16, ribbonGap:5, stationFont:9,  tunerH:10, tickW:3, tickH:8,  needleW:2, needleH:12, statusFont:9,  marqueeFont:10 }
-        return (
-          <div style={{ position:"absolute", zIndex:48, left:z.x, top:z.y, width:z.w, height:z.h, display:"flex", flexDirection:"column", gap:isMobile?6:4 }}>
-
-            {/* FITINHA FINA — era só o nome da faixa, agora é onde moram os
-                controles (bolinhas de estação, próxima rádio, play grande
-                = power, shuffle e volume); o nome da faixa já aparece na
-                tela do rádio logo abaixo */}
-            <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:R.ribbonGap, padding:"0 2px" }}>
-              <div style={{ display:"flex", gap:isMobile?6:4, flexShrink:0 }}>
-                {tunedTiers.map(tier => {
-                  const tMeta = F[tier]
-                  const isSel = tier === activeTier
-                  return (
-                    <button
-                      key={tier}
-                      type="button"
-                      onClick={() => { setShuffleMode(false); setManualTier(tier); setRadioOn(true) }}
-                      aria-label={`Tocar ${tMeta.label}`}
-                      style={{
-                        flexShrink:0, width:R.dot, height:R.dot, borderRadius:"50%",
-                        background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
-                        border: `1px solid ${tMeta.color}`,
-                        boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
-                        cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
-                      }}
-                    />
-                  )
-                })}
-              </div>
-
-              <div style={{ flex:1 }} />
-
-              <button
-                type="button"
-                onClick={nextTier}
-                aria-label="Próxima rádio"
-                style={{
-                  flexShrink:0, width:R.next, height:R.next, borderRadius:"50%",
-                  background:"rgba(255,255,255,0.06)", border:"1.5px solid rgba(255,255,255,0.3)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                }}
-              >
-                <svg width={R.next*0.45} height={R.next*0.45} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRadioOn(o => !o)}
-                aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
-                style={{
-                  flexShrink:0, width:R.play, height:R.play, borderRadius:"50%",
-                  background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
-                  border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                }}
-              >
-                {radioOn ? (
-                  <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
-                ) : (
-                  <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleShuffle}
-                aria-label={shuffleMode ? "Desligar shuffle" : "Ligar shuffle geral"}
-                style={{
-                  flexShrink:0, width:R.shuffle, height:R.shuffle, borderRadius:"50%",
-                  background: shuffleMode ? `${meta.color}22` : "rgba(255,255,255,0.06)",
-                  border: `1.5px solid ${shuffleMode ? meta.color : "rgba(255,255,255,0.3)"}`,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                }}
-              >
-                <svg width={R.shuffle*0.5} height={R.shuffle*0.5} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h3.5a4 4 0 013.2 1.6L14 12"/>
-                  <path d="M3 18h3.5a4 4 0 003.2-1.6L14 12"/>
-                  <path d="M17 6h4M17 18h4"/>
-                  <path d="M18.5 4.5L21 6l-2.5 1.5"/>
-                  <path d="M18.5 19.5L21 18l-2.5-1.5"/>
-                </svg>
-              </button>
-
-              <div style={{ position:"relative", flexShrink:0, width:R.vol, height:R.vol }}>
-                <div
-                  ref={volumeRingRef}
-                  onPointerDown={(e) => {
-                    e.stopPropagation()
-                    volumeDraggingRef.current = true
-                    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-                    updateVolumeFromPointer(e.clientX, e.clientY)
-                  }}
-                  onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
-                  onPointerUp={() => { volumeDraggingRef.current = false }}
-                  style={{
-                    position:"absolute", inset:0, borderRadius:"50%",
-                    cursor:"grab", touchAction:"none",
-                    background:`conic-gradient(from -120deg, ${meta.color} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
-                    WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
-                    mask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* TELA DO RÁDIO (ESTAÇÃO) — estação/frequência atual + dial de
-                sintonia manual; tocar fora do dial continua abrindo o
-                SINT0NIA direto (extensão do rádio no celular, função
-                "sintonia" centralizada aqui) */}
-            <div
-              onClick={() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) }}
-              role="button"
-              tabIndex={0}
-              aria-label="Abrir SINT0NIA — sintonizar rádio"
-              style={{
-                flex:1, minHeight:0, position:"relative", borderRadius:14, cursor:"pointer", overflow:"hidden",
-                background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-                border:`1px solid ${accent}55`,
-                boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
-                display:"flex", flexDirection:"column", justifyContent:"center", padding: isMobile ? "4px 10px" : "3px 10px",
-                WebkitTapHighlightColor:"transparent",
-              }}
-            >
-              <div style={{fontFamily:"monospace",fontSize:R.stationFont,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                {meta.label} · {meta.freq} FM{shuffleMode && radioOn ? " · SHUFFLE" : ""}
-              </div>
-
-              {/* DIAL DE SINTONIA — arrasta pra "passar" pelas 4 frequências;
-                  só acerta (toca) quando passa bem em cima de uma já
-                  desbloqueada, as outras continuam sintonizáveis a
-                  qualquer momento. Bolinhas na fitinha acima continuam
-                  sendo o atalho que pula direto pra frequência exata. */}
-              <div
-                ref={tunerTrackRef}
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => {
-                  e.stopPropagation()
-                  tunerDraggingRef.current = true
-                  ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-                  updateTunerFromPointer(e.clientX)
-                }}
-                onPointerMove={(e) => { if (tunerDraggingRef.current) updateTunerFromPointer(e.clientX) }}
-                onPointerUp={() => { tunerDraggingRef.current = false }}
-                style={{ position:"relative", height:R.tunerH, marginTop: isMobile?4:3, cursor:"grab", touchAction:"none" }}
-              >
-                <div style={{ position:"absolute", left:0, right:0, top:"50%", height:isMobile?3:2, transform:"translateY(-50%)", background:"rgba(255,255,255,0.12)", borderRadius:2 }}/>
-                {ALL_TIERS.map(t => {
-                  const tMeta = F[t]
-                  const unlocked = radioAccepted[t]
-                  return (
-                    <div key={t} style={{
-                      position:"absolute", left:`${pctForFreq(freqOf(t))*100}%`, top:"50%",
-                      width:R.tickW, height:R.tickH, transform:"translate(-50%,-50%)", borderRadius:1,
-                      background: unlocked ? tMeta.color : "rgba(255,255,255,0.15)",
-                      boxShadow: unlocked ? `0 0 4px ${tMeta.color}` : "none",
-                    }}/>
-                  )
-                })}
-                <div style={{
-                  position:"absolute", left:`${tunerPct*100}%`, top:"50%", width:R.needleW, height:R.needleH,
-                  transform:"translate(-50%,-50%)", borderRadius:1, background:"#fff",
-                  boxShadow: tunerLocked ? `0 0 6px ${accent}` : "0 0 3px rgba(255,255,255,0.5)",
-                }}/>
-              </div>
-
-              <div style={{position:"relative",height:R.marqueeFont+3,overflow:"hidden",marginTop: isMobile?2:1}}>
-                {!radioOn ? (
-                  <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
-                ) : isStatic ? (
-                  <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:1,color:accent,animation:"radio-blink 0.25s steps(2) infinite"}}>▓▒░ INTERFERÊNCIA ░▒▓</span>
-                ) : radioActive ? (
-                  <div style={{position:"absolute",whiteSpace:"nowrap",fontFamily:"monospace",fontSize:R.marqueeFont,fontWeight:700,letterSpacing:1,
-                    color:"#eafff8",textShadow:`0 0 6px ${accent}aa`,animation:"dash-marquee 12s linear infinite"}}>
-                    ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp; ♪ {title} &nbsp;&nbsp;&nbsp;&nbsp;
-                  </div>
-                ) : (
-                  <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
-                )}
-              </div>
-              <div style={{position:"absolute", left:0, right:0, bottom:0, height: isMobile?3:2, background:"rgba(255,255,255,0.06)"}}>
-                <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
-              </div>
-            </div>
-          </div>
-        )
-      })()}
 
       {/* BARRA DE NOTIFICAÇÃO DO CELULAR — fininha, no topo, clicável (abre o
           celular e executa a mesma ação de tocar nela lá dentro). Notificações
@@ -2615,8 +2594,9 @@ function drawDashboard(
   ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke()
   ctx.shadowBlur=0
 
-  // console central — fundo decorativo (controles/botões), atrás do rádio
-  const cc = zonePx(zones.centerConsole, W, H)
+  // console central — fundo decorativo (controles/botões), atrás do deck DJ
+  // (a zona `centerConsole` própria saiu — o deck DJ ocupa esse espaço agora)
+  const cc = zonePx(zones.djDeck, W, H)
   drawCenterConsole(ctx, cc.x, cc.y, cc.w, cc.h)
 
   // cluster digital — zona própria do blocking, atrás do volante (HTML) —
