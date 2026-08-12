@@ -65,21 +65,12 @@ export function ChordInstrumentPage({
   const armedInfo = chordChoices.find((c) => c.degree === armedDegree)
   const armedChord: ArmedChord | null = armedInfo ? { rootPc: armedInfo.rootPc, quality: armedInfo.quality, chordName: armedInfo.chordName } : null
 
-  const fullSteps = useMemo(() => {
-    const n = bars * STEPS_PER_BAR
-    if (steps.length === n) return steps
-    const next = Array(n).fill(null) as (number | null)[]
-    steps.forEach((v, i) => { if (i < n) next[i] = v })
-    return next
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bars])
-
   const draftTrack = useMemo(() => ({
     id: `draft-${instrument}`,
     instrument: instrument as InstrumentId,
     fx: defaultFx(),
-    data: { kind: "chord" as const, timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps: fullSteps },
-  }), [instrument, timbreIdx, bars, fullSteps])
+    data: { kind: "chord" as const, timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps },
+  }), [instrument, timbreIdx, bars, steps])
 
   useEffect(() => { engine?.setTracks([...song.tracks, draftTrack]) }, [engine, song.tracks, draftTrack])
 
@@ -112,14 +103,14 @@ export function ChordInstrumentPage({
   const canAdd = song.tracks.length < MAX_TRACKS
 
   const handleAdd = async () => {
-    if (!fullSteps.some((s) => s !== null)) { setFeedback("coloque pelo menos um acorde no trilho"); return }
-    const ok = await addTrack({ id: newTrackId(), instrument, fx: defaultFx(), data: { kind: "chord", timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps: fullSteps } })
+    if (!steps.some((s) => s !== null)) { setFeedback("coloque pelo menos um acorde no trilho"); return }
+    const ok = await addTrack({ id: newTrackId(), instrument, fx: defaultFx(), data: { kind: "chord", timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps } })
     if (ok) { setSteps(Array(bars * STEPS_PER_BAR).fill(null)); setFeedback(`faixa de ${label.toLowerCase()} adicionada`) }
     else setFeedback("limite de 5 faixas atingido")
     window.setTimeout(() => setFeedback(null), 2600)
   }
 
-  const activeSteps = fullSteps.slice(activeBar * STEPS_PER_BAR, activeBar * STEPS_PER_BAR + STEPS_PER_BAR)
+  const activeSteps = steps.slice(activeBar * STEPS_PER_BAR, activeBar * STEPS_PER_BAR + STEPS_PER_BAR)
 
   return (
     <PhoneShell accent={accent}>
