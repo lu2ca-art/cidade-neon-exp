@@ -40,7 +40,7 @@ export const TIER_META: Record<Tier, TierMeta> = {
   full: {
     label: "CIDADE NEON 222.4 FM", freq: "222.4", color: "#22ff88", tier: "full",
     projectName: "CIDADE NEON — álbum completo", projectKind: "buy",
-    projectLink: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz",
+    projectLink: "https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ",
   },
 }
 

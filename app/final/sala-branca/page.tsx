@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { ExternalLink } from "lucide-react"
 
-const ALBUM_LINK = "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz"
+const ALBUM_LINK = "https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ"
 
 export default function SalaBrancaPage() {
   const router = useRouter()

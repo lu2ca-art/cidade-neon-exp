@@ -364,7 +364,7 @@ function CidadeNeonExperience() {
 
   const phoneApps = [
     // [UNTITLED], //LOOP e _IRIS.EXE ficam bloqueados até a pessoa terminar as 3 confirmacoes (identityValidated)
-    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz", locked: !gameFunnelState.identityValidated },
+    { id: "untitled",      name: "[UNTITLED]",    icon: "untitled",      color: "#5B21B6", link: "https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ", locked: !gameFunnelState.identityValidated },
     { id: "spotify",       name: "FR3Q_",         icon: "heartbeat",     color: "#031a0f" },
     { id: "tiktok",        name: "//LOOP",         icon: "tiktok",        color: "#1a0010", link: "https://tiktok.com/@lu2ca.mp3", locked: !gameFunnelState.identityValidated },
     { id: "youtube",       name: "STR34M",        icon: "youtube",       color: "#7F1D1D", link: "https://www.youtube.com/@LU222CA" },
@@ -698,7 +698,7 @@ function CidadeNeonExperience() {
       missions.push(
         { id: "youtube-clip", app: "YouTube", icon: "youtube", color: "#FF0000", title: "LU2CA", body: "Novo video disponivel", action: "https://youtu.be/f83oYSMRyaY?si=NUcIB37Y2QrdUlQ6" },
         { id: "tiktok-feed", app: "TikTok", icon: "tiktok", color: "#000000", title: "LU2CA", body: "LU2CA publicou 5 novos videos", action: "/tiktok/feed" },
-        { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" },
+        { id: "untitled-final", app: "[UNTITLED]", icon: "untitled", color: "#8B5CF6", title: "Lancamento", body: "CIDADE NEON - LU2CA", action: "https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ" },
       )
     }
 
@@ -1432,7 +1432,7 @@ function CidadeNeonExperience() {
               <a href={`mailto:lucca.c2c@gmail.com?subject=Meu%20NECTAR%20-%20${encodeURIComponent(result.name)}&body=Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}`} className="inline-block px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 mb-4" style={{ backgroundColor: `${result.color}12`, color: result.color, border: `1px solid ${result.color}20` }}>
                 Enviar meu NECTAR por email
               </a>
-              <a href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz" target="_blank" rel="noopener noreferrer" className="block px-6 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 mb-6" style={{ color: result.color }}>
+              <a href="https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ" target="_blank" rel="noopener noreferrer" className="block px-6 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 mb-6" style={{ color: result.color }}>
                 Eleve seu NECTAR com o Album
               </a>
               <button type="button" onClick={() => setPhase("phone-home")} className="px-8 py-3 rounded-2xl bg-black/5 text-black/40 text-sm font-medium active:scale-95 transition-transform">

@@ -312,7 +312,7 @@ export default function TikTokFinalPage() {
               </p>
 
               <a
-                href="https://untitled.stream/buy/project/cwGIXvpY419u7v6UDOHQz"
+                href="https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-center bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-purple-500/20 active:scale-[0.97] transition-transform min-h-[44px]"
