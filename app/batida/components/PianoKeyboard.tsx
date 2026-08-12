@@ -11,7 +11,7 @@ import type { ArmedChord } from "../lib/theory"
 
 const WHITE_SEMIS = [0, 2, 4, 5, 7, 9, 11]
 const BLACK_SEMIS = [1, 3, null, 6, 8, 10, null] // null = sem tecla preta depois (E-F e B-C)
-const BASE_MIDI = 60 // C4
+const BASE_MIDI = 60 // C4 — default; modo PRO pode deslocar por oitava via baseMidi
 const FLASH_MS = 220
 
 function chordTones(chord: ArmedChord): { root: number; third: number; fifth: number } {
@@ -24,21 +24,25 @@ export function PianoKeyboard({
   chord,
   accent,
   onNote,
+  baseMidi = BASE_MIDI,
 }: {
   chord: ArmedChord | null
   accent: string
   onNote: (midi: number) => void
+  baseMidi?: number // desloca a oitava visível — usado no modo PRO
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const sizeRef = useRef({ w: 320, h: 150, dpr: 1 })
   const chordRef = useRef(chord)
   const accentRef = useRef(accent)
+  const baseMidiRef = useRef(baseMidi)
   const flashRef = useRef<Map<number, number>>(new Map())
   const rafRef = useRef<number | null>(null)
 
   chordRef.current = chord
   accentRef.current = accent
+  baseMidiRef.current = baseMidi
 
   function draw() {
     const canvas = canvasRef.current
@@ -56,7 +60,7 @@ export function PianoKeyboard({
 
     for (let i = 0; i < 7; i++) {
       const semi = WHITE_SEMIS[i]
-      const midi = BASE_MIDI + semi
+      const midi = baseMidiRef.current + semi
       const flashAge = now - (flashRef.current.get(semi) ?? -Infinity)
       const flashT = flashAge < FLASH_MS ? 1 - flashAge / FLASH_MS : 0
       const isRoot = tones && semi === tones.root
@@ -85,7 +89,7 @@ export function PianoKeyboard({
     for (let i = 0; i < 7; i++) {
       const semi = BLACK_SEMIS[i]
       if (semi === null) continue
-      const midi = BASE_MIDI + semi
+      const midi = baseMidiRef.current + semi
       const flashAge = now - (flashRef.current.get(semi) ?? -Infinity)
       const flashT = flashAge < FLASH_MS ? 1 - flashAge / FLASH_MS : 0
       const isRoot = tones && semi === tones.root
@@ -160,7 +164,7 @@ export function PianoKeyboard({
   function playSemi(semi: number) {
     flashRef.current.set(semi, performance.now())
     requestDraw()
-    onNote(BASE_MIDI + semi)
+    onNote(baseMidiRef.current + semi)
   }
 
   return (

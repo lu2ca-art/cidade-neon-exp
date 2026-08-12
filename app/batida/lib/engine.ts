@@ -199,6 +199,16 @@ export class BatidaEngine {
     if (instrument === "guitarra") triggerGuitarChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
     else triggerPianoChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
   }
+  // audição de uma voicing customizada (chip da esteira, célula do grid do
+  // modo PRO) — mesma coisa que previewChord, mas com notas MIDI exatas em
+  // vez de derivar a tríade a partir de um grau
+  previewVoicing(instrument: "guitarra" | "piano", midiNotes: number[], timbre: number) {
+    void this.ctx.resume()
+    const freqs = midiNotes.map(midiToFreq)
+    const time = this.ctx.currentTime + 0.01
+    if (instrument === "guitarra") triggerGuitarChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
+    else triggerPianoChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
+  }
 
   // uma corda só (fretboard Smart Guitar) ou uma tecla só (Smart Piano) —
   // usadas pelas telas com o instrumento "tocável" de verdade, nota a nota

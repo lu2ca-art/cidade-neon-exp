@@ -4,7 +4,7 @@
 // o baixo (define a tonalidade e quais graus foram usados) aos acordes
 // disponíveis na guitarra/piano.
 
-import type { MusicMode } from "./types"
+import type { ChordStepEntry, MusicMode } from "./types"
 
 export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -98,4 +98,26 @@ export function degreeTriadMidi(rootNote: number, mode: MusicMode, degree: numbe
   const fifth = extended[degree + 4]
   const toMidi = (semis: number) => rootNote + semis + 12 * (octave + 1)
   return [toMidi(base), toMidi(third), toMidi(fifth)]
+}
+
+// resolve um passo (grau da escala OU voicing customizada do modo PRO) pras
+// notas MIDI que precisam soar — ponto único usado tanto pela reprodução ao
+// vivo (mixgraph.ts) quanto pelo export offline (render.ts, que chama a
+// mesma função de agendamento)
+export function chordStepMidiNotes(
+  entry: ChordStepEntry | undefined,
+  rootNote: number,
+  mode: MusicMode,
+  octave: number,
+): number[] | null {
+  if (entry === null || entry === undefined) return null
+  if (typeof entry === "number") return degreeTriadMidi(rootNote, mode, entry, octave)
+  return entry.midi
+}
+
+// nome legível de uma nota MIDI (ex: "C4", "D#3") — usado nos chips da
+// esteira e nos rótulos do grid de voicing do modo PRO
+export function midiToNoteName(midi: number): string {
+  const pc = ((midi % 12) + 12) % 12
+  return `${NOTE_NAMES[pc]}${Math.floor(midi / 12) - 1}`
 }

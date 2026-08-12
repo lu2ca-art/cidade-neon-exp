@@ -4,7 +4,7 @@
 // pessoa ouve ao vivo é exatamente o que sai no áudio exportado.
 
 import { createImpulseResponse } from "./dsp"
-import { degreeToMidi, degreeTriadMidi, midiToFreq } from "./theory"
+import { chordStepMidiNotes, degreeToMidi, midiToFreq } from "./theory"
 import { triggerDrum, triggerBassNote, triggerGuitarChord, triggerPianoChord } from "./synths"
 import { DRUM_ROWS, type MusicMode, type Track } from "./types"
 
@@ -121,11 +121,11 @@ export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: Song
   if (data.kind === "chord") {
     const patternTicks = (data.bars ?? 1) * TICKS_PER_BAR
     const stepIdx = globalTick % patternTicks
-    const degree = data.steps[stepIdx]
-    if (degree === null || degree === undefined) return
-    const out = buildOneShotChain(ctx, bus, track.fx)
     const octave = track.instrument === "guitarra" ? 3 : 4
-    const freqs = degreeTriadMidi(song.rootNote, song.mode, degree, octave).map(midiToFreq)
+    const midiNotes = chordStepMidiNotes(data.steps[stepIdx], song.rootNote, song.mode, octave)
+    if (!midiNotes) return
+    const out = buildOneShotChain(ctx, bus, track.fx)
+    const freqs = midiNotes.map(midiToFreq)
     const ringDur = dur * 4
     if (track.instrument === "guitarra") triggerGuitarChord(ctx, out, time, freqs, ringDur, data.timbre)
     else triggerPianoChord(ctx, out, time, freqs, ringDur, data.timbre)

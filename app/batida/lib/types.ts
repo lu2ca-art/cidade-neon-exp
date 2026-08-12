@@ -26,6 +26,10 @@ export const INSTRUMENT_COLOR: Record<InstrumentId, string> = {
   voz: "#4ADE80",
 }
 
+// acento do modo PRO (esteira + grid de voicing) — reaproveita o azul/ciano
+// do baixo, que já é a referência visual de "edição precisa" no app
+export const PRO_ACCENT = INSTRUMENT_COLOR.baixo
+
 // grade de passos por instrumento sequenciado — bateria em colcheias (8),
 // baixo/guitarra/piano em semicolcheias (16), ambos cabendo em exatamente
 // 1 compasso (4/4), então tudo permanece sincronizado em loop
@@ -70,13 +74,19 @@ export interface BassPattern {
   cells: boolean[][] // [grau 0-6][passo] — 7 x (16 * bars)
 }
 
-// guitarra/piano: 1 acorde (ou vazio) por passo, escolhido entre os acordes
-// desbloqueados pelo baixo
+// guitarra/piano: 1 acorde (ou vazio) por passo. No modo PLAY é sempre um
+// grau da escala (0-6), escolhido entre os acordes desbloqueados pelo baixo.
+// No modo PRO pode ser uma voicing customizada — notas MIDI exatas que a
+// pessoa tocou no braço/teclado livre, sem depender do grau/tonalidade.
+// É um alargamento puro do tipo antigo (number | null): toda música salva
+// antes disso continua válida, sem precisar de migração.
+export type ChordStepEntry = number | { midi: number[] } | null
+
 export interface ChordPattern {
   kind: "chord"
   timbre: MelodicTimbre
   bars: BarLength
-  steps: (number | null)[] // grau da escala (0-6) ocupando aquele passo, ou null
+  steps: ChordStepEntry[]
 }
 
 export type SequencedPattern = DrumPattern | BassPattern | ChordPattern

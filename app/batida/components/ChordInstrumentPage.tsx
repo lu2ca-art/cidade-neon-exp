@@ -4,15 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useCurrentSong } from "../lib/CurrentSongContext"
 import { PhoneShell } from "./PhoneShell"
 import { InstrumentHeader } from "./InstrumentHeader"
+import { ModeToggle } from "./ModeToggle"
 import { TimbrePicker } from "./TimbrePicker"
 import { BarLengthPicker } from "./BarLengthPicker"
 import { BarPager } from "./BarPager"
 import { ChordPalette } from "./ChordPalette"
+import { AutoplayPicker } from "./AutoplayPicker"
 import { ChordStepStrip } from "./ChordStepStrip"
 import { GuitarFretboard } from "./GuitarFretboard"
 import { PianoKeyboard } from "./PianoKeyboard"
 import { AddTrackBar } from "./AddTrackBar"
 import { keyDegrees, type ArmedChord } from "../lib/theory"
+import { patternsFor, applyPatternToBar, type StrumPattern } from "../lib/patterns"
 import { MAX_TRACKS, defaultFx, newTrackId, unlockedDegrees, type BarLength, type InstrumentId } from "../lib/types"
 
 const STEPS_PER_BAR = 16
@@ -112,9 +115,19 @@ export function ChordInstrumentPage({
 
   const activeSteps = steps.slice(activeBar * STEPS_PER_BAR, activeBar * STEPS_PER_BAR + STEPS_PER_BAR)
 
+  const patterns = useMemo(() => patternsFor(instrument), [instrument])
+  const handleApplyPattern = (pattern: StrumPattern) => {
+    if (armedDegree === null) { setFeedback("arme um acorde antes de aplicar o padrão"); return }
+    setSteps((prev) => {
+      const base = prev.length === bars * STEPS_PER_BAR ? prev : Array(bars * STEPS_PER_BAR).fill(null)
+      return applyPatternToBar(base, activeBar * STEPS_PER_BAR, pattern, armedDegree)
+    })
+  }
+
   return (
     <PhoneShell accent={accent}>
       <InstrumentHeader accent={accent} label={label} playing={playing} onTogglePlay={togglePlay} />
+      <ModeToggle mode="play" instrument={instrument} accent={accent} />
       <p className="text-white/40 text-xs text-center mb-2 flex-shrink-0">{intro}</p>
 
       {unlocked.size === 0 && (
@@ -131,6 +144,8 @@ export function ChordInstrumentPage({
         )}
 
         <ChordPalette chords={chordChoices} armedDegree={armedDegree} onArm={setArmedDegree} accent={accent} />
+
+        <AutoplayPicker patterns={patterns} onApply={handleApplyPattern} accent={accent} />
 
         <TimbrePicker labels={timbreLabels} effects={timbreEffects} value={timbreIdx} onChange={setTimbreIdx} accent={accent} />
         <BarLengthPicker value={bars} onChange={changeBars} accent={accent} />
