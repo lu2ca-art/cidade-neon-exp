@@ -32,6 +32,7 @@ public/obras/
 !public/galeria/**
 !public/museu/**
 !public/loja-discos/**
+!public/radio-222/**
 
 # Documentos e briefings efêmeros na raiz do repo
 VISION.md

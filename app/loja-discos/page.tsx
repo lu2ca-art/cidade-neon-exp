@@ -16,25 +16,21 @@ type Disc = {
 
 const CAT_COLORS: Record<string, string> = {
   "Blues": "#3b82f6",              // azul elétrico
-  "Radio Escola": "#22c55e",        // verde
-  "Tome Ciencia": "#f97316",        // laranja
   "Musica Contemporanea": "#eab308", // dourado
 }
 
+// Loja de discos = SÓ MÚSICA. Programas educativos (Radio Escola, Tome Ciência,
+// Ler e Escrever) foram movidos pra rádio 222 FM.
 const DISCOS: Disc[] = [
-  { id: "disco-01", file: "/loja-discos/disco-01.mp3", titulo: "12-tone blues",                autor: "Radan Papezik",      categoria: "Blues",                cor: CAT_COLORS["Blues"] },
-  { id: "disco-02", file: "/loja-discos/disco-02.mp3", titulo: 'Johnson "Jass" Blues',         autor: "Band Friscoe Jass",  categoria: "Blues",                cor: CAT_COLORS["Blues"] },
-  { id: "disco-03", file: "/loja-discos/disco-03.mp3", titulo: "Lonesome Road Blues",          autor: "Anônimo",            categoria: "Blues",                cor: CAT_COLORS["Blues"] },
-  { id: "disco-04", file: "/loja-discos/disco-04.mp3", titulo: "New York Blues",               autor: "Pietro Frosini",     categoria: "Blues",                cor: CAT_COLORS["Blues"] },
-  { id: "disco-05", file: "/loja-discos/disco-05.mp3", titulo: "The St. Louis Blues",          autor: "W. C. Handy",        categoria: "Blues",                cor: CAT_COLORS["Blues"] },
-  { id: "disco-06", file: "/loja-discos/disco-06.mp3", titulo: "Poluição invisível",           autor: "Bibvirt",            categoria: "Radio Escola",         cor: CAT_COLORS["Radio Escola"] },
-  { id: "disco-07", file: "/loja-discos/disco-07.mp3", titulo: "Retrospectiva Tome Ciência I", autor: "Bibvirt",            categoria: "Tome Ciencia",         cor: CAT_COLORS["Tome Ciencia"] },
-  { id: "disco-08", file: "/loja-discos/disco-08.mp3", titulo: "Retrospectiva Tome Ciência II",autor: "Bibvirt",            categoria: "Tome Ciencia",         cor: CAT_COLORS["Tome Ciencia"] },
+  { id: "disco-01", file: "/loja-discos/disco-01.mp3", titulo: "12-tone blues",                autor: "Radan Papezik",         categoria: "Blues",                cor: CAT_COLORS["Blues"] },
+  { id: "disco-02", file: "/loja-discos/disco-02.mp3", titulo: 'Johnson "Jass" Blues',         autor: "Band Friscoe Jass",     categoria: "Blues",                cor: CAT_COLORS["Blues"] },
+  { id: "disco-03", file: "/loja-discos/disco-03.mp3", titulo: "Lonesome Road Blues",          autor: "Anônimo",               categoria: "Blues",                cor: CAT_COLORS["Blues"] },
+  { id: "disco-04", file: "/loja-discos/disco-04.mp3", titulo: "New York Blues",               autor: "Pietro Frosini",        categoria: "Blues",                cor: CAT_COLORS["Blues"] },
+  { id: "disco-05", file: "/loja-discos/disco-05.mp3", titulo: "The St. Louis Blues",          autor: "W. C. Handy",           categoria: "Blues",                cor: CAT_COLORS["Blues"] },
   { id: "disco-09", file: "/loja-discos/disco-09.mp3", titulo: "Comentários — musicalidade",   autor: "César M. Borges (USP)", categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
-  { id: "disco-10", file: "/loja-discos/disco-10.mp3", titulo: "Ein Musikalischer Spass Mv.1", autor: "W. A. Mozart",       categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
-  { id: "disco-11", file: "/loja-discos/disco-11.mp3", titulo: "Musikalisches Opfer — Ricercare", autor: "J. S. Bach",      categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
-  { id: "disco-12", file: "/loja-discos/disco-12.mp3", titulo: "Musikalisches Opfer — Ricercare a 6", autor: "J. S. Bach",  categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
-  { id: "disco-13", file: "/loja-discos/disco-13.mp3", titulo: "Ler e Escrever — Programa 05", autor: "MEC",                categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
+  { id: "disco-10", file: "/loja-discos/disco-10.mp3", titulo: "Ein Musikalischer Spass Mv.1", autor: "W. A. Mozart",          categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
+  { id: "disco-11", file: "/loja-discos/disco-11.mp3", titulo: "Musikalisches Opfer — Ricercare",     autor: "J. S. Bach",     categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
+  { id: "disco-12", file: "/loja-discos/disco-12.mp3", titulo: "Musikalisches Opfer — Ricercare a 6", autor: "J. S. Bach",     categoria: "Musica Contemporanea", cor: CAT_COLORS["Musica Contemporanea"] },
 ]
 
 // ─── Vinil na prateleira ──────────────────────────────────────────────────────
@@ -354,14 +350,14 @@ export default function LojaDiscosPage() {
   const next = () => setSelectedIdx((i) => (i === null ? 0 : (i + 1) % DISCOS.length))
   const prev = () => setSelectedIdx((i) => (i === null ? 0 : (i - 1 + DISCOS.length) % DISCOS.length))
 
-  // posições dos discos — grade 5x3 curvada em arco pra dar movimento
+  // posições dos discos — grade 3x3 curvada em arco (9 discos)
   const shelfPositions = useMemo<[number, number, number][]>(() => {
     return DISCOS.map((_, i) => {
-      const col = i % 5
-      const row = Math.floor(i / 5)
-      const x = (col - 2) * 1.6
-      const y = 2 - row * 1.6
-      const z = 1.5 + Math.abs(col - 2) * 0.15 // arco sutil
+      const col = i % 3
+      const row = Math.floor(i / 3)
+      const x = (col - 1) * 1.8
+      const y = 3.2 - row * 1.7
+      const z = 1.5 + Math.abs(col - 1) * 0.2
       return [x, y, z]
     })
   }, [])
