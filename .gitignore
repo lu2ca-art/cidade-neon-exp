@@ -16,16 +16,22 @@ pnpm-lock.yaml
 package-lock.json
 yarn.lock
 
-# Bibliotecas grandes de assets ficam fora do git — servidas via CDN futuramente
+# Bibliotecas grandes de assets brutos ficam fora do git
+# (a biblioteca completa vive em ~/obras_dominio_publico/)
 public/obras/
-public/loja-discos/
-public/radio-222/
-*.mp3
-*.wav
-*.flac
-*.ogg
-# Exceção: assets já curados de salas que devem ser commitados
+
+# Assets de áudio brutos NÃO commitar; áudios CURADOS por sala SIM.
+# Pra evitar acidentes, ignora a raiz + libera explicitamente as salas ativas.
+/*.mp3
+/*.wav
+/*.flac
+/*.ogg
+
+# Salas com assets curados que devem ser commitados:
+# (não adicionar novas linhas de ignore que apaguem estas)
 !public/galeria/**
+!public/museu/**
+!public/loja-discos/**
 
 # Documentos e briefings efêmeros na raiz do repo
 VISION.md
