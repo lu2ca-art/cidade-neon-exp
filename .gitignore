@@ -10,3 +10,24 @@ node_modules/
 .DS_Store
 .vercel
 tsconfig.tsbuildinfo
+
+# Package manager consistency — bun é o padrão do projeto
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Bibliotecas grandes de assets ficam fora do git — servidas via CDN futuramente
+public/obras/
+public/loja-discos/
+public/radio-222/
+*.mp3
+*.wav
+*.flac
+*.ogg
+# Exceção: assets já curados de salas que devem ser commitados
+!public/galeria/**
+
+# Documentos e briefings efêmeros na raiz do repo
+VISION.md
+CLAUDE.md
+STATE_AUDIT_REPORT.md
