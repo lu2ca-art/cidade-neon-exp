@@ -265,6 +265,11 @@ function CidadeNeonExperience() {
   /* ── Phase ────────── */
   const [phase, setPhase] = useState<Phase>(getInitialPhase)
 
+  // Detecta se está renderizado dentro do iframe do carro (drive-v2). Nesse
+  // modo, mostramos um botão "voltar ao carro" fixo pra evitar órfãos, e
+  // ao clicar dispara postMessage pro pai fechar o modal do celular.
+  const isEmbedded = searchParams?.get("embedded") === "1"
+
   // Pause Spotify when entering phases that have their own audio
   useEffect(() => {
     if (phase === "active-call" || phase === "incoming-call") {
@@ -1548,6 +1553,23 @@ function CidadeNeonExperience() {
 
   return (
     <div className="h-dvh bg-black flex items-center justify-center overflow-hidden">
+      {/* Botão "voltar ao carro" — só aparece quando o celular está renderizado
+          dentro do iframe do /drive-v2 (embedded=1). Evita órfãos: quem entra
+          no HUB pelo carro sempre tem como voltar sem sair da rota. */}
+      {isEmbedded && (
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              window.parent?.postMessage({ type: "CLOSE_PHONE" }, "*")
+            } catch {}
+          }}
+          className="fixed left-2 top-2 z-[100] rounded-full border border-white/20 bg-black/70 px-3 py-1.5 text-[11px] font-mono uppercase tracking-widest text-white backdrop-blur hover:bg-white/10"
+          style={{ boxShadow: "0 0 12px rgba(255, 45, 120, 0.4)" }}
+        >
+          ← voltar ao carro
+        </button>
+      )}
       <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] relative overflow-hidden">
         {/* wallpaper: dark space-blue com pontos neon sutis */}
         <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 30% 20%, #1a0d2e 0%, #0d0d1a 45%, #080810 100%)" }} />

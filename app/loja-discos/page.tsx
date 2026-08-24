@@ -87,15 +87,20 @@ function ShelfVinyl({
         position={[0, highlight ? 0.15 : 0, 0]}
         scale={highlight ? 1.08 : 1}
       >
-        {/* disco preto — cilindro fininho */}
+        {/* disco preto — cilindro fininho, usa Basic pra ser visível sem luz forte */}
         <mesh castShadow>
           <cylinderGeometry args={[0.9, 0.9, 0.04, 64]} />
-          <meshStandardMaterial color="#0a0a0a" roughness={0.4} metalness={0.3} />
+          <meshBasicMaterial color="#1a1a1a" toneMapped={false} />
         </mesh>
-        {/* ranhuras — anel externo mais claro */}
+        {/* ranhuras — anel externo com brilho sutil da cor do label */}
         <mesh position={[0, 0.021, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.35, 0.85, 64]} />
-          <meshStandardMaterial color="#1a1a1a" roughness={0.6} />
+          <meshBasicMaterial color={disc.cor} toneMapped={false} transparent opacity={0.15} />
+        </mesh>
+        {/* anel de ranhuras cinza pra dar leitura de vinil */}
+        <mesh position={[0, 0.022, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.36, 0.84, 64]} />
+          <meshBasicMaterial color="#2a2a2a" toneMapped={false} transparent opacity={0.5} />
         </mesh>
         {/* label central colorido */}
         <mesh position={[0, 0.022, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -383,18 +388,20 @@ export default function LojaDiscosPage() {
         </p>
       </div>
 
-      <Canvas shadows camera={{ position: [0, 2, 6], fov: 55 }}>
+      <Canvas shadows camera={{ position: [0, 2, 7], fov: 55 }}>
         <Suspense fallback={null}>
-          <ambientLight intensity={0.4} />
-          <pointLight position={[0, 6, 4]} intensity={0.8} color="#ff00ff" />
-          <pointLight position={[-6, 4, 3]} intensity={0.5} color="#00ffff" />
-          <pointLight position={[6, 4, 3]} intensity={0.5} color="#ffaa00" />
+          {/* Iluminação forte porque discos e paredes estavam escuros demais */}
+          <ambientLight intensity={1.2} />
+          <pointLight position={[0, 6, 4]} intensity={2.5} color="#ff00ff" distance={20} />
+          <pointLight position={[-8, 4, 4]} intensity={1.8} color="#00ffff" distance={20} />
+          <pointLight position={[8, 4, 4]} intensity={1.8} color="#ffaa00" distance={20} />
+          <pointLight position={[0, 3, 5]} intensity={1.5} color="#ffffff" distance={12} />
           <spotLight
             position={[0, 6, 0]}
             target-position={[0, 0.5, -3]}
-            intensity={1.2}
-            angle={0.6}
-            penumbra={0.6}
+            intensity={2.0}
+            angle={0.7}
+            penumbra={0.5}
             color="#ffffff"
             castShadow
           />

@@ -1,6 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Canvas } from "@react-three/fiber"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { COCKPIT_LAYOUT } from "@/lib/cockpit-layout"
+import { CockpitScene, CockpitLighting } from "@/components/DriveCockpit/CockpitScene"
 import { useAudioPlayer, getAudioEl } from "@/app/providers/AudioPlayerProvider"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import type { BridgeCommand, BridgeState, PhoneNotification, MinimizeConsole, SelectRadioTier, CarRadioControl } from "@/app/providers/AudioBridge"
@@ -9,6 +12,40 @@ import SteeringWheel3D from "@/components/SteeringWheel3D"
 import { DriveRouteMap } from "@/components/DriveMap"
 import { AppIcon } from "@/components/AppIcon"
 import { type Tier, ALL_TIERS, TIER_META } from "@/lib/radio-tiers"
+import {
+  type RadioTrack,
+  STATION_TRACKS,
+  TRACKS_BY_TIER,
+  highestAcceptedTier,
+  FREQ_MIN,
+  FREQ_MAX,
+  FREQ_TOLERANCE,
+  RADIO_SNIPPET_MS,
+  freqOf,
+  pctForFreq,
+} from "@/lib/radio-stations"
+import {
+  type MissionDef,
+  MISSIONS,
+  activeMission,
+  MISSION_COLORS,
+  ROAD_LEN,
+  SEG_LEN,
+  DRAW_DIST,
+  ROAD_W,
+  CAM_H,
+  CAM_DEPTH,
+  TOTAL_LEN,
+} from "@/lib/missions"
+import {
+  type HubApp,
+  type HubAppUnlockState,
+  HUB_MEMBER_ORDER,
+  HUB_VISIBLE_FROM_CC,
+  HUB_AVATARS,
+  HUB_TILES,
+  HUB_APPS,
+} from "@/lib/hub-apps"
 import { SCRIPTS, PREVIEW_SUMMARY, phaseFor, type MemberKey } from "@/app/n3xo/privado/[member]/page"
 
 const C = {
@@ -99,156 +136,8 @@ const PALETTES: Record<Scenario, Palette> = {
 // caracteres da chuva digital (transição estilo Matrix ao trocar de cenário)
 const MATRIX_CHARS = "アイウエオカキクケコサシスセソ0123456789ABCXYZ$#%&+-="
 
-// Duração fixa de cada faixa na rádio (prévia)
-const RADIO_SNIPPET_MS = 22000
 
-// Sintonia manual (dial) — espectro de frequências reais das 4 estações
-// (69.9 a 222.4 FM), usado pra posicionar o ponteiro e as marcações no dial
-const FREQ_MIN = 69.9
-const FREQ_MAX = 222.4
-const FREQ_TOLERANCE = 6 // "passar pela frequência certinha" — janela de acerto em torno de cada marcação
-function freqOf(tier: Tier): number { return parseFloat(TIER_META[tier].freq) }
-function pctForFreq(freq: number): number { return Math.min(1, Math.max(0, (freq - FREQ_MIN) / (FREQ_MAX - FREQ_MIN))) }
 
-// Faixa da rádio: title já vem no formato mascarado (com asteriscos), como o
-// resto do jogo. Cada faixa carrega sua própria estação/cor e um "tier" — a
-// frequência é sempre anunciada/liberada ANTES da missão que a segue (vira o
-// gancho pra próxima etapa), exceto a CIDADE NEON 222.4 FM, que só entra no ar
-// no fim de toda a experiência (unlocked.finalCompleted), somando-se ao que já
-// toca na LIVE NEON.
-type RadioTrack = { title: string; src: string; freq: string; color: string; label: string; tier: Tier }
-
-const F = TIER_META
-
-const STATION_TRACKS: Record<string, RadioTrack[]> = {
-  "SUBÚRBIO XÊNON": [
-    { title: "g*** m**",   src: "/audio/tracks/gata-mia.mp3",     ...F.suburbio },
-    { title: "t***o",       src: "/audio/tracks/tedio.mp3",        ...F.suburbio },
-    { title: "b*** b*** k", src: "/audio/tracks/boom-boom-k.mp3",  ...F.suburbio },
-    { title: "10 D3 10",    src: "/audio/tracks/10de10.mp3",       ...F.suburbio },
-  ],
-  // CIDADENEON.CRYPTO — os 5 instrumentais do jogo FEEL.GOOD
-  "CIDADE NEON": [
-    { title: "n****r",      src: "/audio/tracks/inst-nectar.mp3",      ...F.crypto },
-    { title: "d*****nA",    src: "/audio/tracks/inst-dopamina.mp3",    ...F.crypto },
-    { title: "o***á",       src: "/audio/tracks/inst-ojala.mp3",       ...F.crypto },
-    { title: "s*** o****?", src: "/audio/tracks/inst-sabe-ontem.mp3",  ...F.crypto },
-    { title: "C***A",       src: "/audio/tracks/inst-chuva.mp3",       ...F.crypto },
-  ],
-  // NOVA ONDA — LIVE NEON (5 ao vivo) + CIDADE NEON 222.4 FM (15 prévias do álbum)
-  "NOVA ONDA": [
-    { title: "n****r",      src: "/audio/tracks/live-nectar.mp3",      ...F.live },
-    { title: "d*****nA",    src: "/audio/tracks/live-dopamina.mp3",    ...F.live },
-    { title: "o***á",       src: "/audio/tracks/live-ojala.mp3",       ...F.live },
-    { title: "s*** o****?", src: "/audio/tracks/live-sabe-ontem.mp3",  ...F.live },
-    { title: "C***A",       src: "/audio/tracks/live-chuva.mp3",       ...F.live },
-    { title: "s*****ira",       src: "/audio/tracks/sextafeira.mp3",     ...F.full },
-    { title: "n****r",          src: "/audio/tracks/nectar.mp3",         ...F.full },
-    { title: "c*** a*****no",   src: "/audio/tracks/222-copo-americano.mp3", ...F.full },
-    { title: "d*****nA",        src: "/audio/tracks/dopamina.mp3",       ...F.full },
-    { title: "o***á",           src: "/audio/tracks/ojala.mp3",          ...F.full },
-    { title: "s**v",            src: "/audio/tracks/swav.mp3",           ...F.full },
-    { title: "c****e",          src: "/audio/tracks/cliche.mp3",         ...F.full },
-    { title: "s*** o****?",     src: "/audio/tracks/sabe-ontem.mp3",     ...F.full },
-    { title: "h*****ood",       src: "/audio/tracks/hollywood.mp3",      ...F.full },
-    { title: "s*****t",         src: "/audio/tracks/stylist.mp3",        ...F.full },
-    { title: "o***s",           src: "/audio/tracks/oasis.mp3",          ...F.full },
-    { title: "a*******a",       src: "/audio/tracks/astronauta.mp3",     ...F.full },
-    { title: "C***A",           src: "/audio/tracks/222-chuva.mp3",      ...F.full },
-    { title: "q* é v*?",        src: "/audio/tracks/qm-e-vc.mp3",        ...F.full },
-    { title: "r*******ster",    src: "/audio/tracks/rollercoaster.mp3",  ...F.full },
-  ],
-}
-
-// Pool isolado por frequência (usado na sintonia livre, apos finalCompleted)
-const TRACKS_BY_TIER: Record<Tier, RadioTrack[]> = {
-  suburbio: STATION_TRACKS["SUBÚRBIO XÊNON"],
-  crypto:   STATION_TRACKS["CIDADE NEON"],
-  live:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "live"),
-  full:     STATION_TRACKS["NOVA ONDA"].filter(t => t.tier === "full"),
-}
-// Deriva a estação sintonizada por último a partir do que já foi SINTONIZADO
-// (persistido no funil) — evita que reentrar em /drive (remount) perca a
-// seleção da pessoa, e retorna null se nada foi sintonizado ainda (rádio de
-// verdade: sem nada sintonizado, não tem o que tocar)
-function highestAcceptedTier(accepted: Record<Tier, boolean>): Tier | null {
-  for (let i = ALL_TIERS.length - 1; i >= 0; i--) {
-    if (accepted[ALL_TIERS[i]]) return ALL_TIERS[i]
-  }
-  return null
-}
-
-const ROAD_LEN  = 1600
-const SEG_LEN   = 200
-const DRAW_DIST = 100
-const ROAD_W    = 2200
-const CAM_H     = 1500
-const CAM_DEPTH = 0.84
-const TOTAL_LEN = ROAD_LEN * SEG_LEN
-
-// ── MISSÕES no mapa — cada uma tem um contato/letra (estilo marcador de
-// missão de GTA), a rota que abre no celular, em que confirmationCount ela
-// aparece no mapa e conta como concluída, e a distância dirigida até
-// "chegar no local" (odômetro, mesma unidade de TOTAL_LEN — a primeira é
-// curta pra aprender a mecânica, as seguintes aumentam) ──
-interface MissionDef {
-  id: "nectar" | "batida" | "guitarDriver"
-  letter: string
-  name: string
-  route: string
-  visibleFromCC: number
-  doneAtCC: number
-  distance: number
-}
-
-const MISSIONS: MissionDef[] = [
-  { id: "nectar",       letter: "A", name: "NECTAR",       route: "/nectar",     visibleFromCC: 0, doneAtCC: 1, distance: TOTAL_LEN * 0.15 },
-  { id: "batida",       letter: "N", name: "B4TIDA",       route: "/batida",     visibleFromCC: 1, doneAtCC: 2, distance: TOTAL_LEN * 0.35 },
-  { id: "guitarDriver", letter: "D", name: "GUITAR DRIVER",route: "/neon-tiles", visibleFromCC: 2, doneAtCC: 3, distance: TOTAL_LEN * 0.6 },
-]
-
-function activeMission(confirmationCount: number): MissionDef | undefined {
-  return MISSIONS.find(m => m.doneAtCC > confirmationCount)
-}
-
-const MISSION_COLORS: Record<MissionDef["id"], string> = {
-  nectar: "#a78bfa",
-  batida: "#00e5ff",
-  guitarDriver: "#ff2d78",
-}
-
-// ── HUB (estilo Apple CarPlay) — mesma ordem/dados do N3XO (app/n3xo/page.tsx)
-// pra lista de mensagens recentes bater exatamente com o app de verdade ──
-const HUB_MEMBER_ORDER: MemberKey[] = ["alohan", "nizzy", "dbee"]
-const HUB_VISIBLE_FROM_CC: Record<MemberKey, number> = { alohan: 0, nizzy: 1, dbee: 2 }
-const HUB_AVATARS: Record<MemberKey, { avatar: string; color: string }> = {
-  alohan: { avatar: "A", color: "#4ECDC4" },
-  nizzy: { avatar: "N", color: "#FF6B6B" },
-  dbee: { avatar: "D", color: "#6B7FD7" },
-}
-
-// Apps clicáveis direto do HUB — não abre mais a tela inicial genérica do
-// celular, só os apps específicos (cada um com sua rota). Miniatura do
-// ícone de verdade do app (AppIcon), não uma letra inicial.
-interface HubAppUnlockState { radioAnyAccepted: boolean; nectar: boolean; feelGood: boolean; guitarDriver: boolean }
-interface HubApp { id: string; label: string; icon: string; color: string; route: string; external?: boolean; unlocked: (s: HubAppUnlockState) => boolean }
-
-// Blocos grandes (estilo TikTok/Netflix da referência) — os 3 apps-jogo
-const HUB_TILES: HubApp[] = [
-  { id: "loop",   label: "//LOOP",       icon: "tiktok",       color: "#1a0010", route: "/tiktok/feed", unlocked: () => true },
-  { id: "batida", label: "B4TIDA",       icon: "beatbuilder",  color: "#2a0505", route: "/batida",      unlocked: (s) => s.feelGood },
-  { id: "guitar", label: "GUITAR DRIVER",icon: "guitardriver", color: "#1a0a00", route: "/neon-tiles",  unlocked: (s) => s.guitarDriver },
-]
-
-// Dock fino embaixo — utilitários + os apps externos do celular (YouTube/Instagram)
-const HUB_APPS: HubApp[] = [
-  { id: "sintonia",  label: "SINT0NIA",  icon: "tuner",     color: "#22ff88", route: "/sintonizador",       unlocked: (s) => s.radioAnyAccepted },
-  { id: "n3xo",      label: "N3XO",      icon: "whatsapp",  color: "#00e5ff", route: "/n3xo",               unlocked: () => true },
-  { id: "freq",      label: "FR3Q_",     icon: "heartbeat", color: "#1DB954", route: "/spotify/auto-chuva", unlocked: (s) => s.radioAnyAccepted },
-  { id: "nectar",    label: "NECTAR",    icon: "nectar",    color: "#a78bfa", route: "/nectar",             unlocked: (s) => s.nectar },
-  { id: "youtube",   label: "STR34M",    icon: "youtube",   color: "#FF0000", route: "https://www.youtube.com/@LU222CA", external: true, unlocked: () => true },
-  { id: "instagram", label: "_IRIS.EXE", icon: "instagram", color: "#3B0764", route: "https://www.instagram.com/lu2ca.art?igsh=cDRrcGpndjJrdjJ6&utm_source=qr", external: true, unlocked: () => true },
-]
 
 interface Seg { curve: number; sprites: { x: number; type: string }[] }
 interface Car  { seg: number; x: number; color: string }
@@ -583,6 +472,21 @@ export default function DrivePage() {
     }, 250)
     return () => clearInterval(id)
   }, [])
+
+  // Amostragem leve dos refs de física (speedRef, playerXRef) pra alimentar o
+  // dashboard 3D — o loop imperativo já mexe nos refs em ~60fps, mas a UI 3D
+  // só precisa de ~15fps pra parecer viva. Normalizado (0..1 pra speed, -1..1
+  // pra steer) pra desacoplar consumidores da escala interna do jogo.
+  const [dashboard3d, setDashboard3d] = useState({ speedNorm: 0.4, steer: 0 })
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDashboard3d({
+        speedNorm: Math.min(speedRef.current / 222, 1),
+        steer: playerXRef.current,
+      })
+    }, 66)
+    return () => clearInterval(id)
+  }, [])
   // cenário visual do mundo (fora do painel) — segue o activeTier, lido pelo
   // loop imperativo do canvas via ref (o efeito do canvas só roda 1x)
   const activeTierRef = useRef<Tier>(activeTier)
@@ -654,8 +558,8 @@ export default function DrivePage() {
     const tuned = radioOn && radioMachine === "playing" && manualTier !== null
     sendCarRadioState(iframeRef.current, {
       tier: activeTier,
-      label: F[activeTier].label,
-      color: F[activeTier].color,
+      label: TIER_META[activeTier].label,
+      color: TIER_META[activeTier].color,
       title: radioTrack?.title ?? "",
       elapsedMs: snippetPct * RADIO_SNIPPET_MS,
       durationMs: RADIO_SNIPPET_MS,
@@ -1361,13 +1265,12 @@ export default function DrivePage() {
         }
       }
 
-      // ── INTERIOR DO CARRO — colunas do para-brisa, moldura superior,
-      // retrovisor e o lábio de transição pro painel, pra dar a sensação de
-      // estar dentro do carro (não só vendo a pista solta na tela) ──
-      drawInteriorFrame(ctx,W,JOGO_H)
-
-      // ── DASHBOARD ──
-      drawDashboard(ctx,W,H,DASH_H,BOTOES_H_NOW,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing,Z)
+      // ── INTERIOR + DASHBOARD 2D DESABILITADOS ──
+      // Agora o interior/dashboard são renderizados em R3F (CockpitScene)
+      // sobreposto ao canvas 2D. Manter chamadas comentadas pra facilitar
+      // rollback se precisar.
+      // drawInteriorFrame(ctx,W,JOGO_H)
+      // drawDashboard(ctx,W,H,DASH_H,BOTOES_H_NOW,kmhNow,rpmNow,z,camCurve,audio.currentTrack?.title||"—",audio.playing,Z)
 
       // ── TRANSIÇÃO estilo Matrix (chuva digital) ao trocar de cenário ──
       const tr = transitionRef.current
@@ -1529,6 +1432,41 @@ export default function DrivePage() {
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"/>
 
+      {/* Dashboard 3D em R3F sobreposto ao canvas 2D — o mundo (paisagem,
+          pista, cenários por tier) continua no canvas 2D atrás; aqui só
+          desenhamos o painel/volante/rádio/pads em 3D. pointer-events:none
+          pra não bloquear os overlays HTML de rádio, HUB, phone, etc. */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ zIndex: 5 }}
+      >
+        <Canvas
+          gl={{ alpha: true }}
+          camera={{
+            // Câmera aproximada pro /drive — no LAYOUT do editor a câmera fica
+            // longe (Z=1.5) pra POV de dirigir, mas aqui queremos que só o
+            // dashboard ocupe a metade inferior visível, então aproximamos.
+            position: [0, 0.85, 0.55],
+            rotation: [0, 0, 0],
+            fov: 65,
+          }}
+        >
+          <Suspense fallback={null}>
+            <CockpitLighting />
+            <CockpitScene
+              isPlaying={audio.playing}
+              speed={dashboard3d.speedNorm}
+              steerValue={dashboard3d.steer}
+              hideCity
+              hideBancos
+              hideCabineSuperior
+              hideEstrutura
+              hideRadioHub
+            />
+          </Suspense>
+        </Canvas>
+      </div>
+
       {/* BLUR LATERAL — motion blur */}
       {!phoneOpen&&(
         <>
@@ -1658,7 +1596,7 @@ export default function DrivePage() {
           // ── dados do rádio (página 0 do painel) — mesma lógica que já
           // existia na barra do rádio separada, só que agora com bem mais
           // espaço de verdade pra respirar ──
-          const meta = F[activeTier]
+          const meta = TIER_META[activeTier]
           const accent = radioOn ? meta.color : "rgba(255,255,255,0.4)"
           const title = (radioTrack?.title ?? "—").toUpperCase()
           const isStatic = radioMachine === "static"
@@ -1695,7 +1633,7 @@ export default function DrivePage() {
                     <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:R.ribbonGap, padding:"0 2px" }}>
                       <div style={{ display:"flex", gap:isMobile?6:4, flexShrink:0 }}>
                         {tunedTiers.map(tier => {
-                          const tMeta = F[tier]
+                          const tMeta = TIER_META[tier]
                           const isSel = tier === activeTier
                           return (
                             <button
@@ -1826,7 +1764,7 @@ export default function DrivePage() {
                       >
                         <div style={{ position:"absolute", left:0, right:0, top:"50%", height:isMobile?3:2, transform:"translateY(-50%)", background:"rgba(255,255,255,0.12)", borderRadius:2 }}/>
                         {ALL_TIERS.map(t => {
-                          const tMeta = F[t]
+                          const tMeta = TIER_META[t]
                           const unlocked = radioAccepted[t]
                           return (
                             <div key={t} style={{
@@ -2145,6 +2083,8 @@ export default function DrivePage() {
           é uma camada HTML separada acima do canvas; a intenção do
           blocking (mostradores espiando por trás do aro) já é atendida
           pelo cluster ocupar uma faixa mais alta e estreita que o volante. */}
+      {/* SteeringWheel3D HTML desabilitado — volante 3D em R3F substitui.
+          Mantido comentado pra rollback fácil se precisar reverter.
       {!phoneOpen && viewport.w > 0 && (() => {
         const wb = zonePx(Z.wheel, viewport.w, viewport.h)
         return (
@@ -2157,10 +2097,14 @@ export default function DrivePage() {
           </div>
         )
       })()}
+      */}
 
       {/* DECK DJ — toca-discos de verdade (base + prato com sulcos + braço),
           entre os bancos (zona `djDeck`, z10). Clicar abre o console direto
           no B4TIDA. */}
+      {/* DJ deck: SVG visual desabilitado (toca-discos 3D em R3F substitui).
+          Mantemos só o botão invisível na mesma zona pra preservar o clique
+          → handleOpenBatida (abre o /batida no iframe do celular). */}
       {!phoneOpen && viewport.w > 0 && (() => {
         const db = zonePx(Z.djDeck, viewport.w, viewport.h)
         const size = Math.min(db.w, db.h)
@@ -2170,29 +2114,8 @@ export default function DrivePage() {
               type="button"
               onClick={handleOpenBatida}
               aria-label="Toca-discos — abrir B4TIDA"
-              style={{ position:"absolute", inset:0, padding:0, cursor:"pointer", background:"none", border:"none" }}
-            >
-              <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ filter:"drop-shadow(0 0 10px rgba(202,115,57,0.3))" }}>
-                <defs>
-                  <radialGradient id="djPlatter" cx="45%" cy="40%" r="70%">
-                    <stop offset="0%" stopColor="#2c1f2c" />
-                    <stop offset="100%" stopColor="#0d0910" />
-                  </radialGradient>
-                </defs>
-                {/* base/plinth */}
-                <rect x="3" y="3" width="94" height="94" rx="12" fill="#1c1420" stroke="rgba(202,115,57,0.4)" strokeWidth="1.5" />
-                {/* prato + sulcos */}
-                <circle cx="41" cy="56" r="32" fill="url(#djPlatter)" stroke="rgba(202,115,57,0.55)" strokeWidth="1.5" />
-                <circle cx="41" cy="56" r="25" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-                <circle cx="41" cy="56" r="18" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                <circle cx="41" cy="56" r="11" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                <circle cx="41" cy="56" r="4" fill="#8a5220" />
-                {/* braço */}
-                <circle cx="80" cy="18" r="5" fill="rgba(202,115,57,0.65)" />
-                <line x1="80" y1="18" x2="53" y2="41" stroke="rgba(224,139,58,0.75)" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx="53" cy="41" r="3.5" fill="rgba(224,139,58,0.9)" />
-              </svg>
-            </button>
+              style={{ position:"absolute", inset:0, padding:0, cursor:"pointer", background:"transparent", border:"none" }}
+            />
           </div>
         )
       })()}
