@@ -16,7 +16,11 @@ export interface KombiPart {
 export const KOMBI_LAYOUT = {
   // ── Câmera (POV motorista) ──
   cameraMotorista: {
-    position: [-0.35, 1.05, 0.6] as Vec3,
+    // POV motorista real — colada atrás do volante (Z=-0.85), acima dele
+    // (Y=1.15), no lado esquerdo (X=-0.4). Distância ao para-brisa: 0.85u
+    // (antes: 1.95u — motorista parecia estar sentado no banco de trás).
+    // Z=-0.5 (não -0.6) dá margem pra Kombi sacolejar sem clipping.
+    position: [-0.4, 1.15, -0.5] as Vec3,
     rotation: [0.05, 0, 0] as Vec3,
     size: [0.12, 0.12, 0.12] as Vec3,
     color: "#ffffff",
@@ -163,24 +167,30 @@ export const KOMBI_LAYOUT = {
     size: [0.06, 0.21, 0.08] as Vec3,
     color: "#3a2410",
   },
+  // Posições editadas por LU2CA no /kombi-editor (2026-08-25).
   radio: {
-    position: [-0.02, 0.9, -0.9] as Vec3,
-    rotation: [-0.15, 0, 0] as Vec3,
-    size: [0.55, 0.22, 0.03] as Vec3,
+    position: [0.05, 0.75, -0.82] as Vec3,
+    rotation: [0, 0, 0] as Vec3,
+    size: [0.28, 0.06, 0.04] as Vec3,
     color: "#3a2410",
   },
   tocaDiscos: {
-    position: [0.15, 0.4, -0.65] as Vec3,
-    rotation: [0, 0.2, 0] as Vec3,
-    size: [0.28, 0.31, 0.28] as Vec3,
-    color: "#6a4820",
+    position: [0.45, 0.83, -0.92] as Vec3,
+    rotation: [0, 0.15, 0] as Vec3,
+    size: [0.31, 0.06, 0.16] as Vec3,
+    color: "#3a2410",
   },
   padsMPC: {
-    // Debruçado EM CIMA do porta-luvas (mesma X/Z, Y=topo do porta-luvas)
-    position: [0.55, 0.72, -0.85] as Vec3,
+    position: [0.7, 0.72, -0.65] as Vec3,
     rotation: [0.1, 0, 0] as Vec3,
-    size: [0.35, 0.06, 0.3] as Vec3,
+    size: [0.3, 0.06, 0.3] as Vec3,
     color: "#ffcc00",
+  },
+  pedestalMPC: {
+    position: [0.6, 0.485, -0.65] as Vec3,
+    rotation: [0, 0, 0] as Vec3,
+    size: [0.04, 0.45, 0.04] as Vec3,
+    color: "#2a1f10",
   },
   retrovisor: {
     position: [0, 1.28, -1.05] as Vec3,
@@ -230,12 +240,10 @@ export const KOMBI_LAYOUT = {
     size: [1.5, 0.03, 0.03] as Vec3,
     color: "#ff00ff",
   },
-  // Porta-luvas: caixa à direita do painel, MAIS BAIXA agora (Y=0.55). Os
-  // pads MPC (batida) ficam debruçados EM CIMA dela.
   portaLuvas: {
-    position: [0.55, 0.55, -0.85] as Vec3,
-    rotation: [0, 0, 0] as Vec3,
-    size: [0.35, 0.28, 0.18] as Vec3,
+    position: [0.2, 0.48, -0.95] as Vec3,
+    rotation: [0, -0.3, 0] as Vec3,
+    size: [0.4, 0.4, 0.28] as Vec3,
     color: "#5a3010",
   },
 } as const

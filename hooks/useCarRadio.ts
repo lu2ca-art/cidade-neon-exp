@@ -113,27 +113,44 @@ export function useCarRadio(): UseCarRadioReturn {
     shuffleQueueRef.current = arr
   }, [])
 
-  // Auto-avanço quando a faixa termina — pega próxima da fila shuffle
+  // Refs "vivos" pra ler o valor mais recente dentro do listener sem
+  // recriar o listener a cada mudança (o que gerava racing e faixa repetida).
+  const activeTierRef = useRef(activeTier)
+  const currentTrackIdxRef = useRef(currentTrackIdx)
+  useEffect(() => { activeTierRef.current = activeTier }, [activeTier])
+  useEffect(() => { currentTrackIdxRef.current = currentTrackIdx }, [currentTrackIdx])
+
+  // Auto-avanço quando a faixa termina — SORTEIA próximo idx diferente do
+  // atual (sem fila persistente; simples e robusto).
   useEffect(() => {
     const el = audioRef.current
     if (!el) return
     const onEnded = () => {
-      // remove a primeira da fila (que acabou de tocar) e pega a próxima
-      const q = shuffleQueueRef.current
-      if (q.length <= 1) reshuffleQueue(activeTier, currentTrackIdx)
-      else q.shift()
-      const nextIdx = shuffleQueueRef.current[0] ?? 0
-      setCurrentTrackIdx(nextIdx)
+      const tier = activeTierRef.current
+      const tracks = TRACKS_BY_TIER[tier]
+      const n = tracks.length
+      if (n === 0) return
+      if (n === 1) {
+        // Só 1 faixa no tier — reinicia
+        el.currentTime = 0
+        el.play().catch(() => {})
+        return
+      }
+      // n >= 2: sorteia idx diferente da atual
+      const cur = currentTrackIdxRef.current
+      let next = Math.floor(Math.random() * (n - 1))
+      if (next >= cur) next += 1  // pula o cur → distribuição uniforme entre os n-1 restantes
+      setCurrentTrackIdx(next)
     }
     el.addEventListener("ended", onEnded)
     return () => el.removeEventListener("ended", onEnded)
-  }, [activeTier, currentTrackIdx, reshuffleQueue])
+  }, [])
 
-  // Inicializa fila shuffle sempre que muda de tier
+  // Ao mudar de tier: escolhe faixa inicial aleatória
   useEffect(() => {
-    reshuffleQueue(activeTier)
-    setCurrentTrackIdx(shuffleQueueRef.current[0] ?? 0)
-  }, [activeTier, reshuffleQueue])
+    const n = TRACKS_BY_TIER[activeTier].length
+    setCurrentTrackIdx(n > 0 ? Math.floor(Math.random() * n) : 0)
+  }, [activeTier])
 
   useEffect(() => {
     const el = audioRef.current

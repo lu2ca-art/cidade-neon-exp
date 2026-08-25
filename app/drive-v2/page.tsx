@@ -7,7 +7,7 @@
 // Referência: Shopify Horizon Drive.
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { Physics, RigidBody, CuboidCollider, type RapierRigidBody } from "@react-three/rapier"
+import { Physics, RigidBody, CuboidCollider, useRapier, type RapierRigidBody } from "@react-three/rapier"
 import Link from "next/link"
 import { Suspense, useEffect, useRef, useState } from "react"
 import * as THREE from "three"
@@ -21,6 +21,7 @@ import { RadioMusicalPanel } from "@/components/DriveHUD/RadioMusicalPanel"
 import { CarPanelDisplay } from "@/components/DriveCockpit/CarPanelDisplay"
 import { PortaLuvasModal } from "@/components/DriveHUD/PortaLuvasModal"
 import { Speedometer } from "@/components/DriveHUD/Speedometer"
+import { MobileControls } from "@/components/DriveHUD/MobileControls"
 import type { InventoryAction } from "@/lib/inventory-items"
 import { CyberpunkCity, magentaSpawn } from "@/components/DriveCockpit/CyberpunkCity"
 import { NeonDesert } from "@/components/DriveCockpit/NeonDesert"
@@ -174,6 +175,7 @@ export type CameraMode = "third" | "first"
 
 function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRigidBody | null> }) {
   const { camera, gl } = useThree()
+  const { rapier, world } = useRapier()
   const desiredPos = useRef(new THREE.Vector3(0, 6, 12))
   const desiredLook = useRef(new THREE.Vector3(0, 1, 0))
   // Orbit atual + target (pra retorno automático quando solta o mouse)
@@ -258,6 +260,34 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
     )
     desiredLook.current.set(t.x, t.y + 0.5, t.z)
 
+    // DUCK UNDER — raycast da van até câmera. Se bater em uma pista/prédio,
+    // recua a câmera pra logo antes do hit (câmera "passa por baixo" do
+    // viaduto em vez de ficar bloqueando a visão).
+    const dx = desiredPos.current.x - t.x
+    const dy = desiredPos.current.y - (t.y + 0.5)
+    const dz = desiredPos.current.z - t.z
+    const dLen = Math.sqrt(dx * dx + dy * dy + dz * dz)
+    if (dLen > 0.1) {
+      const rayOrigin = { x: t.x, y: t.y + 0.5, z: t.z }
+      const rayDir = { x: dx / dLen, y: dy / dLen, z: dz / dLen }
+      // castRay retorna null OU objeto com toi (distância normalizada 0..maxTOI)
+      const ray = new rapier.Ray(rayOrigin, rayDir)
+      // Exclui o RigidBody da van do raycast — sem isso, o próprio carro
+      // hita o raio e a câmera "aproxima" pra dentro da Kombi.
+      // Assinatura: (ray, maxToi, solid, filterFlags?, filterGroups?,
+      //              filterExcludeCollider?, filterExcludeRigidBody?)
+      const hit = world.castRay(ray, dLen, true, undefined, undefined, undefined, body)
+      if (hit) {
+        // Recua pra 90% da distância do hit (dá margem pra não clipar)
+        const safeDist = hit.timeOfImpact * 0.9
+        desiredPos.current.set(
+          t.x + rayDir.x * safeDist,
+          t.y + 0.5 + rayDir.y * safeDist,
+          t.z + rayDir.z * safeDist,
+        )
+      }
+    }
+
     const lerpPos = 1 - Math.exp(-delta * 6)
     camera.position.lerp(desiredPos.current, lerpPos)
     camera.lookAt(desiredLook.current)
@@ -266,42 +296,41 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
   return null
 }
 
-// ─── Câmera 1ª pessoa (cockpit-locked, free-look com auto-return) ───────────
-// Câmera fixada na cabeça do motorista (relativo à van). Ao clicar+arrastar
-// o mouse, olha até ±150° yaw (300° total) e ±60° pitch. Ao soltar, volta
-// suave pro centro (olhando pra frente, feel de dirigir).
-const YAW_LIMIT = (150 * Math.PI) / 180   // ±150°
-const PITCH_LIMIT = (60 * Math.PI) / 180  // ±60°
+// ─── Câmera 1ª pessoa (cockpit-locked, free-look com auto-return DELAYED) ──
+// Ao clicar+arrastar, olha até ±150° yaw (300° total) e ±60° pitch. Ao soltar,
+// câmera FICA PARADA no último ponto por 7s (LU2CA interage com painel/rádio
+// sem "puxão"). Passados 7s, começa a derivar suave pra frente.
+const YAW_LIMIT = (150 * Math.PI) / 180
+const PITCH_LIMIT = (60 * Math.PI) / 180
 const MOUSE_SENSITIVITY = 0.0025
-// Offset do banco motorista relativo à van, em coordenadas locais.
-// Banco motorista está em [-0.35, 0.15, 1.0] no LAYOUT; cabeça sentada fica
-// bem acima do assento e RECUADA (Z=1.2) pra dar espaço ao volante+painel
-// ficarem na frente sem cortar. Feel de "sentado na Kombi olhando pro
-// para-brisa com o volante bem visível".
-// Câmera FP = posição EXATA da camera-motorista definida por LU2CA no /kombi-editor
+const HOLD_MS = 7000              // ms parado após soltar antes de começar a voltar
+const DRAG_RESPONSE_RATE = 14     // rate lerp enquanto arrasta (resposta imediata)
+const RETURN_RATE = 1.5           // rate lerp após os 7s (drift suave até frente)
 const HEAD_OFFSET_LOCAL = new THREE.Vector3(...KOMBI_LAYOUT.cameraMotorista.position)
 
 function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigidBody | null> }) {
   const { camera, gl } = useThree()
-  const yaw = useRef(0)     // atual
-  const pitch = useRef(0)   // atual
-  const targetYaw = useRef(0)   // pra onde queremos (segue mouse OU 0 se soltou)
+  const yaw = useRef(0)
+  const pitch = useRef(0)
+  const targetYaw = useRef(0)
   const targetPitch = useRef(0)
   const dragging = useRef(false)
+  const releaseTime = useRef<number | null>(null)  // quando soltou o mouse
 
   useEffect(() => {
     const el = gl.domElement
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return
       dragging.current = true
+      releaseTime.current = null
       el.style.cursor = "grabbing"
     }
     const onUp = () => {
       dragging.current = false
       el.style.cursor = "grab"
-      // ao soltar, mira volta pro centro (motorista olha pra frente)
-      targetYaw.current = 0
-      targetPitch.current = 0
+      // NÃO mexe em targetYaw/targetPitch — câmera trava no último ponto.
+      // Só marca o instante da soltura pro useFrame contar o hold.
+      releaseTime.current = performance.now()
     }
     const onMove = (e: MouseEvent) => {
       if (!dragging.current) return
@@ -324,8 +353,17 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
     const body = target.current
     if (!body) return
 
-    // interpola yaw/pitch atual em direção ao target — feel elástico
-    const lerp = 1 - Math.exp(-delta * (dragging.current ? 14 : 5))
+    // Passou o hold de 7s? → seta target pra frente e deriva
+    if (!dragging.current && releaseTime.current !== null) {
+      if (performance.now() - releaseTime.current >= HOLD_MS) {
+        targetYaw.current = 0
+        targetPitch.current = 0
+      }
+    }
+
+    // Rate: enquanto arrasta = rápido; após hold+release = drift lento; parado = travado
+    const rate = dragging.current ? DRAG_RESPONSE_RATE : RETURN_RATE
+    const lerp = 1 - Math.exp(-delta * rate)
     yaw.current += (targetYaw.current - yaw.current) * lerp
     pitch.current += (targetPitch.current - pitch.current) * lerp
 
@@ -333,15 +371,10 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
     const r = body.rotation()
     const vanQuat = new THREE.Quaternion(r.x, r.y, r.z, r.w)
 
-    // Posição alvo da cabeça em world space
     const headPos = HEAD_OFFSET_LOCAL.clone().applyQuaternion(vanQuat)
     headPos.add(new THREE.Vector3(t.x, t.y, t.z))
-    // Sutil inércia: cabeça "atrasa" um pouco atrás da van (feel força G)
-    const posLerp = 1 - Math.exp(-delta * 22)
-    camera.position.lerp(headPos, posLerp)
+    camera.position.copy(headPos)
 
-    // Rotação: van_yaw ∘ camera_yaw ∘ camera_pitch
-    // Slerp suave em vez de copy direto — dá inércia à cabeça quando a van vira.
     const cameraQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, 0, "YXZ"))
     const desiredQuat = vanQuat.clone().multiply(cameraQuat)
     const rotLerp = 1 - Math.exp(-delta * 18)
@@ -360,6 +393,17 @@ export default function DriveV2Page() {
   const speedRef = useRef(0)
   const [cameraMode, setCameraMode] = useState<CameraMode>("third")
   const [phoneOpen, setPhoneOpen] = useState(false)
+  // URL do app do HUB aberto em iframe overlay (não navega fora de /drive-v2).
+  // null = nenhum. Ao clicar num app do dock, seta aqui.
+  const [hubAppUrl, setHubAppUrl] = useState<string | null>(null)
+  // Detecta se o device é touch (mobile). Se sim, renderiza controles virtuais.
+  const [isTouch, setIsTouch] = useState(false)
+  useEffect(() => {
+    setIsTouch(
+      typeof window !== "undefined" &&
+        (("ontouchstart" in window) || navigator.maxTouchPoints > 0)
+    )
+  }, [])
   const [volume, setVolume] = useState(0.8)
   const [portaLuvasOpen, setPortaLuvasOpen] = useState(false)
   // Splash controlado: aparece até LU2CA clicar PLAY (assegura que a cidade
@@ -526,6 +570,10 @@ export default function DriveV2Page() {
       {/* Speedometer isolado — lê linvel + escreve DOM direto (sem setState) */}
       <Speedometer bodyRef={vanBodyRef} />
 
+      {/* Controles touch — só em mobile. Disparam KeyboardEvent sintético
+          (w/a/s/d/shift/f) então o VanBody consome igual ao desktop. */}
+      {isTouch && <MobileControls />}
+
       {/* Painel Musical Horizontal — SÓ em 3ª pessoa. Em 1ª pessoa quem
           exibe é o CarPanelDisplay ancorado ao rádio 3D. */}
       {!isFirstPerson && (
@@ -537,35 +585,64 @@ export default function DriveV2Page() {
         />
       )}
 
-      {/* Toast de notificações do celular (aparece quando AudioBridge manda) */}
-      {phoneNotif && (
-        <div
-          className="pointer-events-auto absolute left-1/2 top-6 z-30 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/15 bg-black/85 px-4 py-3 backdrop-blur-md"
-          style={{
-            boxShadow: `0 0 24px ${phoneNotif.color}66`,
-            borderColor: `${phoneNotif.color}55`,
-          }}
-        >
+      {/* Toast de notificações do celular — CLICÁVEL: mapeia o `app` da
+          notificação pra rota do HUB e abre no iframe overlay (não sai do jogo). */}
+      {phoneNotif && (() => {
+        // Match case-insensitive: "N3XO" → app id "n3xo" → route "/n3xo"
+        const key = phoneNotif.app.toLowerCase()
+        const matched = HUB_APPS.find((a) => a.id === key || a.label.toLowerCase() === key)
+          ?? HUB_TILES.find((a) => a.id === key || a.label.toLowerCase() === key)
+        const canOpen = matched && !matched.external
+        const openApp = () => {
+          if (!matched) return
+          if (matched.external) {
+            window.open(matched.route, "_blank", "noopener,noreferrer")
+          } else {
+            const sep = matched.route.includes("?") ? "&" : "?"
+            setHubAppUrl(`${matched.route}${sep}embedded=1`)
+          }
+          setPhoneNotif(null)
+        }
+        return (
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-lg"
-            style={{ background: phoneNotif.color }}
+            className={`pointer-events-auto absolute left-1/2 top-6 z-30 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/15 bg-black/85 px-4 py-3 backdrop-blur-md transition ${
+              canOpen ? "cursor-pointer hover:bg-black/95" : ""
+            }`}
+            style={{
+              boxShadow: `0 0 24px ${phoneNotif.color}66`,
+              borderColor: `${phoneNotif.color}55`,
+            }}
+            onClick={canOpen ? openApp : undefined}
           >
-            <AppIcon icon={phoneNotif.icon} size={20} />
-          </div>
-          <div className="min-w-[10rem]">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-white/50">
-              {phoneNotif.app} · {phoneNotif.title}
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{ background: phoneNotif.color }}
+            >
+              <AppIcon icon={phoneNotif.icon} size={20} />
             </div>
-            <div className="text-xs text-white">{phoneNotif.body}</div>
+            <div className="min-w-[10rem]">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-white/50">
+                {phoneNotif.app} · {phoneNotif.title}
+              </div>
+              <div className="text-xs text-white">{phoneNotif.body}</div>
+              {canOpen && (
+                <div className="mt-0.5 text-[9px] font-mono uppercase tracking-widest text-[#00ffff]">
+                  toque pra abrir ▶
+                </div>
+              )}
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setPhoneNotif(null)
+              }}
+              className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white hover:bg-white/20"
+            >
+              ✕
+            </button>
           </div>
-          <button
-            onClick={() => setPhoneNotif(null)}
-            className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white hover:bg-white/20"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Player mini antigo REMOVIDO — substituído pelo RadioMusicalPanel único
           que muda de posição/tamanho baseado no modo de câmera. */}
@@ -608,10 +685,21 @@ export default function DriveV2Page() {
                 </a>
               )
             }
+            // App INTERNO: abre em iframe overlay (nunca navega fora de /drive-v2).
+            // Adiciona ?embedded=1 pra sinalizar que a página deve mostrar botão
+            // de voltar (postMessage pra fechar o modal).
             return (
-              <Link key={app.id} href={app.route} className="flex flex-col items-center transition hover:scale-105">
+              <button
+                key={app.id}
+                type="button"
+                onClick={() => {
+                  const sep = app.route.includes("?") ? "&" : "?"
+                  setHubAppUrl(`${app.route}${sep}embedded=1`)
+                }}
+                className="flex flex-col items-center transition hover:scale-105"
+              >
                 {inner}
-              </Link>
+              </button>
             )
           })}
         </div>
@@ -635,6 +723,45 @@ export default function DriveV2Page() {
         onClose={() => setPortaLuvasOpen(false)}
         onAction={onInventoryAction}
       />
+
+      {/* App do HUB aberto — iframe overlay em MOLDURA DE CELULAR.
+          Os apps foram feitos pra mobile, então mesmo no desktop o iframe
+          mantém proporção 9:19 (~400×780). Em mobile web, ocupa tela toda
+          (o device já é o tamanho certo). Botão ✕ fecha voltando pro jogo. */}
+      {hubAppUrl && (
+        <div
+          className="pointer-events-auto fixed inset-0 z-40 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={() => setHubAppUrl(null)}
+        >
+          <div
+            className="relative overflow-hidden rounded-3xl border border-white/15 bg-black shadow-2xl"
+            style={{
+              // Mesmo tamanho do celular clonado. Em desktop: 400×780 (proporção
+              // iPhone). Em mobile: quase tela toda (92vw × 88vh). O max
+              // garante que nunca fica "aba larga" que descoordena os apps.
+              width: "min(400px, 92vw)",
+              height: "min(780px, 88vh)",
+              boxShadow: "0 20px 80px rgba(255, 45, 120, 0.25)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setHubAppUrl(null)}
+              aria-label="voltar ao carro"
+              className="absolute right-2 top-2 z-20 rounded-full bg-white/10 px-2.5 py-1 text-xs text-white hover:bg-white/20"
+            >
+              ✕
+            </button>
+            <iframe
+              src={hubAppUrl}
+              className="h-full w-full border-0"
+              title="app do hub"
+              allow="autoplay; fullscreen"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Celular clonado — usa o mesmo HUB do jogo original via iframe direto
           em ?screen=home&embedded=1. Nunca redireciona /drive-v2. O param
@@ -706,22 +833,24 @@ export default function DriveV2Page() {
                     volume={volume}
                     onVolumeChange={setVolume}
                     onOpenPhone={() => setPhoneOpen(true)}
-                    hidden={portaLuvasOpen || phoneOpen}
+                    onOpenHubApp={(url) => setHubAppUrl(url)}
+                    hidden={portaLuvasOpen || phoneOpen || hubAppUrl !== null}
                   />
                 ) : null
               }
             />
             <CyberpunkCity />
+            {/* Câmeras precisam estar DENTRO de <Physics> — a 3P usa
+                useRapier() pro raycast de duck-under. */}
+            {isFirstPerson ? (
+              <CockpitFPCamera target={vanBodyRef} />
+            ) : (
+              <ThirdPersonCamera target={vanBodyRef} />
+            )}
           </Physics>
 
           {/* Deserto egípcio neon infinito — fora da cidade, cenário sem colisão */}
           <NeonDesert />
-
-          {isFirstPerson ? (
-            <CockpitFPCamera target={vanBodyRef} />
-          ) : (
-            <ThirdPersonCamera target={vanBodyRef} />
-          )}
         </Suspense>
       </Canvas>
     </div>

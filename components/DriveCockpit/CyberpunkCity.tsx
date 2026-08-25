@@ -21,33 +21,85 @@ const RAIL_VISUAL_H = 0.7
 // explodir em 3.600 RigidBody (bottleneck #1 identificado pelos agentes).
 const SEGMENT_DIVISIONS = 60
 
+// Circuitos inspirados em pistas reais (aproximações simbólicas, não
+// medidas geograficamente exatas — LU2CA pode refinar via /pistas-editor).
+// Magenta = Monaco (irregular, curvas apertadas, forma quadrada).
+// Ciano   = Suzuka (única figura-8 real no calendário F1 — cruzamento
+//           natural que vira viaduto graças aos Y diferentes).
+// Amarela = Interlagos (oval alongado com S do Senna e Junção).
 const CIRCUITS = {
-  magenta: { color: "#ff00ff", points: makeOval(80, 60) },
-  cyan:    { color: "#00ffff", points: makeOval(45, 35) },
-  yellow:  { color: "#ffcc00", points: makeFigure8(50, 25) },
+  magenta: { color: "#ff00ff", points: makeMonaco(75) },
+  cyan:    { color: "#00ffff", points: makeSuzuka(40) },
+  yellow:  { color: "#ffcc00", points: makeInterlagos(65) },
 } as const
 
-// Gera pontos de uma elipse (rx, rz) com N pontos.
-function makeOval(rx: number, rz: number, n = 12): THREE.Vector3[] {
-  const pts: THREE.Vector3[] = []
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2
-    pts.push(new THREE.Vector3(Math.cos(a) * rx, ROAD_Y, Math.sin(a) * rz))
-  }
-  return pts
+// Monaco (simplificado). Retangular apertado, largada reta na "Boulevard
+// Albert 1er", curva Ste-Devote (norte-leste), subida Beau Rivage/Massenet,
+// Casino Square, descida Mirabeau + Loews Hairpin (ferradura), Portier,
+// Túnel, Nouvelle Chicane, Tabac, Piscine, La Rascasse, Anthony Noghes.
+function makeMonaco(scale: number): THREE.Vector3[] {
+  const pts: [number, number][] = [
+    [ 1.0,  0.0],   // largada
+    [ 1.0, -0.4],   // Ste-Devote
+    [ 0.6, -0.7],   // subida Beau Rivage
+    [ 0.1, -0.9],   // Casino Square
+    [-0.2, -0.75],  // Mirabeau
+    [-0.35, -0.55], // Loews Hairpin (ferradura)
+    [-0.2, -0.4],
+    [-0.1, -0.15],  // Portier
+    [-0.3,  0.15],  // saída túnel
+    [-0.5,  0.4],   // Nouvelle Chicane
+    [-0.35, 0.6],   // Tabac
+    [-0.1,  0.75],  // Piscine
+    [ 0.15, 0.85],  // La Rascasse
+    [ 0.55, 0.6],   // Anthony Noghes
+    [ 0.85, 0.3],
+  ]
+  return pts.map(([x, z]) => new THREE.Vector3(x * scale, ROAD_Y, z * scale))
 }
 
-// Gera pontos de uma figura em 8 (∞) — dois loops conectados no centro.
-function makeFigure8(size: number, thin: number): THREE.Vector3[] {
-  const pts: THREE.Vector3[] = []
-  const n = 20
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2
-    const x = Math.sin(a * 2) * size
-    const z = Math.sin(a) * thin
-    pts.push(new THREE.Vector3(x, ROAD_Y, z))
-  }
-  return pts
+// Suzuka (figura-8). O circuito de fato cruza sobre si mesmo — aqui o
+// cruzamento é natural graças a altura Y=8 (ciano) vs Y=2 (magenta).
+function makeSuzuka(scale: number): THREE.Vector3[] {
+  const pts: [number, number][] = [
+    [ 1.0,  0.0],
+    [ 0.9,  0.35],   // 130R vibe
+    [ 0.55, 0.65],   // Casio Triangle
+    [ 0.15, 0.5],    // approach do cruzamento (de cima)
+    [-0.15,-0.05],   // CRUZAMENTO 8
+    [-0.5,-0.55],    // Degner 1
+    [-0.9,-0.65],    // Degner 2
+    [-1.0,-0.35],    // hairpin
+    [-0.85, 0.0],
+    [-0.5,  0.5],    // Spoon
+    [-0.2,  0.75],
+    [ 0.15, 0.5],    // approach de baixo pro cruzamento (mesmo XZ, ok pra spline)
+    [ 0.5, -0.4],    // S curves
+    [ 0.85,-0.55],
+    [ 1.0, -0.2],
+  ]
+  return pts.map(([x, z]) => new THREE.Vector3(x * scale, ROAD_Y, z * scale))
+}
+
+// Interlagos (São Paulo). Anti-horário, S do Senna, Curva do Sol, reta
+// oposta, Descida do Lago, Ferradura, Laranjinha, reta dos boxes.
+function makeInterlagos(scale: number): THREE.Vector3[] {
+  const pts: [number, number][] = [
+    [ 1.0,  0.0],   // largada / reta dos boxes
+    [ 0.85, 0.45],  // S do Senna curva 1
+    [ 0.55, 0.7],   // S do Senna curva 2
+    [ 0.15, 0.85],  // Curva do Sol
+    [-0.4,  0.75],  // reta oposta
+    [-0.85, 0.55],  // Descida do Lago
+    [-1.0,  0.1],   // Ferradura
+    [-0.85,-0.3],   // Laranjinha
+    [-0.55,-0.55],  // Pinheirinho
+    [-0.15,-0.7],   // Cotovelo
+    [ 0.35,-0.7],   // Mergulho
+    [ 0.75,-0.5],   // Junção
+    [ 0.95,-0.25],  // Arquibancadas
+  ]
+  return pts.map(([x, z]) => new THREE.Vector3(x * scale, ROAD_Y, z * scale))
 }
 
 // ─── Segmento de estrada (visual + collider) ────────────────────────────────

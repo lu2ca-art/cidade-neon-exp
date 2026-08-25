@@ -1,8 +1,9 @@
 "use client"
 
-import { Canvas } from "@react-three/fiber"
+import { Canvas, useThree, useFrame } from "@react-three/fiber"
 import { OrbitControls, Grid, Text } from "@react-three/drei"
-import { Suspense, useState, useEffect, useCallback } from "react"
+import { Suspense, useState, useEffect, useCallback, useRef } from "react"
+import * as THREE from "three"
 
 // Editor da Kombi Hippie — interior + exterior. LU2CA edita cada peça
 // (position/rotation/size/color) e exporta o JSON pra colar em
@@ -21,44 +22,47 @@ type CubeObject = {
 
 const STORAGE_KEY = "kombi-editor-objects-v1"
 
+// Espelhado do lib/kombi-layout.ts (estado atual do jogo). Se você exportar
+// JSON novo daqui, cole lá; sempre que kombi-layout.ts mudar, atualize aqui.
 const DEFAULT_OBJECTS: CubeObject[] = [
   // ── CÂMERA (referência de POV motorista) ──
-  { id: "camera-motorista",  name: "camera-motorista",   position: [-0.35, 1.05, 0.6],  rotation: [0.05, 0, 0], size: [0.12, 0.12, 0.12], color: "#ffffff", renderOrder: 20, locked: true },
+  { id: "camera-motorista",  name: "camera-motorista",   position: [-0.4, 1.15, -0.5],  rotation: [0.05, 0, 0], size: [0.12, 0.12, 0.12], color: "#ffffff", renderOrder: 20, locked: true },
 
   // ── EXTERIOR da Kombi ──
-  { id: "carroceria",        name: "carroceria (base)",  position: [0, 0.7, 0.4],   rotation: [0, 0, 0], size: [1.75, 1.4, 3.6],  color: "#7fb2d4", renderOrder: 1,  locked: true },
-  { id: "capo-dianteiro",    name: "capô dianteiro",     position: [0, 0.35, -1.6], rotation: [0, 0, 0], size: [1.7, 0.7, 0.5],   color: "#7fb2d4", renderOrder: 1,  locked: true },
-  { id: "para-choque-fr",    name: "para-choque frente", position: [0, 0.28, -1.85],rotation: [0, 0, 0], size: [1.7, 0.15, 0.1],  color: "#c0c0c8", renderOrder: 1,  locked: true },
-  { id: "para-choque-tr",    name: "para-choque trás",   position: [0, 0.28, 2.15], rotation: [0, 0, 0], size: [1.7, 0.15, 0.1],  color: "#c0c0c8", renderOrder: 1,  locked: true },
-  { id: "farol-esq",         name: "farol esquerdo",     position: [-0.55, 0.6, -1.87],rotation: [0, 0, 0], size: [0.22, 0.22, 0.03], color: "#fff8c0", renderOrder: 2,  locked: true },
-  { id: "farol-dir",         name: "farol direito",      position: [0.55, 0.6, -1.87], rotation: [0, 0, 0], size: [0.22, 0.22, 0.03], color: "#fff8c0", renderOrder: 2,  locked: true },
-  { id: "lanterna-esq",      name: "lanterna esquerda",  position: [-0.55, 0.9, 2.17], rotation: [0, 0, 0], size: [0.22, 0.14, 0.03], color: "#ff6b35", renderOrder: 2,  locked: true },
-  { id: "lanterna-dir",      name: "lanterna direita",   position: [0.55, 0.9, 2.17],  rotation: [0, 0, 0], size: [0.22, 0.14, 0.03], color: "#ff6b35", renderOrder: 2,  locked: true },
-  { id: "emblema-frontal",   name: "emblema Kombi (V)",  position: [0, 0.85, -1.87], rotation: [0, 0, 0], size: [0.18, 0.18, 0.02], color: "#ffcc00", renderOrder: 3,  locked: true },
-  { id: "roda-frente-esq",   name: "roda frente esq",    position: [-0.85, 0.25, -1.15], rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
-  { id: "roda-frente-dir",   name: "roda frente dir",    position: [0.85, 0.25, -1.15],  rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
-  { id: "roda-tras-esq",     name: "roda trás esq",      position: [-0.85, 0.25, 1.15],  rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
-  { id: "roda-tras-dir",     name: "roda trás dir",      position: [0.85, 0.25, 1.15],   rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
+  { id: "carroceria",        name: "carroceria (base)",  position: [0, 0.8, 0.25],   rotation: [0, 0, 0], size: [1.76, 1.4, 3.11],  color: "#7fb2d4", renderOrder: 1,  locked: true },
+  { id: "capo-dianteiro",    name: "capô dianteiro",     position: [0, 0.35, -1.4],  rotation: [0, 0, 0], size: [1.61, 0.66, 0.11], color: "#7fb2d4", renderOrder: 1,  locked: true },
+  { id: "para-choque-fr",    name: "para-choque frente", position: [0, 0.28, -1.45], rotation: [0, 0, 0], size: [1.7, 0.15, 0.1],   color: "#c0c0c8", renderOrder: 1,  locked: true },
+  { id: "para-choque-tr",    name: "para-choque trás",   position: [0, 0.28, 1.8],   rotation: [0, 0, 0], size: [1.7, 0.15, 0.06],  color: "#c0c0c8", renderOrder: 1,  locked: true },
+  { id: "farol-esq",         name: "farol esquerdo",     position: [-0.55, 0.6, -1.47], rotation: [0, 0, 0], size: [0.22, 0.22, 0.03], color: "#fff8c0", renderOrder: 2,  locked: true },
+  { id: "farol-dir",         name: "farol direito",      position: [0.55, 0.6, -1.47],  rotation: [0, 0, 0], size: [0.22, 0.22, 0.03], color: "#fff8c0", renderOrder: 2,  locked: true },
+  { id: "lanterna-esq",      name: "lanterna esquerda",  position: [-0.55, 0.7, 1.8],   rotation: [0, 0, 0], size: [0.22, 0.14, 0.03], color: "#ff6b35", renderOrder: 2,  locked: true },
+  { id: "lanterna-dir",      name: "lanterna direita",   position: [0.55, 0.7, 1.8],    rotation: [0, 0, 0], size: [0.22, 0.14, 0.03], color: "#ff6b35", renderOrder: 2,  locked: true },
+  { id: "emblema-frontal",   name: "emblema Kombi (V)",  position: [0, 0.55, -1.47], rotation: [0, 0, 0], size: [0.18, 0.18, 0.02], color: "#ffcc00", renderOrder: 3,  locked: true },
+  { id: "roda-frente-esq",   name: "roda frente esq",    position: [-0.95, 0.25, -1.15], rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
+  { id: "roda-frente-dir",   name: "roda frente dir",    position: [0.95, 0.25, -1.15],  rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
+  { id: "roda-tras-esq",     name: "roda trás esq",      position: [-0.95, 0.25, 1.15],  rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
+  { id: "roda-tras-dir",     name: "roda trás dir",      position: [0.95, 0.25, 1.15],   rotation: [0, 0, 0], size: [0.15, 0.5, 0.5], color: "#0a0a0a", renderOrder: 3,  locked: true },
   { id: "teto-externo",      name: "teto externo",       position: [0, 1.45, 0.4],  rotation: [0, 0, 0], size: [1.65, 0.05, 3.2], color: "#e8e8f0", renderOrder: 1,  locked: true },
-  { id: "faixa-hippie",      name: "faixa hippie lateral", position: [0, 0.9, 0.4], rotation: [0, 0, 0], size: [1.77, 0.15, 3.6], color: "#ff5fae", renderOrder: 2,  locked: true },
+  { id: "faixa-hippie",      name: "faixa hippie lateral", position: [0, 0.2, 0.2], rotation: [0, 0, 0], size: [1.71, 0.15, 3.36], color: "#ff5fae", renderOrder: 2,  locked: true },
 
   // ── INTERIOR da Kombi ──
-  { id: "parabrisa",         name: "parabrisa",          position: [0, 1.1, -1.35], rotation: [0.1, 0, 0], size: [1.6, 0.85, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
-  { id: "vidro-tras",        name: "vidro traseiro",     position: [0, 1.1, 1.9],   rotation: [-0.1, 0, 0], size: [1.6, 0.5, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
-  { id: "janela-esq",        name: "janela lateral esq", position: [-0.87, 1.05, 0.5], rotation: [0, 1.5708, 0], size: [2.8, 0.55, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
-  { id: "janela-dir",        name: "janela lateral dir", position: [0.87, 1.05, 0.5], rotation: [0, -1.5708, 0], size: [2.8, 0.55, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
-  { id: "porta-esq",         name: "porta esquerda",     position: [-0.87, 0.55, -0.4], rotation: [0, 0, 0], size: [0.03, 0.75, 1.0], color: "#5a9ac0", renderOrder: 5,  locked: true },
-  { id: "porta-dir",         name: "porta direita",      position: [0.87, 0.55, -0.4],  rotation: [0, 0, 0], size: [0.03, 0.75, 1.0], color: "#5a9ac0", renderOrder: 5,  locked: true },
-  { id: "painel",            name: "painel bege",        position: [0, 0.75, -0.95], rotation: [0, 0, 0], size: [1.5, 0.3, 0.35], color: "#c9a97a", renderOrder: 6,  locked: true },
-  { id: "volante",           name: "volante hippie",     position: [-0.42, 0.85, -0.55], rotation: [-0.25, 0, 0], size: [0.42, 0.4, 0.05], color: "#e8e8f0", renderOrder: 7,  locked: true },
-  { id: "cambio",            name: "câmbio T-bar",       position: [0, 0.5, -0.4], rotation: [0, 0, 0], size: [0.08, 0.35, 0.08], color: "#3a2410", renderOrder: 7,  locked: true },
-  { id: "radio",             name: "rádio sintonizador", position: [0.28, 0.9, -0.9], rotation: [-0.15, 0, 0], size: [0.55, 0.22, 0.03], color: "#3a2410", renderOrder: 8,  locked: true },
-  { id: "toca-discos",       name: "toca-discos vintage", position: [-0.55, 0.9, -0.85], rotation: [0, 0.3, 0], size: [0.28, 0.06, 0.28], color: "#6a4820", renderOrder: 8,  locked: true },
-  { id: "pads-mpc",          name: "pads MPC (batida)",  position: [0.45, 0.55, -0.4], rotation: [0.15, 0, 0], size: [0.35, 0.06, 0.3], color: "#ffcc00", renderOrder: 8,  locked: true },
+  { id: "parabrisa",         name: "parabrisa",          position: [0, 1.1, -1.35], rotation: [0.1, 0, 0], size: [1.51, 0.56, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
+  { id: "vidro-tras",        name: "vidro traseiro",     position: [0, 1.1, 1.8],   rotation: [0, 0, 0], size: [1.6, 0.46, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
+  { id: "janela-esq",        name: "janela lateral esq", position: [-0.9, 1.05, 0.25], rotation: [0, 1.5708, 0], size: [2.86, 0.46, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
+  { id: "janela-dir",        name: "janela lateral dir", position: [0.9, 1.05, 0.25],  rotation: [0, -1.5708, 0], size: [2.86, 0.46, 0.02], color: "#88ddff", renderOrder: 4,  locked: true },
+  { id: "porta-dir",         name: "porta direita",      position: [0.87, 0.55, -0.4], rotation: [0, 0, 0], size: [0.03, 0.75, 1.0], color: "#5a9ac0", renderOrder: 5,  locked: true },
+  { id: "painel",            name: "painel bege",        position: [0, 0.75, -0.95], rotation: [0, 0, 0], size: [1.51, 0.06, 0.16], color: "#c9a97a", renderOrder: 6,  locked: true },
+  { id: "volante",           name: "volante hippie",     position: [-0.42, 0.85, -0.85], rotation: [-0.25, 0, 0], size: [0.42, 0.4, 0.05], color: "#e8e8f0", renderOrder: 7,  locked: true },
+  { id: "cambio",            name: "câmbio T-bar",       position: [0, 0.5, -1],    rotation: [0, 0, 0], size: [0.06, 0.21, 0.08], color: "#3a2410", renderOrder: 7,  locked: true },
+  { id: "radio",             name: "rádio sintonizador", position: [0.05, 0.75, -0.82], rotation: [0, 0, 0], size: [0.28, 0.06, 0.04], color: "#3a2410", renderOrder: 8,  locked: true },
+  { id: "toca-discos",       name: "toca-discos vintage", position: [0.45, 0.83, -0.92], rotation: [0, 0.15, 0], size: [0.31, 0.06, 0.16], color: "#3a2410", renderOrder: 8,  locked: true },
+  { id: "pads-mpc",          name: "pads MPC (batida)",  position: [0.7, 0.72, -0.65], rotation: [0.1, 0, 0], size: [0.3, 0.06, 0.3], color: "#ffcc00", renderOrder: 8,  locked: true },
+  { id: "pedestal-mpc",      name: "pedestal MPC",       position: [0.6, 0.485, -0.65], rotation: [0, 0, 0], size: [0.04, 0.45, 0.04], color: "#2a1f10", renderOrder: 7,  locked: true },
   { id: "retrovisor",        name: "retrovisor + dado",  position: [0, 1.28, -1.05], rotation: [0, 0, 0], size: [0.24, 0.08, 0.04], color: "#8a6a3a", renderOrder: 9,  locked: true },
-  { id: "banco-motorista",   name: "banco motorista",    position: [-0.35, 0.4, 0.65], rotation: [0, 0, 0], size: [0.55, 0.65, 0.55], color: "#4a2510", renderOrder: 5,  locked: true },
-  { id: "banco-passageira",  name: "banco passageira",   position: [0.35, 0.4, 0.65],  rotation: [0, 0, 0], size: [0.55, 0.65, 0.55], color: "#4a2510", renderOrder: 5,  locked: true },
-  { id: "piso-interno",      name: "piso interno",       position: [0, 0.05, 0.4],  rotation: [0, 0, 0], size: [1.55, 0.02, 3.0], color: "#2a1f10", renderOrder: 2,  locked: true },
+  { id: "porta-luvas",       name: "porta-luvas (baú)",  position: [0.2, 0.48, -0.95], rotation: [0, -0.3, 0], size: [0.4, 0.4, 0.28], color: "#5a3010", renderOrder: 7,  locked: true },
+  { id: "banco-motorista",   name: "banco motorista",    position: [-0.25, 0.4, -0.05], rotation: [0, 0, 0], size: [1.11, 0.36, 0.55], color: "#4a2510", renderOrder: 5,  locked: true },
+  { id: "banco-passageira",  name: "banco passageira",   position: [0.55, 0.4, -0.05],  rotation: [0, 0, 0], size: [0.55, 0.36, 0.55], color: "#4a2510", renderOrder: 5,  locked: true },
+  { id: "piso-interno",      name: "piso interno",       position: [0, 0.25, 0.4],  rotation: [0, 0, 0], size: [1.55, 0.02, 3.0], color: "#2a1f10", renderOrder: 2,  locked: true },
   { id: "cortina-esq",       name: "cortina esquerda",   position: [-0.86, 1.15, 0.5], rotation: [0, 1.5708, 0], size: [1.6, 0.3, 0.005], color: "#ff5fae", renderOrder: 10, locked: true },
   { id: "cortina-dir",       name: "cortina direita",    position: [0.86, 1.15, 0.5], rotation: [0, -1.5708, 0], size: [1.6, 0.3, 0.005], color: "#a855f7", renderOrder: 10, locked: true },
   { id: "guirlanda-frente",  name: "guirlanda LED frente", position: [0, 1.42, -1.0], rotation: [0, 0, 0], size: [1.5, 0.03, 0.03], color: "#00ffff", renderOrder: 11, locked: true },
@@ -246,11 +250,119 @@ function ObjectCard({
   )
 }
 
+// Snapshot da câmera do orbit — captura pos + target do OrbitControls antes
+// de sair pro FP. Não faz sentido restaurar aqui (isso rola no OrbitControls
+// ao remontar, via defaultTarget/defaultCameraPosition passados por props).
+function OrbitCameraSnapshot({
+  viewMode,
+  snapshotRef,
+  orbitControlsRef,
+}: {
+  viewMode: "orbit" | "fp"
+  snapshotRef: React.MutableRefObject<{ pos: [number, number, number]; target: [number, number, number] } | null>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orbitControlsRef: React.MutableRefObject<any>
+}) {
+  const { camera } = useThree()
+  const prev = useRef(viewMode)
+  useEffect(() => {
+    const was = prev.current
+    prev.current = viewMode
+    if (viewMode === "fp" && was === "orbit") {
+      const t = orbitControlsRef.current?.target
+      snapshotRef.current = {
+        pos: [camera.position.x, camera.position.y, camera.position.z],
+        target: t ? [t.x, t.y, t.z] : [0, 0.7, 0],
+      }
+    } else if (viewMode === "orbit" && was === "fp" && snapshotRef.current) {
+      // Restaura assim que OrbitControls remontar
+      const { pos, target } = snapshotRef.current
+      camera.position.set(...pos)
+      // Aguarda 1 frame pra OrbitControls existir, aí seta target
+      requestAnimationFrame(() => {
+        const c = orbitControlsRef.current
+        if (c?.target) {
+          c.target.set(...target)
+          c.update?.()
+        }
+      })
+    }
+  }, [viewMode, camera, snapshotRef, orbitControlsRef])
+  return null
+}
+
+// ─── Câmera 1ª pessoa (mesmo comportamento do drive-v2 pra o editor) ────────
+// Fixa a câmera na posição da "camera-motorista" do editor + free-look com
+// drag do mouse. Sem física — só posição/rotação diretas.
+function CockpitFPView({ headPos }: { headPos: [number, number, number] }) {
+  const { camera, gl } = useThree()
+  const yaw = useRef(0)
+  const pitch = useRef(0)
+  const targetYaw = useRef(0)
+  const targetPitch = useRef(0)
+  const dragging = useRef(false)
+
+  useEffect(() => {
+    const el = gl.domElement
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      dragging.current = true
+      el.style.cursor = "grabbing"
+    }
+    const onUp = () => {
+      dragging.current = false
+      el.style.cursor = "grab"
+      // NÃO reseta target — no EDITOR a câmera fica travada onde LU2CA soltar
+      // (diferente do jogo /drive-v2 onde volta suave pra frente).
+    }
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current) return
+      const YAW_LIMIT = (150 * Math.PI) / 180
+      const PITCH_LIMIT = (60 * Math.PI) / 180
+      targetYaw.current = Math.max(-YAW_LIMIT, Math.min(YAW_LIMIT, targetYaw.current - e.movementX * 0.0025))
+      targetPitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, targetPitch.current - e.movementY * 0.0025))
+    }
+    el.style.cursor = "grab"
+    el.addEventListener("mousedown", onDown)
+    window.addEventListener("mouseup", onUp)
+    window.addEventListener("mousemove", onMove)
+    return () => {
+      el.style.cursor = ""
+      el.removeEventListener("mousedown", onDown)
+      window.removeEventListener("mouseup", onUp)
+      window.removeEventListener("mousemove", onMove)
+    }
+  }, [gl])
+
+  useFrame((_, delta) => {
+    const rate = dragging.current ? 14 : 3
+    const l = 1 - Math.exp(-delta * rate)
+    yaw.current += (targetYaw.current - yaw.current) * l
+    pitch.current += (targetPitch.current - pitch.current) * l
+    camera.position.set(headPos[0], headPos[1], headPos[2])
+    camera.quaternion.setFromEuler(new THREE.Euler(pitch.current, yaw.current, 0, "YXZ"))
+  })
+
+  return null
+}
+
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function CockpitEditorPage() {
   const [objects, setObjects] = useState<CubeObject[]>(DEFAULT_OBJECTS)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [hydrated, setHydrated] = useState(false)
+  // Modo de visualização: "orbit" (padrão do editor) ou "fp" (mesma câmera
+  // do jogo /drive-v2). No FP, LU2CA vê exatamente como fica dentro do carro.
+  const [viewMode, setViewMode] = useState<"orbit" | "fp">("orbit")
+  // Snapshot da câmera do orbit antes de trocar pra FP — pra restaurar
+  // exatamente o mesmo enquadramento ao voltar.
+  const orbitSnapshot = useRef<{ pos: [number, number, number]; target: [number, number, number] } | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orbitControlsRef = useRef<any>(null)
+
+  // Posição da câmera FP = posição atual da peça "camera-motorista" no editor
+  const cameraMotorista = objects.find((o) => o.id === "camera-motorista")
+  const headPos: [number, number, number] = cameraMotorista?.position ?? [-0.35, 1.05, 0.6]
 
   // Carrega de localStorage no mount (client-only)
   useEffect(() => {
@@ -444,9 +556,44 @@ export default function CockpitEditorPage() {
               <CubeMesh key={obj.id} obj={obj} onSelect={() => toggleLock(obj.id)} />
             ))}
 
-            <OrbitControls makeDefault enableDamping dampingFactor={0.1} />
+            <OrbitCameraSnapshot
+              viewMode={viewMode}
+              snapshotRef={orbitSnapshot}
+              orbitControlsRef={orbitControlsRef}
+            />
+            {viewMode === "orbit" ? (
+              <OrbitControls ref={orbitControlsRef} makeDefault enableDamping dampingFactor={0.1} />
+            ) : (
+              <CockpitFPView headPos={headPos} />
+            )}
           </Suspense>
         </Canvas>
+      </div>
+
+      {/* Toggle de câmera — orbit (padrão editor) vs 1ª pessoa (POV motorista) */}
+      <div className="pointer-events-auto absolute right-4 top-4 z-20 flex flex-col items-end gap-2">
+        <button
+          onClick={() => setViewMode((m) => (m === "orbit" ? "fp" : "orbit"))}
+          className="rounded border border-white/20 bg-black/85 px-4 py-2 text-xs font-mono uppercase tracking-widest text-white backdrop-blur-md hover:bg-white/10"
+        >
+          {viewMode === "orbit" ? "🎥 orbit" : "👁 1ª pessoa"} · trocar
+        </button>
+        <button
+          onClick={() => {
+            if (!confirm("Descarta edições locais e volta aos defaults (kombi-layout.ts atual)?")) return
+            localStorage.removeItem(STORAGE_KEY)
+            setObjects(DEFAULT_OBJECTS)
+          }}
+          className="rounded border border-orange-400/40 bg-orange-950/60 px-4 py-2 text-xs font-mono uppercase tracking-widest text-orange-200 backdrop-blur-md hover:bg-orange-900/60"
+        >
+          ↺ reset defaults
+        </button>
+        {viewMode === "fp" && (
+          <div className="rounded border border-white/15 bg-black/85 p-2 text-[10px] font-mono text-cyan-300 backdrop-blur">
+            arrasta o mouse pra olhar em volta<br/>
+            (câmera segue a peça &quot;camera-motorista&quot;)
+          </div>
+        )}
       </div>
 
       {/* HUD topo esquerdo — instruções */}

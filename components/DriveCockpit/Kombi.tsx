@@ -9,6 +9,7 @@
 // consumidor pode manter só exterior; em 1ª pessoa mostra tudo.
 
 import { useFrame } from "@react-three/fiber"
+import { RoundedBox } from "@react-three/drei"
 import { useRef } from "react"
 import * as THREE from "three"
 import { KOMBI_LAYOUT, type KombiPart } from "@/lib/kombi-layout"
@@ -45,7 +46,42 @@ function PartGlow({ part, intensity = 0.9 }: { part: KombiPart; intensity?: numb
   )
 }
 
-// Peças transparentes (janelas, parabrisa)
+// Canopy única de vidro — substitui parabrisa + janelas + vidro traseiro
+// por uma superfície contínua, arredondada (RoundedBox). Cobre a parte de
+// cima da Kombi como uma bolha translúcida ("Kombi do futuro").
+function KombiCanopy() {
+  const carroceria = KOMBI_LAYOUT.carroceria
+  // Largura ligeiramente maior que a carroceria pra "envelopar", altura
+  // apenas da região das janelas (Y ~0.85 até 1.35), profundidade quase
+  // toda mas recuada 0.1 pra cabeça atrás não passar pelo vidro traseiro.
+  const width = carroceria.size[0] + 0.02
+  const height = 0.62 // 0.85 até 1.47 (do topo do painel ao topo do teto)
+  const depth = carroceria.size[2] - 0.05
+  const cy = 0.85 + height / 2
+  const cz = carroceria.position[2]
+  return (
+    <RoundedBox
+      args={[width, height, depth]}
+      radius={0.28}
+      smoothness={4}
+      position={[0, cy, cz]}
+    >
+      <meshPhysicalMaterial
+        color="#a8e8ff"
+        transparent
+        opacity={0.28}
+        transmission={0.85}
+        thickness={0.4}
+        roughness={0.05}
+        metalness={0.0}
+        ior={1.35}
+        side={THREE.DoubleSide}
+      />
+    </RoundedBox>
+  )
+}
+
+// Peças transparentes (janelas, parabrisa) — mantida caso alguém use ainda
 function PartGlass({ part }: { part: KombiPart }) {
   return (
     <mesh position={part.position} rotation={part.rotation}>
@@ -417,13 +453,12 @@ export function Kombi({
             <meshStandardMaterial color="#3a2410" roughness={0.7} />
           </mesh>
 
-          {/* vidros — depois das paredes pra render order ficar correto */}
-          <PartGlass part={K.parabrisa} />
-          <PartGlass part={K.vidroTras} />
-          <PartGlass part={K.janelaEsq} />
-          <PartGlass part={K.janelaDir} />
-          {/* porta interna direita (LAYOUT — visualmente idêntica ao painel dir) */}
-          <PartMesh part={K.portaDir} />
+          {/* Canopy única — uma bolha de vidro arredondada cobre tudo em cima
+              (para-brisa + vidro-tras + janelas laterais + teto de vidro).
+              "Kombi do futuro" — sem separação de peças, coeso, arredondado. */}
+          <KombiCanopy />
+          {/* Porta interna direita — removida (parede azul feia que quebrava
+              o interior). A carroceria e painéis laterais já fecham o carro. */}
           {/* dashboard */}
           <PartMesh part={K.painel} />
           <Volante part={K.volante} steerValue={steerValue} />
@@ -436,23 +471,90 @@ export function Kombi({
           </group>
           <group onClick={onItemClick ? (e) => { e.stopPropagation(); onItemClick("pads") } : undefined}>
             <PadsMPC part={K.padsMPC} isPlaying={isPlaying} />
+            {/* Pedestal fino sustentando a MPC (sai do piso até a MPC) */}
+            <PartMesh part={K.pedestalMPC} />
           </group>
           <Retrovisor part={K.retrovisor} />
-          {/* Porta-luvas clicável — abre inventário */}
+          {/* Porta-luvas clicável — abre inventário. Detalhes de OURO na face
+              frontal (gaveta virada pro banco motorista, Z+). */}
           <group
             onClick={onItemClick ? (e) => { e.stopPropagation(); onItemClick("portaLuvas") } : undefined}
           >
             <PartMesh part={K.portaLuvas} />
-            {/* puxador metálico central */}
-            <mesh position={[K.portaLuvas.position[0], K.portaLuvas.position[1] - 0.03, K.portaLuvas.position[2] + K.portaLuvas.size[2] / 2 + 0.005]}>
-              <boxGeometry args={[0.08, 0.02, 0.015]} />
-              <meshStandardMaterial color="#c0c0c8" metalness={0.9} roughness={0.2} />
-            </mesh>
-            {/* LED indicador amarelo (aceso quando disponível) */}
-            <mesh position={[K.portaLuvas.position[0] + K.portaLuvas.size[0] / 2 - 0.02, K.portaLuvas.position[1] + K.portaLuvas.size[1] / 2 - 0.02, K.portaLuvas.position[2] + K.portaLuvas.size[2] / 2 + 0.005]}>
-              <sphereGeometry args={[0.008, 12, 12]} />
-              <meshBasicMaterial color="#ffcc00" toneMapped={false} />
-            </mesh>
+            {(() => {
+              const p = K.portaLuvas.position
+              const s = K.portaLuvas.size
+              const faceZ = p[2] + s[2] / 2 + 0.005 // frente (gaveta)
+              const topY = p[1] + s[1] / 2 + 0.001  // TAMPA (top face)
+              const rightX = p[0] + s[0] / 2
+              const leftX = p[0] - s[0] / 2
+              const backZ = p[2] - s[2] / 2
+              const gold = <meshStandardMaterial color="#ffd700" metalness={0.95} roughness={0.15} emissive="#ffb400" emissiveIntensity={0.15} />
+              const goldGlow = <meshBasicMaterial color="#ffd700" toneMapped={false} />
+              return (
+                <>
+                  {/* ── DETALHES CENTURIANOS DE OURO NO TOPO ── */}
+                  {/* Moldura dourada — 4 filetes finos ao redor da tampa */}
+                  <mesh position={[p[0], topY, p[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[0, 0, 0]} />
+                    <meshBasicMaterial color="#ffd700" toneMapped={false} />
+                  </mesh>
+                  {/* Filete frontal (borda da tampa lado gaveta) */}
+                  <mesh position={[p[0], topY, faceZ - 0.015]}>
+                    <boxGeometry args={[s[0] - 0.02, 0.003, 0.012]} />
+                    {gold}
+                  </mesh>
+                  {/* Filete traseiro */}
+                  <mesh position={[p[0], topY, backZ + 0.015]}>
+                    <boxGeometry args={[s[0] - 0.02, 0.003, 0.012]} />
+                    {gold}
+                  </mesh>
+                  {/* Filete lateral esquerdo */}
+                  <mesh position={[leftX + 0.015, topY, p[2]]}>
+                    <boxGeometry args={[0.012, 0.003, s[2] - 0.02]} />
+                    {gold}
+                  </mesh>
+                  {/* Filete lateral direito */}
+                  <mesh position={[rightX - 0.015, topY, p[2]]}>
+                    <boxGeometry args={[0.012, 0.003, s[2] - 0.02]} />
+                    {gold}
+                  </mesh>
+                  {/* Emblema centurião — círculo dourado central com losango dentro */}
+                  <mesh position={[p[0], topY + 0.002, p[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[0.035, 0.045, 32]} />
+                    <meshBasicMaterial color="#ffd700" toneMapped={false} side={THREE.DoubleSide} />
+                  </mesh>
+                  <mesh position={[p[0], topY + 0.003, p[2]]} rotation={[-Math.PI / 2, Math.PI / 4, 0]}>
+                    <planeGeometry args={[0.05, 0.05]} />
+                    <meshBasicMaterial color="#ffb400" toneMapped={false} transparent opacity={0.7} />
+                  </mesh>
+                  {/* 4 pequenos espigões triangulares nas quinas (romano) */}
+                  {[
+                    [leftX + 0.03, backZ + 0.03],
+                    [rightX - 0.03, backZ + 0.03],
+                    [leftX + 0.03, faceZ - 0.03],
+                    [rightX - 0.03, faceZ - 0.03],
+                  ].map(([x, z], i) => (
+                    <mesh key={`spike-${i}`} position={[x, topY + 0.015, z]}>
+                      <coneGeometry args={[0.012, 0.03, 4]} />
+                      {gold}
+                    </mesh>
+                  ))}
+
+                  {/* ── FACE FRONTAL (GAVETA) DISCRETA ── */}
+                  {/* Puxador simples (não dourado, discreto) */}
+                  <mesh position={[p[0], p[1] - 0.05, faceZ + 0.003]}>
+                    <boxGeometry args={[0.1, 0.018, 0.012]} />
+                    <meshStandardMaterial color="#8a6a3a" metalness={0.6} roughness={0.4} />
+                  </mesh>
+                  {/* LED amarelo pequeno (disponibilidade) */}
+                  <mesh position={[rightX - 0.025, p[1] + s[1] / 2 - 0.025, faceZ + 0.003]}>
+                    <sphereGeometry args={[0.006, 12, 12]} />
+                    {goldGlow}
+                  </mesh>
+                </>
+              )
+            })()}
           </group>
           {/* bancos */}
           <PartMesh part={K.bancoMotorista} />

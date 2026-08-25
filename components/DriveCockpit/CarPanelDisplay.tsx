@@ -27,6 +27,8 @@ export interface CarPanelDisplayProps {
   volume: number
   onVolumeChange: (v: number) => void
   onOpenPhone: () => void
+  /** Callback pra abrir app do HUB em iframe overlay (não navega fora de /drive-v2) */
+  onOpenHubApp?: (url: string) => void
   /** Se true, some (usado quando algum modal HTML está aberto — porta-luvas
    *  ou celular — pra não sobrepor). */
   hidden?: boolean
@@ -39,37 +41,87 @@ export function CarPanelDisplay({
   volume,
   onVolumeChange,
   onOpenPhone,
+  onOpenHubApp,
   hidden = false,
 }: CarPanelDisplayProps) {
   const [page, setPage] = useState<Page>("radio")
   if (hidden) return null
   const r = KOMBI_LAYOUT.radio
-  // Posição do Html: exatamente na face frontal do rádio 3D. Ligeiro offset
-  // em Z (+0.02) pra ficar na frente da moldura.
+  // HOLOGRAMA — bem COLADO ao painel, subindo pouco (10cm) acima do rádio 3D.
+  // Não flutua alto — parece "brotar" da face do painel.
+  const HOLOGRAM_HEIGHT = 0.1
   const htmlPos: [number, number, number] = [
     r.position[0],
-    r.position[1],
-    r.position[2] + 0.025,
+    r.position[1] + HOLOGRAM_HEIGHT,
+    r.position[2] + 0.005,
   ]
+  const htmlRot: [number, number, number] = [-0.08, 0, 0]
   return (
-    <Html
-      transform
-      position={htmlPos}
-      rotation={r.rotation as [number, number, number]}
-      distanceFactor={0.35}
-      style={{ pointerEvents: "auto" }}
-    >
+    <>
+      {/* Faixa de luz neon PARALELA ao painel — plano fino colado à face
+          frontal do rádio 3D. Serve como "base emissora" do holograma. */}
+      <mesh
+        position={[r.position[0], r.position[1] + r.size[1] / 2 + 0.002, r.position[2] - r.size[2] / 2 - 0.001]}
+        rotation={[0, 0, 0]}
+      >
+        <planeGeometry args={[r.size[0], 0.012]} />
+        <meshBasicMaterial color="#00ffff" toneMapped={false} />
+      </mesh>
+      {/* Faixa complementar rosa embaixo (contorno neon dupla cor) */}
+      <mesh
+        position={[r.position[0], r.position[1] - r.size[1] / 2 - 0.002, r.position[2] - r.size[2] / 2 - 0.001]}
+        rotation={[0, 0, 0]}
+      >
+        <planeGeometry args={[r.size[0], 0.008]} />
+        <meshBasicMaterial color="#ff2d78" toneMapped={false} />
+      </mesh>
+      <Html
+        transform
+        position={htmlPos}
+        rotation={htmlRot}
+        distanceFactor={0.35}
+        style={{ pointerEvents: "auto" }}
+      >
       <div
         style={{
           width: 480,
           height: 190,
-          // SEM border/bg — a moldura do rádio 3D é a moldura visual.
-          padding: 6,
+          // HOLOGRAMA — borda ciano com glow, background com transparência
+          // e scanlines sutis (linhas horizontais). Feel Blade Runner.
+          padding: 8,
           fontFamily: "monospace",
           color: "#fff",
           userSelect: "none",
+          background: "linear-gradient(180deg, rgba(0, 40, 60, 0.55) 0%, rgba(0, 20, 40, 0.55) 100%)",
+          border: "1px solid rgba(0, 255, 255, 0.55)",
+          borderRadius: 8,
+          boxShadow:
+            "0 0 24px rgba(0, 255, 255, 0.45), inset 0 0 20px rgba(0, 255, 255, 0.15)",
+          backdropFilter: "blur(4px)",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
+        {/* Scanlines horizontais (holograma) */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              "repeating-linear-gradient(0deg, rgba(0,255,255,0.06) 0px, rgba(0,255,255,0.06) 1px, transparent 1px, transparent 4px)",
+            mixBlendMode: "screen",
+          }}
+        />
+        {/* Cantos do holograma (4 marcadores L) */}
+        {[
+          { top: 4, left: 4, borderTop: "2px solid #00ffff", borderLeft: "2px solid #00ffff" },
+          { top: 4, right: 4, borderTop: "2px solid #00ffff", borderRight: "2px solid #00ffff" },
+          { bottom: 4, left: 4, borderBottom: "2px solid #00ffff", borderLeft: "2px solid #00ffff" },
+          { bottom: 4, right: 4, borderBottom: "2px solid #00ffff", borderRight: "2px solid #00ffff" },
+        ].map((s, i) => (
+          <div key={i} style={{ position: "absolute", width: 12, height: 12, ...s }} />
+        ))}
         {/* HEADER TABS */}
         <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
           {(["radio", "apps", "mapa"] as Page[]).map((p) => (
@@ -97,10 +149,11 @@ export function CarPanelDisplay({
 
         {/* CONTEÚDO POR PÁGINA */}
         {page === "radio" && <PageRadio radio={radio} funnelRadioAccepted={funnelRadioAccepted} volume={volume} onVolumeChange={onVolumeChange} />}
-        {page === "apps" && <PageApps hubUnlock={hubUnlock} />}
+        {page === "apps" && <PageApps hubUnlock={hubUnlock} onOpenHubApp={onOpenHubApp} />}
         {page === "mapa" && <PageMapa />}
       </div>
-    </Html>
+      </Html>
+    </>
   )
 }
 
@@ -199,7 +252,7 @@ function PageRadio({
 // ─── Página APPS ─────────────────────────────────────────────────────────────
 // Grid 4x3 com TODOS os apps (tiles do jogo primeiro, dock utilitário depois).
 // Sem botão "abrir celular" — os apps são acessíveis direto daqui.
-function PageApps({ hubUnlock }: { hubUnlock: HubAppUnlockState; onOpenPhone?: () => void }) {
+function PageApps({ hubUnlock, onOpenHubApp }: { hubUnlock: HubAppUnlockState; onOpenHubApp?: (url: string) => void }) {
   const all = [...HUB_TILES, ...HUB_APPS]
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
@@ -231,6 +284,23 @@ function PageApps({ hubUnlock }: { hubUnlock: HubAppUnlockState; onOpenPhone?: (
             <a key={app.id} href={app.route} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
               {inner}
             </a>
+          )
+        }
+        // App interno: se onOpenHubApp existir, abre em iframe overlay (não
+        // sai de /drive-v2). Se não, cai no Link (comportamento antigo).
+        if (onOpenHubApp) {
+          return (
+            <button
+              key={app.id}
+              type="button"
+              onClick={() => {
+                const sep = app.route.includes("?") ? "&" : "?"
+                onOpenHubApp(`${app.route}${sep}embedded=1`)
+              }}
+              style={{ textDecoration: "none", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", width: "100%" }}
+            >
+              {inner}
+            </button>
           )
         }
         return (
