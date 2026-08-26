@@ -423,6 +423,23 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
   return null
 }
 
+// ─── Dica de toque (mobile FP) ──────────────────────────────────────────────
+// Mostra "arraste pra olhar" por 6s ao entrar em 1ª pessoa no mobile.
+// LU2CA reclamou de não achar como girar a câmera; overlay resolve o discovery.
+function TouchHint() {
+  const [visible, setVisible] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(false), 6000)
+    return () => clearTimeout(t)
+  }, [])
+  if (!visible) return null
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-1/3 z-30 -translate-x-1/2 rounded-full border border-white/20 bg-black/70 px-4 py-2 text-[11px] uppercase tracking-widest text-white backdrop-blur-md animate-pulse">
+      arraste pra olhar ao redor →
+    </div>
+  )
+}
+
 // ─── Página ─────────────────────────────────────────────────────────────────
 export default function DriveV2Page() {
   const vanBodyRef = useRef<RapierRigidBody | null>(null)
@@ -615,6 +632,9 @@ export default function DriveV2Page() {
       {/* Controles touch — só em mobile. Disparam KeyboardEvent sintético
           (w/a/s/d/shift/f) então o VanBody consome igual ao desktop. */}
       {isTouch && <MobileControls />}
+
+      {/* Dica visual de arraste — só mobile + 1ª pessoa. Some após 6s. */}
+      {isTouch && isFirstPerson && <TouchHint />}
 
       {/* Painel Musical Horizontal — SÓ em 3ª pessoa. Em 1ª pessoa quem
           exibe é o CarPanelDisplay ancorado ao rádio 3D. */}
