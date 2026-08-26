@@ -331,36 +331,60 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
   const targetPitch = useRef(0)
   const dragging = useRef(false)
   const releaseTime = useRef<number | null>(null)  // quando soltou o mouse
+  // Últimas coords do pointer — touch não tem movementX/Y nativo consistente
+  // em iOS Safari, então calcula delta manualmente entre frames.
+  const lastX = useRef(0)
+  const lastY = useRef(0)
+  const activePointerId = useRef<number | null>(null)
 
   useEffect(() => {
     const el = gl.domElement
-    const onDown = (e: MouseEvent) => {
-      if (e.button !== 0) return
+    const onDown = (e: PointerEvent) => {
+      // Só primary button (mouse esquerdo) ou touch (button = 0)
+      if (e.pointerType === "mouse" && e.button !== 0) return
       dragging.current = true
       releaseTime.current = null
+      lastX.current = e.clientX
+      lastY.current = e.clientY
+      activePointerId.current = e.pointerId
+      try { el.setPointerCapture(e.pointerId) } catch {}
       el.style.cursor = "grabbing"
     }
-    const onUp = () => {
+    const onUp = (e: PointerEvent) => {
+      if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return
       dragging.current = false
+      activePointerId.current = null
+      try { el.releasePointerCapture(e.pointerId) } catch {}
       el.style.cursor = "grab"
       // NÃO mexe em targetYaw/targetPitch — câmera trava no último ponto.
       // Só marca o instante da soltura pro useFrame contar o hold.
       releaseTime.current = performance.now()
     }
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (!dragging.current) return
-      targetYaw.current = Math.max(-YAW_LIMIT, Math.min(YAW_LIMIT, targetYaw.current - e.movementX * MOUSE_SENSITIVITY))
-      targetPitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, targetPitch.current - e.movementY * MOUSE_SENSITIVITY))
+      if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return
+      const dx = e.clientX - lastX.current
+      const dy = e.clientY - lastY.current
+      lastX.current = e.clientX
+      lastY.current = e.clientY
+      targetYaw.current = Math.max(-YAW_LIMIT, Math.min(YAW_LIMIT, targetYaw.current - dx * MOUSE_SENSITIVITY))
+      targetPitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, targetPitch.current - dy * MOUSE_SENSITIVITY))
     }
     el.style.cursor = "grab"
-    el.addEventListener("mousedown", onDown)
-    window.addEventListener("mouseup", onUp)
-    window.addEventListener("mousemove", onMove)
+    // touchAction none evita scroll/zoom do browser competir com o drag
+    const prevTouch = el.style.touchAction
+    el.style.touchAction = "none"
+    el.addEventListener("pointerdown", onDown)
+    el.addEventListener("pointermove", onMove)
+    el.addEventListener("pointerup", onUp)
+    el.addEventListener("pointercancel", onUp)
     return () => {
       el.style.cursor = ""
-      el.removeEventListener("mousedown", onDown)
-      window.removeEventListener("mouseup", onUp)
-      window.removeEventListener("mousemove", onMove)
+      el.style.touchAction = prevTouch
+      el.removeEventListener("pointerdown", onDown)
+      el.removeEventListener("pointermove", onMove)
+      el.removeEventListener("pointerup", onUp)
+      el.removeEventListener("pointercancel", onUp)
     }
   }, [gl])
 
@@ -550,30 +574,32 @@ export default function DriveV2Page() {
         if (carRadio.audioRef.current) carRadio.audioRef.current.volume = volume
         return null
       })()}
-      {/* HUD */}
-      <div className="pointer-events-none absolute left-4 top-4 z-10 text-white">
-        <h1 className="text-xl font-light tracking-widest">DRIVE · V2</h1>
-        <p className="mt-1 text-xs text-neutral-400">Kombi pilotável · física Rapier · 3ª pessoa</p>
-        <p className="mt-3 text-[10px] text-neutral-500">
-          <kbd className="rounded border border-white/20 px-1.5">W/↑</kbd> acelera ·{" "}
-          <kbd className="rounded border border-white/20 px-1.5">S/↓</kbd> freia/ré ·{" "}
-          <kbd className="rounded border border-white/20 px-1.5">A D ← →</kbd> vira ·{" "}
-          <kbd className="rounded border border-white/20 px-1.5">Shift</kbd> boost ·{" "}
-          <kbd className="rounded border border-white/20 px-1.5">X/C</kbd> drift ·{" "}
-          <kbd className="rounded border border-white/20 px-1.5">F/␣</kbd> 🔥 jetpack ·{" "}
-          <kbd className="rounded border border-white/20 px-1.5">V</kbd> visão
-        </p>
-        {isFirstPerson && (
-          <p className="mt-1 text-[10px] text-[#00ffff]/80">
-            dentro do carro: <b>segure o mouse e arraste</b> pra olhar (até 300°) · clique nos itens do painel pra abrir
+      {/* HUD — legenda completa só desktop. Em mobile a UI já é o suficiente. */}
+      {!isTouch && (
+        <div className="pointer-events-none absolute left-4 top-4 z-10 text-white">
+          <h1 className="text-xl font-light tracking-widest">DRIVE · V2</h1>
+          <p className="mt-1 text-xs text-neutral-400">Kombi pilotável · física Rapier · 3ª pessoa</p>
+          <p className="mt-3 text-[10px] text-neutral-500">
+            <kbd className="rounded border border-white/20 px-1.5">W/↑</kbd> acelera ·{" "}
+            <kbd className="rounded border border-white/20 px-1.5">S/↓</kbd> freia/ré ·{" "}
+            <kbd className="rounded border border-white/20 px-1.5">A D ← →</kbd> vira ·{" "}
+            <kbd className="rounded border border-white/20 px-1.5">Shift</kbd> boost ·{" "}
+            <kbd className="rounded border border-white/20 px-1.5">X/C</kbd> drift ·{" "}
+            <kbd className="rounded border border-white/20 px-1.5">F/␣</kbd> 🔥 jetpack ·{" "}
+            <kbd className="rounded border border-white/20 px-1.5">V</kbd> visão
           </p>
-        )}
-        {!isFirstPerson && (
-          <p className="mt-1 text-[10px] text-[#ff00ff]/70">
-            3ª pessoa · exploração · aperte V pra entrar no cockpit e usar rádio/hub/apps
-          </p>
-        )}
-      </div>
+          {isFirstPerson && (
+            <p className="mt-1 text-[10px] text-[#00ffff]/80">
+              dentro do carro: <b>segure o mouse e arraste</b> pra olhar (até 300°) · clique nos itens do painel pra abrir
+            </p>
+          )}
+          {!isFirstPerson && (
+            <p className="mt-1 text-[10px] text-[#ff00ff]/70">
+              3ª pessoa · exploração · aperte V pra entrar no cockpit e usar rádio/hub/apps
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Camera mode indicator + botão */}
       <button
@@ -817,7 +843,7 @@ export default function DriveV2Page() {
 
       {/* Sem `shadows` — cena é NEON (emissive), sombra real não agrega.
           Bottleneck #4 (agentes de perf): -15-25fps. */}
-      <Canvas camera={{ position: [8, 6, 12], fov: isFirstPerson ? 78 : 55 }}>
+      <Canvas camera={{ position: [8, 6, 12], fov: isFirstPerson ? (isTouch ? 85 : 78) : 55 }}>
         <Suspense fallback={null}>
           <color attach="background" args={["#0a0521"]} />
           {/* Fog longo pra deserto aparecer no horizonte com dissolve suave */}

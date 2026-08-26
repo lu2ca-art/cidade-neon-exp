@@ -16,11 +16,11 @@ export interface KombiPart {
 export const KOMBI_LAYOUT = {
   // ── Câmera (POV motorista) ──
   cameraMotorista: {
-    // POV motorista real — colada atrás do volante (Z=-0.85), acima dele
-    // (Y=1.15), no lado esquerdo (X=-0.4). Distância ao para-brisa: 0.85u
-    // (antes: 1.95u — motorista parecia estar sentado no banco de trás).
-    // Z=-0.5 (não -0.6) dá margem pra Kombi sacolejar sem clipping.
-    position: [-0.4, 1.15, -0.5] as Vec3,
+    // POV motorista real — recuada pra ver volante + painel + rádio no frame
+    // (antes Z=-0.5 Y=1.15 mostrava só teto/céu no mobile). Z=0.25 põe a
+    // câmera no meio do banco do motorista, Y=0.95 na altura dos olhos
+    // sentado. Volante fica no terço inferior; rádio no centro do frame.
+    position: [-0.4, 0.95, 0.25] as Vec3,
     rotation: [0.05, 0, 0] as Vec3,
     size: [0.12, 0.12, 0.12] as Vec3,
     color: "#ffffff",
