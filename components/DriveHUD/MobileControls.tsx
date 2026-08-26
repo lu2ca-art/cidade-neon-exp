@@ -133,6 +133,20 @@ export function MobileControls() {
         ▲▲
       </button>
 
+      {/* DRIFT (X) — segura pra derrapar nas curvas */}
+      <button
+        {...holdButton("x")}
+        className="pointer-events-auto absolute bottom-52 right-24 flex h-12 w-12 items-center justify-center rounded-full border border-fuchsia-400/60 text-xs font-black text-white active:scale-95"
+        style={{
+          background: "rgba(255, 45, 120, 0.25)",
+          boxShadow: "0 0 16px rgba(255, 45, 120, 0.5)",
+          touchAction: "none",
+        }}
+        aria-label="drift"
+      >
+        ~
+      </button>
+
       {/* Jetpack (F) — acima do freio */}
       <button
         {...holdButton("f")}

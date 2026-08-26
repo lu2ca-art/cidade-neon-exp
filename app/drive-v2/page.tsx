@@ -44,11 +44,10 @@ interface VanBodyProps {
 }
 
 function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, carRadioActiveTier, carRadioDialPct, carRadioOn, carPanelDisplay }: VanBodyProps) {
-  const keys = useRef({ w: false, a: false, s: false, d: false, shift: false, jet: false })
-  // Alocações reutilizáveis pro useFrame — evita GC pressure por frame
+  const keys = useRef({ w: false, a: false, s: false, d: false, shift: false, jet: false, drift: false })
   const tmpQuat = useRef(new THREE.Quaternion())
   const tmpForward = useRef(new THREE.Vector3())
-  const tmpLinvelDot = useRef(new THREE.Vector3())
+  const tmpRight = useRef(new THREE.Vector3())
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -59,6 +58,8 @@ function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, car
       if (k === "d" || k === "arrowright") { keys.current.d = true }
       if (k === "shift") { keys.current.shift = true }
       if (k === "f" || k === " ") { e.preventDefault(); keys.current.jet = true }
+      // DRIFT / handbrake — X ou C (fácil de manter apertado com pinky)
+      if (k === "x" || k === "c") { keys.current.drift = true }
     }
     const up = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase()
@@ -68,6 +69,7 @@ function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, car
       if (k === "d" || k === "arrowright") { keys.current.d = false }
       if (k === "shift") { keys.current.shift = false }
       if (k === "f" || k === " ") { keys.current.jet = false }
+      if (k === "x" || k === "c") { keys.current.drift = false }
     }
     window.addEventListener("keydown", down)
     window.addEventListener("keyup", up)
@@ -83,51 +85,64 @@ function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, car
 
     const rot = body.rotation()
     tmpQuat.current.set(rot.x, rot.y, rot.z, rot.w)
-    // vetor "forward" local (-Z) rotacionado pra world space (reutiliza ref)
+    // forward local (-Z) e right local (+X) rotacionados pra world space
     tmpForward.current.set(0, 0, -1).applyQuaternion(tmpQuat.current)
+    tmpRight.current.set(1, 0, 0).applyQuaternion(tmpQuat.current)
     const forward = tmpForward.current
+    const right = tmpRight.current
 
-    // ── Tuning arcade estilo Horizon Drive ──
-    // Aceleração AGRESSIVA (responde na hora), velocidade alta, turn CONSTANTE
-    // (não depende de velocidade — vira igual estacionado ou em 200km/h).
-    const MAX_SPEED = keys.current.shift ? 65 : 42
-    const ACCEL = 0.9   // ramp-up rápido
-    const BRAKE = 1.0
-    const TURN_RATE = 2.6
+    // ── Tuning arcade Horizon-style ──
+    const drifting = keys.current.drift
+    const MAX_SPEED = keys.current.shift ? 75 : 50    // +boost geral
+    const ACCEL = 1.1                                  // ramp-up mais agressivo
+    const BRAKE = 1.2
+    // Turn maior no drift (carro rotaciona mais rápido do que a inércia
+    // consegue seguir → sensação de derrapar pra fora da curva)
+    const TURN_RATE = drifting ? 3.6 : 2.6
 
-    // velocidade linear atual (reutiliza ref)
     const linvel = body.linvel()
-    tmpLinvelDot.current.set(linvel.x, 0, linvel.z)
-    const currentSpeed = tmpLinvelDot.current.dot(forward)
+    // DECOMPOSIÇÃO forward/lateral no plano XZ — chave pra o drift.
+    // Sem isso, setLinvel matava toda velocidade lateral e não havia deriva.
+    const speedForward = linvel.x * forward.x + linvel.z * forward.z
+    const speedLateral = linvel.x * right.x + linvel.z * right.z
 
-    // acelera / freia — resposta arcade instantânea
-    let targetSpeed = currentSpeed
-    if (keys.current.w) targetSpeed = Math.min(MAX_SPEED, currentSpeed + ACCEL * MAX_SPEED / 3)
-    else if (keys.current.s) targetSpeed = Math.max(-MAX_SPEED * 0.4, currentSpeed - BRAKE * MAX_SPEED / 3)
-    else targetSpeed = currentSpeed * 0.997 // atrito mínimo — mantém velocidade tipo arcade
+    // Aceleração / frenagem no eixo forward
+    let targetForward = speedForward
+    if (keys.current.w) targetForward = Math.min(MAX_SPEED, speedForward + ACCEL * MAX_SPEED / 3)
+    else if (keys.current.s) targetForward = Math.max(-MAX_SPEED * 0.4, speedForward - BRAKE * MAX_SPEED / 3)
+    else targetForward = speedForward * 0.997
 
-    // JETPACK — F ou Espaço aplica impulso vertical (permite subir pra
-    // pistas altas cyan Y=8 e yellow Y=14). Sem limite de combustível.
+    // GRIP lateral: quanto da velocidade lateral é preservada por frame.
+    // Normal → 0.75 (carro "gruda" na direção que aponta, side vira rápido a 0)
+    // Drift → 0.985 (velocidade lateral persiste, carro desliza pra fora)
+    const lateralGrip = drifting ? 0.985 : 0.75
+    let targetLateral = speedLateral * lateralGrip
+    // Kick lateral no início do drift + curva: dá um "empurrão" pra fora
+    // pra sensação de o carro romper o grip. Simula rear-end quebrando.
+    if (drifting && (keys.current.a || keys.current.d)) {
+      const kick = (keys.current.a ? 1 : -1) * Math.min(Math.abs(speedForward) * 0.15, 6)
+      targetLateral += kick
+    }
+
+    // JETPACK — F ou Espaço
     let vy = linvel.y
     if (keys.current.jet) {
-      const JET_POWER = 22 // velocidade vertical alvo
-      vy = Math.max(vy, 0) + JET_POWER * 0.15 // acelera suave até JET_POWER
+      const JET_POWER = 24
+      vy = Math.max(vy, 0) + JET_POWER * 0.15
       if (vy > JET_POWER) vy = JET_POWER
     }
 
-    // aplica velocidade linear apenas no plano do forward (sem alocar Vector3)
-    const nvX = forward.x * targetSpeed
-    const nvZ = forward.z * targetSpeed
+    // Velocidade world = forward*targetForward + right*targetLateral
+    const nvX = forward.x * targetForward + right.x * targetLateral
+    const nvZ = forward.z * targetForward + right.z * targetLateral
     body.setLinvel({ x: nvX, y: vy, z: nvZ }, true)
 
-    // direção: CONSTANTE tipo arcade (não depende de velocidade — Horizon-style)
     let angvelY = 0
     if (keys.current.a) angvelY = TURN_RATE
     if (keys.current.d) angvelY = -TURN_RATE
-    if (currentSpeed < -0.5) angvelY = -angvelY
+    if (speedForward < -0.5) angvelY = -angvelY
     body.setAngvel({ x: 0, y: angvelY, z: 0 }, true)
 
-    // Atualiza speedRef (magnitude horizontal) pro Kombi (roda spin) sem setState
     const horizSpeed = Math.sqrt(linvel.x * linvel.x + linvel.z * linvel.z)
     speedRef.current = horizSpeed
   })
@@ -544,6 +559,7 @@ export default function DriveV2Page() {
           <kbd className="rounded border border-white/20 px-1.5">S/↓</kbd> freia/ré ·{" "}
           <kbd className="rounded border border-white/20 px-1.5">A D ← →</kbd> vira ·{" "}
           <kbd className="rounded border border-white/20 px-1.5">Shift</kbd> boost ·{" "}
+          <kbd className="rounded border border-white/20 px-1.5">X/C</kbd> drift ·{" "}
           <kbd className="rounded border border-white/20 px-1.5">F/␣</kbd> 🔥 jetpack ·{" "}
           <kbd className="rounded border border-white/20 px-1.5">V</kbd> visão
         </p>

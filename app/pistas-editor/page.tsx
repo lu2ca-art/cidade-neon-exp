@@ -30,54 +30,65 @@ interface Circuit {
 
 const STORAGE_KEY = "pistas-editor-v1"
 
-// Circuitos iniciais (mesmos que estão hoje em CyberpunkCity)
+// Helper: constrói circuito a partir de pontos [-1,1] normalizados + escala.
+// Y=2 é a base (o useEditedCircuits força altura real por circuito depois).
+function circuitFromNormalized(id: string, color: string, scale: number, pts: [number, number][]): Circuit {
+  return {
+    id,
+    color,
+    points: pts.map(([x, z]) => ({ x: x * scale, y: 2, z: z * scale })),
+  }
+}
+
+// PISTAS REAIS (F1). Coordenadas fiéis ao traçado geográfico visto de cima
+// (norte=-Z, sul=+Z). Escala pensada pro editor: aplicada * SCALE=1.5 vira
+// o tamanho final no jogo (~200-315u de diâmetro cobrindo a cidade).
 const DEFAULT_CIRCUITS: Circuit[] = [
-  {
-    id: "magenta",
-    color: "#ff00ff",
-    points: [
-      { x: 80, y: 2, z: 0 },
-      { x: 70, y: 2, z: 45 },
-      { x: 40, y: 2, z: 70 },
-      { x: 0, y: 2, z: 80 },
-      { x: -40, y: 2, z: 70 },
-      { x: -70, y: 2, z: 45 },
-      { x: -80, y: 2, z: 0 },
-      { x: -70, y: 2, z: -45 },
-      { x: -40, y: 2, z: -70 },
-      { x: 0, y: 2, z: -80 },
-      { x: 40, y: 2, z: -70 },
-      { x: 70, y: 2, z: -45 },
-    ],
-  },
-  {
-    id: "cyan",
-    color: "#00ffff",
-    points: [
-      { x: 45, y: 2, z: 0 },
-      { x: 32, y: 2, z: 32 },
-      { x: 0, y: 2, z: 45 },
-      { x: -32, y: 2, z: 32 },
-      { x: -45, y: 2, z: 0 },
-      { x: -32, y: 2, z: -32 },
-      { x: 0, y: 2, z: -45 },
-      { x: 32, y: 2, z: -32 },
-    ],
-  },
-  {
-    id: "yellow",
-    color: "#ffcc00",
-    points: [
-      { x: 50, y: 2, z: 15 },
-      { x: 25, y: 2, z: 25 },
-      { x: 0, y: 2, z: 15 },
-      { x: -25, y: 2, z: 0 },
-      { x: -50, y: 2, z: -15 },
-      { x: -25, y: 2, z: -25 },
-      { x: 0, y: 2, z: -15 },
-      { x: 25, y: 2, z: 0 },
-    ],
-  },
+  // MAGENTA = MONACO (sentido horário)
+  circuitFromNormalized("magenta", "#ff00ff", 133, [
+    [ 0.9,  0.85], [ 0.5,  0.9], [ 0.1,  0.92], [-0.25, 0.9],   // reta Boulevard Albert I
+    [-0.55, 0.82], [-0.7,  0.7],                                 // Sainte Dévote
+    [-0.75, 0.5], [-0.75, 0.25], [-0.7,  0.0],                   // Beau Rivage
+    [-0.6, -0.2], [-0.35,-0.35], [-0.05,-0.4],                   // Massenet + Casino Square
+    [ 0.2, -0.32], [ 0.4, -0.15], [ 0.55, 0.0], [ 0.6,  0.15],   // Mirabeau
+    [ 0.72, 0.25], [ 0.78, 0.3], [ 0.72, 0.38], [ 0.55, 0.4],    // Loews Hairpin 180°
+    [ 0.4,  0.35], [ 0.25, 0.3],                                 // Portier
+    [ 0.1,  0.35], [-0.05, 0.45], [-0.15, 0.55],                 // Túnel
+    [-0.15, 0.65], [-0.05, 0.7], [ 0.05, 0.6],                   // Nouvelle Chicane
+    [ 0.15, 0.55], [ 0.3,  0.45],                                // Tabac
+    [ 0.45, 0.5], [ 0.55, 0.6], [ 0.5,  0.72], [ 0.4,  0.78],    // Piscine (Louis Chiron)
+    [ 0.55, 0.85], [ 0.7,  0.88],                                // La Rascasse
+    [ 0.85, 0.88], [ 0.95, 0.85],                                // Anthony Noghès
+  ]),
+  // CIANO = SUZUKA (figura-8, sentido horário)
+  circuitFromNormalized("cyan", "#00ffff", 120, [
+    [-0.8,  0.85], [-0.5,  0.85], [-0.15, 0.85],                 // reta principal
+    [ 0.15, 0.75], [ 0.25, 0.55],                                // curvas 1-2
+    [ 0.15, 0.35], [ 0.0,  0.2], [-0.15, 0.05], [-0.05,-0.1], [ 0.15,-0.15],  // S curves
+    [ 0.25,-0.3], [ 0.2, -0.5],                                  // Dunlop
+    [ 0.05,-0.6], [-0.15,-0.6],                                  // Degner 1+2
+    [-0.35,-0.5],                                                 // aproximação hairpin
+    [-0.55,-0.35], [-0.75,-0.35], [-0.85,-0.25], [-0.85,-0.1], [-0.75, 0.05],  // Hairpin
+    [-0.55, 0.15], [-0.35, 0.15], [-0.15, 0.05], [-0.1, -0.1], [-0.25,-0.25],  // Spoon
+    [-0.2, -0.4], [ 0.05,-0.4], [ 0.3, -0.35],                   // 130R
+    [ 0.55,-0.25], [ 0.7, -0.1], [ 0.75, 0.1],                   // Casio Triangle
+    [ 0.7,  0.35], [ 0.55, 0.55], [ 0.3,  0.7], [ 0.0,  0.8], [-0.4,  0.85], [-0.7, 0.85],  // pit straight
+  ]),
+  // AMARELA = INTERLAGOS (anti-horário)
+  circuitFromNormalized("yellow", "#ffcc00", 140, [
+    [ 0.95, 0.55], [ 0.95, 0.3], [ 0.9,  0.1],                   // reta dos boxes
+    [ 0.75, 0.0], [ 0.55,-0.05], [ 0.35, 0.0],                   // S do Senna
+    [ 0.15, 0.1], [ 0.0,  0.2], [-0.15, 0.25],                   // Curva do Sol
+    [-0.35, 0.15], [-0.5,  0.05], [-0.6, -0.1],                  // reta oposta
+    [-0.65,-0.3], [-0.6, -0.5],                                  // Descida do Lago
+    [-0.5, -0.65], [-0.35,-0.7], [-0.15,-0.7],                   // Ferradura
+    [ 0.0, -0.65],                                               // Laranjinha
+    [ 0.15,-0.55],                                               // Pinheirinho
+    [ 0.25,-0.4], [ 0.15,-0.3], [ 0.05,-0.15],                   // Bico de Pato
+    [ 0.1,  0.0], [ 0.25, 0.1],                                  // Mergulho
+    [ 0.4,  0.2], [ 0.55, 0.35],                                 // Junção
+    [ 0.65, 0.5], [ 0.75, 0.6], [ 0.85, 0.6], [ 0.95, 0.6],      // Subida dos Boxes
+  ]),
 ]
 
 // Viewport 2D top-down: 600x600px representando ±160 unidades do mundo
@@ -211,7 +222,7 @@ export default function PistasEditorPage() {
   }, [circuits])
 
   const resetDefaults = useCallback(() => {
-    if (confirm("resetar todos os circuitos aos defaults?")) {
+    if (confirm("carregar traçados F1 reais (Monaco / Suzuka / Interlagos)?\nsobrescreve tudo que você editou.")) {
       setCircuits(DEFAULT_CIRCUITS)
       setSelectedIdx(null)
     }
@@ -339,9 +350,10 @@ export default function PistasEditorPage() {
           </button>
           <button
             onClick={resetDefaults}
-            className="rounded border border-white/20 bg-white/5 px-3 py-2 text-xs text-white hover:bg-white/10"
+            className="rounded border border-red-400/50 bg-red-950 px-3 py-2 text-xs font-bold uppercase tracking-widest text-red-200 hover:bg-red-900"
+            title="Monaco (magenta) · Suzuka (ciano) · Interlagos (amarela)"
           >
-            defaults
+            🏁 F1
           </button>
         </div>
 

@@ -21,14 +21,32 @@ const STORAGE_KEY = "pistas-editor-v1"
 // 3. Deduplicação de pontos idênticos ou muito próximos
 // 4. Ordenação por nearest-neighbor (TSP simples) pra evitar curvas
 //    "voltando pra trás" que cruzam a própria pista
-const SCALE = 1.5
+const SCALE = 2.4  // pistas GIGANTES cobrindo até o limite do deserto (~320u)
 const DEDUP_DIST_SQ = 400  // pontos a <20u são considerados o mesmo (era 5u)
-const MAX_POINTS_PER_CIRCUIT = 16 // limite pra pistas não ficarem hiperlotadas
+const MAX_POINTS_PER_CIRCUIT = 60 // suficiente pra shapes reais (Monaco 38, Suzuka 37)
+// Alturas por terço da altura dos prédios mais altos (h max ~50 no CyberpunkCity).
+// Cada pista OSCILA em torno de sua altura base (senoide com fase própria) —
+// cria efeito de "montanha-russa" orgânica onde pistas passam naturalmente
+// por baixo e por cima umas das outras ao longo do percurso.
 const CIRCUIT_HEIGHT: Record<string, number> = {
-  magenta: 2,
-  cyan: 8,
-  yellow: 14,
+  magenta: 6,
+  cyan: 22,
+  yellow: 38,
 }
+// Amplitude da onda vertical por circuito (variação ±u em torno da altura base)
+const CIRCUIT_WAVE_AMP: Record<string, number> = {
+  magenta: 4,
+  cyan: 5,
+  yellow: 6,
+}
+// Fase inicial da onda (rad) — diferente por circuito pra desencontrar picos
+const CIRCUIT_WAVE_PHASE: Record<string, number> = {
+  magenta: 0,
+  cyan: (2 * Math.PI) / 3,
+  yellow: (4 * Math.PI) / 3,
+}
+// Frequência da onda (nº de "morros" por volta completa)
+const WAVE_CYCLES = 3
 
 function dedupePoints(points: [number, number, number][]): [number, number, number][] {
   const out: [number, number, number][] = []
@@ -98,20 +116,29 @@ function decimate(points: [number, number, number][], maxN: number): [number, nu
   return out
 }
 
-// Pipeline de simplificação: dedup 20u → limita a 16 pontos → ordena
-// radialmente (loop garantido sem cruzamento próprio) → remove ângulos
-// >150° (dobras impossíveis). Altura Y = base do circuito + offset editor.
+// Pipeline de simplificação: SÓ dedup + decimate + remove ângulos absurdos.
+// NÃO reordena mais radialmente — isso destruía formas não-convexas como
+// Monaco (retangular c/ ferradura) ou Interlagos (loop em 8-like). Preserva
+// a ORDEM ORIGINAL dos pontos do editor pra manter o traçado desenhado.
 function applyRules(circuit: EditedCircuit): EditedCircuit {
   const baseY = CIRCUIT_HEIGHT[circuit.id] ?? 2
-  const scaled: [number, number, number][] = circuit.points.map((p) => [
-    p[0] * SCALE,
-    baseY + (p[1] - 2),
-    p[2] * SCALE,
-  ])
+  const amp = CIRCUIT_WAVE_AMP[circuit.id] ?? 0
+  const phase = CIRCUIT_WAVE_PHASE[circuit.id] ?? 0
+  const n = circuit.points.length
+  // Aplica: escala XZ + altura BASE + onda senoidal ao longo do percurso.
+  // A senoide faz cada pista subir/descer organicamente (roller-coaster).
+  const scaled: [number, number, number][] = circuit.points.map((p, i) => {
+    const t = n > 0 ? i / n : 0
+    const wave = amp * Math.sin(t * WAVE_CYCLES * 2 * Math.PI + phase)
+    return [
+      p[0] * SCALE,
+      baseY + wave + (p[1] - 2),
+      p[2] * SCALE,
+    ]
+  })
   const deduped = dedupePoints(scaled)
   const decimated = decimate(deduped, MAX_POINTS_PER_CIRCUIT)
-  const ordered = orderByAngleFromCentroid(decimated)
-  const smoothed = removeSharpAngles(ordered)
+  const smoothed = removeSharpAngles(decimated)
   return { ...circuit, points: smoothed }
 }
 

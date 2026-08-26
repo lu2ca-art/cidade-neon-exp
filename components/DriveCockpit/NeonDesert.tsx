@@ -8,7 +8,7 @@ import { useFrame } from "@react-three/fiber"
 import { useLayoutEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 
-const CITY_RADIUS = 260   // raio da cidade — deserto começa daqui
+const CITY_RADIUS = 360   // raio da cidade — deserto começa após as pistas GIGANTES
 const DESERT_RADIUS = 1500 // limite externo do deserto visível
 const N_PYRAMIDS = 120
 const N_OBELISKS = 40
