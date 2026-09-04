@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useCurrentSong } from "../lib/CurrentSongContext"
 import { PhoneShell } from "./PhoneShell"
 import { InstrumentHeader } from "./InstrumentHeader"
@@ -98,10 +98,71 @@ export function ChordInstrumentPage({
     })
   }
 
-  const handleNote = (midi: number) => {
+  const handleNote = useCallback((midi: number) => {
     if (instrument === "guitarra") engine?.previewGuitarNote(midi, timbreIdx)
     else engine?.previewPianoNote(midi, timbreIdx)
-  }
+  }, [engine, instrument, timbreIdx])
+
+  // ── TECLADO DESKTOP como MIDI controller ──
+  // Layout FL Studio: linhas Z-M (oitava baixa) + Q-P (oitava alta).
+  // Números 1-7 armam graus do acorde. Shift+↑/↓ transpõem oitava.
+  const [octaveShift, setOctaveShift] = useState(0)
+  const octaveShiftRef = useRef(octaveShift)
+  useEffect(() => { octaveShiftRef.current = octaveShift }, [octaveShift])
+
+  useEffect(() => {
+    // Mapa de tecla → semitom relativo a C4 (MIDI 60)
+    // Linha baixa (Z/X/C/V/B/N/M são teclas brancas, S/D/G/H/J pretas)
+    const KEY_TO_SEMITONE: Record<string, number> = {
+      // Oitava baixa (C4 = 60)
+      "z": 0, "s": 1, "x": 2, "d": 3, "c": 4, "v": 5, "g": 6,
+      "b": 7, "h": 8, "n": 9, "j": 10, "m": 11,
+      ",": 12, "l": 13, ".": 14, ";": 15, "/": 16,
+      // Oitava alta (C5 = 72)
+      "q": 12, "2": 13, "w": 14, "3": 15, "e": 16, "r": 17, "5": 18,
+      "t": 19, "6": 20, "y": 21, "7": 22, "u": 23,
+      "i": 24, "9": 25, "o": 26, "0": 27, "p": 28,
+    }
+    const heldKeys = new Set<string>()
+
+    const onDown = (e: KeyboardEvent) => {
+      // Ignora quando digitando em input/textarea
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
+      const k = e.key.toLowerCase()
+
+      // Graus do acorde: 1-7 armam
+      if (["1", "2", "3", "4", "5", "6", "7"].includes(k) && !e.shiftKey) {
+        const deg = parseInt(k, 10)
+        if (chordChoices.some((c) => c.degree === deg)) {
+          e.preventDefault()
+          setArmedDegree(deg)
+          return
+        }
+      }
+
+      // Shift + seta ↑/↓ transpõe oitava
+      if (e.shiftKey && k === "arrowup") { e.preventDefault(); setOctaveShift((v) => Math.min(3, v + 1)); return }
+      if (e.shiftKey && k === "arrowdown") { e.preventDefault(); setOctaveShift((v) => Math.max(-2, v - 1)); return }
+
+      // Notas
+      const semi = KEY_TO_SEMITONE[k]
+      if (semi === undefined || e.repeat || heldKeys.has(k)) return
+      e.preventDefault()
+      heldKeys.add(k)
+      const midi = 60 + semi + octaveShiftRef.current * 12
+      handleNote(midi)
+    }
+    const onUp = (e: KeyboardEvent) => {
+      heldKeys.delete(e.key.toLowerCase())
+    }
+    window.addEventListener("keydown", onDown)
+    window.addEventListener("keyup", onUp)
+    return () => {
+      window.removeEventListener("keydown", onDown)
+      window.removeEventListener("keyup", onUp)
+    }
+  }, [handleNote, chordChoices])
 
   const canAdd = song.tracks.length < MAX_TRACKS
 
@@ -142,6 +203,9 @@ export function ChordInstrumentPage({
         ) : (
           <PianoKeyboard chord={armedChord} accent={accent} onNote={handleNote} />
         )}
+        <p className="text-white/30 text-[8px] font-mono text-center leading-tight flex-shrink-0 hidden md:block">
+          teclado: <span style={{ color: accent }}>Z-M</span> / <span style={{ color: accent }}>Q-P</span> tocam · <span style={{ color: accent }}>1-7</span> armam grau · <span style={{ color: accent }}>Shift+↑↓</span> oitava{octaveShift !== 0 ? ` (${octaveShift > 0 ? "+" : ""}${octaveShift})` : ""}
+        </p>
 
         <ChordPalette chords={chordChoices} armedDegree={armedDegree} onArm={setArmedDegree} accent={accent} />
 
