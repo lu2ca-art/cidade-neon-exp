@@ -7,7 +7,14 @@
 import { useEffect, useRef } from "react"
 import type { RapierRigidBody } from "@react-three/rapier"
 
-export function Speedometer({ bodyRef }: { bodyRef: React.MutableRefObject<RapierRigidBody | null> }) {
+export function Speedometer({
+  bodyRef,
+  position = "bottom-right",
+}: {
+  bodyRef: React.MutableRefObject<RapierRigidBody | null>
+  /** "bottom-right" (desktop) ou "top-left" (mobile) pra não conflitar com pedais. */
+  position?: "bottom-right" | "top-left"
+}) {
   const displayRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const id = setInterval(() => {
@@ -20,8 +27,11 @@ export function Speedometer({ bodyRef }: { bodyRef: React.MutableRefObject<Rapie
     }, 80)
     return () => clearInterval(id)
   }, [bodyRef])
+  const posClass = position === "top-left"
+    ? "top-4 left-4"
+    : "bottom-6 right-6"
   return (
-    <div className="pointer-events-none absolute bottom-6 right-6 z-10 rounded border border-white/10 bg-black/80 px-4 py-3 text-right backdrop-blur-md">
+    <div className={`pointer-events-none absolute ${posClass} z-10 rounded border border-white/10 bg-black/80 px-4 py-3 text-right backdrop-blur-md`}>
       <div ref={displayRef} className="font-mono text-3xl font-bold text-[#00ffff]">0</div>
       <div className="text-[10px] uppercase tracking-widest text-white/50">km/h</div>
     </div>
