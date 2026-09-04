@@ -311,11 +311,10 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
   return null
 }
 
-// ─── Câmera 1ª pessoa (cockpit-locked, free-look com auto-return DELAYED) ──
-// Ao clicar+arrastar, olha até ±150° yaw (300° total) e ±60° pitch. Ao soltar,
-// câmera FICA PARADA no último ponto por 7s (LU2CA interage com painel/rádio
-// sem "puxão"). Passados 7s, começa a derivar suave pra frente.
-const YAW_LIMIT = (150 * Math.PI) / 180
+// ─── Câmera 1ª pessoa (cockpit-locked, só pitch dragável) ─────────────────
+// LU2CA pediu: câmera travada em Y/Z, só rotação X (pitch) responde ao
+// arraste. Yaw locked em 0 (sempre olha pra frente, sem swipe horizontal).
+// Pitch limitado a ±60° (olhar teto/painel). Auto-return depois de 7s parado.
 const PITCH_LIMIT = (60 * Math.PI) / 180
 const MOUSE_SENSITIVITY = 0.0025
 const HOLD_MS = 7000              // ms parado após soltar antes de começar a voltar
@@ -325,9 +324,7 @@ const HEAD_OFFSET_LOCAL = new THREE.Vector3(...KOMBI_LAYOUT.cameraMotorista.posi
 
 function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigidBody | null> }) {
   const { camera, gl } = useThree()
-  const yaw = useRef(0)
   const pitch = useRef(0)
-  const targetYaw = useRef(0)
   const targetPitch = useRef(0)
   const dragging = useRef(false)
   const releaseTime = useRef<number | null>(null)  // quando soltou o mouse
@@ -363,11 +360,10 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
     const onMove = (e: PointerEvent) => {
       if (!dragging.current) return
       if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return
-      const dx = e.clientX - lastX.current
       const dy = e.clientY - lastY.current
       lastX.current = e.clientX
       lastY.current = e.clientY
-      targetYaw.current = Math.max(-YAW_LIMIT, Math.min(YAW_LIMIT, targetYaw.current - dx * MOUSE_SENSITIVITY))
+      // YAW travado — só delta vertical altera pitch. Swipe horizontal ignorado.
       targetPitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, targetPitch.current - dy * MOUSE_SENSITIVITY))
     }
     el.style.cursor = "grab"
@@ -392,10 +388,9 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
     const body = target.current
     if (!body) return
 
-    // Passou o hold de 7s? → seta target pra frente e deriva
+    // Passou o hold de 7s? → volta pra pitch=0 (horizonte)
     if (!dragging.current && releaseTime.current !== null) {
       if (performance.now() - releaseTime.current >= HOLD_MS) {
-        targetYaw.current = 0
         targetPitch.current = 0
       }
     }
@@ -403,7 +398,6 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
     // Rate: enquanto arrasta = rápido; após hold+release = drift lento; parado = travado
     const rate = dragging.current ? DRAG_RESPONSE_RATE : RETURN_RATE
     const lerp = 1 - Math.exp(-delta * rate)
-    yaw.current += (targetYaw.current - yaw.current) * lerp
     pitch.current += (targetPitch.current - pitch.current) * lerp
 
     const t = body.translation()
@@ -414,7 +408,8 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
     headPos.add(new THREE.Vector3(t.x, t.y, t.z))
     camera.position.copy(headPos)
 
-    const cameraQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, 0, "YXZ"))
+    // YAW travado em 0 → sempre olha na direção da Kombi. Só pitch varia.
+    const cameraQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, 0, 0, "YXZ"))
     const desiredQuat = vanQuat.clone().multiply(cameraQuat)
     const rotLerp = 1 - Math.exp(-delta * 18)
     camera.quaternion.slerp(desiredQuat, rotLerp)
@@ -435,7 +430,7 @@ function TouchHint() {
   if (!visible) return null
   return (
     <div className="pointer-events-none absolute left-1/2 top-1/3 z-30 -translate-x-1/2 rounded-full border border-white/20 bg-black/70 px-4 py-2 text-[11px] uppercase tracking-widest text-white backdrop-blur-md animate-pulse">
-      arraste pra olhar ao redor →
+      arraste ↕ pra inclinar câmera
     </div>
   )
 }
@@ -626,8 +621,9 @@ export default function DriveV2Page() {
         {cameraMode === "third" ? "3ª pessoa" : "1ª pessoa"} · trocar
       </button>
 
-      {/* Speedometer isolado — lê linvel + escreve DOM direto (sem setState) */}
-      <Speedometer bodyRef={vanBodyRef} />
+      {/* Speedometer isolado — lê linvel + escreve DOM direto (sem setState).
+          Mobile: top-left (livra o bottom pros pedais). Desktop: bottom-right. */}
+      <Speedometer bodyRef={vanBodyRef} position={isTouch ? "top-left" : "bottom-right"} />
 
       {/* Controles touch — só em mobile. Disparam KeyboardEvent sintético
           (w/a/s/d/shift/f) então o VanBody consome igual ao desktop. */}
@@ -709,10 +705,11 @@ export default function DriveV2Page() {
       {/* Player mini antigo REMOVIDO — substituído pelo RadioMusicalPanel único
           que muda de posição/tamanho baseado no modo de câmera. */}
 
-      {/* HUB dock (bottom-left) — apps do celular. SÓ em 3ª pessoa.
-          Em 1ª pessoa, os apps aparecem no CarPanelDisplay (dentro do carro,
-          página "apps" swipeable). Interface FP fica limpa. */}
-      {!isFirstPerson && (
+      {/* HUB dock (bottom-left) — apps do celular. SÓ em 3ª pessoa DESKTOP.
+          Em mobile, os controles ocupam o bottom — user usa botão "celular"
+          pra abrir os apps. Em 1ª pessoa, os apps aparecem no CarPanelDisplay
+          (dentro do carro, página "apps" swipeable). */}
+      {!isFirstPerson && !isTouch && (
       <div className="pointer-events-auto absolute bottom-6 left-6 z-10">
         <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur-md">
           {HUB_APPS.map((app) => {

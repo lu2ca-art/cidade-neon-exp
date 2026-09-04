@@ -16,13 +16,11 @@ export interface KombiPart {
 export const KOMBI_LAYOUT = {
   // ── Câmera (POV motorista) ──
   cameraMotorista: {
-    // POV motorista — bem recuada pra enquadrar cockpit inteiro (volante,
-    // painel, rádio) mesmo em portrait mobile. Z=0.75 é meio do salão,
-    // Y=0.85 é altura do banco. Sensação de "passageiro/observador" >
-    // "motorista real", mas garante que o interior CAIBA na tela.
-    // Ordem de iteração: Z=-0.5 → 0.25 → 0.75 (agora), ajustar aqui se
-    // sentir muito longe.
-    position: [-0.4, 0.85, 0.75] as Vec3,
+    // POV motorista — Y elevado (1.05) pra altura de cabeça em pé no salão,
+    // Z=0.75 no meio da Kombi. Câmera FIXA (só rotação X/pitch dragável),
+    // ver CockpitFPCamera. Iterações: [-0.5,1.15,-0.5] → [0.25,0.95] →
+    // [0.75,0.85] → [0.75,1.05] (atual).
+    position: [-0.4, 1.05, 0.75] as Vec3,
     rotation: [0.05, 0, 0] as Vec3,
     size: [0.12, 0.12, 0.12] as Vec3,
     color: "#ffffff",
