@@ -188,10 +188,16 @@ function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, car
     posOut.current.y = worldY
     posOut.current.z = worldZ
 
-    // Orientação: yaw pela tangente da curva, pitch leve seguindo a rampa
+    // Orientação: yaw pela tangente da curva, pitch leve seguindo a rampa.
+    // Forward LOCAL da van é -Z (convenção usada em todo o resto do
+    // arquivo) — em yaw=0 isso aponta pra (0,0,-1), então pra apontar na
+    // direção do tangent preciso do sinal invertido (atan2(-x,-z), não
+    // atan2(x,z)). Sem isso a van fica de costas pra onde anda: câmera de
+    // 3ª pessoa via a frente do carro em vez de atrás, e no cockpit o
+    // olhar apontava pra onde a pista JÁ tinha passado, não pra onde vai.
     const horizLen = Math.sqrt(tangent.x * tangent.x + tangent.z * tangent.z) || 1
-    const yaw = Math.atan2(tangent.x, tangent.z)
-    const pitch = -Math.atan2(tangent.y, horizLen)
+    const yaw = Math.atan2(-tangent.x, -tangent.z)
+    const pitch = Math.atan2(tangent.y, horizLen)
     tmpEuler.current.set(pitch, yaw, 0, "YXZ")
     tmpQuat.current.setFromEuler(tmpEuler.current)
     rotOut.current.x = tmpQuat.current.x
