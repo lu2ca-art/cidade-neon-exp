@@ -195,15 +195,25 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
   const desiredLook = useRef(new THREE.Vector3(0, 1, 0))
   // Orbit atual + target (pra retorno automático quando solta o mouse)
   const yaw = useRef(0)
-  const pitch = useRef(0.35)
+  const pitch = useRef(0.28)
   const targetYaw = useRef(0)
-  const targetPitch = useRef(0.35)
+  const targetPitch = useRef(0.28)
   const zoom = useRef(1)
   const dragging = useRef(false)
   // Alocações reutilizáveis pro useFrame
   const camQuat = useRef(new THREE.Quaternion())
   const camBackward = useRef(new THREE.Vector3())
   const camAxisY = useRef(new THREE.Vector3(0, 1, 0))
+  // Rotação da van SUAVIZADA — a rotação crua do corpo físico (Rapier) tem
+  // ruído de alta frequência (contato de roda, suspensão), mais forte sob
+  // aceleração. Usar ela direto pra calcular a direção da câmera faz a
+  // câmera tremer junto. Filtra com um slerp de baixa passagem antes de
+  // derivar qualquer direção — a van visualmente ainda vira normal (yaw
+  // real do veículo é lento comparado à taxa de suavização), só o ruído
+  // de alta frequência é cortado.
+  const smoothVanQuat = useRef(new THREE.Quaternion())
+  const rawVanQuat = useRef(new THREE.Quaternion())
+  const smoothInit = useRef(false)
 
   useEffect(() => {
     const el = gl.domElement
@@ -254,7 +264,16 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
 
     const t = body.translation()
     const r = body.rotation()
-    camQuat.current.set(r.x, r.y, r.z, r.w)
+    rawVanQuat.current.set(r.x, r.y, r.z, r.w)
+    if (!smoothInit.current) {
+      // primeiro frame: copia direto, sem suavizar a partir de identidade
+      smoothVanQuat.current.copy(rawVanQuat.current)
+      smoothInit.current = true
+    } else {
+      const rotSmoothing = 1 - Math.exp(-delta * 10)
+      smoothVanQuat.current.slerp(rawVanQuat.current, rotSmoothing)
+    }
+    camQuat.current.copy(smoothVanQuat.current)
 
     // Van forward LOCAL = -Z. Backward local = +Z. Rotaciona pelo quaternion
     // da van pra ter world backward. Reutiliza refs — evita GC.
@@ -262,9 +281,9 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
     camBackward.current.applyAxisAngle(camAxisY.current, yaw.current)
     const backward = camBackward.current
 
-    const BASE_DIST = 11
+    const BASE_DIST = 12
     const dist = BASE_DIST * zoom.current
-    const height = Math.sin(pitch.current) * dist + 1.5
+    const height = Math.sin(pitch.current) * dist + 1.8
     const horiz = Math.cos(pitch.current) * dist
 
     // Câmera = van + backward * horiz (no plano XZ) + altura
@@ -273,7 +292,9 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
       t.y + height,
       t.z + backward.z * horiz
     )
-    desiredLook.current.set(t.x, t.y + 0.5, t.z)
+    // Mira num ponto ACIMA da van (não no chão/carroceria) — aponta mais
+    // pro horizonte em vez de pra baixo, estilo chase-cam Horizon.
+    desiredLook.current.set(t.x, t.y + 2.2, t.z)
 
     // DUCK UNDER — raycast da van até câmera. Se bater em uma pista/prédio,
     // recua a câmera pra logo antes do hit (câmera "passa por baixo" do
@@ -327,6 +348,12 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
   const pitch = useRef(0)
   const targetPitch = useRef(0)
   const dragging = useRef(false)
+  // Mesma suavização anti-tremedeira da câmera 3ª pessoa — aqui é ainda
+  // mais crítico porque a câmera fica colada no motorista, então qualquer
+  // ruído da física vira tela toda tremendo.
+  const smoothVanQuat = useRef(new THREE.Quaternion())
+  const rawVanQuat = useRef(new THREE.Quaternion())
+  const smoothInit = useRef(false)
   const releaseTime = useRef<number | null>(null)  // quando soltou o mouse
   // Últimas coords do pointer — touch não tem movementX/Y nativo consistente
   // em iOS Safari, então calcula delta manualmente entre frames.
@@ -402,11 +429,20 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigi
 
     const t = body.translation()
     const r = body.rotation()
-    const vanQuat = new THREE.Quaternion(r.x, r.y, r.z, r.w)
+    rawVanQuat.current.set(r.x, r.y, r.z, r.w)
+    if (!smoothInit.current) {
+      smoothVanQuat.current.copy(rawVanQuat.current)
+      smoothInit.current = true
+    } else {
+      const rotSmoothing = 1 - Math.exp(-delta * 10)
+      smoothVanQuat.current.slerp(rawVanQuat.current, rotSmoothing)
+    }
+    const vanQuat = smoothVanQuat.current
 
     const headPos = HEAD_OFFSET_LOCAL.clone().applyQuaternion(vanQuat)
     headPos.add(new THREE.Vector3(t.x, t.y, t.z))
-    camera.position.copy(headPos)
+    const posLerp = 1 - Math.exp(-delta * 14)
+    camera.position.lerp(headPos, posLerp)
 
     // YAW travado em 0 → sempre olha na direção da Kombi. Só pitch varia.
     const cameraQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, 0, 0, "YXZ"))
