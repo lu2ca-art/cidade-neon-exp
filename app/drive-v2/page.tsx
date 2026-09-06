@@ -262,18 +262,6 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<Kinemati
   const camQuat = useRef(new THREE.Quaternion())
   const camBackward = useRef(new THREE.Vector3())
   const camAxisY = useRef(new THREE.Vector3(0, 1, 0))
-  // Posição da van SUAVIZADA — a rotação é travada só no eixo Y
-  // (enabledRotations={[false,true,false]}), então não tem ruído de
-  // suspensão/contato pra filtrar aí. O bounce físico real (contato,
-  // restitution) aparece na TRANSLAÇÃO (principalmente Y). Filtra a
-  // posição crua com um lerp de baixa passagem antes de qualquer cálculo
-  // — sem isso, o tremor vertical vai direto pro desiredPos, e sem isso
-  // TAMBÉM a câmera final (mais responsiva) amplificava esse ruído em vez
-  // de só seguir o movimento real do carro.
-  const smoothVanPos = useRef(new THREE.Vector3())
-  const rawVanPos = useRef(new THREE.Vector3())
-  const smoothInit = useRef(false)
-
   useEffect(() => {
     const el = gl.domElement
     const onDown = (e: MouseEvent) => {
@@ -321,21 +309,12 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<Kinemati
     yaw.current += (targetYaw.current - yaw.current) * l
     pitch.current += (targetPitch.current - pitch.current) * l
 
-    const tRaw = body.translation()
+    // Corpo cinemático (trilho) — posição/rotação já vêm exatas da curva,
+    // sem ruído de física. Suavizar aqui só atrasaria a câmera em relação
+    // à van de verdade (ver comentário equivalente em CockpitFPCamera).
+    const t = body.translation()
     const r = body.rotation()
-    // normalize — ver comentário em CockpitFPCamera (drift numérico do
-    // quaternion da física escala vetores em vez de só rotacionar)
     camQuat.current.set(r.x, r.y, r.z, r.w).normalize()
-
-    rawVanPos.current.set(tRaw.x, tRaw.y, tRaw.z)
-    if (!smoothInit.current) {
-      smoothVanPos.current.copy(rawVanPos.current)
-      smoothInit.current = true
-    } else {
-      const posSmoothing = 1 - Math.exp(-delta * 14)
-      smoothVanPos.current.lerp(rawVanPos.current, posSmoothing)
-    }
-    const t = smoothVanPos.current
 
     // Van forward LOCAL = -Z. Backward local = +Z. Rotaciona pelo quaternion
     // da van pra ter world backward. Reutiliza refs — evita GC.
@@ -415,13 +394,6 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<KinematicB
   const pitch = useRef(0)
   const targetPitch = useRef(0)
   const dragging = useRef(false)
-  // Mesma suavização de POSIÇÃO da câmera 3ª pessoa (rotação é travada em
-  // Y, não precisa de filtro — ver comentário em ThirdPersonCamera). Aqui
-  // é ainda mais crítico porque a câmera fica colada no motorista, então
-  // qualquer bounce vertical vira tela toda tremendo.
-  const smoothVanPos = useRef(new THREE.Vector3())
-  const rawVanPos = useRef(new THREE.Vector3())
-  const smoothInit = useRef(false)
   const releaseTime = useRef<number | null>(null)  // quando soltou o mouse
   // Últimas coords do pointer — touch não tem movementX/Y nativo consistente
   // em iOS Safari, então calcula delta manualmente entre frames.
@@ -497,29 +469,17 @@ function CockpitFPCamera({ target }: { target: React.MutableRefObject<KinematicB
 
     const tRaw = body.translation()
     const r = body.rotation()
-    // NORMALIZE — quaternion da física pode perder a normalização (drift
-    // numérico) depois de muitos frames de setAngvel/contato acumulado,
-    // principalmente sustentando velocidade alta por tempo longo. Um
-    // quaternion não-unitário faz applyQuaternion ESCALAR o vetor em vez
-    // de só rotacionar — HEAD_OFFSET_LOCAL (offset fixo do banco do
-    // motorista) encolhia/distorcia até a câmera cair pra dentro do
-    // próprio corpo da van. Non-issue pra rotação em si (Y só, então gira
-    // pouco), mas fatal pra qualquer vetor aplicado a ela.
+    // O corpo agora é cinemático (trilho) — posição e rotação já vêm
+    // exatas, direto da curva, sem ruído de física pra filtrar. Suavizar
+    // a posição aqui (como fazia quando a fonte era física) SÓ atrasava
+    // a câmera em relação à van de verdade (que VanBody desenha com a
+    // posição exata, sem atraso nenhum) — em curva fechada e velocidade
+    // alta, esse desalinho jogava a câmera pra fora de onde a van
+    // realmente estava, caindo dentro do corpo dela. Usa tRaw direto.
     const vanQuat = new THREE.Quaternion(r.x, r.y, r.z, r.w).normalize()
 
-    rawVanPos.current.set(tRaw.x, tRaw.y, tRaw.z)
-    if (!smoothInit.current) {
-      smoothVanPos.current.copy(rawVanPos.current)
-      smoothInit.current = true
-    } else {
-      const posSmoothing = 1 - Math.exp(-delta * 14)
-      smoothVanPos.current.lerp(rawVanPos.current, posSmoothing)
-    }
-
     const headPos = HEAD_OFFSET_LOCAL.clone().applyQuaternion(vanQuat)
-    headPos.add(smoothVanPos.current)
-    // Posição já vem da translação filtrada — pode copiar direto (câmera
-    // colada no motorista, sem lag) sem reintroduzir tremor.
+    headPos.add(new THREE.Vector3(tRaw.x, tRaw.y, tRaw.z))
     camera.position.copy(headPos)
 
     // YAW travado em 0 → sempre olha na direção da Kombi. Só pitch varia.
