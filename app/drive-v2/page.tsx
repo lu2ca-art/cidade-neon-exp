@@ -7,7 +7,7 @@
 // Referência: Shopify Horizon Drive.
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { Physics, RigidBody, CuboidCollider, useRapier, type RapierRigidBody } from "@react-three/rapier"
+import { Physics, useRapier } from "@react-three/rapier"
 import Link from "next/link"
 import { Suspense, useEffect, useRef, useState } from "react"
 import * as THREE from "three"
@@ -23,16 +23,37 @@ import { PortaLuvasModal } from "@/components/DriveHUD/PortaLuvasModal"
 import { Speedometer } from "@/components/DriveHUD/Speedometer"
 import { MobileControls } from "@/components/DriveHUD/MobileControls"
 import type { InventoryAction } from "@/lib/inventory-items"
-import { CyberpunkCity, magentaSpawn } from "@/components/DriveCockpit/CyberpunkCity"
+import { CyberpunkCity, getMagentaCurve, ROAD_WIDTH } from "@/components/DriveCockpit/CyberpunkCity"
 import { NeonDesert } from "@/components/DriveCockpit/NeonDesert"
 import { CidadeNeonSplash } from "@/components/DriveCockpit/CidadeNeonSplash"
 import { Kombi } from "@/components/DriveCockpit/Kombi"
-import { KOMBI_LAYOUT, KOMBI_COLLIDER_HALF } from "@/lib/kombi-layout"
+import { KOMBI_LAYOUT } from "@/lib/kombi-layout"
 import { useRouter } from "next/navigation"
 
-// ─── Corpo físico do carro + controles de teclado ───────────────────────────
+// ─── Corpo cinemático do carro, preso à curva da pista ──────────────────────
+// LU2CA pediu movimento em TRILHO igual ao Shopify Horizon Drive: a posição
+// nunca é livre, é sempre (progresso na curva + offset lateral clampado à
+// largura da pista) — sair da pista deixa de ser um bug possível, porque a
+// posição literalmente não consegue representar "fora da pista". Antes disso
+// era física livre (Rapier) com guard rails/CCD tentando conter o carro —
+// funcionava até certa velocidade, mas qualquer furo na malha de colisão
+// (junção de segmentos, cruzamento de circuitos) deixava o carro escapar
+// pra dentro dos prédios.
+interface KinematicBody {
+  translation(): { x: number; y: number; z: number }
+  rotation(): { x: number; y: number; z: number; w: number }
+  linvel(): { x: number; y: number; z: number }
+}
+
+const MAGENTA_CURVE = getMagentaCurve()
+const MAGENTA_CURVE_LENGTH = MAGENTA_CURVE.getLength()
+// Margem de segurança lateral — metade da largura do carro + folga, pra
+// nunca sobrepor visualmente o guard rail neon nas bordas da pista.
+const LATERAL_MARGIN = 2
+const MAX_LATERAL = ROAD_WIDTH / 2 - LATERAL_MARGIN
+
 interface VanBodyProps {
-  bodyRef: React.MutableRefObject<RapierRigidBody | null>
+  bodyRef: React.MutableRefObject<KinematicBody | null>
   showCockpit: boolean
   onCockpitItem?: (item: "radio" | "pads" | "toca" | "portaLuvas") => void
   isPlaying: boolean
@@ -45,9 +66,6 @@ interface VanBodyProps {
 
 function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, carRadioActiveTier, carRadioDialPct, carRadioOn, carPanelDisplay }: VanBodyProps) {
   const keys = useRef({ w: false, a: false, s: false, d: false, shift: false, jet: false, drift: false })
-  const tmpQuat = useRef(new THREE.Quaternion())
-  const tmpForward = useRef(new THREE.Vector3())
-  const tmpRight = useRef(new THREE.Vector3())
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -79,96 +97,125 @@ function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, car
     }
   }, [])
 
-  useFrame(() => {
-    const body = bodyRef.current
-    if (!body) return
+  // Estado do trilho — tudo em refs (lido/escrito só dentro do useFrame,
+  // sem re-render). progress: 0..1 fração ao longo da curva fechada.
+  const progressRef = useRef(0)
+  const forwardSpeedRef = useRef(0)
+  const lateralRef = useRef(0)
+  const lateralVelRef = useRef(0)
+  const jetYRef = useRef(0)
 
-    const rot = body.rotation()
-    tmpQuat.current.set(rot.x, rot.y, rot.z, rot.w)
-    // forward local (-Z) e right local (+X) rotacionados pra world space
-    tmpForward.current.set(0, 0, -1).applyQuaternion(tmpQuat.current)
-    tmpRight.current.set(1, 0, 0).applyQuaternion(tmpQuat.current)
-    const forward = tmpForward.current
-    const right = tmpRight.current
+  const groupRef = useRef<THREE.Group>(null!)
+  const posOut = useRef({ x: 0, y: 0, z: 0 })
+  const rotOut = useRef({ x: 0, y: 0, z: 0, w: 1 })
+  const velOut = useRef({ x: 0, y: 0, z: 0 })
+  const tmpQuat = useRef(new THREE.Quaternion())
+  const tmpEuler = useRef(new THREE.Euler())
 
-    // ── Tuning arcade Horizon-style ──
+  // Objeto estável — mesma interface do RigidBody que câmeras/Speedometer
+  // já esperavam (.translation()/.rotation()/.linvel()), mas lendo dos
+  // refs acima em vez de física. Setado uma vez, nunca recriado.
+  const kinematicBody = useRef<KinematicBody>({
+    translation: () => posOut.current,
+    rotation: () => rotOut.current,
+    linvel: () => velOut.current,
+  }).current
+  useEffect(() => { bodyRef.current = kinematicBody }, [bodyRef, kinematicBody])
+
+  useFrame((_, delta) => {
+    // ── Tuning arcade Horizon-style (mesmos números de antes, só que
+    // agora aplicados a progresso-na-curva + offset lateral em vez de
+    // velocidade linear/angular livre) ──
     const drifting = keys.current.drift
-    const MAX_SPEED = keys.current.shift ? 75 : 50    // +boost geral
-    const ACCEL = 1.1                                  // ramp-up mais agressivo
+    const MAX_SPEED = keys.current.shift ? 75 : 50
+    const ACCEL = 1.1
     const BRAKE = 1.2
-    // Turn maior no drift (carro rotaciona mais rápido do que a inércia
-    // consegue seguir → sensação de derrapar pra fora da curva)
     const TURN_RATE = drifting ? 3.6 : 2.6
 
-    const linvel = body.linvel()
-    // DECOMPOSIÇÃO forward/lateral no plano XZ — chave pra o drift.
-    // Sem isso, setLinvel matava toda velocidade lateral e não havia deriva.
-    const speedForward = linvel.x * forward.x + linvel.z * forward.z
-    const speedLateral = linvel.x * right.x + linvel.z * right.z
+    let speed = forwardSpeedRef.current
+    if (keys.current.w) speed = Math.min(MAX_SPEED, speed + ACCEL * MAX_SPEED / 3)
+    else if (keys.current.s) speed = Math.max(-MAX_SPEED * 0.4, speed - BRAKE * MAX_SPEED / 3)
+    else speed = speed * 0.997
+    forwardSpeedRef.current = speed
 
-    // Aceleração / frenagem no eixo forward
-    let targetForward = speedForward
-    if (keys.current.w) targetForward = Math.min(MAX_SPEED, speedForward + ACCEL * MAX_SPEED / 3)
-    else if (keys.current.s) targetForward = Math.max(-MAX_SPEED * 0.4, speedForward - BRAKE * MAX_SPEED / 3)
-    else targetForward = speedForward * 0.997
+    // Lateral: A/D acelera o deslocamento lateral (steer). Grip mais baixo
+    // em drift = desliza mais e demora mais pra voltar ao centro — mesma
+    // sensação de derrapar da versão com física, só que sempre clampado
+    // à largura da pista, nunca saindo dela.
+    const STEER_ACCEL = TURN_RATE * 2.2
+    let lateralVel = lateralVelRef.current
+    if (keys.current.a) lateralVel -= STEER_ACCEL
+    else if (keys.current.d) lateralVel += STEER_ACCEL
+    const grip = drifting ? 0.985 : 0.82
+    lateralVel *= grip
+    let lateral = lateralRef.current + lateralVel * delta
+    if (lateral > MAX_LATERAL) { lateral = MAX_LATERAL; lateralVel = 0 }
+    if (lateral < -MAX_LATERAL) { lateral = -MAX_LATERAL; lateralVel = 0 }
+    lateralVelRef.current = lateralVel
+    lateralRef.current = lateral
 
-    // GRIP lateral: quanto da velocidade lateral é preservada por frame.
-    // Normal → 0.75 (carro "gruda" na direção que aponta, side vira rápido a 0)
-    // Drift → 0.985 (velocidade lateral persiste, carro desliza pra fora)
-    const lateralGrip = drifting ? 0.985 : 0.75
-    let targetLateral = speedLateral * lateralGrip
-    // Kick lateral no início do drift + curva: dá um "empurrão" pra fora
-    // pra sensação de o carro romper o grip. Simula rear-end quebrando.
-    if (drifting && (keys.current.a || keys.current.d)) {
-      const kick = (keys.current.a ? 1 : -1) * Math.min(Math.abs(speedForward) * 0.15, 6)
-      targetLateral += kick
+    // JETPACK — bob vertical cosmético, decai sozinho quando solta
+    let jetY = jetYRef.current
+    if (keys.current.jet) jetY = Math.min(jetY + 24 * delta, 6)
+    else jetY = Math.max(jetY - 10 * delta, 0)
+    jetYRef.current = jetY
+
+    // Avança progresso na curva — getPointAt/getTangentAt são
+    // arc-length-parametrizados (uniformes em distância real), então
+    // speed em unidades/seg funciona direto sem distorção nas curvas.
+    let progress = progressRef.current + (speed * delta) / MAGENTA_CURVE_LENGTH
+    progress = ((progress % 1) + 1) % 1
+    progressRef.current = progress
+
+    const point = MAGENTA_CURVE.getPointAt(progress)
+    const tangent = MAGENTA_CURVE.getTangentAt(progress)
+
+    // "Right" no plano XZ, perpendicular ao tangent (ignora componente Y
+    // da rampa pro offset lateral não inclinar o carro pro lado errado)
+    const rightX = tangent.z
+    const rightZ = -tangent.x
+    const rightLen = Math.sqrt(rightX * rightX + rightZ * rightZ) || 1
+    const rx = rightX / rightLen
+    const rz = rightZ / rightLen
+
+    // +1.5 — mesmo offset que o spawn antigo usava pra pousar a van EM
+    // CIMA da laje da pista, não na altura do centro dela.
+    const worldX = point.x + rx * lateral
+    const worldY = point.y + 1.5 + jetY
+    const worldZ = point.z + rz * lateral
+
+    posOut.current.x = worldX
+    posOut.current.y = worldY
+    posOut.current.z = worldZ
+
+    // Orientação: yaw pela tangente da curva, pitch leve seguindo a rampa
+    const horizLen = Math.sqrt(tangent.x * tangent.x + tangent.z * tangent.z) || 1
+    const yaw = Math.atan2(tangent.x, tangent.z)
+    const pitch = -Math.atan2(tangent.y, horizLen)
+    tmpEuler.current.set(pitch, yaw, 0, "YXZ")
+    tmpQuat.current.setFromEuler(tmpEuler.current)
+    rotOut.current.x = tmpQuat.current.x
+    rotOut.current.y = tmpQuat.current.y
+    rotOut.current.z = tmpQuat.current.z
+    rotOut.current.w = tmpQuat.current.w
+
+    velOut.current.x = tangent.x * speed + rx * lateralVel
+    velOut.current.y = 0
+    velOut.current.z = tangent.z * speed + rz * lateralVel
+
+    speedRef.current = Math.abs(speed)
+
+    if (groupRef.current) {
+      groupRef.current.position.set(worldX, worldY, worldZ)
+      groupRef.current.quaternion.copy(tmpQuat.current)
     }
-
-    // JETPACK — F ou Espaço
-    let vy = linvel.y
-    if (keys.current.jet) {
-      const JET_POWER = 24
-      vy = Math.max(vy, 0) + JET_POWER * 0.15
-      if (vy > JET_POWER) vy = JET_POWER
-    }
-
-    // Velocidade world = forward*targetForward + right*targetLateral
-    const nvX = forward.x * targetForward + right.x * targetLateral
-    const nvZ = forward.z * targetForward + right.z * targetLateral
-    body.setLinvel({ x: nvX, y: vy, z: nvZ }, true)
-
-    let angvelY = 0
-    if (keys.current.a) angvelY = TURN_RATE
-    if (keys.current.d) angvelY = -TURN_RATE
-    if (speedForward < -0.5) angvelY = -angvelY
-    body.setAngvel({ x: 0, y: angvelY, z: 0 }, true)
-
-    const horizSpeed = Math.sqrt(linvel.x * linvel.x + linvel.z * linvel.z)
-    speedRef.current = horizSpeed
   })
 
-  const half = KOMBI_COLLIDER_HALF as unknown as [number, number, number]
   // sync steer visual das rodas com o steer real do jogador
   const steerVisual = keys.current.a ? 1 : keys.current.d ? -1 : 0
 
   return (
-    <RigidBody
-      ref={bodyRef}
-      colliders={false}
-      position={magentaSpawn()}
-      rotation={[0, 0, 0]}
-      restitution={0.2}
-      friction={0.3}
-      linearDamping={0.02}
-      angularDamping={4}
-      enabledRotations={[false, true, false]}
-      // Sem CCD, um corpo rápido pode atravessar (tunelar) colliders finos
-      // num único passo de física — em alta velocidade a van ia literalmente
-      // pra dentro de prédios/paredes, e a câmera só mostrava fielmente
-      // onde o corpo físico realmente estava (bug de física, não de câmera).
-      ccd
-    >
-      <CuboidCollider args={half} />
+    <group ref={groupRef}>
       {/* Kombi hippie — layout exato do /kombi-editor. Em 3ª pessoa mostra
           só exterior (interior bloqueia visão); em 1ª pessoa mostra o
           interior completo (câmera dentro do carro). */}
@@ -186,14 +233,14 @@ function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, car
         }}
       />
       {carPanelDisplay}
-    </RigidBody>
+    </group>
   )
 }
 
 // ─── Câmera 3ª pessoa (elastic follow atrás e acima da van) ─────────────────
 export type CameraMode = "third" | "first"
 
-function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRigidBody | null> }) {
+function ThirdPersonCamera({ target }: { target: React.MutableRefObject<KinematicBody | null> }) {
   const { camera, gl } = useThree()
   const { rapier, world } = useRapier()
   const desiredPos = useRef(new THREE.Vector3(0, 6, 12))
@@ -317,11 +364,10 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
       const rayDir = { x: dx / dLen, y: dy / dLen, z: dz / dLen }
       // castRay retorna null OU objeto com toi (distância normalizada 0..maxTOI)
       const ray = new rapier.Ray(rayOrigin, rayDir)
-      // Exclui o RigidBody da van do raycast — sem isso, o próprio carro
-      // hita o raio e a câmera "aproxima" pra dentro da Kombi.
-      // Assinatura: (ray, maxToi, solid, filterFlags?, filterGroups?,
-      //              filterExcludeCollider?, filterExcludeRigidBody?)
-      const hit = world.castRay(ray, dLen, true, undefined, undefined, undefined, body)
+      // A van não tem mais RigidBody próprio (movimento cinemático em
+      // trilho), então não precisa excluir nada do raycast — só a
+      // pista/prédios têm collider agora.
+      const hit = world.castRay(ray, dLen, true)
       if (hit) {
         // Recua pra 90% da distância do hit, com um piso mínimo — sem o
         // piso, um hit muito perto (raycast bugado, geometria fina, frame
@@ -358,7 +404,7 @@ const DRAG_RESPONSE_RATE = 14     // rate lerp enquanto arrasta (resposta imedia
 const RETURN_RATE = 1.5           // rate lerp após os 7s (drift suave até frente)
 const HEAD_OFFSET_LOCAL = new THREE.Vector3(...KOMBI_LAYOUT.cameraMotorista.position)
 
-function CockpitFPCamera({ target }: { target: React.MutableRefObject<RapierRigidBody | null> }) {
+function CockpitFPCamera({ target }: { target: React.MutableRefObject<KinematicBody | null> }) {
   const { camera, gl } = useThree()
   const pitch = useRef(0)
   const targetPitch = useRef(0)
@@ -499,7 +545,7 @@ function TouchHint() {
 
 // ─── Página ─────────────────────────────────────────────────────────────────
 export default function DriveV2Page() {
-  const vanBodyRef = useRef<RapierRigidBody | null>(null)
+  const vanBodyRef = useRef<KinematicBody | null>(null)
   // speed é REF (não state) — atualizado pelo VanBody useFrame + lido pelo
   // Kombi (rodas girando) e Speedometer (interval + DOM direto). Sem
   // setState no root: elimina 12 re-renders/s que reinstanciavam handlers.
@@ -561,21 +607,8 @@ export default function DriveV2Page() {
 
   const isFirstPerson = cameraMode === "first"
 
-  // Respawn: se cair muito abaixo do chão, teleporta pro spawn.
-  useEffect(() => {
-    const id = setInterval(() => {
-      const b = vanBodyRef.current
-      if (!b) return
-      const t = b.translation()
-      if (t.y < -8) {
-        const spawn = magentaSpawn()
-        b.setTranslation({ x: spawn[0], y: spawn[1] + 2, z: spawn[2] }, true)
-        b.setLinvel({ x: 0, y: 0, z: 0 }, true)
-        b.setAngvel({ x: 0, y: 0, z: 0 }, true)
-      }
-    }, 80)
-    return () => clearInterval(id)
-  }, [])
+  // Sem watchdog de respawn — movimento em trilho nunca sai da pista nem
+  // cai do mundo, a posição Y sempre vem da curva (+ bob do jetpack).
 
   // V alterna 1ª ↔ 3ª pessoa
   useEffect(() => {

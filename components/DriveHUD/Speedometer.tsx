@@ -5,13 +5,18 @@
 // reinstanciava handlers e reconciliava toda a árvore R3F).
 
 import { useEffect, useRef } from "react"
-import type { RapierRigidBody } from "@react-three/rapier"
+
+// Duck-typed contra RapierRigidBody E o corpo cinemático do /drive-v2
+// (movimento em trilho, sem física própria) — só precisa de .linvel().
+interface SpeedometerBody {
+  linvel(): { x: number; y: number; z: number }
+}
 
 export function Speedometer({
   bodyRef,
   position = "bottom-right",
 }: {
-  bodyRef: React.MutableRefObject<RapierRigidBody | null>
+  bodyRef: React.MutableRefObject<SpeedometerBody | null>
   /** "bottom-right" (desktop) ou "top-left" (mobile) pra não conflitar com pedais. */
   position?: "bottom-right" | "top-left"
 }) {

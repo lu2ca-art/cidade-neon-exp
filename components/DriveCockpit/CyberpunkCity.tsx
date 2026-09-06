@@ -46,6 +46,15 @@ const CIRCUITS = {
   rampaCY: { color: "#88ff00", points: makeRampaLinear(210, 6, CYAN_Y, YELLOW_Y, "south"), closed: false },
 } as const
 
+// Curva de Mônaco — mesma construção (pontos, closed, chordal, tension 0.5)
+// usada pelo componente <Circuit> pra renderizar a pista, exportada pra
+// quem precisar amostrar posição/tangente ao longo dela (ex: movimento em
+// trilho do carro em /drive-v2 — nunca sai da pista porque a posição É a
+// curva, não física livre tentando não atravessá-la).
+export function getMagentaCurve(): THREE.CatmullRomCurve3 {
+  return new THREE.CatmullRomCurve3(CIRCUITS.magenta.points, true, "chordal", 0.5)
+}
+
 // Monaco (simplificado). Retangular apertado, largada reta na "Boulevard
 // Albert 1er", curva Ste-Devote (norte-leste), subida Beau Rivage/Massenet,
 // Casino Square, descida Mirabeau + Loews Hairpin (ferradura), Portier,
