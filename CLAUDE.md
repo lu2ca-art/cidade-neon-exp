@@ -47,6 +47,38 @@ bun run lint      # eslint
 - **Nunca** force-push em `main`.
 - **Nunca** commitar `.env.local` ou arquivos de link Vercel (já no .gitignore).
 
+## Branch policy (obrigatório antes de commitar)
+
+O jogo é uma **plataforma** que abriga muitos lugares (museu, galeria,
+loja de discos, pistas, prédios, ruas), personagens, histórias e missões.
+Branch naming reflete essa arquitetura. **Uma branch = um escopo**:
+
+```
+main                              → sempre deployável (produção)
+feature/game/<lugar-ou-sistema>   → dentro do jogo (museu, galeria,
+                                    drive-v2, loja-discos, personagem-X,
+                                    missao-Y, etc.)
+feature/tools/<ferramenta>        → apps/ferramentas paralelas ao jogo
+                                    (batida é o exemplo — studio musical
+                                    que vive dentro do repo mas não é
+                                    parte do jogo)
+feature/infra/<escopo>            → tooling: CI, deploy, CLAUDE.md,
+                                    hooks, refactor cross-cutting
+```
+
+Regras:
+- **Nome da branch tem que descrever o escopo.** `feature/museu` só
+  pode conter mudanças no museu. Não é bucket genérico de "próxima
+  release" nem "coisas variadas".
+- **Se um commit não cabe na branch, crie outra branch pra ele.** Não
+  empurra fix de drive na branch da loja-discos.
+- **Merge → delete a branch** (local e remoto). Branches longas
+  acumulam trabalho não-relacionado.
+- **Nunca commitar direto em `main`** exceto `feature/infra/*` triviais
+  (chore de docs, .gitignore, config) — todo o resto passa por branch.
+- **Chore de infra pode ir direto em `main`** se for pequeno e sem
+  risco de produção (ex: adicionar seção no CLAUDE.md).
+
 ## Estrutura
 
 - `app/` — App Router. Cada pasta é uma **sala** da experiência
