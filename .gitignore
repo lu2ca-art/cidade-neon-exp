@@ -8,7 +8,6 @@ node_modules/
 .next/
 .env*.local
 .DS_Store
-.vercel
 tsconfig.tsbuildinfo
 
 # Package manager consistency — bun é o padrão do projeto
@@ -20,12 +19,6 @@ yarn.lock
 # (a biblioteca completa vive em ~/obras_dominio_publico/)
 public/obras/
 
-# Assets de áudio brutos NÃO commitar; áudios CURADOS por sala SIM.
-# Pra evitar acidentes, ignora a raiz + libera explicitamente as salas ativas.
-/*.mp3
-/*.wav
-/*.flac
-/*.ogg
 
 # Salas com assets curados que devem ser commitados:
 # (não adicionar novas linhas de ignore que apaguem estas)
