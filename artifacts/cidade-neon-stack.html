@@ -1,0 +1,516 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Cidade Neon Stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=IBM+Plex+Mono:wght@300;400;500&display=swap">
+
+<style>
+  /* ── TOKENS ── */
+  :root {
+    --void:     #05050b;
+    --panel:    #0d0d1e;
+    --card:     #111130;
+    --card-hi:  #171748;
+    --border:   #1c1c48;
+    --border-hi:#2a2a60;
+    --cyan:     #00f0ff;
+    --magenta:  #ff0055;
+    --yellow:   #f0e030;
+    --green:    #39ff88;
+    --text:     #dde0f0;
+    --muted:    #5a5a80;
+    --dim:      #383860;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--void);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanlines */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.18) 3px,
+      rgba(0,0,0,0.18) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 32px 80px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 32px;
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    animation: pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--cyan); }
+    50% { opacity: 0.3; box-shadow: 0 0 2px var(--cyan); }
+  }
+
+  h1 {
+    font-family: 'Michroma', sans-serif;
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    line-height: 1.1;
+    text-wrap: balance;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  h1 .slash { color: var(--cyan); opacity: 0.5; margin: 0 6px; }
+
+  .header-meta {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── LAYERS ── */
+  .layers { display: flex; flex-direction: column; gap: 0; }
+
+  .layer {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 0;
+    border-top: 1px solid var(--border);
+    padding: 28px 0;
+    align-items: start;
+  }
+
+  .layer:last-child { border-bottom: 1px solid var(--border); }
+
+  .layer-label {
+    padding-top: 2px;
+    padding-right: 24px;
+  }
+
+  .layer-name {
+    font-family: 'Michroma', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .layer-sublabel {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+
+  /* layer accent colors */
+  .layer[data-cat="code"] .layer-name { color: var(--cyan); }
+  .layer[data-cat="visual"] .layer-name { color: var(--magenta); }
+  .layer[data-cat="audio"] .layer-name { color: var(--yellow); }
+  .layer[data-cat="assets"] .layer-name { color: var(--magenta); }
+  .layer[data-cat="ia"] .layer-name { color: var(--cyan); }
+  .layer[data-cat="org"] .layer-name { color: var(--green); }
+  .layer[data-cat="output"] .layer-name { color: var(--yellow); }
+
+  /* ── TOOL CARDS ── */
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .tool {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 16px;
+    width: 220px;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    display: block;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tool::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 2px; height: 100%;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .layer[data-cat="code"] .tool::before    { background: var(--cyan); }
+  .layer[data-cat="visual"] .tool::before  { background: var(--magenta); }
+  .layer[data-cat="audio"] .tool::before   { background: var(--yellow); }
+  .layer[data-cat="assets"] .tool::before  { background: var(--magenta); }
+  .layer[data-cat="ia"] .tool::before      { background: var(--cyan); }
+  .layer[data-cat="org"] .tool::before     { background: var(--green); }
+  .layer[data-cat="output"] .tool::before  { background: var(--yellow); }
+
+  .tool:hover {
+    background: var(--card-hi);
+    border-color: var(--border-hi);
+  }
+
+  .layer[data-cat="code"] .tool:hover    { box-shadow: 0 0 20px rgba(0,240,255,0.08); border-color: rgba(0,240,255,0.3); }
+  .layer[data-cat="visual"] .tool:hover  { box-shadow: 0 0 20px rgba(255,0,85,0.08); border-color: rgba(255,0,85,0.3); }
+  .layer[data-cat="audio"] .tool:hover   { box-shadow: 0 0 20px rgba(240,224,48,0.08); border-color: rgba(240,224,48,0.3); }
+  .layer[data-cat="assets"] .tool:hover  { box-shadow: 0 0 20px rgba(255,0,85,0.08); border-color: rgba(255,0,85,0.3); }
+  .layer[data-cat="ia"] .tool:hover      { box-shadow: 0 0 20px rgba(0,240,255,0.08); border-color: rgba(0,240,255,0.3); }
+  .layer[data-cat="org"] .tool:hover     { box-shadow: 0 0 20px rgba(57,255,136,0.08); border-color: rgba(57,255,136,0.3); }
+  .layer[data-cat="output"] .tool:hover  { box-shadow: 0 0 20px rgba(240,224,48,0.08); border-color: rgba(240,224,48,0.3); }
+
+  .tool:hover::before { opacity: 1; }
+
+  .tool-name {
+    font-family: 'Michroma', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+
+  .tool-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+
+  .tool-integration {
+    font-size: 10px;
+    color: var(--dim);
+    line-height: 1.4;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .tool.no-link { cursor: default; }
+
+  /* note card */
+  .tool.note {
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--dim);
+    width: auto;
+    flex: 1;
+    min-width: 200px;
+  }
+  .tool.note:hover { background: rgba(17,17,48,0.5); box-shadow: none; border-color: var(--muted); }
+
+  /* color swatches */
+  .swatches {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .swatch-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* footer */
+  .footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .footer-left { font-size: 10px; color: var(--muted); letter-spacing: 0.05em; }
+  .footer-right { font-size: 10px; color: var(--dim); }
+
+  /* responsive */
+  @media (max-width: 640px) {
+    .layer { grid-template-columns: 1fr; gap: 16px; }
+    .tool { width: 100%; }
+    .page { padding: 32px 20px 60px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse { animation: none; }
+    .tool { transition: none; }
+  }
+</style>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="eyebrow">
+      <span class="pulse"></span>
+      lu2ca.art // sistema ativo
+    </div>
+    <h1>CIDADE NEON<span class="slash">//</span>STACK MAP</h1>
+    <p class="header-meta">ecossistema integrado de ferramentas — agosto 2026</p>
+  </header>
+
+  <!-- LAYERS -->
+  <div class="layers">
+
+    <!-- OUTPUT -->
+    <div class="layer" data-cat="output">
+      <div class="layer-label">
+        <div class="layer-name">OUTPUT<br>SUPERFÍCIE</div>
+        <div class="layer-sublabel">o que o usuário vê</div>
+      </div>
+      <div class="tools">
+        <a class="tool note no-link">
+          <div class="tool-name">UI DIEGÉTICA — REGRA BASE</div>
+          <div class="tool-desc">Toda interface existe dentro do universo CN. Nenhum elemento flutua sobre a realidade. Tela de chamada, terminal hacker, N3XO, L0OP — tudo é parte do mundo.</div>
+          <div class="tool-integration">referência: Dead Space spine-health / Cyberpunk 2077 retinal HUD</div>
+        </a>
+        <a class="tool" href="https://www.gameuidatabase.com" target="_blank" rel="noopener">
+          <div class="tool-name">GAME UI DATABASE</div>
+          <div class="tool-desc">Biblioteca de interfaces de jogos AAA catalogadas por tipo.</div>
+          <div class="tool-integration">usar como referência antes de desenhar qualquer tela nova do ARG</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- VISUAL -->
+    <div class="layer" data-cat="visual">
+      <div class="layer-label">
+        <div class="layer-name">VISUAL<br>RENDERING</div>
+        <div class="layer-sublabel">shaders, luz, 3D</div>
+      </div>
+      <div class="tools">
+        <a class="tool" href="https://r3f.docs.pmnd.rs" target="_blank" rel="noopener">
+          <div class="tool-name">REACT THREE FIBER</div>
+          <div class="tool-desc">Three.js declarativo dentro do React. 3D, shaders, e pós-processamento sem sair do JSX.</div>
+          <div class="tool-integration">base visual do ARG — elementos 3D nas telas do game</div>
+        </a>
+        <a class="tool" href="https://github.com/pmndrs/drei" target="_blank" rel="noopener">
+          <div class="tool-name">DREI</div>
+          <div class="tool-desc">Helpers para R3F: glow, fog, environment maps, text 3D, instâncias.</div>
+          <div class="tool-integration">usar para neon glow e névoa volumétrica no terminal hacker</div>
+        </a>
+        <a class="tool" href="https://www.shadertoy.com" target="_blank" rel="noopener">
+          <div class="tool-name">SHADERTOY</div>
+          <div class="tool-desc">Banco de shaders GLSL abertos. Scanlines, glitch, CRT, reflexo de neon, estática.</div>
+          <div class="tool-integration">fonte primária de shaders — adaptar para o stack R3F/WebGL</div>
+        </a>
+        <a class="tool" href="https://threejs.org/examples/webgpu_volume_lighting.html" target="_blank" rel="noopener">
+          <div class="tool-name">VOLUMETRIC LIGHTING</div>
+          <div class="tool-desc">Iluminação volumétrica via WebGPU no Three.js. Névoa com volume, raymarching.</div>
+          <div class="tool-integration">atmosfera nas cenas de SP e no quarto do Avatar</div>
+        </a>
+        <a class="tool" href="https://blog.maximeheckel.com/posts/shaping-light-volumetric-lighting-with-post-processing-and-raymarching/" target="_blank" rel="noopener">
+          <div class="tool-name">RAYMARCHING GUIDE</div>
+          <div class="tool-desc">Tutorial profundo sobre luz volumétrica com post-processing na web.</div>
+          <div class="tool-integration">referência técnica para os efeitos de luz do terminal</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- ASSETS DE ARTE -->
+    <div class="layer" data-cat="assets">
+      <div class="layer-label">
+        <div class="layer-name">ASSETS<br>ARTE + COR</div>
+        <div class="layer-sublabel">sprites, paleta, tipo</div>
+      </div>
+      <div class="tools">
+        <a class="tool" href="https://itch.io/game-assets/free/tag-cyberpunk" target="_blank" rel="noopener">
+          <div class="tool-name">ITCH.IO CYBERPUNK</div>
+          <div class="tool-desc">Sprites, tiles e backgrounds cyberpunk gratuitos. Atualizado constantemente pela comunidade.</div>
+          <div class="tool-integration">banco de assets visuais para cenas e UI do ARG</div>
+        </a>
+        <a class="tool" href="https://craftpix.net/tags/cyberpunk-game-assets-download/" target="_blank" rel="noopener">
+          <div class="tool-name">CRAFTPIX CYBERPUNK</div>
+          <div class="tool-desc">Assets premium com qualidade consistente: pixel art e vetorial cyberpunk.</div>
+          <div class="tool-integration">elementos de cena que precisam de acabamento profissional</div>
+        </a>
+        <a class="tool no-link">
+          <div class="tool-name">PALETA CN</div>
+          <div class="tool-desc">Tokens de cor do universo Cidade Neon.</div>
+          <div class="swatches">
+            <span class="swatch"><span class="swatch-dot" style="background:#00f0ff;box-shadow:0 0 6px #00f0ff"></span>#00f0ff</span>
+            <span class="swatch"><span class="swatch-dot" style="background:#ff0055;box-shadow:0 0 6px #ff0055"></span>#ff0055</span>
+            <span class="swatch"><span class="swatch-dot" style="background:#f0e030;box-shadow:0 0 6px #f0e030"></span>#f0e030</span>
+            <span class="swatch"><span class="swatch-dot" style="background:#39ff88;box-shadow:0 0 6px #39ff88"></span>#39ff88</span>
+            <span class="swatch"><span class="swatch-dot" style="background:#0d0d1e"></span>#0d0d1e</span>
+          </div>
+          <div class="tool-integration" style="margin-top:8px">usar como design tokens no Tailwind — nunca cores hardcoded</div>
+        </a>
+        <a class="tool" href="https://www.stellae.design/en/learn/cyberpunk-ui-design" target="_blank" rel="noopener">
+          <div class="tool-name">CYBERPUNK UI GUIDE</div>
+          <div class="tool-desc">Referência de princípios de design para UI dark + neon + terminal.</div>
+          <div class="tool-integration">consultar ao criar novas telas do ARG</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- ÁUDIO -->
+    <div class="layer" data-cat="audio">
+      <div class="layer-label">
+        <div class="layer-name">ÁUDIO<br>SOM</div>
+        <div class="layer-sublabel">procedural + SFX</div>
+      </div>
+      <div class="tools">
+        <a class="tool" href="https://tonejs.github.io" target="_blank" rel="noopener">
+          <div class="tool-name">TONE.JS</div>
+          <div class="tool-desc">Áudio procedural e síntese no browser. Som que reage ao estado do game em tempo real.</div>
+          <div class="tool-integration">integrar com XState — cada modo do ARG tem seu ambiente sonoro</div>
+        </a>
+        <a class="tool" href="https://pixabay.com/sound-effects/search/cyberpunk/" target="_blank" rel="noopener">
+          <div class="tool-name">PIXABAY SFX</div>
+          <div class="tool-desc">Biblioteca gratuita de efeitos sonoros cyberpunk, royalty-free, download direto.</div>
+          <div class="tool-integration">SFX de interface: cliques, estática, glitch, transições</div>
+        </a>
+        <a class="tool" href="https://itch.io/game-assets/free/tag-audio/tag-cyberpunk" target="_blank" rel="noopener">
+          <div class="tool-name">ITCH.IO AUDIO</div>
+          <div class="tool-desc">Pacotes de áudio cyberpunk da comunidade — ambientes, loops, SFX.</div>
+          <div class="tool-integration">ambientes para N3XO, terminal hacker e mapa do game</div>
+        </a>
+        <a class="tool" href="https://sfxengine.com/sound-effects/cyberpunk" target="_blank" rel="noopener">
+          <div class="tool-name">SFX ENGINE</div>
+          <div class="tool-desc">Gerador de SFX cyberpunk por IA + banco de sons prontos para download.</div>
+          <div class="tool-integration">gerar variações de SFX customizadas para o universo CN</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- LÓGICA / CÓDIGO -->
+    <div class="layer" data-cat="code">
+      <div class="layer-label">
+        <div class="layer-name">LÓGICA<br>ESTADO</div>
+        <div class="layer-sublabel">fluxo do ARG</div>
+      </div>
+      <div class="tools">
+        <a class="tool" href="https://xstate.js.org" target="_blank" rel="noopener">
+          <div class="tool-name">XSTATE</div>
+          <div class="tool-desc">Máquinas de estado formais para React. Cada modo do ARG é um estado explícito, testável e rastreável.</div>
+          <div class="tool-integration">QUIZ → N3XO → GUITAR DRIVER → L0OP: transições sem espaguete de estado</div>
+        </a>
+        <a class="tool" href="https://stately.ai/viz" target="_blank" rel="noopener">
+          <div class="tool-name">STATELY VISUALIZER</div>
+          <div class="tool-desc">Ferramenta visual para desenhar e debugar as máquinas de estado XState.</div>
+          <div class="tool-integration">mapear o fluxo completo do ARG antes de codar</div>
+        </a>
+        <a class="tool note no-link">
+          <div class="tool-name">PRINCÍPIO NAUGHTY DOG</div>
+          <div class="tool-desc">Nunca bloquear a thread principal. Parallelismo por design. No stack web: React Suspense + RSC + Edge Functions (Vercel) carregam cada módulo do game em paralelo — mesmo princípio, stack diferente.</div>
+          <div class="tool-integration">aplicar em todas as rotas do ARG — loading states explícitos</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- IA -->
+    <div class="layer" data-cat="ia">
+      <div class="layer-label">
+        <div class="layer-name">IA<br>PERSONAGENS</div>
+        <div class="layer-sublabel">NPCs vivos</div>
+      </div>
+      <div class="tools">
+        <a class="tool" href="https://www.inworld.ai" target="_blank" rel="noopener">
+          <div class="tool-name">INWORLD AI</div>
+          <div class="tool-desc">NPCs com personalidade persistente e memória. Usado por estúdios AAA para personagens que realmente conversam.</div>
+          <div class="tool-integration">personagens do N3XO que respondem dentro da lore CN</div>
+        </a>
+        <a class="tool" href="https://docs.anthropic.com/en/api/getting-started" target="_blank" rel="noopener">
+          <div class="tool-name">CLAUDE API</div>
+          <div class="tool-desc">Alimentar o Avatar e os personagens do N3XO com Claude — respostas dentro da lore, sem roteiro fixo.</div>
+          <div class="tool-integration">sistema: prompt de personagem + histórico de conversa + Claude → N3XO vivo</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- ORGANIZAÇÃO -->
+    <div class="layer" data-cat="org">
+      <div class="layer-label">
+        <div class="layer-name">INFRA<br>ORGANIZAÇÃO</div>
+        <div class="layer-sublabel">código limpo</div>
+      </div>
+      <div class="tools">
+        <a class="tool" href="https://turbo.build" target="_blank" rel="noopener">
+          <div class="tool-name">TURBOREPO</div>
+          <div class="tool-desc">Monorepo com builds paralelos e cache inteligente. Game, site, API e ARG no mesmo repo, sem conflito.</div>
+          <div class="tool-integration">estrutura: /apps/game /apps/site /packages/ui /packages/game-state</div>
+        </a>
+        <a class="tool" href="https://palmier.io" target="_blank" rel="noopener">
+          <div class="tool-name">PALMIER PRO</div>
+          <div class="tool-desc">Editor de vídeo com MCP server local (127.0.0.1:19789). Claude edita a timeline diretamente.</div>
+          <div class="tool-integration">output de vídeo para L0OP e conteúdo CN — skill de edição em construção</div>
+        </a>
+        <a class="tool" href="https://lyrc.com.ar" target="_blank" rel="noopener">
+          <div class="tool-name">LYRC</div>
+          <div class="tool-desc">Timing de legendas/letras no segundo certo. Integra com o fluxo de vídeo pós-Palmier.</div>
+          <div class="tool-integration">etapa 3 do fluxo de vídeo: roteiro → gravação → Palmier → LYRC → post</div>
+        </a>
+        <a class="tool" href="https://github.com/palmier-io/palmier-pro" target="_blank" rel="noopener">
+          <div class="tool-name">HYPERFRAMES</div>
+          <div class="tool-desc">Animação de frames via IA — transição digital→real. Assinatura visual de todos os vídeos CN.</div>
+          <div class="tool-integration">abre cada vídeo da série antes de cortar para a rua</div>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-left">CIDADE NEON // C2C — lu2ca.art &nbsp;·&nbsp; stack v1.0 &nbsp;·&nbsp; agosto 2026</div>
+    <div class="footer-right">skill de edição via Palmier em construção</div>
+  </footer>
+
+</div>
+
+</body></html>
