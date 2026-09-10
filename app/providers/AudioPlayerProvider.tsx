@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useRef, useState, useCallback, useEffect, type ReactNode } from "react"
+import { track as trackEvent, type MusicSource } from "@/lib/analytics"
 
 export interface Track {
   id: number
@@ -127,7 +128,7 @@ interface AudioPlayerContextType {
   trackIdx: number
   playing: boolean
   elapsed: number
-  play: (trackIndex: number) => void
+  play: (trackIndex: number, source?: MusicSource) => void
   pause: () => void
   resume: () => void
   toggle: () => void
@@ -222,7 +223,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [startTick, stopTick])
 
-  const play = useCallback((index: number) => {
+  const play = useCallback((index: number, source: MusicSource = "other") => {
     const track = ALBUM_TRACKS[index]
     if (!track?.playable) return
     const el = getAudioEl()
@@ -231,6 +232,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     stopTick()
     _trackIdx = index
     setTrackIdx(index)
+
+    trackEvent("music_play_started", {
+      track_id: track.id,
+      track_name: track.title ?? track.masked ?? `track-${track.id}`,
+      source,
+    })
 
     if (track.audioUrl) {
       // Troca src apenas se for uma faixa diferente

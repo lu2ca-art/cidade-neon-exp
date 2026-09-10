@@ -4,6 +4,8 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { GameFunnelProvider } from './providers/GameFunnelProvider'
 import { AudioPlayerProvider } from './providers/AudioPlayerProvider'
+import { PostHogProvider } from '@/components/PostHogProvider'
+import { ConsentBanner } from '@/components/ConsentBanner'
 import './globals.css'
 
 const geistSans = Geist({ 
@@ -53,11 +55,14 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-black`}>
-        <GameFunnelProvider>
-          <AudioPlayerProvider>
-            {children}
-          </AudioPlayerProvider>
-        </GameFunnelProvider>
+        <PostHogProvider>
+          <GameFunnelProvider>
+            <AudioPlayerProvider>
+              {children}
+            </AudioPlayerProvider>
+          </GameFunnelProvider>
+          <ConsentBanner />
+        </PostHogProvider>
         <Analytics />
       </body>
     </html>
