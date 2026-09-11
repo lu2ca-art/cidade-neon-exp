@@ -8,6 +8,7 @@ export type ConsentLevel = "full" | "essential"
 
 const CONSENT_KEY = "cidade-neon-analytics-consent"
 const SESSION_KEY = "cidade-neon-session-id"
+const DEV_MODE_KEY = "cidade-neon-dev-mode"
 
 interface PostHogConsentContextType {
   consent: ConsentLevel | null
@@ -42,6 +43,24 @@ function detectDeviceType(): "desktop" | "mobile" | "tablet" {
   if (/tablet|ipad/i.test(ua)) return "tablet"
   if (/mobile|iphone|android/i.test(ua)) return "mobile"
   return "desktop"
+}
+
+// Opt-out de teste interno: visitar com ?dev=1 marca este navegador como
+// interno pra sempre (localStorage), e nenhum evento é enviado ao PostHog
+// dali em diante — evita que testes do time poluam os dados de público.
+// ?dev=0 reverte, pra quando precisar validar o próprio tracking.
+function isDevMode(): boolean {
+  if (typeof window === "undefined") return false
+  const params = new URLSearchParams(window.location.search)
+  if (params.get("dev") === "1") {
+    localStorage.setItem(DEV_MODE_KEY, "1")
+    return true
+  }
+  if (params.get("dev") === "0") {
+    localStorage.removeItem(DEV_MODE_KEY)
+    return false
+  }
+  return localStorage.getItem(DEV_MODE_KEY) === "1"
 }
 
 // LGPD: PostHog só inicializa depois do consentimento. "essential" ainda
@@ -81,6 +100,7 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated || !consent) return
+    if (isDevMode()) return
 
     initPostHog(consent)
 
