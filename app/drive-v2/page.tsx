@@ -204,6 +204,11 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
   const camQuat = useRef(new THREE.Quaternion())
   const camBackward = useRef(new THREE.Vector3())
   const camAxisY = useRef(new THREE.Vector3(0, 1, 0))
+  // Distância "segura" (duck-under) suavizada — sem isso, um raycast que
+  // acerta/erra por pouco a cada frame (comum perto de pontes/viadutos)
+  // faz desiredPos pular entre 2 posições bem diferentes frame a frame, e
+  // isso aparece como a câmera tremendo mesmo com o lerp de posição.
+  const duckDist = useRef(Infinity)
 
   useEffect(() => {
     const el = gl.domElement
@@ -292,13 +297,21 @@ function ThirdPersonCamera({ target }: { target: React.MutableRefObject<RapierRi
       // Assinatura: (ray, maxToi, solid, filterFlags?, filterGroups?,
       //              filterExcludeCollider?, filterExcludeRigidBody?)
       const hit = world.castRay(ray, dLen, true, undefined, undefined, undefined, body)
-      if (hit) {
-        // Recua pra 90% da distância do hit (dá margem pra não clipar)
-        const safeDist = hit.timeOfImpact * 0.9
+      // Alvo da distância segura: se bateu em algo, 90% do TOI; senão, a
+      // distância cheia (sem duck). SUAVIZA em vez de aplicar na hora —
+      // perto de uma ponte/viaduto o raio pode bater/errar por pouco a
+      // cada frame, e aplicar direto fazia a câmera pular entre as duas
+      // posições (aparecia como tremor, sobretudo sobrevoando os viadutos).
+      const targetDist = hit ? hit.timeOfImpact * 0.9 : dLen
+      const duckLerp = 1 - Math.exp(-delta * 10)
+      duckDist.current = Number.isFinite(duckDist.current)
+        ? duckDist.current + (targetDist - duckDist.current) * duckLerp
+        : targetDist
+      if (duckDist.current < dLen - 0.05) {
         desiredPos.current.set(
-          t.x + rayDir.x * safeDist,
-          t.y + 0.5 + rayDir.y * safeDist,
-          t.z + rayDir.z * safeDist,
+          t.x + rayDir.x * duckDist.current,
+          t.y + 0.5 + rayDir.y * duckDist.current,
+          t.z + rayDir.z * duckDist.current,
         )
       }
     }
