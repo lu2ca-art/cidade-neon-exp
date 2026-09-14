@@ -922,7 +922,7 @@ export default function DriveV2Page() {
           <directionalLight position={[20, 30, -30]} intensity={0.5} color="#00ffff" />
           <pointLight position={[0, 20, 0]} intensity={1.2} color="#ffcc00" distance={80} />
 
-          <Physics gravity={[0, -18, 0]}>
+          <Physics gravity={[0, -36, 0]}>
             <VanBody
               bodyRef={vanBodyRef}
               showCockpit={isFirstPerson}
