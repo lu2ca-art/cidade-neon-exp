@@ -19,6 +19,12 @@ yarn.lock
 # (a biblioteca completa vive em ~/obras_dominio_publico/)
 public/obras/
 
+# Cenas e referências brutas do Blender (binário, sem histórico útil em git).
+# Fonte de verdade fica local em blender/cenas/ — só os .glb exportados e
+# curados em blender/exports/ (ou já promovidos pra public/models/) vão pro git.
+blender/cenas/
+blender/refs/
+
 
 # Salas com assets curados que devem ser commitados:
 # (não adicionar novas linhas de ignore que apaguem estas)
