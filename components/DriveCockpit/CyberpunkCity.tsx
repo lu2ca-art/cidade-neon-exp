@@ -36,10 +36,21 @@ const LAJE_OVERLAP = 1.10
 const MAGENTA_Y = 6
 const CYAN_Y = 22
 const YELLOW_Y = 38
-// Fator de expansão pra aproximar do perímetro máximo da cidade (grid
-// ±256u) sem estourar — considerando ROAD_WIDTH/2 (8u) de folga nos
-// pontos mais extremos de cada traçado.
-const PERIMETER_SCALE = 1.15
+// Distância vertical entre andares (16-32u): altura real da Kombi
+// (KOMBI_COLLIDER_HALF[1]*2 em lib/kombi-layout.ts) é ~1.8u, então isso já
+// é ~9-18x a altura do carro — bem acima do mínimo de 3x pedido. A
+// poluição visual das pistas se cruzando não era falta de distância
+// vertical, era quantidade de cruzamentos concentrados na mesma região
+// (ver offsets abaixo).
+// Fator de escala das 3 pistas. Reduzido de 1.15 pra 0.9 — na escala
+// maior, mesmo com offsets bem espaçados, Mônaco e Interlagos (os dois
+// mais "largos") se cruzavam em planta 8 vezes numa faixa só, o que
+// parecia um emaranhado bizarro mesmo com Y bem separado entre andares
+// (ver MIN_TIER_CLEARANCE abaixo — a distância vertical nunca foi o
+// problema; a quantidade de cruzamentos concentrados numa área pequena é
+// que poluía o visual). Com escala menor sobra espaço pra afastar os
+// offsets sem estourar o grid da cidade (±256u).
+const PERIMETER_SCALE = 0.9
 // Nenhuma curva do loop pode virar mais que isso entre um ponto e o
 // próximo — mantém a direção fluida (arcade), sem tranco nas ferraduras
 // reais (Loews, Spoon etc.) que no traçado real são bem mais fechadas.
@@ -50,12 +61,16 @@ const MAX_BANK_DEG = 18
 const MAX_BANK_RAD = (MAX_BANK_DEG * Math.PI) / 180
 // Offsets que espalham cada pista por uma região diferente da cidade —
 // antes as 3 ficavam concêntricas no centro, só empilhadas em Y (por isso
-// pareciam compactas/coladas de cima). Agora cada uma ocupa um canto do
-// grid (±256u) e encosta a própria borda na borda da cidade, com uma faixa
-// de overlap natural entre pistas vizinhas pra plantar a rampa.
-const MONACO_OFFSET: [number, number] = [-78, 40] // noroeste
-const SUZUKA_OFFSET: [number, number] = [95, -126] // sudeste
-const INTERLAGOS_OFFSET: [number, number] = [21, 105] // nordeste
+// pareciam compactas/coladas de cima). Reposicionados (junto com a escala
+// menor acima) pra minimizar cruzamento em planta entre pistas DIFERENTES
+// — Mônaco x Suzuka e Mônaco x Interlagos zeraram, Suzuka x Interlagos caiu
+// de 2 pra ainda existir mas bem mais isolado. A distância vertical entre
+// andares (16-32u, MIN_TIER_CLEARANCE abaixo) já garante folga de sobra
+// nesses pontos que sobraram — o ajuste aqui foi sobre poluição visual,
+// não colisão física.
+const MONACO_OFFSET: [number, number] = [-108, 62] // oeste
+const SUZUKA_OFFSET: [number, number] = [68, -132] // sudeste
+const INTERLAGOS_OFFSET: [number, number] = [90, 60] // leste
 
 function translateXZ(points: THREE.Vector3[], dx: number, dz: number): THREE.Vector3[] {
   return points.map((p) => new THREE.Vector3(p.x + dx, p.y, p.z + dz))
@@ -589,6 +604,32 @@ function bankAngleAt(disc: THREE.Vector3[], i: number, closed: boolean, window =
   return Math.max(-MAX_BANK_RAD, Math.min(MAX_BANK_RAD, turn * gain))
 }
 
+// Calcula o banking de TODOS os pontos e suaviza a sequência inteira antes
+// de usar — cada laje é um segmento RÍGIDO e RETO; se o ângulo de um
+// segmento pro próximo mudar rápido demais, a junção entre eles aparece
+// como um corte/vinco na pista, mesmo o ângulo em si estando dentro do
+// limite. `maxDeltaPerSegment` limita quanto o roll pode variar de um
+// segmento pro vizinho (passada pra frente e pra trás, pega os dois
+// sentidos da transição).
+function smoothedBankAngles(disc: THREE.Vector3[], closed: boolean, maxDeltaPerSegment = 0.025): number[] {
+  const n = disc.length
+  const raw = disc.map((_, i) => bankAngleAt(disc, i, closed))
+  const out = raw.slice()
+  const clampStep = (prevVal: number, target: number) => {
+    const delta = target - prevVal
+    if (delta > maxDeltaPerSegment) return prevVal + maxDeltaPerSegment
+    if (delta < -maxDeltaPerSegment) return prevVal - maxDeltaPerSegment
+    return target
+  }
+  // passada pra frente
+  for (let i = 1; i < n; i++) out[i] = clampStep(out[i - 1], out[i])
+  if (closed) out[0] = clampStep(out[n - 1], out[0])
+  // passada pra trás (suaviza a transição nos dois sentidos, não só um)
+  for (let i = n - 2; i >= 0; i--) out[i] = clampStep(out[i + 1], out[i])
+  if (closed) out[n - 1] = clampStep(out[0], out[n - 1])
+  return out
+}
+
 // ─── Circuito com InstancedMesh (perf otimizado) ────────────────────────────
 // 5 InstancedMesh por circuito (laje, faixa central, rail-esq, rail-dir,
 // underglow) em vez de N × 5 meshes separados. 24 draw calls totais em vez
@@ -601,6 +642,7 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
     // applyCrossingBumps pra explicação de por que não faz isso nos
     // pontos de controle (X/Z já garantidamente sem autocruzamento aqui).
     const disc = applyCrossingBumps(curve.getPoints(SEGMENT_DIVISIONS), closed)
+    const rolls = smoothedBankAngles(disc, closed)
     // Pra cada segmento: matriz completa (position + rotation + scale).
     // Cada laje INCLINA (pitch) seguindo a rampa entre os dois pontos —
     // sem isso, apareciam degraus onde Y variava entre segmentos.
@@ -627,8 +669,11 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
       const pitch = -Math.atan2(dy, horizLen)
       // Banking: inclina a laje PRA DENTRO da curva ali, proporcional a
       // quão fechada ela é — igual autódromo de verdade, harmoniza a
-      // transição entre trechos retos e curvas fechadas.
-      const roll = bankAngleAt(disc, i, closed)
+      // transição entre trechos retos e curvas fechadas. Já vem suavizado
+      // (rolls[]) — usar bankAngleAt cru aqui criava corte na junção entre
+      // lajes vizinhas quando o ângulo mudava rápido demais de uma pra
+      // outra.
+      const roll = rolls[i]
       tmpPos.set(cx, cy, cz)
       tmpEuler.set(pitch, angle, roll, "YXZ")
       tmpQuat.setFromEuler(tmpEuler)
@@ -1160,10 +1205,67 @@ function BuildingChunks({ buildings }: { buildings: Building[] }) {
 }
 
 // ─── Helpers exportados pra spawn ───────────────────────────────────────────
-/** Retorna um ponto seguro na estrada magenta pra spawnar o carro. */
-export function magentaSpawn(): [number, number, number] {
+export interface SpawnPose {
+  position: [number, number, number]
+  /** Rotação Y (yaw) pronta pra jogar no prop `rotation` do RigidBody — já
+   * alinhada pra o FORWARD local do carro (-Z, ver VanBody) apontar na
+   * direção real da pista ali, não um valor fixo arbitrário. */
+  rotation: [number, number, number]
+}
+
+// Yaw que faz o forward local do carro (-Z) apontar na direção da pista
+// no ponto `idx` de `pts` (olhando pro próximo ponto). Ver derivação: pra
+// rotação Y padrão do three.js, local (0,0,-1) vira mundo
+// (-sinθ,0,-cosθ) — pra isso bater com a tangente (dx,dz), θ = atan2(-dx,-dz).
+function tangentYawAt(pts: THREE.Vector3[], idx: number, closed: boolean): number {
+  const n = pts.length
+  const nextIdx = closed ? (idx + 1) % n : Math.min(idx + 1, n - 1)
+  const a = pts[idx]
+  const b = pts[nextIdx]
+  const dx = b.x - a.x
+  const dz = b.z - a.z
+  return Math.atan2(-dx, -dz)
+}
+
+/** Retorna posição + rotação seguras na estrada magenta pra spawnar o carro. */
+export function magentaSpawn(): SpawnPose {
   // Primeiro ponto do traçado magenta já smoothado/posicionado — sempre em
   // cima da pista de verdade, independente de onde ela esteja na cidade.
   const p = magentaPts[0]
-  return [p.x, p.y + 1.5, p.z]
+  return {
+    position: [p.x, p.y + 1.5, p.z],
+    rotation: [0, tangentYawAt(magentaPts, 0, true), 0],
+  }
+}
+
+/**
+ * Ponto + orientação mais próximos de (x,z) em QUALQUER uma das 3 pistas —
+ * pra respawn de recuperação (carro caiu/travou) não jogar o jogador de
+ * volta pro início fixo da Mônaco toda vez (quebra o fluxo se ele tava
+ * dirigindo longe dali, num andar diferente) NEM virado pro lado errado
+ * (o carro saía direto da pista de novo, mesmo com a posição certa — a
+ * rotação de spawn tem que acompanhar a direção real da pista ali).
+ * Sempre em cima da pista de verdade (nunca no chão) porque só busca
+ * entre pontos que já são parte de um traçado.
+ */
+export function nearestTrackSpawn(x: number, z: number): SpawnPose {
+  let bestPts: THREE.Vector3[] = magentaPts
+  let bestIdx = 0
+  let bestDist = Infinity
+  for (const pts of [magentaPts, cyanPts, yellowPts]) {
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i]
+      const d = (p.x - x) ** 2 + (p.z - z) ** 2
+      if (d < bestDist) {
+        bestDist = d
+        bestPts = pts
+        bestIdx = i
+      }
+    }
+  }
+  const best = bestPts[bestIdx]
+  return {
+    position: [best.x, best.y + 1.5, best.z],
+    rotation: [0, tangentYawAt(bestPts, bestIdx, true), 0],
+  }
 }
