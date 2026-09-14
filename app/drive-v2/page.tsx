@@ -517,17 +517,35 @@ export default function DriveV2Page() {
 
   const isFirstPerson = cameraMode === "first"
 
-  // Respawn: se cair muito abaixo do chão, teleporta pro spawn.
+  // Respawn: se cair muito abaixo do chão OU ficar travado, teleporta pro
+  // spawn. O check só de Y<-8 não bastava: as pistas hoje chegam a Y=38
+  // (+ ponte de cruzamento, mais ~10 acima disso), então uma queda até -8
+  // é enorme — dava tempo de sobra pro carro ficar entalado num prédio ou
+  // na geometria do deserto no meio do caminho, bem antes desse limite
+  // dISPARAR. Por isso, também detecta "travado": velocidade quase zero
+  // por tempo demais ENQUANTO abaixo do nível do chão (y<-1) — carro
+  // parado numa pista normal (y>=0) nunca entra nessa condição, só um
+  // que ficou preso durante a queda.
+  const stuckMsRef = useRef(0)
   useEffect(() => {
     const id = setInterval(() => {
       const b = vanBodyRef.current
       if (!b) return
       const t = b.translation()
-      if (t.y < -8) {
+      const v = b.linvel()
+      const speed = Math.hypot(v.x, v.y, v.z)
+      if (t.y < -1 && speed < 0.4) {
+        stuckMsRef.current += 80
+      } else {
+        stuckMsRef.current = 0
+      }
+      const stuck = stuckMsRef.current > 1500
+      if (t.y < -8 || stuck) {
         const spawn = magentaSpawn()
         b.setTranslation({ x: spawn[0], y: spawn[1] + 2, z: spawn[2] }, true)
         b.setLinvel({ x: 0, y: 0, z: 0 }, true)
         b.setAngvel({ x: 0, y: 0, z: 0 }, true)
+        stuckMsRef.current = 0
       }
     }, 80)
     return () => clearInterval(id)
