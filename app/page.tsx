@@ -1595,7 +1595,7 @@ function CidadeNeonExperience() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[280px] h-[34px] bg-black/80 backdrop-blur rounded-b-[18px] flex items-center overflow-hidden px-2">
             <div className="flex items-center gap-1.5 whitespace-nowrap animate-spotify-scroll">
               <span className="text-[#E8FF3A] text-[10px] font-mono font-bold">▶</span>
-              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack.title || "CHUVA"}</span>
+              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack?.title || "CHUVA"}</span>
               <span className="text-white/30 text-[10px] font-mono">· LU2CA</span>
             </div>
           </div>
