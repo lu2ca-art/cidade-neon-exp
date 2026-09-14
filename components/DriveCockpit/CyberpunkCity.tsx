@@ -40,10 +40,14 @@ const YELLOW_Y = 38
 // ±256u) sem estourar — considerando ROAD_WIDTH/2 (8u) de folga nos
 // pontos mais extremos de cada traçado.
 const PERIMETER_SCALE = 1.15
+// Nenhuma curva do loop pode virar mais que isso entre um ponto e o
+// próximo — mantém a direção fluida (arcade), sem tranco nas ferraduras
+// reais (Loews, Spoon etc.) que no traçado real são bem mais fechadas.
+const MAX_TRACK_TURN_DEG = 70
 const CIRCUITS = {
-  magenta: { color: "#ff00ff", points: makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y) },
-  cyan:    { color: "#00ffff", points: makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y) },
-  yellow:  { color: "#ffcc00", points: makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y) },
+  magenta: { color: "#ff00ff", points: openSharpCorners(makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y)) },
+  cyan:    { color: "#00ffff", points: openSharpCorners(makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y)) },
+  yellow:  { color: "#ffcc00", points: openSharpCorners(makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y)) },
   // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares
   // em pontos específicos. Sobem/descem em Y de forma progressiva.
   rampaMC: { color: "#ff8800", points: makeRampaLinear(200 * PERIMETER_SCALE, 6, MAGENTA_Y, CYAN_Y, "north"), closed: false },
@@ -259,6 +263,79 @@ function makeRampaLinear(
     const off = (t - 0.5) * rampLength
     pts.push(new THREE.Vector3(cx + axis[0] * off, y, cz + axis[1] * off))
   }
+  return pts
+}
+
+// Abre cantos mais apertados que `maxTurnDeg` (ângulo entre o segmento que
+// chega e o que sai de cada ponto) por relaxamento local iterativo — puxa
+// só os pontos apertados na direção do meio dos vizinhos, um pouco a cada
+// passada, até nenhum passar do limite. Preserva a identidade do traçado
+// real (curvas largas não são tocadas; só as ferraduras/chicanes fechadas
+// demais pra um loop arcade fluido vão sendo abertas aos poucos).
+// Como último recurso, remove vértices quase-reversos (>removeAboveDeg)
+// que sobrarem depois do relaxamento — normalmente são artefatos de
+// fechamento do loop (o último ponto encostando no primeiro), não curvas
+// de verdade, e travam o relaxamento num ziguezague sem convergir.
+function openSharpCorners(
+  points: THREE.Vector3[],
+  opts: {
+    maxTurnDeg?: number
+    iterations?: number
+    strength?: number
+    removeAboveDeg?: number
+    maxRemovals?: number
+    closed?: boolean
+  } = {},
+): THREE.Vector3[] {
+  const {
+    maxTurnDeg = MAX_TRACK_TURN_DEG,
+    iterations = 60,
+    strength = 0.3,
+    removeAboveDeg = 100,
+    maxRemovals = 4,
+    closed = true,
+  } = opts
+
+  const turnAngles = (pts: THREE.Vector3[]): number[] => {
+    const n = pts.length
+    return pts.map((p1, i) => {
+      const p0 = closed ? pts[(i - 1 + n) % n] : pts[Math.max(i - 1, 0)]
+      const p2 = closed ? pts[(i + 1) % n] : pts[Math.min(i + 1, n - 1)]
+      const ax = p1.x - p0.x, az = p1.z - p0.z
+      const bx = p2.x - p1.x, bz = p2.z - p1.z
+      const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz)
+      if (la === 0 || lb === 0) return 0
+      const cos = Math.min(1, Math.max(-1, (ax * bx + az * bz) / (la * lb)))
+      return (Math.acos(cos) * 180) / Math.PI
+    })
+  }
+
+  let pts = points.map((p) => p.clone())
+
+  for (let pass = 0; pass <= maxRemovals; pass++) {
+    for (let it = 0; it < iterations; it++) {
+      const angs = turnAngles(pts)
+      const n = pts.length
+      let changed = false
+      const next = pts.map((p) => p.clone())
+      angs.forEach((a, i) => {
+        if (a <= maxTurnDeg) return
+        changed = true
+        const p0 = closed ? pts[(i - 1 + n) % n] : pts[Math.max(i - 1, 0)]
+        const p2 = closed ? pts[(i + 1) % n] : pts[Math.min(i + 1, n - 1)]
+        next[i].x = pts[i].x + strength * ((p0.x + p2.x) / 2 - pts[i].x)
+        next[i].z = pts[i].z + strength * ((p0.z + p2.z) / 2 - pts[i].z)
+      })
+      pts = next
+      if (!changed) break
+    }
+    const angs = turnAngles(pts)
+    let worst = 0
+    for (let i = 1; i < angs.length; i++) if (angs[i] > angs[worst]) worst = i
+    if (angs[worst] <= removeAboveDeg) break
+    pts.splice(worst, 1)
+  }
+
   return pts
 }
 
