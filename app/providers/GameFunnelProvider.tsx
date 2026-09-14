@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react"
+import { MISSIONS } from "@/lib/missions"
+import { track } from "@/lib/analytics"
 
 // Types
 export type CinematicStep =
@@ -203,6 +205,11 @@ interface GameFunnelContextType {
   // com sua própria lista de chaves que podia (e já tinha) divergir
   resetExperience: () => void
   getNextConfirmation: () => 1 | 2 | 3 | null
+  // dispara mission_started e guarda o timestamp pra duration_ms do
+  // mission_completed correspondente (ver completeConfirmation) — só
+  // precisa disso na única missão visível desde o início (visibleFromCC: 0,
+  // "nectar"), as outras abrem dentro do próprio completeConfirmation
+  markMissionStarted: (missionId: string, placeId: string) => void
 }
 
 const GameFunnelContext = createContext<GameFunnelContextType | null>(null)
@@ -249,6 +256,9 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
   const [state, setStateInternal] = useState<GameFunnelState>(defaultState)
   const [isHydrated, setIsHydrated] = useState(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Timestamp de quando cada missão do mapa (lib/missions.ts) ficou visível
+  // — só em memória, usado pra calcular duration_ms de mission_completed.
+  const missionStartedAtRef = useRef<Record<string, number>>({})
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -306,6 +316,24 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const key = `c${num}` as keyof Confirmations
       const newCount = Math.min(prev.confirmationCount + 1, 3) as 0 | 1 | 2 | 3
+
+      // Missões do mapa (lib/missions.ts) que fecham ou abrem neste degrau
+      // do funil — mission_completed pra quem termina aqui, mission_started
+      // pra próxima que passa a ficar visível.
+      for (const m of MISSIONS) {
+        if (m.doneAtCC === newCount) {
+          const startedAt = missionStartedAtRef.current[m.id]
+          track("mission_completed", {
+            mission_id: m.id,
+            duration_ms: startedAt ? Date.now() - startedAt : 0,
+          })
+        }
+        if (m.visibleFromCC === newCount) {
+          missionStartedAtRef.current[m.id] = Date.now()
+          track("mission_started", { mission_id: m.id, place_id: m.route })
+        }
+      }
+
       return {
         ...prev,
         confirmationCount: newCount,
@@ -422,6 +450,12 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
     window.location.reload()
   }, [])
 
+  const markMissionStarted = useCallback((missionId: string, placeId: string) => {
+    if (missionStartedAtRef.current[missionId]) return
+    missionStartedAtRef.current[missionId] = Date.now()
+    track("mission_started", { mission_id: missionId, place_id: placeId })
+  }, [])
+
   const getNextConfirmation = useCallback((): 1 | 2 | 3 | null => {
     if (!state.confirmations.c1.done) return 1
     if (!state.confirmations.c2.done) return 2
@@ -457,6 +491,7 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
         resetAll,
         resetExperience,
         getNextConfirmation,
+        markMissionStarted,
       }}
     >
       {children}
