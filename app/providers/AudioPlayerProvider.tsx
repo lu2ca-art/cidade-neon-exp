@@ -128,6 +128,8 @@ interface AudioPlayerContextType {
   trackIdx: number
   playing: boolean
   elapsed: number
+  volume: number
+  setVolume: (v: number) => void
   play: (trackIndex: number, source?: MusicSource) => void
   pause: () => void
   resume: () => void
@@ -151,11 +153,35 @@ export function useAudioPlayer() {
 let _audioEl: HTMLAudioElement | null = null
 let _trackIdx = 0
 
+const VOLUME_KEY = "cidade-neon-volume"
+
+function getStoredVolume(): number {
+  if (typeof window === "undefined") return 0.8
+  const raw = localStorage.getItem(VOLUME_KEY)
+  const n = raw ? Number.parseFloat(raw) : Number.NaN
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0.8
+}
+
+// Fade curto no início de cada faixa (manual ou auto-avanço) em vez do
+// corte seco de volume 0→máximo instantâneo. Não é crossfade de verdade
+// (precisaria de 2 elementos <audio> tocando ao mesmo tempo — o player
+// usa um singleton só) — isso aqui suaviza só o ataque da próxima faixa.
+function fadeVolumeIn(el: HTMLAudioElement, to: number, durationMs = 350) {
+  const from = el.volume
+  const start = performance.now()
+  function step(now: number) {
+    const t = Math.min(1, (now - start) / durationMs)
+    el.volume = from + (to - from) * t
+    if (t < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+
 export function getAudioEl(): HTMLAudioElement | null {
   if (typeof window === "undefined") return null
   if (!_audioEl) {
     _audioEl = new Audio()
-    _audioEl.volume = 0.8
+    _audioEl.volume = getStoredVolume()
     _audioEl.preload = "auto"
   }
   return _audioEl
@@ -167,6 +193,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [trackIdx, setTrackIdx] = useState(_trackIdx)
   const [playing, setPlaying] = useState(false)
   const [elapsed, setElapsed] = useState(0)
+  // Começa em 0.8 (mesmo default de sempre) até hidratar do localStorage,
+  // pra não divergir do valor real que getAudioEl() já aplicou no áudio.
+  const [volume, setVolumeState] = useState(0.8)
+
+  useEffect(() => {
+    setVolumeState(getStoredVolume())
+  }, [])
+
+  const setVolume = useCallback((v: number) => {
+    const clamped = Math.min(1, Math.max(0, v))
+    localStorage.setItem(VOLUME_KEY, String(clamped))
+    setVolumeState(clamped)
+    const el = getAudioEl()
+    if (el) el.volume = clamped
+  }, [])
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // Estado do "playthrough" atual, pra music_progress/music_abandoned —
@@ -292,7 +333,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           el.src = next.audioUrl
           el.currentTime = 0
           beginPlaythrough(next, "other")
-          el.play().then(() => { setPlaying(true); startTick() }).catch(() => {})
+          el.volume = 0
+          el.play().then(() => {
+            setPlaying(true)
+            startTick()
+            fadeVolumeIn(el, getStoredVolume())
+          }).catch(() => {})
         }
         // sem audioUrl: apenas troca o estado visual da faixa
       }
@@ -325,12 +371,24 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     if (track.audioUrl) {
       // Troca src apenas se for uma faixa diferente
-      if (el.src !== track.audioUrl) {
+      const isNewSrc = el.src !== track.audioUrl
+      if (isNewSrc) {
         el.src = track.audioUrl
         el.currentTime = 0
       }
       setElapsed(Math.floor(el.currentTime))
-      el.play().then(() => { setPlaying(true); startTick() }).catch(() => {})
+      if (isNewSrc) {
+        el.volume = 0
+        el.play().then(() => {
+          setPlaying(true)
+          startTick()
+          fadeVolumeIn(el, getStoredVolume())
+        }).catch(() => {})
+      } else {
+        // Mesma faixa (ex: reabrindo o player) — sem fade, retoma direto.
+        el.volume = getStoredVolume()
+        el.play().then(() => { setPlaying(true); startTick() }).catch(() => {})
+      }
     } else {
       // Sem audio: pausa o player atual, marca como "tocando" visualmente
       el.pause()
@@ -399,6 +457,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       trackIdx,
       playing,
       elapsed,
+      volume,
+      setVolume,
       play,
       pause,
       resume,
