@@ -20,22 +20,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'CIDADE NEON - Experiência Imersiva',
   description: 'Uma experiência interativa imersiva na Cidade Neon',
+  // As referências antigas (icon-light/dark-32x32.png, apple-icon.png)
+  // apontavam pra arquivos que não existem em public/ — 404 silencioso.
+  // Só existe public/icon.svg de verdade; usando ele nos dois até
+  // termos PNGs reais em 192/512 pro manifest PWA (ver roadmap-tecnico).
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/icon.svg',
+    apple: '/icon.svg',
   },
 }
 
