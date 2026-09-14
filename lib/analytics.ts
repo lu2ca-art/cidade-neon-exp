@@ -103,7 +103,10 @@ export interface AnalyticsEvents {
 
   // 6. Conversão externa
   external_link_click: {
-    destination: "spotify" | "instagram" | "youtube" | "other"
+    // "untitled" = untitled.stream, o hub de distribuição/compra do álbum
+    // (ver CLAUDE.md do repo) — categoria própria porque é a conversão que
+    // mais importa aqui, não cabe bem em "other" nem é literalmente Spotify.
+    destination: "spotify" | "instagram" | "youtube" | "untitled" | "other"
     track_id?: string | number
     place_id?: string
     utm_source?: string
