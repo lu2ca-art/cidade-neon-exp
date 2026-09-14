@@ -23,7 +23,7 @@ import { PortaLuvasModal } from "@/components/DriveHUD/PortaLuvasModal"
 import { Speedometer } from "@/components/DriveHUD/Speedometer"
 import { MobileControls } from "@/components/DriveHUD/MobileControls"
 import type { InventoryAction } from "@/lib/inventory-items"
-import { CyberpunkCity, magentaSpawn } from "@/components/DriveCockpit/CyberpunkCity"
+import { CyberpunkCity, magentaSpawn, nearestTrackSpawn } from "@/components/DriveCockpit/CyberpunkCity"
 import { NeonDesert } from "@/components/DriveCockpit/NeonDesert"
 import { CidadeNeonSplash } from "@/components/DriveCockpit/CidadeNeonSplash"
 import { Kombi } from "@/components/DriveCockpit/Kombi"
@@ -150,13 +150,18 @@ function VanBody({ bodyRef, showCockpit, onCockpitItem, isPlaying, speedRef, car
   const half = KOMBI_COLLIDER_HALF as unknown as [number, number, number]
   // sync steer visual das rodas com o steer real do jogador
   const steerVisual = keys.current.a ? 1 : keys.current.d ? -1 : 0
+  // Posição E rotação de spawn vêm juntas — a rotação [0,0,0] fixa que
+  // tinha aqui antes não acompanhava a direção real da pista quando a
+  // geometria mudava (offset/escala das pistas), então o carro nascia
+  // torto e saía da pista sozinho mesmo indo reto.
+  const spawnPose = useRef(magentaSpawn()).current
 
   return (
     <RigidBody
       ref={bodyRef}
       colliders={false}
-      position={magentaSpawn()}
-      rotation={[0, 0, 0]}
+      position={spawnPose.position}
+      rotation={spawnPose.rotation}
       restitution={0.2}
       friction={0.3}
       linearDamping={0.02}
@@ -541,8 +546,18 @@ export default function DriveV2Page() {
       }
       const stuck = stuckMsRef.current > 1500
       if (t.y < -8 || stuck) {
-        const spawn = magentaSpawn()
-        b.setTranslation({ x: spawn[0], y: spawn[1] + 2, z: spawn[2] }, true)
+        // Sempre no ponto de QUALQUER pista mais perto de onde o carro tá
+        // agora (x,z) — nunca um spot fixo longe, que quebrava o fluxo se
+        // o jogador tava dirigindo num andar/canto diferente da cidade.
+        // nearestTrackSpawn só busca entre pontos que já pertencem a um
+        // traçado, então nunca cai no chão vazio. Rotação também vem do
+        // spawn — sem ela o carro reaparecia na pista certa mas virado
+        // pro lado errado, e saía da pista de novo sozinho.
+        const spawn = nearestTrackSpawn(t.x, t.z)
+        const [px, py, pz] = spawn.position
+        b.setTranslation({ x: px, y: py + 2, z: pz }, true)
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, spawn.rotation[1], 0))
+        b.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true)
         b.setLinvel({ x: 0, y: 0, z: 0 }, true)
         b.setAngvel({ x: 0, y: 0, z: 0 }, true)
         stuckMsRef.current = 0
