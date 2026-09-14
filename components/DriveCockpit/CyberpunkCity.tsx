@@ -57,7 +57,12 @@ const PERIMETER_SCALE = 0.9
 const MAX_TRACK_TURN_DEG = 70
 // Inclinação lateral máxima (banking) — a pista inclina PRA DENTRO da
 // curva, tipo autódromo de verdade, proporcional a quão fechada ela é ali.
-const MAX_BANK_DEG = 18
+// 18° quebrava: em trechos com curvas fechadas em sequência (chicane), o
+// ângulo bruto pulava de -18° pra +18° em 1-2 amostras — pouco espaço pra
+// suavizar dentro do limite por segmento, sobrava salto de até 10° na
+// junção mesmo depois de 30 passadas. Com 10° a suavização converge
+// exatamente no limite teórico (1.43°/segmento) nas 3 pistas.
+const MAX_BANK_DEG = 10
 const MAX_BANK_RAD = (MAX_BANK_DEG * Math.PI) / 180
 // Offsets que espalham cada pista por uma região diferente da cidade —
 // antes as 3 ficavam concêntricas no centro, só empilhadas em Y (por isso
@@ -79,11 +84,25 @@ function translateXZ(points: THREE.Vector3[], dx: number, dz: number): THREE.Vec
 const magentaPts = smoothAndBridgeTrack(translateXZ(makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y), ...MONACO_OFFSET))
 const cyanPts = smoothAndBridgeTrack(translateXZ(makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y), ...SUZUKA_OFFSET))
 const yellowPts = smoothAndBridgeTrack(translateXZ(makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y), ...INTERLAGOS_OFFSET))
+// Bem acima do pior caso das outras 3 (yellow chega a ~48 com ponte de
+// cruzamento ativa) — folga de sobra, nunca precisa de lógica de
+// cruzamento com elas.
+const AUTOBAHN_Y = 58
+// arcSteps=48: com menos, a transição reta→curva (mudança de curvatura,
+// não de direção — a reta já nasce tangente ao círculo) tinha amostras
+// de menos pro banking suavizar direito, sobrava corte na pista bem no
+// meio da curva. Passa pelo mesmo smoothAndBridgeTrack das outras 3 por
+// consistência, mesmo não tendo canto apertado nenhum pra abrir.
+const autobahnPts = smoothAndBridgeTrack(makeAutobahn(560, 100, AUTOBAHN_Y, 40, 48))
 
 const CIRCUITS = {
   magenta: { color: "#ff00ff", points: magentaPts },
   cyan:    { color: "#00ffff", points: cyanPts },
   yellow:  { color: "#ffcc00", points: yellowPts },
+  // Autobahn — sem canto apertado, atravessa o mapa inteiro bem acima de
+  // tudo. Sem rampa de conexão com as outras 3 de propósito: é uma pista
+  // de cruzeiro separada, "ninguém para por lá".
+  autobahn: { color: "#00ff88", points: autobahnPts },
   // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares.
   // Em vez de um ponto cardinal fixo (só funcionava quando as 3 pistas
   // eram concêntricas), agora conecta onde as pistas vizinhas ficam
@@ -271,6 +290,34 @@ function makeInterlagos(scale: number, y: number): THREE.Vector3[] {
   return pts.map(([x, z]) => new THREE.Vector3(x * scale, y, z * scale))
 }
 
+// AUTOBAHN — 4ª pista, formato "estádio" (dois retões + duas curvas bem
+// abertas nas pontas, raio grande, sem canto apertado nenhum). Atravessa
+// o mapa inteiro na diagonal. Fica muito acima das outras 3 (ver
+// AUTOBAHN_Y) — nunca precisa de ponte de cruzamento porque fisicamente
+// não tem como colidir com nada, mesmo cruzando todo mundo em planta.
+// "Ninguém para por lá": sem chicane, sem hairpin, só reta e curva larga.
+function makeAutobahn(length: number, halfWidth: number, y: number, angleDeg: number, arcSteps = 16): THREE.Vector3[] {
+  const half = length / 2
+  const pts: [number, number][] = []
+  // reta de cima (X crescente)
+  pts.push([-half, halfWidth], [0, halfWidth], [half, halfWidth])
+  // curva da ponta direita (semicírculo, +90°→-90° ao redor de (half,0))
+  for (let i = 1; i < arcSteps; i++) {
+    const t = Math.PI / 2 - (i / arcSteps) * Math.PI
+    pts.push([half + halfWidth * Math.cos(t), halfWidth * Math.sin(t)])
+  }
+  // reta de baixo (X decrescente)
+  pts.push([half, -halfWidth], [0, -halfWidth], [-half, -halfWidth])
+  // curva da ponta esquerda (semicírculo, -90°→+90° ao redor de (-half,0))
+  for (let i = 1; i < arcSteps; i++) {
+    const t = -Math.PI / 2 + (i / arcSteps) * Math.PI
+    pts.push([-half + halfWidth * Math.cos(t), halfWidth * Math.sin(t)])
+  }
+  const rad = (angleDeg * Math.PI) / 180
+  const cos = Math.cos(rad), sin = Math.sin(rad)
+  return pts.map(([x, z]) => new THREE.Vector3(x * cos - z * sin, y, x * sin + z * cos))
+}
+
 // Rampa entre duas pistas: acha o par de pontos (um em cada pista) mais
 // próximo entre si — respeitando uma distância mínima (`minSpan`) pra não
 // ficar quase vertical quando as pistas se encostam de perto — e liga os
@@ -416,14 +463,19 @@ function findSelfCrossings(pts: THREE.Vector2[], closed = true) {
 // X/Z já estão prontos (a curva já interpolada e comprovadamente sem
 // autocruzamento), é geometricamente impossível criar um autocruzamento
 // novo: só a altura muda.
-function applyCrossingBumps(disc: THREE.Vector3[], closed: boolean, clearance = 10, windowSamples = 10): THREE.Vector3[] {
+function applyCrossingBumps(
+  disc: THREE.Vector3[],
+  closed: boolean,
+  clearance = 10,
+  windowSamples = 10,
+): { points: THREE.Vector3[]; bumpWeight: number[] } {
   // Pra curva fechada, getPoints devolve o último ponto igual ao primeiro
   // (fecha o loop) — trabalha só com os pontos únicos e refecha no final.
   const pts = closed && disc.length > 1 ? disc.slice(0, -1) : disc.slice()
+  const n = pts.length
+  const bumpWeight = new Array(n).fill(0)
   const flat = pts.map((p) => new THREE.Vector2(p.x, p.z))
   const hits = findSelfCrossings(flat, closed)
-  if (hits.length === 0) return disc
-  const n = pts.length
   const out = pts.map((p) => p.clone())
   for (const { j } of hits) {
     for (let d = -windowSamples; d <= windowSamples; d++) {
@@ -431,10 +483,14 @@ function applyCrossingBumps(disc: THREE.Vector3[], closed: boolean, clearance = 
       if (idx < 0 || idx >= n) continue
       const w = 0.5 + 0.5 * Math.cos((d / windowSamples) * Math.PI) // 1 no centro, 0 nas bordas
       out[idx].y = Math.max(out[idx].y, pts[idx].y + clearance * w)
+      bumpWeight[idx] = Math.max(bumpWeight[idx], w)
     }
   }
-  if (closed) out.push(out[0].clone())
-  return out
+  if (closed) {
+    out.push(out[0].clone())
+    bumpWeight.push(bumpWeight[0])
+  }
+  return { points: out, bumpWeight }
 }
 
 // Remove pontos consecutivos mais próximos que `minDist` (mantém o
@@ -609,24 +665,70 @@ function bankAngleAt(disc: THREE.Vector3[], i: number, closed: boolean, window =
 // segmento pro próximo mudar rápido demais, a junção entre eles aparece
 // como um corte/vinco na pista, mesmo o ângulo em si estando dentro do
 // limite. `maxDeltaPerSegment` limita quanto o roll pode variar de um
-// segmento pro vizinho (passada pra frente e pra trás, pega os dois
-// sentidos da transição).
-function smoothedBankAngles(disc: THREE.Vector3[], closed: boolean, maxDeltaPerSegment = 0.025): number[] {
-  const n = disc.length
-  const raw = disc.map((_, i) => bankAngleAt(disc, i, closed))
-  const out = raw.slice()
+// segmento pro vizinho.
+//
+// `bumpWeight` (0..1 por amostra, de applyCrossingBumps) ZERA o banking
+// onde tem ponte de cruzamento — Y subindo E a pista inclinando de lado
+// ao mesmo tempo fazia a superfície ali parecer torcida/quebrada. A
+// ponte já resolve o cruzamento sozinha; não precisa bankar nela também.
+//
+// Pra curva fechada, `disc` (de curve.getPoints) tem o último ponto IGUAL
+// ao primeiro (fecha o loop visualmente) — mas são 121 ENTRADAS pro mesmo
+// ponto físico. Calcular o banking direto nas 121 entradas com wraparound
+// módulo-121 dava dois ângulos DIFERENTES pro mesmo lugar (a "curvatura"
+// vista de i=0 e de i=120 usa janelas de vizinhança diferentes), e isso
+// nem 30 passadas de suavização resolviam — o salto ficava preso ali de
+// propósito, não por falta de convergência. Fix: calcula só nos pontos
+// ÚNICOS (120), fecha o loop DEPOIS repetindo o valor de i=0 — garante
+// que o ponto de fechamento tem o mesmo ângulo dos dois lados por
+// construção, não por aproximação.
+function smoothedBankAngles(
+  disc: THREE.Vector3[],
+  closed: boolean,
+  bumpWeight?: number[],
+  maxDeltaPerSegment = 0.025,
+  maxIterations = 30,
+): number[] {
+  const full = closed && disc.length > 1 ? disc.slice(0, -1) : disc
+  const n = full.length
+  let out = full.map((_, i) => {
+    const raw = bankAngleAt(full, i, closed)
+    const suppress = bumpWeight ? 1 - bumpWeight[i] : 1
+    return raw * suppress
+  })
   const clampStep = (prevVal: number, target: number) => {
     const delta = target - prevVal
     if (delta > maxDeltaPerSegment) return prevVal + maxDeltaPerSegment
     if (delta < -maxDeltaPerSegment) return prevVal - maxDeltaPerSegment
     return target
   }
-  // passada pra frente
-  for (let i = 1; i < n; i++) out[i] = clampStep(out[i - 1], out[i])
-  if (closed) out[0] = clampStep(out[n - 1], out[0])
-  // passada pra trás (suaviza a transição nos dois sentidos, não só um)
-  for (let i = n - 2; i >= 0; i--) out[i] = clampStep(out[i + 1], out[i])
-  if (closed) out[n - 1] = clampStep(out[0], out[n - 1])
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let changed = false
+    const next = out.slice()
+    for (let i = 1; i < n; i++) {
+      const v = clampStep(next[i - 1], next[i])
+      if (v !== next[i]) changed = true
+      next[i] = v
+    }
+    if (closed) {
+      const v = clampStep(next[n - 1], next[0])
+      if (v !== next[0]) changed = true
+      next[0] = v
+    }
+    for (let i = n - 2; i >= 0; i--) {
+      const v = clampStep(next[i + 1], next[i])
+      if (v !== next[i]) changed = true
+      next[i] = v
+    }
+    if (closed) {
+      const v = clampStep(next[0], next[n - 1])
+      if (v !== next[n - 1]) changed = true
+      next[n - 1] = v
+    }
+    out = next
+    if (!changed) break
+  }
+  if (closed) out.push(out[0]) // fecha por construção — mesmo ângulo dos dois lados, sempre
   return out
 }
 
@@ -641,8 +743,8 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
     // Ponte dos cruzamentos mexe em Y DEPOIS da curva pronta — ver
     // applyCrossingBumps pra explicação de por que não faz isso nos
     // pontos de controle (X/Z já garantidamente sem autocruzamento aqui).
-    const disc = applyCrossingBumps(curve.getPoints(SEGMENT_DIVISIONS), closed)
-    const rolls = smoothedBankAngles(disc, closed)
+    const { points: disc, bumpWeight } = applyCrossingBumps(curve.getPoints(SEGMENT_DIVISIONS), closed)
+    const rolls = smoothedBankAngles(disc, closed, bumpWeight)
     // Pra cada segmento: matriz completa (position + rotation + scale).
     // Cada laje INCLINA (pitch) seguindo a rampa entre os dois pontos —
     // sem isso, apareciam degraus onde Y variava entre segmentos.
