@@ -8,6 +8,7 @@ import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 import { sendNotificationToParent } from "@/app/providers/AudioBridge"
 import { TIER_META, ALL_TIERS, type Tier } from "@/lib/radio-tiers"
+import { vibrate } from "@/lib/haptics"
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
@@ -787,6 +788,7 @@ function CidadeNeonExperience() {
   const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
     if (mission.isReward) {
       // Rewards go to "collected" drawer only
+      vibrate("reward")
       setCollectedRewards(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
     } else {
       // All non-reward items vanish from novidades when clicked

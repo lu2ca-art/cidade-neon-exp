@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react"
+import { vibrate } from "@/lib/haptics"
 
 // Types
 export type CinematicStep =
@@ -303,6 +304,7 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
   }, [debouncedSave])
 
   const completeConfirmation = useCallback((num: 1 | 2 | 3, data?: Record<string, unknown>) => {
+    vibrate("unlock")
     setState((prev) => {
       const key = `c${num}` as keyof Confirmations
       const newCount = Math.min(prev.confirmationCount + 1, 3) as 0 | 1 | 2 | 3
