@@ -45,9 +45,9 @@ const PERIMETER_SCALE = 1.15
 // reais (Loews, Spoon etc.) que no traçado real são bem mais fechadas.
 const MAX_TRACK_TURN_DEG = 70
 const CIRCUITS = {
-  magenta: { color: "#ff00ff", points: openSharpCorners(makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y)) },
-  cyan:    { color: "#00ffff", points: openSharpCorners(makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y)) },
-  yellow:  { color: "#ffcc00", points: openSharpCorners(makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y)) },
+  magenta: { color: "#ff00ff", points: smoothAndBridgeTrack(makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y)) },
+  cyan:    { color: "#00ffff", points: smoothAndBridgeTrack(makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y)) },
+  yellow:  { color: "#ffcc00", points: smoothAndBridgeTrack(makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y)) },
   // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares
   // em pontos específicos. Sobem/descem em Y de forma progressiva.
   rampaMC: { color: "#ff8800", points: makeRampaLinear(200 * PERIMETER_SCALE, 6, MAGENTA_Y, CYAN_Y, "north"), closed: false },
@@ -266,77 +266,132 @@ function makeRampaLinear(
   return pts
 }
 
-// Abre cantos mais apertados que `maxTurnDeg` (ângulo entre o segmento que
-// chega e o que sai de cada ponto) por relaxamento local iterativo — puxa
-// só os pontos apertados na direção do meio dos vizinhos, um pouco a cada
-// passada, até nenhum passar do limite. Preserva a identidade do traçado
-// real (curvas largas não são tocadas; só as ferraduras/chicanes fechadas
-// demais pra um loop arcade fluido vão sendo abertas aos poucos).
-// Como último recurso, remove vértices quase-reversos (>removeAboveDeg)
-// que sobrarem depois do relaxamento — normalmente são artefatos de
-// fechamento do loop (o último ponto encostando no primeiro), não curvas
-// de verdade, e travam o relaxamento num ziguezague sem convergir.
-function openSharpCorners(
-  points: THREE.Vector3[],
-  opts: {
-    maxTurnDeg?: number
-    iterations?: number
-    strength?: number
-    removeAboveDeg?: number
-    maxRemovals?: number
-    closed?: boolean
-  } = {},
-): THREE.Vector3[] {
-  const {
-    maxTurnDeg = MAX_TRACK_TURN_DEG,
-    iterations = 60,
-    strength = 0.3,
-    removeAboveDeg = 100,
-    maxRemovals = 4,
-    closed = true,
-  } = opts
+// ─── Refino do traçado: abre cantos fechados e cria pontes nos cruzamentos ──
+// Ângulo de mudança de direção em cada ponto de uma polilinha fechada (XZ).
+function turnAnglesXZ(pts: { x: number; z: number }[], closed = true): number[] {
+  const n = pts.length
+  return pts.map((p1, i) => {
+    const p0 = closed ? pts[(i - 1 + n) % n] : pts[Math.max(i - 1, 0)]
+    const p2 = closed ? pts[(i + 1) % n] : pts[Math.min(i + 1, n - 1)]
+    const ax = p1.x - p0.x, az = p1.z - p0.z
+    const bx = p2.x - p1.x, bz = p2.z - p1.z
+    const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz)
+    if (la === 0 || lb === 0) return 0
+    const cos = Math.min(1, Math.max(-1, (ax * bx + az * bz) / (la * lb)))
+    return (Math.acos(cos) * 180) / Math.PI
+  })
+}
 
-  const turnAngles = (pts: THREE.Vector3[]): number[] => {
-    const n = pts.length
-    return pts.map((p1, i) => {
-      const p0 = closed ? pts[(i - 1 + n) % n] : pts[Math.max(i - 1, 0)]
-      const p2 = closed ? pts[(i + 1) % n] : pts[Math.min(i + 1, n - 1)]
-      const ax = p1.x - p0.x, az = p1.z - p0.z
-      const bx = p2.x - p1.x, bz = p2.z - p1.z
-      const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz)
-      if (la === 0 || lb === 0) return 0
-      const cos = Math.min(1, Math.max(-1, (ax * bx + az * bz) / (la * lb)))
-      return (Math.acos(cos) * 180) / Math.PI
-    })
-  }
-
-  let pts = points.map((p) => p.clone())
-
-  for (let pass = 0; pass <= maxRemovals; pass++) {
-    for (let it = 0; it < iterations; it++) {
-      const angs = turnAngles(pts)
-      const n = pts.length
-      let changed = false
-      const next = pts.map((p) => p.clone())
-      angs.forEach((a, i) => {
-        if (a <= maxTurnDeg) return
-        changed = true
-        const p0 = closed ? pts[(i - 1 + n) % n] : pts[Math.max(i - 1, 0)]
-        const p2 = closed ? pts[(i + 1) % n] : pts[Math.min(i + 1, n - 1)]
-        next[i].x = pts[i].x + strength * ((p0.x + p2.x) / 2 - pts[i].x)
-        next[i].z = pts[i].z + strength * ((p0.z + p2.z) / 2 - pts[i].z)
-      })
-      pts = next
-      if (!changed) break
-    }
-    const angs = turnAngles(pts)
+// Remove, um de cada vez, o vértice quase-reverso (>150°) mais extremo que
+// sobrar — normalmente artefato de fechamento do loop (o traçado volta
+// quase sobre si mesmo perto do ponto de largada), não curva de verdade.
+// Corte de canto puro nunca resolve isso (é uma reversão exata numa reta),
+// então tem que remover o ponto mesmo.
+function removeDegenerateReversals(pts: THREE.Vector2[], snapDeg = 150, maxRemovals = 10): THREE.Vector2[] {
+  let out = pts.slice()
+  for (let i = 0; i < maxRemovals; i++) {
+    const angs = turnAnglesXZ(out.map((p) => ({ x: p.x, z: p.y })))
     let worst = 0
-    for (let i = 1; i < angs.length; i++) if (angs[i] > angs[worst]) worst = i
-    if (angs[worst] <= removeAboveDeg) break
-    pts.splice(worst, 1)
+    for (let k = 1; k < angs.length; k++) if (angs[k] > angs[worst]) worst = k
+    if (angs[worst] <= snapDeg) break
+    out.splice(worst, 1)
   }
+  return out
+}
 
-  return pts
+// Corte de canto (estilo Chaikin): todo ponto acima de `maxTurnDeg` é
+// substituído por 2 pontos interpolados entre ele e cada vizinho (nunca
+// extrapola pra fora do triângulo do canto), repetido em passadas até
+// nenhum canto passar do limite. Diferente de relaxamento por média, isso
+// NUNCA cria os "laçinhos" de overshoot em cantos muito próximos entre si
+// (ex: uma chicane com várias curvas fechadas em sequência).
+function chaikinOpenCorners(pts: THREE.Vector2[], maxTurnDeg: number, maxPasses = 8, cutRatio = 0.22): THREE.Vector2[] {
+  let out = pts.slice()
+  for (let pass = 0; pass < maxPasses; pass++) {
+    const angs = turnAnglesXZ(out.map((p) => ({ x: p.x, z: p.y })))
+    if (Math.max(...angs) <= maxTurnDeg) break
+    const n = out.length
+    const next: THREE.Vector2[] = []
+    for (let i = 0; i < n; i++) {
+      if (angs[i] <= maxTurnDeg) {
+        next.push(out[i])
+        continue
+      }
+      const prev = out[(i - 1 + n) % n]
+      const nxt = out[(i + 1) % n]
+      const cur = out[i]
+      next.push(new THREE.Vector2(cur.x + cutRatio * (prev.x - cur.x), cur.y + cutRatio * (prev.y - cur.y)))
+      next.push(new THREE.Vector2(cur.x + cutRatio * (nxt.x - cur.x), cur.y + cutRatio * (nxt.y - cur.y)))
+    }
+    out = next
+  }
+  return out
+}
+
+// Interseção de 2 segmentos 2D (t,u em (0,1) = cruzam de verdade, não só
+// encostam na ponta).
+function segmentIntersection(p1: THREE.Vector2, p2: THREE.Vector2, p3: THREE.Vector2, p4: THREE.Vector2) {
+  const d1x = p2.x - p1.x, d1y = p2.y - p1.y
+  const d2x = p4.x - p3.x, d2y = p4.y - p3.y
+  const denom = d1x * d2y - d1y * d2x
+  if (Math.abs(denom) < 1e-9) return null
+  const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom
+  const u = ((p3.x - p1.x) * d1y - (p3.y - p1.y) * d1x) / denom
+  if (t > 1e-6 && t < 1 - 1e-6 && u > 1e-6 && u < 1 - 1e-6) return { t, u }
+  return null
+}
+
+// Acha todo par de arestas não-adjacentes que se cruzam numa polilinha
+// fechada — é a pista colidindo com ela mesma no plano (ex: a figura-8 da
+// Suzuka, de propósito; ou um cruzamento sem querer que sobrou do traçado
+// original aproximado).
+function findSelfCrossings(pts: THREE.Vector2[]) {
+  const n = pts.length
+  const hits: { i: number; j: number; u: number }[] = []
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue // adjacentes pelo fechamento do loop
+      const hit = segmentIntersection(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n])
+      if (hit) hits.push({ i, j, u: hit.u })
+    }
+  }
+  return hits
+}
+
+// Em cada cruzamento encontrado, insere uma ondulação (sobe → pico → desce)
+// na aresta de índice maior, pra ela passar POR CIMA da outra em vez de
+// colidir — igual um viaduto curto, só no ponto exato do cruzamento.
+function bridgeSelfCrossings(pts: THREE.Vector2[], baseY: number, clearance = 10, rampFrac = 0.18): THREE.Vector3[] {
+  const hits = findSelfCrossings(pts).sort((a, b) => b.j - a.j) // maior índice primeiro, pra inserção não bagunçar os outros
+  const out: THREE.Vector3[] = pts.map((p) => new THREE.Vector3(p.x, baseY, p.y))
+  for (const { j, u } of hits) {
+    const p3 = out[j]
+    const p4 = out[(j + 1) % out.length]
+    const lerp = (s: number, y: number) => new THREE.Vector3(p3.x + (p4.x - p3.x) * s, y, p3.z + (p4.z - p3.z) * s)
+    const u0 = Math.max(0, u - rampFrac)
+    const u1 = Math.min(1, u + rampFrac)
+    const insert = [
+      lerp(u0, baseY),
+      lerp((u0 + u) / 2, baseY + clearance * 0.6),
+      lerp(u, baseY + clearance),
+      lerp((u + u1) / 2, baseY + clearance * 0.6),
+      lerp(u1, baseY),
+    ]
+    out.splice(j + 1, 0, ...insert)
+  }
+  return out
+}
+
+// Pipeline completo: abre cantos fechados demais (sem overshoot) e cria
+// pontes onde a pista cruzaria com ela mesma no plano. `points` precisa
+// ter Y uniforme (um andar só) — os pontos extras da ponte herdam esse Y
+// como base e sobem localmente só perto do cruzamento.
+function smoothAndBridgeTrack(points: THREE.Vector3[], maxTurnDeg = MAX_TRACK_TURN_DEG): THREE.Vector3[] {
+  const baseY = points[0]?.y ?? 0
+  let flat = points.map((p) => new THREE.Vector2(p.x, p.z))
+  flat = removeDegenerateReversals(flat)
+  flat = chaikinOpenCorners(flat, maxTurnDeg)
+  return bridgeSelfCrossings(flat, baseY)
 }
 
 // ─── Segmento de estrada (visual + collider) ────────────────────────────────
