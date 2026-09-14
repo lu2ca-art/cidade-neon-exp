@@ -36,14 +36,46 @@ const LAJE_OVERLAP = 1.10
 const MAGENTA_Y = 6
 const CYAN_Y = 22
 const YELLOW_Y = 38
+// Fator de expansão pra aproximar do perímetro máximo da cidade (grid
+// ±256u) sem estourar — considerando ROAD_WIDTH/2 (8u) de folga nos
+// pontos mais extremos de cada traçado.
+const PERIMETER_SCALE = 1.15
+// Nenhuma curva do loop pode virar mais que isso entre um ponto e o
+// próximo — mantém a direção fluida (arcade), sem tranco nas ferraduras
+// reais (Loews, Spoon etc.) que no traçado real são bem mais fechadas.
+const MAX_TRACK_TURN_DEG = 70
+// Inclinação lateral máxima (banking) — a pista inclina PRA DENTRO da
+// curva, tipo autódromo de verdade, proporcional a quão fechada ela é ali.
+const MAX_BANK_DEG = 18
+const MAX_BANK_RAD = (MAX_BANK_DEG * Math.PI) / 180
+// Offsets que espalham cada pista por uma região diferente da cidade —
+// antes as 3 ficavam concêntricas no centro, só empilhadas em Y (por isso
+// pareciam compactas/coladas de cima). Agora cada uma ocupa um canto do
+// grid (±256u) e encosta a própria borda na borda da cidade, com uma faixa
+// de overlap natural entre pistas vizinhas pra plantar a rampa.
+const MONACO_OFFSET: [number, number] = [-78, 40] // noroeste
+const SUZUKA_OFFSET: [number, number] = [95, -126] // sudeste
+const INTERLAGOS_OFFSET: [number, number] = [21, 105] // nordeste
+
+function translateXZ(points: THREE.Vector3[], dx: number, dz: number): THREE.Vector3[] {
+  return points.map((p) => new THREE.Vector3(p.x + dx, p.y, p.z + dz))
+}
+
+const magentaPts = smoothAndBridgeTrack(translateXZ(makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y), ...MONACO_OFFSET))
+const cyanPts = smoothAndBridgeTrack(translateXZ(makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y), ...SUZUKA_OFFSET))
+const yellowPts = smoothAndBridgeTrack(translateXZ(makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y), ...INTERLAGOS_OFFSET))
+
 const CIRCUITS = {
-  magenta: { color: "#ff00ff", points: makeMonaco(200, MAGENTA_Y) },
-  cyan:    { color: "#00ffff", points: makeSuzuka(180, CYAN_Y) },
-  yellow:  { color: "#ffcc00", points: makeInterlagos(210, YELLOW_Y) },
-  // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares
-  // em pontos específicos. Sobem/descem em Y de forma progressiva.
-  rampaMC: { color: "#ff8800", points: makeRampaLinear(200, 6, MAGENTA_Y, CYAN_Y, "north"), closed: false },
-  rampaCY: { color: "#88ff00", points: makeRampaLinear(210, 6, CYAN_Y, YELLOW_Y, "south"), closed: false },
+  magenta: { color: "#ff00ff", points: magentaPts },
+  cyan:    { color: "#00ffff", points: cyanPts },
+  yellow:  { color: "#ffcc00", points: yellowPts },
+  // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares.
+  // Em vez de um ponto cardinal fixo (só funcionava quando as 3 pistas
+  // eram concêntricas), agora conecta onde as pistas vizinhas ficam
+  // naturalmente mais próximas no novo layout espalhado — funciona não
+  // importa pra onde cada uma se mova.
+  rampaMC: { color: "#ff8800", points: makeRampBetweenNearest(magentaPts, cyanPts, MAGENTA_Y, CYAN_Y), closed: false },
+  rampaCY: { color: "#88ff00", points: makeRampBetweenNearest(cyanPts, yellowPts, CYAN_Y, YELLOW_Y), closed: false },
 } as const
 
 // Monaco (simplificado). Retangular apertado, largada reta na "Boulevard
@@ -224,38 +256,210 @@ function makeInterlagos(scale: number, y: number): THREE.Vector3[] {
   return pts.map(([x, z]) => new THREE.Vector3(x * scale, y, z * scale))
 }
 
-// Rampa reta com curva suave — sobe de yFrom até yTo em N pontos, posicionada
-// numa borda cardinal ("north"=+Z, "south"=-Z) da cidade em distância `dist`.
-// Comprimento total ~ 60u no eixo cardinal. Suave (curva de Bezier no meio).
-function makeRampaLinear(
-  dist: number,
-  n: number,
+// Rampa entre duas pistas: acha o par de pontos (um em cada pista) mais
+// próximo entre si — respeitando uma distância mínima (`minSpan`) pra não
+// ficar quase vertical quando as pistas se encostam de perto — e liga os
+// dois com um traçado reto + curva de altura ease-in-out. Funciona pra
+// qualquer posição relativa entre as pistas (não depende de estarem
+// concêntricas nem de um lado cardinal fixo).
+function makeRampBetweenNearest(
+  a: THREE.Vector3[],
+  b: THREE.Vector3[],
   yFrom: number,
   yTo: number,
-  side: "north" | "south" | "east" | "west",
+  n = 8,
+  minSpan = 100,
 ): THREE.Vector3[] {
-  const pts: THREE.Vector3[] = []
-  const rampLength = 60
-  // Direção do eixo principal e offset perpendicular pra ficar "adjacente"
-  // sem cruzar as pistas circulares
-  const cardinal: Record<typeof side, [number, number]> = {
-    north: [0, dist],
-    south: [0, -dist],
-    east: [dist, 0],
-    west: [-dist, 0],
+  let best: { d: number; pa: THREE.Vector3; pb: THREE.Vector3 } | null = null
+  let bestAny: { d: number; pa: THREE.Vector3; pb: THREE.Vector3 } | null = null
+  for (const pa of a) {
+    for (const pb of b) {
+      const d = Math.hypot(pa.x - pb.x, pa.z - pb.z)
+      if (!bestAny || d < bestAny.d) bestAny = { d, pa, pb }
+      if (d < minSpan) continue
+      if (!best || d < best.d) best = { d, pa, pb }
+    }
   }
-  const [cx, cz] = cardinal[side]
-  // Distribui pontos ao longo do eixo perpendicular ao cardinal
-  const axis: [number, number] = side === "north" || side === "south" ? [1, 0] : [0, 1]
+  // se as pistas nunca chegam a `minSpan` de distância em lugar nenhum,
+  // usa o par mais próximo mesmo assim (rampa curta, mas ainda conecta)
+  const { pa, pb } = best ?? bestAny!
+  const pts: THREE.Vector3[] = []
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1)
-    // Curva de altura EASE-IN-OUT (mais orgânico que linear)
     const yEase = 0.5 - 0.5 * Math.cos(t * Math.PI)
-    const y = yFrom + (yTo - yFrom) * yEase
-    const off = (t - 0.5) * rampLength
-    pts.push(new THREE.Vector3(cx + axis[0] * off, y, cz + axis[1] * off))
+    pts.push(new THREE.Vector3(pa.x + (pb.x - pa.x) * t, yFrom + (yTo - yFrom) * yEase, pa.z + (pb.z - pa.z) * t))
   }
   return pts
+}
+
+// ─── Refino do traçado: abre cantos fechados e cria pontes nos cruzamentos ──
+// Ângulo de mudança de direção em cada ponto de uma polilinha fechada (XZ).
+function turnAnglesXZ(pts: { x: number; z: number }[], closed = true): number[] {
+  const n = pts.length
+  return pts.map((p1, i) => {
+    const p0 = closed ? pts[(i - 1 + n) % n] : pts[Math.max(i - 1, 0)]
+    const p2 = closed ? pts[(i + 1) % n] : pts[Math.min(i + 1, n - 1)]
+    const ax = p1.x - p0.x, az = p1.z - p0.z
+    const bx = p2.x - p1.x, bz = p2.z - p1.z
+    const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz)
+    if (la === 0 || lb === 0) return 0
+    const cos = Math.min(1, Math.max(-1, (ax * bx + az * bz) / (la * lb)))
+    return (Math.acos(cos) * 180) / Math.PI
+  })
+}
+
+// Remove, um de cada vez, o vértice quase-reverso (>150°) mais extremo que
+// sobrar — normalmente artefato de fechamento do loop (o traçado volta
+// quase sobre si mesmo perto do ponto de largada), não curva de verdade.
+// Corte de canto puro nunca resolve isso (é uma reversão exata numa reta),
+// então tem que remover o ponto mesmo.
+function removeDegenerateReversals(pts: THREE.Vector2[], snapDeg = 150, maxRemovals = 10): THREE.Vector2[] {
+  let out = pts.slice()
+  for (let i = 0; i < maxRemovals; i++) {
+    const angs = turnAnglesXZ(out.map((p) => ({ x: p.x, z: p.y })))
+    let worst = 0
+    for (let k = 1; k < angs.length; k++) if (angs[k] > angs[worst]) worst = k
+    if (angs[worst] <= snapDeg) break
+    out.splice(worst, 1)
+  }
+  return out
+}
+
+// Corte de canto (estilo Chaikin): todo ponto acima de `maxTurnDeg` é
+// substituído por 2 pontos interpolados entre ele e cada vizinho (nunca
+// extrapola pra fora do triângulo do canto), repetido em passadas até
+// nenhum canto passar do limite. Diferente de relaxamento por média, isso
+// NUNCA cria os "laçinhos" de overshoot em cantos muito próximos entre si
+// (ex: uma chicane com várias curvas fechadas em sequência).
+function chaikinOpenCorners(pts: THREE.Vector2[], maxTurnDeg: number, maxPasses = 8, cutRatio = 0.22): THREE.Vector2[] {
+  let out = pts.slice()
+  for (let pass = 0; pass < maxPasses; pass++) {
+    const angs = turnAnglesXZ(out.map((p) => ({ x: p.x, z: p.y })))
+    if (Math.max(...angs) <= maxTurnDeg) break
+    const n = out.length
+    const next: THREE.Vector2[] = []
+    for (let i = 0; i < n; i++) {
+      if (angs[i] <= maxTurnDeg) {
+        next.push(out[i])
+        continue
+      }
+      const prev = out[(i - 1 + n) % n]
+      const nxt = out[(i + 1) % n]
+      const cur = out[i]
+      next.push(new THREE.Vector2(cur.x + cutRatio * (prev.x - cur.x), cur.y + cutRatio * (prev.y - cur.y)))
+      next.push(new THREE.Vector2(cur.x + cutRatio * (nxt.x - cur.x), cur.y + cutRatio * (nxt.y - cur.y)))
+    }
+    out = next
+  }
+  return out
+}
+
+// Interseção de 2 segmentos 2D (t,u em (0,1) = cruzam de verdade, não só
+// encostam na ponta).
+function segmentIntersection(p1: THREE.Vector2, p2: THREE.Vector2, p3: THREE.Vector2, p4: THREE.Vector2) {
+  const d1x = p2.x - p1.x, d1y = p2.y - p1.y
+  const d2x = p4.x - p3.x, d2y = p4.y - p3.y
+  const denom = d1x * d2y - d1y * d2x
+  if (Math.abs(denom) < 1e-9) return null
+  const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom
+  const u = ((p3.x - p1.x) * d1y - (p3.y - p1.y) * d1x) / denom
+  if (t > 1e-6 && t < 1 - 1e-6 && u > 1e-6 && u < 1 - 1e-6) return { t, u }
+  return null
+}
+
+// Acha todo par de arestas não-adjacentes que se cruzam numa polilinha —
+// é a pista colidindo com ela mesma no plano (ex: a figura-8 da Suzuka,
+// de propósito; ou um cruzamento sem querer que sobrou do traçado
+// original aproximado). `closed=false` pras rampas (não fecha o loop —
+// sem isso, checava também uma aresta de "fechamento" que não existe).
+function findSelfCrossings(pts: THREE.Vector2[], closed = true) {
+  const n = pts.length
+  const hits: { i: number; j: number; u: number }[] = []
+  const edges = closed ? n : n - 1
+  for (let i = 0; i < edges; i++) {
+    for (let j = i + 2; j < edges; j++) {
+      if (closed && i === 0 && j === edges - 1) continue // adjacentes pelo fechamento do loop
+      const hit = segmentIntersection(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n])
+      if (hit) hits.push({ i, j, u: hit.u })
+    }
+  }
+  return hits
+}
+
+// Em cada cruzamento encontrado, sobe suavemente a altura (Y) dos pontos
+// JÁ DISCRETIZADOS (a curva final, pronta) numa janela ao redor do
+// cruzamento — janela de cosseno levantado, sem tocar X/Z. Passa por cima
+// da outra pista em vez de colidir, tipo viaduto curto.
+//
+// Por que aqui e não nos pontos de controle: a primeira versão inseria
+// pontos de controle extras ANTES do CatmullRomCurve3 interpolar. Mesmo
+// com um perfil de altura suave, meter vários pontos densos no meio de um
+// trecho normalmente espaçado bagunça a estimativa de tangente do
+// CatmullRom nos pontos vizinhos (a densidade local muda, não só a
+// altura), e a curva final ainda dava voltinha/se autocruzava em X/Z bem
+// ali — o "X" quebrado perto de algumas curvas. Mexendo em Y DEPOIS que
+// X/Z já estão prontos (a curva já interpolada e comprovadamente sem
+// autocruzamento), é geometricamente impossível criar um autocruzamento
+// novo: só a altura muda.
+function applyCrossingBumps(disc: THREE.Vector3[], closed: boolean, clearance = 10, windowSamples = 10): THREE.Vector3[] {
+  // Pra curva fechada, getPoints devolve o último ponto igual ao primeiro
+  // (fecha o loop) — trabalha só com os pontos únicos e refecha no final.
+  const pts = closed && disc.length > 1 ? disc.slice(0, -1) : disc.slice()
+  const flat = pts.map((p) => new THREE.Vector2(p.x, p.z))
+  const hits = findSelfCrossings(flat, closed)
+  if (hits.length === 0) return disc
+  const n = pts.length
+  const out = pts.map((p) => p.clone())
+  for (const { j } of hits) {
+    for (let d = -windowSamples; d <= windowSamples; d++) {
+      const idx = closed ? (j + d + n) % n : j + d
+      if (idx < 0 || idx >= n) continue
+      const w = 0.5 + 0.5 * Math.cos((d / windowSamples) * Math.PI) // 1 no centro, 0 nas bordas
+      out[idx].y = Math.max(out[idx].y, pts[idx].y + clearance * w)
+    }
+  }
+  if (closed) out.push(out[0].clone())
+  return out
+}
+
+// Remove pontos consecutivos mais próximos que `minDist` (mantém o
+// primeiro, descarta o que vem colado nele) — passada de segurança contra
+// pontos quase-duplicados que qualquer etapa anterior possa ter deixado
+// (corte de canto perto do fechamento do loop, clamp da ponte na borda de
+// um trecho etc). Pontos muito próximos são o que faz o CatmullRomCurve3
+// "beliscar"/sumir um pedaço da curva e o collider ficar fino/instável ali
+// — exatamente onde o carro engancha.
+function enforceMinSpacing(points: THREE.Vector3[], minDist: number, closed = true): THREE.Vector3[] {
+  if (points.length === 0) return points
+  const out: THREE.Vector3[] = [points[0]]
+  for (let i = 1; i < points.length; i++) {
+    const last = out[out.length - 1]
+    const p = points[i]
+    if (Math.hypot(p.x - last.x, p.z - last.z) >= minDist) out.push(p)
+  }
+  if (closed && out.length > 1) {
+    const first = out[0]
+    const last = out[out.length - 1]
+    if (Math.hypot(first.x - last.x, first.z - last.z) < minDist) out.pop()
+  }
+  return out
+}
+
+// Pipeline dos pontos de CONTROLE: abre cantos fechados demais (sem
+// overshoot) e garante espaçamento mínimo (evita os "beliscões" na curva
+// e os colliders degenerados que travavam o carro). A ponte dos
+// cruzamentos NÃO entra aqui — ela mexe em Y só depois que essa curva já
+// foi interpolada pelo CatmullRomCurve3 (ver applyCrossingBumps), pra
+// nunca correr o risco de criar um autocruzamento novo em X/Z.
+function smoothAndBridgeTrack(points: THREE.Vector3[], maxTurnDeg = MAX_TRACK_TURN_DEG): THREE.Vector3[] {
+  const baseY = points[0]?.y ?? 0
+  let flat = points.map((p) => new THREE.Vector2(p.x, p.z))
+  flat = removeDegenerateReversals(flat)
+  flat = chaikinOpenCorners(flat, maxTurnDeg)
+  return enforceMinSpacing(
+    flat.map((p) => new THREE.Vector3(p.x, baseY, p.y)),
+    8,
+  )
 }
 
 // ─── Segmento de estrada (visual + collider) ────────────────────────────────
@@ -365,6 +569,26 @@ function CurveArrow({ position, angle }: { position: [number, number, number]; a
   )
 }
 
+// Ângulo de banking num ponto do traçado discretizado: olha um pouco antes
+// e um pouco depois (`window` amostras) pra medir curvatura + direção
+// (esquerda/direita, pelo sinal do produto vetorial 2D) e devolve o quanto
+// a pista deveria inclinar PRA DENTRO da curva ali, clampado no máximo.
+function bankAngleAt(disc: THREE.Vector3[], i: number, closed: boolean, window = 5, gain = 2.4): number {
+  const n = disc.length
+  const idxPrev = closed ? (i - window + n) % n : Math.max(i - window, 0)
+  const idxNext = closed ? (i + window) % n : Math.min(i + window, n - 1)
+  const prev = disc[idxPrev]
+  const cur = disc[i]
+  const next = disc[idxNext]
+  const v1x = cur.x - prev.x, v1z = cur.z - prev.z
+  const v2x = next.x - cur.x, v2z = next.z - cur.z
+  const l1 = Math.hypot(v1x, v1z) || 1
+  const l2 = Math.hypot(v2x, v2z) || 1
+  const cross = Math.max(-1, Math.min(1, (v1x * v2z - v1z * v2x) / (l1 * l2)))
+  const turn = Math.asin(cross)
+  return Math.max(-MAX_BANK_RAD, Math.min(MAX_BANK_RAD, turn * gain))
+}
+
 // ─── Circuito com InstancedMesh (perf otimizado) ────────────────────────────
 // 5 InstancedMesh por circuito (laje, faixa central, rail-esq, rail-dir,
 // underglow) em vez de N × 5 meshes separados. 24 draw calls totais em vez
@@ -373,11 +597,14 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
   const { segData, colliderData, arrows } = useMemo(() => {
     // tension 0.5 (era 0.3) — curvas MAIS SUAVES, orgânicas, sem quinas
     const curve = new THREE.CatmullRomCurve3(points, closed, "chordal", 0.5)
-    const disc = curve.getPoints(SEGMENT_DIVISIONS)
+    // Ponte dos cruzamentos mexe em Y DEPOIS da curva pronta — ver
+    // applyCrossingBumps pra explicação de por que não faz isso nos
+    // pontos de controle (X/Z já garantidamente sem autocruzamento aqui).
+    const disc = applyCrossingBumps(curve.getPoints(SEGMENT_DIVISIONS), closed)
     // Pra cada segmento: matriz completa (position + rotation + scale).
     // Cada laje INCLINA (pitch) seguindo a rampa entre os dois pontos —
     // sem isso, apareciam degraus onde Y variava entre segmentos.
-    const segs: { matrix: THREE.Matrix4; length: number; cx: number; cy: number; cz: number; angle: number; pitch: number }[] = []
+    const segs: { matrix: THREE.Matrix4; length: number; cx: number; cy: number; cz: number; angle: number; pitch: number; roll: number }[] = []
     const tmpPos = new THREE.Vector3()
     const tmpQuat = new THREE.Quaternion()
     const tmpEuler = new THREE.Euler()
@@ -398,17 +625,23 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
       // Pitch: inclina a laje pra cima/baixo seguindo a rampa. Sinal negativo
       // pra que dy>0 (segmento sobe) resulte em pitch negativo (frente sobe).
       const pitch = -Math.atan2(dy, horizLen)
+      // Banking: inclina a laje PRA DENTRO da curva ali, proporcional a
+      // quão fechada ela é — igual autódromo de verdade, harmoniza a
+      // transição entre trechos retos e curvas fechadas.
+      const roll = bankAngleAt(disc, i, closed)
       tmpPos.set(cx, cy, cz)
-      tmpEuler.set(pitch, angle, 0, "YXZ")
+      tmpEuler.set(pitch, angle, roll, "YXZ")
       tmpQuat.setFromEuler(tmpEuler)
       const matrix = new THREE.Matrix4().compose(tmpPos, tmpQuat, tmpScale)
-      segs.push({ matrix, length, cx, cy, cz, angle, pitch })
+      segs.push({ matrix, length, cx, cy, cz, angle, pitch, roll })
     }
 
-    // Colliders em batch (um RigidBody por circuito, N colliders filhos)
+    // Colliders em batch (um RigidBody por circuito, N colliders filhos) —
+    // rotação inclui o banking, senão o collider fica plano por baixo do
+    // visual inclinado e o carro flutua/afunda na lateral da pista.
     const cols = segs.map((s) => ({
       pos: [s.cx, s.cy, s.cz] as [number, number, number],
-      rot: [s.pitch, s.angle, 0] as [number, number, number],
+      rot: [s.pitch, s.angle, s.roll] as [number, number, number],
       length: s.length,
     }))
 
@@ -462,9 +695,10 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
     const worldDown = new THREE.Vector3()
     for (let i = 0; i < segData.length; i++) {
       const s = segData[i]
-      // Rotação AGORA inclui pitch — laje inclina seguindo a rampa entre
-      // pontos consecutivos, sem degraus.
-      tmpEuler.set(s.pitch, s.angle, 0, "YXZ")
+      // Rotação inclui pitch (rampa entre pontos consecutivos) e roll
+      // (banking pra dentro da curva) — sem isso apareciam degraus/e a
+      // pista ficava sempre plana de lado mesmo nas curvas fechadas.
+      tmpEuler.set(s.pitch, s.angle, s.roll, "YXZ")
       tmpQuat.setFromEuler(tmpEuler)
       // Vetor "up" e "down" DA LAJE em coordenadas world (pra offsetar
       // faixa central, underglow e rails perpendiculares corretamente
@@ -572,25 +806,37 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
 
       {/* Colliders — um RigidBody por circuito, com N CuboidCollider filhos.
           friction 0.4 na laje (era 1.0) — carro DESLIZA fluido, arcade-style.
-          Sem isso a Kombi "grudava" ao curvar. */}
+          Sem isso a Kombi "grudava" ao curvar.
+          IMPORTANTE: usa `quaternion`, não `rotation` — o prop `rotation` do
+          r3f/rapier interpreta o array em ordem XYZ por padrão, mas
+          pitch/angle/roll foram compostos em ordem YXZ (igual o mesh
+          visual). Passar o array direto como `rotation` desalinhava
+          collider e visual sempre que pitch OU roll não eram zero — era
+          isso que travava o carro em rampas/curvas fechadas mesmo com a
+          pista parecendo certa. */}
       <RigidBody type="fixed" colliders={false} friction={0.4}>
-        {colliderData.map((c, i) => (
-          <CuboidCollider
-            key={i}
-            args={[ROAD_WIDTH / 2, ROAD_THICKNESS / 2, c.length / 2]}
-            position={c.pos}
-            rotation={c.rot}
-          />
-        ))}
+        {colliderData.map((c, i) => {
+          const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(c.rot[0], c.rot[1], c.rot[2], "YXZ"))
+          return (
+            <CuboidCollider
+              key={i}
+              args={[ROAD_WIDTH / 2, ROAD_THICKNESS / 2, c.length / 2]}
+              position={c.pos}
+              quaternion={[q.x, q.y, q.z, q.w]}
+            />
+          )
+        })}
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.005} restitution={0.7}>
         {colliderData.map((c, i) => {
           // Rails alinhados com a laje INCLINADA — usa quaternion pra pegar
-          // eixos LOCAIS right/up (pitch inclui rampa). Sem isso, em rampas
-          // íngremes os rails ficavam soltos no ar/enterrados.
+          // eixos LOCAIS right/up (pitch+roll inclui rampa e banking). Sem
+          // isso, em rampas íngremes ou curvas bancadas os rails ficavam
+          // soltos no ar/enterrados.
           const q = new THREE.Quaternion().setFromEuler(
             new THREE.Euler(c.rot[0], c.rot[1], c.rot[2], "YXZ")
           )
+          const qArr: [number, number, number, number] = [q.x, q.y, q.z, q.w]
           const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
           const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
           const offX = ROAD_WIDTH / 2
@@ -604,7 +850,7 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
                   c.pos[1] - right.y * offX + up.y * upOff,
                   c.pos[2] - right.z * offX + up.z * upOff,
                 ]}
-                rotation={c.rot}
+                quaternion={qArr}
               />
               <CuboidCollider
                 args={[0.1, RAIL_H / 2, c.length / 2]}
@@ -613,7 +859,7 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
                   c.pos[1] + right.y * offX + up.y * upOff,
                   c.pos[2] + right.z * offX + up.z * upOff,
                 ]}
-                rotation={c.rot}
+                quaternion={qArr}
               />
             </React.Fragment>
           )
@@ -916,6 +1162,8 @@ function BuildingChunks({ buildings }: { buildings: Building[] }) {
 // ─── Helpers exportados pra spawn ───────────────────────────────────────────
 /** Retorna um ponto seguro na estrada magenta pra spawnar o carro. */
 export function magentaSpawn(): [number, number, number] {
-  // Ponto (rx, 0) do oval magenta = ponto mais à direita do circuito
-  return [80, ROAD_Y + 1.5, 0]
+  // Primeiro ponto do traçado magenta já smoothado/posicionado — sempre em
+  // cima da pista de verdade, independente de onde ela esteja na cidade.
+  const p = magentaPts[0]
+  return [p.x, p.y + 1.5, p.z]
 }
