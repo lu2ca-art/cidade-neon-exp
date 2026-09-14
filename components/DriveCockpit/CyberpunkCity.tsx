@@ -44,14 +44,34 @@ const PERIMETER_SCALE = 1.15
 // próximo — mantém a direção fluida (arcade), sem tranco nas ferraduras
 // reais (Loews, Spoon etc.) que no traçado real são bem mais fechadas.
 const MAX_TRACK_TURN_DEG = 70
+// Offsets que espalham cada pista por uma região diferente da cidade —
+// antes as 3 ficavam concêntricas no centro, só empilhadas em Y (por isso
+// pareciam compactas/coladas de cima). Agora cada uma ocupa um canto do
+// grid (±256u) e encosta a própria borda na borda da cidade, com uma faixa
+// de overlap natural entre pistas vizinhas pra plantar a rampa.
+const MONACO_OFFSET: [number, number] = [-78, 40] // noroeste
+const SUZUKA_OFFSET: [number, number] = [95, -126] // sudeste
+const INTERLAGOS_OFFSET: [number, number] = [21, 105] // nordeste
+
+function translateXZ(points: THREE.Vector3[], dx: number, dz: number): THREE.Vector3[] {
+  return points.map((p) => new THREE.Vector3(p.x + dx, p.y, p.z + dz))
+}
+
+const magentaPts = smoothAndBridgeTrack(translateXZ(makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y), ...MONACO_OFFSET))
+const cyanPts = smoothAndBridgeTrack(translateXZ(makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y), ...SUZUKA_OFFSET))
+const yellowPts = smoothAndBridgeTrack(translateXZ(makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y), ...INTERLAGOS_OFFSET))
+
 const CIRCUITS = {
-  magenta: { color: "#ff00ff", points: smoothAndBridgeTrack(makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y)) },
-  cyan:    { color: "#00ffff", points: smoothAndBridgeTrack(makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y)) },
-  yellow:  { color: "#ffcc00", points: smoothAndBridgeTrack(makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y)) },
-  // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares
-  // em pontos específicos. Sobem/descem em Y de forma progressiva.
-  rampaMC: { color: "#ff8800", points: makeRampaLinear(200 * PERIMETER_SCALE, 6, MAGENTA_Y, CYAN_Y, "north"), closed: false },
-  rampaCY: { color: "#88ff00", points: makeRampaLinear(210 * PERIMETER_SCALE, 6, CYAN_Y, YELLOW_Y, "south"), closed: false },
+  magenta: { color: "#ff00ff", points: magentaPts },
+  cyan:    { color: "#00ffff", points: cyanPts },
+  yellow:  { color: "#ffcc00", points: yellowPts },
+  // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares.
+  // Em vez de um ponto cardinal fixo (só funcionava quando as 3 pistas
+  // eram concêntricas), agora conecta onde as pistas vizinhas ficam
+  // naturalmente mais próximas no novo layout espalhado — funciona não
+  // importa pra onde cada uma se mova.
+  rampaMC: { color: "#ff8800", points: makeRampBetweenNearest(magentaPts, cyanPts, MAGENTA_Y, CYAN_Y), closed: false },
+  rampaCY: { color: "#88ff00", points: makeRampBetweenNearest(cyanPts, yellowPts, CYAN_Y, YELLOW_Y), closed: false },
 } as const
 
 // Monaco (simplificado). Retangular apertado, largada reta na "Boulevard
@@ -232,36 +252,38 @@ function makeInterlagos(scale: number, y: number): THREE.Vector3[] {
   return pts.map(([x, z]) => new THREE.Vector3(x * scale, y, z * scale))
 }
 
-// Rampa reta com curva suave — sobe de yFrom até yTo em N pontos, posicionada
-// numa borda cardinal ("north"=+Z, "south"=-Z) da cidade em distância `dist`.
-// Comprimento total ~ 60u no eixo cardinal. Suave (curva de Bezier no meio).
-function makeRampaLinear(
-  dist: number,
-  n: number,
+// Rampa entre duas pistas: acha o par de pontos (um em cada pista) mais
+// próximo entre si — respeitando uma distância mínima (`minSpan`) pra não
+// ficar quase vertical quando as pistas se encostam de perto — e liga os
+// dois com um traçado reto + curva de altura ease-in-out. Funciona pra
+// qualquer posição relativa entre as pistas (não depende de estarem
+// concêntricas nem de um lado cardinal fixo).
+function makeRampBetweenNearest(
+  a: THREE.Vector3[],
+  b: THREE.Vector3[],
   yFrom: number,
   yTo: number,
-  side: "north" | "south" | "east" | "west",
+  n = 8,
+  minSpan = 100,
 ): THREE.Vector3[] {
-  const pts: THREE.Vector3[] = []
-  const rampLength = 60
-  // Direção do eixo principal e offset perpendicular pra ficar "adjacente"
-  // sem cruzar as pistas circulares
-  const cardinal: Record<typeof side, [number, number]> = {
-    north: [0, dist],
-    south: [0, -dist],
-    east: [dist, 0],
-    west: [-dist, 0],
+  let best: { d: number; pa: THREE.Vector3; pb: THREE.Vector3 } | null = null
+  let bestAny: { d: number; pa: THREE.Vector3; pb: THREE.Vector3 } | null = null
+  for (const pa of a) {
+    for (const pb of b) {
+      const d = Math.hypot(pa.x - pb.x, pa.z - pb.z)
+      if (!bestAny || d < bestAny.d) bestAny = { d, pa, pb }
+      if (d < minSpan) continue
+      if (!best || d < best.d) best = { d, pa, pb }
+    }
   }
-  const [cx, cz] = cardinal[side]
-  // Distribui pontos ao longo do eixo perpendicular ao cardinal
-  const axis: [number, number] = side === "north" || side === "south" ? [1, 0] : [0, 1]
+  // se as pistas nunca chegam a `minSpan` de distância em lugar nenhum,
+  // usa o par mais próximo mesmo assim (rampa curta, mas ainda conecta)
+  const { pa, pb } = best ?? bestAny!
+  const pts: THREE.Vector3[] = []
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1)
-    // Curva de altura EASE-IN-OUT (mais orgânico que linear)
     const yEase = 0.5 - 0.5 * Math.cos(t * Math.PI)
-    const y = yFrom + (yTo - yFrom) * yEase
-    const off = (t - 0.5) * rampLength
-    pts.push(new THREE.Vector3(cx + axis[0] * off, y, cz + axis[1] * off))
+    pts.push(new THREE.Vector3(pa.x + (pb.x - pa.x) * t, yFrom + (yTo - yFrom) * yEase, pa.z + (pb.z - pa.z) * t))
   }
   return pts
 }
@@ -1052,6 +1074,8 @@ function BuildingChunks({ buildings }: { buildings: Building[] }) {
 // ─── Helpers exportados pra spawn ───────────────────────────────────────────
 /** Retorna um ponto seguro na estrada magenta pra spawnar o carro. */
 export function magentaSpawn(): [number, number, number] {
-  // Ponto (rx, 0) do oval magenta = ponto mais à direita do circuito
-  return [80, ROAD_Y + 1.5, 0]
+  // Primeiro ponto do traçado magenta já smoothado/posicionado — sempre em
+  // cima da pista de verdade, independente de onde ela esteja na cidade.
+  const p = magentaPts[0]
+  return [p.x, p.y + 1.5, p.z]
 }
