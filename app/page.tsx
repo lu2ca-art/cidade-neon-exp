@@ -9,6 +9,7 @@ import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 import { sendNotificationToParent } from "@/app/providers/AudioBridge"
 import { TIER_META, ALL_TIERS, type Tier } from "@/lib/radio-tiers"
 import { track } from "@/lib/analytics"
+import { vibrate } from "@/lib/haptics"
 
 function classifyExternalDestination(url: string): "spotify" | "instagram" | "youtube" | "untitled" | "other" {
   if (url.includes("spotify.com")) return "spotify"
@@ -810,6 +811,7 @@ function CidadeNeonExperience() {
   const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
     if (mission.isReward) {
       // Rewards go to "collected" drawer only
+      vibrate("reward")
       setCollectedRewards(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
     } else {
       // All non-reward items vanish from novidades when clicked
@@ -1627,7 +1629,7 @@ function CidadeNeonExperience() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[280px] h-[34px] bg-black/80 backdrop-blur rounded-b-[18px] flex items-center overflow-hidden px-2">
             <div className="flex items-center gap-1.5 whitespace-nowrap animate-spotify-scroll">
               <span className="text-[#E8FF3A] text-[10px] font-mono font-bold">▶</span>
-              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack.title || "CHUVA"}</span>
+              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack?.title || "CHUVA"}</span>
               <span className="text-white/30 text-[10px] font-mono">· LU2CA</span>
             </div>
           </div>

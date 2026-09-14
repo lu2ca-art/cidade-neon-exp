@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react"
 import { MISSIONS } from "@/lib/missions"
 import { track } from "@/lib/analytics"
+import { vibrate } from "@/lib/haptics"
 
 // Types
 export type CinematicStep =
@@ -313,6 +314,7 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
   }, [debouncedSave])
 
   const completeConfirmation = useCallback((num: 1 | 2 | 3, data?: Record<string, unknown>) => {
+    vibrate("unlock")
     setState((prev) => {
       const key = `c${num}` as keyof Confirmations
       const newCount = Math.min(prev.confirmationCount + 1, 3) as 0 | 1 | 2 | 3
@@ -466,8 +468,21 @@ export function GameFunnelProvider({ children }: { children: ReactNode }) {
   // Don't render children until hydrated to avoid hydration mismatch
   if (!isHydrated) {
     return (
-      <div className="h-dvh bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+      <div
+        className="h-dvh flex items-center justify-center"
+        style={{ background: "linear-gradient(180deg, #1a0533 0%, #4a0a6b 45%, #0a0918 100%)" }}
+      >
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 rounded-full border-2 border-white/10" />
+          <div
+            className="absolute inset-0 rounded-full border-2 border-transparent animate-spin"
+            style={{
+              borderTopColor: "#2fe8ff",
+              borderRightColor: "#ff3fb0",
+              boxShadow: "0 0 16px 2px rgba(47,232,255,0.35)",
+            }}
+          />
+        </div>
       </div>
     )
   }

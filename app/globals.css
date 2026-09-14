@@ -178,3 +178,16 @@
   0%, 100% { opacity: 0.6; }
   50%      { opacity: 1; }
 }
+
+/* Respeita "reduzir movimento" do SO — o jogo tem bastante motion (cinematics,
+   hacker-takeover, pulses) e não tinha nenhum tratamento pra isso. Blanket
+   fix: encurta toda animação/transição pra quase-instantânea em vez de
+   reescrever cada uma das ~19 @keyframes uma por uma. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

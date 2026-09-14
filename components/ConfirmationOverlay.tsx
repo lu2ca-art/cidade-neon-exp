@@ -95,6 +95,7 @@ export function ConfirmationOverlay() {
               <button
                 type="button"
                 onClick={handleEnterConfirmation}
+                aria-label="Entrar na confirmação"
                 className="
                   flex items-center gap-1 px-3 py-2 rounded-xl
                   bg-gradient-to-r from-cyan-500 to-purple-500
