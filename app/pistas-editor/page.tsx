@@ -30,22 +30,34 @@ interface Circuit {
 
 const STORAGE_KEY = "pistas-editor-v1"
 
-// Helper: constrói circuito a partir de pontos [-1,1] normalizados + escala.
-// Y=2 é a base (o useEditedCircuits força altura real por circuito depois).
-function circuitFromNormalized(id: string, color: string, scale: number, pts: [number, number][]): Circuit {
+// Helper: constrói circuito a partir de pontos [-1,1] normalizados + escala
+// + offset (posição do circuito na cidade). Y=2 é a base (o
+// useEditedCircuits força altura real por circuito depois).
+// Escala e offset aqui batem com CyberpunkCity.tsx (PERIMETER_SCALE=1.15 e
+// MONACO/SUZUKA/INTERLAGOS_OFFSET) — se aquele arquivo mudar, atualiza aqui
+// também, senão o botão "🏁 F1" carrega um traçado que não bate com o jogo.
+function circuitFromNormalized(
+  id: string,
+  color: string,
+  scale: number,
+  offset: [number, number],
+  pts: [number, number][],
+): Circuit {
+  const [ox, oz] = offset
   return {
     id,
     color,
-    points: pts.map(([x, z]) => ({ x: x * scale, y: 2, z: z * scale })),
+    points: pts.map(([x, z]) => ({ x: x * scale + ox, y: 2, z: z * scale + oz })),
   }
 }
 
 // PISTAS REAIS (F1). Coordenadas fiéis ao traçado geográfico visto de cima
-// (norte=-Z, sul=+Z). Escala pensada pro editor: aplicada * SCALE=1.5 vira
-// o tamanho final no jogo (~200-315u de diâmetro cobrindo a cidade).
+// (norte=-Z, sul=+Z). Escala + offset iguais ao jogo de verdade — cada
+// pista encosta numa borda diferente da cidade (±256u) em vez de ficar
+// concêntrica no centro.
 const DEFAULT_CIRCUITS: Circuit[] = [
-  // MAGENTA = MONACO (sentido horário)
-  circuitFromNormalized("magenta", "#ff00ff", 133, [
+  // MAGENTA = MONACO (noroeste, sentido horário)
+  circuitFromNormalized("magenta", "#ff00ff", 230, [-78, 40], [
     [ 0.9,  0.85], [ 0.5,  0.9], [ 0.1,  0.92], [-0.25, 0.9],   // reta Boulevard Albert I
     [-0.55, 0.82], [-0.7,  0.7],                                 // Sainte Dévote
     [-0.75, 0.5], [-0.75, 0.25], [-0.7,  0.0],                   // Beau Rivage
@@ -60,8 +72,8 @@ const DEFAULT_CIRCUITS: Circuit[] = [
     [ 0.55, 0.85], [ 0.7,  0.88],                                // La Rascasse
     [ 0.85, 0.88], [ 0.95, 0.85],                                // Anthony Noghès
   ]),
-  // CIANO = SUZUKA (figura-8, sentido horário)
-  circuitFromNormalized("cyan", "#00ffff", 120, [
+  // CIANO = SUZUKA (sudeste, figura-8, sentido horário)
+  circuitFromNormalized("cyan", "#00ffff", 207, [95, -126], [
     [-0.8,  0.85], [-0.5,  0.85], [-0.15, 0.85],                 // reta principal
     [ 0.15, 0.75], [ 0.25, 0.55],                                // curvas 1-2
     [ 0.15, 0.35], [ 0.0,  0.2], [-0.15, 0.05], [-0.05,-0.1], [ 0.15,-0.15],  // S curves
@@ -74,8 +86,8 @@ const DEFAULT_CIRCUITS: Circuit[] = [
     [ 0.55,-0.25], [ 0.7, -0.1], [ 0.75, 0.1],                   // Casio Triangle
     [ 0.7,  0.35], [ 0.55, 0.55], [ 0.3,  0.7], [ 0.0,  0.8], [-0.4,  0.85], [-0.7, 0.85],  // pit straight
   ]),
-  // AMARELA = INTERLAGOS (anti-horário)
-  circuitFromNormalized("yellow", "#ffcc00", 140, [
+  // AMARELA = INTERLAGOS (nordeste, anti-horário)
+  circuitFromNormalized("yellow", "#ffcc00", 241.5, [21, 105], [
     [ 0.95, 0.55], [ 0.95, 0.3], [ 0.9,  0.1],                   // reta dos boxes
     [ 0.75, 0.0], [ 0.55,-0.05], [ 0.35, 0.0],                   // S do Senna
     [ 0.15, 0.1], [ 0.0,  0.2], [-0.15, 0.25],                   // Curva do Sol
@@ -91,9 +103,12 @@ const DEFAULT_CIRCUITS: Circuit[] = [
   ]),
 ]
 
-// Viewport 2D top-down: 600x600px representando ±160 unidades do mundo
+// Viewport 2D top-down: 720x720px representando ±320 unidades do mundo.
+// Aumentado de ±160 pra ±320 — as pistas de verdade (CyberpunkCity.tsx)
+// hoje chegam perto de ±250 (espalhadas pelos cantos da cidade), não
+// cabiam mais no viewport antigo.
 const VIEW = 720
-const WORLD = 320 // ±160
+const WORLD = 640 // ±320
 const scale = VIEW / WORLD // px per world unit
 const worldToScreen = (v: number) => v * scale + VIEW / 2
 const screenToWorld = (px: number) => (px - VIEW / 2) / scale
@@ -238,6 +253,26 @@ export default function PistasEditorPage() {
       setSelectedIdx(null)
     }
   }, [activeCircuit, activeIdx])
+
+  // Escala o circuito ativo em volta do PRÓPRIO centro (não da origem do
+  // mundo) — cresce/encolhe no lugar, sem arrastar o circuito de posição.
+  const scaleActive = useCallback(
+    (factor: number) => {
+      setCircuits((prev) => {
+        const copy = [...prev]
+        const pts = copy[activeIdx].points
+        if (pts.length === 0) return prev
+        const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
+        const cz = pts.reduce((s, p) => s + p.z, 0) / pts.length
+        copy[activeIdx] = {
+          ...copy[activeIdx],
+          points: pts.map((p) => ({ ...p, x: cx + (p.x - cx) * factor, z: cz + (p.z - cz) * factor })),
+        }
+        return copy
+      })
+    },
+    [activeIdx]
+  )
 
   // Interpolação spline via CatmullRomCurve3
   const splinePaths = useMemo(() => {
@@ -391,6 +426,37 @@ export default function PistasEditorPage() {
         >
           limpar circuito {active.id}
         </button>
+
+        {/* Escala do circuito ativo — cresce/encolhe em volta do próprio
+            centro, sem mudar a posição dele na cidade. */}
+        <div>
+          <div className="mb-1 text-[10px] uppercase tracking-widest text-neutral-500">
+            escala do circuito {active.id}
+          </div>
+          <div className="flex gap-1">
+            <button
+              onClick={() => scaleActive(0.9)}
+              className="flex-1 rounded border border-white/20 bg-white/5 py-1.5 text-xs font-bold hover:bg-white/10"
+              title="encolher 10%"
+            >
+              − 10%
+            </button>
+            <button
+              onClick={() => scaleActive(1.1)}
+              className="flex-1 rounded border border-white/20 bg-white/5 py-1.5 text-xs font-bold hover:bg-white/10"
+              title="aumentar 10%"
+            >
+              + 10%
+            </button>
+            <button
+              onClick={() => scaleActive(1.25)}
+              className="flex-1 rounded border border-yellow-600/50 bg-yellow-950/30 py-1.5 text-xs font-bold text-yellow-300 hover:bg-yellow-900/40"
+              title="aumentar 25%"
+            >
+              + 25%
+            </button>
+          </div>
+        </div>
 
         {/* Painel do ponto selecionado */}
         {selectedPoint !== null && selectedIdx !== null && (
