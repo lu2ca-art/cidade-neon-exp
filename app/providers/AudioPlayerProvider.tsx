@@ -161,24 +161,101 @@ export function getAudioEl(): HTMLAudioElement | null {
   return _audioEl
 }
 
+const MILESTONES = [25, 50, 75, 100] as const
+
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [trackIdx, setTrackIdx] = useState(_trackIdx)
   const [playing, setPlaying] = useState(false)
   const [elapsed, setElapsed] = useState(0)
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Estado do "playthrough" atual, pra music_progress/music_abandoned —
+  // não é estado de componente porque play() precisa ler/escrever fora do
+  // ciclo de render (dentro do handler de "ended" e no próprio play()).
+  const currentPlayRef = useRef<{ id: number; durationSec: number; milestonesFired: Set<number> } | null>(null)
+  const playCountRef = useRef<Record<number, number>>({})
 
   const stopTick = useCallback(() => {
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null }
+  }, [])
+
+  const checkMilestones = useCallback((pct: number) => {
+    const cur = currentPlayRef.current
+    if (!cur) return
+    for (const m of MILESTONES) {
+      if (pct >= m && !cur.milestonesFired.has(m)) {
+        cur.milestonesFired.add(m)
+        trackEvent("music_progress", { track_id: cur.id, milestone: m })
+      }
+    }
+  }, [])
+
+  // Sempre dispara music_play_started (marca o início do playthrough); a
+  // partir da 2ª vez que a MESMA faixa toca, dispara também music_replayed.
+  // Arma o playthrough atual pro milestone/abandonment tracking acima.
+  const beginPlaythrough = useCallback((track: Track, source: MusicSource) => {
+    currentPlayRef.current = { id: track.id, durationSec: track.durationSec, milestonesFired: new Set() }
+    const count = (playCountRef.current[track.id] ?? 0) + 1
+    playCountRef.current[track.id] = count
+
+    trackEvent("music_play_started", {
+      track_id: track.id,
+      track_name: track.title ?? track.masked ?? `track-${track.id}`,
+      source,
+    })
+    if (count > 1) {
+      trackEvent("music_replayed", { track_id: track.id, replay_number: count })
+    }
+  }, [])
+
+  // Dispara music_abandoned se o playthrough atual for interrompido antes
+  // de quase terminar (troca de faixa, stop, fechar aba) — completar até o
+  // fim não conta como abandono, é coberto pelo milestone 100 acima.
+  const emitAbandonIfIncomplete = useCallback((reason: string) => {
+    const el = getAudioEl()
+    const cur = currentPlayRef.current
+    if (!el || !cur) return
+    const positionMs = Math.floor(el.currentTime * 1000)
+    const totalMs = cur.durationSec * 1000
+    const pct = totalMs > 0 ? Math.min(100, (positionMs / totalMs) * 100) : 0
+    if (pct < 98) {
+      trackEvent("music_abandoned", {
+        track_id: cur.id,
+        position_ms: positionMs,
+        total_ms: totalMs,
+        position_pct: Math.round(pct),
+        reason,
+      })
+    }
   }, [])
 
   const startTick = useCallback(() => {
     stopTick()
     tickRef.current = setInterval(() => {
       const el = getAudioEl()
-      if (el) setElapsed(Math.floor(el.currentTime))
+      const cur = currentPlayRef.current
+      if (el) {
+        setElapsed(Math.floor(el.currentTime))
+        if (cur && cur.durationSec > 0) checkMilestones((el.currentTime / cur.durationSec) * 100)
+      }
     }, 250)
-  }, [stopTick])
+  }, [stopTick, checkMilestones])
+
+  // Fecha o playthrough em andamento quando a aba é escondida/fechada —
+  // sem isso, um usuário que fecha no meio de uma faixa nunca gera
+  // music_abandoned (nem play() nem "ended" rodam nesse caso).
+  useEffect(() => {
+    const handlePageHide = () => emitAbandonIfIncomplete("closed")
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") emitAbandonIfIncomplete("tab_hidden")
+    }
+    window.addEventListener("pagehide", handlePageHide)
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [emitAbandonIfIncomplete])
 
   // Sync playing state from singleton on mount (handles back-navigation)
   useEffect(() => {
@@ -198,6 +275,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (!el) return
 
     const handleEnded = () => {
+      // Terminou de verdade (não abandono) — garante que o milestone 100%
+      // seja registrado mesmo se o último tick de 250ms não chegou a rodar.
+      checkMilestones(100)
+      currentPlayRef.current = null
       stopTick()
       setPlaying(false)
       // Auto-avanca para a proxima faixa playable (com ou sem audio)
@@ -210,6 +291,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         if (next?.audioUrl) {
           el.src = next.audioUrl
           el.currentTime = 0
+          beginPlaythrough(next, "other")
           el.play().then(() => { setPlaying(true); startTick() }).catch(() => {})
         }
         // sem audioUrl: apenas troca o estado visual da faixa
@@ -221,7 +303,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       el.removeEventListener("ended", handleEnded)
       stopTick()
     }
-  }, [startTick, stopTick])
+  }, [startTick, stopTick, checkMilestones, beginPlaythrough])
 
   const play = useCallback((index: number, source: MusicSource = "other") => {
     const track = ALBUM_TRACKS[index]
@@ -229,15 +311,17 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const el = getAudioEl()
     if (!el) return
 
+    // Trocando de faixa no meio de outra que não tinha terminado — registra
+    // o abandono da anterior antes de começar a nova.
+    if (currentPlayRef.current && currentPlayRef.current.id !== track.id) {
+      emitAbandonIfIncomplete("track_change")
+    }
+
     stopTick()
     _trackIdx = index
     setTrackIdx(index)
 
-    trackEvent("music_play_started", {
-      track_id: track.id,
-      track_name: track.title ?? track.masked ?? `track-${track.id}`,
-      source,
-    })
+    beginPlaythrough(track, source)
 
     if (track.audioUrl) {
       // Troca src apenas se for uma faixa diferente
@@ -255,7 +339,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       setPlaying(true)
       startTick()
     }
-  }, [startTick, stopTick])
+  }, [startTick, stopTick, emitAbandonIfIncomplete, beginPlaythrough])
 
   const pause = useCallback(() => {
     const el = getAudioEl()
@@ -299,11 +383,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [play])
 
   const stopAndClear = useCallback(() => {
+    emitAbandonIfIncomplete("stopped")
+    currentPlayRef.current = null
     const el = getAudioEl()
     if (el) { el.pause(); el.src = "" }
     setPlaying(false)
     stopTick()
-  }, [stopTick])
+  }, [stopTick, emitAbandonIfIncomplete])
 
   const currentTrack = ALBUM_TRACKS[trackIdx] ?? null
 

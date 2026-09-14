@@ -8,6 +8,30 @@ import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 import { sendNotificationToParent } from "@/app/providers/AudioBridge"
 import { TIER_META, ALL_TIERS, type Tier } from "@/lib/radio-tiers"
+import { track } from "@/lib/analytics"
+import { vibrate } from "@/lib/haptics"
+
+function classifyExternalDestination(url: string): "spotify" | "instagram" | "youtube" | "untitled" | "other" {
+  if (url.includes("spotify.com")) return "spotify"
+  if (url.includes("untitled.stream")) return "untitled"
+  if (url.includes("instagram.com")) return "instagram"
+  if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube"
+  return "other"
+}
+
+// UTM de origem em todo link de saída, pra distinguir no destino (Spotify
+// for Artists, Untitled etc.) o que veio do jogo do que veio de outro canal.
+function withUtm(url: string, campaign: string): string {
+  try {
+    const u = new URL(url)
+    if (!u.searchParams.has("utm_source")) u.searchParams.set("utm_source", "cidade-neon")
+    if (!u.searchParams.has("utm_medium")) u.searchParams.set("utm_medium", "game")
+    if (!u.searchParams.has("utm_campaign")) u.searchParams.set("utm_campaign", campaign)
+    return u.toString()
+  } catch {
+    return url
+  }
+}
 
 /* ─── TYPES ──────────────────────────────────────────── */
 type Phase =
@@ -245,7 +269,7 @@ export default function CidadeNeonWrapper() {
 }
 
 function CidadeNeonExperience() {
-  const { state: gameFunnelState, setState, completeConfirmation, resetExperience, updateCinematicStep, updateHackerState } = useGameFunnel()
+  const { state: gameFunnelState, setState, completeConfirmation, resetExperience, updateCinematicStep, updateHackerState, markMissionStarted } = useGameFunnel()
   const globalAudio = useAudioPlayer()
   const searchParams = useSearchParams()
   
@@ -787,6 +811,7 @@ function CidadeNeonExperience() {
   const handleMissionClick = (mission: { id: string; action: string; isReward?: boolean }) => {
     if (mission.isReward) {
       // Rewards go to "collected" drawer only
+      vibrate("reward")
       setCollectedRewards(prev => prev.includes(mission.id) ? prev : [...prev, mission.id])
     } else {
       // All non-reward items vanish from novidades when clicked
@@ -797,7 +822,8 @@ function CidadeNeonExperience() {
         setPhase("nectar-splash")
     } else if (mission.action.startsWith("http")) {
       // recompensas com link externo: apenas abre no browser
-      window.open(mission.action, "_blank")
+      track("external_link_click", { destination: classifyExternalDestination(mission.action) })
+      window.open(withUtm(mission.action, "recompensa"), "_blank")
     } else {
       // rotas internas (inclusive privado/*)
       window.location.href = mission.action
@@ -875,6 +901,9 @@ function CidadeNeonExperience() {
     const handlePlay = () => {
       setState({ flowStarted: true })
       updateCinematicStep("hacker-takeover")
+      // "nectar" é a única missão visível desde o início (visibleFromCC: 0) —
+      // as outras abrem dentro de completeConfirmation.
+      markMissionStarted("nectar", "/nectar")
       setPhase("hacker")
     }
 
@@ -1437,7 +1466,14 @@ function CidadeNeonExperience() {
               <a href={`mailto:lucca.c2c@gmail.com?subject=Meu%20NECTAR%20-%20${encodeURIComponent(result.name)}&body=Eu%20sou%20${encodeURIComponent(result.name)}%20-%20${encodeURIComponent(result.desc)}`} className="inline-block px-6 py-3 rounded-2xl text-sm font-medium transition-all active:scale-95 mb-4" style={{ backgroundColor: `${result.color}12`, color: result.color, border: `1px solid ${result.color}20` }}>
                 Enviar meu NECTAR por email
               </a>
-              <a href="https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ" target="_blank" rel="noopener noreferrer" className="block px-6 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 mb-6" style={{ color: result.color }}>
+              <a
+                href={withUtm("https://untitled.stream/buy/project/E9hOiyu7mwDoijTgQ3cwQ", "nectar-result")}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("external_link_click", { destination: "untitled", place_id: "nectar-result" })}
+                className="block px-6 py-3 rounded-2xl text-sm font-semibold transition-all active:scale-95 mb-6"
+                style={{ color: result.color }}
+              >
                 Eleve seu NECTAR com o Album
               </a>
               <button type="button" onClick={() => setPhase("phone-home")} className="px-8 py-3 rounded-2xl bg-black/5 text-black/40 text-sm font-medium active:scale-95 transition-transform">
@@ -1593,7 +1629,7 @@ function CidadeNeonExperience() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 w-[280px] h-[34px] bg-black/80 backdrop-blur rounded-b-[18px] flex items-center overflow-hidden px-2">
             <div className="flex items-center gap-1.5 whitespace-nowrap animate-spotify-scroll">
               <span className="text-[#E8FF3A] text-[10px] font-mono font-bold">▶</span>
-              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack.title || "CHUVA"}</span>
+              <span className="text-white/80 text-[10px] font-mono">{globalAudio.currentTrack?.title || "CHUVA"}</span>
               <span className="text-white/30 text-[10px] font-mono">· LU2CA</span>
             </div>
           </div>
@@ -1807,7 +1843,11 @@ function CidadeNeonExperience() {
                         if (isLocked) return
                         if (app.id === "youtube" && appBadges.youtube) { window.location.href = "/youtube/cidade-neon"; return }
                         if (app.id === "tiktok") { window.location.href = gameFunnelState.confirmationCount >= 3 ? "/tiktok/feed" : "/tiktok/final"; return }
-                        if (app.link) { window.open(app.link, "_blank"); return }
+                        if (app.link) {
+                          track("external_link_click", { destination: classifyExternalDestination(app.link), place_id: "phone-home" })
+                          window.open(withUtm(app.link, "app-hub"), "_blank")
+                          return
+                        }
                         if (app.id === "whatsapp") { window.location.href = "/n3xo"; return }
                         if (app.id === "spotify") { window.location.href = "/spotify/auto-chuva"; return }
                         if (app.id === "nectar-app") { window.location.href = "/nectar"; return }
