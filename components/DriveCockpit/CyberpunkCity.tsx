@@ -367,16 +367,18 @@ function segmentIntersection(p1: THREE.Vector2, p2: THREE.Vector2, p3: THREE.Vec
   return null
 }
 
-// Acha todo par de arestas não-adjacentes que se cruzam numa polilinha
-// fechada — é a pista colidindo com ela mesma no plano (ex: a figura-8 da
-// Suzuka, de propósito; ou um cruzamento sem querer que sobrou do traçado
-// original aproximado).
-function findSelfCrossings(pts: THREE.Vector2[]) {
+// Acha todo par de arestas não-adjacentes que se cruzam numa polilinha —
+// é a pista colidindo com ela mesma no plano (ex: a figura-8 da Suzuka,
+// de propósito; ou um cruzamento sem querer que sobrou do traçado
+// original aproximado). `closed=false` pras rampas (não fecha o loop —
+// sem isso, checava também uma aresta de "fechamento" que não existe).
+function findSelfCrossings(pts: THREE.Vector2[], closed = true) {
   const n = pts.length
   const hits: { i: number; j: number; u: number }[] = []
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 2; j < n; j++) {
-      if (i === 0 && j === n - 1) continue // adjacentes pelo fechamento do loop
+  const edges = closed ? n : n - 1
+  for (let i = 0; i < edges; i++) {
+    for (let j = i + 2; j < edges; j++) {
+      if (closed && i === 0 && j === edges - 1) continue // adjacentes pelo fechamento do loop
       const hit = segmentIntersection(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n])
       if (hit) hits.push({ i, j, u: hit.u })
     }
@@ -384,33 +386,39 @@ function findSelfCrossings(pts: THREE.Vector2[]) {
   return hits
 }
 
-// Em cada cruzamento encontrado, insere uma ondulação (sobe → pico → desce)
-// na aresta de índice maior, pra ela passar POR CIMA da outra em vez de
-// colidir — igual um viaduto curto, só no ponto exato do cruzamento.
-// `rampDist` é em UNIDADES DE MUNDO fixas (não fração do trecho) — usar
-// fração criava pontos quase-duplicados (distância ~0) quando o trecho já
-// era curto, o que fazia o CatmullRomCurve3 "beliscar" a curva bem ali
-// (some pedaço da pista, carro engancha no collider degenerado).
-function bridgeSelfCrossings(pts: THREE.Vector2[], baseY: number, clearance = 10, rampDist = 20): THREE.Vector3[] {
-  const hits = findSelfCrossings(pts).sort((a, b) => b.j - a.j) // maior índice primeiro, pra inserção não bagunçar os outros
-  const out: THREE.Vector3[] = pts.map((p) => new THREE.Vector3(p.x, baseY, p.y))
-  for (const { j, u } of hits) {
-    const p3 = out[j]
-    const p4 = out[(j + 1) % out.length]
-    const edgeLen = Math.hypot(p4.x - p3.x, p4.z - p3.z)
-    const frac = Math.min(0.45, rampDist / Math.max(edgeLen, 1e-6))
-    const lerp = (s: number, y: number) => new THREE.Vector3(p3.x + (p4.x - p3.x) * s, y, p3.z + (p4.z - p3.z) * s)
-    const u0 = Math.max(0, u - frac)
-    const u1 = Math.min(1, u + frac)
-    const insert = [
-      lerp(u0, baseY),
-      lerp((u0 + u) / 2, baseY + clearance * 0.6),
-      lerp(u, baseY + clearance),
-      lerp((u + u1) / 2, baseY + clearance * 0.6),
-      lerp(u1, baseY),
-    ]
-    out.splice(j + 1, 0, ...insert)
+// Em cada cruzamento encontrado, sobe suavemente a altura (Y) dos pontos
+// JÁ DISCRETIZADOS (a curva final, pronta) numa janela ao redor do
+// cruzamento — janela de cosseno levantado, sem tocar X/Z. Passa por cima
+// da outra pista em vez de colidir, tipo viaduto curto.
+//
+// Por que aqui e não nos pontos de controle: a primeira versão inseria
+// pontos de controle extras ANTES do CatmullRomCurve3 interpolar. Mesmo
+// com um perfil de altura suave, meter vários pontos densos no meio de um
+// trecho normalmente espaçado bagunça a estimativa de tangente do
+// CatmullRom nos pontos vizinhos (a densidade local muda, não só a
+// altura), e a curva final ainda dava voltinha/se autocruzava em X/Z bem
+// ali — o "X" quebrado perto de algumas curvas. Mexendo em Y DEPOIS que
+// X/Z já estão prontos (a curva já interpolada e comprovadamente sem
+// autocruzamento), é geometricamente impossível criar um autocruzamento
+// novo: só a altura muda.
+function applyCrossingBumps(disc: THREE.Vector3[], closed: boolean, clearance = 10, windowSamples = 10): THREE.Vector3[] {
+  // Pra curva fechada, getPoints devolve o último ponto igual ao primeiro
+  // (fecha o loop) — trabalha só com os pontos únicos e refecha no final.
+  const pts = closed && disc.length > 1 ? disc.slice(0, -1) : disc.slice()
+  const flat = pts.map((p) => new THREE.Vector2(p.x, p.z))
+  const hits = findSelfCrossings(flat, closed)
+  if (hits.length === 0) return disc
+  const n = pts.length
+  const out = pts.map((p) => p.clone())
+  for (const { j } of hits) {
+    for (let d = -windowSamples; d <= windowSamples; d++) {
+      const idx = closed ? (j + d + n) % n : j + d
+      if (idx < 0 || idx >= n) continue
+      const w = 0.5 + 0.5 * Math.cos((d / windowSamples) * Math.PI) // 1 no centro, 0 nas bordas
+      out[idx].y = Math.max(out[idx].y, pts[idx].y + clearance * w)
+    }
   }
+  if (closed) out.push(out[0].clone())
   return out
 }
 
@@ -437,24 +445,21 @@ function enforceMinSpacing(points: THREE.Vector3[], minDist: number, closed = tr
   return out
 }
 
-// Pipeline completo: abre cantos fechados demais (sem overshoot), cria
-// pontes onde a pista cruzaria com ela mesma no plano, e garante
-// espaçamento mínimo entre pontos em toda etapa (evita os "beliscões" na
-// curva e os colliders degenerados que travavam o carro). `points`
-// precisa ter Y uniforme (um andar só) — os pontos extras da ponte
-// herdam esse Y como base e sobem localmente só perto do cruzamento.
+// Pipeline dos pontos de CONTROLE: abre cantos fechados demais (sem
+// overshoot) e garante espaçamento mínimo (evita os "beliscões" na curva
+// e os colliders degenerados que travavam o carro). A ponte dos
+// cruzamentos NÃO entra aqui — ela mexe em Y só depois que essa curva já
+// foi interpolada pelo CatmullRomCurve3 (ver applyCrossingBumps), pra
+// nunca correr o risco de criar um autocruzamento novo em X/Z.
 function smoothAndBridgeTrack(points: THREE.Vector3[], maxTurnDeg = MAX_TRACK_TURN_DEG): THREE.Vector3[] {
   const baseY = points[0]?.y ?? 0
   let flat = points.map((p) => new THREE.Vector2(p.x, p.z))
   flat = removeDegenerateReversals(flat)
   flat = chaikinOpenCorners(flat, maxTurnDeg)
-  let spaced = enforceMinSpacing(
+  return enforceMinSpacing(
     flat.map((p) => new THREE.Vector3(p.x, baseY, p.y)),
     8,
   )
-  const flatSpaced = spaced.map((p) => new THREE.Vector2(p.x, p.z))
-  const bridged = bridgeSelfCrossings(flatSpaced, baseY)
-  return enforceMinSpacing(bridged, 3) // limiar menor aqui pra não engolir o pico da ponte
 }
 
 // ─── Segmento de estrada (visual + collider) ────────────────────────────────
@@ -592,7 +597,10 @@ function Circuit({ color, points, closed = true }: { color: string; points: THRE
   const { segData, colliderData, arrows } = useMemo(() => {
     // tension 0.5 (era 0.3) — curvas MAIS SUAVES, orgânicas, sem quinas
     const curve = new THREE.CatmullRomCurve3(points, closed, "chordal", 0.5)
-    const disc = curve.getPoints(SEGMENT_DIVISIONS)
+    // Ponte dos cruzamentos mexe em Y DEPOIS da curva pronta — ver
+    // applyCrossingBumps pra explicação de por que não faz isso nos
+    // pontos de controle (X/Z já garantidamente sem autocruzamento aqui).
+    const disc = applyCrossingBumps(curve.getPoints(SEGMENT_DIVISIONS), closed)
     // Pra cada segmento: matriz completa (position + rotation + scale).
     // Cada laje INCLINA (pitch) seguindo a rampa entre os dois pontos —
     // sem isso, apareciam degraus onde Y variava entre segmentos.
