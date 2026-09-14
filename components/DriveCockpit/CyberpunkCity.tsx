@@ -36,14 +36,18 @@ const LAJE_OVERLAP = 1.10
 const MAGENTA_Y = 6
 const CYAN_Y = 22
 const YELLOW_Y = 38
+// Fator de expansão pra aproximar do perímetro máximo da cidade (grid
+// ±256u) sem estourar — considerando ROAD_WIDTH/2 (8u) de folga nos
+// pontos mais extremos de cada traçado.
+const PERIMETER_SCALE = 1.15
 const CIRCUITS = {
-  magenta: { color: "#ff00ff", points: makeMonaco(200, MAGENTA_Y) },
-  cyan:    { color: "#00ffff", points: makeSuzuka(180, CYAN_Y) },
-  yellow:  { color: "#ffcc00", points: makeInterlagos(210, YELLOW_Y) },
+  magenta: { color: "#ff00ff", points: makeMonaco(200 * PERIMETER_SCALE, MAGENTA_Y) },
+  cyan:    { color: "#00ffff", points: makeSuzuka(180 * PERIMETER_SCALE, CYAN_Y) },
+  yellow:  { color: "#ffcc00", points: makeInterlagos(210 * PERIMETER_SCALE, YELLOW_Y) },
   // Rampas — circuitos ABERTOS (spline não fechada) que conectam patamares
   // em pontos específicos. Sobem/descem em Y de forma progressiva.
-  rampaMC: { color: "#ff8800", points: makeRampaLinear(200, 6, MAGENTA_Y, CYAN_Y, "north"), closed: false },
-  rampaCY: { color: "#88ff00", points: makeRampaLinear(210, 6, CYAN_Y, YELLOW_Y, "south"), closed: false },
+  rampaMC: { color: "#ff8800", points: makeRampaLinear(200 * PERIMETER_SCALE, 6, MAGENTA_Y, CYAN_Y, "north"), closed: false },
+  rampaCY: { color: "#88ff00", points: makeRampaLinear(210 * PERIMETER_SCALE, 6, CYAN_Y, YELLOW_Y, "south"), closed: false },
 } as const
 
 // Monaco (simplificado). Retangular apertado, largada reta na "Boulevard
