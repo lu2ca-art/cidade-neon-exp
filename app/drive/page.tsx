@@ -1446,9 +1446,13 @@ export default function DrivePage() {
             // Câmera aproximada pro /drive — no LAYOUT do editor a câmera fica
             // longe (Z=1.5) pra POV de dirigir, mas aqui queremos que só o
             // dashboard ocupe a metade inferior visível, então aproximamos.
-            position: [0, 0.85, 0.55],
+            // Em telas estreitas/altas (celular) o campo de visão horizontal
+            // é bem menor que o vertical pro mesmo fov, e isso cortava as
+            // bordas do volante/MPC — afasta e abre mais o fov só nesse caso
+            // (18/set). Desktop mantém os valores originais.
+            position: [0, 0.85, isMobile ? 1.3 : 0.55],
             rotation: [0, 0, 0],
-            fov: 65,
+            fov: isMobile ? 80 : 65,
           }}
         >
           <Suspense fallback={null}>
@@ -1462,6 +1466,7 @@ export default function DrivePage() {
               hideCabineSuperior
               hideEstrutura
               hideRadioHub
+              hideCabineFechada
             />
           </Suspense>
         </Canvas>
