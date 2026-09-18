@@ -16,6 +16,7 @@ const VIDEOS = [
     gradient: "from-[#0a1628] via-[#1e3a5f] to-[#0c1f3d]",
     accentColor: "#9DFF6B",
     visualType: "rain" as const,
+    videoSrc: "/videos/loop/chuva-studio.mp4",
   },
   {
     id: 2,
@@ -27,6 +28,7 @@ const VIDEOS = [
     gradient: "from-[#1a0a2e] via-[#2d1b69] to-[#110720]",
     accentColor: "#FF6B9D",
     visualType: "neon" as const,
+    videoSrc: "/videos/loop/teaser-2.mp4",
   },
   {
     id: 3,
@@ -38,6 +40,7 @@ const VIDEOS = [
     gradient: "from-[#1a0f0f] via-[#3d1a1a] to-[#1a0a0a]",
     accentColor: "#FF9D6B",
     visualType: "fire" as const,
+    videoSrc: "/videos/loop/video4.mp4",
   },
   {
     id: 4,
@@ -60,6 +63,19 @@ const VIDEOS = [
     gradient: "from-[#1a1a0a] via-[#3d3d1a] to-[#1a1808]",
     accentColor: "#FFD93D",
     visualType: "stars" as const,
+  },
+  {
+    id: 6,
+    // legenda provisória — LU2CA: troca por algo real quando revisar
+    caption: "bastidores, sem contexto ainda. cortes brutos do banco do LOOP.",
+    likes: 6100,
+    comments: 289,
+    shares: 740,
+    songName: "LU2CA - CIDADE NEON",
+    gradient: "from-[#0a1a2e] via-[#1b3d69] to-[#071120]",
+    accentColor: "#8ECBFF",
+    visualType: "stars" as const,
+    videoSrc: "/videos/loop/passaros.mp4",
   },
 ]
 
@@ -182,7 +198,22 @@ function VideoSlide({ video, isActive }: { video: typeof VIDEOS[0]; isActive: bo
   const [likeCount, setLikeCount] = useState(video.likes)
   const [showHeart, setShowHeart] = useState(false)
   const [following, setFollowing] = useState(false)
+  const [muted, setMuted] = useState(true)
   const lastTap = useRef(0)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Toca só o vídeo do slide ativo (evita várias trilhas de áudio somadas
+  // no scroll) e reinicia do começo sempre que ele entra em foco.
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    if (isActive) {
+      el.currentTime = 0
+      el.play().catch(() => {})
+    } else {
+      el.pause()
+    }
+  }, [isActive])
 
   const handleDoubleTap = useCallback(() => {
     const now = Date.now()
@@ -204,11 +235,38 @@ function VideoSlide({ video, isActive }: { video: typeof VIDEOS[0]; isActive: bo
 
   return (
     <div className="h-full w-full relative flex-shrink-0 snap-start snap-always" onClick={handleDoubleTap}>
-      {/* Background gradient */}
+      {/* Background gradient (fica visível nas bordas/letterbox do vídeo real, ou sozinho nos slides ainda sem clipe) */}
       <div className={`absolute inset-0 bg-gradient-to-b ${video.gradient}`} />
 
-      {/* Visual effect overlay */}
-      <VideoVisual type={video.visualType} color={video.accentColor} active={isActive} />
+      {video.videoSrc ? (
+        <video
+          ref={videoRef}
+          src={video.videoSrc}
+          className="absolute inset-0 w-full h-full object-cover"
+          loop
+          muted={muted}
+          playsInline
+          preload={isActive ? "auto" : "none"}
+        />
+      ) : (
+        <VideoVisual type={video.visualType} color={video.accentColor} active={isActive} />
+      )}
+
+      {/* Mudo por padrão (autoplay com som é bloqueado pelo navegador) — toca pra alternar */}
+      {video.videoSrc && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setMuted((m) => !m) }}
+          className="absolute top-[90px] right-3 z-20 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center"
+          aria-label={muted ? "Ativar som" : "Silenciar"}
+        >
+          {muted ? (
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0014 8v1.79l2.48 2.48c.01-.09.02-.18.02-.27zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 003.69-1.81L18.73 21 20 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+          ) : (
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          )}
+        </button>
+      )}
 
       {/* Double-tap heart animation */}
       {showHeart && (
