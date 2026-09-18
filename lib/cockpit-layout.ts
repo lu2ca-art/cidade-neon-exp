@@ -36,10 +36,13 @@ export const COCKPIT_LAYOUT = {
     size: [1.4, 0.25, 0.3] as Vec3,
     color: "#000099",
   },
+  // Reduzido de [0.31, 0.26, 0.05] (14/set) — tamanho original dominava a
+  // tela e sobrepunha o display/toca-discos. Mantém posição e continua
+  // clicável, só ocupa menos espaço visual.
   volante: {
     position: [-0.4, 0.7, -0.4] as Vec3,
     rotation: [-0.2, 0, 0] as Vec3,
-    size: [0.31, 0.26, 0.05] as Vec3,
+    size: [0.21, 0.18, 0.04] as Vec3,
     color: "#d40217",
   },
   retrovisor: {
@@ -58,17 +61,23 @@ export const COCKPIT_LAYOUT = {
   // Toca-discos reposicionado — antes ficava DEITADO no chão do carro
   // (fora do campo de visão do motorista). Agora fica EM PÉ no painel à
   // esquerda do rádio, altura do braço, visível pro motorista clicar.
+  // Reduzido de [0.28, 0.06, 0.28] (14/set) — mesmo motivo do volante:
+  // cabe no painel sem sobrepor o display/volante, continua clicável.
+  // Posição mantida — testei mover mais pra esquerda/cima pra sair de trás
+  // do volante na POV do motorista, mas sem visual ao vivo pra comparar
+  // não dá pra garantir que não fica flutuando estranho. Sinalizado abaixo.
   tocaDiscos: {
     position: [-0.55, 0.72, -0.55] as Vec3,
     rotation: [0, 0.3, 0] as Vec3,
-    size: [0.28, 0.06, 0.28] as Vec3,
+    size: [0.19, 0.045, 0.19] as Vec3,
     color: "#ff6b6b",
   },
   // id "toca-discos" → nome "batida (mpc pads coloridos no ritmo da musica)"
+  // Reduzido de [0.41, 0.11, 0.36] (14/set) — mesmo motivo.
   padsMPC: {
     position: [0.45, 0.4, -0.45] as Vec3,
     rotation: [0.2, 0, 0] as Vec3,
-    size: [0.41, 0.11, 0.36] as Vec3,
+    size: [0.27, 0.08, 0.24] as Vec3,
     color: "#ffcc00",
   },
   // Bancos deslocados pra frente (Z de 1.5 → 1.0) — motorista senta mais
