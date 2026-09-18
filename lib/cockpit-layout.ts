@@ -30,17 +30,21 @@ export const COCKPIT_LAYOUT = {
     size: [1.71, 0.9, 0.02] as Vec3,
     color: "#7a1d99",
   },
+  // Alargado de 1.4 (18/set) — inspirado em painel de carro estilo BYD:
+  // mais largo, tudo à vista, nada escondido atrás do volante.
   painel: {
     position: [0, 0.6, -0.8] as Vec3,
     rotation: [0, 0, 0] as Vec3,
-    size: [1.4, 0.25, 0.3] as Vec3,
+    size: [2.0, 0.25, 0.3] as Vec3,
     color: "#000099",
   },
   // Reduzido de [0.31, 0.26, 0.05] (14/set) — tamanho original dominava a
   // tela e sobrepunha o display/toca-discos. Mantém posição e continua
   // clicável, só ocupa menos espaço visual.
+  // Empurrado um pouco mais pra fora (18/set, era -0.4) pra acompanhar o
+  // painel mais largo e equilibrar com o MPC do outro lado.
   volante: {
-    position: [-0.4, 0.7, -0.4] as Vec3,
+    position: [-0.6, 0.7, -0.4] as Vec3,
     rotation: [-0.2, 0, 0] as Vec3,
     size: [0.21, 0.18, 0.04] as Vec3,
     color: "#d40217",
@@ -63,19 +67,20 @@ export const COCKPIT_LAYOUT = {
   // esquerda do rádio, altura do braço, visível pro motorista clicar.
   // Reduzido de [0.28, 0.06, 0.28] (14/set) — mesmo motivo do volante:
   // cabe no painel sem sobrepor o display/volante, continua clicável.
-  // Posição mantida — testei mover mais pra esquerda/cima pra sair de trás
-  // do volante na POV do motorista, mas sem visual ao vivo pra comparar
-  // não dá pra garantir que não fica flutuando estranho. Sinalizado abaixo.
+  // Centralizado (18/set) — a zona clicável real (`djDeck` no /drive, abre
+  // o B4TIDA) já era centralizada; o mesh visual em x=-0.55 tinha ficado
+  // desalinhado dela (e escondido atrás do volante). Agora os dois batem.
   tocaDiscos: {
-    position: [-0.55, 0.72, -0.55] as Vec3,
+    position: [0, 0.72, -0.55] as Vec3,
     rotation: [0, 0.3, 0] as Vec3,
     size: [0.19, 0.045, 0.19] as Vec3,
     color: "#ff6b6b",
   },
   // id "toca-discos" → nome "batida (mpc pads coloridos no ritmo da musica)"
-  // Reduzido de [0.41, 0.11, 0.36] (14/set) — mesmo motivo.
+  // Empurrado mais pra direita (18/set) — painel alargou, e esse é o canto
+  // que sobrou depois de tirar o porta-luvas (`gloveBox`) de cena no /drive.
   padsMPC: {
-    position: [0.45, 0.4, -0.45] as Vec3,
+    position: [0.75, 0.42, -0.5] as Vec3,
     rotation: [0.2, 0, 0] as Vec3,
     size: [0.27, 0.08, 0.24] as Vec3,
     color: "#ffcc00",
@@ -118,7 +123,7 @@ export const COCKPIT_LAYOUT = {
   },
   // pequeno display do velocímetro + rpm em cima do volante
   velocRpm: {
-    position: [-0.4, 0.8, -0.7] as Vec3,
+    position: [-0.6, 0.8, -0.7] as Vec3,
     rotation: [-0.15, 0, 0] as Vec3,
     size: [0.21, 0.16, 0.06] as Vec3,
     color: "#ffffff",

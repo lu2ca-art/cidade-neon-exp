@@ -1450,9 +1450,9 @@ export default function DrivePage() {
             // é bem menor que o vertical pro mesmo fov, e isso cortava as
             // bordas do volante/MPC — afasta e abre mais o fov só nesse caso
             // (18/set). Desktop mantém os valores originais.
-            position: [0, 0.85, isMobile ? 1.3 : 0.55],
+            position: [0, 0.85, isMobile ? 1.6 : 0.55],
             rotation: [0, 0, 0],
-            fov: isMobile ? 80 : 65,
+            fov: isMobile ? 90 : 65,
           }}
         >
           <Suspense fallback={null}>
@@ -1509,6 +1509,55 @@ export default function DrivePage() {
             background:"rgba(255,255,255,0.15)",
           }}/>
         </div>
+      )}
+
+      {/* Botões físicos de rádio (18/set, pedido do LU2CA) — play e próxima
+          estação, direto na moldura do console, não na tela. Antes viviam
+          dentro da página 0 do painel (agora reduzida a 1 fileira de
+          status); ação idêntica (setRadioOn/nextTier). Renderizados como
+          irmãos do bezel, não filhos — z-index de filho só compete dentro
+          do próprio pai, e o bezel (z46) fica atrás da tela do console
+          (z47) de propósito. */}
+      {!phoneOpen && viewport.w > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setRadioOn((o) => !o) }}
+            aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
+            style={{
+              position:"absolute", zIndex:49,
+              left:crtBox.x-9+14, top:crtBox.y+CONSOLE_BTN_H/2, transform:"translateY(-50%)",
+              width:isMobile?30:26, height:isMobile?30:26, borderRadius:"50%",
+              background: radioOn ? `${TIER_META[activeTier].color}33` : "rgba(255,255,255,0.1)",
+              border:`1.5px solid ${radioOn ? TIER_META[activeTier].color : "rgba(255,255,255,0.35)"}`,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              cursor:"pointer", WebkitTapHighlightColor:"transparent",
+              boxShadow:"0 2px 6px rgba(0,0,0,0.5)",
+            }}
+          >
+            {radioOn ? (
+              <svg width={isMobile?12:10} height={isMobile?12:10} viewBox="0 0 24 24" fill={TIER_META[activeTier].color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+            ) : (
+              <svg width={isMobile?12:10} height={isMobile?12:10} viewBox="0 0 24 24" fill="rgba(255,255,255,0.8)"><path d="M8 5v14l11-7z"/></svg>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); nextTier() }}
+            aria-label="Próxima rádio"
+            style={{
+              position:"absolute", zIndex:49,
+              left:crtBox.x-9+CONSOLE_BTN_W+18-14-(isMobile?30:26), top:crtBox.y+CONSOLE_BTN_H/2, transform:"translateY(-50%)",
+              width:isMobile?30:26, height:isMobile?30:26, borderRadius:"50%",
+              background:"rgba(255,255,255,0.1)", border:"1.5px solid rgba(255,255,255,0.35)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              cursor:"pointer", WebkitTapHighlightColor:"transparent",
+              boxShadow:"0 2px 6px rgba(0,0,0,0.5)",
+            }}
+          >
+            <svg width={isMobile?13:11} height={isMobile?13:11} viewBox="0 0 24 24" fill="rgba(255,255,255,0.8)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
+          </button>
+        </>
       )}
 
       {/* TELA CRT / CONSOLE — fechada: HUB estilo Apple CarPlay (mini-mapa +
@@ -1631,163 +1680,30 @@ export default function DrivePage() {
                 transform:`translateX(calc(${-panelPage * (100 / 3)}% + ${panelDragPx}px))`,
                 transition: panelDraggingRef.current ? "none" : "transform .32s cubic-bezier(.4,0,.2,1)",
               }}>
-                {/* PÁGINA 0 — RÁDIO (tudo que já existia na barra separada,
-                    agora com o painel inteiro pra si) */}
+                {/* PÁGINA 0 — RÁDIO. Reduzida a 1 fileira (18/set, pedido do
+                    LU2CA) — play/seleção de rádio viraram botões físicos no
+                    painel (zona `radioBtns`, fora da tela), aqui só sobra
+                    nome da rádio + faixa tocando. Sintonia fina e shuffle
+                    continuam em /sintonizador (tela cheia). */}
                 <div style={{ width:`${100/3}%`, height:"100%", flexShrink:0, position:"relative" }}>
-                  <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", gap:isMobile?8:6, padding:isMobile?10:8, background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)" }}>
-                    <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:R.ribbonGap, padding:"0 2px" }}>
-                      <div style={{ display:"flex", gap:isMobile?6:4, flexShrink:0 }}>
-                        {tunedTiers.map(tier => {
-                          const tMeta = TIER_META[tier]
-                          const isSel = tier === activeTier
-                          return (
-                            <button
-                              key={tier}
-                              type="button"
-                              onClick={() => { setShuffleMode(false); setManualTier(tier); setRadioOn(true) }}
-                              aria-label={`Tocar ${tMeta.label}`}
-                              style={{
-                                flexShrink:0, width:R.dot, height:R.dot, borderRadius:"50%",
-                                background: isSel && radioOn ? tMeta.color : `${tMeta.color}33`,
-                                border: `1px solid ${tMeta.color}`,
-                                boxShadow: isSel && radioOn ? `0 0 6px ${tMeta.color}` : "none",
-                                cursor:"pointer", padding:0, WebkitTapHighlightColor:"transparent",
-                              }}
-                            />
-                          )
-                        })}
-                      </div>
-
-                      <div style={{ flex:1 }} />
-
-                      <button
-                        type="button"
-                        onClick={nextTier}
-                        aria-label="Próxima rádio"
-                        style={{
-                          flexShrink:0, width:R.next, height:R.next, borderRadius:"50%",
-                          background:"rgba(255,255,255,0.06)", border:"1.5px solid rgba(255,255,255,0.3)",
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                        }}
-                      >
-                        <svg width={R.next*0.45} height={R.next*0.45} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M5 5v14l10-7z"/><rect x="17" y="5" width="2.5" height="14"/></svg>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRadioOn(o => !o)}
-                        aria-label={radioOn ? "Desligar rádio" : "Ligar rádio"}
-                        style={{
-                          flexShrink:0, width:R.play, height:R.play, borderRadius:"50%",
-                          background: radioOn ? `${meta.color}22` : "rgba(255,255,255,0.06)",
-                          border: `1.5px solid ${radioOn ? meta.color : "rgba(255,255,255,0.3)"}`,
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                        }}
-                      >
-                        {radioOn ? (
-                          <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill={meta.color}><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
-                        ) : (
-                          <svg width={R.play*0.4} height={R.play*0.4} viewBox="0 0 24 24" fill="rgba(255,255,255,0.7)"><path d="M8 5v14l11-7z"/></svg>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={toggleShuffle}
-                        aria-label={shuffleMode ? "Desligar shuffle" : "Ligar shuffle geral"}
-                        style={{
-                          flexShrink:0, width:R.shuffle, height:R.shuffle, borderRadius:"50%",
-                          background: shuffleMode ? `${meta.color}22` : "rgba(255,255,255,0.06)",
-                          border: `1.5px solid ${shuffleMode ? meta.color : "rgba(255,255,255,0.3)"}`,
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          cursor:"pointer", WebkitTapHighlightColor:"transparent",
-                        }}
-                      >
-                        <svg width={R.shuffle*0.5} height={R.shuffle*0.5} viewBox="0 0 24 24" fill="none" stroke={shuffleMode ? meta.color : "rgba(255,255,255,0.7)"} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h3.5a4 4 0 013.2 1.6L14 12"/>
-                          <path d="M3 18h3.5a4 4 0 003.2-1.6L14 12"/>
-                          <path d="M17 6h4M17 18h4"/>
-                          <path d="M18.5 4.5L21 6l-2.5 1.5"/>
-                          <path d="M18.5 19.5L21 18l-2.5-1.5"/>
-                        </svg>
-                      </button>
-
-                      <div style={{ position:"relative", flexShrink:0, width:R.vol, height:R.vol }}>
-                        <div
-                          ref={volumeRingRef}
-                          onPointerDown={(e) => {
-                            e.stopPropagation()
-                            volumeDraggingRef.current = true
-                            ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-                            updateVolumeFromPointer(e.clientX, e.clientY)
-                          }}
-                          onPointerMove={(e) => { if (volumeDraggingRef.current) updateVolumeFromPointer(e.clientX, e.clientY) }}
-                          onPointerUp={() => { volumeDraggingRef.current = false }}
-                          style={{
-                            position:"absolute", inset:0, borderRadius:"50%",
-                            cursor:"grab", touchAction:"none",
-                            background:`conic-gradient(from -120deg, ${meta.color} ${volume*300}deg, rgba(255,255,255,0.10) ${volume*300}deg 300deg, transparent 300deg 360deg)`,
-                            WebkitMask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
-                            mask:"radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      onClick={guardPanelClick(() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) })}
-                      role="button"
-                      tabIndex={0}
-                      aria-label="Abrir SINT0NIA — sintonizar rádio"
-                      style={{
-                        flex:1, minHeight:0, position:"relative", borderRadius:14, cursor:"pointer", overflow:"hidden",
-                        background:"linear-gradient(180deg, rgba(8,4,20,0.92), rgba(4,2,10,0.94))",
-                        border:`1px solid ${accent}55`,
-                        boxShadow: radioOn ? `0 0 18px ${accent}33, inset 0 0 14px ${accent}18` : "none",
-                        display:"flex", flexDirection:"column", justifyContent:"center", padding: isMobile ? "6px 12px" : "5px 12px",
-                        WebkitTapHighlightColor:"transparent",
-                      }}
-                    >
+                  <div
+                    onClick={guardPanelClick(() => { if (iframeRef.current) iframeRef.current.src = "/sintonizador"; setPhoneOpen(true) })}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Abrir SINT0NIA — sintonizar rádio"
+                    style={{
+                      position:"absolute", inset:0, display:"flex", alignItems:"center", gap:10,
+                      padding: isMobile ? "0 14px" : "0 12px", cursor:"pointer",
+                      background:"linear-gradient(160deg, #1b0f26 0%, #0d0714 100%)",
+                      WebkitTapHighlightColor:"transparent",
+                    }}
+                  >
+                    <div style={{ flexShrink:0, width:8, height:8, borderRadius:"50%", background: radioOn ? accent : "rgba(255,255,255,0.25)", boxShadow: radioOn ? `0 0 6px ${accent}` : "none" }} />
+                    <div style={{ minWidth:0, flex:1, overflow:"hidden" }}>
                       <div style={{fontFamily:"monospace",fontSize:R.stationFont,letterSpacing:1,color:accent,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                         {meta.label} · {meta.freq} FM{shuffleMode && radioOn ? " · SHUFFLE" : ""}
                       </div>
-
-                      <div
-                        ref={tunerTrackRef}
-                        onClick={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => {
-                          e.stopPropagation()
-                          tunerDraggingRef.current = true
-                          ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-                          updateTunerFromPointer(e.clientX)
-                        }}
-                        onPointerMove={(e) => { if (tunerDraggingRef.current) updateTunerFromPointer(e.clientX) }}
-                        onPointerUp={() => { tunerDraggingRef.current = false }}
-                        style={{ position:"relative", height:R.tunerH, marginTop: isMobile?6:4, cursor:"grab", touchAction:"none" }}
-                      >
-                        <div style={{ position:"absolute", left:0, right:0, top:"50%", height:isMobile?3:2, transform:"translateY(-50%)", background:"rgba(255,255,255,0.12)", borderRadius:2 }}/>
-                        {ALL_TIERS.map(t => {
-                          const tMeta = TIER_META[t]
-                          const unlocked = radioAccepted[t]
-                          return (
-                            <div key={t} style={{
-                              position:"absolute", left:`${pctForFreq(freqOf(t))*100}%`, top:"50%",
-                              width:R.tickW, height:R.tickH, transform:"translate(-50%,-50%)", borderRadius:1,
-                              background: unlocked ? tMeta.color : "rgba(255,255,255,0.15)",
-                              boxShadow: unlocked ? `0 0 4px ${tMeta.color}` : "none",
-                            }}/>
-                          )
-                        })}
-                        <div style={{
-                          position:"absolute", left:`${tunerPct*100}%`, top:"50%", width:R.needleW, height:R.needleH,
-                          transform:"translate(-50%,-50%)", borderRadius:1, background:"#fff",
-                          boxShadow: tunerLocked ? `0 0 6px ${accent}` : "0 0 3px rgba(255,255,255,0.5)",
-                        }}/>
-                      </div>
-
-                      <div style={{position:"relative",height:R.marqueeFont+3,overflow:"hidden",marginTop: isMobile?3:2}}>
+                      <div style={{position:"relative",height:R.marqueeFont+3,overflow:"hidden",marginTop:2}}>
                         {!radioOn ? (
                           <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:0.5,color:"rgba(255,255,255,0.4)"}}>toque pra sintonizar</span>
                         ) : isStatic ? (
@@ -1800,9 +1716,6 @@ export default function DrivePage() {
                         ) : (
                           <span style={{fontFamily:"monospace",fontSize:R.marqueeFont-1,letterSpacing:1,color:"rgba(255,255,255,0.35)"}}>◌ SILÊNCIO ◌</span>
                         )}
-                      </div>
-                      <div style={{position:"absolute", left:0, right:0, bottom:0, height: isMobile?3:2, background:"rgba(255,255,255,0.06)"}}>
-                        <div style={{height:"100%", width:`${radioOn ? snippetPct*100 : 0}%`, background:accent, boxShadow:`0 0 6px ${accent}`, transition:"width .12s linear"}} />
                       </div>
                     </div>
                   </div>
@@ -2125,31 +2038,10 @@ export default function DrivePage() {
         )
       })()}
 
-      {/* PORTA-LUVAS — inventário "cartola de mágico" (zona `gloveBox`,
-          z5). Blocos escuros, só os LEDs âmbar acendem. Clicar abre a tela
-          de inventário (sem itens reais ainda). */}
-      {!phoneOpen && viewport.w > 0 && (() => {
-        const gb = zonePx(Z.gloveBox, viewport.w, viewport.h)
-        return (
-          <button
-            type="button"
-            onClick={() => setShowGloveBox(true)}
-            aria-label="Porta-luvas — inventário"
-            style={{
-              position:"absolute", zIndex:44,
-              left:gb.x, top:gb.y, width:gb.w, height:gb.h,
-              borderRadius:8, padding:8, cursor:"pointer",
-              background:"linear-gradient(160deg, #1c1420 0%, #0d0910 100%)",
-              border:"1px solid rgba(255,255,255,0.06)",
-              display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, alignContent:"center", justifyItems:"center",
-            }}
-          >
-            {Array.from({length:4}, (_,i)=>(
-              <span key={i} style={{ width:"22%", aspectRatio:"1", borderRadius:"50%", background:"#8a5220", boxShadow:"0 0 6px rgba(224,139,58,0.5)" }}/>
-            ))}
-          </button>
-        )
-      })()}
+      {/* PORTA-LUVAS — ícone tirado de cena (18/set, pedido do LU2CA) pra
+          abrir espaço pro MPC nesse canto. Zona `gloveBox` e a tela de
+          inventário abaixo continuam existindo (rollback fácil), só sem
+          entrada visual por enquanto. */}
 
       {/* Tela do porta-luvas — overlay simples, sem itens reais ainda */}
       {showGloveBox && (
