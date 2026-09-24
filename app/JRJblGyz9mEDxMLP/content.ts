@@ -665,8 +665,8 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
       </button>
       <button class="card-btn cycle-cell" data-open="checklist-all">
         <div class="k">Checklist geral <span class="affordance">›</span></div>
-        <div class="v">14<span style="color:var(--text-faint)">/37</span></div>
-        <div class="sub">38% concluído</div>
+        <div class="v">15<span style="color:var(--text-faint)">/37</span></div>
+        <div class="sub">41% concluído</div>
       </button>
     </div>
   </section>
@@ -689,9 +689,9 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
       <button class="card-btn liftable prog-card" data-open="section:B">
         <div class="letter-row"><span class="letter">B</span><span class="affordance">›</span></div>
         <h3>Rotas de acesso &amp; conversão</h3>
-        <div class="prog-bar-track"><div class="prog-bar-fill" style="width:0%"></div></div>
-        <div class="prog-count"><span>não iniciado</span><b>0/5</b></div>
-        <div class="prog-next">Próximo: <b>link único</b> por plataforma até o jogo/Spotify</div>
+        <div class="prog-bar-track"><div class="prog-bar-fill" style="width:20%"></div></div>
+        <div class="prog-count"><span>bio já linka — resto falta</span><b>1/5</b></div>
+        <div class="prog-next">Próximo: <b>testar o fluxo</b> ditto.fm/sabe-ontem em até 2 cliques</div>
       </button>
 
       <button class="card-btn liftable prog-card" data-open="section:C">
@@ -767,9 +767,9 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
             <div class="sub2">streams · 54 ouvintes/mês</div>
           </div>
           <div class="stat">
-            <div class="plat">Instagram</div>
-            <div class="num">13.439</div>
-            <div class="sub2">seguidores · 25.305 views</div>
+            <div class="plat">Instagram — verificado via API 24/set</div>
+            <div class="num">13.410</div>
+            <div class="sub2">seguidores · 48 posts · bio já tem link (ditto.fm/sabe-ontem)</div>
           </div>
           <div class="stat">
             <div class="plat">YouTube — verificado via API 24/set</div>
@@ -790,12 +790,13 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
           <span class="chip warn">Spotify sem banner</span>
           <span class="chip warn">Spotify sem link</span>
           <span class="chip block">TikTok não verificado</span>
-          <span class="chip block">Seção B (rotas de acesso) 0/5 — não iniciada</span>
+          <span class="chip warn">Seção B — bio já tem link, resto (2 cliques, rastreio) falta confirmar</span>
           <span class="chip block">PR #18 esperando merge</span>
+          <span class="chip block">Gap de posts 13-21/set (9 dias sem nada)</span>
           <span class="chip done">YouTube handle → @LU2CA</span>
           <span class="chip done">links unificados → lu2ca.art</span>
           <span class="chip done">CIDADE NEON MIDIA organizada — 9 faixas + galeria</span>
-          <span class="chip done">YouTube API conectada — dados ao vivo, não mais estimativa</span>
+          <span class="chip done">YouTube + Instagram API conectadas — dados ao vivo, não mais estimativa</span>
         </div>
       </div>
     </div>
@@ -902,10 +903,10 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
     },
     B: {
       title: "Rotas de acesso & conversão",
-      note: "não iniciado · 0/5",
+      note: "1/5 · confirmado via Instagram API 24/set",
       items: [
-        ["todo", "Link do Spotify na bio + página de links", "enquanto tracking do jogo não valida"],
-        ["todo", "Confirmar: música alcançada em NO MÁXIMO 2 cliques", ""],
+        ["done", "Link do Spotify na bio + página de links", "confirmado 24/set via API: bio do Instagram aponta pra ditto.fm/sabe-ontem. Falta checar nas outras plataformas"],
+        ["todo", "Confirmar: música alcançada em NO MÁXIMO 2 cliques", "precisa testar o fluxo ditto.fm/sabe-ontem de verdade"],
         ["todo", "Links diferentes e rastreáveis pra jogo, Spotify, pré-save, outros", ""],
         ["todo", "Revisar todos os links em celular E computador antes de publicar", ""],
         ["todo", "Definir chamada principal de cada publicação", "entrar/ouvir/salvar/compartilhar/responder"]
@@ -1009,7 +1010,7 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
   }
 
   function renderChecklistAll() {
-    var html = '<p class="modal-lede">37 itens no total (checklist.md, seções A–E) · 14 concluídos · 38%.</p>';
+    var html = '<p class="modal-lede">37 itens no total (checklist.md, seções A–E) · 15 concluídos · 41%.</p>';
     SECTION_ORDER.forEach(function (key) {
       var s = SECTIONS[key];
       html += '<h4>' + key + ' · ' + esc(s.title) + '</h4>' + renderSectionBody(key).replace(/^<p class="modal-lede">.*?<\\/p>/, '');
