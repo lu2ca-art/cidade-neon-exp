@@ -665,8 +665,8 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
       </button>
       <button class="card-btn cycle-cell" data-open="checklist-all">
         <div class="k">Checklist geral <span class="affordance">›</span></div>
-        <div class="v">15<span style="color:var(--text-faint)">/37</span></div>
-        <div class="sub">41% concluído</div>
+        <div class="v">16<span style="color:var(--text-faint)">/37</span></div>
+        <div class="sub">43% concluído</div>
       </button>
     </div>
   </section>
@@ -681,9 +681,9 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
       <button class="card-btn liftable prog-card" data-open="section:A">
         <div class="letter-row"><span class="letter">A</span><span class="affordance">›</span></div>
         <h3>Dados &amp; instrumentação do jogo</h3>
-        <div class="prog-bar-track"><div class="prog-bar-fill" style="width:86%"></div></div>
-        <div class="prog-count"><span>prioridade máxima</span><b>12/14</b></div>
-        <div class="prog-next">Próximo: <b>painel único</b> no PostHog + testar todos os eventos no navegador</div>
+        <div class="prog-bar-track"><div class="prog-bar-fill done" style="width:93%"></div></div>
+        <div class="prog-count"><span>prioridade máxima</span><b>13/14</b></div>
+        <div class="prog-next">Próximo (depende de você): <b>abrir o jogo num navegador normal</b> e conferir no PostHog Activity — automação (Playwright) é filtrada como bot pelo próprio posthog-js</div>
       </button>
 
       <button class="card-btn liftable prog-card" data-open="section:B">
@@ -883,7 +883,7 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
   var SECTIONS = {
     A: {
       title: "Dados & instrumentação do jogo",
-      note: "prioridade máxima · 12/14",
+      note: "prioridade máxima · 13/14",
       items: [
         ["done", "Definir qual ferramenta de analytics será usada", "PostHog EU Cloud (rationale em ~/vault/projetos/cidade-neon/analytics.md)"],
         ["done", "Integrar ao jogo o SDK ou APIs necessárias", "posthog-js no cidade-neon-exp, testado em produção local (eventos confirmados no dashboard)"],
@@ -895,8 +895,8 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
         ["done", "Rastrear música por faixa: início, 25/50/75/100%, repetição, abandono", "14/set: music_progress (25/50/75/100), music_replayed, music_abandoned implementados"],
         ["done", "Rastrear cliques de saída para Spotify + outras", "14/set: external_link_click nos 3 pontos reais de saída (hub, missão, botão NECTAR)"],
         ["done", "Adicionar UTMs em todos os links externos", "14/set: withUtm() acrescenta utm_source/medium/campaign em todo link de saída instrumentado"],
-        ["todo", "Painel único com acessos + perfil + localização + movimentação + interações + plays", "não iniciado (Sprint 3, dentro do PostHog)"],
-        ["todo", "Testar todos eventos em homologação", "build/typecheck limpos; falta rodar de verdade no navegador e conferir no PostHog"],
+        ["done", "Painel único com acessos + perfil + localização + movimentação + interações + plays", "já existia desde 14/set (eu não tinha cruzado com analytics.md) — dashboard 'Cidade Neon — Overview', 8 gráficos: eu.posthog.com/project/267571/dashboard/953074"],
+        ["todo", "Testar todos eventos em homologação", "investigado 24/set: capture() dispara certo no código, mas nenhuma requisição sai pro host de ingestão em dev nem produção — causa provável é detecção de bot do posthog-js (navigator.webdriver=true do Playwright). Precisa de um teste manual num navegador de verdade"],
         ["done", "Registrar baseline PRÉ-lançamento (24h/7d/21d)", "levantado 6/set, ver baseline.md"],
         ["done", "Revisar consentimento, aviso de privacidade e tratamento agregado (LGPD)", "banner de consentimento (aceitar tudo / só essencial) implementado e testado"]
       ]
@@ -1010,7 +1010,7 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
   }
 
   function renderChecklistAll() {
-    var html = '<p class="modal-lede">37 itens no total (checklist.md, seções A–E) · 15 concluídos · 41%.</p>';
+    var html = '<p class="modal-lede">37 itens no total (checklist.md, seções A–E) · 16 concluídos · 43%.</p>';
     SECTION_ORDER.forEach(function (key) {
       var s = SECTIONS[key];
       html += '<h4>' + key + ' · ' + esc(s.title) + '</h4>' + renderSectionBody(key).replace(/^<p class="modal-lede">.*?<\\/p>/, '');
