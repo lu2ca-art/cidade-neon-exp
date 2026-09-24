@@ -90,9 +90,15 @@ export default function SintonizadorPage() {
       const noise = ctx.createBufferSource()
       noise.buffer = buffer
       noise.loop = true
+      // ruído branco cru dói no ouvido em qualquer volume perceptível —
+      // filtra pra soar como estática de rádio (banda estreita) antes do gain
+      const filter = ctx.createBiquadFilter()
+      filter.type = "bandpass"
+      filter.frequency.value = 1800
+      filter.Q.value = 0.7
       const gain = ctx.createGain()
       gain.gain.value = 0
-      noise.connect(gain).connect(ctx.destination)
+      noise.connect(filter).connect(gain).connect(ctx.destination)
       noise.start()
       ctxRef.current = ctx
       noiseGainRef.current = gain
@@ -119,7 +125,7 @@ export default function SintonizadorPage() {
       const dist = Math.abs(freqRef.current - target)
       const clarity = Math.max(0, 1 - dist / CLARITY_RANGE)
       if (audioElRef.current) audioElRef.current.volume = Math.min(1, clarity) * 0.9
-      if (noiseGainRef.current) noiseGainRef.current.gain.value = Math.min(1, 1 - clarity) * 0.3
+      if (noiseGainRef.current) noiseGainRef.current.gain.value = Math.min(1, 1 - clarity) * 0.1
 
       const inRange = dist <= TOLERANCE
       setLockProgress((p) => {
