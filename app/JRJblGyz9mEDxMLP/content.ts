@@ -772,9 +772,9 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
             <div class="sub2">seguidores · 25.305 views</div>
           </div>
           <div class="stat">
-            <div class="plat">YouTube</div>
-            <div class="num">1.169 <span class="delta down">▼9%</span></div>
-            <div class="sub2">inscritos · 4/9 vídeos do ciclo lançados</div>
+            <div class="plat">YouTube — verificado via API 24/set</div>
+            <div class="num">1.160</div>
+            <div class="sub2">inscritos · 10 vídeos totais · 4/9 do ciclo lançados (CHUVA, Copo Americano, Dopamina, Sexta-Feira, 06/05/2026)</div>
           </div>
           <div class="stat">
             <div class="plat">lu2ca.art</div>
@@ -795,6 +795,7 @@ export const PANEL_HTML = `<!doctype html><html><head><meta charset=utf8><meta n
           <span class="chip done">YouTube handle → @LU2CA</span>
           <span class="chip done">links unificados → lu2ca.art</span>
           <span class="chip done">CIDADE NEON MIDIA organizada — 9 faixas + galeria</span>
+          <span class="chip done">YouTube API conectada — dados ao vivo, não mais estimativa</span>
         </div>
       </div>
     </div>
