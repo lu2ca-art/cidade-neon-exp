@@ -112,17 +112,20 @@ function isDevMode(): boolean {
 // autocapture nem profile completo — ver mentoria/analytics.md pra rationale.
 function initPostHog(level: ConsentLevel) {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST
 
-  if (!key || !host) {
+  if (!key) {
     console.warn(
-      "[analytics] NEXT_PUBLIC_POSTHOG_KEY/NEXT_PUBLIC_POSTHOG_HOST não configurados em .env.local — eventos não serão enviados"
+      "[analytics] NEXT_PUBLIC_POSTHOG_KEY não configurado em .env.local — eventos não serão enviados"
     )
     return
   }
 
   posthog.init(key, {
-    api_host: host,
+    // Envia pelo proxy do próprio domínio (rewrites em next.config.mjs) pra
+    // não ser barrado por bloqueador de anúncio. ui_host mantém os links do
+    // PostHog (toolbar etc.) apontando pro painel da região EU.
+    api_host: "/ingest",
+    ui_host: "https://eu.posthog.com",
     person_profiles: level === "full" ? "always" : "identified_only",
     capture_pageview: level === "full",
     autocapture: level === "full",
