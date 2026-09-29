@@ -13,7 +13,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
-import { Kombi } from "@/components/DriveCockpit/Kombi"
+import { Kombi222 } from "./Kombi222"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
@@ -710,6 +710,8 @@ function Cena({
     y0: new THREE.Vector3(0, 1, 0), z0: new THREE.Vector3(0, 0, 1),
   }), [])
   const hudN = useRef(0)
+  const kTurbo = useRef(false)
+  const kVel = useRef(0)
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
   const tempoOrb = useRef(0)
@@ -1007,6 +1009,8 @@ function Cena({
       ft.prox = j.tempo + 9 + Math.random() * 6
     }
 
+    kTurbo.current = j.turboT > 0
+    kVel.current = j.v
     hudN.current++
     if (hudN.current % 4 === 0) ev.hud(j)
   })
@@ -1100,7 +1104,7 @@ function Cena({
       </points>
 
       <group ref={carro}>
-        <Kombi hideInterior isPlaying />
+        <Kombi222 turbo={kTurbo} velocidade={kVel} />
         <pointLight position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
