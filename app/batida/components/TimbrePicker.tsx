@@ -15,7 +15,7 @@ export function TimbrePicker({
 }) {
   return (
     <div className="mb-2 flex-shrink-0">
-      <div className="flex items-center gap-1.5">
+      <div className="grid grid-cols-4 gap-1.5">
         {labels.map((label, i) => (
           <button
             key={label}

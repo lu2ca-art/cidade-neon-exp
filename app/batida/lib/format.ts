@@ -7,5 +7,6 @@ export function timbreLabel(track: Track): string {
   if (d.kind === "bass") return BASS_TIMBRE_LABEL[d.timbre]
   if (d.kind === "chord" && track.instrument === "guitarra") return GUITAR_TIMBRE_LABEL[d.timbre]
   if (d.kind === "chord") return PIANO_TIMBRE_LABEL[d.timbre]
+  if (d.kind === "chops") return `kit ${d.kit}`
   return `${d.bars} compassos`
 }

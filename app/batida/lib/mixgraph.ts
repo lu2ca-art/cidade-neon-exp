@@ -3,6 +3,7 @@
 // offline pro export (render.ts, OfflineAudioContext) — garante que o que a
 // pessoa ouve ao vivo é exatamente o que sai no áudio exportado.
 
+import { tocarChop } from "./amostras"
 import { createImpulseResponse } from "./dsp"
 import { chordStepMidiNotes, degreeToMidi, midiToFreq } from "./theory"
 import { triggerDrum, triggerBassNote, triggerGuitarChord, triggerPianoChord } from "./synths"
@@ -113,6 +114,21 @@ export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: Song
         const out = buildOneShotChain(ctx, bus, track.fx)
         const midi = degreeToMidi(song.rootNote, song.mode, degree, 2)
         triggerBassNote(ctx, out, time, midiToFreq(midi), dur * 0.9, data.timbre)
+      }
+    }
+    return
+  }
+
+  if (data.kind === "chops") {
+    const patternTicks = (data.bars ?? 1) * TICKS_PER_BAR
+    const localTick = globalTick % patternTicks
+    if (localTick % 2 !== 0) return
+    const stepIdx = localTick / 2
+    for (let pad = 0; pad < 8; pad++) {
+      if (data.cells[pad]?.[stepIdx]) {
+        const out = buildOneShotChain(ctx, bus, track.fx)
+        // pedaço corta no próximo pad aceso da mesma linha, no máximo 2 tempos
+        tocarChop(ctx, out, time, data.kit, pad, dur * 8) // até 2 tempos
       }
     }
     return

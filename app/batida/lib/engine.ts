@@ -7,6 +7,7 @@ import { degreeToMidi, degreeTriadMidi, midiToFreq } from "./theory"
 import { triggerDrum, triggerBassNote, triggerGuitarChord, triggerPianoChord } from "./synths"
 import { createMixBus, scheduleTrackTick, secPerBar, secPerTick, TICKS_PER_BAR, type MixBus } from "./mixgraph"
 import type { InstrumentId, MusicMode, Track } from "./types"
+import { carregarKit, tocarChop } from "./amostras"
 
 const LOOKAHEAD_SEC = 0.1
 const SCHEDULER_INTERVAL_MS = 25
@@ -65,6 +66,8 @@ export class BatidaEngine {
   setTracks(tracks: Track[]) {
     const prevFingerprint = this.voiceFingerprint(this.tracks)
     this.tracks = tracks
+    // kits de chops carregam em segundo plano assim que aparecem numa faixa
+    for (const t of tracks) if (t.data.kind === "chops") void carregarKit(this.ctx, t.data.kit)
     const nextFingerprint = this.voiceFingerprint(tracks)
     if (this.playing && prevFingerprint !== nextFingerprint) this.restartVoiceLoops()
   }
@@ -185,6 +188,11 @@ export class BatidaEngine {
   previewDrum(row: Parameters<typeof triggerDrum>[3], timbre: Parameters<typeof triggerDrum>[4]) {
     void this.ctx.resume()
     triggerDrum(this.ctx, this.bus.master, this.ctx.currentTime + 0.01, row, timbre)
+  }
+  async previewChop(kit: string, pad: number) {
+    void this.ctx.resume()
+    await carregarKit(this.ctx, kit)
+    tocarChop(this.ctx, this.bus.master, this.ctx.currentTime + 0.01, kit, pad)
   }
   previewBass(degree: number, timbre: number) {
     void this.ctx.resume()

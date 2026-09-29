@@ -8,7 +8,7 @@ export const MAX_SLOTS = 4
 export const MAX_TRACKS = 5
 export const MAX_VOICE_BARS = 16
 
-export type InstrumentId = "bateria" | "baixo" | "guitarra" | "piano" | "voz"
+export type InstrumentId = "bateria" | "baixo" | "guitarra" | "piano" | "voz" | "chops"
 
 export const INSTRUMENT_LABEL: Record<InstrumentId, string> = {
   bateria: "BATERIA",
@@ -16,6 +16,7 @@ export const INSTRUMENT_LABEL: Record<InstrumentId, string> = {
   guitarra: "GUITARRA",
   piano: "PIANO",
   voz: "VOZ",
+  chops: "CHOPS",
 }
 
 export const INSTRUMENT_COLOR: Record<InstrumentId, string> = {
@@ -24,6 +25,7 @@ export const INSTRUMENT_COLOR: Record<InstrumentId, string> = {
   guitarra: "#FFD93D",
   piano: "#A78BFA",
   voz: "#4ADE80",
+  chops: "#FF3FB0",
 }
 
 // acento do modo PRO (esteira + grid de voicing) — reaproveita o azul/ciano
@@ -38,10 +40,12 @@ export const STEPS_PER_INSTRUMENT: Record<Exclude<InstrumentId, "voz">, number> 
   baixo: 16,
   guitarra: 16,
   piano: 16,
+  chops: 8,
 }
 
-export type DrumTimbre = "sintetico" | "808" | "acustico" | "lofi"
-export type MelodicTimbre = 0 | 1 | 2 | 3
+// os 4 kits novos seguem a paleta dos gases nobres da cidade (+ a chuva)
+export type DrumTimbre = "sintetico" | "808" | "acustico" | "lofi" | "xenonio" | "neonio" | "argonio" | "chuva"
+export type MelodicTimbre = 0 | 1 | 2 | 3 | 4 | 5
 
 // linhas do grid de bateria (mantém compat com o app original)
 export type DrumRow = "kick" | "snare" | "hat" | "perc"
@@ -89,7 +93,16 @@ export interface ChordPattern {
   steps: ChordStepEntry[]
 }
 
-export type SequencedPattern = DrumPattern | BassPattern | ChordPattern
+// chops: 8 pads com pedaços das faixas do LU2CA (kits em public/batida/kits),
+// grade de colcheias como a bateria
+export interface ChopsPattern {
+  kind: "chops"
+  kit: string
+  bars: BarLength
+  cells: boolean[][] // [pad 0-7][passo] — 8 x (8 * bars)
+}
+
+export type SequencedPattern = DrumPattern | BassPattern | ChordPattern | ChopsPattern
 
 export interface VoiceClip {
   kind: "voice"
