@@ -3,10 +3,15 @@
 // HTMLMediaElement.volume é somente-leitura: sem o grafo, fade e ducking
 // simplesmente não acontecem no celular.
 
+import { TONS } from "./tons"
+
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let chuvaGain: GainNode | null = null
 let chuvaLigada = false
+// chuva ambiente: pedido do LU2CA, 80% mais baixa que a primeira versão
+const CHUVA = 0.032
+const CHUVA_COM_MUSICA = 0.008
 
 export function audioCtx(): AudioContext | null {
   if (typeof window === "undefined") return null
@@ -57,7 +62,7 @@ export function ligarChuva() {
   lp.frequency.value = 2600
   chuvaGain = c.createGain()
   chuvaGain.gain.value = 0
-  chuvaGain.gain.linearRampToValueAtTime(0.16, c.currentTime + 3)
+  chuvaGain.gain.linearRampToValueAtTime(CHUVA, c.currentTime + 3)
   src.connect(hp).connect(lp).connect(chuvaGain).connect(out)
   src.start()
 }
@@ -76,8 +81,26 @@ export function mudo(m: boolean) {
 }
 
 // ── Notas ───────────────────────────────────────────────────
-// pentatônica menor em Ré — qualquer sequência soa bem, ninguém "erra"
-const PENTA = [293.66, 349.23, 392, 440, 523.25, 587.33, 698.46, 783.99]
+// As notas de interface (bolinhas da estrada, mensagens, provas) tocam a
+// pentatônica do TOM DA MÚSICA que está tocando agora — detectado ao vivo
+// (ver detector de tom lá embaixo). Sem música, fica em Ré menor.
+// Pentatônica: qualquer sequência soa bem, ninguém "erra".
+
+export interface Tom { tonica: number; modo: "maior" | "menor" }
+const NOMES = ["Dó", "Dó#", "Ré", "Ré#", "Mi", "Fá", "Fá#", "Sol", "Sol#", "Lá", "Lá#", "Si"]
+let tomAtual: Tom | null = null
+export function tomDaMusica() { return tomAtual }
+export function nomeDoTom(t: Tom) { return `${NOMES[t.tonica]} ${t.modo}` }
+
+function notaNoTom(i: number) {
+  const tom = tomAtual ?? { tonica: 2, modo: "menor" as const }
+  const esc = tom.modo === "maior" ? [0, 2, 4, 7, 9] : [0, 3, 5, 7, 10]
+  const grau = ((i % 8) + 8) % 8
+  let base = 60 + tom.tonica
+  if (base > 66) base -= 12 // tônica entre Dó4 e Fá#4
+  const midi = base + esc[grau % 5] + 12 * Math.floor(grau / 5)
+  return 440 * Math.pow(2, (midi - 69) / 12)
+}
 
 export function gota(i: number) {
   const c = audioCtx()
@@ -87,7 +110,7 @@ export function gota(i: number) {
   const o = c.createOscillator()
   const g = c.createGain()
   o.type = "sine"
-  o.frequency.value = PENTA[i % PENTA.length]
+  o.frequency.value = notaNoTom(i)
   g.gain.setValueAtTime(0, t)
   g.gain.linearRampToValueAtTime(0.22, t + 0.01)
   g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2)
@@ -184,8 +207,103 @@ export function estatica() {
 
 type Ouvinte = (s: { src: string | null; tocando: boolean; t: number; dur: number }) => void
 
+// ── Detector de tom ─────────────────────────────────────────
+// Cromagrama ao vivo (energia por classe de nota, 80Hz–2kHz) com média
+// móvel de ~4s, comparado com os perfis de Krumhansl-Kessler de maior e
+// menor nas 12 tônicas. Troca de tom só quando o novo vence duas leituras
+// seguidas (histerese), pra não ficar pulando no meio de uma frase.
+const KK_MAIOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
+const KK_MENOR = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+
+function pearson(a: ArrayLike<number>, b: number[], rot: number) {
+  let ma = 0, mb = 0
+  for (let i = 0; i < 12; i++) { ma += a[i]; mb += b[i] }
+  ma /= 12
+  mb /= 12
+  let num = 0, da = 0, db = 0
+  for (let i = 0; i < 12; i++) {
+    const x = a[i] - ma
+    const y = b[(i - rot + 12) % 12] - mb
+    num += x * y
+    da += x * x
+    db += y * y
+  }
+  return num / (Math.sqrt(da * db) || 1)
+}
+
+class DetectorDeTom {
+  private croma = new Float32Array(12)
+  private buf: Float32Array<ArrayBuffer> | null = null
+  private timer: ReturnType<typeof setInterval> | null = null
+  private n = 0
+  private candidato: string | null = null
+  private votos = 0
+  fixo = false
+
+  constructor(private analyser: AnalyserNode, private sr: number) {}
+
+  ligar() {
+    if (this.timer) return
+    this.buf ??= new Float32Array(this.analyser.frequencyBinCount)
+    this.timer = setInterval(() => this.ler(), 200)
+  }
+  desligar() {
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+  }
+  // faixa nova: a memória esfria rápido pra acompanhar o tom novo
+  esfriar(src: string) {
+    for (let i = 0; i < 12; i++) this.croma[i] *= 0.25
+    this.candidato = null
+    this.n = 0
+    const conhecido = TONS[src]
+    this.fixo = !!conhecido
+    if (conhecido) tomAtual = conhecido
+  }
+
+  private ler() {
+    const buf = this.buf!
+    this.analyser.getFloatFrequencyData(buf)
+    const quadro = new Float32Array(12)
+    const hz = this.sr / this.analyser.fftSize
+    const k0 = Math.ceil(80 / hz)
+    const k1 = Math.min(buf.length - 1, Math.floor(2000 / hz))
+    let total = 0
+    for (let k = k0; k <= k1; k++) {
+      const db = buf[k]
+      if (!isFinite(db) || db < -90) continue
+      const mag = Math.pow(10, db / 20)
+      const pc = ((Math.round(12 * Math.log2((k * hz) / 440)) + 69) % 12 + 12) % 12
+      quadro[pc] += mag
+      total += mag
+    }
+    if (total <= 0) return
+    for (let i = 0; i < 12; i++) this.croma[i] = this.croma[i] * 0.975 + (quadro[i] / total) * 0.025
+    // faixa conhecida: o tom vem da tabela (tons.ts); o detector só manda
+    // no que não está lá
+    if (this.fixo) return
+    if (++this.n % 5 !== 0 || this.n < 20) return
+    let melhor: Tom = { tonica: 0, modo: "maior" }
+    let r = -Infinity
+    for (let t = 0; t < 12; t++) {
+      const rM = pearson(this.croma, KK_MAIOR, t)
+      if (rM > r) { r = rM; melhor = { tonica: t, modo: "maior" } }
+      const rm = pearson(this.croma, KK_MENOR, t)
+      if (rm > r) { r = rm; melhor = { tonica: t, modo: "menor" } }
+    }
+    if (r < 0.35) return // leitura fraca: mantém o tom de antes
+    const chave = `${melhor.tonica}${melhor.modo}`
+    if (!tomAtual) { tomAtual = melhor; return }
+    if (tomAtual.tonica === melhor.tonica && tomAtual.modo === melhor.modo) { this.candidato = null; return }
+    if (this.candidato === chave) {
+      if (++this.votos >= 3) { tomAtual = melhor; this.candidato = null; this.votos = 0 }
+    } else { this.candidato = chave; this.votos = 1 }
+  }
+}
+
 class Player {
   el: HTMLAudioElement | null = null
+  detector: DetectorDeTom | null = null
   gain: GainNode | null = null
   src: string | null = null
   ouvintes = new Set<Ouvinte>()
@@ -197,9 +315,9 @@ class Player {
     el.preload = "auto"
     el.crossOrigin = "anonymous"
     el.addEventListener("timeupdate", () => this.emitir())
-    el.addEventListener("play", () => { volumeChuva(0.04); this.emitir() })
-    el.addEventListener("pause", () => { volumeChuva(0.16); this.emitir() })
-    el.addEventListener("ended", () => { volumeChuva(0.16); this.aoFim?.(); this.emitir() })
+    el.addEventListener("play", () => { volumeChuva(CHUVA_COM_MUSICA); this.detector?.ligar(); this.emitir() })
+    el.addEventListener("pause", () => { volumeChuva(CHUVA); this.detector?.desligar(); this.emitir() })
+    el.addEventListener("ended", () => { volumeChuva(CHUVA); this.aoFim?.(); this.emitir() })
     const c = audioCtx()
     const out = saida()
     if (c && out) {
@@ -212,6 +330,11 @@ class Player {
         this.analyser.smoothingTimeConstant = 0.6
         node.connect(this.gain).connect(out)
         this.gain.connect(this.analyser)
+        const ouvido = c.createAnalyser()
+        ouvido.fftSize = 16384
+        ouvido.smoothingTimeConstant = 0
+        this.gain.connect(ouvido)
+        this.detector = new DetectorDeTom(ouvido, c.sampleRate)
       } catch {}
     }
     this.el = el
@@ -235,6 +358,7 @@ class Player {
     const el = this.garantir()
     this.aoFim = aoFim ?? null
     if (this.src !== src) {
+      this.detector?.esfriar(src)
       el.src = src
       this.src = src
     }

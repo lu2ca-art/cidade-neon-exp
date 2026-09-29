@@ -15,7 +15,8 @@ export function montarMotor() {
   if (!c) return null
   const out = c.createGain()
   out.gain.value = 0
-  out.gain.setTargetAtTime(1, c.currentTime, 0.4)
+  // mistura do carro bem abaixo da música (pedido do LU2CA)
+  out.gain.setTargetAtTime(0.32, c.currentTime, 0.4)
   out.connect(c.destination)
 
   const o1 = c.createOscillator()

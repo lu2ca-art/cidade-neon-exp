@@ -897,3 +897,29 @@
 @keyframes l-portal { 0% { opacity: 0; transform: scale(1.4); } 8% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
 .l-chegada .l-btn-ghost { margin-top: 2px; }
 @media (hover: none) { .l-hud-dica .is-desk { display: none; } }
+
+/* corrida: missões e bairros */
+.l-minimapa path { stroke-width: 2.6; }
+.l-minimapa-pulso { stroke-width: 1.5; animation: l-minimapa-pulso 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes l-minimapa-pulso { from { transform: scale(0.6); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
+.l-hud-missoes { position: absolute; left: 12px; bottom: calc(188px + env(safe-area-inset-bottom)); padding: 7px 12px; border-radius: 999px; background: rgba(255, 200, 87, 0.14) !important; border: 1px solid rgba(255, 200, 87, 0.55) !important; font: 700 11px var(--mono) !important; letter-spacing: 0.08em; text-transform: uppercase; color: #ffc857 !important; animation: l-pulsa 2s infinite; }
+.l-hud-missoes b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 4px; border-radius: 9px; background: #ffc857; color: #050510; font-size: 10px; }
+.l-painel-missoes { position: absolute; left: 10px; right: 10px; top: calc(96px + env(safe-area-inset-top)); z-index: 20; padding: 14px; border-radius: 20px; background: rgba(10, 9, 24, 0.94); border: 1px solid rgba(255, 200, 87, 0.4); backdrop-filter: blur(14px); animation: l-sobe 0.3s both; }
+.l-painel-missoes header { display: flex; justify-content: space-between; align-items: center; }
+.l-painel-missoes header b { font-family: var(--cond); font-weight: 700; font-size: 22px; text-transform: uppercase; color: #ffc857; }
+.l-painel-missoes header button { color: var(--mut) !important; font-size: 14px; }
+.l-painel-missoes p { margin: 4px 0 10px; font: 11px var(--mono); color: var(--mut); }
+.l-painel-missoes ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.l-painel-missoes li button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; text-align: left; background: rgba(255, 255, 255, 0.04) !important; border-left: 3px solid var(--cor) !important; }
+.l-painel-n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--cor); color: var(--cor); font: 700 13px var(--mono); flex-shrink: 0; }
+.l-painel-missoes li span:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
+.l-painel-missoes li b { font-family: var(--cond); font-weight: 700; font-size: 18px; text-transform: uppercase; }
+.l-painel-missoes li small { font: 10.5px var(--mono); color: var(--mut); }
+.l-painel-missoes li em { font: 700 12px var(--mono); font-style: normal; color: var(--cor); }
+.l-bairro { position: absolute; left: 0; right: 0; top: 30%; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; animation: l-portal 3.8s cubic-bezier(0.2, 1, 0.3, 1) both; }
+.l-bairro-tabela { width: 104px; height: 118px; border: 2px solid var(--cor); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5, 5, 16, 0.55); box-shadow: 0 0 40px -6px var(--cor), inset 0 0 24px -8px var(--cor); position: relative; }
+.l-bairro-tabela small { position: absolute; top: 6px; left: 8px; font: 700 12px var(--mono); color: var(--cor); }
+.l-bairro-tabela b { font: 800 54px/1 var(--cond); color: #fff; text-shadow: 0 0 18px var(--cor); }
+.l-bairro-tabela span { font: 11px var(--mono); color: var(--cor); }
+.l-bairro small { font: 700 11px var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: var(--cor); }
+.l-bairro p { margin: 0; font-family: var(--cond); font-weight: 700; font-size: 44px; line-height: 1; text-transform: uppercase; color: #fff; text-shadow: 0 0 20px var(--cor); }

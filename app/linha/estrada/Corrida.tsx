@@ -18,10 +18,11 @@ import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } fro
 import { VOZES } from "../roteiros"
 import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import type { Save } from "../estado"
-import { estatica, gota, player } from "../som"
+import { estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
 import { MARCHAS, montarMotor, vib } from "../som-carro"
 import { MEIA, amostra, du, montarPista, mundo, type Amostra, type Pista } from "./pista"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
+import { DISTRITOS, distritoEm, hexRgb, type Distrito, type DistritoId } from "./distritos"
 
 const VMAX = 46 // m/s
 const VTURBO = 62
@@ -54,12 +55,13 @@ type Jogo = {
   y: number; vy: number; ar: boolean; tAr: number
   turboT: number; carga: number; shake: number; flash: number
   tempo: number; voltaIni: number; voltas: number
-  chegando: boolean; parado: boolean
+  chegando: boolean; parado: boolean; encaixar?: boolean
   st: Stats
   pegos: Set<number>
 }
 
 type Evs = {
+  distrito: (d: Distrito) => void
   falar: (de: string, t: string) => void
   popup: (t: string, cor: string) => void
   sinal: (n: number, rotulo: string, cor: string) => void
@@ -87,6 +89,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
   const hudTurbo = useRef<HTMLDivElement>(null)
   const hudRota = useRef<HTMLSpanElement>(null)
   const mapaCarro = useRef<SVGCircleElement>(null)
+  const hudTom = useRef<HTMLElement>(null)
 
   const [toasts, setToasts] = useState<{ id: number; de: string; texto: string }[]>([])
   const [popup, setPopup] = useState<{ id: number; txt: string; cor: string } | null>(null)
@@ -94,6 +97,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
   const [freq, setFreq] = useState<FreqId>((save.freq as FreqId) || "linha")
   const [faixa, setFaixa] = useState("")
   const [portal, setPortal] = useState<{ id: EstacaoId; t: number } | null>(null)
+  const [bairro, setBairro] = useState<{ d: Distrito; t: number } | null>(null)
+  const [painel, setPainel] = useState(false)
   const [chegou, setChegou] = useState<Stats | null>(null)
   const [dica, setDica] = useState(true)
   const [prox, setProx] = useState(() => proximaFreq(save.sinal))
@@ -152,6 +157,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
 
   const confeteRef = useRef<((cor: string, n: number) => void) | null>(null)
 
+  // atalho de desenvolvimento: window.__irPara(0.66) teleporta pra 66% do loop
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return
+    const w = window as unknown as { __irPara?: (f: number) => void }
+    w.__irPara = (f: number) => { jogo.current.u = f * pista.L; jogo.current.encaixar = true }
+    ;(window as unknown as { __tom?: () => unknown }).__tom = () => tomDaMusica()
+    return () => { delete w.__irPara }
+  }, [pista])
+
   // minimapa: o loop visto de cima
   const minimapa = useMemo(() => {
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
@@ -166,7 +180,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
       const [x, y] = P(i)
       d += `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`
     }
+    const trechos = DISTRITOS.map((ds) => {
+      let dd = ""
+      const i0 = Math.floor(ds.de * pista.n)
+      const i1 = Math.min(pista.n - 1, Math.floor(ds.ate * pista.n))
+      for (let i = i0; i <= i1; i += 6) {
+        const [x, y] = P(i)
+        dd += `${i === i0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`
+      }
+      const [x, y] = P(i1 === pista.n - 1 ? 0 : i1)
+      return { id: ds.id, cor: ds.luz[0], d: dd + `L${x.toFixed(1)} ${y.toFixed(1)}` }
+    })
     return {
+      trechos,
       d: d + "Z",
       estacoes: pista.estacoes.map((e) => ({ id: e.id, p: P(Math.floor(e.u / 2) % pista.n) })),
       ponto: (u: number) => P(Math.floor((((u % pista.L) + pista.L) % pista.L) / 2) % pista.n),
@@ -210,6 +236,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
         gota(e.n + 1)
       },
       chegou: () => setChegou({ ...jogo.current.st, tempo: jogo.current.tempo }),
+      distrito: (d) => {
+        setBairro({ d, t: Date.now() })
+        gota(d.numero % 8)
+        vib([15, 30, 15])
+      },
       volta: (t) => {
         falar("Notti", `volta em ${t.toFixed(1)}s!!`)
         onVolta?.(t)
@@ -239,6 +270,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
         const ant = lib[lib.length - 1]?.custo ?? 0
         if (hudSinal.current) hudSinal.current.style.transform = `scaleY(${p ? (sinalRef.current - ant) / (p.custo - ant) : 1})`
         if (hudTurbo.current) hudTurbo.current.style.transform = `scaleX(${j.turboT > 0 ? Math.min(1, j.turboT / 2.2) : j.carga})`
+        if (hudTom.current) {
+          const tom = tomDaMusica()
+          hudTom.current.textContent = tom ? `toca pra trocar · ${nomeDoTom(tom)}` : "toca pra trocar"
+        }
         if (mapaCarro.current) {
           const [mx, my] = minimapa.ponto(j.u)
           mapaCarro.current.setAttribute("cx", String(mx))
@@ -274,6 +309,35 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
     window.addEventListener("keyup", ku)
     return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku) }
   }, [])
+
+  const missoesAbertas = pista.estacoes.filter(({ id }) => missao(getEstacao(id), nivel).ok && !save.objetos.includes(id))
+  const [distancias, setDistancias] = useState<Record<string, number>>({})
+  const abrirPainel = () => {
+    const u = jogo.current.u
+    setDistancias(Object.fromEntries(missoesAbertas.map((m) => [m.id, ((m.u - u) % pista.L + pista.L) % pista.L])))
+    setPainel(true)
+  }
+  const tracarRota = (id: EstacaoId) => {
+    setDestino(id)
+    jogo.current.chegando = false
+    jogo.current.parado = false
+    setChegou(null)
+    setPainel(false)
+    const e = getEstacao(id)
+    falar(e.personagem, "tô te esperando. segue a coluna de luz")
+  }
+  useEffect(() => {
+    if (!destinoInicial && missoesAbertas.length) {
+      const t = setTimeout(() => setPopup({ id: Math.random(), txt: `${missoesAbertas.length} ${missoesAbertas.length === 1 ? "missão aberta" : "missões abertas"}`, cor: "#ffc857" }), 1800)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (!bairro) return
+    const t = setTimeout(() => setBairro(null), 3800)
+    return () => clearTimeout(t)
+  }, [bairro])
 
   const fq = FREQUENCIAS.find((f) => f.id === freq)
   const dest = destino ? getEstacao(destino) : null
@@ -320,13 +384,57 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
       </div>
 
       <svg className="l-minimapa" viewBox="0 0 100 100" aria-hidden>
-        <path d={minimapa.d} />
+        {minimapa.trechos.map((t) => <path key={t.id} d={t.d} style={{ stroke: t.cor }} />)}
         {minimapa.estacoes.map((e) => {
           const est = getEstacao(e.id)
-          return <circle key={e.id} cx={e.p[0]} cy={e.p[1]} r={e.id === destino ? 4 : 2.4} fill={est.cor} opacity={lancada(est) || e.id === "ontem" || e.id === "nectar" ? 1 : 0.3} />
+          const temMissao = missao(est, nivel).ok && !save.objetos.includes(e.id)
+          return (
+            <g key={e.id}>
+              {temMissao && <circle className="l-minimapa-pulso" cx={e.p[0]} cy={e.p[1]} r="5" fill="none" stroke={est.cor} />}
+              <circle cx={e.p[0]} cy={e.p[1]} r={e.id === destino ? 4 : 2.4} fill={est.cor} opacity={lancada(est) || e.id === "ontem" || e.id === "nectar" ? 1 : 0.3} />
+            </g>
+          )
         })}
         <circle ref={mapaCarro} r="3.2" fill="#fff" stroke="#050510" strokeWidth="1" />
       </svg>
+
+      {missoesAbertas.length > 0 && (
+        <button type="button" className="l-hud-missoes" onPointerDown={(e) => e.stopPropagation()} onClick={abrirPainel}>
+          missões <b>{missoesAbertas.length}</b>
+        </button>
+      )}
+      {painel && (
+        <div className="l-painel-missoes" onPointerDown={(e) => e.stopPropagation()}>
+          <header>
+            <b>missões abertas</b>
+            <button type="button" onClick={() => setPainel(false)} aria-label="fechar">✕</button>
+          </header>
+          <p>toca numa pra traçar a rota. a coluna de luz marca o lugar.</p>
+          <ul>
+            {missoesAbertas
+              .slice()
+              .sort((x, y) => (distancias[x.id] ?? 0) - (distancias[y.id] ?? 0))
+              .map((m) => {
+                const e = getEstacao(m.id)
+                return (
+                  <li key={m.id}>
+                    <button type="button" style={{ ["--cor" as string]: e.cor }} onClick={() => tracarRota(m.id)}>
+                      <span className="l-painel-n">{e.n}</span>
+                      <span><b>{e.faixa}</b><small>{e.personagem} · {e.objetoNome}</small></span>
+                      <em>{Math.round(distancias[m.id] ?? 0)}m</em>
+                    </button>
+                  </li>
+                )
+              })}
+          </ul>
+        </div>
+      )}
+      {bairro && (
+        <div key={bairro.t} className="l-bairro" style={{ ["--cor" as string]: bairro.d.luz[0] }}>
+          <small>você entrou em</small>
+          <p>{bairro.d.lugar}</p>
+        </div>
+      )}
 
       <div className="l-toasts">
         {toasts.map((t) => (
@@ -347,7 +455,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
       <button type="button" className="l-hud-radio" onClick={trocarFreq}>
         <span className="l-hud-freq" style={{ color: fq?.cor }}>{fq?.freq} FM</span>
         <span className="l-hud-faixa">{faixa || "…"}</span>
-        <small>toca pra trocar</small>
+        <small ref={hudTom}>toca pra trocar</small>
       </button>
 
       <div className="l-hud-sinal" title="sinal da próxima rádio">
@@ -426,11 +534,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
 }
 
 function novoJogo(p: Pista, destino: EstacaoId | null, estacao: EstacaoId | null): Jogo {
-  // com destino: começa três estações antes (≈30s de estrada); sem destino,
-  // começa no portal da própria estação
+  // sem destino: começa no portal da própria estação
   let u = 0
   const idx = (id: EstacaoId) => p.estacoes.findIndex((e) => e.id === id)
-  if (destino) u = p.estacoes[(idx(destino) - 3 + 9) % 9].u + 25
+  // com destino: começa ~900m antes, atravessando pelo menos um bairro
+  if (destino) u = (p.estacoes[idx(destino)].u - 900 + p.L) % p.L
   else if (estacao) u = p.estacoes[idx(estacao)].u + 25
   return {
     u, x: 0, v: 0, vx: 0, steer: 0, y: 0, vy: 0, ar: false, tAr: 0,
@@ -441,6 +549,9 @@ function novoJogo(p: Pista, destino: EstacaoId | null, estacao: EstacaoId | null
   }
 }
 
+/* eslint-disable react-hooks/immutability, react-hooks/purity --
+   cena R3F: useFrame muta geometria, instâncias e uniforms do three.js a
+   60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   pista, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos,
@@ -470,7 +581,7 @@ function Cena({
   const geo = useMemo(() => {
     const rails = (lado: number) => fita(pista, lado * (MEIA + 0.25), 0.75, 0, {
       vertical: true,
-      cor: (i) => (Math.floor(i / 10) % 2 ? (lado < 0 ? [0.18, 0.9, 1] : [1, 0.25, 0.7]) : [0.05, 0.05, 0.12]),
+      cor: (i) => (Math.floor(i / 10) % 2 ? hexRgb(distritoEm(i / pista.n).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
     })
     return {
       chao: fita(pista, -MEIA - 0.25, MEIA + 0.25, 0.01),
@@ -483,39 +594,84 @@ function Cena({
     }
   }, [pista])
 
-  // ── cidade: prédios, pilares, postes ──
+  // ── cidade: cada bairro com a sua arquitetura e a cor do seu gás ──
   const cidade = useMemo(() => {
     const r = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646 })()
     const d = new THREE.Object3D()
-    const nP = 320
-    const predios = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: "#ffffff", emissiveMap: tex.janelas, emissiveIntensity: 1.25, roughness: 0.9 }),
-      nP,
-    )
-    // nenhum prédio pode cair em cima de outro trecho do loop
     const livre = (x: number, z: number, raio: number) => {
       for (let q = 0; q < pista.n; q += 4) if (Math.hypot(pista.px[q] - x, pista.pz[q] - z) < raio) return false
       return true
     }
-    let tent = 0
-    let i = 0
-    for (; i < nP && tent < nP * 6; tent++) {
-      const k = Math.floor(r() * pista.n)
-      const lado = r() < 0.5 ? -1 : 1
-      const off = MEIA + 22 + r() * 90
-      const h = 24 + r() * r() * 150
-      const bx = pista.px[k] - pista.tz[k] * lado * off
-      const bz = pista.pz[k] + pista.tx[k] * lado * off
-      if (!livre(bx, bz, MEIA + 20)) continue
-      d.position.set(bx, -12 + h / 2, bz)
-      d.rotation.set(0, Math.atan2(pista.tx[k], pista.tz[k]), 0)
-      d.scale.set(10 + r() * 18, h, 10 + r() * 18)
-      d.updateMatrix()
-      predios.setMatrixAt(i, d.matrix)
-      i++
+    const ESTILO: Record<Distrito["predio"], { n: number; h: [number, number]; w: [number, number]; off: [number, number]; brilho: number }> = {
+      torres: { n: 190, h: [24, 175], w: [10, 28], off: [22, 110], brilho: 1.25 },
+      casas: { n: 150, h: [5, 16], w: [7, 13], off: [14, 70], brilho: 1.1 },
+      aberto: { n: 60, h: [20, 70], w: [10, 22], off: [70, 170], brilho: 1.4 },
+      tunel: { n: 0, h: [0, 0], w: [0, 0], off: [0, 0], brilho: 0 },
+      brancas: { n: 80, h: [60, 210], w: [8, 14], off: [24, 100], brilho: 1.6 },
+      obra: { n: 50, h: [30, 120], w: [12, 24], off: [22, 90], brilho: 0 },
     }
-    predios.count = i
+    const predios = DISTRITOS.filter((ds) => ESTILO[ds.predio].n > 0).map((ds) => {
+      const e = ESTILO[ds.predio]
+      const obra = ds.predio === "obra"
+      const mat = obra
+        ? new THREE.MeshBasicMaterial({ color: ds.janela, wireframe: true, transparent: true, opacity: 0.45 })
+        : new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: ds.janela, emissiveMap: tex.janelas, emissiveIntensity: e.brilho, roughness: 0.9 })
+      const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, e.n)
+      const k0 = Math.floor(ds.de * pista.n)
+      const k1 = Math.floor(ds.ate * pista.n)
+      let i = 0
+      for (let tent = 0; i < e.n && tent < e.n * 8; tent++) {
+        const k = k0 + Math.floor(r() * (k1 - k0))
+        const lado = r() < 0.5 ? -1 : 1
+        const off = MEIA + e.off[0] + r() * (e.off[1] - e.off[0])
+        const h = e.h[0] + r() * r() * (e.h[1] - e.h[0])
+        const bx = pista.px[k] - pista.tz[k] * lado * off
+        const bz = pista.pz[k] + pista.tx[k] * lado * off
+        if (!livre(bx, bz, MEIA + 12)) continue
+        const w = e.w[0] + r() * (e.w[1] - e.w[0])
+        d.position.set(bx, -12 + h / 2, bz)
+        d.rotation.set(0, Math.atan2(pista.tx[k], pista.tz[k]), 0)
+        d.scale.set(w, h, e.w[0] + r() * (e.w[1] - e.w[0]))
+        d.updateMatrix()
+        m.setMatrixAt(i, d.matrix)
+        i++
+      }
+      m.count = i
+      return m
+    })
+
+    // túnel do radônio: arcos com paredes, teto e fita de luz vermelha
+    const rad = DISTRITOS.find((x) => x.id === "radonio")!
+    const kr0 = Math.floor(rad.de * pista.n)
+    const kr1 = Math.floor(rad.ate * pista.n)
+    const nA = Math.floor((kr1 - kr0) / 5)
+    const arcos = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#2a0c10", emissive: "#3a0508", emissiveIntensity: 0.9, roughness: 0.6 }), nA * 3)
+    const fitas = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: "#ff2436", toneMapped: false }), nA * 2)
+    for (let a = 0; a < nA; a++) {
+      const k = kr0 + a * 5
+      const rot = Math.atan2(pista.tx[k], pista.tz[k])
+      const pecas: [number, number, number, number, number][] = [
+        [-(MEIA + 1.6), 4.6, 1, 9.2, 10.4], // parede esq
+        [MEIA + 1.6, 4.6, 1, 9.2, 10.4], // parede dir
+        [0, 9.4, MEIA * 2 + 4.2, 0.8, 10.4], // teto
+      ]
+      pecas.forEach(([x, y, sx, sy, sz], j) => {
+        d.position.set(pista.px[k] - pista.tz[k] * x, pista.py[k] + y, pista.pz[k] + pista.tx[k] * x)
+        d.rotation.set(0, rot, 0)
+        d.scale.set(sx, sy, sz)
+        d.updateMatrix()
+        arcos.setMatrixAt(a * 3 + j, d.matrix)
+      })
+      for (const l of [-1, 1]) {
+        const x = l * (MEIA + 1)
+        d.position.set(pista.px[k] - pista.tz[k] * x, pista.py[k] + 8.9, pista.pz[k] + pista.tx[k] * x)
+        d.rotation.set(0, rot, 0)
+        d.scale.set(0.25, 0.12, 9)
+        d.updateMatrix()
+        fitas.setMatrixAt(a * 2 + (l > 0 ? 1 : 0), d.matrix)
+      }
+    }
+
     const nPil = Math.floor(pista.n / 20)
     const pilares = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 1, 1.6), new THREE.MeshStandardMaterial({ color: "#10122a", roughness: 0.8 }), nPil)
     for (let i = 0; i < nPil; i++) {
@@ -527,28 +683,27 @@ function Cena({
       d.updateMatrix()
       pilares.setMatrixAt(i, d.matrix)
     }
-    // postes a cada 24m dos dois lados
-    const cores = ["#2fe8ff", "#ff3fb0", "#ffc857", "#b38cff"]
+    // postes a cada 24m dos dois lados, na cor do gás do bairro (no túnel
+    // a luz é a fita do teto)
     const ks: number[] = []
-    for (let k = 0; k < pista.n; k += 12) ks.push(k)
+    for (let k = 0; k < pista.n; k += 12) if (distritoEm(k / pista.n).predio !== "tunel") ks.push(k)
     const nL = ks.length * 2
     const postes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 7.2, 0.16), new THREE.MeshStandardMaterial({ color: "#22243e" }), nL)
     const luzPos = new Float32Array(nL * 3)
     const luzCor = new Float32Array(nL * 3)
     const reflexos = new THREE.InstancedMesh(
       new THREE.PlaneGeometry(1.8, 11),
-      new THREE.MeshBasicMaterial({ map: tex.brilho, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, vertexColors: false }),
+      new THREE.MeshBasicMaterial({ map: tex.brilho, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }),
       nL,
     )
     const c = new THREE.Color()
     let n = 0
     for (const k of ks) {
+      const ds = distritoEm(k / pista.n)
       for (const lado of [-1, 1]) {
         const rx = -pista.tz[k] * lado
         const rz = pista.tx[k] * lado
-        const bx = pista.px[k] + rx * (MEIA + 0.9)
-        const bz = pista.pz[k] + rz * (MEIA + 0.9)
-        d.position.set(bx, pista.py[k] + 3.6, bz)
+        d.position.set(pista.px[k] + rx * (MEIA + 0.9), pista.py[k] + 3.6, pista.pz[k] + rz * (MEIA + 0.9))
         d.rotation.set(0, 0, 0)
         d.scale.set(1, 1, 1)
         d.updateMatrix()
@@ -556,9 +711,8 @@ function Cena({
         const hx = pista.px[k] + rx * (MEIA - 0.8)
         const hz = pista.pz[k] + rz * (MEIA - 0.8)
         luzPos.set([hx, pista.py[k] + 7.1, hz], n * 3)
-        c.set(cores[(k / 12 + (lado > 0 ? 1 : 0)) % cores.length])
+        c.set(ds.luz[(k / 12 + (lado > 0 ? 1 : 0)) % ds.luz.length])
         luzCor.set([c.r, c.g, c.b], n * 3)
-        // reflexo no asfalto molhado: risco de luz no chão, alinhado à pista
         d.position.set(hx - rx * 1.2, pista.py[k] + 0.05, hz - rz * 1.2)
         d.rotation.set(-Math.PI / 2, 0, Math.atan2(pista.tx[k], pista.tz[k]))
         d.updateMatrix()
@@ -571,7 +725,30 @@ function Cena({
     luzes.setAttribute("position", new THREE.BufferAttribute(luzPos, 3))
     luzes.setAttribute("color", new THREE.BufferAttribute(luzCor, 3))
     const luzMat = new THREE.PointsMaterial({ size: 3.6, map: tex.brilho, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true })
-    return { predios, pilares, postes, luzes, luzMat, reflexos }
+
+    // outdoors do NÚCLEO no bairro do criptônio
+    const kri = DISTRITOS.find((x) => x.id === "criptonio")!
+    const frases = ["OTIMIZE-SE ✓", "VOCÊ ESTÁ FELIZ ✓", "NÚCLEO", "NADA MUDOU ✓", "VOLTE AO FEED ✓"]
+    const outdoors = frases.map((txt, j) => {
+      const k = Math.floor((kri.de + ((j + 0.5) / frases.length) * (kri.ate - kri.de)) * pista.n)
+      const lado = j % 2 ? 1 : -1
+      const x = lado * (MEIA + 16)
+      return {
+        pos: new THREE.Vector3(pista.px[k] - pista.tz[k] * x, pista.py[k] + 14, pista.pz[k] + pista.tx[k] * x),
+        rot: Math.atan2(pista.tx[k], pista.tz[k]) + Math.PI + lado * -0.5,
+        tex: texTexto([{ txt, tam: 120, cor: "#eef3ff" }]),
+      }
+    })
+
+    // canteiros do vol.2: portais apagados, só a estrutura
+    const arg = DISTRITOS.find((x) => x.id === "argonio")!
+    const obras = [0.2, 0.5, 0.8].map((f) => {
+      const k = Math.floor((arg.de + f * (arg.ate - arg.de)) * pista.n)
+      return { pos: new THREE.Vector3(pista.px[k], pista.py[k], pista.pz[k]), rot: Math.atan2(pista.tx[k], pista.tz[k]) }
+    })
+    const obraTex = texTexto([{ txt: "VOL.2 · EM OBRA", tam: 110, cor: "#b38cff" }, { txt: "a partir de 2027", tam: 54, cor: "#ffffff", fonte: "ui-monospace, monospace" }])
+
+    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, obras, obraTex }
   }, [pista, tex])
 
   // ── portais das estações ──
@@ -587,6 +764,11 @@ function Cena({
     ])
     return { id, pos: p, rot, cor: e.cor, escuro, tex: tex2 }
   }), [pista, a, nivel, objetos])
+
+  // ── colunas de luz: onde tem missão aberta, dá pra ver de longe ──
+  const colunas = useMemo(() => pista.estacoes
+    .filter(({ id }) => missao(getEstacao(id), nivel).ok && !objetos.includes(id))
+    .map(({ id, u }) => ({ id, cor: getEstacao(id).cor, pos: mundo(pista, u, 0, 0, a, new THREE.Vector3()) })), [pista, a, nivel, objetos])
 
   // ── orbs ──
   const orbs = useMemo(() => {
@@ -678,13 +860,13 @@ function Cena({
   const ceuMat = useMemo(() => new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
-    uniforms: { lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() } },
+    uniforms: { lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() }, tinta: { value: new THREE.Color("#4a1a30") }, nevoaC: { value: new THREE.Color("#1a0f24") } },
     vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-    fragmentShader: `varying vec3 vP; uniform vec3 lua;
+    fragmentShader: `varying vec3 vP; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC;
       void main(){
         float h = vP.y;
-        vec3 fundo = vec3(0.043,0.059,0.141);
-        vec3 faixa = vec3(0.24,0.08,0.32);
+        vec3 fundo = nevoaC;
+        vec3 faixa = tinta;
         vec3 meio = vec3(0.06,0.10,0.29);
         vec3 topo = vec3(0.016,0.016,0.06);
         vec3 c = mix(fundo, faixa, smoothstep(-0.04, 0.03, h));
@@ -697,8 +879,8 @@ function Cena({
   }), [])
 
   useEffect(() => {
-    scene.fog = new THREE.Fog("#0b0f24", 70, 900)
-    scene.background = new THREE.Color("#0b0f24")
+    scene.fog = new THREE.Fog("#1a0f24", 70, 900)
+    scene.background = new THREE.Color("#1a0f24")
     return () => { scene.fog = null }
   }, [scene])
 
@@ -710,6 +892,10 @@ function Cena({
     y0: new THREE.Vector3(0, 1, 0), z0: new THREE.Vector3(0, 0, 1),
   }), [])
   const hudN = useRef(0)
+  const bairroAtual = useRef<DistritoId | null>(null)
+  const hemi = useRef<THREE.HemisphereLight>(null)
+  const alvoNevoa = useMemo(() => new THREE.Color(), [])
+  const alvoCeu = useMemo(() => new THREE.Color(), [])
   const kTurbo = useRef(false)
   const kVel = useRef(0)
   const camInit = useRef(false)
@@ -919,6 +1105,7 @@ function Cena({
     // ── câmera: amortecida, abre com a velocidade ──
     const atras = 8.4 + pct * 1.8
     tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
+    if (j.encaixar) { camInit.current = false; j.encaixar = false }
     const k = camInit.current ? 1 - Math.exp(-dt * (j.ar ? 3 : 5.5)) : 1
     camera.position.lerp(tmp.alvo, k)
     tmp.olhar.copy(car.position).addScaledVector(tmp.f, 7).addScaledVector(tmp.up, 1.2)
@@ -937,6 +1124,21 @@ function Cena({
 
     // céu acompanha a câmera
     if (ceu.current) ceu.current.position.copy(camera.position)
+    // atmosfera do bairro: névoa, céu e luz ambiente mudam devagar
+    const ds = distritoEm(j.u / pista.L)
+    if (ds.id !== bairroAtual.current) {
+      if (bairroAtual.current) ev.distrito(ds)
+      bairroAtual.current = ds.id
+      alvoNevoa.set(ds.nevoa)
+      alvoCeu.set(ds.ceu)
+    }
+    const kk = Math.min(1, dt * 0.9)
+    const fog = scene.fog as THREE.Fog | null
+    if (fog) fog.color.lerp(alvoNevoa, kk)
+    ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
+    ceuMat.uniforms.nevoaC.value.lerp(alvoNevoa, kk)
+    ceuMat.uniforms.tinta.value.lerp(alvoCeu, kk)
+    if (hemi.current) hemi.current.color.lerp(alvoCeu, kk * 0.5)
 
     // som
     motor?.atualizar(Math.min(1.45, j.v / VMAX), !inp.freio && !j.chegando, Math.min(1, Math.abs(a.curv) * j.v * 0.6 * Math.abs(j.steer)), Math.abs(j.x) > lim - 0.05 && j.v > 8, j.turboT > 0)
@@ -1017,7 +1219,7 @@ function Cena({
 
   return (
     <>
-      <hemisphereLight args={["#8f7dff", "#0b1a3a", 1.6]} />
+      <hemisphereLight ref={hemi} args={["#8f7dff", "#0b1a3a", 1.6]} />
       <ambientLight intensity={0.35} color="#7f8cff" />
       <directionalLight position={[200, 300, -400]} intensity={0.9} color="#b9ccff" />
       <mesh ref={ceu} material={ceuMat} frustumCulled={false} renderOrder={-1}>
@@ -1055,7 +1257,29 @@ function Cena({
         </mesh>
       ))}
 
-      <primitive object={cidade.predios} />
+      {cidade.predios.map((m, i) => <primitive key={i} object={m} />)}
+      <primitive object={cidade.arcos} />
+      <primitive object={cidade.fitas} />
+      {cidade.outdoors.map((o, i) => (
+        <mesh key={`out${i}`} position={o.pos} rotation={[0, o.rot, 0]}>
+          <planeGeometry args={[28, 7]} />
+          <meshBasicMaterial map={o.tex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ))}
+      {cidade.obras.map((o, i) => (
+        <group key={`obra${i}`} position={o.pos} rotation={[0, o.rot, 0]}>
+          {[-1, 1].map((l) => (
+            <mesh key={l} position={[l * (MEIA + 0.9), 4.6, 0]}>
+              <boxGeometry args={[0.5, 9.2, 0.5]} />
+              <meshBasicMaterial color="#b38cff" wireframe />
+            </mesh>
+          ))}
+          <mesh position={[0, 11.4, 0]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[MEIA * 2 + 2, (MEIA * 2 + 2) / 4]} />
+            <meshBasicMaterial map={cidade.obraTex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} opacity={0.7} />
+          </mesh>
+        </group>
+      ))}
       <primitive object={cidade.pilares} />
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
@@ -1080,6 +1304,22 @@ function Cena({
         </group>
       ))}
 
+      {colunas.map((c) => (
+        <group key={`col${c.id}`} position={c.pos}>
+          <mesh position={[0, 140, 0]}>
+            <cylinderGeometry args={[2.2, 2.2, 280, 16, 1, true]} />
+            <meshBasicMaterial color={c.cor} transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 140, 0]}>
+            <cylinderGeometry args={[0.6, 0.6, 280, 10, 1, true]} />
+            <meshBasicMaterial color={c.cor} transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 0.08, 0]} rotation-x={-Math.PI / 2}>
+            <ringGeometry args={[MEIA * 0.6, MEIA * 0.75, 40]} />
+            <meshBasicMaterial color={c.cor} transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
       {turbos.map((t, i) => (
         <mesh key={i} position={t.p} rotation={[-Math.PI / 2, 0, t.rot]}>
           <planeGeometry args={[3.4, 7]} />
@@ -1113,6 +1353,8 @@ function Cena({
     </>
   )
 }
+
+/* eslint-enable react-hooks/immutability, react-hooks/purity */
 
 const FALAS = [
   { de: "D-Bee", texto: "o núcleo apagou os radares nessa rua. aproveita" },

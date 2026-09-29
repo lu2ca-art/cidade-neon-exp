@@ -41,10 +41,10 @@ export function montarPista(seed = 222): Pista {
   const r = rng(seed)
   // pontos de controle num anel irregular: curvas longas, nenhuma fechada
   const pts: THREE.Vector3[] = []
-  const N = 22
+  const N = 26
   for (let i = 0; i < N; i++) {
     const a = (i / N) * Math.PI * 2
-    const raio = 560 + (r() - 0.5) * 260 + Math.sin(a * 3) * 90
+    const raio = 760 + (r() - 0.5) * 300 + Math.sin(a * 3) * 110
     const h = Math.sin(a * 2 + 0.7) * 10 + Math.sin(a * 5) * 4
     pts.push(new THREE.Vector3(Math.cos(a) * raio, h, Math.sin(a) * raio))
   }
@@ -64,6 +64,12 @@ export function montarPista(seed = 222): Pista {
     px[i] = p.x
     py[i] = p.y
     pz[i] = p.z
+  }
+
+  // o mirante (bairro do hélio): a pista sobe ~22m entre 49% e 61% do loop
+  for (let i = 0; i < n; i++) {
+    const f = i / n
+    if (f > 0.47 && f < 0.63) py[i] += 22 * Math.sin(((f - 0.47) / 0.16) * Math.PI) ** 2
   }
 
   // rampas: sobe suave 18m e cai de uma vez — o carro decola sozinho
@@ -95,7 +101,8 @@ export function montarPista(seed = 222): Pista {
   }
 
   // estações: arcos igualmente espaçados, na ordem da linha
-  const estacoes = ESTACOES.map((e, i) => ({ id: e.id, u: ((i + 0.08) / ESTACOES.length) * L }))
+  // as 9 estações do vol.1 moram no centro (bairro do neônio, primeira metade)
+  const estacoes = ESTACOES.map((e, i) => ({ id: e.id, u: ((i + 0.5) / ESTACOES.length) * 0.5 * L }))
 
   // orbs em colares de 6, desenhando uma linha que dá gosto seguir
   const orbs: { u: number; x: number }[] = []
