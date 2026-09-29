@@ -1,239 +1,328 @@
 "use client"
 
-import { useState, useCallback } from "react"
+// NECTAR — a leitura. Dinâmica de chapéu seletor: cenas curtas, caminhos
+// que se bifurcam pela primeira resposta, uma aura que muda de cor enquanto
+// a cidade "pensa", e uma cerimônia antes do resultado. O resultado é uma
+// campanha das faixas (faixa × fase), com o objeto que te acompanha e o
+// próximo ponto da rota dele. Dados em ./leitura.ts.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { track } from "@/lib/analytics"
+import "./nectar.css"
+import { CAMPANHAS, FAIXAS, FASE_NOME, NOS, OBJETOS, TOTAL_PERGUNTAS, ler, type Faixa, type Resultado } from "./leitura"
 
-// ─── Perguntas ───────────────────────────────────────────────────────────────
+type Resp = { no: string; opcao: number }
+type Tela = "abertura" | "pergunta" | "cerimonia" | "resultado"
 
-const QUESTIONS = [
-  {
-    q: "voce ta entediado agora?",
-    opts: [
-      { text: "sim, ja faz tipo 3 horas", color: "#6B7280" },
-      { text: "entediado nao, so vazio", color: "#4B5563" },
-      { text: "eu sou o entedio", color: "#374151" },
-      { text: "nunca, minha vida e intensa", color: "#F59E0B" },
-    ],
-  },
-  {
-    q: "voce ve um gato de rua. o que voce faz?",
-    opts: [
-      { text: "chamo e ele ignora, normal", color: "#A78BFA" },
-      { text: "fotografo secretamente", color: "#6B7FD7" },
-      { text: "sento no chao ate ele vir", color: "#4ECDC4" },
-      { text: "passo reto, compromisso", color: "#6B7280" },
-    ],
-  },
-  {
-    q: "academia: preguica ou viciado?",
-    opts: [
-      { text: "preguica cronica", color: "#EF4444" },
-      { text: "vou 2x por semana e finjo que e o suficiente", color: "#F59E0B" },
-      { text: "viciado, academia e terapia", color: "#10B981" },
-      { text: "academia e pra quem?", color: "#6B7280" },
-    ],
-  },
-  {
-    q: "qual e a sua raca (de vibe)?",
-    opts: [
-      { text: "gato de rua que come bem", color: "#A78BFA" },
-      { text: "cachorro leal demais", color: "#F59E0B" },
-      { text: "planta que sobrevive em qualquer solo", color: "#10B981" },
-      { text: "fungo — cresce no escuro", color: "#6B7280" },
-    ],
-  },
-  {
-    q: "quando voce chega em algum lugar novo, o que acontece?",
-    opts: [
-      { text: "fico na parede avaliando", color: "#6B7280" },
-      { text: "finjo que conhoco todo mundo", color: "#F59E0B" },
-      { text: "acho o banheiro e fico la", color: "#6B7FD7" },
-      { text: "sou o lugar", color: "#FF6B6B" },
-    ],
-  },
-]
+const CHAVE = "cn-nectar-leitura"
+const ATO: Record<string, string> = { chegada: "I · a chegada", travessia: "II · a travessia", espelho: "III · o espelho" }
 
-// Resultado baseado na cor que mais apareceu nas respostas
-const NECTAR_RESULTS: Record<string, { name: string; color: string; desc: string }> = {
-  "#6B7280": { name: "NECTAR SOMBRA",   color: "#6B7280", desc: "voce e observador, calculista, guarda tudo. sua forca ta no silencio." },
-  "#4B5563": { name: "NECTAR VAZIO",    color: "#8B9DB0", desc: "voce sente profundo. nao e tristeza — e volume interno." },
-  "#374151": { name: "NECTAR NOITE",    color: "#A0A0B0", desc: "voce virou o proprio entedio e isso e uma qualidade rara." },
-  "#F59E0B": { name: "NECTAR SOLAR",    color: "#F59E0B", desc: "sua energia irradia calor. voce ilumina qualquer ambiente." },
-  "#A78BFA": { name: "NECTAR NEBULOSA", color: "#A78BFA", desc: "misterio e intuicao. voce percebe o que os outros nao veem." },
-  "#6B7FD7": { name: "NECTAR OCEANO",   color: "#6B7FD7", desc: "profundidade e calma. voce e a ancora que estabiliza o caos." },
-  "#4ECDC4": { name: "NECTAR CRISTAL",  color: "#4ECDC4", desc: "clareza e harmonia. voce busca verdade em tudo." },
-  "#EF4444": { name: "NECTAR FOGO",     color: "#EF4444", desc: "paixao e intensidade. voce sente tudo com forca total." },
-  "#10B981": { name: "NECTAR NATUREZA", color: "#10B981", desc: "voce cresce em qualquer condicao. resiliente sem esforco." },
-  "#FF6B6B": { name: "NECTAR CHAMA",    color: "#FF6B6B", desc: "voce nao chega num lugar — voce cria ele. presenca total." },
-  default:   { name: "NECTAR LIVRE",    color: "#A78BFA", desc: "voce nao cabe em uma categoria. isso e bom." },
+// ── som mínimo (a página roda fora da Linha 222, então tem o seu) ──
+let ctx: AudioContext | null = null
+function ac() {
+  if (typeof window === "undefined") return null
+  if (!ctx) {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    if (!AC) return null
+    ctx = new AC()
+  }
+  if (ctx.state === "suspended") ctx.resume().catch(() => {})
+  return ctx
+}
+const PENTA = [293.66, 349.23, 392, 440, 523.25, 587.33, 698.46, 783.99]
+function nota(i: number, vol = 0.18) {
+  const c = ac()
+  if (!c) return
+  const t = c.currentTime
+  const o = c.createOscillator()
+  const g = c.createGain()
+  o.type = "sine"
+  o.frequency.value = PENTA[((i % 8) + 8) % 8]
+  g.gain.setValueAtTime(0, t)
+  g.gain.linearRampToValueAtTime(vol, t + 0.01)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4)
+  o.connect(g).connect(c.destination)
+  o.start(t)
+  o.stop(t + 1.5)
+}
+let drone: { g: GainNode; os: OscillatorNode[] } | null = null
+function ligarDrone(on: boolean) {
+  const c = ac()
+  if (!c) return
+  if (on && !drone) {
+    const g = c.createGain()
+    g.gain.value = 0
+    const lp = c.createBiquadFilter()
+    lp.type = "lowpass"
+    lp.frequency.value = 700
+    const os = [73.42, 110, 146.83, 220].map((f, i) => {
+      const o = c.createOscillator()
+      o.type = i % 2 ? "triangle" : "sine"
+      o.frequency.value = f
+      o.detune.value = (i - 1.5) * 5
+      o.connect(lp)
+      o.start()
+      return o
+    })
+    lp.connect(g).connect(c.destination)
+    drone = { g, os }
+  }
+  if (drone) drone.g.gain.setTargetAtTime(on ? 0.05 : 0, c.currentTime, on ? 2 : 0.5)
+}
+function vib(p: number | number[]) {
+  try { navigator.vibrate?.(p) } catch {}
 }
 
-function getResult(answers: number[]): typeof NECTAR_RESULTS[string] {
-  const colorCount: Record<string, number> = {}
-  answers.forEach((ansIdx, qIdx) => {
-    const c = QUESTIONS[qIdx]?.opts[ansIdx]?.color
-    if (c) colorCount[c] = (colorCount[c] || 0) + 1
-  })
-  const top = Object.entries(colorCount).sort((a, b) => b[1] - a[1])[0]?.[0]
-  return NECTAR_RESULTS[top] || NECTAR_RESULTS.default
+function nomeDoJogador(): string {
+  try {
+    return (JSON.parse(localStorage.getItem("cn-linha-222") || "{}").nome as string) || ""
+  } catch {
+    return ""
+  }
 }
-
-// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function NectarPage() {
   const router = useRouter()
   const { completeConfirmation, state } = useGameFunnel()
+  const [tela, setTela] = useState<Tela>("abertura")
+  const [no, setNo] = useState("inicio")
+  const [resp, setResp] = useState<Resp[]>([])
+  const [escolhida, setEscolhida] = useState<number | null>(null)
+  const [resultado, setResultado] = useState<Resultado | null>(null)
+  const [salvo, setSalvo] = useState<Resultado | null>(null)
+  const [nome, setNome] = useState("")
+  const audio = useRef<HTMLAudioElement | null>(null)
 
-  const alreadyDone = state.confirmations.c1.done
-  const [step, setStep] = useState(alreadyDone ? QUESTIONS.length : 0)
-  const [answers, setAnswers] = useState<number[]>(
-    alreadyDone
-      ? (state.confirmations.c1.data as { nectarAnswers?: number[] })?.nectarAnswers || []
-      : []
-  )
-  const [showResult, setShowResult] = useState(alreadyDone)
-  const [chosen, setChosen] = useState<number | null>(null)
+  useEffect(() => {
+    try {
+      const r = localStorage.getItem(CHAVE)
+      // leitura já feita antes: mostra direto, com opção de ler de novo
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (r) setSalvo(JSON.parse(r))
+    } catch {}
+    setNome(nomeDoJogador())
+    return () => { ligarDrone(false); audio.current?.pause() }
+  }, [])
 
-  const handleAnswer = useCallback((idx: number) => {
-    if (chosen !== null) return
-    setChosen(idx)
-    const newAnswers = [...answers, idx]
+  // aura: a cor da faixa que tá na frente até agora (sem dizer qual é)
+  const aura = useMemo(() => {
+    if (!resp.length) return "#b38cff"
+    const soma: Partial<Record<Faixa, number>> = {}
+    for (const r of resp) for (const [k, v] of Object.entries(NOS[r.no].opcoes[r.opcao].peso.f ?? {})) soma[k as Faixa] = (soma[k as Faixa] ?? 0) + (v ?? 0)
+    const top = (Object.keys(soma) as Faixa[]).sort((a, b) => (soma[b] ?? 0) - (soma[a] ?? 0))[0]
+    return top ? FAIXAS[top].cor : "#b38cff"
+  }, [resp])
 
-    setTimeout(() => {
-      setAnswers(newAnswers)
-      setChosen(null)
-      if (step < QUESTIONS.length - 1) {
-        setStep(s => s + 1)
-      } else {
-        setTimeout(() => {
-          setShowResult(true)
-          if (!alreadyDone) completeConfirmation(1, { nectarAnswers: newAnswers })
-        }, 300)
-      }
-    }, 380)
-  }, [chosen, answers, step, alreadyDone, completeConfirmation])
-
-  const result = showResult ? getResult(answers) : null
-
-  // ── TELA DE RESULTADO ────────────────────────────────────────────────────
-  if (showResult && result) {
-    return (
-      <div className="h-dvh flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0a" }}>
-        <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
-          {/* Glow de fundo */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ backgroundColor: result.color }} />
-          </div>
-
-          <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 text-center">
-            {/* Orb */}
-            <div className="relative w-28 h-28 mb-8">
-              <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: `${result.color}18`, boxShadow: `0 0 60px ${result.color}40` }} />
-              <div className="absolute inset-3 rounded-full" style={{ backgroundColor: `${result.color}12` }} />
-              <div className="absolute inset-7 rounded-full flex items-center justify-center" style={{ backgroundColor: `${result.color}10` }}>
-                <span className="text-3xl font-black" style={{ color: result.color }}>N</span>
-              </div>
-            </div>
-
-            <p className="text-white/30 text-[10px] tracking-[0.35em] uppercase mb-3">seu nectar</p>
-            <h1 className="text-2xl font-black tracking-wide mb-4 text-balance" style={{ color: result.color }}>
-              {result.name}
-            </h1>
-            <p className="text-white/50 text-sm leading-relaxed mb-10 max-w-[260px]">{result.desc}</p>
-
-            <p className="text-white/40 text-sm mb-1">voce desbloqueou uma recompensa.</p>
-            <p className="text-white/20 text-xs mb-6">descubra na conversa com Alohan, pelo N3XO.</p>
-
-            {/* Botao Home — simula botao fisico do iPhone */}
-            <button
-              type="button"
-              onClick={() => { sendMinimizeConsole(); router.push("/?screen=home") }}
-              aria-label="Inicio"
-              className="w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto"
-              style={{ background: "rgba(255,255,255,0.06)", border: "2px solid rgba(255,255,255,0.15)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
-            >
-              <svg className="w-5 h-5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <style jsx>{`
-          @keyframes nectar-in { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
-          .animate-nectar-in { animation: nectar-in 0.5s ease-out forwards; }
-        `}</style>
-      </div>
-    )
+  const comecar = () => {
+    ac()
+    ligarDrone(true)
+    setResp([])
+    setNo("inicio")
+    setResultado(null)
+    setTela("pergunta")
+    track("mission_started", { mission_id: "nectar-leitura", place_id: "nectar" })
   }
 
-  // ── QUIZ ─────────────────────────────────────────────────────────────────
-  const q = QUESTIONS[step]
+  const escolher = useCallback((i: number) => {
+    if (escolhida !== null) return
+    setEscolhida(i)
+    nota(resp.length + i)
+    vib(12)
+    const atual = NOS[no]
+    const nova = [...resp, { no, opcao: i }]
+    setTimeout(() => {
+      setResp(nova)
+      setEscolhida(null)
+      const prox = atual.opcoes[i].prox ?? atual.prox
+      if (prox) setNo(prox)
+      else {
+        setTela("cerimonia")
+        const r = ler(nova)
+        setResultado(r)
+        try { localStorage.setItem(CHAVE, JSON.stringify(r)) } catch {}
+        if (!state.confirmations.c1.done) completeConfirmation(1, { nectarAnswers: nova.map((x) => x.opcao), leitura: `${r.faixa}${r.fase}` })
+        track("mission_completed", { mission_id: "nectar-leitura", duration_ms: 0 })
+        setTimeout(() => {
+          ligarDrone(false)
+          setTela("resultado")
+          vib([30, 50, 30, 50, 120])
+          const a = new Audio(FAIXAS[r.faixa].audio)
+          a.volume = 0.8
+          a.play().catch(() => {})
+          audio.current = a
+        }, 5200)
+      }
+    }, 520)
+  }, [escolhida, no, resp, state.confirmations.c1.done, completeConfirmation])
+
+  const voltar = () => {
+    audio.current?.pause()
+    ligarDrone(false)
+    sendMinimizeConsole()
+    router.push("/?screen=home")
+  }
 
   return (
-    <div className="h-dvh flex items-center justify-center overflow-hidden" style={{ background: "#0a0a0a" }}>
-      <div className="w-full max-w-[100vw] md:max-w-[400px] h-[100dvh] md:h-[844px] flex flex-col relative">
-        {/* Background sutil */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(167,139,250,0.07) 0%, transparent 60%)" }} />
+    <div className="n-raiz" style={{ ["--aura" as string]: tela === "resultado" && resultado ? FAIXAS[resultado.faixa].cor : aura }}>
+      <div className="n-palco">
+        <div className="n-aura" />
+        <div className="n-grao" />
 
-        <div className="relative z-10 flex flex-col h-full px-6 pt-14 pb-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-5">
-              <button
-                type="button"
-                onClick={() => router.push("/?screen=home")}
-                aria-label="Inicio"
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1.5px solid rgba(255,255,255,0.12)" }}
-              >
-                <svg className="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
-                  <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
-                </svg>
+        {tela === "abertura" && (
+          <section className="n-abertura">
+            <p className="n-rotulo">cidade neon · a leitura</p>
+            <h1 className="n-titulo">nectar</h1>
+            <p className="n-lede">
+              {nome ? `${nome}, a` : "a"} cidade vai te ler.
+              <br />sete perguntas. o caminho muda com cada resposta.
+              <br /><em>responde rápido. o primeiro impulso é o que conta.</em>
+            </p>
+            <button type="button" className="n-btn" onClick={comecar}>{salvo ? "ler de novo" : "começar a leitura"}</button>
+            {salvo && (
+              <button type="button" className="n-link" onClick={() => { setResultado(salvo); setTela("resultado") }}>
+                ver minha última leitura · {FAIXAS[salvo.faixa].nome.toLowerCase()} · {CAMPANHAS[`${salvo.faixa}${salvo.fase}`]?.titulo.toLowerCase()}
               </button>
-              <p className="text-white/20 text-xs font-mono">{step + 1}/{QUESTIONS.length}</p>
-            </div>
-            {/* Barra de progresso */}
-            <div className="flex gap-1.5">
-              {QUESTIONS.map((_, i) => (
-                <div key={i} className="flex-1 h-0.5 rounded-full transition-all duration-500"
-                  style={{ backgroundColor: i < step ? "#A78BFA" : i === step ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.06)" }} />
-              ))}
-            </div>
-            <p className="text-white/20 text-[9px] tracking-[0.3em] uppercase mt-4 mb-2">NECTAR</p>
-          </div>
+            )}
+            <button type="button" className="n-link is-sutil" onClick={voltar}>voltar</button>
+          </section>
+        )}
 
-          {/* Pergunta */}
-          <div className="flex-1 flex flex-col justify-center">
-            <h2 className="text-white text-xl font-medium leading-snug mb-10 text-balance">
-              {q.q}
-            </h2>
+        {tela === "pergunta" && (
+          <Pergunta key={no} no={no} n={resp.length} escolhida={escolhida} onEscolher={escolher} />
+        )}
 
-            <div className="space-y-3">
-              {q.opts.map((opt, i) => (
-                <button
-                  key={opt.text}
-                  type="button"
-                  onClick={() => handleAnswer(i)}
-                  className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-left transition-all duration-200 active:scale-[0.97] min-h-[52px]"
-                  style={{
-                    background: chosen === i ? `${opt.color}22` : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${chosen === i ? opt.color + "60" : "rgba(255,255,255,0.06)"}`,
-                    opacity: chosen !== null && chosen !== i ? 0.4 : 1,
-                  }}
-                >
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all" style={{ backgroundColor: chosen === i ? opt.color : "rgba(255,255,255,0.15)" }} />
-                  <span className="text-white/70 text-sm">{opt.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        {tela === "cerimonia" && <Cerimonia />}
+
+        {tela === "resultado" && resultado && <ResultadoTela r={resultado} nome={nome} onDeNovo={comecar} onVoltar={voltar} />}
       </div>
     </div>
+  )
+}
+
+function Pergunta({ no, n, escolhida, onEscolher }: { no: string; n: number; escolhida: number | null; onEscolher: (i: number) => void }) {
+  const d = NOS[no]
+  const [txt, setTxt] = useState("")
+  const [pronto, setPronto] = useState(!d.cena)
+  useEffect(() => {
+    if (!d.cena) return
+    let i = 0
+    const t = setInterval(() => {
+      i += 2
+      setTxt(d.cena!.slice(0, i))
+      if (i >= d.cena!.length) { clearInterval(t); setPronto(true) }
+    }, 22)
+    return () => clearInterval(t)
+  }, [d.cena])
+  return (
+    <section className="n-pergunta">
+      <header className="n-topo">
+        <span className="n-rotulo">{ATO[d.ato]}</span>
+        <div className="n-pontos">
+          {Array.from({ length: TOTAL_PERGUNTAS }, (_, i) => <i key={i} className={i < n ? "is-feito" : i === n ? "is-agora" : ""} />)}
+        </div>
+      </header>
+      <div className="n-meio">
+        {d.cena && <p className="n-cena" onClick={() => { setTxt(d.cena!); setPronto(true) }}>{txt}<span className="n-cursor" /></p>}
+        <h2 className={`n-q ${pronto ? "is-on" : ""}`}>{d.pergunta}</h2>
+      </div>
+      <div className="n-opcoes">
+        {pronto && d.opcoes.map((o, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`n-opcao ${escolhida === i ? "is-escolhida" : ""} ${escolhida !== null && escolhida !== i ? "is-some" : ""}`}
+            style={{ animationDelay: `${i * 80}ms` }}
+            onClick={() => onEscolher(i)}
+          >
+            {o.txt}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+const PALAVRAS = ["saudade", "coragem", "vergonha", "tédio", "presença", "medo", "transbordo", "loop", "resiliência", "fome", "silêncio", "dança", "culpa", "sonho", "fé", "vazio", "chuva", "flor"]
+
+function Cerimonia() {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => { setI((x) => x + 1); nota(Math.floor(Math.random() * 8), 0.07) }, 260)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <section className="n-cerimonia">
+      <p className="n-rotulo">a cidade tá te lendo</p>
+      <div className="n-palavra" key={i}>{PALAVRAS[i % PALAVRAS.length]}</div>
+      <div className="n-anel" />
+      <p className="n-nucleo">NÚCLEO · tentativa de leitura bloqueada ✓</p>
+    </section>
+  )
+}
+
+function ResultadoTela({ r, nome, onDeNovo, onVoltar }: { r: Resultado; nome: string; onDeNovo: () => void; onVoltar: () => void }) {
+  const f = FAIXAS[r.faixa]
+  const c = r.campanha
+  const o = OBJETOS[r.objeto]
+  const compartilhar = async () => {
+    const txt = `meu nectar é ${f.nome.toLowerCase()} · ${c.titulo.toLowerCase()} (${FASE_NOME[r.fase]}). meu objeto: ${o.nome}. e o seu?`
+    try {
+      if (navigator.share) return await navigator.share({ title: "nectar · cidade neon", text: txt, url: "https://lu2ca.art" })
+      await navigator.clipboard.writeText(`${txt} https://lu2ca.art`)
+    } catch {}
+  }
+  return (
+    <section className="n-resultado">
+      <p className="n-rotulo">{nome ? `${nome}, seu nectar é` : "seu nectar é"}</p>
+      <h1 className="n-faixa">{f.nome}</h1>
+      <div className="n-camp">
+        <span className="n-fase">{FASE_NOME[r.fase]}</span>
+        <b>{c.titulo}</b>
+      </div>
+      {c.frase && <blockquote className="n-frase">“{c.frase}”</blockquote>}
+      <dl className="n-leitura">
+        <div><dt>emoção dominante</dt><dd>{c.emocao}</dd></div>
+        <div><dt>sua brecha</dt><dd>{c.brecha}</dd></div>
+        <div><dt>como você fala</dt><dd>{c.linguagem}</dd></div>
+      </dl>
+      <div className="n-objeto">
+        <small>o objeto que te acompanha</small>
+        <b>{o.nome}</b>
+        <div className="n-rota">
+          {o.rota.map(([fx, fs], i) => {
+            const aqui = fx === r.faixa && fs === r.fase
+            return (
+              <span key={i} className={aqui ? "is-aqui" : ""} style={{ ["--c" as string]: FAIXAS[fx].cor }}>
+                <i />
+                {FAIXAS[fx].nome.toLowerCase()}
+              </span>
+            )
+          })}
+        </div>
+        <p>{o.porque}.</p>
+        {r.proximo && (
+          <p className="n-prox">
+            seu próximo passo: <b style={{ color: FAIXAS[r.proximo[0]].cor }}>{FAIXAS[r.proximo[0]].nome}</b> · {CAMPANHAS[`${r.proximo[0]}${r.proximo[1]}`]?.titulo.toLowerCase() ?? FASE_NOME[r.proximo[1]]}
+          </p>
+        )}
+      </div>
+      <p className="n-sombra">sua sombra: <b style={{ color: FAIXAS[r.sombra].cor }}>{FAIXAS[r.sombra].nome}</b></p>
+      {c.cta && (
+        <div className="n-cta">
+          <small>pra você levar</small>
+          <p>{c.cta}</p>
+        </div>
+      )}
+      <div className="n-acoes">
+        <button type="button" className="n-btn" onClick={compartilhar}>compartilhar meu nectar</button>
+        <div className="n-acoes-2">
+          <button type="button" className="n-btn is-ghost" onClick={onDeNovo}>ler de novo</button>
+          <button type="button" className="n-btn is-ghost" onClick={onVoltar}>voltar</button>
+        </div>
+      </div>
+    </section>
   )
 }
