@@ -47,9 +47,9 @@ export interface Palco {
 // (xenônio azul-violeta, neônio laranja-vermelho, argônio lavanda…)
 export const PALCOS: Palco[] = [
   { id: "garagem", nome: "a garagem", lugar: "subúrbio xenom", estrelas: 0, cache: 40, publico: 6, cor: "#6d7bff", fachada: "GARAGEM · ENSAIO ABERTO", fala: "valeu por não quebrar nada. toma, pro busão" },
-  { id: "bar", nome: "bar do copo", lugar: "centro · neônio", estrelas: 6, cache: 120, publico: 22, cor: "#ff6a35", fachada: "BAR DO COPO · HOJE: LU2CA", fala: "o bar nunca vendeu tanto copo americano. volta sexta" },
-  { id: "laje", nome: "festa na laje", lugar: "morro · argônio", estrelas: 14, cache: 280, publico: 60, cor: "#b38cff", fachada: "LAJE 222 · ENTRADA 1 KG DE ALIMENTO", fala: "a vizinhança inteira subiu. isso aqui é seu" },
-  { id: "casa", nome: "casa 222", lugar: "rua da linha · criptônio", estrelas: 24, cache: 650, publico: 180, cor: "#e6f0ff", fachada: "CASA 222 · INGRESSOS ESGOTADOS", fala: "esgotou em 4 minutos. o núcleo tá de olho em vc" },
+  { id: "bar", nome: "bar do copo", lugar: "centro", estrelas: 6, cache: 120, publico: 22, cor: "#ff6a35", fachada: "BAR DO COPO · HOJE: LU2CA", fala: "o bar nunca vendeu tanto copo americano. volta sexta" },
+  { id: "laje", nome: "festa na laje", lugar: "morro", estrelas: 14, cache: 280, publico: 60, cor: "#b38cff", fachada: "LAJE 222 · ENTRADA 1 KG DE ALIMENTO", fala: "a vizinhança inteira subiu. isso aqui é seu" },
+  { id: "casa", nome: "casa 222", lugar: "rua da linha", estrelas: 24, cache: 650, publico: 180, cor: "#e6f0ff", fachada: "CASA 222 · INGRESSOS ESGOTADOS", fala: "esgotou em 4 minutos. o núcleo tá de olho em vc" },
   { id: "arena", nome: "arena neon", lugar: "o festival", estrelas: 36, cache: 1600, publico: 600, cor: "#ff3fb0", fachada: "FESTIVAL CIDADE NEON · PALCO PRINCIPAL", fala: "a cidade inteira cantou junto. isso não se compra" },
 ]
 
@@ -66,11 +66,11 @@ export interface Modelo {
 
 export const MODELOS: Modelo[] = [
   { id: "g-xenom", tipo: "guitarra", nome: "Xenom Standard", preco: 0, corpo: "#6d7bff", braco: "#1a1c3a", forma: "strato" },
-  { id: "g-neon", tipo: "guitarra", nome: "Neônio Jaguar", preco: 350, corpo: "#ff6a35", braco: "#2a1408", forma: "jaguar", bonus: "+10% grana" },
-  { id: "g-flying", tipo: "guitarra", nome: "Radônio Flying", preco: 900, corpo: "#ff2d3d", braco: "#140608", forma: "flying", bonus: "modo NEON dura +2s" },
+  { id: "g-neon", tipo: "guitarra", nome: "Centro Jaguar", preco: 350, corpo: "#ff6a35", braco: "#2a1408", forma: "jaguar", bonus: "+10% grana" },
+  { id: "g-flying", tipo: "guitarra", nome: "Túnel Flying", preco: 900, corpo: "#ff2d3d", braco: "#140608", forma: "flying", bonus: "modo NEON dura +2s" },
   { id: "g-semi", tipo: "guitarra", nome: "Semi Nectar", preco: 1800, corpo: "#b38cff", braco: "#1a0f2a", forma: "semi", bonus: "+20% grana" },
-  { id: "b-argon", tipo: "baixo", nome: "Argônio Precision", preco: 0, corpo: "#9b8cff", braco: "#161230", forma: "precision" },
-  { id: "b-kripton", tipo: "baixo", nome: "Criptônio Jazz", preco: 500, corpo: "#e6f0ff", braco: "#20222e", forma: "jazz", bonus: "+10% grana" },
+  { id: "b-argon", tipo: "baixo", nome: "Morro Precision", preco: 0, corpo: "#9b8cff", braco: "#161230", forma: "precision" },
+  { id: "b-kripton", tipo: "baixo", nome: "Núcleo Jazz", preco: 500, corpo: "#e6f0ff", braco: "#20222e", forma: "jazz", bonus: "+10% grana" },
 ]
 
 export const ACABAMENTOS = [
