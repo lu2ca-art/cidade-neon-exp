@@ -1,1191 +1,672 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+// GUITAR DRIVER — glow-up no espírito do Guitar Hero 1: carreira de palcos
+// (garagem → arena), guitarra ou baixo (o baixo lê o grave real da faixa),
+// loja com a grana dos shows, cutscene de entrada e de saída, show
+// simulado atrás do braço, multiplicador, modo NEON (star power), medidor
+// da galera e cachê no fim. As notas continuam vindo da análise do áudio
+// real (lib/audio-analysis).
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
-import { sendMinimizeConsole, sendCarRadioMute } from "@/app/providers/AudioBridge"
-import { analyzeAudioForTiles, type AnalyzedTile } from "@/lib/audio-analysis"
+import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
+import { analyzeAudioForTiles } from "@/lib/audio-analysis"
+import { track } from "@/lib/analytics"
+import "./gd.css"
+import {
+  ACABAMENTOS, FAIXAS, MODELOS, PALCOS, SAVE_VAZIO, carregar, estrelasPor, faixaAberta, gravar, totalEstrelas,
+  type Faixa, type Instrumento, type Modelo, type Palco, type Save,
+} from "./dados"
+import { COR_LANE, LANES, desenharBraco, desenharPalco, desenharTomada, type Nota, type Tomada } from "./cena"
+import { ac, carregarBuffer, montarShow, soGrave, type Show } from "./som"
 
-// ─── TIPOS ───────────────────────────────────────────────────────────────────
+type Fase = "menu" | "loja" | "carregando" | "entrada" | "tocando" | "saida" | "resultado"
 
-interface Tile {
-  id: number
-  col: number
-  beatTime: number   // ms: momento em que o tile deve ser acertado
-  hit: boolean
-  missed: boolean
-  hold: boolean      // nota longa?
-  holdDuration: number // ms da duração do hold (0 se não for hold)
-  holdActive: boolean  // está sendo segurado agora?
-  holdBroken: boolean  // soltou antes da hora (igual ao Guitar Hero original: quebra o combo)
+const JANELA_ACERTO = { facil: 0.17, medio: 0.13, dificil: 0.1 }
+const VISIVEL = { facil: 2.2, medio: 1.8, dificil: 1.45 }
+const TECLAS = ["d", "f", "j", "k"]
+
+interface Placar {
+  pontos: number
+  seq: number
+  maxSeq: number
+  acertos: number
+  total: number
+  galera: number
+  neon: number
+  neonAtivo: number // segundos restantes
 }
 
-interface Song {
-  id: string
-  title: string
-  bpm: number
-  audioUrl: string
-  color: string
-  accentColor: string
-  duration: number
+interface Resultado {
+  pct: number
+  estrelas: number
+  pontos: number
+  maxSeq: number
+  grana: number
+  recorde: boolean
+  novoPalco: Palco | null
 }
 
-type Profile = "ULTRA CONECTADO" | "EM SINTONIA" | "OSCILANDO" | "DESCONECTADO"
-type Phase = "select" | "analyzing" | "countdown" | "playing" | "result" | "reward"
+function vib(p: number | number[]) {
+  try { navigator.vibrate?.(p) } catch {}
+}
 
-// ─── MÚSICAS ─────────────────────────────────────────────────────────────────
+export default function GuitarDriver() {
+  const router = useRouter()
+  const { updateCinematicStep, completeConfirmation, state } = useGameFunnel()
+  const [save, setSave] = useState<Save>(SAVE_VAZIO)
+  const [fase, setFase] = useState<Fase>("menu")
+  const [palcoId, setPalcoId] = useState("garagem")
+  const [faixa, setFaixa] = useState<Faixa>(FAIXAS[0])
+  const [res, setRes] = useState<Resultado | null>(null)
+  const [erroCarga, setErroCarga] = useState("")
+  const cvs = useRef<HTMLCanvasElement>(null)
+  const jogo = useRef<{ notas: Nota[]; placar: Placar; show: Show | null; dur: number; apertadas: boolean[]; flashes: { lane: number; ate: number; tipo: "ok" | "erro" }[]; buf: AudioBuffer | null }>({
+    notas: [], placar: novoPlacar(), show: null, dur: 22, apertadas: [false, false, false, false], flashes: [], buf: null,
+  })
+  const hud = useRef<HTMLDivElement>(null)
 
-const SONGS: Song[] = [
-  // As 4 faixas usam o mesmo trecho de 22s tocado no rádio do carro (em vez
-  // das masters completas), pra manter tudo consistente com o que a rádio usa.
-  {
-    id: "chuva",
-    title: "CHUVA",
-    bpm: 95,
-    audioUrl: "/audio/tracks/222-chuva.mp3",
-    color: "#00FFF0",
-    accentColor: "#0077FF",
-    duration: 22,
-  },
-  {
-    id: "copo",
-    title: "COPO AMERICANO",
-    bpm: 110,
-    audioUrl: "/audio/tracks/222-copo-americano.mp3",
-    color: "#FF00A8",
-    accentColor: "#FF6B00",
-    duration: 22,
-  },
-  {
-    id: "dopamina",
-    title: "DOPAMINA",
-    bpm: 128,
-    audioUrl: "/audio/tracks/dopamina.mp3",
-    color: "#7C3AED",
-    accentColor: "#FF00A8",
-    duration: 22,
-  },
-  {
-    id: "sexta",
-    title: "SEXTA FEIRA",
-    bpm: 105,
-    audioUrl: "/audio/tracks/sextafeira.mp3",
-    color: "#FFD700",
-    accentColor: "#FF6B00",
-    duration: 22,
-  },
-]
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSave(carregar())
+    sendCarRadioMute(true)
+    return () => { sendCarRadioMute(false); jogo.current.show?.parar() }
+  }, [])
 
-// ─── GERADOR DE TILES DE FALLBACK (usado só se a análise de áudio real falhar
-// ou vier rala demais) — mesmo assim deriva o intervalo do BPM real da faixa
-// (1 nota por tempo), em vez de um valor fixo que ignorava a música ─────────
+  const salvar = useCallback((f: (s: Save) => Save) => setSave((s) => { const n = f(s); gravar(n); return n }), [])
 
-function generateTiles(song: Song): Tile[] {
-  const interval = 60000 / song.bpm
-  const totalMs   = song.duration * 1000
-  const tiles: Tile[] = []
-  let id = 0
-  let lastCol = -1
-  let t = 2000 // começa 2s após o início
+  const palco = PALCOS.find((p) => p.id === palcoId)!
+  const estrelasTot = totalEstrelas(save)
+  const modelo = MODELOS.find((m) => m.id === save.modelo[save.instrumento])!
 
-  const cols = [0, 1, 2, 3]
-
-  while (t < totalMs - 1500) {
-    // escolhe coluna diferente da anterior
-    let col = cols[Math.floor(Math.random() * 4)]
-    while (col === lastCol) col = cols[Math.floor(Math.random() * 4)]
-    lastCol = col
-
-    tiles.push({
-      id: id++,
-      col,
-      beatTime: t,
-      hit: false,
-      missed: false,
-      hold: false,
-      holdDuration: 0,
-      holdActive: false,
-      holdBroken: false,
-    })
-
-    // variação de ritmo: às vezes chega mais rápido, às vezes pausa
-    const jitter = (Math.random() - 0.5) * 200
-    t += interval + jitter
+  /* ── começar um show ── */
+  const comecar = async (f: Faixa) => {
+    ac()
+    setFaixa(f)
+    setErroCarga("")
+    setFase("carregando")
+    track("mission_started", { mission_id: `guitar-${f.id}`, place_id: "neon-tiles" })
+    try {
+      const buf = await carregarBuffer(f.audio)
+      const fonte = save.instrumento === "baixo" ? await soGrave(buf) : buf
+      const analisadas = analyzeAudioForTiles(fonte, f.bpm, buf.duration * 1000)
+      let notas: Nota[] = analisadas.map((t, i) => ({
+        id: i, lane: t.col % LANES, t: t.beatTime / 1000, dur: t.hold ? t.holdDuration / 1000 : 0,
+        estrela: Math.floor(i / 6) % 5 === 2, acertou: false, errou: false, segurando: false, soltou: false,
+      }))
+      if (save.dificuldade === "facil") notas = notas.filter((_, i) => i % 2 === 0).map((n) => ({ ...n, dur: 0 }))
+      if (save.instrumento === "baixo") notas = notas.filter((_, i) => i % 4 !== 3) // baixo respira mais
+      jogo.current = { ...jogo.current, notas, placar: novoPlacar(notas.length), dur: buf.duration, buf, flashes: [] }
+      setFase("entrada")
+    } catch {
+      setErroCarga("não deu pra carregar a faixa. tenta de novo.")
+      setFase("menu")
+    }
   }
 
-  return tiles.sort((a, b) => a.beatTime - b.beatTime)
-}
-
-// converte o resultado da análise de áudio real (lib/audio-analysis) pro
-// formato de Tile usado pelo jogo/render
-function toTiles(analyzed: AnalyzedTile[]): Tile[] {
-  return analyzed.map((t, i) => ({
-    id: i,
-    col: t.col,
-    beatTime: t.beatTime,
-    hit: false,
-    missed: false,
-    hold: t.hold,
-    holdDuration: t.holdDuration,
-    holdActive: false,
-    holdBroken: false,
-  }))
-}
-
-// ─── PERFIL ───────────────────────────────────────────────────────────────────
-
-function getProfile(accuracy: number, maxCombo: number): Profile {
-  if (accuracy > 90 && maxCombo > 20) return "ULTRA CONECTADO"
-  if (accuracy > 75) return "EM SINTONIA"
-  if (accuracy > 50) return "OSCILANDO"
-  return "DESCONECTADO"
-}
-
-const PROFILE_CONFIG: Record<Profile, { color: string; message: string; reward: string }> = {
-  "ULTRA CONECTADO": {
-    color: "#00FFF0",
-    message: "Voce sente a cidade profundamente.",
-    reward: "Acesso ao Suburbia Xenom desbloqueado.",
-  },
-  "EM SINTONIA": {
-    color: "#7C3AED",
-    message: "Voce entende, mas ainda oscila.",
-    reward: "Trecho estendido disponivel.",
-  },
-  "OSCILANDO": {
-    color: "#FF6B00",
-    message: "Distraido pela dopamina.",
-    reward: "voce quase sentiu…",
-  },
-  "DESCONECTADO": {
-    color: "#FF0040",
-    message: "Perdido no ruido.",
-    reward: "a cidade te consumiu. tenta de novo.",
-  },
-}
-
-// ─── CONSTANTES VISUAIS ───────────────────────────────────────────────────────
-
-const COLS = 4
-const TILE_H_BASE = 72        // altura base do tile normal (px no canvas)
-const HIT_ZONE_Y  = 0.78
-const HIT_WINDOW_MS = 200
-const TILE_SPEED_PX_MS = 0.38   // mais rápido → notas aparecem mais cedo na tela
-const CANVAS_H = 580
-
-// Paleta neon rica: rosa, ciano, roxo, amarelo
-const COL_COLORS   = ["#FF00A8", "#00FFF0", "#A855F7", "#FFD700"]
-const COL_GLOWS    = ["rgba(255,0,168,0.8)", "rgba(0,255,240,0.8)", "rgba(168,85,247,0.8)", "rgba(255,215,0,0.8)"]
-const COL_DARK     = ["#4d0030", "#004d4a", "#2d0060", "#4d4000"]
-// Linhas de grade laterais neon
-const LANE_NEONS   = ["#FF00A830", "#00FFF030", "#A855F730", "#FFD70030"]
-
-// ─── COMPONENTE ───────────────────────────────────────────────────────────────
-
-export default function NeonTilesPage() {
-  const router = useRouter()
-  const { updateCinematicStep, completeConfirmation } = useGameFunnel()
-
-  const [phase, setPhase]             = useState<Phase>("select")
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null)
-  const [countdown, setCountdown]     = useState(3)
-  const [completedSongs, setCompletedSongs] = useState(0)
-  const completedSongsRef = useRef(0)
-  const [tiles, setTiles]             = useState<Tile[]>([])
-  const [score, setScore]             = useState(0)
-  const [combo, setCombo]             = useState(0)
-  const [maxCombo, setMaxCombo]       = useState(0)
-  const [hits, setHits]               = useState(0)
-  const [feedback, setFeedback]       = useState<{ col: number; type: "hit"|"miss"|"hold"|"holdbreak"; id: number } | null>(null)
-  const [timeLeft, setTimeLeft]       = useState(60)
-  const [profile, setProfile]         = useState<Profile | null>(null)
-  const [accuracy, setAccuracy]       = useState(0)
-  const [finalCombo, setFinalCombo]   = useState(0)
-
-  const canvasRef         = useRef<HTMLCanvasElement>(null)
-  const audioRef          = useRef<HTMLAudioElement | null>(null)
-  const startTimeRef      = useRef<number>(0)
-  const tilesRef          = useRef<Tile[]>([])
-  const rafRef            = useRef<number>(0)
-  const comboRef          = useRef(0)
-  const maxComboRef       = useRef(0)
-  const hitsRef           = useRef(0)
-  const totalRef          = useRef(0)
-  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const feedbackIdRef     = useRef(0)
-  const songRef           = useRef<Song | null>(null)
-  const holdingRef        = useRef<boolean[]>([false,false,false,false])
-  const particlesRef      = useRef<{x:number;y:number;vx:number;vy:number;r:number;color:string;life:number}[]>([])
-  const bgPhaseRef        = useRef(0)
-  const audioCtxRef       = useRef<AudioContext | null>(null)
-  const gamepadButtonsRef = useRef<boolean[]>([false, false, false, false])
-  // evita que a análise assíncrona de áudio (fetch/decode/FFT) crie e toque
-  // um <Audio> depois que o componente já desmontou (ex.: usuário navegou
-  // pra fora de /neon-tiles enquanto a análise ainda estava em andamento)
-  const isMountedRef      = useRef(true)
-  const [gamepadConnected, setGamepadConnected] = useState(false)
-  // refs indiretos pro renderFrame (useCallback com deps []) sempre chamar a
-  // versão mais atual de handlePointerDown/Up, sem closure obsoleta presa na
-  // fase em que o loop começou a rodar
-  const handlePointerDownRef = useRef<(col: number) => void>(() => {})
-  const handlePointerUpRef   = useRef<(col: number) => void>(() => {})
-
-  useEffect(() => { tilesRef.current = tiles }, [tiles])
-
-  // silencia o rádio do carro (se aberto dentro de /drive) enquanto o
-  // GUITAR DRIVER toca suas próprias faixas — volta ao normal ao sair
+  /* ── cutscene de entrada → contagem → show ── */
   useEffect(() => {
-    sendCarRadioMute(true)
-    return () => sendCarRadioMute(false)
-  }, [])
-
-
-  // controle (joystick/gamepad) conectado — só pra mostrar o indicador; a
-  // leitura dos botões acontece a cada frame dentro do renderFrame
-  useEffect(() => {
-    const onConnect = () => setGamepadConnected(true)
-    const onDisconnect = () => setGamepadConnected(false)
-    window.addEventListener("gamepadconnected", onConnect)
-    window.addEventListener("gamepaddisconnected", onDisconnect)
-    return () => {
-      window.removeEventListener("gamepadconnected", onConnect)
-      window.removeEventListener("gamepaddisconnected", onDisconnect)
-    }
-  }, [])
-
-  // ─── RENDER LOOP ─────────────────────────────────────────────────────────
-
-  const renderFrame = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    const W = canvas.width
-    const H = canvas.height
-    const tileW = W / COLS
-    const hitY = H * HIT_ZONE_Y
-    const elapsed = Date.now() - startTimeRef.current
-    const song = songRef.current
-    bgPhaseRef.current += 0.008
-
-    // controle: lê os 4 botões de face do primeiro gamepad conectado e
-    // dispara hit/release só na borda (evita repetir hit enquanto segura)
-    const pads = navigator.getGamepads ? navigator.getGamepads() : []
-    const pad = pads[0]
-    if (pad) {
-      for (let b = 0; b < 4; b++) {
-        const pressed = !!pad.buttons[b]?.pressed
-        const was = gamepadButtonsRef.current[b]
-        if (pressed && !was) handlePointerDownRef.current(b)
-        if (!pressed && was) handlePointerUpRef.current(b)
-        gamepadButtonsRef.current[b] = pressed
+    if (fase !== "entrada") return
+    const c = cvs.current!
+    const g = c.getContext("2d")!
+    const show = montarShow()
+    jogo.current.show = show
+    show?.galera(0.35)
+    let raf = 0
+    const t0 = performance.now()
+    const beat = 60 / faixa.bpm
+    const TOMADAS: { t: Tomada; dur: number }[] = [
+      { t: "fachada", dur: 2.4 },
+      { t: "backstage", dur: 2.0 },
+      { t: "contagem", dur: beat * 4 + 0.2 },
+    ]
+    let contou = 0
+    const loop = () => {
+      const tt = (performance.now() - t0) / 1000
+      let acc = 0
+      let atual = TOMADAS[TOMADAS.length - 1]
+      let tl = 0
+      for (const tm of TOMADAS) {
+        if (tt < acc + tm.dur) { atual = tm; tl = tt - acc; break }
+        acc += tm.dur
       }
-    }
-
-    // ── FUNDO animado com scanlines e gradiente pulsante ──
-    const bgG = ctx.createLinearGradient(0, 0, 0, H)
-    const pulse = 0.5 + 0.5 * Math.sin(bgPhaseRef.current)
-    bgG.addColorStop(0, `rgba(2,0,22,1)`)
-    bgG.addColorStop(0.5, `rgba(${Math.round(8+pulse*6)},0,${Math.round(28+pulse*12)},1)`)
-    bgG.addColorStop(1, `rgba(0,0,${Math.round(18+pulse*8)},1)`)
-    ctx.fillStyle = bgG
-    ctx.fillRect(0, 0, W, H)
-
-    // scanlines sutis
-    ctx.fillStyle = "rgba(0,0,0,0.06)"
-    for (let sy = 0; sy < H; sy += 4) ctx.fillRect(0, sy, W, 2)
-
-    // ── LANES — cada lane tem cor própria e brilho neon ──
-    for (let c = 0; c < COLS; c++) {
-      const lx = c * tileW
-      // fundo da lane com gradiente
-      const lg = ctx.createLinearGradient(lx, 0, lx + tileW, 0)
-      lg.addColorStop(0, "transparent")
-      lg.addColorStop(0.5, LANE_NEONS[c])
-      lg.addColorStop(1, "transparent")
-      ctx.fillStyle = lg
-      ctx.fillRect(lx, 0, tileW, H)
-    }
-
-    // bordas de lane
-    ctx.lineWidth = 1
-    for (let i = 1; i < COLS; i++) {
-      const lx = i * tileW
-      ctx.strokeStyle = COL_COLORS[i-1] + "20"
-      ctx.shadowColor = COL_COLORS[i-1]
-      ctx.shadowBlur = 3
-      ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, H); ctx.stroke()
-    }
-    ctx.shadowBlur = 0
-
-    // ── PERSPECTIVA (linhas de fuga no centro) ──
-    ctx.save()
-    ctx.globalAlpha = 0.07
-    const vpX = W / 2
-    for (let i = 0; i <= COLS; i++) {
-      ctx.strokeStyle = COL_COLORS[i % COLS]
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(vpX, 0)
-      ctx.lineTo(i * tileW, H)
-      ctx.stroke()
-    }
-    ctx.restore()
-
-    // ── ZONA DE ACERTO ──
-    const zoneColor = song ? song.color : "#00FFF0"
-    ctx.save()
-    ctx.shadowColor = zoneColor
-    ctx.shadowBlur = 18
-    ctx.strokeStyle = zoneColor
-    ctx.lineWidth = 3
-    ctx.globalAlpha = 0.9
-    ctx.beginPath()
-    ctx.moveTo(0, hitY + TILE_H_BASE / 2)
-    ctx.lineTo(W, hitY + TILE_H_BASE / 2)
-    ctx.stroke()
-    ctx.restore()
-
-    // glow na zona de acerto
-    const zoneGrad = ctx.createLinearGradient(0, hitY, 0, hitY + TILE_H_BASE * 1.5)
-    zoneGrad.addColorStop(0, zoneColor + "33")
-    zoneGrad.addColorStop(1, "transparent")
-    ctx.fillStyle = zoneGrad
-    ctx.fillRect(0, hitY, W, TILE_H_BASE * 1.5)
-
-    // ── TILES ──
-    const currentTiles = tilesRef.current
-    for (const tile of currentTiles) {
-      if (tile.hit && !tile.hold) continue
-      if (tile.hit && tile.hold && !tile.holdActive) continue
-
-      const timeToHit = tile.beatTime - elapsed
-      const y = hitY - timeToHit * TILE_SPEED_PX_MS
-
-      if (y > H + 200) continue
-      if (y < -TILE_H_BASE * 4 && !tile.hold) continue
-
-      const x = tile.col * tileW
-      const color = COL_COLORS[tile.col]
-      const glow  = COL_GLOWS[tile.col]
-      const dark  = COL_DARK[tile.col]
-      const alpha = tile.missed ? 0.18 : 1
-
-      ctx.save()
-      ctx.globalAlpha = alpha
-
-      if (tile.hold && !tile.hit) {
-        // ── NOTA LONGA: barra vertical com gradiente ──
-        const holdPx = tile.holdDuration * TILE_SPEED_PX_MS
-        const pad = 10
-        const bx = x + pad
-        const bw = tileW - pad * 2
-        const tailY = y
-        const headY = y - holdPx
-
-        // trilha da nota longa
-        const hg = ctx.createLinearGradient(0, headY, 0, tailY)
-        hg.addColorStop(0, color + "dd")
-        hg.addColorStop(0.4, color + "88")
-        hg.addColorStop(1, color + "11")
-        ctx.fillStyle = hg
-        ctx.shadowColor = color
-        ctx.shadowBlur = tile.missed ? 0 : 14
-        ctx.beginPath()
-        ctx.roundRect(bx, headY, bw, tailY - headY, 8)
-        ctx.fill()
-
-        // cabeça da nota
-        ctx.shadowBlur = tile.missed ? 0 : 24
-        ctx.fillStyle = color
-        ctx.beginPath()
-        ctx.roundRect(bx - 2, headY - TILE_H_BASE * 0.5, bw + 4, TILE_H_BASE * 0.5, 10)
-        ctx.fill()
-
-        // linha de brilho
-        ctx.fillStyle = "rgba(255,255,255,0.5)"
-        ctx.beginPath()
-        ctx.roundRect(bx + 2, headY - TILE_H_BASE * 0.5 + 4, bw * 0.35, 3, 2)
-        ctx.fill()
-
-      } else if (tile.hold && tile.hit && tile.holdActive) {
-        // ── NOTA LONGA sendo segurada AGORA ── igual ao Guitar Hero
-        // original: a barra "encolhe" na linha de acerto conforme o tempo
-        // passa, mostrando quanto ainda falta segurar (antes disso a nota
-        // ficava invisível assim que a cabeça era acertada)
-        const pad = 10
-        const bx = x + pad
-        const bw = tileW - pad * 2
-        const remainingMs = Math.max(0, (tile.beatTime + tile.holdDuration) - elapsed)
-        const tailY = hitY
-        const headY = hitY - remainingMs * TILE_SPEED_PX_MS
-
-        const hg = ctx.createLinearGradient(0, headY, 0, tailY)
-        hg.addColorStop(0, color + "ff")
-        hg.addColorStop(0.5, color + "cc")
-        hg.addColorStop(1, color + "44")
-        ctx.fillStyle = hg
-        ctx.shadowColor = color
-        ctx.shadowBlur = 20
-        ctx.beginPath()
-        ctx.roundRect(bx, headY, bw, Math.max(tailY - headY, 2), 8)
-        ctx.fill()
-
-        // ponta (o que ainda falta segurar)
-        ctx.shadowBlur = 26
-        ctx.fillStyle = color
-        ctx.beginPath()
-        ctx.roundRect(bx - 2, headY - TILE_H_BASE * 0.5, bw + 4, TILE_H_BASE * 0.5, 10)
-        ctx.fill()
-
-        // brilho na base — feedback de "segurando com sucesso"
-        ctx.fillStyle = "rgba(255,255,255,0.6)"
-        ctx.beginPath()
-        ctx.roundRect(bx, tailY - 6, bw, 6, 3)
-        ctx.fill()
-
-      } else if (!tile.hold) {
-        // ── NOTA NORMAL ──
-        const pad = 5
-        const radius = 14
-        const tx = x + pad
-        const ty = y
-        const tw = tileW - pad * 2
-        const th = TILE_H_BASE - 2
-
-        // glow externo
-        if (!tile.missed) {
-          ctx.shadowColor = color
-          ctx.shadowBlur = 22
-        }
-
-        // corpo com gradiente
-        const tg = ctx.createLinearGradient(tx, ty, tx, ty + th)
-        tg.addColorStop(0, color)
-        tg.addColorStop(0.6, color + "cc")
-        tg.addColorStop(1, dark)
-        ctx.fillStyle = tile.missed ? "rgba(255,255,255,0.08)" : tg
-        ctx.beginPath()
-        ctx.roundRect(tx, ty, tw, th, radius)
-        ctx.fill()
-
-        // borda interna
-        if (!tile.missed) {
-          ctx.strokeStyle = "rgba(255,255,255,0.35)"
-          ctx.lineWidth = 1.5
-          ctx.beginPath()
-          ctx.roundRect(tx + 1, ty + 1, tw - 2, th - 2, radius - 1)
-          ctx.stroke()
-        }
-
-        // faixa de brilho no topo
-        if (!tile.missed) {
-          ctx.fillStyle = "rgba(255,255,255,0.4)"
-          ctx.beginPath()
-          ctx.roundRect(tx + 6, ty + 5, tw - 12, 5, 3)
-          ctx.fill()
-        }
-
-        // ícone central (pequeno triângulo)
-        if (!tile.missed && th > 20) {
-          ctx.fillStyle = "rgba(255,255,255,0.7)"
-          ctx.textAlign = "center"
-          ctx.font = `bold ${Math.round(th * 0.35)}px monospace`
-          ctx.shadowBlur = 0
-          ctx.fillText("▼", tx + tw / 2, ty + th * 0.68)
-        }
+      const total = TOMADAS.reduce((s, x) => s + x.dur, 0)
+      let n = 0
+      if (atual.t === "contagem") {
+        n = Math.min(4, Math.floor(tl / beat) + 1)
+        if (n > contou) { contou = n; show?.baqueta(); vib(10) }
       }
-
-      ctx.restore()
-    }
-
-    // ── PARTÍCULAS de acerto ──
-    const pts = particlesRef.current
-    for (let i = pts.length - 1; i >= 0; i--) {
-      const p = pts[i]
-      p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life -= 0.03
-      if (p.life <= 0) { pts.splice(i, 1); continue }
-      ctx.save()
-      ctx.globalAlpha = p.life
-      ctx.fillStyle = p.color
-      ctx.shadowColor = p.color
-      ctx.shadowBlur = 8
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-    }
-
-    // ── BOTÕES HIT na zona inferior ──
-    for (let c = 0; c < COLS; c++) {
-      const bx = c * tileW + tileW * 0.12
-      const by = hitY + TILE_H_BASE * 0.65
-      const bw = tileW * 0.76
-      const bh = TILE_H_BASE * 0.7
-      const isHolding = holdingRef.current[c]
-
-      ctx.save()
-      ctx.shadowColor = COL_COLORS[c]
-      ctx.shadowBlur = isHolding ? 28 : 10
-
-      const bg = ctx.createLinearGradient(bx, by, bx, by + bh)
-      bg.addColorStop(0, isHolding ? COL_COLORS[c] + "aa" : COL_COLORS[c] + "22")
-      bg.addColorStop(1, isHolding ? COL_COLORS[c] + "66" : COL_COLORS[c] + "08")
-      ctx.fillStyle = bg
-      ctx.strokeStyle = COL_COLORS[c] + (isHolding ? "ff" : "60")
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.roundRect(bx, by, bw, bh, 12)
-      ctx.fill()
-      ctx.stroke()
-      ctx.restore()
-    }
-
-    rafRef.current = requestAnimationFrame(renderFrame)
-  }, [])
-
-  // ─── PARTÍCULAS ao acertar ──────────────────────────────��──────────────────
-
-  const spawnParticles = useCallback((col: number) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const tileW = canvas.width / COLS
-    const cx = col * tileW + tileW / 2
-    const cy = canvas.height * HIT_ZONE_Y + TILE_H_BASE / 2
-    for (let i = 0; i < 12; i++) {
-      const angle = (Math.random() * Math.PI * 2)
-      const speed = 1.5 + Math.random() * 3
-      particlesRef.current.push({
-        x: cx, y: cy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 2,
-        r: 2 + Math.random() * 4,
-        color: COL_COLORS[col],
-        life: 0.8 + Math.random() * 0.5,
-      })
-    }
-  }, [])
-
-  // ─── INICIAR JOGO ─────────────────────────────────────────────────────────
-
-  const startGame = useCallback((song: Song) => {
-    if (!song.audioUrl) return
-
-    songRef.current = song
-    particlesRef.current = []
-    holdingRef.current = [false, false, false, false]
-
-    setScore(0); setCombo(0); setMaxCombo(0); setHits(0); setTimeLeft(song.duration)
-    comboRef.current = 0; maxComboRef.current = 0; hitsRef.current = 0; totalRef.current = 0
-
-    setPhase("analyzing")
-
-    const beginCountdown = (generated: Tile[]) => {
-      setTiles(generated)
-      tilesRef.current = generated
-
-      const audio = new Audio(song.audioUrl)
-      audio.volume = 0.85
-      audioRef.current = audio
-
-      setPhase("countdown"); setCountdown(3)
-      let count = 3
-      const cdInterval = setInterval(() => {
-        count--
-        setCountdown(count)
-        if (count <= 0) {
-          clearInterval(cdInterval)
-          audio.play().catch(() => {})
-          startTimeRef.current = Date.now()
-          setPhase("playing")
-          // NOTE: the render loop is started by the `phase === "playing"` effect
-          // below — not here — so the <canvas> is guaranteed to be committed to
-          // the DOM before requestAnimationFrame(renderFrame) first runs.
-        }
-      }, 1000)
-    }
-
-    // analisa o áudio real da faixa (batida + timbre) pra gerar os tiles —
-    // se decode/análise falhar, vier rala demais, OU demorar demais (rede
-    // lenta, aba em segundo plano suspendendo o processamento, aparelho
-    // fraco), cai no gerador procedural — nunca fica travado em "ANALISANDO
-    // ÁUDIO..." pra sempre
-    void (async () => {
-      let settled = false
-      const finish = (tiles: Tile[]) => {
-        if (settled || !isMountedRef.current) return
-        settled = true
-        clearTimeout(timeoutId)
-        beginCountdown(tiles)
+      ajustar(c)
+      desenharTomada(g, c.width, c.height, atual.t, tl, { palco, modelo, contagem: n })
+      if (tt >= total) {
+        cancelAnimationFrame(raf)
+        setFase("tocando")
+        return
       }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [fase, faixa, palco, modelo])
 
-      const timeoutId = setTimeout(() => {
-        console.warn(`[GUITAR DRIVER] análise de "${song.title}" passou de 8s, usando fallback procedural`)
-        finish(generateTiles(song))
-      }, 8000)
-
-      try {
-        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-        const ctx = audioCtxRef.current ?? (audioCtxRef.current = new Ctx())
-        const res = await fetch(song.audioUrl)
-        const arrayBuffer = await res.arrayBuffer()
-        const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-        // usa a duração REAL do áudio decodificado (não o `duration` nominal
-        // do catálogo, que pode divergir alguns segundos do arquivo de
-        // verdade) — evita descartar batidas reais perto do fim da faixa
-        const realDurationMs = audioBuffer.duration * 1000
-        const analyzed = analyzeAudioForTiles(audioBuffer, song.bpm, realDurationMs)
-        const density = analyzed.length / audioBuffer.duration
-        if (density < 0.8) {
-          console.warn(`[GUITAR DRIVER] análise de "${song.title}" gerou poucos onsets (${analyzed.length}), usando fallback procedural`)
-        }
-        finish(density >= 0.8 ? toTiles(analyzed) : generateTiles(song))
-      } catch (err) {
-        console.error(`[GUITAR DRIVER] falha ao analisar áudio de "${song.title}", usando fallback procedural:`, err)
-        finish(generateTiles(song))
-      }
-    })()
-  }, [])
-
-  // ─── RENDER LOOP ────────────────────────────────────────────────────────────
-  // Start the requestAnimationFrame loop only once React has committed the
-  // canvas for the "playing" screen. Starting it synchronously right after
-  // setPhase("playing") raced ahead of the commit and left renderFrame with a
-  // null canvasRef on the first frame.
-  useEffect(() => {
-    if (phase !== "playing") return
-    rafRef.current = requestAnimationFrame(renderFrame)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [phase, renderFrame])
-
-  // ─── TIMER ────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (phase !== "playing") return
-    const interval = setInterval(() => {
-      const song = songRef.current
-      if (!song) return
-      const elapsed = (Date.now() - startTimeRef.current) / 1000
-      const left = Math.max(0, song.duration - elapsed)
-      setTimeLeft(Math.ceil(left))
-
-      const now = Date.now() - startTimeRef.current
-      // efeitos colaterais (pontuação/combo) ficam fora do updater de
-      // setTiles e são aplicados depois, coletados durante o .map() — evita
-      // o mesmo problema de "setState de dentro de outro updater" já
-      // corrigido em endGame
-      let scoreDelta = 0
-      let comboBroke = false
-
-      setTiles(prev => prev.map(t => {
-        // nota nunca tocada, passou da janela de acerto — perdida
-        if (!t.hit && !t.missed && t.beatTime < now - HIT_WINDOW_MS) {
-          totalRef.current += 1
-          comboRef.current = 0
-          comboBroke = true
-          return { ...t, missed: true }
-        }
-
-        // hold em andamento — igual ao Guitar Hero original: precisa segurar
-        // o botão até o fim da nota longa pra pontuar por completo; soltar
-        // antes da hora quebra o combo, mesmo que já tenha acertado a cabeça
-        if (t.hit && t.hold && t.holdActive) {
-          const tailTime = t.beatTime + t.holdDuration
-          if (now >= tailTime) {
-            // segurou até o fim — bônus de conclusão
-            scoreDelta += 60
-            return { ...t, holdActive: false }
-          }
-          if (!holdingRef.current[t.col]) {
-            // soltou antes da hora — rede de segurança (o release físico já
-            // é tratado na hora em handlePointerUp); aqui só cobre o caso
-            // do dedo ter saído sem disparar o evento de soltar
-            comboRef.current = 0
-            comboBroke = true
-            return { ...t, holdActive: false, holdBroken: true }
-          }
-          // ainda segurando, nota ainda não acabou — pontuação progressiva
-          // proporcional ao tempo segurado, como no jogo original
-          scoreDelta += 10 + Math.floor(comboRef.current / 2)
-          return t
-        }
-
-        return t
-      }))
-
-      if (scoreDelta) setScore(s => s + scoreDelta)
-      if (comboBroke) setCombo(0)
-
-      if (left <= 0) { clearInterval(interval); endGame() }
-    }, 100)
-    return () => clearInterval(interval)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
-
-  // ─── FIM DO JOGO ─────────────────────────────────────────────────────────
-
-  const endGame = useCallback(() => {
-    cancelAnimationFrame(rafRef.current)
-    audioRef.current?.pause()
-    const h = hitsRef.current
-    const t = totalRef.current
-    const acc = t > 0 ? Math.round((h / t) * 100) : 0
-    const mc = maxComboRef.current
-    setAccuracy(acc); setFinalCombo(mc); setProfile(getProfile(acc, mc))
-
-    // os efeitos colaterais (funil/fase) ficam FORA do updater de
-    // setCompletedSongs — chamar setState de outro componente/contexto
-    // (GameFunnelProvider) de dentro de um updater funcional dispara "Cannot
-    // update a component while rendering a different component" e travava o
-    // fluxo ao completar a 4ª faixa
-    const next = completedSongsRef.current + 1
-    completedSongsRef.current = next
-    setCompletedSongs(next)
-    if (next >= 4) {
+  /* ── o show ── */
+  const acabar = useCallback(() => {
+    const j = jogo.current
+    const p = j.placar
+    const pct = p.total ? p.acertos / p.total : 0
+    const est = estrelasPor(pct * 0.85 + p.galera * 0.15)
+    const bonus = modelo.bonus?.includes("+20%") ? 1.2 : modelo.bonus?.includes("+10%") ? 1.1 : 1
+    const grana = Math.round((palco.cache * (0.15 + est * 0.17) * bonus) / 10) * 10
+    const chave = `${palco.id}:${faixa.id}:${save.instrumento}`
+    const recorde = p.pontos > (save.recordes[chave] ?? 0)
+    const antes = totalEstrelas(save)
+    const novo = { ...save, estrelas: { ...save.estrelas, [chave]: Math.max(save.estrelas[chave] ?? 0, est) } }
+    const depois = totalEstrelas(novo)
+    const novoPalco = PALCOS.find((pl) => pl.estrelas > antes && pl.estrelas <= depois) ?? null
+    const concluidas = est >= 1 && !save.concluidas.includes(faixa.id) ? [...save.concluidas, faixa.id] : save.concluidas
+    salvar(() => ({
+      ...novo,
+      grana: save.grana + grana,
+      recordes: recorde ? { ...save.recordes, [chave]: p.pontos } : save.recordes,
+      concluidas,
+    }))
+    // funil antigo: 4 faixas terminadas fecham a confirmação 3
+    if (concluidas.length >= 4 && !state.confirmations.c3.done) {
       updateCinematicStep("neon-tiles-complete")
-      // GUITAR DRIVER é a missão 3 (D-Bee) — sem isso confirmationCount
-      // nunca chegava a 3 e a frequência final/finalCompleted nunca liberava
-      completeConfirmation(3, { accuracy: acc, maxCombo: mc })
-      setPhase("reward")
+      completeConfirmation(3, { accuracy: Math.round(pct * 100), maxCombo: p.maxSeq })
+    }
+    track("mission_completed", { mission_id: `guitar-${faixa.id}`, duration_ms: Math.round(j.dur * 1000) })
+    setRes({ pct, estrelas: est, pontos: p.pontos, maxSeq: p.maxSeq, grana, recorde, novoPalco })
+    setFase("saida")
+  }, [modelo, palco, faixa, save, salvar, state.confirmations.c3.done, completeConfirmation, updateCinematicStep])
+
+  const tocar = useCallback((lane: number, on: boolean) => {
+    const j = jogo.current
+    j.apertadas[lane] = on
+    if (fase !== "tocando" || !j.show) return
+    const agora = j.show.tempo()
+    const p = j.placar
+    if (!on) {
+      // estado do jogo vive num ref mutável de propósito (60fps, sem render)
+      // eslint-disable-next-line react-hooks/immutability
+      for (const n of j.notas) if (n.lane === lane && n.segurando) { n.segurando = false; if (agora < n.t + n.dur - 0.08) n.soltou = true }
+      return
+    }
+    const jan = JANELA_ACERTO[save.dificuldade]
+    let alvo: Nota | null = null
+    let melhor = Infinity
+    for (const n of j.notas) {
+      if (n.lane !== lane || n.acertou || n.errou) continue
+      const d = Math.abs(n.t - agora)
+      if (d < jan && d < melhor) { melhor = d; alvo = n }
+      if (n.t > agora + jan) break
+    }
+    if (alvo) {
+      alvo.acertou = true
+      if (alvo.dur > 0) alvo.segurando = true
+      p.seq++
+      p.maxSeq = Math.max(p.maxSeq, p.seq)
+      p.acertos++
+      const multi = Math.min(4, 1 + Math.floor(p.seq / 10)) * (p.neonAtivo > 0 ? 2 : 1)
+      p.pontos += 50 * multi
+      p.galera = Math.min(1, p.galera + 0.025)
+      if (alvo.estrela) p.neon = Math.min(1, p.neon + 0.13)
+      j.flashes.push({ lane, ate: agora + 0.25, tipo: "ok" })
+      j.show.galera(p.galera)
+      vib(8)
     } else {
-      setPhase("result")
+      // palhetada no vazio
+      p.seq = 0
+      p.galera = Math.max(0, p.galera - 0.03)
+      j.flashes.push({ lane, ate: agora + 0.2, tipo: "erro" })
+      j.show.errou()
+      j.show.galera(p.galera)
     }
-  }, [updateCinematicStep, completeConfirmation])
+  }, [fase, save.dificuldade])
 
-  // ─── TAP ──────────────────────────────────────────────────────────────────
+  const ativarNeon = useCallback(() => {
+    const j = jogo.current
+    if (fase !== "tocando" || j.placar.neon < 0.5 || j.placar.neonAtivo > 0) return
+    j.placar.neonAtivo = 8 * j.placar.neon + (modelo.bonus?.includes("NEON") ? 2 : 0)
+    j.placar.neon = 0
+    j.show?.neon(true)
+    j.show?.grito(true)
+    vib([30, 30, 60])
+  }, [fase, modelo])
 
-  const handlePointerDown = useCallback((col: number) => {
-    if (phase !== "playing") return
-    holdingRef.current[col] = true
-
-    const now = Date.now() - startTimeRef.current
-    let bestTile: Tile | null = null
-    let bestDist = Infinity
-
-    for (const tile of tilesRef.current) {
-      if (tile.hit || tile.missed) continue
-      if (tile.col !== col) continue
-      const dist = Math.abs(tile.beatTime - now)
-      if (dist < HIT_WINDOW_MS && dist < bestDist) { bestDist = dist; bestTile = tile }
-    }
-
-    const fid = ++feedbackIdRef.current
-
-    if (bestTile) {
-      const tileId = bestTile.id
-      const isHold = bestTile.hold
-      setTiles(prev => prev.map(t => t.id === tileId
-        ? { ...t, hit: true, holdActive: isHold }
-        : t
-      ))
-
-      hitsRef.current += 1; totalRef.current += 1; comboRef.current += 1
-      if (comboRef.current > maxComboRef.current) maxComboRef.current = comboRef.current
-
-      const newCombo = comboRef.current
-      const points = 100 + (newCombo > 5 ? 50 : 0) + (newCombo > 10 ? 100 : 0)
-
-      setHits(hitsRef.current); setCombo(newCombo); setMaxCombo(maxComboRef.current)
-      setScore(s => s + points)
-      setFeedback({ col, type: isHold ? "hold" : "hit", id: fid })
-      spawnParticles(col)
-    } else {
-      comboRef.current = 0; setCombo(0)
-      setFeedback({ col, type: "miss", id: fid })
-    }
-
-    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
-    feedbackTimeoutRef.current = setTimeout(() => {
-      setFeedback(f => (f?.id === fid ? null : f))
-    }, 300)
-  }, [phase, spawnParticles])
-
-  const handlePointerUp = useCallback((col: number) => {
-    holdingRef.current[col] = false
-
-    // igual ao Guitar Hero original: soltar o botão antes do fim da nota
-    // longa quebra o combo — só conta o hold completo como acerto de verdade
-    const now = Date.now() - startTimeRef.current
-    const activeTile = tilesRef.current.find(t => t.col === col && t.holdActive)
-    if (activeTile) {
-      const tailTime = activeTile.beatTime + activeTile.holdDuration
-      const releasedEarly = now < tailTime - 60 // pequena margem de tolerância
-
-      if (releasedEarly) {
-        comboRef.current = 0
-        setCombo(0)
-        const fid = ++feedbackIdRef.current
-        setFeedback({ col, type: "holdbreak", id: fid })
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
-        feedbackTimeoutRef.current = setTimeout(() => {
-          setFeedback(f => (f?.id === fid ? null : f))
-        }, 300)
-      }
-
-      setTiles(prev => prev.map(t =>
-        t.id === activeTile.id ? { ...t, holdActive: false, holdBroken: releasedEarly } : t
-      ))
-    }
-  }, [])
-
-  // mantém os refs usados pelo renderFrame (controle) sempre com a versão
-  // mais atual de handlePointerDown/Up — renderFrame roda em useCallback com
-  // deps [], então uma referência direta ficaria presa na fase do 1º render
-  useEffect(() => { handlePointerDownRef.current = handlePointerDown }, [handlePointerDown])
-  useEffect(() => { handlePointerUpRef.current = handlePointerUp }, [handlePointerUp])
-
-  // teclado — D F J K mapeiam pras 4 colunas, mesma lógica de hit/miss do
-  // toque na tela (handlePointerDown já ignora tudo fora de phase "playing")
   useEffect(() => {
-    const keyToCol: Record<string, number> = { d: 0, f: 1, j: 2, k: 3 }
+    if (fase !== "tocando") return
+    const c = cvs.current!
+    const g = c.getContext("2d")!
+    const j = jogo.current
+    if (!j.buf || !j.show) return
+    j.show.tocar(j.buf)
+    let raf = 0
+    let ultimo = performance.now()
+    const loop = () => {
+      const agora = j.show!.tempo()
+      const dt = Math.min(0.05, (performance.now() - ultimo) / 1000)
+      ultimo = performance.now()
+      const p = j.placar
+      const jan = JANELA_ACERTO[save.dificuldade]
+      // notas que passaram sem toque
+      for (const n of j.notas) {
+        if (!n.acertou && !n.errou && n.t < agora - jan) {
+          n.errou = true
+          p.seq = 0
+          p.galera = Math.max(0, p.galera - 0.05)
+          j.show!.errou()
+          j.show!.galera(p.galera)
+        }
+        // nota longa: soma enquanto segura
+        if (n.segurando) {
+          if (agora >= n.t + n.dur) n.segurando = false
+          else p.pontos += Math.round(25 * dt * 4)
+        }
+      }
+      if (p.neonAtivo > 0) {
+        p.neonAtivo -= dt
+        if (p.neonAtivo <= 0) j.show!.neon(false)
+      }
+      j.flashes = j.flashes.filter((f) => f.ate > agora)
+      const batida = Math.pow(1 - ((agora * faixa.bpm) / 60 % 1), 3)
+      ajustar(c)
+      const w = c.width
+      const h = c.height
+      desenharPalco(g, w, h, { palco, energia: p.galera, neon: p.neonAtivo > 0, batida, t: agora, instrumento: save.instrumento, modelo })
+      g.fillStyle = "rgba(4,3,12,0.35)"
+      g.fillRect(0, 0, w, h)
+      desenharBraco(g, w, h, {
+        notas: j.notas, agora, janela: VISIVEL[save.dificuldade], apertadas: j.apertadas,
+        neon: p.neonAtivo > 0, modelo, flashes: j.flashes, multi: 1,
+      })
+      atualizarHud(hud.current, p)
+      if (agora > j.dur + 0.3) {
+        acabar()
+        return
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
     const kd = (e: KeyboardEvent) => {
-      const col = keyToCol[e.key.toLowerCase()]
-      if (col === undefined || e.repeat) return
-      e.preventDefault()
-      handlePointerDown(col)
+      const i = TECLAS.indexOf(e.key.toLowerCase())
+      if (i >= 0 && !e.repeat) { tocar(i, true); e.preventDefault() }
+      if (e.key === " ") { ativarNeon(); e.preventDefault() }
     }
     const ku = (e: KeyboardEvent) => {
-      const col = keyToCol[e.key.toLowerCase()]
-      if (col === undefined) return
-      handlePointerUp(col)
+      const i = TECLAS.indexOf(e.key.toLowerCase())
+      if (i >= 0) tocar(i, false)
     }
     window.addEventListener("keydown", kd)
     window.addEventListener("keyup", ku)
-    return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku) }
-  }, [handlePointerDown, handlePointerUp])
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener("keydown", kd)
+      window.removeEventListener("keyup", ku)
+    }
+  }, [fase, faixa, palco, modelo, save.dificuldade, save.instrumento, tocar, ativarNeon, acabar])
 
+  /* ── cutscene de saída ── */
   useEffect(() => {
-    // reafirma true a cada (re)montagem — em dev, o StrictMode roda esse
-    // efeito montar→desmontar→montar de novo pra detectar side effects; sem
-    // resetar aqui, a "desmontagem" fake do StrictMode deixava isMountedRef
-    // preso em false pra sempre, e finish() (usado na análise de áudio) nunca
-    // mais completava, travando em "ANALISANDO ÁUDIO..." só em desenvolvimento
-    isMountedRef.current = true
-    return () => { isMountedRef.current = false; cancelAnimationFrame(rafRef.current); audioRef.current?.pause() }
-  }, [])
+    if (fase !== "saida" || !res) return
+    const c = cvs.current!
+    const g = c.getContext("2d")!
+    const ok = res.estrelas >= 2
+    jogo.current.show?.grito(ok)
+    jogo.current.show?.galera(ok ? 1 : 0.05)
+    vib(ok ? [40, 40, 40, 40, 120] : 60)
+    let raf = 0
+    const t0 = performance.now()
+    const loop = () => {
+      const tt = (performance.now() - t0) / 1000
+      ajustar(c)
+      desenharTomada(g, c.width, c.height, "final", tt, { palco, modelo, sucesso: ok })
+      if (tt > 3.4) {
+        jogo.current.show?.parar()
+        jogo.current.show = null
+        setFase("resultado")
+        return
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [fase, res, palco, modelo])
 
-  // ─── TELA: SELEÇÃO ───────────────────────────────────────────────────────
+  const sair = () => {
+    jogo.current.show?.parar()
+    sendMinimizeConsole()
+    router.push("/?screen=home")
+  }
 
-  if (phase === "select") {
-    return (
-      <div
-        className="h-dvh flex flex-col items-center justify-center p-6 overflow-hidden"
-        style={{ background: "radial-gradient(ellipse at center, #0d0d2b 0%, #000 100%)" }}
-      >
-        <p className="font-mono text-xs mb-2 tracking-widest" style={{ color: "rgba(0,255,240,0.5)" }}>
-          GUITAR DRIVER
-        </p>
-        <h1 className="font-mono font-bold text-3xl text-white mb-1">Escolha a faixa</h1>
-        {completedSongs > 0 && (
-          <div className="flex items-center gap-1.5 mb-3">
-            {[0,1,2,3].map(i => (
-              <div key={i} className="w-7 h-1.5 rounded-full" style={{ background: i < completedSongs ? "#7c3aed" : "rgba(255,255,255,0.08)", boxShadow: i < completedSongs ? "0 0 6px #7c3aed" : "none" }} />
-            ))}
-            <span className="font-mono text-xs ml-1" style={{ color: "rgba(255,255,255,0.3)" }}>{completedSongs}/4</span>
+  const emCena = fase === "entrada" || fase === "tocando" || fase === "saida"
+  const faixasPalco = useMemo(() => FAIXAS, [])
+
+  return (
+    <div className="gd-raiz" style={{ ["--cor" as string]: palco.cor }}>
+      <div className="gd-palco">
+        <canvas ref={cvs} className={`gd-cvs ${emCena ? "is-on" : ""}`} />
+
+        {fase === "menu" && (
+          <Menu
+            save={save}
+            palco={palco}
+            estrelasTot={estrelasTot}
+            faixas={faixasPalco}
+            erro={erroCarga}
+            onPalco={setPalcoId}
+            onFaixa={comecar}
+            onInstrumento={(i) => salvar((s) => ({ ...s, instrumento: i }))}
+            onDificuldade={(d) => salvar((s) => ({ ...s, dificuldade: d }))}
+            onLoja={() => setFase("loja")}
+            onSair={sair}
+          />
+        )}
+        {fase === "loja" && <Loja save={save} salvar={salvar} onVoltar={() => setFase("menu")} />}
+        {fase === "carregando" && (
+          <div className="gd-carrega">
+            <div className="gd-vinil" style={{ ["--cor" as string]: faixa.cor }} />
+            <p>afinando {save.instrumento === "baixo" ? "o baixo" : "a guitarra"}…</p>
+            <small>lendo {faixa.titulo.toLowerCase()} nota por nota</small>
           </div>
         )}
-        <p className="font-mono text-xs mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>
-          complete 4 faixas para desbloquear a recompensa
-        </p>
-        <p className="font-mono text-[11px] mb-4" style={{ color: "rgba(255,255,255,0.25)" }}>
-          jogue no toque, no teclado (D F J K) {gamepadConnected ? "ou no controle conectado" : "ou conectando um controle"}
-        </p>
-        <div className="w-full max-w-sm space-y-2">
-          {SONGS.map(song => (
-            <button
-              key={song.id}
-              onClick={() => { setSelectedSong(song); startGame(song) }}
-              className="w-full flex items-center gap-4 px-5 py-3 rounded-2xl transition-all active:scale-95"
-              style={{
-                background: `linear-gradient(135deg,${song.color}18 0%,${song.accentColor}10 100%)`,
-                border: `1.5px solid ${song.color}40`,
-              }}
-            >
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-mono text-xs font-bold"
-                style={{ background: song.color + "25", color: song.color }}>
-                {song.bpm}<br /><span className="text-[9px] opacity-60">BPM</span>
-              </div>
-              <div className="text-left flex-1">
-                <p className="font-mono font-bold text-white text-sm">{song.title}</p>
-                <p className="font-mono text-xs mt-0.5" style={{ color: song.color }}>
-                  {song.audioUrl ? "com audio" : "modo visual"}
-                </p>
-              </div>
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-                <path d="M9 18l6-6-6-6" stroke={song.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+        {fase === "entrada" && (
+          <button type="button" className="gd-pular" onClick={() => setFase("tocando")}>pular ›</button>
+        )}
+        {fase === "tocando" && (
+          <>
+            <div ref={hud} className="gd-hud">
+              <div className="gd-pontos"><b data-k="pontos">0</b><small data-k="multi">x1</small></div>
+              <div className="gd-galera"><span>galera</span><i><em data-k="galera" /></i></div>
+              <button type="button" className="gd-neon" data-k="neonbtn" onPointerDown={(e) => { e.stopPropagation(); ativarNeon() }}>
+                <i><em data-k="neon" /></i>
+                <span>NEON</span>
+              </button>
+              <div className="gd-seq" data-k="seq" />
+            </div>
+            <div className="gd-trastes" style={{ ["--topo" as string]: "70%" }}>
+              {Array.from({ length: LANES }, (_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`corda ${i + 1}`}
+                  style={{ ["--c" as string]: COR_LANE[i] }}
+                  onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); tocar(i, true) }}
+                  onPointerUp={() => tocar(i, false)}
+                  onPointerCancel={() => tocar(i, false)}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              ))}
+            </div>
+          </>
+        )}
+        {fase === "resultado" && res && (
+          <ResultadoTela
+            r={res}
+            palco={palco}
+            faixa={faixa}
+            instrumento={save.instrumento}
+            onDeNovo={() => comecar(faixa)}
+            onMenu={() => setFase("menu")}
+            onProximo={res.novoPalco ? () => { setPalcoId(res.novoPalco!.id); setFase("menu") } : undefined}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function novoPlacar(total = 0): Placar {
+  return { pontos: 0, seq: 0, maxSeq: 0, acertos: 0, total, galera: 0.5, neon: 0, neonAtivo: 0 }
+}
+
+function ajustar(c: HTMLCanvasElement) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const w = Math.round(c.clientWidth * dpr)
+  const h = Math.round(c.clientHeight * dpr)
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h }
+}
+
+function atualizarHud(el: HTMLDivElement | null, p: Placar) {
+  if (!el) return
+  const q = (k: string) => el.querySelector<HTMLElement>(`[data-k="${k}"]`)
+  const multi = Math.min(4, 1 + Math.floor(p.seq / 10)) * (p.neonAtivo > 0 ? 2 : 1)
+  const pts = q("pontos")
+  if (pts) pts.textContent = p.pontos.toLocaleString("pt-BR")
+  const m = q("multi")
+  if (m) { m.textContent = `x${multi}`; m.dataset.alto = multi >= 4 ? "1" : "" }
+  const gl = q("galera")
+  if (gl) { gl.style.width = `${p.galera * 100}%`; gl.dataset.baixo = p.galera < 0.25 ? "1" : "" }
+  const ne = q("neon")
+  if (ne) ne.style.width = `${(p.neonAtivo > 0 ? Math.min(1, p.neonAtivo / 8) : p.neon) * 100}%`
+  const nb = q("neonbtn")
+  if (nb) nb.dataset.pronto = p.neon >= 0.5 && p.neonAtivo <= 0 ? "1" : p.neonAtivo > 0 ? "on" : ""
+  const sq = q("seq")
+  if (sq) sq.textContent = p.seq >= 10 ? `${p.seq} seguidas` : ""
+}
+
+/* ─── MENU: carreira ───────────────────────────────────── */
+function Menu({
+  save, palco, estrelasTot, faixas, erro, onPalco, onFaixa, onInstrumento, onDificuldade, onLoja, onSair,
+}: {
+  save: Save; palco: Palco; estrelasTot: number; faixas: Faixa[]; erro: string
+  onPalco: (id: string) => void; onFaixa: (f: Faixa) => void; onInstrumento: (i: Instrumento) => void
+  onDificuldade: (d: Save["dificuldade"]) => void; onLoja: () => void; onSair: () => void
+}) {
+  const modelo = MODELOS.find((m) => m.id === save.modelo[save.instrumento])!
+  return (
+    <section className="gd-menu">
+      <header className="gd-topo">
+        <button type="button" onClick={onSair}>‹ sair</button>
+        <b>GUITAR DRIVER</b>
+        <span className="gd-grana">R$ {save.grana.toLocaleString("pt-BR")}</span>
+      </header>
+      <div className="gd-menu-corpo">
+        <p className="gd-rotulo">carreira · {estrelasTot} ★</p>
+        <div className="gd-palcos">
+          {PALCOS.map((p) => {
+            const aberto = estrelasTot >= p.estrelas
+            return (
+              <button
+                key={p.id}
+                type="button"
+                disabled={!aberto}
+                className={`gd-palco-card ${p.id === palco.id ? "is-on" : ""} ${aberto ? "" : "is-trancado"}`}
+                style={{ ["--c" as string]: p.cor }}
+                onClick={() => onPalco(p.id)}
+              >
+                <b>{p.nome}</b>
+                <small>{p.lugar}</small>
+                <em>{aberto ? `cachê R$ ${p.cache}` : `🔒 ${p.estrelas} ★`}</em>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="gd-inst">
+          <div className="gd-toggle">
+            {(["guitarra", "baixo"] as Instrumento[]).map((i) => (
+              <button key={i} type="button" className={save.instrumento === i ? "is-on" : ""} onClick={() => onInstrumento(i)}>{i}</button>
+            ))}
+          </div>
+          <button type="button" className="gd-inst-atual" onClick={onLoja}>
+            <PreviaInstrumento m={modelo} acabamento={save.acabamento} pequeno />
+            <span><b>{modelo.nome}</b><small>loja de instrumentos ›</small></span>
+          </button>
+        </div>
+
+        <div className="gd-toggle is-dif">
+          {(["facil", "medio", "dificil"] as Save["dificuldade"][]).map((d) => (
+            <button key={d} type="button" className={save.dificuldade === d ? "is-on" : ""} onClick={() => onDificuldade(d)}>
+              {d === "facil" ? "fácil" : d === "medio" ? "médio" : "difícil"}
             </button>
           ))}
         </div>
-        {/* Botao Home — simula botao fisico do iPhone */}
-        <button
-          onClick={() => router.push("/?screen=home")}
-          aria-label="Inicio"
-          className="mt-4 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.25)" strokeWidth={1.5}>
-            <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="12" cy="17" r="1.2" fill="rgba(255,255,255,0.25)" stroke="none" />
-          </svg>
-        </button>
+
+        <p className="gd-rotulo">setlist · {palco.nome}</p>
+        {erro && <p className="gd-erro">{erro}</p>}
+        <ul className="gd-setlist">
+          {faixas.map((f) => {
+            const aberta = faixaAberta(f)
+            const est = save.estrelas[`${palco.id}:${f.id}:${save.instrumento}`] ?? 0
+            return (
+              <li key={f.id}>
+                <button type="button" disabled={!aberta} onClick={() => onFaixa(f)} style={{ ["--c" as string]: f.cor }}>
+                  <span className="gd-bpm">{f.bpm}<small>bpm</small></span>
+                  <span className="gd-faixa-nome"><b>{f.titulo}</b><small>{aberta ? "★".repeat(est) + "☆".repeat(5 - est) : `abre ${new Date(f.abre!).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`}</small></span>
+                  <em>›</em>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        <p className="gd-dica">toque nos 4 botões no pé do braço · teclado D F J K · espaço = modo NEON</p>
       </div>
-    )
+    </section>
+  )
+}
+
+/* ─── LOJA ─────────────────────────────────────────────── */
+function Loja({ save, salvar, onVoltar }: { save: Save; salvar: (f: (s: Save) => Save) => void; onVoltar: () => void }) {
+  const [tipo, setTipo] = useState<Instrumento>(save.instrumento)
+  const comprar = (id: string, preco: number) => {
+    if (save.possui.includes(id)) return true
+    if (save.grana < preco) return false
+    salvar((s) => ({ ...s, grana: s.grana - preco, possui: [...s.possui, id] }))
+    vib([20, 30, 20])
+    return true
   }
-
-  // ─── TELA: ANALISANDO ÁUDIO ──────────────────────────────────────────────
-
-  if (phase === "analyzing") {
-    const song = selectedSong || SONGS[0]
-    return (
-      <div className="h-dvh flex flex-col items-center justify-center overflow-hidden" style={{ background: "#000" }}>
-        <p className="font-mono text-xs mb-4 tracking-widest" style={{ color: song.color + "80" }}>{song.title}</p>
-        <div
-          className="w-10 h-10 rounded-full animate-spin mb-4"
-          style={{ border: `3px solid ${song.color}30`, borderTopColor: song.color }}
-        />
-        <p className="font-mono text-xs tracking-widest" style={{ color: "rgba(255,255,255,0.4)" }}>
-          ANALISANDO ÁUDIO...
-        </p>
-      </div>
-    )
-  }
-
-  // ─── TELA: COUNTDOWN ─────────────────────────────────────────────────────
-
-  if (phase === "countdown") {
-    const song = selectedSong || SONGS[0]
-    return (
-      <div className="h-dvh flex flex-col items-center justify-center overflow-hidden" style={{ background: "#000" }}>
-        <p className="font-mono text-xs mb-4 tracking-widest" style={{ color: song.color + "80" }}>{song.title}</p>
-        <p className="font-mono font-bold" style={{ fontSize: 96, color: song.color, textShadow: `0 0 40px ${song.color},0 0 80px ${song.color}66` }}>
-          {countdown === 0 ? "GO" : countdown}
-        </p>
-        <p className="font-mono text-xs mt-4" style={{ color: "rgba(255,255,255,0.3)" }}>
-          toque, tecle D F J K{gamepadConnected ? " ou use o controle" : ""} no ritmo
-        </p>
-      </div>
-    )
-  }
-
-  // ─── TELA: RESULTADO ─────────────────────────────────────────────────────
-
-  if (phase === "result" && profile) {
-    const cfg = PROFILE_CONFIG[profile]
-    return (
-      <div className="h-dvh flex flex-col items-center justify-center p-6 overflow-hidden" style={{ background: "#000" }}>
-        <div className="w-full max-w-sm text-center">
-          <p className="font-mono text-xs mb-3 tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>RESULTADO</p>
-          <h1 className="font-mono font-bold text-3xl mb-2" style={{ color: cfg.color, textShadow: `0 0 30px ${cfg.color}` }}>{profile}</h1>
-          <p className="font-mono text-sm mb-4" style={{ color: "rgba(255,255,255,0.6)" }}>{cfg.message}</p>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {[
-              { label: "ACURACIA", value: `${accuracy}%`, color: cfg.color },
-              { label: "MAX COMBO", value: finalCombo, color: "#FF00A8" },
-              { label: "PONTOS", value: score, color: "#FFD700" },
-            ].map(stat => (
-              <div key={stat.label} className="p-3 rounded-xl font-mono"
-                style={{ background: `${stat.color}12`, border: `1px solid ${stat.color}30` }}>
-                <p className="text-xs mb-1" style={{ color: stat.color + "80" }}>{stat.label}</p>
-                <p className="font-bold text-white text-lg">{stat.value}</p>
-              </div>
-            ))}
-          </div>
-          <p className="font-mono text-xs mb-4" style={{ color: "rgba(255,255,255,0.3)" }}>{cfg.reward}</p>
-          {/* Progresso de faixas */}
-          <div className="flex items-center justify-center gap-2 mb-4">
-            {[0,1,2,3].map(i => (
-              <div key={i} className="w-8 h-2 rounded-full transition-all"
-                style={{ background: i < completedSongs ? cfg.color : "rgba(255,255,255,0.08)", boxShadow: i < completedSongs ? `0 0 8px ${cfg.color}` : "none" }}
-              />
-            ))}
-          </div>
-          <p className="font-mono text-[11px] mb-4" style={{ color: "rgba(255,255,255,0.2)" }}>
-            {completedSongs}/4 faixas completadas
-          </p>
-          <div className="flex gap-3">
-            <button onClick={() => { setPhase("select"); setProfile(null) }}
-              className="flex-1 py-3 rounded-xl font-mono text-sm font-bold transition-all active:scale-95"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}>
-              Tentar de novo
-            </button>
-            <button onClick={() => { setPhase("select"); setProfile(null) }}
-              className="flex-1 py-3 rounded-xl font-mono text-sm font-bold transition-all active:scale-95"
-              style={{ background: cfg.color + "25", color: cfg.color, border: `1px solid ${cfg.color}50` }}>
-              Proxima faixa
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── TELA: RECOMPENSA (4 musicas completadas) ────────────────────────────
-
-  if (phase === "reward") {
-    return (
-      <div className="h-dvh flex flex-col items-center justify-center p-6 overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 30%, #1a003a 0%, #000 70%)" }}>
-        <div className="w-full max-w-sm text-center">
-          {/* Animacao de desbloqueio */}
-          <div className="relative flex items-center justify-center mb-4">
-            <div className="absolute w-32 h-32 rounded-full animate-ping" style={{ background: "rgba(139,92,246,0.12)" }} />
-            <div className="absolute w-24 h-24 rounded-full animate-pulse" style={{ background: "rgba(139,92,246,0.2)" }} />
-            <div className="w-20 h-20 rounded-full flex items-center justify-center relative z-10" style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)", boxShadow: "0 0 40px rgba(124,58,237,0.6)" }}>
-              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-            </div>
-          </div>
-
-          <p className="font-mono text-xs mb-2 tracking-[0.3em]" style={{ color: "rgba(139,92,246,0.7)" }}>RECOMPENSA DESBLOQUEADA</p>
-          <h1 className="font-mono font-bold text-2xl text-white mb-3 text-balance" style={{ textShadow: "0 0 30px rgba(139,92,246,0.8)" }}>
-            4 FAIXAS COMPLETAS
-          </h1>
-          <p className="font-mono text-sm mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-            voce tocou tudo.
-          </p>
-          <p className="font-mono text-sm mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-            voce desbloqueou uma recompensa.
-          </p>
-          <p className="font-mono text-xs mb-4" style={{ color: "rgba(255,255,255,0.3)" }}>
-            descubra na conversa com D-Bee, pelo N3XO.
-          </p>
-
-          {/* Botao Home — simula botao fisico do iPhone */}
-          <button
-            onClick={() => { sendMinimizeConsole(); router.push("/?screen=home") }}
-            aria-label="Inicio"
-            className="w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto"
-            style={{ background: "rgba(255,255,255,0.05)", border: "2px solid rgba(255,255,255,0.12)", boxShadow: "0 0 0 1px rgba(255,255,255,0.04)" }}
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.25)" strokeWidth={1.5}>
-              <rect x="5" y="3" width="14" height="18" rx="3" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="12" cy="17" r="1.2" fill="rgba(255,255,255,0.25)" stroke="none" />
-            </svg>
-          </button>
-
-          <button
-            onClick={() => { setPhase("select"); setProfile(null); completedSongsRef.current = 0; setCompletedSongs(0) }}
-            className="w-full py-3 rounded-xl font-mono text-sm transition-all active:scale-95 mt-4"
-            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            jogar de novo
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── TELA: JOGO ───────────────────────────────────────────────────────────
-
-  const song = selectedSong || SONGS[0]
-
   return (
-    <div
-      className="h-dvh flex flex-col items-center overflow-hidden"
-      style={{ background: "#000", paddingBottom: "env(safe-area-inset-bottom)", userSelect: "none" }}
-    >
-      {/* Header */}
-      <div className="w-full max-w-sm flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => { cancelAnimationFrame(rafRef.current); audioRef.current?.pause(); setPhase("select"); setProfile(null) }}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
-            style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
-            aria-label="Sair da musica"
-          >
-            <svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
-          </button>
-          <div>
-            <p className="font-mono text-xs" style={{ color: song.color }}>{song.title}</p>
-            <p className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{song.bpm} BPM</p>
-          </div>
-          {gamepadConnected && (
-            <span
-              className="font-mono text-[9px] px-1.5 py-0.5 rounded-md"
-              style={{ color: "#00FFF0", background: "#00FFF018", border: "1px solid #00FFF040" }}
-            >
-              CONTROLE
-            </span>
-          )}
+    <section className="gd-menu gd-loja">
+      <header className="gd-topo">
+        <button type="button" onClick={onVoltar}>‹ voltar</button>
+        <b>LOJA DE INSTRUMENTOS</b>
+        <span className="gd-grana">R$ {save.grana.toLocaleString("pt-BR")}</span>
+      </header>
+      <div className="gd-menu-corpo">
+        <div className="gd-toggle">
+          {(["guitarra", "baixo"] as Instrumento[]).map((i) => (
+            <button key={i} type="button" className={tipo === i ? "is-on" : ""} onClick={() => setTipo(i)}>{i}s</button>
+          ))}
         </div>
-        <div className="flex gap-4 font-mono text-sm">
-          <div className="text-right">
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>COMBO</p>
-            <p className="font-bold" style={{ color: combo > 10 ? "#FFD700" : "#00FFF0", textShadow: combo > 10 ? "0 0 10px #FFD700" : "none" }}>
-              {combo > 0 ? `x${combo}` : "—"}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>TEMPO</p>
-            <p className="font-bold text-white">{timeLeft}s</p>
-          </div>
+        <div className="gd-vitrine">
+          {MODELOS.filter((m) => m.tipo === tipo).map((m) => {
+            const tem = save.possui.includes(m.id)
+            const usando = save.modelo[tipo] === m.id
+            return (
+              <div key={m.id} className={`gd-item ${usando ? "is-usando" : ""}`} style={{ ["--c" as string]: m.corpo }}>
+                <PreviaInstrumento m={m} acabamento={usando ? save.acabamento : "liso"} />
+                <b>{m.nome}</b>
+                <small>{m.bonus ?? "sem bônus"}</small>
+                <button
+                  type="button"
+                  disabled={usando || (!tem && save.grana < m.preco)}
+                  onClick={() => { if (comprar(m.id, m.preco)) salvar((s) => ({ ...s, modelo: { ...s.modelo, [tipo]: m.id } })) }}
+                >
+                  {usando ? "usando" : tem ? "usar" : `R$ ${m.preco}`}
+                </button>
+              </div>
+            )
+          })}
         </div>
-      </div>
-
-      {/* Canvas — altura em CSS precisa acompanhar o espaço real disponível
-          (flex-1 do container pai): sem isso o canvas sempre ocupava
-          CANVAS_H cheio (a resolução interna do desenho), estourando telas
-          mais baixas e empurrando os botões de toque pra fora da área
-          visível/clicável do iframe */}
-      <div className="relative w-full max-w-sm flex-1 min-h-0" style={{ maxHeight: CANVAS_H }}>
-        <canvas ref={canvasRef} width={360} height={CANVAS_H} className="w-full" style={{ display: "block", height: "100%", maxHeight: CANVAS_H }} />
-
-        {/* Feedback overlay */}
-        {feedback && (
-          <div
-            className="absolute pointer-events-none font-mono font-bold text-sm"
-            style={{
-              left: `${(feedback.col / COLS + 1 / COLS / 2) * 100}%`,
-              bottom: "22%",
-              transform: "translateX(-50%)",
-              color: feedback.type === "miss" || feedback.type === "holdbreak" ? "#FF0040" : COL_COLORS[feedback.col],
-              textShadow: `0 0 16px ${feedback.type === "miss" || feedback.type === "holdbreak" ? "#FF0040" : COL_COLORS[feedback.col]}`,
-              fontSize: feedback.type === "hold" || feedback.type === "holdbreak" ? "11px" : "13px",
-              letterSpacing: 1,
-            }}
-          >
-            {feedback.type === "hit" ? "PERFECT" : feedback.type === "hold" ? "HOLD!" : feedback.type === "holdbreak" ? "SOLTOU CEDO!" : "MISS"}
-          </div>
-        )}
-      </div>
-
-      {/* Score bar */}
-      <div className="w-full max-w-sm px-4 py-1 flex-shrink-0">
-        <div className="flex justify-between font-mono text-xs mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>
-          <span>PONTOS</span><span style={{ color: "#FFD700" }}>{score.toLocaleString()}</span>
+        <p className="gd-rotulo">acabamento</p>
+        <div className="gd-acab">
+          {ACABAMENTOS.map((a) => {
+            const tem = save.possui.includes(a.id)
+            return (
+              <button
+                key={a.id}
+                type="button"
+                className={save.acabamento === a.id ? "is-on" : ""}
+                disabled={!tem && save.grana < a.preco}
+                onClick={() => { if (comprar(a.id, a.preco)) salvar((s) => ({ ...s, acabamento: a.id })) }}
+              >
+                {a.nome}
+                <small>{tem ? (save.acabamento === a.id ? "usando" : "usar") : `R$ ${a.preco}`}</small>
+              </button>
+            )
+          })}
         </div>
-        <div className="w-full h-1 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
-          <div className="h-1 rounded-full transition-all" style={{ width: `${Math.min((score / 10000) * 100, 100)}%`, background: `linear-gradient(90deg,${song.color},${song.accentColor})`, boxShadow: `0 0 8px ${song.color}` }}/>
-        </div>
+        <p className="gd-dica">arte final dos instrumentos em breve — por enquanto é o desenho-guia de cada modelo.</p>
       </div>
+    </section>
+  )
+}
 
-      {/* Botoes de toque — tambem jogaveis por teclado (D F J K) ou controle */}
-      <div className="w-full max-w-sm grid grid-cols-4 gap-1.5 px-3 pb-6 pt-2 flex-shrink-0">
-        {[0, 1, 2, 3].map(col => (
-          <button
-            key={col}
-            onPointerDown={() => handlePointerDown(col)}
-            onPointerUp={() => handlePointerUp(col)}
-            onPointerLeave={() => handlePointerUp(col)}
-            className="rounded-2xl font-mono font-bold text-xl transition-all select-none flex flex-col items-center justify-center leading-none"
-            style={{
-              height: 68,
-              background: `${COL_COLORS[col]}12`,
-              border: `2px solid ${COL_COLORS[col]}50`,
-              color: COL_COLORS[col],
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
-              boxShadow: `0 0 12px ${COL_COLORS[col]}30`,
-            }}
-          >
-            <span>▼</span>
-            <span className="text-[10px] mt-1 opacity-60 tracking-widest">{["D", "F", "J", "K"][col]}</span>
-          </button>
-        ))}
+// desenho-guia (placeholder) do instrumento: formato + cor + acabamento
+function PreviaInstrumento({ m, acabamento, pequeno }: { m: Modelo; acabamento: string; pequeno?: boolean }) {
+  const corpo: Record<Modelo["forma"], string> = {
+    strato: "M30 70c-14 0-22 10-22 24s10 26 26 26 22-6 30-6 14 6 26 6 20-12 20-26-8-24-22-24c-8 0-10 6-18 6s-12-6-40-6z",
+    jaguar: "M26 72c-16 2-22 14-20 26s14 22 28 20 20-8 34-8 18 10 30 8 18-14 16-28-12-20-24-18-14 8-26 8-20-10-38-8z",
+    flying: "M40 60 L10 124 L52 108 L80 124 L104 60 Z",
+    semi: "M24 70c-14 0-20 12-20 26s8 26 24 26c10 0 16-6 28-6s18 6 28 6c16 0 24-12 24-26s-6-26-20-26c-10 0-14 8-32 8s-22-8-32-8z",
+    precision: "M28 66c-14 2-22 14-20 30s14 26 30 24 18-8 30-8 16 10 30 8 20-14 18-30-12-24-26-22-14 10-26 10-20-14-36-12z",
+    jazz: "M30 64c-16 0-24 14-22 30s14 28 30 26 20-10 32-10 16 12 30 10 20-16 18-30-12-26-26-24-16 12-28 12-18-14-34-14z",
+  }
+  const graves = m.tipo === "baixo"
+  return (
+    <svg className={`gd-previa ${pequeno ? "is-pequeno" : ""}`} viewBox="0 0 140 140" aria-hidden>
+      <defs>
+        <linearGradient id={`h-${m.id}`} x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#2fe8ff" />
+          <stop offset=".5" stopColor="#ff3fb0" />
+          <stop offset="1" stopColor="#ffc857" />
+        </linearGradient>
+      </defs>
+      <rect x={graves ? 64 : 66} y={4} width={graves ? 12 : 8} height={graves ? 78 : 70} rx="2" fill={m.braco} stroke="#444" />
+      <rect x={graves ? 62 : 63} y={2} width={graves ? 16 : 14} height={12} rx="3" fill="#15151f" />
+      <path d={corpo[m.forma]} transform="translate(0 -4)" fill={acabamento === "holografico" ? `url(#h-${m.id})` : m.corpo} stroke="rgba(255,255,255,.35)" />
+      {acabamento === "chuva" && [0, 1, 2, 3, 4, 5].map((i) => <ellipse key={i} cx={30 + i * 15} cy={90 + (i % 2) * 14} rx="2.5" ry="4" fill="#bff6ff" opacity=".8" />)}
+      {acabamento === "adesivos" && <text x="70" y="104" textAnchor="middle" fontSize="11" fontWeight="800" fill="#050510">222</text>}
+      <rect x="54" y="92" width="32" height="6" rx="2" fill="#111" />
+      <text x="70" y="136" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,.35)" fontFamily="monospace">desenho-guia</text>
+    </svg>
+  )
+}
+
+/* ─── RESULTADO ────────────────────────────────────────── */
+function ResultadoTela({ r, palco, faixa, instrumento, onDeNovo, onMenu, onProximo }: {
+  r: Resultado; palco: Palco; faixa: Faixa; instrumento: Instrumento; onDeNovo: () => void; onMenu: () => void; onProximo?: () => void
+}) {
+  const [grana, setGrana] = useState(0)
+  useEffect(() => {
+    let v = 0
+    const t = setInterval(() => {
+      v = Math.min(r.grana, v + Math.max(10, Math.round(r.grana / 25)))
+      setGrana(v)
+      if (v >= r.grana) clearInterval(t)
+    }, 40)
+    return () => clearInterval(t)
+  }, [r.grana])
+  const frase = r.estrelas >= 4 ? "a casa veio abaixo." : r.estrelas >= 2 ? "a galera curtiu." : "hoje não foi. amanhã tem ensaio."
+  return (
+    <section className="gd-resultado">
+      <p className="gd-rotulo">{palco.nome} · {faixa.titulo.toLowerCase()} · {instrumento}</p>
+      <h1>{frase}</h1>
+      <div className="gd-estrelas">{Array.from({ length: 5 }, (_, i) => <span key={i} className={i < r.estrelas ? "is-on" : ""} style={{ animationDelay: `${0.3 + i * 0.18}s` }}>★</span>)}</div>
+      <dl>
+        <div><dt>notas</dt><dd>{Math.round(r.pct * 100)}%</dd></div>
+        <div><dt>maior sequência</dt><dd>{r.maxSeq}</dd></div>
+        <div><dt>pontos</dt><dd>{r.pontos.toLocaleString("pt-BR")}{r.recorde ? " · recorde" : ""}</dd></div>
+      </dl>
+      <div className="gd-cache">
+        <small>o dono do lugar</small>
+        <p>“{palco.fala}”</p>
+        <b>+ R$ {grana.toLocaleString("pt-BR")}</b>
       </div>
-    </div>
+      {r.novoPalco && (
+        <div className="gd-novo" style={{ ["--c" as string]: r.novoPalco.cor }}>
+          <small>palco novo destravado</small>
+          <b>{r.novoPalco.nome}</b>
+          <span>{r.novoPalco.lugar} · cachê R$ {r.novoPalco.cache}</span>
+        </div>
+      )}
+      <div className="gd-acoes">
+        {onProximo && <button type="button" className="gd-btn" onClick={onProximo}>ir pro próximo palco</button>}
+        <button type="button" className={onProximo ? "gd-btn is-ghost" : "gd-btn"} onClick={onDeNovo}>tocar de novo</button>
+        <button type="button" className="gd-btn is-ghost" onClick={onMenu}>setlist</button>
+      </div>
+    </section>
   )
 }
