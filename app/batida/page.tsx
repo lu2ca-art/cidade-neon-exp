@@ -10,6 +10,7 @@ import { INSTRUMENT_COLOR, INSTRUMENT_LABEL, MAX_SLOTS, MAX_TRACKS, type Instrum
 import { timbreLabel } from "./lib/format"
 import { InstrumentIcon } from "./components/InstrumentIcon"
 import { CLIMAS, musicaNoClima } from "./lib/climas"
+import { DRUM_TIMBRE_LABEL } from "./lib/synths"
 import { destaques as buscarDestaques, desserializar, enviar, type Criacao } from "./lib/biblioteca"
 import { renderSongOffline } from "./lib/render"
 
@@ -137,7 +138,7 @@ export default function BatidaHubPage() {
                 style={{ background: `linear-gradient(135deg, ${c.cor}30, ${c.cor}08)`, border: `1px solid ${c.cor}66` }}
               >
                 <span className="block text-[11px] font-bold" style={{ color: c.cor }}>{c.nome}</span>
-                <span className="block text-[8px] font-mono text-white/40 mt-0.5">{c.bpm} bpm · kit {c.bateria}</span>
+                <span className="block text-[8px] font-mono text-white/40 mt-0.5">{c.bpm} bpm · kit {DRUM_TIMBRE_LABEL[c.bateria].toLowerCase()}</span>
               </button>
             ))}
           </div>

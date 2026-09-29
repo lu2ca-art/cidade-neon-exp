@@ -15,9 +15,10 @@ export const DRUM_TIMBRE_LABEL: Record<DrumTimbre, string> = {
   "808": "808",
   acustico: "ACÚSTICO",
   lofi: "LO-FI",
-  xenonio: "XENÔNIO",
-  neonio: "NEÔNIO",
-  argonio: "ARGÔNIO",
+  // ids internos vêm dos gases (inspiração); na tela, só o lugar
+  xenonio: "SUBÚRBIO",
+  neonio: "CENTRO",
+  argonio: "MORRO",
   chuva: "CHUVA",
 }
 export const DRUM_TIMBRE_EFFECT: Record<DrumTimbre, string> = {
