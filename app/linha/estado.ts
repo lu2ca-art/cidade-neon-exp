@@ -29,6 +29,11 @@ export interface Save {
   // sinal acumulado na estrada — destrava as frequências da rádio
   sinal: number
   freq: string
+  // recompensas já dadas por minigames da versão anterior (NECTAR, B4TIDA…)
+  legado: string[]
+  // recordes do fliperama e da estrada
+  melhorVolta: number
+  jogados: Record<string, number>
 }
 
 const CHAVE = "cn-linha-222"
@@ -47,6 +52,9 @@ export const VAZIO: Save = {
   recordes: {},
   sinal: 0,
   freq: "linha",
+  legado: [],
+  melhorVolta: 0,
+  jogados: {},
 }
 
 export function carregar(): Save {

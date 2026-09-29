@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next"
 import type { ReactNode } from "react"
+import { Barlow_Condensed } from "next/font/google"
+
+// condensada pesada pros títulos médios — a Outward (identidade do Vol.1)
+// fica só nos títulos grandes, onde ela respira
+const condensada = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-cond" })
 
 export const metadata: Metadata = {
   title: "Cidade Neon · Linha 222",
@@ -16,5 +21,5 @@ export const viewport: Viewport = {
 }
 
 export default function LinhaLayout({ children }: { children: ReactNode }) {
-  return children
+  return <div className={condensada.variable}>{children}</div>
 }

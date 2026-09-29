@@ -1,31 +1,37 @@
 "use client"
 
-// LINHA 222 — a experiência de entrada da Cidade Neon, refeita.
+// CIDADE NEON — o celular, redesenhado.
 //
-// entrada → tela de bloqueio → D-Bee (DM) → grupo "linha 222" (a leitura:
-// qual estação você é) → a linha inteira aberta pra explorar → Kombi até a
-// estação → conversa + prova + objeto → … → estação 6 (LU2CA) → final.
+// entrada → tela de bloqueio → D-Bee → grupo "linha 222" (qual estação você
+// é) → o celular: todos os apps abertos desde o começo (os novos e os da
+// versão anterior), a Kombi pra rodar a cidade quando quiser, e os níveis
+// liberando coisa nova aos poucos.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import "./linha.css"
-import { ESTACOES, NIVEIS, UNTITLED, type ProvaId, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, type Estacao, type EstacaoId } from "./data"
-import { ECOS, VOZES, type ChatId } from "./roteiros"
-import { VAZIO, apagar, carregar, gravar, hoje, sequencia, type Save } from "./estado"
-import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId } from "./radio"
+import { ESTACOES, NIVEIS, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
+import type { ChatId } from "./roteiros"
+import { VAZIO, carregar, gravar, hoje, type Save } from "./estado"
+import { FREQUENCIAS, faixasDe, type FreqId } from "./radio"
 import { Chat } from "./chat"
 import { Prova } from "./provas"
-import { Viagem, type Stats } from "./viagem"
-import { Objeto } from "./objetos"
-import { audioCtx, gota, ligarChuva, mudo, player } from "./som"
-import { compartilhar, icsHref } from "./util"
+import { Corrida, type Stats } from "./estrada/Corrida"
+import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, legadoFeito, type AppId, type Chamado } from "./os"
+import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
+import { audioCtx, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
+
+type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
+
+type Volta = { t: "home" } | { t: "app"; id: AppId }
 
 type Tela =
   | { t: "entrada" }
   | { t: "bloqueio" }
-  | { t: "chat"; id: Exclude<ChatId, "ojala" | "swav" | "rollercoaster"> }
-  | { t: "mapa" }
-  | { t: "viagem"; destino: EstacaoId }
+  | { t: "chat"; id: ChatRoteiro; volta: Volta }
+  | { t: "home" }
+  | { t: "app"; id: AppId }
+  | { t: "corrida"; destino: EstacaoId | null }
   | { t: "final" }
 
 type Aviso = { id: number; titulo: string; texto: string; cor: string }
@@ -37,8 +43,10 @@ export default function LinhaPage() {
   const [aviso, setAviso] = useState<Aviso | null>(null)
   const [semSom, setSemSom] = useState(false)
   const [xpFlutua, setXpFlutua] = useState<{ id: number; n: number } | null>(null)
+  const [radio, setRadio] = useState<{ titulo: string; tocando: boolean } | null>(null)
   const nivelAnt = useRef<number | null>(null)
   const [provaDev, setProvaDev] = useState<ProvaId | null>(null)
+  const [corridaDev, setCorridaDev] = useState(false)
 
   useEffect(() => {
     const s = carregar()
@@ -47,7 +55,11 @@ export default function LinhaPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSave(s.dias.includes(h) ? s : { ...s, dias: [...s.dias, h].slice(-60) })
     setPronto(true)
-    if (process.env.NODE_ENV !== "production") setProvaDev(new URLSearchParams(location.search).get("prova") as ProvaId | null)
+    if (process.env.NODE_ENV !== "production") {
+      const q = new URLSearchParams(location.search)
+      setProvaDev(q.get("prova") as ProvaId | null)
+      setCorridaDev(q.has("corrida"))
+    }
     track("place_entered", { place_id: "linha-222", place_type: "linha" })
   }, [])
 
@@ -68,6 +80,26 @@ export default function LinhaPage() {
     setXpFlutua({ id: Date.now(), n })
   }, [])
 
+  // o que a rádio tá tocando, pro widget da home
+  useEffect(() => player.ouvir((s) => {
+    if (!s.src) return setRadio(null)
+    const todas = [
+      ...FREQUENCIAS.flatMap((f) => f.faixas),
+      ...ESTACOES.map((e) => ({ titulo: e.faixa, src: e.audio })),
+    ]
+    setRadio({ titulo: todas.find((x) => x.src === s.src)?.titulo ?? "…", tocando: s.tocando })
+  }), [])
+
+  const proxRadio = useRef<(id: FreqId, i: number) => void>(() => {})
+  const tocarRadio = useCallback((id: FreqId, i = 0) => {
+    const f = FREQUENCIAS.find((x) => x.id === id)!
+    let l = faixasDe(f, save.objetos, save.estacao)
+    if (!l.length) l = faixasDe(FREQUENCIAS[4], [], null)
+    if (!l.length) return
+    player.tocar(l[i % l.length].src, () => proxRadio.current(id, i + 1))
+  }, [save.objetos, save.estacao])
+  useEffect(() => { proxRadio.current = tocarRadio }, [tocarRadio])
+
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
   useEffect(() => {
@@ -81,37 +113,84 @@ export default function LinhaPage() {
     nivelAnt.current = nivel
   }, [nivel, pronto, avisar])
 
+  // minigames da versão anterior: quem completa ganha luz e sinal (uma vez)
+  const conferirLegado = useCallback(() => {
+    const feitos = legadoFeito()
+    setSave((s) => {
+      const novos = LEGADO.filter((l) => feitos.includes(l.id) && !s.legado.includes(l.id))
+      if (!novos.length) return s
+      const luz = novos.reduce((t, l) => t + l.luz, 0)
+      const sinal = novos.reduce((t, l) => t + l.sinal, 0)
+      setTimeout(() => {
+        setXpFlutua({ id: Date.now(), n: luz })
+        avisar(novos.map((l) => l.nome).join(" + "), `completo · +${luz} luz · +${sinal} sinal`, "#ffc857")
+      }, 0)
+      return { ...s, legado: [...s.legado, ...novos.map((l) => l.id)], xp: s.xp + luz, sinal: s.sinal + sinal }
+    })
+  }, [avisar])
+
   const entrar = () => {
     audioCtx()
     ligarChuva()
-    if (save.completos.includes("grupo")) setTela({ t: "mapa" })
-    else if (save.completos.includes("abertura")) setTela({ t: "chat", id: "grupo" })
+    if (save.completos.includes("grupo")) {
+      setTela({ t: "home" })
+      conferirLegado()
+    } else if (save.completos.includes("abertura")) setTela({ t: "chat", id: "grupo", volta: { t: "home" } })
     else setTela({ t: "bloqueio" })
   }
 
-  const fimChat = (id: ChatId, para: ChatId | "mapa") => {
-    if (id !== "abertura" && id !== "grupo" && getEstacao(id as EstacaoId)) {
-      track("mission_completed", { mission_id: `linha-${id}`, duration_ms: 0 })
+  const abrirChat = (id: ChatId, volta: Volta = { t: "home" }) => {
+    const e = ESTACOES.find((x) => x.id === id)
+    if (e) {
+      const m = missao(e, nivel)
+      if (!m.ok && !save.objetos.includes(e.id)) {
+        avisar(e.personagem, m.motivo === "nivel" ? "a conversa daqui abre no nível ativista (4 objetos)" : m.motivo === "data" ? "sem sinal ainda" : "descobre sua estação no grupo primeiro", e.cor)
+        return
+      }
+      if (!save.completos.includes(id)) track("mission_started", { mission_id: `linha-${id}`, place_id: "linha-222" })
     }
-    if (id === "nectar") setTela({ t: "final" })
-    else if (para === "mapa") setTela({ t: "mapa" })
-    else setTela({ t: "chat", id: para as "grupo" })
+    setTela({ t: "chat", id: id as ChatRoteiro, volta })
   }
 
-  const chegar = (e: Estacao, st: Stats) => {
-    ganharXp(20 + st.orbs * 2 + st.quase * 5)
-    setSave((s) => {
-      const r = s.recordes[e.id]
-      return { ...s, recordes: { ...s.recordes, [e.id]: r ? Math.min(r, st.tempo) : st.tempo } }
-    })
-    const m = missao(e, nivel)
-    if (m.ok && (e.prova && (ROTEIRO_IDS as string[]).includes(e.id))) {
-      track("mission_started", { mission_id: `linha-${e.id}`, place_id: "linha-222" })
-      setTela({ t: "chat", id: e.id as never })
-    } else {
-      setTela({ t: "mapa" })
-      avisar(e.personagem, m.ok ? "volta depois" : m.motivo === "nivel" ? `a missão daqui abre no nível ${NIVEIS[3].nome}` : "descobre sua estação no grupo primeiro", e.cor)
+  const abrirApp = (id: AppId) => {
+    const a = APPS.find((x) => x.id === id)!
+    if (a.nivel !== undefined && nivel < a.nivel) {
+      avisar(a.nome, `abre no nível ${NIVEIS[a.nivel].nome}`, a.cor)
+      return
     }
+    if (a.link) {
+      track("external_link_click", { destination: a.link.includes("instagram") ? "instagram" : a.link.includes("untitled") ? "untitled" : "other", place_id: "linha-home" })
+      window.open(`${a.link}${a.link.includes("?") ? "&" : "?"}utm_source=cidade-neon&utm_medium=game&utm_campaign=linha-222`, "_blank")
+      return
+    }
+    if (id === "kombi") return setTela({ t: "corrida", destino: null })
+    if (id === "fliperama") setSave((s) => ({ ...s, jogados: { ...s.jogados, visto: 1 } }))
+    setTela({ t: "app", id })
+  }
+
+  const onChamado = (c: Chamado) => {
+    if ("chat" in c.acao) abrirChat(c.acao.chat)
+    else abrirApp(c.acao.app)
+  }
+
+  const fimChat = (id: ChatId, para: ChatId | "mapa", volta: Volta) => {
+    if (ESTACOES.some((e) => e.id === id)) track("mission_completed", { mission_id: `linha-${id}`, duration_ms: 0 })
+    if (id === "nectar") setTela({ t: "final" })
+    else if (para === "grupo") setTela({ t: "chat", id: "grupo", volta: { t: "home" } })
+    else if (id === "grupo" && volta.t === "home") {
+      setTela({ t: "home" })
+      setTimeout(() => avisar("a cidade é sua", "tudo aberto. a Kombi te leva nas estações", "#2fe8ff"), 600)
+    } else setTela(volta)
+  }
+
+  const descer = (id: EstacaoId, st: Stats) => {
+    ganharXp(20 + st.orbs * 2 + st.quase * 5)
+    abrirChat(id, { t: "app", id: "linha" })
+  }
+
+  const sairDaCorrida = (st: Stats) => {
+    if (st.orbs + st.quase > 0) ganharXp(10 + st.orbs * 2 + st.quase * 5)
+    setTela({ t: "home" })
   }
 
   const alternarSom = () => {
@@ -121,6 +200,17 @@ export default function LinhaPage() {
   }
 
   if (!pronto) return <div className="l-raiz" />
+
+  // atalho de desenvolvimento: /linha?corrida=1 abre direto a estrada
+  if (process.env.NODE_ENV !== "production" && corridaDev) {
+    return (
+      <div className="l-raiz">
+        <div className="l-palco">
+          <Corrida save={save} nivel={nivel} destino={null} onSinal={(total) => setSave((s) => ({ ...s, sinal: total }))} onDescer={() => {}} onSair={() => {}} />
+        </div>
+      </div>
+    )
+  }
 
   // atalho de desenvolvimento: /linha?prova=regar mostra só a prova
   if (process.env.NODE_ENV !== "production" && provaDev) {
@@ -133,17 +223,19 @@ export default function LinhaPage() {
               <Prova id={provaDev} cor={e?.cor ?? "#2fe8ff"} onFim={(p) => avisar("prova", p ? "pulou" : "feita ✓")} />
             </div>
           </div>
-          {aviso && <div key={aviso.id} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}><b>{aviso.titulo}</b><span>{aviso.texto}</span></div>}
+          {aviso && <div key={`aviso-${aviso.id}`} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}><b>{aviso.titulo}</b><span>{aviso.texto}</span></div>}
         </div>
       </div>
     )
   }
 
+  const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
+
   return (
     <div className="l-raiz">
       <div className="l-palco">
         {tela.t === "entrada" && <Entrada save={save} onEntrar={entrar} />}
-        {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: "abertura" })} />}
+        {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: "abertura", volta: { t: "home" } })} />}
         {tela.t === "chat" && (
           <Chat
             key={tela.id}
@@ -151,408 +243,91 @@ export default function LinhaPage() {
             save={save}
             atualizar={atualizar}
             onXp={ganharXp}
-            onFim={(para) => fimChat(tela.id, para)}
-            onVoltar={save.completos.includes("grupo") ? () => setTela({ t: "mapa" }) : undefined}
+            onFim={(para) => fimChat(tela.id, para, tela.volta)}
+            onVoltar={save.completos.includes("grupo") ? () => setTela(tela.volta) : undefined}
           />
         )}
-        {tela.t === "mapa" && (
+        {tela.t === "home" && (
+          <Home
+            save={save}
+            nivel={nivel}
+            onApp={abrirApp}
+            onChamado={onChamado}
+            radioTocando={radio}
+            onRadioToggle={() => (radio?.tocando ? player.pausar() : tocarRadio((save.freq as FreqId) || "linha"))}
+          />
+        )}
+
+        {tela.t === "app" && app?.rota && (
+          <AppJanela app={app} onFechar={() => { setTela({ t: "home" }); setTimeout(conferirLegado, 300) }} />
+        )}
+        {tela.t === "app" && tela.id === "n3xo" && (
+          <N3xo save={save} nivel={nivel} onChat={(id) => abrirChat(id, { t: "app", id: "n3xo" })} onVoltar={() => setTela({ t: "home" })} />
+        )}
+        {tela.t === "app" && tela.id === "linha" && (
           <Mapa
             save={save}
             nivel={nivel}
             atualizar={atualizar}
-            onGrupo={() => setTela({ t: "chat", id: "grupo" })}
-            onViajar={(id) => { player.pausar(); setTela({ t: "viagem", destino: id }) }}
-            onEstacao={(id) => setTela({ t: "chat", id: id as never })}
+            onVoltar={() => setTela({ t: "home" })}
+            onGrupo={() => abrirChat("grupo", { t: "app", id: "linha" })}
+            onViajar={(id) => { player.pausar(); setTela({ t: "corrida", destino: id }) }}
+            onEstacao={(id) => abrirChat(id, { t: "app", id: "linha" })}
             onFinal={() => setTela({ t: "final" })}
           />
         )}
-        {tela.t === "viagem" && (
-          <Viagem
-            key={tela.destino}
-            destino={getEstacao(tela.destino)}
+        {tela.t === "app" && tela.id === "radio" && (
+          <section className="l-appnativo">
+            <AppTopo titulo="RÁDIO 222" cor="#ff3fb0" onVoltar={() => setTela({ t: "home" })} />
+            <Radio save={save} atualizar={atualizar} onFechar={() => setTela({ t: "home" })} embutido />
+          </section>
+        )}
+        {tela.t === "app" && tela.id === "fliperama" && (
+          <Fliperama
             save={save}
-            turbo={nivel >= 2}
-            onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
-            onChegar={(st) => chegar(getEstacao(tela.destino), st)}
-            onSair={() => setTela({ t: "mapa" })}
+            onApp={abrirApp}
+            onVoltar={() => setTela({ t: "home" })}
+            onJogou={(id, pulou) => {
+              setSave((s) => ({ ...s, jogados: { ...s.jogados, [id]: (s.jogados[id] ?? 0) + 1 } }))
+              if (!pulou) ganharXp(10)
+            }}
           />
         )}
-        {tela.t === "final" && <Final save={save} onVoltar={() => setTela({ t: "mapa" })} />}
+        {tela.t === "app" && tela.id === "objetos" && (
+          <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} />
+        )}
 
-        {tela.t !== "entrada" && tela.t !== "viagem" && (
+        {tela.t === "corrida" && (
+          <Corrida
+            key={tela.destino ?? "livre"}
+            save={save}
+            nivel={nivel}
+            destino={tela.destino}
+            onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
+            onDescer={descer}
+            onSair={sairDaCorrida}
+            onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
+          />
+        )}
+        {tela.t === "final" && <Final save={save} onVoltar={() => setTela({ t: "home" })} />}
+
+        {(tela.t === "home" || tela.t === "chat" || tela.t === "bloqueio") && (
           <button type="button" className="l-som" onClick={alternarSom} aria-label={semSom ? "ligar som" : "desligar som"}>
             {semSom ? "som off" : "som on"}
           </button>
         )}
+        {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "home" && tela.t !== "corrida" && save.completos.includes("grupo") && (
+          <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
+        )}
         {aviso && (
-          <div key={aviso.id} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}>
+          <div key={`aviso-${aviso.id}`} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}>
             <b>{aviso.titulo}</b>
             <span>{aviso.texto}</span>
           </div>
         )}
-        {xpFlutua && tela.t !== "viagem" && <div key={xpFlutua.id} className="l-xp-flutua">+{xpFlutua.n} luz</div>}
+        {xpFlutua && tela.t !== "corrida" && <div key={`xp-${xpFlutua.id}`} className="l-xp-flutua">+{xpFlutua.n} luz</div>}
       </div>
     </div>
   )
 }
 
-const ROTEIRO_IDS: EstacaoId[] = ["chuva", "copo", "dopamina", "sexta", "ontem", "nectar"]
-
-/* ─── ENTRADA ───────────────────────────────────────────── */
-function Entrada({ save, onEntrar }: { save: Save; onEntrar: () => void }) {
-  const volta = save.completos.includes("abertura")
-  return (
-    <section className="l-entrada">
-      <div className="l-entrada-foto" />
-      <div className="l-agua" />
-      <div className="l-chuva-css" />
-      <div className="l-entrada-conteudo">
-        <p className="l-rotulo">lu2ca · vol.1 · linha 222</p>
-        <h1 className="l-titulo">
-          <span>cidade</span>
-          <span>neon</span>
-        </h1>
-        <p className="l-entrada-poema">
-          a cidade tá alagada de neon.
-          <br />o povo anda em loop e acha que é vida.
-          <br />
-          <em>tem gente acordada ainda.</em>
-        </p>
-        <button type="button" className="l-btn l-btn-entrar" onClick={onEntrar}>
-          {volta ? `voltar pra cidade${save.nome ? `, ${save.nome}` : ""}` : "tô acordado"}
-        </button>
-        <p className="l-entrada-nota">
-          {volta
-            ? `${save.objetos.length}/9 objetos · ${sequencia(save.dias)} ${sequencia(save.dias) === 1 ? "dia" : "dias"} acordado`
-            : "melhor com fone 🎧"}
-        </p>
-      </div>
-    </section>
-  )
-}
-
-/* ─── TELA DE BLOQUEIO ──────────────────────────────────── */
-function Bloqueio({ onAbrir }: { onAbrir: () => void }) {
-  const [n, setN] = useState(0)
-  const agora = new Date()
-  useEffect(() => {
-    const ts = [700, 2100, 3300].map((ms, i) => setTimeout(() => {
-      setN(i + 1)
-      gota(i + 3)
-      try { navigator.vibrate?.(i === 2 ? [30, 60, 30] : 12) } catch {}
-    }, ms))
-    return () => ts.forEach(clearTimeout)
-  }, [])
-  const notifs = [
-    { app: "NÚCLEO", txt: "sua rotina foi otimizada. nada mudou ✓", cor: "#8aa0c8" },
-    { app: "NÚCLEO", txt: "você dormiu 4h12. ótimo para a produtividade ✓", cor: "#8aa0c8" },
-    { app: "N3XO · [desconhecido]", txt: "sabe ontem?", cor: "#2fe8ff", abrir: true },
-  ]
-  return (
-    <section className="l-bloqueio">
-      <div className="l-bloqueio-foto" />
-      <div className="l-chuva-css" />
-      <div className="l-bloqueio-hora">
-        <span>{agora.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</span>
-        <b>{agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</b>
-      </div>
-      <div className="l-notifs">
-        {notifs.slice(0, n).map((x, i) => (
-          <button
-            key={i}
-            type="button"
-            className={`l-notif ${x.abrir ? "is-chave" : ""}`}
-            style={{ ["--cor" as string]: x.cor }}
-            onClick={x.abrir ? onAbrir : undefined}
-          >
-            <small>{x.app} · agora</small>
-            <span>{x.txt}</span>
-          </button>
-        ))}
-      </div>
-      {n >= 3 && <p className="l-bloqueio-dica">toca na mensagem</p>}
-    </section>
-  )
-}
-
-/* ─── MAPA: A LINHA 222 ─────────────────────────────────── */
-function Mapa({
-  save, nivel, atualizar, onGrupo, onViajar, onEstacao, onFinal,
-}: {
-  save: Save
-  nivel: number
-  atualizar: (f: (s: Save) => Save) => void
-  onGrupo: () => void
-  onViajar: (id: EstacaoId) => void
-  onEstacao: (id: EstacaoId) => void
-  onFinal: () => void
-}) {
-  const [aberta, setAberta] = useState<EstacaoId | null>(null)
-  const [radio, setRadio] = useState(false)
-  const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
-  const prox = NIVEIS[Math.min(nivel + 1, NIVEIS.length - 1)]
-  const dias = sequencia(save.dias)
-  const minha = save.estacao ? getEstacao(save.estacao) : null
-  const libs = freqsLiberadas(save.sinal)
-
-  // qual estação sugerir agora: a primeira com missão aberta e sem objeto,
-  // começando pela da própria pessoa
-  const sugerida = useMemo(() => {
-    const ordem = minha ? [minha, ...ESTACOES.filter((e) => e.id !== minha.id)] : ESTACOES
-    return ordem.find((e) => missao(e, nivel).ok && !save.objetos.includes(e.id))?.id ?? null
-  }, [minha, nivel, save.objetos])
-
-  return (
-    <section className="l-mapa">
-      <header className="l-mapa-topo">
-        <div className="l-perfil">
-          <div className="l-perfil-estacao" style={{ ["--cor" as string]: minha?.cor ?? "#2fe8ff" }}>
-            {minha ? <Objeto id={minha.objeto} cor={minha.cor} size={22} /> : "?"}
-          </div>
-          <div>
-            <b>{save.nome || "você"}</b>
-            <small>{NIVEIS[nivel].nome}{minha ? ` · estação ${minha.n}` : ""}</small>
-          </div>
-        </div>
-        <div className="l-stats">
-          <span title="luz"><b>{save.xp}</b> luz</span>
-          <span title="dias seguidos"><b>{dias}</b> {dias === 1 ? "dia" : "dias"}</span>
-        </div>
-      </header>
-
-      {nivel < 4 && (
-        <div className="l-proximo">
-          <div className="l-niveis">
-            {NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}
-          </div>
-          <p>
-            próximo: <b>{prox.nome}</b> — {prox.como} <span>· libera {prox.libera}</span>
-          </p>
-        </div>
-      )}
-      {nivel >= 4 && (
-        <button type="button" className="l-proximo is-final" onClick={onFinal}>
-          <p><b>você acordou.</b> abrir o fim da linha →</p>
-        </button>
-      )}
-
-      <div className="l-atalhos">
-        <button type="button" className="l-atalho" onClick={onGrupo}>
-          <span className="l-atalho-ic">222</span>
-          <span><b>grupo linha 222</b><small>{ecos ? `${ecos} ${ecos === 1 ? "novidade" : "novidades"}` : "6 pessoas acordadas"}</small></span>
-          {ecos > 0 && <em className="l-badge">{ecos}</em>}
-        </button>
-        <button type="button" className="l-atalho" onClick={() => setRadio(true)}>
-          <span className="l-atalho-ic is-radio">FM</span>
-          <span><b>rádio 222</b><small>{libs.length}/{FREQUENCIAS.length} frequências</small></span>
-        </button>
-      </div>
-
-      <ol className="l-linha">
-        {ESTACOES.map((e) => {
-          const m = missao(e, nivel)
-          const tem = save.objetos.includes(e.id)
-          const escuro = !m.ok && m.motivo === "data"
-          const sua = save.estacao === e.id
-          return (
-            <li key={e.id} className={`l-parada ${tem ? "is-feita" : ""} ${escuro ? "is-escuro" : ""} ${sugerida === e.id ? "is-sugerida" : ""}`} style={{ ["--cor" as string]: e.cor }}>
-              <button type="button" onClick={() => setAberta(e.id)}>
-                <span className="l-parada-n">{tem ? <Objeto id={e.objeto} cor="#050510" size={16} /> : e.n}</span>
-                <span className="l-parada-txt">
-                  <b>{e.faixa}</b>
-                  <small>
-                    {e.personagem} · {e.objetoNome}
-                  </small>
-                </span>
-                <span className="l-parada-tag">
-                  {sua && <em>sua</em>}
-                  {tem ? "✓" : escuro && e.lancamento ? `abre ${dataCurta(e.lancamento)}` : sugerida === e.id ? "missão" : m.ok ? "aberta" : m.motivo === "nivel" ? "ativista" : ""}
-                </span>
-              </button>
-            </li>
-          )
-        })}
-      </ol>
-
-      <button type="button" className="l-recomecar" onClick={() => { if (confirm("apagar seu progresso e começar do zero?")) { apagar(); location.reload() } }}>
-        recomeçar do zero
-      </button>
-
-      {aberta && (
-        <FichaEstacao
-          e={getEstacao(aberta)}
-          save={save}
-          nivel={nivel}
-          onFechar={() => { player.pausar(); setAberta(null) }}
-          onViajar={() => onViajar(aberta)}
-          onConversa={() => onEstacao(aberta)}
-        />
-      )}
-      {radio && <Radio save={save} atualizar={atualizar} onFechar={() => setRadio(false)} />}
-    </section>
-  )
-}
-
-function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa }: {
-  e: Estacao; save: Save; nivel: number; onFechar: () => void; onViajar: () => void; onConversa: () => void
-}) {
-  const m = missao(e, nivel)
-  const saiu = lancada(e)
-  const tem = save.objetos.includes(e.id)
-  const [tocando, setTocando] = useState(false)
-  useEffect(() => player.ouvir((s) => setTocando(s.src === e.audio && s.tocando)), [e.audio])
-  const recorde = save.recordes[e.id]
-  return (
-    <div className="l-ficha-fundo" onClick={onFechar}>
-      <div className="l-ficha" style={{ ["--cor" as string]: e.cor }} onClick={(ev) => ev.stopPropagation()}>
-        <div className="l-ficha-alca" />
-        <small className="l-rotulo">estação {e.n}</small>
-        <h2>{e.faixa}</h2>
-        <p className="l-ficha-cidade">“{e.cidade}”</p>
-        <p className="l-ficha-par">{e.luz} <i>×</i> {e.sombra}</p>
-        <div className="l-ficha-quem">
-          <Objeto id={e.objeto} cor={e.cor} size={34} />
-          <span><b>{e.personagem}</b> guarda {e.objetoNome}{tem ? " — já é seu" : ""}</span>
-        </div>
-
-        {(saiu || tem) && (
-          <div className="l-ficha-ouvir">
-            <button type="button" onClick={() => player.alternar(e.audio)}>{tocando ? "❚❚ pausar" : "▶ ouvir um pedaço"}</button>
-            <a
-              href={`${e.ouvir}${e.ouvir.includes("?") ? "&" : "?"}utm_source=cidade-neon&utm_medium=game&utm_campaign=linha-222`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => track("external_link_click", { destination: e.ouvir.includes("spotify") ? "spotify" : "other", track_id: e.id, place_id: "linha-222" })}
-            >
-              ouvir inteira ↗
-            </a>
-          </div>
-        )}
-
-        {!m.ok && m.motivo === "data" && e.lancamento && (
-          <div className="l-ficha-escuro">
-            <p>estação no escuro. {e.personagem} acende ela dia <b>{dataCurta(e.lancamento)}</b>.</p>
-            <a className="l-btn l-btn-ghost" href={icsHref(e)} download={`linha-222-${e.id}.ics`}>me lembra no calendário</a>
-          </div>
-        )}
-        {!m.ok && m.motivo === "estacao" && <p className="l-ficha-trava">descobre sua estação no grupo pra liberar as missões.</p>}
-        {!m.ok && m.motivo === "nivel" && <p className="l-ficha-trava">a missão daqui abre no nível <b>ativista</b> (4 objetos). vc tem {save.objetos.length}.</p>}
-
-        {(m.ok || (m.motivo !== "data")) && (
-          <div className="l-ficha-acoes">
-            <button type="button" className="l-btn" onClick={onViajar}>
-              ir de kombi {recorde ? <small>recorde {recorde.toFixed(1)}s</small> : null}
-            </button>
-            {save.completos.includes(e.id as never) && (
-              <button type="button" className="l-btn l-btn-ghost" onClick={onConversa}>reler a conversa</button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function Radio({ save, atualizar, onFechar }: { save: Save; atualizar: (f: (s: Save) => Save) => void; onFechar: () => void }) {
-  const [agora, setAgora] = useState<string | null>(null)
-  useEffect(() => player.ouvir((s) => setAgora(s.tocando ? s.src : null)), [])
-  const prox = proximaFreq(save.sinal)
-  const tocar = (id: FreqId, i = 0) => {
-    const f = FREQUENCIAS.find((x) => x.id === id)!
-    const l = faixasDe(f, save.objetos, save.estacao)
-    if (!l.length) return
-    player.tocar(l[i % l.length].src, () => tocar(id, i + 1))
-    atualizar((s) => ({ ...s, freq: id }))
-    track("music_play_started", { track_id: l[i % l.length].src, track_name: l[i % l.length].titulo, source: "radio", place_id: "linha-222" })
-  }
-  return (
-    <div className="l-ficha-fundo" onClick={onFechar}>
-      <div className="l-ficha l-radio" onClick={(e) => e.stopPropagation()}>
-        <div className="l-ficha-alca" />
-        <small className="l-rotulo">rádio 222</small>
-        <h2>frequências</h2>
-        <p className="l-ficha-cidade">
-          {prox
-            ? `pega sinal na estrada pra destravar a próxima: faltam ${prox.custo - save.sinal} (orbs e passadas raspando no tráfego).`
-            : "todas as frequências destravadas. a cidade toda toca pra você."}
-        </p>
-        <ul>
-          {FREQUENCIAS.map((f) => {
-            const lib = save.sinal >= f.custo
-            const faixas = faixasDe(f, save.objetos, save.estacao)
-            const tocandoAqui = !!agora && faixas.some((x) => x.src === agora)
-            return (
-              <li key={f.id} className={lib ? "" : "is-trancada"} style={{ ["--cor" as string]: f.cor }}>
-                <button type="button" disabled={!lib || !faixas.length} onClick={() => (tocandoAqui ? player.pausar() : tocar(f.id))}>
-                  <b>{f.freq}</b>
-                  <span>
-                    {f.nome}
-                    <small>{lib ? (faixas.length ? `${faixas.length} faixas` : "pega um objeto pra ela tocar") : `${save.sinal}/${f.custo} de sinal`}</small>
-                  </span>
-                  <em>{lib ? (tocandoAqui ? "❚❚" : "▶") : "🔒"}</em>
-                </button>
-                {lib && f.link && (
-                  <a href={f.link} target="_blank" rel="noopener noreferrer" onClick={() => track("external_link_click", { destination: "untitled", place_id: "linha-222-radio" })}>
-                    completo no untitled ↗
-                  </a>
-                )}
-                {!lib && <div className="l-radio-barra"><i style={{ width: `${Math.min(100, (save.sinal / f.custo) * 100)}%` }} /></div>}
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-    </div>
-  )
-}
-
-/* ─── FINAL ─────────────────────────────────────────────── */
-function Final({ save, onVoltar }: { save: Save; onVoltar: () => void }) {
-  const proxima = ESTACOES.find((e) => !lancada(e) && e.lancamento && !save.objetos.includes(e.id)) ?? null
-  const minha = save.estacao ? getEstacao(save.estacao) : null
-  return (
-    <section className="l-final">
-      <div className="l-entrada-foto is-final" />
-      <div className="l-agua" />
-      <div className="l-final-conteudo">
-        <p className="l-rotulo">fim da linha · por enquanto</p>
-        <h1 className="l-titulo is-menor"><span>você</span><span>acordou</span></h1>
-        <div className="l-colecao">
-          {ESTACOES.map((e) => (
-            <div key={e.id} className={save.objetos.includes(e.id) ? "is-tem" : ""} style={{ ["--cor" as string]: e.cor }} title={e.objetoNome}>
-              <Objeto id={e.objeto} cor={save.objetos.includes(e.id) ? e.cor : "rgba(255,255,255,.18)"} size={26} />
-            </div>
-          ))}
-        </div>
-        {save.linha && <blockquote>“{save.linha}” <cite>— {save.nome}, no caderno do Alohan</cite></blockquote>}
-        <div className="l-antivenda">
-          <p>isso não é produto.</p>
-          <p>as 22 faixas, o live, o instrumental e o subúrbio xênon moram num lugar só.</p>
-          <p>levar pra casa significa sustentar uma coisa que existe fora do sistema.</p>
-          <a
-            className="l-btn"
-            href={`${UNTITLED}?utm_source=cidade-neon&utm_medium=game&utm_campaign=linha-222-final`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("external_link_click", { destination: "untitled", place_id: "linha-222-final" })}
-          >
-            a cidade inteira, no untitled
-          </a>
-        </div>
-        {proxima?.lancamento && (
-          <div className="l-final-proxima" style={{ ["--cor" as string]: proxima.cor }}>
-            <p>a estação {proxima.n}, <b>{proxima.faixa}</b>, acende dia {dataCurta(proxima.lancamento)}. {proxima.personagem} vai estar lá.</p>
-            <a href={icsHref(proxima)} download={`linha-222-${proxima.id}.ics`}>me lembra</a>
-          </div>
-        )}
-        <div className="l-final-acoes">
-          <button type="button" className="l-btn l-btn-ghost" onClick={() => compartilhar(`acordei na cidade neon.${minha ? ` sou da estação ${minha.n}, ${minha.faixa.toLowerCase()}.` : ""} ${save.objetos.length}/9 objetos. e vc?`)}>
-            compartilhar
-          </button>
-          <button type="button" className="l-btn l-btn-ghost" onClick={onVoltar}>voltar pra linha</button>
-        </div>
-        <p className="l-final-voz" style={{ color: VOZES.LU2CA }}>“constante fase de teste”</p>
-      </div>
-    </section>
-  )
-}
