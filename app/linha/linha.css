@@ -930,10 +930,17 @@
 .l-minimapa path.is-ligacao { stroke: rgba(255, 255, 255, 0.28); stroke-width: 0.9; opacity: 1; }
 .l-minimapa path.is-atual { stroke-width: 3.2; opacity: 1; }
 .l-minimapa path.is-ligacao.is-atual { stroke: #fff; stroke-width: 1.8; }
-.l-hud-garfo { position: absolute; right: 12px; top: 44%; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 8px 12px; border-radius: 12px; background: rgba(0, 0, 10, 0.5); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(6px); pointer-events: none; transition: opacity 0.4s; }
-.l-hud-garfo small { font: 700 9px var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: #ffc857; }
-.l-hud-garfo b { font: 700 30px/1 var(--cond); color: #fff; }
-.l-hud-garfo span { font: 11px var(--mono); color: rgba(255, 255, 255, 0.7); }
 .l-hud-radio.is-sintonizando .l-hud-freq { animation: l-pisca 0.7s ease-in-out infinite; }
 .l-bairro-freq { font: 700 12px var(--mono); letter-spacing: 0.12em; color: var(--cor); }
 .l-travou em { margin-top: 8px; max-width: 80%; text-align: center; font: normal 12px var(--mono); color: rgba(255, 255, 255, 0.85); }
+.l-garfo { position: absolute; left: 50%; top: calc(150px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(78%, 320px); display: flex; flex-direction: column; gap: 4px; padding: 5px 6px; border-radius: 12px; background: rgba(0, 0, 10, 0.55); border: 1px solid rgba(255, 200, 87, 0.45); backdrop-filter: blur(8px); pointer-events: none; animation: l-fade 0.3s both; }
+.l-garfo header { font: 700 10px var(--mono); letter-spacing: 0.25em; text-transform: uppercase; color: #ffc857; text-align: center; }
+.l-garfo header b { font: 700 16px var(--cond); letter-spacing: 0.05em; color: #fff; }
+.l-garfo-ops { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.l-garfo-op { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 5px; align-items: center; padding: 3px 6px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cor) 40%, transparent); background: color-mix(in srgb, var(--cor) 8%, transparent); opacity: 0.55; transition: opacity 0.15s, transform 0.15s, background 0.15s; min-width: 0; }
+.l-garfo-op i { grid-row: span 2; font: 800 20px/1 var(--cond); font-style: normal; color: var(--cor); }
+.l-garfo-op b { font: 700 12px/1 var(--cond); text-transform: uppercase; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-garfo-op small { font: 8px var(--mono); color: var(--cor); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-garfo-op.is-vai { opacity: 1; transform: scale(1.06); background: color-mix(in srgb, var(--cor) 26%, transparent); border-color: var(--cor); box-shadow: 0 0 18px -4px var(--cor); }
+.l-garfo-op.is-trancada b { color: #9aa0c0; }
+.l-garfo-op.is-vazia { visibility: hidden; }

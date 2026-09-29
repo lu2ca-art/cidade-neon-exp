@@ -9,8 +9,8 @@
 // O mapa é feito de lugares (ver mundo.ts): cada frequência da rádio tem o
 // seu circuito, na sua altura, com a sua cara. Você fica ali, ouvindo
 // aquela rádio, volta após volta. No fim de cada volta a pista abre numa
-// bifurcação com placas: a faixa da esquerda fica, as da direita levam pros
-// outros lugares — e no meio da saída a rádio sintoniza a do destino.
+// bifurcação de três: uma saída de cada lado, o meio fica — e no meio da
+// saída a rádio sintoniza a do destino.
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
@@ -24,7 +24,7 @@ import type { Save } from "../estado"
 import { gota, nomeDoTom, player, tomDaMusica } from "../som"
 import { MARCHAS, montarMotor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
-import { ENTRADA_U, FAIXA, GARFO, VOL2, distritoDe, faixaEm, montarMundo, territorio, type Destino, type Mundo, type Via } from "./mundo"
+import { ABRE, CK, FAIXA, distritoDe, montarMundo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
 
@@ -81,19 +81,12 @@ type Evs = {
 type Input = { esq: boolean; dir: boolean; freio: boolean; turbo: boolean }
 
 const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
-const lugarDe = (d: Destino) => (d === "vol2" ? VOL2.lugar : territorio(d).lugar)
-const praDe = (d: Destino) => (d === "vol2" ? VOL2.pra : territorio(d).pra)
+const lugarDe = (d: FreqId) => territorio(d).lugar
+const praDe = (d: FreqId) => territorio(d).pra
+// saída aberta = rádio do destino já destravada
+const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id === f.para) < nLib
 
-// quantas faixas de saída estão abertas num circuito (as trancadas ficam
-// sempre do lado de fora: a ordem das faixas é a ordem de custo)
-function abertasDe(v: Via, nLib: number) {
-  let n = 0
-  for (const f of v.faixas) {
-    if (f.para === "vol2" || FREQUENCIAS.findIndex((x) => x.id === f.para) >= nLib) break
-    n++
-  }
-  return n
-}
+type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
 export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDescer, onSair, onVolta }: Props) {
   const M = useMemo(() => montarMundo(), [])
@@ -111,8 +104,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
   const hudSinal = useRef<HTMLDivElement>(null)
   const hudTurbo = useRef<HTMLDivElement>(null)
   const hudRota = useRef<HTMLSpanElement>(null)
-  const hudGarfo = useRef<HTMLDivElement>(null)
   const hudGarfoM = useRef<HTMLElement>(null)
+  const garfoEls = useRef<(HTMLDivElement | null)[]>([])
+  const garfoChave = useRef("")
+  const [garfo, setGarfo] = useState<Garfo | null>(null)
   const mapaCarro = useRef<SVGCircleElement>(null)
   const hudTom = useRef<HTMLElement>(null)
 
@@ -273,27 +268,38 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
         let txt = ""
         let prog = 0
         if (V.tipo === "circuito") {
-          const garfo = V.L - j.u
+          const us = V.faixas.map((f) => f.u)
+          const prox = us.filter((u) => u > j.u)
+          const uG = prox.length ? Math.min(...prox) : V.L + Math.min(...us)
+          const garfo = uG - j.u
           prog = j.u / V.L
+          // cartão da bifurcação: as três opções, acende a do lado em que
+          // o carro está
+          const chave = garfo < 650 ? `${j.via}:${uG % V.L}` : ""
+          if (chave !== garfoChave.current) {
+            garfoChave.current = chave
+            const u0 = uG % V.L
+            setGarfo(chave ? { via: j.via, u: u0, esq: V.faixas.find((f) => f.u === u0 && f.lado < 0), dir: V.faixas.find((f) => f.u === u0 && f.lado > 0) } : null)
+          }
+          if (chave) {
+            if (hudGarfoM.current) hudGarfoM.current.textContent = `${Math.round(garfo)}m`
+            const vai = j.x < -MEIA * 0.35 ? 0 : j.x > MEIA * 0.35 ? 2 : 1
+            garfoEls.current.forEach((el, k) => el?.classList.toggle("is-vai", k === vai))
+          }
           if (d && V.t === "linha") {
             const alvo = centro.estacoes.find((e) => e.id === d)!.u
             const falta = alvo >= j.u ? alvo - j.u : V.L - j.u + alvo
             txt = `${Math.round(falta)}m`
             prog = 1 - Math.min(1, falta / (V.L * 0.5))
-          } else if (d) txt = `pega a saída pra cidade neon · ${Math.round(garfo)}m`
+          } else if (d) txt = `saída → pra cidade neon em ${Math.round(garfo)}m`
           else if (V.t === "linha" && garfo > 700) {
             const px = V.estacoes.find((e) => e.u > j.u)
             txt = px ? `próxima: ${getEstacao(px.id).faixa.toLowerCase()} · ${Math.round(px.u - j.u)}m` : `bifurcação em ${Math.round(garfo)}m`
           } else txt = `bifurcação em ${Math.round(garfo)}m`
-          if (hudGarfo.current) {
-            const perto = garfo < 700 && garfo > 4
-            hudGarfo.current.style.opacity = perto ? "1" : "0"
-            if (perto && hudGarfoM.current) hudGarfoM.current.textContent = `${Math.round(garfo)}m`
-          }
         } else {
-          if (hudGarfo.current) hudGarfo.current.style.opacity = "0"
+          if (garfoChave.current) { garfoChave.current = ""; setGarfo(null) }
           prog = j.u / V.L
-          txt = V.tipo === "saida" ? `faltam ${Math.round(V.L - j.u)}m` : "chegando"
+          txt = `faltam ${Math.round(V.L - j.u)}m`
         }
         if (hudRota.current) hudRota.current.textContent = txt
         if (hudProg.current) hudProg.current.style.transform = `scaleX(${prog})`
@@ -339,6 +345,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
       evs.current?.via(i)
     }
     w.__tom = () => tomDaMusica()
+    if (M.conflitos.length) console.warn("pistas se encostando:", M.conflitos)
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
@@ -527,11 +534,36 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
 
       {popup && <div key={popup.id} className="l-popup" style={{ color: popup.cor }}>{popup.txt}</div>}
 
-      <div ref={hudGarfo} className="l-hud-garfo" style={{ opacity: 0 }}>
-        <small>bifurcação</small>
-        <b ref={hudGarfoM}>0m</b>
-        <span>← fica · sai →</span>
-      </div>
+      {garfo && (() => {
+        const C = M.vias[garfo.via]
+        const aqui = freqDe(C.t)
+        const op = (f: Faixa | undefined, k: number) => {
+          if (!f) return <div key={k} ref={(el) => { garfoEls.current[k] = el }} className="l-garfo-op is-vazia" />
+          const fr = freqDe(f.para)
+          const ok = aberta(f, nLib)
+          return (
+            <div key={k} ref={(el) => { garfoEls.current[k] = el }} className={`l-garfo-op ${ok ? "" : "is-trancada"}`} style={{ ["--cor" as string]: ok ? fr.cor : "#6a6f8c" }}>
+              <i>{f.lado < 0 ? "←" : "→"}</i>
+              <b>{lugarDe(f.para)}</b>
+              <small>{ok ? `${fr.freq} FM` : `trancada · ${fr.custo}`}</small>
+            </div>
+          )
+        }
+        return (
+          <div className="l-garfo">
+            <header>bifurcação em <b ref={hudGarfoM}>…</b> · vai pro lado da saída</header>
+            <div className="l-garfo-ops">
+              {op(garfo.esq, 0)}
+              <div ref={(el) => { garfoEls.current[1] = el }} className="l-garfo-op" style={{ ["--cor" as string]: aqui.cor }}>
+                <i>↑</i>
+                <b>fica</b>
+                <small>{aqui.freq} FM</small>
+              </div>
+              {op(garfo.dir, 2)}
+            </div>
+          </div>
+        )
+      })()}
 
       <div className="l-hud-vel">
         <span ref={hudVel}>0</span>
@@ -629,10 +661,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, onSinal, onDesce
 function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null): Jogo {
   // começa sempre no centro (cidade neon, 222.0)
   const c = M.vias[M.circuito.linha]
-  let u = ENTRADA_U + 10
+  const u0 = c.estacoes[0].u - 150
+  let u = u0
   const e = (id: EstacaoId) => c.estacoes.find((x) => x.id === id)
   // com destino: ~900m antes, pra dar gosto de chegar
-  if (destino && e(destino)) u = Math.max(ENTRADA_U + 10, e(destino)!.u - 900)
+  if (destino && e(destino)) u = Math.max(u0, e(destino)!.u - 900)
   else if (estacao && e(estacao)) u = e(estacao)!.u + 25
   return {
     via: M.circuito.linha,
@@ -688,19 +721,21 @@ function Cena({
   const geo = useMemo(() => {
     const vias = M.vias as Via[]
     const U = (i: number) => i * PASSO
+    // nunca um trilho atravessando pista: some onde a pista divide, onde
+    // outra encosta chegando, e no começo/fim das saídas (coladas no circuito)
+    const divide = (v: Via, i: number, lado: number) => v.faixas.some((f) => f.lado === lado && Math.abs(i - Math.floor(f.u / PASSO)) <= 1)
+    const chegando = (v: Via, i: number) => v.chegadas.some((c) => U(i) > c.u - 220 && U(i) < c.u + 10)
     const trilhoE = (p: Pista, i: number) => {
       const v = p as Via
       const u = U(i)
-      if (v.tipo === "circuito") return !(u > v.L - 130 || u < ENTRADA_U + 10)
-      if (v.tipo === "saida") return u > 150 && u < v.L - 70
-      return u > 40
+      if (v.tipo === "circuito") return !divide(v, i, -1)
+      return !(v.lado! > 0 && u < 90) && u < v.L - 230
     }
     const trilhoD = (p: Pista, i: number) => {
       const v = p as Via
       const u = U(i)
-      if (v.tipo === "circuito") return i !== v.n - 1
-      if (v.tipo === "saida") return u > 150 && u < v.L - 70
-      return u < v.L - 120
+      if (v.tipo === "circuito") return !divide(v, i, 1) && !chegando(v, i)
+      return !(v.lado! < 0 && u < 90)
     }
     const rails = (lado: number) => fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
       vertical: true,
@@ -709,24 +744,22 @@ function Cena({
     })
     const semEmenda = (p: Pista, i: number) => {
       const v = p as Via
-      return !(v.tipo === "circuito" && i === v.n - 1) && !(v.tipo === "saida" && U(i) < 150)
+      if (v.tipo === "circuito") return !divide(v, i, -1) && !divide(v, i, 1)
+      return U(i) > 60 && U(i) < v.L - 120
     }
-    const nMax = Math.max(...circuitos.map((c) => c.faixas.length))
+    // tracejado que separa a faixa de saída da pista que fica
+    const divisoria = (lado: number) => fita(circuitos, lado * MEIA - 0.12, lado * MEIA + 0.12, 0.045, {
+      incluir: (p, i) => i % 5 < 3 && (p as Via).faixas.some((f) => f.lado === lado && U(i) > f.u - ABRE + 110 && U(i) < f.u),
+    })
     return {
       chao: fita(vias, (p, i) => p.esq[i] - 0.25, (p, i) => p.dir[i] + 0.25, 0.01),
-      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, x - 0.1, x + 0.1, 0.04, { incluir: (p, i) => i % 6 < 3 && semEmenda(p, i) && (p as Via).tipo !== "entrada" })),
+      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, x - 0.1, x + 0.1, 0.04, { incluir: (p, i) => i % 6 < 3 && semEmenda(p, i) })),
       bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { incluir: semEmenda })),
-      // divisórias das faixas da bifurcação
-      linhasGarfo: Array.from({ length: nMax }, (_, k) => fita(circuitos, MEIA + k * FAIXA - 0.12, MEIA + k * FAIXA + 0.12, 0.045, {
-        incluir: (p, i) => {
-          const v = p as Via
-          return k < v.faixas.length && U(i) > v.L - GARFO + 110 && i !== v.n - 1 && i % 5 < 3
-        },
-      })),
+      linhasGarfo: [divisoria(-1), divisoria(1)],
       railE: rails(-1),
       railD: rails(1),
-      saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, incluir: semEmenda }),
-      saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, incluir: semEmenda }),
+      saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
+      saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, incluir: (p, i) => semEmenda(p, i) && trilhoD(p, i) }),
     }
   }, [M, circuitos, distI, rgb])
 
@@ -820,7 +853,8 @@ function Cena({
 
     // pilares embaixo de todas as vias
     const pil: [number, number, number, number][] = []
-    for (const v of M.vias) for (let k = 0; k < v.n; k += 20) if (v.py[k] > -9) pil.push([v.px[k], v.py[k], v.pz[k], 0])
+    // (só onde descer até a água não fura outra pista)
+    for (const v of M.vias) for (let k = 0; k < v.n; k += 20) if (v.py[k] > -9 && M.vao(v.px[k], v.pz[k], v.py[k])) pil.push([v.px[k], v.py[k], v.pz[k], 0])
     const pilares = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 1, 1.6), new THREE.MeshStandardMaterial({ color: "#10122a", roughness: 0.8 }), pil.length)
     pil.forEach(([x, y, z], i) => {
       const h = y + 12
@@ -833,17 +867,24 @@ function Cena({
 
     // postes a cada 24m dos dois lados, na cor do lugar (no túnel a luz é a
     // fita do teto)
-    const ks: { v: Via; k: number }[] = []
+    // (nunca em cima de outra pista: somem onde a saída descola e onde
+    // outra encosta chegando)
+    const ks: { v: Via; k: number; lado: number }[] = []
     for (const v of M.vias) {
-      if (v.tipo === "entrada") continue
       for (let k = 0; k < v.n; k += 12) {
         const u = k * PASSO
-        if (v.tipo === "saida" && (u < 150 || u > v.L - 70)) continue
+        if (v.tipo === "saida" && (u < 150 || u > v.L - 240)) continue
         if (noTunel(v, k)) continue
-        ks.push({ v, k })
+        for (const lado of [-1, 1]) {
+          if (v.tipo === "circuito") {
+            if (v.faixas.some((f) => f.lado === lado && u > f.u - 4 && u < f.u + 140)) continue
+            if (lado > 0 && v.chegadas.some((c) => u > c.u - 240 && u < c.u + 10)) continue
+          }
+          ks.push({ v, k, lado })
+        }
       }
     }
-    const nL = ks.length * 2
+    const nL = ks.length
     const postes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 7.2, 0.16), new THREE.MeshStandardMaterial({ color: "#22243e" }), nL)
     const luzPos = new Float32Array(nL * 3)
     const luzCor = new Float32Array(nL * 3)
@@ -854,9 +895,9 @@ function Cena({
     )
     const c = new THREE.Color()
     let n = 0
-    for (const { v, k } of ks) {
+    for (const { v, k, lado } of ks) {
       const ds = distI(v, k)
-      for (const lado of [-1, 1]) {
+      {
         const borda = lado < 0 ? v.esq[k] : v.dir[k]
         pontoI(v, k, borda + lado * 0.9, 3.6, q)
         d.position.copy(q)
@@ -917,67 +958,79 @@ function Cena({
     .filter(({ id }) => missao(getEstacao(id), nivel).ok && !objetos.includes(id))
     .map(({ id, u }) => ({ id, cor: getEstacao(id).cor, pos: noMundo(centro, u, 0, 0, a, new THREE.Vector3()) })), [centro, a, nivel, objetos])
 
-  // ── placas da bifurcação: um pórtico por circuito, uma placa por faixa ──
-  const placas = useMemo(() => circuitos.map((C) => {
-    const t = territorio(C.t)
-    const ab = abertasDe(C, nLib)
-    const larg = MEIA + C.faixas.length * FAIXA
-    const uP = C.L - 110
-    const pos = noMundo(C, uP, 0, 0, a, new THREE.Vector3())
-    const rot = Math.atan2(a.tx, a.tz)
-    const corAqui = freqDe(C.t).cor
-    const paineis = [
-      { x: 0, w: 13, cor: corAqui, tex: texTexto([{ txt: `↑ ${t.lugar.toUpperCase()}`, tam: 110, cor: corAqui }, { txt: `fica · ${freqDe(C.t).freq} FM`, tam: 56, cor: "#ffffff", fonte: "ui-monospace, monospace" }]) },
-      ...C.faixas.map((f, k) => {
-        if (f.para === "vol2") return { x: f.x, w: 6.4, cor: "#b38cff", tex: texTexto([{ txt: "VOL.2", tam: 130, cor: "#b38cff" }, { txt: "em obra", tam: 64, cor: "#ffffff", fonte: "ui-monospace, monospace" }], 512, 256) }
-        const fr = freqDe(f.para)
-        const aberta = k < ab
-        return {
-          x: f.x,
-          w: 6.4,
-          cor: aberta ? fr.cor : "#555a77",
-          tex: aberta
-            ? texTexto([{ txt: `↗ ${lugarDe(f.para).toUpperCase()}`, tam: 70, cor: fr.cor }, { txt: `${fr.freq} FM`, tam: 64, cor: "#ffffff", fonte: "ui-monospace, monospace" }], 512, 256)
-            : texTexto([{ txt: lugarDe(f.para).toUpperCase(), tam: 64, cor: "#7a7f9c" }, { txt: `trancada · ${fr.custo} sinal`, tam: 44, cor: "#9aa0c0", fonte: "ui-monospace, monospace" }], 512, 256),
-        }
-      }),
-    ]
-    // setas no chão, uma por faixa
+  // ── placas: cada bifurcação tem dois pórticos (aviso e "agora"), com
+  // três placas — ← saída da esquerda, ↑ fica, saída da direita → ──
+  const placas = useMemo(() => {
+    const lista: {
+      id: string; pos: THREE.Vector3; rot: number; topo: THREE.Texture
+      paineis: { x: number; cor: string; tex: THREE.Texture }[]
+    }[] = []
     const setas: { p: THREE.Vector3; rot: number; cor: string; op: number }[] = []
-    for (const du0 of [95, 45]) {
-      const u = C.L - du0
-      setas.push({ p: noMundo(C, u, 0, 0.06, a, new THREE.Vector3()), rot: Math.atan2(-a.tx, -a.tz), cor: corAqui, op: 0.8 })
-      C.faixas.forEach((f, k) => {
-        const aberta = f.para !== "vol2" && k < ab
-        setas.push({
-          p: noMundo(C, u, f.x, 0.06, a, new THREE.Vector3()),
-          rot: Math.atan2(-a.tx, -a.tz) - 0.35,
-          cor: aberta ? freqDe(f.para as FreqId).cor : "#444860",
-          op: aberta ? 0.9 : 0.35,
+    const barreiras: { p: THREE.Vector3; rot: number }[] = []
+    const MONO = "ui-monospace, monospace"
+    for (const C of circuitos) {
+      const aqui = freqDe(C.t)
+      const us = [...new Set(C.faixas.map((f) => f.u))].sort((x, y) => y - x)
+      us.forEach((uk, si) => {
+        const lados = [C.faixas.find((f) => f.u === uk && f.lado < 0), undefined, C.faixas.find((f) => f.u === uk && f.lado > 0)]
+        const paineis = lados.map((f, k) => {
+          const x = (k - 1) * CK
+          if (k === 1) return { x, cor: aqui.cor, tex: texTexto([{ txt: "↑", tam: 110, cor: aqui.cor }, { txt: territorio(C.t).lugar.toUpperCase(), tam: 62, cor: aqui.cor }, { txt: "fica · mais uma volta", tam: 40, cor: "#ffffff", fonte: MONO }], 512, 352) }
+          const fr = freqDe(f!.para)
+          const seta = f!.lado < 0 ? "←" : "→"
+          return aberta(f!, nLib)
+            ? { x, cor: fr.cor, tex: texTexto([{ txt: seta, tam: 110, cor: fr.cor }, { txt: lugarDe(f!.para).toUpperCase(), tam: 62, cor: fr.cor }, { txt: `${fr.freq} FM`, tam: 46, cor: "#ffffff", fonte: MONO }], 512, 352) }
+            : { x, cor: "#555a77", tex: texTexto([{ txt: "TRANCADA", tam: 60, cor: "#8a8fae" }, { txt: lugarDe(f!.para).toUpperCase(), tam: 56, cor: "#8a8fae" }, { txt: `junta ${fr.custo} de sinal`, tam: 40, cor: "#b0b5d0", fonte: MONO }], 512, 352) }
         })
+        // o aviso da segunda bifurcação do centro vem logo depois da primeira
+        const antes = us.length > 1 && si === 0 ? 240 : 330
+        for (const [dist, agora] of [[antes, false], [100, true]] as const) {
+          const pos = noMundo(C, uk - dist, 0, 0, a, new THREE.Vector3())
+          lista.push({
+            id: `${C.id}:${uk}:${dist}`,
+            pos,
+            rot: Math.atan2(a.tx, a.tz),
+            topo: texTexto([{ txt: agora ? "SAÍDAS · AGORA" : `SAÍDAS EM ${dist} M`, tam: 96, cor: "#ffc857" }], 1024, 128),
+            paineis,
+          })
+        }
+        // setas no chão: reto no meio, diagonal em cada faixa de saída
+        for (const d0 of [90, 35]) {
+          const u = uk - d0
+          setas.push({ p: noMundo(C, u, 0, 0.06, a, new THREE.Vector3()), rot: Math.atan2(-a.tx, -a.tz), cor: aqui.cor, op: 0.8 })
+          for (const f of [lados[0], lados[2]]) {
+            if (!f) continue
+            const ok = aberta(f, nLib)
+            setas.push({ p: noMundo(C, u, f.lado * CK, 0.06, a, new THREE.Vector3()), rot: Math.atan2(-a.tx, -a.tz) - f.lado * 0.35, cor: ok ? freqDe(f.para).cor : "#444860", op: ok ? 0.95 : 0.35 })
+          }
+        }
+        for (const f of [lados[0], lados[2]]) {
+          if (!f || aberta(f, nLib)) continue
+          barreiras.push({ p: noMundo(C, uk - 4, f.lado * CK, 0.9, a, new THREE.Vector3()), rot: Math.atan2(a.tx, a.tz) })
+        }
       })
     }
-    // aviso 600m antes
-    const uA = C.L - 600
-    const avisoPos = noMundo(C, uA, MEIA + 4, 0, a, new THREE.Vector3())
-    const avisoRot = Math.atan2(a.tx, a.tz)
-    const avisoTex = texTexto([{ txt: "BIFURCAÇÃO · 500 M", tam: 100, cor: corAqui }, { txt: "direita sai · esquerda fica", tam: 54, cor: "#ffffff", fonte: "ui-monospace, monospace" }])
-    // barreira: da primeira faixa trancada pra fora
-    const xb = MEIA + ab * FAIXA
-    const barreira = ab < C.faixas.length
-      ? { p: noMundo(C, C.L - 5, (xb + larg) / 2, 0.9, a, new THREE.Vector3()), rot: Math.atan2(a.tx, a.tz), w: larg - xb }
-      : null
-    return { id: C.id, pos, rot, larg, paineis, setas, avisoPos, avisoRot, avisoTex, barreira }
-  }), [circuitos, a, nLib])
+    return { lista, setas, barreiras }
+  }, [circuitos, a, nLib])
 
-  // muro listrado ao longo das faixas trancadas (física: ver limite no loop)
-  const muros = useMemo(() => {
-    const trancado = (v: Via) => abertasDe(v, nLib) < v.faixas.length
-    return fita(circuitos, (p) => MEIA + abertasDe(p as Via, nLib) * FAIXA, 1.1, 0, {
+  // faixa de saída pintada na cor da rádio (cinza se trancada) e muro
+  // listrado na trancada (física: ver limite no loop)
+  const pinturas = useMemo(() => {
+    const U = (i: number) => i * PASSO
+    const faixaEm = (p: Pista, i: number, lado: number) => (p as Via).faixas.find((f) => f.lado === lado && U(i) > f.u - ABRE + 40 && U(i) <= f.u)
+    const pint = (lado: number) => fita(circuitos, lado > 0 ? MEIA + 0.4 : -(MEIA + FAIXA) + 0.4, lado > 0 ? MEIA + FAIXA - 0.4 : -MEIA - 0.4, 0.03, {
+      incluir: (p, i) => !!faixaEm(p, i, lado),
+      cor: (p, i) => {
+        const f = faixaEm(p, i, lado)!
+        return aberta(f, nLib) ? hexRgb(freqDe(f.para).cor) : [0.25, 0.26, 0.34]
+      },
+    })
+    const muro = (lado: number) => fita(circuitos, lado * (MEIA + 0.25), 1.1, 0, {
       vertical: true,
-      incluir: (p, i) => trancado(p as Via) && i * PASSO > p.L - GARFO + 100 && i !== p.n - 1,
+      incluir: (p, i) => { const f = faixaEm(p, i, lado); return !!f && !aberta(f, nLib) },
       cor: (_p, i) => (i % 2 ? [1, 0.25, 0.35] : [0.95, 0.95, 1]),
     })
+    return { faixas: [pint(-1), pint(1)], muros: [muro(-1), muro(1)] }
   }, [circuitos, nLib])
 
   // ── orbs (todas as vias numa malha só) ──
@@ -1139,7 +1192,8 @@ function Cena({
     } else {
       const alvoSteer = (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 7)
-      const vmax = j.turboT > 0 ? VTURBO : VMAX
+      // nos viadutos entre lugares a pista é expressa
+      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1)
       if (inp.freio) j.v = Math.max(0, j.v - FREIO * dt)
       else j.v += (ACEL * (1 - Math.pow(Math.min(1, j.v / vmax), 2)) + (j.turboT > 0 ? 16 : 0)) * dt
       if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
@@ -1153,11 +1207,18 @@ function Cena({
       if (!j.ar) j.x += (j.vx - a.curv * j.v * j.v * 0.035 * segura) * dt
       else j.x += j.vx * 0.5 * dt
     }
-    // parede macia: raspa, solta faísca, perde um pouco de velocidade. Na
-    // bifurcação, a borda direita para na primeira faixa trancada
+    // parede macia: raspa, solta faísca, perde um pouco de velocidade. Faixa
+    // de saída trancada = muro no lugar da faixa
     let dirMax = a.dir
-    if (V.tipo === "circuito" && V.faixas.length) dirMax = Math.min(dirMax, MEIA + abertasDe(V, nLibRef.current) * FAIXA)
-    const limE = a.esq + 1.05
+    let esqMin = a.esq
+    if (V.tipo === "circuito") {
+      for (const f of V.faixas) {
+        if (j.u <= f.u - ABRE || j.u > f.u || aberta(f, nLibRef.current)) continue
+        if (f.lado > 0) dirMax = Math.min(dirMax, MEIA)
+        else esqMin = Math.max(esqMin, -MEIA)
+      }
+    }
+    const limE = esqMin + 1.05
     const limD = dirMax - 1.05
     if (j.x < limE || j.x > limD) {
       const lado = j.x > limD ? 1 : -1
@@ -1176,42 +1237,45 @@ function Cena({
     const uAnt = j.u
     j.u += j.v * dt
     let trocou = false
-    if (j.u >= V.L) {
+    // bifurcação: se o carro está na faixa de uma saída aberta, pega ela
+    const f = V.tipo === "circuito" ? saidaEm(V, uAnt, j.u, j.x, (ff) => aberta(ff, nLibRef.current)) : null
+    if (f) {
+      trocou = true
+      if (j.voltaIni >= 0) {
+        j.voltas++
+        j.st.voltas = j.voltas
+        ev.volta(j.tempo - j.voltaIni)
+      }
+      j.pegos.clear()
+      j.via = f.via
+      j.u = j.u - f.u
+      j.x -= f.lado * CK
+      j.sintonizou = false
+      vib([20, 30, 20])
+    } else if (j.u >= V.L) {
       const sobra = j.u - V.L
       trocou = true
       if (V.tipo === "circuito") {
-        // fim da volta: bifurcação
+        // fim da volta (quem ficou)
         if (j.voltaIni >= 0) {
-          const tv = j.tempo - j.voltaIni
           j.voltas++
           j.st.voltas = j.voltas
-          ev.volta(tv)
+          ev.volta(j.tempo - j.voltaIni)
         }
         j.pegos.clear()
-        const f = faixaEm(V, j.x, abertasDe(V, nLibRef.current))
-        if (f && f.via >= 0) {
-          j.via = f.via
-          j.u = sobra
-          j.x -= f.x
-          j.sintonizou = false
-          vib([20, 30, 20])
-        } else {
-          j.u = sobra
-          j.voltaIni = j.tempo
-        }
-      } else if (V.tipo === "saida") {
-        j.via = M.entrada[V.t]
         j.u = sobra
-      } else {
-        j.via = M.circuito[V.t]
-        j.u = ENTRADA_U + sobra
         j.voltaIni = j.tempo
+      } else {
+        // fim da saída: encosta no circuito do destino
+        j.via = M.circuito[V.t]
+        j.u = V.chega!.u + sobra
+        j.voltaIni = -1
         j.pegos.clear()
       }
-      if (M.vias[j.via] !== V) {
-        V = M.vias[j.via]
-        ev.via(j.via)
-      }
+    }
+    if (M.vias[j.via] !== V) {
+      V = M.vias[j.via]
+      ev.via(j.via)
     }
 
     // no meio da saída a rádio sintoniza a do destino
@@ -1536,9 +1600,6 @@ function Cena({
           <meshStandardMaterial color="#0d0f24" side={THREE.DoubleSide} />
         </mesh>
       ))}
-      <mesh geometry={muros}>
-        <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
-      </mesh>
 
       {cidade.predios.map((m, i) => <primitive key={i} object={m} />)}
       <primitive object={cidade.arcos} />
@@ -1554,61 +1615,63 @@ function Cena({
       <primitive object={cidade.reflexos} />
       <points geometry={cidade.luzes} material={cidade.luzMat} />
 
-      {/* bifurcações: pórtico com uma placa por faixa, setas no chão,
-          barreira nas trancadas, aviso 500m antes */}
-      {placas.map((g) => (
-        <group key={g.id}>
-          <group position={g.pos} rotation={[0, g.rot, 0]}>
-            {[-(MEIA + 1), g.larg + 1].map((x) => (
-              <mesh key={x} position={[-x, 5.2, 0]}>
-                <boxGeometry args={[0.5, 10.4, 0.5]} />
-                <meshStandardMaterial color="#1c1f3a" />
-              </mesh>
-            ))}
-            <mesh position={[-(g.larg - MEIA) / 2, 10.6, 0]}>
-              <boxGeometry args={[g.larg + MEIA + 2, 0.5, 0.5]} />
+      {/* bifurcações: pórticos com três placas, setas no chão, faixa de
+          saída pintada, barreira nas trancadas */}
+      {pinturas.faixas.map((g, i) => (
+        <mesh key={`pf${i}`} geometry={g}>
+          <meshBasicMaterial vertexColors transparent opacity={0.22} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+      ))}
+      {pinturas.muros.map((g, i) => (
+        <mesh key={`pm${i}`} geometry={g}>
+          <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
+        </mesh>
+      ))}
+      {placas.lista.map((g) => (
+        <group key={g.id} position={g.pos} rotation={[0, g.rot, 0]}>
+          {[-1, 1].map((l) => (
+            <mesh key={l} position={[l * (MEIA + FAIXA + 1.2), 6.6, 0]}>
+              <boxGeometry args={[0.6, 13.2, 0.6]} />
               <meshStandardMaterial color="#1c1f3a" />
-            </mesh>
-            {g.paineis.map((p, i) => (
-              <group key={i} position={[-p.x, 8.4, -0.3]} rotation={[0, Math.PI, 0]}>
-                <mesh position={[0, 0, -0.05]}>
-                  <planeGeometry args={[p.w, p.w / (p.w > 8 ? 4 : 2) + 0.4]} />
-                  <meshBasicMaterial color="#070817" transparent opacity={0.85} side={THREE.DoubleSide} />
-                </mesh>
-                <mesh>
-                  <planeGeometry args={[p.w, p.w / (p.w > 8 ? 4 : 2)]} />
-                  <meshBasicMaterial map={p.tex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
-                </mesh>
-                <mesh position={[0, -(p.w / (p.w > 8 ? 4 : 2)) / 2 - 0.3, 0]}>
-                  <planeGeometry args={[p.w, 0.12]} />
-                  <meshBasicMaterial color={p.cor} toneMapped={false} />
-                </mesh>
-              </group>
-            ))}
-          </group>
-          {g.setas.map((s, i) => (
-            <mesh key={`s${i}`} position={s.p} rotation={[-Math.PI / 2, 0, s.rot]}>
-              <planeGeometry args={[3, 6]} />
-              <meshBasicMaterial map={tex.turbo} color={s.cor} transparent opacity={s.op} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
             </mesh>
           ))}
-          <group position={g.avisoPos} rotation={[0, g.avisoRot, 0]}>
-            <mesh position={[0, 3, 0]}>
-              <boxGeometry args={[0.3, 6, 0.3]} />
-              <meshStandardMaterial color="#1c1f3a" />
-            </mesh>
-            <mesh position={[3.5, 6.6, -0.2]} rotation={[0, Math.PI, 0]}>
-              <planeGeometry args={[10, 2.5]} />
-              <meshBasicMaterial map={g.avisoTex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
-            </mesh>
-          </group>
-          {g.barreira && (
-            <mesh position={g.barreira.p} rotation={[0, g.barreira.rot, 0]}>
-              <boxGeometry args={[g.barreira.w, 1.8, 0.6]} />
-              <meshBasicMaterial color="#ff2a44" toneMapped={false} />
-            </mesh>
-          )}
+          <mesh position={[0, 12.1, 0]}>
+            <boxGeometry args={[(MEIA + FAIXA + 1.2) * 2, 0.6, 0.6]} />
+            <meshStandardMaterial color="#1c1f3a" />
+          </mesh>
+          <mesh position={[0, 13.4, -0.3]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[16, 2]} />
+            <meshBasicMaterial map={g.topo} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
+          </mesh>
+          {g.paineis.map((p, i) => (
+            <group key={i} position={[-p.x, 8.8, -0.3]} rotation={[0, Math.PI, 0]}>
+              <mesh position={[0, 0, -0.05]}>
+                <planeGeometry args={[7.6, 5.6]} />
+                <meshBasicMaterial color="#070817" transparent opacity={0.9} side={THREE.DoubleSide} />
+              </mesh>
+              <mesh>
+                <planeGeometry args={[7.4, 5.1]} />
+                <meshBasicMaterial map={p.tex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
+              </mesh>
+              <mesh position={[0, -2.95, 0]}>
+                <planeGeometry args={[7.6, 0.22]} />
+                <meshBasicMaterial color={p.cor} toneMapped={false} />
+              </mesh>
+            </group>
+          ))}
         </group>
+      ))}
+      {placas.setas.map((s, i) => (
+        <mesh key={`s${i}`} position={s.p} rotation={[-Math.PI / 2, 0, s.rot]}>
+          <planeGeometry args={[3.2, 6.4]} />
+          <meshBasicMaterial map={tex.turbo} color={s.cor} transparent opacity={s.op} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+      ))}
+      {placas.barreiras.map((b, i) => (
+        <mesh key={`b${i}`} position={b.p} rotation={[0, b.rot, 0]}>
+          <boxGeometry args={[FAIXA, 1.8, 0.6]} />
+          <meshBasicMaterial color="#ff2a44" toneMapped={false} />
+        </mesh>
       ))}
 
       {portais.map((p) => (

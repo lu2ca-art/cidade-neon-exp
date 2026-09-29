@@ -1,13 +1,14 @@
 // O mapa da Linha 222: cada frequência da rádio é um lugar da cidade com o
 // seu próprio circuito. Você fica no lugar (e na rádio dele) enquanto
-// quiser; no fim de cada volta a pista abre numa bifurcação com placas —
-// a faixa da esquerda dá mais uma volta, as da direita saem pros outros
-// lugares. Mudar de música = mudar de caminho. Rádio trancada = saída com
-// barreira até juntar sinal.
+// quiser; no fim de cada volta a pista abre em bifurcações de três: uma
+// saída de cada lado e o meio, que fica. Mudar de música = mudar de
+// caminho. Rádio trancada = saída com barreira até juntar sinal.
 //
 // Os cinco circuitos ficam num anel em volta de um vão central, cada um
-// numa altura; as saídas cruzam o vão em viadutos de alturas diferentes.
-// Cada circuito começa (u = 0) no ponto virado pro vão: é ali a bifurcação.
+// numa altura; as saídas cruzam o vão em viadutos. Regra dura: nenhuma
+// pista encosta em outra — só se cruzam com FOLGA de altura (conferido na
+// montagem por conflitos()). Cada saída chega no destino num ponto só dela,
+// alternando os lados, então também nunca se juntam antes de chegar.
 
 import * as THREE from "three"
 import { ESTACOES, type EstacaoId } from "../data"
@@ -15,13 +16,13 @@ import { FREQUENCIAS, type FreqId } from "../radio"
 import { MEIA, PASSO, amostrar, derivar, rng, suave, type Pista } from "./pista"
 import { DISTRITOS, type Distrito, type DistritoId } from "./distritos"
 
-export const FAIXA = 7 // largura de cada faixa de saída na bifurcação
-export const GARFO = 260 // trecho largo antes da bifurcação
-export const RETA = 330 // trecho reto, plano e sem inclinação antes dela
-export const ENTRADA_U = 60 // onde a rampa de chegada encosta no circuito
-const ANEL = 860 // raio do anel onde ficam os circuitos
+export const FAIXA = 7 // largura da faixa de saída
+export const CK = MEIA + FAIXA / 2 // centro da faixa de saída, a partir do eixo
+export const ABRE = 240 // a faixa de saída começa a abrir isso antes da bifurcação
+const ANEL = 940 // raio do anel onde ficam os circuitos
+const FOLGA = 7.5 // viaduto: altura livre mínima entre duas pistas que se cruzam
 
-export type Destino = FreqId | "vol2"
+export type Destino = FreqId
 
 export interface Territorio {
   id: FreqId
@@ -33,19 +34,20 @@ export interface Territorio {
   harm: [number, number, number][] // forma: (harmônico, amplitude, fase)
   relevo: [number, number, number][] // altura: (harmônico, metros, fase)
   kBank: number
+  reta: number // reta plana antes do fim da volta (onde ficam as bifurcações)
   predio: Distrito["predio"]
   tunel?: [number, number] // trecho coberto (fração do loop)
 }
 
 export const TERRITORIOS: Territorio[] = [
-  { id: "linha", lugar: "cidade neon", pra: "pra cidade neon", distrito: "neonio", raio: 470, alt: 3, harm: [[3, 0.16, 0.4], [5, 0.06, 1.2]], relevo: [[2, 6, 0.3], [3, 3, 1]], kBank: 30, predio: "torres" },
-  { id: "suburbio", lugar: "subúrbio xenom", pra: "pro subúrbio xenom", distrito: "xenonio", raio: 320, alt: -5, harm: [[2, 0.2, 0.9], [4, 0.08, 0.2]], relevo: [[3, 1.5, 0]], kBank: 24, predio: "casas" },
-  { id: "crypto", lugar: "o mirante", pra: "pro mirante", distrito: "helio", raio: 300, alt: 36, harm: [[3, 0.12, 2], [6, 0.05, 0.5]], relevo: [[2, 16, 0.8], [5, 4, 0.2]], kBank: 28, predio: "aberto" },
-  { id: "live", lugar: "a arena", pra: "pra arena", distrito: "radonio", raio: 300, alt: 12, harm: [[2, 0.3, 0]], relevo: [[1, 4, 0.5]], kBank: 42, predio: "torres", tunel: [0.28, 0.5] },
-  { id: "full", lugar: "a avenida", pra: "pra avenida", distrito: "criptonio", raio: 330, alt: 22, harm: [[4, 0.14, 0.6], [2, 0.1, 1.5]], relevo: [[3, 8, 0.5]], kBank: 30, predio: "brancas" },
+  { id: "linha", reta: 300, lugar: "cidade neon", pra: "pra cidade neon", distrito: "neonio", raio: 560, alt: 3, harm: [[3, 0.16, 0.4], [5, 0.06, 1.2]], relevo: [[2, 6, 0.3], [3, 3, 1]], kBank: 30, predio: "torres" },
+  { id: "suburbio", reta: 300, lugar: "subúrbio xenom", pra: "pro subúrbio xenom", distrito: "xenonio", raio: 320, alt: -5, harm: [[2, 0.2, 0.9], [4, 0.08, 0.2]], relevo: [[3, 1.5, 0]], kBank: 24, predio: "casas" },
+  { id: "crypto", reta: 300, lugar: "o mirante", pra: "pro mirante", distrito: "helio", raio: 300, alt: 36, harm: [[3, 0.12, 2], [6, 0.05, 0.5]], relevo: [[2, 16, 0.8], [5, 4, 0.2]], kBank: 28, predio: "aberto" },
+  { id: "live", reta: 300, lugar: "a arena", pra: "pra arena", distrito: "radonio", raio: 300, alt: 12, harm: [[2, 0.3, 0]], relevo: [[1, 4, 0.5]], kBank: 42, predio: "torres", tunel: [0.28, 0.5] },
+  { id: "full", reta: 300, lugar: "a avenida", pra: "pra avenida", distrito: "criptonio", raio: 330, alt: 22, harm: [[4, 0.14, 0.6], [2, 0.1, 1.5]], relevo: [[3, 8, 0.5]], kBank: 30, predio: "brancas" },
 ]
 
-export const VOL2 = { lugar: "vol.2 · em obra", pra: "pro vol.2", distrito: "argonio" as DistritoId }
+export const VOL2 = { lugar: "vol.2 · em obra", distrito: "argonio" as DistritoId }
 
 export function territorio(id: FreqId) {
   return TERRITORIOS.find((t) => t.id === id)!
@@ -56,36 +58,47 @@ export function distritoDe(id: FreqId): Distrito {
 }
 
 export interface Faixa {
-  para: Destino
-  via: number // índice da saída (-1 = sem estrada: vol.2)
-  x: number // centro da faixa no circuito, na bifurcação
+  para: FreqId
+  via: number // índice da saída
+  u: number // onde a pista divide (no circuito)
+  lado: 1 | -1 // direita / esquerda
 }
 
 export interface Via extends Pista {
   id: string
-  tipo: "circuito" | "saida" | "entrada"
-  t: FreqId // circuito/entrada: o lugar; saída: pra onde vai
+  tipo: "circuito" | "saida"
+  t: FreqId // circuito: o lugar; saída: pra onde vai
   de?: FreqId // saída: de onde vem
+  lado?: 1 | -1 // saída: lado por onde sai
+  chega?: { u: number; lado: 1 | -1 } // saída: onde encosta no destino
   estacoes: { id: EstacaoId; u: number }[]
   rampas: number[]
   orbs: { u: number; x: number }[]
   turbos: { u: number; x: number }[]
-  faixas: Faixa[]
+  faixas: Faixa[] // circuito: as saídas
+  chegadas: { u: number; lado: 1 | -1 }[] // circuito: onde as saídas encostam
 }
 
 export interface Mundo {
   vias: Via[]
   circuito: Record<FreqId, number>
-  entrada: Record<FreqId, number>
   livre: (x: number, z: number, folga: number) => boolean
+  // pilar pode descer daqui (x, z, altura) até a água sem furar outra pista?
+  vao: (x: number, z: number, y: number) => boolean
+  conflitos: string[]
 }
-
-type Base = { S: THREE.Vector3; T: THREE.Vector3; out: THREE.Vector3; alt: number }
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 
 function via(p: Pista, id: string, tipo: Via["tipo"], t: FreqId, de?: FreqId): Via {
-  return Object.assign(p, { id, tipo, t, de, estacoes: [], rampas: [], orbs: [], turbos: [], faixas: [] })
+  return Object.assign(p, { id, tipo, t, de, estacoes: [], rampas: [], orbs: [], turbos: [], faixas: [], chegadas: [] })
+}
+
+// ponto do mundo sobre um circuito: u (m), lateral (m), altura extra (m)
+function em(v: Pista, u: number, lat: number, dy = 0) {
+  const i = ((Math.round(u / PASSO) % v.n) + v.n) % v.n
+  const c = Math.cos(v.bank[i])
+  return V(v.px[i] - v.tz[i] * lat * c, v.py[i] - lat * Math.sin(v.bank[i]) + dy, v.pz[i] + v.tx[i] * lat * c)
 }
 
 function colares(v: Via, r: () => number, u0: number, u1: number, passo: number) {
@@ -97,7 +110,24 @@ function colares(v: Via, r: () => number, u0: number, u1: number, passo: number)
   }
 }
 
-function montarCircuito(t: Territorio, k: number, nSaidas: number): { v: Via; b: Base } {
+// saídas de cada lugar: o centro tem duas bifurcações (4 saídas); os
+// outros têm uma — direita volta pro centro, esquerda vai pro vizinho.
+// As ligações formam um desenho sem cruzamento no vão (centro→todos +
+// vizinhos do anel), pra nenhuma pista precisar passar por cima de outra
+// no meio do caminho.
+const PROXIMO: Record<FreqId, FreqId> = { linha: "linha", suburbio: "crypto", crypto: "live", live: "full", full: "live" }
+function saidasDe(id: FreqId): { para: FreqId; split: 0 | 1; lado: 1 | -1 }[] {
+  if (id === "linha") return [
+    { para: "suburbio", split: 0, lado: 1 }, { para: "crypto", split: 0, lado: -1 },
+    { para: "live", split: 1, lado: 1 }, { para: "full", split: 1, lado: -1 },
+  ]
+  return [{ para: "linha", split: 0, lado: 1 }, { para: PROXIMO[id], split: 0, lado: -1 }]
+}
+export const SPLITS = [60, 360] // distância da bifurcação até o fim da volta
+const CHEGADA0 = 400 // primeira chegada: passa por baixo de onde as saídas sobem
+const CHEGADA_PASSO = 200
+
+function montarCircuito(t: Territorio, k: number, nChegadas: number): Via {
   const r = rng(222 + k * 31)
   const ang = -Math.PI / 2 + (k * Math.PI * 2) / TERRITORIOS.length
   const C = V(Math.cos(ang) * ANEL, 0, Math.sin(ang) * ANEL)
@@ -108,7 +138,7 @@ function montarCircuito(t: Territorio, k: number, nSaidas: number): { v: Via; b:
   const S = C.clone().addScaledVector(out, rr(th0)).setY(t.alt)
   const r0 = rr(th0)
   const dIni = 240 / r0
-  const dFim = 430 / r0
+  const dFim = (t.reta + 130) / r0
   const N = Math.max(9, Math.round((Math.PI * 2 * t.raio) / 180))
   const pts = [S.clone(), S.clone().addScaledVector(T, 110)]
   for (let i = 0; i <= N; i++) {
@@ -118,119 +148,185 @@ function montarCircuito(t: Territorio, k: number, nSaidas: number): { v: Via; b:
     const R = rr(th)
     pts.push(V(C.x + Math.cos(th) * R, h, C.z + Math.sin(th) * R))
   }
-  pts.push(S.clone().addScaledVector(T, -300), S.clone().addScaledVector(T, -150))
+  pts.push(S.clone().addScaledVector(T, -t.reta), S.clone().addScaledVector(T, -t.reta * 0.66), S.clone().addScaledVector(T, -t.reta * 0.33))
   const p = amostrar(pts, true)
   const L = p.L
+  const fimChegadas = CHEGADA0 + (nChegadas - 1) * CHEGADA_PASSO + 40
 
   // rampas: sobe suave 18m e cai de uma vez — o carro decola sozinho
-  const rampas = [0.3, 0.64].map((f) => f * L)
+  const livre0 = fimChegadas + 60
+  const livre1 = L - SPLITS[1] - ABRE - 120
+  const rampas = [0.3, 0.7].map((f) => livre0 + f * (livre1 - livre0))
   for (const u0 of rampas) {
     const i0 = Math.floor(u0 / PASSO)
     const sobe = Math.floor(18 / PASSO)
     for (let j = 0; j < sobe; j++) p.py[(i0 + j) % p.n] += 2.4 * suave(j / sobe)
   }
-  // bifurcação e emenda de chegada: sem inclinação
+  // bifurcações e chegadas: sem inclinação
   const jan = (i: number) => {
     const u = i * PASSO
-    return Math.min(suave((L - RETA - u) / 80), suave((u - 110) / 80))
+    return Math.min(suave((L - SPLITS[1] - ABRE - 80 - u) / 80), suave((u - fimChegadas) / 80))
   }
   derivar(p, t.kBank, jan)
-  // a pista abre pra direita antes da bifurcação: uma faixa por saída
-  for (let i = 0; i < p.n; i++) {
-    const u = i * PASSO
-    if (u > L - GARFO) p.dir[i] = MEIA + nSaidas * FAIXA * suave((u - (L - GARFO)) / 120)
-  }
   const v = via(p, `circuito:${t.id}`, "circuito", t.id)
   v.rampas = rampas
-  colares(v, r, 160, L - RETA - 40, 150)
+  // a pista ganha uma faixa do lado de cada saída antes de dividir
+  for (const s of saidasDe(t.id)) {
+    const uk = L - SPLITS[s.split]
+    for (let i = 0; i < p.n; i++) {
+      const u = i * PASSO
+      if (u < uk - ABRE || u > uk) continue
+      const w = FAIXA * suave((u - (uk - ABRE)) / 120)
+      if (s.lado > 0) p.dir[i] = MEIA + w
+      else p.esq[i] = -MEIA - w
+    }
+  }
+  colares(v, r, livre0, livre1, 150)
   for (const ru of rampas) for (let q = 0; q < 4; q++) v.orbs.push({ u: ru + 24 + q * 6, x: 0 })
-  for (let u = 320; u < L - RETA - 60; u += 380 + r() * 200) v.turbos.push({ u, x: (r() - 0.5) * MEIA })
+  for (let u = livre0 + 150; u < livre1; u += 380 + r() * 200) v.turbos.push({ u, x: (r() - 0.5) * MEIA })
   if (t.id === "linha") {
     // as 9 estações do vol.1 moram no centro, na ordem da linha
-    const u0 = 200
-    const u1 = L - RETA - 120
-    v.estacoes = ESTACOES.map((e, i) => ({ id: e.id, u: u0 + ((i + 0.5) / ESTACOES.length) * (u1 - u0) }))
+    v.estacoes = ESTACOES.map((e, i) => ({ id: e.id, u: livre0 + ((i + 0.5) / ESTACOES.length) * (livre1 - livre0) }))
   }
-  return { v, b: { S, T, out, alt: t.alt } }
-}
-
-function montarSaida(a: Base, b: Base, k: number, slot: number, par: number, de: FreqId, para: FreqId): Via {
-  const ck = MEIA + (k + 0.5) * FAIXA
-  const sg = k % 2 ? -1 : 1
-  const P0 = a.S.clone().addScaledVector(a.out, ck)
-  const P1 = a.S.clone().addScaledVector(a.T, 60).addScaledVector(a.out, ck + 5 + 4 * k).setY(a.alt + sg * 1.5 * (1 + k * 0.5))
-  const P2 = a.S.clone().addScaledVector(a.T, 170).addScaledVector(a.out, ck + 35 + 24 * k).setY(a.alt + sg * 7 * (1 + k * 0.3))
-  const Q3 = b.S.clone().addScaledVector(b.T, -430).addScaledVector(b.out, 70 + slot * 30).setY(b.alt + 16 + slot * 5)
-  const Q2 = b.S.clone().addScaledVector(b.T, -330).addScaledVector(b.out, -(34 + slot * 10)).setY(b.alt + 11 + slot * 3)
-  const Q1 = b.S.clone().addScaledVector(b.T, -250).addScaledVector(b.out, -(30 + slot * 3)).setY(b.alt + 3)
-  const J = b.S.clone().addScaledVector(b.T, -170).addScaledVector(b.out, -28).setY(b.alt)
-  // meio do caminho: viaduto, cada saída numa altura
-  const M = P2.clone().add(Q3).multiplyScalar(0.5)
-  const lado = V(-(Q3.z - P2.z), 0, Q3.x - P2.x).normalize()
-  M.addScaledVector(lado, ((par % 3) - 1) * 18)
-  M.y = Math.max(a.alt, b.alt) + 22 + ((par * 3) % 7) * 7
-  for (const q of [P1, P2]) q.y = Math.max(q.y, -4)
-  const p = amostrar([P0, P1, P2, M, Q3, Q2, Q1, J], false)
-  const L = p.L
-  // começa com a largura de uma faixa (encostada nas vizinhas), abre depois
-  for (let i = 0; i < p.n; i++) {
-    const w = FAIXA / 2 + (MEIA - FAIXA / 2) * suave((i * PASSO) / 150)
-    p.esq[i] = -w
-    p.dir[i] = w
-  }
-  derivar(p, 22, (i) => Math.min(suave((i * PASSO - 120) / 80), suave((L - i * PASSO - 60) / 80)))
-  const v = via(p, `${de}>${para}`, "saida", para, de)
-  const r = rng(900 + par * 13)
-  colares(v, r, 260, L - 200, 170)
-  v.turbos.push({ u: L * 0.45, x: 0 })
   return v
 }
 
-function montarEntrada(b: Base, t: FreqId): Via {
-  const P = (ao: number, lado: number, dy = 0) => b.S.clone().addScaledVector(b.T, ao).addScaledVector(b.out, lado).setY(b.alt + dy)
-  const p = amostrar([P(-170, -28), P(-100, -19), P(-45, -9), P(5, -2.5), P(ENTRADA_U - 15, 0), P(ENTRADA_U, 0)], false)
-  // encosta por cima do asfalto do circuito, um dedo acima (sem z-fighting)
-  for (let i = 0; i < p.n; i++) p.py[i] += 0.04 * suave((i * PASSO) / 60)
-  derivar(p, 0)
-  return via(p, `entrada:${t}`, "entrada", t)
+function montarSaida(A: Via, B: Via, s: { split: 0 | 1; lado: 1 | -1 }, e: number, extra: number): Via {
+  const u = A.L - SPLITS[s.split]
+  // cruzamento em dois andares: quem SAI sobe logo em viaduto; quem CHEGA
+  // vem rente ao chão por baixo — as duas nunca se encostam
+  const pts: THREE.Vector3[] = s.lado > 0
+    ? [em(A, u, CK), em(A, u + 60, CK + 6, 2.5), em(A, u + 150, CK + 32, 9), em(A, u + 230, CK + 80, 16)]
+    : // saída da esquerda: sobe e cruza por cima do próprio circuito
+      [em(A, u, -CK), em(A, u + 70, -(CK + 4), 3), em(A, u + 160, -(CK - 1), 10), em(A, u + 250, CK + 20, 17), em(A, u + 330, CK + 85, 24)]
+  // chega pelo lado do vão (direita), num ponto só dela
+  const fim = [em(B, e - 420, 120), em(B, e - 280, 48), em(B, e - 170, 21), em(B, e - 90, 8), em(B, e - 30, 1.2), em(B, e, 0)]
+  // meio do caminho: mão inglesa ao contrário — cada sentido fica do seu
+  // lado da corda, então ida e volta nunca se encostam
+  const a0 = pts[pts.length - 1]
+  const b0 = fim[0]
+  const M = a0.clone().add(b0).multiplyScalar(0.5)
+  const dir = b0.clone().sub(a0).setY(0).normalize()
+  M.addScaledVector(V(-dir.z, 0, dir.x), 18)
+  M.y = Math.max(a0.y, b0.y) + 6 + extra
+  for (const q2 of [...pts, ...fim]) q2.y = Math.max(q2.y, -4)
+  const p = amostrar([...pts, M, ...fim], false)
+  const L = p.L
+  // começa da largura de uma faixa (colada no circuito) e abre depois
+  for (let i = 0; i < p.n; i++) {
+    const w = FAIXA / 2 + (MEIA - FAIXA / 2) * suave((i * PASSO) / 110)
+    p.esq[i] = -w
+    p.dir[i] = w
+  }
+  // encosta no destino um dedo acima do asfalto dele (sem z-fighting)
+  for (let i = 0; i < p.n; i++) p.py[i] += 0.04 * suave((i * PASSO - (L - 90)) / 60)
+  derivar(p, 22, (i) => Math.min(suave((i * PASSO - 130) / 80), suave((L - i * PASSO - 320) / 80)))
+  const v = via(p, `${A.t}>${B.t}`, "saida", B.t, A.t)
+  v.lado = s.lado
+  v.chega = { u: e, lado: 1 }
+  const r = rng(900 + A.n + B.n)
+  colares(v, r, 260, L - 320, 170)
+  for (let tu = 300; tu < L - 330; tu += 320) v.turbos.push({ u: tu, x: 0 })
+  return v
+}
+
+// duas pistas não podem se encostar: onde as projeções se sobrepõem, a
+// diferença de altura tem que ser de pelo menos FOLGA. Exceções: a saída
+// colada no circuito de onde sai (início) e no de onde chega (fim).
+export function conflitos(vias: Via[]): { a: number; b: number; ua: number; ub: number; dy: number }[] {
+  const CEL = 30
+  const grade = new Map<string, number[]>()
+  vias.forEach((v, vi) => {
+    for (let i = 0; i < v.n; i += 2) {
+      const key = `${Math.floor(v.px[i] / CEL)},${Math.floor(v.pz[i] / CEL)}`
+      let l = grade.get(key)
+      if (!l) grade.set(key, (l = []))
+      l.push(vi, i)
+    }
+  })
+  const achados = new Map<string, { a: number; b: number; ua: number; ub: number; dy: number }>()
+  const permitido = (va: Via, ia: number, vb: Via) => {
+    if (va.tipo !== "saida") return false
+    const u = ia * PASSO
+    if (vb.tipo === "circuito" && vb.t === va.de && u < 150) return true
+    if (vb.tipo === "circuito" && vb.t === va.t && u > va.L - 300) return true
+    return false
+  }
+  vias.forEach((va, a) => {
+    for (let i = 0; i < va.n; i += 2) {
+      const cx = Math.floor(va.px[i] / CEL)
+      const cz = Math.floor(va.pz[i] / CEL)
+      const wa = Math.max(-va.esq[i], va.dir[i]) + 1.5
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dz = -1; dz <= 1; dz++) {
+          const l = grade.get(`${cx + dx},${cz + dz}`)
+          if (!l) continue
+          for (let q = 0; q < l.length; q += 2) {
+            const b = l[q]
+            const j = l[q + 1]
+            if (b < a) continue
+            const vb = vias[b]
+            if (b === a) {
+              const d = Math.abs(i - j) * PASSO
+              if (Math.min(d, va.fechada ? va.L - d : d) < 120) continue
+            }
+            const wb = Math.max(-vb.esq[j], vb.dir[j]) + 1.5
+            if (Math.hypot(va.px[i] - vb.px[j], va.pz[i] - vb.pz[j]) > wa + wb) continue
+            const dy = Math.abs(va.py[i] - vb.py[j])
+            if (dy >= FOLGA) continue
+            if (permitido(va, i, vb) || permitido(vb, j, va)) continue
+            const key = `${a}-${b}`
+            const ant = achados.get(key)
+            if (!ant || dy < ant.dy) achados.set(key, { a, b, ua: i * PASSO, ub: j * PASSO, dy })
+          }
+        }
+    }
+  })
+  return [...achados.values()]
 }
 
 export function montarMundo(): Mundo {
-  const vias: Via[] = []
   const circuito = {} as Record<FreqId, number>
-  const entrada = {} as Record<FreqId, number>
-  const bases = {} as Record<FreqId, Base>
-  const ordem = FREQUENCIAS.map((f) => f.id)
-  // o centro sai pra todo lugar; os outros saem pro centro e pros vizinhos
-  // do anel. Ordem das faixas = ordem de custo da rádio, então as abertas
-  // são sempre as mais perto do meio da pista
-  const destinos = (id: FreqId): Destino[] => {
-    if (id === "linha") return [...ordem.filter((o) => o !== id), "vol2"]
-    const k = ordem.indexOf(id)
-    const viz = new Set<FreqId>(["linha", ordem[k - 1] ?? "linha", ordem[k + 1] ?? "linha"])
-    return ordem.filter((o) => o !== id && viz.has(o))
-  }
-
+  const circs: Via[] = []
+  const chegam = (id: FreqId) => TERRITORIOS.filter((o) => saidasDe(o.id).some((s) => s.para === id)).map((o) => o.id)
   TERRITORIOS.forEach((t, k) => {
-    const { v, b } = montarCircuito(t, k, destinos(t.id).length)
-    circuito[t.id] = vias.length
-    vias.push(v)
-    bases[t.id] = b
+    circuito[t.id] = circs.length
+    circs.push(montarCircuito(t, k, chegam(t.id).length))
   })
+  // chegada de cada origem: um ponto só dela, alternando esquerda/direita
   for (const t of TERRITORIOS) {
-    entrada[t.id] = vias.length
-    vias.push(montarEntrada(bases[t.id], t.id))
+    const c = circs[circuito[t.id]]
+    c.chegadas = chegam(t.id).map((_, k) => ({ u: CHEGADA0 + k * CHEGADA_PASSO, lado: 1 as const }))
   }
-  let par = 0
-  for (const t of TERRITORIOS) {
-    const c = vias[circuito[t.id]]
-    destinos(t.id).forEach((d, k) => {
-      const x = MEIA + (k + 0.5) * FAIXA
-      if (d === "vol2") { c.faixas.push({ para: d, via: -1, x }); return }
-      const slot = TERRITORIOS.filter((o) => o.id !== d && destinos(o.id).includes(d)).findIndex((o) => o.id === t.id)
-      c.faixas.push({ para: d, via: vias.length, x })
-      vias.push(montarSaida(bases[t.id], bases[d], k, slot, par++, t.id, d))
-    })
+  // monta as saídas; onde duas se encostam, a de maior índice sobe
+  const extra = new Map<string, number>()
+  let vias: Via[] = []
+  let restos: ReturnType<typeof conflitos> = []
+  for (let it = 0; it < 16; it++) {
+    vias = [...circs]
+    circs.forEach((c) => (c.faixas = []))
+    for (const t of TERRITORIOS) {
+      const A = circs[circuito[t.id]]
+      for (const s of saidasDe(t.id)) {
+        const B = circs[circuito[s.para]]
+        const k = chegam(s.para).indexOf(t.id)
+        const id = `${t.id}>${s.para}`
+        A.faixas.push({ para: s.para, via: vias.length, u: A.L - SPLITS[s.split], lado: s.lado })
+        vias.push(montarSaida(A, B, s, B.chegadas[k].u, extra.get(id) ?? 0))
+      }
+    }
+    restos = conflitos(vias)
+    const mexer = restos.filter((c) => vias[c.b].tipo === "saida" || vias[c.a].tipo === "saida")
+    if (!mexer.length) break
+    // sobe o viaduto da que está mais no meio do caminho (é o meio que o
+    // ajuste levanta)
+    for (const c of mexer) {
+      const va = vias[c.a]
+      const vb = vias[c.b]
+      const meio = (v: Via, u: number) => (v.tipo === "saida" ? Math.abs(u / v.L - 0.5) : 9)
+      const alvo = meio(va, c.ua) <= meio(vb, c.ub) ? va : vb
+      extra.set(alvo.id, (extra.get(alvo.id) ?? 0) + 8)
+    }
   }
 
   // grade espacial das amostras: pra cidade não nascer em cima da pista
@@ -241,7 +337,7 @@ export function montarMundo(): Mundo {
       const key = `${Math.floor(v.px[i] / CEL)},${Math.floor(v.pz[i] / CEL)}`
       let l = grade.get(key)
       if (!l) grade.set(key, (l = []))
-      l.push(v.px[i], v.pz[i], Math.max(-v.esq[i], v.dir[i]))
+      l.push(v.px[i], v.pz[i], Math.max(-v.esq[i], v.dir[i]), v.py[i])
     }
   }
   const livre = (x: number, z: number, folga: number) => {
@@ -252,16 +348,30 @@ export function montarMundo(): Mundo {
       for (let b = -alcance; b <= alcance; b++) {
         const l = grade.get(`${cx + a},${cz + b}`)
         if (!l) continue
-        for (let q = 0; q < l.length; q += 3) if (Math.hypot(l[q] - x, l[q + 1] - z) < l[q + 2] + folga) return false
+        for (let q = 0; q < l.length; q += 4) if (Math.hypot(l[q] - x, l[q + 1] - z) < l[q + 2] + folga) return false
       }
     return true
   }
-  return { vias, circuito, entrada, livre }
+  const vao = (x: number, z: number, y: number) => {
+    const cx = Math.floor(x / CEL)
+    const cz = Math.floor(z / CEL)
+    for (let a = -1; a <= 1; a++)
+      for (let b = -1; b <= 1; b++) {
+        const l = grade.get(`${cx + a},${cz + b}`)
+        if (!l) continue
+        for (let q = 0; q < l.length; q += 4) if (l[q + 3] < y - 3 && Math.hypot(l[q] - x, l[q + 1] - z) < l[q + 2] + 2) return false
+      }
+    return true
+  }
+  const nomes = restos.map((c) => `${vias[c.a].id}@${Math.round(c.ua)} × ${vias[c.b].id}@${Math.round(c.ub)} (dy ${c.dy.toFixed(1)})`)
+  return { vias, circuito, livre, vao, conflitos: nomes }
 }
 
-// qual faixa da bifurcação o carro pegou (null = segue no circuito)
-export function faixaEm(v: Via, x: number, abertas: number): Faixa | null {
-  if (x <= MEIA || !abertas) return null
-  const k = Math.min(abertas - 1, Math.floor((x - MEIA) / FAIXA))
-  return v.faixas[k] ?? null
+// saída que o carro pega ao cruzar u0→u1 na posição lateral x (null = fica)
+export function saidaEm(v: Via, u0: number, u1: number, x: number, aberta: (f: Faixa) => boolean): Faixa | null {
+  for (const f of v.faixas) {
+    if (!(u0 < f.u && u1 >= f.u)) continue
+    if (f.lado * x > MEIA && aberta(f)) return f
+  }
+  return null
 }
