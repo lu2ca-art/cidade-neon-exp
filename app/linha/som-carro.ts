@@ -1,5 +1,6 @@
-// Som do carro: motor sintetizado com marchas, vento, pneu, zebra, baque
-// e whoosh. Nada de sample — tudo Web Audio, reage à velocidade real.
+// Som do carro: só o motor (pedido do LU2CA — nada de vento, pneu ou
+// chiado). Sintetizado com marchas, reage à velocidade real e só ronca
+// de verdade quando acelera; solto, vira um ronco baixinho.
 
 import { audioCtx } from "./som"
 
@@ -28,56 +29,36 @@ export function montarMotor() {
   lp.frequency.value = 500
   lp.Q.value = 4
   const mg = c.createGain()
-  mg.gain.value = 0.05
+  mg.gain.value = 0
   o1.connect(lp)
   o2.connect(lp)
   lp.connect(mg).connect(out)
-
-  const ruido = c.createBuffer(1, c.sampleRate * 2, c.sampleRate)
-  const d = ruido.getChannelData(0)
-  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
-  const fonteRuido = (f: number, q: number, tipo: BiquadFilterType) => {
-    const s = c.createBufferSource()
-    s.buffer = ruido
-    s.loop = true
-    const bf = c.createBiquadFilter()
-    bf.type = tipo
-    bf.frequency.value = f
-    bf.Q.value = q
-    const g = c.createGain()
-    g.gain.value = 0
-    s.connect(bf).connect(g).connect(out)
-    s.start()
-    return { s, g }
-  }
-  const vento = fonteRuido(900, 0.4, "bandpass")
-  const pneu = fonteRuido(2600, 9, "bandpass")
-  const zebra = fonteRuido(140, 1, "lowpass")
   o1.start()
   o2.start()
 
   let ultimaMarcha = 1
+  let rev = 0 // empurrão de giro do turbo, decai sozinho
   return {
-    atualizar(pct: number, acel: boolean, curvaPneu: number, naZebra: boolean, turbo: boolean) {
+    atualizar(pct: number, acel: boolean, turbo: boolean) {
       const t = c.currentTime
       let m = 1
       while (m < MARCHAS.length - 1 && pct > MARCHAS[m]) m++
       const lo = MARCHAS[m - 1]
       const hi = MARCHAS[m]
       const rpm = Math.max(0, Math.min(1, (pct - lo) / (hi - lo)))
-      const f = 42 + rpm * 95 + m * 9 + (turbo ? 18 : 0)
+      rev *= 0.94
+      const f = 42 + rpm * 95 + m * 9 + (turbo ? 18 : 0) + rev * 30
       o1.frequency.setTargetAtTime(f, t, 0.04)
       o2.frequency.setTargetAtTime(f / 2, t, 0.04)
-      lp.frequency.setTargetAtTime(300 + rpm * 1500 * (acel ? 1 : 0.5) + (turbo ? 900 : 0), t, 0.05)
-      mg.gain.setTargetAtTime(0.035 + (acel ? 0.03 : 0.01), t, 0.08)
-      vento.g.gain.setTargetAtTime(pct * pct * 0.13, t, 0.1)
-      pneu.g.gain.setTargetAtTime(curvaPneu * 0.07, t, 0.05)
-      zebra.g.gain.setTargetAtTime(naZebra ? 0.5 : 0, t, 0.03)
+      lp.frequency.setTargetAtTime(260 + rpm * 1500 * (acel ? 1 : 0.35) + (turbo ? 900 : 0), t, 0.05)
+      // parado ou solto: quase mudo. acelerando: ronca
+      const vivo = pct > 0.02 ? 1 : 0.3
+      mg.gain.setTargetAtTime((acel ? 0.065 : 0.008) * vivo, t, acel ? 0.08 : 0.25)
       if (m !== ultimaMarcha) {
-        if (m > ultimaMarcha) {
+        if (m > ultimaMarcha && acel) {
           mg.gain.cancelScheduledValues(t)
           mg.gain.setValueAtTime(0.005, t)
-          mg.gain.linearRampToValueAtTime(0.06, t + 0.14)
+          mg.gain.linearRampToValueAtTime(0.065, t + 0.14)
           vib(14)
         }
         ultimaMarcha = m
@@ -87,10 +68,11 @@ export function montarMotor() {
     parar() {
       out.gain.setTargetAtTime(0, c.currentTime, 0.2)
       setTimeout(() => {
-        try { o1.stop(); o2.stop(); vento.s.stop(); pneu.s.stop(); zebra.s.stop() } catch {}
+        try { o1.stop(); o2.stop() } catch {}
         out.disconnect()
       }, 800)
     },
+    // pouso: um baque grave, sem chiado
     baque() {
       const s = c.createOscillator()
       const g = c.createGain()
@@ -103,21 +85,9 @@ export function montarMotor() {
       s.start()
       s.stop(c.currentTime + 0.45)
     },
+    // turbo / decolagem: o motor sobe o giro de uma vez
     whoosh() {
-      const s = c.createBufferSource()
-      s.buffer = ruido
-      const bf = c.createBiquadFilter()
-      bf.type = "bandpass"
-      bf.Q.value = 1.2
-      bf.frequency.setValueAtTime(400, c.currentTime)
-      bf.frequency.exponentialRampToValueAtTime(3000, c.currentTime + 0.3)
-      const g = c.createGain()
-      g.gain.setValueAtTime(0.35, c.currentTime)
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.4)
-      s.connect(bf).connect(g).connect(out)
-      s.start()
-      s.stop(c.currentTime + 0.45)
+      rev = 1
     },
   }
 }
-

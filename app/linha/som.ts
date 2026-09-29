@@ -7,11 +7,6 @@ import { TONS } from "./tons"
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
-let chuvaGain: GainNode | null = null
-let chuvaLigada = false
-// chuva ambiente: pedido do LU2CA, 80% mais baixa que a primeira versão
-const CHUVA = 0.032
-const CHUVA_COM_MUSICA = 0.008
 
 export function audioCtx(): AudioContext | null {
   if (typeof window === "undefined") return null
@@ -32,47 +27,12 @@ function saida(): AudioNode | null {
   return master
 }
 
-function ruidoBuffer(c: AudioContext, seg = 2) {
-  const buf = c.createBuffer(1, c.sampleRate * seg, c.sampleRate)
-  const d = buf.getChannelData(0)
-  let ult = 0
-  for (let i = 0; i < d.length; i++) {
-    // ruído marrom: mais grave e macio que o branco, soa como chuva longe
-    const b = Math.random() * 2 - 1
-    ult = (ult + 0.02 * b) / 1.02
-    d[i] = ult * 3.2
-  }
-  return buf
-}
-
-// ── Chuva ambiente ──────────────────────────────────────────
-export function ligarChuva() {
-  const c = audioCtx()
-  const out = saida()
-  if (!c || !out || chuvaLigada) return
-  chuvaLigada = true
-  const src = c.createBufferSource()
-  src.buffer = ruidoBuffer(c, 4)
-  src.loop = true
-  const hp = c.createBiquadFilter()
-  hp.type = "highpass"
-  hp.frequency.value = 400
-  const lp = c.createBiquadFilter()
-  lp.type = "lowpass"
-  lp.frequency.value = 2600
-  chuvaGain = c.createGain()
-  chuvaGain.gain.value = 0
-  chuvaGain.gain.linearRampToValueAtTime(CHUVA, c.currentTime + 3)
-  src.connect(hp).connect(lp).connect(chuvaGain).connect(out)
-  src.start()
-}
-
-export function volumeChuva(v: number, seg = 0.8) {
-  const c = audioCtx()
-  if (!c || !chuvaGain) return
-  chuvaGain.gain.cancelScheduledValues(c.currentTime)
-  chuvaGain.gain.setTargetAtTime(v, c.currentTime, seg / 3)
-}
+// ── Ambiente ────────────────────────────────────────────────
+// Sem ruído de fundo: o LU2CA pediu silêncio fora da música e do motor
+// (a chuva sintetizada virou "ruído infernal"). As funções ficam como
+// no-op pra quem ainda chama.
+export function ligarChuva() {}
+export function volumeChuva(_v: number, _seg = 0.8) {}
 
 export function mudo(m: boolean) {
   const c = audioCtx()
@@ -203,7 +163,7 @@ export function estatica() {
 
 // ── Player único ────────────────────────────────────────────
 // Um elemento <audio> por vez no jogo inteiro: nota de voz, faixa da prova,
-// rádio. Tocar qualquer coisa pausa o que estava tocando e abaixa a chuva.
+// rádio. Tocar qualquer coisa pausa o que estava tocando.
 
 type Ouvinte = (s: { src: string | null; tocando: boolean; t: number; dur: number }) => void
 
@@ -315,9 +275,9 @@ class Player {
     el.preload = "auto"
     el.crossOrigin = "anonymous"
     el.addEventListener("timeupdate", () => this.emitir())
-    el.addEventListener("play", () => { volumeChuva(CHUVA_COM_MUSICA); this.detector?.ligar(); this.emitir() })
-    el.addEventListener("pause", () => { volumeChuva(CHUVA); this.detector?.desligar(); this.emitir() })
-    el.addEventListener("ended", () => { volumeChuva(CHUVA); this.aoFim?.(); this.emitir() })
+    el.addEventListener("play", () => { this.detector?.ligar(); this.emitir() })
+    el.addEventListener("pause", () => { this.detector?.desligar(); this.emitir() })
+    el.addEventListener("ended", () => { this.aoFim?.(); this.emitir() })
     const c = audioCtx()
     const out = saida()
     if (c && out) {
@@ -354,7 +314,7 @@ class Player {
     return s / (6 * 255)
   }
 
-  tocar(src: string, aoFim?: () => void) {
+  tocar(src: string, aoFim?: () => void, vol = 1) {
     const el = this.garantir()
     this.aoFim = aoFim ?? null
     if (this.src !== src) {
@@ -362,7 +322,7 @@ class Player {
       el.src = src
       this.src = src
     }
-    if (this.gain && ctx) this.gain.gain.setValueAtTime(1, ctx.currentTime)
+    if (this.gain && ctx) this.gain.gain.setValueAtTime(vol, ctx.currentTime)
     el.play().catch(() => {})
   }
 

@@ -902,7 +902,7 @@
 .l-minimapa path { stroke-width: 2.6; }
 .l-minimapa-pulso { stroke-width: 1.5; animation: l-minimapa-pulso 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes l-minimapa-pulso { from { transform: scale(0.6); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
-.l-hud-missoes { position: absolute; left: 12px; bottom: calc(188px + env(safe-area-inset-bottom)); padding: 7px 12px; border-radius: 999px; background: rgba(255, 200, 87, 0.14) !important; border: 1px solid rgba(255, 200, 87, 0.55) !important; font: 700 11px var(--mono) !important; letter-spacing: 0.08em; text-transform: uppercase; color: #ffc857 !important; animation: l-pulsa 2s infinite; }
+.l-hud-missoes { position: absolute; left: 12px; bottom: calc(214px + env(safe-area-inset-bottom)); padding: 7px 12px; border-radius: 999px; background: rgba(255, 200, 87, 0.14) !important; border: 1px solid rgba(255, 200, 87, 0.55) !important; font: 700 11px var(--mono) !important; letter-spacing: 0.08em; text-transform: uppercase; color: #ffc857 !important; animation: l-pulsa 2s infinite; }
 .l-hud-missoes b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 4px; border-radius: 9px; background: #ffc857; color: #050510; font-size: 10px; }
 .l-painel-missoes { position: absolute; left: 10px; right: 10px; top: calc(96px + env(safe-area-inset-top)); z-index: 20; padding: 14px; border-radius: 20px; background: rgba(10, 9, 24, 0.94); border: 1px solid rgba(255, 200, 87, 0.4); backdrop-filter: blur(14px); animation: l-sobe 0.3s both; }
 .l-painel-missoes header { display: flex; justify-content: space-between; align-items: center; }
@@ -923,3 +923,17 @@
 .l-bairro-tabela span { font: 11px var(--mono); color: var(--cor); }
 .l-bairro small { font: 700 11px var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: var(--cor); }
 .l-bairro p { margin: 0; font-family: var(--cond); font-weight: 700; font-size: 44px; line-height: 1; text-transform: uppercase; color: #fff; text-shadow: 0 0 20px var(--cor); }
+
+/* ── mapa por lugares: bifurcação, sintonia, minimapa da cidade inteira ── */
+.l-minimapa { width: 118px; height: 118px; }
+.l-minimapa path { stroke-width: 2.2; opacity: 0.75; }
+.l-minimapa path.is-ligacao { stroke: rgba(255, 255, 255, 0.28); stroke-width: 0.9; opacity: 1; }
+.l-minimapa path.is-atual { stroke-width: 3.2; opacity: 1; }
+.l-minimapa path.is-ligacao.is-atual { stroke: #fff; stroke-width: 1.8; }
+.l-hud-garfo { position: absolute; right: 12px; top: 44%; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 8px 12px; border-radius: 12px; background: rgba(0, 0, 10, 0.5); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(6px); pointer-events: none; transition: opacity 0.4s; }
+.l-hud-garfo small { font: 700 9px var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: #ffc857; }
+.l-hud-garfo b { font: 700 30px/1 var(--cond); color: #fff; }
+.l-hud-garfo span { font: 11px var(--mono); color: rgba(255, 255, 255, 0.7); }
+.l-hud-radio.is-sintonizando .l-hud-freq { animation: l-pisca 0.7s ease-in-out infinite; }
+.l-bairro-freq { font: 700 12px var(--mono); letter-spacing: 0.12em; color: var(--cor); }
+.l-travou em { margin-top: 8px; max-width: 80%; text-align: center; font: normal 12px var(--mono); color: rgba(255, 255, 255, 0.85); }

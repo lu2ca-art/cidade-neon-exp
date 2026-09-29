@@ -2,47 +2,53 @@
 // montagem da cena. Nenhum arquivo de modelo, nenhuma imagem baixada.
 
 import * as THREE from "three"
-import { PASSO, type Pista } from "./pista"
+import { PASSO, pontoI, type Pista } from "./pista"
 
-// faixa (ribbon) ao longo da pista entre dois deslocamentos laterais
+type Lado = number | ((v: Pista, i: number) => number)
+const lado = (l: Lado, v: Pista, i: number) => (typeof l === "number" ? l : l(v, i))
+
+// faixa (ribbon) ao longo de várias vias entre dois deslocamentos laterais
+// (fixos ou por amostra — a pista abre na bifurcação), deitada junto com a
+// inclinação da curva. Tudo numa malha só: uma draw call por tipo de faixa.
 export function fita(
-  p: Pista,
-  x0: number,
-  x1: number,
+  vias: Pista[],
+  x0: Lado,
+  x1: Lado,
   dy: number,
-  opts: { incluir?: (i: number) => boolean; cor?: (i: number) => [number, number, number]; vertical?: boolean; uvEscala?: number } = {},
+  opts: { incluir?: (v: Pista, i: number) => boolean; cor?: (v: Pista, i: number) => [number, number, number]; vertical?: boolean; uvEscala?: number } = {},
 ) {
   const pos: number[] = []
   const uv: number[] = []
   const cor: number[] = []
   const idx: number[] = []
   const esc = opts.uvEscala ?? 16
-  let v = 0
-  for (let i = 0; i < p.n; i++) {
-    if (opts.incluir && !opts.incluir(i)) continue
-    const j = (i + 1) % p.n
-    const pts: number[][] = []
-    for (const k of [i, j]) {
-      const rx = -p.tz[k]
-      const rz = p.tx[k]
-      if (opts.vertical) {
-        // parede: x0 = lateral, dy = base, x1 = altura
-        pts.push([p.px[k] + rx * x0, p.py[k] + dy, p.pz[k] + rz * x0])
-        pts.push([p.px[k] + rx * x0, p.py[k] + dy + x1, p.pz[k] + rz * x0])
-      } else {
-        pts.push([p.px[k] + rx * x0, p.py[k] + dy, p.pz[k] + rz * x0])
-        pts.push([p.px[k] + rx * x1, p.py[k] + dy, p.pz[k] + rz * x1])
+  const q = new THREE.Vector3()
+  for (const p of vias) {
+    const fim = p.fechada ? p.n : p.n - 1
+    for (let i = 0; i < fim; i++) {
+      if (opts.incluir && !opts.incluir(p, i)) continue
+      const j = (i + 1) % p.n
+      const b = pos.length / 3
+      for (const k of [i, j]) {
+        const a0 = lado(x0, p, k)
+        if (opts.vertical) {
+          // parede: x0 = lateral, dy = base, x1 = altura
+          pontoI(p, k, a0, dy, q)
+          pos.push(q.x, q.y, q.z, q.x, q.y + lado(x1, p, k), q.z)
+        } else {
+          pontoI(p, k, a0, dy, q)
+          pos.push(q.x, q.y, q.z)
+          pontoI(p, k, lado(x1, p, k), dy, q)
+          pos.push(q.x, q.y, q.z)
+        }
       }
+      const u0 = (i * PASSO) / esc
+      const u1 = ((i + 1) * PASSO) / esc
+      uv.push(0, u0, 1, u0, 0, u1, 1, u1)
+      const c = opts.cor ? opts.cor(p, i) : [1, 1, 1]
+      for (let k = 0; k < 4; k++) cor.push(c[0], c[1], c[2])
+      idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2)
     }
-    const b = pos.length / 3
-    for (const q of pts) pos.push(q[0], q[1], q[2])
-    const u0 = (i * PASSO) / esc
-    const u1 = ((i + 1) * PASSO) / esc
-    uv.push(0, u0, 1, u0, 0, u1, 1, u1)
-    const c = opts.cor ? opts.cor(i) : [1, 1, 1]
-    for (let k = 0; k < 4; k++) cor.push(c[0], c[1], c[2])
-    idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2)
-    v++
   }
   const g = new THREE.BufferGeometry()
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3))
