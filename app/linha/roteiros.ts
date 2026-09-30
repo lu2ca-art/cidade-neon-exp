@@ -66,6 +66,8 @@ export interface Roteiro {
 
 // Cor de cada voz no grupo — a mesma da estação de cada um
 export const VOZES: Record<string, string> = {
+  "222 FM": "#ff3fb0",
+  "NÚCLEO": "#e6f0ff",
   "D-Bee": "#3d7bff",
   Ella: "#2fe8ff",
   Mubarak: "#ff6a35",
@@ -368,7 +370,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "audio", src: "/audio/tracks/nectar.mp3", titulo: "Nectar · prévia" },
       { t: "msg", texto: "fui eu. na noite do apagão, rodei a linha inteira escondendo as músicas" },
       { t: "msg", texto: "e fiquei esperando alguém juntar" },
-      { t: "msg", texto: "nectar sai dia 14/10. vc ouviu antes" },
+      { t: "msg", texto: "nectar sai dia 16/10. vc ouviu antes" },
       { t: "msg", texto: "a cidade inteira mora num lugar só. todas as frequências, o live, o instrumental" },
       { t: "msg", texto: "n é produto. é sustentar uma coisa que existe fora do sistema" },
       { t: "fim", para: "mapa" },

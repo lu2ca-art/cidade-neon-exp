@@ -12,7 +12,8 @@ import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
 import type { ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Save } from "./estado"
-import { FREQUENCIAS, faixasDe, type FreqId } from "./radio"
+import { ARQUIVO, type FreqId } from "./radio"
+import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
 import { alvoDe, ativa } from "./missoes"
 import { Prova } from "./provas"
@@ -94,21 +95,17 @@ export default function LinhaPage() {
   // o que a rádio tá tocando, pro widget da home
   useEffect(() => player.ouvir((s) => {
     if (!s.src) return setRadio(null)
-    const todas = [
-      ...FREQUENCIAS.flatMap((f) => f.faixas),
-      ...ESTACOES.map((e) => ({ titulo: e.faixa, src: e.audio })),
-    ]
+    const todas = [...TODAS_FAIXAS, ...ARQUIVO]
     setRadio({ titulo: todas.find((x) => x.src === s.src)?.titulo ?? "…", tocando: s.tocando })
   }), [])
 
-  const proxRadio = useRef<(id: FreqId, i: number) => void>(() => {})
-  const tocarRadio = useCallback((id: FreqId, i = 0) => {
-    const f = FREQUENCIAS.find((x) => x.id === id)!
-    let l = faixasDe(f, save.objetos, save.estacao)
-    if (!l.length) l = faixasDe(FREQUENCIAS[4], [], null)
-    if (!l.length) return
-    player.tocar(l[i % l.length].src, () => proxRadio.current(id, i + 1))
-  }, [save.objetos, save.estacao])
+  // o widget da home toca a mesma programação da estrada (programa.ts)
+  const proxRadio = useRef<(id: FreqId) => void>(() => {})
+  const tocarRadio = useCallback((id: FreqId) => {
+    if (ehDoLugar(id, player.src, save.objetos)) return player.tocar(player.src!, () => proxRadio.current(id))
+    const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando: null })
+    if (p) player.tocar(p.faixa.src, () => proxRadio.current(id))
+  }, [save.objetos, save.nome])
   useEffect(() => { proxRadio.current = tocarRadio }, [tocarRadio])
 
   // subir de nível é um momento — não um número mudando em silêncio

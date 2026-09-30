@@ -19,9 +19,10 @@ import * as THREE from "three"
 import { Kombi222 } from "./Kombi222"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
-import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
+import { FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
+import { ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
-import { estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
+import { chiadoCurto, estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
 import { MARCHAS, montarMotor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -200,22 +201,34 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [])
 
   // rádio: toca a frequência do lugar onde você está
-  const proxFaixa = useRef<(id: FreqId, idx: number) => void>(() => {})
-  const idxRadio = useRef(0)
-  const tocarFreq = useCallback((id: FreqId, idx = 0, vol = 1) => {
-    let lista = faixasDe(freqDe(id), save.objetos, save.estacao)
-    if (!lista.length) lista = faixasDe(FREQUENCIAS[4], [], null)
-    if (!lista.length) return
-    const fx = lista[idx % lista.length]
-    idxRadio.current = idx
-    setFaixa(fx.titulo)
-    player.tocar(fx.src, () => proxFaixa.current(freqRef.current, idx + 1), vol)
-  }, [save.objetos, save.estacao])
-  useEffect(() => { proxFaixa.current = (id, idx) => tocarFreq(id, idx) }, [tocarFreq])
+  // rádio: a programação do lugar onde você está (programa.ts) — sacola
+  // sem repetição, estreias e vinhetas do locutor entre as músicas
+  const proxFaixa = useRef<(id: FreqId) => void>(() => {})
+  const tocarProxima = useCallback((id: FreqId, vol = 1) => {
+    const a = alvoRef.current
+    const carregando = a?.t === "entrega" ? MISSOES[a.missao]?.busca.nome ?? null : null
+    const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
+    if (!p) return
+    const tocar = () => {
+      setFaixa(p.faixa.titulo)
+      player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol)
+    }
+    if (!p.vinheta) return tocar()
+    // entre uma música e outra: um chiado de dial e o locutor (ou o Núcleo)
+    chiadoCurto()
+    falar(p.vinheta.de, p.vinheta.texto)
+    if (p.estreia) {
+      jogo.current.flash = 0.7
+      confeteRef.current?.(getEstacao(p.estreia).cor, 70)
+    }
+    setTimeout(tocar, 900)
+     
+  }, [save.objetos, save.nome, falar])
+  useEffect(() => { proxFaixa.current = (id) => tocarProxima(id) }, [tocarProxima])
   useEffect(() => {
     // liga o rádio ao entrar no carro (efeito externo: áudio)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    tocarFreq("linha")
+     
+    tocarProxima(freqRef.current)
     return () => player.pausar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -232,8 +245,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       toques.current.clear()
       return
     }
-    const lista = faixasDe(freqDe(freqRef.current), save.objetos, save.estacao).map((f) => f.src)
-    if (!player.src || !lista.includes(player.src) || !player.tocando) tocarFreq(freqRef.current, idxRadio.current + (player.src && lista.includes(player.src) ? 0 : 1))
+    // a música do lugar que ficou pausada continua de onde parou; se uma
+    // conversa tocou outra coisa, entra a próxima da programação
+    if (ehDoLugar(freqRef.current, player.src, save.objetos)) { if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current)) }
+    else tocarProxima(freqRef.current)
     player.volume(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pausado])
@@ -323,7 +338,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         if (freqRef.current !== v.t) {
           setFreq(v.t)
           freqRef.current = v.t
-          tocarFreq(v.t)
+          tocarProxima(v.t)
         }
         player.volume(1)
         onSinal(sinalRef.current, v.t)
@@ -331,7 +346,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       radio: (id) => {
         setFreq(id)
         freqRef.current = id
-        tocarFreq(id, 0, 0.2)
+        tocarProxima(id, 0.2)
         gota(4)
       },
       pegar: (chave) => {
@@ -492,6 +507,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       evs.current?.via(i)
     }
     w.__tom = () => tomDaMusica()
+    w.__pular = () => proxFaixa.current(freqRef.current)
     w.__estacoes = () => M.vias[M.circuito.linha].estacoes.map((e) => ({ id: e.id, f: e.u / M.vias[M.circuito.linha].L }))
     // pontos de busca da missão: [{ chave, via (id), u, f (fração do loop) }]
     w.__marcos = () => marcosRef.current.map((m) => ({ chave: m.chave, via: M.vias[m.via].id, u: Math.round(m.u), f: m.u / M.vias[m.via].L }))
@@ -501,7 +517,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       const j = jogo.current
       return { via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), src: player.src }
     }
-    return () => { delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes }
+    return () => { delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular }
   }, [M])
 
   // toque: metade esquerda/direita vira, as duas freiam
