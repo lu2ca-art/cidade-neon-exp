@@ -977,3 +977,16 @@
 .l-viagem.is-pausada .l-viagem-cvs { filter: blur(3px) brightness(0.6); }
 /* clarão da chegada num lugar novo: a música entra junto com a cor */
 .l-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 55%, var(--cor) 0%, transparent 70%); mix-blend-mode: screen; z-index: 2; }
+
+/* direção: pedais no celular (drift e freio/ré), aviso de acelerar no computador */
+.l-pedais { position: absolute; right: 14px; bottom: calc(96px + env(safe-area-inset-bottom)); display: none; flex-direction: column; gap: 10px; align-items: flex-end; }
+@media (pointer: coarse) { .l-pedais { display: flex; } }
+.l-pedal { width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; font: 700 11px/1.1 var(--mono) !important; letter-spacing: 0.1em; text-transform: uppercase; color: #fff !important; background: rgba(5, 5, 16, 0.5) !important; border: 1.5px solid rgba(255, 255, 255, 0.28) !important; backdrop-filter: blur(6px); touch-action: none; user-select: none; -webkit-user-select: none; }
+.l-pedal:active { transform: scale(0.94); }
+.l-pedal.is-drift { border-color: #ff3fb0 !important; color: #ffb3dc !important; box-shadow: 0 0 18px -6px #ff3fb0; }
+.l-pedal.is-drift:active { background: rgba(255, 63, 176, 0.35) !important; }
+.l-pedal.is-re { width: 60px; height: 60px; font-size: 10px !important; }
+.l-pedal.is-re:active { background: rgba(255, 60, 80, 0.35) !important; }
+.l-hud-parado { position: absolute; left: 50%; bottom: 30%; transform: translateX(-50%); padding: 10px 16px; border-radius: 14px; background: rgba(5, 5, 16, 0.7); border: 1px solid rgba(47, 232, 255, 0.5); font: 12px var(--mono); color: #cfe9ff; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+.l-hud-parado.is-on { opacity: 1; animation: l-pulsa 1.6s infinite; }
+.l-hud-parado b { color: #2fe8ff; }
