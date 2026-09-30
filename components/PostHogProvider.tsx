@@ -154,6 +154,9 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
     if (isDevMode()) return
 
     initPostHog(consent)
+    // dentro de um iframe (apps abertos pela Linha 222) quem cuida da sessão
+    // é a janela principal: o iframe fechar não é a pessoa indo embora
+    if (window.self !== window.top) return
 
     const sessionId = getOrCreateSessionId()
     const startedAt = getOrCreateSessionStartedAt()
