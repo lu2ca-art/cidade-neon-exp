@@ -496,7 +496,9 @@ function AudioBolha({ src, titulo, de, auto }: { src: string; titulo: string; de
 
   useEffect(() => player.ouvir((e) => setS(e.src === src ? { tocando: e.tocando, t: e.t, dur: e.dur } : { tocando: false, t: 0, dur: 0 })), [src])
   useEffect(() => {
-    if (auto) player.tocar(src)
+    // música inteira não toca sozinha na conversa (quem estreia é a rádio);
+    // só áudio de voz entra automático
+    if (auto && !src.startsWith("/audio/tracks/")) player.tocar(src)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

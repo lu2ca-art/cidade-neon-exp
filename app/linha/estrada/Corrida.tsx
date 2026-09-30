@@ -19,9 +19,10 @@ import * as THREE from "three"
 import { Kombi222 } from "./Kombi222"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
-import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
+import { FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
+import { ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
-import { estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
+import { chiadoCurto, estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
 import { MARCHAS, montarMotor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -56,6 +57,9 @@ interface Props {
   avisos?: number
   // celular aberto por cima: a estrada congela (e continua dali ao fechar)
   pausado?: boolean
+  // o Núcleo derrubou a 222: sem rádio, cidade cinza, missão = religar a antena
+  caido?: boolean
+  onReligar?: () => void
   onSinal: (total: number, freq?: FreqId) => void
   onDescer: (id: EstacaoId, s: Stats) => void
   onSair: (s: Stats) => void
@@ -67,6 +71,8 @@ type Jogo = {
   u: number; x: number; v: number; vx: number; steer: number
   y: number; vy: number; ar: boolean; tAr: number
   turboT: number; carga: number; shake: number; flash: number
+  // drift: ângulo da traseira (rad) e quanto tempo segurou (vira mini-turbo)
+  deriva: number; driftT: number
   // chegada num lugar novo: a música nova entra de uma vez, com o cenário
   impacto: number; soco: boolean
   tempo: number; voltaIni: number; voltas: number
@@ -97,7 +103,12 @@ type Evs = {
 // toqueE/toqueD: um toque de cada lado, guardado até o próximo quadro (um
 // toque mais curto que um quadro não pode se perder — é ele que marca a
 // saída na bifurcação)
-type Input = { esq: boolean; dir: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean }
+// gas: acelerador (no computador é manual; no celular é automático)
+// freio: freia e, parada, dá ré · drift: freio de mão
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; drift: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean }
+const VRE = 15 // ré: m/s
+// celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
+const toqueTela = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
 
 const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
 const lugarDe = (d: FreqId) => territorio(d).lugar
@@ -107,7 +118,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, onSinal, onDescer, onSair, onVolta }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -120,17 +131,24 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const alvoChave = alvo ? `${alvo.t}:${alvo.missao}:${alvo.t === "busca" ? alvo.faltam.join(",") : ""}` : ""
   const missaoAlvo = alvo ? MISSOES[alvo.missao] ?? null : null
   // onde a missão manda: o lugar da busca, ou o centro (onde moram as estações)
-  const lugarAlvo: FreqId | null = alvo ? (alvo.t === "busca" ? alvo.busca.onde : "linha") : null
+  const lugarAlvo: FreqId | null = caido ? "linha" : alvo ? (alvo.t === "busca" ? alvo.busca.onde : "linha") : null
+  const caidoRef = useRef(caido)
+  useEffect(() => { caidoRef.current = caido }, [caido])
   const lugarAlvoRef = useRef(lugarAlvo)
   useEffect(() => { lugarAlvoRef.current = lugarAlvo }, [lugarAlvo])
   const marcos = useMemo<Marco[]>(() => {
+    // a antena da 222: no centro, um terço do caminho
+    if (caido) {
+      const C = M.vias[M.circuito.linha]
+      return [{ chave: "antena", via: M.circuito.linha, u: C.livre[0] + 0.33 * (C.livre[1] - C.livre[0]), cor: "#e6f0ff" }]
+    }
     if (!alvo || alvo.t !== "busca") return []
     const vi = M.circuito[alvo.busca.onde]
     const C = M.vias[vi]
     const cor = getEstacao(alvo.missao).cor
     return alvo.faltam.map((k) => ({ chave: `${alvo.busca.item}:${k}`, via: vi, u: C.livre[0] + alvo.busca.em[k] * (C.livre[1] - C.livre[0]), cor }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [M, alvoChave])
+  }, [M, alvoChave, caido])
   const marcosRef = useRef(marcos)
   useEffect(() => { marcosRef.current = marcos }, [marcos])
   // a busca terminou no meio da corrida: a estação vira destino na hora
@@ -139,7 +157,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvoChave])
 
-  const input = useRef<Input>({ esq: false, dir: false, freio: false, turbo: false, toqueE: false, toqueD: false })
+  const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, drift: false, turbo: false, toqueE: false, toqueD: false })
   const jogo = useRef<Jogo>(novoJogo(M, destino, save.estacao))
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
@@ -149,6 +167,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const hudRota = useRef<HTMLSpanElement>(null)
   const hudGarfoM = useRef<HTMLElement>(null)
   const hudGarfoT = useRef<HTMLSpanElement>(null)
+  const hudParado = useRef<HTMLDivElement>(null)
   const garfoEls = useRef<(HTMLDivElement | null)[]>([])
   const garfoChave = useRef("")
   const [garfo, setGarfo] = useState<Garfo | null>(null)
@@ -200,22 +219,35 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [])
 
   // rádio: toca a frequência do lugar onde você está
-  const proxFaixa = useRef<(id: FreqId, idx: number) => void>(() => {})
-  const idxRadio = useRef(0)
-  const tocarFreq = useCallback((id: FreqId, idx = 0, vol = 1) => {
-    let lista = faixasDe(freqDe(id), save.objetos, save.estacao)
-    if (!lista.length) lista = faixasDe(FREQUENCIAS[4], [], null)
-    if (!lista.length) return
-    const fx = lista[idx % lista.length]
-    idxRadio.current = idx
-    setFaixa(fx.titulo)
-    player.tocar(fx.src, () => proxFaixa.current(freqRef.current, idx + 1), vol)
-  }, [save.objetos, save.estacao])
-  useEffect(() => { proxFaixa.current = (id, idx) => tocarFreq(id, idx) }, [tocarFreq])
+  // rádio: a programação do lugar onde você está (programa.ts) — sacola
+  // sem repetição, estreias e vinhetas do locutor entre as músicas
+  const proxFaixa = useRef<(id: FreqId) => void>(() => {})
+  const tocarProxima = useCallback((id: FreqId, vol = 1) => {
+    if (caidoRef.current) { player.pausar(); setFaixa(""); return }
+    const a = alvoRef.current
+    const carregando = a?.t === "entrega" ? MISSOES[a.missao]?.busca.nome ?? null : null
+    const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
+    if (!p) return
+    const tocar = () => {
+      setFaixa(p.faixa.titulo)
+      player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol)
+    }
+    if (!p.vinheta) return tocar()
+    // entre uma música e outra: um chiado de dial e o locutor (ou o Núcleo)
+    chiadoCurto()
+    falar(p.vinheta.de, p.vinheta.texto)
+    if (p.estreia) {
+      jogo.current.flash = 0.7
+      confeteRef.current?.(getEstacao(p.estreia).cor, 70)
+    }
+    setTimeout(tocar, 900)
+     
+  }, [save.objetos, save.nome, falar])
+  useEffect(() => { proxFaixa.current = (id) => tocarProxima(id) }, [tocarProxima])
   useEffect(() => {
     // liga o rádio ao entrar no carro (efeito externo: áudio)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    tocarFreq("linha")
+     
+    tocarProxima(freqRef.current)
     return () => player.pausar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -224,6 +256,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   // celular aberto → estrada congela; fechou → a rádio volta (uma conversa
   // pode ter tocado um áudio no lugar dela) e as teclas voltam a valer
+  // caiu com a estrada aberta: a rádio sai do ar na hora (efeito externo: áudio)
+  useEffect(() => {
+    if (caido) player.pausar()
+  }, [caido])
   const pausadoRef = useRef(pausado)
   useEffect(() => {
     pausadoRef.current = pausado
@@ -232,12 +268,21 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       toques.current.clear()
       return
     }
-    const lista = faixasDe(freqDe(freqRef.current), save.objetos, save.estacao).map((f) => f.src)
-    if (!player.src || !lista.includes(player.src) || !player.tocando) tocarFreq(freqRef.current, idxRadio.current + (player.src && lista.includes(player.src) ? 0 : 1))
+    // a música do lugar que ficou pausada continua de onde parou; se uma
+    // conversa tocou outra coisa, entra a próxima da programação
+    if (caidoRef.current) return
+    if (ehDoLugar(freqRef.current, player.src, save.objetos)) { if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current)) }
+    else tocarProxima(freqRef.current)
     player.volume(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pausado])
   // "ir de kombi" pra uma estação pelo mapa do celular: vira o destino
+  // a 222 caiu: a missão da vez espera, o destino some (a antena é o alvo)
+  const [caidoAnt, setCaidoAnt] = useState(caido)
+  if (caido !== caidoAnt) {
+    setCaidoAnt(caido)
+    if (caido) setDestino(null)
+  }
   const [destinoAnt, setDestinoAnt] = useState(destinoInicial)
   if (destinoInicial !== destinoAnt) {
     setDestinoAnt(destinoInicial)
@@ -323,7 +368,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         if (freqRef.current !== v.t) {
           setFreq(v.t)
           freqRef.current = v.t
-          tocarFreq(v.t)
+          tocarProxima(v.t)
         }
         player.volume(1)
         onSinal(sinalRef.current, v.t)
@@ -331,10 +376,24 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       radio: (id) => {
         setFreq(id)
         freqRef.current = id
-        tocarFreq(id, 0, 0.2)
+        tocarProxima(id, 0.2)
         gota(4)
       },
       pegar: (chave) => {
+        if (chave === "antena") {
+          onReligar?.()
+          jogo.current.flash = 1
+          jogo.current.impacto = 1
+          confeteRef.current?.("#2fe8ff", 160)
+          vib([40, 30, 40, 30, 120])
+          setPopup({ id: Math.random(), txt: "222 FM no ar", cor: "#2fe8ff" })
+          caidoRef.current = false
+          setTimeout(() => {
+            tocarProxima(freqRef.current)
+            falar("222 FM", "voltamos. o núcleo derrubou a gente e alguém religou na mão. essa vai pra você")
+          }, 600)
+          return
+        }
         const a = alvoRef.current
         if (!a || a.t !== "busca") return
         const k = Number(chave.split(":")[1])
@@ -365,12 +424,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onVolta?.(t)
       },
       hud: (j) => {
-        if (hudVel.current) hudVel.current.textContent = String(Math.round(j.v * 3.6))
+        if (hudVel.current) hudVel.current.textContent = String(Math.round(Math.abs(j.v) * 3.6))
+        // computador: parado sem acelerar → mostra como anda
+        hudParado.current?.classList.toggle("is-on", !toqueTela && Math.abs(j.v) < 0.5 && !j.chegando && !input.current.gas && j.tempo > 1.5)
         if (hudMarcha.current) {
           const pct = j.v / VMAX
           let m = 1
           while (m < MARCHAS.length - 1 && pct > MARCHAS[m]) m++
-          hudMarcha.current.textContent = `${m}ª`
+          hudMarcha.current.textContent = j.v < -0.3 ? "R" : j.driftT > 0 ? "DRIFT" : `${m}ª`
         }
         const V = M.vias[j.via]
         const d = destinoRef.current
@@ -492,6 +553,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       evs.current?.via(i)
     }
     w.__tom = () => tomDaMusica()
+    w.__pular = () => proxFaixa.current(freqRef.current)
     w.__estacoes = () => M.vias[M.circuito.linha].estacoes.map((e) => ({ id: e.id, f: e.u / M.vias[M.circuito.linha].L }))
     // pontos de busca da missão: [{ chave, via (id), u, f (fração do loop) }]
     w.__marcos = () => marcosRef.current.map((m) => ({ chave: m.chave, via: M.vias[m.via].id, u: Math.round(m.u), f: m.u / M.vias[m.via].L }))
@@ -499,9 +561,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), src: player.src }
+      return { via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), turbo: +j.turboT.toFixed(2), src: player.src }
     }
-    return () => { delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes }
+    return () => { delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular }
   }, [M])
 
   // toque: metade esquerda/direita vira, as duas freiam
@@ -512,7 +574,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const d = l.includes("dir")
     if (e && !d && !input.current.esq) input.current.toqueE = true
     if (d && !e && !input.current.dir) input.current.toqueD = true
-    input.current.freio = e && d
     input.current.esq = e && !d
     input.current.dir = d && !e
   }
@@ -527,8 +588,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         if (on && !ev.repeat) input.current.toqueD = true
         input.current.dir = on
       }
+      else if (k === "arrowup" || k === "w") input.current.gas = on
       else if (k === "arrowdown" || k === "s") input.current.freio = on
-      else if (k === " " && on) input.current.turbo = true
+      else if (k === " ") input.current.drift = on
+      else if ((k === "shift" || k === "e") && on) input.current.turbo = true
       else return
       ev.preventDefault()
     }
@@ -589,7 +652,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${pausado ? "is-pausada" : ""}`}>
+    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -652,7 +715,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <circle ref={mapaCarro} r="2.8" fill="#fff" stroke="#050510" strokeWidth="1" />
       </svg>
 
-      {alvo && missaoAlvo && (
+      {caido && (
+        <div className="l-hud-missao" style={{ ["--cor" as string]: "#3d7bff" }}>
+          <small>D-Bee · urgente</small>
+          <b>religar a antena da 222 no centro</b>
+        </div>
+      )}
+      {!caido && alvo && missaoAlvo && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: getEstacao(alvo.missao).cor }}>
           <small>{getEstacao(alvo.missao).personagem} · missão</small>
           <b>{alvo.t === "busca" ? missaoAlvo.tarefa : alvo.t === "visita" ? `te chamou na estação ${getEstacao(alvo.missao).n}` : `levar ${missaoAlvo.busca.nome} na estação ${getEstacao(alvo.missao).n}`}</b>
@@ -726,7 +795,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onClick={() => setPopup({ id: Math.random(), txt: "pra mudar de música, muda de caminho →", cor: fq.cor })}
       >
         <span ref={hudFreq} className="l-hud-freq" style={{ color: fq.cor }}>{fq.freq} FM</span>
-        {passandoE ? (
+        {caido ? (
+          <span className="l-hud-faixa is-caida">sem sinal · o núcleo derrubou a 222</span>
+        ) : passandoE ? (
           <span key={passando!.t} className="l-hud-faixa is-estacao" style={{ color: passandoE.cor }}>estação {passandoE.n} · {passandoE.faixa.toLowerCase()}</span>
         ) : (
           <span className="l-hud-faixa">{faixa || "…"}</span>
@@ -749,10 +820,32 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <span>{temTurbo ? "turbo" : "turbo · nível cúmplice"}</span>
       </button>
 
+      <div ref={hudParado} className="l-hud-parado"><b>↑</b> ou <b>W</b> pra acelerar · <b>↓</b> dá ré</div>
+
+      {/* celular: freio/ré e drift (segurar) */}
+      <div className="l-pedais" onPointerDown={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="l-pedal is-drift"
+          onPointerDown={(e) => { e.stopPropagation(); input.current.drift = true }}
+          onPointerUp={() => { input.current.drift = false }}
+          onPointerCancel={() => { input.current.drift = false }}
+          onPointerLeave={() => { input.current.drift = false }}
+        >drift</button>
+        <button
+          type="button"
+          className="l-pedal is-re"
+          onPointerDown={(e) => { e.stopPropagation(); input.current.freio = true }}
+          onPointerUp={() => { input.current.freio = false }}
+          onPointerCancel={() => { input.current.freio = false }}
+          onPointerLeave={() => { input.current.freio = false }}
+        >freio<br />ré</button>
+      </div>
+
       {dica && (
         <div className="l-hud-dica">
           <span>← segura</span>
-          <span className="is-desk">setas · espaço = turbo</span>
+          <span className="is-desk">↑ acelera · ↓ freia/ré · espaço drift · shift turbo</span>
           <span>segura →</span>
         </div>
       )}
@@ -817,7 +910,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
   return {
     via: M.circuito.linha,
     u, x: 0, v: 0, vx: 0, steer: 0, y: c.py[Math.floor(u / PASSO)], vy: 0, ar: false, tAr: 0,
-    turboT: 0, carga: 0, shake: 0, flash: 0, impacto: 0, soco: false, tempo: 0, voltaIni: -1, voltas: 0,
+    turboT: 0, carga: 0, shake: 0, flash: 0, deriva: 0, driftT: 0, impacto: 0, soco: false, tempo: 0, voltaIni: -1, voltas: 0,
     chegando: false, parado: false, sintonizou: false,
     escolha: 0, escolhaU: -1,
     st: { tempo: 0, vmax: 0, orbs: 0, quase: 0, sinal: 0, ar: 0, voltas: 0 },
@@ -1380,17 +1473,50 @@ function Cena({
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 7)
       // nos viadutos entre lugares a pista é expressa
       const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1)
-      if (inp.freio) j.v = Math.max(0, j.v - FREIO * dt)
-      else j.v += (ACEL * (1 - Math.pow(Math.min(1, j.v / vmax), 2)) + (j.turboT > 0 ? 16 : 0)) * dt
+      // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
+      const gas = inp.gas || (toqueTela && !inp.freio)
+      if (inp.freio) {
+        if (j.v > 0.8) j.v = Math.max(0, j.v - FREIO * dt)
+        else j.v = Math.max(-VRE, j.v - 9 * dt)
+      } else if (gas || j.turboT > 0) {
+        if (j.v < 0) j.v = Math.min(0, j.v + FREIO * dt)
+        else j.v += (ACEL * (1 - Math.pow(Math.min(1, j.v / vmax), 2)) + (j.turboT > 0 ? 16 : 0)) * dt
+      } else {
+        // solto: a Kombi vai perdendo embalo sozinha
+        const atrito = (2.2 + 0.006 * j.v * j.v) * dt
+        j.v = Math.abs(j.v) <= atrito ? 0 : j.v - Math.sign(j.v) * atrito
+      }
       if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
       j.v = Math.min(j.v, VTURBO * 1.08)
       if (j.turboT > 0) j.turboT -= dt
-      // lateral: direção suave + força centrífuga leve (dá o "deslize"); a
-      // curva inclinada segura boa parte dela, como numa pista de verdade
-      const alvoVx = j.steer * (5 + 9 * Math.min(1, pct))
-      j.vx += (alvoVx - j.vx) * Math.min(1, dt * 5)
+      // DRIFT (freio de mão + curva, andando): a traseira escorrega, a Kombi
+      // fecha mais a curva, solta faísca e carrega turbo; soltando depois de
+      // segurar um tempo, vem o mini-turbo
+      const driftando = inp.drift && j.v > 14 && !j.ar && Math.abs(j.steer) > 0.15
+      if (driftando) {
+        j.driftT += dt
+        j.deriva += (Math.sign(j.steer) * 0.62 - j.deriva) * Math.min(1, dt * 4)
+        j.v *= 1 - 0.16 * dt
+        j.carga = Math.min(1, j.carga + dt * 0.22)
+        if (Math.random() < 0.6) soltarFaiscas(faiscas, carro.current, -Math.sign(j.steer))
+        j.shake = Math.max(j.shake, 0.08)
+      } else {
+        if (j.driftT > 0.6 && !inp.drift) {
+          j.turboT = Math.max(j.turboT, Math.min(1.8, 0.5 + j.driftT * 0.6))
+          j.flash = Math.max(j.flash, 0.35)
+          motor?.whoosh()
+          vib([15, 20, 40])
+        }
+        j.driftT = 0
+        j.deriva += (0 - j.deriva) * Math.min(1, dt * 5)
+      }
+      // lateral: mais resposta que antes (Horizon), mais ainda no drift;
+      // força centrífuga leve — a curva inclinada segura boa parte dela
+      const re = j.v < 0 ? -0.6 : 1
+      const alvoVx = j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) * (driftando ? 1.65 : 1) * re
+      j.vx += (alvoVx - j.vx) * Math.min(1, dt * (driftando ? 3.5 : 7))
       const segura = 1 - Math.min(0.75, Math.abs(a.bank) * 2.4)
-      if (!j.ar) j.x += (j.vx - a.curv * j.v * j.v * 0.035 * segura) * dt
+      if (!j.ar) j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * segura) * dt
       else j.x += j.vx * 0.5 * dt
     }
     // parede macia: raspa, solta faísca, perde um pouco de velocidade. Faixa
@@ -1468,6 +1594,23 @@ function Cena({
         j.pegos.clear()
       }
     }
+    // de ré passando do começo: no circuito dá a volta; numa saída, volta
+    // pro lugar de onde saiu, na faixa da bifurcação
+    if (j.u < 0) {
+      trocou = true
+      if (V.tipo === "circuito") j.u += V.L
+      else {
+        const vi = M.circuito[V.de!]
+        const fx = M.vias[vi].faixas.find((ff) => ff.via === j.via)
+        calar()
+        j.sintonizou = false
+        player.volume(1)
+        j.via = vi
+        j.u = (fx?.u ?? 0) + j.u
+        j.x += (fx?.lado ?? 0) * CK
+        j.pegos.clear()
+      }
+    }
     if (M.vias[j.via] !== V) {
       V = M.vias[j.via]
       ev.via(j.via)
@@ -1481,7 +1624,7 @@ function Cena({
       if (hudN.current % 3 === 0) {
         player.volume(p < 0.45 ? 1 : Math.max(0, 1 - (p - 0.45) / 0.3))
         if (chiado.current) {
-          chiado.current.volume(Math.min(0.2, ((p - 0.45) / 0.25) * 0.2))
+          chiado.current.volume(Math.max(0, Math.min(0.2, ((p - 0.45) / 0.25) * 0.2)))
           chiado.current.sintonizar(700 + 2200 * Math.abs(Math.sin(p * 22)))
         }
       }
@@ -1637,7 +1780,7 @@ function Cena({
     tmp.m.makeBasis(tmp.r, tmp.up, tmp.f.clone().negate())
     const car = carro.current!
     car.quaternion.setFromRotationMatrix(tmp.m)
-    const yaw = -Math.atan2(j.vx, Math.max(j.v, 4)) - a.curv * j.v * j.v * 0.0025
+    const yaw = -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva
     tmp.qYaw.setFromAxisAngle(tmp.y0, yaw)
     tmp.qRoll.setFromAxisAngle(tmp.z0, j.steer * 0.05 * Math.min(1, pct))
     car.quaternion.multiply(tmp.qYaw).multiply(tmp.qRoll)
@@ -1693,7 +1836,7 @@ function Cena({
     if (hemi.current) hemi.current.color.lerp(alvoCeu, kk * 0.5)
 
     // som: só o motor
-    motor?.atualizar(Math.min(1.45, j.v / VMAX), !inp.freio && !j.chegando, j.turboT > 0)
+    motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
 
     // orbs: na cor da rádio que está tocando, batendo no grave da música
     const t = state.clock.elapsedTime

@@ -125,7 +125,9 @@ export function chamados(save: Save, nivel: number): Chamado[] {
   const out: Chamado[] = []
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   if (ecos) out.push({ id: "ecos", de: "linha 222", cor: "#2fe8ff", texto: `${ecos} ${ecos === 1 ? "mensagem nova" : "mensagens novas"} no grupo`, acao: { chat: "grupo" } })
-  const a = ativa(save, nivel)
+  // a 222 caiu: nada importa mais do que religar
+  if (save.nucleo.caido) out.push({ id: "antena", de: "D-Bee", cor: "#3d7bff", texto: "derrubaram a 222. religa a antena no centro, de kombi", acao: { app: "kombi" } })
+  const a = save.nucleo.caido ? null : ativa(save, nivel)
   if (a) {
     const e = getEstacao(a)
     const m = MISSOES[a]!

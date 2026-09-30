@@ -30,12 +30,12 @@ export const FREQUENCIAS: Frequencia[] = [
   },
   {
     id: "crypto", freq: TIER_META.crypto.freq, nome: TIER_META.crypto.label, cor: TIER_META.crypto.color, custo: 35,
-    faixas: [t("CHUVA · inst", "inst-chuva"), t("DopaminA · inst", "inst-dopamina"), t("Sabe Ontem? · inst", "inst-sabe-ontem"), t("Nectar · inst", "inst-nectar")],
+    faixas: [t("CHUVA · inst", "inst-chuva"), t("DopaminA · inst", "inst-dopamina"), t("Sabe Ontem? · inst", "inst-sabe-ontem"), t("Nectar · inst", "inst-nectar"), t("Ojalá · inst", "inst-ojala")],
     link: TIER_META.crypto.projectLink,
   },
   {
     id: "live", freq: TIER_META.live.freq, nome: TIER_META.live.label, cor: TIER_META.live.color, custo: 70,
-    faixas: [t("CHUVA · ao vivo", "live-chuva"), t("DopaminA · ao vivo", "live-dopamina"), t("Sabe Ontem? · ao vivo", "live-sabe-ontem"), t("Nectar · ao vivo", "live-nectar")],
+    faixas: [t("CHUVA · ao vivo", "live-chuva"), t("DopaminA · ao vivo", "live-dopamina"), t("Sabe Ontem? · ao vivo", "live-sabe-ontem"), t("Nectar · ao vivo", "live-nectar"), t("Ojalá · ao vivo", "live-ojala")],
     link: TIER_META.live.projectLink,
   },
   {
@@ -47,20 +47,25 @@ export const FREQUENCIAS: Frequencia[] = [
 
 export type FreqId = Frequencia["id"]
 
-// A 222.0 toca as faixas das estações cujo objeto a pessoa já pegou (e,
-// antes disso, a da própria estação se já saiu). A 222.4 toca todo o Vol.1
-// já lançado — é a vitrine do álbum completo.
-export function faixasDe(f: Frequencia, objetos: EstacaoId[], estacao: EstacaoId | null, agora = Date.now()) {
-  if (f.id === "linha") {
-    const ids = new Set<EstacaoId>(objetos)
-    if (estacao) ids.add(estacao)
-    return ESTACOES.filter((e) => ids.has(e.id) && (lancada(e, agora) || objetos.includes(e.id)))
-      .map((e) => ({ titulo: e.faixa, src: e.audio }))
-  }
-  if (f.id === "full") {
-    return ESTACOES.filter((e) => lancada(e, agora)).map((e) => ({ titulo: e.faixa, src: e.audio }))
-  }
-  return f.faixas
+// Repertório de cada lugar (desde 30/09 — antes a 222.0 só tocava os
+// objetos já pegos e virava 1 música em loop):
+// - 222.0 (centro): todo o Vol.1 já lançado, mais a prévia de quem já
+//   pegou o objeto de uma faixa ainda por vir (o Nectar pelo violão)
+// - 69.9, 88.7, 111.3: subúrbio, instrumentais e ao vivo — versões de faixa
+//   que ainda não saiu só entram depois da data
+// - 222.4 (avenida): o Vol.1 lançado + o arquivo (catálogo antigo, nomes
+//   mascarados)
+export const ARQUIVO = [t("c****e", "cliche"), t("h*****ood", "hollywood"), t("s*****t", "stylist"), t("o***s", "oasis"), t("a*******a", "astronauta"), t("q* é v*?", "qm-e-vc")]
+const saiu = (titulo: string, agora: number) => {
+  const e = ESTACOES.find((x) => titulo.toLowerCase().startsWith(x.faixa.toLowerCase()))
+  return !e || lancada(e, agora)
+}
+
+export function faixasDe(f: Frequencia, objetos: EstacaoId[], _estacao: EstacaoId | null, agora = Date.now()) {
+  const vol1 = ESTACOES.filter((e) => lancada(e, agora) || objetos.includes(e.id)).map((e) => ({ titulo: e.faixa, src: e.audio }))
+  if (f.id === "linha") return vol1
+  if (f.id === "full") return [...vol1, ...ARQUIVO]
+  return f.faixas.filter((x) => saiu(x.titulo, agora))
 }
 
 export function proximaFreq(sinal: number) {

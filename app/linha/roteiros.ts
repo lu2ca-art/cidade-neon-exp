@@ -4,6 +4,8 @@
 // de chat, ironia seca, verso de vez em quando, nunca didático, nunca
 // publicitário. O NÚCLEO fala o oposto disso: corporativo, gentil, ✓.
 //
+// Vídeos do LU2CA não entram nas conversas: moram no //LOOP (30/09).
+//
 // Regra de ritmo (desde o fio de missões): ninguém despeja a história. A
 // abertura só apresenta a D-Bee e o quiz; cada pessoa aparece quando chega
 // a vez dela no fio; o que é a cidade vem aos poucos, nas memórias
@@ -66,6 +68,8 @@ export interface Roteiro {
 
 // Cor de cada voz no grupo — a mesma da estação de cada um
 export const VOZES: Record<string, string> = {
+  "222 FM": "#ff3fb0",
+  "NÚCLEO": "#e6f0ff",
   "D-Bee": "#3d7bff",
   Ella: "#2fe8ff",
   Mubarak: "#ff6a35",
@@ -195,7 +199,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "prova", id: "regar" },
       { t: "msg", texto: "olha isso" },
       { t: "objeto" },
-      { t: "video", src: "/videos/loop/chuva-studio.mp4", legenda: "gravei no dia que parou de doer" },
       { t: "audio", src: "/audio/tracks/222-chuva.mp3", titulo: "CHUVA" },
       { t: "msg", texto: "no caos também nasce coisa" },
       { t: "gancho" },
@@ -360,7 +363,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "busca pra mim? a estação 6 é aqui" },
       { t: "tarefa" },
       { t: "msg", texto: "vc achou" },
-      { t: "video", src: "/videos/loop/video4.mp4", legenda: "meus irmãos. eles ouvem tudo primeiro" },
       { t: "msg", texto: "toca comigo?" },
       { t: "prova", id: "violao" },
       { t: "msg", texto: "tá vendo. n precisava ser perfeito" },
@@ -368,7 +370,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "audio", src: "/audio/tracks/nectar.mp3", titulo: "Nectar · prévia" },
       { t: "msg", texto: "fui eu. na noite do apagão, rodei a linha inteira escondendo as músicas" },
       { t: "msg", texto: "e fiquei esperando alguém juntar" },
-      { t: "msg", texto: "nectar sai dia 14/10. vc ouviu antes" },
+      { t: "msg", texto: "nectar sai dia 16/10. vc ouviu antes" },
       { t: "msg", texto: "a cidade inteira mora num lugar só. todas as frequências, o live, o instrumental" },
       { t: "msg", texto: "n é produto. é sustentar uma coisa que existe fora do sistema" },
       { t: "fim", para: "mapa" },

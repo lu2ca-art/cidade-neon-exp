@@ -4,7 +4,8 @@
 // e uma prova curta dentro da própria conversa.
 //
 // Personagem ↔ faixa ↔ objeto seguem a tabela decidida pelo LU2CA em 10/set.
-// Datas seguem o roadmap de 28/09 (cadência de 14 dias, sempre quarta).
+// Datas: cadência de 14 dias, sempre sexta (painel, 30/09): Nectar 16/10,
+// Ojalá 30/10, Swav 13/11, Rollercoaster 27/11.
 
 export type EstacaoId =
   | "chuva" | "copo" | "dopamina" | "sexta" | "ontem"
@@ -83,7 +84,7 @@ export const ESTACOES: Estacao[] = [
   {
     id: "nectar", n: 6, faixa: "Nectar", personagem: "LU2CA",
     objeto: "violao", objetoNome: "o violão", cor: "#b38cff",
-    audio: "/audio/tracks/nectar.mp3", lancamento: "2026-10-14T00:00:00-03:00",
+    audio: "/audio/tracks/nectar.mp3", lancamento: "2026-10-16T00:00:00-03:00",
     luz: "aceitação", sombra: "vergonha",
     cidade: "o que sobra quando você para de ter vergonha de sentir",
     ouvir: busca("Nectar"), prova: "violao",
@@ -91,7 +92,7 @@ export const ESTACOES: Estacao[] = [
   {
     id: "ojala", n: 7, faixa: "Ojalá", personagem: "D-Bee",
     objeto: "camisa", objetoNome: "a camisa da seleção", cor: "#3d7bff",
-    audio: "/audio/tracks/ojala.mp3", lancamento: "2026-10-28T00:00:00-03:00",
+    audio: "/audio/tracks/ojala.mp3", lancamento: "2026-10-30T00:00:00-03:00",
     luz: "esperança", sombra: "destino",
     cidade: "carnaval fora de época, amor com data pra acabar",
     ouvir: busca("Ojalá"),
@@ -99,7 +100,7 @@ export const ESTACOES: Estacao[] = [
   {
     id: "swav", n: 8, faixa: "Swav", personagem: "Tony Gordo",
     objeto: "lanterna", objetoNome: "a lanterna", cor: "#ffe14d",
-    audio: "/audio/tracks/swav.mp3", lancamento: "2026-11-11T00:00:00-03:00",
+    audio: "/audio/tracks/swav.mp3", lancamento: "2026-11-13T00:00:00-03:00",
     luz: "coragem", sombra: "repressão",
     cidade: "o apagão mais longo da história. alguém tá com uma lanterna",
     ouvir: busca("Swav"),
@@ -107,7 +108,7 @@ export const ESTACOES: Estacao[] = [
   {
     id: "rollercoaster", n: 9, faixa: "Rollercoaster", personagem: "Nizzy",
     objeto: "guarda-chuva", objetoNome: "o guarda-chuva", cor: "#ff5b5b",
-    audio: "/audio/tracks/rollercoaster.mp3", lancamento: "2026-11-25T00:00:00-03:00",
+    audio: "/audio/tracks/rollercoaster.mp3", lancamento: "2026-11-27T00:00:00-03:00",
     luz: "recomeço", sombra: "medo",
     cidade: "a montanha-russa parou lá em cima e ninguém desce",
     ouvir: busca("Rollercoaster"),

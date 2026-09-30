@@ -163,6 +163,20 @@ export function estatica() {
   }
 }
 
+// chiado de dial entre uma música e outra (~1 s, varrendo a frequência)
+export function chiadoCurto() {
+  const e = estatica()
+  if (!e) return
+  e.volume(0.09)
+  const t0 = Date.now()
+  const iv = setInterval(() => {
+    const k = (Date.now() - t0) / 1000
+    e.sintonizar(600 + 2400 * Math.abs(Math.sin(k * 9)))
+    if (k > 0.8) e.volume(0)
+    if (k > 1.1) { clearInterval(iv); e.parar() }
+  }, 40)
+}
+
 // ── Player único ────────────────────────────────────────────
 // Um elemento <audio> por vez no jogo inteiro: nota de voz, faixa da prova,
 // rádio. Tocar qualquer coisa pausa o que estava tocando.
