@@ -1,20 +1,22 @@
 // ─── B4TIDA — modelo de dados compartilhado ─────────────────────────────────
 // Uma "música" (Song) vive num dos 4 slots salvos. Cada música tem até
 // MAX_TRACKS faixas (podendo repetir instrumento). Faixas de instrumentos
-// "sequenciados" (bateria/baixo/guitarra/piano) guardam um padrão de passos;
+// "sequenciados" (bateria/baixo/guitarra/synth/pad) guardam um padrão de passos;
 // a faixa de voz guarda áudio gravado (Blob) em vez de padrão.
 
 export const MAX_SLOTS = 4
 export const MAX_TRACKS = 5
 export const MAX_VOICE_BARS = 16
 
-export type InstrumentId = "bateria" | "baixo" | "guitarra" | "piano" | "voz"
+// "piano" é o id interno do SYNTH (renomeado sem quebrar música salva)
+export type InstrumentId = "bateria" | "baixo" | "guitarra" | "piano" | "pad" | "voz"
 
 export const INSTRUMENT_LABEL: Record<InstrumentId, string> = {
   bateria: "BATERIA",
   baixo: "BAIXO",
   guitarra: "GUITARRA",
-  piano: "PIANO",
+  piano: "SYNTH",
+  pad: "PAD",
   voz: "VOZ",
 }
 
@@ -23,6 +25,7 @@ export const INSTRUMENT_COLOR: Record<InstrumentId, string> = {
   baixo: "#00E5FF",
   guitarra: "#FFD93D",
   piano: "#A78BFA",
+  pad: "#FF3FB0",
   voz: "#4ADE80",
 }
 
@@ -38,10 +41,13 @@ export const STEPS_PER_INSTRUMENT: Record<Exclude<InstrumentId, "voz">, number> 
   baixo: 16,
   guitarra: 16,
   piano: 16,
+  pad: 16,
 }
 
-export type DrumTimbre = "sintetico" | "808" | "acustico" | "lofi"
-export type MelodicTimbre = 0 | 1 | 2 | 3
+// os 4 kits novos seguem a paleta dos gases nobres da cidade (+ a chuva)
+export type DrumTimbre = "sintetico" | "808" | "acustico" | "lofi" | "xenonio" | "neonio" | "argonio" | "chuva" | `faixa-${string}`
+// 0-5 sintetizados; 6+ tirados das faixas (amostras.ts)
+export type MelodicTimbre = number
 
 // linhas do grid de bateria (mantém compat com o app original)
 export type DrumRow = "kick" | "snare" | "hat" | "perc"
@@ -165,4 +171,11 @@ export function unlockedDegrees(song: Song): Set<number> {
     }
   }
   return degrees
+}
+
+// músicas salvas (ou mandadas pra biblioteca) antes do CHOPS sair: a faixa
+// de chops some, o resto da música continua igual
+export function limparSong(song: Song): Song {
+  const tracks = song.tracks.filter((t) => t.instrument in INSTRUMENT_LABEL)
+  return tracks.length === song.tracks.length ? song : { ...song, tracks }
 }

@@ -11,7 +11,7 @@ export function ModeToggle({
   accent,
 }: {
   mode: "play" | "pro"
-  instrument: "guitarra" | "piano"
+  instrument: "guitarra" | "piano" | "pad"
   accent: string
 }) {
   const router = useRouter()

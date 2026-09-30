@@ -17,6 +17,13 @@ const nextConfig = {
   // Brave) barram eu.i.posthog.com, e cada visitante com bloqueador sumia
   // dos dados. Passando por lu2ca.art/ingest o tráfego vira do próprio site.
   // Receita oficial do PostHog pra Next.js (região EU).
+  // A Linha 222 é o jogo agora: a v1 (o celular antigo em "/") foi
+  // descontinuada. O código dela fica no repo, mas "/" leva pra /linha
+  // (query junto: ?dev=1, utm_*). Os apps antigos que "voltam pra home"
+  // caem aqui também — a janela da Linha fecha quando vê /linha.
+  async redirects() {
+    return [{ source: "/", destination: "/linha", permanent: false }]
+  },
   async rewrites() {
     return [
       { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },

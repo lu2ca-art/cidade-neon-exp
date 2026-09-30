@@ -8,7 +8,7 @@ export default function PianoProPage() {
   return (
     <ProChordPage
       instrument="piano"
-      label="PIANO"
+      label="SYNTH"
       accent={INSTRUMENT_COLOR.piano}
       timbreLabels={PIANO_TIMBRE_LABEL}
       timbreEffects={PIANO_TIMBRE_EFFECT}

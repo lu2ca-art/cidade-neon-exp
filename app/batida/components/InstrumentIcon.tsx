@@ -46,6 +46,12 @@ const PATHS: Record<IconId, React.ReactNode> = {
       <path d="M12 17.5v4M8.5 21.5h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </>
   ),
+  pad: (
+    <>
+      <path d="M2 9c3-3 5 3 8 0s5-3 8 0 3 1 4 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <path d="M2 15c3-3 5 3 8 0s5-3 8 0 3 1 4 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.55" />
+    </>
+  ),
   mixagem: (
     <>
       <path d="M6 4v16M12 4v16M18 4v16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.45" />

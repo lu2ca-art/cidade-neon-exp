@@ -2,7 +2,7 @@
 // IndexedDB porque as faixas de voz guardam Blob de áudio de verdade — não
 // cabe em localStorage/sessionStorage de forma confiável.
 
-import { MAX_SLOTS, type Song } from "./types"
+import { limparSong, MAX_SLOTS, type Song } from "./types"
 
 const DB_NAME = "b4tida-db"
 const DB_VERSION = 1
@@ -29,7 +29,7 @@ export async function loadAllSlots(): Promise<(Song | null)[]> {
     req.onsuccess = () => {
       const results: (Song | null)[] = Array(MAX_SLOTS).fill(null)
       const rows = req.result as { slot: number; song: Song }[]
-      rows.forEach((r) => { if (r.slot >= 0 && r.slot < MAX_SLOTS) results[r.slot] = r.song })
+      rows.forEach((r) => { if (r.slot >= 0 && r.slot < MAX_SLOTS) results[r.slot] = limparSong(r.song) })
       resolve(results)
     }
     req.onerror = () => reject(req.error)

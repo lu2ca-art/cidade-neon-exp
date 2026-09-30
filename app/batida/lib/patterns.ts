@@ -9,7 +9,7 @@
 export interface StrumPattern {
   id: string
   label: string
-  instrument: "guitarra" | "piano"
+  instrument: "guitarra" | "piano" | "pad"
   hitsPerBar: number[] // índices 0-15 dentro de UM compasso
 }
 
@@ -26,8 +26,15 @@ export const PIANO_PATTERNS: StrumPattern[] = [
   { id: "valsa", label: "VALSA", instrument: "piano", hitsPerBar: [0, 5, 10] },
 ]
 
-export function patternsFor(instrument: "guitarra" | "piano"): StrumPattern[] {
-  return instrument === "guitarra" ? GUITAR_PATTERNS : PIANO_PATTERNS
+// pad: poucas batidas, o acorde segura até o próximo
+export const PAD_PATTERNS: StrumPattern[] = [
+  { id: "compasso", label: "1 POR COMPASSO", instrument: "pad", hitsPerBar: [0] },
+  { id: "meio", label: "2 POR COMPASSO", instrument: "pad", hitsPerBar: [0, 8] },
+  { id: "empurrado", label: "EMPURRADO", instrument: "pad", hitsPerBar: [0, 6, 14] },
+]
+
+export function patternsFor(instrument: "guitarra" | "piano" | "pad"): StrumPattern[] {
+  return instrument === "guitarra" ? GUITAR_PATTERNS : instrument === "pad" ? PAD_PATTERNS : PIANO_PATTERNS
 }
 
 // preenche UM compasso de `steps` (array completo da faixa) com o grau

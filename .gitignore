@@ -36,3 +36,6 @@ blender/refs/
 # Documentos e briefings efêmeros na raiz do repo
 VISION.md
 STATE_AUDIT_REPORT.md
+
+# biblioteca da B4TIDA em desenvolvimento (sem Vercel Blob)
+/.data

@@ -5,7 +5,7 @@
 
 import { createImpulseResponse } from "./dsp"
 import { chordStepMidiNotes, degreeToMidi, midiToFreq } from "./theory"
-import { triggerDrum, triggerBassNote, triggerGuitarChord, triggerPianoChord } from "./synths"
+import { triggerDrum, triggerBassNote, triggerChordFor } from "./synths"
 import { DRUM_ROWS, type MusicMode, type Track } from "./types"
 
 export interface MixBus {
@@ -126,8 +126,13 @@ export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: Song
     if (!midiNotes) return
     const out = buildOneShotChain(ctx, bus, track.fx)
     const freqs = midiNotes.map(midiToFreq)
-    const ringDur = dur * 4
-    if (track.instrument === "guitarra") triggerGuitarChord(ctx, out, time, freqs, ringDur, data.timbre)
-    else triggerPianoChord(ctx, out, time, freqs, ringDur, data.timbre)
+    // pad segura o acorde até o próximo (máx. 1 compasso); o resto soa 1 tempo
+    let ringDur = dur * 4
+    if (track.instrument === "pad") {
+      let n = 1
+      while (n < TICKS_PER_BAR && data.steps[(stepIdx + n) % patternTicks] == null) n++
+      ringDur = dur * n
+    }
+    triggerChordFor(track.instrument, ctx, out, time, freqs, ringDur, data.timbre)
   }
 }

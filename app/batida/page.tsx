@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { useCurrentSong } from "./lib/CurrentSongContext"
@@ -9,6 +9,10 @@ import { keyDegrees, NOTE_NAMES } from "./lib/theory"
 import { INSTRUMENT_COLOR, INSTRUMENT_LABEL, MAX_SLOTS, MAX_TRACKS, type InstrumentId } from "./lib/types"
 import { timbreLabel } from "./lib/format"
 import { InstrumentIcon } from "./components/InstrumentIcon"
+import { CLIMAS, musicaNoClima } from "./lib/climas"
+import { DRUM_TIMBRE_LABEL } from "./lib/synths"
+import { destaques as buscarDestaques, desserializar, enviar, type Criacao } from "./lib/biblioteca"
+import { renderSongOffline } from "./lib/render"
 
 const ACCENT = "#FF6B6B"
 
@@ -16,6 +20,7 @@ const INSTRUMENT_ROUTES: { id: InstrumentId; href: string }[] = [
   { id: "bateria", href: "/batida/bateria" },
   { id: "baixo", href: "/batida/baixo" },
   { id: "guitarra", href: "/batida/guitarra" },
+  { id: "pad", href: "/batida/pad" },
   { id: "piano", href: "/batida/piano" },
   { id: "voz", href: "/batida/voz" },
 ]
@@ -23,8 +28,63 @@ const INSTRUMENT_ROUTES: { id: InstrumentId; href: string }[] = [
 export default function BatidaHubPage() {
   const router = useRouter()
   const { completeConfirmation, updateCinematicStep, state } = useGameFunnel()
-  const { song, slotIndex, slots, slotsLoaded, openSlot, startNewSong, deleteSlot, patchSong, removeTrack } = useCurrentSong()
+  const { song, slotIndex, slots, slotsLoaded, openSlot, startNewSong, deleteSlot, patchSong, removeTrack, engine } = useCurrentSong()
   const [justCompleted, setJustCompleted] = useState(false)
+  const [tocando, setTocando] = useState(false)
+  const [envio, setEnvio] = useState<{ aberto: boolean; autor: string; titulo: string; estado: string }>({ aberto: false, autor: "", titulo: "", estado: "" })
+  const [daCidade, setDaCidade] = useState<Criacao[]>([])
+  const [ouvindo, setOuvindo] = useState<string | null>(null)
+  const ouvinte = useRef<{ ctx: AudioContext; src: AudioBufferSourceNode } | null>(null)
+
+  // a hub também toca a música inteira (antes só as páginas de instrumento)
+  useEffect(() => { engine?.setTracks(song.tracks) }, [engine, song.tracks])
+  // sincroniza com o motor de áudio (externo ao React)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (engine) setTocando(engine.isPlaying) }, [engine])
+  useEffect(() => {
+    void buscarDestaques().then(setDaCidade)
+    try {
+      const a = JSON.parse(localStorage.getItem("cn-linha-222") || "{}").nome
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nome salvo no aparelho
+      if (a) setEnvio((e) => ({ ...e, autor: a }))
+    } catch {}
+    return () => { try { ouvinte.current?.src.stop() } catch {} }
+  }, [])
+
+  const alternarPlay = () => {
+    if (!engine) return
+    if (tocando) engine.stop(); else engine.play()
+    setTocando(!tocando)
+  }
+
+  const noClima = (i: number) => {
+    const m = musicaNoClima(CLIMAS[i])
+    startNewSong()
+    patchSong(() => m)
+    engine?.setSong({ bpm: m.bpm, rootNote: m.rootNote, mode: m.mode })
+    engine?.setTracks(m.tracks)
+    if (engine && !engine.isPlaying) { engine.play(); setTocando(true) }
+  }
+
+  const mandar = async () => {
+    setEnvio((e) => ({ ...e, estado: "enviando…" }))
+    const r = await enviar(song, envio.autor || "anônimo", envio.titulo || song.name || "sem título")
+    setEnvio((e) => ({ ...e, estado: r.ok ? "foi pra cidade. se ficar entre as melhores, toca na rádio 222" : r.erro }))
+  }
+
+  const ouvirDaCidade = async (c: Criacao) => {
+    try { ouvinte.current?.src.stop() } catch {}
+    if (ouvindo === c.id) { setOuvindo(null); return }
+    setOuvindo(c.id)
+    const buf = await renderSongOffline(await desserializar(c.musica))
+    const ctx = ouvinte.current?.ctx ?? new AudioContext()
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.loop = true
+    src.connect(ctx.destination)
+    src.start()
+    ouvinte.current = { ctx, src }
+  }
 
   useEffect(() => { updateCinematicStep("confirmation-2") }, [updateCinematicStep])
 
@@ -61,10 +121,73 @@ export default function BatidaHubPage() {
       </div>
 
       <p className="text-white/40 text-xs text-center mb-3 flex-shrink-0">
-        monte sua música por camadas — bateria, baixo, harmonia e voz. salve até 4 músicas.
+        monte sua música por camadas — ou começa no clima de uma faixa da cidade e vai mexendo.
       </p>
 
       <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-3 pr-0.5">
+        {/* começa no clima de… */}
+        <div>
+          <p className="text-white/25 text-[9px] font-mono tracking-widest mb-1.5">COMEÇA NO CLIMA DE…</p>
+          <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            {CLIMAS.map((c, i) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => noClima(i)}
+                className="flex-shrink-0 px-3 py-2.5 rounded-xl text-left transition-all active:scale-95"
+                style={{ background: `linear-gradient(135deg, ${c.cor}30, ${c.cor}08)`, border: `1px solid ${c.cor}66` }}
+              >
+                <span className="block text-[11px] font-bold" style={{ color: c.cor }}>{c.nome}</span>
+                <span className="block text-[8px] font-mono text-white/40 mt-0.5">{c.bpm} bpm · {NOTE_NAMES[c.tom[0]]}{c.tom[1] === "minor" ? "m" : ""} · kit {DRUM_TIMBRE_LABEL[c.bateria].toLowerCase()}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* tocar a música inteira + mandar pra cidade */}
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={alternarPlay}
+            disabled={!song.tracks.length}
+            className="flex-1 py-2.5 rounded-xl text-[11px] font-mono uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+            style={{ background: tocando ? ACCENT : `${ACCENT}22`, color: tocando ? "#050510" : ACCENT, border: `1px solid ${ACCENT}` }}
+          >
+            {tocando ? "❚❚ parar" : "▶ tocar música"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEnvio((e) => ({ ...e, aberto: !e.aberto, estado: "" }))}
+            disabled={!song.tracks.length}
+            className="flex-1 py-2.5 rounded-xl text-[11px] font-mono uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+            style={{ background: "rgba(255,200,87,0.12)", color: "#FFC857", border: "1px solid rgba(255,200,87,0.5)" }}
+          >
+            mandar pra cidade
+          </button>
+        </div>
+        {envio.aberto && (
+          <div className="rounded-xl p-3 flex flex-col gap-1.5" style={{ background: "rgba(255,200,87,0.06)", border: "1px solid rgba(255,200,87,0.3)" }}>
+            <p className="text-white/50 text-[10px] font-mono">o LU2CA ouve tudo que chega. as melhores tocam na rádio 222 do jogo.</p>
+            <input value={envio.titulo} maxLength={60} onChange={(e) => setEnvio((x) => ({ ...x, titulo: e.target.value }))} placeholder="nome da música" className="px-3 py-2 rounded-lg bg-black/40 border border-white/15 text-sm text-white outline-none" />
+            <input value={envio.autor} maxLength={40} onChange={(e) => setEnvio((x) => ({ ...x, autor: e.target.value }))} placeholder="seu nome ou @" className="px-3 py-2 rounded-lg bg-black/40 border border-white/15 text-sm text-white outline-none" />
+            <button type="button" onClick={mandar} className="py-2 rounded-lg text-[11px] font-mono uppercase" style={{ background: "#FFC857", color: "#050510" }}>enviar</button>
+            {envio.estado && <p className="text-[10px] font-mono text-center text-white/60">{envio.estado}</p>}
+          </div>
+        )}
+
+        {daCidade.length > 0 && (
+          <div>
+            <p className="text-white/25 text-[9px] font-mono tracking-widest mb-1.5">DA CIDADE · AS MELHORES</p>
+            <div className="flex flex-col gap-1">
+              {daCidade.map((c) => (
+                <button key={c.id} type="button" onClick={() => ouvirDaCidade(c)} className="flex items-center justify-between px-3 py-2 rounded-lg text-left" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,200,87,0.25)" }}>
+                  <span className="text-[11px] text-white">{c.titulo} <span className="text-white/35 font-mono text-[9px]">· {c.autor}</span></span>
+                  <span className="text-[10px] font-mono" style={{ color: "#FFC857" }}>{ouvindo === c.id ? "❚❚" : "▶"}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* slots de música */}
         <div>
           <p className="text-white/25 text-[9px] font-mono tracking-widest mb-1.5">SUAS MÚSICAS</p>
@@ -180,6 +303,15 @@ export default function BatidaHubPage() {
                 <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: INSTRUMENT_COLOR[r.id] }}>{INSTRUMENT_LABEL[r.id]}</span>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => router.push("/batida/biblioteca")}
+              className="py-3 rounded-xl flex flex-col items-center gap-1 transition-all active:scale-95"
+              style={{ background: "rgba(255,200,87,0.08)", border: "1px solid rgba(255,200,87,0.35)" }}
+            >
+              <span className="text-lg leading-none" style={{ color: "#FFC857" }}>★</span>
+              <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "#FFC857" }}>BIBLIOTECA</span>
+            </button>
             <button
               type="button"
               onClick={() => router.push("/batida/mixagem")}
