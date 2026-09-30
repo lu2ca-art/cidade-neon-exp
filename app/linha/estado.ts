@@ -3,6 +3,7 @@
 
 import type { EstacaoId } from "./data"
 import type { ChatId } from "./roteiros"
+import { montarFio, type Perfil } from "./missoes"
 
 export type Item =
   | { k: "msg"; texto: string; de?: string; eu?: boolean }
@@ -11,7 +12,8 @@ export type Item =
   | { k: "audio"; src: string; titulo: string; de?: string }
   | { k: "video"; src: string; legenda?: string; de?: string }
   | { k: "prova"; id: string; feita?: boolean; pulou?: boolean }
-  | { k: "objeto"; estacao: EstacaoId }
+  | { k: "objeto"; estacao: EstacaoId; memoria?: number; extra?: string }
+  | { k: "tarefa"; estacao: EstacaoId; feita?: boolean }
   | { k: "revelacao"; estacao: EstacaoId }
 
 export interface Save {
@@ -34,6 +36,13 @@ export interface Save {
   // recordes do fliperama e da estrada
   melhorVolta: number
   jogados: Record<string, number>
+  // o fio das missões (ordem que saiu do quiz) e o jeito de jogar
+  fio: EstacaoId[]
+  perfil: Perfil | null
+  // coisas buscadas no mapa: "agua:0", "pagina:2"…
+  itens: string[]
+  // conversa parada esperando a busca: índice do passo "tarefa"
+  pausas: Partial<Record<ChatId, number>>
 }
 
 const CHAVE = "cn-linha-222"
@@ -55,6 +64,10 @@ export const VAZIO: Save = {
   legado: [],
   melhorVolta: 0,
   jogados: {},
+  fio: [],
+  perfil: null,
+  itens: [],
+  pausas: {},
 }
 
 export function carregar(): Save {
@@ -62,7 +75,10 @@ export function carregar(): Save {
   try {
     const raw = localStorage.getItem(CHAVE)
     if (!raw) return VAZIO
-    return { ...VAZIO, ...JSON.parse(raw) }
+    const s: Save = { ...VAZIO, ...JSON.parse(raw) }
+    // quem já tinha estação antes do fio existir ganha um, pelas respostas
+    if (s.estacao && !s.fio.length) s.fio = montarFio(s.pesos, s.estacao, s.perfil)
+    return s
   } catch {
     return VAZIO
   }

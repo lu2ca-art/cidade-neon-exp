@@ -1,9 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ESTACOES, estacao as getEstacao, lancada, dataCurta, type EstacaoId } from "./data"
-import { BOAS_VINDAS, ECOS, ROTEIROS, VOZES, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
+import { ESTACOES, estacao as getEstacao, lancada, dataCurta, nivelDe, type EstacaoId } from "./data"
+import { ECOS, ROTEIROS, VOZES, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
 import type { Item, Save } from "./estado"
+import { GANCHO, MEMORIAS, MISSOES, ativa, itensFaltando, montarFio, type Perfil } from "./missoes"
+import { FREQUENCIAS, proximaFreq } from "./radio"
+import { track } from "@/lib/analytics"
 import { Objeto } from "./objetos"
 import { Prova } from "./provas"
 import { gota, player } from "./som"
@@ -13,16 +16,20 @@ interface Props {
   id: Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
   save: Save
   atualizar: (f: (s: Save) => Save) => void
-  onFim: (para: ChatId | "mapa") => void
+  onFim: (para: Destino) => void
   onVoltar?: () => void
   onXp: (n: number, motivo: string) => void
 }
+
+// pra onde a conversa manda quando termina (ou pausa)
+export type Destino = ChatId | "mapa" | "missao" | "estrada"
 
 type Espera =
   | { t: "escolha"; passo: Extract<Passo, { t: "escolha" }> }
   | { t: "input"; passo: Extract<Passo, { t: "input" }> }
   | { t: "prova" }
-  | { t: "fim"; para: ChatId | "mapa" }
+  | { t: "tarefa" }
+  | { t: "fim"; para: Destino }
   | null
 
 function resolver(t: string | ((c: Ctx) => string), c: Ctx) {
@@ -45,15 +52,19 @@ function calcularEstacao(pesos: Partial<Record<EstacaoId, number>>): EstacaoId {
   return melhor
 }
 
+const SISTEMA = "__sistema"
+
 const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
 
 export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
   const roteiro = ROTEIROS[id]
   const jaFeito = save.completos.includes(id)
-  const [log, setLog] = useState<Item[]>(() => (jaFeito ? save.logs[id] ?? [] : []))
-  const [pos, setPos] = useState(() => (jaFeito ? roteiro.passos.length : 0))
+  // conversa que parou esperando a busca no mapa: volta de onde parou
+  const pausa = jaFeito ? undefined : save.pausas[id]
+  const [log, setLog] = useState<Item[]>(() => (jaFeito || pausa !== undefined ? save.logs[id] ?? [] : []))
+  const [pos, setPos] = useState(() => (jaFeito ? roteiro.passos.length : pausa ?? 0))
   const [fila, setFila] = useState<Fala[]>([])
-  const [espera, setEspera] = useState<Espera>(() => (jaFeito ? { t: "fim", para: id === "abertura" ? "grupo" : "mapa" } : null))
+  const [espera, setEspera] = useState<Espera>(() => (jaFeito ? { t: "fim", para: "mapa" } : null))
   const [digitando, setDigitando] = useState<string | null>(null)
   const [texto, setTexto] = useState("")
   const [vivos, setVivos] = useState<Set<number>>(new Set())
@@ -66,13 +77,20 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
   useEffect(() => { saveRef.current = save }, [save])
   useEffect(() => { logRef.current = log }, [log])
 
-  const ctx = useCallback((extra?: Partial<Ctx>): Ctx => ({
-    nome: saveRef.current.nome || "você",
-    objetos: saveRef.current.objetos.length,
-    estacao: saveRef.current.estacao,
-    ontemLancada: lancada(getEstacao("ontem")),
-    ...extra,
-  }), [])
+  const ctx = useCallback((extra?: Partial<Ctx>): Ctx => {
+    const s = saveRef.current
+    const a = ativa(s, nivelDe(s))
+    return {
+      nome: s.nome || "você",
+      objetos: s.objetos.length,
+      estacao: s.estacao,
+      ontemLancada: lancada(getEstacao("ontem")),
+      primeira: a ? getEstacao(a).personagem : null,
+      ...extra,
+    }
+  }, [])
+  // a última resposta com perfil define o jeito de jogar
+  const perfil = useRef<Perfil | null>(save.perfil)
 
   const empurrar = useCallback((it: Item, vivo = true) => {
     setLog((l) => {
@@ -109,8 +127,12 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
     const novos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o])
     if (!novos.length) return
     setEspera(null)
-    setFila(novos.flatMap((o) => ECOS[o]!.map((e) => ({ de: e.de, texto: e.texto }))))
-    atualizar((s) => ({ ...s, ecosVistos: [...s.ecosVistos, ...novos] }))
+    setFila(novos.flatMap((o) => [
+      // quem você ajudou entra no grupo agora
+      ...(o === "nectar" ? [] : [{ de: SISTEMA, texto: `D-Bee adicionou ${getEstacao(o).personagem}` }]),
+      ...ECOS[o]!.map((e) => ({ de: e.de, texto: e.texto })),
+    ]))
+    atualizar((s) => ({ ...s, ecosVistos: [...new Set([...s.ecosVistos, ...novos])] }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -124,6 +146,13 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
       const f = fila[0]
       const de = typeof f === "object" ? f.de : quemPadrao
       const txt = resolver(typeof f === "object" ? f.texto : f, c)
+      if (de === SISTEMA) {
+        agendar(500, null, () => {
+          empurrar({ k: "sistema", texto: txt })
+          setFila((q) => q.slice(1))
+        })
+        return
+      }
       agendar(atraso(txt), de ?? "alguém", () => {
         empurrar({ k: "msg", texto: txt, de: roteiro.grupo ? de ?? undefined : undefined })
         setFila((q) => q.slice(1))
@@ -131,7 +160,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
       return
     }
     if (pos >= roteiro.passos.length) {
-      if (jaFeito && !espera) setEspera({ t: "fim", para: id === "abertura" ? "grupo" : "mapa" })
+      if (jaFeito && !espera) setEspera({ t: "fim", para: "mapa" })
       return
     }
     const p = roteiro.passos[pos]
@@ -184,34 +213,91 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
           setEspera({ t: "prova" })
         })
         break
+      case "tarefa": {
+        // a conversa espera a pessoa ir buscar a coisa no mapa
+        const est = id as EstacaoId
+        const m = MISSOES[est]!
+        const pronta = itensFaltando(saveRef.current, est) === 0
+        const jaTem = logRef.current.some((it) => it.k === "tarefa")
+        if (pronta) {
+          agendar(600, null, () => {
+            setLog((l) => l.map((it) => (it.k === "tarefa" ? { ...it, feita: true } : it)))
+            if (!jaTem) empurrar({ k: "tarefa", estacao: est, feita: true })
+            track("mission_step", { mission_id: `linha-${est}`, step: "entrega", perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
+            avancar()
+          })
+          break
+        }
+        agendar(500, null, () => {
+          const it: Item = { k: "tarefa", estacao: est }
+          if (!jaTem) empurrar(it)
+          const novoLog = jaTem ? logRef.current : [...logRef.current, it]
+          const primeira = saveRef.current.pausas[est] === undefined
+          atualizar((s) => ({ ...s, pausas: { ...s.pausas, [id]: pos }, logs: { ...s.logs, [id]: novoLog } }))
+          if (primeira) track("mission_step", { mission_id: `linha-${est}`, step: `busca:${m.busca.item}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
+          setEspera({ t: "tarefa" })
+        })
+        break
+      }
       case "objeto":
         agendar(700, null, () => {
           const est = id as EstacaoId
-          empurrar({ k: "objeto", estacao: est })
-          atualizar((s) => (s.objetos.includes(est) ? s : { ...s, objetos: [...s.objetos, est] }))
+          const s0 = saveRef.current
+          const memoria = s0.objetos.includes(est) ? s0.objetos.indexOf(est) : s0.objetos.length
+          empurrar({ k: "objeto", estacao: est, memoria, extra: MISSOES[est]?.extra })
+          const nivelAntes = nivelDe(s0)
+          atualizar((s) => {
+            if (s.objetos.includes(est)) return s
+            let sinal = s.sinal
+            // o mp3 do Mubarak pega frequência: enche o sinal da próxima rádio
+            if (est === "copo") sinal = proximaFreq(s.sinal)?.custo ?? s.sinal
+            const pausas = { ...s.pausas }
+            delete pausas[est]
+            return { ...s, objetos: [...s.objetos, est], sinal, pausas }
+          })
+          saveRef.current = { ...s0, objetos: s0.objetos.includes(est) ? s0.objetos : [...s0.objetos, est] }
+          if (nivelDe(saveRef.current) > nivelAntes) track("mission_step", { mission_id: `linha-${est}`, step: `nivel:${nivelDe(saveRef.current)}`, perfil: s0.perfil ?? "?", fio_pos: s0.fio.indexOf(est) })
           onXp(100, "objeto")
           avancar()
         })
         break
-      case "revelacao":
-        agendar(2200, "D-Bee", () => {
-          const est = calcularEstacao(saveRef.current.pesos)
-          atualizar((s) => ({ ...s, estacao: est }))
-          empurrar({ k: "revelacao", estacao: est })
-          onXp(100, "estação")
-          const dono = getEstacao(est).personagem
-          if (VOZES[dono] && dono !== "LU2CA") setFila([{ de: dono, texto: BOAS_VINDAS[est] }])
+      case "gancho": {
+        // quem acabou de ser ajudado passa a vez pro próximo do fio
+        const prox = ativa(saveRef.current, nivelDe(saveRef.current))
+        const txt = prox && prox !== id ? GANCHO[prox] ?? "" : "por enquanto é isso. roda de kombi, a cidade sempre tem coisa"
+        agendar(atraso(txt), quemPadrao ?? "", () => {
+          empurrar({ k: "msg", texto: txt })
           avancar()
         })
         break
-      case "fim":
-        setEspera({ t: "fim", para: p.para ?? "mapa" })
-        atualizar((s) => ({
-          ...s,
-          completos: s.completos.includes(id) ? s.completos : [...s.completos, id],
-          logs: { ...s.logs, [id]: logRef.current },
-        }))
+      }
+      case "revelacao":
+        agendar(2200, "D-Bee", () => {
+          const s0 = saveRef.current
+          const est = calcularEstacao(s0.pesos)
+          const fio = montarFio(s0.pesos, est, perfil.current)
+          saveRef.current = { ...s0, estacao: est, fio, perfil: perfil.current }
+          atualizar((s) => ({ ...s, estacao: est, fio, perfil: perfil.current }))
+          empurrar({ k: "revelacao", estacao: est })
+          onXp(100, "estação")
+          track("mission_step", { mission_id: "linha-quiz", step: `estacao:${est}`, perfil: perfil.current ?? "?", fio_pos: -1, fio: fio.join(">") })
+          avancar()
+        })
         break
+      case "fim": {
+        const para = p.para ?? (ativa(saveRef.current, nivelDe(saveRef.current)) ? "missao" : "mapa")
+        setEspera({ t: "fim", para })
+        atualizar((s) => {
+          const completos = s.completos.includes(id) ? [...s.completos] : [...s.completos, id]
+          // a abertura já cria o grupo (só com a D-Bee)
+          if (id === "abertura" && !completos.includes("grupo")) {
+            completos.push("grupo")
+            return { ...s, completos, logs: { ...s.logs, [id]: logRef.current, grupo: [{ k: "sistema", texto: "D-Bee criou o grupo \"linha 222\"" }] } }
+          }
+          return { ...s, completos, logs: { ...s.logs, [id]: logRef.current } }
+        })
+        break
+      }
     }
   }, [pos, fila, espera, roteiro, id, jaFeito, ctx, agendar, empurrar, atualizar, onXp])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -230,6 +316,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
     if (espera?.t !== "escolha") return
     const o = espera.passo.opcoes[i]
     empurrar({ k: "msg", texto: o.label, eu: true })
+    if (o.perfil) perfil.current = o.perfil
     if (o.peso) {
       atualizar((s) => {
         const pesos = { ...s.pesos }
@@ -274,6 +361,12 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
   const contato = revelada ? "D-Bee" : roteiro.contato
   const est = PERSONAGEM_ESTACAO[contato]
   const corContato = roteiro.grupo ? "#2fe8ff" : est ? getEstacao(est).cor : "#8aa0c8"
+  const proxId = ativa(save, nivelDe(save))
+  const proximo = proxId ? getEstacao(proxId).personagem : null
+  // o grupo mostra só quem já entrou
+  const status = roteiro.grupo
+    ? ["D-Bee", ...save.objetos.filter((o) => o !== "ojala").map((o) => getEstacao(o).personagem)].join(", ")
+    : roteiro.status
 
   const cabecalho = useMemo(() => (
     <header className="l-chat-topo">
@@ -285,10 +378,10 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
       </div>
       <div className="l-chat-quem">
         <b>{contato}</b>
-        <small>{digitando ? (roteiro.grupo ? `${digitando} tá digitando…` : "digitando…") : roteiro.status}</small>
+        <small>{digitando ? (roteiro.grupo ? `${digitando} tá digitando…` : "digitando…") : status}</small>
       </div>
     </header>
-  ), [onVoltar, corContato, roteiro, est, digitando, contato])
+  ), [onVoltar, corContato, roteiro, est, digitando, contato, status])
 
   return (
     <div className="l-chat" style={{ ["--cor" as string]: corContato }}>
@@ -329,9 +422,17 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
             <button type="submit" disabled={!texto.trim()} aria-label="enviar">↑</button>
           </form>
         )}
+        {espera?.t === "tarefa" && (
+          <div className="l-tarefa-acoes">
+            <button type="button" className="l-btn l-btn-fim" style={{ ["--cor" as string]: corContato }} onClick={() => onFim("estrada")}>
+              pegar a kombi →
+            </button>
+            {onVoltar && <button type="button" className="l-btn l-btn-ghost" onClick={onVoltar}>depois</button>}
+          </div>
+        )}
         {espera?.t === "fim" && (
           <button type="button" className="l-btn l-btn-fim" style={{ ["--cor" as string]: "#2fe8ff" }} onClick={() => onFim(espera.para)}>
-            {espera.para === "grupo" ? "entrar no grupo" : espera.para === "mapa" && id === "grupo" ? "abrir a linha 222" : "voltar pra linha"}
+            {espera.para === "missao" ? `ver mensagem${proximo ? ` de ${proximo}` : ""}` : espera.para === "grupo" ? "entrar no grupo" : "voltar"}
           </button>
         )}
         {espera === null && <p className="l-acelera">{digitando !== null ? "toca na conversa pra acelerar" : " "}</p>}
@@ -377,7 +478,9 @@ function Bolha({ it, grupo, contato, vivo, onProva, save }: { it: Item; grupo: b
       return <Prova id={it.id as never} cor={e?.cor ?? "#2fe8ff"} onFim={onProva} />
     }
     case "objeto":
-      return <ObjetoCard estacao={it.estacao} vivo={vivo} />
+      return <ObjetoCard estacao={it.estacao} vivo={vivo} memoria={it.memoria} extra={it.extra} />
+    case "tarefa":
+      return <TarefaCard estacao={it.estacao} feita={!!it.feita} save={save} />
     case "revelacao":
       return <Revelacao estacao={it.estacao} vivo={vivo} nome={save.nome} />
   }
@@ -414,17 +517,47 @@ function AudioBolha({ src, titulo, de, auto }: { src: string; titulo: string; de
   )
 }
 
-function ObjetoCard({ estacao, vivo }: { estacao: EstacaoId; vivo: boolean }) {
+// A recompensa de verdade: o objeto, o que ele destrava e um pedaço da
+// história (a memória que estava guardada dentro dele)
+function ObjetoCard({ estacao, vivo, memoria, extra }: { estacao: EstacaoId; vivo: boolean; memoria?: number; extra?: string }) {
   const e = getEstacao(estacao)
+  const linha = FREQUENCIAS[0]
+  const mem = memoria !== undefined ? MEMORIAS[memoria] : undefined
   return (
     <div className={`l-objeto ${vivo ? "is-vivo" : ""}`} style={{ ["--cor" as string]: e.cor }}>
       <div className="l-objeto-icone">
         <Objeto id={e.objeto} cor={e.cor} size={56} />
       </div>
-      <small>você pegou</small>
+      <small>você ganhou</small>
       <b>{e.objetoNome}</b>
       <span>{e.luz} × {e.sombra}</span>
-      <em>+100 luz</em>
+      <ul className="l-objeto-libera">
+        <li><i>♪</i> {e.faixa} entrou na sua rádio · {linha.freq}</li>
+        {e.personagem !== "LU2CA" && <li><i>+</i> {e.personagem} entrou no grupo</li>}
+        {extra && <li><i>★</i> {extra}</li>}
+      </ul>
+      {mem && (
+        <blockquote className="l-memoria">
+          <small>memória {memoria! + 1} de {MEMORIAS.length}</small>
+          <p>{mem}</p>
+        </blockquote>
+      )}
+    </div>
+  )
+}
+
+// o pedido no meio da conversa: o que buscar, onde, e se já foi
+function TarefaCard({ estacao, feita, save }: { estacao: EstacaoId; feita: boolean; save: Save }) {
+  const e = getEstacao(estacao)
+  const m = MISSOES[estacao]
+  if (!m) return null
+  const total = m.busca.em.length
+  const falta = feita ? 0 : itensFaltando(save, estacao)
+  return (
+    <div className={`l-tarefa ${feita || falta === 0 ? "is-feita" : ""}`} style={{ ["--cor" as string]: e.cor }}>
+      <small>{feita || falta === 0 ? "missão · feito" : "missão"}</small>
+      <b>{m.tarefa}</b>
+      <span>{m.busca.lugar}{total > 1 ? ` · ${total - falta}/${total}` : ""}</span>
     </div>
   )
 }

@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { ESTACOES, NIVEIS, UNTITLED, dataCurta, estacao as getEstacao, lancada, missao, type Estacao, type EstacaoId } from "./data"
+import { ativa, conhecidos } from "./missoes"
 import { ECOS, VOZES } from "./roteiros"
 import { apagar, sequencia, type Save } from "./estado"
 import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId } from "./radio"
@@ -114,12 +115,9 @@ export function Mapa({
   const minha = save.estacao ? getEstacao(save.estacao) : null
   const libs = freqsLiberadas(save.sinal)
 
-  // qual estação sugerir agora: a primeira com missão aberta e sem objeto,
-  // começando pela da própria pessoa
-  const sugerida = useMemo(() => {
-    const ordem = minha ? [minha, ...ESTACOES.filter((e) => e.id !== minha.id)] : ESTACOES
-    return ordem.find((e) => missao(e, nivel).ok && !save.objetos.includes(e.id))?.id ?? null
-  }, [minha, nivel, save.objetos])
+  // a estação da missão que está valendo (uma de cada vez, na ordem do fio)
+  const sugerida = useMemo(() => ativa(save, nivel), [save, nivel])
+  const quem = useMemo(() => conhecidos(save, nivel), [save, nivel])
 
   return (
     <section className="l-mapa">
@@ -159,7 +157,7 @@ export function Mapa({
       <div className="l-atalhos">
         <button type="button" className="l-atalho" onClick={onGrupo}>
           <span className="l-atalho-ic">222</span>
-          <span><b>grupo linha 222</b><small>{ecos ? `${ecos} ${ecos === 1 ? "novidade" : "novidades"}` : "6 pessoas acordadas"}</small></span>
+          <span><b>grupo linha 222</b><small>{ecos ? `${ecos} ${ecos === 1 ? "novidade" : "novidades"}` : `${1 + save.objetos.filter((o) => o !== "nectar").length} ${save.objetos.length ? "pessoas acordadas" : "pessoa acordada"}`}</small></span>
           {ecos > 0 && <em className="l-badge">{ecos}</em>}
         </button>
         <button type="button" className="l-atalho" onClick={() => setRadio(true)}>
@@ -181,12 +179,12 @@ export function Mapa({
                 <span className="l-parada-txt">
                   <b>{e.faixa}</b>
                   <small>
-                    {e.personagem} · {e.objetoNome}
+                    {quem.includes(e.id) ? `${e.personagem} · ${e.objetoNome}` : escuro ? "no escuro" : "alguém acordado"}
                   </small>
                 </span>
                 <span className="l-parada-tag">
                   {sua && <em>sua</em>}
-                  {tem ? "✓" : escuro && e.lancamento ? `abre ${dataCurta(e.lancamento)}` : sugerida === e.id ? "missão" : m.ok ? "aberta" : m.motivo === "nivel" ? "ativista" : ""}
+                  {tem ? "✓" : escuro && e.lancamento ? `abre ${dataCurta(e.lancamento)}` : sugerida === e.id ? "missão" : ""}
                 </span>
               </button>
             </li>
@@ -206,6 +204,7 @@ export function Mapa({
           onFechar={() => { player.pausar(); setAberta(null) }}
           onViajar={() => onViajar(aberta)}
           onConversa={() => onEstacao(aberta)}
+          conhece={quem.includes(aberta)}
         />
       )}
       {radio && <Radio save={save} atualizar={atualizar} onFechar={() => setRadio(false)} />}
@@ -213,8 +212,8 @@ export function Mapa({
   )
 }
 
-export function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa }: {
-  e: Estacao; save: Save; nivel: number; onFechar: () => void; onViajar: () => void; onConversa: () => void
+export function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa, conhece = true }: {
+  e: Estacao; save: Save; nivel: number; onFechar: () => void; onViajar: () => void; onConversa: () => void; conhece?: boolean
 }) {
   const m = missao(e, nivel)
   const saiu = lancada(e)
@@ -232,7 +231,7 @@ export function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa }:
         <p className="l-ficha-par">{e.luz} <i>×</i> {e.sombra}</p>
         <div className="l-ficha-quem">
           <Objeto id={e.objeto} cor={e.cor} size={34} />
-          <span><b>{e.personagem}</b> guarda {e.objetoNome}{tem ? " — já é seu" : ""}</span>
+          <span>{conhece ? <><b>{e.personagem}</b> guarda {e.objetoNome}{tem ? " — já é seu" : ""}</> : "alguém acordado mora aqui. ainda não te chamou"}</span>
         </div>
 
         {(saiu || tem) && (
@@ -255,15 +254,14 @@ export function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa }:
             <a className="l-btn l-btn-ghost" href={icsHref(e)} download={`linha-222-${e.id}.ics`}>me lembra no calendário</a>
           </div>
         )}
-        {!m.ok && m.motivo === "estacao" && <p className="l-ficha-trava">descobre sua estação no grupo pra liberar as missões.</p>}
-        {!m.ok && m.motivo === "nivel" && <p className="l-ficha-trava">a missão daqui abre no nível <b>ativista</b> (4 objetos). vc tem {save.objetos.length}.</p>}
+        {!m.ok && m.motivo === "estacao" && <p className="l-ficha-trava">descobre sua estação com a D-Bee pra liberar as missões.</p>}
 
         {(m.ok || (m.motivo !== "data")) && (
           <div className="l-ficha-acoes">
             <button type="button" className="l-btn" onClick={onViajar}>
               ir de kombi {recorde ? <small>recorde {recorde.toFixed(1)}s</small> : null}
             </button>
-            {(m.ok || save.completos.includes(e.id as never)) && e.prova && (
+            {conhece && (m.ok || save.completos.includes(e.id as never)) && e.prova && (
               <button type="button" className="l-btn l-btn-ghost" onClick={onConversa}>
                 {save.completos.includes(e.id as never) ? "reler a conversa" : `falar com ${e.personagem} agora`}
               </button>

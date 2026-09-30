@@ -9,11 +9,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import "./linha.css"
-import { ESTACOES, NIVEIS, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
+import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
 import type { ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Save } from "./estado"
 import { FREQUENCIAS, faixasDe, type FreqId } from "./radio"
-import { Chat } from "./chat"
+import { Chat, type Destino } from "./chat"
+import { alvoDe, ativa } from "./missoes"
 import { Prova } from "./provas"
 import { Corrida, type Stats } from "./estrada/Corrida"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, legadoFeito, type AppId, type Chamado } from "./os"
@@ -129,25 +130,48 @@ export default function LinhaPage() {
     })
   }, [avisar])
 
+  // já fez o quiz = está dentro da cidade
+  const dentro = !!save.estacao
+
   const entrar = () => {
     audioCtx()
     ligarChuva()
-    if (save.completos.includes("grupo")) {
+    if (dentro) {
       setTela({ t: "home" })
       conferirLegado()
-    } else if (save.completos.includes("abertura")) setTela({ t: "chat", id: "grupo", volta: { t: "home" } })
-    else setTela({ t: "bloqueio" })
+    } else if (save.completos.includes("abertura")) {
+      // save antigo: abertura feita, quiz (que era no grupo) não. O quiz agora
+      // mora na conversa da D-Bee — recomeça ela.
+      setSave((s) => {
+        const logs = { ...s.logs }
+        delete logs.abertura
+        delete logs.grupo
+        return { ...s, completos: s.completos.filter((c) => c !== "abertura" && c !== "grupo"), logs }
+      })
+      setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
+    } else setTela({ t: "bloqueio" })
   }
 
   const abrirChat = (id: ChatId, volta: Volta = { t: "home" }) => {
     const e = ESTACOES.find((x) => x.id === id)
     if (e) {
-      const m = missao(e, nivel)
-      if (!m.ok && !save.objetos.includes(e.id)) {
-        avisar(e.personagem, m.motivo === "nivel" ? "a conversa daqui abre no nível ativista (4 objetos)" : m.motivo === "data" ? "sem sinal ainda" : "descobre sua estação no grupo primeiro", e.cor)
+      // uma missão de cada vez, na ordem do fio: só abre a conversa de quem
+      // já te chamou
+      const a = ativa(save, nivel)
+      const conhece = save.objetos.includes(e.id) || save.pausas[e.id] !== undefined || a === e.id
+      if (!conhece) {
+        const m = missao(e, nivel)
+        const agora = a ? getEstacao(a) : null
+        avisar(
+          `estação ${e.n}`,
+          !m.ok && m.motivo === "data" && e.lancamento
+            ? `no escuro até ${dataCurta(e.lancamento)}`
+            : agora ? `ainda n é a vez daqui. quem te chama agora é ${agora.personagem}` : "ainda ninguém acordou aqui",
+          e.cor,
+        )
         return
       }
-      if (!save.completos.includes(id)) track("mission_started", { mission_id: `linha-${id}`, place_id: "linha-222" })
+      if (!save.completos.includes(id) && save.pausas[id] === undefined) track("mission_started", { mission_id: `linha-${id}`, place_id: "linha-222" })
     }
     setTela({ t: "chat", id: id as ChatRoteiro, volta })
   }
@@ -173,19 +197,27 @@ export default function LinhaPage() {
     else abrirApp(c.acao.app)
   }
 
-  const fimChat = (id: ChatId, para: ChatId | "mapa", volta: Volta) => {
+  const fimChat = (id: ChatId, para: Destino, volta: Volta) => {
+    // pausa: a conversa pediu uma coisa que está no mapa
+    if (para === "estrada") {
+      player.pausar()
+      return setTela({ t: "corrida", destino: null })
+    }
     if (ESTACOES.some((e) => e.id === id)) track("mission_completed", { mission_id: `linha-${id}`, duration_ms: 0 })
     if (id === "nectar") setTela({ t: "final" })
+    else if (para === "missao") {
+      // a próxima pessoa do fio já te chamando
+      const a = ativa(save, nivel)
+      if (a) setTela({ t: "chat", id: a as ChatRoteiro, volta: { t: "home" } })
+      else setTela({ t: "home" })
+    }
     else if (para === "grupo") setTela({ t: "chat", id: "grupo", volta: { t: "home" } })
-    else if (id === "grupo" && volta.t === "home") {
-      setTela({ t: "home" })
-      setTimeout(() => avisar("a cidade é sua", "tudo aberto. a Kombi te leva nas estações", "#2fe8ff"), 600)
-    } else setTela(volta)
+    else setTela(volta)
   }
 
   const descer = (id: EstacaoId, st: Stats) => {
-    ganharXp(20 + st.orbs * 2 + st.quase * 5)
-    abrirChat(id, { t: "app", id: "linha" })
+    setSave((s) => ({ ...s, xp: s.xp + 20 + st.orbs * 2 + st.quase * 5 }))
+    abrirChat(id, { t: "home" })
   }
 
   const sairDaCorrida = (st: Stats) => {
@@ -242,9 +274,9 @@ export default function LinhaPage() {
             id={tela.id}
             save={save}
             atualizar={atualizar}
-            onXp={ganharXp}
+            onXp={(n) => setSave((s) => ({ ...s, xp: s.xp + n }))}
             onFim={(para) => fimChat(tela.id, para, tela.volta)}
-            onVoltar={save.completos.includes("grupo") ? () => setTela(tela.volta) : undefined}
+            onVoltar={dentro ? () => setTela(tela.volta) : undefined}
           />
         )}
         {tela.t === "home" && (
@@ -304,6 +336,8 @@ export default function LinhaPage() {
             nivel={nivel}
             destino={tela.destino}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
+            alvo={alvoDe(save, nivel)}
+            onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             onDescer={descer}
             onSair={sairDaCorrida}
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
@@ -316,7 +350,7 @@ export default function LinhaPage() {
             {semSom ? "som off" : "som on"}
           </button>
         )}
-        {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "home" && tela.t !== "corrida" && save.completos.includes("grupo") && (
+        {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {aviso && (
