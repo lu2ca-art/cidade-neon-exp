@@ -17,7 +17,7 @@ import { Chat, type Destino } from "./chat"
 import { alvoDe, ativa } from "./missoes"
 import { Prova } from "./provas"
 import { Corrida, type Stats } from "./estrada/Corrida"
-import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, legadoFeito, type AppId, type Chamado } from "./os"
+import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { audioCtx, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
@@ -137,7 +137,9 @@ export default function LinhaPage() {
     audioCtx()
     ligarChuva()
     if (dentro) {
-      setTela({ t: "home" })
+      // a Kombi é a tela principal: entra direto na estrada
+      player.pausar()
+      setTela({ t: "corrida", destino: null })
       conferirLegado()
     } else if (save.completos.includes("abertura")) {
       // save antigo: abertura feita, quiz (que era no grupo) não. O quiz agora
@@ -338,6 +340,7 @@ export default function LinhaPage() {
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
             alvo={alvoDe(save, nivel)}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
+            avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id.startsWith("est-")).length}
             onDescer={descer}
             onSair={sairDaCorrida}
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}

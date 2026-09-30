@@ -205,6 +205,7 @@ export function conhecidos(s: Save, nivel: number): EstacaoId[] {
 export type Alvo =
   | { t: "busca"; missao: EstacaoId; busca: Busca; faltam: number[] } // índices dos pontos que faltam
   | { t: "entrega"; missao: EstacaoId }
+  | { t: "visita"; missao: EstacaoId } // alguém te chamou: vai até a estação dele
 
 export function alvoDe(s: Save, nivel: number): Alvo | null {
   const id = ativa(s, nivel)
@@ -213,5 +214,6 @@ export function alvoDe(s: Save, nivel: number): Alvo | null {
   const m = MISSOES[id]!
   if (e === "busca") return { t: "busca", missao: id, busca: m.busca, faltam: m.busca.em.map((_, k) => k).filter((k) => !s.itens.includes(`${m.busca.item}:${k}`)) }
   if (e === "entrega") return { t: "entrega", missao: id }
+  if (e === "chamado") return { t: "visita", missao: id }
   return null
 }

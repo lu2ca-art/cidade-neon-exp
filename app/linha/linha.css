@@ -958,3 +958,15 @@
 .l-hud-missao small { font: 9px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--cor); }
 .l-hud-missao b { font: 700 14px/1.1 var(--cond); text-transform: uppercase; color: #fff; }
 .l-hud-missao span { font: 700 11px var(--mono); color: var(--cor); }
+
+/* ── estrada: menos placa, mais música ── */
+.l-hud-cel { pointer-events: auto; position: relative; width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(0, 0, 0, 0.45) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; color: #fff !important; }
+.l-hud-cel em { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #ff3fb0; color: #fff; font: 700 10px/17px var(--mono); font-style: normal; text-align: center; box-shadow: 0 0 10px #ff3fb0; }
+.l-hud-radio.is-pega { animation: l-radio-pega 0.45s ease-out; }
+@keyframes l-radio-pega { 0% { box-shadow: 0 0 0 0 var(--cor); border-color: var(--cor); } 100% { box-shadow: 0 0 22px -6px transparent; } }
+.l-hud-faixa.is-estacao { animation: l-fade 0.4s both; font-weight: 700; }
+.l-hud-tag { font: 700 10px var(--mono); font-style: normal; white-space: nowrap; text-shadow: 0 0 8px currentColor; animation: l-tag 1.3s ease-out both; }
+@keyframes l-tag { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-14px); } }
+.l-descer { position: absolute; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 22px; border-radius: 999px; background: color-mix(in srgb, var(--cor) 22%, rgba(5, 5, 16, 0.8)) !important; border: 1px solid var(--cor) !important; box-shadow: 0 0 24px -6px var(--cor); backdrop-filter: blur(8px); animation: l-sobe 0.35s both; }
+.l-descer small { font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--cor); }
+.l-descer b { font: 700 16px var(--cond); text-transform: uppercase; color: #fff; }
