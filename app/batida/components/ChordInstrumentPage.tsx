@@ -28,7 +28,7 @@ export function ChordInstrumentPage({
   timbreEffects,
   intro,
 }: {
-  instrument: "guitarra" | "piano"
+  instrument: "guitarra" | "piano" | "pad"
   label: string
   accent: string
   timbreLabels: readonly string[]
@@ -72,7 +72,7 @@ export function ChordInstrumentPage({
     id: `draft-${instrument}`,
     instrument: instrument as InstrumentId,
     fx: defaultFx(),
-    data: { kind: "chord" as const, timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps },
+    data: { kind: "chord" as const, timbre: timbreIdx, bars, steps },
   }), [instrument, timbreIdx, bars, steps])
 
   useEffect(() => { engine?.setTracks([...song.tracks, draftTrack]) }, [engine, song.tracks, draftTrack])
@@ -100,14 +100,14 @@ export function ChordInstrumentPage({
 
   const handleNote = (midi: number) => {
     if (instrument === "guitarra") engine?.previewGuitarNote(midi, timbreIdx)
-    else engine?.previewPianoNote(midi, timbreIdx)
+    else engine?.previewPianoNote(midi, timbreIdx, instrument)
   }
 
   const canAdd = song.tracks.length < MAX_TRACKS
 
   const handleAdd = async () => {
     if (!steps.some((s) => s !== null)) { setFeedback("coloque pelo menos um acorde no trilho"); return }
-    const ok = await addTrack({ id: newTrackId(), instrument, fx: defaultFx(), data: { kind: "chord", timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps } })
+    const ok = await addTrack({ id: newTrackId(), instrument, fx: defaultFx(), data: { kind: "chord", timbre: timbreIdx, bars, steps } })
     if (ok) { setSteps(Array(bars * STEPS_PER_BAR).fill(null)); setFeedback(`faixa de ${label.toLowerCase()} adicionada`) }
     else setFeedback("limite de 5 faixas atingido")
     window.setTimeout(() => setFeedback(null), 2600)

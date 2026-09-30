@@ -1,45 +1,46 @@
-// "começa no clima de…" — uma música que já nasce tocando, no BPM da faixa,
-// com um kit de bateria da cidade e os chops dela. Sem baixo de propósito:
-// o tom das faixas não está mapeado aqui, e um baixo no tom errado brigaria
-// com os chops. A tonalidade fica pra pessoa definir na página do baixo.
+// "começa no clima de…" — uma música que já nasce tocando, no BPM e no TOM
+// da faixa (tom lido do áudio, mesma tabela da Linha 222), com bateria,
+// baixo e um pad fazendo a progressão. Só timbres — nenhum trecho da faixa.
 
-import { defaultFx, emptySong, newTrackId, type DrumRow, type DrumTimbre, type Song } from "./types"
+import { defaultFx, emptySong, newTrackId, type DrumRow, type DrumTimbre, type MusicMode, type Song } from "./types"
 
 interface Clima {
-  kit: string
+  id: string
   nome: string
   bpm: number
   cor: string
+  tom: [number, MusicMode] // tônica (0 = Dó) e modo
   bateria: DrumTimbre
+  pad: number // timbre do pad
   ritmo: Record<DrumRow, number[]> // passos acesos (colcheias, 1 compasso)
-  chops: [number, number][] // [pad, passo] em 2 compassos (0-15)
+  graus: number[] // progressão: um grau por meio compasso, 2 compassos
 }
 
 export const CLIMAS: Clima[] = [
   {
-    kit: "chuva", nome: "CHUVA", bpm: 95, cor: "#2fe8ff", bateria: "chuva",
+    id: "chuva", nome: "CHUVA", bpm: 95, cor: "#2fe8ff", tom: [2, "minor"], bateria: "chuva", pad: 3,
     ritmo: { kick: [0, 5], snare: [2, 6], hat: [0, 1, 2, 3, 4, 5, 6, 7], perc: [3, 7] },
-    chops: [[2, 0], [0, 6], [3, 8], [6, 14]],
+    graus: [0, 5, 2, 6],
   },
   {
-    kit: "copo", nome: "COPO AMERICANO", bpm: 110, cor: "#ff6a35", bateria: "neonio",
+    id: "copo", nome: "COPO AMERICANO", bpm: 110, cor: "#ff6a35", tom: [10, "minor"], bateria: "neonio", pad: 4,
     ritmo: { kick: [0, 3, 5], snare: [2, 6], hat: [0, 2, 4, 6], perc: [] },
-    chops: [[2, 0], [1, 4], [4, 8], [7, 12]],
+    graus: [0, 3, 5, 4],
   },
   {
-    kit: "dopamina", nome: "DOPAMINA", bpm: 128, cor: "#5dffa0", bateria: "xenonio",
+    id: "dopamina", nome: "DOPAMINA", bpm: 128, cor: "#5dffa0", tom: [5, "minor"], bateria: "xenonio", pad: 0,
     ritmo: { kick: [0, 2, 4, 6], snare: [2, 6], hat: [1, 3, 5, 7], perc: [7] },
-    chops: [[0, 0], [0, 4], [3, 8], [6, 12], [0, 14]],
+    graus: [0, 0, 5, 6],
   },
   {
-    kit: "sexta", nome: "SEXTA-FEIRA", bpm: 105, cor: "#ff3fb0", bateria: "argonio",
+    id: "sexta", nome: "SEXTA-FEIRA", bpm: 105, cor: "#ff3fb0", tom: [9, "minor"], bateria: "argonio", pad: 2,
     ritmo: { kick: [0, 5], snare: [4], hat: [0, 1, 2, 3, 4, 5, 6, 7], perc: [3] },
-    chops: [[2, 0], [5, 8], [7, 12]],
+    graus: [0, 3, 6, 2],
   },
   {
-    kit: "ontem", nome: "SABE ONTEM?", bpm: 100, cor: "#ffc857", bateria: "xenonio",
+    id: "ontem", nome: "SABE ONTEM?", bpm: 100, cor: "#ffc857", tom: [8, "minor"], bateria: "xenonio", pad: 5,
     ritmo: { kick: [0, 3, 6], snare: [4], hat: [0, 2, 4, 6, 7], perc: [5] },
-    chops: [[3, 0], [1, 6], [4, 8], [6, 15]],
+    graus: [0, 5, 3, 4],
   },
 ]
 
@@ -49,15 +50,25 @@ export function musicaNoClima(c: Clima): Song {
   for (const row of ["kick", "snare", "hat", "perc"] as DrumRow[]) {
     cells[row] = Array.from({ length: 8 }, (_, i) => c.ritmo[row].includes(i))
   }
-  const chops = Array.from({ length: 8 }, () => Array(16).fill(false) as boolean[])
-  for (const [pad, passo] of c.chops) chops[pad][passo] = true
+  // 2 compassos de semicolcheias: um grau a cada 8 passos
+  const steps: (number | null)[] = Array(32).fill(null)
+  const baixo = Array.from({ length: 7 }, () => Array(32).fill(false) as boolean[])
+  c.graus.forEach((g, k) => {
+    steps[k * 8] = g
+    baixo[g][k * 8] = true
+    baixo[g][k * 8 + 6] = true
+  })
   return {
     ...song,
     name: `no clima de ${c.nome.toLowerCase()}`,
     bpm: c.bpm,
+    rootNote: c.tom[0],
+    mode: c.tom[1],
+    keySetBy: "baixo",
     tracks: [
       { id: newTrackId(), instrument: "bateria", fx: defaultFx(), data: { kind: "drum", timbre: c.bateria, bars: 1, cells } },
-      { id: newTrackId(), instrument: "chops", fx: { ...defaultFx(), reverb: 0.15 }, data: { kind: "chops", kit: c.kit, bars: 2, cells: chops } },
+      { id: newTrackId(), instrument: "baixo", fx: defaultFx(), data: { kind: "bass", timbre: 1, bars: 2, cells: baixo } },
+      { id: newTrackId(), instrument: "pad", fx: { ...defaultFx(), volume: 0.7, reverb: 0.2 }, data: { kind: "chord", timbre: c.pad, bars: 2, steps } },
     ],
   }
 }

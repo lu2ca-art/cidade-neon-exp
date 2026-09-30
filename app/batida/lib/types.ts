@@ -1,22 +1,23 @@
 // ─── B4TIDA — modelo de dados compartilhado ─────────────────────────────────
 // Uma "música" (Song) vive num dos 4 slots salvos. Cada música tem até
 // MAX_TRACKS faixas (podendo repetir instrumento). Faixas de instrumentos
-// "sequenciados" (bateria/baixo/guitarra/piano) guardam um padrão de passos;
+// "sequenciados" (bateria/baixo/guitarra/synth/pad) guardam um padrão de passos;
 // a faixa de voz guarda áudio gravado (Blob) em vez de padrão.
 
 export const MAX_SLOTS = 4
 export const MAX_TRACKS = 5
 export const MAX_VOICE_BARS = 16
 
-export type InstrumentId = "bateria" | "baixo" | "guitarra" | "piano" | "voz" | "chops"
+// "piano" é o id interno do SYNTH (renomeado sem quebrar música salva)
+export type InstrumentId = "bateria" | "baixo" | "guitarra" | "piano" | "pad" | "voz"
 
 export const INSTRUMENT_LABEL: Record<InstrumentId, string> = {
   bateria: "BATERIA",
   baixo: "BAIXO",
   guitarra: "GUITARRA",
-  piano: "PIANO",
+  piano: "SYNTH",
+  pad: "PAD",
   voz: "VOZ",
-  chops: "CHOPS",
 }
 
 export const INSTRUMENT_COLOR: Record<InstrumentId, string> = {
@@ -24,8 +25,8 @@ export const INSTRUMENT_COLOR: Record<InstrumentId, string> = {
   baixo: "#00E5FF",
   guitarra: "#FFD93D",
   piano: "#A78BFA",
+  pad: "#FF3FB0",
   voz: "#4ADE80",
-  chops: "#FF3FB0",
 }
 
 // acento do modo PRO (esteira + grid de voicing) — reaproveita o azul/ciano
@@ -40,12 +41,13 @@ export const STEPS_PER_INSTRUMENT: Record<Exclude<InstrumentId, "voz">, number> 
   baixo: 16,
   guitarra: 16,
   piano: 16,
-  chops: 8,
+  pad: 16,
 }
 
 // os 4 kits novos seguem a paleta dos gases nobres da cidade (+ a chuva)
-export type DrumTimbre = "sintetico" | "808" | "acustico" | "lofi" | "xenonio" | "neonio" | "argonio" | "chuva"
-export type MelodicTimbre = 0 | 1 | 2 | 3 | 4 | 5
+export type DrumTimbre = "sintetico" | "808" | "acustico" | "lofi" | "xenonio" | "neonio" | "argonio" | "chuva" | `faixa-${string}`
+// 0-5 sintetizados; 6+ tirados das faixas (amostras.ts)
+export type MelodicTimbre = number
 
 // linhas do grid de bateria (mantém compat com o app original)
 export type DrumRow = "kick" | "snare" | "hat" | "perc"
@@ -93,16 +95,7 @@ export interface ChordPattern {
   steps: ChordStepEntry[]
 }
 
-// chops: 8 pads com pedaços das faixas do LU2CA (kits em public/batida/kits),
-// grade de colcheias como a bateria
-export interface ChopsPattern {
-  kind: "chops"
-  kit: string
-  bars: BarLength
-  cells: boolean[][] // [pad 0-7][passo] — 8 x (8 * bars)
-}
-
-export type SequencedPattern = DrumPattern | BassPattern | ChordPattern | ChopsPattern
+export type SequencedPattern = DrumPattern | BassPattern | ChordPattern
 
 export interface VoiceClip {
   kind: "voice"
@@ -178,4 +171,11 @@ export function unlockedDegrees(song: Song): Set<number> {
     }
   }
   return degrees
+}
+
+// músicas salvas (ou mandadas pra biblioteca) antes do CHOPS sair: a faixa
+// de chops some, o resto da música continua igual
+export function limparSong(song: Song): Song {
+  const tracks = song.tracks.filter((t) => t.instrument in INSTRUMENT_LABEL)
+  return tracks.length === song.tracks.length ? song : { ...song, tracks }
 }

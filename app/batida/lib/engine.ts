@@ -4,10 +4,10 @@
 // o desalinhamento que setInterval puro causa num sequenciador).
 
 import { degreeToMidi, degreeTriadMidi, midiToFreq } from "./theory"
-import { triggerDrum, triggerBassNote, triggerGuitarChord, triggerPianoChord } from "./synths"
+import { triggerDrum, triggerBassNote, triggerChordFor } from "./synths"
 import { createMixBus, scheduleTrackTick, secPerBar, secPerTick, TICKS_PER_BAR, type MixBus } from "./mixgraph"
 import type { InstrumentId, MusicMode, Track } from "./types"
-import { carregarKit, tocarChop } from "./amostras"
+import { carregarDaMusica } from "./amostras"
 
 const LOOKAHEAD_SEC = 0.1
 const SCHEDULER_INTERVAL_MS = 25
@@ -66,8 +66,8 @@ export class BatidaEngine {
   setTracks(tracks: Track[]) {
     const prevFingerprint = this.voiceFingerprint(this.tracks)
     this.tracks = tracks
-    // kits de chops carregam em segundo plano assim que aparecem numa faixa
-    for (const t of tracks) if (t.data.kind === "chops") void carregarKit(this.ctx, t.data.kit)
+    // timbres tirados das faixas carregam em segundo plano quando aparecem
+    void carregarDaMusica(this.ctx, tracks)
     const nextFingerprint = this.voiceFingerprint(tracks)
     if (this.playing && prevFingerprint !== nextFingerprint) this.restartVoiceLoops()
   }
@@ -189,11 +189,6 @@ export class BatidaEngine {
     void this.ctx.resume()
     triggerDrum(this.ctx, this.bus.master, this.ctx.currentTime + 0.01, row, timbre)
   }
-  async previewChop(kit: string, pad: number) {
-    void this.ctx.resume()
-    await carregarKit(this.ctx, kit)
-    tocarChop(this.ctx, this.bus.master, this.ctx.currentTime + 0.01, kit, pad)
-  }
   previewBass(degree: number, timbre: number) {
     void this.ctx.resume()
     const midi = degreeToMidi(this.song.rootNote, this.song.mode, degree, 2)
@@ -203,29 +198,24 @@ export class BatidaEngine {
     void this.ctx.resume()
     const octave = instrument === "guitarra" ? 3 : 4
     const freqs = degreeTriadMidi(this.song.rootNote, this.song.mode, degree, octave).map(midiToFreq)
-    const time = this.ctx.currentTime + 0.01
-    if (instrument === "guitarra") triggerGuitarChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
-    else triggerPianoChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
+    triggerChordFor(instrument, this.ctx, this.bus.master, this.ctx.currentTime + 0.01, freqs, instrument === "pad" ? 1.6 : 0.8, timbre)
   }
   // audição de uma voicing customizada (chip da esteira, célula do grid do
   // modo PRO) — mesma coisa que previewChord, mas com notas MIDI exatas em
   // vez de derivar a tríade a partir de um grau
-  previewVoicing(instrument: "guitarra" | "piano", midiNotes: number[], timbre: number) {
+  previewVoicing(instrument: InstrumentId, midiNotes: number[], timbre: number) {
     void this.ctx.resume()
-    const freqs = midiNotes.map(midiToFreq)
-    const time = this.ctx.currentTime + 0.01
-    if (instrument === "guitarra") triggerGuitarChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
-    else triggerPianoChord(this.ctx, this.bus.master, time, freqs, 0.8, timbre)
+    triggerChordFor(instrument, this.ctx, this.bus.master, this.ctx.currentTime + 0.01, midiNotes.map(midiToFreq), instrument === "pad" ? 1.6 : 0.8, timbre)
   }
 
   // uma corda só (fretboard Smart Guitar) ou uma tecla só (Smart Piano) —
   // usadas pelas telas com o instrumento "tocável" de verdade, nota a nota
   previewGuitarNote(midi: number, timbre: number) {
     void this.ctx.resume()
-    triggerGuitarChord(this.ctx, this.bus.master, this.ctx.currentTime + 0.004, [midiToFreq(midi)], 0.9, timbre)
+    triggerChordFor("guitarra", this.ctx, this.bus.master, this.ctx.currentTime + 0.004, [midiToFreq(midi)], 0.9, timbre)
   }
-  previewPianoNote(midi: number, timbre: number) {
+  previewPianoNote(midi: number, timbre: number, instrument: InstrumentId = "piano") {
     void this.ctx.resume()
-    triggerPianoChord(this.ctx, this.bus.master, this.ctx.currentTime + 0.004, [midiToFreq(midi)], 1.1, timbre)
+    triggerChordFor(instrument, this.ctx, this.bus.master, this.ctx.currentTime + 0.004, [midiToFreq(midi)], instrument === "pad" ? 1.4 : 1.1, timbre)
   }
 }

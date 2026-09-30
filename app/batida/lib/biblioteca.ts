@@ -1,7 +1,7 @@
 // Cliente da biblioteca (/api/batida). A voz gravada é Blob no IndexedDB —
 // pra viajar em JSON vira data URL, e volta a Blob quando alguém abre.
 
-import type { Song, Track } from "./types"
+import { limparSong, type Song, type Track } from "./types"
 
 export interface Criacao {
   id: string
@@ -29,6 +29,7 @@ async function serializar(song: Song) {
 }
 
 export async function desserializar(song: Song): Promise<Song> {
+  song = limparSong(song)
   const tracks = await Promise.all(song.tracks.map(async (t): Promise<Track> => {
     if (t.data.kind !== "voice" || typeof (t.data.blob as unknown) !== "string") return t
     const blob = await (await fetch(t.data.blob as unknown as string)).blob()

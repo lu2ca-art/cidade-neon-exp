@@ -6,11 +6,14 @@
 
 import type { DrumRow, DrumTimbre } from "./types"
 import { createDistortion, createImpulseResponse, scheduleLfo } from "./dsp"
+import { BAIXOS_DA_FAIXA, KITS_DA_FAIXA, PADS_DA_FAIXA, SYNTHS_DA_FAIXA, tocarGolpe, tocarTimbreDaFaixa } from "./amostras"
 
 // ─── BATERIA (4 kits — mesma técnica do B4TIDA original) ───────────────────
 
-export const DRUM_TIMBRES: DrumTimbre[] = ["sintetico", "808", "acustico", "lofi", "xenonio", "neonio", "argonio", "chuva"]
+// kits "da faixa": golpes de verdade tirados das instrumentais (amostras.ts)
+export const DRUM_TIMBRES: DrumTimbre[] = ["sintetico", "808", "acustico", "lofi", "xenonio", "neonio", "argonio", "chuva", ...KITS_DA_FAIXA.map((k) => k.id as DrumTimbre)]
 export const DRUM_TIMBRE_LABEL: Record<DrumTimbre, string> = {
+  ...Object.fromEntries(KITS_DA_FAIXA.map((k) => [k.id, k.nome])),
   sintetico: "SINTÉTICO",
   "808": "808",
   acustico: "ACÚSTICO",
@@ -22,6 +25,7 @@ export const DRUM_TIMBRE_LABEL: Record<DrumTimbre, string> = {
   chuva: "CHUVA",
 }
 export const DRUM_TIMBRE_EFFECT: Record<DrumTimbre, string> = {
+  ...Object.fromEntries(KITS_DA_FAIXA.map((k) => [k.id, "golpes de verdade, tirados da faixa"])),
   sintetico: "limpo, sem efeito",
   "808": "saturação no sub",
   acustico: "reverb de sala curta",
@@ -195,7 +199,10 @@ function triggerPerc(ctx: BaseAudioContext, out: AudioNode, time: number, p: typ
 }
 
 export function triggerDrum(ctx: BaseAudioContext, out: AudioNode, time: number, row: DrumRow, timbre: DrumTimbre) {
-  const p = DRUM_KIT_PARAMS[timbre]
+  // kit da faixa: golpe gravado; se ainda não carregou (ou a faixa não tem
+  // aquele golpe limpo), cai no sintético
+  if (timbre.startsWith("faixa-") && tocarGolpe(ctx, out, time, timbre, row)) return
+  const p = DRUM_KIT_PARAMS[timbre] ?? DRUM_KIT_PARAMS.sintetico
   const voiceOut = drumVoiceOut(ctx, out, timbre)
   if (row === "kick") triggerKick(ctx, voiceOut, time, p.kick)
   else if (row === "snare") triggerNoise(ctx, voiceOut, time, p.snare, 0.6)
@@ -205,7 +212,7 @@ export function triggerDrum(ctx: BaseAudioContext, out: AudioNode, time: number,
 
 // ─── BAIXO (4 timbres) ───────────────────────────────────────────────────
 
-export const BASS_TIMBRE_LABEL = ["SINTÉTICO", "SUB 808", "DEDILHADO", "FUNK", "REESE XENOM", "SUB ÁGUA"] as const
+export const BASS_TIMBRE_LABEL: readonly string[] = ["SINTÉTICO", "SUB 808", "DEDILHADO", "FUNK", "REESE XENOM", "SUB ÁGUA", ...BAIXOS_DA_FAIXA.map((b) => b.nome)]
 export const BASS_TIMBRE_EFFECT = [
   "limpo, sem efeito",
   "saturação (drive)",
@@ -213,9 +220,11 @@ export const BASS_TIMBRE_EFFECT = [
   "auto-wah (filtro em LFO)",
   "dois serrotes desafinados, grave largo",
   "sub com gota no ataque, chorus lento",
-] as const
+  ...BAIXOS_DA_FAIXA.map(() => "nota de baixo de verdade, tirada da faixa"),
+]
 
 export function triggerBassNote(ctx: BaseAudioContext, out: AudioNode, time: number, freq: number, durSec: number, timbre: number) {
+  if (timbre >= 6) return tocarTimbreDaFaixa(ctx, out, time, freq, Math.max(durSec, 0.25), "baixo", timbre)
   if (timbre >= 4) return triggerBassCidade(ctx, out, time, freq, durSec, timbre)
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
@@ -359,99 +368,232 @@ export function triggerGuitarChord(ctx: BaseAudioContext, out: AudioNode, time: 
   freqs.forEach((f, i) => triggerGuitarString(ctx, out, time + i * 0.012, f, durSec, timbre))
 }
 
-// ─── PIANO (4 timbres) ───────────────────────────────────────────────────
+// ─── SYNTH (id interno "piano", pra não quebrar música salva) ─────────────
 
-export const PIANO_TIMBRE_LABEL = ["GRAND", "ELÉTRICO", "LO-FI", "PAD SINTÉTICO", "SINO NEON", "RHODES MOLHADO"] as const
+export const PIANO_TIMBRE_LABEL: readonly string[] = ["SUPERSAW", "PLUCK", "LEAD QUADRADO", "ACID", "SINO NEON", "TECLA MOLHADA", ...SYNTHS_DA_FAIXA.map((s) => s.nome)]
 export const PIANO_TIMBRE_EFFECT = [
-  "limpo, ataque de martelo",
-  "tremolo (LFO de amplitude)",
-  "lowpass pesado + saturação",
-  "chorus largo + ataque lento",
+  "cinco serrotes desafinados, largo",
+  "ataque estalado, filtro fechando rápido",
+  "onda quadrada com vibrato",
+  "filtro ressonante que abre e fecha, drive",
   "sino FM, brilho que some devagar",
-  "rhodes com tremolo e reverb",
-] as const
+  "tecla elétrica com tremolo e reverb",
+  ...SYNTHS_DA_FAIXA.map(() => "nota de synth de verdade, tirada da faixa"),
+]
 
 function triggerPianoNote(ctx: BaseAudioContext, out: AudioNode, time: number, freq: number, durSec: number, timbre: number) {
+  if (timbre >= 6) return tocarTimbreDaFaixa(ctx, out, time, freq, durSec, "piano", timbre)
   if (timbre >= 4) return triggerPianoCidade(ctx, out, time, freq, durSec, timbre)
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0.0001, time)
+  const fim = time + durSec + 0.25
+
   if (timbre === 0) {
-    // grand — sine + harmônico oitava acima simulando corpo do piano
-    const osc1 = ctx.createOscillator()
-    const osc2 = ctx.createOscillator()
-    osc1.type = "sine"; osc2.type = "triangle"
-    osc1.frequency.setValueAtTime(freq, time)
-    osc2.frequency.setValueAtTime(freq * 2, time)
-    const g1 = ctx.createGain(); const g2 = ctx.createGain()
-    g1.gain.setValueAtTime(0.0001, time)
-    g1.gain.exponentialRampToValueAtTime(0.5, time + 0.004)
-    g1.gain.exponentialRampToValueAtTime(0.001, time + durSec)
-    g2.gain.setValueAtTime(0.0001, time)
-    g2.gain.exponentialRampToValueAtTime(0.12, time + 0.004)
-    g2.gain.exponentialRampToValueAtTime(0.001, time + durSec * 0.5)
-    osc1.connect(g1).connect(out)
-    osc2.connect(g2).connect(out)
-    osc1.start(time); osc2.start(time)
-    osc1.stop(time + durSec + 0.1); osc2.stop(time + durSec + 0.1)
+    // supersaw — 5 serrotes espalhados, lowpass aberto
+    const lp = ctx.createBiquadFilter()
+    lp.type = "lowpass"
+    lp.frequency.value = 3600
+    ;[-24, -11, 0, 11, 24].forEach((det) => {
+      const o = ctx.createOscillator()
+      o.type = "sawtooth"
+      o.frequency.setValueAtTime(freq, time)
+      o.detune.setValueAtTime(det, time)
+      o.connect(lp)
+      o.start(time)
+      o.stop(fim)
+    })
+    gain.gain.exponentialRampToValueAtTime(0.16, time + 0.012)
+    gain.gain.setTargetAtTime(0.1, time + 0.05, 0.1)
+    gain.gain.setTargetAtTime(0.0001, time + durSec, 0.08)
+    lp.connect(gain).connect(out)
     return
   }
 
   if (timbre === 1) {
-    // elétrico (rhodes) — tremolo
-    const osc = ctx.createOscillator()
-    osc.type = "sine"
-    osc.frequency.setValueAtTime(freq, time)
-    const envGain = ctx.createGain()
-    envGain.gain.setValueAtTime(0.0001, time)
-    envGain.gain.exponentialRampToValueAtTime(0.5, time + 0.006)
-    envGain.gain.exponentialRampToValueAtTime(0.001, time + durSec * 1.1)
-    const tremolo = ctx.createGain()
-    scheduleLfo(tremolo.gain, time, durSec, { rateHz: 6, base: 0.75, depth: 0.25 })
-    osc.connect(envGain).connect(tremolo).connect(out)
-    osc.start(time)
-    osc.stop(time + durSec + 0.15)
+    // pluck — serrote + quadrada, filtro despenca
+    const a = ctx.createOscillator()
+    const b = ctx.createOscillator()
+    a.type = "sawtooth"
+    b.type = "square"
+    a.frequency.setValueAtTime(freq, time)
+    b.frequency.setValueAtTime(freq * 2, time)
+    const bg = ctx.createGain()
+    bg.gain.value = 0.3
+    const lp = ctx.createBiquadFilter()
+    lp.type = "lowpass"
+    lp.Q.value = 4
+    lp.frequency.setValueAtTime(5200, time)
+    lp.frequency.exponentialRampToValueAtTime(380, time + 0.18)
+    gain.gain.exponentialRampToValueAtTime(0.32, time + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.001, time + Math.min(0.45, durSec + 0.2))
+    a.connect(lp)
+    b.connect(bg).connect(lp)
+    lp.connect(gain).connect(out)
+    a.start(time); b.start(time)
+    a.stop(fim); b.stop(fim)
     return
   }
 
   if (timbre === 2) {
-    // lo-fi / feltro — lowpass pesado + leve saturação
-    const osc = ctx.createOscillator()
-    osc.type = "triangle"
-    osc.frequency.setValueAtTime(freq, time)
-    const gain = ctx.createGain()
-    gain.gain.setValueAtTime(0.0001, time)
-    gain.gain.exponentialRampToValueAtTime(0.45, time + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.001, time + durSec * 1.3)
+    // lead quadrado — vibrato entra depois do ataque
+    const o = ctx.createOscillator()
+    o.type = "square"
+    o.frequency.setValueAtTime(freq, time)
+    scheduleLfo(o.detune, time + 0.15, durSec, { rateHz: 5.5, base: 0, depth: 14 })
     const lp = ctx.createBiquadFilter()
     lp.type = "lowpass"
-    lp.frequency.value = 900
-    const drive = createDistortion(ctx, 0.1)
-    osc.connect(gain).connect(lp).connect(drive).connect(out)
-    osc.start(time)
-    osc.stop(time + durSec + 0.15)
+    lp.frequency.value = 2800
+    gain.gain.exponentialRampToValueAtTime(0.2, time + 0.01)
+    gain.gain.setTargetAtTime(0.0001, time + durSec, 0.06)
+    o.connect(lp).connect(gain).connect(out)
+    o.start(time)
+    o.stop(fim)
     return
   }
 
-  // pad sintético — chorus largo (3 osciladores destafinados) + ataque lento
-  const gain = ctx.createGain()
-  gain.gain.setValueAtTime(0.0001, time)
-  gain.gain.exponentialRampToValueAtTime(0.35, time + durSec * 0.3)
-  gain.gain.exponentialRampToValueAtTime(0.001, time + durSec * 1.4)
-  ;[-10, 0, 10].forEach((detune) => {
-    const osc = ctx.createOscillator()
-    osc.type = "sawtooth"
-    osc.frequency.setValueAtTime(freq, time)
-    osc.detune.setValueAtTime(detune, time)
-    osc.connect(gain)
-    osc.start(time)
-    osc.stop(time + durSec + 0.2)
-  })
+  // acid — serrote, filtro ressonante com envelope, drive
+  const o = ctx.createOscillator()
+  o.type = "sawtooth"
+  o.frequency.setValueAtTime(freq, time)
   const lp = ctx.createBiquadFilter()
   lp.type = "lowpass"
-  lp.frequency.value = 2200
-  gain.connect(lp).connect(out)
+  lp.Q.value = 14
+  lp.frequency.setValueAtTime(220, time)
+  lp.frequency.exponentialRampToValueAtTime(2600, time + 0.04)
+  lp.frequency.exponentialRampToValueAtTime(300, time + 0.35)
+  const drive = createDistortion(ctx, 0.3)
+  gain.gain.exponentialRampToValueAtTime(0.22, time + 0.005)
+  gain.gain.setTargetAtTime(0.0001, time + durSec, 0.05)
+  o.connect(lp).connect(drive).connect(gain).connect(out)
+  o.start(time)
+  o.stop(fim)
 }
 
 export function triggerPianoChord(ctx: BaseAudioContext, out: AudioNode, time: number, freqs: number[], durSec: number, timbre: number) {
   freqs.forEach((f) => triggerPianoNote(ctx, out, time, f, durSec, timbre))
+}
+
+// ─── PAD (acorde que fica soando até o próximo) ─────────────────────────────
+
+export const PAD_TIMBRE_LABEL: readonly string[] = ["NUVEM", "CORAL", "VIDRO", "CHUVA", "ÓRGÃO", "NOITE", ...PADS_DA_FAIXA.map((p) => p.nome)]
+export const PAD_TIMBRE_EFFECT = [
+  "serrotes largos, filtro respirando devagar",
+  "vogal \"ah\" formada por filtros",
+  "FM suave, brilho de vidro",
+  "garoa por baixo do acorde, reverb longo",
+  "órgão com tremolo girando",
+  "grave quente, ataque bem lento",
+  ...PADS_DA_FAIXA.map(() => "nota da faixa esticada em loop, ataque lento"),
+]
+
+function triggerPadNote(ctx: BaseAudioContext, out: AudioNode, time: number, freq: number, durSec: number, timbre: number) {
+  if (timbre >= 6) return tocarTimbreDaFaixa(ctx, out, time, freq, durSec, "pad", timbre)
+  const ataque = [0.6, 0.4, 0.3, 0.8, 0.12, 1.1][timbre] ?? 0.5
+  const solta = [1.2, 1, 1.4, 1.8, 0.4, 1.6][timbre] ?? 1
+  const vol = [0.09, 0.1, 0.12, 0.1, 0.1, 0.14][timbre] ?? 0.1
+  const fim = time + durSec + solta + 0.2
+  const env = ctx.createGain()
+  env.gain.setValueAtTime(0.0001, time)
+  env.gain.linearRampToValueAtTime(vol, time + ataque)
+  env.gain.setValueAtTime(vol, time + Math.max(ataque, durSec))
+  env.gain.setTargetAtTime(0.0001, time + Math.max(ataque, durSec), solta / 3)
+  const osc = (tipo: OscillatorType, f: number, det = 0) => {
+    const o = ctx.createOscillator()
+    o.type = tipo
+    o.frequency.setValueAtTime(f, time)
+    o.detune.setValueAtTime(det, time)
+    o.start(time)
+    o.stop(fim)
+    return o
+  }
+
+  if (timbre === 0) {
+    const lp = ctx.createBiquadFilter()
+    lp.type = "lowpass"
+    scheduleLfo(lp.frequency, time, durSec + solta, { rateHz: 0.25, base: 1500, depth: 700 })
+    ;[-14, 0, 14].forEach((d) => osc("sawtooth", freq, d).connect(lp))
+    lp.connect(env).connect(reverbSend(ctx, out, 2.4, 0.35))
+    return
+  }
+  if (timbre === 1) {
+    const src = ctx.createGain()
+    ;[-6, 6].forEach((d) => osc("sawtooth", freq, d).connect(src))
+    const mix = ctx.createGain()
+    ;[[720, 8, 1], [1150, 10, 0.6], [2600, 12, 0.25]].forEach(([f, q, g]) => {
+      const bp = ctx.createBiquadFilter()
+      bp.type = "bandpass"
+      bp.frequency.value = f
+      bp.Q.value = q
+      const gg = ctx.createGain()
+      gg.gain.value = g * 2.2
+      src.connect(bp).connect(gg).connect(mix)
+    })
+    mix.connect(env).connect(reverbSend(ctx, out, 2.8, 0.45))
+    return
+  }
+  if (timbre === 2) {
+    const car = osc("sine", freq)
+    const mod = osc("sine", freq * 2)
+    const idx = ctx.createGain()
+    idx.gain.setValueAtTime(freq * 0.8, time)
+    mod.connect(idx).connect(car.frequency)
+    const trem = ctx.createGain()
+    scheduleLfo(trem.gain, time, durSec + solta, { rateHz: 3, base: 0.85, depth: 0.15 })
+    car.connect(env).connect(trem).connect(reverbSend(ctx, out, 2.2, 0.4))
+    osc("triangle", freq * 2, 5).connect(env)
+    return
+  }
+  if (timbre === 3) {
+    osc("sine", freq, -8).connect(env)
+    osc("triangle", freq, 8).connect(env)
+    // garoa: ruído filtrado bem baixinho junto com o acorde
+    const n = ctx.createBufferSource()
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < 0.004 ? 1 : 0.08)
+    n.buffer = buf
+    n.loop = true
+    const hp = ctx.createBiquadFilter()
+    hp.type = "bandpass"
+    hp.frequency.value = 4200
+    const ng = ctx.createGain()
+    ng.gain.value = 0.35
+    n.connect(hp).connect(ng).connect(env)
+    n.start(time)
+    n.stop(fim)
+    env.connect(reverbSend(ctx, out, 3.4, 0.55))
+    return
+  }
+  if (timbre === 4) {
+    osc("square", freq).connect(env)
+    osc("sine", freq * 2).connect(env)
+    osc("sine", freq / 2).connect(env)
+    const lp = ctx.createBiquadFilter()
+    lp.type = "lowpass"
+    lp.frequency.value = 2200
+    const trem = ctx.createGain()
+    scheduleLfo(trem.gain, time, durSec + solta, { rateHz: 6.2, base: 0.8, depth: 0.2 })
+    env.connect(lp).connect(trem).connect(out)
+    return
+  }
+  const lp = ctx.createBiquadFilter()
+  lp.type = "lowpass"
+  lp.frequency.value = 700
+  osc("sine", freq / 2).connect(env)
+  osc("sawtooth", freq, -4).connect(lp)
+  lp.connect(env)
+  env.connect(reverbSend(ctx, out, 2, 0.3))
+}
+
+export function triggerPadChord(ctx: BaseAudioContext, out: AudioNode, time: number, freqs: number[], durSec: number, timbre: number) {
+  freqs.forEach((f) => triggerPadNote(ctx, out, time, f, durSec, timbre))
+}
+
+// um lugar só pra decidir quem toca um acorde
+export function triggerChordFor(instrument: string, ctx: BaseAudioContext, out: AudioNode, time: number, freqs: number[], durSec: number, timbre: number) {
+  if (instrument === "guitarra") triggerGuitarChord(ctx, out, time, freqs, durSec, timbre)
+  else if (instrument === "pad") triggerPadChord(ctx, out, time, freqs, durSec, timbre)
+  else triggerPianoChord(ctx, out, time, freqs, durSec, timbre)
 }
 
 // ─── timbres da cidade (4 e 5 de cada instrumento melódico) ─────────────────

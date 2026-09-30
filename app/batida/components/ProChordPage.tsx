@@ -33,7 +33,7 @@ export function ProChordPage({
   timbreLabels,
   timbreEffects,
 }: {
-  instrument: "guitarra" | "piano"
+  instrument: "guitarra" | "piano" | "pad"
   label: string
   accent: string
   timbreLabels: readonly string[]
@@ -67,7 +67,7 @@ export function ProChordPage({
     id: `draft-${instrument}`,
     instrument: instrument as InstrumentId,
     fx: defaultFx(),
-    data: { kind: "chord" as const, timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps },
+    data: { kind: "chord" as const, timbre: timbreIdx, bars, steps },
   }), [instrument, timbreIdx, bars, steps])
 
   useEffect(() => { engine?.setTracks([...song.tracks, draftTrack]) }, [engine, song.tracks, draftTrack])
@@ -95,7 +95,7 @@ export function ProChordPage({
 
   const handleNote = (midi: number, info?: { string: number; fret: number }) => {
     if (instrument === "guitarra") engine?.previewGuitarNote(midi, timbreIdx)
-    else engine?.previewPianoNote(midi, timbreIdx)
+    else engine?.previewPianoNote(midi, timbreIdx, instrument)
     tray.registerNote({ midi, meta: info })
   }
 
@@ -125,7 +125,7 @@ export function ProChordPage({
 
   const handleAdd = async () => {
     if (!steps.some((s) => s !== null)) { setFeedback("arraste pelo menos um som da esteira pro grid"); return }
-    const ok = await addTrack({ id: newTrackId(), instrument, fx: defaultFx(), data: { kind: "chord", timbre: timbreIdx as 0 | 1 | 2 | 3, bars, steps } })
+    const ok = await addTrack({ id: newTrackId(), instrument, fx: defaultFx(), data: { kind: "chord", timbre: timbreIdx, bars, steps } })
     if (ok) { setSteps(Array(bars * STEPS_PER_BAR).fill(null)); setFeedback(`faixa de ${label.toLowerCase()} adicionada`) }
     else setFeedback("limite de 5 faixas atingido")
     window.setTimeout(() => setFeedback(null), 2600)

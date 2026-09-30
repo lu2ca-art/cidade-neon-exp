@@ -3,10 +3,9 @@
 // offline pro export (render.ts, OfflineAudioContext) — garante que o que a
 // pessoa ouve ao vivo é exatamente o que sai no áudio exportado.
 
-import { tocarChop } from "./amostras"
 import { createImpulseResponse } from "./dsp"
 import { chordStepMidiNotes, degreeToMidi, midiToFreq } from "./theory"
-import { triggerDrum, triggerBassNote, triggerGuitarChord, triggerPianoChord } from "./synths"
+import { triggerDrum, triggerBassNote, triggerChordFor } from "./synths"
 import { DRUM_ROWS, type MusicMode, type Track } from "./types"
 
 export interface MixBus {
@@ -119,21 +118,6 @@ export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: Song
     return
   }
 
-  if (data.kind === "chops") {
-    const patternTicks = (data.bars ?? 1) * TICKS_PER_BAR
-    const localTick = globalTick % patternTicks
-    if (localTick % 2 !== 0) return
-    const stepIdx = localTick / 2
-    for (let pad = 0; pad < 8; pad++) {
-      if (data.cells[pad]?.[stepIdx]) {
-        const out = buildOneShotChain(ctx, bus, track.fx)
-        // pedaço corta no próximo pad aceso da mesma linha, no máximo 2 tempos
-        tocarChop(ctx, out, time, data.kit, pad, dur * 8) // até 2 tempos
-      }
-    }
-    return
-  }
-
   if (data.kind === "chord") {
     const patternTicks = (data.bars ?? 1) * TICKS_PER_BAR
     const stepIdx = globalTick % patternTicks
@@ -142,8 +126,13 @@ export function scheduleTrackTick(ctx: BaseAudioContext, bus: MixBus, song: Song
     if (!midiNotes) return
     const out = buildOneShotChain(ctx, bus, track.fx)
     const freqs = midiNotes.map(midiToFreq)
-    const ringDur = dur * 4
-    if (track.instrument === "guitarra") triggerGuitarChord(ctx, out, time, freqs, ringDur, data.timbre)
-    else triggerPianoChord(ctx, out, time, freqs, ringDur, data.timbre)
+    // pad segura o acorde até o próximo (máx. 1 compasso); o resto soa 1 tempo
+    let ringDur = dur * 4
+    if (track.instrument === "pad") {
+      let n = 1
+      while (n < TICKS_PER_BAR && data.steps[(stepIdx + n) % patternTicks] == null) n++
+      ringDur = dur * n
+    }
+    triggerChordFor(track.instrument, ctx, out, time, freqs, ringDur, data.timbre)
   }
 }

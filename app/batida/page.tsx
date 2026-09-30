@@ -20,8 +20,8 @@ const INSTRUMENT_ROUTES: { id: InstrumentId; href: string }[] = [
   { id: "bateria", href: "/batida/bateria" },
   { id: "baixo", href: "/batida/baixo" },
   { id: "guitarra", href: "/batida/guitarra" },
+  { id: "pad", href: "/batida/pad" },
   { id: "piano", href: "/batida/piano" },
-  { id: "chops", href: "/batida/chops" },
   { id: "voz", href: "/batida/voz" },
 ]
 
@@ -131,14 +131,14 @@ export default function BatidaHubPage() {
           <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
             {CLIMAS.map((c, i) => (
               <button
-                key={c.kit}
+                key={c.id}
                 type="button"
                 onClick={() => noClima(i)}
                 className="flex-shrink-0 px-3 py-2.5 rounded-xl text-left transition-all active:scale-95"
                 style={{ background: `linear-gradient(135deg, ${c.cor}30, ${c.cor}08)`, border: `1px solid ${c.cor}66` }}
               >
                 <span className="block text-[11px] font-bold" style={{ color: c.cor }}>{c.nome}</span>
-                <span className="block text-[8px] font-mono text-white/40 mt-0.5">{c.bpm} bpm · kit {DRUM_TIMBRE_LABEL[c.bateria].toLowerCase()}</span>
+                <span className="block text-[8px] font-mono text-white/40 mt-0.5">{c.bpm} bpm · {NOTE_NAMES[c.tom[0]]}{c.tom[1] === "minor" ? "m" : ""} · kit {DRUM_TIMBRE_LABEL[c.bateria].toLowerCase()}</span>
               </button>
             ))}
           </div>

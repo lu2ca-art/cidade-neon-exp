@@ -4,7 +4,7 @@
 
 import { createMixBus, buildOneShotChain, scheduleTrackTick, secPerBar, secPerTick, TICKS_PER_BAR } from "./mixgraph"
 import type { Song, Track, VoiceClip } from "./types"
-import { carregarKit } from "./amostras"
+import { carregarDaMusica } from "./amostras"
 
 function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b) }
 function lcm(a: number, b: number): number { return (a * b) / gcd(a, b) }
@@ -48,8 +48,8 @@ export async function renderSongOffline(song: Song): Promise<AudioBuffer> {
     source.stop(totalSec)
   }
 
-  // chops precisam dos buffers antes de agendar
-  await Promise.all(patternTracks.map((t) => (t.data.kind === "chops" ? carregarKit(offlineCtx, t.data.kit) : null)))
+  // timbres tirados das faixas precisam dos buffers antes de agendar
+  await carregarDaMusica(offlineCtx, patternTracks)
   const totalTicks = cycleBars * TICKS_PER_BAR
   for (let globalTick = 0; globalTick < totalTicks; globalTick++) {
     const time = globalTick * secPerTick(song.bpm)
