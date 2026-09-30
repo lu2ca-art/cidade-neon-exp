@@ -57,6 +57,9 @@ interface Props {
   avisos?: number
   // celular aberto por cima: a estrada congela (e continua dali ao fechar)
   pausado?: boolean
+  // o Núcleo derrubou a 222: sem rádio, cidade cinza, missão = religar a antena
+  caido?: boolean
+  onReligar?: () => void
   onSinal: (total: number, freq?: FreqId) => void
   onDescer: (id: EstacaoId, s: Stats) => void
   onSair: (s: Stats) => void
@@ -115,7 +118,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, onSinal, onDescer, onSair, onVolta }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -128,17 +131,24 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const alvoChave = alvo ? `${alvo.t}:${alvo.missao}:${alvo.t === "busca" ? alvo.faltam.join(",") : ""}` : ""
   const missaoAlvo = alvo ? MISSOES[alvo.missao] ?? null : null
   // onde a missão manda: o lugar da busca, ou o centro (onde moram as estações)
-  const lugarAlvo: FreqId | null = alvo ? (alvo.t === "busca" ? alvo.busca.onde : "linha") : null
+  const lugarAlvo: FreqId | null = caido ? "linha" : alvo ? (alvo.t === "busca" ? alvo.busca.onde : "linha") : null
+  const caidoRef = useRef(caido)
+  useEffect(() => { caidoRef.current = caido }, [caido])
   const lugarAlvoRef = useRef(lugarAlvo)
   useEffect(() => { lugarAlvoRef.current = lugarAlvo }, [lugarAlvo])
   const marcos = useMemo<Marco[]>(() => {
+    // a antena da 222: no centro, um terço do caminho
+    if (caido) {
+      const C = M.vias[M.circuito.linha]
+      return [{ chave: "antena", via: M.circuito.linha, u: C.livre[0] + 0.33 * (C.livre[1] - C.livre[0]), cor: "#e6f0ff" }]
+    }
     if (!alvo || alvo.t !== "busca") return []
     const vi = M.circuito[alvo.busca.onde]
     const C = M.vias[vi]
     const cor = getEstacao(alvo.missao).cor
     return alvo.faltam.map((k) => ({ chave: `${alvo.busca.item}:${k}`, via: vi, u: C.livre[0] + alvo.busca.em[k] * (C.livre[1] - C.livre[0]), cor }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [M, alvoChave])
+  }, [M, alvoChave, caido])
   const marcosRef = useRef(marcos)
   useEffect(() => { marcosRef.current = marcos }, [marcos])
   // a busca terminou no meio da corrida: a estação vira destino na hora
@@ -213,6 +223,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // sem repetição, estreias e vinhetas do locutor entre as músicas
   const proxFaixa = useRef<(id: FreqId) => void>(() => {})
   const tocarProxima = useCallback((id: FreqId, vol = 1) => {
+    if (caidoRef.current) { player.pausar(); setFaixa(""); return }
     const a = alvoRef.current
     const carregando = a?.t === "entrega" ? MISSOES[a.missao]?.busca.nome ?? null : null
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
@@ -245,6 +256,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   // celular aberto → estrada congela; fechou → a rádio volta (uma conversa
   // pode ter tocado um áudio no lugar dela) e as teclas voltam a valer
+  // caiu com a estrada aberta: a rádio sai do ar na hora (efeito externo: áudio)
+  useEffect(() => {
+    if (caido) player.pausar()
+  }, [caido])
   const pausadoRef = useRef(pausado)
   useEffect(() => {
     pausadoRef.current = pausado
@@ -255,12 +270,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
     // a música do lugar que ficou pausada continua de onde parou; se uma
     // conversa tocou outra coisa, entra a próxima da programação
+    if (caidoRef.current) return
     if (ehDoLugar(freqRef.current, player.src, save.objetos)) { if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current)) }
     else tocarProxima(freqRef.current)
     player.volume(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pausado])
   // "ir de kombi" pra uma estação pelo mapa do celular: vira o destino
+  // a 222 caiu: a missão da vez espera, o destino some (a antena é o alvo)
+  const [caidoAnt, setCaidoAnt] = useState(caido)
+  if (caido !== caidoAnt) {
+    setCaidoAnt(caido)
+    if (caido) setDestino(null)
+  }
   const [destinoAnt, setDestinoAnt] = useState(destinoInicial)
   if (destinoInicial !== destinoAnt) {
     setDestinoAnt(destinoInicial)
@@ -358,6 +380,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         gota(4)
       },
       pegar: (chave) => {
+        if (chave === "antena") {
+          onReligar?.()
+          jogo.current.flash = 1
+          jogo.current.impacto = 1
+          confeteRef.current?.("#2fe8ff", 160)
+          vib([40, 30, 40, 30, 120])
+          setPopup({ id: Math.random(), txt: "222 FM no ar", cor: "#2fe8ff" })
+          caidoRef.current = false
+          setTimeout(() => {
+            tocarProxima(freqRef.current)
+            falar("222 FM", "voltamos. o núcleo derrubou a gente e alguém religou na mão. essa vai pra você")
+          }, 600)
+          return
+        }
         const a = alvoRef.current
         if (!a || a.t !== "busca") return
         const k = Number(chave.split(":")[1])
@@ -616,7 +652,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${pausado ? "is-pausada" : ""}`}>
+    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -679,7 +715,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <circle ref={mapaCarro} r="2.8" fill="#fff" stroke="#050510" strokeWidth="1" />
       </svg>
 
-      {alvo && missaoAlvo && (
+      {caido && (
+        <div className="l-hud-missao" style={{ ["--cor" as string]: "#3d7bff" }}>
+          <small>D-Bee · urgente</small>
+          <b>religar a antena da 222 no centro</b>
+        </div>
+      )}
+      {!caido && alvo && missaoAlvo && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: getEstacao(alvo.missao).cor }}>
           <small>{getEstacao(alvo.missao).personagem} · missão</small>
           <b>{alvo.t === "busca" ? missaoAlvo.tarefa : alvo.t === "visita" ? `te chamou na estação ${getEstacao(alvo.missao).n}` : `levar ${missaoAlvo.busca.nome} na estação ${getEstacao(alvo.missao).n}`}</b>
@@ -753,7 +795,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onClick={() => setPopup({ id: Math.random(), txt: "pra mudar de música, muda de caminho →", cor: fq.cor })}
       >
         <span ref={hudFreq} className="l-hud-freq" style={{ color: fq.cor }}>{fq.freq} FM</span>
-        {passandoE ? (
+        {caido ? (
+          <span className="l-hud-faixa is-caida">sem sinal · o núcleo derrubou a 222</span>
+        ) : passandoE ? (
           <span key={passando!.t} className="l-hud-faixa is-estacao" style={{ color: passandoE.cor }}>estação {passandoE.n} · {passandoE.faixa.toLowerCase()}</span>
         ) : (
           <span className="l-hud-faixa">{faixa || "…"}</span>

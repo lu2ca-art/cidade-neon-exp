@@ -43,6 +43,9 @@ export interface Save {
   itens: string[]
   // conversa parada esperando a busca: índice do passo "tarefa"
   pausas: Partial<Record<ChatId, number>>
+  // o Núcleo: quantas invasões já rolaram e se derrubou a 222 (aí a cidade
+  // fica cinza até religar a antena)
+  nucleo: { invasoes: number; caido: boolean }
 }
 
 const CHAVE = "cn-linha-222"
@@ -68,6 +71,7 @@ export const VAZIO: Save = {
   perfil: null,
   itens: [],
   pausas: {},
+  nucleo: { invasoes: 0, caido: false },
 }
 
 export function carregar(): Save {

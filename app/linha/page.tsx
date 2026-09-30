@@ -16,6 +16,7 @@ import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
 import { alvoDe, ativa } from "./missoes"
+import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Corrida, type Stats } from "./estrada/Corrida"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
@@ -52,6 +53,8 @@ export default function LinhaPage() {
   // a estrada, uma vez aberta, fica montada por baixo de tudo: o celular
   // sobe por cima e, ao fechar, a Kombi continua exatamente de onde parou
   const [estrada, setEstrada] = useState(false)
+  // o Núcleo invadindo (janelas de vírus por cima de tudo)
+  const [invasao, setInvasao] = useState<Invasao | null>(null)
   const [destinoEstrada, setDestinoEstrada] = useState<EstacaoId | null>(null)
   useEffect(() => {
     if (tela.t !== "corrida") return
@@ -107,6 +110,37 @@ export default function LinhaPage() {
     if (p) player.tocar(p.faixa.src, () => proxRadio.current(id))
   }, [save.objetos, save.nome])
   useEffect(() => { proxRadio.current = tocarRadio }, [tocarRadio])
+
+  // O Núcleo invade: 1ª vez depois da 2ª missão (dá pra repelir), 2ª depois
+  // da 3ª (derruba a 222 — o primeiro apagão), e depois, de vez em quando na
+  // estrada. Nunca no meio de uma conversa.
+  const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !save.nucleo.caido
+  useEffect(() => {
+    if (!pronto || !podeInvadir) return
+    const n = save.nucleo.invasoes
+    const obj = save.objetos.length
+    if ((n === 0 && obj >= 2) || (n === 1 && obj >= 3)) {
+      const t = setTimeout(() => setInvasao({ id: Date.now(), forte: n === 1 }), 5000)
+      return () => clearTimeout(t)
+    }
+    if (n >= 2 && tela.t === "corrida") {
+      const t = setInterval(() => { if (Math.random() < 0.12) setInvasao({ id: Date.now(), forte: false }) }, 60000)
+      return () => clearInterval(t)
+    }
+  }, [pronto, podeInvadir, save.nucleo.invasoes, save.objetos.length, tela.t])
+
+  const fimInvasao = useCallback((venceu: boolean) => {
+    setInvasao(null)
+    setSave((s) => ({ ...s, sinal: s.sinal + (venceu ? 8 : 0), nucleo: { invasoes: s.nucleo.invasoes + 1, caido: !venceu } }))
+    track("mission_step", { mission_id: "linha-nucleo", step: venceu ? "invasao:repelida" : "invasao:caiu", perfil: save.perfil ?? "?", fio_pos: -1 })
+    if (venceu) avisar("D-Bee", "vc segurou eles. +8 de sinal", "#3d7bff")
+    else setTimeout(() => avisar("D-Bee", "derrubaram a 222. religa a antena no centro, de kombi", "#3d7bff"), 400)
+  }, [avisar, save.perfil])
+
+  const religar = useCallback(() => {
+    setSave((s) => ({ ...s, sinal: s.sinal + 10, nucleo: { ...s.nucleo, caido: false } }))
+    track("mission_step", { mission_id: "linha-nucleo", step: "antena:religou", perfil: save.perfil ?? "?", fio_pos: -1 })
+  }, [save.perfil])
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
@@ -280,11 +314,13 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={tela.t !== "corrida"}
+            pausado={tela.t !== "corrida" || !!invasao}
+            caido={save.nucleo.caido}
+            onReligar={religar}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
-            alvo={alvoDe(save, nivel)}
+            alvo={save.nucleo.caido ? null : alvoDe(save, nivel)}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
-            avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id.startsWith("est-")).length}
+            avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
             onSair={sairDaCorrida}
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
@@ -363,6 +399,7 @@ export default function LinhaPage() {
         {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
+        {invasao && <InvasaoNucleo key={invasao.id} inv={invasao} onFim={fimInvasao} />}
         {aviso && (
           <div key={`aviso-${aviso.id}`} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}>
             <b>{aviso.titulo}</b>
