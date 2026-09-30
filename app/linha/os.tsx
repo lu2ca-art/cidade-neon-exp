@@ -7,7 +7,8 @@
 //
 // Os apps grandes da versão anterior (B4TIDA, GUITAR DRIVER, loja de discos,
 // museu…) abrem dentro do celular, numa janela. Quando eles tentam voltar
-// pra home antiga ("/" ou "/drive"), a janela fecha e você volta pra cá.
+// pra home antiga ("/", que agora redireciona pra /linha, ou "/drive"), a
+// janela fecha e você volta pra cá.
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId, type ProvaId } from "./data"
@@ -318,7 +319,7 @@ export function AppJanela({ app, onFechar }: { app: AppDef; onFechar: () => void
     const t = setInterval(() => {
       try {
         const p = ref.current?.contentWindow?.location.pathname
-        if (p && (p === "/" || p === "/drive" || p === "/drive-v2")) onFechar()
+        if (p && (p === "/" || p === "/linha" || p === "/drive" || p === "/drive-v2")) onFechar()
       } catch {}
     }, 400)
     return () => clearInterval(t)
