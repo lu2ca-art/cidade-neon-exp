@@ -970,3 +970,10 @@
 .l-descer { position: absolute; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 22px; border-radius: 999px; background: color-mix(in srgb, var(--cor) 22%, rgba(5, 5, 16, 0.8)) !important; border: 1px solid var(--cor) !important; box-shadow: 0 0 24px -6px var(--cor); backdrop-filter: blur(8px); animation: l-sobe 0.35s both; }
 .l-descer small { font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--cor); }
 .l-descer b { font: 700 16px var(--cond); text-transform: uppercase; color: #fff; }
+
+/* o celular sobe por cima da estrada (que fica pausada por baixo) */
+.l-viagem ~ .l-os, .l-viagem ~ .l-chat, .l-viagem ~ .l-appnativo, .l-viagem ~ .l-janela, .l-viagem ~ .l-mapa, .l-viagem ~ .l-final { z-index: 10; animation: l-cel-sobe 0.38s cubic-bezier(0.2, 1, 0.3, 1) both; }
+@keyframes l-cel-sobe { from { transform: translateY(100%); } to { transform: none; } }
+.l-viagem.is-pausada .l-viagem-cvs { filter: blur(3px) brightness(0.6); }
+/* clarão da chegada num lugar novo: a música entra junto com a cor */
+.l-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 55%, var(--cor) 0%, transparent 70%); mix-blend-mode: screen; z-index: 2; }

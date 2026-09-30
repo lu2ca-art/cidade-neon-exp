@@ -24,7 +24,7 @@ import { track } from "@/lib/analytics"
 
 type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
 
-type Volta = { t: "home" } | { t: "app"; id: AppId }
+type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: null }
 
 type Tela =
   | { t: "entrada" }
@@ -48,6 +48,16 @@ export default function LinhaPage() {
   const nivelAnt = useRef<number | null>(null)
   const [provaDev, setProvaDev] = useState<ProvaId | null>(null)
   const [corridaDev, setCorridaDev] = useState(false)
+  // a estrada, uma vez aberta, fica montada por baixo de tudo: o celular
+  // sobe por cima e, ao fechar, a Kombi continua exatamente de onde parou
+  const [estrada, setEstrada] = useState(false)
+  const [destinoEstrada, setDestinoEstrada] = useState<EstacaoId | null>(null)
+  useEffect(() => {
+    if (tela.t !== "corrida") return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEstrada(true)
+    setDestinoEstrada(tela.destino)
+  }, [tela])
 
   useEffect(() => {
     const s = carregar()
@@ -219,13 +229,12 @@ export default function LinhaPage() {
 
   const descer = (id: EstacaoId, st: Stats) => {
     setSave((s) => ({ ...s, xp: s.xp + 20 + st.orbs * 2 + st.quase * 5 }))
-    abrirChat(id, { t: "home" })
+    // a conversa abre por cima; fechando, volta pra estrada
+    abrirChat(id, { t: "corrida", destino: null })
   }
 
-  const sairDaCorrida = (st: Stats) => {
-    if (st.orbs + st.quase > 0) ganharXp(10 + st.orbs * 2 + st.quase * 5)
-    setTela({ t: "home" })
-  }
+  // o ícone do celular: pega o celular (a estrada pausa por baixo)
+  const sairDaCorrida = () => setTela({ t: "home" })
 
   const alternarSom = () => {
     const m = !semSom
@@ -268,6 +277,22 @@ export default function LinhaPage() {
   return (
     <div className="l-raiz">
       <div className="l-palco">
+        {/* camada de baixo: a estrada (pausa quando o celular está aberto) */}
+        {(estrada || tela.t === "corrida") && (
+          <Corrida
+            save={save}
+            nivel={nivel}
+            destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
+            pausado={tela.t !== "corrida"}
+            onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
+            alvo={alvoDe(save, nivel)}
+            onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
+            avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id.startsWith("est-")).length}
+            onDescer={descer}
+            onSair={sairDaCorrida}
+            onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
+          />
+        )}
         {tela.t === "entrada" && <Entrada save={save} onEntrar={entrar} />}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: "abertura", volta: { t: "home" } })} />}
         {tela.t === "chat" && (
@@ -331,21 +356,6 @@ export default function LinhaPage() {
           <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} />
         )}
 
-        {tela.t === "corrida" && (
-          <Corrida
-            key={tela.destino ?? "livre"}
-            save={save}
-            nivel={nivel}
-            destino={tela.destino}
-            onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
-            alvo={alvoDe(save, nivel)}
-            onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
-            avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id.startsWith("est-")).length}
-            onDescer={descer}
-            onSair={sairDaCorrida}
-            onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
-          />
-        )}
         {tela.t === "final" && <Final save={save} onVoltar={() => setTela({ t: "home" })} />}
 
         {(tela.t === "home" || tela.t === "chat" || tela.t === "bloqueio") && (

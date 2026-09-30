@@ -21,7 +21,7 @@ import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } fro
 import { VOZES } from "../roteiros"
 import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import type { Save } from "../estado"
-import { gota, nomeDoTom, player, tomDaMusica } from "../som"
+import { estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
 import { MARCHAS, montarMotor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -54,6 +54,8 @@ interface Props {
   onPegar?: (chave: string) => void
   // quantas coisas te chamando no celular (bolinha no ícone)
   avisos?: number
+  // celular aberto por cima: a estrada congela (e continua dali ao fechar)
+  pausado?: boolean
   onSinal: (total: number, freq?: FreqId) => void
   onDescer: (id: EstacaoId, s: Stats) => void
   onSair: (s: Stats) => void
@@ -65,6 +67,8 @@ type Jogo = {
   u: number; x: number; v: number; vx: number; steer: number
   y: number; vy: number; ar: boolean; tAr: number
   turboT: number; carga: number; shake: number; flash: number
+  // chegada num lugar novo: a música nova entra de uma vez, com o cenário
+  impacto: number; soco: boolean
   tempo: number; voltaIni: number; voltas: number
   chegando: boolean; parado: boolean; encaixar?: boolean
   sintonizou: boolean
@@ -103,7 +107,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, onSinal, onDescer, onSair, onVolta }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, onSinal, onDescer, onSair, onVolta }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -197,11 +201,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   // rádio: toca a frequência do lugar onde você está
   const proxFaixa = useRef<(id: FreqId, idx: number) => void>(() => {})
+  const idxRadio = useRef(0)
   const tocarFreq = useCallback((id: FreqId, idx = 0, vol = 1) => {
     let lista = faixasDe(freqDe(id), save.objetos, save.estacao)
     if (!lista.length) lista = faixasDe(FREQUENCIAS[4], [], null)
     if (!lista.length) return
     const fx = lista[idx % lista.length]
+    idxRadio.current = idx
     setFaixa(fx.titulo)
     player.tocar(fx.src, () => proxFaixa.current(freqRef.current, idx + 1), vol)
   }, [save.objetos, save.estacao])
@@ -215,6 +221,38 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [])
 
   const confeteRef = useRef<((cor: string, n: number) => void) | null>(null)
+
+  // celular aberto → estrada congela; fechou → a rádio volta (uma conversa
+  // pode ter tocado um áudio no lugar dela) e as teclas voltam a valer
+  const pausadoRef = useRef(pausado)
+  useEffect(() => {
+    pausadoRef.current = pausado
+    if (pausado) {
+      input.current.esq = input.current.dir = input.current.freio = false
+      toques.current.clear()
+      return
+    }
+    const lista = faixasDe(freqDe(freqRef.current), save.objetos, save.estacao).map((f) => f.src)
+    if (!player.src || !lista.includes(player.src) || !player.tocando) tocarFreq(freqRef.current, idxRadio.current + (player.src && lista.includes(player.src) ? 0 : 1))
+    player.volume(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pausado])
+  // "ir de kombi" pra uma estação pelo mapa do celular: vira o destino
+  const [destinoAnt, setDestinoAnt] = useState(destinoInicial)
+  if (destinoInicial !== destinoAnt) {
+    setDestinoAnt(destinoInicial)
+    if (destinoInicial) setDestino(destinoInicial)
+  }
+  const descerAqui = (id: EstacaoId, st: Stats) => {
+    setChegou(null)
+    setPortal(null)
+    setDestino(null)
+    jogo.current.chegando = false
+    jogo.current.parado = false
+    onDescer(id, st)
+  }
+  const flashEl = useRef<HTMLDivElement>(null)
+  const hudFreq = useRef<HTMLSpanElement>(null)
 
   // minimapa: a cidade inteira vista de cima
   const minimapa = useMemo(() => {
@@ -280,6 +318,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         setViaAtual(i)
         if (v.tipo !== "circuito") return
         setBairro({ id: v.t, t: Date.now() })
+        flashEl.current?.style.setProperty("--cor", freqDe(v.t).cor)
         vib([15, 30, 15])
         if (freqRef.current !== v.t) {
           setFreq(v.t)
@@ -404,6 +443,18 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const ant = lib[lib.length - 1]?.custo ?? 0
         if (hudSinal.current) hudSinal.current.style.transform = `scaleY(${p ? (sinalRef.current - ant) / (p.custo - ant) : 1})`
         if (hudTurbo.current) hudTurbo.current.style.transform = `scaleX(${j.turboT > 0 ? Math.min(1, j.turboT / 2.2) : j.carga})`
+        if (flashEl.current) flashEl.current.style.opacity = String(Math.min(0.85, j.flash))
+        // dial girando: da frequência de onde veio até a de pra onde vai
+        if (hudFreq.current && V.tipo === "saida") {
+          const p = j.u / V.L
+          if (p > 0.45) {
+            const a0 = parseFloat(freqDe(V.de!).freq)
+            const b0 = parseFloat(freqDe(V.t).freq)
+            const q = Math.min(1, (p - 0.45) / 0.5)
+            const ruido = (Math.random() - 0.5) * 6 * (1 - q)
+            hudFreq.current.textContent = `${(a0 + (b0 - a0) * q + ruido).toFixed(1)} FM`
+          }
+        }
         if (hudTom.current) {
           const tom = tomDaMusica()
           const base = V.tipo === "saida" ? `sintonizando ${freqDe(V.t).freq}…` : "troca pelo caminho"
@@ -467,6 +518,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }
   useEffect(() => {
     const tecla = (ev: KeyboardEvent, on: boolean) => {
+      if (pausadoRef.current) return
       const k = ev.key.toLowerCase()
       if (k === "arrowleft" || k === "a") {
         if (on && !ev.repeat) input.current.toqueE = true
@@ -488,14 +540,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [])
 
   // a missão fala com você quando a estrada começa: o que buscar e onde
+  const falouDe = useRef("")
   useEffect(() => {
     const a = alvoRef.current
-    if (!a) return
+    if (!a || pausado || falouDe.current === alvoChave) return
+    falouDe.current = alvoChave
     const e = getEstacao(a.missao)
     const t = setTimeout(() => falar(e.personagem, a.t === "busca" ? `${a.busca.lugar}. segue a coluna de luz` : a.t === "visita" ? `${MISSOES[a.missao]?.chamado ?? "vem aqui"}. segue a coluna de luz` : "tô te esperando. segue a coluna de luz"), 1800)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [alvoChave, pausado])
   // carona: quem está na Kombi conversa no caminho
   useEffect(() => {
     const a = alvoRef.current
@@ -535,11 +589,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className="l-viagem">
+    <div className={`l-viagem ${pausado ? "is-pausada" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
           dpr={[1, 1.5]}
+          frameloop={pausado ? "never" : "always"}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           camera={{ fov: 60, near: 0.1, far: 3200 }}
           onPointerDown={(e) => {
@@ -552,10 +607,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} />
         </Canvas>
       )}
 
+      <div ref={flashEl} className="l-flash" />
       <div className="l-hud-topo">
         {/* o carro é a tela principal; o celular é um toque */}
         <button type="button" className="l-hud-cel" onPointerDown={(e) => e.stopPropagation()} onClick={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} aria-label="abrir o celular">
@@ -669,7 +725,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => setPopup({ id: Math.random(), txt: "pra mudar de música, muda de caminho →", cor: fq.cor })}
       >
-        <span className="l-hud-freq" style={{ color: fq.cor }}>{fq.freq} FM</span>
+        <span ref={hudFreq} className="l-hud-freq" style={{ color: fq.cor }}>{fq.freq} FM</span>
         {passandoE ? (
           <span key={passando!.t} className="l-hud-faixa is-estacao" style={{ color: passandoE.cor }}>estação {passandoE.n} · {passandoE.faixa.toLowerCase()}</span>
         ) : (
@@ -708,7 +764,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           className="l-descer"
           style={{ ["--cor" as string]: portalE.cor }}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onDescer(portalE.id, { ...jogo.current.st, tempo: jogo.current.tempo })}
+          onClick={() => descerAqui(portalE.id, { ...jogo.current.st, tempo: jogo.current.tempo })}
         >
           <small>estação {portalE.n} · {portalE.personagem}</small>
           <b>descer aqui →</b>
@@ -735,7 +791,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             <div><dt>sinal</dt><dd>+{chegou.sinal}</dd></div>
             <div><dt>no ar</dt><dd>{chegou.ar.toFixed(1)}s</dd></div>
           </dl>
-          <button type="button" className="l-btn" onClick={() => onDescer(dest.id, chegou)}>descer na estação</button>
+          <button type="button" className="l-btn" onClick={() => descerAqui(dest.id, chegou)}>descer na estação</button>
           <button
             type="button"
             className="l-btn l-btn-ghost"
@@ -761,7 +817,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
   return {
     via: M.circuito.linha,
     u, x: 0, v: 0, vx: 0, steer: 0, y: c.py[Math.floor(u / PASSO)], vy: 0, ar: false, tAr: 0,
-    turboT: 0, carga: 0, shake: 0, flash: 0, tempo: 0, voltaIni: -1, voltas: 0,
+    turboT: 0, carga: 0, shake: 0, flash: 0, impacto: 0, soco: false, tempo: 0, voltaIni: -1, voltas: 0,
     chegando: false, parado: false, sintonizou: false,
     escolha: 0, escolhaU: -1,
     st: { tempo: 0, vmax: 0, orbs: 0, quase: 0, sinal: 0, ar: 0, voltas: 0 },
@@ -774,8 +830,9 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado,
 }: {
+  pausado: boolean
   corRadio: React.MutableRefObject<string>
   marcos: Marco[]
   marcosRef: React.MutableRefObject<Marco[]>
@@ -802,6 +859,13 @@ function Cena({
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito"), [M])
 
   useEffect(() => () => motor?.parar(), [motor])
+  // a estática da sintonia (entre um lugar e outro)
+  const chiado = useRef<ReturnType<typeof estatica>>(null)
+  const calar = useCallback(() => { chiado.current?.parar(); chiado.current = null }, [])
+  useEffect(() => () => calar(), [calar])
+  useEffect(() => {
+    if (pausado) { calar(); motor?.atualizar(0, false, false) }
+  }, [pausado, calar, motor])
 
   const tex = useMemo(() => ({ asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
 
@@ -1389,7 +1453,15 @@ function Cena({
         j.u = sobra
         j.voltaIni = j.tempo
       } else {
-        // fim da saída: encosta no circuito do destino
+        // fim da saída: encosta no circuito do destino — e aqui é o
+        // impacto: a música nova entra de uma vez (ev.via), com clarão na
+        // cor da rádio, tranco na câmera e o cenário virando junto
+        calar()
+        j.impacto = 1
+        j.flash = 1
+        j.soco = true
+        j.shake = Math.max(j.shake, 0.9)
+        vib([40, 30, 90])
         j.via = M.circuito[V.t]
         j.u = V.chega!.u + sobra
         j.voltaIni = -1
@@ -1401,13 +1473,17 @@ function Cena({
       ev.via(j.via)
     }
 
-    // no meio da saída a rádio sintoniza a do destino
+    // a saída é a sintonia: a música de onde você veio vai sumindo, a
+    // estática sobe e o dial gira; a música nova só entra na CHEGADA
     if (V.tipo === "saida") {
       const p = j.u / V.L
-      if (!j.sintonizou && p >= 0.5) { j.sintonizou = true; ev.radio(V.t) }
-      if (hudN.current % 4 === 0) {
-        const vol = p < 0.4 ? 1 - (0.8 * p) / 0.4 : p < 0.55 ? 0.2 : Math.min(1, 0.2 + (0.8 * (p - 0.55)) / 0.3)
-        player.volume(vol)
+      if (!j.sintonizou && p >= 0.45) { j.sintonizou = true; chiado.current = estatica() }
+      if (hudN.current % 3 === 0) {
+        player.volume(p < 0.45 ? 1 : Math.max(0, 1 - (p - 0.45) / 0.3))
+        if (chiado.current) {
+          chiado.current.volume(Math.min(0.2, ((p - 0.45) / 0.25) * 0.2))
+          chiado.current.sintonizar(700 + 2200 * Math.abs(Math.sin(p * 22)))
+        }
       }
     }
 
@@ -1584,6 +1660,7 @@ function Cena({
     camera.position.y += (Math.random() - 0.5) * amp
     camera.lookAt(tmp.camOlhar)
     const cam = camera as THREE.PerspectiveCamera
+    if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
     const fovAlvo = 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
@@ -1595,7 +1672,8 @@ function Cena({
     // atmosfera do lugar: névoa, céu e luz mudam devagar; na saída, vai
     // misturando do lugar de onde veio pro lugar pra onde vai
     if (V.tipo === "saida") {
-      const s = suave(j.u / V.L)
+      // o cenário segura o lugar de onde veio e só vira no fim, junto com a música
+      const s = 0.35 * suave((j.u / V.L - 0.6) / 0.4)
       const dA = distritoDe(V.de!)
       const dB = distritoDe(V.t)
       alvoNevoa.set(dA.nevoa).lerp(tmp.c1.set(dB.nevoa), s)
@@ -1605,7 +1683,8 @@ function Cena({
       alvoNevoa.set(ds.nevoa)
       alvoCeu.set(ds.ceu)
     }
-    const kk = Math.min(1, dt * 0.9)
+    const kk = Math.min(1, dt * (0.9 + j.impacto * 9))
+    j.impacto = Math.max(0, j.impacto - dt * 0.8)
     const fog = scene.fog as THREE.Fog | null
     if (fog) fog.color.lerp(alvoNevoa, kk)
     ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
