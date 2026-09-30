@@ -75,6 +75,11 @@ export interface AnalyticsEvents {
   }
   mission_started: { mission_id: string; place_id: string }
   mission_completed: { mission_id: string; duration_ms: number }
+  // passo dentro de uma missão (Linha 222): chamado → busca → entrega, o
+  // resultado do quiz (estação + perfil + fio) e subida de nível. perfil e
+  // fio_pos = de que jeito a pessoa joga e em que ponto do fio dela a
+  // missão caiu — é o que mostra qual caminho prende cada tipo de pessoa
+  mission_step: { mission_id: string; step: string; perfil: string; fio_pos: number; fio?: string }
   resource_used: { resource_id: string; place_id: string; action: string }
   // fallback pra elementos sem evento dedicado
   click: { element_id: string; place_id: string; kind: string }

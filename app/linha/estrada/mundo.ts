@@ -77,6 +77,7 @@ export interface Via extends Pista {
   turbos: { u: number; x: number }[]
   faixas: Faixa[] // circuito: as saídas
   chegadas: { u: number; lado: 1 | -1 }[] // circuito: onde as saídas encostam
+  livre: [number, number] // circuito: trecho entre as chegadas e as bifurcações (onde moram estações e missões)
 }
 
 export interface Mundo {
@@ -91,7 +92,7 @@ export interface Mundo {
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 
 function via(p: Pista, id: string, tipo: Via["tipo"], t: FreqId, de?: FreqId): Via {
-  return Object.assign(p, { id, tipo, t, de, estacoes: [], rampas: [], orbs: [], turbos: [], faixas: [], chegadas: [] })
+  return Object.assign(p, { id, tipo, t, de, estacoes: [], rampas: [], orbs: [], turbos: [], faixas: [], chegadas: [], livre: [0, p.L] as [number, number] })
 }
 
 // ponto do mundo sobre um circuito: u (m), lateral (m), altura extra (m)
@@ -115,7 +116,7 @@ function colares(v: Via, r: () => number, u0: number, u1: number, passo: number)
 // As ligações formam um desenho sem cruzamento no vão (centro→todos +
 // vizinhos do anel), pra nenhuma pista precisar passar por cima de outra
 // no meio do caminho.
-const PROXIMO: Record<FreqId, FreqId> = { linha: "linha", suburbio: "crypto", crypto: "live", live: "full", full: "live" }
+export const PROXIMO: Record<FreqId, FreqId> = { linha: "linha", suburbio: "crypto", crypto: "live", live: "full", full: "live" }
 function saidasDe(id: FreqId): { para: FreqId; split: 0 | 1; lado: 1 | -1 }[] {
   if (id === "linha") return [
     { para: "suburbio", split: 0, lado: 1 }, { para: "crypto", split: 0, lado: -1 },
@@ -170,6 +171,7 @@ function montarCircuito(t: Territorio, k: number, nChegadas: number): Via {
   derivar(p, t.kBank, jan)
   const v = via(p, `circuito:${t.id}`, "circuito", t.id)
   v.rampas = rampas
+  v.livre = [livre0, livre1]
   // a pista ganha uma faixa do lado de cada saída antes de dividir
   for (const s of saidasDe(t.id)) {
     const uk = L - SPLITS[s.split]
@@ -367,11 +369,22 @@ export function montarMundo(): Mundo {
   return { vias, circuito, livre, vao, conflitos: nomes }
 }
 
-// saída que o carro pega ao cruzar u0→u1 na posição lateral x (null = fica)
-export function saidaEm(v: Via, u0: number, u1: number, x: number, aberta: (f: Faixa) => boolean): Faixa | null {
+// saída que o carro pega ao cruzar u0→u1 na posição lateral x (null = fica).
+// `escolha` = o lado que a pessoa já marcou antes da bifurcação: vale mesmo
+// que o carro não tenha chegado inteiro na faixa (era isso que travava)
+export function saidaEm(v: Via, u0: number, u1: number, x: number, aberta: (f: Faixa) => boolean, escolha = 0): Faixa | null {
   for (const f of v.faixas) {
     if (!(u0 < f.u && u1 >= f.u)) continue
-    if (f.lado * x > MEIA && aberta(f)) return f
+    if ((f.lado * x > MEIA * 0.55 || f.lado === escolha) && aberta(f)) return f
   }
   return null
+}
+
+// qual lugar a próxima saída tem que ser pra chegar em `alvo` saindo de
+// `aqui`: o centro liga com todo mundo; os outros ligam com o centro e com
+// o vizinho do anel
+export function rumo(aqui: FreqId, alvo: FreqId): FreqId | null {
+  if (aqui === alvo) return null
+  if (aqui === "linha" || PROXIMO[aqui] === alvo) return alvo
+  return "linha"
 }

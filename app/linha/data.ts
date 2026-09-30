@@ -147,8 +147,8 @@ export function missao(e: Estacao, nivel: number, agora = Date.now()): Missao {
 
 export const NIVEIS = [
   { nome: "observador", como: "entra na cidade", libera: "o mapa inteiro, pra explorar" },
-  { nome: "curioso", como: "descobre sua estação no grupo", libera: "as missões das estações abertas" },
-  { nome: "cúmplice", como: "junta 2 objetos", libera: "o turbo do carro" },
+  { nome: "curioso", como: "descobre sua estação com a D-Bee", libera: "a primeira missão" },
+  { nome: "cúmplice", como: "junta 2 objetos", libera: "o turbo da Kombi" },
   { nome: "ativista", como: "junta 4 objetos", libera: "a estação 6, do LU2CA, antes de todo mundo" },
   { nome: "nectar", como: "pega o violão", libera: "a cidade inteira, pra sempre" },
 ] as const

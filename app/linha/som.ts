@@ -157,6 +157,8 @@ export function estatica() {
   src.start()
   return {
     volume: (v: number) => g.gain.setTargetAtTime(v, c.currentTime, 0.05),
+    // gira o "dial": move a faixa de ruído (soa como procurar estação)
+    sintonizar: (hz: number) => bp.frequency.setTargetAtTime(hz, c.currentTime, 0.04),
     parar: () => { try { src.stop() } catch {} },
   }
 }
@@ -332,6 +334,7 @@ class Player {
   }
 
   pausar() { this.el?.pause() }
+  get tocando() { return !!this.el && !this.el.paused }
 
   alternar(src: string, aoFim?: () => void) {
     if (this.src === src && this.el && !this.el.paused) this.pausar()

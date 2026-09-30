@@ -17,6 +17,7 @@ import { sequencia, type Save } from "./estado"
 import { FREQUENCIAS, freqsLiberadas } from "./radio"
 import { Objeto } from "./objetos"
 import { Prova } from "./provas"
+import { MEMORIAS, MISSOES, ativa, conhecidos, etapaDe, itensFaltando } from "./missoes"
 import { player } from "./som"
 import { track } from "@/lib/analytics"
 
@@ -117,30 +118,29 @@ export function legadoFeito(): string[] {
   }
 }
 
-const CHAMADOS_ESTACAO: Partial<Record<EstacaoId, string>> = {
-  chuva: "nasceu uma flor aqui. vem ver",
-  copo: "achei um mp3 num copo. preciso de vc",
-  dopamina: "SOCORRO 47 abas",
-  sexta: "sexta e eu em casa de novo. aparece?",
-  ontem: "o vento espalhou meu caderno.",
-  nectar: "oi. sou eu. vem na estação 6",
-}
-
+// A central mostra UMA coisa de cada vez: o próximo passo da missão que
+// está valendo. O resto (minigames antigos, rádio) só aparece depois que a
+// pessoa já fez a primeira missão — antes disso é ruído.
 export function chamados(save: Save, nivel: number): Chamado[] {
   const out: Chamado[] = []
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   if (ecos) out.push({ id: "ecos", de: "linha 222", cor: "#2fe8ff", texto: `${ecos} ${ecos === 1 ? "mensagem nova" : "mensagens novas"} no grupo`, acao: { chat: "grupo" } })
-  const minha = save.estacao
-  const ordem = minha ? [getEstacao(minha), ...ESTACOES.filter((e) => e.id !== minha)] : ESTACOES
-  for (const e of ordem) {
-    if (save.objetos.includes(e.id) || !CHAMADOS_ESTACAO[e.id]) continue
-    if (!missao(e, nivel).ok) continue
-    out.push({ id: `est-${e.id}`, de: e.personagem, cor: e.cor, texto: CHAMADOS_ESTACAO[e.id]!, acao: { chat: e.id } })
+  const a = ativa(save, nivel)
+  if (a) {
+    const e = getEstacao(a)
+    const m = MISSOES[a]!
+    const et = etapaDe(save, a)
+    if (et === "chamado") out.unshift({ id: `est-${a}`, de: e.personagem, cor: e.cor, texto: m.chamado, acao: { chat: a } })
+    else if (et === "busca") {
+      const f = itensFaltando(save, a)
+      out.unshift({ id: `busca-${a}`, de: e.personagem, cor: e.cor, texto: `${m.tarefa}${m.busca.em.length > 1 ? ` · faltam ${f}` : ""}`, acao: { app: "kombi" } })
+    } else if (et === "entrega") out.unshift({ id: `entrega-${a}`, de: e.personagem, cor: e.cor, texto: `leva ${m.busca.nome} na estação ${e.n}`, acao: { app: "kombi" } })
   }
+  if (!save.objetos.length) return out
   const feitos = legadoFeito()
   for (const l of LEGADO) {
     if (feitos.includes(l.id)) continue
-    const app = APPS.find((a) => a.id === l.app)!
+    const app = APPS.find((x) => x.id === l.app)!
     out.push({ id: `leg-${l.id}`, de: l.nome, cor: app.cor, texto: `${app.desc} · +${l.luz} luz`, acao: { app: l.app } })
   }
   const prox = FREQUENCIAS.find((f) => f.custo > save.sinal)
@@ -343,20 +343,24 @@ export function AppJanela({ app, onFechar }: { app: AppDef; onFechar: () => void
 export function N3xo({ save, nivel, onChat, onVoltar }: { save: Save; nivel: number; onChat: (id: ChatId) => void; onVoltar: () => void }) {
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   const linhas: { id: ChatId | null; nome: string; cor: string; objeto?: EstacaoId; texto: string; estado: "novo" | "feito" | "trancado" | "escuro"; }[] = []
-  if (save.completos.includes("grupo")) linhas.push({ id: "grupo", nome: "linha 222", cor: "#2fe8ff", texto: ecos ? `${ecos} ${ecos === 1 ? "nova" : "novas"}` : "D-Bee, Ella, Mubarak, Notti, BBX, Alohan", estado: ecos ? "novo" : "feito" })
+  const membros = ["D-Bee", ...save.objetos.filter((o) => o !== "ojala" && o !== "nectar").map((o) => getEstacao(o).personagem)]
+  if (save.completos.includes("grupo")) linhas.push({ id: "grupo", nome: "linha 222", cor: "#2fe8ff", texto: ecos ? `${ecos} ${ecos === 1 ? "nova" : "novas"}` : membros.join(", "), estado: ecos ? "novo" : "feito" })
   if (save.completos.includes("abertura")) linhas.push({ id: "abertura", nome: "D-Bee", cor: "#3d7bff", objeto: "ojala", texto: "sabe ontem?", estado: "feito" })
+  // só aparece quem você já conheceu (e quem está te chamando agora)
+  const quem = conhecidos(save, nivel)
+  const a = ativa(save, nivel)
   for (const e of ESTACOES) {
-    const temRoteiro = e.id in ROTEIROS
-    const m = missao(e, nivel)
+    if (e.id === "ojala" || !quem.includes(e.id) || !(e.id in ROTEIROS)) continue
     const feito = save.objetos.includes(e.id)
-    if (e.id === "ojala") continue // a D-Bee já está na lista
+    const m = MISSOES[e.id]
+    const et = etapaDe(save, e.id)
     linhas.push({
-      id: temRoteiro ? e.id : null,
+      id: e.id,
       nome: e.personagem,
       cor: e.cor,
       objeto: e.id,
-      texto: feito ? `${e.objetoNome} ✓` : m.ok ? CHAMADOS_ESTACAO[e.id] ?? "…" : m.motivo === "data" && e.lancamento ? `sem sinal até ${dataCurta(e.lancamento)}` : m.motivo === "nivel" ? "fala com você no nível ativista" : "descobre sua estação primeiro",
-      estado: feito ? "feito" : m.ok ? "novo" : m.motivo === "data" ? "escuro" : "trancado",
+      texto: feito ? `${e.objetoNome} ✓` : et === "chamado" ? m?.chamado ?? "…" : et === "busca" ? m?.tarefa ?? "…" : `leva ${m?.busca.nome} na estação ${e.n}`,
+      estado: feito ? "feito" : e.id === a && et !== "busca" ? "novo" : "feito",
     })
   }
   return (
@@ -471,12 +475,18 @@ export function Objetos({ save, onVoltar, onChat }: { save: Save; onVoltar: () =
               {save.objetos.includes(s.id)
                 ? `${s.personagem} te deu isso na estação ${s.n}.`
                 : lancada(s) || s.id === "ontem" || s.id === "nectar"
-                  ? `${s.personagem} guarda. vai na estação ${s.n}.`
+                  ? "alguém acordado guarda. vai chegar a vez."
                   : `ainda no escuro. acende ${s.lancamento ? dataCurta(s.lancamento) : "em breve"}.`}
             </p>
-            {s.id in ROTEIROS && (lancada(s) || s.id === "ontem" || s.id === "nectar") && (
+            {save.objetos.includes(s.id) && MEMORIAS[save.objetos.indexOf(s.id)] && (
+              <blockquote className="l-memoria">
+                <small>memória {save.objetos.indexOf(s.id) + 1} de {MEMORIAS.length}</small>
+                <p>{MEMORIAS[save.objetos.indexOf(s.id)]}</p>
+              </blockquote>
+            )}
+            {s.id in ROTEIROS && save.objetos.includes(s.id) && (
               <button type="button" className="l-btn" onClick={() => onChat(s.id)}>
-                {save.objetos.includes(s.id) ? "reler a conversa" : `falar com ${s.personagem}`}
+                reler a conversa
               </button>
             )}
           </div>

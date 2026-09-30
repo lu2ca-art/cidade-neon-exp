@@ -422,6 +422,22 @@
 .l-objeto b { font-family: var(--cond); font-weight: 700; font-size: 40px; letter-spacing: 0; text-transform: uppercase; color: var(--cor); line-height: 0.95; }
 .l-objeto span { font-size: 13px; color: rgba(232, 239, 255, 0.7); }
 .l-objeto em { font: 600 11px var(--mono); color: var(--amb); font-style: normal; margin-top: 4px; }
+/* o que a recompensa destrava + a memória que veio dentro do objeto */
+.l-objeto-libera { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; width: 100%; text-align: left; }
+.l-objeto-libera li { display: flex; gap: 8px; align-items: baseline; padding: 7px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); font-size: 13px; color: #e8efff; }
+.l-objeto-libera i { font-style: normal; font-weight: 700; color: var(--cor); width: 12px; flex: none; text-align: center; }
+.l-memoria { margin: 10px 0 0; padding: 10px 12px; border-left: 2px solid var(--cor); background: color-mix(in srgb, var(--cor) 8%, transparent); border-radius: 0 10px 10px 0; text-align: left; width: 100%; }
+.l-memoria small { display: block; font: 10px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--cor); margin-bottom: 4px; }
+.l-memoria p { margin: 0; font-size: 14px; line-height: 1.45; color: #f3f6ff; font-style: italic; }
+
+/* o pedido no meio da conversa */
+.l-tarefa { align-self: stretch; margin: 6px 0; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--cor); background: color-mix(in srgb, var(--cor) 10%, transparent); display: flex; flex-direction: column; gap: 3px; animation: l-sobe 0.4s both; }
+.l-tarefa small { font: 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--cor); }
+.l-tarefa b { font-family: var(--cond); font-weight: 700; font-size: 20px; line-height: 1.05; text-transform: uppercase; color: #fff; }
+.l-tarefa span { font: 11px var(--mono); color: var(--mut); }
+.l-tarefa.is-feita { border-style: solid; opacity: 0.7; }
+.l-tarefa.is-feita b { text-decoration: line-through; text-decoration-color: var(--cor); }
+.l-tarefa-acoes { display: flex; flex-direction: column; gap: 6px; }
 
 .l-revela {
   align-self: stretch;
@@ -902,20 +918,7 @@
 .l-minimapa path { stroke-width: 2.6; }
 .l-minimapa-pulso { stroke-width: 1.5; animation: l-minimapa-pulso 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes l-minimapa-pulso { from { transform: scale(0.6); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
-.l-hud-missoes { position: absolute; left: 12px; bottom: calc(214px + env(safe-area-inset-bottom)); padding: 7px 12px; border-radius: 999px; background: rgba(255, 200, 87, 0.14) !important; border: 1px solid rgba(255, 200, 87, 0.55) !important; font: 700 11px var(--mono) !important; letter-spacing: 0.08em; text-transform: uppercase; color: #ffc857 !important; animation: l-pulsa 2s infinite; }
-.l-hud-missoes b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 4px; border-radius: 9px; background: #ffc857; color: #050510; font-size: 10px; }
-.l-painel-missoes { position: absolute; left: 10px; right: 10px; top: calc(96px + env(safe-area-inset-top)); z-index: 20; padding: 14px; border-radius: 20px; background: rgba(10, 9, 24, 0.94); border: 1px solid rgba(255, 200, 87, 0.4); backdrop-filter: blur(14px); animation: l-sobe 0.3s both; }
-.l-painel-missoes header { display: flex; justify-content: space-between; align-items: center; }
-.l-painel-missoes header b { font-family: var(--cond); font-weight: 700; font-size: 22px; text-transform: uppercase; color: #ffc857; }
-.l-painel-missoes header button { color: var(--mut) !important; font-size: 14px; }
-.l-painel-missoes p { margin: 4px 0 10px; font: 11px var(--mono); color: var(--mut); }
-.l-painel-missoes ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.l-painel-missoes li button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; text-align: left; background: rgba(255, 255, 255, 0.04) !important; border-left: 3px solid var(--cor) !important; }
 .l-painel-n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--cor); color: var(--cor); font: 700 13px var(--mono); flex-shrink: 0; }
-.l-painel-missoes li span:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
-.l-painel-missoes li b { font-family: var(--cond); font-weight: 700; font-size: 18px; text-transform: uppercase; }
-.l-painel-missoes li small { font: 10.5px var(--mono); color: var(--mut); }
-.l-painel-missoes li em { font: 700 12px var(--mono); font-style: normal; color: var(--cor); }
 .l-bairro { position: absolute; left: 0; right: 0; top: 30%; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; animation: l-portal 3.8s cubic-bezier(0.2, 1, 0.3, 1) both; }
 .l-bairro-tabela { width: 104px; height: 118px; border: 2px solid var(--cor); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5, 5, 16, 0.55); box-shadow: 0 0 40px -6px var(--cor), inset 0 0 24px -8px var(--cor); position: relative; }
 .l-bairro-tabela small { position: absolute; top: 6px; left: 8px; font: 700 12px var(--mono); color: var(--cor); }
@@ -944,3 +947,33 @@
 .l-garfo-op.is-vai { opacity: 1; transform: scale(1.06); background: color-mix(in srgb, var(--cor) 26%, transparent); border-color: var(--cor); box-shadow: 0 0 18px -4px var(--cor); }
 .l-garfo-op.is-trancada b { color: #9aa0c0; }
 .l-garfo-op.is-vazia { visibility: hidden; }
+.l-garfo-op { position: relative; }
+.l-garfo-op em { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); padding: 1px 6px; border-radius: 6px; background: var(--cor); color: #050510; font: 700 7px var(--mono); font-style: normal; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
+.l-garfo-op.is-rota { opacity: 0.85; border-style: dashed; border-color: var(--cor); }
+.l-garfo-op.is-trava { animation: l-pulsa 0.9s infinite; }
+.l-garfo header span { font: 700 9px var(--mono); letter-spacing: 0.12em; color: #fff; }
+
+/* a missão valendo, no canto da estrada */
+.l-hud-missao { position: absolute; left: 12px; bottom: calc(214px + env(safe-area-inset-bottom)); max-width: min(62%, 260px); padding: 8px 12px; border-radius: 14px; background: rgba(5, 5, 16, 0.62); border: 1px solid color-mix(in srgb, var(--cor) 60%, transparent); backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: 1px; pointer-events: none; animation: l-sobe 0.4s both; }
+.l-hud-missao small { font: 9px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--cor); }
+.l-hud-missao b { font: 700 14px/1.1 var(--cond); text-transform: uppercase; color: #fff; }
+.l-hud-missao span { font: 700 11px var(--mono); color: var(--cor); }
+
+/* ── estrada: menos placa, mais música ── */
+.l-hud-cel { pointer-events: auto; position: relative; width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(0, 0, 0, 0.45) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; color: #fff !important; }
+.l-hud-cel em { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #ff3fb0; color: #fff; font: 700 10px/17px var(--mono); font-style: normal; text-align: center; box-shadow: 0 0 10px #ff3fb0; }
+.l-hud-radio.is-pega { animation: l-radio-pega 0.45s ease-out; }
+@keyframes l-radio-pega { 0% { box-shadow: 0 0 0 0 var(--cor); border-color: var(--cor); } 100% { box-shadow: 0 0 22px -6px transparent; } }
+.l-hud-faixa.is-estacao { animation: l-fade 0.4s both; font-weight: 700; }
+.l-hud-tag { font: 700 10px var(--mono); font-style: normal; white-space: nowrap; text-shadow: 0 0 8px currentColor; animation: l-tag 1.3s ease-out both; }
+@keyframes l-tag { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-14px); } }
+.l-descer { position: absolute; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 22px; border-radius: 999px; background: color-mix(in srgb, var(--cor) 22%, rgba(5, 5, 16, 0.8)) !important; border: 1px solid var(--cor) !important; box-shadow: 0 0 24px -6px var(--cor); backdrop-filter: blur(8px); animation: l-sobe 0.35s both; }
+.l-descer small { font: 9px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--cor); }
+.l-descer b { font: 700 16px var(--cond); text-transform: uppercase; color: #fff; }
+
+/* o celular sobe por cima da estrada (que fica pausada por baixo) */
+.l-viagem ~ .l-os, .l-viagem ~ .l-chat, .l-viagem ~ .l-appnativo, .l-viagem ~ .l-janela, .l-viagem ~ .l-mapa, .l-viagem ~ .l-final { z-index: 10; animation: l-cel-sobe 0.38s cubic-bezier(0.2, 1, 0.3, 1) both; }
+@keyframes l-cel-sobe { from { transform: translateY(100%); } to { transform: none; } }
+.l-viagem.is-pausada .l-viagem-cvs { filter: blur(3px) brightness(0.6); }
+/* clarão da chegada num lugar novo: a música entra junto com a cor */
+.l-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 55%, var(--cor) 0%, transparent 70%); mix-blend-mode: screen; z-index: 2; }
