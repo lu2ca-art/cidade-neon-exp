@@ -4,6 +4,8 @@
 // de chat, ironia seca, verso de vez em quando, nunca didático, nunca
 // publicitário. O NÚCLEO fala o oposto disso: corporativo, gentil, ✓.
 //
+// Vídeos do LU2CA não entram nas conversas: moram no //LOOP (30/09).
+//
 // Regra de ritmo (desde o fio de missões): ninguém despeja a história. A
 // abertura só apresenta a D-Bee e o quiz; cada pessoa aparece quando chega
 // a vez dela no fio; o que é a cidade vem aos poucos, nas memórias
@@ -197,7 +199,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "prova", id: "regar" },
       { t: "msg", texto: "olha isso" },
       { t: "objeto" },
-      { t: "video", src: "/videos/loop/chuva-studio.mp4", legenda: "gravei no dia que parou de doer" },
       { t: "audio", src: "/audio/tracks/222-chuva.mp3", titulo: "CHUVA" },
       { t: "msg", texto: "no caos também nasce coisa" },
       { t: "gancho" },
@@ -362,7 +363,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "busca pra mim? a estação 6 é aqui" },
       { t: "tarefa" },
       { t: "msg", texto: "vc achou" },
-      { t: "video", src: "/videos/loop/video4.mp4", legenda: "meus irmãos. eles ouvem tudo primeiro" },
       { t: "msg", texto: "toca comigo?" },
       { t: "prova", id: "violao" },
       { t: "msg", texto: "tá vendo. n precisava ser perfeito" },
