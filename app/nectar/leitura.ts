@@ -16,11 +16,19 @@ export interface Peso {
   fase?: Fase
 }
 
+// cada pergunta chega de um jeito (ver formas.tsx): tocar numa cena,
+// ouvir sons, responder no chat, arrastar numa régua, segurar, escolher
+// imagem, apagar uma memória, escolher uma cor. O peso das respostas é o
+// mesmo em qualquer forma.
+export type Forma = "texto" | "cena" | "som" | "chat" | "regua" | "segurar" | "imagens" | "apagar" | "cores"
+
 export interface Opcao {
   txt: string
   peso: Peso
   prox?: string
   objeto?: Objeto
+  img?: string // desenho (visuais.tsx)
+  cor?: string // forma "cores"
 }
 
 export interface No {
@@ -30,6 +38,11 @@ export interface No {
   pergunta: string
   opcoes: Opcao[]
   prox?: string
+  forma?: Forma
+  // régua / segurar: índices das opções da esquerda pra direita (ou do
+  // soltar rápido ao segurar muito) e o nome das pontas
+  ordem?: number[]
+  polos?: [string, string]
 }
 
 export const FAIXAS: Record<Faixa, { nome: string; cor: string; audio: string; lancamento: string | null }> = {
@@ -115,12 +128,13 @@ export const NOS: Record<string, No> = {
   inicio: {
     id: "inicio", ato: "chegada",
     cena: "3h da manhã. a cidade tá acesa, mas ninguém tá acordado de verdade. seu celular vibra na mesa.",
-    pergunta: "o que você faz?",
+    pergunta: "toca no que você faz",
+    forma: "cena",
     opcoes: [
-      { txt: "ignoro. é sempre o núcleo", peso: { f: { dopamina: 1, copo: 1 } }, prox: "loop1" },
-      { txt: "abro na hora. pode ser alguém", peso: { f: { sexta: 1, ontem: 1 } }, prox: "alguem1" },
-      { txt: "vou pra janela ver a chuva", peso: { f: { chuva: 2 } }, prox: "janela1" },
-      { txt: "pego o caderno e escrevo", peso: { f: { nectar: 1, ontem: 1 } }, prox: "caderno1" },
+      { txt: "ignoro. é sempre o núcleo", img: "cama", peso: { f: { dopamina: 1, copo: 1 } }, prox: "loop1" },
+      { txt: "abro na hora. pode ser alguém", img: "celular", peso: { f: { sexta: 1, ontem: 1 } }, prox: "alguem1" },
+      { txt: "vou pra janela ver a chuva", img: "janela", peso: { f: { chuva: 2 } }, prox: "janela1" },
+      { txt: "pego o caderno e escrevo", img: "caderno", peso: { f: { nectar: 1, ontem: 1 } }, prox: "caderno1" },
     ],
   },
 
@@ -128,7 +142,8 @@ export const NOS: Record<string, No> = {
   loop1: {
     id: "loop1", ato: "chegada",
     cena: "você volta pro feed. quarenta minutos passam sem você perceber.",
-    pergunta: "o que você sente?",
+    pergunta: "qual desses sons é o que você sente?",
+    forma: "som",
     opcoes: [
       { txt: "nada. e isso me assusta", peso: { f: { dopamina: 2 }, fase: 1 } },
       { txt: "culpa, mas continuo", peso: { f: { copo: 2 }, fase: 1 } },
@@ -141,11 +156,12 @@ export const NOS: Record<string, No> = {
     id: "loop2", ato: "chegada",
     cena: "tem um copo americano vazio do lado da cama. de ontem?",
     pergunta: "o que ele te lembra?",
+    forma: "imagens",
     opcoes: [
-      { txt: "uma festa que eu nem queria ir", peso: { f: { sexta: 2 }, fase: 1 } },
-      { txt: "alguém que foi embora", peso: { f: { copo: 2, chuva: 1 }, fase: 2 } },
-      { txt: "que eu preciso mudar alguma coisa", peso: { f: { copo: 1, nectar: 1 }, fase: 3 } },
-      { txt: "nada. é só um copo", peso: { f: { copo: 1, dopamina: 1 }, fase: 1 } },
+      { txt: "uma festa que eu nem queria ir", img: "festa", peso: { f: { sexta: 2 }, fase: 1 } },
+      { txt: "alguém que foi embora", img: "partida", peso: { f: { copo: 2, chuva: 1 }, fase: 2 } },
+      { txt: "que eu preciso mudar alguma coisa", img: "broto", peso: { f: { copo: 1, nectar: 1 }, fase: 3 } },
+      { txt: "nada. é só um copo", img: "copo", peso: { f: { copo: 1, dopamina: 1 }, fase: 1 } },
     ],
     prox: "travessia1",
   },
@@ -155,6 +171,7 @@ export const NOS: Record<string, No> = {
     id: "alguem1", ato: "chegada",
     cena: "é uma mensagem de um número sem nome: “sabe ontem?”",
     pergunta: "você responde:",
+    forma: "chat",
     opcoes: [
       { txt: "sei. não esqueço", peso: { f: { ontem: 2 }, fase: 2 } },
       { txt: "quem é?", peso: { f: { sexta: 1, dopamina: 1 }, fase: 1 } },
@@ -166,7 +183,10 @@ export const NOS: Record<string, No> = {
   alguem2: {
     id: "alguem2", ato: "chegada",
     cena: "a pessoa te chama pra encontrar agora. do outro lado da cidade.",
-    pergunta: "e aí?",
+    pergunta: "arrasta até onde você vai",
+    forma: "regua",
+    ordem: [1, 3, 2, 0],
+    polos: ["fico em casa", "vou agora"],
     opcoes: [
       { txt: "vou. sem pensar", peso: { f: { dopamina: 1, nectar: 1 }, fase: 3 } },
       { txt: "invento uma desculpa e fico", peso: { f: { sexta: 2 }, fase: 1 } },
@@ -181,18 +201,22 @@ export const NOS: Record<string, No> = {
     id: "janela1", ato: "chegada",
     cena: "a chuva bate no vidro. lá embaixo, uma flor nasceu no meio do asfalto.",
     pergunta: "você…",
+    forma: "imagens",
     opcoes: [
-      { txt: "desço pra ver de perto", peso: { f: { chuva: 2 }, fase: 3 } },
-      { txt: "tiro foto e posto", peso: { f: { dopamina: 1, sexta: 1 }, fase: 1 } },
-      { txt: "fico pensando quanto tempo ela aguenta", peso: { f: { copo: 1, chuva: 1 }, fase: 2 } },
-      { txt: "choro um pouco. sei lá por quê", peso: { f: { chuva: 2 }, fase: 2 } },
+      { txt: "desço pra ver de perto", img: "descer", peso: { f: { chuva: 2 }, fase: 3 } },
+      { txt: "tiro foto e posto", img: "camera", peso: { f: { dopamina: 1, sexta: 1 }, fase: 1 } },
+      { txt: "fico pensando quanto tempo ela aguenta", img: "ampulheta", peso: { f: { copo: 1, chuva: 1 }, fase: 2 } },
+      { txt: "choro um pouco. sei lá por quê", img: "lagrima", peso: { f: { chuva: 2 }, fase: 2 } },
     ],
     prox: "janela2",
   },
   janela2: {
     id: "janela2", ato: "chegada",
     cena: "a chuva aperta. você tá na rua, sem guarda-chuva.",
-    pergunta: "você…",
+    pergunta: "segura enquanto você fica na chuva",
+    forma: "segurar",
+    ordem: [0, 2, 1, 3],
+    polos: ["solta rápido", "segura muito"],
     opcoes: [
       { txt: "corro", peso: { f: { ontem: 1, dopamina: 1 }, fase: 2 } },
       { txt: "danço", peso: { f: { chuva: 2, sexta: 1 }, fase: 3 } },
@@ -207,6 +231,7 @@ export const NOS: Record<string, No> = {
     id: "caderno1", ato: "chegada",
     cena: "você abre o caderno. a última página tem uma frase que você não lembra de ter escrito.",
     pergunta: "o que ela diz?",
+    forma: "imagens",
     opcoes: [
       { txt: "“fica tudo bem, se a chuva não vem”", peso: { f: { chuva: 2 }, fase: 1 } },
       { txt: "“eu sei o que eu quero, só não sei como”", peso: { f: { ontem: 2 }, fase: 2 } },
@@ -218,6 +243,9 @@ export const NOS: Record<string, No> = {
   caderno2: {
     id: "caderno2", ato: "chegada",
     pergunta: "se alguém lesse seu caderno hoje…",
+    forma: "regua",
+    ordem: [1, 3, 2, 0],
+    polos: ["não ia ver nada", "ia me ver inteiro"],
     opcoes: [
       { txt: "ia me conhecer de verdade", peso: { f: { nectar: 2 }, fase: 3 } },
       { txt: "ia achar que eu tô bem", peso: { f: { copo: 1, sexta: 1 }, fase: 1 } },
@@ -232,11 +260,12 @@ export const NOS: Record<string, No> = {
     id: "travessia1", ato: "travessia",
     cena: "a linha 222 passa na sua rua. a porta abre sozinha. você entra.",
     pergunta: "o que você leva na mão?",
+    forma: "imagens",
     opcoes: [
-      { txt: "um relógio", peso: { f: { dopamina: 1, nectar: 1, sexta: 1 } }, objeto: "relogio" },
-      { txt: "um mp3 sem bateria", peso: { f: { copo: 1, chuva: 1 } }, objeto: "mp3" },
-      { txt: "uma lanterna", peso: { f: { ontem: 2 } }, objeto: "lanterna" },
-      { txt: "um caderno", peso: { f: { nectar: 1, chuva: 1 } }, objeto: "caderno" },
+      { txt: "um relógio", img: "relogio", peso: { f: { dopamina: 1, nectar: 1, sexta: 1 } }, objeto: "relogio" },
+      { txt: "um mp3 sem bateria", img: "mp3", peso: { f: { copo: 1, chuva: 1 } }, objeto: "mp3" },
+      { txt: "uma lanterna", img: "lanterna", peso: { f: { ontem: 2 } }, objeto: "lanterna" },
+      { txt: "um caderno", img: "caderno", peso: { f: { nectar: 1, chuva: 1 } }, objeto: "caderno" },
     ],
     prox: "travessia2",
   },
@@ -244,18 +273,20 @@ export const NOS: Record<string, No> = {
     id: "travessia2", ato: "travessia",
     cena: "no vagão tem um espelho. o reflexo demora meio segundo pra te acompanhar.",
     pergunta: "o que você vê?",
+    forma: "imagens",
     opcoes: [
-      { txt: "alguém cansado", peso: { f: { sexta: 2 }, fase: 2 } },
-      { txt: "alguém que ainda vai surpreender", peso: { f: { ontem: 2 }, fase: 1 } },
-      { txt: "alguém sem máscara", peso: { f: { nectar: 2 }, fase: 3 } },
-      { txt: "alguém que eu não reconheço", peso: { f: { dopamina: 2 }, fase: 2 } },
+      { txt: "alguém cansado", img: "cansado", peso: { f: { sexta: 2 }, fase: 2 } },
+      { txt: "alguém que ainda vai surpreender", img: "brilho", peso: { f: { ontem: 2 }, fase: 1 } },
+      { txt: "alguém sem máscara", img: "mascara", peso: { f: { nectar: 2 }, fase: 3 } },
+      { txt: "alguém que eu não reconheço", img: "glitch", peso: { f: { dopamina: 2 }, fase: 2 } },
     ],
     prox: "espelho1",
   },
   espelho1: {
     id: "espelho1", ato: "espelho",
     cena: "o NÚCLEO aparece na tela do vagão. gentil. “podemos apagar uma memória sua. é de graça ✓”",
-    pergunta: "qual você apaga?",
+    pergunta: "arrasta pro núcleo a que você apaga",
+    forma: "apagar",
     opcoes: [
       { txt: "a que mais dói", peso: { f: { copo: 1 }, fase: 1 } },
       { txt: "nenhuma. todas me fizeram", peso: { f: { chuva: 1, nectar: 1 }, fase: 3 } },
@@ -267,11 +298,12 @@ export const NOS: Record<string, No> = {
   espelho2: {
     id: "espelho2", ato: "espelho",
     pergunta: "última. se a sua vida agora fosse uma estação do ano…",
+    forma: "cores",
     opcoes: [
-      { txt: "inverno. tudo parado", peso: { fase: 1 } },
-      { txt: "outono. caindo o que não serve", peso: { fase: 2 } },
-      { txt: "primavera. brotando", peso: { fase: 3 } },
-      { txt: "verão. transbordando", peso: { f: { chuva: 1 }, fase: 3 } },
+      { txt: "inverno. tudo parado", cor: "#9fd8ff", peso: { fase: 1 } },
+      { txt: "outono. caindo o que não serve", cor: "#ff9a3d", peso: { fase: 2 } },
+      { txt: "primavera. brotando", cor: "#7dffb0", peso: { fase: 3 } },
+      { txt: "verão. transbordando", cor: "#ffc857", peso: { f: { chuva: 1 }, fase: 3 } },
     ],
   },
 }

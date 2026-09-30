@@ -1,7 +1,9 @@
 "use client"
 
 // NECTAR — a leitura. Dinâmica de chapéu seletor: cenas curtas, caminhos
-// que se bifurcam pela primeira resposta, uma aura que muda de cor enquanto
+// que se bifurcam pela primeira resposta, cada pergunta num formato (tocar
+// no quarto, ouvir sons, chat, régua, segurar, imagens, apagar, cores —
+// ver formas.tsx), uma aura que muda de cor enquanto
 // a cidade "pensa", e uma cerimônia antes do resultado. O resultado é uma
 // campanha das faixas (faixa × fase), com o objeto que te acompanha e o
 // próximo ponto da rota dele. Dados em ./leitura.ts.
@@ -13,68 +15,14 @@ import { sendMinimizeConsole } from "@/app/providers/AudioBridge"
 import { track } from "@/lib/analytics"
 import "./nectar.css"
 import { CAMPANHAS, FAIXAS, FASE_NOME, NOS, OBJETOS, TOTAL_PERGUNTAS, ler, type Faixa, type Resultado } from "./leitura"
+import { ac, ligarDrone, nota, vib } from "./som"
+import { Forma } from "./formas"
 
 type Resp = { no: string; opcao: number }
 type Tela = "abertura" | "pergunta" | "cerimonia" | "resultado"
 
 const CHAVE = "cn-nectar-leitura"
 const ATO: Record<string, string> = { chegada: "I · a chegada", travessia: "II · a travessia", espelho: "III · o espelho" }
-
-// ── som mínimo (a página roda fora da Linha 222, então tem o seu) ──
-let ctx: AudioContext | null = null
-function ac() {
-  if (typeof window === "undefined") return null
-  if (!ctx) {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    if (!AC) return null
-    ctx = new AC()
-  }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {})
-  return ctx
-}
-const PENTA = [293.66, 349.23, 392, 440, 523.25, 587.33, 698.46, 783.99]
-function nota(i: number, vol = 0.18) {
-  const c = ac()
-  if (!c) return
-  const t = c.currentTime
-  const o = c.createOscillator()
-  const g = c.createGain()
-  o.type = "sine"
-  o.frequency.value = PENTA[((i % 8) + 8) % 8]
-  g.gain.setValueAtTime(0, t)
-  g.gain.linearRampToValueAtTime(vol, t + 0.01)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4)
-  o.connect(g).connect(c.destination)
-  o.start(t)
-  o.stop(t + 1.5)
-}
-let drone: { g: GainNode; os: OscillatorNode[] } | null = null
-function ligarDrone(on: boolean) {
-  const c = ac()
-  if (!c) return
-  if (on && !drone) {
-    const g = c.createGain()
-    g.gain.value = 0
-    const lp = c.createBiquadFilter()
-    lp.type = "lowpass"
-    lp.frequency.value = 700
-    const os = [73.42, 110, 146.83, 220].map((f, i) => {
-      const o = c.createOscillator()
-      o.type = i % 2 ? "triangle" : "sine"
-      o.frequency.value = f
-      o.detune.value = (i - 1.5) * 5
-      o.connect(lp)
-      o.start()
-      return o
-    })
-    lp.connect(g).connect(c.destination)
-    drone = { g, os }
-  }
-  if (drone) drone.g.gain.setTargetAtTime(on ? 0.05 : 0, c.currentTime, on ? 2 : 0.5)
-}
-function vib(p: number | number[]) {
-  try { navigator.vibrate?.(p) } catch {}
-}
 
 function nomeDoJogador(): string {
   try {
@@ -217,7 +165,7 @@ function Pergunta({ no, n, escolhida, onEscolher }: { no: string; n: number; esc
     return () => clearInterval(t)
   }, [d.cena])
   return (
-    <section className="n-pergunta">
+    <section className={`n-pergunta is-${d.forma ?? "texto"}`}>
       <header className="n-topo">
         <span className="n-rotulo">{ATO[d.ato]}</span>
         <div className="n-pontos">
@@ -228,19 +176,7 @@ function Pergunta({ no, n, escolhida, onEscolher }: { no: string; n: number; esc
         {d.cena && <p className="n-cena" onClick={() => { setTxt(d.cena!); setPronto(true) }}>{txt}<span className="n-cursor" /></p>}
         <h2 className={`n-q ${pronto ? "is-on" : ""}`}>{d.pergunta}</h2>
       </div>
-      <div className="n-opcoes">
-        {pronto && d.opcoes.map((o, i) => (
-          <button
-            key={i}
-            type="button"
-            className={`n-opcao ${escolhida === i ? "is-escolhida" : ""} ${escolhida !== null && escolhida !== i ? "is-some" : ""}`}
-            style={{ animationDelay: `${i * 80}ms` }}
-            onClick={() => onEscolher(i)}
-          >
-            {o.txt}
-          </button>
-        ))}
-      </div>
+      {pronto && <Forma no={d} escolhida={escolhida} onEscolher={onEscolher} />}
     </section>
   )
 }
