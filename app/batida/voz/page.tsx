@@ -18,6 +18,15 @@ function pickMimeType(): string | undefined {
 
 type RecState = "idle" | "counting" | "recording" | "reviewing"
 
+// Compassos de count-in ANTES de começar a gravar de verdade — dá tempo
+// pro artista se preparar. Configurável se quiser mais/menos.
+const COUNT_IN_BARS = 2
+// MediaRecorder tem latência interna de ~80-150ms entre .start() e o áudio
+// realmente começar a ser capturado. Antecipar chama .start() antes do
+// compasso alvo pra compensar, garantindo que o compasso 1 do blob
+// corresponde ao compasso 1 do metronomo.
+const RECORDER_START_LEAD_MS = 120
+
 export default function VozPage() {
   const { song, engine, addTrack } = useCurrentSong()
   const [barsChoice, setBarsChoice] = useState(4)
@@ -29,6 +38,8 @@ export default function VozPage() {
   const [progress, setProgress] = useState(0) // 0..1 durante a gravação
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  // Countdown visível 0..COUNT_IN_BARS (mostra "1", "2" antes de gravar)
+  const [countInBeat, setCountInBeat] = useState(0)
 
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -97,10 +108,26 @@ export default function VozPage() {
     if (!engine.isPlaying) { engine.play(); setPlaying(true) }
 
     setRecState("counting")
-    const t0 = engine.getNextBarStartTime()
+    setCountInBeat(0)
+    const nextBar = engine.getNextBarStartTime()
     const secPerBar = engine.getSecPerBar()
-    const leadMs = Math.max(30, (t0 - engine.ctx.currentTime) * 1000)
+    // Target = próximo compasso + N compassos de count-in
+    const targetTime = nextBar + COUNT_IN_BARS * secPerBar
+    const nowCtx = engine.ctx.currentTime
+    const msUntilTarget = Math.max(30, (targetTime - nowCtx) * 1000)
     const durationMs = barsChoice * secPerBar * 1000
+
+    // Countdown visível — dispara "1", "2" a cada compasso ANTES do target
+    for (let i = 0; i < COUNT_IN_BARS; i++) {
+      const beatTime = nextBar + i * secPerBar
+      const msUntilBeat = Math.max(0, (beatTime - nowCtx) * 1000)
+      const beatId = window.setTimeout(() => setCountInBeat(i + 1), msUntilBeat)
+      timeoutsRef.current.push(beatId)
+    }
+
+    // Antecipa .start() do MediaRecorder pra compensar latência interna
+    // (o áudio real começa ~120ms depois do .start()).
+    const recorderStartMs = Math.max(30, msUntilTarget - RECORDER_START_LEAD_MS)
 
     const startId = window.setTimeout(() => {
       const mimeType = pickMimeType()
@@ -114,13 +141,19 @@ export default function VozPage() {
         setRecordedBlob(blob)
         setRecordedBars(barsChoice)
         setRecState("reviewing")
+        setCountInBeat(0)
         setProgress(0)
         if (progressRafRef.current) cancelAnimationFrame(progressRafRef.current)
       }
       recorderRef.current = recorder
       recorder.start()
-      setRecState("recording")
+    }, recorderStartMs)
+    timeoutsRef.current.push(startId)
 
+    // No tempo EXATO do compasso alvo, muda pra "recording" + inicia progresso
+    const targetId = window.setTimeout(() => {
+      setRecState("recording")
+      setCountInBeat(0)
       const recStart = performance.now()
       const tick = () => {
         const elapsed = performance.now() - recStart
@@ -128,11 +161,15 @@ export default function VozPage() {
         if (elapsed < durationMs) progressRafRef.current = requestAnimationFrame(tick)
       }
       progressRafRef.current = requestAnimationFrame(tick)
+    }, msUntilTarget)
+    timeoutsRef.current.push(targetId)
 
-      const stopId = window.setTimeout(() => { try { recorder.stop() } catch {} }, durationMs)
-      timeoutsRef.current.push(stopId)
-    }, leadMs)
-    timeoutsRef.current.push(startId)
+    // Stop: target + duração dos compassos gravados. Antecipa STOP também
+    // pra compensar latência (áudio real termina ~120ms após .stop()).
+    const stopId = window.setTimeout(() => {
+      try { recorderRef.current?.stop() } catch {}
+    }, msUntilTarget + durationMs - RECORDER_START_LEAD_MS)
+    timeoutsRef.current.push(stopId)
   }, [engine, barsChoice])
 
   const cancelRecording = () => {
@@ -211,7 +248,30 @@ export default function VozPage() {
               <span className="w-6 h-6 rounded-full" style={{ background: ACCENT }} />
             </button>
           )}
-          {recState === "counting" && <p className="text-[11px] font-mono" style={{ color: ACCENT }}>preparando... entra no próximo compasso</p>}
+          {recState === "counting" && (
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2">
+                {Array.from({ length: COUNT_IN_BARS }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="flex h-10 w-10 items-center justify-center rounded-full font-mono text-lg font-bold transition-all"
+                    style={{
+                      background: countInBeat > i ? ACCENT : "rgba(255,255,255,0.05)",
+                      color: countInBeat > i ? "#000" : "rgba(255,255,255,0.35)",
+                      transform: countInBeat === i + 1 ? "scale(1.15)" : "scale(1)",
+                      boxShadow: countInBeat === i + 1 ? `0 0 16px ${ACCENT}` : "none",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: ACCENT }}>
+                count-in · começa no compasso {COUNT_IN_BARS + 1}
+              </p>
+              <button type="button" onClick={cancelRecording} className="text-[9px] font-mono uppercase tracking-widest text-white/40">cancelar</button>
+            </div>
+          )}
           {recState === "recording" && (
             <>
               <p className="text-[11px] font-mono animate-pulse" style={{ color: ACCENT }}>gravando...</p>
