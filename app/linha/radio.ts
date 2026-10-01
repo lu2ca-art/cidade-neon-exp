@@ -5,6 +5,7 @@
 
 import { ESTACOES, lancada, type EstacaoId } from "./data"
 import { TIER_META } from "@/lib/radio-tiers"
+import vinis from "./vinis.json"
 
 export interface Frequencia {
   id: "linha" | "suburbio" | "crypto" | "live" | "full"
@@ -49,13 +50,9 @@ export type FreqId = Frequencia["id"]
 
 // Os vinis da Kombi (os discos da loja): o som de fundo do carro. Tocam
 // desde a chegada e nunca acabam — é por cima deles que as músicas do
-// LU2CA vão entrando, uma por missão.
-export const VINIS = [
-  { titulo: "The St. Louis Blues · W. C. Handy", src: "/loja-discos/disco-05.mp3" },
-  { titulo: "Johnson \"Jass\" Blues · Band Friscoe Jass", src: "/loja-discos/disco-02.mp3" },
-  { titulo: "Lonesome Road Blues · Anônimo", src: "/loja-discos/disco-03.mp3" },
-  { titulo: "New York Blues · Pietro Frosini", src: "/loja-discos/disco-04.mp3" },
-]
+// LU2CA vão entrando, uma por missão. A lista mora em vinis.json
+// (scripts/vinis/baixar.mjs acrescenta discos de domínio público lá).
+export const VINIS = (vinis as { titulo: string; autor: string; src: string }[]).map((v) => ({ titulo: `${v.titulo} · ${v.autor}`, src: v.src }))
 
 // Repertório de cada lugar (desde 01/10): música do LU2CA é RECOMPENSA.
 // Nada entra de graça por já ter sido lançado — cada missão cumprida
