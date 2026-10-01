@@ -236,7 +236,8 @@ export function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa, c
 
         {(saiu || tem) && (
           <div className="l-ficha-ouvir">
-            <button type="button" onClick={() => player.alternar(e.audio)}>{tocando ? "❚❚ pausar" : "▶ ouvir um pedaço"}</button>
+            {/* ouvir aqui dentro é recompensa: só depois de ganhar o objeto */}
+            {tem && <button type="button" onClick={() => player.alternar(e.audio)}>{tocando ? "❚❚ pausar" : "▶ ouvir um pedaço"}</button>}
             <a
               href={`${e.ouvir}${e.ouvir.includes("?") ? "&" : "?"}utm_source=cidade-neon&utm_medium=game&utm_campaign=linha-222`}
               target="_blank"

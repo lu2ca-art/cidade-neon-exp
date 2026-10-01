@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { audioCtx, chiadoCurto, estatica, gota, player } from "./som"
+import { VINIS } from "./radio"
 import { track } from "@/lib/analytics"
 
 // ms depois de entrar
@@ -29,14 +30,6 @@ const ROTEIRO = {
   vibra: 37000, // o celular vibra: N3XO
 }
 
-// os vinis que tem no jogo (loja de discos) — um por vez, sorteado
-const VINIS = [
-  { src: "/loja-discos/disco-01.mp3", titulo: "12-tone blues", autor: "Radan Papezik" },
-  { src: "/loja-discos/disco-02.mp3", titulo: "Johnson \"Jass\" Blues", autor: "Band Friscoe Jass" },
-  { src: "/loja-discos/disco-03.mp3", titulo: "Lonesome Road Blues", autor: "Anônimo" },
-  { src: "/loja-discos/disco-04.mp3", titulo: "New York Blues", autor: "Pietro Frosini" },
-  { src: "/loja-discos/disco-05.mp3", titulo: "The St. Louis Blues", autor: "W. C. Handy" },
-]
 
 // estalo de vinil: cliques esparsos, baixinhos, em loop
 function estaloVinil() {
@@ -288,8 +281,8 @@ export function Chegada({
           <i aria-hidden />
           <div>
             <small>no toca-discos</small>
-            <b>{vinil.titulo}</b>
-            <span>{vinil.autor}</span>
+            <b>{vinil.titulo.split(" · ")[0]}</b>
+            <span>{vinil.titulo.split(" · ")[1]}</span>
           </div>
         </div>
       )}

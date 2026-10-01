@@ -20,7 +20,7 @@ import { Kombi222 } from "./Kombi222"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
-import { ehDoLugar, proxima } from "../programa"
+import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { chiadoCurto, estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
 import { MARCHAS, montarMotor, vib } from "../som-carro"
@@ -159,8 +159,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [M, alvoChave, caido])
   const marcosRef = useRef(marcos)
   useEffect(() => { marcosRef.current = marcos }, [marcos])
-  // a busca terminou no meio da corrida: a estação vira destino na hora
+  // a busca terminou no meio da corrida: a estação vira destino na hora.
+  // E o contrário: a missão virou busca (a pessoa já falou com quem chamou
+  // e pegou a Kombi) — a estação deixa de ser destino, senão a Kombi leva
+  // de volta lá pra "descer" e confirmar de novo
   useEffect(() => {
+    if (alvo?.t === "busca" && destinoRef.current === alvo.missao) setDestino(null)
     if (alvo && alvo.t !== "busca" && !destinoRef.current) setDestino(alvo.missao)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvoChave])
@@ -283,7 +287,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // a música do lugar que ficou pausada continua de onde parou; se uma
     // conversa tocou outra coisa, entra a próxima da programação
     if (caidoRef.current || cinemaRef.current) return
-    if (ehDoLugar(freqRef.current, player.src, save.objetos)) { if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current)) }
+    if (ehDoLugar(freqRef.current, player.src, save.objetos)) {
+      if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current))
+      setFaixa(TODAS_FAIXAS.find((f) => f.src === player.src)?.titulo ?? "")
+    }
     else tocarProxima(freqRef.current)
     player.volume(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -648,7 +655,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const dest = destino ? getEstacao(destino) : null
   const portalE = portal ? getEstacao(portal.id) : null
   const portalMissao = portalE ? missao(portalE, nivel) : null
-  const podeDescerPortal = !!portalE && !!portalMissao?.ok && !save.objetos.includes(portalE.id) && portalE.id === alvo?.missao
+  // descer na estação só quando ela te espera (visita ou entrega) — no meio
+  // da busca, passar por ela não pede nada
+  const podeDescerPortal = !!portalE && !!portalMissao?.ok && !save.objetos.includes(portalE.id) && portalE.id === alvo?.missao && alvo.t !== "busca"
   const passandoE = passando ? getEstacao(passando.id) : null
   useEffect(() => {
     if (!passando) return

@@ -259,8 +259,9 @@ export default function LinhaPage() {
       setCinza(false)
     }
     // pausa: a conversa pediu uma coisa que está no mapa
+    // "pegar a kombi" JÁ é aceitar a missão: vai direto, e o som que tava
+    // tocando (o vinil) segue sem cortar
     if (para === "estrada") {
-      player.pausar()
       return setTela({ t: "corrida", destino: null })
     }
     if (ESTACOES.some((e) => e.id === id)) track("mission_completed", { mission_id: `linha-${id}`, duration_ms: 0 })

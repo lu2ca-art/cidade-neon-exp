@@ -567,10 +567,8 @@ function TarefaCard({ estacao, feita, save }: { estacao: EstacaoId; feita: boole
 function Revelacao({ estacao, vivo, nome }: { estacao: EstacaoId; vivo: boolean; nome: string }) {
   const e = getEstacao(estacao)
   const saiu = lancada(e) || e.id === "ontem"
-  useEffect(() => {
-    if (vivo && saiu) setTimeout(() => player.tocar(e.audio), 600)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // a música da estação NÃO toca aqui: ela é recompensa, entra na rádio
+  // quando a missão dessa estação for cumprida
   return (
     <div className={`l-revela ${vivo ? "is-vivo" : ""}`} style={{ ["--cor" as string]: e.cor }}>
       <small>{nome ? `${nome}, sua estação é` : "sua estação é"}</small>
