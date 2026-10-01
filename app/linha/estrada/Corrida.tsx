@@ -257,7 +257,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     // liga o rádio ao entrar no carro (efeito externo: áudio)
      
-    tocarProxima(freqRef.current)
+    // na abertura (cinema) quem manda no som é a chegada: vinil, depois o
+    // rádio procurando a frequência
+    if (!cinemaRef.current) tocarProxima(freqRef.current)
     return () => player.pausar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -280,7 +282,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
     // a música do lugar que ficou pausada continua de onde parou; se uma
     // conversa tocou outra coisa, entra a próxima da programação
-    if (caidoRef.current) return
+    if (caidoRef.current || cinemaRef.current) return
     if (ehDoLugar(freqRef.current, player.src, save.objetos)) { if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current)) }
     else tocarProxima(freqRef.current)
     player.volume(1)

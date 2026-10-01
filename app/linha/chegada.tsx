@@ -1,9 +1,11 @@
 "use client"
 
 // A CHEGADA NA CIDADE — a primeira vez. Nada de celular: você já está na
-// Kombi, rodando de boa pela cidade neon com a 222 tocando. Aí o Núcleo
-// começa a meter anúncio por cima da música, cada vez mais, até tirar ela do
-// ar. A cidade perde a cor, a Kombi encosta e estaciona. No silêncio, o
+// Kombi, rodando de boa pela cidade neon, ouvindo um vinil no toca-discos
+// (os discos da loja). Uns segundos depois o rádio liga sozinho e fica
+// procurando frequência — chiado, dial girando, quase pega a 222… e quem
+// entra é o Núcleo: anúncio por cima de tudo, cada vez mais, até tirar o som
+// do ar. A cidade perde a cor, a Kombi encosta e estaciona. No silêncio, o
 // celular vibra: alguém no N3XO. É a D-Bee.
 //
 // A Kombi (Corrida em modo cinema) fica por baixo; isso aqui é só a camada
@@ -16,13 +18,62 @@ import { track } from "@/lib/analytics"
 
 // ms depois de entrar
 const ROTEIRO = {
-  titulo: 1200, // "cidade neon" aparece nas tarjas
-  anuncio1: 10000, // 1º anúncio: abaixa a música
-  volta1: 14500, // a música volta (achou que tinha passado)
-  anuncio2: 18500, // vários anúncios, a música quase some
-  corta: 23500, // CONTEÚDO REMOVIDO: a música sai, a cor sai, a Kombi encosta
-  limpa: 26500, // os anúncios somem — sobra a cidade cinza e a chuva
-  vibra: 30500, // o celular vibra: N3XO
+  titulo: 1500, // "cidade neon" aparece nas tarjas
+  radio: 13000, // o rádio liga sozinho: o vinil abaixa e o dial começa a girar
+  agulha: 15500, // o vinil para; só o chiado procurando
+  quase: 19000, // quase pega a 222 (o dial trava, "sinal fraco")
+  anuncio1: 21500, // quem entra na frequência é o Núcleo: 1º anúncio
+  anuncio2: 25000, // vários anúncios, o chiado por baixo
+  corta: 30000, // CONTEÚDO REMOVIDO: o som sai, a cor sai, a Kombi encosta
+  limpa: 33000, // os anúncios somem — sobra a cidade cinza e a chuva
+  vibra: 37000, // o celular vibra: N3XO
+}
+
+// os vinis que tem no jogo (loja de discos) — um por vez, sorteado
+const VINIS = [
+  { src: "/loja-discos/disco-01.mp3", titulo: "12-tone blues", autor: "Radan Papezik" },
+  { src: "/loja-discos/disco-02.mp3", titulo: "Johnson \"Jass\" Blues", autor: "Band Friscoe Jass" },
+  { src: "/loja-discos/disco-03.mp3", titulo: "Lonesome Road Blues", autor: "Anônimo" },
+  { src: "/loja-discos/disco-04.mp3", titulo: "New York Blues", autor: "Pietro Frosini" },
+  { src: "/loja-discos/disco-05.mp3", titulo: "The St. Louis Blues", autor: "W. C. Handy" },
+]
+
+// estalo de vinil: cliques esparsos, baixinhos, em loop
+function estaloVinil() {
+  const c = audioCtx()
+  if (!c) return null
+  const src = c.createBufferSource()
+  const buf = c.createBuffer(1, c.sampleRate * 3, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() < 0.0009 ? (Math.random() * 2 - 1) : (Math.random() * 2 - 1) * 0.012
+  src.buffer = buf
+  src.loop = true
+  const hp = c.createBiquadFilter()
+  hp.type = "highpass"
+  hp.frequency.value = 900
+  const g = c.createGain()
+  g.gain.value = 0.18
+  src.connect(hp).connect(g).connect(c.destination)
+  src.start()
+  return {
+    volume: (v: number) => g.gain.setTargetAtTime(v, c.currentTime, 0.2),
+    parar: () => { try { src.stop() } catch {} },
+  }
+}
+
+// o clique seco do rádio ligando sozinho
+function clique() {
+  const c = audioCtx()
+  if (!c) return
+  const o = c.createOscillator()
+  const g = c.createGain()
+  o.type = "square"
+  o.frequency.value = 90
+  g.gain.setValueAtTime(0.12, c.currentTime)
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.06)
+  o.connect(g).connect(c.destination)
+  o.start()
+  o.stop(c.currentTime + 0.07)
 }
 
 type Anuncio = { k: number; t: string; m: string; x: number; y: number; r: number }
@@ -69,7 +120,11 @@ export function Chegada({
   onCinza: () => void
   onAbrir: () => void
 }) {
-  const [fase, setFase] = useState<"rodando" | "anuncio" | "volta" | "invadindo" | "cortou" | "silencio" | "vibra">("rodando")
+  const [fase, setFase] = useState<"vinil" | "radio" | "quase" | "anuncio" | "invadindo" | "cortou" | "silencio" | "vibra">("vinil")
+  const [vinil] = useState(() => VINIS[Math.floor(Math.random() * VINIS.length)])
+  // o visor do rádio: a frequência girando sozinha
+  const [dial, setDial] = useState<{ f: string; txt: string } | null>(null)
+  const estalo = useRef<ReturnType<typeof estaloVinil>>(null)
   const [titulo, setTitulo] = useState(false)
   const [anuncios, setAnuncios] = useState<Anuncio[]>([])
   const [barra, setBarra] = useState<string | null>(null)
@@ -100,31 +155,62 @@ export function Chegada({
       vibrar(18)
     }
 
+    // o vinil já rodando quando a cena abre
+    player.tocar(vinil.src, undefined, 0.85)
+    estalo.current = estaloVinil()
+
     em(ROTEIRO.titulo, () => setTitulo(true))
     em(ROTEIRO.titulo + 5200, () => setTitulo(false))
 
-    // 1º: um anúncio só, educado. A música abaixa.
+    // o rádio liga sozinho e sai procurando frequência por cima do vinil
+    let giro: ReturnType<typeof setInterval> | undefined
+    em(ROTEIRO.radio, () => {
+      setFase("radio")
+      clique()
+      vibrar(12)
+      player.volume(0.22)
+      estalo.current?.volume(0.05)
+      chiado.current = estatica()
+      chiado.current?.volume(0.1)
+      const t0 = Date.now()
+      giro = setInterval(() => {
+        const k = (Date.now() - t0) / 1000
+        // varre o dial pra frente e pra trás, cada vez mais perto do 222
+        const alvo = 222 - Math.max(0, 6 - k) * 18 * Math.abs(Math.sin(k * 1.3))
+        const f = alvo + (Math.random() - 0.5) * 3
+        chiado.current?.sintonizar(500 + 2600 * Math.abs(Math.sin(k * 5)))
+        setDial({ f: f.toFixed(1), txt: "procurando sinal…" })
+      }, 90)
+    })
+    // a agulha levanta: só o chiado
+    em(ROTEIRO.agulha, () => {
+      player.volume(0)
+      player.pausar()
+      estalo.current?.parar()
+      estalo.current = null
+    })
+    // quase: o dial trava no 222, o chiado abre um pouco… e não pega
+    em(ROTEIRO.quase, () => {
+      clearInterval(giro)
+      setFase("quase")
+      setDial({ f: "222.0", txt: "sinal fraco" })
+      chiado.current?.sintonizar(1200)
+      chiado.current?.volume(0.16)
+    })
+    // quem entra na frequência é o Núcleo
     em(ROTEIRO.anuncio1, () => {
       setFase("anuncio")
       chiadoCurto()
       jingle()
-      player.volume(0.18)
-      setBarra("a 222 fm será retomada após os anúncios ✓")
+      chiado.current?.volume(0.03)
+      setDial({ f: "NÚCLEO", txt: "frequência otimizada ✓" })
+      setBarra("a 222 fm não está disponível na sua região ✓")
       novo(1)
     })
-    // a música volta. parecia que tinha passado
-    em(ROTEIRO.volta1, () => {
-      setFase("volta")
-      setAnuncios([])
-      setBarra(null)
-      player.volume(1)
-    })
-    // 2º: agora vem vários, e a música quase some no chiado
+    // vários, e o chiado por baixo
     em(ROTEIRO.anuncio2, () => {
       setFase("invadindo")
       jingle()
-      player.volume(0.08)
-      chiado.current = estatica()
       chiado.current?.volume(0.06)
       setBarra("otimizando sua experiência sonora ✓")
       novo(2, true)
@@ -134,10 +220,9 @@ export function Chegada({
     em(ROTEIRO.corta, () => {
       setFase("cortou")
       jingle(true)
-      player.volume(0)
-      player.pausar()
       chiado.current?.volume(0)
       setBarra(null)
+      setDial(null)
       vibrar([60, 40, 160])
       cbs.current.onCinza()
       cbs.current.onParar()
@@ -154,10 +239,13 @@ export function Chegada({
     em(ROTEIRO.vibra + 1600, () => { gota(5); vibrar(14) })
     return () => {
       ts.forEach(clearTimeout)
+      clearInterval(giro)
       chiado.current?.parar()
       chiado.current = null
+      estalo.current?.parar()
+      estalo.current = null
     }
-  }, [])
+  }, [vinil])
 
   // pular a abertura (quem já viu): corta direto pro silêncio com a mensagem
   const pular = () => {
@@ -165,8 +253,11 @@ export function Chegada({
     player.pausar()
     chiado.current?.parar()
     chiado.current = null
+    estalo.current?.parar()
+    estalo.current = null
     setAnuncios([])
     setBarra(null)
+    setDial(null)
     setTitulo(false)
     cbs.current.onCinza()
     cbs.current.onParar()
@@ -192,7 +283,26 @@ export function Chegada({
         </div>
       )}
 
-      {(fase === "anuncio" || fase === "invadindo" || fase === "cortou") && <div className="l-chegada-glitch" />}
+      {fase === "vinil" && (
+        <div className="l-vinil">
+          <i aria-hidden />
+          <div>
+            <small>no toca-discos</small>
+            <b>{vinil.titulo}</b>
+            <span>{vinil.autor}</span>
+          </div>
+        </div>
+      )}
+
+      {dial && (
+        <div key={dial.f === "NÚCLEO" ? "n" : "r"} className={`l-dial ${fase === "quase" ? "is-quase" : ""} ${dial.f === "NÚCLEO" ? "is-nucleo" : ""}`}>
+          <small>rádio · ligou sozinho</small>
+          <b>{dial.f}{dial.f !== "NÚCLEO" && <em> FM</em>}</b>
+          <span>{dial.txt}</span>
+        </div>
+      )}
+
+      {(fase === "radio" || fase === "anuncio" || fase === "invadindo" || fase === "cortou") && <div className="l-chegada-glitch" />}
 
       {anuncios.map((a) => (
         <div key={a.k} className="l-anuncio" style={{ left: `${a.x}%`, top: `${a.y}%`, transform: `rotate(${a.r}deg)` }}>
