@@ -2,7 +2,8 @@
 
 // CIDADE NEON — o celular, redesenhado.
 //
-// entrada → tela de bloqueio → D-Bee → grupo "linha 222" (qual estação você
+// entrada → a chegada na cidade (de Kombi, até o Núcleo cortar a música e
+// a cor) → D-Bee no N3XO → grupo "linha 222" (qual estação você
 // é) → o celular: todos os apps abertos desde o começo (os novos e os da
 // versão anterior), a Kombi pra rodar a cidade quando quiser, e os níveis
 // liberando coisa nova aos poucos.
@@ -18,7 +19,8 @@ import { Chat, type Destino } from "./chat"
 import { alvoDe, ativa } from "./missoes"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
-import { Corrida, type Stats } from "./estrada/Corrida"
+import { Corrida, type Cinema, type Stats } from "./estrada/Corrida"
+import { Chegada } from "./chegada"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { audioCtx, ligarChuva, mudo, player } from "./som"
@@ -31,6 +33,7 @@ type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: 
 type Tela =
   | { t: "entrada" }
   | { t: "bloqueio" }
+  | { t: "chegada" }
   | { t: "chat"; id: ChatRoteiro; volta: Volta }
   | { t: "home" }
   | { t: "app"; id: AppId }
@@ -56,6 +59,10 @@ export default function LinhaPage() {
   // o Núcleo invadindo (janelas de vírus por cima de tudo)
   const [invasao, setInvasao] = useState<Invasao | null>(null)
   const [destinoEstrada, setDestinoEstrada] = useState<EstacaoId | null>(null)
+  // a chegada: a Kombi anda sozinha (cinema) e a cidade perde a cor até a
+  // conversa com a D-Bee acabar
+  const [cinema, setCinema] = useState<Cinema>(null)
+  const [cinza, setCinza] = useState(false)
   useEffect(() => {
     if (tela.t !== "corrida") return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -192,7 +199,12 @@ export default function LinhaPage() {
         return { ...s, completos: s.completos.filter((c) => c !== "abertura" && c !== "grupo"), logs }
       })
       setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
-    } else setTela({ t: "bloqueio" })
+    } else {
+      // primeira vez: entra na cidade de Kombi, não pelo celular
+      setCinema("rodando")
+      setEstrada(true)
+      setTela({ t: "chegada" })
+    }
   }
 
   const abrirChat = (id: ChatId, volta: Volta = { t: "home" }) => {
@@ -241,6 +253,11 @@ export default function LinhaPage() {
   }
 
   const fimChat = (id: ChatId, para: Destino, volta: Volta) => {
+    // acabou a conversa com a D-Bee: a cor volta e a Kombi é sua
+    if (id === "abertura" && cinema) {
+      setCinema(null)
+      setCinza(false)
+    }
     // pausa: a conversa pediu uma coisa que está no mapa
     if (para === "estrada") {
       player.pausar()
@@ -314,7 +331,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={tela.t !== "corrida" || !!invasao}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada") || !!invasao}
             caido={save.nucleo.caido}
             onReligar={religar}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
@@ -324,6 +341,15 @@ export default function LinhaPage() {
             onDescer={descer}
             onSair={sairDaCorrida}
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
+            cinema={cinema}
+            cinza={cinza}
+          />
+        )}
+        {tela.t === "chegada" && (
+          <Chegada
+            onParar={() => setCinema("parando")}
+            onCinza={() => setCinza(true)}
+            onAbrir={() => setTela({ t: "chat", id: "abertura", volta: { t: "home" } })}
           />
         )}
         {tela.t === "entrada" && <Entrada save={save} onEntrar={entrar} />}
@@ -391,12 +417,12 @@ export default function LinhaPage() {
 
         {tela.t === "final" && <Final save={save} onVoltar={() => setTela({ t: "home" })} />}
 
-        {(tela.t === "home" || tela.t === "chat" || tela.t === "bloqueio") && (
+        {(tela.t === "home" || tela.t === "chat" || tela.t === "bloqueio" || tela.t === "chegada") && (
           <button type="button" className="l-som" onClick={alternarSom} aria-label={semSom ? "ligar som" : "desligar som"}>
             {semSom ? "som off" : "som on"}
           </button>
         )}
-        {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
+        {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "chegada" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {invasao && <InvasaoNucleo key={invasao.id} inv={invasao} onFim={fimInvasao} />}

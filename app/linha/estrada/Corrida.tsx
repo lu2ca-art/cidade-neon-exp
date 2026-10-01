@@ -64,7 +64,15 @@ interface Props {
   onDescer: (id: EstacaoId, s: Stats) => void
   onSair: (s: Stats) => void
   onVolta?: (tempo: number) => void
+  // abertura: a Kombi anda sozinha pela cidade, sem HUD, câmera de cinema
+  // ("rodando"); "parando" encosta e estaciona. Sem cinema = jogo normal.
+  cinema?: Cinema
+  // a cidade sem cor (o Núcleo apagou tudo) — sem derrubar a 222
+  cinza?: boolean
 }
+
+export type Cinema = "rodando" | "parando" | null
+const VCINEMA = 22 // m/s: de boa, ~80 km/h
 
 type Jogo = {
   via: number
@@ -118,7 +126,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -159,6 +167,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, drift: false, turbo: false, toqueE: false, toqueD: false })
   const jogo = useRef<Jogo>(novoJogo(M, destino, save.estacao))
+  const cinemaRef = useRef<Cinema>(cinema)
+  useEffect(() => { cinemaRef.current = cinema }, [cinema])
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
   const hudProg = useRef<HTMLDivElement>(null)
@@ -579,7 +589,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }
   useEffect(() => {
     const tecla = (ev: KeyboardEvent, on: boolean) => {
-      if (pausadoRef.current) return
+      if (pausadoRef.current || cinemaRef.current) return
       const k = ev.key.toLowerCase()
       if (k === "arrowleft" || k === "a") {
         if (on && !ev.repeat) input.current.toqueE = true
@@ -652,7 +662,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""}`}>
+    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -661,6 +671,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           gl={{ antialias: true, powerPreference: "high-performance" }}
           camera={{ fov: 60, near: 0.1, far: 3200 }}
           onPointerDown={(e) => {
+            if (cinemaRef.current) return
             const r = (e.target as HTMLElement).getBoundingClientRect()
             toques.current.set(e.pointerId, e.clientX - r.left < r.width / 2 ? "esq" : "dir")
             atualizarToque()
@@ -670,7 +681,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} />
         </Canvas>
       )}
 
@@ -923,9 +934,10 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef,
 }: {
   pausado: boolean
+  cinemaRef: React.MutableRefObject<Cinema>
   corRadio: React.MutableRefObject<string>
   marcos: Marco[]
   marcosRef: React.MutableRefObject<Marco[]>
@@ -1439,7 +1451,19 @@ function Cena({
     // ── física na via ──
     amostra(V, j.u, a)
     const pct = j.v / VMAX
-    if (j.chegando) {
+    const cine = cinemaRef.current
+    if (cine) {
+      // piloto automático: segue a pista no meio (nunca pega saída), sem
+      // pressa; parando = encosta à direita e estaciona devagar
+      const alvoX = cine === "parando" ? Math.min(MEIA * 0.4, a.dir - 2) : 0
+      const alvoSteer = Math.max(-1, Math.min(1, (alvoX - j.x) / 3))
+      j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 3)
+      j.escolha = 0
+      if (cine === "parando") j.v = Math.max(0, j.v - (2.6 + j.v * 0.12) * dt)
+      else j.v += (VCINEMA - j.v) * Math.min(1, dt * 0.5)
+      j.vx += (j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) - j.vx) * Math.min(1, dt * 7)
+      j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * (1 - Math.min(0.75, Math.abs(a.bank) * 2.4))) * dt
+    } else if (j.chegando) {
       j.v = Math.max(0, j.v - FREIO * 0.8 * dt)
       j.x += (0 - j.x) * dt * 1.5
       if (j.v < 0.5 && !j.parado) { j.parado = true; ev.chegou(); motor?.atualizar(0, false, false) }
@@ -1789,10 +1813,16 @@ function Cena({
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const atras = 8.4 + pct * 1.8
     tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
+    if (cine) {
+      // câmera de cinema: baixa, de lado, girando devagar em volta da Kombi
+      const ang = j.tempo * 0.11 + 0.5
+      const raio = 9.5 - Math.min(1, j.v / VCINEMA) * 1.5
+      tmp.alvo.copy(car.position).addScaledVector(tmp.f, -Math.cos(ang) * raio).addScaledVector(tmp.r, Math.sin(ang) * raio * 0.75).addScaledVector(tmp.up, 1.6 + Math.sin(j.tempo * 0.07) * 0.5)
+    }
     if (j.encaixar) { camInit.current = false; j.encaixar = false }
-    const k = camInit.current ? 1 - Math.exp(-dt * (j.ar ? 3 : 5.5)) : 1
+    const k = camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
     camera.position.lerp(tmp.alvo, k)
-    tmp.olhar.copy(car.position).addScaledVector(tmp.f, 7).addScaledVector(tmp.up, 1.2)
+    tmp.olhar.copy(car.position).addScaledVector(tmp.f, cine ? 2.5 : 7).addScaledVector(tmp.up, cine ? 1.4 : 1.2)
     tmp.camOlhar.lerp(tmp.olhar, camInit.current ? 1 - Math.exp(-dt * 9) : 1)
     tmp.upMix.copy(tmp.up).lerp(tmp.y0, 0.45).normalize()
     tmp.camUp.lerp(tmp.upMix, camInit.current ? 1 - Math.exp(-dt * 4) : 1).normalize()
@@ -1804,7 +1834,7 @@ function Cena({
     camera.lookAt(tmp.camOlhar)
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
-    const fovAlvo = 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
+    const fovAlvo = cine ? 50 : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
@@ -1836,7 +1866,7 @@ function Cena({
     if (hemi.current) hemi.current.color.lerp(alvoCeu, kk * 0.5)
 
     // som: só o motor
-    motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
+    motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (cine ? cine === "rodando" : inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
 
     // orbs: na cor da rádio que está tocando, batendo no grave da música
     const t = state.clock.elapsedTime
