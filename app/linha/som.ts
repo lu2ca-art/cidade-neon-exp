@@ -362,6 +362,8 @@ class Player {
   }
 
   pausar() { this.el?.pause() }
+  // volta a tocar o que tava tocando, sem mexer no que vem depois
+  retomar() { this.el?.play().catch(() => {}) }
   get tocando() { return !!this.el && !this.el.paused }
 
   alternar(src: string, aoFim?: () => void) {

@@ -114,6 +114,19 @@ export default function LinhaPage() {
     setXpFlutua({ id: Date.now(), n })
   }, [])
 
+  // app com som próprio aberto (//LOOP, clipes, B4TIDA…): o vinil/rádio
+  // pausa e volta de onde parou quando ele fecha
+  const appComSom = tela.t === "app" && !!APPS.find((a) => a.id === tela.id)?.rota
+  const retomar = useRef(false)
+  useEffect(() => {
+    if (appComSom) {
+      if (player.tocando) { retomar.current = true; player.pausar() }
+    } else if (retomar.current) {
+      retomar.current = false
+      player.retomar()
+    }
+  }, [appComSom])
+
   // o que a rádio tá tocando, pro widget da home
   useEffect(() => player.ouvir((s) => {
     if (!s.src) return setRadio(null)
