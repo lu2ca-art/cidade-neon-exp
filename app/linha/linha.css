@@ -1260,3 +1260,13 @@
 /* invasão: a estrada segue por baixo, dá pra ver um pouco */
 .l-inv { pointer-events: none; }
 .l-inv .l-inv-jan, .l-inv .l-inv-barra { pointer-events: auto; }
+
+/* a caça do Núcleo: PROCURADO */
+.l-procurado { position: absolute; left: 50%; top: calc(232px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(76%, 300px); padding: 7px 12px 9px; border-radius: 12px; background: rgba(238, 243, 255, 0.92); color: #15161f; text-align: center; pointer-events: none; box-shadow: 0 0 24px rgba(160, 190, 255, 0.6); animation: l-procurado 0.9s steps(2) infinite; }
+.l-procurado b { display: block; font: 800 16px var(--cond); letter-spacing: 0.2em; color: #c3122a; }
+.l-procurado small { display: block; font: 10px var(--mono); }
+.l-procurado-barra { margin-top: 5px; height: 4px; border-radius: 2px; background: rgba(21, 22, 31, 0.15); overflow: hidden; }
+.l-procurado-barra div { height: 100%; background: #c3122a; transform-origin: left; transform: scaleX(0); transition: transform 0.2s; }
+@keyframes l-procurado { 0% { box-shadow: 0 0 24px rgba(160, 190, 255, 0.7); } 100% { box-shadow: 0 0 24px rgba(255, 60, 80, 0.6); } }
+.l-sirene { position: absolute; left: 0; right: 0; bottom: 0; height: 38%; pointer-events: none; opacity: 0; transition: opacity 0.25s; background: radial-gradient(ellipse 60% 100% at 25% 100%, rgba(255, 255, 255, 0.55), transparent 70%), radial-gradient(ellipse 60% 100% at 75% 100%, rgba(90, 140, 255, 0.6), transparent 70%); mix-blend-mode: screen; animation: l-sirene 0.5s steps(2) infinite; }
+@keyframes l-sirene { 0% { filter: hue-rotate(0deg); transform: scaleX(1); } 100% { filter: hue-rotate(0deg); transform: scaleX(-1); } }
