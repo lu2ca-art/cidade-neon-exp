@@ -17,6 +17,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Kombi222 } from "./Kombi222"
+import { Cabine, OLHO } from "./Cabine"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
@@ -222,6 +223,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [faixa, setFaixa] = useState("")
   // tocando um vinil da Kombi (não uma faixa da rádio): o cartão diz isso
   const [deDisco, setDeDisco] = useState(false)
+  const discoRef = useRef(false)
+  useEffect(() => { discoRef.current = deDisco }, [deDisco])
+  // câmera: de fora (atrás da Kombi) ou de dentro (primeira pessoa). Lembra
+  const [dentro, setDentro] = useState(() => { try { return localStorage.getItem("cn-linha-cam") === "dentro" } catch { return false } })
+  const dentroRef = useRef(dentro)
+  const trocarCamera = useCallback(() => {
+    setDentro((d) => {
+      const n = !d
+      dentroRef.current = n
+      try { localStorage.setItem("cn-linha-cam", n ? "dentro" : "fora") } catch {}
+      return n
+    })
+  }, [])
   const [portal, setPortal] = useState<{ id: EstacaoId; t: number } | null>(null)
   const [bairro, setBairro] = useState<{ id: FreqId; t: number } | null>(null)
   const [painel, setPainel] = useState(false)
@@ -666,6 +680,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "arrowup" || k === "w") input.current.gas = on
       else if (k === "arrowdown" || k === "s") input.current.freio = on
       else if ((k === "shift" || k === "e") && on) input.current.turbo = true
+      else if (k === "c" && on && !ev.repeat) trocarCamera()
       else return
       ev.preventDefault()
     }
@@ -674,7 +689,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     window.addEventListener("keydown", kd)
     window.addEventListener("keyup", ku)
     return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku) }
-  }, [])
+  }, [trocarCamera])
 
   // a missão fala com você quando a estrada começa: o que buscar e onde
   const falouDe = useRef("")
@@ -749,7 +764,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} />
         </Canvas>
       )}
 
@@ -759,6 +774,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <button type="button" className="l-hud-cel" onPointerDown={(e) => e.stopPropagation()} onClick={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} aria-label="abrir o celular">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
           {avisos > 0 && <em>{avisos}</em>}
+        </button>
+        <button type="button" className={`l-hud-cam ${dentro ? "is-dentro" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={trocarCamera} aria-label={dentro ? "câmera de fora" : "câmera de dentro"} title="câmera (C)">
+          {dentro ? (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 16V9a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v7" /><path d="M3 16h18" /><circle cx="7.5" cy="17.5" r="1.6" /><circle cx="16.5" cy="17.5" r="1.6" /></svg>
+          ) : (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="13" r="7" /><circle cx="12" cy="13" r="1.6" fill="currentColor" /><path d="M5.5 11h13M12 6v5" /></svg>
+          )}
         </button>
         <div className="l-hud-rota">
           <span>{dest ? `indo pra estação ${dest.n}` : `${fq.freq} · rodando livre`}</span>
@@ -1002,8 +1024,10 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef,
 }: {
+  dentroRef: React.MutableRefObject<boolean>
+  discoRef: React.MutableRefObject<boolean>
   cacadoRef: React.MutableRefObject<boolean>
   limitadoRef: React.MutableRefObject<boolean>
   pausado: boolean
@@ -1545,6 +1569,11 @@ function Cena({
   const kTurbo = useRef(false)
   const kVel = useRef(0)
   const kEsterco = useRef(0)
+  const kVolante = useRef(0)
+  const kBalanco = useRef(0)
+  const corpoK = useRef<THREE.Group>(null)
+  const cabineG = useRef<THREE.Group>(null)
+  const luzBaixo = useRef<THREE.PointLight>(null)
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
 
@@ -2082,22 +2111,26 @@ function Cena({
       const raio = 9.5 - Math.min(1, j.v / VCINEMA) * 1.5
       tmp.alvo.copy(car.position).addScaledVector(tmp.f, -Math.cos(ang) * raio).addScaledVector(tmp.r, Math.sin(ang) * raio * 0.75).addScaledVector(tmp.up, 1.6 + Math.sin(j.tempo * 0.07) * 0.5)
     }
+    const primeira = dentroRef.current && !cine
+    if (primeira) { car.updateMatrixWorld(); tmp.alvo.copy(OLHO).applyMatrix4(car.matrixWorld) }
     if (j.encaixar) { camInit.current = false; j.encaixar = false }
-    const k = camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
+    const k = primeira ? 1 : camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
     camera.position.lerp(tmp.alvo, k)
     tmp.olhar.copy(car.position).addScaledVector(tmp.f, cine ? 2.5 : 7).addScaledVector(tmp.up, cine ? 1.4 : 1.2)
-    tmp.camOlhar.lerp(tmp.olhar, camInit.current ? 1 - Math.exp(-dt * 9) : 1)
+    // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
+    if (primeira) tmp.olhar.copy(tmp.p.set(OLHO.x + j.steer * 1.2, OLHO.y - 1.1, OLHO.z - 12)).applyMatrix4(car.matrixWorld)
+    tmp.camOlhar.lerp(tmp.olhar, primeira ? 1 - Math.exp(-dt * 14) : camInit.current ? 1 - Math.exp(-dt * 9) : 1)
     tmp.upMix.copy(tmp.up).lerp(tmp.y0, 0.45).normalize()
     tmp.camUp.lerp(tmp.upMix, camInit.current ? 1 - Math.exp(-dt * 4) : 1).normalize()
     camera.up.copy(tmp.camUp)
     camInit.current = true
-    const amp = reduz ? 0 : j.shake * 0.12 + (j.turboT > 0 ? 0.03 : 0)
+    const amp = reduz ? 0 : (j.shake * 0.12 + (j.turboT > 0 ? 0.03 : 0)) * (primeira ? 0.25 : 1)
     camera.position.x += (Math.random() - 0.5) * amp
     camera.position.y += (Math.random() - 0.5) * amp
     camera.lookAt(tmp.camOlhar)
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
-    const fovAlvo = cine ? 50 : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
+    const fovAlvo = cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
@@ -2212,6 +2245,14 @@ function Cena({
     // rodas da frente: com aderência seguem o volante; de lado, apontam pra
     // onde a Kombi anda (contraesterço natural)
     kEsterco.current += ((j.drift ? j.deriva * 0.85 : -j.steer * 0.42) - kEsterco.current) * Math.min(1, dt * 10)
+    kVolante.current = Math.max(-1.3, Math.min(1.3, -kEsterco.current / 0.42))
+    kBalanco.current = j.vx * 0.35 + a.curv * j.v * Math.abs(j.v) * 0.08 + j.deriva * 2
+    // de dentro: some a carroceria de fora, aparece a cabine
+    const dentroAgora = dentroRef.current && !cine
+    if (corpoK.current) corpoK.current.visible = !dentroAgora
+    if (cabineG.current) cabineG.current.visible = dentroAgora
+    // a luz magenta de baixo (o brilho no asfalto) pintava a cabine de rosa
+    if (luzBaixo.current) luzBaixo.current.intensity = dentroAgora ? 0 : 45
     hudN.current++
     if (hudN.current % 4 === 0) ev.hud(j)
   })
@@ -2399,8 +2440,13 @@ function Cena({
       </points>
 
       <group ref={carro}>
-        <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
-        <pointLight position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
+        <group ref={corpoK}>
+          <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
+        </group>
+        <group ref={cabineG} visible={false}>
+          <Cabine esterco={kVolante} balanco={kBalanco} disco={discoRef} objetos={objetos} />
+        </group>
+        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
         <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />
