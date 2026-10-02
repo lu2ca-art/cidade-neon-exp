@@ -1,6 +1,8 @@
 [
-  { "titulo": "The St. Louis Blues", "autor": "W. C. Handy", "src": "/loja-discos/disco-05.mp3", "fonte": "loja de discos (acervo antigo)" },
-  { "titulo": "Johnson \"Jass\" Blues", "autor": "Band Friscoe Jass", "src": "/loja-discos/disco-02.mp3", "fonte": "loja de discos (acervo antigo)" },
-  { "titulo": "Lonesome Road Blues", "autor": "Anônimo", "src": "/loja-discos/disco-03.mp3", "fonte": "loja de discos (acervo antigo)" },
-  { "titulo": "New York Blues", "autor": "Pietro Frosini", "src": "/loja-discos/disco-04.mp3", "fonte": "loja de discos (acervo antigo)" }
+  {"titulo": "The St. Louis Blues", "autor": "W. C. Handy", "src": "/loja-discos/disco-05.mp3", "fonte": "loja de discos (acervo antigo)"},
+  {"titulo": "Johnson \"Jass\" Blues", "autor": "Band Friscoe Jass", "src": "/loja-discos/disco-02.mp3", "fonte": "loja de discos (acervo antigo)"},
+  {"titulo": "Lonesome Road Blues", "autor": "Anônimo", "src": "/loja-discos/disco-03.mp3", "fonte": "loja de discos (acervo antigo)"},
+  {"titulo": "New York Blues", "autor": "Pietro Frosini", "src": "/loja-discos/disco-04.mp3", "fonte": "loja de discos (acervo antigo)"},
+  {"titulo": "Climax Rag", "autor": "James Scott", "src": "/vinis/james-scott-ragtime-climax-rag-1914-by-james-scott.mp3", "ano": 1914, "licenca": "Public domain", "fonte": "https://commons.wikimedia.org/wiki/File:%22Climax_Rag%22_(1914),_by_James_Scott.mp3"},
+  {"titulo": "Dippermouth Blues", "autor": "King Oliver", "src": "/vinis/king-oliver-dippermouth-blues-king-oliver-s-jazz-band.mp3", "ano": 1923, "licenca": "Public domain", "interprete": "King Oliver's Creole Jazz Band, Louis Armstrong", "fonte": "https://commons.wikimedia.org/wiki/File:Dippermouth_Blues_-_KING_OLIVER%27S_JAZZ_BAND.flac"}
 ]
