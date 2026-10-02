@@ -1328,3 +1328,4 @@
 /* câmera de dentro/de fora */
 .l-hud-cam { pointer-events: auto; width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(0, 0, 0, 0.45) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; color: #fff !important; }
 .l-hud-cam.is-dentro { border-color: #2fe8ff !important; color: #2fe8ff !important; }
+.l-pedais.is-oculto { display: none !important; }
