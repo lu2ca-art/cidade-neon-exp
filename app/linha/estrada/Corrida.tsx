@@ -2608,8 +2608,8 @@ function Cena({
         <group ref={corpoK}>
           <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
         </group>
-        {/* a cúpula de vidro e o interior aparecem nas DUAS câmeras: de fora
-            dá pra ver quem tá dentro; de dentro, a cidade por cima */}
+        {/* conversível: o para-brisa e o interior aparecem nas DUAS câmeras
+            (de fora dá pra ver quem tá dentro; de dentro, a cidade inteira) */}
         <Cupula />
         <group ref={cabineG}>
           <Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} />
