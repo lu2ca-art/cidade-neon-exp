@@ -512,7 +512,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       hud: (j) => {
         if (hudVel.current) hudVel.current.textContent = String(Math.round(Math.abs(j.v) * 3.6))
         // computador: parado sem acelerar → mostra como anda
-        hudParado.current?.classList.toggle("is-on", !toqueTela && Math.abs(j.v) < 0.5 && !j.chegando && !input.current.gas && j.tempo > 1.5)
+        hudParado.current?.classList.toggle("is-on", !toqueTela && !dentroRef.current && Math.abs(j.v) < 0.5 && !j.chegando && !input.current.gas && j.tempo > 1.5)
         if (hudMarcha.current) {
           const pct = j.v / VMAX
           let m = 1
@@ -764,7 +764,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={deDisco} carona={alvo?.t === "entrega" && alvo.missao === "sexta" ? "sexta" : null} lugarAlvoRef={lugarAlvoRef} />
         </Canvas>
       )}
 
@@ -932,7 +932,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       <div ref={hudParado} className="l-hud-parado"><b>↑</b> ou <b>W</b> pra acelerar · <b>↓</b> dá ré</div>
 
       {/* celular: freio/ré (segurar). Drift é na direção: a finta */}
-      <div className="l-pedais" onPointerDown={(e) => e.stopPropagation()}>
+      <div className={`l-pedais ${dentro ? "is-oculto" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
         <button
           type="button"
           className="l-pedal is-re"
@@ -1024,8 +1024,11 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef,
 }: {
+  disco: boolean
+  carona: EstacaoId | null
+  lugarAlvoRef: React.MutableRefObject<FreqId | null>
   dentroRef: React.MutableRefObject<boolean>
   discoRef: React.MutableRefObject<boolean>
   cacadoRef: React.MutableRefObject<boolean>
@@ -1048,7 +1051,46 @@ function Cena({
   nLib: number
   nLibRef: React.MutableRefObject<number>
 }) {
-  const { camera, scene } = useThree()
+  const { camera, scene, gl } = useThree()
+  // olhar em volta de dentro (como na drive-v2): arrasta → gira até ±150° e
+  // ±60°; solta → fica 7 s parado ali e depois volta devagar pra frente
+  const olhar = useRef({ yaw: 0, pitch: 0, alvoYaw: 0, alvoPitch: 0, arrastando: false, soltou: 0, x: 0, y: 0, id: -1 })
+  useEffect(() => {
+    const el = gl.domElement
+    const YAW = (150 * Math.PI) / 180
+    const PITCH = (60 * Math.PI) / 180
+    const o = olhar.current
+    const down = (e: PointerEvent) => {
+      if (!dentroRef.current || (e.pointerType === "mouse" && e.button !== 0)) return
+      o.arrastando = true; o.x = e.clientX; o.y = e.clientY; o.id = e.pointerId
+    }
+    const move = (e: PointerEvent) => {
+      if (!o.arrastando || e.pointerId !== o.id) return
+      o.alvoYaw = Math.max(-YAW, Math.min(YAW, o.alvoYaw - (e.clientX - o.x) * 0.006))
+      o.alvoPitch = Math.max(-PITCH, Math.min(PITCH, o.alvoPitch - (e.clientY - o.y) * 0.005))
+      o.x = e.clientX; o.y = e.clientY
+    }
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== o.id) return
+      o.arrastando = false; o.id = -1; o.soltou = performance.now()
+    }
+    el.addEventListener("pointerdown", down)
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", up)
+    window.addEventListener("pointercancel", up)
+    return () => {
+      el.removeEventListener("pointerdown", down)
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", up)
+      window.removeEventListener("pointercancel", up)
+    }
+  }, [gl, dentroRef])
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return
+    const w = window as unknown as Record<string, unknown>
+    w.__olhar = (yaw: number, pitch = 0) => { const o = olhar.current; o.alvoYaw = yaw; o.alvoPitch = pitch; o.soltou = performance.now() }
+    return () => { delete w.__olhar }
+  }, [])
   const carro = useRef<THREE.Group>(null)
   const ceu = useRef<THREE.Mesh>(null)
   const a = useMemo(() => novaAmostra(), [])
@@ -1607,7 +1649,10 @@ function Cena({
       j.x += (0 - j.x) * dt * 1.5
       if (j.v < 0.5 && !j.parado) { j.parado = true; ev.chegou(); motor?.atualizar(0, false, false) }
     } else {
-      let alvoSteer = (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
+      // de dentro (primeira pessoa) a Kombi vai no AUTOMÁTICO: segue a pista
+      // e pega sozinha a saída que leva pra missão; você só olha em volta
+      const auto = dentroRef.current && !cine
+      let alvoSteer = auto ? Math.max(-1, Math.min(1, (0 - j.x) / 3)) : (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
       // bifurcação: nos últimos 330m, um toque pro lado MARCA a saída e a
       // Kombi entra sozinha na faixa (antes tinha que acertar a faixa no
       // metro exato da divisão — era a trava). Toque do outro lado desmarca.
@@ -1623,9 +1668,15 @@ function Cena({
         const uk = fProx.u
         const lado = (l: 1 | -1) => V.faixas.find((f) => f.u === uk && f.lado === l)
         const pode = (l: 1 | -1) => { const f = lado(l); return !!f && aberta(f, nLibRef.current) }
-        if (inp.toqueD) j.escolha = j.escolha === -1 ? 0 : pode(1) ? 1 : j.escolha
-        if (inp.toqueE) j.escolha = j.escolha === 1 ? 0 : pode(-1) ? -1 : j.escolha
-        if (j.escolha && !inp.esq && !inp.dir) {
+        if (auto) {
+          const la = lugarAlvoRef.current
+          const pra = la ? rumo(V.t, la) : null
+          const f = pra ? V.faixas.find((x) => x.u === uk && x.para === pra && aberta(x, nLibRef.current)) : undefined
+          j.escolha = f ? f.lado : 0
+        }
+        if (!auto && inp.toqueD) j.escolha = j.escolha === -1 ? 0 : pode(1) ? 1 : j.escolha
+        if (!auto && inp.toqueE) j.escolha = j.escolha === 1 ? 0 : pode(-1) ? -1 : j.escolha
+        if (j.escolha && (auto || (!inp.esq && !inp.dir))) {
           const lim = j.escolha > 0 ? a.dir - 1.3 : a.esq + 1.3
           const alvoX = j.escolha > 0 ? Math.min(CK, lim) : Math.max(-CK, lim)
           alvoSteer = Math.max(-1, Math.min(1, (alvoX - j.x) / 2.5))
@@ -1636,10 +1687,10 @@ function Cena({
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 7)
       // nos viadutos entre lugares a pista é expressa
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
-      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1)
+      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
-      const gas = inp.gas || (toqueTela && !inp.freio)
-      if (inp.freio) {
+      const gas = auto || inp.gas || (toqueTela && !inp.freio)
+      if (inp.freio && !auto) {
         if (j.v > 0.8) j.v = Math.max(0, j.v - FREIO * dt)
         else j.v = Math.max(-VRE, j.v - 9 * dt)
       } else if (gas || j.turboT > 0) {
@@ -2118,7 +2169,15 @@ function Cena({
     camera.position.lerp(tmp.alvo, k)
     tmp.olhar.copy(car.position).addScaledVector(tmp.f, cine ? 2.5 : 7).addScaledVector(tmp.up, cine ? 1.4 : 1.2)
     // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
-    if (primeira) tmp.olhar.copy(tmp.p.set(OLHO.x + j.steer * 1.2, OLHO.y - 1.1, OLHO.z - 12)).applyMatrix4(car.matrixWorld)
+    if (primeira) {
+      const o = olhar.current
+      if (!o.arrastando && o.soltou && performance.now() - o.soltou > 7000) { o.alvoYaw = 0; o.alvoPitch = 0 }
+      const r = o.arrastando ? 14 : o.alvoYaw === 0 && o.alvoPitch === 0 ? 1.5 : 14
+      o.yaw += (o.alvoYaw - o.yaw) * Math.min(1, dt * r)
+      o.pitch += (o.alvoPitch - o.pitch) * Math.min(1, dt * r)
+      const cp = Math.cos(o.pitch)
+      tmp.olhar.copy(tmp.p.set(OLHO.x - Math.sin(o.yaw) * cp * 10, OLHO.y - 0.9 + Math.sin(o.pitch) * 10, OLHO.z - Math.cos(o.yaw) * cp * 10)).applyMatrix4(car.matrixWorld)
+    }
     tmp.camOlhar.lerp(tmp.olhar, primeira ? 1 - Math.exp(-dt * 14) : camInit.current ? 1 - Math.exp(-dt * 9) : 1)
     tmp.upMix.copy(tmp.up).lerp(tmp.y0, 0.45).normalize()
     tmp.camUp.lerp(tmp.upMix, camInit.current ? 1 - Math.exp(-dt * 4) : 1).normalize()
@@ -2444,7 +2503,7 @@ function Cena({
           <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
         </group>
         <group ref={cabineG} visible={false}>
-          <Cabine esterco={kVolante} balanco={kBalanco} disco={discoRef} objetos={objetos} />
+          <Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} />
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
