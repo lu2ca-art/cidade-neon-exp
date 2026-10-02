@@ -4,6 +4,7 @@
 import type { EstacaoId } from "./data"
 import type { ChatId } from "./roteiros"
 import { montarFio, type Perfil } from "./missoes"
+import type { Modo } from "./ligacoes"
 
 export type Item =
   | { k: "msg"; texto: string; de?: string; eu?: boolean }
@@ -11,6 +12,8 @@ export type Item =
   | { k: "sistema"; texto: string }
   | { k: "audio"; src: string; titulo: string; de?: string }
   | { k: "video"; src: string; legenda?: string; de?: string }
+  | { k: "voz"; fala: string; src?: string; de?: string }
+  | { k: "loop"; titulo: string; video?: number; de?: string }
   | { k: "prova"; id: string; feita?: boolean; pulou?: boolean }
   | { k: "objeto"; estacao: EstacaoId; memoria?: number; extra?: string }
   | { k: "tarefa"; estacao: EstacaoId; feita?: boolean }
@@ -46,6 +49,12 @@ export interface Save {
   // o Núcleo: quantas invasões já rolaram e se derrubou a 222 (aí a cidade
   // fica cinza até religar a antena)
   nucleo: { invasoes: number; caido: boolean }
+  // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
+  ligacoes: string[]
+  // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
+  // último sorteado — o próximo nunca repete
+  modos: Partial<Record<EstacaoId, Modo>>
+  ultimoModo: Modo | null
 }
 
 const CHAVE = "cn-linha-222"
@@ -72,6 +81,10 @@ export const VAZIO: Save = {
   itens: [],
   pausas: {},
   nucleo: { invasoes: 0, caido: false },
+  ligacoes: [],
+  modos: {},
+  // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito
+  ultimoModo: "ligacao",
 }
 
 export function carregar(): Save {

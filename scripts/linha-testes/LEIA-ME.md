@@ -6,7 +6,7 @@ da estrada (`__via`, `__irPara`, `__marcos`, `__estacoes`, `__pular`, `__estado`
 
 | script | o que testa |
 |---|---|
-| fluxo.mjs | abertura + quiz → 1ª missão → busca no mapa → entrega → prova → recompensa |
+| fluxo.mjs | chegada de Kombi (pula) + abertura + quiz → 1ª missão → busca no mapa → entrega → prova → recompensa |
 | garfo.mjs | bifurcação: um toque marca a saída; marcar e desmarcar fica |
 | carro.mjs | a Kombi como tela inicial, ícone do celular, passar por estação |
 | sobre.mjs | celular por cima da estrada (pausa e continua) + impacto da sintonia |

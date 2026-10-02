@@ -20,10 +20,10 @@ import { Kombi222 } from "./Kombi222"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
-import { ehDoLugar, proxima } from "../programa"
+import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { chiadoCurto, estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
-import { MARCHAS, montarMotor, vib } from "../som-carro"
+import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { MISSOES, type Alvo } from "../missoes"
@@ -31,6 +31,14 @@ import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./g
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
 
 const VMAX = 46 // m/s
+// drift: velocidade mínima pra finta derrubar a aderência, quanto peso tem
+// que estar carregado no lado de fora, e o ângulo máximo da carroceria
+const VDRIFT = 20 // ~72 km/h
+const PESO_FINTA = 0.3
+const DERIVA_MAX = 0.95 // ~54°
+// fumaça nas rodas no drift: desligada — o Horizon não tem (prints do
+// LU2CA, 02/10); fica o código caso queira de volta
+const FUMACA = false
 const VTURBO = 62
 const ACEL = 11
 const FREIO = 26
@@ -64,15 +72,26 @@ interface Props {
   onDescer: (id: EstacaoId, s: Stats) => void
   onSair: (s: Stats) => void
   onVolta?: (tempo: number) => void
+  // abertura: a Kombi anda sozinha pela cidade, sem HUD, câmera de cinema
+  // ("rodando"); "parando" encosta e estaciona. Sem cinema = jogo normal.
+  cinema?: Cinema
+  // a cidade sem cor (o Núcleo apagou tudo) — sem derrubar a 222
+  cinza?: boolean
 }
+
+export type Cinema = "rodando" | "parando" | null
+const VCINEMA = 22 // m/s: de boa, ~80 km/h
 
 type Jogo = {
   via: number
   u: number; x: number; v: number; vx: number; steer: number
   y: number; vy: number; ar: boolean; tAr: number
   turboT: number; carga: number; shake: number; flash: number
-  // drift: ângulo da traseira (rad) e quanto tempo segurou (vira mini-turbo)
-  deriva: number; driftT: number
+  // drift: ângulo da carroceria em relação a pra onde ela anda (rad), a
+  // velocidade com que esse ângulo gira, o lado do drift (0 = com
+  // aderência), o peso carregado num lado (a "mola" da finta), o último lado
+  // apertado e quanto tempo de drift de verdade (vira mini-turbo)
+  deriva: number; giro: number; drift: 0 | 1 | -1; peso: number; ladoAnt: number; driftT: number
   // chegada num lugar novo: a música nova entra de uma vez, com o cenário
   impacto: number; soco: boolean
   tempo: number; voltaIni: number; voltas: number
@@ -104,8 +123,8 @@ type Evs = {
 // toque mais curto que um quadro não pode se perder — é ele que marca a
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
-// freio: freia e, parada, dá ré · drift: freio de mão
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; drift: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean }
+// freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean }
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
 const toqueTela = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
@@ -118,7 +137,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -151,14 +170,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [M, alvoChave, caido])
   const marcosRef = useRef(marcos)
   useEffect(() => { marcosRef.current = marcos }, [marcos])
-  // a busca terminou no meio da corrida: a estação vira destino na hora
+  // a busca terminou no meio da corrida: a estação vira destino na hora.
+  // E o contrário: a missão virou busca (a pessoa já falou com quem chamou
+  // e pegou a Kombi) — a estação deixa de ser destino, senão a Kombi leva
+  // de volta lá pra "descer" e confirmar de novo
   useEffect(() => {
+    if (alvo?.t === "busca" && destinoRef.current === alvo.missao) setDestino(null)
     if (alvo && alvo.t !== "busca" && !destinoRef.current) setDestino(alvo.missao)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvoChave])
 
-  const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, drift: false, turbo: false, toqueE: false, toqueD: false })
+  const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false })
   const jogo = useRef<Jogo>(novoJogo(M, destino, save.estacao))
+  const cinemaRef = useRef<Cinema>(cinema)
+  useEffect(() => { cinemaRef.current = cinema }, [cinema])
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
   const hudProg = useRef<HTMLDivElement>(null)
@@ -247,7 +272,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     // liga o rádio ao entrar no carro (efeito externo: áudio)
      
-    tocarProxima(freqRef.current)
+    // na abertura (cinema) quem manda no som é a chegada: vinil, depois o
+    // rádio procurando a frequência
+    if (!cinemaRef.current) tocarProxima(freqRef.current)
     return () => player.pausar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -270,8 +297,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
     // a música do lugar que ficou pausada continua de onde parou; se uma
     // conversa tocou outra coisa, entra a próxima da programação
-    if (caidoRef.current) return
-    if (ehDoLugar(freqRef.current, player.src, save.objetos)) { if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current)) }
+    if (caidoRef.current || cinemaRef.current) return
+    if (ehDoLugar(freqRef.current, player.src, save.objetos)) {
+      if (!player.tocando) player.tocar(player.src!, () => proxFaixa.current(freqRef.current))
+      setFaixa(TODAS_FAIXAS.find((f) => f.src === player.src)?.titulo ?? "")
+    }
     else tocarProxima(freqRef.current)
     player.volume(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -431,7 +461,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           const pct = j.v / VMAX
           let m = 1
           while (m < MARCHAS.length - 1 && pct > MARCHAS[m]) m++
-          hudMarcha.current.textContent = j.v < -0.3 ? "R" : j.driftT > 0 ? "DRIFT" : `${m}ª`
+          hudMarcha.current.textContent = j.v < -0.3 ? "R" : j.drift ? "DRIFT" : `${m}ª`
         }
         const V = M.vias[j.via]
         const d = destinoRef.current
@@ -561,7 +591,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), turbo: +j.turboT.toFixed(2), src: player.src }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src }
     }
     return () => { delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular }
   }, [M])
@@ -579,7 +609,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }
   useEffect(() => {
     const tecla = (ev: KeyboardEvent, on: boolean) => {
-      if (pausadoRef.current) return
+      if (pausadoRef.current || cinemaRef.current) return
       const k = ev.key.toLowerCase()
       if (k === "arrowleft" || k === "a") {
         if (on && !ev.repeat) input.current.toqueE = true
@@ -590,7 +620,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       }
       else if (k === "arrowup" || k === "w") input.current.gas = on
       else if (k === "arrowdown" || k === "s") input.current.freio = on
-      else if (k === " ") input.current.drift = on
       else if ((k === "shift" || k === "e") && on) input.current.turbo = true
       else return
       ev.preventDefault()
@@ -636,7 +665,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const dest = destino ? getEstacao(destino) : null
   const portalE = portal ? getEstacao(portal.id) : null
   const portalMissao = portalE ? missao(portalE, nivel) : null
-  const podeDescerPortal = !!portalE && !!portalMissao?.ok && !save.objetos.includes(portalE.id) && portalE.id === alvo?.missao
+  // descer na estação só quando ela te espera (visita ou entrega) — no meio
+  // da busca, passar por ela não pede nada
+  const podeDescerPortal = !!portalE && !!portalMissao?.ok && !save.objetos.includes(portalE.id) && portalE.id === alvo?.missao && alvo.t !== "busca"
   const passandoE = passando ? getEstacao(passando.id) : null
   useEffect(() => {
     if (!passando) return
@@ -652,7 +683,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""}`}>
+    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -661,6 +692,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           gl={{ antialias: true, powerPreference: "high-performance" }}
           camera={{ fov: 60, near: 0.1, far: 3200 }}
           onPointerDown={(e) => {
+            if (cinemaRef.current) return
             const r = (e.target as HTMLElement).getBoundingClientRect()
             toques.current.set(e.pointerId, e.clientX - r.left < r.width / 2 ? "esq" : "dir")
             atualizarToque()
@@ -670,7 +702,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} />
         </Canvas>
       )}
 
@@ -822,16 +854,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
       <div ref={hudParado} className="l-hud-parado"><b>↑</b> ou <b>W</b> pra acelerar · <b>↓</b> dá ré</div>
 
-      {/* celular: freio/ré e drift (segurar) */}
+      {/* celular: freio/ré (segurar). Drift é na direção: a finta */}
       <div className="l-pedais" onPointerDown={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="l-pedal is-drift"
-          onPointerDown={(e) => { e.stopPropagation(); input.current.drift = true }}
-          onPointerUp={() => { input.current.drift = false }}
-          onPointerCancel={() => { input.current.drift = false }}
-          onPointerLeave={() => { input.current.drift = false }}
-        >drift</button>
         <button
           type="button"
           className="l-pedal is-re"
@@ -845,7 +869,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {dica && (
         <div className="l-hud-dica">
           <span>← segura</span>
-          <span className="is-desk">↑ acelera · ↓ freia/ré · espaço drift · shift turbo</span>
+          <span><span className="is-desk">↑ acelera · ↓ freia/ré · shift turbo<br /></span>drift: toque pra fora, vira pra dentro</span>
           <span>segura →</span>
         </div>
       )}
@@ -910,7 +934,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
   return {
     via: M.circuito.linha,
     u, x: 0, v: 0, vx: 0, steer: 0, y: c.py[Math.floor(u / PASSO)], vy: 0, ar: false, tAr: 0,
-    turboT: 0, carga: 0, shake: 0, flash: 0, deriva: 0, driftT: 0, impacto: 0, soco: false, tempo: 0, voltaIni: -1, voltas: 0,
+    turboT: 0, carga: 0, shake: 0, flash: 0, deriva: 0, giro: 0, drift: 0, peso: 0, ladoAnt: 0, driftT: 0, impacto: 0, soco: false, tempo: 0, voltaIni: -1, voltas: 0,
     chegando: false, parado: false, sintonizou: false,
     escolha: 0, escolhaU: -1,
     st: { tempo: 0, vmax: 0, orbs: 0, quase: 0, sinal: 0, ar: 0, voltas: 0 },
@@ -923,9 +947,10 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef,
 }: {
   pausado: boolean
+  cinemaRef: React.MutableRefObject<Cinema>
   corRadio: React.MutableRefObject<string>
   marcos: Marco[]
   marcosRef: React.MutableRefObject<Marco[]>
@@ -1371,6 +1396,32 @@ function Cena({
     return () => { confeteRef.current = null }
   }, [confete, confeteRef])
 
+  // drift: marca de pneu das 4 rodas no asfalto (anel que vai sobrescrevendo)
+  // e fumaça saindo das 4
+  const marcas = useMemo(() => {
+    const n = 1600
+    const m = new THREE.InstancedMesh(
+      new THREE.PlaneGeometry(0.3, 0.95),
+      new THREE.MeshBasicMaterial({ color: "#030308", transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+      n,
+    )
+    m.frustumCulled = false
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0)
+    for (let i = 0; i < n; i++) m.setMatrixAt(i, zero)
+    return { m, n, prox: 0 }
+  }, [])
+  const fumaca = useMemo(() => {
+    const n = 160
+    const pos = new Float32Array(n * 3).fill(-999)
+    const vel = new Float32Array(n * 3)
+    const vida = new Float32Array(n)
+    const g = new THREE.BufferGeometry()
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
+    return { n, pos, vel, vida, g, prox: 0 }
+  }, [])
+  const texFumaca = useMemo(() => texBrilho(), [])
+  const RODAS = useMemo(() => [[-0.82, -1.35], [0.82, -1.35], [-0.82, 1.35], [0.82, 1.35]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
+
   const faiscas = useMemo(() => {
     const n = 90
     const pos = new Float32Array(n * 3)
@@ -1414,6 +1465,8 @@ function Cena({
     f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3(),
     alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(),
     qYaw: new THREE.Quaternion(), qRoll: new THREE.Quaternion(), camOlhar: new THREE.Vector3(), d: new THREE.Object3D(),
+    qMarca: new THREE.Quaternion(), qDeriva: new THREE.Quaternion(), roda: new THREE.Vector3(),
+    qDeitar: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2),
     y0: new THREE.Vector3(0, 1, 0), z0: new THREE.Vector3(0, 0, 1), camUp: new THREE.Vector3(0, 1, 0), upMix: new THREE.Vector3(),
     c1: new THREE.Color(), c2: new THREE.Color(),
   }), [])
@@ -1423,6 +1476,7 @@ function Cena({
   const alvoCeu = useMemo(() => new THREE.Color(), [])
   const kTurbo = useRef(false)
   const kVel = useRef(0)
+  const kEsterco = useRef(0)
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
 
@@ -1439,7 +1493,19 @@ function Cena({
     // ── física na via ──
     amostra(V, j.u, a)
     const pct = j.v / VMAX
-    if (j.chegando) {
+    const cine = cinemaRef.current
+    if (cine) {
+      // piloto automático: segue a pista no meio (nunca pega saída), sem
+      // pressa; parando = encosta à direita e estaciona devagar
+      const alvoX = cine === "parando" ? Math.min(MEIA * 0.4, a.dir - 2) : 0
+      const alvoSteer = Math.max(-1, Math.min(1, (alvoX - j.x) / 3))
+      j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 3)
+      j.escolha = 0
+      if (cine === "parando") j.v = Math.max(0, j.v - (2.6 + j.v * 0.12) * dt)
+      else j.v += (VCINEMA - j.v) * Math.min(1, dt * 0.5)
+      j.vx += (j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) - j.vx) * Math.min(1, dt * 7)
+      j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * (1 - Math.min(0.75, Math.abs(a.bank) * 2.4))) * dt
+    } else if (j.chegando) {
       j.v = Math.max(0, j.v - FREIO * 0.8 * dt)
       j.x += (0 - j.x) * dt * 1.5
       if (j.v < 0.5 && !j.parado) { j.parado = true; ev.chegou(); motor?.atualizar(0, false, false) }
@@ -1489,32 +1555,73 @@ function Cena({
       if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
       j.v = Math.min(j.v, VTURBO * 1.08)
       if (j.turboT > 0) j.turboT -= dt
-      // DRIFT (freio de mão + curva, andando): a traseira escorrega, a Kombi
-      // fecha mais a curva, solta faísca e carrega turbo; soltando depois de
-      // segurar um tempo, vem o mini-turbo
-      const driftando = inp.drift && j.v > 14 && !j.ar && Math.abs(j.steer) > 0.15
-      if (driftando) {
-        j.driftT += dt
-        j.deriva += (Math.sign(j.steer) * 0.62 - j.deriva) * Math.min(1, dt * 4)
-        j.v *= 1 - 0.16 * dt
-        j.carga = Math.min(1, j.carga + dt * 0.22)
-        if (Math.random() < 0.6) soltarFaiscas(faiscas, carro.current, -Math.sign(j.steer))
-        j.shake = Math.max(j.shake, 0.08)
-      } else {
-        if (j.driftT > 0.6 && !inp.drift) {
-          j.turboT = Math.max(j.turboT, Math.min(1.8, 0.5 + j.driftT * 0.6))
-          j.flash = Math.max(j.flash, 0.35)
-          motor?.whoosh()
-          vib([15, 20, 40])
-        }
+      // DRIFT DE VERDADE — sem botão, é a finta (o "pêndulo" do rali):
+      // virar pra um lado joga o PESO da Kombi pra aquele lado. Se, com o
+      // peso ainda carregado e acima de VDRIFT, a direção vira de uma vez
+      // pro outro lado, a traseira descarrega e as QUATRO rodas perdem
+      // aderência juntas: a carroceria gira pra dentro da curva (deriva)
+      // enquanto o embalo continua levando a Kombi pra onde ela ia — ela
+      // anda de lado. Segurar pra dentro mantém o ângulo; contraesterçar
+      // fecha (e, forte, joga o drift pro outro lado: pêndulo); soltar deixa
+      // a aderência voltar e ela endireita sozinha.
+      const lado = (inp.dir ? 1 : 0) - (inp.esq ? 1 : 0)
+      const pesoAnt = j.peso
+      j.peso += ((j.ar ? 0 : j.steer * Math.min(1, Math.max(0, pct) * 1.6)) - j.peso) * Math.min(1, dt * 4)
+      if (!j.drift && lado !== 0 && lado !== j.ladoAnt && !j.ar && j.v > VDRIFT && -lado * pesoAnt > PESO_FINTA) {
+        // a finta: peso de um lado, volante pro outro. Quanto mais peso, mais
+        // a carroceria gira de saída
+        j.drift = lado as 1 | -1
+        j.giro = lado * (1.4 + Math.abs(pesoAnt) * 2.2)
         j.driftT = 0
-        j.deriva += (0 - j.deriva) * Math.min(1, dt * 5)
+        j.shake = Math.max(j.shake, 0.18)
+        vib([12, 18, 24])
       }
-      // lateral: mais resposta que antes (Horizon), mais ainda no drift;
-      // força centrífuga leve — a curva inclinada segura boa parte dela
+      j.ladoAnt = lado
       const re = j.v < 0 ? -0.6 : 1
-      const alvoVx = j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) * (driftando ? 1.65 : 1) * re
-      j.vx += (alvoVx - j.vx) * Math.min(1, dt * (driftando ? 3.5 : 7))
+      if (j.drift) {
+        const d = j.drift
+        // torque na carroceria: pra dentro sustenta, contra fecha, solto =
+        // só a aderência voltando (o -deriva) puxa ela de volta
+        // (solto, os pneus voltam a morder: puxa bem mais forte pro reto)
+        const torque = (lado === d ? 1.7 : lado === -d ? -2.6 : 0) * d * (0.6 + 0.4 * Math.min(1, pct * 1.5)) - j.deriva * (lado === d ? 2.4 : 7)
+        j.giro += (torque - j.giro * 3) * dt
+        j.deriva += j.giro * dt
+        if (Math.abs(j.deriva) > DERIVA_MAX) { j.deriva = Math.sign(j.deriva) * DERIVA_MAX; j.giro *= -0.2 }
+        // de lado, a Kombi carrega o embalo (resposta lenta) e vai sendo
+        // empurrada pra onde o nariz aponta. Velocidade quase não cai (no
+        // Horizon o carro segue a 170–200 mph atravessado): só um atrito leve
+        // na proporção do ângulo
+        const alvoVx = Math.sin(j.deriva) * Math.abs(j.v) * 0.6
+        j.vx += (alvoVx - j.vx) * Math.min(1, dt * 1.8)
+        j.v -= j.v * Math.abs(Math.sin(j.deriva)) * 0.06 * dt
+        const ang = d * j.deriva
+        if (ang > 0.2) {
+          j.driftT += dt
+          j.carga = Math.min(1, j.carga + dt * 0.22 * Math.min(1, ang / 0.5))
+        }
+        if (ang < 0.05 && lado === -d && -d * j.giro > 1.0 && j.v > VDRIFT) {
+          // pêndulo: o contraesterço passou do ponto e a carroceria foi pro
+          // outro lado com força — vira um drift pro outro lado
+          j.drift = -d as 1 | -1
+        } else if ((ang < 0.05 && lado !== d) || j.v < 10 || j.ar) {
+          // aderência voltou
+          if (j.driftT > 0.6) {
+            j.turboT = Math.max(j.turboT, Math.min(1.8, 0.5 + j.driftT * 0.6))
+            j.flash = Math.max(j.flash, 0.35)
+            motor?.whoosh()
+            vib([15, 20, 40])
+          }
+          j.drift = 0
+          j.driftT = 0
+          j.giro = 0
+        }
+      } else {
+        j.deriva += (0 - j.deriva) * Math.min(1, dt * 5)
+        // lateral com aderência: resposta rápida (Horizon); força centrífuga
+        // leve — a curva inclinada segura boa parte dela
+        const alvoVx = j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) * re
+        j.vx += (alvoVx - j.vx) * Math.min(1, dt * 7)
+      }
       const segura = 1 - Math.min(0.75, Math.abs(a.bank) * 2.4)
       if (!j.ar) j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * segura) * dt
       else j.x += j.vx * 0.5 * dt
@@ -1786,13 +1893,51 @@ function Cena({
     car.quaternion.multiply(tmp.qYaw).multiply(tmp.qRoll)
     car.position.set(a.x - a.tz * j.x * cb, j.y + 0.02, a.z + a.tx * j.x * cb)
 
+    // as 4 rodas derrapando: marca no chão e fumaça em cada uma
+    if (j.drift && Math.abs(j.deriva) > 0.15 && !j.ar) {
+      car.updateMatrixWorld()
+      // a marca segue pra onde a Kombi ANDA (sem a deriva), não pra onde aponta
+      tmp.qMarca.copy(car.quaternion).multiply(tmp.qDeriva.setFromAxisAngle(tmp.y0, j.deriva)).multiply(tmp.qDeitar)
+      const forca = Math.min(1, Math.abs(j.deriva) / 0.6)
+      for (const r of RODAS) {
+        tmp.roda.copy(r).applyMatrix4(car.matrixWorld)
+        tmp.d.position.copy(tmp.roda)
+        tmp.d.quaternion.copy(tmp.qMarca)
+        tmp.d.scale.set(1, Math.max(0.6, Math.abs(j.v) * dt / 0.95 * 1.15), 1)
+        tmp.d.updateMatrix()
+        marcas.m.setMatrixAt(marcas.prox++ % marcas.n, tmp.d.matrix)
+        if (FUMACA && Math.random() < 0.45 * forca) {
+          const i = fumaca.prox++ % fumaca.n
+          fumaca.pos.set([tmp.roda.x, tmp.roda.y + 0.25, tmp.roda.z], i * 3)
+          fumaca.vel.set([(Math.random() - 0.5) * 2, 0.8 + Math.random() * 1.4, (Math.random() - 0.5) * 2], i * 3)
+          fumaca.vida[i] = 0.6 + Math.random() * 0.5
+        }
+      }
+      tmp.d.scale.set(1, 1, 1)
+      marcas.m.instanceMatrix.needsUpdate = true
+    }
+    for (let i = 0; i < fumaca.n; i++) {
+      if (fumaca.vida[i] <= 0) { fumaca.pos[i * 3 + 1] = -999; continue }
+      fumaca.vida[i] -= dt
+      fumaca.pos[i * 3] += fumaca.vel[i * 3] * dt
+      fumaca.pos[i * 3 + 1] += fumaca.vel[i * 3 + 1] * dt
+      fumaca.pos[i * 3 + 2] += fumaca.vel[i * 3 + 2] * dt
+    }
+    fumaca.g.attributes.position.needsUpdate = true
+
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const atras = 8.4 + pct * 1.8
     tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
+    if (cine) {
+      // câmera de cinema: baixa, de lado, girando devagar em volta da Kombi
+      const ang = j.tempo * 0.11 + 0.5
+      const raio = 9.5 - Math.min(1, j.v / VCINEMA) * 1.5
+      tmp.alvo.copy(car.position).addScaledVector(tmp.f, -Math.cos(ang) * raio).addScaledVector(tmp.r, Math.sin(ang) * raio * 0.75).addScaledVector(tmp.up, 1.6 + Math.sin(j.tempo * 0.07) * 0.5)
+    }
     if (j.encaixar) { camInit.current = false; j.encaixar = false }
-    const k = camInit.current ? 1 - Math.exp(-dt * (j.ar ? 3 : 5.5)) : 1
+    const k = camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
     camera.position.lerp(tmp.alvo, k)
-    tmp.olhar.copy(car.position).addScaledVector(tmp.f, 7).addScaledVector(tmp.up, 1.2)
+    tmp.olhar.copy(car.position).addScaledVector(tmp.f, cine ? 2.5 : 7).addScaledVector(tmp.up, cine ? 1.4 : 1.2)
     tmp.camOlhar.lerp(tmp.olhar, camInit.current ? 1 - Math.exp(-dt * 9) : 1)
     tmp.upMix.copy(tmp.up).lerp(tmp.y0, 0.45).normalize()
     tmp.camUp.lerp(tmp.upMix, camInit.current ? 1 - Math.exp(-dt * 4) : 1).normalize()
@@ -1804,7 +1949,7 @@ function Cena({
     camera.lookAt(tmp.camOlhar)
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
-    const fovAlvo = 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
+    const fovAlvo = cine ? 50 : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
@@ -1836,7 +1981,10 @@ function Cena({
     if (hemi.current) hemi.current.color.lerp(alvoCeu, kk * 0.5)
 
     // som: só o motor
-    motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
+    motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (cine ? cine === "rodando" : inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
+    // vibração leve enquanto acelera, mais forte quanto mais rápido (não no
+    // cinema da chegada, não no ar, não freando)
+    tremor(!cine && !j.ar && !j.chegando && !inp.freio && (inp.gas || toqueTela) && j.v > 1, Math.abs(j.v) / VMAX)
 
     // orbs: na cor da rádio que está tocando, batendo no grave da música
     const t = state.clock.elapsedTime
@@ -1913,6 +2061,9 @@ function Cena({
 
     kTurbo.current = j.turboT > 0
     kVel.current = j.v
+    // rodas da frente: com aderência seguem o volante; de lado, apontam pra
+    // onde a Kombi anda (contraesterço natural)
+    kEsterco.current += ((j.drift ? j.deriva * 0.85 : -j.steer * 0.42) - kEsterco.current) * Math.min(1, dt * 10)
     hudN.current++
     if (hudN.current % 4 === 0) ev.hud(j)
   })
@@ -2088,12 +2239,16 @@ function Cena({
         <lineBasicMaterial color="#a8ccff" transparent opacity={0.28} />
       </lineSegments>
       <primitive object={confete.m} frustumCulled={false} />
+      <primitive object={marcas.m} />
+      <points geometry={fumaca.g} frustumCulled={false}>
+        <pointsMaterial size={1.1} map={texFumaca} color="#b4bbd6" transparent opacity={0.22} depthWrite={false} />
+      </points>
       <points geometry={faiscas.g} frustumCulled={false}>
         <pointsMaterial size={0.35} color="#ffb454" transparent blending={THREE.AdditiveBlending} depthWrite={false} />
       </points>
 
       <group ref={carro}>
-        <Kombi222 turbo={kTurbo} velocidade={kVel} />
+        <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
         <pointLight position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}

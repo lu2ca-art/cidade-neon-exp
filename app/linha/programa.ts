@@ -10,7 +10,7 @@
 //   invade). Rascunho: o LU2CA grava na voz dele depois
 
 import { ESTACOES, estacao, type EstacaoId } from "./data"
-import { FREQUENCIAS, faixasDe, type FreqId } from "./radio"
+import { FREQUENCIAS, VINIS, faixasDe, type FreqId } from "./radio"
 
 export interface Faixa { titulo: string; src: string }
 
@@ -165,6 +165,7 @@ export function ehDoLugar(id: FreqId, src: string | null, objetos: EstacaoId[]) 
 }
 
 export const TODAS_FAIXAS: Faixa[] = [
+  ...VINIS,
   ...FREQUENCIAS.flatMap((f) => f.faixas),
   ...ESTACOES.map((e) => ({ titulo: e.faixa, src: e.audio })),
 ]

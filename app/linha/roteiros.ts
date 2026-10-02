@@ -47,6 +47,12 @@ export type Passo =
   | { t: "sistema"; texto: string }
   | { t: "audio"; src: string; titulo: string; de?: string }
   | { t: "video"; src: string; legenda?: string; de?: string }
+  // nota de voz: toca por cima da música (que abaixa), dá pra ouvir
+  // dirigindo. Sem src = rascunho, sai na voz do navegador lendo `fala`
+  | { t: "voz"; fala: string; src?: string; de?: string }
+  // a pessoa manda um vídeo do //LOOP: chega como notificação do app
+  // video: o id do vídeo no feed do //LOOP (app/tiktok/feed) — abre nele
+  | { t: "loop"; titulo: string; video?: number; de?: string }
   | { t: "escolha"; opcoes: Opcao[]; de?: string; pergunta?: string }
   | { t: "input"; chave: "nome" | "linha"; placeholder: string; resposta: (v: string) => Fala[] }
   | { t: "prova"; id: ProvaId }
@@ -180,8 +186,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
     passos: [
       { t: "msg", texto: (c) => `oi ${c.nome}` },
       { t: "msg", texto: (c) => (c.estacao === "chuva" ? "a D-Bee disse que vc é daqui. da chuva" : "a D-Bee me passou teu contato") },
-      { t: "msg", texto: "aqui chove faz três anos. o núcleo chama de instabilidade climática" },
-      { t: "msg", texto: "eu chamo de chuva mesmo" },
+      { t: "voz", fala: "aqui chove faz três anos. o núcleo chama de instabilidade climática. eu chamo de chuva mesmo" },
       {
         t: "escolha",
         opcoes: [
@@ -189,6 +194,8 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "três anos?? como vc aguenta", resposta: ["n aguento", "só deixo molhar. faz diferença"] },
         ],
       },
+      { t: "msg", texto: "achei esse no loop. é a rua daqui, antes" },
+      { t: "loop", titulo: "POV: vc descobriu a cidade neon e nunca mais voltou", video: 2 },
       { t: "msg", texto: "nasceu uma flor no asfalto aqui na frente" },
       { t: "msg", texto: "ironia: chove o dia inteiro e ela tá morrendo de sede. a chuva daqui vem com neon dentro" },
       { t: "msg", texto: "tem uma caixa d'água no subúrbio xenom que o núcleo esqueceu. água de verdade" },
@@ -221,7 +228,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
         ],
       },
       { t: "msg", texto: "achei um mp3 no fundo de um copo americano. sério" },
-      { t: "msg", texto: "tá sem pilha. ninguém vende pilha desde que o núcleo fez tudo recarregar sozinho" },
+      { t: "voz", fala: "tá sem pilha. ninguém vende pilha desde que o núcleo fez tudo recarregar sozinho" },
       { t: "msg", texto: "a conveniência 24h da cidade neon ainda tem umas no fundo da prateleira" },
       { t: "msg", texto: "traz duas. eu pago o café" },
       { t: "tarefa" },
@@ -250,6 +257,8 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "e o relógio aqui anda duas vezes mais rápido" },
       { t: "nucleo", texto: "você tem 12 notificações não lidas ✓" },
       { t: "msg", texto: "TÁ VENDO" },
+      { t: "msg", texto: "vou te mandar um vídeo que eu achei no loop. é tipo a minha cabeça" },
+      { t: "loop", titulo: "bastidores, sem contexto. cortes brutos do banco do loop", video: 6 },
       {
         t: "escolha",
         opcoes: [
@@ -279,8 +288,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
     status: "estação 4 · sexta-feira",
     passos: [
       { t: "msg", texto: (c) => `e aí ${c.nome}` },
-      { t: "msg", texto: "sexta-feira e eu em casa" },
-      { t: "msg", texto: "todo mundo postando rolê" },
+      { t: "voz", fala: "sexta-feira e eu em casa. todo mundo postando rolê" },
       {
         t: "escolha",
         opcoes: [

@@ -5,6 +5,7 @@
 
 import { ESTACOES, lancada, type EstacaoId } from "./data"
 import { TIER_META } from "@/lib/radio-tiers"
+import vinis from "./vinis.json"
 
 export interface Frequencia {
   id: "linha" | "suburbio" | "crypto" | "live" | "full"
@@ -47,25 +48,39 @@ export const FREQUENCIAS: Frequencia[] = [
 
 export type FreqId = Frequencia["id"]
 
-// Repertório de cada lugar (desde 30/09 — antes a 222.0 só tocava os
-// objetos já pegos e virava 1 música em loop):
-// - 222.0 (centro): todo o Vol.1 já lançado, mais a prévia de quem já
-//   pegou o objeto de uma faixa ainda por vir (o Nectar pelo violão)
-// - 69.9, 88.7, 111.3: subúrbio, instrumentais e ao vivo — versões de faixa
-//   que ainda não saiu só entram depois da data
-// - 222.4 (avenida): o Vol.1 lançado + o arquivo (catálogo antigo, nomes
-//   mascarados)
+// Os vinis da Kombi (os discos da loja): o som de fundo do carro. Tocam
+// desde a chegada e nunca acabam — é por cima deles que as músicas do
+// LU2CA vão entrando, uma por missão. A lista mora em vinis.json
+// (scripts/vinis/baixar.mjs acrescenta discos de domínio público lá).
+export const VINIS = (vinis as { titulo: string; autor: string; src: string }[]).map((v) => ({ titulo: `${v.titulo} · ${v.autor}`, src: v.src }))
+
+// Repertório de cada lugar (desde 01/10): música do LU2CA é RECOMPENSA.
+// Nada entra de graça por já ter sido lançado — cada missão cumprida
+// (objeto) libera uma, e o resto do tempo toca vinil.
+// - 222.0 (centro): os vinis + as faixas do Vol.1 que você ganhou
+// - 88.7, 111.3: instrumental e ao vivo só das faixas que você já ganhou
+//   (e que já saíram)
+// - 69.9 (subúrbio) e 222.4 (avenida, o arquivo): catálogo antigo, uma
+//   faixa a mais por missão cumprida
+// Todo lugar tem os vinis por baixo: nunca fica mudo, nunca chove música.
 export const ARQUIVO = [t("c****e", "cliche"), t("h*****ood", "hollywood"), t("s*****t", "stylist"), t("o***s", "oasis"), t("a*******a", "astronauta"), t("q* é v*?", "qm-e-vc")]
 const saiu = (titulo: string, agora: number) => {
   const e = ESTACOES.find((x) => titulo.toLowerCase().startsWith(x.faixa.toLowerCase()))
   return !e || lancada(e, agora)
 }
 
+const ganhou = (titulo: string, objetos: EstacaoId[]) => {
+  const e = ESTACOES.find((x) => titulo.toLowerCase().startsWith(x.faixa.toLowerCase()))
+  return !!e && objetos.includes(e.id)
+}
+
 export function faixasDe(f: Frequencia, objetos: EstacaoId[], _estacao: EstacaoId | null, agora = Date.now()) {
-  const vol1 = ESTACOES.filter((e) => lancada(e, agora) || objetos.includes(e.id)).map((e) => ({ titulo: e.faixa, src: e.audio }))
-  if (f.id === "linha") return vol1
-  if (f.id === "full") return [...vol1, ...ARQUIVO]
-  return f.faixas.filter((x) => saiu(x.titulo, agora))
+  const vol1 = ESTACOES.filter((e) => objetos.includes(e.id)).map((e) => ({ titulo: e.faixa, src: e.audio }))
+  const n = objetos.length
+  if (f.id === "linha") return [...VINIS, ...vol1]
+  if (f.id === "full") return [...VINIS, ...vol1, ...ARQUIVO.slice(0, n)]
+  if (f.id === "suburbio") return [...VINIS, ...f.faixas.slice(0, n)]
+  return [...VINIS, ...f.faixas.filter((x) => ganhou(x.titulo, objetos) && saiu(x.titulo, agora))]
 }
 
 export function proximaFreq(sinal: number) {

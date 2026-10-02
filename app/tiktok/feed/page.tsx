@@ -380,6 +380,10 @@ export default function TikTokFeedPage() {
       setActiveIdx(idx)
     }
     el.addEventListener("scroll", handleScroll, { passive: true })
+    // link direto pra um vídeo (?v=id): alguém mandou ele pelo N3XO
+    const v = Number(new URLSearchParams(location.search).get("v"))
+    const k = VIDEOS.findIndex((x) => x.id === v)
+    if (k > 0) requestAnimationFrame(() => el.scrollTo({ top: k * el.clientHeight }))
     return () => el.removeEventListener("scroll", handleScroll)
   }, [])
 

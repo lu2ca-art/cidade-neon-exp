@@ -1,13 +1,36 @@
 // Som do carro: só o motor (pedido do LU2CA — nada de vento, pneu ou
-// chiado). Sintetizado com marchas, reage à velocidade real e só ronca
-// de verdade quando acelera; solto, vira um ronco baixinho.
+// chiado). Desde 02/10 é um murmúrio grave e redondo, bem embaixo da
+// música: antes era dente-de-serra + quadrada, que soava como ruído.
+// Agora só senoides graves, filtradas, que sobem de leve com o giro e
+// quase somem com o pé fora. Quem dá a sensação de acelerar é a vibração
+// (tremor), não o volume.
 
 import { audioCtx } from "./som"
 
 export const MARCHAS = [0, 0.2, 0.4, 0.6, 0.8, 1.45]
 
+// vibração de evento (pouso, turbo, finta…): marca a hora, pra o tremor
+// da aceleração não atropelar o padrão no meio
+let ultimoEvento = 0
 export function vib(p: number | number[]) {
+  ultimoEvento = performance.now()
   try { navigator.vibrate?.(p) } catch {}
+}
+
+// Tremor de aceleração: pulsos curtos e leves enquanto acelera. A API de
+// vibração não tem força, então a intensidade vem do ritmo e da duração:
+// devagar = um toque leve de vez em quando; rápido = pulsos mais longos e
+// mais juntos. Só no celular que vibra (Android; o iPhone não deixa site
+// vibrar). intensidade: 0–1
+let proxTremor = 0
+export function tremor(acelerando: boolean, intensidade: number) {
+  const agora = performance.now()
+  if (!acelerando || intensidade <= 0.02) return
+  if (agora - ultimoEvento < 400 || agora < proxTremor) return
+  const k = Math.min(1, intensidade)
+  const dur = Math.round(5 + k * 11) // 5ms → 16ms
+  proxTremor = agora + 300 - k * 190 // a cada 300ms → 110ms
+  try { navigator.vibrate?.(dur) } catch {}
 }
 
 /* ─── motor de som ──────────────────────────────────────── */
@@ -17,21 +40,24 @@ export function montarMotor() {
   const out = c.createGain()
   out.gain.value = 0
   // mistura do carro bem abaixo da música (pedido do LU2CA)
-  out.gain.setTargetAtTime(0.32, c.currentTime, 0.4)
+  out.gain.setTargetAtTime(0.28, c.currentTime, 0.6)
   out.connect(c.destination)
 
+  // dois tons graves e limpos (fundamental e quinta), sem harmônico áspero
   const o1 = c.createOscillator()
-  o1.type = "sawtooth"
+  o1.type = "sine"
   const o2 = c.createOscillator()
-  o2.type = "square"
+  o2.type = "triangle"
   const lp = c.createBiquadFilter()
   lp.type = "lowpass"
-  lp.frequency.value = 500
-  lp.Q.value = 4
+  lp.frequency.value = 220
+  lp.Q.value = 0.5
   const mg = c.createGain()
   mg.gain.value = 0
+  const g2 = c.createGain()
+  g2.gain.value = 0.35
   o1.connect(lp)
-  o2.connect(lp)
+  o2.connect(g2).connect(lp)
   lp.connect(mg).connect(out)
   o1.start()
   o2.start()
@@ -47,19 +73,21 @@ export function montarMotor() {
       const hi = MARCHAS[m]
       const rpm = Math.max(0, Math.min(1, (pct - lo) / (hi - lo)))
       rev *= 0.94
-      const f = 42 + rpm * 95 + m * 9 + (turbo ? 18 : 0) + rev * 30
-      o1.frequency.setTargetAtTime(f, t, 0.04)
-      o2.frequency.setTargetAtTime(f / 2, t, 0.04)
-      lp.frequency.setTargetAtTime(260 + rpm * 1500 * (acel ? 1 : 0.35) + (turbo ? 900 : 0), t, 0.05)
-      // parado ou solto: quase mudo. acelerando: ronca
-      const vivo = pct > 0.02 ? 1 : 0.3
-      mg.gain.setTargetAtTime((acel ? 0.065 : 0.008) * vivo, t, acel ? 0.08 : 0.25)
+      // giro sobe pouco (é murmúrio, não grito) e devagar
+      const f = 46 + rpm * 38 + m * 5 + (turbo ? 8 : 0) + rev * 12
+      o1.frequency.setTargetAtTime(f, t, 0.12)
+      o2.frequency.setTargetAtTime(f * 1.5, t, 0.12)
+      lp.frequency.setTargetAtTime(180 + rpm * 160 * (acel ? 1 : 0.4) + (turbo ? 80 : 0), t, 0.15)
+      // parado ou solto: some. acelerando: um fundo baixinho
+      const vivo = pct > 0.02 ? 1 : 0.2
+      mg.gain.setTargetAtTime((acel ? 0.03 : 0.004) * vivo, t, acel ? 0.25 : 0.5)
       if (m !== ultimaMarcha) {
+        // troca de marcha: só um respiro no volume, sem tranco
         if (m > ultimaMarcha && acel) {
           mg.gain.cancelScheduledValues(t)
-          mg.gain.setValueAtTime(0.005, t)
-          mg.gain.linearRampToValueAtTime(0.065, t + 0.14)
-          vib(14)
+          mg.gain.setValueAtTime(0.018, t)
+          mg.gain.linearRampToValueAtTime(0.03, t + 0.25)
+          vib(10)
         }
         ultimaMarcha = m
       }
@@ -79,7 +107,7 @@ export function montarMotor() {
       s.type = "sine"
       s.frequency.setValueAtTime(90, c.currentTime)
       s.frequency.exponentialRampToValueAtTime(30, c.currentTime + 0.35)
-      g.gain.setValueAtTime(0.6, c.currentTime)
+      g.gain.setValueAtTime(0.25, c.currentTime)
       g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.4)
       s.connect(g).connect(out)
       s.start()

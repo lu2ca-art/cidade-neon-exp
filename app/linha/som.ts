@@ -281,6 +281,9 @@ class Player {
   el: HTMLAudioElement | null = null
   detector: DetectorDeTom | null = null
   gain: GainNode | null = null
+  // ducking: abaixa a música por baixo de um áudio de voz (separado do
+  // volume, que a estrada e a chegada mexem)
+  abaixo: GainNode | null = null
   src: string | null = null
   ouvintes = new Set<Ouvinte>()
   private fontes = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>()
@@ -301,10 +304,11 @@ class Player {
         const node = c.createMediaElementSource(el)
         this.fontes.set(el, node)
         this.gain = c.createGain()
+        this.abaixo = c.createGain()
         this.analyser = c.createAnalyser()
         this.analyser.fftSize = 256
         this.analyser.smoothingTimeConstant = 0.6
-        node.connect(this.gain).connect(out)
+        node.connect(this.gain).connect(this.abaixo).connect(out)
         this.gain.connect(this.analyser)
         const ouvido = c.createAnalyser()
         ouvido.fftSize = 16384
@@ -347,6 +351,16 @@ class Player {
     else if (this.el) this.el.volume = Math.max(0, Math.min(1, v))
   }
 
+  // música lá embaixo enquanto alguém fala, e volta devagar depois. Conta
+  // quem pediu (nota de voz, ligação inteira): só volta quando todos soltam
+  private abaixando = 0
+  abaixar(sim: boolean) {
+    this.abaixando = Math.max(0, this.abaixando + (sim ? 1 : -1))
+    const baixo = this.abaixando > 0
+    if (this.abaixo && ctx) this.abaixo.gain.setTargetAtTime(baixo ? 0.12 : 1, ctx.currentTime, baixo ? 0.15 : 0.6)
+    else if (this.el) this.el.volume = baixo ? 0.12 : 1
+  }
+
   pausar() { this.el?.pause() }
   get tocando() { return !!this.el && !this.el.paused }
 
@@ -368,3 +382,86 @@ class Player {
 }
 
 export const player = new Player()
+
+// ── Voz ─────────────────────────────────────────────────────
+// Áudio de voz (nota de voz, ligação) num canal SEPARADO da música: a
+// música não para, só abaixa bastante enquanto a pessoa fala, e volta
+// quando acaba. Dá pra ouvir dirigindo, sem tirar a rádio/vinil do lugar.
+// Sem arquivo gravado ainda (rascunho), a fala sai na voz do navegador.
+type OuvinteVoz = (s: { id: string | null; tocando: boolean; t: number; dur: number }) => void
+
+class Voz {
+  el: HTMLAudioElement | null = null
+  id: string | null = null
+  tocando = false
+  private ouvintes = new Set<OuvinteVoz>()
+  private sintese: SpeechSynthesisUtterance | null = null
+
+  private garantir() {
+    if (this.el) return this.el
+    const el = new Audio()
+    el.preload = "auto"
+    el.crossOrigin = "anonymous"
+    el.addEventListener("timeupdate", () => this.emitir())
+    el.addEventListener("ended", () => this.parou())
+    el.addEventListener("pause", () => { if (this.tocando && !el.ended) this.parou() })
+    const c = audioCtx()
+    const out = saida()
+    if (c && out) {
+      try { c.createMediaElementSource(el).connect(out) } catch {}
+    }
+    this.el = el
+    return el
+  }
+
+  // id: quem é (pra a bolha saber se é ela que tá tocando)
+  tocar(id: string, src?: string, fala?: string, tom = 1) {
+    this.parar()
+    this.id = id
+    this.tocando = true
+    player.abaixar(true)
+    if (src) {
+      const el = this.garantir()
+      el.src = src
+      el.currentTime = 0
+      el.play().catch(() => this.parou())
+    } else if (fala && typeof speechSynthesis !== "undefined") {
+      const u = new SpeechSynthesisUtterance(fala)
+      u.lang = "pt-BR"
+      u.pitch = tom
+      u.rate = 1.05
+      u.onend = () => this.parou()
+      u.onerror = () => this.parou()
+      this.sintese = u
+      speechSynthesis.speak(u)
+    } else this.parou()
+    this.emitir()
+  }
+
+  parar() {
+    if (!this.tocando) return
+    this.el?.pause()
+    if (this.sintese) { speechSynthesis.cancel(); this.sintese = null }
+    this.parou()
+  }
+
+  private parou() {
+    if (!this.tocando) return
+    this.tocando = false
+    this.sintese = null
+    player.abaixar(false)
+    this.emitir()
+  }
+
+  emitir() {
+    const s = { id: this.id, tocando: this.tocando, t: this.el?.currentTime ?? 0, dur: this.el?.duration || 0 }
+    this.ouvintes.forEach((f) => f(s))
+  }
+
+  ouvir(f: OuvinteVoz) {
+    this.ouvintes.add(f)
+    return () => { this.ouvintes.delete(f) }
+  }
+}
+
+export const voz = new Voz()

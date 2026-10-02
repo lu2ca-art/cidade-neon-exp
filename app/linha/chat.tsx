@@ -9,7 +9,7 @@ import { FREQUENCIAS, proximaFreq } from "./radio"
 import { track } from "@/lib/analytics"
 import { Objeto } from "./objetos"
 import { Prova } from "./provas"
-import { gota, player } from "./som"
+import { gota, player, voz } from "./som"
 import { icsHref, compartilhar } from "./util"
 
 interface Props {
@@ -19,6 +19,19 @@ interface Props {
   onFim: (para: Destino) => void
   onVoltar?: () => void
   onXp: (n: number, motivo: string) => void
+  // "painel": a conversa roda na tela da Kombi, dirigindo — responde pelos
+  // botões do painel. Quando precisa do celular de verdade (prova, digitar,
+  // receber o objeto, a revelação), pede a tela cheia (onPrecisaTela) e a
+  // MESMA conversa continua lá
+  modo?: "tela" | "painel"
+  onPrecisaTela?: () => void
+  // notificação do //LOOP tocada: abre o app (no vídeo, se tiver)
+  onLoop?: (video?: number) => void
+  // painel rodando por baixo do celular aberto: continua, mas some
+  oculto?: boolean
+  // "audio": até o pedido da missão, a pessoa manda tudo em nota de voz
+  // (as mensagens seguidas viram um áudio só) — ligacoes.ts, MODOS
+  jeito?: "texto" | "audio"
 }
 
 // pra onde a conversa manda quando termina (ou pausa)
@@ -56,7 +69,7 @@ const SISTEMA = "__sistema"
 
 const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
 
-export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
+export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onLoop, oculto, jeito = "texto" }: Props) {
   const roteiro = ROTEIROS[id]
   const jaFeito = save.completos.includes(id)
   // conversa que parou esperando a busca no mapa: volta de onde parou
@@ -142,6 +155,16 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
     const c = ctx()
     const quemPadrao = roteiro.grupo ? null : roteiro.contato
 
+    const ateOPedido = pos < roteiro.passos.findIndex((x) => x.t === "tarefa")
+    if (fila.length && jeito === "audio" && ateOPedido && !roteiro.grupo) {
+      // modo áudio: a resposta dela também vem em nota de voz, num áudio só
+      const fala = fila.map((f) => resolver(typeof f === "object" ? f.texto : f, c)).join(". ")
+      agendar(Math.min(2800, 900 + fala.length * 16), quemPadrao ?? "", () => {
+        empurrar({ k: "voz", fala })
+        setFila([])
+      })
+      return
+    }
     if (fila.length) {
       const f = fila[0]
       const de = typeof f === "object" ? f.de : quemPadrao
@@ -165,6 +188,20 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
     }
     const p = roteiro.passos[pos]
     const avancar = () => { perguntou.current = false; setPos((n) => n + 1) }
+
+    if (p.t === "msg" && jeito === "audio" && ateOPedido && !roteiro.grupo && !p.de) {
+      // modo áudio: junta as mensagens seguidas dela numa nota de voz
+      const falas: string[] = []
+      let k = pos
+      for (let q = roteiro.passos[k]; q?.t === "msg" && !q.de; q = roteiro.passos[++k]) falas.push(resolver(q.texto, c))
+      const fala = falas.join(". ")
+      agendar(Math.min(2800, 900 + fala.length * 16), quemPadrao ?? "", () => {
+        empurrar({ k: "voz", fala })
+        perguntou.current = false
+        setPos(k)
+      })
+      return
+    }
 
     switch (p.t) {
       case "msg": {
@@ -191,6 +228,19 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
       case "video":
         agendar(1100, p.de ?? quemPadrao ?? "", () => {
           empurrar({ k: "video", src: p.src, legenda: p.legenda, de: p.de })
+          avancar()
+        })
+        break
+      case "voz":
+        // "gravando áudio…" demora o tamanho da fala
+        agendar(Math.min(2600, 900 + p.fala.length * 18), p.de ?? quemPadrao ?? "", () => {
+          empurrar({ k: "voz", fala: p.fala, src: p.src, de: p.de })
+          avancar()
+        })
+        break
+      case "loop":
+        agendar(1200, p.de ?? quemPadrao ?? "", () => {
+          empurrar({ k: "loop", titulo: p.titulo, video: p.video, de: p.de })
           avancar()
         })
         break
@@ -299,7 +349,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
         break
       }
     }
-  }, [pos, fila, espera, roteiro, id, jaFeito, ctx, agendar, empurrar, atualizar, onXp])
+  }, [pos, fila, espera, roteiro, id, jaFeito, ctx, agendar, empurrar, atualizar, onXp, jeito])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // mantém o log salvo quando ecos chegam numa conversa já feita
@@ -309,12 +359,38 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
   }, [log.length])
 
   useEffect(() => {
-    fim.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-  }, [log.length, digitando, espera])
+    if (modo === "tela") fim.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+  }, [log.length, digitando, espera, modo])
+
+  // no painel da Kombi: o que precisa do celular pede a tela cheia; o pedido
+  // da missão é aceito sozinho (já tá na Kombi); o fim fecha o painel
+  const ultimo = log[log.length - 1]
+  const precisaTela = modo === "painel" && (espera?.t === "input" || espera?.t === "prova" || (!!ultimo && vivos.has(log.length - 1) && (ultimo.k === "objeto" || ultimo.k === "revelacao" || ultimo.k === "prova" || ultimo.k === "video")))
+  useEffect(() => {
+    if (precisaTela) onPrecisaTela?.()
+  }, [precisaTela, onPrecisaTela])
+  useEffect(() => {
+    if (modo !== "painel" || (espera?.t !== "tarefa" && espera?.t !== "fim")) return
+    const para: Destino = espera.t === "tarefa" ? "estrada" : espera.para
+    const t = setTimeout(() => onFim(para), espera.t === "tarefa" ? 3200 : 2600)
+    return () => clearTimeout(t)
+  }, [modo, espera, onFim])
+  // no painel, responde também pelo teclado (1, 2, 3, 4)
+  const escolherRef = useRef<(i: number) => void>(() => {})
+  useEffect(() => {
+    if (modo !== "painel") return
+    const k = (e: KeyboardEvent) => {
+      const n = Number(e.key)
+      if (n >= 1 && n <= 4) escolherRef.current(n - 1)
+    }
+    window.addEventListener("keydown", k)
+    return () => window.removeEventListener("keydown", k)
+  }, [modo])
 
   const escolher = (i: number) => {
     if (espera?.t !== "escolha") return
     const o = espera.passo.opcoes[i]
+    if (!o) return
     empurrar({ k: "msg", texto: o.label, eu: true })
     if (o.perfil) perfil.current = o.perfil
     if (o.peso) {
@@ -383,12 +459,47 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
     </header>
   ), [onVoltar, corContato, roteiro, est, digitando, contato, status])
 
+  useEffect(() => { escolherRef.current = escolher })
+
+  if (modo === "painel") {
+    // as últimas falas, curtinhas, na lateral da tela da Kombi
+    // com opção pra escolher, só as 2 últimas — o painel não pode tampar a pista
+    const recentes = log.map((it, i) => ({ it, i })).slice(espera?.t === "escolha" ? -2 : -3)
+    return (
+      <div className={`l-painel ${oculto ? "is-oculto" : ""}`} style={{ ["--cor" as string]: corContato }} onPointerDown={(e) => e.stopPropagation()} onClick={() => pular.current?.()}>
+        <header>
+          <div className="l-avatar" style={{ ["--cor" as string]: corContato }}>
+            {roteiro.grupo ? <span className="l-avatar-222">222</span> : est ? <Objeto id={getEstacao(est).objeto} cor={corContato} size={14} /> : <span>?</span>}
+          </div>
+          <b>{contato}</b>
+          <small>N3XO{digitando !== null ? " · digitando…" : ""}</small>
+        </header>
+        <div className="l-painel-msgs">
+          {recentes.map(({ it, i }) => (
+            <BolhaPainel key={i} it={it} grupo={!!roteiro.grupo} contato={contato} onLoop={onLoop} save={save} />
+          ))}
+          {digitando !== null && <div className="l-digitando"><span><i /><i /><i /></span></div>}
+        </div>
+        {espera?.t === "escolha" && (
+          <div className="l-painel-ops">
+            {espera.passo.opcoes.map((o, i) => (
+              <button key={i} type="button" onClick={(e) => { e.stopPropagation(); escolher(i) }} style={{ animationDelay: `${i * 70}ms` }}>
+                <em>{i + 1}</em>{o.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {espera?.t === "tarefa" && <p className="l-painel-nota">missão aceita · segue a coluna de luz</p>}
+      </div>
+    )
+  }
+
   return (
     <div className="l-chat" style={{ ["--cor" as string]: corContato }}>
       {cabecalho}
       <div className="l-chat-corpo" onClick={() => pular.current?.()}>
         {log.map((it, i) => (
-          <Bolha key={i} it={it} grupo={!!roteiro.grupo} contato={contato} vivo={vivos.has(i)} onProva={fimProva} save={save} />
+          <Bolha key={i} it={it} grupo={!!roteiro.grupo} contato={contato} vivo={vivos.has(i)} onProva={fimProva} save={save} onLoop={onLoop} />
         ))}
         {digitando !== null && (
           <div className="l-digitando" style={{ ["--cor" as string]: VOZES[digitando] ?? corContato }}>
@@ -432,7 +543,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
         )}
         {espera?.t === "fim" && (
           <button type="button" className="l-btn l-btn-fim" style={{ ["--cor" as string]: "#2fe8ff" }} onClick={() => onFim(espera.para)}>
-            {espera.para === "missao" ? `ver mensagem${proximo ? ` de ${proximo}` : ""}` : espera.para === "grupo" ? "entrar no grupo" : "voltar"}
+            {espera.para === "missao" ? (save.estacao ? `pra kombi${proximo ? ` · ${proximo} vai te chamar` : ""} →` : `ver mensagem${proximo ? ` de ${proximo}` : ""}`) : espera.para === "grupo" ? "entrar no grupo" : "voltar"}
           </button>
         )}
         {espera === null && <p className="l-acelera">{digitando !== null ? "toca na conversa pra acelerar" : " "}</p>}
@@ -442,7 +553,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp }: Props) {
   )
 }
 
-function Bolha({ it, grupo, contato, vivo, onProva, save }: { it: Item; grupo: boolean; contato: string; vivo: boolean; onProva: (p?: boolean) => void; save: Save }) {
+function Bolha({ it, grupo, contato, vivo, onProva, save, onLoop }: { it: Item; grupo: boolean; contato: string; vivo: boolean; onProva: (p?: boolean) => void; save: Save; onLoop?: (video?: number) => void }) {
   switch (it.k) {
     case "msg": {
       const cor = it.de ? VOZES[it.de] : undefined
@@ -464,6 +575,10 @@ function Bolha({ it, grupo, contato, vivo, onProva, save }: { it: Item; grupo: b
       return <p className="l-sistema">{it.texto}</p>
     case "audio":
       return <AudioBolha src={it.src} titulo={it.titulo} de={grupo ? it.de : contato} auto={vivo} />
+    case "voz":
+      return <VozBolha it={it} de={grupo && it.de ? it.de : contato} auto={vivo} />
+    case "loop":
+      return <LoopCard titulo={it.titulo} de={grupo && it.de ? it.de : contato} onLoop={onLoop && (() => onLoop(it.video))} />
     case "video":
       return (
         <div className={`l-msg l-video ${vivo ? "is-vivo" : ""}`}>
@@ -567,10 +682,8 @@ function TarefaCard({ estacao, feita, save }: { estacao: EstacaoId; feita: boole
 function Revelacao({ estacao, vivo, nome }: { estacao: EstacaoId; vivo: boolean; nome: string }) {
   const e = getEstacao(estacao)
   const saiu = lancada(e) || e.id === "ontem"
-  useEffect(() => {
-    if (vivo && saiu) setTimeout(() => player.tocar(e.audio), 600)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // a música da estação NÃO toca aqui: ela é recompensa, entra na rádio
+  // quando a missão dessa estação for cumprida
   return (
     <div className={`l-revela ${vivo ? "is-vivo" : ""}`} style={{ ["--cor" as string]: e.cor }}>
       <small>{nome ? `${nome}, sua estação é` : "sua estação é"}</small>
@@ -600,4 +713,84 @@ function Revelacao({ estacao, vivo, nome }: { estacao: EstacaoId; vivo: boolean;
       </button>
     </div>
   )
+}
+
+// tom da voz do navegador por pessoa (só vale enquanto não tem áudio gravado)
+const TOM: Record<string, number> = { "D-Bee": 1.25, Ella: 1.2, Mubarak: 0.8, Notti: 1.1, BBX: 0.9, Alohan: 0.85, LU2CA: 0.95 }
+
+// nota de voz: canal separado — a música abaixa e volta, não para
+function VozBolha({ it, de, auto, compacta }: { it: Extract<Item, { k: "voz" }>; de: string; auto: boolean; compacta?: boolean }) {
+  const id = `${de}:${it.fala.slice(0, 40)}`
+  const [s, setS] = useState({ tocando: false, t: 0, dur: 0 })
+  useEffect(() => voz.ouvir((e) => setS(e.id === id ? { tocando: e.tocando, t: e.t, dur: e.dur } : { tocando: false, t: 0, dur: 0 })), [id])
+  useEffect(() => {
+    if (auto) voz.tocar(id, it.src, it.fala, TOM[de] ?? 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const barras = useMemo(() => {
+    let h = 0
+    for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+    return Array.from({ length: compacta ? 16 : 26 }, (_, i) => 0.25 + (((h >> (i % 24)) & 7) / 7) * 0.75)
+  }, [id, compacta])
+  const cor = VOZES[de]
+  const seg = Math.max(2, Math.round(it.fala.length / 14))
+  return (
+    <div className={`l-msg l-audio ${compacta ? "is-compacta" : ""}`} style={cor ? { ["--voz" as string]: cor } : undefined}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); if (s.tocando) voz.parar(); else voz.tocar(id, it.src, it.fala, TOM[de] ?? 1) }}
+        aria-label={s.tocando ? "parar áudio" : "ouvir áudio"}
+      >
+        {s.tocando ? "❚❚" : "▶"}
+      </button>
+      <div className={`l-audio-onda ${s.tocando ? "is-tocando" : ""}`}>
+        {barras.map((b, i) => <i key={i} style={{ height: `${b * 100}%`, opacity: s.dur && i / barras.length <= s.t / s.dur ? 1 : s.tocando ? 0.75 : 0.35 }} />)}
+      </div>
+      <small>0:{String(seg).padStart(2, "0")}</small>
+      {!compacta && <p className="l-voz-transcricao">{it.fala}</p>}
+    </div>
+  )
+}
+
+// vídeo do //LOOP: chega como notificação do app; tocar abre o LOOP
+function LoopCard({ titulo, de, onLoop }: { titulo: string; de: string; onLoop?: () => void }) {
+  return (
+    <button type="button" className="l-loop-notif" onClick={(e) => { e.stopPropagation(); onLoop?.() }}>
+      <span className="l-loop-ic">{"//"}</span>
+      <span>
+        <small>{"//LOOP"} · {de} te mandou um vídeo</small>
+        <b>{titulo}</b>
+      </span>
+      {onLoop && <em>ver ›</em>}
+    </button>
+  )
+}
+
+// versão curtinha das bolhas, pro painel da Kombi
+function BolhaPainel({ it, grupo, contato, onLoop }: { it: Item; grupo: boolean; contato: string; onLoop?: (video?: number) => void; save: Save }) {
+  switch (it.k) {
+    case "msg": {
+      const cor = it.de ? VOZES[it.de] : undefined
+      return (
+        <div className={`l-msg ${it.eu ? "is-eu" : ""} is-vivo`} style={cor ? { ["--voz" as string]: cor } : undefined}>
+          {grupo && it.de && !it.eu && <small className="l-msg-de">{it.de}</small>}
+          <p>{it.texto}</p>
+        </div>
+      )
+    }
+    case "nucleo":
+      return <div className="l-nucleo is-vivo"><b>NÚCLEO</b><p>{it.texto}</p></div>
+    case "sistema":
+      return <p className="l-sistema">{it.texto}</p>
+    case "voz":
+      return <VozBolha it={it} de={grupo && it.de ? it.de : contato} auto={false} compacta />
+    case "loop":
+      return <LoopCard titulo={it.titulo} de={grupo && it.de ? it.de : contato} onLoop={onLoop && (() => onLoop(it.video))} />
+    case "tarefa": {
+      const m = MISSOES[it.estacao]
+      return m ? <div className="l-tarefa" style={{ ["--cor" as string]: getEstacao(it.estacao).cor }}><small>missão</small><b>{m.tarefa}</b></div> : null
+    }
+    default:
+      return null
+  }
 }

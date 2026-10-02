@@ -310,7 +310,8 @@ export function AppTopo({ titulo, cor, onVoltar, extra }: { titulo: string; cor:
 }
 
 /* ─── janela dos apps da versão anterior ────────────────── */
-export function AppJanela({ app, onFechar }: { app: AppDef; onFechar: () => void }) {
+// rota: abre o app num ponto específico (ex.: o vídeo que mandaram no N3XO)
+export function AppJanela({ app, onFechar, rota }: { app: AppDef; onFechar: () => void; rota?: string }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const [carregou, setCarregou] = useState(false)
   useEffect(() => {
@@ -326,7 +327,8 @@ export function AppJanela({ app, onFechar }: { app: AppDef; onFechar: () => void
     }, 400)
     return () => clearInterval(t)
   }, [app.id, onFechar])
-  const src = `${app.rota}${app.rota!.includes("?") ? "&" : "?"}embedded=1`
+  const base = rota ?? app.rota!
+  const src = `${base}${base.includes("?") ? "&" : "?"}embedded=1`
   return (
     <section className="l-janela" style={{ ["--cor" as string]: app.cor }}>
       <AppTopo titulo={app.nome} cor={app.cor} onVoltar={onFechar} />

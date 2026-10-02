@@ -1,8 +1,8 @@
-// joga o fluxo novo da Linha 222: abertura+quiz → 1ª missão (pedido) →
+// joga o fluxo novo da Linha 222: chegada de Kombi → abertura+quiz → 1ª missão (pedido) →
 // estrada → busca → entrega → prova → recompensa → gancho
 import { chromium } from "playwright-core"
 
-const EXE = `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
+const EXE = process.env.CHROME ?? `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
 const DIR = process.env.SHOTS ?? "./shots"
 const BASE = process.env.BASE ?? "http://localhost:3222"
 const ESCOLHA = Number(process.env.ESCOLHA ?? 0) // qual opção do quiz clicar sempre
@@ -44,9 +44,11 @@ await page.goto(`${BASE}/linha`)
 await page.waitForTimeout(1500)
 await page.getByText("Só o essencial").click().catch(() => {})
 await page.click(".l-btn-entrar")
-await page.waitForTimeout(5000)
-await shot("01-bloqueio")
-for (const b of await page.locator(".l-notifs button").all()) await b.click().catch(() => {})
+// a chegada de Kombi: pula o cinema e toca na mensagem da D-Bee
+await page.waitForTimeout(4000)
+await shot("01-chegada")
+await page.click(".l-chegada-pular")
+await page.click(".l-chegada-cel .l-notif")
 console.log("abertura:", await conversar())
 await shot("02-revelacao")
 const s1 = await save()
