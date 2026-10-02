@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
-import type { ChatId } from "./roteiros"
+import { ROTEIROS, type ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
@@ -68,6 +68,8 @@ export default function LinhaPage() {
   // conversa rolando no painel da Kombi (dirigindo). Quando precisa do
   // celular de verdade, vira tela cheia com a MESMA conversa
   const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
+  // a conversa aberta porque desceu na estação (destrava o passo "chegar")
+  const [naEstacao, setNaEstacao] = useState(false)
   // vídeo do //LOOP que alguém mandou: o app abre direto nele
   const [rotaLoop, setRotaLoop] = useState<string | undefined>(undefined)
   // ligação de voz rolando por cima da estrada (ligacoes.ts)
@@ -205,6 +207,16 @@ export default function LinhaPage() {
     return () => clearTimeout(t)
   }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, ligaDbee, chamaNaEstrada, quemChama])
 
+  // ATO 2 (a crise): pegou a coisa no mapa → a pessoa escreve no painel,
+  // dirigindo (a conversa anda do "tarefa" até o "chegar")
+  const criseDe = !save.nucleo.caido && quemChama && etapaDe(save, quemChama) === "entrega" && save.pausas[quemChama] !== undefined
+    && ROTEIROS[quemChama as keyof typeof ROTEIROS]?.passos[save.pausas[quemChama]!]?.t === "tarefa" ? quemChama : null
+  useEffect(() => {
+    if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || ligacao || !criseDe) return
+    const t = setTimeout(() => setAoVivo(criseDe as ChatRoteiro), 2500)
+    return () => clearTimeout(t)
+  }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, criseDe])
+
   const fimInvasao = useCallback((venceu: boolean) => {
     setInvasao(null)
     setSave((s) => ({ ...s, sinal: s.sinal + (venceu ? 8 : 0), nucleo: { invasoes: s.nucleo.invasoes + 1, caido: !venceu } }))
@@ -291,7 +303,8 @@ export default function LinhaPage() {
     }
   }
 
-  const abrirChat = (id: ChatId, volta: Volta = { t: "home" }) => {
+  const abrirChat = (id: ChatId, volta: Volta = { t: "home" }, estacaoAqui = false) => {
+    setNaEstacao(estacaoAqui)
     const e = ESTACOES.find((x) => x.id === id)
     if (e) {
       // uma missão de cada vez, na ordem do fio: só abre a conversa de quem
@@ -383,7 +396,7 @@ export default function LinhaPage() {
   const descer = (id: EstacaoId, st: Stats) => {
     setSave((s) => ({ ...s, xp: s.xp + 20 + st.orbs * 2 + st.quase * 5 }))
     // a conversa abre por cima; fechando, volta pra estrada
-    abrirChat(id, { t: "corrida", destino: null })
+    abrirChat(id, { t: "corrida", destino: null }, true)
   }
 
   // o ícone do celular: pega o celular (a estrada pausa por baixo)
@@ -475,6 +488,7 @@ export default function LinhaPage() {
             onPrecisaTela={painelPraTela}
             onLoop={(v) => { setRotaLoop(v ? `/tiktok/feed?v=${v}` : undefined); abrirApp("loop") }}
             jeito={save.modos[(tela.t === "chat" ? tela.id : aoVivo) as EstacaoId] === "audio" ? "audio" : "texto"}
+            naEstacao={tela.t === "chat" && naEstacao}
             oculto={tela.t !== "chat" && tela.t !== "corrida"}
           />
         )}
