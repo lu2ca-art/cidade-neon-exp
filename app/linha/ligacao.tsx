@@ -7,7 +7,7 @@
 // ele não entender), é só tocar. A estrada não para.
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { LIGACOES, entender, type Fala, type PassoLigacao } from "./ligacoes"
+import { entender, type Fala, type Ligacao, type PassoLigacao } from "./ligacoes"
 import { VOZES } from "./roteiros"
 import { audioCtx, player, voz } from "./som"
 import { track } from "@/lib/analytics"
@@ -46,8 +46,12 @@ function bipDesliga() {
   })
 }
 
-export function LigacaoNaKombi({ id, onFim }: { id: string; onFim: (atendeu: boolean) => void }) {
-  const lig = LIGACOES[id]
+// o que foi dito na ligação, pra virar histórico da conversa no N3XO
+export type Transcricao = { texto: string; eu?: boolean }[]
+
+export function LigacaoNaKombi({ lig, onFim }: { lig: Ligacao; onFim: (atendeu: boolean, dito: Transcricao) => void }) {
+  const id = lig.id
+  const transcricao = useRef<Transcricao>([])
   const [fase, setFase] = useState<"tocando" | "falando" | "ouvindo" | "fim">("tocando")
   const [legenda, setLegenda] = useState("")
   const [pergunta, setPergunta] = useState<Extract<PassoLigacao, { t: "pergunta" }> | null>(null)
@@ -67,7 +71,7 @@ export function LigacaoNaKombi({ id, onFim }: { id: string; onFim: (atendeu: boo
     voz.tocar("toque", "/audio/iphone-ringtone.mp3")
     const vib = setInterval(() => { try { navigator.vibrate?.([300, 200, 300]) } catch {} }, 1600)
     // ninguém atendeu em 15s: vira recado
-    const perdeu = setTimeout(() => { voz.parar(); onFim(false) }, 15000)
+    const perdeu = setTimeout(() => { voz.parar(); onFim(false, []) }, 15000)
     return () => { clearInterval(vib); clearTimeout(perdeu); voz.parar() }
   }, [fase, onFim])
 
@@ -81,6 +85,7 @@ export function LigacaoNaKombi({ id, onFim }: { id: string; onFim: (atendeu: boo
   // pro caso do navegador não ter voz)
   const falar = useCallback((f: Fala) => new Promise<void>((ok) => {
     setLegenda(f.fala)
+    transcricao.current.push({ texto: f.fala })
     const vid = `lig:${f.fala}`
     const t0 = Date.now()
     const minimo = 700 + f.fala.length * 45
@@ -159,6 +164,7 @@ export function LigacaoNaKombi({ id, onFim }: { id: string; onFim: (atendeu: boo
         setMic("parado")
         setFase("falando")
         track("mission_step", { mission_id: `linha-ligacao-${id}`, step: `resposta:${i}`, perfil: "?", fio_pos: -1 })
+        transcricao.current.push({ texto: p.opcoes[i].label, eu: true })
         for (const f of p.opcoes[i].resposta) { if (!vivo.current) return; await falar(f) }
       }
     } finally {
@@ -174,7 +180,7 @@ export function LigacaoNaKombi({ id, onFim }: { id: string; onFim: (atendeu: boo
     if (segurando.current) { segurando.current = false; player.abaixar(false) }
     bipDesliga()
     setFase("fim")
-    setTimeout(() => onFim(atendeu), 700)
+    setTimeout(() => onFim(atendeu, transcricao.current), 700)
   }
   useEffect(() => {
     vivo.current = true
@@ -197,7 +203,7 @@ export function LigacaoNaKombi({ id, onFim }: { id: string; onFim: (atendeu: boo
         </div>
         {fase === "tocando" ? (
           <div className="l-lig-bts">
-            <button type="button" className="is-recusa" onClick={() => { voz.parar(); onFim(false) }} aria-label="recusar">✕</button>
+            <button type="button" className="is-recusa" onClick={() => { voz.parar(); onFim(false, []) }} aria-label="recusar">✕</button>
             <button type="button" className="is-atende" onClick={atender} aria-label="atender">✆</button>
           </div>
         ) : fase !== "fim" ? (

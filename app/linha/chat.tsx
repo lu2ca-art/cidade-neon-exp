@@ -29,6 +29,9 @@ interface Props {
   onLoop?: (video?: number) => void
   // painel rodando por baixo do celular aberto: continua, mas some
   oculto?: boolean
+  // "audio": até o pedido da missão, a pessoa manda tudo em nota de voz
+  // (as mensagens seguidas viram um áudio só) — ligacoes.ts, MODOS
+  jeito?: "texto" | "audio"
 }
 
 // pra onde a conversa manda quando termina (ou pausa)
@@ -66,7 +69,7 @@ const SISTEMA = "__sistema"
 
 const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
 
-export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onLoop, oculto }: Props) {
+export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onLoop, oculto, jeito = "texto" }: Props) {
   const roteiro = ROTEIROS[id]
   const jaFeito = save.completos.includes(id)
   // conversa que parou esperando a busca no mapa: volta de onde parou
@@ -152,6 +155,16 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
     const c = ctx()
     const quemPadrao = roteiro.grupo ? null : roteiro.contato
 
+    const ateOPedido = pos < roteiro.passos.findIndex((x) => x.t === "tarefa")
+    if (fila.length && jeito === "audio" && ateOPedido && !roteiro.grupo) {
+      // modo áudio: a resposta dela também vem em nota de voz, num áudio só
+      const fala = fila.map((f) => resolver(typeof f === "object" ? f.texto : f, c)).join(". ")
+      agendar(Math.min(2800, 900 + fala.length * 16), quemPadrao ?? "", () => {
+        empurrar({ k: "voz", fala })
+        setFila([])
+      })
+      return
+    }
     if (fila.length) {
       const f = fila[0]
       const de = typeof f === "object" ? f.de : quemPadrao
@@ -175,6 +188,20 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
     }
     const p = roteiro.passos[pos]
     const avancar = () => { perguntou.current = false; setPos((n) => n + 1) }
+
+    if (p.t === "msg" && jeito === "audio" && ateOPedido && !roteiro.grupo && !p.de) {
+      // modo áudio: junta as mensagens seguidas dela numa nota de voz
+      const falas: string[] = []
+      let k = pos
+      for (let q = roteiro.passos[k]; q?.t === "msg" && !q.de; q = roteiro.passos[++k]) falas.push(resolver(q.texto, c))
+      const fala = falas.join(". ")
+      agendar(Math.min(2800, 900 + fala.length * 16), quemPadrao ?? "", () => {
+        empurrar({ k: "voz", fala })
+        perguntou.current = false
+        setPos(k)
+      })
+      return
+    }
 
     switch (p.t) {
       case "msg": {
@@ -322,7 +349,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         break
       }
     }
-  }, [pos, fila, espera, roteiro, id, jaFeito, ctx, agendar, empurrar, atualizar, onXp])
+  }, [pos, fila, espera, roteiro, id, jaFeito, ctx, agendar, empurrar, atualizar, onXp, jeito])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // mantém o log salvo quando ecos chegam numa conversa já feita

@@ -6,6 +6,24 @@
 //
 // Rascunho de texto — o LU2CA reescreve (e grava: `src` em cada fala).
 // Mesmas regras de voz dos roteiros: minúsculas, gíria de SP, seco.
+//
+// MODOS (desde 03/10): cada pessoa do fio entra em contato de um jeito —
+// LIGAÇÃO, TEXTO (no painel da Kombi) ou ÁUDIO (as falas viram notas de
+// voz) — sorteado, nunca o mesmo duas vezes seguidas. A D-Bee abre com
+// ligação. O roteiro é o mesmo (roteiros.ts): ligacaoDaMissao() transforma
+// o começo da conversa (até o pedido) numa ligação.
+
+import { ROTEIROS, type Ctx, type Passo } from "./roteiros"
+import type { EstacaoId } from "./data"
+
+export type Modo = "ligacao" | "texto" | "audio"
+export const MODOS: Modo[] = ["ligacao", "texto", "audio"]
+
+// sorteia o jeito da próxima pessoa, sem repetir o anterior
+export function sortearModo(anterior: Modo | null): Modo {
+  const l = MODOS.filter((m) => m !== anterior)
+  return l[Math.floor(Math.random() * l.length)]
+}
 
 export interface OpcaoLigacao {
   label: string
@@ -75,4 +93,42 @@ export function entender(dito: string, opcoes: OpcaoLigacao[]): number | null {
     if (p > pontos) { pontos = p; melhor = i }
   })
   return melhor
+}
+
+// ── a conversa de missão virando ligação ───────────────────────────
+// Do começo do roteiro até o pedido ({ t: "tarefa" }): as falas viram
+// voz, a escolha vira pergunta (a última fala antes dela é a pergunta
+// falada), e o pedido aceito encerra a ligação. Nota de voz entra como
+// fala; vídeo do LOOP e Núcleo ficam de fora (não cabem numa ligação).
+const resolver = (t: string | ((c: Ctx) => string), c: Ctx) => (typeof t === "function" ? t(c) : t)
+
+// palavras de uma opção, pro reconhecimento: as do próprio botão
+function palavrasDe(label: string) {
+  return normalizar(label).split(" ").filter((w) => w.length >= 3)
+}
+
+export function ligacaoDaMissao(id: EstacaoId, quem: string, c: Ctx): { lig: Ligacao; tarefa: number } | null {
+  const r = ROTEIROS[id as keyof typeof ROTEIROS]
+  if (!r) return null
+  const tarefa = r.passos.findIndex((p) => p.t === "tarefa")
+  if (tarefa < 0) return null
+  const passos: PassoLigacao[] = []
+  r.passos.slice(0, tarefa).forEach((p: Passo) => {
+    if (p.t === "msg") passos.push({ t: "fala", fala: resolver(p.texto, c) })
+    else if (p.t === "voz") passos.push({ t: "fala", fala: p.fala, src: p.src })
+    else if (p.t === "escolha") {
+      const ant = passos[passos.length - 1]
+      const fala = p.pergunta ?? (ant?.t === "fala" ? (passos.pop() as Fala).fala : "e aí?")
+      passos.push({
+        t: "pergunta",
+        fala,
+        opcoes: p.opcoes.map((o) => ({
+          label: o.label,
+          palavras: palavrasDe(o.label),
+          resposta: (o.resposta ?? []).map((f) => ({ fala: resolver(typeof f === "object" ? f.texto : f, c) })),
+        })),
+      })
+    }
+  })
+  return { lig: { id: `missao:${id}`, quem, passos, recado: "n atendeu. te escrevo então" }, tarefa }
 }

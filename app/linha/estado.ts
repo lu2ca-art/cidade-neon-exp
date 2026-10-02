@@ -4,6 +4,7 @@
 import type { EstacaoId } from "./data"
 import type { ChatId } from "./roteiros"
 import { montarFio, type Perfil } from "./missoes"
+import type { Modo } from "./ligacoes"
 
 export type Item =
   | { k: "msg"; texto: string; de?: string; eu?: boolean }
@@ -50,6 +51,10 @@ export interface Save {
   nucleo: { invasoes: number; caido: boolean }
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
+  // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
+  // último sorteado — o próximo nunca repete
+  modos: Partial<Record<EstacaoId, Modo>>
+  ultimoModo: Modo | null
 }
 
 const CHAVE = "cn-linha-222"
@@ -77,6 +82,9 @@ export const VAZIO: Save = {
   pausas: {},
   nucleo: { invasoes: 0, caido: false },
   ligacoes: [],
+  modos: {},
+  // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito
+  ultimoModo: "ligacao",
 }
 
 export function carregar(): Save {

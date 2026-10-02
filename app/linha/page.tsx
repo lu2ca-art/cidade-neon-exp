@@ -10,9 +10,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import "./linha.css"
-import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
+import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
 import type { ChatId } from "./roteiros"
-import { VAZIO, carregar, gravar, hoje, type Save } from "./estado"
+import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
@@ -21,8 +21,8 @@ import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Corrida, type Cinema, type Stats } from "./estrada/Corrida"
 import { Chegada } from "./chegada"
-import { LigacaoNaKombi } from "./ligacao"
-import { LIGACOES } from "./ligacoes"
+import { LigacaoNaKombi, type Transcricao } from "./ligacao"
+import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { audioCtx, ligarChuva, mudo, player } from "./som"
@@ -71,7 +71,8 @@ export default function LinhaPage() {
   // vídeo do //LOOP que alguém mandou: o app abre direto nele
   const [rotaLoop, setRotaLoop] = useState<string | undefined>(undefined)
   // ligação de voz rolando por cima da estrada (ligacoes.ts)
-  const [ligacao, setLigacao] = useState<string | null>(null)
+  // missao/tarefa: é a conversa de uma missão virando ligação (ligacoes.ts)
+  const [ligacao, setLigacao] = useState<{ lig: Ligacao; missao?: EstacaoId; tarefa?: number } | null>(null)
   useEffect(() => {
     if (tela.t !== "corrida") return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -145,6 +146,8 @@ export default function LinhaPage() {
     }
   }, [pronto, podeInvadir, save.nucleo.invasoes, save.objetos.length, tela.t])
 
+  const saveRef = useRef(save)
+  useEffect(() => { saveRef.current = save }, [save])
   // dirigindo: quem chama a próxima missão manda mensagem na tela da Kombi
   // (não precisa pegar o celular pra começar a conversa)
   const quemChama = !save.nucleo.caido ? ativa(save, nivelDe(save)) : null
@@ -154,23 +157,50 @@ export default function LinhaPage() {
   const ligaDbee = save.completos.includes("abertura") && !save.ligacoes.includes("dbee-1")
   useEffect(() => {
     if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || ligacao || !ligaDbee) return
-    const t = setTimeout(() => setLigacao("dbee-1"), 2500)
+    const t = setTimeout(() => setLigacao({ lig: LIGACOES["dbee-1"] }), 2500)
     return () => clearTimeout(t)
   }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, ligaDbee])
-  const fimLigacao = useCallback((atendeu: boolean) => {
-    setLigacao((id) => {
-      if (id) {
-        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, id])], xp: s.xp + (atendeu ? 20 : 0) }))
-        if (!atendeu) setTimeout(() => avisar("D-Bee", LIGACOES[id]?.recado ?? "", "#3d7bff"), 300)
+  const fimLigacao = useCallback((atendeu: boolean, dito: Transcricao) => {
+    setLigacao((l) => {
+      if (!l) return null
+      const { lig, missao: m, tarefa } = l
+      if (m && atendeu && tarefa !== undefined) {
+        // a ligação foi o começo da conversa: o pedido tá aceito, a conversa
+        // fica parada no pedido (como se tivesse sido por texto) e o que foi
+        // dito vira histórico no N3XO
+        const log: Item[] = [{ k: "sistema", texto: `ligação de voz · ${lig.quem}` }, ...dito.map((d) => ({ k: "msg" as const, texto: d.texto, eu: d.eu }))]
+        setSave((s) => ({ ...s, xp: s.xp + 20, ligacoes: [...new Set([...s.ligacoes, lig.id])], pausas: { ...s.pausas, [m]: tarefa }, logs: { ...s.logs, [m]: log } }))
+        track("mission_step", { mission_id: `linha-${m}`, step: "ligacao:pedido", perfil: save.perfil ?? "?", fio_pos: save.fio.indexOf(m) })
+      } else if (m) {
+        // não atendeu: a pessoa escreve (o painel pega)
+        setSave((s) => ({ ...s, modos: { ...s.modos, [m]: "texto" } }))
+        setTimeout(() => avisar(lig.quem, lig.recado, getEstacao(m).cor), 300)
+      } else {
+        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id])], xp: s.xp + (atendeu ? 20 : 0) }))
+        if (!atendeu) setTimeout(() => avisar(lig.quem, lig.recado, "#3d7bff"), 300)
       }
       return null
     })
-  }, [avisar])
+  }, [avisar, save.perfil, save.fio])
   useEffect(() => {
     if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || ligacao || ligaDbee || !chamaNaEstrada || !quemChama) return
     const t = setTimeout(() => {
+      // lido na hora (o save muda a cada orb; não pode reiniciar o timer)
+      const save = saveRef.current
+      // o jeito dessa pessoa (sorteado uma vez, nunca igual ao anterior)
+      const modo = save.modos[quemChama] ?? sortearModo(save.ultimoModo)
+      if (!save.modos[quemChama]) setSave((s) => ({ ...s, modos: { ...s.modos, [quemChama]: modo }, ultimoModo: modo }))
+      track("mission_started", { mission_id: `linha-${quemChama}`, place_id: `linha-kombi-${modo}` })
+      if (modo === "ligacao") {
+        const e = getEstacao(quemChama)
+        const a = ativa(save, nivelDe(save))
+        const r = ligacaoDaMissao(quemChama, e.personagem, {
+          nome: save.nome || "você", objetos: save.objetos.length, estacao: save.estacao,
+          ontemLancada: lancada(getEstacao("ontem")), primeira: a ? getEstacao(a).personagem : null,
+        })
+        if (r) return setLigacao({ lig: r.lig, missao: quemChama, tarefa: r.tarefa })
+      }
       setAoVivo(quemChama as ChatRoteiro)
-      track("mission_started", { mission_id: `linha-${quemChama}`, place_id: "linha-kombi" })
     }, 3500)
     return () => clearTimeout(t)
   }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, ligaDbee, chamaNaEstrada, quemChama])
@@ -426,6 +456,7 @@ export default function LinhaPage() {
             onVoltar={tela.t === "chat" && dentro ? () => setTela(tela.volta) : undefined}
             onPrecisaTela={painelPraTela}
             onLoop={(v) => { setRotaLoop(v ? `/tiktok/feed?v=${v}` : undefined); abrirApp("loop") }}
+            jeito={save.modos[(tela.t === "chat" ? tela.id : aoVivo) as EstacaoId] === "audio" ? "audio" : "texto"}
             oculto={tela.t !== "chat" && tela.t !== "corrida"}
           />
         )}
@@ -489,7 +520,7 @@ export default function LinhaPage() {
         {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "chegada" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
-        {ligacao && <LigacaoNaKombi key={ligacao} id={ligacao} onFim={fimLigacao} />}
+        {ligacao && <LigacaoNaKombi key={ligacao.lig.id} lig={ligacao.lig} onFim={fimLigacao} />}
         {invasao && <InvasaoNucleo key={invasao.id} inv={invasao} onFim={fimInvasao} />}
         {aviso && (
           <div key={`aviso-${aviso.id}`} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}>
