@@ -23,7 +23,7 @@ import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
-import { chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, type Fonte } from "../som"
+import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, type Fonte } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -246,13 +246,29 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // câmera: de fora (atrás da Kombi) ou de dentro (primeira pessoa). Lembra
   const [dentro, setDentro] = useState(() => { try { return localStorage.getItem("cn-linha-cam") === "dentro" } catch { return false } })
   const dentroRef = useRef(dentro)
+  // a troca é um corte suave: a tela apaga, a câmera muda no escuro e volta,
+  // com um chiado de rádio quase inaudível por baixo
+  const fadeCam = useRef<HTMLDivElement>(null)
+  const trocando = useRef(false)
+  const [usouCam, setUsouCam] = useState(() => { try { return localStorage.getItem("cn-linha-cam") !== null } catch { return true } })
   const trocarCamera = useCallback(() => {
-    setDentro((d) => {
-      const n = !d
-      dentroRef.current = n
-      try { localStorage.setItem("cn-linha-cam", n ? "dentro" : "fora") } catch {}
-      return n
-    })
+    if (trocando.current) return
+    trocando.current = true
+    setUsouCam(true)
+    chiadoCamera()
+    fadeCam.current?.classList.add("is-on")
+    setTimeout(() => {
+      setDentro((d) => {
+        const n = !d
+        dentroRef.current = n
+        try { localStorage.setItem("cn-linha-cam", n ? "dentro" : "fora") } catch {}
+        return n
+      })
+      setTimeout(() => {
+        fadeCam.current?.classList.remove("is-on")
+        trocando.current = false
+      }, 90)
+    }, 260)
   }, [])
   const [portal, setPortal] = useState<{ id: EstacaoId; t: number } | null>(null)
   const [bairro, setBairro] = useState<{ id: FreqId; t: number } | null>(null)
@@ -840,18 +856,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
 
       <div ref={flashEl} className="l-flash" />
+      <div ref={fadeCam} className="l-fade-cam" />
       <div className="l-hud-topo">
         {/* o carro é a tela principal; o celular é um toque */}
         <button type="button" className="l-hud-cel" onPointerDown={(e) => e.stopPropagation()} onClick={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} aria-label="abrir o celular">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
           {avisos > 0 && <em>{avisos}</em>}
         </button>
-        <button type="button" className={`l-hud-cam ${dentro ? "is-dentro" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={trocarCamera} aria-label={dentro ? "câmera de fora" : "câmera de dentro"} title="câmera (C)">
+        <button type="button" className={`l-hud-cam ${dentro ? "is-dentro" : ""} ${usouCam ? "" : "is-novo"}`} onPointerDown={(e) => e.stopPropagation()} onClick={trocarCamera} aria-label={dentro ? "câmera de fora" : "câmera de dentro"} title="câmera (C)">
           {dentro ? (
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 16V9a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v7" /><path d="M3 16h18" /><circle cx="7.5" cy="17.5" r="1.6" /><circle cx="16.5" cy="17.5" r="1.6" /></svg>
           ) : (
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="13" r="7" /><circle cx="12" cy="13" r="1.6" fill="currentColor" /><path d="M5.5 11h13M12 6v5" /></svg>
           )}
+          <span>{dentro ? "de fora" : "1ª pessoa"}</span>
         </button>
         {/* guia de rota: a linha do que vem pela frente (as placas guiam
             na pista; aqui só a ordem das coisas e a distância) */}
