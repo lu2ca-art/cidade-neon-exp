@@ -23,7 +23,7 @@ import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
-import { chiadoCurto, estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
+import { chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, type Fonte } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -72,6 +72,9 @@ interface Props {
   // brancos do Núcleo caçam a Kombi. Pego = a coisa volta pro lugar de origem
   cacado?: boolean
   onApreendido?: () => void
+  // dicas que o jogo já deu (tutorial do rádio × toca-discos)
+  dicas?: string[]
+  onDica?: (id: string) => void
   // o Núcleo derrubou a 222: sem rádio, cidade cinza, missão = religar a antena
   caido?: boolean
   onReligar?: () => void
@@ -147,7 +150,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -222,9 +225,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [viaAtual, setViaAtual] = useState(M.circuito.linha)
   const [faixa, setFaixa] = useState("")
   // tocando um vinil da Kombi (não uma faixa da rádio): o cartão diz isso
-  const [deDisco, setDeDisco] = useState(false)
   const discoRef = useRef(false)
-  useEffect(() => { discoRef.current = deDisco }, [deDisco])
   // câmera: de fora (atrás da Kombi) ou de dentro (primeira pessoa). Lembra
   const [dentro, setDentro] = useState(() => { try { return localStorage.getItem("cn-linha-cam") === "dentro" } catch { return false } })
   const dentroRef = useRef(dentro)
@@ -261,26 +262,67 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return () => { vivo = false; clearTimeout(t) }
   }, [])
 
-  const falar = useCallback((de: string, texto: string) => {
+  const falar = useCallback((de: string, texto: string, ms = 3600) => {
     const id = ++toastId.current
     setToasts((t) => [...t.slice(-1), { id, de, texto }])
     gota(6)
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3600)
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ms)
   }, [])
+
+  // ── SOM: rádio OU toca-discos (nunca os dois). O disco é analógico:
+  // nada interrompe; o rádio é a 222 (locutor, Núcleo, estreias, sintonia)
+  const [aparelho, setAparelho] = useState<Fonte>(fonteSom.get())
+  const fonteRef = useRef(aparelho)
+  useEffect(() => fonteSom.ouvir((f) => { fonteRef.current = f; setAparelho(f) }), [])
+  const [discoAgora, setDiscoAgora] = useState<{ src: string | null; tocando: boolean }>({ src: disco.src, tocando: disco.tocando })
+  useEffect(() => disco.ouvir(setDiscoAgora), [])
+  useEffect(() => { discoRef.current = discoAgora.tocando }, [discoAgora.tocando])
+  const [estante, setEstante] = useState(false)
+  const discoInfo = VINIS.find((v) => v.src === discoAgora.src)
+
+  // TUTORIAL do som: o jogo ensina rádio × toca-discos na hora certa
+  const temMusicaNoRadio = save.objetos.length > 0
+  useEffect(() => {
+    if (pausado || cinemaRef.current) return
+    if (!dicas.includes("disco-1") && !temMusicaNoRadio && aparelho !== "disco") {
+      const t = setTimeout(() => {
+        onDica?.("disco-1")
+        falar("D-Bee", "a 222 tá fora do ar. mas tem um toca-discos aqui dentro, analógico, o núcleo não alcança. aperta DISCO lá embaixo e escolhe um", 10000)
+      }, 4000)
+      return () => clearTimeout(t)
+    }
+    if (!dicas.includes("radio-1") && temMusicaNoRadio && aparelho !== "radio") {
+      const t = setTimeout(() => {
+        onDica?.("radio-1")
+        falar("222 FM", "a 222 voltou com uma música que vc ganhou. aperta RÁDIO lá embaixo (o disco para: os dois juntos não dá)", 10000)
+      }, 3000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pausado, temMusicaNoRadio, aparelho, dicas.length])
+  // ganhou música nova ouvindo disco: o disco não para; só avisa
+  const nObj = useRef(save.objetos.length)
+  useEffect(() => {
+    if (save.objetos.length > nObj.current && fonteRef.current !== "radio") {
+      const e = getEstacao(save.objetos[save.objetos.length - 1])
+      falar("222 FM", `estreia na 222: ${e.faixa}. liga o RÁDIO pra ouvir`, 7000)
+    }
+    nObj.current = save.objetos.length
+  }, [save.objetos, falar])
 
   // rádio: toca a frequência do lugar onde você está
   // rádio: a programação do lugar onde você está (programa.ts) — sacola
   // sem repetição, estreias e vinhetas do locutor entre as músicas
   const proxFaixa = useRef<(id: FreqId) => void>(() => {})
   const tocarProxima = useCallback((id: FreqId, vol = 1) => {
+    if (fonteRef.current !== "radio") return
     if (caidoRef.current) { player.pausar(); setFaixa(""); return }
     const a = alvoRef.current
     const carregando = a?.t === "entrega" ? MISSOES[a.missao]?.busca.nome ?? null : null
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
-    if (!p) return
+    if (!p) { setFaixa(""); return }
     const tocar = () => {
       setFaixa(p.faixa.titulo)
-      setDeDisco(VINIS.some((v) => v.src === p.faixa.src))
       player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol)
     }
     if (!p.vinheta) return tocar()
@@ -363,36 +405,35 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const hudFreq = useRef<HTMLSpanElement>(null)
 
   // minimapa: a cidade inteira vista de cima
+  // minimapa: SÓ a estrada em que você está (as placas guiam o resto)
   const minimapa = useMemo(() => {
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
-    for (const v of M.vias)
-      for (let i = 0; i < v.n; i += 8) {
+    const proj = M.vias.map((v) => {
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+      for (let i = 0; i < v.n; i += 4) {
         minX = Math.min(minX, v.px[i]); maxX = Math.max(maxX, v.px[i])
         minZ = Math.min(minZ, v.pz[i]); maxZ = Math.max(maxZ, v.pz[i])
       }
-    const esc = 90 / Math.max(maxX - minX, maxZ - minZ)
-    const ox = 5 + (90 - (maxX - minX) * esc) / 2
-    const oz = 5 + (90 - (maxZ - minZ) * esc) / 2
-    const P = (v: Pista, i: number): [number, number] => [ox + (v.px[i] - minX) * esc, oz + (v.pz[i] - minZ) * esc]
-    const vias = M.vias.map((v, vi) => {
+      const esc = Math.min(150 / Math.max(1, maxX - minX), 54 / Math.max(1, maxZ - minZ))
+      const ox = 80 - ((maxX - minX) * esc) / 2
+      const oz = 30 - ((maxZ - minZ) * esc) / 2
+      const P = (i: number): [number, number] => [ox + (v.px[i] - minX) * esc, oz + (v.pz[i] - minZ) * esc]
       let d = ""
-      for (let i = 0; i < v.n; i += 10) {
-        const [x, y] = P(v, i)
+      for (let i = 0; i < v.n; i += 6) {
+        const [x, y] = P(i)
         d += `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`
       }
-      const [x, y] = P(v, v.fechada ? 0 : v.n - 1)
+      const [x, y] = P(v.fechada ? 0 : v.n - 1)
       d += `L${x.toFixed(1)} ${y.toFixed(1)}`
-      return { vi, tipo: v.tipo, t: v.t, d, cor: distritoDe(v.t).luz[0] }
+      return { d, P, cor: distritoDe(v.t).luz[0] }
     })
     return {
-      vias,
-      estacoes: centro.estacoes.map((e) => ({ id: e.id, p: P(centro, Math.floor(e.u / PASSO)) })),
+      proj,
       ponto: (vi: number, u: number) => {
         const v = M.vias[vi]
-        return P(v, Math.max(0, Math.min(v.n - 1, Math.floor(u / PASSO))))
+        return proj[vi].P(Math.max(0, Math.min(v.n - 1, Math.floor(u / PASSO))))
       },
     }
-  }, [M, centro])
+  }, [M])
 
   // eventos que a cena dispara
   const evs = useRef<Evs>(null as unknown as Evs)
@@ -547,9 +588,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             })
             if (hudGarfoT.current) {
               const f = j.escolha ? V.faixas.find((x) => x.u === uG % V.L && x.lado === j.escolha) : null
-              hudGarfoT.current.textContent = f
-                ? `✓ saindo · ${f.lado > 0 ? "←" : "→"} desfaz`
-                : garfo > 330 ? "chegando" : "um toque pro lado da saída"
+              hudGarfoT.current.textContent = f ? `✓ saindo ${praDe(f.para)}` : ""
+              hudGarfoT.current.parentElement?.classList.toggle("is-on", !!f)
             }
           }
           const la = lugarAlvoRef.current
@@ -592,7 +632,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         if (hudTurbo.current) hudTurbo.current.style.transform = `scaleX(${j.turboT > 0 ? Math.min(1, j.turboT / 2.2) : j.carga})`
         // a sirene sobe da borda de baixo: quanto mais perto, mais forte
         if (sirene.current) sirene.current.style.opacity = j.cacaGap === undefined ? "0" : String(Math.max(0, Math.min(0.9, 1 - j.cacaGap / 180)))
-        if (hudCacaBarra.current) hudCacaBarra.current.style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - (j.cacaGap ?? 320) / 320))})`
+        if (hudCacaBarra.current) hudCacaBarra.current.style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - (j.cacaGap ?? 250) / 250))})`
         if (flashEl.current) flashEl.current.style.opacity = String(Math.min(0.85, j.flash))
         // dial girando: da frequência de onde veio até a de pra onde vai
         if (hudFreq.current && V.tipo === "saida") {
@@ -764,7 +804,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={deDisco} carona={alvo?.t === "entrega" && alvo.missao === "sexta" ? "sexta" : null} lugarAlvoRef={lugarAlvoRef} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={alvo?.t === "entrega" && alvo.missao === "sexta" ? "sexta" : null} lugarAlvoRef={lugarAlvoRef} />
         </Canvas>
       )}
 
@@ -782,45 +822,29 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="13" r="7" /><circle cx="12" cy="13" r="1.6" fill="currentColor" /><path d="M5.5 11h13M12 6v5" /></svg>
           )}
         </button>
-        <div className="l-hud-rota">
-          <span>{dest ? `indo pra estação ${dest.n}` : `${fq.freq} · rodando livre`}</span>
-          {dest ? <b style={{ color: dest.cor }}>{dest.faixa}</b> : <b className="is-livre" style={{ color: fq.cor }}>{lugarAqui}</b>}
-          <span ref={hudRota} className="l-hud-falta" />
-          <div className="l-hud-barra"><div ref={hudProg} style={{ background: dest?.cor ?? fq.cor }} /></div>
-        </div>
+        {/* a estrada em que você está (só ela) */}
+        <svg className="l-minimapa" viewBox="0 0 160 60" aria-hidden>
+          <path d={minimapa.proj[viaAtual].d} style={{ stroke: minimapa.proj[viaAtual].cor }} />
+          {V.tipo === "circuito" && V.t === "linha" && centro.estacoes.map((e) => {
+            const est = getEstacao(e.id)
+            const [x, y] = minimapa.ponto(viaAtual, e.u)
+            const minha = e.id === alvo?.missao && alvo.t !== "busca"
+            return <circle key={e.id} cx={x} cy={y} r={minha ? 4 : 1.8} fill={est.cor} className={minha ? "l-minimapa-pulso" : ""} />
+          })}
+          {marcos.filter((m) => m.via === viaAtual).map((m) => {
+            const [x, y] = minimapa.ponto(m.via, m.u)
+            return <circle key={m.chave} className="l-minimapa-pulso" cx={x} cy={y} r="4" fill={m.cor} />
+          })}
+          <circle ref={mapaCarro} r="3.2" fill="#fff" stroke="#050510" strokeWidth="1" />
+        </svg>
       </div>
 
-      <svg className="l-minimapa" viewBox="0 0 100 100" aria-hidden>
-        {minimapa.vias.map((v) => (
-          <path
-            key={v.vi}
-            d={v.d}
-            className={`${v.tipo === "circuito" ? "" : "is-ligacao"} ${v.vi === viaAtual ? "is-atual" : ""}`}
-            style={{ stroke: v.tipo === "circuito" ? v.cor : undefined }}
-          />
-        ))}
-        {minimapa.estacoes.map((e) => {
-          const est = getEstacao(e.id)
-          const temMissao = e.id === alvo?.missao && alvo.t !== "busca"
-          return (
-            <g key={e.id}>
-              {temMissao && <circle className="l-minimapa-pulso" cx={e.p[0]} cy={e.p[1]} r="4" fill="none" stroke={est.cor} />}
-              <circle cx={e.p[0]} cy={e.p[1]} r={e.id === destino ? 3 : 1.6} fill={est.cor} opacity={lancada(est) || e.id === "ontem" || e.id === "nectar" ? 1 : 0.3} />
-            </g>
-          )
-        })}
-        {marcos.map((m) => {
-          const [x, y] = minimapa.ponto(m.via, m.u)
-          return <circle key={m.chave} className="l-minimapa-pulso" cx={x} cy={y} r="4" fill={m.cor} stroke={m.cor} />
-        })}
-        <circle ref={mapaCarro} r="2.8" fill="#fff" stroke="#050510" strokeWidth="1" />
-      </svg>
 
       <div ref={sirene} className="l-sirene" />
       {cacando && (
         <div className="l-procurado">
           <b>PROCURADO</b>
-          <small>o núcleo tá atrás · abre 300m ou troca de rua</small>
+          <small>o núcleo tá atrás · acelera no talo ou troca de rua</small>
           <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
         </div>
       )}
@@ -855,69 +879,54 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
       {popup && <div key={popup.id} className="l-popup" style={{ color: popup.cor }}>{popup.txt}</div>}
 
-      {garfo && (() => {
-        const C = M.vias[garfo.via]
-        const aqui = freqDe(C.t)
-        const op = (f: Faixa | undefined, k: number) => {
-          if (!f) return <div key={k} ref={(el) => { garfoEls.current[k] = el }} className="l-garfo-op is-vazia" />
-          const fr = freqDe(f.para)
-          const ok = aberta(f, nLib)
-          const minha = !!lugarAlvo && rumo(C.t, lugarAlvo) === f.para
-          return (
-            <div key={k} ref={(el) => { garfoEls.current[k] = el }} className={`l-garfo-op ${ok ? "" : "is-trancada"} ${minha ? "is-rota" : ""}`} style={{ ["--cor" as string]: ok ? fr.cor : "#6a6f8c" }}>
-              {minha && <em>sua missão</em>}
-              <i>{f.lado < 0 ? "←" : "→"}</i>
-              <b>{lugarDe(f.para)}</b>
-              <small>{ok ? `${fr.freq} FM` : `trancada · ${fr.custo}`}</small>
-            </div>
-          )
-        }
-        return (
-          <div className="l-garfo">
-            <header>bifurcação em <b ref={hudGarfoM}>…</b> · <span ref={hudGarfoT}>um toque pro lado da saída</span></header>
-            <div className="l-garfo-ops">
-              {op(garfo.esq, 0)}
-              <div ref={(el) => { garfoEls.current[1] = el }} className={`l-garfo-op ${lugarAlvo === C.t ? "is-rota" : ""}`} style={{ ["--cor" as string]: aqui.cor }}>
-                {lugarAlvo === C.t && <em>sua missão</em>}
-                <i>↑</i>
-                <b>fica</b>
-                <small>{aqui.freq} FM</small>
-              </div>
-              {op(garfo.dir, 2)}
-            </div>
-          </div>
-        )
-      })()}
+      {/* bifurcação: quem guia são as placas na pista; aqui só a confirmação */}
+      {garfo && <div className="l-garfo-chip"><span ref={hudGarfoT} /></div>}
 
       <div className="l-hud-vel">
+        {tag && <em key={tag.id} className="l-hud-tag" style={{ color: tag.cor }}>{tag.txt}</em>}
         <span ref={hudVel}>0</span>
         <small>km/h</small>
         <span ref={hudMarcha} className="l-hud-marcha">1ª</span>
       </div>
 
-      <button
-        type="button"
-        ref={radioBtn}
-        className={`l-hud-radio ${V.tipo === "saida" ? "is-sintonizando" : ""}`}
-        style={{ ["--cor" as string]: fq.cor }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => setPopup({ id: Math.random(), txt: "pra mudar de música, muda de caminho →", cor: fq.cor })}
-      >
-        <span ref={hudFreq} className="l-hud-freq" style={{ color: fq.cor }}>{deDisco && V.tipo !== "saida" ? "TOCA-DISCOS" : `${fq.freq} FM`}</span>
-        {caido ? (
-          <span className="l-hud-faixa is-caida">sem sinal · o núcleo derrubou a 222</span>
-        ) : passandoE ? (
-          <span key={passando!.t} className="l-hud-faixa is-estacao" style={{ color: passandoE.cor }}>estação {passandoE.n} · {passandoE.faixa.toLowerCase()}</span>
-        ) : (
-          <span className="l-hud-faixa">{faixa || "…"}</span>
-        )}
-        <small ref={hudTom}>troca pelo caminho</small>
-      </button>
-
-      <div className="l-hud-sinal" title="sinal da próxima rádio">
-        <div className="l-hud-sinal-tubo"><div ref={hudSinal} style={{ background: prox?.cor ?? "#2fe8ff" }} /></div>
-        <small>{prox ? prox.freq : "todas"}</small>
-        {tag && <em key={tag.id} className="l-hud-tag" style={{ color: tag.cor }}>{tag.txt}</em>}
+      {/* o aparelho da Kombi: RÁDIO ou TOCA-DISCOS (nunca os dois) */}
+      <div ref={radioBtn as unknown as React.RefObject<HTMLDivElement>} className={`l-player is-${aparelho} ${V.tipo === "saida" && aparelho === "radio" ? "is-sintonizando" : ""}`} style={{ ["--cor" as string]: aparelho === "disco" ? "#ffc857" : fq.cor }} onPointerDown={(e) => e.stopPropagation()}>
+        <div className="l-player-tela">
+          {aparelho === "disco" ? (
+            <>
+              <span className="l-player-aparelho"><i className={`l-player-vinil ${discoAgora.tocando ? "is-gira" : ""}`} />TOCA-DISCOS</span>
+              <b>{discoInfo ? discoInfo.titulo : "sem disco"}</b>
+              <small>{discoAgora.tocando ? "analógico · nada interrompe" : "o disco acabou · escolhe outro"}</small>
+            </>
+          ) : aparelho === "radio" ? (
+            <>
+              <span ref={hudFreq} className="l-player-aparelho">{fq.freq} FM</span>
+              {caido ? <b className="is-caida">sem sinal · o núcleo derrubou a 222</b>
+                : passandoE ? <b key={passando!.t} className="is-estacao" style={{ color: passandoE.cor }}>estação {passandoE.n} · {passandoE.faixa.toLowerCase()}</b>
+                : <b>{faixa || "fora do ar · cada missão traz uma música"}</b>}
+              <small ref={hudTom}>troca pelo caminho</small>
+            </>
+          ) : (
+            <>
+              <span className="l-player-aparelho">DESLIGADO</span>
+              <b>rádio ou disco?</b>
+              <small>só um de cada vez</small>
+            </>
+          )}
+        </div>
+        <div className="l-player-bts">
+          <button type="button" className={aparelho === "radio" ? "is-on" : ""} onClick={() => {
+            if (aparelho === "radio") return fonteSom.set("off")
+            fonteSom.set("radio")
+            setTimeout(() => tocarProxima(freqRef.current), 0)
+          }}>RÁDIO</button>
+          <button type="button" className={aparelho === "disco" ? "is-on" : ""} onClick={() => {
+            if (aparelho === "disco") return fonteSom.set("off")
+            // o disco se escolhe DENTRO da Kombi: entra e olha pro toca-discos
+            if (!dentro) trocarCamera()
+            setEstante(true)
+          }}>DISCO</button>
+        </div>
       </div>
 
       <button
@@ -948,6 +957,34 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <span>← segura</span>
           <span><span className="is-desk">↑ acelera · ↓ freia/ré · shift turbo<br /></span>drift: toque pra fora, vira pra dentro</span>
           <span>segura →</span>
+        </div>
+      )}
+
+      {estante && (
+        <div className="l-estante" onPointerDown={(e) => e.stopPropagation()}>
+          <header>
+            <b>os discos da kombi</b>
+            <button type="button" onClick={() => setEstante(false)} aria-label="fechar">✕</button>
+          </header>
+          <p>escolhe um e põe pra tocar. disco é analógico: o núcleo não alcança</p>
+          <ul>
+            {VINIS.map((v) => (
+              <li key={v.src}>
+                <button type="button" className={discoAgora.src === v.src && discoAgora.tocando ? "is-on" : ""} onClick={() => {
+                  fonteSom.set("disco")
+                  disco.tocar(v.src)
+                  setEstante(false)
+                  if (!dicas.includes("disco-2")) {
+                    onDica?.("disco-2")
+                    setTimeout(() => falar("D-Bee", "isso. disco nunca para, nem pro núcleo. rádio e disco não tocam juntos", 8000), 1500)
+                  }
+                }}>
+                  <i className="l-estante-capa" />
+                  <span><b>{v.titulo.split(" · ")[0]}</b><small>{v.titulo.split(" · ")[1]}</small></span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -1024,8 +1061,10 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos,
 }: {
+  fonteRef: React.MutableRefObject<Fonte>
+  onTocaDiscos: () => void
   disco: boolean
   carona: EstacaoId | null
   lugarAlvoRef: React.MutableRefObject<FreqId | null>
@@ -1386,6 +1425,9 @@ function Cena({
         // o aviso da segunda bifurcação do centro vem logo depois da primeira
         const antes = us.length > 1 && si === 0 ? 240 : 330
         for (const [dist, agora] of [[antes, false], [100, true]] as const) {
+          // placa de aviso que cairia ANTES de outra bifurcação confunde
+          // (parece apontar pra entrada de antes): só fica a do "agora"
+          if (!agora && us.some((u2) => u2 < uk && u2 > uk - dist - 20)) continue
           const pos = noMundo(C, uk - dist, 0, 0, a, new THREE.Vector3())
           lista.push({
             id: `${C.id}:${uk}:${dist}`,
@@ -1876,8 +1918,9 @@ function Cena({
     // estática sobe e o dial gira; a música nova só entra na CHEGADA
     if (V.tipo === "saida") {
       const p = j.u / V.L
-      if (!j.sintonizou && p >= 0.45) { j.sintonizou = true; chiado.current = estatica() }
-      if (hudN.current % 3 === 0) {
+      const noRadio = fonteRef.current === "radio"
+      if (!j.sintonizou && p >= 0.45 && noRadio) { j.sintonizou = true; chiado.current = estatica() }
+      if (hudN.current % 3 === 0 && noRadio) {
         player.volume(p < 0.45 ? 1 : Math.max(0, 1 - (p - 0.45) / 0.3))
         if (chiado.current) {
           chiado.current.volume(Math.max(0, Math.min(0.2, ((p - 0.45) / 0.25) * 0.2)))
@@ -2008,7 +2051,8 @@ function Cena({
             const d = -du(CV, j.u, c.u) // >0 = atrás da Kombi
             // longe: vêm rápido (nunca menos que 28 m/s, parado eles chegam);
             // perto: colam e encostam devagar
-            const alvoV = d > 30 ? Math.min(VMAX * 1.12, Math.max(28, Math.abs(j.v) + 9)) : Math.max(4, j.v + (d > 6 ? 3 : -1))
+            // teto ABAIXO da velocidade máxima da Kombi: no talo dá pra fugir
+            const alvoV = d > 30 ? Math.min(VMAX * 0.85, Math.max(28, Math.abs(j.v) + 9)) : Math.max(4, Math.min(VMAX * 0.85, j.v + (d > 6 ? 3 : -1)))
             c.v += (alvoV - c.v) * Math.min(1, dt * 1.4)
             c.u += c.v * dt
             if (CV.fechada) c.u = ((c.u % CV.L) + CV.L) % CV.L
@@ -2025,7 +2069,7 @@ function Cena({
           }
           if (k.ativa) {
             j.cacaGap = gap
-            k.longeT = gap > 320 ? k.longeT + dt : 0
+            k.longeT = gap > 250 ? k.longeT + dt : 0
             if (k.longeT > 3) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; ev.caca("despistou") }
           }
         }
@@ -2503,7 +2547,7 @@ function Cena({
           <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
         </group>
         <group ref={cabineG} visible={false}>
-          <Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} />
+          <Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} />
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />

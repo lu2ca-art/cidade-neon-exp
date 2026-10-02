@@ -25,6 +25,7 @@ type Props = {
   disco: boolean // tocando vinil (o toca-discos gira)
   objetos: EstacaoId[]
   carona: EstacaoId | null // alguém de carona agora (o BBX na missão dele)
+  onTocaDiscos?: () => void // tocou no toca-discos: abre a estante de discos
 }
 
 // cada objeto pendurado com uma forma simples que lembra ele
@@ -86,7 +87,7 @@ const LUGARES: [number, number, number][] = [
   [-0.45, 0.27, 1.45], [0.45, 0.27, 1.45], [0, 0.27, 1.2],
 ]
 
-export function Cabine({ balanco, disco, objetos, carona }: Props) {
+export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos }: Props) {
   const pendulo = useRef<THREE.Group>(null)
   const ang = useRef({ a: 0, w: 0 })
 
@@ -113,7 +114,7 @@ export function Cabine({ balanco, disco, objetos, carona }: Props) {
   const rv = KOMBI_LAYOUT.retrovisor.position
   return (
     <group scale={ESCALA}>
-      <KombiHippie isPlaying={disco} hideExterior={false} />
+      <KombiHippie isPlaying={disco} hideExterior={false} onItemClick={(item) => { if (item === "toca") onTocaDiscos?.() }} />
       {gente.map((g) => <Pessoa key={g.id} cor={g.cor} pos={g.pos} vira={g.pos[2] > 0.5 ? 0 : 0} />)}
       <group ref={pendulo} position={[rv[0], rv[1] - 0.05, rv[2] + 0.02]}>
         {pendurados.map((o, i) => {
