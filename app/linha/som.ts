@@ -103,6 +103,71 @@ export function corda(freq: number, vol = 0.35) {
   src.start(t)
 }
 
+// Violão (Karplus-Strong de verdade): linha de atraso com afinação
+// fracionária (allpass), ataque com posição da palheta, decaimento
+// esticado nos graves e um corpo de madeira (dois picos de ressonância).
+// Cada nota é calculada uma vez e guardada.
+const notasViolao = new Map<number, AudioBuffer>()
+function bufferViolao(c: AudioContext, freq: number) {
+  const chave = Math.round(freq * 10)
+  const pronto = notasViolao.get(chave)
+  if (pronto) return pronto
+  const sr = c.sampleRate
+  const dur = Math.min(4, 1.6 + 220 / freq)
+  const n = Math.floor(sr * dur)
+  const buf = c.createBuffer(1, n, sr)
+  const d = buf.getChannelData(0)
+  const P = sr / freq - 0.5 // o filtro de média atrasa meia amostra
+  const N = Math.floor(P)
+  const frac = P - N
+  const ap = (1 - frac) / (1 + frac) // allpass que acerta a fração
+  // ruído de ataque, filtrado pela posição da palheta (13% da corda)
+  const linha = new Float32Array(N + 1)
+  const pal = Math.max(1, Math.round(N * 0.13))
+  for (let i = 0; i <= N; i++) linha[i] = Math.random() * 2 - 1
+  for (let i = N; i >= pal; i--) linha[i] -= linha[i - pal] * 0.9
+  const S = Math.min(0.9985, 0.994 + freq / 40000) // grave sustenta mais
+  let idx = 0
+  let apX = 0
+  let apY = 0
+  for (let i = 0; i < n; i++) {
+    const a0 = linha[idx]
+    const a1 = linha[(idx + 1) % (N + 1)]
+    const media = S * 0.5 * (a0 + a1)
+    const y = ap * media + apX - ap * apY
+    apX = media
+    apY = y
+    linha[idx] = y
+    d[i] = a0
+    idx = (idx + 1) % (N + 1)
+  }
+  // envelope: ataque de 3 ms, fim suave
+  for (let i = 0; i < 132 && i < n; i++) d[i] *= i / 132
+  for (let i = Math.floor(n * 0.85); i < n; i++) d[i] *= (n - i) / (n * 0.15)
+  notasViolao.set(chave, buf)
+  return buf
+}
+
+export function violao(freq: number, vol = 0.32, quando = 0) {
+  const c = audioCtx()
+  const out = saida()
+  if (!c || !out) return
+  const t = c.currentTime + quando
+  const src = c.createBufferSource()
+  src.buffer = bufferViolao(c, freq)
+  // corpo do violão: ressonâncias de ar (~100 Hz) e do tampo (~220 Hz)
+  const ar = c.createBiquadFilter()
+  ar.type = "peaking"; ar.frequency.value = 105; ar.Q.value = 2.2; ar.gain.value = 5
+  const tampo = c.createBiquadFilter()
+  tampo.type = "peaking"; tampo.frequency.value = 230; tampo.Q.value = 1.6; tampo.gain.value = 3.5
+  const brilho = c.createBiquadFilter()
+  brilho.type = "lowpass"; brilho.frequency.value = 4200
+  const g = c.createGain()
+  g.gain.value = vol
+  src.connect(ar).connect(tampo).connect(brilho).connect(g).connect(out)
+  src.start(t)
+}
+
 export function drone(on: boolean, alvo = 0.12) {
   const c = audioCtx()
   const out = saida()

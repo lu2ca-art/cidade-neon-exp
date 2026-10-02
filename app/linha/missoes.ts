@@ -55,6 +55,7 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
       lugar: "a caixa d'água do subúrbio xenom",
       pega: [{ de: "Ella", texto: "encheu?? traz antes que evapore" }],
     },
+    extra: "o JARDIM no celular: rega e a página floresce",
   },
   copo: {
     id: "copo", estilo: "musica",
@@ -118,7 +119,7 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
       lugar: "o palco da arena",
       pega: [{ de: "LU2CA", texto: "achou. agora traz, a estação 6 é aqui" }],
     },
-    extra: "a cidade inteira, pra sempre",
+    extra: "o VIOLÃO no celular: escalas, acordes e tocar junto",
   },
 }
 

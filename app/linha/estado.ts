@@ -4,6 +4,7 @@
 import type { EstacaoId } from "./data"
 import type { ChatId } from "./roteiros"
 import { montarFio, type Perfil } from "./missoes"
+import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
 
 export type Item =
@@ -49,6 +50,9 @@ export interface Save {
   // o Núcleo: quantas invasões já rolaram e se derrubou a 222 (aí a cidade
   // fica cinza até religar a antena)
   nucleo: { invasoes: number; caido: boolean }
+  // o jardim (recurso da missão da Ella) e se ele é o papel de parede
+  jardim: Flor[]
+  papel: boolean
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
   // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
@@ -81,6 +85,8 @@ export const VAZIO: Save = {
   itens: [],
   pausas: {},
   nucleo: { invasoes: 0, caido: false },
+  jardim: [],
+  papel: false,
   ligacoes: [],
   modos: {},
   // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito

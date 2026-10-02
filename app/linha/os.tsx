@@ -17,6 +17,7 @@ import { sequencia, type Save } from "./estado"
 import { FREQUENCIAS, freqsLiberadas } from "./radio"
 import { Objeto } from "./objetos"
 import { Prova } from "./provas"
+import { JardimFundo } from "./recursos"
 import { MEMORIAS, MISSOES, ativa, conhecidos, etapaDe, itensFaltando } from "./missoes"
 import { player } from "./som"
 import { track } from "@/lib/analytics"
@@ -25,6 +26,7 @@ export type AppId =
   | "kombi" | "n3xo" | "linha" | "radio" | "fliperama" | "objetos"
   | "nectar" | "batida" | "guitar" | "feelgood" | "sintonia" | "freq" | "loop" | "stream"
   | "loja" | "museu" | "galeria" | "salabranca" | "iris" | "untitled" | "access"
+  | "jardim" | "violao"
 
 export interface AppDef {
   id: AppId
@@ -34,6 +36,8 @@ export interface AppDef {
   link?: string
   pagina: 0 | 1
   nivel?: number
+  // recurso que uma missão libera: só abre com o objeto dessa estação
+  precisa?: EstacaoId
   desc: string
 }
 
@@ -44,6 +48,8 @@ export const APPS: AppDef[] = [
   { id: "radio", nome: "RÁDIO 222", cor: "#ff3fb0", pagina: 0, desc: "frequências" },
   { id: "fliperama", nome: "FLIPERAMA", cor: "#ff6a35", pagina: 0, desc: "todos os minigames" },
   { id: "objetos", nome: "OBJETOS", cor: "#b38cff", pagina: 0, desc: "o que você já juntou" },
+  { id: "jardim", nome: "JARDIM", cor: "#5dffa0", pagina: 0, precisa: "chuva", desc: "rega e a página floresce" },
+  { id: "violao", nome: "VIOLÃO", cor: "#b38cff", pagina: 0, precisa: "nectar", desc: "escalas, acordes e tocar junto" },
   { id: "nectar", nome: "NECTAR", cor: "#67e8f9", rota: "/nectar", pagina: 0, desc: "qual é o seu nectar" },
   { id: "batida", nome: "B4TIDA", cor: "#ff6b6b", rota: "/batida", pagina: 0, desc: "monta sua música por camadas" },
   { id: "guitar", nome: "GUITAR DRIVER", cor: "#ff9000", rota: "/neon-tiles", pagina: 0, desc: "toca as 4 faixas" },
@@ -86,6 +92,8 @@ export function Glifo({ id, cor, size = 26 }: { id: AppId; cor: string; size?: n
     case "iris": return <svg {...p}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
     case "untitled": return <svg {...p}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="6" opacity=".4" /><circle cx="12" cy="12" r="2.2" fill={cor} /></svg>
     case "access": return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" /></svg>
+    case "jardim": return <svg {...p}><path d="M12 21v-7" /><path d="M12 14c-3 0-5-2-5-5 3 0 5 2 5 5zM12 14c3 0 5-2 5-5-3 0-5 2-5 5z" /><circle cx="12" cy="6" r="2.4" fill={cor} /></svg>
+    case "violao": return <Objeto id="violao" cor={cor} size={size} />
     case "salabranca": return <svg {...p}><rect x="5" y="5" width="14" height="14" /><rect x="9" y="9" width="6" height="6" opacity=".5" /></svg>
   }
 }
@@ -183,7 +191,7 @@ export function Home({
 
   return (
     <section className="l-os">
-      <div className="l-os-fundo" />
+      {save.papel && save.jardim.length ? <JardimFundo flores={save.jardim} /> : <div className="l-os-fundo" />}
       <div className="l-agua" />
       <header className="l-os-status">
         <b>{agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</b>
@@ -241,7 +249,7 @@ export function Home({
               {pg === 1 && <p className="l-os-titulo-pag">a cidade</p>}
               <div className="l-os-grade">
                 {grade.filter((a) => a.pagina === pg).map((a) => (
-                  <IconeApp key={a.id} a={a} nivel={nivel} onApp={onApp} novo={a.id === "fliperama" && !save.jogados.visto} />
+                  <IconeApp key={a.id} a={a} nivel={nivel} onApp={onApp} objetos={save.objetos} novo={(a.id === "fliperama" && !save.jogados.visto) || (a.id === "jardim" && save.objetos.includes("chuva") && !save.jardim.length) || (a.id === "violao" && save.objetos.includes("nectar") && !save.jogados.violao)} />
                 ))}
               </div>
             </div>
@@ -285,8 +293,8 @@ export function Home({
   )
 }
 
-function IconeApp({ a, nivel, onApp, semNome, novo }: { a: AppDef; nivel: number; onApp: (id: AppId) => void; semNome?: boolean; novo?: boolean }) {
-  const trancado = a.nivel !== undefined && nivel < a.nivel
+function IconeApp({ a, nivel, onApp, semNome, novo, objetos = [] }: { a: AppDef; nivel: number; onApp: (id: AppId) => void; semNome?: boolean; novo?: boolean; objetos?: EstacaoId[] }) {
+  const trancado = (a.nivel !== undefined && nivel < a.nivel) || (!!a.precisa && !objetos.includes(a.precisa))
   return (
     <button type="button" className={`l-app ${trancado ? "is-trancado" : ""}`} style={{ ["--cor" as string]: a.cor }} onClick={() => onApp(a.id)}>
       <span className="l-app-ic">
