@@ -1420,3 +1420,13 @@
 .l-ilha header span { color: #cfe9ff; letter-spacing: 0.04em; text-transform: none; }
 /* a conversa do N3XO é a ilha expandida (mesmo lugar, mesma cara) */
 .l-painel { top: calc(66px + env(safe-area-inset-top)); background: #000; border-radius: 24px; border-color: rgba(255, 255, 255, 0.08); }
+
+/* ═══ câmera em evidência + troca com fade (02/10) ═══════════════════════ */
+.l-hud-cam { width: auto; padding: 0 12px 0 10px; display: flex; gap: 6px; align-items: center; border-radius: 999px; background: rgba(0, 20, 30, 0.6) !important; border: 1px solid #2fe8ff !important; color: #2fe8ff !important; box-shadow: 0 0 14px -4px #2fe8ff, inset 0 0 10px -6px #2fe8ff; }
+.l-hud-cam span { font: 700 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.l-hud-cam.is-dentro { background: rgba(0, 0, 0, 0.5) !important; border-color: rgba(255, 255, 255, 0.35) !important; color: #fff !important; box-shadow: none; }
+.l-hud-cam.is-novo { animation: l-cam-chama 1.6s ease-in-out infinite; }
+@keyframes l-cam-chama { 0%, 100% { box-shadow: 0 0 12px -4px #2fe8ff; } 50% { box-shadow: 0 0 26px 2px #2fe8ff; } }
+@media (max-width: 360px) { .l-hud-cam span { display: none; } .l-hud-cam { padding: 0 11px; } }
+.l-fade-cam { position: absolute; inset: 0; z-index: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.26s ease-in; }
+.l-fade-cam.is-on { opacity: 1; transition: opacity 0.24s ease-out; }

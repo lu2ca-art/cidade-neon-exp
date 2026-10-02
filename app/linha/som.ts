@@ -202,7 +202,7 @@ export function pararDrone() {
 }
 
 // ── Estática (prova de sintonia) ───────────────────────────
-export function estatica() {
+export function estatica(v0 = 0.12) {
   const c = audioCtx()
   const out = saida()
   if (!c || !out) return null
@@ -217,7 +217,7 @@ export function estatica() {
   bp.frequency.value = 1800
   bp.Q.value = 0.6
   const g = c.createGain()
-  g.gain.value = 0.12
+  g.gain.value = v0
   src.connect(bp).connect(g).connect(out)
   src.start()
   return {
@@ -239,6 +239,21 @@ export function chiadoCurto() {
     e.sintonizar(600 + 2400 * Math.abs(Math.sin(k * 9)))
     if (k > 0.8) e.volume(0)
     if (k > 1.1) { clearInterval(iv); e.parar() }
+  }, 40)
+}
+
+// troca de câmera (dentro ⇄ fora): um sopro de dial quase inaudível, sobe e
+// desce junto com o fade da tela (~0,6 s)
+export function chiadoCamera() {
+  const e = estatica(0)
+  if (!e) return
+  e.volume(0.022)
+  const t0 = Date.now()
+  const iv = setInterval(() => {
+    const k = (Date.now() - t0) / 1000
+    e.sintonizar(900 + 1800 * Math.abs(Math.sin(k * 6)))
+    if (k > 0.32) e.volume(0)
+    if (k > 0.65) { clearInterval(iv); e.parar() }
   }, 40)
 }
 
