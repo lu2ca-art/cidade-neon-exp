@@ -14,11 +14,18 @@ import { Kombi as KombiHippie } from "@/components/DriveCockpit/Kombi"
 import { KOMBI_LAYOUT } from "@/lib/kombi-layout"
 import { estacao as getEstacao, type EstacaoId, type ObjetoId } from "../data"
 
-export const ESCALA = 1.3
+// o interior da drive-v2 encaixado na Kombi da estrada (cúpula panorâmica):
+// um pouco mais estreito, mais alto, puxado pra frente (painel perto do
+// para-brisa) e subido (assim quem viaja aparece pelo vidro, de fora)
+export const ESCALA: [number, number, number] = [0.98, 1.3, 1.3]
+export const DESLOCA: [number, number, number] = [0, 0.3, -0.35]
 const cam = KOMBI_LAYOUT.cameraMotorista.position
-// a cabeça: no banco do motorista, um pouco pro meio (no celular em pé,
-// assim cabem o painel e o volante; quem viaja atrás fica a 1–1,7 m)
-export const OLHO = new THREE.Vector3(cam[0] + 0.22, cam[1] + 0.3, 0.12).multiplyScalar(ESCALA)
+// a cabeça: no banco do motorista, um pouco pro meio
+export const OLHO = new THREE.Vector3(
+  (cam[0] + 0.22) * ESCALA[0] + DESLOCA[0],
+  (cam[1] + 0.3) * ESCALA[1] + DESLOCA[1],
+  0.12 * ESCALA[2] + DESLOCA[2],
+)
 
 type Props = {
   balanco: React.MutableRefObject<number> // aceleração lateral (pro pêndulo)
@@ -83,8 +90,8 @@ function Pessoa({ cor, pos, vira = 0 }: { cor: string; pos: [number, number, num
 // o fundo da Kombi
 const LUGARES: [number, number, number][] = [
   [0.55, 0.42, -0.05], // passageiro da frente
-  [-0.45, 0.27, 0.9], [0.45, 0.27, 0.9],
-  [-0.45, 0.27, 1.45], [0.45, 0.27, 1.45], [0, 0.27, 1.2],
+  [-0.45, 0.42, 0.9], [0.45, 0.42, 0.9],
+  [-0.45, 0.42, 1.45], [0.45, 0.42, 1.45], [0, 0.42, 1.2],
 ]
 
 export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos }: Props) {
@@ -113,8 +120,13 @@ export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos }: Props)
 
   const rv = KOMBI_LAYOUT.retrovisor.position
   return (
-    <group scale={ESCALA}>
-      <KombiHippie isPlaying={disco} hideExterior={false} onItemClick={(item) => { if (item === "toca") onTocaDiscos?.() }} />
+    <group scale={ESCALA} position={DESLOCA}>
+      {/* banco de trás (quem vem atrás senta nele) */}
+      <mesh position={[0, 0.34, 1.2]}>
+        <boxGeometry args={[1.4, 0.16, 0.75]} />
+        <meshStandardMaterial color="#5a2a3a" roughness={0.8} />
+      </mesh>
+      <KombiHippie isPlaying={disco} hideExterior semTeto onItemClick={(item) => { if (item === "toca") onTocaDiscos?.() }} />
       {gente.map((g) => <Pessoa key={g.id} cor={g.cor} pos={g.pos} vira={g.pos[2] > 0.5 ? 0 : 0} />)}
       <group ref={pendulo} position={[rv[0], rv[1] - 0.05, rv[2] + 0.02]}>
         {pendurados.map((o, i) => {
