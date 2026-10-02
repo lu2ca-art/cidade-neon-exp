@@ -16,7 +16,7 @@ import { VAZIO, carregar, gravar, hoje, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
-import { alvoDe, ativa } from "./missoes"
+import { alvoDe, ativa, etapaDe } from "./missoes"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Corrida, type Cinema, type Stats } from "./estrada/Corrida"
@@ -63,6 +63,11 @@ export default function LinhaPage() {
   // conversa com a D-Bee acabar
   const [cinema, setCinema] = useState<Cinema>(null)
   const [cinza, setCinza] = useState(false)
+  // conversa rolando no painel da Kombi (dirigindo). Quando precisa do
+  // celular de verdade, vira tela cheia com a MESMA conversa
+  const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
+  // vídeo do //LOOP que alguém mandou: o app abre direto nele
+  const [rotaLoop, setRotaLoop] = useState<string | undefined>(undefined)
   useEffect(() => {
     if (tela.t !== "corrida") return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -135,6 +140,19 @@ export default function LinhaPage() {
       return () => clearInterval(t)
     }
   }, [pronto, podeInvadir, save.nucleo.invasoes, save.objetos.length, tela.t])
+
+  // dirigindo: quem chama a próxima missão manda mensagem na tela da Kombi
+  // (não precisa pegar o celular pra começar a conversa)
+  const quemChama = !save.nucleo.caido ? ativa(save, nivelDe(save)) : null
+  const chamaNaEstrada = !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
+  useEffect(() => {
+    if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || !chamaNaEstrada || !quemChama) return
+    const t = setTimeout(() => {
+      setAoVivo(quemChama as ChatRoteiro)
+      track("mission_started", { mission_id: `linha-${quemChama}`, place_id: "linha-kombi" })
+    }, 3500)
+    return () => clearTimeout(t)
+  }, [pronto, tela.t, cinema, invasao, aoVivo, chamaNaEstrada, quemChama])
 
   const fimInvasao = useCallback((venceu: boolean) => {
     setInvasao(null)
@@ -228,6 +246,8 @@ export default function LinhaPage() {
       }
       if (!save.completos.includes(id) && save.pausas[id] === undefined) track("mission_started", { mission_id: `linha-${id}`, place_id: "linha-222" })
     }
+    // se essa conversa tava no painel da Kombi, ela sobe pro celular inteira
+    if (aoVivo === id) setAoVivo(null)
     setTela({ t: "chat", id: id as ChatRoteiro, volta })
   }
 
@@ -252,6 +272,22 @@ export default function LinhaPage() {
     else abrirApp(c.acao.app)
   }
 
+  // a conversa do painel precisou do celular: sobe em tela cheia (e, quando
+  // acabar ou pausar, volta pra estrada)
+  const painelPraTela = useCallback(() => {
+    setAoVivo((id) => {
+      if (id) setTela({ t: "chat", id, volta: { t: "corrida", destino: null } })
+      return null
+    })
+  }, [])
+  const fimPainel = useCallback((para: Destino) => {
+    const id = aoVivo
+    setAoVivo(null)
+    if (id && ESTACOES.some((e) => e.id === id) && para !== "estrada") track("mission_completed", { mission_id: `linha-${id}`, duration_ms: 0 })
+    // na estrada, o fim (ou o pedido aceito) só fecha o painel: quem vem
+    // depois chama de novo por aqui mesmo
+  }, [aoVivo])
+
   const fimChat = (id: ChatId, para: Destino, volta: Volta) => {
     // acabou a conversa com a D-Bee: a cor volta e a Kombi é sua
     if (id === "abertura" && cinema) {
@@ -267,9 +303,11 @@ export default function LinhaPage() {
     if (ESTACOES.some((e) => e.id === id)) track("mission_completed", { mission_id: `linha-${id}`, duration_ms: 0 })
     if (id === "nectar") setTela({ t: "final" })
     else if (para === "missao") {
-      // a próxima pessoa do fio já te chamando
+      // a próxima pessoa do fio te chama na estrada: volta pra Kombi e a
+      // conversa chega no painel (dirigindo). Sem Kombi ainda: abre a conversa
       const a = ativa(save, nivel)
-      if (a) setTela({ t: "chat", id: a as ChatRoteiro, volta: { t: "home" } })
+      if (a && save.estacao) setTela({ t: "corrida", destino: null })
+      else if (a) setTela({ t: "chat", id: a as ChatRoteiro, volta: { t: "home" } })
       else setTela({ t: "home" })
     }
     else if (para === "grupo") setTela({ t: "chat", id: "grupo", volta: { t: "home" } })
@@ -355,15 +393,19 @@ export default function LinhaPage() {
         )}
         {tela.t === "entrada" && <Entrada save={save} onEntrar={entrar} />}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: "abertura", volta: { t: "home" } })} />}
-        {tela.t === "chat" && (
+        {(tela.t === "chat" || aoVivo) && (
           <Chat
-            key={tela.id}
-            id={tela.id}
+            key={tela.t === "chat" ? tela.id : aoVivo!}
+            id={tela.t === "chat" ? tela.id : aoVivo!}
+            modo={tela.t === "chat" ? "tela" : "painel"}
             save={save}
             atualizar={atualizar}
             onXp={(n) => setSave((s) => ({ ...s, xp: s.xp + n }))}
-            onFim={(para) => fimChat(tela.id, para, tela.volta)}
-            onVoltar={dentro ? () => setTela(tela.volta) : undefined}
+            onFim={tela.t === "chat" ? (para) => fimChat(tela.id, para, tela.volta) : fimPainel}
+            onVoltar={tela.t === "chat" && dentro ? () => setTela(tela.volta) : undefined}
+            onPrecisaTela={painelPraTela}
+            onLoop={(v) => { setRotaLoop(v ? `/tiktok/feed?v=${v}` : undefined); abrirApp("loop") }}
+            oculto={tela.t !== "chat" && tela.t !== "corrida"}
           />
         )}
         {tela.t === "home" && (
@@ -378,7 +420,7 @@ export default function LinhaPage() {
         )}
 
         {tela.t === "app" && app?.rota && (
-          <AppJanela app={app} onFechar={() => { setTela({ t: "home" }); setTimeout(conferirLegado, 300) }} />
+          <AppJanela app={app} rota={tela.id === "loop" ? rotaLoop : undefined} onFechar={() => { setRotaLoop(undefined); setTela({ t: "home" }); setTimeout(conferirLegado, 300) }} />
         )}
         {tela.t === "app" && tela.id === "n3xo" && (
           <N3xo save={save} nivel={nivel} onChat={(id) => abrirChat(id, { t: "app", id: "n3xo" })} onVoltar={() => setTela({ t: "home" })} />

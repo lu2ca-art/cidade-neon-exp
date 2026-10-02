@@ -1147,3 +1147,64 @@
 .l-dial.is-nucleo { background: rgba(244, 246, 251, 0.94); border-color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .l-dial.is-nucleo small, .l-dial.is-nucleo span { color: #4a5a7c; }
 .l-dial.is-nucleo b { color: #1b2233; text-shadow: none; letter-spacing: 0.08em; }
+
+/* ── N3XO NA KOMBI: a conversa no painel, dirigindo (chat.tsx modo painel) ── */
+.l-painel {
+  position: absolute; z-index: 6; left: 10px; top: calc(150px + env(safe-area-inset-top));
+  width: min(268px, 64vw); display: flex; flex-direction: column; gap: 5px;
+  padding: 8px; border-radius: 14px;
+  background: rgba(8, 9, 24, 0.58); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 0 24px -10px var(--cor);
+  animation: l-painel-entra 0.45s cubic-bezier(0.2, 0.9, 0.2, 1.1) both;
+  touch-action: manipulation;
+}
+.l-painel.is-oculto { display: none; }
+@keyframes l-painel-entra { from { opacity: 0; transform: translateX(-24px) scale(0.96); } }
+.l-painel header { display: flex; align-items: center; gap: 8px; }
+.l-painel header .l-avatar { width: 26px; height: 26px; flex-shrink: 0; }
+.l-painel header b { font-size: 14px; }
+.l-painel header small { margin-left: auto; font: 600 9px var(--mono); letter-spacing: 0.1em; color: var(--mut); text-transform: uppercase; }
+.l-painel-msgs { display: flex; flex-direction: column; gap: 5px; }
+.l-painel-msgs .l-msg { max-width: 100%; }
+.l-painel-msgs .l-msg { padding: 6px 10px; }
+.l-painel-msgs .l-msg p { font-size: 12.5px; line-height: 1.28; }
+.l-painel-msgs .l-tarefa b { font-size: 15px; }
+.l-painel-msgs .l-nucleo p, .l-painel-msgs .l-sistema { font-size: 11px; }
+.l-painel-msgs .l-tarefa { margin: 0; }
+.l-painel-ops { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
+.l-painel-ops button {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  padding: 8px 10px; border-radius: 11px; font-size: 13px; color: var(--txt);
+  background: color-mix(in srgb, var(--cor) 16%, rgba(10, 12, 30, 0.8)) !important;
+  border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent) !important;
+  animation: l-sobe 0.35s both;
+}
+.l-painel-ops button:active { transform: scale(0.97); }
+.l-painel-ops em { font: 700 10px var(--mono); font-style: normal; color: var(--cor); opacity: 0.8; }
+@media (hover: none) { .l-painel-ops em { display: none; } }
+.l-painel-nota { margin: 0; font: 11px var(--mono); color: var(--cor); }
+
+/* nota de voz (canal separado: a música abaixa e volta) */
+.l-audio.is-compacta { padding: 6px 8px; gap: 6px; }
+.l-audio.is-compacta .l-audio-onda { height: 18px; }
+.l-audio-onda.is-tocando i { animation: l-onda 0.6s ease-in-out infinite alternate; }
+.l-audio-onda.is-tocando i:nth-child(3n) { animation-delay: 0.2s; }
+.l-audio-onda.is-tocando i:nth-child(3n + 1) { animation-delay: 0.4s; }
+@keyframes l-onda { to { transform: scaleY(0.55); } }
+.l-voz-transcricao { flex-basis: 100%; margin: 4px 0 0; font-size: 12px; color: var(--mut); font-style: italic; }
+
+/* notificação do //LOOP dentro da conversa */
+.l-loop-notif {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 12px; border-radius: 14px; color: var(--txt);
+  background: linear-gradient(120deg, rgba(255, 45, 120, 0.18), rgba(20, 20, 40, 0.8)) !important;
+  border: 1px solid rgba(255, 45, 120, 0.45) !important;
+  animation: l-notif-entra 0.5s cubic-bezier(0.2, 0.9, 0.2, 1.1) both;
+}
+.l-loop-ic { flex-shrink: 0; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: #ff2d78; font: 800 13px var(--mono); color: #fff; }
+.l-loop-notif span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.l-loop-notif small { font: 600 9.5px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: #ff8ab4; }
+.l-loop-notif b { font-size: 13.5px; font-weight: 600; }
+.l-loop-notif em { margin-left: auto; font: 600 12px var(--mono); font-style: normal; color: #ff8ab4; }
+.l-audio:has(.l-voz-transcricao) { flex-wrap: wrap; }

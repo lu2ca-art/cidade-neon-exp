@@ -11,6 +11,8 @@ export type Item =
   | { k: "sistema"; texto: string }
   | { k: "audio"; src: string; titulo: string; de?: string }
   | { k: "video"; src: string; legenda?: string; de?: string }
+  | { k: "voz"; fala: string; src?: string; de?: string }
+  | { k: "loop"; titulo: string; video?: number; de?: string }
   | { k: "prova"; id: string; feita?: boolean; pulou?: boolean }
   | { k: "objeto"; estacao: EstacaoId; memoria?: number; extra?: string }
   | { k: "tarefa"; estacao: EstacaoId; feita?: boolean }
