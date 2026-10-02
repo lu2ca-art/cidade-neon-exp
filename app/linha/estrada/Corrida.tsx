@@ -16,7 +16,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
-import { Kombi222 } from "./Kombi222"
+import { Cupula, Kombi222 } from "./Kombi222"
 import { Cabine, OLHO } from "./Cabine"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
@@ -72,6 +72,10 @@ interface Props {
   // brancos do Núcleo caçam a Kombi. Pego = a coisa volta pro lugar de origem
   cacado?: boolean
   onApreendido?: () => void
+  // tem conversa rolando no painel (ela ocupa a ilha)
+  conversa?: boolean
+  // a ilha virou bifurcação: a conversa se recolhe enquanto isso
+  onBifurca?: (b: boolean) => void
   // dicas que o jogo já deu (tutorial do rádio × toca-discos)
   dicas?: string[]
   onDica?: (id: string) => void
@@ -149,8 +153,9 @@ const praDe = (d: FreqId) => territorio(d).pra
 const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id === f.para) < nLib
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
+type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -209,10 +214,22 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const garfoEls = useRef<(HTMLDivElement | null)[]>([])
   const garfoChave = useRef("")
   const [garfo, setGarfo] = useState<Garfo | null>(null)
+  useEffect(() => { onBifurca?.(!!garfo) }, [garfo, onBifurca])
+  // guia de rota (substitui o mapa): itens à frente, posição atualizada a cada quadro
+  const [guia, setGuia] = useState<ItemGuia[]>([])
+  const guiaChave = useRef("")
+  const guiaEls = useRef(new Map<string, HTMLElement>())
   const mapaCarro = useRef<SVGCircleElement>(null)
   const hudTom = useRef<HTMLElement>(null)
 
-  const [toasts, setToasts] = useState<{ id: number; de: string; texto: string }[]>([])
+  // falas em FILA: a ilha mostra uma de cada vez
+  const [toasts, setToasts] = useState<{ id: number; de: string; texto: string; ms: number }[]>([])
+  useEffect(() => {
+    const t0 = toasts[0]
+    if (!t0) return
+    const t = setTimeout(() => setToasts((l) => l.filter((x) => x.id !== t0.id)), t0.ms)
+    return () => clearTimeout(t)
+  }, [toasts])
   const [popup, setPopup] = useState<{ id: number; txt: string; cor: string } | null>(null)
   // sinal pego: nada de texto no meio da tela — o cartão da rádio pisca e,
   // nos lances grandes (quase, voou), uma etiqueta pequena sai do medidor
@@ -264,9 +281,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   const falar = useCallback((de: string, texto: string, ms = 3600) => {
     const id = ++toastId.current
-    setToasts((t) => [...t.slice(-1), { id, de, texto }])
+    setToasts((t) => [...t.slice(-3), { id, de, texto, ms }])
     gota(6)
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ms)
   }, [])
 
   // ── SOM: rádio OU toca-discos (nunca os dois). O disco é analógico:
@@ -572,7 +588,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           prog = j.u / V.L
           // cartão da bifurcação: as três opções, acende a do lado em que
           // o carro está
-          const chave = garfo < 650 ? `${j.via}:${uG % V.L}` : ""
+          const chave = garfo < 450 ? `${j.via}:${uG % V.L}` : ""
           if (chave !== garfoChave.current) {
             garfoChave.current = chave
             const u0 = uG % V.L
@@ -588,8 +604,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             })
             if (hudGarfoT.current) {
               const f = j.escolha ? V.faixas.find((x) => x.u === uG % V.L && x.lado === j.escolha) : null
-              hudGarfoT.current.textContent = f ? `✓ saindo ${praDe(f.para)}` : ""
-              hudGarfoT.current.parentElement?.classList.toggle("is-on", !!f)
+              hudGarfoT.current.textContent = f ? `✓ saindo ${praDe(f.para)} · ${f.lado > 0 ? "←" : "→"} desfaz` : "um toque pro lado da saída"
             }
           }
           const la = lugarAlvoRef.current
@@ -650,10 +665,26 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           const base = V.tipo === "saida" ? `sintonizando ${freqDe(V.t).freq}…` : "troca pelo caminho"
           hudTom.current.textContent = tom && V.tipo !== "saida" ? `${nomeDoTom(tom)} · ${base}` : base
         }
-        if (mapaCarro.current) {
-          const [mx, my] = minimapa.ponto(j.via, j.u)
-          mapaCarro.current.setAttribute("cx", String(mx))
-          mapaCarro.current.setAttribute("cy", String(my))
+        // guia de rota: o que vem nos próximos 1200 m desta estrada
+        {
+          const JAN = 1200
+          const dist = (u: number) => (V.fechada ? (((u - j.u) % V.L) + V.L) % V.L : u - j.u)
+          const it: ItemGuia[] = []
+          if (V.tipo === "circuito") {
+            for (const e of V.estacoes) {
+              const est = getEstacao(e.id)
+              it.push({ k: `e${e.id}`, d: dist(e.u), cor: est.cor, rot: String(est.n), tipo: e.id === alvoRef.current?.missao && alvoRef.current.t !== "busca" ? "alvo" : "estacao" })
+            }
+            for (const u of new Set(V.faixas.map((f) => f.u))) it.push({ k: `f${u}`, d: dist(u), cor: "#ffc857", rot: "saídas", tipo: "garfo" })
+          } else it.push({ k: "chega", d: V.L - j.u, cor: freqDe(V.t).cor, rot: lugarDe(V.t), tipo: "chegada" })
+          for (const m of marcosRef.current) if (m.via === j.via) it.push({ k: `m${m.chave}`, d: dist(m.u), cor: m.cor, rot: m.chave === "antena" ? "antena" : "missão", tipo: "item" })
+          const vis = it.filter((x) => x.d > 0 && x.d < JAN)
+          const chave = vis.map((x) => x.k).join(",")
+          if (chave !== guiaChave.current) { guiaChave.current = chave; setGuia(vis) }
+          for (const x of vis) {
+            const el = guiaEls.current.get(x.k)
+            if (el) el.style.left = `${(x.d / JAN) * 100}%`
+          }
         }
       },
     }
@@ -822,32 +853,23 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="13" r="7" /><circle cx="12" cy="13" r="1.6" fill="currentColor" /><path d="M5.5 11h13M12 6v5" /></svg>
           )}
         </button>
-        {/* a estrada em que você está (só ela) */}
-        <svg className="l-minimapa" viewBox="0 0 160 60" aria-hidden>
-          <path d={minimapa.proj[viaAtual].d} style={{ stroke: minimapa.proj[viaAtual].cor }} />
-          {V.tipo === "circuito" && V.t === "linha" && centro.estacoes.map((e) => {
-            const est = getEstacao(e.id)
-            const [x, y] = minimapa.ponto(viaAtual, e.u)
-            const minha = e.id === alvo?.missao && alvo.t !== "busca"
-            return <circle key={e.id} cx={x} cy={y} r={minha ? 4 : 1.8} fill={est.cor} className={minha ? "l-minimapa-pulso" : ""} />
-          })}
-          {marcos.filter((m) => m.via === viaAtual).map((m) => {
-            const [x, y] = minimapa.ponto(m.via, m.u)
-            return <circle key={m.chave} className="l-minimapa-pulso" cx={x} cy={y} r="4" fill={m.cor} />
-          })}
-          <circle ref={mapaCarro} r="3.2" fill="#fff" stroke="#050510" strokeWidth="1" />
-        </svg>
+        {/* guia de rota: a linha do que vem pela frente (as placas guiam
+            na pista; aqui só a ordem das coisas e a distância) */}
+        <div className="l-guia" style={{ ["--cor" as string]: fq.cor }}>
+          <small className="l-guia-lugar">{V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`}</small>
+          <div className="l-guia-linha">
+            <i className="l-guia-kombi" />
+            {guia.map((x) => (
+              <span key={x.k} ref={(el) => { if (el) guiaEls.current.set(x.k, el); else guiaEls.current.delete(x.k) }} className={`l-guia-it is-${x.tipo}`} style={{ ["--c" as string]: x.cor, left: `${(x.d / 1200) * 100}%` }}>
+                <i />{x.tipo !== "estacao" && <b>{x.rot}</b>}{x.tipo === "estacao" && <em>{x.rot}</em>}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
 
       <div ref={sirene} className="l-sirene" />
-      {cacando && (
-        <div className="l-procurado">
-          <b>PROCURADO</b>
-          <small>o núcleo tá atrás · acelera no talo ou troca de rua</small>
-          <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
-        </div>
-      )}
       {caido && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: "#3d7bff" }}>
           <small>D-Bee · urgente</small>
@@ -869,18 +891,58 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
 
-      <div className="l-toasts">
-        {toasts.map((t) => (
-          <div key={t.id} className="l-toast" style={{ ["--cor" as string]: VOZES[t.de] ?? "#fff" }}>
-            <b>{t.de}</b> {t.texto}
-          </div>
-        ))}
-      </div>
-
       {popup && <div key={popup.id} className="l-popup" style={{ color: popup.cor }}>{popup.txt}</div>}
 
-      {/* bifurcação: quem guia são as placas na pista; aqui só a confirmação */}
-      {garfo && <div className="l-garfo-chip"><span ref={hudGarfoT} /></div>}
+      {/* ILHA DINÂMICA: uma coisa de cada vez, se transformando —
+          bifurcação > conversa (no painel) > falas (em fila) > PROCURADO > quieta */}
+      {(() => {
+        const modo = garfo ? "garfo" : conversa ? "conversa" : toasts[0] ? "fala" : cacando ? "procurado" : "quieta"
+        const t0 = toasts[0]
+        const C = garfo ? M.vias[garfo.via] : null
+        const op = (f: Faixa | undefined, k: number) => {
+          if (!f) return <div key={k} ref={(el) => { garfoEls.current[k] = el }} className="l-garfo-op is-vazia" />
+          const fr = freqDe(f.para)
+          const ok = aberta(f, nLib)
+          const minha = !!lugarAlvo && rumo(C!.t, lugarAlvo) === f.para
+          return (
+            <div key={k} ref={(el) => { garfoEls.current[k] = el }} className={`l-garfo-op ${ok ? "" : "is-trancada"} ${minha ? "is-rota" : ""}`} style={{ ["--cor" as string]: ok ? fr.cor : "#6a6f8c" }}>
+              {minha && <em>missão</em>}
+              <i>{f.lado < 0 ? "←" : "→"}</i>
+              <b>{lugarDe(f.para)}</b>
+              <small>{ok ? `${fr.freq} FM` : `trancada · ${fr.custo}`}</small>
+            </div>
+          )
+        }
+        return (
+          <div className={`l-ilha is-${modo}`} style={{ ["--cor" as string]: t0 ? VOZES[t0.de] ?? "#fff" : "#2fe8ff" }}>
+            {modo === "garfo" && C && (
+              <div key="garfo" className="l-ilha-conteudo">
+                <header>bifurcação em <b ref={hudGarfoM}>…</b> · <span ref={hudGarfoT}>um toque pro lado da saída</span></header>
+                <div className="l-garfo-ops">
+                  {op(garfo!.esq, 0)}
+                  <div ref={(el) => { garfoEls.current[1] = el }} className={`l-garfo-op ${lugarAlvo === C.t ? "is-rota" : ""}`} style={{ ["--cor" as string]: freqDe(C.t).cor }}>
+                    {lugarAlvo === C.t && <em>missão</em>}
+                    <i>↑</i>
+                    <b>fica</b>
+                    <small>{freqDe(C.t).freq} FM</small>
+                  </div>
+                  {op(garfo!.dir, 2)}
+                </div>
+              </div>
+            )}
+            {modo === "fala" && t0 && (
+              <div key={t0.id} className="l-ilha-conteudo l-ilha-fala"><b>{t0.de}</b> {t0.texto}</div>
+            )}
+            {modo === "procurado" && (
+              <div key="proc" className="l-ilha-conteudo l-ilha-proc">
+                <b>PROCURADO</b><small>acelera no talo ou troca de rua</small>
+                <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
+              </div>
+            )}
+            {modo === "quieta" && <div key="q" className="l-ilha-conteudo l-ilha-quieta" />}
+          </div>
+        )
+      })()}
 
       <div className="l-hud-vel">
         {tag && <em key={tag.id} className="l-hud-tag" style={{ color: tag.cor }}>{tag.txt}</em>}
@@ -2353,7 +2415,7 @@ function Cena({
     // de dentro: some a carroceria de fora, aparece a cabine
     const dentroAgora = dentroRef.current && !cine
     if (corpoK.current) corpoK.current.visible = !dentroAgora
-    if (cabineG.current) cabineG.current.visible = dentroAgora
+    if (cabineG.current) cabineG.current.visible = true
     // a luz magenta de baixo (o brilho no asfalto) pintava a cabine de rosa
     if (luzBaixo.current) luzBaixo.current.intensity = dentroAgora ? 0 : 45
     hudN.current++
@@ -2546,7 +2608,10 @@ function Cena({
         <group ref={corpoK}>
           <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
         </group>
-        <group ref={cabineG} visible={false}>
+        {/* a cúpula de vidro e o interior aparecem nas DUAS câmeras: de fora
+            dá pra ver quem tá dentro; de dentro, a cidade por cima */}
+        <Cupula />
+        <group ref={cabineG}>
           <Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} />
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />

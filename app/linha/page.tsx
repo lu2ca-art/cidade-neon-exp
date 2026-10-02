@@ -71,6 +71,8 @@ export default function LinhaPage() {
   const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
   // a conversa aberta porque desceu na estação (destrava o passo "chegar")
   const [naEstacao, setNaEstacao] = useState(false)
+  // a ilha do topo virou bifurcação: a conversa do painel se recolhe
+  const [bifurcando, setBifurcando] = useState(false)
   // vídeo do //LOOP que alguém mandou: o app abre direto nele
   const [rotaLoop, setRotaLoop] = useState<string | undefined>(undefined)
   // ligação de voz rolando por cima da estrada (ligacoes.ts)
@@ -473,6 +475,8 @@ export default function LinhaPage() {
             pausado={tela.t !== "corrida" && tela.t !== "chegada"}
             limitado={!!invasao}
             cacado={cacado}
+            conversa={!!aoVivo}
+            onBifurca={setBifurcando}
             dicas={save.dicas}
             onDica={(d) => setSave((s) => (s.dicas.includes(d) ? s : { ...s, dicas: [...s.dicas, d] }))}
             onApreendido={apreender}
@@ -512,7 +516,7 @@ export default function LinhaPage() {
             onLoop={(v) => { setRotaLoop(v ? `/tiktok/feed?v=${v}` : undefined); abrirApp("loop") }}
             jeito={save.modos[(tela.t === "chat" ? tela.id : aoVivo) as EstacaoId] === "audio" ? "audio" : "texto"}
             naEstacao={tela.t === "chat" && naEstacao}
-            oculto={tela.t !== "chat" && tela.t !== "corrida"}
+            oculto={(tela.t !== "chat" && tela.t !== "corrida") || (tela.t === "corrida" && bifurcando)}
           />
         )}
         {tela.t === "home" && (

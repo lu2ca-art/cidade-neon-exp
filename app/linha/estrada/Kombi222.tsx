@@ -78,7 +78,10 @@ function Roda({ x, z, giro, esterco }: { x: number; z: number; giro: React.Mutab
 
 // perfil lateral (X = pra frente, Y = pra cima), em metros. Caixas de roda
 // em ±1.35, raio 0.36 (as rodas)
-function perfil() {
+export const FRISO = 1.2 // daqui pra cima é vidro (a cúpula panorâmica)
+
+// a carroceria só até o friso: o nariz sobe até ele e o resto é reto
+function perfilSaia() {
   const s = new THREE.Shape()
   const arco = (cx: number) => {
     for (let i = 0; i <= 14; i++) {
@@ -92,28 +95,43 @@ function perfil() {
   s.lineTo(0.85, 0.4)
   arco(1.35)
   s.lineTo(2.06, 0.4)
-  // nariz: sobe redondo até o friso, depois o para-brisa deita pra trás
   s.quadraticCurveTo(2.2, 0.5, 2.2, 0.82)
-  s.lineTo(2.19, 1.18)
-  s.quadraticCurveTo(2.17, 1.26, 2.12, 1.32)
-  s.lineTo(2.0, 1.86)
-  s.quadraticCurveTo(1.93, 2.04, 1.62, 2.05)
-  // teto até a traseira, que é bem redonda em cima
-  s.lineTo(-1.62, 2.05)
-  s.quadraticCurveTo(-2.15, 2.04, -2.17, 1.66)
+  s.lineTo(2.19, FRISO)
+  s.lineTo(-2.17, FRISO)
   s.lineTo(-2.17, 0.72)
   s.quadraticCurveTo(-2.17, 0.42, -2.12, 0.4)
   return s
 }
 
-function montarCorpo() {
-  const largura = 1.62
-  const g = new THREE.ExtrudeGeometry(perfil(), { depth: largura, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.08, bevelSegments: 5, curveSegments: 20 })
+// a cúpula: mais alta que o teto antigo, para-brisa deitado, traseira redonda
+function perfilCupula() {
+  const s = new THREE.Shape()
+  s.moveTo(2.19, FRISO)
+  s.quadraticCurveTo(2.16, 1.5, 2.04, 1.95)
+  s.quadraticCurveTo(1.95, 2.3, 1.55, 2.32)
+  s.lineTo(-1.6, 2.32)
+  s.quadraticCurveTo(-2.15, 2.3, -2.17, 1.8)
+  s.lineTo(-2.17, FRISO)
+  s.lineTo(2.19, FRISO)
+  return s
+}
+
+
+function extrudar(sh: THREE.Shape, largura: number, bevel = true) {
+  const g = new THREE.ExtrudeGeometry(sh, { depth: largura, bevelEnabled: bevel, bevelThickness: 0.12, bevelSize: 0.08, bevelSegments: 5, curveSegments: 20 })
   g.translate(0, 0, -largura / 2)
-  g.rotateY(Math.PI / 2) // X do perfil vira -Z (a frente da Kombi aponta pra -Z)
+  g.rotateY(Math.PI / 2)
   g.computeVertexNormals()
   return g
 }
+
+function montarCorpo() {
+  return extrudar(perfilSaia(), 1.62)
+}
+export function montarCupula() {
+  return extrudar(perfilCupula(), 1.62)
+}
+
 
 // duas cores no shader, pela posição: crispa, sem depender de vértice
 function montarPintura() {
@@ -164,10 +182,6 @@ const JANELAS: [number, number][] = [[-1.42, 0.62], [-0.5, 0.82], [0.42, 0.82], 
 export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableRefObject<boolean>; velocidade: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number> }) {
   const corpo = useMemo(() => montarCorpo(), [])
   const pintura = useMemo(() => montarPintura(), [])
-  const janelaG = useMemo(() => janela(0.82, 0.48), [])
-  const janelaP = useMemo(() => janela(0.62, 0.48), [])
-  const brisa = useMemo(() => janela(0.78, 0.5, 0.12), [])
-  const traseiro = useMemo(() => janela(1.0, 0.36, 0.1), [])
   const placa = useMemo(() => texPlaca(), [])
   const brilho = useMemo(() => texBrilho(), [])
   const giro = useRef(0)
@@ -186,8 +200,6 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
       if (on) escap.current.scale.setScalar(0.8 + Math.random() * 0.6)
     }
   })
-
-  const vidro = <meshStandardMaterial color={VIDRO} metalness={0.9} roughness={0.08} emissive="#0e2a4a" emissiveIntensity={0.35} />
 
   return (
     <group>
@@ -210,30 +222,6 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
         </mesh>
       ))}
 
-      {/* janelas laterais: a da porta da cabine + 3 do salão, cantos redondos */}
-      {[-1, 1].map((l) =>
-        JANELAS.map(([z, w]) => (
-          <mesh key={`${l}${z}`} geometry={w > 0.7 ? janelaG : janelaP} position={[l * 0.94, 1.56, z]} rotation={[0, (l * Math.PI) / 2, 0]}>
-            {vidro}
-          </mesh>
-        )),
-      )}
-      {/* para-brisa bipartido, inclinado com o nariz */}
-      <group position={[0, 1.56, -2.16]} rotation={[0, Math.PI, 0]}>
-        {[-0.42, 0.42].map((x) => (
-          <mesh key={x} geometry={brisa} position={[x, 0, 0]} rotation={[-0.2, 0, 0]}>
-            {vidro}
-          </mesh>
-        ))}
-      </group>
-      {/* vidro traseiro + reflexo cyan */}
-      <mesh geometry={traseiro} position={[0, 1.5, 2.285]}>
-        {vidro}
-      </mesh>
-      <mesh position={[-0.32, 1.5, 2.29]}>
-        <planeGeometry args={[0.12, 0.32]} />
-        <meshBasicMaterial color="#2fe8ff" transparent opacity={0.22} toneMapped={false} />
-      </mesh>
 
       {/* nariz: emblema redondo e faróis redondos com aro cromado */}
       <mesh position={[0, 0.98, -2.31]} rotation-x={Math.PI / 2}>
@@ -259,15 +247,6 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
           <meshBasicMaterial color="#ffae3d" toneMapped={false} />
         </mesh>
       ))}
-      {/* entradas de ar do motor, no alto da lateral traseira */}
-      {[-1, 1].map((l) =>
-        [0, 1, 2, 3, 4].map((k) => (
-          <mesh key={`${l}${k}`} position={[l * 0.945, 1.86 - k * 0.075, 1.95]} rotation={[0, (l * Math.PI) / 2, 0]}>
-            <planeGeometry args={[0.32, 0.03]} />
-            <meshStandardMaterial color="#0b1030" side={THREE.DoubleSide} />
-          </mesh>
-        )),
-      )}
 
       {/* traseira: tampa do motor com as grelhas, placa, lanternas */}
       {[-1, 1].map((l) =>
@@ -320,6 +299,42 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
       <Roda x={0.82} z={-1.35} giro={giro} esterco={esterco} />
       <Roda x={-0.82} z={1.35} giro={giro} />
       <Roda x={0.82} z={1.35} giro={giro} />
+    </group>
+  )
+}
+
+// A cúpula panorâmica: vidro do friso pra cima, mais alta que o teto antigo,
+// com as colunas e os arcos creme (a cara da Kombi continua). Fica visível
+// de fora (dá pra ver quem tá dentro) e de dentro (dá pra ver a cidade).
+const COLUNAS_Z = [-1.95, -1.0, -0.05, 0.9, 1.9]
+export function Cupula() {
+  const geo = useMemo(() => montarCupula(), [])
+  return (
+    <group>
+      <mesh geometry={geo} renderOrder={2}>
+        <meshStandardMaterial color="#bfe6ff" transparent opacity={0.13} metalness={0.7} roughness={0.04} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+      {/* colunas creme nos dois lados */}
+      {[-1, 1].map((l) => COLUNAS_Z.map((z) => (
+        <mesh key={`${l}${z}`} position={[l * 0.86, FRISO + 0.52, z]}>
+          <boxGeometry args={[0.07, 1.06, 0.07]} />
+          <meshStandardMaterial color={CREME} roughness={0.5} />
+        </mesh>
+      )))}
+      {/* arcos do teto, atravessando de um lado pro outro */}
+      {COLUNAS_Z.map((z) => (
+        <mesh key={z} position={[0, 2.34, z]}>
+          <boxGeometry args={[1.78, 0.06, 0.07]} />
+          <meshStandardMaterial color={CREME} roughness={0.5} />
+        </mesh>
+      ))}
+      {/* trilhos do teto (o bagageiro) */}
+      {[-1, 1].map((l) => (
+        <mesh key={l} position={[l * 0.86, 2.36, 0]}>
+          <boxGeometry args={[0.05, 0.05, 3.9]} />
+          <meshStandardMaterial color="#d9d2c2" metalness={0.6} roughness={0.3} />
+        </mesh>
+      ))}
     </group>
   )
 }

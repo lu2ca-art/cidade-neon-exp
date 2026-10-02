@@ -378,6 +378,8 @@ export interface KombiProps {
   hideInterior?: boolean
   radioHub?: { freq?: string; stationLabel?: string; radioOn?: boolean }
   onItemClick?: (item: "radio" | "pads" | "toca" | "portaLuvas") => void
+  /** sem teto interno nem cúpula (a Linha 222 põe o teto panorâmico dela) */
+  semTeto?: boolean
 }
 
 export function Kombi({
@@ -388,6 +390,7 @@ export function Kombi({
   hideInterior = false,
   radioHub,
   onItemClick,
+  semTeto = false,
 }: KombiProps) {
   const K = KOMBI_LAYOUT
   return (
@@ -423,10 +426,12 @@ export function Kombi({
               ficam de fato transparentes e não vejo o "exterior" pelas paredes. */}
           {/* Teto interno (bem abaixo do teto externo Y=1.45, abaixo do
               parabrisa Y=1.1 pra não bloquear vista frontal) */}
-          <mesh position={[0, 1.38, 0.4]}>
-            <boxGeometry args={[1.55, 0.02, 3.0]} />
-            <meshStandardMaterial color="#3a2410" roughness={0.8} />
-          </mesh>
+          {!semTeto && (
+            <mesh position={[0, 1.38, 0.4]}>
+              <boxGeometry args={[1.55, 0.02, 3.0]} />
+              <meshStandardMaterial color="#3a2410" roughness={0.8} />
+            </mesh>
+          )}
           {/* Parede traseira interna (abaixo do vidro-tras Y<0.85) */}
           <mesh position={[0, 0.5, 1.78]}>
             <boxGeometry args={[1.55, 0.85, 0.02]} />
@@ -456,7 +461,7 @@ export function Kombi({
           {/* Canopy única — uma bolha de vidro arredondada cobre tudo em cima
               (para-brisa + vidro-tras + janelas laterais + teto de vidro).
               "Kombi do futuro" — sem separação de peças, coeso, arredondado. */}
-          <KombiCanopy />
+          {!semTeto && <KombiCanopy />}
           {/* Porta interna direita — removida (parede azul feia que quebrava
               o interior). A carroceria e painéis laterais já fecham o carro. */}
           {/* dashboard */}
