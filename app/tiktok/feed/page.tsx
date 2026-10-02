@@ -79,6 +79,12 @@ const VIDEOS = [
   },
 ]
 
+// pseudo-aleatório fixo por índice (a mesma tela em todo render)
+function rnd(i: number, k: number) {
+  const x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453
+  return x - Math.floor(x)
+}
+
 function formatCount(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
   return String(n)
@@ -96,10 +102,10 @@ function VideoVisual({ type, color, active }: { type: string; color: string; act
             key={i}
             className="absolute w-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent"
             style={{
-              left: `${Math.random() * 100}%`,
-              height: `${30 + Math.random() * 40}px`,
-              animation: `rain-fall ${1.5 + Math.random() * 2}s linear infinite`,
-              animationDelay: `${Math.random() * 3}s`,
+              left: `${rnd(i, 1) * 100}%`,
+              height: `${30 + rnd(i, 2) * 40}px`,
+              animation: `rain-fall ${1.5 + rnd(i, 3) * 2}s linear infinite`,
+              animationDelay: `${rnd(i, 4) * 3}s`,
               top: "-40px",
             }}
           />
@@ -139,9 +145,9 @@ function VideoVisual({ type, color, active }: { type: string; color: string; act
             className="absolute w-2 h-2 rounded-full"
             style={{
               backgroundColor: `${color}60`,
-              left: `${10 + Math.random() * 80}%`,
+              left: `${10 + rnd(i, 5) * 80}%`,
               bottom: "10%",
-              animation: `float-ember ${2 + Math.random() * 3}s ease-out infinite`,
+              animation: `float-ember ${2 + rnd(i, 6) * 3}s ease-out infinite`,
               animationDelay: `${i * 0.3}s`,
               boxShadow: `0 0 6px ${color}40`,
             }}
@@ -181,10 +187,10 @@ function VideoVisual({ type, color, active }: { type: string; color: string; act
           className="absolute w-1 h-1 rounded-full"
           style={{
             backgroundColor: `${color}80`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `twinkle ${2 + Math.random() * 3}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 3}s`,
+            left: `${rnd(i, 7) * 100}%`,
+            top: `${rnd(i, 8) * 100}%`,
+            animation: `twinkle ${2 + rnd(i, 9) * 3}s ease-in-out infinite`,
+            animationDelay: `${rnd(i, 10) * 3}s`,
             boxShadow: `0 0 4px ${color}60`,
           }}
         />

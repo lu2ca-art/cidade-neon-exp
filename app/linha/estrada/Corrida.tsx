@@ -19,7 +19,7 @@ import * as THREE from "three"
 import { Kombi222 } from "./Kombi222"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
-import { FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
+import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { chiadoCurto, estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
@@ -220,6 +220,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [freq, setFreq] = useState<FreqId>("linha")
   const [viaAtual, setViaAtual] = useState(M.circuito.linha)
   const [faixa, setFaixa] = useState("")
+  // tocando um vinil da Kombi (não uma faixa da rádio): o cartão diz isso
+  const [deDisco, setDeDisco] = useState(false)
   const [portal, setPortal] = useState<{ id: EstacaoId; t: number } | null>(null)
   const [bairro, setBairro] = useState<{ id: FreqId; t: number } | null>(null)
   const [painel, setPainel] = useState(false)
@@ -264,6 +266,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     if (!p) return
     const tocar = () => {
       setFaixa(p.faixa.titulo)
+      setDeDisco(VINIS.some((v) => v.src === p.faixa.src))
       player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol)
     }
     if (!p.vinheta) return tocar()
@@ -878,7 +881,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => setPopup({ id: Math.random(), txt: "pra mudar de música, muda de caminho →", cor: fq.cor })}
       >
-        <span ref={hudFreq} className="l-hud-freq" style={{ color: fq.cor }}>{fq.freq} FM</span>
+        <span ref={hudFreq} className="l-hud-freq" style={{ color: fq.cor }}>{deDisco && V.tipo !== "saida" ? "TOCA-DISCOS" : `${fq.freq} FM`}</span>
         {caido ? (
           <span className="l-hud-faixa is-caida">sem sinal · o núcleo derrubou a 222</span>
         ) : passandoE ? (
