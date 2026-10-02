@@ -19,6 +19,7 @@ import { Chat, type Destino } from "./chat"
 import { MISSOES, alvoDe, ativa, etapaDe } from "./missoes"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
+import { Jardim, Violao } from "./recursos"
 import { Corrida, type Cinema, type Stats } from "./estrada/Corrida"
 import { Chegada } from "./chegada"
 import { LigacaoNaKombi, type Transcricao } from "./ligacao"
@@ -349,6 +350,13 @@ export default function LinhaPage() {
       avisar(a.nome, `abre no nível ${NIVEIS[a.nivel].nome}`, a.cor)
       return
     }
+    // recurso de missão: abre com o objeto daquela estação
+    if (a.precisa && !save.objetos.includes(a.precisa)) {
+      const e = getEstacao(a.precisa)
+      avisar(a.nome, save.objetos.length || save.pausas[a.precisa] !== undefined ? `abre quando ${e.personagem} te der ${e.objetoNome}` : "abre com uma missão da cidade", a.cor)
+      return
+    }
+    if (id === "violao") setSave((s) => ({ ...s, jogados: { ...s.jogados, violao: 1 } }))
     if (a.link) {
       track("external_link_click", { destination: a.link.includes("instagram") ? "instagram" : a.link.includes("untitled") ? "untitled" : "other", place_id: "linha-home" })
       window.open(`${a.link}${a.link.includes("?") ? "&" : "?"}utm_source=cidade-neon&utm_medium=game&utm_campaign=linha-222`, "_blank")
@@ -551,6 +559,10 @@ export default function LinhaPage() {
             }}
           />
         )}
+        {tela.t === "app" && tela.id === "jardim" && (
+          <Jardim save={save} atualizar={atualizar} onVoltar={() => setTela({ t: "home" })} />
+        )}
+        {tela.t === "app" && tela.id === "violao" && <Violao onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
           <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} />
         )}
