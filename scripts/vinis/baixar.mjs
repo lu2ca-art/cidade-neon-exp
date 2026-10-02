@@ -86,11 +86,18 @@ function avaliar(c, compositor) {
   const pd = cc0 || /public domain|^pd|\bpd\b|pd-/.test(lic)
   if (!pd) return { ok: false, porque: `licença "${m("LicenseShortName") || "?"}"` }
   if (!/^audio\//.test(c.mime ?? "") && !/\.(ogg|oga|opus|mp3|flac|wav)$/i.test(c.url)) return { ok: false, porque: "não é áudio" }
+  // MIDI é partitura, não gravação (e o ffmpeg não toca)
+  if (/midi/.test(c.mime ?? "") || /\.midi?$/i.test(c.url)) return { ok: false, porque: "MIDI (não é gravação)" }
   if (c.duracao && (c.duracao < 90 || c.duracao > 420)) return { ok: false, porque: `duração ${Math.round(c.duracao)}s` }
   // ano da gravação: data original, depois o texto da descrição/título
   const fonteAno = `${m("DateTimeOriginal")} ${m("ObjectName")} ${m("ImageDescription")} ${c.titulo}`
   const anos = [...fonteAno.matchAll(/\b(18[89]\d|19[0-9]\d|20[0-2]\d)\b/g)].map((x) => Number(x[1]))
-  const ano = anos.length ? Math.min(...anos) : null
+  // o MAIOR ano citado: o menor costuma ser nascimento do compositor ou ano
+  // da composição; a gravação é sempre depois. Data original manda se tiver
+  const dataOrig = [...m("DateTimeOriginal").matchAll(/\b(18[89]\d|19\d\d|20[0-2]\d)\b/g)].map((x) => Number(x[1]))
+  const ano = dataOrig.length ? Math.max(...dataOrig) : anos.length ? Math.max(...anos) : null
+  // "PDP-CH" = domínio público na Suíça, não vale aqui sem data original
+  if (/PDP-CH/i.test(c.titulo) && !dataOrig.length) return { ok: false, porque: "domínio público suíço sem data da gravação" }
   if (!cc0) {
     if (!ano) return { ok: false, porque: "domínio público sem ano da gravação" }
     if (ano > 1925) return { ok: false, porque: `gravação de ${ano} (> 1925)` }
