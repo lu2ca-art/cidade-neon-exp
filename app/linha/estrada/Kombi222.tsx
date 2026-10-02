@@ -103,18 +103,6 @@ function perfilSaia() {
   return s
 }
 
-// a cúpula: mais alta que o teto antigo, para-brisa deitado, traseira redonda
-function perfilCupula() {
-  const s = new THREE.Shape()
-  s.moveTo(2.19, FRISO)
-  s.quadraticCurveTo(2.16, 1.5, 2.04, 1.95)
-  s.quadraticCurveTo(1.95, 2.3, 1.55, 2.32)
-  s.lineTo(-1.6, 2.32)
-  s.quadraticCurveTo(-2.15, 2.3, -2.17, 1.8)
-  s.lineTo(-2.17, FRISO)
-  s.lineTo(2.19, FRISO)
-  return s
-}
 
 
 function extrudar(sh: THREE.Shape, largura: number, bevel = true) {
@@ -127,9 +115,6 @@ function extrudar(sh: THREE.Shape, largura: number, bevel = true) {
 
 function montarCorpo() {
   return extrudar(perfilSaia(), 1.62)
-}
-export function montarCupula() {
-  return extrudar(perfilCupula(), 1.62)
 }
 
 
@@ -303,38 +288,14 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
   )
 }
 
-// A cúpula panorâmica: vidro do friso pra cima, mais alta que o teto antigo,
-// com as colunas e os arcos creme (a cara da Kombi continua). Fica visível
-// de fora (dá pra ver quem tá dentro) e de dentro (dá pra ver a cidade).
-const COLUNAS_Z = [-1.95, -1.0, -0.05, 0.9, 1.9]
+// Conversível: sem teto. Só o para-brisa de vidro, baixo e inclinado, sem
+// moldura de metal (a cúpula com colunas e arcos ficou pesada — LU2CA, 02/10).
+// De fora dá pra ver quem tá dentro; de dentro, a cidade inteira.
 export function Cupula() {
-  const geo = useMemo(() => montarCupula(), [])
   return (
-    <group>
-      <mesh geometry={geo} renderOrder={2}>
-        <meshStandardMaterial color="#bfe6ff" transparent opacity={0.13} metalness={0.7} roughness={0.04} depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
-      {/* colunas creme nos dois lados */}
-      {[-1, 1].map((l) => COLUNAS_Z.map((z) => (
-        <mesh key={`${l}${z}`} position={[l * 0.86, FRISO + 0.52, z]}>
-          <boxGeometry args={[0.07, 1.06, 0.07]} />
-          <meshStandardMaterial color={CREME} roughness={0.5} />
-        </mesh>
-      )))}
-      {/* arcos do teto, atravessando de um lado pro outro */}
-      {COLUNAS_Z.map((z) => (
-        <mesh key={z} position={[0, 2.34, z]}>
-          <boxGeometry args={[1.78, 0.06, 0.07]} />
-          <meshStandardMaterial color={CREME} roughness={0.5} />
-        </mesh>
-      ))}
-      {/* trilhos do teto (o bagageiro) */}
-      {[-1, 1].map((l) => (
-        <mesh key={l} position={[l * 0.86, 2.36, 0]}>
-          <boxGeometry args={[0.05, 0.05, 3.9]} />
-          <meshStandardMaterial color="#d9d2c2" metalness={0.6} roughness={0.3} />
-        </mesh>
-      ))}
-    </group>
+    <mesh position={[0, FRISO + 0.32, -1.98]} rotation-x={-0.42} renderOrder={2}>
+      <planeGeometry args={[1.62, 0.66]} />
+      <meshStandardMaterial color="#bfe6ff" transparent opacity={0.16} metalness={0.7} roughness={0.04} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
   )
 }
