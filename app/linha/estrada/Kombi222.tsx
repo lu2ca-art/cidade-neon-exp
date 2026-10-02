@@ -48,13 +48,15 @@ function texBrilho() {
   return new THREE.CanvasTexture(c)
 }
 
-function Roda({ x, z, giro }: { x: number; z: number; giro: React.MutableRefObject<number> }) {
+function Roda({ x, z, giro, esterco }: { x: number; z: number; giro: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number> }) {
   const ref = useRef<THREE.Group>(null)
+  const pivo = useRef<THREE.Group>(null)
   useFrame(() => {
     if (ref.current) ref.current.rotation.x = giro.current
+    if (pivo.current && esterco) pivo.current.rotation.y = esterco.current
   })
   return (
-    <group position={[x, 0.36, z]}>
+    <group ref={pivo} position={[x, 0.36, z]}>
       <group ref={ref}>
         <mesh rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.36, 0.36, 0.26, 20]} />
@@ -157,7 +159,9 @@ function janela(w: number, h: number, r = 0.09) {
 // [z, largura]: porta da cabine e as 3 do salão
 const JANELAS: [number, number][] = [[-1.42, 0.62], [-0.5, 0.82], [0.42, 0.82], [1.34, 0.82]]
 
-export function Kombi222({ turbo, velocidade }: { turbo: React.MutableRefObject<boolean>; velocidade: React.MutableRefObject<number> }) {
+// esterco: ângulo das rodas da frente (rad, + = pra esquerda). No drift elas
+// apontam pra onde a Kombi ANDA — o contraesterço que mostra que ela tá de lado
+export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableRefObject<boolean>; velocidade: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number> }) {
   const corpo = useMemo(() => montarCorpo(), [])
   const pintura = useMemo(() => montarPintura(), [])
   const janelaG = useMemo(() => janela(0.82, 0.48), [])
@@ -312,8 +316,8 @@ export function Kombi222({ turbo, velocidade }: { turbo: React.MutableRefObject<
         <meshBasicMaterial map={brilho} color="#b38cff" transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
 
-      <Roda x={-0.82} z={-1.35} giro={giro} />
-      <Roda x={0.82} z={-1.35} giro={giro} />
+      <Roda x={-0.82} z={-1.35} giro={giro} esterco={esterco} />
+      <Roda x={0.82} z={-1.35} giro={giro} esterco={esterco} />
       <Roda x={-0.82} z={1.35} giro={giro} />
       <Roda x={0.82} z={1.35} giro={giro} />
     </group>

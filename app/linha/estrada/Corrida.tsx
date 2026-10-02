@@ -36,6 +36,9 @@ const VMAX = 46 // m/s
 const VDRIFT = 20 // ~72 km/h
 const PESO_FINTA = 0.3
 const DERIVA_MAX = 0.95 // ~54°
+// fumaça nas rodas no drift: desligada — o Horizon não tem (prints do
+// LU2CA, 02/10); fica o código caso queira de volta
+const FUMACA = false
 const VTURBO = 62
 const ACEL = 11
 const FREIO = 26
@@ -1399,7 +1402,7 @@ function Cena({
     const n = 1600
     const m = new THREE.InstancedMesh(
       new THREE.PlaneGeometry(0.3, 0.95),
-      new THREE.MeshBasicMaterial({ color: "#030308", transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+      new THREE.MeshBasicMaterial({ color: "#030308", transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
       n,
     )
     m.frustumCulled = false
@@ -1473,6 +1476,7 @@ function Cena({
   const alvoCeu = useMemo(() => new THREE.Color(), [])
   const kTurbo = useRef(false)
   const kVel = useRef(0)
+  const kEsterco = useRef(0)
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
 
@@ -1579,16 +1583,17 @@ function Cena({
         // torque na carroceria: pra dentro sustenta, contra fecha, solto =
         // só a aderência voltando (o -deriva) puxa ela de volta
         // (solto, os pneus voltam a morder: puxa bem mais forte pro reto)
-        const torque = (lado === d ? 1.55 : lado === -d ? -2.6 : 0) * d * (0.6 + 0.4 * Math.min(1, pct * 1.5)) - j.deriva * (lado === d ? 2.4 : 7)
+        const torque = (lado === d ? 1.7 : lado === -d ? -2.6 : 0) * d * (0.6 + 0.4 * Math.min(1, pct * 1.5)) - j.deriva * (lado === d ? 2.4 : 7)
         j.giro += (torque - j.giro * 3) * dt
         j.deriva += j.giro * dt
         if (Math.abs(j.deriva) > DERIVA_MAX) { j.deriva = Math.sign(j.deriva) * DERIVA_MAX; j.giro *= -0.2 }
         // de lado, a Kombi carrega o embalo (resposta lenta) e vai sendo
-        // empurrada pra onde o nariz aponta; o atrito de andar de lado come
-        // velocidade na proporção do ângulo
+        // empurrada pra onde o nariz aponta. Velocidade quase não cai (no
+        // Horizon o carro segue a 170–200 mph atravessado): só um atrito leve
+        // na proporção do ângulo
         const alvoVx = Math.sin(j.deriva) * Math.abs(j.v) * 0.6
         j.vx += (alvoVx - j.vx) * Math.min(1, dt * 1.8)
-        j.v -= j.v * Math.abs(Math.sin(j.deriva)) * 0.22 * dt
+        j.v -= j.v * Math.abs(Math.sin(j.deriva)) * 0.06 * dt
         const ang = d * j.deriva
         if (ang > 0.2) {
           j.driftT += dt
@@ -1901,7 +1906,7 @@ function Cena({
         tmp.d.scale.set(1, Math.max(0.6, Math.abs(j.v) * dt / 0.95 * 1.15), 1)
         tmp.d.updateMatrix()
         marcas.m.setMatrixAt(marcas.prox++ % marcas.n, tmp.d.matrix)
-        if (Math.random() < 0.45 * forca) {
+        if (FUMACA && Math.random() < 0.45 * forca) {
           const i = fumaca.prox++ % fumaca.n
           fumaca.pos.set([tmp.roda.x, tmp.roda.y + 0.25, tmp.roda.z], i * 3)
           fumaca.vel.set([(Math.random() - 0.5) * 2, 0.8 + Math.random() * 1.4, (Math.random() - 0.5) * 2], i * 3)
@@ -2053,6 +2058,9 @@ function Cena({
 
     kTurbo.current = j.turboT > 0
     kVel.current = j.v
+    // rodas da frente: com aderência seguem o volante; de lado, apontam pra
+    // onde a Kombi anda (contraesterço natural)
+    kEsterco.current += ((j.drift ? j.deriva * 0.85 : -j.steer * 0.42) - kEsterco.current) * Math.min(1, dt * 10)
     hudN.current++
     if (hudN.current % 4 === 0) ev.hud(j)
   })
@@ -2237,7 +2245,7 @@ function Cena({
       </points>
 
       <group ref={carro}>
-        <Kombi222 turbo={kTurbo} velocidade={kVel} />
+        <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
         <pointLight position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
