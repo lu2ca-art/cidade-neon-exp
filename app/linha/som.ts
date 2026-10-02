@@ -532,3 +532,58 @@ class Voz {
 }
 
 export const voz = new Voz()
+
+// ── TOCA-DISCOS ─────────────────────────────────────────────
+// Canal próprio, separado do rádio. É analógico: nada interrompe o disco —
+// nem voz, nem Núcleo, nem sintonia, nem estreia. Rádio e disco nunca
+// tocam juntos (quem escolhe é a pessoa: fonteSom).
+type OuvinteDisco = (s: { src: string | null; tocando: boolean }) => void
+class Disco {
+  el: HTMLAudioElement | null = null
+  src: string | null = null
+  private ouvintes = new Set<OuvinteDisco>()
+  private garantir() {
+    if (this.el) return this.el
+    const el = new Audio()
+    el.preload = "auto"
+    el.crossOrigin = "anonymous"
+    el.volume = 0.9
+    el.addEventListener("ended", () => this.emitir())
+    el.addEventListener("pause", () => this.emitir())
+    el.addEventListener("play", () => this.emitir())
+    this.el = el
+    return el
+  }
+  get tocando() { return !!this.el && !this.el.paused }
+  tocar(src: string) {
+    const el = this.garantir()
+    if (this.src !== src) { el.src = src; this.src = src }
+    el.currentTime = 0
+    el.play().catch(() => {})
+    this.emitir()
+  }
+  parar() { this.el?.pause(); this.emitir() }
+  emitir() { const s = { src: this.src, tocando: this.tocando }; this.ouvintes.forEach((f) => f(s)) }
+  ouvir(f: OuvinteDisco) { this.ouvintes.add(f); return () => { this.ouvintes.delete(f) } }
+}
+export const disco = new Disco()
+
+// qual aparelho tá ligado na Kombi: rádio, toca-discos ou nenhum
+export type Fonte = "radio" | "disco" | "off"
+const CHAVE_FONTE = "cn-linha-fonte"
+let fonteAtual: Fonte = "off"
+try { const f = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_FONTE) : null; if (f === "radio" || f === "disco") fonteAtual = f } catch {}
+const ouvintesFonte = new Set<(f: Fonte) => void>()
+export const fonteSom = {
+  get: () => fonteAtual,
+  set(f: Fonte) {
+    if (f === fonteAtual) return
+    fonteAtual = f
+    // nunca os dois juntos
+    if (f !== "disco") disco.parar()
+    if (f !== "radio") player.pausar()
+    try { localStorage.setItem(CHAVE_FONTE, f) } catch {}
+    ouvintesFonte.forEach((o) => o(f))
+  },
+  ouvir(o: (f: Fonte) => void) { ouvintesFonte.add(o); return () => { ouvintesFonte.delete(o) } },
+}

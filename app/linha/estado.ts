@@ -53,6 +53,8 @@ export interface Save {
   // o jardim (recurso da missão da Ella) e se ele é o papel de parede
   jardim: Flor[]
   papel: boolean
+  // dicas que o jogo já deu (tutorial do rádio × toca-discos…)
+  dicas: string[]
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
   // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
@@ -87,6 +89,7 @@ export const VAZIO: Save = {
   nucleo: { invasoes: 0, caido: false },
   jardim: [],
   papel: false,
+  dicas: [],
   ligacoes: [],
   modos: {},
   // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito

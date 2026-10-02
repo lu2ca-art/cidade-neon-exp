@@ -26,7 +26,7 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { audioCtx, ligarChuva, mudo, player } from "./som"
+import { audioCtx, fonteSom, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
 
 type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
@@ -473,6 +473,8 @@ export default function LinhaPage() {
             pausado={tela.t !== "corrida" && tela.t !== "chegada"}
             limitado={!!invasao}
             cacado={cacado}
+            dicas={save.dicas}
+            onDica={(d) => setSave((s) => (s.dicas.includes(d) ? s : { ...s, dicas: [...s.dicas, d] }))}
             onApreendido={apreender}
             caido={save.nucleo.caido}
             onReligar={religar}
@@ -520,7 +522,11 @@ export default function LinhaPage() {
             onApp={abrirApp}
             onChamado={onChamado}
             radioTocando={radio}
-            onRadioToggle={() => (radio?.tocando ? player.pausar() : tocarRadio((save.freq as FreqId) || "linha"))}
+            onRadioToggle={() => {
+              if (radio?.tocando) return fonteSom.set("off")
+              fonteSom.set("radio") // o disco para: os dois juntos não
+              tocarRadio((save.freq as FreqId) || "linha")
+            }}
           />
         )}
 

@@ -62,7 +62,7 @@ export const VINIS = (vinis as { titulo: string; autor: string; src: string }[])
 //   (e que já saíram)
 // - 69.9 (subúrbio) e 222.4 (avenida, o arquivo): catálogo antigo, uma
 //   faixa a mais por missão cumprida
-// Todo lugar tem os vinis por baixo: nunca fica mudo, nunca chove música.
+// Vinil é só no TOCA-DISCOS (escolha da pessoa, nunca junto com o rádio).
 export const ARQUIVO = [t("c****e", "cliche"), t("h*****ood", "hollywood"), t("s*****t", "stylist"), t("o***s", "oasis"), t("a*******a", "astronauta"), t("q* é v*?", "qm-e-vc")]
 const saiu = (titulo: string, agora: number) => {
   const e = ESTACOES.find((x) => titulo.toLowerCase().startsWith(x.faixa.toLowerCase()))
@@ -77,10 +77,12 @@ const ganhou = (titulo: string, objetos: EstacaoId[]) => {
 export function faixasDe(f: Frequencia, objetos: EstacaoId[], _estacao: EstacaoId | null, agora = Date.now()) {
   const vol1 = ESTACOES.filter((e) => objetos.includes(e.id)).map((e) => ({ titulo: e.faixa, src: e.audio }))
   const n = objetos.length
-  if (f.id === "linha") return [...VINIS, ...vol1]
-  if (f.id === "full") return [...VINIS, ...vol1, ...ARQUIVO.slice(0, n)]
-  if (f.id === "suburbio") return [...VINIS, ...f.faixas.slice(0, n)]
-  return [...VINIS, ...f.faixas.filter((x) => ganhou(x.titulo, objetos) && saiu(x.titulo, agora))]
+  // (desde 02/10: vinil é só no TOCA-DISCOS, escolha da pessoa; o rádio
+  // toca o que as missões liberam — sem missão, a 222 tá fora do ar)
+  if (f.id === "linha") return vol1
+  if (f.id === "full") return [...vol1, ...ARQUIVO.slice(0, n)]
+  if (f.id === "suburbio") return f.faixas.slice(0, n)
+  return f.faixas.filter((x) => ganhou(x.titulo, objetos) && saiu(x.titulo, agora))
 }
 
 export function proximaFreq(sinal: number) {
