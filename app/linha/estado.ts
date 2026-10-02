@@ -48,6 +48,8 @@ export interface Save {
   // o Núcleo: quantas invasões já rolaram e se derrubou a 222 (aí a cidade
   // fica cinza até religar a antena)
   nucleo: { invasoes: number; caido: boolean }
+  // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
+  ligacoes: string[]
 }
 
 const CHAVE = "cn-linha-222"
@@ -74,6 +76,7 @@ export const VAZIO: Save = {
   itens: [],
   pausas: {},
   nucleo: { invasoes: 0, caido: false },
+  ligacoes: [],
 }
 
 export function carregar(): Save {

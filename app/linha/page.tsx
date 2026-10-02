@@ -21,6 +21,8 @@ import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Corrida, type Cinema, type Stats } from "./estrada/Corrida"
 import { Chegada } from "./chegada"
+import { LigacaoNaKombi } from "./ligacao"
+import { LIGACOES } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { audioCtx, ligarChuva, mudo, player } from "./som"
@@ -68,6 +70,8 @@ export default function LinhaPage() {
   const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
   // vídeo do //LOOP que alguém mandou: o app abre direto nele
   const [rotaLoop, setRotaLoop] = useState<string | undefined>(undefined)
+  // ligação de voz rolando por cima da estrada (ligacoes.ts)
+  const [ligacao, setLigacao] = useState<string | null>(null)
   useEffect(() => {
     if (tela.t !== "corrida") return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -126,7 +130,7 @@ export default function LinhaPage() {
   // O Núcleo invade: 1ª vez depois da 2ª missão (dá pra repelir), 2ª depois
   // da 3ª (derruba a 222 — o primeiro apagão), e depois, de vez em quando na
   // estrada. Nunca no meio de uma conversa.
-  const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !save.nucleo.caido
+  const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !ligacao && !save.nucleo.caido
   useEffect(() => {
     if (!pronto || !podeInvadir) return
     const n = save.nucleo.invasoes
@@ -145,14 +149,31 @@ export default function LinhaPage() {
   // (não precisa pegar o celular pra começar a conversa)
   const quemChama = !save.nucleo.caido ? ativa(save, nivelDe(save)) : null
   const chamaNaEstrada = !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
+  // a primeira vez na Kombi depois da abertura, a D-Bee LIGA (antes de
+  // qualquer um mandar mensagem)
+  const ligaDbee = save.completos.includes("abertura") && !save.ligacoes.includes("dbee-1")
   useEffect(() => {
-    if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || !chamaNaEstrada || !quemChama) return
+    if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || ligacao || !ligaDbee) return
+    const t = setTimeout(() => setLigacao("dbee-1"), 2500)
+    return () => clearTimeout(t)
+  }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, ligaDbee])
+  const fimLigacao = useCallback((atendeu: boolean) => {
+    setLigacao((id) => {
+      if (id) {
+        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, id])], xp: s.xp + (atendeu ? 20 : 0) }))
+        if (!atendeu) setTimeout(() => avisar("D-Bee", LIGACOES[id]?.recado ?? "", "#3d7bff"), 300)
+      }
+      return null
+    })
+  }, [avisar])
+  useEffect(() => {
+    if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || ligacao || ligaDbee || !chamaNaEstrada || !quemChama) return
     const t = setTimeout(() => {
       setAoVivo(quemChama as ChatRoteiro)
       track("mission_started", { mission_id: `linha-${quemChama}`, place_id: "linha-kombi" })
     }, 3500)
     return () => clearTimeout(t)
-  }, [pronto, tela.t, cinema, invasao, aoVivo, chamaNaEstrada, quemChama])
+  }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, ligaDbee, chamaNaEstrada, quemChama])
 
   const fimInvasao = useCallback((venceu: boolean) => {
     setInvasao(null)
@@ -468,6 +489,7 @@ export default function LinhaPage() {
         {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "chegada" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
+        {ligacao && <LigacaoNaKombi key={ligacao} id={ligacao} onFim={fimLigacao} />}
         {invasao && <InvasaoNucleo key={invasao.id} inv={invasao} onFim={fimInvasao} />}
         {aviso && (
           <div key={`aviso-${aviso.id}`} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}>

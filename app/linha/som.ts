@@ -351,10 +351,14 @@ class Player {
     else if (this.el) this.el.volume = Math.max(0, Math.min(1, v))
   }
 
-  // música lá embaixo enquanto alguém fala, e volta devagar depois
+  // música lá embaixo enquanto alguém fala, e volta devagar depois. Conta
+  // quem pediu (nota de voz, ligação inteira): só volta quando todos soltam
+  private abaixando = 0
   abaixar(sim: boolean) {
-    if (this.abaixo && ctx) this.abaixo.gain.setTargetAtTime(sim ? 0.12 : 1, ctx.currentTime, sim ? 0.15 : 0.6)
-    else if (this.el) this.el.volume = sim ? 0.12 : 1
+    this.abaixando = Math.max(0, this.abaixando + (sim ? 1 : -1))
+    const baixo = this.abaixando > 0
+    if (this.abaixo && ctx) this.abaixo.gain.setTargetAtTime(baixo ? 0.12 : 1, ctx.currentTime, baixo ? 0.15 : 0.6)
+    else if (this.el) this.el.volume = baixo ? 0.12 : 1
   }
 
   pausar() { this.el?.pause() }

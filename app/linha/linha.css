@@ -1208,3 +1208,49 @@
 .l-loop-notif b { font-size: 13.5px; font-weight: 600; }
 .l-loop-notif em { margin-left: auto; font: 600 12px var(--mono); font-style: normal; color: #ff8ab4; }
 .l-audio:has(.l-voz-transcricao) { flex-wrap: wrap; }
+
+/* ── LIGAÇÃO DE VOZ na tela da Kombi (ligacao.tsx) ───────────── */
+.l-lig {
+  position: absolute; z-index: 40; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%);
+  width: min(380px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px; border-radius: 22px;
+  background: rgba(10, 11, 26, 0.86); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border: 1px solid color-mix(in srgb, var(--cor) 40%, transparent);
+  box-shadow: 0 14px 50px rgba(0, 0, 0, 0.6), 0 0 30px -12px var(--cor);
+  animation: l-lig-entra 0.45s cubic-bezier(0.2, 0.9, 0.2, 1.15) both;
+}
+@keyframes l-lig-entra { from { opacity: 0; transform: translate(-50%, -30px) scale(0.92); } }
+.l-lig.is-fim { opacity: 0; transform: translate(-50%, -10px); transition: opacity 0.6s, transform 0.6s; }
+.l-lig header { display: flex; align-items: center; gap: 10px; }
+.l-lig-av {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  font: 700 17px var(--cond); color: #050510; background: var(--cor);
+}
+.l-lig.is-tocando .l-lig-av { animation: l-lig-pulsa 1.2s ease-in-out infinite; }
+.l-lig.is-falando .l-lig-av { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor) 35%, transparent); animation: l-lig-fala 0.5s ease-in-out infinite alternate; }
+@keyframes l-lig-pulsa { 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--cor) 0%, transparent), 0 0 0 5px color-mix(in srgb, var(--cor) 40%, transparent); } }
+@keyframes l-lig-fala { to { box-shadow: 0 0 0 7px color-mix(in srgb, var(--cor) 20%, transparent); } }
+.l-lig-quem { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.l-lig-quem b { font-size: 16px; }
+.l-lig-quem small { font: 11px var(--mono); color: var(--mut); }
+.l-lig-bts { display: flex; gap: 10px; }
+.l-lig-bts button, .l-lig-desliga {
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 19px; color: #fff;
+}
+.l-lig-bts .is-recusa, .l-lig-desliga { background: #e5343f !important; }
+.l-lig-bts .is-atende { background: #22c55e !important; animation: l-lig-pulsa 1.2s ease-in-out infinite; --cor: #22c55e; }
+.l-lig-desliga { width: 36px; height: 36px; font-size: 15px; }
+.l-lig-legenda { margin: 0; font-size: 14px; line-height: 1.35; color: var(--txt); font-style: italic; }
+.l-lig-resp { display: flex; flex-direction: column; gap: 6px; }
+.l-lig-mic { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); color: var(--cor); min-height: 22px; }
+.l-lig-mic i { width: 10px; height: 10px; border-radius: 50%; background: #ff3b4e; box-shadow: 0 0 0 0 rgba(255, 59, 78, 0.6); animation: l-lig-rec 1s ease-out infinite; flex-shrink: 0; }
+@keyframes l-lig-rec { to { box-shadow: 0 0 0 9px rgba(255, 59, 78, 0); } }
+.l-lig-mic button { font: 12px var(--mono); color: var(--cor); padding: 2px 0; }
+.l-lig-mic.is-negado, .l-lig-mic.is-sem { color: var(--mut); }
+.l-lig-op {
+  text-align: left; padding: 9px 12px; border-radius: 12px; font-size: 14px; color: var(--txt);
+  background: color-mix(in srgb, var(--cor) 14%, rgba(10, 12, 30, 0.8)) !important;
+  border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent) !important;
+  animation: l-sobe 0.35s both;
+}
+.l-lig-op:active { transform: scale(0.98); }
