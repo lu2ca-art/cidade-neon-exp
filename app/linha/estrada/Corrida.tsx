@@ -23,7 +23,7 @@ import { FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia 
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { chiadoCurto, estatica, gota, nomeDoTom, player, tomDaMusica } from "../som"
-import { MARCHAS, montarMotor, vib } from "../som-carro"
+import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { MISSOES, type Alvo } from "../missoes"
@@ -1982,6 +1982,9 @@ function Cena({
 
     // som: só o motor
     motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (cine ? cine === "rodando" : inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
+    // vibração leve enquanto acelera, mais forte quanto mais rápido (não no
+    // cinema da chegada, não no ar, não freando)
+    tremor(!cine && !j.ar && !j.chegando && !inp.freio && (inp.gas || toqueTela) && j.v > 1, Math.abs(j.v) / VMAX)
 
     // orbs: na cor da rádio que está tocando, batendo no grave da música
     const t = state.clock.elapsedTime
