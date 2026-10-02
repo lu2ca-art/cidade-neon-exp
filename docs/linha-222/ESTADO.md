@@ -17,6 +17,8 @@
 | 2 discos de domínio público (Climax Rag, Dippermouth Blues) + critério de licença mais rígido no script | #30 (parcial) | `6bca22f` |
 | Ajustes: TOCA-DISCOS no cartão do som, app com som pausa o vinil e retoma, lint do feed, seletor do teste | #32 | `ae2fdda` |
 | JARDIM (papel de parede, salvar imagem) e VIOLÃO (acordes, escalas, tocar junto, som Karplus-Strong) | #27, #26 | `8ac734f` |
+| VIOLÃO simplificado: braço limpo, acorde → campo harmônico → 4 cadências com dica (+ tocar junto) | #26 | `3ae1066` |
+| Kombi em 1ª pessoa na estrada (botão/tecla C): painel, volante, toca-discos girando, objetos pendurados no retrovisor | #23 (parte) | `3ae1066` |
 
 **#30 continua aberta:** com o critério certo (gravação ≤ 1925 confirmada,
 nada de "PDP-CH" suíço sem data, nada de MIDI) o Wikimedia só rendeu 2. Próxima
