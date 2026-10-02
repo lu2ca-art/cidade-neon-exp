@@ -1254,3 +1254,9 @@
   animation: l-sobe 0.35s both;
 }
 .l-lig-op:active { transform: scale(0.98); }
+
+/* painel da Kombi: o celular avisa, você decide quando abrir */
+.l-painel-abrir { margin-top: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--cor) 22%, rgba(5, 5, 16, 0.7)) !important; border: 1px solid var(--cor) !important; color: #fff !important; font: 700 12px var(--mono) !important; text-align: left; animation: l-pulsa 1.6s infinite; }
+/* invasão: a estrada segue por baixo, dá pra ver um pouco */
+.l-inv { pointer-events: none; }
+.l-inv .l-inv-jan, .l-inv .l-inv-barra { pointer-events: auto; }

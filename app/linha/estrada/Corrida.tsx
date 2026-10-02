@@ -65,6 +65,8 @@ interface Props {
   avisos?: number
   // celular aberto por cima: a estrada congela (e continua dali ao fechar)
   pausado?: boolean
+  // o Núcleo invadindo: a estrada segue, mas ele limita o motor
+  limitado?: boolean
   // o Núcleo derrubou a 222: sem rádio, cidade cinza, missão = religar a antena
   caido?: boolean
   onReligar?: () => void
@@ -137,7 +139,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -287,6 +289,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     if (caido) player.pausar()
   }, [caido])
+  const limitadoRef = useRef(limitado)
+  useEffect(() => { limitadoRef.current = limitado }, [limitado])
   const pausadoRef = useRef(pausado)
   useEffect(() => {
     pausadoRef.current = pausado
@@ -443,7 +447,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         if (a.faltam.length <= 1) setTimeout(() => falar(e.personagem, `agora traz aqui. estação ${e.n}, segue a coluna de luz`), 4200)
       },
       portal: (id) => {
-        if (id === alvoRef.current?.missao && !save.objetos.includes(id)) setPortal({ id, t: Date.now() })
+        if ((id === alvoRef.current?.missao || id === destinoRef.current) && !save.objetos.includes(id)) setPortal({ id, t: Date.now() })
         else setPassando({ id, t: Date.now() })
         // passar por uma estação é uma nota no tom da música, não festa
         gota(getEstacao(id).n + 1)
@@ -667,7 +671,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const portalMissao = portalE ? missao(portalE, nivel) : null
   // descer na estação só quando ela te espera (visita ou entrega) — no meio
   // da busca, passar por ela não pede nada
-  const podeDescerPortal = !!portalE && !!portalMissao?.ok && !save.objetos.includes(portalE.id) && portalE.id === alvo?.missao && alvo.t !== "busca"
+  const podeDescerPortal = !!portalE && !save.objetos.includes(portalE.id) && (
+    alvo?.missao === portalE.id ? alvo.t !== "busca" : portalE.id === destino && !!portalMissao?.ok
+  )
   const passandoE = passando ? getEstacao(passando.id) : null
   useEffect(() => {
     if (!passando) return
@@ -678,7 +684,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   useEffect(() => {
     if (!portal) return
-    const t = setTimeout(() => setPortal(null), 5000)
+    const t = setTimeout(() => setPortal(null), 8000)
     return () => clearTimeout(t)
   }, [portal])
 
@@ -702,7 +708,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} />
         </Canvas>
       )}
 
@@ -947,8 +953,9 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef,
 }: {
+  limitadoRef: React.MutableRefObject<boolean>
   pausado: boolean
   cinemaRef: React.MutableRefObject<Cinema>
   corRadio: React.MutableRefObject<string>
@@ -1538,7 +1545,8 @@ function Cena({
       inp.toqueD = false
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 7)
       // nos viadutos entre lugares a pista é expressa
-      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1)
+      // invasão do Núcleo: a estrada não para, mas o motor fica limitado
+      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       const gas = inp.gas || (toqueTela && !inp.freio)
       if (inp.freio) {
@@ -1787,8 +1795,9 @@ function Cena({
     if (!trocou && V.estacoes.length) {
       for (const e of V.estacoes) {
         if (!(uAnt < e.u && j.u >= e.u)) continue
-        if (destinoRef.current === e.id) j.chegando = true
-        else ev.portal(e.id)
+        // chegar no destino NÃO freia sozinho (GTA: o jogo nunca tira o
+        // volante de você). Aparece "descer aqui"; passou reto, segue
+        ev.portal(e.id)
       }
     }
 

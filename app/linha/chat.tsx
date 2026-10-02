@@ -365,10 +365,9 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
   // no painel da Kombi: o que precisa do celular pede a tela cheia; o pedido
   // da missão é aceito sozinho (já tá na Kombi); o fim fecha o painel
   const ultimo = log[log.length - 1]
-  const precisaTela = modo === "painel" && (espera?.t === "input" || espera?.t === "prova" || (!!ultimo && vivos.has(log.length - 1) && (ultimo.k === "objeto" || ultimo.k === "revelacao" || ultimo.k === "prova" || ultimo.k === "video")))
-  useEffect(() => {
-    if (precisaTela) onPrecisaTela?.()
-  }, [precisaTela, onPrecisaTela])
+  // (como no GTA: o celular avisa, quem decide abrir é você — a estrada
+  // nunca para sozinha). Prova e campo de texto esperam o toque
+  const precisaTela = modo === "painel" && (espera?.t === "input" || espera?.t === "prova" || (!!ultimo && ultimo.k === "prova" && !ultimo.feita))
   useEffect(() => {
     if (modo !== "painel" || (espera?.t !== "tarefa" && espera?.t !== "fim")) return
     const para: Destino = espera.t === "tarefa" ? "estrada" : espera.para
@@ -490,6 +489,11 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           </div>
         )}
         {espera?.t === "tarefa" && <p className="l-painel-nota">missão aceita · segue a coluna de luz</p>}
+        {precisaTela && (
+          <button type="button" className="l-painel-abrir" onClick={(e) => { e.stopPropagation(); onPrecisaTela?.() }}>
+            {espera?.t === "input" ? "responder no celular ›" : "abrir no celular ›"}
+          </button>
+        )}
       </div>
     )
   }
@@ -786,6 +790,14 @@ function BolhaPainel({ it, grupo, contato, onLoop }: { it: Item; grupo: boolean;
       return <VozBolha it={it} de={grupo && it.de ? it.de : contato} auto={false} compacta />
     case "loop":
       return <LoopCard titulo={it.titulo} de={grupo && it.de ? it.de : contato} onLoop={onLoop && (() => onLoop(it.video))} />
+    case "objeto": {
+      const e = getEstacao(it.estacao)
+      return <div className="l-tarefa is-feita" style={{ ["--cor" as string]: e.cor }}><small>você ganhou</small><b>{e.objetoNome}</b></div>
+    }
+    case "revelacao": {
+      const e = getEstacao(it.estacao)
+      return <div className="l-tarefa" style={{ ["--cor" as string]: e.cor }}><small>sua estação</small><b>{e.n} · {e.faixa}</b></div>
+    }
     case "tarefa": {
       const m = MISSOES[it.estacao]
       return m ? <div className="l-tarefa" style={{ ["--cor" as string]: getEstacao(it.estacao).cor }}><small>missão</small><b>{m.tarefa}</b></div> : null

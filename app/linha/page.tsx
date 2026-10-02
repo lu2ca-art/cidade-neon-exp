@@ -131,7 +131,7 @@ export default function LinhaPage() {
   // O Núcleo invade: 1ª vez depois da 2ª missão (dá pra repelir), 2ª depois
   // da 3ª (derruba a 222 — o primeiro apagão), e depois, de vez em quando na
   // estrada. Nunca no meio de uma conversa.
-  const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !ligacao && !save.nucleo.caido
+  const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !ligacao && !aoVivo && !save.nucleo.caido
   useEffect(() => {
     if (!pronto || !podeInvadir) return
     const n = save.nucleo.invasoes
@@ -421,7 +421,8 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada") || !!invasao}
+            pausado={tela.t !== "corrida" && tela.t !== "chegada"}
+            limitado={!!invasao}
             caido={save.nucleo.caido}
             onReligar={religar}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
