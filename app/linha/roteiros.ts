@@ -58,6 +58,9 @@ export type Passo =
   | { t: "prova"; id: ProvaId }
   // a conversa para aqui até a pessoa buscar a coisa no mapa (missoes.ts)
   | { t: "tarefa" }
+  // a crise passou: a conversa espera você DESCER na estação (a virada
+  // acontece lá, na prova — abrir pelo celular de longe não pula isso)
+  | { t: "chegar" }
   // objeto + recompensas + memória
   | { t: "objeto" }
   // passa a vez pro próximo do fio
@@ -201,6 +204,18 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "tem uma caixa d'água no subúrbio xenom que o núcleo esqueceu. água de verdade" },
       { t: "msg", texto: "meu cantil tá vazio. enche lá pra mim?" },
       { t: "tarefa" },
+      // ATO 2 · deserto (CHUVA C2): ela desiste antes de você chegar
+      { t: "msg", texto: "fui ver a flor de novo" },
+      { t: "msg", texto: "tá murcha. acho que já era" },
+      { t: "msg", texto: "esquece, sério. n quero que vc perca tempo com isso" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "tô levando mesmo assim", resposta: ["…", "tá. vem"] },
+          { label: "do que vc tem medo?", resposta: ["de cuidar e perder de novo", "da última vez choveu três anos"] },
+        ],
+      },
+      { t: "chegar" },
       { t: "msg", texto: "vc foi até o subúrbio por uma flor" },
       { t: "msg", texto: "rega devagar" },
       { t: "prova", id: "regar" },
@@ -232,6 +247,17 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "a conveniência 24h da cidade neon ainda tem umas no fundo da prateleira" },
       { t: "msg", texto: "traz duas. eu pago o café" },
       { t: "tarefa" },
+      // ATO 2 · piada de mau gosto (COPO C2): o sarcasmo de quem se sabota
+      { t: "msg", texto: "pensei melhor" },
+      { t: "msg", texto: "pra que ouvir de novo. vai doer igual e amanhã o bar abre no mesmo copo" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "então pq vc guardou o mp3?", resposta: ["…", "boa pergunta. traz logo antes que eu desista"] },
+          { label: "e se doer diferente?", resposta: ["kkkk", "ok. traz"] },
+        ],
+      },
+      { t: "chegar" },
       { t: "msg", texto: "trouxe mesmo" },
       { t: "msg", texto: "ligou. só pega estática. o núcleo embaralha toda frequência livre" },
       { t: "nucleo", texto: "frequências não licenciadas podem causar desconforto ✓" },
@@ -270,6 +296,18 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "dizem que no topo do mirante o sinal do núcleo n chega" },
       { t: "msg", texto: "grava 10 segundos de silêncio lá pra mim? sério. preciso ouvir" },
       { t: "tarefa" },
+      // ATO 2 · algo de estranho (DOPAMINA C2): o medo do silêncio
+      { t: "msg", texto: "MANO" },
+      { t: "msg", texto: "e se eu ouvir o silêncio e n gostar" },
+      { t: "msg", texto: "e se lá dentro tiver uma coisa que eu tô fugindo faz anos" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "aí a gente olha junto", resposta: ["tá", "promete que n vai embora no meio"] },
+          { label: "15 segundos. só isso", resposta: ["15 eu aguento", "acho"] },
+        ],
+      },
+      { t: "chegar" },
       { t: "msg", texto: "vc gravou" },
       { t: "msg", texto: "…" },
       { t: "msg", texto: "ok. agora me ensina a fazer isso aqui embaixo. três respirações, sem olhar notificação" },
@@ -300,6 +338,18 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "mas se eu for sozinho eu volto antes de chegar" },
       { t: "msg", texto: "vc tá de kombi né. me busca? moro no subúrbio xenom" },
       { t: "tarefa" },
+      // ATO 2 · bateria esgotada (SEXTA C2): no meio da carona ele quer voltar
+      { t: "msg", texto: "para" },
+      { t: "msg", texto: "volta. me deixa em casa. foi uma ideia ruim" },
+      { t: "msg", texto: "todo mundo vai me olhar" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "ninguém tá olhando. é só a gente", resposta: ["…", "tá. mais um pouco"] },
+          { label: "se quiser eu volto", resposta: ["…", "n. segue. se eu voltar agora eu nunca mais saio"] },
+        ],
+      },
+      { t: "chegar" },
       { t: "msg", texto: "valeu pela carona" },
       { t: "msg", texto: "tem um espelho aqui na estação que embaçou faz tempo" },
       { t: "msg", texto: "n tenho coragem de limpar. e se eu n gostar de quem tá lá?" },
@@ -333,6 +383,17 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "pega pra mim?" },
       { t: "tarefa" },
       { t: "msg", texto: "as três." },
+      // ATO 2 · persistência afrontosa (SABE ONTEM? C2): escrever pra ninguém
+      { t: "msg", texto: "sabe quantas vezes eu escrevi pra ninguém ler?" },
+      { t: "msg", texto: "dez anos. caderno cheio. zero leitor." },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "eu vou ler", resposta: ["…", "então vem. antes que eu rasgue."] },
+          { label: "e mesmo assim vc continuou", resposta: ["continuei.", "é a única coisa que eu sei fazer direito."] },
+        ],
+      },
+      { t: "chegar" },
       { t: "msg", texto: "agora junta na ordem que soar certo." },
       { t: "prova", id: "caderno" },
       { t: "msg", texto: "isso." },
@@ -370,6 +431,17 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "o núcleo n entra lá. é barulho demais pra ele" },
       { t: "msg", texto: "busca pra mim? a estação 6 é aqui" },
       { t: "tarefa" },
+      // ATO 2 · tentativa e erro (NECTAR C2): a corda arrebentada
+      { t: "msg", texto: "tá com uma corda arrebentada né. eu sabia" },
+      { t: "msg", texto: "deixa. com uma corda a menos n vai soar como era" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "n precisa soar como era", resposta: ["…", "isso foi muito eu falando comigo mesmo", "traz"] },
+          { label: "toca errado então", resposta: ["kkkkk", "tentativa e erro. tá bom. traz"] },
+        ],
+      },
+      { t: "chegar" },
       { t: "msg", texto: "vc achou" },
       { t: "msg", texto: "toca comigo?" },
       { t: "prova", id: "violao" },

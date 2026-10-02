@@ -29,6 +29,8 @@ interface Props {
   onLoop?: (video?: number) => void
   // painel rodando por baixo do celular aberto: continua, mas some
   oculto?: boolean
+  // aberta porque a pessoa desceu na estação (é aí que o passo "chegar" anda)
+  naEstacao?: boolean
   // "audio": até o pedido da missão, a pessoa manda tudo em nota de voz
   // (as mensagens seguidas viram um áudio só) — ligacoes.ts, MODOS
   jeito?: "texto" | "audio"
@@ -42,6 +44,7 @@ type Espera =
   | { t: "input"; passo: Extract<Passo, { t: "input" }> }
   | { t: "prova" }
   | { t: "tarefa" }
+  | { t: "chegar" }
   | { t: "fim"; para: Destino }
   | null
 
@@ -69,7 +72,7 @@ const SISTEMA = "__sistema"
 
 const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
 
-export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onLoop, oculto, jeito = "texto" }: Props) {
+export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onLoop, oculto, jeito = "texto", naEstacao = false }: Props) {
   const roteiro = ROTEIROS[id]
   const jaFeito = save.completos.includes(id)
   // conversa que parou esperando a busca no mapa: volta de onde parou
@@ -289,6 +292,16 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         })
         break
       }
+      case "chegar": {
+        const est = id as EstacaoId
+        if (modo === "tela" && naEstacao) { avancar(); break }
+        agendar(300, null, () => {
+          atualizar((s) => ({ ...s, pausas: { ...s.pausas, [id]: pos }, logs: { ...s.logs, [id]: logRef.current } }))
+          track("mission_step", { mission_id: `linha-${est}`, step: "crise", perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
+          setEspera({ t: "chegar" })
+        })
+        break
+      }
       case "objeto":
         agendar(700, null, () => {
           const est = id as EstacaoId
@@ -349,7 +362,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         break
       }
     }
-  }, [pos, fila, espera, roteiro, id, jaFeito, ctx, agendar, empurrar, atualizar, onXp, jeito])
+  }, [pos, fila, espera, roteiro, id, jaFeito, ctx, agendar, empurrar, atualizar, onXp, jeito, modo, naEstacao])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // mantém o log salvo quando ecos chegam numa conversa já feita
@@ -369,9 +382,9 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
   // nunca para sozinha). Prova e campo de texto esperam o toque
   const precisaTela = modo === "painel" && (espera?.t === "input" || espera?.t === "prova" || (!!ultimo && ultimo.k === "prova" && !ultimo.feita))
   useEffect(() => {
-    if (modo !== "painel" || (espera?.t !== "tarefa" && espera?.t !== "fim")) return
-    const para: Destino = espera.t === "tarefa" ? "estrada" : espera.para
-    const t = setTimeout(() => onFim(para), espera.t === "tarefa" ? 3200 : 2600)
+    if (modo !== "painel" || (espera?.t !== "tarefa" && espera?.t !== "chegar" && espera?.t !== "fim")) return
+    const para: Destino = espera.t === "fim" ? espera.para : "estrada"
+    const t = setTimeout(() => onFim(para), espera.t === "fim" ? 2600 : 3200)
     return () => clearTimeout(t)
   }, [modo, espera, onFim])
   // no painel, responde também pelo teclado (1, 2, 3, 4)
@@ -489,6 +502,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           </div>
         )}
         {espera?.t === "tarefa" && <p className="l-painel-nota">missão aceita · segue a coluna de luz</p>}
+        {espera?.t === "chegar" && <p className="l-painel-nota">te espero na estação · segue a coluna de luz</p>}
         {precisaTela && (
           <button type="button" className="l-painel-abrir" onClick={(e) => { e.stopPropagation(); onPrecisaTela?.() }}>
             {espera?.t === "input" ? "responder no celular ›" : "abrir no celular ›"}
@@ -543,6 +557,14 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
               pegar a kombi →
             </button>
             {onVoltar && <button type="button" className="l-btn l-btn-ghost" onClick={onVoltar}>depois</button>}
+          </div>
+        )}
+        {espera?.t === "chegar" && (
+          <div className="l-tarefa-acoes">
+            <p className="l-acelera">continua na estação {ESTACOES.find((e) => e.id === id)?.n} · desce lá</p>
+            <button type="button" className="l-btn l-btn-fim" style={{ ["--cor" as string]: corContato }} onClick={() => onFim("estrada")}>
+              pegar a kombi →
+            </button>
           </div>
         )}
         {espera?.t === "fim" && (
