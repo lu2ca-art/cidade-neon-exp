@@ -16,7 +16,7 @@ import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
-import { alvoDe, ativa, etapaDe } from "./missoes"
+import { MISSOES, alvoDe, ativa, etapaDe } from "./missoes"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Corrida, type Cinema, type Stats } from "./estrada/Corrida"
@@ -212,6 +212,21 @@ export default function LinhaPage() {
     if (venceu) avisar("D-Bee", "vc segurou eles. +8 de sinal", "#3d7bff")
     else setTimeout(() => avisar("D-Bee", "derrubaram a 222. religa a antena no centro, de kombi", "#3d7bff"), 400)
   }, [avisar, save.perfil])
+
+  // a caça: a partir da 3ª missão, carregar o contrabando (o que foi buscado,
+  // ou alguém de carona) até a estação atrai os carros brancos do Núcleo.
+  // Pego = a coisa volta pro lugar de origem (busca de novo; sem game over)
+  const alvoAgora = save.nucleo.caido ? null : alvoDe(save, nivelDe(save))
+  const cacado = alvoAgora?.t === "entrega" && save.objetos.length >= 2
+  const apreender = useCallback(() => {
+    setSave((s) => {
+      const a = alvoDe(s, nivelDe(s))
+      if (!a || a.t !== "entrega") return s
+      const item = MISSOES[a.missao]?.busca.item
+      return item ? { ...s, itens: s.itens.filter((k) => !k.startsWith(`${item}:`)) } : s
+    })
+    track("mission_step", { mission_id: "linha-nucleo", step: "caca:pego", perfil: save.perfil ?? "?", fio_pos: -1 })
+  }, [save.perfil])
 
   const religar = useCallback(() => {
     setSave((s) => ({ ...s, sinal: s.sinal + 10, nucleo: { ...s.nucleo, caido: false } }))
@@ -423,6 +438,8 @@ export default function LinhaPage() {
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
             pausado={tela.t !== "corrida" && tela.t !== "chegada"}
             limitado={!!invasao}
+            cacado={cacado}
+            onApreendido={apreender}
             caido={save.nucleo.caido}
             onReligar={religar}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}

@@ -67,6 +67,10 @@ interface Props {
   pausado?: boolean
   // o Núcleo invadindo: a estrada segue, mas ele limita o motor
   limitado?: boolean
+  // carregando contrabando (o item da missão, ou alguém de carona): os carros
+  // brancos do Núcleo caçam a Kombi. Pego = a coisa volta pro lugar de origem
+  cacado?: boolean
+  onApreendido?: () => void
   // o Núcleo derrubou a 222: sem rádio, cidade cinza, missão = religar a antena
   caido?: boolean
   onReligar?: () => void
@@ -94,6 +98,8 @@ type Jogo = {
   // aderência), o peso carregado num lado (a "mola" da finta), o último lado
   // apertado e quanto tempo de drift de verdade (vira mini-turbo)
   deriva: number; giro: number; drift: 0 | 1 | -1; peso: number; ladoAnt: number; driftT: number
+  // caça do Núcleo: distância do carro branco mais perto (m, atrás)
+  cacaGap?: number
   // chegada num lugar novo: a música nova entra de uma vez, com o cenário
   impacto: number; soco: boolean
   tempo: number; voltaIni: number; voltas: number
@@ -116,6 +122,7 @@ type Evs = {
   sinal: (n: number, rotulo: string, cor: string) => void
   portal: (id: EstacaoId) => void
   pegar: (chave: string) => void
+  caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim") => void
   chegou: () => void
   volta: (t: number) => void
   hud: (j: Jogo) => void
@@ -139,7 +146,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -289,6 +296,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     if (caido) player.pausar()
   }, [caido])
+  const cacadoRef = useRef(cacado)
+  useEffect(() => { cacadoRef.current = cacado }, [cacado])
+  const hudCacaBarra = useRef<HTMLDivElement>(null)
+  const sirene = useRef<HTMLDivElement>(null)
+  const [cacando, setCacando] = useState(false)
   const limitadoRef = useRef(limitado)
   useEffect(() => { limitadoRef.current = limitado }, [limitado])
   const pausadoRef = useRef(pausado)
@@ -412,6 +424,29 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         freqRef.current = id
         tocarProxima(id, 0.2)
         gota(4)
+      },
+      caca: (e) => {
+        if (e === "comecou") {
+          setCacando(true)
+          falar("NÚCLEO", "veículo transportando conteúdo não licenciado. aguarde a otimização ✓")
+          vib([60, 40, 60])
+        } else if (e === "pego") {
+          setCacando(false)
+          jogo.current.flash = 0.8
+          jogo.current.shake = 1.2
+          vib([90, 40, 160])
+          setPopup({ id: Math.random(), txt: "conteúdo apreendido", cor: "#e6f0ff" })
+          falar("NÚCLEO", "conteúdo apreendido e devolvido à origem. obrigado pela colaboração ✓")
+          onApreendido?.()
+        } else if (e === "despistou") {
+          setCacando(false)
+          confeteRef.current?.("#2fe8ff", 60)
+          falar("222 FM", "a kombi despistou o núcleo. respeito")
+          evs.current.sinal(5, "despistou · +5", "#2fe8ff")
+        } else if (e === "perdeu") {
+          setCacando(false)
+          falar("222 FM", "trocou de rua, eles perderam o rastro. por enquanto")
+        } else setCacando(false)
       },
       pegar: (chave) => {
         if (chave === "antena") {
@@ -538,6 +573,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const ant = lib[lib.length - 1]?.custo ?? 0
         if (hudSinal.current) hudSinal.current.style.transform = `scaleY(${p ? (sinalRef.current - ant) / (p.custo - ant) : 1})`
         if (hudTurbo.current) hudTurbo.current.style.transform = `scaleX(${j.turboT > 0 ? Math.min(1, j.turboT / 2.2) : j.carga})`
+        // a sirene sobe da borda de baixo: quanto mais perto, mais forte
+        if (sirene.current) sirene.current.style.opacity = j.cacaGap === undefined ? "0" : String(Math.max(0, Math.min(0.9, 1 - j.cacaGap / 180)))
+        if (hudCacaBarra.current) hudCacaBarra.current.style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - (j.cacaGap ?? 320) / 320))})`
         if (flashEl.current) flashEl.current.style.opacity = String(Math.min(0.85, j.flash))
         // dial girando: da frequência de onde veio até a de pra onde vai
         if (hudFreq.current && V.tipo === "saida") {
@@ -595,7 +633,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap) }
     }
     return () => { delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular }
   }, [M])
@@ -708,7 +746,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} />
+          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} />
         </Canvas>
       )}
 
@@ -753,6 +791,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <circle ref={mapaCarro} r="2.8" fill="#fff" stroke="#050510" strokeWidth="1" />
       </svg>
 
+      <div ref={sirene} className="l-sirene" />
+      {cacando && (
+        <div className="l-procurado">
+          <b>PROCURADO</b>
+          <small>o núcleo tá atrás · abre 300m ou troca de rua</small>
+          <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
+        </div>
+      )}
       {caido && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: "#3d7bff" }}>
           <small>D-Bee · urgente</small>
@@ -953,8 +999,9 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef,
 }: {
+  cacadoRef: React.MutableRefObject<boolean>
   limitadoRef: React.MutableRefObject<boolean>
   pausado: boolean
   cinemaRef: React.MutableRefObject<Cinema>
@@ -1360,6 +1407,17 @@ function Cena({
     const lant = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.2, 0.06), new THREE.MeshBasicMaterial({ color: "#ff2a44", toneMapped: false }), n * 2)
     return { carros, corpo, lant }
   }, [M, circuitos])
+
+  // ── os carros brancos do Núcleo (a caça) ──
+  const caca = useMemo(() => {
+    const n = 2
+    const corpo = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 1.25, 4.4), new THREE.MeshStandardMaterial({ color: "#eef3ff", emissive: "#9fb4ff", emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.2 }), n)
+    const barra = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.18, 0.4), new THREE.MeshBasicMaterial({ color: "#ffffff", toneMapped: false }), n)
+    const farol = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.18, 0.06), new THREE.MeshBasicMaterial({ color: "#dff4ff", toneMapped: false }), n * 2)
+    corpo.count = 0; barra.count = 0; farol.count = 0
+    const carros = Array.from({ length: n }, (_, i) => ({ u: 0, x: (i ? -1 : 1) * 2, v: 0 }))
+    return { corpo, barra, farol, carros, ativa: false, via: -1, perdidoT: 0, longeT: 0, espera: 0, cor: new THREE.Color() }
+  }, [])
 
   // ── chuva (só visual), confete, faíscas ──
   const chuva = useMemo(() => {
@@ -1836,6 +1894,84 @@ function Cena({
     }
     inp.turbo = false
 
+    // ── caça do Núcleo ──
+    {
+      const k = caca
+      k.espera = Math.max(0, k.espera - dt)
+      const quer = cacadoRef.current && !cine && k.espera <= 0
+      if (quer && !k.ativa) {
+        // aparecem no retrovisor, 140m atrás
+        k.ativa = true
+        k.via = j.via
+        k.perdidoT = 0
+        k.longeT = 0
+        k.carros.forEach((c, i) => { c.u = j.u - 140 - i * 22; c.x = j.x + (i ? -2.2 : 2.2); c.v = Math.max(20, j.v) })
+        ev.caca("comecou")
+      } else if (!quer && k.ativa) {
+        // entregou (ou a 222 caiu): a caça acaba sem alarde
+        k.ativa = false
+        j.cacaGap = undefined
+        ev.caca("fim")
+      }
+      if (k.ativa) {
+        if (k.via !== j.via) {
+          // trocou de rua: eles perdem o rastro
+          k.perdidoT += dt
+          if (k.perdidoT > 0.3) { k.ativa = false; k.espera = 25; j.cacaGap = undefined; ev.caca("perdeu") }
+        } else {
+          const CV = M.vias[k.via]
+          let gap = Infinity
+          for (const c of k.carros) {
+            const d = -du(CV, j.u, c.u) // >0 = atrás da Kombi
+            // longe: vêm rápido (nunca menos que 28 m/s, parado eles chegam);
+            // perto: colam e encostam devagar
+            const alvoV = d > 30 ? Math.min(VMAX * 1.12, Math.max(28, Math.abs(j.v) + 9)) : Math.max(4, j.v + (d > 6 ? 3 : -1))
+            c.v += (alvoV - c.v) * Math.min(1, dt * 1.4)
+            c.u += c.v * dt
+            if (CV.fechada) c.u = ((c.u % CV.L) + CV.L) % CV.L
+            c.x += (j.x - c.x) * Math.min(1, dt * (d < 25 ? 1.8 : 0.6))
+            gap = Math.min(gap, d)
+            if (d > -2 && d < 3.6 && Math.abs(c.x - j.x) < 2.3 && !j.ar) {
+              k.ativa = false
+              k.espera = 12
+              j.v = Math.min(j.v, 10)
+              j.cacaGap = undefined
+              ev.caca("pego")
+              break
+            }
+          }
+          if (k.ativa) {
+            j.cacaGap = gap
+            k.longeT = gap > 320 ? k.longeT + dt : 0
+            if (k.longeT > 3) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; ev.caca("despistou") }
+          }
+        }
+      }
+      const n = k.ativa ? k.carros.length : 0
+      k.corpo.count = n; k.barra.count = n; k.farol.count = n * 2
+      if (n) {
+        const CV = M.vias[k.via]
+        const pisca = Math.floor(state.clock.elapsedTime * 6) % 2
+        k.carros.forEach((c, i) => {
+          const p = noMundo(CV, c.u, c.x, 0.7, a, tmp.p)
+          tmp.d.position.copy(p); tmp.d.rotation.set(0, Math.atan2(a.tx, a.tz), 0); tmp.d.scale.set(1, 1, 1); tmp.d.updateMatrix()
+          k.corpo.setMatrixAt(i, tmp.d.matrix)
+          tmp.d.position.set(p.x, p.y + 0.75, p.z); tmp.d.updateMatrix()
+          k.barra.setMatrixAt(i, tmp.d.matrix)
+          k.barra.setColorAt(i, k.cor.set((i + pisca) % 2 ? "#ffffff" : "#7aa2ff"))
+          for (const l of [-1, 1]) {
+            tmp.d.position.set(p.x + a.tx * 2.2 + -a.tz * l * 0.62, p.y, p.z + a.tz * 2.2 + a.tx * l * 0.62)
+            tmp.d.updateMatrix()
+            k.farol.setMatrixAt(i * 2 + (l > 0 ? 1 : 0), tmp.d.matrix)
+          }
+        })
+        k.corpo.instanceMatrix.needsUpdate = true
+        k.barra.instanceMatrix.needsUpdate = true
+        if (k.barra.instanceColor) k.barra.instanceColor.needsUpdate = true
+        k.farol.instanceMatrix.needsUpdate = true
+      }
+    }
+
     // tráfego
     const tr = trafego
     for (let i = 0; i < tr.carros.length; i++) {
@@ -2242,6 +2378,9 @@ function Cena({
       <points geometry={orbs.halo} material={orbs.haloMat} />
 
       <primitive object={trafego.corpo} />
+      <primitive object={caca.corpo} frustumCulled={false} />
+      <primitive object={caca.barra} frustumCulled={false} />
+      <primitive object={caca.farol} frustumCulled={false} />
       <primitive object={trafego.lant} />
 
       <lineSegments geometry={chuva.g} frustumCulled={false}>
