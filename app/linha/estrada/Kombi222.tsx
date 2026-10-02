@@ -2,11 +2,11 @@
 
 // A Kombi da Linha 222 em 3D — mesma leitura da Kombi 2D que abriu a
 // estrada: saia azul (#1a3fa0, o azul da capa), teto creme arredondado,
-// "V" na frente, vidros escuros com reflexo cyan, grade do motor atrás,
+// "V" na frente (agora com a silhueta de Kombi de verdade: perfil lateral
+// extrudado, nariz redondo, caixas de roda, pneu faixa branca), vidros escuros com reflexo cyan, grade do motor atrás,
 // placa LU2 C4, lanternas vermelhas, faróis redondos e luz magenta
 // embaixo, no asfalto molhado. A frente aponta pra -Z.
 
-import { RoundedBox } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
 import * as THREE from "three"
@@ -60,8 +60,13 @@ function Roda({ x, z, giro }: { x: number; z: number; giro: React.MutableRefObje
           <cylinderGeometry args={[0.36, 0.36, 0.26, 20]} />
           <meshStandardMaterial color="#0a0a10" roughness={0.9} />
         </mesh>
+        {/* faixa branca no pneu e calota cromada, de Kombi antiga */}
+        <mesh rotation={[0, Math.PI / 2, 0]} position={[x > 0 ? 0.132 : -0.132, 0, 0]}>
+          <ringGeometry args={[0.2, 0.29, 28]} />
+          <meshStandardMaterial color="#ece5d6" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
         <mesh rotation={[0, 0, Math.PI / 2]} position={[x > 0 ? 0.135 : -0.135, 0, 0]}>
-          <cylinderGeometry args={[0.2, 0.2, 0.02, 16]} />
+          <cylinderGeometry args={[0.2, 0.2, 0.02, 20]} />
           <meshStandardMaterial color="#d9dde8" metalness={0.9} roughness={0.2} />
         </mesh>
       </group>
@@ -69,7 +74,96 @@ function Roda({ x, z, giro }: { x: number; z: number; giro: React.MutableRefObje
   )
 }
 
+// perfil lateral (X = pra frente, Y = pra cima), em metros. Caixas de roda
+// em ±1.35, raio 0.36 (as rodas)
+function perfil() {
+  const s = new THREE.Shape()
+  const arco = (cx: number) => {
+    for (let i = 0; i <= 14; i++) {
+      const t = Math.PI - (i / 14) * Math.PI
+      s.lineTo(cx + Math.cos(t) * 0.5, 0.36 + Math.sin(t) * 0.5)
+    }
+  }
+  s.moveTo(-2.12, 0.4)
+  s.lineTo(-1.85, 0.4)
+  arco(-1.35)
+  s.lineTo(0.85, 0.4)
+  arco(1.35)
+  s.lineTo(2.06, 0.4)
+  // nariz: sobe redondo até o friso, depois o para-brisa deita pra trás
+  s.quadraticCurveTo(2.2, 0.5, 2.2, 0.82)
+  s.lineTo(2.19, 1.18)
+  s.quadraticCurveTo(2.17, 1.26, 2.12, 1.32)
+  s.lineTo(2.0, 1.86)
+  s.quadraticCurveTo(1.93, 2.04, 1.62, 2.05)
+  // teto até a traseira, que é bem redonda em cima
+  s.lineTo(-1.62, 2.05)
+  s.quadraticCurveTo(-2.15, 2.04, -2.17, 1.66)
+  s.lineTo(-2.17, 0.72)
+  s.quadraticCurveTo(-2.17, 0.42, -2.12, 0.4)
+  return s
+}
+
+function montarCorpo() {
+  const largura = 1.62
+  const g = new THREE.ExtrudeGeometry(perfil(), { depth: largura, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.08, bevelSegments: 5, curveSegments: 20 })
+  g.translate(0, 0, -largura / 2)
+  g.rotateY(Math.PI / 2) // X do perfil vira -Z (a frente da Kombi aponta pra -Z)
+  g.computeVertexNormals()
+  return g
+}
+
+// duas cores no shader, pela posição: crispa, sem depender de vértice
+function montarPintura() {
+  const m = new THREE.MeshStandardMaterial({ color: "#ffffff", metalness: 0.3, roughness: 0.32 })
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.azul = { value: new THREE.Color(AZUL) }
+    sh.uniforms.creme = { value: new THREE.Color(CREME) }
+    sh.vertexShader = sh.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vObj;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObj = position;")
+    sh.fragmentShader = sh.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vObj;\nuniform vec3 azul;\nuniform vec3 creme;")
+      .replace(
+        "vec4 diffuseColor = vec4( diffuse, opacity );",
+        `vec4 diffuseColor = vec4( diffuse, opacity );
+        // o friso corre a 1.16 nas laterais; no nariz desce em V até 0.62
+        float nariz = smoothstep(-2.0, -2.12, vObj.z);
+        float cinta = mix(1.16, min(1.16, 0.62 + abs(vObj.x) * 1.15), nariz);
+        float cima = step(cinta, vObj.y);
+        vec3 cor = mix(azul, creme, cima);
+        // friso cromado claro em cima da linha
+        cor = mix(cor, vec3(0.92, 0.94, 0.98), (1.0 - smoothstep(0.0, 0.028, abs(vObj.y - cinta))) * (1.0 - nariz * 0.6));
+        diffuseColor.rgb = cor;`,
+      )
+  }
+  return m
+}
+
+function janela(w: number, h: number, r = 0.09) {
+  const s = new THREE.Shape()
+  s.moveTo(-w / 2 + r, -h / 2)
+  s.lineTo(w / 2 - r, -h / 2)
+  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r)
+  s.lineTo(w / 2, h / 2 - r)
+  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2)
+  s.lineTo(-w / 2 + r, h / 2)
+  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r)
+  s.lineTo(-w / 2, -h / 2 + r)
+  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2)
+  return new THREE.ShapeGeometry(s, 6)
+}
+
+// [z, largura]: porta da cabine e as 3 do salão
+const JANELAS: [number, number][] = [[-1.42, 0.62], [-0.5, 0.82], [0.42, 0.82], [1.34, 0.82]]
+
 export function Kombi222({ turbo, velocidade }: { turbo: React.MutableRefObject<boolean>; velocidade: React.MutableRefObject<number> }) {
+  const corpo = useMemo(() => montarCorpo(), [])
+  const pintura = useMemo(() => montarPintura(), [])
+  const janelaG = useMemo(() => janela(0.82, 0.48), [])
+  const janelaP = useMemo(() => janela(0.62, 0.48), [])
+  const brisa = useMemo(() => janela(0.78, 0.5, 0.12), [])
+  const traseiro = useMemo(() => janela(1.0, 0.36, 0.1), [])
   const placa = useMemo(() => texPlaca(), [])
   const brilho = useMemo(() => texBrilho(), [])
   const giro = useRef(0)
@@ -99,95 +193,117 @@ export function Kombi222({ turbo, velocidade }: { turbo: React.MutableRefObject<
         <meshBasicMaterial ref={under} map={brilho} transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
 
-      {/* saia azul */}
-      <RoundedBox args={[1.86, 0.78, 4.3]} radius={0.16} smoothness={3} position={[0, 0.78, 0]}>
-        <meshStandardMaterial color={AZUL} metalness={0.35} roughness={0.35} />
-      </RoundedBox>
-      {/* parte de cima creme, teto arredondado */}
-      <RoundedBox args={[1.8, 0.95, 4.12]} radius={0.32} smoothness={4} position={[0, 1.58, 0.04]}>
-        <meshStandardMaterial color={CREME} metalness={0.15} roughness={0.4} />
-      </RoundedBox>
-      {/* frisos de cromo entre as cores */}
-      <mesh position={[0, 1.17, 0]}>
-        <boxGeometry args={[1.9, 0.05, 4.34]} />
-        <meshStandardMaterial color="#e6e9f2" metalness={1} roughness={0.15} />
-      </mesh>
+      {/* a carroceria: um perfil lateral só (nariz redondo, para-brisa,
+          teto arredondado, traseira do motor, caixas de roda), extrudado na
+          largura com as bordas boleadas. Pintura em duas cores no shader:
+          saia azul, cima creme, o "V" creme descendo no nariz e o friso */}
+      <mesh geometry={corpo} material={pintura} />
+      {/* caixas de roda por dentro (não dá pra ver através) */}
+      {[-1.35, 1.35].map((z) => (
+        <mesh key={z} position={[0, 0.5, z]}>
+          <boxGeometry args={[1.5, 0.7, 1.0]} />
+          <meshStandardMaterial color="#05060c" roughness={1} />
+        </mesh>
+      ))}
 
-      {/* janelas laterais (4 de cada lado) */}
+      {/* janelas laterais: a da porta da cabine + 3 do salão, cantos redondos */}
       {[-1, 1].map((l) =>
-        [-1.35, -0.45, 0.45, 1.35].map((z) => (
-          <mesh key={`${l}${z}`} position={[l * 0.905, 1.66, z]} rotation={[0, (l * Math.PI) / 2, 0]}>
-            <planeGeometry args={[0.78, 0.5]} />
+        JANELAS.map(([z, w]) => (
+          <mesh key={`${l}${z}`} geometry={w > 0.7 ? janelaG : janelaP} position={[l * 0.94, 1.56, z]} rotation={[0, (l * Math.PI) / 2, 0]}>
             {vidro}
           </mesh>
         )),
       )}
-      {/* para-brisa bipartido */}
-      {[-0.42, 0.42].map((x) => (
-        <mesh key={x} position={[x, 1.68, -2.1]} rotation={[0.12, Math.PI, 0]}>
-          <planeGeometry args={[0.74, 0.55]} />
-          {vidro}
-        </mesh>
-      ))}
-      {/* vidro traseiro */}
-      <mesh position={[0, 1.7, 2.11]}>
-        <planeGeometry args={[1.2, 0.46]} />
+      {/* para-brisa bipartido, inclinado com o nariz */}
+      <group position={[0, 1.56, -2.16]} rotation={[0, Math.PI, 0]}>
+        {[-0.42, 0.42].map((x) => (
+          <mesh key={x} geometry={brisa} position={[x, 0, 0]} rotation={[-0.2, 0, 0]}>
+            {vidro}
+          </mesh>
+        ))}
+      </group>
+      {/* vidro traseiro + reflexo cyan */}
+      <mesh geometry={traseiro} position={[0, 1.5, 2.285]}>
         {vidro}
       </mesh>
-      {/* reflexo cyan no vidro de trás */}
-      <mesh position={[-0.35, 1.72, 2.115]}>
-        <planeGeometry args={[0.16, 0.4]} />
+      <mesh position={[-0.32, 1.5, 2.29]}>
+        <planeGeometry args={[0.12, 0.32]} />
         <meshBasicMaterial color="#2fe8ff" transparent opacity={0.22} toneMapped={false} />
       </mesh>
 
-      {/* "V" na frente */}
-      {[-1, 1].map((l) => (
-        <mesh key={l} position={[l * 0.38, 1.1, -2.16]} rotation={[0, 0, l * -0.62]}>
-          <boxGeometry args={[0.95, 0.07, 0.03]} />
-          <meshStandardMaterial color={CREME} />
-        </mesh>
-      ))}
-      {/* emblema redondo */}
-      <mesh position={[0, 0.98, -2.17]} rotation-x={Math.PI / 2}>
-        <cylinderGeometry args={[0.15, 0.15, 0.03, 20]} />
-        <meshStandardMaterial color="#e6e9f2" metalness={1} roughness={0.15} />
+      {/* nariz: emblema redondo e faróis redondos com aro cromado */}
+      <mesh position={[0, 0.98, -2.31]} rotation-x={Math.PI / 2}>
+        <cylinderGeometry args={[0.15, 0.15, 0.03, 24]} />
+        <meshStandardMaterial color={CREME} metalness={0.4} roughness={0.25} emissive={CREME} emissiveIntensity={0.15} />
       </mesh>
-      {/* faróis redondos */}
-      {[-0.62, 0.62].map((x) => (
-        <mesh key={x} position={[x, 0.95, -2.16]} rotation-x={Math.PI / 2}>
-          <cylinderGeometry args={[0.15, 0.15, 0.04, 20]} />
-          <meshBasicMaterial color="#fff6dc" toneMapped={false} />
+      {[-0.64, 0.64].map((x) => (
+        <group key={x} position={[x, 0.92, -2.27]} rotation-x={Math.PI / 2}>
+          <mesh>
+            <cylinderGeometry args={[0.17, 0.17, 0.06, 24]} />
+            <meshStandardMaterial color="#e6e9f2" metalness={1} roughness={0.15} />
+          </mesh>
+          <mesh position={[0, -0.035, 0]}>
+            <cylinderGeometry args={[0.135, 0.135, 0.02, 24]} />
+            <meshBasicMaterial color="#fff6dc" toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+      {/* piscas laranja embaixo dos faróis */}
+      {[-0.64, 0.64].map((x) => (
+        <mesh key={x} position={[x, 0.66, -2.3]}>
+          <boxGeometry args={[0.14, 0.06, 0.03]} />
+          <meshBasicMaterial color="#ffae3d" toneMapped={false} />
         </mesh>
       ))}
+      {/* entradas de ar do motor, no alto da lateral traseira */}
+      {[-1, 1].map((l) =>
+        [0, 1, 2, 3, 4].map((k) => (
+          <mesh key={`${l}${k}`} position={[l * 0.945, 1.86 - k * 0.075, 1.95]} rotation={[0, (l * Math.PI) / 2, 0]}>
+            <planeGeometry args={[0.32, 0.03]} />
+            <meshStandardMaterial color="#0b1030" side={THREE.DoubleSide} />
+          </mesh>
+        )),
+      )}
 
-      {/* traseira: grade do motor, placa, lanternas, para-choque */}
-      {[0, 1, 2, 3, 4].map((k) => (
-        <mesh key={k} position={[-0.24 + k * 0.12, 1.0, 2.16]}>
-          <boxGeometry args={[0.035, 0.22, 0.02]} />
-          <meshStandardMaterial color="#0b1030" />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.7, 2.16]}>
+      {/* traseira: tampa do motor com as grelhas, placa, lanternas */}
+      {[-1, 1].map((l) =>
+        [0, 1, 2, 3].map((k) => (
+          <mesh key={`${l}${k}`} position={[l * (0.34 + k * 0.09), 1.05, 2.285]}>
+            <boxGeometry args={[0.05, 0.2, 0.02]} />
+            <meshStandardMaterial color="#0b1030" />
+          </mesh>
+        )),
+      )}
+      <mesh position={[0, 0.72, 2.29]}>
         <planeGeometry args={[0.5, 0.16]} />
         <meshBasicMaterial map={placa} toneMapped={false} />
       </mesh>
-      {[-0.74, 0.74].map((x) => (
-        <group key={x} position={[x, 1.0, 2.16]}>
-          <mesh>
-            <boxGeometry args={[0.13, 0.26, 0.04]} />
+      {[-0.76, 0.76].map((x) => (
+        <group key={x} position={[x, 0.98, 2.27]}>
+          <mesh rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.09, 0.09, 0.05, 20]} />
             <meshBasicMaterial color="#ff2436" toneMapped={false} />
           </mesh>
-          <mesh position={[0, 0, 0.05]}>
+          <mesh position={[0, 0, 0.06]}>
             <planeGeometry args={[1.1, 1.1]} />
             <meshBasicMaterial map={brilho} color="#ff2436" transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
           </mesh>
         </group>
       ))}
-      {[-2.2, 2.2].map((z) => (
-        <mesh key={z} position={[0, 0.48, z]}>
-          <boxGeometry args={[1.95, 0.1, 0.1]} />
-          <meshStandardMaterial color="#e6e9f2" metalness={1} roughness={0.15} />
-        </mesh>
+      {/* para-choques cromados, de tubo */}
+      {[-2.36, 2.36].map((z) => (
+        <group key={z} position={[0, 0.44, z]}>
+          <mesh rotation-z={Math.PI / 2}>
+            <capsuleGeometry args={[0.055, 1.85, 6, 12]} />
+            <meshStandardMaterial color="#e6e9f2" metalness={1} roughness={0.12} />
+          </mesh>
+          {[-0.6, 0.6].map((x) => (
+            <mesh key={x} position={[x, 0, -Math.sign(z) * 0.08]}>
+              <boxGeometry args={[0.06, 0.06, 0.16]} />
+              <meshStandardMaterial color="#9aa0b4" metalness={1} roughness={0.3} />
+            </mesh>
+          ))}
+        </group>
       ))}
 
       {/* chama do escapamento no turbo */}
