@@ -14,13 +14,14 @@
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Cabine, OLHO } from "./Cabine"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
-import { LADO_METRO, Metro, montarMetro } from "./Metro"
+import { Suburbio } from "./Suburbio"
+import { Metro, montarMetro } from "./Metro"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
@@ -948,7 +949,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {/* ILHA DINÂMICA: uma coisa de cada vez, se transformando —
           bifurcação > conversa (no painel) > falas (em fila) > PROCURADO > quieta */}
       {(() => {
-        const modo = garfo ? "garfo" : conversa ? "conversa" : toasts[0] ? "fala" : cacando ? "procurado" : "quieta"
+        // na chegada, o grupo falando vem antes do aviso de bifurcação
+        const modo = intro && toasts[0] ? "fala" : garfo ? "garfo" : conversa ? "conversa" : toasts[0] ? "fala" : cacando ? "procurado" : "quieta"
         const t0 = toasts[0]
         const C = garfo ? M.vias[garfo.via] : null
         const op = (f: Faixa | undefined, k: number) => {
@@ -1272,6 +1274,17 @@ function Cena({
   }, [pausado, calar, motor])
 
   const metro = useMemo(() => montarMetro(M), [M])
+  // o subúrbio mora no meio do anel da cidade: o centro e até onde vai o chão
+  const centroSub = useMemo(() => {
+    const v = M.vias[M.circuito.linha]
+    let x = 0, z = 0
+    for (let i = 0; i < v.n; i++) { x += v.px[i]; z += v.pz[i] }
+    x /= v.n
+    z /= v.n
+    let r = Infinity
+    for (let i = 0; i < v.n; i++) r = Math.min(r, Math.hypot(v.px[i] - x, v.pz[i] - z))
+    return { x, z, r: r - MEIA - 4 }
+  }, [M])
   const tex = useMemo(() => ({ asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
 
   // cor de cada trecho: o lugar do circuito; nas saídas, metade de cada lado
@@ -1370,9 +1383,10 @@ function Cena({
         const k = Math.floor(r() * C.n)
         if (noTunel(C, k)) continue
         const lado = r() < 0.5 ? -1 : 1
-        let off = MEIA + e.off[0] + r() * (e.off[1] - e.off[0])
-        // o corredor da Linha 9 (monotrilho à esquerda do circuito principal)
-        if (C === M.vias[M.circuito.linha] && lado < 0) off = Math.max(off, -LADO_METRO + 20)
+        const off = MEIA + e.off[0] + r() * (e.off[1] - e.off[0])
+        // o lado de DENTRO do anel da cidade (e o miolo do subúrbio) é o
+        // subúrbio: sem torre ali (a Linha 9 passa por cima, a vista é lá pra baixo)
+        if ((C === M.vias[M.circuito.linha] || C === M.vias[M.circuito.suburbio]) && lado < 0) continue
         const h = e.h[0] + r() * r() * (e.h[1] - e.h[0])
         const bx = C.px[k] - C.tz[k] * lado * off
         const bz = C.pz[k] + C.tx[k] * lado * off
@@ -1563,12 +1577,15 @@ function Cena({
         const paineis = lados.map((f, k) => {
           const x = (k - 1) * CK
           if (k === 1) return { x, cor: aqui.cor, area: C.t, tex: texTexto([{ txt: "↑", tam: 110, cor: aqui.cor }, { txt: territorio(C.t).lugar.toUpperCase(), tam: 62, cor: aqui.cor }, { txt: "fica · mais uma volta", tam: 40, cor: "#ffffff", fonte: MONO }], 512, 352) }
-          const fr = freqDe(f!.para)
-          const seta = f!.lado < 0 ? "←" : "→"
+          // bifurcação de um lado só (as descidas pro subúrbio, a saída dele)
+          if (!f) return null
+          const fr = freqDe(f.para)
+          const seta = f.lado < 0 ? "←" : "→"
           return aberta(f!, nLib)
             ? { x, cor: fr.cor, area: f!.para, tex: texTexto([{ txt: seta, tam: 110, cor: fr.cor }, { txt: lugarDe(f!.para).toUpperCase(), tam: 62, cor: fr.cor }, { txt: `${fr.freq} FM`, tam: 46, cor: "#ffffff", fonte: MONO }], 512, 352) }
             : { x, cor: "#555a77", tex: texTexto([{ txt: "TRANCADA", tam: 60, cor: "#8a8fae" }, { txt: lugarDe(f!.para).toUpperCase(), tam: 56, cor: "#8a8fae" }, { txt: `junta ${fr.custo} de sinal`, tam: 40, cor: "#b0b5d0", fonte: MONO }], 512, 352) }
         })
+        const paineisOk = paineis.filter((x): x is NonNullable<typeof x> => !!x)
         // o aviso da segunda bifurcação do centro vem logo depois da primeira
         const antes = us.length > 1 && si === 0 ? 240 : 330
         for (const [dist, agora] of [[antes, false], [100, true]] as const) {
@@ -1581,7 +1598,7 @@ function Cena({
             pos,
             rot: Math.atan2(a.tx, a.tz),
             topo: texTexto([{ txt: agora ? "SAÍDAS · AGORA" : `SAÍDAS EM ${dist} M`, tam: 96, cor: "#ffc857" }], 1024, 128),
-            paineis,
+            paineis: paineisOk,
           })
         }
         // setas no chão: reto no meio, diagonal em cada faixa de saída
@@ -2626,6 +2643,7 @@ function Cena({
       ))}
       <primitive object={cidade.pilares} />
       <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
+      <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
       <points geometry={cidade.luzes} material={cidade.luzMat} />

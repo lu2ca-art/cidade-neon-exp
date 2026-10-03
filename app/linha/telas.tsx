@@ -3,6 +3,7 @@
 // Telas da Linha 222 fora do celular (entrada, bloqueio, final) e os apps
 // nativos grandes (a linha/mapa, a rádio).
 
+import { CREDITO_SUBURBIO } from "./estrada/Suburbio"
 import { useEffect, useMemo, useState } from "react"
 import { ESTACOES, NIVEIS, UNTITLED, dataCurta, estacao as getEstacao, lancada, missao, type Estacao, type EstacaoId } from "./data"
 import { ativa, conhecidos } from "./missoes"
@@ -209,6 +210,7 @@ export function Mapa({
       <button type="button" className="l-recomecar" onClick={() => { if (confirm("apagar seu progresso e começar do zero?")) recomecar() }}>
         recomeçar do zero
       </button>
+      <p className="l-creditos">subúrbio xenom: {CREDITO_SUBURBIO}</p>
 
       {aberta && (
         <FichaEstacao
