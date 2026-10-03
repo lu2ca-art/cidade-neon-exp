@@ -234,3 +234,8 @@
 .f-cor.is-some { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) { .v-vibra, .v-chuva, .v-pisca, .v-zz, .v-cai, .v-anda, .v-cresce, .f-ondas i, .f-gotas i, .f-cor i { animation: none !important; } }
+
+/* opções entram depois da pergunta subir (originkit: stagger text rise) */
+.n-forma-entra { display: contents; }
+.n-forma-entra > * { animation: n-forma-entra 0.5s 0.35s both cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+@keyframes n-forma-entra { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: none; } }
