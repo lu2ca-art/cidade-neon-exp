@@ -17,6 +17,7 @@ import "./nectar.css"
 import { CAMPANHAS, FAIXAS, FASE_NOME, NOS, OBJETOS, TOTAL_PERGUNTAS, ler, type Faixa, type Resultado } from "./leitura"
 import { ac, ligarDrone, nota, vib } from "./som"
 import { Forma } from "./formas"
+import { Rasgo, TextoSobe } from "./originkit"
 
 type Resp = { no: string; opcao: number }
 type Tela = "abertura" | "pergunta" | "cerimonia" | "resultado"
@@ -103,7 +104,7 @@ export default function NectarPage() {
           audio.current = a
         }, 5200)
       }
-    }, 520)
+    }, 650)
   }, [escolhida, no, resp, state.confirmations.c1.done, completeConfirmation])
 
   const voltar = () => {
@@ -165,7 +166,7 @@ function Pergunta({ no, n, escolhida, onEscolher }: { no: string; n: number; esc
     return () => clearInterval(t)
   }, [d.cena])
   return (
-    <section className={`n-pergunta is-${d.forma ?? "texto"}`}>
+    <Rasgo on={escolhida !== null} className={`n-pergunta is-${d.forma ?? "texto"}`}>
       <header className="n-topo">
         <span className="n-rotulo">{ATO[d.ato]}</span>
         <div className="n-pontos">
@@ -174,10 +175,10 @@ function Pergunta({ no, n, escolhida, onEscolher }: { no: string; n: number; esc
       </header>
       <div className="n-meio">
         {d.cena && <p className="n-cena" onClick={() => { setTxt(d.cena!); setPronto(true) }}>{txt}<span className="n-cursor" /></p>}
-        <h2 className={`n-q ${pronto ? "is-on" : ""}`}>{d.pergunta}</h2>
+        {pronto ? <TextoSobe texto={d.pergunta} className="n-q is-on" /> : <h2 className="n-q">{d.pergunta}</h2>}
       </div>
-      {pronto && <Forma no={d} escolhida={escolhida} onEscolher={onEscolher} />}
-    </section>
+      {pronto && <div className="n-forma-entra"><Forma no={d} escolhida={escolhida} onEscolher={onEscolher} /></div>}
+    </Rasgo>
   )
 }
 
