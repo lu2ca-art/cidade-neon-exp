@@ -2,7 +2,7 @@
 // `cidade-neon-funnel-v3`, que continua servindo o /drive e o hub).
 
 import type { EstacaoId } from "./data"
-import type { ChatId } from "./roteiros"
+import { ROTEIROS, type ChatId } from "./roteiros"
 import { montarFio, type Perfil } from "./missoes"
 import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
@@ -104,10 +104,28 @@ export function carregar(): Save {
     const s: Save = { ...VAZIO, ...JSON.parse(raw) }
     // quem já tinha estação antes do fio existir ganha um, pelas respostas
     if (s.estacao && !s.fio.length) s.fio = montarFio(s.pesos, s.estacao, s.perfil)
+    s.pausas = acertarPausas(s.pausas)
     return s
   } catch {
     return VAZIO
   }
+}
+
+// A conversa parada guarda o ÍNDICE do passo (a tarefa ou a chegada). Quando
+// um roteiro ganha falas novas antes desse ponto, o índice antigo cai um
+// pouco antes: anda até a próxima parada (tarefa/chegar) do roteiro.
+function acertarPausas(p: Save["pausas"]): Save["pausas"] {
+  const out = { ...p }
+  for (const [id, pos] of Object.entries(p) as [ChatId, number][]) {
+    const passos = ROTEIROS[id as keyof typeof ROTEIROS]?.passos
+    if (!passos || pos === undefined) continue
+    const parada = (i: number) => passos[i]?.t === "tarefa" || passos[i]?.t === "chegar"
+    if (parada(pos)) continue
+    let i = pos
+    while (i < passos.length && !parada(i)) i++
+    if (i < passos.length) out[id] = i
+  }
+  return out
 }
 
 export function gravar(s: Save) {

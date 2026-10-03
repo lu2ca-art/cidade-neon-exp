@@ -144,13 +144,13 @@ export const GANCHO: Partial<Record<EstacaoId, string>> = {
 // Rascunho: o LU2CA reescreve.
 export const MEMORIAS = [
   "antes do núcleo a música tocava na rua. ninguém pedia licença pra cantar alto",
-  "o núcleo nasceu pra organizar o trânsito. deu tão certo que resolveram organizar as pessoas também",
+  "o núcleo nasceu pra organizar o trânsito. deu tão certo que resolveram organizar as pessoas também: cada uma no seu lado, cada lado com seu inimigo",
   "quem desenhou o núcleo foi o pai da D-Bee. ele achava que tava construindo um metrônomo pra cidade",
   "na noite do primeiro apagão, alguém rodou a linha 222 inteira de kombi escondendo uma música em cada estação",
   "a kombi que vc dirige é essa. o rádio dela nunca desligou",
   "quem escondeu as músicas nunca saiu da cidade. ficou esperando alguém juntar tudo",
   "a D-Bee sabia desde o começo. por isso ela pergunta 'sabe ontem?' pra todo mundo",
-  "o apagão mais longo da história n foi falta de luz. foi excesso",
+  "o apagão mais longo da história n foi falta de luz. foi excesso. tanta tela acesa que ninguém viu a cidade inteira cantando junto pela última vez",
   "a linha 222 n termina. ela dá a volta e começa de novo em quem ouviu",
 ]
 

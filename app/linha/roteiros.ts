@@ -11,6 +11,16 @@
 // a vez dela no fio; o que é a cidade vem aos poucos, nas memórias
 // (missoes.ts), uma por missão cumprida.
 //
+// A ESPINHA (03/10): o Núcleo não manda com arma, manda SEPARANDO. Divide a
+// cidade em lados, dá pra cada lado um inimigo e um feed, e apaga quem sente
+// demais. A música é a única coisa que junta quem ele separou: por isso ele
+// caça. Toda conversa tem quatro batidas, além do drama da pessoa:
+//   1. o que o Núcleo tirou DELA (a ferida é um crime do sistema, não azar)
+//   2. uma peça do "ontem" (cada um lembra um pedaço do apagão)
+//   3. o pedido (a missão)
+//   4. o juramento: ela entra na resistência, com medo mesmo
+// A D-Bee conta no grupo: "3 de 9". Quando forem nove, a gente entra.
+//
 // Rascunho — o LU2CA reescreve na voz de cada pessoa real por trás dos
 // personagens.
 
@@ -163,7 +173,21 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       },
       { t: "msg", texto: "ok. já sei" },
       { t: "revelacao" },
-      { t: "msg", texto: "a kombi é sua. cada estação da linha 222 guarda uma música que o núcleo quer abafar" },
+      { t: "msg", texto: "a kombi é sua. agora escuta, que eu só falo uma vez" },
+      { t: "msg", texto: "o núcleo n manda em ninguém com arma. manda separando" },
+      { t: "msg", texto: "divide a cidade em dois lados, dá um inimigo pra cada lado e um feed pra cada um. pronto. ninguém mais conversa com ninguém" },
+      { t: "nucleo", texto: "conteúdos do lado oposto foram ocultados para o seu conforto ✓" },
+      { t: "msg", texto: "e quem sente demais ele apaga. ontem foi isso" },
+      { t: "msg", texto: "cada estação da linha 222 tem alguém que ele quebrou e uma música que ele quer calar. música junta gente que n devia se juntar. por isso ele caça" },
+      { t: "msg", texto: "a gente vai acordar essa gente. uma por uma. quando forem nove, a gente entra no núcleo" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "eu tô com medo", resposta: ["ótimo. eu também", "quem n tem medo já foi otimizado"] },
+          { label: "bora", resposta: ["calma, herói kkk", "mas bora"] },
+          { label: "e se der errado?", resposta: ["vai dar errado várias vezes", "a gente vai mesmo assim"] },
+        ],
+      },
       { t: "msg", texto: (c) => (c.primeira ? `${c.primeira} já tá sabendo de vc. vai chegar mensagem` : "vai chegar mensagem") },
       { t: "fim", para: "missao" },
     ],
@@ -197,6 +221,10 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "três anos?? como vc aguenta", resposta: ["n aguento", "só deixo molhar. faz diferença"] },
         ],
       },
+      { t: "msg", texto: "três anos atrás eu perdi alguém" },
+      { t: "nucleo", texto: "luto público reduz a produtividade do bairro. recomendamos processar a perda em privado ✓" },
+      { t: "msg", texto: "chegou isso no dia. aí eu engoli. e desde aquele dia chove" },
+      { t: "msg", texto: "coincidência, né" },
       { t: "msg", texto: "achei esse no loop. é a rua daqui, antes" },
       { t: "loop", titulo: "POV: vc descobriu a cidade neon e nunca mais voltou", video: 2 },
       { t: "msg", texto: "nasceu uma flor no asfalto aqui na frente" },
@@ -223,6 +251,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "objeto" },
       { t: "audio", src: "/audio/tracks/222-chuva.mp3", titulo: "CHUVA" },
       { t: "msg", texto: "no caos também nasce coisa" },
+      { t: "msg", texto: "sabe o que eu lembro de ontem? uma música tocando alto na rua. todo mundo parou pra ouvir, até quem n se falava. aí apagou" },
+      { t: "msg", texto: "a D-Bee tá juntando gente, né" },
+      { t: "msg", texto: "eu n sou de briga. mas quando ela chamar, eu vou. com medo. chorando se precisar" },
       { t: "gancho" },
       { t: "fim" },
     ],
@@ -242,6 +273,8 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "que triste", resposta: ["triste é achar normal"] },
         ],
       },
+      { t: "nucleo", texto: "Mubarak, sua assinatura MESMA NOITE foi renovada por mais 30 dias ✓" },
+      { t: "msg", texto: "ignora" },
       { t: "msg", texto: "achei um mp3 no fundo de um copo americano. sério" },
       { t: "voz", fala: "tá sem pilha. ninguém vende pilha desde que o núcleo fez tudo recarregar sozinho" },
       { t: "msg", texto: "a conveniência 24h da cidade neon ainda tem umas no fundo da prateleira" },
@@ -268,6 +301,16 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "objeto" },
       { t: "audio", src: "/audio/tracks/222-copo-americano.mp3", titulo: "Copo Americano" },
       { t: "msg", texto: "fica com ele. eu já decorei" },
+      { t: "msg", texto: "vou te contar uma de ontem. eu tava nesse bar. o rádio tocou essa música e o bar inteiro cantou junto" },
+      { t: "msg", texto: "quarenta pessoas que se odiavam no feed, cantando a mesma coisa. abraçadas" },
+      { t: "msg", texto: "dez minutos depois a cidade apagou. vc acha que foi coincidência?" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "vem com a gente", resposta: ["a D-Bee acha que dá pra ganhar deles", "eu acho que n dá", "…mas se ela for, alguém tem que ir junto pra trazer ela de volta"] },
+          { label: "vc tá do lado de quem?", resposta: ["kkkk", "do lado do bar", "pergunta de novo outro dia"] },
+        ],
+      },
       { t: "gancho" },
       { t: "fim" },
     ],
@@ -292,6 +335,8 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "eu vivo assim também", resposta: ["eu sei", "todo mundo aqui vive"] },
         ],
       },
+      { t: "msg", texto: "sabe o pior? as abas nem são minhas. o núcleo abre" },
+      { t: "msg", texto: "gente acelerada n pensa. quem n pensa n pergunta. quem n pergunta n incomoda" },
       { t: "msg", texto: "eu n lembro mais qual é o som do silêncio" },
       { t: "msg", texto: "dizem que no topo do mirante o sinal do núcleo n chega" },
       { t: "msg", texto: "grava 10 segundos de silêncio lá pra mim? sério. preciso ouvir" },
@@ -316,6 +361,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "objeto" },
       { t: "audio", src: "/audio/tracks/dopamina.mp3", titulo: "DopaminA" },
       { t: "msg", texto: "pela primeira vez eu vou ouvir uma música inteira" },
+      { t: "msg", texto: "ah, e ontem: todos os relógios da cidade pararam às 2:22. TODOS. depois voltaram a andar como se nada" },
+      { t: "msg", texto: "o núcleo apagou isso de todo lugar. menos do meu relógio, que é ruim demais pra atualizar kkkk" },
+      { t: "msg", texto: "conta comigo. eu sou rápida. pra fugir e pra entrar onde n deixam" },
       { t: "gancho" },
       { t: "fim" },
     ],
@@ -334,6 +382,8 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "melhor em casa", resposta: ["é o que eu falo pra mim", "às vezes eu acredito"] },
         ],
       },
+      { t: "msg", texto: "o rolê hoje é todo mundo filmando todo mundo. ninguém se olha" },
+      { t: "msg", texto: "a D-Bee diz que é de propósito. multidão que n se olha n se junta. e gente junta derruba coisa" },
       { t: "msg", texto: "sabe o que é pior? eu queria sair" },
       { t: "msg", texto: "mas se eu for sozinho eu volto antes de chegar" },
       { t: "msg", texto: "vc tá de kombi né. me busca? moro no subúrbio xenom" },
@@ -359,6 +409,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "engraçado. parece comigo também" },
       { t: "objeto" },
       { t: "audio", src: "/audio/tracks/sextafeira.mp3", titulo: "Sexta-Feira" },
+      { t: "msg", texto: "lembrei de uma coisa de ontem. eu tava num show. o chão tremendo, todo mundo pulando junto. depois mais nada" },
+      { t: "msg", texto: "se um dia precisar dançar na frente do núcleo, eu danço" },
+      { t: "msg", texto: "sozinho se precisar. mas acho que n vou tá sozinho" },
       { t: "gancho" },
       { t: "fim" },
     ],
@@ -378,8 +431,11 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "o que aconteceu ontem?", resposta: ["a gente sonhou alto.", "aí amanheceu."] },
         ],
       },
-      { t: "msg", texto: "o vento levou três páginas do meu caderno." },
+      { t: "msg", texto: "depois do apagão o núcleo recolheu os cadernos da cidade. de papel e de nuvem." },
+      { t: "nucleo", texto: "memórias não verificadas foram removidas para a sua segurança ✓" },
+      { t: "msg", texto: "o meu sobrou. mas o vento levou três páginas." },
       { t: "msg", texto: "tão voando pela cidade neon. brilham, dá pra ver de longe." },
+      { t: "msg", texto: "são as que eu escrevi ontem, enquanto acontecia. n acho que foi o vento." },
       { t: "msg", texto: "pega pra mim?" },
       { t: "tarefa" },
       { t: "msg", texto: "as três." },
@@ -408,6 +464,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
         t: "msg",
         texto: (c) => (c.ontemLancada ? "saiu. agora é de todo mundo." : "sai amanhã. vc ouviu antes de todo mundo."),
       },
+      { t: "msg", texto: "na última página de ontem tem uma plateia. uma pessoa ficou até o fim." },
+      { t: "msg", texto: "ainda n sei quem. mas vou saber." },
+      { t: "msg", texto: "o que vcs fizerem, eu escrevo. alguém tem que contar que teve resistência." },
       { t: "gancho" },
       { t: "fim" },
     ],
@@ -450,6 +509,10 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "audio", src: "/audio/tracks/nectar.mp3", titulo: "Nectar · prévia" },
       { t: "msg", texto: "fui eu. na noite do apagão, rodei a linha inteira escondendo as músicas" },
       { t: "msg", texto: "e fiquei esperando alguém juntar" },
+      { t: "msg", texto: "n foi só pra proteger. foi medo. medo de lançar e ninguém ouvir" },
+      { t: "msg", texto: "e sabe quem caça as músicas? quem me ensinou a tocar" },
+      { t: "msg", texto: "um dia eu te conto. hoje n consigo" },
+      { t: "msg", texto: "eu ainda tô com medo. vou lançar mesmo assim. acho que resistir é isso" },
       { t: "msg", texto: "nectar sai dia 16/10. vc ouviu antes" },
       { t: "msg", texto: "a cidade inteira mora num lugar só. todas as frequências, o live, o instrumental" },
       { t: "msg", texto: "n é produto. é sustentar uma coisa que existe fora do sistema" },
