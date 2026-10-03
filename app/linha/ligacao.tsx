@@ -6,6 +6,7 @@
 // sem permissão de microfone, sem reconhecimento de voz no navegador (ou se
 // ele não entender), é só tocar. A estrada não para.
 
+import type { Tom } from "./roteiros"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { entender, type Fala, type Ligacao, type PassoLigacao } from "./ligacoes"
 import { VOZES } from "./roteiros"
@@ -49,7 +50,7 @@ function bipDesliga() {
 // o que foi dito na ligação, pra virar histórico da conversa no N3XO
 export type Transcricao = { texto: string; eu?: boolean }[]
 
-export function LigacaoNaKombi({ lig, onFim }: { lig: Ligacao; onFim: (atendeu: boolean, dito: Transcricao) => void }) {
+export function LigacaoNaKombi({ lig, onFim, onTom }: { lig: Ligacao; onFim: (atendeu: boolean, dito: Transcricao) => void; onTom?: (tom: Tom) => void }) {
   const id = lig.id
   const transcricao = useRef<Transcricao>([])
   const [fase, setFase] = useState<"tocando" | "falando" | "ouvindo" | "fim">("tocando")
@@ -164,6 +165,8 @@ export function LigacaoNaKombi({ lig, onFim }: { lig: Ligacao; onFim: (atendeu: 
         setMic("parado")
         setFase("falando")
         track("mission_step", { mission_id: `linha-ligacao-${id}`, step: `resposta:${i}${p.opcoes[i].tom ? `:${p.opcoes[i].tom}` : ""}`, perfil: "?", fio_pos: -1 })
+        const tom = p.opcoes[i].tom
+        if (tom) onTom?.(tom)
         transcricao.current.push({ texto: p.opcoes[i].label, eu: true })
         for (const f of p.opcoes[i].resposta) { if (!vivo.current) return; await falar(f) }
       }

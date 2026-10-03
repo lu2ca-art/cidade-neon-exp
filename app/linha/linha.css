@@ -1438,3 +1438,7 @@
 /* tela inicial: começar do início (03/10) — discreto, dois toques */
 .l-entrada-zero { margin-top: 14px; padding: 8px 14px; border-radius: 999px; background: transparent !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; color: var(--mut) !important; font: 11px var(--mono); letter-spacing: 0.06em; }
 .l-entrada-zero.is-certeza { border-color: #ff5b5b !important; color: #ff8a8a !important; }
+
+/* a ilha com mensagem é clicável (abre a conversa) */
+.l-ilha.is-clicavel { pointer-events: auto; cursor: pointer; }
+.l-ilha.is-clicavel::after { content: "abrir ›"; position: absolute; right: 12px; bottom: 6px; font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cor); opacity: 0.7; }

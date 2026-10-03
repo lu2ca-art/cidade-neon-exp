@@ -119,21 +119,11 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
   // A D-Bee e só ela. Cinco perguntas rápidas, a estação, e a primeira
   // pessoa do fio já te chamando. O resto da história fica pras memórias.
   abertura: {
-    contato: "[desconhecido]",
+    contato: "D-Bee",
     status: "sinal instável",
     passos: [
-      { t: "msg", texto: "vc entrou no grupo da 222 e n falou nada" },
-      { t: "msg", texto: "esperto. lá tem gente que fala demais" },
-      { t: "msg", texto: "sabe ontem?" },
-      { t: "msg", texto: "vc tava lá" },
-      {
-        t: "escolha",
-        opcoes: [
-          { label: "lá onde? ontem eu só rolei o feed", tom: "dormindo", resposta: ["exato", "é assim que eles apagam"] },
-          { label: "quem é vc?", tom: "acordando", resposta: ["alguém que ainda lembra"] },
-          { label: "tava. ninguém mais lembra", tom: "acordado", resposta: ["…", "faz tempo que eu n ouço isso de alguém"] },
-        ],
-      },
+      { t: "msg", texto: "sou eu. a da ligação" },
+      { t: "msg", texto: "rápido, antes que ele leia" },
       { t: "nucleo", texto: "esta conversa foi classificada como improdutiva. recomendamos voltar ao feed ✓" },
       { t: "msg", texto: "ignora. ele fala isso pra todo mundo" },
       { t: "msg", texto: "como te chamam aí fora?" },
@@ -141,7 +131,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
         t: "input", chave: "nome", placeholder: "seu nome ou apelido",
         resposta: (v) => [`${v}.`, "vou lembrar. aqui dentro isso já é muito"],
       },
-      { t: "msg", texto: "eu sou a D-Bee" },
+      { t: "msg", texto: "guarda o meu: D-Bee. o resto o núcleo apaga" },
       { t: "msg", texto: "antes de te soltar na cidade, a cidade precisa te ler" },
       { t: "msg", texto: "sete perguntas. responde no impulso, o primeiro é o que conta" },
       { t: "leitura" },

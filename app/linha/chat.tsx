@@ -630,7 +630,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         )}
         {espera?.t === "fim" && (
           <button type="button" className="l-btn l-btn-fim" style={{ ["--cor" as string]: "#2fe8ff" }} onClick={() => onFim(espera.para)}>
-            {espera.para === "missao" ? (save.estacao ? `pra kombi${proximo ? ` · ${proximo} vai te chamar` : ""} →` : `ver mensagem${proximo ? ` de ${proximo}` : ""}`) : espera.para === "grupo" ? "entrar no grupo" : espera.para === "abertura" ? "ver mensagem nova →" : "voltar"}
+            {espera.para === "missao" ? (save.estacao ? `pra kombi${proximo ? ` · ${proximo} vai te chamar` : ""} →` : `ver mensagem${proximo ? ` de ${proximo}` : ""}`) : espera.para === "grupo" ? "entrar no grupo" : espera.para === "abertura" ? (id === "grupo" ? "voltar pra kombi →" : "ver mensagem nova →") : "voltar"}
           </button>
         )}
         {espera === null && <p className="l-acelera">{digitando !== null ? "toca na conversa pra acelerar" : " "}</p>}

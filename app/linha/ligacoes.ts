@@ -48,6 +48,36 @@ export interface Ligacao {
 }
 
 export const LIGACOES: Record<string, Ligacao> = {
+  // a PRIMEIRA: depois do grupo rolar na ilha, com a cidade cinza. É ela que
+  // começa a história (as respostas nos três tons)
+  "dbee-0": {
+    id: "dbee-0",
+    quem: "D-Bee",
+    recado: "n atendeu. tudo bem. te escrevi, abre o celular",
+    passos: [
+      {
+        t: "pergunta",
+        fala: "alô? é a pessoa nova do grupo?",
+        opcoes: [
+          { label: "que grupo? onde eu tô?", tom: "dormindo", palavras: ["que", "grupo", "onde", "to", "estou"], resposta: [{ fala: "na cidade neon. numa kombi parada no meio da chuva" }, { fala: "relaxa. ninguém lembra como chegou" }] },
+          { label: "sou. quem é?", tom: "acordando", palavras: ["quem", "e", "voce", "vc"], resposta: [{ fala: "a d-bee. a do grupo. liguei porque texto o núcleo lê. voz ainda passa" }] },
+          { label: "sou. tava esperando vc ligar", tom: "acordado", palavras: ["esperando", "sabia", "ligar", "ligacao"], resposta: [{ fala: "então vc é dos que lembram" }] },
+        ],
+      },
+      {
+        t: "pergunta",
+        fala: "sabe ontem?",
+        opcoes: [
+          { label: "ontem eu só rolei o feed", tom: "dormindo", palavras: ["feed", "rolei", "nada", "nao", "sei"], resposta: [{ fala: "exato. é assim que eles apagam" }] },
+          { label: "o que aconteceu ontem?", tom: "acordando", palavras: ["aconteceu", "que", "ontem"], resposta: [{ fala: "vc tava lá. ainda n lembra. vai lembrar" }] },
+          { label: "sei. a cidade cantou junto", tom: "acordado", palavras: ["cantou", "junto", "lembro", "musica"], resposta: [{ fala: "faz tempo que eu n ouço alguém dizer isso" }] },
+        ],
+      },
+      { t: "fala", fala: "o núcleo derrubou a 222 agora há pouco. vc viu a cor sumindo" },
+      { t: "fala", fala: "vou te escrever. rápido, antes que ele leia. abre o celular" },
+    ],
+  },
+
   // a primeira vez na Kombi depois da abertura: a D-Bee liga
   "dbee-1": {
     id: "dbee-1",

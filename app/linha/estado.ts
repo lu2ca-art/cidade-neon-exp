@@ -130,6 +130,9 @@ function acertarPausas(p: Save["pausas"]): Save["pausas"] {
     if (!passos || pos === undefined) continue
     const parada = (i: number) => passos[i]?.t === "tarefa" || passos[i]?.t === "chegar"
     if (parada(pos)) continue
+    // a abertura só para na leitura NECTAR
+    const leitura = passos.findIndex((x) => x.t === "leitura")
+    if (id === "abertura" && leitura >= 0) { out[id] = leitura; continue }
     let i = pos
     while (i < passos.length && !parada(i)) i++
     if (i < passos.length) out[id] = i
