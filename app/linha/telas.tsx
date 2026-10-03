@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ESTACOES, NIVEIS, UNTITLED, dataCurta, estacao as getEstacao, lancada, missao, type Estacao, type EstacaoId } from "./data"
 import { ativa, conhecidos } from "./missoes"
 import { ECOS, VOZES } from "./roteiros"
-import { apagar, sequencia, type Save } from "./estado"
+import { recomecar, sequencia, type Save } from "./estado"
 import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId } from "./radio"
 import { Objeto } from "./objetos"
 import { gota, player } from "./som"
@@ -20,6 +20,14 @@ export const ROTEIRO_IDS: EstacaoId[] = ["chuva", "copo", "dopamina", "sexta", "
 /* ─── ENTRADA ───────────────────────────────────────────── */
 export function Entrada({ save, onEntrar }: { save: Save; onEntrar: () => void }) {
   const volta = save.completos.includes("abertura")
+  const temProgresso = save.completos.length > 0 || !!save.estacao || save.objetos.length > 0
+  // apagar tudo pede dois toques (não tem volta)
+  const [certeza, setCerteza] = useState(false)
+  useEffect(() => {
+    if (!certeza) return
+    const t = setTimeout(() => setCerteza(false), 4000)
+    return () => clearTimeout(t)
+  }, [certeza])
   return (
     <section className="l-entrada">
       <div className="l-entrada-foto" />
@@ -45,6 +53,11 @@ export function Entrada({ save, onEntrar }: { save: Save; onEntrar: () => void }
             ? `${save.objetos.length}/9 objetos · ${sequencia(save.dias)} ${sequencia(save.dias) === 1 ? "dia" : "dias"} acordado`
             : "melhor com fone 🎧"}
         </p>
+        {temProgresso && (
+          <button type="button" className={`l-entrada-zero ${certeza ? "is-certeza" : ""}`} onClick={() => (certeza ? recomecar() : setCerteza(true))}>
+            {certeza ? "apaga tudo, até a leitura. toca de novo pra confirmar" : "começar do início"}
+          </button>
+        )}
       </div>
     </section>
   )
@@ -192,7 +205,7 @@ export function Mapa({
         })}
       </ol>
 
-      <button type="button" className="l-recomecar" onClick={() => { if (confirm("apagar seu progresso e começar do zero?")) { apagar(); location.reload() } }}>
+      <button type="button" className="l-recomecar" onClick={() => { if (confirm("apagar seu progresso e começar do zero?")) recomecar() }}>
         recomeçar do zero
       </button>
 

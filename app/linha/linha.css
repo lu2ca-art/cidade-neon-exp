@@ -1434,3 +1434,7 @@
 /* quem tem missão naquela área (03/10): a mesma etiqueta das placas */
 .l-garfo-quem { grid-column: 1 / -1; display: flex; gap: 3px; margin-top: 3px; }
 .l-garfo-quem i { width: 13px; height: 13px; border-radius: 50%; display: grid; place-items: center; font: 800 8px/1 var(--cond); font-style: normal; color: #070817; box-shadow: 0 0 6px -1px currentColor; }
+
+/* tela inicial: começar do início (03/10) — discreto, dois toques */
+.l-entrada-zero { margin-top: 14px; padding: 8px 14px; border-radius: 999px; background: transparent !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; color: var(--mut) !important; font: 11px var(--mono); letter-spacing: 0.06em; }
+.l-entrada-zero.is-certeza { border-color: #ff5b5b !important; color: #ff8a8a !important; }

@@ -146,6 +146,16 @@ export function apagar() {
   } catch {}
 }
 
+// começar do início de verdade: o progresso da Linha, a leitura NECTAR (a
+// D-Bee pede de novo) e as preferências da Kombi (câmera, rádio/disco)
+export function recomecar() {
+  apagar()
+  try {
+    for (const k of ["cn-nectar-leitura", "cn-linha-fonte", "cn-linha-cam"]) localStorage.removeItem(k)
+  } catch {}
+  location.reload()
+}
+
 export function hoje() {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" })
 }
