@@ -42,9 +42,9 @@ export interface AppDef {
 }
 
 export const APPS: AppDef[] = [
-  { id: "kombi", nome: "KOMBI", cor: "#2fe8ff", pagina: 0, desc: "a estrada da linha 222" },
+  { id: "kombi", nome: "KOMBI", cor: "#2fe8ff", pagina: 0, desc: "a estrada da cidade" },
   { id: "n3xo", nome: "N3XO_", cor: "#5dffa0", pagina: 0, desc: "conversas" },
-  { id: "linha", nome: "LINHA 222", cor: "#ffc857", pagina: 0, desc: "as 9 estações" },
+  { id: "linha", nome: "LINHA 9", cor: "#ffc857", pagina: 0, desc: "as 9 estações" },
   { id: "radio", nome: "RÁDIO 222", cor: "#ff3fb0", pagina: 0, desc: "frequências" },
   { id: "fliperama", nome: "FLIPERAMA", cor: "#ff6a35", pagina: 0, desc: "todos os minigames" },
   { id: "objetos", nome: "OBJETOS", cor: "#b38cff", pagina: 0, desc: "o que você já juntou" },
@@ -132,7 +132,7 @@ export function legadoFeito(): string[] {
 export function chamados(save: Save, nivel: number): Chamado[] {
   const out: Chamado[] = []
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
-  if (ecos) out.push({ id: "ecos", de: "linha 222", cor: "#2fe8ff", texto: `${ecos} ${ecos === 1 ? "mensagem nova" : "mensagens novas"} no grupo`, acao: { chat: "grupo" } })
+  if (ecos) out.push({ id: "ecos", de: "222", cor: "#2fe8ff", texto: `${ecos} ${ecos === 1 ? "mensagem nova" : "mensagens novas"} no grupo`, acao: { chat: "grupo" } })
   // a 222 caiu: nada importa mais do que religar
   if (save.nucleo.caido) out.push({ id: "antena", de: "D-Bee", cor: "#3d7bff", texto: "derrubaram a 222. religa a antena no centro, de kombi", acao: { app: "kombi" } })
   const a = save.nucleo.caido ? null : ativa(save, nivel)
@@ -195,7 +195,7 @@ export function Home({
       <div className="l-agua" />
       <header className="l-os-status">
         <b>{agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</b>
-        <span>linha 222 · {freqsLiberadas(save.sinal).length}/5 FM</span>
+        <span>222 · {freqsLiberadas(save.sinal).length}/5 FM</span>
       </header>
 
       {b && (
@@ -356,7 +356,7 @@ export function N3xo({ save, nivel, onChat, onVoltar }: { save: Save; nivel: num
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   const linhas: { id: ChatId | null; nome: string; cor: string; objeto?: EstacaoId; texto: string; estado: "novo" | "feito" | "trancado" | "escuro"; }[] = []
   const membros = ["D-Bee", ...save.objetos.filter((o) => o !== "ojala" && o !== "nectar").map((o) => getEstacao(o).personagem)]
-  if (save.completos.includes("grupo")) linhas.push({ id: "grupo", nome: "linha 222", cor: "#2fe8ff", texto: ecos ? `${ecos} ${ecos === 1 ? "nova" : "novas"}` : membros.join(", "), estado: ecos ? "novo" : "feito" })
+  if (save.completos.includes("grupo")) linhas.push({ id: "grupo", nome: "222", cor: "#2fe8ff", texto: ecos ? `${ecos} ${ecos === 1 ? "nova" : "novas"}` : membros.join(", "), estado: ecos ? "novo" : "feito" })
   if (save.completos.includes("abertura")) linhas.push({ id: "abertura", nome: "D-Bee", cor: "#3d7bff", objeto: "ojala", texto: "sabe ontem?", estado: "feito" })
   // só aparece quem você já conheceu (e quem está te chamando agora)
   const quem = conhecidos(save, nivel)

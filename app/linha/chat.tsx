@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, estacao as getEstacao, lancada, dataCurta, nivelDe, type EstacaoId } from "./data"
 import { ECOS, ROTEIROS, VOZES, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
 import type { Item, Save } from "./estado"
-import { GANCHO, MEMORIAS, MISSOES, ativa, itensFaltando, montarFio, type Perfil } from "./missoes"
+import { MEMORIAS, MISSOES, ativa, itensFaltando, montarFio, type Perfil } from "./missoes"
 import { FREQUENCIAS, proximaFreq } from "./radio"
 import { track } from "@/lib/analytics"
 import { Objeto } from "./objetos"
@@ -38,12 +38,12 @@ interface Props {
 
 // pra onde a conversa manda quando termina (ou pausa)
 
-// "3 de 9": cada pessoa acordada entra pra conta. Quando forem nove, a gente entra
+// "3 de 9": as músicas que voltaram pra rua. Quando forem nove, a gente entra
 function contagem(n: number) {
   if (n >= 9) return "9 de 9. agora a gente entra"
-  if (n === 1) return "1 de 9. a primeira é a mais difícil"
+  if (n === 1) return "1 de 9 de volta na rua. a primeira é a mais difícil"
   if (n === 5) return "5 de 9. o núcleo já sabe o nome da kombi"
-  return `${n} de 9. faltam ${9 - n}`
+  return `${n} de 9 de volta na rua. faltam ${9 - n}`
 }
 export type Destino = ChatId | "mapa" | "missao" | "estrada"
 
@@ -152,11 +152,9 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
     if (!novos.length) return
     setEspera(null)
     setFila(novos.flatMap((o) => [
-      // quem você ajudou entra no grupo agora
-      ...(o === "nectar" ? [] : [{ de: SISTEMA, texto: `D-Bee adicionou ${getEstacao(o).personagem}` }]),
       ...ECOS[o]!.map((e) => ({ de: e.de, texto: e.texto })),
-      // a D-Bee conta a resistência: quantos já acordaram dos nove
-      ...(o === "nectar" ? [] : [{ de: "D-Bee", texto: contagem(save.objetos.indexOf(o) + 1) }]),
+      // a D-Bee conta: quantas das nove músicas já voltaram pra rua
+      { de: "D-Bee", texto: contagem(save.objetos.indexOf(o) + 1) },
     ]))
     atualizar((s) => ({ ...s, ecosVistos: [...new Set([...s.ecosVistos, ...novos])] }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -334,16 +332,11 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           avancar()
         })
         break
-      case "gancho": {
-        // quem acabou de ser ajudado passa a vez pro próximo do fio
-        const prox = ativa(saveRef.current, nivelDe(saveRef.current))
-        const txt = prox && prox !== id ? GANCHO[prox] ?? "" : "por enquanto é isso. roda de kombi, a cidade sempre tem coisa"
-        agendar(atraso(txt), quemPadrao ?? "", () => {
-          empurrar({ k: "msg", texto: txt })
-          avancar()
-        })
+      case "gancho":
+        // sem corrente desde 03/10: ninguém passa a vez (passo mantido só
+        // pra conversas antigas salvas)
+        avancar()
         break
-      }
       case "revelacao":
         agendar(2200, "D-Bee", () => {
           const s0 = saveRef.current
@@ -362,11 +355,6 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         setEspera({ t: "fim", para })
         atualizar((s) => {
           const completos = s.completos.includes(id) ? [...s.completos] : [...s.completos, id]
-          // a abertura já cria o grupo (só com a D-Bee)
-          if (id === "abertura" && !completos.includes("grupo")) {
-            completos.push("grupo")
-            return { ...s, completos, logs: { ...s.logs, [id]: logRef.current, grupo: [{ k: "sistema", texto: "D-Bee criou o grupo \"linha 222\"" }] } }
-          }
           return { ...s, completos, logs: { ...s.logs, [id]: logRef.current } }
         })
         break

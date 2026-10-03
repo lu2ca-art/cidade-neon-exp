@@ -1,18 +1,17 @@
-// O fio das missões da Linha 222.
-//
-// Antes: todas as estações chamavam ao mesmo tempo e cada missão era
-// conversa → prova → +100 luz. Agora a experiência é uma corrente só:
+// As missões da cidade (03/10: sem corrente).
 //
 //   alguém te chama → pede uma coisa → a coisa está num lugar do MAPA →
 //   você vai de Kombi buscar → volta → prova → recompensa de verdade
-//   (objeto + a música na rádio + um pedaço da história + a pessoa no
-//   grupo) → essa pessoa te passa pra próxima.
+//   (objeto + a música na rádio + um pedaço da história).
 //
-// A ordem da corrente (o "fio") sai do quiz da D-Bee: primeiro a estação da
-// pessoa, depois as que mais combinaram com as respostas, puxando pro
-// começo as missões do jeito que ela gosta de jogar (perfil). Cada passo
-// vira evento no PostHog (mission_step) com o perfil e a posição no fio —
-// é assim que a gente descobre qual caminho prende cada tipo de pessoa.
+// A primeira é SEMPRE a do LU2CA (o violão): começa logo depois das
+// primeiras conversas, não depende de onde a pessoa está nem do quiz, e
+// ensina que recompensa aqui é coisa que se USA (o app VIOLÃO).
+// Depois disso não tem fila: cada área da cidade tem as suas missões, e
+// quem mora nela te chama quando você entra (em qualquer ordem). As áreas
+// abrem com o sinal (radio.ts), então a cidade vai se revelando aos poucos.
+// O fio (ordem do quiz) só desempata dentro da mesma área. Cada passo vira
+// evento no PostHog (mission_step).
 
 import { ESTACOES, estacao, missao, type EstacaoId } from "./data"
 import type { FreqId } from "./radio"
@@ -112,12 +111,12 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   },
   nectar: {
     id: "nectar", estilo: "musica",
-    chamado: "oi. sou eu. esqueci o violão na arena",
-    tarefa: "buscar o violão no palco da arena, depois do túnel",
+    chamado: "oi. vc é a pessoa nova, né. preciso de um favor",
+    tarefa: "buscar o violão esquecido debaixo da plataforma da Linha 9",
     busca: {
-      item: "violao", nome: "o violão", onde: "live", em: [0.8],
-      lugar: "o palco da arena",
-      pega: [{ de: "LU2CA", texto: "achou. agora traz, a estação 6 é aqui" }],
+      item: "violao", nome: "o violão", onde: "linha", em: [0.12],
+      lugar: "debaixo da plataforma da Linha 9, entre a estação 1 e a 2",
+      pega: [{ de: "LU2CA", texto: "achou. antes das 2:22, ufa. agora traz, a estação 6 é aqui" }],
     },
     extra: "o VIOLÃO no celular: escalas, acordes e tocar junto",
   },
@@ -127,16 +126,9 @@ export function missaoDe(id: EstacaoId) {
   return MISSOES[id]
 }
 
-// quem pede e quem passa a vez: a fala do personagem que ACABOU de ajudar,
-// apontando pro próximo do fio
-export const GANCHO: Partial<Record<EstacaoId, string>> = {
-  chuva: "Ella quer te mostrar uma coisa. lá chove, leva paciência",
-  copo: "Mubarak tá te procurando. n é de pedir ajuda, então é sério",
-  dopamina: "Notti mandou 14 mensagens perguntando de vc. responde lá",
-  sexta: "BBX tá em casa de novo. acho que tá precisando de uma carona",
-  ontem: "Alohan perdeu umas páginas. n vai admitir, mas precisa de vc",
-  nectar: "tem alguém na estação 6 querendo te conhecer. n falo quem",
-}
+// sem corrente (03/10): ninguém passa a vez pra ninguém. Às vezes um cita
+// o outro dentro da própria conversa, nunca como regra
+export const GANCHO: Partial<Record<EstacaoId, string>> = {}
 
 // Memórias: a história da cidade contada em pedaços, uma por missão
 // cumprida, SEMPRE na mesma ordem (qualquer que seja o fio da pessoa) —
@@ -146,22 +138,22 @@ export const MEMORIAS = [
   "antes do núcleo a música tocava na rua. ninguém pedia licença pra cantar alto",
   "o núcleo nasceu pra organizar o trânsito. deu tão certo que resolveram organizar as pessoas também: cada uma no seu lado, cada lado com seu inimigo",
   "quem desenhou o núcleo foi o pai da D-Bee. ele achava que tava construindo um metrônomo pra cidade",
-  "na noite do primeiro apagão, alguém rodou a linha 222 inteira de kombi escondendo uma música em cada estação",
+  "na noite do primeiro apagão, alguém rodou a linha 9 inteira de kombi, por baixo do trilho, escondendo uma música em cada estação",
   "a kombi que vc dirige é essa. o rádio dela nunca desligou",
   "quem escondeu as músicas nunca saiu da cidade. ficou esperando alguém juntar tudo",
   "a D-Bee sabia desde o começo. por isso ela pergunta 'sabe ontem?' pra todo mundo",
   "o apagão mais longo da história n foi falta de luz. foi excesso. tanta tela acesa que ninguém viu a cidade inteira cantando junto pela última vez",
-  "a linha 222 n termina. ela dá a volta e começa de novo em quem ouviu",
+  "a linha 9 dá a volta e começa de novo, pra sempre. a 222 também n termina: começa de novo em quem ouviu",
 ]
 
 // ── o fio ────────────────────────────────────────────────────────────
 
-// ordem das missões pra esta pessoa. A própria estação primeiro (se tiver
-// missão), depois pelas respostas do quiz, com um empurrão pras missões do
-// estilo dela. Nectar sempre por último (é o fim do arco).
+// ordem de preferência das missões pra esta pessoa (desempate dentro da
+// mesma área): o violão do LU2CA sempre primeiro, depois a própria estação,
+// depois pelas respostas do quiz, com um empurrão pro estilo dela
 export function montarFio(pesos: Partial<Record<EstacaoId, number>>, estacaoId: EstacaoId | null, perfil: Perfil | null): EstacaoId[] {
   const nota = (id: EstacaoId) =>
-    (pesos[id] ?? 0) + (MISSOES[id]!.estilo === perfil ? 3 : 0) + (id === estacaoId ? 100 : 0) - (id === "nectar" ? 1000 : 0)
+    (pesos[id] ?? 0) + (MISSOES[id]!.estilo === perfil ? 3 : 0) + (id === estacaoId ? 100 : 0) + (id === "nectar" ? 1000 : 0)
   const ids = ESTACOES.map((e) => e.id).filter((id) => MISSOES[id])
   // sort estável: empate fica na ordem da linha
   return ids.map((id, i) => ({ id, i, n: nota(id) })).sort((a, b) => b.n - a.n || a.i - b.i).map((x) => x.id)
@@ -183,15 +175,29 @@ export function itensFaltando(s: Save, id: EstacaoId) {
   return m.busca.em.filter((_, k) => !s.itens.includes(`${m.busca.item}:${k}`)).length
 }
 
-// a missão que está valendo agora: a primeira do fio ainda não feita cuja
-// estação está aberta. Uma de cada vez — é isso que dá ritmo.
+// em que área está o próximo passo de uma missão já começada: a busca é
+// onde a coisa está; a entrega é sempre na estação (cidade neon)
+export function areaDoPasso(s: Save, id: EstacaoId): FreqId {
+  const m = MISSOES[id]!
+  return etapaDe(s, id) === "busca" ? m.busca.onde : "linha"
+}
+
+// a missão que está valendo agora (o foco do HUD e de quem chama):
+// 1. o violão do LU2CA, enquanto não pegou (a primeira, sempre)
+// 2. uma já começada cujo próximo passo é AQUI, nesta área
+// 3. alguém DESTA área que ainda não te chamou (chama agora)
+// 4. qualquer outra já começada (o HUD aponta pra ela de longe)
 export function ativa(s: Save, nivel: number, agora = Date.now()): EstacaoId | null {
-  for (const id of s.fio) {
-    if (s.objetos.includes(id)) continue
-    if (!missao(estacao(id), nivel, agora).ok) continue
-    return id
-  }
-  return null
+  const area = (s.freq || "linha") as FreqId
+  const ok = (id: EstacaoId) => !s.objetos.includes(id) && !!MISSOES[id] && missao(estacao(id), nivel, agora).ok
+  const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
+  if (ok("nectar")) return "nectar"
+  const comecadas = ordem.filter((id) => ok(id) && s.pausas[id] !== undefined)
+  const aqui = comecadas.find((id) => areaDoPasso(s, id) === area)
+  if (aqui) return aqui
+  const nova = ordem.find((id) => ok(id) && s.pausas[id] === undefined && MISSOES[id]!.busca.onde === area)
+  if (nova) return nova
+  return comecadas[0] ?? null
 }
 
 // quem a pessoa já conhece: a D-Bee, quem já pediu algo e quem está chamando

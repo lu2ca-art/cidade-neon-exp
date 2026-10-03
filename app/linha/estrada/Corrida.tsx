@@ -20,7 +20,7 @@ import { Cupula, Kombi222 } from "./Kombi222"
 import { Cabine, OLHO } from "./Cabine"
 import { Cinema } from "./Cinema"
 import { LADO_METRO, Metro, montarMetro } from "./Metro"
-import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
+import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
@@ -29,7 +29,7 @@ import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, 
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
-import { MISSOES, type Alvo } from "../missoes"
+import { MISSOES, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
 
@@ -217,6 +217,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const garfoChave = useRef("")
   const [garfo, setGarfo] = useState<Garfo | null>(null)
   useEffect(() => { onBifurca?.(!!garfo) }, [garfo, onBifurca])
+  // etiquetas das placas: em cada área, quem tem missão em aberto lá (a
+  // começar: onde está a coisa; começada: onde é o próximo passo)
+  const tagsArea = useMemo(() => {
+    const out: Partial<Record<FreqId, { nome: string; cor: string }[]>> = {}
+    for (const e of ESTACOES) {
+      const m = MISSOES[e.id]
+      if (!m || save.objetos.includes(e.id) || !missao(e, nivel).ok) continue
+      const area = save.pausas[e.id] !== undefined ? areaDoPasso(save, e.id) : m.busca.onde
+      ;(out[area] ??= []).push({ nome: e.personagem, cor: e.cor })
+    }
+    return out
+  }, [save, nivel])
+
   // guia de rota (substitui o mapa): itens à frente, posição atualizada a cada quadro
   const [guia, setGuia] = useState<ItemGuia[]>([])
   const guiaChave = useRef("")
@@ -689,9 +702,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           const dist = (u: number) => (V.fechada ? (((u - j.u) % V.L) + V.L) % V.L : u - j.u)
           const it: ItemGuia[] = []
           if (V.tipo === "circuito") {
+            // as bolinhas são GUIA DE MISSÃO, não o mapa: só aparece a
+            // estação de quem tá te esperando (as outras ficam no escuro)
             for (const e of V.estacoes) {
+              if (e.id !== alvoRef.current?.missao || alvoRef.current.t === "busca") continue
               const est = getEstacao(e.id)
-              it.push({ k: `e${e.id}`, d: dist(e.u), cor: est.cor, rot: String(est.n), tipo: e.id === alvoRef.current?.missao && alvoRef.current.t !== "busca" ? "alvo" : "estacao" })
+              it.push({ k: `e${e.id}`, d: dist(e.u), cor: est.cor, rot: String(est.n), tipo: "alvo" })
             }
             for (const u of new Set(V.faixas.map((f) => f.u))) it.push({ k: `f${u}`, d: dist(u), cor: "#ffc857", rot: "saídas", tipo: "garfo" })
           } else it.push({ k: "chega", d: V.L - j.u, cor: freqDe(V.t).cor, rot: lugarDe(V.t), tipo: "chegada" })
@@ -853,7 +869,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={alvo?.t === "entrega" && alvo.missao === "sexta" ? "sexta" : null} lugarAlvoRef={lugarAlvoRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={alvo?.t === "entrega" && alvo.missao === "sexta" ? "sexta" : null} lugarAlvoRef={lugarAlvoRef} />
         </Canvas>
       )}
 
@@ -930,6 +946,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <i>{f.lado < 0 ? "←" : "→"}</i>
               <b>{lugarDe(f.para)}</b>
               <small>{ok ? `${fr.freq} FM` : `trancada · ${fr.custo}`}</small>
+              {ok && !!tagsArea[f.para]?.length && <span className="l-garfo-quem">◆ {tagsArea[f.para]!.map((x) => x.nome).join(" · ")}</span>}
             </div>
           )
         }
@@ -945,6 +962,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
                     <i>↑</i>
                     <b>fica</b>
                     <small>{freqDe(C.t).freq} FM</small>
+                    {!!tagsArea[C.t]?.length && <span className="l-garfo-quem">◆ {tagsArea[C.t]!.map((x) => x.nome).join(" · ")}</span>}
                   </div>
                   {op(garfo!.dir, 2)}
                 </div>
@@ -1143,6 +1161,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
+  tags,
   M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos,
 }: {
   fonteRef: React.MutableRefObject<Fonte>
@@ -1160,6 +1179,8 @@ function Cena({
   marcos: Marco[]
   marcosRef: React.MutableRefObject<Marco[]>
   estacaoAlvo: EstacaoId | null
+  // quem tem missão em aberto em cada área (etiqueta nas placas)
+  tags: Partial<Record<FreqId, { nome: string; cor: string }[]>>
   M: Mundo
   jogo: React.MutableRefObject<Jogo>
   input: React.MutableRefObject<Input>
@@ -1508,7 +1529,7 @@ function Cena({
   const placas = useMemo(() => {
     const lista: {
       id: string; pos: THREE.Vector3; rot: number; topo: THREE.Texture
-      paineis: { x: number; cor: string; tex: THREE.Texture }[]
+      paineis: { x: number; cor: string; tex: THREE.Texture; area?: FreqId }[]
     }[] = []
     const setas: { p: THREE.Vector3; rot: number; cor: string; op: number }[] = []
     const barreiras: { p: THREE.Vector3; rot: number }[] = []
@@ -1520,11 +1541,11 @@ function Cena({
         const lados = [C.faixas.find((f) => f.u === uk && f.lado < 0), undefined, C.faixas.find((f) => f.u === uk && f.lado > 0)]
         const paineis = lados.map((f, k) => {
           const x = (k - 1) * CK
-          if (k === 1) return { x, cor: aqui.cor, tex: texTexto([{ txt: "↑", tam: 110, cor: aqui.cor }, { txt: territorio(C.t).lugar.toUpperCase(), tam: 62, cor: aqui.cor }, { txt: "fica · mais uma volta", tam: 40, cor: "#ffffff", fonte: MONO }], 512, 352) }
+          if (k === 1) return { x, cor: aqui.cor, area: C.t, tex: texTexto([{ txt: "↑", tam: 110, cor: aqui.cor }, { txt: territorio(C.t).lugar.toUpperCase(), tam: 62, cor: aqui.cor }, { txt: "fica · mais uma volta", tam: 40, cor: "#ffffff", fonte: MONO }], 512, 352) }
           const fr = freqDe(f!.para)
           const seta = f!.lado < 0 ? "←" : "→"
           return aberta(f!, nLib)
-            ? { x, cor: fr.cor, tex: texTexto([{ txt: seta, tam: 110, cor: fr.cor }, { txt: lugarDe(f!.para).toUpperCase(), tam: 62, cor: fr.cor }, { txt: `${fr.freq} FM`, tam: 46, cor: "#ffffff", fonte: MONO }], 512, 352) }
+            ? { x, cor: fr.cor, area: f!.para, tex: texTexto([{ txt: seta, tam: 110, cor: fr.cor }, { txt: lugarDe(f!.para).toUpperCase(), tam: 62, cor: fr.cor }, { txt: `${fr.freq} FM`, tam: 46, cor: "#ffffff", fonte: MONO }], 512, 352) }
             : { x, cor: "#555a77", tex: texTexto([{ txt: "TRANCADA", tam: 60, cor: "#8a8fae" }, { txt: lugarDe(f!.para).toUpperCase(), tam: 56, cor: "#8a8fae" }, { txt: `junta ${fr.custo} de sinal`, tam: 40, cor: "#b0b5d0", fonte: MONO }], 512, 352) }
         })
         // o aviso da segunda bifurcação do centro vem logo depois da primeira
@@ -1560,6 +1581,16 @@ function Cena({
     }
     return { lista, setas, barreiras }
   }, [circuitos, a, nLib])
+
+  // etiqueta de missão embaixo de cada placa: "MISSÃO · ELLA · BBX"
+  const tagTex = useMemo(() => {
+    const out: Partial<Record<FreqId, THREE.Texture>> = {}
+    for (const [area, q] of Object.entries(tags) as [FreqId, { nome: string; cor: string }[]][]) {
+      if (!q.length) continue
+      out[area] = texTexto([{ txt: `◆ MISSÃO · ${q.map((x) => x.nome.toUpperCase()).join(" · ")}`, tam: 50, cor: q[0].cor, fonte: "ui-monospace, monospace" }], 1024, 112)
+    }
+    return out
+  }, [tags])
 
   // faixa de saída pintada na cor da rádio (cinza se trancada) e muro
   // listrado na trancada (física: ver limite no loop)
@@ -2599,6 +2630,18 @@ function Cena({
                 <planeGeometry args={[7.6, 0.22]} />
                 <meshBasicMaterial color={p.cor} toneMapped={false} />
               </mesh>
+              {p.area && tagTex[p.area] && (
+                <group position={[0, -3.75, 0]}>
+                  <mesh position={[0, 0, -0.05]}>
+                    <planeGeometry args={[7.6, 1.05]} />
+                    <meshBasicMaterial color="#070817" transparent opacity={0.92} side={THREE.DoubleSide} />
+                  </mesh>
+                  <mesh>
+                    <planeGeometry args={[7.4, 0.81]} />
+                    <meshBasicMaterial map={tagTex[p.area]} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
+                  </mesh>
+                </group>
+              )}
             </group>
           ))}
         </group>

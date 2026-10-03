@@ -26,7 +26,7 @@ export function Entrada({ save, onEntrar }: { save: Save; onEntrar: () => void }
       <div className="l-agua" />
       <div className="l-chuva-css" />
       <div className="l-entrada-conteudo">
-        <p className="l-rotulo">lu2ca · vol.1 · linha 222</p>
+        <p className="l-rotulo">lu2ca · vol.1 · 222</p>
         <h1 className="l-titulo">
           <span>cidade</span>
           <span>neon</span>
@@ -121,7 +121,7 @@ export function Mapa({
 
   return (
     <section className="l-mapa">
-      <AppTopo titulo="LINHA 222" cor="#ffc857" onVoltar={onVoltar} />
+      <AppTopo titulo="LINHA 9" cor="#ffc857" onVoltar={onVoltar} />
       <header className="l-mapa-topo">
         <div className="l-perfil">
           <div className="l-perfil-estacao" style={{ ["--cor" as string]: minha?.cor ?? "#2fe8ff" }}>
@@ -157,7 +157,7 @@ export function Mapa({
       <div className="l-atalhos">
         <button type="button" className="l-atalho" onClick={onGrupo}>
           <span className="l-atalho-ic">222</span>
-          <span><b>grupo linha 222</b><small>{ecos ? `${ecos} ${ecos === 1 ? "novidade" : "novidades"}` : `${1 + save.objetos.filter((o) => o !== "nectar").length} ${save.objetos.length ? "pessoas acordadas" : "pessoa acordada"}`}</small></span>
+          <span><b>grupo 222</b><small>{ecos ? `${ecos} ${ecos === 1 ? "novidade" : "novidades"}` : `${save.objetos.length} de 9 músicas de volta na rua`}</small></span>
           {ecos > 0 && <em className="l-badge">{ecos}</em>}
         </button>
         <button type="button" className="l-atalho" onClick={() => setRadio(true)}>

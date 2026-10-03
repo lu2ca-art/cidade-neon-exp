@@ -1430,3 +1430,6 @@
 @media (max-width: 360px) { .l-hud-cam span { display: none; } .l-hud-cam { padding: 0 11px; } }
 .l-fade-cam { position: absolute; inset: 0; z-index: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.26s ease-in; }
 .l-fade-cam.is-on { opacity: 1; transition: opacity 0.24s ease-out; }
+
+/* quem tem missão naquela área (03/10): a mesma etiqueta das placas */
+.l-garfo-quem { grid-column: 1 / -1; display: block; max-width: 100%; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 9px var(--mono); letter-spacing: 0.04em; color: #fff; opacity: 0.85; }

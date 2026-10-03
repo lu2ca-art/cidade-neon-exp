@@ -6,10 +6,13 @@
 //
 // Vídeos do LU2CA não entram nas conversas: moram no //LOOP (30/09).
 //
-// Regra de ritmo (desde o fio de missões): ninguém despeja a história. A
-// abertura só apresenta a D-Bee e o quiz; cada pessoa aparece quando chega
-// a vez dela no fio; o que é a cidade vem aos poucos, nas memórias
-// (missoes.ts), uma por missão cumprida.
+// Regra de ritmo (03/10): a PRIMEIRA conversa é o grupo da 222, onde a
+// resistência discute a cidade, cada um do seu jeito — o foco não é quem
+// chegou, a pessoa nova passa quase despercebida. Depois a D-Bee chama no
+// privado (o quiz), o LU2CA chama pro violão (a 1ª missão) e daí em diante
+// quem mora em cada área chama quando você entra nela. Ninguém repete "te
+// achei no grupo": cada um abre com o que defende, com a história dele.
+// Ninguém passa a vez pra ninguém; às vezes um cita o outro.
 //
 // A ESPINHA (03/10): o Núcleo não manda com arma, manda SEPARANDO. Divide a
 // cidade em lados, dá pra cada lado um inimigo e um feed, e apaga quem sente
@@ -107,6 +110,8 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
     contato: "[desconhecido]",
     status: "sinal instável",
     passos: [
+      { t: "msg", texto: "vc entrou no grupo da 222 e n falou nada" },
+      { t: "msg", texto: "esperto. lá tem gente que fala demais" },
       { t: "msg", texto: "sabe ontem?" },
       { t: "msg", texto: "vc tava lá" },
       {
@@ -178,8 +183,8 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "divide a cidade em dois lados, dá um inimigo pra cada lado e um feed pra cada um. pronto. ninguém mais conversa com ninguém" },
       { t: "nucleo", texto: "conteúdos do lado oposto foram ocultados para o seu conforto ✓" },
       { t: "msg", texto: "e quem sente demais ele apaga. ontem foi isso" },
-      { t: "msg", texto: "cada estação da linha 222 tem alguém que ele quebrou e uma música que ele quer calar. música junta gente que n devia se juntar. por isso ele caça" },
-      { t: "msg", texto: "a gente vai acordar essa gente. uma por uma. quando forem nove, a gente entra no núcleo" },
+      { t: "msg", texto: "a linha 9 tem nove estações. em cada uma, alguém que ele quebrou e uma música que ele calou. música junta gente que n devia se juntar. por isso ele caça" },
+      { t: "msg", texto: "a gente devolve uma por uma. quando as nove tocarem na rua, a gente entra no núcleo" },
       {
         t: "escolha",
         opcoes: [
@@ -188,22 +193,45 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "e se der errado?", resposta: ["vai dar errado várias vezes", "a gente vai mesmo assim"] },
         ],
       },
-      { t: "msg", texto: (c) => (c.primeira ? `${c.primeira} já tá sabendo de vc. vai chegar mensagem` : "vai chegar mensagem") },
+      { t: "msg", texto: "faz três anos que ninguém novo aparece nessa cidade. todo mundo viu vc chegar" },
+      { t: "msg", texto: "vão te chamar. o primeiro vai ser quem vc menos espera" },
       { t: "fim", para: "missao" },
     ],
   },
 
-  // O grupo nasce com a D-Bee e vai ganhando gente: cada pessoa que você
-  // ajuda entra (ver ECOS). Aqui é só o comecinho, pra quem abrir cedo.
+  // A PRIMEIRA conversa: o grupo da 222 discutindo a cidade. Quem acabou
+  // de chegar só lê. Cada um do seu jeito (a voz de cada um: voz.md)
   grupo: {
-    contato: "linha 222",
-    status: "D-Bee",
+    contato: "222",
+    status: "D-Bee, Mubarak, Notti, Ella, BBX, Alohan, Tony Gordo, Nizzy, LU2CA",
     grupo: true,
     passos: [
-      { t: "sistema", texto: "D-Bee criou o grupo \"linha 222\"" },
-      { t: "msg", de: "D-Bee", texto: "por enquanto é só a gente" },
-      { t: "msg", de: "D-Bee", texto: "cada pessoa que vc acordar entra aqui" },
-      { t: "fim", para: "mapa" },
+      { t: "sistema", texto: "você entrou no grupo \"222\" por um link da rádio" },
+      { t: "msg", de: "D-Bee", texto: "pauta de hoje: a linha 9 agora roda 24h" },
+      { t: "msg", de: "Tony Gordo", texto: "24h?? e quem dorme" },
+      { t: "msg", de: "Notti", texto: "NINGUÉM DORME. ninguém dorme faz tempo" },
+      { t: "msg", de: "D-Bee", texto: "ela leva as pessoas pras dependências do núcleo. entra gente, sai gente igual" },
+      { t: "msg", de: "Mubarak", texto: "sai gente feliz ✓" },
+      { t: "msg", de: "Ella", texto: "n tem graça, Mubarak" },
+      { t: "msg", de: "Mubarak", texto: "tem um pouco" },
+      { t: "nucleo", texto: "esta conversa reúne usuários de lados incompatíveis. recomendamos silenciar os demais participantes ✓" },
+      { t: "msg", de: "BBX", texto: "lados kkkk a gente nem se encontra pessoalmente" },
+      { t: "msg", de: "Alohan", texto: "eles precisam que a gente brigue. gente brigando não canta junto." },
+      { t: "msg", de: "D-Bee", texto: "por isso a música. toda vez que uma toca na rua, ele perde um pouco" },
+      { t: "msg", de: "Notti", texto: "então bora tocar TODAS. agora" },
+      { t: "msg", de: "Tony Gordo", texto: "calma. se a gente seguir o roteiro que eu fiz…" },
+      { t: "msg", de: "Mubarak", texto: "lá vem" },
+      { t: "msg", de: "Tony Gordo", texto: "…uma música por estação. nove estações, nove músicas. aí a gente entra" },
+      { t: "msg", de: "Ella", texto: "e quem tá preso? n adianta tocar se a pessoa n consegue ouvir" },
+      { t: "msg", de: "D-Bee", texto: "por isso uma de cada vez. ninguém sai do loop sozinho" },
+      { t: "msg", de: "Nizzy", texto: "eu saí uma vez." },
+      { t: "msg", de: "Nizzy", texto: "voltei." },
+      { t: "msg", de: "Alohan", texto: "anotado." },
+      { t: "msg", de: "D-Bee", texto: "a gente precisa de gente nova. faz três anos que ninguém entra nessa cidade" },
+      { t: "msg", de: "Mubarak", texto: "e quando entra o núcleo pega primeiro" },
+      { t: "msg", de: "Ella", texto: "às vezes n" },
+      { t: "msg", de: "LU2CA", texto: "tô vendo." },
+      { t: "fim", para: "abertura" },
     ],
   },
 
@@ -212,7 +240,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
     status: "estação 1 · chuva",
     passos: [
       { t: "msg", texto: (c) => `oi ${c.nome}` },
-      { t: "msg", texto: (c) => (c.estacao === "chuva" ? "a D-Bee disse que vc é daqui. da chuva" : "a D-Bee me passou teu contato") },
+      { t: "msg", texto: (c) => (c.estacao === "chuva" ? "vc anda na chuva sem pressa. igual quem é daqui" : "vc é a primeira pessoa nova que eu vejo andando na chuva sem pressa") },
       { t: "voz", fala: "aqui chove faz três anos. o núcleo chama de instabilidade climática. eu chamo de chuva mesmo" },
       {
         t: "escolha",
@@ -254,7 +282,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "sabe o que eu lembro de ontem? uma música tocando alto na rua. todo mundo parou pra ouvir, até quem n se falava. aí apagou" },
       { t: "msg", texto: "a D-Bee tá juntando gente, né" },
       { t: "msg", texto: "eu n sou de briga. mas quando ela chamar, eu vou. com medo. chorando se precisar" },
-      { t: "gancho" },
       { t: "fim" },
     ],
   },
@@ -311,7 +338,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "vc tá do lado de quem?", resposta: ["kkkk", "do lado do bar", "pergunta de novo outro dia"] },
         ],
       },
-      { t: "gancho" },
       { t: "fim" },
     ],
   },
@@ -364,7 +390,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "ah, e ontem: todos os relógios da cidade pararam às 2:22. TODOS. depois voltaram a andar como se nada" },
       { t: "msg", texto: "o núcleo apagou isso de todo lugar. menos do meu relógio, que é ruim demais pra atualizar kkkk" },
       { t: "msg", texto: "conta comigo. eu sou rápida. pra fugir e pra entrar onde n deixam" },
-      { t: "gancho" },
       { t: "fim" },
     ],
   },
@@ -412,7 +437,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "lembrei de uma coisa de ontem. eu tava num show. o chão tremendo, todo mundo pulando junto. depois mais nada" },
       { t: "msg", texto: "se um dia precisar dançar na frente do núcleo, eu danço" },
       { t: "msg", texto: "sozinho se precisar. mas acho que n vou tá sozinho" },
-      { t: "gancho" },
       { t: "fim" },
     ],
   },
@@ -467,27 +491,29 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "na última página de ontem tem uma plateia. uma pessoa ficou até o fim." },
       { t: "msg", texto: "ainda n sei quem. mas vou saber." },
       { t: "msg", texto: "o que vcs fizerem, eu escrevo. alguém tem que contar que teve resistência." },
-      { t: "gancho" },
       { t: "fim" },
     ],
   },
 
+  // A PRIMEIRA missão de todo mundo: ensina que recompensa aqui se USA
+  // (o violão vira o app VIOLÃO). A confissão dele (foi ele que escondeu as
+  // músicas) fica pro episódio do Nectar, 16/10 — não aqui
   nectar: {
     contato: "LU2CA",
-    status: "estação 6 · nectar · prévia",
+    status: "estação 6 · nectar",
     passos: [
       { t: "msg", texto: (c) => `oi ${c.nome}` },
-      { t: "msg", texto: "sou eu. a D-Bee disse que vc tá juntando as coisas" },
-      { t: "msg", texto: (c) => `${c.objetos} objetos. a maioria desiste na primeira notificação` },
+      { t: "msg", texto: "faz três anos que eu n vejo ninguém novo por aqui. aí aparece uma kombi" },
+      { t: "voz", fala: "eu sou o LU2CA. eu faço música numa cidade que transformou música em contrabando" },
       {
         t: "escolha",
         opcoes: [
-          { label: "quem é vc?", resposta: ["daqui a pouco vc sabe"] },
-          { label: "o que é nectar?", resposta: ["é o que sobra quando vc para de ter vergonha de sentir"] },
+          { label: "vc é da 222?", resposta: ["sou ouvinte. que nem todo mundo que ainda presta"] },
+          { label: "o que vc quer comigo?", resposta: ["um favor", "e te dar uma coisa, se der certo"] },
         ],
       },
-      { t: "msg", texto: "esqueci meu violão na arena. no palco, depois do túnel" },
-      { t: "msg", texto: "o núcleo n entra lá. é barulho demais pra ele" },
+      { t: "msg", texto: "ontem eu saí correndo da linha 9 e deixei meu violão debaixo da plataforma, entre a estação 1 e a 2" },
+      { t: "msg", texto: "às 2:22 o núcleo recolhe tudo que fica lá. o que ele recolhe vira dado" },
       { t: "msg", texto: "busca pra mim? a estação 6 é aqui" },
       { t: "tarefa" },
       // ATO 2 · tentativa e erro (NECTAR C2): a corda arrebentada
@@ -507,15 +533,11 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "tá vendo. n precisava ser perfeito" },
       { t: "objeto" },
       { t: "audio", src: "/audio/tracks/nectar.mp3", titulo: "Nectar · prévia" },
-      { t: "msg", texto: "fui eu. na noite do apagão, rodei a linha inteira escondendo as músicas" },
-      { t: "msg", texto: "e fiquei esperando alguém juntar" },
-      { t: "msg", texto: "n foi só pra proteger. foi medo. medo de lançar e ninguém ouvir" },
-      { t: "msg", texto: "e sabe quem caça as músicas? quem me ensinou a tocar" },
-      { t: "msg", texto: "um dia eu te conto. hoje n consigo" },
-      { t: "msg", texto: "eu ainda tô com medo. vou lançar mesmo assim. acho que resistir é isso" },
+      { t: "msg", texto: "o violão agora é teu. sério" },
+      { t: "msg", texto: "abre o celular: tem um app novo, VIOLÃO. acorde, campo harmônico, tocar junto com a rádio" },
+      { t: "msg", texto: "aqui tudo que vc ganha serve pra alguma coisa. guarda, usa, empresta" },
       { t: "msg", texto: "nectar sai dia 16/10. vc ouviu antes" },
-      { t: "msg", texto: "a cidade inteira mora num lugar só. todas as frequências, o live, o instrumental" },
-      { t: "msg", texto: "n é produto. é sustentar uma coisa que existe fora do sistema" },
+      { t: "msg", texto: "agora roda. tem gente em todo canto dessa cidade esperando alguém que ainda sente" },
       { t: "fim", para: "mapa" },
     ],
   },
