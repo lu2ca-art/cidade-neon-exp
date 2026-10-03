@@ -13,7 +13,7 @@
 // ligação. O roteiro é o mesmo (roteiros.ts): ligacaoDaMissao() transforma
 // o começo da conversa (até o pedido) numa ligação.
 
-import { ROTEIROS, type Ctx, type Passo } from "./roteiros"
+import { ROTEIROS, type Ctx, type Passo, type Tom } from "./roteiros"
 import type { EstacaoId } from "./data"
 
 export type Modo = "ligacao" | "texto" | "audio"
@@ -27,6 +27,7 @@ export function sortearModo(anterior: Modo | null): Modo {
 
 export interface OpcaoLigacao {
   label: string
+  tom?: Tom
   // o que conta como ter dito essa opção (palavras soltas, sem acento)
   palavras: string[]
   resposta: Fala[]
@@ -124,6 +125,7 @@ export function ligacaoDaMissao(id: EstacaoId, quem: string, c: Ctx): { lig: Lig
         fala,
         opcoes: p.opcoes.map((o) => ({
           label: o.label,
+          tom: o.tom,
           palavras: palavrasDe(o.label),
           resposta: (o.resposta ?? []).map((f) => ({ fala: resolver(typeof f === "object" ? f.texto : f, c) })),
         })),

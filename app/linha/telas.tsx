@@ -40,10 +40,11 @@ export function Entrada({ save, onEntrar }: { save: Save; onEntrar: () => void }
           <span>neon</span>
         </h1>
         <p className="l-entrada-poema">
-          a cidade tá alagada de neon.
-          <br />o povo anda em loop e acha que é vida.
+          choveu neon a noite inteira.
+          <br />quem dorme jura que é dia.
+          <br />quem acorda jura que é sonho.
           <br />
-          <em>tem gente acordada ainda.</em>
+          <em>quem tá acordado sabe ontem.</em>
         </p>
         <button type="button" className="l-btn l-btn-entrar" onClick={onEntrar}>
           {volta ? `voltar pra cidade${save.nome ? `, ${save.nome}` : ""}` : "tô acordado"}

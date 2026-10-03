@@ -2,7 +2,7 @@
 // `cidade-neon-funnel-v3`, que continua servindo o /drive e o hub).
 
 import type { EstacaoId } from "./data"
-import { ROTEIROS, type ChatId } from "./roteiros"
+import { ROTEIROS, type ChatId, type Tom } from "./roteiros"
 import { montarFio, type Perfil } from "./missoes"
 import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
@@ -58,6 +58,8 @@ export interface Save {
   dicas: string[]
   // o violão que a D-Bee dá no fim da leitura NECTAR (abre o app VIOLÃO)
   violao: boolean
+  // quantas vezes respondeu em cada tom (dormindo / acordando / acordado)
+  tons: Record<Tom, number>
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
   // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
@@ -94,6 +96,7 @@ export const VAZIO: Save = {
   papel: false,
   dicas: [],
   violao: false,
+  tons: { dormindo: 0, acordando: 0, acordado: 0 },
   ligacoes: [],
   modos: {},
   // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito

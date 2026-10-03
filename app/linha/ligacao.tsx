@@ -163,7 +163,7 @@ export function LigacaoNaKombi({ lig, onFim }: { lig: Ligacao; onFim: (atendeu: 
         setPergunta(null)
         setMic("parado")
         setFase("falando")
-        track("mission_step", { mission_id: `linha-ligacao-${id}`, step: `resposta:${i}`, perfil: "?", fio_pos: -1 })
+        track("mission_step", { mission_id: `linha-ligacao-${id}`, step: `resposta:${i}${p.opcoes[i].tom ? `:${p.opcoes[i].tom}` : ""}`, perfil: "?", fio_pos: -1 })
         transcricao.current.push({ texto: p.opcoes[i].label, eu: true })
         for (const f of p.opcoes[i].resposta) { if (!vivo.current) return; await falar(f) }
       }
