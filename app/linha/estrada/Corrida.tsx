@@ -21,6 +21,7 @@ import { Cabine, OLHO } from "./Cabine"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
+import { KombiHerbal } from "./KombiHerbal"
 import { Metro, montarMetro } from "./Metro"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
@@ -2579,7 +2580,8 @@ function Cena({
     // de dentro: some a carroceria de fora, aparece a cabine
     const dentroAgora = dentroRef.current && !cine
     if (corpoK.current) corpoK.current.visible = !dentroAgora
-    if (cabineG.current) cabineG.current.visible = true
+    // a herbal é fechada: a cabine (o interior) só aparece de dentro
+    if (cabineG.current) cabineG.current.visible = dentroAgora
     // a luz magenta de baixo (o brilho no asfalto) pintava a cabine de rosa
     if (luzBaixo.current) luzBaixo.current.intensity = dentroAgora ? 0 : 45
     hudN.current++
@@ -2785,11 +2787,15 @@ function Cena({
 
       <group ref={carro}>
         <group ref={corpoK}>
-          <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} />
+          {/* a Kombi de verdade (escaneada); enquanto carrega, ou se falhar
+              no aparelho, a desenhada à mão */}
+          <Seguro nome="kombi" reserva={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
+            <Suspense fallback={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
+              <KombiHerbal />
+              <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} soEfeitos />
+            </Suspense>
+          </Seguro>
         </group>
-        {/* conversível: o para-brisa e o interior aparecem nas DUAS câmeras
-            (de fora dá pra ver quem tá dentro; de dentro, a cidade inteira) */}
-        <Cupula />
         <group ref={cabineG}>
           <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>
         </group>
