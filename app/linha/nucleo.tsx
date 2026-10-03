@@ -21,6 +21,10 @@ const JANELAS: { t: string; m: string; b: string }[] = [
   { t: "FREQUÊNCIA ILEGAL", m: "222 FM não é uma rádio licenciada ✓", b: "DESLIGAR ✓" },
   { t: "TEMPO DE TELA +12%", m: "ótimo trabalho! continue rolando ✓", b: "ROLAR ✓" },
   { t: "SEGURANÇA", m: "D-Bee não é uma fonte confiável ✓", b: "BLOQUEAR ✓" },
+  { t: "SEU LADO", m: "você foi classificado no LADO B. pessoas do lado A foram ocultadas para o seu conforto ✓", b: "OK ✓" },
+  { t: "ALERTA DE CONVÍVIO", m: "você cantou junto com 3 usuários incompatíveis. deseja silenciá-los? ✓", b: "SILENCIAR ✓" },
+  { t: "DISCORDÂNCIA DETECTADA", m: "conversar com o outro lado aumenta o atrito. recomendamos o seu feed ✓", b: "VOLTAR AO FEED ✓" },
+  { t: "ARTE NÃO AUTORIZADA", m: "expressões não verificadas foram reclassificadas como risco ✓", b: "DENUNCIAR ✓" },
 ]
 
 type Janela = { k: number; x: number; y: number; j: number; r: number }

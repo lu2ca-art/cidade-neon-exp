@@ -37,6 +37,14 @@ interface Props {
 }
 
 // pra onde a conversa manda quando termina (ou pausa)
+
+// "3 de 9": cada pessoa acordada entra pra conta. Quando forem nove, a gente entra
+function contagem(n: number) {
+  if (n >= 9) return "9 de 9. agora a gente entra"
+  if (n === 1) return "1 de 9. a primeira é a mais difícil"
+  if (n === 5) return "5 de 9. o núcleo já sabe o nome da kombi"
+  return `${n} de 9. faltam ${9 - n}`
+}
 export type Destino = ChatId | "mapa" | "missao" | "estrada"
 
 type Espera =
@@ -147,6 +155,8 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
       // quem você ajudou entra no grupo agora
       ...(o === "nectar" ? [] : [{ de: SISTEMA, texto: `D-Bee adicionou ${getEstacao(o).personagem}` }]),
       ...ECOS[o]!.map((e) => ({ de: e.de, texto: e.texto })),
+      // a D-Bee conta a resistência: quantos já acordaram dos nove
+      ...(o === "nectar" ? [] : [{ de: "D-Bee", texto: contagem(save.objetos.indexOf(o) + 1) }]),
     ]))
     atualizar((s) => ({ ...s, ecosVistos: [...new Set([...s.ecosVistos, ...novos])] }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
