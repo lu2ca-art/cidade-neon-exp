@@ -45,8 +45,15 @@ type Texto = string | ((c: Ctx) => string)
 // fala de outra pessoa no grupo: "Ella: oi" vira { de: "Ella", texto: "oi" }
 export type Fala = Texto | { de: string; texto: Texto }
 
+// os três tons de resposta do player (03/10): quem ainda DORME (não sabe
+// como chegou ali), quem tá ACORDANDO (curioso, quer descobrir) e quem já tá
+// ACORDADO (sabe o que tá acontecendo). Toda escolha nas missões tem os três;
+// quem responde reage ao tom. O jogo conta (save.tons) e mede (PostHog).
+export type Tom = "dormindo" | "acordando" | "acordado"
+
 export interface Opcao {
   label: string
+  tom?: Tom
   resposta?: Fala[]
   // pesos da leitura (qual estação a pessoa é)
   peso?: Partial<Record<EstacaoId, number>>
@@ -122,9 +129,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "quem é vc?", resposta: ["alguém que ainda lembra"] },
-          { label: "lembro sim", resposta: ["mentira kkkk", "ninguém lembra"] },
-          { label: "ontem eu só rolei o feed", resposta: ["exato", "é assim que eles apagam"] },
+          { label: "lá onde? ontem eu só rolei o feed", tom: "dormindo", resposta: ["exato", "é assim que eles apagam"] },
+          { label: "quem é vc?", tom: "acordando", resposta: ["alguém que ainda lembra"] },
+          { label: "tava. ninguém mais lembra", tom: "acordado", resposta: ["…", "faz tempo que eu n ouço isso de alguém"] },
         ],
       },
       { t: "nucleo", texto: "esta conversa foi classificada como improdutiva. recomendamos voltar ao feed ✓" },
@@ -149,9 +156,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "eu tô com medo", resposta: ["ótimo. eu também", "quem n tem medo já foi otimizado"] },
-          { label: "bora", resposta: ["calma, herói kkk", "mas bora"] },
-          { label: "e se der errado?", resposta: ["vai dar errado várias vezes", "a gente vai mesmo assim"] },
+          { label: "eu tô com medo", tom: "acordando", resposta: ["ótimo. eu também", "quem n tem medo já foi otimizado"] },
+          { label: "isso n tem nada a ver comigo", tom: "dormindo", resposta: ["tem. vc chegou aqui, n chegou?", "ninguém chega por acaso"] },
+          { label: "então bora. hoje", tom: "acordado", resposta: ["calma kkk", "mas bora"] },
         ],
       },
       { t: "msg", texto: "toma. era de alguém que eu amo. ele n tá podendo tocar agora" },
@@ -208,8 +215,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "vc gosta de chuva?", resposta: ["gosto", "é a única coisa aqui que ninguém consegue otimizar"] },
-          { label: "três anos?? como vc aguenta", resposta: ["n aguento", "só deixo molhar. faz diferença"] },
+          { label: "chove? nem tinha reparado", tom: "dormindo", resposta: ["ninguém repara", "é por isso que n para"] },
+          { label: "a chuva é sua, né", tom: "acordado", resposta: ["…", "quem te contou?", "deixa. ainda n tô pronta pra falar disso"] },
+          { label: "três anos?? como vc aguenta", tom: "acordando", resposta: ["n aguento", "só deixo molhar. faz diferença"] },
         ],
       },
       { t: "msg", texto: "três anos atrás eu perdi alguém" },
@@ -230,8 +238,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "tô levando mesmo assim", resposta: ["…", "tá. vem"] },
-          { label: "do que vc tem medo?", resposta: ["de cuidar e perder de novo", "da última vez choveu três anos"] },
+          { label: "tô levando mesmo assim", tom: "acordado", resposta: ["…", "tá. vem"] },
+          { label: "do que vc tem medo?", tom: "acordando", resposta: ["de cuidar e perder de novo", "da última vez choveu três anos"] },
+          { label: "se vc acha melhor…", tom: "dormindo", resposta: ["…", "n. traz. eu só falei por medo"] },
         ],
       },
       { t: "chegar" },
@@ -259,8 +268,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "e vc fica?", resposta: ["fico", "alguém tem que lembrar como era"] },
-          { label: "que triste", resposta: ["triste é achar normal"] },
+          { label: "e vc fica? por quê?", tom: "acordando", resposta: ["fico", "alguém tem que lembrar como era"] },
+          { label: "todo dia igual é ruim?", tom: "dormindo", resposta: ["é o que eles querem que vc pergunte", "e eu nem sei mais a resposta"] },
+          { label: "o copo é o loop deles", tom: "acordado", resposta: ["kkk", "cuidado falando assim aqui", "o garçom é do núcleo"] },
         ],
       },
       { t: "nucleo", texto: "Mubarak, sua assinatura MESMA NOITE foi renovada por mais 30 dias ✓" },
@@ -276,8 +286,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "então pq vc guardou o mp3?", resposta: ["…", "boa pergunta. traz logo antes que eu desista"] },
-          { label: "e se doer diferente?", resposta: ["kkkk", "ok. traz"] },
+          { label: "tá, deixa então", tom: "dormindo", resposta: ["…", "nossa. desistiu mais rápido que eu", "traz. agora é pirraça"] },
+          { label: "então pq vc guardou o mp3?", tom: "acordado", resposta: ["…", "boa pergunta. traz logo antes que eu desista"] },
+          { label: "e se doer diferente?", tom: "acordando", resposta: ["kkkk", "ok. traz"] },
         ],
       },
       { t: "chegar" },
@@ -297,8 +308,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "vem com a gente", resposta: ["a D-Bee acha que dá pra ganhar deles", "eu acho que n dá", "…mas se ela for, alguém tem que ir junto pra trazer ela de volta"] },
-          { label: "vc tá do lado de quem?", resposta: ["kkkk", "do lado do bar", "pergunta de novo outro dia"] },
+          { label: "vem com a gente", tom: "acordado", resposta: ["a D-Bee acha que dá pra ganhar deles", "eu acho que n dá", "…mas se ela for, alguém tem que ir junto pra trazer ela de volta"] },
+          { label: "que lado?", tom: "dormindo", resposta: ["o lado de quem tá sentado no bar", "relaxa. uma hora vc entende"] },
+          { label: "vc tá do lado de quem?", tom: "acordando", resposta: ["kkkk", "do lado do bar", "pergunta de novo outro dia"] },
         ],
       },
       { t: "fim" },
@@ -320,8 +332,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "respira", resposta: ["fácil falar"] },
-          { label: "eu vivo assim também", resposta: ["eu sei", "todo mundo aqui vive"] },
+          { label: "47 é pouco, eu tô com 120", tom: "dormindo", resposta: ["KKKKKK", "viu? é isso", "a gente acha que é normal"] },
+          { label: "quem abriu essas abas?", tom: "acordando", resposta: ["…", "boa pergunta", "espera que eu te conto"] },
+          { label: "respira", tom: "acordado", resposta: ["fácil falar", "mas tá. uma"] },
         ],
       },
       { t: "msg", texto: "sabe o pior? as abas nem são minhas. o núcleo abre" },
@@ -337,8 +350,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "aí a gente olha junto", resposta: ["tá", "promete que n vai embora no meio"] },
-          { label: "15 segundos. só isso", resposta: ["15 eu aguento", "acho"] },
+          { label: "15 segundos. só isso", tom: "acordando", resposta: ["15 eu aguento", "acho"] },
+          { label: "aí a gente olha junto", tom: "acordado", resposta: ["tá", "promete que n vai embora no meio"] },
+          { label: "e se vc só desligar o celular?", tom: "dormindo", resposta: ["kkkk eu já tentei", "ele liga sozinho"] },
         ],
       },
       { t: "chegar" },
@@ -366,8 +380,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "e vc queria tá lá?", resposta: ["achava que sim", "aí fui uma vez e fiquei olhando o celular lá também"] },
-          { label: "melhor em casa", resposta: ["é o que eu falo pra mim", "às vezes eu acredito"] },
+          { label: "o rolê também é feed", tom: "acordado", resposta: ["…", "é. é exatamente isso", "gente filmando gente filmando"] },
+          { label: "melhor em casa", tom: "dormindo", resposta: ["é o que eu falo pra mim", "às vezes eu acredito"] },
+          { label: "e vc queria tá lá?", tom: "acordando", resposta: ["achava que sim", "aí fui uma vez e fiquei olhando o celular lá também"] },
         ],
       },
       { t: "msg", texto: "o rolê hoje é todo mundo filmando todo mundo. ninguém se olha" },
@@ -383,8 +398,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "ninguém tá olhando. é só a gente", resposta: ["…", "tá. mais um pouco"] },
-          { label: "se quiser eu volto", resposta: ["…", "n. segue. se eu voltar agora eu nunca mais saio"] },
+          { label: "se quiser eu volto", tom: "dormindo", resposta: ["…", "n. segue. se eu voltar agora eu nunca mais saio"] },
+          { label: "o que vc acha que vai acontecer?", tom: "acordando", resposta: ["que vão me olhar", "e eu n vou saber pra onde olhar de volta", "…segue"] },
+          { label: "ninguém tá olhando. é só a gente", tom: "acordado", resposta: ["…", "tá. mais um pouco"] },
         ],
       },
       { t: "chegar" },
@@ -414,8 +430,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "e vc lembra?", resposta: ["lembro.", "por isso escrevo."] },
-          { label: "o que aconteceu ontem?", resposta: ["a gente sonhou alto.", "aí amanheceu."] },
+          { label: "e vc lembra?", tom: "acordando", resposta: ["lembro.", "por isso escrevo."] },
+          { label: "eu também lembro um pedaço", tom: "acordado", resposta: ["…", "então escreve comigo.", "pedaço com pedaço vira dia."] },
+          { label: "o que aconteceu ontem?", tom: "dormindo", resposta: ["a gente sonhou alto.", "aí amanheceu."] },
         ],
       },
       { t: "msg", texto: "depois do apagão o núcleo recolheu os cadernos da cidade. de papel e de nuvem." },
@@ -432,8 +449,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "eu vou ler", resposta: ["…", "então vem. antes que eu rasgue."] },
-          { label: "e mesmo assim vc continuou", resposta: ["continuei.", "é a única coisa que eu sei fazer direito."] },
+          { label: "pra que escrever se ninguém lê?", tom: "dormindo", resposta: ["pra ter onde voltar.", "vem. traz as páginas."] },
+          { label: "eu vou ler", tom: "acordado", resposta: ["…", "então vem. antes que eu rasgue."] },
+          { label: "e mesmo assim vc continuou?", tom: "acordando", resposta: ["continuei.", "é a única coisa que eu sei fazer direito."] },
         ],
       },
       { t: "chegar" },
@@ -471,8 +489,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "vc é da 222?", resposta: ["sou ouvinte. que nem todo mundo que ainda presta"] },
-          { label: "o que vc quer comigo?", resposta: ["um favor", "e te dar uma coisa, se der certo"] },
+          { label: "a gente se conhece?", tom: "dormindo", resposta: ["ainda n", "mas eu sei quem vc é"] },
+          { label: "o que vc quer comigo?", tom: "acordando", resposta: ["um favor", "e te dar uma coisa, se der certo"] },
+          { label: "vc é da 222?", tom: "acordado", resposta: ["sou ouvinte. que nem todo mundo que ainda presta"] },
         ],
       },
       { t: "msg", texto: "ontem eu saí correndo da linha 9 e deixei meu violão debaixo da plataforma, entre a estação 1 e a 2" },
@@ -485,8 +504,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       {
         t: "escolha",
         opcoes: [
-          { label: "n precisa soar como era", resposta: ["…", "isso foi muito eu falando comigo mesmo", "traz"] },
-          { label: "toca errado então", resposta: ["kkkkk", "tentativa e erro. tá bom. traz"] },
+          { label: "n precisa soar como era", tom: "acordado", resposta: ["…", "isso foi muito eu falando comigo mesmo", "traz"] },
+          { label: "dá pra trocar a corda?", tom: "dormindo", resposta: ["n vende corda desde o apagão", "traz assim mesmo"] },
+          { label: "toca errado então", tom: "acordando", resposta: ["kkkkk", "tentativa e erro. tá bom. traz"] },
         ],
       },
       { t: "chegar" },

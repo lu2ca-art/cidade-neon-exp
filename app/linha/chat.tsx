@@ -453,6 +453,12 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
     if (!o) return
     empurrar({ k: "msg", texto: o.label, eu: true })
     if (o.perfil) perfil.current = o.perfil
+    // o tom da resposta: dormindo, acordando ou acordado
+    if (o.tom) {
+      const tom = o.tom
+      atualizar((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))
+      track("mission_step", { mission_id: `linha-${id}`, step: `tom:${tom}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(id as EstacaoId) })
+    }
     if (o.peso) {
       atualizar((s) => {
         const pesos = { ...s.pesos }

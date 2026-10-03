@@ -8,7 +8,7 @@ const condensada = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700"]
 
 export const metadata: Metadata = {
   title: "Cidade Neon · Linha 222",
-  description: "a cidade tá alagada de neon. tem gente acordada ainda.",
+  description: "quem dorme jura que é dia. quem acorda jura que é sonho. quem tá acordado sabe ontem.",
   openGraph: {
     title: "Cidade Neon · Linha 222",
     description: "qual estação você é?",
