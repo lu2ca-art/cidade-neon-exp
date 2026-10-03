@@ -23,7 +23,8 @@
 | Kombi CONVERSÍVEL: sem teto e sem estrutura de metal (a cúpula de vidro ficou pesada); só um para-brisa baixo. De fora se vê quem viaja, de dentro a cidade inteira | — | `1f00ccf` |
 | Botão de câmera em evidência (pílula ciano "1ª PESSOA" / "DE FORA", pulsa até a 1ª vez); a troca de câmera tem fade pro preto e um chiado de rádio quase inaudível | — | `8f6ff69` |
 | Quiz NECTAR com animações do OriginKit: a pergunta sobe letra por letra, a resposta rasga em glitch | — | `d373d2a` |
-| NARRATIVA, a espinha: o Núcleo governa separando, a música junta. Toda conversa ganhou o que o Núcleo tirou da pessoa, uma peça do "ontem" e o juramento de lutar com medo; a D-Bee conta "N de 9" no grupo; popups de polarização; saves antigos com missão em andamento migram sozinhos | — | (este merge) |
+| NARRATIVA, a espinha: o Núcleo governa separando, a música junta. Toda conversa ganhou o que o Núcleo tirou da pessoa, uma peça do "ontem" e o juramento de lutar com medo; a D-Bee conta "N de 9" no grupo; popups de polarização; saves antigos com missão em andamento migram sozinhos | — | `2494c7b` |
+| VISUAL fase 1: lente de cinema (bloom, AgX, vinheta, grão, SMAA; cai pra leve sozinha se o aparelho engasgar), céu com nuvens baixas acesas pela cidade + lua + estrelas, janelas em escala real, luz de aviação piscando nos prédios altos | — | (este merge) |
 
 **#30 continua aberta:** com o critério certo (gravação ≤ 1925 confirmada,
 nada de "PDP-CH" suíço sem data, nada de MIDI) o Wikimedia só rendeu 2. Próxima
