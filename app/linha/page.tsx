@@ -403,7 +403,12 @@ export default function LinhaPage() {
       return setTela({ t: "corrida", destino: null })
     }
     if (ESTACOES.some((e) => e.id === id)) track("mission_completed", { mission_id: `linha-${id}`, duration_ms: 0 })
-    if (id === "nectar") setTela({ t: "final" })
+    // o fim da linha: quando as seis missões estão feitas (não mais ao fechar
+    // a do LU2CA, que agora é a primeira)
+    const feitos = new Set([...saveRef.current.objetos, ...(ESTACOES.some((e) => e.id === id) ? [id as EstacaoId] : [])])
+    if (ESTACOES.some((e) => e.id === id) && feitos.size >= 6) setTela({ t: "final" })
+    // o grupo acabou: a D-Bee chama no privado
+    else if (para === "abertura") setTela({ t: "chat", id: "abertura", volta })
     else if (para === "missao") {
       // a próxima pessoa do fio te chama na estrada: volta pra Kombi e a
       // conversa chega no painel (dirigindo). Sem Kombi ainda: abre a conversa
@@ -497,11 +502,11 @@ export default function LinhaPage() {
           <Chegada
             onParar={() => setCinema("parando")}
             onCinza={() => setCinza(true)}
-            onAbrir={() => setTela({ t: "chat", id: "abertura", volta: { t: "home" } })}
+            onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })}
           />
         )}
         {tela.t === "entrada" && <Entrada save={save} onEntrar={entrar} />}
-        {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: "abertura", volta: { t: "home" } })} />}
+        {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (
           <Chat
             key={tela.t === "chat" ? tela.id : aoVivo!}

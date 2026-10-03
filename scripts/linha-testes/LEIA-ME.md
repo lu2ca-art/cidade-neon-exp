@@ -18,3 +18,5 @@ da estrada (`__via`, `__irPara`, `__marcos`, `__estacoes`, `__pular`, `__estado`
 Precisa de `playwright-core` e do Chrome de teste do Playwright
 (`~/Library/Caches/ms-playwright/chromium-*`). Prints vão pra `$SHOTS` (padrão `./shots`).
 Rodar: `bun scripts/linha-testes/fluxo.mjs`
+
+> 03/10: o começo mudou (chegada → GRUPO → abertura da D-Bee → Kombi, e a 1ª missão é a do LU2CA na estrada). `fluxo.mjs` ainda é do fluxo antigo: atualizar antes de usar.

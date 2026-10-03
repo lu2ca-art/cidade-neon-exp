@@ -21,7 +21,7 @@ const t = (titulo: string, arq: string) => ({ titulo, src: `/audio/tracks/${arq}
 
 export const FREQUENCIAS: Frequencia[] = [
   {
-    id: "linha", freq: "222.0", nome: "LINHA 222", cor: "#2fe8ff", custo: 0,
+    id: "linha", freq: "222.0", nome: "LINHA 9", cor: "#2fe8ff", custo: 0,
     faixas: [], // montada a partir dos objetos que a pessoa já tem (faixasDaLinha)
   },
   {

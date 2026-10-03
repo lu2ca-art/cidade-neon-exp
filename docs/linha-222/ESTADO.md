@@ -25,7 +25,8 @@
 | Quiz NECTAR com animações do OriginKit: a pergunta sobe letra por letra, a resposta rasga em glitch | — | `d373d2a` |
 | NARRATIVA, a espinha: o Núcleo governa separando, a música junta. Toda conversa ganhou o que o Núcleo tirou da pessoa, uma peça do "ontem" e o juramento de lutar com medo; a D-Bee conta "N de 9" no grupo; popups de polarização; saves antigos com missão em andamento migram sozinhos | — | `2494c7b` |
 | VISUAL fase 1: lente de cinema (bloom, AgX, vinheta, grão, SMAA; cai pra leve sozinha se o aparelho engasgar), céu com nuvens baixas acesas pela cidade + lua + estrelas, janelas em escala real, luz de aviação piscando nos prédios altos | — | `ebfa8bf` |
-| LINHA 9: o monotrilho do Núcleo. Elevado à esquerda do circuito principal nas 9 estações (para em cada uma, plataforma branca), mergulha num portal do Núcleo antes das saídas e some por baixo da cidade até reaparecer antes da 1ª estação. Automático, em loop | — | (este merge) |
+| LINHA 9: o monotrilho do Núcleo. Elevado à esquerda do circuito principal nas 9 estações (para em cada uma, plataforma branca), mergulha num portal do Núcleo antes das saídas e some por baixo da cidade até reaparecer antes da 1ª estação. Automático, em loop | — | `d999799` |
+| MISSÕES POR ÁREA (sem corrente): a 1ª conversa é o GRUPO 222 (a resistência discutindo; quem chega só lê) → D-Bee no privado (quiz) → LU2CA chama pro VIOLÃO (1ª missão de todo mundo, debaixo da plataforma da Linha 9; ensina recompensa que se usa). Depois quem mora em cada área chama quando você entra nela, em qualquer ordem. Bolinhas do topo = guia da missão; placas e ilha da bifurcação com etiqueta "MISSÃO · nomes" da área. 222 = rádio, LINHA 9 = metrô. Final quando as 6 estiverem feitas. Confissão do LU2CA saiu da 1ª missão (vai pro ep. 16/10) | — | (este merge) |
 
 **#30 continua aberta:** com o critério certo (gravação ≤ 1925 confirmada,
 nada de "PDP-CH" suíço sem data, nada de MIDI) o Wikimedia só rendeu 2. Próxima

@@ -270,7 +270,7 @@ export function Chegada({
 
       {titulo && (
         <div className="l-chegada-titulo">
-          <small>222.0 FM · linha 222</small>
+          <small>222.0 FM · linha 9</small>
           <b>cidade neon</b>
           <span>a cidade tá alagada de neon</span>
         </div>
@@ -323,8 +323,8 @@ export function Chegada({
       {fase === "vibra" && (
         <div className="l-chegada-cel">
           <button type="button" className="l-notif is-chave" style={{ ["--cor" as string]: "#2fe8ff" }} onClick={abrir}>
-            <small>N3XO · [desconhecido] · agora</small>
-            <span>sabe ontem?</span>
+            <small>N3XO · grupo 222 · agora</small>
+            <span>D-Bee: pauta de hoje: a linha 9 agora roda 24h</span>
           </button>
           <p className="l-bloqueio-dica">toca na mensagem</p>
         </div>

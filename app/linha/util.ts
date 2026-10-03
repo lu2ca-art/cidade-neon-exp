@@ -28,7 +28,7 @@ export function icsHref(e: Estacao) {
 }
 
 export async function compartilhar(texto: string) {
-  const dados = { title: "cidade neon · linha 222", text: texto, url: URL_LINHA }
+  const dados = { title: "cidade neon · 222", text: texto, url: URL_LINHA }
   try {
     if (navigator.share) {
       await navigator.share(dados)
