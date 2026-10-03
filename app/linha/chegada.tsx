@@ -9,7 +9,8 @@
 // celular vibra: alguém no N3XO. É a D-Bee.
 //
 // A Kombi (Corrida em modo cinema) fica por baixo; isso aqui é só a camada
-// de cima: tarjas de cinema, os anúncios e a notificação. Os tempos ficam
+// de cima: tarjas de cinema e os anúncios. No silêncio a chegada acaba e o
+// grupo 222 começa a rolar na ilha da Kombi (page.tsx), sem travar nada. Os tempos ficam
 // todos em ROTEIRO pra dar pra afinar o ritmo num lugar só.
 
 import { useEffect, useRef, useState } from "react"
@@ -123,8 +124,8 @@ export function Chegada({
   const [barra, setBarra] = useState<string | null>(null)
   const prox = useRef(0)
   const chiado = useRef<ReturnType<typeof estatica>>(null)
-  const cbs = useRef({ onParar, onCinza })
-  useEffect(() => { cbs.current = { onParar, onCinza } }, [onParar, onCinza])
+  const cbs = useRef({ onParar, onCinza, onAbrir })
+  useEffect(() => { cbs.current = { onParar, onCinza, onAbrir } }, [onParar, onCinza, onAbrir])
 
   useEffect(() => {
     track("mission_step", { mission_id: "linha-chegada", step: "inicio", perfil: "?", fio_pos: -1 })
@@ -229,7 +230,7 @@ export function Chegada({
       gota(3)
       vibrar([30, 60, 30])
     })
-    em(ROTEIRO.vibra + 1600, () => { gota(5); vibrar(14) })
+    em(ROTEIRO.vibra + 900, () => cbs.current.onAbrir())
     return () => {
       ts.forEach(clearTimeout)
       clearInterval(giro)
@@ -256,11 +257,7 @@ export function Chegada({
     cbs.current.onParar()
     setFase("vibra")
     track("mission_step", { mission_id: "linha-chegada", step: "pulou", perfil: "?", fio_pos: -1 })
-  }
-
-  const abrir = () => {
-    track("mission_step", { mission_id: "linha-chegada", step: "abriu-n3xo", perfil: "?", fio_pos: -1 })
-    onAbrir()
+    setTimeout(() => cbs.current.onAbrir(), 900)
   }
 
   return (
@@ -317,16 +314,6 @@ export function Chegada({
           <b>CONTEÚDO REMOVIDO ✓</b>
           <p>a 222 fm viola as diretrizes da cidade.</p>
           <small>obrigado por não sentir.</small>
-        </div>
-      )}
-
-      {fase === "vibra" && (
-        <div className="l-chegada-cel">
-          <button type="button" className="l-notif is-chave" style={{ ["--cor" as string]: "#2fe8ff" }} onClick={abrir}>
-            <small>N3XO · grupo 222 · agora</small>
-            <span>D-Bee: pauta de hoje: a linha 9 agora roda 24h</span>
-          </button>
-          <p className="l-bloqueio-dica">toca na mensagem</p>
         </div>
       )}
 

@@ -94,6 +94,12 @@ interface Props {
   cinema?: Cinema
   // a cidade sem cor (o Núcleo apagou tudo) — sem derrubar a 222
   cinza?: boolean
+  // a chegada (antes da D-Bee): a cidade fica quieta (sem falas soltas nem
+  // tutorial) e quem fala na ilha é o grupo, de fora (fala)
+  intro?: boolean
+  fala?: { id: number; de: string; texto: string } | null
+  // tocar na ilha quando ela mostra uma mensagem
+  onIlha?: () => void
 }
 
 export type Cinema = "rodando" | "parando" | null
@@ -158,7 +164,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -328,10 +334,18 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [estante, setEstante] = useState(false)
   const discoInfo = VINIS.find((v) => v.src === discoAgora.src)
 
+  // mensagem que vem de fora (o grupo na chegada): entra na ilha
+  const introRef = useRef(intro)
+  useEffect(() => { introRef.current = intro }, [intro])
+  useEffect(() => {
+    if (fala) falar(fala.de, fala.texto, 3000)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fala?.id])
+
   // TUTORIAL do som: o jogo ensina rádio × toca-discos na hora certa
   const temMusicaNoRadio = save.objetos.length > 0
   useEffect(() => {
-    if (pausado || cinemaRef.current) return
+    if (pausado || cinemaRef.current || intro) return
     if (!dicas.includes("disco-1") && !temMusicaNoRadio && aparelho !== "disco") {
       const t = setTimeout(() => {
         onDica?.("disco-1")
@@ -347,7 +361,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       return () => clearTimeout(t)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pausado, temMusicaNoRadio, aparelho, dicas.length])
+  }, [pausado, temMusicaNoRadio, aparelho, dicas.length, intro])
   // ganhou música nova ouvindo disco: o disco não para; só avisa
   const nObj = useRef(save.objetos.length)
   useEffect(() => {
@@ -487,7 +501,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const evs = useRef<Evs>(null as unknown as Evs)
   useEffect(() => {
     evs.current = {
-      falar,
+      // na chegada a cidade fica quieta: só o grupo fala
+      falar: (de, t) => { if (!introRef.current) falar(de, t) },
       popup: (txt, cor) => setPopup({ id: Math.random(), txt, cor }),
       sinal: (n, rotulo, cor) => {
         const antes = sinalRef.current
@@ -952,7 +967,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           )
         }
         return (
-          <div className={`l-ilha is-${modo}`} style={{ ["--cor" as string]: t0 ? VOZES[t0.de] ?? "#fff" : "#2fe8ff" }}>
+          <div
+            className={`l-ilha is-${modo} ${modo === "fala" && onIlha ? "is-clicavel" : ""}`}
+            style={{ ["--cor" as string]: t0 ? VOZES[t0.de] ?? "#fff" : "#2fe8ff" }}
+            onPointerDown={modo === "fala" && onIlha ? (e) => e.stopPropagation() : undefined}
+            onClick={modo === "fala" && onIlha ? onIlha : undefined}
+          >
             {modo === "garfo" && C && (
               <div key="garfo" className="l-ilha-conteudo">
                 <header>bifurcação em <b ref={hudGarfoM}>…</b> · <span ref={hudGarfoT}>um toque pro lado da saída</span></header>

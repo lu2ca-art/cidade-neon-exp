@@ -66,6 +66,10 @@ export default function LinhaPage() {
   // conversa com a D-Bee acabar
   const [cinema, setCinema] = useState<Cinema>(null)
   const [cinza, setCinza] = useState(false)
+  // a chegada: o grupo 222 rola na ilha da Kombi, mensagem por mensagem.
+  // null = não está rolando; número = a próxima mensagem
+  const [introGrupo, setIntroGrupo] = useState<number | null>(null)
+  const [falaIntro, setFalaIntro] = useState<{ id: number; de: string; texto: string } | null>(null)
   // conversa rolando no painel da Kombi (dirigindo). Quando precisa do
   // celular de verdade, vira tela cheia com a MESMA conversa
   const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
@@ -170,6 +174,34 @@ export default function LinhaPage() {
   // (não precisa pegar o celular pra começar a conversa)
   const quemChama = !save.nucleo.caido ? ativa(save, nivelDe(save)) : null
   const chamaNaEstrada = !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
+  // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
+  // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
+  // tudo no histórico, e a D-Bee LIGA. Desligou: ela escreve (a abertura)
+  useEffect(() => {
+    if (introGrupo === null || tela.t !== "corrida" || ligacao) return
+    const falas = ROTEIROS.grupo.passos.flatMap((p) => (p.t === "msg" && p.de ? [{ de: p.de, texto: typeof p.texto === "string" ? p.texto : "" }] : p.t === "nucleo" ? [{ de: "NÚCLEO", texto: p.texto }] : []))
+    const t = setTimeout(() => {
+      if (introGrupo >= falas.length) {
+        setIntroGrupo(null)
+        setSave((s) => {
+          if (s.completos.includes("grupo")) return s
+          const log: Item[] = ROTEIROS.grupo.passos.flatMap((p): Item[] => (p.t === "msg" ? [{ k: "msg", texto: typeof p.texto === "string" ? p.texto : "", de: p.de }] : p.t === "nucleo" ? [{ k: "nucleo", texto: p.texto }] : p.t === "sistema" ? [{ k: "sistema", texto: p.texto }] : []))
+          return { ...s, completos: [...s.completos, "grupo"], logs: { ...s.logs, grupo: log } }
+        })
+        return
+      }
+      setFalaIntro({ id: Date.now(), ...falas[introGrupo] })
+      setIntroGrupo(introGrupo + 1)
+    }, introGrupo === 0 ? 1200 : 3600)
+    return () => clearTimeout(t)
+  }, [introGrupo, tela.t, ligacao])
+  const ligaPrimeira = save.completos.includes("grupo") && !save.completos.includes("abertura") && save.pausas.abertura === undefined && !save.ligacoes.includes("dbee-0")
+  useEffect(() => {
+    if (!pronto || tela.t !== "corrida" || introGrupo !== null || invasao || aoVivo || ligacao || !ligaPrimeira) return
+    const t = setTimeout(() => setLigacao({ lig: LIGACOES["dbee-0"] }), 4000)
+    return () => clearTimeout(t)
+  }, [pronto, tela.t, introGrupo, invasao, aoVivo, ligacao, ligaPrimeira])
+
   // a primeira vez na Kombi depois da abertura, a D-Bee LIGA (antes de
   // qualquer um mandar mensagem)
   const ligaDbee = save.completos.includes("abertura") && !save.ligacoes.includes("dbee-1")
@@ -194,8 +226,11 @@ export default function LinhaPage() {
         setSave((s) => ({ ...s, modos: { ...s.modos, [m]: "texto" } }))
         setTimeout(() => avisar(lig.quem, lig.recado, getEstacao(m).cor), 300)
       } else {
-        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id])], xp: s.xp + (atendeu ? 20 : 0) }))
+        const extra = lig.id === "dbee-0" ? ["dbee-1"] : []
+        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id, ...extra])], xp: s.xp + (atendeu ? 20 : 0) }))
         if (!atendeu) setTimeout(() => avisar(lig.quem, lig.recado, "#3d7bff"), 300)
+        // a primeira ligação: em seguida ela escreve
+        if (lig.id === "dbee-0") setTimeout(() => setTela({ t: "chat", id: "abertura", volta: { t: "corrida", destino: null } }), atendeu ? 600 : 2400)
       }
       return null
     })
@@ -396,10 +431,12 @@ export default function LinhaPage() {
 
   const fimChat = (id: ChatId, para: Destino, volta: Volta) => {
     // acabou a conversa com a D-Bee: a cor volta e a Kombi é sua
-    if (id === "abertura" && cinema) {
+    if (id === "abertura") {
       setCinema(null)
       setCinza(false)
     }
+    // leu o grupo na chegada: volta pra Kombi (a D-Bee liga daqui a pouco)
+    if (id === "grupo" && !save.completos.includes("abertura")) return setTela({ t: "corrida", destino: null })
     // pausa: a conversa pediu uma coisa que está no mapa
     // "pegar a kombi" JÁ é aceitar a missão: vai direto, e o som que tava
     // tocando (o vinil) segue sem cortar
@@ -497,6 +534,16 @@ export default function LinhaPage() {
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
             onSair={sairDaCorrida}
+            intro={!save.completos.includes("abertura")}
+            fala={falaIntro}
+            onIlha={() => {
+              // o grupo rolando: abre a conversa inteira; depois disso, a
+              // ilha abre o celular (como o ícone)
+              if (introGrupo !== null) {
+                setIntroGrupo(null)
+                setTela({ t: "chat", id: "grupo", volta: { t: "corrida", destino: null } })
+              } else sairDaCorrida()
+            }}
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
             cinema={cinema}
             cinza={cinza}
@@ -506,7 +553,11 @@ export default function LinhaPage() {
           <Chegada
             onParar={() => setCinema("parando")}
             onCinza={() => setCinza(true)}
-            onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })}
+            onAbrir={() => {
+              setCinema(null)
+              setTela({ t: "corrida", destino: null })
+              if (!save.completos.includes("grupo")) setIntroGrupo(0)
+            }}
           />
         )}
         {tela.t === "entrada" && <Entrada save={save} onEntrar={entrar} />}
@@ -596,7 +647,7 @@ export default function LinhaPage() {
         {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "chegada" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
-        {ligacao && <LigacaoNaKombi key={ligacao.lig.id} lig={ligacao.lig} onFim={fimLigacao} />}
+        {ligacao && <LigacaoNaKombi key={ligacao.lig.id} lig={ligacao.lig} onFim={fimLigacao} onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))} />}
         {invasao && <InvasaoNucleo key={invasao.id} inv={invasao} onFim={fimInvasao} />}
         {aviso && (
           <div key={`aviso-${aviso.id}`} className="l-aviso" style={{ ["--cor" as string]: aviso.cor }}>
