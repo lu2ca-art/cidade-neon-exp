@@ -7,7 +7,7 @@
 import { Component, type ReactNode } from "react"
 import posthog from "posthog-js"
 
-export class Seguro extends Component<{ nome: string; children: ReactNode }, { erro: boolean }> {
+export class Seguro extends Component<{ nome: string; children: ReactNode; reserva?: ReactNode }, { erro: boolean }> {
   state = { erro: false }
   static getDerivedStateFromError() {
     return { erro: true }
@@ -19,6 +19,6 @@ export class Seguro extends Component<{ nome: string; children: ReactNode }, { e
     } catch {}
   }
   render() {
-    return this.state.erro ? null : this.props.children
+    return this.state.erro ? (this.props.reserva ?? null) : this.props.children
   }
 }

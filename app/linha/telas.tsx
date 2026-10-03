@@ -4,6 +4,7 @@
 // nativos grandes (a linha/mapa, a rádio).
 
 import { CREDITO_SUBURBIO } from "./estrada/Suburbio"
+import { CREDITO_KOMBI } from "./estrada/KombiHerbal"
 import { useEffect, useMemo, useState } from "react"
 import { ESTACOES, NIVEIS, UNTITLED, dataCurta, estacao as getEstacao, lancada, missao, type Estacao, type EstacaoId } from "./data"
 import { ativa, conhecidos } from "./missoes"
@@ -210,7 +211,7 @@ export function Mapa({
       <button type="button" className="l-recomecar" onClick={() => { if (confirm("apagar seu progresso e começar do zero?")) recomecar() }}>
         recomeçar do zero
       </button>
-      <p className="l-creditos">subúrbio xenom: {CREDITO_SUBURBIO}</p>
+      <p className="l-creditos">subúrbio xenom: {CREDITO_SUBURBIO}<br />a kombi: {CREDITO_KOMBI}</p>
 
       {aberta && (
         <FichaEstacao

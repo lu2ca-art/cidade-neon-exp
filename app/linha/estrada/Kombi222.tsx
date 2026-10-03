@@ -164,7 +164,7 @@ const JANELAS: [number, number][] = [[-1.42, 0.62], [-0.5, 0.82], [0.42, 0.82], 
 
 // esterco: ângulo das rodas da frente (rad, + = pra esquerda). No drift elas
 // apontam pra onde a Kombi ANDA — o contraesterço que mostra que ela tá de lado
-export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableRefObject<boolean>; velocidade: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number> }) {
+export function Kombi222({ turbo, velocidade, esterco, soEfeitos = false }: { turbo: React.MutableRefObject<boolean>; velocidade: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number>; soEfeitos?: boolean }) {
   const corpo = useMemo(() => montarCorpo(), [])
   const pintura = useMemo(() => montarPintura(), [])
   const placa = useMemo(() => texPlaca(), [])
@@ -198,6 +198,7 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
           teto arredondado, traseira do motor, caixas de roda), extrudado na
           largura com as bordas boleadas. Pintura em duas cores no shader:
           saia azul, cima creme, o "V" creme descendo no nariz e o friso */}
+      {!soEfeitos && (<>
       <mesh geometry={corpo} material={pintura} />
       {/* caixas de roda por dentro (não dá pra ver através) */}
       {[-1.35, 1.35].map((z) => (
@@ -246,6 +247,7 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
         <planeGeometry args={[0.5, 0.16]} />
         <meshBasicMaterial map={placa} toneMapped={false} />
       </mesh>
+      </>)}
       {[-0.76, 0.76].map((x) => (
         <group key={x} position={[x, 0.98, 2.27]}>
           <mesh rotation-x={Math.PI / 2}>
@@ -258,6 +260,7 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
           </mesh>
         </group>
       ))}
+      {!soEfeitos && (<>
       {/* para-choques cromados, de tubo */}
       {[-2.36, 2.36].map((z) => (
         <group key={z} position={[0, 0.44, z]}>
@@ -274,16 +277,19 @@ export function Kombi222({ turbo, velocidade, esterco }: { turbo: React.MutableR
         </group>
       ))}
 
+      </>)}
       {/* chama do escapamento no turbo */}
       <mesh ref={escap} position={[0.55, 0.45, 2.35]} visible={false}>
         <planeGeometry args={[0.7, 0.7]} />
         <meshBasicMaterial map={brilho} color="#b38cff" transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
 
+      {!soEfeitos && (<>
       <Roda x={-0.82} z={-1.35} giro={giro} esterco={esterco} />
       <Roda x={0.82} z={-1.35} giro={giro} esterco={esterco} />
       <Roda x={-0.82} z={1.35} giro={giro} />
       <Roda x={0.82} z={1.35} giro={giro} />
+      </>)}
     </group>
   )
 }
