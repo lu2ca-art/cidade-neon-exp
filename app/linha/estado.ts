@@ -19,6 +19,7 @@ export type Item =
   | { k: "objeto"; estacao: EstacaoId; memoria?: number; extra?: string }
   | { k: "tarefa"; estacao: EstacaoId; feita?: boolean }
   | { k: "revelacao"; estacao: EstacaoId }
+  | { k: "presente" }
 
 export interface Save {
   nome: string
@@ -55,6 +56,8 @@ export interface Save {
   papel: boolean
   // dicas que o jogo já deu (tutorial do rádio × toca-discos…)
   dicas: string[]
+  // o violão que a D-Bee dá no fim da leitura NECTAR (abre o app VIOLÃO)
+  violao: boolean
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
   // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
@@ -90,6 +93,7 @@ export const VAZIO: Save = {
   jardim: [],
   papel: false,
   dicas: [],
+  violao: false,
   ligacoes: [],
   modos: {},
   // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito
@@ -105,6 +109,8 @@ export function carregar(): Save {
     // quem já tinha estação antes do fio existir ganha um, pelas respostas
     if (s.estacao && !s.fio.length) s.fio = montarFio(s.pesos, s.estacao, s.perfil)
     s.pausas = acertarPausas(s.pausas)
+    // quem já tinha o violão pelo caminho antigo (missão do LU2CA) continua com ele
+    if (s.objetos.includes("nectar")) s.violao = true
     return s
   } catch {
     return VAZIO

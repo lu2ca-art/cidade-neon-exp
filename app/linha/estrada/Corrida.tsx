@@ -19,6 +19,7 @@ import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Cabine, OLHO } from "./Cabine"
 import { Cinema } from "./Cinema"
+import { Seguro } from "./Seguro"
 import { LADO_METRO, Metro, montarMetro } from "./Metro"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
@@ -946,7 +947,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <i>{f.lado < 0 ? "←" : "→"}</i>
               <b>{lugarDe(f.para)}</b>
               <small>{ok ? `${fr.freq} FM` : `trancada · ${fr.custo}`}</small>
-              {ok && !!tagsArea[f.para]?.length && <span className="l-garfo-quem">◆ {tagsArea[f.para]!.map((x) => x.nome).join(" · ")}</span>}
+              {ok && !!tagsArea[f.para]?.length && <span className="l-garfo-quem">{tagsArea[f.para]!.map((x) => <i key={x.nome} style={{ background: x.cor }}>{x.nome[0]}</i>)}</span>}
             </div>
           )
         }
@@ -962,7 +963,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
                     <i>↑</i>
                     <b>fica</b>
                     <small>{freqDe(C.t).freq} FM</small>
-                    {!!tagsArea[C.t]?.length && <span className="l-garfo-quem">◆ {tagsArea[C.t]!.map((x) => x.nome).join(" · ")}</span>}
+                    {!!tagsArea[C.t]?.length && <span className="l-garfo-quem">{tagsArea[C.t]!.map((x) => <i key={x.nome} style={{ background: x.cor }}>{x.nome[0]}</i>)}</span>}
                   </div>
                   {op(garfo!.dir, 2)}
                 </div>
@@ -1582,12 +1583,33 @@ function Cena({
     return { lista, setas, barreiras }
   }, [circuitos, a, nLib])
 
-  // etiqueta de missão embaixo de cada placa: "MISSÃO · ELLA · BBX"
+  // embaixo de cada placa, uma bolinha por missão em aberto naquela área:
+  // a cor e a inicial de quem chama (sem nome)
   const tagTex = useMemo(() => {
     const out: Partial<Record<FreqId, THREE.Texture>> = {}
     for (const [area, q] of Object.entries(tags) as [FreqId, { nome: string; cor: string }[]][]) {
       if (!q.length) continue
-      out[area] = texTexto([{ txt: `◆ MISSÃO · ${q.map((x) => x.nome.toUpperCase()).join(" · ")}`, tam: 50, cor: q[0].cor, fonte: "ui-monospace, monospace" }], 1024, 112)
+      const c = document.createElement("canvas")
+      c.width = 1024
+      c.height = 112
+      const g = c.getContext("2d")!
+      const R = 44, passo = R * 2 + 26
+      const x0 = 512 - ((q.length - 1) * passo) / 2
+      q.forEach((x, i) => {
+        const cx = x0 + i * passo
+        g.beginPath()
+        g.arc(cx, 56, R, 0, Math.PI * 2)
+        g.fillStyle = x.cor
+        g.fill()
+        g.fillStyle = "#070817"
+        g.font = "800 54px ui-sans-serif, system-ui, sans-serif"
+        g.textAlign = "center"
+        g.textBaseline = "middle"
+        g.fillText(x.nome[0].toUpperCase(), cx, 59)
+      })
+      const t = new THREE.CanvasTexture(c)
+      t.colorSpace = THREE.SRGBColorSpace
+      out[area] = t
     }
     return out
   }, [tags])
@@ -2583,7 +2605,7 @@ function Cena({
         </mesh>
       ))}
       <primitive object={cidade.pilares} />
-      <Metro metro={metro} />
+      <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
       <points geometry={cidade.luzes} material={cidade.luzMat} />
@@ -2731,14 +2753,14 @@ function Cena({
             (de fora dá pra ver quem tá dentro; de dentro, a cidade inteira) */}
         <Cupula />
         <group ref={cabineG}>
-          <Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} />
+          <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
         <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />
       </group>
-      <Cinema />
+      <Seguro nome="lente"><Cinema /></Seguro>
     </>
   )
 }

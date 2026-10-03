@@ -130,8 +130,8 @@ export function lancada(e: Estacao, agora = Date.now()) {
 // dá o objeto:
 // - estações já lançadas + Sabe Ontem? (drop da semana): a partir de
 //   "curioso", ou seja, depois de descobrir a própria estação no grupo
-// - Nectar (estação do próprio LU2CA): a PRIMEIRA missão de todo mundo
-//   (o violão), antes da data — tier de antecipação, ver CLAUDE.md do repo
+// - Nectar (estação do próprio LU2CA): só no episódio dele, 16/10 (o
+//   violão a pessoa já ganhou da D-Bee, no fim da leitura NECTAR)
 // - Ojalá, Swav, Rollercoaster: só no dia do lançamento. Até lá a estação
 //   fica no escuro, com contagem e lembrete no calendário
 export type Missao =
@@ -139,7 +139,7 @@ export type Missao =
   | { ok: false; motivo: "estacao" | "nivel" | "data"; quando?: string }
 
 export function missao(e: Estacao, nivel: number, agora = Date.now()): Missao {
-  if (!e.prova || (e.id !== "nectar" && e.id !== "ontem" && !lancada(e, agora)))
+  if (!e.prova || (e.id !== "ontem" && !lancada(e, agora)))
     return { ok: false, motivo: "data", quando: e.lancamento ?? undefined }
   if (nivel < 1) return { ok: false, motivo: "estacao" }
   return { ok: true }
@@ -147,7 +147,7 @@ export function missao(e: Estacao, nivel: number, agora = Date.now()): Missao {
 
 export const NIVEIS = [
   { nome: "observador", como: "entra na cidade", libera: "o mapa inteiro, pra explorar" },
-  { nome: "curioso", como: "descobre sua estação com a D-Bee", libera: "o violão do LU2CA, a primeira missão" },
+  { nome: "curioso", como: "faz a leitura NECTAR com a D-Bee", libera: "o violão e as missões da cidade" },
   { nome: "cúmplice", como: "junta 2 objetos", libera: "o turbo da Kombi" },
   { nome: "ativista", como: "junta 4 objetos", libera: "o Núcleo te conhece pelo nome" },
   { nome: "nectar", como: "junta os 6 objetos", libera: "o fim da linha" },

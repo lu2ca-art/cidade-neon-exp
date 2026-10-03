@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, estacao as getEstacao, lancada, dataCurta, nivelDe, type EstacaoId } from "./data"
 import { ECOS, ROTEIROS, VOZES, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
@@ -53,8 +54,19 @@ type Espera =
   | { t: "prova" }
   | { t: "tarefa" }
   | { t: "chegar" }
+  | { t: "leitura" }
   | { t: "fim"; para: Destino }
   | null
+
+// o resultado da leitura NECTAR (app/nectar guarda em localStorage)
+function lerLeitura(): { faixa: EstacaoId; sombra?: EstacaoId } | null {
+  try {
+    const r = JSON.parse(localStorage.getItem("cn-nectar-leitura") || "null")
+    return r && typeof r.faixa === "string" ? r : null
+  } catch {
+    return null
+  }
+}
 
 function resolver(t: string | ((c: Ctx) => string), c: Ctx) {
   return typeof t === "function" ? t(c) : t
@@ -81,6 +93,7 @@ const SISTEMA = "__sistema"
 const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
 
 export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onLoop, oculto, jeito = "texto", naEstacao = false }: Props) {
+  const router = useRouter()
   const roteiro = ROTEIROS[id]
   const jaFeito = save.completos.includes(id)
   // conversa que parou esperando a busca no mapa: volta de onde parou
@@ -337,6 +350,43 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         // pra conversas antigas salvas)
         avancar()
         break
+      case "leitura": {
+        // a cidade lê a pessoa: o app NECTAR. Volta com a faixa = a estação
+        const r = lerLeitura()
+        if (!r) {
+          agendar(300, null, () => {
+            atualizar((s) => ({ ...s, pausas: { ...s.pausas, [id]: pos }, logs: { ...s.logs, [id]: logRef.current } }))
+            setEspera({ t: "leitura" })
+          })
+          break
+        }
+        agendar(1600, "D-Bee", () => {
+          const s0 = saveRef.current
+          const est = r.faixa
+          const pesos: Partial<Record<EstacaoId, number>> = { [est]: 10, ...(r.sombra && r.sombra !== est ? { [r.sombra]: 4 } : {}) }
+          const fio = montarFio(pesos, est, perfil.current)
+          saveRef.current = { ...s0, estacao: est, pesos, fio }
+          atualizar((s) => {
+            const pausas = { ...s.pausas }
+            delete pausas[id]
+            return { ...s, estacao: est, pesos, fio, pausas }
+          })
+          empurrar({ k: "revelacao", estacao: est })
+          onXp(100, "estação")
+          track("mission_step", { mission_id: "linha-quiz", step: `estacao:${est}`, perfil: perfil.current ?? "?", fio_pos: -1, fio: fio.join(">") })
+          avancar()
+        })
+        break
+      }
+      case "presente":
+        agendar(900, null, () => {
+          empurrar({ k: "presente" })
+          atualizar((s) => ({ ...s, violao: true }))
+          onXp(100, "objeto")
+          track("mission_step", { mission_id: "linha-quiz", step: "presente:violao", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          avancar()
+        })
+        break
       case "revelacao":
         agendar(2200, "D-Bee", () => {
           const s0 = saveRef.current
@@ -557,6 +607,13 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
             {onVoltar && <button type="button" className="l-btn l-btn-ghost" onClick={onVoltar}>depois</button>}
           </div>
         )}
+        {espera?.t === "leitura" && (
+          <div className="l-tarefa-acoes">
+            <button type="button" className="l-btn l-btn-fim" style={{ ["--cor" as string]: "#b38cff" }} onClick={() => router.push("/nectar?volta=linha")}>
+              fazer a leitura NECTAR →
+            </button>
+          </div>
+        )}
         {espera?.t === "chegar" && (
           <div className="l-tarefa-acoes">
             <p className="l-acelera">continua na estação {ESTACOES.find((e) => e.id === id)?.n} · desce lá</p>
@@ -567,7 +624,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         )}
         {espera?.t === "fim" && (
           <button type="button" className="l-btn l-btn-fim" style={{ ["--cor" as string]: "#2fe8ff" }} onClick={() => onFim(espera.para)}>
-            {espera.para === "missao" ? (save.estacao ? `pra kombi${proximo ? ` · ${proximo} vai te chamar` : ""} →` : `ver mensagem${proximo ? ` de ${proximo}` : ""}`) : espera.para === "grupo" ? "entrar no grupo" : "voltar"}
+            {espera.para === "missao" ? (save.estacao ? `pra kombi${proximo ? ` · ${proximo} vai te chamar` : ""} →` : `ver mensagem${proximo ? ` de ${proximo}` : ""}`) : espera.para === "grupo" ? "entrar no grupo" : espera.para === "abertura" ? "ver mensagem nova →" : "voltar"}
           </button>
         )}
         {espera === null && <p className="l-acelera">{digitando !== null ? "toca na conversa pra acelerar" : " "}</p>}
@@ -622,6 +679,8 @@ function Bolha({ it, grupo, contato, vivo, onProva, save, onLoop }: { it: Item; 
       return <TarefaCard estacao={it.estacao} feita={!!it.feita} save={save} />
     case "revelacao":
       return <Revelacao estacao={it.estacao} vivo={vivo} nome={save.nome} />
+    case "presente":
+      return <div className="l-tarefa" style={{ ["--cor" as string]: "#b38cff" }}><small>a D-Bee te deu</small><b>o violão</b><small>abre o app VIOLÃO no celular: acorde, campo harmônico, tocar junto</small></div>
   }
 }
 
@@ -818,6 +877,8 @@ function BolhaPainel({ it, grupo, contato, onLoop }: { it: Item; grupo: boolean;
       const e = getEstacao(it.estacao)
       return <div className="l-tarefa" style={{ ["--cor" as string]: e.cor }}><small>sua estação</small><b>{e.n} · {e.faixa}</b></div>
     }
+    case "presente":
+      return <div className="l-tarefa" style={{ ["--cor" as string]: "#b38cff" }}><small>a D-Bee te deu</small><b>o violão</b></div>
     case "tarefa": {
       const m = MISSOES[it.estacao]
       return m ? <div className="l-tarefa" style={{ ["--cor" as string]: getEstacao(it.estacao).cor }}><small>missão</small><b>{m.tarefa}</b></div> : null

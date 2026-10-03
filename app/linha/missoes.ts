@@ -4,10 +4,9 @@
 //   você vai de Kombi buscar → volta → prova → recompensa de verdade
 //   (objeto + a música na rádio + um pedaço da história).
 //
-// A primeira é SEMPRE a do LU2CA (o violão): começa logo depois das
-// primeiras conversas, não depende de onde a pessoa está nem do quiz, e
-// ensina que recompensa aqui é coisa que se USA (o app VIOLÃO).
-// Depois disso não tem fila: cada área da cidade tem as suas missões, e
+// O violão quem dá é a D-Bee, no fim da leitura NECTAR (roteiros.ts): ensina
+// que recompensa aqui é coisa que se USA (o app VIOLÃO). O LU2CA só aparece
+// no episódio dele (16/10). Não tem fila: cada área da cidade tem as suas missões, e
 // quem mora nela te chama quando você entra (em qualquer ordem). As áreas
 // abrem com o sinal (radio.ts), então a cidade vai se revelando aos poucos.
 // O fio (ordem do quiz) só desempata dentro da mesma área. Cada passo vira
@@ -149,11 +148,11 @@ export const MEMORIAS = [
 // ── o fio ────────────────────────────────────────────────────────────
 
 // ordem de preferência das missões pra esta pessoa (desempate dentro da
-// mesma área): o violão do LU2CA sempre primeiro, depois a própria estação,
+// mesma área): a própria estação primeiro,
 // depois pelas respostas do quiz, com um empurrão pro estilo dela
 export function montarFio(pesos: Partial<Record<EstacaoId, number>>, estacaoId: EstacaoId | null, perfil: Perfil | null): EstacaoId[] {
   const nota = (id: EstacaoId) =>
-    (pesos[id] ?? 0) + (MISSOES[id]!.estilo === perfil ? 3 : 0) + (id === estacaoId ? 100 : 0) + (id === "nectar" ? 1000 : 0)
+    (pesos[id] ?? 0) + (MISSOES[id]!.estilo === perfil ? 3 : 0) + (id === estacaoId ? 100 : 0)
   const ids = ESTACOES.map((e) => e.id).filter((id) => MISSOES[id])
   // sort estável: empate fica na ordem da linha
   return ids.map((id, i) => ({ id, i, n: nota(id) })).sort((a, b) => b.n - a.n || a.i - b.i).map((x) => x.id)
@@ -183,15 +182,13 @@ export function areaDoPasso(s: Save, id: EstacaoId): FreqId {
 }
 
 // a missão que está valendo agora (o foco do HUD e de quem chama):
-// 1. o violão do LU2CA, enquanto não pegou (a primeira, sempre)
-// 2. uma já começada cujo próximo passo é AQUI, nesta área
-// 3. alguém DESTA área que ainda não te chamou (chama agora)
-// 4. qualquer outra já começada (o HUD aponta pra ela de longe)
+// 1. uma já começada cujo próximo passo é AQUI, nesta área
+// 2. alguém DESTA área que ainda não te chamou (chama agora)
+// 3. qualquer outra já começada (o HUD aponta pra ela de longe)
 export function ativa(s: Save, nivel: number, agora = Date.now()): EstacaoId | null {
   const area = (s.freq || "linha") as FreqId
   const ok = (id: EstacaoId) => !s.objetos.includes(id) && !!MISSOES[id] && missao(estacao(id), nivel, agora).ok
   const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
-  if (ok("nectar")) return "nectar"
   const comecadas = ordem.filter((id) => ok(id) && s.pausas[id] !== undefined)
   const aqui = comecadas.find((id) => areaDoPasso(s, id) === area)
   if (aqui) return aqui

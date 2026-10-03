@@ -1432,4 +1432,5 @@
 .l-fade-cam.is-on { opacity: 1; transition: opacity 0.24s ease-out; }
 
 /* quem tem missão naquela área (03/10): a mesma etiqueta das placas */
-.l-garfo-quem { grid-column: 1 / -1; display: block; max-width: 100%; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 9px var(--mono); letter-spacing: 0.04em; color: #fff; opacity: 0.85; }
+.l-garfo-quem { grid-column: 1 / -1; display: flex; gap: 3px; margin-top: 3px; }
+.l-garfo-quem i { width: 13px; height: 13px; border-radius: 50%; display: grid; place-items: center; font: 800 8px/1 var(--cond); font-style: normal; color: #070817; box-shadow: 0 0 6px -1px currentColor; }

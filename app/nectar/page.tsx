@@ -43,6 +43,8 @@ export default function NectarPage() {
   const [resultado, setResultado] = useState<Resultado | null>(null)
   const [salvo, setSalvo] = useState<Resultado | null>(null)
   const [nome, setNome] = useState("")
+  // aberta pela D-Bee, de dentro da Linha: no fim, volta pra conversa dela
+  const [daLinha, setDaLinha] = useState(false)
   const audio = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function NectarPage() {
       if (r) setSalvo(JSON.parse(r))
     } catch {}
     setNome(nomeDoJogador())
+    setDaLinha(new URLSearchParams(window.location.search).get("volta") === "linha")
     return () => { ligarDrone(false); audio.current?.pause() }
   }, [])
 
@@ -110,6 +113,7 @@ export default function NectarPage() {
   const voltar = () => {
     audio.current?.pause()
     ligarDrone(false)
+    if (daLinha) return router.push("/linha")
     sendMinimizeConsole()
     router.push("/?screen=home")
   }
@@ -145,7 +149,7 @@ export default function NectarPage() {
 
         {tela === "cerimonia" && <Cerimonia />}
 
-        {tela === "resultado" && resultado && <ResultadoTela r={resultado} nome={nome} onDeNovo={comecar} onVoltar={voltar} />}
+        {tela === "resultado" && resultado && <ResultadoTela r={resultado} nome={nome} onDeNovo={comecar} onVoltar={voltar} daLinha={daLinha} />}
       </div>
     </div>
   )
@@ -200,7 +204,7 @@ function Cerimonia() {
   )
 }
 
-function ResultadoTela({ r, nome, onDeNovo, onVoltar }: { r: Resultado; nome: string; onDeNovo: () => void; onVoltar: () => void }) {
+function ResultadoTela({ r, nome, onDeNovo, onVoltar, daLinha }: { r: Resultado; nome: string; onDeNovo: () => void; onVoltar: () => void; daLinha: boolean }) {
   const f = FAIXAS[r.faixa]
   const c = r.campanha
   const o = OBJETOS[r.objeto]
@@ -254,7 +258,8 @@ function ResultadoTela({ r, nome, onDeNovo, onVoltar }: { r: Resultado; nome: st
         </div>
       )}
       <div className="n-acoes">
-        <button type="button" className="n-btn" onClick={compartilhar}>compartilhar meu nectar</button>
+        {daLinha && <button type="button" className="n-btn" onClick={onVoltar}>voltar pra D-Bee →</button>}
+        <button type="button" className={`n-btn ${daLinha ? "is-ghost" : ""}`} onClick={compartilhar}>compartilhar meu nectar</button>
         <div className="n-acoes-2">
           <button type="button" className="n-btn is-ghost" onClick={onDeNovo}>ler de novo</button>
           <button type="button" className="n-btn is-ghost" onClick={onVoltar}>voltar</button>

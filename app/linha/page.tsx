@@ -301,6 +301,9 @@ export default function LinhaPage() {
       player.pausar()
       setTela({ t: "corrida", destino: null })
       conferirLegado()
+    } else if (save.pausas.abertura !== undefined) {
+      // voltou da leitura NECTAR: a D-Bee continua de onde parou
+      setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
     } else if (save.completos.includes("abertura")) {
       // save antigo: abertura feita, quiz (que era no grupo) não. O quiz agora
       // mora na conversa da D-Bee — recomeça ela.
@@ -353,7 +356,8 @@ export default function LinhaPage() {
       return
     }
     // recurso de missão: abre com o objeto daquela estação
-    if (a.precisa && !save.objetos.includes(a.precisa)) {
+    // (o violão vem da D-Bee, no fim da leitura NECTAR)
+    if (a.precisa && !(a.id === "violao" ? save.violao : save.objetos.includes(a.precisa))) {
       const e = getEstacao(a.precisa)
       avisar(a.nome, save.objetos.length || save.pausas[a.precisa] !== undefined ? `abre quando ${e.personagem} te der ${e.objetoNome}` : "abre com uma missão da cidade", a.cor)
       return
