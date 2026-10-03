@@ -79,6 +79,11 @@ export type Passo =
   // passa a vez pro próximo do fio
   | { t: "gancho" }
   | { t: "revelacao" }
+  // a D-Bee manda fazer a leitura NECTAR (/nectar): a conversa espera e, na
+  // volta, a faixa da leitura vira a estação da pessoa
+  | { t: "leitura" }
+  // a D-Bee dá o violão (abre o app VIOLÃO)
+  | { t: "presente" }
   | { t: "fim"; para?: ChatId | "mapa" | "missao" }
 
 export interface Roteiro {
@@ -130,54 +135,10 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
         resposta: (v) => [`${v}.`, "vou lembrar. aqui dentro isso já é muito"],
       },
       { t: "msg", texto: "eu sou a D-Bee" },
-      { t: "msg", texto: "cinco perguntas, rápido, antes que ele volte. responde sem pensar" },
-      {
-        t: "escolha", pergunta: "tá chovendo lá fora. vc…",
-        opcoes: [
-          { label: "abre a janela pra ouvir", peso: { chuva: 2, sexta: 1 }, resposta: ["gostei"] },
-          { label: "coloca fone e finge que é clipe", peso: { ontem: 2, ojala: 1 }, resposta: ["clássico"] },
-          { label: "sai sem guarda-chuva", peso: { rollercoaster: 2, swav: 1 }, resposta: ["doido. gostei também"] },
-          { label: "nem vi, tava no celular", peso: { dopamina: 2, copo: 1 }, resposta: ["honesto"] },
-        ],
-      },
-      {
-        t: "escolha", pergunta: "sexta, 23h. cê tá onde?",
-        opcoes: [
-          { label: "no bar de sempre", peso: { copo: 2, ojala: 1 } },
-          { label: "em casa, e tá tudo bem", peso: { sexta: 2, chuva: 1 }, resposta: ["tá mesmo?"] },
-          { label: "num rolê que eu nem sei como cheguei", peso: { rollercoaster: 2, dopamina: 1 }, resposta: ["kkkkk"] },
-          { label: "no carro, rodando sem destino", peso: { nectar: 2, ontem: 1 }, resposta: ["isso tem cara de alguém que eu conheço"] },
-        ],
-      },
-      {
-        t: "escolha", pergunta: "o que te dá mais medo?",
-        opcoes: [
-          { label: "ficar igual pra sempre", peso: { copo: 2, rollercoaster: 1 } },
-          { label: "ser visto de verdade", peso: { sexta: 2, nectar: 2 } },
-          { label: "o amor acabar", peso: { ojala: 2, chuva: 1 }, resposta: ["acaba. e mesmo assim vale"] },
-          { label: "o silêncio", peso: { dopamina: 1, swav: 2 } },
-        ],
-      },
-      {
-        t: "escolha", pergunta: "um sonho que vc guarda.",
-        opcoes: [
-          { label: "tocar pra um estádio", peso: { swav: 2, ojala: 1 } },
-          { label: "voltar pra um dia específico", peso: { ontem: 3, copo: 1 } },
-          { label: "sumir por um ano", peso: { rollercoaster: 2, dopamina: 1 } },
-          { label: "sentir sem vergonha", peso: { nectar: 2, sexta: 1 } },
-        ],
-      },
-      // a última decide o JEITO de jogar (ordena o fio de missões)
-      {
-        t: "escolha", pergunta: "última. tem uma kombi lá embaixo com a chave no contato. vc…",
-        opcoes: [
-          { label: "pisa fundo e vê no que dá", perfil: "estrada", peso: { dopamina: 1, sexta: 1 }, resposta: ["sabia"] },
-          { label: "liga o rádio antes de tudo", perfil: "musica", peso: { copo: 1, nectar: 1 }, resposta: ["o rádio dela nunca desligou"] },
-          { label: "pergunta de quem é a kombi", perfil: "historia", peso: { ontem: 1, chuva: 1 }, resposta: ["boa pergunta. um dia eu te conto"] },
-        ],
-      },
-      { t: "msg", texto: "ok. já sei" },
-      { t: "revelacao" },
+      { t: "msg", texto: "antes de te soltar na cidade, a cidade precisa te ler" },
+      { t: "msg", texto: "sete perguntas. responde no impulso, o primeiro é o que conta" },
+      { t: "leitura" },
+      { t: "msg", texto: "ok. já sei quem vc é" },
       { t: "msg", texto: "a kombi é sua. agora escuta, que eu só falo uma vez" },
       { t: "msg", texto: "o núcleo n manda em ninguém com arma. manda separando" },
       { t: "msg", texto: "divide a cidade em dois lados, dá um inimigo pra cada lado e um feed pra cada um. pronto. ninguém mais conversa com ninguém" },
@@ -193,8 +154,11 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "e se der errado?", resposta: ["vai dar errado várias vezes", "a gente vai mesmo assim"] },
         ],
       },
+      { t: "msg", texto: "toma. era de alguém que eu amo. ele n tá podendo tocar agora" },
+      { t: "presente" },
+      { t: "msg", texto: "tá no teu celular, no app VIOLÃO. aqui tudo que vc ganha serve pra alguma coisa. usa" },
       { t: "msg", texto: "faz três anos que ninguém novo aparece nessa cidade. todo mundo viu vc chegar" },
-      { t: "msg", texto: "vão te chamar. o primeiro vai ser quem vc menos espera" },
+      { t: "msg", texto: "vão te chamar. cada canto da cidade tem alguém esperando" },
       { t: "fim", para: "missao" },
     ],
   },
@@ -203,7 +167,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
   // de chegar só lê. Cada um do seu jeito (a voz de cada um: voz.md)
   grupo: {
     contato: "222",
-    status: "D-Bee, Mubarak, Notti, Ella, BBX, Alohan, Tony Gordo, Nizzy, LU2CA",
+    status: "D-Bee, Mubarak, Notti, Ella, BBX, Alohan, Tony Gordo, Nizzy",
     grupo: true,
     passos: [
       { t: "sistema", texto: "você entrou no grupo \"222\" por um link da rádio" },
@@ -230,7 +194,6 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", de: "D-Bee", texto: "a gente precisa de gente nova. faz três anos que ninguém entra nessa cidade" },
       { t: "msg", de: "Mubarak", texto: "e quando entra o núcleo pega primeiro" },
       { t: "msg", de: "Ella", texto: "às vezes n" },
-      { t: "msg", de: "LU2CA", texto: "tô vendo." },
       { t: "fim", para: "abertura" },
     ],
   },
