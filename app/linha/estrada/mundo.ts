@@ -37,11 +37,14 @@ export interface Territorio {
   reta: number // reta plana antes do fim da volta (onde ficam as bifurcações)
   predio: Distrito["predio"]
   tunel?: [number, number] // trecho coberto (fração do loop)
+  // circuito que mora DENTRO do anel de outro, mais baixo (o subúrbio fica
+  // embaixo da cidade neon, no chão)
+  dentro?: FreqId
 }
 
 export const TERRITORIOS: Territorio[] = [
   { id: "linha", reta: 300, lugar: "cidade neon", pra: "pra cidade neon", distrito: "neonio", raio: 560, alt: 3, harm: [[3, 0.16, 0.4], [5, 0.06, 1.2]], relevo: [[2, 6, 0.3], [3, 3, 1]], kBank: 30, predio: "torres" },
-  { id: "suburbio", reta: 300, lugar: "subúrbio xenom", pra: "pro subúrbio xenom", distrito: "xenonio", raio: 320, alt: -5, harm: [[2, 0.2, 0.9], [4, 0.08, 0.2]], relevo: [[3, 1.5, 0]], kBank: 24, predio: "casas" },
+  { id: "suburbio", reta: 260, lugar: "subúrbio xenom", pra: "pro subúrbio xenom", distrito: "xenonio", raio: 255, alt: -8, harm: [[2, 0.12, 0.9], [4, 0.05, 0.2]], relevo: [[3, 0.8, 0]], kBank: 18, predio: "casas", dentro: "linha" },
   { id: "crypto", reta: 300, lugar: "o mirante", pra: "pro mirante", distrito: "helio", raio: 300, alt: 36, harm: [[3, 0.12, 2], [6, 0.05, 0.5]], relevo: [[2, 16, 0.8], [5, 4, 0.2]], kBank: 28, predio: "aberto" },
   { id: "live", reta: 300, lugar: "a arena", pra: "pra arena", distrito: "radonio", raio: 300, alt: 12, harm: [[2, 0.3, 0]], relevo: [[1, 4, 0.5]], kBank: 42, predio: "torres", tunel: [0.28, 0.5] },
   { id: "full", reta: 300, lugar: "a avenida", pra: "pra avenida", distrito: "criptonio", raio: 330, alt: 22, harm: [[4, 0.14, 0.6], [2, 0.1, 1.5]], relevo: [[3, 8, 0.5]], kBank: 30, predio: "brancas" },
@@ -116,13 +119,25 @@ function colares(v: Via, r: () => number, u0: number, u1: number, passo: number)
 // As ligações formam um desenho sem cruzamento no vão (centro→todos +
 // vizinhos do anel), pra nenhuma pista precisar passar por cima de outra
 // no meio do caminho.
-export const PROXIMO: Record<FreqId, FreqId> = { linha: "linha", suburbio: "crypto", crypto: "live", live: "full", full: "live" }
+export const PROXIMO: Record<FreqId, FreqId> = { linha: "linha", suburbio: "linha", crypto: "live", live: "full", full: "live" }
 function saidasDe(id: FreqId): { para: FreqId; split: 0 | 1; lado: 1 | -1 }[] {
   if (id === "linha") return [
-    { para: "suburbio", split: 0, lado: 1 }, { para: "crypto", split: 0, lado: -1 },
+    { para: "crypto", split: 0, lado: -1 },
     { para: "live", split: 1, lado: 1 }, { para: "full", split: 1, lado: -1 },
   ]
+  if (id === "suburbio") return [{ para: "linha", split: 0, lado: 1 }]
   return [{ para: "linha", split: 0, lado: 1 }, { para: PROXIMO[id], split: 0, lado: -1 }]
+}
+
+// as ruas que DESCEM da cidade neon pro subúrbio: pela esquerda (o lado de
+// dentro do anel), nos vãos entre estações, longe das rampas de pulo
+export const DESCIDAS = [1316, 1968, 2618]
+// onde a pista do circuito abre faixa: as bifurcações do fim da volta e,
+// na cidade, as descidas
+function aberturas(t: Territorio, L: number): { u: number; lado: 1 | -1 }[] {
+  const out = saidasDe(t.id).map((s) => ({ u: L - SPLITS[s.split], lado: s.lado }))
+  if (t.id === "linha") for (const u of DESCIDAS) out.push({ u, lado: -1 })
+  return out
 }
 export const SPLITS = [60, 360] // distância da bifurcação até o fim da volta
 const CHEGADA0 = 400 // primeira chegada: passa por baixo de onde as saídas sobem
@@ -130,7 +145,8 @@ const CHEGADA_PASSO = 200
 
 function montarCircuito(t: Territorio, k: number, nChegadas: number): Via {
   const r = rng(222 + k * 31)
-  const ang = -Math.PI / 2 + (k * Math.PI * 2) / TERRITORIOS.length
+  const kc = t.dentro ? TERRITORIOS.findIndex((o) => o.id === t.dentro) : k
+  const ang = -Math.PI / 2 + (kc * Math.PI * 2) / TERRITORIOS.length
   const C = V(Math.cos(ang) * ANEL, 0, Math.sin(ang) * ANEL)
   const th0 = Math.atan2(-C.z, -C.x) // virado pro vão central
   const rr = (th: number) => t.raio * (1 + t.harm.reduce((s, [h, a, f]) => s + a * Math.sin(h * th + f), 0))
@@ -157,7 +173,8 @@ function montarCircuito(t: Territorio, k: number, nChegadas: number): Via {
   // rampas: sobe suave 18m e cai de uma vez — o carro decola sozinho
   const livre0 = fimChegadas + 60
   const livre1 = L - SPLITS[1] - ABRE - 120
-  const rampas = [0.3, 0.7].map((f) => livre0 + f * (livre1 - livre0))
+  // rampas de pulo (no subúrbio não: é rua de bairro, e as descidas encostam lá)
+  const rampas = t.dentro ? [] : [0.3, 0.7].map((f) => livre0 + f * (livre1 - livre0))
   for (const u0 of rampas) {
     const i0 = Math.floor(u0 / PASSO)
     const sobe = Math.floor(18 / PASSO)
@@ -173,8 +190,8 @@ function montarCircuito(t: Territorio, k: number, nChegadas: number): Via {
   v.rampas = rampas
   v.livre = [livre0, livre1]
   // a pista ganha uma faixa do lado de cada saída antes de dividir
-  for (const s of saidasDe(t.id)) {
-    const uk = L - SPLITS[s.split]
+  for (const s of aberturas(t, L)) {
+    const uk = s.u
     for (let i = 0; i < p.n; i++) {
       const u = i * PASSO
       if (u < uk - ABRE || u > uk) continue
@@ -230,6 +247,37 @@ function montarSaida(A: Via, B: Via, s: { split: 0 | 1; lado: 1 | -1 }, e: numbe
   colares(v, r, 260, L - 320, 170)
   for (let tu = 300; tu < L - 330; tu += 320) v.turbos.push({ u: tu, x: 0 })
   return v
+}
+
+// a descida pro subúrbio: sai pela faixa da esquerda (o lado de dentro do
+// anel), desce passando por baixo do trilho da Linha 9 e encosta no
+// subúrbio pelo lado de fora dele, andando no mesmo sentido
+function montarDescida(A: Via, B: Via, u: number): { v: Via; e: number } {
+  const ini = [em(A, u, -CK), em(A, u + 55, -(CK + 6), -0.6), em(A, u + 120, -(CK + 30), -3)]
+  // o ponto do subúrbio mais perto de onde a descida aponta, um pouco à frente
+  const alvo = em(A, u + 200, -(CK + 110), 0)
+  let melhor = 0, d0 = Infinity
+  for (let i = 0; i < B.n; i++) {
+    const d = Math.hypot(B.px[i] - alvo.x, B.pz[i] - alvo.z)
+    if (d < d0) { d0 = d; melhor = i }
+  }
+  const e = (melhor * PASSO + 140) % B.L
+  const fim = [em(B, e - 150, 46), em(B, e - 90, 14), em(B, e - 35, 1.5), em(B, e, 0)]
+  const p = amostrar([...ini, ...fim], false)
+  // a curva não passa do chão do subúrbio
+  const piso = Math.min(...fim.map((q) => q.y))
+  for (let i = 0; i < p.n; i++) p.py[i] = Math.max(p.py[i], piso)
+  for (let i = 0; i < p.n; i++) {
+    const w = FAIXA / 2 + (MEIA - FAIXA / 2) * suave((i * PASSO) / 90)
+    p.esq[i] = -w
+    p.dir[i] = w
+  }
+  for (let i = 0; i < p.n; i++) p.py[i] += 0.04 * suave((i * PASSO - (p.L - 70)) / 50)
+  derivar(p, 18, (i) => Math.min(suave((i * PASSO - 90) / 60), suave((p.L - i * PASSO - 160) / 60)))
+  const v = via(p, `${A.t}>${B.t}@${u}`, "saida", B.t, A.t)
+  v.lado = -1
+  v.chega = { u: e, lado: 1 }
+  return { v, e }
 }
 
 // duas pistas não podem se encostar: onde as projeções se sobrepõem, a
@@ -307,6 +355,17 @@ export function montarMundo(): Mundo {
   for (let it = 0; it < 16; it++) {
     vias = [...circs]
     circs.forEach((c) => (c.faixas = []))
+    {
+      const A = circs[circuito.linha]
+      const B = circs[circuito.suburbio]
+      B.chegadas = B.chegadas.slice(0, chegam("suburbio").length)
+      for (const u of DESCIDAS) {
+        const { v, e } = montarDescida(A, B, u)
+        A.faixas.push({ para: "suburbio", via: vias.length, u, lado: -1 })
+        B.chegadas.push({ u: e, lado: 1 })
+        vias.push(v)
+      }
+    }
     for (const t of TERRITORIOS) {
       const A = circs[circuito[t.id]]
       for (const s of saidasDe(t.id)) {

@@ -1442,3 +1442,6 @@
 /* a ilha com mensagem é clicável (abre a conversa) */
 .l-ilha.is-clicavel { pointer-events: auto; cursor: pointer; }
 .l-ilha.is-clicavel::after { content: "abrir ›"; position: absolute; right: 12px; bottom: 6px; font: 8px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cor); opacity: 0.7; }
+
+/* créditos de modelos 3D (licenças CC-BY pedem) */
+.l-creditos { margin: 10px 16px 24px; text-align: center; font: 9px/1.5 var(--mono); color: var(--mut); opacity: 0.7; }
