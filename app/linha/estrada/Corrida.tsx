@@ -19,6 +19,7 @@ import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Cabine, OLHO } from "./Cabine"
 import { Cinema } from "./Cinema"
+import { LADO_METRO, Metro, montarMetro } from "./Metro"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
@@ -1228,6 +1229,7 @@ function Cena({
     if (pausado) { calar(); motor?.atualizar(0, false, false) }
   }, [pausado, calar, motor])
 
+  const metro = useMemo(() => montarMetro(M), [M])
   const tex = useMemo(() => ({ asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
 
   // cor de cada trecho: o lugar do circuito; nas saídas, metade de cada lado
@@ -1326,7 +1328,9 @@ function Cena({
         const k = Math.floor(r() * C.n)
         if (noTunel(C, k)) continue
         const lado = r() < 0.5 ? -1 : 1
-        const off = MEIA + e.off[0] + r() * (e.off[1] - e.off[0])
+        let off = MEIA + e.off[0] + r() * (e.off[1] - e.off[0])
+        // o corredor da Linha 9 (monotrilho à esquerda do circuito principal)
+        if (C === M.vias[M.circuito.linha] && lado < 0) off = Math.max(off, -LADO_METRO + 20)
         const h = e.h[0] + r() * r() * (e.h[1] - e.h[0])
         const bx = C.px[k] - C.tz[k] * lado * off
         const bz = C.pz[k] + C.tx[k] * lado * off
@@ -2548,6 +2552,7 @@ function Cena({
         </mesh>
       ))}
       <primitive object={cidade.pilares} />
+      <Metro metro={metro} />
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
       <points geometry={cidade.luzes} material={cidade.luzMat} />
