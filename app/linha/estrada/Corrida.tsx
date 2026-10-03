@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Cabine, OLHO } from "./Cabine"
+import { Cinema } from "./Cinema"
 import { dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
@@ -838,7 +839,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           className="l-viagem-cvs"
           dpr={[1, 1.5]}
           frameloop={pausado ? "never" : "always"}
-          gl={{ antialias: true, powerPreference: "high-performance" }}
+          gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
           camera={{ fov: 60, near: 0.1, far: 3200 }}
           onPointerDown={(e) => {
             if (cinemaRef.current) return
@@ -1299,12 +1300,26 @@ function Cena({
       const tt = territorio(v.t).tunel
       return v.tipo === "circuito" && !!tt && i / v.n > tt[0] && i / v.n < tt[1]
     }
+    const topos: number[] = []
     const predios = circuitos.map((C) => {
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
       const e = ESTILO[t.predio]
       const qt = Math.round((e.n * C.L) / 2600)
-      const mat = new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: ds.janela, emissiveMap: tex.janelas, emissiveIntensity: e.brilho, roughness: 0.9 })
+      const mat = new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: ds.janela, emissiveMap: tex.janelas, emissiveIntensity: e.brilho, roughness: 0.62, metalness: 0.35 })
+      // janela em escala real: a textura repete pelo tamanho de cada prédio
+      // (antes um prédio de 200 m tinha janelas de 7 m) e cada prédio começa
+      // num ponto diferente dela; telhado sem janela
+      mat.onBeforeCompile = (sh) => {
+        sh.vertexShader = sh.vertexShader.replace("#include <uv_vertex>", `#include <uv_vertex>
+          #ifdef USE_EMISSIVEMAP
+            vec3 escala = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+            float largura = abs(normal.x) > 0.5 ? escala.z : escala.x;
+            vec2 semente = fract(instanceMatrix[3].xz * vec2(0.0137, 0.0191));
+            vEmissiveMapUv = vEmissiveMapUv * vec2(largura / 22.0, escala.y / 90.0) + semente;
+            if (abs(normal.y) > 0.5) vEmissiveMapUv = vec2(0.0);
+          #endif`)
+      }
       const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, qt)
       let i = 0
       for (let tent = 0; i < qt && tent < qt * 10; tent++) {
@@ -1318,6 +1333,7 @@ function Cena({
         const w = e.w[0] + r() * (e.w[1] - e.w[0])
         if (!M.livre(bx, bz, 10 + w * 0.7)) continue
         d.position.set(bx, -12 + h / 2, bz)
+        if (h > 85) topos.push(bx, -12 + h + 1.5, bz)
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
         d.scale.set(w, h, e.w[0] + r() * (e.w[1] - e.w[0]))
         d.updateMatrix()
@@ -1456,7 +1472,12 @@ function Cena({
       }
     })
 
-    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors }
+    // a luz vermelha de aviação no topo dos prédios altos (pisca no loop)
+    const aviacao = new THREE.BufferGeometry()
+    aviacao.setAttribute("position", new THREE.BufferAttribute(new Float32Array(topos), 3))
+    const aviacaoMat = new THREE.PointsMaterial({ size: 5, map: tex.brilho, color: "#ff2a2a", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
+
+    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat }
   }, [M, circuitos, tex, distI])
 
   // ── portais das estações (no centro) ──
@@ -1688,24 +1709,52 @@ function Cena({
     return { n, pos, vel, vida, g, prox: 0 }
   }, [])
 
-  // céu em gradiente com lua
+  // céu de cidade grande à noite: gradiente, poluição luminosa no horizonte
+  // (sódio laranja + a cor do bairro), um teto de nuvens baixas acesas POR
+  // BAIXO pela cidade e andando com o vento, a lua atravessando as nuvens
+  // (borda prateada) e umas estrelas nos buracos
   const ceuMat = useMemo(() => new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
-    uniforms: { lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() }, tinta: { value: new THREE.Color("#4a1a30") }, nevoaC: { value: new THREE.Color("#1a0f24") } },
+    uniforms: { lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() }, tinta: { value: new THREE.Color("#4a1a30") }, nevoaC: { value: new THREE.Color("#1a0f24") }, tempo: { value: 0 } },
     vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-    fragmentShader: `varying vec3 vP; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC;
+    fragmentShader: `varying vec3 vP; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC; uniform float tempo;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float ruido(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+        return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+      float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int k = 0; k < 5; k++){ v += a * ruido(p); p = p * 2.03 + 17.1; a *= 0.5; } return v; }
       void main(){
-        float h = vP.y;
-        vec3 fundo = nevoaC;
-        vec3 faixa = tinta;
-        vec3 meio = vec3(0.06,0.10,0.29);
-        vec3 topo = vec3(0.016,0.016,0.06);
-        vec3 c = mix(fundo, faixa, smoothstep(-0.04, 0.03, h));
-        c = mix(c, meio, smoothstep(0.03, 0.22, h));
-        c = mix(c, topo, smoothstep(0.22, 0.8, h));
-        float m = max(dot(vP, lua), 0.0);
-        c += vec3(0.8,0.85,1.0) * smoothstep(0.9993, 0.9997, m) + vec3(0.25,0.3,0.6) * pow(m, 60.0) * 0.5;
+        vec3 d = normalize(vP);
+        float h = d.y;
+        float hp = max(h, 0.0);
+        vec3 topo = vec3(0.012, 0.014, 0.05);
+        vec3 meio = vec3(0.05, 0.07, 0.2);
+        vec3 c = mix(nevoaC, tinta, smoothstep(-0.04, 0.03, h));
+        c = mix(c, meio, smoothstep(0.03, 0.25, h));
+        c = mix(c, topo, smoothstep(0.25, 0.85, h));
+        // poluição luminosa: a cidade acende o horizonte
+        vec3 sodio = vec3(1.0, 0.46, 0.18);
+        c += tinta * exp(-hp * 9.0) * 0.55 + sodio * exp(-hp * 16.0) * 0.16;
+        // estrelas (só lá em cima)
+        vec2 g = floor(d.xz / (hp + 0.15) * 260.0);
+        float est = step(0.9965, hash(g)) * smoothstep(0.2, 0.5, h);
+        c += vec3(0.75, 0.8, 1.0) * est * (0.5 + 0.5 * sin(tempo * 3.0 + hash(g) * 40.0));
+        // lua + halo
+        float m = max(dot(d, lua), 0.0);
+        vec3 luaC = vec3(0.85, 0.9, 1.0) * smoothstep(0.99935, 0.99965, m) * 1.6;
+        vec3 halo = vec3(0.3, 0.36, 0.7) * pow(m, 48.0) * 0.55;
+        c += luaC + halo;
+        // nuvens: um teto baixo, projetado num plano, andando com o vento
+        vec2 uv = d.xz / (hp + 0.09) * 2.1 + vec2(tempo * 0.012, tempo * 0.005);
+        float n = fbm(uv);
+        float n2 = fbm(uv * 2.7 - tempo * 0.02);
+        float cob = smoothstep(0.34, 0.7, n * 0.75 + n2 * 0.35) * smoothstep(0.0, 0.07, h);
+        // a base da nuvem pega a luz da cidade; o alto fica escuro
+        vec3 nuvem = mix(tinta * 1.25 + sodio * 0.18, vec3(0.035, 0.035, 0.08), smoothstep(0.02, 0.55, h));
+        nuvem *= 0.65 + 0.55 * n2;
+        // borda prateada onde a lua bate
+        nuvem += vec3(0.55, 0.62, 0.95) * pow(m, 10.0) * (1.0 - cob) * cob * 2.4;
+        c = mix(c, nuvem, cob * 0.92);
         gl_FragColor = vec4(c, 1.0);
       }`,
   }), [])
@@ -2342,6 +2391,9 @@ function Cena({
     ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
     ceuMat.uniforms.nevoaC.value.lerp(alvoNevoa, kk)
     ceuMat.uniforms.tinta.value.lerp(alvoCeu, kk)
+    ceuMat.uniforms.tempo.value += dt
+    // aviação: 1 s aceso, 1 s apagado, todos juntos (como na vida)
+    cidade.aviacaoMat.opacity = Math.sin(ceuMat.uniforms.tempo.value * Math.PI) > 0 ? 1 : 0.08
     if (hemi.current) hemi.current.color.lerp(alvoCeu, kk * 0.5)
 
     // som: só o motor
@@ -2486,6 +2538,7 @@ function Cena({
       ))}
 
       {cidade.predios.map((m, i) => <primitive key={i} object={m} />)}
+      <points geometry={cidade.aviacao} material={cidade.aviacaoMat} />
       <primitive object={cidade.arcos} />
       <primitive object={cidade.fitas} />
       {cidade.outdoors.map((o, i) => (
@@ -2637,6 +2690,7 @@ function Cena({
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
         <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />
       </group>
+      <Cinema />
     </>
   )
 }
