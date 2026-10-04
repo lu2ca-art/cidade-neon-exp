@@ -83,7 +83,7 @@ export default function LinhaPage() {
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
-  const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean } | null>(null)
+  const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; chegou?: boolean } | null>(null)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
   // a ilha do topo virou bifurcação: a conversa do painel se recolhe
@@ -343,6 +343,7 @@ export default function LinhaPage() {
   const fimCena = useCallback((r: ResultadoCena) => {
     const c = cena
     setCena(null)
+    setViagem(null)
     setCinema(null)
     if (!c) return
     const est = c.missao
@@ -747,7 +748,8 @@ export default function LinhaPage() {
         )}
         {viagem && (
           <Viagem
-            onFim={() => { const v = viagem; setViagem(null); setCena(v) }}
+            chegou={!!viagem.chegou}
+            onFim={() => { setViagem({ ...viagem, chegou: true }); setCena({ lugar: viagem.lugar, missao: viagem.missao, pegar: viagem.pegar }) }}
           />
         )}
         {ligacao && <LigacaoNaKombi key={ligacao.lig.id} lig={ligacao.lig} onFim={fimLigacao} onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))} />}

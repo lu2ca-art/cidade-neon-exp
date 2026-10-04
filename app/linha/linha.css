@@ -1542,3 +1542,5 @@
 .l-estrada-fora-corte { position: absolute; inset: 0; z-index: 4; background: #000; }
 .l-estrada-fora-legenda { position: absolute; left: 24px; right: 24px; bottom: calc(11vh + 22px); z-index: 3; margin: 0; text-align: center; font: italic 500 16px/1.4 var(--sans, system-ui); color: rgba(255,255,255,0.86); text-shadow: 0 1px 10px rgba(0,0,0,0.8); animation: l-fade 1.2s both; }
 .l-estrada-fora-dica { position: absolute; left: 0; right: 0; top: calc(11vh + 16px); z-index: 3; text-align: center; font: 700 10px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.55); animation: l-fade 0.8s 1.2s both; }
+/* chegou: a estrada fica de fundo, parada, e a cena da casa roda por cima */
+.l-estrada-fora.is-chegou { z-index: 29; cursor: default; animation: none; }
