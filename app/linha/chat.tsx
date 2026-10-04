@@ -317,6 +317,10 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
       case "lugar": {
         // a conversa para no convite: o resto é a cena no lugar (cenas.ts)
         const est = id as EstacaoId
+        // carona: a 1ª parada é a casa da pessoa. Se ela já entrou na Kombi,
+        // a conversa segue (a crise no caminho) até a 2ª parada
+        const primeiroLugar = roteiro.passos.findIndex((x) => x.t === "lugar")
+        if (MISSOES[est]?.carona && pos === primeiroLugar && saveRef.current.itens.includes(`carona:${est}`)) { avancar(); break }
         const jaTem = logRef.current.some((it) => it.k === "tarefa")
         agendar(400, null, () => {
           const it: Item = { k: "tarefa", estacao: est }

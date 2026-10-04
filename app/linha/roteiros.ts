@@ -348,8 +348,11 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "a D-Bee diz que é de propósito. multidão que n se olha n se junta. e gente junta derruba coisa" },
       { t: "msg", texto: "sabe o que é pior? eu queria sair" },
       { t: "msg", texto: "mas se eu for sozinho eu volto antes de chegar" },
-      { t: "msg", texto: "vc tá de kombi né. me busca? moro no subúrbio xenom" },
-      { t: "tarefa" },
+      { t: "msg", texto: "vc tá de kombi né. me busca? moro no subúrbio xenom, AP 222" },
+      { t: "msg", texto: "encosta na frente. se eu n descer em 1 minuto, buzina. se eu n descer em 2, desiste" },
+      // 1ª parada: a casa dele (a cena da porta, cenas.ts). Depois dela a
+      // conversa continua aqui, no caminho (a crise)
+      { t: "lugar" },
       // ATO 2 · bateria esgotada (SEXTA C2): no meio da carona ele quer voltar
       { t: "msg", texto: "para" },
       { t: "msg", texto: "volta. me deixa em casa. foi uma ideia ruim" },
@@ -362,20 +365,10 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "ninguém tá olhando. é só a gente", tom: "acordado", resposta: ["…", "tá. mais um pouco"] },
         ],
       },
-      { t: "chegar" },
-      { t: "msg", texto: "valeu pela carona" },
-      { t: "msg", texto: "tem um espelho aqui na estação que embaçou faz tempo" },
-      { t: "msg", texto: "n tenho coragem de limpar. e se eu n gostar de quem tá lá?" },
-      { t: "msg", texto: "limpa pra mim?" },
-      { t: "prova", id: "espelho" },
-      { t: "msg", texto: "…é vc aí?" },
-      { t: "msg", texto: "engraçado. parece comigo também" },
-      { t: "objeto" },
-      { t: "audio", src: "/audio/tracks/sextafeira.mp3", titulo: "Sexta-Feira" },
-      { t: "msg", texto: "lembrei de uma coisa de ontem. eu tava num show. o chão tremendo, todo mundo pulando junto. depois mais nada" },
-      { t: "msg", texto: "se um dia precisar dançar na frente do núcleo, eu danço" },
-      { t: "msg", texto: "sozinho se precisar. mas acho que n vou tá sozinho" },
-      { t: "fim" },
+      { t: "msg", texto: "a balada é na cidade neon. SEXTA, letreiro rosa. do lado direito" },
+      // 2ª parada: a balada (a cena da dança)
+      { t: "lugar" },
+      { t: "fim", para: "mapa" },
     ],
   },
 

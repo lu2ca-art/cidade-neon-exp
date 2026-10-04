@@ -47,6 +47,8 @@ export interface MissaoDef {
   // leva até o outro
   lugar?: LugarId
   carona?: LugarId
+  // o que a carona fala no caminho (dirigindo, pela ilha)
+  caminho?: string[]
   extra?: string // recompensa própria da missão, além das de sempre
 }
 
@@ -83,18 +85,16 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   sexta: {
     id: "sexta", estilo: "estrada",
     chamado: "sexta e eu em casa de novo. me busca?",
-    tarefa: "buscar o Drewboy de carona no subúrbio",
-    busca: {
-      item: "carona", nome: "Drewboy de carona", onde: "suburbio", em: [0.22],
-      lugar: "a casa do Drewboy, no subúrbio xenom",
-      pega: [{ de: "Drewboy", texto: "entrei. bora antes que eu desista" }],
-      caminho: [
+    tarefa: "buscar o Drewboy em casa e levar ele na balada",
+    carona: "casa-drewboy",
+    lugar: "balada",
+    caminho: [
         "vc sempre dirige assim?",
         "essa música é boa. n conta pra ninguém que eu disse",
         "faz tempo que eu n via a cidade de fora do quarto",
         "ok. eu tô gostando",
       ],
-    },
+    extra: "o espelho de bolso rachado",
   },
   ontem: {
     id: "ontem", estilo: "historia",

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react"
 import { RELIQUIAS, type Cena, type PassoCena, type Reliquia } from "./cenas"
 import { estacao as getEstacao, type EstacaoId } from "./data"
 import { MEMORIAS } from "./missoes"
+import { LUGARES } from "./lugares"
 import { VOZES, type Tom } from "./roteiros"
 import { gota } from "./som"
 import { vib } from "./som-carro"
@@ -30,7 +31,9 @@ const COPOS = [
   { id: "eternidade", nome: "o copo da eternidade", promessa: "agora você nunca mais vai querer sair" },
 ]
 
-export function CenaLugar({ cena, memoria, onTom, onFim }: { cena: Cena; memoria: number; onTom: (t: Tom) => void; onFim: (r: ResultadoCena) => void }) {
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, onTom, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; onTom: (t: Tom) => void; onFim: (r: ResultadoCena) => void }) {
+  // os passos com `se` só entram se a pessoa já passou por aquela estação
+  const cena = useMemo(() => ({ ...cenaBruta, passos: cenaBruta.passos.filter((p) => !("se" in p) || !p.se || objetos.includes(p.se)) }), [cenaBruta, objetos])
   const [pos, setPos] = useState(0)
   const [fila, setFila] = useState<Fila>([])
   const [ganhos, setGanhos] = useState<{ objeto?: EstacaoId; reliquias: Reliquia[] }>({ reliquias: [] })
@@ -81,7 +84,7 @@ export function CenaLugar({ cena, memoria, onTom, onFim }: { cena: Cena; memoria
     <div className="l-cena" onClick={atual ? avancar : undefined}>
       <div className="l-cena-tarja is-cima" />
       <div className="l-cena-tarja is-baixo" />
-      <small className="l-cena-lugar">{cena.lugar === "bar" ? "o copo · cidade neon" : cena.lugar}</small>
+      <small className="l-cena-lugar">{LUGARES[cena.lugar].letreiro.toLowerCase()} · {LUGARES[cena.lugar].nome}</small>
 
       {atual && atual.tipo === "nucleo" && (
         <div className="l-cena-nucleo"><b>NÚCLEO</b><p>{atual.texto.slice(0, letras)}</p></div>
@@ -103,6 +106,7 @@ export function CenaLugar({ cena, memoria, onTom, onFim }: { cena: Cena; memoria
       )}
 
       {!atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} />}
+      {!atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
 
       {mostrando && (
         <Ganho objeto={mostrando.objeto} reliquia={mostrando.reliquia} memoria={mostrando.objeto ? memoria : null} onOk={fecharGanho} />
@@ -163,6 +167,40 @@ function Copos({ onNegar }: { onNegar: () => void }) {
   )
 }
 
+// O GESTO da balada: o Drewboy dança e você marca o ritmo. Um anel fecha no
+// compasso; tocar quando ele encosta no círculo é acertar. Cada acerto abaixa
+// uns celulares na pista. Oito e ele se solta (errar não tira nada)
+const BATIDA = 560 // ms (~107 bpm)
+function Danca({ onFim }: { onFim: () => void }) {
+  const [t0] = useState(() => performance.now())
+  const [acertos, setAcertos] = useState(0)
+  const [ultimo, setUltimo] = useState<{ ok: boolean; n: number } | null>(null)
+  const META = 8
+  const tocar = () => {
+    const fase = ((performance.now() - t0) % BATIDA) / BATIDA
+    const ok = fase > 0.8 || fase < 0.12
+    if (ok) { vib(18); gota(5); setAcertos((a) => a + 1) }
+    setUltimo((u) => ({ ok, n: (u?.n ?? 0) + 1 }))
+  }
+  useEffect(() => {
+    if (acertos < META) return
+    const t = setTimeout(onFim, 900)
+    return () => clearTimeout(t)
+  }, [acertos, onFim])
+  const celulares = Math.max(0, 200 - Math.round((acertos / META) * 200))
+  return (
+    <div className="l-danca" onClick={(e) => { e.stopPropagation(); if (acertos < META) tocar() }} style={{ ["--batida" as string]: `${BATIDA}ms` }}>
+      <div className="l-danca-alvo">
+        <i className="l-danca-anel" />
+        <b>{acertos >= META ? "solta" : "toca no ritmo"}</b>
+      </div>
+      {ultimo && <small key={ultimo.n} className={`l-danca-eco ${ultimo.ok ? "is-ok" : ""}`}>{ultimo.ok ? "isso" : "…"}</small>}
+      <p className="l-danca-conta">celulares levantados: {celulares}</p>
+      <div className="l-danca-barra"><i style={{ width: `${(acertos / META) * 100}%` }} /></div>
+    </div>
+  )
+}
+
 function Ganho({ objeto, reliquia, memoria, onOk }: { objeto?: EstacaoId; reliquia?: Reliquia; memoria: number | null; onOk: () => void }) {
   const e = objeto ? getEstacao(objeto) : null
   const r = reliquia ? RELIQUIAS[reliquia] : null
@@ -172,6 +210,7 @@ function Ganho({ objeto, reliquia, memoria, onOk }: { objeto?: EstacaoId; reliqu
       <small>{r ? "uma relíquia · ela vai pro deserto" : "você ganhou"}</small>
       <b>{r ? r.nome : e?.objetoNome}</b>
       <p>{r ? r.texto : `a 222 ganhou ${e?.faixa}. liga o RÁDIO`}</p>
+      {r && e && <p className="l-cena-ganha-mais">e a 222 ganhou {e.faixa}</p>}
       {e && memoria !== null && MEMORIAS[memoria] && <blockquote>{MEMORIAS[memoria]}</blockquote>}
       <i className="l-cena-toque">toca pra seguir</i>
     </div>

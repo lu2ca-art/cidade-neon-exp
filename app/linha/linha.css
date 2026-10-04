@@ -1493,3 +1493,16 @@
 
 /* durante a cena de um lugar, a ilha e o guia somem (é cinema) */
 .l-viagem.is-cinema .l-ilha, .l-viagem.is-cinema .l-guia, .l-viagem.is-cinema .l-hud-missao { display: none !important; }
+
+/* o gesto da balada: a dança no ritmo */
+.l-danca { position: relative; z-index: 2; margin: 0 16px calc(11vh + 16px); display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.l-danca-alvo { position: relative; width: 150px; height: 150px; display: grid; place-items: center; border-radius: 50%; border: 2px solid #ff3fb0; box-shadow: 0 0 30px -6px #ff3fb0, inset 0 0 30px -10px #ff3fb0; background: rgba(5,5,14,0.6); }
+.l-danca-alvo b { font: 800 14px var(--cond); text-transform: uppercase; letter-spacing: 0.08em; color: #fff; }
+.l-danca-anel { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #fff; animation: l-danca-fecha var(--batida) linear infinite; }
+@keyframes l-danca-fecha { 0% { transform: scale(2.1); opacity: 0; } 30% { opacity: 0.9; } 100% { transform: scale(1); opacity: 1; } }
+.l-danca-eco { font: 700 12px var(--mono); color: rgba(255,255,255,0.5); animation: l-tag 0.6s ease-out both; }
+.l-danca-eco.is-ok { color: #ff7fd0; }
+.l-danca-conta { margin: 0; font: 13px var(--mono); color: rgba(255,255,255,0.8); }
+.l-danca-barra { width: 70%; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
+.l-danca-barra i { display: block; height: 100%; background: #ff3fb0; box-shadow: 0 0 10px #ff3fb0; transition: width 0.2s; }
+.l-cena-ganha-mais { font: 12px var(--mono) !important; color: rgba(255,255,255,0.6) !important; }
