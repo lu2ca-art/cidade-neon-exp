@@ -219,6 +219,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [segId, segVoltas, poses])
   const camLugarRef = useRef<PoseLugar | null>(null)
   useEffect(() => { camLugarRef.current = cenaLugar ? poses[cenaLugar] : null }, [cenaLugar, poses])
+  const conversaRef = useRef(conversa)
+  useEffect(() => { conversaRef.current = conversa }, [conversa])
   const caidoRef = useRef(caido)
   useEffect(() => { caidoRef.current = caido }, [caido])
   const foraRef = useRef(foraDoAr)
@@ -687,7 +689,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           prog = j.u / V.L
           // cartão da bifurcação: as três opções, acende a do lado em que
           // o carro está
-          const chave = garfo < 450 ? `${j.via}:${uG % V.L}` : ""
+          // com conversa no painel, o cartão só toma a ilha nos últimos 330 m
+          // (onde o toque marca a saída): na cidade as descidas vêm a cada
+          // ~650 m e a conversa ficava escondida quase o tempo todo
+          const chave = garfo < (conversaRef.current ? 330 : 450) ? `${j.via}:${uG % V.L}` : ""
           if (chave !== garfoChave.current) {
             garfoChave.current = chave
             const u0 = uG % V.L
