@@ -203,6 +203,7 @@ export function areaDoPasso(s: Save, id: EstacaoId): FreqId {
 }
 
 // a missão que está valendo agora (o foco do HUD e de quem chama):
+// 0. a de quem está de carona na Kombi
 // 1. uma já começada cujo próximo passo é AQUI, nesta área
 // 2. alguém DESTA área que ainda não te chamou (chama agora)
 // 3. qualquer outra já começada (o HUD aponta pra ela de longe)
@@ -211,6 +212,10 @@ export function ativa(s: Save, nivel: number, agora = Date.now()): EstacaoId | n
   const ok = (id: EstacaoId) => !s.objetos.includes(id) && !!MISSOES[id] && missao(estacao(id), nivel, agora).ok
   const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
   const comecadas = ordem.filter((id) => ok(id) && s.pausas[id] !== undefined)
+  // 0. tem alguém de carona na Kombi: a missão dele manda (ninguém mais
+  // te chama por cima de quem está sentado do seu lado)
+  const levando = comecadas.find((id) => MISSOES[id]?.carona && s.itens.includes(`carona:${id}`))
+  if (levando) return levando
   const aqui = comecadas.find((id) => areaDoPasso(s, id) === area)
   if (aqui) return aqui
   const nova = ordem.find((id) => ok(id) && s.pausas[id] === undefined && areaDaMissao(id) === area)
