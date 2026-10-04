@@ -5,6 +5,7 @@
 // pra cena começar) e quem está esperando na porta. A cor do lugar é a da
 // estação de quem mora lá; a cor pessoal fica no detalhe (porta, toldo).
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
 import * as THREE from "three"
@@ -44,27 +45,41 @@ export function poseLugar(M: Mundo, l: Lugar): PoseLugar {
   return { via, u: l.u, lado: l.lado, chao, centro, rumo, porta, vaga, cam }
 }
 
-function Pessoa({ cor, pos }: { cor: string; pos: [number, number, number] }) {
-  const cab = useRef<THREE.Mesh>(null)
+// a gente na porta: um corpo modelado no Blender (blender/scripts/pessoa.py),
+// escuro com a cor de quem é no contorno. Respira e balança o peso de leve.
+const URL_PESSOA = "/models/pessoa.glb"
+
+function Pessoa({ cor, pos, vira }: { cor: string; pos: [number, number, number]; vira: number }) {
+  const { scene } = useGLTF(URL_PESSOA)
+  const corpo = useMemo(() => {
+    const g = scene.clone(true)
+    const mat = new THREE.MeshStandardMaterial({ color: "#14152a", emissive: cor, emissiveIntensity: 0.22, roughness: 0.75 })
+    g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.material = mat })
+    return g
+  }, [scene, cor])
+  const g = useRef<THREE.Group>(null)
   const fase = pos[0] * 3.1 + pos[2] * 1.7
-  useFrame((s) => { if (cab.current) cab.current.position.y = 1.62 + Math.sin(s.clock.elapsedTime * 1.4 + fase) * 0.015 })
+  useFrame((s) => {
+    if (!g.current) return
+    const t = s.clock.elapsedTime + fase
+    g.current.scale.y = 1 + Math.sin(t * 1.4) * 0.006
+    g.current.rotation.z = Math.sin(t * 0.35) * 0.025
+  })
   return (
-    <group position={pos}>
-      <mesh position={[0, 0.95, 0]}>
-        <capsuleGeometry args={[0.24, 0.85, 6, 12]} />
-        <meshStandardMaterial color="#14152a" emissive={cor} emissiveIntensity={0.18} roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 1.15, 0.2]}>
-        <boxGeometry args={[0.36, 0.04, 0.02]} />
+    <group position={pos} rotation-y={vira}>
+      <group ref={g}>
+        <primitive object={corpo} />
+      </group>
+      {/* a cor da pessoa: uma faixa de luz no peito */}
+      <mesh position={[0, 1.22, 0.12]}>
+        <boxGeometry args={[0.3, 0.035, 0.02]} />
         <meshBasicMaterial color={cor} toneMapped={false} />
-      </mesh>
-      <mesh ref={cab} position={[0, 1.62, 0]}>
-        <sphereGeometry args={[0.17, 16, 12]} />
-        <meshStandardMaterial color="#c99b76" emissive="#3a2418" emissiveIntensity={0.5} roughness={0.6} />
       </mesh>
     </group>
   )
 }
+
+useGLTF.preload(URL_PESSOA)
 
 function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean; emCena: boolean }) {
   const letreiro = useMemo(() => texTexto([{ txt: l.letreiro, tam: 150, cor: l.cor }], 1024, 220), [l])
@@ -132,7 +147,9 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
           {/* a luz da vitrine no chão da calçada */}
           <pointLight position={[0, 2.5, 2.5]} color={l.cor} intensity={emCena ? 34 : 20} distance={12} decay={2} />
         </group>
-        {/* um poste na calçada, luz branca fria (contra o quente do lugar) */}
+        {/* um poste na calçada, luz branca fria (contra o quente do lugar).
+            Na cena ele sai: fica bem na frente da câmera */}
+        {!emCena && <>
         <mesh position={[-6.5, 2.4, FUNDO / 2 + 7.2]}>
           <cylinderGeometry args={[0.07, 0.09, 4.8, 8]} />
           <meshStandardMaterial color="#20223a" />
@@ -141,6 +158,7 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
           <sphereGeometry args={[0.22, 12, 8]} />
           <meshBasicMaterial color="#dfe9ff" toneMapped={false} />
         </mesh>
+        </>}
         <pointLight position={[-6.5, 4.6, FUNDO / 2 + 7.2]} color="#cfe0ff" intensity={18} distance={11} decay={2} />
         {/* calçada até a pista */}
         <mesh position={[0, 0.06, FUNDO / 2 + 4.5]}>
@@ -149,7 +167,7 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
         </mesh>
         {/* quem espera na porta (a missão de lá está valendo, ou é a cena) */}
         {(alvo || emCena) && l.gente.map((g, k) => (
-          <Pessoa key={g.quem} cor={g.cor} pos={[2.8 - k * 1.3, 0.12, FUNDO / 2 + 1.4 + (k % 2) * 0.5]} />
+          <Pessoa key={g.quem} cor={g.cor} pos={[2.8 - k * 1.3, 0.12, FUNDO / 2 + 1.4 + (k % 2) * 0.5]} vira={-0.5 * l.lado + k * 0.6} />
         ))}
       </group>
       {/* a vaga: um retângulo na beira da pista, do lado do lugar */}
