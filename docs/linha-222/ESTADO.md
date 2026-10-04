@@ -4,7 +4,7 @@
 > item andar, atualize aqui e na issue #22. No Mac, o bookmark geral fica em
 > `~/vault/operacional/state.md` (o "AGUA" lê de lá).
 
-Última atualização: 02/10/2026 (Mac).
+Última atualização: 04/10/2026 (Mac).
 
 ## 02/10 no Mac — feito e NO AR (main)
 
@@ -41,6 +41,9 @@
 | CARONA do Drewboy: chama no subúrbio → a CASA (AP 222, cena da porta, ele entra na Kombi, aparece no banco em 1ª pessoa, comenta no caminho) → a crise no painel ~25 s depois ("para. volta") → A BALADA (todo mundo filmando, o DJ é o feed, gesto: DANÇAR no ritmo até baixarem os celulares) → o espelho rachado (objeto + relíquia). Colisão: se o bar já foi feito, a mulher dos copos no camarote e o Mubarak no canto | — | (este merge) |
 | FASE 1 nos lugares: Ella (busca o cantil → O LUGAR ESCONDIDO, regar), Notti (O TERRAÇO do mirante: 15 s de silêncio absoluto, a luz da casa da D-Bee lá longe, depois respirar), Alohan (busca as páginas → A CASA DE SHOWS: o caderno, a sua linha, o poste que apaga). Missão pode ter busca e depois lugar | — | (este merge) |
 | EP. 2 (trancado até 16/10): O POSTO (o LU2CA reconhece o violão, a confissão, entra na Kombi) → crise no caminho → A ESTAÇÃO 6 da Linha 9 (o vagão: artistas definhando, gesto TOCAR, a letra escrita à mão, gesto FUGIR, pular do trem, o VIOLÃO FICA NO TREM → app trancado até o GUITAR DRIVER; "eu sei quem você é, 0222.") | — | (este merge) |
+| GENTE nas portas: corpo modelado no Blender (`blender/scripts/pessoa.py` → `public/models/pessoa.glb`, 54 KB) no lugar das cápsulas, respira e balança o peso; o poste da calçada sai da frente da câmera durante a cena | — | (este merge) |
+| O BECO DOS TRÊS LETREIROS (lugar secreto, sem missão nem marcador): libera depois do terraço da Notti (ela vê lá de cima as três ruas que dão a volta). Fica no mirante (u 1300, esquerda): dois paredões cinza, os letreiros GLAMOUR / CONSUMO / CONFORTO em cima. Só aparece depois de passar por ele 1 (acordado), 2 (acordando) ou 3 (dormindo) vezes; aí a 222 sussurra. A moradora fala em pedaços, gesto ORDEM ("se quiser ver / pare de procurar / onde todos olham") → O RELICÁRIO (a cidade verde) | — | (este merge) |
+| FIX: quem está de carona tem prioridade (com o Drewboy no banco, a Ella não chamava mais por cima ao entrar no subúrbio) | — | (este merge) |
 
 **#30 continua aberta:** com o critério certo (gravação ≤ 1925 confirmada,
 nada de "PDP-CH" suíço sem data, nada de MIDI) o Wikimedia só rendeu 2. Próxima
