@@ -199,7 +199,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
 
   chuva: {
     contato: "Ella",
-    status: "estação 1 · chuva",
+    status: "o lugar escondido",
     passos: [
       { t: "msg", texto: (c) => `oi ${c.nome}` },
       { t: "msg", texto: (c) => (c.estacao === "chuva" ? "vc anda na chuva sem pressa. igual quem é daqui" : "vc é a primeira pessoa nova que eu vejo andando na chuva sem pressa") },
@@ -235,18 +235,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "se vc acha melhor…", tom: "dormindo", resposta: ["…", "n. traz. eu só falei por medo"] },
         ],
       },
-      { t: "chegar" },
-      { t: "msg", texto: "vc foi até o subúrbio por uma flor" },
-      { t: "msg", texto: "rega devagar" },
-      { t: "prova", id: "regar" },
-      { t: "msg", texto: "olha isso" },
-      { t: "objeto" },
-      { t: "audio", src: "/audio/tracks/222-chuva.mp3", titulo: "CHUVA" },
-      { t: "msg", texto: "no caos também nasce coisa" },
-      { t: "msg", texto: "sabe o que eu lembro de ontem? uma música tocando alto na rua. todo mundo parou pra ouvir, até quem n se falava. aí apagou" },
-      { t: "msg", texto: "a D-Bee tá juntando gente, né" },
-      { t: "msg", texto: "eu n sou de briga. mas quando ela chamar, eu vou. com medo. chorando se precisar" },
-      { t: "fim" },
+      // a virada acontece no LUGAR (a cena, cenas.ts), não na estação
+      { t: "lugar" },
+      { t: "fim", para: "mapa" },
     ],
   },
 
@@ -278,7 +269,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
 
   dopamina: {
     contato: "Notti",
-    status: "estação 3 · dopamina",
+    status: "o terraço do mirante",
     passos: [
       { t: "msg", texto: "OI" },
       { t: "msg", texto: "oi oi" },
@@ -300,33 +291,11 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "gente acelerada n pensa. quem n pensa n pergunta. quem n pergunta n incomoda" },
       { t: "msg", texto: "eu n lembro mais qual é o som do silêncio" },
       { t: "msg", texto: "dizem que no topo do mirante o sinal do núcleo n chega" },
-      { t: "msg", texto: "grava 10 segundos de silêncio lá pra mim? sério. preciso ouvir" },
-      { t: "tarefa" },
-      // ATO 2 · algo de estranho (DOPAMINA C2): o medo do silêncio
-      { t: "msg", texto: "MANO" },
-      { t: "msg", texto: "e se eu ouvir o silêncio e n gostar" },
-      { t: "msg", texto: "e se lá dentro tiver uma coisa que eu tô fugindo faz anos" },
-      {
-        t: "escolha",
-        opcoes: [
-          { label: "15 segundos. só isso", tom: "acordando", resposta: ["15 eu aguento", "acho"] },
-          { label: "aí a gente olha junto", tom: "acordado", resposta: ["tá", "promete que n vai embora no meio"] },
-          { label: "e se vc só desligar o celular?", tom: "dormindo", resposta: ["kkkk eu já tentei", "ele liga sozinho"] },
-        ],
-      },
-      { t: "chegar" },
-      { t: "msg", texto: "vc gravou" },
-      { t: "msg", texto: "…" },
-      { t: "msg", texto: "ok. agora me ensina a fazer isso aqui embaixo. três respirações, sem olhar notificação" },
-      { t: "prova", id: "respira" },
-      { t: "msg", texto: "o relógio parou" },
-      { t: "objeto" },
-      { t: "audio", src: "/audio/tracks/dopamina.mp3", titulo: "DopaminA" },
-      { t: "msg", texto: "pela primeira vez eu vou ouvir uma música inteira" },
-      { t: "msg", texto: "ah, e ontem: todos os relógios da cidade pararam às 2:22. TODOS. depois voltaram a andar como se nada" },
-      { t: "msg", texto: "o núcleo apagou isso de todo lugar. menos do meu relógio, que é ruim demais pra atualizar kkkk" },
-      { t: "msg", texto: "conta comigo. eu sou rápida. pra fugir e pra entrar onde n deixam" },
-      { t: "fim" },
+      { t: "msg", texto: "me encontra lá em cima. o terraço do prédio mais alto do mirante" },
+      { t: "msg", texto: "eu vou ter coragem até vc chegar. depois n garanto" },
+      // o silêncio é o próprio lugar (a cena do terraço, cenas.ts)
+      { t: "lugar" },
+      { t: "fim", para: "mapa" },
     ],
   },
 
@@ -374,7 +343,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
 
   ontem: {
     contato: "Alohan",
-    status: "estação 5 · sabe ontem?",
+    status: "a casa de shows",
     passos: [
       { t: "msg", texto: "ei." },
       { t: "msg", texto: "a D-Bee te perguntou se vc sabe ontem, né." },
@@ -406,25 +375,9 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
           { label: "e mesmo assim vc continuou?", tom: "acordando", resposta: ["continuei.", "é a única coisa que eu sei fazer direito."] },
         ],
       },
-      { t: "chegar" },
-      { t: "msg", texto: "agora junta na ordem que soar certo." },
-      { t: "prova", id: "caderno" },
-      { t: "msg", texto: "isso." },
-      { t: "msg", texto: "agora escreve uma linha sua. qualquer coisa. ninguém vai corrigir." },
-      {
-        t: "input", chave: "linha", placeholder: "sua linha no caderno",
-        resposta: () => ["vou guardar do jeito que tá."],
-      },
-      { t: "objeto" },
-      { t: "audio", src: "/audio/tracks/sabe-ontem.mp3", titulo: "Sabe Ontem?" },
-      {
-        t: "msg",
-        texto: (c) => (c.ontemLancada ? "saiu. agora é de todo mundo." : "sai amanhã. vc ouviu antes de todo mundo."),
-      },
-      { t: "msg", texto: "na última página de ontem tem uma plateia. uma pessoa ficou até o fim." },
-      { t: "msg", texto: "ainda n sei quem. mas vou saber." },
-      { t: "msg", texto: "o que vcs fizerem, eu escrevo. alguém tem que contar que teve resistência." },
-      { t: "fim" },
+      // a virada acontece no LUGAR (a cena, cenas.ts), não na estação
+      { t: "lugar" },
+      { t: "fim", para: "mapa" },
     ],
   },
 
