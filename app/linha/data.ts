@@ -35,6 +35,8 @@ export interface Estacao {
   cidade: string
   ouvir: string
   prova?: ProvaId
+  // a missão acontece toda num LUGAR (cenas.ts), sem prova antiga
+  cena?: true
 }
 
 const busca = (faixa: string) =>
@@ -95,7 +97,7 @@ export const ESTACOES: Estacao[] = [
     audio: "/audio/tracks/ojala.mp3", lancamento: "2026-10-30T00:00:00-03:00",
     luz: "esperança", sombra: "destino",
     cidade: "carnaval fora de época, amor com data pra acabar",
-    ouvir: busca("Ojalá"),
+    ouvir: busca("Ojalá"), cena: true,
   },
   {
     id: "swav", n: 8, faixa: "Swav", personagem: "Tony Gordo",
@@ -139,7 +141,7 @@ export type Missao =
   | { ok: false; motivo: "estacao" | "nivel" | "data"; quando?: string }
 
 export function missao(e: Estacao, nivel: number, agora = Date.now()): Missao {
-  if (!e.prova || (e.id !== "ontem" && !lancada(e, agora)))
+  if ((!e.prova && !e.cena) || (e.id !== "ontem" && !lancada(e, agora)))
     return { ok: false, motivo: "data", quando: e.lancamento ?? undefined }
   if (nivel < 1) return { ok: false, motivo: "estacao" }
   return { ok: true }

@@ -1535,3 +1535,10 @@
 .l-ordem-pedacos button { padding: 10px 14px; border-radius: 10px; background: rgba(184,188,200,0.1) !important; border: 1px dashed rgba(184,188,200,0.45) !important; color: #e8ebf2 !important; font: 500 15px var(--sans, system-ui); transition: opacity 0.25s, transform 0.25s; }
 .l-ordem-pedacos button:disabled { opacity: 0.18; transform: scale(0.94); }
 @keyframes l-ordem-treme { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+/* a viagem pra fora (ep. 3): só dirigir */
+.l-estrada-fora { position: absolute; inset: 0; z-index: 31; background: #04050b; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: none; outline: none; animation: l-fade 1.2s both; }
+.l-estrada-fora.is-saindo::after { content: ""; position: absolute; inset: 0; z-index: 5; background: #000; animation: l-fade 1.4s both; }
+.l-estrada-fora-cvs { position: absolute !important; inset: 0; }
+.l-estrada-fora-corte { position: absolute; inset: 0; z-index: 4; background: #000; }
+.l-estrada-fora-legenda { position: absolute; left: 24px; right: 24px; bottom: calc(11vh + 22px); z-index: 3; margin: 0; text-align: center; font: italic 500 16px/1.4 var(--sans, system-ui); color: rgba(255,255,255,0.86); text-shadow: 0 1px 10px rgba(0,0,0,0.8); animation: l-fade 1.2s both; }
+.l-estrada-fora-dica { position: absolute; left: 0; right: 0; top: calc(11vh + 16px); z-index: 3; text-align: center; font: 700 10px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.55); animation: l-fade 0.8s 1.2s both; }

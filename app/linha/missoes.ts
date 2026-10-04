@@ -50,6 +50,8 @@ export interface MissaoDef {
   // o que a carona fala no caminho (dirigindo, pela ilha)
   caminho?: string[]
   extra?: string // recompensa própria da missão, além das de sempre
+  // só chama depois que esta outra missão estiver feita (os episódios)
+  requer?: EstacaoId
 }
 
 export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
@@ -124,6 +126,17 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
       "a estação 6 é a minha. lá ninguém mais desce",
     ],
     extra: "a letra escrita à mão (e o violão fica no trem)",
+  },
+  // ep. 3 (30/10): a delação. O Mubarak entrega, a D-Bee foge, a 222 sai
+  // do ar e a cidade perde a cor. Ela manda ir até onde a estrada acaba: a
+  // viagem pra fora (viagem.tsx) e a casa vazia (cenas.ts)
+  ojala: {
+    id: "ojala", estilo: "historia",
+    chamado: "alguém entregou a gente. lê agora",
+    tarefa: "dirigir até onde a estrada acaba: a casa da D-Bee, fora da cidade",
+    lugar: "casa-dbee",
+    requer: "nectar",
+    extra: "a camisa da seleção (e o movimento)",
   },
 }
 
@@ -209,7 +222,10 @@ export function areaDoPasso(s: Save, id: EstacaoId): FreqId {
 // 3. qualquer outra já começada (o HUD aponta pra ela de longe)
 export function ativa(s: Save, nivel: number, agora = Date.now()): EstacaoId | null {
   const area = (s.freq || "linha") as FreqId
-  const ok = (id: EstacaoId) => !s.objetos.includes(id) && !!MISSOES[id] && missao(estacao(id), nivel, agora).ok
+  const ok = (id: EstacaoId) => {
+    const m = MISSOES[id]
+    return !s.objetos.includes(id) && !!m && (!m.requer || s.objetos.includes(m.requer)) && missao(estacao(id), nivel, agora).ok
+  }
   const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
   const comecadas = ordem.filter((id) => ok(id) && s.pausas[id] !== undefined)
   // 0. tem alguém de carona na Kombi: a missão dele manda (ninguém mais

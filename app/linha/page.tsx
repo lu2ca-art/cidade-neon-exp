@@ -18,8 +18,9 @@ import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
 import { MISSOES, alvoDe, ativa, etapaDe } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
-import { cenaDe } from "./cenas"
-import type { LugarId } from "./lugares"
+import { cenaDe, type Reliquia } from "./cenas"
+import { Viagem } from "./viagem"
+import { LUGARES, type LugarId } from "./lugares"
 import { proximaFreq } from "./radio"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
@@ -81,6 +82,8 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean } | null>(null)
+  // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
+  const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean } | null>(null)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
   // a ilha do topo virou bifurcação: a conversa do painel se recolhe
@@ -310,6 +313,9 @@ export default function LinhaPage() {
   // relicário. Quantas voltas no mirante até ele aparecer depende do tom:
   // quem tá acordado vê de primeira; quem dorme dá três voltas
   const tomMaior = (["acordado", "acordando", "dormindo"] as const).reduce((a, b) => ((save.tons?.[b] ?? 0) > (save.tons?.[a] ?? 0) ? b : a), "dormindo" as "acordado" | "acordando" | "dormindo")
+  // ep. 3: a delação derrubou a 222. Do chamado da D-Bee até a casa dela,
+  // sem rádio e a cidade cinza (a provação: o silêncio mais longo do jogo)
+  const apagao = save.pausas.ojala !== undefined && !save.objetos.includes("ojala")
   const becoLivre = save.objetos.includes("dopamina") && !(save.reliquias ?? []).includes("relicario")
   const segredo = useMemo(() => (becoLivre ? { id: "beco" as LugarId, voltas: tomMaior === "acordado" ? 1 : tomMaior === "acordando" ? 2 : 3 } : null), [becoLivre, tomMaior])
 
@@ -329,7 +335,9 @@ export default function LinhaPage() {
     if (!cenaDe(id)) return
     setAoVivo(null)
     setCinema("lugar")
-    setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
+    // fora da cidade: primeiro a estrada (viagem.tsx), a cena é na chegada
+    if (LUGARES[id].fora) setViagem({ lugar: id, missao: a.missao, pegar: a.pegar })
+    else setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
   }, [cinema])
   const fimCena = useCallback((r: ResultadoCena) => {
@@ -621,7 +629,8 @@ export default function LinhaPage() {
             }}
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
             cinema={cinema}
-            cinza={cinza}
+            cinza={cinza || apagao}
+            foraDoAr={apagao}
           />
         )}
         {tela.t === "chegada" && (
@@ -728,10 +737,17 @@ export default function LinhaPage() {
             cena={cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
+            reliquias={(save.reliquias ?? []) as Reliquia[]}
+            tom={tomMaior}
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={fimCena}
+          />
+        )}
+        {viagem && (
+          <Viagem
+            onFim={() => { const v = viagem; setViagem(null); setCena(v) }}
           />
         )}
         {ligacao && <LigacaoNaKombi key={ligacao.lig.id} lig={ligacao.lig} onFim={fimLigacao} onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))} />}

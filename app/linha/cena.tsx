@@ -33,9 +33,18 @@ const COPOS = [
   { id: "eternidade", nome: "o copo da eternidade", promessa: "agora você nunca mais vai querer sair" },
 ]
 
-export function CenaLugar({ cena: cenaBruta, memoria, objetos, semSom = false, onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; semSom?: boolean; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
-  // os passos com `se` só entram se a pessoa já passou por aquela estação
-  const cena = useMemo(() => ({ ...cenaBruta, passos: cenaBruta.passos.filter((p) => !("se" in p) || !p.se || objetos.includes(p.se)) }), [cenaBruta, objetos])
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
+  // o tom vale o do começo da cena (responder no meio não reembaralha os passos)
+  const [tom] = useState(tomAgora)
+  // os passos com `se` só entram se a pessoa já passou por aquela estação;
+  // com `tom`, só pra quem está naquele tom; com `rel`, só pra quem tem a relíquia
+  const cena = useMemo(() => ({
+    ...cenaBruta,
+    passos: cenaBruta.passos.filter((p) =>
+      (!("se" in p) || !p.se || objetos.includes(p.se)) &&
+      (!("tom" in p) || !p.tom || p.tom.includes(tom)) &&
+      (!("rel" in p) || !p.rel || reliquias.includes(p.rel))),
+  }), [cenaBruta, objetos, reliquias, tom])
   const [pos, setPos] = useState(0)
   const [fila, setFila] = useState<Fila>([])
   const [ganhos, setGanhos] = useState<{ objeto?: EstacaoId; reliquias: Reliquia[]; perdeViolao?: boolean }>({ reliquias: [] })

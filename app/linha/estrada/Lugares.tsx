@@ -256,6 +256,57 @@ function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: bo
   )
 }
 
+// A SAÍDA da cidade (o lugar fora: a casa da D-Bee, ep. 3). Nada de
+// prédio: a mureta da pista abre, uma estrada de terra sai pro escuro e uma
+// placa velha avisa que a cidade acaba ali
+function Saida({ l, p, alvo }: { l: Lugar; p: PoseLugar; alvo: boolean }) {
+  const placa = useMemo(() => texTexto([{ txt: "FIM DA CIDADE NEON", tam: 110, cor: "#e6f0ff" }], 1024, 200), [])
+  const vaga = useRef<THREE.MeshBasicMaterial>(null)
+  const coluna = useRef<THREE.Mesh>(null)
+  useFrame((s) => {
+    if (vaga.current) vaga.current.opacity = alvo ? 0.32 + Math.sin(s.clock.elapsedTime * 3) * 0.14 : 0
+    if (coluna.current) coluna.current.visible = alvo
+  })
+  return (
+    <group>
+      <group position={[p.centro.x, p.chao, p.centro.z]} rotation-y={p.rumo + (l.lado > 0 ? Math.PI / 2 : -Math.PI / 2)}>
+        {/* a estrada de terra, indo embora pro escuro */}
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0.04, -30]}>
+          <planeGeometry args={[6.5, 80]} />
+          <meshStandardMaterial color="#2a2522" roughness={1} />
+        </mesh>
+        {/* a placa, torta */}
+        <group position={[4.6, 0, 4]} rotation-z={0.05}>
+          {[-1.7, 1.7].map((x) => (
+            <mesh key={x} position={[x, 1.6, 0]}>
+              <cylinderGeometry args={[0.06, 0.07, 3.2, 6]} />
+              <meshStandardMaterial color="#3a3640" />
+            </mesh>
+          ))}
+          <mesh position={[0, 3.1, 0.05]}>
+            <planeGeometry args={[4.4, 0.9]} />
+            <meshStandardMaterial color="#14131a" />
+          </mesh>
+          <mesh position={[0, 3.1, 0.07]}>
+            <planeGeometry args={[4.2, 0.8]} />
+            <meshBasicMaterial map={placa} transparent toneMapped={false} depthWrite={false} />
+          </mesh>
+        </group>
+        {/* bem longe, a luz acesa (a mesma que a Notti viu) */}
+        <mesh position={[1.5, 3, -160]}>
+          <sphereGeometry args={[0.7, 8, 6]} />
+          <meshBasicMaterial color="#ffcf8a" toneMapped={false} />
+        </mesh>
+      </group>
+      <Vaga p={p} cor={l.cor} materialRef={vaga} />
+      <mesh ref={coluna} position={[p.vaga.x, p.vaga.y + 22, p.vaga.z]} visible={false}>
+        <cylinderGeometry args={[0.9, 0.9, 44, 12, 1, true]} />
+        <meshBasicMaterial color={l.cor} transparent opacity={0.22} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
 function Vaga({ p, cor, materialRef }: { p: PoseLugar; cor: string; materialRef: React.RefObject<THREE.MeshBasicMaterial | null> }) {
   return (
     <mesh position={[p.vaga.x, p.vaga.y + 0.05, p.vaga.z]} rotation={[-Math.PI / 2, 0, p.rumo]}>
@@ -271,6 +322,8 @@ export function Lugares({ M, alvo, emCena, revelado = null }: { M: Mundo; alvo: 
     <group>
       {poses.map(({ l, p }) => l.segredo
         ? <Beco key={l.id} l={l} p={p} revelado={revelado === l.id} emCena={emCena === l.id} />
+        : l.fora
+        ? <Saida key={l.id} l={l} p={p} alvo={alvo === l.id} />
         : <Fachada key={l.id} l={l} p={p} alvo={alvo === l.id} emCena={emCena === l.id} />)}
     </group>
   )
