@@ -17,6 +17,10 @@ import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
 import { MISSOES, alvoDe, ativa, etapaDe } from "./missoes"
+import { CenaLugar, type ResultadoCena } from "./cena"
+import { cenaDe } from "./cenas"
+import type { LugarId } from "./lugares"
+import { proximaFreq } from "./radio"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Jardim, Violao } from "./recursos"
@@ -75,6 +79,10 @@ export default function LinhaPage() {
   const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
   // a conversa aberta porque desceu na estação (destrava o passo "chegar")
   const [naEstacao, setNaEstacao] = useState(false)
+  // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean } | null>(null)
+  // o Núcleo vindo atrás depois de uma cena que mexeu com ele
+  const [perseguido, setPerseguido] = useState(false)
   // a ilha do topo virou bifurcação: a conversa do painel se recolhe
   const [bifurcando, setBifurcando] = useState(false)
   // vídeo do //LOOP que alguém mandou: o app abre direto nele
@@ -153,7 +161,7 @@ export default function LinhaPage() {
   // O Núcleo invade: 1ª vez depois da 2ª missão (dá pra repelir), 2ª depois
   // da 3ª (derruba a 222 — o primeiro apagão), e depois, de vez em quando na
   // estrada. Nunca no meio de uma conversa.
-  const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !ligacao && !aoVivo && !save.nucleo.caido
+  const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !ligacao && !aoVivo && !cinema && !save.nucleo.caido
   useEffect(() => {
     if (!pronto || !podeInvadir) return
     const n = save.nucleo.invasoes
@@ -285,11 +293,50 @@ export default function LinhaPage() {
     setSave((s) => {
       const a = alvoDe(s, nivelDe(s))
       if (!a || a.t !== "entrega") return s
-      const item = MISSOES[a.missao]?.busca.item
+      const item = MISSOES[a.missao]?.busca?.item
       return item ? { ...s, itens: s.itens.filter((k) => !k.startsWith(`${item}:`)) } : s
     })
     track("mission_step", { mission_id: "linha-nucleo", step: "caca:pego", perfil: save.perfil ?? "?", fio_pos: -1 })
   }, [save.perfil])
+
+  // encostou devagar na vaga do lugar da missão: a cena começa
+  const abrirCena = useCallback((id: LugarId) => {
+    const a = alvoDe(saveRef.current, nivelDe(saveRef.current))
+    if (!a || a.t !== "lugar" || a.lugar !== id || cinema) return
+    if (!cenaDe(id)) return
+    setAoVivo(null)
+    setCinema("lugar")
+    setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
+    track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
+  }, [cinema])
+  const fimCena = useCallback((r: ResultadoCena) => {
+    const c = cena
+    setCena(null)
+    setCinema(null)
+    if (!c) return
+    const est = c.missao
+    setSave((s) => {
+      let objetos = s.objetos
+      let sinal = s.sinal
+      if (r.objeto && !objetos.includes(r.objeto)) {
+        objetos = [...objetos, r.objeto]
+        // o mp3 do Mubarak pega frequência: enche o sinal da próxima rádio
+        if (r.objeto === "copo") sinal = proximaFreq(s.sinal)?.custo ?? s.sinal
+      }
+      const pausas = { ...s.pausas }
+      if (r.objeto) delete pausas[est]
+      const itens = c.pegar && !s.itens.includes(`carona:${est}`) ? [...s.itens, `carona:${est}`] : s.itens
+      const completos = r.objeto && !s.completos.includes(est) ? [...s.completos, est] : s.completos
+      const reliquias = [...new Set([...(s.reliquias ?? []), ...r.reliquias])]
+      const logs = r.objeto ? { ...s.logs, [est]: [...(s.logs[est] ?? []), { k: "sistema" as const, texto: `o resto aconteceu em ${c.lugar === "bar" ? "o copo" : c.lugar}` }] } : s.logs
+      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, xp: s.xp + (r.objeto ? 100 : 30) }
+    })
+    if (r.objeto) track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
+    if (r.caca) {
+      setPerseguido(true)
+      setTimeout(() => setPerseguido(false), 60000)
+    }
+  }, [cena])
 
   const religar = useCallback(() => {
     setSave((s) => ({ ...s, sinal: s.sinal + 10, nucleo: { ...s.nucleo, caido: false } }))
@@ -520,7 +567,7 @@ export default function LinhaPage() {
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
             pausado={tela.t !== "corrida" && tela.t !== "chegada"}
             limitado={!!invasao}
-            cacado={cacado}
+            cacado={cacado || perseguido}
             conversa={!!aoVivo}
             onBifurca={setBifurcando}
             dicas={save.dicas}
@@ -534,6 +581,8 @@ export default function LinhaPage() {
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
             onSair={sairDaCorrida}
+            onVaga={abrirCena}
+            cenaLugar={cena?.lugar ?? null}
             intro={!save.completos.includes("abertura")}
             fala={falaIntro}
             onIlha={() => {
@@ -646,6 +695,15 @@ export default function LinhaPage() {
         )}
         {tela.t !== "entrada" && tela.t !== "bloqueio" && tela.t !== "chegada" && tela.t !== "home" && tela.t !== "corrida" && dentro && (
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
+        )}
+        {cena && cenaDe(cena.lugar) && (
+          <CenaLugar
+            key={`${cena.lugar}:${cena.missao}`}
+            cena={cenaDe(cena.lugar)!}
+            memoria={save.objetos.length}
+            onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
+            onFim={fimCena}
+          />
         )}
         {ligacao && <LigacaoNaKombi key={ligacao.lig.id} lig={ligacao.lig} onFim={fimLigacao} onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))} />}
         {invasao && <InvasaoNucleo key={invasao.id} inv={invasao} onFim={fimInvasao} />}

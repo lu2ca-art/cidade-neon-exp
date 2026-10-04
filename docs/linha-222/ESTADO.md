@@ -36,7 +36,8 @@
 | KOMBI HERBAL (escaneada, Mr. Mushi): escolha do LU2CA ciente da licença CC-BY-NC-SA (não comercial) e da marca Jia Jia na lateral. 12,9 MB → 1 MB, sem o tampo da mesa do escaneamento, material com luz. A desenhada à mão virou reserva (carregando/erro) e só os efeitos (neon de baixo, lanternas, turbo). Cabine só aparece de dentro. Crédito no app LINHA 9. Porta lateral aberta é do escaneamento | — | `2ff72d1` |
 | Kombi herbal com rodas que GIRAM (e as da frente esterçam): rodas de verdade por cima das escaneadas (frente z −1,14, trás +1,38, x +0,72/−0,92, raio 0,34) | — | `ad1d76b` |
 | SEGURANÇA: Next 16.0.10 → 16.3.8 (2 RCE críticas), audit 55 → 1 (braces, só dev), .env bloqueado no gitignore + .env.example, /api/batida blindada (tempo constante, 6/min por IP, UUID, validação), cabeçalhos de segurança | — | `14f51e2` |
-| BBX vira DREWBOY (nome do amigo real não pode). D-Bee: casa isolada (vault) | — | (este merge) |
+| BBX vira DREWBOY (nome do amigo real não pode). D-Bee: casa isolada (vault) | — | `e106216` |
+| LUGARES (o arco no jogo, etapa 1): sistema de lugar (fachada com letreiro, vaga na beira da pista, coluna de luz, gente na porta), missão de LUGAR (sem "buscar coisa"; `MissaoDef.lugar/carona`), encostar devagar na vaga abre a CENA (câmera de cinema do outro lado da rua, tarjas, legenda, três tons, gesto), recompensa (objeto + relíquia + memória) e consequência (o Núcleo vem atrás 60 s). Primeiro lugar: O BAR (O COPO): Mubarak só chama pelo celular; no bar a mulher dos copos oferece os seis copos (cada um é um loop), negar a oferta → a muda (relíquia) e o mp3. Piloto automático encosta sozinho. `__vel(v)` pra teste | — | (este merge) |
 
 **#30 continua aberta:** com o critério certo (gravação ≤ 1925 confirmada,
 nada de "PDP-CH" suíço sem data, nada de MIDI) o Wikimedia só rendeu 2. Próxima

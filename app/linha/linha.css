@@ -1445,3 +1445,51 @@
 
 /* créditos de modelos 3D (licenças CC-BY pedem) */
 .l-creditos { margin: 10px 16px 24px; text-align: center; font: 9px/1.5 var(--mono); color: var(--mut); opacity: 0.7; }
+
+/* ═══ A CENA de um lugar (04/10): cinema por cima da estrada parada ═════ */
+.l-cena { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; animation: l-fade 0.5s both; }
+.l-cena-tarja { position: absolute; left: 0; right: 0; height: 11vh; background: #000; z-index: 1; }
+.l-cena-tarja.is-cima { top: 0; animation: l-tarja-cima 0.7s cubic-bezier(.2,.8,.2,1) both; }
+.l-cena-tarja.is-baixo { bottom: 0; animation: l-tarja-baixo 0.7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes l-tarja-cima { from { transform: translateY(-100%); } }
+@keyframes l-tarja-baixo { from { transform: translateY(100%); } }
+.l-cena-lugar { position: absolute; top: calc(11vh + 12px); left: 18px; z-index: 2; font: 700 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.55); }
+.l-cena-legenda { position: relative; z-index: 2; margin: 0 16px calc(11vh + 18px); padding: 14px 16px 12px; border-radius: 14px; background: linear-gradient(180deg, rgba(5,5,14,0.55), rgba(5,5,14,0.82)); border-left: 3px solid var(--cor); backdrop-filter: blur(6px); }
+.l-cena-legenda small { display: block; margin-bottom: 4px; font: 700 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-cena-legenda p { margin: 0; font: 500 19px/1.35 var(--sans, system-ui); color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,0.6); }
+.l-cena-legenda.is-acao { border-left-color: transparent; background: rgba(5,5,14,0.5); }
+.l-cena-legenda.is-acao p { font-style: italic; font-size: 16px; color: rgba(255,255,255,0.82); }
+.l-cena-toque { display: block; margin-top: 8px; font: 9px var(--mono); font-style: normal; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+.l-cena-nucleo { position: relative; z-index: 2; align-self: center; margin: 0 16px calc(11vh + 18px); padding: 14px 18px; border-radius: 10px; background: #eef2fb; color: #121522; box-shadow: 0 0 40px rgba(230,240,255,0.5); }
+.l-cena-nucleo b { font: 800 11px var(--mono); letter-spacing: 0.2em; }
+.l-cena-nucleo p { margin: 6px 0 0; font: 500 15px/1.35 var(--mono); }
+.l-cena-escolhas { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 8px; margin: 0 16px calc(11vh + 18px); cursor: default; }
+.l-cena-escolhas button { padding: 13px 16px; border-radius: 12px; text-align: left; background: rgba(5,5,14,0.78) !important; border: 1px solid rgba(255,255,255,0.22) !important; color: #fff !important; font: 500 16px/1.3 var(--sans, system-ui); backdrop-filter: blur(6px); animation: l-sobe 0.35s both; }
+.l-cena-escolhas button:nth-child(2) { animation-delay: 0.08s; }
+.l-cena-escolhas button:nth-child(3) { animation-delay: 0.16s; }
+.l-cena-escolhas button:active { border-color: #fff !important; }
+.l-cena-fim { position: relative; z-index: 2; display: flex; justify-content: center; margin: 0 16px calc(11vh + 22px); }
+.l-cena-fim button { padding: 14px 26px; border-radius: 999px; background: #2fe8ff !important; color: #050510 !important; font: 800 15px var(--cond); text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 0 28px -6px #2fe8ff; }
+.l-cena-ganha { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0 28px; text-align: center; background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--cor) 22%, transparent), rgba(0,0,0,0.78) 70%); animation: l-fade 0.5s both; }
+.l-cena-ganha small { font: 700 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--cor); }
+.l-cena-ganha b { font: 800 30px/1.05 var(--cond); text-transform: uppercase; color: #fff; text-shadow: 0 0 24px var(--cor); }
+.l-cena-ganha p { margin: 0; font: 15px/1.4 var(--sans, system-ui); color: rgba(255,255,255,0.85); }
+.l-cena-ganha blockquote { margin: 10px 0 0; max-width: 320px; font: italic 14px/1.45 var(--sans, system-ui); color: rgba(255,255,255,0.7); }
+/* o gesto do bar: os seis copos */
+.l-copos { position: relative; z-index: 2; margin: 0 14px calc(11vh + 16px); display: flex; flex-direction: column; gap: 10px; cursor: default; filter: saturate(calc(1 + var(--vazio) * 0.6)); }
+.l-copos-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.l-copos-grade button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 10px; border-radius: 12px; background: rgba(5,5,14,0.78) !important; border: 1px solid rgba(255,106,53,0.35) !important; color: #fff !important; backdrop-filter: blur(6px); }
+.l-copos-grade button b { font: 600 11px/1.2 var(--mono); text-transform: lowercase; }
+.l-copos-grade button i { width: 22px; height: 30px; border: 2px solid rgba(255,255,255,0.8); border-top: none; border-radius: 0 0 6px 6px; background: linear-gradient(0deg, #ff6a35 0 55%, transparent 55%); box-shadow: 0 0 14px -2px #ff6a35; }
+.l-copos-grade button.is-bebido { opacity: 0.25; }
+.l-copos-grade button.is-bebido i { background: transparent; }
+.l-copos-loop { padding: 12px 14px; border-radius: 12px; background: rgba(255,63,122,0.12); border: 1px solid rgba(255,63,122,0.35); animation: l-copo-pisca 0.9s both; }
+@keyframes l-copo-pisca { 0% { background: rgba(255,255,255,0.9); } 100% { background: rgba(255,63,122,0.12); } }
+.l-copos-ela { margin: 0; font: 500 17px/1.35 var(--sans, system-ui); color: #ffd0de; }
+.l-copos-loop small { display: block; margin-top: 6px; font: 10px var(--mono); letter-spacing: 0.06em; color: rgba(255,255,255,0.55); }
+.l-copos-mub { margin: 6px 0 0; font: 13px var(--mono); color: #ff9a6a; }
+.l-copos-negar { align-self: center; padding: 12px 26px; border-radius: 999px; background: transparent !important; border: 1px solid #fff !important; color: #fff !important; font: 800 15px var(--cond); text-transform: uppercase; letter-spacing: 0.08em; animation: l-negar 2.4s ease-in-out infinite; }
+@keyframes l-negar { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } 50% { box-shadow: 0 0 24px 2px rgba(255,255,255,0.35); } }
+
+/* durante a cena de um lugar, a ilha e o guia somem (é cinema) */
+.l-viagem.is-cinema .l-ilha, .l-viagem.is-cinema .l-guia, .l-viagem.is-cinema .l-hud-missao { display: none !important; }

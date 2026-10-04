@@ -60,6 +60,8 @@ export interface Save {
   violao: boolean
   // quantas vezes respondeu em cada tom (dormindo / acordando / acordado)
   tons: Record<Tom, number>
+  // as relíquias do ritual do deserto que já nasceram (cenas.ts)
+  reliquias: string[]
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
   // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
@@ -97,6 +99,7 @@ export const VAZIO: Save = {
   dicas: [],
   violao: false,
   tons: { dormindo: 0, acordando: 0, acordado: 0 },
+  reliquias: [],
   ligacoes: [],
   modos: {},
   // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito
@@ -128,11 +131,14 @@ function acertarPausas(p: Save["pausas"]): Save["pausas"] {
   for (const [id, pos] of Object.entries(p) as [ChatId, number][]) {
     const passos = ROTEIROS[id as keyof typeof ROTEIROS]?.passos
     if (!passos || pos === undefined) continue
-    const parada = (i: number) => passos[i]?.t === "tarefa" || passos[i]?.t === "chegar"
+    const parada = (i: number) => passos[i]?.t === "tarefa" || passos[i]?.t === "chegar" || passos[i]?.t === "lugar"
     if (parada(pos)) continue
     // a abertura só para na leitura NECTAR
     const leitura = passos.findIndex((x) => x.t === "leitura")
     if (id === "abertura" && leitura >= 0) { out[id] = leitura; continue }
+    // missão que virou de LUGAR (04/10): a conversa só para no convite
+    const lugar = passos.findIndex((x) => x.t === "lugar")
+    if (lugar >= 0) { out[id] = lugar; continue }
     let i = pos
     while (i < passos.length && !parada(i)) i++
     if (i < passos.length) out[id] = i

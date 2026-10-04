@@ -83,6 +83,8 @@ export type Passo =
   | { t: "chegar" }
   // objeto + recompensas + memória
   | { t: "objeto" }
+  // a conversa para aqui: o resto acontece num LUGAR da cidade (a cena)
+  | { t: "lugar" }
   // passa a vez pro próximo do fio
   | { t: "gancho" }
   | { t: "revelacao" }
@@ -248,9 +250,11 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
     ],
   },
 
+  // o Mubarak só CHAMA pelo celular. A história dele acontece no bar (O
+  // COPO): a cena de lugar em cenas.ts (a mulher dos copos, negar a oferta)
   copo: {
     contato: "Mubarak",
-    status: "estação 2 · copo americano",
+    status: "o bar de sempre",
     passos: [
       { t: "msg", texto: "ah. vc" },
       { t: "msg", texto: (c) => `${c.nome}. nome de quem ainda acredita em coisa` },
@@ -265,45 +269,10 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       },
       { t: "nucleo", texto: "Mubarak, sua assinatura MESMA NOITE foi renovada por mais 30 dias ✓" },
       { t: "msg", texto: "ignora" },
-      { t: "msg", texto: "achei um mp3 no fundo de um copo americano. sério" },
-      { t: "voz", fala: "tá sem pilha. ninguém vende pilha desde que o núcleo fez tudo recarregar sozinho" },
-      { t: "msg", texto: "a conveniência 24h da cidade neon ainda tem umas no fundo da prateleira" },
-      { t: "msg", texto: "traz duas. eu pago o café" },
-      { t: "tarefa" },
-      // ATO 2 · piada de mau gosto (COPO C2): o sarcasmo de quem se sabota
-      { t: "msg", texto: "pensei melhor" },
-      { t: "msg", texto: "pra que ouvir de novo. vai doer igual e amanhã o bar abre no mesmo copo" },
-      {
-        t: "escolha",
-        opcoes: [
-          { label: "tá, deixa então", tom: "dormindo", resposta: ["…", "nossa. desistiu mais rápido que eu", "traz. agora é pirraça"] },
-          { label: "então pq vc guardou o mp3?", tom: "acordado", resposta: ["…", "boa pergunta. traz logo antes que eu desista"] },
-          { label: "e se doer diferente?", tom: "acordando", resposta: ["kkkk", "ok. traz"] },
-        ],
-      },
-      { t: "chegar" },
-      { t: "msg", texto: "trouxe mesmo" },
-      { t: "msg", texto: "ligou. só pega estática. o núcleo embaralha toda frequência livre" },
-      { t: "nucleo", texto: "frequências não licenciadas podem causar desconforto ✓" },
-      { t: "msg", texto: "sintoniza aí. vc tem a mão melhor que a minha" },
-      { t: "prova", id: "sintonia" },
-      { t: "msg", texto: "…p***" },
-      { t: "msg", texto: "fazia anos que eu n ouvia isso" },
-      { t: "objeto" },
-      { t: "audio", src: "/audio/tracks/222-copo-americano.mp3", titulo: "Copo Americano" },
-      { t: "msg", texto: "fica com ele. eu já decorei" },
-      { t: "msg", texto: "vou te contar uma de ontem. eu tava nesse bar. o rádio tocou essa música e o bar inteiro cantou junto" },
-      { t: "msg", texto: "quarenta pessoas que se odiavam no feed, cantando a mesma coisa. abraçadas" },
-      { t: "msg", texto: "dez minutos depois a cidade apagou. vc acha que foi coincidência?" },
-      {
-        t: "escolha",
-        opcoes: [
-          { label: "vem com a gente", tom: "acordado", resposta: ["a D-Bee acha que dá pra ganhar deles", "eu acho que n dá", "…mas se ela for, alguém tem que ir junto pra trazer ela de volta"] },
-          { label: "que lado?", tom: "dormindo", resposta: ["o lado de quem tá sentado no bar", "relaxa. uma hora vc entende"] },
-          { label: "vc tá do lado de quem?", tom: "acordando", resposta: ["kkkk", "do lado do bar", "pergunta de novo outro dia"] },
-        ],
-      },
-      { t: "fim" },
+      { t: "msg", texto: "vem pro bar. O COPO, na cidade neon, do lado direito da pista" },
+      { t: "msg", texto: "encosta devagar na vaga da frente. e se ela te oferecer alguma coisa… sei lá. vc que sabe" },
+      { t: "lugar" },
+      { t: "fim", para: "mapa" },
     ],
   },
 
