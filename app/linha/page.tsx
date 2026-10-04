@@ -268,7 +268,8 @@ export default function LinhaPage() {
 
   // ATO 2 (a crise): pegou a coisa no mapa → a pessoa escreve no painel,
   // dirigindo (a conversa anda do "tarefa" até o "chegar")
-  const criseDe = !save.nucleo.caido && quemChama && etapaDe(save, quemChama) === "entrega" && save.pausas[quemChama] !== undefined
+  const etapaChama = quemChama ? etapaDe(save, quemChama) : null
+  const criseDe = !save.nucleo.caido && quemChama && (etapaChama === "entrega" || etapaChama === "lugar") && save.pausas[quemChama] !== undefined
     && ROTEIROS[quemChama as keyof typeof ROTEIROS]?.passos[save.pausas[quemChama]!]?.t === "tarefa" ? quemChama : null
   // na carona: a pessoa já entrou na Kombi e a conversa ainda tá na 1ª parada
   // → a crise chega no caminho (uns 25 s depois, dirigindo)
@@ -708,6 +709,8 @@ export default function LinhaPage() {
             cena={cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
+            semSom={semSom}
+            onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={fimCena}
           />

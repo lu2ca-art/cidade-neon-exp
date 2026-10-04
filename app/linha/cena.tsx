@@ -5,13 +5,14 @@
 // com quem fala, escolha nos três tons e o GESTO do lugar. Toca na tela pra
 // seguir. Roteiros em cenas.ts.
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { RELIQUIAS, type Cena, type PassoCena, type Reliquia } from "./cenas"
 import { estacao as getEstacao, type EstacaoId } from "./data"
 import { MEMORIAS } from "./missoes"
 import { LUGARES } from "./lugares"
 import { VOZES, type Tom } from "./roteiros"
-import { gota } from "./som"
+import { gota, mudo } from "./som"
+import { Prova } from "./provas"
 import { vib } from "./som-carro"
 
 export interface ResultadoCena {
@@ -31,7 +32,7 @@ const COPOS = [
   { id: "eternidade", nome: "o copo da eternidade", promessa: "agora você nunca mais vai querer sair" },
 ]
 
-export function CenaLugar({ cena: cenaBruta, memoria, objetos, onTom, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; onTom: (t: Tom) => void; onFim: (r: ResultadoCena) => void }) {
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, semSom = false, onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; semSom?: boolean; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
   // os passos com `se` só entram se a pessoa já passou por aquela estação
   const cena = useMemo(() => ({ ...cenaBruta, passos: cenaBruta.passos.filter((p) => !("se" in p) || !p.se || objetos.includes(p.se)) }), [cenaBruta, objetos])
   const [pos, setPos] = useState(0)
@@ -107,6 +108,13 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, onTom, onFim }: {
 
       {!atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
+      {!atual && passo?.t === "gesto" && passo.id === "silencio" && <Silencio semSom={semSom} onFim={() => setPos((p) => p + 1)} />}
+      {!atual && passo?.t === "gesto" && passo.id === "linha" && <Linha onFim={(t) => { onLinha?.(t); setPos((p) => p + 1) }} />}
+      {!atual && passo?.t === "gesto" && passo.id === "prova" && (
+        <div className="l-cena-prova" onClick={(e) => e.stopPropagation()}>
+          <Prova id={passo.prova} cor={LUGARES[cena.lugar].cor} onFim={() => setPos((p) => p + 1)} />
+        </div>
+      )}
 
       {mostrando && (
         <Ganho objeto={mostrando.objeto} reliquia={mostrando.reliquia} memoria={mostrando.objeto ? memoria : null} onOk={fecharGanho} />
@@ -182,11 +190,13 @@ function Danca({ onFim }: { onFim: () => void }) {
     if (ok) { vib(18); gota(5); setAcertos((a) => a + 1) }
     setUltimo((u) => ({ ok, n: (u?.n ?? 0) + 1 }))
   }
+  const fim = useRef(onFim)
+  useEffect(() => { fim.current = onFim }, [onFim])
   useEffect(() => {
     if (acertos < META) return
-    const t = setTimeout(onFim, 900)
+    const t = setTimeout(() => fim.current(), 900)
     return () => clearTimeout(t)
-  }, [acertos, onFim])
+  }, [acertos])
   const celulares = Math.max(0, 200 - Math.round((acertos / META) * 200))
   return (
     <div className="l-danca" onClick={(e) => { e.stopPropagation(); if (acertos < META) tocar() }} style={{ ["--batida" as string]: `${BATIDA}ms` }}>
@@ -198,6 +208,38 @@ function Danca({ onFim }: { onFim: () => void }) {
       <p className="l-danca-conta">celulares levantados: {celulares}</p>
       <div className="l-danca-barra"><i style={{ width: `${(acertos / META) * 100}%` }} /></div>
     </div>
+  )
+}
+
+// O GESTO do terraço: 15 segundos de silêncio absoluto. O jogo inteiro cala
+// (sem música, sem legenda, sem nada), só a cidade lá embaixo
+function Silencio({ semSom, onFim }: { semSom: boolean; onFim: () => void }) {
+  const [t0] = useState(() => Date.now())
+  const [agora, setAgora] = useState(t0)
+  const fim = useRef(onFim)
+  useEffect(() => { fim.current = onFim }, [onFim])
+  useEffect(() => {
+    mudo(true)
+    const iv = setInterval(() => setAgora(Date.now()), 250)
+    const t = setTimeout(() => { mudo(semSom); fim.current() }, 15000)
+    return () => { clearInterval(iv); clearTimeout(t); mudo(semSom) }
+  }, [semSom])
+  const p = Math.min(1, (agora - t0) / 15000)
+  return (
+    <div className="l-silencio" onClick={(e) => e.stopPropagation()}>
+      <i style={{ transform: `scaleX(${p})` }} />
+    </div>
+  )
+}
+
+// O GESTO da casa de shows: a sua linha no caderno do Alohan
+function Linha({ onFim }: { onFim: (t: string) => void }) {
+  const [t, setT] = useState("")
+  return (
+    <form className="l-cena-linha" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (t.trim()) onFim(t.trim().slice(0, 140)) }}>
+      <input value={t} onChange={(e) => setT(e.target.value)} placeholder="sua linha no caderno" autoFocus maxLength={140} enterKeyHint="send" />
+      <button type="submit" disabled={!t.trim()}>escrever</button>
+    </form>
   )
 }
 

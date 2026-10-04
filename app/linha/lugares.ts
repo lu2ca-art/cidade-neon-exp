@@ -11,7 +11,7 @@
 import type { EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 
-export type LugarId = "bar" | "casa-drewboy" | "balada"
+export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows"
 
 export interface Lugar {
   id: LugarId
@@ -28,7 +28,7 @@ export interface Lugar {
   dono?: EstacaoId
 }
 
-export const LUGARES: Record<LugarId, Lugar> = {
+export const LUGARES = {
   bar: {
     id: "bar", nome: "o bar", no: "no bar", letreiro: "O COPO", area: "linha", u: 1530, lado: 1,
     cor: "#ff6a35", acento: "#ffc857", dono: "copo",
@@ -44,6 +44,23 @@ export const LUGARES: Record<LugarId, Lugar> = {
     cor: "#ff3fb0", acento: "#b38cff", dono: "sexta",
     gente: [{ quem: "Drewboy", cor: "#ff3fb0" }],
   },
+} as Record<LugarId, Lugar>
+
+// (fase 1 do arco: Ella, Notti, Alohan)
+LUGARES.escondido = {
+  id: "escondido", nome: "o lugar escondido", no: "no lugar escondido", letreiro: "· · ·", area: "suburbio", u: 1300, lado: -1,
+  cor: "#2fe8ff", acento: "#5dffa0", dono: "chuva",
+  gente: [{ quem: "Ella", cor: "#2fe8ff" }],
+}
+LUGARES.topo = {
+  id: "topo", nome: "o terraço", no: "no terraço", letreiro: "TERRAÇO", area: "crypto", u: 950, lado: 1,
+  cor: "#5dffa0", acento: "#e6f0ff", dono: "dopamina",
+  gente: [{ quem: "Notti", cor: "#5dffa0" }],
+}
+LUGARES["casa-shows"] = {
+  id: "casa-shows", nome: "a casa de shows", no: "na casa de shows", letreiro: "ONTEM", area: "live", u: 1250, lado: 1,
+  cor: "#ffc857", acento: "#ff3fb0", dono: "ontem",
+  gente: [{ quem: "Alohan", cor: "#ffc857" }],
 }
 
 export function lugar(id: LugarId) {

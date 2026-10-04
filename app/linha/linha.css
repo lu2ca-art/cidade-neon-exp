@@ -1506,3 +1506,12 @@
 .l-danca-barra { width: 70%; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
 .l-danca-barra i { display: block; height: 100%; background: #ff3fb0; box-shadow: 0 0 10px #ff3fb0; transition: width 0.2s; }
 .l-cena-ganha-mais { font: 12px var(--mono) !important; color: rgba(255,255,255,0.6) !important; }
+
+/* gestos da fase 1: a prova no lugar, o silêncio, a linha no caderno */
+.l-cena-prova { position: relative; z-index: 2; margin: 0 12px calc(11vh + 12px); max-height: 62vh; overflow: auto; padding: 12px; border-radius: 16px; background: rgba(5,5,14,0.82); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px); cursor: default; }
+.l-silencio { position: absolute; inset: 0; z-index: 4; background: rgba(0,0,0,0.25); cursor: default; }
+.l-silencio i { position: absolute; left: 20%; right: 20%; bottom: calc(11vh + 30px); height: 2px; background: rgba(255,255,255,0.35); transform-origin: left; }
+.l-cena-linha { position: relative; z-index: 2; display: flex; gap: 8px; margin: 0 16px calc(11vh + 18px); cursor: default; }
+.l-cena-linha input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 12px; background: rgba(5,5,14,0.85); border: 1px solid #ffc857; color: #fff; font: 16px var(--sans, system-ui); }
+.l-cena-linha button { padding: 0 16px; border-radius: 12px; background: #ffc857 !important; color: #050510 !important; font: 800 13px var(--cond); text-transform: uppercase; }
+.l-cena-linha button:disabled { opacity: 0.4; }

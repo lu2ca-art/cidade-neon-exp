@@ -7,7 +7,7 @@
 // gíria de SP. "ela" (a mulher dos copos) fala bonito e devagar, como quem
 // vende. O Núcleo, corporativo e gentil ✓. Rascunho: o LU2CA reescreve.
 
-import type { EstacaoId } from "./data"
+import type { EstacaoId, ProvaId } from "./data"
 import type { LugarId } from "./lugares"
 import type { Tom } from "./roteiros"
 
@@ -35,7 +35,9 @@ export type PassoCena =
   | { t: "nucleo"; texto: string }
   | { t: "escolha"; opcoes: { label: string; tom: Tom; resposta: FalaCena[] }[] }
   // o gesto do lugar (cena.tsx desenha cada um)
-  | { t: "gesto"; id: "copos" | "danca" }
+  | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" }
+  // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
+  | { t: "gesto"; id: "prova"; prova: ProvaId }
   | { t: "ganha"; objeto?: EstacaoId; reliquia?: Reliquia }
   // fim: volta pra Kombi. caca = o Núcleo vem atrás na saída
   | { t: "fim"; caca?: boolean }
@@ -133,6 +135,99 @@ CENAS.balada = {
     { t: "ganha", objeto: "sexta", reliquia: "espelho" },
     { t: "fala", de: "Drewboy", texto: "lembrei de uma coisa de ontem. eu tava num show. o chão tremendo, todo mundo pulando junto. depois mais nada" },
     { t: "fala", de: "Drewboy", texto: "se um dia precisar dançar na frente do núcleo, eu danço" },
+    { t: "fim" },
+  ],
+}
+
+// ── O LUGAR ESCONDIDO · drama íntimo · Ella e a flor ──
+CENAS.escondido = {
+  lugar: "escondido",
+  missao: "chuva",
+  passos: [
+    { t: "acao", texto: "atrás da caixa d'água, um pedaço de asfalto rachado. no meio, uma flor murcha" },
+    { t: "fala", de: "Ella", texto: "vc foi até o subúrbio por uma flor" },
+    { t: "fala", de: "Ella", texto: "rega devagar" },
+    { t: "gesto", id: "prova", prova: "regar" },
+    { t: "acao", texto: "a flor levanta. devagar. a chuva em volta diminui, só ali" },
+    { t: "fala", de: "Ella", texto: "olha isso" },
+    { t: "ganha", objeto: "chuva" },
+    { t: "fala", de: "Ella", texto: "no caos também nasce coisa" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "a chuva parou?", tom: "dormindo", resposta: [{ de: "Ella", texto: "só aqui. só um pouco" }] },
+        { label: "por que ela levantou?", tom: "acordando", resposta: [{ de: "Ella", texto: "acho que ela só precisava de alguém que voltasse" }] },
+        { label: "a chuva é sua, né", tom: "acordado", resposta: [{ de: "Ella", texto: "…" }, { de: "Ella", texto: "é. um dia eu te conto o resto" }] },
+      ],
+    },
+    { t: "fala", de: "Ella", texto: "sabe o que eu lembro de ontem? uma música tocando alto na rua. todo mundo parou pra ouvir, até quem n se falava. aí apagou" },
+    { t: "fala", de: "Ella", texto: "eu n sou de briga. mas quando a hora chegar, eu vou. com medo. chorando se precisar" },
+    { t: "nucleo", texto: "luto público reduz a produtividade do bairro. recomendamos processar a perda em privado ✓" },
+    { t: "fim" },
+  ],
+}
+
+// ── O TERRAÇO · drama silencioso · Notti e os 15 segundos ──
+CENAS.topo = {
+  lugar: "topo",
+  missao: "dopamina",
+  passos: [
+    { t: "acao", texto: "o terraço do prédio mais alto do mirante. a cidade inteira lá embaixo, piscando" },
+    { t: "fala", de: "Notti", texto: "MANO vc veio" },
+    { t: "fala", de: "Notti", texto: "e se eu ouvir o silêncio e n gostar" },
+    { t: "fala", de: "Notti", texto: "e se lá dentro tiver uma coisa que eu tô fugindo faz anos" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "15 segundos. só isso", tom: "acordando", resposta: [{ de: "Notti", texto: "15 eu aguento" }, { de: "Notti", texto: "acho" }] },
+        { label: "aí a gente olha junto", tom: "acordado", resposta: [{ de: "Notti", texto: "tá" }, { de: "Notti", texto: "promete que n vai embora no meio" }] },
+        { label: "e se vc só desligar o celular?", tom: "dormindo", resposta: [{ de: "Notti", texto: "kkkk eu já tentei" }, { de: "Notti", texto: "ele liga sozinho" }] },
+      ],
+    },
+    { t: "fala", de: "Notti", texto: "tá. agora. ninguém fala" },
+    { t: "gesto", id: "silencio" },
+    { t: "acao", texto: "quinze segundos. sem música. sem notificação. só a chuva batendo no terraço" },
+    { t: "acao", texto: "lá longe, fora da cidade, onde a estrada acaba, uma luz acesa" },
+    { t: "fala", de: "Notti", texto: "…quem mora lá?" },
+    { t: "nucleo", texto: "você ficou 15 s offline. está tudo bem com você? ✓" },
+    { t: "fala", de: "Notti", texto: "ok. agora me ensina a fazer isso lá embaixo. três respirações, sem olhar notificação" },
+    { t: "gesto", id: "prova", prova: "respira" },
+    { t: "fala", de: "Notti", texto: "o relógio parou" },
+    { t: "ganha", objeto: "dopamina" },
+    { t: "fala", de: "Notti", texto: "ah, e ontem: todos os relógios da cidade pararam às 2:22. TODOS. depois voltaram a andar como se nada" },
+    { t: "fala", de: "Notti", texto: "conta comigo. eu sou rápida. pra fugir e pra entrar onde n deixam" },
+    { t: "fim" },
+  ],
+}
+
+// ── A CASA DE SHOWS · mistério · Alohan e o caderno ──
+CENAS["casa-shows"] = {
+  lugar: "casa-shows",
+  missao: "ontem",
+  passos: [
+    { t: "acao", texto: "a casa de shows depois do túnel. o letreiro diz ONTEM. falta uma letra acesa" },
+    { t: "acao", texto: "lá dentro, o palco vazio. um poste de luz pisca no meio da pista" },
+    { t: "fala", de: "Alohan", texto: "trouxe as três." },
+    { t: "fala", de: "Alohan", texto: "agora junta na ordem que soar certo." },
+    { t: "gesto", id: "prova", prova: "caderno" },
+    { t: "fala", de: "Alohan", texto: "isso." },
+    { t: "fala", de: "Alohan", texto: "agora escreve uma linha sua. qualquer coisa. ninguém vai corrigir." },
+    { t: "gesto", id: "linha" },
+    { t: "fala", de: "Alohan", texto: "vou guardar do jeito que tá." },
+    { t: "ganha", objeto: "ontem" },
+    { t: "fala", de: "Alohan", texto: "foi aqui. o último show antes do apagão." },
+    { t: "fala", de: "Alohan", texto: "na última página de ontem tem uma plateia. uma pessoa ficou até o fim." },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "quem?", tom: "dormindo", resposta: [{ de: "Alohan", texto: "ainda não sei." }] },
+        { label: "tem como descobrir?", tom: "acordando", resposta: [{ de: "Alohan", texto: "tem. eu acho. as páginas voltam quando querem." }] },
+        { label: "(ficar em silêncio, olhando o palco)", tom: "acordado", resposta: [{ de: "Alohan", texto: "você também sente, né. que conhece esse palco." }] },
+      ],
+    },
+    { t: "fala", de: "Alohan", texto: "o que vocês fizerem, eu escrevo. alguém tem que contar que teve resistência." },
+    { t: "acao", texto: "o poste pisca três vezes e apaga. a pista fica no escuro" },
+    { t: "nucleo", texto: "apagão programado no setor arena. obrigado pela compreensão ✓" },
     { t: "fim" },
   ],
 }

@@ -62,6 +62,7 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
       lugar: "a caixa d'água do subúrbio xenom",
       pega: [{ de: "Ella", texto: "encheu?? traz antes que evapore" }],
     },
+    lugar: "escondido",
     extra: "o JARDIM no celular: rega e a página floresce",
   },
   copo: {
@@ -74,12 +75,8 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   dopamina: {
     id: "dopamina", estilo: "estrada",
     chamado: "SOCORRO 47 abas. o relógio não para",
-    tarefa: "gravar 10 segundos de silêncio no topo do mirante",
-    busca: {
-      item: "silencio", nome: "o silêncio", onde: "crypto", em: [0.5],
-      lugar: "o topo do mirante, onde o sinal do núcleo não chega",
-      pega: [{ de: "Notti", texto: "VC GRAVOU O SILÊNCIO?? traz traz traz" }],
-    },
+    tarefa: "encontrar a Notti no terraço do prédio mais alto do mirante",
+    lugar: "topo",
     extra: "o turbo da Kombi",
   },
   sexta: {
@@ -109,6 +106,7 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
         { de: "Alohan", texto: "as três. vem." },
       ],
     },
+    lugar: "casa-shows",
     extra: "sua linha guardada no caderno",
   },
   nectar: {
@@ -168,16 +166,18 @@ export function etapaDe(s: Save, id: EstacaoId): Etapa {
   if (s.objetos.includes(id)) return "feita"
   const m = MISSOES[id]
   if (!m || s.pausas[id] === undefined) return "chamado"
+  // a coisa no mapa vem primeiro (se tiver); depois o lugar (ou a estação)
+  if (m.busca && itensFaltando(s, id) > 0) return "busca"
   if (m.lugar) return m.carona && !s.itens.includes(`carona:${id}`) ? "pegar" : "lugar"
-  return itensFaltando(s, id) > 0 ? "busca" : "entrega"
+  return "entrega"
 }
 
 // onde a pessoa mora/chama (a área em que ela te chama quando você entra)
 export function areaDaMissao(id: EstacaoId): FreqId {
   const m = MISSOES[id]!
   if (m.carona) return LUGARES[m.carona].area
-  if (m.lugar) return LUGARES[m.lugar].area
-  return m.busca!.onde
+  if (m.busca) return m.busca.onde
+  return LUGARES[m.lugar!].area
 }
 
 export function itensFaltando(s: Save, id: EstacaoId) {
@@ -234,9 +234,9 @@ export function alvoDe(s: Save, nivel: number): Alvo | null {
   if (!id) return null
   const e = etapaDe(s, id)
   const m = MISSOES[id]!
+  if (e === "busca" && m.busca) { const b = m.busca; return { t: "busca", missao: id, busca: b, faltam: b.em.map((_, k) => k).filter((k) => !s.itens.includes(`${b.item}:${k}`)) } }
   if (e === "pegar") return { t: "lugar", missao: id, lugar: m.carona!, pegar: true }
   if (e === "lugar") return { t: "lugar", missao: id, lugar: m.lugar!, pegar: false }
-  if (e === "busca" && m.busca) { const b = m.busca; return { t: "busca", missao: id, busca: b, faltam: b.em.map((_, k) => k).filter((k) => !s.itens.includes(`${b.item}:${k}`)) } }
   if (e === "entrega") return { t: "entrega", missao: id }
   // missão de lugar: o chamado chega sozinho na estrada (não manda pra estação)
   if (e === "chamado") return m.lugar ? null : { t: "visita", missao: id }
