@@ -1526,3 +1526,12 @@
 .l-fuga-voce { background: #2fe8ff; box-shadow: 0 0 10px #2fe8ff; }
 .l-fuga-policial { background: #eef2fb; box-shadow: 0 0 10px #eef2fb; opacity: 0.85; }
 .l-danca-alvo { border-color: var(--cor, #ff3fb0); box-shadow: 0 0 30px -6px var(--cor, #ff3fb0), inset 0 0 30px -10px var(--cor, #ff3fb0); }
+/* o gesto do beco: pôr os pedaços na ordem */
+.l-ordem { position: relative; z-index: 2; margin: 0 16px calc(11vh + 18px); display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 14px; background: rgba(8,9,14,0.84); border: 1px solid rgba(184,188,200,0.3); cursor: default; }
+.l-ordem-frase { margin: 0; min-height: 26px; font: italic 500 18px/1.35 var(--sans, system-ui); color: #e8ebf2; transition: color 0.4s; }
+.l-ordem-frase.is-errou { color: rgba(255,255,255,0.5); animation: l-ordem-treme 0.35s; }
+.l-ordem.is-pronta .l-ordem-frase { color: #5dffa0; text-shadow: 0 0 18px rgba(93,255,160,0.45); }
+.l-ordem-pedacos { display: flex; flex-wrap: wrap; gap: 8px; }
+.l-ordem-pedacos button { padding: 10px 14px; border-radius: 10px; background: rgba(184,188,200,0.1) !important; border: 1px dashed rgba(184,188,200,0.45) !important; color: #e8ebf2 !important; font: 500 15px var(--sans, system-ui); transition: opacity 0.25s, transform 0.25s; }
+.l-ordem-pedacos button:disabled { opacity: 0.18; transform: scale(0.94); }
+@keyframes l-ordem-treme { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }

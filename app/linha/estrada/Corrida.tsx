@@ -106,6 +106,8 @@ interface Props {
   onIlha?: () => void
   // encostou devagar na vaga de um lugar (a cena começa)
   onVaga?: (id: LugarId) => void
+  // o lugar secreto liberado (o beco): aparece depois de `voltas` passadas
+  segredo?: { id: LugarId; voltas: number } | null
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -137,6 +139,9 @@ type Jogo = {
   // a vaga do lugar da missão: já avisou que tá chegando? já encostou?
   vagaAvisou?: string
   naVaga?: boolean
+  segAnt?: number
+  segPassou?: number
+  naSeg?: boolean
 }
 
 // ponto de busca de uma missão no mapa (a coluna de luz com a coisa)
@@ -176,7 +181,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -201,6 +206,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const p = poses[lugarDaMissao]
     vagaRef.current = { id: l.id, via: p.via, u: l.u, lado: l.lado, nome: l.nome, cor: l.cor, quem: l.gente[0]?.quem ?? "" }
   }, [lugarDaMissao, poses])
+  // o lugar secreto: sem aviso nem guia; a Cena conta as passadas
+  const segredoRef = useRef<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>(null)
+  const segId = segredo?.id ?? null
+  const segVoltas = segredo?.voltas ?? 0
+  useEffect(() => {
+    if (!segId) { segredoRef.current = null; return }
+    const p = poses[segId]
+    segredoRef.current = { id: segId, via: p.via, u: p.u, lado: p.lado, voltas: segVoltas }
+  }, [segId, segVoltas, poses])
   const camLugarRef = useRef<PoseLugar | null>(null)
   useEffect(() => { camLugarRef.current = cenaLugar ? poses[cenaLugar] : null }, [cenaLugar, poses])
   const caidoRef = useRef(caido)
@@ -918,7 +932,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={(alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={(alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} />
         </Canvas>
       )}
 
@@ -1217,8 +1231,9 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef,
 }: {
+  segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -1252,6 +1267,8 @@ function Cena({
   nLib: number
   nLibRef: React.MutableRefObject<number>
 }) {
+  // o lugar secreto já apareceu (Lugares acende a vaga dele)
+  const [revelado, setRevelado] = useState<LugarId | null>(null)
   const { camera, scene, gl } = useThree()
   // olhar em volta de dentro (como na drive-v2): arrasta → gira até ±150° e
   // ±60°; solta → fica 7 s parado ali e depois volta devagar pra frente
@@ -2479,6 +2496,27 @@ function Cena({
         if (naVaga && !j.naVaga) { j.naVaga = true; ev.vaga(vg.id) }
         if (Math.abs(d) > VAGA) j.naVaga = false
       }
+      // o lugar secreto (o beco): cada vez que você passa por ele conta uma
+      // volta. Ninguém avisa; depois das voltas que o seu tom pede, a 222
+      // sussurra e a vaga dele passa a valer
+      const sg = segredoRef.current
+      if (sg && !cine && j.via === sg.via) {
+        const d = du(M.vias[j.via], j.u, sg.u)
+        if (j.segAnt !== undefined && j.segAnt > 0 && d <= 0 && d > -40) {
+          j.segPassou = (j.segPassou ?? 0) + 1
+          if (j.segPassou >= sg.voltas && revelado !== sg.id) setRevelado(sg.id)
+        }
+        j.segAnt = d
+        if (revelado === sg.id) {
+          if (j.vagaAvisou !== sg.id && d > 0 && d < 200) {
+            j.vagaAvisou = sg.id
+            ev.falar("222 FM", "…tem um beco aí na esquerda. entre os letreiros. ninguém olha pra ele")
+          }
+          const naVaga = Math.abs(d) < VAGA / 2 + 6 && j.x * sg.lado > MEIA * 0.2 && Math.abs(j.v) < 7
+          if (naVaga && !j.naSeg) { j.naSeg = true; ev.vaga(sg.id) }
+          if (Math.abs(d) > VAGA) j.naSeg = false
+        }
+      }
     }
 
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
@@ -2709,7 +2747,7 @@ function Cena({
       ))}
       <primitive object={cidade.pilares} />
       <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
-      <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} /></Seguro>
+      <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
       <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />

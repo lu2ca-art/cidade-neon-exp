@@ -8,7 +8,7 @@
 // versão anterior), a Kombi pra rodar a cidade quando quiser, e os níveis
 // liberando coisa nova aos poucos.
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
 import { ROTEIROS, type ChatId } from "./roteiros"
@@ -306,8 +306,24 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: "linha-nucleo", step: "caca:pego", perfil: save.perfil ?? "?", fio_pos: -1 })
   }, [save.perfil])
 
+  // o beco (lugar secreto): libera depois do terraço da Notti, até achar o
+  // relicário. Quantas voltas no mirante até ele aparecer depende do tom:
+  // quem tá acordado vê de primeira; quem dorme dá três voltas
+  const tomMaior = (["acordado", "acordando", "dormindo"] as const).reduce((a, b) => ((save.tons?.[b] ?? 0) > (save.tons?.[a] ?? 0) ? b : a), "dormindo" as "acordado" | "acordando" | "dormindo")
+  const becoLivre = save.objetos.includes("dopamina") && !(save.reliquias ?? []).includes("relicario")
+  const segredo = useMemo(() => (becoLivre ? { id: "beco" as LugarId, voltas: tomMaior === "acordado" ? 1 : tomMaior === "acordando" ? 2 : 3 } : null), [becoLivre, tomMaior])
+
   // encostou devagar na vaga do lugar da missão: a cena começa
   const abrirCena = useCallback((id: LugarId) => {
+    if (id === "beco") {
+      const s = saveRef.current
+      if (cinema || !s.objetos.includes("dopamina") || (s.reliquias ?? []).includes("relicario")) return
+      setAoVivo(null)
+      setCinema("lugar")
+      setCena({ lugar: id, missao: "dopamina", pegar: false })
+      track("mission_step", { mission_id: "linha-beco", step: "cena:beco", perfil: s.perfil ?? "?", fio_pos: -1 })
+      return
+    }
     const a = alvoDe(saveRef.current, nivelDe(saveRef.current))
     if (!a || a.t !== "lugar" || a.lugar !== id || cinema) return
     if (!cenaDe(id)) return
@@ -591,6 +607,7 @@ export default function LinhaPage() {
             onDescer={descer}
             onSair={sairDaCorrida}
             onVaga={abrirCena}
+            segredo={segredo}
             cenaLugar={cena?.lugar ?? null}
             intro={!save.completos.includes("abertura")}
             fala={falaIntro}

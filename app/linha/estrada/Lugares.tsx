@@ -181,6 +181,78 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
   )
 }
 
+// O BECO (lugar secreto): nada de vitrine nem neon próprio. Dois paredões
+// cinza com um vão escuro no meio, e em cima os três letreiros que gritam
+// (as três ruas bonitas que dão a volta). No fundo do vão, o papelão dela
+const GRITOS = [
+  { txt: "GLAMOUR →", cor: "#ff3fb0" },
+  { txt: "CONSUMO →", cor: "#ffc857" },
+  { txt: "CONFORTO →", cor: "#2fe8ff" },
+]
+
+function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: boolean; emCena: boolean }) {
+  const placas = useMemo(() => GRITOS.map((g) => texTexto([{ txt: g.txt, tam: 120, cor: g.cor }], 1024, 200)), [])
+  const vaga = useRef<THREE.MeshBasicMaterial>(null)
+  useFrame((s) => {
+    if (vaga.current) vaga.current.opacity = revelado ? 0.1 + Math.sin(s.clock.elapsedTime * 1.5) * 0.05 : 0
+  })
+  const alto = p.chao + 12 - -12
+  return (
+    <group>
+      <group position={[p.centro.x, -12 + alto / 2, p.centro.z]} rotation-y={p.rumo}>
+        {/* os dois paredões, com o vão de 3,5 m no meio */}
+        {[-4.9, 4.9].map((z) => (
+          <mesh key={z} position={[0, 0, z]}>
+            <boxGeometry args={[FUNDO, alto, 6.2]} />
+            <meshStandardMaterial color="#24252c" roughness={0.95} />
+          </mesh>
+        ))}
+      </group>
+      <group position={[p.centro.x, p.chao, p.centro.z]} rotation-y={p.rumo + (l.lado > 0 ? Math.PI / 2 : -Math.PI / 2)}>
+        {/* a parede do fundo do beco */}
+        <mesh position={[0, -p.chao / 2, -FUNDO / 2 + 0.3]}>
+          <boxGeometry args={[3.6, alto, 0.6]} />
+          <meshStandardMaterial color="#1b1c21" roughness={1} />
+        </mesh>
+        {/* o chão do beco, molhado */}
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0.07, 0]}>
+          <planeGeometry args={[3.6, FUNDO]} />
+          <meshStandardMaterial color="#121318" roughness={0.25} metalness={0.5} />
+        </mesh>
+        {/* o papelão e o cobertor, no fundo */}
+        <mesh position={[0.6, 0.1, -FUNDO / 2 + 1.6]} rotation-x={-Math.PI / 2}>
+          <planeGeometry args={[1.6, 2.2]} />
+          <meshStandardMaterial color="#5a4630" roughness={1} />
+        </mesh>
+        {/* uma lâmpada fraca, amarela, no fundo: a única luz que é dela */}
+        <pointLight position={[0, 3.2, -FUNDO / 2 + 2]} color="#ffd9a0" intensity={emCena ? 10 : 4} distance={8} decay={2} />
+        <mesh position={[0, 3.3, -FUNDO / 2 + 1.2]}>
+          <sphereGeometry args={[0.09, 8, 6]} />
+          <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
+        </mesh>
+        {/* os três letreiros, empilhados por cima do vão, apontando pra frente */}
+        {placas.map((tex, k) => (
+          <group key={k} position={[0, 6.2 + k * 2.3, FUNDO / 2 + 0.1]}>
+            <mesh>
+              <planeGeometry args={[9, 1.8]} />
+              <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} />
+            </mesh>
+            <pointLight position={[0, 0, 1.5]} color={GRITOS[k].cor} intensity={14} distance={10} decay={2} />
+          </group>
+        ))}
+        <mesh position={[0, 0.06, FUNDO / 2 + 4.5]}>
+          <boxGeometry args={[16, 0.12, 9]} />
+          <meshStandardMaterial color="#1c1d2c" roughness={0.9} />
+        </mesh>
+        {emCena && l.gente.map((g) => (
+          <Pessoa key={g.quem} cor={g.cor} pos={[0.6, 0.12, -FUNDO / 2 + 2.2]} vira={0} />
+        ))}
+      </group>
+      <Vaga p={p} cor="#e6f0ff" materialRef={vaga} />
+    </group>
+  )
+}
+
 function Vaga({ p, cor, materialRef }: { p: PoseLugar; cor: string; materialRef: React.RefObject<THREE.MeshBasicMaterial | null> }) {
   return (
     <mesh position={[p.vaga.x, p.vaga.y + 0.05, p.vaga.z]} rotation={[-Math.PI / 2, 0, p.rumo]}>
@@ -190,11 +262,13 @@ function Vaga({ p, cor, materialRef }: { p: PoseLugar; cor: string; materialRef:
   )
 }
 
-export function Lugares({ M, alvo, emCena }: { M: Mundo; alvo: LugarId | null; emCena: LugarId | null }) {
+export function Lugares({ M, alvo, emCena, revelado = null }: { M: Mundo; alvo: LugarId | null; emCena: LugarId | null; revelado?: LugarId | null }) {
   const poses = useMemo(() => Object.values(LUGARES).map((l) => ({ l, p: poseLugar(M, l) })), [M])
   return (
     <group>
-      {poses.map(({ l, p }) => <Fachada key={l.id} l={l} p={p} alvo={alvo === l.id} emCena={emCena === l.id} />)}
+      {poses.map(({ l, p }) => l.segredo
+        ? <Beco key={l.id} l={l} p={p} revelado={revelado === l.id} emCena={emCena === l.id} />
+        : <Fachada key={l.id} l={l} p={p} alvo={alvo === l.id} emCena={emCena === l.id} />)}
     </group>
   )
 }

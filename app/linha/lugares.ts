@@ -11,7 +11,7 @@
 import type { EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 
-export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "posto" | "plataforma"
+export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "posto" | "plataforma"
 
 export interface Lugar {
   id: LugarId
@@ -26,6 +26,9 @@ export interface Lugar {
   // quem aparece na frente do lugar durante a cena
   gente: { quem: string; cor: string }[]
   dono?: EstacaoId
+  // lugar SEM missão e sem marcador: ninguém vê. Só aparece depois de dar a
+  // volta no circuito (quantas, depende do tom da pessoa) — o beco
+  segredo?: true
 }
 
 export const LUGARES = {
@@ -73,6 +76,15 @@ LUGARES.plataforma = {
   id: "plataforma", nome: "a estação 6 da Linha 9", no: "na estação 6", letreiro: "LINHA 9 · 6", area: "linha", u: 2293, lado: -1,
   cor: "#e6f0ff", acento: "#b38cff", dono: "nectar",
   gente: [{ quem: "policial", cor: "#e6f0ff" }],
+}
+
+// o beco dos três letreiros (arco, lugar 3): depois do terraço da Notti.
+// As três ruas brilhantes dão a volta e devolvem pro começo; o beco cinza
+// fica entre elas, e ninguém olha. A moradora de rua mora no fundo
+LUGARES.beco = {
+  id: "beco", nome: "o beco", no: "no beco", letreiro: "", area: "crypto", u: 1300, lado: -1,
+  cor: "#8a8f9e", acento: "#5dffa0", dono: "dopamina", segredo: true,
+  gente: [{ quem: "a moradora", cor: "#8a8f9e" }],
 }
 
 export function lugar(id: LugarId) {

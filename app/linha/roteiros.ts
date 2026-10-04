@@ -115,6 +115,7 @@ export const VOZES: Record<string, string> = {
   LU2CA: "#b38cff",
   "Tony Gordo": "#ffe14d",
   Nizzy: "#ff5b5b",
+  "a moradora": "#b8bcc8",
 }
 
 export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamina" | "sexta" | "ontem" | "nectar", Roteiro> = {
