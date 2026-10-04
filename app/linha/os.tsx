@@ -143,8 +143,9 @@ export function chamados(save: Save, nivel: number): Chamado[] {
     if (et === "chamado") out.unshift({ id: `est-${a}`, de: e.personagem, cor: e.cor, texto: m.chamado, acao: { chat: a } })
     else if (et === "busca") {
       const f = itensFaltando(save, a)
-      out.unshift({ id: `busca-${a}`, de: e.personagem, cor: e.cor, texto: `${m.tarefa}${m.busca.em.length > 1 ? ` · faltam ${f}` : ""}`, acao: { app: "kombi" } })
-    } else if (et === "entrega") out.unshift({ id: `entrega-${a}`, de: e.personagem, cor: e.cor, texto: `leva ${m.busca.nome} na estação ${e.n}`, acao: { app: "kombi" } })
+      out.unshift({ id: `busca-${a}`, de: e.personagem, cor: e.cor, texto: `${m.tarefa}${(m.busca?.em.length ?? 1) > 1 ? ` · faltam ${f}` : ""}`, acao: { app: "kombi" } })
+    } else if (et === "entrega") out.unshift({ id: `entrega-${a}`, de: e.personagem, cor: e.cor, texto: `leva ${m.busca?.nome ?? "a coisa"} na estação ${e.n}`, acao: { app: "kombi" } })
+    else if (et === "pegar" || et === "lugar") out.unshift({ id: `lugar-${a}`, de: e.personagem, cor: e.cor, texto: m.tarefa, acao: { app: "kombi" } })
   }
   if (!save.objetos.length) return out
   const feitos = legadoFeito()
@@ -371,7 +372,7 @@ export function N3xo({ save, nivel, onChat, onVoltar }: { save: Save; nivel: num
       nome: e.personagem,
       cor: e.cor,
       objeto: e.id,
-      texto: feito ? `${e.objetoNome} ✓` : et === "chamado" ? m?.chamado ?? "…" : et === "busca" ? m?.tarefa ?? "…" : `leva ${m?.busca.nome} na estação ${e.n}`,
+      texto: feito ? `${e.objetoNome} ✓` : et === "chamado" ? m?.chamado ?? "…" : et === "busca" || et === "pegar" || et === "lugar" ? m?.tarefa ?? "…" : `leva ${m?.busca?.nome ?? "a coisa"} na estação ${e.n}`,
       estado: feito ? "feito" : e.id === a && et !== "busca" ? "novo" : "feito",
     })
   }

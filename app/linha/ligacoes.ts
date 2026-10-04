@@ -141,7 +141,7 @@ function palavrasDe(label: string) {
 export function ligacaoDaMissao(id: EstacaoId, quem: string, c: Ctx): { lig: Ligacao; tarefa: number } | null {
   const r = ROTEIROS[id as keyof typeof ROTEIROS]
   if (!r) return null
-  const tarefa = r.passos.findIndex((p) => p.t === "tarefa")
+  const tarefa = r.passos.findIndex((p) => p.t === "tarefa" || p.t === "lugar")
   if (tarefa < 0) return null
   const passos: PassoLigacao[] = []
   r.passos.slice(0, tarefa).forEach((p: Passo) => {

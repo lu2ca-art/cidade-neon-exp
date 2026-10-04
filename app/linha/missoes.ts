@@ -15,6 +15,7 @@
 import { ESTACOES, estacao, missao, type EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 import type { Save } from "./estado"
+import { LUGARES, type LugarId } from "./lugares"
 
 // como a pessoa gosta de jogar — sai da pergunta da Kombi no quiz
 export type Perfil = "estrada" | "musica" | "historia"
@@ -39,7 +40,13 @@ export interface MissaoDef {
   estilo: Perfil
   chamado: string // a notificação que chega no celular
   tarefa: string // o pedido, curto, no cartão da conversa e no HUD
-  busca: Busca
+  // missão de BUSCA (o jeito antigo: uma coisa num ponto do mapa)…
+  busca?: Busca
+  // …ou missão de LUGAR (04/10): a cena acontece num lugar da cidade
+  // (lugares.ts, cenas.ts). Com `carona`, primeiro pega alguém num lugar e
+  // leva até o outro
+  lugar?: LugarId
+  carona?: LugarId
   extra?: string // recompensa própria da missão, além das de sempre
 }
 
@@ -57,13 +64,9 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   },
   copo: {
     id: "copo", estilo: "musica",
-    chamado: "achei um mp3 no fundo do copo. tá sem pilha",
-    tarefa: "buscar pilha na conveniência 24h da cidade neon",
-    busca: {
-      item: "pilha", nome: "as pilhas", onde: "linha", em: [0.445],
-      lugar: "a conveniência 24h, na cidade neon",
-      pega: [{ de: "Mubarak", texto: "duas? pô. traz" }],
-    },
+    chamado: "tô no bar de sempre. vem",
+    tarefa: "encontrar o Mubarak no bar (O COPO), na cidade neon",
+    lugar: "bar",
     extra: "o mp3 pega frequência: sinal cheio pra próxima rádio",
   },
   dopamina: {
@@ -158,27 +161,40 @@ export function montarFio(pesos: Partial<Record<EstacaoId, number>>, estacaoId: 
   return ids.map((id, i) => ({ id, i, n: nota(id) })).sort((a, b) => b.n - a.n || a.i - b.i).map((x) => x.id)
 }
 
-export type Etapa = "chamado" | "busca" | "entrega" | "feita"
+export type Etapa = "chamado" | "busca" | "entrega" | "pegar" | "lugar" | "feita"
 
 // em que pé está uma missão
 export function etapaDe(s: Save, id: EstacaoId): Etapa {
   if (s.objetos.includes(id)) return "feita"
   const m = MISSOES[id]
   if (!m || s.pausas[id] === undefined) return "chamado"
+  if (m.lugar) return m.carona && !s.itens.includes(`carona:${id}`) ? "pegar" : "lugar"
   return itensFaltando(s, id) > 0 ? "busca" : "entrega"
+}
+
+// onde a pessoa mora/chama (a área em que ela te chama quando você entra)
+export function areaDaMissao(id: EstacaoId): FreqId {
+  const m = MISSOES[id]!
+  if (m.carona) return LUGARES[m.carona].area
+  if (m.lugar) return LUGARES[m.lugar].area
+  return m.busca!.onde
 }
 
 export function itensFaltando(s: Save, id: EstacaoId) {
   const m = MISSOES[id]
-  if (!m) return 0
-  return m.busca.em.filter((_, k) => !s.itens.includes(`${m.busca.item}:${k}`)).length
+  if (!m?.busca) return 0
+  const b = m.busca
+  return b.em.filter((_, k) => !s.itens.includes(`${b.item}:${k}`)).length
 }
 
 // em que área está o próximo passo de uma missão já começada: a busca é
 // onde a coisa está; a entrega é sempre na estação (cidade neon)
 export function areaDoPasso(s: Save, id: EstacaoId): FreqId {
   const m = MISSOES[id]!
-  return etapaDe(s, id) === "busca" ? m.busca.onde : "linha"
+  const e = etapaDe(s, id)
+  if (e === "pegar") return LUGARES[m.carona!].area
+  if (e === "lugar") return LUGARES[m.lugar!].area
+  return e === "busca" ? m.busca!.onde : "linha"
 }
 
 // a missão que está valendo agora (o foco do HUD e de quem chama):
@@ -192,7 +208,7 @@ export function ativa(s: Save, nivel: number, agora = Date.now()): EstacaoId | n
   const comecadas = ordem.filter((id) => ok(id) && s.pausas[id] !== undefined)
   const aqui = comecadas.find((id) => areaDoPasso(s, id) === area)
   if (aqui) return aqui
-  const nova = ordem.find((id) => ok(id) && s.pausas[id] === undefined && MISSOES[id]!.busca.onde === area)
+  const nova = ordem.find((id) => ok(id) && s.pausas[id] === undefined && areaDaMissao(id) === area)
   if (nova) return nova
   return comecadas[0] ?? null
 }
@@ -210,14 +226,19 @@ export type Alvo =
   | { t: "busca"; missao: EstacaoId; busca: Busca; faltam: number[] } // índices dos pontos que faltam
   | { t: "entrega"; missao: EstacaoId }
   | { t: "visita"; missao: EstacaoId } // alguém te chamou: vai até a estação dele
+  // vai até um LUGAR (a cena acontece lá). pegar = é o ponto da carona
+  | { t: "lugar"; missao: EstacaoId; lugar: LugarId; pegar: boolean }
 
 export function alvoDe(s: Save, nivel: number): Alvo | null {
   const id = ativa(s, nivel)
   if (!id) return null
   const e = etapaDe(s, id)
   const m = MISSOES[id]!
-  if (e === "busca") return { t: "busca", missao: id, busca: m.busca, faltam: m.busca.em.map((_, k) => k).filter((k) => !s.itens.includes(`${m.busca.item}:${k}`)) }
+  if (e === "pegar") return { t: "lugar", missao: id, lugar: m.carona!, pegar: true }
+  if (e === "lugar") return { t: "lugar", missao: id, lugar: m.lugar!, pegar: false }
+  if (e === "busca" && m.busca) { const b = m.busca; return { t: "busca", missao: id, busca: b, faltam: b.em.map((_, k) => k).filter((k) => !s.itens.includes(`${b.item}:${k}`)) } }
   if (e === "entrega") return { t: "entrega", missao: id }
-  if (e === "chamado") return { t: "visita", missao: id }
+  // missão de lugar: o chamado chega sozinho na estrada (não manda pra estação)
+  if (e === "chamado") return m.lugar ? null : { t: "visita", missao: id }
   return null
 }

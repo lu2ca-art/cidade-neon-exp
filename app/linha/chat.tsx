@@ -1,5 +1,6 @@
 "use client"
 
+import { LUGARES } from "./lugares"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, estacao as getEstacao, lancada, dataCurta, nivelDe, type EstacaoId } from "./data"
@@ -308,7 +309,22 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           const novoLog = jaTem ? logRef.current : [...logRef.current, it]
           const primeira = saveRef.current.pausas[est] === undefined
           atualizar((s) => ({ ...s, pausas: { ...s.pausas, [id]: pos }, logs: { ...s.logs, [id]: novoLog } }))
-          if (primeira) track("mission_step", { mission_id: `linha-${est}`, step: `busca:${m.busca.item}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
+          if (primeira) track("mission_step", { mission_id: `linha-${est}`, step: `busca:${m.busca?.item ?? "lugar"}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
+          setEspera({ t: "tarefa" })
+        })
+        break
+      }
+      case "lugar": {
+        // a conversa para no convite: o resto é a cena no lugar (cenas.ts)
+        const est = id as EstacaoId
+        const jaTem = logRef.current.some((it) => it.k === "tarefa")
+        agendar(400, null, () => {
+          const it: Item = { k: "tarefa", estacao: est }
+          if (!jaTem) empurrar(it)
+          const novoLog = jaTem ? logRef.current : [...logRef.current, it]
+          const primeira = saveRef.current.pausas[est] === undefined
+          atualizar((s) => ({ ...s, pausas: { ...s.pausas, [id]: pos }, logs: { ...s.logs, [id]: novoLog } }))
+          if (primeira) track("mission_step", { mission_id: `linha-${est}`, step: `lugar:${MISSOES[est]?.lugar ?? "?"}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
           setEspera({ t: "tarefa" })
         })
         break
@@ -757,13 +773,13 @@ function TarefaCard({ estacao, feita, save }: { estacao: EstacaoId; feita: boole
   const e = getEstacao(estacao)
   const m = MISSOES[estacao]
   if (!m) return null
-  const total = m.busca.em.length
+  const total = m.busca?.em.length ?? 1
   const falta = feita ? 0 : itensFaltando(save, estacao)
   return (
     <div className={`l-tarefa ${feita || falta === 0 ? "is-feita" : ""}`} style={{ ["--cor" as string]: e.cor }}>
       <small>{feita || falta === 0 ? "missão · feito" : "missão"}</small>
       <b>{m.tarefa}</b>
-      <span>{m.busca.lugar}{total > 1 ? ` · ${total - falta}/${total}` : ""}</span>
+      <span>{m.busca ? m.busca.lugar : m.lugar ? LUGARES[m.lugar].nome : ""}{total > 1 ? ` · ${total - falta}/${total}` : ""}</span>
     </div>
   )
 }

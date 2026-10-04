@@ -23,6 +23,8 @@ import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
 import { KombiHerbal } from "./KombiHerbal"
 import { Metro, montarMetro } from "./Metro"
+import { LUGARES, VAGA, type LugarId } from "../lugares"
+import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
@@ -32,7 +34,7 @@ import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, 
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
-import { MISSOES, areaDoPasso, type Alvo } from "../missoes"
+import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
 
@@ -102,9 +104,13 @@ interface Props {
   fala?: { id: number; de: string; texto: string } | null
   // tocar na ilha quando ela mostra uma mensagem
   onIlha?: () => void
+  // encostou devagar na vaga de um lugar (a cena começa)
+  onVaga?: (id: LugarId) => void
+  // a cena de um lugar está rolando: a câmera de cinema olha pra ele
+  cenaLugar?: LugarId | null
 }
 
-export type Cinema = "rodando" | "parando" | null
+export type Cinema = "rodando" | "parando" | "lugar" | null
 const VCINEMA = 22 // m/s: de boa, ~80 km/h
 
 type Jogo = {
@@ -128,6 +134,9 @@ type Jogo = {
   escolha: 0 | 1 | -1; escolhaU: number
   st: Stats
   pegos: Set<number>
+  // a vaga do lugar da missão: já avisou que tá chegando? já encostou?
+  vagaAvisou?: string
+  naVaga?: boolean
 }
 
 // ponto de busca de uma missão no mapa (a coluna de luz com a coisa)
@@ -135,6 +144,7 @@ export type Marco = { chave: string; via: number; u: number; cor: string }
 
 type Evs = {
   via: (i: number) => void
+  vaga: (id: LugarId) => void
   radio: (id: FreqId) => void
   falar: (de: string, t: string) => void
   popup: (t: string, cor: string) => void
@@ -166,12 +176,12 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
   // levando a coisa pra estação = a estação vira o destino
-  const [destino, setDestino] = useState<EstacaoId | null>(destinoInicial ?? (alvo && alvo.t !== "busca" ? alvo.missao : null))
+  const [destino, setDestino] = useState<EstacaoId | null>(destinoInicial ?? (alvo && (alvo.t === "entrega" || alvo.t === "visita") ? alvo.missao : null))
   const destinoRef = useRef(destino)
   useEffect(() => { destinoRef.current = destino }, [destino])
   const alvoRef = useRef(alvo)
@@ -179,7 +189,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const alvoChave = alvo ? `${alvo.t}:${alvo.missao}:${alvo.t === "busca" ? alvo.faltam.join(",") : ""}` : ""
   const missaoAlvo = alvo ? MISSOES[alvo.missao] ?? null : null
   // onde a missão manda: o lugar da busca, ou o centro (onde moram as estações)
-  const lugarAlvo: FreqId | null = caido ? "linha" : alvo ? (alvo.t === "busca" ? alvo.busca.onde : "linha") : null
+  const lugarAlvo: FreqId | null = caido ? "linha" : alvo ? (alvo.t === "busca" ? alvo.busca.onde : alvo.t === "lugar" ? LUGARES[alvo.lugar].area : "linha") : null
+  // os lugares da cidade: onde fica cada um (fachada, vaga, câmera)
+  const poses = useMemo(() => Object.fromEntries(Object.values(LUGARES).map((l) => [l.id, poseLugar(M, l)])) as Record<LugarId, PoseLugar>, [M])
+  const lugarDaMissao: LugarId | null = !caido && alvo?.t === "lugar" ? alvo.lugar : null
+  // a vaga que vale agora (encostar nela começa a cena)
+  const vagaRef = useRef<{ id: LugarId; via: number; u: number; lado: 1 | -1; nome: string; cor: string; quem: string } | null>(null)
+  useEffect(() => {
+    if (!lugarDaMissao) { vagaRef.current = null; return }
+    const l = LUGARES[lugarDaMissao]
+    const p = poses[lugarDaMissao]
+    vagaRef.current = { id: l.id, via: p.via, u: l.u, lado: l.lado, nome: l.nome, cor: l.cor, quem: l.gente[0]?.quem ?? "" }
+  }, [lugarDaMissao, poses])
+  const camLugarRef = useRef<PoseLugar | null>(null)
+  useEffect(() => { camLugarRef.current = cenaLugar ? poses[cenaLugar] : null }, [cenaLugar, poses])
   const caidoRef = useRef(caido)
   useEffect(() => { caidoRef.current = caido }, [caido])
   const lugarAlvoRef = useRef(lugarAlvo)
@@ -204,8 +227,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // e pegou a Kombi) — a estação deixa de ser destino, senão a Kombi leva
   // de volta lá pra "descer" e confirmar de novo
   useEffect(() => {
-    if (alvo?.t === "busca" && destinoRef.current === alvo.missao) setDestino(null)
-    if (alvo && alvo.t !== "busca" && !destinoRef.current) setDestino(alvo.missao)
+    if ((alvo?.t === "busca" || alvo?.t === "lugar") && destinoRef.current === alvo.missao) setDestino(null)
+    if (alvo && (alvo.t === "entrega" || alvo.t === "visita") && !destinoRef.current) setDestino(alvo.missao)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvoChave])
 
@@ -233,7 +256,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     for (const e of ESTACOES) {
       const m = MISSOES[e.id]
       if (!m || save.objetos.includes(e.id) || !missao(e, nivel).ok) continue
-      const area = save.pausas[e.id] !== undefined ? areaDoPasso(save, e.id) : m.busca.onde
+      const area = save.pausas[e.id] !== undefined ? areaDoPasso(save, e.id) : areaDaMissao(e.id)
       ;(out[area] ??= []).push({ nome: e.personagem, cor: e.cor })
     }
     return out
@@ -382,7 +405,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     if (fonteRef.current !== "radio") return
     if (caidoRef.current) { player.pausar(); setFaixa(""); return }
     const a = alvoRef.current
-    const carregando = a?.t === "entrega" ? MISSOES[a.missao]?.busca.nome ?? null : null
+    const carregando = a?.t === "entrega" ? MISSOES[a.missao]?.busca?.nome ?? null : null
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
     if (!p) { setFaixa(""); return }
     const tocar = () => {
@@ -499,10 +522,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
   }, [M])
 
+  const onVagaRef = useRef(onVaga)
+  useEffect(() => { onVagaRef.current = onVaga }, [onVaga])
   // eventos que a cena dispara
   const evs = useRef<Evs>(null as unknown as Evs)
   useEffect(() => {
     evs.current = {
+      vaga: (id) => onVagaRef.current?.(id),
       // na chegada a cidade fica quieta: só o grupo fala
       falar: (de, t) => { if (!introRef.current) falar(de, t) },
       popup: (txt, cor) => setPopup({ id: Math.random(), txt, cor }),
@@ -729,6 +755,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             }
             for (const u of new Set(V.faixas.map((f) => f.u))) it.push({ k: `f${u}`, d: dist(u), cor: "#ffc857", rot: "saídas", tipo: "garfo" })
           } else it.push({ k: "chega", d: V.L - j.u, cor: freqDe(V.t).cor, rot: lugarDe(V.t), tipo: "chegada" })
+          // o lugar da missão (a vaga) também entra no guia
+          const vg = vagaRef.current
+          if (vg && vg.via === j.via) it.push({ k: `l${vg.id}`, d: dist(vg.u), cor: vg.cor, rot: vg.nome, tipo: "alvo" })
           for (const m of marcosRef.current) if (m.via === j.via) it.push({ k: `m${m.chave}`, d: dist(m.u), cor: m.cor, rot: m.chave === "antena" ? "antena" : "missão", tipo: "item" })
           const vis = it.filter((x) => x.d > 0 && x.d < JAN)
           const chave = vis.map((x) => x.k).join(",")
@@ -747,6 +776,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return
     const w = window as unknown as Record<string, unknown>
+    // teste: a velocidade da Kombi (m/s), ex. 0 pra estacionar na vaga
+    w.__vel = (v: number) => { jogo.current.v = v }
     w.__irPara = (f: number, x?: number) => {
       const j = jogo.current
       j.u = f * M.vias[j.via].L
@@ -775,7 +806,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       const j = jogo.current
       return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap) }
     }
-    return () => { delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular }
+    return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular }
   }, [M])
 
   // toque: metade esquerda/direita vira, as duas freiam
@@ -828,7 +859,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // carona: quem está na Kombi conversa no caminho
   useEffect(() => {
     const a = alvoRef.current
-    const fala = a?.t === "entrega" ? MISSOES[a.missao]?.busca.caminho : undefined
+    const fala = a?.t === "entrega" ? MISSOES[a.missao]?.busca?.caminho : undefined
     if (!a || !fala) return
     let i = 0
     const quem = getEstacao(a.missao).personagem
@@ -851,7 +882,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // descer na estação só quando ela te espera (visita ou entrega) — no meio
   // da busca, passar por ela não pede nada
   const podeDescerPortal = !!portalE && !save.objetos.includes(portalE.id) && (
-    alvo?.missao === portalE.id ? alvo.t !== "busca" : portalE.id === destino && !!portalMissao?.ok
+    alvo?.missao === portalE.id ? alvo.t === "entrega" || alvo.t === "visita" : portalE.id === destino && !!portalMissao?.ok
   )
   const passandoE = passando ? getEstacao(passando.id) : null
   useEffect(() => {
@@ -887,7 +918,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={alvo?.t === "entrega" && alvo.missao === "sexta" ? "sexta" : null} lugarAlvoRef={lugarAlvoRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={alvo?.t === "entrega" && alvo.missao === "sexta" ? "sexta" : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} />
         </Canvas>
       )}
 
@@ -933,7 +964,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {!caido && alvo && missaoAlvo && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: getEstacao(alvo.missao).cor }}>
           <small>{getEstacao(alvo.missao).personagem} · missão</small>
-          <b>{alvo.t === "busca" ? missaoAlvo.tarefa : alvo.t === "visita" ? `te chamou na estação ${getEstacao(alvo.missao).n}` : `levar ${missaoAlvo.busca.nome} na estação ${getEstacao(alvo.missao).n}`}</b>
+          <b>{alvo.t === "busca" ? missaoAlvo.tarefa : alvo.t === "lugar" ? (alvo.pegar ? `buscar ${LUGARES[alvo.lugar].no}` : `encosta ${LUGARES[alvo.lugar].no}`) : alvo.t === "visita" ? `te chamou na estação ${getEstacao(alvo.missao).n}` : `levar ${missaoAlvo.busca?.nome ?? "a coisa"} na estação ${getEstacao(alvo.missao).n}`}</b>
           {alvo.t === "busca" && alvo.busca.em.length > 1 && <span>{alvo.busca.em.length - alvo.faltam.length}/{alvo.busca.em.length}</span>}
         </div>
       )}
@@ -1186,13 +1217,17 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar,
 }: {
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
   carona: EstacaoId | null
   lugarAlvoRef: React.MutableRefObject<FreqId | null>
+  vagaRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; nome: string; cor: string; quem: string } | null>
+  camLugarRef: React.MutableRefObject<PoseLugar | null>
+  lugarAlvoId: LugarId | null
+  cenaLugar: LugarId | null
   dentroRef: React.MutableRefObject<boolean>
   discoRef: React.MutableRefObject<boolean>
   cacadoRef: React.MutableRefObject<boolean>
@@ -1275,6 +1310,7 @@ function Cena({
   }, [pausado, calar, motor])
 
   const metro = useMemo(() => montarMetro(M), [M])
+  const centrosLugares = useMemo(() => Object.values(LUGARES).map((l) => poseLugar(M, l).centro), [M])
   // o subúrbio mora no meio do anel da cidade: o centro e até onde vai o chão
   const centroSub = useMemo(() => {
     const v = M.vias[M.circuito.linha]
@@ -1393,6 +1429,7 @@ function Cena({
         const bz = C.pz[k] + C.tx[k] * lado * off
         const w = e.w[0] + r() * (e.w[1] - e.w[0])
         if (!M.livre(bx, bz, 10 + w * 0.7)) continue
+        if (centrosLugares.some((c) => Math.hypot(c.x - bx, c.z - bz) < 24 + w * 0.7)) continue
         d.position.set(bx, -12 + h / 2, bz)
         if (h > 85) topos.push(bx, -12 + h + 1.5, bz)
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
@@ -1539,7 +1576,7 @@ function Cena({
     const aviacaoMat = new THREE.PointsMaterial({ size: 5, map: tex.brilho, color: "#ff2a2a", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
 
     return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat }
-  }, [M, circuitos, tex, distI])
+  }, [M, circuitos, tex, distI, centrosLugares])
 
   // ── portais das estações (no centro) ──
   const portais = useMemo(() => centro.estacoes.map(({ id, u }) => {
@@ -1902,11 +1939,12 @@ function Cena({
     if (cine) {
       // piloto automático: segue a pista no meio (nunca pega saída), sem
       // pressa; parando = encosta à direita e estaciona devagar
-      const alvoX = cine === "parando" ? Math.min(MEIA * 0.4, a.dir - 2) : 0
+      const alvoX = cine === "lugar" ? j.x : cine === "parando" ? Math.min(MEIA * 0.4, a.dir - 2) : 0
       const alvoSteer = Math.max(-1, Math.min(1, (alvoX - j.x) / 3))
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 3)
       j.escolha = 0
-      if (cine === "parando") j.v = Math.max(0, j.v - (2.6 + j.v * 0.12) * dt)
+      if (cine === "lugar") j.v = Math.max(0, j.v - (8 + j.v * 0.6) * dt)
+      else if (cine === "parando") j.v = Math.max(0, j.v - (2.6 + j.v * 0.12) * dt)
       else j.v += (VCINEMA - j.v) * Math.min(1, dt * 0.5)
       j.vx += (j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) - j.vx) * Math.min(1, dt * 7)
       j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * (1 - Math.min(0.75, Math.abs(a.bank) * 2.4))) * dt
@@ -1918,7 +1956,12 @@ function Cena({
       // de dentro (primeira pessoa) a Kombi vai no AUTOMÁTICO: segue a pista
       // e pega sozinha a saída que leva pra missão; você só olha em volta
       const auto = dentroRef.current && !cine
-      let alvoSteer = auto ? Math.max(-1, Math.min(1, (0 - j.x) / 3)) : (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
+      // no automático, chegando na vaga da missão: encosta e freia sozinha
+      const vgA = auto ? vagaRef.current : null
+      const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity
+      const encostando = !!vgA && dVaga > -VAGA / 2 && dVaga < 90
+      const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : 0
+      let alvoSteer = auto ? Math.max(-1, Math.min(1, (xAuto - j.x) / 3)) : (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
       // bifurcação: nos últimos 330m, um toque pro lado MARCA a saída e a
       // Kombi entra sozinha na faixa (antes tinha que acertar a faixa no
       // metro exato da divisão — era a trava). Toque do outro lado desmarca.
@@ -1968,6 +2011,7 @@ function Cena({
         j.v = Math.abs(j.v) <= atrito ? 0 : j.v - Math.sign(j.v) * atrito
       }
       if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
+      if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
       j.v = Math.min(j.v, VTURBO * 1.08)
       if (j.turboT > 0) j.turboT -= dt
       // DRIFT DE VERDADE — sem botão, é a finta (o "pêndulo" do rali):
@@ -2421,6 +2465,22 @@ function Cena({
     }
     fumaca.g.attributes.position.needsUpdate = true
 
+    // a vaga do lugar da missão: avisa quando tá chegando, e encostar
+    // devagar nela abre a cena (page.tsx → cena.tsx)
+    {
+      const vg = vagaRef.current
+      if (vg && !cine && j.via === vg.via) {
+        const d = du(M.vias[j.via], j.u, vg.u)
+        if (j.vagaAvisou !== vg.id && d > 0 && d < 260) {
+          j.vagaAvisou = vg.id
+          ev.falar(vg.quem || "222 FM", `${vg.nome}: encosta na vaga ${vg.lado > 0 ? "da direita" : "da esquerda"}. devagar`)
+        }
+        const naVaga = Math.abs(d) < VAGA / 2 + 6 && j.x * vg.lado > MEIA * 0.2 && Math.abs(j.v) < 7
+        if (naVaga && !j.naVaga) { j.naVaga = true; ev.vaga(vg.id) }
+        if (Math.abs(d) > VAGA) j.naVaga = false
+      }
+    }
+
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const atras = 8.4 + pct * 1.8
     tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
@@ -2430,12 +2490,16 @@ function Cena({
       const raio = 9.5 - Math.min(1, j.v / VCINEMA) * 1.5
       tmp.alvo.copy(car.position).addScaledVector(tmp.f, -Math.cos(ang) * raio).addScaledVector(tmp.r, Math.sin(ang) * raio * 0.75).addScaledVector(tmp.up, 1.6 + Math.sin(j.tempo * 0.07) * 0.5)
     }
+    // a cena de um lugar: a câmera corta pro outro lado da rua, olhando a porta
+    const cl = cine === "lugar" ? camLugarRef.current : null
+    if (cl) { tmp.alvo.copy(cl.cam); tmp.alvo.y += Math.sin(j.tempo * 0.35) * 0.12 }
     const primeira = dentroRef.current && !cine
     if (primeira) { car.updateMatrixWorld(); tmp.alvo.copy(OLHO).applyMatrix4(car.matrixWorld) }
     if (j.encaixar) { camInit.current = false; j.encaixar = false }
-    const k = primeira ? 1 : camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
+    const k = primeira || cl ? 1 : camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
     camera.position.lerp(tmp.alvo, k)
     tmp.olhar.copy(car.position).addScaledVector(tmp.f, cine ? 2.5 : 7).addScaledVector(tmp.up, cine ? 1.4 : 1.2)
+    if (cl) tmp.olhar.copy(cl.porta)
     // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
     if (primeira) {
       const o = olhar.current
@@ -2446,7 +2510,7 @@ function Cena({
       const cp = Math.cos(o.pitch)
       tmp.olhar.copy(tmp.p.set(OLHO.x - Math.sin(o.yaw) * cp * 10, OLHO.y - 0.9 + Math.sin(o.pitch) * 10, OLHO.z - Math.cos(o.yaw) * cp * 10)).applyMatrix4(car.matrixWorld)
     }
-    tmp.camOlhar.lerp(tmp.olhar, primeira ? 1 - Math.exp(-dt * 14) : camInit.current ? 1 - Math.exp(-dt * 9) : 1)
+    tmp.camOlhar.lerp(tmp.olhar, cl ? 1 : primeira ? 1 - Math.exp(-dt * 14) : camInit.current ? 1 - Math.exp(-dt * 9) : 1)
     tmp.upMix.copy(tmp.up).lerp(tmp.y0, 0.45).normalize()
     tmp.camUp.lerp(tmp.upMix, camInit.current ? 1 - Math.exp(-dt * 4) : 1).normalize()
     camera.up.copy(tmp.camUp)
@@ -2457,7 +2521,7 @@ function Cena({
     camera.lookAt(tmp.camOlhar)
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
-    const fovAlvo = cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
+    const fovAlvo = cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
@@ -2645,6 +2709,7 @@ function Cena({
       ))}
       <primitive object={cidade.pilares} />
       <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
+      <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} /></Seguro>
       <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
