@@ -14,7 +14,7 @@ import { audioCtx, player, voz } from "./som"
 import { track } from "@/lib/analytics"
 
 const MIC_NEGADO = "cn-linha-mic-negado"
-const TOM: Record<string, number> = { "D-Bee": 1.25, Ella: 1.2, Mubarak: 0.8, Notti: 1.1, BBX: 0.9, Alohan: 0.85, LU2CA: 0.95 }
+const TOM: Record<string, number> = { "D-Bee": 1.25, Ella: 1.2, Mubarak: 0.8, Notti: 1.1, Drewboy: 0.9, Alohan: 0.85, LU2CA: 0.95 }
 
 type Reconhecedor = {
   lang: string; interimResults: boolean; continuous: boolean; maxAlternatives: number

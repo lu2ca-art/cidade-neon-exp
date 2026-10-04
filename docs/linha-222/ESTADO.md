@@ -34,7 +34,9 @@
 | SUBÚRBIO XENOM EMBAIXO DA CIDADE: saiu do anel distante e virou um circuito menor DENTRO do anel da cidade neon, a −8 m, num chão de verdade (fora é água). TRÊS DESCIDAS pela esquerda da cidade (u 1316, 1968, 2618, entre estações) e uma subida de volta por cima do anel. Sem torres no lado de dentro (a vista é o bairro). Modelo "CITY SUBURBS" (isabm, CC-BY, crédito no app LINHA 9) otimizado de 157 MB → 3,5 MB (scratchpad/modelos/otimizar.mjs). Placas aceitam bifurcação de um lado só; na chegada o grupo tem prioridade na ilha | — | `1f55861` |
 | Frase da entrada: "ninguém chega na cidade neon do mesmo jeito / uns caem aqui dormindo / uns entram querendo saber / uns voltam pq lembram de ontem" | — | `607c770` |
 | KOMBI HERBAL (escaneada, Mr. Mushi): escolha do LU2CA ciente da licença CC-BY-NC-SA (não comercial) e da marca Jia Jia na lateral. 12,9 MB → 1 MB, sem o tampo da mesa do escaneamento, material com luz. A desenhada à mão virou reserva (carregando/erro) e só os efeitos (neon de baixo, lanternas, turbo). Cabine só aparece de dentro. Crédito no app LINHA 9. Porta lateral aberta é do escaneamento | — | `2ff72d1` |
-| Kombi herbal com rodas que GIRAM (e as da frente esterçam): rodas de verdade por cima das escaneadas (frente z −1,14, trás +1,38, x +0,72/−0,92, raio 0,34) | — | (este merge) |
+| Kombi herbal com rodas que GIRAM (e as da frente esterçam): rodas de verdade por cima das escaneadas (frente z −1,14, trás +1,38, x +0,72/−0,92, raio 0,34) | — | `ad1d76b` |
+| SEGURANÇA: Next 16.0.10 → 16.3.8 (2 RCE críticas), audit 55 → 1 (braces, só dev), .env bloqueado no gitignore + .env.example, /api/batida blindada (tempo constante, 6/min por IP, UUID, validação), cabeçalhos de segurança | — | `14f51e2` |
+| BBX vira DREWBOY (nome do amigo real não pode). D-Bee: casa isolada (vault) | — | (este merge) |
 
 **#30 continua aberta:** com o critério certo (gravação ≤ 1925 confirmada,
 nada de "PDP-CH" suíço sem data, nada de MIDI) o Wikimedia só rendeu 2. Próxima

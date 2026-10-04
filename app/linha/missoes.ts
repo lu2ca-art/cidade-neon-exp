@@ -80,11 +80,11 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   sexta: {
     id: "sexta", estilo: "estrada",
     chamado: "sexta e eu em casa de novo. me busca?",
-    tarefa: "buscar o BBX de carona no subúrbio",
+    tarefa: "buscar o Drewboy de carona no subúrbio",
     busca: {
-      item: "carona", nome: "BBX de carona", onde: "suburbio", em: [0.22],
-      lugar: "a casa do BBX, no subúrbio xenom",
-      pega: [{ de: "BBX", texto: "entrei. bora antes que eu desista" }],
+      item: "carona", nome: "Drewboy de carona", onde: "suburbio", em: [0.22],
+      lugar: "a casa do Drewboy, no subúrbio xenom",
+      pega: [{ de: "Drewboy", texto: "entrei. bora antes que eu desista" }],
       caminho: [
         "vc sempre dirige assim?",
         "essa música é boa. n conta pra ninguém que eu disse",

@@ -31,7 +31,7 @@ type Props = {
   balanco: React.MutableRefObject<number> // aceleração lateral (pro pêndulo)
   disco: boolean // tocando vinil (o toca-discos gira)
   objetos: EstacaoId[]
-  carona: EstacaoId | null // alguém de carona agora (o BBX na missão dele)
+  carona: EstacaoId | null // alguém de carona agora (o Drewboy na missão dele)
   onTocaDiscos?: () => void // tocou no toca-discos: abre a estante de discos
 }
 
