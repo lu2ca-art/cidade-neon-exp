@@ -104,7 +104,7 @@ export function proxima(id: FreqId, objetos: EstacaoId[], ctx: Contexto): Proxim
 export interface Contexto {
   nome: string
   objetos: EstacaoId[]
-  carregando: string | null // "o cantil", "BBX de carona"…
+  carregando: string | null // "o cantil", "Drewboy de carona"…
 }
 
 const LUGAR: Record<FreqId, string[]> = {
@@ -149,7 +149,7 @@ const ESTREIA: Partial<Record<EstacaoId, string>> = {
   chuva: "alguém regou a flor da estação 1. pela primeira vez na 222: CHUVA",
   copo: "o mp3 do copo americano pegou sinal. pela primeira vez na 222: Copo Americano",
   dopamina: "a estação 3 respirou. pela primeira vez na 222, inteira, sem pular: DopaminA",
-  sexta: "o BBX saiu de casa. essa é dele: Sexta-Feira",
+  sexta: "o Drewboy saiu de casa. essa é dele: Sexta-Feira",
   ontem: "o caderno tá completo. pela primeira vez na 222: Sabe Ontem?",
   nectar: "o violão voltou pra estação 6. antes de todo mundo: Nectar",
 }

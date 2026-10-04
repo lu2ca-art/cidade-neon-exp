@@ -108,7 +108,7 @@ export const VOZES: Record<string, string> = {
   Ella: "#2fe8ff",
   Mubarak: "#ff6a35",
   Notti: "#5dffa0",
-  BBX: "#ff3fb0",
+  Drewboy: "#ff3fb0",
   Alohan: "#ffc857",
   LU2CA: "#b38cff",
   "Tony Gordo": "#ffe14d",
@@ -164,7 +164,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
   // de chegar só lê. Cada um do seu jeito (a voz de cada um: voz.md)
   grupo: {
     contato: "222",
-    status: "D-Bee, Mubarak, Notti, Ella, BBX, Alohan, Tony Gordo, Nizzy",
+    status: "D-Bee, Mubarak, Notti, Ella, Drewboy, Alohan, Tony Gordo, Nizzy",
     grupo: true,
     passos: [
       { t: "sistema", texto: "você entrou no grupo \"222\" por um link da rádio" },
@@ -176,7 +176,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", de: "Ella", texto: "n tem graça, Mubarak" },
       { t: "msg", de: "Mubarak", texto: "tem um pouco" },
       { t: "nucleo", texto: "esta conversa reúne usuários de lados incompatíveis. recomendamos silenciar os demais participantes ✓" },
-      { t: "msg", de: "BBX", texto: "lados kkkk a gente nem se encontra pessoalmente" },
+      { t: "msg", de: "Drewboy", texto: "lados kkkk a gente nem se encontra pessoalmente" },
       { t: "msg", de: "Alohan", texto: "eles precisam que a gente brigue. gente brigando não canta junto." },
       { t: "msg", de: "D-Bee", texto: "por isso a música. toda vez que uma toca na rua, ele perde um pouco" },
       { t: "msg", de: "Notti", texto: "então bora tocar TODAS. agora" },
@@ -362,7 +362,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
   },
 
   sexta: {
-    contato: "BBX",
+    contato: "Drewboy",
     status: "estação 4 · sexta-feira",
     passos: [
       { t: "msg", texto: (c) => `e aí ${c.nome}` },
@@ -534,10 +534,10 @@ export const ECOS: Partial<Record<EstacaoId, { de: string; texto: Texto }[]>> = 
     { de: "D-Bee", texto: "orgulho" },
   ],
   sexta: [
-    { de: "BBX", texto: "saí de casa" },
-    { de: "BBX", texto: (c) => `${c.nome} me buscou de kombi` },
+    { de: "Drewboy", texto: "saí de casa" },
+    { de: "Drewboy", texto: (c) => `${c.nome} me buscou de kombi` },
     { de: "D-Bee", texto: "e aí, gostou do espelho?" },
-    { de: "BBX", texto: "tô gostando" },
+    { de: "Drewboy", texto: "tô gostando" },
   ],
   ontem: [
     { de: "Alohan", texto: (c) => `${c.nome} escreveu no caderno.` },

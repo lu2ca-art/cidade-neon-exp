@@ -66,7 +66,7 @@ export const ESTACOES: Estacao[] = [
     ouvir: busca("Dopamina"), prova: "respira",
   },
   {
-    id: "sexta", n: 4, faixa: "Sexta-Feira", personagem: "BBX",
+    id: "sexta", n: 4, faixa: "Sexta-Feira", personagem: "Drewboy",
     objeto: "espelho", objetoNome: "o espelho", cor: "#ff3fb0",
     audio: "/audio/tracks/sextafeira.mp3", lancamento: null,
     luz: "amor próprio", sombra: "fomo",
