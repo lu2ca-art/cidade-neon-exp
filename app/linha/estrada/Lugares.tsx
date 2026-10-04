@@ -37,11 +37,14 @@ export function poseLugar(M: Mundo, l: Lugar): PoseLugar {
   const chao = C.py[i]
   const rumo = Math.atan2(C.tx[i], C.tz[i])
   const centro = pontoI(C, i, l.lado * (FRENTE + FUNDO / 2), 0, new THREE.Vector3())
-  const porta = pontoI(C, i, l.lado * (FRENTE - 1.2), 2.6, new THREE.Vector3())
+  const porta = pontoI(C, i, l.lado * (l.segredo ? FRENTE + 4 : FRENTE - 1.2), 2.6, new THREE.Vector3())
   const vaga = pontoI(C, i, l.lado * (MEIA - 1.8), 0, new THREE.Vector3())
   // a câmera: do outro lado da pista, um pouco antes, na altura dos olhos
-  const j = ((i - Math.round(17 / PASSO)) % C.n + C.n) % C.n
-  const cam = pontoI(C, j, -l.lado * 5.5, 3.4, new THREE.Vector3())
+  // no beco a câmera fica quase de frente, pra ver o fundo do vão
+  const antes = l.segredo ? 7 : 17
+  const j = ((i - Math.round(antes / PASSO)) % C.n + C.n) % C.n
+  const cam = pontoI(C, j, l.segredo ? -l.lado * 2.5 : -l.lado * 5.5, l.segredo ? 2.4 : 3.4, new THREE.Vector3())
+  if (l.segredo) porta.y -= 0.9
   return { via, u: l.u, lado: l.lado, chao, centro, rumo, porta, vaga, cam }
 }
 
@@ -225,16 +228,16 @@ function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: bo
           <meshStandardMaterial color="#5a4630" roughness={1} />
         </mesh>
         {/* uma lâmpada fraca, amarela, no fundo: a única luz que é dela */}
-        <pointLight position={[0, 3.2, -FUNDO / 2 + 2]} color="#ffd9a0" intensity={emCena ? 10 : 4} distance={8} decay={2} />
+        <pointLight position={[0, 3.2, -FUNDO / 2 + 2.5]} color="#ffd9a0" intensity={emCena ? 30 : 6} distance={12} decay={2} />
         <mesh position={[0, 3.3, -FUNDO / 2 + 1.2]}>
           <sphereGeometry args={[0.09, 8, 6]} />
           <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
         </mesh>
         {/* os três letreiros, empilhados por cima do vão, apontando pra frente */}
         {placas.map((tex, k) => (
-          <group key={k} position={[0, 6.2 + k * 2.3, FUNDO / 2 + 0.1]}>
+          <group key={k} position={[(k - 1) * 0.8, 4.6 + k * 1.6, FUNDO / 2 + 0.1]}>
             <mesh>
-              <planeGeometry args={[9, 1.8]} />
+              <planeGeometry args={[7, 1.4]} />
               <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} />
             </mesh>
             <pointLight position={[0, 0, 1.5]} color={GRITOS[k].cor} intensity={14} distance={10} decay={2} />
