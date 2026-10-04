@@ -116,9 +116,10 @@ export const VOZES: Record<string, string> = {
   "Tony Gordo": "#ffe14d",
   Nizzy: "#ff5b5b",
   "a moradora": "#b8bcc8",
+  "o bilhete": "#3d7bff",
 }
 
-export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamina" | "sexta" | "ontem" | "nectar", Roteiro> = {
+export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamina" | "sexta" | "ontem" | "nectar" | "ojala", Roteiro> = {
   // A D-Bee e só ela. Cinco perguntas rápidas, a estação, e a primeira
   // pessoa do fio já te chamando. O resto da história fica pras memórias.
   abertura: {
@@ -422,6 +423,35 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "fim", para: "mapa" },
     ],
   },
+  // ep. 3 (30/10) · A PROVAÇÃO: a delação. O Núcleo agradece o Mubarak (a
+  // assinatura MESMA NOITE do bar era isso), a D-Bee foge, a 222 sai do ar e
+  // a cidade perde a cor (page.tsx: apagão enquanto a missão anda). Ela
+  // manda uma mensagem só: ir até onde a estrada acaba
+  ojala: {
+    contato: "D-Bee",
+    status: "offline",
+    passos: [
+      { t: "nucleo", texto: "Mubarak, obrigado pela colaboração. sua assinatura MESMA NOITE agora é vitalícia ✓" },
+      { t: "sistema", texto: "D-Bee saiu do grupo 222" },
+      { t: "msg", texto: "alguém entregou onde a gente se encontrava" },
+      { t: "msg", texto: "n foi vc. eu sei quem foi" },
+      { t: "voz", fala: "eles acharam a antena. a 222 vai sair do ar daqui a pouco. a cidade vai ficar cinza. n se assusta" },
+      {
+        t: "escolha",
+        opcoes: [
+          { label: "o que eu faço?", tom: "dormindo", resposta: ["nada ainda. respira", "e n liga o feed. é ali que eles te pegam de volta"] },
+          { label: "foi o Mubarak, né", tom: "acordando", resposta: ["foi", "n odeia ele. ele tá cansado. o núcleo sabe usar cansaço"] },
+          { label: "eu vou atrás de vc", tom: "acordado", resposta: ["eu sabia que vc ia dizer isso", "por isso eu te escrevi"] },
+        ],
+      },
+      { t: "msg", texto: "quando tudo apagar, dirige até onde a estrada acaba" },
+      { t: "msg", texto: "depois do posto, do lado direito, a pista vira terra. segue. n para" },
+      { t: "msg", texto: "a luz acesa que a Notti viu lá do terraço. é ali" },
+      { t: "sistema", texto: "a 222 FM saiu do ar" },
+      { t: "lugar" },
+      { t: "fim", para: "mapa" },
+    ],
+  },
 }
 
 // Ecos: o grupo reage quando a pessoa fecha uma missão — e quem você ajudou
@@ -455,6 +485,12 @@ export const ECOS: Partial<Record<EstacaoId, { de: string; texto: Texto }[]>> = 
   nectar: [
     { de: "LU2CA", texto: "oi gente" },
     { de: "D-Bee", texto: (c) => `foi ${c.nome} que trouxe` },
+  ],
+  // ep. 3: sem a D-Bee no grupo. Ninguém lidera; o grupo é de todo mundo
+  ojala: [
+    { de: "Ella", texto: "a gente voltou. a chuva também" },
+    { de: "Notti", texto: "a 222 voltou ao ar. alguém religou e n foi ninguém. foi todo mundo" },
+    { de: "LU2CA", texto: (c) => `${c.nome}, guarda a camisa dela. ela volta pra buscar` },
   ],
 }
 

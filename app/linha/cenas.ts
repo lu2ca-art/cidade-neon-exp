@@ -28,10 +28,12 @@ export interface FalaCena { de: string; texto: string }
 // `se`: o passo só acontece se a pessoa já fez a missão daquela estação
 // (é assim que os mundos colidem: quem já passou pelo bar vê a mulher dos
 // copos no camarote da balada)
+// `tom`: o passo só acontece pra quem está nesse(s) tom(ns) (o que mais
+// respondeu até aqui). `rel`: só pra quem já tem essa relíquia
 export type PassoCena =
-  | { t: "fala"; de: string; texto: string; se?: EstacaoId }
+  | { t: "fala"; de: string; texto: string; se?: EstacaoId; tom?: Tom[]; rel?: Reliquia }
   // direção de cena, em itálico ("ela sorri. não responde.")
-  | { t: "acao"; texto: string; se?: EstacaoId }
+  | { t: "acao"; texto: string; se?: EstacaoId; tom?: Tom[]; rel?: Reliquia }
   | { t: "nucleo"; texto: string }
   | { t: "escolha"; opcoes: { label: string; tom: Tom; resposta: FalaCena[] }[] }
   // o gesto do lugar (cena.tsx desenha cada um)
@@ -42,7 +44,7 @@ export type PassoCena =
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o
   // violão do Nectar, que fica no trem)
-  | { t: "ganha"; objeto?: EstacaoId; reliquia?: Reliquia; titulo?: string; texto?: string }
+  | { t: "ganha"; objeto?: EstacaoId; reliquia?: Reliquia; titulo?: string; texto?: string; tom?: Tom[] }
   // o que fica pra trás (o violão no vagão: o app VIOLÃO tranca de novo)
   | { t: "perde"; item: "violao"; texto: string }
   // fim: volta pra Kombi. caca = o Núcleo vem atrás na saída
@@ -331,6 +333,53 @@ CENAS.beco = {
     { t: "fala", de: "a moradora", texto: "a do bar vende o que brilha. eu guardo o que sobrou. as duas sabem seu nome", se: "copo" },
     { t: "nucleo", texto: "área sem interesse comercial. nada a registrar ✓" },
     { t: "fala", de: "a moradora", texto: "agora vai. e olha pros lados de vez em quando" },
+    { t: "fim" },
+  ],
+}
+
+// ── A CASA DA D-BEE · road movie, ausência, redenção (ep. 3, 30/10) ──
+// Você chega depois da viagem (viagem.tsx) e ela não está mais lá. A casa
+// vazia fala por ela; o que você acha muda com o tom. O grupo vai chegando
+// um a um e, sem ela, a revolta vira movimento. Rascunho: o LU2CA reescreve
+// (o fim da frase do bilhete só ele sabe: é a pista do Vol.2)
+CENAS["casa-dbee"] = {
+  lugar: "casa-dbee",
+  missao: "ojala",
+  passos: [
+    { t: "acao", texto: "uma casa sozinha no fim da estrada. a luz da varanda acesa. a porta aberta" },
+    { t: "acao", texto: "ninguém" },
+    { t: "acao", texto: "a cama feita às pressas. um violão encostado na parede, sem dono. uma xícara ainda morna" },
+    { t: "acao", texto: "ela sabia que aqui já não era seguro", tom: ["dormindo"] },
+    { t: "acao", texto: "na parede, uma foto: uma mulher sorrindo numa cidade toda verde", tom: ["acordando", "acordado"] },
+    { t: "acao", texto: "a mesma cidade do relicário. você tira ele do bolso e compara. é igual", tom: ["acordando", "acordado"], rel: "relicario" },
+    { t: "acao", texto: "embaixo do travesseiro, um papel dobrado em quatro", tom: ["acordado"] },
+    { t: "fala", de: "o bilhete", texto: "se vc achou isso, eu já fui", tom: ["acordado"] },
+    { t: "fala", de: "o bilhete", texto: "entrega pro KIN", tom: ["acordado"] },
+    { t: "fala", de: "o bilhete", texto: "fala pra ele que eu lembrei do calendário da lua. a parede da cozinha, os riscos de giz", tom: ["acordado"] },
+    { t: "fala", de: "o bilhete", texto: "lua nova a gente plantava. lua cheia a gente", tom: ["acordado"] },
+    { t: "acao", texto: "e para aí", tom: ["acordado"] },
+    { t: "ganha", titulo: "o bilhete pro KIN", texto: "lua nova a gente plantava. lua cheia a gente…", tom: ["acordado"] },
+    // o grupo chega (cada um só se você já foi até ele)
+    { t: "acao", texto: "um farol na estrada. depois outro. depois outro" },
+    { t: "fala", de: "Ella", texto: "ela n tá, né", se: "chuva" },
+    { t: "fala", de: "Notti", texto: "era essa a luz. eu vi lá de cima", se: "dopamina" },
+    { t: "fala", de: "Drewboy", texto: "vim de pijama de novo. foi mal", se: "sexta" },
+    { t: "fala", de: "Alohan", texto: "ela deixou a porta aberta pra gente entrar.", se: "ontem" },
+    { t: "fala", de: "LU2CA", texto: "ela sempre vai antes. pra gente aprender a ir sem ela", se: "nectar" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "e agora? sem ela?", tom: "dormindo", resposta: [{ de: "Ella", texto: "agora é com a gente" }] },
+        { label: "quem lidera agora?", tom: "acordando", resposta: [{ de: "Notti", texto: "ninguém" }, { de: "Notti", texto: "todo mundo" }] },
+        { label: "a gente n precisa esperar ela", tom: "acordado", resposta: [{ de: "LU2CA", texto: "…é isso" }, { de: "LU2CA", texto: "ela sabia que a gente ia chegar nisso. por isso foi" }] },
+      ],
+    },
+    { t: "acao", texto: "ninguém combinou. alguém liga o rádio da kombi. a 222 volta, baixinho, numa frequência que ninguém conhecia" },
+    { t: "acao", texto: "lá longe, a cidade acende de novo. um bairro de cada vez" },
+    { t: "fala", de: "Tony Gordo", texto: "beleza. agora que todo mundo tá aqui. eu tenho um plano" },
+    { t: "nucleo", texto: "detectamos uma reunião não autorizada fora do perímetro. obrigado por avisar onde vocês estão ✓" },
+    { t: "acao", texto: "no varal, uma camisa da seleção esquecida. você leva" },
+    { t: "ganha", objeto: "ojala" },
     { t: "fim" },
   ],
 }

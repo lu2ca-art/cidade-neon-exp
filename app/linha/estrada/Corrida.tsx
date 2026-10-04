@@ -108,6 +108,8 @@ interface Props {
   onVaga?: (id: LugarId) => void
   // o lugar secreto liberado (o beco): aparece depois de `voltas` passadas
   segredo?: { id: LugarId; voltas: number } | null
+  // a 222 saiu do ar (ep. 3, a delação): sem rádio até o fim da missão
+  foraDoAr?: boolean
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -181,7 +183,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -219,6 +221,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => { camLugarRef.current = cenaLugar ? poses[cenaLugar] : null }, [cenaLugar, poses])
   const caidoRef = useRef(caido)
   useEffect(() => { caidoRef.current = caido }, [caido])
+  const foraRef = useRef(foraDoAr)
+  useEffect(() => { foraRef.current = foraDoAr }, [foraDoAr])
   const lugarAlvoRef = useRef(lugarAlvo)
   useEffect(() => { lugarAlvoRef.current = lugarAlvo }, [lugarAlvo])
   const marcos = useMemo<Marco[]>(() => {
@@ -417,7 +421,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const proxFaixa = useRef<(id: FreqId) => void>(() => {})
   const tocarProxima = useCallback((id: FreqId, vol = 1) => {
     if (fonteRef.current !== "radio") return
-    if (caidoRef.current) { player.pausar(); setFaixa(""); return }
+    if (caidoRef.current || foraRef.current) { player.pausar(); setFaixa(foraRef.current ? "a 222 saiu do ar" : ""); return }
     const a = alvoRef.current
     const carregando = a?.t === "entrega" ? MISSOES[a.missao]?.busca?.nome ?? null : null
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
@@ -454,8 +458,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // pode ter tocado um áudio no lugar dela) e as teclas voltam a valer
   // caiu com a estrada aberta: a rádio sai do ar na hora (efeito externo: áudio)
   useEffect(() => {
-    if (caido) player.pausar()
-  }, [caido])
+    if (caido || foraDoAr) player.pausar()
+  }, [caido, foraDoAr])
+  // a 222 voltou ao ar (o fim do ep. 3): a rádio religa sozinha (efeito externo: áudio)
+  const foraAnt = useRef(foraDoAr)
+  useEffect(() => {
+    if (foraAnt.current && !foraDoAr) proxFaixa.current(freqRef.current)
+    foraAnt.current = foraDoAr
+  }, [foraDoAr])
   const cacadoRef = useRef(cacado)
   useEffect(() => { cacadoRef.current = cacado }, [cacado])
   const hudCacaBarra = useRef<HTMLDivElement>(null)

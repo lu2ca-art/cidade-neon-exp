@@ -11,7 +11,7 @@
 import type { EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 
-export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "posto" | "plataforma"
+export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "casa-dbee" | "posto" | "plataforma"
 
 export interface Lugar {
   id: LugarId
@@ -29,6 +29,9 @@ export interface Lugar {
   // lugar SEM missão e sem marcador: ninguém vê. Só aparece depois de dar a
   // volta no circuito (quantas, depende do tom da pessoa) — o beco
   segredo?: true
+  // fica FORA da cidade: a vaga é a saída (o fim da estrada) e encostar
+  // nela começa a viagem (viagem.tsx); a cena é na chegada
+  fora?: true
 }
 
 export const LUGARES = {
@@ -85,6 +88,15 @@ LUGARES.beco = {
   id: "beco", nome: "o beco", no: "no beco", letreiro: "", area: "crypto", u: 1300, lado: -1,
   cor: "#8a8f9e", acento: "#5dffa0", dono: "dopamina", segredo: true,
   gente: [{ quem: "a moradora", cor: "#8a8f9e" }],
+}
+
+// a casa da D-Bee (arco, lugar 10, ep. 3): fora da cidade, a luz que a
+// Notti viu do terraço. Na cidade fica só a SAÍDA: depois do posto, do lado
+// direito, onde a pista vira estrada de terra
+LUGARES["casa-dbee"] = {
+  id: "casa-dbee", nome: "o fim da estrada", no: "no fim da estrada", letreiro: "", area: "linha", u: 3260, lado: 1,
+  cor: "#3d7bff", acento: "#ffc857", dono: "ojala", fora: true,
+  gente: [],
 }
 
 export function lugar(id: LugarId) {
