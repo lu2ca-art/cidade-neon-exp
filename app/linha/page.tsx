@@ -270,11 +270,17 @@ export default function LinhaPage() {
   // dirigindo (a conversa anda do "tarefa" até o "chegar")
   const criseDe = !save.nucleo.caido && quemChama && etapaDe(save, quemChama) === "entrega" && save.pausas[quemChama] !== undefined
     && ROTEIROS[quemChama as keyof typeof ROTEIROS]?.passos[save.pausas[quemChama]!]?.t === "tarefa" ? quemChama : null
+  // na carona: a pessoa já entrou na Kombi e a conversa ainda tá na 1ª parada
+  // → a crise chega no caminho (uns 25 s depois, dirigindo)
+  const passosChama = quemChama ? ROTEIROS[quemChama as keyof typeof ROTEIROS]?.passos : undefined
+  const criseCarona = !save.nucleo.caido && quemChama && MISSOES[quemChama]?.carona && save.itens.includes(`carona:${quemChama}`)
+    && save.pausas[quemChama] !== undefined && passosChama && save.pausas[quemChama] === passosChama.findIndex((x) => x.t === "lugar") ? quemChama : null
+  const crise = criseDe ?? criseCarona
   useEffect(() => {
-    if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || ligacao || !criseDe) return
-    const t = setTimeout(() => setAoVivo(criseDe as ChatRoteiro), 2500)
+    if (!pronto || tela.t !== "corrida" || cinema || invasao || aoVivo || ligacao || !crise) return
+    const t = setTimeout(() => setAoVivo(crise as ChatRoteiro), criseCarona ? 25000 : 2500)
     return () => clearTimeout(t)
-  }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, criseDe])
+  }, [pronto, tela.t, cinema, invasao, aoVivo, ligacao, crise, criseCarona])
 
   const fimInvasao = useCallback((venceu: boolean) => {
     setInvasao(null)
@@ -701,6 +707,7 @@ export default function LinhaPage() {
             key={`${cena.lugar}:${cena.missao}`}
             cena={cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
+            objetos={save.objetos}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={fimCena}
           />
