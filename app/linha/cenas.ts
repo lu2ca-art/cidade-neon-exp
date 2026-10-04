@@ -36,6 +36,8 @@ export type PassoCena =
   | { t: "escolha"; opcoes: { label: string; tom: Tom; resposta: FalaCena[] }[] }
   // o gesto do lugar (cena.tsx desenha cada um)
   | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" | "tocar" | "fuga" }
+  // pôr frases soltas na ordem (a moradora do beco fala em pedaços)
+  | { t: "gesto"; id: "ordem"; frases: string[] }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o
@@ -200,6 +202,9 @@ CENAS.topo = {
     { t: "ganha", objeto: "dopamina" },
     { t: "fala", de: "Notti", texto: "ah, e ontem: todos os relógios da cidade pararam às 2:22. TODOS. depois voltaram a andar como se nada" },
     { t: "fala", de: "Notti", texto: "conta comigo. eu sou rápida. pra fugir e pra entrar onde n deixam" },
+    // semente do beco (lugar 3): só se vê lá de cima
+    { t: "fala", de: "Notti", texto: "uma coisa estranha: daqui de cima as três ruas brilhantes do mirante dão a volta e voltam pro começo" },
+    { t: "fala", de: "Notti", texto: "e no meio delas tem um beco cinza. lá embaixo eu nunca vi ele" },
     { t: "fim" },
   ],
 }
@@ -296,4 +301,36 @@ CENAS.plataforma = {
 
 export function cenaDe(lugar: LugarId): Cena | null {
   return CENAS[lugar] ?? null
+}
+
+// ── O BECO DOS TRÊS LETREIROS · thriller psicológico · a moradora ──
+// Sem missão: aparece depois de dar a volta no mirante (Corrida.tsx conta).
+// Ela é o avesso da mulher dos copos: a verdade que ninguém vê
+CENAS.beco = {
+  lugar: "beco",
+  missao: "dopamina",
+  passos: [
+    { t: "acao", texto: "entre os três letreiros que gritam, um beco cinza. ninguém entra. ninguém nem olha" },
+    { t: "acao", texto: "no fundo, uma mulher sentada num papelão, enrolada num cobertor da cor da parede" },
+    { t: "fala", de: "a moradora", texto: "vc passou aqui antes" },
+    { t: "fala", de: "a moradora", texto: "todo mundo passa. as ruas bonitas dão a volta e devolvem pro começo" },
+    { t: "fala", de: "a moradora", texto: "eu falo em pedaço. quem quiser, monta" },
+    { t: "gesto", id: "ordem", frases: ["se quiser ver", "pare de procurar", "onde todos olham"] },
+    { t: "acao", texto: "ela sorri. tira do cobertor um relicário pequeno, de lata" },
+    { t: "ganha", reliquia: "relicario" },
+    { t: "fala", de: "a moradora", texto: "dentro tem uma cidade. toda verde. eu nunca fui" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "é bonita", tom: "dormindo", resposta: [{ de: "a moradora", texto: "é. bonito n basta" }] },
+        { label: "onde fica isso?", tom: "acordando", resposta: [{ de: "a moradora", texto: "longe. alguém que vc conhece sabe" }, { de: "a moradora", texto: "a mãe dela sabia" }] },
+        { label: "por que vc me dá isso?", tom: "acordado", resposta: [{ de: "a moradora", texto: "pq vc entrou no beco" }, { de: "a moradora", texto: "ninguém entra" }] },
+      ],
+    },
+    // colisão com o bar: as duas pontas da mesma cidade
+    { t: "fala", de: "a moradora", texto: "a do bar vende o que brilha. eu guardo o que sobrou. as duas sabem seu nome", se: "copo" },
+    { t: "nucleo", texto: "área sem interesse comercial. nada a registrar ✓" },
+    { t: "fala", de: "a moradora", texto: "agora vai. e olha pros lados de vez em quando" },
+    { t: "fim" },
+  ],
 }

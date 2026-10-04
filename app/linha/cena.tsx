@@ -87,7 +87,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, semSom = false, o
     <div className="l-cena" onClick={atual ? avancar : undefined}>
       <div className="l-cena-tarja is-cima" />
       <div className="l-cena-tarja is-baixo" />
-      <small className="l-cena-lugar">{LUGARES[cena.lugar].letreiro.toLowerCase()} · {LUGARES[cena.lugar].nome}</small>
+      <small className="l-cena-lugar">{[LUGARES[cena.lugar].letreiro.toLowerCase(), LUGARES[cena.lugar].nome].filter(Boolean).join(" · ")}</small>
 
       {atual && atual.tipo === "nucleo" && (
         <div className="l-cena-nucleo"><b>NÚCLEO</b><p>{atual.texto.slice(0, letras)}</p></div>
@@ -112,6 +112,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, semSom = false, o
       {!atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
+      {!atual && passo?.t === "gesto" && passo.id === "ordem" && <Ordem frases={passo.frases} onFim={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "silencio" && <Silencio semSom={semSom} onFim={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "linha" && <Linha onFim={(t) => { onLinha?.(t); setPos((p) => p + 1) }} />}
       {!atual && passo?.t === "gesto" && passo.id === "prova" && (
@@ -265,6 +266,45 @@ function Silencio({ semSom, onFim }: { semSom: boolean; onFim: () => void }) {
   return (
     <div className="l-silencio" onClick={(e) => e.stopPropagation()}>
       <i style={{ transform: `scaleX(${p})` }} />
+    </div>
+  )
+}
+
+// O GESTO do beco: a moradora fala em pedaços, você põe na ordem. Errou,
+// os pedaços voltam pro chão (sem castigo: ela só espera)
+function Ordem({ frases, onFim }: { frases: string[]; onFim: () => void }) {
+  // embaralha uma vez, nunca já na ordem certa
+  const [soltas] = useState(() => {
+    const idx = frases.map((_, i) => i)
+    do idx.sort(() => Math.random() - 0.5)
+    while (idx.every((v, i) => v === i) && idx.length > 1)
+    return idx
+  })
+  const [montada, setMontada] = useState<number[]>([])
+  const [errou, setErrou] = useState(0)
+  const fim = useRef(onFim)
+  useEffect(() => { fim.current = onFim }, [onFim])
+  const pronta = montada.length === frases.length
+  useEffect(() => {
+    if (!pronta) return
+    const t = setTimeout(() => fim.current(), 1400)
+    return () => clearTimeout(t)
+  }, [pronta])
+  const pegar = (i: number) => {
+    if (pronta || montada.includes(i)) return
+    if (i !== montada.length) { setMontada([]); setErrou((n) => n + 1); vib(30); return }
+    setMontada((m) => [...m, i]); gota(2)
+  }
+  return (
+    <div className={`l-ordem ${pronta ? "is-pronta" : ""}`} onClick={(e) => e.stopPropagation()}>
+      <p key={errou} className={`l-ordem-frase ${errou && !montada.length ? "is-errou" : ""}`}>
+        {montada.length ? montada.map((i) => frases[i]).join(" ") + (pronta ? "." : "…") : errou ? "não. de novo, com calma" : "toca os pedaços na ordem"}
+      </p>
+      <div className="l-ordem-pedacos">
+        {soltas.map((i) => (
+          <button key={i} type="button" disabled={montada.includes(i)} onClick={() => pegar(i)}>{frases[i]}</button>
+        ))}
+      </div>
     </div>
   )
 }
