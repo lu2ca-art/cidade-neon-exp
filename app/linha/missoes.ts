@@ -109,16 +109,21 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
     lugar: "casa-shows",
     extra: "sua linha guardada no caderno",
   },
+  // ep. 2 (16/10): o LU2CA te espera no POSTO (a confissão), entra na Kombi
+  // e você leva ele até a ESTAÇÃO 6 da Linha 9, onde você entra no vagão
   nectar: {
     id: "nectar", estilo: "musica",
-    chamado: "oi. vc é a pessoa nova, né. preciso de um favor",
-    tarefa: "buscar o violão esquecido debaixo da plataforma da Linha 9",
-    busca: {
-      item: "violao", nome: "o violão", onde: "linha", em: [0.12],
-      lugar: "debaixo da plataforma da Linha 9, entre a estação 1 e a 2",
-      pega: [{ de: "LU2CA", texto: "achou. antes das 2:22, ufa. agora traz, a estação 6 é aqui" }],
-    },
-    extra: "o VIOLÃO no celular: escalas, acordes e tocar junto",
+    chamado: "a D-Bee te deu meu violão, né. me encontra no posto",
+    tarefa: "encontrar o LU2CA no posto da saída e levar ele até a estação 6 da Linha 9",
+    carona: "posto",
+    lugar: "plataforma",
+    caminho: [
+      "vc dirige igual ela. sem medo de curva",
+      "essa kombi já foi minha também, sabia? antes de tudo",
+      "n olha pra mim. olha pra frente",
+      "a estação 6 é a minha. lá ninguém mais desce",
+    ],
+    extra: "a letra escrita à mão (e o violão fica no trem)",
   },
 }
 

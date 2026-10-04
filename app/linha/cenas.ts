@@ -35,10 +35,14 @@ export type PassoCena =
   | { t: "nucleo"; texto: string }
   | { t: "escolha"; opcoes: { label: string; tom: Tom; resposta: FalaCena[] }[] }
   // o gesto do lugar (cena.tsx desenha cada um)
-  | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" }
+  | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" | "tocar" | "fuga" }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
-  | { t: "ganha"; objeto?: EstacaoId; reliquia?: Reliquia }
+  // titulo/texto: quando o cartão não deve dizer o nome do objeto (o
+  // violão do Nectar, que fica no trem)
+  | { t: "ganha"; objeto?: EstacaoId; reliquia?: Reliquia; titulo?: string; texto?: string }
+  // o que fica pra trás (o violão no vagão: o app VIOLÃO tranca de novo)
+  | { t: "perde"; item: "violao"; texto: string }
   // fim: volta pra Kombi. caca = o Núcleo vem atrás na saída
   | { t: "fim"; caca?: boolean }
 
@@ -229,6 +233,64 @@ CENAS["casa-shows"] = {
     { t: "acao", texto: "o poste pisca três vezes e apaga. a pista fica no escuro" },
     { t: "nucleo", texto: "apagão programado no setor arena. obrigado pela compreensão ✓" },
     { t: "fim" },
+  ],
+}
+
+// ── O POSTO · indie, confissão · o LU2CA (ep. 2, 16/10) ──
+CENAS.posto = {
+  lugar: "posto",
+  missao: "nectar",
+  passos: [
+    { t: "acao", texto: "o posto. o último antes da estrada acabar. a luz fria da loja de conveniência, ninguém atrás do balcão" },
+    { t: "acao", texto: "ele tá sentado no meio-fio, do lado da bomba 6" },
+    { t: "fala", de: "LU2CA", texto: "esse violão aí. era meu" },
+    { t: "fala", de: "LU2CA", texto: "dei pra ela quando a gente era criança. ela sempre devolve pra alguém que precisa" },
+    { t: "fala", de: "LU2CA", texto: "vou te contar uma coisa e vc n precisa dizer nada" },
+    { t: "fala", de: "LU2CA", texto: "na noite do apagão fui eu que rodei a linha inteira escondendo as músicas" },
+    { t: "fala", de: "LU2CA", texto: "e n foi só pra proteger. foi medo. medo de lançar e ninguém ouvir" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "e agora?", tom: "dormindo", resposta: [{ de: "LU2CA", texto: "agora eu lanço. dia 16. com medo mesmo" }] },
+        { label: "medo de quê, exatamente?", tom: "acordando", resposta: [{ de: "LU2CA", texto: "de ser visto de verdade" }, { de: "LU2CA", texto: "e de quem ia caçar as músicas" }] },
+        { label: "a gente tá lançando junto", tom: "acordado", resposta: [{ de: "LU2CA", texto: "…" }, { de: "LU2CA", texto: "é. acho que sempre foi isso" }] },
+      ],
+    },
+    { t: "fala", de: "LU2CA", texto: "quem caça as músicas é quem me ensinou a tocar" },
+    { t: "fala", de: "LU2CA", texto: "um dia eu te conto. hoje n consigo" },
+    { t: "acao", texto: "ele levanta. abre a porta da kombi e senta no banco da frente" },
+    { t: "fala", de: "LU2CA", texto: "posto é lugar de passagem. ninguém mora, todo mundo passa. eu fiquei tempo demais aqui" },
+    { t: "fala", de: "LU2CA", texto: "bora" },
+    { t: "fim" },
+  ],
+}
+
+// ── O VAGÃO DA LINHA 9 · thriller de fuga (ep. 2, 16/10) ──
+CENAS.plataforma = {
+  lugar: "plataforma",
+  missao: "nectar",
+  passos: [
+    { t: "fala", de: "LU2CA", texto: "eu fico. vai" },
+    { t: "acao", texto: "o trem branco para na estação 6. as portas abrem sozinhas. você entra" },
+    { t: "acao", texto: "lá dentro, ninguém olha pra fora. um com a câmera no colo. uma com o caderno fechado. um com o fone sem música" },
+    { t: "acao", texto: "artistas. ou o que sobrou deles. o trem vai pras dependências do núcleo, volta, e vai de novo" },
+    { t: "acao", texto: "no fundo do vagão, um policial. ele te olha como quem já sabe" },
+    { t: "acao", texto: "o violão pesa nas suas costas" },
+    { t: "gesto", id: "tocar" },
+    { t: "acao", texto: "um por um, eles levantam a cabeça. o da câmera liga a câmera. o do fone tira o fone" },
+    { t: "acao", texto: "a moça do caderno abre o caderno, arranca uma página e escreve rápido" },
+    { t: "nucleo", texto: "atividade artística não autorizada no vagão 3 ✓" },
+    { t: "acao", texto: "o policial levanta" },
+    { t: "fala", de: "a moça do caderno", texto: "toma. corre" },
+    { t: "ganha", reliquia: "letra", objeto: "nectar", titulo: "a letra escrita à mão", texto: "a chuva não vem, deixa que eu te molho, amor" },
+    { t: "gesto", id: "fuga" },
+    { t: "acao", texto: "a porta abre na curva. você pula" },
+    { t: "perde", item: "violao", texto: "o violão ficou no trem. lá dentro, alguém começa a tocar ele" },
+    { t: "nucleo", texto: "eu sei quem você é, 0222." },
+    { t: "acao", texto: "o LU2CA te espera na plataforma. não pergunta nada" },
+    { t: "fala", de: "LU2CA", texto: "eles ficaram com o violão. tudo bem. era pra ficar" },
+    { t: "fala", de: "LU2CA", texto: "os instrumentos agora vêm de outro lugar. procura o GUITAR DRIVER no teu celular" },
+    { t: "fim", caca: true },
   ],
 }
 

@@ -11,7 +11,7 @@
 import type { EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 
-export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows"
+export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "posto" | "plataforma"
 
 export interface Lugar {
   id: LugarId
@@ -61,6 +61,18 @@ LUGARES["casa-shows"] = {
   id: "casa-shows", nome: "a casa de shows", no: "na casa de shows", letreiro: "ONTEM", area: "live", u: 1250, lado: 1,
   cor: "#ffc857", acento: "#ff3fb0", dono: "ontem",
   gente: [{ quem: "Alohan", cor: "#ffc857" }],
+}
+
+// (ep. 2: o Nectar)
+LUGARES.posto = {
+  id: "posto", nome: "o posto", no: "no posto", letreiro: "POSTO 24H", area: "linha", u: 3110, lado: 1,
+  cor: "#b38cff", acento: "#e6f0ff", dono: "nectar",
+  gente: [{ quem: "LU2CA", cor: "#b38cff" }],
+}
+LUGARES.plataforma = {
+  id: "plataforma", nome: "a estação 6 da Linha 9", no: "na estação 6", letreiro: "LINHA 9 · 6", area: "linha", u: 2293, lado: -1,
+  cor: "#e6f0ff", acento: "#b38cff", dono: "nectar",
+  gente: [{ quem: "policial", cor: "#e6f0ff" }],
 }
 
 export function lugar(id: LugarId) {
