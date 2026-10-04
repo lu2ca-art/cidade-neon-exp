@@ -381,51 +381,43 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
     ],
   },
 
-  // A PRIMEIRA missão de todo mundo: ensina que recompensa aqui se USA
-  // (o violão vira o app VIOLÃO). A confissão dele (foi ele que escondeu as
-  // músicas) fica pro episódio do Nectar, 16/10 — não aqui
+  // ep. 2 (16/10, o Nectar): o LU2CA chama, te encontra no POSTO (a
+  // confissão, cenas.ts), entra na Kombi; no caminho a crise; na ESTAÇÃO 6
+  // você entra no vagão da Linha 9 sozinho (o violão fica no trem)
   nectar: {
     contato: "LU2CA",
     status: "estação 6 · nectar",
     passos: [
       { t: "msg", texto: (c) => `oi ${c.nome}` },
-      { t: "msg", texto: "faz três anos que eu n vejo ninguém novo por aqui. aí aparece uma kombi" },
-      { t: "voz", fala: "eu sou o LU2CA. eu faço música numa cidade que transformou música em contrabando" },
+      { t: "msg", texto: "a D-Bee te deu meu violão, né. ela sempre faz isso" },
+      { t: "voz", fala: "eu sou o LU2CA. a voz que vc ouve na 222 de madrugada também sou eu" },
       {
         t: "escolha",
         opcoes: [
-          { label: "a gente se conhece?", tom: "dormindo", resposta: ["ainda n", "mas eu sei quem vc é"] },
-          { label: "o que vc quer comigo?", tom: "acordando", resposta: ["um favor", "e te dar uma coisa, se der certo"] },
-          { label: "vc é da 222?", tom: "acordado", resposta: ["sou ouvinte. que nem todo mundo que ainda presta"] },
+          { label: "a voz da rádio era vc?", tom: "dormindo", resposta: ["era. é. desculpa n ter dito antes"] },
+          { label: "por que vc tá me procurando?", tom: "acordando", resposta: ["pq vc tá com uma coisa minha", "e pq eu preciso contar uma coisa pra alguém"] },
+          { label: "eu sabia que a 222 tinha dono", tom: "acordado", resposta: ["kkk", "dono n. culpado"] },
         ],
       },
-      { t: "msg", texto: "ontem eu saí correndo da linha 9 e deixei meu violão debaixo da plataforma, entre a estação 1 e a 2" },
-      { t: "msg", texto: "às 2:22 o núcleo recolhe tudo que fica lá. o que ele recolhe vira dado" },
-      { t: "msg", texto: "busca pra mim? a estação 6 é aqui" },
-      { t: "tarefa" },
-      // ATO 2 · tentativa e erro (NECTAR C2): a corda arrebentada
-      { t: "msg", texto: "tá com uma corda arrebentada né. eu sabia" },
-      { t: "msg", texto: "deixa. com uma corda a menos n vai soar como era" },
+      { t: "msg", texto: "me encontra no posto da saída da cidade. o último antes da estrada acabar, do lado direito" },
+      // 1ª parada: o posto (a confissão). Depois ele entra na Kombi
+      { t: "lugar" },
+      // ATO 2 · tentativa e erro (NECTAR C2): no caminho ele trava
+      { t: "msg", texto: "para" },
+      { t: "msg", texto: "n. segue" },
+      { t: "msg", texto: "é que eu nunca tinha contado isso em voz alta. e contei pra alguém que eu conheci hoje, numa kombi" },
       {
         t: "escolha",
         opcoes: [
-          { label: "n precisa soar como era", tom: "acordado", resposta: ["…", "isso foi muito eu falando comigo mesmo", "traz"] },
-          { label: "dá pra trocar a corda?", tom: "dormindo", resposta: ["n vende corda desde o apagão", "traz assim mesmo"] },
-          { label: "toca errado então", tom: "acordando", resposta: ["kkkkk", "tentativa e erro. tá bom. traz"] },
+          { label: "tá tudo bem", tom: "dormindo", resposta: ["n tá. mas vai ficar"] },
+          { label: "por que vc escondeu as músicas?", tom: "acordando", resposta: ["medo", "de lançar e ninguém ouvir", "e medo de quem ia caçar elas"] },
+          { label: "vc tá lançando agora", tom: "acordado", resposta: ["…", "tô. com medo e tudo"] },
         ],
       },
-      { t: "chegar" },
-      { t: "msg", texto: "vc achou" },
-      { t: "msg", texto: "toca comigo?" },
-      { t: "prova", id: "violao" },
-      { t: "msg", texto: "tá vendo. n precisava ser perfeito" },
-      { t: "objeto" },
-      { t: "audio", src: "/audio/tracks/nectar.mp3", titulo: "Nectar · prévia" },
-      { t: "msg", texto: "o violão agora é teu. sério" },
-      { t: "msg", texto: "abre o celular: tem um app novo, VIOLÃO. acorde, campo harmônico, tocar junto com a rádio" },
-      { t: "msg", texto: "aqui tudo que vc ganha serve pra alguma coisa. guarda, usa, empresta" },
-      { t: "msg", texto: "nectar sai dia 16/10. vc ouviu antes" },
-      { t: "msg", texto: "agora roda. tem gente em todo canto dessa cidade esperando alguém que ainda sente" },
+      { t: "msg", texto: "me deixa na estação 6. tem gente naquele trem que precisa ouvir esse violão" },
+      { t: "msg", texto: "eu n consigo mais entrar ali. vc consegue" },
+      // 2ª parada: a estação 6 (o vagão)
+      { t: "lugar" },
       { t: "fim", para: "mapa" },
     ],
   },

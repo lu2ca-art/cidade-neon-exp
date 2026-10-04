@@ -250,7 +250,7 @@ export function Home({
               {pg === 1 && <p className="l-os-titulo-pag">a cidade</p>}
               <div className="l-os-grade">
                 {grade.filter((a) => a.pagina === pg).map((a) => (
-                  <IconeApp key={a.id} a={a} nivel={nivel} onApp={onApp} objetos={save.violao ? [...save.objetos, "nectar"] : save.objetos} novo={(a.id === "fliperama" && !save.jogados.visto) || (a.id === "jardim" && save.objetos.includes("chuva") && !save.jardim.length) || (a.id === "violao" && save.violao && !save.jogados.violao)} />
+                  <IconeApp key={a.id} a={a} nivel={nivel} onApp={onApp} objetos={[...save.objetos.filter((o) => o !== "nectar"), ...(save.violao ? ["nectar" as const] : [])]} novo={(a.id === "fliperama" && !save.jogados.visto) || (a.id === "jardim" && save.objetos.includes("chuva") && !save.jardim.length) || (a.id === "violao" && save.violao && !save.jogados.violao)} />
                 ))}
               </div>
             </div>

@@ -111,12 +111,15 @@ export function carregar(): Save {
   try {
     const raw = localStorage.getItem(CHAVE)
     if (!raw) return VAZIO
-    const s: Save = { ...VAZIO, ...JSON.parse(raw) }
+    const bruto = JSON.parse(raw)
+    const s: Save = { ...VAZIO, ...bruto }
     // quem já tinha estação antes do fio existir ganha um, pelas respostas
     if (s.estacao && !s.fio.length) s.fio = montarFio(s.pesos, s.estacao, s.perfil)
     s.pausas = acertarPausas(s.pausas)
     // quem já tinha o violão pelo caminho antigo (missão do LU2CA) continua com ele
-    if (s.objetos.includes("nectar")) s.violao = true
+    // (só em save antigo, de antes do campo existir: depois do ep. 2 o
+    // violão pode ter ficado no trem mesmo com a estação 6 feita)
+    if (bruto.violao === undefined && s.objetos.includes("nectar")) s.violao = true
     return s
   } catch {
     return VAZIO

@@ -336,7 +336,9 @@ export default function LinhaPage() {
       const completos = r.objeto && !s.completos.includes(est) ? [...s.completos, est] : s.completos
       const reliquias = [...new Set([...(s.reliquias ?? []), ...r.reliquias])]
       const logs = r.objeto ? { ...s.logs, [est]: [...(s.logs[est] ?? []), { k: "sistema" as const, texto: `o resto aconteceu em ${c.lugar === "bar" ? "o copo" : c.lugar}` }] } : s.logs
-      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, xp: s.xp + (r.objeto ? 100 : 30) }
+      // o violão ficou no trem (ep. 2): o app VIOLÃO tranca até o GUITAR DRIVER
+      const violao = r.perdeViolao ? false : s.violao
+      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, xp: s.xp + (r.objeto ? 100 : 30) }
     })
     if (r.objeto) track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
     if (r.caca) {
