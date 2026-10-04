@@ -6,7 +6,10 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules/
 .next/
-.env*.local
+# segredos: nenhum .env entra no git (só o exemplo, sem valores)
+.env
+.env.*
+!.env.example
 .DS_Store
 tsconfig.tsbuildinfo
 

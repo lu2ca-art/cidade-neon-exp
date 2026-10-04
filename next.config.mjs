@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -41,6 +42,20 @@ const nextConfig = {
   // cache "immutable" faria quem já visitou ficar preso na versão velha.
   async headers() {
     return [
+      // segurança em todas as páginas: ninguém embute o site num iframe de
+      // fora (golpe de clique), o navegador não "adivinha" tipo de arquivo,
+      // não vaza o caminho completo pra outros sites, e só o microfone
+      // (as ligações de voz do jogo) fica liberado entre os sensores
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+        ],
+      },
       {
         source: "/(audio|images|models|museu|galeria|loja-discos|radio-222)/:path*",
         headers: [

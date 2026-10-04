@@ -15,6 +15,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { list, put } from "@vercel/blob"
 import { promises as fs } from "node:fs"
 import path from "node:path"
+import { randomUUID, timingSafeEqual } from "node:crypto"
 
 const PREFIXO = "batida/criacoes/"
 const DESTAQUES = "batida/destaques.json"
@@ -77,7 +78,26 @@ async function listarCriacoes(): Promise<Criacao[]> {
 function admin(req: NextRequest) {
   const chave = process.env.BATIDA_ADMIN_KEY
   if (!chave) return local // sem chave configurada, só em dev
-  return req.headers.get("x-admin-key") === chave
+  // comparação em tempo constante (não vaza pelo tempo quantos caracteres batem)
+  const a = Buffer.from(req.headers.get("x-admin-key") ?? "")
+  const b = Buffer.from(chave)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+// freio contra enxurrada de envios: por IP, poucos por minuto. É por
+// instância (serverless), então é um freio, não um muro — o muro de
+// verdade é a regra de rate limit no firewall da Vercel
+const JANELA = 60_000
+const LIMITE = 6
+const envios = new Map<string, number[]>()
+function devagar(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "?"
+  const agora = Date.now()
+  const lista = (envios.get(ip) ?? []).filter((t) => agora - t < JANELA)
+  lista.push(agora)
+  envios.set(ip, lista)
+  if (envios.size > 5000) envios.clear()
+  return lista.length > LIMITE
 }
 
 function semArmazenamento() {
@@ -86,12 +106,18 @@ function semArmazenamento() {
 
 export async function POST(req: NextRequest) {
   if (semArmazenamento()) return NextResponse.json({ erro: "biblioteca ainda sem armazenamento" }, { status: 503 })
+  if (devagar(req)) return NextResponse.json({ erro: "calma. tenta de novo daqui a pouco" }, { status: 429 })
+  // recusa antes de ler, se o próprio pedido já diz que é grande demais
+  const tam = Number(req.headers.get("content-length") ?? 0)
+  if (tam > MAX_BYTES) return NextResponse.json({ erro: "música grande demais" }, { status: 413 })
   const texto = await req.text()
   if (texto.length > MAX_BYTES) return NextResponse.json({ erro: "música grande demais" }, { status: 413 })
   let dado: Partial<Criacao>
   try { dado = JSON.parse(texto) } catch { return NextResponse.json({ erro: "json inválido" }, { status: 400 }) }
   if (!dado.musica || typeof dado.musica !== "object") return NextResponse.json({ erro: "sem música" }, { status: 400 })
-  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+  // id impossível de adivinhar: o arquivo fica num link público do Blob, e
+  // criação sem curadoria não pode ser achada chutando endereço
+  const id = randomUUID()
   const c: Criacao = {
     id,
     autor: String(dado.autor ?? "anônimo").slice(0, 40),
@@ -116,7 +142,8 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ erro: "sem acesso" }, { status: 401 })
-  const { id, destaque } = (await req.json()) as { id: string; destaque: boolean }
+  const { id, destaque } = (await req.json()) as { id: unknown; destaque: unknown }
+  if (typeof id !== "string" || !/^[\w-]{6,64}$/.test(id) || typeof destaque !== "boolean") return NextResponse.json({ erro: "pedido inválido" }, { status: 400 })
   const atual = new Set((await ler<string[]>(DESTAQUES)) ?? [])
   if (destaque) atual.add(id)
   else atual.delete(id)
