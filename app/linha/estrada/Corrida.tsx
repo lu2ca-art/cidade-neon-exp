@@ -138,7 +138,7 @@ type Jogo = {
   pegos: Set<number>
   // a vaga do lugar da missão: já avisou que tá chegando? já encostou?
   vagaAvisou?: string
-  naVaga?: boolean
+  naVaga?: string | false // em qual vaga já encostou (não reabre a cena parado nela)
   segAnt?: number
   segPassou?: number
   naSeg?: boolean
@@ -2493,7 +2493,7 @@ function Cena({
           ev.falar(vg.quem || "222 FM", `${vg.nome}: encosta na vaga ${vg.lado > 0 ? "da direita" : "da esquerda"}. devagar`)
         }
         const naVaga = Math.abs(d) < VAGA / 2 + 6 && j.x * vg.lado > MEIA * 0.2 && Math.abs(j.v) < 7
-        if (naVaga && !j.naVaga) { j.naVaga = true; ev.vaga(vg.id) }
+        if (naVaga && j.naVaga !== vg.id) { j.naVaga = vg.id; ev.vaga(vg.id) }
         if (Math.abs(d) > VAGA) j.naVaga = false
       }
       // o lugar secreto (o beco): cada vez que você passa por ele conta uma
