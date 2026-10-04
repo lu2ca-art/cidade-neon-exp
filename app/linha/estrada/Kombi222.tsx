@@ -48,7 +48,7 @@ function texBrilho() {
   return new THREE.CanvasTexture(c)
 }
 
-function Roda({ x, z, giro, esterco }: { x: number; z: number; giro: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number> }) {
+function Roda({ x, z, giro, esterco, r = 0.36 }: { x: number; z: number; giro: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number>; r?: number }) {
   const ref = useRef<THREE.Group>(null)
   const pivo = useRef<THREE.Group>(null)
   useFrame(() => {
@@ -56,7 +56,7 @@ function Roda({ x, z, giro, esterco }: { x: number; z: number; giro: React.Mutab
     if (pivo.current && esterco) pivo.current.rotation.y = esterco.current
   })
   return (
-    <group ref={pivo} position={[x, 0.36, z]}>
+    <group ref={pivo} position={[x, r, z]} scale={r / 0.36}>
       <group ref={ref}>
         <mesh rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.36, 0.36, 0.26, 20]} />
@@ -284,6 +284,14 @@ export function Kombi222({ turbo, velocidade, esterco, soEfeitos = false }: { tu
         <meshBasicMaterial map={brilho} color="#b38cff" transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
 
+      {/* a Kombi escaneada é uma peça só (as rodas dela não giram): rodas de
+          verdade por cima das dela, um dedo pra fora pra cobrir */}
+      {soEfeitos && (<>
+        <Roda x={0.72} z={-1.14} r={0.34} giro={giro} esterco={esterco} />
+        <Roda x={-0.92} z={-1.14} r={0.34} giro={giro} esterco={esterco} />
+        <Roda x={0.72} z={1.38} r={0.34} giro={giro} />
+        <Roda x={-0.92} z={1.38} r={0.34} giro={giro} />
+      </>)}
       {!soEfeitos && (<>
       <Roda x={-0.82} z={-1.35} giro={giro} esterco={esterco} />
       <Roda x={0.82} z={-1.35} giro={giro} esterco={esterco} />
