@@ -437,7 +437,6 @@ export const CENA_INICIO: Cena = {
     { t: "gesto", id: "casa-inicio" },
     { t: "fala", de: "D-Bee", texto: "otimizar é bonito de falar. na prática eles apagam o que não se encaixa" },
     { t: "fala", de: "D-Bee", texto: "a música, quem sente demais, quem pensa diferente. vão queimar as raízes da cidade inteira" },
-    { t: "acao", texto: "ela coloca uma chave na sua mão. o chaveiro é uma lua de plástico" },
     { t: "fala", de: "D-Bee", texto: "vc veio de fora. o núcleo ainda não te leu. isso é raro" },
     {
       t: "escolha",
@@ -447,7 +446,6 @@ export const CENA_INICIO: Cena = {
         { label: "quantas pessoas a gente precisa?", tom: "acordado", resposta: [{ de: "D-Bee", texto: "nove. uma rede de nove e eles não conseguem mais separar a cidade" }] },
       ],
     },
-    { t: "ganha", titulo: "a chave da kombi", texto: "o chaveiro é uma lua. três luas até a otimização geral" },
     { t: "fala", de: "D-Bee", texto: "a estrada é reta. pisa fundo. eu te ligo no caminho" },
     { t: "fim" },
   ],

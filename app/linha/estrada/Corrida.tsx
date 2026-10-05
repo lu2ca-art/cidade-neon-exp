@@ -1056,14 +1056,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           {alvo.t === "busca" && alvo.busca.em.length > 1 && <span>{alvo.busca.em.length - alvo.faltam.length}/{alvo.busca.em.length}</span>}
         </div>
       )}
-      {bairro && bairroF && (
-        <div key={bairro.t} className="l-bairro" style={{ ["--cor" as string]: bairroF.cor }}>
-          <small>você entrou em</small>
-          <p>{territorio(bairro.id).lugar}</p>
-          <span className="l-bairro-freq">{bairroF.freq} FM · {bairroF.nome}</span>
-        </div>
-      )}
-
       {popup && <div key={popup.id} className="l-popup" style={{ color: popup.cor }}>{popup.txt}</div>}
 
       {/* ILHA DINÂMICA: uma coisa de cada vez, se transformando —
@@ -1249,15 +1241,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <small>estação {portalE.n} · {portalE.personagem}</small>
           <b>descer aqui →</b>
         </button>
-      )}
-
-      {travou && (
-        <div className="l-travou" style={{ ["--cor" as string]: travou.cor }}>
-          <small>sinal travado</small>
-          <b>{travou.freq}</b>
-          <span>{travou.nome}</span>
-          <em>a saída {territorio(travou.id).pra} abriu · pega na próxima bifurcação</em>
-        </div>
       )}
 
       {chegou && dest && (
