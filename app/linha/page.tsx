@@ -92,6 +92,9 @@ export default function LinhaPage() {
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
+  // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
+  // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
+  const [voltaDaSala, setVoltaDaSala] = useState(false)
   const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; chegou?: boolean } | null>(null)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
@@ -308,6 +311,13 @@ export default function LinhaPage() {
   // Pego = a coisa volta pro lugar de origem (busca de novo; sem game over)
   const alvoAgora = save.nucleo.caido ? null : alvoDe(save, nivelDe(save))
   const cacado = alvoAgora?.t === "entrega" && save.objetos.length >= 2
+  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem
+  // entrou numa sala: a próxima estrada que montar retoma de onde parou;
+  // foi pra outra tela (celular, início): a estrada começa do jeito normal
+  const [emSalaAnt, setEmSalaAnt] = useState(emSala)
+  if (emSala !== emSalaAnt) { setEmSalaAnt(emSala); if (emSala) setVoltaDaSala(true) }
+  if (voltaDaSala && !emSala && tela.t !== "corrida" && tela.t !== "chegada") setVoltaDaSala(false)
+
   // a sala do lugar da missão começa a baixar enquanto a Kombi ainda está
   // longe (o beco também, quando ele fica liberado)
   const lugarDoAlvo = alvoAgora?.t === "lugar" ? alvoAgora.lugar : null
@@ -624,12 +634,13 @@ export default function LinhaPage() {
     <div className="l-raiz">
       <div className="l-palco">
         {/* camada de baixo: a estrada (pausa quando o celular está aberto) */}
-        {(estrada || tela.t === "corrida") && (
+        {(estrada || tela.t === "corrida") && !emSala && (
           <Corrida
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada") || !!viagem || (!!cena && temSala(cena.lugar))}
+            pausado={tela.t !== "corrida" && tela.t !== "chegada"}
+            retomar={voltaDaSala}
             limitado={!!invasao}
             cacado={cacado || perseguido}
             conversa={!!aoVivo}
