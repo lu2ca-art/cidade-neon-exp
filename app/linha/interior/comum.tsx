@@ -363,5 +363,16 @@ export function useExplorar(ativo: boolean, coisas: Coisa[], precisa: number, si
     setVistas(novas)
     if (novas.length >= precisa) sinal({ t: "fim-gesto" })
   }
+  // atalho de teste: __gesto() olha a próxima coisa
+  const verRef = useRef(ver)
+  useEffect(() => { verRef.current = ver })
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return
+    const w = window as unknown as Record<string, unknown>
+    w.__gesto = () => { const c = coisas.find((x) => !vistasRef.current.includes(x.id)); if (c) verRef.current(c.id) }
+    return () => { delete w.__gesto }
+  }, [coisas])
+  const vistasRef = useRef(vistas)
+  useEffect(() => { vistasRef.current = vistas })
   return { vistas, ver }
 }
