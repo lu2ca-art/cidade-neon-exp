@@ -40,7 +40,7 @@ Meta do LU2CA (05/10): jogo insanamente otimizado, assets leves e bonitos, cenas
 - A viagem pra fora do ep. 3 e a casa da D-Bee.
 
 ## Como testar
-- Scripts Playwright em `docs/linha-222/testes/` (usar `bun`, `playwright-core`, dev server em `localhost:3222`). Salvam imagens em `/tmp/linha-shots`.
+- Scripts Playwright em `docs/linha-222/testes/` (o `playwright-core` não está no package.json do jogo: rodar de uma pasta com ele instalado, ou `bun add -d playwright-core` numa branch de infra) (usar `bun`, `playwright-core`, dev server em `localhost:3222`). Salvam imagens em `/tmp/linha-shots`.
   - `sala.mjs <bar|balada|vagao|escondido|beco|topo|shows|posto|drewboy|dbee>`: uma sala do começo ao fim.
   - `bar2.mjs`: as duas visitas do bar (beber, voltar, negar).
   - `passa.mjs`: passar na frente abre a cena; `carona.mjs`, `fase1.mjs`, `ep2.mjs`, `ep3.mjs`: fluxos das missões.
