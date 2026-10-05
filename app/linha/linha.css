@@ -1632,3 +1632,14 @@
 .l-check li.is-ok i { background: #5dffa0; border-color: #5dffa0; animation: l-check-ok 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
 .l-check li small { display: block; margin-top: 2px; font-size: 11.5px; color: #8fb2ff; }
 @keyframes l-check-ok { from { transform: scale(0.4); } }
+
+/* ── o HUD sem sobreposição (05/10, LU2CA: "um monte de coisa se sobrepondo"):
+   o topo é só do cartão da estrada (a ilha) e da ligação; MISSÕES, o painel
+   dele e a checklist moram embaixo, acima do turbo e da missão ── */
+.l-btn-missoes { top: auto; left: auto; right: 12px; bottom: calc(170px + env(safe-area-inset-bottom)); }
+.l-missoes { top: auto; bottom: calc(216px + env(safe-area-inset-bottom)); max-height: 46vh; }
+.l-check { top: auto; bottom: calc(188px + env(safe-area-inset-bottom)); width: min(230px, calc(100% - 160px)); }
+.l-lig { background: rgba(10, 11, 26, 0.97); }
+.l-check-topo { text-align: left; white-space: nowrap; gap: 10px; }
+/* ligação tocando: a ilha vazia some (sobrava uma caixa preta embaixo) */
+.l-raiz:has(.l-lig) .l-ilha { opacity: 0; }

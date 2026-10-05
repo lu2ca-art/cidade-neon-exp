@@ -773,7 +773,7 @@ export default function LinhaPage() {
           </button>
         )}
         {tut && tela.t === "corrida" && !emSala && !cinema && !painelMissoes && !aoVivo && <Checklist save={save} />}
-        {painelMissoes && tela.t === "corrida" && !emSala && (
+        {painelMissoes && !ligacao && tela.t === "corrida" && !emSala && (
           <div className="l-missoes" role="dialog" aria-label="Missões">
             <header><b>quem precisa de você</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
             <ul>
