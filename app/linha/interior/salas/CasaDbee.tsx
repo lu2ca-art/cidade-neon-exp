@@ -24,6 +24,8 @@ const PLANOS: Record<string, Plano> = {
   grupo: { pos: [-1.3, 1.6, -1.2], olha: [0.8, 1.3, 2.4], fov: 62 },
   dbee: { pos: [0.9, 1.55, -0.6], olha: [-1.5, 1.35, 1.1], fov: 52 },
   janela: { pos: [0.4, 1.6, -0.2], olha: [-2.5, 1.6, 0.8], fov: 55 },
+  // o primeiro plano do jogo: as costas dela na janela, a cidade lá fora
+  abertura: { pos: [1.4, 1.5, 1.9], olha: [-2.5, 1.55, 0.5], fov: 50 },
 }
 
 const COISAS: Coisa[] = [
@@ -69,7 +71,7 @@ export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
       if (estado.texto?.includes("janela")) return PLANOS.janela
       if (procurando) return PLANOS.dentro
       if (estado.falando === "D-Bee" || estado.falando === "você" || estado.escolha) return PLANOS.dbee
-      if (estado.pos === 0) return PLANOS.porta
+      if (estado.pos <= 1) return PLANOS.abertura
       return PLANOS.dentro
     }
     if (chegaram.length && (estado.falando === null || GRUPO.some((g) => g.quem === estado.falando) || estado.falando === "você" || estado.escolha)) return PLANOS.grupo

@@ -126,7 +126,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
     <div className={`l-cena ${atual ? "" : "is-livre"} ${gestos3d.length ? "is-sala" : ""}`} onClick={atual ? avancar : undefined}>
       <div className="l-cena-tarja is-cima" />
       <div className="l-cena-tarja is-baixo" />
-      <small className="l-cena-lugar">{[LUGARES[cena.lugar].letreiro.toLowerCase(), LUGARES[cena.lugar].nome].filter(Boolean).join(" · ")}</small>
+      <small className="l-cena-lugar">{cena.titulo ?? [LUGARES[cena.lugar].letreiro.toLowerCase(), LUGARES[cena.lugar].nome].filter(Boolean).join(" · ")}</small>
 
       {atual && atual.tipo === "nucleo" && (
         <div className="l-cena-nucleo"><b>NÚCLEO</b><p>{atual.texto.slice(0, letras)}</p></div>

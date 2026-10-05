@@ -65,6 +65,8 @@ export type PassoCena =
 
 export interface Cena {
   lugar: LugarId
+  // título no alto da cena, quando o nome do lugar não serve (o começo)
+  titulo?: string
   missao: EstacaoId
   passos: PassoCena[]
 }
@@ -415,10 +417,11 @@ CENAS["casa-dbee"] = {
 // pesa porque você já esteve aqui com ela. RASCUNHO: o LU2CA reescreve
 export const CENA_INICIO: Cena = {
   lugar: "casa-dbee",
+  titulo: "a casa da d-bee",
   missao: "ojala",
   passos: [
     { t: "acao", texto: "uma casa sozinha no fim de uma estrada de terra. lá longe, no horizonte, uma cidade inteira acesa" },
-    { t: "acao", texto: "você acorda no sofá. não lembra de como chegou" },
+    { t: "acao", texto: "você acorda na cama de alguém. não lembra de como chegou" },
     { t: "fala", de: "D-Bee", texto: "acordou" },
     { t: "fala", de: "D-Bee", texto: "relaxa. ninguém lembra como chega aqui" },
     {
