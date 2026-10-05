@@ -18,7 +18,7 @@ import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
 import { MISSOES, abertas, alvoDe, ativa, etapaDe } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
-import { cenaDe, type Reliquia } from "./cenas"
+import { CENA_INICIO, cenaDe, type Reliquia } from "./cenas"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
 import { LUGARES, type LugarId } from "./lugares"
 import { proximaFreq } from "./radio"
@@ -56,6 +56,9 @@ type Tela =
   | { t: "entrada" }
   | { t: "bloqueio" }
   | { t: "chegada" }
+  // o COMEÇO (05/10): a casa da D-Bee, longe de tudo, e a reta até a cidade
+  | { t: "casa" }
+  | { t: "reta" }
   | { t: "chat"; id: ChatRoteiro; volta: Volta }
   | { t: "home" }
   | { t: "app"; id: AppId }
@@ -501,8 +504,11 @@ export default function LinhaPage() {
         return { ...s, completos: s.completos.filter((c) => c !== "abertura" && c !== "grupo"), logs }
       })
       setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
+    } else if (!save.casa) {
+      // primeira vez: acorda na casa da D-Bee, longe de tudo
+      setTela({ t: "casa" })
     } else {
-      // primeira vez: entra na cidade de Kombi, não pelo celular
+      // já passou pela casa: entra na cidade de Kombi, não pelo celular
       setCinema("rodando")
       setEstrada(true)
       setTela({ t: "chegada" })
@@ -731,6 +737,37 @@ export default function LinhaPage() {
               })}
             </ul>
           </div>
+        )}
+        {tela.t === "casa" && (
+          <>
+            <Interior key="sala:inicio" lugar="casa-dbee" inicio />
+            <CenaLugar
+              key="cena:inicio"
+              gestos3d={GESTOS_3D["casa-dbee"] ?? []}
+              cena={CENA_INICIO}
+              memoria={0}
+              objetos={save.objetos}
+              tom={tomMaior}
+              semSom={semSom}
+              onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
+              onFim={() => {
+                setSave((s) => ({ ...s, casa: true }))
+                track("mission_step", { mission_id: "linha-inicio", step: "casa:fim", perfil: save.perfil ?? "?", fio_pos: -1 })
+                setTela({ t: "reta" })
+              }}
+            />
+          </>
+        )}
+        {tela.t === "reta" && (
+          <Viagem
+            rumo="cidade"
+            onFim={() => {
+              // a reta acabou na entrada da cidade: o Núcleo invade o rádio
+              setCinema("rodando")
+              setEstrada(true)
+              setTela({ t: "chegada" })
+            }}
+          />
         )}
         {tela.t === "chegada" && (
           <Chegada

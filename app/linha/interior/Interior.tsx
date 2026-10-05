@@ -28,7 +28,7 @@ const SALAS = Object.fromEntries(
   Object.entries(CARREGAR).map(([id, c]) => [id, lazy(() => c!().then((C) => ({ default: C })))]),
 ) as Partial<Record<LugarId, LazyExoticComponent<ComponentType<SalaProps>>>>
 
-export function Interior({ lugar, objetos = [] }: { lugar: LugarId; objetos?: EstacaoId[] }) {
+export function Interior({ lugar, objetos = [], inicio = false }: { lugar: LugarId; objetos?: EstacaoId[]; inicio?: boolean }) {
   // a sala vem num pedaço próprio do pacote (registro.ts)
   const S = SALAS[lugar]
   const estado = useEstadoCena()
@@ -49,7 +49,7 @@ export function Interior({ lugar, objetos = [] }: { lugar: LugarId; objetos?: Es
     >
       <Canvas className="l-interior-cvs" dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 50, near: 0.05, far: 200, position: [0, 1.6, 6] }}>
         <Suspense fallback={null}>
-          <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} /></Seguro>
+          <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} inicio={inicio} /></Seguro>
         </Suspense>
         <Seguro nome="lente-sala"><Cinema /></Seguro>
         {process.env.NODE_ENV !== "production" && <Medidor />}

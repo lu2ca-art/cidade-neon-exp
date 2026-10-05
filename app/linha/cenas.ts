@@ -52,7 +52,7 @@ export type PassoCena =
   // pôr frases soltas na ordem (a moradora do beco fala em pedaços)
   | { t: "gesto"; id: "ordem"; frases: string[] }
   // explorar a sala: tocar nas coisas (interior/: o quarto do Drewboy, a casa da D-Bee)
-  | { t: "gesto"; id: "quarto" | "casa" }
+  | { t: "gesto"; id: "quarto" | "casa" | "casa-inicio" }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o
@@ -404,6 +404,48 @@ CENAS["casa-dbee"] = {
     { t: "nucleo", texto: "detectamos uma reunião não autorizada fora do perímetro. obrigado por avisar onde vocês estão ✓" },
     { t: "acao", texto: "no varal, uma camisa da seleção esquecida. você leva" },
     { t: "ganha", objeto: "ojala" },
+    { t: "fim" },
+  ],
+}
+
+// ── O COMEÇO · a casa da D-Bee, longe de tudo (novo começo, 05/10) ──
+// O jogo começa aqui, com ela em pessoa. Uma ideia só: lá longe tem uma
+// cidade que vai ser apagada, e você é quem pode entrar nela sem ser lido.
+// No ep. 3 você volta e a casa está vazia (cenas["casa-dbee"]): a ausência
+// pesa porque você já esteve aqui com ela. RASCUNHO: o LU2CA reescreve
+export const CENA_INICIO: Cena = {
+  lugar: "casa-dbee",
+  missao: "ojala",
+  passos: [
+    { t: "acao", texto: "uma casa sozinha no fim de uma estrada de terra. lá longe, no horizonte, uma cidade inteira acesa" },
+    { t: "acao", texto: "você acorda no sofá. não lembra de como chegou" },
+    { t: "fala", de: "D-Bee", texto: "acordou" },
+    { t: "fala", de: "D-Bee", texto: "relaxa. ninguém lembra como chega aqui" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "onde eu tô?", tom: "dormindo", resposta: [{ de: "D-Bee", texto: "longe o bastante pra eles não ouvirem" }] },
+        { label: "quem é vc?", tom: "acordando", resposta: [{ de: "D-Bee", texto: "d-bee. a que te achou na beira da estrada" }] },
+        { label: "aquela cidade… eu conheço", tom: "acordado", resposta: [{ de: "D-Bee", texto: "conhece. só não lembra de onde ainda" }] },
+      ],
+    },
+    { t: "fala", de: "D-Bee", texto: "olha em volta. eu faço um café" },
+    // explorar: a janela (a cidade), o calendário de giz (as luas), o violão
+    { t: "gesto", id: "casa-inicio" },
+    { t: "fala", de: "D-Bee", texto: "otimizar é bonito de falar. na prática eles apagam o que não se encaixa" },
+    { t: "fala", de: "D-Bee", texto: "a música, quem sente demais, quem pensa diferente. vão queimar as raízes da cidade inteira" },
+    { t: "acao", texto: "ela coloca uma chave na sua mão. o chaveiro é uma lua de plástico" },
+    { t: "fala", de: "D-Bee", texto: "vc veio de fora. o núcleo ainda não te leu. isso é raro" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "e o que eu faço com isso?", tom: "dormindo", resposta: [{ de: "D-Bee", texto: "vai até lá. acorda quem ainda dá pra acordar" }] },
+        { label: "por que eu?", tom: "acordando", resposta: [{ de: "D-Bee", texto: "pq lá ninguém sabe seu nome ainda. vc entra sem ninguém ver" }] },
+        { label: "quantas pessoas a gente precisa?", tom: "acordado", resposta: [{ de: "D-Bee", texto: "nove. uma rede de nove e eles não conseguem mais separar a cidade" }] },
+      ],
+    },
+    { t: "ganha", titulo: "a chave da kombi", texto: "o chaveiro é uma lua. três luas até a otimização geral" },
+    { t: "fala", de: "D-Bee", texto: "a estrada é reta. pisa fundo. eu te ligo no caminho" },
     { t: "fim" },
   ],
 }
