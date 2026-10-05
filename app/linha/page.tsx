@@ -348,6 +348,14 @@ export default function LinhaPage() {
     setCinema(null)
     if (!c) return
     const est = c.missao
+    // escolha errada (o bar: beber): a missão fica aberta, nada se ganha, e o
+    // mundo estranha (loops → Corrida)
+    if (r.loop) {
+      setSave((s) => ({ ...s, loops: { ...(s.loops ?? {}), [c.lugar]: (s.loops?.[c.lugar] ?? 0) + 1 } }))
+      avisar("a noite voltou pro começo", "a missão continua aberta", "#ffc857")
+      track("mission_step", { mission_id: `linha-${est}`, step: `loop:${c.lugar}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
+      return
+    }
     setSave((s) => {
       let objetos = s.objetos
       let sinal = s.sinal
@@ -371,7 +379,7 @@ export default function LinhaPage() {
       setPerseguido(true)
       setTimeout(() => setPerseguido(false), 60000)
     }
-  }, [cena])
+  }, [cena, avisar])
 
   const religar = useCallback(() => {
     setSave((s) => ({ ...s, sinal: s.sinal + 10, nucleo: { ...s.nucleo, caido: false } }))
@@ -632,6 +640,7 @@ export default function LinhaPage() {
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
             cinema={cinema}
             cinza={cinza || apagao}
+            noiteRepete={save.objetos.includes("copo") ? 0 : (save.loops?.bar ?? 0)}
             foraDoAr={apagao}
           />
         )}
@@ -740,6 +749,7 @@ export default function LinhaPage() {
           <CenaLugar
             key={`${cena.lugar}:${cena.missao}`}
             gestos3d={GESTOS_3D[cena.lugar] ?? []}
+            loops={save.loops?.[cena.lugar] ?? 0}
             cena={cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}

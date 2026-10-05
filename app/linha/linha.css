@@ -1553,3 +1553,7 @@
 .l-dica3d { position: relative; z-index: 2; margin: 0 16px calc(11vh + 18px); display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none !important; }
 .l-dica3d small { padding: 8px 14px; border-radius: 999px; background: rgba(5,5,14,0.66); font: 700 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.85); animation: l-fade 0.6s both; }
 .l-dica3d button { pointer-events: auto; }
+/* a noite repete (saiu do bar com a escolha errada): mais bonito e mais vazio */
+.l-viagem.is-repete .l-viagem-cvs { filter: saturate(1.35) brightness(1.1) sepia(0.28) hue-rotate(-12deg); transition: filter 1.5s; }
+.l-viagem.is-repete::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(ellipse at center, transparent 55%, rgba(255, 200, 87, 0.16)); animation: l-repete 6s ease-in-out infinite; }
+@keyframes l-repete { 50% { opacity: 0.35; } }

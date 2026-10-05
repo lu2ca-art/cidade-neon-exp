@@ -62,6 +62,9 @@ export interface Save {
   tons: Record<Tom, number>
   // as relíquias do ritual do deserto que já nasceram (cenas.ts)
   reliquias: string[]
+  // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
+  // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
+  loops: Record<string, number>
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
   // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o
@@ -100,6 +103,7 @@ export const VAZIO: Save = {
   violao: false,
   tons: { dormindo: 0, acordando: 0, acordado: 0 },
   reliquias: [],
+  loops: {},
   ligacoes: [],
   modos: {},
   // a D-Bee abre com ligação: a primeira pessoa vem de outro jeito

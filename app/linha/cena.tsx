@@ -21,6 +21,8 @@ export interface ResultadoCena {
   reliquias: Reliquia[]
   caca: boolean
   perdeViolao?: boolean
+  // saiu com a escolha errada: a missão fica aberta e o mundo estranha
+  loop?: boolean
 }
 
 type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
@@ -28,7 +30,7 @@ type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
 
 // `gestos3d`: os gestos que a sala em 3D faz (interior/): a legenda só dá
 // a dica e espera a sala avisar que acabou
-export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], loops = 0, onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; loops?: number; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
   // o tom vale o do começo da cena (responder no meio não reembaralha os passos)
   const [tom] = useState(tomAgora)
   // os passos com `se` só entram se a pessoa já passou por aquela estação;
@@ -38,15 +40,21 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
     passos: cenaBruta.passos.filter((p) =>
       (!("se" in p) || !p.se || objetos.includes(p.se)) &&
       (!("tom" in p) || !p.tom || p.tom.includes(tom)) &&
-      (!("rel" in p) || !p.rel || reliquias.includes(p.rel))),
-  }), [cenaBruta, objetos, reliquias, tom])
+      (!("rel" in p) || !p.rel || reliquias.includes(p.rel)) &&
+      (!("volta" in p) || !p.volta || (p.volta === "sim") === (loops > 0))),
+  }), [cenaBruta, objetos, reliquias, tom, loops])
   const [pos, setPos] = useState(0)
   const [fila, setFila] = useState<Fila>([])
   const [ganhos, setGanhos] = useState<{ objeto?: EstacaoId; reliquias: Reliquia[]; perdeViolao?: boolean }>({ reliquias: [] })
   const [letras, setLetras] = useState(0)
+  // bebeu: a escolha errada. A cena acaba aqui e a pessoa sai do lugar
+  const [saida, setSaida] = useState(false)
+  // 10 s parada olhando o balcão: aí aparece a saída (negar). Quem já saiu
+  // errado uma vez vê de cara
+  const [esperou, setEsperou] = useState(false)
   const passo: PassoCena | undefined = cena.passos[pos]
   // o que está na legenda agora: primeiro a fila (respostas), depois o passo
-  const atual = fila[0] ?? (passo && (passo.t === "fala" || passo.t === "acao" || passo.t === "nucleo") ? { de: passo.t === "fala" ? passo.de : undefined, texto: passo.texto, tipo: passo.t } : passo?.t === "perde" ? { texto: passo.texto, tipo: "acao" as const } : null)
+  const atual = fila[0] ?? (saida ? null : passo && (passo.t === "fala" || passo.t === "acao" || passo.t === "nucleo") ? { de: passo.t === "fala" ? passo.de : undefined, texto: passo.texto, tipo: passo.t } : passo?.t === "perde" ? { texto: passo.texto, tipo: "acao" as const } : null)
   const chave = `${pos}:${fila.length}:${atual?.texto ?? ""}`
   // fala nova: a legenda recomeça do zero (ajuste no render, sem efeito)
   const [chaveAnt, setChaveAnt] = useState(chave)
@@ -62,13 +70,17 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   }, [pos, atual?.de, atual?.texto, gestoAgora, passo?.t, !!atual, mostrando]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => zerar(), [])
   // e ouve a sala: uma fala solta, um copo bebido, o gesto acabou
-  const [bebeu, setBebeu] = useState(0)
   useEffect(() => ouvirSala((sn) => {
     if (sn.t === "fala") setFila((f) => [...f, { de: sn.de, texto: sn.texto, tipo: sn.tipo ?? "fala" }])
-    else if (sn.t === "bebeu") setBebeu(sn.n)
+    else if (sn.t === "bebeu") setSaida(true)
     else if (sn.t === "fim-gesto") setPos((p) => p + 1)
   }), [])
-  const gesto3d = gestoAgora !== null && gestos3d.includes(gestoAgora)
+  const gesto3d = gestoAgora !== null && gestos3d.includes(gestoAgora) && !saida
+  useEffect(() => {
+    if (gestoAgora !== "copos") return
+    const t = setTimeout(() => setEsperou(true), 10000)
+    return () => clearTimeout(t)
+  }, [gestoAgora])
   // explorar só existe com a sala em 3D: sem ela (aparelho que não aguentou),
   // a cena segue sozinha
   useEffect(() => {
@@ -135,8 +147,13 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
-      {gesto3d && <Dica3d id={gestoAgora!} bebeu={bebeu} onNegar={() => setPos((p) => p + 1)} />}
-      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} />}
+      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} voltou={loops > 0} onNegar={() => setPos((p) => p + 1)} />}
+      {!gesto3d && !saida && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} onBeber={() => setSaida(true)} podeNegar={loops > 0 || esperou} />}
+      {saida && !atual && (
+        <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
+          <button type="button" onClick={() => onFim({ reliquias: [], caca: false, loop: true })}>sair do bar →</button>
+        </div>
+      )}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
@@ -174,11 +191,12 @@ const DICAS_3D: Record<string, string> = {
   casa: "procura pela casa. toca no que chamar sua atenção",
   quarto: "olha o quarto. toca no que chamar sua atenção",
 }
-function Dica3d({ id, bebeu, onNegar }: { id: string; bebeu: number; onNegar: () => void }) {
+function Dica3d({ id, podeNegar, voltou, onNegar }: { id: string; podeNegar: boolean; voltou: boolean; onNegar: () => void }) {
+  const texto = id === "copos" ? (voltou ? "o mesmo balcão. a mesma escolha?" : DICAS_3D.copos) : DICAS_3D[id] ?? "toca na cena"
   return (
     <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
-      <small>{id === "copos" && bebeu >= COPOS.length ? "acabaram os copos" : DICAS_3D[id] ?? "toca na cena"}</small>
-      {id === "copos" && bebeu > 0 && <button type="button" className="l-copos-negar" onClick={onNegar}>negar a oferta</button>}
+      <small>{texto}</small>
+      {id === "copos" && podeNegar && <button type="button" className="l-copos-negar" onClick={onNegar}>negar a oferta</button>}
     </div>
   )
 }
@@ -186,7 +204,7 @@ function Dica3d({ id, bebeu, onNegar }: { id: string; bebeu: number; onNegar: ()
 // O GESTO do bar: seis copos, cada um uma promessa. Beber é um loop: a
 // noite volta pro começo e o bar fica mais bonito e mais vazio. Depois do
 // primeiro, aparece a saída que ninguém escolhe: negar a oferta
-function Copos({ onNegar }: { onNegar: () => void }) {
+function Copos({ onNegar, onBeber, podeNegar }: { onNegar: () => void; onBeber: () => void; podeNegar: boolean }) {
   const [bebidos, setBebidos] = useState<string[]>([])
   const [loop, setLoop] = useState<{ n: number; copo: string } | null>(null)
   const todos = bebidos.length === COPOS.length
@@ -195,6 +213,7 @@ function Copos({ onNegar }: { onNegar: () => void }) {
     gota(1)
     setBebidos((b) => [...b, id])
     setLoop({ n: bebidos.length + 1, copo: id })
+    setTimeout(onBeber, 1800)
   }
   const fala = useMemo(() => {
     if (!loop) return null
@@ -222,7 +241,7 @@ function Copos({ onNegar }: { onNegar: () => void }) {
           ))}
         </div>
       )}
-      {bebidos.length > 0 && (
+      {podeNegar && bebidos.length === 0 && (
         <button type="button" className="l-copos-negar" onClick={onNegar}>negar a oferta</button>
       )}
     </div>

@@ -59,17 +59,16 @@ export function SalaBar({ estado }: SalaProps) {
     return PLANOS.balcao
   }, [estado])
 
+  // beber é a escolha errada: um copo só e a cena acaba (cena.tsx leva a
+  // pessoa pra fora do bar). A noite volta pro começo, mais bonita e mais vazia
   const beber = (i: number) => {
-    if (bebidos.includes(i) || estado.gesto !== "copos") return
+    if (bebidos.length || estado.gesto !== "copos") return
     vib([20, 40, 20]); gota(1)
-    const novo = [...bebidos, i]
-    setBebidos(novo)
+    setBebidos([i])
     const c = COPOS[i]
     sinalizar({ t: "fala", de: "ela", texto: c.promessa })
-    sinalizar({ t: "fala", tipo: "acao", texto: `você bebe ${c.nome}. a noite volta pro começo. noite ${novo.length + 1}. o bar tá mais bonito. e mais vazio` })
-    if (novo.length < COPOS.length) sinalizar({ t: "fala", de: "Mubarak", texto: "chegou. senta aí" })
-    else sinalizar({ t: "fala", de: "ela", texto: "agora que você encontrou todas as respostas, o que mais poderia querer?" })
-    sinalizar({ t: "bebeu", n: novo.length })
+    sinalizar({ t: "fala", tipo: "acao", texto: `você bebe ${c.nome}. tá bom. tá muito bom. você levanta e sai. lá fora, a noite começa de novo` })
+    sinalizar({ t: "bebeu", n: 1 })
   }
 
   // atalho de desenvolvimento: __beber(i) bebe o copo i

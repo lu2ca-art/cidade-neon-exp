@@ -38,12 +38,13 @@ export interface FalaCena { de: string; texto: string }
 // `se`: o passo só acontece se a pessoa já fez a missão daquela estação
 // (é assim que os mundos colidem: quem já passou pelo bar vê a mulher dos
 // copos no camarote da balada)
+// `volta`: "sim" só na 2ª visita em diante (saiu errado da 1ª), "nao" só na 1ª
 // `tom`: o passo só acontece pra quem está nesse(s) tom(ns) (o que mais
 // respondeu até aqui). `rel`: só pra quem já tem essa relíquia
 export type PassoCena =
-  | { t: "fala"; de: string; texto: string; se?: EstacaoId; tom?: Tom[]; rel?: Reliquia }
+  | { t: "fala"; de: string; texto: string; se?: EstacaoId; tom?: Tom[]; rel?: Reliquia; volta?: "sim" | "nao" }
   // direção de cena, em itálico ("ela sorri. não responde.")
-  | { t: "acao"; texto: string; se?: EstacaoId; tom?: Tom[]; rel?: Reliquia }
+  | { t: "acao"; texto: string; se?: EstacaoId; tom?: Tom[]; rel?: Reliquia; volta?: "sim" | "nao" }
   | { t: "nucleo"; texto: string }
   | { t: "escolha"; opcoes: { label: string; tom: Tom; resposta: FalaCena[] }[] }
   // o gesto do lugar (cena.tsx desenha cada um)
@@ -74,12 +75,19 @@ export const CENAS: Partial<Record<LugarId, Cena>> = {
     lugar: "bar",
     missao: "copo",
     passos: [
-      { t: "acao", texto: "o copo. a porta abre sozinha. lá dentro, a mesma música de sempre, no mesmo trecho" },
-      { t: "fala", de: "Mubarak", texto: "chegou. senta aí" },
-      { t: "fala", de: "Mubarak", texto: "o bar de sempre. o copo de sempre. a noite de sempre" },
+      // 1ª visita: ninguém diz que tem uma saída. Beber é o que o bar espera
+      // e leva pra fora com a escolha errada (a cena acaba, a missão fica
+      // aberta, o mundo estranha). Só negar a oferta quebra o loop
+      { t: "acao", texto: "o copo. a porta abre sozinha. lá dentro, a mesma música de sempre, no mesmo trecho", volta: "nao" },
+      { t: "acao", texto: "o copo. a porta abre sozinha. a mesma música. no mesmo trecho. de novo", volta: "sim" },
+      { t: "fala", de: "Mubarak", texto: "chegou. senta aí", volta: "nao" },
+      { t: "fala", de: "Mubarak", texto: "…voltou. vc percebeu, né? a noite é a mesma", volta: "sim" },
+      { t: "fala", de: "Mubarak", texto: "o bar de sempre. o copo de sempre. a noite de sempre", volta: "nao" },
       { t: "acao", texto: "atrás do balcão, uma mulher que não parece trabalhar ali. parece se divertir ali" },
-      { t: "fala", de: "ela", texto: "você tá com sede. dá pra ver" },
-      { t: "fala", de: "ela", texto: "tenho seis aqui. cada um resolve uma coisa. escolhe" },
+      { t: "fala", de: "ela", texto: "você tá com sede. dá pra ver", volta: "nao" },
+      { t: "fala", de: "ela", texto: "voltou. o mesmo copo de novo?", volta: "sim" },
+      { t: "fala", de: "ela", texto: "tenho seis aqui. cada um resolve uma coisa. escolhe", volta: "nao" },
+      { t: "fala", de: "ela", texto: "ainda tenho seis aqui. ou nenhum. você sabe a diferença agora", volta: "sim" },
       { t: "gesto", id: "copos" },
       { t: "acao", texto: "ela sorri. não responde. pela primeira vez, alguém disse não" },
       { t: "acao", texto: "no balcão, onde estavam os copos, uma muda de planta" },
