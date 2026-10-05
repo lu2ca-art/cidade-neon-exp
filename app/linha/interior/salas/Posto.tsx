@@ -2,8 +2,8 @@
 
 // O POSTO (lugar 9, indie, confissão). O último antes da estrada acabar:
 // a cobertura com luz fria, as bombas numeradas, a loja de conveniência
-// vazia atrás do vidro. A Kombi parada na bomba 6 e o LU2CA sentado no
-// meio-fio do lado dela. Quando ele decide ir, levanta e entra na Kombi.
+// vazia atrás do vidro. A Kombi parada na bomba 5 e o LU2CA sentado no
+// meio-fio do lado da 6. Quando ele decide ir, levanta e entra na Kombi.
 
 import { Suspense, useMemo } from "react"
 import { texTexto } from "../../estrada/geo"
@@ -16,10 +16,10 @@ const LILAS = "#b38cff"
 const FRIO = "#dfe9ff"
 
 const PLANOS: Record<string, Plano> = {
-  chegada: { pos: [5, 2, 7], olha: [0, 1.2, 0], fov: 58 },
-  lu2ca: { pos: [2.2, 1.2, 2.6], olha: [0.6, 0.85, 0.4], fov: 46 },
-  junto: { pos: [3.4, 1.4, 3.2], olha: [0.2, 1, 0], fov: 56 },
-  loja: { pos: [1, 1.7, 4], olha: [-2, 1.5, -6], fov: 56 },
+  chegada: { pos: [5.5, 2, 7], olha: [1, 1.2, -1], fov: 58 },
+  lu2ca: { pos: [4.9, 1.25, 3.4], olha: [3.3, 0.8, 0.5], fov: 50 },
+  junto: { pos: [5.4, 1.5, 4.2], olha: [1.2, 1, 0], fov: 58 },
+  loja: { pos: [3.5, 1.7, 5], olha: [-2, 1.5, -6], fov: 56 },
 }
 
 export function SalaPosto({ estado }: SalaProps) {
@@ -49,7 +49,7 @@ export function SalaPosto({ estado }: SalaProps) {
       {[-3, 3].map((x) => <pointLight key={x} position={[x, 4.6, 0]} color={FRIO} intensity={10} distance={10} decay={2} />)}
       {[-4.5, 4.5].map((x) => <Caixa key={x} pos={[x, 2.5, 0]} tam={[0.4, 5, 0.4]} cor="#c8ccd8" />)}
       {/* as bombas */}
-      {[-2.2, 2.2].map((x, i) => <Bomba key={x} pos={[x, 0, -1]} n={i === 0 ? 5 : 6} />)}
+      {[-2.2, 2.2].map((x, i) => <Bomba key={x} pos={[x, 0, -2.5]} n={i === 0 ? 5 : 6} />)}
       {/* a loja de conveniência: vidro, prateleiras, ninguém no caixa */}
       <group position={[-2, 0, -9]}>
         <Caixa pos={[0, 1.6, 0]} tam={[10, 3.2, 4]} cor="#1a1c24" />
@@ -58,16 +58,16 @@ export function SalaPosto({ estado }: SalaProps) {
         <Placa />
       </group>
       {/* a Kombi na bomba 6 */}
-      <group position={[1.1, 0, 0.5]} rotation-y={Math.PI}>
+      <group position={[-1.2, 0, 0.8]} rotation-y={Math.PI}>
         <Seguro nome="kombi-posto">
           <Suspense fallback={null}><KombiHerbal /></Suspense>
         </Seguro>
       </group>
       {/* o LU2CA no meio-fio do lado da bomba 6 (levanta e entra na Kombi) */}
       {!levantou
-        ? <Npc cor={LILAS} pos={[3.1, -0.12, 0.4]} vira={-1.9} pose="sentada" falando={estado.falando === "LU2CA"} />
-        : <Npc cor={LILAS} pos={[2.2, 0, 1.4]} vira={-2.4} falando={estado.falando === "LU2CA"} />}
-      <Caixa pos={[3.1, 0.07, 0.4]} tam={[1.6, 0.14, 0.5]} cor="#4a4c56" />
+        ? <Npc cor={LILAS} pos={[3.3, -0.12, 0.5]} vira={0.3} pose="sentada" falando={estado.falando === "LU2CA"} />
+        : <Npc cor={LILAS} pos={[1.6, 0, 1.6]} vira={-1.6} falando={estado.falando === "LU2CA"} />}
+      <Caixa pos={[3.3, 0.07, 0.5]} tam={[1.6, 0.14, 0.5]} cor="#4a4c56" />
       <Camera plano={plano} />
     </>
   )

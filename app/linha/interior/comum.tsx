@@ -319,7 +319,7 @@ export function Chuva({ n = 600, larg = 20, alto = 12, fundo = 20, centro = [0, 
 }
 
 // a cidade lá fora (pela janela, do terraço): prédios com janelas acesas
-export function Cidade({ raio = 60, n = 70, alt = 0, cor = "#ff3fb0" }: { raio?: number; n?: number; alt?: number; cor?: string }) {
+export function Cidade({ raio = 60, n = 70, alt = 0, cor = "#ff3fb0", brilho = 0.06 }: { raio?: number; n?: number; alt?: number; cor?: string; brilho?: number }) {
   const predios = useMemo(() => {
     let seed = 9
     const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
@@ -336,7 +336,7 @@ export function Cidade({ raio = 60, n = 70, alt = 0, cor = "#ff3fb0" }: { raio?:
         <group key={i} position={[p.x, p.h / 2, p.z]}>
           <mesh>
             <boxGeometry args={[p.w, p.h, p.w]} />
-            <meshStandardMaterial color="#0d0c16" emissive={p.c} emissiveIntensity={0.06} roughness={0.9} />
+            <meshStandardMaterial color="#0d0c16" emissive={p.c} emissiveIntensity={brilho} roughness={0.9} />
           </mesh>
           <mesh position={[0, p.h / 2 + 0.2, 0]}>
             <boxGeometry args={[p.w * 0.9, 0.3, p.w * 0.9]} />

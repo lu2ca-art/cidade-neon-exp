@@ -21,9 +21,9 @@ const VERDE = "#5dffa0"
 const GOTAS = 10
 
 const PLANOS: Record<string, Plano> = {
-  chegada: { pos: [2.6, 1.8, 4.2], olha: [0, 0.6, 0], fov: 58 },
-  ella: { pos: [1.4, 1.2, 1.9], olha: [-0.55, 0.75, -0.2], fov: 48 },
-  flor: { pos: [0.5, 1.35, 1.5], olha: [0, 0.25, 0], fov: 54 },
+  chegada: { pos: [2.2, 1.7, 3.6], olha: [-0.4, 0.6, -0.4], fov: 58 },
+  ella: { pos: [1.2, 1.2, 1.6], olha: [-0.7, 0.7, -0.5], fov: 50 },
+  flor: { pos: [0.8, 1.05, 1.0], olha: [-0.1, 0.3, -0.1], fov: 56 },
 }
 
 export function SalaEscondido({ estado }: SalaProps) {
@@ -92,11 +92,16 @@ export function SalaEscondido({ estado }: SalaProps) {
       {/* a mureta e, lá em cima, o trilho da Linha 9 passando */}
       <Caixa pos={[0, 0.45, -4.5]} tam={[12, 0.9, 0.25]} cor="#24262e" />
       <Caixa pos={[0, 7.5, -6]} tam={[30, 0.6, 1.4]} cor="#d8dce8" brilho={0.05} />
-      <pointLight position={[3, 3, 2]} color="#ffcf8a" intensity={4} distance={10} decay={2} />
+      {/* o poste da rua de baixo, a única luz da laje */}
+      <group position={[2.6, 0, -1.6]}>
+        <mesh position={[0, 1.6, 0]}><cylinderGeometry args={[0.05, 0.06, 3.2, 6]} /><meshStandardMaterial color="#2a2c34" /></mesh>
+        <mesh position={[-0.3, 3.2, 0]}><sphereGeometry args={[0.12, 10, 8]} /><meshBasicMaterial color="#ffe0a8" toneMapped={false} /></mesh>
+        <pointLight position={[-0.4, 3, 0.3]} color="#ffcf8a" intensity={14} distance={10} decay={2} />
+      </group>
       <Flor k={k} />
       <pointLight position={[0, 0.8, 0.3]} color={VERDE} intensity={0.5 + k * 3} distance={3} decay={2} />
       {/* a Ella agachada do lado (pose sentada, baixa) */}
-      <Npc cor={CIANO} pos={[-0.55, -0.32, -0.25]} vira={0.9} pose="sentada" falando={estado.falando === "Ella"} />
+      <Npc cor={CIANO} pos={[-0.95, -0.32, -0.55]} vira={0.7} pose="sentada" falando={estado.falando === "Ella"} />
       {/* as gotas do cantil */}
       {!regou && gotasPos.map((p, i) => (
         <Toque key={i} pos={p} raio={0.08} cor={CIANO} ativo={regando && !regadas.includes(i)} onToque={() => regar(i)}>

@@ -16,9 +16,9 @@ const VERDE = "#5dffa0"
 
 const PLANOS: Record<string, Plano> = {
   chegada: { pos: [0, 1.7, 5], olha: [0, 1.2, -1], fov: 60 },
-  notti: { pos: [1.3, 1.45, 0.6], olha: [0, 1.15, -1.6], fov: 48 },
+  notti: { pos: [1.6, 1.5, 1.4], olha: [0, 1.0, -2.2], fov: 54 },
   horizonte: { pos: [0.2, 1.6, 0.5], olha: [-30, 0, -90], fov: 55 },
-  cidade: { pos: [0.6, 1.8, 2.5], olha: [0, -10, -40], fov: 62 },
+  cidade: { pos: [0.6, 1.8, 2.5], olha: [0, -6, -40], fov: 62 },
 }
 
 export function SalaTopo({ estado }: SalaProps) {
@@ -33,10 +33,13 @@ export function SalaTopo({ estado }: SalaProps) {
   }, [estado, silencio])
   return (
     <>
-      <color attach="background" args={["#05060c"]} />
-      <fog attach="fog" args={["#05060c", 30, 160]} />
-      <ambientLight intensity={0.2} color="#a8c0ff" />
-      <hemisphereLight args={["#7f9ccf", "#0a0c10", 0.35]} />
+      <color attach="background" args={["#0b0a1c"]} />
+      <fog attach="fog" args={["#140e28", 40, 190]} />
+      <ambientLight intensity={0.3} color="#a8c0ff" />
+      <hemisphereLight args={["#7f9ccf", "#1a1020", 0.5]} />
+      {/* a luz que sobe da cidade e a luz da escada do terraço */}
+      <pointLight position={[0, -4, -8]} color="#ff3fb0" intensity={40} distance={30} decay={2} />
+      <pointLight position={[2.5, 2.6, 2]} color="#ffe0a8" intensity={6} distance={9} decay={2} />
       {/* o chão do terraço e a mureta */}
       <mesh rotation-x={-Math.PI / 2}>
         <planeGeometry args={[10, 10]} />
@@ -55,7 +58,7 @@ export function SalaTopo({ estado }: SalaProps) {
       {/* a Notti na mureta */}
       <Npc cor={VERDE} pos={[0, 0.55, -2.45]} vira={0} pose="sentada" falando={estado.falando === "Notti"} />
       {/* a cidade lá embaixo, e a chuva */}
-      <Cidade raio={90} n={90} alt={-60} cor={VERDE} />
+      <Cidade raio={70} n={110} alt={-28} cor={VERDE} brilho={0.3} />
       <Chuva n={500} larg={14} alto={10} fundo={14} />
       {/* a luz lá longe (a casa da D-Bee): só depois do silêncio */}
       {viuLuz && (

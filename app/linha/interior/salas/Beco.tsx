@@ -23,9 +23,9 @@ const NA_PAREDE = [2, 0, 1]
 const GRITOS = [{ txt: "GLAMOUR →", cor: "#ff3fb0" }, { txt: "CONSUMO →", cor: "#ffc857" }, { txt: "CONFORTO →", cor: "#2fe8ff" }]
 
 const PLANOS: Record<string, Plano> = {
-  boca: { pos: [0, 1.7, 6], olha: [0, 1.4, -3], fov: 58 },
+  boca: { pos: [0, 1.6, 8.5], olha: [0, 2.4, -3], fov: 62 },
   moradora: { pos: [0.5, 1.2, -1.2], olha: [-0.2, 0.7, -3.6], fov: 48 },
-  parede: { pos: [0.3, 1.55, -0.6], olha: [-1.6, 1.5, -1.6], fov: 58 },
+  parede: { pos: [1.5, 1.6, -1.5], olha: [-1.8, 1.55, -1.5], fov: 62 },
 }
 
 export function SalaBeco({ estado }: SalaProps) {
@@ -77,7 +77,7 @@ export function SalaBeco({ estado }: SalaProps) {
       <Caixa pos={[2, 4, 0]} tam={[0.3, 8, 14]} cor="#26272e" rough={0.95} />
       <Caixa pos={[0, 4, -4.6]} tam={[4, 8, 0.3]} cor="#1e1f24" rough={1} />
       {/* os letreiros na boca do beco */}
-      {GRITOS.map((g, k) => <Grito key={k} txt={g.txt} cor={g.cor} pos={[(k - 1) * 0.4, 3.6 + k * 1.1, 5.2]} />)}
+      {GRITOS.map((g, k) => <Grito key={k} txt={g.txt} cor={g.cor} pos={[(k - 1) * 0.35, 3.1 + k * 0.85, 4.6]} />)}
       {/* a lâmpada dela, o papelão, o cobertor */}
       <mesh position={[0, 2.6, -4.3]}>
         <sphereGeometry args={[0.06, 8, 6]} />
@@ -86,10 +86,10 @@ export function SalaBeco({ estado }: SalaProps) {
       <pointLight position={[0, 2.4, -3.9]} color="#ffd9a0" intensity={5} distance={7} decay={2} />
       <Caixa pos={[-0.2, 0.02, -3.7]} tam={[1.4, 0.03, 1.2]} cor="#6a5236" />
       <Npc cor={CINZA} pos={[-0.2, -0.05, -3.75]} vira={0.2} pose="sentada" pele="#3a3a40" falando={estado.falando === "a moradora"} />
-      <Caixa pos={[-0.2, 0.5, -3.65]} tam={[0.8, 0.6, 0.5]} cor="#5a5048" rough={1} />
+      <Caixa pos={[-0.2, 0.28, -4.05]} tam={[0.9, 0.55, 0.35]} cor="#5a5048" rough={1} />
       {/* as frases a giz na parede da esquerda */}
       {NA_PAREDE.map((i, k) => (
-        <Giz key={i} texto={FRASES[i]} pos={[-1.83, 2.1 - k * 0.55, -1.2 - k * 0.35]} feita={montada.includes(i) || (estado.pos > 5 && !montando)} ativo={montando && !montada.includes(i)} onToque={() => pegar(i)} />
+        <Giz key={i} texto={FRASES[i]} pos={[-1.83, 2.05 - k * 0.45, -1.5 + (k - 1) * 0.25]} feita={montada.includes(i) || (estado.pos > 5 && !montando)} ativo={montando && !montada.includes(i)} onToque={() => pegar(i)} />
       ))}
       <Chuva n={280} larg={4} alto={8} fundo={12} />
       <Camera plano={plano} />
@@ -101,8 +101,8 @@ function Grito({ txt, cor, pos }: { txt: string; cor: string; pos: V3 }) {
   const tex = useMemo(() => texTexto([{ txt, tam: 120, cor }], 1024, 200), [txt, cor])
   return (
     <group position={pos}>
-      <mesh rotation-y={Math.PI}>
-        <planeGeometry args={[3.4, 0.66]} />
+      <mesh>
+        <planeGeometry args={[3, 0.58]} />
         <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} />
       </mesh>
       <pointLight color={cor} intensity={4} distance={6} decay={2} />
@@ -113,9 +113,9 @@ function Grito({ txt, cor, pos }: { txt: string; cor: string; pos: V3 }) {
 function Giz({ texto, pos, feita, ativo, onToque }: { texto: string; pos: V3; feita: boolean; ativo: boolean; onToque: () => void }) {
   const tex = useMemo(() => texTexto([{ txt: texto, tam: 90, cor: feita ? "#5dffa0" : "#e8ebf2" }], 1024, 160), [texto, feita])
   return (
-    <Toque pos={pos} raio={0.32} cor="#e8ebf2" ativo={ativo} onToque={onToque}>
+    <Toque pos={pos} raio={0.22} cor="#e8ebf2" ativo={ativo} onToque={onToque}>
       <mesh rotation-y={Math.PI / 2}>
-        <planeGeometry args={[1.7, 0.27]} />
+        <planeGeometry args={[1.25, 0.2]} />
         <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} opacity={0.92} />
       </mesh>
     </Toque>

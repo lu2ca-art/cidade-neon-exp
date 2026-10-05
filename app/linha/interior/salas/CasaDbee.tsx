@@ -19,7 +19,7 @@ const QUENTE = "#ffcf8a"
 
 const PLANOS: Record<string, Plano> = {
   porta: { pos: [0.3, 1.65, 3.1], olha: [-0.4, 1.2, -2], fov: 62 },
-  dentro: { pos: [1.4, 1.6, 1.4], olha: [-1, 1.1, -1.6], fov: 64 },
+  dentro: { pos: [0.1, 1.75, 2.3], olha: [0.1, 0.85, -1.6], fov: 70 },
   foto: { pos: [0.2, 1.65, -0.4], olha: [0.2, 1.7, -2.4], fov: 46 },
   grupo: { pos: [-1.3, 1.6, -1.2], olha: [0.8, 1.3, 2.4], fov: 62 },
 }

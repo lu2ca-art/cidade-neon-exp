@@ -18,7 +18,7 @@ const CIANO = "#7fe8ff"
 
 const PLANOS: Record<string, Plano> = {
   porta: { pos: [0.2, 1.65, 2.6], olha: [-0.2, 1.1, -1.4], fov: 60 },
-  drewboy: { pos: [0.9, 1.35, 0.4], olha: [-0.2, 1.05, -0.8], fov: 50 },
+  drewboy: { pos: [1.3, 1.45, 1.4], olha: [-0.3, 0.95, -0.8], fov: 52 },
   quarto: { pos: [0.3, 1.75, 2.3], olha: [-0.1, 1.0, -1.2], fov: 66 },
 }
 
@@ -31,7 +31,8 @@ const COISAS: Coisa[] = [
 export function SalaQuarto({ estado }: SalaProps) {
   const olhando = estado.gesto === "quarto"
   const { vistas, ver } = useExplorar(olhando, COISAS, 2, sinalizar)
-  const saiu = estado.pos >= 7
+  // sai depois da resposta (a ação "ele apaga a luz do espelho")
+  const saiu = estado.pos >= 8 || (estado.pos === 7 && estado.falando === null)
   const plano = useMemo(() => {
     if (olhando || estado.escolha) return PLANOS.quarto
     if (estado.falando === "Drewboy" || estado.falando === "você") return PLANOS.drewboy

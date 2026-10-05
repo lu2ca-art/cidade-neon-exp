@@ -10,13 +10,13 @@ import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
 import * as THREE from "three"
 import { texTexto } from "../../estrada/geo"
-import { Caixa, Npc, Sala } from "../comum"
+import { Caixa, Neon, Npc, Sala } from "../comum"
 import { Camera, type Plano, type SalaProps } from "../Interior"
 
 const OURO = "#ffc857"
 
 const PLANOS: Record<string, Plano> = {
-  entrada: { pos: [0, 2, 9], olha: [0, 1.6, -5], fov: 60 },
+  entrada: { pos: [0, 2, 7.5], olha: [0, 1.6, -5], fov: 62 },
   alohan: { pos: [1.4, 1.5, -1.6], olha: [0, 1.25, -4.4], fov: 46 },
   poste: { pos: [2.5, 1.4, 4.5], olha: [0, 2.2, 1], fov: 54 },
   palco: { pos: [0, 1.7, 2.5], olha: [0, 1.6, -6], fov: 58 },
@@ -34,13 +34,17 @@ export function SalaShows({ estado }: SalaProps) {
     <>
       <color attach="background" args={["#060508"]} />
       <fog attach="fog" args={["#060508", 8, 26]} />
-      <ambientLight intensity={0.16} color="#ffd9a0" />
-      <hemisphereLight args={["#ffcf8a", "#0a0806", 0.2]} />
+      <ambientLight intensity={0.26} color="#ffd9a0" />
+      <hemisphereLight args={["#ffcf8a", "#0a0806", 0.3]} />
       <Sala larg={16} fundo={18} alto={8} parede="#16120e" chao="#120e0c" teto="#08070a" />
       {/* o palco e a cortina */}
       <Caixa pos={[0, 0.5, -6.5]} tam={[12, 1, 5]} cor="#24180e" rough={0.6} />
       <Caixa pos={[0, 4.5, -8.8]} tam={[12, 7, 0.2]} cor="#4a0e14" rough={1} />
       {[-5.5, 5.5].map((x) => <Caixa key={x} pos={[x, 4.5, -8.4]} tam={[1.2, 7, 0.4]} cor="#3a0a10" rough={1} />)}
+      {/* a ribalta: luz baixa na beira do palco (apaga junto com o poste) */}
+      <Neon pos={[0, 1.04, -4.02]} comp={11.6} cor={OURO} luz={apagou ? 0 : 3} />
+      {/* o foco em cima de onde ele senta */}
+      <pointLight position={[0.3, 3.4, -3.2]} color="#ffe0a8" intensity={apagou ? 0 : 7} distance={6} decay={2} />
       {/* um pedestal de microfone sozinho */}
       <mesh position={[0, 1.75, -6]}>
         <cylinderGeometry args={[0.015, 0.015, 1.5, 6]} />
