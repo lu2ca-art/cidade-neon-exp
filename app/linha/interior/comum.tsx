@@ -176,7 +176,6 @@ export function Toque({ pos, raio = 0.35, cor = "#ffffff", ativo = true, onToque
 useGLTF.preload(GLB["em-pe"])
 useGLTF.preload(GLB.sentada)
 useGLTF.preload(GLB.danca)
-useGLTF.preload(GLB_LEVE)
 
 // ── a multidão: muita gente num desenho só (instâncias do mesmo corpo) ──
 // `celulares`: quantos ainda filmam (luz branca em cima da cabeça); os que
@@ -185,6 +184,7 @@ export interface Pessoa { x: number; z: number; vira: number; cor: string }
 // a multidão usa uma versão leve do corpo (blender/scripts/gente.py: ~1/4 dos
 // triângulos): de longe ninguém vê a diferença, e 48 pessoas pesam como 12
 const GLB_LEVE = "/models/pessoa-leve.glb"
+useGLTF.preload(GLB_LEVE)
 export function Multidao({ gente, celulares = 0, pele = "#2a2636" }: { gente: Pessoa[]; celulares?: number; pele?: string }) {
   const { scene } = useGLTF(GLB_LEVE)
   const geo = useMemo(() => {
