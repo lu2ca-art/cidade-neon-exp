@@ -220,14 +220,21 @@ export function areaDoPasso(s: Save, id: EstacaoId): FreqId {
 // 1. uma já começada cujo próximo passo é AQUI, nesta área
 // 2. alguém DESTA área que ainda não te chamou (chama agora)
 // 3. qualquer outra já começada (o HUD aponta pra ela de longe)
+// a missão pode acontecer agora? (não feita, a anterior feita, nível ok)
+function pode(s: Save, nivel: number, id: EstacaoId, agora = Date.now()) {
+  const m = MISSOES[id]
+  return !s.objetos.includes(id) && !!m && (!m.requer || s.objetos.includes(m.requer)) && missao(estacao(id), nivel, agora).ok
+}
+
 export function ativa(s: Save, nivel: number, agora = Date.now()): EstacaoId | null {
   const area = (s.freq || "linha") as FreqId
-  const ok = (id: EstacaoId) => {
-    const m = MISSOES[id]
-    return !s.objetos.includes(id) && !!m && (!m.requer || s.objetos.includes(m.requer)) && missao(estacao(id), nivel, agora).ok
-  }
+  const ok = (id: EstacaoId) => pode(s, nivel, id, agora)
   const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
   const comecadas = ordem.filter((id) => ok(id) && s.pausas[id] !== undefined)
+  // a que a pessoa escolheu no painel MISSÕES vale primeiro (menos quem tá
+  // de carona, que manda sempre)
+  const levandoAntes = comecadas.find((id) => MISSOES[id]?.carona && s.itens.includes(`carona:${id}`))
+  if (!levandoAntes && s.foco && ok(s.foco)) return s.foco
   // 0. tem alguém de carona na Kombi: a missão dele manda (ninguém mais
   // te chama por cima de quem está sentado do seu lado)
   const levando = comecadas.find((id) => MISSOES[id]?.carona && s.itens.includes(`carona:${id}`))
@@ -267,4 +274,33 @@ export function alvoDe(s: Save, nivel: number): Alvo | null {
   // missão de lugar: o chamado chega sozinho na estrada (não manda pra estação)
   if (e === "chamado") return m.lugar ? null : { t: "visita", missao: id }
   return null
+}
+
+// ── o painel MISSÕES (05/10, LU2CA): tudo que está aberto, de uma vez, com
+// "ir agora" — a Kombi corta pra perto do lugar (ninguém roda quilômetros nem
+// se perde numa saída errada) ──
+export interface Aberta {
+  id: EstacaoId
+  etapa: Etapa
+  texto: string // o que fazer, curto
+  area: FreqId
+  lugar?: LugarId // pra onde a Kombi corta
+  frac?: number // ou um ponto do trecho livre do circuito (busca)
+}
+export function abertas(s: Save, nivel: number): Aberta[] {
+  const ordem = [...s.fio, ...ESTACOES.map((e) => e.id).filter((id) => !s.fio.includes(id))]
+  return ordem.filter((id) => pode(s, nivel, id)).map((id) => {
+    const m = MISSOES[id]!
+    const e = etapaDe(s, id)
+    if (e === "busca" && m.busca) {
+      const b = m.busca
+      const k = b.em.findIndex((_, i) => !s.itens.includes(`${b.item}:${i}`))
+      return { id, etapa: e, texto: m.tarefa, area: b.onde, frac: b.em[Math.max(0, k)] }
+    }
+    if (e === "pegar") return { id, etapa: e, texto: `buscar ${LUGARES[m.carona!].no}`, area: LUGARES[m.carona!].area, lugar: m.carona }
+    if (e === "lugar") return { id, etapa: e, texto: `ir ${LUGARES[m.lugar!].no}`, area: LUGARES[m.lugar!].area, lugar: m.lugar }
+    // ainda não chamou: leva pra onde a pessoa está (a chamada chega ao entrar)
+    const lugar = m.carona ?? (m.busca ? undefined : m.lugar)
+    return { id, etapa: e, texto: m.chamado, area: areaDaMissao(id), lugar, frac: m.busca ? 0 : undefined }
+  })
 }

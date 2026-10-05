@@ -114,6 +114,8 @@ interface Props {
   noiteRepete?: number
   // voltando de uma sala: reaparece onde estava
   retomar?: boolean
+  // "ir agora" do painel MISSÕES: corta pra perto do lugar (chave muda = vai)
+  teleporte?: { chave: number; area: FreqId; lugar?: LugarId; frac?: number } | null
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -187,7 +189,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -824,6 +826,29 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
   })
 
+  // ir agora (painel MISSÕES): um corte preto e a Kombi reaparece ~140 m
+  // antes do lugar, já andando — passar na frente entra na missão
+  const telChave = teleporte?.chave ?? 0
+  useEffect(() => {
+    if (!teleporte) return
+    const vi = M.circuito[teleporte.area]
+    const C = M.vias[vi]
+    if (!C) return
+    let u: number
+    if (teleporte.lugar) u = LUGARES[teleporte.lugar].u - 140
+    else if (teleporte.frac !== undefined) u = C.livre[0] + teleporte.frac * (C.livre[1] - C.livre[0]) - 140
+    else u = C.livre[0]
+    u = ((u % C.L) + C.L) % C.L
+    const t = setTimeout(() => {
+      const j = jogo.current
+      j.via = vi; j.u = u; j.x = 0; j.v = 14; j.vx = 0
+      j.naVaga = false; j.vagaAvisou = undefined; j.encaixar = true
+      evs.current?.via(vi)
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [telChave])
+
   // atalhos de desenvolvimento: __irPara(0.9) anda na via atual,
   // __via("crypto", 0.5) teleporta pra um lugar (ou "linha>crypto")
   useEffect(() => {
@@ -952,7 +977,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""}`}>
+    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -1008,6 +1033,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
 
       <div ref={sirene} className="l-sirene" />
+      {telChave > 0 && <div key={telChave} className="l-corte-teleporte" />}
       {caido && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: "#3d7bff" }}>
           <small>D-Bee · urgente</small>

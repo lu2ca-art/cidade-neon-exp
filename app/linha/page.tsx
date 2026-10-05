@@ -16,7 +16,7 @@ import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
-import { MISSOES, alvoDe, ativa, etapaDe } from "./missoes"
+import { MISSOES, abertas, alvoDe, ativa, etapaDe } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
 import { cenaDe, type Reliquia } from "./cenas"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
@@ -95,6 +95,9 @@ export default function LinhaPage() {
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
   const [voltaDaSala, setVoltaDaSala] = useState(false)
+  // o painel MISSÕES: tudo que está aberto + "ir agora"
+  const [painelMissoes, setPainelMissoes] = useState(false)
+  const [teleporte, setTeleporte] = useState<{ chave: number; area: FreqId; lugar?: LugarId; frac?: number } | null>(null)
   const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; chegou?: boolean } | null>(null)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
@@ -419,6 +422,15 @@ export default function LinhaPage() {
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
+  const listaMissoes = useMemo(() => abertas(save, nivel), [save, nivel])
+  const irAgora = (m: (typeof listaMissoes)[number]) => {
+    setPainelMissoes(false)
+    // quem estava chamando e não é a escolhida espera (chama de novo depois)
+    if (aoVivo && aoVivo !== m.id) setAoVivo(null)
+    setSave((s) => ({ ...s, foco: m.id, freq: m.area }))
+    setTeleporte((t) => ({ chave: (t?.chave ?? 0) + 1, area: m.area, lugar: m.lugar, frac: m.frac }))
+    track("mission_step", { mission_id: `linha-${m.id}`, step: "ir-agora", perfil: save.perfil ?? "?", fio_pos: save.fio.indexOf(m.id) })
+  }
   useEffect(() => {
     if (!pronto) return
     if (nivelAnt.current !== null && nivel > nivelAnt.current) {
@@ -555,6 +567,8 @@ export default function LinhaPage() {
     if (id === "abertura") {
       setCinema(null)
       setCinza(false)
+      // a D-Bee te soltou na cidade: já mostra quem precisa de você
+      setTimeout(() => setPainelMissoes(true), 1800)
     }
     // leu o grupo na chegada: volta pra Kombi (a D-Bee liga daqui a pouco)
     if (id === "grupo" && !save.completos.includes("abertura")) return setTela({ t: "corrida", destino: null })
@@ -641,6 +655,7 @@ export default function LinhaPage() {
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
             pausado={tela.t !== "corrida" && tela.t !== "chegada"}
             retomar={voltaDaSala}
+            teleporte={teleporte}
             limitado={!!invasao}
             cacado={cacado || perseguido}
             conversa={!!aoVivo}
@@ -671,10 +686,32 @@ export default function LinhaPage() {
             }}
             onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
             cinema={cinema}
-            cinza={cinza || apagao}
+            cinza={cinza}
             noiteRepete={save.objetos.includes("copo") ? 0 : (save.loops?.bar ?? 0)}
             foraDoAr={apagao}
           />
+        )}
+        {tela.t === "corrida" && !emSala && !cinema && nivel >= 1 && listaMissoes.length > 0 && (
+          <button type="button" className={`l-btn-missoes ${painelMissoes ? "is-aberto" : ""}`} onClick={() => setPainelMissoes((v) => !v)}>
+            missões <em>{listaMissoes.length}</em>
+          </button>
+        )}
+        {painelMissoes && tela.t === "corrida" && !emSala && (
+          <div className="l-missoes" role="dialog" aria-label="Missões">
+            <header><b>quem precisa de você</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
+            <ul>
+              {listaMissoes.map((m) => {
+                const e = getEstacao(m.id)
+                return (
+                  <li key={m.id} style={{ ["--cor" as string]: e.cor }}>
+                    <span className="l-missoes-quem">{e.personagem}<small>{m.etapa === "chamado" ? "quer falar com você" : m.etapa === "busca" ? "buscar no mapa" : m.etapa === "pegar" ? "buscar alguém" : "te espera"}</small></span>
+                    <p>{m.texto}</p>
+                    <button type="button" onClick={() => irAgora(m)}>ir agora →</button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         )}
         {tela.t === "chegada" && (
           <Chegada
@@ -682,6 +719,8 @@ export default function LinhaPage() {
             onCinza={() => setCinza(true)}
             onAbrir={() => {
               setCinema(null)
+              // a cor volta aqui: o cinza é só o susto da chegada
+              setTimeout(() => setCinza(false), 2500)
               setTela({ t: "corrida", destino: null })
               if (!save.completos.includes("grupo")) setIntroGrupo(0)
             }}

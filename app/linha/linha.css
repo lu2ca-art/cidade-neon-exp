@@ -1011,7 +1011,7 @@
 .l-inv-limpo b { font: 700 30px var(--cond); text-transform: uppercase; color: #2fe8ff; text-shadow: 0 0 20px #2fe8ff; }
 .l-inv-limpo p { margin: 0; font: 12px var(--mono); color: #cfe9ff; }
 /* a 222 caiu: a cidade perde a cor */
-.l-viagem.is-caida .l-viagem-cvs { filter: grayscale(0.92) contrast(1.08) brightness(0.9); transition: filter 0.6s; }
+.l-viagem.is-caida .l-viagem-cvs { filter: grayscale(0.35) contrast(1.05) brightness(0.92); transition: filter 0.6s; }
 .l-hud-faixa.is-caida { color: #ff5b5b !important; }
 
 /* ── CHEGADA: entrar na cidade de Kombi (chegada.tsx) ───────── */
@@ -1033,8 +1033,10 @@
 .l-viagem.is-cinema .l-descer { display: none !important; }
 .l-viagem.is-cinema .l-toasts { top: calc(17vh + 14px); }
 /* o Núcleo apagou a cor (sem derrubar a 222) */
-.l-viagem.is-cinza .l-viagem-cvs { filter: grayscale(1) contrast(1.12) brightness(0.85); transition: filter 2.4s ease-in; }
-.l-viagem.is-cinza.is-pausada .l-viagem-cvs { filter: grayscale(1) contrast(1.1) blur(3px) brightness(0.5); }
+.l-viagem.is-cinza .l-viagem-cvs { filter: grayscale(0.85) contrast(1.1) brightness(0.88); transition: filter 1.6s ease-in-out; }
+/* nunca preto e branco por muito tempo: o apagão do ep. 3 só desbota */
+.l-viagem.is-apagao .l-viagem-cvs { filter: grayscale(0.4) brightness(0.9); transition: filter 2s; }
+.l-viagem.is-cinza.is-pausada .l-viagem-cvs { filter: grayscale(0.85) contrast(1.1) blur(3px) brightness(0.5); }
 
 .l-chegada-cine { position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden; }
 .l-chegada-cine button { pointer-events: auto; }
@@ -1557,3 +1559,22 @@
 .l-viagem.is-repete .l-viagem-cvs { filter: saturate(1.35) brightness(1.1) sepia(0.28) hue-rotate(-12deg); transition: filter 1.5s; }
 .l-viagem.is-repete::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(ellipse at center, transparent 55%, rgba(255, 200, 87, 0.16)); animation: l-repete 6s ease-in-out infinite; }
 @keyframes l-repete { 50% { opacity: 0.35; } }
+/* "ir agora": um corte de cinema (preto rápido) e a Kombi já está lá */
+.l-corte-teleporte { position: absolute; inset: 0; z-index: 25; background: #000; pointer-events: none; animation: l-corte 1.1s ease-in-out both; }
+@keyframes l-corte { 0% { opacity: 0; } 30% { opacity: 1; } 55% { opacity: 1; } 100% { opacity: 0; } }
+/* o painel MISSÕES: sempre à mão, com "ir agora" */
+.l-btn-missoes { position: absolute; z-index: 21; left: 12px; top: calc(66px + env(safe-area-inset-top)); display: inline-flex; gap: 8px; align-items: center; padding: 9px 14px; border-radius: 999px; background: rgba(5, 5, 16, 0.72) !important; border: 1px solid #ffc857 !important; color: #fff !important; font: 800 13px var(--cond); letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 0 18px -6px #ffc857; animation: l-missoes-pulsa 2.4s ease-in-out infinite; }
+.l-btn-missoes.is-aberto { animation: none; background: #ffc857 !important; color: #120c02 !important; }
+.l-btn-missoes em { font-style: normal; min-width: 20px; height: 20px; border-radius: 10px; background: #ffc857; color: #120c02; display: inline-grid; place-items: center; font: 700 11px var(--mono); }
+.l-btn-missoes.is-aberto em { background: #120c02; color: #ffc857; }
+@keyframes l-missoes-pulsa { 50% { box-shadow: 0 0 28px -2px #ffc857; } }
+.l-missoes { position: absolute; z-index: 22; left: 12px; right: 12px; top: calc(112px + env(safe-area-inset-top)); max-height: 60vh; overflow: auto; padding: 12px; border-radius: 16px; background: rgba(6, 6, 16, 0.92); border: 1px solid rgba(255, 200, 87, 0.45); backdrop-filter: blur(10px); animation: l-sobe 0.3s both; }
+.l-missoes header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.l-missoes header b { font: 800 15px var(--cond); text-transform: uppercase; letter-spacing: 0.08em; color: #ffc857; }
+.l-missoes header button { background: transparent !important; border: 0 !important; color: #fff !important; font-size: 22px; line-height: 1; padding: 0 4px; }
+.l-missoes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.l-missoes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border-left: 3px solid var(--cor); }
+.l-missoes-quem { font: 800 14px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; color: var(--cor); }
+.l-missoes-quem small { display: block; font: 400 10px var(--mono); letter-spacing: 0.06em; text-transform: none; color: rgba(255,255,255,0.6); }
+.l-missoes li p { grid-column: 1; margin: 0; font: 13px/1.35 var(--sans, system-ui); color: rgba(255,255,255,0.88); }
+.l-missoes li button { grid-column: 2; grid-row: 1 / span 2; padding: 9px 12px; border-radius: 10px; background: var(--cor) !important; color: #06060c !important; border: 0 !important; font: 800 13px var(--cond); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
