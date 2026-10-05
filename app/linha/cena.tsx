@@ -55,7 +55,8 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   const mostrando = !fila.length && passo?.t === "ganha" ? passo : null
 
   // conta pra sala o que está acontecendo (quem fala, gesto, escolha…)
-  const gestoAgora = !atual && passo?.t === "gesto" ? passo.id : null
+  // os minijogos antigos entram como "prova:<id>" (a sala pode assumir um deles)
+  const gestoAgora = !atual && passo?.t === "gesto" ? (passo.id === "prova" ? `prova:${passo.prova}` : passo.id) : null
   useEffect(() => {
     publicar({ pos, falando: atual?.de ?? null, gesto: gestoAgora, escolha: !atual && passo?.t === "escolha", ganha: !!mostrando })
   }, [pos, atual?.de, gestoAgora, passo?.t, !!atual, mostrando]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -129,13 +130,13 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
 
       {gesto3d && <Dica3d id={gestoAgora!} bebeu={bebeu} onNegar={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} />}
-      {!atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
-      {!atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
-      {!atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
-      {!atual && passo?.t === "gesto" && passo.id === "ordem" && <Ordem frases={passo.frases} onFim={() => setPos((p) => p + 1)} />}
-      {!atual && passo?.t === "gesto" && passo.id === "silencio" && <Silencio semSom={semSom} onFim={() => setPos((p) => p + 1)} />}
-      {!atual && passo?.t === "gesto" && passo.id === "linha" && <Linha onFim={(t) => { onLinha?.(t); setPos((p) => p + 1) }} />}
-      {!atual && passo?.t === "gesto" && passo.id === "prova" && (
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "ordem" && <Ordem frases={passo.frases} onFim={() => setPos((p) => p + 1)} />}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "silencio" && <Silencio semSom={semSom} onFim={() => setPos((p) => p + 1)} />}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "linha" && <Linha onFim={(t) => { onLinha?.(t); setPos((p) => p + 1) }} />}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "prova" && (
         <div className="l-cena-prova" onClick={(e) => e.stopPropagation()}>
           <Prova id={passo.prova} cor={LUGARES[cena.lugar].cor} onFim={() => setPos((p) => p + 1)} />
         </div>
@@ -161,7 +162,8 @@ const DICAS_3D: Record<string, string> = {
   danca: "toca na pista no ritmo",
   tocar: "toca no violão no ritmo",
   ordem: "toca as frases na parede, na ordem",
-  regar: "toca nas gotas pra regar a flor",
+  "prova:regar": "toca nas gotas pra regar a flor",
+  fuga: "toca rápido: corre pra porta",
   casa: "procura pela casa. toca no que chamar sua atenção",
 }
 function Dica3d({ id, bebeu, onNegar }: { id: string; bebeu: number; onNegar: () => void }) {

@@ -14,16 +14,32 @@ import { Suspense, useEffect, useMemo, useRef, type ComponentType } from "react"
 import * as THREE from "three"
 import { Cinema } from "../estrada/Cinema"
 import { Seguro } from "../estrada/Seguro"
+import type { EstacaoId } from "../data"
 import type { LugarId } from "../lugares"
 import { useEstadoCena, type EstadoCena } from "./bus"
 import type { V3 } from "./comum"
+import { SalaBalada } from "./salas/Balada"
 import { SalaBar } from "./salas/Bar"
 
-export interface SalaProps { estado: EstadoCena }
+export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[] }
+
+// toque livre na tela (fora dos objetos): a sala que quiser escuta
+// (a balada e o vagão: tocar no ritmo em qualquer lugar)
+let toqueLivre: (() => void) | null = null
+export function useToqueLivre(f: (() => void) | null) {
+  const ref = useRef(f)
+  useEffect(() => { ref.current = f })
+  useEffect(() => {
+    const ouvir = () => ref.current?.()
+    toqueLivre = ouvir
+    return () => { if (toqueLivre === ouvir) toqueLivre = null }
+  }, [])
+}
 
 // as salas que já existem por dentro (as outras caem na fachada, como antes)
 export const SALAS: Partial<Record<LugarId, ComponentType<SalaProps>>> = {
   bar: SalaBar,
+  balada: SalaBalada,
 }
 
 export function temSala(id: LugarId) { return !!SALAS[id] }
@@ -31,12 +47,13 @@ export function temSala(id: LugarId) { return !!SALAS[id] }
 // os gestos que cada sala faz em 3D (o resto continua na legenda)
 export const GESTOS_3D: Partial<Record<LugarId, string[]>> = {
   bar: ["copos"],
+  balada: ["danca"],
 }
 
 // olhar em volta: arrastar gira a câmera um pouco (volta sozinha)
 const olhar = { yaw: 0, pitch: 0, arrastando: false }
 
-export function Interior({ lugar }: { lugar: LugarId }) {
+export function Interior({ lugar, objetos = [] }: { lugar: LugarId; objetos?: EstacaoId[] }) {
   const S = SALAS[lugar]
   const estado = useEstadoCena()
   const ult = useRef<{ x: number; y: number } | null>(null)
@@ -44,7 +61,7 @@ export function Interior({ lugar }: { lugar: LugarId }) {
   return (
     <div
       className="l-interior"
-      onPointerDown={(e) => { ult.current = { x: e.clientX, y: e.clientY }; olhar.arrastando = true }}
+      onPointerDown={(e) => { ult.current = { x: e.clientX, y: e.clientY }; olhar.arrastando = true; toqueLivre?.() }}
       onPointerMove={(e) => {
         if (!ult.current) return
         olhar.yaw = THREE.MathUtils.clamp(olhar.yaw - (e.clientX - ult.current.x) * 0.004, -0.6, 0.6)
@@ -56,7 +73,7 @@ export function Interior({ lugar }: { lugar: LugarId }) {
     >
       <Canvas className="l-interior-cvs" dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 50, near: 0.05, far: 200, position: [0, 1.6, 6] }}>
         <Suspense fallback={null}>
-          <Seguro nome={`sala-${lugar}`}><S estado={estado} /></Seguro>
+          <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} /></Seguro>
         </Suspense>
         <Seguro nome="lente-sala"><Cinema /></Seguro>
       </Canvas>

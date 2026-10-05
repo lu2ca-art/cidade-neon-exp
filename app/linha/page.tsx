@@ -734,7 +734,7 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} />
+          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} />
         )}
         {cena && (
           <CenaLugar

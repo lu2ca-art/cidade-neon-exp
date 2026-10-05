@@ -7,7 +7,7 @@
 
 import { useGLTF } from "@react-three/drei"
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 
 export type V3 = [number, number, number]
@@ -179,3 +179,171 @@ export function Toque({ pos, raio = 0.35, cor = "#ffffff", ativo = true, onToque
 useGLTF.preload(GLB["em-pe"])
 useGLTF.preload(GLB.sentada)
 useGLTF.preload(GLB.danca)
+
+// ── a multidão: muita gente num desenho só (instâncias do mesmo corpo) ──
+// `celulares`: quantos ainda filmam (luz branca em cima da cabeça); os que
+// abaixam o celular viram de frente pro meio e passam a balançar
+export interface Pessoa { x: number; z: number; vira: number; cor: string }
+export function Multidao({ gente, celulares = 0, pose = "em-pe", pele = "#2a2636" }: { gente: Pessoa[]; celulares?: number; pose?: Pose; pele?: string }) {
+  const { scene } = useGLTF(GLB[pose])
+  const geo = useMemo(() => {
+    let g: THREE.BufferGeometry | null = null
+    scene.traverse((o) => { const m = o as THREE.Mesh; if (!g && m.isMesh) g = m.geometry })
+    return g as unknown as THREE.BufferGeometry
+  }, [scene])
+  const corpos = useRef<THREE.InstancedMesh>(null)
+  const fones = useRef<THREE.InstancedMesh>(null)
+  const tmp = useMemo(() => new THREE.Object3D(), [])
+  const cor = useMemo(() => new THREE.Color(), [])
+  const n = gente.length
+  useEffect(() => {
+    if (!corpos.current) return
+    gente.forEach((p, i) => corpos.current!.setColorAt(i, cor.set(p.cor).lerp(new THREE.Color(pele), 0.55)))
+    if (corpos.current.instanceColor) corpos.current.instanceColor.needsUpdate = true
+  }, [gente, cor, pele])
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    gente.forEach((p, i) => {
+      const filma = i < celulares
+      const solto = !filma // quem abaixou balança
+      const bate = solto ? Math.abs(Math.sin(t * 5.6 + i)) * 0.08 : Math.sin(t * 1.3 + i) * 0.01
+      tmp.position.set(p.x, bate, p.z)
+      tmp.rotation.set(0, p.vira + (solto ? Math.sin(t * 2.8 + i) * 0.2 : 0), solto ? Math.sin(t * 2.8 + i) * 0.06 : 0)
+      tmp.scale.setScalar(1)
+      tmp.updateMatrix()
+      corpos.current?.setMatrixAt(i, tmp.matrix)
+      // o celular: na frente do rosto (filmando) ou guardado (some)
+      tmp.position.set(p.x + Math.sin(p.vira) * 0.3, filma ? 1.95 + Math.sin(t * 2 + i) * 0.02 : -5, p.z + Math.cos(p.vira) * 0.3)
+      tmp.rotation.set(0, p.vira, 0)
+      tmp.updateMatrix()
+      fones.current?.setMatrixAt(i, tmp.matrix)
+    })
+    if (corpos.current) corpos.current.instanceMatrix.needsUpdate = true
+    if (fones.current) fones.current.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <group>
+      <instancedMesh ref={corpos} args={[geo, undefined, n]} frustumCulled={false}>
+        <meshStandardMaterial color="#ffffff" roughness={0.8} emissive="#1a1424" emissiveIntensity={0.4} />
+      </instancedMesh>
+      <instancedMesh ref={fones} args={[undefined, undefined, n]} frustumCulled={false}>
+        <boxGeometry args={[0.08, 0.15, 0.01]} />
+        <meshBasicMaterial color="#e6f0ff" toneMapped={false} />
+      </instancedMesh>
+    </group>
+  )
+}
+
+// ── o ritmo (balada, vagão): um compasso de ~107 bpm; tocar perto da batida
+// é acerto. `meta` acertos → acabou ──
+export const BATIDA = 560
+export function useRitmo(ativo: boolean, meta: number, onFim: () => void) {
+  const t0 = useRef(0)
+  const [acertos, setAcertos] = useState(0)
+  const [ultimo, setUltimo] = useState<{ ok: boolean; n: number } | null>(null)
+  useEffect(() => { if (ativo) t0.current = performance.now() }, [ativo])
+  const fim = useRef(onFim)
+  useEffect(() => { fim.current = onFim })
+  useEffect(() => {
+    if (acertos < meta) return
+    const t = setTimeout(() => fim.current(), 900)
+    return () => clearTimeout(t)
+  }, [acertos, meta])
+  const tocar = () => {
+    if (!ativo || acertos >= meta) return
+    const fase = ((performance.now() - t0.current) % BATIDA) / BATIDA
+    const ok = fase > 0.78 || fase < 0.14
+    setUltimo((u) => ({ ok, n: (u?.n ?? 0) + 1 }))
+    if (ok) setAcertos((a) => a + 1)
+    return ok
+  }
+  // a fase da batida agora (0 → 1), pra desenhar o anel fechando
+  const fase = () => ((performance.now() - t0.current) % BATIDA) / BATIDA
+  return { acertos, ultimo, tocar, fase }
+}
+
+// um anel no chão que fecha a cada batida (toca quando ele encosta)
+export function AnelRitmo({ pos, cor, fase, raio = 1.4, ativo = true }: { pos: V3; cor: string; fase: () => number; raio?: number; ativo?: boolean }) {
+  const anel = useRef<THREE.Mesh>(null)
+  const alvo = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    if (!anel.current) return
+    anel.current.visible = ativo
+    if (alvo.current) alvo.current.visible = ativo
+    const f = fase()
+    const k = 1 + (1 - f) * 1.6
+    anel.current.scale.setScalar(k)
+    const m = anel.current.material as THREE.MeshBasicMaterial
+    m.opacity = 0.25 + f * 0.7
+  })
+  return (
+    <group position={pos} rotation-x={-Math.PI / 2}>
+      <mesh ref={alvo}>
+        <ringGeometry args={[raio * 0.95, raio, 48]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.6} toneMapped={false} />
+      </mesh>
+      <mesh ref={anel}>
+        <ringGeometry args={[raio * 0.9, raio, 48]} />
+        <meshBasicMaterial color={cor} transparent toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+// a chuva (dentro de um volume): riscos caindo
+export function Chuva({ n = 600, larg = 20, alto = 12, fundo = 20, centro = [0, 0, 0] as V3, cor = "#9fc8ff" }: { n?: number; larg?: number; alto?: number; fundo?: number; centro?: V3; cor?: string }) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const gotas = useMemo(() => {
+    let seed = 5
+    const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    return Array.from({ length: n }, () => ({ x: (r() - 0.5) * larg, y: r() * alto, z: (r() - 0.5) * fundo, v: 9 + r() * 4 }))
+  }, [n, larg, alto, fundo])
+  const tmp = useMemo(() => new THREE.Object3D(), [])
+  useFrame((_, dt) => {
+    if (!ref.current) return
+    gotas.forEach((g, i) => {
+      g.y -= g.v * Math.min(dt, 0.05)
+      if (g.y < 0) g.y += alto
+      tmp.position.set(centro[0] + g.x, centro[1] + g.y, centro[2] + g.z)
+      tmp.updateMatrix()
+      ref.current!.setMatrixAt(i, tmp.matrix)
+    })
+    ref.current.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, n]} frustumCulled={false}>
+      <boxGeometry args={[0.012, 0.35, 0.012]} />
+      <meshBasicMaterial color={cor} transparent opacity={0.35} depthWrite={false} />
+    </instancedMesh>
+  )
+}
+
+// a cidade lá fora (pela janela, do terraço): prédios com janelas acesas
+export function Cidade({ raio = 60, n = 70, alt = 0, cor = "#ff3fb0" }: { raio?: number; n?: number; alt?: number; cor?: string }) {
+  const predios = useMemo(() => {
+    let seed = 9
+    const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    const cores = [cor, "#2fe8ff", "#ffc857", "#b38cff", "#5dffa0"]
+    return Array.from({ length: n }, (_, i) => {
+      const a = (i / n) * Math.PI * 2 + r() * 0.05
+      const d = raio * (0.8 + r() * 0.5)
+      return { x: Math.cos(a) * d, z: Math.sin(a) * d, w: 4 + r() * 6, h: 10 + r() * 40, c: cores[Math.floor(r() * cores.length)] }
+    })
+  }, [raio, n, cor])
+  return (
+    <group position={[0, alt, 0]}>
+      {predios.map((p, i) => (
+        <group key={i} position={[p.x, p.h / 2, p.z]}>
+          <mesh>
+            <boxGeometry args={[p.w, p.h, p.w]} />
+            <meshStandardMaterial color="#0d0c16" emissive={p.c} emissiveIntensity={0.06} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, p.h / 2 + 0.2, 0]}>
+            <boxGeometry args={[p.w * 0.9, 0.3, p.w * 0.9]} />
+            <meshBasicMaterial color={p.c} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
