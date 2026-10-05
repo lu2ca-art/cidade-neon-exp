@@ -425,6 +425,8 @@ export default function LinhaPage() {
   const listaMissoes = useMemo(() => abertas(save, nivel), [save, nivel])
   const irAgora = (m: (typeof listaMissoes)[number]) => {
     setPainelMissoes(false)
+    // quem estava chamando e não é a escolhida espera (chama de novo depois)
+    if (aoVivo && aoVivo !== m.id) setAoVivo(null)
     setSave((s) => ({ ...s, foco: m.id, freq: m.area }))
     setTeleporte((t) => ({ chave: (t?.chave ?? 0) + 1, area: m.area, lugar: m.lugar, frac: m.frac }))
     track("mission_step", { mission_id: `linha-${m.id}`, step: "ir-agora", perfil: save.perfil ?? "?", fio_pos: save.fio.indexOf(m.id) })
