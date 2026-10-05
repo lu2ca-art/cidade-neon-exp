@@ -21,7 +21,8 @@ await page.click(".l-btn-entrar"); await page.waitForTimeout(6000)
 await page.evaluate(() => { const f = 1550 / 3772; window.__via("linha", f); window.__irPara(f, 0); window.__vel(0) })
 console.log("hud:", (await page.locator(".l-hud-missao").innerText().catch(() => "-")).replace(/\s+/g, " "))
 const cenaAte = async (nome) => {
-  for (let k = 0; k < 200; k++) {
+  for (let k = 0; k < 220; k++) {
+    if (await page.locator(".l-dica3d").count()) { const fez = await page.evaluate(() => (window.__gesto ? (window.__gesto(), true) : false)); if (!fez) for (let i = 0; i < 4; i++) { await page.mouse.click(200, 380); await page.waitForTimeout(140) } await page.waitForTimeout(400); continue }
     if (await page.locator(".l-danca").count()) { await shot({ path: `${DIR}/${nome}-danca.png` }); for (let i = 0; i < 150 && (await page.locator(".l-danca").count()); i++) { await clicar(page.locator(".l-danca")); await page.waitForTimeout(140) } continue }
     if (await page.locator(".l-fuga").count()) { await shot({ path: `${DIR}/${nome}-fuga.png` }); for (let i = 0; i < 30 && (await page.locator(".l-fuga").count()); i++) { await clicar(page.locator(".l-fuga")); await page.waitForTimeout(120) } continue }
     if (await page.locator(".l-cena-ganha").count()) { console.log("  ganhou:", await page.locator(".l-cena-ganha b").innerText()); await shot({ path: `${DIR}/${nome}-ganha.png` }); await clicar(page.locator(".l-cena-ganha")); await page.waitForTimeout(400); continue }

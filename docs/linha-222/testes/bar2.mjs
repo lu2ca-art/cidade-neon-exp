@@ -14,7 +14,7 @@ await page.waitForTimeout(2000); await page.click(".l-btn-entrar"); await page.w
 const entrar = async () => { await page.evaluate(() => { const f = 1528 / 3772; window.__via("linha", f); window.__irPara(f, 5); window.__vel(0) }); for (let i = 0; i < 24 && !(await page.locator(".l-cena").count()); i++) await page.waitForTimeout(500) }
 const ate = async (cond, passoMax = 120) => { for (let k = 0; k < passoMax; k++) { if (await cond()) return true; if (await page.locator(".l-cena-escolhas button").count()) { await clicar(page.locator(".l-cena-escolhas button").nth(1)); await page.waitForTimeout(300); continue } await page.mouse.click(200, 400); await page.waitForTimeout(220) } return false }
 // ── 1ª visita: beber
-await entrar(); console.log("1ª visita, cena?", await page.locator(".l-cena").count())
+await entrar(); console.log("1ª visita, cena?", await page.locator(".l-cena").count(), "| estrada montada durante a sala?", await page.locator(".l-viagem").count(), "(esperado 0)")
 await ate(async () => (await page.locator(".l-dica3d").count()) > 0)
 console.log("negar logo de cara?", await page.locator(".l-copos-negar").count(), "(esperado 0)")
 await page.evaluate(() => window.__beber(2)); await page.waitForTimeout(800)
@@ -22,6 +22,9 @@ await ate(async () => (await page.locator(".l-cena-fim button").count()) > 0, 40
 await shot("depois-de-beber"); console.log("botão sair do bar:", (await page.locator(".l-cena-fim button").innerText().catch(() => "-")))
 await clicar(page.locator(".l-cena-fim button")); await page.waitForTimeout(2500)
 let s = await save(); console.log("loops:", JSON.stringify(s.loops), "| objetos:", s.objetos, "| pausas:", JSON.stringify(s.pausas))
+await page.waitForTimeout(3000)
+console.log("estrada de volta?", await page.locator(".l-viagem").count(), "| cena reabriu sozinha?", await page.locator(".l-cena").count(), "(esperado 0)")
+console.log("posição:", JSON.stringify(await page.evaluate(() => { const e = window.__estado(); return { via: e.via, u: e.u } })))
 console.log("mundo repete?", await page.locator(".l-viagem.is-repete").count()); await shot("mundo-repete")
 console.log("HUD ainda manda pro bar:", (await page.locator(".l-hud-missao").innerText().catch(() => "-")).replace(/\s+/g, " "))
 // ── 2ª visita: negar (vai embora e volta)
