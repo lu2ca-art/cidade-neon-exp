@@ -19,7 +19,7 @@ import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
 import { AnelRitmo, Caixa, Multidao, Neon, Npc, Sala, useRitmo, type Pessoa } from "../comum"
-import { Camera, useToqueLivre, type Plano, type SalaProps } from "../Interior"
+import { Camera, useToqueLivre, type Plano, type SalaProps } from "../motor"
 
 const ROSA = "#ff3fb0"
 const LILAS = "#b38cff"

@@ -16,7 +16,7 @@ import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
 import { Caixa, Neon, Npc, Sala, Toque, type V3 } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const LARANJA = "#ff6a35"
 const OURO = "#ffc857"
@@ -117,7 +117,11 @@ export function SalaBar({ estado }: SalaProps) {
             <cylinderGeometry args={[0.45, 0.45, 0.04, 20]} />
             <meshStandardMaterial color="#3b2a22" roughness={0.4} />
           </mesh>
-          <pointLight position={[0, 1.9, 0]} color={OURO} intensity={1.4} distance={3} decay={2} />
+          {/* a lâmpada da mesa: brilha pelo material (luz dinâmica custa caro no celular) */}
+          <mesh position={[0, 1.9, 0]}>
+            <sphereGeometry args={[0.06, 8, 6]} />
+            <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
+          </mesh>
         </group>
       ))}
       {/* a gente */}
@@ -190,7 +194,7 @@ function Garrafas() {
   return (
     <group position={[0, 0, -4.7]}>
       {[1.4, 2.9].map((y) => <Caixa key={y} pos={[-0.5, y - 0.03, 0]} tam={[7.4, 0.04, 0.35]} cor="#3a2a22" />)}
-      {[1.4, 2.9].map((y) => <Neon key={`n${y}`} pos={[-0.5, y - 0.07, 0.12]} comp={7} cor={OURO} luz={1.2} />)}
+      {[1.4, 2.9].map((y) => <Neon key={`n${y}`} pos={[-0.5, y - 0.07, 0.12]} comp={7} cor={OURO} luz={y < 2 ? 1.6 : 0} />)}
       {garrafas.map((g, i) => (
         <mesh key={i} position={[g.x, g.y + g.h / 2, 0]}>
           <cylinderGeometry args={[0.05, 0.06, g.h, 8]} />
@@ -221,7 +225,6 @@ function Copo({ pos, cor, bebido, ativo, onToque }: { pos: V3; cor: string; bebi
         <cylinderGeometry args={[0.058, 0.047, 0.11, 12]} />
         <meshStandardMaterial color={cor} emissive={cor} emissiveIntensity={0.7} transparent opacity={0.85} />
       </mesh>
-      {!bebido && <pointLight position={[0, 0.12, 0]} color={cor} intensity={0.3} distance={0.6} decay={2} />}
     </Toque>
   )
 }
@@ -248,7 +251,6 @@ function Muda({ pos }: { pos: V3 }) {
           </mesh>
         ))}
       </group>
-      <pointLight position={[0, 0.4, 0.2]} color="#5dffa0" intensity={2} distance={1.5} decay={2} />
     </group>
   )
 }

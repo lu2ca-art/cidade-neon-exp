@@ -70,5 +70,16 @@ def corpo(pose):
     nome = {"em-pe": "pessoa", "sentada": "pessoa-sentada", "danca": "pessoa-danca"}[pose]
     bpy.ops.export_scene.gltf(filepath=f"public/models/{nome}.glb", export_format='GLB', export_apply=True, export_yup=True)
 
+def leve():
+    # a multidão (balada): o corpo em pé com ~1/4 dos triângulos
+    corpo("em-pe")
+    o = [x for x in bpy.context.scene.objects if x.type == "MESH"][0]
+    bpy.context.view_layer.objects.active = o
+    mod = o.modifiers.new("menos", "DECIMATE"); mod.ratio = 0.25
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.ops.export_scene.gltf(filepath="public/models/pessoa-leve.glb", export_format='GLB', export_apply=True, export_yup=True)
+    print("TRIS LEVE", sum(len(p.vertices) - 2 for p in o.data.polygons))
+
 for pose in ("em-pe", "sentada", "danca"):
     corpo(pose)
+leve()

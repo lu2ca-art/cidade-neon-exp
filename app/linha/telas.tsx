@@ -3,8 +3,7 @@
 // Telas da Linha 222 fora do celular (entrada, bloqueio, final) e os apps
 // nativos grandes (a linha/mapa, a rádio).
 
-import { CREDITO_SUBURBIO } from "./estrada/Suburbio"
-import { CREDITO_KOMBI } from "./estrada/KombiHerbal"
+import { CREDITO_KOMBI, CREDITO_SUBURBIO } from "./estrada/creditos"
 import { useEffect, useMemo, useState } from "react"
 import { ESTACOES, NIVEIS, UNTITLED, dataCurta, estacao as getEstacao, lancada, missao, type Estacao, type EstacaoId } from "./data"
 import { ativa, conhecidos } from "./missoes"

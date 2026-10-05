@@ -11,7 +11,8 @@ await page.click(".l-btn-entrar"); await page.waitForTimeout(6000)
 const shot = (o) => page.screenshot({ ...o, timeout: 90000 }).catch(() => {})
 const clicar = async (loc) => { const bb = await loc.boundingBox().catch(() => null); if (bb) await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2) }
 const cenaAte = async (nome) => {
-  for (let k = 0; k < 120; k++) {
+  for (let k = 0; k < 160; k++) {
+    if (await page.locator(".l-dica3d").count()) { const fez = await page.evaluate(() => (window.__gesto ? (window.__gesto(), true) : false)); if (!fez) for (let i = 0; i < 4; i++) { await page.mouse.click(200, 380); await page.waitForTimeout(140) } await page.waitForTimeout(400); continue }
     if (await page.locator(".l-danca").count()) { await shot({ path: `${DIR}/${nome}-danca.png` }); for (let i = 0; i < 120 && (await page.locator(".l-danca").count()); i++) { await clicar(page.locator(".l-danca")); await page.waitForTimeout(110) } continue }
     if (await page.locator(".l-cena-ganha").count()) { console.log("  ganhou:", (await page.locator(".l-cena-ganha b").innerText())); await shot({ path: `${DIR}/${nome}-ganha.png` }); await clicar(page.locator(".l-cena-ganha")); await page.waitForTimeout(400); continue }
     if (await page.locator(".l-cena-escolhas button").count()) { await page.waitForTimeout(400); await shot({ path: `${DIR}/${nome}-escolha.png` }); await clicar(page.locator(".l-cena-escolhas button").nth(1)); await page.waitForTimeout(400); continue }
@@ -31,7 +32,7 @@ await page.waitForTimeout(1500)
 let s = await page.evaluate(() => JSON.parse(localStorage.getItem("cn-linha-222")))
 console.log("itens", s.itens, "hud:", (await page.locator(".l-hud-missao").innerText().catch(() => "-")).replace(/\s+/g, " "))
 await page.click(".l-hud-cam", { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(1500)
-await page.evaluate(() => window.__olhar(0.9, 0)); await page.waitForTimeout(1800)
+await page.evaluate(() => window.__olhar && window.__olhar(0.9, 0)); await page.waitForTimeout(1800)
 await shot({ path: `${DIR}/dw2-banco.png` })
 await page.click(".l-hud-cam", { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(800)
 // a crise chega no caminho (~25 s)

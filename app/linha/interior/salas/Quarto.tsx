@@ -11,7 +11,7 @@
 import { useMemo } from "react"
 import { sinalizar } from "../bus"
 import { Caixa, Neon, Npc, Sala, Toque, useExplorar, type Coisa } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const ROSA = "#ff3fb0"
 const CIANO = "#7fe8ff"

@@ -112,6 +112,8 @@ interface Props {
   foraDoAr?: boolean
   // saiu do bar errado N vezes: o mundo repete a noite (mais bonito, mais vazio)
   noiteRepete?: number
+  // voltando de uma sala: reaparece onde estava
+  retomar?: boolean
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -185,8 +187,11 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0 }: Props) {
-  const M = useMemo(() => montarMundo(), [])
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false }: Props) {
+  const M = useMemo(() => mundo(), [])
+  // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
+  const [retomada] = useState(() => (retomar ? RETOMAR : null))
+  useEffect(() => { RETOMAR = null }, [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
   // levando a coisa pra estação = a estação vira o destino
@@ -255,7 +260,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [alvoChave])
 
   const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false })
-  const jogo = useRef<Jogo>(novoJogo(M, destino, save.estacao))
+  const [jogo0] = useState(() => retomarJogo(M, retomada) ?? novoJogo(M, destino, save.estacao))
+  const jogo = useRef<Jogo>(jogo0)
+  // ao sair da tela, guarda onde a Kombi estava
+  useEffect(() => () => {
+    const j = jogo.current
+    RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg }
+  }, [M])
   const cinemaRef = useRef<Cinema>(cinema)
   useEffect(() => { cinemaRef.current = cinema }, [cinema])
   const hudVel = useRef<HTMLSpanElement>(null)
@@ -307,8 +318,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // passando por uma estação: o nome dela aparece no cartão da rádio
   const [passando, setPassando] = useState<{ id: EstacaoId; t: number } | null>(null)
   const [travou, setTravou] = useState<Frequencia | null>(null)
-  const [freq, setFreq] = useState<FreqId>("linha")
-  const [viaAtual, setViaAtual] = useState(M.circuito.linha)
+  const [freq, setFreq] = useState<FreqId>(() => {
+    const v = M.vias[jogo0.via]
+    return v.tipo === "circuito" ? v.t : v.de ?? v.t
+  })
+  const [viaAtual, setViaAtual] = useState(() => jogo0.via)
   const [faixa, setFaixa] = useState("")
   // tocando um vinil da Kombi (não uma faixa da rádio): o cartão diz isso
   const discoRef = useRef(false)
@@ -1228,6 +1242,31 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
     </div>
   )
+}
+
+// PASSO 1 da otimização: dentro de uma sala a estrada SAI da tela (desmonta,
+// libera a memória da placa de vídeo). O mundo montado fica em cache e a
+// posição da Kombi fica guardada aqui, pra ela voltar no mesmo ponto
+let MUNDO: Mundo | null = null
+function mundo() { return (MUNDO ??= montarMundo()) }
+export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
+let RETOMAR: Retomada | null = null
+
+function retomarJogo(M: Mundo, r: Retomada | null): Jogo | null {
+  if (!r) return null
+  const i = M.vias.findIndex((v) => v.id === r.via)
+  if (i < 0) return null
+  const j = novoJogo(M, null, null)
+  const C = M.vias[i]
+  j.via = i
+  j.u = Math.min(Math.max(0, r.u), C.L - 1)
+  j.x = r.x
+  j.y = C.py[Math.floor(j.u / PASSO)] ?? j.y
+  // já encostou nesse lugar: não reabre a cena parada na porta
+  j.naVaga = r.naVaga
+  j.naSeg = r.naSeg
+  j.encaixar = true
+  return j
 }
 
 function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null): Jogo {

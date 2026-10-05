@@ -11,7 +11,8 @@ import { useGLTF } from "@react-three/drei"
 import { useMemo } from "react"
 import * as THREE from "three"
 
-export const CREDITO_KOMBI = "“Jia Jia Herbal Tea VW Van Kombi Car” por Mr. Mushi (sketchfab.com/mr.mushi), CC-BY-NC-SA 4.0"
+import { CREDITO_KOMBI } from "./creditos"
+export { CREDITO_KOMBI }
 const URL = "/models/kombi-herbal.glb"
 const COMPRIMENTO = 4.5 // m, do para-choque ao para-choque (a Kombi da estrada)
 

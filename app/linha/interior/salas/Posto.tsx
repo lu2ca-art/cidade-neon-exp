@@ -10,7 +10,7 @@ import { texTexto } from "../../estrada/geo"
 import { KombiHerbal } from "../../estrada/KombiHerbal"
 import { Seguro } from "../../estrada/Seguro"
 import { Caixa, Npc } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const LILAS = "#b38cff"
 const FRIO = "#dfe9ff"

@@ -10,7 +10,20 @@ Meta do LU2CA (05/10): jogo insanamente otimizado, assets leves e bonitos, cenas
 - Luzes dinâmicas por sala: bar 7, casa de shows 4, quarto/balada 3. Luz dinâmica é cara em celular.
 - Peso morto fora do /linha: `public/models/van.glb` (2,2 MB), `voxel-city/` (4,1 MB).
 
-## O que fazer (em fatias pequenas, testando cada uma)
+## Feito em 05/10 (branch feature/game/cenas-separadas)
+- **Fatia 1, sob demanda:** `next/dynamic` pra Corrida, Interior e Viagem; cada sala é um `lazy()` próprio (`interior/registro.ts` é leve, sem three). A sala do lugar da missão pré-carrega quando a missão aponta pra ela; a estrada baixa em segundo plano depois da tela inicial. Os créditos dos modelos foram pra `estrada/creditos.ts` (puxavam three pra carga inicial). **Carga inicial da /linha: 727 → 338 KB gzip.** O three.js saiu da tela inicial. O maior pedaço restante é o PostHog (270 KB, no layout do site inteiro: mexer em `feature/infra`).
+- **Fatia 2, a estrada sai da tela:** dentro de uma sala ou na viagem, a Corrida desmonta (libera a GPU). O mundo montado fica em cache (`mundo()`), a posição em `RETOMAR` (via, u, x, naVaga, naSeg), e a Kombi volta no mesmo ponto sem reabrir a cena (`retomar` prop, `voltaDaSala` na página).
+- **Fatia 3, orçamento:** medidor `__sala()` em dev; pessoas e copos sem luz própria, `Neon` sem luz por padrão, cidade do terraço instanciada, multidão com `pessoa-leve.glb` (428 triângulos). Teste: `docs/linha-222/testes/orcamento.mjs` (limites: 10 luzes, 60 mil triângulos, 160 malhas).
+
+| sala | luzes | triângulos | malhas |
+|---|---|---|---|
+| bar | 28 → 9 | 17 mil | 110 |
+| balada | 10 → 6 | 85 mil → 27 mil | 28 |
+| vagão | 18 → 7 | 19 mil | 50 |
+| terraço | 5 → 4 | 10 mil | 230 → 12 |
+| posto | 4 | 49 mil (a Kombi) | 24 |
+
+## O que falta
 1. **Salas sob demanda:** `Interior.tsx` e cada `salas/*.tsx` via `next/dynamic` (sem SSR), carregando só quando `abrirCena` dispara. Pré-carregar a sala do lugar-alvo quando a Kombi chega perto (a 260 m, o mesmo ponto do aviso `vagaAvisou`).
 2. **Desmontar a estrada dentro de uma sala:** hoje `pausado` só congela. Trocar por desmontar o `<Canvas>` da Corrida e guardar o estado de física (`jogo.current`: via, u, x, v) pra remontar no mesmo ponto na saída. Cuidado: rádio, piloto automático, carona, perseguição.
 3. **Mapa de cenas:** um manifesto (`cenas-mapa.ts`) com cada cena (cidade, subúrbio, 10 salas, viagem, deserto), seus vizinhos e o orçamento. A viagem pra fora e o deserto entram aqui.
@@ -27,7 +40,7 @@ Meta do LU2CA (05/10): jogo insanamente otimizado, assets leves e bonitos, cenas
 - A viagem pra fora do ep. 3 e a casa da D-Bee.
 
 ## Como testar
-- Scripts Playwright em `docs/linha-222/testes/` (usar `bun`, `playwright-core`, dev server em `localhost:3222`). Salvam imagens em `/tmp/linha-shots`.
+- Scripts Playwright em `docs/linha-222/testes/` (o `playwright-core` não está no package.json do jogo: rodar de uma pasta com ele instalado, ou `bun add -d playwright-core` numa branch de infra) (usar `bun`, `playwright-core`, dev server em `localhost:3222`). Salvam imagens em `/tmp/linha-shots`.
   - `sala.mjs <bar|balada|vagao|escondido|beco|topo|shows|posto|drewboy|dbee>`: uma sala do começo ao fim.
   - `bar2.mjs`: as duas visitas do bar (beber, voltar, negar).
   - `passa.mjs`: passar na frente abre a cena; `carona.mjs`, `fase1.mjs`, `ep2.mjs`, `ep3.mjs`: fluxos das missões.

@@ -1,5 +1,4 @@
 "use client"
-/* eslint-disable react-hooks/immutability -- three.js: câmera, materiais e luzes são do motor, mexidos a cada quadro */
 
 // POR DENTRO dos lugares (04/10, pedido do LU2CA): a cena não acontece mais
 // na fachada. Passou na frente, a câmera corta pra DENTRO: a sala em 3D com
@@ -9,72 +8,28 @@
 // A legenda e as escolhas continuam por cima (cena.tsx); as duas conversam
 // pelo bus.ts. Cada sala é um componente em salas/*.tsx.
 
-import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { Suspense, useEffect, useMemo, useRef, type ComponentType } from "react"
+import { Canvas, useThree } from "@react-three/fiber"
+import { Suspense, lazy, useEffect, useRef, type ComponentType, type LazyExoticComponent } from "react"
 import * as THREE from "three"
 import { Cinema } from "../estrada/Cinema"
 import { Seguro } from "../estrada/Seguro"
 import type { EstacaoId } from "../data"
 import type { LugarId } from "../lugares"
-import { useEstadoCena, type EstadoCena } from "./bus"
-import type { V3 } from "./comum"
-import { SalaBalada } from "./salas/Balada"
-import { SalaBar } from "./salas/Bar"
-import { SalaVagao } from "./salas/Vagao"
-import { SalaBeco } from "./salas/Beco"
-import { SalaCasaDbee } from "./salas/CasaDbee"
-import { SalaEscondido } from "./salas/Escondido"
-import { SalaPosto } from "./salas/Posto"
-import { SalaQuarto } from "./salas/Quarto"
-import { SalaShows } from "./salas/Shows"
-import { SalaTopo } from "./salas/Topo"
+import { useEstadoCena } from "./bus"
+import { chamarToqueLivre, olhar, type SalaProps } from "./motor"
+import { CARREGAR } from "./registro"
 
-export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[] }
+// re-exporta o motor pra quem ainda importa daqui
+export { Camera, useToqueLivre, type Plano, type SalaProps } from "./motor"
 
-// toque livre na tela (fora dos objetos): a sala que quiser escuta
-// (a balada e o vagão: tocar no ritmo em qualquer lugar)
-let toqueLivre: (() => void) | null = null
-export function useToqueLivre(f: (() => void) | null) {
-  const ref = useRef(f)
-  useEffect(() => { ref.current = f })
-  useEffect(() => {
-    const ouvir = () => ref.current?.()
-    toqueLivre = ouvir
-    return () => { if (toqueLivre === ouvir) toqueLivre = null }
-  }, [])
-}
-
-// as salas que já existem por dentro (as outras caem na fachada, como antes)
-export const SALAS: Partial<Record<LugarId, ComponentType<SalaProps>>> = {
-  bar: SalaBar,
-  balada: SalaBalada,
-  plataforma: SalaVagao,
-  "casa-drewboy": SalaQuarto,
-  escondido: SalaEscondido,
-  beco: SalaBeco,
-  topo: SalaTopo,
-  "casa-shows": SalaShows,
-  posto: SalaPosto,
-  "casa-dbee": SalaCasaDbee,
-}
-
-export function temSala(id: LugarId) { return !!SALAS[id] }
-
-// os gestos que cada sala faz em 3D (o resto continua na legenda)
-export const GESTOS_3D: Partial<Record<LugarId, string[]>> = {
-  bar: ["copos"],
-  balada: ["danca"],
-  plataforma: ["tocar", "fuga"],
-  "casa-drewboy": ["quarto"],
-  escondido: ["prova:regar"],
-  beco: ["ordem"],
-  "casa-dbee": ["casa"],
-}
-
-// olhar em volta: arrastar gira a câmera um pouco (volta sozinha)
-const olhar = { yaw: 0, pitch: 0, arrastando: false }
+// cada sala vira um componente preguiçoso uma vez só (o código dela só baixa
+// quando for desenhada pela primeira vez)
+const SALAS = Object.fromEntries(
+  Object.entries(CARREGAR).map(([id, c]) => [id, lazy(() => c!().then((C) => ({ default: C })))]),
+) as Partial<Record<LugarId, LazyExoticComponent<ComponentType<SalaProps>>>>
 
 export function Interior({ lugar, objetos = [] }: { lugar: LugarId; objetos?: EstacaoId[] }) {
+  // a sala vem num pedaço próprio do pacote (registro.ts)
   const S = SALAS[lugar]
   const estado = useEstadoCena()
   const ult = useRef<{ x: number; y: number } | null>(null)
@@ -82,7 +37,7 @@ export function Interior({ lugar, objetos = [] }: { lugar: LugarId; objetos?: Es
   return (
     <div
       className="l-interior"
-      onPointerDown={(e) => { ult.current = { x: e.clientX, y: e.clientY }; olhar.arrastando = true; toqueLivre?.() }}
+      onPointerDown={(e) => { ult.current = { x: e.clientX, y: e.clientY }; olhar.arrastando = true; chamarToqueLivre() }}
       onPointerMove={(e) => {
         if (!ult.current) return
         olhar.yaw = THREE.MathUtils.clamp(olhar.yaw - (e.clientX - ult.current.x) * 0.004, -0.6, 0.6)
@@ -97,44 +52,34 @@ export function Interior({ lugar, objetos = [] }: { lugar: LugarId; objetos?: Es
           <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} /></Seguro>
         </Suspense>
         <Seguro nome="lente-sala"><Cinema /></Seguro>
+        {process.env.NODE_ENV !== "production" && <Medidor />}
       </Canvas>
     </div>
   )
 }
 
-// ── a câmera da sala: vai até o plano pedido, devagar, e respira ──
-export interface Plano { pos: V3; olha: V3; fov?: number }
 
-export function Camera({ plano, rapido = false }: { plano: Plano; rapido?: boolean }) {
-  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
-  const alvoPos = useMemo(() => new THREE.Vector3(), [])
-  const alvoOlha = useMemo(() => new THREE.Vector3(), [])
-  const olhaAgora = useRef<THREE.Vector3 | null>(null)
-  const dir = useMemo(() => new THREE.Vector3(), [])
+// o ORÇAMENTO da sala (só em desenvolvimento): __sala() no console devolve
+// quantas luzes, malhas, triângulos e chamadas de desenho a cena está gastando
+function Medidor() {
+  const { scene, gl } = useThree()
   useEffect(() => {
-    alvoPos.set(...plano.pos)
-    alvoOlha.set(...plano.olha)
-  }, [plano, alvoPos, alvoOlha])
-  useFrame((s, dt) => {
-    const k = Math.min(1, dt * (rapido ? 4 : 1.6))
-    camera.position.lerp(alvoPos, k)
-    if (!olhaAgora.current) olhaAgora.current = alvoOlha.clone()
-    olhaAgora.current.lerp(alvoOlha, k)
-    // respiração da câmera na mão
-    const t = s.clock.elapsedTime
-    camera.position.y += Math.sin(t * 0.9) * 0.002
-    // olhar em volta: solta e volta pro plano
-    if (!olhar.arrastando) { olhar.yaw *= 1 - Math.min(1, dt * 1.5); olhar.pitch *= 1 - Math.min(1, dt * 1.5) }
-    dir.copy(olhaAgora.current).sub(camera.position)
-    dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), olhar.yaw)
-    dir.y += olhar.pitch * dir.length()
-    camera.lookAt(camera.position.x + dir.x, camera.position.y + dir.y, camera.position.z + dir.z)
-    // o fov do plano é pensado deitado; com o celular em pé a imagem fica
-    // estreita, então abre o vertical pra manter a largura (até 78°)
-    const base = plano.fov ?? 50
-    const asp = camera.aspect || 1
-    const fov = asp >= 1 ? base : Math.min(78, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(base) / 2) / Math.max(asp, 0.45) * 0.62)))
-    if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * k; camera.updateProjectionMatrix() }
-  })
+    const w = window as unknown as Record<string, unknown>
+    w.__sala = () => {
+      let luzes = 0, malhas = 0, tri = 0
+      scene.traverse((o) => {
+        if ((o as THREE.Light).isLight && o.visible) luzes++
+        const m = o as THREE.Mesh
+        if (m.isMesh && m.visible) {
+          malhas++
+          const g = m.geometry
+          const n = g.index ? g.index.count : g.attributes.position?.count ?? 0
+          tri += Math.round(n / 3) * ((m as THREE.InstancedMesh).count ?? 1)
+        }
+      })
+      return { luzes, malhas, triangulos: tri, chamadas: gl.info.render.calls, geometrias: gl.info.memory.geometries, texturas: gl.info.memory.textures }
+    }
+    return () => { delete w.__sala }
+  }, [scene, gl])
   return null
 }

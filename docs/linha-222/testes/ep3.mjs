@@ -47,7 +47,8 @@ for (let i = 0; i < 60 && !(await page.locator(".l-cena").count()); i++) await p
 await page.mouse.up()
 console.log("cena da casa?", await page.locator(".l-cena").count())
 await page.waitForTimeout(1500); await shot({ path: `${DIR}/ep3-casa.png` })
-for (let k = 0; k < 160; k++) {
+for (let k = 0; k < 200; k++) {
+  if (await page.locator(".l-dica3d").count()) { await page.evaluate(() => window.__gesto && window.__gesto()); await page.waitForTimeout(400); continue }
   if (await page.locator(".l-cena-ganha").count()) { console.log("  ganhou:", await page.locator(".l-cena-ganha b").innerText()); await shot({ path: `${DIR}/ep3-ganha-${k}.png` }); await clicar(page.locator(".l-cena-ganha")); await page.waitForTimeout(400); continue }
   if (await page.locator(".l-cena-escolhas button").count()) { await clicar(page.locator(".l-cena-escolhas button").nth(2)); await page.waitForTimeout(300); continue }
   if (await page.locator(".l-cena-fim button").count()) { await clicar(page.locator(".l-cena-fim button")); console.log("FIM"); break }
