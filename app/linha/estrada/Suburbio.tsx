@@ -10,7 +10,8 @@ import { useGLTF } from "@react-three/drei"
 import { useMemo } from "react"
 import * as THREE from "three"
 
-export const CREDITO_SUBURBIO = "“CITY SUBURBS” por isabm (sketchfab.com/isabm), CC-BY 4.0"
+import { CREDITO_SUBURBIO } from "./creditos"
+export { CREDITO_SUBURBIO }
 const URL = "/models/suburbio.glb"
 
 // centro do bairro (o mesmo do anel da cidade) e quanto o modelo cresce
