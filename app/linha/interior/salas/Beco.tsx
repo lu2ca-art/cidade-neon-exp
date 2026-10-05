@@ -14,7 +14,7 @@ import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
 import { Caixa, Chuva, Npc, Toque, type V3 } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const CINZA = "#b8bcc8"
 const FRASES = ["se quiser ver", "pare de procurar", "onde todos olham"]

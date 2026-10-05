@@ -12,7 +12,7 @@ import { useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { sinalizar } from "../bus"
 import { Caixa, Npc, Sala, Toque, useExplorar, type Coisa, type V3 } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const AZUL = "#3d7bff"
 const QUENTE = "#ffcf8a"

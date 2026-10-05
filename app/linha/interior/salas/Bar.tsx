@@ -16,7 +16,7 @@ import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
 import { Caixa, Neon, Npc, Sala, Toque, type V3 } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const LARANJA = "#ff6a35"
 const OURO = "#ffc857"

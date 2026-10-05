@@ -14,7 +14,7 @@ import * as THREE from "three"
 import { gota } from "../../som"
 import { sinalizar } from "../bus"
 import { Caixa, Chuva, Npc, Toque, type V3 } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const CIANO = "#2fe8ff"
 const VERDE = "#5dffa0"

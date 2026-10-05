@@ -11,7 +11,7 @@ import { useMemo, useRef } from "react"
 import * as THREE from "three"
 import { texTexto } from "../../estrada/geo"
 import { Caixa, Neon, Npc, Sala } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const OURO = "#ffc857"
 

@@ -10,7 +10,7 @@ import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Caixa, Chuva, Cidade, Npc } from "../comum"
-import { Camera, type Plano, type SalaProps } from "../Interior"
+import { Camera, type Plano, type SalaProps } from "../motor"
 
 const VERDE = "#5dffa0"
 
