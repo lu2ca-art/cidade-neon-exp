@@ -92,7 +92,7 @@ export function SalaBeco({ estado }: SalaProps) {
         <Giz key={i} texto={FRASES[i]} pos={[-1.83, 2.05 - k * 0.45, -1.5 + (k - 1) * 0.25]} feita={montada.includes(i) || (estado.pos > 5 && !montando)} ativo={montando && !montada.includes(i)} onToque={() => pegar(i)} />
       ))}
       <Chuva n={280} larg={4} alto={8} fundo={12} />
-      <Camera plano={plano} />
+      <Camera plano={plano} rapido={montando} />
     </>
   )
 }
