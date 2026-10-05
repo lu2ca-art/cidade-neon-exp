@@ -65,6 +65,8 @@ export interface Save {
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>
+  // a missão que a pessoa escolheu no painel MISSÕES (vale primeiro)
+  foco?: EstacaoId
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
   ligacoes: string[]
   // o jeito que cada pessoa entrou em contato (ligação, texto, áudio) e o

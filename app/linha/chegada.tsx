@@ -20,15 +20,17 @@ import { track } from "@/lib/analytics"
 
 // ms depois de entrar
 const ROTEIRO = {
-  titulo: 1500, // "cidade neon" aparece nas tarjas
-  radio: 13000, // o rádio liga sozinho: o vinil abaixa e o dial começa a girar
-  agulha: 15500, // o vinil para; só o chiado procurando
-  quase: 19000, // quase pega a 222 (o dial trava, "sinal fraco")
-  anuncio1: 21500, // quem entra na frequência é o Núcleo: 1º anúncio
-  anuncio2: 25000, // vários anúncios, o chiado por baixo
-  corta: 30000, // CONTEÚDO REMOVIDO: o som sai, a cor sai, a Kombi encosta
-  limpa: 33000, // os anúncios somem — sobra a cidade cinza e a chuva
-  vibra: 37000, // o celular vibra: N3XO
+  // 05/10 (LU2CA): a abertura demorava e deixava o jogo cinza tempo demais.
+  // Agora tudo acontece em ~20 s, e o cinza é só um susto
+  titulo: 1200, // "cidade neon" aparece nas tarjas
+  radio: 6000, // o rádio liga sozinho: o vinil abaixa e o dial começa a girar
+  agulha: 7500, // o vinil para; só o chiado procurando
+  quase: 9500, // quase pega a 222 (o dial trava, "sinal fraco")
+  anuncio1: 11000, // quem entra na frequência é o Núcleo: 1º anúncio
+  anuncio2: 13000, // vários anúncios, o chiado por baixo
+  corta: 16000, // CONTEÚDO REMOVIDO: o som sai, a cor sai, a Kombi encosta
+  limpa: 18000, // os anúncios somem — sobra a cidade cinza e a chuva
+  vibra: 20000, // o celular vibra: N3XO
 }
 
 
