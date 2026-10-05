@@ -1544,3 +1544,12 @@
 .l-estrada-fora-dica { position: absolute; left: 0; right: 0; top: calc(11vh + 16px); z-index: 3; text-align: center; font: 700 10px var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.55); animation: l-fade 0.8s 1.2s both; }
 /* chegou: a estrada fica de fundo, parada, e a cena da casa roda por cima */
 .l-estrada-fora.is-chegou { z-index: 29; cursor: default; animation: none; }
+/* por dentro dos lugares: a sala em 3D embaixo da legenda */
+.l-interior { position: absolute; inset: 0; z-index: 29; background: #000; animation: l-fade 1.4s 0.3s both; touch-action: none; }
+.l-interior-cvs { position: absolute !important; inset: 0; }
+.l-cena.is-sala { background: transparent; }
+.l-cena.is-livre { pointer-events: none; }
+.l-cena.is-livre > :not(.l-cena-tarja):not(.l-cena-lugar) { pointer-events: auto; }
+.l-dica3d { position: relative; z-index: 2; margin: 0 16px calc(11vh + 18px); display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none !important; }
+.l-dica3d small { padding: 8px 14px; border-radius: 999px; background: rgba(5,5,14,0.66); font: 700 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.85); animation: l-fade 0.6s both; }
+.l-dica3d button { pointer-events: auto; }

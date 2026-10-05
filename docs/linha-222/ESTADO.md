@@ -4,7 +4,7 @@
 > item andar, atualize aqui e na issue #22. No Mac, o bookmark geral fica em
 > `~/vault/operacional/state.md` (o "AGUA" lê de lá).
 
-Última atualização: 04/10/2026 (Mac).
+Última atualização: 05/10/2026 (Mac).
 
 ## 02/10 no Mac — feito e NO AR (main)
 
@@ -45,6 +45,8 @@
 | O BECO DOS TRÊS LETREIROS (lugar secreto, sem missão nem marcador): libera depois do terraço da Notti (ela vê lá de cima as três ruas que dão a volta). Fica no mirante (u 1300, esquerda): dois paredões cinza, os letreiros GLAMOUR / CONSUMO / CONFORTO em cima. Só aparece depois de passar por ele 1 (acordado), 2 (acordando) ou 3 (dormindo) vezes; aí a 222 sussurra. A moradora fala em pedaços, gesto ORDEM ("se quiser ver / pare de procurar / onde todos olham") → O RELICÁRIO (a cidade verde) | — | (este merge) |
 | FIX: quem está de carona tem prioridade (com o Drewboy no banco, a Ella não chamava mais por cima ao entrar no subúrbio) | — | (este merge) |
 | EP. 3 (trancado até 30/10, e só depois do ep. 2): A DELAÇÃO — a D-Bee chama ("alguém entregou a gente"), o Núcleo agradece o Mubarak (a assinatura MESMA NOITE vira vitalícia), ela sai do grupo, **a 222 sai do ar e a cidade fica cinza** até o fim da missão. A SAÍDA da cidade (depois do posto, direita: a pista vira terra, placa "FIM DA CIDADE NEON") → A VIAGEM PRA FORA (`viagem.tsx`: só dirigir, segura pra andar; a câmera olha pra trás, a cidade cinza ficando pequena, depois corta pra frente, a luz que a Notti viu) → A CASA VAZIA (o que se acha muda com o tom: a porta aberta / a foto da mãe na cidade verde, igual ao relicário / o bilhete pro KIN; o grupo chega um a um e, sem ela, vira movimento; o Tony Gordo tem um plano; a 222 volta) → a camisa da seleção. Passo de cena com `tom` e `rel` | — | (este merge) |
+| CHEGAR: passar na frente do lugar (qualquer faixa, qualquer velocidade) já entra na missão; PIN flutuando em cima do lugar. SEM TRAVA DE DATA nas missões (o jogo inteiro jogável antes das músicas saírem; só a rádio espera o lançamento) | — | `bd0233d` |
+| POR DENTRO DOS LUGARES (`app/linha/interior/`): passou na frente, a câmera corta pra DENTRO. Motor: sala em 3D embaixo da legenda (bus.ts liga as duas), gente modelada no Blender em 3 poses (`blender/scripts/gente.py`: em pé, sentada, dançando), quem fala acende e vira pra câmera, a câmera troca de plano conforme a cena (fov ajustado pro celular em pé), arrastar pra olhar em volta, tocar nas coisas. Gestos feitos NA SALA: os seis copos no balcão (o bar esvazia e doura), a dança no anel em volta do Drewboy (cada acerto abaixa celulares de 48 pessoas), tocar o violão no vagão (cada acerto um artista acorda) e fugir pelo corredor, regar a flor tocando nas gotas (a chuva diminui), as frases a giz na parede do beco, EXPLORAR o quarto do Drewboy e a casa da D-Bee (cada coisa conta algo). As 10 salas: bar, quarto do Drewboy, balada, lugar escondido, terraço, beco, casa de shows, posto (a Kombi na bomba), vagão, casa da D-Bee (o grupo chegando pela porta). Os gestos que já eram bons (silêncio, respirar, caderno, a sua linha) continuam na legenda, com a sala atrás | — | (este merge) |
 
 **#30 continua aberta:** com o critério certo (gravação ≤ 1925 confirmada,
 nada de "PDP-CH" suíço sem data, nada de MIDI) o Wikimedia só rendeu 2. Próxima
