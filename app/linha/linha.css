@@ -1640,6 +1640,6 @@
 .l-missoes { top: auto; bottom: calc(216px + env(safe-area-inset-bottom)); max-height: 46vh; }
 .l-check { top: auto; bottom: calc(188px + env(safe-area-inset-bottom)); width: min(230px, calc(100% - 160px)); }
 .l-lig { background: rgba(10, 11, 26, 0.97); }
-.l-check-topo { text-align: left; white-space: nowrap; }
+.l-check-topo { text-align: left; white-space: nowrap; gap: 10px; }
 /* ligação tocando: a ilha vazia some (sobrava uma caixa preta embaixo) */
 .l-raiz:has(.l-lig) .l-ilha { opacity: 0; }
