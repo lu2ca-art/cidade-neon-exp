@@ -20,6 +20,7 @@ import { useEstadoCena, type EstadoCena } from "./bus"
 import type { V3 } from "./comum"
 import { SalaBalada } from "./salas/Balada"
 import { SalaBar } from "./salas/Bar"
+import { SalaVagao } from "./salas/Vagao"
 
 export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[] }
 
@@ -40,6 +41,7 @@ export function useToqueLivre(f: (() => void) | null) {
 export const SALAS: Partial<Record<LugarId, ComponentType<SalaProps>>> = {
   bar: SalaBar,
   balada: SalaBalada,
+  plataforma: SalaVagao,
 }
 
 export function temSala(id: LugarId) { return !!SALAS[id] }
@@ -48,6 +50,7 @@ export function temSala(id: LugarId) { return !!SALAS[id] }
 export const GESTOS_3D: Partial<Record<LugarId, string[]>> = {
   bar: ["copos"],
   balada: ["danca"],
+  plataforma: ["tocar", "fuga"],
 }
 
 // olhar em volta: arrastar gira a câmera um pouco (volta sozinha)

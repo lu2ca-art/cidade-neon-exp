@@ -27,7 +27,7 @@ const META = 8
 
 const PLANOS: Record<string, Plano> = {
   entrada: { pos: [0.5, 2.4, 10], olha: [0, 1.6, -2], fov: 62 },
-  drewboy: { pos: [1.3, 1.65, 3.2], olha: [0, 1.45, 0], fov: 46 },
+  drewboy: { pos: [1.5, 1.7, 4.8], olha: [0, 1.5, 0], fov: 50 },
   pista: { pos: [0, 3.6, 6.2], olha: [0, 0.9, 0], fov: 60 },
   camarote: { pos: [2, 2.4, 3], olha: [-6.5, 3.2, -3], fov: 50 },
   dj: { pos: [0, 2.2, 3], olha: [0, 3.2, -8], fov: 56 },
