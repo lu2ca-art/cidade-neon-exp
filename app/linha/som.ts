@@ -563,14 +563,30 @@ class Disco {
     el.preload = "auto"
     el.crossOrigin = "anonymous"
     el.volume = 0.9
-    el.addEventListener("ended", () => this.emitir())
+    // o disco toca inteiro: acabou uma faixa, entra a próxima
+    el.addEventListener("ended", () => { if (this.fila.length > 1) this.proxima(); else this.emitir() })
     el.addEventListener("pause", () => this.emitir())
     el.addEventListener("play", () => this.emitir())
     this.el = el
     return el
   }
+  fila: string[] = []
+  i = 0
   get tocando() { return !!this.el && !this.el.paused }
+  // um disco inteiro (as faixas em ordem, voltando pro começo no fim)
+  tocarLista(fila: string[], i = 0) {
+    if (!fila.length) return
+    this.fila = fila
+    this.i = i % fila.length
+    this.tocarFaixa(fila[this.i])
+  }
+  proxima() { if (this.fila.length) this.tocarLista(this.fila, this.i + 1) }
   tocar(src: string) {
+    this.fila = [src]
+    this.i = 0
+    this.tocarFaixa(src)
+  }
+  private tocarFaixa(src: string) {
     const el = this.garantir()
     if (this.src !== src) { el.src = src; this.src = src }
     el.currentTime = 0

@@ -22,6 +22,8 @@ import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
 import { KombiHerbal } from "./KombiHerbal"
+import { Capa } from "../capa"
+import { discosDaKombi } from "../discos"
 import { Metro, montarMetro } from "./Metro"
 import { LUGARES, VAGA, type LugarId } from "../lugares"
 import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
@@ -403,7 +405,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => disco.ouvir(setDiscoAgora), [])
   useEffect(() => { discoRef.current = discoAgora.tocando }, [discoAgora.tocando])
   const [estante, setEstante] = useState(false)
-  const discoInfo = VINIS.find((v) => v.src === discoAgora.src)
+  // o que tá tocando no toca-discos: "faixa · disco"
+  const discoInfo = (() => {
+    for (const d of discosDaKombi(save.discos ?? [])) {
+      const f = d.faixas.find((x) => x.src === discoAgora.src)
+      if (f) return { titulo: `${f.titulo} · ${d.titulo}` }
+    }
+    return VINIS.find((v) => v.src === discoAgora.src) ?? null
+  })()
 
   // mensagem que vem de fora (o grupo na chegada): entra na ilha
   const introRef = useRef(intro)
@@ -1200,25 +1209,31 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             <b>os discos da kombi</b>
             <button type="button" onClick={() => setEstante(false)} aria-label="fechar">✕</button>
           </header>
-          <p>escolhe um e põe pra tocar. disco é analógico: o núcleo não alcança</p>
+          <p>escolhe um disco e põe pra tocar, do começo ao fim. disco é analógico: o núcleo não alcança</p>
           <ul>
-            {VINIS.map((v) => (
-              <li key={v.src}>
-                <button type="button" className={discoAgora.src === v.src && discoAgora.tocando ? "is-on" : ""} onClick={() => {
-                  fonteSom.set("disco")
-                  disco.tocar(v.src)
-                  setEstante(false)
-                  if (!dicas.includes("disco-2")) {
-                    onDica?.("disco-2")
-                    setTimeout(() => falar("D-Bee", "isso. disco nunca para, nem pro núcleo. rádio e disco não tocam juntos", 8000), 1500)
-                  }
-                }}>
-                  <i className="l-estante-capa" />
-                  <span><b>{v.titulo.split(" · ")[0]}</b><small>{v.titulo.split(" · ")[1]}</small></span>
-                </button>
-              </li>
-            ))}
+            {discosDaKombi(save.discos ?? []).map((d) => {
+              const srcs = d.faixas.map((f) => f.src)
+              const esse = discoAgora.tocando && !!discoAgora.src && srcs.includes(discoAgora.src)
+              const faixa = esse ? d.faixas.find((f) => f.src === discoAgora.src) : null
+              return (
+                <li key={d.id}>
+                  <button type="button" className={esse ? "is-on" : ""} onClick={() => {
+                    fonteSom.set("disco")
+                    disco.tocarLista(srcs)
+                    setEstante(false)
+                    if (!dicas.includes("disco-2")) {
+                      onDica?.("disco-2")
+                      setTimeout(() => falar("D-Bee", "isso. disco nunca para, nem pro núcleo. rádio e disco não tocam juntos", 8000), 1500)
+                    }
+                  }}>
+                    <i className="l-estante-capa"><Capa motivo={d.motivo} a={d.a} b={d.b} titulo="" size={44} /></i>
+                    <span><b>{d.titulo}</b><small>{faixa ? `tocando: ${faixa.titulo}` : `${d.faixas.length} faixas`}</small></span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
+          {!(save.discos ?? []).length && <small className="l-estante-loja">mais discos na LOJA DE DISCOS, no celular</small>}
         </div>
       )}
 

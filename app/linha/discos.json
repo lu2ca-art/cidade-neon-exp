@@ -1,0 +1,784 @@
+{
+ "hip-hop": {
+  "genero": "HIP HOP",
+  "faixas": [
+   {
+    "titulo": "$O COLD (Clean Version)",
+    "autor": "Baha Bank$",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/o-cold-clean-version-baha-bank.mp3",
+    "dur": 144
+   },
+   {
+    "titulo": "$O COLD (Instrumental Version)",
+    "autor": "Baha Bank$",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/o-cold-instrumental-version-baha-bank.mp3",
+    "dur": 144
+   },
+   {
+    "titulo": "Cant Stop, Wont Stop (Instrumental Version)",
+    "autor": "Demon Baby",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/cant-stop-wont-stop-instrumental-version-demon-baby.mp3",
+    "dur": 132
+   },
+   {
+    "titulo": "Cant Stop, Wont Stop",
+    "autor": "Demon Baby",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/cant-stop-wont-stop-demon-baby.mp3",
+    "dur": 132
+   },
+   {
+    "titulo": "GET IT DONE",
+    "autor": "ROONIN",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/get-it-done-roonin.mp3",
+    "dur": 157
+   },
+   {
+    "titulo": "On the Chase (Instrumental Version)",
+    "autor": "Witchitaw Slim",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/on-the-chase-instrumental-version-witchitaw-slim.mp3",
+    "dur": 139
+   },
+   {
+    "titulo": "On the Chase",
+    "autor": "Witchitaw Slim",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/on-the-chase-witchitaw-slim.mp3",
+    "dur": 139
+   },
+   {
+    "titulo": "Suit and Loafers (Clean Version)",
+    "autor": "Nyck Caution",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/suit-and-loafers-clean-version-nyck-caution.mp3",
+    "dur": 160
+   },
+   {
+    "titulo": "Suit and Loafers",
+    "autor": "Nyck Caution",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/suit-and-loafers-nyck-caution.mp3",
+    "dur": 160
+   },
+   {
+    "titulo": "by the fireplace",
+    "autor": "baegel",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/by-the-fireplace-baegel.mp3",
+    "dur": 161
+   }
+  ]
+ },
+ "pop": {
+  "genero": "POP",
+  "faixas": [
+   {
+    "titulo": "Banna Re",
+    "autor": "Kanika",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/banna-re-kanika.mp3",
+    "dur": 187
+   },
+   {
+    "titulo": "Favorite Boy (Instrumental Version)",
+    "autor": "SRA",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/favorite-boy-instrumental-version-sra.mp3",
+    "dur": 186
+   },
+   {
+    "titulo": "Favorite Boy",
+    "autor": "SRA",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/favorite-boy-sra.mp3",
+    "dur": 186
+   },
+   {
+    "titulo": "Freaky Love (Instrumental Version)",
+    "autor": "I'MIN",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/freaky-love-instrumental-version-i-min.mp3",
+    "dur": 185
+   },
+   {
+    "titulo": "Keeping Hope",
+    "autor": "Hector Gabriel",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/keeping-hope-hector-gabriel.mp3",
+    "dur": 202
+   },
+   {
+    "titulo": "SOME KINDA STRANGER (Stella Explorer Rework)",
+    "autor": "Dylan Sitts",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/some-kinda-stranger-stella-explorer-rework-dylan-sitts.mp3",
+    "dur": 196
+   },
+   {
+    "titulo": "SPICE (Stella Explorer Rework)",
+    "autor": "Lu'",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/spice-stella-explorer-rework-lu.mp3",
+    "dur": 223
+   },
+   {
+    "titulo": "Seeds",
+    "autor": "rakey",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/seeds-rakey.mp3",
+    "dur": 222
+   },
+   {
+    "titulo": "Tides (Harrison First Rework)",
+    "autor": "Torii Wolf",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/tides-harrison-first-rework-torii-wolf.mp3",
+    "dur": 155
+   },
+   {
+    "titulo": "UNIVERSE (Instrumental Version)",
+    "autor": "ALICE",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/universe-instrumental-version-alice.mp3",
+    "dur": 149
+   },
+   {
+    "titulo": "Yo Quiero",
+    "autor": "Manuelo Jersey",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/yo-quiero-manuelo-jersey.mp3",
+    "dur": 166
+   }
+  ]
+ },
+ "rnb": {
+  "genero": "RNB",
+  "faixas": [
+   {
+    "titulo": "3AM",
+    "autor": "ALICE",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/3am-alice.mp3",
+    "dur": 165
+   },
+   {
+    "titulo": "All Day Long",
+    "autor": "Eva Hummingbird",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/all-day-long-eva-hummingbird.mp3",
+    "dur": 173
+   },
+   {
+    "titulo": "Muse",
+    "autor": "King Sis",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/muse-king-sis.mp3",
+    "dur": 229
+   },
+   {
+    "titulo": "Satisfied (Instrumental Version)",
+    "autor": "I'MIN",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/satisfied-instrumental-version-i-min.mp3",
+    "dur": 176
+   },
+   {
+    "titulo": "Satisfied",
+    "autor": "I'MIN",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/satisfied-i-min.mp3",
+    "dur": 176
+   },
+   {
+    "titulo": "Sin Permiso",
+    "autor": "AURA STELLA",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/sin-permiso-aura-stella.mp3",
+    "dur": 206
+   },
+   {
+    "titulo": "Trigger Finger (Instrumental Version)",
+    "autor": "King Sis",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/trigger-finger-instrumental-version-king-sis.mp3",
+    "dur": 169
+   },
+   {
+    "titulo": "Trigger Finger",
+    "autor": "King Sis",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/trigger-finger-king-sis.mp3",
+    "dur": 169
+   },
+   {
+    "titulo": "Try Again (Instrumental Version)",
+    "autor": "mr.",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/try-again-instrumental-version-mr.mp3",
+    "dur": 319
+   },
+   {
+    "titulo": "Try Again",
+    "autor": "mr.",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/try-again-mr.mp3",
+    "dur": 319
+   },
+   {
+    "titulo": "When You Know, You Know (Instrumental Version)",
+    "autor": "I'MIN",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/when-you-know-you-know-instrumental-version-i-min.mp3",
+    "dur": 192
+   },
+   {
+    "titulo": "Yo No Se",
+    "autor": "AURA STELLA",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/yo-no-se-aura-stella.mp3",
+    "dur": 127
+   },
+   {
+    "titulo": "in luv",
+    "autor": "Ayoub",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/in-luv-ayoub.mp3",
+    "dur": 146
+   },
+   {
+    "titulo": "make it right",
+    "autor": "Ayoub",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rnb/make-it-right-ayoub.mp3",
+    "dur": 146
+   }
+  ]
+ },
+ "rock": {
+  "genero": "ROCK",
+  "faixas": [
+   {
+    "titulo": "Above the Horizon",
+    "autor": "Out To The World",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/above-the-horizon-out-to-the-world.mp3",
+    "dur": 157
+   },
+   {
+    "titulo": "California",
+    "autor": "Sully Bright",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/california-sully-bright.mp3",
+    "dur": 304
+   },
+   {
+    "titulo": "Infected",
+    "autor": "LeDorean",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/infected-ledorean.mp3",
+    "dur": 176
+   },
+   {
+    "titulo": "Inferno",
+    "autor": "Rymdklang Soundtracks",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/inferno-rymdklang-soundtracks.mp3",
+    "dur": 199
+   },
+   {
+    "titulo": "Lemon Sun",
+    "autor": "First Timer",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/lemon-sun-first-timer.mp3",
+    "dur": 228
+   },
+   {
+    "titulo": "Out of Control",
+    "autor": "PW",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/out-of-control-pw.mp3",
+    "dur": 186
+   },
+   {
+    "titulo": "Paranoia Cloud",
+    "autor": "First Timer",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/paranoia-cloud-first-timer.mp3",
+    "dur": 182
+   },
+   {
+    "titulo": "Space Trip",
+    "autor": "OTE",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/space-trip-ote.mp3",
+    "dur": 237
+   },
+   {
+    "titulo": "Tornado Baby",
+    "autor": "SONTALK",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/tornado-baby-sontalk.mp3",
+    "dur": 209
+   },
+   {
+    "titulo": "We Stay",
+    "autor": "SONTALK",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/we-stay-sontalk.mp3",
+    "dur": 217
+   },
+   {
+    "titulo": "chokehold",
+    "autor": "pipsqueak",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/rock/chokehold-pipsqueak.mp3",
+    "dur": 156
+   }
+  ]
+ },
+ "funky": {
+  "genero": "FUNKY",
+  "faixas": [
+   {
+    "titulo": "All Works Out",
+    "autor": "Nic Hanson",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/all-works-out-nic-hanson.mp3",
+    "dur": 180
+   },
+   {
+    "titulo": "Atomic Bass",
+    "autor": "Daniel Fridell",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/atomic-bass-daniel-fridell.mp3",
+    "dur": 291
+   },
+   {
+    "titulo": "Dancing in the Darklight",
+    "autor": "Daniel Fridell",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/dancing-in-the-darklight-daniel-fridell.mp3",
+    "dur": 189
+   },
+   {
+    "titulo": "Don't Funk with Me",
+    "autor": "Daniel Fridell",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/don-t-funk-with-me-daniel-fridell.mp3",
+    "dur": 184
+   },
+   {
+    "titulo": "Electric Desire",
+    "autor": "Daniel Fridell",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/electric-desire-daniel-fridell.mp3",
+    "dur": 226
+   },
+   {
+    "titulo": "Four on the Funky Flour",
+    "autor": "Duke Herrington",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/four-on-the-funky-flour-duke-herrington.mp3",
+    "dur": 184
+   },
+   {
+    "titulo": "Funky Brew",
+    "autor": "Duke Herrington",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/funky-brew-duke-herrington.mp3",
+    "dur": 202
+   },
+   {
+    "titulo": "MOJO (Instrumental Version)",
+    "autor": "Nic Hanson",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/mojo-instrumental-version-nic-hanson.mp3",
+    "dur": 200
+   },
+   {
+    "titulo": "MOJO",
+    "autor": "Nic Hanson",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/mojo-nic-hanson.mp3",
+    "dur": 200
+   },
+   {
+    "titulo": "Reasons",
+    "autor": "Ryan James Carr",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/reasons-ryan-james-carr.mp3",
+    "dur": 166
+   },
+   {
+    "titulo": "Street Machine",
+    "autor": "Ben Elson",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/funky/street-machine-ben-elson.mp3",
+    "dur": 200
+   }
+  ]
+ },
+ "eletronic": {
+  "genero": "ELETRONIC",
+  "faixas": [
+   {
+    "titulo": "BALLIN",
+    "autor": "ROONIN",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/ballin-roonin.mp3",
+    "dur": 166
+   },
+   {
+    "titulo": "Big Boy",
+    "autor": "Bonkers Beat Club",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/big-boy-bonkers-beat-club.mp3",
+    "dur": 233
+   },
+   {
+    "titulo": "GET IT DONE",
+    "autor": "ROONIN",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/get-it-done-roonin.mp3",
+    "dur": 157
+   },
+   {
+    "titulo": "Give It to Me",
+    "autor": "Ooyy",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/give-it-to-me-ooyy.mp3",
+    "dur": 148
+   },
+   {
+    "titulo": "IMPACT",
+    "autor": "Cushy",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/impact-cushy.mp3",
+    "dur": 160
+   },
+   {
+    "titulo": "Invictus",
+    "autor": "Lennon Hutton",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/invictus-lennon-hutton.mp3",
+    "dur": 138
+   },
+   {
+    "titulo": "Redzone",
+    "autor": "Henry Miles",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/redzone-henry-miles.mp3",
+    "dur": 168
+   },
+   {
+    "titulo": "Seven Days",
+    "autor": "Hampus Naeselius",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/seven-days-hampus-naeselius.mp3",
+    "dur": 175
+   },
+   {
+    "titulo": "Take Me Away",
+    "autor": "dvine",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/take-me-away-dvine.mp3",
+    "dur": 187
+   },
+   {
+    "titulo": "The Finish Line",
+    "autor": "Bonkers Beat Club",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/the-finish-line-bonkers-beat-club.mp3",
+    "dur": 164
+   },
+   {
+    "titulo": "Unseen",
+    "autor": "Elin Piel",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/unseen-elin-piel.mp3",
+    "dur": 210
+   },
+   {
+    "titulo": "Virtue",
+    "autor": "Hampus Naeselius",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/virtue-hampus-naeselius.mp3",
+    "dur": 179
+   },
+   {
+    "titulo": "Yonomori",
+    "autor": "Rymdklang Soundtracks",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/eletronic/yonomori-rymdklang-soundtracks.mp3",
+    "dur": 180
+   }
+  ]
+ },
+ "latin": {
+  "genero": "LATIN",
+  "faixas": [
+   {
+    "titulo": "2 AM IN PR",
+    "autor": "Ray Ali",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/2-am-in-pr-ray-ali.mp3",
+    "dur": 160
+   },
+   {
+    "titulo": "Azul",
+    "autor": "Monique Hasbun",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/azul-monique-hasbun.mp3",
+    "dur": 195
+   },
+   {
+    "titulo": "Cuando Estes Conmigo (Clean Version)",
+    "autor": "Loreana",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/cuando-estes-conmigo-clean-version-loreana.mp3",
+    "dur": 193
+   },
+   {
+    "titulo": "El Matador",
+    "autor": "Jonathan Bondesson",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/el-matador-jonathan-bondesson.mp3",
+    "dur": 219
+   },
+   {
+    "titulo": "Faster",
+    "autor": "Alik",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/faster-alik.mp3",
+    "dur": 168
+   },
+   {
+    "titulo": "LEGENDS",
+    "autor": "MXRPHEUS",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/legends-mxrpheus.mp3",
+    "dur": 151
+   },
+   {
+    "titulo": "MAS PERREO",
+    "autor": "Lawd Ito",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/mas-perreo-lawd-ito.mp3",
+    "dur": 173
+   },
+   {
+    "titulo": "Mocktail",
+    "autor": "Jonathan Bondesson",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/mocktail-jonathan-bondesson.mp3",
+    "dur": 155
+   },
+   {
+    "titulo": "Que No Se Acabe",
+    "autor": "Manuelo Jersey",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/que-no-se-acabe-manuelo-jersey.mp3",
+    "dur": 156
+   },
+   {
+    "titulo": "Se Nos Dio",
+    "autor": "Manuelo Jersey",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/se-nos-dio-manuelo-jersey.mp3",
+    "dur": 161
+   },
+   {
+    "titulo": "hacerte de to",
+    "autor": "Alik",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/hacerte-de-to-alik.mp3",
+    "dur": 177
+   }
+  ]
+ },
+ "bossa": {
+  "genero": "BOSSA",
+  "faixas": [
+   {
+    "titulo": "A Melodia Cortejada",
+    "autor": "El Equipo Del Norte",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/a-melodia-cortejada-el-equipo-del-norte.mp3",
+    "dur": 162
+   },
+   {
+    "titulo": "Beco das Garrafas",
+    "autor": "El Equipo Del Norte",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/beco-das-garrafas-el-equipo-del-norte.mp3",
+    "dur": 176
+   },
+   {
+    "titulo": "Bossagogo",
+    "autor": "El Equipo Del Norte",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/bossagogo-el-equipo-del-norte.mp3",
+    "dur": 196
+   },
+   {
+    "titulo": "Bossahia",
+    "autor": "El Equipo Del Norte",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/bossahia-el-equipo-del-norte.mp3",
+    "dur": 203
+   },
+   {
+    "titulo": "Cruzeiro",
+    "autor": "El Equipo Del Norte",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/cruzeiro-el-equipo-del-norte.mp3",
+    "dur": 199
+   },
+   {
+    "titulo": "Cura (Instrumental Version)",
+    "autor": "Luiz Mura",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/cura-instrumental-version-luiz-mura.mp3",
+    "dur": 191
+   },
+   {
+    "titulo": "Deixa de Preguica (Instrumental Version)",
+    "autor": "Luiz Mura",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/deixa-de-preguica-instrumental-version-luiz-mura.mp3",
+    "dur": 221
+   },
+   {
+    "titulo": "Enrolacao (Instrumental Version)",
+    "autor": "Luiz Mura",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/enrolacao-instrumental-version-luiz-mura.mp3",
+    "dur": 166
+   },
+   {
+    "titulo": "Jardim da Promessa",
+    "autor": "Master One",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/jardim-da-promessa-master-one.mp3",
+    "dur": 154
+   },
+   {
+    "titulo": "Lobby Em Bossa",
+    "autor": "Master One",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/lobby-em-bossa-master-one.mp3",
+    "dur": 174
+   },
+   {
+    "titulo": "Lover of My Dreams (Instrumental Version)",
+    "autor": "Gamma Skies",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/lover-of-my-dreams-instrumental-version-gamma-skies.mp3",
+    "dur": 198
+   },
+   {
+    "titulo": "Luar em Copacabana",
+    "autor": "Martin Landstrom",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/luar-em-copacabana-martin-landstrom.mp3",
+    "dur": 225
+   },
+   {
+    "titulo": "Mestica (Instrumental Version)",
+    "autor": "Luiz Mura",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/mestica-instrumental-version-luiz-mura.mp3",
+    "dur": 206
+   },
+   {
+    "titulo": "Nascer Do Sol",
+    "autor": "El Equipo Del Norte",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/nascer-do-sol-el-equipo-del-norte.mp3",
+    "dur": 168
+   },
+   {
+    "titulo": "Peixoto",
+    "autor": "El Equipo Del Norte",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/bossa/peixoto-el-equipo-del-norte.mp3",
+    "dur": 192
+   }
+  ]
+ },
+ "hindi": {
+  "genero": "HINDI",
+  "faixas": [
+   {
+    "titulo": "Balle Balle",
+    "autor": "Aks & Lakshmi",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/balle-balle-aks-lakshmi.mp3",
+    "dur": 170
+   },
+   {
+    "titulo": "Detroit Dholi",
+    "autor": "Pawan Krishna",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/detroit-dholi-pawan-krishna.mp3",
+    "dur": 210
+   },
+   {
+    "titulo": "Ganesh Stuti",
+    "autor": "Siddharth Parashar",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/ganesh-stuti-siddharth-parashar.mp3",
+    "dur": 239
+   },
+   {
+    "titulo": "Goldie",
+    "autor": "Pawan Krishna",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/goldie-pawan-krishna.mp3",
+    "dur": 205
+   },
+   {
+    "titulo": "Govinda Murari",
+    "autor": "Tripti  Sharma",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/govinda-murari-tripti-sharma.mp3",
+    "dur": 243
+   },
+   {
+    "titulo": "Kaatil Eyes (Instrumental Version)",
+    "autor": "Aks & Lakshmi",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/kaatil-eyes-instrumental-version-aks-lakshmi.mp3",
+    "dur": 166
+   },
+   {
+    "titulo": "O Saajna (Instrumental Version)",
+    "autor": "Tripti  Sharma",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/o-saajna-instrumental-version-tripti-sharma.mp3",
+    "dur": 200
+   },
+   {
+    "titulo": "O Saajna",
+    "autor": "Tripti  Sharma",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/o-saajna-tripti-sharma.mp3",
+    "dur": 200
+   },
+   {
+    "titulo": "Pukaare",
+    "autor": "Kanika",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/pukaare-kanika.mp3",
+    "dur": 166
+   },
+   {
+    "titulo": "Roobaroo",
+    "autor": "Kanika",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/roobaroo-kanika.mp3",
+    "dur": 213
+   },
+   {
+    "titulo": "Sanskriti",
+    "autor": "Aks & Lakshmi",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/sanskriti-aks-lakshmi.mp3",
+    "dur": 138
+   },
+   {
+    "titulo": "Shri Ram Stuti",
+    "autor": "Siddharth Parashar",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/shri-ram-stuti-siddharth-parashar.mp3",
+    "dur": 301
+   },
+   {
+    "titulo": "Suhana",
+    "autor": "Aashray Harishankar",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/suhana-aashray-harishankar.mp3",
+    "dur": 237
+   },
+   {
+    "titulo": "Vibing Punjabi",
+    "autor": "Aks & Lakshmi",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hindi/vibing-punjabi-aks-lakshmi.mp3",
+    "dur": 192
+   }
+  ]
+ },
+ "middle-east": {
+  "genero": "MIDDLE EAST",
+  "faixas": [
+   {
+    "titulo": "Ahura",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/ahura-hatamitsunami.mp3",
+    "dur": 210
+   },
+   {
+    "titulo": "Asrar",
+    "autor": "Ealot",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/asrar-ealot.mp3",
+    "dur": 162
+   },
+   {
+    "titulo": "Crescent Nomad",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/crescent-nomad-hatamitsunami.mp3",
+    "dur": 179
+   },
+   {
+    "titulo": "Desert Knight",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/desert-knight-hatamitsunami.mp3",
+    "dur": 158
+   },
+   {
+    "titulo": "Lelan",
+    "autor": "Mukryan Molod",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/lelan-mukryan-molod.mp3",
+    "dur": 187
+   },
+   {
+    "titulo": "Lunar Drift",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/lunar-drift-hatamitsunami.mp3",
+    "dur": 147
+   },
+   {
+    "titulo": "Midnight in Shiraz",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/midnight-in-shiraz-hatamitsunami.mp3",
+    "dur": 209
+   },
+   {
+    "titulo": "Mirage",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/mirage-hatamitsunami.mp3",
+    "dur": 145
+   },
+   {
+    "titulo": "Nelia",
+    "autor": "Mukryan Molod",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/nelia-mukryan-molod.mp3",
+    "dur": 145
+   },
+   {
+    "titulo": "Revolution",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/revolution-hatamitsunami.mp3",
+    "dur": 174
+   },
+   {
+    "titulo": "Vesper",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/vesper-hatamitsunami.mp3",
+    "dur": 131
+   },
+   {
+    "titulo": "Yalda",
+    "autor": "HATAMITSUNAMI",
+    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/middle-east/yalda-hatamitsunami.mp3",
+    "dur": 156
+   }
+  ]
+ }
+}

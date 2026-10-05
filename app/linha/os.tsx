@@ -56,7 +56,7 @@ export const APPS: AppDef[] = [
   { id: "sintonia", nome: "SINT0NIA", cor: "#00e5ff", rota: "/sintonizador", pagina: 0, desc: "sintonizador" },
   { id: "freq", nome: "FR3Q_", cor: "#00ff9c", rota: "/spotify/auto-chuva", pagina: 0, desc: "player" },
   { id: "loop", nome: "//LOOP", cor: "#ff2d78", rota: "/tiktok/feed", pagina: 0, desc: "vídeos curtos" },
-  { id: "loja", nome: "LOJA DE DISCOS", cor: "#ffc857", rota: "/loja-discos", pagina: 1, desc: "domínio público pra tocar" },
+  { id: "loja", nome: "LOJA DE DISCOS", cor: "#ffc857", pagina: 1, desc: "discos pra kombi, pagos em neon" },
   { id: "museu", nome: "MUSEU", cor: "#e9e3d5", rota: "/museu", pagina: 1, desc: "quem inspira" },
   { id: "galeria", nome: "GALERIA", cor: "#3d7bff", rota: "/galeria", pagina: 1, desc: "quadros" },
   { id: "stream", nome: "STR34M", cor: "#ff4040", rota: "/youtube/cidade-neon", pagina: 1, desc: "clipes" },

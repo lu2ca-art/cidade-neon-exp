@@ -33,6 +33,8 @@ import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chama
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { audioCtx, fonteSom, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
+import { Loja } from "./loja"
+import { PRECO_DISCO } from "./discos"
 import dynamic from "next/dynamic"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
@@ -46,6 +48,9 @@ const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: fa
 type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
 
 type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: null }
+
+// quanto NEON rende acordar uma pessoa (uma missão inteira)
+const NEON_POR_PESSOA = 60
 
 type Tela =
   | { t: "entrada" }
@@ -406,14 +411,28 @@ export default function LinhaPage() {
       const logs = r.objeto ? { ...s.logs, [est]: [...(s.logs[est] ?? []), { k: "sistema" as const, texto: `o resto aconteceu ${LUGARES[c.lugar].no}` }] } : s.logs
       // o violão ficou no trem (ep. 2): o app VIOLÃO tranca até o GUITAR DRIVER
       const violao = r.perdeViolao ? false : s.violao
-      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, xp: s.xp + (r.objeto ? 100 : 30) }
+      // acordar alguém rende NEON (a rede te devolve)
+      const neon = (s.neon ?? 0) + (r.objeto ? NEON_POR_PESSOA : 0)
+      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon, xp: s.xp + (r.objeto ? 100 : 30) }
     })
-    if (r.objeto) track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
+    if (r.objeto) {
+      track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
+      setTimeout(() => avisar(`+${NEON_POR_PESSOA} neon`, "a rede te devolve. gasta na loja de discos", "#ffc857"), 1200)
+    }
     if (r.caca) {
       setPerseguido(true)
       setTimeout(() => setPerseguido(false), 60000)
     }
   }, [cena, avisar])
+
+  // a loja de discos: todo disco custa o mesmo em NEON
+  const comprarDisco = (id: string) => {
+    const s = saveRef.current
+    if ((s.neon ?? 0) < PRECO_DISCO || (s.discos ?? []).includes(id)) return false
+    setSave((x) => ({ ...x, neon: (x.neon ?? 0) - PRECO_DISCO, discos: [...(x.discos ?? []), id] }))
+    track("mission_step", { mission_id: "linha-loja", step: `comprou:${id}`, perfil: s.perfil ?? "?", fio_pos: -1 })
+    return true
+  }
 
   const religar = useCallback(() => {
     setSave((s) => ({ ...s, sinal: s.sinal + 10, nucleo: { ...s.nucleo, caido: false } }))
@@ -799,6 +818,7 @@ export default function LinhaPage() {
           <Jardim save={save} atualizar={atualizar} onVoltar={() => setTela({ t: "home" })} />
         )}
         {tela.t === "app" && tela.id === "violao" && <Violao onVoltar={() => setTela({ t: "home" })} />}
+        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarDisco} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
           <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} />
         )}
