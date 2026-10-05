@@ -993,7 +993,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {!caido && alvo && missaoAlvo && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: getEstacao(alvo.missao).cor }}>
           <small>{getEstacao(alvo.missao).personagem} · missão</small>
-          <b>{alvo.t === "busca" ? missaoAlvo.tarefa : alvo.t === "lugar" ? (alvo.pegar ? `buscar ${LUGARES[alvo.lugar].no}` : `encosta ${LUGARES[alvo.lugar].no}`) : alvo.t === "visita" ? `te chamou na estação ${getEstacao(alvo.missao).n}` : `levar ${missaoAlvo.busca?.nome ?? "a coisa"} na estação ${getEstacao(alvo.missao).n}`}</b>
+          <b>{alvo.t === "busca" ? missaoAlvo.tarefa : alvo.t === "lugar" ? (alvo.pegar ? `buscar ${LUGARES[alvo.lugar].no}` : `passa ${LUGARES[alvo.lugar].no}`) : alvo.t === "visita" ? `te chamou na estação ${getEstacao(alvo.missao).n}` : `levar ${missaoAlvo.busca?.nome ?? "a coisa"} na estação ${getEstacao(alvo.missao).n}`}</b>
           {alvo.t === "busca" && alvo.busca.em.length > 1 && <span>{alvo.busca.em.length - alvo.faltam.length}/{alvo.busca.em.length}</span>}
         </div>
       )}
@@ -2497,17 +2497,18 @@ function Cena({
     }
     fumaca.g.attributes.position.needsUpdate = true
 
-    // a vaga do lugar da missão: avisa quando tá chegando, e encostar
-    // devagar nela abre a cena (page.tsx → cena.tsx)
+    // o lugar da missão: avisa quando tá chegando, e PASSAR NA FRENTE dele
+    // (em qualquer faixa, em qualquer velocidade) abre a cena — a Kombi
+    // freia sozinha no modo cinema (page.tsx → cena.tsx)
     {
       const vg = vagaRef.current
       if (vg && !cine && j.via === vg.via) {
         const d = du(M.vias[j.via], j.u, vg.u)
         if (j.vagaAvisou !== vg.id && d > 0 && d < 260) {
           j.vagaAvisou = vg.id
-          ev.falar(vg.quem || "222 FM", `${vg.nome}: encosta na vaga ${vg.lado > 0 ? "da direita" : "da esquerda"}. devagar`)
+          ev.falar(vg.quem || "222 FM", `${vg.nome} tá chegando, ${vg.lado > 0 ? "na direita" : "na esquerda"}. é só passar na frente`)
         }
-        const naVaga = Math.abs(d) < VAGA / 2 + 6 && j.x * vg.lado > MEIA * 0.2 && Math.abs(j.v) < 7
+        const naVaga = Math.abs(d) < VAGA / 2 + 10
         if (naVaga && j.naVaga !== vg.id) { j.naVaga = vg.id; ev.vaga(vg.id) }
         if (Math.abs(d) > VAGA) j.naVaga = false
       }
@@ -2525,9 +2526,9 @@ function Cena({
         if (revelado === sg.id) {
           if (j.vagaAvisou !== sg.id && d > 0 && d < 200) {
             j.vagaAvisou = sg.id
-            ev.falar("222 FM", "…tem um beco aí na esquerda. entre os letreiros. ninguém olha pra ele")
+            ev.falar("222 FM", "…tem um beco aí na esquerda, entre os letreiros. ninguém olha pra ele. passa na frente")
           }
-          const naVaga = Math.abs(d) < VAGA / 2 + 6 && j.x * sg.lado > MEIA * 0.2 && Math.abs(j.v) < 7
+          const naVaga = Math.abs(d) < VAGA / 2 + 10
           if (naVaga && !j.naSeg) { j.naSeg = true; ev.vaga(sg.id) }
           if (Math.abs(d) > VAGA) j.naSeg = false
         }

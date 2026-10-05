@@ -1,7 +1,7 @@
 "use client"
 
 // Os lugares na estrada (lugares.ts): a fachada com o letreiro em neon, a
-// calçada até a pista, a VAGA pintada na beira (onde você encosta devagar
+// calçada até a pista, o PIN em cima quando é a missão (passar na frente
 // pra cena começar) e quem está esperando na porta. A cor do lugar é a da
 // estação de quem mora lá; a cor pessoal fica no detalhe (porta, toldo).
 
@@ -175,6 +175,7 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
       </group>
       {/* a vaga: um retângulo na beira da pista, do lado do lugar */}
       <Vaga p={p} cor={l.cor} materialRef={vaga} />
+      {alvo && !emCena && <Pin p={p} cor={l.cor} />}
       {/* coluna de luz em cima da vaga quando é ali que a missão manda */}
       <mesh ref={coluna} position={[p.vaga.x, p.vaga.y + 22, p.vaga.z]} visible={false}>
         <cylinderGeometry args={[0.9, 0.9, 44, 12, 1, true]} />
@@ -299,10 +300,40 @@ function Saida({ l, p, alvo }: { l: Lugar; p: PoseLugar; alvo: boolean }) {
         </mesh>
       </group>
       <Vaga p={p} cor={l.cor} materialRef={vaga} />
+      {alvo && <Pin p={p} cor={l.cor} />}
       <mesh ref={coluna} position={[p.vaga.x, p.vaga.y + 22, p.vaga.z]} visible={false}>
         <cylinderGeometry args={[0.9, 0.9, 44, 12, 1, true]} />
         <meshBasicMaterial color={l.cor} transparent opacity={0.22} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
+    </group>
+  )
+}
+
+// O PIN: um marcador de mapa flutuando em cima do lugar da missão (girando,
+// subindo e descendo), visível de longe. Passar na frente = entrar
+function Pin({ p, cor }: { p: PoseLugar; cor: string }) {
+  const g = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!g.current) return
+    const t = s.clock.elapsedTime
+    g.current.position.y = p.chao + 15 + Math.sin(t * 2) * 0.6
+    g.current.rotation.y = t * 1.2
+  })
+  return (
+    <group ref={g} position={[p.vaga.x, p.chao + 15, p.vaga.z]}>
+      <mesh position={[0, 2.2, 0]}>
+        <sphereGeometry args={[1.6, 20, 14]} />
+        <meshBasicMaterial color={cor} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 2.2, 0]}>
+        <sphereGeometry args={[0.7, 14, 10]} />
+        <meshBasicMaterial color="#ffffff" toneMapped={false} />
+      </mesh>
+      <mesh position={[0, -0.2, 0]} rotation-x={Math.PI}>
+        <coneGeometry args={[1.25, 3.2, 20]} />
+        <meshBasicMaterial color={cor} toneMapped={false} />
+      </mesh>
+      <pointLight position={[0, 1, 0]} color={cor} intensity={60} distance={30} decay={2} />
     </group>
   )
 }

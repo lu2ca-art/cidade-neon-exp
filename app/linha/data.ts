@@ -141,7 +141,11 @@ export type Missao =
   | { ok: false; motivo: "estacao" | "nivel" | "data"; quando?: string }
 
 export function missao(e: Estacao, nivel: number, agora = Date.now()): Missao {
-  if ((!e.prova && !e.cena) || (e.id !== "ontem" && !lancada(e, agora)))
+  // sem trava de data (04/10, LU2CA): o jogo é completo antes das músicas
+  // saírem — a história conta o que vem e gera expectativa. Só a RÁDIO
+  // espera o lançamento (radio.ts)
+  void agora
+  if (!e.prova && !e.cena)
     return { ok: false, motivo: "data", quando: e.lancamento ?? undefined }
   if (nivel < 1) return { ok: false, motivo: "estacao" }
   return { ok: true }
