@@ -110,6 +110,8 @@ interface Props {
   segredo?: { id: LugarId; voltas: number } | null
   // a 222 saiu do ar (ep. 3, a delação): sem rádio até o fim da missão
   foraDoAr?: boolean
+  // saiu do bar errado N vezes: o mundo repete a noite (mais bonito, mais vazio)
+  noiteRepete?: number
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -183,7 +185,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0 }: Props) {
   const M = useMemo(() => montarMundo(), [])
   const centro = M.vias[M.circuito.linha]
   const [fonte, setFonte] = useState(false)
@@ -368,6 +370,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     gota(6)
   }, [])
 
+  // a noite repete: de tempos em tempos a 222 estranha junto com a pessoa
+  useEffect(() => {
+    if (!noiteRepete) return
+    const frases = ["a mesma noite. de novo.", "tá tudo tão bonito. tá tudo tão vazio.", "alguém ainda tá no bar.", "vc já ouviu essa música. n ouviu?"]
+    let k = 0
+    const iv = setInterval(() => { if (!cinemaRef.current) falar("222 FM", frases[k++ % frases.length]) }, 70000)
+    return () => clearInterval(iv)
+  }, [noiteRepete, falar])
   // ── SOM: rádio OU toca-discos (nunca os dois). O disco é analógico:
   // nada interrompe; o rádio é a 222 (locutor, Núcleo, estreias, sintonia)
   const [aparelho, setAparelho] = useState<Fonte>(fonteSom.get())
@@ -928,7 +938,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""}`}>
+    <div className={`l-viagem ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
