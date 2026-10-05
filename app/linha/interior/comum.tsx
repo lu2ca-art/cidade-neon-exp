@@ -87,11 +87,11 @@ const GLB: Record<Pose, string> = { "em-pe": "/models/pessoa.glb", sentada: "/mo
 
 // quem está na sala. Quando fala: acende por cima, vira devagar pra câmera
 // e balança um pouco mais. `some` = sumiu (o bar esvaziando)
-export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, dancando = false, pele = "#14152a", some = false, escala = 1 }: {
+export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, dancando = false, pele = "#2c2838", some = false, escala = 1 }: {
   cor: string; pos: V3; vira?: number; pose?: Pose; falando?: boolean; dancando?: boolean; pele?: string; some?: boolean; escala?: number
 }) {
   const { scene } = useGLTF(GLB[pose])
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: pele, emissive: cor, emissiveIntensity: 0.08, roughness: 0.75, transparent: true }), [cor, pele])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: pele, emissive: cor, emissiveIntensity: 0.14, roughness: 0.75, transparent: true }), [cor, pele])
   const corpo = useMemo(() => {
     const g = scene.clone(true)
     g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.material = mat })
@@ -109,7 +109,7 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     const alvoOp = some ? 0 : 1
     mat.opacity += (alvoOp - mat.opacity) * Math.min(1, dt * 2.5)
     g.current.visible = mat.opacity > 0.02
-    mat.emissiveIntensity += ((falando ? 0.22 : 0.08) - mat.emissiveIntensity) * Math.min(1, dt * 4)
+    mat.emissiveIntensity += ((falando ? 0.3 : 0.14) - mat.emissiveIntensity) * Math.min(1, dt * 4)
     if (dancando) {
       g.current.position.y = pos[1] + Math.abs(Math.sin(t * 5.6)) * 0.12
       g.current.rotation.z = Math.sin(t * 2.8) * 0.12

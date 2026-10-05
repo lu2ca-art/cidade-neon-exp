@@ -86,7 +86,10 @@ export function SalaBar({ estado }: SalaProps) {
     <>
       <color attach="background" args={["#07060a"]} />
       <fog attach="fog" args={["#07060a", 6, 18]} />
-      <ambientLight intensity={0.22} color="#ffd9b0" />
+      <ambientLight intensity={0.3} color="#ffd9b0" />
+      <hemisphereLight args={["#ffcf9a", "#1a0c10", 0.35]} />
+      {/* luz de preenchimento vinda da porta (a rua lá fora) */}
+      <directionalLight position={[2, 3, 6]} intensity={0.55} color="#9fb4ff" />
       <Luzes n={n} />
       <Sala larg={12} fundo={10} alto={3.8} parede="#22161a" chao="#140d0d" teto="#0c0809" />
       <Letreiro />
@@ -120,7 +123,7 @@ export function SalaBar({ estado }: SalaProps) {
       ))}
       {/* a gente */}
       <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />
-      <Npc cor={ELA} pos={[0.6, 0, -3.65]} vira={0} pele="#2a1a24" falando={estado.falando === "ela"} />
+      <Npc cor={ELA} pos={[0.6, 0, -3.65]} vira={0} pele="#3a2430" falando={estado.falando === "ela"} />
       {MESAS.map((m, i) => (
         <Npc key={i} cor={m.cor} pos={m.pos} vira={m.vira} pose="sentada" some={i < n} />
       ))}
