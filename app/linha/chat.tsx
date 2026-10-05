@@ -279,9 +279,16 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           })
         } else setEspera({ t: "escolha", passo: p })
         break
-      case "input":
-        setEspera({ t: "input", passo: p })
+      case "input": {
+        // o nome já é conhecido: segue sem perguntar de novo
+        const nome = saveRef.current.nome
+        if (p.chave === "nome" && nome) {
+          const c = ctx({ nome })
+          setFila(p.resposta(nome).map((f) => (typeof f === "object" ? { de: f.de, texto: resolver(f.texto, c) } : resolver(f, c))))
+          avancar()
+        } else setEspera({ t: "input", passo: p })
         break
+      }
       case "prova":
         agendar(500, null, () => {
           empurrar({ k: "prova", id: p.id })

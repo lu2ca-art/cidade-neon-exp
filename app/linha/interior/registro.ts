@@ -33,7 +33,7 @@ export const GESTOS_3D: Partial<Record<LugarId, string[]>> = {
   "casa-drewboy": ["quarto"],
   escondido: ["prova:regar"],
   beco: ["ordem"],
-  "casa-dbee": ["casa"],
+  "casa-dbee": ["casa", "casa-inicio"],
 }
 
 // baixa antes de precisar: o motor das salas + a sala do lugar. Chamado

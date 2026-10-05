@@ -19,9 +19,19 @@ import { KombiHerbal } from "./estrada/KombiHerbal"
 import { Seguro } from "./estrada/Seguro"
 
 const DIST = 1300 // m até a casa
+const NEON = ["#ff3fb0", "#2fe8ff", "#ffc857", "#b38cff", "#5dffa0", "#1a1530", "#221a3a", "#1a1530"]
 const VMAX = 24 // m/s
 const POSTE = 38 // um poste a cada tantos metros
 const MARCA = 12 // marcas no meio da estrada
+
+// o começo: a reta da casa da D-Bee até a cidade (rascunho: o LU2CA reescreve)
+const LEGENDAS_CIDADE: { em: number; texto: string }[] = [
+  { em: 0.03, texto: "a casa some no retrovisor" },
+  { em: 0.2, texto: "o rádio pega um chiado. música, depois nada" },
+  { em: 0.42, texto: "a cidade cresce na frente. cada luz é alguém" },
+  { em: 0.64, texto: "você nunca esteve aqui. você conhece cada esquina" },
+  { em: 0.86, texto: "cidade neon" },
+]
 
 // as legendas da viagem, pelo caminho (fração da distância)
 const LEGENDAS: { em: number; texto: string }[] = [
@@ -32,14 +42,18 @@ const LEGENDAS: { em: number; texto: string }[] = [
   { em: 0.86, texto: "uma casa" },
 ]
 
-interface Estado { d: number; v: number; segura: boolean; fim: boolean; virou: boolean }
+interface Estado { d: number; v: number; segura: boolean; fim: boolean; virou: boolean; rumo: Rumo; dist: number; vmax: number }
+// "fora": da cidade pra casa da D-Bee (ep. 3). "cidade": o COMEÇO do jogo, da
+// casa dela até a cidade numa reta muito veloz (o choque de ambientes)
+export type Rumo = "fora" | "cidade"
 
 // `chegou`: a viagem acabou e a cena da casa está rolando por cima — a
 // estrada fica de fundo, parada, com a câmera de frente pra casa
-export function Viagem({ onFim, chegou = false }: { onFim: () => void; chegou?: boolean }) {
-  const st = useRef<Estado>({ d: 0, v: 0, segura: false, fim: false, virou: false })
+export function Viagem({ onFim, chegou = false, rumo = "fora" }: { onFim: () => void; chegou?: boolean; rumo?: Rumo }) {
+  const st = useRef<Estado>({ d: 0, v: 0, segura: false, fim: false, virou: false, rumo, dist: rumo === "cidade" ? 1600 : DIST, vmax: rumo === "cidade" ? 62 : VMAX })
+  const legendas = rumo === "cidade" ? LEGENDAS_CIDADE : LEGENDAS
   const [legenda, setLegenda] = useState<string | null>(null)
-  const [plano, setPlano] = useState<"tras" | "frente">("tras")
+  const [plano, setPlano] = useState<"tras" | "frente">(rumo === "cidade" ? "frente" : "tras")
   const [corte, setCorte] = useState(false)
   const [parado, setParado] = useState(true)
   const [saindo, setSaindo] = useState(false)
@@ -49,14 +63,14 @@ export function Viagem({ onFim, chegou = false }: { onFim: () => void; chegou?: 
   // o que muda devagar (legenda, plano, fim) sai do estado da física
   // num relógio separado, pra não re-renderizar a cada frame
   useEffect(() => {
-    if (chegou) { const s = st.current; s.d = DIST; s.v = 0; s.fim = true; return }
+    if (chegou) { const s = st.current; s.d = s.dist; s.v = 0; s.fim = true; return }
     const iv = setInterval(() => {
       const s = st.current
-      const p = s.d / DIST
-      const l = [...LEGENDAS].reverse().find((x) => p >= x.em && p < x.em + 0.12)
+      const p = s.d / s.dist
+      const l = [...legendas].reverse().find((x) => p >= x.em && p < x.em + 0.12)
       setLegenda(l ? l.texto : null)
       setParado(s.v < 0.5 && !s.segura)
-      if (p >= 0.45 && !s.virou) {
+      if (p >= 0.45 && !s.virou && s.rumo === "fora") {
         s.virou = true
         setPlano("frente")
         setCorte(true)
@@ -69,6 +83,7 @@ export function Viagem({ onFim, chegou = false }: { onFim: () => void; chegou?: 
       }
     }, 200)
     return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chegou])
 
   // atalho de desenvolvimento: __viagem(1200) pula pra perto da casa
@@ -159,10 +174,10 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
     const dt = Math.min(dtBruto, 0.05)
     const e = st.current
     // só dirigir: segura acelera, solta vai parando (na chegada, freia sozinha)
-    const falta = DIST - e.d
-    const alvo = e.fim ? 0 : e.segura ? (falta < 60 ? Math.max(4, falta * 0.3) : VMAX) : 0
-    e.v += (alvo - e.v) * Math.min(1, dt * (e.segura ? 0.55 : 0.35))
-    e.d = Math.min(DIST, e.d + e.v * dt)
+    const falta = e.dist - e.d
+    const alvo = e.fim ? 0 : e.segura ? (falta < 60 ? Math.max(4, falta * 0.3) : e.vmax) : 0
+    e.v += (alvo - e.v) * Math.min(1, dt * (e.segura ? (e.rumo === "cidade" ? 0.9 : 0.55) : 0.35))
+    e.d = Math.min(e.dist, e.d + e.v * dt)
     vel.current = e.v
     const t = s.clock.elapsedTime
     // a Kombi balança na terra
@@ -190,13 +205,20 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
       marcas.current.instanceMatrix.needsUpdate = true
     }
     // a casa vem chegando; a luz longe cresce; a cidade some no retrovisor
-    if (casa.current) casa.current.position.z = -(DIST - e.d) - 14
+    if (casa.current) casa.current.position.z = e.rumo === "cidade" ? 24 + e.d : -(DIST - e.d) - 14
     if (luzLonge.current) {
       const p = e.d / DIST
       luzLonge.current.scale.setScalar(1 + p * 3)
-      luzLonge.current.visible = DIST - e.d > 380
+      luzLonge.current.visible = e.rumo === "fora" && DIST - e.d > 380
     }
-    if (cidade.current) cidade.current.position.z = e.d * 0.35
+    // fora: a cidade fica pra trás. cidade: ela vem chegando, enorme
+    if (cidade.current) cidade.current.position.z = e.rumo === "cidade" ? -(e.dist + 260) + e.d : e.d * 0.35
+    // a velocidade abre a lente (a reta do começo)
+    if (e.rumo === "cidade") {
+      const pc = camera as THREE.PerspectiveCamera
+      const fov = 50 + Math.min(28, e.v * 0.45)
+      if (Math.abs(pc.fov - fov) > 0.1) { pc.fov += (fov - pc.fov) * Math.min(1, dt * 3); pc.updateProjectionMatrix() }
+    }
     // a câmera: primeiro olhando pra trás (a cidade), depois pra frente
     if (plano === "casa") {
       // de frente pra varanda, a Kombi no canto do quadro
@@ -243,9 +265,9 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
       {/* a cidade lá atrás, cinza, ficando pequena */}
       <group ref={cidade}>
         {predios.map((p, i) => (
-          <mesh key={i} position={[p.x, p.h / 2, p.z]}>
+          <mesh key={i} position={[p.x, p.h / 2, st.current.rumo === "cidade" ? p.z - 1300 : p.z]}>
             <boxGeometry args={[p.w, p.h, p.w]} />
-            <meshBasicMaterial color={p.acesa ? "#3a3c46" : "#15161c"} fog={false} />
+            <meshBasicMaterial color={st.current.rumo === "cidade" ? NEON[i % NEON.length] : p.acesa ? "#3a3c46" : "#15161c"} fog={false} toneMapped={st.current.rumo !== "cidade"} />
           </mesh>
         ))}
       </group>

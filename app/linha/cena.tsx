@@ -84,7 +84,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   // explorar só existe com a sala em 3D: sem ela (aparelho que não aguentou),
   // a cena segue sozinha
   useEffect(() => {
-    if ((gestoAgora !== "quarto" && gestoAgora !== "casa") || gesto3d) return
+    if ((gestoAgora !== "quarto" && gestoAgora !== "casa" && gestoAgora !== "casa-inicio") || gesto3d) return
     const t = setTimeout(() => setPos((p) => p + 1), 0)
     return () => clearTimeout(t)
   }, [gestoAgora, gesto3d])
@@ -126,7 +126,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
     <div className={`l-cena ${atual ? "" : "is-livre"} ${gestos3d.length ? "is-sala" : ""}`} onClick={atual ? avancar : undefined}>
       <div className="l-cena-tarja is-cima" />
       <div className="l-cena-tarja is-baixo" />
-      <small className="l-cena-lugar">{[LUGARES[cena.lugar].letreiro.toLowerCase(), LUGARES[cena.lugar].nome].filter(Boolean).join(" · ")}</small>
+      <small className="l-cena-lugar">{cena.titulo ?? [LUGARES[cena.lugar].letreiro.toLowerCase(), LUGARES[cena.lugar].nome].filter(Boolean).join(" · ")}</small>
 
       {atual && atual.tipo === "nucleo" && (
         <div className="l-cena-nucleo"><b>NÚCLEO</b><p>{atual.texto.slice(0, letras)}</p></div>
@@ -190,6 +190,7 @@ const DICAS_3D: Record<string, string> = {
   fuga: "toca rápido: corre pra porta",
   casa: "procura pela casa. toca no que chamar sua atenção",
   quarto: "olha o quarto. toca no que chamar sua atenção",
+  "casa-inicio": "olha em volta. toca no que chamar sua atenção",
 }
 function Dica3d({ id, podeNegar, voltou, onNegar }: { id: string; podeNegar: boolean; voltou: boolean; onNegar: () => void }) {
   const texto = id === "copos" ? (voltou ? "o mesmo balcão. a mesma escolha?" : DICAS_3D.copos) : DICAS_3D[id] ?? "toca na cena"

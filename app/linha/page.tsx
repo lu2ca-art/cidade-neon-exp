@@ -18,7 +18,7 @@ import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
 import { MISSOES, abertas, alvoDe, ativa, etapaDe } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
-import { cenaDe, type Reliquia } from "./cenas"
+import { CENA_INICIO, cenaDe, type Reliquia } from "./cenas"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
 import { LUGARES, type LugarId } from "./lugares"
 import { proximaFreq } from "./radio"
@@ -35,6 +35,8 @@ import { audioCtx, fonteSom, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
 import { Loja } from "./loja"
 import { PRECO_DISCO } from "./discos"
+import { BLOCOS, ITENS, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
+import { Checklist } from "./tutorial-tela"
 import dynamic from "next/dynamic"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
@@ -50,12 +52,16 @@ type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
 type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: null }
 
 // quanto NEON rende acordar uma pessoa (uma missão inteira)
-const NEON_POR_PESSOA = 60
+// um disco por pessoa acordada (a primeira já compra o primeiro disco)
+const NEON_POR_PESSOA = 100
 
 type Tela =
   | { t: "entrada" }
   | { t: "bloqueio" }
   | { t: "chegada" }
+  // o COMEÇO (05/10): a casa da D-Bee, longe de tudo, e a reta até a cidade
+  | { t: "casa" }
+  | { t: "reta" }
   | { t: "chat"; id: ChatRoteiro; volta: Volta }
   | { t: "home" }
   | { t: "app"; id: AppId }
@@ -204,7 +210,13 @@ export default function LinhaPage() {
   // dirigindo: quem chama a próxima missão manda mensagem na tela da Kombi
   // (não precisa pegar o celular pra começar a conversa)
   const quemChama = !save.nucleo.caido ? ativa(save, nivelDe(save)) : null
-  const chamaNaEstrada = !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
+  // o tutorial (tutorial.ts): ninguém chama antes da D-Bee apresentar o
+  // Mubarak (bloco 2)
+  const tut = emTutorial(save)
+  const blocoTut = tut ? blocoAtual(save) : BLOCOS.length
+  // e até o fim do tutorial, só a primeira pessoa chama
+  const tutLibera = !tut || (quemChama === PRIMEIRA && (blocoTut > 1 || (blocoTut === 1 && ligou(save, 1))))
+  const chamaNaEstrada = tutLibera && !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
   // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
   // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
   // tudo no histórico, e a D-Bee LIGA. Desligou: ela escreve (a abertura)
@@ -272,7 +284,8 @@ export default function LinhaPage() {
       // lido na hora (o save muda a cada orb; não pode reiniciar o timer)
       const save = saveRef.current
       // o jeito dessa pessoa (sorteado uma vez, nunca igual ao anterior)
-      const modo = save.modos[quemChama] ?? sortearModo(save.ultimoModo)
+      // no tutorial a primeira pessoa escreve (é ela que pergunta o nome)
+      const modo = save.modos[quemChama] ?? (emTutorial(save) ? "texto" : sortearModo(save.ultimoModo))
       if (!save.modos[quemChama]) setSave((s) => ({ ...s, modos: { ...s.modos, [quemChama]: modo }, ultimoModo: modo }))
       track("mission_started", { mission_id: `linha-${quemChama}`, place_id: `linha-kombi-${modo}` })
       if (modo === "ligacao") {
@@ -441,7 +454,48 @@ export default function LinhaPage() {
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
-  const listaMissoes = useMemo(() => abertas(save, nivel), [save, nivel])
+  const listaMissoes = useMemo(() => {
+    const l = abertas(save, nivel)
+    // no tutorial, só a primeira pessoa (as outras abrem quando ele acaba)
+    return emTutorial(save) ? l.filter((m) => m.id === PRIMEIRA) : l
+  }, [save, nivel])
+
+  // ── o TUTORIAL (tutorial.ts) ──
+  // a D-Bee liga antes de cada bloco
+  const ligaTut = tut && blocoTut < BLOCOS.length && !ligou(save, blocoTut)
+  useEffect(() => {
+    if (!pronto || !ligaTut || tela.t !== "corrida" || emSala || cinema || invasao || aoVivo || ligacao) return
+    const t = setTimeout(() => setLigacao({ lig: LIGACOES[BLOCOS[blocoTut].lig] }), blocoTut === 0 ? 3500 : 2500)
+    return () => clearTimeout(t)
+  }, [pronto, ligaTut, blocoTut, tela.t, emSala, cinema, invasao, aoVivo, ligacao])
+  const marcarTut = useCallback((i: ItemTutorial) => setSave((s) => ((s.tutorial ?? []).includes(i) ? s : { ...s, tutorial: [...(s.tutorial ?? []), i] })), [])
+  // dirigir com a 222 de volta: 20 s rodando depois da ligação dela
+  const rodandoTut = tut && ligou(save, 0) && !feito(save, "ouvir") && tela.t === "corrida" && !emSala && !cinema && !ligacao
+  useEffect(() => {
+    if (!rodandoTut) return
+    const t = setTimeout(() => marcarTut("ouvir"), 20000)
+    return () => clearTimeout(t)
+  }, [rodandoTut, marcarTut])
+  // cada item marcado: um comentário dela. Tudo feito: a cidade é sua
+  const feitosTut = useRef<Set<ItemTutorial> | null>(null)
+  useEffect(() => {
+    if (!pronto || !tut) return
+    const agora = new Set(BLOCOS.flatMap((b) => b.itens).filter((i) => feito(save, i)))
+    const antes = feitosTut.current
+    feitosTut.current = agora
+    if (!antes) return
+    const novo = [...agora].find((i) => !antes.has(i))
+    // (sem cleanup: o save muda o tempo todo e não pode cancelar o aviso)
+    // acordar alguém já tem o aviso do NEON: o comentário vem depois
+    if (novo) setTimeout(() => avisar("D-Bee", ITENS[novo].comenta, "#3d7bff"), novo === "acordar" ? 5600 : 900)
+    if (novo && blocoAtual(save) >= BLOCOS.length) {
+      setTimeout(() => {
+        setSave((s) => ({ ...s, tutorial: [...new Set([...(s.tutorial ?? []), "fim"])], foco: undefined }))
+        avisar("a cidade é sua", "tem gente esperando em cada canto. as missões tão abertas", "#ffc857")
+        track("mission_completed", { mission_id: "linha-tutorial", duration_ms: 0 })
+      }, 5600)
+    }
+  }, [save, pronto, tut, avisar])
   const irAgora = (m: (typeof listaMissoes)[number]) => {
     setPainelMissoes(false)
     // quem estava chamando e não é a escolhida espera (chama de novo depois)
@@ -478,7 +532,7 @@ export default function LinhaPage() {
   }, [avisar])
 
   // já fez o quiz = está dentro da cidade
-  const dentro = !!save.estacao
+  const dentro = !!save.estacao || !!save.casa
 
   const entrar = () => {
     audioCtx()
@@ -501,8 +555,11 @@ export default function LinhaPage() {
         return { ...s, completos: s.completos.filter((c) => c !== "abertura" && c !== "grupo"), logs }
       })
       setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
+    } else if (!save.casa) {
+      // primeira vez: acorda na casa da D-Bee, longe de tudo
+      setTela({ t: "casa" })
     } else {
-      // primeira vez: entra na cidade de Kombi, não pelo celular
+      // já passou pela casa: entra na cidade de Kombi, não pelo celular
       setCinema("rodando")
       setEstrada(true)
       setTela({ t: "chegada" })
@@ -711,10 +768,11 @@ export default function LinhaPage() {
           />
         )}
         {tela.t === "corrida" && !emSala && !cinema && nivel >= 1 && listaMissoes.length > 0 && (
-          <button type="button" className={`l-btn-missoes ${painelMissoes ? "is-aberto" : ""}`} onClick={() => setPainelMissoes((v) => !v)}>
+          <button type="button" className={`l-btn-missoes ${painelMissoes ? "is-aberto" : ""}`} onClick={() => { setPainelMissoes((v) => !v); if (tut) marcarTut("missoes") }}>
             missões <em>{listaMissoes.length}</em>
           </button>
         )}
+        {tut && tela.t === "corrida" && !emSala && !cinema && !painelMissoes && !aoVivo && <Checklist save={save} />}
         {painelMissoes && tela.t === "corrida" && !emSala && (
           <div className="l-missoes" role="dialog" aria-label="Missões">
             <header><b>quem precisa de você</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
@@ -731,6 +789,49 @@ export default function LinhaPage() {
               })}
             </ul>
           </div>
+        )}
+        {tela.t === "casa" && (
+          <>
+            <Interior key="sala:inicio" lugar="casa-dbee" inicio />
+            <CenaLugar
+              key="cena:inicio"
+              gestos3d={GESTOS_3D["casa-dbee"] ?? []}
+              cena={CENA_INICIO}
+              memoria={0}
+              objetos={save.objetos}
+              tom={tomMaior}
+              semSom={semSom}
+              onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
+              onFim={() => {
+                // o começo antigo (o grupo rolando, as ligações dbee-0/1, a
+                // abertura com o quiz) não acontece: o grupo fica no
+                // histórico do N3XO, o violão (que tava na casa) vem junto e
+                // a primeira pessoa é o Mubarak (o tutorial)
+                setSave((s) => {
+                  const grupo: Item[] = ROTEIROS.grupo.passos.flatMap((p): Item[] => (p.t === "msg" ? [{ k: "msg", texto: typeof p.texto === "string" ? p.texto : "", de: p.de }] : p.t === "nucleo" ? [{ k: "nucleo", texto: p.texto }] : p.t === "sistema" ? [{ k: "sistema", texto: p.texto }] : []))
+                  return {
+                    ...s, casa: true, violao: true, foco: s.foco ?? PRIMEIRA, tutorial: s.tutorial ?? [],
+                    completos: [...new Set([...s.completos, "grupo" as const, "abertura" as const])],
+                    ligacoes: [...new Set([...s.ligacoes, "dbee-0", "dbee-1"])],
+                    logs: { ...s.logs, grupo },
+                  }
+                })
+                track("mission_step", { mission_id: "linha-inicio", step: "casa:fim", perfil: save.perfil ?? "?", fio_pos: -1 })
+                setTela({ t: "reta" })
+              }}
+            />
+          </>
+        )}
+        {tela.t === "reta" && (
+          <Viagem
+            rumo="cidade"
+            onFim={() => {
+              // a reta acabou na entrada da cidade: o Núcleo invade o rádio
+              setCinema("rodando")
+              setEstrada(true)
+              setTela({ t: "chegada" })
+            }}
+          />
         )}
         {tela.t === "chegada" && (
           <Chegada

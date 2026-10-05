@@ -159,11 +159,12 @@ export const NIVEIS = [
   { nome: "nectar", como: "junta os 6 objetos", libera: "o fim da linha" },
 ] as const
 
-export function nivelDe(p: { estacao: EstacaoId | null; objetos: EstacaoId[] }) {
+export function nivelDe(p: { estacao: EstacaoId | null; objetos: EstacaoId[]; casa?: boolean }) {
   if (p.objetos.length >= 6) return 4
   if (p.objetos.length >= 4) return 3
   if (p.objetos.length >= 2) return 2
-  if (p.estacao) return 1
+  // quem começou pela casa da D-Bee (05/10) entra sem a leitura NECTAR
+  if (p.estacao || p.casa) return 1
   return 0
 }
 

@@ -69,6 +69,13 @@ export interface Save {
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>
+  // já acordou na casa da D-Bee e fez a reta até a cidade (o começo, 05/10)
+  casa?: boolean
+  // o tutorial (tutorial.ts): itens marcados à mão ("ouvir", "missoes") e
+  // "fim" quando acaba
+  tutorial?: string[]
+  // a versão do save (VERSAO): save de versão diferente começa do zero
+  versao?: number
   // a missão que a pessoa escolheu no painel MISSÕES (vale primeiro)
   foco?: EstacaoId
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
@@ -80,8 +87,13 @@ export interface Save {
 }
 
 const CHAVE = "cn-linha-222"
+// sobe quando o começo do jogo muda a ponto de save antigo não fazer sentido.
+// 2 (05/10): o novo começo (a casa da D-Bee, a reta, o tutorial) — o LU2CA
+// zerou o save de todo mundo
+export const VERSAO = 2
 
 export const VAZIO: Save = {
+  versao: VERSAO,
   nome: "",
   estacao: null,
   pesos: {},
@@ -122,6 +134,7 @@ export function carregar(): Save {
     const raw = localStorage.getItem(CHAVE)
     if (!raw) return VAZIO
     const bruto = JSON.parse(raw)
+    if (bruto.versao !== VERSAO) return VAZIO
     const s: Save = { ...VAZIO, ...bruto }
     // quem já tinha estação antes do fio existir ganha um, pelas respostas
     if (s.estacao && !s.fio.length) s.fio = montarFio(s.pesos, s.estacao, s.perfil)

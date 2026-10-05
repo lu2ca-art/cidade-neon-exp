@@ -104,6 +104,68 @@ export const LIGACOES: Record<string, Ligacao> = {
       { t: "fala", fala: "vai ter gente te chamando na tela da kombi. responde dirigindo mesmo. e se eu ligar, atende. falou" },
     ],
   },
+
+  // ── o TUTORIAL (tutorial.ts): uma ligação curta antes de cada bloco.
+  // RASCUNHO, o LU2CA reescreve. Ela já disse quem é e o que tá em jogo na
+  // casa (cenas.ts, CENA_INICIO): aqui só o que vem agora, com o susto e o
+  // carinho dela, nunca aula
+  // A: acabou de entrar na cidade e o Núcleo tomou o rádio
+  "dbee-a": {
+    id: "dbee-a",
+    quem: "D-Bee",
+    recado: "chegou? dirige um pouco. a 222 tá embaixo do barulho",
+    passos: [
+      {
+        t: "pergunta",
+        fala: "chegou? ouvi daqui o rádio gritando",
+        opcoes: [
+          { label: "o rádio tá falando sozinho", tom: "dormindo", palavras: ["radio", "falando", "sozinho"], resposta: [{ fala: "sozinho não. é ele" }] },
+          { label: "quem tomou a rádio?", tom: "acordando", palavras: ["quem", "tomou", "radio"], resposta: [{ fala: "o núcleo. a voz da cidade agora é dele" }] },
+          { label: "ele sabe que eu cheguei?", tom: "acordado", palavras: ["sabe", "cheguei", "chegou"], resposta: [{ fala: "ainda não. por isso eu ligo, não escrevo" }] },
+        ],
+      },
+      { t: "fala", fala: "a 222 tá viva embaixo disso. dirige um pouco que ela volta" },
+      { t: "fala", fala: "e não roda à toa. tem gente precisando de vc" },
+    ],
+  },
+  // B: a primeira pessoa (o Mubarak, no bar). Ela não consegue mais chegar nele
+  "dbee-b": {
+    id: "dbee-b",
+    quem: "D-Bee",
+    recado: "tem um amigo meu num bar. ele vai te chamar. atende ele",
+    passos: [
+      { t: "fala", fala: "tem um amigo meu num bar. faz tempo que ele não sai da mesma noite" },
+      {
+        t: "pergunta",
+        fala: "ele vai te chamar. vc atende?",
+        opcoes: [
+          { label: "atendo", tom: "acordado", palavras: ["atendo", "sim", "claro", "bora"], resposta: [{ fala: "sabia" }] },
+          { label: "e se eu não souber o que dizer?", tom: "acordando", palavras: ["saber", "dizer", "nao", "sei"], resposta: [{ fala: "ninguém sabe. ele também não" }] },
+          { label: "por que não vai vc?", tom: "dormindo", palavras: ["porque", "por", "que", "voce", "vc"], resposta: [{ fala: "pq a minha voz ele já não escuta" }] },
+        ],
+      },
+      { t: "fala", fala: "vai. eu fico na escuta" },
+    ],
+  },
+  // C: acordou a primeira pessoa e ganhou NEON. A loja de discos
+  "dbee-c": {
+    id: "dbee-c",
+    quem: "D-Bee",
+    recado: "o neon que vc ganhou é nosso. passa na loja de discos",
+    passos: [
+      {
+        t: "pergunta",
+        fala: "vc viu a cara dele quando saiu?",
+        opcoes: [
+          { label: "parecia que tinha dormido anos", tom: "dormindo", palavras: ["dormido", "anos", "sono"], resposta: [{ fala: "três. mas quem tá contando" }] },
+          { label: "ele vai ficar bem?", tom: "acordando", palavras: ["bem", "vai", "ficar"], resposta: [{ fala: "hoje vai. amanhã a gente vê" }] },
+          { label: "vi. ele lembrou", tom: "acordado", palavras: ["vi", "lembrou", "lembra"], resposta: [{ fala: "…" }, { fala: "faz tempo que eu não ouço isso" }] },
+        ],
+      },
+      { t: "fala", fala: "o neon que vc ganhou não compra nada deles. só o que é feito por gente" },
+      { t: "fala", fala: "passa na loja de discos. escolhe um pra kombi. essa cidade tá quieta demais" },
+    ],
+  },
 }
 
 // tira acento e pontuação pra comparar o que a pessoa falou
@@ -147,6 +209,9 @@ export function ligacaoDaMissao(id: EstacaoId, quem: string, c: Ctx): { lig: Lig
   r.passos.slice(0, tarefa).forEach((p: Passo) => {
     if (p.t === "msg") passos.push({ t: "fala", fala: resolver(p.texto, c) })
     else if (p.t === "voz") passos.push({ t: "fala", fala: p.fala, src: p.src })
+    // o nome por voz não dá: quem já tem nome ouve a resposta; sem nome, a
+    // missão vem por texto (page.tsx)
+    else if (p.t === "input" && p.chave === "nome" && c.nome !== "você") p.resposta(c.nome).forEach((f) => passos.push({ t: "fala", fala: resolver(typeof f === "object" ? f.texto : f, c) }))
     else if (p.t === "escolha") {
       const ant = passos[passos.length - 1]
       const fala = p.pergunta ?? (ant?.t === "fala" ? (passos.pop() as Fala).fala : "e aí?")

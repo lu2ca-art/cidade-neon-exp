@@ -250,7 +250,10 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
     status: "o bar de sempre",
     passos: [
       { t: "msg", texto: "ah. vc" },
-      { t: "msg", texto: (c) => `${c.nome}. nome de quem ainda acredita em coisa` },
+      // o começo novo (05/10) não pergunta o nome: o Mubarak, a primeira
+      // pessoa, pergunta. Quem já tem nome não digita de novo (chat.tsx)
+      { t: "msg", texto: (c) => (c.nome === "você" ? "a d-bee nem me falou seu nome" : "a d-bee falou de vc") },
+      { t: "input", chave: "nome", placeholder: "seu nome ou apelido", resposta: (v) => [`${v}. nome de quem ainda acredita em coisa`] },
       { t: "msg", texto: "aqui o bar fecha e abre no mesmo copo. todo dia igual" },
       {
         t: "escolha",
