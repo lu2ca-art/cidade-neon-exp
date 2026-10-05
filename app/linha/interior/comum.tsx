@@ -91,7 +91,7 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
   cor: string; pos: V3; vira?: number; pose?: Pose; falando?: boolean; dancando?: boolean; pele?: string; some?: boolean; escala?: number
 }) {
   const { scene } = useGLTF(GLB[pose])
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: pele, emissive: cor, emissiveIntensity: 0.2, roughness: 0.7, transparent: true }), [cor, pele])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: pele, emissive: cor, emissiveIntensity: 0.08, roughness: 0.75, transparent: true }), [cor, pele])
   const corpo = useMemo(() => {
     const g = scene.clone(true)
     g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.material = mat })
@@ -109,7 +109,7 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     const alvoOp = some ? 0 : 1
     mat.opacity += (alvoOp - mat.opacity) * Math.min(1, dt * 2.5)
     g.current.visible = mat.opacity > 0.02
-    mat.emissiveIntensity += ((falando ? 0.55 : 0.2) - mat.emissiveIntensity) * Math.min(1, dt * 4)
+    mat.emissiveIntensity += ((falando ? 0.22 : 0.08) - mat.emissiveIntensity) * Math.min(1, dt * 4)
     if (dancando) {
       g.current.position.y = pos[1] + Math.abs(Math.sin(t * 5.6)) * 0.12
       g.current.rotation.z = Math.sin(t * 2.8) * 0.12
@@ -127,7 +127,7 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     let dy = alvoY - g.current.rotation.y
     dy = Math.atan2(Math.sin(dy), Math.cos(dy))
     g.current.rotation.y += dy * Math.min(1, dt * 2.2)
-    if (luz.current) luz.current.intensity += ((falando ? 5 : 0) - luz.current.intensity) * Math.min(1, dt * 4)
+    if (luz.current) luz.current.intensity += ((falando ? 1.6 : 0) - luz.current.intensity) * Math.min(1, dt * 4)
   })
   return (
     <group ref={g} position={pos} rotation-y={vira} scale={escala}>
@@ -137,7 +137,7 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
         <boxGeometry args={[0.3, 0.035, 0.02]} />
         <meshBasicMaterial color={cor} toneMapped={false} transparent opacity={some ? 0 : 1} />
       </mesh>
-      <pointLight ref={luz} position={[0, 2.4, 0.6]} color={cor} intensity={0} distance={4} decay={2} />
+      <pointLight ref={luz} position={[0, 2.2, -0.5]} color={cor} intensity={0} distance={4} decay={2} />
     </group>
   )
 }

@@ -23,11 +23,11 @@ const OURO = "#ffc857"
 const ELA = "#ff3f7a"
 
 const PLANOS: Record<string, Plano> = {
-  entrada: { pos: [0.4, 1.65, 4.2], olha: [-0.2, 1.3, -3], fov: 52 },
-  balcao: { pos: [-0.2, 1.42, -1.25], olha: [0.3, 1.45, -3.8], fov: 50 },
-  mubarak: { pos: [-0.35, 1.45, -1.15], olha: [-1.45, 1.2, -1.85], fov: 44 },
-  ela: { pos: [-0.15, 1.42, -1.4], olha: [0.6, 1.55, -3.6], fov: 40 },
-  copos: { pos: [-0.15, 1.85, -1.35], olha: [-0.1, 1.1, -2.5], fov: 46 },
+  entrada: { pos: [0.6, 1.7, 3.8], olha: [-0.4, 1.35, -3], fov: 60 },
+  balcao: { pos: [-0.1, 1.5, -0.3], olha: [0.1, 1.45, -3.8], fov: 56 },
+  mubarak: { pos: [0.5, 1.5, -0.2], olha: [-1.4, 1.15, -1.8], fov: 46 },
+  ela: { pos: [-0.2, 1.5, -0.6], olha: [0.6, 1.5, -3.6], fov: 44 },
+  copos: { pos: [-0.1, 2.05, -0.55], olha: [-0.1, 1.08, -2.45], fov: 50 },
 }
 
 // as cores dos líquidos: cada promessa brilha de um jeito
@@ -86,14 +86,14 @@ export function SalaBar({ estado }: SalaProps) {
     <>
       <color attach="background" args={["#07060a"]} />
       <fog attach="fog" args={["#07060a", 6, 18]} />
-      <ambientLight intensity={0.12} color="#ffd9b0" />
+      <ambientLight intensity={0.22} color="#ffd9b0" />
       <Luzes n={n} />
       <Sala larg={12} fundo={10} alto={3.8} parede="#22161a" chao="#140d0d" teto="#0c0809" />
       <Letreiro />
       {/* o balcão: madeira escura, tampo claro, frisos de neon embaixo */}
       <Caixa pos={[-0.5, 0.55, -2.65]} tam={[7.4, 1.1, 0.8]} cor="#2b1a14" rough={0.6} />
       <Caixa pos={[-0.5, 1.12, -2.6]} tam={[7.6, 0.06, 0.95]} cor="#5a3a26" rough={0.25} metal={0.3} />
-      <Neon pos={[-0.5, 0.1, -2.22]} comp={7.2} cor={LARANJA} luz={6} />
+      <Neon pos={[-0.5, 0.1, -2.22]} comp={7.2} cor={LARANJA} luz={2} />
       {/* atrás do balcão: prateleiras com garrafas acesas e o espelho */}
       <Garrafas />
       <Caixa pos={[-0.5, 2.25, -4.92]} tam={[7, 1.1, 0.05]} cor="#2a2a34" rough={0.05} metal={0.9} />
@@ -115,7 +115,7 @@ export function SalaBar({ estado }: SalaProps) {
             <cylinderGeometry args={[0.45, 0.45, 0.04, 20]} />
             <meshStandardMaterial color="#3b2a22" roughness={0.4} />
           </mesh>
-          <pointLight position={[0, 1.9, 0]} color={OURO} intensity={2.2} distance={3} decay={2} />
+          <pointLight position={[0, 1.9, 0]} color={OURO} intensity={1.4} distance={3} decay={2} />
         </group>
       ))}
       {/* a gente */}
@@ -126,7 +126,7 @@ export function SalaBar({ estado }: SalaProps) {
       ))}
       {/* os seis copos no balcão (o gesto) */}
       {!negou && COPOS.map((c, i) => (
-        <Copo key={c.id} pos={[-1.15 + i * 0.42, 1.15, -2.42]} cor={LIQ[i]} bebido={bebidos.includes(i)} ativo={estado.gesto === "copos"} onToque={() => beber(i)} />
+        <Copo key={c.id} pos={[-0.85 + i * 0.3, 1.15, -2.42]} cor={LIQ[i]} bebido={bebidos.includes(i)} ativo={estado.gesto === "copos"} onToque={() => beber(i)} />
       ))}
       {/* negou: no lugar dos copos, a muda */}
       {negou && <Muda pos={[-0.1, 1.15, -2.42]} />}
@@ -140,7 +140,7 @@ export function SalaBar({ estado }: SalaProps) {
 function Luzes({ n }: { n: number }) {
   const ls = useRef<THREE.PointLight[]>([])
   useFrame((_, dt) => {
-    const alvo = 9 + n * 4
+    const alvo = 4 + n * 1.6
     for (const l of ls.current) if (l) l.intensity += (alvo - l.intensity) * Math.min(1, dt * 1.5)
   })
   return (
@@ -156,7 +156,7 @@ function Luzes({ n }: { n: number }) {
             <sphereGeometry args={[0.07, 10, 8]} />
             <meshBasicMaterial color="#ffe0a8" toneMapped={false} />
           </mesh>
-          <pointLight ref={(el) => { if (el) ls.current[i] = el }} position={[0, -0.2, 0]} color="#ffcf8a" intensity={9} distance={5} decay={2} />
+          <pointLight ref={(el) => { if (el) ls.current[i] = el }} position={[0, -0.2, 0]} color="#ffcf8a" intensity={4} distance={5} decay={2} />
         </group>
       ))}
     </>
@@ -171,7 +171,7 @@ function Letreiro() {
         <planeGeometry args={[3.2, 0.8]} />
         <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} />
       </mesh>
-      <pointLight position={[0, 0, 0.6]} color={LARANJA} intensity={10} distance={5} decay={2} />
+      <pointLight position={[0, 0, 0.6]} color={LARANJA} intensity={4} distance={5} decay={2} />
     </group>
   )
 }
@@ -188,11 +188,11 @@ function Garrafas() {
   return (
     <group position={[0, 0, -4.7]}>
       {[1.4, 2.9].map((y) => <Caixa key={y} pos={[-0.5, y - 0.03, 0]} tam={[7.4, 0.04, 0.35]} cor="#3a2a22" />)}
-      {[1.4, 2.9].map((y) => <Neon key={`n${y}`} pos={[-0.5, y - 0.07, 0.12]} comp={7} cor={OURO} luz={3} />)}
+      {[1.4, 2.9].map((y) => <Neon key={`n${y}`} pos={[-0.5, y - 0.07, 0.12]} comp={7} cor={OURO} luz={1.2} />)}
       {garrafas.map((g, i) => (
         <mesh key={i} position={[g.x, g.y + g.h / 2, 0]}>
           <cylinderGeometry args={[0.05, 0.06, g.h, 8]} />
-          <meshStandardMaterial color={g.cor} emissive={g.cor} emissiveIntensity={0.5} transparent opacity={0.8} roughness={0.1} />
+          <meshStandardMaterial color={g.cor} emissive={g.cor} emissiveIntensity={0.35} transparent opacity={0.8} roughness={0.1} />
         </mesh>
       ))}
     </group>
@@ -206,10 +206,10 @@ function Copo({ pos, cor, bebido, ativo, onToque }: { pos: V3; cor: string; bebi
     const alvo = bebido ? 0.001 : 1
     liq.current.scale.y += (alvo - liq.current.scale.y) * Math.min(1, dt * 3)
     const m = liq.current.material as THREE.MeshStandardMaterial
-    m.emissiveIntensity = 0.9 + Math.sin(s.clock.elapsedTime * 3 + pos[0] * 5) * 0.3
+    m.emissiveIntensity = 0.6 + Math.sin(s.clock.elapsedTime * 3 + pos[0] * 5) * 0.3
   })
   return (
-    <Toque pos={pos} raio={0.17} cor={cor} ativo={ativo && !bebido} onToque={onToque}>
+    <Toque pos={pos} raio={0.13} cor={cor} ativo={ativo && !bebido} onToque={onToque}>
       {/* o copo americano: vidro com gomos */}
       <mesh position={[0, 0.07, 0]}>
         <cylinderGeometry args={[0.065, 0.05, 0.14, 12, 1, true]} />
@@ -217,9 +217,9 @@ function Copo({ pos, cor, bebido, ativo, onToque }: { pos: V3; cor: string; bebi
       </mesh>
       <mesh ref={liq} position={[0, 0.005, 0]}>
         <cylinderGeometry args={[0.058, 0.047, 0.11, 12]} />
-        <meshStandardMaterial color={cor} emissive={cor} emissiveIntensity={1} transparent opacity={0.85} />
+        <meshStandardMaterial color={cor} emissive={cor} emissiveIntensity={0.7} transparent opacity={0.85} />
       </mesh>
-      {!bebido && <pointLight position={[0, 0.12, 0]} color={cor} intensity={0.8} distance={0.8} decay={2} />}
+      {!bebido && <pointLight position={[0, 0.12, 0]} color={cor} intensity={0.3} distance={0.6} decay={2} />}
     </Toque>
   )
 }

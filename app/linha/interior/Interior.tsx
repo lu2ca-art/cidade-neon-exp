@@ -91,7 +91,11 @@ export function Camera({ plano, rapido = false }: { plano: Plano; rapido?: boole
     dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), olhar.yaw)
     dir.y += olhar.pitch * dir.length()
     camera.lookAt(camera.position.x + dir.x, camera.position.y + dir.y, camera.position.z + dir.z)
-    const fov = plano.fov ?? 50
+    // o fov do plano é pensado deitado; com o celular em pé a imagem fica
+    // estreita, então abre o vertical pra manter a largura (até 78°)
+    const base = plano.fov ?? 50
+    const asp = camera.aspect || 1
+    const fov = asp >= 1 ? base : Math.min(78, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(base) / 2) / Math.max(asp, 0.45) * 0.62)))
     if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * k; camera.updateProjectionMatrix() }
   })
   return null
