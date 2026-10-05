@@ -263,7 +263,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "nucleo", texto: "Mubarak, sua assinatura MESMA NOITE foi renovada por mais 30 dias ✓" },
       { t: "msg", texto: "ignora" },
       { t: "msg", texto: "vem pro bar. O COPO, na cidade neon, do lado direito da pista" },
-      { t: "msg", texto: "encosta devagar na vaga da frente. e se ela te oferecer alguma coisa… sei lá. vc que sabe" },
+      { t: "msg", texto: "é só passar na frente. e se ela te oferecer alguma coisa… sei lá. vc que sabe" },
       { t: "lugar" },
       { t: "fim", para: "mapa" },
     ],
@@ -320,7 +320,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "sabe o que é pior? eu queria sair" },
       { t: "msg", texto: "mas se eu for sozinho eu volto antes de chegar" },
       { t: "msg", texto: "vc tá de kombi né. me busca? moro no subúrbio xenom, AP 222" },
-      { t: "msg", texto: "encosta na frente. se eu n descer em 1 minuto, buzina. se eu n descer em 2, desiste" },
+      { t: "msg", texto: "passa na frente. se eu n descer em 1 minuto, buzina. se eu n descer em 2, desiste" },
       // 1ª parada: a casa dele (a cena da porta, cenas.ts). Depois dela a
       // conversa continua aqui, no caminho (a crise)
       { t: "lugar" },
