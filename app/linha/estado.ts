@@ -62,6 +62,10 @@ export interface Save {
   tons: Record<Tom, number>
   // as relíquias do ritual do deserto que já nasceram (cenas.ts)
   reliquias: string[]
+  // NEON: a moeda do povo (fictícia). Compra o que é orgânico/artístico
+  neon?: number
+  // os discos comprados na loja (discos.ts)
+  discos?: string[]
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>
