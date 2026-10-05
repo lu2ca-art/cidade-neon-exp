@@ -8,8 +8,8 @@
 // A legenda e as escolhas continuam por cima (cena.tsx); as duas conversam
 // pelo bus.ts. Cada sala é um componente em salas/*.tsx.
 
-import { Canvas } from "@react-three/fiber"
-import { Suspense, lazy, useRef, type ComponentType, type LazyExoticComponent } from "react"
+import { Canvas, useThree } from "@react-three/fiber"
+import { Suspense, lazy, useEffect, useRef, type ComponentType, type LazyExoticComponent } from "react"
 import * as THREE from "three"
 import { Cinema } from "../estrada/Cinema"
 import { Seguro } from "../estrada/Seguro"
@@ -52,8 +52,34 @@ export function Interior({ lugar, objetos = [] }: { lugar: LugarId; objetos?: Es
           <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} /></Seguro>
         </Suspense>
         <Seguro nome="lente-sala"><Cinema /></Seguro>
+        {process.env.NODE_ENV !== "production" && <Medidor />}
       </Canvas>
     </div>
   )
 }
 
+
+// o ORÇAMENTO da sala (só em desenvolvimento): __sala() no console devolve
+// quantas luzes, malhas, triângulos e chamadas de desenho a cena está gastando
+function Medidor() {
+  const { scene, gl } = useThree()
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>
+    w.__sala = () => {
+      let luzes = 0, malhas = 0, tri = 0
+      scene.traverse((o) => {
+        if ((o as THREE.Light).isLight && o.visible) luzes++
+        const m = o as THREE.Mesh
+        if (m.isMesh && m.visible) {
+          malhas++
+          const g = m.geometry
+          const n = g.index ? g.index.count : g.attributes.position?.count ?? 0
+          tri += Math.round(n / 3) * ((m as THREE.InstancedMesh).count ?? 1)
+        }
+      })
+      return { luzes, malhas, triangulos: tri, chamadas: gl.info.render.calls, geometrias: gl.info.memory.geometries, texturas: gl.info.memory.textures }
+    }
+    return () => { delete w.__sala }
+  }, [scene, gl])
+  return null
+}
