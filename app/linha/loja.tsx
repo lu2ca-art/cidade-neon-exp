@@ -4,10 +4,11 @@
 // uma página à parte numa janela (a antiga guardava o progresso por fora e
 // brigava com o jogo). Cada disco é um gênero, todos pelo mesmo preço em
 // NEON. Dá pra ouvir um trecho antes. Comprou, vai pro toca-discos da Kombi.
+// O acervo antigo não está à venda: ele já mora na Kombi.
 
 import { useEffect, useRef, useState } from "react"
 import { Capa } from "./capa"
-import { ACERVO, DISCOS, PRECO_DISCO, duracao, type DiscoLoja } from "./discos"
+import { DISCOS, PRECO_DISCO, duracao, type DiscoLoja } from "./discos"
 import type { Save } from "./estado"
 import { disco as toca, fonteSom } from "./som"
 import { AppTopo } from "./os"
@@ -22,12 +23,12 @@ export function Loja({ save, comprar, onVoltar }: { save: Save; comprar: (id: st
       <AppTopo titulo="LOJA DE DISCOS" cor="#ffc857" onVoltar={onVoltar} />
       <header className="l-loja-cab">
         <div>
-          <p>cada disco custa <b>{PRECO_DISCO} neon</b>. o que vc compra toca no toca-discos da kombi, do começo ao fim</p>
+          <p>cada disco custa <b>{PRECO_DISCO} neon</b>. o que vc compra toca no toca-discos da kombi, do começo ao fim. os discos antigos já estão lá</p>
         </div>
         <span className="l-loja-saldo" aria-label={`${neon} neon`}><i aria-hidden="true">◎</i>{neon}<small>neon</small></span>
       </header>
       <ul className="l-loja-grade">
-        {[ACERVO, ...DISCOS].map((d) => {
+        {DISCOS.map((d) => {
           const tem = d.gratis || meus.includes(d.id)
           return (
             <li key={d.id}>

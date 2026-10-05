@@ -57,18 +57,6 @@
     "dur": 160
    },
    {
-    "titulo": "The Season to Be Jolly",
-    "autor": "Matt Large",
-    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/the-season-to-be-jolly-matt-large.mp3",
-    "dur": 188
-   },
-   {
-    "titulo": "You Already Know (It's Christmas)",
-    "autor": "Matt Large",
-    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/you-already-know-it-s-christmas-matt-large.mp3",
-    "dur": 171
-   },
-   {
     "titulo": "by the fireplace",
     "autor": "baegel",
     "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/hip-hop/by-the-fireplace-baegel.mp3",
@@ -108,12 +96,6 @@
     "autor": "Hector Gabriel",
     "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/keeping-hope-hector-gabriel.mp3",
     "dur": 202
-   },
-   {
-    "titulo": "Llego la Navidad (Instrumental Version)",
-    "autor": "El Pequeno Fary",
-    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/pop/llego-la-navidad-instrumental-version-el-pequeno-fary.mp3",
-    "dur": 190
    },
    {
     "titulo": "SOME KINDA STRANGER (Stella Explorer Rework)",
@@ -505,12 +487,6 @@
     "autor": "MXRPHEUS",
     "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/legends-mxrpheus.mp3",
     "dur": 151
-   },
-   {
-    "titulo": "Llego la Navidad",
-    "autor": "El Pequeno Fary",
-    "src": "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/discos/latin/llego-la-navidad-el-pequeno-fary.mp3",
-    "dur": 190
    },
    {
     "titulo": "MAS PERREO",
