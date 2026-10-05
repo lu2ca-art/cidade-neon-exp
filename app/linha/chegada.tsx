@@ -288,7 +288,6 @@ export function Chegada({
 
       {dial && (
         <div key={dial.f === "NÚCLEO" ? "n" : "r"} className={`l-dial ${fase === "quase" ? "is-quase" : ""} ${dial.f === "NÚCLEO" ? "is-nucleo" : ""}`}>
-          <small>rádio · ligou sozinho</small>
           <b>{dial.f}{dial.f !== "NÚCLEO" && <em> FM</em>}</b>
           <span>{dial.txt}</span>
         </div>

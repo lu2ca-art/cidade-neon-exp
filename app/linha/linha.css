@@ -1638,7 +1638,8 @@
    dele e a checklist moram embaixo, acima do turbo e da missão ── */
 .l-btn-missoes { top: auto; left: auto; right: 12px; bottom: calc(170px + env(safe-area-inset-bottom)); }
 .l-missoes { top: auto; bottom: calc(216px + env(safe-area-inset-bottom)); max-height: 46vh; }
-.l-check { top: auto; bottom: calc(188px + env(safe-area-inset-bottom)); width: min(230px, calc(100% - 160px)); }
+.l-check { top: calc(66px + env(safe-area-inset-top)); bottom: auto; width: min(240px, calc(100% - 24px)); transition: opacity 0.3s; }
+.l-raiz:has(.l-ilha.is-garfo, .l-ilha.is-fala) .l-check { opacity: 0; pointer-events: none; }
 .l-lig { background: rgba(10, 11, 26, 0.97); }
 .l-check-topo { text-align: left; white-space: nowrap; gap: 10px; }
 /* ligação tocando: a ilha vazia some (sobrava uma caixa preta embaixo) */

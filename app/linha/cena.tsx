@@ -97,7 +97,6 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
       return n + 2
     }), 22)
     if (atual.tipo === "nucleo") vib(20)
-    else gota(3)
     return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave])
