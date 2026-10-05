@@ -1620,7 +1620,7 @@
 .l-estante-capa:has(svg) { border-radius: 3px; background: none; box-shadow: none; width: 44px; height: 44px; overflow: hidden; }
 
 /* ── a checklist do tutorial (tutorial-tela.tsx) ── */
-.l-check { position: absolute; z-index: 20; left: 12px; top: calc(114px + env(safe-area-inset-top)); width: min(250px, calc(100% - 24px)); border-radius: 14px; background: rgba(6, 6, 16, 0.78); border: 1px solid rgba(61, 123, 255, 0.5); box-shadow: 0 0 24px -10px #3d7bff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #e8efff; animation: l-sobe 0.35s both; }
+.l-check { position: absolute; z-index: 20; left: 12px; top: calc(136px + env(safe-area-inset-top)); width: min(250px, calc(100% - 24px)); border-radius: 14px; background: rgba(6, 6, 16, 0.78); border: 1px solid rgba(61, 123, 255, 0.5); box-shadow: 0 0 24px -10px #3d7bff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #e8efff; animation: l-sobe 0.35s both; }
 .l-check-topo { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; background: none !important; border: 0 !important; color: #8fb2ff !important; font: 800 12px var(--cond); letter-spacing: 0.12em; text-transform: uppercase; }
 .l-check-topo em { font: 700 11px var(--mono); font-style: normal; color: rgba(232, 239, 255, 0.6); }
 .l-check ul { list-style: none; margin: 0; padding: 0 12px 11px; display: flex; flex-direction: column; gap: 8px; }

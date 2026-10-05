@@ -214,7 +214,8 @@ export default function LinhaPage() {
   // Mubarak (bloco 2)
   const tut = emTutorial(save)
   const blocoTut = tut ? blocoAtual(save) : BLOCOS.length
-  const tutLibera = !tut || blocoTut > 1 || (blocoTut === 1 && ligou(save, 1))
+  // e até o fim do tutorial, só a primeira pessoa chama
+  const tutLibera = !tut || (quemChama === PRIMEIRA && (blocoTut > 1 || (blocoTut === 1 && ligou(save, 1))))
   const chamaNaEstrada = tutLibera && !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
   // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
   // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
@@ -771,7 +772,7 @@ export default function LinhaPage() {
             missões <em>{listaMissoes.length}</em>
           </button>
         )}
-        {tut && tela.t === "corrida" && !emSala && !cinema && !painelMissoes && <Checklist save={save} />}
+        {tut && tela.t === "corrida" && !emSala && !cinema && !painelMissoes && !aoVivo && <Checklist save={save} />}
         {painelMissoes && tela.t === "corrida" && !emSala && (
           <div className="l-missoes" role="dialog" aria-label="Missões">
             <header><b>quem precisa de você</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
