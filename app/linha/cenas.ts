@@ -23,6 +23,16 @@ export const RELIQUIAS: Record<Reliquia, { nome: string; texto: string }> = {
   regador: { nome: "o regador", texto: "pra cuidar do que vem" },
 }
 
+// os seis copos do bar (a oferta da mulher dos copos)
+export const COPOS = [
+  { id: "felicidade", nome: "o copo da felicidade", promessa: "isso vai te fazer esquecer suas dúvidas" },
+  { id: "certeza", nome: "o copo da certeza", promessa: "agora você sabe exatamente o que fazer" },
+  { id: "liberdade", nome: "o copo da liberdade", promessa: "basta beber pra nunca mais se preocupar com nada" },
+  { id: "amor", nome: "o copo do amor", promessa: "isso vai preencher o vazio aí dentro" },
+  { id: "grandeza", nome: "o copo da grandeza", promessa: "isso te torna maior que qualquer um aqui" },
+  { id: "eternidade", nome: "o copo da eternidade", promessa: "agora você nunca mais vai querer sair" },
+]
+
 export interface FalaCena { de: string; texto: string }
 
 // `se`: o passo só acontece se a pessoa já fez a missão daquela estação

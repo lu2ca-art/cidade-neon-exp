@@ -20,6 +20,7 @@ import { MISSOES, alvoDe, ativa, etapaDe } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
 import { cenaDe, type Reliquia } from "./cenas"
 import { Viagem } from "./viagem"
+import { GESTOS_3D, Interior, temSala } from "./interior/Interior"
 import { LUGARES, type LugarId } from "./lugares"
 import { proximaFreq } from "./radio"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
@@ -599,7 +600,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada") || !!viagem}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada") || !!viagem || (!!cena && temSala(cena.lugar))}
             limitado={!!invasao}
             cacado={cacado || perseguido}
             conversa={!!aoVivo}
@@ -733,8 +734,12 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
+          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} />
+        )}
+        {cena && (
           <CenaLugar
             key={`${cena.lugar}:${cena.missao}`}
+            gestos3d={GESTOS_3D[cena.lugar] ?? []}
             cena={cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}

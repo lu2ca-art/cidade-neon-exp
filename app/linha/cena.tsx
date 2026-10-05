@@ -6,7 +6,7 @@
 // seguir. Roteiros em cenas.ts.
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { RELIQUIAS, type Cena, type PassoCena, type Reliquia } from "./cenas"
+import { COPOS, RELIQUIAS, type Cena, type PassoCena, type Reliquia } from "./cenas"
 import { estacao as getEstacao, type EstacaoId } from "./data"
 import { MEMORIAS } from "./missoes"
 import { LUGARES } from "./lugares"
@@ -14,6 +14,7 @@ import { VOZES, type Tom } from "./roteiros"
 import { gota, mudo } from "./som"
 import { Prova } from "./provas"
 import { vib } from "./som-carro"
+import { ouvirSala, publicar, zerar } from "./interior/bus"
 
 export interface ResultadoCena {
   objeto?: EstacaoId
@@ -24,16 +25,10 @@ export interface ResultadoCena {
 
 type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
 
-const COPOS = [
-  { id: "felicidade", nome: "o copo da felicidade", promessa: "isso vai te fazer esquecer suas dúvidas" },
-  { id: "certeza", nome: "o copo da certeza", promessa: "agora você sabe exatamente o que fazer" },
-  { id: "liberdade", nome: "o copo da liberdade", promessa: "basta beber pra nunca mais se preocupar com nada" },
-  { id: "amor", nome: "o copo do amor", promessa: "isso vai preencher o vazio aí dentro" },
-  { id: "grandeza", nome: "o copo da grandeza", promessa: "isso te torna maior que qualquer um aqui" },
-  { id: "eternidade", nome: "o copo da eternidade", promessa: "agora você nunca mais vai querer sair" },
-]
 
-export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
+// `gestos3d`: os gestos que a sala em 3D faz (interior/): a legenda só dá
+// a dica e espera a sala avisar que acabou
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
   // o tom vale o do começo da cena (responder no meio não reembaralha os passos)
   const [tom] = useState(tomAgora)
   // os passos com `se` só entram se a pessoa já passou por aquela estação;
@@ -58,6 +53,21 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   if (chaveAnt !== chave) { setChaveAnt(chave); setLetras(0) }
   // o cartão do que ganhou sai direto do passo
   const mostrando = !fila.length && passo?.t === "ganha" ? passo : null
+
+  // conta pra sala o que está acontecendo (quem fala, gesto, escolha…)
+  const gestoAgora = !atual && passo?.t === "gesto" ? passo.id : null
+  useEffect(() => {
+    publicar({ pos, falando: atual?.de ?? null, gesto: gestoAgora, escolha: !atual && passo?.t === "escolha", ganha: !!mostrando })
+  }, [pos, atual?.de, gestoAgora, passo?.t, !!atual, mostrando]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => zerar(), [])
+  // e ouve a sala: uma fala solta, um copo bebido, o gesto acabou
+  const [bebeu, setBebeu] = useState(0)
+  useEffect(() => ouvirSala((sn) => {
+    if (sn.t === "fala") setFila((f) => [...f, { de: sn.de, texto: sn.texto, tipo: sn.tipo ?? "fala" }])
+    else if (sn.t === "bebeu") setBebeu(sn.n)
+    else if (sn.t === "fim-gesto") setPos((p) => p + 1)
+  }), [])
+  const gesto3d = gestoAgora !== null && gestos3d.includes(gestoAgora)
 
   // máquina de escrever na legenda
   useEffect(() => {
@@ -93,7 +103,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   }
 
   return (
-    <div className="l-cena" onClick={atual ? avancar : undefined}>
+    <div className={`l-cena ${atual ? "" : "is-livre"} ${gestos3d.length ? "is-sala" : ""}`} onClick={atual ? avancar : undefined}>
       <div className="l-cena-tarja is-cima" />
       <div className="l-cena-tarja is-baixo" />
       <small className="l-cena-lugar">{[LUGARES[cena.lugar].letreiro.toLowerCase(), LUGARES[cena.lugar].nome].filter(Boolean).join(" · ")}</small>
@@ -117,7 +127,8 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
-      {!atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} />}
+      {gesto3d && <Dica3d id={gestoAgora!} bebeu={bebeu} onNegar={() => setPos((p) => p + 1)} />}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
       {!atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
@@ -139,6 +150,25 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
           <button type="button" onClick={() => onFim({ objeto: ganhos.objeto, reliquias: ganhos.reliquias, caca: !!passo.caca, perdeViolao: ganhos.perdeViolao })}>voltar pra kombi →</button>
         </div>
       )}
+    </div>
+  )
+}
+
+// a dica do gesto feito na sala em 3D (o toque é lá; aqui só o texto e, no
+// bar, a saída que ninguém escolhe)
+const DICAS_3D: Record<string, string> = {
+  copos: "toca num copo no balcão",
+  danca: "toca na pista no ritmo",
+  tocar: "toca no violão no ritmo",
+  ordem: "toca as frases na parede, na ordem",
+  regar: "toca nas gotas pra regar a flor",
+  casa: "procura pela casa. toca no que chamar sua atenção",
+}
+function Dica3d({ id, bebeu, onNegar }: { id: string; bebeu: number; onNegar: () => void }) {
+  return (
+    <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
+      <small>{id === "copos" && bebeu >= COPOS.length ? "acabaram os copos" : DICAS_3D[id] ?? "toca na cena"}</small>
+      {id === "copos" && bebeu > 0 && <button type="button" className="l-copos-negar" onClick={onNegar}>negar a oferta</button>}
     </div>
   )
 }
