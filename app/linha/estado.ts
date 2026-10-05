@@ -71,6 +71,9 @@ export interface Save {
   loops: Record<string, number>
   // já acordou na casa da D-Bee e fez a reta até a cidade (o começo, 05/10)
   casa?: boolean
+  // o tutorial (tutorial.ts): itens marcados à mão ("ouvir", "missoes") e
+  // "fim" quando acaba
+  tutorial?: string[]
   // a missão que a pessoa escolheu no painel MISSÕES (vale primeiro)
   foco?: EstacaoId
   // ligações de voz já feitas (atendidas ou recusadas) — ligacoes.ts
