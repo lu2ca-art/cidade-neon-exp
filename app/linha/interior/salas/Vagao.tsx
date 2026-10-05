@@ -28,10 +28,10 @@ const PASSOS = 14
 // o vagão vai de z −9 a z 9; a porta da plataforma fica no lado +x, em z 0
 const PLANOS: Record<string, Plano> = {
   plataforma: { pos: [5.2, 1.65, 3.4], olha: [2.2, 1.45, 0.4], fov: 56 },
-  dentro: { pos: [0, 1.62, 4.5], olha: [0, 1.3, -6], fov: 60 },
+  dentro: { pos: [0.5, 1.62, 4.5], olha: [-0.1, 1.3, -6], fov: 60 },
   artistas: { pos: [0.4, 1.45, 1.6], olha: [-1.1, 0.9, -1.2], fov: 52 },
   policial: { pos: [0.2, 1.65, 3], olha: [0, 1.55, -8.4], fov: 46 },
-  tocar: { pos: [0, 1.5, 3.2], olha: [0, 1.0, -3], fov: 58 },
+  tocar: { pos: [0.55, 1.5, 3.4], olha: [-0.1, 1.0, -3], fov: 58 },
   moca: { pos: [0.6, 1.4, 0.2], olha: [-1.1, 0.95, -2.2], fov: 46 },
 }
 
@@ -190,7 +190,7 @@ function Artista({ a, acordado, falando }: { a: (typeof ARTISTAS)[number]; acord
   return (
     <group>
       <group position={a.pos} rotation-x={acordado ? 0 : 0.18}>
-        <Npc cor={a.cor} pos={[0, 0, 0]} vira={vira + (acordado ? (a.lado > 0 ? -0.5 : 0.5) : 0)} pose="sentada" falando={falando} pele={acordado ? "#3a3448" : "#24222c"} />
+        <Npc cor={acordado ? a.cor : "#7a7c88"} pos={[0, 0, 0]} vira={vira + (acordado ? (a.lado > 0 ? -0.5 : 0.5) : 0)} pose="sentada" falando={falando} pele={acordado ? "#3a3448" : "#24222c"} />
       </group>
       {a.coisa === "camera" && (
         <group position={[a.pos[0] - 0.25 * a.lado, 0.62, a.pos[2]]}>
@@ -224,12 +224,12 @@ function ViolaoNaMao({ tocando }: { tocando: boolean }) {
     const cam = s.camera
     g.current.position.copy(cam.position)
     g.current.quaternion.copy(cam.quaternion)
-    g.current.translateX(0.18); g.current.translateY(-0.42); g.current.translateZ(-0.7)
+    g.current.translateX(0.24); g.current.translateY(-0.5); g.current.translateZ(-0.95)
     g.current.rotateZ(0.9)
     if (tocando) g.current.rotateZ(Math.sin(s.clock.elapsedTime * 11.2) * 0.015)
   })
   return (
-    <group ref={g}>
+    <group ref={g} scale={0.75}>
       <mesh scale={[1, 1.2, 0.35]}>
         <sphereGeometry args={[0.16, 18, 12]} />
         <meshStandardMaterial color="#8a5a2c" roughness={0.5} />
