@@ -50,6 +50,8 @@ export type PassoCena =
   | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" | "tocar" | "fuga" }
   // pôr frases soltas na ordem (a moradora do beco fala em pedaços)
   | { t: "gesto"; id: "ordem"; frases: string[] }
+  // explorar a sala: tocar nas coisas (interior/: o quarto do Drewboy, a casa da D-Bee)
+  | { t: "gesto"; id: "quarto" | "casa" }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o
@@ -107,25 +109,27 @@ CENAS["casa-drewboy"] = {
   lugar: "casa-drewboy",
   missao: "sexta",
   passos: [
-    { t: "acao", texto: "AP 222. a luz do quarto acesa, a cortina fechada. um minuto" },
-    { t: "acao", texto: "dois minutos. a cortina mexe" },
+    { t: "acao", texto: "AP 222. a porta tá destrancada. lá dentro, o quarto escuro, só a luz do espelho" },
+    { t: "acao", texto: "ele tá sentado na cama, de frente pro espelho. de costas pra porta" },
     { t: "fala", de: "Drewboy", texto: "…vc veio mesmo" },
     { t: "fala", de: "Drewboy", texto: "eu tô de pijama por baixo dessa roupa. só pra vc saber" },
+    { t: "fala", de: "Drewboy", texto: "pode olhar. ninguém entra aqui faz tempo" },
+    // explorar o quarto: o espelho, o tênis, a janela (interior/salas/Quarto.tsx)
+    { t: "gesto", id: "quarto" },
     {
       t: "escolha",
       opcoes: [
         { label: "pode ir de pijama", tom: "dormindo", resposta: [{ de: "Drewboy", texto: "kkkk. ninguém ia reparar mesmo" }] },
         { label: "o que te fez descer?", tom: "acordando", resposta: [{ de: "Drewboy", texto: "o espelho do quarto. cansei de ver só ele" }] },
-        { label: "entra. a noite é curta", tom: "acordado", resposta: [{ de: "Drewboy", texto: "…tá. entrei" }] },
+        { label: "calça o tênis. a noite é curta", tom: "acordado", resposta: [{ de: "Drewboy", texto: "…tá. calcei" }] },
       ],
     },
-    { t: "acao", texto: "ele entra na kombi. senta no banco da frente. não olha pra trás" },
+    { t: "acao", texto: "ele apaga a luz do espelho. desce a escada na sua frente e senta no banco da frente da kombi" },
     { t: "fala", de: "Drewboy", texto: "bora antes que eu desista" },
     { t: "fim" },
   ],
 }
 
-// ── A BALADA · coming-of-age · o Drewboy dança sozinho ──
 CENAS.balada = {
   lugar: "balada",
   missao: "sexta",
@@ -359,6 +363,8 @@ CENAS["casa-dbee"] = {
     { t: "acao", texto: "uma casa sozinha no fim da estrada. a luz da varanda acesa. a porta aberta" },
     { t: "acao", texto: "ninguém" },
     { t: "acao", texto: "a cama feita às pressas. um violão encostado na parede, sem dono. uma xícara ainda morna" },
+    // explorar a casa vazia (interior/salas/CasaDbee.tsx)
+    { t: "gesto", id: "casa" },
     { t: "acao", texto: "ela sabia que aqui já não era seguro", tom: ["dormindo"] },
     { t: "acao", texto: "na parede, uma foto: uma mulher sorrindo numa cidade toda verde", tom: ["acordando", "acordado"] },
     { t: "acao", texto: "a mesma cidade do relicário. você tira ele do bolso e compara. é igual", tom: ["acordando", "acordado"], rel: "relicario" },

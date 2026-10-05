@@ -58,8 +58,8 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   // os minijogos antigos entram como "prova:<id>" (a sala pode assumir um deles)
   const gestoAgora = !atual && passo?.t === "gesto" ? (passo.id === "prova" ? `prova:${passo.prova}` : passo.id) : null
   useEffect(() => {
-    publicar({ pos, falando: atual?.de ?? null, gesto: gestoAgora, escolha: !atual && passo?.t === "escolha", ganha: !!mostrando })
-  }, [pos, atual?.de, gestoAgora, passo?.t, !!atual, mostrando]) // eslint-disable-line react-hooks/exhaustive-deps
+    publicar({ pos, falando: atual?.de ?? null, texto: atual?.texto ?? null, gesto: gestoAgora, escolha: !atual && passo?.t === "escolha", ganha: !!mostrando })
+  }, [pos, atual?.de, atual?.texto, gestoAgora, passo?.t, !!atual, mostrando]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => zerar(), [])
   // e ouve a sala: uma fala solta, um copo bebido, o gesto acabou
   const [bebeu, setBebeu] = useState(0)
@@ -69,6 +69,13 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
     else if (sn.t === "fim-gesto") setPos((p) => p + 1)
   }), [])
   const gesto3d = gestoAgora !== null && gestos3d.includes(gestoAgora)
+  // explorar só existe com a sala em 3D: sem ela (aparelho que não aguentou),
+  // a cena segue sozinha
+  useEffect(() => {
+    if ((gestoAgora !== "quarto" && gestoAgora !== "casa") || gesto3d) return
+    const t = setTimeout(() => setPos((p) => p + 1), 0)
+    return () => clearTimeout(t)
+  }, [gestoAgora, gesto3d])
 
   // máquina de escrever na legenda
   useEffect(() => {
@@ -165,6 +172,7 @@ const DICAS_3D: Record<string, string> = {
   "prova:regar": "toca nas gotas pra regar a flor",
   fuga: "toca rápido: corre pra porta",
   casa: "procura pela casa. toca no que chamar sua atenção",
+  quarto: "olha o quarto. toca no que chamar sua atenção",
 }
 function Dica3d({ id, bebeu, onNegar }: { id: string; bebeu: number; onNegar: () => void }) {
   return (

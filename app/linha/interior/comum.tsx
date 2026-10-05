@@ -347,3 +347,21 @@ export function Cidade({ raio = 60, n = 70, alt = 0, cor = "#ff3fb0" }: { raio?:
     </group>
   )
 }
+
+// ── explorar: coisas da sala que contam algo quando você toca ──
+// cada coisa manda as falas dela pra legenda; vistas `precisa` coisas, o
+// gesto acaba (dá pra continuar olhando as outras depois, só que sem pressa)
+export interface Coisa { id: string; pos: V3; raio?: number; falas: { de?: string; texto: string; tipo?: "fala" | "acao" }[] }
+export function useExplorar(ativo: boolean, coisas: Coisa[], precisa: number, sinal: (s: { t: "fala"; de?: string; texto: string; tipo?: "fala" | "acao" } | { t: "fim-gesto" }) => void) {
+  const [vistas, setVistas] = useState<string[]>([])
+  const ver = (id: string) => {
+    if (!ativo || vistas.includes(id)) return
+    const c = coisas.find((x) => x.id === id)
+    if (!c) return
+    for (const f of c.falas) sinal({ t: "fala", ...f })
+    const novas = [...vistas, id]
+    setVistas(novas)
+    if (novas.length >= precisa) sinal({ t: "fim-gesto" })
+  }
+  return { vistas, ver }
+}

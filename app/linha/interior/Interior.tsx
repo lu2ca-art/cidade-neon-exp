@@ -21,6 +21,13 @@ import type { V3 } from "./comum"
 import { SalaBalada } from "./salas/Balada"
 import { SalaBar } from "./salas/Bar"
 import { SalaVagao } from "./salas/Vagao"
+import { SalaBeco } from "./salas/Beco"
+import { SalaCasaDbee } from "./salas/CasaDbee"
+import { SalaEscondido } from "./salas/Escondido"
+import { SalaPosto } from "./salas/Posto"
+import { SalaQuarto } from "./salas/Quarto"
+import { SalaShows } from "./salas/Shows"
+import { SalaTopo } from "./salas/Topo"
 
 export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[] }
 
@@ -42,6 +49,13 @@ export const SALAS: Partial<Record<LugarId, ComponentType<SalaProps>>> = {
   bar: SalaBar,
   balada: SalaBalada,
   plataforma: SalaVagao,
+  "casa-drewboy": SalaQuarto,
+  escondido: SalaEscondido,
+  beco: SalaBeco,
+  topo: SalaTopo,
+  "casa-shows": SalaShows,
+  posto: SalaPosto,
+  "casa-dbee": SalaCasaDbee,
 }
 
 export function temSala(id: LugarId) { return !!SALAS[id] }
@@ -51,6 +65,10 @@ export const GESTOS_3D: Partial<Record<LugarId, string[]>> = {
   bar: ["copos"],
   balada: ["danca"],
   plataforma: ["tocar", "fuga"],
+  "casa-drewboy": ["quarto"],
+  escondido: ["prova:regar"],
+  beco: ["ordem"],
+  "casa-dbee": ["casa"],
 }
 
 // olhar em volta: arrastar gira a câmera um pouco (volta sozinha)

@@ -754,7 +754,11 @@ export default function LinhaPage() {
         {viagem && (
           <Viagem
             chegou={!!viagem.chegou}
-            onFim={() => { setViagem({ ...viagem, chegou: true }); setCena({ lugar: viagem.lugar, missao: viagem.missao, pegar: viagem.pegar }) }}
+            onFim={() => {
+              // com a sala por dentro, a estrada some; sem ela, fica de fundo
+              setViagem(temSala(viagem.lugar) ? null : { ...viagem, chegou: true })
+              setCena({ lugar: viagem.lugar, missao: viagem.missao, pegar: viagem.pegar })
+            }}
           />
         )}
         {ligacao && <LigacaoNaKombi key={ligacao.lig.id} lig={ligacao.lig} onFim={fimLigacao} onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))} />}
