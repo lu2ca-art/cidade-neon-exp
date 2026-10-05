@@ -69,7 +69,7 @@ export function Caixa({ pos, tam, cor, rot = 0, brilho, rough = 0.8, metal = 0.1
 }
 
 // um tubo de neon (horizontal por padrão) com a luz que ele joga
-export function Neon({ pos, comp, cor, vertical = false, rot = 0, luz = 8 }: { pos: V3; comp: number; cor: string; vertical?: boolean; rot?: number; luz?: number }) {
+export function Neon({ pos, comp, cor, vertical = false, rot = 0, luz = 0 }: { pos: V3; comp: number; cor: string; vertical?: boolean; rot?: number; luz?: number }) {
   return (
     <group position={pos} rotation-y={rot}>
       <mesh rotation-z={vertical ? 0 : Math.PI / 2}>
@@ -98,7 +98,6 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     return g
   }, [scene, mat])
   const g = useRef<THREE.Group>(null)
-  const luz = useRef<THREE.PointLight>(null)
   const camera = useThree((s) => s.camera)
   const fase = pos[0] * 3.1 + pos[2] * 1.7
   const tmp = useMemo(() => new THREE.Vector3(), [])
@@ -109,7 +108,7 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     const alvoOp = some ? 0 : 1
     mat.opacity += (alvoOp - mat.opacity) * Math.min(1, dt * 2.5)
     g.current.visible = mat.opacity > 0.02
-    mat.emissiveIntensity += ((falando ? 0.3 : 0.14) - mat.emissiveIntensity) * Math.min(1, dt * 4)
+    mat.emissiveIntensity += ((falando ? 0.42 : 0.14) - mat.emissiveIntensity) * Math.min(1, dt * 4)
     if (dancando) {
       g.current.position.y = pos[1] + Math.abs(Math.sin(t * 5.6)) * 0.12
       g.current.rotation.z = Math.sin(t * 2.8) * 0.12
@@ -127,7 +126,6 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     let dy = alvoY - g.current.rotation.y
     dy = Math.atan2(Math.sin(dy), Math.cos(dy))
     g.current.rotation.y += dy * Math.min(1, dt * 2.2)
-    if (luz.current) luz.current.intensity += ((falando ? 1.6 : 0) - luz.current.intensity) * Math.min(1, dt * 4)
   })
   return (
     <group ref={g} position={pos} rotation-y={vira} scale={escala}>
@@ -137,7 +135,6 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
         <boxGeometry args={[0.3, 0.035, 0.02]} />
         <meshBasicMaterial color={cor} toneMapped={false} transparent opacity={some ? 0 : 1} />
       </mesh>
-      <pointLight ref={luz} position={[0, 2.2, -0.5]} color={cor} intensity={0} distance={4} decay={2} />
     </group>
   )
 }
@@ -179,13 +176,17 @@ export function Toque({ pos, raio = 0.35, cor = "#ffffff", ativo = true, onToque
 useGLTF.preload(GLB["em-pe"])
 useGLTF.preload(GLB.sentada)
 useGLTF.preload(GLB.danca)
+useGLTF.preload(GLB_LEVE)
 
 // ── a multidão: muita gente num desenho só (instâncias do mesmo corpo) ──
 // `celulares`: quantos ainda filmam (luz branca em cima da cabeça); os que
 // abaixam o celular viram de frente pro meio e passam a balançar
 export interface Pessoa { x: number; z: number; vira: number; cor: string }
-export function Multidao({ gente, celulares = 0, pose = "em-pe", pele = "#2a2636" }: { gente: Pessoa[]; celulares?: number; pose?: Pose; pele?: string }) {
-  const { scene } = useGLTF(GLB[pose])
+// a multidão usa uma versão leve do corpo (blender/scripts/gente.py: ~1/4 dos
+// triângulos): de longe ninguém vê a diferença, e 48 pessoas pesam como 12
+const GLB_LEVE = "/models/pessoa-leve.glb"
+export function Multidao({ gente, celulares = 0, pele = "#2a2636" }: { gente: Pessoa[]; celulares?: number; pele?: string }) {
+  const { scene } = useGLTF(GLB_LEVE)
   const geo = useMemo(() => {
     let g: THREE.BufferGeometry | null = null
     scene.traverse((o) => { const m = o as THREE.Mesh; if (!g && m.isMesh) g = m.geometry })
@@ -318,7 +319,8 @@ export function Chuva({ n = 600, larg = 20, alto = 12, fundo = 20, centro = [0, 
   )
 }
 
-// a cidade lá fora (pela janela, do terraço): prédios com janelas acesas
+// a cidade lá fora (pela janela, do terraço): prédios com o topo aceso.
+// Desenhada de uma vez só (duas instâncias): 70 prédios custam 2 chamadas
 export function Cidade({ raio = 60, n = 70, alt = 0, cor = "#ff3fb0", brilho = 0.06 }: { raio?: number; n?: number; alt?: number; cor?: string; brilho?: number }) {
   const predios = useMemo(() => {
     let seed = 9
@@ -330,20 +332,37 @@ export function Cidade({ raio = 60, n = 70, alt = 0, cor = "#ff3fb0", brilho = 0
       return { x: Math.cos(a) * d, z: Math.sin(a) * d, w: 4 + r() * 6, h: 10 + r() * 40, c: cores[Math.floor(r() * cores.length)] }
     })
   }, [raio, n, cor])
+  const corpos = useRef<THREE.InstancedMesh>(null)
+  const topos = useRef<THREE.InstancedMesh>(null)
+  useEffect(() => {
+    const o = new THREE.Object3D()
+    const c = new THREE.Color()
+    const base = new THREE.Color("#0d0c16")
+    predios.forEach((p, i) => {
+      o.position.set(p.x, alt + p.h / 2, p.z); o.scale.set(p.w, p.h, p.w); o.updateMatrix()
+      corpos.current?.setMatrixAt(i, o.matrix)
+      corpos.current?.setColorAt(i, c.copy(base).lerp(new THREE.Color(p.c), brilho))
+      o.position.set(p.x, alt + p.h + 0.2, p.z); o.scale.set(p.w * 0.9, 0.3, p.w * 0.9); o.updateMatrix()
+      topos.current?.setMatrixAt(i, o.matrix)
+      topos.current?.setColorAt(i, c.set(p.c))
+    })
+    for (const m of [corpos.current, topos.current]) {
+      if (!m) continue
+      m.instanceMatrix.needsUpdate = true
+      if (m.instanceColor) m.instanceColor.needsUpdate = true
+      m.computeBoundingSphere()
+    }
+  }, [predios, alt, brilho])
   return (
-    <group position={[0, alt, 0]}>
-      {predios.map((p, i) => (
-        <group key={i} position={[p.x, p.h / 2, p.z]}>
-          <mesh>
-            <boxGeometry args={[p.w, p.h, p.w]} />
-            <meshStandardMaterial color="#0d0c16" emissive={p.c} emissiveIntensity={brilho} roughness={0.9} />
-          </mesh>
-          <mesh position={[0, p.h / 2 + 0.2, 0]}>
-            <boxGeometry args={[p.w * 0.9, 0.3, p.w * 0.9]} />
-            <meshBasicMaterial color={p.c} toneMapped={false} />
-          </mesh>
-        </group>
-      ))}
+    <group>
+      <instancedMesh ref={corpos} args={[undefined, undefined, n]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={topos} args={[undefined, undefined, n]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshBasicMaterial color="#ffffff" toneMapped={false} />
+      </instancedMesh>
     </group>
   )
 }
