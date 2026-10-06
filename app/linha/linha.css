@@ -1793,3 +1793,10 @@
 .l-ilha.is-garfo .l-garfo-op { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 3px; }
 .l-ilha.is-garfo .l-garfo-op b { min-width: 0; }
 .l-ilha.is-garfo .l-garfo-ops { min-width: 0; margin-top: 0; }
+
+/* PROCURADO: as estrelas (Corrida.tsx) */
+.l-estrelas { position: absolute; z-index: 21; right: 16px; top: calc(62px + env(safe-area-inset-top)); display: flex; gap: 3px; padding: 3px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); pointer-events: none; animation: l-sobe 0.3s both; }
+.l-estrelas i { font-style: normal; font-size: 15px; line-height: 1; color: rgba(255, 255, 255, 0.18); }
+.l-estrelas i.is-on { color: #ffd23a; text-shadow: 0 0 8px rgba(255, 210, 58, 0.8); animation: l-sobe 0.3s both; }
+.l-estrelas.is-caca i.is-on { animation: l-pisca 0.5s ease-in-out infinite; }
+.l-estrelas { right: auto; left: 16px; }

@@ -158,6 +158,11 @@ type Jogo = {
   deriva: number; giro: number; drift: 0 | 1 | -1; peso: number; ladoAnt: number; driftT: number
   // caça do Núcleo: distância do carro branco mais perto (m, atrás)
   cacaGap?: number
+  // as batidas no trânsito (06/10, LU2CA): cada uma acende uma estrela; na
+  // 3ª a polícia vem. As estrelas apagam devagar sem bater
+  batidas?: number
+  batidaT?: number
+  procurado?: boolean
   // chegada num lugar novo: a música nova entra de uma vez, com o cenário
   impacto: number; soco: boolean
   tempo: number; voltaIni: number; voltas: number
@@ -188,6 +193,7 @@ type Evs = {
   portal: (id: EstacaoId) => void
   pegar: (chave: string) => void
   caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim") => void
+  estrelas: (n: number) => void
   chegou: () => void
   volta: (t: number) => void
   hud: (j: Jogo) => void
@@ -609,6 +615,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const hudCacaBarra = useRef<HTMLDivElement>(null)
   const sirene = useRef<HTMLDivElement>(null)
   const [cacando, setCacando] = useState(false)
+  const [estrelas, setEstrelas] = useState(0)
   const limitadoRef = useRef(limitado)
   useEffect(() => { limitadoRef.current = limitado }, [limitado])
   const celularRef = useRef(celular)
@@ -739,10 +746,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         tocarProxima(id, 0.2)
         gota(4)
       },
+      estrelas: (n) => setEstrelas(n),
       caca: (e) => {
         if (e === "comecou") {
           setCacando(true)
-          falar("NÚCLEO", "veículo transportando conteúdo não licenciado. aguarde a otimização ✓")
+          // (rascunho da voz do Núcleo: batidas no trânsito)
+          falar("NÚCLEO", cacadoRef.current ? "veículo transportando conteúdo não licenciado. aguarde a otimização ✓" : "colisões registradas. veículo em processo de otimização ✓")
           vib([60, 40, 60])
         } else if (e === "pego") {
           setCacando(false)
@@ -750,8 +759,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           jogo.current.shake = 1.2
           vib([90, 40, 160])
           setPopup({ id: Math.random(), txt: "conteúdo apreendido", cor: "#e6f0ff" })
-          falar("NÚCLEO", "conteúdo apreendido e devolvido à origem. obrigado pela colaboração ✓")
-          onApreendido?.()
+          if (cacadoRef.current) {
+            falar("NÚCLEO", "conteúdo apreendido e devolvido à origem. obrigado pela colaboração ✓")
+            onApreendido?.()
+          } else falar("NÚCLEO", "veículo identificado. desta vez, só um aviso ✓")
         } else if (e === "despistou") {
           setCacando(false)
           confeteRef.current?.("#2fe8ff", 60)
@@ -1004,6 +1015,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__tom = () => tomDaMusica()
     // teste: a hora do jogo (0–24)
     w.__hora = (h: number) => { horaRef.current = h }
+    // teste: a polícia vem (3 estrelas)
+    w.__procurado = () => { const j = jogo.current; j.batidas = 3; j.procurado = true; evs.current.estrelas(3) }
     w.__pular = () => proxFaixa.current(freqRef.current)
     w.__estacoes = () => M.vias[M.circuito.linha].estacoes.map((e) => ({ id: e.id, f: e.u / M.vias[M.circuito.linha].L }))
     // pontos de busca da missão: [{ chave, via (id), u, f (fração do loop) }]
@@ -1014,7 +1027,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       const j = jogo.current
       return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap) }
     }
-    return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora }
+    return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora; delete w.__procurado }
   }, [M])
 
   // toque: metade esquerda/direita vira, as duas freiam
@@ -1163,6 +1176,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       </div>
 
 
+      {/* PROCURADO: as estrelas (uma por batida; na 3ª a polícia vem) */}
+      {(estrelas > 0 || cacando) && (
+        <div className={`l-estrelas ${cacando ? "is-caca" : ""}`} aria-label={`procurado: ${cacando ? 3 : estrelas} estrelas`}>
+          {[0, 1, 2].map((k) => <i key={k} className={k < (cacando ? 3 : estrelas) ? "is-on" : ""}>★</i>)}
+        </div>
+      )}
       <div ref={sirene} className="l-sirene" />
       {telChave > 0 && <div key={telChave} className="l-corte-teleporte" />}
       {caido && (
@@ -1238,7 +1257,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             )}
             {modo === "procurado" && (
               <div key="proc" className="l-ilha-conteudo l-ilha-proc">
-                <b>PROCURADO</b><small>acelera no talo ou troca de rua</small>
+                <b>PROCURADO</b><small>usa o turbo e abre distância</small>
                 <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
               </div>
             )}
@@ -2061,26 +2080,45 @@ function Cena({
 
   // ── tráfego: cada circuito com o seu ──
   const trafego = useMemo(() => {
-    const carros: { via: number; u: number; x: number; v: number; passou: boolean; bateu: number }[] = []
+    // (06/10: o dobro de carros; batida arremessa pro lado — vx, voo, giro)
+    const carros: { via: number; u: number; x: number; v: number; v0: number; x0: number; passou: boolean; bateu: number; vx: number; y: number; vy: number; giro: number; vgiro: number; caido: number }[] = []
     circuitos.forEach((C) => {
       const vi = M.vias.indexOf(C)
-      const q = Math.max(4, Math.round(C.L / 480))
-      for (let i = 0; i < q; i++) carros.push({ via: vi, u: (i / q) * C.L + 60, x: [-MEIA * 0.62, 0, MEIA * 0.62][i % 3], v: 20 + (i % 5) * 3.2, passou: false, bateu: 0 })
+      const q = Math.max(8, Math.round(C.L / 240))
+      for (let i = 0; i < q; i++) {
+        const x = [-MEIA * 0.62, 0, MEIA * 0.62][i % 3]
+        const v = 20 + (i % 5) * 3.2
+        carros.push({ via: vi, u: (i / q) * C.L + 60, x, v, v0: v, x0: x, passou: false, bateu: 0, vx: 0, y: 0, vy: 0, giro: 0, vgiro: 0, caido: 0 })
+      }
     })
     const n = carros.length
     const corpo = new THREE.InstancedMesh(new THREE.BoxGeometry(1.9, 1.3, 4.2), new THREE.MeshStandardMaterial({ color: "#1b1d36", metalness: 0.6, roughness: 0.35 }), n)
     const lant = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.2, 0.06), new THREE.MeshBasicMaterial({ color: "#ff2a44", toneMapped: false }), n * 2)
     return { carros, corpo, lant }
   }, [M, circuitos])
+  // teste: a Kombi logo atrás de um carro do trânsito, mais rápida (bate)
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return
+    const w = window as unknown as Record<string, unknown>
+    w.__bater = () => {
+      const j = jogo.current
+      const c = trafego.carros.find((x) => x.via === j.via && x.caido <= 0)
+      if (!c) return false
+      const L = M.vias[j.via].L
+      j.u = (c.u - 7 + L) % L; j.x = c.x; j.v = c.v + 14; j.encaixar = true
+      return true
+    }
+    return () => { delete w.__bater }
+  }, [trafego, jogo, M])
 
   // ── os carros brancos do Núcleo (a caça) ──
   const caca = useMemo(() => {
-    const n = 2
+    const n = 3
     const corpo = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 1.25, 4.4), new THREE.MeshStandardMaterial({ color: "#eef3ff", emissive: "#9fb4ff", emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.2 }), n)
     const barra = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.18, 0.4), new THREE.MeshBasicMaterial({ color: "#ffffff", toneMapped: false }), n)
     const farol = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.18, 0.06), new THREE.MeshBasicMaterial({ color: "#dff4ff", toneMapped: false }), n * 2)
     corpo.count = 0; barra.count = 0; farol.count = 0
-    const carros = Array.from({ length: n }, (_, i) => ({ u: 0, x: (i ? -1 : 1) * 2, v: 0 }))
+    const carros = Array.from({ length: n }, (_, i) => ({ u: 0, x: [2, -2, 0][i % 3], v: 0 }))
     return { corpo, barra, farol, carros, ativa: false, via: -1, perdidoT: 0, longeT: 0, espera: 0, cor: new THREE.Color() }
   }, [])
 
@@ -2640,14 +2678,19 @@ function Cena({
     {
       const k = caca
       k.espera = Math.max(0, k.espera - dt)
-      const quer = cacadoRef.current && !cine && k.espera <= 0
+      // estrelas: apagam uma a cada 25 s sem bater (não durante a caça)
+      if (!j.procurado && (j.batidas ?? 0) > 0) {
+        j.batidaT = (j.batidaT ?? 0) + dt
+        if (j.batidaT > 25) { j.batidaT = 0; j.batidas = (j.batidas ?? 1) - 1; ev.estrelas(j.batidas) }
+      }
+      const quer = (cacadoRef.current || !!j.procurado) && !cine && k.espera <= 0
       if (quer && !k.ativa) {
         // aparecem no retrovisor, 140m atrás
         k.ativa = true
         k.via = j.via
         k.perdidoT = 0
         k.longeT = 0
-        k.carros.forEach((c, i) => { c.u = j.u - 140 - i * 22; c.x = j.x + (i ? -2.2 : 2.2); c.v = Math.max(20, j.v) })
+        k.carros.forEach((c, i) => { c.u = j.u - 140 - i * 22; c.x = j.x + [2.2, -2.2, 0][i % 3]; c.v = Math.max(20, j.v) })
         ev.caca("comecou")
       } else if (!quer && k.ativa) {
         // entregou (ou a 222 caiu): a caça acaba sem alarde
@@ -2657,9 +2700,14 @@ function Cena({
       }
       if (k.ativa) {
         if (k.via !== j.via) {
-          // trocou de rua: eles perdem o rastro
+          // trocou de rua: eles vêm atrás (06/10: fugir ficou mais difícil) —
+          // reaparecem atrás na rua nova, um pouco mais longe
           k.perdidoT += dt
-          if (k.perdidoT > 0.3) { k.ativa = false; k.espera = 25; j.cacaGap = undefined; ev.caca("perdeu") }
+          if (k.perdidoT > 1.2) {
+            k.via = j.via
+            k.perdidoT = 0
+            k.carros.forEach((c, i) => { c.u = j.u - 120 - i * 20; c.v = Math.max(25, j.v * 0.9) })
+          }
         } else {
           const CV = M.vias[k.via]
           let gap = Infinity
@@ -2668,7 +2716,8 @@ function Cena({
             // longe: vêm rápido (nunca menos que 28 m/s, parado eles chegam);
             // perto: colam e encostam devagar
             // teto ABAIXO da velocidade máxima da Kombi: no talo dá pra fugir
-            const alvoV = d > 30 ? Math.min(VMAX * 0.85, Math.max(28, Math.abs(j.v) + 9)) : Math.max(4, Math.min(VMAX * 0.85, j.v + (d > 6 ? 3 : -1)))
+            // (06/10: mais rápidos que a Kombi no talo; só o turbo abre distância)
+            const alvoV = d > 30 ? Math.min(VMAX * 1.06, Math.max(30, Math.abs(j.v) + 12)) : Math.max(4, Math.min(VMAX * 1.06, j.v + (d > 6 ? 4 : -1)))
             c.v += (alvoV - c.v) * Math.min(1, dt * 1.4)
             c.u += c.v * dt
             if (CV.fechada) c.u = ((c.u % CV.L) + CV.L) % CV.L
@@ -2677,6 +2726,7 @@ function Cena({
             if (d > -2 && d < 3.6 && Math.abs(c.x - j.x) < 2.3 && !j.ar) {
               k.ativa = false
               k.espera = 12
+              j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0)
               j.v = Math.min(j.v, 10)
               j.cacaGap = undefined
               ev.caca("pego")
@@ -2685,8 +2735,8 @@ function Cena({
           }
           if (k.ativa) {
             j.cacaGap = gap
-            k.longeT = gap > 250 ? k.longeT + dt : 0
-            if (k.longeT > 3) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; ev.caca("despistou") }
+            k.longeT = gap > 350 ? k.longeT + dt : 0
+            if (k.longeT > 6) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou") }
           }
         }
       }
@@ -2725,16 +2775,39 @@ function Cena({
       c.u = (c.u + c.v * dt) % CV.L
       const d = du(CV, j.u, c.u)
       c.bateu = Math.max(0, c.bateu - dt)
-      if (aqui && Math.abs(d) < 3.6 && Math.abs(c.x - j.x) < 1.85 && !j.ar && c.bateu <= 0) {
-        // encostão: empurra de lado e perde embalo, sem parar o jogo
+      // arremessado: voa pro lado girando, cai, fica um tempo fora e volta
+      if (c.caido > 0) {
+        c.caido -= dt
+        c.x += c.vx * dt
+        c.vx *= Math.exp(-dt * 1.6)
+        c.vy -= 22 * dt
+        c.y = Math.max(0, c.y + c.vy * dt)
+        if (c.y === 0) { c.vy = Math.abs(c.vy) * 0.25; c.vgiro *= 0.6 }
+        c.giro += c.vgiro * dt
+        c.v *= Math.exp(-dt * 2)
+        if (c.caido <= 0) { c.x = c.x0; c.y = 0; c.vy = 0; c.vx = 0; c.giro = 0; c.v = c.v0; c.u = (c.u + CV.L * 0.5) % CV.L }
+      }
+      if (aqui && c.caido <= 0 && Math.abs(d) < 3.6 && Math.abs(c.x - j.x) < 1.85 && !j.ar && c.bateu <= 0) {
+        // a batida (06/10, LU2CA): o carro da cidade voa pro lado, a Kombi segue
         c.bateu = 1
-        j.v = Math.min(j.v, c.v * 0.85)
-        j.vx = Math.sign(j.x - c.x || 1) * 6
+        c.caido = 7
+        const lado = Math.sign(c.x - j.x) || (Math.random() < 0.5 ? -1 : 1)
+        const forca = Math.min(1.6, 0.5 + Math.abs(j.v - c.v) / 25)
+        c.vx = lado * (9 + 8 * forca)
+        c.vy = 3 + 4 * forca
+        c.vgiro = (Math.random() < 0.5 ? -1 : 1) * (3 + 4 * forca)
+        j.v *= 0.82
         j.shake = 1.1
         j.flash = 0.3
         motor?.baque()
         vib([50, 30, 80])
-        ev.falar("Ella", "tá tudo bem??")
+        // a estrela: na 3ª, a polícia vem
+        if (!j.procurado) {
+          j.batidas = Math.min(3, (j.batidas ?? 0) + 1)
+          j.batidaT = 0
+          ev.estrelas(j.batidas)
+          if (j.batidas >= 3) j.procurado = true
+        }
       }
       if (aqui && antes > 0 && d <= 0) {
         if (!c.passou && c.bateu <= 0 && Math.abs(c.x - j.x) < 3.3 && j.v > 30) {
@@ -2749,8 +2822,9 @@ function Cena({
       }
       if (d > 50) c.passou = false
       const p = noMundo(CV, c.u, c.x, 0.75, a, tmp.p)
+      p.y += c.y
       tmp.d.position.copy(p)
-      tmp.d.rotation.set(0, Math.atan2(a.tx, a.tz), 0)
+      tmp.d.rotation.set(0, Math.atan2(a.tx, a.tz) + c.giro, c.caido > 0 ? Math.sin(c.giro) * 0.3 : 0)
       tmp.d.scale.set(1, 1, 1)
       tmp.d.updateMatrix()
       tr.corpo.setMatrixAt(i, tmp.d.matrix)
