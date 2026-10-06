@@ -77,6 +77,8 @@ export interface Save {
   // o combustível (06/10, LU2CA): o tanque (0–1) e o galão do inventário
   tanque?: number
   galao?: "cheio" | "vazio"
+  // a hora do jogo (0–24): o céu escurece e amanhece devagar (06/10)
+  hora?: number
   // o bar: os copos que a pessoa já bebeu (ficam vazios no balcão)
   copos?: number[]
   // a versão do save (VERSAO): save de versão diferente começa do zero

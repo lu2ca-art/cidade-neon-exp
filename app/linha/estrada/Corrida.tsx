@@ -136,6 +136,9 @@ interface Props {
   onTanque?: (n: number) => void
   // passou devagar em frente ao posto: a bomba
   onPosto?: () => void
+  // a hora do jogo (0–24) e o aviso pra guardar
+  hora?: number
+  onHora?: (h: number) => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -198,6 +201,35 @@ type Evs = {
 type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean }
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
+// O CÉU NA HORA (06/10, LU2CA): o jogo começa no fim de tarde (18 h, o tom
+// de sempre) e vai escurecendo até a noite funda, amanhece e vira dia.
+// [hora, topo, meio, tinta do horizonte, noite (estrelas/lua/sódio), luz]
+type ChaveCeu = [number, [number, number, number], [number, number, number], number, number, number]
+const CEU_HORAS: ChaveCeu[] = [
+  [0, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
+  [3.5, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
+  [5, [0.03, 0.03, 0.09], [0.12, 0.09, 0.2], 1.4, 0.6, 0.9],
+  [6.5, [0.12, 0.2, 0.42], [0.55, 0.45, 0.55], 2.2, 0.15, 1.4],
+  [9, [0.16, 0.32, 0.62], [0.48, 0.62, 0.82], 1.6, 0, 1.8],
+  [16, [0.16, 0.32, 0.62], [0.48, 0.62, 0.82], 1.6, 0, 1.8],
+  [17.2, [0.08, 0.1, 0.28], [0.4, 0.25, 0.35], 2, 0.4, 1.3],
+  [18, [0.012, 0.014, 0.05], [0.05, 0.07, 0.2], 1, 1, 1],
+  [21, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
+  [24, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
+]
+function ceuNaHora(h: number) {
+  let k = 0
+  while (k < CEU_HORAS.length - 2 && h >= CEU_HORAS[k + 1][0]) k++
+  const a = CEU_HORAS[k], b = CEU_HORAS[k + 1]
+  const t = Math.min(1, Math.max(0, (h - a[0]) / (b[0] - a[0])))
+  const m = (x: number, y: number) => x + (y - x) * t
+  return {
+    topo: [m(a[1][0], b[1][0]), m(a[1][1], b[1][1]), m(a[1][2], b[1][2])],
+    meio: [m(a[2][0], b[2][0]), m(a[2][1], b[2][1]), m(a[2][2], b[2][2])],
+    tinta: m(a[3], b[3]), noite: m(a[4], b[4]), luz: m(a[5], b[5]),
+  }
+}
+
 // as marcas do velocímetro (0–140 km/h, 270°)
 const DIAL = Array.from({ length: 15 }, (_, k) => {
   const a = ((-135 + k * (270 / 14)) * Math.PI) / 180
@@ -216,7 +248,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -315,6 +347,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // encheu no posto (ou usou o galão): o page manda o novo nível
   useEffect(() => { if (Math.abs(tanque - combRef.current.tanque) > 0.04) combRef.current.tanque = tanque }, [tanque])
   const hudComb = useRef<SVGLineElement>(null)
+  const horaRef = useRef(hora)
+  const onHoraRef = useRef(onHora)
+  useEffect(() => { onHoraRef.current = onHora }, [onHora])
+  const horaT = useRef(0)
   const hudCombBox = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!abertura) return
@@ -785,6 +821,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         hudComb.current?.setAttribute("transform", `rotate(${-80 + nivelComb * 160} 30 30)`)
         hudCombBox.current?.classList.toggle("is-reserva", nivelComb < 0.1)
         if (!ab.ativa && agora - combRef.current.t > 3000) { combRef.current.t = agora; onTanqueRef.current?.(combRef.current.tanque) }
+        if (agora - horaT.current > 10000) { horaT.current = agora; onHoraRef.current?.(horaRef.current) }
         // computador: parado sem acelerar → mostra como anda
         hudParado.current?.classList.toggle("is-on", !toqueTela && !dentroRef.current && Math.abs(j.v) < 0.5 && !j.chegando && !input.current.gas && j.tempo > 1.5)
         if (hudMarcha.current) {
@@ -965,6 +1002,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       evs.current?.via(i)
     }
     w.__tom = () => tomDaMusica()
+    // teste: a hora do jogo (0–24)
+    w.__hora = (h: number) => { horaRef.current = h }
     w.__pular = () => proxFaixa.current(freqRef.current)
     w.__estacoes = () => M.vias[M.circuito.linha].estacoes.map((e) => ({ id: e.id, f: e.u / M.vias[M.circuito.linha].L }))
     // pontos de busca da missão: [{ chave, via (id), u, f (fração do loop) }]
@@ -975,7 +1014,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       const j = jogo.current
       return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap) }
     }
-    return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular }
+    return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora }
   }, [M])
 
   // toque: metade esquerda/direita vira, as duas freiam
@@ -1087,7 +1126,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} />
         </Canvas>
       )}
 
@@ -1496,12 +1535,13 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
   combRef: React.MutableRefObject<Comb>
+  horaRef: React.MutableRefObject<number>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -2130,9 +2170,9 @@ function Cena({
   const ceuMat = useMemo(() => new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
-    uniforms: { lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() }, tinta: { value: new THREE.Color("#4a1a30") }, nevoaC: { value: new THREE.Color("#1a0f24") }, tempo: { value: 0 } },
+    uniforms: { lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() }, tinta: { value: new THREE.Color("#4a1a30") }, nevoaC: { value: new THREE.Color("#1a0f24") }, tempo: { value: 0 }, topoC: { value: new THREE.Vector3(0.012, 0.014, 0.05) }, meioC: { value: new THREE.Vector3(0.05, 0.07, 0.2) }, noite: { value: 1 } },
     vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-    fragmentShader: `varying vec3 vP; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC; uniform float tempo;
+    fragmentShader: `varying vec3 vP; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC; uniform float tempo; uniform vec3 topoC; uniform vec3 meioC; uniform float noite;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float ruido(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
         return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
@@ -2141,30 +2181,33 @@ function Cena({
         vec3 d = normalize(vP);
         float h = d.y;
         float hp = max(h, 0.0);
-        vec3 topo = vec3(0.012, 0.014, 0.05);
-        vec3 meio = vec3(0.05, 0.07, 0.2);
+        // a hora do jogo (CEU_HORAS): de dia o céu clareia, de noite escurece
+        vec3 topo = topoC;
+        vec3 meio = meioC;
         vec3 c = mix(nevoaC, tinta, smoothstep(-0.04, 0.03, h));
         c = mix(c, meio, smoothstep(0.03, 0.25, h));
         c = mix(c, topo, smoothstep(0.25, 0.85, h));
         // poluição luminosa: a cidade acende o horizonte
         vec3 sodio = vec3(1.0, 0.46, 0.18);
-        c += tinta * exp(-hp * 9.0) * 0.55 + sodio * exp(-hp * 16.0) * 0.16;
+        c += tinta * exp(-hp * 9.0) * 0.55 + sodio * exp(-hp * 16.0) * 0.16 * noite;
         // estrelas (só lá em cima)
         vec2 g = floor(d.xz / (hp + 0.15) * 260.0);
         float est = step(0.9965, hash(g)) * smoothstep(0.2, 0.5, h);
-        c += vec3(0.75, 0.8, 1.0) * est * (0.5 + 0.5 * sin(tempo * 3.0 + hash(g) * 40.0));
+        c += vec3(0.75, 0.8, 1.0) * est * noite * (0.5 + 0.5 * sin(tempo * 3.0 + hash(g) * 40.0));
         // lua + halo
         float m = max(dot(d, lua), 0.0);
         vec3 luaC = vec3(0.85, 0.9, 1.0) * smoothstep(0.99935, 0.99965, m) * 1.6;
         vec3 halo = vec3(0.3, 0.36, 0.7) * pow(m, 48.0) * 0.55;
-        c += luaC + halo;
+        c += (luaC + halo) * noite;
         // nuvens: um teto baixo, projetado num plano, andando com o vento
         vec2 uv = d.xz / (hp + 0.09) * 2.1 + vec2(tempo * 0.012, tempo * 0.005);
         float n = fbm(uv);
         float n2 = fbm(uv * 2.7 - tempo * 0.02);
         float cob = smoothstep(0.34, 0.7, n * 0.75 + n2 * 0.35) * smoothstep(0.0, 0.07, h);
         // a base da nuvem pega a luz da cidade; o alto fica escuro
-        vec3 nuvem = mix(tinta * 1.25 + sodio * 0.18, vec3(0.035, 0.035, 0.08), smoothstep(0.02, 0.55, h));
+        // de dia as nuvens clareiam (cinza-claro); de noite pegam a luz da cidade
+        float dia = 1.0 - noite;
+        vec3 nuvem = mix(tinta * 1.25 + sodio * 0.18 * noite + vec3(0.55, 0.57, 0.62) * dia, mix(vec3(0.035, 0.035, 0.08), vec3(0.6, 0.64, 0.72), dia), smoothstep(0.02, 0.55, h));
         nuvem *= 0.65 + 0.55 * n2;
         // borda prateada onde a lua bate
         nuvem += vec3(0.55, 0.62, 0.95) * pow(m, 10.0) * (1.0 - cob) * cob * 2.4;
@@ -2191,6 +2234,9 @@ function Cena({
   }), [])
   const hudN = useRef(0)
   const hemi = useRef<THREE.HemisphereLight>(null)
+  const ambRef = useRef<THREE.AmbientLight>(null)
+  const dirRef = useRef<THREE.DirectionalLight>(null)
+  const diaNevoa = useMemo(() => new THREE.Color("#7f93ad"), [])
   const alvoNevoa = useMemo(() => new THREE.Color(), [])
   const alvoCeu = useMemo(() => new THREE.Color(), [])
   const kTurbo = useRef(false)
@@ -2906,6 +2952,16 @@ function Cena({
       alvoNevoa.set(ds.nevoa)
       alvoCeu.set(ds.ceu)
     }
+    // A HORA DO JOGO: anda devagar (1 h a cada 3 min) e muda o céu, a névoa e a luz
+    horaRef.current = (horaRef.current + dt / 180) % 24
+    const ch = ceuNaHora(horaRef.current)
+    ceuMat.uniforms.topoC.value.set(ch.topo[0], ch.topo[1], ch.topo[2])
+    ceuMat.uniforms.meioC.value.set(ch.meio[0], ch.meio[1], ch.meio[2])
+    ceuMat.uniforms.noite.value = ch.noite
+    alvoCeu.multiplyScalar(ch.tinta)
+    alvoNevoa.lerp(diaNevoa, (1 - ch.noite) * 0.75)
+    if (ambRef.current) ambRef.current.intensity = 0.35 * ch.luz
+    if (dirRef.current) dirRef.current.intensity = 0.9 * ch.luz
     const kk = Math.min(1, dt * (0.9 + j.impacto * 9))
     j.impacto = Math.max(0, j.impacto - dt * 0.8)
     const fog = scene.fog as THREE.Fog | null
@@ -3026,8 +3082,8 @@ function Cena({
   return (
     <>
       <hemisphereLight ref={hemi} args={["#8f7dff", "#0b1a3a", 1.6]} />
-      <ambientLight intensity={0.35} color="#7f8cff" />
-      <directionalLight position={[200, 300, -400]} intensity={0.9} color="#b9ccff" />
+      <ambientLight ref={ambRef} intensity={0.35} color="#7f8cff" />
+      <directionalLight ref={dirRef} position={[200, 300, -400]} intensity={0.9} color="#b9ccff" />
       <mesh ref={ceu} material={ceuMat} frustumCulled={false} renderOrder={-1}>
         <sphereGeometry args={[2800, 32, 16]} />
       </mesh>
