@@ -1714,3 +1714,27 @@
 /* aberta, a caixa de missões sobe pra baixo do botão de 1ª pessoa */
 .l-missoes { top: calc(62px + env(safe-area-inset-top)) !important; bottom: auto !important; max-height: 60vh; }
 .l-abertura-dica { top: calc(66px + env(safe-area-inset-top)); bottom: auto; background: #000; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 22px; animation: none; }
+
+/* ── O PAINEL DA KOMBI (06/10): um painel só, como o de uma Kombi —
+   velocímetro redondo cromado, o rádio no meio, combustível e turbo ── */
+.l-painel-kombi { position: absolute; z-index: 20; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(96vw, 430px); display: grid; grid-template-columns: 92px minmax(0, 1fr) 66px; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 22px 22px 14px 14px; background: linear-gradient(180deg, #1c1815 0%, #0d0b0a 100%); border: 1px solid #3a3029; box-shadow: inset 0 1px 0 rgba(255, 230, 200, 0.08), inset 0 -6px 14px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.6); }
+.l-painel-kombi .l-hud-vel { position: relative; left: auto; bottom: auto; width: 92px; height: 92px; display: block; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #191613, #080706 70%); box-shadow: inset 0 0 0 3px #a7a092, inset 0 0 0 5px #2a2622, inset 0 4px 10px rgba(0, 0, 0, 0.8), 0 0 0 1px #000; pointer-events: none; }
+.l-kombi-dial { position: absolute; inset: 0; width: 100%; height: 100%; }
+.l-kombi-agulha { position: absolute; left: calc(50% - 1px); top: calc(50% - 34px); width: 2px; height: 36px; border-radius: 2px; background: linear-gradient(#ff8a4a, #ff5b1a); transform-origin: 50% 34px; transform: rotate(-135deg); box-shadow: 0 0 6px rgba(255, 110, 40, 0.7); transition: transform 0.12s linear; }
+.l-kombi-agulha::after { content: ""; position: absolute; left: -4px; top: 30px; width: 10px; height: 10px; border-radius: 50%; background: #2a2622; box-shadow: inset 0 0 0 2px #a7a092; }
+.l-painel-kombi .l-hud-vel span:first-of-type { position: absolute; left: 0; right: 0; top: 54px; text-align: center; font: 700 13px var(--mono); color: #fff; text-shadow: none; min-width: 0; line-height: 1; }
+.l-painel-kombi .l-hud-vel small { position: absolute; left: 0; right: 0; top: 67px; text-align: center; font: 6px var(--mono); color: #8a8274; }
+.l-painel-kombi .l-hud-marcha { position: absolute; right: 14px; top: 20px; font: 700 8px var(--mono); color: #ffc857; }
+.l-kombi-odo { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); padding: 1px 3px; border-radius: 2px; background: #000; box-shadow: inset 0 0 0 1px #3a332c; font: 600 7px var(--mono); font-style: normal; letter-spacing: 0.08em; color: #e8e0cf; }
+.l-painel-kombi .l-hud-tag { position: absolute; left: 0; bottom: 100%; margin-bottom: 6px; white-space: nowrap; }
+.l-painel-kombi .l-player { position: static; transform: none; width: auto; left: auto; right: auto; bottom: auto; }
+.l-kombi-dir { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.l-kombi-comb { position: relative; height: 40px; border-radius: 8px; background: radial-gradient(circle at 50% 80%, #191613, #080706); box-shadow: inset 0 0 0 2px #a7a092, inset 0 0 0 3px #2a2622; padding: 3px 4px 0; }
+.l-kombi-comb svg { width: 100%; height: 100%; display: block; }
+.l-kombi-comb small { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); font: 800 7px var(--mono); color: #ff5b3a; opacity: 0; }
+.l-kombi-comb.is-reserva small { animation: l-pisca 0.9s ease-in-out infinite; opacity: 1; }
+.l-painel-kombi .l-hud-turbo { position: static; transform: none; left: auto; right: auto; bottom: auto; width: auto; padding: 5px 6px; border-radius: 8px; flex-direction: column; gap: 4px; align-items: stretch; background: #1d1813 !important; border: 1px solid #4a3c30 !important; }
+.l-painel-kombi .l-hud-turbo span { font: 700 8px var(--mono); letter-spacing: 0.12em; color: #d9c8ff; text-align: center; }
+.l-painel-kombi .l-hud-turbo-barra { width: auto; height: 3px; }
+.l-caixa-missao { bottom: calc(126px + env(safe-area-inset-bottom)); }
+.l-tanque { display: none; }

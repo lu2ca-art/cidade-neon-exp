@@ -256,6 +256,26 @@ export function estatica(v0 = 0.12) {
   }
 }
 
+// dinheiro caiu na conta: uma moedinha, baixinho
+export function moeda() {
+  const c = audioCtx()
+  const out = saida()
+  if (!c || !out) return
+  const t = c.currentTime
+  ;[1568, 2093].forEach((f, i) => {
+    const o = c.createOscillator()
+    o.type = "triangle"
+    o.frequency.value = f
+    const g = c.createGain()
+    g.gain.setValueAtTime(0, t + i * 0.07)
+    g.gain.linearRampToValueAtTime(0.05, t + i * 0.07 + 0.005)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.07 + 0.25)
+    o.connect(g).connect(out)
+    o.start(t + i * 0.07)
+    o.stop(t + i * 0.07 + 0.3)
+  })
+}
+
 // o vento do deserto (a abertura): ruído grave que sobe e desce devagar
 export function vento(v0 = 0.16) {
   const c = audioCtx()
