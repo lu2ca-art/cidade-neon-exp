@@ -1687,3 +1687,5 @@
 .l-missoes-check li.is-ok i { background: #5dffa0; border-color: #5dffa0; }
 /* com a placa da bifurcação aberta, o aviso desce pra não cobrir */
 .l-raiz:has(.l-ilha.is-garfo) .l-aviso { top: calc(140px + env(safe-area-inset-top)); }
+/* o tanque da abertura fica acima do toca-discos */
+.l-tanque { bottom: calc(150px + env(safe-area-inset-bottom)); left: 12px; }
