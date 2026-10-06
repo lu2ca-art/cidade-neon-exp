@@ -8,7 +8,7 @@
 // O gesto é olhar o quarto: tocar no espelho, no tênis, na janela. Cada
 // coisa ele comenta. Viu duas, ele levanta.
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import * as THREE from "three"
 import { sinalizar } from "../bus"
 import { Caixa, Neon, Npc, Sala, Toque, useExplorar, type Coisa } from "../comum"
@@ -21,13 +21,15 @@ const PLANOS: Record<string, Plano> = {
   porta: { pos: [0.2, 1.65, 2.6], olha: [-0.2, 1.1, -1.4], fov: 60 },
   drewboy: { pos: [1.3, 1.45, 1.4], olha: [-0.3, 0.95, -0.8], fov: 52 },
   mubarak: { pos: [-0.6, 1.55, 1.9], olha: [0.9, 1.25, 0.7], fov: 50 },
-  quarto: { pos: [0.3, 1.75, 2.3], olha: [-0.1, 1.0, -1.2], fov: 66 },
+  // do canto, na diagonal: o espelho, o tênis e a janela no mesmo quadro
+  // (no celular em pé a câmera antiga só pegava o espelho — o gesto travava)
+  quarto: { pos: [-1.7, 1.9, 2.2], olha: [0.6, 0.8, -0.9], fov: 75 },
 }
 
 const COISAS: Coisa[] = [
   { id: "espelho", pos: [-0.2, 1.4, -2.15], raio: 0.3, falas: [{ texto: "o espelho é maior que a janela", tipo: "acao" }, { de: "Drewboy", texto: "ele me vê mais do que todo mundo junto" }] },
   { id: "tenis", pos: [1.3, 0.12, -1.3], raio: 0.22, falas: [{ texto: "um tênis novo, ainda na caixa", tipo: "acao" }, { de: "Drewboy", texto: "comprei pra sair. nunca saí com ele" }] },
-  { id: "janela", pos: [1.95, 1.5, 0.2], raio: 0.35, falas: [{ texto: "lá fora, a cidade. de longe, o grave abafado de uma balada", tipo: "acao" }, { de: "Drewboy", texto: "dá pra ouvir a SEXTA daqui. toda sexta" }] },
+  { id: "janela", pos: [1.95, 1.5, -0.3], raio: 0.35, falas: [{ texto: "lá fora, a cidade. de longe, o grave abafado de uma balada", tipo: "acao" }, { de: "Drewboy", texto: "dá pra ouvir a SEXTA daqui. toda sexta" }] },
 ]
 
 export function SalaQuarto({ estado }: SalaProps) {
@@ -36,6 +38,13 @@ export function SalaQuarto({ estado }: SalaProps) {
   const [mubarak, setMubarak] = useState(false)
   if (!mubarak && estado.falando === "Mubarak") setMubarak(true)
   const { vistas, ver } = useExplorar(olhando, COISAS, 2, sinalizar)
+  // nenhum aparelho trava aqui: se em 25 s a pessoa não achou o que tocar
+  // (tela estreita, câmera longe), a cena segue sozinha
+  useEffect(() => {
+    if (!olhando) return
+    const t = setTimeout(() => sinalizar({ t: "fim-gesto" }), 25000)
+    return () => clearTimeout(t)
+  }, [olhando])
   // sai depois da resposta (a ação "ele apaga a luz do espelho")
   const saiu = estado.pos >= 8 || (estado.pos === 7 && estado.falando === null)
   const plano = useMemo(() => {
@@ -80,7 +89,7 @@ export function SalaQuarto({ estado }: SalaProps) {
           roupa estilosa pendurada, caixas de som */}
       <Grafite pos={[-1.98, 1.35, -0.2]} rot={Math.PI / 2} w={3.6} h={1.9} seed={3} />
       <Grafite pos={[1.1, 1.5, -2.28]} rot={0} w={1.6} h={1.5} seed={8} />
-      <Varal pos={[-1.2, 2.05, 1.9]} />
+      <Varal pos={[-1.85, 2.05, -0.6]} rot={Math.PI / 2} />
       {[-1.6, 1.55].map((x) => <Som key={x} pos={[x, 0, x < 0 ? -1.8 : 1.5]} />)}
       <pointLight position={[-1.2, 2.1, 0.6]} color="#ffc857" intensity={1.4} distance={4} decay={2} />
       {mubarak && <Npc cor="#ff6a35" pos={[0.9, 0, 0.8]} vira={-2.4} falando={estado.falando === "Mubarak"} />}
@@ -129,10 +138,10 @@ function Grafite({ pos, rot, w, h, seed }: { pos: [number, number, number]; rot:
 }
 
 // o varal da sala: roupa estilosa pendurada (jaqueta, moletom, camisas)
-function Varal({ pos }: { pos: [number, number, number] }) {
+function Varal({ pos, rot = 0 }: { pos: [number, number, number]; rot?: number }) {
   const pecas = [["#ff3fb0", 0.55, 0.7], ["#1d2b4a", 0.5, 0.75], ["#ffc857", 0.45, 0.6], ["#2fe8ff", 0.5, 0.68], ["#e8e2d8", 0.42, 0.62]] as const
   return (
-    <group position={pos}>
+    <group position={pos} rotation-y={rot}>
       <mesh rotation-z={Math.PI / 2}><cylinderGeometry args={[0.015, 0.015, 2.2, 6]} /><meshStandardMaterial color="#8a8590" metalness={0.6} /></mesh>
       {pecas.map(([cor, w, h], i) => (
         <group key={i} position={[-0.9 + i * 0.45, 0, 0]}>
