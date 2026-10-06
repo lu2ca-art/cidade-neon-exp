@@ -22,9 +22,9 @@ const VERDE = "#5dffa0"
 const GOTAS = 10
 
 const PLANOS: Record<string, Plano> = {
-  chegada: { pos: [1.6, 1.7, 2.6], olha: [-0.3, 0.9, -0.6], fov: 60 },
-  ella: { pos: [0.6, 1.25, 1.6], olha: [-1.25, 0.75, 0.1], fov: 50 },
-  flor: { pos: [0.5, 1.15, 0.8], olha: [0, 0.85, -0.6], fov: 52 },
+  chegada: { pos: [1.9, 1.7, 2.5], olha: [-0.2, 1.0, -0.6], fov: 58 },
+  ella: { pos: [0.7, 1.3, 1.7], olha: [-1.25, 0.75, 0.1], fov: 50 },
+  flor: { pos: [0.15, 1.25, 1.05], olha: [0, 1.0, -0.6], fov: 50 },
 }
 
 export function SalaEscondido({ estado }: SalaProps) {
@@ -129,10 +129,10 @@ function criarTricomas() {
   let semente = 5
   const r = () => ((semente = (semente * 16807) % 2147483647) / 2147483647)
   for (let i = 0; i < n; i++) {
-    const c = Math.floor(r() * 4)
-    const cy = 0.55 + c * 0.16, ca = c * 2.1
-    const rr = 0.04 + r() * 0.05, th = r() * Math.PI * 2
-    p.set([Math.cos(ca) * 0.08 * (c ? 1 : 0) + Math.cos(th) * rr, cy + (r() - 0.5) * 0.12, Math.sin(ca) * 0.08 * (c ? 1 : 0) + Math.sin(th) * rr], i * 3)
+    const COLAS = [[0, 1.18, 0, 1.5], [0.1, 0.95, 0.04, 1], [-0.09, 0.82, -0.05, 0.9], [0.06, 0.7, -0.08, 0.8]]
+    const [cx, cy, cz, e] = COLAS[Math.floor(r() * COLAS.length)]
+    const rr = (0.03 + r() * 0.04) * e, th = r() * Math.PI * 2
+    p.set([cx + Math.cos(th) * rr, cy + (r() - 0.5) * 0.18 * e, cz + Math.sin(th) * rr], i * 3)
   }
   geo.setAttribute("position", new THREE.BufferAttribute(p, 3))
   return geo
@@ -143,40 +143,46 @@ function criarTricomas() {
 function Planta({ k }: { k: number }) {
   const g = useRef<THREE.Group>(null)
   const kk = useRef(0)
-  const folhas = useMemo(() => Array.from({ length: 9 }, (_, i) => ({ y: 0.12 + i * 0.09, a: i * 2.4, s: 1 - i * 0.06 })), [])
+  // os nós: folhas grandes em leque (7 folíolos), alternando a volta
+  const nos = useMemo(() => Array.from({ length: 8 }, (_, i) => ({ y: 0.12 + i * 0.12, a: i * 2.2, s: 1.15 - i * 0.08 })), [])
   const tricomas = useMemo(() => criarTricomas(), [])
+  const murcha = useRef<THREE.Group[]>([])
   useFrame((st, dt) => {
     kk.current += (k - kk.current) * Math.min(1, dt * 2)
     if (g.current) {
-      g.current.rotation.z = (1 - kk.current) * 0.5 + Math.sin(st.clock.elapsedTime * 1.2) * 0.02
-      g.current.scale.setScalar(0.85 + kk.current * 0.25)
+      g.current.rotation.z = (1 - kk.current) * 0.22 + Math.sin(st.clock.elapsedTime * 1.2) * 0.015
+      g.current.scale.setScalar(0.9 + kk.current * 0.2)
     }
+    // as folhas caídas levantam conforme rega
+    for (const f of murcha.current) if (f) f.rotation.z = -0.9 * (1 - kk.current) - 0.15
   })
-  const verde = new THREE.Color("#5a6a40").lerp(new THREE.Color("#2fa84a"), k)
+  const verde = new THREE.Color("#6a7a48").lerp(new THREE.Color("#2fa84a"), k)
   return (
     <group ref={g}>
-      <mesh position={[0, 0.5, 0]}><cylinderGeometry args={[0.015, 0.025, 1, 6]} /><meshStandardMaterial color="#4a7a3a" /></mesh>
-      {folhas.map((f, i) => (
-        <group key={i} position={[0, f.y, 0]} rotation-y={f.a}>
-          {[-0.9, -0.45, 0, 0.45, 0.9].map((d) => (
-            <mesh key={d} position={[0.13 * f.s, 0, 0]} rotation={[0, 0, -0.5 - (1 - k) * 0.6 + d * 0.15]} >
-              <mesh position={[0.12 * f.s, 0, 0]} rotation-y={d * 0.5} scale={[1, 0.08, 0.22]}>
-                <sphereGeometry args={[0.13 * f.s, 8, 4]} />
-                <meshStandardMaterial color={verde} roughness={0.7} />
-              </mesh>
-            </mesh>
-          ))}
+      <mesh position={[0, 0.55, 0]}><cylinderGeometry args={[0.016, 0.03, 1.1, 6]} /><meshStandardMaterial color="#4a7a3a" /></mesh>
+      {nos.map((n, i) => (
+        <group key={i} position={[0, n.y, 0]} rotation-y={n.a}>
+          <group ref={(el) => { if (el) murcha.current[i] = el }}>
+            {[-1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2].map((d) => (
+              <group key={d} rotation-y={d * 0.55}>
+                <mesh position={[0.17 * n.s * (1 - Math.abs(d) * 0.25), 0, 0]} scale={[1, 0.05, 0.2]}>
+                  <sphereGeometry args={[0.17 * n.s * (1 - Math.abs(d) * 0.25), 8, 5]} />
+                  <meshStandardMaterial color={verde} roughness={0.7} side={THREE.DoubleSide} />
+                </mesh>
+              </group>
+            ))}
+          </group>
         </group>
       ))}
-      {/* as flores (colas) no alto */}
-      {[0, 1, 2, 3].map((c) => (
-        <mesh key={c} position={[Math.cos(c * 2.1) * 0.08 * (c ? 1 : 0), 0.55 + c * 0.16, Math.sin(c * 2.1) * 0.08 * (c ? 1 : 0)]} scale={[0.7, 1.3, 0.7]}>
-          <sphereGeometry args={[0.07, 10, 8]} />
-          <meshStandardMaterial color="#6abf5a" emissive="#2a6a2a" emissiveIntensity={0.2 + k * 0.4} roughness={0.6} />
+      {/* as colas (flores) no alto, cheias de tricomas */}
+      {[[0, 1.18, 0, 1.5], [0.1, 0.95, 0.04, 1], [-0.09, 0.82, -0.05, 0.9], [0.06, 0.7, -0.08, 0.8]].map(([x, y, z, e], c) => (
+        <mesh key={c} position={[x, y, z]} scale={[0.75 * e, 1.6 * e, 0.75 * e]}>
+          <sphereGeometry args={[0.065, 12, 10]} />
+          <meshStandardMaterial color="#7ac85a" emissive="#2a6a2a" emissiveIntensity={0.2 + k * 0.4} roughness={0.6} />
         </mesh>
       ))}
       <points geometry={tricomas}>
-        <pointsMaterial size={0.012} color="#f4f0ff" transparent opacity={0.4 + k * 0.6} toneMapped={false} />
+        <pointsMaterial size={0.014} color="#f4f0ff" transparent opacity={0.45 + k * 0.55} toneMapped={false} />
       </points>
     </group>
   )
