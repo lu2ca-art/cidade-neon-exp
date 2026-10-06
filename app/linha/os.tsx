@@ -68,6 +68,8 @@ export const APPS: AppDef[] = [
 ]
 
 export const DOCK: AppId[] = ["kombi", "n3xo", "linha", "radio"]
+// fora do celular por enquanto (06/10, LU2CA): ficam no código, não aparecem
+export const ESCONDIDOS: AppId[] = ["museu", "feelgood", "galeria", "salabranca", "jardim"]
 
 export function Glifo({ id, cor, size = 26 }: { id: AppId; cor: string; size?: number }) {
   const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: cor, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const }
@@ -190,7 +192,8 @@ export function Home({
   }, [lista.length])
 
   const b = lista.length ? lista[banner % lista.length] : null
-  const grade = APPS.filter((a) => !DOCK.includes(a.id))
+  // todos os apps na página inicial (06/10, LU2CA)
+  const grade = APPS.filter((a) => !DOCK.includes(a.id) && !ESCONDIDOS.includes(a.id))
 
   return (
     <section className="l-os">
@@ -218,12 +221,12 @@ export function Home({
         onPointerUp={(e) => {
           if (swipe.current === null) return
           const dx = e.clientX - swipe.current
-          if (Math.abs(dx) > 50) setPag(dx < 0 ? 1 : 0)
+          if (Math.abs(dx) > 50) setPag(0)
           swipe.current = null
         }}
       >
         <div className="l-os-trilho" style={{ transform: `translateX(-${pag * 50}%)` }}>
-          {[0, 1].map((pg) => (
+          {[0].map((pg) => (
             <div key={pg} className="l-os-pagina">
               {pg === 0 && (
                 <div className="l-widgets">
@@ -251,7 +254,7 @@ export function Home({
               )}
               {pg === 1 && <p className="l-os-titulo-pag">a cidade</p>}
               <div className="l-os-grade">
-                {grade.filter((a) => a.pagina === pg).map((a) => (
+                {grade.map((a) => (
                   <IconeApp key={a.id} a={a} nivel={nivel} onApp={onApp} objetos={[...save.objetos.filter((o) => o !== "nectar"), ...(save.violao ? ["nectar" as const] : [])]} novo={(a.id === "fliperama" && !save.jogados.visto) || (a.id === "jardim" && save.objetos.includes("chuva") && !save.jardim.length) || (a.id === "violao" && save.violao && !save.jogados.violao)} />
                 ))}
               </div>
@@ -260,9 +263,6 @@ export function Home({
         </div>
       </div>
 
-      <div className="l-os-pontos">
-        {[0, 1].map((i) => <button key={i} type="button" className={pag === i ? "is-on" : ""} onClick={() => setPag(i)} aria-label={`página ${i + 1}`} />)}
-      </div>
 
       <div className="l-os-dock">
         {DOCK.map((id) => <IconeApp key={id} a={APPS.find((x) => x.id === id)!} nivel={nivel} onApp={onApp} semNome />)}
