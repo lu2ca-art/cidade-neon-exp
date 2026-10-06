@@ -1257,7 +1257,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             )}
             {modo === "procurado" && (
               <div key="proc" className="l-ilha-conteudo l-ilha-proc">
-                <b>PROCURADO</b><small>acelera no talo ou troca de rua</small>
+                <b>PROCURADO</b><small>usa o turbo e abre distância</small>
                 <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
               </div>
             )}
