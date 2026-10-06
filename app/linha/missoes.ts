@@ -271,8 +271,9 @@ export function alvoDe(s: Save, nivel: number): Alvo | null {
   if (e === "pegar") return { t: "lugar", missao: id, lugar: m.carona!, pegar: true }
   if (e === "lugar") return { t: "lugar", missao: id, lugar: m.lugar!, pegar: false }
   if (e === "entrega") return { t: "entrega", missao: id }
-  // missão de lugar: o chamado chega sozinho na estrada (não manda pra estação)
-  if (e === "chamado") return m.lugar ? null : { t: "visita", missao: id }
+  // missão de lugar: o chamado chega sozinho na estrada (não manda pra estação).
+  // Aceita no painel (foco): o lugar já fica marcado no mapa
+  if (e === "chamado") return m.lugar ? (s.foco === id ? { t: "lugar", missao: id, lugar: m.carona ?? m.lugar, pegar: !!m.carona } : null) : { t: "visita", missao: id }
   return null
 }
 

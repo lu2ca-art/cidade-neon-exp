@@ -507,7 +507,8 @@ export default function LinhaPage() {
     setSave((s) => {
       const grupo: Item[] = ROTEIROS.grupo.passos.flatMap((p): Item[] => (p.t === "msg" ? [{ k: "msg", texto: typeof p.texto === "string" ? p.texto : "", de: p.de }] : p.t === "nucleo" ? [{ k: "nucleo", texto: p.texto }] : p.t === "sistema" ? [{ k: "sistema", texto: p.texto }] : []))
       return {
-        ...s, casa: true, violao: true, foco: s.foco ?? PRIMEIRA, tutorial: s.tutorial ?? [],
+        // (a missão do Mubarak NÃO vem aceita: a pessoa aceita no painel)
+        ...s, casa: true, violao: true, tutorial: s.tutorial ?? [],
         // a D-Bee: o galão (despejado no tanque, dá pra chegar na cidade);
         // os 25 NEON caem na conta na cena ("toma aqui")
         tanque: GALAO, galao: "vazio",
@@ -538,7 +539,7 @@ export default function LinhaPage() {
   const listaMissoes = useMemo(() => {
     const l = abertas(save, nivel)
     // no tutorial, só a primeira pessoa (as outras abrem quando ele acaba)
-    return emTutorial(save) ? l.filter((m) => m.id === PRIMEIRA) : l
+    return emTutorial(save) ? (feito(save, "posto") ? l.filter((m) => m.id === PRIMEIRA) : []) : l
   }, [save, nivel])
 
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
@@ -571,9 +572,9 @@ export default function LinhaPage() {
   // alguém escreveu e a conversa espera resposta no N3XO
   const esperaN3xo = !!quemChama && adiadas.includes(quemChama) && save.pausas[quemChama] === undefined
   const resumoMissao = esperaN3xo
-    ? { rotulo: itemAgora ? "primeiros passos" : "missão", texto: `${getEstacao(quemChama!).personagem} te escreveu · responde no N3XO`, cor: getEstacao(quemChama!).cor }
+    ? { rotulo: itemAgora ? BLOCOS[blocoTut].titulo : "missão", texto: `${getEstacao(quemChama!).personagem} te escreveu · responde no N3XO`, cor: getEstacao(quemChama!).cor }
     : itemAgora
-    ? { rotulo: "primeiros passos", texto: ITENS[itemAgora].texto, cor: "#3d7bff" }
+    ? { rotulo: BLOCOS[blocoTut].titulo, texto: ITENS[itemAgora].texto, cor: blocoTut === 0 ? "#3d7bff" : getEstacao(PRIMEIRA).cor }
     : missaoAgora
     ? { rotulo: `missão · ${getEstacao(missaoAgora.id).personagem}`, texto: missaoAgora.texto, cor: getEstacao(missaoAgora.id).cor }
     : listaMissoes.length
@@ -619,9 +620,11 @@ export default function LinhaPage() {
     setPainelMissoes(false)
     // quem estava chamando e não é a escolhida espera (chama de novo depois)
     if (aoVivo && aoVivo !== m.id) setAoVivo(null)
-    setSave((s) => ({ ...s, foco: m.id, freq: m.area }))
-    setTeleporte((t) => ({ chave: (t?.chave ?? 0) + 1, area: m.area, lugar: m.lugar, frac: m.frac }))
-    track("mission_step", { mission_id: `linha-${m.id}`, step: "ir-agora", perfil: save.perfil ?? "?", fio_pos: save.fio.indexOf(m.id) })
+    // aceitar (06/10, LU2CA): sem corte — a missão vira a selecionada e o
+    // lugar fica marcado no mapa; o caminho é a pessoa que faz
+    setSave((s) => ({ ...s, foco: m.id }))
+    avisar("missão aceita", m.texto, getEstacao(m.id).cor)
+    track("mission_step", { mission_id: `linha-${m.id}`, step: "aceitar", perfil: save.perfil ?? "?", fio_pos: save.fio.indexOf(m.id) })
   }
   useEffect(() => {
     if (!pronto) return
@@ -921,9 +924,9 @@ export default function LinhaPage() {
             <header><b>missões</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
             {tut ? (
               <section className="l-missoes-agora">
-                <small>primeiros passos</small>
+                <small>{BLOCOS[Math.min(blocoTut, BLOCOS.length - 1)].titulo}</small>
                 <ul className="l-missoes-check">
-                  {BLOCOS.flatMap((bl) => bl.itens).map((i) => (
+                  {BLOCOS[Math.min(blocoTut, BLOCOS.length - 1)].itens.map((i) => (
                     <li key={i} className={feito(save, i) ? "is-ok" : ""}><i aria-hidden="true">{feito(save, i) ? "✓" : ""}</i>{ITENS[i].texto}</li>
                   ))}
                 </ul>
@@ -942,7 +945,7 @@ export default function LinhaPage() {
                   <li key={m.id} style={{ ["--cor" as string]: e.cor }}>
                     <span className="l-missoes-quem">{e.personagem}<small>{m.etapa === "chamado" ? "quer falar com você" : m.etapa === "busca" ? "buscar no mapa" : m.etapa === "pegar" ? "buscar alguém" : "te espera"}</small></span>
                     <p>{m.texto}</p>
-                    <button type="button" onClick={() => irAgora(m)}>ir agora →</button>
+                    {save.foco === m.id ? <em className="l-missoes-sel">selecionada</em> : <button type="button" onClick={() => irAgora(m)}>aceitar</button>}
                   </li>
                 )
               })}

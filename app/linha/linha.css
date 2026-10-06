@@ -1759,3 +1759,4 @@
 .l-cena-neon { position: absolute; z-index: 30; top: calc(16px + env(safe-area-inset-top)); right: 16px; padding: 6px 12px; border-radius: 999px; background: rgba(5, 5, 14, 0.7); border: 1px solid #ffc857; font: 700 13px var(--mono); color: #ffc857; animation: l-aviso 1.6s cubic-bezier(0.2, 1, 0.3, 1) both; pointer-events: none; }
 /* dinheiro na conta durante a cena: no canto, discreto */
 .l-cena-neon { position: absolute; z-index: 30; top: calc(16px + env(safe-area-inset-top)); right: 16px; padding: 6px 12px; border-radius: 999px; background: rgba(5, 5, 14, 0.7); border: 1px solid #ffc857; font: 700 13px var(--mono); color: #ffc857; animation: l-aviso 1.6s cubic-bezier(0.2, 1, 0.3, 1) both; pointer-events: none; }
+.l-missoes-sel { font: 700 10px var(--mono); font-style: normal; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cor); }

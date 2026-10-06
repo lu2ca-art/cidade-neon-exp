@@ -67,16 +67,21 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   const neonDado = useRef(-1)
   // o copo que bebeu (o Bar avisa pelo bus)
   const copoRef = useRef<number | undefined>(undefined)
-  useEffect(() => {
-    if (mostrando?.neon && neonDado.current !== pos) { neonDado.current = pos; onNeon?.(mostrando.neon) }
-  }, [mostrando, pos, onNeon])
-  // só dinheiro (sem objeto nem relíquia): nada de cartão, segue sozinho
+  // só dinheiro (sem objeto nem relíquia): sem cartão e sem parar a cena —
+  // o +X aparece no canto e a cena já segue
   const soNeon = !!mostrando?.neon && !mostrando.objeto && !mostrando.reliquia
+  const [neonCanto, setNeonCanto] = useState<{ n: number; id: number } | null>(null)
   useEffect(() => {
+    if (!mostrando?.neon || neonDado.current === pos) return
+    neonDado.current = pos
+    onNeon?.(mostrando.neon)
     if (!soNeon) return
-    const t = setTimeout(() => setPos((p) => p + 1), 1600)
-    return () => clearTimeout(t)
-  }, [soNeon, pos])
+    const id = Date.now()
+    const n = mostrando.neon
+    const t0 = setTimeout(() => { setNeonCanto({ n, id }); setPos((p) => p + 1) }, 0)
+    const t1 = setTimeout(() => setNeonCanto((x) => (x?.id === id ? null : x)), 2000)
+    return () => { clearTimeout(t0); clearTimeout(t1) }
+  }, [mostrando, pos, onNeon, soNeon])
 
   // conta pra sala o que está acontecendo (quem fala, gesto, escolha…)
   // os minijogos antigos entram como "prova:<id>" (a sala pode assumir um deles)
@@ -182,7 +187,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
       )}
 
       {/* dinheiro na conta: só o +X no canto, e a cena segue sozinha */}
-      {mostrando && soNeon && <div key={pos} className="l-cena-neon">+{mostrando.neon} neon$</div>}
+      {neonCanto && <div key={neonCanto.id} className="l-cena-neon">+{neonCanto.n} neon$</div>}
       {mostrando && !soNeon && (
         <Ganho objeto={mostrando.objeto} reliquia={mostrando.reliquia} titulo={mostrando.titulo} texto={mostrando.texto} memoria={mostrando.objeto ? memoria : null} onOk={fecharGanho} />
       )}
