@@ -3,18 +3,18 @@
 // e dirija até a Cidade Neon" (a D-Bee liga no caminho e conta a história:
 // ligacoes.ts, dbee-historia); chegando, a missão do bar é o tutorial.
 //
-// "tanque" fica guardado em save.tutorial; o resto é lido do save.
+// "tanque" e "drewboy" ficam guardados em save.tutorial; o resto é lido do save.
 
 import type { Save } from "./estado"
 import type { EstacaoId } from "./data"
 
-export type ItemTutorial = "tanque" | "mubarak"
+export type ItemTutorial = "tanque" | "mubarak" | "drewboy"
 
 export interface Bloco { lig: "dbee-historia" | null; itens: ItemTutorial[] }
 
 export const BLOCOS: Bloco[] = [
   { lig: "dbee-historia", itens: ["tanque"] },
-  { lig: null, itens: ["mubarak"] },
+  { lig: null, itens: ["mubarak", "drewboy"] },
 ]
 
 // a primeira missão da cidade (o tutorial anda junto com ela)
@@ -26,12 +26,14 @@ export const NEON_POR_ITEM = 10
 export const ITENS: Record<ItemTutorial, { texto: string; dica: string }> = {
   tanque: { texto: "Encha o tanque e dirija até a Cidade Neon", dica: "a estrada leva até a cidade" },
   mubarak: { texto: "Resgate o Mubarak no bar", dica: "o bar fica na Cidade Neon" },
+  drewboy: { texto: "Leve o Mubarak até a casa do Drewboy no subúrbio", dica: "o subúrbio fica embaixo da cidade" },
 }
 
 export function feito(s: Save, i: ItemTutorial): boolean {
   switch (i) {
     case "tanque":
-      return (s.tutorial ?? []).includes("tanque")
+    case "drewboy":
+      return (s.tutorial ?? []).includes(i)
     case "mubarak":
       return s.objetos.includes("copo")
   }

@@ -16,7 +16,7 @@ import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
-import { MISSOES, abertas, alvoDe, ativa, etapaDe } from "./missoes"
+import { MISSOES, abertas, alvoDe, ativa, etapaDe, type Alvo } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
 import { CENA_INICIO, cenaDe, type Reliquia } from "./cenas"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
@@ -53,6 +53,8 @@ type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: 
 // quanto NEON rende acordar uma pessoa (uma missão inteira)
 // cada missão completa vale 50 NEON; cada item do tutorial, 10 (LU2CA, 05/10)
 const NEON_POR_PESSOA = 50
+// o tutorial: depois de resgatar o Mubarak, levar ele até a casa do Drewboy
+const levarDrewboy = (s: Save) => emTutorial(s) && s.objetos.includes("copo") && !feito(s, "drewboy")
 
 type Tela =
   | { t: "entrada" }
@@ -393,6 +395,12 @@ export default function LinhaPage() {
 
   // encostou devagar na vaga do lugar da missão: a cena começa
   const abrirCena = useCallback((id: LugarId) => {
+    // o tutorial: chegou na casa do Drewboy com o Mubarak de carona
+    if (id === "casa-drewboy" && levarDrewboy(saveRef.current)) {
+      setSave((s) => ({ ...s, tutorial: [...new Set([...(s.tutorial ?? []), "drewboy"])] }))
+      track("mission_step", { mission_id: "linha-tutorial", step: "drewboy", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+      return
+    }
     if (id === "beco") {
       const s = saveRef.current
       if (cinema || !s.objetos.includes("dopamina") || (s.reliquias ?? []).includes("relicario")) return
@@ -498,6 +506,8 @@ export default function LinhaPage() {
     return emTutorial(save) ? l.filter((m) => m.id === PRIMEIRA) : l
   }, [save, nivel])
 
+  // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
+  const alvoTut: Alvo | null = levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
   // a missão de agora e o resumo da caixa (no canto da tela)
   const missaoAgora = quemChama ? listaMissoes.find((m) => m.id === quemChama) ?? null : null
   const itemAgora = tut && blocoTut < BLOCOS.length ? BLOCOS[blocoTut].itens.find((i) => !feito(save, i)) ?? null : null
@@ -809,7 +819,8 @@ export default function LinhaPage() {
             caido={save.nucleo.caido}
             onReligar={religar}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
-            alvo={save.nucleo.caido ? null : alvoDe(save, nivel)}
+            alvo={save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
+            levando={alvoTut ? "copo" : null}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
