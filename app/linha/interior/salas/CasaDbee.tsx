@@ -24,8 +24,10 @@ const PLANOS: Record<string, Plano> = {
   grupo: { pos: [-1.3, 1.6, -1.2], olha: [0.8, 1.3, 2.4], fov: 62 },
   dbee: { pos: [0.9, 1.55, -0.6], olha: [-1.5, 1.35, 1.1], fov: 52 },
   janela: { pos: [0.4, 1.6, -0.2], olha: [-2.5, 1.6, 0.8], fov: 55 },
-  // o primeiro plano do jogo: as costas dela na janela, a cidade lá fora
-  abertura: { pos: [1.4, 1.5, 1.9], olha: [-2.5, 1.55, 0.5], fov: 50 },
+  // a abertura: de fora, quem bateu na porta. Ela abre, no batente
+  abertura: { pos: [0.15, 1.6, 5.2], olha: [0, 1.4, 1.8], fov: 46 },
+  // ela fala de perto, a luz da casa nela
+  dbeePorta: { pos: [0.5, 1.6, 4], olha: [0, 1.45, 2], fov: 42 },
 }
 
 const COISAS: Coisa[] = [
@@ -33,15 +35,6 @@ const COISAS: Coisa[] = [
   { id: "violao", pos: [1.75, 0.8, -1.9], raio: 0.3, falas: [{ texto: "um violão encostado. as cordas novas. ninguém tocou nele ainda", tipo: "acao" }] },
   { id: "xicara", pos: [1, 0.86, 0.2], raio: 0.2, falas: [{ texto: "a xícara ainda morna. ela saiu faz pouco. muito pouco", tipo: "acao" }] },
   { id: "foto", pos: [0.2, 1.7, -2.25], raio: 0.3, falas: [{ texto: "um quadro na parede, virado de costas. alguém virou ele antes de sair", tipo: "acao" }] },
-]
-
-// O COMEÇO (05/10): a mesma casa, com ela dentro. O que se explora conta o
-// universo sem aula: a cidade apagando e acendendo branca pela janela, as luas
-// riscadas a giz (três em branco: o cronômetro da otimização geral), o violão
-const COISAS_INICIO: Coisa[] = [
-  { id: "janela", pos: [-2.4, 1.6, 0.6], raio: 0.4, falas: [{ texto: "pela janela, a cidade lá longe. de tempos em tempos um bairro inteiro apaga e acende de novo, branco", tipo: "acao" }, { de: "D-Bee", texto: "é o núcleo testando. cada vez que acende, volta mais igual" }] },
-  { id: "calendario", pos: [1.2, 1.6, -2.4], raio: 0.35, falas: [{ texto: "riscos de giz na parede. luas desenhadas, uma por uma. as três últimas, em branco", tipo: "acao" }, { de: "D-Bee", texto: "três luas. depois disso eles otimizam tudo de uma vez" }] },
-  { id: "violao", pos: [1.75, 0.8, -1.9], raio: 0.3, falas: [{ texto: "um violão encostado. cordas novas", tipo: "acao" }, { de: "D-Bee", texto: "era de alguém que eu amo. depois a gente fala dele" }] },
 ]
 
 // quem chega (na ordem em que fala na cena)
@@ -55,7 +48,7 @@ const GRUPO: { quem: string; cor: string; pos: V3 }[] = [
 ]
 
 export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
-  const coisas = inicio ? COISAS_INICIO : COISAS
+  const coisas = inicio ? [] : COISAS
   const procurando = estado.gesto === (inicio ? "casa-inicio" : "casa")
   const { vistas, ver } = useExplorar(procurando, coisas, inicio ? 2 : 3, sinalizar)
   // cada um aparece quando fala pela primeira vez e fica
@@ -67,13 +60,7 @@ export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
   const naFoto = !!estado.texto && /foto|relicário/.test(estado.texto)
 
   const plano = useMemo(() => {
-    if (inicio) {
-      if (estado.texto?.includes("janela")) return PLANOS.janela
-      if (procurando) return PLANOS.dentro
-      if (estado.falando === "D-Bee" || estado.falando === "você" || estado.escolha) return PLANOS.dbee
-      if (estado.pos <= 1) return PLANOS.abertura
-      return PLANOS.dentro
-    }
+    if (inicio) return estado.falando === "D-Bee" || estado.pos >= 3 ? PLANOS.dbeePorta : PLANOS.abertura
     if (chegaram.length && (estado.falando === null || GRUPO.some((g) => g.quem === estado.falando) || estado.falando === "você" || estado.escolha)) return PLANOS.grupo
     if (procurando) return PLANOS.dentro
     if (estado.falando === "o bilhete") return PLANOS.dentro
@@ -122,11 +109,12 @@ export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
       {/* o quadro na parede, virado (a cena desvira pra quem acorda) */}
       <Quadro pos={[0.2, 1.7, -2.47]} virado={!viuFoto} />
       {/* a janela pra estrada */}
-      <Janela pos={[-2.46, 1.6, 0.6]} />
+      <Janela pos={[-2.46, 1.6, 0.6]} deserto={inicio} />
       <pointLight position={[-1.9, 1.6, 0.6]} color={AZUL} intensity={0.8} distance={3} decay={2} />
-      {/* no começo, ela está em casa: na janela, olhando a cidade */}
-      {inicio && <Npc cor={AZUL} pos={[-1.5, 0, 1.1]} vira={-1.6} falando={estado.falando === "D-Bee"} />}
-      {inicio && <Calendario pos={[1.2, 1.6, -2.47]} />}
+      {/* a abertura: ela abre a porta e fica no batente, com a luz da casa
+          nas costas e a do fim de tarde no rosto */}
+      {inicio && <Npc cor={AZUL} pos={[0, 0, 2.2]} vira={0} falando={estado.falando === "D-Bee"} />}
+      {inicio && <pointLight position={[0.2, 1.8, 3.6]} color="#ffb070" intensity={5} distance={4} decay={2} />}
       {/* quem chega */}
       {GRUPO.filter((g) => chegaram.includes(g.quem)).map((g) => (
         <Npc key={g.quem} cor={g.cor} pos={g.pos} vira={Math.PI} falando={estado.falando === g.quem} />
@@ -184,33 +172,6 @@ function Quadro({ pos, virado }: { pos: V3; virado: boolean }) {
   )
 }
 
-// o calendário da lua riscado a giz: luas cheias, minguantes, novas… e as
-// três últimas só o contorno, em branco (o prazo da otimização geral)
-function Calendario({ pos }: { pos: V3 }) {
-  const tex = useMemo(() => {
-    const c = document.createElement("canvas"); c.width = 512; c.height = 256
-    const g = c.getContext("2d")!
-    g.fillStyle = "#2a2a2e"; g.fillRect(0, 0, 512, 256)
-    g.strokeStyle = "#e8e4da"; g.fillStyle = "#e8e4da"; g.lineWidth = 3
-    for (let i = 0; i < 12; i++) {
-      const x = 44 + (i % 6) * 84, y = 70 + Math.floor(i / 6) * 110
-      g.beginPath(); g.arc(x, y, 26, 0, Math.PI * 2); g.stroke()
-      if (i < 9) {
-        // fases desenhadas e riscadas (já passaram)
-        g.beginPath(); g.arc(x + (i % 3 - 1) * 10, y, 22, 0, Math.PI * 2); g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1
-        g.beginPath(); g.moveTo(x - 30, y + 30); g.lineTo(x + 30, y - 30); g.stroke()
-      }
-    }
-    return new THREE.CanvasTexture(c)
-  }, [])
-  return (
-    <mesh position={pos}>
-      <planeGeometry args={[1.2, 0.6]} />
-      <meshStandardMaterial map={tex} roughness={1} />
-    </mesh>
-  )
-}
-
 const PREDIOS_JANELA = (() => {
   let seed = 4
   const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
@@ -219,13 +180,23 @@ const PREDIOS_JANELA = (() => {
 
 // a janela: a cidade neon lá longe, no horizonte. De tempos em tempos um
 // pedaço dela apaga e acende BRANCO (o Núcleo testando a otimização)
-function Janela({ pos }: { pos: V3 }) {
+function Janela({ pos, deserto = false }: { pos: V3; deserto?: boolean }) {
   const { tex, pintar } = useMemo(() => {
     const c = document.createElement("canvas"); c.width = 256; c.height = 192
     const g = c.getContext("2d")!
     const predios = PREDIOS_JANELA
     const t = new THREE.CanvasTexture(c)
     const pintar = (branco: number) => {
+      if (deserto) {
+        // a abertura: o mesmo fim de tarde lá de fora, só dunas
+        const c2 = g.createLinearGradient(0, 0, 0, 192)
+        c2.addColorStop(0, "#2b1a4a"); c2.addColorStop(0.5, "#8a3a5c"); c2.addColorStop(0.8, "#e8683a"); c2.addColorStop(1, "#ffb066")
+        g.fillStyle = c2; g.fillRect(0, 0, 256, 192)
+        g.fillStyle = "#ffd27a"; g.beginPath(); g.arc(90, 140, 16, 0, Math.PI * 2); g.fill()
+        g.fillStyle = "#6a3e28"; g.beginPath(); g.moveTo(0, 150); g.quadraticCurveTo(80, 128, 150, 148); g.quadraticCurveTo(210, 162, 256, 140); g.lineTo(256, 192); g.lineTo(0, 192); g.fill()
+        t.needsUpdate = true
+        return
+      }
       const ceu = g.createLinearGradient(0, 0, 0, 192)
       ceu.addColorStop(0, "#05060f"); ceu.addColorStop(0.7, "#1a0f2e"); ceu.addColorStop(1, "#2a1238")
       g.fillStyle = ceu; g.fillRect(0, 0, 256, 192)
@@ -241,10 +212,11 @@ function Janela({ pos }: { pos: V3 }) {
     }
     pintar(-1)
     return { tex: t, pintar }
-  }, [])
+  }, [deserto])
   const prox = useRef(4)
   const branco = useRef(-1)
   useFrame((s) => {
+    if (deserto) return
     const t = s.clock.elapsedTime
     if (t > prox.current) {
       if (branco.current < 0) { branco.current = 3 + Math.floor(Math.random() * 20); prox.current = t + 1.2 }

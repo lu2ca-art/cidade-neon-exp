@@ -17,12 +17,18 @@ import { Cinema } from "./estrada/Cinema"
 import { Kombi222 } from "./estrada/Kombi222"
 import { KombiHerbal } from "./estrada/KombiHerbal"
 import { Seguro } from "./estrada/Seguro"
+import { montarMotor } from "./som-carro"
+import { vento } from "./som"
 
 const DIST = 1300 // m até a casa
 const NEON = ["#ff3fb0", "#2fe8ff", "#ffc857", "#b38cff", "#5dffa0", "#1a1530", "#221a3a", "#1a1530"]
 const VMAX = 24 // m/s
 const POSTE = 38 // um poste a cada tantos metros
 const MARCA = 12 // marcas no meio da estrada
+// a abertura (deserto): a mesma Kombi da cidade (Corrida.tsx: VMAX, ACEL)
+const VMAX_JOGO = 46
+const ACEL_JOGO = 11
+const SEM_GAS = 170 // m antes da casa o combustível acaba
 
 // o começo: a reta da casa da D-Bee até a cidade (rascunho: o LU2CA reescreve)
 const LEGENDAS_CIDADE: { em: number; texto: string }[] = [
@@ -42,18 +48,22 @@ const LEGENDAS: { em: number; texto: string }[] = [
   { em: 0.86, texto: "uma casa" },
 ]
 
-interface Estado { d: number; v: number; segura: boolean; fim: boolean; virou: boolean; rumo: Rumo; dist: number; vmax: number }
+interface Estado { d: number; v: number; segura: boolean; fim: boolean; virou: boolean; rumo: Rumo; dist: number; vmax: number; semGas: boolean; parou: boolean }
 // "fora": da cidade pra casa da D-Bee (ep. 3). "cidade": o COMEÇO do jogo, da
 // casa dela até a cidade numa reta muito veloz (o choque de ambientes)
-export type Rumo = "fora" | "cidade"
+// "deserto": a ABERTURA (05/10, texto do LU2CA): fim de tarde, silêncio, só
+// vento e motor, o combustível na reserva acaba em frente à casa dela
+export type Rumo = "fora" | "cidade" | "deserto"
 
 // `chegou`: a viagem acabou e a cena da casa está rolando por cima — a
 // estrada fica de fundo, parada, com a câmera de frente pra casa
 export function Viagem({ onFim, chegou = false, rumo = "fora" }: { onFim: () => void; chegou?: boolean; rumo?: Rumo }) {
-  const st = useRef<Estado>({ d: 0, v: 0, segura: false, fim: false, virou: false, rumo, dist: rumo === "cidade" ? 1600 : DIST, vmax: rumo === "cidade" ? 62 : VMAX })
-  const legendas = rumo === "cidade" ? LEGENDAS_CIDADE : LEGENDAS
+  const st = useRef<Estado>({ d: 0, v: 0, segura: false, fim: false, virou: false, rumo, dist: rumo === "cidade" ? 1600 : rumo === "deserto" ? 1800 : DIST, vmax: rumo === "cidade" ? 62 : rumo === "deserto" ? VMAX_JOGO : VMAX, semGas: false, parou: false })
+  const legendas = rumo === "cidade" ? LEGENDAS_CIDADE : rumo === "deserto" ? [] : LEGENDAS
   const [legenda, setLegenda] = useState<string | null>(null)
-  const [plano, setPlano] = useState<"tras" | "frente">(rumo === "cidade" ? "frente" : "tras")
+  const [plano, setPlano] = useState<"tras" | "frente">(rumo === "fora" ? "tras" : "frente")
+  const [vazio, setVazio] = useState(false)
+  const [naPorta, setNaPorta] = useState(false)
   const [corte, setCorte] = useState(false)
   const [parado, setParado] = useState(true)
   const [saindo, setSaindo] = useState(false)
@@ -70,6 +80,11 @@ export function Viagem({ onFim, chegou = false, rumo = "fora" }: { onFim: () => 
       const l = [...legendas].reverse().find((x) => p >= x.em && p < x.em + 0.12)
       setLegenda(l ? l.texto : null)
       setParado(s.v < 0.5 && !s.segura)
+      if (s.rumo === "deserto") {
+        setVazio(s.semGas)
+        setNaPorta(s.parou)
+        return
+      }
       if (p >= 0.45 && !s.virou && s.rumo === "fora") {
         s.virou = true
         setPlano("frente")
@@ -95,6 +110,27 @@ export function Viagem({ onFim, chegou = false, rumo = "fora" }: { onFim: () => 
   }, [])
 
   const segurar = (v: boolean) => { st.current.segura = v }
+  // o teclado (↑ / W / espaço), igual na cidade
+  useEffect(() => {
+    if (chegou) return
+    const tecla = (v: boolean) => (e: KeyboardEvent) => { if (e.key === " " || e.key === "ArrowUp" || e.key === "w" || e.key === "W") st.current.segura = v }
+    const d = tecla(true), u = tecla(false)
+    window.addEventListener("keydown", d); window.addEventListener("keyup", u)
+    return () => { window.removeEventListener("keydown", d); window.removeEventListener("keyup", u) }
+  }, [chegou])
+  // o som da abertura: só o vento e o motor (o motor morre com o combustível)
+  useEffect(() => {
+    if (rumo !== "deserto" || chegou) return
+    const m = montarMotor()
+    const w = vento()
+    let morreu = false
+    const iv = setInterval(() => {
+      const s = st.current
+      if (s.semGas && !morreu) { morreu = true; m?.parar() }
+      if (!morreu) m?.atualizar(Math.min(1.45, s.v / VMAX_JOGO), s.segura, false)
+    }, 50)
+    return () => { clearInterval(iv); if (!morreu) m?.parar(); w?.parar() }
+  }, [rumo, chegou])
 
   return (
     <div
@@ -115,7 +151,15 @@ export function Viagem({ onFim, chegou = false, rumo = "fora" }: { onFim: () => 
         <div className="l-cena-tarja is-baixo" />
         {corte && <div className="l-estrada-fora-corte" />}
         {legenda && <p key={legenda} className="l-estrada-fora-legenda">{legenda}</p>}
-        {parado && !saindo && <small className="l-estrada-fora-dica">segura pra dirigir</small>}
+        {rumo === "deserto" ? <>
+          <div className={`l-tanque ${vazio ? "is-vazio" : ""}`} aria-label={vazio ? "sem combustível" : "combustível na reserva"}>
+            <small>combustível</small>
+            <div className="l-tanque-barra"><i /></div>
+            <b>R</b>
+          </div>
+          {parado && !vazio && <small className="l-estrada-fora-dica">segura a tela ou ↑ pra acelerar</small>}
+          {naPorta && <button type="button" className="l-estrada-fora-porta" onPointerDown={(e) => e.stopPropagation()} onClick={() => fim.current()}>bater na porta</button>}
+        </> : parado && !saindo && <small className="l-estrada-fora-dica">segura pra dirigir</small>}
       </>}
     </div>
   )
@@ -137,11 +181,25 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
   const nMarcas = 60
   const tmp = useMemo(() => new THREE.Object3D(), [])
 
+  const deserto = st.current.rumo === "deserto"
   useEffect(() => {
+    if (deserto) {
+      // o fim de tarde: o céu do roxo lá em cima ao laranja no horizonte
+      const c = document.createElement("canvas"); c.width = 4; c.height = 256
+      const g = c.getContext("2d")!
+      const ceu = g.createLinearGradient(0, 0, 0, 256)
+      ceu.addColorStop(0, "#2b1a4a"); ceu.addColorStop(0.45, "#8a3a5c"); ceu.addColorStop(0.72, "#e8683a"); ceu.addColorStop(0.86, "#ffb066"); ceu.addColorStop(1, "#ffcf8a")
+      g.fillStyle = ceu; g.fillRect(0, 0, 4, 256)
+      const tex = new THREE.CanvasTexture(c)
+      tex.colorSpace = THREE.SRGBColorSpace
+      scene.background = tex
+      scene.fog = new THREE.Fog("#e0875a", 120, 1300)
+      return () => { scene.fog = null; tex.dispose() }
+    }
     scene.background = new THREE.Color("#04050b")
     scene.fog = new THREE.Fog("#04050b", 40, 460)
     return () => { scene.fog = null }
-  }, [scene])
+  }, [scene, deserto])
 
   // a cidade lá atrás: prédios sem cor (apagão), uma janela ou outra acesa
   const predios = useMemo(() => {
@@ -175,9 +233,20 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
     const e = st.current
     // só dirigir: segura acelera, solta vai parando (na chegada, freia sozinha)
     const falta = e.dist - e.d
-    const alvo = e.fim ? 0 : e.segura ? (falta < 60 ? Math.max(4, falta * 0.3) : e.vmax) : 0
-    e.v += (alvo - e.v) * Math.min(1, dt * (e.segura ? (e.rumo === "cidade" ? 0.9 : 0.55) : 0.35))
-    e.d = Math.min(e.dist, e.d + e.v * dt)
+    if (e.rumo === "deserto") {
+      // a Kombi da cidade: acelera igual, perde embalo igual
+      if (falta < SEM_GAS) e.semGas = true
+      if (e.segura && !e.semGas) e.v += ACEL_JOGO * (1 - Math.pow(Math.min(1, e.v / e.vmax), 2)) * dt
+      else { const atrito = (2.2 + 0.006 * e.v * e.v) * dt; e.v = Math.max(0, e.v - atrito) }
+      // sem combustível: vai no embalo e para em frente à casa
+      if (e.semGas) { const vPara = Math.sqrt(2 * 2.6 * Math.max(0, falta)); e.v = Math.min(vPara, Math.max(e.v, 8)) }
+      e.d = Math.min(e.dist, e.d + e.v * dt)
+      if (e.dist - e.d < 0.3) { e.v = 0; e.parou = true }
+    } else {
+      const alvo = e.fim ? 0 : e.segura ? (falta < 60 ? Math.max(4, falta * 0.3) : e.vmax) : 0
+      e.v += (alvo - e.v) * Math.min(1, dt * (e.segura ? (e.rumo === "cidade" ? 0.9 : 0.55) : 0.35))
+      e.d = Math.min(e.dist, e.d + e.v * dt)
+    }
     vel.current = e.v
     const t = s.clock.elapsedTime
     // a Kombi balança na terra
@@ -205,7 +274,7 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
       marcas.current.instanceMatrix.needsUpdate = true
     }
     // a casa vem chegando; a luz longe cresce; a cidade some no retrovisor
-    if (casa.current) casa.current.position.z = e.rumo === "cidade" ? 24 + e.d : -(DIST - e.d) - 14
+    if (casa.current) casa.current.position.z = e.rumo === "cidade" ? 24 + e.d : -(e.dist - e.d) - 14
     if (luzLonge.current) {
       const p = e.d / DIST
       luzLonge.current.scale.setScalar(1 + p * 3)
@@ -235,24 +304,31 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
 
   return (
     <>
-      <ambientLight intensity={0.18} color="#8090c0" />
-      <directionalLight position={[-30, 60, -40]} intensity={0.35} color="#b8c8ff" />
-      <points geometry={estrelas}>
+      <ambientLight intensity={deserto ? 0.45 : 0.18} color={deserto ? "#ffc8a0" : "#8090c0"} />
+      <directionalLight position={deserto ? [-120, 40, -400] : [-30, 60, -40]} intensity={deserto ? 1.4 : 0.35} color={deserto ? "#ffa66a" : "#b8c8ff"} />
+      {/* o sol se pondo, lá na frente */}
+      {deserto && (
+        <mesh position={[-160, 60, -1500]}>
+          <sphereGeometry args={[60, 24, 16]} />
+          <meshBasicMaterial color="#ffd27a" fog={false} toneMapped={false} />
+        </mesh>
+      )}
+      <points geometry={estrelas} visible={!deserto}>
         <pointsMaterial size={2.2} sizeAttenuation={false} color="#dfe6ff" fog={false} transparent opacity={0.85} />
       </points>
       {/* a lua */}
-      <mesh position={[-500, 520, -1200]}>
+      <mesh position={[-500, 520, -1200]} visible={!deserto}>
         <sphereGeometry args={[34, 24, 16]} />
         <meshBasicMaterial color="#f1f0e6" fog={false} />
       </mesh>
       {/* o chão de terra e a estrada */}
       <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, -400]}>
         <planeGeometry args={[3000, 3000]} />
-        <meshStandardMaterial color="#17141a" roughness={1} />
+        <meshStandardMaterial color={deserto ? "#8a5634" : "#17141a"} roughness={1} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.005, -400]}>
         <planeGeometry args={[7, 3000]} />
-        <meshStandardMaterial color="#26232a" roughness={0.95} />
+        <meshStandardMaterial color={deserto ? "#3a2a26" : "#26232a"} roughness={0.95} />
       </mesh>
       <instancedMesh ref={marcas} args={[undefined, undefined, nMarcas]} frustumCulled={false}>
         <planeGeometry args={[0.18, 3.2]} />
@@ -263,7 +339,7 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
         <meshStandardMaterial color="#2a2530" roughness={1} />
       </instancedMesh>
       {/* a cidade lá atrás, cinza, ficando pequena */}
-      <group ref={cidade}>
+      <group ref={cidade} visible={!deserto}>
         {predios.map((p, i) => (
           <mesh key={i} position={[p.x, p.h / 2, st.current.rumo === "cidade" ? p.z - 1300 : p.z]}>
             <boxGeometry args={[p.w, p.h, p.w]} />
@@ -278,7 +354,7 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
       </mesh>
       {/* a casa: uma só, no fim da estrada. A porta aberta, a luz da
           varanda acesa, o varal com a camisa da seleção esquecida */}
-      <group ref={casa} position={[0, 0, -DIST]}>
+      <group ref={casa} position={[0, 0, -st.current.dist]}>
         <group position={[10, 0, 0]}>
           <mesh position={[0, 2.4, 0]}>
             <boxGeometry args={[9, 4.8, 8]} />
@@ -307,23 +383,26 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
             <meshStandardMaterial color="#4a3028" roughness={1} />
           </mesh>
           {/* as janelas acesas e a porta aberta (a luz de dentro vazando) */}
+          {/* na abertura a casa parece abandonada: tudo apagado, porta fechada */}
           {[2.4, -2.6].map((z) => (
             <mesh key={z} position={[-4.52, 2.4, z]} rotation-y={-Math.PI / 2}>
               <planeGeometry args={[1.5, 1.2]} />
-              <meshBasicMaterial color="#ffcf8a" toneMapped={false} />
+              <meshBasicMaterial color={deserto ? "#1c1512" : "#ffcf8a"} toneMapped={false} />
             </mesh>
           ))}
           <mesh position={[-4.52, 1.15, 0]} rotation-y={-Math.PI / 2}>
             <planeGeometry args={[1.1, 2.3]} />
-            <meshBasicMaterial color="#ffb867" toneMapped={false} />
+            <meshBasicMaterial color={deserto ? "#2a1e18" : "#ffb867"} toneMapped={false} />
           </mesh>
-          {/* a lâmpada da varanda */}
-          <mesh position={[-5.4, 2.85, 0]}>
-            <sphereGeometry args={[0.1, 10, 8]} />
-            <meshBasicMaterial color="#fff0c8" toneMapped={false} />
-          </mesh>
-          <pointLight position={[-5.6, 2.6, 0]} color="#ffcf8a" intensity={30} distance={16} decay={2} />
-          <pointLight position={[-3.5, 1.4, 0]} color="#ffb867" intensity={12} distance={7} decay={2} />
+          {!deserto && <>
+            {/* a lâmpada da varanda */}
+            <mesh position={[-5.4, 2.85, 0]}>
+              <sphereGeometry args={[0.1, 10, 8]} />
+              <meshBasicMaterial color="#fff0c8" toneMapped={false} />
+            </mesh>
+            <pointLight position={[-5.6, 2.6, 0]} color="#ffcf8a" intensity={30} distance={16} decay={2} />
+            <pointLight position={[-3.5, 1.4, 0]} color="#ffb867" intensity={12} distance={7} decay={2} />
+          </>}
           {/* o varal, do lado da casa, com a camisa amarela */}
           {[5, 10].map((z) => (
             <mesh key={z} position={[-7.5, 1.1, z]}>
@@ -335,11 +414,11 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
             <cylinderGeometry args={[0.01, 0.01, 5, 4]} />
             <meshStandardMaterial color="#8a8590" />
           </mesh>
-          <mesh position={[-7.5, 1.75, 7.2]} rotation-y={-Math.PI / 2}>
+          <mesh position={[-7.5, 1.75, 7.2]} rotation-y={-Math.PI / 2} visible={!deserto}>
             <planeGeometry args={[0.8, 0.8]} />
             <meshStandardMaterial color="#f2c230" emissive="#f2c230" emissiveIntensity={0.15} side={THREE.DoubleSide} />
           </mesh>
-          <mesh position={[-7.49, 1.95, 7.2]} rotation-y={-Math.PI / 2}>
+          <mesh position={[-7.49, 1.95, 7.2]} rotation-y={-Math.PI / 2} visible={!deserto}>
             <planeGeometry args={[0.8, 0.08]} />
             <meshStandardMaterial color="#1d8a3a" side={THREE.DoubleSide} />
           </mesh>

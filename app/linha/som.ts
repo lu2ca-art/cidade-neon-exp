@@ -228,6 +228,37 @@ export function estatica(v0 = 0.12) {
   }
 }
 
+// o vento do deserto (a abertura): ruído grave que sobe e desce devagar
+export function vento(v0 = 0.16) {
+  const c = audioCtx()
+  const out = saida()
+  if (!c || !out) return null
+  const src = c.createBufferSource()
+  const buf = c.createBuffer(1, c.sampleRate * 4, c.sampleRate)
+  const d = buf.getChannelData(0)
+  let ult = 0
+  for (let i = 0; i < d.length; i++) { ult = ult * 0.97 + (Math.random() * 2 - 1) * 0.03; d[i] = ult * 6 }
+  src.buffer = buf
+  src.loop = true
+  const lp = c.createBiquadFilter()
+  lp.type = "lowpass"
+  lp.frequency.value = 520
+  const g = c.createGain()
+  g.gain.value = 0
+  g.gain.setTargetAtTime(v0, c.currentTime, 1.5)
+  // as rajadas: um LFO lento no volume
+  const lfo = c.createOscillator()
+  lfo.frequency.value = 0.13
+  const lg = c.createGain()
+  lg.gain.value = v0 * 0.5
+  lfo.connect(lg).connect(g.gain)
+  src.connect(lp).connect(g).connect(out)
+  src.start(); lfo.start()
+  return {
+    parar: () => { g.gain.setTargetAtTime(0, c.currentTime, 0.8); setTimeout(() => { try { src.stop(); lfo.stop() } catch {} }, 3000) },
+  }
+}
+
 // chiado de dial entre uma música e outra (~1 s, varrendo a frequência)
 export function chiadoCurto() {
   const e = estatica()

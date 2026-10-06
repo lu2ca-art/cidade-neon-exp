@@ -59,6 +59,7 @@ type Tela =
   | { t: "entrada" }
   | { t: "bloqueio" }
   | { t: "chegada" }
+  | { t: "deserto" }
   // o COMEÇO (05/10): a casa da D-Bee, longe de tudo, e a reta até a cidade
   | { t: "casa" }
   | { t: "reta" }
@@ -556,8 +557,8 @@ export default function LinhaPage() {
       })
       setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
     } else if (!save.casa) {
-      // primeira vez: acorda na casa da D-Bee, longe de tudo
-      setTela({ t: "casa" })
+      // primeira vez: a abertura, dirigindo pelo deserto até a casa dela
+      setTela({ t: "deserto" })
     } else {
       // já passou pela casa: entra na cidade de Kombi, não pelo celular
       setCinema("rodando")
@@ -822,6 +823,7 @@ export default function LinhaPage() {
             />
           </>
         )}
+        {tela.t === "deserto" && <Viagem key="deserto" rumo="deserto" onFim={() => setTela({ t: "casa" })} />}
         {tela.t === "reta" && (
           <Viagem
             rumo="cidade"
