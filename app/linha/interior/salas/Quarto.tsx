@@ -20,7 +20,8 @@ const CIANO = "#7fe8ff"
 const PLANOS: Record<string, Plano> = {
   porta: { pos: [0.2, 1.65, 2.6], olha: [-0.2, 1.1, -1.4], fov: 60 },
   drewboy: { pos: [1.3, 1.45, 1.4], olha: [-0.3, 0.95, -0.8], fov: 52 },
-  mubarak: { pos: [-0.6, 1.55, 1.9], olha: [0.9, 1.25, 0.7], fov: 50 },
+  // de frente pro Mubarak (encostado no varal, longe da linha câmera → Drewboy)
+  mubarak: { pos: [0.3, 1.55, -0.2], olha: [-1.3, 1.35, 0.3], fov: 50 },
   // do canto, na diagonal: o espelho, o tênis e a janela no mesmo quadro
   // (no celular em pé a câmera antiga só pegava o espelho — o gesto travava)
   quarto: { pos: [-1.7, 1.9, 2.2], olha: [0.6, 0.8, -0.9], fov: 75 },
@@ -92,7 +93,7 @@ export function SalaQuarto({ estado }: SalaProps) {
       <Varal pos={[-1.85, 2.05, -0.6]} rot={Math.PI / 2} />
       {[-1.6, 1.55].map((x) => <Som key={x} pos={[x, 0, x < 0 ? -1.8 : 1.5]} />)}
       <pointLight position={[-1.2, 2.1, 0.6]} color="#ffc857" intensity={1.4} distance={4} decay={2} />
-      {mubarak && <Npc cor="#ff6a35" pos={[0.9, 0, 0.8]} vira={-2.4} falando={estado.falando === "Mubarak"} />}
+      {mubarak && <Npc cor="#ff6a35" pos={[-1.3, 0, 0.3]} vira={2.36} falando={estado.falando === "Mubarak"} />}
       {/* ele, sentado na cama de frente pro espelho (sai quando desce) */}
       {!saiu && <Npc cor={ROSA} pos={[-0.3, 0.12, -0.7]} vira={Math.PI} pose="sentada" falando={estado.falando === "Drewboy"} />}
       {COISAS.map((c) => (
