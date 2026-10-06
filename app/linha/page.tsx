@@ -314,7 +314,7 @@ export default function LinhaPage() {
         // fica parada no pedido (como se tivesse sido por texto) e o que foi
         // dito vira histórico no N3XO
         const log: Item[] = [{ k: "sistema", texto: `ligação de voz · ${lig.quem}` }, ...dito.map((d) => ({ k: "msg" as const, texto: d.texto, eu: d.eu }))]
-        setSave((s) => ({ ...s, neon: (s.neon ?? 0) + 20, ligacoes: [...new Set([...s.ligacoes, lig.id])], pausas: { ...s.pausas, [m]: tarefa }, logs: { ...s.logs, [m]: log } }))
+        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id])], pausas: { ...s.pausas, [m]: tarefa }, logs: { ...s.logs, [m]: log } }))
         track("mission_step", { mission_id: `linha-${m}`, step: "ligacao:pedido", perfil: save.perfil ?? "?", fio_pos: save.fio.indexOf(m) })
       } else if (m) {
         // não atendeu: a pessoa escreve (o painel pega)
@@ -322,7 +322,7 @@ export default function LinhaPage() {
         setTimeout(() => avisar(lig.quem, lig.recado, getEstacao(m).cor), 300)
       } else {
         const extra = lig.id === "dbee-0" ? ["dbee-1"] : []
-        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id, ...extra])], neon: (s.neon ?? 0) + (atendeu ? 20 : 0) }))
+        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id, ...extra])] }))
         if (!atendeu) setTimeout(() => avisar(lig.quem, lig.recado, "#3d7bff"), 300)
         // a primeira ligação: em seguida ela escreve
         if (lig.id === "dbee-0") setTimeout(() => setTela({ t: "chat", id: "abertura", volta: { t: "corrida", destino: null } }), atendeu ? 600 : 2400)
@@ -602,6 +602,16 @@ export default function LinhaPage() {
     const t = setTimeout(() => setLigacao({ lig: LIGACOES[lig] }), blocoTut === 0 ? 10000 : 2500)
     return () => clearTimeout(t)
   }, [pronto, ligaTut, blocoTut, tela.t, emSala, cinema, invasao, aoVivo, ligacao])
+  // a HISTÓRIA da D-Bee em partes (ligacoes.ts): a 2ª, a 3ª e a 4ª chegam
+  // depois da 1ª, da 2ª e da 3ª missão (de volta na estrada, uns segundos depois)
+  const proxHistoria = save.ligacoes.includes("dbee-historia-1")
+    ? (["dbee-historia-2", "dbee-historia-3", "dbee-historia-4"] as const).find((id, k) => save.objetos.length >= k + 1 && !save.ligacoes.includes(id)) ?? null
+    : null
+  useEffect(() => {
+    if (!pronto || !proxHistoria || tela.t !== "corrida" || emSala || cinema || invasao || aoVivo || ligacao) return
+    const t = setTimeout(() => setLigacao({ lig: LIGACOES[proxHistoria] }), 8000)
+    return () => clearTimeout(t)
+  }, [pronto, proxHistoria, tela.t, emSala, cinema, invasao, aoVivo, ligacao])
   const marcarTut = useCallback((i: ItemTutorial) => setSave((s) => ((s.tutorial ?? []).includes(i) ? s : { ...s, tutorial: [...(s.tutorial ?? []), i] })), [])
   // cada item marcado: +10 NEON. Tudo feito: a cidade é sua
   const feitosTut = useRef<Set<ItemTutorial> | null>(null)
@@ -816,7 +826,7 @@ export default function LinhaPage() {
   }
 
   const descer = (id: EstacaoId, st: Stats) => {
-    setSave((s) => ({ ...s, neon: (s.neon ?? 0) + 20 + st.orbs * 2 + st.quase * 5 }))
+    void st
     // a conversa abre por cima; fechando, volta pra estrada
     abrirChat(id, { t: "corrida", destino: null }, true)
   }
@@ -1001,7 +1011,9 @@ export default function LinhaPage() {
             modo={tela.t === "chat" ? "tela" : "painel"}
             save={save}
             atualizar={atualizar}
-            onXp={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
+            // (06/10, LU2CA: o dinheiro começa do zero — só missão completa
+            // paga aqui; responder, ligar e provas não dão NEON)
+            onXp={(n, motivo) => { if (motivo === "objeto" || motivo === "estação") setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n })) }}
             onFim={tela.t === "chat" ? (para) => fimChat(tela.id, para, tela.volta) : fimPainel}
             onVoltar={tela.t === "chat" && dentro ? () => setTela(tela.volta) : undefined}
             onPrecisaTela={painelPraTela}
@@ -1058,7 +1070,6 @@ export default function LinhaPage() {
             onVoltar={() => setTela({ t: "home" })}
             onJogou={(id, pulou) => {
               setSave((s) => ({ ...s, jogados: { ...s.jogados, [id]: (s.jogados[id] ?? 0) + 1 } }))
-              if (!pulou) ganharXp(10)
             }}
           />
         )}

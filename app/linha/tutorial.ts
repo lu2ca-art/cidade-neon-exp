@@ -1,7 +1,7 @@
 // O TUTORIAL (05/10, LU2CA): depois da casa da D-Bee, uma checklist na tela.
 // Cada item é um comando completo e vale 10 NEON. Começa com "Encha o tanque
 // e dirija até a Cidade Neon" (a D-Bee liga no caminho e conta a história:
-// ligacoes.ts, dbee-historia); chegando, a missão do bar é o tutorial.
+// ligacoes.ts, dbee-historia-1); chegando, a missão do bar é o tutorial.
 //
 // "tanque" e "drewboy" ficam guardados em save.tutorial; o resto é lido do save.
 
@@ -10,11 +10,11 @@ import type { EstacaoId } from "./data"
 
 export type ItemTutorial = "tanque" | "posto" | "mubarak" | "drewboy"
 
-export interface Bloco { titulo: string; lig: "dbee-historia" | null; itens: ItemTutorial[] }
+export interface Bloco { titulo: string; lig: "dbee-historia-1" | null; itens: ItemTutorial[] }
 
 export const BLOCOS: Bloco[] = [
   // os primeiros passos (06/10, LU2CA); depois, a missão do Mubarak
-  { titulo: "primeiros passos", lig: "dbee-historia", itens: ["tanque", "posto"] },
+  { titulo: "primeiros passos", lig: "dbee-historia-1", itens: ["tanque", "posto"] },
   { titulo: "missão · Mubarak", lig: null, itens: ["mubarak", "drewboy"] },
 ]
 
