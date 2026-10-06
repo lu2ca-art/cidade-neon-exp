@@ -57,7 +57,7 @@ export const LUGARES = {
 
 // (fase 1 do arco: Ella, Notti, Alohan)
 LUGARES.escondido = {
-  id: "escondido", nome: "o lugar escondido", no: "no lugar escondido", letreiro: "· · ·", area: "suburbio", u: 1300, lado: -1,
+  id: "escondido", nome: "a casa da ella", no: "na casa da ella", letreiro: "· · ·", area: "suburbio", u: 1300, lado: -1,
   cor: "#2fe8ff", acento: "#5dffa0", dono: "chuva",
   gente: [{ quem: "Ella", cor: "#2fe8ff" }],
 }

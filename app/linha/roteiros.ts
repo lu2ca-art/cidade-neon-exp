@@ -220,7 +220,7 @@ export const ROTEIROS: Record<"abertura" | "grupo" | "chuva" | "copo" | "dopamin
       { t: "msg", texto: "coincidência, né" },
       { t: "msg", texto: "achei esse no loop. é a rua daqui, antes" },
       { t: "loop", titulo: "POV: vc descobriu a cidade neon e nunca mais voltou", video: 2 },
-      { t: "msg", texto: "nasceu uma flor no asfalto aqui na frente" },
+      { t: "msg", texto: "tenho uma planta aqui em casa. a única coisa que eu cuido" },
       { t: "msg", texto: "ironia: chove o dia inteiro e ela tá morrendo de sede. a chuva daqui vem com neon dentro" },
       { t: "msg", texto: "tem uma caixa d'água no subúrbio xenom que o núcleo esqueceu. água de verdade" },
       { t: "msg", texto: "meu cantil tá vazio. enche lá pra mim?" },

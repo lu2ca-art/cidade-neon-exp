@@ -176,14 +176,18 @@ CENAS.escondido = {
   lugar: "escondido",
   missao: "chuva",
   passos: [
-    { t: "acao", texto: "atrás da caixa d'água, um pedaço de asfalto rachado. no meio, uma flor murcha" },
-    { t: "fala", de: "Ella", texto: "vc foi até o subúrbio por uma flor" },
+    // (06/10, LU2CA: a casa dela é um grow indoor, rastafári; o discurso é
+    // sobre a hipocrisia — RASCUNHO das falas, o LU2CA reescreve)
+    { t: "acao", texto: "um quarto quente, cheiro de mato. bandeira verde, amarela e vermelha na parede. no canto, uma tenda prateada e uma luz roxa" },
+    { t: "acao", texto: "lá dentro, uma planta verde. murcha. as flores cheias de pontinhos brancos" },
+    { t: "fala", de: "Ella", texto: "vc foi até o subúrbio por ela" },
     { t: "fala", de: "Ella", texto: "rega devagar" },
     { t: "gesto", id: "prova", prova: "regar" },
-    { t: "acao", texto: "a flor levanta. devagar. a chuva em volta diminui, só ali" },
+    { t: "acao", texto: "as folhas levantam. devagar. os tricomas brilham na luz roxa. lá fora, a chuva na janela diminui" },
     { t: "fala", de: "Ella", texto: "olha isso" },
     { t: "ganha", objeto: "chuva" },
-    { t: "fala", de: "Ella", texto: "no caos também nasce coisa" },
+    { t: "fala", de: "Ella", texto: "eles chamam ela de perigo" },
+    { t: "fala", de: "Ella", texto: "e aplaudem quem vende flor de plástico. a que vem em caixinha, em lata, em tela. a que te deixa dormindo" },
     {
       t: "escolha",
       opcoes: [
@@ -194,7 +198,7 @@ CENAS.escondido = {
     },
     { t: "fala", de: "Ella", texto: "sabe o que eu lembro de ontem? uma música tocando alto na rua. todo mundo parou pra ouvir, até quem n se falava. aí apagou" },
     { t: "fala", de: "Ella", texto: "eu n sou de briga. mas quando a hora chegar, eu vou. com medo. chorando se precisar" },
-    { t: "nucleo", texto: "luto público reduz a produtividade do bairro. recomendamos processar a perda em privado ✓" },
+    { t: "nucleo", texto: "cultivo doméstico não certificado detectado. recomendamos os produtos licenciados ✓" },
     { t: "fim" },
   ],
 }
@@ -415,6 +419,24 @@ CENAS["casa-dbee"] = {
 // cidade que vai ser apagada, e você é quem pode entrar nela sem ser lido.
 // No ep. 3 você volta e a casa está vazia (cenas["casa-dbee"]): a ausência
 // pesa porque você já esteve aqui com ela. RASCUNHO: o LU2CA reescreve
+// O MUBARAK NA CASA DO DREWBOY (06/10, LU2CA): o fim do tutorial — ele
+// agradece por ter saído do loop. RASCUNHO das falas (a voz dele: ironia que
+// esconde saudade, nunca pede nada); o LU2CA reescreve
+export const CENA_MUBARAK_DREW: Cena = {
+  lugar: "casa-drewboy",
+  titulo: "a casa do drewboy",
+  missao: "copo",
+  passos: [
+    { t: "acao", texto: "a casa do drewboy. grafite em todas as paredes, roupa estilosa pendurada no varal da sala, duas caixas de som no chão" },
+    { t: "fala", de: "Mubarak", texto: "então é aqui que o drew se esconde" },
+    { t: "fala", de: "Mubarak", texto: "fazia tempo que eu não saía do bar. de verdade, digo" },
+    { t: "acao", texto: "ele olha pra porta. pra rua. pra você" },
+    { t: "fala", de: "Mubarak", texto: "vc me tirou do loop. não vou fazer discurso" },
+    { t: "fala", de: "Mubarak", texto: "valeu." },
+    { t: "fim" },
+  ],
+}
+
 // A ABERTURA (05/10): o texto é do LU2CA, como veio (só os acentos
 // corrigidos). A Kombi ficou sem combustível em frente à casa (viagem.tsx,
 // "deserto"); a história inteira ela conta no caminho, na ligação da reta
