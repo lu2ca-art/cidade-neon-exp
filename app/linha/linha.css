@@ -1789,3 +1789,6 @@
 .l-ilha.is-garfo .l-garfo-op em { font-size: 6px; top: -6px; }
 .l-ilha.is-garfo .l-garfo-op.is-vazia { display: none; }
 .l-ilha.is-garfo .l-garfo-ops { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.l-ilha.is-garfo .l-garfo-ops { display: flex; }
+.l-ilha.is-garfo .l-garfo-op { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 3px; }
+.l-ilha.is-garfo .l-garfo-op b { min-width: 0; }
