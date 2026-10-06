@@ -515,8 +515,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
      
     // na abertura (cinema) quem manda no som é a chegada: vinil, depois o
     // rádio procurando a frequência
-    if (!cinemaRef.current) tocarProxima(freqRef.current)
-    return () => player.pausar()
+    // voltando de um lugar com a música rolando (abafada): segue a mesma
+    if (!cinemaRef.current && !player.tocando) tocarProxima(freqRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

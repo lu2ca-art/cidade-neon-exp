@@ -31,7 +31,7 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { audioCtx, disco, fonteSom, ligarChuva, mudo, player } from "./som"
+import { abafar, audioCtx, disco, fonteSom, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
 import { Loja } from "./loja"
 import { ACERVO, PRECO_DISCO } from "./discos"
@@ -172,6 +172,21 @@ export default function LinhaPage() {
       player.retomar()
     }
   }, [appComSom])
+
+  // a música abafada (LU2CA): dentro de um lugar (a missão) e com o telefone
+  // tocando, o rádio e o disco seguem mais baixos e sem agudo
+  const emCena = !!cena
+  useEffect(() => {
+    if (!emCena) return
+    abafar(true)
+    return () => abafar(false)
+  }, [emCena])
+  const telefone = !!ligacao
+  useEffect(() => {
+    if (!telefone) return
+    abafar(true)
+    return () => abafar(false)
+  }, [telefone])
 
   // o que a rádio tá tocando, pro widget da home
   useEffect(() => player.ouvir((s) => {

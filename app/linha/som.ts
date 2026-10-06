@@ -27,6 +27,34 @@ function saida(): AudioNode | null {
   return master
 }
 
+// A MÚSICA ABAFADA (05/10, LU2CA): durante a missão (dentro de um lugar) e
+// quando o telefone toca, o rádio e o toca-discos continuam, mais baixos e
+// sem agudo, como se viessem de outro cômodo. Os dois passam por aqui
+let abafoF: BiquadFilterNode | null = null
+let abafoG: GainNode | null = null
+function abafo(): AudioNode | null {
+  const c = audioCtx()
+  const out = saida()
+  if (!c || !out) return null
+  if (!abafoF || !abafoG) {
+    abafoF = c.createBiquadFilter()
+    abafoF.type = "lowpass"
+    abafoF.frequency.value = 20000
+    abafoG = c.createGain()
+    abafoF.connect(abafoG).connect(out)
+  }
+  return abafoF
+}
+let abafando = 0
+export function abafar(sim: boolean) {
+  abafando = Math.max(0, abafando + (sim ? 1 : -1))
+  const c = audioCtx()
+  if (!c || !abafo() || !abafoF || !abafoG) return
+  const on = abafando > 0
+  abafoF.frequency.setTargetAtTime(on ? 650 : 20000, c.currentTime, on ? 0.2 : 0.5)
+  abafoG.gain.setTargetAtTime(on ? 0.4 : 1, c.currentTime, on ? 0.2 : 0.5)
+}
+
 // ── Ambiente ────────────────────────────────────────────────
 // Sem ruído de fundo: o LU2CA pediu silêncio fora da música e do motor
 // (a chuva sintetizada virou "ruído infernal"). As funções ficam como
@@ -419,7 +447,7 @@ class Player {
         this.analyser = c.createAnalyser()
         this.analyser.fftSize = 256
         this.analyser.smoothingTimeConstant = 0.6
-        node.connect(this.gain).connect(this.abaixo).connect(out)
+        node.connect(this.gain).connect(this.abaixo).connect(abafo() ?? out)
         this.gain.connect(this.analyser)
         const ouvido = c.createAnalyser()
         ouvido.fftSize = 16384
@@ -593,7 +621,16 @@ class Disco {
     const el = new Audio()
     el.preload = "auto"
     el.crossOrigin = "anonymous"
-    el.volume = 0.9
+    // pelo grafo (o abafado da missão e do telefone): volume num GainNode
+    const c = audioCtx()
+    const dst = abafo()
+    if (c && dst) {
+      try {
+        const g = c.createGain()
+        g.gain.value = 0.9
+        c.createMediaElementSource(el).connect(g).connect(dst)
+      } catch { el.volume = 0.9 }
+    } else el.volume = 0.9
     // o disco toca inteiro: acabou uma faixa, entra a próxima
     el.addEventListener("ended", () => { if (this.fila.length > 1) this.proxima(); else this.emitir() })
     el.addEventListener("pause", () => this.emitir())
