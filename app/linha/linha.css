@@ -1803,3 +1803,22 @@
 /* o celular tem uma página só (06/10): todos os apps na inicial */
 .l-os-trilho { width: 100%; transform: none !important; }
 .l-os-pagina { width: 100%; }
+
+/* ─── plataformas (06/10): a faixa inteira lá fora ─────── */
+.l-plats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.l-plats a { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid color-mix(in srgb, var(--plat) 40%, transparent); color: #e8efff; text-decoration: none; font: 600 12px var(--mono); }
+.l-plats a:active { background: color-mix(in srgb, var(--plat) 18%, transparent); }
+.l-plats svg { flex: none; }
+.l-plats.is-compacto { grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.l-plats.is-compacto a { flex-direction: column; justify-content: center; gap: 3px; padding: 6px 0; min-height: 52px; font-size: 10px; }
+.l-radio-agora { margin: 0 0 12px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--cor) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cor) 40%, transparent); }
+.l-radio-agora small { font: 600 11px var(--mono); color: var(--cor); text-transform: uppercase; letter-spacing: 0.06em; }
+.l-ouvir { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 28px; overflow-y: auto; }
+.l-ouvir-intro { margin: 4px 0 6px; font-size: 14px; line-height: 1.45; color: rgba(232, 239, 255, 0.75); }
+.l-ouvir-faixa { padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid color-mix(in srgb, var(--cor, #1ed760) 30%, transparent); }
+.l-ouvir-faixa.is-breve { opacity: 0.55; }
+.l-ouvir-faixa.is-artista { --cor: #1ed760; }
+.l-ouvir-nome { display: flex; align-items: baseline; gap: 10px; }
+.l-ouvir-nome b { font: 700 12px var(--mono); color: var(--cor); }
+.l-ouvir-nome span { font-weight: 700; font-size: 16px; color: #fff; }
+.l-ouvir-nome small { margin-left: auto; font: 600 11px var(--mono); color: rgba(232, 239, 255, 0.6); }

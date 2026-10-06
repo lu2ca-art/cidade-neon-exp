@@ -113,7 +113,7 @@ export interface AnalyticsEvents {
     // "untitled" = untitled.stream, o hub de distribuição/compra do álbum
     // (ver CLAUDE.md do repo) — categoria própria porque é a conversão que
     // mais importa aqui, não cabe bem em "other" nem é literalmente Spotify.
-    destination: "spotify" | "instagram" | "youtube" | "untitled" | "other"
+    destination: "spotify" | "apple" | "deezer" | "instagram" | "youtube" | "untitled" | "other"
     track_id?: string | number
     place_id?: string
     utm_source?: string
