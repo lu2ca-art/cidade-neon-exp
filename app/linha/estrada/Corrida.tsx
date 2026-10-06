@@ -2870,10 +2870,14 @@ function Cena({
       if (ab.ativa && ab.de && (ab.fase === "ape" || ab.fase === "porta")) {
         const p = tmp.p.lerpVectors(ab.de, ab.porta, ab.pe)
         const dirP = tmp.q2.subVectors(ab.porta, ab.de).setY(0).normalize()
-        // colada atrás de quem anda, o caminho inteiro (da Kombi até a porta)
-        tmp.alvo.copy(p).addScaledVector(dirP, -3.4).setY(p.y + 1.9)
-        camera.position.lerp(tmp.alvo, 1 - Math.exp(-dt * 7))
-        tmp.olhar.copy(p).addScaledVector(dirP, 5).setY(p.y + 1.2)
+        // de longe, do lado da estrada: a Kombi, a casa e quem anda entre
+        // as duas no mesmo quadro (LU2CA, 06/10)
+        tmp.alvo.copy(ab.de).addScaledVector(dirP, -12).setY(ab.de.y + 5.5)
+        tmp.alvo.x += dirP.z * 4
+        tmp.alvo.z -= dirP.x * 4
+        camera.position.lerp(tmp.alvo, 1 - Math.exp(-dt * 2.5))
+        tmp.olhar.lerpVectors(ab.de, ab.porta, 0.5).lerp(p, 0.35)
+        tmp.olhar.y = p.y + 1.4
         camera.up.set(0, 1, 0)
         camera.lookAt(tmp.olhar)
       }
