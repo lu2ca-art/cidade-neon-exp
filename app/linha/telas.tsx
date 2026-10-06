@@ -300,7 +300,7 @@ export function Radio({ save, atualizar, onFechar, embutido }: { save: Save; atu
     if (!l.length) return
     player.tocar(l[i % l.length].src, () => tocar(id, i + 1))
     atualizar((s) => ({ ...s, freq: id }))
-    track("music_play_started", { track_id: l[i % l.length].src, track_name: l[i % l.length].titulo, source: "radio", place_id: "linha-222" })
+    // music_play_started sai do próprio tocador (som.ts), quando soa de verdade
   }
   return (
     <div className={embutido ? "l-radio-app" : "l-ficha-fundo"} onClick={embutido ? undefined : onFechar}>

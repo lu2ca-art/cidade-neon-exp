@@ -7,7 +7,7 @@ import posthog from "posthog-js"
 
 export type DeviceType = "desktop" | "mobile" | "tablet"
 export type PlaceType = "museu" | "galeria" | "loja-discos" | "drive-v2" | "radio" | string
-export type MusicSource = "radio" | "loja-discos" | "museu" | "other"
+export type MusicSource = "radio" | "toca-discos" | "loja-discos" | "museu" | "other"
 
 export interface AnalyticsEvents {
   // 1. Acesso
@@ -90,8 +90,10 @@ export interface AnalyticsEvents {
     track_name: string
     source: MusicSource
     place_id?: string
+    // true = faixa do LU2CA (/audio/tracks/); false = vinil de domínio público
+    lu2ca?: boolean
   }
-  music_progress: { track_id: string | number; milestone: 25 | 50 | 75 | 100 }
+  music_progress: { track_id: string | number; milestone: 25 | 50 | 75 | 100; source?: MusicSource; lu2ca?: boolean }
   music_replayed: { track_id: string | number; replay_number: number }
   music_abandoned: {
     track_id: string | number
