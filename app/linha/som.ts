@@ -4,6 +4,7 @@
 // simplesmente não acontecem no celular.
 
 import { TONS } from "./tons"
+import { track, type MusicSource } from "@/lib/analytics"
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
@@ -436,6 +437,39 @@ class DetectorDeTom {
   }
 }
 
+// ── Medição (PostHog) ───────────────────────────────────────
+// Conta no próprio tocador, não em quem chama: toda música que COMEÇA A
+// SOAR de verdade (evento "playing") vira music_play_started uma vez por
+// faixa, e as faixas do LU2CA ainda marcam até onde foram ouvidas (25/50/
+// 75/100%). É o passo "ouviu no jogo" do funil da mentoria.
+const ehLu2ca = (src: string) => src.startsWith("/audio/tracks/")
+const nomeDe = (src: string) => decodeURIComponent(src.split("/").pop() ?? src).replace(/\.mp3$/, "")
+function medir(el: HTMLAudioElement, source: MusicSource) {
+  let contada: string | null = null
+  let marcos = new Set<number>()
+  const atual = () => { try { return new URL(el.currentSrc || el.src).pathname } catch { return el.src } }
+  el.addEventListener("playing", () => {
+    const src = atual()
+    if (src === contada) return
+    contada = src
+    marcos = new Set()
+    track("music_play_started", { track_id: src, track_name: nomeDe(src), source, place_id: "linha-222", lu2ca: ehLu2ca(src) })
+  })
+  el.addEventListener("timeupdate", () => {
+    const src = atual()
+    if (src !== contada || !ehLu2ca(src) || !el.duration) return
+    const pct = (el.currentTime / el.duration) * 100
+    for (const m of [25, 50, 75] as const) {
+      if (pct >= m && !marcos.has(m)) { marcos.add(m); track("music_progress", { track_id: src, milestone: m, source, lu2ca: true }) }
+    }
+  })
+  el.addEventListener("ended", () => {
+    const src = atual()
+    if (src === contada && ehLu2ca(src) && !marcos.has(100)) { marcos.add(100); track("music_progress", { track_id: src, milestone: 100, source, lu2ca: true }) }
+    contada = null // a mesma faixa de novo (repetir) conta como outra vez
+  })
+}
+
 class Player {
   el: HTMLAudioElement | null = null
   detector: DetectorDeTom | null = null
@@ -456,6 +490,7 @@ class Player {
     el.addEventListener("play", () => { this.detector?.ligar(); this.emitir() })
     el.addEventListener("pause", () => { this.detector?.desligar(); this.emitir() })
     el.addEventListener("ended", () => { this.aoFim?.(); this.emitir() })
+    medir(el, "radio")
     const c = audioCtx()
     const out = saida()
     if (c && out) {
@@ -655,6 +690,7 @@ class Disco {
     el.addEventListener("ended", () => { if (this.fila.length > 1) this.proxima(); else this.emitir() })
     el.addEventListener("pause", () => this.emitir())
     el.addEventListener("play", () => this.emitir())
+    medir(el, "toca-discos")
     this.el = el
     return el
   }
