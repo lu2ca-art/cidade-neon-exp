@@ -239,7 +239,7 @@ function Mundo({ st, plano }: { st: React.MutableRefObject<Estado>; plano: "tras
       if (e.segura && !e.semGas) e.v += ACEL_JOGO * (1 - Math.pow(Math.min(1, e.v / e.vmax), 2)) * dt
       else { const atrito = (2.2 + 0.006 * e.v * e.v) * dt; e.v = Math.max(0, e.v - atrito) }
       // sem combustível: vai no embalo e para em frente à casa
-      if (e.semGas) { const vPara = Math.sqrt(2 * 2.6 * Math.max(0, falta)); e.v = Math.max(Math.min(e.v, vPara), Math.min(2.2, vPara)) }
+      if (e.semGas) { const vPara = Math.sqrt(2 * 2.6 * Math.max(0, falta)); e.v = Math.min(vPara, Math.max(e.v, 8)) }
       e.d = Math.min(e.dist, e.d + e.v * dt)
       if (e.dist - e.d < 0.3) { e.v = 0; e.parou = true }
     } else {
