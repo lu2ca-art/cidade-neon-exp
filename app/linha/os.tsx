@@ -21,7 +21,7 @@ import { JardimFundo } from "./recursos"
 import { MEMORIAS, MISSOES, ativa, conhecidos, etapaDe, itensFaltando } from "./missoes"
 import { player } from "./som"
 import { track } from "@/lib/analytics"
-import { Plataformas } from "./plataformas"
+import { PreSave, Plataformas } from "./plataformas"
 
 export type AppId =
   | "kombi" | "n3xo" | "linha" | "radio" | "fliperama" | "objetos"
@@ -556,7 +556,7 @@ export function Ouvir({ onVoltar }: { onVoltar: () => void }) {
                 <span>{e.faixa}</span>
                 {!saiu && e.lancamento && <small>sai {dataCurta(e.lancamento)}</small>}
               </div>
-              {saiu && <Plataformas faixa={e.id} lugar="linha-222-ouvir" compacto />}
+              {saiu ? <Plataformas faixa={e.id} lugar="linha-222-ouvir" compacto /> : <PreSave faixa={e.id} lugar="linha-222-ouvir" />}
             </div>
           )
         })}
