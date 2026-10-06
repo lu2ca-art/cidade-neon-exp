@@ -1,6 +1,7 @@
-// Som do GUITAR DRIVER. A faixa passa por um filtro: quando você erra, ele
-// fecha e a música "abafa" (no Guitar Hero a guitarra some; aqui só temos
-// a mix, então abafar é o equivalente honesto). A galera é ruído filtrado
+// Som do GUITAR DRIVER. Com as stems (faixas com gd), a música toca em duas
+// camadas que somadas são o master: o resto da banda e a SUA parte (guitarra
+// ou baixo). Errou, a sua parte some do som; acertou a próxima, ela volta —
+// como no Guitar Hero. Sem stems, a mix passa por um filtro que abafa. A galera é ruído filtrado
 // que cresce com o medidor. Baquetas no count-in, grito no fim.
 
 let ctx: AudioContext | null = null
@@ -45,7 +46,7 @@ export async function soGrave(buf: AudioBuffer) {
 }
 
 export interface Show {
-  tocar: (buf: AudioBuffer, emSeg?: number) => void
+  tocar: (buf: AudioBuffer, emSeg?: number, parte?: AudioBuffer | null) => void
   tempo: () => number // segundos da faixa
   errou: () => void
   acertou: () => void
@@ -81,26 +82,47 @@ export function montarShow(): Show | null {
   g1.connect(bp).connect(galeraG).connect(out)
   g1.start()
 
+  // a sua parte (stem do instrumento): entra no mesmo filtro, com volume próprio
+  const parteG = c.createGain()
+  parteG.connect(filtro)
   let src: AudioBufferSourceNode | null = null
+  let srcParte: AudioBufferSourceNode | null = null
   let inicio = 0
   let offset = 0
+  let calada = false
 
   return {
-    tocar(buf, emSeg = 0) {
+    tocar(buf, emSeg = 0, parte = null) {
       src?.stop()
+      srcParte?.stop()
       src = c.createBufferSource()
       src.buffer = buf
       src.connect(filtro)
-      inicio = c.currentTime + 0.05
+      // as duas camadas começam no mesmo instante do relógio de áudio (amostra a amostra)
+      inicio = c.currentTime + 0.08
       offset = emSeg
       src.start(inicio, emSeg)
+      srcParte = null
+      if (parte) {
+        srcParte = c.createBufferSource()
+        srcParte.buffer = parte
+        srcParte.connect(parteG)
+        srcParte.start(inicio, emSeg)
+      }
     },
     tempo: () => (src ? c.currentTime - inicio + offset : 0),
     errou() {
       const t = c.currentTime
-      filtro.frequency.cancelScheduledValues(t)
-      filtro.frequency.setValueAtTime(420, t)
-      filtro.frequency.exponentialRampToValueAtTime(20000, t + 0.55)
+      if (srcParte) {
+        // a sua parte sai (rápido, sem estalo) e fica fora até o próximo acerto
+        calada = true
+        parteG.gain.cancelScheduledValues(t)
+        parteG.gain.setTargetAtTime(0, t, 0.012)
+      } else {
+        filtro.frequency.cancelScheduledValues(t)
+        filtro.frequency.setValueAtTime(420, t)
+        filtro.frequency.exponentialRampToValueAtTime(20000, t + 0.55)
+      }
       // "clanc" de corda errada
       const o = c.createOscillator()
       const g = c.createGain()
@@ -114,7 +136,12 @@ export function montarShow(): Show | null {
       o.stop(t + 0.25)
     },
     acertou() {
-      /* a própria música é a recompensa: só garante o filtro aberto */
+      // a própria música é a recompensa: a sua parte volta
+      if (!calada) return
+      calada = false
+      const t = c.currentTime
+      parteG.gain.cancelScheduledValues(t)
+      parteG.gain.setTargetAtTime(1, t, 0.008)
     },
     galera(n) {
       galeraG.gain.setTargetAtTime(0.015 + n * n * 0.09, c.currentTime, 0.4)
@@ -154,6 +181,7 @@ export function montarShow(): Show | null {
     },
     parar() {
       try { src?.stop() } catch {}
+      try { srcParte?.stop() } catch {}
       try { g1.stop() } catch {}
       out.gain.setTargetAtTime(0, c.currentTime, 0.2)
       setTimeout(() => out.disconnect(), 800)

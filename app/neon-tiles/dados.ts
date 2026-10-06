@@ -16,15 +16,18 @@ export interface Faixa {
   cor: string
   acento: string
   abre?: string // data de liberação (T-21 / lançamento)
+  // as notas desenhadas das stems reais (public/gd/<id>.json) e o áudio em
+  // camadas (o seu instrumento separado do resto): errou, a sua parte some
+  gd?: boolean
 }
 
 export const FAIXAS: Faixa[] = [
-  { id: "chuva", titulo: "CHUVA", bpm: 95, audio: "/audio/tracks/222-chuva.mp3", cor: "#2fe8ff", acento: "#1a3fa0" },
-  { id: "copo", titulo: "COPO AMERICANO", bpm: 110, audio: "/audio/tracks/222-copo-americano.mp3", cor: "#ff6a35", acento: "#ff3fb0" },
-  { id: "dopamina", titulo: "DOPAMINA", bpm: 128, audio: "/audio/tracks/dopamina.mp3", cor: "#5dffa0", acento: "#7c3aed" },
-  { id: "sexta", titulo: "SEXTA-FEIRA", bpm: 105, audio: "/audio/tracks/sextafeira.mp3", cor: "#ff3fb0", acento: "#ffc857" },
-  { id: "ontem", titulo: "SABE ONTEM?", bpm: 100, audio: "/audio/tracks/sabe-ontem.mp3", cor: "#ffc857", acento: "#ff6a35", abre: "2026-09-30T00:00:00-03:00" },
-  { id: "nectar", titulo: "NECTAR", bpm: 96, audio: "/audio/tracks/nectar.mp3", cor: "#b38cff", acento: "#2fe8ff", abre: "2026-10-14T00:00:00-03:00" },
+  { id: "chuva", titulo: "CHUVA", bpm: 79, gd: true, audio: "/audio/tracks/222-chuva.mp3", cor: "#2fe8ff", acento: "#1a3fa0" },
+  { id: "copo", titulo: "COPO AMERICANO", bpm: 80, gd: true, audio: "/audio/tracks/222-copo-americano.mp3", cor: "#ff6a35", acento: "#ff3fb0" },
+  { id: "dopamina", titulo: "DOPAMINA", bpm: 125, gd: true, audio: "/audio/tracks/dopamina.mp3", cor: "#5dffa0", acento: "#7c3aed" },
+  { id: "sexta", titulo: "SEXTA-FEIRA", bpm: 88, gd: true, audio: "/audio/tracks/sextafeira.mp3", cor: "#ff3fb0", acento: "#ffc857" },
+  { id: "ontem", titulo: "SABE ONTEM?", bpm: 100, gd: true, audio: "/audio/tracks/sabe-ontem.mp3", cor: "#ffc857", acento: "#ff6a35", abre: "2026-09-30T00:00:00-03:00" },
+  { id: "nectar", titulo: "NECTAR", bpm: 79, gd: true, audio: "/audio/tracks/nectar.mp3", cor: "#b38cff", acento: "#2fe8ff", abre: "2026-10-14T00:00:00-03:00" },
 ]
 
 export function faixaAberta(f: Faixa, agora = Date.now()) {
