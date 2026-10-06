@@ -35,7 +35,7 @@ import { audioCtx, fonteSom, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
 import { Loja } from "./loja"
 import { PRECO_DISCO } from "./discos"
-import { BLOCOS, ITENS, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
+import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import { Checklist } from "./tutorial-tela"
 import dynamic from "next/dynamic"
 
@@ -52,8 +52,8 @@ type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
 type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: null }
 
 // quanto NEON rende acordar uma pessoa (uma missão inteira)
-// um disco por pessoa acordada (a primeira já compra o primeiro disco)
-const NEON_POR_PESSOA = 100
+// cada missão completa vale 50 NEON; cada item do tutorial, 10 (LU2CA, 05/10)
+const NEON_POR_PESSOA = 50
 
 type Tela =
   | { t: "entrada" }
@@ -102,7 +102,8 @@ export default function LinhaPage() {
   // a conversa aberta porque desceu na estação (destrava o passo "chegar")
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean } | null>(null)
+  // inicio: a casa da D-Bee na abertura (CENA_INICIO)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -216,7 +217,7 @@ export default function LinhaPage() {
   const tut = emTutorial(save)
   const blocoTut = tut ? blocoAtual(save) : BLOCOS.length
   // e até o fim do tutorial, só a primeira pessoa chama
-  const tutLibera = !tut || (quemChama === PRIMEIRA && (blocoTut > 1 || (blocoTut === 1 && ligou(save, 1))))
+  const tutLibera = !tut || (quemChama === PRIMEIRA && blocoTut >= 1)
   const chamaNaEstrada = tutLibera && !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
   // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
   // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
@@ -439,6 +440,25 @@ export default function LinhaPage() {
     }
   }, [cena, avisar])
 
+  // saiu da casa da D-Bee (a abertura): o tanque cheio, o tutorial começa.
+  // O começo antigo (o grupo rolando, as ligações dbee-0/1, a abertura com o
+  // quiz) não acontece: o grupo fica no histórico do N3XO, o violão (que tava
+  // na casa) vem junto e a primeira pessoa é o Mubarak
+  const fimInicio = useCallback(() => {
+    setCena(null)
+    setCinema(null)
+    setSave((s) => {
+      const grupo: Item[] = ROTEIROS.grupo.passos.flatMap((p): Item[] => (p.t === "msg" ? [{ k: "msg", texto: typeof p.texto === "string" ? p.texto : "", de: p.de }] : p.t === "nucleo" ? [{ k: "nucleo", texto: p.texto }] : p.t === "sistema" ? [{ k: "sistema", texto: p.texto }] : []))
+      return {
+        ...s, casa: true, violao: true, foco: s.foco ?? PRIMEIRA, tutorial: s.tutorial ?? [],
+        completos: [...new Set([...s.completos, "grupo" as const, "abertura" as const])],
+        ligacoes: [...new Set([...s.ligacoes, "dbee-0", "dbee-1"])],
+        logs: { ...s.logs, grupo },
+      }
+    })
+    track("mission_step", { mission_id: "linha-inicio", step: "casa:fim", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }, [])
+
   // a loja de discos: todo disco custa o mesmo em NEON
   const comprarDisco = (id: string) => {
     const s = saveRef.current
@@ -466,18 +486,13 @@ export default function LinhaPage() {
   const ligaTut = tut && blocoTut < BLOCOS.length && !ligou(save, blocoTut)
   useEffect(() => {
     if (!pronto || !ligaTut || tela.t !== "corrida" || emSala || cinema || invasao || aoVivo || ligacao) return
-    const t = setTimeout(() => setLigacao({ lig: LIGACOES[BLOCOS[blocoTut].lig] }), blocoTut === 0 ? 3500 : 2500)
+    const lig = BLOCOS[blocoTut].lig
+    if (!lig) return
+    const t = setTimeout(() => setLigacao({ lig: LIGACOES[lig] }), blocoTut === 0 ? 3500 : 2500)
     return () => clearTimeout(t)
   }, [pronto, ligaTut, blocoTut, tela.t, emSala, cinema, invasao, aoVivo, ligacao])
   const marcarTut = useCallback((i: ItemTutorial) => setSave((s) => ((s.tutorial ?? []).includes(i) ? s : { ...s, tutorial: [...(s.tutorial ?? []), i] })), [])
-  // dirigir com a 222 de volta: 20 s rodando depois da ligação dela
-  const rodandoTut = tut && ligou(save, 0) && !feito(save, "ouvir") && tela.t === "corrida" && !emSala && !cinema && !ligacao
-  useEffect(() => {
-    if (!rodandoTut) return
-    const t = setTimeout(() => marcarTut("ouvir"), 20000)
-    return () => clearTimeout(t)
-  }, [rodandoTut, marcarTut])
-  // cada item marcado: um comentário dela. Tudo feito: a cidade é sua
+  // cada item marcado: +10 NEON. Tudo feito: a cidade é sua
   const feitosTut = useRef<Set<ItemTutorial> | null>(null)
   useEffect(() => {
     if (!pronto || !tut) return
@@ -487,8 +502,11 @@ export default function LinhaPage() {
     if (!antes) return
     const novo = [...agora].find((i) => !antes.has(i))
     // (sem cleanup: o save muda o tempo todo e não pode cancelar o aviso)
-    // acordar alguém já tem o aviso do NEON: o comentário vem depois
-    if (novo) setTimeout(() => avisar("D-Bee", ITENS[novo].comenta, "#3d7bff"), novo === "acordar" ? 5600 : 900)
+    // acordar alguém já tem o aviso dos 50 NEON: o do item vem depois
+    if (novo) setTimeout(() => {
+      setSave((s) => ({ ...s, neon: (s.neon ?? 0) + NEON_POR_ITEM }))
+      avisar(`+${NEON_POR_ITEM} neon`, ITENS[novo].texto, "#ffc857")
+    }, novo === "mubarak" ? 5600 : 900)
     if (novo && blocoAtual(save) >= BLOCOS.length) {
       setTimeout(() => {
         setSave((s) => ({ ...s, tutorial: [...new Set([...(s.tutorial ?? []), "fim"])], foco: undefined }))
@@ -557,8 +575,11 @@ export default function LinhaPage() {
       })
       setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
     } else if (!save.casa) {
-      // primeira vez: a abertura, dirigindo pelo deserto até a casa dela
-      setTela({ t: "deserto" })
+      // primeira vez: a abertura, no deserto do mapa (Corrida, abertura),
+      // em silêncio: só o vento e o motor
+      fonteSom.set("off")
+      setEstrada(true)
+      setTela({ t: "corrida", destino: null })
     } else {
       // já passou pela casa: entra na cidade de Kombi, não pelo celular
       setCinema("rodando")
@@ -733,6 +754,9 @@ export default function LinhaPage() {
             pausado={tela.t !== "corrida" && tela.t !== "chegada"}
             retomar={voltaDaSala}
             teleporte={teleporte}
+            abertura={!save.casa}
+            onAbertura={() => { setCinema("lugar"); setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, inicio: true }) }}
+            onArea={(id) => { if (id === "circuito:linha" && emTutorial(saveRef.current)) marcarTut("tanque") }}
             limitado={!!invasao}
             cacado={cacado || perseguido}
             conversa={!!aoVivo}
@@ -769,7 +793,7 @@ export default function LinhaPage() {
           />
         )}
         {tela.t === "corrida" && !emSala && !cinema && nivel >= 1 && listaMissoes.length > 0 && (
-          <button type="button" className={`l-btn-missoes ${painelMissoes ? "is-aberto" : ""}`} onClick={() => { setPainelMissoes((v) => !v); if (tut) marcarTut("missoes") }}>
+          <button type="button" className={`l-btn-missoes ${painelMissoes ? "is-aberto" : ""}`} onClick={() => setPainelMissoes((v) => !v)}>
             missões <em>{listaMissoes.length}</em>
           </button>
         )}
@@ -790,50 +814,6 @@ export default function LinhaPage() {
               })}
             </ul>
           </div>
-        )}
-        {tela.t === "casa" && (
-          <>
-            <Interior key="sala:inicio" lugar="casa-dbee" inicio />
-            <CenaLugar
-              key="cena:inicio"
-              gestos3d={GESTOS_3D["casa-dbee"] ?? []}
-              cena={CENA_INICIO}
-              memoria={0}
-              objetos={save.objetos}
-              tom={tomMaior}
-              semSom={semSom}
-              onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-              onFim={() => {
-                // o começo antigo (o grupo rolando, as ligações dbee-0/1, a
-                // abertura com o quiz) não acontece: o grupo fica no
-                // histórico do N3XO, o violão (que tava na casa) vem junto e
-                // a primeira pessoa é o Mubarak (o tutorial)
-                setSave((s) => {
-                  const grupo: Item[] = ROTEIROS.grupo.passos.flatMap((p): Item[] => (p.t === "msg" ? [{ k: "msg", texto: typeof p.texto === "string" ? p.texto : "", de: p.de }] : p.t === "nucleo" ? [{ k: "nucleo", texto: p.texto }] : p.t === "sistema" ? [{ k: "sistema", texto: p.texto }] : []))
-                  return {
-                    ...s, casa: true, violao: true, foco: s.foco ?? PRIMEIRA, tutorial: s.tutorial ?? [],
-                    completos: [...new Set([...s.completos, "grupo" as const, "abertura" as const])],
-                    ligacoes: [...new Set([...s.ligacoes, "dbee-0", "dbee-1"])],
-                    logs: { ...s.logs, grupo },
-                  }
-                })
-                track("mission_step", { mission_id: "linha-inicio", step: "casa:fim", perfil: save.perfil ?? "?", fio_pos: -1 })
-                setTela({ t: "reta" })
-              }}
-            />
-          </>
-        )}
-        {tela.t === "deserto" && <Viagem key="deserto" rumo="deserto" onFim={() => setTela({ t: "casa" })} />}
-        {tela.t === "reta" && (
-          <Viagem
-            rumo="cidade"
-            onFim={() => {
-              // a reta acabou na entrada da cidade: o Núcleo invade o rádio
-              setCinema("rodando")
-              setEstrada(true)
-              setTela({ t: "chegada" })
-            }}
-          />
         )}
         {tela.t === "chegada" && (
           <Chegada
@@ -937,14 +917,14 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} />
+          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} />
         )}
         {cena && (
           <CenaLugar
-            key={`${cena.lugar}:${cena.missao}`}
+            key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : ""}`}
             gestos3d={GESTOS_3D[cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cenaDe(cena.lugar)!}
+            cena={cena.inicio ? CENA_INICIO : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -952,7 +932,7 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={fimCena}
+            onFim={cena.inicio ? fimInicio : fimCena}
           />
         )}
         {viagem && (

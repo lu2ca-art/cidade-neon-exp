@@ -105,65 +105,35 @@ export const LIGACOES: Record<string, Ligacao> = {
     ],
   },
 
-  // ── o TUTORIAL (tutorial.ts): uma ligação curta antes de cada bloco.
-  // RASCUNHO, o LU2CA reescreve. Ela já disse quem é e o que tá em jogo na
-  // casa (cenas.ts, CENA_INICIO): aqui só o que vem agora, com o susto e o
-  // carinho dela, nunca aula
-  // A: acabou de entrar na cidade e o Núcleo tomou o rádio
-  "dbee-a": {
-    id: "dbee-a",
+  // ── a HISTÓRIA (05/10): a D-Bee conta tudo no caminho, na estrada do
+  // deserto até a cidade (o tutorial, tutorial.ts). O texto é do LU2CA, em
+  // fala direta
+  "dbee-historia": {
+    id: "dbee-historia",
     quem: "D-Bee",
-    recado: "chegou? dirige um pouco. a 222 tá embaixo do barulho",
+    recado: "Conto com você!",
     passos: [
-      {
-        t: "pergunta",
-        fala: "chegou? ouvi daqui o rádio gritando",
-        opcoes: [
-          { label: "o rádio tá falando sozinho", tom: "dormindo", palavras: ["radio", "falando", "sozinho"], resposta: [{ fala: "sozinho não. é ele" }] },
-          { label: "quem tomou a rádio?", tom: "acordando", palavras: ["quem", "tomou", "radio"], resposta: [{ fala: "o núcleo. a voz da cidade agora é dele" }] },
-          { label: "ele sabe que eu cheguei?", tom: "acordado", palavras: ["sabe", "cheguei", "chegou"], resposta: [{ fala: "ainda não. por isso eu ligo, não escrevo" }] },
-        ],
-      },
-      { t: "fala", fala: "a 222 tá viva embaixo disso. dirige um pouco que ela volta" },
-      { t: "fala", fala: "e não roda à toa. tem gente precisando de vc" },
-    ],
-  },
-  // B: a primeira pessoa (o Mubarak, no bar). Ela não consegue mais chegar nele
-  "dbee-b": {
-    id: "dbee-b",
-    quem: "D-Bee",
-    recado: "tem um amigo meu num bar. ele vai te chamar. atende ele",
-    passos: [
-      { t: "fala", fala: "tem um amigo meu num bar. faz tempo que ele não sai da mesma noite" },
-      {
-        t: "pergunta",
-        fala: "ele vai te chamar. vc atende?",
-        opcoes: [
-          { label: "atendo", tom: "acordado", palavras: ["atendo", "sim", "claro", "bora"], resposta: [{ fala: "sabia" }] },
-          { label: "e se eu não souber o que dizer?", tom: "acordando", palavras: ["saber", "dizer", "nao", "sei"], resposta: [{ fala: "ninguém sabe. ele também não" }] },
-          { label: "por que não vai vc?", tom: "dormindo", palavras: ["porque", "por", "que", "voce", "vc"], resposta: [{ fala: "pq a minha voz ele já não escuta" }] },
-        ],
-      },
-      { t: "fala", fala: "vai. eu fico na escuta" },
-    ],
-  },
-  // C: acordou a primeira pessoa e ganhou NEON. A loja de discos
-  "dbee-c": {
-    id: "dbee-c",
-    quem: "D-Bee",
-    recado: "o neon que vc ganhou é nosso. passa na loja de discos",
-    passos: [
-      {
-        t: "pergunta",
-        fala: "vc viu a cara dele quando saiu?",
-        opcoes: [
-          { label: "parecia que tinha dormido anos", tom: "dormindo", palavras: ["dormido", "anos", "sono"], resposta: [{ fala: "três. mas quem tá contando" }] },
-          { label: "ele vai ficar bem?", tom: "acordando", palavras: ["bem", "vai", "ficar"], resposta: [{ fala: "hoje vai. amanhã a gente vê" }] },
-          { label: "vi. ele lembrou", tom: "acordado", palavras: ["vi", "lembrou", "lembra"], resposta: [{ fala: "…" }, { fala: "faz tempo que eu não ouço isso" }] },
-        ],
-      },
-      { t: "fala", fala: "o neon que vc ganhou não compra nada deles. só o que é feito por gente" },
-      { t: "fala", fala: "passa na loja de discos. escolhe um pra kombi. essa cidade tá quieta demais" },
+      { t: "fala", fala: "Há alguns anos, a cidade chegou ao seu ápice. Luzes neon por toda parte, o dia e a noite se confundiam." },
+      { t: "fala", fala: "Todo o tempo, tudo aceso. Um mundo dos sonhos, sem escuridão." },
+      { t: "fala", fala: "Foi assim que, aos poucos, as pessoas foram cegas pelas luzes. E ela foi tomando conta de cada beco e avenida, cada bar, cada esquina." },
+      { t: "fala", fala: "Não havia mais nada. Só as luzes." },
+      { t: "fala", fala: "Cada vez menos espaço pra sermos vistos. Tudo que era real era perseguido e apagado." },
+      { t: "fala", fala: "E aí, então, veio o Núcleo." },
+      { t: "fala", fala: "Eles disseram que iam tomar conta da gente, que iam devolver a vida pra nossa cidade. Iam trazer a visão que a gente não tinha há tanto tempo." },
+      { t: "fala", fala: "Nós acreditamos. Fomos seus soldados." },
+      { t: "fala", fala: "Lutamos pra que não fôssemos mais fantoches, controlados pela máquina. Batalhamos muito em nome dessa organização, que nos prometia o nosso mundo de volta." },
+      { t: "fala", fala: "Até que um dia ela se voltou contra nós. E agora controla não só as cidades, mas também aqueles que vivem nelas." },
+      { t: "fala", fala: "Eles tiraram a máscara e assumiram o comando. E nos chutaram pra fora da cidade." },
+      { t: "fala", fala: "Foi aí que nasceu a 222. Nos arredores da Cidade Neon, onde vivem até hoje todos aqueles que queriam sua vida de volta. E hoje vivem escondidos nas sombras." },
+      { t: "fala", fala: "O Núcleo não chega lá. Mas também mantém a gente isolado, como fugitivos. Nada chega até o subúrbio." },
+      { t: "fala", fala: "A 222 é um movimento de resistência e de resgate do que foi roubado da gente e levado pra Cidade Neon." },
+      { t: "fala", fala: "Arte, música, natureza, vida real. Transformados em mera decoração pros humanos que se tornaram um com a máquina. Se alimentando daquilo que não são mais capazes de produzir." },
+      { t: "fala", fala: "A 222 precisa resgatar de volta o que foi roubado. E recuperar aqueles velhos amigos que se perderam entre as luzes e estão presos na cidade." },
+      { t: "fala", fala: "Por isso eu preciso de você." },
+      { t: "fala", fala: "Seu carro não pode ser rastreado pelo Núcleo. Eles não sabem quem você é. Mas logo vão saber." },
+      { t: "fala", fala: "Espero que a gente consiga resgatar o que é nosso a tempo de fugir de lá sem ser pegos." },
+      { t: "fala", fala: "No subúrbio eles não chegam. Por isso é importante passar despercebido, ou ser o mais veloz que puder." },
+      { t: "fala", fala: "Conto com você!" },
     ],
   },
 }
