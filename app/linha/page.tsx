@@ -560,6 +560,9 @@ export default function LinhaPage() {
   const sairDoPosto = useCallback(() => {
     const primeira = noPosto?.primeira
     setNoPosto(null)
+    // o item "Encha o tanque no posto" (e os +10) só conta saindo — lá dentro
+    // o saldo tem que zerar no tanque (o galão dá "saldo insuficiente")
+    setSave((x) => (emTutorial(x) && (x.tanque ?? 0) > 0.97 ? { ...x, tutorial: [...new Set([...(x.tutorial ?? []), "posto"])] } : x))
     if (primeira) {
       setSave((x) => ({ ...x, tutorial: [...new Set([...(x.tutorial ?? []), "lu2ca-posto"])] }))
       // a loja de discos chama (rascunho): o disco novo que ele falou
@@ -569,7 +572,7 @@ export default function LinhaPage() {
   const encherTanque = useCallback(() => setSave((s) => {
     if ((s.neon ?? 0) < PRECO_TANQUE || (s.tanque ?? 1) > 0.97) return s
     track("mission_step", { mission_id: "linha-posto", step: "tanque", perfil: s.perfil ?? "?", fio_pos: -1 })
-    return { ...s, neon: (s.neon ?? 0) - PRECO_TANQUE, tanque: 1, tutorial: emTutorial(s) ? [...new Set([...(s.tutorial ?? []), "posto"])] : s.tutorial }
+    return { ...s, neon: (s.neon ?? 0) - PRECO_TANQUE, tanque: 1 }
   }), [])
   const encherGalao = () => setSave((s) => ((s.neon ?? 0) < PRECO_GALAO || s.galao !== "vazio" ? s : { ...s, neon: (s.neon ?? 0) - PRECO_GALAO, galao: "cheio" }))
 

@@ -84,7 +84,7 @@ export function PostoDentro({ primeira, neon, tanque, galao, precoTanque, precoG
     onEncherGalao()
   }
   // a saída: na primeira vez, só depois do presente
-  const podeSair = !primeira || ganhou
+  const podeSair = !primeira || ganhou || galaoCheio
 
   return (
     <div className="l-cena l-posto-dentro" onClick={fala ? seguir : undefined}>
