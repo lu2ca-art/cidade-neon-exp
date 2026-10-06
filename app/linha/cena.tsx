@@ -70,6 +70,13 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   useEffect(() => {
     if (mostrando?.neon && neonDado.current !== pos) { neonDado.current = pos; onNeon?.(mostrando.neon) }
   }, [mostrando, pos, onNeon])
+  // só dinheiro (sem objeto nem relíquia): nada de cartão, segue sozinho
+  const soNeon = !!mostrando?.neon && !mostrando.objeto && !mostrando.reliquia
+  useEffect(() => {
+    if (!soNeon) return
+    const t = setTimeout(() => setPos((p) => p + 1), 1600)
+    return () => clearTimeout(t)
+  }, [soNeon, pos])
 
   // conta pra sala o que está acontecendo (quem fala, gesto, escolha…)
   // os minijogos antigos entram como "prova:<id>" (a sala pode assumir um deles)
@@ -174,7 +181,9 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
-      {mostrando && (
+      {/* dinheiro na conta: só o +X no canto, e a cena segue sozinha */}
+      {mostrando && soNeon && <div key={pos} className="l-cena-neon">+{mostrando.neon} neon$</div>}
+      {mostrando && !soNeon && (
         <Ganho objeto={mostrando.objeto} reliquia={mostrando.reliquia} titulo={mostrando.titulo} texto={mostrando.texto} memoria={mostrando.objeto ? memoria : null} onOk={fecharGanho} />
       )}
 

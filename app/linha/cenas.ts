@@ -431,7 +431,7 @@ export const CENA_INICIO: Cena = {
     { t: "fala", de: "D-Bee", texto: "Agora você é a única pessoa em quem eu posso confiar. Eu sei que você é diferente dos outros." },
     { t: "fala", de: "D-Bee", texto: "Guardei o último galão pra você conseguir chegar até a cidade. Lá você enche o tanque." },
     { t: "fala", de: "D-Bee", texto: "Toma aqui. Você vai precisar!" },
-    { t: "ganha", titulo: "+25 neon", neon: 25 },
+    { t: "ganha", neon: 25 },
     { t: "fim" },
   ],
 }
