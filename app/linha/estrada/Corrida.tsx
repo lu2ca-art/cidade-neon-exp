@@ -1966,6 +1966,7 @@ function Cena({
   }, [])
 
   // ── chuva (só visual), confete, faíscas ──
+  const chuvaRef = useRef<THREE.LineSegments>(null)
   const chuva = useMemo(() => {
     const n = 700
     const pos = new Float32Array(n * 6)
@@ -2854,7 +2855,9 @@ function Cena({
     cidade.luzMat.opacity = 0.55 + grave * 0.35
     tex.turbo.offset.y -= dt * 2.5
 
-    // chuva: volume que acompanha a câmera, inclina com a velocidade
+    // chuva: volume que acompanha a câmera, inclina com a velocidade (no
+    // deserto não chove)
+    if (chuvaRef.current) chuvaRef.current.visible = V.id !== "deserto"
     const cp = camera.position
     for (let i = 0; i < chuva.n; i++) {
       let y = chuva.base[i * 3 + 1] - dt * (38 + j.v * 0.2)
@@ -3114,7 +3117,7 @@ function Cena({
       <primitive object={caca.farol} frustumCulled={false} />
       <primitive object={trafego.lant} />
 
-      <lineSegments geometry={chuva.g} frustumCulled={false}>
+      <lineSegments ref={chuvaRef} geometry={chuva.g} frustumCulled={false}>
         <lineBasicMaterial color="#a8ccff" transparent opacity={0.28} />
       </lineSegments>
       <primitive object={confete.m} frustumCulled={false} />
