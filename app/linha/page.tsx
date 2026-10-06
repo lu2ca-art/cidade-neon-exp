@@ -34,6 +34,7 @@ import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
 import { Loja } from "./loja"
+import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
@@ -117,8 +118,8 @@ export default function LinhaPage() {
   const [voltaDaSala, setVoltaDaSala] = useState(false)
   // o painel MISSÕES: tudo que está aberto + "ir agora"
   const [painelMissoes, setPainelMissoes] = useState(false)
-  // a bomba do posto aberta
-  const [posto, setPosto] = useState(false)
+  // dentro do posto (posto.tsx): primeira = a apresentação do LU2CA
+  const [noPosto, setNoPosto] = useState<{ primeira: boolean } | null>(null)
   const abrirPostoRef = useRef(() => {})
   // conversas que chegaram numa pergunta no painel: esperam no N3XO (não
   // chamam de novo na estrada até a pessoa abrir e responder)
@@ -383,7 +384,7 @@ export default function LinhaPage() {
   // Pego = a coisa volta pro lugar de origem (busca de novo; sem game over)
   const alvoAgora = save.nucleo.caido ? null : alvoDe(save, nivelDe(save))
   const cacado = alvoAgora?.t === "entrega" && save.objetos.length >= 2
-  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem
+  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto
   // entrou numa sala: a próxima estrada que montar retoma de onde parou;
   // foi pra outra tela (celular, início): a estrada começa do jeito normal
   const [emSalaAnt, setEmSalaAnt] = useState(emSala)
@@ -550,20 +551,26 @@ export default function LinhaPage() {
   // se impressiona com a Kombi, nunca te viu na cidade)
   useEffect(() => {
     abrirPostoRef.current = () => {
-      setPosto(true)
-      const s = saveRef.current
-      if (!(s.tutorial ?? []).includes("lu2ca-posto")) {
-        setSave((x) => ({ ...x, tutorial: [...new Set([...(x.tutorial ?? []), "lu2ca-posto"])] }))
-        setTimeout(() => avisar("LU2CA", "que kombi é essa? faz tempo que eu não vejo uma rodando", "#b38cff"), 400)
-        setTimeout(() => avisar("LU2CA", "nunca te vi por aqui. vc não é da cidade, né", "#b38cff"), 5000)
-      }
+      if (cinema || cena || noPosto) return
+      setAoVivo(null)
+      setPainelMissoes(false)
+      setNoPosto({ primeira: !(saveRef.current.tutorial ?? []).includes("lu2ca-posto") })
     }
-  }, [avisar])
-  const encherTanque = () => setSave((s) => {
+  }, [cinema, cena, noPosto])
+  const sairDoPosto = useCallback(() => {
+    const primeira = noPosto?.primeira
+    setNoPosto(null)
+    if (primeira) {
+      setSave((x) => ({ ...x, tutorial: [...new Set([...(x.tutorial ?? []), "lu2ca-posto"])] }))
+      // a loja de discos chama (rascunho): o disco novo que ele falou
+      setTimeout(() => avisar("LOJA DE DISCOS", "tem disco novo na prateleira · abre no celular", "#ffc857"), 2500)
+    }
+  }, [noPosto, avisar])
+  const encherTanque = useCallback(() => setSave((s) => {
     if ((s.neon ?? 0) < PRECO_TANQUE || (s.tanque ?? 1) > 0.97) return s
     track("mission_step", { mission_id: "linha-posto", step: "tanque", perfil: s.perfil ?? "?", fio_pos: -1 })
     return { ...s, neon: (s.neon ?? 0) - PRECO_TANQUE, tanque: 1, tutorial: emTutorial(s) ? [...new Set([...(s.tutorial ?? []), "posto"])] : s.tutorial }
-  })
+  }), [])
   const encherGalao = () => setSave((s) => ((s.neon ?? 0) < PRECO_GALAO || s.galao !== "vazio" ? s : { ...s, neon: (s.neon ?? 0) - PRECO_GALAO, galao: "cheio" }))
 
   // a missão de agora e o resumo da caixa (no canto da tela)
@@ -952,20 +959,22 @@ export default function LinhaPage() {
             </ul>
           </div>
         )}
-        {posto && tela.t === "corrida" && !emSala && (
-          <div className="l-posto" role="dialog" aria-label="Posto">
-            <header><b>POSTO 24H</b><button type="button" onClick={() => setPosto(false)} aria-label="Fechar">×</button></header>
-            <button type="button" className="l-posto-op" disabled={(save.neon ?? 0) < PRECO_TANQUE || (save.tanque ?? 1) > 0.97} onClick={encherTanque}>
-              <span>encher o tanque</span><b>{PRECO_TANQUE} neon</b>
-            </button>
-            {save.galao === "vazio" && (
-              <button type="button" className="l-posto-op" disabled={(save.neon ?? 0) < PRECO_GALAO} onClick={encherGalao}>
-                <span>encher o galão</span><b>{PRECO_GALAO} neon</b>
-              </button>
-            )}
-            <small>{(save.tanque ?? 1) > 0.97 ? "o tanque tá cheio" : (save.neon ?? 0) < PRECO_TANQUE ? "sem neon suficiente" : "a bomba tá livre"}</small>
-            <button type="button" className="l-posto-sair" onClick={() => setPosto(false)}>seguir viagem →</button>
-          </div>
+        {noPosto && (
+          <>
+            <Interior key="sala:posto" lugar="posto" objetos={save.objetos} />
+            <PostoDentro
+              primeira={noPosto.primeira}
+              neon={save.neon ?? 0}
+              tanque={save.tanque ?? 1}
+              galao={save.galao}
+              precoTanque={PRECO_TANQUE}
+              precoGalao={PRECO_GALAO}
+              onEncherTanque={encherTanque}
+              onEncherGalao={encherGalao}
+              onPresente={(n) => setSave((x) => ({ ...x, neon: (x.neon ?? 0) + n }))}
+              onSair={sairDoPosto}
+            />
+          </>
         )}
         {tela.t === "chegada" && (
           <Chegada

@@ -307,7 +307,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [abFase, setAbFase] = useState<{ fase: Abertura["fase"]; semGas: boolean }>({ fase: "dirige", semGas: false })
   // o combustível: um ref (gasta a cada frame); o page guarda de tempos em tempos
   const postoPose = poses.posto
-  const combRef = useRef<Comb>({ tanque, via: postoPose.via, u: LUGARES.posto.u, avisou: false, onPosto: () => {}, t: 0 })
+  // voltando de dentro do posto, a Kombi tá parada na frente dele: não abre de novo
+  const combRef = useRef<Comb>({ tanque, via: postoPose.via, u: LUGARES.posto.u, avisou: jogo0.via === postoPose.via && Math.abs(du(M.vias[jogo0.via], jogo0.u, LUGARES.posto.u)) < 60, onPosto: () => {}, t: 0 })
   const onTanqueRef = useRef(onTanque)
   useEffect(() => { onTanqueRef.current = onTanque }, [onTanque])
   useEffect(() => { combRef.current.onPosto = () => onPosto?.() }, [onPosto])

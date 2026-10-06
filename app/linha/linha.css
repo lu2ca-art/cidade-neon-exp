@@ -1760,3 +1760,11 @@
 /* dinheiro na conta durante a cena: no canto, discreto */
 .l-cena-neon { position: absolute; z-index: 30; top: calc(16px + env(safe-area-inset-top)); right: 16px; padding: 6px 12px; border-radius: 999px; background: rgba(5, 5, 14, 0.7); border: 1px solid #ffc857; font: 700 13px var(--mono); color: #ffc857; animation: l-aviso 1.6s cubic-bezier(0.2, 1, 0.3, 1) both; pointer-events: none; }
 .l-missoes-sel { font: 700 10px var(--mono); font-style: normal; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cor); }
+
+/* ── dentro do posto (posto.tsx) ── */
+.l-posto-ops { position: relative; z-index: 2; margin: 0 16px calc(11vh + 18px); display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; background: linear-gradient(180deg, rgba(5, 5, 14, 0.6), rgba(5, 5, 14, 0.85)); border-left: 3px solid #ff8a3d; animation: l-sobe 0.3s both; cursor: default; }
+.l-posto-ops .l-posto-op { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 10px; background: rgba(42, 30, 20, 0.85) !important; border: 1px solid rgba(255, 138, 61, 0.6) !important; color: #fff !important; font: 600 15px var(--sans, system-ui); }
+.l-posto-ops .l-posto-op small { font: 600 10px var(--mono); color: rgba(255, 179, 92, 0.7); }
+.l-posto-ops .l-posto-op:disabled { opacity: 0.45; }
+.l-posto-aviso { margin: 0; font: 700 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: #ff6a6a; text-align: center; animation: l-sobe 0.2s both; }
+.l-posto-ops .l-posto-sair { align-self: flex-end; padding: 6px 4px 0; background: none !important; border: 0 !important; color: #e8efff !important; font: 700 12px var(--mono) !important; letter-spacing: 0.1em; text-transform: uppercase; }
