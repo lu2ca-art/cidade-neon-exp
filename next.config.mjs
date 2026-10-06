@@ -7,7 +7,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://commons.wikimedia.org https://upload.wikimedia.org https://i.ytimg.com",
   "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
-  "connect-src 'self' blob: data: https://*.public.blob.vercel-storage.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://va.vercel-scripts.com https://vitals.vercel-insights.com",
+  "connect-src 'self' blob: data: https://*.public.blob.vercel-storage.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.de.sentry.io",
   "font-src 'self' data:",
   "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
   "worker-src 'self' blob:",
