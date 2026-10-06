@@ -371,7 +371,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           })
           saveRef.current = { ...s0, objetos: s0.objetos.includes(est) ? s0.objetos : [...s0.objetos, est] }
           if (nivelDe(saveRef.current) > nivelAntes) track("mission_step", { mission_id: `linha-${est}`, step: `nivel:${nivelDe(saveRef.current)}`, perfil: s0.perfil ?? "?", fio_pos: s0.fio.indexOf(est) })
-          onXp(100, "objeto")
+          onXp(50, "objeto")
           avancar()
         })
         break
@@ -402,7 +402,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
             return { ...s, estacao: est, pesos, fio, pausas }
           })
           empurrar({ k: "revelacao", estacao: est })
-          onXp(100, "estação")
+          onXp(50, "estação")
           track("mission_step", { mission_id: "linha-quiz", step: `estacao:${est}`, perfil: perfil.current ?? "?", fio_pos: -1, fio: fio.join(">") })
           avancar()
         })
@@ -412,7 +412,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         agendar(900, null, () => {
           empurrar({ k: "presente" })
           atualizar((s) => ({ ...s, violao: true }))
-          onXp(100, "objeto")
+          onXp(50, "objeto")
           track("mission_step", { mission_id: "linha-quiz", step: "presente:violao", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
           avancar()
         })
@@ -425,7 +425,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           saveRef.current = { ...s0, estacao: est, fio, perfil: perfil.current }
           atualizar((s) => ({ ...s, estacao: est, fio, perfil: perfil.current }))
           empurrar({ k: "revelacao", estacao: est })
-          onXp(100, "estação")
+          onXp(50, "estação")
           track("mission_step", { mission_id: "linha-quiz", step: `estacao:${est}`, perfil: perfil.current ?? "?", fio_pos: -1, fio: fio.join(">") })
           avancar()
         })

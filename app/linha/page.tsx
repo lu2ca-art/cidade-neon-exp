@@ -158,7 +158,7 @@ export default function LinhaPage() {
   }, [])
 
   const ganharXp = useCallback((n: number) => {
-    setSave((s) => ({ ...s, xp: s.xp + n }))
+    setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))
     setXpFlutua({ id: Date.now(), n })
   }, [])
 
@@ -281,7 +281,7 @@ export default function LinhaPage() {
         // fica parada no pedido (como se tivesse sido por texto) e o que foi
         // dito vira histórico no N3XO
         const log: Item[] = [{ k: "sistema", texto: `ligação de voz · ${lig.quem}` }, ...dito.map((d) => ({ k: "msg" as const, texto: d.texto, eu: d.eu }))]
-        setSave((s) => ({ ...s, xp: s.xp + 20, ligacoes: [...new Set([...s.ligacoes, lig.id])], pausas: { ...s.pausas, [m]: tarefa }, logs: { ...s.logs, [m]: log } }))
+        setSave((s) => ({ ...s, neon: (s.neon ?? 0) + 20, ligacoes: [...new Set([...s.ligacoes, lig.id])], pausas: { ...s.pausas, [m]: tarefa }, logs: { ...s.logs, [m]: log } }))
         track("mission_step", { mission_id: `linha-${m}`, step: "ligacao:pedido", perfil: save.perfil ?? "?", fio_pos: save.fio.indexOf(m) })
       } else if (m) {
         // não atendeu: a pessoa escreve (o painel pega)
@@ -289,7 +289,7 @@ export default function LinhaPage() {
         setTimeout(() => avisar(lig.quem, lig.recado, getEstacao(m).cor), 300)
       } else {
         const extra = lig.id === "dbee-0" ? ["dbee-1"] : []
-        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id, ...extra])], xp: s.xp + (atendeu ? 20 : 0) }))
+        setSave((s) => ({ ...s, ligacoes: [...new Set([...s.ligacoes, lig.id, ...extra])], neon: (s.neon ?? 0) + (atendeu ? 20 : 0) }))
         if (!atendeu) setTimeout(() => avisar(lig.quem, lig.recado, "#3d7bff"), 300)
         // a primeira ligação: em seguida ela escreve
         if (lig.id === "dbee-0") setTimeout(() => setTela({ t: "chat", id: "abertura", volta: { t: "corrida", destino: null } }), atendeu ? 600 : 2400)
@@ -445,7 +445,7 @@ export default function LinhaPage() {
       const violao = r.perdeViolao ? false : s.violao
       // acordar alguém rende NEON (a rede te devolve)
       const neon = (s.neon ?? 0) + (r.objeto ? NEON_POR_PESSOA : 0)
-      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon, xp: s.xp + (r.objeto ? 100 : 30) }
+      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon }
     })
     if (r.objeto) {
       track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
@@ -576,9 +576,9 @@ export default function LinhaPage() {
       const sinal = novos.reduce((t, l) => t + l.sinal, 0)
       setTimeout(() => {
         setXpFlutua({ id: Date.now(), n: luz })
-        avisar(novos.map((l) => l.nome).join(" + "), `completo · +${luz} luz · +${sinal} sinal`, "#ffc857")
+        avisar(novos.map((l) => l.nome).join(" + "), `completo · +${luz} neon`, "#ffc857")
       }, 0)
-      return { ...s, legado: [...s.legado, ...novos.map((l) => l.id)], xp: s.xp + luz, sinal: s.sinal + sinal }
+      return { ...s, legado: [...s.legado, ...novos.map((l) => l.id)], neon: (s.neon ?? 0) + luz, sinal: s.sinal + sinal }
     })
   }, [avisar])
 
@@ -735,7 +735,7 @@ export default function LinhaPage() {
   }
 
   const descer = (id: EstacaoId, st: Stats) => {
-    setSave((s) => ({ ...s, xp: s.xp + 20 + st.orbs * 2 + st.quase * 5 }))
+    setSave((s) => ({ ...s, neon: (s.neon ?? 0) + 20 + st.orbs * 2 + st.quase * 5 }))
     // a conversa abre por cima; fechando, volta pra estrada
     abrirChat(id, { t: "corrida", destino: null }, true)
   }
@@ -899,7 +899,7 @@ export default function LinhaPage() {
             modo={tela.t === "chat" ? "tela" : "painel"}
             save={save}
             atualizar={atualizar}
-            onXp={(n) => setSave((s) => ({ ...s, xp: s.xp + n }))}
+            onXp={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
             onFim={tela.t === "chat" ? (para) => fimChat(tela.id, para, tela.volta) : fimPainel}
             onVoltar={tela.t === "chat" && dentro ? () => setTela(tela.volta) : undefined}
             onPrecisaTela={painelPraTela}
@@ -1016,7 +1016,7 @@ export default function LinhaPage() {
             <span>{aviso.texto}</span>
           </div>
         )}
-        {xpFlutua && tela.t !== "corrida" && <div key={`xp-${xpFlutua.id}`} className="l-xp-flutua">+{xpFlutua.n} luz</div>}
+        {xpFlutua && tela.t !== "corrida" && <div key={`xp-${xpFlutua.id}`} className="l-xp-flutua">+{xpFlutua.n} neon</div>}
       </div>
     </div>
   )
