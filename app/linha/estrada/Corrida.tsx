@@ -1069,7 +1069,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         {/* guia de rota: a linha do que vem pela frente (as placas guiam
             na pista; aqui só a ordem das coisas e a distância) */}
         <div className="l-guia" style={{ ["--cor" as string]: fq.cor }}>
-          <small className="l-guia-lugar">{V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`}</small>
+          <small className={`l-guia-lugar ${bairro ? "is-entrando" : ""}`}>{bairro ? `entrando em ${territorio(bairro.id).lugar}` : V.id === "deserto" ? "deserto" : V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`}</small>
           <div className="l-guia-linha">
             <i className="l-guia-kombi" />
             {guia.map((x) => (
@@ -1111,6 +1111,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           const fr = freqDe(f.para)
           const ok = aberta(f, nLib)
           const minha = !!lugarAlvo && rumo(C!.t, lugarAlvo) === f.para
+          // a saída pro deserto (mundo.ts): sem rádio, cor de areia
+          if (M.vias[f.via]?.id === "deserto") return (
+            <div key={k} ref={(el) => { garfoEls.current[k] = el }} className="l-garfo-op" style={{ ["--cor" as string]: "#e8b86a" }}>
+              <i>{f.lado < 0 ? "←" : "→"}</i>
+              <b>deserto</b>
+              <small>sem rádio</small>
+            </div>
+          )
           return (
             <div key={k} ref={(el) => { garfoEls.current[k] = el }} className={`l-garfo-op ${ok ? "" : "is-trancada"} ${minha ? "is-rota" : ""}`} style={{ ["--cor" as string]: ok ? fr.cor : "#6a6f8c" }}>
               {minha && <em>missão</em>}
@@ -1780,16 +1788,6 @@ function Cena({
     return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat }
   }, [M, circuitos, tex, distI, centrosLugares])
 
-  // ── portais das estações (no centro) ──
-  const portais = useMemo(() => centro.estacoes.map(({ id, u }) => {
-    const e = getEstacao(id)
-    const m = missao(e, nivel)
-    const escuro = !m.ok && m.motivo === "data"
-    const p = noMundo(centro, u, 0, 0, a, new THREE.Vector3())
-    const rot = Math.atan2(a.tx, a.tz)
-    return { id, pos: p, rot, ban: a.bank, cor: e.cor, escuro }
-  }), [centro, a, nivel])
-
   // ── colunas de luz: só onde a missão manda agora (a coisa pra buscar,
   // ou a estação de quem te chamou), dá pra ver de longe ──
   const colunas = useMemo(() => [
@@ -1821,6 +1819,8 @@ function Cena({
           if (!f) return null
           const fr = freqDe(f.para)
           const seta = f.lado < 0 ? "←" : "→"
+          // a saída pro deserto (mundo.ts)
+          if (M.vias[f.via]?.id === "deserto") return { x, cor: "#e8b86a", tex: texTexto([{ txt: seta, tam: 110, cor: "#e8b86a" }, { txt: "DESERTO", tam: 62, cor: "#e8b86a" }, { txt: "sem rádio", tam: 40, cor: "#ffffff", fonte: MONO }], 512, 352) }
           return aberta(f!, nLib)
             ? { x, cor: fr.cor, area: f!.para, tex: texTexto([{ txt: seta, tam: 110, cor: fr.cor }, { txt: lugarDe(f!.para).toUpperCase(), tam: 62, cor: fr.cor }, { txt: `${fr.freq} FM`, tam: 46, cor: "#ffffff", fonte: MONO }], 512, 352) }
             : { x, cor: "#555a77", tex: texTexto([{ txt: "TRANCADA", tam: 60, cor: "#8a8fae" }, { txt: lugarDe(f!.para).toUpperCase(), tam: 56, cor: "#8a8fae" }, { txt: `junta ${fr.custo} de sinal`, tam: 40, cor: "#b0b5d0", fonte: MONO }], 512, 352) }
@@ -1858,7 +1858,7 @@ function Cena({
       })
     }
     return { lista, setas, barreiras }
-  }, [circuitos, a, nLib])
+  }, [M, circuitos, a, nLib])
 
   // embaixo de cada placa, uma bolinha por missão em aberto naquela área:
   // a cor e a inicial de quem chama (sem nome)
@@ -3063,25 +3063,6 @@ function Cena({
           <boxGeometry args={[FAIXA, 1.8, 0.6]} />
           <meshBasicMaterial color="#ff2a44" toneMapped={false} />
         </mesh>
-      ))}
-
-      {/* estações: um totem baixo na beira da pista, na cor da faixa —
-          nada atravessando a pista nem nome gigante no caminho */}
-      {portais.map((p) => (
-        <group key={p.id} position={p.pos} rotation={[0, p.rot, 0]}>
-          <mesh position={[MEIA + 2.2, 1.6, 0]}>
-            <boxGeometry args={[0.35, 3.2, 0.35]} />
-            <meshBasicMaterial color={p.cor} toneMapped={false} transparent opacity={p.escuro ? 0.25 : 0.95} />
-          </mesh>
-          <mesh position={[MEIA + 2.2, 3.6, 0]}>
-            <sphereGeometry args={[0.55, 12, 10]} />
-            <meshBasicMaterial color={p.cor} toneMapped={false} transparent opacity={p.escuro ? 0.3 : 1} />
-          </mesh>
-          <mesh position={[MEIA + 0.4, 0.05, 0]} rotation-x={-Math.PI / 2}>
-            <planeGeometry args={[1.4, 6]} />
-            <meshBasicMaterial color={p.cor} toneMapped={false} transparent opacity={p.escuro ? 0.1 : 0.35} blending={THREE.AdditiveBlending} depthWrite={false} />
-          </mesh>
-        </group>
       ))}
 
       {colunas.map((c) => (

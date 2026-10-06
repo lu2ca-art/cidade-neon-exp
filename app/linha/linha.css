@@ -1658,3 +1658,13 @@
 .l-player-ctl { display: flex; gap: 6px; margin-top: 4px; }
 .l-player-ctl button { padding: 3px 8px; border-radius: 6px; background: rgba(255, 200, 87, 0.12) !important; border: 1px solid rgba(255, 200, 87, 0.4) !important; color: #ffc857 !important; font: 700 10px var(--mono) !important; letter-spacing: 0.08em; text-transform: uppercase; }
 .l-player-ctl button:disabled { opacity: 0.4; }
+
+/* ── a ILHA é o mapa (05/10, LU2CA: notch dinâmico do iPhone) ── */
+/* quieta não existe: sem nada acontecendo, o mapa lá em cima é a ilha */
+.l-ilha.is-quieta { display: none; }
+/* bifurcação: a caixa do mapa vira a placa (o mapa some enquanto isso) */
+.l-ilha.is-garfo { top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px; transform: none; max-width: none; border-radius: 14px; z-index: 31; animation: l-notch-abre 0.35s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+.l-raiz:has(.l-ilha.is-garfo) .l-hud-topo { visibility: hidden; }
+@keyframes l-notch-abre { from { transform: scaleY(0.4); transform-origin: top; opacity: 0.4; } }
+/* entrando num lugar: o mapa avisa */
+.l-guia-lugar.is-entrando { color: #fff; animation: l-pisca 1.2s ease-in-out 2; }
