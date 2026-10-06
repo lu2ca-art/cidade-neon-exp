@@ -109,6 +109,9 @@ export default function LinhaPage() {
   const [voltaDaSala, setVoltaDaSala] = useState(false)
   // o painel MISSÕES: tudo que está aberto + "ir agora"
   const [painelMissoes, setPainelMissoes] = useState(false)
+  // conversas que chegaram numa pergunta no painel: esperam no N3XO (não
+  // chamam de novo na estrada até a pessoa abrir e responder)
+  const [adiadas, setAdiadas] = useState<string[]>([])
   const [teleporte, setTeleporte] = useState<{ chave: number; area: FreqId; lugar?: LugarId; frac?: number } | null>(null)
   const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; chegou?: boolean } | null>(null)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
@@ -232,7 +235,7 @@ export default function LinhaPage() {
   const blocoTut = tut ? blocoAtual(save) : BLOCOS.length
   // e até o fim do tutorial, só a primeira pessoa chama
   const tutLibera = !tut || (quemChama === PRIMEIRA && blocoTut >= 1)
-  const chamaNaEstrada = tutLibera && !!quemChama && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
+  const chamaNaEstrada = tutLibera && !!quemChama && !adiadas.includes(quemChama) && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
   // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
   // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
   // tudo no histórico, e a D-Bee LIGA. Desligou: ela escreve (a abertura)
@@ -498,7 +501,11 @@ export default function LinhaPage() {
   // a missão de agora e o resumo da caixa (no canto da tela)
   const missaoAgora = quemChama ? listaMissoes.find((m) => m.id === quemChama) ?? null : null
   const itemAgora = tut && blocoTut < BLOCOS.length ? BLOCOS[blocoTut].itens.find((i) => !feito(save, i)) ?? null : null
-  const resumoMissao = itemAgora
+  // alguém escreveu e a conversa espera resposta no N3XO
+  const esperaN3xo = !!quemChama && adiadas.includes(quemChama) && save.pausas[quemChama] === undefined
+  const resumoMissao = esperaN3xo
+    ? { rotulo: itemAgora ? "primeiros passos" : "missão", texto: `${getEstacao(quemChama!).personagem} te escreveu · responde no N3XO`, cor: getEstacao(quemChama!).cor }
+    : itemAgora
     ? { rotulo: "primeiros passos", texto: ITENS[itemAgora].texto, cor: "#3d7bff" }
     : missaoAgora
     ? { rotulo: `missão · ${getEstacao(missaoAgora.id).personagem}`, texto: missaoAgora.texto, cor: getEstacao(missaoAgora.id).cor }
@@ -675,6 +682,12 @@ export default function LinhaPage() {
   const painelPraTela = useCallback(() => {
     setAoVivo((id) => {
       if (id) setTela({ t: "chat", id, volta: { t: "corrida", destino: null } })
+      return null
+    })
+  }, [])
+  const adiarPainel = useCallback(() => {
+    setAoVivo((id) => {
+      if (id) setAdiadas((a) => (a.includes(id) ? a : [...a, id]))
       return null
     })
   }, [])
@@ -890,6 +903,7 @@ export default function LinhaPage() {
             onFim={tela.t === "chat" ? (para) => fimChat(tela.id, para, tela.volta) : fimPainel}
             onVoltar={tela.t === "chat" && dentro ? () => setTela(tela.volta) : undefined}
             onPrecisaTela={painelPraTela}
+            onAdiar={tela.t === "chat" ? undefined : adiarPainel}
             onLoop={(v) => { setRotaLoop(v ? `/tiktok/feed?v=${v}` : undefined); abrirApp("loop") }}
             jeito={save.modos[(tela.t === "chat" ? tela.id : aoVivo) as EstacaoId] === "audio" ? "audio" : "texto"}
             naEstacao={tela.t === "chat" && naEstacao}
