@@ -107,12 +107,14 @@ export interface Chamado {
   acao: { app: AppId } | { chat: ChatId }
 }
 
+// (06/10, LU2CA: nenhuma missão paga mais de 100 NEON — é o teto; a grana
+// grande vem do GUITAR DRIVER subindo de nível, mais pra frente)
 // Minigames da versão anterior contam pro jogo novo: completar dá luz e
 // sinal (uma vez cada). Lido do mesmo localStorage que eles escrevem.
 export const LEGADO = [
-  { id: "c1", app: "nectar" as AppId, nome: "NECTAR", luz: 150, sinal: 6 },
-  { id: "c2", app: "batida" as AppId, nome: "B4TIDA", luz: 200, sinal: 8 },
-  { id: "c3", app: "guitar" as AppId, nome: "GUITAR DRIVER", luz: 250, sinal: 10 },
+  { id: "c1", app: "nectar" as AppId, nome: "NECTAR", luz: 100, sinal: 6 },
+  { id: "c2", app: "batida" as AppId, nome: "B4TIDA", luz: 100, sinal: 8 },
+  { id: "c3", app: "guitar" as AppId, nome: "GUITAR DRIVER", luz: 100, sinal: 10 },
 ]
 
 export function legadoFeito(): string[] {

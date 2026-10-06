@@ -18,7 +18,7 @@ import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
 import { MISSOES, abertas, alvoDe, ativa, etapaDe, type Alvo } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
-import { CENA_INICIO, cenaDe, type Reliquia } from "./cenas"
+import { CENA_INICIO, CENA_MUBARAK_DREW, cenaDe, type Reliquia } from "./cenas"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
 import { LUGARES, type LugarId } from "./lugares"
 import { proximaFreq } from "./radio"
@@ -111,7 +111,7 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   // inicio: a casa da D-Bee na abertura (CENA_INICIO)
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean } | null>(null)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -335,20 +335,11 @@ export default function LinhaPage() {
     const t = setTimeout(() => {
       // lido na hora (o save muda a cada orb; não pode reiniciar o timer)
       const save = saveRef.current
-      // o jeito dessa pessoa (sorteado uma vez, nunca igual ao anterior)
-      // no tutorial a primeira pessoa escreve (é ela que pergunta o nome)
-      const modo = save.modos[quemChama] ?? (emTutorial(save) ? "texto" : sortearModo(save.ultimoModo))
-      if (!save.modos[quemChama]) setSave((s) => ({ ...s, modos: { ...s.modos, [quemChama]: modo }, ultimoModo: modo }))
-      track("mission_started", { mission_id: `linha-${quemChama}`, place_id: `linha-kombi-${modo}` })
-      if (modo === "ligacao") {
-        const e = getEstacao(quemChama)
-        const a = ativa(save, nivelDe(save))
-        const r = ligacaoDaMissao(quemChama, e.personagem, {
-          nome: save.nome || "você", objetos: save.objetos.length, estacao: save.estacao,
-          ontemLancada: lancada(getEstacao("ontem")), primeira: a ? getEstacao(a).personagem : null,
-        })
-        if (r) return setLigacao({ lig: r.lig, missao: quemChama, tarefa: r.tarefa })
-      }
+      // todo mundo escreve (06/10, LU2CA: ninguém é obrigado a responder — as
+      // mensagens chegam no painel; responde se quiser, ali ou no N3XO).
+      // Ligação de voz fica só pra história da D-Bee
+      if (!save.modos[quemChama]) setSave((s) => ({ ...s, modos: { ...s.modos, [quemChama]: "texto" }, ultimoModo: "texto" }))
+      track("mission_started", { mission_id: `linha-${quemChama}`, place_id: "linha-kombi-texto" })
       setAoVivo(quemChama as ChatRoteiro)
     }, 3500)
     return () => clearTimeout(t)
@@ -428,10 +419,13 @@ export default function LinhaPage() {
   const abrirCena = useCallback((id: LugarId) => {
     // o tutorial: o pin do posto abre a bomba
     if (id === "posto" && irAoPosto(saveRef.current)) { abrirPostoRef.current(); return }
-    // o tutorial: chegou na casa do Drewboy com o Mubarak de carona
+    // o tutorial: chegou na casa do Drewboy com o Mubarak de carona — a cena
+    // dele agradecendo (CENA_MUBARAK_DREW)
     if (id === "casa-drewboy" && levarDrewboy(saveRef.current)) {
-      setSave((s) => ({ ...s, tutorial: [...new Set([...(s.tutorial ?? []), "drewboy"])] }))
-      track("mission_step", { mission_id: "linha-tutorial", step: "drewboy", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+      if (cinema) return
+      setAoVivo(null)
+      setCinema("lugar")
+      setCena({ lugar: "casa-drewboy", missao: "copo", pegar: false, especial: "mubarak-drew" })
       return
     }
     if (id === "beco") {
@@ -519,6 +513,14 @@ export default function LinhaPage() {
       }
     })
     track("mission_step", { mission_id: "linha-inicio", step: "casa:fim", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }, [])
+
+  // o Mubarak agradeceu na casa do Drewboy: o fim da missão do tutorial
+  const fimMubarakDrew = useCallback(() => {
+    setCena(null)
+    setCinema(null)
+    setSave((s) => ({ ...s, tutorial: [...new Set([...(s.tutorial ?? []), "drewboy"])] }))
+    track("mission_step", { mission_id: "linha-tutorial", step: "drewboy", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
   }, [])
 
   // a loja de discos: todo disco custa o mesmo em NEON
@@ -1021,7 +1023,7 @@ export default function LinhaPage() {
             onPrecisaTela={painelPraTela}
             onAdiar={tela.t === "chat" ? undefined : adiarPainel}
             onLoop={(v) => { setRotaLoop(v ? `/tiktok/feed?v=${v}` : undefined); abrirApp("loop") }}
-            jeito={save.modos[(tela.t === "chat" ? tela.id : aoVivo) as EstacaoId] === "audio" ? "audio" : "texto"}
+            jeito="texto"
             naEstacao={tela.t === "chat" && naEstacao}
             oculto={(tela.t !== "chat" && tela.t !== "corrida") || (tela.t === "corrida" && bifurcando)}
           />
@@ -1099,10 +1101,10 @@ export default function LinhaPage() {
         )}
         {cena && (
           <CenaLugar
-            key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : ""}`}
+            key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.inicio ? CENA_INICIO : cenaDe(cena.lugar)!}
+            cena={cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -1110,7 +1112,7 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.inicio ? fimInicio : fimCena}
+            onFim={cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
           />
         )}

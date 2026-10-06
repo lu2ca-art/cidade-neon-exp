@@ -57,7 +57,7 @@ export interface MissaoDef {
 export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   chuva: {
     id: "chuva", estilo: "historia",
-    chamado: "nasceu uma flor no asfalto. e meu cantil tá vazio",
+    chamado: "minha planta tá morrendo. e meu cantil tá vazio",
     tarefa: "encher o cantil na caixa d'água do subúrbio",
     busca: {
       item: "agua", nome: "o cantil", onde: "suburbio", em: [0.62],
