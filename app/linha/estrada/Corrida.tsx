@@ -1858,7 +1858,7 @@ function Cena({
       })
     }
     return { lista, setas, barreiras }
-  }, [circuitos, a, nLib])
+  }, [M, circuitos, a, nLib])
 
   // embaixo de cada placa, uma bolinha por missão em aberto naquela área:
   // a cor e a inicial de quem chama (sem nome)
