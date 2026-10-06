@@ -148,7 +148,7 @@ export function Mapa({
           </div>
         </div>
         <div className="l-stats">
-          <span title="luz"><b>{save.xp}</b> luz</span>
+          <span title="neon"><b>{save.neon ?? 0}</b> neon</span>
           <span title="dias seguidos"><b>{dias}</b> {dias === 1 ? "dia" : "dias"}</span>
         </div>
       </header>

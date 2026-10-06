@@ -152,7 +152,7 @@ export function chamados(save: Save, nivel: number): Chamado[] {
   for (const l of LEGADO) {
     if (feitos.includes(l.id)) continue
     const app = APPS.find((x) => x.id === l.app)!
-    out.push({ id: `leg-${l.id}`, de: l.nome, cor: app.cor, texto: `${app.desc} · +${l.luz} luz`, acao: { app: l.app } })
+    out.push({ id: `leg-${l.id}`, de: l.nome, cor: app.cor, texto: `${app.desc} · +${l.luz} neon`, acao: { app: l.app } })
   }
   const prox = FREQUENCIAS.find((f) => f.custo > save.sinal)
   if (prox) out.push({ id: "freq", de: "RÁDIO 222", cor: prox.cor, texto: `faltam ${prox.custo - save.sinal} de sinal pra ${prox.freq}. pega na estrada`, acao: { app: "kombi" } })
@@ -232,7 +232,7 @@ export function Home({
                     </span>
                     <span className="l-widget-nivel">{NIVEIS[nivel].nome}</span>
                     <span className="l-widget-barra">{NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}</span>
-                    <span className="l-widget-nums"><b>{save.xp}</b> luz · <b>{dias}</b> {dias === 1 ? "dia" : "dias"}</span>
+                    <span className="l-widget-nums"><b>{save.neon ?? 0}</b> neon · <b>{dias}</b> {dias === 1 ? "dia" : "dias"}</span>
                     {nivel < 4 && <small>próximo: {prox.como}</small>}
                   </button>
                   <div className="l-widget l-widget-radio" style={{ ["--cor" as string]: freq.cor }}>
@@ -437,7 +437,7 @@ export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onAp
               <button key={id} type="button" className="l-fliper-card" style={{ ["--cor" as string]: a.cor }} onClick={() => onApp(id)}>
                 <Glifo id={id} cor={a.cor} size={30} />
                 <b>{a.nome}</b>
-                <small>{l ? (feitos.includes(l.id) ? "✓ completo" : `+${l.luz} luz`) : a.desc}</small>
+                <small>{l ? (feitos.includes(l.id) ? "✓ completo" : `+${l.luz} neon`) : a.desc}</small>
               </button>
             )
           })}
