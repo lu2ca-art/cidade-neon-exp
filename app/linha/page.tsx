@@ -55,6 +55,12 @@ type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: 
 const NEON_POR_PESSOA = 50
 // o tutorial: depois de resgatar o Mubarak, levar ele até a casa do Drewboy
 const levarDrewboy = (s: Save) => emTutorial(s) && s.objetos.includes("copo") && !feito(s, "drewboy")
+// o tutorial: chegou na cidade, encher o tanque no posto
+const irAoPosto = (s: Save) => emTutorial(s) && feito(s, "tanque") && !feito(s, "posto")
+// o combustível (06/10, LU2CA)
+const PRECO_TANQUE = 25
+const PRECO_GALAO = 10
+const GALAO = 0.35 // o quanto um galão põe no tanque (dá pra chegar na cidade)
 
 type Tela =
   | { t: "entrada" }
@@ -111,6 +117,9 @@ export default function LinhaPage() {
   const [voltaDaSala, setVoltaDaSala] = useState(false)
   // o painel MISSÕES: tudo que está aberto + "ir agora"
   const [painelMissoes, setPainelMissoes] = useState(false)
+  // a bomba do posto aberta
+  const [posto, setPosto] = useState(false)
+  const abrirPostoRef = useRef(() => {})
   // conversas que chegaram numa pergunta no painel: esperam no N3XO (não
   // chamam de novo na estrada até a pessoa abrir e responder)
   const [adiadas, setAdiadas] = useState<string[]>([])
@@ -244,7 +253,7 @@ export default function LinhaPage() {
   const tut = emTutorial(save)
   const blocoTut = tut ? blocoAtual(save) : BLOCOS.length
   // e até o fim do tutorial, só a primeira pessoa chama
-  const tutLibera = !tut || (quemChama === PRIMEIRA && blocoTut >= 1)
+  const tutLibera = !tut || (quemChama === PRIMEIRA && blocoTut >= 1 && feito(save, "posto"))
   const chamaNaEstrada = tutLibera && !!quemChama && !adiadas.includes(quemChama) && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
   // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
   // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
@@ -403,6 +412,8 @@ export default function LinhaPage() {
 
   // encostou devagar na vaga do lugar da missão: a cena começa
   const abrirCena = useCallback((id: LugarId) => {
+    // o tutorial: o pin do posto abre a bomba
+    if (id === "posto" && irAoPosto(saveRef.current)) { abrirPostoRef.current(); return }
     // o tutorial: chegou na casa do Drewboy com o Mubarak de carona
     if (id === "casa-drewboy" && levarDrewboy(saveRef.current)) {
       setSave((s) => ({ ...s, tutorial: [...new Set([...(s.tutorial ?? []), "drewboy"])] }))
@@ -484,6 +495,9 @@ export default function LinhaPage() {
       const grupo: Item[] = ROTEIROS.grupo.passos.flatMap((p): Item[] => (p.t === "msg" ? [{ k: "msg", texto: typeof p.texto === "string" ? p.texto : "", de: p.de }] : p.t === "nucleo" ? [{ k: "nucleo", texto: p.texto }] : p.t === "sistema" ? [{ k: "sistema", texto: p.texto }] : []))
       return {
         ...s, casa: true, violao: true, foco: s.foco ?? PRIMEIRA, tutorial: s.tutorial ?? [],
+        // a D-Bee: o galão (despejado no tanque, dá pra chegar na cidade);
+        // os 25 NEON caem na conta na cena ("toma aqui")
+        tanque: GALAO, galao: "vazio",
         completos: [...new Set([...s.completos, "grupo" as const, "abertura" as const])],
         ligacoes: [...new Set([...s.ligacoes, "dbee-0", "dbee-1"])],
         logs: { ...s.logs, grupo },
@@ -515,7 +529,29 @@ export default function LinhaPage() {
   }, [save, nivel])
 
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
-  const alvoTut: Alvo | null = levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
+  const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
+    : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
+  // O POSTO: passou devagar em frente (ou o pin do tutorial). Da primeira
+  // vez, o LU2CA tá lá (RASCUNHO das falas, a partir do que o LU2CA contou:
+  // se impressiona com a Kombi, nunca te viu na cidade)
+  useEffect(() => {
+    abrirPostoRef.current = () => {
+      setPosto(true)
+      const s = saveRef.current
+      if (!(s.tutorial ?? []).includes("lu2ca-posto")) {
+        setSave((x) => ({ ...x, tutorial: [...new Set([...(x.tutorial ?? []), "lu2ca-posto"])] }))
+        setTimeout(() => avisar("LU2CA", "que kombi é essa? faz tempo que eu não vejo uma rodando", "#b38cff"), 400)
+        setTimeout(() => avisar("LU2CA", "nunca te vi por aqui. vc não é da cidade, né", "#b38cff"), 5000)
+      }
+    }
+  }, [avisar])
+  const encherTanque = () => setSave((s) => {
+    if ((s.neon ?? 0) < PRECO_TANQUE || (s.tanque ?? 1) > 0.97) return s
+    track("mission_step", { mission_id: "linha-posto", step: "tanque", perfil: s.perfil ?? "?", fio_pos: -1 })
+    return { ...s, neon: (s.neon ?? 0) - PRECO_TANQUE, tanque: 1, tutorial: emTutorial(s) ? [...new Set([...(s.tutorial ?? []), "posto"])] : s.tutorial }
+  })
+  const encherGalao = () => setSave((s) => ((s.neon ?? 0) < PRECO_GALAO || s.galao !== "vazio" ? s : { ...s, neon: (s.neon ?? 0) - PRECO_GALAO, galao: "cheio" }))
+
   // a missão de agora e o resumo da caixa (no canto da tela)
   const missaoAgora = quemChama ? listaMissoes.find((m) => m.id === quemChama) ?? null : null
   const itemAgora = tut && blocoTut < BLOCOS.length ? BLOCOS[blocoTut].itens.find((i) => !feito(save, i)) ?? null : null
@@ -829,7 +865,10 @@ export default function LinhaPage() {
             onReligar={religar}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
             alvo={save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
-            levando={alvoTut ? "copo" : null}
+            levando={levarDrewboy(save) ? "copo" : null}
+            tanque={save.tanque ?? 1}
+            onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 ? s : { ...s, tanque: n }))}
+            onPosto={() => abrirPostoRef.current()}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
@@ -895,6 +934,21 @@ export default function LinhaPage() {
                 )
               })}
             </ul>
+          </div>
+        )}
+        {posto && tela.t === "corrida" && !emSala && (
+          <div className="l-posto" role="dialog" aria-label="Posto">
+            <header><b>POSTO 24H</b><button type="button" onClick={() => setPosto(false)} aria-label="Fechar">×</button></header>
+            <button type="button" className="l-posto-op" disabled={(save.neon ?? 0) < PRECO_TANQUE || (save.tanque ?? 1) > 0.97} onClick={encherTanque}>
+              <span>encher o tanque</span><b>{PRECO_TANQUE} neon</b>
+            </button>
+            {save.galao === "vazio" && (
+              <button type="button" className="l-posto-op" disabled={(save.neon ?? 0) < PRECO_GALAO} onClick={encherGalao}>
+                <span>encher o galão</span><b>{PRECO_GALAO} neon</b>
+              </button>
+            )}
+            <small>{(save.tanque ?? 1) > 0.97 ? "o tanque tá cheio" : (save.neon ?? 0) < PRECO_TANQUE ? "sem neon suficiente" : "a bomba tá livre"}</small>
+            <button type="button" className="l-posto-sair" onClick={() => setPosto(false)}>seguir viagem →</button>
           </div>
         )}
         {tela.t === "chegada" && (
@@ -986,7 +1040,7 @@ export default function LinhaPage() {
         {tela.t === "app" && tela.id === "violao" && <Violao onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarDisco} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
-          <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} />
+          <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (s.tanque ?? 0) + GALAO) } : s))} />
         )}
 
         {tela.t === "final" && <Final save={save} onVoltar={() => setTela({ t: "home" })} />}
@@ -1016,6 +1070,7 @@ export default function LinhaPage() {
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={cena.inicio ? fimInicio : fimCena}
+            onNeon={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
           />
         )}
         {viagem && (

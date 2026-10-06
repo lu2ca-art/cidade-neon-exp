@@ -1738,3 +1738,14 @@
 .l-painel-kombi .l-hud-turbo-barra { width: auto; height: 3px; }
 .l-caixa-missao { bottom: calc(126px + env(safe-area-inset-bottom)); }
 .l-tanque { display: none; }
+
+/* ── o posto (page.tsx): a bomba ── */
+.l-posto { position: absolute; z-index: 30; left: 50%; bottom: calc(130px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(86vw, 320px); display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: linear-gradient(180deg, #1c1815, #0d0b0a); border: 1px solid #ff8a3d; box-shadow: 0 0 30px -10px #ff8a3d; animation: l-sobe 0.3s both; }
+.l-posto header { display: flex; justify-content: space-between; align-items: center; }
+.l-posto header b { font: 800 16px var(--cond); letter-spacing: 0.12em; color: #ffb35c; }
+.l-posto header button { background: none !important; border: 0 !important; color: #fff !important; font-size: 22px; }
+.l-posto-op { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; border-radius: 10px; background: #2a1e14 !important; border: 1px solid #ff8a3d !important; color: #fff !important; font: 600 14px var(--sans, system-ui); }
+.l-posto-op b { font: 700 13px var(--mono); color: #ffb35c; }
+.l-posto-op:disabled { opacity: 0.4; }
+.l-posto small { font: 11px var(--mono); color: #b9a58e; text-align: center; }
+.l-posto-sair { padding: 8px; background: none !important; border: 0 !important; color: #e8efff !important; font: 700 12px var(--mono) !important; text-transform: uppercase; letter-spacing: 0.1em; }

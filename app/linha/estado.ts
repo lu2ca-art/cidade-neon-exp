@@ -74,6 +74,9 @@ export interface Save {
   // o tutorial (tutorial.ts): itens marcados à mão ("ouvir", "missoes") e
   // "fim" quando acaba
   tutorial?: string[]
+  // o combustível (06/10, LU2CA): o tanque (0–1) e o galão do inventário
+  tanque?: number
+  galao?: "cheio" | "vazio"
   // a versão do save (VERSAO): save de versão diferente começa do zero
   versao?: number
   // a missão que a pessoa escolheu no painel MISSÕES (vale primeiro)

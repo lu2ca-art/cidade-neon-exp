@@ -460,13 +460,21 @@ export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onAp
 }
 
 /* ─── OBJETOS ──────────────────────────────────────────── */
-export function Objetos({ save, onVoltar, onChat }: { save: Save; onVoltar: () => void; onChat: (id: ChatId) => void }) {
+export function Objetos({ save, onVoltar, onChat, onUsarGalao }: { save: Save; onVoltar: () => void; onChat: (id: ChatId) => void; onUsarGalao?: () => void }) {
   const [sel, setSel] = useState<EstacaoId | null>(null)
+  // o galão (06/10, LU2CA): o que ele é só aparece aqui, tocando nele
+  const [verGalao, setVerGalao] = useState(false)
   const s = sel ? getEstacao(sel) : null
   return (
     <section className="l-appnativo">
       <AppTopo titulo="OBJETOS" cor="#b38cff" onVoltar={onVoltar} extra={`${save.objetos.length}/9`} />
       <div className="l-objs">
+        {save.galao && (
+          <button type="button" className="l-obj is-tem" style={{ ["--cor" as string]: "#ff8a3d" }} onClick={() => setVerGalao(true)}>
+            <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="9" y="10" width="22" height="26" rx="3" fill="none" stroke="#ff8a3d" strokeWidth="2" /><path d="M14 10 V6 h9" fill="none" stroke="#ff8a3d" strokeWidth="2" /><rect x="11" y={save.galao === "cheio" ? 14 : 31} width="18" height={save.galao === "cheio" ? 20 : 3} fill="#ff8a3d" opacity="0.5" /></svg>
+            <small>galão</small>
+          </button>
+        )}
         {ESTACOES.map((e) => {
           const tem = save.objetos.includes(e.id)
           return (
@@ -477,6 +485,19 @@ export function Objetos({ save, onVoltar, onChat }: { save: Save; onVoltar: () =
           )
         })}
       </div>
+      {verGalao && save.galao && (
+        <div className="l-ficha-fundo" onClick={() => setVerGalao(false)}>
+          <div className="l-ficha" style={{ ["--cor" as string]: "#ff8a3d" }} onClick={(ev) => ev.stopPropagation()}>
+            <div className="l-ficha-alca" />
+            <small className="l-rotulo">inventário</small>
+            <h2>galão de gasolina</h2>
+            <p className="l-ficha-cidade">{save.galao === "cheio" ? "cheio." : "vazio."} serve pra quando a gasolina acabar. encher no posto custa 10 neon.</p>
+            {save.galao === "cheio" && onUsarGalao && (
+              <button type="button" className="l-btn" onClick={() => { onUsarGalao(); setVerGalao(false) }}>usar no tanque</button>
+            )}
+          </div>
+        </div>
+      )}
       {s && (
         <div className="l-ficha-fundo" onClick={() => setSel(null)}>
           <div className="l-ficha" style={{ ["--cor" as string]: s.cor }} onClick={(ev) => ev.stopPropagation()}>
