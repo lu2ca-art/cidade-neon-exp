@@ -60,7 +60,8 @@ export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
   const naFoto = !!estado.texto && /foto|relicário/.test(estado.texto)
 
   const plano = useMemo(() => {
-    if (inicio) return estado.falando === "D-Bee" || estado.pos >= 3 ? PLANOS.dbeePorta : PLANOS.abertura
+    // a porta abre (plano aberto), depois ela de perto
+    if (inicio) return estado.pos === 0 ? PLANOS.abertura : PLANOS.dbeePorta
     if (chegaram.length && (estado.falando === null || GRUPO.some((g) => g.quem === estado.falando) || estado.falando === "você" || estado.escolha)) return PLANOS.grupo
     if (procurando) return PLANOS.dentro
     if (estado.falando === "o bilhete") return PLANOS.dentro
@@ -188,12 +189,15 @@ function Janela({ pos, deserto = false }: { pos: V3; deserto?: boolean }) {
     const t = new THREE.CanvasTexture(c)
     const pintar = (branco: number) => {
       if (deserto) {
-        // a abertura: o mesmo fim de tarde lá de fora, só dunas
+        // a abertura: o céu da cidade (estrada/ceu.ts) sobre o deserto, e a
+        // cidade neon pequenininha no horizonte
         const c2 = g.createLinearGradient(0, 0, 0, 192)
-        c2.addColorStop(0, "#2b1a4a"); c2.addColorStop(0.5, "#8a3a5c"); c2.addColorStop(0.8, "#e8683a"); c2.addColorStop(1, "#ffb066")
+        c2.addColorStop(0, "#03040d"); c2.addColorStop(0.55, "#0d1233"); c2.addColorStop(0.85, "#4a1a30"); c2.addColorStop(1, "#6a2a2a")
         g.fillStyle = c2; g.fillRect(0, 0, 256, 192)
-        g.fillStyle = "#ffd27a"; g.beginPath(); g.arc(90, 140, 16, 0, Math.PI * 2); g.fill()
-        g.fillStyle = "#6a3e28"; g.beginPath(); g.moveTo(0, 150); g.quadraticCurveTo(80, 128, 150, 148); g.quadraticCurveTo(210, 162, 256, 140); g.lineTo(256, 192); g.lineTo(0, 192); g.fill()
+        const cores = ["#ff6a35", "#ff3fb0", "#2fe8ff", "#ffc857"]
+        for (let i = 0; i < 40; i++) { const h = 3 + ((i * 37) % 11); g.fillStyle = cores[i % 4]; g.globalAlpha = 0.7; g.fillRect(88 + i * 2, 156 - h, 1.6, h) }
+        g.globalAlpha = 1
+        g.fillStyle = "#1c1412"; g.fillRect(0, 156, 256, 36)
         t.needsUpdate = true
         return
       }

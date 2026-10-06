@@ -57,7 +57,7 @@ export type PassoCena =
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o
   // violão do Nectar, que fica no trem)
-  | { t: "ganha"; objeto?: EstacaoId; reliquia?: Reliquia; titulo?: string; texto?: string; tom?: Tom[] }
+  | { t: "ganha"; objeto?: EstacaoId; reliquia?: Reliquia; titulo?: string; texto?: string; tom?: Tom[]; neon?: number }
   // o que fica pra trás (o violão no vagão: o app VIOLÃO tranca de novo)
   | { t: "perde"; item: "violao"; texto: string }
   // fim: volta pra Kombi. caca = o Núcleo vem atrás na saída
@@ -423,11 +423,15 @@ export const CENA_INICIO: Cena = {
   titulo: "a casa da d-bee",
   missao: "ojala",
   passos: [
-    { t: "acao", texto: "Nós batemos na porta e somos recebidos por uma garota." },
-    { t: "acao", texto: "Ela se apresenta: D-Bee." },
-    { t: "acao", texto: "E diz que nada é por acaso. Que na verdade ela estava me esperando. E que ela pode me ajudar a sair dali." },
-    { t: "fala", de: "D-Bee", texto: "Guardei os últimos galões pra você levar nessa missão, enche o tanque lá fora e eu te conto tudo no caminho!" },
-    { t: "acao", texto: "Nesse momento eu sou a única pessoa que ela pode confiar. Ela sabe que eu sou diferente dos outros." },
+    // falas diretas, a partir do guia do LU2CA (06/10: o galão e os 25 NEON
+    // nas palavras do LU2CA; ela não avisa que vai ligar, fecha a porta e liga)
+    { t: "fala", de: "D-Bee", texto: "Eu sou a D-Bee." },
+    { t: "fala", de: "D-Bee", texto: "Nada é por acaso. Na verdade, eu tava te esperando." },
+    { t: "fala", de: "D-Bee", texto: "E eu posso te ajudar a sair daqui." },
+    { t: "fala", de: "D-Bee", texto: "Agora você é a única pessoa em quem eu posso confiar. Eu sei que você é diferente dos outros." },
+    { t: "fala", de: "D-Bee", texto: "Guardei o último galão pra você conseguir chegar até a cidade. Lá você enche o tanque." },
+    { t: "fala", de: "D-Bee", texto: "Toma aqui. Você vai precisar!" },
+    { t: "ganha", titulo: "+25 neon", neon: 25 },
     { t: "fim" },
   ],
 }

@@ -131,8 +131,11 @@ interface Props {
   // quem vai de carona na Kombi fora das missões de carona (o tutorial: o
   // Mubarak indo pra casa do Drewboy)
   levando?: EstacaoId | null
-  // o tanque (0–1): o ponteiro do combustível no painel
-  combustivel?: number
+  // o tanque (0–1): gasta andando; seco, a Kombi vai na reserva (devagar)
+  tanque?: number
+  onTanque?: (n: number) => void
+  // passou devagar em frente ao posto: a bomba
+  onPosto?: () => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -213,7 +216,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, combustivel = 1 }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -302,7 +305,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (combAgora é calculado depois de abFase)
   // o que a tela mostra da abertura (o tanque, a dica de andar)
   const [abFase, setAbFase] = useState<{ fase: Abertura["fase"]; semGas: boolean }>({ fase: "dirige", semGas: false })
-  const combAgora = abertura ? (abFase.semGas ? 0 : 0.06) : combustivel
+  // o combustível: um ref (gasta a cada frame); o page guarda de tempos em tempos
+  const postoPose = poses.posto
+  const combRef = useRef<Comb>({ tanque, via: postoPose.via, u: LUGARES.posto.u, avisou: false, onPosto: () => {}, t: 0 })
+  const onTanqueRef = useRef(onTanque)
+  useEffect(() => { onTanqueRef.current = onTanque }, [onTanque])
+  useEffect(() => { combRef.current.onPosto = () => onPosto?.() }, [onPosto])
+  // encheu no posto (ou usou o galão): o page manda o novo nível
+  useEffect(() => { if (Math.abs(tanque - combRef.current.tanque) > 0.04) combRef.current.tanque = tanque }, [tanque])
+  const hudComb = useRef<SVGLineElement>(null)
+  const hudCombBox = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!abertura) return
     const iv = setInterval(() => {
@@ -766,6 +778,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         if (odo.current.t) odo.current.m += Math.abs(j.v) * Math.min(0.2, (agora - odo.current.t) / 1000)
         odo.current.t = agora
         if (hudOdo.current) hudOdo.current.textContent = (odo.current.m / 1000).toFixed(1).padStart(6, "0")
+        // o ponteiro do combustível (na abertura: a reserva até secar)
+        const ab = aberturaRef.current
+        const nivelComb = ab.ativa ? (ab.semGas ? 0 : 0.06) : combRef.current.tanque
+        hudComb.current?.setAttribute("transform", `rotate(${-80 + nivelComb * 160} 30 30)`)
+        hudCombBox.current?.classList.toggle("is-reserva", nivelComb < 0.1)
+        if (!ab.ativa && agora - combRef.current.t > 3000) { combRef.current.t = agora; onTanqueRef.current?.(combRef.current.tanque) }
         // computador: parado sem acelerar → mostra como anda
         hudParado.current?.classList.toggle("is-on", !toqueTela && !dentroRef.current && Math.abs(j.v) < 0.5 && !j.chegando && !input.current.gas && j.tempo > 1.5)
         if (hudMarcha.current) {
@@ -1068,7 +1086,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} />
         </Canvas>
       )}
 
@@ -1252,13 +1270,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       </div>
 
       <div className="l-kombi-dir">
-        <div className={`l-kombi-comb ${combAgora < 0.1 ? "is-reserva" : ""}`} aria-label={`combustível ${Math.round(combAgora * 100)}%`}>
+        <div ref={hudCombBox} className="l-kombi-comb" aria-label="combustível">
           <svg viewBox="0 0 60 34" aria-hidden="true">
             <path d="M6 30 A24 24 0 0 1 54 30" fill="none" stroke="#3a332c" strokeWidth="3" />
             <path d="M6 30 A24 24 0 0 1 12 14" fill="none" stroke="#ff5b3a" strokeWidth="3" />
             <text x="4" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">E</text>
             <text x="52" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">F</text>
-            <line x1="30" y1="30" x2="30" y2="10" stroke="#ff6a35" strokeWidth="1.6" transform={`rotate(${-80 + combAgora * 160} 30 30)`} />
+            <line ref={hudComb} x1="30" y1="30" x2="30" y2="10" stroke="#ff6a35" strokeWidth="1.6" transform="rotate(80 30 30)" />
           </svg>
           <small>R</small>
         </div>
@@ -1376,6 +1394,15 @@ function mundo() { return (MUNDO ??= montarMundo()) }
 export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
 let RETOMAR: Retomada | null = null
 
+export interface Comb {
+  tanque: number
+  via: number // onde fica o posto
+  u: number
+  avisou: boolean
+  onPosto: () => void
+  t: number // último aviso pro page (guardar no save)
+}
+
 export interface Abertura {
   ativa: boolean
   via: number
@@ -1468,11 +1495,12 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
+  combRef: React.MutableRefObject<Comb>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -2251,7 +2279,9 @@ function Cena({
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 7)
       // nos viadutos entre lugares a pista é expressa
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
-      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1)
+      // tanque seco: a Kombi vai na reserva, bem devagar (dá pra chegar no posto)
+      const seco = !aberturaRef.current.ativa && combRef.current.tanque <= 0
+      const vmax = (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -2270,6 +2300,8 @@ function Cena({
       }
       if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
       if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
+      // o tanque gasta andando (cheio dá uns 15 km)
+      if (!aberturaRef.current.ativa && gas && Math.abs(j.v) > 1) combRef.current.tanque = Math.max(0, combRef.current.tanque - (Math.abs(j.v) * dt) / 15000)
       if (abAqui) {
         // o combustível acaba uns 110 m antes da casa: no embalo, para em frente
         const falta = ab.u - j.u
@@ -2748,6 +2780,13 @@ function Cena({
         const naVaga = Math.abs(d) < VAGA / 2 + 10
         if (naVaga && j.naVaga !== vg.id) { j.naVaga = vg.id; ev.vaga(vg.id) }
         if (Math.abs(d) > VAGA) j.naVaga = false
+      }
+      // o posto: passou devagar em frente, abre a bomba
+      const cb = combRef.current
+      if (!cine && j.via === cb.via) {
+        const dp = du(M.vias[j.via], j.u, cb.u)
+        if (!cb.avisou && Math.abs(dp) < 16 && Math.abs(j.v) < 9) { cb.avisou = true; cb.onPosto() }
+        if (Math.abs(dp) > 60) cb.avisou = false
       }
       // o lugar secreto (o beco): cada vez que você passa por ele conta uma
       // volta. Ninguém avisa; depois das voltas que o seu tom pede, a 222

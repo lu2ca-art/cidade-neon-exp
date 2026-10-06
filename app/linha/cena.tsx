@@ -30,7 +30,7 @@ type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
 
 // `gestos3d`: os gestos que a sala em 3D faz (interior/): a legenda só dá
 // a dica e espera a sala avisar que acabou
-export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], loops = 0, onTom, onLinha, onFim }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; loops?: number; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void }) {
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], loops = 0, onTom, onLinha, onFim, onNeon }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; loops?: number; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void; onNeon?: (n: number) => void }) {
   // o tom vale o do começo da cena (responder no meio não reembaralha os passos)
   const [tom] = useState(tomAgora)
   // os passos com `se` só entram se a pessoa já passou por aquela estação;
@@ -61,6 +61,11 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   if (chaveAnt !== chave) { setChaveAnt(chave); setLetras(0) }
   // o cartão do que ganhou sai direto do passo
   const mostrando = !fila.length && passo?.t === "ganha" ? passo : null
+  // NEON na conta no momento do "ganha" (a D-Bee: "toma aqui")
+  const neonDado = useRef(-1)
+  useEffect(() => {
+    if (mostrando?.neon && neonDado.current !== pos) { neonDado.current = pos; onNeon?.(mostrando.neon) }
+  }, [mostrando, pos, onNeon])
 
   // conta pra sala o que está acontecendo (quem fala, gesto, escolha…)
   // os minijogos antigos entram como "prova:<id>" (a sala pode assumir um deles)
