@@ -36,7 +36,6 @@ import { track } from "@/lib/analytics"
 import { Loja } from "./loja"
 import { ACERVO, PRECO_DISCO } from "./discos"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
-import { Checklist } from "./tutorial-tela"
 import dynamic from "next/dynamic"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
@@ -496,6 +495,17 @@ export default function LinhaPage() {
     return emTutorial(save) ? l.filter((m) => m.id === PRIMEIRA) : l
   }, [save, nivel])
 
+  // a missão de agora e o resumo da caixa (no canto da tela)
+  const missaoAgora = quemChama ? listaMissoes.find((m) => m.id === quemChama) ?? null : null
+  const itemAgora = tut && blocoTut < BLOCOS.length ? BLOCOS[blocoTut].itens.find((i) => !feito(save, i)) ?? null : null
+  const resumoMissao = itemAgora
+    ? { rotulo: "primeiros passos", texto: ITENS[itemAgora].texto, cor: "#3d7bff" }
+    : missaoAgora
+    ? { rotulo: `missão · ${getEstacao(missaoAgora.id).personagem}`, texto: missaoAgora.texto, cor: getEstacao(missaoAgora.id).cor }
+    : listaMissoes.length
+    ? { rotulo: "missões", texto: "tem gente precisando de você", cor: "#ffc857" }
+    : null
+
   // ── o TUTORIAL (tutorial.ts) ──
   // a D-Bee liga antes de cada bloco
   const ligaTut = tut && blocoTut < BLOCOS.length && !ligou(save, blocoTut)
@@ -811,15 +821,35 @@ export default function LinhaPage() {
             foraDoAr={apagao}
           />
         )}
-        {tela.t === "corrida" && !emSala && !cinema && nivel >= 1 && listaMissoes.length > 0 && (
-          <button type="button" className={`l-btn-missoes ${painelMissoes ? "is-aberto" : ""}`} onClick={() => setPainelMissoes((v) => !v)}>
-            missões <em>{listaMissoes.length}</em>
+        {/* AS MISSÕES NUMA CAIXA SÓ (LU2CA, 05/10): no canto, o que fazer agora
+            e a bolinha com quantas estão abertas; tocando, a atual (ou a
+            checklist do tutorial) e as disponíveis */}
+        {tela.t === "corrida" && !emSala && !cinema && !painelMissoes && resumoMissao && (
+          <button type="button" className="l-caixa-missao" style={{ ["--cor" as string]: resumoMissao.cor }} onClick={() => setPainelMissoes(true)}>
+            <small>{resumoMissao.rotulo}</small>
+            <b>{resumoMissao.texto}</b>
+            {listaMissoes.length > 0 && <em aria-label={`${listaMissoes.length} missões`}>{listaMissoes.length}</em>}
           </button>
         )}
-        {tut && tela.t === "corrida" && !emSala && !cinema && !painelMissoes && !aoVivo && <Checklist save={save} />}
         {painelMissoes && !ligacao && tela.t === "corrida" && !emSala && (
           <div className="l-missoes" role="dialog" aria-label="Missões">
-            <header><b>quem precisa de você</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
+            <header><b>missões</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
+            {tut ? (
+              <section className="l-missoes-agora">
+                <small>primeiros passos</small>
+                <ul className="l-missoes-check">
+                  {BLOCOS.flatMap((bl) => bl.itens).map((i) => (
+                    <li key={i} className={feito(save, i) ? "is-ok" : ""}><i aria-hidden="true">{feito(save, i) ? "✓" : ""}</i>{ITENS[i].texto}</li>
+                  ))}
+                </ul>
+              </section>
+            ) : missaoAgora ? (
+              <section className="l-missoes-agora" style={{ ["--cor" as string]: getEstacao(missaoAgora.id).cor }}>
+                <small>agora · {getEstacao(missaoAgora.id).personagem}</small>
+                <p>{missaoAgora.texto}</p>
+              </section>
+            ) : null}
+            {listaMissoes.length > 0 && <small className="l-missoes-sub">disponíveis</small>}
             <ul>
               {listaMissoes.map((m) => {
                 const e = getEstacao(m.id)
