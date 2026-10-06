@@ -1792,3 +1792,4 @@
 .l-ilha.is-garfo .l-garfo-ops { display: flex; }
 .l-ilha.is-garfo .l-garfo-op { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 3px; }
 .l-ilha.is-garfo .l-garfo-op b { min-width: 0; }
+.l-ilha.is-garfo .l-garfo-ops { min-width: 0; margin-top: 0; }
