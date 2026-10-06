@@ -71,17 +71,20 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   // o +X aparece no canto e a cena já segue
   const soNeon = !!mostrando?.neon && !mostrando.objeto && !mostrando.reliquia
   const [neonCanto, setNeonCanto] = useState<{ n: number; id: number } | null>(null)
+  // (sem cleanup: o NEON caindo re-renderiza a página e cancelava o avanço —
+  // a cena travava no "toma aqui")
+  const onNeonRef = useRef(onNeon)
+  useEffect(() => { onNeonRef.current = onNeon }, [onNeon])
   useEffect(() => {
     if (!mostrando?.neon || neonDado.current === pos) return
     neonDado.current = pos
-    onNeon?.(mostrando.neon)
+    onNeonRef.current?.(mostrando.neon)
     if (!soNeon) return
     const id = Date.now()
     const n = mostrando.neon
-    const t0 = setTimeout(() => { setNeonCanto({ n, id }); setPos((p) => p + 1) }, 0)
-    const t1 = setTimeout(() => setNeonCanto((x) => (x?.id === id ? null : x)), 2000)
-    return () => { clearTimeout(t0); clearTimeout(t1) }
-  }, [mostrando, pos, onNeon, soNeon])
+    setTimeout(() => { setNeonCanto({ n, id }); setPos((p) => p + 1) }, 0)
+    setTimeout(() => setNeonCanto((x) => (x?.id === id ? null : x)), 2000)
+  }, [mostrando, pos, soNeon])
 
   // conta pra sala o que está acontecendo (quem fala, gesto, escolha…)
   // os minijogos antigos entram como "prova:<id>" (a sala pode assumir um deles)
