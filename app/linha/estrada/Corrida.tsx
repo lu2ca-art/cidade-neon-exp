@@ -1819,6 +1819,8 @@ function Cena({
           if (!f) return null
           const fr = freqDe(f.para)
           const seta = f.lado < 0 ? "←" : "→"
+          // a saída pro deserto (mundo.ts)
+          if (M.vias[f.via]?.id === "deserto") return { x, cor: "#e8b86a", tex: texTexto([{ txt: seta, tam: 110, cor: "#e8b86a" }, { txt: "DESERTO", tam: 62, cor: "#e8b86a" }, { txt: "sem rádio", tam: 40, cor: "#ffffff", fonte: MONO }], 512, 352) }
           return aberta(f!, nLib)
             ? { x, cor: fr.cor, area: f!.para, tex: texTexto([{ txt: seta, tam: 110, cor: fr.cor }, { txt: lugarDe(f!.para).toUpperCase(), tam: 62, cor: fr.cor }, { txt: `${fr.freq} FM`, tam: 46, cor: "#ffffff", fonte: MONO }], 512, 352) }
             : { x, cor: "#555a77", tex: texTexto([{ txt: "TRANCADA", tam: 60, cor: "#8a8fae" }, { txt: lugarDe(f!.para).toUpperCase(), tam: 56, cor: "#8a8fae" }, { txt: `junta ${fr.custo} de sinal`, tam: 40, cor: "#b0b5d0", fonte: MONO }], 512, 352) }

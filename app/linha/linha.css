@@ -1663,8 +1663,8 @@
 /* quieta não existe: sem nada acontecendo, o mapa lá em cima é a ilha */
 .l-ilha.is-quieta { display: none; }
 /* bifurcação: a caixa do mapa vira a placa (o mapa some enquanto isso) */
-.l-ilha.is-garfo { top: calc(12px + env(safe-area-inset-top)); left: 190px; right: 12px; transform: none; max-width: none; border-radius: 14px; z-index: 31; animation: l-notch-abre 0.35s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
-.l-raiz:has(.l-ilha.is-garfo) .l-guia { visibility: hidden; }
+.l-ilha.is-garfo { top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px; transform: none; max-width: none; border-radius: 14px; z-index: 31; animation: l-notch-abre 0.35s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+.l-raiz:has(.l-ilha.is-garfo) .l-hud-topo { visibility: hidden; }
 @keyframes l-notch-abre { from { transform: scaleY(0.4); transform-origin: top; opacity: 0.4; } }
 /* entrando num lugar: o mapa avisa */
 .l-guia-lugar.is-entrando { color: #fff; animation: l-pisca 1.2s ease-in-out 2; }
