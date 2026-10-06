@@ -905,6 +905,8 @@ export default function LinhaPage() {
             tanque={save.tanque ?? 1}
             onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 ? s : { ...s, tanque: n }))}
             onPosto={() => abrirPostoRef.current()}
+            hora={save.hora ?? 18}
+            onHora={(h) => setSave((s) => ({ ...s, hora: h }))}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
