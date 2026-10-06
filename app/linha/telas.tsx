@@ -15,6 +15,7 @@ import { gota, player } from "./som"
 import { compartilhar, icsHref } from "./util"
 import { track } from "@/lib/analytics"
 import { AppTopo } from "./os"
+import { Plataformas } from "./plataformas"
 
 export const ROTEIRO_IDS: EstacaoId[] = ["chuva", "copo", "dopamina", "sexta", "ontem", "nectar"]
 
@@ -250,20 +251,14 @@ export function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa, c
           <span>{conhece ? <><b>{e.personagem}</b> guarda {e.objetoNome}{tem ? " — já é seu" : ""}</> : "alguém acordado mora aqui. ainda não te chamou"}</span>
         </div>
 
-        {(saiu || tem) && (
+        {/* ouvir aqui dentro é recompensa: só depois de ganhar o objeto */}
+        {tem && (
           <div className="l-ficha-ouvir">
-            {/* ouvir aqui dentro é recompensa: só depois de ganhar o objeto */}
-            {tem && <button type="button" onClick={() => player.alternar(e.audio)}>{tocando ? "❚❚ pausar" : "▶ ouvir um pedaço"}</button>}
-            <a
-              href={`${e.ouvir}${e.ouvir.includes("?") ? "&" : "?"}utm_source=cidade-neon&utm_medium=game&utm_campaign=linha-222`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => track("external_link_click", { destination: e.ouvir.includes("spotify") ? "spotify" : "other", track_id: e.id, place_id: "linha-222" })}
-            >
-              ouvir inteira ↗
-            </a>
+            <button type="button" onClick={() => player.alternar(e.audio)}>{tocando ? "❚❚ pausar" : "▶ ouvir um pedaço"}</button>
           </div>
         )}
+        {/* lá fora: a faixa inteira, em qualquer plataforma (desde que já saiu) */}
+        {saiu && <Plataformas faixa={e.id} lugar="linha-222-ficha" />}
 
         {!m.ok && m.motivo === "data" && e.lancamento && (
           <div className="l-ficha-escuro">
@@ -294,6 +289,12 @@ export function Radio({ save, atualizar, onFechar, embutido }: { save: Save; atu
   const [agora, setAgora] = useState<string | null>(null)
   useEffect(() => player.ouvir((s) => setAgora(s.tocando ? s.src : null)), [])
   const prox = proximaFreq(save.sinal)
+  // a faixa do LU2CA que tá tocando (original, instrumental ou ao vivo):
+  // daqui ela vai inteira pras plataformas
+  const doVol1 = agora ? ESTACOES.find((e) => {
+    const base = e.audio.split("/").pop()!.replace(/^222-/, "")
+    return agora === e.audio || agora.endsWith(`-${base}`)
+  }) ?? null : null
   const tocar = (id: FreqId, i = 0) => {
     const f = FREQUENCIAS.find((x) => x.id === id)!
     const l = faixasDe(f, save.objetos, save.estacao)
@@ -313,6 +314,12 @@ export function Radio({ save, atualizar, onFechar, embutido }: { save: Save; atu
             ? `pega sinal na estrada pra destravar a próxima: faltam ${prox.custo - save.sinal} (orbs e passadas raspando no tráfego).`
             : "todas as frequências destravadas. a cidade toda toca pra você."}
         </p>
+        {doVol1 && lancada(doVol1) && (
+          <div className="l-radio-agora" style={{ ["--cor" as string]: doVol1.cor }}>
+            <small>tocando agora · {doVol1.faixa}</small>
+            <Plataformas faixa={doVol1.id} lugar="linha-222-radio" compacto />
+          </div>
+        )}
         <ul>
           {FREQUENCIAS.map((f) => {
             const lib = save.sinal >= f.custo

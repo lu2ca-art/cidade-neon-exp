@@ -21,12 +21,13 @@ import { JardimFundo } from "./recursos"
 import { MEMORIAS, MISSOES, ativa, conhecidos, etapaDe, itensFaltando } from "./missoes"
 import { player } from "./som"
 import { track } from "@/lib/analytics"
+import { Plataformas } from "./plataformas"
 
 export type AppId =
   | "kombi" | "n3xo" | "linha" | "radio" | "fliperama" | "objetos"
   | "nectar" | "batida" | "guitar" | "feelgood" | "sintonia" | "freq" | "loop" | "stream"
   | "loja" | "museu" | "galeria" | "salabranca" | "iris" | "untitled" | "access"
-  | "jardim" | "violao"
+  | "jardim" | "violao" | "ouvir"
 
 export interface AppDef {
   id: AppId
@@ -50,6 +51,7 @@ export const APPS: AppDef[] = [
   { id: "objetos", nome: "OBJETOS", cor: "#b38cff", pagina: 0, desc: "o que você já juntou" },
   { id: "jardim", nome: "JARDIM", cor: "#5dffa0", pagina: 0, precisa: "chuva", desc: "rega e a página floresce" },
   { id: "violao", nome: "VIOLÃO", cor: "#b38cff", pagina: 0, precisa: "nectar", desc: "escalas, acordes e tocar junto" },
+  { id: "ouvir", nome: "OUVIR", cor: "#1ed760", pagina: 0, desc: "as faixas lá fora: spotify, apple, youtube, deezer" },
   { id: "nectar", nome: "NECTAR", cor: "#67e8f9", rota: "/nectar", pagina: 0, desc: "qual é o seu nectar" },
   { id: "batida", nome: "B4TIDA", cor: "#ff6b6b", rota: "/batida", pagina: 0, desc: "monta sua música por camadas" },
   { id: "guitar", nome: "GUITAR DRIVER", cor: "#ff9000", rota: "/neon-tiles", pagina: 0, desc: "toca as 4 faixas" },
@@ -96,6 +98,7 @@ export function Glifo({ id, cor, size = 26 }: { id: AppId; cor: string; size?: n
     case "access": return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" /></svg>
     case "jardim": return <svg {...p}><path d="M12 21v-7" /><path d="M12 14c-3 0-5-2-5-5 3 0 5 2 5 5zM12 14c3 0 5-2 5-5-3 0-5 2-5 5z" /><circle cx="12" cy="6" r="2.4" fill={cor} /></svg>
     case "violao": return <Objeto id="violao" cor={cor} size={size} />
+    case "ouvir": return <svg {...p}><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><rect x="3" y="14" width="4" height="6" rx="1.5" fill={cor} /><rect x="17" y="14" width="4" height="6" rx="1.5" fill={cor} /></svg>
     case "salabranca": return <svg {...p}><rect x="5" y="5" width="14" height="14" /><rect x="9" y="9" width="6" height="6" opacity=".5" /></svg>
   }
 }
@@ -533,3 +536,35 @@ export function Objetos({ save, onVoltar, onChat, onUsarGalao }: { save: Save; o
 }
 
 export { VOZES }
+
+/* ─── OUVIR: as faixas fora do jogo ─────────────────────── */
+// Tudo que já saiu, com um botão por plataforma. O que ainda não saiu
+// aparece com a data (sem link: nada vaza antes da hora).
+export function Ouvir({ onVoltar }: { onVoltar: () => void }) {
+  const [agora] = useState(() => Date.now())
+  return (
+    <section className="l-appnativo">
+      <AppTopo titulo="OUVIR" cor="#1ed760" onVoltar={onVoltar} />
+      <div className="l-ouvir">
+        <p className="l-ouvir-intro">a cidade toca aqui dentro. lá fora, a faixa inteira toca onde você já escuta.</p>
+        {ESTACOES.map((e) => {
+          const saiu = lancada(e, agora)
+          return (
+            <div key={e.id} className={`l-ouvir-faixa ${saiu ? "" : "is-breve"}`} style={{ ["--cor" as string]: e.cor }}>
+              <div className="l-ouvir-nome">
+                <b>{String(e.n).padStart(2, "0")}</b>
+                <span>{e.faixa}</span>
+                {!saiu && e.lancamento && <small>sai {dataCurta(e.lancamento)}</small>}
+              </div>
+              {saiu && <Plataformas faixa={e.id} lugar="linha-222-ouvir" compacto />}
+            </div>
+          )
+        })}
+        <div className="l-ouvir-faixa is-artista">
+          <div className="l-ouvir-nome"><span>LU2CA, tudo</span></div>
+          <Plataformas faixa={null} lugar="linha-222-ouvir" compacto />
+        </div>
+      </div>
+    </section>
+  )
+}
