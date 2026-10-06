@@ -31,10 +31,10 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { audioCtx, fonteSom, ligarChuva, mudo, player } from "./som"
+import { audioCtx, disco, fonteSom, ligarChuva, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
 import { Loja } from "./loja"
-import { PRECO_DISCO } from "./discos"
+import { ACERVO, PRECO_DISCO } from "./discos"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import { Checklist } from "./tutorial-tela"
 import dynamic from "next/dynamic"
@@ -575,9 +575,10 @@ export default function LinhaPage() {
       })
       setTela({ t: "chat", id: "abertura", volta: { t: "home" } })
     } else if (!save.casa) {
-      // primeira vez: a abertura, no deserto do mapa (Corrida, abertura),
-      // em silêncio: só o vento e o motor
-      fonteSom.set("off")
+      // primeira vez: a abertura, no deserto do mapa (Corrida, abertura).
+      // A primeira coisa: o toca-discos liga com os discos antigos (LU2CA)
+      fonteSom.set("disco")
+      disco.tocarLista(ACERVO.faixas.map((f) => f.src))
       setEstrada(true)
       setTela({ t: "corrida", destino: null })
     } else {

@@ -1173,6 +1173,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <span className="l-player-aparelho"><i className={`l-player-vinil ${discoAgora.tocando ? "is-gira" : ""}`} />TOCA-DISCOS</span>
               <b>{discoInfo ? discoInfo.titulo : "sem disco"}</b>
               <small>{discoAgora.tocando ? "analógico · nada interrompe" : "o disco acabou · escolhe outro"}</small>
+              <span className="l-player-ctl">
+                <button type="button" onClick={() => disco.proxima()} disabled={!discoAgora.tocando} aria-label="próxima faixa">⏭ próxima</button>
+                <button type="button" onClick={() => { if (!dentro) trocarCamera(); setEstante(true) }}>trocar disco</button>
+              </span>
             </>
           ) : aparelho === "radio" ? (
             <>
