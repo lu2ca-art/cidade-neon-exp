@@ -199,7 +199,8 @@ const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
 const lugarDe = (d: FreqId) => territorio(d).lugar
 const praDe = (d: FreqId) => territorio(d).pra
 // saída aberta = rádio do destino já destravada
-const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id === f.para) < nLib
+// as saídas ficam todas abertas (06/10): rádio é outra coisa, a estrada não tranca
+const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
@@ -409,7 +410,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => { nLibRef.current = nLib }, [nLib])
   const toastId = useRef(0)
   // turbo: nível cúmplice, ou o relógio da Notti (recompensa da missão)
-  const temTurbo = nivel >= 2 || save.objetos.includes("dopamina")
+  // o turbo é de todo mundo desde o começo (06/10); os anéis carregam
+  const temTurbo = true
 
   useEffect(() => {
     let vivo = true
@@ -1230,7 +1232,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onPointerDown={(e) => { e.stopPropagation(); input.current.turbo = true }}
       >
         <div className="l-hud-turbo-barra"><div ref={hudTurbo} /></div>
-        <span>{temTurbo ? "turbo" : "turbo · nível cúmplice"}</span>
+        <span>turbo</span>
       </button>
 
       <div ref={hudParado} className="l-hud-parado"><b>↑</b> ou <b>W</b> pra acelerar · <b>↓</b> dá ré</div>
@@ -2490,10 +2492,10 @@ function Cena({
       if (d > -1.5 && d < 1.8 && Math.abs(o.x - j.x) < 1.3 && Math.abs(j.y + 1 - (yPista + 1.4)) < 2.6 + (j.ar ? 2 : 0)) {
         j.pegos.add(i)
         j.st.orbs++
-        j.carga = Math.min(1, j.carga + 0.08)
+        // o anel: carrega o turbo e toca uma nota no tom da música (só isso)
+        j.carga = Math.min(1, j.carga + 0.12)
         gota(j.st.orbs % 8)
         vib(8)
-        ev.sinal(1, "", "")
       }
     }
 
