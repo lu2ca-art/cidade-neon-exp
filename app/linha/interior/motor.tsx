@@ -13,7 +13,7 @@ import type { EstadoCena } from "./bus"
 import type { V3 } from "./comum"
 
 // `inicio`: a sala no começo do jogo (a casa da D-Bee com ela dentro)
-export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[]; inicio?: boolean }
+export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[]; inicio?: boolean; copos?: number[] }
 
 // toque livre na tela (fora dos objetos): a sala que quiser escuta
 // (a balada e o vagão: tocar no ritmo em qualquer lugar)

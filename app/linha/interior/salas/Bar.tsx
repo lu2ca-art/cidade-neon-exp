@@ -43,8 +43,10 @@ const MESAS: { pos: V3; vira: number; cor: string }[] = [
   { pos: [-4.6, 0.0, -0.4], vira: 0.4, cor: "#7a7a8c" },
 ]
 
-export function SalaBar({ estado }: SalaProps) {
-  const [bebidos, setBebidos] = useState<number[]>([])
+export function SalaBar({ estado, copos = [] }: SalaProps) {
+  // os copos que já foram (de outras noites) ficam vazios no balcão
+  const [bebidos, setBebidos] = useState<number[]>(copos)
+  const [bebeuAgora, setBebeuAgora] = useState(false)
   const [posGesto, setPosGesto] = useState<number | null>(null)
   if (estado.gesto === "copos" && posGesto === null) setPosGesto(estado.pos)
   const negou = posGesto !== null && estado.pos > posGesto
@@ -62,13 +64,14 @@ export function SalaBar({ estado }: SalaProps) {
   // beber é a escolha errada: um copo só e a cena acaba (cena.tsx leva a
   // pessoa pra fora do bar). A noite volta pro começo, mais bonita e mais vazia
   const beber = (i: number) => {
-    if (bebidos.length || estado.gesto !== "copos") return
+    if (bebeuAgora || bebidos.includes(i) || estado.gesto !== "copos") return
     vib([20, 40, 20]); gota(1)
-    setBebidos([i])
+    setBebeuAgora(true)
+    setBebidos([...bebidos, i])
     const c = COPOS[i]
     sinalizar({ t: "fala", de: "ela", texto: c.promessa })
     sinalizar({ t: "fala", tipo: "acao", texto: `você bebe ${c.nome}. tá bom. tá muito bom. você levanta e sai. lá fora, a noite começa de novo` })
-    sinalizar({ t: "bebeu", n: 1 })
+    sinalizar({ t: "bebeu", n: 1, i })
   }
 
   // atalho de desenvolvimento: __beber(i) bebe o copo i

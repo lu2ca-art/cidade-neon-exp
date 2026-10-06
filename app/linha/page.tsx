@@ -462,7 +462,7 @@ export default function LinhaPage() {
     // escolha errada (o bar: beber): a missão fica aberta, nada se ganha, e o
     // mundo estranha (loops → Corrida)
     if (r.loop) {
-      setSave((s) => ({ ...s, loops: { ...(s.loops ?? {}), [c.lugar]: (s.loops?.[c.lugar] ?? 0) + 1 } }))
+      setSave((s) => ({ ...s, loops: { ...(s.loops ?? {}), [c.lugar]: (s.loops?.[c.lugar] ?? 0) + 1 }, copos: r.copo === undefined ? s.copos : [...new Set([...(s.copos ?? []), r.copo])] }))
       avisar("a noite voltou pro começo", "a missão continua aberta", "#ffc857")
       track("mission_step", { mission_id: `linha-${est}`, step: `loop:${c.lugar}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
       return
@@ -1067,7 +1067,7 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} />
+          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} />
         )}
         {cena && (
           <CenaLugar

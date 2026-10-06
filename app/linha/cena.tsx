@@ -23,6 +23,8 @@ export interface ResultadoCena {
   perdeViolao?: boolean
   // saiu com a escolha errada: a missão fica aberta e o mundo estranha
   loop?: boolean
+  // o copo que bebeu (fica vazio no balcão)
+  copo?: number
 }
 
 type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
@@ -63,6 +65,8 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   const mostrando = !fila.length && passo?.t === "ganha" ? passo : null
   // NEON na conta no momento do "ganha" (a D-Bee: "toma aqui")
   const neonDado = useRef(-1)
+  // o copo que bebeu (o Bar avisa pelo bus)
+  const copoRef = useRef<number | undefined>(undefined)
   useEffect(() => {
     if (mostrando?.neon && neonDado.current !== pos) { neonDado.current = pos; onNeon?.(mostrando.neon) }
   }, [mostrando, pos, onNeon])
@@ -77,7 +81,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   // e ouve a sala: uma fala solta, um copo bebido, o gesto acabou
   useEffect(() => ouvirSala((sn) => {
     if (sn.t === "fala") setFila((f) => [...f, { de: sn.de, texto: sn.texto, tipo: sn.tipo ?? "fala" }])
-    else if (sn.t === "bebeu") setSaida(true)
+    else if (sn.t === "bebeu") { setSaida(true); copoRef.current = sn.i }
     else if (sn.t === "fim-gesto") setPos((p) => p + 1)
   }), [])
   const gesto3d = gestoAgora !== null && gestos3d.includes(gestoAgora) && !saida
@@ -151,11 +155,11 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
-      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} voltou={loops > 0} onNegar={() => setPos((p) => p + 1)} />}
+      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} onSair={() => onFim({ reliquias: [], caca: false })} />}
       {!gesto3d && !saida && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} onBeber={() => setSaida(true)} podeNegar={loops > 0 || esperou} />}
       {saida && !atual && (
         <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => onFim({ reliquias: [], caca: false, loop: true })}>sair do bar →</button>
+          <button type="button" onClick={() => onFim({ reliquias: [], caca: false, loop: true, copo: copoRef.current })}>sair do bar →</button>
         </div>
       )}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
@@ -196,12 +200,27 @@ const DICAS_3D: Record<string, string> = {
   quarto: "olha o quarto. toca no que chamar sua atenção",
   "casa-inicio": "olha em volta. toca no que chamar sua atenção",
 }
-function Dica3d({ id, podeNegar, voltou, onNegar }: { id: string; podeNegar: boolean; voltou: boolean; onNegar: () => void }) {
-  const texto = id === "copos" ? (voltou ? "o mesmo balcão. a mesma escolha?" : DICAS_3D.copos) : DICAS_3D[id] ?? "toca na cena"
+function Dica3d({ id, podeNegar, onNegar, onSair }: { id: string; podeNegar: boolean; onNegar: () => void; onSair: () => void }) {
+  // o bar (06/10, LU2CA): a saída é a palavra ESCOLHA, em amarelo — quem
+  // repara toca nela e diz não. "sair do bar" só sai: a missão não se cumpre
+  const [sn, setSn] = useState(false)
+  if (id === "copos") return (
+    <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
+      {podeNegar
+        ? <small>o mesmo balcão. a mesma <b className="l-escolha" role="button" tabIndex={0} onClick={() => setSn((v) => !v)}>escolha</b>?</small>
+        : <small>{DICAS_3D.copos}</small>}
+      {sn && (
+        <span className="l-escolha-sn">
+          <button type="button" onClick={() => setSn(false)}>sim</button>
+          <button type="button" onClick={onNegar}>não</button>
+        </span>
+      )}
+      <button type="button" className="l-copos-sair" onClick={onSair}>sair do bar</button>
+    </div>
+  )
   return (
     <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
-      <small>{texto}</small>
-      {id === "copos" && podeNegar && <button type="button" className="l-copos-negar" onClick={onNegar}>negar a oferta</button>}
+      <small>{DICAS_3D[id] ?? "toca na cena"}</small>
     </div>
   )
 }
