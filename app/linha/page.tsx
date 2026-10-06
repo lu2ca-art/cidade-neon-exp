@@ -136,7 +136,7 @@ export default function LinhaPage() {
   const [ligacao, setLigacao] = useState<{ lig: Ligacao; missao?: EstacaoId; tarefa?: number } | null>(null)
   useEffect(() => {
     if (tela.t !== "corrida") return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setEstrada(true)
     setDestinoEstrada(tela.destino)
   }, [tela])
@@ -145,7 +145,7 @@ export default function LinhaPage() {
     const s = carregar()
     const h = hoje()
     // hidratação do localStorage: só existe no cliente, depois do mount
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setSave(s.dias.includes(h) ? s : { ...s, dias: [...s.dias, h].slice(-60) })
     setPronto(true)
     if (process.env.NODE_ENV !== "production") {
@@ -162,11 +162,24 @@ export default function LinhaPage() {
 
   const atualizar = useCallback((f: (s: Save) => Save) => setSave(f), [])
 
-  const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
-    const id = Date.now()
-    setAviso({ id, titulo, texto, cor })
-    setTimeout(() => setAviso((a) => (a?.id === id ? null : a)), 4200)
+  // os avisos entram em FILA (um não apaga o outro: o LU2CA no posto e o
+  // +10 NEON chegando juntos)
+  const filaAvisos = useRef<{ titulo: string; texto: string; cor: string }[]>([])
+  const avisando = useRef(false)
+  const proximoAviso = useCallback(function proximo() {
+    const a = filaAvisos.current.shift()
+    if (!a) { avisando.current = false; return }
+    avisando.current = true
+    const id = Date.now() + Math.random()
+    setAviso({ id, ...a })
+    setTimeout(() => { setAviso((x) => (x?.id === id ? null : x)); setTimeout(proximo, 250) }, 4200)
   }, [])
+  const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
+    // o mesmo aviso de novo, enquanto ainda tá na fila: não repete
+    if (filaAvisos.current.some((a) => a.titulo === titulo && a.texto === texto)) return
+    filaAvisos.current.push({ titulo, texto, cor })
+    if (!avisando.current) proximoAviso()
+  }, [proximoAviso])
 
   const ganharXp = useCallback((n: number) => {
     setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))
