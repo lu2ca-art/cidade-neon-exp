@@ -1755,3 +1755,7 @@
 .l-escolha-sn { display: flex; gap: 10px; pointer-events: auto; animation: l-sobe 0.25s both; }
 .l-escolha-sn button { padding: 8px 18px; border-radius: 999px; background: rgba(5, 5, 14, 0.7) !important; border: 1px solid #ffc857 !important; color: #ffc857 !important; font: 700 12px var(--mono) !important; letter-spacing: 0.12em; text-transform: uppercase; }
 .l-copos-sair { padding: 4px 10px; background: none !important; border: 0 !important; color: rgba(255, 255, 255, 0.45) !important; font: 600 10px var(--mono) !important; letter-spacing: 0.14em; text-transform: uppercase; }
+/* dinheiro na conta durante a cena: no canto, discreto */
+.l-cena-neon { position: absolute; z-index: 30; top: calc(16px + env(safe-area-inset-top)); right: 16px; padding: 6px 12px; border-radius: 999px; background: rgba(5, 5, 14, 0.7); border: 1px solid #ffc857; font: 700 13px var(--mono); color: #ffc857; animation: l-aviso 1.6s cubic-bezier(0.2, 1, 0.3, 1) both; pointer-events: none; }
+/* dinheiro na conta durante a cena: no canto, discreto */
+.l-cena-neon { position: absolute; z-index: 30; top: calc(16px + env(safe-area-inset-top)); right: 16px; padding: 6px 12px; border-radius: 999px; background: rgba(5, 5, 14, 0.7); border: 1px solid #ffc857; font: 700 13px var(--mono); color: #ffc857; animation: l-aviso 1.6s cubic-bezier(0.2, 1, 0.3, 1) both; pointer-events: none; }
