@@ -297,18 +297,29 @@ function montarDeserto(A: Via): Via {
   cx /= A.n
   cz /= A.n
   const ini = [em(A, u, CK), em(A, u + 60, CK + 6, -0.6), em(A, u + 150, CK + 40, -1.6), em(A, u + 260, CK + 110, -2)]
-  // a volta pelo deserto: um arco grande em volta da cidade, pelo norte,
-  // com o chão ondulando de leve (dunas)
+  // a volta pelo deserto: um arco grande em volta da cidade, pelo norte
   const arco: THREE.Vector3[] = []
   const N = 18
   for (let k = 0; k <= N; k++) {
     const th = (-8 - (k * 164) / N) * (Math.PI / 180)
     const R = DESERTO.raio * (1 + 0.06 * Math.sin(k * 1.7))
-    arco.push(V(cx + Math.cos(th) * R, 1.5 + 2.5 * Math.sin(k * 0.9), cz + Math.sin(th) * R))
+    // plano, sempre acima da areia (Corrida: o chão do deserto em y -0.25)
+    arco.push(V(cx + Math.cos(th) * R, 0.4, cz + Math.sin(th) * R))
   }
   const fim = [em(A, e - 520, 300, 0), em(A, e - 420, 120), em(A, e - 280, 48), em(A, e - 170, 21), em(A, e - 90, 8), em(A, e - 30, 1.2), em(A, e, 0)]
   const p = amostrar([...ini, ...arco, ...fim], false)
   const L = p.L
+  // a altura: plana no deserto (0.4, acima da areia) e só nas pontas sobe
+  // suave até a pista da cidade (os pontos de ligação herdam a inclinação
+  // das curvas dela e faziam a estrada afundar e subir dezenas de metros)
+  const y0 = p.py[0]
+  const y1 = p.py[p.n - 1]
+  for (let i = 0; i < p.n; i++) {
+    const u = i * PASSO
+    const a = suave(u / 220)
+    const b = suave((L - u) / 220)
+    p.py[i] = 0.4 + (y0 - 0.4) * (1 - a) + (y1 - 0.4) * (1 - b)
+  }
   for (let i = 0; i < p.n; i++) {
     const w = FAIXA / 2 + (MEIA - FAIXA / 2) * suave((i * PASSO) / 110)
     p.esq[i] = -w

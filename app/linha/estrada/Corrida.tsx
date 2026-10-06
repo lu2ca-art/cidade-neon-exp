@@ -1726,6 +1726,8 @@ function Cena({
       for (let k = 0; k < v.n; k += 12) {
         const u = k * PASSO
         if (v.tipo === "saida" && (u < 150 || u > v.L - 240)) continue
+        // o deserto não tem poste (só perto da cidade)
+        if (v.id === "deserto" && u > 900 && u < v.L - 900) continue
         if (noTunel(v, k)) continue
         for (const lado of [-1, 1]) {
           if (v.tipo === "circuito") {

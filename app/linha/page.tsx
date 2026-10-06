@@ -530,7 +530,8 @@ export default function LinhaPage() {
     if (!pronto || !ligaTut || tela.t !== "corrida" || emSala || cinema || invasao || aoVivo || ligacao) return
     const lig = BLOCOS[blocoTut].lig
     if (!lig) return
-    const t = setTimeout(() => setLigacao({ lig: LIGACOES[lig] }), blocoTut === 0 ? 3500 : 2500)
+    // a história: uns 10 s depois de sair da casa da D-Bee (mais natural)
+    const t = setTimeout(() => setLigacao({ lig: LIGACOES[lig] }), blocoTut === 0 ? 10000 : 2500)
     return () => clearTimeout(t)
   }, [pronto, ligaTut, blocoTut, tela.t, emSala, cinema, invasao, aoVivo, ligacao])
   const marcarTut = useCallback((i: ItemTutorial) => setSave((s) => ((s.tutorial ?? []).includes(i) ? s : { ...s, tutorial: [...(s.tutorial ?? []), i] })), [])
