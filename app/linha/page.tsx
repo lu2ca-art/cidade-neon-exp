@@ -757,6 +757,8 @@ export default function LinhaPage() {
   }
 
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
+  // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
+  const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
 
   return (
     <div className="l-raiz">
@@ -767,7 +769,8 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={tela.t !== "corrida" && tela.t !== "chegada"}
+            pausado={tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto}
+            celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
             abertura={!save.casa}
