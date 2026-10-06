@@ -1799,3 +1799,4 @@
 .l-estrelas i { font-style: normal; font-size: 15px; line-height: 1; color: rgba(255, 255, 255, 0.18); }
 .l-estrelas i.is-on { color: #ffd23a; text-shadow: 0 0 8px rgba(255, 210, 58, 0.8); animation: l-sobe 0.3s both; }
 .l-estrelas.is-caca i.is-on { animation: l-pisca 0.5s ease-in-out infinite; }
+.l-estrelas { right: auto; left: 16px; }
