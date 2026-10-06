@@ -1771,3 +1771,25 @@
 /* celular aberto por cima da estrada (a Kombi segue sozinha): a interface
    da estrada some, só a cena fica de fundo */
 .l-viagem.is-celular > :not(.l-viagem-cvs) { display: none !important; }
+
+/* ── a placa da bifurcação DENTRO da caixa do mapa (06/10, LU2CA: não pode
+   cobrir o celular nem o botão de 1ª pessoa) — compacta: distância numa
+   linha e as saídas como etiquetas ── */
+.l-ilha.is-garfo { left: 190px !important; right: 12px !important; top: calc(12px + env(safe-area-inset-top)) !important; padding: 0 !important; border-radius: 14px !important; min-height: 44px; }
+.l-raiz:has(.l-ilha.is-garfo) .l-hud-topo { visibility: visible !important; }
+.l-raiz:has(.l-ilha.is-garfo) .l-guia { visibility: hidden; }
+.l-ilha.is-garfo .l-ilha-conteudo { padding: 4px 6px 5px; }
+.l-ilha.is-garfo header { font-size: 8px !important; letter-spacing: 0.08em !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+.l-ilha.is-garfo header span { display: none; }
+.l-ilha.is-garfo .l-garfo-ops { gap: 4px; }
+.l-ilha.is-garfo .l-garfo-op { padding: 2px 5px; border-radius: 7px; grid-template-rows: auto; column-gap: 3px; }
+.l-ilha.is-garfo .l-garfo-op i { grid-row: auto; font-size: 13px; }
+.l-ilha.is-garfo .l-garfo-op b { font-size: 10px; }
+.l-ilha.is-garfo .l-garfo-op small, .l-ilha.is-garfo .l-garfo-quem { display: none; }
+.l-ilha.is-garfo .l-garfo-op em { font-size: 6px; top: -6px; }
+.l-ilha.is-garfo .l-garfo-op.is-vazia { display: none; }
+.l-ilha.is-garfo .l-garfo-ops { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.l-ilha.is-garfo .l-garfo-ops { display: flex; }
+.l-ilha.is-garfo .l-garfo-op { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 3px; }
+.l-ilha.is-garfo .l-garfo-op b { min-width: 0; }
+.l-ilha.is-garfo .l-garfo-ops { min-width: 0; margin-top: 0; }
