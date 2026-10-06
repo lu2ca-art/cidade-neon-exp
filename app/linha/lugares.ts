@@ -32,6 +32,9 @@ export interface Lugar {
   // fica FORA da cidade: a vaga é a saída (o fim da estrada) e encostar
   // nela começa a viagem (viagem.tsx); a cena é na chegada
   fora?: true
+  // mora numa estrada que não é circuito (o deserto: estrada/mundo.ts),
+  // pelo id da via; `area` continua dizendo pra onde as missões apontam
+  via?: string
 }
 
 export const LUGARES = {
@@ -93,9 +96,11 @@ LUGARES.beco = {
 // a casa da D-Bee (arco, lugar 10, ep. 3): fora da cidade, a luz que a
 // Notti viu do terraço. Na cidade fica só a SAÍDA: depois do posto, do lado
 // direito, onde a pista vira estrada de terra
+// a casa da D-Bee: no deserto, na beira da estrada que volta pra cidade
+// (05/10, LU2CA: o deserto é um bairro do mesmo mapa). O jogo começa aqui
 LUGARES["casa-dbee"] = {
-  id: "casa-dbee", nome: "o fim da estrada", no: "no fim da estrada", letreiro: "", area: "linha", u: 3260, lado: 1,
-  cor: "#3d7bff", acento: "#ffc857", dono: "ojala", fora: true,
+  id: "casa-dbee", nome: "a casa da d-bee", no: "na casa da d-bee", letreiro: "", area: "linha", via: "deserto", u: 6000, lado: 1,
+  cor: "#3d7bff", acento: "#ffc857", dono: "ojala",
   gente: [],
 }
 

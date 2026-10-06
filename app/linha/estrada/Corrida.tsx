@@ -14,6 +14,7 @@
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
@@ -32,7 +33,7 @@ import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
-import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, type Fonte } from "../som"
+import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -118,6 +119,13 @@ interface Props {
   retomar?: boolean
   // "ir agora" do painel MISSÕES: corta pra perto do lugar (chave muda = vai)
   teleporte?: { chave: number; area: FreqId; lugar?: LugarId; frac?: number } | null
+  // A ABERTURA (05/10, LU2CA): o jogo começa no deserto, uns metros antes da
+  // casa da D-Bee, com o combustível na reserva. Ele acaba em frente à casa;
+  // a pessoa desce e anda até a porta (onAbertura = chegou na porta)
+  abertura?: boolean
+  onAbertura?: () => void
+  // mudou de via (o id: "circuito:linha", "deserto"…)
+  onArea?: (id: string) => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -191,7 +199,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -264,7 +272,30 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [alvoChave])
 
   const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false })
-  const [jogo0] = useState(() => retomarJogo(M, retomada) ?? novoJogo(M, destino, save.estacao))
+  const [jogo0] = useState(() => retomarJogo(M, retomada) ?? novoJogo(M, destino, save.estacao, abertura))
+  // a abertura: onde a casa fica e em que pé a pessoa está
+  const casaPose = poses["casa-dbee"]
+  const aberturaRef = useRef<Abertura>({ ativa: abertura, via: casaPose.via, u: LUGARES["casa-dbee"].u, porta: new THREE.Vector3(casaPose.porta.x, casaPose.vaga.y, casaPose.porta.z), fase: "dirige", pe: 0, semGas: false, t0: 0, de: null, onPorta: () => {} })
+  const onAberturaRef = useRef(onAbertura)
+  useEffect(() => { onAberturaRef.current = onAbertura }, [onAbertura])
+  const onAreaRef = useRef(onArea)
+  useEffect(() => { onAreaRef.current = onArea }, [onArea])
+  useEffect(() => {
+    aberturaRef.current.ativa = abertura
+    aberturaRef.current.onPorta = () => onAberturaRef.current?.()
+  }, [abertura])
+  // o que a tela mostra da abertura (o tanque, a dica de andar)
+  const [abFase, setAbFase] = useState<{ fase: Abertura["fase"]; semGas: boolean }>({ fase: "dirige", semGas: false })
+  useEffect(() => {
+    if (!abertura) return
+    const iv = setInterval(() => {
+      const a = aberturaRef.current
+      setAbFase((x) => (x.fase === a.fase && x.semGas === a.semGas ? x : { fase: a.fase, semGas: a.semGas }))
+    }, 200)
+    // silêncio absoluto: só o vento (e o motor)
+    const w = vento()
+    return () => { clearInterval(iv); w?.parar() }
+  }, [abertura])
   const jogo = useRef<Jogo>(jogo0)
   // ao sair da tela, guarda onde a Kombi estava
   useEffect(() => () => {
@@ -617,6 +648,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       via: (i) => {
         const v = M.vias[i]
         setViaAtual(i)
+        onAreaRef.current?.(v.id)
         if (v.tipo !== "circuito") return
         setBairro({ id: v.t, t: Date.now() })
         flashEl.current?.style.setProperty("--cor", freqDe(v.t).cor)
@@ -840,7 +872,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const telChave = teleporte?.chave ?? 0
   useEffect(() => {
     if (!teleporte) return
-    const vi = M.circuito[teleporte.area]
+    const viaLugar = teleporte.lugar ? LUGARES[teleporte.lugar].via : undefined
+    const vi = viaLugar ? M.vias.findIndex((v) => v.id === viaLugar) : M.circuito[teleporte.area]
     const C = M.vias[vi]
     if (!C) return
     let u: number
@@ -1005,10 +1038,18 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={(alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={(alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} />
         </Canvas>
       )}
 
+      {abertura && abFase.fase === "dirige" && (
+        <div className={`l-tanque ${abFase.semGas ? "is-vazio" : ""}`} aria-label={abFase.semGas ? "sem combustível" : "combustível na reserva"}>
+          <small>combustível</small>
+          <div className="l-tanque-barra"><i /></div>
+          <b>R</b>
+        </div>
+      )}
+      {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
       <div className="l-hud-topo">
@@ -1132,6 +1173,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <span className="l-player-aparelho"><i className={`l-player-vinil ${discoAgora.tocando ? "is-gira" : ""}`} />TOCA-DISCOS</span>
               <b>{discoInfo ? discoInfo.titulo : "sem disco"}</b>
               <small>{discoAgora.tocando ? "analógico · nada interrompe" : "o disco acabou · escolhe outro"}</small>
+              <span className="l-player-ctl">
+                <button type="button" onClick={() => disco.proxima()} disabled={!discoAgora.tocando} aria-label="próxima faixa">⏭ próxima</button>
+                <button type="button" onClick={() => { if (!dentro) trocarCamera(); setEstante(true) }}>trocar disco</button>
+              </span>
             </>
           ) : aparelho === "radio" ? (
             <>
@@ -1276,6 +1321,46 @@ function mundo() { return (MUNDO ??= montarMundo()) }
 export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
 let RETOMAR: Retomada | null = null
 
+export interface Abertura {
+  ativa: boolean
+  via: number
+  u: number
+  porta: THREE.Vector3 // a porta da casa, no chão
+  fase: "dirige" | "parou" | "ape" | "porta"
+  pe: number // 0..1 do caminho a pé
+  semGas: boolean
+  t0: number
+  de: THREE.Vector3 | null // onde desceu da Kombi
+  onPorta: () => void
+}
+
+// a pessoa a pé (a abertura): o mesmo corpo da gente das portas
+function Caminhante({ abRef }: { abRef: React.MutableRefObject<Abertura> }) {
+  const { scene } = useGLTF("/models/pessoa.glb")
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#2c2838", emissive: "#e6f0ff", emissiveIntensity: 0.12, roughness: 0.75 }), [])
+  const corpo = useMemo(() => {
+    const g = scene.clone(true)
+    g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.material = mat })
+    return g
+  }, [scene, mat])
+  const g = useRef<THREE.Group>(null)
+  const passo = useRef(0)
+  const ant = useRef(0)
+  useFrame((_, dt) => {
+    const a = abRef.current
+    if (!g.current) return
+    const vis = !!a.de && (a.fase === "ape" || a.fase === "porta")
+    g.current.visible = vis
+    if (!vis || !a.de) return
+    g.current.position.lerpVectors(a.de, a.porta, a.pe)
+    g.current.rotation.y = Math.atan2(a.porta.x - a.de.x, a.porta.z - a.de.z)
+    if (a.pe !== ant.current) passo.current += dt * 9
+    ant.current = a.pe
+    g.current.position.y += Math.abs(Math.sin(passo.current)) * 0.05
+  })
+  return <group ref={g} visible={false}><primitive object={corpo} /></group>
+}
+
 function retomarJogo(M: Mundo, r: Retomada | null): Jogo | null {
   if (!r) return null
   const i = M.vias.findIndex((v) => v.id === r.via)
@@ -1293,7 +1378,16 @@ function retomarJogo(M: Mundo, r: Retomada | null): Jogo | null {
   return j
 }
 
-function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null): Jogo {
+function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null, abertura = false): Jogo {
+  // a abertura: no deserto, uns 650 m antes da casa da D-Bee
+  if (abertura) {
+    const di = M.vias.findIndex((v) => v.id === "deserto")
+    const j = novoJogo(M, null, null)
+    j.via = di
+    j.u = LUGARES["casa-dbee"].u - 650
+    j.y = M.vias[di].py[Math.floor(j.u / PASSO)]
+    return j
+  }
   // começa sempre no centro (cidade neon, 222.0)
   const c = M.vias[M.circuito.linha]
   const u0 = c.estacoes[0].u - 150
@@ -1319,9 +1413,10 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
+  aberturaRef: React.MutableRefObject<Abertura>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -1448,12 +1543,14 @@ function Cena({
     const trilhoE = (p: Pista, i: number) => {
       const v = p as Via
       const u = U(i)
+      if (v.id === "deserto") return u > 90 && (u < 900 || u > v.L - 900) && u < v.L - 230
       if (v.tipo === "circuito") return !divide(v, i, -1)
       return !(v.lado! > 0 && u < 90) && u < v.L - 230
     }
     const trilhoD = (p: Pista, i: number) => {
       const v = p as Via
       const u = U(i)
+      if (v.id === "deserto") return u < 900 || u > v.L - 900
       if (v.tipo === "circuito") return !divide(v, i, 1) && !chegando(v, i)
       return !(v.lado! < 0 && u < 90)
     }
@@ -2005,7 +2102,7 @@ function Cena({
   // ── loop ──
   const tmp = useMemo(() => ({
     f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3(),
-    alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(),
+    alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(), q2: new THREE.Vector3(),
     qYaw: new THREE.Quaternion(), qRoll: new THREE.Quaternion(), camOlhar: new THREE.Vector3(), d: new THREE.Object3D(),
     qMarca: new THREE.Quaternion(), qDeriva: new THREE.Quaternion(), roda: new THREE.Vector3(),
     qDeitar: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2),
@@ -2103,7 +2200,10 @@ function Cena({
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
       const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
-      const gas = auto || inp.gas || (toqueTela && !inp.freio)
+      // a abertura: sem combustível o pedal não responde
+      const ab = aberturaRef.current
+      const abAqui = ab.ativa && j.via === ab.via
+      const gas = !(abAqui && (ab.semGas || ab.fase !== "dirige")) && (auto || inp.gas || (toqueTela && !inp.freio))
       if (inp.freio && !auto) {
         if (j.v > 0.8) j.v = Math.max(0, j.v - FREIO * dt)
         else j.v = Math.max(-VRE, j.v - 9 * dt)
@@ -2117,6 +2217,17 @@ function Cena({
       }
       if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
       if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
+      if (abAqui) {
+        // o combustível acaba uns 110 m antes da casa: no embalo, para em frente
+        const falta = ab.u - j.u
+        if (falta < 110 && falta > -5) ab.semGas = true
+        if (ab.semGas && ab.fase === "dirige") {
+          const vPara = Math.sqrt(2 * 2.6 * Math.max(0, falta))
+          j.v = Math.min(vPara, Math.max(j.v, Math.min(8, vPara)))
+          if (falta < 0.6) { j.v = 0; ab.fase = "parou"; ab.t0 = j.tempo }
+        }
+        if (ab.fase !== "dirige") j.v = 0
+      }
       j.v = Math.min(j.v, VTURBO * 1.08)
       if (j.turboT > 0) j.turboT -= dt
       // DRIFT DE VERDADE — sem botão, é a finta (o "pêndulo" do rali):
@@ -2608,6 +2719,19 @@ function Cena({
       }
     }
 
+    // a abertura: parou, desce; segura e anda até a porta
+    {
+      const ab = aberturaRef.current
+      if (ab.ativa && ab.fase === "parou" && j.tempo - ab.t0 > 0.9) {
+        ab.de = car.position.clone().addScaledVector(tmp.r, 2.4)
+        ab.de.y = ab.porta.y
+        ab.fase = "ape"
+      }
+      if (ab.ativa && ab.fase === "ape" && ab.de && (inp.gas || toqueTela)) {
+        ab.pe = Math.min(1, ab.pe + (1.7 / Math.max(1, ab.de.distanceTo(ab.porta))) * dt)
+        if (ab.pe >= 1) { ab.fase = "porta"; ab.onPorta() }
+      }
+    }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const atras = 8.4 + pct * 1.8
     tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
@@ -2646,6 +2770,19 @@ function Cena({
     camera.position.x += (Math.random() - 0.5) * amp
     camera.position.y += (Math.random() - 0.5) * amp
     camera.lookAt(tmp.camOlhar)
+    {
+      // a pé: a câmera atrás de quem anda, a porta na frente
+      const ab = aberturaRef.current
+      if (ab.ativa && ab.de && (ab.fase === "ape" || ab.fase === "porta")) {
+        const p = tmp.p.lerpVectors(ab.de, ab.porta, ab.pe)
+        const dirP = tmp.q2.subVectors(ab.porta, ab.de).setY(0).normalize()
+        tmp.alvo.copy(p).addScaledVector(dirP, -4.6).setY(p.y + 2.1)
+        camera.position.lerp(tmp.alvo, 1 - Math.exp(-dt * 3))
+        tmp.olhar.copy(p).addScaledVector(dirP, 6).setY(p.y + 1.3)
+        camera.up.set(0, 1, 0)
+        camera.lookAt(tmp.olhar)
+      }
+    }
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
     const fovAlvo = cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
@@ -2674,6 +2811,12 @@ function Cena({
     j.impacto = Math.max(0, j.impacto - dt * 0.8)
     const fog = scene.fog as THREE.Fog | null
     if (fog) fog.color.lerp(alvoNevoa, kk)
+    // no deserto a névoa vai longe: a cidade inteira lá no horizonte
+    if (fog) {
+      const longe = V.id === "deserto"
+      fog.far += ((longe ? 5200 : 950) - fog.far) * Math.min(1, dt * 0.6)
+      fog.near += ((longe ? 300 : 70) - fog.near) * Math.min(1, dt * 0.6)
+    }
     ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
     ceuMat.uniforms.nevoaC.value.lerp(alvoNevoa, kk)
     ceuMat.uniforms.tinta.value.lerp(alvoCeu, kk)
@@ -2788,6 +2931,12 @@ function Cena({
         <sphereGeometry args={[2800, 32, 16]} />
       </mesh>
 
+      {/* o deserto: chão de areia em volta da cidade, pelo norte (mundo.ts) */}
+      <mesh rotation-x={-Math.PI / 2} position={[centroSub.x, -0.25, centroSub.z]}>
+        <ringGeometry args={[1350, 9000, 120, 1, -0.12, Math.PI + 0.24]} />
+        <meshStandardMaterial color="#2e231e" roughness={1} />
+      </mesh>
+      <Caminhante abRef={aberturaRef} />
       {/* água */}
       <mesh rotation-x={-Math.PI / 2} position={[0, -12, 0]}>
         <planeGeometry args={[9000, 9000]} />

@@ -31,9 +31,9 @@ export interface PoseLugar {
 
 // onde um lugar fica no mundo (o mesmo cálculo pra fachada, vaga e câmera)
 export function poseLugar(M: Mundo, l: Lugar): PoseLugar {
-  const via = M.circuito[l.area]
+  const via = l.via ? M.vias.findIndex((v) => v.id === l.via) : M.circuito[l.area]
   const C = M.vias[via]
-  const i = ((Math.round(l.u / PASSO) % C.n) + C.n) % C.n
+  const i = C.fechada ? ((Math.round(l.u / PASSO) % C.n) + C.n) % C.n : Math.max(0, Math.min(C.n - 1, Math.round(l.u / PASSO)))
   const chao = C.py[i]
   const rumo = Math.atan2(C.tx[i], C.tz[i])
   const centro = pontoI(C, i, l.lado * (FRENTE + FUNDO / 2), 0, new THREE.Vector3())
@@ -257,54 +257,55 @@ function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: bo
   )
 }
 
-// A SAÍDA da cidade (o lugar fora: a casa da D-Bee, ep. 3). Nada de
-// prédio: a mureta da pista abre, uma estrada de terra sai pro escuro e uma
-// placa velha avisa que a cidade acaba ali
-function Saida({ l, p, alvo }: { l: Lugar; p: PoseLugar; alvo: boolean }) {
-  const placa = useMemo(() => texTexto([{ txt: "FIM DA CIDADE NEON", tam: 110, cor: "#e6f0ff" }], 1024, 200), [])
+// A CASA DA D-BEE (05/10): sozinha no deserto, na beira da estrada. Apagada,
+// porta fechada — parece abandonada (a abertura do LU2CA)
+function CasaDeserto({ l, p, alvo }: { l: Lugar; p: PoseLugar; alvo: boolean }) {
   const vaga = useRef<THREE.MeshBasicMaterial>(null)
-  const coluna = useRef<THREE.Mesh>(null)
-  useFrame((s) => {
-    if (vaga.current) vaga.current.opacity = alvo ? 0.32 + Math.sin(s.clock.elapsedTime * 3) * 0.14 : 0
-    if (coluna.current) coluna.current.visible = alvo
-  })
+  useFrame((s) => { if (vaga.current) vaga.current.opacity = alvo ? 0.32 + Math.sin(s.clock.elapsedTime * 3) * 0.14 : 0 })
   return (
     <group>
-      <group position={[p.centro.x, p.chao, p.centro.z]} rotation-y={p.rumo + (l.lado > 0 ? Math.PI / 2 : -Math.PI / 2)}>
-        {/* a estrada de terra, indo embora pro escuro */}
-        <mesh rotation-x={-Math.PI / 2} position={[0, 0.04, -30]}>
-          <planeGeometry args={[6.5, 80]} />
-          <meshStandardMaterial color="#2a2522" roughness={1} />
-        </mesh>
-        {/* a placa, torta */}
-        <group position={[4.6, 0, 4]} rotation-z={0.05}>
-          {[-1.7, 1.7].map((x) => (
-            <mesh key={x} position={[x, 1.6, 0]}>
-              <cylinderGeometry args={[0.06, 0.07, 3.2, 6]} />
-              <meshStandardMaterial color="#3a3640" />
+      {/* de frente pra pista: a varanda olha pra estrada */}
+      <group position={[p.centro.x, p.chao, p.centro.z]} rotation-y={p.rumo + (l.lado > 0 ? Math.PI : 0)}>
+        <group>
+          <mesh position={[0, 2.4, 0]}>
+            <boxGeometry args={[9, 4.8, 8]} />
+            <meshStandardMaterial color="#3a3138" roughness={0.9} />
+          </mesh>
+          {[-1, 1].map((k) => (
+            <mesh key={k} position={[0, 5.6, k * 2.1]} rotation-x={k * 0.62}>
+              <boxGeometry args={[9.6, 0.18, 5.2]} />
+              <meshStandardMaterial color="#5a3a30" roughness={0.95} />
             </mesh>
           ))}
-          <mesh position={[0, 3.1, 0.05]}>
-            <planeGeometry args={[4.4, 0.9]} />
-            <meshStandardMaterial color="#14131a" />
+          <mesh position={[-5.6, 0.15, 0]}>
+            <boxGeometry args={[2.4, 0.3, 7.6]} />
+            <meshStandardMaterial color="#4a3a2c" roughness={1} />
           </mesh>
-          <mesh position={[0, 3.1, 0.07]}>
-            <planeGeometry args={[4.2, 0.8]} />
-            <meshBasicMaterial map={placa} transparent toneMapped={false} depthWrite={false} />
+          {[-3.4, 3.4].map((z) => (
+            <mesh key={z} position={[-6.6, 1.55, z]}>
+              <boxGeometry args={[0.16, 2.8, 0.16]} />
+              <meshStandardMaterial color="#2a2226" />
+            </mesh>
+          ))}
+          <mesh position={[-5.6, 3.05, 0]} rotation-z={-0.12}>
+            <boxGeometry args={[2.8, 0.12, 8]} />
+            <meshStandardMaterial color="#4a3028" roughness={1} />
+          </mesh>
+          {/* janelas apagadas e a porta fechada */}
+          {[2.4, -2.6].map((z) => (
+            <mesh key={z} position={[-4.52, 2.4, z]} rotation-y={-Math.PI / 2}>
+              <planeGeometry args={[1.5, 1.2]} />
+              <meshStandardMaterial color="#141012" roughness={0.4} />
+            </mesh>
+          ))}
+          <mesh position={[-4.52, 1.15, 0]} rotation-y={-Math.PI / 2}>
+            <planeGeometry args={[1.1, 2.3]} />
+            <meshStandardMaterial color="#2a1e18" roughness={1} />
           </mesh>
         </group>
-        {/* bem longe, a luz acesa (a mesma que a Notti viu) */}
-        <mesh position={[1.5, 3, -160]}>
-          <sphereGeometry args={[0.7, 8, 6]} />
-          <meshBasicMaterial color="#ffcf8a" toneMapped={false} />
-        </mesh>
       </group>
       <Vaga p={p} cor={l.cor} materialRef={vaga} />
       {alvo && <Pin p={p} cor={l.cor} />}
-      <mesh ref={coluna} position={[p.vaga.x, p.vaga.y + 22, p.vaga.z]} visible={false}>
-        <cylinderGeometry args={[0.9, 0.9, 44, 12, 1, true]} />
-        <meshBasicMaterial color={l.cor} transparent opacity={0.22} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
-      </mesh>
     </group>
   )
 }
@@ -353,8 +354,8 @@ export function Lugares({ M, alvo, emCena, revelado = null }: { M: Mundo; alvo: 
     <group>
       {poses.map(({ l, p }) => l.segredo
         ? <Beco key={l.id} l={l} p={p} revelado={revelado === l.id} emCena={emCena === l.id} />
-        : l.fora
-        ? <Saida key={l.id} l={l} p={p} alvo={alvo === l.id} />
+        : l.id === "casa-dbee"
+        ? <CasaDeserto key={l.id} l={l} p={p} alvo={alvo === l.id} />
         : <Fachada key={l.id} l={l} p={p} alvo={alvo === l.id} emCena={emCena === l.id} />)}
     </group>
   )

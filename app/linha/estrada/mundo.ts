@@ -132,11 +132,18 @@ function saidasDe(id: FreqId): { para: FreqId; split: 0 | 1; lado: 1 | -1 }[] {
 // as ruas que DESCEM da cidade neon pro subúrbio: pela esquerda (o lado de
 // dentro do anel), nos vãos entre estações, longe das rampas de pulo
 export const DESCIDAS = [1316, 1968, 2618]
+// O DESERTO (05/10, LU2CA): um bairro do mesmo mapa, fora da cidade. Uma
+// estrada sai da cidade neon pela direita (lado de fora do anel), vai pro
+// norte, dá uma volta enorme pelo deserto (o deserto "infinito") e volta
+// pra cidade pela entrada do outro lado. A casa da D-Bee fica nela; o jogo
+// começa lá. Mesmo céu, mesmo horizonte: a cidade inteira lá longe
+export const DESERTO = { sai: 1100, chega: 2900, raio: 2100 }
 // onde a pista do circuito abre faixa: as bifurcações do fim da volta e,
 // na cidade, as descidas
 function aberturas(t: Territorio, L: number): { u: number; lado: 1 | -1 }[] {
   const out = saidasDe(t.id).map((s) => ({ u: L - SPLITS[s.split], lado: s.lado }))
   if (t.id === "linha") for (const u of DESCIDAS) out.push({ u, lado: -1 })
+  if (t.id === "linha") out.push({ u: DESERTO.sai, lado: 1 })
   return out
 }
 export const SPLITS = [60, 360] // distância da bifurcação até o fim da volta
@@ -280,6 +287,41 @@ function montarDescida(A: Via, B: Via, u: number): { v: Via; e: number } {
   return { v, e }
 }
 
+// a estrada do deserto: sai da cidade, vai longe e volta (via aberta)
+function montarDeserto(A: Via): Via {
+  const u = DESERTO.sai
+  const e = DESERTO.chega
+  // o centro da cidade neon (o meio do circuito)
+  let cx = 0, cz = 0
+  for (let i = 0; i < A.n; i++) { cx += A.px[i]; cz += A.pz[i] }
+  cx /= A.n
+  cz /= A.n
+  const ini = [em(A, u, CK), em(A, u + 60, CK + 6, -0.6), em(A, u + 150, CK + 40, -1.6), em(A, u + 260, CK + 110, -2)]
+  // a volta pelo deserto: um arco grande em volta da cidade, pelo norte,
+  // com o chão ondulando de leve (dunas)
+  const arco: THREE.Vector3[] = []
+  const N = 18
+  for (let k = 0; k <= N; k++) {
+    const th = (-8 - (k * 164) / N) * (Math.PI / 180)
+    const R = DESERTO.raio * (1 + 0.06 * Math.sin(k * 1.7))
+    arco.push(V(cx + Math.cos(th) * R, 1.5 + 2.5 * Math.sin(k * 0.9), cz + Math.sin(th) * R))
+  }
+  const fim = [em(A, e - 520, 300, 0), em(A, e - 420, 120), em(A, e - 280, 48), em(A, e - 170, 21), em(A, e - 90, 8), em(A, e - 30, 1.2), em(A, e, 0)]
+  const p = amostrar([...ini, ...arco, ...fim], false)
+  const L = p.L
+  for (let i = 0; i < p.n; i++) {
+    const w = FAIXA / 2 + (MEIA - FAIXA / 2) * suave((i * PASSO) / 110)
+    p.esq[i] = -w
+    p.dir[i] = w
+  }
+  for (let i = 0; i < p.n; i++) p.py[i] += 0.04 * suave((i * PASSO - (L - 90)) / 60)
+  derivar(p, 14, (i) => Math.min(suave((i * PASSO - 130) / 80), suave((L - i * PASSO - 320) / 80)))
+  const v = via(p, "deserto", "saida", "linha", "linha")
+  v.lado = 1
+  v.chega = { u: e, lado: 1 }
+  return v
+}
+
 // duas pistas não podem se encostar: onde as projeções se sobrepõem, a
 // diferença de altura tem que ser de pelo menos FOLGA. Exceções: a saída
 // colada no circuito de onde sai (início) e no de onde chega (fim).
@@ -348,6 +390,8 @@ export function montarMundo(): Mundo {
     const c = circs[circuito[t.id]]
     c.chegadas = chegam(t.id).map((_, k) => ({ u: CHEGADA0 + k * CHEGADA_PASSO, lado: 1 as const }))
   }
+  // a volta do deserto chega na cidade (depois das chegadas de sempre)
+  circs[circuito.linha].chegadas.push({ u: DESERTO.chega, lado: 1 })
   // monta as saídas; onde duas se encostam, a de maior índice sobe
   const extra = new Map<string, number>()
   let vias: Via[] = []
@@ -365,6 +409,11 @@ export function montarMundo(): Mundo {
         B.chegadas.push({ u: e, lado: 1 })
         vias.push(v)
       }
+    }
+    {
+      const A = circs[circuito.linha]
+      A.faixas.push({ para: "linha", via: vias.length, u: DESERTO.sai, lado: 1 })
+      vias.push(montarDeserto(A))
     }
     for (const t of TERRITORIOS) {
       const A = circs[circuito[t.id]]
