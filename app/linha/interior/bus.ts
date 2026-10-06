@@ -47,7 +47,7 @@ export function useEstadoCena() {
 export type Sinal =
   | { t: "fim-gesto" } // o gesto em 3D acabou: a cena segue
   | { t: "fala"; de?: string; texto: string; tipo?: "fala" | "acao" } // uma fala solta na legenda
-  | { t: "bebeu"; n: number } // o bar: quantos copos já foram (aparece o "negar")
+  | { t: "bebeu"; n: number; i?: number } // o bar: quantos copos já foram (aparece o "negar")
 
 const sinais = new Set<(s: Sinal) => void>()
 export function ouvirSala(f: (s: Sinal) => void) { sinais.add(f); return () => { sinais.delete(f) } }

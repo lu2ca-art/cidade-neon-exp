@@ -1749,3 +1749,9 @@
 .l-posto-op:disabled { opacity: 0.4; }
 .l-posto small { font: 11px var(--mono); color: #b9a58e; text-align: center; }
 .l-posto-sair { padding: 8px; background: none !important; border: 0 !important; color: #e8efff !important; font: 700 12px var(--mono) !important; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* o bar: a ESCOLHA em amarelo (quem repara, toca), sim/não, e o sair discreto */
+.l-dica3d .l-escolha { color: #ffc857; font-weight: 800; pointer-events: auto; cursor: pointer; }
+.l-escolha-sn { display: flex; gap: 10px; pointer-events: auto; animation: l-sobe 0.25s both; }
+.l-escolha-sn button { padding: 8px 18px; border-radius: 999px; background: rgba(5, 5, 14, 0.7) !important; border: 1px solid #ffc857 !important; color: #ffc857 !important; font: 700 12px var(--mono) !important; letter-spacing: 0.12em; text-transform: uppercase; }
+.l-copos-sair { padding: 4px 10px; background: none !important; border: 0 !important; color: rgba(255, 255, 255, 0.45) !important; font: 600 10px var(--mono) !important; letter-spacing: 0.14em; text-transform: uppercase; }
