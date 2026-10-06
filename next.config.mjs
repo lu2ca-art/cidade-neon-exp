@@ -1,3 +1,22 @@
+// o que o site pode carregar (ver headers): o próprio domínio, os Blobs da
+// Vercel (áudio dos discos, criações), o PostHog (via /ingest), vídeos do
+// YouTube das páginas antigas e imagens do Wikimedia (museu)
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://commons.wikimedia.org https://upload.wikimedia.org https://i.ytimg.com",
+  "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
+  "connect-src 'self' https://*.public.blob.vercel-storage.com https://eu.i.posthog.com https://eu-assets.i.posthog.com",
+  "font-src 'self' data:",
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+  "worker-src 'self' blob:",
+  "frame-ancestors 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ")
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -54,6 +73,10 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)" },
           { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+          // A REGRA DE CONTEÚDO (CSP, 06/10): o que o site pode carregar. Em
+          // OBSERVAÇÃO primeiro (Report-Only: só avisa no console, não
+          // bloqueia); depois de conferir que nada quebra, vira a de verdade
+          { key: "Content-Security-Policy-Report-Only", value: CSP },
         ],
       },
       {

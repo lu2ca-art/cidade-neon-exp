@@ -19,6 +19,9 @@ import { randomUUID, timingSafeEqual } from "node:crypto"
 
 const PREFIXO = "batida/criacoes/"
 const DESTAQUES = "batida/destaques.json"
+// os destaques prontos (as criações inteiras), refeitos a cada PATCH: o GET
+// público lê um arquivo só, em vez de baixar todas as criações a cada visita
+const VITRINE = "batida/vitrine.json"
 const MAX_BYTES = 3 * 1024 * 1024
 
 interface Criacao {
@@ -136,8 +139,14 @@ export async function GET(req: NextRequest) {
     const todas = (await listarCriacoes()).sort((a, b) => b.criadaEm - a.criadaEm)
     return NextResponse.json({ criacoes: todas, destaques, armazenamento: temBlob() ? "blob" : "local" })
   }
-  const todas = await listarCriacoes()
-  return NextResponse.json({ criacoes: todas.filter((c) => destaques.includes(c.id)) })
+  let vitrine = await ler<Criacao[]>(VITRINE)
+  if (!vitrine) {
+    // primeira vez (ou arquivo perdido): monta e guarda
+    vitrine = (await listarCriacoes()).filter((c) => destaques.includes(c.id))
+    await gravar(VITRINE, vitrine)
+  }
+  // a borda da Vercel guarda a resposta por 1 minuto
+  return NextResponse.json({ criacoes: vitrine }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } })
 }
 
 export async function PATCH(req: NextRequest) {
@@ -148,5 +157,6 @@ export async function PATCH(req: NextRequest) {
   if (destaque) atual.add(id)
   else atual.delete(id)
   await gravar(DESTAQUES, [...atual])
+  await gravar(VITRINE, (await listarCriacoes()).filter((c) => atual.has(c.id)))
   return NextResponse.json({ destaques: [...atual] })
 }
