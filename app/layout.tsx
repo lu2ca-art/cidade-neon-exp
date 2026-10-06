@@ -6,6 +6,7 @@ import { GameFunnelProvider } from './providers/GameFunnelProvider'
 import { AudioPlayerProvider } from './providers/AudioPlayerProvider'
 import { PostHogProvider } from '@/components/PostHogProvider'
 import { ConsentBanner } from '@/components/ConsentBanner'
+import { Sentry } from '@/components/Sentry'
 import './globals.css'
 
 const geistSans = Geist({ 
@@ -55,6 +56,7 @@ export default function RootLayout({
           <ConsentBanner />
         </PostHogProvider>
         <Analytics />
+        <Sentry />
       </body>
     </html>
   )
