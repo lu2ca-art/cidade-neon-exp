@@ -1685,3 +1685,5 @@
 .l-missoes-check li i { flex: none; width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid #3d7bff; display: grid; place-items: center; font: 800 11px var(--mono); font-style: normal; color: #07060a; }
 .l-missoes-check li.is-ok { color: rgba(232, 239, 255, 0.5); text-decoration: line-through; }
 .l-missoes-check li.is-ok i { background: #5dffa0; border-color: #5dffa0; }
+/* com a placa da bifurcação aberta, o aviso desce pra não cobrir */
+.l-raiz:has(.l-ilha.is-garfo) .l-aviso { top: calc(140px + env(safe-area-inset-top)); }

@@ -824,7 +824,7 @@ export default function LinhaPage() {
         {/* AS MISSÕES NUMA CAIXA SÓ (LU2CA, 05/10): no canto, o que fazer agora
             e a bolinha com quantas estão abertas; tocando, a atual (ou a
             checklist do tutorial) e as disponíveis */}
-        {tela.t === "corrida" && !emSala && !cinema && !painelMissoes && !aoVivo && resumoMissao && (
+        {tela.t === "corrida" && !emSala && !cinema && !painelMissoes && resumoMissao && (
           <button type="button" className="l-caixa-missao" style={{ ["--cor" as string]: resumoMissao.cor }} onClick={() => setPainelMissoes(true)}>
             <small>{resumoMissao.rotulo}</small>
             <b>{resumoMissao.texto}</b>
