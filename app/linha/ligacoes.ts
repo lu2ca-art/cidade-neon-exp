@@ -105,13 +105,14 @@ export const LIGACOES: Record<string, Ligacao> = {
     ],
   },
 
-  // ── a HISTÓRIA (05/10): a D-Bee conta tudo no caminho, na estrada do
-  // deserto até a cidade (o tutorial, tutorial.ts). O texto é do LU2CA, em
-  // fala direta
-  "dbee-historia": {
-    id: "dbee-historia",
+  // ── a HISTÓRIA (05–06/10): a D-Bee conta em PARTES, conforme a pessoa anda
+  // pela cidade e fecha missões (o suspense segura quem tá lendo). O texto é
+  // do LU2CA, em fala direta; cada parte termina num gancho
+  // parte 1: na estrada do deserto, saindo da casa dela
+  "dbee-historia-1": {
+    id: "dbee-historia-1",
     quem: "D-Bee",
-    recado: "Conto com você!",
+    recado: "Depois eu te conto o resto.",
     passos: [
       { t: "fala", fala: "Há alguns anos, a cidade chegou ao seu ápice. Luzes neon por toda parte, o dia e a noite se confundiam." },
       { t: "fala", fala: "Todo o tempo, tudo aceso. Um mundo dos sonhos, sem escuridão." },
@@ -119,16 +120,40 @@ export const LIGACOES: Record<string, Ligacao> = {
       { t: "fala", fala: "Não havia mais nada. Só as luzes." },
       { t: "fala", fala: "Cada vez menos espaço pra sermos vistos. Tudo que era real era perseguido e apagado." },
       { t: "fala", fala: "E aí, então, veio o Núcleo." },
+    ],
+  },
+  // parte 2: depois da primeira missão
+  "dbee-historia-2": {
+    id: "dbee-historia-2",
+    quem: "D-Bee",
+    recado: "Depois eu te conto o resto.",
+    passos: [
       { t: "fala", fala: "Eles disseram que iam tomar conta da gente, que iam devolver a vida pra nossa cidade. Iam trazer a visão que a gente não tinha há tanto tempo." },
       { t: "fala", fala: "Nós acreditamos. Fomos seus soldados." },
       { t: "fala", fala: "Lutamos pra que não fôssemos mais fantoches, controlados pela máquina. Batalhamos muito em nome dessa organização, que nos prometia o nosso mundo de volta." },
       { t: "fala", fala: "Até que um dia ela se voltou contra nós. E agora controla não só as cidades, mas também aqueles que vivem nelas." },
       { t: "fala", fala: "Eles tiraram a máscara e assumiram o comando. E nos chutaram pra fora da cidade." },
+    ],
+  },
+  // parte 3: depois da segunda missão
+  "dbee-historia-3": {
+    id: "dbee-historia-3",
+    quem: "D-Bee",
+    recado: "Depois eu te conto o resto.",
+    passos: [
       { t: "fala", fala: "Foi aí que nasceu a 222. Nos arredores da Cidade Neon, onde vivem até hoje todos aqueles que queriam sua vida de volta. E hoje vivem escondidos nas sombras." },
       { t: "fala", fala: "O Núcleo não chega lá. Mas também mantém a gente isolado, como fugitivos. Nada chega até o subúrbio." },
       { t: "fala", fala: "A 222 é um movimento de resistência e de resgate do que foi roubado da gente e levado pra Cidade Neon." },
       { t: "fala", fala: "Arte, música, natureza, vida real. Transformados em mera decoração pros humanos que se tornaram um com a máquina. Se alimentando daquilo que não são mais capazes de produzir." },
       { t: "fala", fala: "A 222 precisa resgatar de volta o que foi roubado. E recuperar aqueles velhos amigos que se perderam entre as luzes e estão presos na cidade." },
+    ],
+  },
+  // parte 4: depois da terceira missão
+  "dbee-historia-4": {
+    id: "dbee-historia-4",
+    quem: "D-Bee",
+    recado: "Conto com você!",
+    passos: [
       { t: "fala", fala: "Por isso eu preciso de você." },
       { t: "fala", fala: "Seu carro não pode ser rastreado pelo Núcleo. Eles não sabem quem você é. Mas logo vão saber." },
       { t: "fala", fala: "Espero que a gente consiga resgatar o que é nosso a tempo de fugir de lá sem ser pegos." },
