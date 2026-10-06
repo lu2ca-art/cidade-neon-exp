@@ -31,7 +31,7 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { abafar, audioCtx, disco, fonteSom, ligarChuva, mudo, player } from "./som"
+import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
 import { Loja } from "./loja"
 import { ACERVO, PRECO_DISCO } from "./discos"
@@ -176,6 +176,14 @@ export default function LinhaPage() {
       player.retomar()
     }
   }, [appComSom])
+
+  // dinheiro caiu na conta: o som da moedinha
+  const neonAntes = useRef<number | null>(null)
+  useEffect(() => {
+    const n = save.neon ?? 0
+    if (pronto && neonAntes.current !== null && n > neonAntes.current) moeda()
+    if (pronto) neonAntes.current = n
+  }, [save.neon, pronto])
 
   // a música abafada (LU2CA): dentro de um lugar (a missão) e com o telefone
   // tocando, o rádio e o disco seguem mais baixos e sem agudo

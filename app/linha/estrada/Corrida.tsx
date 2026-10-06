@@ -131,6 +131,8 @@ interface Props {
   // quem vai de carona na Kombi fora das missões de carona (o tutorial: o
   // Mubarak indo pra casa do Drewboy)
   levando?: EstacaoId | null
+  // o tanque (0–1): o ponteiro do combustível no painel
+  combustivel?: number
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -193,6 +195,12 @@ type Evs = {
 type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean }
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
+// as marcas do velocímetro (0–140 km/h, 270°)
+const DIAL = Array.from({ length: 15 }, (_, k) => {
+  const a = ((-135 + k * (270 / 14)) * Math.PI) / 180
+  const sx = Math.sin(a), cy = -Math.cos(a)
+  return { k, x1: 50 + sx * 44, y1: 50 + cy * 44, x2: 50 + sx * (k % 2 ? 40 : 37), y2: 50 + cy * (k % 2 ? 40 : 37), tx: 50 + sx * 29, ty: 50 + cy * 29 }
+})
 const toqueTela = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
 
 const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
@@ -205,7 +213,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, combustivel = 1 }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -290,8 +298,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     aberturaRef.current.ativa = abertura
     aberturaRef.current.onPorta = () => onAberturaRef.current?.()
   }, [abertura])
+  // o ponteiro do combustível: na abertura, a reserva até secar
+  // (combAgora é calculado depois de abFase)
   // o que a tela mostra da abertura (o tanque, a dica de andar)
   const [abFase, setAbFase] = useState<{ fase: Abertura["fase"]; semGas: boolean }>({ fase: "dirige", semGas: false })
+  const combAgora = abertura ? (abFase.semGas ? 0 : 0.06) : combustivel
   useEffect(() => {
     if (!abertura) return
     const iv = setInterval(() => {
@@ -319,6 +330,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const hudGarfoM = useRef<HTMLElement>(null)
   const hudGarfoT = useRef<HTMLSpanElement>(null)
   const hudParado = useRef<HTMLDivElement>(null)
+  const hudAgulha = useRef<HTMLElement>(null)
+  const hudOdo = useRef<HTMLElement>(null)
+  const odo = useRef({ m: 0, t: 0 })
   const garfoEls = useRef<(HTMLDivElement | null)[]>([])
   const garfoChave = useRef("")
   const [garfo, setGarfo] = useState<Garfo | null>(null)
@@ -744,7 +758,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onVolta?.(t)
       },
       hud: (j) => {
-        if (hudVel.current) hudVel.current.textContent = String(Math.round(Math.abs(j.v) * 3.6))
+        const kmh = Math.abs(j.v) * 3.6
+        if (hudVel.current) hudVel.current.textContent = String(Math.round(kmh))
+        if (hudAgulha.current) hudAgulha.current.style.transform = `rotate(${-135 + Math.min(1, kmh / 140) * 270}deg)`
+        // o odômetro: quanto a Kombi andou nesta viagem
+        const agora = performance.now()
+        if (odo.current.t) odo.current.m += Math.abs(j.v) * Math.min(0.2, (agora - odo.current.t) / 1000)
+        odo.current.t = agora
+        if (hudOdo.current) hudOdo.current.textContent = (odo.current.m / 1000).toFixed(1).padStart(6, "0")
         // computador: parado sem acelerar → mostra como anda
         hudParado.current?.classList.toggle("is-on", !toqueTela && !dentroRef.current && Math.abs(j.v) < 0.5 && !j.chegando && !input.current.gas && j.tempo > 1.5)
         if (hudMarcha.current) {
@@ -1051,13 +1072,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </Canvas>
       )}
 
-      {abertura && abFase.fase === "dirige" && (
-        <div className={`l-tanque ${abFase.semGas ? "is-vazio" : ""}`} aria-label={abFase.semGas ? "sem combustível" : "combustível na reserva"}>
-          <small>combustível</small>
-          <div className="l-tanque-barra"><i /></div>
-          <b>R</b>
-        </div>
-      )}
       {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
@@ -1175,11 +1189,22 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         )
       })()}
 
+      {/* O PAINEL DA KOMBI (06/10, LU2CA): velocímetro com odômetro, o
+          rádio/toca-discos e, do lado, combustível e turbo — juntos,
+          como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
+          de NEON fica só no celular */}
+      <div className="l-painel-kombi" onPointerDown={(e) => e.stopPropagation()}>
       <div className="l-hud-vel">
         {tag && <em key={tag.id} className="l-hud-tag" style={{ color: tag.cor }}>{tag.txt}</em>}
+        <svg className="l-kombi-dial" viewBox="0 0 100 100" aria-hidden="true">
+          {DIAL.map((t) => <line key={t.k} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} stroke={t.k % 2 ? "#6e675c" : "#e8e0cf"} strokeWidth={t.k % 2 ? 1 : 1.8} />)}
+          {DIAL.filter((t) => t.k % 2 === 0).map((t) => <text key={`n${t.k}`} x={t.tx} y={t.ty} fill="#e8e0cf" fontSize="7.5" fontFamily="ui-monospace, monospace" textAnchor="middle" dominantBaseline="middle">{t.k * 10}</text>)}
+        </svg>
+        <i ref={hudAgulha} className="l-kombi-agulha" />
         <span ref={hudVel}>0</span>
         <small>km/h</small>
         <span ref={hudMarcha} className="l-hud-marcha">1ª</span>
+        <em ref={hudOdo} className="l-kombi-odo">0000.0</em>
       </div>
 
       {/* o aparelho da Kombi: RÁDIO ou TOCA-DISCOS (nunca os dois) */}
@@ -1226,14 +1251,27 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       </div>
 
-      <button
-        type="button"
-        className={`l-hud-turbo ${temTurbo ? "" : "is-trancado"}`}
-        onPointerDown={(e) => { e.stopPropagation(); input.current.turbo = true }}
-      >
-        <div className="l-hud-turbo-barra"><div ref={hudTurbo} /></div>
-        <span>turbo</span>
-      </button>
+      <div className="l-kombi-dir">
+        <div className={`l-kombi-comb ${combAgora < 0.1 ? "is-reserva" : ""}`} aria-label={`combustível ${Math.round(combAgora * 100)}%`}>
+          <svg viewBox="0 0 60 34" aria-hidden="true">
+            <path d="M6 30 A24 24 0 0 1 54 30" fill="none" stroke="#3a332c" strokeWidth="3" />
+            <path d="M6 30 A24 24 0 0 1 12 14" fill="none" stroke="#ff5b3a" strokeWidth="3" />
+            <text x="4" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">E</text>
+            <text x="52" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">F</text>
+            <line x1="30" y1="30" x2="30" y2="10" stroke="#ff6a35" strokeWidth="1.6" transform={`rotate(${-80 + combAgora * 160} 30 30)`} />
+          </svg>
+          <small>R</small>
+        </div>
+        <button
+          type="button"
+          className="l-hud-turbo"
+          onPointerDown={(e) => { e.stopPropagation(); input.current.turbo = true }}
+        >
+          <div className="l-hud-turbo-barra"><div ref={hudTurbo} /></div>
+          <span>turbo</span>
+        </button>
+      </div>
+      </div>
 
       <div ref={hudParado} className="l-hud-parado"><b>↑</b> ou <b>W</b> pra acelerar · <b>↓</b> dá ré</div>
 
