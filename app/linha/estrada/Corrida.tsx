@@ -2821,7 +2821,8 @@ function Cena({
       }
       if (ab.ativa && ab.fase === "ape" && ab.de && (inp.gas || toqueTela)) {
         ab.pe = Math.min(1, ab.pe + (1.7 / Math.max(1, ab.de.distanceTo(ab.porta))) * dt)
-        if (ab.pe >= 1) { ab.fase = "porta"; ab.onPorta() }
+        // chegou na porta: bate (um respiro) e entra
+        if (ab.pe >= 1) { ab.fase = "porta"; setTimeout(() => ab.onPorta(), 700) }
       }
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
@@ -2868,9 +2869,10 @@ function Cena({
       if (ab.ativa && ab.de && (ab.fase === "ape" || ab.fase === "porta")) {
         const p = tmp.p.lerpVectors(ab.de, ab.porta, ab.pe)
         const dirP = tmp.q2.subVectors(ab.porta, ab.de).setY(0).normalize()
-        tmp.alvo.copy(p).addScaledVector(dirP, -4.6).setY(p.y + 2.1)
-        camera.position.lerp(tmp.alvo, 1 - Math.exp(-dt * 3))
-        tmp.olhar.copy(p).addScaledVector(dirP, 6).setY(p.y + 1.3)
+        // colada atrás de quem anda, o caminho inteiro (da Kombi até a porta)
+        tmp.alvo.copy(p).addScaledVector(dirP, -3.4).setY(p.y + 1.9)
+        camera.position.lerp(tmp.alvo, 1 - Math.exp(-dt * 7))
+        tmp.olhar.copy(p).addScaledVector(dirP, 5).setY(p.y + 1.2)
         camera.up.set(0, 1, 0)
         camera.lookAt(tmp.olhar)
       }

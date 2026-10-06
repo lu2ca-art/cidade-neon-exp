@@ -459,12 +459,13 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
   // (como no GTA: o celular avisa, quem decide abrir é você — a estrada
   // nunca para sozinha). Prova e campo de texto esperam o toque
   const precisaTela = modo === "painel" && (espera?.t === "input" || espera?.t === "prova" || (!!ultimo && ultimo.k === "prova" && !ultimo.feita))
-  // pede resposta (escolha, nome, prova): no painel ninguém precisa responder
-  // dirigindo — avisa e fecha; a conversa continua no N3XO
+  // pede resposta (escolha, nome, prova): dá pra responder dali mesmo,
+  // dirigindo — mas ninguém é obrigado. Sem resposta em uns 10 s, o painel
+  // fecha e a conversa espera no N3XO (LU2CA, 06/10)
   const pedeResposta = precisaTela || (modo === "painel" && espera?.t === "escolha")
   useEffect(() => {
     if (!pedeResposta || !onAdiar) return
-    const t = setTimeout(() => onAdiar(), 3500)
+    const t = setTimeout(() => onAdiar(), 10000)
     return () => clearTimeout(t)
   }, [pedeResposta, onAdiar])
   useEffect(() => {
@@ -584,8 +585,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
           ))}
           {digitando !== null && <div className="l-digitando"><span><i /><i /><i /></span></div>}
         </div>
-        {pedeResposta && onAdiar && <p className="l-painel-nota">responde no N3XO quando quiser</p>}
-        {espera?.t === "escolha" && !onAdiar && (
+        {espera?.t === "escolha" && (
           <div className="l-painel-ops">
             {espera.passo.opcoes.map((o, i) => (
               <button key={i} type="button" onClick={(e) => { e.stopPropagation(); escolher(i) }} style={{ animationDelay: `${i * 70}ms` }}>
@@ -596,7 +596,7 @@ export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela"
         )}
         {espera?.t === "tarefa" && <p className="l-painel-nota">missão aceita · segue a coluna de luz</p>}
         {espera?.t === "chegar" && <p className="l-painel-nota">te espero na estação · segue a coluna de luz</p>}
-        {precisaTela && !onAdiar && (
+        {precisaTela && (
           <button type="button" className="l-painel-abrir" onClick={(e) => { e.stopPropagation(); onPrecisaTela?.() }}>
             {espera?.t === "input" ? "responder no celular ›" : "abrir no celular ›"}
           </button>

@@ -10,11 +10,12 @@ import type { EstacaoId } from "./data"
 
 export type ItemTutorial = "tanque" | "posto" | "mubarak" | "drewboy"
 
-export interface Bloco { lig: "dbee-historia" | null; itens: ItemTutorial[] }
+export interface Bloco { titulo: string; lig: "dbee-historia" | null; itens: ItemTutorial[] }
 
 export const BLOCOS: Bloco[] = [
-  { lig: "dbee-historia", itens: ["tanque"] },
-  { lig: null, itens: ["posto", "mubarak", "drewboy"] },
+  // os primeiros passos (06/10, LU2CA); depois, a missão do Mubarak
+  { titulo: "primeiros passos", lig: "dbee-historia", itens: ["tanque", "posto"] },
+  { titulo: "missão · Mubarak", lig: null, itens: ["mubarak", "drewboy"] },
 ]
 
 // a primeira missão da cidade (o tutorial anda junto com ela)
@@ -24,7 +25,7 @@ export const PRIMEIRA: EstacaoId = "copo"
 export const NEON_POR_ITEM = 10
 
 export const ITENS: Record<ItemTutorial, { texto: string; dica: string }> = {
-  tanque: { texto: "Encha o tanque e dirija até a Cidade Neon", dica: "a estrada leva até a cidade" },
+  tanque: { texto: "Dirija até a Cidade Neon", dica: "a estrada leva até a cidade" },
   posto: { texto: "Encha o tanque no posto", dica: "o posto fica na Cidade Neon" },
   mubarak: { texto: "Resgate o Mubarak no bar", dica: "o bar fica na Cidade Neon" },
   drewboy: { texto: "Leve o Mubarak até a casa do Drewboy no subúrbio", dica: "o subúrbio fica embaixo da cidade" },
