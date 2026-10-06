@@ -1768,3 +1768,6 @@
 .l-posto-ops .l-posto-op:disabled { opacity: 0.45; }
 .l-posto-aviso { margin: 0; font: 700 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: #ff6a6a; text-align: center; animation: l-sobe 0.2s both; }
 .l-posto-ops .l-posto-sair { align-self: flex-end; padding: 6px 4px 0; background: none !important; border: 0 !important; color: #e8efff !important; font: 700 12px var(--mono) !important; letter-spacing: 0.1em; text-transform: uppercase; }
+/* celular aberto por cima da estrada (a Kombi segue sozinha): a interface
+   da estrada some, só a cena fica de fundo */
+.l-viagem.is-celular > :not(.l-viagem-cvs) { display: none !important; }
