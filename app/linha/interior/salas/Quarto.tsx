@@ -8,7 +8,7 @@
 // O gesto é olhar o quarto: tocar no espelho, no tênis, na janela. Cada
 // coisa ele comenta. Viu duas, ele levanta.
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import * as THREE from "three"
 import { sinalizar } from "../bus"
 import { Caixa, Neon, Npc, Sala, Toque, useExplorar, type Coisa } from "../comum"
@@ -38,6 +38,13 @@ export function SalaQuarto({ estado }: SalaProps) {
   const [mubarak, setMubarak] = useState(false)
   if (!mubarak && estado.falando === "Mubarak") setMubarak(true)
   const { vistas, ver } = useExplorar(olhando, COISAS, 2, sinalizar)
+  // nenhum aparelho trava aqui: se em 25 s a pessoa não achou o que tocar
+  // (tela estreita, câmera longe), a cena segue sozinha
+  useEffect(() => {
+    if (!olhando) return
+    const t = setTimeout(() => sinalizar({ t: "fim-gesto" }), 25000)
+    return () => clearTimeout(t)
+  }, [olhando])
   // sai depois da resposta (a ação "ele apaga a luz do espelho")
   const saiu = estado.pos >= 8 || (estado.pos === 7 && estado.falando === null)
   const plano = useMemo(() => {
