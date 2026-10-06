@@ -15,7 +15,7 @@ import { gota, player } from "./som"
 import { compartilhar, icsHref } from "./util"
 import { track } from "@/lib/analytics"
 import { AppTopo } from "./os"
-import { Plataformas } from "./plataformas"
+import { PreSave, Plataformas } from "./plataformas"
 
 export const ROTEIRO_IDS: EstacaoId[] = ["chuva", "copo", "dopamina", "sexta", "ontem", "nectar"]
 
@@ -258,7 +258,7 @@ export function FichaEstacao({ e, save, nivel, onFechar, onViajar, onConversa, c
           </div>
         )}
         {/* lá fora: a faixa inteira, em qualquer plataforma (desde que já saiu) */}
-        {saiu && <Plataformas faixa={e.id} lugar="linha-222-ficha" />}
+        {saiu ? <Plataformas faixa={e.id} lugar="linha-222-ficha" /> : <PreSave faixa={e.id} lugar="linha-222-ficha" />}
 
         {!m.ok && m.motivo === "data" && e.lancamento && (
           <div className="l-ficha-escuro">

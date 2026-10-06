@@ -1822,3 +1822,5 @@
 .l-ouvir-nome b { font: 700 12px var(--mono); color: var(--cor); }
 .l-ouvir-nome span { font-weight: 700; font-size: 16px; color: #fff; }
 .l-ouvir-nome small { margin-left: auto; font: 600 11px var(--mono); color: rgba(232, 239, 255, 0.6); }
+.l-presave { display: grid; place-items: center; margin-top: 10px; min-height: 44px; border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--cor, #1ed760) 70%, transparent); color: var(--cor, #1ed760); background: color-mix(in srgb, var(--cor, #1ed760) 8%, transparent); text-decoration: none; font: 700 13px var(--mono); letter-spacing: 0.04em; }
+.l-ouvir-faixa.is-breve:has(.l-presave) { opacity: 1; }

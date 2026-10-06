@@ -61,6 +61,28 @@ export const LINKS: Partial<Record<EstacaoId, Partial<Record<PlataformaId, strin
   // nectar, ojala, swav, rollercoaster: no dia de cada lançamento
 }
 
+// Pré-save (smartlink da Ditto) das faixas que ainda não saíram. No dia do
+// lançamento a faixa ganha os LINKS acima e o pré-save some sozinho (lancada).
+export const PRESAVE: Partial<Record<EstacaoId, string>> = {
+  nectar: "https://ditto.fm/nectar-lu2ca",
+}
+
+export function PreSave({ faixa, lugar }: { faixa: EstacaoId; lugar: string }) {
+  const url = PRESAVE[faixa]
+  if (!url) return null
+  return (
+    <a
+      className="l-presave"
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => track("external_link_click", { destination: "presave", track_id: faixa, place_id: lugar })}
+    >
+      pré-save ↗
+    </a>
+  )
+}
+
 export function linkDe(faixa: EstacaoId | null, p: PlataformaId) {
   const base = (faixa && LINKS[faixa]?.[p]) || ARTISTA[p]
   // utm só onde não atrapalha o app abrir (Spotify e Apple ignoram)

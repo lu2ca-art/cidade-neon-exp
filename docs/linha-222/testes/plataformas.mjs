@@ -18,6 +18,7 @@ const faixas = await page.locator(".l-ouvir-faixa").evaluateAll((els) => els.map
 console.log("OUVIR:\n " + faixas.join("\n "))
 const hrefs = await page.locator(".l-ouvir-faixa").nth(4).locator(".l-plats a").evaluateAll((as) => as.map((a) => a.textContent + " " + a.getAttribute("href")))
 console.log("Sabe Ontem?:\n " + hrefs.join("\n "))
+console.log("pré-save:", await page.locator(".l-ouvir .l-presave").evaluateAll((as) => as.map((a) => a.closest(".l-ouvir-faixa").querySelector(".l-ouvir-nome span").textContent + " → " + a.getAttribute("href"))))
 await shot("ouvir")
 // rádio com uma faixa do LU2CA tocando
 await page.getByText("início").first().dispatchEvent("click"); await page.waitForTimeout(800)
