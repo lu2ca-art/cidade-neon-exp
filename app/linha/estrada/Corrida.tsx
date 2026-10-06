@@ -124,6 +124,8 @@ interface Props {
   // a pessoa desce e anda até a porta (onAbertura = chegou na porta)
   abertura?: boolean
   onAbertura?: () => void
+  // o celular aberto (LU2CA): a Kombi segue sozinha, devagar, e não para
+  celular?: boolean
   // mudou de via (o id: "circuito:linha", "deserto"…)
   onArea?: (id: string) => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
@@ -199,7 +201,7 @@ const aberta = (f: Faixa, nLib: number) => FREQUENCIAS.findIndex((x) => x.id ===
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -541,6 +543,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [cacando, setCacando] = useState(false)
   const limitadoRef = useRef(limitado)
   useEffect(() => { limitadoRef.current = limitado }, [limitado])
+  const celularRef = useRef(celular)
+  useEffect(() => { celularRef.current = celular }, [celular])
   const pausadoRef = useRef(pausado)
   useEffect(() => {
     pausadoRef.current = pausado
@@ -1038,7 +1042,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={(alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={(alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} />
         </Canvas>
       )}
 
@@ -1421,10 +1425,11 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
+  celularRef: React.MutableRefObject<boolean>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -2158,9 +2163,11 @@ function Cena({
     } else {
       // de dentro (primeira pessoa) a Kombi vai no AUTOMÁTICO: segue a pista
       // e pega sozinha a saída que leva pra missão; você só olha em volta
-      const auto = dentroRef.current && !cine
+      // e com o celular aberto também: devagar, sem parar em lugar nenhum
+      const noCel = celularRef.current
+      const auto = (dentroRef.current || noCel) && !cine
       // no automático, chegando na vaga da missão: encosta e freia sozinha
-      const vgA = auto ? vagaRef.current : null
+      const vgA = auto && !noCel ? vagaRef.current : null
       const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity
       const encostando = !!vgA && dVaga > -VAGA / 2 && dVaga < 90
       const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : 0
@@ -2199,7 +2206,7 @@ function Cena({
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 7)
       // nos viadutos entre lugares a pista é expressa
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
-      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1)
+      const vmax = (j.turboT > 0 ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -2687,7 +2694,7 @@ function Cena({
     // freia sozinha no modo cinema (page.tsx → cena.tsx)
     {
       const vg = vagaRef.current
-      if (vg && !cine && j.via === vg.via) {
+      if (vg && !cine && !celularRef.current && j.via === vg.via) {
         const d = du(M.vias[j.via], j.u, vg.u)
         if (j.vagaAvisou !== vg.id && d > 0 && d < 260) {
           j.vagaAvisou = vg.id
