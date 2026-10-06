@@ -2205,7 +2205,9 @@ function Cena({
         float n2 = fbm(uv * 2.7 - tempo * 0.02);
         float cob = smoothstep(0.34, 0.7, n * 0.75 + n2 * 0.35) * smoothstep(0.0, 0.07, h);
         // a base da nuvem pega a luz da cidade; o alto fica escuro
-        vec3 nuvem = mix(tinta * 1.25 + sodio * 0.18, vec3(0.035, 0.035, 0.08), smoothstep(0.02, 0.55, h));
+        // de dia as nuvens clareiam (cinza-claro); de noite pegam a luz da cidade
+        float dia = 1.0 - noite;
+        vec3 nuvem = mix(tinta * 1.25 + sodio * 0.18 * noite + vec3(0.55, 0.57, 0.62) * dia, mix(vec3(0.035, 0.035, 0.08), vec3(0.6, 0.64, 0.72), dia), smoothstep(0.02, 0.55, h));
         nuvem *= 0.65 + 0.55 * n2;
         // borda prateada onde a lua bate
         nuvem += vec3(0.55, 0.62, 0.95) * pow(m, 10.0) * (1.0 - cob) * cob * 2.4;
