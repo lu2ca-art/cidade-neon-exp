@@ -4,8 +4,10 @@
 // (garagem → arena), guitarra ou baixo (o baixo lê o grave real da faixa),
 // loja com a grana dos shows, cutscene de entrada e de saída, show
 // simulado atrás do braço, multiplicador, modo NEON (star power), medidor
-// da galera e cachê no fim. As notas continuam vindo da análise do áudio
-// real (lib/audio-analysis).
+// da galera e cachê no fim. Nas faixas com stems (gd), as notas foram
+// desenhadas da guitarra/baixo reais, presas na grade de cada faixa
+// (public/gd/<id>.json), e a sua parte toca separada: errou, ela some. Nas
+// outras, as notas ainda vêm da análise da mix (lib/audio-analysis).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -26,6 +28,25 @@ type Fase = "menu" | "loja" | "carregando" | "entrada" | "tocando" | "saida" | "
 const JANELA_ACERTO = { facil: 0.17, medio: 0.13, dificil: 0.1 }
 const VISIVEL = { facil: 2.2, medio: 1.8, dificil: 1.45 }
 const TECLAS = ["d", "f", "j", "k"]
+
+// o áudio em camadas das faixas com stems: <base>/<faixa>/{sem-guitarra,guitarra,sem-baixo,baixo}.mp3
+const GD_AUDIO = process.env.NEXT_PUBLIC_GD_AUDIO ?? "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/gd/v1"
+
+// [tempo, trilha, duração, trilha do acorde?] — gerado das stems (scratchpad gd_notas.py)
+type NotaGd = [number, number, number, number?]
+interface ChartGd { bpm: number; t0: number; dur: number; guitarra: Record<Save["dificuldade"], NotaGd[]>; baixo: Record<Save["dificuldade"], NotaGd[]> }
+
+function notasDoChart(c: ChartGd, inst: Instrumento, dif: Save["dificuldade"]): Nota[] {
+  const out: Nota[] = []
+  c[inst][dif].forEach(([t, lane, dur, l2], i) => {
+    // frases de NEON: um grupo de notas a cada ~5 (como antes, por frase)
+    const estrela = Math.floor(i / 6) % 5 === 2
+    for (const l of l2 === undefined ? [lane] : [lane, l2]) {
+      out.push({ id: out.length, lane: l, t, dur, estrela, acertou: false, errou: false, segurando: false, soltou: false })
+    }
+  })
+  return out
+}
 
 interface Placar {
   pontos: number
@@ -62,8 +83,8 @@ export default function GuitarDriver() {
   const [res, setRes] = useState<Resultado | null>(null)
   const [erroCarga, setErroCarga] = useState("")
   const cvs = useRef<HTMLCanvasElement>(null)
-  const jogo = useRef<{ notas: Nota[]; placar: Placar; show: Show | null; dur: number; apertadas: boolean[]; flashes: { lane: number; ate: number; tipo: "ok" | "erro" }[]; buf: AudioBuffer | null }>({
-    notas: [], placar: novoPlacar(), show: null, dur: 22, apertadas: [false, false, false, false], flashes: [], buf: null,
+  const jogo = useRef<{ notas: Nota[]; placar: Placar; show: Show | null; dur: number; apertadas: boolean[]; flashes: { lane: number; ate: number; tipo: "ok" | "erro" }[]; buf: AudioBuffer | null; parte: AudioBuffer | null }>({
+    notas: [], placar: novoPlacar(), show: null, dur: 22, apertadas: [false, false, false, false], flashes: [], buf: null, parte: null,
   })
   const hud = useRef<HTMLDivElement>(null)
 
@@ -72,6 +93,11 @@ export default function GuitarDriver() {
     setSave(carregar())
     sendCarRadioMute(true)
     return () => { sendCarRadioMute(false); jogo.current.show?.parar() }
+  }, [])
+
+  // dev: o teste automático lê o estado do show
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __gd: typeof jogo }).__gd = jogo
   }, [])
 
   const salvar = useCallback((f: (s: Save) => Save) => setSave((s) => { const n = f(s); gravar(n); return n }), [])
@@ -88,6 +114,19 @@ export default function GuitarDriver() {
     setFase("carregando")
     track("mission_started", { mission_id: `guitar-${f.id}`, place_id: "neon-tiles" })
     try {
+      if (f.gd) {
+        const inst = save.instrumento
+        const base = `${GD_AUDIO}/${f.id}`
+        const [chart, buf, parte] = await Promise.all([
+          fetch(`/gd/${f.id}.json`).then((r) => r.json() as Promise<ChartGd>),
+          carregarBuffer(`${base}/sem-${inst}.mp3`),
+          carregarBuffer(`${base}/${inst}.mp3`),
+        ])
+        const notas = notasDoChart(chart, inst, save.dificuldade)
+        jogo.current = { ...jogo.current, notas, placar: novoPlacar(notas.length), dur: buf.duration, buf, parte, flashes: [] }
+        setFase("entrada")
+        return
+      }
       const buf = await carregarBuffer(f.audio)
       const fonte = save.instrumento === "baixo" ? await soGrave(buf) : buf
       const analisadas = analyzeAudioForTiles(fonte, f.bpm, buf.duration * 1000)
@@ -97,7 +136,7 @@ export default function GuitarDriver() {
       }))
       if (save.dificuldade === "facil") notas = notas.filter((_, i) => i % 2 === 0).map((n) => ({ ...n, dur: 0 }))
       if (save.instrumento === "baixo") notas = notas.filter((_, i) => i % 4 !== 3) // baixo respira mais
-      jogo.current = { ...jogo.current, notas, placar: novoPlacar(notas.length), dur: buf.duration, buf, flashes: [] }
+      jogo.current = { ...jogo.current, notas, placar: novoPlacar(notas.length), dur: buf.duration, buf, parte: null, flashes: [] }
       setFase("entrada")
     } catch {
       setErroCarga("não deu pra carregar a faixa. tenta de novo.")
@@ -213,6 +252,7 @@ export default function GuitarDriver() {
       p.galera = Math.min(1, p.galera + 0.025)
       if (alvo.estrela) p.neon = Math.min(1, p.neon + 0.13)
       j.flashes.push({ lane, ate: agora + 0.25, tipo: "ok" })
+      j.show.acertou()
       j.show.galera(p.galera)
       vib(8)
     } else {
@@ -241,7 +281,7 @@ export default function GuitarDriver() {
     const g = c.getContext("2d")!
     const j = jogo.current
     if (!j.buf || !j.show) return
-    j.show.tocar(j.buf)
+    j.show.tocar(j.buf, 0, j.parte)
     let raf = 0
     let ultimo = performance.now()
     const loop = () => {
