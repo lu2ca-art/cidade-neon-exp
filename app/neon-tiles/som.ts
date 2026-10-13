@@ -188,3 +188,25 @@ export function montarShow(): Show | null {
     },
   }
 }
+
+// o clique da calibração (agendado no relógio de áudio)
+export function clique(c: AudioContext, quando: number, forte = false) {
+  const o = c.createOscillator()
+  const g = c.createGain()
+  o.type = "square"
+  o.frequency.value = forte ? 1760 : 1320
+  g.gain.setValueAtTime(0, quando)
+  g.gain.linearRampToValueAtTime(0.35, quando + 0.002)
+  g.gain.exponentialRampToValueAtTime(0.0001, quando + 0.06)
+  o.connect(g).connect(c.destination)
+  o.start(quando)
+  o.stop(quando + 0.08)
+}
+
+// um palpite de atraso antes de calibrar (o que o navegador conta + um pouco)
+export function atrasoEstimado() {
+  const c = ac()
+  if (!c) return 0.04
+  const lat = (c.outputLatency || 0) + (c.baseLatency || 0)
+  return Math.min(0.3, Math.max(0.02, lat + 0.015))
+}

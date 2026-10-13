@@ -1,163 +1,177 @@
 "use client"
 
-// GUITAR DRIVER — glow-up no espírito do Guitar Hero 1: carreira de palcos
-// (garagem → arena), guitarra ou baixo (o baixo lê o grave real da faixa),
-// loja com a grana dos shows, cutscene de entrada e de saída, show
-// simulado atrás do braço, multiplicador, modo NEON (star power), medidor
-// da galera e cachê no fim. Nas faixas com stems (gd), as notas foram
-// desenhadas da guitarra/baixo reais, presas na grade de cada faixa
-// (public/gd/<id>.json), e a sua parte toca separada: errou, ela some. Nas
-// outras, as notas ainda vêm da análise da mix (lib/audio-analysis).
+// GUITAR DRIVER — tocar as faixas do LU2CA ao vivo, no espírito do Guitar Hero
+// (refeito, nosso): carreira de palcos (garagem → arena), cada palco com o seu
+// setlist e o seu dono da noite (o duelo leva o palco), desafios, a loja com
+// instrumentos desenhados como os de verdade, e o cachê em NEON (a moeda do
+// jogo). As notas foram desenhadas das stems reais, presas na grade de cada
+// faixa (public/gd/<id>.json) e a SUA parte toca separada: errou, ela some.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useGameFunnel } from "@/app/providers/GameFunnelProvider"
 import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBridge"
-import { analyzeAudioForTiles } from "@/lib/audio-analysis"
 import { track } from "@/lib/analytics"
 import "./gd.css"
 import {
-  ACABAMENTOS, FAIXAS, MODELOS, PALCOS, SAVE_VAZIO, carregar, estrelasPor, faixaAberta, gravar, totalEstrelas,
-  type Faixa, type Instrumento, type Modelo, type Palco, type Save,
+  DESAFIOS, FAIXAS, MODELOS, PALCOS, SAVE_VAZIO, carregar, estrelasPor, gravar, palcoAberto,
+  type Faixa, type Feito, type Instrumento, type Palco, type Save,
 } from "./dados"
-import { COR_LANE, LANES, desenharBraco, desenharPalco, desenharTomada, type Nota, type Tomada } from "./cena"
-import { ac, carregarBuffer, montarShow, soGrave, type Show } from "./som"
+import {
+  COR_LANE, LANES, andarParticulas, desenharBraco, desenharHud, desenharPalco, desenharTomada, geometriaBraco, soltarFaiscas,
+  type Nota, type Particula, type Tomada,
+} from "./cena"
+import { ac, atrasoEstimado, carregarBuffer, montarShow, type Show } from "./som"
+import {
+  JANELA, NOME_ATAQUE, PERFEITO, VISIVEL, andarRival, multiplicador, notasDoChart, novoDuelo, novoPlacar,
+  type ChartGd, type Duelo, type Placar,
+} from "./motor"
+import { imagemInstrumento } from "./instrumentos"
+import { mudarNeon, saldoInicial } from "./neon"
+import { Calibrar, Carreira, Desafios, Loja, Opcoes, Preparo, Rapido, ResultadoTela, Setlist, Titulo, type Resultado } from "./menus"
+import { Editor } from "./editor"
 
-type Fase = "menu" | "loja" | "carregando" | "entrada" | "tocando" | "saida" | "resultado"
-
-const JANELA_ACERTO = { facil: 0.17, medio: 0.13, dificil: 0.1 }
-const VISIVEL = { facil: 2.2, medio: 1.8, dificil: 1.45 }
+// o áudio em camadas: <base>/<faixa>/{sem-guitarra,guitarra,sem-baixo,baixo}.mp3
+const GD_AUDIO = process.env.NEXT_PUBLIC_GD_AUDIO ?? "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/gd/v1"
 const TECLAS = ["d", "f", "j", "k"]
 
-// o áudio em camadas das faixas com stems: <base>/<faixa>/{sem-guitarra,guitarra,sem-baixo,baixo}.mp3
-const GD_AUDIO = process.env.NEXT_PUBLIC_GD_AUDIO ?? "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/gd/v1"
+export type Tela =
+  | { t: "titulo" } | { t: "carreira" } | { t: "palco"; id: string } | { t: "rapido" } | { t: "desafios" }
+  | { t: "preparo"; faixa: string; palco: string | null; batalha: boolean }
+  | { t: "loja" } | { t: "opcoes" } | { t: "calibrar"; depois?: Tela } | { t: "editor" }
+  | { t: "carregando" } | { t: "entrada" } | { t: "tocando" } | { t: "saida" } | { t: "resultado" }
+  | { t: "cutscene"; palco: string }
 
-// [tempo, trilha, duração, trilha do acorde?] — gerado das stems (scratchpad gd_notas.py)
-type NotaGd = [number, number, number, number?]
-interface ChartGd { bpm: number; t0: number; dur: number; guitarra: Record<Save["dificuldade"], NotaGd[]>; baixo: Record<Save["dificuldade"], NotaGd[]> }
-
-function notasDoChart(c: ChartGd, inst: Instrumento, dif: Save["dificuldade"]): Nota[] {
-  const out: Nota[] = []
-  c[inst][dif].forEach(([t, lane, dur, l2], i) => {
-    // frases de NEON: um grupo de notas a cada ~5 (como antes, por frase)
-    const estrela = Math.floor(i / 6) % 5 === 2
-    for (const l of l2 === undefined ? [lane] : [lane, l2]) {
-      out.push({ id: out.length, lane: l, t, dur, estrela, acertou: false, errou: false, segurando: false, soltou: false })
-    }
-  })
-  return out
+interface Show_ {
+  faixa: Faixa
+  palco: Palco
+  carreira: boolean // false = tocar rápido
+  batalha: boolean
 }
 
-interface Placar {
-  pontos: number
-  seq: number
-  maxSeq: number
-  acertos: number
-  total: number
-  galera: number
-  neon: number
-  neonAtivo: number // segundos restantes
-}
-
-interface Resultado {
-  pct: number
-  estrelas: number
-  pontos: number
-  maxSeq: number
-  grana: number
-  recorde: boolean
-  novoPalco: Palco | null
+interface Jogo {
+  notas: Nota[]
+  placar: Placar
+  show: Show | null
+  dur: number
+  bpm: number
+  t0: number
+  apertadas: boolean[]
+  flashes: { lane: number; ate: number; tipo: "ok" | "erro"; perfeito?: boolean }[]
+  particulas: Particula[]
+  buf: AudioBuffer | null
+  parte: AudioBuffer | null
+  aviso: { texto: string; ate: number; cor: string } | null
+  frases: Map<number, { total: number; acertos: number; falhou: boolean }>
+  duelo: Duelo | null
+  tremor: number
+  fim: "vaiado" | "ganhou" | "perdeu" | null
+  ini: number // primeira nota ainda na tela (otimização)
 }
 
 function vib(p: number | number[]) {
   try { navigator.vibrate?.(p) } catch {}
 }
 
+function jogoVazio(): Jogo {
+  return { notas: [], placar: novoPlacar(), show: null, dur: 30, bpm: 100, t0: 0, apertadas: [false, false, false, false], flashes: [], particulas: [], buf: null, parte: null, aviso: null, frases: new Map(), duelo: null, tremor: 0, fim: null, ini: 0 }
+}
+
 export default function GuitarDriver() {
   const router = useRouter()
   const { updateCinematicStep, completeConfirmation, state } = useGameFunnel()
   const [save, setSave] = useState<Save>(SAVE_VAZIO)
-  const [fase, setFase] = useState<Fase>("menu")
-  const [palcoId, setPalcoId] = useState("garagem")
-  const [faixa, setFaixa] = useState<Faixa>(FAIXAS[0])
+  const [neon, setNeon] = useState(0)
+  const [tela, setTela] = useState<Tela>({ t: "titulo" })
+  const [show, setShow] = useState<Show_ | null>(null)
   const [res, setRes] = useState<Resultado | null>(null)
   const [erroCarga, setErroCarga] = useState("")
+  const [editorLiberado, setEditorLiberado] = useState(false)
   const cvs = useRef<HTMLCanvasElement>(null)
-  const jogo = useRef<{ notas: Nota[]; placar: Placar; show: Show | null; dur: number; apertadas: boolean[]; flashes: { lane: number; ate: number; tipo: "ok" | "erro" }[]; buf: AudioBuffer | null; parte: AudioBuffer | null }>({
-    notas: [], placar: novoPlacar(), show: null, dur: 22, apertadas: [false, false, false, false], flashes: [], buf: null, parte: null,
-  })
-  const hud = useRef<HTMLDivElement>(null)
+  const jogo = useRef<Jogo>(jogoVazio())
+  const toques = useRef(new Map<number, number>()) // ponteiro → posição na pista
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSave(carregar())
+    setNeon(saldoInicial())
+    setEditorLiberado(new URLSearchParams(window.location.search).has("editor"))
     sendCarRadioMute(true)
+    // dev: o teste automático lê o estado do show
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __gd: typeof jogo }).__gd = jogo
     return () => { sendCarRadioMute(false); jogo.current.show?.parar() }
   }, [])
 
-  // dev: o teste automático lê o estado do show
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production") (window as unknown as { __gd: typeof jogo }).__gd = jogo
+  const salvar = useCallback((f: (s: Save) => Save) => setSave((s) => { const n = f(s); gravar(n); return n }), [])
+  const modelo = MODELOS.find((m) => m.id === save.modelo[save.instrumento]) ?? MODELOS[0]
+  const atraso = save.atraso ?? atrasoEstimado()
+
+  // os instrumentos de verdade no palco (o seu + o da outra pessoa da banda)
+  const imgs = useMemo(() => {
+    if (typeof window === "undefined") return {}
+    const g = MODELOS.find((m) => m.id === save.modelo.guitarra) ?? MODELOS[0]
+    const b = MODELOS.find((m) => m.id === save.modelo.baixo) ?? MODELOS.find((m) => m.tipo === "baixo")!
+    return {
+      guitarra: imagemInstrumento(g.id, g.visual, "guitarra", save.acabamentos[g.id] ?? "liso"),
+      baixo: imagemInstrumento(b.id, b.visual, "baixo", save.acabamentos[b.id] ?? "liso"),
+    }
+  }, [save.modelo, save.acabamentos])
+
+  const gastar = useCallback(async (valor: number) => {
+    const r = await mudarNeon(-valor)
+    setNeon(r.neon)
+    return r.ok
   }, [])
 
-  const salvar = useCallback((f: (s: Save) => Save) => setSave((s) => { const n = f(s); gravar(n); return n }), [])
-
-  const palco = PALCOS.find((p) => p.id === palcoId)!
-  const estrelasTot = totalEstrelas(save)
-  const modelo = MODELOS.find((m) => m.id === save.modelo[save.instrumento])!
-
   /* ── começar um show ── */
-  const comecar = async (f: Faixa) => {
+  const comecar = async (faixaId: string, palcoId: string | null, batalha: boolean) => {
+    const f = FAIXAS.find((x) => x.id === faixaId)!
+    // tocar rápido: o visual (e o cachê, pela metade) do palco mais alto aberto
+    const abertos = PALCOS.filter((_, i) => palcoAberto(save, i))
+    const palco = PALCOS.find((p) => p.id === palcoId) ?? abertos[abertos.length - 1] ?? PALCOS[0]
     ac()
-    setFaixa(f)
+    setShow({ faixa: f, palco, carreira: !!palcoId, batalha })
     setErroCarga("")
-    setFase("carregando")
+    setTela({ t: "carregando" })
     track("mission_started", { mission_id: `guitar-${f.id}`, place_id: "neon-tiles" })
     try {
-      if (f.gd) {
-        const inst = save.instrumento
-        const base = `${GD_AUDIO}/${f.id}`
-        const [chart, buf, parte] = await Promise.all([
-          fetch(`/gd/${f.id}.json`).then((r) => r.json() as Promise<ChartGd>),
-          carregarBuffer(`${base}/sem-${inst}.mp3`),
-          carregarBuffer(`${base}/${inst}.mp3`),
-        ])
-        const notas = notasDoChart(chart, inst, save.dificuldade)
-        jogo.current = { ...jogo.current, notas, placar: novoPlacar(notas.length), dur: buf.duration, buf, parte, flashes: [] }
-        setFase("entrada")
-        return
+      const inst = save.instrumento
+      const base = `${GD_AUDIO}/${f.id}`
+      // o editor pode ter deixado uma versão das notas pra testar (só no aparelho)
+      const local = (() => { try { return localStorage.getItem(`gd-chart-${f.id}`) } catch { return null } })()
+      const [chart, buf, parte] = await Promise.all([
+        local ? Promise.resolve(JSON.parse(local) as ChartGd) : fetch(`/gd/${f.id}.json`).then((r) => r.json() as Promise<ChartGd>),
+        carregarBuffer(`${base}/sem-${inst}.mp3`),
+        carregarBuffer(`${base}/${inst}.mp3`),
+      ])
+      const notas = notasDoChart(chart, inst, save.dificuldade)
+      const frases = new Map<number, { total: number; acertos: number; falhou: boolean }>()
+      for (const n of notas) if (n.frase !== undefined) { const fr = frases.get(n.frase) ?? { total: 0, acertos: 0, falhou: false }; fr.total++; frases.set(n.frase, fr) }
+      jogo.current = {
+        ...jogoVazio(), notas, placar: novoPlacar(notas.length), dur: buf.duration, bpm: chart.bpm, t0: chart.t0, buf, parte, frases,
+        duelo: batalha ? novoDuelo(palco.rival) : null,
       }
-      const buf = await carregarBuffer(f.audio)
-      const fonte = save.instrumento === "baixo" ? await soGrave(buf) : buf
-      const analisadas = analyzeAudioForTiles(fonte, f.bpm, buf.duration * 1000)
-      let notas: Nota[] = analisadas.map((t, i) => ({
-        id: i, lane: t.col % LANES, t: t.beatTime / 1000, dur: t.hold ? t.holdDuration / 1000 : 0,
-        estrela: Math.floor(i / 6) % 5 === 2, acertou: false, errou: false, segurando: false, soltou: false,
-      }))
-      if (save.dificuldade === "facil") notas = notas.filter((_, i) => i % 2 === 0).map((n) => ({ ...n, dur: 0 }))
-      if (save.instrumento === "baixo") notas = notas.filter((_, i) => i % 4 !== 3) // baixo respira mais
-      jogo.current = { ...jogo.current, notas, placar: novoPlacar(notas.length), dur: buf.duration, buf, parte: null, flashes: [] }
-      setFase("entrada")
+      setTela({ t: "entrada" })
     } catch {
-      setErroCarga("não deu pra carregar a faixa. tenta de novo.")
-      setFase("menu")
+      setErroCarga("não deu pra carregar a faixa. confere a internet e tenta de novo.")
+      setTela({ t: "preparo", faixa: f.id, palco: palcoId, batalha })
     }
   }
 
   /* ── cutscene de entrada → contagem → show ── */
   useEffect(() => {
-    if (fase !== "entrada") return
+    if (tela.t !== "entrada" || !show) return
     const c = cvs.current!
     const g = c.getContext("2d")!
-    const show = montarShow()
-    jogo.current.show = show
-    show?.galera(0.35)
+    const sh = montarShow()
+    jogo.current.show = sh
+    sh?.galera(0.35)
     let raf = 0
     const t0 = performance.now()
-    const beat = 60 / faixa.bpm
+    const beat = 60 / jogo.current.bpm
     const TOMADAS: { t: Tomada; dur: number }[] = [
-      { t: "fachada", dur: 2.4 },
-      { t: "backstage", dur: 2.0 },
+      { t: "fachada", dur: 2.2 },
+      { t: "backstage", dur: 1.8 },
       { t: "contagem", dur: beat * 4 + 0.2 },
     ]
     let contou = 0
@@ -174,109 +188,171 @@ export default function GuitarDriver() {
       let n = 0
       if (atual.t === "contagem") {
         n = Math.min(4, Math.floor(tl / beat) + 1)
-        if (n > contou) { contou = n; show?.baqueta(); vib(10) }
+        if (n > contou) { contou = n; sh?.baqueta(); vib(10) }
       }
       ajustar(c)
-      desenharTomada(g, c.width, c.height, atual.t, tl, { palco, modelo, contagem: n })
-      if (tt >= total) {
-        cancelAnimationFrame(raf)
-        setFase("tocando")
-        return
-      }
+      desenharTomada(g, c.width, c.height, atual.t, tl, { palco: show.palco, modelo, contagem: n, imgs })
+      if (tt >= total) { cancelAnimationFrame(raf); setTela({ t: "tocando" }); return }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [fase, faixa, palco, modelo])
+  }, [tela.t, show, modelo, imgs])
 
-  /* ── o show ── */
+  /* ── fim do show: nota, cachê, desafios, duelo ── */
   const acabar = useCallback(() => {
+    if (!show) return
     const j = jogo.current
     const p = j.placar
     const pct = p.total ? p.acertos / p.total : 0
-    const est = estrelasPor(pct * 0.85 + p.galera * 0.15)
-    const bonus = modelo.bonus?.includes("+20%") ? 1.2 : modelo.bonus?.includes("+10%") ? 1.1 : 1
-    const grana = Math.round((palco.cache * (0.15 + est * 0.17) * bonus) / 10) * 10
-    const chave = `${palco.id}:${faixa.id}:${save.instrumento}`
+    const vaiado = j.fim === "vaiado"
+    const terminou = !vaiado && !(show.batalha && j.fim === "perdeu")
+    const est = vaiado ? 0 : estrelasPor(pct * 0.85 + p.galera * 0.15)
+    const venceu = show.batalha ? j.fim === "ganhou" || (j.fim !== "perdeu" && (j.duelo?.voce ?? 0) > 0.5) : false
+    const bonus = modelo.bonus?.includes("+30%") ? 1.3 : modelo.bonus?.includes("+20%") ? 1.2 : modelo.bonus?.includes("+10%") ? 1.1 : 1
+    let cache = vaiado ? 0 : Math.round((show.palco.cache * (0.15 + est * 0.17) * bonus * (show.carreira ? 1 : 0.5)) / 5) * 5
+    if (show.batalha) cache = venceu ? show.palco.cache * 2 : Math.round(cache * 0.3)
+    const feito: Feito = { palco: show.palco.id, faixa: show.faixa.id, dificuldade: save.dificuldade, pct, maxSeq: p.maxSeq, estrelas: est, neonUsos: p.neonUsos, semErro: p.erros === 0 && terminou, terminou }
+    const novosDesafios = DESAFIOS.filter((d) => d.palco === show.palco.id && !save.desafios.includes(d.id) && d.ok(feito))
+    const premio = novosDesafios.reduce((s, d) => s + d.neon, 0)
+    const chave = `${show.palco.id}:${show.faixa.id}:${save.instrumento}`
     const recorde = p.pontos > (save.recordes[chave] ?? 0)
-    const antes = totalEstrelas(save)
-    const novo = { ...save, estrelas: { ...save.estrelas, [chave]: Math.max(save.estrelas[chave] ?? 0, est) } }
-    const depois = totalEstrelas(novo)
-    const novoPalco = PALCOS.find((pl) => pl.estrelas > antes && pl.estrelas <= depois) ?? null
-    const concluidas = est >= 1 && !save.concluidas.includes(faixa.id) ? [...save.concluidas, faixa.id] : save.concluidas
-    salvar(() => ({
-      ...novo,
-      grana: save.grana + grana,
-      recordes: recorde ? { ...save.recordes, [chave]: p.pontos } : save.recordes,
+    const primeiraVitoria = venceu && !save.batalhas.includes(show.palco.id)
+    const iPalco = PALCOS.findIndex((x) => x.id === show.palco.id)
+    const novoPalco = primeiraVitoria ? PALCOS[iPalco + 1] ?? null : null
+    const concluidas = est >= 1 && !save.concluidas.includes(show.faixa.id) ? [...save.concluidas, show.faixa.id] : save.concluidas
+    salvar((s) => ({
+      ...s,
+      estrelas: show.batalha ? s.estrelas : { ...s.estrelas, [chave]: Math.max(s.estrelas[chave] ?? 0, est) },
+      recordes: recorde ? { ...s.recordes, [chave]: p.pontos } : s.recordes,
       concluidas,
+      desafios: [...s.desafios, ...novosDesafios.map((d) => d.id)],
+      batalhas: venceu && !s.batalhas.includes(show.palco.id) ? [...s.batalhas, show.palco.id] : s.batalhas,
     }))
+    const total = cache + premio
+    if (total > 0) mudarNeon(total).then((r) => setNeon(r.neon))
     // funil antigo: 4 faixas terminadas fecham a confirmação 3
     if (concluidas.length >= 4 && !state.confirmations.c3.done) {
       updateCinematicStep("neon-tiles-complete")
       completeConfirmation(3, { accuracy: Math.round(pct * 100), maxCombo: p.maxSeq })
     }
-    track("mission_completed", { mission_id: `guitar-${faixa.id}`, duration_ms: Math.round(j.dur * 1000) })
-    setRes({ pct, estrelas: est, pontos: p.pontos, maxSeq: p.maxSeq, grana, recorde, novoPalco })
-    setFase("saida")
-  }, [modelo, palco, faixa, save, salvar, state.confirmations.c3.done, completeConfirmation, updateCinematicStep])
+    track("mission_completed", { mission_id: `guitar-${show.faixa.id}`, duration_ms: Math.round(j.dur * 1000) })
+    setRes({
+      pct, estrelas: est, pontos: p.pontos, maxSeq: p.maxSeq, perfeitos: p.perfeitos, cache, recorde, novoPalco, vaiado,
+      desafios: novosDesafios.map((d) => ({ texto: d.texto, neon: d.neon })), batalha: show.batalha ? { venceu, rival: show.palco.rival.nome } : null,
+    })
+    setTela({ t: "saida" })
+  }, [show, modelo, save, salvar, state.confirmations.c3.done, completeConfirmation, updateCinematicStep])
 
-  const tocar = useCallback((lane: number, on: boolean) => {
+  /* ── tocar (posição na pista → trilha, que inverte no ataque) ── */
+  const tocar = useCallback((pos: number, on: boolean) => {
     const j = jogo.current
+    const inv = j.duelo?.ataque?.tipo === "trocadas"
+    const lane = inv ? LANES - 1 - pos : pos
     j.apertadas[lane] = on
-    if (fase !== "tocando" || !j.show) return
-    const agora = j.show.tempo()
+    if (tela.t !== "tocando" || !j.show) return
+    const agora = j.show.tempo() - atraso
     const p = j.placar
     if (!on) {
       // estado do jogo vive num ref mutável de propósito (60fps, sem render)
       // eslint-disable-next-line react-hooks/immutability
-      for (const n of j.notas) if (n.lane === lane && n.segurando) { n.segurando = false; if (agora < n.t + n.dur - 0.08) n.soltou = true }
+      for (const n of j.notas) if (n.lane === lane && n.segurando) { n.segurando = false; if (agora < n.t + n.dur - 0.1) n.soltou = true }
       return
     }
-    const jan = JANELA_ACERTO[save.dificuldade]
+    const jan = JANELA[save.dificuldade] * (modelo.bonus?.includes("janela") ? 1.12 : 1)
     let alvo: Nota | null = null
     let melhor = Infinity
-    for (const n of j.notas) {
+    for (let i = j.ini; i < j.notas.length; i++) {
+      const n = j.notas[i]
+      if (n.t > agora + jan) break
       if (n.lane !== lane || n.acertou || n.errou) continue
       const d = Math.abs(n.t - agora)
       if (d < jan && d < melhor) { melhor = d; alvo = n }
-      if (n.t > agora + jan) break
     }
+    const c = cvs.current
     if (alvo) {
       alvo.acertou = true
       if (alvo.dur > 0) alvo.segurando = true
+      const perfeito = melhor <= PERFEITO
       p.seq++
       p.maxSeq = Math.max(p.maxSeq, p.seq)
       p.acertos++
-      const multi = Math.min(4, 1 + Math.floor(p.seq / 10)) * (p.neonAtivo > 0 ? 2 : 1)
-      p.pontos += 50 * multi
-      p.galera = Math.min(1, p.galera + 0.025)
-      if (alvo.estrela) p.neon = Math.min(1, p.neon + 0.13)
-      j.flashes.push({ lane, ate: agora + 0.25, tipo: "ok" })
+      if (perfeito) p.perfeitos++
+      p.pontos += (perfeito ? 50 : 40) * multiplicador(p)
+      p.galera = Math.min(1, p.galera + (p.neonAtivo > 0 ? 0.035 : 0.02) * (modelo.bonus?.includes("galera") ? 1.3 : 1))
+      j.flashes.push({ lane, ate: agora + 0.35, tipo: "ok", perfeito })
+      if (c) soltarFaiscas(j.particulas, c.width, c.height, lane, COR_LANE[lane], perfeito ? 12 : 6, inv)
       j.show.acertou()
       j.show.galera(p.galera)
-      vib(8)
+      if (j.duelo) j.duelo.voce = Math.min(1, j.duelo.voce + 0.006)
+      if (p.seq > 0 && p.seq % 50 === 0) j.aviso = { texto: `${p.seq} NOTAS SEGUIDAS!`, ate: agora + 1.4, cor: "#ffe14d" }
+      // frase de estrela completa
+      if (alvo.frase !== undefined) {
+        const fr = j.frases.get(alvo.frase)
+        if (fr) {
+          fr.acertos++
+          if (fr.acertos === fr.total && !fr.falhou) {
+            if (j.duelo) { j.duelo.cartas++; j.aviso = { texto: "ATAQUE NA MÃO!", ate: agora + 1.3, cor: "#8fe3ff" } }
+            else { p.neon = Math.min(1, p.neon + 0.25); j.aviso = { texto: "FRASE NEON!", ate: agora + 1.2, cor: "#8fe3ff" } }
+          }
+        }
+      }
+      vib(perfeito ? 10 : 6)
     } else {
       // palhetada no vazio
       p.seq = 0
-      p.galera = Math.max(0, p.galera - 0.03)
-      j.flashes.push({ lane, ate: agora + 0.2, tipo: "erro" })
+      p.galera = Math.max(0, p.galera - 0.02)
+      j.flashes.push({ lane, ate: agora + 0.25, tipo: "erro" })
       j.show.errou()
       j.show.galera(p.galera)
+      j.tremor = 0.6
     }
-  }, [fase, save.dificuldade])
+  }, [tela.t, save.dificuldade, atraso, modelo])
 
   const ativarNeon = useCallback(() => {
     const j = jogo.current
-    if (fase !== "tocando" || j.placar.neon < 0.5 || j.placar.neonAtivo > 0) return
-    j.placar.neonAtivo = 8 * j.placar.neon + (modelo.bonus?.includes("NEON") ? 2 : 0)
+    if (tela.t !== "tocando" || !j.show) return
+    const agora = j.show.tempo() - atraso
+    // no duelo, o botão dispara um ataque no rival
+    if (j.duelo) {
+      if (j.duelo.cartas <= 0) return
+      j.duelo.cartas--
+      j.duelo.atordoado = agora + 5
+      j.duelo.voce = Math.min(1, j.duelo.voce + 0.06)
+      j.aviso = { texto: "O RIVAL ERROU FEIO!", ate: agora + 1.3, cor: "#5dffa0" }
+      j.show.grito(true)
+      vib([20, 20, 40])
+      return
+    }
+    if (j.placar.neon < 0.5 || j.placar.neonAtivo > 0) return
+    j.placar.neonAtivo = 16 * j.placar.neon + (modelo.bonus?.includes("NEON") ? 2 : 0)
     j.placar.neon = 0
-    j.show?.neon(true)
-    j.show?.grito(true)
+    j.placar.neonUsos++
+    j.aviso = { texto: "MODO NEON!", ate: agora + 1.2, cor: "#8fe3ff" }
+    j.show.neon(true)
+    j.show.grito(true)
     vib([30, 30, 60])
-  }, [fase, modelo])
+  }, [tela.t, modelo, atraso])
+
+  // o falha de uma nota (passou sem tocar)
+  const errou = useCallback((n: Nota, agora: number) => {
+    const j = jogo.current
+    const p = j.placar
+    n.errou = true
+    p.seq = 0
+    p.erros++
+    p.galera = Math.max(0, p.galera - (save.dificuldade === "facil" ? 0.03 : 0.045))
+    if (n.frase !== undefined) { const fr = j.frases.get(n.frase); if (fr) fr.falhou = true }
+    j.show!.errou()
+    j.show!.galera(p.galera)
+    j.tremor = 1
+    if (j.duelo) j.duelo.voce = Math.max(0, j.duelo.voce - 0.028)
+    else if (p.galera <= 0 && agora > 8) j.fim = "vaiado"
+    vib(35)
+  }, [save.dificuldade])
 
   useEffect(() => {
-    if (fase !== "tocando") return
+    if (tela.t !== "tocando" || !show) return
     const c = cvs.current!
     const g = c.getContext("2d")!
     const j = jogo.current
@@ -285,44 +361,57 @@ export default function GuitarDriver() {
     let raf = 0
     let ultimo = performance.now()
     const loop = () => {
-      const agora = j.show!.tempo()
+      const agora = j.show!.tempo() - atraso
       const dt = Math.min(0.05, (performance.now() - ultimo) / 1000)
       ultimo = performance.now()
       const p = j.placar
-      const jan = JANELA_ACERTO[save.dificuldade]
-      // notas que passaram sem toque
-      for (const n of j.notas) {
-        if (!n.acertou && !n.errou && n.t < agora - jan) {
-          n.errou = true
-          p.seq = 0
-          p.galera = Math.max(0, p.galera - 0.05)
-          j.show!.errou()
-          j.show!.galera(p.galera)
-        }
-        // nota longa: soma enquanto segura
+      const jan = JANELA[save.dificuldade]
+      // notas que passaram sem toque + notas longas segurando
+      while (j.ini < j.notas.length && j.notas[j.ini].t + j.notas[j.ini].dur < agora - 1.5) j.ini++
+      for (let i = j.ini; i < j.notas.length; i++) {
+        const n = j.notas[i]
+        if (n.t > agora + 0.2) break
+        if (!n.acertou && !n.errou && n.t < agora - jan) errou(n, agora)
         if (n.segurando) {
           if (agora >= n.t + n.dur) n.segurando = false
-          else p.pontos += Math.round(25 * dt * 4)
+          else p.pontos += Math.round(25 * dt * 4 * multiplicador(p))
         }
+      }
+      // o duelo
+      let rapida = false
+      if (j.duelo) {
+        const novo = andarRival(j.duelo, j.notas, agora)
+        if (novo) { j.aviso = { texto: NOME_ATAQUE[novo], ate: agora + 1.4, cor: "#ff3fb0" }; vib([50, 30, 50]) }
+        rapida = j.duelo.ataque?.tipo === "rapida"
+        if (j.duelo.voce >= 1) j.fim = "ganhou"
+        else if (j.duelo.voce <= 0) j.fim = "perdeu"
       }
       if (p.neonAtivo > 0) {
         p.neonAtivo -= dt
         if (p.neonAtivo <= 0) j.show!.neon(false)
       }
+      j.tremor = Math.max(0, j.tremor - dt * 4)
       j.flashes = j.flashes.filter((f) => f.ate > agora)
-      const batida = Math.pow(1 - ((agora * faixa.bpm) / 60 % 1), 3)
+      andarParticulas(j.particulas, dt)
+      const fb = ((agora - j.t0) / (60 / j.bpm)) % 1
+      const batida = Math.pow(1 - (fb < 0 ? fb + 1 : fb), 3)
       ajustar(c)
       const w = c.width
       const h = c.height
-      desenharPalco(g, w, h, { palco, energia: p.galera, neon: p.neonAtivo > 0, batida, t: agora, instrumento: save.instrumento, modelo })
-      g.fillStyle = "rgba(4,3,12,0.35)"
+      desenharPalco(g, w, h, { palco: show.palco, energia: p.galera, neon: p.neonAtivo > 0, batida, t: agora, instrumento: save.instrumento, modelo, imgs, vaia: p.galera < 0.15 })
+      g.fillStyle = "rgba(4,3,12,0.42)"
       g.fillRect(0, 0, w, h)
       desenharBraco(g, w, h, {
-        notas: j.notas, agora, janela: VISIVEL[save.dificuldade], apertadas: j.apertadas,
-        neon: p.neonAtivo > 0, modelo, flashes: j.flashes, multi: 1,
+        notas: j.notas, agora, janela: VISIVEL[save.dificuldade] * (rapida ? 0.6 : 1), apertadas: j.apertadas,
+        neon: p.neonAtivo > 0, modelo, flashes: j.flashes, multi: multiplicador(p), bpm: j.bpm, t0: j.t0,
+        particulas: j.particulas, invertido: j.duelo?.ataque?.tipo === "trocadas", apagao: j.duelo?.ataque?.tipo === "apagao", tremor: j.tremor,
       })
-      atualizarHud(hud.current, p)
-      if (agora > j.dur + 0.3) {
+      desenharHud(g, w, h, {
+        pontos: p.pontos, seq: p.seq, multi: multiplicador(p), galera: p.galera, neon: p.neonAtivo > 0 ? Math.min(1, p.neonAtivo / 16) : p.neon,
+        neonAtivo: p.neonAtivo > 0, aviso: j.aviso, agora, progresso: Math.min(1, agora / j.dur),
+        duelo: j.duelo ? { voce: j.duelo.voce, rival: j.duelo.rival.nome, ataque: j.duelo.ataque ? NOME_ATAQUE[j.duelo.ataque.tipo] : null, cartas: j.duelo.cartas } : null,
+      })
+      if (agora > j.dur + 0.4 || j.fim) {
         acabar()
         return
       }
@@ -345,14 +434,14 @@ export default function GuitarDriver() {
       window.removeEventListener("keydown", kd)
       window.removeEventListener("keyup", ku)
     }
-  }, [fase, faixa, palco, modelo, save.dificuldade, save.instrumento, tocar, ativarNeon, acabar])
+  }, [tela.t, show, modelo, imgs, save.dificuldade, save.instrumento, atraso, tocar, ativarNeon, acabar, errou])
 
   /* ── cutscene de saída ── */
   useEffect(() => {
-    if (fase !== "saida" || !res) return
+    if (tela.t !== "saida" || !res || !show) return
     const c = cvs.current!
     const g = c.getContext("2d")!
-    const ok = res.estrelas >= 2
+    const ok = res.batalha ? res.batalha.venceu : res.estrelas >= 2
     jogo.current.show?.grito(ok)
     jogo.current.show?.galera(ok ? 1 : 0.05)
     vib(ok ? [40, 40, 40, 40, 120] : 60)
@@ -361,18 +450,42 @@ export default function GuitarDriver() {
     const loop = () => {
       const tt = (performance.now() - t0) / 1000
       ajustar(c)
-      desenharTomada(g, c.width, c.height, "final", tt, { palco, modelo, sucesso: ok })
-      if (tt > 3.4) {
+      desenharTomada(g, c.width, c.height, "final", tt, { palco: show.palco, modelo, sucesso: ok, imgs })
+      if (tt > 3.2) {
         jogo.current.show?.parar()
         jogo.current.show = null
-        setFase("resultado")
+        setTela({ t: "resultado" })
         return
       }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [fase, res, palco, modelo])
+  }, [tela.t, res, show, modelo, imgs])
+
+  /* ── cutscene da carreira: a Kombi na estrada → o cartaz do palco novo ── */
+  useEffect(() => {
+    if (tela.t !== "cutscene") return
+    const palco = PALCOS.find((p) => p.id === tela.palco)!
+    const c = cvs.current!
+    const g = c.getContext("2d")!
+    let raf = 0
+    const t0 = performance.now()
+    const loop = () => {
+      const tt = (performance.now() - t0) / 1000
+      ajustar(c)
+      if (tt < 4.2) desenharTomada(g, c.width, c.height, "estrada", tt, { palco, modelo, titulo: `rumo a ${palco.nome}`, sub: palco.lugar })
+      else desenharTomada(g, c.width, c.height, "cartaz", tt - 4.2, { palco, modelo, titulo: palco.nome, sub: `${palco.lugar} · hoje: LU2CA` })
+      if (tt > 7.4) {
+        salvar((s) => ({ ...s, vistos: s.vistos.includes(palco.id) ? s.vistos : [...s.vistos, palco.id] }))
+        setTela({ t: "palco", id: palco.id })
+        return
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [tela, modelo, salvar])
 
   const sair = () => {
     jogo.current.show?.parar()
@@ -380,85 +493,79 @@ export default function GuitarDriver() {
     router.push("/?screen=home")
   }
 
-  const emCena = fase === "entrada" || fase === "tocando" || fase === "saida"
-  const faixasPalco = useMemo(() => FAIXAS, [])
+  // o toque na pista: a coluna inteira (vários dedos ao mesmo tempo)
+  const posDoToque = (e: React.PointerEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const gb = geometriaBraco(r.width, r.height)
+    const x = e.clientX - r.left - (gb.cx - gb.baseW / 2)
+    return Math.max(0, Math.min(LANES - 1, Math.floor((x / gb.baseW) * LANES)))
+  }
+
+  const emCena = tela.t === "entrada" || tela.t === "tocando" || tela.t === "saida" || tela.t === "cutscene"
+  const cor = show?.palco.cor ?? "#ff9000"
 
   return (
-    <div className="gd-raiz" style={{ ["--cor" as string]: palco.cor }}>
+    <div className="gd-raiz" style={{ ["--cor" as string]: cor }}>
       <div className="gd-palco">
         <canvas ref={cvs} className={`gd-cvs ${emCena ? "is-on" : ""}`} />
 
-        {fase === "menu" && (
-          <Menu
-            save={save}
-            palco={palco}
-            estrelasTot={estrelasTot}
-            faixas={faixasPalco}
-            erro={erroCarga}
-            onPalco={setPalcoId}
-            onFaixa={comecar}
-            onInstrumento={(i) => salvar((s) => ({ ...s, instrumento: i }))}
-            onDificuldade={(d) => salvar((s) => ({ ...s, dificuldade: d }))}
-            onLoja={() => setFase("loja")}
-            onSair={sair}
-          />
+        {tela.t === "titulo" && (
+          <Titulo neon={neon} modelo={modelo} acabamento={save.acabamentos[modelo.id] ?? "liso"} editor={editorLiberado}
+            onIr={(t) => setTela(t)} onSair={sair} />
         )}
-        {fase === "loja" && <Loja save={save} salvar={salvar} onVoltar={() => setFase("menu")} />}
-        {fase === "carregando" && (
+        {tela.t === "carreira" && <Carreira save={save} neon={neon} onPalco={(id) => setTela(save.vistos.includes(id) || id === "garagem" ? { t: "palco", id } : { t: "cutscene", palco: id })} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "palco" && (
+          <Setlist save={save} neon={neon} palco={PALCOS.find((p) => p.id === tela.id)!}
+            onFaixa={(f, batalha) => setTela({ t: "preparo", faixa: f, palco: tela.id, batalha })} onVoltar={() => setTela({ t: "carreira" })} />
+        )}
+        {tela.t === "rapido" && <Rapido save={save} neon={neon} onFaixa={(f) => setTela({ t: "preparo", faixa: f, palco: null, batalha: false })} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "desafios" && <Desafios save={save} neon={neon} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "preparo" && (
+          <Preparo save={save} salvar={salvar} faixa={FAIXAS.find((f) => f.id === tela.faixa)!} palco={tela.palco ? PALCOS.find((p) => p.id === tela.palco)! : null}
+            batalha={tela.batalha} erro={erroCarga} calibrado={save.atraso !== null}
+            onTocar={() => comecar(tela.faixa, tela.palco, tela.batalha)}
+            onCalibrar={() => setTela({ t: "calibrar", depois: tela })}
+            onVoltar={() => setTela(tela.palco ? { t: "palco", id: tela.palco } : { t: "rapido" })} />
+        )}
+        {tela.t === "loja" && <Loja save={save} salvar={salvar} neon={neon} gastar={gastar} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "opcoes" && <Opcoes save={save} salvar={salvar} editor={editorLiberado} onCalibrar={() => setTela({ t: "calibrar", depois: { t: "opcoes" } })} onEditor={() => setTela({ t: "editor" })} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "calibrar" && <Calibrar onFim={(s) => { if (s !== null) salvar((x) => ({ ...x, atraso: s })); setTela(tela.depois ?? { t: "opcoes" }) }} />}
+        {tela.t === "editor" && <Editor gdAudio={GD_AUDIO} onVoltar={() => setTela({ t: "opcoes" })} />}
+        {tela.t === "carregando" && show && (
           <div className="gd-carrega">
-            <div className="gd-vinil" style={{ ["--cor" as string]: faixa.cor }} />
+            <div className="gd-vinil" style={{ ["--cor" as string]: show.faixa.cor }} />
             <p>afinando {save.instrumento === "baixo" ? "o baixo" : "a guitarra"}…</p>
-            <small>lendo {faixa.titulo.toLowerCase()} nota por nota</small>
+            <small>{show.faixa.titulo.toLowerCase()} · {show.palco.nome}</small>
           </div>
         )}
-        {fase === "entrada" && (
-          <button type="button" className="gd-pular" onClick={() => setFase("tocando")}>pular ›</button>
+        {(tela.t === "entrada" || tela.t === "cutscene") && (
+          <button type="button" className="gd-pular" onClick={() => {
+            if (tela.t === "entrada") setTela({ t: "tocando" })
+            else { salvar((s) => ({ ...s, vistos: [...s.vistos, tela.palco] })); setTela({ t: "palco", id: tela.palco }) }
+          }}>pular ›</button>
         )}
-        {fase === "tocando" && (
+        {tela.t === "tocando" && (
           <>
-            <div ref={hud} className="gd-hud">
-              <div className="gd-pontos"><b data-k="pontos">0</b><small data-k="multi">x1</small></div>
-              <div className="gd-galera"><span>galera</span><i><em data-k="galera" /></i></div>
-              <button type="button" className="gd-neon" data-k="neonbtn" onPointerDown={(e) => { e.stopPropagation(); ativarNeon() }}>
-                <i><em data-k="neon" /></i>
-                <span>NEON</span>
-              </button>
-              <div className="gd-seq" data-k="seq" />
-            </div>
-            <div className="gd-trastes" style={{ ["--topo" as string]: "70%" }}>
-              {Array.from({ length: LANES }, (_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`corda ${i + 1}`}
-                  style={{ ["--c" as string]: COR_LANE[i] }}
-                  onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); tocar(i, true) }}
-                  onPointerUp={() => tocar(i, false)}
-                  onPointerCancel={() => tocar(i, false)}
-                  onContextMenu={(e) => e.preventDefault()}
-                />
-              ))}
-            </div>
+            <div
+              className="gd-toque"
+              onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); const pos = posDoToque(e); toques.current.set(e.pointerId, pos); tocar(pos, true) }}
+              onPointerUp={(e) => { const pos = toques.current.get(e.pointerId); if (pos !== undefined) { tocar(pos, false); toques.current.delete(e.pointerId) } }}
+              onPointerCancel={(e) => { const pos = toques.current.get(e.pointerId); if (pos !== undefined) { tocar(pos, false); toques.current.delete(e.pointerId) } }}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+            <button type="button" className="gd-neon-btn" onPointerDown={(e) => { e.stopPropagation(); ativarNeon() }}>{show?.batalha ? "ATAQUE" : "NEON"}</button>
+            <button type="button" className="gd-pausa" onClick={() => { jogo.current.show?.parar(); jogo.current.show = null; setTela(show?.carreira ? { t: "palco", id: show.palco.id } : { t: "rapido" }) }} aria-label="sair do show">✕</button>
           </>
         )}
-        {fase === "resultado" && res && (
-          <ResultadoTela
-            r={res}
-            palco={palco}
-            faixa={faixa}
-            instrumento={save.instrumento}
-            onDeNovo={() => comecar(faixa)}
-            onMenu={() => setFase("menu")}
-            onProximo={res.novoPalco ? () => { setPalcoId(res.novoPalco!.id); setFase("menu") } : undefined}
-          />
+        {tela.t === "resultado" && res && show && (
+          <ResultadoTela r={res} palco={show.palco} faixa={show.faixa} instrumento={save.instrumento} neon={neon}
+            onDeNovo={() => comecar(show.faixa.id, show.carreira ? show.palco.id : null, show.batalha)}
+            onMenu={() => setTela(show.carreira ? { t: "palco", id: show.palco.id } : { t: "rapido" })}
+            onProximo={res.novoPalco ? () => setTela({ t: "cutscene", palco: res.novoPalco!.id }) : undefined} />
         )}
       </div>
     </div>
   )
-}
-
-function novoPlacar(total = 0): Placar {
-  return { pontos: 0, seq: 0, maxSeq: 0, acertos: 0, total, galera: 0.5, neon: 0, neonAtivo: 0 }
 }
 
 function ajustar(c: HTMLCanvasElement) {
@@ -468,245 +575,4 @@ function ajustar(c: HTMLCanvasElement) {
   if (c.width !== w || c.height !== h) { c.width = w; c.height = h }
 }
 
-function atualizarHud(el: HTMLDivElement | null, p: Placar) {
-  if (!el) return
-  const q = (k: string) => el.querySelector<HTMLElement>(`[data-k="${k}"]`)
-  const multi = Math.min(4, 1 + Math.floor(p.seq / 10)) * (p.neonAtivo > 0 ? 2 : 1)
-  const pts = q("pontos")
-  if (pts) pts.textContent = p.pontos.toLocaleString("pt-BR")
-  const m = q("multi")
-  if (m) { m.textContent = `x${multi}`; m.dataset.alto = multi >= 4 ? "1" : "" }
-  const gl = q("galera")
-  if (gl) { gl.style.width = `${p.galera * 100}%`; gl.dataset.baixo = p.galera < 0.25 ? "1" : "" }
-  const ne = q("neon")
-  if (ne) ne.style.width = `${(p.neonAtivo > 0 ? Math.min(1, p.neonAtivo / 8) : p.neon) * 100}%`
-  const nb = q("neonbtn")
-  if (nb) nb.dataset.pronto = p.neon >= 0.5 && p.neonAtivo <= 0 ? "1" : p.neonAtivo > 0 ? "on" : ""
-  const sq = q("seq")
-  if (sq) sq.textContent = p.seq >= 10 ? `${p.seq} seguidas` : ""
-}
-
-/* ─── MENU: carreira ───────────────────────────────────── */
-function Menu({
-  save, palco, estrelasTot, faixas, erro, onPalco, onFaixa, onInstrumento, onDificuldade, onLoja, onSair,
-}: {
-  save: Save; palco: Palco; estrelasTot: number; faixas: Faixa[]; erro: string
-  onPalco: (id: string) => void; onFaixa: (f: Faixa) => void; onInstrumento: (i: Instrumento) => void
-  onDificuldade: (d: Save["dificuldade"]) => void; onLoja: () => void; onSair: () => void
-}) {
-  const modelo = MODELOS.find((m) => m.id === save.modelo[save.instrumento])!
-  return (
-    <section className="gd-menu">
-      <header className="gd-topo">
-        <button type="button" onClick={onSair}>‹ sair</button>
-        <b>GUITAR DRIVER</b>
-        <span className="gd-grana">R$ {save.grana.toLocaleString("pt-BR")}</span>
-      </header>
-      <div className="gd-menu-corpo">
-        <p className="gd-rotulo">carreira · {estrelasTot} ★</p>
-        <div className="gd-palcos">
-          {PALCOS.map((p) => {
-            const aberto = estrelasTot >= p.estrelas
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={!aberto}
-                className={`gd-palco-card ${p.id === palco.id ? "is-on" : ""} ${aberto ? "" : "is-trancado"}`}
-                style={{ ["--c" as string]: p.cor }}
-                onClick={() => onPalco(p.id)}
-              >
-                <b>{p.nome}</b>
-                <small>{p.lugar}</small>
-                <em>{aberto ? `cachê R$ ${p.cache}` : `🔒 ${p.estrelas} ★`}</em>
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="gd-inst">
-          <div className="gd-toggle">
-            {(["guitarra", "baixo"] as Instrumento[]).map((i) => (
-              <button key={i} type="button" className={save.instrumento === i ? "is-on" : ""} onClick={() => onInstrumento(i)}>{i}</button>
-            ))}
-          </div>
-          <button type="button" className="gd-inst-atual" onClick={onLoja}>
-            <PreviaInstrumento m={modelo} acabamento={save.acabamento} pequeno />
-            <span><b>{modelo.nome}</b><small>loja de instrumentos ›</small></span>
-          </button>
-        </div>
-
-        <div className="gd-toggle is-dif">
-          {(["facil", "medio", "dificil"] as Save["dificuldade"][]).map((d) => (
-            <button key={d} type="button" className={save.dificuldade === d ? "is-on" : ""} onClick={() => onDificuldade(d)}>
-              {d === "facil" ? "fácil" : d === "medio" ? "médio" : "difícil"}
-            </button>
-          ))}
-        </div>
-
-        <p className="gd-rotulo">setlist · {palco.nome}</p>
-        {erro && <p className="gd-erro">{erro}</p>}
-        <ul className="gd-setlist">
-          {faixas.map((f) => {
-            const aberta = faixaAberta(f)
-            const est = save.estrelas[`${palco.id}:${f.id}:${save.instrumento}`] ?? 0
-            return (
-              <li key={f.id}>
-                <button type="button" disabled={!aberta} onClick={() => onFaixa(f)} style={{ ["--c" as string]: f.cor }}>
-                  <span className="gd-bpm">{f.bpm}<small>bpm</small></span>
-                  <span className="gd-faixa-nome"><b>{f.titulo}</b><small>{aberta ? "★".repeat(est) + "☆".repeat(5 - est) : `abre ${new Date(f.abre!).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`}</small></span>
-                  <em>›</em>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-        <p className="gd-dica">toque nos 4 botões no pé do braço · teclado D F J K · espaço = modo NEON</p>
-      </div>
-    </section>
-  )
-}
-
-/* ─── LOJA ─────────────────────────────────────────────── */
-function Loja({ save, salvar, onVoltar }: { save: Save; salvar: (f: (s: Save) => Save) => void; onVoltar: () => void }) {
-  const [tipo, setTipo] = useState<Instrumento>(save.instrumento)
-  const comprar = (id: string, preco: number) => {
-    if (save.possui.includes(id)) return true
-    if (save.grana < preco) return false
-    salvar((s) => ({ ...s, grana: s.grana - preco, possui: [...s.possui, id] }))
-    vib([20, 30, 20])
-    return true
-  }
-  return (
-    <section className="gd-menu gd-loja">
-      <header className="gd-topo">
-        <button type="button" onClick={onVoltar}>‹ voltar</button>
-        <b>LOJA DE INSTRUMENTOS</b>
-        <span className="gd-grana">R$ {save.grana.toLocaleString("pt-BR")}</span>
-      </header>
-      <div className="gd-menu-corpo">
-        <div className="gd-toggle">
-          {(["guitarra", "baixo"] as Instrumento[]).map((i) => (
-            <button key={i} type="button" className={tipo === i ? "is-on" : ""} onClick={() => setTipo(i)}>{i}s</button>
-          ))}
-        </div>
-        <div className="gd-vitrine">
-          {MODELOS.filter((m) => m.tipo === tipo).map((m) => {
-            const tem = save.possui.includes(m.id)
-            const usando = save.modelo[tipo] === m.id
-            return (
-              <div key={m.id} className={`gd-item ${usando ? "is-usando" : ""}`} style={{ ["--c" as string]: m.corpo }}>
-                <PreviaInstrumento m={m} acabamento={usando ? save.acabamento : "liso"} />
-                <b>{m.nome}</b>
-                <small>{m.bonus ?? "sem bônus"}</small>
-                <button
-                  type="button"
-                  disabled={usando || (!tem && save.grana < m.preco)}
-                  onClick={() => { if (comprar(m.id, m.preco)) salvar((s) => ({ ...s, modelo: { ...s.modelo, [tipo]: m.id } })) }}
-                >
-                  {usando ? "usando" : tem ? "usar" : `R$ ${m.preco}`}
-                </button>
-              </div>
-            )
-          })}
-        </div>
-        <p className="gd-rotulo">acabamento</p>
-        <div className="gd-acab">
-          {ACABAMENTOS.map((a) => {
-            const tem = save.possui.includes(a.id)
-            return (
-              <button
-                key={a.id}
-                type="button"
-                className={save.acabamento === a.id ? "is-on" : ""}
-                disabled={!tem && save.grana < a.preco}
-                onClick={() => { if (comprar(a.id, a.preco)) salvar((s) => ({ ...s, acabamento: a.id })) }}
-              >
-                {a.nome}
-                <small>{tem ? (save.acabamento === a.id ? "usando" : "usar") : `R$ ${a.preco}`}</small>
-              </button>
-            )
-          })}
-        </div>
-        <p className="gd-dica">arte final dos instrumentos em breve — por enquanto é o desenho-guia de cada modelo.</p>
-      </div>
-    </section>
-  )
-}
-
-// desenho-guia (placeholder) do instrumento: formato + cor + acabamento
-function PreviaInstrumento({ m, acabamento, pequeno }: { m: Modelo; acabamento: string; pequeno?: boolean }) {
-  const corpo: Record<Modelo["forma"], string> = {
-    strato: "M30 70c-14 0-22 10-22 24s10 26 26 26 22-6 30-6 14 6 26 6 20-12 20-26-8-24-22-24c-8 0-10 6-18 6s-12-6-40-6z",
-    jaguar: "M26 72c-16 2-22 14-20 26s14 22 28 20 20-8 34-8 18 10 30 8 18-14 16-28-12-20-24-18-14 8-26 8-20-10-38-8z",
-    flying: "M40 60 L10 124 L52 108 L80 124 L104 60 Z",
-    semi: "M24 70c-14 0-20 12-20 26s8 26 24 26c10 0 16-6 28-6s18 6 28 6c16 0 24-12 24-26s-6-26-20-26c-10 0-14 8-32 8s-22-8-32-8z",
-    precision: "M28 66c-14 2-22 14-20 30s14 26 30 24 18-8 30-8 16 10 30 8 20-14 18-30-12-24-26-22-14 10-26 10-20-14-36-12z",
-    jazz: "M30 64c-16 0-24 14-22 30s14 28 30 26 20-10 32-10 16 12 30 10 20-16 18-30-12-26-26-24-16 12-28 12-18-14-34-14z",
-  }
-  const graves = m.tipo === "baixo"
-  return (
-    <svg className={`gd-previa ${pequeno ? "is-pequeno" : ""}`} viewBox="0 0 140 140" aria-hidden>
-      <defs>
-        <linearGradient id={`h-${m.id}`} x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="#2fe8ff" />
-          <stop offset=".5" stopColor="#ff3fb0" />
-          <stop offset="1" stopColor="#ffc857" />
-        </linearGradient>
-      </defs>
-      <rect x={graves ? 64 : 66} y={4} width={graves ? 12 : 8} height={graves ? 78 : 70} rx="2" fill={m.braco} stroke="#444" />
-      <rect x={graves ? 62 : 63} y={2} width={graves ? 16 : 14} height={12} rx="3" fill="#15151f" />
-      <path d={corpo[m.forma]} transform="translate(0 -4)" fill={acabamento === "holografico" ? `url(#h-${m.id})` : m.corpo} stroke="rgba(255,255,255,.35)" />
-      {acabamento === "chuva" && [0, 1, 2, 3, 4, 5].map((i) => <ellipse key={i} cx={30 + i * 15} cy={90 + (i % 2) * 14} rx="2.5" ry="4" fill="#bff6ff" opacity=".8" />)}
-      {acabamento === "adesivos" && <text x="70" y="104" textAnchor="middle" fontSize="11" fontWeight="800" fill="#050510">222</text>}
-      <rect x="54" y="92" width="32" height="6" rx="2" fill="#111" />
-      <text x="70" y="136" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,.35)" fontFamily="monospace">desenho-guia</text>
-    </svg>
-  )
-}
-
-/* ─── RESULTADO ────────────────────────────────────────── */
-function ResultadoTela({ r, palco, faixa, instrumento, onDeNovo, onMenu, onProximo }: {
-  r: Resultado; palco: Palco; faixa: Faixa; instrumento: Instrumento; onDeNovo: () => void; onMenu: () => void; onProximo?: () => void
-}) {
-  const [grana, setGrana] = useState(0)
-  useEffect(() => {
-    let v = 0
-    const t = setInterval(() => {
-      v = Math.min(r.grana, v + Math.max(10, Math.round(r.grana / 25)))
-      setGrana(v)
-      if (v >= r.grana) clearInterval(t)
-    }, 40)
-    return () => clearInterval(t)
-  }, [r.grana])
-  const frase = r.estrelas >= 4 ? "a casa veio abaixo." : r.estrelas >= 2 ? "a galera curtiu." : "hoje não foi. amanhã tem ensaio."
-  return (
-    <section className="gd-resultado">
-      <p className="gd-rotulo">{palco.nome} · {faixa.titulo.toLowerCase()} · {instrumento}</p>
-      <h1>{frase}</h1>
-      <div className="gd-estrelas">{Array.from({ length: 5 }, (_, i) => <span key={i} className={i < r.estrelas ? "is-on" : ""} style={{ animationDelay: `${0.3 + i * 0.18}s` }}>★</span>)}</div>
-      <dl>
-        <div><dt>notas</dt><dd>{Math.round(r.pct * 100)}%</dd></div>
-        <div><dt>maior sequência</dt><dd>{r.maxSeq}</dd></div>
-        <div><dt>pontos</dt><dd>{r.pontos.toLocaleString("pt-BR")}{r.recorde ? " · recorde" : ""}</dd></div>
-      </dl>
-      <div className="gd-cache">
-        <small>o dono do lugar</small>
-        <p>“{palco.fala}”</p>
-        <b>+ R$ {grana.toLocaleString("pt-BR")}</b>
-      </div>
-      {r.novoPalco && (
-        <div className="gd-novo" style={{ ["--c" as string]: r.novoPalco.cor }}>
-          <small>palco novo destravado</small>
-          <b>{r.novoPalco.nome}</b>
-          <span>{r.novoPalco.lugar} · cachê R$ {r.novoPalco.cache}</span>
-        </div>
-      )}
-      <div className="gd-acoes">
-        {onProximo && <button type="button" className="gd-btn" onClick={onProximo}>ir pro próximo palco</button>}
-        <button type="button" className={onProximo ? "gd-btn is-ghost" : "gd-btn"} onClick={onDeNovo}>tocar de novo</button>
-        <button type="button" className="gd-btn is-ghost" onClick={onMenu}>setlist</button>
-      </div>
-    </section>
-  )
-}
+export type { Instrumento }

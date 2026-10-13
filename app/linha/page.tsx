@@ -259,6 +259,21 @@ export default function LinhaPage() {
 
   const saveRef = useRef(save)
   useEffect(() => { saveRef.current = save }, [save])
+
+  // os apps de dentro do celular (GUITAR DRIVER…) pagam e cobram em NEON: o
+  // celular é o banco. O app pede (delta), o jogo confere o saldo e responde.
+  useEffect(() => {
+    const h = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.data?.tipo !== "cn-neon") return
+      const delta = Math.round(Number(e.data.delta) || 0)
+      const atual = saveRef.current.neon ?? 0
+      const ok = delta >= 0 || atual + delta >= 0
+      if (ok && delta) setSave((s) => ({ ...s, neon: Math.max(0, (s.neon ?? 0) + delta) }))
+      ;(e.source as Window | null)?.postMessage({ tipo: "cn-neon-saldo", neon: ok ? atual + delta : atual, ok, id: e.data.id }, window.location.origin)
+    }
+    window.addEventListener("message", h)
+    return () => window.removeEventListener("message", h)
+  }, [])
   // dirigindo: quem chama a próxima missão manda mensagem na tela da Kombi
   // (não precisa pegar o celular pra começar a conversa)
   const quemChama = !save.nucleo.caido ? ativa(save, nivelDe(save)) : null
