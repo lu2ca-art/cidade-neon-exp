@@ -38,6 +38,7 @@ import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
+import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -260,6 +261,20 @@ export default function LinhaPage() {
   const saveRef = useRef(save)
   useEffect(() => { saveRef.current = save }, [save])
 
+  // O RELÓGIO DA CIDADE (relogio.ts, 13/10): dormir na Kombi pula pras 8h do
+  // dia seguinte; cochilar (de dia) pula pras 19h. A tela escurece e mostra
+  // o dia novo.
+  const [saltoHora, setSaltoHora] = useState<{ h: number; id: number } | null>(null)
+  const [dormindo, setDormindo] = useState<{ texto: string } | null>(null)
+  const pularPara = useCallback((h: number, dormir: boolean) => {
+    const s = saveRef.current
+    const dia = (s.dia ?? 1) + (dormir ? 1 : 0)
+    setDormindo({ texto: dormir ? `dia ${dia}` : "a noite chegou" })
+    // o relógio pula; quem conta o dia novo é a virada das 8h (onHora)
+    setTimeout(() => setSaltoHora({ h, id: Date.now() }), 900)
+    setTimeout(() => setDormindo(null), 2600)
+  }, [])
+
   // os apps de dentro do celular (GUITAR DRIVER…) pagam e cobram em NEON: o
   // celular é o banco. O app pede (delta), o jogo confere o saldo e responde.
   useEffect(() => {
@@ -292,7 +307,8 @@ export default function LinhaPage() {
   const blocoTut = tut ? blocoAtual(save) : BLOCOS.length
   // e até o fim do tutorial, só a primeira pessoa chama
   const tutLibera = !tut || (quemChama === PRIMEIRA && blocoTut >= 1 && feito(save, "posto"))
-  const chamaNaEstrada = tutLibera && !!quemChama && !adiadas.includes(quemChama) && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
+  // a história só chama do entardecer até as 4h (relogio.ts)
+  const chamaNaEstrada = horaDaHistoria(save.hora ?? 18) && tutLibera && !!quemChama && !adiadas.includes(quemChama) && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
   // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
   // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
   // tudo no histórico, e a D-Bee LIGA. Desligou: ela escreve (a abertura)
@@ -441,6 +457,13 @@ export default function LinhaPage() {
 
   // encostou devagar na vaga do lugar da missão: a cena começa
   const abrirCena = useCallback((id: LugarId) => {
+    // cada lugar tem a sua hora (relogio.ts): fora dela, fechado
+    const hr = LUGARES[id]?.horario ?? "noite"
+    const h = saveRef.current.hora ?? 18
+    if (!abertoAgora(hr, h)) {
+      avisar(LUGARES[id].nome, turnoDe(h) === "ocio" ? "a cidade dorme. só música até as 8h" : `fechado agora. abre às ${abreAs(hr)}`, "#8a93b8")
+      return
+    }
     // o tutorial: o pin do posto abre a bomba
     if (id === "posto" && irAoPosto(saveRef.current)) { abrirPostoRef.current(); return }
     // o tutorial: chegou na casa do Drewboy com o Mubarak de carona — a cena
@@ -470,7 +493,7 @@ export default function LinhaPage() {
     if (LUGARES[id].fora) setViagem({ lugar: id, missao: a.missao, pegar: a.pegar })
     else setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
-  }, [cinema])
+  }, [cinema, avisar])
   const fimCena = useCallback((r: ResultadoCena) => {
     const c = cena
     setCena(null)
@@ -932,7 +955,9 @@ export default function LinhaPage() {
             onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 ? s : { ...s, tanque: n }))}
             onPosto={() => abrirPostoRef.current()}
             hora={save.hora ?? 18}
-            onHora={(h) => setSave((s) => ({ ...s, hora: h }))}
+            onHora={(h) => setSave((s) => ({ ...s, hora: h, dia: virouODia(s.hora ?? 18, h) ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))}
+            dia={save.dia ?? 1}
+            saltoHora={saltoHora}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
@@ -957,6 +982,16 @@ export default function LinhaPage() {
             foraDoAr={apagao}
           />
         )}
+        {/* O RELÓGIO (13/10): de dia dá pra cochilar até a noite; de noite e
+            na madrugada, dormir na Kombi (o dia seguinte começa às 8h) */}
+        {tela.t === "corrida" && !emSala && !cinema && !ligacao && save.casa && (
+          ehDia(save.hora ?? 18)
+            ? <button type="button" className="l-dormir" onClick={() => pularPara(19, false)}>cochilar até a noite</button>
+            : (save.hora ?? 18) >= 19 || (save.hora ?? 18) < 8
+              ? <button type="button" className="l-dormir" onClick={() => pularPara(8, true)}>dormir na kombi</button>
+              : null
+        )}
+        {dormindo && <div className="l-dormindo"><b>{dormindo.texto}</b></div>}
         {/* AS MISSÕES NUMA CAIXA SÓ (LU2CA, 05/10): no canto, o que fazer agora
             e a bolinha com quantas estão abertas; tocando, a atual (ou a
             checklist do tutorial) e as disponíveis */}
