@@ -527,10 +527,10 @@ export default function GuitarDriver() {
         )}
         {tela.t === "carreira" && <Carreira save={save} linha={linha} neon={neon} onPalco={(id) => setTela(save.vistos.includes(id) ? { t: "palco", id } : { t: "cutscene", palco: id })} onVoltar={() => setTela({ t: "titulo" })} />}
         {tela.t === "palco" && (
-          <Setlist save={save} neon={neon} popularidade={linha.popularidade ?? 0} palco={PALCOS.find((p) => p.id === tela.id)!}
+          <Setlist save={save} linha={linha} neon={neon} popularidade={linha.popularidade ?? 0} palco={PALCOS.find((p) => p.id === tela.id)!}
             onFaixa={(f, batalha) => setTela({ t: "preparo", faixa: f, palco: tela.id, batalha })} onVoltar={() => setTela({ t: "carreira" })} />
         )}
-        {tela.t === "rapido" && <Rapido save={save} neon={neon} onFaixa={(f) => setTela({ t: "preparo", faixa: f, palco: null, batalha: false })} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "rapido" && <Rapido save={save} linha={linha} neon={neon} onFaixa={(f) => setTela({ t: "preparo", faixa: f, palco: null, batalha: false })} onVoltar={() => setTela({ t: "titulo" })} />}
         {tela.t === "desafios" && <Desafios save={save} linha={linha} neon={neon} onVoltar={() => setTela({ t: "titulo" })} />}
         {tela.t === "preparo" && (
           <Preparo save={save} salvar={salvar} faixa={FAIXAS.find((f) => f.id === tela.faixa)!} palco={tela.palco ? PALCOS.find((p) => p.id === tela.palco)! : null}

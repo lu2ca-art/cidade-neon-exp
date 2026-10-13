@@ -41,6 +41,13 @@ export function faixaAberta(f: Faixa, agora = Date.now()) {
   return !f.abre || new Date(f.abre).getTime() <= agora
 }
 
+// cada missão cumprida libera a faixa da pessoa (como na rádio): a faixa só
+// toca aqui depois da missão E do lançamento. Sem anúncio: o que ainda não
+// foi conquistado aparece como "???"
+export function faixaConquistada(f: Faixa, l: { objetos?: string[] }) {
+  return !!l.objetos?.includes(f.id)
+}
+
 export interface Rival {
   nome: string
   habilidade: number // 0..1: chance de acertar cada nota
