@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, MODELOS, PALCOS, faixaAberta, palcoAberto, publicoDe,
+  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, MODELOS, PALCOS, faixaAberta, faixaConquistada, palcoAberto, publicoDe,
   type Faixa, type Instrumento, type Modelo, type Palco, type Save, type SaveLinha,
 } from "./dados"
 import { svgInstrumento, type Acabamento } from "./instrumentos"
@@ -110,12 +110,13 @@ export function Carreira({ save, linha, neon, onPalco, onVoltar }: { save: Save;
             const tocadas = p.setlist.filter((f) => Object.keys(save.estrelas).some((k) => k.startsWith(`${p.id}:${f}:`) && save.estrelas[k] > 0)).length
             const venceu = save.batalhas.includes(p.id)
             const gente = publicoDe(p, pop)
+            const prontas = p.setlist.filter((f) => faixaAberta(fx(f)) && faixaConquistada(fx(f), linha)).length
             return (
               <button key={p.id} type="button" disabled={!aberto} className={`gd-cartaz ${aberto ? "" : "is-trancado"}`} style={{ ["--c" as string]: p.cor, animationDelay: `${i * 0.04}s` }} onClick={() => onPalco(p.id)}>
                 <small className="gd-cartaz-n">{p.lugar}</small>
                 <b>{aberto ? p.nome : "???"}</b>
                 <span>{aberto ? `${gente === 1 ? "1 pessoa vem te ver" : `${gente} pessoas vêm te ver`} · cabem ${p.capacidade}` : `🔒 ${p.conhecer}`}</span>
-                {aberto && <em>{tocadas}/{p.setlist.length} músicas{p.rival ? ` · ${venceu ? "duelo vencido ✓" : `duelo: ${p.rival.nome}`}` : ""}</em>}
+                {aberto && <em>{prontas ? `${tocadas}/${prontas} músicas` : "nenhuma música ainda"}{p.rival ? ` · ${venceu ? "duelo vencido ✓" : `duelo: ${p.rival.nome}`}` : ""}</em>}
               </button>
             )
           })}
@@ -126,11 +127,12 @@ export function Carreira({ save, linha, neon, onPalco, onVoltar }: { save: Save;
 }
 
 /* ─── SETLIST de um palco ──────────────────────────────── */
-export function Setlist({ save, neon, popularidade, palco, onFaixa, onVoltar }: { save: Save; neon: number; popularidade: number; palco: Palco; onFaixa: (f: string, batalha: boolean) => void; onVoltar: () => void }) {
-  const abertas = palco.setlist.filter((f) => faixaAberta(fx(f)))
+export function Setlist({ save, linha, neon, popularidade, palco, onFaixa, onVoltar }: { save: Save; linha: SaveLinha; neon: number; popularidade: number; palco: Palco; onFaixa: (f: string, batalha: boolean) => void; onVoltar: () => void }) {
+  const pronta = (f: Faixa) => faixaAberta(f) && faixaConquistada(f, linha)
+  const abertas = palco.setlist.filter((f) => pronta(fx(f)))
   const tocou = (f: string) => Object.keys(save.estrelas).some((k) => k.startsWith(`${palco.id}:${f}:`) && save.estrelas[k] > 0)
   const rival = palco.rival
-  const podeDuelo = !!rival && abertas.length > 0 && abertas.every(tocou) && faixaAberta(fx(rival.faixa))
+  const podeDuelo = !!rival && abertas.length > 0 && abertas.every(tocou) && pronta(fx(rival.faixa))
   const gente = publicoDe(palco, popularidade)
   const venceu = save.batalhas.includes(palco.id)
   return (
@@ -141,13 +143,13 @@ export function Setlist({ save, neon, popularidade, palco, onFaixa, onVoltar }: 
         <ul className="gd-setlist">
           {palco.setlist.map((id, i) => {
             const f = fx(id)
-            const aberta = faixaAberta(f)
+            const aberta = pronta(f)
             const est = save.estrelas[`${palco.id}:${f.id}:${save.instrumento}`] ?? 0
             return (
               <li key={id}>
-                <button type="button" disabled={!aberta} onClick={() => onFaixa(id, false)} style={{ ["--c" as string]: f.cor, animationDelay: `${i * 0.05}s` }}>
+                <button type="button" disabled={!aberta} onClick={() => onFaixa(id, false)} style={{ ["--c" as string]: aberta ? f.cor : "#555", animationDelay: `${i * 0.05}s` }}>
                   <span className="gd-num">{i + 1}</span>
-                  <span className="gd-faixa-nome"><b>{f.titulo}</b><small>{aberta ? "★".repeat(est) + "☆".repeat(5 - est) : `abre ${dataCurta(f.abre!)}`}</small></span>
+                  <span className="gd-faixa-nome"><b>{aberta ? f.titulo : "???"}</b><small>{aberta ? "★".repeat(est) + "☆".repeat(5 - est) : faixaAberta(f) ? "· · ·" : `abre ${dataCurta(f.abre!)}`}</small></span>
                   <span className="gd-bpm">{f.bpm}<small>bpm</small></span>
                 </button>
               </li>
@@ -173,21 +175,21 @@ export function Setlist({ save, neon, popularidade, palco, onFaixa, onVoltar }: 
 }
 
 /* ─── TOCAR RÁPIDO ─────────────────────────────────────── */
-export function Rapido({ save, neon, onFaixa, onVoltar }: { save: Save; neon: number; onFaixa: (f: string) => void; onVoltar: () => void }) {
+export function Rapido({ save, linha, neon, onFaixa, onVoltar }: { save: Save; linha: SaveLinha; neon: number; onFaixa: (f: string) => void; onVoltar: () => void }) {
   return (
     <section className="gd-menu">
       <Topo titulo="TOCAR RÁPIDO" neon={neon} onVoltar={onVoltar} />
       <div className="gd-menu-corpo">
-        <p className="gd-rotulo">o cachê aqui é metade do palco mais alto que você abriu</p>
+        <p className="gd-rotulo">as faixas chegam conforme você acorda as pessoas da cidade</p>
         <ul className="gd-setlist">
           {FAIXAS.map((f, i) => {
-            const aberta = faixaAberta(f)
+            const aberta = faixaAberta(f) && faixaConquistada(f, linha)
             const melhor = Math.max(0, ...Object.entries(save.estrelas).filter(([k]) => k.split(":")[1] === f.id).map(([, v]) => v))
             return (
               <li key={f.id}>
-                <button type="button" disabled={!aberta} onClick={() => onFaixa(f.id)} style={{ ["--c" as string]: f.cor, animationDelay: `${i * 0.04}s` }}>
+                <button type="button" disabled={!aberta} onClick={() => onFaixa(f.id)} style={{ ["--c" as string]: aberta ? f.cor : "#555", animationDelay: `${i * 0.04}s` }}>
                   <span className="gd-num">{i + 1}</span>
-                  <span className="gd-faixa-nome"><b>{f.titulo}</b><small>{aberta ? "★".repeat(melhor) + "☆".repeat(5 - melhor) : `abre ${dataCurta(f.abre!)}`}</small></span>
+                  <span className="gd-faixa-nome"><b>{aberta ? f.titulo : "???"}</b><small>{aberta ? "★".repeat(melhor) + "☆".repeat(5 - melhor) : faixaAberta(f) ? "· · ·" : `abre ${dataCurta(f.abre!)}`}</small></span>
                   <span className="gd-bpm">{f.bpm}<small>bpm</small></span>
                 </button>
               </li>
