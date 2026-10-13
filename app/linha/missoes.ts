@@ -305,3 +305,11 @@ export function abertas(s: Save, nivel: number): Aberta[] {
     return { id, etapa: e, texto: m.chamado, area: areaDaMissao(id), lugar, frac: m.busca ? 0 : undefined }
   })
 }
+
+// A POPULARIDADE (13/10, LU2CA): o quanto a cidade te conhece (0–100). Cada
+// pessoa acordada soma, em silêncio (nada anunciado na tela); os shows do
+// Guitar Driver somam também. Os valores seguem o rascunho da ordem das
+// missões (vault: trilhas-2026-10-13.md §11) e mudam quando a ordem fechar.
+export const POPULARIDADE: Partial<Record<EstacaoId, number>> = {
+  copo: 3, sexta: 7, chuva: 6, dopamina: 6, ontem: 8, nectar: 15, ojala: 0, swav: 15, rollercoaster: 10,
+}
