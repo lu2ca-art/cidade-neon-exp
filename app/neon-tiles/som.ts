@@ -24,12 +24,32 @@ function ruido(c: AudioContext, seg = 2) {
   return b
 }
 
+// o áudio em camadas fica CIFRADO no armazenamento (api/gd/chave): o jogo
+// pede a chave uma vez e abre cada arquivo na memória
+let chaveP: Promise<CryptoKey> | null = null
+function chave() {
+  chaveP ??= fetch("/api/gd/chave", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("sem chave"))))
+    .then((j: { k: string }) => crypto.subtle.importKey("raw", Uint8Array.from(atob(j.k), (ch) => ch.charCodeAt(0)), "AES-GCM", false, ["decrypt"]))
+    .catch((e) => { chaveP = null; throw e })
+  return chaveP
+}
+
 export async function carregarBuffer(url: string) {
   const c = ac()
   if (!c) throw new Error("sem áudio")
   const r = await fetch(url)
-  return c.decodeAudioData(await r.arrayBuffer())
+  let dados = await r.arrayBuffer()
+  if (url.endsWith(".bin")) {
+    // [12 bytes de IV][áudio cifrado + tag] (AES-256-GCM)
+    dados = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(dados, 0, 12) }, await chave(), new Uint8Array(dados, 12))
+  }
+  return c.decodeAudioData(dados)
 }
+
+// o endereço de uma camada (cifrada) de uma faixa
+export const GD_AUDIO = process.env.NEXT_PUBLIC_GD_AUDIO ?? "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/gd/v2"
+export const urlCamada = (faixa: string, camada: string) => `${GD_AUDIO}/${faixa}/${camada}.bin`
 
 // só o grave da faixa, pra gerar as notas do baixo a partir do baixo real
 export async function soGrave(buf: AudioBuffer) {
