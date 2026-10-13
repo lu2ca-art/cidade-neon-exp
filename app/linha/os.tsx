@@ -54,7 +54,7 @@ export const APPS: AppDef[] = [
   { id: "ouvir", nome: "OUVIR", cor: "#1ed760", pagina: 0, desc: "as faixas lá fora: spotify, apple, youtube, deezer" },
   { id: "nectar", nome: "NECTAR", cor: "#67e8f9", rota: "/nectar", pagina: 0, desc: "qual é o seu nectar" },
   { id: "batida", nome: "B4TIDA", cor: "#ff6b6b", rota: "/batida", pagina: 0, desc: "monta sua música por camadas" },
-  { id: "guitar", nome: "GUITAR DRIVER", cor: "#ff9000", rota: "/neon-tiles", pagina: 0, desc: "toca as 4 faixas" },
+  { id: "guitar", nome: "GUITAR DRIVER", cor: "#ff9000", rota: "/neon-tiles", pagina: 0, desc: "toque as faixas ao vivo" },
   { id: "sintonia", nome: "SINT0NIA", cor: "#00e5ff", rota: "/sintonizador", pagina: 0, desc: "sintonizador" },
   { id: "freq", nome: "FR3Q_", cor: "#00ff9c", rota: "/spotify/auto-chuva", pagina: 0, desc: "player" },
   { id: "loop", nome: "//LOOP", cor: "#ff2d78", rota: "/tiktok/feed", pagina: 0, desc: "vídeos curtos" },
