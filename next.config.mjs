@@ -3,7 +3,8 @@
 // YouTube das páginas antigas e imagens do Wikimedia (museu)
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://va.vercel-scripts.com",
+  // blob: = o AudioWorklet da voz da B4TIDA (carregado de um Blob)
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://commons.wikimedia.org https://upload.wikimedia.org https://i.ytimg.com",
   "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
