@@ -48,28 +48,47 @@ export interface Rival {
   ataquesPorMin: number
 }
 
+// o que o Guitar Driver lê do save do jogo (cn-linha-222) pra saber quais
+// lugares você já conhece e o quanto a cidade te conhece
+export interface SaveLinha { casa?: boolean; tutorial?: string[]; objetos?: string[]; reliquias?: string[]; popularidade?: number }
+
 export interface Palco {
-  id: string
+  id: string // o mesmo id do lugar no jogo (app/linha/lugares.ts)
   nome: string
   lugar: string
   setlist: string[] // ids das faixas deste palco
-  rival: Rival // o dono da noite: ganhou o duelo, leva o palco
-  cache: number // NEON por show com 5 estrelas
-  publico: number // tamanho da galera (desenho)
+  rival: Rival | null // o dono da noite (duelo opcional)
+  cache: number // NEON por show com 5 estrelas e casa cheia
+  capacidade: number // quanta gente cabe
   cor: string // luz dominante
   fachada: string // letreiro da cutscene
-  fala: string // o dono do lugar, no fim
+  conhecer: string // o que fazer no jogo pra este palco abrir
+  abre: (l: SaveLinha) => boolean
 }
 
-// a carreira, palco a palco: cada um tem o seu setlist e o seu dono da noite.
-// A paleta segue os gases nobres (xenônio azul-violeta, neônio laranja…)
+const fez = (l: SaveLinha, o: string) => !!l.objetos?.includes(o)
+const tut = (l: SaveLinha, i: string) => !!l.tutorial?.includes(i)
+
+// os palcos são os lugares da história: conforme você conhece um lugar na
+// cidade, ele abre aqui, com um ângulo próprio (cenarios.ts)
 export const PALCOS: Palco[] = [
-  { id: "garagem", nome: "a garagem", lugar: "subúrbio xenom", setlist: ["chuva", "ontem"], rival: { nome: "o vizinho do som alto", habilidade: 0.62, faixa: "ontem", ataquesPorMin: 2 }, cache: 40, publico: 6, cor: "#6d7bff", fachada: "GARAGEM · ENSAIO ABERTO", fala: "valeu por não quebrar nada. toma, pro busão" },
-  { id: "bar", nome: "bar do copo", lugar: "centro", setlist: ["copo", "nectar"], rival: { nome: "a banda cover da esquina", habilidade: 0.72, faixa: "copo", ataquesPorMin: 2.5 }, cache: 80, publico: 22, cor: "#ff6a35", fachada: "BAR DO COPO · HOJE: LU2CA", fala: "o bar nunca vendeu tanto copo americano. volta sexta" },
-  { id: "laje", nome: "festa na laje", lugar: "morro", setlist: ["sexta", "dopamina"], rival: { nome: "o DJ da laje", habilidade: 0.8, faixa: "sexta", ataquesPorMin: 3 }, cache: 150, publico: 60, cor: "#b38cff", fachada: "LAJE 222 · ENTRADA 1 KG DE ALIMENTO", fala: "a vizinhança inteira subiu. isso aqui é seu" },
-  { id: "casa", nome: "casa 222", lugar: "rua da linha", setlist: ["ojala", "swav"], rival: { nome: "a banda da casa", habilidade: 0.86, faixa: "swav", ataquesPorMin: 3.5 }, cache: 300, publico: 180, cor: "#e6f0ff", fachada: "CASA 222 · INGRESSOS ESGOTADOS", fala: "esgotou em 4 minutos. o núcleo tá de olho em vc" },
-  { id: "arena", nome: "arena neon", lugar: "o festival", setlist: ["rollercoaster", "sexta", "copo"], rival: { nome: "o headliner", habilidade: 0.92, faixa: "rollercoaster", ataquesPorMin: 4 }, cache: 600, publico: 600, cor: "#ff3fb0", fachada: "FESTIVAL CIDADE NEON · PALCO PRINCIPAL", fala: "a cidade inteira cantou junto. isso não se compra" },
+  { id: "casa-dbee", nome: "a casa da d-bee", lugar: "o deserto", setlist: ["ontem", "chuva", "ojala"], rival: null, cache: 30, capacidade: 6, cor: "#ff9a5c", fachada: "A CASA NO DESERTO", conhecer: "a abertura do jogo", abre: (l) => !!l.casa },
+  { id: "posto", nome: "o posto", lugar: "a beira da estrada", setlist: ["nectar", "copo"], rival: null, cache: 40, capacidade: 15, cor: "#ffd23a", fachada: "POSTO 24H", conhecer: "encher o tanque no posto", abre: (l) => tut(l, "posto") },
+  { id: "bar", nome: "o bar", lugar: "o centro", setlist: ["copo", "ontem"], rival: { nome: "a banda cover da esquina", habilidade: 0.68, faixa: "copo", ataquesPorMin: 2.5 }, cache: 60, capacidade: 40, cor: "#ff6a35", fachada: "O COPO · HOJE: LU2CA", conhecer: "resgatar o Mubarak no bar", abre: (l) => tut(l, "mubarak") || fez(l, "copo") },
+  { id: "casa-drewboy", nome: "a casa do drewboy", lugar: "o subúrbio", setlist: ["sexta", "chuva"], rival: { nome: "o vizinho do som alto", habilidade: 0.6, faixa: "sexta", ataquesPorMin: 2 }, cache: 50, capacidade: 12, cor: "#ff3fb0", fachada: "AP 222", conhecer: "levar o Mubarak até a casa do Drewboy", abre: (l) => tut(l, "drewboy") || fez(l, "sexta") },
+  { id: "escondido", nome: "a casa da ella", lugar: "o subúrbio", setlist: ["chuva", "nectar"], rival: null, cache: 50, capacidade: 10, cor: "#5dffa0", fachada: "· · ·", conhecer: "a missão da Ella", abre: (l) => fez(l, "chuva") },
+  { id: "balada", nome: "a balada", lugar: "o centro", setlist: ["sexta", "dopamina"], rival: { nome: "o DJ da casa", habilidade: 0.78, faixa: "dopamina", ataquesPorMin: 3 }, cache: 100, capacidade: 200, cor: "#b38cff", fachada: "SEXTA", conhecer: "a noite da balada com o Drewboy", abre: (l) => fez(l, "sexta") },
+  { id: "topo", nome: "o terraço", lugar: "o mirante", setlist: ["dopamina", "swav"], rival: null, cache: 90, capacidade: 60, cor: "#2fe8ff", fachada: "TERRAÇO", conhecer: "a missão da Notti", abre: (l) => fez(l, "dopamina") },
+  { id: "casa-shows", nome: "a casa de shows", lugar: "o túnel", setlist: ["ontem", "sexta", "copo"], rival: { nome: "a banda da casa", habilidade: 0.85, faixa: "ontem", ataquesPorMin: 3.5 }, cache: 150, capacidade: 300, cor: "#ffc857", fachada: "ONTEM", conhecer: "a missão do Alohan", abre: (l) => fez(l, "ontem") },
+  { id: "plataforma", nome: "o vagão da linha 9", lugar: "a estação 6", setlist: ["nectar", "rollercoaster"], rival: null, cache: 120, capacidade: 30, cor: "#e6f0ff", fachada: "LINHA 9 · 6", conhecer: "o episódio do Nectar", abre: (l) => fez(l, "nectar") },
+  { id: "beco", nome: "o beco", lugar: "o mirante", setlist: ["dopamina", "copo"], rival: null, cache: 80, capacidade: 25, cor: "#9b8cff", fachada: "", conhecer: "achar o beco cinza", abre: (l) => !!l.reliquias?.includes("relicario") },
+  { id: "arena", nome: "a arena neon", lugar: "o festival", setlist: ["rollercoaster", "sexta", "copo", "chuva"], rival: { nome: "o headliner", habilidade: 0.92, faixa: "sexta", ataquesPorMin: 4 }, cache: 600, capacidade: 2000, cor: "#ff3fb0", fachada: "FESTIVAL CIDADE NEON", conhecer: "a cidade inteira te conhecer (popularidade 80)", abre: (l) => (l.popularidade ?? 0) >= 80 },
 ]
+
+// a plateia vem da popularidade: no começo, uma pessoa (a multidão de 1)
+export function publicoDe(p: Palco, popularidade: number) {
+  return Math.max(1, Math.min(p.capacidade, Math.round(1 + Math.pow(Math.max(0, popularidade), 1.6) * 0.5)))
+}
 
 export type Dificuldade = "facil" | "medio" | "dificil" | "expert"
 export const DIFICULDADES: { id: Dificuldade; nome: string; ouve: string }[] = [
@@ -95,18 +114,18 @@ export interface Feito {
 export interface Desafio { id: string; palco: string; texto: string; neon: number; ok: (f: Feito) => boolean }
 const ord = (d: Dificuldade) => ["facil", "medio", "dificil", "expert"].indexOf(d)
 export const DESAFIOS: Desafio[] = [
-  { id: "garagem-70", palco: "garagem", texto: "acerte 70% das notas de uma música", neon: 30, ok: (f) => f.terminou && f.pct >= 0.7 },
-  { id: "garagem-25", palco: "garagem", texto: "faça 25 notas seguidas", neon: 30, ok: (f) => f.maxSeq >= 25 },
-  { id: "garagem-neon", palco: "garagem", texto: "ligue o NEON numa música", neon: 40, ok: (f) => f.neonUsos >= 1 },
+  { id: "garagem-70", palco: "casa-drewboy", texto: "acerte 70% das notas de uma música", neon: 30, ok: (f) => f.terminou && f.pct >= 0.7 },
+  { id: "garagem-25", palco: "casa-drewboy", texto: "faça 25 notas seguidas", neon: 30, ok: (f) => f.maxSeq >= 25 },
+  { id: "garagem-neon", palco: "casa-drewboy", texto: "ligue o NEON numa música", neon: 40, ok: (f) => f.neonUsos >= 1 },
   { id: "bar-80", palco: "bar", texto: "acerte 80% das notas no médio ou acima", neon: 60, ok: (f) => f.terminou && f.pct >= 0.8 && ord(f.dificuldade) >= 1 },
   { id: "bar-50", palco: "bar", texto: "faça 50 notas seguidas", neon: 60, ok: (f) => f.maxSeq >= 50 },
   { id: "bar-4e", palco: "bar", texto: "tire 4 estrelas", neon: 80, ok: (f) => f.estrelas >= 4 },
-  { id: "laje-90", palco: "laje", texto: "acerte 90% das notas", neon: 100, ok: (f) => f.terminou && f.pct >= 0.9 },
-  { id: "laje-100", palco: "laje", texto: "faça 100 notas seguidas", neon: 120, ok: (f) => f.maxSeq >= 100 },
-  { id: "laje-neon3", palco: "laje", texto: "ligue o NEON 3 vezes numa música", neon: 120, ok: (f) => f.neonUsos >= 3 },
-  { id: "casa-dif", palco: "casa", texto: "termine uma música no difícil", neon: 200, ok: (f) => f.terminou && ord(f.dificuldade) >= 2 },
-  { id: "casa-150", palco: "casa", texto: "faça 150 notas seguidas", neon: 200, ok: (f) => f.maxSeq >= 150 },
-  { id: "casa-95", palco: "casa", texto: "acerte 95% das notas", neon: 250, ok: (f) => f.terminou && f.pct >= 0.95 },
+  { id: "laje-90", palco: "balada", texto: "acerte 90% das notas", neon: 100, ok: (f) => f.terminou && f.pct >= 0.9 },
+  { id: "laje-100", palco: "balada", texto: "faça 100 notas seguidas", neon: 120, ok: (f) => f.maxSeq >= 100 },
+  { id: "laje-neon3", palco: "balada", texto: "ligue o NEON 3 vezes numa música", neon: 120, ok: (f) => f.neonUsos >= 3 },
+  { id: "casa-dif", palco: "casa-shows", texto: "termine uma música no difícil", neon: 200, ok: (f) => f.terminou && ord(f.dificuldade) >= 2 },
+  { id: "casa-150", palco: "casa-shows", texto: "faça 150 notas seguidas", neon: 200, ok: (f) => f.maxSeq >= 150 },
+  { id: "casa-95", palco: "casa-shows", texto: "acerte 95% das notas", neon: 250, ok: (f) => f.terminou && f.pct >= 0.95 },
   { id: "arena-expert", palco: "arena", texto: "termine uma música no expert", neon: 400, ok: (f) => f.terminou && f.dificuldade === "expert" },
   { id: "arena-fc", palco: "arena", texto: "toque uma música inteira sem errar", neon: 500, ok: (f) => f.terminou && f.semErro },
   { id: "arena-5e", palco: "arena", texto: "tire 5 estrelas", neon: 400, ok: (f) => f.estrelas >= 5 },
@@ -185,9 +204,9 @@ export const SAVE_VAZIO: Save = {
   vistos: [],
 }
 
-// um palco abre quando você ganha o duelo do anterior
-export function palcoAberto(s: Save, i: number) {
-  return i === 0 || s.batalhas.includes(PALCOS[i - 1].id)
+// um palco abre quando você conhece o lugar no jogo
+export function palcoAberto(l: SaveLinha, p: Palco) {
+  return p.abre(l)
 }
 
 const CHAVE = "cn-guitar-driver"

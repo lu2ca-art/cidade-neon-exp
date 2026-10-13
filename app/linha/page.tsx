@@ -264,7 +264,16 @@ export default function LinhaPage() {
   // celular é o banco. O app pede (delta), o jogo confere o saldo e responde.
   useEffect(() => {
     const h = (e: MessageEvent) => {
-      if (e.origin !== window.location.origin || e.data?.tipo !== "cn-neon") return
+      if (e.origin !== window.location.origin) return
+      // a popularidade (o Guitar Driver: cada show bom, a cidade te conhece mais)
+      if (e.data?.tipo === "cn-pop") {
+        const delta = Math.round(Number(e.data.delta) || 0)
+        const nova = Math.max(0, Math.min(100, (saveRef.current.popularidade ?? 0) + delta))
+        if (delta) setSave((s) => ({ ...s, popularidade: nova }))
+        ;(e.source as Window | null)?.postMessage({ tipo: "cn-pop-ok", popularidade: nova, id: e.data.id }, window.location.origin)
+        return
+      }
+      if (e.data?.tipo !== "cn-neon") return
       const delta = Math.round(Number(e.data.delta) || 0)
       const atual = saveRef.current.neon ?? 0
       const ok = delta >= 0 || atual + delta >= 0

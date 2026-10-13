@@ -14,8 +14,8 @@ import { sendCarRadioMute, sendMinimizeConsole } from "@/app/providers/AudioBrid
 import { track } from "@/lib/analytics"
 import "./gd.css"
 import {
-  DESAFIOS, FAIXAS, MODELOS, PALCOS, SAVE_VAZIO, carregar, estrelasPor, gravar, palcoAberto,
-  type Faixa, type Feito, type Instrumento, type Palco, type Save,
+  DESAFIOS, FAIXAS, MODELOS, PALCOS, SAVE_VAZIO, carregar, estrelasPor, gravar, palcoAberto, publicoDe,
+  type Faixa, type Feito, type Instrumento, type Palco, type Save, type SaveLinha,
 } from "./dados"
 import {
   COR_LANE, LANES, andarParticulas, desenharBraco, desenharHud, desenharPalco, desenharTomada, geometriaBraco, soltarFaiscas,
@@ -27,7 +27,7 @@ import {
   type ChartGd, type Duelo, type Placar,
 } from "./motor"
 import { imagemInstrumento } from "./instrumentos"
-import { mudarNeon, saldoInicial } from "./neon"
+import { lerLinha, mudarNeon, mudarPopularidade, saldoInicial } from "./neon"
 import { Calibrar, Carreira, Desafios, Loja, Opcoes, Preparo, Rapido, ResultadoTela, Setlist, Titulo, type Resultado } from "./menus"
 import { Editor } from "./editor"
 
@@ -45,6 +45,7 @@ export type Tela =
 interface Show_ {
   faixa: Faixa
   palco: Palco
+  publico: number // quanta gente veio (a popularidade)
   carreira: boolean // false = tocar rápido
   batalha: boolean
 }
@@ -87,6 +88,7 @@ export default function GuitarDriver() {
   const [res, setRes] = useState<Resultado | null>(null)
   const [erroCarga, setErroCarga] = useState("")
   const [editorLiberado, setEditorLiberado] = useState(false)
+  const [linha, setLinha] = useState<SaveLinha>({}) // o save do jogo: os lugares conhecidos e a popularidade
   const cvs = useRef<HTMLCanvasElement>(null)
   const jogo = useRef<Jogo>(jogoVazio())
   const toques = useRef(new Map<number, number>()) // ponteiro → posição na pista
@@ -95,6 +97,7 @@ export default function GuitarDriver() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSave(carregar())
     setNeon(saldoInicial())
+    setLinha(lerLinha())
     setEditorLiberado(new URLSearchParams(window.location.search).has("editor"))
     sendCarRadioMute(true)
     // dev: o teste automático lê o estado do show
@@ -126,11 +129,11 @@ export default function GuitarDriver() {
   /* ── começar um show ── */
   const comecar = async (faixaId: string, palcoId: string | null, batalha: boolean) => {
     const f = FAIXAS.find((x) => x.id === faixaId)!
-    // tocar rápido: o visual (e o cachê, pela metade) do palco mais alto aberto
-    const abertos = PALCOS.filter((_, i) => palcoAberto(save, i))
-    const palco = PALCOS.find((p) => p.id === palcoId) ?? abertos[abertos.length - 1] ?? PALCOS[0]
+    // tocar rápido: o último lugar que você conheceu (ou a casa de shows)
+    const abertos = PALCOS.filter((p) => palcoAberto(linha, p) && p.id !== "arena")
+    const palco = PALCOS.find((p) => p.id === palcoId) ?? abertos[abertos.length - 1] ?? PALCOS.find((p) => p.id === "casa-shows")!
     ac()
-    setShow({ faixa: f, palco, carreira: !!palcoId, batalha })
+    setShow({ faixa: f, palco, publico: publicoDe(palco, linha.popularidade ?? 0), carreira: !!palcoId, batalha })
     setErroCarga("")
     setTela({ t: "carregando" })
     track("mission_started", { mission_id: `guitar-${f.id}`, place_id: "neon-tiles" })
@@ -149,7 +152,7 @@ export default function GuitarDriver() {
       for (const n of notas) if (n.frase !== undefined) { const fr = frases.get(n.frase) ?? { total: 0, acertos: 0, falhou: false }; fr.total++; frases.set(n.frase, fr) }
       jogo.current = {
         ...jogoVazio(), notas, placar: novoPlacar(notas.length), dur: buf.duration, bpm: chart.bpm, t0: chart.t0, buf, parte, frases,
-        duelo: batalha ? novoDuelo(palco.rival) : null,
+        duelo: batalha && palco.rival ? novoDuelo(palco.rival) : null,
       }
       setTela({ t: "entrada" })
     } catch {
@@ -191,7 +194,7 @@ export default function GuitarDriver() {
         if (n > contou) { contou = n; sh?.baqueta(); vib(10) }
       }
       ajustar(c)
-      desenharTomada(g, c.width, c.height, atual.t, tl, { palco: show.palco, modelo, contagem: n, imgs })
+      desenharTomada(g, c.width, c.height, atual.t, tl, { palco: show.palco, modelo, contagem: n, imgs, publico: show.publico })
       if (tt >= total) { cancelAnimationFrame(raf); setTela({ t: "tocando" }); return }
       raf = requestAnimationFrame(loop)
     }
@@ -210,16 +213,24 @@ export default function GuitarDriver() {
     const est = vaiado ? 0 : estrelasPor(pct * 0.85 + p.galera * 0.15)
     const venceu = show.batalha ? j.fim === "ganhou" || (j.fim !== "perdeu" && (j.duelo?.voce ?? 0) > 0.5) : false
     const bonus = modelo.bonus?.includes("+30%") ? 1.3 : modelo.bonus?.includes("+20%") ? 1.2 : modelo.bonus?.includes("+10%") ? 1.1 : 1
-    let cache = vaiado ? 0 : Math.round((show.palco.cache * (0.15 + est * 0.17) * bonus * (show.carreira ? 1 : 0.5)) / 5) * 5
+    // o cachê depende de quanta gente veio (casa vazia paga pouco)
+    const lotacao = 0.3 + 0.7 * Math.min(1, show.publico / show.palco.capacidade)
+    let cache = vaiado ? 0 : Math.round((show.palco.cache * (0.15 + est * 0.17) * bonus * lotacao * (show.carreira ? 1 : 0.5)) / 5) * 5
     if (show.batalha) cache = venceu ? show.palco.cache * 2 : Math.round(cache * 0.3)
     const feito: Feito = { palco: show.palco.id, faixa: show.faixa.id, dificuldade: save.dificuldade, pct, maxSeq: p.maxSeq, estrelas: est, neonUsos: p.neonUsos, semErro: p.erros === 0 && terminou, terminou }
     const novosDesafios = DESAFIOS.filter((d) => d.palco === show.palco.id && !save.desafios.includes(d.id) && d.ok(feito))
     const premio = novosDesafios.reduce((s, d) => s + d.neon, 0)
     const chave = `${show.palco.id}:${show.faixa.id}:${save.instrumento}`
     const recorde = p.pontos > (save.recordes[chave] ?? 0)
-    const primeiraVitoria = venceu && !save.batalhas.includes(show.palco.id)
-    const iPalco = PALCOS.findIndex((x) => x.id === show.palco.id)
-    const novoPalco = primeiraVitoria ? PALCOS[iPalco + 1] ?? null : null
+    // a popularidade: show bom, a cidade te conhece mais; vaia, um pouco menos
+    const popAntes = linha.popularidade ?? 0
+    let pop = vaiado ? -1 : est >= 3 ? 1 + (est - 3) : 0
+    if (feito.semErro) pop += 1
+    if (venceu && !save.batalhas.includes(show.palco.id)) pop += 4
+    const popDepois = Math.max(0, Math.min(100, popAntes + pop))
+    const arena = PALCOS.find((x) => x.id === "arena")!
+    const novoPalco = popAntes < 80 && popDepois >= 80 ? arena : null
+    if (pop) mudarPopularidade(pop).then((v) => setLinha((l) => ({ ...l, popularidade: v })))
     const concluidas = est >= 1 && !save.concluidas.includes(show.faixa.id) ? [...save.concluidas, show.faixa.id] : save.concluidas
     salvar((s) => ({
       ...s,
@@ -238,11 +249,11 @@ export default function GuitarDriver() {
     }
     track("mission_completed", { mission_id: `guitar-${show.faixa.id}`, duration_ms: Math.round(j.dur * 1000) })
     setRes({
-      pct, estrelas: est, pontos: p.pontos, maxSeq: p.maxSeq, perfeitos: p.perfeitos, cache, recorde, novoPalco, vaiado,
-      desafios: novosDesafios.map((d) => ({ texto: d.texto, neon: d.neon })), batalha: show.batalha ? { venceu, rival: show.palco.rival.nome } : null,
+      pct, estrelas: est, pontos: p.pontos, maxSeq: p.maxSeq, perfeitos: p.perfeitos, cache, recorde, novoPalco, vaiado, publico: show.publico, popularidade: popDepois, popDelta: pop,
+      desafios: novosDesafios.map((d) => ({ texto: d.texto, neon: d.neon })), batalha: show.batalha ? { venceu, rival: show.palco.rival?.nome ?? "o rival" } : null,
     })
     setTela({ t: "saida" })
-  }, [show, modelo, save, salvar, state.confirmations.c3.done, completeConfirmation, updateCinematicStep])
+  }, [show, modelo, save, salvar, linha.popularidade, state.confirmations.c3.done, completeConfirmation, updateCinematicStep])
 
   /* ── tocar (posição na pista → trilha, que inverte no ataque) ── */
   const tocar = useCallback((pos: number, on: boolean) => {
@@ -399,7 +410,7 @@ export default function GuitarDriver() {
       ajustar(c)
       const w = c.width
       const h = c.height
-      desenharPalco(g, w, h, { palco: show.palco, energia: p.galera, neon: p.neonAtivo > 0, batida, t: agora, instrumento: save.instrumento, modelo, imgs, vaia: p.galera < 0.15 })
+      desenharPalco(g, w, h, { palco: show.palco, energia: p.galera, neon: p.neonAtivo > 0, batida, t: agora, instrumento: save.instrumento, modelo, imgs, vaia: p.galera < 0.15, publico: show.publico, show: true })
       g.fillStyle = "rgba(4,3,12,0.42)"
       g.fillRect(0, 0, w, h)
       desenharBraco(g, w, h, {
@@ -451,7 +462,7 @@ export default function GuitarDriver() {
     const loop = () => {
       const tt = (performance.now() - t0) / 1000
       ajustar(c)
-      desenharTomada(g, c.width, c.height, "final", tt, { palco: show.palco, modelo, sucesso: ok, imgs })
+      desenharTomada(g, c.width, c.height, "final", tt, { palco: show.palco, modelo, sucesso: ok, imgs, publico: show.publico })
       if (tt > 3.2) {
         jogo.current.show?.parar()
         jogo.current.show = null
@@ -511,16 +522,16 @@ export default function GuitarDriver() {
         <canvas ref={cvs} className={`gd-cvs ${emCena ? "is-on" : ""}`} />
 
         {tela.t === "titulo" && (
-          <Titulo neon={neon} modelo={modelo} acabamento={save.acabamentos[modelo.id] ?? "liso"} editor={editorLiberado}
+          <Titulo neon={neon} popularidade={linha.popularidade ?? 0} modelo={modelo} acabamento={save.acabamentos[modelo.id] ?? "liso"} editor={editorLiberado}
             onIr={(t) => setTela(t)} onSair={sair} />
         )}
-        {tela.t === "carreira" && <Carreira save={save} neon={neon} onPalco={(id) => setTela(save.vistos.includes(id) || id === "garagem" ? { t: "palco", id } : { t: "cutscene", palco: id })} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "carreira" && <Carreira save={save} linha={linha} neon={neon} onPalco={(id) => setTela(save.vistos.includes(id) ? { t: "palco", id } : { t: "cutscene", palco: id })} onVoltar={() => setTela({ t: "titulo" })} />}
         {tela.t === "palco" && (
-          <Setlist save={save} neon={neon} palco={PALCOS.find((p) => p.id === tela.id)!}
+          <Setlist save={save} neon={neon} popularidade={linha.popularidade ?? 0} palco={PALCOS.find((p) => p.id === tela.id)!}
             onFaixa={(f, batalha) => setTela({ t: "preparo", faixa: f, palco: tela.id, batalha })} onVoltar={() => setTela({ t: "carreira" })} />
         )}
         {tela.t === "rapido" && <Rapido save={save} neon={neon} onFaixa={(f) => setTela({ t: "preparo", faixa: f, palco: null, batalha: false })} onVoltar={() => setTela({ t: "titulo" })} />}
-        {tela.t === "desafios" && <Desafios save={save} neon={neon} onVoltar={() => setTela({ t: "titulo" })} />}
+        {tela.t === "desafios" && <Desafios save={save} linha={linha} neon={neon} onVoltar={() => setTela({ t: "titulo" })} />}
         {tela.t === "preparo" && (
           <Preparo save={save} salvar={salvar} faixa={FAIXAS.find((f) => f.id === tela.faixa)!} palco={tela.palco ? PALCOS.find((p) => p.id === tela.palco)! : null}
             batalha={tela.batalha} erro={erroCarga} calibrado={save.atraso !== null}
