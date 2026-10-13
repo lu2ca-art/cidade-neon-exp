@@ -21,7 +21,7 @@ import {
   COR_LANE, LANES, andarParticulas, desenharBraco, desenharHud, desenharPalco, desenharTomada, geometriaBraco, soltarFaiscas,
   type Nota, type Particula, type Tomada,
 } from "./cena"
-import { ac, atrasoEstimado, carregarBuffer, montarShow, type Show } from "./som"
+import { GD_AUDIO, ac, atrasoEstimado, carregarBuffer, montarShow, urlCamada, type Show } from "./som"
 import {
   JANELA, NOME_ATAQUE, PERFEITO, VISIVEL, andarRival, multiplicador, notasDoChart, novoDuelo, novoPlacar,
   type ChartGd, type Duelo, type Placar,
@@ -31,8 +31,6 @@ import { lerLinha, mudarNeon, mudarPopularidade, saldoInicial } from "./neon"
 import { Calibrar, Carreira, Desafios, Loja, Opcoes, Preparo, Rapido, ResultadoTela, Setlist, Titulo, type Resultado } from "./menus"
 import { Editor } from "./editor"
 
-// o áudio em camadas: <base>/<faixa>/{sem-guitarra,guitarra,sem-baixo,baixo}.mp3
-const GD_AUDIO = process.env.NEXT_PUBLIC_GD_AUDIO ?? "https://evlqbbqswxhxemwk.public.blob.vercel-storage.com/gd/v1"
 const TECLAS = ["d", "f", "j", "k"]
 
 export type Tela =
@@ -139,13 +137,12 @@ export default function GuitarDriver() {
     track("mission_started", { mission_id: `guitar-${f.id}`, place_id: "neon-tiles" })
     try {
       const inst = save.instrumento
-      const base = `${GD_AUDIO}/${f.id}`
       // o editor pode ter deixado uma versão das notas pra testar (só no aparelho)
       const local = (() => { try { return localStorage.getItem(`gd-chart-${f.id}`) } catch { return null } })()
       const [chart, buf, parte] = await Promise.all([
         local ? Promise.resolve(JSON.parse(local) as ChartGd) : fetch(`/gd/${f.id}.json`).then((r) => r.json() as Promise<ChartGd>),
-        carregarBuffer(`${base}/sem-${inst}.mp3`),
-        carregarBuffer(`${base}/${inst}.mp3`),
+        carregarBuffer(urlCamada(f.id, `sem-${inst}`)),
+        carregarBuffer(urlCamada(f.id, inst)),
       ])
       const notas = notasDoChart(chart, inst, save.dificuldade)
       const frases = new Map<number, { total: number; acertos: number; falhou: boolean }>()

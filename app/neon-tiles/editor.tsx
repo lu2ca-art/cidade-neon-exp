@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { DIFICULDADES, FAIXAS, faixaAberta, type Dificuldade, type Instrumento } from "./dados"
 import { COR_LANE, LANES } from "./cena"
 import type { ChartGd, NotaGd } from "./motor"
-import { ac, carregarBuffer } from "./som"
+import { ac, carregarBuffer, urlCamada } from "./som"
 
 interface NotaE { t: number; lane: number; dur: number }
 
@@ -64,7 +64,7 @@ export function Editor({ gdAudio, onVoltar }: { gdAudio: string; onVoltar: () =>
     setChart(null); setBufs(null); setMsg("carregando…")
     const local = (() => { try { return localStorage.getItem(`gd-chart-${faixaId}`) } catch { return null } })()
     const pc = local ? Promise.resolve(JSON.parse(local) as ChartGd) : fetch(`/gd/${faixaId}.json`).then((r) => r.json() as Promise<ChartGd>)
-    Promise.all([pc, carregarBuffer(`${gdAudio}/${faixaId}/sem-${inst}.mp3`), carregarBuffer(`${gdAudio}/${faixaId}/${inst}.mp3`)])
+    Promise.all([pc, carregarBuffer(urlCamada(faixaId, `sem-${inst}`)), carregarBuffer(urlCamada(faixaId, inst))])
       .then(([c, a, b]) => { if (!vivo) return; setChart(c); setBufs([a, b]); setMsg(local ? "versão editada (guardada neste aparelho)" : "") })
       .catch(() => vivo && setMsg("não deu pra carregar essa faixa"))
     return () => { vivo = false }
