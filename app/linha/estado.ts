@@ -64,6 +64,8 @@ export interface Save {
   reliquias: string[]
   // NEON: a moeda do povo (fictícia). Compra o que é orgânico/artístico
   neon?: number
+  // o quanto a cidade te conhece (0–100): enche a plateia dos shows (13/10)
+  popularidade?: number
   // os discos comprados na loja (discos.ts)
   discos?: string[]
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:

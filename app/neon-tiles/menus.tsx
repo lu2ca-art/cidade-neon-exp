@@ -6,8 +6,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, MODELOS, PALCOS, faixaAberta, palcoAberto,
-  type Faixa, type Instrumento, type Modelo, type Palco, type Save,
+  ACABAMENTOS, DESAFIOS, DIFICULDADES, FAIXAS, MODELOS, PALCOS, faixaAberta, palcoAberto, publicoDe,
+  type Faixa, type Instrumento, type Modelo, type Palco, type Save, type SaveLinha,
 } from "./dados"
 import { svgInstrumento, type Acabamento } from "./instrumentos"
 import { densidade, type ChartGd } from "./motor"
@@ -24,6 +24,9 @@ export interface Resultado {
   recorde: boolean
   novoPalco: Palco | null
   vaiado: boolean
+  publico: number // quanta gente viu
+  popularidade: number // depois do show
+  popDelta: number
   desafios: { texto: string; neon: number }[]
   batalha: { venceu: boolean; rival: string } | null
 }
@@ -47,11 +50,11 @@ export function Instr({ m, acabamento = "liso", className }: { m: Modelo; acabam
 }
 
 /* ─── TÍTULO ───────────────────────────────────────────── */
-export function Titulo({ neon, modelo, acabamento, editor, onIr, onSair }: {
-  neon: number; modelo: Modelo; acabamento: Acabamento; editor: boolean; onIr: (t: Tela) => void; onSair: () => void
+export function Titulo({ neon, popularidade, modelo, acabamento, editor, onIr, onSair }: {
+  neon: number; popularidade: number; modelo: Modelo; acabamento: Acabamento; editor: boolean; onIr: (t: Tela) => void; onSair: () => void
 }) {
   const itens: { t: Tela; nome: string; sub: string }[] = [
-    { t: { t: "carreira" }, nome: "carreira", sub: "da garagem à arena" },
+    { t: { t: "carreira" }, nome: "carreira", sub: "os lugares da cidade viram palco" },
     { t: { t: "rapido" }, nome: "tocar rápido", sub: "qualquer faixa aberta" },
     { t: { t: "desafios" }, nome: "desafios", sub: "metas de cada palco" },
     { t: { t: "loja" }, nome: "loja", sub: "guitarras, baixos, acabamentos" },
@@ -65,6 +68,7 @@ export function Titulo({ neon, modelo, acabamento, editor, onIr, onSair }: {
         <span className="gd-saldo">{neon.toLocaleString("pt-BR")} <small>neon$</small></span>
       </header>
       <h1 className="gd-logo"><span>GUITAR</span><span>DRIVER</span></h1>
+      <Popularidade valor={popularidade} />
       <Instr m={modelo} acabamento={acabamento} className="gd-titulo-instr" />
       <nav className="gd-menu-lista">
         {itens.map((it, i) => (
@@ -78,27 +82,40 @@ export function Titulo({ neon, modelo, acabamento, editor, onIr, onSair }: {
   )
 }
 
-/* ─── CARREIRA: os palcos ──────────────────────────────── */
-export function Carreira({ save, neon, onPalco, onVoltar }: { save: Save; neon: number; onPalco: (id: string) => void; onVoltar: () => void }) {
+/* ─── a popularidade (o quanto a cidade te conhece) ───── */
+function Popularidade({ valor }: { valor: number }) {
+  const fase = valor < 5 ? "ninguém te conhece ainda" : valor < 20 ? "uns amigos vêm te ver" : valor < 45 ? "o bairro já sabe quem é você" : valor < 80 ? "a cidade tá falando de você" : "a cidade inteira canta junto"
+  return (
+    <div className="gd-pop" style={{ ["--p" as string]: `${valor}%` }}>
+      <small>popularidade · {Math.round(valor)}</small>
+      <i><em /></i>
+      <span>{fase}</span>
+    </div>
+  )
+}
+
+/* ─── CARREIRA: os lugares da cidade ───────────────────── */
+export function Carreira({ save, linha, neon, onPalco, onVoltar }: { save: Save; linha: SaveLinha; neon: number; onPalco: (id: string) => void; onVoltar: () => void }) {
+  const pop = linha.popularidade ?? 0
+  const abertos = PALCOS.filter((p) => palcoAberto(linha, p)).length
   return (
     <section className="gd-menu">
       <Topo titulo="CARREIRA" neon={neon} onVoltar={onVoltar} />
       <div className="gd-menu-corpo">
-        <p className="gd-rotulo">cada palco tem um setlist e um dono da noite. ganhou o duelo, o próximo palco abre.</p>
+        <Popularidade valor={pop} />
+        <p className="gd-rotulo">{abertos} de {PALCOS.length} lugares · conheça um lugar na cidade e ele vira palco</p>
         <div className="gd-cartazes">
           {PALCOS.map((p, i) => {
-            const aberto = palcoAberto(save, i)
+            const aberto = palcoAberto(linha, p)
             const tocadas = p.setlist.filter((f) => Object.keys(save.estrelas).some((k) => k.startsWith(`${p.id}:${f}:`) && save.estrelas[k] > 0)).length
             const venceu = save.batalhas.includes(p.id)
-            const breve = p.setlist.every((f) => !faixaAberta(fx(f)))
+            const gente = publicoDe(p, pop)
             return (
-              <button key={p.id} type="button" disabled={!aberto} className={`gd-cartaz ${aberto ? "" : "is-trancado"}`} style={{ ["--c" as string]: p.cor }} onClick={() => onPalco(p.id)}>
-                <small className="gd-cartaz-n">palco {i + 1}</small>
-                <b>{p.nome}</b>
-                <span>{p.lugar}</span>
-                <em>
-                  {!aberto ? "🔒 vença o duelo do palco anterior" : breve ? `abre ${dataCurta(fx(p.setlist[0]).abre!)}` : `${tocadas}/${p.setlist.length} músicas · ${venceu ? "duelo vencido ✓" : `duelo: ${p.rival.nome}`}`}
-                </em>
+              <button key={p.id} type="button" disabled={!aberto} className={`gd-cartaz ${aberto ? "" : "is-trancado"}`} style={{ ["--c" as string]: p.cor, animationDelay: `${i * 0.04}s` }} onClick={() => onPalco(p.id)}>
+                <small className="gd-cartaz-n">{p.lugar}</small>
+                <b>{aberto ? p.nome : "???"}</b>
+                <span>{aberto ? `${gente === 1 ? "1 pessoa vem te ver" : `${gente} pessoas vêm te ver`} · cabem ${p.capacidade}` : `🔒 ${p.conhecer}`}</span>
+                {aberto && <em>{tocadas}/{p.setlist.length} músicas{p.rival ? ` · ${venceu ? "duelo vencido ✓" : `duelo: ${p.rival.nome}`}` : ""}</em>}
               </button>
             )
           })}
@@ -109,16 +126,18 @@ export function Carreira({ save, neon, onPalco, onVoltar }: { save: Save; neon: 
 }
 
 /* ─── SETLIST de um palco ──────────────────────────────── */
-export function Setlist({ save, neon, palco, onFaixa, onVoltar }: { save: Save; neon: number; palco: Palco; onFaixa: (f: string, batalha: boolean) => void; onVoltar: () => void }) {
+export function Setlist({ save, neon, popularidade, palco, onFaixa, onVoltar }: { save: Save; neon: number; popularidade: number; palco: Palco; onFaixa: (f: string, batalha: boolean) => void; onVoltar: () => void }) {
   const abertas = palco.setlist.filter((f) => faixaAberta(fx(f)))
   const tocou = (f: string) => Object.keys(save.estrelas).some((k) => k.startsWith(`${palco.id}:${f}:`) && save.estrelas[k] > 0)
-  const podeDuelo = abertas.length > 0 && abertas.every(tocou) && faixaAberta(fx(palco.rival.faixa))
+  const rival = palco.rival
+  const podeDuelo = !!rival && abertas.length > 0 && abertas.every(tocou) && faixaAberta(fx(rival.faixa))
+  const gente = publicoDe(palco, popularidade)
   const venceu = save.batalhas.includes(palco.id)
   return (
     <section className="gd-menu" style={{ ["--cor" as string]: palco.cor }}>
       <Topo titulo={palco.nome.toUpperCase()} neon={neon} onVoltar={onVoltar} />
       <div className="gd-menu-corpo">
-        <p className="gd-rotulo">setlist · {palco.lugar} · cachê até {palco.cache} neon$</p>
+        <p className="gd-rotulo">setlist · {palco.lugar} · hoje: {gente === 1 ? "1 pessoa" : `${gente} pessoas`} de {palco.capacidade}</p>
         <ul className="gd-setlist">
           {palco.setlist.map((id, i) => {
             const f = fx(id)
@@ -135,11 +154,13 @@ export function Setlist({ save, neon, palco, onFaixa, onVoltar }: { save: Save; 
             )
           })}
         </ul>
-        <button type="button" className={`gd-duelo ${venceu ? "is-feito" : ""}`} disabled={!podeDuelo} onClick={() => onFaixa(palco.rival.faixa, true)}>
-          <small>{venceu ? "duelo vencido ✓ · tocar de novo" : "o dono da noite"}</small>
-          <b>DUELO · {palco.rival.nome}</b>
-          <span>{podeDuelo ? `${fx(palco.rival.faixa).titulo.toLowerCase()} · acerte as frases de estrela pra ganhar ataques` : "toque todas as músicas do setlist pra liberar"}</span>
-        </button>
+        {rival && (
+          <button type="button" className={`gd-duelo ${venceu ? "is-feito" : ""}`} disabled={!podeDuelo} onClick={() => onFaixa(rival.faixa, true)}>
+            <small>{venceu ? "duelo vencido ✓ · tocar de novo" : "o dono da noite"}</small>
+            <b>DUELO · {rival.nome}</b>
+            <span>{podeDuelo ? `${fx(rival.faixa).titulo.toLowerCase()} · acerte as frases de estrela pra ganhar ataques` : "toque todas as músicas do setlist pra liberar"}</span>
+          </button>
+        )}
         <p className="gd-rotulo">desafios deste palco</p>
         <ul className="gd-desafios">
           {DESAFIOS.filter((d) => d.palco === palco.id).map((d) => (
@@ -179,14 +200,14 @@ export function Rapido({ save, neon, onFaixa, onVoltar }: { save: Save; neon: nu
 }
 
 /* ─── DESAFIOS ─────────────────────────────────────────── */
-export function Desafios({ save, neon, onVoltar }: { save: Save; neon: number; onVoltar: () => void }) {
+export function Desafios({ save, linha, neon, onVoltar }: { save: Save; linha: SaveLinha; neon: number; onVoltar: () => void }) {
   return (
     <section className="gd-menu">
       <Topo titulo="DESAFIOS" neon={neon} onVoltar={onVoltar} />
       <div className="gd-menu-corpo">
-        {PALCOS.map((p, i) => (
+        {PALCOS.filter((p) => DESAFIOS.some((d) => d.palco === p.id)).map((p) => (
           <div key={p.id} className="gd-desafio-grupo" style={{ ["--c" as string]: p.cor }}>
-            <p className="gd-rotulo">{p.nome}{palcoAberto(save, i) ? "" : " · 🔒"}</p>
+            <p className="gd-rotulo">{p.nome}{palcoAberto(linha, p) ? "" : " · 🔒"}</p>
             <ul className="gd-desafios">
               {DESAFIOS.filter((d) => d.palco === p.id).map((d) => (
                 <li key={d.id} className={save.desafios.includes(d.id) ? "is-feito" : ""}><span>{save.desafios.includes(d.id) ? "✓" : "○"}</span>{d.texto}<em>+{d.neon}</em></li>
@@ -222,7 +243,7 @@ export function Preparo({ save, salvar, faixa, palco, batalha, erro, calibrado, 
       </header>
       <div className="gd-menu-corpo">
         <div className="gd-faixa-capa">
-          <small>{batalha && palco ? `contra ${palco.rival.nome}` : "LU2CA"}</small>
+          <small>{batalha && palco?.rival ? `contra ${palco.rival.nome}` : "LU2CA"}</small>
           <b>{faixa.titulo}</b>
           <span>{faixa.bpm} bpm</span>
         </div>
@@ -470,9 +491,14 @@ export function ResultadoTela({ r, palco, faixa, instrumento, neon, onDeNovo, on
       </dl>
       {r.cache > 0 && (
         <div className="gd-cache">
-          <small>{r.batalha?.venceu ? "o prêmio do duelo" : "o dono do lugar"}</small>
-          {!r.batalha && <p>“{palco.fala}”</p>}
+          <small>{r.batalha?.venceu ? "o prêmio do duelo" : `cachê · ${r.publico === 1 ? "1 pessoa viu" : `${r.publico} pessoas viram`}`}</small>
           <b>+ {cache.toLocaleString("pt-BR")} neon$</b>
+        </div>
+      )}
+      {r.popDelta !== 0 && (
+        <div className="gd-pop-res">
+          <b>{r.popDelta > 0 ? `+${r.popDelta}` : r.popDelta} popularidade</b>
+          <Popularidade valor={r.popularidade} />
         </div>
       )}
       {r.desafios.length > 0 && (
@@ -482,9 +508,9 @@ export function ResultadoTela({ r, palco, faixa, instrumento, neon, onDeNovo, on
       )}
       {r.novoPalco && (
         <div className="gd-novo" style={{ ["--c" as string]: r.novoPalco.cor }}>
-          <small>palco novo destravado</small>
+          <small>a cidade inteira te conhece</small>
           <b>{r.novoPalco.nome}</b>
-          <span>{r.novoPalco.lugar} · cachê até {r.novoPalco.cache} neon$</span>
+          <span>{r.novoPalco.lugar} · cabem {r.novoPalco.capacidade}</span>
         </div>
       )}
       <p className="gd-rotulo">saldo: {neon.toLocaleString("pt-BR")} neon$</p>

@@ -207,3 +207,13 @@
 .gd-ed-barra button.is-on { background: #ffc857 !important; color: #111 !important; }
 .gd-ed-barra .gd-btn { min-height: 38px; font-size: 13px !important; }
 .gd-ed-cvs { flex: 1; width: 100%; min-height: 0; touch-action: none; }
+
+/* popularidade */
+.gd-pop { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.gd-pop small { font: 700 9.5px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: #ffc857; }
+.gd-pop i { display: block; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.gd-pop em { display: block; height: 100%; width: var(--p); background: linear-gradient(90deg, #ff6a35, #ffc857, #5dffa0); box-shadow: 0 0 10px rgba(255, 200, 87, 0.6); }
+.gd-pop span { font: 11px var(--mono); color: rgba(255, 255, 255, 0.7); }
+.gd-titulo .gd-pop { margin-top: 10px; max-width: 70%; }
+.gd-pop-res { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 200, 87, 0.07); box-shadow: inset 0 0 0 1px rgba(255, 200, 87, 0.3); }
+.gd-pop-res > b { font: 800 18px var(--mono); color: #ffc857; }

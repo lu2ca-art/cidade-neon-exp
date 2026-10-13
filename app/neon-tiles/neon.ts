@@ -61,3 +61,34 @@ export function mudarNeon(delta: number): Promise<{ ok: boolean; neon: number }>
     window.parent.postMessage({ tipo: "cn-neon", delta, id }, window.location.origin)
   })
 }
+
+/* ─── a popularidade (o quanto a cidade te conhece, 0–100) ─── */
+// mora no save do jogo; o Guitar Driver lê dali e pede pra mudar como o NEON
+export function lerLinha(): { casa?: boolean; tutorial?: string[]; objetos?: string[]; reliquias?: string[]; popularidade?: number } {
+  try { return JSON.parse(localStorage.getItem(CHAVE) || "{}") } catch { return {} }
+}
+
+export function mudarPopularidade(delta: number): Promise<number> {
+  if (!dentroDoJogo()) {
+    try {
+      const raw = localStorage.getItem(CHAVE)
+      if (!raw) return Promise.resolve(0)
+      const s = JSON.parse(raw)
+      s.popularidade = Math.max(0, Math.min(100, (s.popularidade ?? 0) + delta))
+      localStorage.setItem(CHAVE, JSON.stringify(s))
+      return Promise.resolve(s.popularidade)
+    } catch { return Promise.resolve(0) }
+  }
+  return new Promise((res) => {
+    const id = `pop-${Date.now()}`
+    const fim = setTimeout(() => { window.removeEventListener("message", h); res(lerLinha().popularidade ?? 0) }, 2500)
+    const h = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.data?.tipo !== "cn-pop-ok" || e.data.id !== id) return
+      clearTimeout(fim)
+      window.removeEventListener("message", h)
+      res(Number(e.data.popularidade) || 0)
+    }
+    window.addEventListener("message", h)
+    window.parent.postMessage({ tipo: "cn-pop", delta, id }, window.location.origin)
+  })
+}

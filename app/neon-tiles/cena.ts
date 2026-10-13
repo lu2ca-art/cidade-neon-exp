@@ -2,6 +2,7 @@
 // o braço em perspectiva com as notas, e as cutscenes. Tudo procedural.
 
 import type { Instrumento, Modelo, Palco } from "./dados"
+import { desenharCenario } from "./cenarios"
 
 export const LANES = 4
 export const COR_LANE = ["#2bd14f", "#ff2b3a", "#ffd21a", "#2a8cff"] // verde, vermelho, amarelo, azul (as cores clássicas)
@@ -41,91 +42,145 @@ export interface EstadoPalco {
   modelo: Modelo
   vaia?: boolean
   imgs?: Partial<Record<Instrumento, HTMLImageElement>> // os instrumentos de verdade (instrumentos.ts)
+  publico?: number // quanta gente veio (sai da popularidade)
+  show?: boolean // durante o show a galera fica dos lados da pista (como no GH)
 }
 
 export function desenharPalco(g: CanvasRenderingContext2D, w: number, h: number, e: EstadoPalco) {
   const cor = e.neon ? "#b38cff" : e.palco.cor
-  // fundo
-  const bg = g.createLinearGradient(0, 0, 0, h)
-  bg.addColorStop(0, "#05040f")
-  bg.addColorStop(0.55, hexA(cor, 0.18))
-  bg.addColorStop(1, "#05040f")
-  g.fillStyle = bg
-  g.fillRect(0, 0, w, h)
-
-  // telão de LED
-  const tw = w * 0.7
-  const th = h * 0.2
-  const tx = (w - tw) / 2
-  const ty = h * 0.06
-  g.fillStyle = "#0a0a18"
-  g.fillRect(tx, ty, tw, th)
-  for (let x = 0; x < 24; x++)
-    for (let y = 0; y < 7; y++) {
-      const v = Math.sin(x * 0.5 + e.t * 3 + y * 0.8) * 0.5 + 0.5
-      g.fillStyle = hexA(cor, 0.12 + v * 0.35 * (0.5 + e.batida * 0.5))
-      g.fillRect(tx + (x * tw) / 24 + 1, ty + (y * th) / 7 + 1, tw / 24 - 2, th / 7 - 2)
+  // cada lugar da cidade tem o seu cenário e o seu ângulo (cenarios.ts)
+  const disp = desenharCenario(g, w, h, e.palco.id, { t: e.t, cor, batida: e.batida, energia: e.energia, neon: e.neon })
+  if (!disp) {
+    // a arena: o palco grande com telão de LED
+    const bg = g.createLinearGradient(0, 0, 0, h)
+    bg.addColorStop(0, "#05040f")
+    bg.addColorStop(0.55, hexA(cor, 0.18))
+    bg.addColorStop(1, "#05040f")
+    g.fillStyle = bg
+    g.fillRect(0, 0, w, h)
+    const tw = w * 0.7
+    const th = h * 0.2
+    const tx = (w - tw) / 2
+    const ty = h * 0.06
+    g.fillStyle = "#0a0a18"
+    g.fillRect(tx, ty, tw, th)
+    for (let x = 0; x < 24; x++)
+      for (let y = 0; y < 7; y++) {
+        const v = Math.sin(x * 0.5 + e.t * 3 + y * 0.8) * 0.5 + 0.5
+        g.fillStyle = hexA(cor, 0.12 + v * 0.35 * (0.5 + e.batida * 0.5))
+        g.fillRect(tx + (x * tw) / 24 + 1, ty + (y * th) / 7 + 1, tw / 24 - 2, th / 7 - 2)
+      }
+    g.fillStyle = "rgba(255,255,255,0.9)"
+    g.font = `700 ${Math.round(th * 0.36)}px "Arial Narrow", system-ui, sans-serif`
+    g.textAlign = "center"
+    g.textBaseline = "middle"
+    g.fillText(e.neon ? "MODO NEON" : "LU2CA", w / 2, ty + th / 2)
+    g.fillStyle = "#1a1a2e"
+    g.fillRect(0, ty - 10, w, 6)
+    g.globalCompositeOperation = "lighter"
+    for (let i = 0; i < 6; i++) {
+      const x = (w / 6) * (i + 0.5)
+      const ang = Math.sin(e.t * 1.3 + i) * 0.5 + (i % 2 ? 0.2 : -0.2)
+      const len = h * 0.85
+      const lx = x + Math.sin(ang) * len
+      const ly = ty + Math.cos(ang) * len
+      const gr = g.createLinearGradient(x, ty, lx, ly)
+      const c2 = i % 2 ? cor : "#ffffff"
+      gr.addColorStop(0, hexA(c2, 0.28 + e.batida * 0.25))
+      gr.addColorStop(1, hexA(c2, 0))
+      g.fillStyle = gr
+      g.beginPath()
+      g.moveTo(x, ty - 4)
+      g.lineTo(lx - 60, ly)
+      g.lineTo(lx + 60, ly)
+      g.closePath()
+      g.fill()
     }
-  g.fillStyle = "rgba(255,255,255,0.9)"
-  g.font = `700 ${Math.round(th * 0.36)}px "Arial Narrow", system-ui, sans-serif`
-  g.textAlign = "center"
-  g.textBaseline = "middle"
-  g.fillText(e.neon ? "MODO NEON" : "LU2CA", w / 2, ty + th / 2)
-
-  // treliça com spots girando no tempo
-  g.fillStyle = "#1a1a2e"
-  g.fillRect(0, ty - 10, w, 6)
-  g.globalCompositeOperation = "lighter"
-  for (let i = 0; i < 6; i++) {
-    const x = (w / 6) * (i + 0.5)
-    const ang = Math.sin(e.t * 1.3 + i) * 0.5 + (i % 2 ? 0.2 : -0.2)
-    const len = h * 0.85
-    const lx = x + Math.sin(ang) * len
-    const ly = ty + Math.cos(ang) * len
-    const gr = g.createLinearGradient(x, ty, lx, ly)
-    const c2 = i % 2 ? cor : "#ffffff"
-    gr.addColorStop(0, hexA(c2, 0.28 + e.batida * 0.25))
-    gr.addColorStop(1, hexA(c2, 0))
-    g.fillStyle = gr
-    g.beginPath()
-    g.moveTo(x, ty - 4)
-    g.lineTo(lx - 60, ly)
-    g.lineTo(lx + 60, ly)
-    g.closePath()
-    g.fill()
+    g.globalCompositeOperation = "source-over"
+    const py = h * 0.62
+    g.fillStyle = "#0c0b1c"
+    g.fillRect(0, py, w, h - py)
+    g.fillStyle = hexA(cor, 0.5)
+    g.fillRect(0, py, w, 2)
+  } else if (e.neon) {
+    // o modo NEON tinge qualquer lugar
+    g.fillStyle = hexA("#b38cff", 0.18)
+    g.fillRect(0, 0, w, h)
   }
-  g.globalCompositeOperation = "source-over"
 
-  // chão do palco
-  const py = h * 0.62
-  g.fillStyle = "#0c0b1c"
-  g.fillRect(0, py, w, h - py)
-  g.fillStyle = hexA(cor, 0.5)
-  g.fillRect(0, py, w, 2)
-
-  // banda: baterista ao fundo, baixista e LU2CA
+  // a banda, no palco de cada lugar (no fundo, atrás do braço, como no GH)
   const bob = Math.sin(e.t * Math.PI * 2 * 1.8) * 3 * (0.4 + e.energia)
-  // a banda fica no fundo do palco, acima do braço — como no GH, o show
-  // acontece atrás das notas
-  const fundo = h * 0.5
-  desenharBateria(g, w * 0.5, fundo - h * 0.01, h * 0.12, cor, e.batida)
-  desenharMusico(g, w * 0.2, fundo, h * 0.2, e.instrumento === "baixo" ? e.modelo.corpo : "#9b8cff", "baixo", bob, e.t, cor, e.imgs?.baixo)
-  desenharMusico(g, w * 0.8, fundo, h * 0.21, e.instrumento === "guitarra" ? e.modelo.corpo : "#ff6a35", "guitarra", -bob, e.t + 0.4, cor, e.imgs?.guitarra)
+  const fundo = disp ? disp.fundo : h * 0.5
+  const k = disp ? disp.escala : 1
+  const bx = disp ? disp.baixo[0] : w * 0.2
+  const gx = disp ? disp.guitarra[0] : w * 0.8
+  const bat = disp ? disp.bateria : [w * 0.5, h * 0.12]
+  if (bat) desenharBateria(g, bat[0], fundo - h * 0.01, h * 0.12 * k, cor, e.batida)
+  desenharMusico(g, bx, fundo, h * 0.2 * k, e.instrumento === "baixo" ? e.modelo.corpo : "#9b8cff", "baixo", bob, e.t, cor, e.imgs?.baixo)
+  desenharMusico(g, gx, fundo, h * 0.21 * k, e.instrumento === "guitarra" ? e.modelo.corpo : "#ff6a35", "guitarra", -bob, e.t + 0.4, cor, e.imgs?.guitarra)
 
-  // fumaça
-  g.globalCompositeOperation = "lighter"
-  for (let i = 0; i < 5; i++) {
-    const x = ((e.t * 12 + i * 170) % (w + 200)) - 100
-    const gr = g.createRadialGradient(x, py, 0, x, py, 120)
-    gr.addColorStop(0, hexA(cor, 0.08))
-    gr.addColorStop(1, hexA(cor, 0))
-    g.fillStyle = gr
-    g.fillRect(x - 120, py - 120, 240, 240)
+  if (!disp) {
+    const py = h * 0.62
+    g.globalCompositeOperation = "lighter"
+    for (let i = 0; i < 5; i++) {
+      const x = ((e.t * 12 + i * 170) % (w + 200)) - 100
+      const gr = g.createRadialGradient(x, py, 0, x, py, 120)
+      gr.addColorStop(0, hexA(cor, 0.08))
+      gr.addColorStop(1, hexA(cor, 0))
+      g.fillStyle = gr
+      g.fillRect(x - 120, py - 120, 240, 240)
+    }
+    g.globalCompositeOperation = "source-over"
   }
-  g.globalCompositeOperation = "source-over"
 
-  // galera em primeiro plano
-  desenharGalera(g, w, h, e.palco.publico, e.energia, e.t, cor, e.vaia)
+  // a galera em primeiro plano: quanta gente veio (no começo, uma pessoa)
+  if (e.show) desenharGaleraLados(g, w, h, e.publico ?? 40, e.energia, e.t, cor, fundo, e.vaia)
+  else desenharGalera(g, w, h, e.publico ?? 40, e.energia, e.t, cor, e.vaia)
+}
+
+// durante o show: a galera dos dois lados da pista, em perspectiva (quanto
+// mais perto, maior). Com 1 pessoa, ela fica sozinha na frente, à esquerda.
+function desenharGaleraLados(g: CanvasRenderingContext2D, w: number, h: number, publico: number, energia: number, t: number, cor: string, fundo: number, vaia?: boolean) {
+  const gb = geometriaBraco(w, h)
+  const n = publico <= 40 ? publico : Math.min(120, Math.round(40 + (publico - 40) / 10))
+  const y0 = Math.max(fundo + h * 0.02, gb.yTopo + h * 0.08)
+  const y1 = gb.yBase + h * 0.06
+  const filas = Math.max(1, Math.min(7, Math.ceil(n / 8)))
+  for (let i = 0; i < n; i++) {
+    const sd = i * 7 + 3
+    // da frente pra trás: as primeiras pessoas ficam mais perto (embaixo)
+    const fila = filas - 1 - (i % filas)
+    const y = y0 + ((fila + 0.5) / filas) * (y1 - y0) + (rnd(sd) - 0.5) * h * 0.015
+    const k = (y - gb.yTopo) / (gb.yBase - gb.yTopo)
+    const meia = (gb.topoW + (gb.baseW - gb.topoW) * Math.min(1.1, k)) / 2
+    const borda = gb.cx - meia - 6
+    if (borda < 8) continue
+    const s = h * (0.05 + k * 0.08)
+    const lado = n === 1 ? -1 : i % 2 ? 1 : -1
+    const fx = 0.12 + rnd(sd + 1) * 0.8
+    const x = lado < 0 ? borda * fx : w - borda * fx
+    const pulo = vaia ? 0 : Math.max(0, Math.sin(t * 7 + rnd(sd) * 6)) * 8 * energia
+    const yy = y - pulo
+    g.fillStyle = "#06050c"
+    g.save()
+    g.shadowColor = cor
+    g.shadowBlur = 6
+    g.beginPath()
+    g.arc(x, yy - s * 0.8, s * 0.2, 0, Math.PI * 2)
+    g.fill()
+    g.fillRect(x - s * 0.26, yy - s * 0.62, s * 0.52, s * 0.75)
+    g.restore()
+    if (energia > 0.5 && !vaia && rnd(sd + 5) < energia) {
+      g.fillStyle = "#06050c"
+      g.fillRect(x + (lado < 0 ? s * 0.12 : -s * 0.2), yy - s * 1.3, s * 0.08, s * 0.6)
+      if (rnd(sd + 9) < 0.3) {
+        g.globalCompositeOperation = "lighter"
+        g.fillStyle = hexA(rnd(sd) < 0.5 ? "#ffffff" : cor, 0.9)
+        g.fillRect(x + (lado < 0 ? s * 0.11 : -s * 0.21), yy - s * 1.4, s * 0.1, s * 0.12)
+        g.globalCompositeOperation = "source-over"
+      }
+    }
+  }
 }
 
 function desenharBateria(g: CanvasRenderingContext2D, x: number, y: number, s: number, cor: string, batida: number) {
@@ -196,26 +251,27 @@ function desenharMusico(g: CanvasRenderingContext2D, x: number, y: number, s: nu
 }
 
 function desenharGalera(g: CanvasRenderingContext2D, w: number, h: number, publico: number, energia: number, t: number, cor: string, vaia?: boolean) {
-  const n = Math.min(70, Math.max(6, Math.round(publico / 8)))
-  const base = h
-  for (let fila = 0; fila < 3; fila++) {
-    const qt = Math.round(n / 3) + fila * 3
-    for (let i = 0; i < qt; i++) {
+  // até 40 pessoas, uma silhueta cada; depois disso a multidão adensa
+  const n = publico <= 40 ? publico : Math.min(110, Math.round(40 + (publico - 40) / 12))
+  const filas = n <= 6 ? 1 : n <= 20 ? 2 : 3
+  let feitos = 0
+  for (let fila = filas - 1; fila >= 0; fila--) {
+    const qt = fila === filas - 1 ? n - Math.floor((n * (filas - 1)) / filas) : Math.floor(n / filas)
+    for (let i = 0; i < qt && feitos < n; i++, feitos++) {
       const sd = fila * 100 + i
-      const x = ((i + rnd(sd) * 0.8) / qt) * w
+      // pouca gente: em pé, espalhada perto do palco (a multidão de 1 no meio)
+      const x = qt === 1 ? w * 0.5 : ((i + 0.5 + (rnd(sd) - 0.5) * 0.6) / qt) * w
       const pulo = vaia ? 0 : Math.max(0, Math.sin(t * 7 + rnd(sd) * 6)) * 10 * energia
       const s = h * (0.1 + fila * 0.035)
-      const y = base - fila * h * 0.035 + (fila === 2 ? 0 : 0) - pulo
+      const y = h - fila * h * 0.035 - pulo
       g.fillStyle = fila === 2 ? "#020205" : fila === 1 ? "#07060f" : "#0b0a18"
       g.beginPath()
       g.arc(x, y - s * 0.8, s * 0.2, 0, Math.PI * 2)
       g.fill()
       g.fillRect(x - s * 0.28, y - s * 0.62, s * 0.56, s * 0.7)
-      // mãos pra cima quando a galera tá quente
       if (energia > 0.55 && !vaia && rnd(sd + 7) < energia) {
         g.fillRect(x - s * 0.3, y - s * 1.35, s * 0.08, s * 0.6)
         if (rnd(sd + 3) < 0.35) {
-          // celular / isqueiro aceso
           g.globalCompositeOperation = "lighter"
           g.fillStyle = hexA(rnd(sd) < 0.5 ? "#ffffff" : cor, 0.9)
           g.fillRect(x - s * 0.31, y - s * 1.45, s * 0.1, s * 0.12)
@@ -781,7 +837,7 @@ export type Tomada = "fachada" | "backstage" | "contagem" | "final" | "estrada" 
 
 export function desenharTomada(
   g: CanvasRenderingContext2D, w: number, h: number, tomada: Tomada, t: number,
-  d: { palco: Palco; modelo: Modelo; contagem?: number; sucesso?: boolean; grana?: number; imgs?: Partial<Record<Instrumento, HTMLImageElement>>; titulo?: string; sub?: string },
+  d: { palco: Palco; modelo: Modelo; contagem?: number; sucesso?: boolean; grana?: number; imgs?: Partial<Record<Instrumento, HTMLImageElement>>; titulo?: string; sub?: string; publico?: number },
 ) {
   const cor = d.palco.cor
   g.fillStyle = "#04030b"
@@ -811,7 +867,7 @@ export function desenharTomada(
     g.font = `700 ${Math.round(w * 0.058)}px "Arial Narrow", system-ui, sans-serif`
     g.textAlign = "center"
     g.textBaseline = "middle"
-    g.fillText(d.palco.fachada, w / 2, h * 0.55, w * 0.76)
+    g.fillText(d.palco.fachada || d.palco.nome.toUpperCase(), w / 2, h * 0.55, w * 0.76)
     g.shadowBlur = 0
     // porta com luz vazando
     const gr = g.createLinearGradient(0, h * 0.62, 0, h)
@@ -991,7 +1047,7 @@ export function desenharTomada(
   } else if (tomada === "final") {
     const ok = d.sucesso
     // galera enorme de mãos pra cima, papel picado caindo
-    const e = { palco: d.palco, energia: ok ? 1 : 0.05, neon: false, batida: ok ? Math.abs(Math.sin(t * 6)) : 0, t, instrumento: d.modelo.tipo, modelo: d.modelo, vaia: !ok, imgs: d.imgs }
+    const e = { palco: d.palco, energia: ok ? 1 : 0.05, neon: false, batida: ok ? Math.abs(Math.sin(t * 6)) : 0, t, instrumento: d.modelo.tipo, modelo: d.modelo, vaia: !ok, imgs: d.imgs, publico: d.publico }
     desenharPalco(g, w, h, e)
     if (ok) {
       for (let i = 0; i < 60; i++) {
