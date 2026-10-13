@@ -341,13 +341,14 @@ export default function GuitarDriver() {
     n.errou = true
     p.seq = 0
     p.erros++
-    p.galera = Math.max(0, p.galera - (save.dificuldade === "facil" ? 0.03 : 0.045))
+    p.galera = Math.max(0, p.galera - (save.dificuldade === "facil" ? 0.03 : save.dificuldade === "medio" ? 0.038 : 0.045))
     if (n.frase !== undefined) { const fr = j.frases.get(n.frase); if (fr) fr.falhou = true }
     j.show!.errou()
     j.show!.galera(p.galera)
     j.tremor = 1
     if (j.duelo) j.duelo.voce = Math.max(0, j.duelo.voce - 0.028)
-    else if (p.galera <= 0 && agora > 8) j.fim = "vaiado"
+    // no fácil a galera nunca vaia (pra quem nunca tocou)
+    else if (p.galera <= 0 && agora > 8 && save.dificuldade !== "facil") j.fim = "vaiado"
     vib(35)
   }, [save.dificuldade])
 
