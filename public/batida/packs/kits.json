@@ -1,0 +1,71 @@
+{
+ "chuva": {
+  "pads": [
+   "bumbo",
+   "caixa",
+   "chimbal",
+   "aberto",
+   "palma",
+   "perc",
+   "tom"
+  ],
+  "baixo": 42.98
+ },
+ "copo": {
+  "pads": [
+   "bumbo",
+   "caixa",
+   "chimbal",
+   "aberto",
+   "tom"
+  ],
+  "baixo": 29.08
+ },
+ "dopamina": {
+  "pads": [
+   "bumbo",
+   "caixa",
+   "chimbal",
+   "aberto",
+   "perc"
+  ],
+  "baixo": 29.18
+ },
+ "sexta": {
+  "pads": [
+   "bumbo",
+   "caixa",
+   "chimbal",
+   "aberto",
+   "palma",
+   "perc",
+   "tom"
+  ],
+  "baixo": 41.18
+ },
+ "ontem": {
+  "pads": [
+   "bumbo",
+   "caixa",
+   "chimbal",
+   "aberto",
+   "palma",
+   "perc",
+   "tom",
+   "prato"
+  ],
+  "baixo": 38.98
+ },
+ "nectar": {
+  "pads": [
+   "bumbo",
+   "caixa",
+   "chimbal",
+   "aberto",
+   "palma",
+   "perc",
+   "tom"
+  ],
+  "baixo": 35.18
+ }
+}

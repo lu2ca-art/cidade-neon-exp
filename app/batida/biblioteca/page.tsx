@@ -10,6 +10,13 @@ import { useCurrentSong } from "../lib/CurrentSongContext"
 import { desserializar, marcar, todas, type Criacao } from "../lib/biblioteca"
 import { renderSongOffline } from "../lib/render"
 import { INSTRUMENT_COLOR, INSTRUMENT_LABEL } from "../lib/types"
+import { renderizar } from "../estudio/exportar"
+import { salvarMusica, salvarVoz } from "../estudio/armazem"
+import { INST_COR, novoId, type Musica } from "../estudio/tipos"
+
+// as músicas feitas no estúdio novo (v2) vêm com as vozes junto (data URLs)
+type MusicaV2 = Musica & { vozes?: Record<string, string> }
+const ehV2 = (x: unknown): x is MusicaV2 => (x as { versao?: number })?.versao === 2
 
 const ACCENT = "#FFC857"
 const CHAVE_LS = "b4tida-admin"
@@ -51,8 +58,8 @@ export default function BibliotecaPage() {
     try { src.current?.stop() } catch {}
     if (tocando === c.id) { setTocando(null); return }
     setRenderizando(c.id)
-    const song = await desserializar(c.musica)
-    const buf = await renderSongOffline(song)
+    const mus = c.musica as unknown
+    const buf = ehV2(mus) ? await renderizar(mus, undefined, mus.vozes) : await renderSongOffline(await desserializar(c.musica))
     ctx.current ??= new AudioContext()
     const s = ctx.current.createBufferSource()
     s.buffer = buf
@@ -70,6 +77,16 @@ export default function BibliotecaPage() {
   }
 
   const abrir = async (c: Criacao) => {
+    const mus = c.musica as unknown
+    if (ehV2(mus)) {
+      // entra como uma música nova no estúdio (as vozes vão pro aparelho)
+      for (const [chave, url] of Object.entries(mus.vozes ?? {})) await salvarVoz(chave, await (await fetch(url)).blob())
+      const { vozes: _v, ...resto } = mus
+      void _v
+      await salvarMusica({ ...resto, id: novoId("m"), nome: `${c.titulo} (de ${c.autor})`, atualizadaEm: Date.now() + 1000 })
+      router.push("/batida")
+      return
+    }
     const song = await desserializar(c.musica)
     startNewSong()
     patchSong(() => ({ ...song, id: `song-${Date.now()}` }))
@@ -109,14 +126,18 @@ export default function BibliotecaPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-white text-sm font-semibold truncate">{c.titulo}</p>
-                    <p className="text-white/40 text-[10px] font-mono">{c.autor} · {new Date(c.criadaEm).toLocaleDateString("pt-BR")} · {c.musica.bpm} bpm</p>
+                    <p className="text-white/40 text-[10px] font-mono">{c.autor} · {new Date(c.criadaEm).toLocaleDateString("pt-BR")} · {c.musica.bpm} bpm{ehV2(c.musica as unknown) ? " · estúdio novo" : ""}</p>
                   </div>
                   <button type="button" onClick={() => alternarDestaque(c.id)} aria-label="destaque" className="text-xl leading-none" style={{ color: d ? ACCENT : "rgba(255,255,255,0.25)" }}>★</button>
                 </div>
                 <div className="flex flex-wrap gap-1 my-2">
-                  {c.musica.tracks.map((t) => (
-                    <span key={t.id} className="px-1.5 py-0.5 rounded text-[8px] font-mono" style={{ background: `${INSTRUMENT_COLOR[t.instrument]}18`, color: INSTRUMENT_COLOR[t.instrument] }}>{INSTRUMENT_LABEL[t.instrument]}</span>
-                  ))}
+                  {ehV2(c.musica as unknown)
+                    ? (c.musica as unknown as MusicaV2).faixas.map((f) => (
+                      <span key={f.id} className="px-1.5 py-0.5 rounded text-[8px] font-mono uppercase" style={{ background: `${INST_COR[f.inst]}18`, color: INST_COR[f.inst] }}>{f.inst}</span>
+                    ))
+                    : c.musica.tracks.map((t) => (
+                      <span key={t.id} className="px-1.5 py-0.5 rounded text-[8px] font-mono" style={{ background: `${INSTRUMENT_COLOR[t.instrument]}18`, color: INSTRUMENT_COLOR[t.instrument] }}>{INSTRUMENT_LABEL[t.instrument]}</span>
+                    ))}
                 </div>
                 <div className="flex gap-1.5">
                   <button type="button" onClick={() => tocar(c)} className="flex-1 py-1.5 rounded-lg text-[10px] font-mono uppercase" style={{ background: tocando === c.id ? ACCENT : "rgba(255,255,255,0.06)", color: tocando === c.id ? "#050510" : "white" }}>
