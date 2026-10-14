@@ -1839,3 +1839,11 @@
 .l-respirar-conta i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
 .l-respirar-conta i.is-on { background: #5dffa0; box-shadow: 0 0 10px #5dffa0; }
 .l-respirar small { position: relative; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(255, 255, 255, 0.8); text-align: center; max-width: 80%; }
+/* o relógio da cidade (13/10) */
+.l-relogio { position: absolute; left: 12px; top: calc(64px + env(safe-area-inset-top)); z-index: 6; display: flex; flex-direction: column; pointer-events: none; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.l-relogio b { font: 800 17px var(--font-geist-mono), ui-monospace, monospace; color: #fff; font-variant-numeric: tabular-nums; }
+.l-relogio small { white-space: nowrap; font: 700 9px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
+.l-relogio small[data-turno="noite"] { color: #b38cff; }
+.l-relogio small[data-turno="ocio"] { color: #8a93b8; }
+.l-relogio small[data-turno="manha"], .l-relogio small[data-turno="tarde"] { color: #ffc857; }
+button.l-dormir { position: absolute; left: 12px; top: calc(104px + env(safe-area-inset-top)); z-index: 6; padding: 6px 10px !important; border-radius: 999px; border: 0; background: rgba(8, 7, 16, 0.7) !important; color: rgba(255, 255, 255, 0.85) !important; font: 700 10px var(--font-geist-mono), ui-monospace, monospace !important; white-space: nowrap; width: auto !important; letter-spacing: 0.06em; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }

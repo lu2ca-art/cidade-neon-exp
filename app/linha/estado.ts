@@ -81,6 +81,8 @@ export interface Save {
   galao?: "cheio" | "vazio"
   // a hora do jogo (0–24): o céu escurece e amanhece devagar (06/10)
   hora?: number
+  // o dia da cidade (13/10): começa no 1 e vira às 8h (ou ao dormir)
+  dia?: number
   // o bar: os copos que a pessoa já bebeu (ficam vazios no balcão)
   copos?: number[]
   // a versão do save (VERSAO): save de versão diferente começa do zero
