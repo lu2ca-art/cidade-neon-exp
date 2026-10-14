@@ -26,6 +26,8 @@ export const ATALHOS: Atalho[] = [
   { id: "parque", nome: "a montanha-russa", desc: "de noite, na avenida, chegando no parque · toca em “andar na montanha-russa”", save: { hora: 21 }, ir: { area: "full", u: 650, parado: true } },
   { id: "ginasio", nome: "entrar no ginásio", desc: "de manhã, na avenida, chegando no ginásio · toca em “entrar”, a cena carrega a página, “sair” volta pra estrada", save: { hora: 10 }, ir: { area: "full", u: 1640, parado: true } },
   { id: "galeria", nome: "entrar na galeria", desc: "de tarde, no mirante, chegando na galeria", save: { hora: 14 }, ir: { area: "crypto", u: 1490, parado: true } },
+  { id: "shows", nome: "a casa de shows (pista cheia)", desc: "de noite, perto da arena · entra e vê um amigo da 222 tocando; popularidade 85", save: { hora: 22, popularidade: 85, objetos: ["copo", "chuva", "dopamina"] }, ir: { area: "live", u: 1190, parado: true } },
+  { id: "shows-vazio", nome: "a casa de shows (vazia)", desc: "o mesmo show com a 222 desconhecida: popularidade 2", save: { hora: 22, popularidade: 2 }, ir: { area: "live", u: 1190, parado: true } },
   { id: "fliperama", nome: "entrar no fliperama", desc: "de noite, perto da arena, chegando no fliperama", save: { hora: 22 }, ir: { area: "live", u: 1440, parado: true } },
   { id: "flores", nome: "as flores da Ella", desc: "de manhã, no subúrbio, chegando no 1º canteiro · toca em “regar as flores”", save: { hora: 10 }, ir: { area: "suburbio", u: 270, parado: true } },
   { id: "embacado", nome: "o vidro embaçado", desc: "parada na chuva, de noite · em uns segundos o vidro embaça forte: passa o dedo; depois embaça leve: passa de novo", save: { hora: 19, dia: 3, dicas: ["disco-1", "disco-2", "radio-1"] }, ir: { area: "linha", u: 300, parado: true } },

@@ -57,7 +57,7 @@ function blipsDo(M: Mundo): Blip[] {
     if (via < 0) continue
     b.push({ id: l.id, nome: l.nome, cor: l.cor, via, u: l.u, tipo: l.id === "posto" ? "posto" : "lugar" })
   }
-  for (const lp of PAGINAS) b.push({ id: lp.id, nome: lp.nome, cor: lp.cor, via: M.circuito[lp.area], u: lp.u, tipo: "lugar" })
+  for (const lp of PAGINAS) if (!lp.lugar) b.push({ id: lp.id, nome: lp.nome, cor: lp.cor, via: M.circuito[lp.area], u: lp.u, tipo: "lugar" })
   b.push({ id: "parque", nome: "o parque", cor: "#ff5b5b", via: M.circuito[PARQUE.area], u: PARQUE.u, tipo: "parque" })
   for (const c of CANTEIROS) b.push({ id: `flor-${c.id}`, nome: "um canteiro da Ella", cor: "#2fe8ff", via: M.circuito[c.area], u: c.u, tipo: "flor" })
   return b

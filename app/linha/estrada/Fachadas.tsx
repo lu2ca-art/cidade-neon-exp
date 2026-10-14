@@ -54,5 +54,5 @@ function UmaFachada({ M, p, aberto, perto }: { M: Mundo; p: LugarPagina; aberto:
 }
 
 export function Fachadas({ M, abertos, perto }: { M: Mundo; abertos: Record<string, boolean>; perto: string | null }) {
-  return <group>{PAGINAS.map((p) => <UmaFachada key={p.id} M={M} p={p} aberto={!!abertos[p.id]} perto={perto === p.id} />)}</group>
+  return <group>{PAGINAS.filter((p) => !p.lugar).map((p) => <UmaFachada key={p.id} M={M} p={p} aberto={!!abertos[p.id]} perto={perto === p.id} />)}</group>
 }

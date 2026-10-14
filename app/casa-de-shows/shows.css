@@ -1,0 +1,11 @@
+/* a casa de shows */
+.sh-raiz { position: fixed; inset: 0; background: #060508; color: #f2eefa; font-family: var(--font-geist-sans), system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
+.sh-raiz canvas { position: absolute !important; inset: 0; }
+.sh-topo { position: absolute; z-index: 2; left: 0; right: 0; top: 0; padding: calc(14px + env(safe-area-inset-top)) 16px 0; display: flex; justify-content: space-between; align-items: center; font: 700 12px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.sh-topo button { font: inherit; color: #fff; background: rgba(255, 255, 255, 0.1); border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.sh-topo span { color: rgba(255, 255, 255, 0.6); }
+.sh-cartaz { position: absolute; z-index: 2; left: 16px; right: 16px; bottom: calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 14px; background: rgba(6, 5, 8, 0.72); border-left: 4px solid var(--cor, #ffc857); }
+.sh-cartaz b { font: 900 32px/1 "Arial Black", system-ui, sans-serif; color: var(--cor, #ffc857); text-transform: uppercase; }
+.sh-cartaz small { font: 700 14px var(--font-geist-sans), system-ui, sans-serif; }
+.sh-cartaz em { font: 700 11px var(--font-geist-mono), ui-monospace, monospace; font-style: normal; color: rgba(255, 255, 255, 0.7); }
+.sh-som { position: absolute; z-index: 3; left: 50%; top: 45%; transform: translate(-50%, -50%); padding: 14px 26px; border-radius: 999px; border: 0; background: #ffc857; color: #1a1206; font: 900 15px "Arial Black", system-ui, sans-serif; text-transform: uppercase; cursor: pointer; }

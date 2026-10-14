@@ -443,6 +443,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // a entrada (a cutscene espera a página carregar em paralelo)
   const router = useRouter()
   const [paginaPerto, setPaginaPerto] = useState<string | null>(null)
+  const missaoLugarRef = useRef<LugarId | null>(null)
+  useEffect(() => { missaoLugarRef.current = lugarDaMissao }, [lugarDaMissao])
   const [abertos, setAbertos] = useState<Record<string, boolean>>({})
   const [entrando, setEntrando] = useState<LugarPagina | null>(null)
   // o posto e as bombas: perto de qual, e abastecendo numa bomba (o painel)
@@ -517,6 +519,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       let pp: string | null = null
       for (const lp of PAGINAS) {
         ab[lp.id] = abertoAgora(lp.horario, horaRef.current)
+        // a missão aponta pra esse lugar: quem manda é a cena dela
+        if (lp.lugar && lp.lugar === missaoLugarRef.current) continue
         const V = M.vias[j.via]
         if (M.circuito[lp.area] !== j.via) continue
         let d = lp.u - j.u
@@ -1736,6 +1740,7 @@ const CARREGAR_PAGINA: Record<LugarPagina["id"], () => Promise<unknown>> = {
   ginasio: () => import("../../ginasio/page"),
   galeria: () => import("../../galeria/GaleriaScene"),
   fliperama: () => import("../../fliperama/page"),
+  shows: () => import("../../casa-de-shows/Show"),
 }
 
 export interface Comb {
