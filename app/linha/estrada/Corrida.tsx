@@ -13,6 +13,7 @@
 // saída a rádio sintoniza a do destino.
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
+import { NOME_TURNO, SEG_POR_HORA, horaTexto, turnoDe } from "../relogio"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -139,6 +140,9 @@ interface Props {
   // a hora do jogo (0–24) e o aviso pra guardar
   hora?: number
   onHora?: (h: number) => void
+  // o dia da cidade (relogio.ts) e um salto de hora (dormir/cochilar)
+  dia?: number
+  saltoHora?: { h: number; id: number } | null
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -254,7 +258,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -355,6 +359,23 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const hudComb = useRef<SVGLineElement>(null)
   const horaRef = useRef(hora)
   const onHoraRef = useRef(onHora)
+  // dormir/cochilar: a hora pula (e o céu vai junto)
+  useEffect(() => {
+    if (!saltoHora) return
+    horaRef.current = saltoHora.h
+    onHoraRef.current?.(saltoHora.h)
+  }, [saltoHora])
+  // o relógio na tela (lido do ref, sem render a cada quadro)
+  const hudRelogio = useRef<HTMLElement>(null)
+  const hudTurno = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const t = setInterval(() => {
+      const h = horaRef.current
+      if (hudRelogio.current) hudRelogio.current.textContent = horaTexto(h)
+      if (hudTurno.current) { const tn = turnoDe(h); hudTurno.current.textContent = `dia ${dia} · ${NOME_TURNO[tn]}`; hudTurno.current.dataset.turno = tn }
+    }, 500)
+    return () => clearInterval(t)
+  }, [dia])
   useEffect(() => { onHoraRef.current = onHora }, [onHora])
   const horaT = useRef(0)
   const hudCombBox = useRef<HTMLDivElement>(null)
@@ -1270,6 +1291,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           rádio/toca-discos e, do lado, combustível e turbo — juntos,
           como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
           de NEON fica só no celular */}
+      {/* o relógio da cidade (13/10): a hora e o dia */}
+      <div className="l-relogio" aria-label="relógio da cidade"><b ref={hudRelogio}>{horaTexto(hora)}</b><small ref={hudTurno}>dia {dia}</small></div>
+
       <div className="l-painel-kombi" onPointerDown={(e) => e.stopPropagation()}>
       <div className="l-hud-vel">
         {tag && <em key={tag.id} className="l-hud-tag" style={{ color: tag.cor }}>{tag.txt}</em>}
@@ -3026,8 +3050,8 @@ function Cena({
       alvoNevoa.set(ds.nevoa)
       alvoCeu.set(ds.ceu)
     }
-    // A HORA DO JOGO: anda devagar (1 h a cada 3 min) e muda o céu, a névoa e a luz
-    horaRef.current = (horaRef.current + dt / 180) % 24
+    // A HORA DO JOGO (relogio.ts): o dia inteiro em 15 min; muda o céu, a névoa e a luz
+    horaRef.current = (horaRef.current + dt / SEG_POR_HORA) % 24
     const ch = ceuNaHora(horaRef.current)
     ceuMat.uniforms.topoC.value.set(ch.topo[0], ch.topo[1], ch.topo[2])
     ceuMat.uniforms.meioC.value.set(ch.meio[0], ch.meio[1], ch.meio[2])

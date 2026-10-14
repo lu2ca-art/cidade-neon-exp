@@ -15,6 +15,9 @@ export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" |
 
 export interface Lugar {
   id: LugarId
+  // quando abre (relogio.ts): os lugares da história são da noite; o posto e
+  // a casa da D-Bee nunca fecham. Sem o campo = "noite"
+  horario?: "noite" | "dia" | "sempre"
   nome: string // "o bar"
   no: string // "no bar" (pra frase: "encosta no bar")
   letreiro: string // o neon da fachada
@@ -74,7 +77,7 @@ LUGARES["casa-shows"] = {
 
 // (ep. 2: o Nectar)
 LUGARES.posto = {
-  id: "posto", nome: "o posto", no: "no posto", letreiro: "POSTO 24H", area: "linha", u: 3110, lado: 1,
+  id: "posto", horario: "sempre", nome: "o posto", no: "no posto", letreiro: "POSTO 24H", area: "linha", u: 3110, lado: 1,
   cor: "#b38cff", acento: "#e6f0ff", dono: "nectar",
   gente: [{ quem: "LU2CA", cor: "#b38cff" }],
 }
@@ -99,7 +102,7 @@ LUGARES.beco = {
 // a casa da D-Bee: no deserto, na beira da estrada que volta pra cidade
 // (05/10, LU2CA: o deserto é um bairro do mesmo mapa). O jogo começa aqui
 LUGARES["casa-dbee"] = {
-  id: "casa-dbee", nome: "a casa da d-bee", no: "na casa da d-bee", letreiro: "", area: "linha", via: "deserto", u: 6000, lado: 1,
+  id: "casa-dbee", horario: "sempre", nome: "a casa da d-bee", no: "na casa da d-bee", letreiro: "", area: "linha", via: "deserto", u: 6000, lado: 1,
   cor: "#3d7bff", acento: "#ffc857", dono: "ojala",
   gente: [],
 }
