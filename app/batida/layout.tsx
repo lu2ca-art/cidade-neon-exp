@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
 import { useAudioPlayer } from "@/app/providers/AudioPlayerProvider"
 import { sendCarRadioMute } from "@/app/providers/AudioBridge"
 import { CurrentSongProvider } from "./lib/CurrentSongContext"
@@ -11,6 +12,7 @@ import { CurrentSongProvider } from "./lib/CurrentSongContext"
 // /batida/voz e /batida/mixagem.
 export default function BatidaLayout({ children }: { children: ReactNode }) {
   const globalAudio = useAudioPlayer()
+  const pathname = usePathname()
 
   useEffect(() => {
     globalAudio.pause()
@@ -19,5 +21,9 @@ export default function BatidaLayout({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // o estúdio novo (/batida) tem o motor dele; o provedor antigo (que cria um
+  // segundo AudioContext com reverb rodando o tempo todo) só nas páginas
+  // antigas. Dois contextos juntos pesavam no celular e o som cortava (14/10)
+  if (pathname === "/batida") return <>{children}</>
   return <CurrentSongProvider>{children}</CurrentSongProvider>
 }
