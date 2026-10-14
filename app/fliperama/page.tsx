@@ -9,15 +9,19 @@ import { useRouter } from "next/navigation"
 import { Cobra } from "./cobra"
 import { Invasores } from "./invasores"
 import { Linha9 } from "./linha9"
+import { Pingue } from "./pingue"
+import { Quebra } from "./quebra"
 import { ac, ficha } from "./oito"
 import { mudarNeon, saldoInicial } from "../neon-tiles/neon"
 import "./fliperama.css"
 
-type Maquina = "linha9" | "cobra" | "invasores"
+type Maquina = "linha9" | "cobra" | "invasores" | "pingue" | "quebra"
 const MAQUINAS: { id: Maquina; nome: string; desc: string; cor: string }[] = [
   { id: "linha9", nome: "LINHA 9", desc: "o mapa do metrô · fuja dos agentes", cor: "#2fe8ff" },
   { id: "cobra", nome: "KOMBI COBRA", desc: "o bloco que cresce atrás da Kombi", cor: "#ff3fb0" },
   { id: "invasores", nome: "INVASORES", desc: "os outdoors do Núcleo descendo · atire notas", cor: "#5dffa0" },
+  { id: "pingue", nome: "PINGUE", desc: "dois DJs trocando a bola · cada rebatida é uma batida", cor: "#b38cff" },
+  { id: "quebra", nome: "QUEBRA-NEON", desc: "quebra o letreiro do Núcleo, letra por letra", cor: "#ffc857" },
 ]
 const CHAVE = "cn-fliperama"
 const FICHA = 1
@@ -53,6 +57,8 @@ export default function Fliperama() {
   }, [jogando])
 
   if (jogando === "cobra") return <div className="fp-raiz"><Cobra onFim={fim} /></div>
+  if (jogando === "pingue") return <div className="fp-raiz"><Pingue onFim={fim} /></div>
+  if (jogando === "quebra") return <div className="fp-raiz"><Quebra onFim={fim} /></div>
   if (jogando === "invasores") return <div className="fp-raiz"><Invasores onFim={fim} /></div>
   if (jogando === "linha9") return <div className="fp-raiz"><Linha9 onFim={fim} /></div>
 
@@ -70,7 +76,7 @@ export default function Fliperama() {
             <b>{m.nome}</b><small>{m.desc}</small><em>recorde: {rec[m.id] ?? 0}</em>
           </button>
         ))}
-        <button type="button" className="fp-maquina is-trancada" disabled><b>PRÉDIO · PINGUE · ATRAVESSA · QUEBRA-NEON</b><small>em breve</small></button>
+        <button type="button" className="fp-maquina is-trancada" disabled><b>PRÉDIO · ATRAVESSA</b><small>em breve</small></button>
         {msg && <p className="fp-msg">{msg}</p>}
       </section>
     </div>
