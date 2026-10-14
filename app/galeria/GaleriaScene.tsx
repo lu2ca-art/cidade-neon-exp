@@ -6,6 +6,8 @@ import { PointerLockControls, Text, useTexture } from "@react-three/drei"
 import { Suspense, useState, useRef, useEffect, useMemo } from "react"
 import * as THREE from "three"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { sairDaPagina } from "../linha/paginas"
 import { lerObras, type Obra } from "./obras"
 
 type Artwork = {
@@ -221,6 +223,7 @@ function OlharComDedo() {
 }
 
 export default function GaleriaScene() {
+  const router = useRouter()
   const keys = useRef<Teclas>({ w: false, a: false, s: false, d: false })
   const [toque, setToque] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -240,6 +243,7 @@ export default function GaleriaScene() {
         </p>
       </div>
       <Link href="/galeria/pintar" className="absolute right-6 top-6 z-10 rounded-md bg-[#ff3fb0] px-4 py-2 text-sm font-bold text-black">pintar a sua</Link>
+      <button type="button" onClick={() => sairDaPagina(router.push)} className="absolute bottom-8 left-6 z-10 rounded-md bg-white/10 px-4 py-2 text-sm font-bold text-white">‹ sair</button>
       {toque && (
         <div className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 gap-3 select-none">
           <button type="button" aria-label="andar pra frente" className="h-16 w-16 rounded-full border-2 border-white/40 bg-white/10 text-2xl text-white" style={{ touchAction: "none" }} {...segura("w")}>↑</button>

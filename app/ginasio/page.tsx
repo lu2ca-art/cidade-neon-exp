@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { sairDaPagina } from "../linha/paginas"
 import { Basquete } from "./basquete"
 import { Cama } from "./cama"
 import { PingPong } from "./pingpong"
@@ -43,7 +44,7 @@ export default function Ginasio() {
     <div className="gi-raiz">
       <section className="gi-menu">
         <header>
-          <button type="button" onClick={() => router.push("/?screen=home")}>‹ sair</button>
+          <button type="button" onClick={() => sairDaPagina(router.push)}>‹ sair</button>
           <span>{neon} <small>neon$</small></span>
         </header>
         <h1>GINÁSIO</h1>

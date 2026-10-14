@@ -24,6 +24,9 @@ const BASE = {
 
 export const ATALHOS: Atalho[] = [
   { id: "parque", nome: "a montanha-russa", desc: "de noite, na avenida, chegando no parque · toca em “andar na montanha-russa”", save: { hora: 21 }, ir: { area: "full", u: 650, parado: true } },
+  { id: "ginasio", nome: "entrar no ginásio", desc: "de manhã, na avenida, chegando no ginásio · toca em “entrar”, a cena carrega a página, “sair” volta pra estrada", save: { hora: 10 }, ir: { area: "full", u: 1640, parado: true } },
+  { id: "galeria", nome: "entrar na galeria", desc: "de tarde, no mirante, chegando na galeria", save: { hora: 14 }, ir: { area: "crypto", u: 1490, parado: true } },
+  { id: "fliperama", nome: "entrar no fliperama", desc: "de noite, perto da arena, chegando no fliperama", save: { hora: 22 }, ir: { area: "live", u: 1440, parado: true } },
   { id: "flores", nome: "as flores da Ella", desc: "de manhã, no subúrbio, chegando no 1º canteiro · toca em “regar as flores”", save: { hora: 10 }, ir: { area: "suburbio", u: 270, parado: true } },
   { id: "embacado", nome: "o vidro embaçado", desc: "de noite, na chuva · o vidro embaça em uns segundos: passa o dedo na parte de cima", save: { hora: 22, dicas: ["disco-1", "disco-2", "radio-1"] }, ir: { area: "linha", u: 300, embacar: true } },
   { id: "respirar", nome: "respirar na caçada", desc: "a polícia atrás de você · despista, segura o freio até parar e respira com o círculo", save: { hora: 23 }, ir: { area: "linha", u: 500, procurado: true } },

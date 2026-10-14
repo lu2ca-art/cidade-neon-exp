@@ -15,6 +15,7 @@ import { calcularRota, pontoMaisPerto, type Ponto, type Rota } from "./rota"
 import { LUGARES, type LugarId } from "../lugares"
 import { CANTEIROS } from "./Flores"
 import { PARQUE } from "./Parque"
+import { PAGINAS } from "../paginas"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
@@ -56,6 +57,7 @@ function blipsDo(M: Mundo): Blip[] {
     if (via < 0) continue
     b.push({ id: l.id, nome: l.nome, cor: l.cor, via, u: l.u, tipo: l.id === "posto" ? "posto" : "lugar" })
   }
+  for (const lp of PAGINAS) b.push({ id: lp.id, nome: lp.nome, cor: lp.cor, via: M.circuito[lp.area], u: lp.u, tipo: "lugar" })
   b.push({ id: "parque", nome: "o parque", cor: "#ff5b5b", via: M.circuito[PARQUE.area], u: PARQUE.u, tipo: "parque" })
   for (const c of CANTEIROS) b.push({ id: `flor-${c.id}`, nome: "um canteiro da Ella", cor: "#2fe8ff", via: M.circuito[c.area], u: c.u, tipo: "flor" })
   return b
@@ -130,6 +132,7 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
       const c = mini.current, p = pose.current
       if (!c || !p) return
       const dpr = Math.min(2, window.devicePixelRatio || 1), S = c.clientWidth
+      if (S < 20) return // escondido (cutscene, montanha-russa)
       if (c.width !== S * dpr) { c.width = S * dpr; c.height = S * dpr }
       const g = c.getContext("2d")!
       g.setTransform(dpr, 0, 0, dpr, 0, 0)

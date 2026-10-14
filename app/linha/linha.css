@@ -1874,3 +1874,22 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-mapa-grande footer { position: absolute; left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 8px; }
 .l-mapa-grande footer button { padding: 12px 18px !important; border-radius: 999px; border: 0 !important; background: #ff3fb0 !important; color: #14121c !important; font: 800 14px var(--font-geist-sans), system-ui, sans-serif !important; width: auto !important; }
 .l-mapa-grande footer button:first-child:not(:last-child) { background: rgba(255, 255, 255, 0.12) !important; color: #fff !important; }
+
+/* os lugares que são páginas (paginas.ts): o botão de entrar e a cutscene */
+.l-regar-btn.is-pagina { background: var(--cor, #ff9000) !important; color: #0b0a12 !important; box-shadow: 0 0 20px color-mix(in srgb, var(--cor, #ff9000) 60%, transparent); }
+.l-pagina-fechada { position: absolute; z-index: 7; right: 12px; top: calc(196px + env(safe-area-inset-top)); margin: 0; padding: 8px 12px; border-radius: 999px; background: rgba(11, 10, 18, 0.8); color: rgba(255, 255, 255, 0.75); font: 700 11px var(--font-geist-mono), ui-monospace, monospace; pointer-events: none; }
+.l-entrada-lugar { position: fixed; inset: 0; z-index: 70; pointer-events: all; animation: l-entrada-escurece 3.4s ease-in forwards; }
+@keyframes l-entrada-escurece { 0%, 70% { background: rgba(0, 0, 0, 0); } 100% { background: rgba(0, 0, 0, 1); } }
+.l-entrada-lugar i { position: absolute; left: 0; right: 0; height: 13vh; background: #000; animation: l-faixa 0.6s ease-out both; }
+.l-faixa-cima { top: 0; }
+.l-faixa-baixo { bottom: 0; }
+@keyframes l-faixa { from { height: 0; } }
+.l-entrada-titulo { position: absolute; left: 0; right: 0; bottom: 16vh; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; animation: l-titulo 3.2s ease-out both; }
+@keyframes l-titulo { 0% { opacity: 0; transform: translateY(14px); } 20%, 80% { opacity: 1; transform: none; } 100% { opacity: 0.6; } }
+.l-entrada-titulo b { font: 900 clamp(40px, 13vw, 72px)/0.9 "Arial Black", system-ui, sans-serif; letter-spacing: 0.04em; color: var(--cor, #ff9000); text-shadow: 0 0 30px color-mix(in srgb, var(--cor, #ff9000) 70%, transparent), 0 2px 0 #000; }
+.l-entrada-titulo small { font: 700 12px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.85); text-shadow: 0 2px 6px #000; }
+.l-entrada-barra { position: absolute; left: 30%; right: 30%; bottom: calc(13vh - 10px); height: 2px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.l-entrada-barra::after { content: ""; position: absolute; inset: 0; width: 40%; background: var(--cor, #ff9000); animation: l-carrega 1s ease-in-out infinite; }
+.l-entrada-barra.is-pronta::after { width: 100%; animation: none; }
+@keyframes l-carrega { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+.l-viagem.is-entrando .l-painel-kombi, .l-viagem.is-entrando .l-pedal, .l-viagem.is-entrando .l-dormir, .l-viagem.is-entrando .l-mapa-mini, .l-viagem.is-entrando .l-relogio, .l-viagem.is-entrando .l-guia, :has(.l-viagem.is-entrando) .l-caixa-missao, :has(.l-viagem.is-entrando) .l-dormir { display: none !important; }

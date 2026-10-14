@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { sairDaPagina } from "../linha/paginas"
 import { Cobra } from "./cobra"
 import { Invasores } from "./invasores"
 import { Linha9 } from "./linha9"
@@ -66,7 +67,7 @@ export default function Fliperama() {
     <div className="fp-raiz">
       <section className="fp-menu">
         <header>
-          <button type="button" onClick={() => router.push("/?screen=home")}>‹ sair</button>
+          <button type="button" onClick={() => sairDaPagina(router.push)}>‹ sair</button>
           <span>{neon} <small>neon$</small></span>
         </header>
         <h1>FLIPERAMA</h1>

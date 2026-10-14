@@ -13,7 +13,10 @@
 // saída a rádio sintoniza a do destino.
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
-import { NOME_TURNO, SEG_POR_HORA, abertoAgora, ehDia, horaTexto, turnoDe } from "../relogio"
+import { NOME_TURNO, SEG_POR_HORA, abertoAgora, abreAs, ehDia, horaTexto, turnoDe } from "../relogio"
+import { PAGINAS, marcarDaCidade, type LugarPagina } from "../paginas"
+import { Fachadas } from "./Fachadas"
+import { useRouter } from "next/navigation"
 import { Embacado } from "./Embacado"
 import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
@@ -30,7 +33,7 @@ import { KombiHerbal } from "./KombiHerbal"
 import { Capa } from "../capa"
 import { discosDaKombi } from "../discos"
 import { Metro, montarMetro } from "./Metro"
-import { LUGARES, VAGA, type LugarId } from "../lugares"
+import { LUGARES, VAGA, type Lugar, type LugarId } from "../lugares"
 import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
 import { ESPECIES, Flores, canteiroPerto, canteiroPorId } from "./Flores"
 import type { Ir as IrAtalho } from "../../teste/atalhos"
@@ -430,6 +433,25 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // as flores da Ella: de dia, chegando num canteiro, dá pra regar
   const [canteiro, setCanteiro] = useState<string | null>(null)
   const [regando, setRegando] = useState<string | null>(null)
+  // os lugares que são páginas (paginas.ts): perto de qual, quais abertos, e
+  // a entrada (a cutscene espera a página carregar em paralelo)
+  const router = useRouter()
+  const [paginaPerto, setPaginaPerto] = useState<string | null>(null)
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({})
+  const [entrando, setEntrando] = useState<LugarPagina | null>(null)
+  const [carregou, setCarregou] = useState(false)
+  // a câmera da entrada: do outro lado da rua, olhando a fachada (como nas cenas)
+  const camEntrada = useRef<{ cam: THREE.Vector3; olhar: THREE.Vector3 } | null>(null)
+  const entrar = (lp: LugarPagina) => {
+    jogo.current.encostando = true
+    const pose = poseLugar(M, { area: lp.area, u: lp.u, lado: lp.lado } as Lugar)
+    camEntrada.current = { cam: pose.cam.clone(), olhar: pose.porta.clone().setY(pose.porta.y + 2.5) }
+    setEntrando(lp); setCarregou(false)
+    router.prefetch(lp.rota)
+    // a cena dura pelo menos 3,2 s (o tempo de ver o letreiro e a fachada)
+    const pagina = CARREGAR_PAGINA[lp.id]().catch(() => null).then(() => setCarregou(true))
+    void Promise.all([pagina, new Promise((r) => setTimeout(r, 3200))]).then(() => { marcarDaCidade(); router.push(`${lp.rota}?de=cidade`) })
+  }
   // a montanha-russa: perto (dá pra andar) ou andando
   const passeio = useRef<PasseioParque>(novoPasseio())
   const [parque, setParque] = useState<"perto" | "andando" | null>(null)
@@ -456,6 +478,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       setCanteiro(c && !regadas.includes(c.id) ? c.id : null)
       const pq = passeio.current
       setParque(pq.andando ? "andando" : abertoAgora("noite", horaRef.current) && pertoDoParque(M, j.via, j.u) ? "perto" : null)
+      // os lugares que são páginas: aberto agora? a Kombi está chegando?
+      const ab: Record<string, boolean> = {}
+      let pp: string | null = null
+      for (const lp of PAGINAS) {
+        ab[lp.id] = abertoAgora(lp.horario, horaRef.current)
+        const V = M.vias[j.via]
+        if (M.circuito[lp.area] !== j.via) continue
+        let d = lp.u - j.u
+        if (V.fechada) d = ((d % V.L) + V.L * 1.5) % V.L - V.L / 2
+        if (d > -20 && d < 90) pp = lp.id
+      }
+      setAbertos((a) => (PAGINAS.every((lp) => a[lp.id] === ab[lp.id]) ? a : ab))
+      setPaginaPerto(pp)
       if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
     }, 300)
     return () => clearInterval(t)
@@ -1256,7 +1291,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""}`}>
+    <div className={`l-viagem ${entrando ? "is-entrando" : ""} ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -1275,7 +1310,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} />
         </Canvas>
       )}
 
@@ -1410,6 +1445,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
           de NEON fica só no celular */}
       {/* o relógio da cidade (13/10): a hora e o dia */}
+      {(() => {
+        const lp = PAGINAS.find((x) => x.id === paginaPerto)
+        if (!lp || entrando || regando || parque === "andando") return null
+        return abertos[lp.id]
+          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrar(lp)}>entrar · {lp.nome}</button>
+          : <p className="l-pagina-fechada">{lp.nome} abre às {abreAs(lp.horario)}</p>
+      })()}
+      {entrando && (
+        <div className="l-entrada-lugar" style={{ ["--cor" as string]: entrando.cor }}>
+          <i className="l-faixa-cima" /><i className="l-faixa-baixo" />
+          <div className="l-entrada-titulo"><b>{entrando.letreiro}</b><small>{entrando.chegada}</small></div>
+          <span className={`l-entrada-barra${carregou ? " is-pronta" : ""}`} />
+        </div>
+      )}
       {parque === "perto" && !regando && (
         <button type="button" className="l-regar-btn is-parque" onPointerDown={(e) => e.stopPropagation()} onClick={andarMontanha}>andar na montanha-russa</button>
       )}
@@ -1623,6 +1672,13 @@ function mundo() { return (MUNDO ??= montarMundo()) }
 export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
 let RETOMAR: Retomada | null = null
 
+// as páginas robustas dos lugares: baixadas durante a cutscene de entrada
+const CARREGAR_PAGINA: Record<LugarPagina["id"], () => Promise<unknown>> = {
+  ginasio: () => import("../../ginasio/page"),
+  galeria: () => import("../../galeria/GaleriaScene"),
+  fliperama: () => import("../../fliperama/page"),
+}
+
 export interface Comb {
   tanque: number
   via: number // onde fica o posto
@@ -1724,13 +1780,16 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, climaRef, regadas, passeio, respiroRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
   combRef: React.MutableRefObject<Comb>
   horaRef: React.MutableRefObject<number>
+  abertos: Record<string, boolean>
+  paginaPerto: string | null
+  camEntrada: React.RefObject<{ cam: THREE.Vector3; olhar: THREE.Vector3 } | null>
   climaRef: React.RefObject<{ chove: boolean; k: number }>
   respiroRef: React.MutableRefObject<{ pode: boolean; feito: boolean }>
   fonteRef: React.MutableRefObject<Fonte>
@@ -3214,6 +3273,13 @@ function Cena({
       camera.lookAt(mr.olhar)
       tmp.camOlhar.copy(mr.olhar); tmp.camUp.copy(mr.up)
     } else camMontanha.current = null
+    // entrando num lugar que é página: a câmera corta pro outro lado da rua
+    const ce = camEntrada.current
+    if (ce) {
+      camera.position.lerp(ce.cam, 1 - Math.exp(-dt * 2.2))
+      camera.up.set(0, 1, 0)
+      camera.lookAt(ce.olhar)
+    }
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
     const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
@@ -3447,6 +3513,7 @@ function Cena({
       <primitive object={cidade.pilares} />
       <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
       <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
+      <Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro>
       <Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro>
       <Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro>
       <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>

@@ -40,6 +40,7 @@ import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, 
 import dynamic from "next/dynamic"
 import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
+import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
@@ -153,6 +154,13 @@ export default function LinhaPage() {
      
     setSave(s.dias.includes(h) ? s : { ...s, dias: [...s.dias, h].slice(-60) })
     setPronto(true)
+    // voltando de um lugar que é página (paginas.ts): direto pra estrada, onde estava
+    if (new URLSearchParams(location.search).get("volta") === "cidade" && (s.casa || s.estacao)) {
+      audioCtx()
+      limparDaCidade()
+      setVoltaDaSala(true)
+      setTela({ t: "corrida", destino: null })
+    }
     // atalho de teste (/teste): fora da produção, a Kombi aparece num ponto
     if (atalhosLiberados()) setAtalhoTeste(atalhoPorId(new URLSearchParams(location.search).get("atalho"))?.ir ?? null)
     if (process.env.NODE_ENV !== "production") {
