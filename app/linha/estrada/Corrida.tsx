@@ -224,18 +224,29 @@ const VRE = 15 // ré: m/s
 // de sempre) e vai escurecendo até a noite funda, amanhece e vira dia.
 // [hora, topo, meio, tinta do horizonte, noite (estrelas/lua/sódio), luz]
 type ChaveCeu = [number, [number, number, number], [number, number, number], number, number, number]
+// a referência do dia passando é o Red Dead Redemption 2 (LU2CA, 14/10):
+// madrugada roxa, nascer laranja, dia azul, uma hora dourada comprida no fim
+// da tarde, o pôr do sol vermelho e a hora azul antes da noite
 const CEU_HORAS: ChaveCeu[] = [
   [0, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
-  [3.5, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
-  [5, [0.03, 0.03, 0.09], [0.12, 0.09, 0.2], 1.4, 0.6, 0.9],
-  [6.5, [0.12, 0.2, 0.42], [0.55, 0.45, 0.55], 2.2, 0.15, 1.4],
-  [9, [0.16, 0.32, 0.62], [0.48, 0.62, 0.82], 1.6, 0, 1.8],
-  [16, [0.16, 0.32, 0.62], [0.48, 0.62, 0.82], 1.6, 0, 1.8],
-  [17.2, [0.08, 0.1, 0.28], [0.4, 0.25, 0.35], 2, 0.4, 1.3],
-  [18, [0.012, 0.014, 0.05], [0.05, 0.07, 0.2], 1, 1, 1],
+  [4.5, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
+  [5.5, [0.04, 0.05, 0.14], [0.35, 0.2, 0.3], 1.6, 0.7, 0.85],
+  [6.5, [0.14, 0.22, 0.45], [0.95, 0.55, 0.35], 2.4, 0.2, 1.3],
+  [8, [0.16, 0.32, 0.62], [0.5, 0.62, 0.8], 1.6, 0, 1.8],
+  [15.5, [0.16, 0.32, 0.62], [0.5, 0.62, 0.8], 1.6, 0, 1.8],
+  [17, [0.14, 0.24, 0.5], [0.85, 0.55, 0.35], 2, 0.1, 1.55],
+  [18.2, [0.07, 0.08, 0.24], [0.9, 0.38, 0.25], 2.4, 0.45, 1.15],
+  [19.2, [0.012, 0.014, 0.05], [0.06, 0.07, 0.2], 1, 1, 0.9],
   [21, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
   [24, [0.006, 0.007, 0.025], [0.02, 0.028, 0.09], 0.6, 1, 0.75],
 ]
+// onde estão o sol e a lua: o sol nasce no leste às 6h, passa alto ao meio-dia
+// e se põe no oeste às 18h; a lua faz o caminho oposto
+function astros(h: number, sol: THREE.Vector3, lua: THREE.Vector3) {
+  const a = ((h - 6) / 12) * Math.PI
+  sol.set(Math.cos(a) * 0.9, Math.sin(a) * 0.85, -0.42).normalize()
+  lua.set(-Math.cos(a) * 0.8, Math.max(0.12, -Math.sin(a) * 0.75), -0.6).normalize()
+}
 function ceuNaHora(h: number) {
   let k = 0
   while (k < CEU_HORAS.length - 2 && h >= CEU_HORAS[k + 1][0]) k++
@@ -2263,9 +2274,9 @@ function Cena({
   const ceuMat = useMemo(() => new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
-    uniforms: { lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() }, tinta: { value: new THREE.Color("#4a1a30") }, nevoaC: { value: new THREE.Color("#1a0f24") }, tempo: { value: 0 }, topoC: { value: new THREE.Vector3(0.012, 0.014, 0.05) }, meioC: { value: new THREE.Vector3(0.05, 0.07, 0.2) }, noite: { value: 1 } },
+    uniforms: { sol: { value: new THREE.Vector3(0, -1, 0) }, lua: { value: new THREE.Vector3(0.4, 0.35, -0.85).normalize() }, tinta: { value: new THREE.Color("#4a1a30") }, nevoaC: { value: new THREE.Color("#1a0f24") }, tempo: { value: 0 }, topoC: { value: new THREE.Vector3(0.012, 0.014, 0.05) }, meioC: { value: new THREE.Vector3(0.05, 0.07, 0.2) }, noite: { value: 1 } },
     vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-    fragmentShader: `varying vec3 vP; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC; uniform float tempo; uniform vec3 topoC; uniform vec3 meioC; uniform float noite;
+    fragmentShader: `varying vec3 vP; uniform vec3 sol; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC; uniform float tempo; uniform vec3 topoC; uniform vec3 meioC; uniform float noite;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float ruido(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
         return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
@@ -2292,6 +2303,15 @@ function Cena({
         vec3 luaC = vec3(0.85, 0.9, 1.0) * smoothstep(0.99935, 0.99965, m) * 1.6;
         vec3 halo = vec3(0.3, 0.36, 0.7) * pow(m, 48.0) * 0.55;
         c += (luaC + halo) * noite;
+        // o sol: o disco, o brilho em volta e, baixo no céu, o horizonte pegando
+        // fogo do lado dele (a hora dourada)
+        float ss = max(dot(d, sol), 0.0);
+        float acima = smoothstep(-0.08, 0.04, sol.y);
+        float quente = 1.0 - smoothstep(0.02, 0.4, sol.y);
+        vec3 solC = mix(vec3(1.0, 0.95, 0.86), vec3(1.0, 0.42, 0.14), quente);
+        c += solC * (smoothstep(0.99925, 0.9996, ss) * 1.8 + pow(ss, 96.0) * 0.35 + pow(ss, 8.0) * 0.08) * acima;
+        vec2 dh = normalize(d.xz + 1e-4), sh = normalize(sol.xz + 1e-4);
+        c += solC * exp(-hp * 6.0) * pow(max(dot(dh, sh), 0.0), 3.0) * quente * acima * 0.55;
         // nuvens: um teto baixo, projetado num plano, andando com o vento
         vec2 uv = d.xz / (hp + 0.09) * 2.1 + vec2(tempo * 0.012, tempo * 0.005);
         float n = fbm(uv);
@@ -2304,6 +2324,8 @@ function Cena({
         nuvem *= 0.65 + 0.55 * n2;
         // borda prateada onde a lua bate
         nuvem += vec3(0.55, 0.62, 0.95) * pow(m, 10.0) * (1.0 - cob) * cob * 2.4;
+        // no nascer e no pôr do sol a base das nuvens acende laranja
+        nuvem += solC * (pow(ss, 3.0) * 0.8 + 0.18) * quente * acima;
         c = mix(c, nuvem, cob * 0.92);
         gl_FragColor = vec4(c, 1.0);
       }`,
@@ -2322,6 +2344,7 @@ function Cena({
     qYaw: new THREE.Quaternion(), qRoll: new THREE.Quaternion(), camOlhar: new THREE.Vector3(), d: new THREE.Object3D(),
     qMarca: new THREE.Quaternion(), qDeriva: new THREE.Quaternion(), roda: new THREE.Vector3(),
     qDeitar: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2),
+    sol: new THREE.Vector3(), lua: new THREE.Vector3(),
     y0: new THREE.Vector3(0, 1, 0), z0: new THREE.Vector3(0, 0, 1), camUp: new THREE.Vector3(0, 1, 0), upMix: new THREE.Vector3(),
     c1: new THREE.Color(), c2: new THREE.Color(),
   }), [])
@@ -3081,9 +3104,21 @@ function Cena({
       alvoNevoa.set(ds.nevoa)
       alvoCeu.set(ds.ceu)
     }
-    // A HORA DO JOGO (relogio.ts): o dia inteiro em 15 min; muda o céu, a névoa e a luz
+    // A HORA DO JOGO (relogio.ts): o dia inteiro em 20 min; muda o céu, a névoa e a luz
     horaRef.current = (horaRef.current + dt / SEG_POR_HORA) % 24
     const ch = ceuNaHora(horaRef.current)
+    // o sol e a lua andam com a hora; a luz da cena vem de quem estiver no céu
+    astros(horaRef.current, tmp.sol, tmp.lua)
+    ceuMat.uniforms.sol.value.copy(tmp.sol)
+    ceuMat.uniforms.lua.value.copy(tmp.lua)
+    if (dirRef.current) {
+      const deDia = tmp.sol.y > -0.05
+      const fonteLuz = deDia ? tmp.sol : tmp.lua
+      dirRef.current.position.copy(fonteLuz).multiplyScalar(500)
+      const quente = 1 - Math.min(1, Math.max(0, (tmp.sol.y - 0.02) / 0.38))
+      if (deDia) dirRef.current.color.setRGB(1, 0.93 - 0.4 * quente, 0.84 - 0.62 * quente)
+      else dirRef.current.color.set("#b9ccff")
+    }
     ceuMat.uniforms.topoC.value.set(ch.topo[0], ch.topo[1], ch.topo[2])
     ceuMat.uniforms.meioC.value.set(ch.meio[0], ch.meio[1], ch.meio[2])
     ceuMat.uniforms.noite.value = ch.noite
