@@ -13,6 +13,7 @@
 // saída a rádio sintoniza a do destino.
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
+import { Embacado } from "./Embacado"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -376,6 +377,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [M])
   const cinemaRef = useRef<Cinema>(cinema)
   useEffect(() => { cinemaRef.current = cinema }, [cinema])
+  // pode embaçar? (noite, chuva da cidade — o deserto não chove —, andando, sem cena)
+  const embacaRef = useRef(false)
+  useEffect(() => {
+    const t = setInterval(() => {
+      const h = horaRef.current
+      const j = jogo.current
+      embacaRef.current = (h >= 19 || h < 4) && M.vias[j.via]?.id !== "deserto" && Math.abs(j.v) > 4 && !cinemaRef.current
+    }, 500)
+    return () => clearInterval(t)
+  }, [M])
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
   const hudProg = useRef<HTMLDivElement>(null)
@@ -1143,6 +1154,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </Canvas>
       )}
 
+      {/* o vidro embaça de noite na chuva (Embacado.tsx) */}
+      {!abertura && <Embacado podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
       {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
