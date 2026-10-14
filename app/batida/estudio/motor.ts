@@ -127,10 +127,18 @@ export class Motor {
     this.ctx = new AC({ latencyHint: "interactive" })
     this.bus = createMixBus(this.ctx)
     this.atrasoSaida = Math.min(0.3, (this.ctx.outputLatency || 0) + (this.ctx.baseLatency || 0) + 0.01)
+    // o celular suspende o áudio (uma ligação, um fone que conecta, a tela que
+    // apaga): tocando, retoma sozinho — senão o relógio para e o som some
+    this.ctx.onstatechange = () => { if (this.tocando && this.ctx.state !== "running" && this.ctx.state !== "closed") void this.ctx.resume() }
+    this.aoVoltar = () => { if (document.visibilityState === "visible" && this.tocando) void this.ctx.resume() }
+    document.addEventListener("visibilitychange", this.aoVoltar)
   }
+  private aoVoltar: () => void
 
   destruir() {
     this.parar()
+    document.removeEventListener("visibilitychange", this.aoVoltar)
+    this.ctx.onstatechange = null
     try { void this.ctx.close() } catch {}
   }
 
@@ -194,6 +202,20 @@ export class Motor {
     const m = this.m
     if (!this.tocando || !m) return
     const spp = segPorPasso(m.bpm)
+    if (this.ctx.state !== "running") { void this.ctx.resume(); return }
+    // o celular engasgou e a agenda ficou pra trás: pula pro agora (em vez de
+    // despejar de uma vez todas as notas atrasadas, o que engasga mais)
+    if (this.prox < this.ctx.currentTime - 0.25) {
+      const atras = Math.ceil((this.ctx.currentTime - this.prox) / spp)
+      for (let k = 0; k < atras && this.contagem === 0; k++) {
+        const bl = this.blocos()
+        if (!bl.length) break
+        if (this.bloco >= bl.length) this.bloco = 0
+        this.passo++
+        if (this.passo >= passosDa(bl[this.bloco])) { this.passo = 0; this.bloco++ }
+      }
+      this.prox += atras * spp
+    }
     while (this.prox < this.ctx.currentTime + LOOKAHEAD) {
       if (this.contagem > 0) {
         const k = 16 - this.contagem
@@ -232,7 +254,8 @@ export class Motor {
       if (this.metronomo && this.passo % 4 === 0) this.clique(this.prox, this.passo % 16 === 0)
       for (const f of audiveis(m)) {
         const mesa = this.mesas.get(f.id)
-        if (mesa) tocarPasso(this.ctx, mesa.entrada, f, s.eventos[f.id], this.passo, t, m.bpm)
+        // uma nota com problema não pode travar a agenda inteira
+        if (mesa) try { tocarPasso(this.ctx, mesa.entrada, f, s.eventos[f.id], this.passo, t, m.bpm) } catch {}
       }
       this.tiques.push({ t: this.prox, bloco: this.bloco, secao: s.id, passo: this.passo })
       if (this.tiques.length > 128) this.tiques.splice(0, this.tiques.length - 128)
