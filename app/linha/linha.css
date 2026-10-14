@@ -1836,3 +1836,7 @@ button.l-dormir { position: absolute; left: 12px; top: calc(104px + env(safe-are
 .l-dormindo { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: #04030a; animation: l-dorme 2.6s ease-in-out both; pointer-events: none; }
 .l-dormindo b { font: 900 34px "Arial Black", system-ui, sans-serif; color: #fff; text-transform: uppercase; letter-spacing: 0.06em; }
 @keyframes l-dorme { 0% { opacity: 0; } 30%, 70% { opacity: 1; } 100% { opacity: 0; } }
+
+/* as flores da Ella (estrada/Flores.tsx) */
+.l-regar-btn { position: absolute; z-index: 7; right: 12px; top: calc(70px + env(safe-area-inset-top)); padding: 10px 16px; border: 0 !important; border-radius: 999px; background: #2fe8ff !important; color: #06141a !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; box-shadow: 0 0 20px rgba(47, 232, 255, 0.6); cursor: pointer; animation: l-regar-pulsa 1.6s ease-in-out infinite; }
+@keyframes l-regar-pulsa { 50% { box-shadow: 0 0 6px rgba(47, 232, 255, 0.3); } }
