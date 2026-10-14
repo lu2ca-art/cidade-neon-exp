@@ -33,6 +33,7 @@ import { LUGARES, VAGA, type LugarId } from "../lugares"
 import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
 import { Flores, canteiroPerto } from "./Flores"
 import type { Ir as IrAtalho } from "../../teste/atalhos"
+import { Mapa, type Marca } from "./Mapa"
 import { Parque, areaDoParque, novoPasseio, pertoDoParque, type PasseioParque } from "./Parque"
 import { Prova } from "../provas"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
@@ -191,6 +192,8 @@ type Jogo = {
   encostando?: boolean
   // atalho de teste: segura parada uns segundos depois de aparecer
   segura?: boolean
+  // com o mapa grande aberto a Kombi espera parada
+  noMapa?: boolean
   sintonizou: boolean
   // bifurcação: o lado que a pessoa marcou (0 = fica) e em qual divisão
   escolha: 0 | 1 | -1; escolhaU: number
@@ -309,6 +312,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // os lugares da cidade: onde fica cada um (fachada, vaga, câmera)
   const poses = useMemo(() => Object.fromEntries(Object.values(LUGARES).map((l) => [l.id, poseLugar(M, l)])) as Record<LugarId, PoseLugar>, [M])
   const lugarDaMissao: LugarId | null = !caido && alvo?.t === "lugar" ? alvo.lugar : null
+  // o destino que você marcou no mapa (senão, o mapa aponta a missão)
+  const [marca, setMarca] = useState<Marca | null>(null)
   // a vaga que vale agora (encostar nela começa a cena)
   const vagaRef = useRef<{ id: LugarId; via: number; u: number; lado: 1 | -1; nome: string; cor: string; quem: string } | null>(null)
   useEffect(() => {
@@ -1420,6 +1425,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           </div>
         </div>
       )}
+      {parque !== "andando" && (
+        <Mapa M={M} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} />
+      )}
       <div className="l-relogio" aria-label="relógio da cidade"><b ref={hudRelogio}>{horaTexto(hora)}</b><small ref={hudTurno}>dia {dia}</small></div>
 
       <div className="l-painel-kombi" onPointerDown={(e) => e.stopPropagation()}>
@@ -2484,7 +2492,7 @@ function Cena({
       else j.v += (VCINEMA - j.v) * Math.min(1, dt * 0.5)
       j.vx += (j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) - j.vx) * Math.min(1, dt * 7)
       j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * (1 - Math.min(0.75, Math.abs(a.bank) * 2.4))) * dt
-    } else if (j.chegando || j.encostando || j.segura) {
+    } else if (j.chegando || j.encostando || j.segura || j.noMapa) {
       j.v = Math.max(0, j.v - FREIO * 0.8 * dt)
       j.x += (0 - j.x) * dt * 1.5
       if (j.chegando && j.v < 0.5 && !j.parado) { j.parado = true; ev.chegou(); motor?.atualizar(0, false, false) }
