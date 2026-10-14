@@ -586,6 +586,7 @@ export default function LinhaPage() {
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
+  const regadasHoje = useMemo(() => Object.entries(save.regadas ?? {}).filter(([, d]) => d === (save.dia ?? 1)).map(([id]) => id), [save.regadas, save.dia])
   const listaMissoes = useMemo(() => {
     const l = abertas(save, nivel)
     // no tutorial, só a primeira pessoa (as outras abrem quando ele acaba)
@@ -958,6 +959,8 @@ export default function LinhaPage() {
             onHora={(h) => setSave((s) => ({ ...s, hora: h, dia: virouODia(s.hora ?? 18, h) ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))}
             dia={save.dia ?? 1}
             saltoHora={saltoHora}
+            regadas={regadasHoje}
+            onRegar={(id) => setSave((s) => ({ ...s, regadas: { ...s.regadas, [id]: s.dia ?? 1 }, neon: (s.neon ?? 0) + 2 }))}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}

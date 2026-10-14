@@ -83,6 +83,8 @@ export interface Save {
   hora?: number
   // o dia da cidade (13/10): começa no 1 e vira às 8h (ou ao dormir)
   dia?: number
+  // as flores da Ella (estrada/Flores.tsx): canteiro → o dia em que regou
+  regadas?: Record<string, number>
   // o bar: os copos que a pessoa já bebeu (ficam vazios no balcão)
   copos?: number[]
   // a versão do save (VERSAO): save de versão diferente começa do zero
