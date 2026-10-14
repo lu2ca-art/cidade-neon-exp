@@ -38,6 +38,7 @@ import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
+import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
@@ -580,6 +581,18 @@ export default function LinhaPage() {
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
+  // regou um canteiro da Ella: +2 neon, quantos já foram regados alguma vez e,
+  // com todos, a conquista
+  const regouCanteiro = useCallback((id: string) => {
+    const s0 = saveRef.current
+    const regadas = { ...s0.regadas, [id]: s0.dia ?? 1 }
+    const total = CANTEIROS.length, feitos = CANTEIROS.filter((c) => regadas[c.id] !== undefined).length
+    const conquista = feitos >= total && !(s0.conquistas ?? []).includes("jardim-da-ella")
+    setSave((s) => ({ ...s, regadas: { ...s.regadas, [id]: s.dia ?? 1 }, neon: (s.neon ?? 0) + 2, conquistas: conquista ? [...(s.conquistas ?? []), "jardim-da-ella"] : s.conquistas }))
+    const c = canteiroPorId(id)
+    if (conquista) avisar("conquista · o jardim da Ella", `você regou os ${total} canteiros da cidade`, "#ffc857")
+    else avisar(c ? `${ESPECIES[c.especie].nome} · regado` : "regado", `${feitos} de ${total} canteiros da Ella · +2 neon`, c ? ESPECIES[c.especie].cor : "#2fe8ff")
+  }, [avisar])
   const regadasHoje = useMemo(() => Object.entries(save.regadas ?? {}).filter(([, d]) => d === (save.dia ?? 1)).map(([id]) => id), [save.regadas, save.dia])
   const listaMissoes = useMemo(() => {
     const l = abertas(save, nivel)
@@ -954,7 +967,7 @@ export default function LinhaPage() {
             dia={save.dia ?? 1}
             saltoHora={saltoHora}
             regadas={regadasHoje}
-            onRegar={(id) => setSave((s) => ({ ...s, regadas: { ...s.regadas, [id]: s.dia ?? 1 }, neon: (s.neon ?? 0) + 2 }))}
+            onRegar={regouCanteiro}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}

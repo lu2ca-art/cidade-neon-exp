@@ -29,7 +29,7 @@ import { discosDaKombi } from "../discos"
 import { Metro, montarMetro } from "./Metro"
 import { LUGARES, VAGA, type LugarId } from "../lugares"
 import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
-import { Flores, canteiroPerto } from "./Flores"
+import { ESPECIES, Flores, canteiroPerto, canteiroPorId } from "./Flores"
 import { Prova } from "../provas"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
@@ -1328,8 +1328,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
       {regando && (
         <div className="l-ficha-fundo" onPointerDown={(e) => e.stopPropagation()}>
-          <div className="l-fliper-jogo" style={{ ["--cor" as string]: "#2fe8ff" }}>
-            <Prova id="regar" cor="#2fe8ff" onFim={(pulou) => { const id = regando; jogo.current.regando = false; setRegando(null); if (!pulou) onRegar?.(id) }} />
+          <div className="l-fliper-jogo" style={{ ["--cor" as string]: ESPECIES[canteiroPorId(regando)?.especie ?? "rosa"].cor }}>
+            <Prova id="regar" cor={ESPECIES[canteiroPorId(regando)?.especie ?? "rosa"].cor} onFim={(pulou) => { const id = regando; jogo.current.regando = false; setRegando(null); if (!pulou) onRegar?.(id) }} />
           </div>
         </div>
       )}
