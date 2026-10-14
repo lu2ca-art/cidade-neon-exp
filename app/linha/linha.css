@@ -1893,3 +1893,16 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-entrada-barra.is-pronta::after { width: 100%; animation: none; }
 @keyframes l-carrega { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
 .l-viagem.is-entrando .l-painel-kombi, .l-viagem.is-entrando .l-pedal, .l-viagem.is-entrando .l-dormir, .l-viagem.is-entrando .l-mapa-mini, .l-viagem.is-entrando .l-relogio, .l-viagem.is-entrando .l-guia, :has(.l-viagem.is-entrando) .l-caixa-missao, :has(.l-viagem.is-entrando) .l-dormir { display: none !important; }
+
+/* o posto e as bombas de rua (estrada/postos.ts) */
+.l-regar-btn.is-bomba { background: #ffc857 !important; color: #1a1206 !important; box-shadow: 0 0 20px rgba(255, 200, 87, 0.6); }
+.l-bomba { position: absolute; z-index: 8; left: 16px; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; background: rgba(11, 10, 18, 0.92); border: 1px solid rgba(255, 200, 87, 0.5); color: #fff; }
+.l-bomba b { font: 900 18px "Arial Black", system-ui, sans-serif; color: #ffc857; text-transform: uppercase; }
+.l-bomba small, .l-bomba em { font: 700 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(255, 255, 255, 0.75); font-style: normal; }
+.l-bomba em { color: #ffc857; }
+.l-bomba-tanque { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.l-bomba-tanque i { display: block; height: 100%; background: linear-gradient(90deg, #ff6a35, #ffc857); transition: width 0.6s; }
+.l-bomba button { padding: 11px !important; border-radius: 10px; border: 0 !important; background: rgba(255, 200, 87, 0.15) !important; color: #fff !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif !important; width: auto !important; }
+.l-bomba button:disabled { opacity: 0.35; }
+.l-bomba button.is-seguir { background: #ffc857 !important; color: #1a1206 !important; }
+:has(.l-bomba) .l-caixa-missao { display: none !important; }

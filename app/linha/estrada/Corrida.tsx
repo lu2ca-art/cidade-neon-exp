@@ -16,6 +16,8 @@
 import { NOME_TURNO, SEG_POR_HORA, abertoAgora, abreAs, ehDia, horaTexto, turnoDe } from "../relogio"
 import { PAGINAS, marcarDaCidade, type LugarPagina } from "../paginas"
 import { Fachadas } from "./Fachadas"
+import { Bombas } from "./Bombas"
+import { BOMBAS, pertoDe } from "./postos"
 import { useRouter } from "next/navigation"
 import { Embacado } from "./Embacado"
 import { Respirar } from "./Respirar"
@@ -159,6 +161,10 @@ interface Props {
   onRegar?: (id: string) => void
   // uma volta na montanha-russa do parque (Parque.tsx): o NEON que ela paga
   onMontanha?: (neon: number) => void
+  // abastecer numa bomba de rua (bombas.ts): devolve se deu (tinha neon)
+  onAbastecer?: (o: "tanque" | "galao") => boolean
+  // o posto do LU2CA está aberto (pra Kombi seguir quando ele fechar)
+  postoAberto?: boolean
   // atalho de teste (/teste): aparece neste ponto, com a polícia ou o vidro embaçado
   atalho?: IrAtalho | null
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
@@ -296,7 +302,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, atalho = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -439,6 +445,34 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [paginaPerto, setPaginaPerto] = useState<string | null>(null)
   const [abertos, setAbertos] = useState<Record<string, boolean>>({})
   const [entrando, setEntrando] = useState<LugarPagina | null>(null)
+  // o posto e as bombas: perto de qual, e abastecendo numa bomba (o painel)
+  const [pertoComb, setPertoComb] = useState<string | null>(null)
+  const [naBomba, setNaBomba] = useState(false)
+  const [msgBomba, setMsgBomba] = useState("")
+  const [esperandoPosto, setEsperandoPosto] = useState(false)
+  const postoJaAbriu = useRef(false)
+  const abastecer = (onde: string) => {
+    jogo.current.encostando = true
+    if (onde === "posto") {
+      setEsperandoPosto(true)
+      setTimeout(() => onPosto?.(), 900)
+      // o posto não abriu (uma cena no meio): a Kombi não fica presa
+      setTimeout(() => { if (!postoJaAbriu.current) { jogo.current.encostando = false; setEsperandoPosto(false) } }, 3000)
+    }
+    else {
+      // o painel abre com a Kombi parada do lado da bomba
+      const espera = setInterval(() => { if (Math.abs(jogo.current.v) < 1) { clearInterval(espera); setNaBomba(true) } }, 200)
+    }
+  }
+  // o posto abriu e fechou: a Kombi segue
+  useEffect(() => {
+    if (postoAberto) postoJaAbriu.current = true
+    else if (postoJaAbriu.current) {
+      postoJaAbriu.current = false
+      jogo.current.encostando = false
+      setEsperandoPosto(false)
+    }
+  }, [postoAberto])
   const [carregou, setCarregou] = useState(false)
   // a câmera da entrada: do outro lado da rua, olhando a fachada (como nas cenas)
   const camEntrada = useRef<{ cam: THREE.Vector3; olhar: THREE.Vector3 } | null>(null)
@@ -491,6 +525,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       }
       setAbertos((a) => (PAGINAS.every((lp) => a[lp.id] === ab[lp.id]) ? a : ab))
       setPaginaPerto(pp)
+      // o posto (sempre aberto) e as bombas de rua
+      const Vb = M.vias[j.via]
+      let combustivel: string | null = null
+      if (M.circuito[LUGARES.posto.area] === j.via && pertoDe(Vb.L, !!Vb.fechada, LUGARES.posto.u, j.u)) combustivel = "posto"
+      for (const bb of BOMBAS) if (M.circuito[bb.area] === j.via && pertoDe(Vb.L, !!Vb.fechada, bb.u, j.u)) combustivel = bb.id
+      setPertoComb(combustivel)
       if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
     }, 300)
     return () => clearInterval(t)
@@ -1448,6 +1488,22 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
           de NEON fica só no celular */}
       {/* o relógio da cidade (13/10): a hora e o dia */}
+      {pertoComb && !naBomba && !entrando && !regando && parque !== "andando" && !postoAberto && !esperandoPosto && (
+        <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={() => abastecer(pertoComb)}>
+          {pertoComb === "posto" ? "abastecer · o posto" : "abastecer · a bomba"}
+        </button>
+      )}
+      {naBomba && (
+        <div className="l-bomba" onPointerDown={(e) => e.stopPropagation()}>
+          <b>a bomba</b>
+          <div className="l-bomba-tanque"><i style={{ width: `${Math.round(tanque * 100)}%` }} /></div>
+          <small>tanque {Math.round(tanque * 100)}% · {save.neon ?? 0} neon</small>
+          <button type="button" disabled={tanque > 0.97} onClick={() => setMsgBomba(onAbastecer?.("tanque") ? "tanque cheio" : "sem neon pra encher")}>encher o tanque · 25 neon</button>
+          <button type="button" disabled={save.galao !== "vazio"} onClick={() => setMsgBomba(onAbastecer?.("galao") ? "galão cheio" : "sem neon pro galão")}>encher o galão · 10 neon</button>
+          {msgBomba && <em>{msgBomba}</em>}
+          <button type="button" className="is-seguir" onClick={() => { setNaBomba(false); setMsgBomba(""); jogo.current.encostando = false }}>seguir</button>
+        </div>
+      )}
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
         if (!lp || entrando || regando || parque === "andando") return null
@@ -3516,6 +3572,7 @@ function Cena({
       <primitive object={cidade.pilares} />
       <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
       <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
+      <Seguro nome="bombas"><Bombas M={M} /></Seguro>
       <Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro>
       <Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro>
       <Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro>

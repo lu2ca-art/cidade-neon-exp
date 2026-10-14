@@ -992,6 +992,13 @@ export default function LinhaPage() {
             regadas={regadasHoje}
             onRegar={regouCanteiro}
             onMontanha={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
+            onAbastecer={(o) => {
+              const s0 = saveRef.current
+              if (o === "tanque" ? (s0.neon ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.neon ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
+              if (o === "tanque") encherTanque(); else encherGalao()
+              return true
+            }}
+            postoAberto={!!noPosto}
             atalho={atalhoTeste}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
