@@ -39,6 +39,7 @@ import { ACERVO, PRECO_DISCO } from "./discos"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
+import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -82,6 +83,7 @@ type Aviso = { id: number; titulo: string; texto: string; cor: string }
 
 export default function LinhaPage() {
   const [save, setSave] = useState<Save>(VAZIO)
+  const [atalhoTeste, setAtalhoTeste] = useState<IrAtalho | null>(null)
   const [pronto, setPronto] = useState(false)
   const [tela, setTela] = useState<Tela>({ t: "entrada" })
   const [aviso, setAviso] = useState<Aviso | null>(null)
@@ -150,6 +152,8 @@ export default function LinhaPage() {
      
     setSave(s.dias.includes(h) ? s : { ...s, dias: [...s.dias, h].slice(-60) })
     setPronto(true)
+    // atalho de teste (/teste): fora da produção, a Kombi aparece num ponto
+    if (atalhosLiberados()) setAtalhoTeste(atalhoPorId(new URLSearchParams(location.search).get("atalho"))?.ir ?? null)
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -973,6 +977,7 @@ export default function LinhaPage() {
             regadas={regadasHoje}
             onRegar={(id) => setSave((s) => ({ ...s, regadas: { ...s.regadas, [id]: s.dia ?? 1 }, neon: (s.neon ?? 0) + 2 }))}
             onMontanha={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
+            atalho={atalhoTeste}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}

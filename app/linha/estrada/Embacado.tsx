@@ -11,6 +11,8 @@ import { useEffect, useRef, useState } from "react"
 interface Props {
   // pode embaçar agora? (noite, chovendo, andando) — lido a cada quadro
   podeRef: React.RefObject<boolean>
+  // atalho de teste: começa um episódio já
+  agora?: boolean
   jaSabe: boolean
   onAprendeu: () => void
 }
@@ -18,7 +20,7 @@ interface Props {
 const INTERVALO: [number, number] = [120, 260] // s de estrada entre um episódio e outro
 const CRESCE = 34 // s embaçando
 
-export function Embacado({ podeRef, jaSabe, onAprendeu }: Props) {
+export function Embacado({ podeRef, agora = false, jaSabe, onAprendeu }: Props) {
   const cvs = useRef<HTMLCanvasElement>(null)
   const [limpando, setLimpando] = useState(false) // a zona de limpar ativa
   const [dica, setDica] = useState(false)
@@ -91,6 +93,7 @@ export function Embacado({ podeRef, jaSabe, onAprendeu }: Props) {
     return () => cancelAnimationFrame(raf)
   }, [podeRef])
 
+  useEffect(() => { if (agora) estado.current.prox = 0 }, [agora])
   // atalho de teste: __embacar() começa um episódio agora
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return

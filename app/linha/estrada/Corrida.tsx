@@ -32,6 +32,7 @@ import { Metro, montarMetro } from "./Metro"
 import { LUGARES, VAGA, type LugarId } from "../lugares"
 import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
 import { Flores, canteiroPerto } from "./Flores"
+import type { Ir as IrAtalho } from "../../teste/atalhos"
 import { Parque, areaDoParque, novoPasseio, pertoDoParque, type PasseioParque } from "./Parque"
 import { Prova } from "../provas"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
@@ -153,6 +154,8 @@ interface Props {
   onRegar?: (id: string) => void
   // uma volta na montanha-russa do parque (Parque.tsx): o NEON que ela paga
   onMontanha?: (neon: number) => void
+  // atalho de teste (/teste): aparece neste ponto, com a polícia ou o vidro embaçado
+  atalho?: IrAtalho | null
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -186,6 +189,8 @@ type Jogo = {
   // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
   // para, sem o "chegou"
   encostando?: boolean
+  // atalho de teste: segura parada uns segundos depois de aparecer
+  segura?: boolean
   sintonizou: boolean
   // bifurcação: o lado que a pessoa marcou (0 = fica) e em qual divisão
   escolha: 0 | 1 | -1; escolhaU: number
@@ -273,7 +278,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, atalho = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -1074,6 +1079,25 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telChave])
 
+  // atalho de teste (/teste): a Kombi reaparece no ponto, já andando
+  const [embacarJa, setEmbacarJa] = useState(false)
+  useEffect(() => {
+    if (!atalho) return
+    const t = setTimeout(() => {
+      const vi = M.circuito[atalho.area], C = M.vias[vi]
+      if (!C) return
+      const j = jogo.current
+      j.via = vi; j.u = ((atalho.u % C.L) + C.L) % C.L; j.x = 0; j.v = atalho.parado ? 0 : 12; j.vx = 0
+      if (atalho.parado) { j.segura = true; setTimeout(() => { jogo.current.segura = false }, 10000) }
+      j.naVaga = false; j.vagaAvisou = undefined; j.encaixar = true
+      evs.current?.via(vi)
+      if (atalho.procurado) { j.batidas = 3; j.procurado = true; evs.current.estrelas(3) }
+      if (atalho.embacar) setTimeout(() => setEmbacarJa(true), 2500)
+    }, 900)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atalho])
+
   // atalhos de desenvolvimento: __irPara(0.9) anda na via atual,
   // __via("crypto", 0.5) teleporta pra um lugar (ou "linha>crypto")
   useEffect(() => {
@@ -1231,7 +1255,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
       {respirando && <Respirar jaSabe={dicas.includes("respirar")} onAprendeu={() => onDica?.("respirar")} onFeito={() => { respiroRef.current.feito = true }} />}
       {/* o vidro embaça de noite na chuva (Embacado.tsx) */}
-      {!abertura && <Embacado podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
+      {!abertura && <Embacado agora={embacarJa} podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
       {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
@@ -2437,7 +2461,7 @@ function Cena({
       else j.v += (VCINEMA - j.v) * Math.min(1, dt * 0.5)
       j.vx += (j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) - j.vx) * Math.min(1, dt * 7)
       j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * (1 - Math.min(0.75, Math.abs(a.bank) * 2.4))) * dt
-    } else if (j.chegando || j.encostando) {
+    } else if (j.chegando || j.encostando || j.segura) {
       j.v = Math.max(0, j.v - FREIO * 0.8 * dt)
       j.x += (0 - j.x) * dt * 1.5
       if (j.chegando && j.v < 0.5 && !j.parado) { j.parado = true; ev.chegou(); motor?.atualizar(0, false, false) }
