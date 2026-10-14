@@ -1835,7 +1835,7 @@
 button.l-dormir { position: absolute; left: 12px; top: calc(104px + env(safe-area-inset-top)); z-index: 6; padding: 6px 10px !important; border-radius: 999px; border: 0; background: rgba(8, 7, 16, 0.7) !important; color: rgba(255, 255, 255, 0.85) !important; font: 700 10px var(--font-geist-mono), ui-monospace, monospace !important; white-space: nowrap; width: auto !important; letter-spacing: 0.06em; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
 
 /* as flores da Ella (estrada/Flores.tsx) */
-.l-regar-btn { position: absolute; z-index: 7; right: 12px; top: calc(70px + env(safe-area-inset-top)); padding: 10px 16px; border: 0 !important; border-radius: 999px; background: #2fe8ff !important; color: #06141a !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; box-shadow: 0 0 20px rgba(47, 232, 255, 0.6); cursor: pointer; animation: l-regar-pulsa 1.6s ease-in-out infinite; }
+.l-regar-btn { position: absolute; z-index: 7; right: 12px; top: calc(196px + env(safe-area-inset-top)); padding: 10px 16px; border: 0 !important; border-radius: 999px; background: #2fe8ff !important; color: #06141a !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; box-shadow: 0 0 20px rgba(47, 232, 255, 0.6); cursor: pointer; animation: l-regar-pulsa 1.6s ease-in-out infinite; }
 @keyframes l-regar-pulsa { 50% { box-shadow: 0 0 6px rgba(47, 232, 255, 0.3); } }
 
 /* a montanha-russa do parque (estrada/Parque.tsx) */
@@ -1847,3 +1847,16 @@ button.l-dormir { position: absolute; left: 12px; top: calc(104px + env(safe-are
 button.l-montanha-bracos { position: absolute; z-index: 7; right: 18px; bottom: calc(28px + env(safe-area-inset-bottom)); width: 88px !important; height: 88px; border-radius: 50%; background: rgba(255, 91, 91, 0.25) !important; border: 2px solid #ff5b5b !important; color: #fff !important; font: 800 12px var(--font-geist-mono), ui-monospace, monospace !important; letter-spacing: 0.1em; text-transform: uppercase; }
 button.l-montanha-bracos.is-on { background: #ff5b5b !important; color: #1a0606 !important; box-shadow: 0 0 24px #ff5b5b; }
 .l-montanha-foto { position: absolute; z-index: 7; left: 16px; right: 16px; top: calc(110px + env(safe-area-inset-top)); margin: 0; padding: 12px 14px; border-radius: 12px; background: #ffc857; color: #14121c; text-align: center; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; }
+
+/* o mapa (estrada/Mapa.tsx): o minimapa redondo e o mapa grande */
+button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px + env(safe-area-inset-top)); width: 118px !important; height: 118px; padding: 0 !important; border: 0 !important; border-radius: 50%; background: none !important; cursor: pointer; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5); }
+.l-mapa-mini canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.l-mapa-mini span { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); padding: 2px 8px; border-radius: 999px; background: #0b0a12; border: 1px solid var(--cor, #ff3fb0); color: #fff; font: 800 10px var(--font-geist-mono), ui-monospace, monospace; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.l-mapa-grande { position: fixed; inset: 0; z-index: 60; background: #07060e; touch-action: none; }
+.l-mapa-grande canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.l-mapa-grande header { position: absolute; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top)); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(11, 10, 18, 0.85); color: #fff; pointer-events: none; }
+.l-mapa-grande header b { font: 800 14px var(--font-geist-sans), system-ui, sans-serif; }
+.l-mapa-grande header span { font: 800 13px var(--font-geist-mono), ui-monospace, monospace; color: #ff3fb0; font-variant-numeric: tabular-nums; }
+.l-mapa-grande footer { position: absolute; left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 8px; }
+.l-mapa-grande footer button { padding: 12px 18px !important; border-radius: 999px; border: 0 !important; background: #ff3fb0 !important; color: #14121c !important; font: 800 14px var(--font-geist-sans), system-ui, sans-serif !important; width: auto !important; }
+.l-mapa-grande footer button:first-child:not(:last-child) { background: rgba(255, 255, 255, 0.12) !important; color: #fff !important; }
