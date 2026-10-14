@@ -35,8 +35,9 @@ export interface Trilho {
 }
 
 // quadros por transporte paralelo (o "cima" acompanha o carrinho no looping)
-export function montarTrilho(n = 1400): Trilho {
-  const curva = new THREE.CatmullRomCurve3(P.map((p) => new THREE.Vector3(...p)), true, "centripetal", 0.5)
+// sem pontos = o circuito de teste (/parque); o do mapa passa os dele (estrada/Parque.tsx)
+export function montarTrilho(n = 1400, pts?: THREE.Vector3[]): Trilho {
+  const curva = new THREE.CatmullRomCurve3(pts ?? P.map((p) => new THREE.Vector3(...p)), true, "centripetal", 0.5)
   const comp = curva.getLength()
   const pontos: THREE.Vector3[] = [], frente: THREE.Vector3[] = [], cima: THREE.Vector3[] = [], lado: THREE.Vector3[] = []
   let up = new THREE.Vector3(0, 1, 0)
@@ -57,6 +58,13 @@ export function montarTrilho(n = 1400): Trilho {
   }
   const alturaTopo = Math.max(...pontos.map((p) => p.y))
   return { curva, comp, n, pontos, frente, cima, lado, alturaTopo }
+}
+
+// a fração do circuito mais perto de um ponto (pra marcar a corrente, a estação)
+export function fracaoDe(tr: Trilho, p: THREE.Vector3) {
+  let m = 0, dm = Infinity
+  tr.pontos.forEach((q, i) => { const d = q.distanceToSquared(p); if (d < dm) { dm = d; m = i } })
+  return m / tr.n
 }
 
 // índice do quadro mais perto da fração u

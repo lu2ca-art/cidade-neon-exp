@@ -13,7 +13,7 @@
 // saída a rádio sintoniza a do destino.
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
-import { NOME_TURNO, SEG_POR_HORA, ehDia, horaTexto, turnoDe } from "../relogio"
+import { NOME_TURNO, SEG_POR_HORA, abertoAgora, ehDia, horaTexto, turnoDe } from "../relogio"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -30,6 +30,7 @@ import { Metro, montarMetro } from "./Metro"
 import { LUGARES, VAGA, type LugarId } from "../lugares"
 import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
 import { Flores, canteiroPerto } from "./Flores"
+import { Parque, areaDoParque, novoPasseio, pertoDoParque, type PasseioParque } from "./Parque"
 import { Prova } from "../provas"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
@@ -148,6 +149,8 @@ interface Props {
   // as flores da Ella regadas hoje (Flores.tsx) e o aviso de que regou
   regadas?: string[]
   onRegar?: (id: string) => void
+  // uma volta na montanha-russa do parque (Parque.tsx): o NEON que ela paga
+  onMontanha?: (neon: number) => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -178,8 +181,9 @@ type Jogo = {
   impacto: number; soco: boolean
   tempo: number; voltaIni: number; voltas: number
   chegando: boolean; parado: boolean; encaixar?: boolean
-  // regando as flores da Ella: encosta e para, sem o "chegou"
-  regando?: boolean
+  // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
+  // para, sem o "chegou"
+  encostando?: boolean
   sintonizou: boolean
   // bifurcação: o lado que a pessoa marcou (0 = fica) e em qual divisão
   escolha: 0 | 1 | -1; escolhaU: number
@@ -267,7 +271,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -402,11 +406,33 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // as flores da Ella: de dia, chegando num canteiro, dá pra regar
   const [canteiro, setCanteiro] = useState<string | null>(null)
   const [regando, setRegando] = useState<string | null>(null)
+  // a montanha-russa: perto (dá pra andar) ou andando
+  const passeio = useRef<PasseioParque>(novoPasseio())
+  const [parque, setParque] = useState<"perto" | "andando" | null>(null)
+  const [fotoParque, setFotoParque] = useState("")
+  const hudMontanha = useRef<HTMLElement>(null)
+  const andarMontanha = () => {
+    const pq = passeio.current
+    jogo.current.encostando = true
+    pq.bracos = false
+    pq.fim = (r) => {
+      jogo.current.encostando = false
+      const ganho = 2 + (r.bracos >= 0.9 ? 4 : 0)
+      setFotoParque(`${r.bracos >= 0.9 ? "a foto da descida: braços pra cima" : "a foto da descida"} · ${Math.round(r.velMax * 3.6)} km/h · +${ganho} neon`)
+      setTimeout(() => setFotoParque(""), 4500)
+      onMontanha?.(ganho)
+    }
+    pq.andando = true
+    setParque("andando")
+  }
   useEffect(() => {
     const t = setInterval(() => {
       const j = jogo.current
       const c = ehDia(horaRef.current) ? canteiroPerto(M, j.via, j.u) : null
       setCanteiro(c && !regadas.includes(c.id) ? c.id : null)
+      const pq = passeio.current
+      setParque(pq.andando ? "andando" : abertoAgora("noite", horaRef.current) && pertoDoParque(M, j.via, j.u) ? "perto" : null)
+      if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
     }, 300)
     return () => clearInterval(t)
   }, [M, regadas])
@@ -1161,7 +1187,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""}`}>
+    <div className={`l-viagem ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -1180,7 +1206,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} regadas={regadas} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} regadas={regadas} passeio={passeio} />
         </Canvas>
       )}
 
@@ -1312,13 +1338,28 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
           de NEON fica só no celular */}
       {/* o relógio da cidade (13/10): a hora e o dia */}
-      {canteiro && !regando && (
-        <button type="button" className="l-regar-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.regando = true; setRegando(canteiro) }}>regar as flores</button>
+      {parque === "perto" && !regando && (
+        <button type="button" className="l-regar-btn is-parque" onPointerDown={(e) => e.stopPropagation()} onClick={andarMontanha}>andar na montanha-russa</button>
+      )}
+      {parque === "andando" && (
+        <>
+          <div className="l-montanha-hud"><b ref={hudMontanha}>0</b><small>km/h</small></div>
+          <button type="button" className="l-montanha-bracos" style={{ touchAction: "none" }}
+            onPointerDown={(e) => { e.stopPropagation(); passeio.current.bracos = true; e.currentTarget.classList.add("is-on") }}
+            onPointerUp={(e) => { passeio.current.bracos = false; e.currentTarget.classList.remove("is-on") }}
+            onPointerLeave={(e) => { passeio.current.bracos = false; e.currentTarget.classList.remove("is-on") }}
+            onPointerCancel={(e) => { passeio.current.bracos = false; e.currentTarget.classList.remove("is-on") }}
+          >braços</button>
+        </>
+      )}
+      {fotoParque && <p className="l-montanha-foto">{fotoParque}</p>}
+      {canteiro && !regando && parque !== "andando" && (
+        <button type="button" className="l-regar-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setRegando(canteiro) }}>regar as flores</button>
       )}
       {regando && (
         <div className="l-ficha-fundo" onPointerDown={(e) => e.stopPropagation()}>
           <div className="l-fliper-jogo" style={{ ["--cor" as string]: "#2fe8ff" }}>
-            <Prova id="regar" cor="#2fe8ff" onFim={(pulou) => { const id = regando; jogo.current.regando = false; setRegando(null); if (!pulou) onRegar?.(id) }} />
+            <Prova id="regar" cor="#2fe8ff" onFim={(pulou) => { const id = regando; jogo.current.encostando = false; setRegando(null); if (!pulou) onRegar?.(id) }} />
           </div>
         </div>
       )}
@@ -1608,7 +1649,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, regadas,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, regadas, passeio,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
@@ -1634,6 +1675,7 @@ function Cena({
   marcos: Marco[]
   marcosRef: React.MutableRefObject<Marco[]>
   regadas: string[]
+  passeio: React.RefObject<PasseioParque>
   estacaoAlvo: EstacaoId | null
   // quem tem missão em aberto em cada área (etiqueta nas placas)
   tags: Partial<Record<FreqId, { nome: string; cor: string }[]>>
@@ -1652,6 +1694,7 @@ function Cena({
   // o lugar secreto já apareceu (Lugares acende a vaga dele)
   const [revelado, setRevelado] = useState<LugarId | null>(null)
   const { camera, scene, gl } = useThree()
+  const camMontanha = useRef<{ pos: THREE.Vector3; olhar: THREE.Vector3; up: THREE.Vector3 } | null>(null)
   // olhar em volta de dentro (como na drive-v2): arrasta → gira até ±150° e
   // ±60°; solta → fica 7 s parado ali e depois volta devagar pra frente
   const olhar = useRef({ yaw: 0, pitch: 0, alvoYaw: 0, alvoPitch: 0, arrastando: false, soltou: 0, x: 0, y: 0, id: -1 })
@@ -1795,6 +1838,7 @@ function Cena({
       const tt = territorio(v.t).tunel
       return v.tipo === "circuito" && !!tt && i / v.n > tt[0] && i / v.n < tt[1]
     }
+    const parqueChao = areaDoParque(M)
     const topos: number[] = []
     const predios = circuitos.map((C) => {
       const t = territorio(C.t)
@@ -1831,6 +1875,7 @@ function Cena({
         const w = e.w[0] + r() * (e.w[1] - e.w[0])
         if (!M.livre(bx, bz, 10 + w * 0.7)) continue
         if (centrosLugares.some((c) => Math.hypot(c.x - bx, c.z - bz) < 24 + w * 0.7)) continue
+        if (parqueChao.some((c) => Math.hypot(c.x - bx, c.z - bz) < 14 + w * 0.7)) continue
         d.position.set(bx, -12 + h / 2, bz)
         if (h > 85) topos.push(bx, -12 + h + 1.5, bz)
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
@@ -2369,7 +2414,7 @@ function Cena({
       else j.v += (VCINEMA - j.v) * Math.min(1, dt * 0.5)
       j.vx += (j.steer * (6 + 10 * Math.min(1, Math.abs(pct))) - j.vx) * Math.min(1, dt * 7)
       j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * (1 - Math.min(0.75, Math.abs(a.bank) * 2.4))) * dt
-    } else if (j.chegando || j.regando) {
+    } else if (j.chegando || j.encostando) {
       j.v = Math.max(0, j.v - FREIO * 0.8 * dt)
       j.x += (0 - j.x) * dt * 1.5
       if (j.chegando && j.v < 0.5 && !j.parado) { j.parado = true; ev.chegou(); motor?.atualizar(0, false, false) }
@@ -3057,9 +3102,22 @@ function Cena({
         camera.lookAt(tmp.olhar)
       }
     }
+    // a montanha-russa: a câmera vai pra trás do carrinho (terceira pessoa)
+    // (posição, olhar e "cima" próprios, contínuos: a da Kombi recomeça a cada quadro)
+    const pq = passeio.current
+    if (pq.andando) {
+      const mr = camMontanha.current ?? (camMontanha.current = { pos: camera.position.clone(), olhar: tmp.camOlhar.clone(), up: camera.up.clone() })
+      mr.pos.lerp(pq.cam, 1 - Math.exp(-dt * 6))
+      mr.olhar.lerp(pq.olhar, 1 - Math.exp(-dt * 10))
+      mr.up.lerp(pq.up, 1 - Math.exp(-dt * 5)).normalize()
+      camera.position.copy(mr.pos)
+      camera.up.copy(mr.up)
+      camera.lookAt(mr.olhar)
+      tmp.camOlhar.copy(mr.olhar); tmp.camUp.copy(mr.up)
+    } else camMontanha.current = null
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
-    const fovAlvo = cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
+    const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
@@ -3273,6 +3331,7 @@ function Cena({
       <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
       <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
       <Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro>
+      <Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro>
       <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />

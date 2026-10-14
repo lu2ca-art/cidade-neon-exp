@@ -1840,3 +1840,13 @@ button.l-dormir { position: absolute; left: 12px; top: calc(104px + env(safe-are
 /* as flores da Ella (estrada/Flores.tsx) */
 .l-regar-btn { position: absolute; z-index: 7; right: 12px; top: calc(70px + env(safe-area-inset-top)); padding: 10px 16px; border: 0 !important; border-radius: 999px; background: #2fe8ff !important; color: #06141a !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; box-shadow: 0 0 20px rgba(47, 232, 255, 0.6); cursor: pointer; animation: l-regar-pulsa 1.6s ease-in-out infinite; }
 @keyframes l-regar-pulsa { 50% { box-shadow: 0 0 6px rgba(47, 232, 255, 0.3); } }
+
+/* a montanha-russa do parque (estrada/Parque.tsx) */
+.l-regar-btn.is-parque { background: #ff5b5b !important; color: #1a0606 !important; box-shadow: 0 0 20px rgba(255, 91, 91, 0.6); }
+.l-viagem.is-montanha .l-painel-kombi, .l-viagem.is-montanha .l-pedal, .l-viagem.is-montanha .l-dormir, :has(.l-viagem.is-montanha) .l-caixa-missao { display: none !important; }
+.l-montanha-hud { position: absolute; z-index: 7; top: calc(64px + env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: center; align-items: baseline; gap: 4px; pointer-events: none; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8); }
+.l-montanha-hud b { font: 900 34px "Arial Black", system-ui, sans-serif; color: #fff; font-variant-numeric: tabular-nums; }
+.l-montanha-hud small { font: 700 10px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
+button.l-montanha-bracos { position: absolute; z-index: 7; right: 18px; bottom: calc(28px + env(safe-area-inset-bottom)); width: 88px !important; height: 88px; border-radius: 50%; background: rgba(255, 91, 91, 0.25) !important; border: 2px solid #ff5b5b !important; color: #fff !important; font: 800 12px var(--font-geist-mono), ui-monospace, monospace !important; letter-spacing: 0.1em; text-transform: uppercase; }
+button.l-montanha-bracos.is-on { background: #ff5b5b !important; color: #1a0606 !important; box-shadow: 0 0 24px #ff5b5b; }
+.l-montanha-foto { position: absolute; z-index: 7; left: 16px; right: 16px; top: calc(110px + env(safe-area-inset-top)); margin: 0; padding: 12px 14px; border-radius: 12px; background: #ffc857; color: #14121c; text-align: center; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; }

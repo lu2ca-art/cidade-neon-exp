@@ -961,6 +961,7 @@ export default function LinhaPage() {
             saltoHora={saltoHora}
             regadas={regadasHoje}
             onRegar={(id) => setSave((s) => ({ ...s, regadas: { ...s.regadas, [id]: s.dia ?? 1 }, neon: (s.neon ?? 0) + 2 }))}
+            onMontanha={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
