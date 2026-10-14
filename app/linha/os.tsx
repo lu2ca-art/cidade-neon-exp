@@ -70,8 +70,10 @@ export const APPS: AppDef[] = [
 ]
 
 export const DOCK: AppId[] = ["kombi", "n3xo", "linha", "radio"]
-// fora do celular por enquanto (06/10, LU2CA): ficam no código, não aparecem
-export const ESCONDIDOS: AppId[] = ["museu", "feelgood", "galeria", "salabranca", "jardim"]
+// fora do celular por enquanto (06/10, LU2CA): ficam no código, não aparecem.
+// O fliperama saiu em 14/10 (LU2CA): as máquinas ficam só no estabelecimento
+// do fliperama (/fliperama), e os minigames viraram momentos do mundo
+export const ESCONDIDOS: AppId[] = ["museu", "feelgood", "galeria", "salabranca", "jardim", "fliperama"]
 
 export function Glifo({ id, cor, size = 26 }: { id: AppId; cor: string; size?: number }) {
   const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: cor, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const }
