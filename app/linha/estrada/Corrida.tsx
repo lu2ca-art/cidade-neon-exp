@@ -519,11 +519,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     let paradoT = 0, disparou = false
     const t = setInterval(() => {
-      const j = jogo.current as Jogo & { encostando?: boolean; noMapa?: boolean; segura?: boolean }, c = climaRef.current
+      const j = jogo.current as Jogo & { encostando?: boolean; noMapa?: boolean }, c = climaRef.current
       const deserto = M.vias[j.via]?.id === "deserto"
       c.chove = !deserto && chovendo(dia, horaRef.current)
       // parada de verdade: não conta quando a parada já tem outra coisa na tela
-      const ocupado = !!cinemaRef.current || !!j.encostando || !!j.noMapa || !!j.segura || respiroRef.current.pode
+      const ocupado = !!cinemaRef.current || !!j.encostando || !!j.noMapa || respiroRef.current.pode
       const parado = c.chove && Math.abs(j.v) < 0.8 && !ocupado
       if (Math.abs(j.v) > 3) { paradoT = 0; disparou = false }
       paradoT = parado ? paradoT + 0.5 : 0
