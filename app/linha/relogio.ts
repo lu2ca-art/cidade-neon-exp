@@ -1,5 +1,6 @@
-// O RELÓGIO DA CIDADE (13/10, LU2CA): dias simulados. O dia inteiro dura 15
-// minutos reais (1 hora do jogo ≈ 37,5 s, enquanto você dirige). A história
+// O RELÓGIO DA CIDADE (13/10, LU2CA): dias simulados. O dia inteiro dura 20
+// minutos reais (1 hora do jogo = 50 s, enquanto você dirige; era 15 min, o
+// LU2CA pediu um pouco mais devagar em 14/10). A história
 // só acontece de noite; de dia a cidade tem as coisas do dia.
 //
 //   manhã 8–12 · tarde 12–18 · entardecer 18–19 · noite 19–4 · ócio 4–8
@@ -8,7 +9,7 @@
 // quando a biblioteca existir). Dormir na Kombi pula pras 8h do dia seguinte;
 // cochilar (de dia) pula pras 19h do mesmo dia.
 
-export const SEG_POR_HORA = 37.5 // 24 h em 15 min
+export const SEG_POR_HORA = 50 // 24 h em 20 min
 
 export type Turno = "manha" | "tarde" | "entardecer" | "noite" | "ocio"
 export const NOME_TURNO: Record<Turno, string> = { manha: "manhã", tarde: "tarde", entardecer: "entardecer", noite: "noite", ocio: "madrugada" }

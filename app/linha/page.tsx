@@ -265,15 +265,9 @@ export default function LinhaPage() {
   // dia seguinte; cochilar (de dia) pula pras 19h. A tela escurece e mostra
   // o dia novo.
   const [saltoHora, setSaltoHora] = useState<{ h: number; id: number } | null>(null)
-  const [dormindo, setDormindo] = useState<{ texto: string } | null>(null)
-  const pularPara = useCallback((h: number, dormir: boolean) => {
-    const s = saveRef.current
-    const dia = (s.dia ?? 1) + (dormir ? 1 : 0)
-    setDormindo({ texto: dormir ? `dia ${dia}` : "a noite chegou" })
-    // o relógio pula; quem conta o dia novo é a virada das 8h (onHora)
-    setTimeout(() => setSaltoHora({ h, id: Date.now() }), 900)
-    setTimeout(() => setDormindo(null), 2600)
-  }, [])
+  // dormir e cochilar: o relógio só pula, sem animação (LU2CA, 14/10); quem
+  // conta o dia novo é a virada das 8h (onHora)
+  const pularPara = useCallback((h: number) => setSaltoHora({ h, id: Date.now() }), [])
 
   // os apps de dentro do celular (GUITAR DRIVER…) pagam e cobram em NEON: o
   // celular é o banco. O app pede (delta), o jogo confere o saldo e responde.
@@ -986,12 +980,11 @@ export default function LinhaPage() {
             na madrugada, dormir na Kombi (o dia seguinte começa às 8h) */}
         {tela.t === "corrida" && !emSala && !cinema && !ligacao && save.casa && (
           ehDia(save.hora ?? 18)
-            ? <button type="button" className="l-dormir" onClick={() => pularPara(19, false)}>cochilar até a noite</button>
+            ? <button type="button" className="l-dormir" onClick={() => pularPara(19)}>cochilar até a noite</button>
             : (save.hora ?? 18) >= 19 || (save.hora ?? 18) < 8
-              ? <button type="button" className="l-dormir" onClick={() => pularPara(8, true)}>dormir na kombi</button>
+              ? <button type="button" className="l-dormir" onClick={() => pularPara(8)}>dormir na kombi</button>
               : null
         )}
-        {dormindo && <div className="l-dormindo"><b>{dormindo.texto}</b></div>}
         {/* AS MISSÕES NUMA CAIXA SÓ (LU2CA, 05/10): no canto, o que fazer agora
             e a bolinha com quantas estão abertas; tocando, a atual (ou a
             checklist do tutorial) e as disponíveis */}
