@@ -1,15 +1,16 @@
 "use client"
 
 // O VIDRO EMBAÇADO (13/10, LU2CA: "desembaçar" sai do fliperama e vira um
-// momento do mundo). Quando a chuva começa (clima.ts), o vidro da Kombi embaça
+// momento do mundo). Com a Kombi parada na chuva (clima.ts), o vidro embaça
 // em dois estágios (LU2CA, 14/10): primeiro forte; você passa o dedo e limpa;
-// aí embaça de novo, leve, e você limpa de novo. Quem pede é a Corrida. Só a metade de cima da tela limpa: a de baixo continua sendo o
+// aí embaça de novo, leve, e você limpa de novo. Andando, desembaça sozinho.
+// Quem decide a hora é a Corrida. Só a metade de cima da tela limpa: a de baixo continua sendo o
 // volante. Só a primeira vez avisa; depois a pessoa já sabe.
 
 import { useEffect, useRef, useState } from "react"
 
 interface Props {
-  // pode embaçar agora? (noite, chovendo, andando) — lido a cada quadro
+  // pode embaçar agora? (parada na chuva) — lido a cada quadro
   podeRef: React.RefObject<boolean>
   // a chuva começou: id novo = começam os dois estágios
   pedido: number | null
@@ -61,7 +62,7 @@ export function Embacado({ podeRef, pedido, jaSabe, onAprendeu }: Props) {
         } else {
           // parou de embaçar (ou saiu da chuva): o vidro desembaça sozinho, devagar
           g.globalCompositeOperation = "destination-out"
-          g.fillStyle = `rgba(0,0,0,${pode ? 0.004 : 0.03})`
+          g.fillStyle = `rgba(0,0,0,${pode ? 0.004 : 0.012})`
           g.fillRect(0, 0, W, H)
         }
         // o dedo passando: limpa por onde passou (o rastro em traço grosso)
@@ -93,8 +94,8 @@ export function Embacado({ podeRef, pedido, jaSabe, onAprendeu }: Props) {
             e.espera = 0
           }
         }
-        // parado o vidro não embaça (o estágio espera a Kombi andar), e a área de
-        // limpar só fica na tela com o vidro embaçado de verdade
+        // fora da hora de embaçar (andando) o estágio espera, e a área de limpar
+        // só fica na tela com o vidro embaçado de verdade
         const ativo = e.nivel > 0.25 || (e.cresce > 0 && pode)
         setLimpando((x) => (x === ativo ? x : ativo))
         if (ativo && e.nivel > 0.35 && !e.aprendeu) setDica(true)

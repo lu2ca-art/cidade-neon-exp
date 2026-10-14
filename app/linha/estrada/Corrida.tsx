@@ -418,25 +418,28 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const t = setInterval(() => setRespirando((x) => (x === respiroRef.current.pode ? x : respiroRef.current.pode)), 300)
     return () => clearInterval(t)
   }, [])
-  // o clima (clima.ts): a chuva vem em pancadas. Quando uma começa, o vidro
-  // embaça em dois estágios (forte, você limpa; leve, você limpa)
+  // o clima (clima.ts): a chuva vem em pancadas. O vidro embaça só com a
+  // Kombi PARADA na chuva (LU2CA, 14/10: "momentos bem específicos", tipo a
+  // gasolina acabar no meio da chuva): uns 5 s parada e começam os dois
+  // estágios; andando, desembaça sozinho. Uma vez por parada.
   const climaRef = useRef({ chove: false, k: 0 })
   const embacaRef = useRef(false)
   const [pedidoEmbaca, setPedidoEmbaca] = useState<number | null>(null)
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = []
+    let paradoT = 0, disparou = false
     const t = setInterval(() => {
-      const j = jogo.current, c = climaRef.current
+      const j = jogo.current as Jogo & { encostando?: boolean; noMapa?: boolean; segura?: boolean }, c = climaRef.current
       const deserto = M.vias[j.via]?.id === "deserto"
-      const agora = !deserto && chovendo(dia, horaRef.current)
-      if (agora && !c.chove) {
-        timers.push(setTimeout(() => setPedidoEmbaca(Date.now()), 5000))
-      }
-      c.chove = agora
-      // só embaça andando, fora de cena
-      embacaRef.current = !deserto && Math.abs(j.v) > 4 && !cinemaRef.current
+      c.chove = !deserto && chovendo(dia, horaRef.current)
+      // parada de verdade: não conta quando a parada já tem outra coisa na tela
+      const ocupado = !!cinemaRef.current || !!j.encostando || !!j.noMapa || !!j.segura || respiroRef.current.pode
+      const parado = c.chove && Math.abs(j.v) < 0.8 && !ocupado
+      if (Math.abs(j.v) > 3) { paradoT = 0; disparou = false }
+      paradoT = parado ? paradoT + 0.5 : 0
+      if (paradoT >= 5 && !disparou) { disparou = true; setPedidoEmbaca(Date.now()) }
+      embacaRef.current = parado
     }, 500)
-    return () => { clearInterval(t); timers.forEach(clearTimeout) }
+    return () => clearInterval(t)
   }, [M, dia])
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
