@@ -16,6 +16,7 @@
 import { NOME_TURNO, SEG_POR_HORA, abertoAgora, ehDia, horaTexto, turnoDe } from "../relogio"
 import { Embacado } from "./Embacado"
 import { Respirar } from "./Respirar"
+import { chovendo } from "../clima"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -473,16 +474,26 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const t = setInterval(() => setRespirando((x) => (x === respiroRef.current.pode ? x : respiroRef.current.pode)), 300)
     return () => clearInterval(t)
   }, [])
-  // pode embaçar? (noite, chuva da cidade — o deserto não chove —, andando, sem cena)
+  // o clima (clima.ts): a chuva vem em pancadas. Quando uma começa, o vidro
+  // embaça em dois estágios (forte, você limpa; leve, você limpa)
+  const climaRef = useRef({ chove: false, k: 0 })
   const embacaRef = useRef(false)
+  const [pedidoEmbaca, setPedidoEmbaca] = useState<number | null>(null)
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = []
     const t = setInterval(() => {
-      const h = horaRef.current
-      const j = jogo.current
-      embacaRef.current = (h >= 19 || h < 4) && M.vias[j.via]?.id !== "deserto" && Math.abs(j.v) > 4 && !cinemaRef.current
+      const j = jogo.current, c = climaRef.current
+      const deserto = M.vias[j.via]?.id === "deserto"
+      const agora = !deserto && chovendo(dia, horaRef.current)
+      if (agora && !c.chove) {
+        timers.push(setTimeout(() => setPedidoEmbaca(Date.now()), 5000))
+      }
+      c.chove = agora
+      // só embaça andando, fora de cena
+      embacaRef.current = !deserto && Math.abs(j.v) > 4 && !cinemaRef.current
     }, 500)
-    return () => clearInterval(t)
-  }, [M])
+    return () => { clearInterval(t); timers.forEach(clearTimeout) }
+  }, [M, dia])
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
   const hudProg = useRef<HTMLDivElement>(null)
@@ -1096,7 +1107,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [telChave])
 
   // atalho de teste (/teste): a Kombi reaparece no ponto, já andando
-  const [embacarJa, setEmbacarJa] = useState(false)
   useEffect(() => {
     if (!atalho) return
     const t = setTimeout(() => {
@@ -1108,7 +1118,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       j.naVaga = false; j.vagaAvisou = undefined; j.encaixar = true
       evs.current?.via(vi)
       if (atalho.procurado) { j.batidas = 3; j.procurado = true; evs.current.estrelas(3) }
-      if (atalho.embacar) setTimeout(() => setEmbacarJa(true), 2500)
+      if (atalho.embacar) setTimeout(() => setPedidoEmbaca(Date.now()), 2500)
     }, 900)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1265,13 +1275,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} />
         </Canvas>
       )}
 
       {respirando && <Respirar jaSabe={dicas.includes("respirar")} onAprendeu={() => onDica?.("respirar")} onFeito={() => { respiroRef.current.feito = true }} />}
       {/* o vidro embaça de noite na chuva (Embacado.tsx) */}
-      {!abertura && <Embacado agora={embacarJa} podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
+      {!abertura && <Embacado pedido={pedidoEmbaca} podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
       {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
@@ -1714,13 +1724,14 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, regadas, passeio, respiroRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, climaRef, regadas, passeio, respiroRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
   combRef: React.MutableRefObject<Comb>
   horaRef: React.MutableRefObject<number>
+  climaRef: React.RefObject<{ chove: boolean; k: number }>
   respiroRef: React.MutableRefObject<{ pode: boolean; feito: boolean }>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
@@ -3298,7 +3309,13 @@ function Cena({
 
     // chuva: volume que acompanha a câmera, inclina com a velocidade (no
     // deserto não chove)
-    if (chuvaRef.current) chuvaRef.current.visible = V.id !== "deserto"
+    // a pancada chega e vai embora devagar (uns 12 s)
+    const clima = climaRef.current
+    clima.k += ((clima.chove ? 1 : 0) - clima.k) * Math.min(1, dt / 12)
+    if (chuvaRef.current) {
+      chuvaRef.current.visible = V.id !== "deserto" && clima.k > 0.02
+      ;(chuvaRef.current.material as THREE.LineBasicMaterial).opacity = 0.28 * clima.k
+    }
     const cp = camera.position
     for (let i = 0; i < chuva.n; i++) {
       let y = chuva.base[i * 3 + 1] - dt * (38 + j.v * 0.2)
