@@ -535,6 +535,14 @@ export default function LinhaPage() {
     if (r.objeto) {
       track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
       setTimeout(() => avisar(`+${NEON_POR_PESSOA} neon`, "a rede te devolve. gasta na loja de discos", "#ffc857"), 1200)
+      // AS LIBERAÇÕES (13/10, LU2CA): cada pessoa acordada libera a faixa dela
+      // na 222 e no Guitar Driver, e o lugar vira palco. Só a PRIMEIRA vez é
+      // mostrada (o tutorial do ato 1); depois a pessoa descobre sozinha.
+      const primeira = saveRef.current.objetos.length === 0
+      if (primeira) {
+        const e = getEstacao(r.objeto)
+        setTimeout(() => avisar(`${e.faixa.toLowerCase()} entrou na 222`, `e ${LUGARES[c.lugar].nome} virou palco no guitar driver`, e.cor), 5800)
+      }
     }
     if (r.caca) {
       setPerseguido(true)
