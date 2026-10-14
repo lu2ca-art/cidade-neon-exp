@@ -1,9 +1,12 @@
 "use client"
+/* eslint-disable react-hooks/immutability -- three.js: a câmera é do motor, mexida a cada quadro */
 
 import { Canvas, useThree, useFrame } from "@react-three/fiber"
 import { PointerLockControls, Text, useTexture } from "@react-three/drei"
-import { Suspense, useState, useRef, useEffect } from "react"
+import { Suspense, useState, useRef, useEffect, useMemo } from "react"
 import * as THREE from "three"
+import Link from "next/link"
+import { lerObras, type Obra } from "./obras"
 
 type Artwork = {
   id: string
@@ -89,6 +92,33 @@ function Painting({
   )
 }
 
+// as obras que você pintou (CN-21): as 3 últimas na parede da direita
+function SuaObra({ obra, position }: { obra: Obra; position: [number, number, number] }) {
+  const tex = useMemo(() => { const t = new THREE.TextureLoader().load(obra.img); t.colorSpace = THREE.SRGBColorSpace; return t }, [obra.img])
+  const w = H * 0.75
+  return (
+    <group position={position} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[0, 0, -0.06]}>
+        <boxGeometry args={[w + 0.35, H + 0.35, 0.1]} />
+        <meshStandardMaterial color="#ffc857" emissive="#ffc857" emissiveIntensity={0.35} />
+      </mesh>
+      <mesh position={[0, 0, 0.01]}>
+        <planeGeometry args={[w, H]} />
+        <meshBasicMaterial map={tex} toneMapped={false} />
+      </mesh>
+      <Text position={[0, -(H / 2 + 0.25), 0.02]} fontSize={0.14} color="#ffffff" anchorX="center" outlineWidth={0.006} outlineColor="#000000">{obra.nome}</Text>
+      <Text position={[0, -(H / 2 + 0.45), 0.02]} fontSize={0.09} color="#ffc857" anchorX="center">você</Text>
+    </group>
+  )
+}
+
+function SuasObras() {
+  const [obras, setObras] = useState<Obra[]>([])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setObras(lerObras().slice(0, 3)) }, [])
+  return <>{obras.map((o, i) => <SuaObra key={o.id} obra={o} position={[14.9, 3, (i - 1) * 4.5]} />)}</>
+}
+
 function Room() {
   return (
     <>
@@ -170,6 +200,7 @@ export default function GaleriaScene() {
           clique pra caminhar · WASD movimenta · mouse olha · ESC sai
         </p>
       </div>
+      <Link href="/galeria/pintar" className="absolute right-6 top-6 z-10 rounded-md bg-[#ff3fb0] px-4 py-2 text-sm font-bold text-black">pintar a sua</Link>
       <Canvas shadows camera={{ position: [0, 1.7, 6], fov: 65 }}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.5} />
@@ -199,6 +230,9 @@ export default function GaleriaScene() {
               rotation={[0, Math.PI / 2, 0]}
             />
           ))}
+
+          <SuasObras />
+          <spotLight position={[10, 6, 0]} target-position={[15, 3, 0]} intensity={0.7} angle={0.9} penumbra={0.6} color="#ffe0a8" />
 
           <PointerLockControls />
           <WASDMovement />
