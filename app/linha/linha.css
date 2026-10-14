@@ -1830,3 +1830,12 @@
 .l-embacado-vidro { position: absolute; left: 0; right: 0; top: 16%; height: 40%; touch-action: none; cursor: grab; }
 .l-embacado-dica { position: absolute; left: 50%; top: 36%; transform: translateX(-50%); z-index: 5; padding: 8px 14px; border-radius: 999px; background: rgba(8, 7, 16, 0.75); color: #e6f2ff; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.06em; white-space: nowrap; pointer-events: none; animation: l-pulsa-dica 1.6s ease-in-out infinite; }
 @keyframes l-pulsa-dica { 50% { opacity: 0.55; } }
+
+/* respirar com o Núcleo na cola (13/10) */
+.l-respirar { position: absolute; inset: 0; z-index: 7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle, rgba(4, 3, 12, 0.35), rgba(4, 3, 12, 0.75)); touch-action: none; }
+.l-respirar-circulo { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(93, 255, 160, 0.35), rgba(93, 255, 160, 0.05) 70%); box-shadow: 0 0 0 2px rgba(93, 255, 160, 0.7), 0 0 60px rgba(93, 255, 160, 0.4); transition: transform 0.08s linear; position: absolute; }
+.l-respirar b { position: relative; font: 900 26px "Arial Black", system-ui, sans-serif; color: #eafff2; text-transform: uppercase; letter-spacing: 0.1em; }
+.l-respirar-conta { position: relative; display: flex; gap: 8px; margin-top: 150px; }
+.l-respirar-conta i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+.l-respirar-conta i.is-on { background: #5dffa0; box-shadow: 0 0 10px #5dffa0; }
+.l-respirar small { position: relative; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(255, 255, 255, 0.8); text-align: center; max-width: 80%; }
