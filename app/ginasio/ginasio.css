@@ -27,3 +27,4 @@
 .gi-card.is-pingue { --c: #2a8cff; }
 .gi-card.is-trancado { opacity: 0.4; --c: #555; }
 .gi-msg { margin: 6px 0 0; text-align: center; font: 700 13px var(--font-geist-mono), ui-monospace, monospace; color: #ffc857; }
+.gi-card.is-cama { --c: #2fe8ff; }

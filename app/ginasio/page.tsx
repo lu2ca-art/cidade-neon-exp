@@ -7,24 +7,25 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Basquete } from "./basquete"
+import { Cama } from "./cama"
 import { PingPong } from "./pingpong"
 import { ac } from "./sons"
 import { mudarNeon, saldoInicial } from "../neon-tiles/neon"
 import "./ginasio.css"
 
-type Tela = "menu" | "basquete" | "pingpong"
+type Tela = "menu" | "basquete" | "pingpong" | "cama"
 const CHAVE = "cn-ginasio"
 
 export default function Ginasio() {
   const router = useRouter()
   const [tela, setTela] = useState<Tela>("menu")
   const [neon, setNeon] = useState(0)
-  const [rec, setRec] = useState({ cestas: 0, vitorias: 0 })
+  const [rec, setRec] = useState({ cestas: 0, vitorias: 0, cama: 0 })
   const [msg, setMsg] = useState("")
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNeon(saldoInicial())
-    try { setRec({ cestas: 0, vitorias: 0, ...JSON.parse(localStorage.getItem(CHAVE) || "{}") }) } catch {}
+    try { setRec({ cestas: 0, vitorias: 0, cama: 0, ...JSON.parse(localStorage.getItem(CHAVE) || "{}") }) } catch {}
   }, [])
   const guardar = (r: typeof rec) => { setRec(r); try { localStorage.setItem(CHAVE, JSON.stringify(r)) } catch {} }
   const pagar = async (n: number, texto: string) => {
@@ -35,6 +36,8 @@ export default function Ginasio() {
 
   if (tela === "basquete") return <div className="gi-raiz"><Basquete onFim={(c) => { setTela("menu"); guardar({ ...rec, cestas: Math.max(rec.cestas, c) }); void pagar(Math.floor(c / 3), c > rec.cestas && c > 0 ? `recorde: ${c} cestas` : `${c} cestas`) }} /></div>
   if (tela === "pingpong") return <div className="gi-raiz"><PingPong onFim={(v, p) => { setTela("menu"); if (v) guardar({ ...rec, vitorias: rec.vitorias + 1 }); void pagar(v ? 6 : 1, v ? `ganhou de ${p[0]} a ${p[1]}` : `perdeu de ${p[1]} a ${p[0]}`) }} /></div>
+
+  if (tela === "cama") return <div className="gi-raiz"><Cama onFim={(p) => { setTela("menu"); guardar({ ...rec, cama: Math.max(rec.cama, p) }); void pagar(Math.floor(p / 20), p > rec.cama && p > 0 ? `recorde: ${p} pontos` : `${p} pontos`) }} /></div>
 
   return (
     <div className="gi-raiz">
@@ -51,8 +54,8 @@ export default function Ginasio() {
         <button type="button" className="gi-card is-pingue" onClick={() => { ac(); setTela("pingpong") }}>
           <b>pingue-pongue</b><small>até 7 · {rec.vitorias} vitórias</small><em>ganhou: 6 neon</em>
         </button>
-        <button type="button" className="gi-card is-trancado" disabled>
-          <b>cama elástica</b><small>em breve</small>
+        <button type="button" className="gi-card is-cama" onClick={() => { ac(); setTela("cama") }}>
+          <b>cama elástica</b><small>60 segundos · recorde: {rec.cama} pontos</small><em>1 neon a cada 20 pontos</em>
         </button>
         {msg && <p className="gi-msg">{msg}</p>}
       </section>
