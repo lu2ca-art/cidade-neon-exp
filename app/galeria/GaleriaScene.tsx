@@ -1,9 +1,12 @@
 "use client"
+/* eslint-disable react-hooks/immutability -- three.js: a câmera é do motor, mexida a cada quadro */
 
 import { Canvas, useThree, useFrame } from "@react-three/fiber"
 import { PointerLockControls, Text, useTexture } from "@react-three/drei"
-import { Suspense, useState, useRef, useEffect } from "react"
+import { Suspense, useState, useRef, useEffect, useMemo } from "react"
 import * as THREE from "three"
+import Link from "next/link"
+import { lerObras, type Obra } from "./obras"
 
 type Artwork = {
   id: string
@@ -89,6 +92,33 @@ function Painting({
   )
 }
 
+// as obras que você pintou (CN-21): as 3 últimas na parede da direita
+function SuaObra({ obra, position }: { obra: Obra; position: [number, number, number] }) {
+  const tex = useMemo(() => { const t = new THREE.TextureLoader().load(obra.img); t.colorSpace = THREE.SRGBColorSpace; return t }, [obra.img])
+  const w = H * 0.75
+  return (
+    <group position={position} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[0, 0, -0.06]}>
+        <boxGeometry args={[w + 0.35, H + 0.35, 0.1]} />
+        <meshStandardMaterial color="#ffc857" emissive="#ffc857" emissiveIntensity={0.35} />
+      </mesh>
+      <mesh position={[0, 0, 0.01]}>
+        <planeGeometry args={[w, H]} />
+        <meshBasicMaterial map={tex} toneMapped={false} />
+      </mesh>
+      <Text position={[0, -(H / 2 + 0.25), 0.02]} fontSize={0.14} color="#ffffff" anchorX="center" outlineWidth={0.006} outlineColor="#000000">{obra.nome}</Text>
+      <Text position={[0, -(H / 2 + 0.45), 0.02]} fontSize={0.09} color="#ffc857" anchorX="center">você</Text>
+    </group>
+  )
+}
+
+function SuasObras() {
+  const [obras, setObras] = useState<Obra[]>([])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setObras(lerObras().slice(0, 3)) }, [])
+  return <>{obras.map((o, i) => <SuaObra key={o.id} obra={o} position={[14.9, 3, (i - 1) * 4.5]} />)}</>
+}
+
 function Room() {
   return (
     <>
@@ -118,9 +148,10 @@ function Room() {
 
 // Navegação primeira-pessoa: WASD move + PointerLockControls olha com o mouse.
 // Câmera fica travada em altura de olho (1.7) e clampeada dentro das paredes.
-function WASDMovement() {
+type Teclas = { w: boolean; a: boolean; s: boolean; d: boolean }
+
+function WASDMovement({ keys }: { keys: React.RefObject<Teclas> }) {
   const { camera } = useThree()
-  const keys = useRef({ w: false, a: false, s: false, d: false })
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -137,7 +168,7 @@ function WASDMovement() {
       window.removeEventListener("keydown", down)
       window.removeEventListener("keyup", up)
     }
-  }, [])
+  }, [keys])
 
   useFrame((_, delta) => {
     const speed = 4
@@ -161,15 +192,60 @@ function WASDMovement() {
   return null
 }
 
+// no celular: arrastar o dedo olha em volta (no lugar do mouse travado)
+function OlharComDedo() {
+  const { camera, gl } = useThree()
+  useEffect(() => {
+    const el = gl.domElement
+    const euler = new THREE.Euler(0, 0, 0, "YXZ")
+    let ult: { x: number; y: number } | null = null
+    const down = (e: PointerEvent) => { if (e.pointerType !== "mouse") ult = { x: e.clientX, y: e.clientY } }
+    const move = (e: PointerEvent) => {
+      if (!ult) return
+      euler.setFromQuaternion(camera.quaternion)
+      euler.y += (e.clientX - ult.x) * 0.005
+      euler.x = Math.max(-1.2, Math.min(1.2, euler.x + (e.clientY - ult.y) * 0.004))
+      camera.quaternion.setFromEuler(euler)
+      ult = { x: e.clientX, y: e.clientY }
+    }
+    const up = () => { ult = null }
+    el.style.touchAction = "none"
+    el.addEventListener("pointerdown", down); el.addEventListener("pointermove", move)
+    el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up)
+    return () => {
+      el.removeEventListener("pointerdown", down); el.removeEventListener("pointermove", move)
+      el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up)
+    }
+  }, [camera, gl])
+  return null
+}
+
 export default function GaleriaScene() {
+  const keys = useRef<Teclas>({ w: false, a: false, s: false, d: false })
+  const [toque, setToque] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setToque(window.matchMedia("(pointer: coarse)").matches) }, [])
+  const segura = (k: keyof Teclas) => ({
+    onPointerDown: () => { keys.current[k] = true },
+    onPointerUp: () => { keys.current[k] = false },
+    onPointerLeave: () => { keys.current[k] = false },
+    onPointerCancel: () => { keys.current[k] = false },
+  })
   return (
     <div className="h-screen w-screen bg-black">
       <div className="pointer-events-none absolute left-6 top-6 z-10 text-white">
         <h1 className="text-xl font-light tracking-widest">GALERIA</h1>
         <p className="mt-1 text-xs text-neutral-400">
-          clique pra caminhar · WASD movimenta · mouse olha · ESC sai
+          {toque ? "arrasta pra olhar · segura as setas pra andar" : "clique pra caminhar · WASD movimenta · mouse olha · ESC sai"}
         </p>
       </div>
+      <Link href="/galeria/pintar" className="absolute right-6 top-6 z-10 rounded-md bg-[#ff3fb0] px-4 py-2 text-sm font-bold text-black">pintar a sua</Link>
+      {toque && (
+        <div className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 gap-3 select-none">
+          <button type="button" aria-label="andar pra frente" className="h-16 w-16 rounded-full border-2 border-white/40 bg-white/10 text-2xl text-white" style={{ touchAction: "none" }} {...segura("w")}>↑</button>
+          <button type="button" aria-label="andar pra trás" className="h-16 w-16 rounded-full border-2 border-white/40 bg-white/10 text-2xl text-white" style={{ touchAction: "none" }} {...segura("s")}>↓</button>
+        </div>
+      )}
       <Canvas shadows camera={{ position: [0, 1.7, 6], fov: 65 }}>
         <Suspense fallback={null}>
           <ambientLight intensity={0.5} />
@@ -200,8 +276,11 @@ export default function GaleriaScene() {
             />
           ))}
 
-          <PointerLockControls />
-          <WASDMovement />
+          <SuasObras />
+          <spotLight position={[10, 6, 0]} target-position={[15, 3, 0]} intensity={0.7} angle={0.9} penumbra={0.6} color="#ffe0a8" />
+
+          {toque ? <OlharComDedo /> : <PointerLockControls />}
+          <WASDMovement keys={keys} />
         </Suspense>
       </Canvas>
     </div>
