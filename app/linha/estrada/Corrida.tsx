@@ -14,6 +14,8 @@
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
 import { NOME_TURNO, SEG_POR_HORA, ehDia, horaTexto, turnoDe } from "../relogio"
+import { Embacado } from "./Embacado"
+import { Respirar } from "./Respirar"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -417,6 +419,23 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [M])
   const cinemaRef = useRef<Cinema>(cinema)
   useEffect(() => { cinemaRef.current = cinema }, [cinema])
+  // respirar com o Núcleo na cola (Respirar.tsx): a Cena diz quando pode
+  const respiroRef = useRef({ pode: false, feito: false })
+  const [respirando, setRespirando] = useState(false)
+  useEffect(() => {
+    const t = setInterval(() => setRespirando((x) => (x === respiroRef.current.pode ? x : respiroRef.current.pode)), 300)
+    return () => clearInterval(t)
+  }, [])
+  // pode embaçar? (noite, chuva da cidade — o deserto não chove —, andando, sem cena)
+  const embacaRef = useRef(false)
+  useEffect(() => {
+    const t = setInterval(() => {
+      const h = horaRef.current
+      const j = jogo.current
+      embacaRef.current = (h >= 19 || h < 4) && M.vias[j.via]?.id !== "deserto" && Math.abs(j.v) > 4 && !cinemaRef.current
+    }, 500)
+    return () => clearInterval(t)
+  }, [M])
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
   const hudProg = useRef<HTMLDivElement>(null)
@@ -1180,10 +1199,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} regadas={regadas} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} regadas={regadas} respiroRef={respiroRef} />
         </Canvas>
       )}
 
+      {respirando && <Respirar jaSabe={dicas.includes("respirar")} onAprendeu={() => onDica?.("respirar")} onFeito={() => { respiroRef.current.feito = true }} />}
+      {/* o vidro embaça de noite na chuva (Embacado.tsx) */}
+      {!abertura && <Embacado podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
       {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
@@ -1608,13 +1630,14 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, regadas,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, regadas, respiroRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
   combRef: React.MutableRefObject<Comb>
   horaRef: React.MutableRefObject<number>
+  respiroRef: React.MutableRefObject<{ pode: boolean; feito: boolean }>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -2772,7 +2795,9 @@ function Cena({
             // perto: colam e encostam devagar
             // teto ABAIXO da velocidade máxima da Kombi: no talo dá pra fugir
             // (06/10: mais rápidos que a Kombi no talo; só o turbo abre distância)
-            const alvoV = d > 30 ? Math.min(VMAX * 1.06, Math.max(30, Math.abs(j.v) + 12)) : Math.max(4, Math.min(VMAX * 1.06, j.v + (d > 6 ? 4 : -1)))
+            let alvoV = d > 30 ? Math.min(VMAX * 1.06, Math.max(30, Math.abs(j.v) + 12)) : Math.max(4, Math.min(VMAX * 1.06, j.v + (d > 6 ? 4 : -1)))
+            // você parou no escuro longe deles: perderam de vista, procuram devagar
+            if (respiroRef.current.pode) alvoV = Math.min(alvoV, 4)
             c.v += (alvoV - c.v) * Math.min(1, dt * 1.4)
             c.u += c.v * dt
             if (CV.fechada) c.u = ((c.u % CV.L) + CV.L) % CV.L
@@ -2790,11 +2815,19 @@ function Cena({
           }
           if (k.ativa) {
             j.cacaGap = gap
+            // respirar (Respirar.tsx): parado e com eles longe, o círculo abre
+            respiroRef.current.pode = Math.abs(j.v) < 1.2 && (respiroRef.current.pode ? gap > 40 : gap > 120)
+            if (respiroRef.current.feito) {
+              respiroRef.current.feito = false
+              respiroRef.current.pode = false
+              k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou")
+            }
             k.longeT = gap > 350 ? k.longeT + dt : 0
             if (k.longeT > 6) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou") }
           }
         }
       }
+      if (!k.ativa) respiroRef.current.pode = false
       const n = k.ativa ? k.carros.length : 0
       k.corpo.count = n; k.barra.count = n; k.farol.count = n * 2
       if (n) {
