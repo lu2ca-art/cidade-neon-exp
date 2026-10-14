@@ -185,7 +185,9 @@ export interface Pessoa { x: number; z: number; vira: number; cor: string }
 // triângulos): de longe ninguém vê a diferença, e 48 pessoas pesam como 12
 const GLB_LEVE = "/models/pessoa-leve.glb"
 useGLTF.preload(GLB_LEVE)
-export function Multidao({ gente, celulares = 0, pele = "#2a2636" }: { gente: Pessoa[]; celulares?: number; pele?: string }) {
+// `copiam` (13/10, a popularidade): dos que já dançam, quantos repetem o seu
+// passo, pulando junto com cada toque seu (`pulso`: o instante do último, s)
+export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, pulso }: { gente: Pessoa[]; celulares?: number; pele?: string; copiam?: number; pulso?: React.RefObject<number> }) {
   const { scene } = useGLTF(GLB_LEVE)
   const geo = useMemo(() => {
     let g: THREE.BufferGeometry | null = null
@@ -207,9 +209,13 @@ export function Multidao({ gente, celulares = 0, pele = "#2a2636" }: { gente: Pe
     gente.forEach((p, i) => {
       const filma = i < celulares
       const solto = !filma // quem abaixou balança
-      const bate = solto ? Math.abs(Math.sin(t * 5.6 + i)) * 0.08 : Math.sin(t * 1.3 + i) * 0.01
+      // quem copia (os últimos da lista, os de fora da roda, vão entrando primeiro)
+      const copia = solto && i >= n - copiam && !!pulso
+      const desde = copia ? performance.now() / 1000 - (pulso!.current ?? -9) : 9
+      const pulo = copia ? Math.max(0, 1 - desde / 0.42) : 0
+      const bate = copia ? Math.sin(Math.min(1, desde / 0.42) * Math.PI) * 0.32 + Math.abs(Math.sin(t * 5.6 + i)) * 0.03 : solto ? Math.abs(Math.sin(t * 5.6 + i)) * 0.08 : Math.sin(t * 1.3 + i) * 0.01
       tmp.position.set(p.x, bate, p.z)
-      tmp.rotation.set(0, p.vira + (solto ? Math.sin(t * 2.8 + i) * 0.2 : 0), solto ? Math.sin(t * 2.8 + i) * 0.06 : 0)
+      tmp.rotation.set(0, p.vira + (copia ? pulo * 0.6 : solto ? Math.sin(t * 2.8 + i) * 0.2 : 0), solto ? Math.sin(t * 2.8 + i) * 0.06 : 0)
       tmp.scale.setScalar(1)
       tmp.updateMatrix()
       corpos.current?.setMatrixAt(i, tmp.matrix)
