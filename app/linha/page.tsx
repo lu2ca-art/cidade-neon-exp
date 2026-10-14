@@ -16,7 +16,7 @@ import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
-import { MISSOES, abertas, alvoDe, ativa, etapaDe, type Alvo } from "./missoes"
+import { MISSOES, abertas, alvoDe, ativa, etapaDe, type Alvo, POPULARIDADE } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
 import { CENA_INICIO, CENA_MUBARAK_DREW, cenaDe, type Reliquia } from "./cenas"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
@@ -527,7 +527,10 @@ export default function LinhaPage() {
       const violao = r.perdeViolao ? false : s.violao
       // acordar alguém rende NEON (a rede te devolve)
       const neon = (s.neon ?? 0) + (r.objeto ? NEON_POR_PESSOA : 0)
-      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon }
+      // e a cidade te conhece mais (em silêncio)
+      const novo = !!r.objeto && !s.objetos.includes(r.objeto)
+      const popularidade = Math.min(100, (s.popularidade ?? 0) + (novo ? POPULARIDADE[r.objeto!] ?? 0 : 0))
+      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon, popularidade }
     })
     if (r.objeto) {
       track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })

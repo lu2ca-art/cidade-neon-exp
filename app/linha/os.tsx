@@ -184,7 +184,6 @@ export function Home({
   const lista = useMemo(() => chamados(save, nivel), [save, nivel])
   const minha = save.estacao ? getEstacao(save.estacao) : null
   const prox = NIVEIS[Math.min(nivel + 1, NIVEIS.length - 1)]
-  const dias = sequencia(save.dias)
   const freq = FREQUENCIAS.find((f) => f.id === save.freq) ?? FREQUENCIAS[0]
   const agora = new Date()
 
@@ -240,7 +239,7 @@ export function Home({
                     </span>
                     <span className="l-widget-nivel">{NIVEIS[nivel].nome}</span>
                     <span className="l-widget-barra">{NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}</span>
-                    <span className="l-widget-nums"><b>{save.neon ?? 0}</b> neon · <b>{dias}</b> {dias === 1 ? "dia" : "dias"}</span>
+                    <span className="l-widget-nums"><b>{save.neon ?? 0}</b> neon · <b>{Math.round(save.popularidade ?? 0)}</b> popularidade</span>
                     {nivel < 4 && <small>próximo: {prox.como}</small>}
                   </button>
                   <div className="l-widget l-widget-radio" style={{ ["--cor" as string]: freq.cor }}>
