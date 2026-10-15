@@ -481,16 +481,31 @@ export function ResultadoTela({ r, palco, faixa, instrumento, neon, onDeNovo, on
     ? r.batalha.venceu ? "o palco é seu." : `${r.batalha.rival} levou essa.`
     : r.vaiado ? "a galera vaiou. de novo?" : r.estrelas >= 4 ? "a casa veio abaixo." : r.estrelas >= 2 ? "a galera curtiu." : "hoje não foi. amanhã tem ensaio."
   return (
-    <section className="gd-resultado" style={{ ["--cor" as string]: palco.cor }}>
-      <p className="gd-rotulo">{palco.nome} · {faixa.titulo.toLowerCase()} · {instrumento}</p>
-      <h1>{frase}</h1>
-      {!r.batalha && <div className="gd-estrelas">{Array.from({ length: 5 }, (_, i) => <span key={i} className={i < r.estrelas ? "is-on" : ""} style={{ animationDelay: `${0.3 + i * 0.18}s` }}>★</span>)}</div>}
-      <dl>
-        <div><dt>notas</dt><dd>{Math.round(r.pct * 100)}%</dd></div>
-        <div><dt>seguidas</dt><dd>{r.maxSeq}</dd></div>
-        <div><dt>perfeitas</dt><dd>{r.perfeitos}</dd></div>
-        <div><dt>pontos</dt><dd>{r.pontos.toLocaleString("pt-BR")}{r.recorde ? " ★" : ""}</dd></div>
-      </dl>
+    <section className="gd-resultado is-jornal" style={{ ["--cor" as string]: palco.cor }}>
+      {/* o resultado sai no jornal da cidade, como o jornal do Guitar Hero 3 */}
+      <article className="gd-jornal">
+        <header className="gd-jornal-topo">
+          <small>edição da noite · {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}</small>
+          <b>O Diário da Cidade Neon</b>
+          <small>{palco.lugar} · {r.publico === 1 ? "1 pessoa viu" : `${r.publico} pessoas viram`}</small>
+        </header>
+        <h1>{frase}</h1>
+        <div className="gd-jornal-corpo">
+          <figure className="gd-jornal-foto">
+            <span>{palco.fachada || palco.nome}</span>
+            <figcaption>{faixa.titulo} · {instrumento} · {palco.nome}</figcaption>
+          </figure>
+          <div className="gd-jornal-lado">
+            {!r.batalha && <div className="gd-estrelas">{Array.from({ length: 5 }, (_, i) => <span key={i} className={i < r.estrelas ? "is-on" : ""} style={{ animationDelay: `${0.3 + i * 0.18}s` }}>★</span>)}</div>}
+            <p className="gd-jornal-pct"><b>{Math.round(r.pct * 100)}%</b>das notas</p>
+            <p className="gd-jornal-pontos">{r.pontos.toLocaleString("pt-BR")} pontos{r.recorde ? " · recorde" : ""}</p>
+          </div>
+        </div>
+        <dl>
+          <div><dt>seguidas</dt><dd>{r.maxSeq}</dd></div>
+          <div><dt>perfeitas</dt><dd>{r.perfeitos}</dd></div>
+        </dl>
+      </article>
       {r.cache > 0 && (
         <div className="gd-cache">
           <small>{r.batalha?.venceu ? "o prêmio do duelo" : `cachê · ${r.publico === 1 ? "1 pessoa viu" : `${r.publico} pessoas viram`}`}</small>
