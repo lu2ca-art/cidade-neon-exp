@@ -102,10 +102,27 @@ export function desenharPalco(g: CanvasRenderingContext2D, w: number, h: number,
     g.fillRect(0, py, w, h - py)
     g.fillStyle = hexA(cor, 0.5)
     g.fillRect(0, py, w, 2)
-  } else if (e.neon) {
-    // o modo NEON tinge qualquer lugar
-    g.fillStyle = hexA("#b38cff", 0.18)
+  } else {
+    // a luz de show em qualquer lugar (Guitar Hero 3): o lugar escurece e os
+    // canhões de luz varrem no tempo da música
+    g.fillStyle = "rgba(6,4,18,0.42)"
     g.fillRect(0, 0, w, h)
+    g.globalCompositeOperation = "lighter"
+    for (let i = 0; i < 4; i++) {
+      const x = (w / 4) * (i + 0.5)
+      const ang = Math.sin(e.t * 0.9 + i * 1.7) * 0.45
+      const len = h * 0.75
+      const lx = x + Math.sin(ang) * len, ly = Math.cos(ang) * len
+      const c2 = i % 2 ? cor : "#ffffff"
+      const gr = g.createLinearGradient(x, 0, lx, ly)
+      gr.addColorStop(0, hexA(c2, 0.2 + e.batida * 0.18))
+      gr.addColorStop(1, hexA(c2, 0))
+      g.fillStyle = gr
+      g.beginPath(); g.moveTo(x - 6, 0); g.lineTo(lx - w * 0.09, ly); g.lineTo(lx + w * 0.09, ly); g.closePath(); g.fill()
+    }
+    g.globalCompositeOperation = "source-over"
+    // o modo NEON tinge qualquer lugar
+    if (e.neon) { g.fillStyle = hexA("#b38cff", 0.18); g.fillRect(0, 0, w, h) }
   }
 
   // a banda, no palco de cada lugar (no fundo, atrás do braço, como no GH)
@@ -456,8 +473,8 @@ export function desenharBraco(g: CanvasRenderingContext2D, w: number, h: number,
   if (e.neon) {
     g.globalCompositeOperation = "lighter"
     const az = g.createLinearGradient(0, gb.yTopo, 0, gb.yBase)
-    az.addColorStop(0, "rgba(60,160,255,0)")
-    az.addColorStop(1, `rgba(60,160,255,${0.22 + pulso * 0.12})`)
+    az.addColorStop(0, "rgba(60,160,255,0.08)")
+    az.addColorStop(1, `rgba(60,160,255,${0.42 + pulso * 0.14})`)
     g.fillStyle = az
     trap()
     g.fill()
@@ -510,6 +527,24 @@ export function desenharBraco(g: CanvasRenderingContext2D, w: number, h: number,
     g.moveTo(xa - lado * 3, a.y)
     g.lineTo(xb - lado * 4, b.y + 40)
     g.stroke()
+    // NEON ligado: raios correndo pelos trilhos (o Star Power do Guitar Hero 3)
+    if (e.neon) {
+      g.globalCompositeOperation = "lighter"
+      for (const [cor, larg] of [["rgba(60,160,255,0.45)", 7], ["rgba(190,240,255,0.95)", 1.8]] as const) {
+        g.strokeStyle = cor
+        g.lineWidth = larg
+        g.beginPath()
+        for (let k = 0; k <= 22; k++) {
+          const t = k / 22, x = xa + (xb - xa) * t, y = a.y + (b.y + 40 - a.y) * t
+          const amp = (3 + 14 * t) * (k === 0 || k === 22 ? 0 : 1)
+          const dx = (Math.random() - 0.5) * amp * 2 + lado * Math.random() * amp * 0.6
+          if (k === 0) g.moveTo(x, y)
+          else g.lineTo(x + dx, y + (Math.random() - 0.5) * amp * 0.5)
+        }
+        g.stroke()
+      }
+      g.globalCompositeOperation = "source-over"
+    }
   }
 
   const laneDe = (l: number) => (e.invertido ? lanes - 1 - l : l)
