@@ -54,15 +54,7 @@ export type FreqId = Frequencia["id"]
 // (scripts/vinis/baixar.mjs acrescenta discos de domínio público lá).
 export const VINIS = (vinis as { titulo: string; autor: string; src: string }[]).map((v) => ({ titulo: `${v.titulo} · ${v.autor}`, src: v.src }))
 
-// Repertório de cada lugar (desde 01/10): música do LU2CA é RECOMPENSA.
-// Nada entra de graça por já ter sido lançado — cada missão cumprida
-// (objeto) libera uma, e o resto do tempo toca vinil.
-// - 222.0 (centro): os vinis + as faixas do Vol.1 que você ganhou
-// - 88.7, 111.3: instrumental e ao vivo só das faixas que você já ganhou
-//   (e que já saíram)
-// - 69.9 (subúrbio) e 222.4 (avenida, o arquivo): catálogo antigo, uma
-//   faixa a mais por missão cumprida
-// Vinil é só no TOCA-DISCOS (escolha da pessoa, nunca junto com o rádio).
+// o arquivo: o catálogo antigo, na 222.4
 export const ARQUIVO = [t("c****e", "cliche"), t("h*****ood", "hollywood"), t("s*****t", "stylist"), t("o***s", "oasis"), t("a*******a", "astronauta"), t("q* é v*?", "qm-e-vc")]
 const saiu = (titulo: string, agora: number) => {
   const e = ESTACOES.find((x) => titulo.toLowerCase().startsWith(x.faixa.toLowerCase()))
@@ -74,15 +66,21 @@ const ganhou = (titulo: string, objetos: EstacaoId[]) => {
   return !!e && objetos.includes(e.id)
 }
 
+// RÁDIO ≠ LUGAR (LU2CA 15/10): cada frequência é uma rádio, e todas tocam
+// todas as faixas LANÇADAS, inteiras. A que ainda não teve a missão liberada
+// toca com interferência (abafada, chiado); o catálogo antigo fica assim até
+// todas as missões. Prévia não lançada nunca entra aqui (só no mp3).
+// - 222.0 LINHA 9: o Vol.1 (as faixas de estúdio)
+// - 88.7: as instrumentais · 111.3: as ao vivo (das que já saíram)
+// - 69.9: o catálogo do subúrbio · 222.4: tudo junto, com o arquivo
 export function faixasDe(f: Frequencia, objetos: EstacaoId[], _estacao: EstacaoId | null, agora = Date.now()) {
-  const vol1 = ESTACOES.filter((e) => objetos.includes(e.id)).map((e) => ({ titulo: e.faixa, src: e.audio }))
-  const n = objetos.length
-  // (desde 02/10: vinil é só no TOCA-DISCOS, escolha da pessoa; o rádio
-  // toca o que as missões liberam — sem missão, a 222 tá fora do ar)
+  const lancadas = ESTACOES.filter((e) => lancada(e, agora))
+  const todas = lancadas.length > 0 && lancadas.every((e) => objetos.includes(e.id))
+  const vol1 = lancadas.map((e) => ({ titulo: e.faixa, src: e.audio, abafada: !objetos.includes(e.id) }))
   if (f.id === "linha") return vol1
-  if (f.id === "full") return [...vol1, ...ARQUIVO.slice(0, n)]
-  if (f.id === "suburbio") return f.faixas.slice(0, n)
-  return f.faixas.filter((x) => ganhou(x.titulo, objetos) && saiu(x.titulo, agora))
+  if (f.id === "full") return [...vol1, ...ARQUIVO.map((x) => ({ ...x, abafada: !todas }))]
+  if (f.id === "suburbio") return f.faixas.map((x) => ({ ...x, abafada: !todas }))
+  return f.faixas.filter((x) => saiu(x.titulo, agora)).map((x) => ({ ...x, abafada: !ganhou(x.titulo, objetos) }))
 }
 
 export function proximaFreq(sinal: number) {

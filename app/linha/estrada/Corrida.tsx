@@ -821,7 +821,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
     if (!p) { setFaixa(""); return }
     const tocar = () => {
-      setFaixa(p.faixa.titulo)
+      setFaixa(p.faixa.abafada ? `${p.faixa.titulo} · com interferência` : p.faixa.titulo)
+      player.interferir(p.faixa.abafada ? 1 : 0)
       player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol)
     }
     if (!p.vinheta) return tocar()
@@ -836,6 +837,17 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
      
   }, [save.objetos, save.nome, falar])
   useEffect(() => { proxFaixa.current = (id) => tocarProxima(id) }, [tocarProxima])
+  // o dial: passa pelas rádios que você já sintonizou (as do sinal)
+  const trocarRadio = (passo: number) => {
+    const lib = freqsLiberadas(sinalRef.current)
+    if (lib.length < 2) return
+    const i = lib.findIndex((f) => f.id === freqRef.current)
+    const nova = lib[(i + passo + lib.length) % lib.length].id
+    chiadoCurto()
+    setFreq(nova); freqRef.current = nova
+    tocarProxima(nova)
+    onSinal(sinalRef.current, nova)
+  }
   useEffect(() => {
     // liga o rádio ao entrar no carro (efeito externo: áudio)
      
@@ -982,13 +994,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         setBairro({ id: v.t, t: Date.now() })
         flashEl.current?.style.setProperty("--cor", freqDe(v.t).cor)
         vib([15, 30, 15])
-        if (freqRef.current !== v.t) {
-          setFreq(v.t)
-          freqRef.current = v.t
-          tocarProxima(v.t)
-        }
+        // (desde 15/10 a rádio não muda com o bairro: só no dial)
         player.volume(1)
-        onSinal(sinalRef.current, v.t)
       },
       radio: (id) => {
         setFreq(id)
@@ -1190,7 +1197,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         }
         if (hudTom.current) {
           const tom = tomDaMusica()
-          const base = V.tipo === "saida" ? `sintonizando ${freqDe(V.t).freq}…` : "troca pelo caminho"
+          const base = "troca a rádio"
           hudTom.current.textContent = tom && V.tipo !== "saida" ? `${nomeDoTom(tom)} · ${base}` : base
         }
         // guia de rota: o que vem nos próximos 1200 m desta estrada
@@ -1656,7 +1663,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               {caido ? <b className="is-caida">sem sinal · o núcleo derrubou a 222</b>
                 : passandoE ? <b key={passando!.t} className="is-estacao" style={{ color: passandoE.cor }}>estação {passandoE.n} · {passandoE.faixa.toLowerCase()}</b>
                 : <b>{faixa || "fora do ar · cada missão traz uma música"}</b>}
-              <small ref={hudTom}>troca pelo caminho</small>
+              <span className="l-player-ctl">
+                <button type="button" aria-label="rádio anterior" onClick={() => trocarRadio(-1)}>‹</button>
+                <small ref={hudTom}>troca a rádio</small>
+                <button type="button" aria-label="próxima rádio" onClick={() => trocarRadio(1)}>›</button>
+              </span>
             </>
           ) : (
             <>
@@ -3011,18 +3022,8 @@ function Cena({
 
     // a saída é a sintonia: a música de onde você veio vai sumindo, a
     // estática sobe e o dial gira; a música nova só entra na CHEGADA
-    if (V.tipo === "saida") {
-      const p = j.u / V.L
-      const noRadio = fonteRef.current === "radio"
-      if (!j.sintonizou && p >= 0.45 && noRadio) { j.sintonizou = true; chiado.current = estatica() }
-      if (hudN.current % 3 === 0 && noRadio) {
-        player.volume(p < 0.45 ? 1 : Math.max(0, 1 - (p - 0.45) / 0.3))
-        if (chiado.current) {
-          chiado.current.volume(Math.max(0, Math.min(0.2, ((p - 0.45) / 0.25) * 0.2)))
-          chiado.current.sintonizar(700 + 2200 * Math.abs(Math.sin(p * 22)))
-        }
-      }
-    }
+    // (até 15/10 a saída sintonizava a rádio do destino; agora a música
+    // segue a mesma pelo caminho todo)
 
     // pulos: se a pista cai mais rápido do que a gravidade, a Kombi voa
     amostra(V, j.u, a)

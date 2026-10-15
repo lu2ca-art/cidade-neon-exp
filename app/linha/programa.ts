@@ -12,7 +12,7 @@
 import { ESTACOES, estacao, type EstacaoId } from "./data"
 import { FREQUENCIAS, VINIS, faixasDe, type FreqId } from "./radio"
 
-export interface Faixa { titulo: string; src: string }
+export interface Faixa { titulo: string; src: string; abafada?: boolean }
 
 interface Sacola { ordem: string[]; i: number }
 interface Estado { sacolas: Partial<Record<FreqId, Sacola>>; estreias: string[]; n: number }
