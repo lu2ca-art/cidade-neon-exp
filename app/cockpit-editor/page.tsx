@@ -63,7 +63,7 @@ function CubeMesh({ obj, onSelect }: { obj: CubeObject; onSelect: () => void }) 
         </mesh>
       )}
       {/* label 3D flutuando em cima */}
-      <Text
+      <Text font="/fonts/geist.ttf"
         position={[0, obj.size[1] / 2 + 0.1, 0]}
         fontSize={0.06}
         color={active ? "#ff00ff" : "#a0a0b0"}
