@@ -61,9 +61,13 @@ const VMAX = 46 // m/s
 const VDRIFT = 20 // ~72 km/h
 const PESO_FINTA = 0.3
 const DERIVA_MAX = 0.95 // ~54°
-// fumaça nas rodas no drift: desligada — o Horizon não tem (prints do
-// LU2CA, 02/10); fica o código caso queira de volta
-const FUMACA = false
+// fumaça nas rodas no drift: ligada de novo em 15/10 (referências novas do
+// LU2CA: CarX Drift Racing 3 e Drift Max Pro, fumaça grossa no drift)
+const FUMACA = true
+// a pontuação do drift (CarX/Drift Max): os pontos sobem enquanto a Kombi anda
+// de lado, o multiplicador cresce com o drift seguido e tudo só conta quando
+// o drift acaba limpo (encostar no muro perde o que estava em jogo)
+const DRIFT_JUNTA = 1.2 // s pra emendar um drift no outro sem perder o combo
 const VTURBO = 62
 const ACEL = 11
 const FREIO = 26
@@ -186,6 +190,9 @@ type Jogo = {
   // aderência), o peso carregado num lado (a "mola" da finta), o último lado
   // apertado e quanto tempo de drift de verdade (vira mini-turbo)
   deriva: number; giro: number; drift: 0 | 1 | -1; peso: number; ladoAnt: number; driftT: number
+  // a pontuação do drift: em jogo, multiplicador, quando o último drift acabou,
+  // o total da noite e o recado do HUD
+  dPts: number; dMult: number; dFim: number; dTotal: number; dMsg: string; dMsgT: number; dRaspa: number
   // caça do Núcleo: distância do carro branco mais perto (m, atrás)
   cacaGap?: number
   // as batidas no trânsito (06/10, LU2CA): cada uma acende uma estrela; na
@@ -241,7 +248,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean }
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean }
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
 // O CÉU NA HORA (06/10, LU2CA): o jogo começa no fim de tarde (18 h, o tom
@@ -376,7 +383,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvoChave])
 
-  const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false })
+  const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false, mao: false })
   const [jogo0] = useState(() => retomarJogo(M, retomada) ?? novoJogo(M, destino, save.estacao, abertura))
   // a abertura: onde a casa fica e em que pé a pessoa está
   const casaPose = poses["casa-dbee"]
@@ -578,6 +585,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [M, dia])
   const hudVel = useRef<HTMLSpanElement>(null)
   const hudMarcha = useRef<HTMLSpanElement>(null)
+  const hudDrift = useRef<HTMLDivElement>(null)
   const hudProg = useRef<HTMLDivElement>(null)
   const hudSinal = useRef<HTMLDivElement>(null)
   const hudTurbo = useRef<HTMLDivElement>(null)
@@ -1041,6 +1049,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           while (m < MARCHAS.length - 1 && pct > MARCHAS[m]) m++
           hudMarcha.current.textContent = j.v < -0.3 ? "R" : j.drift ? "DRIFT" : `${m}ª`
         }
+        if (hudDrift.current) {
+          const em = j.dPts > 0, msg = j.tempo < j.dMsgT ? j.dMsg : ""
+          hudDrift.current.classList.toggle("is-on", em || !!msg)
+          hudDrift.current.classList.toggle("is-ganhou", !em && msg.startsWith("+"))
+          hudDrift.current.classList.toggle("is-perdeu", !em && msg.startsWith("bateu"))
+          const [b, i, sm] = hudDrift.current.children as unknown as HTMLElement[]
+          b.textContent = em ? Math.round(j.dPts).toLocaleString("pt-BR") : msg.startsWith("+") ? msg : ""
+          i.textContent = em ? `×${j.dMult.toFixed(1)}` : ""
+          sm.textContent = em ? msg : msg.startsWith("+") ? `drift · ${j.dTotal.toLocaleString("pt-BR")} na noite` : msg
+        }
         const V = M.vias[j.via]
         const d = destinoRef.current
         let txt = ""
@@ -1243,7 +1261,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap) }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts) }
     }
     return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora; delete w.__procurado }
   }, [M])
@@ -1273,6 +1291,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "arrowup" || k === "w") input.current.gas = on
       else if (k === "arrowdown" || k === "s") input.current.freio = on
       else if ((k === "shift" || k === "e") && on) input.current.turbo = true
+      else if (k === " " || k === "q") input.current.mao = on
       else if (k === "c" && on && !ev.repeat) trocarCamera()
       else return
       ev.preventDefault()
@@ -1632,6 +1651,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       </div>
       </div>
 
+      {/* a pontuação do drift, no alto e no centro (CarX / Drift Max) */}
+      <div ref={hudDrift} className="l-hud-drift" aria-hidden="true"><b /><i /><small /></div>
+
       <div ref={hudParado} className="l-hud-parado"><b>↑</b> ou <b>W</b> pra acelerar · <b>↓</b> dá ré</div>
 
       {/* celular: freio/ré (segurar). Drift é na direção: a finta */}
@@ -1644,12 +1666,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerCancel={() => { input.current.freio = false }}
           onPointerLeave={() => { input.current.freio = false }}
         >freio<br />ré</button>
+        <button
+          type="button"
+          className="l-pedal is-mao"
+          onPointerDown={(e) => { e.stopPropagation(); input.current.mao = true }}
+          onPointerUp={() => { input.current.mao = false }}
+          onPointerCancel={() => { input.current.mao = false }}
+          onPointerLeave={() => { input.current.mao = false }}
+        >freio<br />de mão</button>
       </div>
 
       {dica && (
         <div className="l-hud-dica">
           <span>← segura</span>
-          <span><span className="is-desk">↑ acelera · ↓ freia/ré · shift turbo<br /></span>drift: toque pra fora, vira pra dentro</span>
+          <span><span className="is-desk">↑ acelera · ↓ freia/ré · shift turbo · espaço freio de mão<br /></span>drift: freio de mão + vira, ou toque pra fora e vira pra dentro</span>
           <span>segura →</span>
         </div>
       )}
@@ -1830,7 +1860,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
   return {
     via: M.circuito.linha,
     u, x: 0, v: 0, vx: 0, steer: 0, y: c.py[Math.floor(u / PASSO)], vy: 0, ar: false, tAr: 0,
-    turboT: 0, carga: 0, shake: 0, flash: 0, deriva: 0, giro: 0, drift: 0, peso: 0, ladoAnt: 0, driftT: 0, impacto: 0, soco: false, tempo: 0, voltaIni: -1, voltas: 0,
+    turboT: 0, carga: 0, shake: 0, flash: 0, deriva: 0, giro: 0, drift: 0, peso: 0, ladoAnt: 0, driftT: 0, dPts: 0, dMult: 1, dFim: 0, dTotal: 0, dMsg: "", dMsgT: 0, dRaspa: 0, impacto: 0, soco: false, tempo: 0, voltaIni: -1, voltas: 0,
     chegando: false, parado: false, sintonizou: false,
     escolha: 0, escolhaU: -1,
     st: { tempo: 0, vmax: 0, orbs: 0, quase: 0, sinal: 0, ar: 0, voltas: 0 },
@@ -2733,6 +2763,16 @@ function Cena({
         j.shake = Math.max(j.shake, 0.18)
         vib([12, 18, 24])
       }
+      // o freio de mão (Drift Max): segurando com a direção apertada, a
+      // traseira solta na hora, sem precisar da finta
+      if (!j.drift && inp.mao && lado !== 0 && !j.ar && j.v > VDRIFT * 0.8) {
+        j.drift = lado as 1 | -1
+        j.giro = lado * 2.2
+        j.driftT = 0
+        j.v *= 0.97
+        j.shake = Math.max(j.shake, 0.14)
+        vib([10, 14, 20])
+      }
       j.ladoAnt = lado
       const re = j.v < 0 ? -0.6 : 1
       if (j.drift) {
@@ -2755,6 +2795,11 @@ function Cena({
         if (ang > 0.2) {
           j.driftT += dt
           j.carga = Math.min(1, j.carga + dt * 0.22 * Math.min(1, ang / 0.5))
+          // os pontos: ângulo × velocidade; o multiplicador sobe com o tempo de lado
+          j.dMult = Math.min(5, j.dMult + dt * 0.1)
+          j.dPts += ang * Math.abs(j.v) * dt * 12 * j.dMult
+          const rotulo = ang > 0.65 ? "ângulo grande" : Math.abs(j.v) > 36 ? "rápido" : ang > 0.4 ? "bom ângulo" : ""
+          if (rotulo) { j.dMsg = rotulo; j.dMsgT = j.tempo + 0.6 }
         }
         if (ang < 0.05 && lado === -d && -d * j.giro > 1.0 && j.v > VDRIFT) {
           // pêndulo: o contraesterço passou do ponto e a carroceria foi pro
@@ -2771,8 +2816,15 @@ function Cena({
           j.drift = 0
           j.driftT = 0
           j.giro = 0
+          j.dFim = j.tempo
         }
       } else {
+        // sem emendar outro drift a tempo, os pontos entram no total
+        if (j.dPts > 0 && j.tempo - j.dFim > DRIFT_JUNTA) {
+          const pts = Math.round(j.dPts)
+          j.dTotal += pts; j.dMsg = `+${pts.toLocaleString("pt-BR")}`; j.dMsgT = j.tempo + 1.6
+          j.dPts = 0; j.dMult = 1
+        }
         j.deriva += (0 - j.deriva) * Math.min(1, dt * 5)
         // lateral com aderência: resposta rápida (Horizon); força centrífuga
         // leve — a curva inclinada segura boa parte dela
@@ -2800,6 +2852,9 @@ function Cena({
       const lado = j.x > limD ? 1 : -1
       j.x = lado > 0 ? limD : limE
       j.vx = -lado * Math.abs(j.vx) * 0.25
+      // ficou raspando no muro: o drift em jogo se perde (um toque leve passa)
+      j.dRaspa += dt
+      if (j.dPts > 0 && j.dRaspa > 0.35) { j.dPts = 0; j.dMult = 1; j.dMsg = "bateu · perdeu o drift"; j.dMsgT = j.tempo + 1.4 }
       if (j.v > 8) {
         j.v *= 1 - 0.55 * dt
         j.shake = Math.max(j.shake, 0.25)
@@ -2808,6 +2863,7 @@ function Cena({
         soltarFaiscas(faiscas, carro.current, lado)
       }
     }
+    else j.dRaspa = Math.max(0, j.dRaspa - dt)
     j.st.vmax = Math.max(j.st.vmax, j.v)
 
     const uAnt = j.u
