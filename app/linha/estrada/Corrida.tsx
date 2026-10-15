@@ -14,7 +14,7 @@
 // Rádio trancada = faixa com barreira até juntar sinal na estrada.
 
 import { NOME_TURNO, SEG_POR_HORA, abertoAgora, abreAs, ehDia, horaTexto, turnoDe } from "../relogio"
-import { PAGINAS, marcarDaCidade, type LugarPagina } from "../paginas"
+import { PAGINAS, marcarDaCidade, trancadaPelaHistoria, type LugarPagina } from "../paginas"
 import { Fachadas } from "./Fachadas"
 import { Bombas } from "./Bombas"
 import { BOMBAS, pertoDe } from "./postos"
@@ -1566,6 +1566,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
         if (!lp || entrando || regando || parque === "andando") return null
+        if (trancadaPelaHistoria(lp, save.objetos)) return <p className="l-pagina-fechada">{lp.nome} · de portas fechadas</p>
         return abertos[lp.id]
           ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrar(lp)}>entrar · {lp.nome}</button>
           : <p className="l-pagina-fechada">{lp.nome} abre às {abreAs(lp.horario)}</p>
