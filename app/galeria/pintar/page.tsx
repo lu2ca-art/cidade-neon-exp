@@ -2,20 +2,22 @@
 
 // PINTAR (CN-21, a galeria de dia, versão enxuta): uma tela, o pincel, o spray,
 // o balde e a borracha nas cores da cidade. Dar um nome e expor manda a obra
-// pra parede da galeria e paga um pouco de NEON.
+// pra parede da galeria e paga um pouco de NEON. E a tela toca: cada cor é um
+// instrumento, a altura é a nota, e a linha varre a tela em loop (som.ts).
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { guardarObra, lerObras, type Obra } from "../obras"
 import { mudarNeon, saldoInicial } from "../../neon-tiles/neon"
+import { CORES, INSTRUMENTOS, criarEco, freqDaAltura, notasDaColuna, tocar } from "./som"
 import "./pintar.css"
 
 const LARG = 600, ALT = 800
-const CORES = ["#f2eefa", "#14121c", "#ff3fb0", "#2fe8ff", "#ffc857", "#5dffa0", "#b38cff", "#ff6a35", "#ff3b3b", "#3a4cff", "#8a6a4a", "#ffe0a8"]
 const FUNDOS = { escuro: "#14121c", claro: "#efe8da" }
 const TAMANHOS = [6, 16, 40]
 const PAGA = 3
 const MIN_TRACOS = 25
+const DENSIDADES = [16, 32, 64]  // passos por volta da linha
 
 type Ferramenta = "pincel" | "spray" | "balde" | "borracha"
 
@@ -61,6 +63,13 @@ export default function Pintar() {
   const ult = useRef<{ x: number; y: number } | null>(null)
   const spray = useRef<ReturnType<typeof setInterval> | null>(null)
   const ponta = useRef({ x: 0, y: 0 })
+  // a música: a linha que varre, o tempo, a densidade e o eco
+  const [tocando, setTocando] = useState(false)
+  const [bpm, setBpm] = useState(100)
+  const [dens, setDens] = useState(1)
+  const [eco, setEco] = useState(true)
+  const som = useRef({ ac: null as AudioContext | null, saida: null as GainNode | null, molhado: null as GainNode | null, passo: 0, prox: 0, timer: 0 as unknown as ReturnType<typeof setInterval>, raf: 0, marcas: [] as { t: number; x: number }[], bpm: 100, dens: 1, fundo: "escuro" as keyof typeof FUNDOS })
+  const cabeca = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -68,6 +77,50 @@ export default function Pintar() {
     const g = cvs.current?.getContext("2d", { willReadFrequently: true })
     if (g) { g.fillStyle = FUNDOS.escuro; g.fillRect(0, 0, LARG, ALT) }
   }, [])
+
+  useEffect(() => () => { const m = som.current; clearInterval(m.timer); cancelAnimationFrame(m.raf); void m.ac?.close() }, [])
+
+  const audio = () => {
+    const m = som.current
+    if (!m.ac) {
+      const ac = new AudioContext(), saida = ac.createGain(), molhado = ac.createGain(), rev = criarEco(ac)
+      saida.gain.value = 0.8; saida.connect(ac.destination); saida.connect(rev).connect(molhado).connect(ac.destination); molhado.gain.value = 0.35
+      m.ac = ac; m.saida = saida; m.molhado = molhado
+    }
+    if (m.ac.state === "suspended") void m.ac.resume()
+    return m
+  }
+  // agenda os passos um pouco à frente; a linha na tela segue o relógio do áudio
+  const agendar = () => {
+    const m = som.current, ac = m.ac, g = ctx(); if (!ac || !m.saida || !g) return
+    const passos = DENSIDADES[m.dens], dur = (8 * 60) / m.bpm / passos
+    const fundoIdx = CORES.indexOf(FUNDOS[m.fundo])
+    while (m.prox < ac.currentTime + 0.12) {
+      const x = Math.min(LARG - 1, Math.floor(((m.passo % passos) + 0.5) / passos * LARG))
+      const notas = notasDaColuna(g.getImageData(x, 0, 1, ALT).data, ALT, fundoIdx)
+      const vol = 0.55 / Math.sqrt(Math.max(1, notas.length))
+      for (const n of notas) tocar(ac, m.saida, INSTRUMENTOS[n.cor], freqDaAltura(n.y01), m.prox, vol)
+      m.marcas.push({ t: m.prox, x: x / LARG }); if (m.marcas.length > 64) m.marcas.shift()
+      m.prox += dur; m.passo = (m.passo + 1) % passos
+    }
+  }
+  const andarLinha = () => {
+    const m = som.current, ac = m.ac
+    if (ac && cabeca.current) { let x = 0; for (const k of m.marcas) if (k.t <= ac.currentTime) x = k.x; cabeca.current.style.left = `${x * 100}%` }
+    m.raf = requestAnimationFrame(andarLinha)
+  }
+  const tocarPausar = () => {
+    const m = audio()
+    if (tocando) { clearInterval(m.timer); cancelAnimationFrame(m.raf); setTocando(false); return }
+    m.passo = 0; m.prox = m.ac!.currentTime + 0.06; m.marcas = []
+    m.timer = setInterval(agendar, 25); m.raf = requestAnimationFrame(andarLinha); setTocando(true)
+  }
+  // a pincelada toca a nota na hora em que encosta
+  const previa = (y: number) => {
+    if (fer === "borracha" || fer === "balde") return
+    const m = audio(); const i = CORES.indexOf(cor)
+    if (m.ac && m.saida && i >= 0 && cor !== FUNDOS[fundo]) tocar(m.ac, m.saida, INSTRUMENTOS[i], freqDaAltura(y / ALT), m.ac.currentTime + 0.01, 0.45)
+  }
 
   const ctx = () => cvs.current?.getContext("2d", { willReadFrequently: true }) ?? null
   const guardarPasso = () => {
@@ -109,6 +162,7 @@ export default function Pintar() {
     e.currentTarget.setPointerCapture(e.pointerId)
     const p = ponto(e)
     guardarPasso(); tracos.current++
+    previa(p.y)
     if (fer === "balde") { const g = ctx(); if (g) balde(g, Math.floor(p.x), Math.floor(p.y), cor); return }
     if (fer === "spray") { ponta.current = p; borrifar(); spray.current = setInterval(borrifar, 30); return }
     ult.current = p; linha(p, { x: p.x + 0.01, y: p.y })
@@ -147,6 +201,13 @@ export default function Pintar() {
       </header>
       <div className="pt-tela-caixa">
         <canvas ref={cvs} className="pt-tela" width={LARG} height={ALT} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
+        <div ref={cabeca} className="pt-cabeca" hidden={!tocando} />
+      </div>
+      <div className="pt-musica">
+        <button type="button" className={tocando ? "is-on" : ""} onClick={tocarPausar}>{tocando ? "❚❚ pausar" : "▶ tocar"}</button>
+        <label>lento<input type="range" min={60} max={160} step={5} value={bpm} onChange={(e) => { const v = Number(e.target.value); setBpm(v); som.current.bpm = v }} />rápido</label>
+        <div className="pt-dens">{DENSIDADES.map((_, i) => <button key={i} type="button" aria-label={`densidade ${i + 1}`} className={dens === i ? "is-on" : ""} onClick={() => { setDens(i); som.current.dens = i; som.current.passo = 0 }}>{"•".repeat(i + 1)}</button>)}</div>
+        <button type="button" className={eco ? "is-on" : ""} onClick={() => { const v = !eco; setEco(v); const m = som.current; if (m.molhado && m.ac) m.molhado.gain.setTargetAtTime(v ? 0.35 : 0, m.ac.currentTime, 0.05) }}>eco</button>
       </div>
       <div className="pt-barra">
         <div className="pt-ferramentas">
@@ -166,9 +227,10 @@ export default function Pintar() {
             ))}
           </div>
           <button type="button" disabled={!podeDesfazer} onClick={desfazer}>desfazer</button>
-          <button type="button" onClick={() => { const f = fundo === "escuro" ? "claro" : "escuro"; setFundo(f); limpar(f) }}>tela {fundo === "escuro" ? "clara" : "escura"}</button>
+          <button type="button" onClick={() => { const f = fundo === "escuro" ? "claro" : "escuro"; setFundo(f); som.current.fundo = f; limpar(f) }}>tela {fundo === "escuro" ? "clara" : "escura"}</button>
           <button type="button" className="pt-expor" onClick={() => setExpor(true)}>expor</button>
         </div>
+        <p className="pt-inst">{CORES.indexOf(cor) >= 0 && cor !== FUNDOS[fundo] ? `esta cor toca: ${INSTRUMENTOS[CORES.indexOf(cor)]}` : "a cor do fundo não toca"}</p>
         {msg && <p className="pt-msg">{msg}</p>}
         {obras.length > 0 && (
           <div className="pt-obras">
