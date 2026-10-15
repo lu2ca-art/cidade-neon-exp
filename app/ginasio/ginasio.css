@@ -28,3 +28,11 @@
 .gi-card.is-trancado { opacity: 0.4; --c: #555; }
 .gi-msg { margin: 6px 0 0; text-align: center; font: 700 13px var(--font-geist-mono), ui-monospace, monospace; color: #ffc857; }
 .gi-card.is-cama { --c: #2fe8ff; }
+
+/* basquete: a barra de força (Basketball Stars) */
+.bq-barra { position: absolute; z-index: 2; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 46vh; border-radius: 9px; background: rgba(10, 8, 24, 0.55); border: 2px solid rgba(255, 255, 255, 0.7); overflow: visible; pointer-events: none; }
+.bq-faixa { position: absolute; left: -2px; right: -2px; border-radius: 3px; }
+.bq-faixa.is-perfeita { background: #34e07a; }
+.bq-faixa.is-tabela { background: #b06bff; }
+.bq-faixa em { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); white-space: nowrap; font: 700 9px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; font-style: normal; color: #fff; text-shadow: 0 1px 4px #000; }
+.bq-nivel { position: absolute; left: 3px; right: 3px; bottom: 3px; max-height: calc(100% - 6px); border-radius: 6px; background: linear-gradient(to top, #ffd23a, #ff6a1a); box-shadow: 0 0 10px #ff9a3a; }

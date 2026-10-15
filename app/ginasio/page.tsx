@@ -35,7 +35,7 @@ export default function Ginasio() {
     setTimeout(() => setMsg(""), 3500)
   }
 
-  if (tela === "basquete") return <div className="gi-raiz"><Basquete onFim={(c) => { setTela("menu"); guardar({ ...rec, cestas: Math.max(rec.cestas, c) }); void pagar(Math.floor(c / 3), c > rec.cestas && c > 0 ? `recorde: ${c} cestas` : `${c} cestas`) }} /></div>
+  if (tela === "basquete") return <div className="gi-raiz"><Basquete onFim={(p, c) => { setTela("menu"); guardar({ ...rec, cestas: Math.max(rec.cestas, p) }); void pagar(Math.floor(p / 6), p > rec.cestas && p > 0 ? `recorde: ${p} pontos (${c} cestas)` : `${p} pontos · ${c} cestas`) }} /></div>
   if (tela === "pingpong") return <div className="gi-raiz"><PingPong onFim={(v, p) => { setTela("menu"); if (v) guardar({ ...rec, vitorias: rec.vitorias + 1 }); void pagar(v ? 6 : 1, v ? `ganhou de ${p[0]} a ${p[1]}` : `perdeu de ${p[1]} a ${p[0]}`) }} /></div>
 
   if (tela === "cama") return <div className="gi-raiz"><Cama onFim={(p) => { setTela("menu"); guardar({ ...rec, cama: Math.max(rec.cama, p) }); void pagar(Math.floor(p / 20), p > rec.cama && p > 0 ? `recorde: ${p} pontos` : `${p} pontos`) }} /></div>
@@ -50,7 +50,7 @@ export default function Ginasio() {
         <h1>GINÁSIO</h1>
         <p className="gi-sub">de dia · a quadra tá livre</p>
         <button type="button" className="gi-card is-basquete" onClick={() => { ac(); setTela("basquete") }}>
-          <b>basquete</b><small>60 segundos · recorde: {rec.cestas} cestas</small><em>1 neon a cada 3 cestas</em>
+          <b>basquete</b><small>60 segundos · recorde: {rec.cestas} pontos</small><em>1 neon a cada 6 pontos</em>
         </button>
         <button type="button" className="gi-card is-pingue" onClick={() => { ac(); setTela("pingpong") }}>
           <b>pingue-pongue</b><small>até 7 · {rec.vitorias} vitórias</small><em>ganhou: 6 neon</em>
