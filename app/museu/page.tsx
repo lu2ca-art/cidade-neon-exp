@@ -83,7 +83,7 @@ function ArtworkFloating({
         {/* legenda só no hover, mantém a leitura visual limpa */}
         {hovered && (
           <>
-            <Text
+            <Text font="/fonts/geist.ttf"
               position={[0, -h / 2 - 0.3, 0]}
               fontSize={0.16}
               color="#ffffff"
@@ -93,7 +93,7 @@ function ArtworkFloating({
             >
               {artwork.title}
             </Text>
-            <Text
+            <Text font="/fonts/geist.ttf"
               position={[0, -h / 2 - 0.55, 0]}
               fontSize={0.1}
               color="#a0a0a0"
