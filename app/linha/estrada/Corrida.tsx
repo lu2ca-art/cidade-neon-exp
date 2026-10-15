@@ -27,6 +27,7 @@ import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
+import { Patinador } from "./Patins"
 import { Cabine, OLHO } from "./Cabine"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -166,7 +167,7 @@ interface Props {
   // uma volta na montanha-russa do parque (Parque.tsx): o NEON que ela paga
   onMontanha?: (neon: number) => void
   // abastecer numa bomba de rua (bombas.ts): devolve se deu (tinha neon)
-  onAbastecer?: (o: "tanque" | "galao") => boolean
+  onAbastecer?: (o: "tanque" | "galao" | "despejar") => boolean
   // o posto do LU2CA está aberto (pra Kombi seguir quando ele fechar)
   postoAberto?: boolean
   // atalho de teste (/teste): aparece neste ponto, com a polícia ou o vidro embaçado
@@ -459,6 +460,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [naBomba, setNaBomba] = useState(false)
   const [msgBomba, setMsgBomba] = useState("")
   const [esperandoPosto, setEsperandoPosto] = useState(false)
+  // a gasolina acabou: de patins até o posto ou uma bomba, e volta com o galão
+  const [dePatins, setDePatins] = useState(false)
+  const [msgPatins, setMsgPatins] = useState("")
   const postoJaAbriu = useRef(false)
   const abastecer = (onde: string) => {
     jogo.current.encostando = true
@@ -652,6 +656,29 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const fadeCam = useRef<HTMLDivElement>(null)
   const trocando = useRef(false)
   const [usouCam, setUsouCam] = useState(() => { try { return localStorage.getItem("cn-linha-cam") !== null } catch { return true } })
+  const irDePatins = () => {
+    fadeCam.current?.classList.add("is-on")
+    setTimeout(() => {
+      if (dentroRef.current) { dentroRef.current = false; setDentro(false) }
+      combRef.current.patins = true; combRef.current.parada = null
+      jogo.current.v = 0; jogo.current.encostando = false
+      setDePatins(true)
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 120)
+    }, 350)
+  }
+  const voltarComGalao = () => {
+    if (!onAbastecer?.("despejar")) { setMsgPatins("sem neon pro galão (10)"); setTimeout(() => setMsgPatins(""), 2500); return }
+    fadeCam.current?.classList.add("is-on")
+    setMsgPatins("voltando pra Kombi com o galão…")
+    setTimeout(() => {
+      const c = combRef.current, p = c.parada, j = jogo.current
+      if (p) { const mudou = j.via !== p.via; j.via = p.via; j.u = p.u; j.x = p.x; if (mudou) evs.current?.via(p.via) }
+      j.v = 0; j.vx = 0; j.encostando = false; j.encaixar = true
+      c.patins = false; c.parada = null
+      setDePatins(false); setMsgPatins("")
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 200)
+    }, 1400)
+  }
   const trocarCamera = useCallback(() => {
     if (trocando.current) return
     trocando.current = true
@@ -1511,7 +1538,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
           de NEON fica só no celular */}
       {/* o relógio da cidade (13/10): a hora e o dia */}
-      {pertoComb && !naBomba && !entrando && !regando && parque !== "andando" && !postoAberto && !esperandoPosto && (
+      {/* sem gasolina: os patins (a Kombi fica) */}
+      {tanque <= 0.001 && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
+        <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
+      )}
+      {dePatins && pertoComb && (
+        <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={voltarComGalao}>encher o galão e voltar pra Kombi</button>
+      )}
+      {dePatins && !pertoComb && !msgPatins && <p className="l-pagina-fechada">de patins · o posto ou uma bomba no mapa</p>}
+      {msgPatins && <p className="l-pagina-fechada">{msgPatins}</p>}
+      {pertoComb && !dePatins && !naBomba && !entrando && !regando && parque !== "andando" && !postoAberto && !esperandoPosto && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={() => abastecer(pertoComb)}>
           {pertoComb === "posto" ? "abastecer · o posto" : "abastecer · a bomba"}
         </button>
@@ -1780,6 +1816,9 @@ export interface Comb {
   avisou: boolean
   onPosto: () => void
   t: number // último aviso pro page (guardar no save)
+  // a gasolina acabou e você foi de patins (Patins.tsx): onde a Kombi ficou
+  patins?: boolean
+  parada?: { pos: THREE.Vector3; quat: THREE.Quaternion; via: number; u: number; x: number } | null
 }
 
 export interface Abertura {
@@ -2626,6 +2665,10 @@ function Cena({
   const kBalanco = useRef(0)
   const corpoK = useRef<THREE.Group>(null)
   const cabineG = useRef<THREE.Group>(null)
+  const patinador = useRef<THREE.Group>(null)
+  const kombiParada = useRef<THREE.Group>(null)
+  const kParadaT = useRef(false)
+  const kParadaZero = useRef(0)
   const luzBaixo = useRef<THREE.PointLight>(null)
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
@@ -2708,7 +2751,9 @@ function Cena({
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
       // tanque seco: a Kombi vai na reserva, bem devagar (dá pra chegar no posto)
       const seco = !aberturaRef.current.ativa && combRef.current.tanque <= 0
-      const vmax = (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      // de patins: o embalo de quem empurra (≈ 40 km/h), sem turbo
+      const patins = !!combRef.current.patins
+      const vmax = patins ? VMAX * 0.24 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -2754,7 +2799,7 @@ function Cena({
       const lado = (inp.dir ? 1 : 0) - (inp.esq ? 1 : 0)
       const pesoAnt = j.peso
       j.peso += ((j.ar ? 0 : j.steer * Math.min(1, Math.max(0, pct) * 1.6)) - j.peso) * Math.min(1, dt * 4)
-      if (!j.drift && lado !== 0 && lado !== j.ladoAnt && !j.ar && j.v > VDRIFT && -lado * pesoAnt > PESO_FINTA) {
+      if (!j.drift && !patins && lado !== 0 && lado !== j.ladoAnt && !j.ar && j.v > VDRIFT && -lado * pesoAnt > PESO_FINTA) {
         // a finta: peso de um lado, volante pro outro. Quanto mais peso, mais
         // a carroceria gira de saída
         j.drift = lado as 1 | -1
@@ -2765,7 +2810,7 @@ function Cena({
       }
       // o freio de mão (Drift Max): segurando com a direção apertada, a
       // traseira solta na hora, sem precisar da finta
-      if (!j.drift && inp.mao && lado !== 0 && !j.ar && j.v > VDRIFT * 0.8) {
+      if (!j.drift && !patins && inp.mao && lado !== 0 && !j.ar && j.v > VDRIFT * 0.8) {
         j.drift = lado as 1 | -1
         j.giro = lado * 2.2
         j.driftT = 0
@@ -3232,6 +3277,17 @@ function Cena({
     tmp.qRoll.setFromAxisAngle(tmp.z0, j.steer * 0.05 * Math.min(1, pct))
     car.quaternion.multiply(tmp.qYaw).multiply(tmp.qRoll)
     car.position.set(a.x - a.tz * j.x * cb, j.y + 0.02, a.z + a.tx * j.x * cb)
+    {
+      const cb2 = combRef.current
+      if (cb2.patins && !cb2.parada) cb2.parada = { pos: car.position.clone(), quat: car.quaternion.clone(), via: j.via, u: j.u, x: j.x }
+      if (corpoK.current) corpoK.current.visible = !cb2.patins
+      if (cabineG.current && cb2.patins) cabineG.current.visible = false
+      if (patinador.current) patinador.current.visible = !!cb2.patins
+      if (kombiParada.current) {
+        kombiParada.current.visible = !!(cb2.patins && cb2.parada)
+        if (cb2.parada) { kombiParada.current.position.copy(cb2.parada.pos); kombiParada.current.quaternion.copy(cb2.parada.quat) }
+      }
+    }
 
     // as 4 rodas derrapando: marca no chão e fumaça em cada uma
     if (j.drift && Math.abs(j.deriva) > 0.15 && !j.ar) {
@@ -3325,8 +3381,9 @@ function Cena({
       }
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
-    const atras = 8.4 + pct * 1.8
-    tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
+    const dePatins = !!combRef.current.patins
+    const atras = dePatins ? 4.6 : 8.4 + pct * 1.8
+    tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, dePatins ? 2.3 : 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
     if (cine) {
       // câmera de cinema: baixa, de lado, girando devagar em volta da Kombi
       const ang = j.tempo * 0.11 + 0.5
@@ -3560,9 +3617,9 @@ function Cena({
     kBalanco.current = j.vx * 0.35 + a.curv * j.v * Math.abs(j.v) * 0.08 + j.deriva * 2
     // de dentro: some a carroceria de fora, aparece a cabine
     const dentroAgora = dentroRef.current && !cine
-    if (corpoK.current) corpoK.current.visible = !dentroAgora
+    if (corpoK.current) corpoK.current.visible = !dentroAgora && !combRef.current.patins
     // a herbal é fechada: a cabine (o interior) só aparece de dentro
-    if (cabineG.current) cabineG.current.visible = dentroAgora
+    if (cabineG.current) cabineG.current.visible = dentroAgora && !combRef.current.patins
     // a luz magenta de baixo (o brilho no asfalto) pintava a cabine de rosa
     if (luzBaixo.current) luzBaixo.current.intensity = dentroAgora ? 0 : 45
     hudN.current++
@@ -3758,6 +3815,8 @@ function Cena({
         <pointsMaterial size={0.35} color="#ffb454" transparent blending={THREE.AdditiveBlending} depthWrite={false} />
       </points>
 
+      {/* a Kombi que ficou sem gasolina, esperando o galão */}
+      <group ref={kombiParada} visible={false}><Kombi222 turbo={kParadaT} velocidade={kParadaZero} esterco={kParadaZero} /></group>
       <group ref={carro}>
         <group ref={corpoK}>
           {/* a Kombi de verdade (escaneada); enquanto carrega, ou se falhar
@@ -3768,6 +3827,9 @@ function Cena({
               <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} soEfeitos />
             </Suspense>
           </Seguro>
+        </group>
+        <group ref={patinador} visible={false} rotation-y={Math.PI}>
+          <Patinador vel={() => jogo.current.v} steer={() => -jogo.current.steer} />
         </group>
         <group ref={cabineG}>
           <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>

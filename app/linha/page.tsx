@@ -994,6 +994,13 @@ export default function LinhaPage() {
             onMontanha={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
             onAbastecer={(o) => {
               const s0 = saveRef.current
+              // de patins (a gasolina acabou): o galão vai direto no tanque; se já tinha um cheio, só despeja
+              if (o === "despejar") {
+                const tinha = s0.galao === "cheio"
+                if (!tinha && (s0.neon ?? 0) < PRECO_GALAO) return false
+                setSave((s) => ({ ...s, neon: (s.neon ?? 0) - (tinha ? 0 : PRECO_GALAO), galao: "vazio", tanque: Math.min(1, (s.tanque ?? 0) + GALAO) }))
+                return true
+              }
               if (o === "tanque" ? (s0.neon ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.neon ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
               if (o === "tanque") encherTanque(); else encherGalao()
               return true
