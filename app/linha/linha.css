@@ -1917,3 +1917,4 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-hud-drift.is-perdeu small { color: #ff4a5a; font-size: 12px; }
 .l-pedal.is-mao { width: 60px; height: 60px; font-size: 9px !important; }
 .l-pedal.is-mao:active { background: rgba(255, 200, 87, 0.4) !important; }
+.l-regar-btn.is-patins { background: #ff3fb0 !important; color: #14121c !important; box-shadow: 0 0 20px rgba(255, 63, 176, 0.6); }
