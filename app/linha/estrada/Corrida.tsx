@@ -28,6 +28,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
+import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -1808,6 +1809,7 @@ const CARREGAR_PAGINA: Record<LugarPagina["id"], () => Promise<unknown>> = {
   galeria: () => import("../../galeria/GaleriaScene"),
   fliperama: () => import("../../fliperama/page"),
   shows: () => import("../../casa-de-shows/Show"),
+  oficina: () => import("../../oficina/Elevador"),
 }
 
 export interface Comb {
@@ -2668,6 +2670,8 @@ function Cena({
   const cabineG = useRef<THREE.Group>(null)
   const patinador = useRef<THREE.Group>(null)
   const kombiParada = useRef<THREE.Group>(null)
+  // o estilo da oficina (pintura e neon de baixo)
+  const [estiloK] = useState(() => lerEstilo())
   const kParadaT = useRef(false)
   const kParadaZero = useRef(0)
   const luzBaixo = useRef<THREE.PointLight>(null)
@@ -3824,7 +3828,7 @@ function Cena({
               no aparelho, a desenhada à mão */}
           <Seguro nome="kombi" reserva={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
             <Suspense fallback={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
-              <KombiHerbal />
+              <KombiHerbal tinta={corPintura(estiloK)} />
               <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} soEfeitos />
             </Suspense>
           </Seguro>
@@ -3835,7 +3839,7 @@ function Cena({
         <group ref={cabineG}>
           <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>
         </group>
-        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
+        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color={corNeon(estiloK)} intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
         <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />

@@ -8,7 +8,7 @@
 // O material da foto (sem luz) vira material com luz: o neon bate nela.
 
 import { useGLTF } from "@react-three/drei"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import * as THREE from "three"
 
 import { CREDITO_KOMBI } from "./creditos"
@@ -16,7 +16,8 @@ export { CREDITO_KOMBI }
 const URL = "/models/kombi-herbal.glb"
 const COMPRIMENTO = 4.5 // m, do para-choque ao para-choque (a Kombi da estrada)
 
-export function KombiHerbal() {
+// tinta: a pintura da oficina (multiplica a cor da foto; branco = a de fábrica)
+export function KombiHerbal({ tinta = "#ffffff" }: { tinta?: string }) {
   const { scene } = useGLTF(URL)
   const kombi = useMemo(() => {
     const g = scene.clone(true)
@@ -51,6 +52,10 @@ export function KombiHerbal() {
     fora.scale.setScalar(s)
     return fora
   }, [scene])
+  useEffect(() => {
+    const c = new THREE.Color(tinta)
+    kombi.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined; if (m?.isMeshStandardMaterial) { m.color.copy(c); m.emissive.copy(c) } })
+  }, [kombi, tinta])
   return <primitive object={kombi} />
 }
 

@@ -1,0 +1,16 @@
+/* a oficina (o estilo da Kombi) */
+.of-raiz { position: fixed; inset: 0; background: #1a1618; color: #f2eefa; font-family: var(--font-geist-mono), ui-monospace, monospace; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.of-raiz * { box-sizing: border-box; }
+.of-raiz button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+.of-cvs { position: absolute !important; inset: 0; }
+.of-topo { position: absolute; z-index: 2; top: 0; left: 0; right: 0; padding: calc(12px + env(safe-area-inset-top)) 16px 8px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; text-shadow: 0 2px 6px #000; }
+.of-topo b { font: 900 18px "Arial Black", system-ui, sans-serif; letter-spacing: 0.14em; color: #ff9000; }
+.of-painel { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(10, 8, 12, 0.92) 22%); display: flex; flex-direction: column; gap: 8px; }
+.of-rotulo { margin: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.of-cores { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.of-cores button { flex: 0 0 auto; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 10px; background: rgba(255, 255, 255, 0.05) !important; border: 2px solid transparent !important; }
+.of-cores button.is-on { border-color: #ff9000 !important; background: rgba(255, 144, 0, 0.14) !important; }
+.of-cores i { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.3); }
+.of-cores small { font-size: 9px; text-align: center; line-height: 1.1; }
+.of-cores em { font-style: normal; font-weight: 700; font-size: 10px; color: #ffc857; }
+.of-msg { margin: 0; text-align: center; font-weight: 700; font-size: 12px; color: #ffc857; }
