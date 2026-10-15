@@ -16,7 +16,7 @@ import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
-import { MISSOES, abertas, alvoDe, ativa, etapaDe, type Alvo } from "./missoes"
+import { MISSOES, abertas, alvoDe, ativa, etapaDe, type Alvo, POPULARIDADE } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
 import { CENA_INICIO, CENA_MUBARAK_DREW, cenaDe, type Reliquia } from "./cenas"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
@@ -38,6 +38,10 @@ import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
+import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
+import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
+import { limparDaCidade } from "./paginas"
+import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -81,6 +85,7 @@ type Aviso = { id: number; titulo: string; texto: string; cor: string }
 
 export default function LinhaPage() {
   const [save, setSave] = useState<Save>(VAZIO)
+  const [atalhoTeste, setAtalhoTeste] = useState<IrAtalho | null>(null)
   const [pronto, setPronto] = useState(false)
   const [tela, setTela] = useState<Tela>({ t: "entrada" })
   const [aviso, setAviso] = useState<Aviso | null>(null)
@@ -149,6 +154,15 @@ export default function LinhaPage() {
      
     setSave(s.dias.includes(h) ? s : { ...s, dias: [...s.dias, h].slice(-60) })
     setPronto(true)
+    // voltando de um lugar que é página (paginas.ts): direto pra estrada, onde estava
+    if (new URLSearchParams(location.search).get("volta") === "cidade" && (s.casa || s.estacao)) {
+      audioCtx()
+      limparDaCidade()
+      setVoltaDaSala(true)
+      setTela({ t: "corrida", destino: null })
+    }
+    // atalho de teste (/teste): fora da produção, a Kombi aparece num ponto
+    if (atalhosLiberados()) setAtalhoTeste(atalhoPorId(new URLSearchParams(location.search).get("atalho"))?.ir ?? null)
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -260,6 +274,14 @@ export default function LinhaPage() {
   const saveRef = useRef(save)
   useEffect(() => { saveRef.current = save }, [save])
 
+  // O RELÓGIO DA CIDADE (relogio.ts, 13/10): dormir na Kombi pula pras 8h do
+  // dia seguinte; cochilar (de dia) pula pras 19h. A tela escurece e mostra
+  // o dia novo.
+  const [saltoHora, setSaltoHora] = useState<{ h: number; id: number } | null>(null)
+  // dormir e cochilar: o relógio só pula, sem animação (LU2CA, 14/10); quem
+  // conta o dia novo é a virada das 8h (onHora)
+  const pularPara = useCallback((h: number) => setSaltoHora({ h, id: Date.now() }), [])
+
   // os apps de dentro do celular (GUITAR DRIVER…) pagam e cobram em NEON: o
   // celular é o banco. O app pede (delta), o jogo confere o saldo e responde.
   useEffect(() => {
@@ -292,7 +314,8 @@ export default function LinhaPage() {
   const blocoTut = tut ? blocoAtual(save) : BLOCOS.length
   // e até o fim do tutorial, só a primeira pessoa chama
   const tutLibera = !tut || (quemChama === PRIMEIRA && blocoTut >= 1 && feito(save, "posto"))
-  const chamaNaEstrada = tutLibera && !!quemChama && !adiadas.includes(quemChama) && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
+  // a história só chama do entardecer até as 4h (relogio.ts)
+  const chamaNaEstrada = horaDaHistoria(save.hora ?? 18) && tutLibera && !!quemChama && !adiadas.includes(quemChama) && etapaDe(save, quemChama) === "chamado" && !save.completos.includes(quemChama) && save.pausas[quemChama] === undefined
   // A CHEGADA: o grupo 222 rola na ilha, uma mensagem a cada ~3,4 s, sem
   // travar nada. Acabou (ou a pessoa abriu e leu): o grupo fica feito, com
   // tudo no histórico, e a D-Bee LIGA. Desligou: ela escreve (a abertura)
@@ -441,6 +464,13 @@ export default function LinhaPage() {
 
   // encostou devagar na vaga do lugar da missão: a cena começa
   const abrirCena = useCallback((id: LugarId) => {
+    // cada lugar tem a sua hora (relogio.ts): fora dela, fechado
+    const hr = LUGARES[id]?.horario ?? "noite"
+    const h = saveRef.current.hora ?? 18
+    if (!abertoAgora(hr, h)) {
+      avisar(LUGARES[id].nome, turnoDe(h) === "ocio" ? "a cidade dorme. só música até as 8h" : `fechado agora. abre às ${abreAs(hr)}`, "#8a93b8")
+      return
+    }
     // o tutorial: o pin do posto abre a bomba
     if (id === "posto" && irAoPosto(saveRef.current)) { abrirPostoRef.current(); return }
     // o tutorial: chegou na casa do Drewboy com o Mubarak de carona — a cena
@@ -470,7 +500,7 @@ export default function LinhaPage() {
     if (LUGARES[id].fora) setViagem({ lugar: id, missao: a.missao, pegar: a.pegar })
     else setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
-  }, [cinema])
+  }, [cinema, avisar])
   const fimCena = useCallback((r: ResultadoCena) => {
     const c = cena
     setCena(null)
@@ -504,11 +534,22 @@ export default function LinhaPage() {
       const violao = r.perdeViolao ? false : s.violao
       // acordar alguém rende NEON (a rede te devolve)
       const neon = (s.neon ?? 0) + (r.objeto ? NEON_POR_PESSOA : 0)
-      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon }
+      // e a cidade te conhece mais (em silêncio)
+      const novo = !!r.objeto && !s.objetos.includes(r.objeto)
+      const popularidade = Math.min(100, (s.popularidade ?? 0) + (novo ? POPULARIDADE[r.objeto!] ?? 0 : 0))
+      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon, popularidade }
     })
     if (r.objeto) {
       track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
       setTimeout(() => avisar(`+${NEON_POR_PESSOA} neon`, "a rede te devolve. gasta na loja de discos", "#ffc857"), 1200)
+      // AS LIBERAÇÕES (13/10, LU2CA): cada pessoa acordada libera a faixa dela
+      // na 222 e no Guitar Driver, e o lugar vira palco. Só a PRIMEIRA vez é
+      // mostrada (o tutorial do ato 1); depois a pessoa descobre sozinha.
+      const primeira = saveRef.current.objetos.length === 0
+      if (primeira) {
+        const e = getEstacao(r.objeto)
+        setTimeout(() => avisar(`${e.faixa.toLowerCase()} entrou na 222`, `e ${LUGARES[c.lugar].nome} virou palco no guitar driver`, e.cor), 5800)
+      }
     }
     if (r.caca) {
       setPerseguido(true)
@@ -563,6 +604,19 @@ export default function LinhaPage() {
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
+  // regou um canteiro da Ella: +2 neon, quantos já foram regados alguma vez e,
+  // com todos, a conquista
+  const regouCanteiro = useCallback((id: string) => {
+    const s0 = saveRef.current
+    const regadas = { ...s0.regadas, [id]: s0.dia ?? 1 }
+    const total = CANTEIROS.length, feitos = CANTEIROS.filter((c) => regadas[c.id] !== undefined).length
+    const conquista = feitos >= total && !(s0.conquistas ?? []).includes("jardim-da-ella")
+    setSave((s) => ({ ...s, regadas: { ...s.regadas, [id]: s.dia ?? 1 }, neon: (s.neon ?? 0) + 2, conquistas: conquista ? [...(s.conquistas ?? []), "jardim-da-ella"] : s.conquistas }))
+    const c = canteiroPorId(id)
+    if (conquista) avisar("conquista · o jardim da Ella", `você regou os ${total} canteiros da cidade`, "#ffc857")
+    else avisar(c ? `${ESPECIES[c.especie].nome} · regado` : "regado", `${feitos} de ${total} canteiros da Ella · +2 neon`, c ? ESPECIES[c.especie].cor : "#2fe8ff")
+  }, [avisar])
+  const regadasHoje = useMemo(() => Object.entries(save.regadas ?? {}).filter(([, d]) => d === (save.dia ?? 1)).map(([id]) => id), [save.regadas, save.dia])
   const listaMissoes = useMemo(() => {
     const l = abertas(save, nivel)
     // no tutorial, só a primeira pessoa (as outras abrem quando ele acaba)
@@ -932,7 +986,20 @@ export default function LinhaPage() {
             onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 ? s : { ...s, tanque: n }))}
             onPosto={() => abrirPostoRef.current()}
             hora={save.hora ?? 18}
-            onHora={(h) => setSave((s) => ({ ...s, hora: h }))}
+            onHora={(h) => setSave((s) => ({ ...s, hora: h, dia: virouODia(s.hora ?? 18, h) ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))}
+            dia={save.dia ?? 1}
+            saltoHora={saltoHora}
+            regadas={regadasHoje}
+            onRegar={regouCanteiro}
+            onMontanha={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
+            onAbastecer={(o) => {
+              const s0 = saveRef.current
+              if (o === "tanque" ? (s0.neon ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.neon ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
+              if (o === "tanque") encherTanque(); else encherGalao()
+              return true
+            }}
+            postoAberto={!!noPosto}
+            atalho={atalhoTeste}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
@@ -956,6 +1023,15 @@ export default function LinhaPage() {
             noiteRepete={save.objetos.includes("copo") ? 0 : (save.loops?.bar ?? 0)}
             foraDoAr={apagao}
           />
+        )}
+        {/* O RELÓGIO (13/10): de dia dá pra cochilar até a noite; de noite e
+            na madrugada, dormir na Kombi (o dia seguinte começa às 8h) */}
+        {tela.t === "corrida" && !emSala && !cinema && !ligacao && save.casa && (
+          ehDia(save.hora ?? 18)
+            ? <button type="button" className="l-dormir" onClick={() => pularPara(19)}>cochilar até a noite</button>
+            : (save.hora ?? 18) >= 19 || (save.hora ?? 18) < 8
+              ? <button type="button" className="l-dormir" onClick={() => pularPara(8)}>dormir na kombi</button>
+              : null
         )}
         {/* AS MISSÕES NUMA CAIXA SÓ (LU2CA, 05/10): no canto, o que fazer agora
             e a bolinha com quantas estão abertas; tocando, a atual (ou a
@@ -1122,7 +1198,7 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} />
+          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} />
         )}
         {cena && (
           <CenaLugar

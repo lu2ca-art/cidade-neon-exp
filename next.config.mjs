@@ -74,10 +74,10 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)" },
           { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
-          // A REGRA DE CONTEÚDO (CSP, 06/10): o que o site pode carregar. Em
-          // OBSERVAÇÃO primeiro (Report-Only: só avisa no console, não
-          // bloqueia); depois de conferir que nada quebra, vira a de verdade
-          { key: "Content-Security-Policy-Report-Only", value: CSP },
+          // A REGRA DE CONTEÚDO (CSP, 06/10): o que o site pode carregar.
+          // Ficou em observação (Report-Only) de 06/10 a 14/10; varredura de
+          // 19 rotas em produção sem nenhuma violação, então vira a de verdade
+          { key: "Content-Security-Policy", value: CSP },
         ],
       },
       {

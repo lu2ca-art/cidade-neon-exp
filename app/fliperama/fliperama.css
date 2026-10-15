@@ -1,0 +1,20 @@
+/* o fliperama retrô (CN-26) */
+.fp-raiz { position: fixed; inset: 0; display: flex; justify-content: center; background: #0b0a12; color: #f2eefa; font-family: var(--font-geist-mono), ui-monospace, monospace; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
+.fp-raiz * { box-sizing: border-box; }
+.fp-raiz button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+.fp-tela { width: min(100vw, 480px); height: 100dvh; padding: calc(12px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 10px; justify-content: center; }
+.fp-placar { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 700; font-size: 12px; letter-spacing: 0.12em; }
+.fp-placar b { font: 900 22px "Courier New", monospace; color: #ffc857; text-shadow: 0 0 10px rgba(255, 200, 87, 0.5); }
+.fp-placar i { font-style: normal; color: #ff3fb0; }
+.fp-cvs { width: 100%; height: auto; max-height: calc(100dvh - 130px); object-fit: contain; image-rendering: pixelated; border: 2px solid #26222f; border-radius: 6px; box-shadow: 0 0 40px rgba(47, 232, 255, 0.12); }
+.fp-dica { margin: 0; font-size: 11px; color: rgba(255, 255, 255, 0.55); text-align: center; }
+.fp-menu { width: min(100vw, 480px); padding: calc(16px + env(safe-area-inset-top)) 18px 24px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.fp-menu header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 13px; }
+.fp-menu h1 { margin: 18px 0 0; font: 900 44px "Courier New", monospace; letter-spacing: 0.04em; color: #ff6a35; text-shadow: 3px 3px 0 #2fe8ff; }
+.fp-sub { margin: 0 0 10px; font-size: 12px; color: rgba(255, 255, 255, 0.6); }
+.fp-maquina { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px; border-radius: 6px; text-align: left; background: #14121c !important; border: 2px solid var(--cor, #3a3446) !important; box-shadow: 4px 4px 0 var(--cor, #3a3446); }
+.fp-maquina b { font: 900 22px "Courier New", monospace; color: var(--cor, #f2eefa); }
+.fp-maquina small { font-size: 11px; color: rgba(255, 255, 255, 0.65); }
+.fp-maquina em { font-style: normal; font-weight: 700; font-size: 11px; color: #ffc857; }
+.fp-maquina.is-trancada { opacity: 0.4; cursor: default; box-shadow: none; }
+.fp-msg { margin: 6px 0 0; text-align: center; font-weight: 700; color: #ffc857; }

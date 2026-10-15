@@ -1,0 +1,315 @@
+"use client"
+
+// O MAPA (LU2CA 14/10: "no jeito do GTA / Watch Dogs"). Um minimapa redondo
+// no canto, girando com a Kombi (a frente sempre pra cima), com as ruas por
+// perto, os lugares, a rota até o destino em destaque e a distância. Tocar
+// nele abre o mapa grande: a cidade inteira, norte pra cima; tocar num lugar
+// (ou numa rua) marca o destino e a rota se refaz sozinha. Sem destino
+// marcado, a rota vai pra missão.
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { Mundo } from "./mundo"
+import { distritoDe } from "./mundo"
+import { PASSO } from "./pista"
+import { calcularRota, pontoMaisPerto, type Ponto, type Rota } from "./rota"
+import { LUGARES, type LugarId } from "../lugares"
+import { CANTEIROS } from "./Flores"
+import { PARQUE } from "./Parque"
+import { PAGINAS } from "../paginas"
+
+export interface Marca extends Ponto { nome: string; cor: string }
+interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
+interface PoseKombi { via: number; u: number; x: number; v: number }
+
+const ROTA_COR = "#ff3fb0"
+
+// os pontos de cada via (em metros do mundo), um a cada ~8 m
+function amostrarVias(M: Mundo) {
+  return M.vias.map((v) => {
+    const pts: number[] = []
+    for (let i = 0; i < v.n; i += 4) pts.push(v.px[i], v.pz[i])
+    if (v.fechada) pts.push(v.px[0], v.pz[0])
+    return { pts, cor: distritoDe(v.t).luz[0], saida: v.tipo === "saida" }
+  })
+}
+
+function noMundo(M: Mundo, p: Ponto) {
+  const v = M.vias[p.via]
+  const i = v.fechada ? ((Math.round(p.u / PASSO) % v.n) + v.n) % v.n : Math.max(0, Math.min(v.n - 1, Math.round(p.u / PASSO)))
+  return { x: v.px[i], z: v.pz[i], tx: v.tx[i], tz: v.tz[i] }
+}
+
+// a rota como uma linha de pontos do mundo
+function linhaDaRota(M: Mundo, r: Rota) {
+  const pts: number[] = []
+  for (const t of r.trechos) {
+    for (let u = t.u0; u <= t.u1; u += 8) { const p = noMundo(M, { via: t.via, u }); pts.push(p.x, p.z) }
+    const p = noMundo(M, { via: t.via, u: t.u1 }); pts.push(p.x, p.z)
+  }
+  return pts
+}
+
+function blipsDo(M: Mundo): Blip[] {
+  const b: Blip[] = []
+  for (const l of Object.values(LUGARES)) {
+    if (l.segredo) continue
+    const via = l.via ? M.vias.findIndex((v) => v.id === l.via) : M.circuito[l.area]
+    if (via < 0) continue
+    b.push({ id: l.id, nome: l.nome, cor: l.cor, via, u: l.u, tipo: l.id === "posto" ? "posto" : "lugar" })
+  }
+  for (const lp of PAGINAS) if (!lp.lugar) b.push({ id: lp.id, nome: lp.nome, cor: lp.cor, via: M.circuito[lp.area], u: lp.u, tipo: "lugar" })
+  b.push({ id: "parque", nome: "o parque", cor: "#ff5b5b", via: M.circuito[PARQUE.area], u: PARQUE.u, tipo: "parque" })
+  for (const c of CANTEIROS) b.push({ id: `flor-${c.id}`, nome: "um canteiro da Ella", cor: "#2fe8ff", via: M.circuito[c.area], u: c.u, tipo: "flor" })
+  return b
+}
+
+function desenharBlip(g: CanvasRenderingContext2D, x: number, y: number, b: { cor: string; tipo: Blip["tipo"] }, k = 1) {
+  if (b.tipo === "flor") { g.fillStyle = b.cor; g.beginPath(); g.arc(x, y, 2.2 * k, 0, 7); g.fill(); return }
+  g.fillStyle = "#0b0a12"; g.beginPath(); g.arc(x, y, 6.5 * k, 0, 7); g.fill()
+  g.strokeStyle = b.cor; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, 6.5 * k, 0, 7); g.stroke()
+  g.fillStyle = b.cor
+  if (b.tipo === "posto") { g.fillRect(x - 2.5 * k, y - 3 * k, 4 * k, 6 * k); g.fillRect(x + 1.5 * k, y - 1 * k, 1.5 * k, 3 * k) }
+  else if (b.tipo === "parque") { g.beginPath(); g.arc(x, y, 3.2 * k, 0, 7); g.stroke() }
+  else { g.beginPath(); g.arc(x, y, 2.4 * k, 0, 7); g.fill() }
+}
+
+function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k = 1) {
+  g.save(); g.translate(x, y); g.rotate(ang)
+  g.fillStyle = "#ffffff"; g.strokeStyle = "#0b0a12"; g.lineWidth = 2
+  g.beginPath(); g.moveTo(0, -8 * k); g.lineTo(6 * k, 7 * k); g.lineTo(0, 3.5 * k); g.lineTo(-6 * k, 7 * k); g.closePath(); g.stroke(); g.fill()
+  g.restore()
+}
+
+const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
+
+export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
+  M: Mundo
+  // a Kombi: via, u (m), x (lateral) e v (velocidade) — o jogo.current da Corrida
+  pose: React.RefObject<PoseKombi>
+  missao: LugarId | null
+  marca: Marca | null
+  onMarcar: (m: Marca | null) => void
+  onAberto: (aberto: boolean) => void
+}) {
+  const mini = useRef<HTMLCanvasElement>(null)
+  const grande = useRef<HTMLCanvasElement>(null)
+  const [aberto, setAberto] = useState(false)
+  const [distancia, setDistancia] = useState("")
+  const vias = useMemo(() => amostrarVias(M), [M])
+  const blips = useMemo(() => blipsDo(M), [M])
+  // o destino: o que você marcou, senão o lugar da missão
+  const destino = useMemo<Marca | null>(() => {
+    if (marca) return marca
+    const b = missao ? blips.find((x) => x.id === missao) : null
+    return b ? { via: b.via, u: b.u, nome: b.nome, cor: b.cor } : null
+  }, [marca, missao, blips])
+  const rota = useRef<{ pts: number[]; metros: number } | null>(null)
+
+  // a rota se refaz a cada segundo (a Kombi andou, o destino mudou)
+  useEffect(() => {
+    const refazer = () => {
+      const p = pose.current
+      if (!destino || !p) { rota.current = null; setDistancia(""); return }
+      const r = calcularRota(M, { via: p.via, u: p.u }, destino)
+      if (!r) { rota.current = null; setDistancia(""); return }
+      rota.current = { pts: linhaDaRota(M, r), metros: r.metros }
+      setDistancia(km(r.metros))
+      // chegou no destino que você marcou: a marca some
+      if (marca && r.metros < 40) onMarcar(null)
+    }
+    refazer()
+    const t = setInterval(refazer, 1000)
+    return () => clearInterval(t)
+  }, [M, destino, marca, onMarcar, pose])
+
+  // o minimapa: redondo, a frente da Kombi pra cima, aproxima devagar e afasta correndo
+  useEffect(() => {
+    let raf = 0, ultimo = 0, zoom = 260
+    const desenhar = (agora: number) => {
+      raf = requestAnimationFrame(desenhar)
+      if (agora - ultimo < 50) return
+      ultimo = agora
+      const c = mini.current, p = pose.current
+      if (!c || !p) return
+      const dpr = Math.min(2, window.devicePixelRatio || 1), S = c.clientWidth
+      if (S < 20) return // escondido (cutscene, montanha-russa)
+      if (c.width !== S * dpr) { c.width = S * dpr; c.height = S * dpr }
+      const g = c.getContext("2d")!
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      const k = noMundo(M, p)
+      const ox = k.x - k.tz * p.x, oz = k.z + k.tx * p.x
+      const alvoZoom = 240 + Math.min(260, Math.abs(p.v) * 9)
+      zoom += (alvoZoom - zoom) * 0.08
+      const R = S / 2, esc = R / zoom
+      // mundo → tela: a frente (tx, tz) vira "pra cima"
+      const tela = (x: number, z: number): [number, number] => {
+        const dx = x - ox, dz = z - oz
+        return [R + (dx * -k.tz + dz * k.tx) * esc, R - (dx * k.tx + dz * k.tz) * esc]
+      }
+      g.clearRect(0, 0, S, S)
+      g.save(); g.beginPath(); g.arc(R, R, R - 1, 0, 7); g.clip()
+      g.fillStyle = "rgba(8, 7, 16, 0.86)"; g.fillRect(0, 0, S, S)
+      g.lineCap = "round"; g.lineJoin = "round"
+      for (const v of vias) {
+        g.strokeStyle = v.saida ? "rgba(255,255,255,0.28)" : v.cor; g.globalAlpha = v.saida ? 1 : 0.55
+        g.lineWidth = v.saida ? 2.5 : 3.5
+        g.beginPath()
+        for (let i = 0; i < v.pts.length; i += 2) { const [x, y] = tela(v.pts[i], v.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
+        g.stroke()
+      }
+      g.globalAlpha = 1
+      const rt = rota.current
+      if (rt) {
+        g.strokeStyle = ROTA_COR; g.lineWidth = 4.5
+        g.beginPath()
+        for (let i = 0; i < rt.pts.length; i += 2) { const [x, y] = tela(rt.pts[i], rt.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
+        g.stroke()
+      }
+      for (const b of blips) {
+        const w = noMundo(M, b)
+        let [x, y] = tela(w.x, w.z)
+        const d = Math.hypot(x - R, y - R)
+        if (b.tipo === "flor" && d > R - 4) continue
+        // fora do círculo: o lugar fica preso na borda (como no GTA)
+        if (d > R - 9) { x = R + ((x - R) / d) * (R - 9); y = R + ((y - R) / d) * (R - 9) }
+        desenharBlip(g, x, y, b, 0.85)
+      }
+      if (destino) {
+        const w = noMundo(M, destino)
+        let [x, y] = tela(w.x, w.z)
+        const d = Math.hypot(x - R, y - R)
+        if (d > R - 10) { x = R + ((x - R) / d) * (R - 10); y = R + ((y - R) / d) * (R - 10) }
+        g.fillStyle = ROTA_COR; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x - 6, y - 8); g.lineTo(x + 6, y - 8); g.closePath(); g.fill()
+      }
+      g.restore()
+      g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 2; g.beginPath(); g.arc(R, R, R - 1, 0, 7); g.stroke()
+      seta(g, R, R, 0, 0.9)
+    }
+    raf = requestAnimationFrame(desenhar)
+    return () => cancelAnimationFrame(raf)
+  }, [M, vias, blips, destino, pose])
+
+  // o mapa grande: a cidade inteira, norte pra cima
+  const caixa = useMemo(() => {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity
+    for (const v of vias) for (let i = 0; i < v.pts.length; i += 2) { x0 = Math.min(x0, v.pts[i]); x1 = Math.max(x1, v.pts[i]); z0 = Math.min(z0, v.pts[i + 1]); z1 = Math.max(z1, v.pts[i + 1]) }
+    return { x0, x1, z0, z1 }
+  }, [vias])
+  const vista = useRef({ cx: 0, cz: 0, esc: 0.1 })
+  useEffect(() => {
+    if (!aberto) return
+    const c = grande.current; if (!c) return
+    const W = c.clientWidth, H = c.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1)
+    c.width = W * dpr; c.height = H * dpr
+    // começa centrado na Kombi, com a cidade quase inteira na tela
+    const p = pose.current, k = p ? noMundo(M, p) : { x: 0, z: 0 }
+    vista.current = { cx: k.x, cz: k.z, esc: Math.min(W / (caixa.x1 - caixa.x0), H / (caixa.z1 - caixa.z0)) * 1.6 }
+    let raf = 0
+    const desenhar = () => {
+      raf = requestAnimationFrame(desenhar)
+      const g = c.getContext("2d")!, vv = vista.current
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
+      const tela = (x: number, z: number): [number, number] => [W / 2 + (x - vv.cx) * vv.esc, H / 2 + (z - vv.cz) * vv.esc]
+      g.fillStyle = "#07060e"; g.fillRect(0, 0, W, H)
+      g.lineCap = "round"; g.lineJoin = "round"
+      for (const v of vias) {
+        g.strokeStyle = v.saida ? "rgba(255,255,255,0.3)" : v.cor; g.globalAlpha = v.saida ? 1 : 0.7
+        g.lineWidth = v.saida ? 2 : 3.5
+        g.beginPath()
+        for (let i = 0; i < v.pts.length; i += 2) { const [x, y] = tela(v.pts[i], v.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
+        g.stroke()
+      }
+      g.globalAlpha = 1
+      const rt = rota.current
+      if (rt) {
+        g.strokeStyle = ROTA_COR; g.lineWidth = 4
+        g.beginPath()
+        for (let i = 0; i < rt.pts.length; i += 2) { const [x, y] = tela(rt.pts[i], rt.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
+        g.stroke()
+      }
+      g.font = "700 11px ui-monospace, monospace"; g.textBaseline = "middle"
+      for (const b of blips) {
+        const w = noMundo(M, b); const [x, y] = tela(w.x, w.z); desenharBlip(g, x, y, b, 1.1)
+        if (b.tipo === "flor") continue
+        g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(b.nome).width; g.fillRect(x + 10, y - 8, tw + 8, 16)
+        g.fillStyle = "#e9e6f2"; g.fillText(b.nome, x + 14, y)
+      }
+      if (destino) {
+        const w = noMundo(M, destino); const [x, y] = tela(w.x, w.z)
+        g.fillStyle = ROTA_COR; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x - 8, y - 18); g.lineTo(x + 8, y - 18); g.closePath(); g.fill()
+      }
+      const pk = pose.current
+      if (pk) { const w = noMundo(M, pk); const [x, y] = tela(w.x, w.z); seta(g, x, y, Math.atan2(w.tx, -w.tz), 1.1) }
+    }
+    desenhar()
+    return () => cancelAnimationFrame(raf)
+  }, [aberto, M, vias, blips, destino, caixa, pose])
+
+  // arrastar move, pinça/roda aproxima, tocar marca
+  const gesto = useRef<{ x: number; y: number; moveu: boolean; dedos: Map<number, { x: number; y: number }>; dist: number }>({ x: 0, y: 0, moveu: false, dedos: new Map(), dist: 0 })
+  const tocar = (sx: number, sy: number) => {
+    const c = grande.current; if (!c) return
+    const r = c.getBoundingClientRect(), vv = vista.current
+    const x = vv.cx + (sx - r.left - r.width / 2) / vv.esc, z = vv.cz + (sy - r.top - r.height / 2) / vv.esc
+    // um lugar perto do dedo ganha; senão, a rua mais perto
+    let melhor: Blip | null = null, dm = 28 / vv.esc
+    for (const b of blips) { if (b.tipo === "flor") continue; const w = noMundo(M, b); const d = Math.hypot(w.x - x, w.z - z); if (d < dm) { dm = d; melhor = b } }
+    if (melhor) { onMarcar({ via: melhor.via, u: melhor.u, nome: melhor.nome, cor: melhor.cor }); return }
+    const p = pontoMaisPerto(M, x, z)
+    if (p && p.d < 60 / vv.esc + 40) onMarcar({ via: p.via, u: p.u, nome: "o ponto marcado", cor: ROTA_COR })
+  }
+  const abrir = (v: boolean) => { setAberto(v); onAberto(v) }
+
+  return (
+    <>
+      <button type="button" className="l-mapa-mini" aria-label="abrir o mapa" onPointerDown={(e) => e.stopPropagation()} onClick={() => abrir(true)}>
+        <canvas ref={mini} />
+        {distancia && <span style={{ ["--cor" as string]: destino?.cor ?? ROTA_COR }}>{distancia}</span>}
+      </button>
+      {aberto && (
+        <div className="l-mapa-grande" onPointerDown={(e) => e.stopPropagation()}>
+          <canvas
+            ref={grande}
+            onPointerDown={(e) => {
+              const gs = gesto.current
+              e.currentTarget.setPointerCapture(e.pointerId)
+              gs.dedos.set(e.pointerId, { x: e.clientX, y: e.clientY })
+              if (gs.dedos.size === 1) { gs.x = e.clientX; gs.y = e.clientY; gs.moveu = false }
+              if (gs.dedos.size === 2) { const [a, b] = [...gs.dedos.values()]; gs.dist = Math.hypot(a.x - b.x, a.y - b.y); gs.moveu = true }
+            }}
+            onPointerMove={(e) => {
+              const gs = gesto.current, vv = vista.current
+              if (!gs.dedos.has(e.pointerId)) return
+              const antes = gs.dedos.get(e.pointerId)!
+              gs.dedos.set(e.pointerId, { x: e.clientX, y: e.clientY })
+              if (gs.dedos.size === 2) {
+                const [a, b] = [...gs.dedos.values()], d = Math.hypot(a.x - b.x, a.y - b.y)
+                if (gs.dist) vv.esc = Math.max(0.02, Math.min(2, vv.esc * (d / gs.dist)))
+                gs.dist = d
+                return
+              }
+              if (Math.hypot(e.clientX - gs.x, e.clientY - gs.y) > 8) gs.moveu = true
+              vv.cx -= (e.clientX - antes.x) / vv.esc; vv.cz -= (e.clientY - antes.y) / vv.esc
+            }}
+            onPointerUp={(e) => {
+              const gs = gesto.current
+              gs.dedos.delete(e.pointerId)
+              if (!gs.dedos.size && !gs.moveu) tocar(e.clientX, e.clientY)
+              if (gs.dedos.size < 2) gs.dist = 0
+            }}
+            onPointerCancel={(e) => { gesto.current.dedos.delete(e.pointerId) }}
+            onWheel={(e) => { const vv = vista.current; vv.esc = Math.max(0.02, Math.min(2, vv.esc * (e.deltaY < 0 ? 1.15 : 1 / 1.15))) }}
+          />
+          <header>
+            <b>{destino ? destino.nome : "toca num lugar pra marcar o caminho"}</b>
+            {distancia && <span>{distancia}</span>}
+          </header>
+          <footer>
+            {marca && <button type="button" onClick={() => onMarcar(null)}>tirar a marca</button>}
+            <button type="button" onClick={() => abrir(false)}>voltar pra estrada</button>
+          </footer>
+        </div>
+      )}
+    </>
+  )
+}

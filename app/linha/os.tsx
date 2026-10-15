@@ -70,8 +70,10 @@ export const APPS: AppDef[] = [
 ]
 
 export const DOCK: AppId[] = ["kombi", "n3xo", "linha", "radio"]
-// fora do celular por enquanto (06/10, LU2CA): ficam no código, não aparecem
-export const ESCONDIDOS: AppId[] = ["museu", "feelgood", "galeria", "salabranca", "jardim"]
+// fora do celular por enquanto (06/10, LU2CA): ficam no código, não aparecem.
+// O fliperama saiu em 14/10 (LU2CA): as máquinas ficam só no estabelecimento
+// do fliperama (/fliperama), e os minigames viraram momentos do mundo
+export const ESCONDIDOS: AppId[] = ["museu", "feelgood", "galeria", "salabranca", "jardim", "fliperama"]
 
 export function Glifo({ id, cor, size = 26 }: { id: AppId; cor: string; size?: number }) {
   const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: cor, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const }
@@ -184,7 +186,6 @@ export function Home({
   const lista = useMemo(() => chamados(save, nivel), [save, nivel])
   const minha = save.estacao ? getEstacao(save.estacao) : null
   const prox = NIVEIS[Math.min(nivel + 1, NIVEIS.length - 1)]
-  const dias = sequencia(save.dias)
   const freq = FREQUENCIAS.find((f) => f.id === save.freq) ?? FREQUENCIAS[0]
   const agora = new Date()
 
@@ -240,7 +241,7 @@ export function Home({
                     </span>
                     <span className="l-widget-nivel">{NIVEIS[nivel].nome}</span>
                     <span className="l-widget-barra">{NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}</span>
-                    <span className="l-widget-nums"><b>{save.neon ?? 0}</b> neon · <b>{dias}</b> {dias === 1 ? "dia" : "dias"}</span>
+                    <span className="l-widget-nums"><b>{save.neon ?? 0}</b> neon · <b>{Math.round(save.popularidade ?? 0)}</b> popularidade</span>
                     {nivel < 4 && <small>próximo: {prox.como}</small>}
                   </button>
                   <div className="l-widget l-widget-radio" style={{ ["--cor" as string]: freq.cor }}>

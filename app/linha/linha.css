@@ -1824,3 +1824,85 @@
 .l-ouvir-nome small { margin-left: auto; font: 600 11px var(--mono); color: rgba(232, 239, 255, 0.6); }
 .l-presave { display: grid; place-items: center; margin-top: 10px; min-height: 44px; border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--cor, #1ed760) 70%, transparent); color: var(--cor, #1ed760); background: color-mix(in srgb, var(--cor, #1ed760) 8%, transparent); text-decoration: none; font: 700 13px var(--mono); letter-spacing: 0.04em; }
 .l-ouvir-faixa.is-breve:has(.l-presave) { opacity: 1; }
+
+/* o relógio da cidade (13/10) */
+.l-relogio { position: absolute; left: 12px; top: calc(64px + env(safe-area-inset-top)); z-index: 6; display: flex; flex-direction: column; pointer-events: none; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.l-relogio b { font: 800 17px var(--font-geist-mono), ui-monospace, monospace; color: #fff; font-variant-numeric: tabular-nums; }
+.l-relogio small { white-space: nowrap; font: 700 9px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
+.l-relogio small[data-turno="noite"] { color: #b38cff; }
+.l-relogio small[data-turno="ocio"] { color: #8a93b8; }
+.l-relogio small[data-turno="manha"], .l-relogio small[data-turno="tarde"] { color: #ffc857; }
+button.l-dormir { position: absolute; left: 12px; top: calc(104px + env(safe-area-inset-top)); z-index: 6; padding: 6px 10px !important; border-radius: 999px; border: 0; background: rgba(8, 7, 16, 0.7) !important; color: rgba(255, 255, 255, 0.85) !important; font: 700 10px var(--font-geist-mono), ui-monospace, monospace !important; white-space: nowrap; width: auto !important; letter-spacing: 0.06em; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
+
+/* as flores da Ella (estrada/Flores.tsx) */
+.l-regar-btn { position: absolute; z-index: 7; right: 12px; top: calc(196px + env(safe-area-inset-top)); padding: 10px 16px; border: 0 !important; border-radius: 999px; background: #2fe8ff !important; color: #06141a !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; box-shadow: 0 0 20px rgba(47, 232, 255, 0.6); cursor: pointer; animation: l-regar-pulsa 1.6s ease-in-out infinite; }
+@keyframes l-regar-pulsa { 50% { box-shadow: 0 0 6px rgba(47, 232, 255, 0.3); } }
+/* o vidro embaçado (13/10) */
+.l-embacado { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; filter: blur(2px); }
+.l-embacado-vidro { position: absolute; left: 0; right: 0; top: 16%; height: 40%; touch-action: none; cursor: grab; }
+.l-embacado-dica { position: absolute; left: 50%; top: 36%; transform: translateX(-50%); z-index: 5; padding: 8px 14px; border-radius: 999px; background: rgba(8, 7, 16, 0.75); color: #e6f2ff; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.06em; white-space: nowrap; pointer-events: none; animation: l-pulsa-dica 1.6s ease-in-out infinite; }
+@keyframes l-pulsa-dica { 50% { opacity: 0.55; } }
+
+/* respirar com o Núcleo na cola (13/10) */
+.l-respirar { position: absolute; inset: 0; z-index: 7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(circle, rgba(4, 3, 12, 0.35), rgba(4, 3, 12, 0.75)); touch-action: none; }
+.l-respirar-circulo { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(93, 255, 160, 0.35), rgba(93, 255, 160, 0.05) 70%); box-shadow: 0 0 0 2px rgba(93, 255, 160, 0.7), 0 0 60px rgba(93, 255, 160, 0.4); transition: transform 0.08s linear; position: absolute; }
+.l-respirar b { position: relative; font: 900 26px "Arial Black", system-ui, sans-serif; color: #eafff2; text-transform: uppercase; letter-spacing: 0.1em; }
+.l-respirar-conta { position: relative; display: flex; gap: 8px; margin-top: 150px; }
+.l-respirar-conta i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+.l-respirar-conta i.is-on { background: #5dffa0; box-shadow: 0 0 10px #5dffa0; }
+.l-respirar small { position: relative; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(255, 255, 255, 0.8); text-align: center; max-width: 80%; }
+
+/* a montanha-russa do parque (estrada/Parque.tsx) */
+.l-regar-btn.is-parque { background: #ff5b5b !important; color: #1a0606 !important; box-shadow: 0 0 20px rgba(255, 91, 91, 0.6); }
+.l-viagem.is-montanha .l-painel-kombi, .l-viagem.is-montanha .l-pedal, .l-viagem.is-montanha .l-dormir, :has(.l-viagem.is-montanha) .l-caixa-missao { display: none !important; }
+.l-montanha-hud { position: absolute; z-index: 7; top: calc(64px + env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: center; align-items: baseline; gap: 4px; pointer-events: none; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8); }
+.l-montanha-hud b { font: 900 34px "Arial Black", system-ui, sans-serif; color: #fff; font-variant-numeric: tabular-nums; }
+.l-montanha-hud small { font: 700 10px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
+button.l-montanha-bracos { position: absolute; z-index: 7; right: 18px; bottom: calc(28px + env(safe-area-inset-bottom)); width: 88px !important; height: 88px; border-radius: 50%; background: rgba(255, 91, 91, 0.25) !important; border: 2px solid #ff5b5b !important; color: #fff !important; font: 800 12px var(--font-geist-mono), ui-monospace, monospace !important; letter-spacing: 0.1em; text-transform: uppercase; }
+button.l-montanha-bracos.is-on { background: #ff5b5b !important; color: #1a0606 !important; box-shadow: 0 0 24px #ff5b5b; }
+.l-montanha-foto { position: absolute; z-index: 7; left: 16px; right: 16px; top: calc(110px + env(safe-area-inset-top)); margin: 0; padding: 12px 14px; border-radius: 12px; background: #ffc857; color: #14121c; text-align: center; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; }
+
+/* o mapa (estrada/Mapa.tsx): o minimapa redondo e o mapa grande */
+button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px + env(safe-area-inset-top)); width: 118px !important; height: 118px; padding: 0 !important; border: 0 !important; border-radius: 50%; background: none !important; cursor: pointer; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5); }
+.l-mapa-mini canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.l-mapa-mini span { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); padding: 2px 8px; border-radius: 999px; background: #0b0a12; border: 1px solid var(--cor, #ff3fb0); color: #fff; font: 800 10px var(--font-geist-mono), ui-monospace, monospace; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.l-mapa-grande { position: fixed; inset: 0; z-index: 60; background: #07060e; touch-action: none; }
+.l-mapa-grande canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.l-mapa-grande header { position: absolute; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top)); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(11, 10, 18, 0.85); color: #fff; pointer-events: none; }
+.l-mapa-grande header b { font: 800 14px var(--font-geist-sans), system-ui, sans-serif; }
+.l-mapa-grande header span { font: 800 13px var(--font-geist-mono), ui-monospace, monospace; color: #ff3fb0; font-variant-numeric: tabular-nums; }
+.l-mapa-grande footer { position: absolute; left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 8px; }
+.l-mapa-grande footer button { padding: 12px 18px !important; border-radius: 999px; border: 0 !important; background: #ff3fb0 !important; color: #14121c !important; font: 800 14px var(--font-geist-sans), system-ui, sans-serif !important; width: auto !important; }
+.l-mapa-grande footer button:first-child:not(:last-child) { background: rgba(255, 255, 255, 0.12) !important; color: #fff !important; }
+
+/* os lugares que são páginas (paginas.ts): o botão de entrar e a cutscene */
+.l-regar-btn.is-pagina { background: var(--cor, #ff9000) !important; color: #0b0a12 !important; box-shadow: 0 0 20px color-mix(in srgb, var(--cor, #ff9000) 60%, transparent); }
+.l-pagina-fechada { position: absolute; z-index: 7; right: 12px; top: calc(196px + env(safe-area-inset-top)); margin: 0; padding: 8px 12px; border-radius: 999px; background: rgba(11, 10, 18, 0.8); color: rgba(255, 255, 255, 0.75); font: 700 11px var(--font-geist-mono), ui-monospace, monospace; pointer-events: none; }
+.l-entrada-lugar { position: fixed; inset: 0; z-index: 70; pointer-events: all; animation: l-entrada-escurece 3.4s ease-in forwards; }
+@keyframes l-entrada-escurece { 0%, 70% { background: rgba(0, 0, 0, 0); } 100% { background: rgba(0, 0, 0, 1); } }
+.l-entrada-lugar i { position: absolute; left: 0; right: 0; height: 13vh; background: #000; animation: l-faixa 0.6s ease-out both; }
+.l-faixa-cima { top: 0; }
+.l-faixa-baixo { bottom: 0; }
+@keyframes l-faixa { from { height: 0; } }
+.l-entrada-titulo { position: absolute; left: 0; right: 0; bottom: 16vh; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; animation: l-titulo 3.2s ease-out both; }
+@keyframes l-titulo { 0% { opacity: 0; transform: translateY(14px); } 20%, 80% { opacity: 1; transform: none; } 100% { opacity: 0.6; } }
+.l-entrada-titulo b { font: 900 clamp(40px, 13vw, 72px)/0.9 "Arial Black", system-ui, sans-serif; letter-spacing: 0.04em; color: var(--cor, #ff9000); text-shadow: 0 0 30px color-mix(in srgb, var(--cor, #ff9000) 70%, transparent), 0 2px 0 #000; }
+.l-entrada-titulo small { font: 700 12px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.85); text-shadow: 0 2px 6px #000; }
+.l-entrada-barra { position: absolute; left: 30%; right: 30%; bottom: calc(13vh - 10px); height: 2px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.l-entrada-barra::after { content: ""; position: absolute; inset: 0; width: 40%; background: var(--cor, #ff9000); animation: l-carrega 1s ease-in-out infinite; }
+.l-entrada-barra.is-pronta::after { width: 100%; animation: none; }
+@keyframes l-carrega { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+.l-viagem.is-entrando .l-painel-kombi, .l-viagem.is-entrando .l-pedal, .l-viagem.is-entrando .l-dormir, .l-viagem.is-entrando .l-mapa-mini, .l-viagem.is-entrando .l-relogio, .l-viagem.is-entrando .l-guia, :has(.l-viagem.is-entrando) .l-caixa-missao, :has(.l-viagem.is-entrando) .l-dormir { display: none !important; }
+
+/* o posto e as bombas de rua (estrada/postos.ts) */
+.l-regar-btn.is-bomba { background: #ffc857 !important; color: #1a1206 !important; box-shadow: 0 0 20px rgba(255, 200, 87, 0.6); }
+.l-bomba { position: absolute; z-index: 8; left: 16px; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; background: rgba(11, 10, 18, 0.92); border: 1px solid rgba(255, 200, 87, 0.5); color: #fff; }
+.l-bomba b { font: 900 18px "Arial Black", system-ui, sans-serif; color: #ffc857; text-transform: uppercase; }
+.l-bomba small, .l-bomba em { font: 700 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(255, 255, 255, 0.75); font-style: normal; }
+.l-bomba em { color: #ffc857; }
+.l-bomba-tanque { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.l-bomba-tanque i { display: block; height: 100%; background: linear-gradient(90deg, #ff6a35, #ffc857); transition: width 0.6s; }
+.l-bomba button { padding: 11px !important; border-radius: 10px; border: 0 !important; background: rgba(255, 200, 87, 0.15) !important; color: #fff !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif !important; width: auto !important; }
+.l-bomba button:disabled { opacity: 0.35; }
+.l-bomba button.is-seguir { background: #ffc857 !important; color: #1a1206 !important; }
+:has(.l-bomba) .l-caixa-missao { display: none !important; }

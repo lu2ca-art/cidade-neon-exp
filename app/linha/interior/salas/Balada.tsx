@@ -33,12 +33,16 @@ const PLANOS: Record<string, Plano> = {
   dj: { pos: [0, 2.2, 3], olha: [0, 3.2, -8], fov: 56 },
 }
 
-export function SalaBalada({ estado, objetos }: SalaProps) {
+export function SalaBalada({ estado, objetos, popularidade = 0 }: SalaProps) {
   const [dancou, setDancou] = useState(false)
   const dancando = estado.gesto === "danca"
   const { acertos, tocar, fase } = useRitmo(dancando, META, () => sinalizar({ t: "fim-gesto" }))
   if (acertos >= META && !dancou) setDancou(true)
+  // a multidão copia o seu passo (13/10): cada toque, quem copia pula junto
+  const pulso = useRef(-9)
   useToqueLivre(() => {
+    if (!dancando && !dancou) return
+    pulso.current = performance.now() / 1000
     if (!dancando) return
     const ok = tocar()
     if (ok) { vib(18); gota(5) }
@@ -100,7 +104,7 @@ export function SalaBalada({ estado, objetos }: SalaProps) {
       {bar && <Npc cor="#ff3f7a" pos={[-8.3, 1.68, -3]} vira={1.2} pele="#3a2430" falando={estado.falando === "ela"} />}
       {bar && <Npc cor="#ff6a35" pos={[8.6, 0, -6.5]} vira={-2.2} falando={estado.falando === "Mubarak"} />}
       {/* a gente */}
-      <Multidao gente={gente} celulares={celulares} />
+      <Multidao gente={gente} celulares={celulares} copiam={Math.round(gente.length * Math.min(1, 0.08 + popularidade / 45))} pulso={pulso} />
       <Npc cor={ROSA} pos={[0, 0, 0]} vira={0} pose={dancando || dancou ? "danca" : "em-pe"} dancando={dancando || dancou} falando={estado.falando === "Drewboy"} />
       <AnelRitmo pos={[0, 0.03, 0]} cor={ROSA} fase={fase} ativo={dancando && acertos < META} />
       <Camera plano={plano} />
