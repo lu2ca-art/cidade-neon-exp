@@ -22,6 +22,9 @@ export interface LugarPagina {
   // é a página de um lugar da história que já tem fachada (lugares.ts): não
   // desenha outra, e quando a missão aponta pra ele a cena da missão manda
   lugar?: LugarId
+  // só abre depois dessa missão (o objeto dela no save): o fliperama, depois
+  // de Rollercoaster (decisão do LU2CA nas trilhas, item 10.7)
+  exige?: string
 }
 
 // longe das portas, dos canteiros, do parque, das bifurcações e das chegadas
@@ -29,7 +32,7 @@ export const PAGINAS: LugarPagina[] = [
   { id: "ginasio", nome: "o ginásio", rota: "/ginasio", area: "full", u: 1700, lado: 1, horario: "dia", cor: "#ff9000", letreiro: "GINÁSIO", chegada: "de dia · a quadra tá livre" },
   { id: "galeria", nome: "a galeria", rota: "/galeria", area: "crypto", u: 1550, lado: 1, horario: "dia", cor: "#3d7bff", letreiro: "GALERIA", chegada: "de dia · as paredes esperando quadro" },
   { id: "shows", nome: "a casa de shows", rota: "/casa-de-shows", area: "live", u: 1250, lado: 1, horario: "noite", cor: "#ffc857", letreiro: "SHOW HOJE", chegada: "de noite · um amigo da 222 no palco", lugar: "casa-shows" },
-  { id: "fliperama", nome: "o fliperama", rota: "/fliperama", area: "live", u: 1500, lado: -1, horario: "noite", cor: "#ff6a35", letreiro: "FLIPERAMA", chegada: "de noite · as fichas tilintando" },
+  { id: "fliperama", nome: "o fliperama", rota: "/fliperama", area: "live", u: 1500, lado: -1, horario: "noite", cor: "#ff6a35", letreiro: "FLIPERAMA", chegada: "de noite · as fichas tilintando", exige: "rollercoaster" },
 ]
 
 // a página foi aberta a partir da cidade? então o "sair" volta pra estrada.
@@ -42,3 +45,6 @@ export function sairDaPagina(push: (url: string) => void, senao = "/?screen=home
   try { daCidade = new URLSearchParams(location.search).get("de") === "cidade" || sessionStorage.getItem(MARCA) === "1" } catch {}
   push(daCidade ? "/linha?volta=cidade" : senao)
 }
+
+// a porta ainda trancada pela história (não diz quando abre)
+export const trancadaPelaHistoria = (lp: LugarPagina, objetos: string[]) => !!lp.exige && !objetos.includes(lp.exige)
