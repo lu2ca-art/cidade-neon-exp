@@ -206,6 +206,9 @@ type Jogo = {
   impacto: number; soco: boolean
   tempo: number; voltaIni: number; voltas: number
   chegando: boolean; parado: boolean; encaixar?: boolean
+  // a Kombi desligada (LU2CA 15/10): 10 s sem tocar em nada, ou chegou numa
+  // missão; só anda de novo com "dar partida"
+  desligada?: boolean
   // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
   // para, sem o "chegou"
   encostando?: boolean
@@ -250,7 +253,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean }
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number }
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
 // O CÉU NA HORA (06/10, LU2CA): o jogo começa no fim de tarde (18 h, o tom
@@ -385,7 +388,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvoChave])
 
-  const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false, mao: false })
+  const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false, mao: false, ultimo: 0 })
   const [jogo0] = useState(() => retomarJogo(M, retomada) ?? novoJogo(M, destino, save.estacao, abertura))
   // a abertura: onde a casa fica e em que pé a pessoa está
   const casaPose = poses["casa-dbee"]
@@ -463,6 +466,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [esperandoPosto, setEsperandoPosto] = useState(false)
   // a gasolina acabou: de patins até o posto ou uma bomba, e volta com o galão
   const [dePatins, setDePatins] = useState(false)
+  // a Kombi desligada: no lugar da ré, "dar partida"
+  const [desligada, setDesligada] = useState(false)
+  const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
+  useEffect(() => {
+    // qualquer toque ou tecla conta como "tem gente dirigindo"
+    const vivo = () => { input.current.ultimo = performance.now() }
+    vivo()
+    window.addEventListener("pointerdown", vivo); window.addEventListener("keydown", vivo)
+    return () => { window.removeEventListener("pointerdown", vivo); window.removeEventListener("keydown", vivo) }
+  }, [])
   const [msgPatins, setMsgPatins] = useState("")
   const postoJaAbriu = useRef(false)
   const abastecer = (onde: string) => {
@@ -547,6 +560,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       if (M.circuito[LUGARES.posto.area] === j.via && pertoDe(Vb.L, !!Vb.fechada, LUGARES.posto.u, j.u)) combustivel = "posto"
       for (const bb of BOMBAS) if (M.circuito[bb.area] === j.via && pertoDe(Vb.L, !!Vb.fechada, bb.u, j.u)) combustivel = bb.id
       setPertoComb(combustivel)
+      setDesligada(!!j.desligada)
       if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
     }, 300)
     return () => clearInterval(t)
@@ -1316,7 +1330,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         if (on && !ev.repeat) input.current.toqueD = true
         input.current.dir = on
       }
-      else if (k === "arrowup" || k === "w") input.current.gas = on
+      else if (k === "arrowup" || k === "w") { input.current.gas = on; if (on) jogo.current.desligada = false }
       else if (k === "arrowdown" || k === "s") input.current.freio = on
       else if ((k === "shift" || k === "e") && on) input.current.turbo = true
       else if (k === " " || k === "q") input.current.mao = on
@@ -1696,14 +1710,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
       {/* celular: freio/ré (segurar). Drift é na direção: a finta */}
       <div className={`l-pedais ${dentro ? "is-oculto" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
-        <button
+        {desligada ? (
+          <button type="button" className="l-pedal is-partida" onPointerDown={(e) => e.stopPropagation()} onClick={darPartida}>dar<br />partida</button>
+        ) : <button
           type="button"
           className="l-pedal is-re"
           onPointerDown={(e) => { e.stopPropagation(); input.current.freio = true }}
           onPointerUp={() => { input.current.freio = false }}
           onPointerCancel={() => { input.current.freio = false }}
           onPointerLeave={() => { input.current.freio = false }}
-        >freio<br />ré</button>
+        >freio<br />ré</button>}
         <button
           type="button"
           className="l-pedal is-mao"
@@ -2707,7 +2723,7 @@ function Cena({
     } else if (j.chegando || j.encostando || j.segura || j.noMapa) {
       j.v = Math.max(0, j.v - FREIO * 0.8 * dt)
       j.x += (0 - j.x) * dt * 1.5
-      if (j.chegando && j.v < 0.5 && !j.parado) { j.parado = true; ev.chegou(); motor?.atualizar(0, false, false) }
+      if (j.chegando && j.v < 0.5 && !j.parado) { j.parado = true; j.desligada = true; ev.chegou(); motor?.atualizar(0, false, false) }
     } else {
       // de dentro (primeira pessoa) a Kombi vai no AUTOMÁTICO: segue a pista
       // e pega sozinha a saída que leva pra missão; você só olha em volta
@@ -2763,8 +2779,15 @@ function Cena({
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
       const abAqui = ab.ativa && j.via === ab.via
-      const gas = !(abAqui && (ab.semGas || ab.fase !== "dirige")) && (auto || inp.gas || (toqueTela && !inp.freio))
-      if (inp.freio && !auto) {
+      // 10 s sem tocar em nada: tira o pé, freia devagar e desliga (no
+      // automático da primeira pessoa e com o celular aberto ela segue)
+      if (inp.esq || inp.dir || inp.gas || inp.freio || inp.mao) inp.ultimo = performance.now()
+      const ocioso = !auto && !abAqui && inp.ultimo > 0 && performance.now() - inp.ultimo > 10000
+      if (ocioso && Math.abs(j.v) < 0.3) j.desligada = true
+      const gas = !j.desligada && !ocioso && !(abAqui && (ab.semGas || ab.fase !== "dirige")) && (auto || inp.gas || (toqueTela && !inp.freio))
+      if (j.desligada || ocioso) {
+        j.v = Math.abs(j.v) < 0.3 ? 0 : j.v - Math.sign(j.v) * FREIO * 0.3 * dt
+      } else if (inp.freio && !auto) {
         if (j.v > 0.8) j.v = Math.max(0, j.v - FREIO * dt)
         else j.v = Math.max(-VRE, j.v - 9 * dt)
       } else if (gas || j.turboT > 0) {

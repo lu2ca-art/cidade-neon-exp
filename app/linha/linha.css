@@ -1918,3 +1918,7 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-pedal.is-mao { width: 60px; height: 60px; font-size: 9px !important; }
 .l-pedal.is-mao:active { background: rgba(255, 200, 87, 0.4) !important; }
 .l-regar-btn.is-patins { background: #ff3fb0 !important; color: #14121c !important; box-shadow: 0 0 20px rgba(255, 63, 176, 0.6); }
+/* a Kombi desligada: o botão de partida no lugar da ré */
+.l-pedal.is-partida { width: 74px; height: 74px; font-size: 10px !important; background: #5dffa0 !important; color: #06140c !important; border-color: #5dffa0 !important; box-shadow: 0 0 22px rgba(93, 255, 160, 0.6); animation: l-regar-pulsa 1.6s ease-in-out infinite; }
+/* no computador o botão também aparece (os pedais são só do celular) */
+.l-pedais:has(.is-partida) { display: flex; }
