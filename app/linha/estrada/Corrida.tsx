@@ -29,6 +29,7 @@ import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
+import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
@@ -211,6 +212,8 @@ type Jogo = {
   // a Kombi desligada (LU2CA 15/10): 10 s sem tocar em nada, ou chegou numa
   // missão; só anda de novo com "dar partida"
   desligada?: boolean
+  // o mapa novo: pediu o retorno (troca pra outra mão da mesma rua)
+  retorno?: boolean
   // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
   // para, sem o "chegou"
   encostando?: boolean
@@ -298,13 +301,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const lugarDaMissao: LugarId | null = !caido && alvo?.t === "lugar" ? alvo.lugar : null
   // o destino que você marcou no mapa (senão, o mapa aponta a missão)
   const [marca, setMarca] = useState<Marca | null>(null)
+  const marcaRef = useRef<Marca | null>(null)
+  useEffect(() => { marcaRef.current = marca }, [marca])
   // a vaga que vale agora (encostar nela começa a cena)
   const vagaRef = useRef<{ id: LugarId; via: number; u: number; lado: 1 | -1; nome: string; cor: string; quem: string } | null>(null)
   useEffect(() => {
     if (!lugarDaMissao) { vagaRef.current = null; return }
     const l = LUGARES[lugarDaMissao]
     const p = poses[lugarDaMissao]
-    vagaRef.current = { id: l.id, via: p.via, u: l.u, lado: l.lado, nome: l.nome, cor: l.cor, quem: l.gente[0]?.quem ?? "" }
+    vagaRef.current = { id: l.id, via: p.via, u: p.u, lado: p.lado, nome: l.nome, cor: l.cor, quem: l.gente[0]?.quem ?? "" }
   }, [lugarDaMissao, poses])
   // o lugar secreto: sem aviso nem guia; a Cena conta as passadas
   const segredoRef = useRef<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>(null)
@@ -431,6 +436,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [dePatins, setDePatins] = useState(false)
   // a Kombi desligada: no lugar da ré, "dar partida"
   const [desligada, setDesligada] = useState(false)
+  const [retorno, setRetorno] = useState(false)
   const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
   useEffect(() => {
     // qualquer toque ou tecla conta como "tem gente dirigindo"
@@ -526,6 +532,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       for (const bb of BOMBAS) { const ob = posicao(M, `bomba:${bb.id}`, bb.area, bb.u, bb.lado); if (ob.via === j.via && pertoDe(Vb.L, !!Vb.fechada, ob.u, j.u)) combustivel = bb.id }
       setPertoComb(combustivel)
       setDesligada(!!j.desligada)
+      {
+        // o mapa novo: dá pra fazer o retorno aqui? (os pontos da rede, nas retas compridas)
+        const Vr = M.vias[j.via]
+        let pode = false
+        if (Vr.tipo === "rua" && Vr.rede) {
+          const f = Vr.rede.ida ? j.u / Vr.L : 1 - j.u / Vr.L
+          pode = (M as MundoRede).ligacoes.rede.retornos.some((r) => r.aresta === Vr.rede!.aresta && Math.abs(r.f - f) * Vr.L < 45)
+        }
+        setRetorno(pode)
+      }
       if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
     }, 300)
     return () => clearInterval(t)
@@ -1265,6 +1281,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       evs.current?.via(o.via)
       return { via: M.vias[o.via].id, u: o.u }
     }
+    ;(w as Record<string, unknown>).__marcar = (chave: string) => { const o = M.onde?.(chave); if (o) setMarca({ via: o.via, u: o.u, nome: chave, cor: "#5dffa0" }); return o }
+    ;(w as Record<string, unknown>).__irRetorno = () => {
+      if (!("ligacoes" in M)) return null
+      const r = (M as MundoRede).ligacoes.rede.retornos[3], vi = 2 * r.aresta, j = jogo.current
+      j.via = vi; j.u = Math.max(0, r.f * M.vias[vi].L - 70); j.x = 0; j.encaixar = true; evs.current?.via(vi)
+      return M.vias[vi].id
+    }
     w.__tom = () => tomDaMusica()
     // teste: a hora do jogo (0–24)
     w.__hora = (h: number) => { horaRef.current = h }
@@ -1393,7 +1416,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} />
         </Canvas>
       )}
 
@@ -1528,6 +1551,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
           de NEON fica só no celular */}
       {/* o relógio da cidade (13/10): a hora e o dia */}
+      {retorno && !entrando && <button type="button" className="l-regar-btn is-retorno" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.retorno = true }}>↩ retorno</button>}
       {/* sem gasolina: os patins (a Kombi fica) */}
       {tanque <= 0.001 && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
         <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
@@ -1920,7 +1944,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
@@ -1932,6 +1956,7 @@ function Cena({
   camEntrada: React.RefObject<{ cam: THREE.Vector3; olhar: THREE.Vector3 } | null>
   climaRef: React.RefObject<{ chove: boolean; k: number }>
   respiroRef: React.MutableRefObject<{ pode: boolean; feito: boolean }>
+  marcaRef: React.RefObject<Marca | null>
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -2931,6 +2956,14 @@ function Cena({
     else j.dRaspa = Math.max(0, j.dRaspa - dt)
     j.st.vmax = Math.max(j.st.vmax, j.v)
 
+    // o retorno (mapa novo): passa pra outra mão da mesma rua, no mesmo ponto
+    if (j.retorno && V.tipo === "rua" && V.rede) {
+      j.retorno = false
+      const par = V.rede.par
+      j.via = par; j.u = Math.max(0, M.vias[par].L - j.u); j.x = 0; j.vx = 0; j.v *= 0.4
+      j.shake = Math.max(j.shake, 0.2); vib([20, 40, 20])
+      V = M.vias[j.via]; ev.via(j.via)
+    }
     const uAnt = j.u
     j.u += j.v * dt
     let trocou = false
@@ -2960,7 +2993,13 @@ function Cena({
       const tx = V.tx[V.n - 1], tz = V.tz[V.n - 1]
       const lado = (inp.dir ? 1 : 0) - (inp.esq ? 1 : 0)
       let prox = V.rede.par, melhor = -Infinity
+      // com destino (o que você marcou no mapa, senão a vaga da missão): a rota escolhe
+      const alvoR = marcaRef.current ?? vagaRef.current
+      const rr = alvoR && !lado ? calcularRota(M, { via: j.via, u: V.L }, { via: alvoR.via, u: alvoR.u }) : null
+      const pelaRota = rr?.trechos[1]?.via
+      if (pelaRota !== undefined && cands.includes(pelaRota)) { melhor = Infinity; prox = pelaRota }
       for (const vi of cands) {
+        if (melhor === Infinity) break
         const C = M.vias[vi], reto = tx * C.tx[0] + tz * C.tz[0], direita = tx * C.tz[0] - tz * C.tx[0]
         const nota = lado === 0 ? reto : lado * direita * 2 + reto * 0.3
         if (nota > melhor) { melhor = nota; prox = vi }

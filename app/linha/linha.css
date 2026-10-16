@@ -1922,3 +1922,4 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-pedal.is-partida { width: 74px; height: 74px; font-size: 10px !important; background: #5dffa0 !important; color: #06140c !important; border-color: #5dffa0 !important; box-shadow: 0 0 22px rgba(93, 255, 160, 0.6); animation: l-regar-pulsa 1.6s ease-in-out infinite; }
 /* no computador o botão também aparece (os pedais são só do celular) */
 .l-pedais:has(.is-partida) { display: flex; }
+.l-regar-btn.is-retorno { top: calc(250px + env(safe-area-inset-top)); background: #2fe8ff !important; }

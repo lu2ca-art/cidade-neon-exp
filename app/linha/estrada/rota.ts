@@ -5,6 +5,7 @@
 // é o caminho mais curto de onde a Kombi está até um ponto (via, u).
 
 import type { Mundo } from "./mundo"
+import { calcularRotaRede, type MundoRede } from "./mundoRede"
 import { PASSO } from "./pista"
 
 export interface Ponto { via: number; u: number }
@@ -17,6 +18,8 @@ function frente(L: number, de: number, ate: number) {
 }
 
 export function calcularRota(M: Mundo, de: Ponto, ate: Ponto): Rota | null {
+  // o mapa novo: a rede de ruas
+  if ("ligacoes" in M) return calcularRotaRede(M as MundoRede, de, ate)
   let melhor: Rota | null = null
   const busca = (p: Ponto, feito: Trecho[], metros: number, visitados: Set<number>) => {
     if (melhor && metros >= melhor.metros) return
