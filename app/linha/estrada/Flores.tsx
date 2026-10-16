@@ -9,7 +9,7 @@
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
 import * as THREE from "three"
-import type { Mundo } from "./mundo"
+import { posicao, type Mundo } from "./mundo"
 import { MEIA, PASSO, pontoI } from "./pista"
 
 const CIANO = "#2fe8ff"
@@ -31,9 +31,12 @@ const MURCHA = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0
 
 function UmCanteiro({ M, c, regado }: { M: Mundo; c: Canteiro; regado: boolean }) {
   const { pos, rumo } = useMemo(() => {
-    const C = M.vias[M.circuito[c.area]]
-    const i = C.fechada ? ((Math.round(c.u / PASSO) % C.n) + C.n) % C.n : Math.max(0, Math.min(C.n - 1, Math.round(c.u / PASSO)))
-    return { pos: pontoI(C, i, c.lado * (MEIA - 1.4), 0, new THREE.Vector3()), rumo: Math.atan2(C.tx[i], C.tz[i]) }
+    const o = posicao(M, `flor:${c.id}`, c.area, c.u, c.lado)
+    const C = M.vias[o.via]
+    const i = C.fechada ? ((Math.round(o.u / PASSO) % C.n) + C.n) % C.n : Math.max(0, Math.min(C.n - 1, Math.round(o.u / PASSO)))
+    // (na beira da pista: no mapa novo a mão é mais estreita que a pista de sempre)
+    const borda = C.tipo === "rua" ? C.dir[i] + 1.2 : MEIA - 1.4
+    return { pos: pontoI(C, i, o.lado * borda, 0, new THREE.Vector3()), rumo: Math.atan2(C.tx[i], C.tz[i]) }
   }, [M, c])
   const flores = useRef<THREE.Group>(null)
   const abre = useRef(regado ? 1 : 0)

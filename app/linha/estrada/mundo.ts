@@ -92,6 +92,18 @@ export interface Mundo {
   // pilar pode descer daqui (x, z, altura) até a água sem furar outra pista?
   vao: (x: number, z: number, y: number) => boolean
   conflitos: string[]
+  // o mapa novo: onde fica cada coisa ("lugar:bar", "pagina:ginasio",
+  // "flor:linha-1", "bomba:bomba-arena", "parque") — via, u e o lado
+  onde?: (chave: string) => Onde | null
+}
+
+export interface Onde { via: number; u: number; lado: 1 | -1 }
+// a posição de uma coisa do jogo: no mapa novo, a tabela dele; no de
+// sempre, o circuito do lugar (ou a via com nome) e o u
+export function posicao(M: Mundo, chave: string, area: FreqId, u: number, lado: 1 | -1, via?: string): Onde {
+  const r = M.onde?.(chave)
+  if (r) return r
+  return { via: via ? M.vias.findIndex((v) => v.id === via) : M.circuito[area], u, lado }
 }
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)

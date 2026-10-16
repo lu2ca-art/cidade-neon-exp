@@ -8,7 +8,7 @@
 // marcado, a rota vai pra missão.
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { Mundo } from "./mundo"
+import { posicao, type Mundo } from "./mundo"
 import { distritoDe } from "./mundo"
 import { PASSO } from "./pista"
 import { calcularRota, pontoMaisPerto, type Ponto, type Rota } from "./rota"
@@ -53,13 +53,13 @@ function blipsDo(M: Mundo): Blip[] {
   const b: Blip[] = []
   for (const l of Object.values(LUGARES)) {
     if (l.segredo) continue
-    const via = l.via ? M.vias.findIndex((v) => v.id === l.via) : M.circuito[l.area]
-    if (via < 0) continue
-    b.push({ id: l.id, nome: l.nome, cor: l.cor, via, u: l.u, tipo: l.id === "posto" ? "posto" : "lugar" })
+    const o = posicao(M, `lugar:${l.id}`, l.area, l.u, l.lado, l.via)
+    if (o.via < 0) continue
+    b.push({ id: l.id, nome: l.nome, cor: l.cor, via: o.via, u: o.u, tipo: l.id === "posto" ? "posto" : "lugar" })
   }
-  for (const lp of PAGINAS) if (!lp.lugar) b.push({ id: lp.id, nome: lp.nome, cor: lp.cor, via: M.circuito[lp.area], u: lp.u, tipo: "lugar" })
-  b.push({ id: "parque", nome: "o parque", cor: "#ff5b5b", via: M.circuito[PARQUE.area], u: PARQUE.u, tipo: "parque" })
-  for (const c of CANTEIROS) b.push({ id: `flor-${c.id}`, nome: "um canteiro da Ella", cor: "#2fe8ff", via: M.circuito[c.area], u: c.u, tipo: "flor" })
+  for (const lp of PAGINAS) if (!lp.lugar) { const o = posicao(M, `pagina:${lp.id}`, lp.area, lp.u, lp.lado); b.push({ id: lp.id, nome: lp.nome, cor: lp.cor, via: o.via, u: o.u, tipo: "lugar" }) }
+  { const o = posicao(M, "parque", PARQUE.area, PARQUE.u, PARQUE.lado); b.push({ id: "parque", nome: "o parque", cor: "#ff5b5b", via: o.via, u: o.u, tipo: "parque" }) }
+  for (const c of CANTEIROS) { const o = posicao(M, `flor:${c.id}`, c.area, c.u, c.lado); b.push({ id: `flor-${c.id}`, nome: "um canteiro da Ella", cor: "#2fe8ff", via: o.via, u: o.u, tipo: "flor" }) }
   return b
 }
 

@@ -12,7 +12,8 @@ import { montarRede, type Rede } from "../rede/rede"
 import { ESCALA, H, W, altura, bairro, costa } from "../rede/terreno"
 import { amostrar, derivar, type Pista } from "./pista"
 import type { FreqId } from "../radio"
-import type { Mundo, Via } from "./mundo"
+import type { Mundo, Onde, Via } from "./mundo"
+import { CANTEIROS } from "./canteiros"
 
 export const MAO = 5.5 // meia largura de cada mão (m)
 const ALT = 0.6 // metros de altura por unidade da maquete
@@ -110,7 +111,48 @@ export function montarMundoRede(): MundoRede {
   }
   const livre = (x: number, z: number, folga: number) => !perto(x, z, folga + 40, (l, q) => Math.hypot(l[q] - x, l[q + 1] - z) < l[q + 2] + folga)
   const vao = (x: number, z: number, y: number) => !perto(x, z, 40, (l, q) => l[q + 3] < y - 3 && Math.hypot(l[q] - x, l[q + 1] - z) < l[q + 2] + 2)
-  CACHE = { vias, circuito, livre, vao, conflitos: [], ligacoes: { rede, saidas }, chao: chaoEm }
+  // ── onde fica cada coisa no mapa novo (a distribuição do LU2CA, 14/10) ──
+  const POS: Record<string, [number, number]> = {
+    "lugar:bar": [640, 920], "lugar:casa-drewboy": [705, 875], "lugar:escondido": [915, 1100], "lugar:beco": [610, 1010],
+    "lugar:balada": [915, 590], "lugar:posto": [1105, 615], "lugar:plataforma": [1010, 495],
+    "lugar:topo": [1610, 305], "lugar:casa-shows": [1630, 715], "lugar:casa-dbee": [115, 985],
+    "pagina:ginasio": [1000, 945], "pagina:galeria": [830, 655], "pagina:fliperama": [715, 1085], "pagina:oficina": [990, 1175],
+    "parque": [1440, 1080],
+    "bomba:bomba-mirante": [1450, 440], "bomba:bomba-arena": [1500, 780], "bomba:bomba-avenida": [1250, 1160],
+  }
+  // encosta no lado de dentro (a calçada) da mão mais perto
+  const encostar = (x: number, y: number): Onde => {
+    const X = mx(x), Z = mz(y)
+    let best: Onde = { via: 0, u: 0, lado: 1 }, bd = Infinity
+    vias.forEach((v, vi) => {
+      if (v.rede!.tipo === "expressa" || v.rede!.tipo === "rampa") return
+      for (let i = 20; i < v.n - 20; i += 2) {
+        const dx = X - v.px[i], dz = Z - v.pz[i], d = Math.hypot(dx, dz)
+        const direita = dx * -v.tz[i] + dz * v.tx[i] > 0
+        const nota = d + (direita ? 0 : 12)
+        if (nota < bd) { bd = nota; best = { via: vi, u: i * 2, lado: 1 } }
+      }
+    })
+    return best
+  }
+  const tabela = new Map<string, Onde>()
+  for (const [k, [x, y]] of Object.entries(POS)) tabela.set(k, encostar(x, y))
+  // os canteiros da Ella: espalhados pelas ruas da cidade, do subúrbio e da orla
+  const lugarVago = (vi: number, u: number) => [...tabela.values()].every((o) => { const a = vias[o.via], b = vias[vi], ia = Math.floor(o.u / 2), ib = Math.floor(u / 2); return Math.hypot(a.px[ia] - b.px[ib], a.pz[ia] - b.pz[ib]) > 120 })
+  const ruasDaElla = vias.map((v, vi) => ({ v, vi })).filter(({ v }) => v.rede!.ida && ["rua", "avenida", "principal", "orla", "beco"].includes(v.rede!.tipo) && ["cidade", "suburbio", "orla"].includes(v.rede!.bairro))
+  const total = ruasDaElla.reduce((a, r) => a + r.v.L, 0)
+  let acc = 0, k = 0
+  const passo = total / CANTEIROS.length
+  for (const { v, vi } of ruasDaElla) {
+    for (let u = 60; u < v.L - 60 && k < CANTEIROS.length; u += 20) {
+      if (acc + u < (k + 0.5) * passo) continue
+      if (!lugarVago(vi, u)) continue
+      tabela.set(`flor:${CANTEIROS[k].id}`, { via: vi, u, lado: 1 }); k++
+    }
+    acc += v.L
+  }
+  const onde = (chave: string) => tabela.get(chave) ?? null
+  CACHE = { vias, circuito, livre, vao, conflitos: [], ligacoes: { rede, saidas }, chao: chaoEm, onde }
   return CACHE
 }
 
