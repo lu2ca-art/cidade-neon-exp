@@ -58,7 +58,13 @@ export const LINKS: Partial<Record<EstacaoId, Partial<Record<PlataformaId, strin
     youtube: "https://music.youtube.com/watch?v=oedzqXNw-U0",
     deezer: "https://www.deezer.com/track/4279545722",
   },
-  // nectar, ojala, swav, rollercoaster: no dia de cada lançamento
+  nectar: {
+    spotify: "https://open.spotify.com/track/1xmpDdYDKLx9UhiqMkUiop",
+    apple: "https://music.apple.com/br/album/nectar/6819845250?i=6819845474",
+    youtube: yt("nectar"),
+    // deezer: ainda não aparecia na busca do Deezer em 16/10 (cai no artista)
+  },
+  // ojala, swav, rollercoaster: no dia de cada lançamento
 }
 
 // Pré-save (smartlink da Ditto) das faixas que ainda não saíram. No dia do
