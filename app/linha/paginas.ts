@@ -40,12 +40,13 @@ export const PAGINAS: LugarPagina[] = [
 // a página foi aberta a partir da cidade? então o "sair" volta pra estrada.
 // Fica marcado na sessão (vale pras subpáginas, como pintar dentro da galeria)
 const MARCA = "cn-de-cidade"
-export function marcarDaCidade() { try { sessionStorage.setItem(MARCA, "1") } catch {} }
+// valor "nova": veio da cidade nova (/cidade), e é pra lá que volta
+export function marcarDaCidade(de: "1" | "nova" = "1") { try { sessionStorage.setItem(MARCA, de) } catch {} }
 export function limparDaCidade() { try { sessionStorage.removeItem(MARCA) } catch {} }
 export function sairDaPagina(push: (url: string) => void, senao = "/?screen=home") {
-  let daCidade = false
-  try { daCidade = new URLSearchParams(location.search).get("de") === "cidade" || sessionStorage.getItem(MARCA) === "1" } catch {}
-  push(daCidade ? "/linha?volta=cidade" : senao)
+  let daCidade = false, nova = false
+  try { nova = sessionStorage.getItem(MARCA) === "nova"; daCidade = new URLSearchParams(location.search).get("de") === "cidade" || sessionStorage.getItem(MARCA) === "1" } catch {}
+  push(nova ? "/cidade?volta=1" : daCidade ? "/linha?volta=cidade" : senao)
 }
 
 // a porta ainda trancada pela história (não diz quando abre)
