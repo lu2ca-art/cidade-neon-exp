@@ -59,7 +59,7 @@ export function montarModelos(): Modelo[] {
     // a estufa de vidro e o teto
     const estufa: [number, number][] = [[cab[0], cint - 0.02], [cab[0] + incl[0], H - 0.07], [cab[1] - incl[1], H - 0.07], [cab[1], cint - 0.02]]
     const teto: [number, number][] = [[cab[0] + incl[0] - 0.03, H - 0.08], [cab[1] - incl[1] + 0.03, H - 0.08], [cab[1] - incl[1] + 0.03, H], [cab[0] + incl[0] - 0.03, H]]
-    const pintadas = [extrudar(corpo, W), extrudar(teto, W - 0.06)]
+    const pintadas: THREE.BufferGeometry[] = [extrudar(corpo, W), extrudar(teto, W - 0.06)]
     if (p.cacamba) {
       // as paredes da caçamba
       for (const z of [-1, 1]) { const b = new THREE.BoxGeometry(0.08, cint - cl + 0.25, cab[0] - x0); b.translate(z * (W / 2 - 0.04), (cint + cl) / 2 + 0.1, (x0 + cab[0]) / 2); pintadas.push(b) }
