@@ -214,6 +214,7 @@ type Jogo = {
   desligada?: boolean
   // o mapa novo: pediu o retorno (troca pra outra mão da mesma rua)
   retorno?: boolean
+  tVolta?: number // parado, segurando freio + um lado: quanto tempo (meia-volta)
   // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
   // para, sem o "chegou"
   encostando?: boolean
@@ -438,7 +439,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [pertoKombi, setPertoKombi] = useState(false)
   // a Kombi desligada: no lugar da ré, "dar partida"
   const [desligada, setDesligada] = useState(false)
-  const [retorno, setRetorno] = useState(false)
   const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
   useEffect(() => {
     // qualquer toque ou tecla conta como "tem gente dirigindo"
@@ -539,16 +539,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         setSeco(!aberturaRef.current.ativa && cb.tanque <= 0)
         setPertoKombi(!!(cb.patins && cb.parada && cb.aqui && cb.aqui.distanceTo(cb.parada.pos) < 18))
       }
-      {
-        // o mapa novo: dá pra fazer o retorno aqui? (os pontos da rede, nas retas compridas)
-        const Vr = M.vias[j.via]
-        let pode = false
-        if (Vr.tipo === "rua" && Vr.rede) {
-          const f = Vr.rede.ida ? j.u / Vr.L : 1 - j.u / Vr.L
-          pode = (M as MundoRede).ligacoes.rede.retornos.some((r) => r.aresta === Vr.rede!.aresta && Math.abs(r.f - f) * Vr.L < 45)
-        }
-        setRetorno(pode)
-      }
+
       if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
     }, 300)
     return () => clearInterval(t)
@@ -1321,7 +1312,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts) }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo }
     }
     return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora; delete w.__procurado }
   }, [M])
@@ -1573,7 +1564,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           como no painel de uma Kombi de verdade (o mesmo na 1ª pessoa). O saldo
           de NEON fica só no celular */}
       {/* o relógio da cidade (13/10): a hora e o dia */}
-      {retorno && !entrando && <button type="button" className="l-regar-btn is-retorno" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.retorno = true }}>↩ retorno</button>}
       {/* sem gasolina: os patins (a Kombi fica) */}
       {seco && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
         <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
@@ -2986,11 +2976,17 @@ function Cena({
     else j.dRaspa = Math.max(0, j.dRaspa - dt)
     j.st.vmax = Math.max(j.st.vmax, j.v)
 
-    // o retorno (mapa novo): passa pra outra mão da mesma rua, no mesmo ponto
+    // a meia-volta (mapa novo): parado, segurando o freio e um lado por meio segundo
+    if (V.tipo === "rua" && Math.abs(j.v) < 6 && inp.freio && (inp.esq || inp.dir)) {
+      j.v = 0 // segura parada (sem dar ré) enquanto faz a manobra
+      j.tVolta = (j.tVolta ?? 0) + dt
+      if (j.tVolta > 0.5) { j.tVolta = 0; j.retorno = true }
+    } else j.tVolta = 0
     if (j.retorno && V.tipo === "rua" && V.rede) {
       j.retorno = false
       const par = V.rede.par
-      j.via = par; j.u = Math.max(0, M.vias[par].L - j.u); j.x = 0; j.vx = 0; j.v *= 0.4
+      // (o mesmo eixo: o lado da rua só espelha)
+      j.via = par; j.u = Math.max(0, M.vias[par].L - j.u); j.x = -j.x; j.vx = 0; j.v = 0
       j.shake = Math.max(j.shake, 0.2); vib([20, 40, 20])
       V = M.vias[j.via]; ev.via(j.via)
     }
