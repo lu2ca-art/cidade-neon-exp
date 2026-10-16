@@ -13,6 +13,9 @@ import * as THREE from "three"
 import { KombiHerbal } from "../linha/estrada/KombiHerbal"
 import { rota as calcRota } from "../linha/rede/rede"
 import { CLIMA, MAR, VMAX, geoRelevo, geoRuas, lotes, naTrilha, type Mundo, type Trilha } from "./mundo"
+import { astros, ceuNaHora } from "../linha/ceu"
+import { SEG_POR_HORA } from "../linha/relogio"
+import { chovendo } from "../linha/clima"
 import { W, H, ESCALA } from "../linha/rede/terreno"
 
 export interface Carro {
@@ -36,7 +39,9 @@ function janelas() {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t
 }
 
-function Cidade({ mundo }: { mundo: Mundo }) {
+export interface Ceu { hora: number; dia: number; noite: number; chove: boolean }
+
+function Cidade({ mundo, ceu }: { mundo: Mundo; ceu: React.RefObject<Ceu> }) {
   const { relevo, ruas, lt } = useMemo(() => {
     const r = geoRelevo(mundo)
     return { relevo: r.geo, ruas: geoRuas(mundo), lt: lotes(mundo, r.grade) }
@@ -70,19 +75,28 @@ function Cidade({ mundo }: { mundo: Mundo }) {
     if (pl) { lt.pilares.forEach((p, i) => { o.position.set(p.x, p.y, p.z); o.rotation.set(0, 0, 0); o.scale.set(2.4, p.h, 2.4); o.updateMatrix(); pl.setMatrixAt(i, o.matrix) }); pl.instanceMatrix.needsUpdate = true; pl.computeBoundingSphere() }
   }, [grupos, lt])
   const poste = useMemo(() => { const g = new THREE.CylinderGeometry(0.12, 0.16, 7, 5); g.translate(0, 3.5, 0); return g }, [])
+  // de noite as janelas e os postes acendem; de dia apagam
+  const matTorre = useRef<THREE.MeshStandardMaterial>(null), matLuz = useRef<THREE.MeshBasicMaterial>(null), matAsf = useRef<THREE.MeshStandardMaterial>(null)
+  useFrame(() => {
+    const n = ceu.current.noite
+    if (matTorre.current) matTorre.current.emissiveIntensity = 0.15 + n * 0.8
+    if (matLuz.current) matLuz.current.color.setScalar(0.25 + n * 0.75)
+    // chovendo, o asfalto molha (espelha)
+    if (matAsf.current) { const alvo = ceu.current.chove ? 0.18 : 0.6; matAsf.current.roughness += (alvo - matAsf.current.roughness) * 0.02 }
+  })
   return (
     <group>
       <mesh geometry={relevo}><meshStandardMaterial vertexColors roughness={0.95} /></mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, MAR, 0]}><planeGeometry args={[W * ESCALA * 2, H * ESCALA * 2]} /><meshStandardMaterial color="#0e3a52" roughness={0.12} metalness={0.6} /></mesh>
-      <mesh geometry={ruas.asfalto}><meshStandardMaterial color="#1c1a24" roughness={0.6} metalness={0.2} side={THREE.DoubleSide} /></mesh>
+      <mesh geometry={ruas.asfalto}><meshStandardMaterial ref={matAsf} color="#1c1a24" roughness={0.6} metalness={0.2} side={THREE.DoubleSide} /></mesh>
       <mesh geometry={ruas.calcada}><meshStandardMaterial color="#5a5660" roughness={0.9} side={THREE.DoubleSide} /></mesh>
       <mesh geometry={ruas.faixa}><meshBasicMaterial color="#e8e4d0" side={THREE.DoubleSide} /></mesh>
       <mesh geometry={ruas.muro}><meshStandardMaterial color="#9a96a8" emissive="#ff3fb0" emissiveIntensity={0.15} side={THREE.DoubleSide} /></mesh>
-      <instancedMesh ref={rTorre} args={[caixa, undefined, Math.max(1, grupos.torre.length)]}><meshStandardMaterial map={jan} emissive="#ffffff" emissiveMap={jan} emissiveIntensity={0.85} roughness={0.5} /></instancedMesh>
+      <instancedMesh ref={rTorre} args={[caixa, undefined, Math.max(1, grupos.torre.length)]}><meshStandardMaterial ref={matTorre} map={jan} emissive="#ffffff" emissiveMap={jan} emissiveIntensity={0.85} roughness={0.5} /></instancedMesh>
       <instancedMesh ref={rCasa} args={[caixa, undefined, Math.max(1, grupos.casa.length)]}><meshLambertMaterial /></instancedMesh>
       <instancedMesh ref={rGalpao} args={[caixa, undefined, Math.max(1, grupos.galpao.length)]}><meshStandardMaterial roughness={0.8} /></instancedMesh>
       <instancedMesh ref={rPoste} args={[poste, undefined, Math.max(1, lt.postes.length)]}><meshStandardMaterial color="#2a2834" /></instancedMesh>
-      <instancedMesh ref={rLuz} args={[undefined, undefined, Math.max(1, lt.postes.length)]}><sphereGeometry args={[0.45, 8, 6]} /><meshBasicMaterial toneMapped={false} /></instancedMesh>
+      <instancedMesh ref={rLuz} args={[undefined, undefined, Math.max(1, lt.postes.length)]}><sphereGeometry args={[0.45, 8, 6]} /><meshBasicMaterial ref={matLuz} toneMapped={false} /></instancedMesh>
       <instancedMesh ref={rPilar} args={[caixa, undefined, Math.max(1, lt.pilares.length)]}><meshStandardMaterial color="#7a7686" /></instancedMesh>
     </group>
   )
@@ -98,10 +112,9 @@ function saida(t: Trilha, no: number, out: THREE.Vector3) {
 
 function Motor({ mundo, carro, ent, onChegou }: { mundo: Mundo; carro: React.RefObject<Carro>; ent: React.RefObject<Entrada>; onChegou: () => void }) {
   const camera = useThree((s) => s.camera)
-  const scene = useThree((s) => s.scene)
   const kombi = useRef<THREE.Group>(null)
   const iniciou = useRef(false)
-  const tmp = useMemo(() => ({ p: new THREE.Vector3(), f: new THREE.Vector3(), r: new THREE.Vector3(), o: new THREE.Vector3(), i: new THREE.Vector3(), alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), ceu: new THREE.Color(), nev: new THREE.Color() }), [])
+  const tmp = useMemo(() => ({ p: new THREE.Vector3(), f: new THREE.Vector3(), r: new THREE.Vector3(), o: new THREE.Vector3(), i: new THREE.Vector3(), alvo: new THREE.Vector3(), olhar: new THREE.Vector3() }), [])
   const { rede, trilhas } = mundo
   useFrame((_, dtReal) => {
     const dt = Math.min(dtReal, 1 / 30), c = carro.current, e = ent.current
@@ -185,12 +198,6 @@ function Motor({ mundo, carro, ent, onChegou }: { mundo: Mundo; carro: React.Ref
     camera.position.lerp(tmp.alvo, Math.min(1, dt * 5))
     tmp.olhar.copy(k ? k.position : tmp.p).addScaledVector(tmp.f, 7).add(new THREE.Vector3(0, 1.4, 0))
     camera.lookAt(tmp.olhar)
-    // ── o clima da área onde você está ──
-    const cl = CLIMA[t.e.bairro]
-    tmp.ceu.set(cl.ceu); tmp.nev.set(cl.nevoa)
-    ;(scene.background as THREE.Color | null)?.lerp(tmp.ceu, dt * 0.6)
-    const fog = scene.fog as THREE.Fog | null
-    if (fog) { fog.color.lerp(tmp.nev, dt * 0.6); fog.near += (cl.perto - fog.near) * dt * 0.5; fog.far += (cl.longe - fog.far) * dt * 0.5 }
     const cam = camera as THREE.PerspectiveCamera
     cam.fov += (58 + Math.min(1, c.v / 40) * 12 - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix()
   })
@@ -215,15 +222,97 @@ function Destino({ mundo, no }: { mundo: Mundo; no: number | null }) {
   return <mesh position={[pos.x, pos.y + 60, pos.z]}><cylinderGeometry args={[3, 3, 120, 16, 1, true]} /><meshBasicMaterial color="#5dffa0" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} /></mesh>
 }
 
-export function Cena({ mundo, carro, ent, destino, onChegou }: { mundo: Mundo; carro: React.RefObject<Carro>; ent: React.RefObject<Entrada>; destino: number | null; onChegou: () => void }) {
+// o céu, a luz e a névoa: a hora do jogo (o mesmo céu do Red Dead da
+// estrada) misturada com o clima de cada área; e a chuva
+function Ambiente({ mundo, carro, ceu }: { mundo: Mundo; carro: React.RefObject<Carro>; ceu: React.RefObject<Ceu> }) {
+  const scene = useThree((s) => s.scene), camera = useThree((s) => s.camera)
+  const hemi = useRef<THREE.HemisphereLight>(null), dir = useRef<THREE.DirectionalLight>(null)
+  const tmp = useMemo(() => ({ sol: new THREE.Vector3(), lua: new THREE.Vector3(), a: new THREE.Color(), b: new THREE.Color(), dia: new THREE.Color() }), [])
+  const chuva = useMemo(() => {
+    const n = 1600, pos = new Float32Array(n * 6)
+    let sem = 9; const r = () => ((sem = (sem * 16807) % 2147483647) / 2147483647)
+    for (let i = 0; i < n; i++) { const x = (r() - 0.5) * 120, y = r() * 60, z = (r() - 0.5) * 120; pos.set([x, y, z, x + 0.15, y - 1.4, z], i * 6) }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); return g
+  }, [])
+  const linhas = useRef<THREE.LineSegments>(null)
+  useFrame((_, dtReal) => {
+    const dt = Math.min(dtReal, 1 / 20), c = ceu.current
+    c.hora = (c.hora + dt / SEG_POR_HORA) % 24
+    const ch = ceuNaHora(c.hora)
+    c.noite = ch.noite
+    const area = mundo.trilhas[carro.current.t].e.bairro
+    c.chove = area !== "deserto" && chovendo(c.dia, c.hora)
+    const cl = CLIMA[area]
+    // o céu: a cor da área de noite, o céu do dia de dia
+    tmp.dia.setRGB(ch.meio[0], ch.meio[1], ch.meio[2])
+    tmp.a.set(cl.ceu).lerp(tmp.dia, 1 - ch.noite * 0.85)
+    tmp.b.set(cl.nevoa).lerp(tmp.dia, (1 - ch.noite) * 0.7)
+    if (c.chove) { tmp.a.multiplyScalar(0.7); tmp.b.lerp(new THREE.Color("#5a6070"), 0.35) }
+    ;(scene.background as THREE.Color | null)?.lerp(tmp.a, dt * 0.8)
+    const fog = scene.fog as THREE.Fog | null
+    if (fog) { fog.color.lerp(tmp.b, dt * 0.8); const longe = cl.longe * (c.chove ? 0.55 : 1) * (1 + (1 - ch.noite) * 0.6); fog.near += (cl.perto - fog.near) * dt * 0.5; fog.far += (longe - fog.far) * dt * 0.5 }
+    astros(c.hora, tmp.sol, tmp.lua)
+    const deDia = tmp.sol.y > -0.05
+    if (dir.current) {
+      dir.current.position.copy(deDia ? tmp.sol : tmp.lua).multiplyScalar(1500).add(camera.position)
+      dir.current.target.position.copy(camera.position); dir.current.target.updateMatrixWorld()
+      const quente = 1 - Math.min(1, Math.max(0, (tmp.sol.y - 0.02) / 0.38))
+      if (deDia) dir.current.color.setRGB(1, 0.93 - 0.4 * quente, 0.84 - 0.62 * quente); else dir.current.color.set("#b9ccff")
+      dir.current.intensity = 0.35 + ch.luz * 0.7
+    }
+    if (hemi.current) hemi.current.intensity = 0.7 + ch.luz * 0.6
+    // a chuva acompanha a câmera
+    const l = linhas.current
+    if (l) {
+      l.visible = c.chove
+      if (c.chove) { l.position.set(camera.position.x, camera.position.y - 20, camera.position.z); l.position.y -= (performance.now() / 18) % 30 }
+    }
+  })
+  return (
+    <>
+      <hemisphereLight ref={hemi} args={["#a89ae8", "#4a3a30", 1.2]} />
+      <ambientLight intensity={0.3} color="#b8a8ff" />
+      <directionalLight ref={dir} intensity={0.8} />
+      <lineSegments ref={linhas} geometry={chuva} frustumCulled={false}><lineBasicMaterial color="#a8ccff" transparent opacity={0.35} /></lineSegments>
+    </>
+  )
+}
+
+// a fachada de cada lugar: o prédio, a vitrine na cor dele e o letreiro aceso
+function letreiro(txt: string, cor: string) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128; const g = c.getContext("2d")!
+  g.fillStyle = "#0a0812"; g.fillRect(0, 0, 512, 128)
+  g.font = "900 72px Arial Black, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"
+  g.shadowColor = cor; g.shadowBlur = 24; g.fillStyle = cor; g.fillText(txt, 256, 68)
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t
+}
+function Fachadas({ mundo }: { mundo: Mundo }) {
+  const itens = useMemo(() => mundo.lugares.map((p) => ({ p, tex: letreiro(p.l.letreiro, p.l.cor) })), [mundo])
+  return (
+    <>
+      {itens.map(({ p, tex }) => {
+        const h = p.l.alto ?? 12
+        return (
+          <group key={p.l.id} position={[p.fx, p.Y - 1, p.fz]} rotation-y={p.ang}>
+            <mesh position={[0, h / 2, 0]}><boxGeometry args={[18, h, 16]} /><meshStandardMaterial color="#1e1a2a" roughness={0.8} /></mesh>
+            <mesh position={[0, 2.4, 8.05]}><planeGeometry args={[14, 3.6]} /><meshStandardMaterial color="#07060c" emissive={p.l.cor} emissiveIntensity={0.6} /></mesh>
+            <mesh position={[0, Math.min(h - 1.5, 6.6), 8.1]}><planeGeometry args={[14, 3.5]} /><meshBasicMaterial map={tex} toneMapped={false} /></mesh>
+            <mesh position={[0, 4.6, 8.6]}><boxGeometry args={[15, 0.15, 1.4]} /><meshStandardMaterial color={p.l.cor} emissive={p.l.cor} emissiveIntensity={0.5} /></mesh>
+          </group>
+        )
+      })}
+    </>
+  )
+}
+
+export function Cena({ mundo, carro, ent, destino, ceu, onChegou }: { mundo: Mundo; carro: React.RefObject<Carro>; ent: React.RefObject<Entrada>; destino: number | null; ceu: React.RefObject<Ceu>; onChegou: () => void }) {
   return (
     <>
       <color attach="background" args={["#1a0b33"]} />
       <fog attach="fog" args={["#3a1f5f", 120, 1400]} />
-      <hemisphereLight args={["#a89ae8", "#4a3a30", 1.4]} />
-      <ambientLight intensity={0.35} color="#b8a8ff" />
-      <directionalLight position={[-800, 1200, -600]} intensity={0.6} color="#b9ccff" />
-      <Cidade mundo={mundo} />
+      <Ambiente mundo={mundo} carro={carro} ceu={ceu} />
+      <Cidade mundo={mundo} ceu={ceu} />
+      <Fachadas mundo={mundo} />
       <Destino mundo={mundo} no={destino} />
       <Motor mundo={mundo} carro={carro} ent={ent} onChegou={onChegou} />
     </>

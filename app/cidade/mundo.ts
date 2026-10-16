@@ -7,6 +7,7 @@
 import * as THREE from "three"
 import { ESCALA, H, W, altura, bairro, costa, type Bairro } from "../linha/rede/terreno"
 import { montarRede, type Aresta, type Rede, type TipoVia } from "../linha/rede/rede"
+import { LUGARES_CIDADE, type LugarCidade } from "./lugares"
 
 export const ALT = 0.6 // metros de altura por unidade da maquete
 export const MAR = 3
@@ -64,12 +65,27 @@ export function naTrilha(t: Trilha, s: number, pos: THREE.Vector3, dir: THREE.Ve
   dir.set(t.px[hi] - t.px[lo], t.py[hi] - t.py[lo], t.pz[hi] - t.pz[lo]).normalize()
 }
 
-export interface Mundo { rede: Rede; trilhas: Trilha[] }
+// um lugar encostado na rua: o ponto da rua (onde a Kombi para) e a fachada
+export interface PoseLugar { l: LugarCidade; t: number; i: number; X: number; Y: number; Z: number; fx: number; fz: number; ang: number; no: number }
+export interface Mundo { rede: Rede; trilhas: Trilha[]; lugares: PoseLugar[] }
 let cache: Mundo | null = null
 export function montarMundo(): Mundo {
   if (cache) return cache
   const rede = montarRede()
-  cache = { rede, trilhas: rede.arestas.map(amostrar) }
+  const trilhas = rede.arestas.map(amostrar)
+  const lugares = LUGARES_CIDADE.map((l) => {
+    const X = mx(l.x), Z = mz(l.y)
+    let bt = 0, bi = 0, bd = Infinity
+    trilhas.forEach((t, ti) => { if (t.e.tipo === "expressa" || t.e.tipo === "rampa") return; for (let i = 2; i < t.n - 2; i++) { const d = Math.hypot(t.px[i] - X, t.pz[i] - Z); if (d < bd) { bd = d; bt = ti; bi = i } } })
+    const t = trilhas[bt], i = bi
+    const dx = t.px[i + 1] - t.px[i - 1], dz = t.pz[i + 1] - t.pz[i - 1], k = Math.hypot(dx, dz) || 1, rx = -dz / k, rz = dx / k
+    const off = l.lado * (t.larg / 2 + (t.calcada ? 3 : 1) + 10)
+    // o cruzamento mais perto do lugar (o destino da rota)
+    let no = rede.nos[0].id, dn = Infinity
+    for (const n of rede.nos) { if (!n.arestas.includes(t.e.id)) continue; const d = Math.hypot(mx(n.x) - t.px[i], mz(n.y) - t.pz[i]); if (d < dn) { dn = d; no = n.id } }
+    return { l, t: bt, i, X: t.px[i], Y: t.py[i], Z: t.pz[i], fx: t.px[i] + rx * off, fz: t.pz[i] + rz * off, ang: Math.atan2(-rx * l.lado, -rz * l.lado), no }
+  })
+  cache = { rede, trilhas, lugares }
   return cache
 }
 
@@ -162,6 +178,8 @@ export function lotes(m: Mundo, g: ReturnType<typeof grade>) {
         const X = t.px[i] + rx * off * lado, Z = t.pz[i] + rz * off * lado
         const ck = `${Math.floor(X / 10)},${Math.floor(Z / 10)}`
         if (ocup.has(ck)) continue
+        // a fachada de um lugar fica livre
+        if (m.lugares.some((p) => Math.hypot(p.fx - X, p.fz - Z) < 24 + w / 2)) continue
         const perto = ruaPerto(m, g, X, Z, w * 0.75 + 2)
         if (perto && perto.d < w * 0.6) continue
         ocup.add(ck)
