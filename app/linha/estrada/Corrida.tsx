@@ -2078,13 +2078,19 @@ function Cena({
   // olhar em volta de dentro (como na drive-v2): arrasta → gira até ±150° e
   // ±60°; solta → fica 7 s parado ali e depois volta devagar pra frente
   const olhar = useRef({ yaw: 0, pitch: 0, alvoYaw: 0, alvoPitch: 0, arrastando: false, soltou: 0, x: 0, y: 0, id: -1 })
+  // a câmera dinâmica (LU2CA 16/10: "como a do GTA 6"): o rumo dela atrasa em
+  // relação ao da Kombi (nas curvas e no drift aparece a lateral), a distância
+  // respira com a aceleração, olha pra dentro da curva, deita um pouco com ela,
+  // e parada dá uma volta lenta de cinema
+  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3() })
   useEffect(() => {
     const el = gl.domElement
     const YAW = (150 * Math.PI) / 180
     const PITCH = (60 * Math.PI) / 180
     const o = olhar.current
     const down = (e: PointerEvent) => {
-      if (!dentroRef.current || (e.pointerType === "mouse" && e.button !== 0)) return
+      // de dentro: o dedo ou o mouse; de fora: só o mouse (no celular os dedos dirigem)
+      if ((!dentroRef.current && e.pointerType !== "mouse") || (e.pointerType === "mouse" && e.button !== 0)) return
       o.arrastando = true; o.x = e.clientX; o.y = e.clientY; o.id = e.pointerId
     }
     const move = (e: PointerEvent) => {
@@ -3589,8 +3595,40 @@ function Cena({
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins
-    const atras = dePatins ? 4.6 : 8.4 + pct * 1.8
-    tmp.alvo.copy(car.position).addScaledVector(tmp.f, -atras).addScaledVector(tmp.up, dePatins ? 2.3 : 3.1 + pct * 0.3).addScaledVector(tmp.r, j.steer * 0.8)
+    const cd = camDin.current
+    {
+      // o rumo da câmera: entre pra onde a Kombi anda e pra onde ela aponta (no
+      // drift aponta mais pro lado), com atraso — a lateral aparece na curva
+      cd.carF.set(0, 0, -1).applyQuaternion(car.quaternion).setY(0).normalize()
+      const alvoF = tmp.p.copy(tmp.f).setY(0).normalize().lerp(cd.carF, j.drift ? 0.3 : 0.12).normalize()
+      if (!cd.ok || j.encaixar) { cd.f.copy(alvoF); cd.ok = true }
+      cd.f.lerp(alvoF, 1 - Math.exp(-dt * (j.drift ? 1.6 : 2.6))).normalize()
+      // a aceleração empurra a câmera pra trás; a freada traz pra perto
+      const acc = dt > 0 ? (j.v - cd.vAnt) / dt : 0
+      cd.vAnt = j.v
+      cd.puxa += (Math.max(-1.6, Math.min(2.4, acc * 0.09)) - cd.puxa) * Math.min(1, dt * 3)
+      // parada: depois de uns segundos, a volta lenta de cinema
+      cd.parada = Math.abs(j.v) < 0.6 ? cd.parada + dt : 0
+      const alvoOrb = cd.parada > 3 ? (cd.parada - 3) * 0.13 : 0
+      cd.orbita += (alvoOrb - cd.orbita) * Math.min(1, dt * (cd.parada > 3 ? 4 : 1.5))
+      // o olhar livre (arrastar com o mouse) gira em volta; solta, volta sozinha
+      const o = olhar.current
+      if (!dentroRef.current) {
+        if (!o.arrastando && o.soltou && performance.now() - o.soltou > 1600) { o.alvoYaw = 0; o.alvoPitch = 0 }
+        o.yaw += (o.alvoYaw - o.yaw) * Math.min(1, dt * (o.arrastando ? 12 : 2.5))
+        o.pitch += (o.alvoPitch - o.pitch) * Math.min(1, dt * (o.arrastando ? 12 : 2.5))
+      }
+      const vel = Math.max(0, Math.min(1.3, Math.abs(j.v) / VMAX))
+      const atras = dePatins ? 4.4 + vel * 1.4 : 6.8 + vel * 3.4 + cd.puxa + (cd.parada > 3 ? 1.5 : 0)
+      const alto = dePatins ? 2.1 : 2.9 - vel * 0.75 + (cd.parada > 3 ? 0.6 : 0) - o.pitch * 2.5
+      cd.dir.copy(cd.f).applyAxisAngle(tmp.y0, cd.orbita + (dentroRef.current ? 0 : o.yaw))
+      // a lateral: a câmera abre um pouco pro lado de fora da curva
+      cd.lado += ((-a.curv * Math.abs(j.v) * 2.2 + j.steer * 0.6) - cd.lado) * Math.min(1, dt * 2)
+      cd.lado = Math.max(-2.5, Math.min(2.5, cd.lado))
+      tmp.alvo.copy(car.position).addScaledVector(cd.dir, -atras).addScaledVector(tmp.y0, alto).addScaledVector(tmp.r, cd.lado * 0.5)
+      // a inclinação: deita de leve com a curva e com o drift
+      cd.roll += ((-j.steer * 0.03 * vel - j.deriva * 0.05) - cd.roll) * Math.min(1, dt * 3)
+    }
     if (cine) {
       // câmera de cinema: baixa, de lado, girando devagar em volta da Kombi
       const ang = j.tempo * 0.11 + 0.5
@@ -3606,6 +3644,11 @@ function Cena({
     const k = primeira || cl ? 1 : camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
     camera.position.lerp(tmp.alvo, k)
     tmp.olhar.copy(car.position).addScaledVector(tmp.f, cine ? 2.5 : 7).addScaledVector(tmp.up, cine ? 1.4 : 1.2)
+    if (!cine && !dentroRef.current) {
+      // de fora: olha à frente da Kombi (mais longe quanto mais rápido) e pra dentro da curva
+      const vel = Math.min(1.3, Math.abs(j.v) / VMAX)
+      tmp.olhar.copy(car.position).addScaledVector(camDin.current.dir, 5 + vel * 7).addScaledVector(tmp.y0, 1.1 + olhar.current.pitch * 3).addScaledVector(tmp.r, Math.max(-4, Math.min(4, a.curv * Math.abs(j.v) * 3)))
+    }
     if (cl) tmp.olhar.copy(cl.porta)
     // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
     if (primeira) {
@@ -3626,6 +3669,12 @@ function Cena({
     camera.position.x += (Math.random() - 0.5) * amp
     camera.position.y += (Math.random() - 0.5) * amp
     camera.lookAt(tmp.camOlhar)
+    if (!cine && !primeira && !reduz) {
+      camera.rotateZ(camDin.current.roll)
+      // acima de ~150 km/h: um tremor sutil (como a câmera no carro do GTA)
+      const vel = Math.abs(j.v) / VMAX
+      if (vel > 0.75) { const t = j.tempo, k2 = (vel - 0.75) * 0.012; camera.rotateX(Math.sin(t * 37) * k2 + Math.sin(t * 23) * k2 * 0.6); camera.rotateY(Math.sin(t * 29) * k2 * 0.8) }
+    }
     {
       // a pé: a câmera atrás de quem anda, a porta na frente
       const ab = aberturaRef.current
@@ -3666,7 +3715,7 @@ function Cena({
     }
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
-    const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 58 + pct * 14 + (j.turboT > 0 ? 10 : 0)
+    const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 55 + Math.min(1.3, Math.abs(pct)) * 17 + (j.turboT > 0 ? 10 : 0) + Math.max(0, camDin.current.puxa) * 1.5
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
