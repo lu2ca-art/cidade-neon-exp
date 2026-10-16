@@ -222,6 +222,8 @@ type Jogo = {
   // o mapa novo: pediu o retorno (troca pra outra mão da mesma rua)
   retorno?: boolean
   tVolta?: number // parado, segurando freio + um lado: quanto tempo (meia-volta)
+  // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
+  wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
   // para, sem o "chegou"
   encostando?: boolean
@@ -1360,7 +1362,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo, wx: j.wx && +j.wx.toFixed(1), wz: j.wz && +j.wz.toFixed(1), rumo: j.rumo && +j.rumo.toFixed(2), fora: j.livreFora }
     }
     return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora; delete w.__procurado }
   }, [M])
@@ -2228,6 +2230,8 @@ function Cena({
     }
     const parqueChao = areaDoParque(M)
     const topos: number[] = []
+    // (mapa novo, direção livre) o contorno de cada prédio: a Kombi não atravessa
+    const colisores: number[] = []
     const predios = circuitos.map((C) => {
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
@@ -2269,7 +2273,9 @@ function Cena({
         d.position.set(bx, y0 + h / 2, bz)
         if (h > 85) topos.push(bx, y0 + h + 1.5, bz)
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
-        d.scale.set(w, h, e.w[0] + r() * (e.w[1] - e.w[0]))
+        const fundo = e.w[0] + r() * (e.w[1] - e.w[0])
+        d.scale.set(w, h, fundo)
+        if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5) }
         d.updateMatrix()
         m.setMatrixAt(i, d.matrix)
         i++
@@ -2416,7 +2422,7 @@ function Cena({
     aviacao.setAttribute("position", new THREE.BufferAttribute(new Float32Array(topos), 3))
     const aviacaoMat = new THREE.PointsMaterial({ size: 5, map: tex.brilho, color: "#ff2a2a", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
 
-    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat }
+    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores }
   }, [M, circuitos, tex, distI, centrosLugares])
 
   // ── colunas de luz: só onde a missão manda agora (a coisa pra buscar,
@@ -2572,6 +2578,31 @@ function Cena({
   }, [M, a])
 
   // ── tráfego: cada circuito com o seu ──
+  // (direção livre) bater num prédio: devolve o empurrão pra fora, ou null
+  const bater = useMemo(() => {
+    const c = cidade.colisores, g = new Map<string, number[]>(), CEL = 24
+    for (let k = 0; k < c.length; k += 6) { const key = `${Math.floor(c[k] / CEL)},${Math.floor(c[k + 1] / CEL)}`; let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k) }
+    return (x: number, z: number, raio: number): [number, number] | null => {
+      const cx = Math.floor(x / CEL), cz = Math.floor(z / CEL)
+      // a caixa do prédio, girada com a rua: z local = a tangente, x local = o lado
+      let ex = 0, ez = 0, bateu = false
+      for (let a2 = -2; a2 <= 2; a2++) for (let b2 = -2; b2 <= 2; b2++) for (const k of g.get(`${cx + a2},${cz + b2}`) ?? []) {
+        const dx = x + ex - c[k], dz = z + ez - c[k + 1], tx = c[k + 2], tz = c[k + 3], hw = c[k + 4], hd = c[k + 5]
+        const lx = dx * tz - dz * tx, lz = dx * tx + dz * tz
+        const qx = Math.max(-hw, Math.min(hw, lx)), qz = Math.max(-hd, Math.min(hd, lz))
+        let px = lx - qx, pz = lz - qz, d = Math.hypot(px, pz)
+        if (d >= raio) continue
+        if (d < 1e-4) {
+          // o centro entrou na caixa: sai pelo lado mais perto
+          const sx = hw - Math.abs(lx), sz = hd - Math.abs(lz)
+          if (sx < sz) { px = Math.sign(lx) || 1; pz = 0; d = -sx } else { px = 0; pz = Math.sign(lz) || 1; d = -sz }
+        } else { px /= d; pz /= d }
+        const m = raio - d
+        ex += (px * tz + pz * tx) * m; ez += (-px * tx + pz * tz) * m; bateu = true
+      }
+      return bateu ? [ex, ez] : null
+    }
+  }, [cidade])
   const trafego = useMemo(() => {
     // (06/10: o dobro de carros; batida arremessa pro lado — vx, voo, giro)
     // (16/10: carros de verdade — carros.ts — e, no mapa novo, ~120 carros pela rede, cada um na mão dele)
@@ -3028,6 +3059,60 @@ function Cena({
       if (!j.ar) j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * segura) * dt
       else j.x += j.vx * 0.5 * dt
     }
+    // ── A DIREÇÃO LIVRE (mapa novo, LU2CA 16/10: "liberdade de direção e
+    // movimento pro carro"): a Kombi tem posição e rumo no mundo; a direção
+    // vira o carro de verdade (fecha mais devagar, abre mais rápido), sobe na
+    // calçada, corta por onde quiser; os prédios são obstáculo. A cada quadro
+    // ela é projetada na rede (via, u, x): as missões, os lugares, o mapa, a
+    // rota e o trânsito seguem lendo isso como sempre ──
+    const MR = "ligacoes" in M ? (M as MundoRede) : null
+    const livre = !!MR && !cine && !aberturaRef.current.ativa && !j.chegando && !passeio.current.andando
+    let trocou = false
+    const uAnt = j.u
+    if (livre && MR) {
+      if (!j.livreOk || j.encaixar) { j.wx = a.x - a.tz * j.x; j.wz = a.z + a.tx * j.x; j.rumo = Math.atan2(a.tx, a.tz); j.livreOk = true }
+      // no automático (de dentro, celular aberto) ela segue a rua sozinha
+      if (dentroRef.current || celularRef.current) {
+        const dif = Math.atan2(Math.sin(Math.atan2(a.tx, a.tz) - j.rumo!), Math.cos(Math.atan2(a.tx, a.tz) - j.rumo!))
+        j.steer += (Math.max(-1, Math.min(1, -dif * 2.5 - j.x * 0.12)) - j.steer) * Math.min(1, dt * 4)
+      }
+      // sem mexer na direção, em cima da rua, ela acompanha a curva sozinha
+      // (como antes): a liberdade é pra quando você vira
+      if (Math.abs(j.steer) < 0.08 && !j.livreFora && !j.drift) {
+        const contra = Math.cos(Math.atan2(a.tx, a.tz) - j.rumo!) < 0
+        // e volta devagar pro meio da faixa (de ré na rua, o lado inverte)
+        const tang = Math.atan2(a.tx, a.tz) + (contra ? Math.PI : 0) + Math.max(-0.25, Math.min(0.25, j.x * 0.035)) * (contra ? -1 : 1)
+        const dif = Math.atan2(Math.sin(tang - j.rumo!), Math.cos(tang - j.rumo!))
+        if (Math.abs(dif) < 0.6) j.rumo! += dif * Math.min(1, dt * 3)
+      }
+      const vel = Math.abs(j.v)
+      const giro = j.steer * Math.min(1, vel / 4) * (2.4 - 1.4 * Math.min(1, vel / 50)) * (j.drift ? 1.6 : 1)
+      j.rumo! -= giro * dt * (j.v < 0 ? -1 : 1)
+      const sx = Math.sin(j.rumo!), cz = Math.cos(j.rumo!)
+      let nx = j.wx! + sx * j.v * dt, nz = j.wz! + cz * j.v * dt
+      const empurra = bater(nx, nz, 1.5)
+      if (empurra) {
+        nx += empurra[0]; nz += empurra[1]
+        j.dRaspa += dt
+        if (j.dPts > 0 && j.dRaspa > 0.35) { j.dPts = 0; j.dMult = 1; j.dMsg = "bateu · perdeu o drift"; j.dMsgT = j.tempo + 1.4 }
+        if (Math.abs(j.v) > 6) {
+          j.v *= 1 - 1.4 * dt
+          j.shake = Math.max(j.shake, 0.3)
+          falasT.current.raspa -= dt
+          if (falasT.current.raspa <= 0) { vib(18); falasT.current.raspa = 0.14 }
+          soltarFaiscas(faiscas, carro.current, 1)
+        }
+      } else j.dRaspa = Math.max(0, j.dRaspa - dt)
+      j.wx = nx; j.wz = nz
+      const pr = MR.projetar(nx, nz, j.y, sx, cz)
+      if (pr) {
+        if (pr.via !== j.via) { j.via = pr.via; trocou = true; j.pegos.clear() }
+        j.u = pr.u; j.x = pr.x; j.livreFora = Math.abs(pr.x) > pr.meia + 3
+      }
+      j.st.vmax = Math.max(j.st.vmax, j.v)
+    }
+    if (!livre) j.livreOk = false
+    if (!livre) {
     // parede macia: raspa, solta faísca, perde um pouco de velocidade. Faixa
     // de saída trancada = muro no lugar da faixa
     let dirMax = a.dir
@@ -3073,9 +3158,7 @@ function Cena({
       j.shake = Math.max(j.shake, 0.2); vib([20, 40, 20])
       V = M.vias[j.via]; ev.via(j.via)
     }
-    const uAnt = j.u
     j.u += j.v * dt
-    let trocou = false
     // bifurcação: se o carro está na faixa de uma saída aberta, pega ela
     const f = V.tipo === "circuito" ? saidaEm(V, uAnt, j.u, j.x, (ff) => aberta(ff, nLibRef.current), j.escolha) : null
     if (V.tipo === "circuito" && V.faixas.some((ff) => uAnt < ff.u && j.u >= ff.u)) j.escolha = 0
@@ -3163,6 +3246,7 @@ function Cena({
         j.pegos.clear()
       }
     }
+    }
     if (M.vias[j.via] !== V) {
       V = M.vias[j.via]
       ev.via(j.via)
@@ -3188,7 +3272,7 @@ function Cena({
 
     // pulos: se a pista cai mais rápido do que a gravidade, a Kombi voa
     amostra(V, j.u, a)
-    const yPista = a.y - j.x * Math.sin(a.bank)
+    const yPista = livre && MR && j.livreFora ? MR.chao(j.wx!, j.wz!) + 0.3 : a.y - j.x * Math.sin(a.bank)
     if (j.encaixar) { j.ar = false; j.y = yPista; j.vy = 0 } // teleporte (dev)
     if (j.ar) {
       j.vy -= G * dt
@@ -3474,21 +3558,24 @@ function Cena({
 
     // ── pose da Kombi: deita junto com a curva inclinada ──
     amostra(V, j.u, a)
-    const cb = Math.cos(a.bank)
-    const sb = Math.sin(a.bank)
-    tmp.f.set(a.tx, j.ar ? Math.max(-0.2, Math.min(0.35, j.vy / Math.max(j.v, 1))) : a.ty, a.tz).normalize()
-    tmp.r.set(-a.tz * cb, -sb, a.tx * cb).normalize()
+    const vivo = livre && !!j.livreOk
+    const cb = vivo && j.livreFora ? 1 : Math.cos(a.bank)
+    const sb = vivo && j.livreFora ? 0 : Math.sin(a.bank)
+    const fx = vivo ? Math.sin(j.rumo!) : a.tx, fz = vivo ? Math.cos(j.rumo!) : a.tz
+    tmp.f.set(fx, j.ar ? Math.max(-0.2, Math.min(0.35, j.vy / Math.max(j.v, 1))) : vivo && j.livreFora ? 0 : a.ty, fz).normalize()
+    tmp.r.set(-fz * cb, -sb, fx * cb).normalize()
     tmp.up.crossVectors(tmp.r, tmp.f).normalize()
     tmp.r.crossVectors(tmp.f, tmp.up).normalize()
     // base: x = direita, y = cima, z = trás (a Kombi aponta pra -Z)
     tmp.m.makeBasis(tmp.r, tmp.up, tmp.f.clone().negate())
     const car = carro.current!
     car.quaternion.setFromRotationMatrix(tmp.m)
-    const yaw = -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva
+    const yaw = vivo ? -j.deriva : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva
     tmp.qYaw.setFromAxisAngle(tmp.y0, yaw)
     tmp.qRoll.setFromAxisAngle(tmp.z0, j.steer * 0.05 * Math.min(1, pct))
     car.quaternion.multiply(tmp.qYaw).multiply(tmp.qRoll)
-    car.position.set(a.x - a.tz * j.x * cb, j.y + 0.02, a.z + a.tx * j.x * cb)
+    if (vivo) car.position.set(j.wx!, j.y + 0.02, j.wz!)
+    else car.position.set(a.x - a.tz * j.x * cb, j.y + 0.02, a.z + a.tx * j.x * cb)
     {
       const cb2 = combRef.current
       if (cb2.patins && !cb2.parada) cb2.parada = { pos: car.position.clone(), quat: car.quaternion.clone(), via: j.via, u: j.u, x: j.x }
@@ -3626,6 +3713,15 @@ function Cena({
       cd.lado += ((-a.curv * Math.abs(j.v) * 2.2 + j.steer * 0.6) - cd.lado) * Math.min(1, dt * 2)
       cd.lado = Math.max(-2.5, Math.min(2.5, cd.lado))
       tmp.alvo.copy(car.position).addScaledVector(cd.dir, -atras).addScaledVector(tmp.y0, alto).addScaledVector(tmp.r, cd.lado * 0.5)
+      // (direção livre) a câmera não atravessa prédio: chega mais perto da Kombi
+      if ("ligacoes" in M) {
+        const dx = tmp.alvo.x - car.position.x, dz = tmp.alvo.z - car.position.z, L = Math.hypot(dx, dz)
+        for (let s2 = 1.5; s2 < L; s2 += 1) if (bater(car.position.x + (dx * s2) / L, car.position.z + (dz * s2) / L, 0.8)) {
+          const f = Math.max(1.5, s2 - 1) / L
+          tmp.alvo.x = car.position.x + dx * f; tmp.alvo.z = car.position.z + dz * f; tmp.alvo.y += (1 - f) * 2
+          break
+        }
+      }
       // a inclinação: deita de leve com a curva e com o drift
       cd.roll += ((-j.steer * 0.03 * vel - j.deriva * 0.05) - cd.roll) * Math.min(1, dt * 3)
     }

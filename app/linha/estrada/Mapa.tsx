@@ -21,7 +21,7 @@ import { ESCALA, H as HU, W as WU } from "../rede/terreno"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
-interface PoseKombi { via: number; u: number; x: number; v: number }
+interface PoseKombi { via: number; u: number; x: number; v: number; wx?: number; wz?: number; rumo?: number; livreOk?: boolean }
 
 const ROTA_COR = "#ff3fb0"
 
@@ -145,8 +145,10 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
       if (c.width !== S * dpr) { c.width = S * dpr; c.height = S * dpr }
       const g = c.getContext("2d")!
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
-      const k = noMundo(M, p)
-      const ox = k.x - k.tz * p.x, oz = k.z + k.tx * p.x
+      // (direção livre) a Kombi tem posição e rumo próprios: o minimapa gira com ela
+      const livre = p.livreOk && p.wx !== undefined
+      const k = livre ? { x: p.wx!, z: p.wz!, tx: Math.sin(p.rumo!), tz: Math.cos(p.rumo!) } : noMundo(M, p)
+      const ox = livre ? k.x : k.x - k.tz * p.x, oz = livre ? k.z : k.z + k.tx * p.x
       const alvoZoom = 240 + Math.min(260, Math.abs(p.v) * 9)
       zoom += (alvoZoom - zoom) * 0.08
       const R = S / 2, esc = R / zoom
