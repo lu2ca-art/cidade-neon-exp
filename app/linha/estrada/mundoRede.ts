@@ -19,8 +19,8 @@ import { CANTEIROS } from "./canteiros"
 // (as duas vias, uma por sentido, passam pelo mesmo eixo); você anda em
 // qualquer lado dela. A meia largura depende do tipo da rua
 const MEIA_RUA: Record<string, number> = { expressa: 12, avenida: 10, orla: 10, principal: 8.5, rua: 7, beco: 5, tunel: 9, serpentina: 7, terra: 7, rampa: 7 }
-const ALT = 0.6 // metros de altura por unidade da maquete
-const BASE = -15 // o nível do mar (3 m no v5) cai na água de sempre (−12)
+const ALT = 0.32 // metros de altura por unidade da maquete (acompanha a escala: as rampas não ficam íngremes)
+const BASE = -13.4 // o nível do mar do v5 (≈ 5 unidades) cai logo acima da água de sempre (−12)
 const ELEVADA = 14
 
 const mx = (x: number) => (x - W / 2) * ESCALA

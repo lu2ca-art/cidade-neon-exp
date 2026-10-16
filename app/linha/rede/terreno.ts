@@ -4,7 +4,8 @@
 // tem 2000 × 1400; ESCALA converte pra metros.
 
 export const W = 2000, H = 1400
-export const ESCALA = 8 // metros por unidade: atravessar a cidade (deserto → orla) ≈ 10 min
+// metros por unidade. 16/10: 8 → 4 (o LU2CA: "demora muito pra chegar nos lugares"): atravessar a cidade ≈ 5 min
+export const ESCALA = 4
 
 const perm = new Uint8Array(512)
 {
