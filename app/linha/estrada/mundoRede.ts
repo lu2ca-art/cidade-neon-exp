@@ -8,7 +8,7 @@
 // o nível do mar bate com a água de sempre (−12).
 
 import * as THREE from "three"
-import { montarRede, type Rede } from "../rede/rede"
+import { montarRede, rota as rotaRede, type Rede } from "../rede/rede"
 import { ESCALA, H, W, altura, bairro, costa } from "../rede/terreno"
 import { amostrar, derivar, type Pista } from "./pista"
 import type { FreqId } from "../radio"
@@ -154,6 +154,24 @@ export function montarMundoRede(): MundoRede {
   const onde = (chave: string) => tabela.get(chave) ?? null
   CACHE = { vias, circuito, livre, vao, conflitos: [], ligacoes: { rede, saidas }, chao: chaoEm, onde }
   return CACHE
+}
+
+// ── a rota no mapa novo: o caminho mais curto pelos cruzamentos, em trechos
+// de via (o mesmo formato da rota de sempre: rota.ts) ──
+export function calcularRotaRede(M: MundoRede, de: { via: number; u: number }, ate: { via: number; u: number }) {
+  const A = M.vias[de.via], B = M.vias[ate.via]
+  if (!A?.rede || !B?.rede) return null
+  if (de.via === ate.via && ate.u >= de.u) return { trechos: [{ via: de.via, u0: de.u, u1: ate.u }], metros: ate.u - de.u }
+  const r = rotaRede(M.ligacoes.rede, A.rede.para, B.rede.de)
+  if (!r) return null
+  const trechos = [{ via: de.via, u0: de.u, u1: A.L }]
+  let metros = A.L - de.u
+  r.arestas.forEach((ai, k) => {
+    const vi = 2 * ai + (M.ligacoes.rede.arestas[ai].a === r.nos[k] ? 0 : 1)
+    trechos.push({ via: vi, u0: 0, u1: M.vias[vi].L }); metros += M.vias[vi].L
+  })
+  trechos.push({ via: ate.via, u0: 0, u1: ate.u }); metros += ate.u
+  return { trechos, metros }
 }
 
 // ── o relevo do v5 debaixo das ruas (afunda onde passa rua no chão) ──
