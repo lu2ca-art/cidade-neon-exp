@@ -22,6 +22,7 @@ export interface Carro {
   retorno: boolean // pode fazer o retorno aqui
   pedeRetorno: boolean
   X: number; Z: number; rumo: number // pros mapas
+  salto?: boolean // teleporte: a câmera vai junto, sem voar
 }
 export interface Entrada { esq: boolean; dir: boolean; gas: boolean; freio: boolean; toque: boolean }
 
@@ -56,6 +57,7 @@ function Cidade({ mundo }: { mundo: Mundo }) {
         m.setColorAt(i, k === "casa" ? c.setHex(PAL[Math.floor(l.cor * PAL.length)]) : k === "torre" ? c.setHSL(0.7 + l.cor * 0.15, 0.3, 0.55 + l.cor * 0.2) : c.setHex(0x8a5a3a))
       })
       m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true
+      m.computeBoundingSphere()
     }
     const CORES = [0xff6ad5, 0xffc27a, 0x9fd8ff]
     const pm = rPoste.current, lm = rLuz.current
@@ -63,9 +65,9 @@ function Cidade({ mundo }: { mundo: Mundo }) {
       o.position.set(p.x, p.y, p.z); o.rotation.set(0, p.a, 0); o.scale.set(1, 1, 1); o.updateMatrix(); pm.setMatrixAt(i, o.matrix)
       o.position.set(p.x, p.y + 7, p.z); o.updateMatrix(); lm.setMatrixAt(i, o.matrix); lm.setColorAt(i, c.setHex(CORES[p.cor]))
     })
-    if (pm && lm) { pm.instanceMatrix.needsUpdate = true; lm.instanceMatrix.needsUpdate = true; if (lm.instanceColor) lm.instanceColor.needsUpdate = true }
+    if (pm && lm) { pm.instanceMatrix.needsUpdate = true; lm.instanceMatrix.needsUpdate = true; if (lm.instanceColor) lm.instanceColor.needsUpdate = true; pm.computeBoundingSphere(); lm.computeBoundingSphere() }
     const pl = rPilar.current
-    if (pl) { lt.pilares.forEach((p, i) => { o.position.set(p.x, p.y, p.z); o.rotation.set(0, 0, 0); o.scale.set(2.4, p.h, 2.4); o.updateMatrix(); pl.setMatrixAt(i, o.matrix) }); pl.instanceMatrix.needsUpdate = true }
+    if (pl) { lt.pilares.forEach((p, i) => { o.position.set(p.x, p.y, p.z); o.rotation.set(0, 0, 0); o.scale.set(2.4, p.h, 2.4); o.updateMatrix(); pl.setMatrixAt(i, o.matrix) }); pl.instanceMatrix.needsUpdate = true; pl.computeBoundingSphere() }
   }, [grupos, lt])
   const poste = useMemo(() => { const g = new THREE.CylinderGeometry(0.12, 0.16, 7, 5); g.translate(0, 3.5, 0); return g }, [])
   return (
@@ -98,6 +100,7 @@ function Motor({ mundo, carro, ent, onChegou }: { mundo: Mundo; carro: React.Ref
   const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
   const kombi = useRef<THREE.Group>(null)
+  const iniciou = useRef(false)
   const tmp = useMemo(() => ({ p: new THREE.Vector3(), f: new THREE.Vector3(), r: new THREE.Vector3(), o: new THREE.Vector3(), i: new THREE.Vector3(), alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), ceu: new THREE.Color(), nev: new THREE.Color() }), [])
   const { rede, trilhas } = mundo
   useFrame((_, dtReal) => {
@@ -175,6 +178,10 @@ function Motor({ mundo, carro, ent, onChegou }: { mundo: Mundo; carro: React.Ref
     // ── a câmera, atrás e acima, abrindo com a velocidade ──
     const atras = 9 + Math.min(1, c.v / 40) * 3
     tmp.alvo.copy(k ? k.position : tmp.p).addScaledVector(tmp.f, -atras).add(new THREE.Vector3(0, 3.8, 0)).addScaledVector(tmp.r, c.steer * 0.8)
+    // vista de cima (só pra teste: window.__cdVista = true)
+    if (process.env.NODE_ENV !== "production" && (window as unknown as { __cdVista?: boolean }).__cdVista) tmp.alvo.copy(k ? k.position : tmp.p).addScaledVector(tmp.f, -160).add(new THREE.Vector3(0, 140, 0))
+    // o primeiro quadro: a câmera já nasce atrás da Kombi (não dentro do morro)
+    if (!iniciou.current || c.salto) { camera.position.copy(tmp.alvo); iniciou.current = true; c.salto = false }
     camera.position.lerp(tmp.alvo, Math.min(1, dt * 5))
     tmp.olhar.copy(k ? k.position : tmp.p).addScaledVector(tmp.f, 7).add(new THREE.Vector3(0, 1.4, 0))
     camera.lookAt(tmp.olhar)
@@ -213,7 +220,8 @@ export function Cena({ mundo, carro, ent, destino, onChegou }: { mundo: Mundo; c
     <>
       <color attach="background" args={["#1a0b33"]} />
       <fog attach="fog" args={["#3a1f5f", 120, 1400]} />
-      <hemisphereLight args={["#8a7ad8", "#3a2a20", 0.8]} />
+      <hemisphereLight args={["#a89ae8", "#4a3a30", 1.4]} />
+      <ambientLight intensity={0.35} color="#b8a8ff" />
       <directionalLight position={[-800, 1200, -600]} intensity={0.6} color="#b9ccff" />
       <Cidade mundo={mundo} />
       <Destino mundo={mundo} no={destino} />

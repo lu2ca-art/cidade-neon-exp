@@ -52,6 +52,21 @@ export function Jogo() {
     return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); window.removeEventListener("pointerdown", vivo) }
   }, [])
 
+  // atalho de teste (fora da produção): window.__cdIr(x, y) leva a Kombi pro cruzamento mais perto
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return
+    const w = window as unknown as { __cdIr?: (x: number, y: number) => void; __cdEstado?: () => object }
+    w.__cdIr = (x, y) => {
+      const n = noMaisPerto(mundo.rede, x, y), ai = n.arestas[0], t = mundo.trilhas[ai], c = carro.current
+      c.t = ai; c.d = t.e.a === n.id ? 1 : -1; c.s = c.d > 0 ? 15 : t.len - 15; c.x = 2; c.salto = true
+    }
+    ;(w as unknown as { __cdRetorno: () => void }).__cdRetorno = () => {
+      const r = mundo.rede.retornos[0], t = mundo.trilhas[r.aresta], c = carro.current
+      c.t = r.aresta; c.d = 1; c.s = r.f * t.len - 60; c.x = 3; c.salto = true
+    }
+    w.__cdEstado = () => { const c = carro.current; return { t: c.t, s: Math.round(c.s), d: c.d, x: +c.x.toFixed(1), v: Math.round(c.v), retorno: c.retorno, via: mundo.trilhas[c.t].e.via, bairro: mundo.trilhas[c.t].e.bairro } }
+  }, [mundo])
+
   // o HUD e o minimapa (girando com a Kombi), 10× por segundo
   useEffect(() => {
     const id = setInterval(() => {
