@@ -434,6 +434,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [esperandoPosto, setEsperandoPosto] = useState(false)
   // a gasolina acabou: de patins até o posto ou uma bomba, e volta com o galão
   const [dePatins, setDePatins] = useState(false)
+  const [seco, setSeco] = useState(false)
+  const [pertoKombi, setPertoKombi] = useState(false)
   // a Kombi desligada: no lugar da ré, "dar partida"
   const [desligada, setDesligada] = useState(false)
   const [retorno, setRetorno] = useState(false)
@@ -532,6 +534,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       for (const bb of BOMBAS) { const ob = posicao(M, `bomba:${bb.id}`, bb.area, bb.u, bb.lado); if (ob.via === j.via && pertoDe(Vb.L, !!Vb.fechada, ob.u, j.u)) combustivel = bb.id }
       setPertoComb(combustivel)
       setDesligada(!!j.desligada)
+      {
+        const cb = combRef.current
+        setSeco(!aberturaRef.current.ativa && cb.tanque <= 0)
+        setPertoKombi(!!(cb.patins && cb.parada && cb.aqui && cb.aqui.distanceTo(cb.parada.pos) < 18))
+      }
       {
         // o mapa novo: dá pra fazer o retorno aqui? (os pontos da rede, nas retas compridas)
         const Vr = M.vias[j.via]
@@ -661,6 +668,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       setDePatins(true)
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 120)
     }, 350)
+  }
+  // sair da Kombi a qualquer hora (LU2CA 16/10): ela fica estacionada, você
+  // segue de patins; perto dela de novo, "voltar pra Kombi"
+  const entrarNaKombi = () => {
+    fadeCam.current?.classList.add("is-on")
+    setTimeout(() => {
+      const c = combRef.current, p = c.parada, j = jogo.current
+      if (p) { const mudou = j.via !== p.via; j.via = p.via; j.u = p.u; j.x = p.x; if (mudou) evs.current?.via(p.via) }
+      j.v = 0; j.vx = 0; j.encaixar = true
+      c.patins = false; c.parada = null
+      setDePatins(false); setPertoKombi(false)
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 150)
+    }, 300)
   }
   const voltarComGalao = () => {
     if (!onAbastecer?.("despejar")) { setMsgPatins("sem neon pro galão (10)"); setTimeout(() => setMsgPatins(""), 2500); return }
@@ -1332,6 +1352,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "arrowdown" || k === "s") input.current.freio = on
       else if ((k === "shift" || k === "e") && on) input.current.turbo = true
       else if (k === " " || k === "q") input.current.mao = on
+      // F (como no GTA): sai da Kombi, ou volta pra ela quando está perto
+      else if (k === "f" && on && !ev.repeat) document.querySelector<HTMLButtonElement>(".l-sair-kombi, .l-regar-btn.is-voltar")?.click()
       else if (k === "c" && on && !ev.repeat) trocarCamera()
       else return
       ev.preventDefault()
@@ -1553,13 +1575,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {/* o relógio da cidade (13/10): a hora e o dia */}
       {retorno && !entrando && <button type="button" className="l-regar-btn is-retorno" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.retorno = true }}>↩ retorno</button>}
       {/* sem gasolina: os patins (a Kombi fica) */}
-      {tanque <= 0.001 && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
+      {seco && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
         <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
       )}
-      {dePatins && pertoComb && (
+      {/* sair a qualquer hora / voltar pra Kombi */}
+      {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
+        <button type="button" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>sair da kombi</button>
+      )}
+      {dePatins && pertoKombi && !msgPatins && (
+        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>voltar pra Kombi</button>
+      )}
+      {dePatins && pertoComb && seco && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={voltarComGalao}>encher o galão e voltar pra Kombi</button>
       )}
-      {dePatins && !pertoComb && !msgPatins && <p className="l-pagina-fechada">de patins · o posto ou uma bomba no mapa</p>}
+      {dePatins && !pertoComb && !pertoKombi && !msgPatins && <p className="l-pagina-fechada">{seco ? "de patins · o posto ou uma bomba no mapa" : "de patins · a Kombi ficou estacionada"}</p>}
       {msgPatins && <p className="l-pagina-fechada">{msgPatins}</p>}
       {pertoComb && !dePatins && !naBomba && !entrando && !regando && parque !== "andando" && !postoAberto && !esperandoPosto && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={() => abastecer(pertoComb)}>
@@ -1847,6 +1876,7 @@ export interface Comb {
   // a gasolina acabou e você foi de patins (Patins.tsx): onde a Kombi ficou
   patins?: boolean
   parada?: { pos: THREE.Vector3; quat: THREE.Quaternion; via: number; u: number; x: number } | null
+  aqui?: THREE.Vector3 // onde você está agora (pra saber se está perto da Kombi parada)
 }
 
 export interface Abertura {
@@ -3361,6 +3391,7 @@ function Cena({
     {
       const cb2 = combRef.current
       if (cb2.patins && !cb2.parada) cb2.parada = { pos: car.position.clone(), quat: car.quaternion.clone(), via: j.via, u: j.u, x: j.x }
+      ;(cb2.aqui ??= new THREE.Vector3()).copy(car.position)
       if (corpoK.current) corpoK.current.visible = !cb2.patins
       if (cabineG.current && cb2.patins) cabineG.current.visible = false
       if (patinador.current) patinador.current.visible = !!cb2.patins

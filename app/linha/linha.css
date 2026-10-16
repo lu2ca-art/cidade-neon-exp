@@ -1923,3 +1923,6 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 /* no computador o botão também aparece (os pedais são só do celular) */
 .l-pedais:has(.is-partida) { display: flex; }
 .l-regar-btn.is-retorno { top: calc(250px + env(safe-area-inset-top)); background: #2fe8ff !important; }
+/* sair da Kombi a qualquer hora (16/10) */
+.l-sair-kombi { position: absolute; z-index: 6; left: 12px; top: calc(128px + env(safe-area-inset-top)); padding: 6px 12px; border-radius: 999px; background: rgba(11, 10, 18, 0.7) !important; border: 1px solid rgba(255, 255, 255, 0.25) !important; color: #fff !important; font: 700 11px var(--font-geist-mono), ui-monospace, monospace !important; letter-spacing: 0.04em; cursor: pointer; }
+.l-regar-btn.is-voltar { background: #5dffa0 !important; color: #06140c !important; box-shadow: 0 0 20px rgba(93, 255, 160, 0.6); }

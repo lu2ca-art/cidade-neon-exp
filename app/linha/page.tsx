@@ -983,7 +983,8 @@ export default function LinhaPage() {
             alvo={save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
             levando={levarDrewboy(save) ? "copo" : null}
             tanque={save.tanque ?? 1}
-            onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 ? s : { ...s, tanque: n }))}
+            // (o zero sempre salva: antes o último pouquinho nunca virava 0 e a Kombi ficava na reserva pra sempre)
+            onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 && !(n <= 0 && (s.tanque ?? 1) > 0) ? s : { ...s, tanque: n }))}
             onPosto={() => abrirPostoRef.current()}
             hora={save.hora ?? 18}
             onHora={(h) => setSave((s) => ({ ...s, hora: h, dia: virouODia(s.hora ?? 18, h) ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))}
