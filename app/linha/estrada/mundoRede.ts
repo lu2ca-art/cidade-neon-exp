@@ -15,7 +15,10 @@ import type { FreqId } from "../radio"
 import type { Mundo, Onde, Via } from "./mundo"
 import { CANTEIROS } from "./canteiros"
 
-export const MAO = 5.5 // meia largura de cada mão (m)
+// mão única com contramão livre (LU2CA 16/10): cada rua é UMA faixa larga
+// (as duas vias, uma por sentido, passam pelo mesmo eixo); você anda em
+// qualquer lado dela. A meia largura depende do tipo da rua
+const MEIA_RUA: Record<string, number> = { expressa: 12, avenida: 10, orla: 10, principal: 8.5, rua: 7, beco: 5, tunel: 9, serpentina: 7, terra: 7, rampa: 7 }
 const ALT = 0.6 // metros de altura por unidade da maquete
 const BASE = -15 // o nível do mar (3 m no v5) cai na água de sempre (−12)
 const ELEVADA = 14
@@ -45,8 +48,6 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
   if (limpos.length < 2) limpos.push(limpos[0].clone().add(new THREE.Vector3(1, 0, 1)))
   const p = amostrar(limpos, false) as Pista
   derivar(p, 0)
-  // a mão: o centro da via vai pro lado direito da rua
-  for (let i = 0; i < p.n; i++) { p.px[i] += -p.tz[i] * MAO; p.pz[i] += p.tx[i] * MAO }
   // a altura: o chão suavizado; a expressa sobe nos pilares no trecho elevado
   const bruto = new Float32Array(p.n), elev = new Float32Array(p.n)
   for (let i = 0; i < p.n; i++) {
@@ -59,7 +60,8 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
     let s = 0, el = 0, k = 0
     for (let j = Math.max(0, i - jan); j <= Math.min(p.n - 1, i + jan); j++) { s += bruto[j]; el += elev[j]; k++ }
     p.py[i] = s / k + (el / k) * ELEVADA
-    p.esq[i] = -MAO; p.dir[i] = MAO
+    const m = MEIA_RUA[e.tipo] ?? 7
+    p.esq[i] = -m; p.dir[i] = m
   }
   derivar(p, 6)
   const meio = e.pts[Math.floor(e.pts.length / 2)]
