@@ -28,6 +28,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
+import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
@@ -357,6 +358,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const onAberturaRef = useRef(onAbertura)
   useEffect(() => { onAberturaRef.current = onAbertura }, [onAbertura])
   const onAreaRef = useRef(onArea)
+  const areaRua = useRef<string | null>(null)
   useEffect(() => { onAreaRef.current = onArea }, [onArea])
   useEffect(() => {
     aberturaRef.current.ativa = abertura
@@ -939,7 +941,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const v = M.vias[i]
         setViaAtual(i)
         onAreaRef.current?.(v.id)
-        if (v.tipo !== "circuito") return
+        // no mapa novo cada rua é uma via: só conta como chegar num bairro quando o bairro muda
+        if (v.tipo === "rua") { if (areaRua.current === v.t) return; areaRua.current = v.t }
+        else if (v.tipo !== "circuito") return
         setBairro({ id: v.t, t: Date.now() })
         flashEl.current?.style.setProperty("--cor", freqDe(v.t).cor)
         vib([15, 30, 15])
@@ -1776,7 +1780,17 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 // libera a memória da placa de vídeo). O mundo montado fica em cache e a
 // posição da Kombi fica guardada aqui, pra ela voltar no mesmo ponto
 let MUNDO: Mundo | null = null
-function mundo() { return (MUNDO ??= montarMundo()) }
+// o mapa novo (a rede de ruas do v5) atrás do /linha?mapa=novo; fica marcado na sessão
+export function mapaNovo() {
+  if (typeof window === "undefined") return false
+  try {
+    const q = new URLSearchParams(location.search).get("mapa")
+    if (q === "novo") sessionStorage.setItem("cn-mapa", "novo")
+    if (q === "velho") sessionStorage.removeItem("cn-mapa")
+    return sessionStorage.getItem("cn-mapa") === "novo"
+  } catch { return false }
+}
+function mundo() { return (MUNDO ??= mapaNovo() ? montarMundoRede() : montarMundo()) }
 export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
 let RETOMAR: Retomada | null = null
 
@@ -1864,13 +1878,14 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
     const di = M.vias.findIndex((v) => v.id === "deserto")
     const j = novoJogo(M, null, null)
     j.via = di
-    j.u = LUGARES["casa-dbee"].u - 650
+    j.u = Math.max(0, Math.min(M.vias[di].L - 700, LUGARES["casa-dbee"].u - 650))
     j.y = M.vias[di].py[Math.floor(j.u / PASSO)]
     return j
   }
   // começa sempre no centro (cidade neon, 222.0)
   const c = M.vias[M.circuito.linha]
-  const u0 = c.estacoes[0].u - 150
+  // (no mapa novo as estações ainda não têm lugar: começa no começo da rua)
+  const u0 = Math.min(c.L - 50, (c.estacoes[0]?.u ?? 250) - 150)
   let u = u0
   const e = (id: EstacaoId) => c.estacoes.find((x) => x.id === id)
   // com destino: ~900m antes, pra dar gosto de chegar
@@ -1989,7 +2004,9 @@ function Cena({
   const motor = useMemo(() => montarMotor(), [])
   const reduz = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, [])
   const centro = M.vias[M.circuito.linha]
-  const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito"), [M])
+  // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
+  const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
+  const relevoNovo = useMemo(() => ("ligacoes" in M ? geoRelevoRede(M as MundoRede) : null), [M])
 
   useEffect(() => () => motor?.parar(), [motor])
   // a estática da sintonia (entre um lugar e outro)
@@ -2093,7 +2110,7 @@ function Cena({
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
       const e = ESTILO[t.predio]
-      const qt = Math.round((e.n * C.L) / 2600)
+      const qt = Math.round(((e.n * C.L) / 2600) * (C.tipo === "rua" ? 0.45 : 1))
       const mat = new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: ds.janela, emissiveMap: tex.janelas, emissiveIntensity: e.brilho, roughness: 0.62, metalness: 0.35 })
       // janela em escala real: a textura repete pelo tamanho de cada prédio
       // (antes um prédio de 200 m tinha janelas de 7 m) e cada prédio começa
@@ -2125,8 +2142,10 @@ function Cena({
         if (!M.livre(bx, bz, 10 + w * 0.7)) continue
         if (centrosLugares.some((c) => Math.hypot(c.x - bx, c.z - bz) < 24 + w * 0.7)) continue
         if (parqueChao.some((c) => Math.hypot(c.x - bx, c.z - bz) < 14 + w * 0.7)) continue
-        d.position.set(bx, -12 + h / 2, bz)
-        if (h > 85) topos.push(bx, -12 + h + 1.5, bz)
+        // no mapa novo o prédio nasce no chão (o relevo do v5), não na água
+        const y0 = "chao" in M ? (M as MundoRede).chao(bx, bz) - 1 : -12
+        d.position.set(bx, y0 + h / 2, bz)
+        if (h > 85) topos.push(bx, y0 + h + 1.5, bz)
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
         d.scale.set(w, h, e.w[0] + r() * (e.w[1] - e.w[0]))
         d.updateMatrix()
@@ -2919,6 +2938,24 @@ function Cena({
       j.x -= f.lado * CK
       j.sintonizou = false
       vib([20, 30, 20])
+    } else if (j.u >= V.L && V.tipo === "rua" && V.rede) {
+      // o mapa novo: no cruzamento, a próxima rua (a mais reta; segurando
+      // pro lado, a curva daquele lado). Rua sem saída: dá a volta pela outra mão
+      const sobra = j.u - V.L
+      trocou = true
+      const sai = (M as MundoRede).ligacoes.saidas[V.rede.para]
+      const cands = sai.filter((vi) => vi !== V.rede!.par)
+      const tx = V.tx[V.n - 1], tz = V.tz[V.n - 1]
+      const lado = (inp.dir ? 1 : 0) - (inp.esq ? 1 : 0)
+      let prox = V.rede.par, melhor = -Infinity
+      for (const vi of cands) {
+        const C = M.vias[vi], reto = tx * C.tx[0] + tz * C.tz[0], direita = tx * C.tz[0] - tz * C.tx[0]
+        const nota = lado === 0 ? reto : lado * direita * 2 + reto * 0.3
+        if (nota > melhor) { melhor = nota; prox = vi }
+      }
+      j.via = prox
+      j.u = Math.min(sobra, M.vias[prox].L - 1)
+      j.pegos.clear()
     } else if (j.u >= V.L) {
       const sobra = j.u - V.L
       trocou = true
@@ -2950,7 +2987,8 @@ function Cena({
     }
     // de ré passando do começo: no circuito dá a volta; numa saída, volta
     // pro lugar de onde saiu, na faixa da bifurcação
-    if (j.u < 0) {
+    if (j.u < 0 && V.tipo === "rua") { j.u = 0; j.v = Math.max(0, j.v) }
+    else if (j.u < 0) {
       trocou = true
       if (V.tipo === "circuito") j.u += V.L
       else {
@@ -3680,7 +3718,8 @@ function Cena({
         </mesh>
       ))}
       <primitive object={cidade.pilares} />
-      <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>
+      {/* (no mapa novo a Linha 9 ainda vai ganhar o traçado dela) */}
+      {!relevoNovo && <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>}
       <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
       <Seguro nome="bombas"><Bombas M={M} /></Seguro>
       <Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro>
@@ -3786,6 +3825,8 @@ function Cena({
         </mesh>
       ))}
 
+      {/* o mapa novo: o relevo do v5 debaixo das ruas */}
+      {relevoNovo && <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} /></mesh>}
       <primitive object={orbs.m} />
       <points geometry={orbs.halo} material={orbs.haloMat} />
 

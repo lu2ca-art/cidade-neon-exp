@@ -69,7 +69,7 @@ export interface Faixa {
 
 export interface Via extends Pista {
   id: string
-  tipo: "circuito" | "saida"
+  tipo: "circuito" | "saida" | "rua" // rua: o mapa novo (mundoRede.ts), uma via por mão
   t: FreqId // circuito: o lugar; saída: pra onde vai
   de?: FreqId // saída: de onde vem
   lado?: 1 | -1 // saída: lado por onde sai
@@ -81,6 +81,8 @@ export interface Via extends Pista {
   faixas: Faixa[] // circuito: as saídas
   chegadas: { u: number; lado: 1 | -1 }[] // circuito: onde as saídas encostam
   livre: [number, number] // circuito: trecho entre as chegadas e as bifurcações (onde moram estações e missões)
+  // rua do mapa novo: a aresta da rede, a mão, de que cruzamento sai, pra qual vai e a via da outra mão
+  rede?: { aresta: number; ida: boolean; de: number; para: number; par: number; tipo: string; bairro: string }
 }
 
 export interface Mundo {
