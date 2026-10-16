@@ -28,6 +28,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
+import { MODELOS, montarModelos } from "./carros"
 import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
@@ -2563,20 +2564,35 @@ function Cena({
   // ── tráfego: cada circuito com o seu ──
   const trafego = useMemo(() => {
     // (06/10: o dobro de carros; batida arremessa pro lado — vx, voo, giro)
-    const carros: { via: number; u: number; x: number; v: number; v0: number; x0: number; passou: boolean; bateu: number; vx: number; y: number; vy: number; giro: number; vgiro: number; caido: number }[] = []
-    circuitos.forEach((C) => {
+    // (16/10: carros de verdade — carros.ts — e, no mapa novo, ~120 carros pela rede, cada um na mão dele)
+    type Carro = { via: number; u: number; x: number; v: number; v0: number; x0: number; passou: boolean; bateu: number; vx: number; y: number; vy: number; giro: number; vgiro: number; caido: number; modelo: number; slot: number }
+    const carros: Carro[] = []
+    const rede = "ligacoes" in M
+    const novo = (via: number, u: number, x: number, v: number) => carros.push({ via, u, x, v, v0: v, x0: x, passou: false, bateu: 0, vx: 0, y: 0, vy: 0, giro: 0, vgiro: 0, caido: 0, modelo: 0, slot: 0 })
+    if (rede) {
+      const ruas = M.vias.map((_, vi) => vi).filter((vi) => M.vias[vi].tipo === "rua" && M.vias[vi].rede!.tipo !== "terra" && M.vias[vi].L > 60)
+      let sem = 31; const r = () => ((sem = (sem * 16807) % 2147483647) / 2147483647)
+      for (let i = 0; i < 120; i++) { const vi = ruas[Math.floor(r() * ruas.length)], VV = M.vias[vi]; novo(vi, r() * VV.L, 2.4 + r() * 1.6, 11 + r() * 12) }
+    } else circuitos.forEach((C) => {
       const vi = M.vias.indexOf(C)
       const q = Math.max(8, Math.round(C.L / 240))
-      for (let i = 0; i < q; i++) {
-        const x = [-MEIA * 0.62, 0, MEIA * 0.62][i % 3]
-        const v = 20 + (i % 5) * 3.2
-        carros.push({ via: vi, u: (i / q) * C.L + 60, x, v, v0: v, x0: x, passou: false, bateu: 0, vx: 0, y: 0, vy: 0, giro: 0, vgiro: 0, caido: 0 })
-      }
+      for (let i = 0; i < q; i++) novo(vi, (i / q) * C.L + 60, [-MEIA * 0.62, 0, MEIA * 0.62][i % 3], 20 + (i % 5) * 3.2)
     })
-    const n = carros.length
-    const corpo = new THREE.InstancedMesh(new THREE.BoxGeometry(1.9, 1.3, 4.2), new THREE.MeshStandardMaterial({ color: "#1b1d36", metalness: 0.6, roughness: 0.35 }), n)
-    const lant = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.2, 0.06), new THREE.MeshBasicMaterial({ color: "#ff2a44", toneMapped: false }), n * 2)
-    return { carros, corpo, lant }
+    // cada carro ganha um modelo e uma cor
+    const modelos = montarModelos()
+    const porModelo = modelos.map(() => 0)
+    carros.forEach((c, i) => { c.modelo = i % 13 === 5 ? 5 : i % 5; c.slot = porModelo[c.modelo]++ })
+    const malhas = modelos.map((m, k) => {
+      const n = Math.max(1, porModelo[k])
+      const pint = new THREE.InstancedMesh(m.pintada, new THREE.MeshStandardMaterial({ metalness: 0.55, roughness: 0.32 }), n)
+      const esc = new THREE.InstancedMesh(m.escura, new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.25 }), n)
+      const luz = new THREE.InstancedMesh(m.luzes, new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), n)
+      const cor = new THREE.Color()
+      for (let i = 0; i < n; i++) pint.setColorAt(i, cor.set(MODELOS[k].cores[(i * 7) % MODELOS[k].cores.length]))
+      for (const im of [pint, esc, luz]) im.frustumCulled = false
+      return [pint, esc, luz]
+    })
+    return { carros, malhas }
   }, [M, circuitos])
   // teste: a Kombi logo atrás de um carro do trânsito, mais rápida (bate)
   useEffect(() => {
@@ -3354,13 +3370,40 @@ function Cena({
 
     // tráfego
     const tr = trafego
+    const rede = "ligacoes" in M ? (M as MundoRede).ligacoes : null
+    const car0 = carro.current!.position
     for (let i = 0; i < tr.carros.length; i++) {
       const c = tr.carros[i]
-      const CV = M.vias[c.via]
-      const aqui = c.via === j.via
-      const antes = du(CV, j.u, c.u)
-      c.u = (c.u + c.v * dt) % CV.L
-      const d = du(CV, j.u, c.u)
+      let CV = M.vias[c.via]
+      // no mapa novo: quem vem na outra mão da MESMA rua também conta (contramão)
+      const par = V.rede?.par === c.via
+      const aqui = c.via === j.via || par
+      const uRel = (u: number) => (par ? CV.L - u : u)
+      const antes = du(V, j.u, uRel(c.u))
+      if (rede && CV.rede) {
+        c.u += c.v * dt
+        if (c.u >= CV.L) {
+          // a esquina: sai por outra rua daquele cruzamento (de preferência reto)
+          const sai = rede.saidas[CV.rede.para].filter((vi) => vi !== CV.rede!.par && M.vias[vi].rede!.tipo !== "terra")
+          let prox = CV.rede.par, melhor = -Infinity
+          for (const vi of sai) { const C2 = M.vias[vi], nota = CV.tx[CV.n - 1] * C2.tx[0] + CV.tz[CV.n - 1] * C2.tz[0] + Math.random() * 0.9; if (nota > melhor) { melhor = nota; prox = vi } }
+          c.u -= CV.L; c.via = prox; CV = M.vias[prox]; c.u = Math.min(c.u, CV.L - 1)
+        }
+        // longe demais de você: renasce numa rua por perto (a cidade tem gente perto de você sempre)
+        if ((i + Math.floor(j.tempo * 10)) % 40 === 0) {
+          const k = Math.min(CV.n - 1, Math.floor(c.u / PASSO))
+          if (Math.hypot(CV.px[k] - car0.x, CV.pz[k] - car0.z) > 650) {
+            for (let t = 0; t < 30; t++) {
+              const vi = Math.floor(Math.random() * M.vias.length), W2 = M.vias[vi]
+              if (W2.tipo !== "rua" || W2.rede!.tipo === "terra") continue
+              const u = Math.random() * W2.L, q = Math.min(W2.n - 1, Math.floor(u / PASSO)), dd = Math.hypot(W2.px[q] - car0.x, W2.pz[q] - car0.z)
+              if (dd > 140 && dd < 520) { c.via = vi; c.u = u; CV = W2; c.caido = 0; c.y = 0; c.giro = 0; c.x = c.x0; break }
+            }
+          }
+        }
+      } else c.u = (c.u + c.v * dt) % CV.L
+      const d = du(V, j.u, uRel(c.u))
+      const cx = par ? -c.x : c.x
       c.bateu = Math.max(0, c.bateu - dt)
       // arremessado: voa pro lado girando, cai, fica um tempo fora e volta
       if (c.caido > 0) {
@@ -3372,14 +3415,15 @@ function Cena({
         if (c.y === 0) { c.vy = Math.abs(c.vy) * 0.25; c.vgiro *= 0.6 }
         c.giro += c.vgiro * dt
         c.v *= Math.exp(-dt * 2)
-        if (c.caido <= 0) { c.x = c.x0; c.y = 0; c.vy = 0; c.vx = 0; c.giro = 0; c.v = c.v0; c.u = (c.u + CV.L * 0.5) % CV.L }
+        if (c.caido <= 0) { c.x = c.x0; c.y = 0; c.vy = 0; c.vx = 0; c.giro = 0; c.v = c.v0; c.u = rede ? Math.random() * CV.L : (c.u + CV.L * 0.5) % CV.L }
       }
-      if (aqui && c.caido <= 0 && Math.abs(d) < 3.6 && Math.abs(c.x - j.x) < 1.85 && !j.ar && c.bateu <= 0) {
+      if (aqui && c.caido <= 0 && Math.abs(d) < 3.6 && Math.abs(cx - j.x) < 1.85 && !j.ar && c.bateu <= 0) {
         // a batida (06/10, LU2CA): o carro da cidade voa pro lado, a Kombi segue
         c.bateu = 1
         c.caido = 7
-        const lado = Math.sign(c.x - j.x) || (Math.random() < 0.5 ? -1 : 1)
-        const forca = Math.min(1.6, 0.5 + Math.abs(j.v - c.v) / 25)
+        const lado = Math.sign(cx - j.x) || (Math.random() < 0.5 ? -1 : 1)
+        // de frente (contramão) a batida é mais forte
+        const forca = Math.min(1.6, 0.5 + Math.abs(j.v + (par ? c.v : -c.v)) / 25)
         c.vx = lado * (9 + 8 * forca)
         c.vy = 3 + 4 * forca
         c.vgiro = (Math.random() < 0.5 ? -1 : 1) * (3 + 4 * forca)
@@ -3397,7 +3441,7 @@ function Cena({
         }
       }
       if (aqui && antes > 0 && d <= 0) {
-        if (!c.passou && c.bateu <= 0 && Math.abs(c.x - j.x) < 3.3 && j.v > 30) {
+        if (!c.passou && c.bateu <= 0 && Math.abs(cx - j.x) < 3.3 && j.v > 30) {
           j.st.quase++
           j.carga = Math.min(1, j.carga + 0.3)
           motor?.whoosh()
@@ -3408,21 +3452,15 @@ function Cena({
         c.passou = true
       }
       if (d > 50) c.passou = false
-      const p = noMundo(CV, c.u, c.x, 0.75, a, tmp.p)
+      const p = noMundo(CV, c.u, c.x, 0.02, a, tmp.p)
       p.y += c.y
       tmp.d.position.copy(p)
       tmp.d.rotation.set(0, Math.atan2(a.tx, a.tz) + c.giro, c.caido > 0 ? Math.sin(c.giro) * 0.3 : 0)
       tmp.d.scale.set(1, 1, 1)
       tmp.d.updateMatrix()
-      tr.corpo.setMatrixAt(i, tmp.d.matrix)
-      for (const k of [-1, 1]) {
-        tmp.d.position.set(p.x - a.tx * 2.12 + -a.tz * k * 0.62, p.y + 0.1, p.z - a.tz * 2.12 + a.tx * k * 0.62)
-        tmp.d.updateMatrix()
-        tr.lant.setMatrixAt(i * 2 + (k > 0 ? 1 : 0), tmp.d.matrix)
-      }
+      for (const m of tr.malhas[c.modelo]) m.setMatrixAt(c.slot, tmp.d.matrix)
     }
-    tr.corpo.instanceMatrix.needsUpdate = true
-    tr.lant.instanceMatrix.needsUpdate = true
+    for (const ms of tr.malhas) for (const m of ms) m.instanceMatrix.needsUpdate = true
 
     // ── pose da Kombi: deita junto com a curva inclinada ──
     amostra(V, j.u, a)
@@ -3966,11 +4004,10 @@ function Cena({
       <primitive object={orbs.m} />
       <points geometry={orbs.halo} material={orbs.haloMat} />
 
-      <primitive object={trafego.corpo} />
+      {trafego.malhas.flat().map((m, i) => <primitive key={i} object={m} />)}
       <primitive object={caca.corpo} frustumCulled={false} />
       <primitive object={caca.barra} frustumCulled={false} />
       <primitive object={caca.farol} frustumCulled={false} />
-      <primitive object={trafego.lant} />
 
       <lineSegments ref={chuvaRef} geometry={chuva.g} frustumCulled={false}>
         <lineBasicMaterial color="#a8ccff" transparent opacity={0.28} />
