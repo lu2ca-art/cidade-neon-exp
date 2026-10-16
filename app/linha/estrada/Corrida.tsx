@@ -821,7 +821,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando })
     if (!p) { setFaixa(""); return }
     const tocar = () => {
-      setFaixa(p.faixa.abafada ? `${p.faixa.titulo} · com interferência` : p.faixa.titulo)
+      setFaixa(p.faixa.abafada ? `${p.faixa.titulo} · abafada` : p.faixa.titulo)
       player.interferir(p.faixa.abafada ? 1 : 0)
       player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol)
     }
@@ -843,7 +843,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     if (lib.length < 2) return
     const i = lib.findIndex((f) => f.id === freqRef.current)
     const nova = lib[(i + passo + lib.length) % lib.length].id
-    chiadoCurto()
     setFreq(nova); freqRef.current = nova
     tocarProxima(nova)
     onSinal(sinalRef.current, nova)

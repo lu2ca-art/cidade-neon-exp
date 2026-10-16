@@ -68,7 +68,7 @@ const ganhou = (titulo: string, objetos: EstacaoId[]) => {
 
 // RÁDIO ≠ LUGAR (LU2CA 15/10): cada frequência é uma rádio, e todas tocam
 // todas as faixas LANÇADAS, inteiras. A que ainda não teve a missão liberada
-// toca com interferência (abafada, chiado); o catálogo antigo fica assim até
+// toca abafada (sem chiado); o catálogo antigo fica assim até
 // todas as missões. Prévia não lançada nunca entra aqui (só no mp3).
 // - 222.0 LINHA 9: o Vol.1 (as faixas de estúdio)
 // - 88.7: as instrumentais · 111.3: as ao vivo (das que já saíram)

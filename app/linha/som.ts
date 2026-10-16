@@ -503,18 +503,9 @@ class Player {
         this.analyser.fftSize = 256
         this.analyser.smoothingTimeConstant = 0.6
         // a interferência (rádio ≠ lugar, 15/10): a faixa cuja missão ainda
-        // não saiu toca inteira, mas abafada, com chiado e o dial oscilando
+        // não saiu toca inteira, só abafada (sem chiado: pedido do LU2CA)
         this.filtro = c.createBiquadFilter()
-        this.filtro.type = "lowpass"; this.filtro.frequency.value = 20000; this.filtro.Q.value = 0.9
-        const lfo = c.createOscillator(); lfo.frequency.value = 0.35
-        this.balanco = c.createGain(); this.balanco.gain.value = 0
-        lfo.connect(this.balanco).connect(this.filtro.frequency); lfo.start()
-        const n = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = n.getChannelData(0)
-        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (0.6 + 0.4 * Math.sin(i / 900))
-        const ruido = c.createBufferSource(); ruido.buffer = n; ruido.loop = true
-        const passa = c.createBiquadFilter(); passa.type = "bandpass"; passa.frequency.value = 2400; passa.Q.value = 0.6
-        this.chiado = c.createGain(); this.chiado.gain.value = 0
-        ruido.connect(passa).connect(this.chiado).connect(this.abaixo); ruido.start()
+        this.filtro.type = "lowpass"; this.filtro.frequency.value = 20000; this.filtro.Q.value = 0.7
         node.connect(this.gain).connect(this.filtro).connect(this.abaixo).connect(abafo() ?? out)
         this.gain.connect(this.analyser)
         const ouvido = c.createAnalyser()
@@ -531,16 +522,11 @@ class Player {
   aoFim: (() => void) | null = null
   analyser: AnalyserNode | null = null
   private filtro: BiquadFilterNode | null = null
-  private balanco: GainNode | null = null
-  private chiado: GainNode | null = null
-  // 0 = limpa; 1 = a faixa com interferência (missão ainda não liberada)
+  // 0 = limpa; 1 = abafada (missão ainda não liberada)
   interferir(k: number) {
     this.garantir()
-    if (!ctx || !this.filtro || !this.chiado || !this.balanco) return
-    const t = ctx.currentTime
-    this.filtro.frequency.setTargetAtTime(k > 0 ? 1100 : 20000, t, 0.2)
-    this.balanco.gain.setTargetAtTime(k > 0 ? 260 : 0, t, 0.2)
-    this.chiado.gain.setTargetAtTime(k > 0 ? 0.035 * k : 0, t, 0.2)
+    if (!ctx || !this.filtro) return
+    this.filtro.frequency.setTargetAtTime(k > 0 ? 900 : 20000, ctx.currentTime, 0.2)
   }
   private dados = new Uint8Array(128)
 
