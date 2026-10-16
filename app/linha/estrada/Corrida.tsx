@@ -2772,9 +2772,9 @@ function Cena({
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
       // tanque seco: a Kombi vai na reserva, bem devagar (dá pra chegar no posto)
       const seco = !aberturaRef.current.ativa && combRef.current.tanque <= 0
-      // de patins: o embalo de quem empurra (≈ 40 km/h), sem turbo
+      // de patins: o embalo de quem empurra (≈ 65 km/h, LU2CA 15/10: mais veloz), sem turbo
       const patins = !!combRef.current.patins
-      const vmax = patins ? VMAX * 0.24 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      const vmax = patins ? VMAX * 0.4 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
