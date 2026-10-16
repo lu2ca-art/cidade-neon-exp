@@ -11,7 +11,7 @@ import type { Lugar } from "../lugares"
 const COR = "#ffc857"
 
 function UmaBomba({ M, b }: { M: Mundo; b: Bomba }) {
-  const p = useMemo(() => poseLugar(M, { area: b.area, u: b.u, lado: b.lado } as Lugar), [M, b])
+  const p = useMemo(() => poseLugar(M, { area: b.area, u: b.u, lado: b.lado } as Lugar, `bomba:${b.id}`), [M, b])
   return (
     <group position={[p.vaga.x, p.chao, p.vaga.z]} rotation-y={p.rumo}>
       <group position={[b.lado * 4.5, 0, 0]}>

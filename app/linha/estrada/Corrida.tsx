@@ -54,7 +54,7 @@ import type { Save } from "../estado"
 import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
-import { ABRE, CK, FAIXA, distritoDe, montarMundo, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
+import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
@@ -468,7 +468,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const camEntrada = useRef<{ cam: THREE.Vector3; olhar: THREE.Vector3 } | null>(null)
   const entrar = (lp: LugarPagina) => {
     jogo.current.encostando = true
-    const pose = poseLugar(M, { area: lp.area, u: lp.u, lado: lp.lado } as Lugar)
+    const pose = poseLugar(M, { area: lp.area, u: lp.u, lado: lp.lado } as Lugar, `pagina:${lp.id}`)
     camEntrada.current = { cam: pose.cam.clone(), olhar: pose.porta.clone().setY(pose.porta.y + 2.5) }
     setEntrando(lp); setCarregou(false)
     router.prefetch(lp.rota)
@@ -510,8 +510,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         // a missão aponta pra esse lugar: quem manda é a cena dela
         if (lp.lugar && lp.lugar === missaoLugarRef.current) continue
         const V = M.vias[j.via]
-        if (M.circuito[lp.area] !== j.via) continue
-        let d = lp.u - j.u
+        const op = posicao(M, `pagina:${lp.id}`, lp.area, lp.u, lp.lado)
+        if (op.via !== j.via) continue
+        let d = op.u - j.u
         if (V.fechada) d = ((d % V.L) + V.L * 1.5) % V.L - V.L / 2
         if (d > -20 && d < 90) pp = lp.id
       }
@@ -520,8 +521,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       // o posto (sempre aberto) e as bombas de rua
       const Vb = M.vias[j.via]
       let combustivel: string | null = null
-      if (M.circuito[LUGARES.posto.area] === j.via && pertoDe(Vb.L, !!Vb.fechada, LUGARES.posto.u, j.u)) combustivel = "posto"
-      for (const bb of BOMBAS) if (M.circuito[bb.area] === j.via && pertoDe(Vb.L, !!Vb.fechada, bb.u, j.u)) combustivel = bb.id
+      const oPosto = posicao(M, "lugar:posto", LUGARES.posto.area, LUGARES.posto.u, LUGARES.posto.lado)
+      if (oPosto.via === j.via && pertoDe(Vb.L, !!Vb.fechada, oPosto.u, j.u)) combustivel = "posto"
+      for (const bb of BOMBAS) { const ob = posicao(M, `bomba:${bb.id}`, bb.area, bb.u, bb.lado); if (ob.via === j.via && pertoDe(Vb.L, !!Vb.fechada, ob.u, j.u)) combustivel = bb.id }
       setPertoComb(combustivel)
       setDesligada(!!j.desligada)
       if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
@@ -1255,6 +1257,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       j.encaixar = true
       evs.current?.via(i)
     }
+    // (mapa novo) leva a Kombi pra perto de uma coisa da tabela: "lugar:bar", "pagina:ginasio", "flor:linha-1", "parque"
+    ;(w as Record<string, unknown>).__irAte = (chave: string, antes = 60) => {
+      const o = M.onde?.(chave); if (!o) return null
+      const j = jogo.current
+      j.via = o.via; j.u = Math.max(0, o.u - antes); j.x = 0; j.encaixar = true
+      evs.current?.via(o.via)
+      return { via: M.vias[o.via].id, u: o.u }
+    }
     w.__tom = () => tomDaMusica()
     // teste: a hora do jogo (0–24)
     w.__hora = (h: number) => { horaRef.current = h }
@@ -1875,10 +1885,12 @@ function retomarJogo(M: Mundo, r: Retomada | null): Jogo | null {
 function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null, abertura = false): Jogo {
   // a abertura: no deserto, uns 650 m antes da casa da D-Bee
   if (abertura) {
-    const di = M.vias.findIndex((v) => v.id === "deserto")
+    const casa = LUGARES["casa-dbee"]
+    const oc = posicao(M, "lugar:casa-dbee", casa.area, casa.u, casa.lado, casa.via)
+    const di = oc.via
     const j = novoJogo(M, null, null)
     j.via = di
-    j.u = Math.max(0, Math.min(M.vias[di].L - 700, LUGARES["casa-dbee"].u - 650))
+    j.u = Math.max(0, oc.u - 650)
     j.y = M.vias[di].py[Math.floor(j.u / PASSO)]
     return j
   }

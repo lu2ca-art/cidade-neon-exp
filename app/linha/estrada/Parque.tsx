@@ -12,7 +12,7 @@
 import { useFrame } from "@react-three/fiber"
 import { useEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
-import type { Mundo } from "./mundo"
+import { posicao, type Mundo } from "./mundo"
 import { PASSO, pontoI } from "./pista"
 import { G, fracaoDe, montarTrilho, quadro, type Trilho } from "../../parque/trilho"
 import { criarVento, estalo, sino } from "../../parque/sons"
@@ -51,19 +51,21 @@ export const novoPasseio = (): PasseioParque => ({ andando: false, bracos: false
 
 // a Kombi está chegando no parque? (metros na via, de 90 antes até 20 depois)
 export function pertoDoParque(M: Mundo, via: number, u: number) {
-  if (M.circuito[PARQUE.area] !== via) return false
+  const o = posicao(M, "parque", PARQUE.area, PARQUE.u, PARQUE.lado)
+  if (o.via !== via) return false
   const V = M.vias[via]
-  let d = PARQUE.u - u
+  let d = o.u - u
   if (V.fechada) d = ((d % V.L) + V.L * 1.5) % V.L - V.L / 2
   return d > -20 && d < 90
 }
 
 function montar(M: Mundo) {
-  const C = M.vias[M.circuito[PARQUE.area]]
-  const i0 = Math.round(PARQUE.u / PASSO)
+  const o = posicao(M, "parque", PARQUE.area, PARQUE.u, PARQUE.lado)
+  const C = M.vias[o.via]
+  const i0 = Math.round(o.u / PASSO)
   const noMundo = ([a, s, h]: [number, number, number]) => {
-    const i = (((i0 + Math.round(a / PASSO)) % C.n) + C.n) % C.n
-    return pontoI(C, i, PARQUE.lado * s, h, new THREE.Vector3())
+    const i = C.fechada ? (((i0 + Math.round(a / PASSO)) % C.n) + C.n) % C.n : Math.max(0, Math.min(C.n - 1, i0 + Math.round(a / PASSO)))
+    return pontoI(C, i, o.lado * s, h, new THREE.Vector3())
   }
   const pts = TRACADO.map(noMundo)
   const tr = montarTrilho(1600, pts)

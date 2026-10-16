@@ -1,7 +1,7 @@
 // Os canteiros da Ella (dados, sem three.js: a página principal lê pra
 // contar a conquista; o desenho mora em Flores.tsx).
 
-import type { Mundo } from "./mundo"
+import { posicao, type Mundo } from "./mundo"
 
 export type Especie = "girassol" | "rosa" | "lavanda" | "hortensia" | "margarida" | "tulipa" | "orquidea"
 export const ESPECIES: Record<Especie, { nome: string; cor: string; miolo: string; altura: number; n: number }> = {
@@ -53,8 +53,9 @@ const ANTES = 70, DEPOIS = 12
 export function canteiroPerto(M: Mundo, via: number, u: number): Canteiro | null {
   const V = M.vias[via]
   for (const c of CANTEIROS) {
-    if (M.circuito[c.area] !== via) continue
-    let d = c.u - u
+    const o = posicao(M, `flor:${c.id}`, c.area, c.u, c.lado)
+    if (o.via !== via) continue
+    let d = o.u - u
     if (V.fechada) d = ((d % V.L) + V.L * 1.5) % V.L - V.L / 2
     if (d > -DEPOIS && d < ANTES) return c
   }

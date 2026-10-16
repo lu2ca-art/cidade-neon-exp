@@ -17,7 +17,7 @@ const FUNDO = 10
 
 function UmaFachada({ M, p, aberto, perto }: { M: Mundo; p: LugarPagina; aberto: boolean; perto: boolean }) {
   // a posição sai do mesmo cálculo dos lugares da história
-  const pose = useMemo(() => poseLugar(M, { area: p.area, u: p.u, lado: p.lado } as Lugar), [M, p])
+  const pose = useMemo(() => poseLugar(M, { area: p.area, u: p.u, lado: p.lado } as Lugar, `pagina:${p.id}`), [M, p])
   const letreiro = useMemo(() => texTexto([{ txt: p.letreiro, tam: 150, cor: p.cor }], 1024, 220), [p])
   const vaga = useRef<THREE.MeshBasicMaterial>(null)
   useFrame((s) => { if (vaga.current) vaga.current.opacity = perto && aberto ? 0.34 + Math.sin(s.clock.elapsedTime * 3) * 0.14 : 0.1 })

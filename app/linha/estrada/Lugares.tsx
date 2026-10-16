@@ -10,7 +10,7 @@ import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
 import * as THREE from "three"
 import { LUGARES, VAGA, type Lugar, type LugarId } from "../lugares"
-import type { Mundo } from "./mundo"
+import { posicao, type Mundo } from "./mundo"
 import { MEIA, PASSO, pontoI } from "./pista"
 import { texTexto } from "./geo"
 
@@ -30,8 +30,11 @@ export interface PoseLugar {
 }
 
 // onde um lugar fica no mundo (o mesmo cálculo pra fachada, vaga e câmera)
-export function poseLugar(M: Mundo, l: Lugar): PoseLugar {
-  const via = l.via ? M.vias.findIndex((v) => v.id === l.via) : M.circuito[l.area]
+export function poseLugar(M: Mundo, l0: Lugar, chave = `lugar:${l0.id}`): PoseLugar {
+  // (no mapa novo a posição vem da tabela dele; no de sempre, do circuito)
+  const o = posicao(M, chave, l0.area, l0.u, l0.lado, l0.via)
+  const via = o.via
+  const l = { ...l0, u: o.u, lado: o.lado }
   const C = M.vias[via]
   const i = C.fechada ? ((Math.round(l.u / PASSO) % C.n) + C.n) % C.n : Math.max(0, Math.min(C.n - 1, Math.round(l.u / PASSO)))
   const chao = C.py[i]
