@@ -28,6 +28,8 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
+import { FloresAsfalto } from "./FloresAsfalto"
+import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
@@ -435,6 +437,40 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [esperandoPosto, setEsperandoPosto] = useState(false)
   // a gasolina acabou: de patins até o posto ou uma bomba, e volta com o galão
   const [dePatins, setDePatins] = useState(false)
+  // as flores do asfalto (mapa novo, LU2CA 16/10): só de patins; 10 por vez, sem fim
+  const [flores, setFlores] = useState(() => lerFlores())
+  const leva = useMemo(() => ("ligacoes" in M ? levaDe(M, flores.geracao) : []), [M, flores.geracao])
+  const levaPos = useMemo(() => leva.map((f) => { const C = M.vias[f.via], i = Math.max(0, Math.min(C.n - 1, Math.floor(f.u / 2))); return { f, x: C.px[i], z: C.pz[i] } }), [M, leva])
+  const [regandoFlor, setRegandoFlor] = useState<{ id: string; desde: number } | null>(null)
+  const [florPerto, setFlorPerto] = useState<FlorAsfalto | null>(null)
+  const [msgFlor, setMsgFlor] = useState("")
+  // teste (fora da produção): leva até a flor k da leva
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return
+    ;(window as unknown as Record<string, unknown>).__irFlor = (k: number) => {
+      const f = leva[k]; if (!f) return null
+      const j = jogo.current; j.via = f.via; j.u = Math.max(0, f.u - 4); j.x = f.lado * 3; j.v = 0; j.encaixar = true
+      return { id: f.id, especie: f.especie }
+    }
+  }, [leva])
+  const floresRef = useRef(new Set<string>())
+  useEffect(() => { floresRef.current = new Set(flores.regadas.map((f) => f.id)) }, [flores])
+  const regarFlor = (f: FlorAsfalto) => {
+    setRegandoFlor({ id: f.id, desde: performance.now() })
+    vib([10, 20, 10])
+    setTimeout(() => {
+      setFlores((e) => {
+        const desta = [...e.desta, f.id]
+        const nova = desta.length >= POR_VEZ
+        const prox = { geracao: nova ? e.geracao + 1 : e.geracao, regadas: [...e.regadas, f], desta: nova ? [] : desta }
+        guardarFlores(prox)
+        if (nova) { setMsgFlor(`nasceram mais ${POR_VEZ} flores pela cidade`); setTimeout(() => setMsgFlor(""), 3500) }
+        return prox
+      })
+      onMontanha?.(1)
+      setRegandoFlor(null)
+    }, 1700)
+  }
   const [seco, setSeco] = useState(false)
   const [pertoKombi, setPertoKombi] = useState(false)
   // a Kombi desligada: no lugar da ré, "dar partida"
@@ -506,7 +542,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     const t = setInterval(() => {
       const j = jogo.current
-      const c = ehDia(horaRef.current) ? canteiroPerto(M, j.via, j.u) : null
+      const c = ehDia(horaRef.current) && !("ligacoes" in M) ? canteiroPerto(M, j.via, j.u) : null
       setCanteiro(c && !regadas.includes(c.id) ? c.id : null)
       const pq = passeio.current
       setParque(pq.andando ? "andando" : abertoAgora("noite", horaRef.current) && pertoDoParque(M, j.via, j.u) ? "perto" : null)
@@ -535,6 +571,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       setPertoComb(combustivel)
       setDesligada(!!j.desligada)
       {
+        // de patins: a flor do asfalto mais perto (a menos de 8 m) que ainda espera água
+        const cb = combRef.current
+        let fp: FlorAsfalto | null = null
+        if (cb.patins && cb.aqui) { let dm = 10; for (const p of levaPos) { if (floresRef.current.has(p.f.id)) continue; const d = Math.hypot(p.x - cb.aqui.x, p.z - cb.aqui.z); if (d < dm) { dm = d; fp = p.f } } }
+        setFlorPerto((a) => (a?.id === fp?.id ? a : fp))
+      }
+      {
         const cb = combRef.current
         setSeco(!aberturaRef.current.ativa && cb.tanque <= 0)
         setPertoKombi(!!(cb.patins && cb.parada && cb.aqui && cb.aqui.distanceTo(cb.parada.pos) < 18))
@@ -543,7 +586,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       if (pq.andando && hudMontanha.current) hudMontanha.current.textContent = String(Math.round(pq.v * 3.6))
     }, 300)
     return () => clearInterval(t)
-  }, [M, regadas])
+  }, [M, regadas, levaPos])
   // ao sair da tela, guarda onde a Kombi estava
   useEffect(() => () => {
     const j = jogo.current
@@ -1429,7 +1472,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins }} />
         </Canvas>
       )}
 
@@ -1572,6 +1615,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
         <button type="button" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>sair da kombi</button>
       )}
+      {dePatins && florPerto && !regandoFlor && (
+        <button type="button" className="l-regar-btn is-flor" onPointerDown={(e) => e.stopPropagation()} onClick={() => regarFlor(florPerto)}>regar a flor</button>
+      )}
+      {msgFlor && <p className="l-pagina-fechada is-flor">{msgFlor}</p>}
       {dePatins && pertoKombi && !msgPatins && (
         <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>voltar pra Kombi</button>
       )}
@@ -1964,7 +2011,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
@@ -1977,6 +2024,7 @@ function Cena({
   climaRef: React.RefObject<{ chove: boolean; k: number }>
   respiroRef: React.MutableRefObject<{ pode: boolean; feito: boolean }>
   marcaRef: React.RefObject<Marca | null>
+  floresAsf: { leva: FlorAsfalto[]; regadas: FlorAsfalto[]; regando: { id: string; desde: number } | null; visivel: boolean }
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -3810,7 +3858,8 @@ function Cena({
       <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
       <Seguro nome="bombas"><Bombas M={M} /></Seguro>
       <Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro>
-      <Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro>
+      {/* no mapa novo: as flores do asfalto (só de patins); no de sempre, os canteiros */}
+      <Seguro nome="flores">{"ligacoes" in M ? <FloresAsfalto M={M} {...floresAsf} /> : <Flores M={M} regadas={regadas} />}</Seguro>
       <Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro>
       <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
       <primitive object={cidade.postes} />
