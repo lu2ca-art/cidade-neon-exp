@@ -16,6 +16,8 @@ import { LUGARES, type LugarId } from "../lugares"
 import { CANTEIROS } from "./Flores"
 import { PARQUE } from "./Parque"
 import { PAGINAS } from "../paginas"
+import { pintarCarta } from "./carta"
+import { ESCALA, H as HU, W as WU } from "../rede/terreno"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
@@ -96,6 +98,13 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
   const [aberto, setAberto] = useState(false)
   const [distancia, setDistancia] = useState("")
   const vias = useMemo(() => amostrarVias(M), [M])
+  // o mapa novo: a carta pintada (o v5) embaixo, no lugar das linhas soltas
+  const [carta, setCarta] = useState<HTMLCanvasElement | null>(null)
+  useEffect(() => {
+    if (!("ligacoes" in M) || (window as unknown as { __semCarta?: boolean }).__semCarta) return
+    const t = setTimeout(() => setCarta(pintarCarta()), 700)
+    return () => clearTimeout(t)
+  }, [M])
   const blips = useMemo(() => blipsDo(M), [M])
   // o destino: o que você marcou, senão o lugar da missão
   const destino = useMemo<Marca | null>(() => {
@@ -150,7 +159,15 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
       g.save(); g.beginPath(); g.arc(R, R, R - 1, 0, 7); g.clip()
       g.fillStyle = "rgba(8, 7, 16, 0.86)"; g.fillRect(0, 0, S, S)
       g.lineCap = "round"; g.lineJoin = "round"
-      for (const v of vias) {
+      if (carta) {
+        // a mesma conta do tela(), como matriz: a carta gira com a Kombi
+        const a = -k.tz * esc, b = -k.tx * esc, cc = k.tx * esc, dd = -k.tz * esc
+        const e = R - (a * ox + cc * oz), f = R - (b * ox + dd * oz)
+        g.save(); g.setTransform(a * dpr, b * dpr, cc * dpr, dd * dpr, e * dpr, f * dpr)
+        g.drawImage(carta, -WU / 2 * ESCALA, -HU / 2 * ESCALA, WU * ESCALA, HU * ESCALA)
+        g.restore()
+      }
+      if (!carta) for (const v of vias) {
         g.strokeStyle = v.saida ? "rgba(255,255,255,0.28)" : v.cor; g.globalAlpha = v.saida ? 1 : 0.55
         g.lineWidth = v.saida ? 2.5 : 3.5
         g.beginPath()
@@ -187,7 +204,7 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
     }
     raf = requestAnimationFrame(desenhar)
     return () => cancelAnimationFrame(raf)
-  }, [M, vias, blips, destino, pose])
+  }, [M, vias, blips, destino, pose, carta])
 
   // o mapa grande: a cidade inteira, norte pra cima
   const caixa = useMemo(() => {
@@ -203,16 +220,22 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
     c.width = W * dpr; c.height = H * dpr
     // começa centrado na Kombi, com a cidade quase inteira na tela
     const p = pose.current, k = p ? noMundo(M, p) : { x: 0, z: 0 }
-    vista.current = { cx: k.x, cz: k.z, esc: Math.min(W / (caixa.x1 - caixa.x0), H / (caixa.z1 - caixa.z0)) * 1.6 }
+    // (no mapa novo abre mostrando mais da cidade)
+    vista.current = { cx: k.x, cz: k.z, esc: Math.min(W / (caixa.x1 - caixa.x0), H / (caixa.z1 - caixa.z0)) * ("ligacoes" in M ? 1.15 : 1.6) }
     let raf = 0
     const desenhar = () => {
       raf = requestAnimationFrame(desenhar)
       const g = c.getContext("2d")!, vv = vista.current
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
       const tela = (x: number, z: number): [number, number] => [W / 2 + (x - vv.cx) * vv.esc, H / 2 + (z - vv.cz) * vv.esc]
-      g.fillStyle = "#07060e"; g.fillRect(0, 0, W, H)
+      g.fillStyle = carta ? "#1a5470" : "#07060e"; g.fillRect(0, 0, W, H)
       g.lineCap = "round"; g.lineJoin = "round"
-      for (const v of vias) {
+      if (carta) {
+        g.save(); g.setTransform(vv.esc * dpr, 0, 0, vv.esc * dpr, (W / 2 - vv.cx * vv.esc) * dpr, (H / 2 - vv.cz * vv.esc) * dpr)
+        g.drawImage(carta, -WU / 2 * ESCALA, -HU / 2 * ESCALA, WU * ESCALA, HU * ESCALA)
+        g.restore()
+      }
+      if (!carta) for (const v of vias) {
         g.strokeStyle = v.saida ? "rgba(255,255,255,0.3)" : v.cor; g.globalAlpha = v.saida ? 1 : 0.7
         g.lineWidth = v.saida ? 2 : 3.5
         g.beginPath()
@@ -243,7 +266,7 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
     }
     desenhar()
     return () => cancelAnimationFrame(raf)
-  }, [aberto, M, vias, blips, destino, caixa, pose])
+  }, [aberto, M, vias, blips, destino, caixa, pose, carta])
 
   // arrastar move, pinça/roda aproxima, tocar marca
   const gesto = useRef<{ x: number; y: number; moveu: boolean; dedos: Map<number, { x: number; y: number }>; dist: number }>({ x: 0, y: 0, moveu: false, dedos: new Map(), dist: 0 })

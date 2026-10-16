@@ -2015,6 +2015,12 @@ function Cena({
   // o lugar secreto já apareceu (Lugares acende a vaga dele)
   const [revelado, setRevelado] = useState<LugarId | null>(null)
   const { camera, scene, gl } = useThree()
+  // teste (fora da produção): a cena e o renderizador, pra medir o que pesa
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return
+    const w = window as unknown as Record<string, unknown>
+    w.__cena = scene; w.__gl = gl
+  }, [scene, gl])
   const camMontanha = useRef<{ pos: THREE.Vector3; olhar: THREE.Vector3; up: THREE.Vector3 } | null>(null)
   // olhar em volta de dentro (como na drive-v2): arrasta → gira até ±150° e
   // ±60°; solta → fica 7 s parado ali e depois volta devagar pra frente
@@ -2167,7 +2173,7 @@ function Cena({
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
       const e = ESTILO[t.predio]
-      const qt = Math.round(((e.n * C.L) / 2600) * (C.tipo === "rua" ? 0.45 : 1))
+      const qt = Math.round(((e.n * C.L) / 2600) * (C.tipo === "rua" ? 0.8 : 1))
       const mat = new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: ds.janela, emissiveMap: tex.janelas, emissiveIntensity: e.brilho, roughness: 0.62, metalness: 0.35 })
       // janela em escala real: a textura repete pelo tamanho de cada prédio
       // (antes um prédio de 200 m tinha janelas de 7 m) e cada prédio começa
@@ -2259,7 +2265,8 @@ function Cena({
     // pilares embaixo de todas as vias
     const pil: [number, number, number, number][] = []
     // (só onde descer até a água não fura outra pista)
-    for (const v of M.vias) for (let k = 0; k < v.n; k += 20) if (v.py[k] > -9 && M.vao(v.px[k], v.pz[k], v.py[k])) pil.push([v.px[k], v.py[k], v.pz[k], 0])
+    // (no mapa novo as duas vias de uma rua passam no mesmo eixo: um sentido só)
+    for (const v of M.vias) { if (v.tipo === "rua" && !v.rede?.ida) continue; for (let k = 0; k < v.n; k += 20) if (v.py[k] > -9 && M.vao(v.px[k], v.pz[k], v.py[k])) pil.push([v.px[k], v.py[k], v.pz[k], 0]) }
     const pilares = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 1, 1.6), new THREE.MeshStandardMaterial({ color: "#10122a", roughness: 0.8 }), pil.length)
     pil.forEach(([x, y, z], i) => {
       const h = y + 12
@@ -2276,7 +2283,9 @@ function Cena({
     // outra encosta chegando)
     const ks: { v: Via; k: number; lado: number }[] = []
     for (const v of M.vias) {
-      for (let k = 0; k < v.n; k += 12) {
+      // (no mapa novo: um sentido só, e os postes a cada 40 m)
+      if (v.tipo === "rua" && !v.rede?.ida) continue
+      for (let k = 0; k < v.n; k += v.tipo === "rua" ? 20 : 12) {
         const u = k * PASSO
         if (v.tipo === "saida" && (u < 150 || u > v.L - 240)) continue
         // o deserto não tem poste (só perto da cidade)
