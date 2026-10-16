@@ -63,7 +63,9 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
     const m = MEIA_RUA[e.tipo] ?? 7
     p.esq[i] = -m; p.dir[i] = m
   }
-  derivar(p, 6)
+  // as curvas deitam como nas pistas de sempre (sem isso a curva joga a Kombi
+  // no muro e o drift não se sustenta — o LU2CA sentiu a diferença)
+  derivar(p, 26)
   const meio = e.pts[Math.floor(e.pts.length / 2)]
   const v = Object.assign(p, {
     id: `${e.via}:${ai}${ida ? ">" : "<"}`, tipo: "rua" as const, t: AREA[bairro(meio[0], meio[1])],

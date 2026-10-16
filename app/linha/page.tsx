@@ -254,8 +254,10 @@ export default function LinhaPage() {
   useEffect(() => { proxRadio.current = tocarRadio }, [tocarRadio])
 
   // O Núcleo invade: 1ª vez depois da 2ª missão (dá pra repelir), 2ª depois
-  // da 3ª (derruba a 222 — o primeiro apagão), e depois, de vez em quando na
-  // estrada. Nunca no meio de uma conversa.
+  // da 3ª (derruba a 222 — o primeiro apagão). E só: é um easter egg, duas
+  // vezes no percurso inteiro (LU2CA 16/10: "está exagerado"; a 222 é uma
+  // máquina de desenvolvimento humano, não o Núcleo invadindo toda hora).
+  // Nunca no meio de uma conversa.
   const podeInvadir = (tela.t === "corrida" || tela.t === "home") && !invasao && !ligacao && !aoVivo && !cinema && !save.nucleo.caido
   useEffect(() => {
     if (!pronto || !podeInvadir) return
@@ -264,10 +266,6 @@ export default function LinhaPage() {
     if ((n === 0 && obj >= 2) || (n === 1 && obj >= 3)) {
       const t = setTimeout(() => setInvasao({ id: Date.now(), forte: n === 1 }), 5000)
       return () => clearTimeout(t)
-    }
-    if (n >= 2 && tela.t === "corrida") {
-      const t = setInterval(() => { if (Math.random() < 0.12) setInvasao({ id: Date.now(), forte: false }) }, 60000)
-      return () => clearInterval(t)
     }
   }, [pronto, podeInvadir, save.nucleo.invasoes, save.objetos.length, tela.t])
 

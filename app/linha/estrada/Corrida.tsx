@@ -63,7 +63,11 @@ import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
 
-const VMAX = 46 // m/s
+// (16/10, LU2CA: "aumentar a velocidade como um todo") 46 → 55,6 m/s: 200 km/h de verdade
+const VMAX = 55.6 // m/s
+// o velocímetro marca numa escala própria: 110 km/h de verdade (os patins no
+// máximo) aparecem como 60; a Kombi a 200 de verdade marca ~109
+const K_VEL = 60 / 110
 // drift: velocidade mínima pra finta derrubar a aderência, quanto peso tem
 // que estar carregado no lado de fora, e o ângulo máximo da carroceria
 const VDRIFT = 20 // ~72 km/h
@@ -76,8 +80,8 @@ const FUMACA = true
 // de lado, o multiplicador cresce com o drift seguido e tudo só conta quando
 // o drift acaba limpo (encostar no muro perde o que estava em jogo)
 const DRIFT_JUNTA = 1.2 // s pra emendar um drift no outro sem perder o combo
-const VTURBO = 62
-const ACEL = 11
+const VTURBO = 75
+const ACEL = 13.5
 const FREIO = 26
 const G = 24
 
@@ -1106,7 +1110,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         onVolta?.(t)
       },
       hud: (j) => {
-        const kmh = Math.abs(j.v) * 3.6
+        const kmh = Math.abs(j.v) * 3.6 * K_VEL
         if (hudVel.current) hudVel.current.textContent = String(Math.round(kmh))
         if (hudAgulha.current) hudAgulha.current.style.transform = `rotate(${-135 + Math.min(1, kmh / 140) * 270}deg)`
         // o odômetro: quanto a Kombi andou nesta viagem
@@ -1859,7 +1863,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <p className="l-chegada-cidade">{dest.cidade}</p>
           <dl>
             <div><dt>tempo</dt><dd>{chegou.tempo.toFixed(1)}s</dd></div>
-            <div><dt>máx</dt><dd>{Math.round(chegou.vmax * 3.6)} km/h</dd></div>
+            <div><dt>máx</dt><dd>{Math.round(chegou.vmax * 3.6 * K_VEL)} km/h</dd></div>
             <div><dt>sinal</dt><dd>+{chegou.sinal}</dd></div>
             <div><dt>no ar</dt><dd>{chegou.ar.toFixed(1)}s</dd></div>
           </dl>
@@ -2882,9 +2886,9 @@ function Cena({
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
       // tanque seco: a Kombi vai na reserva, bem devagar (dá pra chegar no posto)
       const seco = !aberturaRef.current.ativa && combRef.current.tanque <= 0
-      // de patins: o embalo de quem empurra (≈ 65 km/h, LU2CA 15/10: mais veloz), sem turbo
+      // de patins: 110 km/h de verdade (o velocímetro marca 60), sem turbo
       const patins = !!combRef.current.patins
-      const vmax = patins ? VMAX * 0.4 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      const vmax = patins ? 110 / 3.6 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
