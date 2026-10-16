@@ -3011,10 +3011,13 @@ function Cena({
 
     // a saída é a sintonia: a música de onde você veio vai sumindo, a
     // estática sobe e o dial gira; a música nova só entra na CHEGADA
+    // a estática só existe dentro da saída: saiu por qualquer caminho
+    // (teleporte, atalho, troca de via), cala — antes ela ficava chiando presa
+    if (V.tipo !== "saida" && chiado.current) calar()
     if (V.tipo === "saida") {
       const p = j.u / V.L
       const noRadio = fonteRef.current === "radio"
-      if (!j.sintonizou && p >= 0.45 && noRadio) { j.sintonizou = true; chiado.current = estatica() }
+      if (!j.sintonizou && p >= 0.45 && noRadio) { j.sintonizou = true; calar(); chiado.current = estatica() }
       if (hudN.current % 3 === 0 && noRadio) {
         player.volume(p < 0.45 ? 1 : Math.max(0, 1 - (p - 0.45) / 0.3))
         if (chiado.current) {
