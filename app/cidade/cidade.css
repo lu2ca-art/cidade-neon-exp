@@ -1,0 +1,23 @@
+/* a cidade nova (o motor do mapa livre) */
+.cd-raiz { position: fixed; inset: 0; background: #1a0b33; color: #f2eefa; font-family: var(--font-geist-mono), ui-monospace, monospace; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; overflow: hidden; }
+.cd-raiz button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+.cd-cvs { position: absolute !important; inset: 0; }
+.cd-topo { position: absolute; z-index: 2; top: 0; left: 0; right: 0; padding: calc(12px + env(safe-area-inset-top)) 16px 8px; display: flex; gap: 12px; align-items: baseline; font-weight: 700; font-size: 12px; text-shadow: 0 2px 6px #000; }
+.cd-topo b { font: 900 16px "Arial Black", system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #ffc857; }
+.cd-beta { margin-left: auto; font-size: 10px; color: rgba(255, 255, 255, 0.5); letter-spacing: 0.12em; text-transform: uppercase; }
+.cd-mini { position: absolute; z-index: 2; right: 12px; top: calc(44px + env(safe-area-inset-top)); width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.3); cursor: pointer; }
+.cd-vel { position: absolute; z-index: 2; left: 16px; bottom: calc(24px + env(safe-area-inset-bottom)); display: flex; align-items: baseline; gap: 4px; text-shadow: 0 2px 8px #000; pointer-events: none; }
+.cd-vel b { font: 900 40px "Arial Black", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.cd-vel small { font-size: 11px; color: rgba(255, 255, 255, 0.7); }
+.cd-eta { position: absolute; z-index: 2; left: 0; right: 0; top: calc(48px + env(safe-area-inset-top)); margin: 0; text-align: center; font-weight: 700; font-size: 12px; color: #5dffa0; text-shadow: 0 2px 6px #000; pointer-events: none; }
+.cd-eta.is-chegou { font-size: 18px; }
+.cd-bts { position: absolute; z-index: 3; right: 12px; bottom: calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.cd-bts button { min-width: 74px; padding: 12px 14px; border-radius: 999px; background: rgba(10, 8, 24, 0.6) !important; border: 1.5px solid rgba(255, 255, 255, 0.3) !important; font-weight: 700 !important; font-size: 12px !important; }
+.cd-bts .is-retorno { background: #2fe8ff !important; color: #06141a !important; border-color: #2fe8ff !important; }
+.cd-bts .is-partida { background: #5dffa0 !important; color: #06140c !important; border-color: #5dffa0 !important; box-shadow: 0 0 20px rgba(93, 255, 160, 0.6); }
+.cd-mapa { position: absolute; z-index: 5; inset: 0; background: rgba(8, 6, 18, 0.94); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: calc(14px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)); }
+.cd-mapa canvas { flex: 1; width: 100%; min-height: 0; cursor: crosshair; }
+.cd-mapa p { margin: 0; font-size: 12px; color: rgba(255, 255, 255, 0.7); }
+.cd-mapa div { display: flex; gap: 8px; }
+.cd-mapa div button { padding: 10px 16px; border-radius: 999px; background: #ffc857 !important; color: #14121c !important; font-weight: 800 !important; }
+.cd-dica { position: absolute; z-index: 2; left: 110px; right: 110px; bottom: calc(30px + env(safe-area-inset-bottom)); margin: 0; text-align: center; font-size: 10px; color: rgba(255, 255, 255, 0.5); pointer-events: none; }
