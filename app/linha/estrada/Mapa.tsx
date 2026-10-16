@@ -61,7 +61,7 @@ function blipsDo(M: Mundo): Blip[] {
   }
   for (const lp of PAGINAS) if (!lp.lugar) { const o = posicao(M, `pagina:${lp.id}`, lp.area, lp.u, lp.lado); b.push({ id: lp.id, nome: lp.nome, cor: lp.cor, via: o.via, u: o.u, tipo: "lugar" }) }
   { const o = posicao(M, "parque", PARQUE.area, PARQUE.u, PARQUE.lado); b.push({ id: "parque", nome: "o parque", cor: "#ff5b5b", via: o.via, u: o.u, tipo: "parque" }) }
-  for (const c of CANTEIROS) { const o = posicao(M, `flor:${c.id}`, c.area, c.u, c.lado); b.push({ id: `flor-${c.id}`, nome: "um canteiro da Ella", cor: "#2fe8ff", via: o.via, u: o.u, tipo: "flor" }) }
+  if (!("ligacoes" in M)) for (const c of CANTEIROS) { const o = posicao(M, `flor:${c.id}`, c.area, c.u, c.lado); b.push({ id: `flor-${c.id}`, nome: "um canteiro da Ella", cor: "#2fe8ff", via: o.via, u: o.u, tipo: "flor" }) }
   return b
 }
 
