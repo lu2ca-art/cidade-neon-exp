@@ -38,7 +38,10 @@ export interface Ligacoes {
   rede: Rede
   saidas: number[][] // por cruzamento: as vias que saem dele
 }
-export type MundoRede = Mundo & { ligacoes: Ligacoes; chao: (x: number, z: number) => number }
+export type MundoRede = Mundo & { ligacoes: Ligacoes; chao: (x: number, z: number) => number; projetar: (x: number, z: number, y: number, dx: number, dz: number) => Projecao | null }
+// onde você está na rede, de qualquer ponto do mundo (a direção livre): a
+// via (a mão que bate com o seu rumo), o u, o lado (x) e a distância do eixo
+export interface Projecao { via: number; u: number; x: number; meia: number }
 
 function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
   const e = rede.arestas[ai]
@@ -156,7 +159,30 @@ export function montarMundoRede(): MundoRede {
     acc += v.L
   }
   const onde = (chave: string) => tabela.get(chave) ?? null
-  CACHE = { vias, circuito, livre, vao, conflitos: [], ligacoes: { rede, saidas }, chao: chaoEm, onde }
+  // a grade das ruas (uma mão só: o eixo é o mesmo) pra projetar qualquer ponto
+  const CP = 32, gp = new Map<string, number[]>()
+  vias.forEach((v, vi) => { if (!v.rede!.ida) return; for (let i = 0; i < v.n; i += 2) { const k = `${Math.floor(v.px[i] / CP)},${Math.floor(v.pz[i] / CP)}`; let l = gp.get(k); if (!l) gp.set(k, (l = [])); l.push(vi, i) } })
+  const projetar = (x: number, z: number, y: number, dx: number, dz: number): Projecao | null => {
+    const cx = Math.floor(x / CP), cz = Math.floor(z / CP)
+    let best = -1, bi = 0, bn = Infinity
+    for (let raio = 1; raio <= 4 && best < 0; raio += 3) for (let a = -raio; a <= raio; a++) for (let b = -raio; b <= raio; b++) {
+      const l = gp.get(`${cx + a},${cz + b}`); if (!l) continue
+      for (let q = 0; q < l.length; q += 2) {
+        const v = vias[l[q]], i = l[q + 1]
+        // a distância no chão, e a altura conta (debaixo do viaduto não gruda nele)
+        const nota = Math.hypot(v.px[i] - x, v.pz[i] - z) + Math.max(0, Math.abs(v.py[i] - y) - 2) * 3
+        if (nota < bn) { bn = nota; best = l[q]; bi = i }
+      }
+    }
+    if (best < 0) return null
+    const v = vias[best], ox = x - v.px[bi], oz = z - v.pz[bi]
+    const lat = ox * -v.tz[bi] + oz * v.tx[bi], meia = v.dir[bi]
+    // a mão: a que anda pro mesmo lado que você
+    if (dx * v.tx[bi] + dz * v.tz[bi] >= 0) return { via: best, u: bi * 2, x: lat, meia }
+    const par = v.rede!.par
+    return { via: par, u: Math.max(0, vias[par].L - bi * 2), x: -lat, meia }
+  }
+  CACHE = { vias, circuito, livre, vao, conflitos: [], ligacoes: { rede, saidas }, chao: chaoEm, onde, projetar }
   return CACHE
 }
 
