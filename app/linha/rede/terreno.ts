@@ -5,7 +5,8 @@
 
 export const W = 2000, H = 1400
 // metros por unidade. 16/10: 8 → 4 (o LU2CA: "demora muito pra chegar nos lugares"): atravessar a cidade ≈ 5 min
-export const ESCALA = 4
+// 17/10: 4 → 2,5 (REA do Horizon Drive: caminho conciso): atravessar ≈ 1 min 30 a fundo
+export const ESCALA = 2.5
 
 const perm = new Uint8Array(512)
 {
@@ -59,6 +60,9 @@ export function altura(x: number, y: number) {
   h = h * (1 - Math.min(1, dCid * 1.6)) + Math.min(1, dCid * 1.6) * 55
   const dSub = Math.max(0, 1 - Math.hypot((x - 830) / 480, (y - 1010) / 250))
   h = h * (1 - dSub) + dSub * (40 - (y - 760) * 0.08)
+  // (17/10, REA do Horizon: quase metade da pista sobe ou desce) morros
+  // suaves por toda parte, inclusive no platô da cidade e no subúrbio
+  h += (fbm(x / 55 + 40, y / 55) - 0.5) * 44 + (fbm(x / 140 + 9, y / 140) - 0.5) * 40
   h += 34
   const c = costa(x)
   if (y > c - 40) h -= (y - (c - 40)) * 1.4

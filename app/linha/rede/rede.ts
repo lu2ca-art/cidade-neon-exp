@@ -25,9 +25,7 @@ export const VIAS: ViaDef[] = [
   // a cidade: o anel e as duas diagonais
   { id: "anel", tipo: "avenida", pts: [[700, 560], [800, 420], [1010, 370], [1220, 430], [1330, 560], [1260, 760], [1010, 830], [780, 760]], fechada: true },
   { id: "diagonal-1", tipo: "avenida", pts: [[800, 420], [920, 600], [1010, 830]] },
-  { id: "diagonal-2", tipo: "avenida", pts: [[1220, 430], [1100, 620], [780, 760]] },
   { id: "centro-1", tipo: "rua", pts: [[800, 420], [900, 480], [1010, 500], [1100, 470], [1220, 430]] },
-  { id: "centro-2", tipo: "rua", pts: [[1010, 370], [1010, 500], [1060, 560]] },
   { id: "centro-3", tipo: "rua", pts: [[700, 560], [820, 650], [940, 700], [1060, 700], [1180, 680], [1330, 560]] },
   // as rampas da expressa
   { id: "rampa-oeste", tipo: "rampa", pts: [[760, 610], [730, 590], [700, 560]] },
@@ -37,11 +35,8 @@ export const VIAS: ViaDef[] = [
   { id: "principal", tipo: "principal", pts: [[780, 760], [700, 880], [760, 1000], [900, 1050], [1060, 1120], [1120, 1210]] },
   { id: "principal-2", tipo: "principal", pts: [[1010, 830], [1000, 950], [1080, 1060], [1060, 1120]] },
   { id: "rua-do-bar", tipo: "rua", pts: [[520, 660], [520, 760], [560, 860], [640, 920], [700, 960], [760, 1000]] },
-  { id: "rua-da-feira", tipo: "rua", pts: [[760, 1000], [720, 1080], [800, 1140], [900, 1150]] },
-  { id: "beco-1", tipo: "beco", pts: [[900, 1050], [920, 1110], [900, 1150]] },
+  { id: "rua-da-feira", tipo: "rua", pts: [[760, 1000], [720, 1080], [800, 1140], [900, 1150], [990, 1165], [1060, 1120]] },
   { id: "beco-2", tipo: "beco", pts: [[640, 920], [600, 1010], [660, 1080], [720, 1080]] },
-  { id: "beco-3", tipo: "beco", pts: [[1060, 1120], [980, 1180], [900, 1150]] },
-  { id: "beco-4", tipo: "beco", pts: [[1000, 950], [900, 980], [800, 940], [700, 880]] },
   // a arena e o mirante
   { id: "arena", tipo: "avenida", pts: [[1260, 760], [1380, 840], [1500, 780], [1570, 770]] },
   { id: "arena-volta", tipo: "rua", pts: [[1570, 770], [1620, 720], [1680, 780], [1620, 840]], fechada: true },
@@ -51,6 +46,16 @@ export const VIAS: ViaDef[] = [
   { id: "prisao", tipo: "terra", pts: [[260, 690], [230, 620], [300, 590], [200, 540], [280, 500], [170, 460], [240, 420], [140, 390], [120, 360]] },
   { id: "dbee", tipo: "terra", pts: [[260, 690], [210, 840], [130, 960], [110, 990]] },
 ]
+
+// (17/10, REA do Horizon Drive: "caminhos muito longos e sem movimento")
+// saíram as ruas repetidas (a segunda diagonal, a rua do meio do centro e
+// três becos que não levavam a lugar nenhum), e toda rua ganha CURVA: um
+// zigue-zague aberto, alternando o lado a cada meio comprimento de onda
+// (no Horizon a curva vem a cada ~300 m e metade da pista está virando).
+// As pontas ficam no lugar (os cruzamentos não saem do lugar).
+const ONDA: Partial<Record<TipoVia, [number, number]>> = { // [comprimento de onda, amplitude], em unidades da maquete
+  expressa: [300, 16], avenida: [230, 13], orla: [260, 12], principal: [200, 13], rua: [180, 11], beco: [120, 6], terra: [220, 24],
+}
 
 // ── geometria ──
 function spline(pts: P2[], fechada: boolean, passo = 8): P2[] {
@@ -76,6 +81,30 @@ function cruza(a: P2, b: P2, c: P2, d: P2): number | null {
   return t > 0.001 && t < 0.999 && u > 0.001 && u < 0.999 ? t : null
 }
 
+// a onda em cima da spline: desloca cada ponto pro lado (normal da curva
+// suavizada), com o zigue-zague sumindo perto das pontas
+function ondular(pts: P2[], tipo: TipoVia, fechada: boolean, id: string): P2[] {
+  const o = ONDA[tipo]
+  if (!o || pts.length < 4 || id === "prisao") return pts // a da prisão já é um zigue-zague
+  const s = [0]
+  for (let i = 1; i < pts.length; i++) s.push(s[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]))
+  const S = s[s.length - 1]
+  if (S < o[0] * 0.6) return pts
+  // um número inteiro de meias ondas (as voltas fechadas emendam sem degrau)
+  const meias = Math.max(1, Math.round(S / (o[0] / 2)))
+  const fase = (id.length * 1.7) % 2 < 1 ? 1 : -1 // cada rua começa pra um lado
+  const out: P2[] = []
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[Math.max(0, i - 3)], b = pts[Math.min(pts.length - 1, i + 3)]
+    let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l
+    const borda = fechada ? 1 : Math.min(1, s[i] / 45, (S - s[i]) / 45)
+    const taper = borda * borda * (3 - 2 * borda)
+    const d = o[1] * fase * Math.sin((Math.PI * meias * s[i]) / S) * taper
+    out.push([pts[i][0] - ty * d, pts[i][1] + tx * d])
+  }
+  return out
+}
+
 // ── o grafo ──
 export interface No { id: number; x: number; y: number; arestas: number[] }
 export interface Aresta { id: number; via: string; tipo: TipoVia; a: number; b: number; pts: P2[]; m: number; elevada: boolean; bairro: Bairro }
@@ -87,7 +116,7 @@ const elevadoEm = (v: ViaDef, p: P2) => !!v.elevada && p[0] > v.elevada[0] && p[
 let cache: Rede | null = null
 export function montarRede(): Rede {
   if (cache) return cache
-  const linhas = VIAS.map((v) => ({ v, pts: spline(v.pts, !!v.fechada) }))
+  const linhas = VIAS.map((v) => ({ v, pts: ondular(spline(v.pts, !!v.fechada), v.tipo, !!v.fechada, v.id) }))
   // os cortes de cada via: índices (com fração) onde vira nó
   const cortes = linhas.map((l) => [{ i: 0, p: l.pts[0] }, { i: l.pts.length - 1, p: l.pts[l.pts.length - 1] }] as { i: number; p: P2 }[])
   // 1) cruzamentos no meio, só entre ruas do mesmo nível

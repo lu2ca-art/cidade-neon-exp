@@ -63,10 +63,11 @@ import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
 
-// (16/10, LU2CA: "aumentar a velocidade como um todo") 46 → 55,6 m/s: 200 km/h de verdade
-const VMAX = 55.6 // m/s
-// o velocímetro marca numa escala própria: 110 km/h de verdade (os patins no
-// máximo) aparecem como 60; a Kombi a 200 de verdade marca ~109
+// (16/10, LU2CA: "aumentar a velocidade como um todo") 46 → 55,6 m/s; (17/10,
+// REA do Horizon Drive: "a Kombi está muito lenta") 69,4 m/s = 250 km/h de verdade
+const VMAX = 69.4 // m/s
+// o velocímetro marca numa escala própria: 110 km/h de verdade aparecem como
+// 60; os patins (150 de verdade) marcam ~82 e a Kombi a 250 marca ~136
 const K_VEL = 60 / 110
 // drift: velocidade mínima pra finta derrubar a aderência, quanto peso tem
 // que estar carregado no lado de fora, e o ângulo máximo da carroceria
@@ -80,9 +81,10 @@ const FUMACA = true
 // de lado, o multiplicador cresce com o drift seguido e tudo só conta quando
 // o drift acaba limpo (encostar no muro perde o que estava em jogo)
 const DRIFT_JUNTA = 1.2 // s pra emendar um drift no outro sem perder o combo
-const VTURBO = 75
-const ACEL = 13.5
-const FREIO = 26
+const VTURBO = 88
+// o soco do Horizon: 30 m/s² parado, suavizando até a máxima (0 → 216 km/h em ~4,5 s)
+const ACEL = 30
+const FREIO = 30
 const G = 24
 
 export interface Stats {
@@ -2923,9 +2925,9 @@ function Cena({
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
       // tanque seco: a Kombi vai na reserva, bem devagar (dá pra chegar no posto)
       const seco = !aberturaRef.current.ativa && combRef.current.tanque <= 0
-      // de patins: 110 km/h de verdade (o velocímetro marca 60), sem turbo
+      // de patins: 150 km/h de verdade (o velocímetro marca ~82), sem turbo
       const patins = !!combRef.current.patins
-      const vmax = patins ? 110 / 3.6 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      const vmax = patins ? 150 / 3.6 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -2943,7 +2945,7 @@ function Cena({
         else j.v = Math.max(-VRE, j.v - 9 * dt)
       } else if (gas || j.turboT > 0) {
         if (j.v < 0) j.v = Math.min(0, j.v + FREIO * dt)
-        else j.v += (ACEL * (1 - Math.pow(Math.min(1, j.v / vmax), 2)) + (j.turboT > 0 ? 16 : 0)) * dt
+        else j.v += (ACEL * Math.max(0, 1 - j.v / vmax) + (j.turboT > 0 ? 16 : 0)) * dt
       } else {
         // solto: a Kombi vai perdendo embalo sozinha
         const atrito = (2.2 + 0.006 * j.v * j.v) * dt
@@ -3706,8 +3708,9 @@ function Cena({
         o.pitch += (o.alvoPitch - o.pitch) * Math.min(1, dt * (o.arrastando ? 12 : 2.5))
       }
       const vel = Math.max(0, Math.min(1.3, Math.abs(j.v) / VMAX))
-      const atras = dePatins ? 4.4 + vel * 1.4 : 6.8 + vel * 3.4 + cd.puxa + (cd.parada > 3 ? 1.5 : 0)
-      const alto = dePatins ? 2.1 : 2.9 - vel * 0.75 + (cd.parada > 3 ? 0.6 : 0) - o.pitch * 2.5
+      // (REA Horizon: câmera colada, 3 m atrás e 1 m acima) mais perto e mais baixa
+      const atras = dePatins ? 3.4 + vel * 1 : 4.6 + vel * 1.8 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
+      const alto = dePatins ? 1.7 : 2.1 - vel * 0.45 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
       cd.dir.copy(cd.f).applyAxisAngle(tmp.y0, cd.orbita + (dentroRef.current ? 0 : o.yaw))
       // a lateral: a câmera abre um pouco pro lado de fora da curva
       cd.lado += ((-a.curv * Math.abs(j.v) * 2.2 + j.steer * 0.6) - cd.lado) * Math.min(1, dt * 2)
@@ -3811,7 +3814,7 @@ function Cena({
     }
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
-    const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 55 + Math.min(1.3, Math.abs(pct)) * 17 + (j.turboT > 0 ? 10 : 0) + Math.max(0, camDin.current.puxa) * 1.5
+    const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 60 + Math.min(1.3, Math.abs(pct)) * 18 + (j.turboT > 0 ? 10 : 0) + Math.max(0, camDin.current.puxa) * 1.5
     cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
