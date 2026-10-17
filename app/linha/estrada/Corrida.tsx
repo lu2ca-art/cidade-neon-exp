@@ -278,7 +278,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number }
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number }
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
 // as marcas do velocímetro (0–140 km/h, 270°)
@@ -326,11 +326,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // a dica do mapa 2.0 (nas 3 primeiras entradas, fora da abertura): o que é novo
   const [dica2, setDica2] = useState(() => {
     if (abertura) return false
-    try { return Number(localStorage.getItem("cn-dica-mapa2") ?? 0) < 3 } catch { return false }
+    try { return Number(localStorage.getItem("cn-dica-mapa2b") ?? 0) < 3 } catch { return false }
   })
   useEffect(() => {
     if (!dica2) return
-    try { localStorage.setItem("cn-dica-mapa2", String(Number(localStorage.getItem("cn-dica-mapa2") ?? 0) + 1)) } catch {}
+    try { localStorage.setItem("cn-dica-mapa2b", String(Number(localStorage.getItem("cn-dica-mapa2b") ?? 0) + 1)) } catch {}
     const t = setTimeout(() => setDica2(false), 9000)
     return () => clearTimeout(t)
   }, [dica2])
@@ -1410,6 +1410,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   // toque: metade esquerda/direita vira, as duas freiam
   const toques = useRef(new Map<number, "esq" | "dir">())
+  const longo = useRef(new Map<number, { x0: number; y0: number; t: number }>())
+  const soltarLongo = (id: number) => { const l = longo.current.get(id); if (l) { clearTimeout(l.t); longo.current.delete(id) } }
   const atualizarToque = () => {
     const l = [...toques.current.values()]
     const e = l.includes("esq")
@@ -1434,7 +1436,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "arrowdown" || k === "s") input.current.freio = on
       else if ((k === "shift" || k === "e") && on) input.current.turbo = true
       // (17/10) o espaço é o PULO; o freio de mão fica no Q (e no X)
-      else if (k === " ") { if (on && !ev.repeat) input.current.pulo = true }
+      // (17/10, LU2CA) espaço = turbo; dois espaços seguidos (até 0,3 s) = pulo
+      else if (k === " ") {
+        if (on && !ev.repeat) {
+          const agora = performance.now()
+          if (agora - (input.current.ultimoEspaco ?? 0) < 300) { input.current.pulo = true; input.current.ultimoEspaco = 0 }
+          else { input.current.turbo = true; input.current.ultimoEspaco = agora }
+        }
+      }
       else if (k === "q" || k === "x") input.current.mao = on
       // F (como no GTA): sai da Kombi, ou volta pra ela quando está perto
       else if (k === "f" && on && !ev.repeat) document.querySelector<HTMLButtonElement>(".l-sair-kombi, .l-regar-btn.is-voltar")?.click()
@@ -1517,12 +1526,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             // toque duplo (dois toques em menos de 0,3 s): pula
             const agora = performance.now()
             if (agora - (input.current.ultimoToque ?? 0) < 300) { input.current.pulo = true; input.current.ultimoToque = 0 } else input.current.ultimoToque = agora
+            // toque LONGO (segurou ~0,55 s sem arrastar): turbo, uma vez por toque
+            const id = e.pointerId, x0 = e.clientX, y0 = e.clientY
+            longo.current.set(id, { x0, y0, t: window.setTimeout(() => { if (longo.current.has(id)) { input.current.turbo = true; vib(20); longo.current.delete(id) } }, 550) })
             toques.current.set(e.pointerId, e.clientX - r.left < r.width / 2 ? "esq" : "dir")
             atualizarToque()
           }}
-          onPointerUp={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
-          onPointerCancel={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
-          onPointerLeave={(e) => { toques.current.delete(e.pointerId); atualizarToque() }}
+          onPointerMove={(e) => { const l = longo.current.get(e.pointerId); if (l && Math.hypot(e.clientX - l.x0, e.clientY - l.y0) > 24) { clearTimeout(l.t); longo.current.delete(e.pointerId) } }}
+          onPointerUp={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
+          onPointerCancel={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
+          onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
           <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins }} />
@@ -1743,7 +1756,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {dica2 && !cinema && (
         <div className="l-dica2" role="status">
           <b>novo</b>
-          <span><kbd>espaço</kbd> ou toque duplo: pula · vira no ar pra girar</span>
+          <span><kbd>espaço</kbd> 2× ou toque duplo: pula · vira no ar pra girar</span>
+          <span><kbd>espaço</kbd> ou toque longo: turbo</span>
           <span>100 anéis = 2 viagens rápidas pelo mapa</span>
         </div>
       )}
@@ -2141,7 +2155,7 @@ function Cena({
   // relação ao da Kombi (nas curvas e no drift aparece a lateral), a distância
   // respira com a aceleração, olha pra dentro da curva, deita um pouco com ela,
   // e parada dá uma volta lenta de cinema
-  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3(), off: new THREE.Vector3(), offOk: false })
+  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3(), off: new THREE.Vector3(), offOk: false, yS: 0, ySok: false, enc: 1 })
   useEffect(() => {
     const el = gl.domElement
     const YAW = (150 * Math.PI) / 180
@@ -3445,7 +3459,9 @@ function Cena({
       }
     } else {
       const vyPista = Math.max(-40, Math.min(40, (yPista - j.y) / Math.max(dt, 1e-4)))
-      if (vyPista < j.vy - G * dt * 2.2 && j.v > 20 && !trocou) {
+      // (mapa novo: sem pulo automático — a rua que cai não lança a Kombi;
+      // só o pulo do jogador tira ela do chão)
+      if (!("ligacoes" in M) && vyPista < j.vy - G * dt * 2.2 && j.v > 20 && !trocou) {
         j.ar = true
         j.tAr = 0
         motor?.whoosh()
@@ -3842,6 +3858,11 @@ function Cena({
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins
     const cd = camDin.current
+    // (17/10, LU2CA: "a câmera tá muito insana de ruim, toda descontrolada")
+    // no mapa novo, de fora: a câmera CALMA. Um atraso só (o rumo), a altura
+    // suavizada (não pula com cada morro), sem balanço lateral, sem inclinação,
+    // sem órbita parada, prédio no caminho resolvido devagar, tremida pequena
+    const calma = "ligacoes" in M && !cine && !dentroRef.current
     {
       // o rumo da câmera: entre pra onde a Kombi anda e pra onde ela aponta (no
       // drift aponta mais pro lado), com atraso — a lateral aparece na curva
@@ -3857,10 +3878,10 @@ function Cena({
       // a aceleração empurra a câmera pra trás; a freada traz pra perto
       const acc = dt > 0 ? (j.v - cd.vAnt) / dt : 0
       cd.vAnt = j.v
-      cd.puxa += (Math.max(-1.6, Math.min(2.4, acc * 0.09)) - cd.puxa) * Math.min(1, dt * 3)
+      cd.puxa += (Math.max(-1.6, Math.min(2.4, acc * 0.09)) * (calma ? 0.35 : 1) - cd.puxa) * Math.min(1, dt * (calma ? 1.5 : 3))
       // parada: depois de uns segundos, a volta lenta de cinema
       cd.parada = Math.abs(j.v) < 0.6 ? cd.parada + dt : 0
-      const alvoOrb = cd.parada > 3 ? (cd.parada - 3) * 0.13 : 0
+      const alvoOrb = cd.parada > 3 && !calma ? (cd.parada - 3) * 0.13 : 0
       cd.orbita += (alvoOrb - cd.orbita) * Math.min(1, dt * (cd.parada > 3 ? 4 : 1.5))
       // o olhar livre (arrastar com o mouse) gira em volta; solta, volta sozinha
       const o = olhar.current
@@ -3875,27 +3896,32 @@ function Cena({
       // (17/10, sem o atraso que afastava a câmera na velocidade: a distância
       // agora é a de verdade. Na tela em pé do celular, a 8 m a Kombi tomava
       // meia tela — "não deixar perto demais")
-      const atras = dePatins ? 5 + vel * 1.6 : 7.6 + vel * 3 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
-      const alto = dePatins ? 2.2 : 3.1 - vel * 0.45 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
+      const atras = dePatins ? 5 + vel * 1.6 : calma ? 8.2 + vel * 2.4 + cd.puxa : 7.6 + vel * 3 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
+      const alto = dePatins ? 2.2 : calma ? 3.0 - vel * 0.3 - o.pitch * 2.5 : 3.1 - vel * 0.45 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
+      // a altura de referência: a da Kombi, suavizada (lombada e morro não sacodem)
+      if (!cd.ySok || j.encaixar) { cd.yS = car.position.y; cd.ySok = true }
+      cd.yS += (car.position.y - cd.yS) * Math.min(1, dt * (calma ? 4 : 30))
       cd.dir.copy(cd.f).applyAxisAngle(tmp.y0, cd.orbita + (dentroRef.current ? 0 : o.yaw))
       // a lateral: a câmera abre um pouco pro lado de fora da curva
       // (na direção livre, só o volante conta: a curvatura da rua sob a Kombi
       // não é a curva que ela está fazendo, e balançava a câmera à toa)
       cd.lado += ((livreCam ? j.steer * 1.1 * Math.min(1, vel * 1.5) : -a.curv * Math.abs(j.v) * 2.2 + j.steer * 0.6) - cd.lado) * Math.min(1, dt * 2)
-      cd.lado = Math.max(-2.5, Math.min(2.5, cd.lado))
-      tmp.alvo.copy(car.position).addScaledVector(cd.dir, -atras).addScaledVector(tmp.y0, alto).addScaledVector(tmp.r, cd.lado * 0.5)
+      cd.lado = calma ? 0 : Math.max(-2.5, Math.min(2.5, cd.lado))
+      tmp.alvo.copy(car.position)
+      if (calma) tmp.alvo.y = cd.yS
+      tmp.alvo.addScaledVector(cd.dir, -atras).addScaledVector(tmp.y0, alto).addScaledVector(tmp.r, cd.lado * 0.5)
       // (direção livre) a câmera não atravessa prédio: chega mais perto da Kombi
       if ("ligacoes" in M) {
         const dx = tmp.alvo.x - car.position.x, dz = tmp.alvo.z - car.position.z, L = Math.hypot(dx, dz)
-        for (let s2 = 1.5; s2 < L; s2 += 1) if (bater(car.position.x + (dx * s2) / L, car.position.z + (dz * s2) / L, 0.8)) {
-          // chega perto, mas não cola: no mínimo 3 m, e sobe pra olhar por cima
-          const f = Math.min(1, Math.max(3, s2 - 1) / L)
-          tmp.alvo.x = car.position.x + dx * f; tmp.alvo.z = car.position.z + dz * f; tmp.alvo.y += (1 - f) * 3.5
-          break
-        }
+        let fAlvo = 1
+        for (let s2 = 2; s2 < L; s2 += 1) if (bater(car.position.x + (dx * s2) / L, car.position.z + (dz * s2) / L, 0.6)) { fAlvo = Math.min(1, Math.max(4, s2 - 1) / L); break }
+        // chega perto e sobe DEVAGAR (e volta mais devagar ainda): antes era aos trancos
+        cd.enc += (fAlvo - cd.enc) * Math.min(1, dt * (fAlvo < cd.enc ? 5 : 1.2))
+        const f = cd.enc
+        tmp.alvo.x = car.position.x + dx * f; tmp.alvo.z = car.position.z + dz * f; tmp.alvo.y += (1 - f) * 3.5
       }
       // a inclinação: deita de leve com a curva e com o drift
-      cd.roll += ((-j.steer * 0.03 * vel - j.deriva * 0.05) - cd.roll) * Math.min(1, dt * 3)
+      cd.roll += ((calma ? 0 : -j.steer * 0.03 * vel - j.deriva * 0.05) - cd.roll) * Math.min(1, dt * 3)
     }
     if (cine) {
       // câmera de cinema: baixa, de lado, girando devagar em volta da Kombi
@@ -3915,7 +3941,8 @@ function Cena({
     // a 15–27 m a 250 km/h e colada parada. Assim a distância é a mesma em
     // qualquer velocidade e só as curvas e os balanços demoram a chegar
     const cdx = camDin.current
-    if (!primeira && !cl && !cine) {
+    if (calma) { cdx.offOk = false; camera.position.copy(tmp.alvo) }
+    else if (!primeira && !cl && !cine) {
       tmp.p.copy(tmp.alvo).sub(car.position)
       if (!camInit.current || !cdx.offOk) { cdx.off.copy(tmp.p); cdx.offOk = true }
       cdx.off.lerp(tmp.p, 1 - Math.exp(-dt * (j.ar ? 3 : 4.5)))
@@ -3925,7 +3952,8 @@ function Cena({
     if (!cine && !dentroRef.current) {
       // de fora: olha à frente da Kombi (mais longe quanto mais rápido) e pra dentro da curva
       const vel = Math.min(1.3, Math.abs(j.v) / VMAX)
-      tmp.olhar.copy(car.position).addScaledVector(camDin.current.dir, 5 + vel * 7).addScaledVector(tmp.y0, 1.1 + olhar.current.pitch * 3).addScaledVector(tmp.r, "ligacoes" in M && j.livreOk ? j.steer * 1.5 * Math.min(1, vel) : Math.max(-4, Math.min(4, a.curv * Math.abs(j.v) * 3)))
+      if (calma) tmp.olhar.copy(car.position).setY(camDin.current.yS).addScaledVector(camDin.current.dir, 6 + vel * 6).addScaledVector(tmp.y0, 1.3 + olhar.current.pitch * 3)
+      else tmp.olhar.copy(car.position).addScaledVector(camDin.current.dir, 5 + vel * 7).addScaledVector(tmp.y0, 1.1 + olhar.current.pitch * 3).addScaledVector(tmp.r, Math.max(-4, Math.min(4, a.curv * Math.abs(j.v) * 3)))
     }
     if (cl) tmp.olhar.copy(cl.porta)
     // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
@@ -3939,11 +3967,11 @@ function Cena({
       tmp.olhar.copy(tmp.p.set(OLHO.x - Math.sin(o.yaw) * cp * 10, OLHO.y - 0.9 + Math.sin(o.pitch) * 10, OLHO.z - Math.cos(o.yaw) * cp * 10)).applyMatrix4(car.matrixWorld)
     }
     tmp.camOlhar.lerp(tmp.olhar, cl ? 1 : primeira ? 1 - Math.exp(-dt * 14) : camInit.current ? 1 - Math.exp(-dt * 9) : 1)
-    tmp.upMix.copy(tmp.up).lerp(tmp.y0, 0.45).normalize()
+    tmp.upMix.copy(tmp.up).lerp(tmp.y0, calma ? 1 : 0.45).normalize()
     tmp.camUp.lerp(tmp.upMix, camInit.current ? 1 - Math.exp(-dt * 4) : 1).normalize()
     camera.up.copy(tmp.camUp)
     camInit.current = true
-    const amp = reduz ? 0 : (j.shake * 0.12 + (j.turboT > 0 ? 0.03 : 0)) * (primeira ? 0.25 : 1)
+    const amp = reduz ? 0 : (j.shake * 0.12 + (j.turboT > 0 ? 0.03 : 0)) * (primeira ? 0.25 : calma ? 0.3 : 1)
     camera.position.x += (Math.random() - 0.5) * amp
     camera.position.y += (Math.random() - 0.5) * amp
     camera.lookAt(tmp.camOlhar)
@@ -3951,7 +3979,7 @@ function Cena({
       camera.rotateZ(camDin.current.roll)
       // acima de ~150 km/h: um tremor sutil (como a câmera no carro do GTA)
       const vel = Math.abs(j.v) / VMAX
-      if (vel > 0.75) { const t = j.tempo, k2 = (vel - 0.75) * 0.012; camera.rotateX(Math.sin(t * 37) * k2 + Math.sin(t * 23) * k2 * 0.6); camera.rotateY(Math.sin(t * 29) * k2 * 0.8) }
+      if (vel > 0.75 && !calma) { const t = j.tempo, k2 = (vel - 0.75) * 0.012; camera.rotateX(Math.sin(t * 37) * k2 + Math.sin(t * 23) * k2 * 0.6); camera.rotateY(Math.sin(t * 29) * k2 * 0.8) }
     }
     {
       // a pé: a câmera atrás de quem anda, a porta na frente

@@ -46,7 +46,9 @@ export interface Projecao { via: number; u: number; x: number; meia: number }
 // (17/10, REA do Horizon: um momento em cada pedaço do caminho) as lombadas
 // de salto, presas a um ponto do mapa (as duas mãos passam pela mesma): sobe
 // 2,6 m em 20 m e cai — a 250 km/h a Kombi decola
-const SALTOS: [number, number][] = [[150, 690], [430, 662]]
+// (17/10, LU2CA: "o sistema de pulos automáticos não é pra acontecer, tira
+// isso") sem lombada nenhuma: a Kombi só sai do chão quando você pula
+const SALTOS: [number, number][] = []
 const SOBE = 20
 
 function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
@@ -81,7 +83,7 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
     for (let i = 0; i < p.n; i++) { const d = Math.hypot(p.px[i] - X, p.pz[i] - Z); if (d < bd) { bd = d; bi = i } }
     if (bi >= 0) cristas.push(bi)
   }
-  if (e.m > 650 && !e.elevada && !["tunel", "rampa", "beco", "serpentina"].includes(e.tipo) && e.via !== "dbee") cristas.push(Math.floor(p.n / 2))
+
   for (const bi of cristas) {
     // a lombada é simétrica (igual nas duas mãos): rápido, a queda do outro
     // lado é mais íngreme que a gravidade, e a Kombi decola
