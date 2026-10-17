@@ -1,0 +1,11 @@
+{
+  "maxKB": 1500,
+  "maxTriangulos": 40000,
+  "maxTexturas": 4,
+  "maxLadoTextura": 2048,
+  "legado": [
+    "kombi-herbal.glb",
+    "suburbio.glb",
+    "van.glb"
+  ]
+}

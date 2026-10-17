@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "deps:doc": "node scripts/gerar-dependencias.mjs",
-    "deps:check": "node scripts/gerar-dependencias.mjs --check"
+    "deps:check": "node scripts/gerar-dependencias.mjs --check",
+    "mapa": "node scripts/gerar-mapa.mjs",
+    "modelos": "node scripts/verificar-modelos.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
