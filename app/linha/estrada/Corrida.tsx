@@ -3390,11 +3390,14 @@ function Cena({
     // (números da pesquisa de 17/10: 2,5 m de altura, topo em 0,35 s, a queda
     // 1,7× mais forte que a subida, ~0,6 s no ar; apertar até 0,12 s antes de
     // pousar ainda vale)
-    if (inp.pulo && !j.ar) {
+    // ("coyote time", pesquisa 17/10: até 0,1 s depois de a Kombi sair da
+    // lombada sozinha, o pulo ainda vale e soma com o voo)
+    const coyote = j.ar && !j.pulou && j.tAr < 0.1 && j.vy > -2
+    if (inp.pulo && (!j.ar || coyote)) {
       inp.pulo = false
       if (!cine && !aberturaRef.current.ativa && !j.chegando && j.tPulo <= 0 && !j.desligada) {
         j.ar = true; j.tAr = 0; j.pulou = true
-        j.vy = 14.3
+        j.vy = Math.max(0, coyote ? j.vy : 0) + 14.3
         j.y = Math.max(j.y, yPista) + 0.05
         j.shake = Math.max(j.shake, 0.18)
         motor?.whoosh(); vib(14)
