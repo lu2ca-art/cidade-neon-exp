@@ -14,7 +14,8 @@ export interface Bloco { titulo: string; lig: "dbee-historia-1" | null; itens: I
 
 export const BLOCOS: Bloco[] = [
   // os primeiros passos (06/10, LU2CA); depois, a missão do Mubarak
-  { titulo: "primeiros passos", lig: "dbee-historia-1", itens: ["tanque", "posto"] },
+  // (17/10: a Kombi é solar, não tem mais "encha o tanque no posto")
+  { titulo: "primeiros passos", lig: "dbee-historia-1", itens: ["tanque"] },
   { titulo: "missão · Mubarak", lig: null, itens: ["mubarak", "drewboy"] },
 ]
 
@@ -33,8 +34,9 @@ export const ITENS: Record<ItemTutorial, { texto: string; dica: string }> = {
 
 export function feito(s: Save, i: ItemTutorial): boolean {
   switch (i) {
-    case "tanque":
     case "posto":
+      return true // (Kombi solar: o passo do posto não existe mais)
+    case "tanque":
     case "drewboy":
       return (s.tutorial ?? []).includes(i)
     case "mubarak":
