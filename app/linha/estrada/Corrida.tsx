@@ -414,12 +414,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // o combustível: um ref (gasta a cada frame); o page guarda de tempos em tempos
   const postoPose = poses.posto
   // voltando de dentro do posto, a Kombi tá parada na frente dele: não abre de novo
-  const combRef = useRef<Comb>({ tanque, via: postoPose.via, u: LUGARES.posto.u, avisou: jogo0.via === postoPose.via && Math.abs(du(M.vias[jogo0.via], jogo0.u, LUGARES.posto.u)) < 60, onPosto: () => {}, t: 0 })
+  // (17/10, LU2CA: a Kombi virou ELÉTRICA, com painéis solares: não acaba,
+  // não abastece) fora da abertura o "tanque" é a bateria, sempre cheia
+  const combRef = useRef<Comb>({ tanque: abertura ? tanque : 1, via: postoPose.via, u: LUGARES.posto.u, avisou: jogo0.via === postoPose.via && Math.abs(du(M.vias[jogo0.via], jogo0.u, LUGARES.posto.u)) < 60, onPosto: () => {}, t: 0 })
   const onTanqueRef = useRef(onTanque)
   useEffect(() => { onTanqueRef.current = onTanque }, [onTanque])
   useEffect(() => { combRef.current.onPosto = () => onPosto?.() }, [onPosto])
   // encheu no posto (ou usou o galão): o page manda o novo nível
-  useEffect(() => { if (Math.abs(tanque - combRef.current.tanque) > 0.04) combRef.current.tanque = tanque }, [tanque])
+  useEffect(() => { if (!abertura && Math.abs(tanque - combRef.current.tanque) > 0.04) combRef.current.tanque = 1 }, [tanque, abertura])
   const hudComb = useRef<SVGLineElement>(null)
   const horaRef = useRef(hora)
   const onHoraRef = useRef(onHora)
@@ -612,7 +614,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       const oPosto = posicao(M, "lugar:posto", LUGARES.posto.area, LUGARES.posto.u, LUGARES.posto.lado)
       if (oPosto.via === j.via && pertoDe(Vb.L, !!Vb.fechada, oPosto.u, j.u)) combustivel = "posto"
       for (const bb of BOMBAS) { const ob = posicao(M, `bomba:${bb.id}`, bb.area, bb.u, bb.lado); if (ob.via === j.via && pertoDe(Vb.L, !!Vb.fechada, ob.u, j.u)) combustivel = bb.id }
-      setPertoComb(combustivel)
+      // (Kombi solar: ninguém abastece mais; o posto segue como lugar das missões)
+      void combustivel
+      setPertoComb(null)
       setDesligada(!!j.desligada)
       {
         // de patins: a flor do asfalto mais perto (a menos de 8 m) que ainda espera água
@@ -623,7 +627,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       }
       {
         const cb = combRef.current
-        setSeco(!aberturaRef.current.ativa && cb.tanque <= 0)
+        setSeco(false)
         setPertoKombi(!!(cb.patins && cb.parada && cb.aqui && cb.aqui.distanceTo(cb.parada.pos) < 18))
       }
 
@@ -1823,15 +1827,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       </div>
 
       <div className="l-kombi-dir">
-        <div ref={hudCombBox} className="l-kombi-comb" aria-label="combustível">
+        <div ref={hudCombBox} className="l-kombi-comb is-solar" aria-label={abertura ? "combustível" : "energia solar"}>
           <svg viewBox="0 0 60 34" aria-hidden="true">
             <path d="M6 30 A24 24 0 0 1 54 30" fill="none" stroke="#3a332c" strokeWidth="3" />
-            <path d="M6 30 A24 24 0 0 1 12 14" fill="none" stroke="#ff5b3a" strokeWidth="3" />
-            <text x="4" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">E</text>
-            <text x="52" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">F</text>
-            <line ref={hudComb} x1="30" y1="30" x2="30" y2="10" stroke="#ff6a35" strokeWidth="1.6" transform="rotate(80 30 30)" />
+            <path d="M6 30 A24 24 0 0 1 12 14" fill="none" stroke={abertura ? "#ff5b3a" : "#3a332c"} strokeWidth="3" />
+            {!abertura && <path d="M42 12 A24 24 0 0 1 54 30" fill="none" stroke="#5dffa0" strokeWidth="3" />}
+            <text x="4" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">{abertura ? "E" : "−"}</text>
+            <text x="52" y="33" fill="#e8e0cf" fontSize="6" fontFamily="ui-monospace, monospace">{abertura ? "F" : "+"}</text>
+            <line ref={hudComb} x1="30" y1="30" x2="30" y2="10" stroke={abertura ? "#ff6a35" : "#5dffa0"} strokeWidth="1.6" transform="rotate(80 30 30)" />
           </svg>
-          <small>R</small>
+          <small>{abertura ? "R" : "☀"}</small>
         </div>
         <button
           type="button"
@@ -3068,7 +3073,8 @@ function Cena({
       if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
       if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
       // o tanque gasta andando (cheio dá uns 15 km)
-      if (!aberturaRef.current.ativa && gas && Math.abs(j.v) > 1) combRef.current.tanque = Math.max(0, combRef.current.tanque - (Math.abs(j.v) * dt) / 15000)
+      // (Kombi solar: a bateria não acaba)
+      if (!aberturaRef.current.ativa) combRef.current.tanque = 1
       if (abAqui) {
         // o combustível acaba uns 110 m antes da casa: no embalo, para em frente
         const falta = ab.u - j.u
@@ -3919,9 +3925,9 @@ function Cena({
         cd.enc += (fAlvo - cd.enc) * Math.min(1, dt * (fAlvo < cd.enc ? 5 : 1.2))
         const f = cd.enc
         tmp.alvo.x = car.position.x + dx * f; tmp.alvo.z = car.position.z + dz * f; tmp.alvo.y += (1 - f) * 3.5
-      }
       // a inclinação: deita de leve com a curva e com o drift
       cd.roll += ((calma ? 0 : -j.steer * 0.03 * vel - j.deriva * 0.05) - cd.roll) * Math.min(1, dt * 3)
+      }
     }
     if (cine) {
       // câmera de cinema: baixa, de lado, girando devagar em volta da Kombi

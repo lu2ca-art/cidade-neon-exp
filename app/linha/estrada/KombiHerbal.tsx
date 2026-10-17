@@ -50,13 +50,52 @@ export function KombiHerbal({ tinta = "#ffffff" }: { tinta?: string }) {
     const centro = caixa.getCenter(new THREE.Vector3())
     giro.position.set(-centro.x, -caixa.min.y, -centro.z)
     fora.scale.setScalar(s)
-    return fora
+    return { fora, alto: tam.y * s, larg: Math.min(tam.x, tam.z) * s, comp: Math.max(tam.x, tam.z) * s }
   }, [scene])
   useEffect(() => {
     const c = new THREE.Color(tinta)
-    kombi.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined; if (m?.isMeshStandardMaterial) { m.color.copy(c); m.emissive.copy(c) } })
+    kombi.fora.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined; if (m?.isMeshStandardMaterial) { m.color.copy(c); m.emissive.copy(c) } })
   }, [kombi, tinta])
-  return <primitive object={kombi} />
+  return (
+    <group>
+      <primitive object={kombi.fora} />
+      <PaineisSolares alto={kombi.alto} larg={kombi.larg} comp={kombi.comp} />
+    </group>
+  )
+}
+
+// (17/10, LU2CA: "colocamos painéis solares na Kombi, ela passa a ser
+// elétrica, não precisa mais abastecer") três placas no teto, com as células
+// desenhadas e um brilho azul fraco
+let TEX_PAINEL: THREE.CanvasTexture | null = null
+function texPainel() {
+  if (TEX_PAINEL) return TEX_PAINEL
+  const c = document.createElement("canvas"); c.width = 128; c.height = 192
+  const g = c.getContext("2d")!
+  g.fillStyle = "#0b1a3a"; g.fillRect(0, 0, 128, 192)
+  for (let y = 0; y < 6; y++) for (let x = 0; x < 4; x++) {
+    const gr = g.createLinearGradient(x * 32, y * 32, x * 32 + 32, y * 32 + 32)
+    gr.addColorStop(0, "#1d3f8f"); gr.addColorStop(1, "#0e2357")
+    g.fillStyle = gr; g.fillRect(x * 32 + 2, y * 32 + 2, 28, 28)
+  }
+  g.strokeStyle = "#c9d6ff"; g.lineWidth = 2; g.strokeRect(1, 1, 126, 190)
+  TEX_PAINEL = new THREE.CanvasTexture(c); TEX_PAINEL.colorSpace = THREE.SRGBColorSpace
+  return TEX_PAINEL
+}
+function PaineisSolares({ alto, larg, comp }: { alto: number; larg: number; comp: number }) {
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ map: texPainel(), roughness: 0.25, metalness: 0.6, emissive: new THREE.Color("#2f6bff"), emissiveIntensity: 0.18 }), [])
+  const w = larg * 0.78, l = comp * 0.2
+  return (
+    <group position={[0, alto + 0.05, 0]}>
+      {[-1, 0, 1].map((k) => (
+        <group key={k} position={[0, 0, k * (l + 0.06)]} rotation-x={-0.04}>
+          <mesh material={mat} rotation-x={-Math.PI / 2}><planeGeometry args={[w, l]} /></mesh>
+          {/* a moldura e os pezinhos */}
+          <mesh position={[0, -0.03, 0]}><boxGeometry args={[w + 0.04, 0.03, l + 0.04]} /><meshStandardMaterial color="#9aa3b5" metalness={0.8} roughness={0.35} /></mesh>
+        </group>
+      ))}
+    </group>
+  )
 }
 
 useGLTF.preload(URL)
