@@ -62,6 +62,7 @@ import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, terri
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
+import { FRASE_GERAL, Outdoors, type Outdoor } from "./Outdoors"
 
 // (16/10, LU2CA: "aumentar a velocidade como um todo") 46 → 55,6 m/s; (17/10,
 // REA do Horizon Drive: "a Kombi está muito lenta") 69,4 m/s = 250 km/h de verdade
@@ -231,6 +232,7 @@ type Jogo = {
   combo?: number; comboT?: number; psi?: number; giroAr?: number
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
+  lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
   // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
   // para, sem o "chegou"
   encostando?: boolean
@@ -1390,7 +1392,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo, wx: j.wx && +j.wx.toFixed(1), wz: j.wz && +j.wz.toFixed(1), rumo: j.rumo && +j.rumo.toFixed(2), fora: j.livreFora, y: +j.y.toFixed(2) }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo, wx: j.wx && +j.wx.toFixed(1), wz: j.wz && +j.wz.toFixed(1), rumo: j.rumo && +j.rumo.toFixed(2), fora: j.livreFora, y: +j.y.toFixed(2), vy: +j.vy.toFixed(1) }
     }
     return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora; delete w.__procurado }
   }, [M])
@@ -1923,14 +1925,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 // posição da Kombi fica guardada aqui, pra ela voltar no mesmo ponto
 let MUNDO: Mundo | null = null
 // o mapa novo (a rede de ruas do v5) atrás do /linha?mapa=novo; fica marcado na sessão
+// (17/10, LU2CA: o mapa 2.0 vira o padrão) o mapa novo é o de sempre;
+// ?mapa=velho volta pro antigo naquela aba, ?mapa=novo desfaz
 export function mapaNovo() {
-  if (typeof window === "undefined") return false
+  if (typeof window === "undefined") return true
   try {
     const q = new URLSearchParams(location.search).get("mapa")
-    if (q === "novo") sessionStorage.setItem("cn-mapa", "novo")
-    if (q === "velho") sessionStorage.removeItem("cn-mapa")
-    return sessionStorage.getItem("cn-mapa") === "novo"
-  } catch { return false }
+    if (q === "velho") sessionStorage.setItem("cn-mapa", "velho")
+    if (q === "novo") sessionStorage.removeItem("cn-mapa")
+    return sessionStorage.getItem("cn-mapa") !== "velho"
+  } catch { return true }
 }
 function mundo() { return (MUNDO ??= mapaNovo() ? montarMundoRede() : montarMundo()) }
 export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
@@ -2603,16 +2607,36 @@ function Cena({
     const pts = new THREE.Points(g, mat); pts.frustumCulled = false
     return { N, pos, cor, g, pts, cab: 0 }
   }, [tex])
+  // ── os outdoors surrealistas (mapa novo): o chamado de cada missão perto
+  // do lugar dela, e a frase do LU2CA nas vias rápidas ──
+  const outdoors = useMemo<Outdoor[]>(() => {
+    if (!("ligacoes" in M) || !M.onde) return []
+    const CORES = ["#ff3fb0", "#2fe8ff", "#ffd84a", "#9b6bff", "#5dffa0", "#ff7a3d"]
+    const l: Outdoor[] = []
+    Object.values(MISSOES).forEach((ms, k) => {
+      if (!ms?.lugar || !ms.chamado) return
+      const o = M.onde!(`lugar:${ms.lugar}`); if (!o) return
+      // 170 m antes do lugar; se o lugar fica no começo da rua, um pouco depois dele
+      const L = M.vias[o.via].L
+      l.push({ via: o.via, u: o.u > 200 ? o.u - 170 : Math.min(L - 20, o.u + 90), lado: -1, frase: ms.chamado, cor: CORES[k % CORES.length], forma: k })
+    })
+    let g = 0
+    M.vias.forEach((v, vi) => {
+      if (g >= 8 || !v.rede?.ida || !["expressa", "avenida", "orla"].includes(v.rede.tipo) || v.L < 800) return
+      l.push({ via: vi, u: v.L * 0.35, lado: 1, frase: FRASE_GERAL, cor: CORES[(g + 3) % CORES.length], forma: g + 2 }); g++
+    })
+    return l
+  }, [M])
   // ── orbs (todas as vias numa malha só) ──
   const orbs = useMemo(() => {
-    const lista: { via: number; u: number; x: number }[] = []
+    const lista: { via: number; u: number; x: number; y: number }[] = []
     const porVia: number[][] = M.vias.map(() => [])
-    M.vias.forEach((v, vi) => v.orbs.forEach((o) => { porVia[vi].push(lista.length); lista.push({ via: vi, u: o.u, x: o.x }) }))
+    M.vias.forEach((v, vi) => v.orbs.forEach((o) => { porVia[vi].push(lista.length); lista.push({ via: vi, u: o.u, x: o.x, y: o.y ?? 1.4 }) }))
     const m = new THREE.InstancedMesh(new THREE.TorusGeometry(0.75, 0.14, 8, 22), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length)
     const pos = new Float32Array(lista.length * 3)
     const v3 = new THREE.Vector3()
     lista.forEach((o, i) => {
-      noMundo(M.vias[o.via], o.u, o.x, 1.4, a, v3)
+      noMundo(M.vias[o.via], o.u, o.x, o.y, a, v3)
       pos.set([v3.x, v3.y, v3.z], i * 3)
     })
     const halo = new THREE.BufferGeometry()
@@ -3126,7 +3150,15 @@ function Cena({
     let trocou = false
     const uAnt = j.u
     if (livre && MR) {
-      if (!j.livreOk || j.encaixar) { j.wx = a.x - a.tz * j.x; j.wz = a.z + a.tx * j.x; j.rumo = Math.atan2(a.tx, a.tz); j.livreOk = true }
+      // alguém mudou a Kombi de lugar por fora (missão, atalho, viagem rápida,
+      // cena): realinha com a rua em vez de voltar pro ponto antigo do mundo
+      const mexeram = j.livreOk && (j.via !== j.lvVia || Math.abs(j.u - (j.lvU ?? j.u)) > 3)
+      if (!j.livreOk || j.encaixar || mexeram) {
+        const C0 = M.vias[j.via], i0 = Math.max(0, Math.min(C0.n - 1, Math.floor(j.u / PASSO)))
+        j.wx = C0.px[i0] - C0.tz[i0] * j.x; j.wz = C0.pz[i0] + C0.tx[i0] * j.x; j.rumo = Math.atan2(C0.tx[i0], C0.tz[i0]) + (j.v < -0.5 ? Math.PI : 0)
+        if (mexeram && !j.ar) { j.y = C0.py[i0]; j.vy = 0 }
+        j.livreOk = true
+      }
       // no automático (de dentro, celular aberto) ela segue a rua sozinha
       if (dentroRef.current || celularRef.current) {
         const dif = Math.atan2(Math.sin(Math.atan2(a.tx, a.tz) - j.rumo!), Math.cos(Math.atan2(a.tx, a.tz) - j.rumo!))
@@ -3165,6 +3197,7 @@ function Cena({
         if (pr.via !== j.via) { j.via = pr.via; trocou = true; j.pegos.clear() }
         j.u = pr.u; j.x = pr.x; j.livreFora = Math.abs(pr.x) > pr.meia + 3
       }
+      j.lvVia = j.via; j.lvU = j.u
       j.st.vmax = Math.max(j.st.vmax, j.v)
     }
     if (!livre) j.livreOk = false
@@ -3423,7 +3456,10 @@ function Cena({
       if (j.pegos.has(i)) continue
       const o = orbs.lista[i]
       const d = du(V, j.u, o.u)
-      if (d > -1.5 && d < 1.8 && Math.abs(o.x - j.x) < 1.3 && Math.abs(j.y + 1 - (yPista + 1.4)) < 2.6 + (j.ar ? 2 : 0)) {
+      // (rápido e a 30 quadros/s a Kombi anda 2+ m por quadro: vale o trecho
+      // entre o quadro passado e este, não só onde ela está agora)
+      const dA = trocou ? d : du(V, uAnt, o.u)
+      if (d < 1.8 && Math.max(d, dA) > -1.5 && dA - d < 12 && Math.abs(o.x - j.x) < 1.3 && Math.abs(j.y + 1 - (yPista + o.y)) < 2.6 + (j.ar ? 2 : 0)) {
         j.pegos.add(i)
         j.st.orbs++
         ev.anel()
@@ -4297,6 +4333,7 @@ function Cena({
       {relevoNovo && <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} /></mesh>}
       <primitive object={orbs.m} />
       <primitive object={rastro.pts} />
+      {outdoors.length > 0 && <Outdoors M={M} lista={outdoors} />}
       <points geometry={orbs.halo} material={orbs.haloMat} />
 
       {trafego.malhas.flat().map((m, i) => <primitive key={i} object={m} />)}
