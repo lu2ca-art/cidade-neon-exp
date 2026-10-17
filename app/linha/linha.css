@@ -1939,3 +1939,9 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 
 /* o combo de anéis (modo arcade, 17/10): no meio da tela, pulsando em arco-íris */
 .l-combo { position: absolute; left: 50%; top: calc(30% + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 6; font: 900 44px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: -0.02em; text-shadow: 0 0 18px currentColor, 0 2px 0 rgba(0, 0, 0, 0.6); pointer-events: none; transition: transform 0.18s cubic-bezier(.2, 1.6, .4, 1); }
+
+/* a dica do mapa 2.0 (17/10): o que é novo, nas primeiras entradas */
+.l-dica2 { position: absolute; left: 50%; top: calc(236px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 7; display: flex; flex-direction: column; align-items: center; gap: 3px; max-width: calc(100% - 32px); padding: 9px 14px; border-radius: 14px; background: rgba(8, 10, 20, 0.78); border: 1px solid rgba(47, 232, 255, 0.4); color: #e8f9ff; font: 600 12.5px system-ui, sans-serif; text-align: center; pointer-events: none; animation: l-dica2 9s ease forwards; }
+.l-dica2 b { font: 800 10px var(--font-geist-mono), monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #2fe8ff; }
+.l-dica2 kbd { font: 700 11px var(--font-geist-mono), monospace; padding: 0 5px; border-radius: 4px; background: rgba(255, 255, 255, 0.14); }
+@keyframes l-dica2 { 0% { opacity: 0; transform: translate(-50%, 8px) } 6%, 88% { opacity: 1; transform: translate(-50%, 0) } 100% { opacity: 0 } }

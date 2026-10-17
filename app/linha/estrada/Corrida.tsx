@@ -323,6 +323,17 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [marca, setMarca] = useState<Marca | null>(null)
   // os ANÉIS (17/10, mapa 2.0): cada 100 que você pega viram duas viagens
   // rápidas pelo mapa. Ficam guardados no aparelho
+  // a dica do mapa 2.0 (nas 3 primeiras entradas, fora da abertura): o que é novo
+  const [dica2, setDica2] = useState(() => {
+    if (abertura) return false
+    try { return Number(localStorage.getItem("cn-dica-mapa2") ?? 0) < 3 } catch { return false }
+  })
+  useEffect(() => {
+    if (!dica2) return
+    try { localStorage.setItem("cn-dica-mapa2", String(Number(localStorage.getItem("cn-dica-mapa2") ?? 0) + 1)) } catch {}
+    const t = setTimeout(() => setDica2(false), 9000)
+    return () => clearTimeout(t)
+  }, [dica2])
   const [aneis, setAneis] = useState<{ total: number; viagens: number }>(() => {
     try { const a = JSON.parse(localStorage.getItem("cn-aneis") ?? "null"); if (a && typeof a.total === "number") return a } catch {}
     return { total: 0, viagens: 0 }
@@ -1729,6 +1740,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <Mapa M={M} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} />
       )}
       <div className="l-combo" aria-hidden />
+      {dica2 && !cinema && (
+        <div className="l-dica2" role="status">
+          <b>novo</b>
+          <span><kbd>espaço</kbd> ou toque duplo: pula · vira no ar pra girar</span>
+          <span>100 anéis = 2 viagens rápidas pelo mapa</span>
+        </div>
+      )}
       <div className="l-aneis" aria-label={`${aneis.total} anéis, ${aneis.viagens} viagens rápidas`}><i />{aneis.total % 100}<small>/100</small>{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
       <div className="l-relogio" aria-label="relógio da cidade"><b ref={hudRelogio}>{horaTexto(hora)}</b><small ref={hudTurno}>dia {dia}</small></div>
 
