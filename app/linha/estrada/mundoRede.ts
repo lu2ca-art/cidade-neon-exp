@@ -43,6 +43,12 @@ export type MundoRede = Mundo & { ligacoes: Ligacoes; chao: (x: number, z: numbe
 // via (a mão que bate com o seu rumo), o u, o lado (x) e a distância do eixo
 export interface Projecao { via: number; u: number; x: number; meia: number }
 
+// (17/10, REA do Horizon: um momento em cada pedaço do caminho) as lombadas
+// de salto, presas a um ponto do mapa (as duas mãos passam pela mesma): sobe
+// 2,6 m em 20 m e cai — a 250 km/h a Kombi decola
+const SALTOS: [number, number][] = [[150, 690], [430, 662]]
+const SOBE = 20
+
 function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
   const e = rede.arestas[ai]
   const pts = (ida ? e.pts : [...e.pts].reverse()).map(([x, y]) => new THREE.Vector3(mx(x), 0, mz(y)))
@@ -66,6 +72,16 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
     const m = MEIA_RUA[e.tipo] ?? 7
     p.esq[i] = -m; p.dir[i] = m
   }
+  for (const [sx, sy] of SALTOS) {
+    const X = mx(sx), Z = mz(sy)
+    let bi = -1, bd = 45
+    for (let i = 0; i < p.n; i++) { const d = Math.hypot(p.px[i] - X, p.pz[i] - Z); if (d < bd) { bd = d; bi = i } }
+    if (bi < 0) continue
+    // a lombada é simétrica (igual nas duas mãos): rápido, a queda do outro
+    // lado é mais íngreme que a gravidade, e a Kombi decola
+    const k = Math.floor(SOBE / 2)
+    for (let j = -k; j <= k; j++) { const i = bi + j; if (i < 0 || i >= p.n) continue; p.py[i] += 2.6 * (1 - Math.pow(j / k, 2)) }
+  }
   // as curvas deitam como nas pistas de sempre (sem isso a curva joga a Kombi
   // no muro e o drift não se sustenta — o LU2CA sentiu a diferença)
   derivar(p, 26)
@@ -77,6 +93,8 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
   }) as unknown as Via
   // as bolinhas de sinal: uns colares pelas ruas compridas
   if (p.L > 500) for (let u = 200; u < p.L - 150; u += 520) for (let k = 0; k < 6; k++) v.orbs.push({ u: u + k * 7, x: ((k % 3) - 1) * 1.6 })
+  // turbos no chão nas vias rápidas (no Horizon o embalo nunca morre)
+  if (["expressa", "orla", "avenida"].includes(e.tipo) && p.L > 400) for (let u = 260; u < p.L - 120; u += 620) v.turbos.push({ u, x: ((Math.floor(u / 620) % 3) - 1) * 3 })
   return v
 }
 

@@ -1364,7 +1364,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo, wx: j.wx && +j.wx.toFixed(1), wz: j.wz && +j.wz.toFixed(1), rumo: j.rumo && +j.rumo.toFixed(2), fora: j.livreFora }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo, wx: j.wx && +j.wx.toFixed(1), wz: j.wz && +j.wz.toFixed(1), rumo: j.rumo && +j.rumo.toFixed(2), fora: j.livreFora, y: +j.y.toFixed(2) }
     }
     return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora; delete w.__procurado }
   }, [M])
@@ -3572,7 +3572,7 @@ function Cena({
     tmp.m.makeBasis(tmp.r, tmp.up, tmp.f.clone().negate())
     const car = carro.current!
     car.quaternion.setFromRotationMatrix(tmp.m)
-    const yaw = vivo ? -j.deriva : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva
+    const yaw = vivo ? -j.deriva - j.steer * 0.11 * Math.min(1, Math.abs(j.v) / 25) * Math.sign(j.v || 1) : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva
     tmp.qYaw.setFromAxisAngle(tmp.y0, yaw)
     tmp.qRoll.setFromAxisAngle(tmp.z0, j.steer * 0.05 * Math.min(1, pct))
     car.quaternion.multiply(tmp.qYaw).multiply(tmp.qRoll)
@@ -3689,9 +3689,14 @@ function Cena({
       // o rumo da câmera: entre pra onde a Kombi anda e pra onde ela aponta (no
       // drift aponta mais pro lado), com atraso — a lateral aparece na curva
       cd.carF.set(0, 0, -1).applyQuaternion(car.quaternion).setY(0).normalize()
-      const alvoF = tmp.p.copy(tmp.f).setY(0).normalize().lerp(cd.carF, j.drift ? 0.3 : 0.12).normalize()
+      // (17/10, LU2CA: "cuidado com a anulação da câmera e da dinâmica de
+      // direção") a câmera segue pra onde a Kombi ANDA, quase nada pra onde
+      // ela aponta: se girasse junto com o nariz, a virada e o drift sumiam
+      // da tela. Assim o nariz entra na curva e a traseira escorrega na sua frente
+      const livreCam = "ligacoes" in M && !!j.livreOk
+      const alvoF = tmp.p.copy(tmp.f).setY(0).normalize().lerp(cd.carF, livreCam ? 0.04 : j.drift ? 0.3 : 0.12).normalize()
       if (!cd.ok || j.encaixar) { cd.f.copy(alvoF); cd.ok = true }
-      cd.f.lerp(alvoF, 1 - Math.exp(-dt * (j.drift ? 1.6 : 2.6))).normalize()
+      cd.f.lerp(alvoF, 1 - Math.exp(-dt * (livreCam ? (j.drift ? 1.3 : 2) : j.drift ? 1.6 : 2.6))).normalize()
       // a aceleração empurra a câmera pra trás; a freada traz pra perto
       const acc = dt > 0 ? (j.v - cd.vAnt) / dt : 0
       cd.vAnt = j.v
@@ -3708,20 +3713,24 @@ function Cena({
         o.pitch += (o.alvoPitch - o.pitch) * Math.min(1, dt * (o.arrastando ? 12 : 2.5))
       }
       const vel = Math.max(0, Math.min(1.3, Math.abs(j.v) / VMAX))
-      // (REA Horizon: câmera colada, 3 m atrás e 1 m acima) mais perto e mais baixa
-      const atras = dePatins ? 3.4 + vel * 1 : 4.6 + vel * 1.8 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
-      const alto = dePatins ? 1.7 : 2.1 - vel * 0.45 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
+      // (REA Horizon: a câmera deles fica a 3 m) a nossa no meio-termo: mais
+      // perto que antes (~10 m), sem colar (o LU2CA: "não deixar perto demais")
+      const atras = dePatins ? 3.9 + vel * 1.3 : 5.8 + vel * 2.2 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
+      const alto = dePatins ? 1.9 : 2.55 - vel * 0.5 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
       cd.dir.copy(cd.f).applyAxisAngle(tmp.y0, cd.orbita + (dentroRef.current ? 0 : o.yaw))
       // a lateral: a câmera abre um pouco pro lado de fora da curva
-      cd.lado += ((-a.curv * Math.abs(j.v) * 2.2 + j.steer * 0.6) - cd.lado) * Math.min(1, dt * 2)
+      // (na direção livre, só o volante conta: a curvatura da rua sob a Kombi
+      // não é a curva que ela está fazendo, e balançava a câmera à toa)
+      cd.lado += ((livreCam ? j.steer * 1.1 * Math.min(1, vel * 1.5) : -a.curv * Math.abs(j.v) * 2.2 + j.steer * 0.6) - cd.lado) * Math.min(1, dt * 2)
       cd.lado = Math.max(-2.5, Math.min(2.5, cd.lado))
       tmp.alvo.copy(car.position).addScaledVector(cd.dir, -atras).addScaledVector(tmp.y0, alto).addScaledVector(tmp.r, cd.lado * 0.5)
       // (direção livre) a câmera não atravessa prédio: chega mais perto da Kombi
       if ("ligacoes" in M) {
         const dx = tmp.alvo.x - car.position.x, dz = tmp.alvo.z - car.position.z, L = Math.hypot(dx, dz)
         for (let s2 = 1.5; s2 < L; s2 += 1) if (bater(car.position.x + (dx * s2) / L, car.position.z + (dz * s2) / L, 0.8)) {
-          const f = Math.max(1.5, s2 - 1) / L
-          tmp.alvo.x = car.position.x + dx * f; tmp.alvo.z = car.position.z + dz * f; tmp.alvo.y += (1 - f) * 2
+          // chega perto, mas não cola: no mínimo 3 m, e sobe pra olhar por cima
+          const f = Math.min(1, Math.max(3, s2 - 1) / L)
+          tmp.alvo.x = car.position.x + dx * f; tmp.alvo.z = car.position.z + dz * f; tmp.alvo.y += (1 - f) * 3.5
           break
         }
       }
@@ -3746,7 +3755,7 @@ function Cena({
     if (!cine && !dentroRef.current) {
       // de fora: olha à frente da Kombi (mais longe quanto mais rápido) e pra dentro da curva
       const vel = Math.min(1.3, Math.abs(j.v) / VMAX)
-      tmp.olhar.copy(car.position).addScaledVector(camDin.current.dir, 5 + vel * 7).addScaledVector(tmp.y0, 1.1 + olhar.current.pitch * 3).addScaledVector(tmp.r, Math.max(-4, Math.min(4, a.curv * Math.abs(j.v) * 3)))
+      tmp.olhar.copy(car.position).addScaledVector(camDin.current.dir, 5 + vel * 7).addScaledVector(tmp.y0, 1.1 + olhar.current.pitch * 3).addScaledVector(tmp.r, "ligacoes" in M && j.livreOk ? j.steer * 1.5 * Math.min(1, vel) : Math.max(-4, Math.min(4, a.curv * Math.abs(j.v) * 3)))
     }
     if (cl) tmp.olhar.copy(cl.porta)
     // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
