@@ -224,6 +224,11 @@ type Jogo = {
   // o mapa novo: pediu o retorno (troca pra outra mão da mesma rua)
   retorno?: boolean
   tVolta?: number // parado, segurando freio + um lado: quanto tempo (meia-volta)
+  // o pulo (17/10, mapa 2.0: barra de espaço / toque duplo, a movimentação do inFamous)
+  pulou?: boolean; tPulo?: number
+  // o modo arcade (17/10, LU2CA: "arcade, divertido, psicodélico, fidget"):
+  // o combo de anéis, a onda psicodélica (0–1) e o giro da Kombi no ar
+  combo?: number; comboT?: number; psi?: number; giroAr?: number
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   // encostando pra fazer algo na beira (regar as flores, a montanha-russa):
@@ -258,6 +263,7 @@ type Evs = {
   sinal: (n: number, rotulo: string, cor: string) => void
   portal: (id: EstacaoId) => void
   pegar: (chave: string) => void
+  anel: () => void
   caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim") => void
   estrelas: (n: number) => void
   chegou: () => void
@@ -270,7 +276,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number }
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number }
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
 // as marcas do velocímetro (0–140 km/h, 270°)
@@ -313,6 +319,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const lugarDaMissao: LugarId | null = !caido && alvo?.t === "lugar" ? alvo.lugar : null
   // o destino que você marcou no mapa (senão, o mapa aponta a missão)
   const [marca, setMarca] = useState<Marca | null>(null)
+  // os ANÉIS (17/10, mapa 2.0): cada 100 que você pega viram duas viagens
+  // rápidas pelo mapa. Ficam guardados no aparelho
+  const [aneis, setAneis] = useState<{ total: number; viagens: number }>(() => {
+    try { const a = JSON.parse(localStorage.getItem("cn-aneis") ?? "null"); if (a && typeof a.total === "number") return a } catch {}
+    return { total: 0, viagens: 0 }
+  })
+  useEffect(() => { try { localStorage.setItem("cn-aneis", JSON.stringify(aneis)) } catch {} }, [aneis])
   const marcaRef = useRef<Marca | null>(null)
   useEffect(() => { marcaRef.current = marca }, [marca])
   // a vaga que vale agora (encostar nela começa a cena)
@@ -484,6 +497,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [pertoKombi, setPertoKombi] = useState(false)
   // a Kombi desligada: no lugar da ré, "dar partida"
   const [desligada, setDesligada] = useState(false)
+  const viajar = () => {
+    const j = jogo.current
+    if (!marca || aneis.viagens <= 0 || aberturaRef.current.ativa || j.chegando) return false
+    j.via = marca.via; j.u = Math.max(0, marca.u - 70); j.x = 0; j.v = Math.min(j.v, 20); j.encaixar = true; j.livreOk = false
+    evs.current?.via(marca.via)
+    setAneis((a) => ({ ...a, viagens: a.viagens - 1 }))
+    vib([20, 30, 60])
+    return true
+  }
   const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
   useEffect(() => {
     // qualquer toque ou tecla conta como "tem gente dirigindo"
@@ -993,6 +1015,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const evs = useRef<Evs>(null as unknown as Evs)
   useEffect(() => {
     evs.current = {
+      anel: () => setAneis((a) => {
+        const total = a.total + 1
+        return { total, viagens: a.viagens + (total % 100 === 0 ? 2 : 0) }
+      }),
       vaga: (id) => onVagaRef.current?.(id),
       // na chegada a cidade fica quieta: só o grupo fala
       falar: (de, t) => { if (!introRef.current) falar(de, t) },
@@ -1394,7 +1420,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "arrowup" || k === "w") { input.current.gas = on; if (on) jogo.current.desligada = false }
       else if (k === "arrowdown" || k === "s") input.current.freio = on
       else if ((k === "shift" || k === "e") && on) input.current.turbo = true
-      else if (k === " " || k === "q") input.current.mao = on
+      // (17/10) o espaço é o PULO; o freio de mão fica no Q (e no X)
+      else if (k === " ") { if (on && !ev.repeat) input.current.pulo = true }
+      else if (k === "q" || k === "x") input.current.mao = on
       // F (como no GTA): sai da Kombi, ou volta pra ela quando está perto
       else if (k === "f" && on && !ev.repeat) document.querySelector<HTMLButtonElement>(".l-sair-kombi, .l-regar-btn.is-voltar")?.click()
       else if (k === "c" && on && !ev.repeat) trocarCamera()
@@ -1473,6 +1501,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerDown={(e) => {
             if (cinemaRef.current) return
             const r = (e.target as HTMLElement).getBoundingClientRect()
+            // toque duplo (dois toques em menos de 0,3 s): pula
+            const agora = performance.now()
+            if (agora - (input.current.ultimoToque ?? 0) < 300) { input.current.pulo = true; input.current.ultimoToque = 0 } else input.current.ultimoToque = agora
             toques.current.set(e.pointerId, e.clientX - r.left < r.width / 2 ? "esq" : "dir")
             atualizarToque()
           }}
@@ -1693,8 +1724,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {parque !== "andando" && (
-        <Mapa M={M} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} />
+        <Mapa M={M} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} />
       )}
+      <div className="l-combo" aria-hidden />
+      <div className="l-aneis" aria-label={`${aneis.total} anéis, ${aneis.viagens} viagens rápidas`}><i />{aneis.total % 100}<small>/100</small>{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
       <div className="l-relogio" aria-label="relógio da cidade"><b ref={hudRelogio}>{horaTexto(hora)}</b><small ref={hudTurno}>dia {dia}</small></div>
 
       <div className="l-painel-kombi" onPointerDown={(e) => e.stopPropagation()}>
@@ -2238,7 +2271,10 @@ function Cena({
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
       const e = ESTILO[t.predio]
-      const qt = Math.round(((e.n * C.L) / 2600) * (C.tipo === "rua" ? 0.8 : 1))
+      // (mapa 2.0, 17/10: "as proporções das avenidas em relação aos prédios,
+      // o mapa antigo é muito bom nisso") nas ruas do mapa novo, mais prédios
+      // e colados na calçada: o cânion do mapa antigo, não um horizonte longe
+      const qt = Math.round(((e.n * C.L) / 2600) * (C.tipo === "rua" ? 1.7 : 1))
       const mat = new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: ds.janela, emissiveMap: tex.janelas, emissiveIntensity: e.brilho, roughness: 0.62, metalness: 0.35 })
       // janela em escala real: a textura repete pelo tamanho de cada prédio
       // (antes um prédio de 200 m tinha janelas de 7 m) e cada prédio começa
@@ -2259,15 +2295,22 @@ function Cena({
         const k = Math.floor(r() * C.n)
         if (noTunel(C, k)) continue
         const lado = r() < 0.5 ? -1 : 1
-        const off = MEIA + e.off[0] + r() * (e.off[1] - e.off[0])
+        // (no mapa novo a fachada encosta na calçada: a 4 m da borda da rua,
+        // alguns mais pra trás; no mapa de sempre, a conta de sempre)
+        const rua = C.tipo === "rua"
+        let off: number, h: number, w = 0
+        if (rua) {
+          w = e.w[0] + r() * (e.w[1] - e.w[0])
+          off = C.dir[k] + w * 0.5 + 4 + r() * r() * (e.off[1] - e.off[0]) * 0.5
+        } else off = MEIA + e.off[0] + r() * (e.off[1] - e.off[0])
         // o lado de DENTRO do anel da cidade (e o miolo do subúrbio) é o
         // subúrbio: sem torre ali (a Linha 9 passa por cima, a vista é lá pra baixo)
-        if ((C === M.vias[M.circuito.linha] || C === M.vias[M.circuito.suburbio]) && lado < 0) continue
-        const h = e.h[0] + r() * r() * (e.h[1] - e.h[0])
+        if (!rua && (C === M.vias[M.circuito.linha] || C === M.vias[M.circuito.suburbio]) && lado < 0) continue
+        h = e.h[0] + r() * r() * (e.h[1] - e.h[0])
         const bx = C.px[k] - C.tz[k] * lado * off
         const bz = C.pz[k] + C.tx[k] * lado * off
-        const w = e.w[0] + r() * (e.w[1] - e.w[0])
-        if (!M.livre(bx, bz, 10 + w * 0.7)) continue
+        if (!rua) w = e.w[0] + r() * (e.w[1] - e.w[0])
+        if (!M.livre(bx, bz, rua ? w * 0.5 + 2.5 : 10 + w * 0.7)) continue
         if (centrosLugares.some((c) => Math.hypot(c.x - bx, c.z - bz) < 24 + w * 0.7)) continue
         if (parqueChao.some((c) => Math.hypot(c.x - bx, c.z - bz) < 14 + w * 0.7)) continue
         // no mapa novo o prédio nasce no chão (o relevo do v5), não na água
@@ -2550,6 +2593,16 @@ function Cena({
     return { faixas: [pint(-1), pint(1)], muros: [muro(-1), muro(1)] }
   }, [circuitos, nLib])
 
+  // ── o rastro neon do pulo (o dash do inFamous): uma fita de luz que fica
+  // no ar por onde a Kombi passou voando e apaga em ~1 s ──
+  const rastro = useMemo(() => {
+    const N = 90, pos = new Float32Array(N * 3), cor = new Float32Array(N * 3)
+    const g = new THREE.BufferGeometry()
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(cor, 3))
+    const mat = new THREE.PointsMaterial({ size: 0.9, map: tex.brilho, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
+    const pts = new THREE.Points(g, mat); pts.frustumCulled = false
+    return { N, pos, cor, g, pts, cab: 0 }
+  }, [tex])
   // ── orbs (todas as vias numa malha só) ──
   const orbs = useMemo(() => {
     const lista: { via: number; u: number; x: number }[] = []
@@ -2815,7 +2868,7 @@ function Cena({
   // ── loop ──
   const tmp = useMemo(() => ({
     f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3(),
-    alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(), q2: new THREE.Vector3(),
+    cor: new THREE.Color(), alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(), q2: new THREE.Vector3(),
     qYaw: new THREE.Quaternion(), qRoll: new THREE.Quaternion(), camOlhar: new THREE.Vector3(), d: new THREE.Object3D(),
     qMarca: new THREE.Quaternion(), qDeriva: new THREE.Quaternion(), roda: new THREE.Vector3(),
     qDeitar: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2),
@@ -2824,6 +2877,7 @@ function Cena({
     c1: new THREE.Color(), c2: new THREE.Color(),
   }), [])
   const hudN = useRef(0)
+  const comboEl = useRef<HTMLElement | null>(null)
   const hemi = useRef<THREE.HemisphereLight>(null)
   const ambRef = useRef<THREE.AmbientLight>(null)
   const dirRef = useRef<THREE.DirectionalLight>(null)
@@ -3088,7 +3142,7 @@ function Cena({
         if (Math.abs(dif) < 0.6) j.rumo! += dif * Math.min(1, dt * 3)
       }
       const vel = Math.abs(j.v)
-      const giro = j.steer * Math.min(1, vel / 4) * (2.4 - 1.4 * Math.min(1, vel / 50)) * (j.drift ? 1.6 : 1)
+      const giro = j.steer * Math.min(1, vel / 4) * (2.4 - 1.4 * Math.min(1, vel / 50)) * (j.drift ? 1.6 : 1) * (j.ar ? 0.25 : 1)
       j.rumo! -= giro * dt * (j.v < 0 ? -1 : 1)
       const sx = Math.sin(j.rumo!), cz = Math.cos(j.rumo!)
       let nx = j.wx! + sx * j.v * dt, nz = j.wz! + cz * j.v * dt
@@ -3276,8 +3330,27 @@ function Cena({
     amostra(V, j.u, a)
     const yPista = livre && MR && j.livreFora ? MR.chao(j.wx!, j.wz!) + 0.3 : a.y - j.x * Math.sin(a.bank)
     if (j.encaixar) { j.ar = false; j.y = yPista; j.vy = 0 } // teleporte (dev)
+    // o PULO: do chão, quando quiser (não no meio de cena nem da abertura)
+    j.tPulo = Math.max(0, (j.tPulo ?? 0) - dt)
+    // (números da pesquisa de 17/10: 2,5 m de altura, topo em 0,35 s, a queda
+    // 1,7× mais forte que a subida, ~0,6 s no ar; apertar até 0,12 s antes de
+    // pousar ainda vale)
+    if (inp.pulo && !j.ar) {
+      inp.pulo = false
+      if (!cine && !aberturaRef.current.ativa && !j.chegando && j.tPulo <= 0 && !j.desligada) {
+        j.ar = true; j.tAr = 0; j.pulou = true
+        j.vy = 14.3
+        j.y = Math.max(j.y, yPista) + 0.05
+        j.shake = Math.max(j.shake, 0.18)
+        motor?.whoosh(); vib(14)
+      }
+    }
+    if (inp.pulo && j.ar && j.tAr > 0.3 && j.vy < 0 && j.y - yPista > 2.2) inp.pulo = false // cedo demais: não guarda
+    // o GIRO no ar: virando durante o voo, a Kombi rodopia (só a carroceria)
+    if (j.ar) j.giroAr = (j.giroAr ?? 0) + j.steer * dt * 11
+    else if (j.giroAr) { j.giroAr *= Math.exp(-dt * 9); if (Math.abs(j.giroAr) < 0.01) j.giroAr = 0 }
     if (j.ar) {
-      j.vy -= G * dt
+      j.vy -= (j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
       j.y += j.vy * dt
       j.tAr += dt
       if (j.y <= yPista) {
@@ -3285,6 +3358,23 @@ function Cena({
         j.ar = false
         j.y = yPista
         j.shake = Math.max(j.shake, Math.min(1.2, 0.3 + tempoAr))
+        // pousou de um pulo: um empurrão pra frente (o embalo do inFamous) e um respiro antes do próximo
+        // (pulinho no chão plano não dá turbo; voo de verdade, como no Crash, dá)
+        if (j.pulou) { j.pulou = false; j.tPulo = 0.6 }
+        // pousou girando: 360 (ou mais) bem alinhado = turbo e onda; torto, só balança
+        if (j.giroAr) {
+          const voltas = Math.round(j.giroAr / (Math.PI * 2))
+          const sobra = j.giroAr - voltas * Math.PI * 2
+          if (voltas !== 0 && Math.abs(sobra) < 0.9) {
+            if (Math.abs(j.v) > 5) j.v += Math.sign(j.v) * 6 * Math.abs(voltas)
+            j.turboT = Math.max(j.turboT, 0.8)
+            j.psi = Math.min(1, (j.psi ?? 0) + 0.45)
+            ev.sinal(2 * Math.abs(voltas), `${Math.abs(voltas) * 360}°!`, "#ff5bd6")
+          }
+          j.giroAr = sobra
+        }
+        if (tempoAr > 1) j.psi = Math.min(1, (j.psi ?? 0) + 0.25)
+        if (tempoAr > 0.75 && Math.abs(j.v) > 5) { j.v += Math.sign(j.v) * Math.min(8, tempoAr * 4); j.carga = Math.min(1, j.carga + 0.08) }
         motor?.baque()
         vib(tempoAr > 0.6 ? [40, 30, 60] : 30)
         j.st.ar += tempoAr
@@ -3336,9 +3426,15 @@ function Cena({
       if (d > -1.5 && d < 1.8 && Math.abs(o.x - j.x) < 1.3 && Math.abs(j.y + 1 - (yPista + 1.4)) < 2.6 + (j.ar ? 2 : 0)) {
         j.pegos.add(i)
         j.st.orbs++
-        // o anel: carrega o turbo e toca uma nota no tom da música (só isso)
+        ev.anel()
+        // o COMBO: anel atrás de anel (menos de 2,5 s) sobe a nota e a onda
+        j.combo = j.tempo - (j.comboT ?? -9) < 2.5 ? (j.combo ?? 0) + 1 : 1
+        j.comboT = j.tempo
+        j.psi = Math.min(1, (j.psi ?? 0) + (j.combo >= 5 ? 0.22 : 0.06))
+        // o anel: carrega o turbo, toca uma nota no tom da música e conta
+        // pra viagem rápida (a cada 100, duas viagens)
         j.carga = Math.min(1, j.carga + 0.12)
-        gota(j.st.orbs % 8)
+        gota(Math.min(14, (j.combo ?? 1) - 1))
         vib(8)
       }
     }
@@ -3572,7 +3668,7 @@ function Cena({
     tmp.m.makeBasis(tmp.r, tmp.up, tmp.f.clone().negate())
     const car = carro.current!
     car.quaternion.setFromRotationMatrix(tmp.m)
-    const yaw = vivo ? -j.deriva - j.steer * 0.11 * Math.min(1, Math.abs(j.v) / 25) * Math.sign(j.v || 1) : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva
+    const yaw = (j.giroAr ?? 0) + (vivo ? -j.deriva - j.steer * 0.11 * Math.min(1, Math.abs(j.v) / 25) * Math.sign(j.v || 1) : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva)
     tmp.qYaw.setFromAxisAngle(tmp.y0, yaw)
     tmp.qRoll.setFromAxisAngle(tmp.z0, j.steer * 0.05 * Math.min(1, pct))
     car.quaternion.multiply(tmp.qYaw).multiply(tmp.qRoll)
@@ -3908,6 +4004,43 @@ function Cena({
       orbs.m.setMatrixAt(i, tmp.d.matrix)
     }
     orbs.m.instanceMatrix.needsUpdate = true
+    {
+      // o rastro: apaga devagar; enquanto a Kombi voa de um pulo, solta luz
+      const rs = rastro, apaga = Math.exp(-dt * 2.6)
+      for (let i = 0; i < rs.cor.length; i++) rs.cor[i] *= apaga
+      if (j.pulou || (j.ar && j.turboT > 0)) for (let q = 0; q < 2; q++) {
+        const k = rs.cab, f = q / 2
+        rs.pos[k * 3] = car.position.x - tmp.f.x * (2.8 + f * j.v * dt) + (Math.random() - 0.5) * 0.4
+        rs.pos[k * 3 + 1] = car.position.y + 0.9 + (Math.random() - 0.5) * 0.4
+        rs.pos[k * 3 + 2] = car.position.z - tmp.f.z * (2.8 + f * j.v * dt) + (Math.random() - 0.5) * 0.4
+        // arco-íris: a cor anda com o tempo (o rastro inteiro vira um degradê)
+        tmp.cor.setHSL((j.tempo * 0.9 + q * 0.03) % 1, 1, 0.55)
+        rs.cor[k * 3] = tmp.cor.r * 1.3; rs.cor[k * 3 + 1] = tmp.cor.g * 1.3; rs.cor[k * 3 + 2] = tmp.cor.b * 1.3
+        rs.cab = (k + 1) % rs.N
+      }
+      rs.g.attributes.position.needsUpdate = true; rs.g.attributes.color.needsUpdate = true
+    }
+    {
+      // a ONDA PSICODÉLICA: combo alto, voo longo, 360 e turbo giram as cores
+      // da cidade por uns segundos (um filtro no canvas: barato e some sozinho)
+      j.psi = Math.max(j.turboT > 0 ? 0.3 : 0, (j.psi ?? 0) * Math.exp(-dt * 0.55))
+      if (j.combo && j.tempo - (j.comboT ?? 0) > 2.5) j.combo = 0
+      const el = state.gl.domElement
+      const psi = j.psi
+      // (LU2CA: "muito sutil, como uma marca d'água, chapado de ácido; às
+      // vezes forte e curta") o fundo: a cor respira ±10° bem devagar, sempre;
+      // por cima, o golpe forte quando a onda sobe
+      const fundo = Math.sin(j.tempo * 0.09) * 10 + Math.sin(j.tempo * 0.031) * 6
+      const f = `hue-rotate(${Math.round(fundo + (psi > 0.02 ? (j.tempo * 140 * psi) % 360 : 0))}deg) saturate(${(1.06 + psi * 0.9).toFixed(2)})${psi > 0.02 ? ` contrast(${(1 + psi * 0.12).toFixed(2)})` : ""}`
+      if (el.style.filter !== f) el.style.filter = f
+      // o contador do combo (no centro, só a partir de x3)
+      const ce = comboEl.current ?? (comboEl.current = document.querySelector<HTMLElement>(".l-combo"))
+      if (ce) {
+        const c = j.combo ?? 0, txt = c >= 3 ? `x${c}` : ""
+        if (ce.textContent !== txt) { ce.textContent = txt; ce.style.transform = "translateX(-50%) scale(1.35)"; requestAnimationFrame(() => { ce.style.transform = "translateX(-50%) scale(1)" }) }
+        ce.style.color = `hsl(${Math.round((j.tempo * 220) % 360)} 100% 65%)`
+      }
+    }
 
     // luz dos postes pulsa no grave
     cidade.luzMat.size = 3.4 + grave * 3
@@ -4163,6 +4296,7 @@ function Cena({
       {/* o mapa novo: o relevo do v5 debaixo das ruas */}
       {relevoNovo && <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} /></mesh>}
       <primitive object={orbs.m} />
+      <primitive object={rastro.pts} />
       <points geometry={orbs.halo} material={orbs.haloMat} />
 
       {trafego.malhas.flat().map((m, i) => <primitive key={i} object={m} />)}
