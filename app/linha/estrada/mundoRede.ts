@@ -72,11 +72,17 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
     const m = MEIA_RUA[e.tipo] ?? 7
     p.esq[i] = -m; p.dir[i] = m
   }
+  // (mapa 2.0: "manter e encher") além dos dois do deserto, uma lombada no
+  // meio de toda rua comprida que não seja elevada, túnel, rampa ou beco
+  const cristas: number[] = []
   for (const [sx, sy] of SALTOS) {
     const X = mx(sx), Z = mz(sy)
     let bi = -1, bd = 45
     for (let i = 0; i < p.n; i++) { const d = Math.hypot(p.px[i] - X, p.pz[i] - Z); if (d < bd) { bd = d; bi = i } }
-    if (bi < 0) continue
+    if (bi >= 0) cristas.push(bi)
+  }
+  if (e.m > 650 && !e.elevada && !["tunel", "rampa", "beco", "serpentina"].includes(e.tipo) && e.via !== "dbee") cristas.push(Math.floor(p.n / 2))
+  for (const bi of cristas) {
     // a lombada é simétrica (igual nas duas mãos): rápido, a queda do outro
     // lado é mais íngreme que a gravidade, e a Kombi decola
     const k = Math.floor(SOBE / 2)
@@ -92,7 +98,15 @@ function viaDaRua(rede: Rede, ai: number, ida: boolean): Via {
     rede: { aresta: ai, ida, de: ida ? e.a : e.b, para: ida ? e.b : e.a, par: -1, tipo: e.tipo, bairro: e.bairro },
   }) as unknown as Via
   // as bolinhas de sinal: uns colares pelas ruas compridas
-  if (p.L > 500) for (let u = 200; u < p.L - 150; u += 520) for (let k = 0; k < 6; k++) v.orbs.push({ u: u + k * 7, x: ((k % 3) - 1) * 1.6 })
+  if (p.L > 300) for (let u = 200; u < p.L - 120; u += 330) for (let k = 0; k < 6; k++) v.orbs.push({ u: u + k * 7, x: ((k % 3) - 1) * 1.6 })
+  // depois de cada lombada, um arco de anéis no ar (só pega quem pulou ou
+  // voou): o lado "fidget" do LU2CA. Nas duas mãos, cada uma do seu lado
+  for (const bi of cristas) {
+    const u0 = bi * 2
+    for (let q = 0; q < 5; q++) { const u = u0 + 22 + q * 14; if (u < p.L - 20) v.orbs.push({ u, x: 0, y: 1.4 + [2, 4.5, 6, 4.5, 2][q] }) }
+  }
+  // e anéis altos soltos nas retas: pra pegar, pula (um a cada ~400 m)
+  if (p.L > 300) for (let u = 120; u < p.L - 80; u += 410) { const x = ((Math.floor(u / 410) % 3) - 1) * 3; for (let q = 0; q < 3; q++) v.orbs.push({ u: u + q * 8, x, y: 3.6 }) }
   // turbos no chão nas vias rápidas (no Horizon o embalo nunca morre)
   if (["expressa", "orla", "avenida"].includes(e.tipo) && p.L > 400) for (let u = 260; u < p.L - 120; u += 620) v.turbos.push({ u, x: ((Math.floor(u / 620) % 3) - 1) * 3 })
   return v
@@ -195,10 +209,13 @@ export function montarMundoRede(): MundoRede {
     if (best < 0) return null
     const v = vias[best], ox = x - v.px[bi], oz = z - v.pz[bi]
     const lat = ox * -v.tz[bi] + oz * v.tx[bi], meia = v.dir[bi]
+    // o u CONTÍNUO (a grade guarda uma amostra a cada 4 m: arredondar fazia a
+    // altura da rua andar em degraus, e cada degrau virava um pulo sozinho)
+    const u = Math.max(0, Math.min(v.L, bi * 2 + ox * v.tx[bi] + oz * v.tz[bi]))
     // a mão: a que anda pro mesmo lado que você
-    if (dx * v.tx[bi] + dz * v.tz[bi] >= 0) return { via: best, u: bi * 2, x: lat, meia }
+    if (dx * v.tx[bi] + dz * v.tz[bi] >= 0) return { via: best, u, x: lat, meia }
     const par = v.rede!.par
-    return { via: par, u: Math.max(0, vias[par].L - bi * 2), x: -lat, meia }
+    return { via: par, u: Math.max(0, vias[par].L - u), x: -lat, meia }
   }
   CACHE = { vias, circuito, livre, vao, conflitos: [], ligacoes: { rede, saidas }, chao: chaoEm, onde, projetar }
   return CACHE

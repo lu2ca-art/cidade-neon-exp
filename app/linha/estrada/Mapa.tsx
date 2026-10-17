@@ -84,13 +84,15 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
+export function Mapa({ M, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar }: {
   M: Mundo
   // a Kombi: via, u (m), x (lateral) e v (velocidade) — o jogo.current da Corrida
   pose: React.RefObject<PoseKombi>
   missao: LugarId | null
   marca: Marca | null
   onMarcar: (m: Marca | null) => void
+  viagens?: number
+  onViajar?: () => boolean
   onAberto: (aberto: boolean) => void
 }) {
   const mini = useRef<HTMLCanvasElement>(null)
@@ -330,6 +332,9 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto }: {
             {distancia && <span>{distancia}</span>}
           </header>
           <footer>
+            {marca && onViajar && (viagens > 0
+              ? <button type="button" className="is-viagem" onClick={() => { if (onViajar()) abrir(false) }}>viagem rápida · {viagens}</button>
+              : <button type="button" className="is-viagem" disabled>viagem rápida: 100 anéis = 2</button>)}
             {marca && <button type="button" onClick={() => onMarcar(null)}>tirar a marca</button>}
             <button type="button" onClick={() => abrir(false)}>voltar pra estrada</button>
           </footer>

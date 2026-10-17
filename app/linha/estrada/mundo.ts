@@ -76,7 +76,7 @@ export interface Via extends Pista {
   chega?: { u: number; lado: 1 | -1 } // saída: onde encosta no destino
   estacoes: { id: EstacaoId; u: number }[]
   rampas: number[]
-  orbs: { u: number; x: number }[]
+  orbs: { u: number; x: number; y?: number }[] // y: altura acima da rua (sem = 1,4 m; no ar, só pulando)
   turbos: { u: number; x: number }[]
   faixas: Faixa[] // circuito: as saídas
   chegadas: { u: number; lado: 1 | -1 }[] // circuito: onde as saídas encostam

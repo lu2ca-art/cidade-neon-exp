@@ -1928,3 +1928,14 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-regar-btn.is-voltar { background: #5dffa0 !important; color: #06140c !important; box-shadow: 0 0 20px rgba(93, 255, 160, 0.6); }
 .l-regar-btn.is-flor { background: #5dffa0 !important; color: #06140c !important; box-shadow: 0 0 20px rgba(93, 255, 160, 0.6); }
 .l-pagina-fechada.is-flor { color: #5dffa0; border: 1px solid rgba(93, 255, 160, 0.5); }
+
+/* os anéis (17/10, mapa 2.0): a contagem até 100 e as viagens rápidas guardadas */
+.l-aneis { position: absolute; right: 14px; top: calc(196px + env(safe-area-inset-top)); z-index: 6; display: flex; align-items: center; gap: 4px; padding: 3px 9px 3px 6px; border-radius: 999px; background: rgba(8, 10, 20, 0.62); border: 1px solid rgba(47, 232, 255, 0.35); color: #fff; font: 800 13px var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; pointer-events: none; }
+.l-aneis i { width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid #2fe8ff; box-shadow: 0 0 6px #2fe8ff; }
+.l-aneis small { opacity: 0.55; font-size: 10px; }
+.l-aneis b { margin-left: 4px; color: #ffd84a; }
+.is-viagem { background: #2fe8ff !important; color: #061018 !important; font-weight: 800; }
+.is-viagem:disabled { background: rgba(47, 232, 255, 0.18) !important; color: #bff6ff !important; }
+
+/* o combo de anéis (modo arcade, 17/10): no meio da tela, pulsando em arco-íris */
+.l-combo { position: absolute; left: 50%; top: calc(30% + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 6; font: 900 44px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: -0.02em; text-shadow: 0 0 18px currentColor, 0 2px 0 rgba(0, 0, 0, 0.6); pointer-events: none; transition: transform 0.18s cubic-bezier(.2, 1.6, .4, 1); }
