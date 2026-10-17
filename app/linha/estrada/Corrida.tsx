@@ -2113,8 +2113,8 @@ function Cena({
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return
     const w = window as unknown as Record<string, unknown>
-    w.__cena = scene; w.__gl = gl
-  }, [scene, gl])
+    w.__cena = scene; w.__gl = gl; w.__cam = camera
+  }, [scene, gl, camera])
   const camMontanha = useRef<{ pos: THREE.Vector3; olhar: THREE.Vector3; up: THREE.Vector3 } | null>(null)
   // olhar em volta de dentro (como na drive-v2): arrasta → gira até ±150° e
   // ±60°; solta → fica 7 s parado ali e depois volta devagar pra frente
@@ -2123,7 +2123,7 @@ function Cena({
   // relação ao da Kombi (nas curvas e no drift aparece a lateral), a distância
   // respira com a aceleração, olha pra dentro da curva, deita um pouco com ela,
   // e parada dá uma volta lenta de cinema
-  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3() })
+  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3(), off: new THREE.Vector3(), offOk: false })
   useEffect(() => {
     const el = gl.domElement
     const YAW = (150 * Math.PI) / 180
@@ -2274,7 +2274,11 @@ function Cena({
     const predios = circuitos.map((C) => {
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
-      const e = ESTILO[t.predio]
+      // (mapa novo) o estilo vem do BAIRRO de verdade da rua: o deserto caía
+      // na mesma rádio da cidade e ganhava arranha-céu no meio da areia
+      const PELO_BAIRRO: Record<string, Distrito["predio"]> = { cidade: "torres", suburbio: "casas", orla: "brancas", arena: "obra", mirante: "aberto", campo: "casas", deserto: "tunel" }
+      const b0 = C.tipo === "rua" ? C.rede?.bairro : undefined
+      const e = b0 && PELO_BAIRRO[b0] ? (b0 === "campo" ? { ...ESTILO.casas, n: 40 } : ESTILO[PELO_BAIRRO[b0]]) : ESTILO[t.predio]
       // (mapa 2.0, 17/10: "as proporções das avenidas em relação aos prédios,
       // o mapa antigo é muito bom nisso") nas ruas do mapa novo, mais prédios
       // e colados na calçada: o cânion do mapa antigo, não um horizonte longe
@@ -3466,7 +3470,7 @@ function Cena({
         // o COMBO: anel atrás de anel (menos de 2,5 s) sobe a nota e a onda
         j.combo = j.tempo - (j.comboT ?? -9) < 2.5 ? (j.combo ?? 0) + 1 : 1
         j.comboT = j.tempo
-        j.psi = Math.min(1, (j.psi ?? 0) + (j.combo >= 5 ? 0.22 : 0.06))
+        j.psi = Math.min(0.8, (j.psi ?? 0) + (j.combo >= 8 ? 0.16 : j.combo >= 5 ? 0.06 : 0.02))
         // o anel: carrega o turbo, toca uma nota no tom da música e conta
         // pra viagem rápida (a cada 100, duas viagens)
         j.carga = Math.min(1, j.carga + 0.12)
@@ -3847,8 +3851,11 @@ function Cena({
       const vel = Math.max(0, Math.min(1.3, Math.abs(j.v) / VMAX))
       // (REA Horizon: a câmera deles fica a 3 m) a nossa no meio-termo: mais
       // perto que antes (~10 m), sem colar (o LU2CA: "não deixar perto demais")
-      const atras = dePatins ? 3.9 + vel * 1.3 : 5.8 + vel * 2.2 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
-      const alto = dePatins ? 1.9 : 2.55 - vel * 0.5 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
+      // (17/10, sem o atraso que afastava a câmera na velocidade: a distância
+      // agora é a de verdade. Na tela em pé do celular, a 8 m a Kombi tomava
+      // meia tela — "não deixar perto demais")
+      const atras = dePatins ? 5 + vel * 1.6 : 7.6 + vel * 3 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
+      const alto = dePatins ? 2.2 : 3.1 - vel * 0.45 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
       cd.dir.copy(cd.f).applyAxisAngle(tmp.y0, cd.orbita + (dentroRef.current ? 0 : o.yaw))
       // a lateral: a câmera abre um pouco pro lado de fora da curva
       // (na direção livre, só o volante conta: a curvatura da rua sob a Kombi
@@ -3882,7 +3889,17 @@ function Cena({
     if (primeira) { car.updateMatrixWorld(); tmp.alvo.copy(OLHO).applyMatrix4(car.matrixWorld) }
     if (j.encaixar) { camInit.current = false; j.encaixar = false }
     const k = primeira || cl ? 1 : camInit.current ? 1 - Math.exp(-dt * (cine ? 1.6 : j.ar ? 3 : 5.5)) : 1
-    camera.position.lerp(tmp.alvo, k)
+    // (17/10) de fora, o atraso fica no DESLOCAMENTO em relação à Kombi, não
+    // na posição do mundo: perseguir um ponto com atraso fixo deixava a câmera
+    // a 15–27 m a 250 km/h e colada parada. Assim a distância é a mesma em
+    // qualquer velocidade e só as curvas e os balanços demoram a chegar
+    const cdx = camDin.current
+    if (!primeira && !cl && !cine) {
+      tmp.p.copy(tmp.alvo).sub(car.position)
+      if (!camInit.current || !cdx.offOk) { cdx.off.copy(tmp.p); cdx.offOk = true }
+      cdx.off.lerp(tmp.p, 1 - Math.exp(-dt * (j.ar ? 3 : 4.5)))
+      camera.position.copy(car.position).add(cdx.off)
+    } else { cdx.offOk = false; camera.position.lerp(tmp.alvo, k) }
     tmp.olhar.copy(car.position).addScaledVector(tmp.f, cine ? 2.5 : 7).addScaledVector(tmp.up, cine ? 1.4 : 1.2)
     if (!cine && !dentroRef.current) {
       // de fora: olha à frente da Kombi (mais longe quanto mais rápido) e pra dentro da curva
@@ -4067,7 +4084,9 @@ function Cena({
       // vezes forte e curta") o fundo: a cor respira ±10° bem devagar, sempre;
       // por cima, o golpe forte quando a onda sobe
       const fundo = Math.sin(j.tempo * 0.09) * 10 + Math.sin(j.tempo * 0.031) * 6
-      const f = `hue-rotate(${Math.round(fundo + (psi > 0.02 ? (j.tempo * 140 * psi) % 360 : 0))}deg) saturate(${(1.06 + psi * 0.9).toFixed(2)})${psi > 0.02 ? ` contrast(${(1 + psi * 0.12).toFixed(2)})` : ""}`
+      // (o golpe BALANÇA a cor ±60°, não gira a roda inteira: girado 180° o
+      // roxo da cidade vira verde, e fica feio)
+      const f = `hue-rotate(${Math.round(fundo + (psi > 0.02 ? Math.sin(j.tempo * 2.6) * 60 * psi : 0))}deg) saturate(${(1.06 + psi * 0.45).toFixed(2)})${psi > 0.02 ? ` contrast(${(1 + psi * 0.08).toFixed(2)})` : ""}`
       if (el.style.filter !== f) el.style.filter = f
       // o contador do combo (no centro, só a partir de x3)
       const ce = comboEl.current ?? (comboEl.current = document.querySelector<HTMLElement>(".l-combo"))

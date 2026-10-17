@@ -45,6 +45,7 @@ function telao(frase: string, cor: string) {
 
 function Um({ M, o }: { M: Mundo; o: Outdoor }) {
   const escultura = useRef<THREE.Group>(null)
+  const tela = useRef<THREE.MeshBasicMaterial>(null)
   const { pos, rumo, linhas, pontos, tex, hastes, larg } = useMemo(() => {
     const C = M.vias[o.via], i = Math.max(0, Math.min(C.n - 1, Math.floor(o.u / 2)))
     // um pórtico POR CIMA da rua (como os arcos do Crash e as placas do mapa
@@ -65,7 +66,8 @@ function Um({ M, o }: { M: Mundo; o: Outdoor }) {
     return { pos, rumo, linhas, pontos, tex, hastes, larg }
   }, [M, o])
   useFrame((st, dt) => {
-    tex.offset.x = (tex.offset.x + dt * 0.035) % 1
+    const m = tela.current?.map
+    if (m) m.offset.x = (m.offset.x + dt * 0.035) % 1
     const e = escultura.current
     if (e) { e.rotation.y += dt * 0.25; e.rotation.x = Math.sin(st.clock.elapsedTime * 0.3 + o.forma) * 0.4; e.position.y = 22 + Math.sin(st.clock.elapsedTime * 0.8 + o.forma) * 0.8 }
   })
@@ -74,7 +76,7 @@ function Um({ M, o }: { M: Mundo; o: Outdoor }) {
       <primitive object={hastes} />
       <mesh position={[0, 11, 0]}>
         <planeGeometry args={[larg, 4.6]} />
-        <meshBasicMaterial map={tex} toneMapped={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial ref={tela} map={tex} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
       <group ref={escultura} position={[0, 22, 0]}>
         <primitive object={linhas} />
