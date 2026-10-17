@@ -279,6 +279,18 @@ type Evs = {
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
 type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number }
+// mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
+// segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
+function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
+  const w = 2 / Math.max(1e-4, tempo), x = w * dt
+  const e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+  const d = atual - alvo
+  const t = (o[k] + w * d) * dt
+  o[k] = (o[k] - w * t) * e
+  return alvo + (d + t) * e
+}
+// a menor diferença entre dois ângulos (−π a π)
+const angDif = (a: number, b: number) => Math.atan2(Math.sin(a - b), Math.cos(a - b))
 const VRE = 15 // ré: m/s
 // celular: acelerador automático (dois polegares já cuidam de virar/drift/ré)
 // as marcas do velocímetro (0–140 km/h, 270°)
@@ -2155,7 +2167,8 @@ function Cena({
   // relação ao da Kombi (nas curvas e no drift aparece a lateral), a distância
   // respira com a aceleração, olha pra dentro da curva, deita um pouco com ela,
   // e parada dá uma volta lenta de cinema
-  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3(), off: new THREE.Vector3(), offOk: false, yS: 0, ySok: false, enc: 1 })
+  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3(), off: new THREE.Vector3(), offOk: false, yS: 0, ySok: false, enc: 1,
+    cz: { ok: false, ant: false, patins: false, t: 1, yaw: 0, vYaw: 0, dist: 8, vDist: 0, alt: 3, vAlt: 0, y: 0, vY: 0, de: new THREE.Vector3(), deOlhar: new THREE.Vector3() } })
   useEffect(() => {
     const el = gl.domElement
     const YAW = (150 * Math.PI) / 180
@@ -3891,6 +3904,62 @@ function Cena({
         o.pitch += (o.alvoPitch - o.pitch) * Math.min(1, dt * (o.arrastando ? 12 : 2.5))
       }
       const vel = Math.max(0, Math.min(1.3, Math.abs(j.v) / VMAX))
+      if (calma) {
+        // (17/10, LU2CA: "uma câmera que acompanha o carro e o personagem como
+        // nos jogos atuais") a câmera de perseguição do Horizon: um braço preso
+        // atrás da Kombi, tudo em mola amortecida (sem tranco nem chicote). O
+        // olhar é preso à Kombi, então ela fica no mesmo lugar da tela em
+        // qualquer velocidade; só o rumo atrasa um pouco, e a curva aparece
+        const cz = cd.cz
+        const wNariz = livreCam ? (j.drift ? 0.15 : 0.06) : 0.12
+        const yawAlvo = Math.atan2(tmp.f.x * (1 - wNariz) + cd.carF.x * wNariz, tmp.f.z * (1 - wNariz) + cd.carF.z * wNariz)
+        const atrasD = dePatins ? 6.4 + vel * 1.4 : 8 + vel * 1.6 + cd.puxa
+        const altoD = dePatins ? 2.5 - o.pitch * 2 : 2.9 - vel * 0.25 - o.pitch * 2.5
+        if (!cz.ok || j.encaixar || !camInit.current) {
+          cz.yaw = yawAlvo; cz.dist = atrasD; cz.alt = altoD; cz.y = car.position.y
+          cz.vYaw = cz.vDist = cz.vAlt = cz.vY = 0; cz.ok = true; cz.t = 1
+        }
+        // o rumo: mais solto no drift (a Kombi atravessa na tela), firme no resto
+        cz.yaw = amortece(cz.yaw, cz.yaw + angDif(yawAlvo, cz.yaw), cz, "vYaw", j.drift ? 0.32 : 0.2, dt)
+        // e nunca atrasa demais: num giro forte (drift, freada virando) a Kombi
+        // sairia da tela. O limite depende da largura (no celular em pé cabe menos)
+        const aspecto = (camera as THREE.PerspectiveCamera).aspect || 1
+        const lagMax = (j.drift ? 0.16 : 0.1) + 0.12 * Math.min(1.8, aspecto)
+        const lag = angDif(yawAlvo, cz.yaw)
+        if (Math.abs(lag) > lagMax) cz.yaw = yawAlvo - Math.sign(lag) * lagMax
+        cz.dist = amortece(cz.dist, atrasD, cz, "vDist", 0.45, dt)
+        cz.alt = amortece(cz.alt, altoD, cz, "vAlt", 0.3, dt)
+        // a altura: segue morro e rua rápido; no pulo, fica pra trás (a Kombi sobe na tela)
+        cz.y = amortece(cz.y, car.position.y, cz, "vY", j.ar ? 0.38 : 0.1, dt)
+        cd.yS = cz.y
+        cd.f.set(Math.sin(cz.yaw), 0, Math.cos(cz.yaw))
+        cd.dir.copy(cd.f).applyAxisAngle(tmp.y0, o.yaw)
+        cd.lado = 0; cd.roll = 0
+        tmp.alvo.copy(car.position).setY(cz.y).addScaledVector(cd.dir, -cz.dist).addScaledVector(tmp.y0, cz.alt)
+        // prédio no caminho: entra NA HORA (nunca atravessa parede) e volta devagar
+        const dx = tmp.alvo.x - car.position.x, dz = tmp.alvo.z - car.position.z, L = Math.hypot(dx, dz)
+        let fAlvo = 1
+        for (let s2 = 2; s2 < L; s2 += 0.75) if (bater(car.position.x + (dx * s2) / L, car.position.z + (dz * s2) / L, 0.6)) { fAlvo = Math.min(1, Math.max(4, s2 - 1) / L); break }
+        cd.enc = fAlvo < cd.enc ? fAlvo : cd.enc + (fAlvo - cd.enc) * Math.min(1, dt * 1.5)
+        // desliza pelo próprio braço (do teto da Kombi até a câmera): o ângulo
+        // fica o mesmo e ela continua no mesmo lugar da tela, só que maior
+        tmp.q2.copy(car.position).setY(cz.y + 1.3)
+        tmp.alvo.sub(tmp.q2).multiplyScalar(cd.enc).add(tmp.q2)
+        // pra onde olha: à frente da Kombi, preso nela (sem atraso no mundo)
+        tmp.olhar.copy(car.position).setY(cz.y).addScaledVector(cd.dir, dePatins ? 6 + vel * 3 : 7 + vel * 5).addScaledVector(tmp.y0, (dePatins ? 1.2 : 1.3) + o.pitch * 3)
+        // voltando de uma cena, da entrada de um lugar, da montanha-russa ou
+        // trocando Kombi ↔ patins: desliza do enquadramento antigo (não corta)
+        if (!cz.ant || cz.patins !== dePatins) {
+          if (camInit.current && cz.ok) { cz.t = 0; cz.de.subVectors(camera.position, car.position); cz.deOlhar.subVectors(tmp.camOlhar, car.position) }
+          cz.patins = dePatins
+        }
+        if (cz.t < 1) {
+          cz.t = Math.min(1, cz.t + dt / 0.9)
+          const e = cz.t * cz.t * (3 - 2 * cz.t)
+          tmp.alvo.sub(car.position).lerpVectors(cz.de, tmp.alvo, e).add(car.position)
+          tmp.olhar.sub(car.position).lerpVectors(cz.deOlhar, tmp.olhar, e).add(car.position)
+        }
+      } else {
       // (REA Horizon: a câmera deles fica a 3 m) a nossa no meio-termo: mais
       // perto que antes (~10 m), sem colar (o LU2CA: "não deixar perto demais")
       // (17/10, sem o atraso que afastava a câmera na velocidade: a distância
@@ -3922,6 +3991,7 @@ function Cena({
       }
       // a inclinação: deita de leve com a curva e com o drift
       cd.roll += ((calma ? 0 : -j.steer * 0.03 * vel - j.deriva * 0.05) - cd.roll) * Math.min(1, dt * 3)
+      }
     }
     if (cine) {
       // câmera de cinema: baixa, de lado, girando devagar em volta da Kombi
@@ -3952,8 +4022,7 @@ function Cena({
     if (!cine && !dentroRef.current) {
       // de fora: olha à frente da Kombi (mais longe quanto mais rápido) e pra dentro da curva
       const vel = Math.min(1.3, Math.abs(j.v) / VMAX)
-      if (calma) tmp.olhar.copy(car.position).setY(camDin.current.yS).addScaledVector(camDin.current.dir, 6 + vel * 6).addScaledVector(tmp.y0, 1.3 + olhar.current.pitch * 3)
-      else tmp.olhar.copy(car.position).addScaledVector(camDin.current.dir, 5 + vel * 7).addScaledVector(tmp.y0, 1.1 + olhar.current.pitch * 3).addScaledVector(tmp.r, Math.max(-4, Math.min(4, a.curv * Math.abs(j.v) * 3)))
+      if (!calma) tmp.olhar.copy(car.position).addScaledVector(camDin.current.dir, 5 + vel * 7).addScaledVector(tmp.y0, 1.1 + olhar.current.pitch * 3).addScaledVector(tmp.r, Math.max(-4, Math.min(4, a.curv * Math.abs(j.v) * 3)))
     }
     if (cl) tmp.olhar.copy(cl.porta)
     // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
@@ -3966,14 +4035,15 @@ function Cena({
       const cp = Math.cos(o.pitch)
       tmp.olhar.copy(tmp.p.set(OLHO.x - Math.sin(o.yaw) * cp * 10, OLHO.y - 0.9 + Math.sin(o.pitch) * 10, OLHO.z - Math.cos(o.yaw) * cp * 10)).applyMatrix4(car.matrixWorld)
     }
-    tmp.camOlhar.lerp(tmp.olhar, cl ? 1 : primeira ? 1 - Math.exp(-dt * 14) : camInit.current ? 1 - Math.exp(-dt * 9) : 1)
+    tmp.camOlhar.lerp(tmp.olhar, cl || primeira || calma ? 1 : camInit.current ? 1 - Math.exp(-dt * 9) : 1)
     tmp.upMix.copy(tmp.up).lerp(tmp.y0, calma ? 1 : 0.45).normalize()
     tmp.camUp.lerp(tmp.upMix, camInit.current ? 1 - Math.exp(-dt * 4) : 1).normalize()
     camera.up.copy(tmp.camUp)
     camInit.current = true
     const amp = reduz ? 0 : (j.shake * 0.12 + (j.turboT > 0 ? 0.03 : 0)) * (primeira ? 0.25 : calma ? 0.3 : 1)
-    camera.position.x += (Math.random() - 0.5) * amp
-    camera.position.y += (Math.random() - 0.5) * amp
+    // tremida suave (ondas, não sorteio a cada quadro: aquilo virava chuvisco)
+    camera.position.x += (Math.sin(j.tempo * 31) + Math.sin(j.tempo * 53.7) * 0.6) * amp * 0.32
+    camera.position.y += (Math.sin(j.tempo * 37.3 + 1.7) + Math.sin(j.tempo * 61.1) * 0.6) * amp * 0.32
     camera.lookAt(tmp.camOlhar)
     if (!cine && !primeira && !reduz) {
       camera.rotateZ(camDin.current.roll)
@@ -3981,10 +4051,12 @@ function Cena({
       const vel = Math.abs(j.v) / VMAX
       if (vel > 0.75 && !calma) { const t = j.tempo, k2 = (vel - 0.75) * 0.012; camera.rotateX(Math.sin(t * 37) * k2 + Math.sin(t * 23) * k2 * 0.6); camera.rotateY(Math.sin(t * 29) * k2 * 0.8) }
     }
+    let apeCam = false
     {
       // a pé: a câmera atrás de quem anda, a porta na frente
       const ab = aberturaRef.current
       if (ab.ativa && ab.de && (ab.fase === "ape" || ab.fase === "porta")) {
+        apeCam = true
         const p = tmp.p.lerpVectors(ab.de, ab.porta, ab.pe)
         const dirP = tmp.q2.subVectors(ab.porta, ab.de).setY(0).normalize()
         // de longe, do lado da estrada: a Kombi, a casa e quem anda entre
@@ -4014,10 +4086,23 @@ function Cena({
     } else camMontanha.current = null
     // entrando num lugar que é página: a câmera corta pro outro lado da rua
     const ce = camEntrada.current
+    // a câmera calma sabe se foi ela quem enquadrou (pra voltar deslizando)
+    camDin.current.cz.ant = calma && !ce && !pq.andando && !apeCam
     if (ce) {
       camera.position.lerp(ce.cam, 1 - Math.exp(-dt * 2.2))
       camera.up.set(0, 1, 0)
       camera.lookAt(ce.olhar)
+    }
+    // teste (fora da produção): onde a Kombi aparece na tela, quadro a quadro.
+    // Liga com window.__camLog = [] (cada linha: x, y na tela, distância, km/h, dt)
+    if (process.env.NODE_ENV !== "production") {
+      const w = window as unknown as { __camLog?: number[][] }
+      if (w.__camLog) {
+        camera.updateMatrixWorld()
+        const s = tmp.p.copy(car.position).project(camera)
+        w.__camLog.push([+s.x.toFixed(4), +s.y.toFixed(4), +camera.position.distanceTo(car.position).toFixed(2), Math.round(j.v), +dt.toFixed(4)])
+        if (w.__camLog.length > 4000) w.__camLog.shift()
+      }
     }
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
