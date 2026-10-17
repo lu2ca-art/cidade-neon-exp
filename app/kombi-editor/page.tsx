@@ -686,7 +686,7 @@ export default function CockpitEditorPage() {
             ))}
             {objects.length === 0 && (
               <div className="rounded border border-white/10 bg-white/[0.02] p-4 text-center text-xs text-neutral-500">
-                nenhum objeto ainda. clica "+ novo objeto" pra começar.
+                nenhum objeto ainda. clica &quot;+ novo objeto&quot; pra começar.
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import Link from "next/link"
 import posthog from "posthog-js"
 
 export default function Error({
@@ -40,12 +41,12 @@ export default function Error({
         >
           Tentar de novo
         </button>
-        <a
+        <Link
           href="/"
           className="px-6 py-3 rounded-2xl border border-white/20 text-white/70 text-sm font-medium active:scale-95 transition-transform"
         >
           Voltar ao início
-        </a>
+        </Link>
       </div>
     </div>
   )

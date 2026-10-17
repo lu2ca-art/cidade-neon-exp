@@ -894,6 +894,43 @@ function CidadeNeonExperience() {
     )
   }
 
+  // hooks da home do celular: ficam antes de qualquer return antecipado (ordem dos hooks tem que ser a mesma em toda fase)
+  const [homePageIndex, setHomePageIndex] = useState(0)
+  const swipeStartX = useRef<number | null>(null)
+  // funciona com touch (celular) e pointer/mouse (desktop) — ambas as direcoes
+  const handleSwipeStart = useCallback((e: React.TouchEvent | React.PointerEvent) => {
+    swipeStartX.current = "touches" in e ? e.touches[0].clientX : e.clientX
+  }, [])
+  const handleSwipeEnd = useCallback((e: React.TouchEvent | React.PointerEvent) => {
+    if (swipeStartX.current === null) return
+    const endX = "changedTouches" in e ? e.changedTouches[0].clientX : e.clientX
+    const dx = endX - swipeStartX.current
+    if (Math.abs(dx) > 50) setHomePageIndex(dx < 0 ? 1 : 0)
+    swipeStartX.current = null
+  }, [])
+
+  // Painel de Teste (atalhos de dev) fica atrás de senha — a experiência já
+  // está aberta ao público, então o acesso direto a cada etapa (sem passar
+  // pelo jogo) não pode ficar solto pra qualquer um que deslize até a página 2
+  const DEV_PANEL_PASSWORD = "bananadaterra"
+  const [devPanelUnlocked, setDevPanelUnlocked] = useState(false)
+  const [devPasswordInput, setDevPasswordInput] = useState("")
+  const [devPasswordError, setDevPasswordError] = useState(false)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("cn-dev-panel-unlocked") === "true") setDevPanelUnlocked(true)
+    } catch {}
+  }, [])
+  const submitDevPassword = useCallback(() => {
+    if (devPasswordInput.trim().toLowerCase() === DEV_PANEL_PASSWORD) {
+      setDevPanelUnlocked(true)
+      setDevPasswordError(false)
+      try { localStorage.setItem("cn-dev-panel-unlocked", "true") } catch {}
+    } else {
+      setDevPasswordError(true)
+    }
+  }, [devPasswordInput])
+
   /* ═══════════════════════════════════════════════════ */
   /* ─── RENDER: START (landing de lu2ca.art) ───────── */
   /* ═══════════════════════════════════════════════════ */
@@ -1129,7 +1166,7 @@ function CidadeNeonExperience() {
             {/* Audio wave */}
             <div className="flex items-end gap-[2px] mt-6 h-5">
               {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((h, i) => (
-                <div key={i} className="w-[2px] rounded-full bg-[#7C3AED]" style={{ height: `${h * 3}px`, animationName: "call-eq", animationDuration: `${0.4 + Math.random() * 0.3}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
+                <div key={i} className="w-[2px] rounded-full bg-[#7C3AED]" style={{ height: `${h * 3}px`, animationName: "call-eq", animationDuration: `${0.4 + ((i * 37) % 30) / 100}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDelay: `${i * 0.08}s`, transformOrigin: "bottom" }} />
               ))}
             </div>
           </div>
@@ -1537,41 +1574,6 @@ function CidadeNeonExperience() {
 
   /* ─── RENDER: PHONE HOME ���────────────────────────── */
   const activeMissions = getMissions()
-  const [homePageIndex, setHomePageIndex] = useState(0)
-  const swipeStartX = useRef<number | null>(null)
-  // funciona com touch (celular) e pointer/mouse (desktop) — ambas as direcoes
-  const handleSwipeStart = useCallback((e: React.TouchEvent | React.PointerEvent) => {
-    swipeStartX.current = "touches" in e ? e.touches[0].clientX : e.clientX
-  }, [])
-  const handleSwipeEnd = useCallback((e: React.TouchEvent | React.PointerEvent) => {
-    if (swipeStartX.current === null) return
-    const endX = "changedTouches" in e ? e.changedTouches[0].clientX : e.clientX
-    const dx = endX - swipeStartX.current
-    if (Math.abs(dx) > 50) setHomePageIndex(dx < 0 ? 1 : 0)
-    swipeStartX.current = null
-  }, [])
-
-  // Painel de Teste (atalhos de dev) fica atrás de senha — a experiência já
-  // está aberta ao público, então o acesso direto a cada etapa (sem passar
-  // pelo jogo) não pode ficar solto pra qualquer um que deslize até a página 2
-  const DEV_PANEL_PASSWORD = "bananadaterra"
-  const [devPanelUnlocked, setDevPanelUnlocked] = useState(false)
-  const [devPasswordInput, setDevPasswordInput] = useState("")
-  const [devPasswordError, setDevPasswordError] = useState(false)
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("cn-dev-panel-unlocked") === "true") setDevPanelUnlocked(true)
-    } catch {}
-  }, [])
-  const submitDevPassword = useCallback(() => {
-    if (devPasswordInput.trim().toLowerCase() === DEV_PANEL_PASSWORD) {
-      setDevPanelUnlocked(true)
-      setDevPasswordError(false)
-      try { localStorage.setItem("cn-dev-panel-unlocked", "true") } catch {}
-    } else {
-      setDevPasswordError(true)
-    }
-  }, [devPasswordInput])
 
   const DEV_SHORTCUTS = [
     { label: "Ligacao", color: "#7C3AED", action: () => resetExperience() },
