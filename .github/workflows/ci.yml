@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  qualidade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Tipos
+        run: bunx tsc --noEmit
+
+      - name: Dependências explicadas
+        run: node scripts/gerar-dependencias.mjs --check
+
+      - name: Vulnerabilidades em produção
+        run: bun audit --prod
+
+      - name: Lint (só relatório por enquanto)
+        run: bun run lint
+        continue-on-error: true
+
+      - name: Build
+        run: bun run build
+
+      - name: Navegador pro teste
+        run: bunx playwright install --with-deps chromium
+
+      - name: Teste de fumaça
+        run: bun run test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-resultado
+          path: test-results/
+          retention-days: 7
+
+  segredos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
