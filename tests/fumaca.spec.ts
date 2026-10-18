@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 
 const consentimento = () => localStorage.setItem("cidade-neon-analytics-consent", "essential")
 
-for (const rota of ["/", "/linha"]) {
+for (const rota of ["/", "/?screen=home", "/linha"]) {
   test(`${rota} abre sem erro de JavaScript`, async ({ page }) => {
     const erros: string[] = []
     page.on("pageerror", (e) => erros.push(e.message))
