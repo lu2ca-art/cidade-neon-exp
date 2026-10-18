@@ -1974,16 +1974,17 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 // posição da Kombi fica guardada aqui, pra ela voltar no mesmo ponto
 let MUNDO: Mundo | null = null
 // o mapa novo (a rede de ruas do v5) atrás do /linha?mapa=novo; fica marcado na sessão
-// (17/10, LU2CA: o mapa 2.0 vira o padrão) o mapa novo é o de sempre;
-// ?mapa=velho volta pro antigo naquela aba, ?mapa=novo desfaz
+// (18/10, LU2CA: "a pior versão até hoje" — sem guard rail, a Kombi sai da rua
+// e entra nos prédios, a cidade no chão) o mapa VELHO volta a ser o padrão; o
+// 2.0 fica atrás do ?mapa=novo (marcado na aba) até ficar pronto; ?mapa=velho desfaz
 export function mapaNovo() {
-  if (typeof window === "undefined") return true
+  if (typeof window === "undefined") return false
   try {
     const q = new URLSearchParams(location.search).get("mapa")
-    if (q === "velho") sessionStorage.setItem("cn-mapa", "velho")
-    if (q === "novo") sessionStorage.removeItem("cn-mapa")
-    return sessionStorage.getItem("cn-mapa") !== "velho"
-  } catch { return true }
+    if (q === "novo") sessionStorage.setItem("cn-mapa", "novo")
+    if (q === "velho") sessionStorage.removeItem("cn-mapa")
+    return sessionStorage.getItem("cn-mapa") === "novo"
+  } catch { return false }
 }
 function mundo() { return (MUNDO ??= mapaNovo() ? montarMundoRede() : montarMundo()) }
 export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
