@@ -35,8 +35,16 @@ sistema maior. Toda decisão aqui deve considerar o resto.
 bun install       # instala deps
 bun run dev       # dev server em http://localhost:3000
 bun run build     # build de produção
-bun run lint      # eslint
+bun run lint      # eslint (82 erros antigos; no CI é só relatório)
+bun run typecheck # tsc --noEmit
+bun run test      # teste de fumaça (Playwright; local: CHROME_PATH=<chrome> ou `bunx playwright install chromium`)
+bun run deps:doc  # regenera docs/DEPENDENCIAS.md (dependência nova precisa de explicação no script)
+bun run mapa      # regenera docs/ARQUITETURA.md (áreas, acoplamento, ciclos, órfãos)
+bun run modelos   # confere os .glb contra o orçamento (ver docs/FUNIL-TRIPO.md)
 ```
+
+CI em `.github/workflows/ci.yml`; vigia semanal em `vigia.yml` (abre PR só de docs e issue se o audit falhar).
+Leia `docs/ARQUITETURA.md` antes de mexer em módulo muito importado ou em sala que usa outra sala.
 
 ## Etiqueta de deploy (CRÍTICO)
 

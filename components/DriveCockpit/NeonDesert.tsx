@@ -351,15 +351,22 @@ function NeonStars() {
       [1, 0.8, 0], // amarelo
       [1, 0.4, 0.2], // laranja
     ]
+    let seed = 1337
+    const rand = () => {
+      seed = (seed + 0x6d2b79f5) | 0
+      let x = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+      x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296
+    }
     for (let i = 0; i < N; i++) {
       // Distribui em uma cúpula (r ~ 2000, y > 30)
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(1 - Math.random() * 0.7) // hemisfério superior
-      const r = 1800 + Math.random() * 400
+      const theta = rand() * Math.PI * 2
+      const phi = Math.acos(1 - rand() * 0.7) // hemisfério superior
+      const r = 1800 + rand() * 400
       positions[i * 3 + 0] = r * Math.sin(phi) * Math.cos(theta)
       positions[i * 3 + 1] = r * Math.cos(phi) + 60
       positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta)
-      const c = palette[Math.floor(Math.random() * palette.length)]
+      const c = palette[Math.floor(rand() * palette.length)]
       colors[i * 3 + 0] = c[0]
       colors[i * 3 + 1] = c[1]
       colors[i * 3 + 2] = c[2]

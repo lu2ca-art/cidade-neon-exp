@@ -1,0 +1,48 @@
+name: Vigia semanal
+
+on:
+  schedule:
+    - cron: "0 10 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  vigia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Vulnerabilidades em produção
+        id: audit
+        run: bun audit --prod
+        continue-on-error: true
+
+      - name: Regenerar documentação
+        run: |
+          node scripts/gerar-dependencias.mjs
+          node scripts/gerar-mapa.mjs
+
+      - name: PR com a documentação atualizada
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: feature/infra/docs-automaticas
+          title: "docs: dependências e arquitetura atualizadas pelo vigia"
+          commit-message: "docs: atualiza DEPENDENCIAS.md e ARQUITETURA.md (vigia semanal)"
+          body: "Gerado automaticamente. Só muda documentação. Olhe o diff de ARQUITETURA.md: ciclos e órfãos novos aparecem aqui."
+          add-paths: docs/DEPENDENCIAS.md,docs/ARQUITETURA.md
+          delete-branch: true
+
+      - name: Abrir issue se houver vulnerabilidade em produção
+        if: steps.audit.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --title "Vulnerabilidade em dependência de produção" \
+            --body "O vigia semanal rodou 'bun audit --prod' e falhou. Veja o log: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

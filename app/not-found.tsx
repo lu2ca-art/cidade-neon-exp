@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 export default function NotFound() {
   return (
     <div
@@ -11,12 +13,12 @@ export default function NotFound() {
       <p className="text-white/50 text-sm max-w-xs leading-relaxed">
         O endereço mudou ou nunca existiu por aqui.
       </p>
-      <a
+      <Link
         href="/"
         className="px-6 py-3 rounded-2xl bg-white text-black text-sm font-medium active:scale-95 transition-transform"
       >
         Voltar ao início
-      </a>
+      </Link>
     </div>
   )
 }
