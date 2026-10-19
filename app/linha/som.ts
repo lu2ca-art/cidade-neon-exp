@@ -47,13 +47,24 @@ function abafo(): AudioNode | null {
   return abafoF
 }
 let abafando = 0
-export function abafar(sim: boolean) {
-  abafando = Math.max(0, abafando + (sim ? 1 : -1))
+// (LU2CA 19/10) um jogo aberto no holo: a música PARA (o jogo tem o som dele);
+// fechou, ela volta de onde estava. A voz de um personagem só abafa
+let silenciando = 0
+function aplicarAbafo() {
   const c = audioCtx()
   if (!c || !abafo() || !abafoF || !abafoG) return
-  const on = abafando > 0
+  const on = abafando > 0, mudo = silenciando > 0
   abafoF.frequency.setTargetAtTime(on ? 650 : 20000, c.currentTime, on ? 0.2 : 0.5)
-  abafoG.gain.setTargetAtTime(on ? 0.4 : 1, c.currentTime, on ? 0.2 : 0.5)
+  abafoG.gain.setTargetAtTime(mudo ? 0 : on ? 0.4 : 1, c.currentTime, on || mudo ? 0.2 : 0.5)
+}
+export function abafar(sim: boolean) {
+  abafando = Math.max(0, abafando + (sim ? 1 : -1))
+  aplicarAbafo()
+}
+export function silenciar(sim: boolean) {
+  silenciando = Math.max(0, silenciando + (sim ? 1 : -1))
+  pistaSom.segurar(silenciando > 0)
+  aplicarAbafo()
 }
 
 // ── Ambiente ────────────────────────────────────────────────
@@ -618,6 +629,8 @@ class Voz {
     this.id = id
     this.tocando = true
     player.abaixar(true)
+    // (LU2CA 19/10) um personagem falando: a música da pista abafa por baixo
+    abafar(true)
     if (src) {
       const el = this.garantir()
       el.src = src
@@ -648,6 +661,7 @@ class Voz {
     this.tocando = false
     this.sintese = null
     player.abaixar(false)
+    abafar(false)
     this.emitir()
   }
 
@@ -825,6 +839,8 @@ class PistaSom {
   estado(contato: boolean, vel: number, dt: number, radio = false) {
     const el = this.el
     if (!el || !this.src) return
+    // um jogo aberto no holo (silenciar): a faixa fica parada onde estava
+    if (this.segurando) { if (!el.paused) el.pause(); return }
     // (LU2CA 19/10) a música não depende da velocidade: no chão gira sempre; só o ar freia
     const gira = contato
     void vel
@@ -846,6 +862,11 @@ class PistaSom {
     }
   }
   parar() { this.el?.pause(); this.src = null }
+  private segurando = false
+  segurar(sim: boolean) {
+    this.segurando = sim
+    if (sim) this.el?.pause()
+  }
   get tocando() { return !!this.el && !this.el.paused }
   get nivelFade() { return this.fade() }
   // os graves da faixa (as luzes da cidade pulsam com isso)

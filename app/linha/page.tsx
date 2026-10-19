@@ -1010,6 +1010,9 @@ export default function LinhaPage() {
             }}
             postoAberto={!!noPosto}
             atalho={atalhoTeste}
+            onApp={abrirApp}
+            onMissoes={() => setPainelMissoes(true)}
+            missaoHolo={resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}

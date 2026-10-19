@@ -10,10 +10,13 @@
 //
 // A TORRE (LU2CA 19/10: "as pistas começam em volta da torre, da mesma maneira
 // que terminam, numa rotatória; a espiral liga todos os andares"):
-//   - a espiral de fora sobe em volta da torre (mão única). Cada linha se liga
-//     nela no seu ângulo: a alça de entrada (quem chega da pista) e, logo
-//     depois, a alça de saída (quem vai pra pista). Chegou da sua linha, pode
-//     sair nela de novo (outra volta) ou subir até a saída de outra linha
+//   - a espiral de fora sobe em volta da torre (mão única, o centro sempre à
+//     esquerda). Cada linha se liga nela no seu ângulo por UMA alça de 4
+//     faixas (o tronco, que começa no PORTÃO da linha): as 2 faixas da direita
+//     de quem sai, as 2 de quem chega. Perto da espiral o tronco se abre em
+//     dois ramos: primeiro a saída (pela direita), depois a chegada (entra
+//     pela direita). Nada se sobrepõe; entre uma linha e a próxima há VAO
+//     metros de espiral livre (a placa, ver o portão e decidir)
 //   - no topo, uma curva leva pra espiral de dentro, que desce até a base e
 //     volta pra espiral de fora: dá pra chegar em qualquer andar
 // Uma volta na pista (saída → ida → balão → volta → entrada) dura meia música
@@ -40,23 +43,22 @@ const TETO = 140 // nenhuma pista acima disso
 const CHAO = -12 // o deserto embaixo de tudo
 const R_BALAO = 45 // raio do balão da ponta (a 200 km/h, com a curva deitada)
 const D_BALAO = 100 // do fim da pista até o centro do balão
-// a torre
-const R_SOBE = 82 // a espiral de fora (sobe), raio do eixo
-const R_DESCE = 50 // a espiral de dentro (desce)
-const NUCLEO = 30 // o prédio da torre
-const RA_CABECA = 150 // a torre principal ocupa a cabeça do desenho (o círculo do editor)
+// a torre (LU2CA 19/10, 2ª rodada: "a espiral com um diâmetro bem maior, tempo
+// de ver qual a entrada e decidir; o tanto de volta deixa tonto")
+const R_SOBE = 130 // a espiral de fora (sobe), raio do eixo
+const R_DESCE = 92 // a espiral de dentro (desce)
+const NUCLEO = 52 // o prédio da torre
+const RA_CABECA = 195 // a torre principal ocupa a cabeça do desenho (a torre 3 fica a 304 m: não cresce mais que isso)
 const PASSO_ESPIRAL = 11 // metros que a espiral sobe por volta (folga entre as voltas)
 const Y_BASE = 8 // a base da espiral
-const ALCA = 0.42 // rad entre a entrada e a saída de cada linha
-const ANTES = 0.42 // a saída fica um pouco antes do ângulo da pista (a alça sai pra frente)
-const GAP = 0.7 // rad mínimos entre uma linha e a próxima na espiral
+const RAMO = 50 // m: do eixo da espiral até onde a alça vira tronco (e o arco que o ramo come)
+const VAO = 150 // m de espiral livre entre o portão de uma linha e a saída da próxima (a placa, ver e decidir)
 const TRANSF = 0.8 // rad da curva entre as duas espirais
 export const V_TORRE = 26 // m/s na torre (~95 km/h): a espiral é de passear
 // as torres das pontas (LU2CA 19/10): cada uma junta 3 linhas pelo fim
-const R_PONTA = 50
-const R_PONTA_DESCE = 30
-const RA_PONTA = 112 // até onde a torre da ponta ocupa (as linhas chegam nessa borda)
-const NUCLEO_PONTA = 11
+const R_PONTA = 66
+const RA_PONTA = 118 // até onde a torre da ponta ocupa (as linhas chegam nessa borda)
+const RAMO_PONTA = 36
 const GRUPOS = [["Nectar", "Sexta-Feira", "Ojalá"], ["Rollercoaster", "Swav", "DopaminA"], ["Copo Americano", "CHUVA", "Sabe Ontem?"]]
 
 export type ParteDisco = "ida" | "volta" | "balao" | "saida" | "entrada" | "sobe" | "desce" | "transf"
@@ -65,6 +67,8 @@ export type CentralDisco = { x: number; z: number; raio: number; nucleo: number;
 // onde a Kombi pousa vindo do ar: a via (no sentido do rumo), o u, o lado e a altura do asfalto
 export type Pouso = { via: number; u: number; x: number; y: number; cx: number; cz: number; tx: number; tz: number }
 export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; chaoDeserto: number }
+// os trechos da espiral sabem onde a borda de fora se abre e a faixa pintada da saída
+export type SinaisEspiral = { abreFora?: [number, number][]; pintaSaida?: { u0: number; u1: number; cor: string }[] }
 // as espirais (qualquer torre): a Kombi passeia
 export const naEspiral = (p: ParteDisco | undefined) => p === "sobe" || p === "desce" || p === "transf"
 // a torre principal (sem a música da pista: ela some e volta em fade)
@@ -135,7 +139,8 @@ const L_GOTA = comprimento(gota(new THREE.Vector2(), new THREE.Vector2(0, 1)))
 
 // um "fio" é tudo que tem altura a decidir: as pistas (ondas próprias) e as
 // alças das torres (presas nas duas pontas: a espiral e o começo/fim da pista)
-type Fio = { pos: THREE.Vector2[]; tan: THREE.Vector2[]; hIni: number; hFim: number | null; dono: number; gota: boolean; isenta: number; onda: boolean }
+// (fixo: as alças. A altura é a do perfil, e quem cede num cruzamento é a pista)
+type Fio = { pos: THREE.Vector2[]; tan: THREE.Vector2[]; hIni: number; hFim: number | null; dono: number; gota: boolean; isenta: number; onda: boolean; fixo?: number[] }
 type Coluna = { x: number; z: number; r: number; topo: number } // a área de uma torre
 
 // a altura de cada fio; depois os fios se afastam onde se cruzam (relaxação),
@@ -146,6 +151,7 @@ function alturas(F: Fio[], colunas: Coluna[]) {
     const a = 0.7 + k * 0.53, b = 1.9 + k * 1.1
     for (let i = 0; i < n; i++) {
       const s = i * 2, sf = (n - 1 - i) * 2
+      if (f.fixo) { h[i] = f.fixo[i]; continue }
       if (!f.onda) { h[i] = f.hFim === null ? f.hIni : f.hIni + (f.hFim - f.hIni) * (i / (n - 1)); continue }
       const onda = 26 + 11 * Math.sin(s / (140 + k * 9) + a) + 6 * Math.sin(s / (61 + k * 4) + b)
       const w = Math.min(1, s / 260), e = w * w * (3 - 2 * w)
@@ -185,6 +191,7 @@ function alturas(F: Fio[], colunas: Coluna[]) {
   const preso = (k: number, j: number) => j === 0 || (F[k].hFim !== null && j === F[k].pos.length - 1)
   const empurra = (k: number, ii: number, v: number, sig: number) => {
     const h = H[k]
+    if (F[k].fixo) return
     for (let j = Math.max(0, ii - 2 * sig); j < Math.min(h.length, ii + 2 * sig); j++) {
       if (preso(k, j)) continue
       // perto das pontas presas, o empurrão some (a emenda não dá degrau)
@@ -195,6 +202,7 @@ function alturas(F: Fio[], colunas: Coluna[]) {
   const rampa = (teto: number) => {
     for (let k = 0; k < H.length; k++) {
       const h = H[k], f = F[k], n = h.length
+      if (f.fixo) continue
       h[0] = f.hIni
       if (f.hFim !== null) h[n - 1] = f.hFim
       const r = (f.onda ? RAMPA_MAX : 0.15) * 2 // as alças (acesso, na velocidade da torre) podem ser mais íngremes
@@ -260,7 +268,8 @@ function alturas(F: Fio[], colunas: Coluna[]) {
 }
 
 // vira via no formato do mapa novo (plana: a torre não deita na curva)
-function viaDe(pts: THREE.Vector3[], id: string, tipo: string, bairro: string, cor: string, plana = false): Via {
+// (metade: só as 2 faixas da direita, as da alça; o eixo é a linha do meio do tronco)
+function viaDe(pts: THREE.Vector3[], id: string, tipo: string, bairro: string, cor: string, plana = false, metade = false): Via {
   const p = amostrar(pts, false) as Pista
   derivar(p, 0)
   // a inclinação: curvatura suavizada em ±40 m, deita até ~23°, e some nas
@@ -270,7 +279,7 @@ function viaDe(pts: THREE.Vector3[], id: string, tipo: string, bairro: string, c
     for (let j = Math.max(0, i - BANK_JAN); j <= Math.min(p.n - 1, i + BANK_JAN); j++) { c += p.curv[j]; k++ }
     const borda = Math.min(1, Math.min(i, p.n - 1 - i) / 30)
     p.bank[i] = plana ? 0 : Math.max(-BANK_MAX, Math.min(BANK_MAX, (c / k) * BANK_K)) * borda * borda * (3 - 2 * borda)
-    p.esq[i] = -MEIA_PISTA; p.dir[i] = MEIA_PISTA
+    p.esq[i] = metade ? 0 : -MEIA_PISTA; p.dir[i] = MEIA_PISTA
   }
   return Object.assign(p, {
     id, tipo: "rua" as const, t: "linha" as FreqId, disco: true, cor, // a cor da linha (a do diagrama)
@@ -306,16 +315,19 @@ export function montarMundoDisco(): MundoDisco {
   const pontaLonge = (k: number) => { const c = brutos[k]; return c[0].distanceTo(cabeca) > c[c.length - 1].distanceTo(cabeca) ? "inicio" as const : "fim" as const }
   const ptDe = (k: number, ponta: "inicio" | "fim") => (ponta === "inicio" ? brutos[k][0] : brutos[k][brutos[k].length - 1])
   type Membro = { k: number; ponta: "inicio" | "fim" }
-  const defs: { C: { x: number; z: number }; R: number; Rd: number; RA: number; nucleo: number; membros: Membro[]; nome: string; voltaPorLinha: boolean }[] = [
-    { C, R: R_SOBE, Rd: R_DESCE, RA: RA_CABECA, nucleo: NUCLEO, membros: [], nome: "central", voltaPorLinha: false },
+  const defs: { C: { x: number; z: number }; R: number; Rd: number; RA: number; nucleo: number; ramo: number; membros: Membro[]; nome: string }[] = [
+    { C, R: R_SOBE, Rd: R_DESCE, RA: RA_CABECA, nucleo: NUCLEO, ramo: RAMO, membros: [], nome: "central" },
   ]
   GRUPOS.forEach((nomes, g) => {
     const ks = nomes.map(idDe).filter((k) => k >= 0)
     const ms = ks.map((k) => ({ k, ponta: pontaLonge(k) }))
     const pts = ms.map((m) => ptDe(m.k, m.ponta))
     const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length, cz = pts.reduce((a, p) => a + p.y, 0) / pts.length
-    // (cada linha chega no seu andar: um estacionamento com a espiral ligando os andares)
-    defs.push({ C: { x: cx, z: cz }, R: R_PONTA, Rd: R_PONTA_DESCE, RA: RA_PONTA, nucleo: NUCLEO_PONTA, membros: ms, nome: `torre ${g + 1}`, voltaPorLinha: true })
+    // (cada linha chega no seu andar: um estacionamento com a espiral ligando os
+    // andares. A que fica colada na cabeça encolhe pra não encostar na central)
+    const RA = Math.min(RA_PONTA, Math.hypot(cx - C.x, cz - C.z) - RA_CABECA - 6)
+    const R = Math.min(R_PONTA, RA - RAMO_PONTA - 12)
+    defs.push({ C: { x: cx, z: cz }, R, Rd: R - 24, RA, nucleo: R - 24 - MEIA_PISTA - 8, ramo: RAMO_PONTA, membros: ms, nome: `torre ${g + 1}` })
   })
   // a outra ponta de cada linha liga na torre principal
   B.forEach((_, k) => {
@@ -335,57 +347,76 @@ export function montarMundoDisco(): MundoDisco {
   const fimDe = new Array<number>(B.length).fill(1) // todas terminam numa torre (sem balão)
   const juntar = (a: THREE.Vector2[], b: THREE.Vector2[]) => [...a, ...b.slice(1)]
   const torres = defs.map((d, t) => {
-    const naEsp = (phi: number, R = d.R) => new THREE.Vector2(d.C.x + R * Math.cos(phi), d.C.z + R * Math.sin(phi))
-    const tanEsp = (phi: number) => new THREE.Vector2(-Math.sin(phi), Math.cos(phi)) // o sentido de phi crescente
-    const radial = (phi: number) => new THREE.Vector2(Math.cos(phi), Math.sin(phi))
-    // onde cada membro encosta e pra onde a pista "sai" da torre
+    // a espiral anda no sentido de s, e o ângulo de verdade é -s: quem sobe tem
+    // o centro à ESQUERDA, então a borda de fora é a direita, a mão do trânsito
+    // (os carros andam do lado +x de cada via) — as alças saem e entram por ali
+    const naEsp = (s: number, R = d.R) => new THREE.Vector2(d.C.x + R * Math.cos(s), d.C.z - R * Math.sin(s))
+    const tanEsp = (s: number) => new THREE.Vector2(-Math.sin(s), -Math.cos(s)) // o sentido de s crescente
+    const radial = (s: number) => new THREE.Vector2(Math.cos(s), -Math.sin(s))
+    // onde cada membro encosta (o PORTÃO da linha) e pra onde a pista "sai" da torre
     const liga = d.membros.map((m) => {
       const tt = T[m.k]
       return m.ponta === "inicio" ? { ...m, P: tt.pos[0], fora: tt.tan[0].clone() } : { ...m, P: tt.pos[tt.n - 1], fora: tt.tan[tt.n - 1].clone().negate() }
     })
-    const ordem = liga.map((l, i) => ({ i, a: Math.atan2(l.P.y - d.C.z, l.P.x - d.C.x) })).sort((x, y) => x.a - y.a)
+    const sDe = liga.map((l) => -Math.atan2(l.P.y - d.C.z, l.P.x - d.C.x))
+    // cada linha ocupa uma janela [saída, chegada] em volta do ângulo do portão;
+    // entre uma janela e a próxima, VAO metros de espiral livre
+    const w = d.ramo / d.R, vao = VAO / d.R
+    // a subida começa logo depois do maior vão entre os portões
+    const ordem = sDe.map((a, i) => ({ i, a })).sort((x, y) => x.a - y.a)
     let maiorVao = -1, iv = 0
     ordem.forEach((o, i) => { const prox = ordem[(i + 1) % ordem.length].a + (i === ordem.length - 1 ? Math.PI * 2 : 0); if (prox - o.a > maiorVao) { maiorVao = prox - o.a; iv = (i + 1) % ordem.length } })
-    const seq = [...ordem.slice(iv), ...ordem.slice(0, iv)]
-    const phiE: number[] = [], phiS: number[] = []
-    let cursor = seq[0].a - ANTES - ALCA - 0.6
-    const phiIni = cursor
-    for (const { i, a } of seq) {
-      let e = a - ANTES - ALCA
-      // linhas que chegam perto uma da outra (menos de 90 m) ligam em voltas diferentes
-      const perto = (lim: number) => seq.some((o) => o.i !== i && phiS[o.i] !== undefined && liga[o.i].P.distanceTo(liga[i].P) < lim)
-      // (coladas, menos de 70 m: duas voltas, 22 m)
-      const minimo = perto(70) ? Math.PI * 4 - ALCA : (d.voltaPorLinha && i !== seq[0].i) || perto(90) ? Math.PI * 2 - ALCA : GAP
-      while (e < cursor + minimo) e += Math.PI * 2
-      phiE[i] = e; phiS[i] = e + ALCA; cursor = phiS[i]
+    const phiIni = ordem[iv].a - w - 0.5
+    // a varredura: subindo, a próxima janela é a do portão que vem primeiro e
+    // ainda cabe (assim cada volta junta quantas linhas couberem: poucas voltas)
+    const phiQ: number[] = [], phiS: number[] = [], phiE: number[] = []
+    let cursor = phiIni + 0.5 - 1e-6
+    const resta = new Set(liga.map((_, i) => i))
+    while (resta.size) {
+      let melhor = -1, qMelhor = Infinity
+      for (const i of resta) {
+        let q = sDe[i]
+        while (q - w < cursor) q += Math.PI * 2
+        while (q - Math.PI * 2 - w >= cursor) q -= Math.PI * 2
+        if (q < qMelhor) { qMelhor = q; melhor = i }
+      }
+      resta.delete(melhor)
+      phiQ[melhor] = qMelhor; phiS[melhor] = qMelhor - w; phiE[melhor] = qMelhor + w
+      cursor = phiE[melhor] + vao
     }
-    const phiFim = Math.max(cursor + 0.6, phiIni + Math.PI * 4)
-    const yEsp = (phi: number) => Y_BASE + PASSO_ESPIRAL * (phi - phiIni) / (Math.PI * 2)
-    // as alças, passando por um ponto logo fora da espiral (só encostam onde ligam)
+    const phiFim = Math.max(cursor - vao + 0.6, phiIni + Math.PI * 2)
+    const yEsp = (s: number) => Y_BASE + PASSO_ESPIRAL * (s - phiIni) / (Math.PI * 2)
+    // a alça: o tronco (portão → o ponto Q, logo fora da espiral) e dois ramos.
+    // A saída vem da espiral (antes do Q) e a chegada vai pra ela (depois do Q),
+    // cada uma com as 2 faixas da direita do mesmo eixo: lado a lado, sem nunca
+    // se sobrepor. O tronco é plano, na altura do portão
     const alcas = liga.map((l, i) => {
-      const ws = naEsp(phiS[i] + 0.35, d.R + 26), tws = radial(phiS[i] + 0.35).multiplyScalar(0.7).add(tanEsp(phiS[i] + 0.35).multiplyScalar(0.7)).normalize()
-      const we = naEsp(phiE[i] - 0.35, d.R + 26), twe = radial(phiE[i] - 0.35).multiplyScalar(-0.7).add(tanEsp(phiE[i] - 0.35).multiplyScalar(0.7)).normalize()
-      const saida = juntar(bezier(naEsp(phiS[i]), tanEsp(phiS[i]), ws, tws, 0.35), bezier(ws, tws, l.P, l.fora))
-      const entrada = juntar(bezier(l.P, l.fora.clone().negate(), we, twe), bezier(we, twe, naEsp(phiE[i]), tanEsp(phiE[i]), 0.35))
-      const hJ = yEsp((phiE[i] + phiS[i]) / 2)
-      const lin = (pts: THREE.Vector2[], ya: number, yb: number) => pts.map((_, q) => ya + (yb - ya) * (q / (pts.length - 1)))
-      return { ...l, saida, entrada, hJ, hs: lin(saida, yEsp(phiS[i]), hJ), he: lin(entrada, hJ, yEsp(phiE[i])), iS: undefined as number | undefined, iE: undefined as number | undefined }
+      const Q = naEsp(phiQ[i], d.R + d.ramo), rq = radial(phiQ[i])
+      const tronco = bezier(Q, rq, l.P, l.fora, 0.35)
+      const ramoS = bezier(naEsp(phiS[i]), tanEsp(phiS[i]), Q, rq, 0.45)
+      const ramoE = bezier(Q, rq.clone().negate(), naEsp(phiE[i]), tanEsp(phiE[i]), 0.45)
+      const saida = juntar(ramoS, tronco), entrada = juntar([...tronco].reverse(), ramoE)
+      return { ...l, saida, entrada, nTronco: tronco.length, hJ: yEsp(phiQ[i]), ySai: yEsp(phiS[i]), yEnt: yEsp(phiE[i]), hs: [] as number[], he: [] as number[] }
     })
-    return { t, d, naEsp, phiE, phiS, phiIni, phiFim, yEsp, topo: yEsp(phiFim), alcas }
+    return { t, d, naEsp, phiE, phiS, phiQ, phiIni, phiFim, yEsp, topo: yEsp(phiFim), alcas }
   })
   // ── as alturas: as pistas e as alças juntas (cada alça presa na espiral e na pista) ──
   const fios: Fio[] = T.map((tt, k) => ({ pos: tt.pos, tan: tt.tan, hIni: Y_BASE, hFim: null, dono: k, gota: fimDe[k] < 0, isenta: -1, onda: true }))
   for (const tw of torres) for (const a of tw.alcas) {
     if (a.ponta === "inicio") fios[a.k].hIni = a.hJ; else fios[a.k].hFim = a.hJ
+    const Lt = comprimento(a.saida.slice(a.saida.length - a.nTronco))
     const rs = reamostrar(a.saida), re = reamostrar(a.entrada)
     a.saida = rs.pos; a.entrada = re.pos
-    a.iS = fios.push({ pos: rs.pos, tan: rs.tan, hIni: a.hs[0], hFim: a.hJ, dono: a.k, gota: false, isenta: tw.t, onda: false }) - 1
-    a.iE = fios.push({ pos: re.pos, tan: re.tan, hIni: a.hJ, hFim: a.he[a.he.length - 1], dono: a.k, gota: false, isenta: tw.t, onda: false }) - 1
+    // o tronco plano na altura do portão; o ramo vai até a altura da espiral
+    const ramo = rs.L - Lt
+    a.hs = rs.pos.map((_, q) => (q * 2 >= ramo ? a.hJ : a.ySai + (a.hJ - a.ySai) * (q * 2 / ramo)))
+    a.he = re.pos.map((_, q) => (q * 2 <= Lt ? a.hJ : a.hJ + (a.yEnt - a.hJ) * ((q * 2 - Lt) / (re.L - Lt))))
+    fios.push({ pos: rs.pos, tan: rs.tan, hIni: a.hs[0], hFim: a.hJ, dono: a.k, gota: false, isenta: tw.t, onda: false, fixo: a.hs })
+    fios.push({ pos: re.pos, tan: re.tan, hIni: a.hJ, hFim: a.he[a.he.length - 1], dono: a.k, gota: false, isenta: tw.t, onda: false, fixo: a.he })
   }
   const colunas: Coluna[] = torres.map((tw) => ({ x: tw.d.C.x, z: tw.d.C.z, r: tw.d.R + MEIA_PISTA + 10, topo: tw.topo }))
   const { H: HF, sobra } = alturas(fios, colunas)
   const H = HF.slice(0, T.length)
-  for (const tw of torres) for (const a of tw.alcas) { a.hs = Array.from(HF[a.iS!]); a.he = Array.from(HF[a.iE!]) }
 
   const V3 = (p: THREE.Vector2, y: number) => new THREE.Vector3(p.x, y, p.y)
   const vias: Via[] = []
@@ -408,9 +439,20 @@ export function montarMundoDisco(): MundoDisco {
       for (let q = 0; q <= n; q++) { const phi = a + (b - a) * (q / n); pts.push(V3(naEsp(phi, R), ya + (yb - ya) * (q / n))) }
       return pts
     }
+    // de quem é cada saída / chegada (a cor da linha)
+    const corS = new Map(tw.alcas.map((al, i) => [phiS[i], B[al.k].cor]))
+    const temE = new Set(phiE)
     for (let i = 0; i < marcos.length - 1; i++) {
       const a = marcos[i], b = marcos[i + 1]
-      const vi = nova(viaDe(trecho(a, b, d.R, yEsp(a), yEsp(b)), `disco:torre${t}:sobe${i}`, "rampa", "disco", COR_TORRE, true), { pista: -1, parte: "sobe", torre: t })
+      const v = viaDe(trecho(a, b, d.R, yEsp(a), yEsp(b)), `disco:torre${t}:sobe${i}`, "rampa", "disco", COR_TORRE, true)
+      // (sinalização) onde a borda de fora se abre (a alça sai ou chega: sem
+      // guard rail) e a faixa da direita pintada na cor da linha até a saída
+      const abre: [number, number][] = [], pinta: { u0: number; u1: number; cor: string }[] = []
+      if (corS.has(a)) { abre.push([0, Math.min(v.L, 75)]); pinta.push({ u0: 0, u1: Math.min(v.L, 30), cor: corS.get(a)! }) }
+      if (temE.has(b)) abre.push([Math.max(0, v.L - 75), v.L])
+      if (corS.has(b)) pinta.push({ u0: Math.max(0, v.L - 150), u1: v.L, cor: corS.get(b)! })
+      Object.assign(v, { abreFora: abre, pintaSaida: pinta })
+      const vi = nova(v, { pista: -1, parte: "sobe", torre: t })
       ligar(vi, noDe.get(a)!, noDe.get(b)!)
     }
     const yTopo = yEsp(phiFim)
@@ -460,8 +502,8 @@ export function montarMundoDisco(): MundoDisco {
     const alca3 = (pts: THREE.Vector2[], hs: number[]) => pts.map((p, i) => V3(p, hs[i]))
     // a torre principal: a saída pra ida, a entrada vinda da volta
     const t0 = ini.tw.t
-    const iSai = nova(viaDe(alca3(ini.a.saida, ini.a.hs), `disco:${k}:saida${t0}`, "rampa", "disco", b.cor, true), { pista: k, parte: "saida", torre: t0 })
-    const iEnt = nova(viaDe(alca3(ini.a.entrada, ini.a.he), `disco:${k}:entrada${t0}`, "rampa", "disco", b.cor, true), { pista: k, parte: "entrada", torre: t0 })
+    const iSai = nova(viaDe(alca3(ini.a.saida, ini.a.hs), `disco:${k}:saida${t0}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "saida", torre: t0 })
+    const iEnt = nova(viaDe(alca3(ini.a.entrada, ini.a.he), `disco:${k}:entrada${t0}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "entrada", torre: t0 })
     ligar(iSai, noTorre[t0].get(ini.tw.phiS[ini.i])!, nIda0)
     ligar(iEnt, nVolta1, noTorre[t0].get(ini.tw.phiE[ini.i])!)
     const iIda = nova(viaDe(ida, `disco:${k}:ida`, "avenida", bairro, b.cor), { pista: k, parte: "ida", torre: -1 })
@@ -470,8 +512,8 @@ export function montarMundoDisco(): MundoDisco {
     if (fim) {
       // a torre da ponta: a ida entra na espiral; a saída dela começa a volta
       const t = fim.tw.t
-      const iE2 = nova(viaDe(alca3(fim.a.entrada, fim.a.he), `disco:${k}:entrada${t}`, "rampa", "disco", b.cor, true), { pista: k, parte: "entrada", torre: t })
-      const iS2 = nova(viaDe(alca3(fim.a.saida, fim.a.hs), `disco:${k}:saida${t}`, "rampa", "disco", b.cor, true), { pista: k, parte: "saida", torre: t })
+      const iE2 = nova(viaDe(alca3(fim.a.entrada, fim.a.he), `disco:${k}:entrada${t}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "entrada", torre: t })
+      const iS2 = nova(viaDe(alca3(fim.a.saida, fim.a.hs), `disco:${k}:saida${t}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "saida", torre: t })
       ligar(iE2, nIda1, noTorre[t].get(fim.tw.phiE[fim.i])!)
       ligar(iS2, noTorre[t].get(fim.tw.phiS[fim.i])!, nVolta0)
     } else {
@@ -579,7 +621,7 @@ export function montarMundoDisco(): MundoDisco {
   // sem direção livre no disco: nunca é chamado, mas o formato pede
   const projetar = (): Projecao | null => null
   const conflitos = sobra ? [`${sobra} trechos de pista com menos de ${FOLGA - 1} m de folga`] : []
-  const torresOut: CentralDisco[] = torres.map((tw) => ({ x: tw.d.C.x, z: tw.d.C.z, raio: tw.d.R, nucleo: tw.d.nucleo, topo: tw.topo, andares: tw.alcas.map((a, i) => ({ y: a.hJ, cor: B[a.k].cor, nome: B[a.k].nome, ang: (tw.phiE[i] + tw.phiS[i]) / 2 })) }))
+  const torresOut: CentralDisco[] = torres.map((tw) => ({ x: tw.d.C.x, z: tw.d.C.z, raio: tw.d.R, nucleo: tw.d.nucleo, topo: tw.topo, andares: tw.alcas.map((a, i) => ({ y: a.hJ, cor: B[a.k].cor, nome: B[a.k].nome, ang: -tw.phiQ[i] })) }))
   CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: () => CHAO, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, pousar, chaoDeserto: CHAO + 0.4 }
   return CACHE
 }

@@ -19,7 +19,7 @@ import { Objeto } from "./objetos"
 import { Prova } from "./provas"
 import { JardimFundo } from "./recursos"
 import { MEMORIAS, MISSOES, ativa, conhecidos, etapaDe, itensFaltando } from "./missoes"
-import { player } from "./som"
+import { player, silenciar } from "./som"
 import { track } from "@/lib/analytics"
 import { PreSave, Plataformas } from "./plataformas"
 
@@ -329,6 +329,12 @@ export function AppTopo({ titulo, cor, onVoltar, extra }: { titulo: string; cor:
 export function AppJanela({ app, onFechar, rota }: { app: AppDef; onFechar: () => void; rota?: string }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const [carregou, setCarregou] = useState(false)
+  // (LU2CA 19/10) entrou num jogo do holo: a música da pista (e o rádio, o
+  // disco) para enquanto ele está aberto; fechou, volta de onde estava
+  useEffect(() => {
+    silenciar(true)
+    return () => silenciar(false)
+  }, [])
   useEffect(() => {
     player.pausar()
     track("place_entered", { place_id: `linha-app-${app.id}`, place_type: "app" })

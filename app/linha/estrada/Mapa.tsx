@@ -291,7 +291,7 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto, viagens = 0, 
 
   return (
     <>
-      <button type="button" className="l-mapa-mini" aria-label="abrir o mapa" onPointerDown={(e) => e.stopPropagation()} onClick={() => abrir(true)}>
+      <button type="button" className="l-mapa-mini" data-info="mapa" aria-label="abrir o mapa" onPointerDown={(e) => e.stopPropagation()} onClick={() => abrir(true)}>
         <canvas ref={mini} />
         {distancia && <span style={{ ["--cor" as string]: destino?.cor ?? ROTA_COR }}>{distancia}</span>}
       </button>

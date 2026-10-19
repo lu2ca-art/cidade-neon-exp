@@ -2045,3 +2045,100 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-placa-espiral .is-sair.is-esq { order: 0; } .l-placa-espiral .is-sair.is-dir { order: 2; }
 .l-placa-espiral .is-subir { order: 1; color: #ff6a35; }
 .l-placa-espiral small { order: 3; grid-column: 1 / -1; font-weight: 500; font-size: 10px; opacity: 0.6; }
+
+/* ── O HOLO (disco, LU2CA 19/10): ligado, tudo nas bordas e o centro livre;
+   desligado, nada. Sem frase explicando: a explicação vem nas invasões da
+   rádio, e o "?" diz o que cada coisa é ── */
+.l-viagem.is-disco .l-hud-dica, .l-viagem.is-disco .l-hud-parado, .l-viagem.is-disco .l-dica2, .l-viagem.is-disco .l-abertura-dica,
+.l-viagem.is-disco .l-guia, .l-viagem.is-disco .l-hud-missao, .l-viagem.is-disco .l-placa-espiral small, .l-viagem.is-disco .l-relogio { display: none !important; }
+:has(.l-viagem.is-disco) .l-caixa-missao { display: none !important; }
+/* desligado: só o óculos no canto (e o turbo e o propulsor, que ficam sempre) */
+.l-viagem.is-holo-off .l-hud-cam, .l-viagem.is-holo-off .l-mapa-mini, .l-viagem.is-holo-off .l-aneis, .l-viagem.is-holo-off .l-sair-kombi,
+.l-viagem.is-holo-off .l-ilha.is-quieta, .l-viagem.is-holo-off .l-placa-espiral { display: none !important; }
+:has(.l-viagem.is-holo-off) .l-dormir { display: none !important; }
+
+/* o canto: o "?" e o desligar */
+.l-hud-cel.is-ajuda { font: 800 19px var(--font-geist-mono), ui-monospace, monospace; color: #2fe8ff !important; border-color: rgba(47, 232, 255, 0.55) !important; }
+.l-hud-cel.is-ajuda.is-on { background: rgba(47, 232, 255, 0.2) !important; box-shadow: 0 0 16px rgba(47, 232, 255, 0.5); }
+.l-hud-cel.is-desligar { color: rgba(255, 255, 255, 0.7) !important; }
+.l-hud-cel.is-oculos { color: rgba(255, 255, 255, 0.6) !important; }
+
+/* em cima, à esquerda: a faixa e a rádio */
+.l-holo-som { position: absolute; z-index: 6; left: 12px; top: calc(62px + env(safe-area-inset-top)); width: min(56vw, 250px); display: grid; gap: 5px; padding: 8px 10px; border-radius: 12px; color: #dffbff; background: linear-gradient(180deg, rgba(47, 232, 255, 0.10), rgba(47, 232, 255, 0.03)); border: 1px solid rgba(47, 232, 255, 0.32); backdrop-filter: blur(3px); font: 600 11px var(--font-geist-mono), ui-monospace, monospace; pointer-events: auto; animation: l-oculos 0.4s ease-out; }
+.l-holo-faixa { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.l-holo-faixa i { flex: none; width: 13px; height: 13px; border-radius: 50%; background: radial-gradient(circle, #2fe8ff 0 2px, #0b0a16 2.5px 4px, #1d1b30 4.5px); box-shadow: 0 0 0 1px rgba(47, 232, 255, 0.5); }
+.l-holo-faixa i.is-gira { animation: l-holo-gira 1.8s linear infinite; }
+.l-holo-faixa b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #fff; }
+.l-holo-faixa small { flex: none; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.l-holo-barra { height: 2px; background: rgba(47, 232, 255, 0.18); border-radius: 1px; overflow: hidden; }
+.l-holo-barra > div { height: 100%; background: #2fe8ff; transform-origin: left; }
+.l-holo-radio { display: flex; gap: 5px; }
+.l-holo-radio button { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 8px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--cor) 40%, transparent) !important; background: color-mix(in srgb, var(--cor) 8%, transparent) !important; color: #fff !important; font: 700 10px var(--font-geist-mono), monospace !important; cursor: pointer; }
+.l-holo-radio button:first-child { flex: 1; }
+.l-holo-radio button b { color: var(--cor); }
+.l-holo-radio button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.55; }
+.l-holo-radio.is-on button span { opacity: 1; }
+.l-holo-radio.is-on button:first-child { border-color: var(--cor) !important; box-shadow: 0 0 10px -4px var(--cor); }
+.l-viagem.is-holo .l-sair-kombi { top: calc(150px + env(safe-area-inset-top)); }
+:has(.l-viagem.is-holo) .l-dormir { top: auto !important; bottom: calc(100px + env(safe-area-inset-bottom)); }
+
+/* em cima, no meio: a ilha fininha do N3XO, o letreiro de ônibus */
+.l-viagem.is-disco .l-ilha { top: calc(14px + env(safe-area-inset-top)); }
+.l-viagem.is-disco .l-ilha.is-letreiro { display: block !important; opacity: 1; min-width: min(40vw, 360px); max-width: min(40vw, 360px); min-height: 24px; pointer-events: auto; cursor: pointer; }
+.l-viagem.is-disco .l-ilha.is-letreiro::after { content: none; }
+.l-holo-letreiro { display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 10px; font: 700 10px var(--font-geist-mono), ui-monospace, monospace; }
+.l-holo-letreiro > b { flex: none; color: #fff; font-variant-numeric: tabular-nums; }
+.l-holo-letreiro-faixa { flex: 1; min-width: 0; overflow: hidden; -webkit-mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.l-holo-letreiro-faixa em { display: inline-block; white-space: pre; font-style: normal; color: #ffc857; text-shadow: 0 0 6px rgba(255, 200, 87, 0.6); animation: l-holo-letreiro var(--dur, 14s) linear infinite; }
+.l-holo-letreiro-vazio { flex: 1; text-align: center; letter-spacing: 0.2em; color: #5dffa0; opacity: 0.7; }
+.l-holo-letreiro > i { flex: none; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; background: #ff3fb0; color: #fff; font: 700 9px/15px var(--font-geist-mono), monospace; font-style: normal; text-align: center; }
+@keyframes l-holo-letreiro { from { transform: translateX(-50%) } to { transform: translateX(0) } }
+
+/* em cima, à direita: o mapa e o anel das missões girando em volta */
+.l-viagem.is-disco button.l-mapa-mini { top: calc(16px + env(safe-area-inset-top)); right: 16px; }
+.l-holo-anel { position: absolute; z-index: 5; right: 0; top: calc(0px + env(safe-area-inset-top)); width: 150px !important; height: 150px; padding: 0 !important; border: 0 !important; background: none !important; cursor: pointer; }
+.l-holo-anel svg { width: 100%; height: 100%; overflow: visible; }
+.l-holo-anel > svg > circle { fill: none; stroke: var(--cor); stroke-width: 1; opacity: 0.35; stroke-dasharray: 2 4; }
+.l-holo-anel text { fill: var(--cor); font: 700 10px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.08em; filter: drop-shadow(0 0 3px var(--cor)); }
+.l-holo-anel-gira { transform-origin: 80px 80px; animation: l-holo-gira 40s linear infinite; }
+.l-holo-anel.is-vazio > svg > circle { opacity: 0.15; }
+.l-holo-anel-n circle { fill: var(--cor); stroke: none; }
+.l-holo-anel-n text { fill: #0b0a12; font-size: 11px; text-anchor: middle; dominant-baseline: central; filter: none; letter-spacing: 0; }
+.l-viagem.is-disco .l-aneis { top: calc(156px + env(safe-area-inset-top)); pointer-events: auto; }
+@keyframes l-holo-gira { to { transform: rotate(360deg) } }
+
+/* embaixo, à esquerda: o widget que vai trocando de app */
+.l-holo-apps { position: absolute; z-index: 6; left: 12px; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(42vw, 210px) !important; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; row-gap: 5px; align-items: center; padding: 10px 12px !important; border-radius: 14px; text-align: left; border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent) !important; background: linear-gradient(135deg, color-mix(in srgb, var(--cor) 16%, rgba(8, 10, 24, 0.55)), rgba(8, 10, 24, 0.55)) !important; backdrop-filter: blur(8px); box-shadow: 0 0 20px -10px var(--cor); color: #fff !important; cursor: pointer; animation: l-oculos 0.45s ease-out; }
+.l-holo-apps > svg, .l-holo-apps > :first-child { grid-row: 1 / span 2; }
+.l-holo-apps b { font: 800 12px var(--font-geist-mono), monospace; letter-spacing: 0.1em; color: var(--cor); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-holo-apps-pips { display: flex; gap: 4px; }
+.l-holo-apps-pips i { width: 14px; height: 2px; border-radius: 1px; background: rgba(255, 255, 255, 0.2); }
+.l-holo-apps-pips i.is-on { background: var(--cor); box-shadow: 0 0 6px var(--cor); }
+
+/* embaixo, à direita: o turbo e o propulsor (o clique semi-longo enche a borda) */
+.l-viagem.is-disco .l-propulsao-bt small { display: none; }
+.l-propulsao-bt::after { content: ""; position: absolute; inset: -2px; border-radius: 17px; pointer-events: none; border: 2px solid var(--c); opacity: 0; clip-path: inset(100% 0 0 0); }
+.l-propulsao-bt.is-armando::after { opacity: 1; animation: l-holo-arma 0.26s linear forwards; }
+.l-propulsao-bt.is-ativo { box-shadow: 0 0 34px -4px var(--c), inset 0 0 26px -8px var(--c); }
+.l-propulsao-bt.is-ativo::after { opacity: 1; clip-path: none; }
+@keyframes l-holo-arma { from { clip-path: inset(100% 0 0 0) } to { clip-path: inset(0 0 0 0) } }
+
+/* o "?": tocar numa coisa diz o que ela é */
+.l-holo-ajuda { position: absolute; z-index: 40; left: 50%; top: calc(48px + env(safe-area-inset-top)); transform: translateX(-50%); width: max-content; max-width: min(86vw, 340px); display: grid; gap: 3px; padding: 10px 14px; border-radius: 12px; color: #dffbff; background: rgba(6, 10, 26, 0.86); border: 1px solid rgba(47, 232, 255, 0.55); box-shadow: 0 0 24px -8px #2fe8ff; font: 500 12.5px/1.4 system-ui, sans-serif; pointer-events: none; animation: l-oculos 0.25s ease-out; }
+.l-holo-ajuda b { font: 800 11px var(--font-geist-mono), monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #2fe8ff; }
+.l-viagem.is-holo:has(.l-holo-ajuda) [data-info] { outline: 1px dashed rgba(47, 232, 255, 0.75); outline-offset: 3px; }
+
+/* celular em pé: a ilha ganha a faixa de cima só pra ela; o resto desce */
+@media (max-width: 600px) {
+  .l-viagem.is-disco .l-hud-topo { padding-top: calc(44px + env(safe-area-inset-top)); }
+  .l-viagem.is-disco .l-hud-cam span { display: none; }
+  .l-viagem.is-disco .l-hud-cam { padding: 0 11px; }
+  .l-viagem.is-disco .l-ilha { top: calc(8px + env(safe-area-inset-top)); }
+  .l-viagem.is-disco .l-ilha.is-letreiro { min-width: min(70vw, 320px); max-width: min(70vw, 320px); }
+  .l-viagem.is-disco button.l-mapa-mini { top: calc(52px + env(safe-area-inset-top)); width: 104px !important; height: 104px; }
+  .l-holo-anel { top: calc(38px + env(safe-area-inset-top)); right: 2px; width: 132px !important; height: 132px; }
+  .l-holo-som { top: calc(94px + env(safe-area-inset-top)); width: min(52vw, 230px); }
+  .l-viagem.is-holo .l-sair-kombi { top: calc(182px + env(safe-area-inset-top)); }
+  .l-viagem.is-disco .l-aneis { top: calc(176px + env(safe-area-inset-top)); }
+  .l-holo-ajuda { top: calc(40px + env(safe-area-inset-top)); }
+}
