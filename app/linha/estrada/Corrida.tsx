@@ -230,6 +230,9 @@ type Jogo = {
   tVolta?: number // parado, segurando freio + um lado: quanto tempo (meia-volta)
   // o pulo (17/10, mapa 2.0: barra de espaço / toque duplo, a movimentação do inFamous)
   pulou?: boolean; tPulo?: number
+  // (disco, passo 3) o voo: solta da pista e voa livre (wx, wz, rumo); a energia
+  // do propulsor (0–1, volta andando na pista); propulsou = este voo usou o propulsor
+  voo?: boolean; energia?: number; propulsou?: boolean
   // o modo arcade (17/10, LU2CA: "arcade, divertido, psicodélico, fidget"):
   // o combo de anéis, a onda psicodélica (0–1) e o giro da Kombi no ar
   combo?: number; comboT?: number; psi?: number; giroAr?: number
@@ -281,7 +284,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number }
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -693,6 +696,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const hudProg = useRef<HTMLDivElement>(null)
   const hudSinal = useRef<HTMLDivElement>(null)
   const hudTurbo = useRef<HTMLDivElement>(null)
+  const hudEnergia = useRef<HTMLDivElement>(null) // (disco) a energia do propulsor
   const hudRota = useRef<HTMLSpanElement>(null)
   const hudGarfoM = useRef<HTMLElement>(null)
   const hudGarfoT = useRef<HTMLSpanElement>(null)
@@ -1300,6 +1304,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const ant = lib[lib.length - 1]?.custo ?? 0
         if (hudSinal.current) hudSinal.current.style.transform = `scaleY(${p ? (sinalRef.current - ant) / (p.custo - ant) : 1})`
         if (hudTurbo.current) hudTurbo.current.style.transform = `scaleX(${j.turboT > 0 ? Math.min(1, j.turboT / 2.2) : j.carga})`
+        if (hudEnergia.current) hudEnergia.current.style.transform = `scaleX(${j.energia ?? 1})`
         // a sirene sobe da borda de baixo: quanto mais perto, mais forte
         if (sirene.current) sirene.current.style.opacity = j.cacaGap === undefined ? "0" : String(Math.max(0, Math.min(0.9, 1 - j.cacaGap / 180)))
         if (hudCacaBarra.current) hudCacaBarra.current.style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - (j.cacaGap ?? 250) / 250))})`
@@ -1432,6 +1437,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       j.via = vi; j.u = Math.max(0, r.f * M.vias[vi].L - 70); j.x = 0; j.encaixar = true; evs.current?.via(vi)
       return M.vias[vi].id
     }
+    // (disco) teste: a Kombi voando h metros acima de uma via (pra conferir o pouso)
+    ;(w as Record<string, unknown>).__voarSobre = (id: string, f = 0.5, h = 15) => {
+      const vi = M.vias.findIndex((v) => v.id === id); if (vi < 0) return null
+      const v = M.vias[vi], i = Math.floor(f * (v.n - 1)), j = jogo.current
+      j.voo = true; j.ar = true; j.propulsou = true; j.tAr = 0; j.vy = 0
+      j.wx = v.px[i]; j.wz = v.pz[i]; j.y = v.py[i] + h; j.rumo = Math.atan2(v.tx[i], v.tz[i])
+      return { y: j.y }
+    }
     w.__tom = () => tomDaMusica()
     // teste: a hora do jogo (0–24)
     w.__hora = (h: number) => { horaRef.current = h }
@@ -1445,7 +1458,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     w.__sinal = (n: number) => evs.current?.sinal(n, `+${n}`, "#fff")
     w.__estado = () => {
       const j = jogo.current
-      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo, wx: j.wx && +j.wx.toFixed(1), wz: j.wz && +j.wz.toFixed(1), rumo: j.rumo && +j.rumo.toFixed(2), fora: j.livreFora, y: +j.y.toFixed(2), vy: +j.vy.toFixed(1) }
+      return { t: +j.tempo.toFixed(2), via: M.vias[j.via].id, u: Math.round(j.u), L: Math.round(M.vias[j.via].L), x: +j.x.toFixed(2), v: Math.round(j.v), deriva: +j.deriva.toFixed(2), giro: +j.giro.toFixed(2), drift: j.drift, peso: +j.peso.toFixed(2), vx: +j.vx.toFixed(1), turbo: +j.turboT.toFixed(2), src: player.src, caca: j.cacaGap === undefined ? null : Math.round(j.cacaGap), inp: { ...input.current }, ar: j.ar, dPts: Math.round(j.dPts), tVolta: j.tVolta, retorno: j.retorno, tipo: M.vias[j.via].tipo, wx: j.wx && +j.wx.toFixed(1), wz: j.wz && +j.wz.toFixed(1), rumo: j.rumo && +j.rumo.toFixed(2), fora: j.livreFora, y: +j.y.toFixed(2), vy: +j.vy.toFixed(1), voo: !!j.voo, en: j.energia && +j.energia.toFixed(2) }
     }
     return () => { delete w.__vel; delete w.__irPara; delete w.__via; delete w.__tom; delete w.__sinal; delete w.__estado; delete w.__marcos; delete w.__estacoes; delete w.__pular; delete w.__hora; delete w.__procurado }
   }, [M])
@@ -1480,6 +1493,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       // (17/10) o espaço é o PULO; o freio de mão fica no Q (e no X)
       // (17/10, LU2CA) espaço = turbo; dois espaços seguidos (até 0,3 s) = pulo
       else if (k === " ") {
+        // (disco) SEGURAR o espaço = propulsor (o toque curto continua sendo o turbo)
+        if (!on) input.current.espacoDesde = 0
+        else if (!ev.repeat) input.current.espacoDesde = performance.now()
         if (on && !ev.repeat) {
           const agora = performance.now()
           if (agora - (input.current.ultimoEspaco ?? 0) < 300) { input.current.pulo = true; input.current.ultimoEspaco = 0 }
@@ -1898,6 +1914,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <div className="l-hud-turbo-barra"><div ref={hudTurbo} /></div>
           <span>turbo</span>
         </button>
+        {/* (disco) o propulsor: segura pra voar (no teclado, segura o espaço) */}
+        {"disco" in M && (
+          <button
+            type="button"
+            className="l-hud-turbo is-propulsor"
+            onPointerDown={(e) => { e.stopPropagation(); input.current.propulsorBotao = true }}
+            onPointerUp={() => { input.current.propulsorBotao = false }}
+            onPointerLeave={() => { input.current.propulsorBotao = false }}
+            onPointerCancel={() => { input.current.propulsorBotao = false }}
+          >
+            <div className="l-hud-turbo-barra"><div ref={hudEnergia} /></div>
+            <span>propulsor</span>
+          </button>
+        )}
       </div>
       </div>
 
@@ -3328,7 +3358,7 @@ function Cena({
       j.st.vmax = Math.max(j.st.vmax, j.v)
     }
     if (!livre) j.livreOk = false
-    if (!livre) {
+    if (!livre && !j.voo) {
     // parede macia: raspa, solta faísca, perde um pouco de velocidade. Faixa
     // de saída trancada = muro no lugar da faixa
     let dirMax = a.dir
@@ -3489,7 +3519,54 @@ function Cena({
 
     // pulos: se a pista cai mais rápido do que a gravidade, a Kombi voa
     amostra(V, j.u, a)
-    const yPista = livre && MR && j.livreFora ? MR.chao(j.wx!, j.wz!) + 0.3 : a.y - j.x * Math.sin(a.bank)
+    let yPista = livre && MR && j.livreFora ? MR.chao(j.wx!, j.wz!) + 0.3 : a.y - j.x * Math.sin(a.bank)
+    // ── (disco, passo 3) O VOO: segurando o propulsor a Kombi sobe; longe da
+    // pista, solta dela e voa livre (vira com o volante); embaixo, a pista
+    // mais alta é onde ela pousa (e a faixa daquela pista entra); sem pista
+    // embaixo, o deserto ──
+    const MD = "disco" in M ? (M as MundoDisco) : null
+    let pouso: ReturnType<MundoDisco["pousar"]> = null
+    if (MD) {
+      if (j.encaixar) { j.voo = false; j.propulsou = false }
+      j.energia = j.energia ?? 1
+      inp.propulsor = (!!inp.espacoDesde && performance.now() - inp.espacoDesde > 220) || !!inp.propulsorBotao
+      const quer = inp.propulsor && !cine && !j.desligada && !combRef.current.patins && !aberturaRef.current.ativa
+      if (quer && j.energia > 0) {
+        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, 3); motor?.whoosh(); vib(18) }
+        j.vy = Math.min(16, j.vy + 34 * dt)
+        j.energia = Math.max(0, j.energia - 0.22 * dt)
+        j.propulsou = true
+      } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + 0.1 * dt) // a energia solar volta na pista
+      if (j.ar && j.propulsou && !j.voo && j.y - yPista > 3.5) {
+        const p = carro.current!.position
+        j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = Math.atan2(a.tx, a.tz)
+      }
+      if (j.voo) {
+        j.rumo = (j.rumo ?? 0) - j.steer * dt * (j.ar ? 1.1 : 1.8)
+        j.wx = j.wx! + Math.sin(j.rumo) * j.v * dt
+        j.wz = j.wz! + Math.cos(j.rumo) * j.v * dt
+        // os prédios: abaixo do topo, bate e escorrega
+        const emp = bater(j.wx, j.wz, 1.6, j.y)
+        if (emp) { j.wx += emp[0]; j.wz += emp[1]; if (Math.abs(j.v) > 8) { j.v *= 1 - 1.2 * dt; j.shake = Math.max(j.shake, 0.3) } }
+        pouso = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo))
+        // o ímã do pouso: descendo, com uma pista a até 24 m de lado lá embaixo,
+        // a Kombi vai pra cima dela e alinha o rumo (a mira generosa dos jogos)
+        if (j.ar && j.vy < 0 && !inp.propulsor) {
+          const im = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo), 24)
+          if (im && Math.abs(im.x) > 1.5) {
+            const k = Math.min(1, dt * 2.2), alvoX = im.cx - im.tz * Math.sign(im.x) * 2, alvoZ = im.cz + im.tx * Math.sign(im.x) * 2
+            j.wx += (alvoX - j.wx) * k; j.wz += (alvoZ - j.wz) * k
+          }
+          if (im) {
+            const lado = Math.sin(j.rumo) * im.tx + Math.cos(j.rumo) * im.tz >= 0 ? 0 : Math.PI
+            const alvoR = Math.atan2(im.tx, im.tz) + lado
+            j.rumo += Math.atan2(Math.sin(alvoR - j.rumo), Math.cos(alvoR - j.rumo)) * Math.min(1, dt * 1.5)
+          }
+          if (!pouso) pouso = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo))
+        }
+        yPista = pouso ? pouso.y : MD.chaoDeserto
+      }
+    }
     if (j.encaixar) { j.ar = false; j.y = yPista; j.vy = 0 } // teleporte (dev)
     // o PULO: do chão, quando quiser (não no meio de cena nem da abertura)
     j.tPulo = Math.max(0, (j.tPulo ?? 0) - dt)
@@ -3511,10 +3588,12 @@ function Cena({
     }
     if (inp.pulo && j.ar && j.tAr > 0.3 && j.vy < 0 && j.y - yPista > 2.2) inp.pulo = false // cedo demais: não guarda
     // o GIRO no ar: virando durante o voo, a Kombi rodopia (só a carroceria)
-    if (j.ar) j.giroAr = (j.giroAr ?? 0) + j.steer * dt * 11
+    if (j.ar && !j.voo) j.giroAr = (j.giroAr ?? 0) + j.steer * dt * 11
     else if (j.giroAr) { j.giroAr *= Math.exp(-dt * 9); if (Math.abs(j.giroAr) < 0.01) j.giroAr = 0 }
     if (j.ar) {
       j.vy -= (j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
+      // (disco) sem o propulsor, a Kombi plana (desce até 10 m/s): dá tempo de mirar numa pista
+      if (j.voo && !inp.propulsor) j.vy = Math.max(j.vy, -10)
       j.y += j.vy * dt
       j.tAr += dt
       if (j.y <= yPista) {
@@ -3525,6 +3604,14 @@ function Cena({
         // pousou de um pulo: um empurrão pra frente (o embalo do inFamous) e um respiro antes do próximo
         // (pulinho no chão plano não dá turbo; voo de verdade, como no Crash, dá)
         if (j.pulou) { j.pulou = false; j.tPulo = 0.6 }
+        // (disco) pousou do voo: numa pista (a via no sentido do rumo), ou no deserto
+        if (j.voo && pouso) {
+          j.voo = false
+          const mudou = j.via !== pouso.via
+          j.via = pouso.via; j.u = pouso.u; j.x = pouso.x; j.vx = 0
+          if (mudou) { trocou = true; V = M.vias[j.via]; ev.via(j.via) }
+        }
+        j.propulsou = false
         // pousou girando: 360 (ou mais) bem alinhado = turbo e onda; torto, só balança
         if (j.giroAr) {
           const voltas = Math.round(j.giroAr / (Math.PI * 2))
@@ -3738,7 +3825,7 @@ function Cena({
       let CV = M.vias[c.via]
       // no mapa novo: quem vem na outra mão da MESMA rua também conta (contramão)
       const par = V.rede?.par === c.via
-      const aqui = c.via === j.via || par
+      const aqui = (c.via === j.via || par) && !j.voo
       const uRel = (u: number) => (par ? CV.L - u : u)
       const antes = du(V, j.u, uRel(c.u))
       if (rede && CV.rede) {
@@ -3825,11 +3912,12 @@ function Cena({
 
     // ── pose da Kombi: deita junto com a curva inclinada ──
     amostra(V, j.u, a)
-    const vivo = livre && !!j.livreOk
-    const cb = vivo && j.livreFora ? 1 : Math.cos(a.bank)
-    const sb = vivo && j.livreFora ? 0 : Math.sin(a.bank)
+    const vivo = (livre && !!j.livreOk) || !!j.voo
+    const plano = vivo && (j.livreFora || !!j.voo)
+    const cb = plano ? 1 : Math.cos(a.bank)
+    const sb = plano ? 0 : Math.sin(a.bank)
     const fx = vivo ? Math.sin(j.rumo!) : a.tx, fz = vivo ? Math.cos(j.rumo!) : a.tz
-    tmp.f.set(fx, j.ar ? Math.max(-0.2, Math.min(0.35, j.vy / Math.max(j.v, 1))) : vivo && j.livreFora ? 0 : a.ty, fz).normalize()
+    tmp.f.set(fx, j.ar ? Math.max(-0.2, Math.min(0.35, j.vy / Math.max(j.v, 1))) : plano ? 0 : a.ty, fz).normalize()
     tmp.r.set(-fz * cb, -sb, fx * cb).normalize()
     tmp.up.crossVectors(tmp.r, tmp.f).normalize()
     tmp.r.crossVectors(tmp.f, tmp.up).normalize()
@@ -3958,7 +4046,7 @@ function Cena({
         pistaSom.entrar(faixaDaPista(fx))
         definirTom(fx.tom)
       }
-      pistaSom.estado(!j.ar && !combRef.current.patins && !pausado, Math.abs(j.v), dt)
+      pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt)
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins

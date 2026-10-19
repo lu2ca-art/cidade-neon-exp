@@ -44,7 +44,9 @@ const NUCLEO = 28 // raio do prédio da torre (o elevador mora dentro)
 
 export type DiscoInfo = { pista: number; parte: "ida" | "volta" | "balao" | "torre" | "rampa" }
 export type CentralDisco = { x: number; z: number; raio: number; nucleo: number; andares: { y: number; cor: string; nome: string; box: number }[] }
-export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; box: number }[]; info: DiscoInfo[]; central: CentralDisco }
+// onde a Kombi pousa vindo do ar: a via (no sentido do rumo), o u, o lado e a altura do asfalto
+export type Pouso = { via: number; u: number; x: number; y: number; cx: number; cz: number; tx: number; tz: number }
+export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; box: number }[]; info: DiscoInfo[]; central: CentralDisco; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; chaoDeserto: number }
 
 const P = (x: number, y: number) => new THREE.Vector2((x - 500) * ESCALA, (y - 500) * ESCALA)
 
@@ -398,6 +400,31 @@ export function montarMundoDisco(): MundoDisco {
   vias[daPista("Ojalá").ida].id = "deserto"
 
   const onde = (chave: string) => tabela.get(chave) ?? null
+  // ── o pouso (o voo, passo 3): a pista mais alta logo abaixo da Kombi ──
+  const CP = 16, gp = new Map<string, number[]>()
+  vias.forEach((v, vi) => { for (let i = 0; i < v.n; i++) { const k = `${Math.floor(v.px[i] / CP)},${Math.floor(v.pz[i] / CP)}`; let l = gp.get(k); if (!l) gp.set(k, (l = [])); l.push(vi, i) } })
+  // margem: até onde, de lado, ainda conta (o ímã do pouso procura mais longe)
+  const pousar = (x: number, z: number, y: number, dx: number, dz: number, margem = MEIA_PISTA): Pouso | null => {
+    const cx = Math.floor(x / CP), cz = Math.floor(z / CP), R = Math.ceil(margem / CP)
+    let melhor: Pouso | null = null, nota = -Infinity
+    for (let a = -R; a <= R; a++) for (let b = -R; b <= R; b++) {
+      const l = gp.get(`${cx + a},${cz + b}`); if (!l) continue
+      for (let q = 0; q < l.length; q += 2) {
+        const v = vias[l[q]], i = l[q + 1]
+        const ox = x - v.px[i], oz = z - v.pz[i]
+        const lon = ox * v.tx[i] + oz * v.tz[i]
+        if (Math.abs(lon) > 1.2) continue // a amostra certa (a cada 2 m)
+        const lat = ox * -v.tz[i] + oz * v.tx[i]
+        if (Math.abs(lat) > margem) continue
+        const ys = v.py[i] - lat * Math.sin(v.bank[i])
+        if (ys > y + 0.6) continue // está acima da Kombi: passa por baixo dela
+        // a mais alta embaixo; entre ida e volta (mesmo asfalto), a que anda pro mesmo lado
+        const n = ys * 10 + (dx * v.tx[i] + dz * v.tz[i] > 0 ? 1 : 0) - Math.max(0, Math.abs(lat) - MEIA_PISTA) * 2
+        if (n > nota) { nota = n; melhor = { via: l[q], u: i * 2 + lon, x: lat, y: ys, cx: v.px[i], cz: v.pz[i], tx: v.tx[i], tz: v.tz[i] } }
+      }
+    }
+    return melhor
+  }
   const circuito = { linha: pistas[0].ida, suburbio: daPista("Sexta-Feira").ida, crypto: daPista("DopaminA").ida, live: daPista("Sabe Ontem?").ida, full: daPista("Swav").ida } as Record<FreqId, number>
   const rede: Rede = { nos: [], arestas: [], retornos: [] }
   const saidas = nos.map((n) => n.saem)
@@ -405,7 +432,7 @@ export function montarMundoDisco(): MundoDisco {
   const projetar = (): Projecao | null => null
   const conflitos = sobra ? [`${sobra} trechos de pista com menos de ${FOLGA - 1} m de folga`] : []
   const central: CentralDisco = { x: C.x, z: C.z, raio: R_TORRE, nucleo: NUCLEO, andares: pistas.map((p, k) => ({ y: andarDe(k), cor: p.cor, nome: p.nome, box: p.box })) }
-  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: () => CHAO, projetar, disco: true, pistas, info, central }
+  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: () => CHAO, projetar, disco: true, pistas, info, central, pousar, chaoDeserto: CHAO + 0.4 }
   return CACHE
 }
 

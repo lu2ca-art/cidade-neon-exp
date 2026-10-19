@@ -1955,3 +1955,6 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-elevador-linhas button i { flex: none; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--c); color: #0b0a12; font-style: normal; font-size: 10px; }
 .l-elevador-linhas button.is-aqui { opacity: 0.45; cursor: default; }
 @keyframes l-elevador { from { opacity: 0; transform: translate(-50%, 10px) } to { opacity: 1; transform: translate(-50%, 0) } }
+
+/* (disco) o propulsor, ao lado do turbo */
+.l-hud-turbo.is-propulsor .l-hud-turbo-barra > div { background: linear-gradient(90deg, #2fe8ff, #e0ff4f); transform-origin: left; }
