@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation"
 import { Embacado } from "./Embacado"
 import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
-import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
@@ -2258,9 +2258,10 @@ function Cena({
   // o lugar secreto já apareceu (Lugares acende a vaga dele)
   const [revelado, setRevelado] = useState<LugarId | null>(null)
   const { camera, scene, gl } = useThree()
-  // teste (fora da produção): a cena e o renderizador, pra medir o que pesa
+  // teste (fora da produção, ou com ?medir na URL): a cena e o renderizador, pra
+  // medir o que pesa e a lisura (scripts de desempenho)
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return
+    if (process.env.NODE_ENV === "production" && !/[?&]medir/.test(location.search)) return
     const w = window as unknown as Record<string, unknown>
     w.__cena = scene; w.__gl = gl; w.__cam = camera
   }, [scene, gl, camera])
@@ -3117,14 +3118,18 @@ function Cena({
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
 
-  useFrame((state, dtRaw) => {
-    const dt = Math.min(0.05, dtRaw)
+  // ── O RELÓGIO (19/10, LU2CA: "motores de movimento sincronizados com um
+  // relógio por dentro"): a física anda em passos fixos de 1/120 s, quantos o
+  // tempo pedir. A mesma Kombi a 30, 60 ou 144 quadros por segundo, e um quadro
+  // atrasado não dá mais um pulo maior na física. A tela desenha a Kombi entre
+  // os dois últimos passos (interpolada); a câmera e os efeitos seguem essa
+  // pose, uma vez por quadro ──
+  const relogio = useRef({ acc: 0, ok: false, p0: new THREE.Vector3(), q0: new THREE.Quaternion(), p1: new THREE.Vector3(), q1: new THREE.Quaternion(), f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), cine: cinemaRef.current, pct: 0, tq: null as number | null })
+  const passo = (state: RootState, dt: number) => {
     const j = jogo.current
     const inp = input.current
-    const ev = evs.current
-    if (!ev) return
+    const ev = evs.current!
     j.tempo += dt
-    const grave = faixasDisco.length ? pistaSom.grave() : player.grave()
     let V = M.vias[j.via]
 
     // ── física na via ──
@@ -3995,6 +4000,48 @@ function Cena({
         if (cb2.parada) { kombiParada.current.position.copy(cb2.parada.pos); kombiParada.current.quaternion.copy(cb2.parada.quat) }
       }
     }
+    return { cine, pct }
+  }
+
+  useFrame((state, dtRaw) => {
+    const rl = relogio.current
+    // o tempo do QUADRO (o instante em que ele vai pra tela, no ritmo do
+    // monitor), não a hora em que o código rodou: depois de um quadro lento o
+    // próximo começa atrasado, e o relógio do three contava esse atraso como
+    // movimento (o tranco). document.timeline.currentTime = o carimbo do quadro
+    const tq = typeof document !== "undefined" ? (document.timeline?.currentTime as number | null) : null
+    const dtQ = tq != null && rl.tq != null && tq > rl.tq ? (tq - rl.tq) / 1000 : dtRaw
+    rl.tq = tq
+    const dt = Math.min(0.1, dtQ)
+    const j = jogo.current
+    const inp = input.current
+    const ev = evs.current
+    if (!ev) return
+    const car = carro.current!
+    const H = 1 / 120
+    // no máximo 8 passos por quadro (a aba voltando do fundo não acelera o mundo)
+    rl.acc = rl.ok ? Math.min(rl.acc + dt, 8 * H) : H // (o 1º quadro sempre dá um passo: a pose nasce)
+    while (rl.acc >= H) {
+      rl.p0.copy(rl.p1); rl.q0.copy(rl.q1)
+      // a física lê a pose de verdade (o voo nasce dela), não a desenhada
+      if (rl.ok) { car.position.copy(rl.p1); car.quaternion.copy(rl.q1) }
+      const r = passo(state, H)
+      rl.cine = r.cine; rl.pct = r.pct
+      rl.p1.copy(car.position); rl.q1.copy(car.quaternion)
+      rl.f.copy(tmp.f); rl.r.copy(tmp.r); rl.up.copy(tmp.up)
+      // teleporte (ou o 1º passo): não desenha o caminho entre o antes e o depois
+      if (!rl.ok || j.encaixar || rl.p0.distanceToSquared(rl.p1) > 25 * 25) { rl.p0.copy(rl.p1); rl.q0.copy(rl.q1); rl.ok = true }
+      rl.acc -= H
+    }
+    // a pose desenhada: entre os dois últimos passos
+    const alfa = rl.acc / H
+    car.position.lerpVectors(rl.p0, rl.p1, alfa)
+    car.quaternion.slerpQuaternions(rl.q0, rl.q1, alfa)
+    tmp.f.copy(rl.f); tmp.r.copy(rl.r); tmp.up.copy(rl.up)
+    const cine = rl.cine, pct = rl.pct
+    const V = M.vias[j.via]
+    amostra(V, j.u, a)
+    const grave = faixasDisco.length ? pistaSom.grave() : player.grave()
 
     // as 4 rodas derrapando: marca no chão e fumaça em cada uma
     if (j.drift && Math.abs(j.deriva) > 0.15 && !j.ar) {
