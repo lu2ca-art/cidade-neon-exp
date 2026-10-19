@@ -783,14 +783,42 @@ class PistaSom {
     this.el = el
     return el
   }
-  // a faixa da pista nova, do começo
-  entrar(src: string) {
+  // o fade (0–1): sobe na entrada, desce na saída (segundos do relógio do áudio)
+  private fadeDe = 0
+  private fadePara = 1
+  private fadeIni = 0
+  private fadeDur = 0.01
+  private fade() {
+    const c = audioCtx()
+    if (!c) return this.fadePara
+    const t = Math.min(1, (c.currentTime - this.fadeIni) / this.fadeDur)
+    return this.fadeDe + (this.fadePara - this.fadeDe) * t
+  }
+  private comecarFade(para: number, seg: number) {
+    const c = audioCtx()
+    this.fadeDe = this.fade()
+    this.fadePara = para
+    this.fadeIni = c ? c.currentTime : 0
+    this.fadeDur = Math.max(0.01, seg)
+  }
+  // a faixa da pista nova, do começo, subindo em fade (seg)
+  entrar(src: string, fadeSeg = 0) {
     const el = this.garantir()
     if (this.src !== src) { el.src = src; this.src = src }
     el.currentTime = 0
     this.rate = 0.4 // começa girando (spin-up)
     el.playbackRate = this.rate
+    this.fadeDe = 0
+    this.comecarFade(1, fadeSeg)
+    this.fadeDe = 0
     el.play().catch(() => {})
+  }
+  // voltou pra torre: a faixa some em fade e para
+  sair(fadeSeg = 2) {
+    if (!this.src) return
+    this.comecarFade(0, fadeSeg)
+    const src = this.src
+    setTimeout(() => { if (this.src === src && this.fadePara === 0) this.parar() }, fadeSeg * 1000 + 50)
   }
   // a cada quadro: em contato e andando, gira a 1; senão, freia até parar
   // radio: a rádio invadiu (a pista abaixa: rádio e disco nunca juntos no mesmo volume)
@@ -812,11 +840,12 @@ class PistaSom {
     if (c && this.filtro && this.gain) {
       // no ar o som abafa (o vento por cima); no chão, aberto
       this.filtro.frequency.setTargetAtTime(contato ? 20000 : 700, c.currentTime, 0.08)
-      this.gain.gain.setTargetAtTime((contato ? 1 : 0.35) * (radio ? 0.12 : 1), c.currentTime, 0.1)
+      this.gain.gain.setTargetAtTime((contato ? 1 : 0.35) * (radio ? 0.12 : 1) * this.fade(), c.currentTime, 0.05)
     }
   }
   parar() { this.el?.pause(); this.src = null }
   get tocando() { return !!this.el && !this.el.paused }
+  get nivelFade() { return this.fade() }
   // os graves da faixa (as luzes da cidade pulsam com isso)
   grave() {
     if (!this.analyser || !this.el || this.el.paused) return 0
@@ -829,5 +858,5 @@ class PistaSom {
 export const pistaSom = new PistaSom()
 // teste (fora da produção): o estado do toca-discos da pista
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-  ;(window as unknown as { __pistaSom?: () => unknown }).__pistaSom = () => ({ src: pistaSom.src, tocando: pistaSom.tocando, rate: pistaSom.el ? +pistaSom.el.playbackRate.toFixed(2) : null, t: pistaSom.el ? +pistaSom.el.currentTime.toFixed(1) : null })
+  ;(window as unknown as { __pistaSom?: () => unknown }).__pistaSom = () => ({ src: pistaSom.src, tocando: pistaSom.tocando, rate: pistaSom.el ? +pistaSom.el.playbackRate.toFixed(2) : null, fade: +pistaSom.nivelFade.toFixed(2), t: pistaSom.el ? +pistaSom.el.currentTime.toFixed(1) : null })
 }

@@ -3,7 +3,7 @@
 // A CENTRAL do mapa-disco (LU2CA 19/10): a torre de onde saem todas as pistas.
 // Um prédio de vidro escuro com janelas; em cada andar, um anel de neon na cor
 // da linha que sai dali (o box daquele andar contorna a torre); no topo, uma
-// coroa que pulsa devagar. O elevador (trocar de linha) mora dentro.
+// coroa que pulsa devagar. As espirais (a de subir por fora, a de descer por dentro) ligam os andares.
 
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
@@ -13,7 +13,7 @@ import type { CentralDisco } from "./mundoDisco"
 const CHAO = -12
 
 export function TorreCentral({ c, janelas }: { c: CentralDisco; janelas: THREE.Texture }) {
-  const topo = Math.max(...c.andares.map((a) => a.y)) + 22
+  const topo = Math.max(c.topo, ...c.andares.map((a) => a.y)) + 22
   const alto = topo - CHAO
   const coroa = useRef<THREE.MeshBasicMaterial>(null)
   const tex = useMemo(() => {

@@ -32,7 +32,7 @@ import { MODELOS, montarModelos } from "./carros"
 import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
-import { geoChaoDisco, montarMundoDisco, type MundoDisco } from "./mundoDisco"
+import { V_TORRE, geoChaoDisco, montarMundoDisco, naTorre, type MundoDisco } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
 import { qualMapa } from "./qualMapa"
 import { OculosHud, OculosMapa } from "./Oculos"
@@ -753,28 +753,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [viaAtual, setViaAtual] = useState(() => jogo0.via)
   // (disco) no box da central: o elevador troca de linha (de andar)
   const discoM = "disco" in M ? (M as MundoDisco) : null
-  const naCentral = !!discoM && /:torre$/.test(M.vias[viaAtual]?.id ?? "")
+  // (disco) na torre (as espirais): o óculos não precisa do painel de missão
+  const naCentral = !!discoM && naTorre(discoM.info[viaAtual]?.parte)
+  // a próxima saída da espiral (no fim do trecho onde a Kombi está)
+  const placaEspiral = (() => {
+    if (!discoM || discoM.info[viaAtual]?.parte !== "sobe") return null
+    const prox = (M as MundoDisco).ligacoes.saidas[M.vias[viaAtual].rede!.para] ?? []
+    const vi = prox.find((v) => discoM.info[v]?.parte === "saida")
+    if (vi === undefined) return null
+    const p = discoM.pistas[discoM.info[vi].pista]
+    return { nome: p.nome, cor: p.cor, lado: p.lado }
+  })()
   // (disco) o óculos no lugar do celular: ligado por padrão, o botão liga e desliga
   const [oculos, setOculos] = useState(() => { try { return localStorage.getItem("cn-oculos") !== "off" } catch { return true } })
   const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
-  const pistaAtual = discoM ? discoM.info[viaAtual]?.pista ?? -1 : -1
-  const elevador = useCallback((k: number) => {
-    if (!discoM || k === pistaAtual) return
-    fadeCam.current?.classList.add("is-on")
-    vib([20, 60, 20])
-    setTimeout(() => {
-      const box = discoM.pistas[k].box, j = jogo.current
-      j.via = box; j.u = M.vias[box].L * 0.5; j.x = 0; j.encaixar = true
-      evs.current?.via(box)
-      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 220)
-    }, 380)
-  }, [discoM, pistaAtual, M])
-  useEffect(() => {
-    if (!naCentral) return
-    const tecla = (e: KeyboardEvent) => { const n = Number(e.key); if (n >= 1 && n <= 9) elevador(n - 1) }
-    window.addEventListener("keydown", tecla)
-    return () => window.removeEventListener("keydown", tecla)
-  }, [naCentral, elevador])
   const [faixa, setFaixa] = useState("")
   // tocando um vinil da Kombi (não uma faixa da rádio): o cartão diz isso
   const discoRef = useRef(false)
@@ -1750,26 +1742,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {seco && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
         <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
       )}
+      {/* (disco) a placa da espiral: chegando numa saída, "◀ Linha X" e "▲ subir" */}
+      {placaEspiral && (
+        <div className="l-placa-espiral" style={{ ["--c" as string]: placaEspiral.cor }} aria-live="polite">
+          <span className={`is-sair ${placaEspiral.lado > 0 ? "is-dir" : "is-esq"}`}>{placaEspiral.lado > 0 ? "" : "◀ "}<b>{placaEspiral.nome}</b>{placaEspiral.lado > 0 ? " ▶" : ""}</span>
+          <span className="is-subir">▲ subir</span>
+          <small>vira pro lado da linha pra sair</small>
+        </div>
+      )}
       {/* (disco) o óculos: o mapa holográfico (aparece subindo) e o painel leve */}
       {discoM && <OculosMapa M={discoM} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; x: number; y: number; voo?: boolean; wx?: number; wz?: number; rumo?: number }>} />}
       {discoM && <OculosHud aberto={oculos && !naCentral} save={save} nivel={nivel} tarefa={missaoAlvo?.tarefa ?? null}
         radio={{ ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal · o núcleo derrubou a 222" : faixa || "fora do ar", cor: fq.cor }}
         onRadio={() => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }}
         onProxima={() => proxFaixa.current(freqRef.current)} onAbrirCelular={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} />}
-      {/* (disco) o elevador da central: as 9 linhas, uma por andar */}
-      {naCentral && discoM && (
-        <div className="l-elevador" onPointerDown={(e) => e.stopPropagation()}>
-          <b>central · elevador</b>
-          <span>continue pra dar outra volta, ou troque de linha</span>
-          <div className="l-elevador-linhas">
-            {discoM.pistas.map((p, k) => (
-              <button key={p.nome} type="button" style={{ "--c": p.cor } as React.CSSProperties} className={k === pistaAtual ? "is-aqui" : ""} disabled={k === pistaAtual} onClick={() => elevador(k)}>
-                <i>{k + 1}</i>{p.nome}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
       {/* sair a qualquer hora / voltar pra Kombi */}
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
         <button type="button" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>sair da kombi</button>
@@ -2383,7 +2369,14 @@ function Cena({
     const doDisco = (p: Pista) => !!(p as Via & { disco?: boolean }).disco
     const corDe = (p: Pista) => (p as Via & { cor?: string }).cor
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
-    const gargalo = (p: Pista, i: number) => /:(balao|torre)$/.test((p as Via).id) && (U(i) < 75 || U(i) > p.L - 75)
+    // (e nas emendas da torre: as alças se separam da espiral e uma da outra)
+    const gargalo = (p: Pista, i: number) => {
+      const id = (p as Via).id, u = U(i)
+      if (/:balao$/.test(id)) return u < 75 || u > p.L - 75
+      if (/:(saida|entrada)$/.test(id)) return u < 45 || u > p.L - 45
+      if (/^disco:torre:/.test(id)) return u < 28 || u > p.L - 28
+      return false
+    }
     const CIANO = hexRgb("#2fe8ff"), ROSA = hexRgb("#ff3fb0"), BRANCO: [number, number, number] = [1, 1, 1]
     const trilhoE = (p: Pista, i: number) => {
       const v = p as Via
@@ -2591,7 +2584,7 @@ function Cena({
         if (v.id === "deserto" && u > 900 && u < v.L - 900) continue
         if (noTunel(v, k)) continue
         for (const lado of [-1, 1]) {
-          if ((v as Via & { disco?: boolean }).disco && /:(balao|torre)$/.test(v.id) && (u < 75 || u > v.L - 75)) continue
+          if ((v as Via & { disco?: boolean }).disco && (/:(balao|saida|entrada)$/.test(v.id) || /^disco:torre:/.test(v.id)) && (u < 75 || u > v.L - 75)) continue
           if (v.tipo === "circuito") {
             if (v.faixas.some((f) => f.lado === lado && u > f.u - 4 && u < f.u + 140)) continue
             if (lado > 0 && v.chegadas.some((c) => u > c.u - 240 && u < c.u + 10)) continue
@@ -3195,8 +3188,10 @@ function Cena({
       // de patins: 150 km/h de verdade (o velocímetro marca ~82), sem turbo
       const patins = !!combRef.current.patins
       // (disco) a Kombi anda no dobro do BPM da faixa da pista (km/h); o turbo passa 25%
-      const fxP = faixasDisco.length ? faixasDisco[(M as MundoDisco).info[j.via]?.pista ?? -1] : null
-      const vmax = patins ? 150 / 3.6 : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      const infV = faixasDisco.length ? (M as MundoDisco).info[j.via] : null
+      const naEspiral = !!infV && naTorre(infV.parte)
+      const fxP = infV && !naEspiral ? faixasDisco[infV.pista] ?? null : null
+      const vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -3475,7 +3470,7 @@ function Cena({
       if (pelaRota !== undefined && cands.includes(pelaRota)) { melhor = Infinity; prox = pelaRota }
       for (const vi of cands) {
         if (melhor === Infinity) break
-        const C = M.vias[vi], reto = tx * C.tx[0] + tz * C.tz[0], direita = tx * C.tz[0] - tz * C.tx[0]
+        const C = M.vias[vi], q8 = Math.min(C.n - 1, 8), reto = tx * C.tx[q8] + tz * C.tz[q8], direita = tx * C.tz[q8] - tz * C.tx[q8]
         const nota = lado === 0 ? reto : lado * direita * 2 + reto * 0.3
         if (nota > melhor) { melhor = nota; prox = vi }
       }
@@ -4073,15 +4068,22 @@ function Cena({
     }
     // (disco) a pista é o toca-discos: entrou numa pista, a faixa dela; em
     // contato toca, parou ou saiu do chão, freia (scratch)
+    // (LU2CA 19/10) a música da linha entra em fade in de 7 s a partir da
+    // alça de saída da torre (é ela que decide a faixa); voltando pra torre,
+    // some. Pousando de um voo em outra pista, entra mais rápido (2 s)
     if (faixasDisco.length) {
-      const k = (M as MundoDisco).info[j.via]?.pista ?? -1
-      const fx = faixasDisco[k]
-      if (fx && k !== pistaTocando.current) {
+      const inf = (M as MundoDisco).info[j.via]
+      const k = inf && !naTorre(inf.parte) ? inf.pista : -1
+      if (k !== pistaTocando.current) {
+        const antes = pistaTocando.current
         pistaTocando.current = k
-        if (fonteRef.current !== "radio") player.pausar()
-        discoPainel.parar()
-        pistaSom.entrar(faixaDaPista(fx))
-        definirTom(fx.tom)
+        const fx = k >= 0 ? faixasDisco[k] : null
+        if (fx) {
+          if (fonteRef.current !== "radio") player.pausar()
+          discoPainel.parar()
+          pistaSom.entrar(faixaDaPista(fx), antes < 0 ? 7 : 2)
+          definirTom(fx.tom)
+        } else pistaSom.sair(2)
       }
       pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio")
     }
