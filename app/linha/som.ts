@@ -79,6 +79,8 @@ export interface Tom { tonica: number; modo: "maior" | "menor" }
 const NOMES = ["Dó", "Dó#", "Ré", "Ré#", "Mi", "Fá", "Fá#", "Sol", "Sol#", "Lá", "Lá#", "Si"]
 let tomAtual: Tom | null = null
 export function tomDaMusica() { return tomAtual }
+// (disco) a pista sabe o tom da faixa dela: as notas do jogo (anéis) afinam nele
+export function definirTom(t: Tom) { tomAtual = t }
 export function nomeDoTom(t: Tom) { return `${NOMES[t.tonica]} ${t.modo}` }
 
 function notaNoTom(i: number) {
@@ -741,4 +743,90 @@ export const fonteSom = {
     ouvintesFonte.forEach((o) => o(f))
   },
   ouvir(o: (f: Fonte) => void) { ouvintesFonte.add(o); return () => { ouvintesFonte.delete(o) } },
+}
+
+// ── A PISTA É O TOCA-DISCOS (mapa-disco, LU2CA 18/10) ───────────────────────
+// Entrou numa pista, a faixa dela dá play (do começo). Enquanto a Kombi está em
+// contato com a pista, toca normal; parou ou saiu do chão (propulsor, pulo),
+// a rotação cai como um vinil freando (o scratch) e o som some no vento; voltou,
+// gira de novo. É o canal analógico: o rádio e o toca-discos do painel calam.
+class PistaSom {
+  el: HTMLAudioElement | null = null
+  src: string | null = null
+  private gain: GainNode | null = null
+  private filtro: BiquadFilterNode | null = null
+  private analyser: AnalyserNode | null = null
+  private dados = new Uint8Array(128)
+  private rate = 1
+  private garantir() {
+    if (this.el) return this.el
+    const el = new Audio()
+    el.preload = "auto"
+    el.crossOrigin = "anonymous"
+    ;(el as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = false // o tom cai junto (vinil)
+    const c = audioCtx(), dst = abafo()
+    if (c && dst) {
+      try {
+        this.gain = c.createGain()
+        this.filtro = c.createBiquadFilter()
+        this.filtro.type = "lowpass"
+        this.filtro.frequency.value = 20000
+        this.analyser = c.createAnalyser()
+        this.analyser.fftSize = 256
+        this.analyser.smoothingTimeConstant = 0.6
+        c.createMediaElementSource(el).connect(this.filtro).connect(this.gain).connect(dst)
+        this.gain.connect(this.analyser)
+      } catch {}
+    }
+    el.loop = true // a faixa da pista recomeça se você ficar mais de uma música nela
+    medir(el, "toca-discos")
+    this.el = el
+    return el
+  }
+  // a faixa da pista nova, do começo
+  entrar(src: string) {
+    const el = this.garantir()
+    if (this.src !== src) { el.src = src; this.src = src }
+    el.currentTime = 0
+    this.rate = 0.4 // começa girando (spin-up)
+    el.playbackRate = this.rate
+    el.play().catch(() => {})
+  }
+  // a cada quadro: em contato e andando, gira a 1; senão, freia até parar
+  estado(contato: boolean, vel: number, dt: number) {
+    const el = this.el
+    if (!el || !this.src) return
+    const gira = contato && vel > 2.5
+    const alvo = gira ? 1 : 0
+    // freia rápido (o scratch é curto), acelera um pouco mais devagar
+    this.rate += (alvo - this.rate) * Math.min(1, dt * (gira ? 5 : 7))
+    if (this.rate < 0.12) {
+      if (!el.paused) el.pause()
+      this.rate = Math.max(this.rate, 0.0625)
+    } else {
+      if (el.paused) el.play().catch(() => {})
+      el.playbackRate = Math.max(0.0625, Math.min(1, this.rate))
+    }
+    const c = audioCtx()
+    if (c && this.filtro && this.gain) {
+      // no ar o som abafa (o vento por cima); no chão, aberto
+      this.filtro.frequency.setTargetAtTime(contato ? 20000 : 700, c.currentTime, 0.08)
+      this.gain.gain.setTargetAtTime(contato ? 1 : 0.35, c.currentTime, 0.1)
+    }
+  }
+  parar() { this.el?.pause(); this.src = null }
+  get tocando() { return !!this.el && !this.el.paused }
+  // os graves da faixa (as luzes da cidade pulsam com isso)
+  grave() {
+    if (!this.analyser || !this.el || this.el.paused) return 0
+    this.analyser.getByteFrequencyData(this.dados)
+    let s = 0
+    for (let i = 1; i < 7; i++) s += this.dados[i]
+    return s / (6 * 255)
+  }
+}
+export const pistaSom = new PistaSom()
+// teste (fora da produção): o estado do toca-discos da pista
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  ;(window as unknown as { __pistaSom?: () => unknown }).__pistaSom = () => ({ src: pistaSom.src, tocando: pistaSom.tocando, rate: pistaSom.el ? +pistaSom.el.playbackRate.toFixed(2) : null, t: pistaSom.el ? +pistaSom.el.currentTime.toFixed(1) : null })
 }

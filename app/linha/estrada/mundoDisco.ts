@@ -340,11 +340,22 @@ export function montarMundoDisco(): MundoDisco {
   })
   // (19/10) a ligação entre as pistas vem no passo do voo, com a espiral da
   // torre desenhada de verdade: as rampas diretas cruzavam os balões dos andares
-  // anéis: colares ao longo das pistas (a partitura de verdade vem com a música)
-  for (const p of pistas) for (const vi of [p.ida, p.volta]) {
-    const v = vias[vi]
-    for (let u = 120; u < v.L - 80; u += 260) for (let q = 0; q < 6; q++) v.orbs.push({ u: u + q * 7, x: ((q % 3) - 1) * 1.4 })
-  }
+  // anéis como partitura (LU2CA 18/10): a 2 × BPM km/h, toda faixa dá uma
+  // batida a cada 33,3 m. Um anel por batida, em compassos de 4; o lado
+  // desenha uma melodia suave; um compasso a cada 8 vem no alto (só pulando)
+  const BATIDA = 100 / 3
+  pistas.forEach((p, k) => {
+    for (const vi of [p.ida, p.volta]) {
+      const v = vias[vi]
+      for (let b = 2; b * BATIDA < v.L - 60; b++) {
+        const comp = Math.floor(b / 4), tempo = b % 4
+        if (comp % 4 === 3) continue // respiro: um compasso sem anel a cada 4
+        const x = 3.4 * Math.sin(comp * 0.9 + tempo * 0.55 + k * 1.3)
+        const alto = comp % 8 === 5
+        v.orbs.push({ u: b * BATIDA, x, ...(alto ? { y: 3.4 + (tempo === 1 || tempo === 2 ? 1.2 : 0) } : {}) })
+      }
+    }
+  })
 
   // a grade das amostras (pra cidade não nascer em cima da pista)
   const CEL = 40

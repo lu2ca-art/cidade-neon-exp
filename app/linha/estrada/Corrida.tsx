@@ -34,6 +34,7 @@ import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./f
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { geoChaoDisco, montarMundoDisco, type MundoDisco } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
+import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
@@ -57,7 +58,7 @@ import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
-import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte } from "../som"
+import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -1100,6 +1101,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const v = M.vias[i]
         setViaAtual(i)
         onAreaRef.current?.(v.id)
+        // (disco) a música é a da pista (toca-discos): a rádio não sintoniza sozinha
+        if ("disco" in M) return
         // no mapa novo cada rua é uma via: só conta como chegar num bairro quando o bairro muda
         if (v.tipo === "rua") { if (areaRua.current === v.t) return; areaRua.current = v.t }
         else if (v.tipo !== "circuito") return
@@ -2260,6 +2263,10 @@ function Cena({
   const a = useMemo(() => novaAmostra(), [])
   const motor = useMemo(() => montarMotor(), [])
   const reduz = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, [])
+  // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
+  const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
+  const pistaTocando = useRef(-1)
+  useEffect(() => () => pistaSom.parar(), [])
   const centro = M.vias[M.circuito.linha]
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
@@ -3048,7 +3055,7 @@ function Cena({
     const ev = evs.current
     if (!ev) return
     j.tempo += dt
-    const grave = player.grave()
+    const grave = faixasDisco.length ? pistaSom.grave() : player.grave()
     let V = M.vias[j.via]
 
     // ── física na via ──
@@ -3121,7 +3128,9 @@ function Cena({
       const seco = !aberturaRef.current.ativa && combRef.current.tanque <= 0
       // de patins: 150 km/h de verdade (o velocímetro marca ~82), sem turbo
       const patins = !!combRef.current.patins
-      const vmax = patins ? 150 / 3.6 : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      // (disco) a Kombi anda no dobro do BPM da faixa da pista (km/h); o turbo passa 25%
+      const fxP = faixasDisco.length ? faixasDisco[(M as MundoDisco).info[j.via]?.pista ?? -1] : null
+      const vmax = patins ? 150 / 3.6 : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -3937,6 +3946,19 @@ function Cena({
         // chegou na porta: bate (um respiro) e entra
         if (ab.pe >= 1) { ab.fase = "porta"; setTimeout(() => ab.onPorta(), 700) }
       }
+    }
+    // (disco) a pista é o toca-discos: entrou numa pista, a faixa dela; em
+    // contato toca, parou ou saiu do chão, freia (scratch)
+    if (faixasDisco.length) {
+      const k = (M as MundoDisco).info[j.via]?.pista ?? -1
+      const fx = faixasDisco[k]
+      if (fx && k !== pistaTocando.current) {
+        pistaTocando.current = k
+        player.pausar(); discoPainel.parar()
+        pistaSom.entrar(faixaDaPista(fx))
+        definirTom(fx.tom)
+      }
+      pistaSom.estado(!j.ar && !combRef.current.patins && !pausado, Math.abs(j.v), dt)
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins
