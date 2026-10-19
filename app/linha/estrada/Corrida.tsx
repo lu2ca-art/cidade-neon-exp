@@ -2263,7 +2263,8 @@ function Cena({
 
   // ── pista ──
   const geo = useMemo(() => {
-    const vias = M.vias as Via[]
+    // (disco) a volta é o mesmo asfalto da ida: desenha uma vez só
+    const vias = (M.vias as Via[]).filter((v) => !((v as Via & { disco?: boolean }).disco && v.rede && !v.rede.ida))
     const U = (i: number) => i * PASSO
     // nunca um trilho atravessando pista: some onde a pista divide, onde
     // outra encosta chegando, e no começo/fim das saídas (coladas no circuito)
@@ -2271,10 +2272,14 @@ function Cena({
     const chegando = (v: Via, i: number) => v.chegadas.some((c) => U(i) > c.u - 220 && U(i) < c.u + 10)
     // (disco) a borda de dentro de cada mão é o meio da pista: lá é linha, não guard rail
     const doDisco = (p: Pista) => !!(p as Via & { disco?: boolean }).disco
+    const corDe = (p: Pista) => (p as Via & { cor?: string }).cor
+    // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
+    const gargalo = (p: Pista, i: number) => /:(balao|torre)$/.test((p as Via).id) && (U(i) < 75 || U(i) > p.L - 75)
+    const CIANO = hexRgb("#2fe8ff"), ROSA = hexRgb("#ff3fb0"), BRANCO: [number, number, number] = [1, 1, 1]
     const trilhoE = (p: Pista, i: number) => {
       const v = p as Via
       const u = U(i)
-      if (doDisco(p)) return false
+      if (doDisco(p)) return !gargalo(p, i)
       if (v.id === "deserto") return u > 90 && (u < 900 || u > v.L - 900) && u < v.L - 230
       if (v.tipo === "circuito") return !divide(v, i, -1)
       return !(v.lado! > 0 && u < 90) && u < v.L - 230
@@ -2282,6 +2287,7 @@ function Cena({
     const trilhoD = (p: Pista, i: number) => {
       const v = p as Via
       const u = U(i)
+      if (doDisco(p)) return !gargalo(p, i)
       if (v.id === "deserto") return u < 900 || u > v.L - 900
       if (v.tipo === "circuito") return !divide(v, i, 1) && !chegando(v, i)
       return !(v.lado! < 0 && u < 90)
@@ -2289,7 +2295,8 @@ function Cena({
     const rails = (lado: number) => fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
       vertical: true,
       incluir: lado < 0 ? trilhoE : trilhoD,
-      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb(distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
+      // (disco) o guard rail na cor da linha
+      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb((p as Via & { cor?: string }).cor ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
     })
     const semEmenda = (p: Pista, i: number) => {
       const v = p as Via
@@ -2303,9 +2310,12 @@ function Cena({
     return {
       chao: fita(vias, (p, i) => p.esq[i] - 0.25, (p, i) => p.dir[i] + 0.25, 0.01),
       // (disco) cada mão tem 2 faixas: um tracejado só, no meio dela
-      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? -0.1 : x - 0.1), (p) => (doDisco(p) ? 0.1 : x + 0.1), 0.04, { incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? x < 0 : semEmenda(p, i)) })),
-      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { incluir: semEmenda })),
-      linhasGarfo: [divisoria(-1), divisoria(1)],
+      // (disco) 4 faixas: o tracejado separa as duas de cada sentido (±4,2 m)
+      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
+      // (disco) as duas bordas na cor da linha
+      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
+      // (disco) a linha contínua branca no meio (o canteiro é aberto: só pintura)
+      linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
       railE: rails(-1),
       railD: rails(1),
       saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
@@ -2472,7 +2482,7 @@ function Cena({
         if (v.id === "deserto" && u > 900 && u < v.L - 900) continue
         if (noTunel(v, k)) continue
         for (const lado of [-1, 1]) {
-          if (lado < 0 && (v as Via & { disco?: boolean }).disco) continue
+          if ((v as Via & { disco?: boolean }).disco && /:(balao|torre)$/.test(v.id) && (u < 75 || u > v.L - 75)) continue
           if (v.tipo === "circuito") {
             if (v.faixas.some((f) => f.lado === lado && u > f.u - 4 && u < f.u + 140)) continue
             if (lado > 0 && v.chegadas.some((c) => u > c.u - 240 && u < c.u + 10)) continue
@@ -2504,7 +2514,7 @@ function Cena({
         postes.setMatrixAt(n, d.matrix)
         pontoI(v, k, borda - lado * 0.8, 7.1, q)
         luzPos.set([q.x, q.y, q.z], n * 3)
-        c.set(ds.luz[(k / 12 + (lado > 0 ? 1 : 0)) % ds.luz.length])
+        c.set((v as Via & { cor?: string }).cor ?? ds.luz[(k / 12 + (lado > 0 ? 1 : 0)) % ds.luz.length])
         luzCor.set([c.r, c.g, c.b], n * 3)
         pontoI(v, k, borda - lado * 2, 0.05, q)
         d.position.copy(q)
@@ -4363,12 +4373,12 @@ function Cena({
       </mesh>
       {geo.faixas.map((g, i) => (
         <mesh key={i} geometry={g}>
-          <meshBasicMaterial color="#2fe8ff" toneMapped={false} transparent opacity={0.85} />
+          <meshBasicMaterial vertexColors toneMapped={false} transparent opacity={0.85} />
         </mesh>
       ))}
       {geo.bordas.map((g, i) => (
         <mesh key={i} geometry={g}>
-          <meshBasicMaterial color={i ? "#ff3fb0" : "#2fe8ff"} toneMapped={false} />
+          <meshBasicMaterial vertexColors toneMapped={false} />
         </mesh>
       ))}
       {geo.linhasGarfo.map((g, i) => (

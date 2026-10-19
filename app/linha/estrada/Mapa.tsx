@@ -31,7 +31,8 @@ function amostrarVias(M: Mundo) {
     const pts: number[] = []
     for (let i = 0; i < v.n; i += 4) pts.push(v.px[i], v.pz[i])
     if (v.fechada) pts.push(v.px[0], v.pz[0])
-    return { pts, cor: distritoDe(v.t).luz[0], saida: v.tipo === "saida" }
+    // (disco) cada linha na cor dela, a mesma do diagrama
+    return { pts, cor: (v as typeof v & { cor?: string }).cor ?? distritoDe(v.t).luz[0], saida: v.tipo === "saida" }
   })
 }
 

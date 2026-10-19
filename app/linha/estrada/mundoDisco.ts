@@ -4,14 +4,12 @@
 // sobem e descem (gente que vive nos altos e baixos) sem nunca encostar uma
 // na outra. Decisões: ~/vault/projetos/cidade-neon/mapa-disco-decisoes.md
 //
-// Cada pista vira quatro vias de mão única, no formato das ruas do mapa novo
-// (mundoRede.ts), pra o carro, a rota, o trânsito e os lugares funcionarem
-// igual:
-//   ida (2 faixas, à direita do traçado) → balão da ponta → volta (2 faixas,
-//   do outro lado) → balão da torre → ida de novo
-// e na torre, no fim da volta, a outra opção: a rampa pro andar de cima.
-// A linha contínua do meio é parede (a pista é de Gran Turismo: parede
-// invisível segura a Kombi no percurso; quem quiser sair, voa).
+// Cada pista é UMA estrada de 4 faixas (2 por sentido, canteiro aberto, as 4
+// na mesma altura e deitando juntas na curva). Por baixo, como as ruas do mapa
+// novo (mundoRede.ts), são vias de mão única no mesmo eixo:
+//   ida → balão da ponta → volta (a outra mão, mesmo eixo) → balão da torre → ida
+// As bordas são parede (pista de Gran Turismo: parede invisível segura a
+// Kombi no percurso; quem quiser sair, voa).
 
 import * as THREE from "three"
 import { amostrar, derivar, type Pista } from "./pista"
@@ -22,7 +20,10 @@ import type { FreqId } from "../radio"
 import { CANTEIROS } from "./canteiros"
 import DESENHO from "./polvo-desenho.json"
 
-const MEIA_MAO = 4.2 // meia largura de cada mão (2 faixas)
+const MEIA_PISTA = 8.4 // meia largura da pista: 4 faixas, 2 por sentido, canteiro aberto (LU2CA 19/10)
+const BANK_K = 46 // quanto a curva deita por unidade de curvatura (Horizon: curva de corrida)
+const BANK_MAX = 0.4 // ~23°
+const BANK_JAN = 20 // a inclinação entra e sai em ±40 m (amostras de 2 m)
 const ESCALA = DESENHO.escala_km // metros por unidade do desenho (1000 unidades = escala_km km)
 const ANDAR = 9 // altura entre os andares da torre
 const ANDAR0 = 8 // o primeiro andar
@@ -70,6 +71,15 @@ function reamostrar(c: THREE.Vector2[]) {
     const t = (s - acc[j]) / Math.max(1e-6, acc[j + 1] - acc[j])
     pos.push(c[j].clone().lerp(c[j + 1], t))
   }
+  // (19/10, "fluidez nas curvas") média móvel de ±10 m: tira as quinas do
+  // traçado (desvio de 1–2 m nas curvas mais fechadas) e mantém as pontas
+  const liso = pos.map((p, k) => {
+    if (k < 5 || k > n - 6) return p.clone()
+    const m = new THREE.Vector2()
+    for (let j = -5; j <= 5; j++) m.add(pos[k + j])
+    return m.multiplyScalar(1 / 11)
+  })
+  for (let k = 0; k < n; k++) pos[k] = liso[k]
   for (let k = 0; k < n; k++) {
     const a = pos[Math.max(0, k - 2)], b = pos[Math.min(n - 1, k + 2)]
     tan.push(b.clone().sub(a).normalize())
@@ -99,7 +109,7 @@ function alturas(T: ReturnType<typeof reamostrar>[]) {
     const l: { p: THREE.Vector2; i: number }[] = []
     for (let i = 0; i < t.n; i += 2) l.push({ p: t.pos[i], i })
     const c = t.pos[t.n - 1], f = t.tan[t.n - 1], r = new THREE.Vector2(-f.y, f.x), cb = c.clone().addScaledVector(f, D_BALAO)
-    for (let a = 0; a < 12; a++) { const th = (a / 12) * Math.PI * 2; l.push({ p: cb.clone().addScaledVector(r, Math.cos(th) * (R_BALAO + MEIA_MAO)).addScaledVector(f, Math.sin(th) * (R_BALAO + MEIA_MAO)), i: t.n - 1 }) }
+    for (let a = 0; a < 12; a++) { const th = (a / 12) * Math.PI * 2; l.push({ p: cb.clone().addScaledVector(r, Math.cos(th) * (R_BALAO + MEIA_PISTA)).addScaledVector(f, Math.sin(th) * (R_BALAO + MEIA_PISTA)), i: t.n - 1 }) }
     return l
   })
   const grade = new Map<string, number[]>()
@@ -113,7 +123,7 @@ function alturas(T: ReturnType<typeof reamostrar>[]) {
         for (let q = 0; q < l.length; q += 3) {
           const k2 = l[q], i2 = l[q + 1]
           if (k2 < k || (k2 === k && i2 <= i + 60)) continue // a mesma pista: só se volta sobre si mesma
-          if (pk.distanceTo(amostras[k2][l[q + 2]].p) < 24) pares.push([k, i, k2, i2])
+          if (pk.distanceTo(amostras[k2][l[q + 2]].p) < 2 * MEIA_PISTA + 8) pares.push([k, i, k2, i2])
         }
       }
     }
@@ -123,8 +133,8 @@ function alturas(T: ReturnType<typeof reamostrar>[]) {
   T.forEach((t, k) => {
     const c = t.pos[0], f = t.tan[0].clone().negate(), r = new THREE.Vector2(-f.y, f.x), y = ANDAR0 + k * ANDAR
     const pts: THREE.Vector2[] = []
-    for (let q = 0; q <= 6; q++) { const e = q / 6; pts.push(c.clone().addScaledVector(f, D_TORRE * e).addScaledVector(r, (R_TORRE + MEIA_MAO) * Math.sin(Math.PI / 2 * e))); pts.push(c.clone().addScaledVector(f, D_TORRE * e).addScaledVector(r, -(R_TORRE + MEIA_MAO) * Math.sin(Math.PI / 2 * e))) }
-    for (let a = 0; a < 12; a++) { const th = (a / 12) * Math.PI * 2; pts.push(c.clone().addScaledVector(f, D_TORRE + Math.cos(th) * (R_TORRE + MEIA_MAO)).addScaledVector(r, Math.sin(th) * (R_TORRE + MEIA_MAO))) }
+    for (let q = 0; q <= 6; q++) { const e = q / 6; pts.push(c.clone().addScaledVector(f, D_TORRE * e).addScaledVector(r, (R_TORRE + MEIA_PISTA) * Math.sin(Math.PI / 2 * e))); pts.push(c.clone().addScaledVector(f, D_TORRE * e).addScaledVector(r, -(R_TORRE + MEIA_PISTA) * Math.sin(Math.PI / 2 * e))) }
+    for (let a = 0; a < 12; a++) { const th = (a / 12) * Math.PI * 2; pts.push(c.clone().addScaledVector(f, D_TORRE + Math.cos(th) * (R_TORRE + MEIA_PISTA)).addScaledVector(r, Math.sin(th) * (R_TORRE + MEIA_PISTA))) }
     for (const p of pts) {
       const cx = Math.floor(p.x / CEL), cz = Math.floor(p.y / CEL)
       for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
@@ -132,7 +142,7 @@ function alturas(T: ReturnType<typeof reamostrar>[]) {
         for (let q = 0; q < l.length; q += 3) {
           const k2 = l[q], i2 = l[q + 1]
           if (k2 === k && i2 < 40) continue // o começo da própria pista sai do balão
-          if (p.distanceTo(amostras[k2][l[q + 2]].p) < 24) obst.push([k2, i2, y])
+          if (p.distanceTo(amostras[k2][l[q + 2]].p) < 2 * MEIA_PISTA + 8) obst.push([k2, i2, y])
         }
       }
     }
@@ -174,12 +184,20 @@ function alturas(T: ReturnType<typeof reamostrar>[]) {
 }
 
 // vira via no formato do mapa novo
-function viaDe(pts: THREE.Vector3[], id: string, tipo: string, bairro: string): Via {
+function viaDe(pts: THREE.Vector3[], id: string, tipo: string, bairro: string, cor: string): Via {
   const p = amostrar(pts, false) as Pista
-  derivar(p, 26)
-  for (let i = 0; i < p.n; i++) { p.esq[i] = -MEIA_MAO; p.dir[i] = MEIA_MAO }
+  derivar(p, 0)
+  // a inclinação: curvatura suavizada em ±40 m, deita até ~23°, e some nas
+  // pontas da via (na emenda com o balão, as duas inclinações batem em zero)
+  for (let i = 0; i < p.n; i++) {
+    let c = 0, k = 0
+    for (let j = Math.max(0, i - BANK_JAN); j <= Math.min(p.n - 1, i + BANK_JAN); j++) { c += p.curv[j]; k++ }
+    const borda = Math.min(1, Math.min(i, p.n - 1 - i) / 30)
+    p.bank[i] = Math.max(-BANK_MAX, Math.min(BANK_MAX, (c / k) * BANK_K)) * borda * borda * (3 - 2 * borda)
+    p.esq[i] = -MEIA_PISTA; p.dir[i] = MEIA_PISTA
+  }
   return Object.assign(p, {
-    id, tipo: "rua" as const, t: "linha" as FreqId, disco: true,
+    id, tipo: "rua" as const, t: "linha" as FreqId, disco: true, cor, // a cor da linha (a do diagrama)
     estacoes: [], rampas: [], orbs: [] as { u: number; x: number; y?: number }[], turbos: [], faixas: [], chegadas: [], livre: [0, p.L] as [number, number],
     rede: { aresta: 0, ida: true, de: -1, para: -1, par: -1, tipo, bairro },
   }) as unknown as Via
@@ -210,14 +228,14 @@ export function montarMundoDisco(): MundoDisco {
     for (let i = 0; i < t.n - 1; i += 3) idx.push(i)
     if (t.n - 1 - idx[idx.length - 1] < 2) idx.pop()
     idx.push(t.n - 1)
-    for (const i of idx) { const r = dir(t.tan[i]); ida.push(V3(t.pos[i].clone().addScaledVector(r, MEIA_MAO + 0.2), h[i])) }
-    for (const i of [...idx].reverse()) { const r = dir(t.tan[i]); volta.push(V3(t.pos[i].clone().addScaledVector(r, -(MEIA_MAO + 0.2)), h[i])) }
+    for (const i of idx) ida.push(V3(t.pos[i], h[i]))
+    for (const i of [...idx].reverse()) volta.push(V3(t.pos[i], h[i]))
     return { ida, volta }
   })
   // o balão (uma gota): da mão direita abre suave pra fora, contorna o círculo
   // pela frente e volta suave pela mão esquerda. Sem degrau na curvatura
   const balao = (c: THREE.Vector2, t: THREE.Vector2, y: number, olhando: 1 | -1, R = R_BALAO, D = D_BALAO) => {
-    const f = t.clone().multiplyScalar(olhando), r = dir(f), W = MEIA_MAO + 0.2, pts: THREE.Vector3[] = []
+    const f = t.clone().multiplyScalar(olhando), r = dir(f), W = 0, pts: THREE.Vector3[] = []
     const em = (fw: number, lat: number) => V3(c.clone().addScaledVector(f, fw).addScaledVector(r, lat), y)
     const S = 12 // pontos de cada abertura
     for (let q = 0; q <= S; q++) { const k = q / S, e = (1 - Math.cos(Math.PI * k)) / 2; pts.push(em(D * k, W + (R - W) * e)) }
@@ -231,13 +249,14 @@ export function montarMundoDisco(): MundoDisco {
     const b = B[k], bairro = b.nome === "Nectar" ? "cidade" : "disco"
     const nIni = no(), nPonta = no(), nPonta2 = no(), nFim = no()
     ini.push(nIni); fim.push(nFim)
-    const iIda = vias.push(viaDe(pontas[k].ida, `disco:${k}:ida`, "avenida", bairro)) - 1; info.push({ pista: k, parte: "ida" })
-    const iBp = vias.push(viaDe(balao(t.pos[t.n - 1], t.tan[t.n - 1], H[k][t.n - 1], 1), `disco:${k}:balao`, "rampa", "disco")) - 1; info.push({ pista: k, parte: "balao" })
-    const iVolta = vias.push(viaDe(pontas[k].volta, `disco:${k}:volta`, "avenida", bairro)) - 1; info.push({ pista: k, parte: "volta" })
-    const iBt = vias.push(viaDe(balao(t.pos[0], t.tan[0], andarDe(k), -1, R_TORRE, D_TORRE), `disco:${k}:torre`, "rampa", "disco")) - 1; info.push({ pista: k, parte: "torre" })
+    const iIda = vias.push(viaDe(pontas[k].ida, `disco:${k}:ida`, "avenida", bairro, b.cor)) - 1; info.push({ pista: k, parte: "ida" })
+    const iBp = vias.push(viaDe(balao(t.pos[t.n - 1], t.tan[t.n - 1], H[k][t.n - 1], 1), `disco:${k}:balao`, "rampa", "disco", b.cor)) - 1; info.push({ pista: k, parte: "balao" })
+    const iVolta = vias.push(viaDe(pontas[k].volta, `disco:${k}:volta`, "avenida", bairro, b.cor)) - 1; info.push({ pista: k, parte: "volta" })
+    const iBt = vias.push(viaDe(balao(t.pos[0], t.tan[0], andarDe(k), -1, R_TORRE, D_TORRE), `disco:${k}:torre`, "rampa", "disco", b.cor)) - 1; info.push({ pista: k, parte: "torre" })
     ligar(iIda, nIni, nPonta); ligar(iBp, nPonta, nPonta2); ligar(iVolta, nPonta2, nFim); ligar(iBt, nFim, nIni)
     // a meia-volta: ida e volta são as duas mãos do mesmo traçado
     vias[iIda].rede!.par = iVolta; vias[iVolta].rede!.par = iIda
+    vias[iVolta].rede!.ida = false // o mesmo asfalto da ida: não desenha de novo
     pistas.push({ nome: b.nome, cor: b.cor, ida: iIda, volta: iVolta })
   })
   // (19/10) a ligação entre as pistas vem no passo do voo, com a espiral da
@@ -254,7 +273,7 @@ export function montarMundoDisco(): MundoDisco {
   for (const v of vias) for (let i = 0; i < v.n; i += 3) {
     const key = `${Math.floor(v.px[i] / CEL)},${Math.floor(v.pz[i] / CEL)}`
     let l = grade.get(key); if (!l) grade.set(key, (l = []))
-    l.push(v.px[i], v.pz[i], MEIA_MAO + 11, v.py[i]) // prédio a 10 m da borda: a câmera passa
+    l.push(v.px[i], v.pz[i], MEIA_PISTA + 10, v.py[i]) // prédio a 10 m da borda: a câmera passa
   }
   const perto = (x: number, z: number, raio: number, f: (q: number[], k: number) => boolean) => {
     const cx = Math.floor(x / CEL), cz = Math.floor(z / CEL), r = Math.ceil(raio / CEL)
