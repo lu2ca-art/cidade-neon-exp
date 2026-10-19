@@ -32,7 +32,8 @@ import { MODELOS, montarModelos } from "./carros"
 import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
-import { geoChaoDisco, montarMundoDisco } from "./mundoDisco"
+import { geoChaoDisco, montarMundoDisco, type MundoDisco } from "./mundoDisco"
+import { TorreCentral } from "./Torre"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
@@ -743,6 +744,27 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return v.tipo === "circuito" ? v.t : v.de ?? v.t
   })
   const [viaAtual, setViaAtual] = useState(() => jogo0.via)
+  // (disco) no box da central: o elevador troca de linha (de andar)
+  const discoM = "disco" in M ? (M as MundoDisco) : null
+  const naCentral = !!discoM && /:torre$/.test(M.vias[viaAtual]?.id ?? "")
+  const pistaAtual = discoM ? discoM.info[viaAtual]?.pista ?? -1 : -1
+  const elevador = useCallback((k: number) => {
+    if (!discoM || k === pistaAtual) return
+    fadeCam.current?.classList.add("is-on")
+    vib([20, 60, 20])
+    setTimeout(() => {
+      const box = discoM.pistas[k].box, j = jogo.current
+      j.via = box; j.u = M.vias[box].L * 0.5; j.x = 0; j.encaixar = true
+      evs.current?.via(box)
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 220)
+    }, 380)
+  }, [discoM, pistaAtual, M])
+  useEffect(() => {
+    if (!naCentral) return
+    const tecla = (e: KeyboardEvent) => { const n = Number(e.key); if (n >= 1 && n <= 9) elevador(n - 1) }
+    window.addEventListener("keydown", tecla)
+    return () => window.removeEventListener("keydown", tecla)
+  }, [naCentral, elevador])
   const [faixa, setFaixa] = useState("")
   // tocando um vinil da Kombi (não uma faixa da rádio): o cartão diz isso
   const discoRef = useRef(false)
@@ -1693,6 +1715,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {/* sem gasolina: os patins (a Kombi fica) */}
       {seco && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
         <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
+      )}
+      {/* (disco) o elevador da central: as 9 linhas, uma por andar */}
+      {naCentral && discoM && (
+        <div className="l-elevador" onPointerDown={(e) => e.stopPropagation()}>
+          <b>central · elevador</b>
+          <span>continue pra dar outra volta, ou troque de linha</span>
+          <div className="l-elevador-linhas">
+            {discoM.pistas.map((p, k) => (
+              <button key={p.nome} type="button" style={{ "--c": p.cor } as React.CSSProperties} className={k === pistaAtual ? "is-aqui" : ""} disabled={k === pistaAtual} onClick={() => elevador(k)}>
+                <i>{k + 1}</i>{p.nome}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       {/* sair a qualquer hora / voltar pra Kombi */}
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
@@ -4127,6 +4163,12 @@ function Cena({
       camera.up.set(0, 1, 0)
       camera.lookAt(ce.olhar)
     }
+    // teste (fora da produção): window.__vista = [x, y, z, olharX, olharY, olharZ]
+    // segura a câmera num ponto (vista aérea pra conferir o mapa)
+    if (process.env.NODE_ENV !== "production") {
+      const vw = (window as unknown as { __vista?: number[] }).__vista
+      if (vw) { camera.position.set(vw[0], vw[1], vw[2]); camera.up.set(0, 1, 0); camera.lookAt(vw[3], vw[4], vw[5]) }
+    }
     // teste (fora da produção): onde a Kombi aparece na tela, quadro a quadro.
     // Liga com window.__camLog = [] (cada linha: x, y na tela, distância, km/h, dt)
     if (process.env.NODE_ENV !== "production") {
@@ -4398,6 +4440,8 @@ function Cena({
       ))}
 
       {cidade.predios.map((m, i) => <primitive key={i} object={m} />)}
+      {/* (disco) a central: a torre de onde saem todas as pistas */}
+      {"disco" in M && <TorreCentral c={(M as MundoDisco).central} janelas={tex.janelas} />}
       <points geometry={cidade.aviacao} material={cidade.aviacaoMat} />
       <primitive object={cidade.arcos} />
       <primitive object={cidade.fitas} />

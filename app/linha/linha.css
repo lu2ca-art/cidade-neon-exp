@@ -1945,3 +1945,13 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-dica2 b { font: 800 10px var(--font-geist-mono), monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #2fe8ff; }
 .l-dica2 kbd { font: 700 11px var(--font-geist-mono), monospace; padding: 0 5px; border-radius: 4px; background: rgba(255, 255, 255, 0.14); }
 @keyframes l-dica2 { 0% { opacity: 0; transform: translate(-50%, 8px) } 6%, 88% { opacity: 1; transform: translate(-50%, 0) } 100% { opacity: 0 } }
+
+/* (disco) o elevador da central: as 9 linhas, uma por andar */
+.l-elevador { position: absolute; z-index: 7; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(92vw, 420px); display: grid; gap: 6px; padding: 10px 12px 12px; border-radius: 14px; background: rgba(11, 10, 18, 0.78); border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(6px); color: #fff; animation: l-elevador 0.35s ease-out; }
+.l-elevador b { font: 800 11px var(--font-geist-mono), monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #ff6a35; }
+.l-elevador > span { font: 500 12px var(--font-geist-mono), monospace; color: rgba(255, 255, 255, 0.7); }
+.l-elevador-linhas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.l-elevador-linhas button { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); color: #fff; font: 700 11px var(--font-geist-mono), monospace; text-align: left; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.l-elevador-linhas button i { flex: none; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--c); color: #0b0a12; font-style: normal; font-size: 10px; }
+.l-elevador-linhas button.is-aqui { opacity: 0.45; cursor: default; }
+@keyframes l-elevador { from { opacity: 0; transform: translate(-50%, 10px) } to { opacity: 1; transform: translate(-50%, 0) } }
