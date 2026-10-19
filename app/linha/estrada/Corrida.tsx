@@ -35,6 +35,7 @@ import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { V_TORRE, geoChaoDisco, montarMundoDisco, naEspiral as naEspiralParte, naTorre, naTorreDaPonta, type MundoDisco } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
+import { DPR, ResolucaoDinamica } from "./resolucao"
 import { qualMapa } from "./qualMapa"
 import { OculosHud, OculosMapa } from "./Oculos"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
@@ -309,6 +310,8 @@ const DIAL = Array.from({ length: 15 }, (_, k) => {
   return { k, x1: 50 + sx * 44, y1: 50 + cy * 44, x2: 50 + sx * (k % 2 ? 40 : 37), y2: 50 + cy * (k % 2 ? 40 : 37), tx: 50 + sx * 29, ty: 50 + cy * 29 }
 })
 const toqueTela = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
+// medição (só com ?medir): ?dpr=1.25 fixa a densidade de pixels do canvas
+const testeDpr = (() => { if (typeof window === "undefined" || !/[?&]medir/.test(location.search)) return null; const v = Number(new URLSearchParams(location.search).get("dpr")); return v > 0 ? v : null })()
 
 const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
 const lugarDe = (d: FreqId) => territorio(d).lugar
@@ -1574,7 +1577,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
-          dpr={[1, 1.5]}
+          dpr={testeDpr ?? DPR.v ?? 1}
           frameloop={pausado ? "never" : "always"}
           gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
           camera={{ fov: 60, near: 0.1, far: 3200 }}
@@ -2377,6 +2380,8 @@ function Cena({
     const chegando = (v: Via, i: number) => v.chegadas.some((c) => U(i) > c.u - 220 && U(i) < c.u + 10)
     // (disco) a borda de dentro de cada mão é o meio da pista: lá é linha, não guard rail
     const doDisco = (p: Pista) => !!(p as Via & { disco?: boolean }).disco
+    // (desempenho) o desenho das pistas do disco usa uma amostra a cada 6 m (a física, a cada 2)
+    const passoD = (p: Pista) => (doDisco(p) ? 3 : 1)
     const corDe = (p: Pista) => (p as Via & { cor?: string }).cor
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
     // (e nas emendas da torre: as alças se separam da espiral e uma da outra)
@@ -2405,6 +2410,7 @@ function Cena({
       return !(v.lado! < 0 && u < 90)
     }
     const rails = (lado: number) => fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
+      passo: passoD,
       vertical: true,
       incluir: lado < 0 ? trilhoE : trilhoD,
       // (disco) o guard rail na cor da linha
@@ -2420,18 +2426,18 @@ function Cena({
       incluir: (p, i) => i % 5 < 3 && (p as Via).faixas.some((f) => f.lado === lado && U(i) > f.u - ABRE + 110 && U(i) < f.u),
     })
     return {
-      chao: fita(vias, (p, i) => p.esq[i] - 0.25, (p, i) => p.dir[i] + 0.25, 0.01),
+      chao: fita(vias, (p, i) => p.esq[i] - 0.25, (p, i) => p.dir[i] + 0.25, 0.01, { passo: passoD }),
       // (disco) cada mão tem 2 faixas: um tracejado só, no meio dela
       // (disco) 4 faixas: o tracejado separa as duas de cada sentido (±4,2 m)
-      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
+      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
       // (disco) as duas bordas na cor da linha
-      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
+      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
       // (disco) a linha contínua branca no meio (o canteiro é aberto: só pintura)
-      linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
+      linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { passo: passoD, incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
       railE: rails(-1),
       railD: rails(1),
-      saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
-      saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, incluir: (p, i) => semEmenda(p, i) && trilhoD(p, i) }),
+      saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
+      saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoD(p, i) }),
     }
   }, [M, circuitos, distI, rgb])
 
@@ -2455,7 +2461,11 @@ function Cena({
     const topos: number[] = []
     // (mapa novo, direção livre) o contorno de cada prédio: a Kombi não atravessa
     const colisores: number[] = []
-    const predios = circuitos.map((C) => {
+    // (19/10, desempenho) os prédios de todas as ruas com a mesma cara (a cor
+    // da janela e o brilho do bairro) numa malha só: no disco eram ~100 malhas
+    // (uma por via, cada uma com o seu material), ~100 draw calls por quadro
+    const grupos = new Map<string, { mat: THREE.MeshStandardMaterial; mats: THREE.Matrix4[] }>()
+    circuitos.forEach((C) => {
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
       // (mapa novo) o estilo vem do BAIRRO de verdade da rua: o deserto caía
@@ -2467,6 +2477,9 @@ function Cena({
       // o mapa antigo é muito bom nisso") nas ruas do mapa novo, mais prédios
       // e colados na calçada: o cânion do mapa antigo, não um horizonte longe
       const qt = Math.round(((e.n * C.L) / 2600) * (C.tipo === "rua" ? 1.7 : 1))
+      const chave = `${ds.janela}|${e.brilho}`
+      let gp = grupos.get(chave)
+      if (!gp) {
       const mat = new THREE.MeshStandardMaterial({ color: "#0a0c1e", emissive: ds.janela, emissiveMap: tex.janelas, emissiveIntensity: e.brilho, roughness: 0.62, metalness: 0.35 })
       // janela em escala real: a textura repete pelo tamanho de cada prédio
       // (antes um prédio de 200 m tinha janelas de 7 m) e cada prédio começa
@@ -2481,7 +2494,10 @@ function Cena({
             if (abs(normal.y) > 0.5) vEmissiveMapUv = vec2(0.0);
           #endif`)
       }
-      const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, qt)
+      gp = { mat, mats: [] }
+      grupos.set(chave, gp)
+      }
+      const doGrupo = gp.mats
       let i = 0
       for (let tent = 0; i < qt && tent < qt * 10; tent++) {
         const k = Math.floor(r() * C.n)
@@ -2514,10 +2530,14 @@ function Cena({
         d.scale.set(w, h, fundo)
         if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h) }
         d.updateMatrix()
-        m.setMatrixAt(i, d.matrix)
+        doGrupo.push(d.matrix.clone())
         i++
       }
-      m.count = i
+    })
+    const predios = [...grupos.values()].filter((g) => g.mats.length).map(({ mat, mats }) => {
+      const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, mats.length)
+      mats.forEach((x, k) => m.setMatrixAt(k, x))
+      m.computeBoundingSphere()
       return m
     })
 
@@ -2821,7 +2841,7 @@ function Cena({
     const lista: { via: number; u: number; x: number; y: number }[] = []
     const porVia: number[][] = M.vias.map(() => [])
     M.vias.forEach((v, vi) => v.orbs.forEach((o) => { porVia[vi].push(lista.length); lista.push({ via: vi, u: o.u, x: o.x, y: o.y ?? 1.4 }) }))
-    const m = new THREE.InstancedMesh(new THREE.TorusGeometry(0.75, 0.14, 8, 22), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length)
+    const m = new THREE.InstancedMesh(new THREE.TorusGeometry(0.75, 0.14, 6, 16), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length) // (6×16: 192 triângulos por anel; eram 352)
     m.frustumCulled = false // (a esfera dela ficaria velha: quem escolhe os anéis perto é o useFrame)
     const pos = new Float32Array(lista.length * 3)
     const v3 = new THREE.Vector3()
@@ -4621,6 +4641,7 @@ function Cena({
       {/* as luzes dos lugares, bombas e torres: um punhado que segue a câmera (luzes.tsx) */}
       <LuzesProximas />
       <CompilaSemTravar />
+      <ResolucaoDinamica fixa={testeDpr} />
       <mesh ref={ceu} material={ceuMat} frustumCulled={false} renderOrder={-1}>
         <sphereGeometry args={[2800, 32, 16]} />
       </mesh>

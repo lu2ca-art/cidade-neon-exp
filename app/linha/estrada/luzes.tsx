@@ -61,6 +61,11 @@ export function compilarSemTravar(gl: THREE.WebGLRenderer, o: THREE.Object3D, ca
   gl.setRenderTarget(POS.ativo ? ALVO : null)
   let mats: Set<THREE.Material>
   try { mats = gl.compile(o, camera, scene) } catch { mats = new Set() } finally { gl.setRenderTarget(antes) }
+  // as texturas também: o three só sobe uma textura pra placa de vídeo na 1ª
+  // vez que ela aparece (as dos modelos, 1024², davam 60 ms num quadro)
+  for (const m of mats) {
+    for (const v of Object.values(m)) if ((v as THREE.Texture | null)?.isTexture && !(v as THREE.Texture & { isRenderTargetTexture?: boolean }).isRenderTargetTexture) { try { gl.initTexture(v as THREE.Texture) } catch {} }
+  }
   const t0 = performance.now()
   return new Promise((pronto) => {
     const ver = () => {

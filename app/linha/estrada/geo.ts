@@ -15,7 +15,7 @@ export function fita(
   x0: Lado,
   x1: Lado,
   dy: number,
-  opts: { incluir?: (v: Pista, i: number) => boolean; cor?: (v: Pista, i: number) => [number, number, number]; vertical?: boolean; uvEscala?: number } = {},
+  opts: { incluir?: (v: Pista, i: number) => boolean; cor?: (v: Pista, i: number) => [number, number, number]; vertical?: boolean; uvEscala?: number; passo?: (v: Pista) => number } = {},
 ) {
   const pos: number[] = []
   const uv: number[] = []
@@ -25,9 +25,13 @@ export function fita(
   const q = new THREE.Vector3()
   for (const p of vias) {
     const fim = p.fechada ? p.n : p.n - 1
-    for (let i = 0; i < fim; i++) {
+    // (19/10, desempenho) quantas amostras cada quad pula: a física usa uma a
+    // cada 2 m, o desenho pode usar menos (a 6 m, na curva de 45 m de raio, a
+    // corda erra menos de 10 cm). O tracejado de 6 em 6 continua igual
+    const pulo = Math.max(1, Math.floor(opts.passo?.(p) ?? 1))
+    for (let i = 0; i < fim; i += pulo) {
       if (opts.incluir && !opts.incluir(p, i)) continue
-      const j = (i + 1) % p.n
+      const j = p.fechada ? Math.min(i + pulo, p.n) % p.n : Math.min(i + pulo, p.n - 1)
       const b = pos.length / 3
       for (const k of [i, j]) {
         const a0 = lado(x0, p, k)
@@ -43,7 +47,7 @@ export function fita(
         }
       }
       const u0 = (i * PASSO) / esc
-      const u1 = ((i + 1) * PASSO) / esc
+      const u1 = ((i + pulo) * PASSO) / esc
       uv.push(0, u0, 1, u0, 0, u1, 1, u1)
       const c = opts.cor ? opts.cor(p, i) : [1, 1, 1]
       for (let k = 0; k < 4; k++) cor.push(c[0], c[1], c[2])

@@ -16,7 +16,8 @@ import * as THREE from "three"
 import { POS } from "./luzes"
 
 export function Cinema() {
-  const [nivel, setNivel] = useState(2)
+  // (medição: ?medir&lente=0|1|2 fixa o nível da lente)
+  const [nivel, setNivel] = useState(() => { if (typeof window === "undefined" || !/[?&]medir/.test(location.search)) return 2; const v = new URLSearchParams(location.search).get("lente"); return v === "0" || v === "1" || v === "2" ? +v : 2 })
   const gl = useThree((s) => s.gl)
   // com a lente ligada quem faz o tonemapping é ela; sem lente, o renderer
   useEffect(() => {
