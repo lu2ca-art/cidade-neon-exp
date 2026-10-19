@@ -32,7 +32,7 @@ import { MODELOS, montarModelos } from "./carros"
 import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
-import { V_TORRE, geoChaoDisco, montarMundoDisco, naTorre, type MundoDisco } from "./mundoDisco"
+import { V_TORRE, geoChaoDisco, montarMundoDisco, naEspiral as naEspiralParte, naTorre, naTorreDaPonta, type MundoDisco } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
 import { qualMapa } from "./qualMapa"
 import { OculosHud, OculosMapa } from "./Oculos"
@@ -754,7 +754,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (disco) no box da central: o elevador troca de linha (de andar)
   const discoM = "disco" in M ? (M as MundoDisco) : null
   // (disco) na torre (as espirais): o óculos não precisa do painel de missão
-  const naCentral = !!discoM && naTorre(discoM.info[viaAtual]?.parte)
+  const naCentral = !!discoM && (naTorre(discoM.info[viaAtual]) || naTorreDaPonta(discoM.info[viaAtual]))
   // a próxima saída da espiral (no fim do trecho onde a Kombi está)
   const placaEspiral = (() => {
     if (!discoM || discoM.info[viaAtual]?.parte !== "sobe") return null
@@ -762,7 +762,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const vi = prox.find((v) => discoM.info[v]?.parte === "saida")
     if (vi === undefined) return null
     const p = discoM.pistas[discoM.info[vi].pista]
-    return { nome: p.nome, cor: p.cor, lado: p.lado }
+    return { nome: p.nome, cor: p.cor, lado: discoM.ladoSaida.get(vi) ?? 1 }
   })()
   // (disco) o óculos no lugar do celular: ligado por padrão, o botão liga e desliga
   const [oculos, setOculos] = useState(() => { try { return localStorage.getItem("cn-oculos") !== "off" } catch { return true } })
@@ -3189,7 +3189,7 @@ function Cena({
       const patins = !!combRef.current.patins
       // (disco) a Kombi anda no dobro do BPM da faixa da pista (km/h); o turbo passa 25%
       const infV = faixasDisco.length ? (M as MundoDisco).info[j.via] : null
-      const naEspiral = !!infV && naTorre(infV.parte)
+      const naEspiral = !!infV && naEspiralParte(infV.parte)
       const fxP = infV && !naEspiral ? faixasDisco[infV.pista] ?? null : null
       const vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
@@ -3468,6 +3468,17 @@ function Cena({
       const rr = alvoR && !lado ? calcularRota(M, { via: j.via, u: V.L }, { via: alvoR.via, u: alvoR.u }) : null
       const pelaRota = rr?.trechos[1]?.via
       if (pelaRota !== undefined && cands.includes(pelaRota)) { melhor = Infinity; prox = pelaRota }
+      // (disco) na espiral: a rota marcada decide; senão, o volante pro lado da
+      // placa sai na linha, e qualquer outra coisa segue na espiral
+      if ("disco" in M) {
+        const MD = M as MundoDisco
+        const segue = cands.find((vi) => naEspiralParte(MD.info[vi]?.parte))
+        const sai = cands.find((vi) => MD.info[vi]?.parte === "saida")
+        if (segue !== undefined && sai !== undefined && !(pelaRota !== undefined && cands.includes(pelaRota))) {
+          melhor = Infinity
+          prox = lado !== 0 && Math.sign(lado) === (MD.ladoSaida.get(sai) ?? 1) ? sai : segue
+        }
+      }
       for (const vi of cands) {
         if (melhor === Infinity) break
         const C = M.vias[vi], q8 = Math.min(C.n - 1, 8), reto = tx * C.tx[q8] + tz * C.tz[q8], direita = tx * C.tz[q8] - tz * C.tx[q8]
@@ -4068,22 +4079,21 @@ function Cena({
     }
     // (disco) a pista é o toca-discos: entrou numa pista, a faixa dela; em
     // contato toca, parou ou saiu do chão, freia (scratch)
-    // (LU2CA 19/10) a música da linha entra em fade in de 7 s a partir da
-    // alça de saída da torre (é ela que decide a faixa); voltando pra torre,
-    // some. Pousando de um voo em outra pista, entra mais rápido (2 s)
+    // (LU2CA 19/10) cada pista toca a faixa dela em loop, venha de qual torre
+    // vier e em qualquer velocidade; nas torres continua a que estava; entrou na
+    // pista de outra faixa, a faixa muda junto (fade curto)
     if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]
-      const k = inf && !naTorre(inf.parte) ? inf.pista : -1
-      if (k !== pistaTocando.current) {
-        const antes = pistaTocando.current
+      const k = inf && inf.pista >= 0 ? inf.pista : pistaTocando.current
+      if (k !== pistaTocando.current && k >= 0) {
         pistaTocando.current = k
-        const fx = k >= 0 ? faixasDisco[k] : null
+        const fx = faixasDisco[k]
         if (fx) {
           if (fonteRef.current !== "radio") player.pausar()
           discoPainel.parar()
-          pistaSom.entrar(faixaDaPista(fx), antes < 0 ? 7 : 2)
+          pistaSom.entrar(faixaDaPista(fx), 2)
           definirTom(fx.tom)
-        } else pistaSom.sair(2)
+        }
       }
       pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio")
     }
@@ -4590,7 +4600,7 @@ function Cena({
 
       {cidade.predios.map((m, i) => <primitive key={i} object={m} />)}
       {/* (disco) a central: a torre de onde saem todas as pistas */}
-      {"disco" in M && <TorreCentral c={(M as MundoDisco).central} janelas={tex.janelas} />}
+      {"disco" in M && (M as MundoDisco).torres.map((t, i) => <TorreCentral key={i} c={t} janelas={tex.janelas} />)}
       <points geometry={cidade.aviacao} material={cidade.aviacaoMat} />
       <primitive object={cidade.arcos} />
       <primitive object={cidade.fitas} />

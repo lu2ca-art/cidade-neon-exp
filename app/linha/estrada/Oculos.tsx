@@ -139,12 +139,15 @@ export function OculosMapa({ M, jogo }: { M: MundoDisco; jogo: React.RefObject<J
         g.stroke()
       }
       g.shadowBlur = 0
-      // a torre
-      const [tx, ty] = tela2(M.central.x, M.central.z)
-      g.strokeStyle = "#ff6a35"; g.lineWidth = 2
-      g.beginPath(); g.arc(tx, ty, Math.max(6, M.central.raio * esc), 0, Math.PI * 2); g.stroke()
-      g.fillStyle = "#ff6a35"; g.font = "700 11px ui-monospace, monospace"; g.textAlign = "center"
-      g.fillText("CENTRAL", tx, ty - Math.max(9, M.central.raio * esc) - 4)
+      // as torres (a central e as das pontas)
+      g.font = "700 11px ui-monospace, monospace"; g.textAlign = "center"
+      M.torres.forEach((tw, i) => {
+        const [tx, ty] = tela2(tw.x, tw.z)
+        g.strokeStyle = "#ff6a35"; g.lineWidth = i ? 1.5 : 2
+        g.beginPath(); g.arc(tx, ty, Math.max(5, tw.raio * esc), 0, Math.PI * 2); g.stroke()
+        g.fillStyle = "#ff6a35"
+        g.fillText(i ? "TORRE" : "CENTRAL", tx, ty - Math.max(8, tw.raio * esc) - 4)
+      })
       // os nomes nas pontas
       for (const n of nomes) { const [x, y] = tela2(n.x, n.z); g.fillStyle = n.cor; g.fillText(n.nome.toUpperCase(), x, y - 6) }
       // a Kombi

@@ -825,7 +825,9 @@ class PistaSom {
   estado(contato: boolean, vel: number, dt: number, radio = false) {
     const el = this.el
     if (!el || !this.src) return
-    const gira = contato && vel > 2.5
+    // (LU2CA 19/10) a música não depende da velocidade: no chão gira sempre; só o ar freia
+    const gira = contato
+    void vel
     const alvo = gira ? 1 : 0
     // freia rápido (o scratch é curto), acelera um pouco mais devagar
     this.rate += (alvo - this.rate) * Math.min(1, dt * (gira ? 5 : 7))
