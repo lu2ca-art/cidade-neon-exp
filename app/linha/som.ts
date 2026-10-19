@@ -793,7 +793,8 @@ class PistaSom {
     el.play().catch(() => {})
   }
   // a cada quadro: em contato e andando, gira a 1; senão, freia até parar
-  estado(contato: boolean, vel: number, dt: number) {
+  // radio: a rádio invadiu (a pista abaixa: rádio e disco nunca juntos no mesmo volume)
+  estado(contato: boolean, vel: number, dt: number, radio = false) {
     const el = this.el
     if (!el || !this.src) return
     const gira = contato && vel > 2.5
@@ -811,7 +812,7 @@ class PistaSom {
     if (c && this.filtro && this.gain) {
       // no ar o som abafa (o vento por cima); no chão, aberto
       this.filtro.frequency.setTargetAtTime(contato ? 20000 : 700, c.currentTime, 0.08)
-      this.gain.gain.setTargetAtTime(contato ? 1 : 0.35, c.currentTime, 0.1)
+      this.gain.gain.setTargetAtTime((contato ? 1 : 0.35) * (radio ? 0.12 : 1), c.currentTime, 0.1)
     }
   }
   parar() { this.el?.pause(); this.src = null }

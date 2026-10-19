@@ -6,8 +6,11 @@
 // celular num toque). No ar: o mapa — a cidade acende aos poucos conforme a
 // Kombi sobe, com todas as linhas, a torre e os nomes.
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { pistaSom } from "../som"
+import { NIVEIS } from "../data"
+import { chamados } from "../os"
+import type { Save } from "../estado"
 import { PISTAS } from "./pistas"
 import type { MundoDisco } from "./mundoDisco"
 
@@ -23,7 +26,11 @@ function pose(M: MundoDisco, j: JogoMin) {
   return { x: v.px[i] - v.tz[i] * j.x, z: v.pz[i] + v.tx[i] * j.x, rumo: Math.atan2(v.tx[i], v.tz[i]) }
 }
 
-export function OculosHud({ aberto, tarefa, onAbrirCelular }: { aberto: boolean; tarefa?: string | null; onAbrirCelular: () => void }) {
+type RadioOculos = { ligada: boolean; freq: string; faixa: string; cor: string }
+export function OculosHud({ aberto, save, nivel, tarefa, radio, onRadio, onProxima, onAbrirCelular }: { aberto: boolean; save: Save; nivel: number; tarefa?: string | null; radio: RadioOculos; onRadio: () => void; onProxima: () => void; onAbrirCelular: () => void }) {
+  // os widgets do celular (LU2CA 19/10): o chamado mais recente e o nível
+  const chamado = useMemo(() => chamados(save, nivel)[0] ?? null, [save, nivel])
+  const nv = NIVEIS[Math.min(nivel, NIVEIS.length - 1)], prox = NIVEIS[Math.min(nivel + 1, NIVEIS.length - 1)]
   const [som, setSom] = useState<{ faixa: string; t: number; dur: number; cor: string } | null>(null)
   useEffect(() => {
     if (!aberto) return
@@ -40,6 +47,18 @@ export function OculosHud({ aberto, tarefa, onAbrirCelular }: { aberto: boolean;
   if (!aberto) return null
   return (
     <div className="l-oculos" onPointerDown={(e) => e.stopPropagation()}>
+      {chamado && (
+        <button type="button" className="l-oculos-chamado" style={{ ["--cor" as string]: chamado.cor }} onClick={onAbrirCelular}>
+          <b>{chamado.de}</b>
+          <span>{chamado.texto}</span>
+        </button>
+      )}
+      <div className="l-oculos-nivel">
+        <b>{nv.nome}</b>
+        <span className="l-oculos-pips">{NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}</span>
+        <span><em>{save.neon ?? 0}</em> neon · <em>{Math.round(save.popularidade ?? 0)}</em> popularidade</span>
+        {nivel < NIVEIS.length - 1 && <small>próximo: {prox.como}</small>}
+      </div>
       <div className="l-oculos-linha">
         <b>tocando</b>
         {som ? (
@@ -49,11 +68,22 @@ export function OculosHud({ aberto, tarefa, onAbrirCelular }: { aberto: boolean;
         )}
       </div>
       {som && <div className="l-oculos-barra"><div style={{ transform: `scaleX(${Math.min(1, som.t / Math.max(1, som.dur))})` }} /></div>}
+      {/* a rádio 222 (instável): ligada, ela invade e a pista abaixa */}
+      <div className={`l-oculos-radio ${radio.ligada ? "is-on" : ""}`} style={{ ["--cor" as string]: radio.cor }}>
+        <div className="l-oculos-linha">
+          <b>{radio.freq} fm</b>
+          <span>{radio.ligada ? radio.faixa : "a 222 está desligada"}</span>
+        </div>
+        <span className="l-oculos-radio-bts">
+          <button type="button" onClick={onRadio}>{radio.ligada ? "desligar" : "ligar"}</button>
+          {radio.ligada && <button type="button" onClick={onProxima} aria-label="próxima faixa">⏭</button>}
+        </span>
+      </div>
       <div className="l-oculos-linha">
         <b>missão</b>
         <span>{tarefa || "nenhuma marcada · marca um lugar no mapa"}</span>
       </div>
-      <button type="button" onClick={onAbrirCelular}>mensagens, missões e o resto</button>
+      <button type="button" className="l-oculos-abrir" onClick={onAbrirCelular}>abrir o painel inteiro</button>
     </div>
   )
 }

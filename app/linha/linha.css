@@ -1971,6 +1971,69 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-oculos-linha .is-mudo { opacity: 0.55; }
 .l-oculos-barra { height: 2px; background: rgba(47, 232, 255, 0.2); border-radius: 1px; overflow: hidden; }
 .l-oculos-barra > div { height: 100%; background: #2fe8ff; transform-origin: left; }
-.l-oculos button { justify-self: start; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(47, 232, 255, 0.45) !important; background: rgba(47, 232, 255, 0.08) !important; color: #dffbff !important; font: 700 10px var(--font-geist-mono), monospace !important; cursor: pointer; }
+.l-oculos .l-oculos-abrir { justify-self: start; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(47, 232, 255, 0.45) !important; background: rgba(47, 232, 255, 0.08) !important; color: #dffbff !important; font: 700 10px var(--font-geist-mono), monospace !important; cursor: pointer; }
 .l-oculos-mapa { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; mix-blend-mode: screen; }
 @keyframes l-oculos { from { opacity: 0; transform: translateY(-4px); filter: blur(3px) } to { opacity: 1; transform: none; filter: none } }
+
+/* ─── (disco) O ÓCULOS DE REALIDADE AUMENTADA (LU2CA 19/10) ───
+   O celular vira holograma: translúcido por cima da cidade que segue rodando.
+   No desktop o palco ocupa a tela inteira (nada de moldura de celular) e o
+   celular é um painel largo no meio; no celular, vertical, mas translúcido. */
+.is-ar .l-os-fundo, .is-ar .l-agua { display: none; }
+.is-ar .l-os, .is-ar .l-chat, .is-ar .l-appnativo, .is-ar .l-janela {
+  background: rgba(7, 9, 26, 0.44) !important;
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+}
+.is-ar .l-os::after, .is-ar .l-chat::after, .is-ar .l-appnativo::after {
+  content: ""; position: absolute; inset: 0; z-index: 30; pointer-events: none; border-radius: inherit;
+  background: repeating-linear-gradient(0deg, rgba(47, 232, 255, 0.05) 0 1px, transparent 1px 4px);
+  box-shadow: inset 0 0 0 1px rgba(47, 232, 255, 0.28), inset 0 0 60px rgba(47, 232, 255, 0.08);
+}
+.is-ar .l-os-dock { background: rgba(47, 232, 255, 0.07); border-color: rgba(47, 232, 255, 0.3); }
+.is-ar .l-widgets > * { background: rgba(47, 232, 255, 0.06) !important; border: 1px solid rgba(47, 232, 255, 0.22) !important; }
+@media (min-width: 700px) {
+  .is-ar .l-palco { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; }
+  /* o painel no meio da visão, largo (a cidade em volta) */
+  .is-ar .l-os, .is-ar .l-appnativo, .is-ar .l-janela { inset: 8vh 9vw; border-radius: 22px; }
+  .is-ar .l-chat { inset: 8vh max(9vw, calc(50vw - 380px)); border-radius: 22px; }
+  .is-ar .l-os-pagina { padding: 22px 28px 0; }
+  .is-ar .l-widgets { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); max-width: 980px; }
+  .is-ar .l-os-grade { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); max-width: 1100px; }
+  .is-ar .l-os-dock { max-width: 760px; margin-left: auto; margin-right: auto; width: calc(100% - 40px); }
+}
+
+/* (disco) os widgets do celular no óculos */
+.l-oculos-chamado { display: grid; gap: 1px; text-align: left; padding: 6px 8px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent) !important; background: color-mix(in srgb, var(--cor) 10%, transparent) !important; color: #fff !important; cursor: pointer; min-width: 0; }
+.l-oculos-chamado b { font-size: 10.5px; color: var(--cor); }
+.l-oculos-chamado span { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-oculos-nivel { display: grid; gap: 3px; }
+.l-oculos-nivel > b { font-size: 15px; letter-spacing: 0.04em; color: #ffc857; text-transform: uppercase; }
+.l-oculos-nivel em { font-style: normal; color: #fff; }
+.l-oculos-nivel small { opacity: 0.6; font-size: 10px; }
+.l-oculos-pips { display: flex; gap: 3px; }
+.l-oculos-pips i { flex: 1; height: 2px; border-radius: 1px; background: rgba(255, 200, 87, 0.22); }
+.l-oculos-pips i.is-feito { background: #ffc857; box-shadow: 0 0 6px #ffc857; }
+
+/* (disco) a rádio no óculos */
+.l-oculos-radio { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 2px; border-top: 1px solid rgba(47, 232, 255, 0.15); }
+.l-oculos-radio .l-oculos-linha b { color: var(--cor); }
+.l-oculos-radio:not(.is-on) .l-oculos-linha span { opacity: 0.55; }
+.l-oculos-radio-bts { display: flex; gap: 4px; flex: none; }
+.l-oculos-radio-bts button { padding: 3px 7px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent) !important; background: color-mix(in srgb, var(--cor) 12%, transparent) !important; color: #fff !important; font: 700 10px var(--font-geist-mono), monospace !important; cursor: pointer; }
+
+/* (disco) o turbo e o propulsor: o módulo deles, minimalista e tecnológico.
+   Dois pilares de vidro no canto, barras segmentadas de neon, a dica da tecla */
+.l-propulsao { position: absolute; z-index: 6; right: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; gap: 8px; pointer-events: auto; }
+.l-propulsao-bt { --c: #ff3fb0; position: relative; width: 74px; height: 128px; padding: 10px 8px 8px; display: grid; grid-template-rows: 1fr auto auto; justify-items: center; gap: 3px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent) !important; background: linear-gradient(180deg, rgba(10, 12, 30, 0.35), rgba(10, 12, 30, 0.7)) !important; backdrop-filter: blur(10px) saturate(1.3); -webkit-backdrop-filter: blur(10px) saturate(1.3); box-shadow: 0 0 22px -10px var(--c), inset 0 0 18px -12px var(--c); color: #fff !important; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; transition: transform 0.12s, box-shadow 0.2s; }
+.l-propulsao-bt:active { transform: scale(0.96); box-shadow: 0 0 34px -6px var(--c), inset 0 0 26px -10px var(--c); }
+.l-propulsao-bt.is-propulsor { --c: #2fe8ff; }
+.l-propulsao-bt b { font: 800 10px var(--font-geist-mono), monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c); }
+.l-propulsao-bt small { font: 600 8.5px var(--font-geist-mono), monospace; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.45); }
+/* a barra: vertical, 12 segmentos (a máscara corta a barra em gomos) */
+.l-propulsao-barra { position: relative; width: 14px; height: 100%; border-radius: 4px; background: rgba(255, 255, 255, 0.06); overflow: hidden; -webkit-mask: repeating-linear-gradient(0deg, #000 0 6px, transparent 6px 8px); mask: repeating-linear-gradient(0deg, #000 0 6px, transparent 6px 8px); }
+.l-propulsao-barra > div { position: absolute; inset: 0; transform-origin: bottom; background: linear-gradient(0deg, var(--c), color-mix(in srgb, var(--c) 40%, #fff)); box-shadow: 0 0 12px var(--c); }
+@media (min-width: 700px) {
+  .l-propulsao { right: 22px; bottom: 22px; }
+  .l-propulsao-bt { width: 82px; height: 150px; }
+}

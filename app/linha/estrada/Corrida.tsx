@@ -34,6 +34,7 @@ import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./f
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { geoChaoDisco, montarMundoDisco, type MundoDisco } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
+import { qualMapa } from "./qualMapa"
 import { OculosHud, OculosMapa } from "./Oculos"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -1307,8 +1308,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const lib = freqsLiberadas(sinalRef.current)
         const ant = lib[lib.length - 1]?.custo ?? 0
         if (hudSinal.current) hudSinal.current.style.transform = `scaleY(${p ? (sinalRef.current - ant) / (p.custo - ant) : 1})`
-        if (hudTurbo.current) hudTurbo.current.style.transform = `scaleX(${j.turboT > 0 ? Math.min(1, j.turboT / 2.2) : j.carga})`
-        if (hudEnergia.current) hudEnergia.current.style.transform = `scaleX(${j.energia ?? 1})`
+        // (disco: as barras do módulo são verticais)
+        const eixo = "disco" in M ? "scaleY" : "scaleX"
+        if (hudTurbo.current) hudTurbo.current.style.transform = `${eixo}(${j.turboT > 0 ? Math.min(1, j.turboT / 2.2) : j.carga})`
+        if (hudEnergia.current) hudEnergia.current.style.transform = `${eixo}(${j.energia ?? 1})`
         // a sirene sobe da borda de baixo: quanto mais perto, mais forte
         if (sirene.current) sirene.current.style.opacity = j.cacaGap === undefined ? "0" : String(Math.max(0, Math.min(0.9, 1 - j.cacaGap / 180)))
         if (hudCacaBarra.current) hudCacaBarra.current.style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - (j.cacaGap ?? 250) / 250))})`
@@ -1749,7 +1752,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
       {/* (disco) o óculos: o mapa holográfico (aparece subindo) e o painel leve */}
       {discoM && <OculosMapa M={discoM} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; x: number; y: number; voo?: boolean; wx?: number; wz?: number; rumo?: number }>} />}
-      {discoM && <OculosHud aberto={oculos && !naCentral} tarefa={missaoAlvo?.tarefa ?? null} onAbrirCelular={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} />}
+      {discoM && <OculosHud aberto={oculos && !naCentral} save={save} nivel={nivel} tarefa={missaoAlvo?.tarefa ?? null}
+        radio={{ ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal · o núcleo derrubou a 222" : faixa || "fora do ar", cor: fq.cor }}
+        onRadio={() => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }}
+        onProxima={() => proxFaixa.current(freqRef.current)} onAbrirCelular={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} />}
       {/* (disco) o elevador da central: as 9 linhas, uma por andar */}
       {naCentral && discoM && (
         <div className="l-elevador" onPointerDown={(e) => e.stopPropagation()}>
@@ -1851,8 +1857,33 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       <div className="l-aneis" aria-label={`${aneis.total} anéis, ${aneis.viagens} viagens rápidas`}><i />{aneis.total % 100}<small>/100</small>{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
       <div className="l-relogio" aria-label="relógio da cidade"><b ref={hudRelogio}>{horaTexto(hora)}</b><small ref={hudTurno}>dia {dia}</small></div>
 
-      <div className="l-painel-kombi" onPointerDown={(e) => e.stopPropagation()}>
-      <div className="l-hud-vel">
+      {/* (disco, LU2CA 19/10) o painel analógico sai: o rádio mora no óculos e o
+          turbo e o propulsor ganham o módulo deles (l-propulsao) */}
+      {discoM && (
+        <div className="l-propulsao" onPointerDown={(e) => e.stopPropagation()}>
+          <button type="button" className="l-propulsao-bt is-turbo" onPointerDown={(e) => { e.stopPropagation(); input.current.turbo = true }} aria-label="turbo">
+            <div className="l-propulsao-barra"><div ref={hudTurbo} /></div>
+            <b>turbo</b>
+            <small>toque · shift</small>
+          </button>
+          <button
+            type="button"
+            className="l-propulsao-bt is-propulsor"
+            onPointerDown={(e) => { e.stopPropagation(); input.current.propulsorBotao = true }}
+            onPointerUp={() => { input.current.propulsorBotao = false }}
+            onPointerLeave={() => { input.current.propulsorBotao = false }}
+            onPointerCancel={() => { input.current.propulsorBotao = false }}
+            aria-label="propulsor"
+          >
+            <div className="l-propulsao-barra"><div ref={hudEnergia} /></div>
+            <b>propulsor</b>
+            <small>segura · espaço</small>
+          </button>
+        </div>
+      )}
+      {!discoM && <div className="l-painel-kombi" onPointerDown={(e) => e.stopPropagation()}>
+      {/* (disco, LU2CA 19/10) sem velocímetro nem odômetro: a velocidade é a da música */}
+      {!discoM && <div className="l-hud-vel">
         {tag && <em key={tag.id} className="l-hud-tag" style={{ color: tag.cor }}>{tag.txt}</em>}
         <svg className="l-kombi-dial" viewBox="0 0 100 100" aria-hidden="true">
           {DIAL.map((t) => <line key={t.k} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} stroke={t.k % 2 ? "#6e675c" : "#e8e0cf"} strokeWidth={t.k % 2 ? 1 : 1.8} />)}
@@ -1863,7 +1894,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <small>km/h</small>
         <span ref={hudMarcha} className="l-hud-marcha">1ª</span>
         <em ref={hudOdo} className="l-kombi-odo">0000.0</em>
-      </div>
+      </div>}
 
       {/* o aparelho da Kombi: RÁDIO ou TOCA-DISCOS (nunca os dois) */}
       <div ref={radioBtn as unknown as React.RefObject<HTMLDivElement>} className={`l-player is-${aparelho} ${V.tipo === "saida" && aparelho === "radio" ? "is-sintonizando" : ""}`} style={{ ["--cor" as string]: aparelho === "disco" ? "#ffc857" : fq.cor }} onPointerDown={(e) => e.stopPropagation()}>
@@ -1944,7 +1975,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           </button>
         )}
       </div>
-      </div>
+      </div>}
 
       {/* a pontuação do drift, no alto e no centro (CarX / Drift Max) */}
       <div ref={hudDrift} className="l-hud-drift" aria-hidden="true"><b /><i /><small /></div>
@@ -2062,17 +2093,7 @@ let MUNDO: Mundo | null = null
 // (18/10, LU2CA: "a pior versão até hoje" — sem guard rail, a Kombi sai da rua
 // e entra nos prédios, a cidade no chão) o mapa VELHO volta a ser o padrão; o
 // 2.0 fica atrás do ?mapa=novo (marcado na aba) até ficar pronto; ?mapa=velho desfaz
-// (19/10) ?mapa=disco: o mapa-disco (mundoDisco.ts), em construção
-export function qualMapa(): "velho" | "novo" | "disco" {
-  if (typeof window === "undefined") return "velho"
-  try {
-    const q = new URLSearchParams(location.search).get("mapa")
-    if (q === "novo" || q === "disco") sessionStorage.setItem("cn-mapa", q)
-    if (q === "velho") sessionStorage.removeItem("cn-mapa")
-    const m = sessionStorage.getItem("cn-mapa")
-    return m === "novo" || m === "disco" ? m : "velho"
-  } catch { return "velho" }
-}
+export { qualMapa } from "./qualMapa"
 function mundo() {
   if (MUNDO) return MUNDO
   const q = qualMapa()
@@ -4057,11 +4078,12 @@ function Cena({
       const fx = faixasDisco[k]
       if (fx && k !== pistaTocando.current) {
         pistaTocando.current = k
-        player.pausar(); discoPainel.parar()
+        if (fonteRef.current !== "radio") player.pausar()
+        discoPainel.parar()
         pistaSom.entrar(faixaDaPista(fx))
         definirTom(fx.tom)
       }
-      pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt)
+      pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio")
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins

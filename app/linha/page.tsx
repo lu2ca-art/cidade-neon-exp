@@ -26,6 +26,7 @@ import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Jardim, Violao } from "./recursos"
 import type { Cinema, Stats } from "./estrada/Corrida"
+import { qualMapa } from "./estrada/qualMapa"
 import { Chegada } from "./chegada"
 import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
@@ -952,8 +953,11 @@ export default function LinhaPage() {
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
 
+  // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
+  // celular translúcido por cima da cidade (LU2CA 19/10)
+  const ar = qualMapa() === "disco"
   return (
-    <div className="l-raiz">
+    <div className={`l-raiz ${ar ? "is-ar" : ""}`}>
       <div className="l-palco">
         {/* camada de baixo: a estrada (pausa quando o celular está aberto) */}
         {(estrada || tela.t === "corrida") && !emSala && (
