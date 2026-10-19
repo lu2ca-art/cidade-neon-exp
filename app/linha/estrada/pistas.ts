@@ -9,8 +9,7 @@
 // - os 3 trechos da pista são as 3 campanhas da faixa (campanhas-vol1.md):
 //   a altura segue o sentimento (todo mundo vive nos altos e baixos)
 //
-// BPM medido na bateria isolada (SLIMBI); `bpmConferir` = a medida ficou
-// entre o andamento e a metade/dobro dele, falta o LU2CA confirmar.
+// BPM medido na bateria isolada (SLIMBI) e confirmado pelo LU2CA (18/10).
 // Tom pelo cromagrama da faixa inteira (scripts/linha-tons.py).
 
 import type { Tom } from "../som"
@@ -24,7 +23,6 @@ export interface Pista {
   objeto: string
   tema: string
   bpm: number
-  bpmConferir?: boolean
   duracao: number // s, da versão que toca
   voz: string | null // a faixa com voz (null até o lançamento)
   inst: string
@@ -48,7 +46,7 @@ export const PISTAS: Pista[] = [
   },
   {
     id: "swav", faixa: "Swav", personagem: "Tony Gordo", objeto: "a lanterna", tema: "álbum",
-    bpm: 135, bpmConferir: true, duracao: 188.5, voz: null, inst: A + "swav-inst.mp3", lancamento: "2026-11-13T00:00:00-03:00",
+    bpm: 135, duracao: 188.5, voz: null, inst: A + "swav-inst.mp3", lancamento: "2026-11-13T00:00:00-03:00",
     tom: { tonica: 2, modo: "maior" }, campanhas: ["Criatividade Eminente", "Reflexos", "Salto de Fé"],
   },
   {
@@ -63,24 +61,25 @@ export const PISTAS: Pista[] = [
   },
   {
     id: "dopamina", faixa: "DopaminA", personagem: "Notti", objeto: "o relógio", tema: "jogo",
-    bpm: 125, bpmConferir: true, duracao: 150.9, voz: A + "dopamina.mp3", inst: A + "dopamina-inst.mp3", lancamento: null,
+    bpm: 125, duracao: 150.9, voz: A + "dopamina.mp3", inst: A + "dopamina-inst.mp3", lancamento: null,
     tom: { tonica: 5, modo: "menor" }, campanhas: ["Prazer Instantâneo", "Algo de Estranho", "Verde Interior"],
   },
   {
     id: "chuva", faixa: "CHUVA", personagem: "Ella", objeto: "a flor", tema: "missão",
-    bpm: 79, bpmConferir: true, duracao: 189.9, voz: A + "chuva.mp3", inst: A + "chuva-inst.mp3", lancamento: null,
+    bpm: 79, duracao: 189.9, voz: A + "chuva.mp3", inst: A + "chuva-inst.mp3", lancamento: null,
     tom: { tonica: 5, modo: "maior" }, campanhas: ["Solo Fértil", "Deserto", "Chuva de Verão"],
   },
   {
     id: "ojala", faixa: "Ojalá", personagem: "D-Bee", objeto: "a camisa da seleção", tema: "propósito",
-    bpm: 118, duracao: 175.2, voz: null, inst: A + "ojala-inst.mp3", lancamento: "2026-10-30T00:00:00-03:00",
+    bpm: 118, duracao: 168.3, // a versão final é o wav de 2:48 (o instrumental do SLIMBI tem 2:55)
+    voz: null, inst: A + "ojala-inst.mp3", lancamento: "2026-10-30T00:00:00-03:00",
     tom: { tonica: 6, modo: "menor" }, campanhas: ["Amor de Carnaval", "Pelé e Maradona", "Fugaz como o Vento"],
   },
   {
     // (18/10, LU2CA) a pista da Nectar é a das FLORES: regar faz a cidade
     // florescer, e a beleza natural (a aurora boreal) enfeita a noite
     id: "nectar", faixa: "Nectar", personagem: "LU2CA", objeto: "o violão", tema: "as flores",
-    bpm: 79, bpmConferir: true, duracao: 155.0, voz: A + "nectar.mp3", inst: A + "nectar-inst.mp3", lancamento: null,
+    bpm: 79, duracao: 155.0, voz: A + "nectar.mp3", inst: A + "nectar-inst.mp3", lancamento: null,
     tom: { tonica: 4, modo: "maior" }, campanhas: ["Bicho de 7 Cabeças", "Tentativa e Erro", "Menino Sem Vergonha"],
   },
 ]
