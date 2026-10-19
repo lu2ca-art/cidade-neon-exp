@@ -34,6 +34,7 @@ import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./f
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { V_TORRE, geoChaoDisco, montarMundoDisco, naEspiral as naEspiralParte, naTorre, naTorreDaPonta, type MundoDisco } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
+import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
 import { qualMapa } from "./qualMapa"
 import { OculosHud, OculosMapa } from "./Oculos"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
@@ -2263,6 +2264,14 @@ function Cena({
     const w = window as unknown as Record<string, unknown>
     w.__cena = scene; w.__gl = gl; w.__cam = camera
   }, [scene, gl, camera])
+  // (19/10, desempenho) o three compila o shader de cada material na 1ª vez que
+  // ele aparece na tela: no meio da corrida, travava 1–3 s. Compila tudo antes,
+  // sem travar (luzes.tsx); de novo depois que os modelos carregam
+  useEffect(() => {
+    const compilar = () => { void compilarSemTravar(gl, scene, camera, scene) }
+    const ts = [0, 1500, 5000, 12000].map((ms) => window.setTimeout(compilar, ms))
+    return () => ts.forEach(clearTimeout)
+  }, [scene, gl, camera])
   const camMontanha = useRef<{ pos: THREE.Vector3; olhar: THREE.Vector3; up: THREE.Vector3 } | null>(null)
   // olhar em volta de dentro (como na drive-v2): arrasta → gira até ±150° e
   // ±60°; solta → fica 7 s parado ali e depois volta devagar pra frente
@@ -2812,6 +2821,7 @@ function Cena({
     const porVia: number[][] = M.vias.map(() => [])
     M.vias.forEach((v, vi) => v.orbs.forEach((o) => { porVia[vi].push(lista.length); lista.push({ via: vi, u: o.u, x: o.x, y: o.y ?? 1.4 }) }))
     const m = new THREE.InstancedMesh(new THREE.TorusGeometry(0.75, 0.14, 8, 22), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length)
+    m.frustumCulled = false // (a esfera dela ficaria velha: quem escolhe os anéis perto é o useFrame)
     const pos = new Float32Array(lista.length * 3)
     const v3 = new THREE.Vector3()
     lista.forEach((o, i) => {
@@ -4416,16 +4426,25 @@ function Cena({
     orbs.haloMat.color.copy(corOrb.color)
     orbs.haloMat.size = 3 + grave * 5
     const bate = 0.8 + grave * 0.75
+    // (19/10, desempenho) só os anéis a até 450 m da câmera entram na malha (no
+    // disco são 1142, 400 mil triângulos desenhados e reenviados todo quadro;
+    // um anel de 1,5 m some de vista bem antes disso)
+    const camP = state.camera.position, R2 = 450 * 450
+    let n = 0
     for (let i = 0; i < orbs.lista.length; i++) {
-      const pego = j.pegos.has(i)
+      if (j.pegos.has(i)) continue
+      const dx = orbs.pos[i * 3] - camP.x, dy = orbs.pos[i * 3 + 1] - camP.y, dz = orbs.pos[i * 3 + 2] - camP.z
+      if (dx * dx + dy * dy + dz * dz > R2) continue
       tmp.d.position.set(orbs.pos[i * 3], orbs.pos[i * 3 + 1] + Math.sin(t * 3 + i) * 0.2, orbs.pos[i * 3 + 2])
       tmp.d.rotation.set(0, t * 2 + i, 0)
-      const s = pego ? 0 : bate
-      tmp.d.scale.set(s, s, s)
+      tmp.d.scale.set(bate, bate, bate)
       tmp.d.updateMatrix()
-      orbs.m.setMatrixAt(i, tmp.d.matrix)
+      orbs.m.setMatrixAt(n++, tmp.d.matrix)
     }
+    orbs.m.count = n
     orbs.m.instanceMatrix.needsUpdate = true
+    orbs.m.instanceMatrix.clearUpdateRanges()
+    orbs.m.instanceMatrix.addUpdateRange(0, n * 16)
     {
       // o rastro: apaga devagar; enquanto a Kombi voa de um pulo, solta luz
       const rs = rastro, apaga = Math.exp(-dt * 2.6)
@@ -4552,6 +4571,9 @@ function Cena({
       <hemisphereLight ref={hemi} args={["#8f7dff", "#0b1a3a", 1.6]} />
       <ambientLight ref={ambRef} intensity={0.35} color="#7f8cff" />
       <directionalLight ref={dirRef} position={[200, 300, -400]} intensity={0.9} color="#b9ccff" />
+      {/* as luzes dos lugares, bombas e torres: um punhado que segue a câmera (luzes.tsx) */}
+      <LuzesProximas />
+      <CompilaSemTravar />
       <mesh ref={ceu} material={ceuMat} frustumCulled={false} renderOrder={-1}>
         <sphereGeometry args={[2800, 32, 16]} />
       </mesh>

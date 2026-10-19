@@ -7,6 +7,7 @@ import type { Mundo } from "./mundo"
 import { poseLugar } from "./Lugares"
 import { BOMBAS, type Bomba } from "./postos"
 import type { Lugar } from "../lugares"
+import { LuzPonto } from "./luzes"
 
 const COR = "#ffc857"
 
@@ -21,7 +22,7 @@ function UmaBomba({ M, b }: { M: Mundo; b: Bomba }) {
         <mesh position={[0, 5.05, 0]}><boxGeometry args={[4.05, 0.12, 9.05]} /><meshStandardMaterial color={COR} emissive={COR} emissiveIntensity={1.1} /></mesh>
         <mesh position={[0, 0.9, 0]}><boxGeometry args={[0.8, 1.8, 0.6]} /><meshStandardMaterial color="#d23a3a" emissive="#d23a3a" emissiveIntensity={0.25} /></mesh>
         <mesh position={[b.lado * -0.41, 1.3, 0]}><boxGeometry args={[0.02, 0.5, 0.4]} /><meshBasicMaterial color={COR} /></mesh>
-        <pointLight position={[0, 4.6, 0]} color={COR} intensity={30} distance={14} decay={2} />
+        <LuzPonto position={[0, 4.6, 0]} color={COR} intensity={30} distance={14} decay={2} />
       </group>
     </group>
   )

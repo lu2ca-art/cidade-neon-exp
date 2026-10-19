@@ -13,6 +13,7 @@ import { Bloom, BrightnessContrast, ChromaticAberration, EffectComposer, HueSatu
 import { BlendFunction, ToneMappingMode } from "postprocessing"
 import { useEffect, useMemo, useState } from "react"
 import * as THREE from "three"
+import { POS } from "./luzes"
 
 export function Cinema() {
   const [nivel, setNivel] = useState(2)
@@ -23,11 +24,21 @@ export function Cinema() {
     gl.toneMapping = nivel > 0 ? THREE.NoToneMapping : THREE.AgXToneMapping
     gl.toneMappingExposure = 1
     /* eslint-enable react-hooks/immutability */
+    POS.ativo = nivel > 0 // (luzes.tsx compila os shaders pro mesmo destino)
   }, [gl, nivel])
   const aberracao = useMemo(() => new THREE.Vector2(0.0009, 0.0006), [])
+  // (19/10) o monitor só começa a julgar depois que o jogo assenta: carregando
+  // (compilando shaders, decodificando modelos) todo aparelho engasga, e ele
+  // desligava a lente de vez já no começo (sem bloom o resto do jogo)
+  const [vigiar, setVigiar] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setVigiar(true), 15000); return () => clearTimeout(t) }, [])
   return (
     <>
-      <PerformanceMonitor flipflops={3} onDecline={() => setNivel((n) => Math.max(0, n - 1))} onFallback={() => setNivel(0)} />
+      {/* (19/10) só desce com engasgo de verdade (menos de 30 fps seguidos). O
+          padrão do drei (numa tela de 120 Hz: abaixo de 50 desce, acima de 90
+          sobe) virava gangorra a cada travadinha e, com 3 viradas, desligava a
+          lente pra sempre: do 1 pro 0 TODOS os shaders recompilam (trava) */}
+      {vigiar && <PerformanceMonitor bounds={() => [30, 1000]} flipflops={Infinity} onDecline={() => setNivel((n) => Math.max(0, n - 1))} />}
       {nivel === 2 && (
         <EffectComposer multisampling={0} enableNormalPass={false}>
           <SMAA />

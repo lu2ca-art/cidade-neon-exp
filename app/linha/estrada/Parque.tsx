@@ -16,6 +16,7 @@ import { posicao, type Mundo } from "./mundo"
 import { PASSO, pontoI } from "./pista"
 import { G, fracaoDe, montarTrilho, quadro, type Trilho } from "../../parque/trilho"
 import { criarVento, estalo, sino } from "../../parque/sons"
+import { LuzPonto } from "./luzes"
 
 // onde: na avenida, deste lado, a partir deste ponto da pista
 export const PARQUE = { area: "full" as const, u: 700, lado: 1 as 1 | -1 }
@@ -255,7 +256,7 @@ export function Parque({ M, passeio }: { M: Mundo; passeio: React.RefObject<Pass
       <Trilhos tr={tr} />
       <Estacao pos={estacao} rumo={rumo} />
       <RodaGigante pos={roda} rumo={rumo} />
-      <pointLight position={[estacao.x, estacao.y + 30, estacao.z]} color="#ff5b5b" intensity={300} distance={120} decay={2} />
+      <LuzPonto position={[estacao.x, estacao.y + 30, estacao.z]} color="#ff5b5b" intensity={300} distance={120} decay={2} />
       <group ref={carro}>
         <mesh position={[0, 0.25, 0]}><boxGeometry args={[1.6, 0.4, 2.4]} /><meshStandardMaterial color="#ff5b5b" emissive="#ff5b5b" emissiveIntensity={0.35} metalness={0.4} roughness={0.4} /></mesh>
         <mesh position={[0, 0.55, -1.1]} rotation-x={-0.4}><boxGeometry args={[1.6, 0.1, 0.6]} /><meshStandardMaterial color="#ff5b5b" emissive="#ff5b5b" emissiveIntensity={0.35} /></mesh>

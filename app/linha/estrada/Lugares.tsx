@@ -13,6 +13,7 @@ import { LUGARES, VAGA, type Lugar, type LugarId } from "../lugares"
 import { posicao, type Mundo } from "./mundo"
 import { MEIA, PASSO, pontoI } from "./pista"
 import { texTexto } from "./geo"
+import { LuzPonto } from "./luzes"
 
 const FRENTE = MEIA + 9 // a fachada fica a isso do eixo da pista
 const FUNDO = 10 // profundidade do prédio
@@ -151,7 +152,7 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
             <meshBasicMaterial map={letreiro} transparent toneMapped={false} depthWrite={false} />
           </mesh>
           {/* a luz da vitrine no chão da calçada */}
-          <pointLight position={[0, 2.5, 2.5]} color={l.cor} intensity={emCena ? 34 : 20} distance={12} decay={2} />
+          <LuzPonto position={[0, 2.5, 2.5]} color={l.cor} intensity={emCena ? 34 : 20} distance={12} decay={2} />
         </group>
         {/* um poste na calçada, luz branca fria (contra o quente do lugar).
             Na cena ele sai: fica bem na frente da câmera */}
@@ -165,7 +166,7 @@ function Fachada({ l, p, alvo, emCena }: { l: Lugar; p: PoseLugar; alvo: boolean
           <meshBasicMaterial color="#dfe9ff" toneMapped={false} />
         </mesh>
         </>}
-        <pointLight position={[-6.5, 4.6, FUNDO / 2 + 7.2]} color="#cfe0ff" intensity={18} distance={11} decay={2} />
+        <LuzPonto position={[-6.5, 4.6, FUNDO / 2 + 7.2]} color="#cfe0ff" intensity={18} distance={11} decay={2} />
         {/* calçada até a pista */}
         <mesh position={[0, 0.06, FUNDO / 2 + 4.5]}>
           <boxGeometry args={[16, 0.12, 9]} />
@@ -232,7 +233,7 @@ function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: bo
           <meshStandardMaterial color="#5a4630" roughness={1} />
         </mesh>
         {/* uma lâmpada fraca, amarela, no fundo: a única luz que é dela */}
-        <pointLight position={[0, 3.2, -FUNDO / 2 + 2.5]} color="#ffd9a0" intensity={emCena ? 30 : 6} distance={12} decay={2} />
+        <LuzPonto position={[0, 3.2, -FUNDO / 2 + 2.5]} color="#ffd9a0" intensity={emCena ? 30 : 6} distance={12} decay={2} />
         <mesh position={[0, 3.3, -FUNDO / 2 + 1.2]}>
           <sphereGeometry args={[0.09, 8, 6]} />
           <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
@@ -244,7 +245,7 @@ function Beco({ l, p, revelado, emCena }: { l: Lugar; p: PoseLugar; revelado: bo
               <planeGeometry args={[7, 1.4]} />
               <meshBasicMaterial map={tex} transparent toneMapped={false} depthWrite={false} />
             </mesh>
-            <pointLight position={[0, 0, 1.5]} color={GRITOS[k].cor} intensity={14} distance={10} decay={2} />
+            <LuzPonto position={[0, 0, 1.5]} color={GRITOS[k].cor} intensity={14} distance={10} decay={2} />
           </group>
         ))}
         <mesh position={[0, 0.06, FUNDO / 2 + 4.5]}>
@@ -337,7 +338,7 @@ function Pin({ p, cor }: { p: PoseLugar; cor: string }) {
         <coneGeometry args={[1.25, 3.2, 20]} />
         <meshBasicMaterial color={cor} toneMapped={false} />
       </mesh>
-      <pointLight position={[0, 1, 0]} color={cor} intensity={60} distance={30} decay={2} />
+      <LuzPonto position={[0, 1, 0]} color={cor} intensity={60} distance={30} decay={2} />
     </group>
   )
 }

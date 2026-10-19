@@ -9,6 +9,7 @@ import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
 import * as THREE from "three"
 import type { CentralDisco } from "./mundoDisco"
+import { LuzPonto } from "./luzes"
 
 const CHAO = -12
 
@@ -55,7 +56,7 @@ export function TorreCentral({ c, janelas }: { c: CentralDisco; janelas: THREE.T
         <cylinderGeometry args={[0.6, 1.4, 26, 8]} />
         <meshStandardMaterial color="#1a1830" emissive="#ff6a35" emissiveIntensity={0.6} />
       </mesh>
-      <pointLight position={[0, topo + 6, 0]} color="#ff6a35" intensity={80} distance={260} />
+      <LuzPonto position={[0, topo + 6, 0]} color="#ff6a35" intensity={80} distance={260} />
     </group>
   )
 }
