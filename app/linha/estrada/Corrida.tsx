@@ -34,6 +34,7 @@ import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./f
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { geoChaoDisco, montarMundoDisco, type MundoDisco } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
+import { OculosHud, OculosMapa } from "./Oculos"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
@@ -752,6 +753,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (disco) no box da central: o elevador troca de linha (de andar)
   const discoM = "disco" in M ? (M as MundoDisco) : null
   const naCentral = !!discoM && /:torre$/.test(M.vias[viaAtual]?.id ?? "")
+  // (disco) o óculos no lugar do celular: ligado por padrão, o botão liga e desliga
+  const [oculos, setOculos] = useState(() => { try { return localStorage.getItem("cn-oculos") !== "off" } catch { return true } })
+  const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
   const pistaAtual = discoM ? discoM.info[viaAtual]?.pista ?? -1 : -1
   const elevador = useCallback((k: number) => {
     if (!discoM || k === pistaAtual) return
@@ -1608,10 +1612,18 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       <div ref={fadeCam} className="l-fade-cam" />
       <div className="l-hud-topo">
         {/* o carro é a tela principal; o celular é um toque */}
+        {discoM ? (
+          // (disco) o óculos: liga e desliga o holograma (o celular mora dentro dele)
+          <button type="button" className={`l-hud-cel is-oculos ${oculos ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarOculos} aria-label={oculos ? "desligar o óculos" : "ligar o óculos"}>
+            <svg width="22" height="18" viewBox="0 0 28 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="10" height="8" rx="3" /><rect x="16" y="6" width="10" height="8" rx="3" /><path d="M12 9.5c1.3-1 2.7-1 4 0M2 8 0.8 5.5M26 8l1.2-2.5" /></svg>
+            {avisos > 0 && <em>{avisos}</em>}
+          </button>
+        ) : (
         <button type="button" className="l-hud-cel" onPointerDown={(e) => e.stopPropagation()} onClick={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} aria-label="abrir o celular">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg>
           {avisos > 0 && <em>{avisos}</em>}
         </button>
+        )}
         <button type="button" className={`l-hud-cam ${dentro ? "is-dentro" : ""} ${usouCam ? "" : "is-novo"}`} onPointerDown={(e) => e.stopPropagation()} onClick={trocarCamera} aria-label={dentro ? "câmera de fora" : "câmera de dentro"} title="câmera (C)">
           {dentro ? (
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 16V9a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v7" /><path d="M3 16h18" /><circle cx="7.5" cy="17.5" r="1.6" /><circle cx="16.5" cy="17.5" r="1.6" /></svg>
@@ -1735,6 +1747,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {seco && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
         <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
       )}
+      {/* (disco) o óculos: o mapa holográfico (aparece subindo) e o painel leve */}
+      {discoM && <OculosMapa M={discoM} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; x: number; y: number; voo?: boolean; wx?: number; wz?: number; rumo?: number }>} />}
+      {discoM && <OculosHud aberto={oculos && !naCentral} tarefa={missaoAlvo?.tarefa ?? null} onAbrirCelular={() => onSair({ ...jogo.current.st, tempo: jogo.current.tempo })} />}
       {/* (disco) o elevador da central: as 9 linhas, uma por andar */}
       {naCentral && discoM && (
         <div className="l-elevador" onPointerDown={(e) => e.stopPropagation()}>
