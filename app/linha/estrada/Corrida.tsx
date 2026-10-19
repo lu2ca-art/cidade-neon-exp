@@ -32,6 +32,7 @@ import { MODELOS, montarModelos } from "./carros"
 import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
+import { geoChaoDisco, montarMundoDisco } from "./mundoDisco"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
@@ -1977,16 +1978,22 @@ let MUNDO: Mundo | null = null
 // (18/10, LU2CA: "a pior versão até hoje" — sem guard rail, a Kombi sai da rua
 // e entra nos prédios, a cidade no chão) o mapa VELHO volta a ser o padrão; o
 // 2.0 fica atrás do ?mapa=novo (marcado na aba) até ficar pronto; ?mapa=velho desfaz
-export function mapaNovo() {
-  if (typeof window === "undefined") return false
+// (19/10) ?mapa=disco: o mapa-disco (mundoDisco.ts), em construção
+export function qualMapa(): "velho" | "novo" | "disco" {
+  if (typeof window === "undefined") return "velho"
   try {
     const q = new URLSearchParams(location.search).get("mapa")
-    if (q === "novo") sessionStorage.setItem("cn-mapa", "novo")
+    if (q === "novo" || q === "disco") sessionStorage.setItem("cn-mapa", q)
     if (q === "velho") sessionStorage.removeItem("cn-mapa")
-    return sessionStorage.getItem("cn-mapa") === "novo"
-  } catch { return false }
+    const m = sessionStorage.getItem("cn-mapa")
+    return m === "novo" || m === "disco" ? m : "velho"
+  } catch { return "velho" }
 }
-function mundo() { return (MUNDO ??= mapaNovo() ? montarMundoRede() : montarMundo()) }
+function mundo() {
+  if (MUNDO) return MUNDO
+  const q = qualMapa()
+  return (MUNDO = q === "disco" ? montarMundoDisco() : q === "novo" ? montarMundoRede() : montarMundo())
+}
 export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
 let RETOMAR: Retomada | null = null
 
@@ -2220,7 +2227,7 @@ function Cena({
   const centro = M.vias[M.circuito.linha]
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
-  const relevoNovo = useMemo(() => ("ligacoes" in M ? geoRelevoRede(M as MundoRede) : null), [M])
+  const relevoNovo = useMemo(() => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null), [M])
 
   useEffect(() => () => motor?.parar(), [motor])
   // a estática da sintonia (entre um lugar e outro)
@@ -2262,9 +2269,12 @@ function Cena({
     // outra encosta chegando, e no começo/fim das saídas (coladas no circuito)
     const divide = (v: Via, i: number, lado: number) => v.faixas.some((f) => f.lado === lado && Math.abs(i - Math.floor(f.u / PASSO)) <= 1)
     const chegando = (v: Via, i: number) => v.chegadas.some((c) => U(i) > c.u - 220 && U(i) < c.u + 10)
+    // (disco) a borda de dentro de cada mão é o meio da pista: lá é linha, não guard rail
+    const doDisco = (p: Pista) => !!(p as Via & { disco?: boolean }).disco
     const trilhoE = (p: Pista, i: number) => {
       const v = p as Via
       const u = U(i)
+      if (doDisco(p)) return false
       if (v.id === "deserto") return u > 90 && (u < 900 || u > v.L - 900) && u < v.L - 230
       if (v.tipo === "circuito") return !divide(v, i, -1)
       return !(v.lado! > 0 && u < 90) && u < v.L - 230
@@ -2292,7 +2302,8 @@ function Cena({
     })
     return {
       chao: fita(vias, (p, i) => p.esq[i] - 0.25, (p, i) => p.dir[i] + 0.25, 0.01),
-      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, x - 0.1, x + 0.1, 0.04, { incluir: (p, i) => i % 6 < 3 && semEmenda(p, i) })),
+      // (disco) cada mão tem 2 faixas: um tracejado só, no meio dela
+      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? -0.1 : x - 0.1), (p) => (doDisco(p) ? 0.1 : x + 0.1), 0.04, { incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? x < 0 : semEmenda(p, i)) })),
       bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { incluir: semEmenda })),
       linhasGarfo: [divisoria(-1), divisoria(1)],
       railE: rails(-1),
@@ -2379,7 +2390,7 @@ function Cena({
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
         const fundo = e.w[0] + r() * (e.w[1] - e.w[0])
         d.scale.set(w, h, fundo)
-        if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5) }
+        if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h) }
         d.updateMatrix()
         m.setMatrixAt(i, d.matrix)
         i++
@@ -2461,6 +2472,7 @@ function Cena({
         if (v.id === "deserto" && u > 900 && u < v.L - 900) continue
         if (noTunel(v, k)) continue
         for (const lado of [-1, 1]) {
+          if (lado < 0 && (v as Via & { disco?: boolean }).disco) continue
           if (v.tipo === "circuito") {
             if (v.faixas.some((f) => f.lado === lado && u > f.u - 4 && u < f.u + 140)) continue
             if (lado > 0 && v.chegadas.some((c) => u > c.u - 240 && u < c.u + 10)) continue
@@ -2715,12 +2727,15 @@ function Cena({
   // (direção livre) bater num prédio: devolve o empurrão pra fora, ou null
   const bater = useMemo(() => {
     const c = cidade.colisores, g = new Map<string, number[]>(), CEL = 24
-    for (let k = 0; k < c.length; k += 6) { const key = `${Math.floor(c[k] / CEL)},${Math.floor(c[k + 1] / CEL)}`; let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k) }
-    return (x: number, z: number, raio: number): [number, number] | null => {
+    // (cada prédio: centro, rumo, meia largura, meio fundo e a altura do topo)
+    for (let k = 0; k < c.length; k += 7) { const key = `${Math.floor(c[k] / CEL)},${Math.floor(c[k + 1] / CEL)}`; let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k) }
+    // y: a altura de quem testa (a câmera numa pista elevada passa por cima do prédio baixo)
+    return (x: number, z: number, raio: number, y = -Infinity): [number, number] | null => {
       const cx = Math.floor(x / CEL), cz = Math.floor(z / CEL)
       // a caixa do prédio, girada com a rua: z local = a tangente, x local = o lado
       let ex = 0, ez = 0, bateu = false
       for (let a2 = -2; a2 <= 2; a2++) for (let b2 = -2; b2 <= 2; b2++) for (const k of g.get(`${cx + a2},${cz + b2}`) ?? []) {
+        if (y > c[k + 6] + 1) continue
         const dx = x + ex - c[k], dz = z + ez - c[k + 1], tx = c[k + 2], tz = c[k + 3], hw = c[k + 4], hd = c[k + 5]
         const lx = dx * tz - dz * tx, lz = dx * tx + dz * tz
         const qx = Math.max(-hw, Math.min(hw, lx)), qz = Math.max(-hd, Math.min(hd, lz))
@@ -3202,7 +3217,8 @@ function Cena({
     // ela é projetada na rede (via, u, x): as missões, os lugares, o mapa, a
     // rota e o trânsito seguem lendo isso como sempre ──
     const MR = "ligacoes" in M ? (M as MundoRede) : null
-    const livre = !!MR && !cine && !aberturaRef.current.ativa && !j.chegando && !passeio.current.andando
+    // (o disco é pista de Gran Turismo: parede invisível, sem direção livre)
+    const livre = !!MR && !("disco" in M) && !cine && !aberturaRef.current.ativa && !j.chegando && !passeio.current.andando
     let trocou = false
     const uAnt = j.u
     if (livre && MR) {
@@ -3295,6 +3311,7 @@ function Cena({
       j.tVolta = (j.tVolta ?? 0) + dt
       if (j.tVolta > 0.5) { j.tVolta = 0; j.retorno = true }
     } else j.tVolta = 0
+    if (j.retorno && V.tipo === "rua" && V.rede && V.rede.par < 0) j.retorno = false
     if (j.retorno && V.tipo === "rua" && V.rede) {
       j.retorno = false
       const par = V.rede.par
@@ -3946,7 +3963,7 @@ function Cena({
         // prédio no caminho: entra NA HORA (nunca atravessa parede) e volta devagar
         const dx = tmp.alvo.x - car.position.x, dz = tmp.alvo.z - car.position.z, L = Math.hypot(dx, dz)
         let fAlvo = 1
-        for (let s2 = 2; s2 < L; s2 += 0.75) if (bater(car.position.x + (dx * s2) / L, car.position.z + (dz * s2) / L, 0.6)) { fAlvo = Math.min(1, Math.max(4, s2 - 1) / L); break }
+        for (let s2 = 2; s2 < L; s2 += 0.75) if (bater(car.position.x + (dx * s2) / L, car.position.z + (dz * s2) / L, 0.6, cz.y + 1.3 + (tmp.alvo.y - cz.y - 1.3) * (s2 / L))) { fAlvo = Math.min(1, Math.max(4, s2 - 1) / L); break }
         cd.enc = fAlvo < cd.enc ? fAlvo : cd.enc + (fAlvo - cd.enc) * Math.min(1, dt * 1.5)
         // desliza pelo próprio braço (do teto da Kombi até a câmera): o ângulo
         // fica o mesmo e ela continua no mesmo lugar da tela, só que maior

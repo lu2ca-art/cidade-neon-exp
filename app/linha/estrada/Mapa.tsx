@@ -103,7 +103,8 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto, viagens = 0, 
   // o mapa novo: a carta pintada (o v5) embaixo, no lugar das linhas soltas
   const [carta, setCarta] = useState<HTMLCanvasElement | null>(null)
   useEffect(() => {
-    if (!("ligacoes" in M) || (window as unknown as { __semCarta?: boolean }).__semCarta) return
+    // (o disco não tem a carta do v5: as linhas das pistas bastam)
+    if (!("ligacoes" in M) || "disco" in M || (window as unknown as { __semCarta?: boolean }).__semCarta) return
     const t = setTimeout(() => setCarta(pintarCarta()), 700)
     return () => clearTimeout(t)
   }, [M])
