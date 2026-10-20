@@ -2372,3 +2372,35 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-visor-capa { display: block; width: min(60vw, 260px); aspect-ratio: 4 / 3; background-size: cover; background-position: center; border-radius: 14px; box-shadow: 0 0 30px -8px var(--cor); }
 .l-visor-fora p { max-width: 380px; margin: 0; font: 14px/1.5 system-ui, sans-serif; opacity: 0.85; }
 .l-visor-fora a { padding: 10px 18px; border-radius: 999px; background: var(--cor); color: #07060d; font: 700 13px var(--mono); text-decoration: none; }
+
+/* (disco, B15c) o FR3Q_ com a cara do untitled */
+.l-freq { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); width: 100%; min-height: 0; background: #1c1c1f; color: #f2f2f4; }
+.l-freq-grade { overflow-y: auto; padding: 22px 22px 120px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 22px 18px; align-content: start; }
+.l-freq-proj { display: grid; gap: 6px; padding: 0 !important; border: 0 !important; background: none !important; text-align: left; cursor: pointer; color: inherit !important; }
+.l-freq-capa { position: relative; display: block; aspect-ratio: 1; border-radius: 10px; background-size: cover; background-position: center; background-color: #2a2a2e; transition: transform 0.15s; }
+.l-freq-proj:hover .l-freq-capa { transform: translateY(-2px); }
+.l-freq-proj.is-aqui .l-freq-capa { outline: 2px solid #f2f2f4; outline-offset: 2px; }
+.l-freq-play { position: absolute; left: 10px; bottom: 10px; width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(18, 18, 20, 0.88); color: #fff; font: 12px system-ui, sans-serif; font-style: normal; }
+.l-freq-proj b { font: 500 14px system-ui, sans-serif; color: #fff; }
+.l-freq-proj small { font: 400 12.5px system-ui, sans-serif; color: #8e8e95; margin-top: -4px; }
+.l-freq-player { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: rgba(40, 40, 44, 0.96); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.l-freq-mini { flex: none; width: 40px; height: 40px; border-radius: 50%; background-size: cover; background-position: center; background-color: #3a3a40; }
+.l-freq-nome { flex: 0 1 170px; display: grid; min-width: 0; }
+.l-freq-nome b { font: 500 13px system-ui, sans-serif; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-freq-nome small { font: 12px system-ui, sans-serif; color: #8e8e95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-freq-onda { flex: 1; height: 32px; display: flex; align-items: center; gap: 2px; cursor: pointer; min-width: 60px; }
+.l-freq-onda i { flex: 1; border-radius: 1px; background: #5a5a62; }
+.l-freq-onda i.is-tocou { background: #f2f2f4; }
+.l-freq-tempo { flex: none; font: 12px ui-monospace, monospace; color: #b0b0b8; font-variant-numeric: tabular-nums; }
+.l-freq-ctrl { flex: none; display: flex; align-items: center; gap: 4px; }
+.l-freq-ctrl button { width: 30px !important; height: 30px; padding: 0 !important; border: 0 !important; border-radius: 50%; background: none !important; color: #c8c8d0 !important; font: 14px system-ui, sans-serif !important; cursor: pointer; }
+.l-freq-ctrl button.is-on { color: #fff !important; }
+.l-freq-ctrl button.is-play { width: 36px !important; height: 36px; background: #f2f2f4 !important; color: #1c1c1f !important; }
+.l-freq-ctrl input { width: 70px; accent-color: #f2f2f4; }
+.l-freq-mais { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #3a3a40; color: #fff; font: 20px system-ui, sans-serif; text-decoration: none; }
+@media (max-width: 700px) {
+  .l-freq-grade { grid-template-columns: repeat(2, 1fr); padding: 16px 16px 230px; }
+  .l-freq-player { flex-wrap: wrap; }
+  .l-freq-onda { order: 5; flex-basis: 100%; }
+  .l-freq-ctrl input { display: none; }
+}

@@ -47,6 +47,7 @@ import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, comHistoria, historiaAtiva, historia
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
 import { VISOR, Visor, type VisorId } from "./disco/Visor"
+import { Freq } from "./disco/Freq"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -1219,7 +1220,7 @@ export default function LinhaPage() {
         )}
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
-        {visor && <Visor id={visor} onFechar={() => setVisor(null)} />}
+        {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq /> : undefined}</Visor>}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (
           <Chat
