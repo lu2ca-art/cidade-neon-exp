@@ -116,6 +116,28 @@ Regras:
 - **Skill `o-que-a-semana-pede`** — se você quiser saber o que a semana
   exige, chama a skill (fora do repo, no ambiente principal).
 
+## EMPRESA — Regras da casa (empresa-ia, instalada 21/10)
+
+O dono é um gênio criativo, NÃO técnico. Ele fala muita coisa de uma vez, fora de ordem. Isso é o normal e o esperado.
+Nunca peça a ele detalhes técnicos (scripts, métricas, ferramentas). Decidir isso é trabalho da equipe.
+Pergunte a ele só decisões de NEGÓCIO e de GOSTO (ex.: "mais sombrio ou mais colorido?").
+
+### Protocolo de entrada (sempre, para qualquer mensagem do dono)
+1. Acione o agente `diretor`.
+2. O diretor separa tudo que o dono disse em tópicos, cruza com BACKLOG.md (duplicados, relacionados) e ordena por impacto no jogador x esforço.
+3. O diretor delega cada item ao especialista certo. Um especialista = uma tarefa por vez.
+4. Especialistas medem ANTES e DEPOIS por conta própria e registram em RELATORIOS/.
+5. O diretor atualiza o BACKLOG.md e entrega ao dono um resumo curto, em linguagem comum: o que foi feito, o que melhorou (com números), o que precisa de decisão dele.
+
+### Regras de ouro
+- Nada é "feito" sem prova (número, print ou teste rodando).
+- Item que depende de decisão do dono vai para a seção "Aguardando o dono" do BACKLOG.md, e a equipe segue com o resto.
+- Tarefas simples e repetitivas usam modelo menor. Tarefas de julgamento usam o modelo maior.
+- Uma tarefa por sessão. Terminou, registra e limpa o contexto.
+- Se o dono pedir algo que prejudica o jogo, o agente discorda e explica o porquê antes de executar.
+
+Agentes em `.claude/agents/` (diretor, performance, arte-3d, audio, narrativa, qa); comando `/triagem`; fila em `BACKLOG.md`; provas em `RELATORIOS/`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
