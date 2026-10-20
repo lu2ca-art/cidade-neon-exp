@@ -2461,3 +2461,10 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-perfil li button:disabled { opacity: 0.4; cursor: default; }
 .l-perfil.is-oficina li { opacity: 1; }
 .l-perfil-pintura { justify-self: end; padding: 7px 12px !important; border-radius: 999px; border: 1px solid #ff9000 !important; background: none !important; color: #ff9000 !important; font: 700 11px var(--mono) !important; cursor: pointer; }
+
+/* (disco, B11) o ping pong com o robô */
+.l-pingpong { position: absolute; inset: 0; z-index: 72; background: #06040c; touch-action: none; }
+.l-pingpong canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.l-pingpong header { position: absolute; left: 0; right: 0; top: calc(12px + env(safe-area-inset-top)); display: grid; justify-items: center; gap: 2px; pointer-events: none; }
+.l-pingpong header small { font: 11px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--cor); }
+.l-pingpong header b { font: 800 26px var(--mono); color: #fff; }

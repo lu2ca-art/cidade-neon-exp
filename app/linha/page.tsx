@@ -52,6 +52,10 @@ import { Freq } from "./disco/Freq"
 import { Show, type ResultadoShow } from "./disco/Show"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
+import { pecaAgora } from "./disco/missoes"
+import { PingPong } from "./disco/PingPong"
+import { luzDasPistas, pistasFeitas } from "./estrada/atos"
+import { PISTAS } from "./estrada/pistas"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -496,6 +500,8 @@ export default function LinhaPage() {
         setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" })
         return
       }
+      // (B11) a peça de destreza da carreira (o ping pong da Sexta-Feira)
+      if (h.fase === "carreira" && id === "casa-drewboy" && !(h.pecas ?? []).includes("sexta:pingpong") && Date.now() - barFechou.current > 8000) { setPingpong(true); return }
       if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
         setAoVivo(null)
         setCinema("lugar")
@@ -687,10 +693,18 @@ export default function LinhaPage() {
     return emTutorial(save) ? (feito(save, "posto") ? l.filter((m) => m.id === PRIMEIRA) : []) : l
   }, [save, nivel])
 
+  // (B11) a carreira: a próxima peça jogável das linhas acesas
+  const pecaCarreira = useMemo(() => {
+    if (hist.fase !== "carreira") return null
+    const luz = luzDasPistas(pistasFeitas(save.objetos))
+    return pecaAgora(PISTAS.filter((p) => luz[p.faixa] === "aberta").map((p) => p.id), hist.pecas ?? [])
+  }, [hist.fase, hist.pecas, save.objetos])
+  const [pingpong, setPingpong] = useState(false)
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? { t: "lugar", missao: "copo", lugar: "bar", pegar: false }
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : hist.fase === "nectar" && hist.nectar === "oficina" ? { t: "lugar", missao: "nectar", lugar: "oficina", pegar: false }
+    : pecaCarreira?.peca.onde?.lugar ? { t: "lugar", missao: "sexta", lugar: pecaCarreira.peca.onde.lugar as LugarId, pegar: false }
     : null
   // (B8) o show marcado: o fim de cada missão (o prólogo é o do bar)
   const SHOWS: Record<string, { faixa: "copo" | "nectar"; lugar: string; cor: string }> = {
@@ -707,7 +721,8 @@ export default function LinhaPage() {
   }
   // o que o anel do holo diz (curto: o lugar, não a explicação)
   const objetivoDisco = hist.fase === "dunas" ? "a cidade" : hist.fase === "bar" ? "o bar"
-    : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"] : null
+    : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
+    : pecaCarreira ? pecaCarreira.peca.nome : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -1108,7 +1123,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
@@ -1273,6 +1288,11 @@ export default function LinhaPage() {
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
         {showAgora && <Show key={showAgora} faixa={SHOWS[showAgora].faixa} lugar={SHOWS[showAgora].lugar} cor={SHOWS[showAgora].cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
+        {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
+          setPingpong(false)
+          barFechou.current = Date.now()
+          if (venceu) setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + 3), neon: (s.neon ?? 0) + 10 }, (h) => ({ ...h, pecas: [...new Set([...(h.pecas ?? []), "sexta:pingpong"])] })))
+        }} />}
         {jornal && <Jornal m={jornal} cor={SHOWS[jornal.missao]?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq /> : undefined}</Visor>}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}

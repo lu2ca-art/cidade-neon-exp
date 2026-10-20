@@ -42,6 +42,8 @@ export interface HistoriaDisco {
   mods?: string[]
   // robôs espatifados (B12)
   robos?: number
+  // (B11) as peças das missões já feitas ("sexta:pingpong")
+  pecas?: string[]
   // o show que está pra acontecer (B8): o fim de cada missão (o prólogo: "bar")
   show?: string
 }
