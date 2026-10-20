@@ -16,9 +16,13 @@ import * as THREE from "three"
 import { POS } from "./luzes"
 import { VELO } from "./velo"
 
-export function Cinema() {
+// maxLente (20/10): o teto que a qualidade do aparelho dá (qualidade.ts)
+export function Cinema({ maxLente = 2 }: { maxLente?: number }) {
   // (medição: ?medir&lente=0|1|2 fixa o nível da lente)
-  const [nivel, setNivel] = useState(() => { if (typeof window === "undefined" || !/[?&]medir/.test(location.search)) return 2; const v = new URLSearchParams(location.search).get("lente"); return v === "0" || v === "1" || v === "2" ? +v : 2 })
+  const [nivel, setNivel] = useState(() => { if (typeof window === "undefined" || !/[?&]medir/.test(location.search)) return Math.min(2, maxLente); const v = new URLSearchParams(location.search).get("lente"); return v === "0" || v === "1" || v === "2" ? +v : Math.min(2, maxLente) })
+  // a medida do aparelho baixou o teto: a lente desce junto (uma vez só)
+  const [tetoAnt, setTetoAnt] = useState(maxLente)
+  if (tetoAnt !== maxLente) { setTetoAnt(maxLente); if (nivel > maxLente) setNivel(maxLente) }
   const gl = useThree((s) => s.gl)
   // com a lente ligada quem faz o tonemapping é ela; sem lente, o renderer
   useEffect(() => {

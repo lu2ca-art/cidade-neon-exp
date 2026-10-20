@@ -43,6 +43,8 @@ import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
 import { DPR, ResolucaoDinamica } from "./resolucao"
+import { NIVEIS, QUALIDADE } from "./qualidade"
+import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
 import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloLetreiro, HoloSom, type Clima } from "./Holo"
@@ -339,6 +341,8 @@ const DIAL = Array.from({ length: 15 }, (_, k) => {
 })
 const toqueTela = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
 // medição (só com ?medir): ?dpr=1.25 fixa a densidade de pixels do canvas
+const testeMedir = typeof window !== "undefined" && /[?&]medir/.test(location.search)
+const testeMedirAparelho = typeof window !== "undefined" && /[?&]medirAparelho/.test(location.search)
 const testeDpr = (() => { if (typeof window === "undefined" || !/[?&]medir/.test(location.search)) return null; const v = Number(new URLSearchParams(location.search).get("dpr")); return v > 0 ? v : null })()
 
 const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
@@ -2454,6 +2458,8 @@ function Cena({
   const carro = useRef<THREE.Group>(null)
   const ceu = useRef<THREE.Mesh>(null)
   const a = useMemo(() => novaAmostra(), [])
+  // (20/10) o nível de qualidade do aparelho (qualidade.ts): muda uma vez, quando a medida termina
+  const [qual, setQual] = useState(QUALIDADE.nivel)
   const motor = useMemo(() => montarMotor(), [])
   const reduz = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, [])
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
@@ -4314,7 +4320,10 @@ function Cena({
       p.y += c.y
       tmp.d.position.copy(p)
       tmp.d.rotation.set(0, Math.atan2(a.tx, a.tz) + c.giro, c.caido > 0 ? Math.sin(c.giro) * 0.3 : 0)
-      tmp.d.scale.set(1, 1, 1)
+      // (20/10) longe da câmera (além do que a qualidade do aparelho desenha) o carro some
+      const cp = state.camera.position, dc2 = (p.x - cp.x) ** 2 + (p.z - cp.z) ** 2
+      const sc = dc2 > QUALIDADE.carros * QUALIDADE.carros ? 0 : 1
+      tmp.d.scale.set(sc, sc, sc)
       tmp.d.updateMatrix()
       for (const m of tr.malhas[c.modelo]) m.setMatrixAt(c.slot, tmp.d.matrix)
     }
@@ -4871,7 +4880,7 @@ function Cena({
     // (19/10, desempenho) só os anéis a até 450 m da câmera entram na malha (no
     // disco são 1142, 400 mil triângulos desenhados e reenviados todo quadro;
     // um anel de 1,5 m some de vista bem antes disso)
-    const camP = state.camera.position, R2 = 450 * 450
+    const camP = state.camera.position, R2 = QUALIDADE.gotas * QUALIDADE.gotas // (20/10: a distância vem da qualidade do aparelho)
     let n = 0
     for (let i = 0; i < orbs.lista.length; i++) {
       if (j.pegos.has(i) || viaApagada?.[orbs.lista[i].via]) continue
@@ -5018,7 +5027,10 @@ function Cena({
       {/* as luzes dos lugares, bombas e torres: um punhado que segue a câmera (luzes.tsx) */}
       <LuzesProximas />
       <CompilaSemTravar />
-      <ResolucaoDinamica fixa={testeDpr} />
+      <ResolucaoDinamica fixa={testeDpr} max={NIVEIS[qual].dprMax} />
+      {/* (20/10) a primeira partida mede o aparelho e define a qualidade (no
+          teste, só com ?medirAparelho: a medição de desempenho não pode mudar sozinha) */}
+      {"disco" in M && !QUALIDADE.medido && (!testeMedir || testeMedirAparelho) && <MedirAparelho onFim={setQual} />}
       <mesh ref={ceu} material={ceuMat} frustumCulled={false} renderOrder={-1}>
         <sphereGeometry args={[2800, 32, 16]} />
       </mesh>
@@ -5245,7 +5257,7 @@ function Cena({
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
         <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />
       </group>
-      <Seguro nome="lente"><Cinema /></Seguro>
+      <Seguro nome="lente"><Cinema maxLente={NIVEIS[qual].lente} /></Seguro>
     </>
   )
 }

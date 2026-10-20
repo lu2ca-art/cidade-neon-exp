@@ -27,6 +27,8 @@ export function ResolucaoDinamica({ max = 1.5, fixa = null }: { max?: number; fi
   const st = useRef({ dpr: DPR.v ?? inicio, tq: 0, quadros: [] as number[], desde: 0, folga: 0, ruins: 0, trocas: 0, ritmo: 1000 / 60 })
   const mudar = (v: number) => { DPR.v = v; setDpr(v) }
   useEffect(() => { if (fixa == null && DPR.v == null) { DPR.v = inicio; setDpr(inicio) } }, [inicio, fixa, setDpr])
+  // (20/10, a qualidade medida) o teto baixou: a densidade desce junto na hora
+  useEffect(() => { if (fixa == null && DPR.v != null && DPR.v > teto) { st.current.dpr = teto; DPR.v = teto; setDpr(teto) } }, [teto, fixa, setDpr])
   useFrame(() => {
     if (fixa != null) return
     const s = st.current
