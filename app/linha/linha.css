@@ -2537,3 +2537,28 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
   .l-viagem.is-holo-celular.is-holo .l-sair-kombi { top: calc(70px + env(safe-area-inset-top)) !important; left: calc(12px + env(safe-area-inset-left)); }
   .l-viagem.is-disco .l-aneis { top: calc(150px + env(safe-area-inset-top)) !important; }
 }
+
+/* (B17) o FR3Q_: a lista das prévias, os trancados, a senha, os ícones desenhados */
+.l-freq-play svg, .l-freq-ctrl svg, .l-freq-mais svg { display: block; }
+.l-freq-proj.is-trancado .l-freq-capa { filter: saturate(0.55) brightness(0.7); }
+.l-freq-lista { grid-column: 1 / -1; list-style: none; margin: 0; padding: 8px; display: grid; gap: 2px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+.l-freq-lista button { width: 100% !important; display: grid; grid-template-columns: 28px 1fr auto 20px; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px !important; border-radius: 8px; border: 0 !important; background: none !important; color: #f2f2f4 !important; text-align: left; cursor: pointer; }
+.l-freq-lista button:hover:not(:disabled), .l-freq-lista button.is-aqui { background: rgba(255, 255, 255, 0.07) !important; }
+.l-freq-lista button:disabled { color: #6e6e76 !important; cursor: default; }
+.l-freq-lista em { font: 13px system-ui, sans-serif; font-style: normal; color: #8e8e95; text-align: center; }
+.l-freq-lista b { font: 500 14px system-ui, sans-serif; }
+.l-freq-lista small { font: 12px system-ui, sans-serif; color: #8e8e95; }
+.l-freq-ctrl button { display: grid; place-items: center; }
+.l-freq-vol { display: flex; align-items: center; gap: 6px; color: #c8c8d0; }
+.l-freq-mais { border: 0 !important; cursor: pointer; padding: 0 !important; color: #fff !important; }
+.l-freq-senha-fundo { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(10, 10, 12, 0.72); backdrop-filter: blur(4px); }
+.l-freq-senha { width: min(86%, 300px); display: grid; justify-items: center; gap: 10px; padding: 22px 20px; border-radius: 16px; background: #26262a; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); color: #f2f2f4; text-align: center; }
+.l-freq-senha-capa { width: 120px; aspect-ratio: 1; border-radius: 10px; background-size: cover; background-position: center; display: grid; place-items: center; color: #fff; box-shadow: inset 0 0 0 200px rgba(0, 0, 0, 0.45); }
+.l-freq-senha b { font: 600 16px system-ui, sans-serif; }
+.l-freq-senha small { font: 12.5px system-ui, sans-serif; color: #8e8e95; }
+.l-freq-senha input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #3a3a40; background: #1c1c1f; color: #fff; font: 15px system-ui, sans-serif; text-align: center; outline: none; }
+.l-freq-senha input:focus { border-color: #f2f2f4; }
+.l-freq-senha.is-errou input { border-color: #ff5b5b; animation: l-nega 0.3s; }
+.l-freq-senha em { font: 12px system-ui, sans-serif; font-style: normal; color: #ff8a8a; }
+.l-freq-senha button { width: 100% !important; min-height: 42px; border-radius: 999px; border: 0 !important; background: #f2f2f4 !important; color: #1c1c1f !important; font: 600 14px system-ui, sans-serif !important; cursor: pointer; }
+.l-freq-senha button.is-sec { background: none !important; color: #8e8e95 !important; }

@@ -1301,7 +1301,7 @@ export default function LinhaPage() {
           if (venceu) setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + 3), neon: (s.neon ?? 0) + 10 }, (h) => ({ ...h, pecas: [...new Set([...(h.pecas ?? []), "sexta:pingpong"])] })))
         }} />}
         {jornal && <Jornal m={jornal} cor={SHOWS[jornal.missao]?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
-        {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq /> : undefined}</Visor>}
+        {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq save={save} /> : undefined}</Visor>}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (
           <Chat
