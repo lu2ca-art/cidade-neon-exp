@@ -40,16 +40,19 @@ export function suave(t: number) {
 
 // amostra a spline em passos de PASSO metros. Depois de mexer em py (relevo,
 // rampas), chamar derivar() pra tangentes, curvatura e inclinação.
-export function amostrar(pontos: THREE.Vector3[], fechada: boolean): Pista {
+// exato (o disco, LU2CA 20/10 "lapidar as transições"): a última amostra cai
+// bem no fim da curva (o passo estica uns centímetros); sem isso a via acabava
+// até 2 m antes e a emenda com a próxima ficava com um buraco
+export function amostrar(pontos: THREE.Vector3[], fechada: boolean, exato = false): Pista {
   const curva = new THREE.CatmullRomCurve3(pontos, fechada, "centripetal")
   const Lr = curva.getLength()
-  const n = fechada ? Math.floor(Lr / PASSO) : Math.floor(Lr / PASSO) + 1
+  const n = fechada ? Math.floor(Lr / PASSO) : exato ? Math.max(2, Math.round(Lr / PASSO) + 1) : Math.floor(Lr / PASSO) + 1
   const L = fechada ? n * PASSO : (n - 1) * PASSO
   const f = () => new Float32Array(n)
   const p: Pista = { L, n, fechada, px: f(), py: f(), pz: f(), tx: f(), ty: f(), tz: f(), curv: f(), bank: f(), esq: f(), dir: f() }
   const v = new THREE.Vector3()
   for (let i = 0; i < n; i++) {
-    curva.getPointAt(fechada ? i / n : Math.min(1, (i * PASSO) / Lr), v)
+    curva.getPointAt(fechada ? i / n : exato ? i / (n - 1) : Math.min(1, (i * PASSO) / Lr), v)
     p.px[i] = v.x
     p.py[i] = v.y
     p.pz[i] = v.z
