@@ -28,6 +28,9 @@ const PLANOS: Record<string, Plano> = {
   abertura: { pos: [0.15, 1.6, 5.2], olha: [0, 1.4, 1.8], fov: 46 },
   // ela fala de perto, a luz da casa nela
   dbeePorta: { pos: [0.5, 1.6, 4], olha: [0, 1.45, 2], fov: 42 },
+  // (disco) o tapete com os tambores e a parede dos instrumentos
+  tapete: { pos: [1.2, 1.5, 1.6], olha: [-0.6, 0.35, -0.6], fov: 54 },
+  parede: { pos: [0.4, 1.5, 1.4], olha: [0.2, 1.6, -2.4], fov: 58 },
 }
 
 const COISAS: Coisa[] = [
@@ -47,7 +50,7 @@ const GRUPO: { quem: string; cor: string; pos: V3 }[] = [
   { quem: "Tony Gordo", cor: "#ffe14d", pos: [0.6, 0, 3.4] },
 ]
 
-export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
+export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProps) {
   const coisas = inicio ? [] : COISAS
   const procurando = estado.gesto === (inicio ? "casa-inicio" : "casa")
   const { vistas, ver } = useExplorar(procurando, coisas, inicio ? 2 : 3, sinalizar)
@@ -60,6 +63,14 @@ export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
   const naFoto = !!estado.texto && /foto|relicário/.test(estado.texto)
 
   const plano = useMemo(() => {
+    // (disco, LU2CA 20/10) a casinha no deserto: a porta, a parede dos
+    // instrumentos, ela falando, os tambores
+    if (disco) {
+      if (estado.pos === 0) return PLANOS.abertura
+      if (estado.pos === 1 || /estante|livros/.test(estado.texto ?? "")) return PLANOS.parede
+      if (estado.gesto === "tambores" || /tambor|tocam junto/.test(estado.texto ?? "")) return PLANOS.tapete
+      return estado.falando === "D-Bee" ? PLANOS.dbee : PLANOS.dentro
+    }
     // a porta abre (plano aberto), depois ela de perto
     if (inicio) return estado.pos === 0 ? PLANOS.abertura : PLANOS.dbeePorta
     if (chegaram.length && (estado.falando === null || GRUPO.some((g) => g.quem === estado.falando) || estado.falando === "você" || estado.escolha)) return PLANOS.grupo
@@ -68,7 +79,7 @@ export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
     if (naFoto) return PLANOS.foto
     if (estado.pos === 0) return PLANOS.porta
     return PLANOS.dentro
-  }, [estado, procurando, chegaram, naFoto, inicio])
+  }, [estado, procurando, chegaram, naFoto, inicio, disco])
 
   return (
     <>
@@ -116,6 +127,8 @@ export function SalaCasaDbee({ estado, inicio = false }: SalaProps) {
           nas costas e a do fim de tarde no rosto */}
       {inicio && <Npc cor={AZUL} pos={[0, 0, 2.2]} vira={0} falando={estado.falando === "D-Bee"} />}
       {inicio && <pointLight position={[0.2, 1.8, 3.6]} color="#ffb070" intensity={5} distance={4} decay={2} />}
+      {/* (disco) a D-Bee em casa, os instrumentos na parede, os tambores no tapete */}
+      {disco && <CasaDisco falando={estado.falando === "D-Bee"} />}
       {/* quem chega */}
       {GRUPO.filter((g) => chegaram.includes(g.quem)).map((g) => (
         <Npc key={g.quem} cor={g.cor} pos={g.pos} vira={Math.PI} falando={estado.falando === g.quem} />
@@ -236,5 +249,44 @@ function Janela({ pos, deserto = false }: { pos: V3; deserto?: boolean }) {
         <meshBasicMaterial map={tex} toneMapped={false} />
       </mesh>
     </group>
+  )
+}
+
+// (disco, LU2CA 20/10: "instrumentos na parede, tambores no tapete")
+function CasaDisco({ falando }: { falando: boolean }) {
+  return (
+    <>
+      <Npc cor={AZUL} pos={[0.55, 0, 0.75]} vira={-2.4} falando={falando} />
+      {/* o tapete redondo e os três tambores */}
+      <mesh rotation-x={-Math.PI / 2} position={[-0.5, 0.01, -0.5]}>
+        <circleGeometry args={[1.05, 24]} />
+        <meshStandardMaterial color="#7a2a34" roughness={1} />
+      </mesh>
+      <mesh rotation-x={-Math.PI / 2} position={[-0.5, 0.015, -0.5]}>
+        <ringGeometry args={[0.8, 0.92, 24]} />
+        <meshStandardMaterial color="#e0b060" roughness={1} />
+      </mesh>
+      {([[-0.9, -0.8, 0.22, 0.5], [-0.25, -0.95, 0.18, 0.4], [-0.55, -0.15, 0.15, 0.32]] as const).map(([x, z, r, h], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <mesh position={[0, h / 2, 0]}><cylinderGeometry args={[r, r * 0.85, h, 16]} /><meshStandardMaterial color={["#8a5a2c", "#a0683a", "#6a4424"][i]} /></mesh>
+          <mesh position={[0, h + 0.005, 0]} rotation-x={-Math.PI / 2}><circleGeometry args={[r * 0.96, 16]} /><meshStandardMaterial color="#efe4cc" roughness={0.9} /></mesh>
+        </group>
+      ))}
+      {/* na parede do fundo: duas guitarras, um violino e um pandeiro */}
+      {([[-1.4, 1.55, 0.25], [-0.75, 1.5, -0.2]] as const).map(([x, y, rz], i) => (
+        <group key={i} position={[x, y, -2.44]} rotation={[0, 0, rz]}>
+          <mesh scale={[1, 1.25, 0.25]}><sphereGeometry args={[0.17, 14, 10]} /><meshStandardMaterial color={["#b0342c", "#2a2a3a"][i]} /></mesh>
+          <Caixa pos={[0, 0.42, 0.02]} tam={[0.05, 0.5, 0.03]} cor="#2a1a10" />
+        </group>
+      ))}
+      <group position={[1.15, 1.75, -2.44]} rotation={[0, 0, -0.3]}>
+        <mesh scale={[0.7, 1.1, 0.2]}><sphereGeometry args={[0.12, 12, 8]} /><meshStandardMaterial color="#8a4a1c" /></mesh>
+        <Caixa pos={[0, 0.22, 0.01]} tam={[0.03, 0.22, 0.02]} cor="#1a0e08" />
+      </group>
+      <mesh position={[1.6, 1.25, -2.44]}><torusGeometry args={[0.13, 0.03, 8, 18]} /><meshStandardMaterial color="#c8a050" metalness={0.4} /></mesh>
+      {/* a estante dos livros velhos */}
+      <Caixa pos={[2.35, 1, 1.2]} tam={[0.3, 2, 1.2]} cor="#3a2416" />
+      {[0.5, 1, 1.5].map((y) => <Caixa key={y} pos={[2.25, y, 1.2]} tam={[0.18, 0.32, 1.05]} cor={y === 1 ? "#6a2a2a" : y === 0.5 ? "#2a3a5a" : "#5a4a2a"} />)}
+    </>
   )
 }

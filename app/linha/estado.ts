@@ -6,6 +6,7 @@ import { ROTEIROS, type ChatId, type Tom } from "./roteiros"
 import { montarFio, type Perfil } from "./missoes"
 import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
+import type { HistoriaDisco } from "./disco/historia"
 
 export type Item =
   | { k: "msg"; texto: string; de?: string; eu?: boolean }
@@ -104,6 +105,10 @@ export interface Save {
   // último sorteado — o próximo nunca repete
   modos: Partial<Record<EstacaoId, Modo>>
   ultimoModo: Modo | null
+  // (mapa-disco, LU2CA 20/10) a história nova: do buraco de minhoca à carreira
+  // (disco/historia.ts). Sem o campo: save novo começa no deserto; quem já
+  // jogava segue livre
+  disco?: HistoriaDisco
 }
 
 const CHAVE = "cn-linha-222"

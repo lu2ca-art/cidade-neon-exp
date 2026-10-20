@@ -38,6 +38,8 @@ import { Portoes } from "./Portoes"
 import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
+import { CASA, QUEDA, RAIO_CASA, SAIDA_CASA, FALAS_DUNAS, type HistoriaDisco } from "../disco/historia"
+import { CasaDeserto } from "../disco/CasaDeserto"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
@@ -215,7 +217,12 @@ interface Props {
   onFuga?: (pontos: number) => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
+  // (disco, LU2CA 20/10) a história nova (disco/historia.ts): a fase manda em
+  // onde a Kombi começa, se o holo existe, e o que acontece no deserto
+  historia?: HistoriaDisco | null
+  onHistoria?: (e: EventoHistoria) => void
 }
+export type EventoHistoria = "casa" | "cidade" | "robo"
 
 const SEM_FLORES: string[] = []
 
@@ -318,7 +325,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean }
+type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -355,7 +362,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -463,7 +470,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [alvoChave])
 
   const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false, mao: false, ultimo: 0 })
-  const [jogo0] = useState(() => retomarJogo(M, retomada) ?? novoJogo(M, destino, save.estacao, abertura))
+  const [jogo0] = useState(() => {
+    const ret = retomarJogo(M, retomada)
+    const j = ret ?? novoJogo(M, destino, save.estacao, abertura)
+    // (disco, a história) a Kombi cai do buraco de minhoca no deserto, perto da
+    // casa; depois da casa, sai dela de frente pra cidade (dirigindo nas dunas)
+    if ("disco" in M && historia && (historia.fase === "casa" || historia.fase === "dunas")) {
+      const MD = M as MundoDisco, p = historia.fase === "casa" ? QUEDA : SAIDA_CASA
+      j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
+      const ch = MD.chaoEm(p.x, p.z)
+      if (historia.fase === "casa") { j.ar = true; j.tAr = 0; j.y = ch + 70; j.vy = -6; j.v = 16 } else { j.ar = false; j.y = ch + 0.3; j.v = 0 }
+    }
+    return j
+  })
   // a abertura: onde a casa fica e em que pé a pessoa está
   const casaPose = poses["casa-dbee"]
   const aberturaRef = useRef<Abertura>({ ativa: abertura, via: casaPose.via, u: LUGARES["casa-dbee"].u, porta: new THREE.Vector3(casaPose.porta.x, casaPose.vaga.y, casaPose.porta.z), fase: "dirige", pe: 0, semGas: false, t0: 0, de: null, onPorta: () => {} })
@@ -729,7 +748,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     let paradoT = 0, disparou = false
     const t = setInterval(() => {
       const j = jogo.current as Jogo & { encostando?: boolean; noMapa?: boolean }, c = climaRef.current
-      const deserto = M.vias[j.via]?.id === "deserto"
+      // (disco) voando/andando nas dunas sem pista embaixo também é deserto (nunca chove)
+      const MDc = "disco" in M ? (M as MundoDisco) : null
+      const deserto = M.vias[j.via]?.id === "deserto" || (!!MDc && !!j.voo && j.wx !== undefined && Math.hypot(j.wx, j.wz!) > 1300)
       c.chove = !deserto && chovendo(dia, horaRef.current)
       // parada de verdade: não conta quando a parada já tem outra coisa na tela
       const ocupado = !!cinemaRef.current || !!j.encostando || !!j.noMapa || respiroRef.current.pode
@@ -822,7 +843,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return { nome: p.nome, cor: p.cor, lado: discoM.ladoSaida.get(vi) ?? 1 }
   })()
   // (disco) o óculos no lugar do celular: ligado por padrão, o botão liga e desliga
-  const [oculos, setOculos] = useState(() => { try { return localStorage.getItem("cn-oculos") !== "off" } catch { return true } })
+  const [oculosLigado, setOculos] = useState(() => { try { return localStorage.getItem("cn-oculos") !== "off" } catch { return true } })
+  // (LU2CA 20/10) antes de a D-Bee dar o holo, ele não existe: nem o óculos no
+  // canto, nem o turbo e o propulsor (a Kombi velha ainda não tem)
+  const holoOk = !historia || historia.holo
+  const oculos = oculosLigado && holoOk
+  useEffect(() => { input.current.semHolo = !!discoM && !holoOk }, [discoM, holoOk])
   const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
   // (o holo) o clima de onde a Kombi está: a pista (o nome dela), a torre ou,
   // voando sem pista embaixo, o deserto (que nunca chove)
@@ -946,6 +972,42 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     gota(6)
   }, [])
 
+  // (disco, a história) o deserto: chegar na casa; nas dunas, a D-Bee pelo rádio
+  // (curto, na hora certa) e pousar numa pista = chegou na cidade
+  const onHistoriaRef = useRef(onHistoria)
+  useEffect(() => { onHistoriaRef.current = onHistoria }, [onHistoria])
+  const fase = discoM ? historia?.fase ?? null : null
+  useEffect(() => {
+    if (fase !== "casa" && fase !== "dunas") return
+    const ditas = new Set<string>()
+    let t = 0, avisou = false
+    const diz = (q: (typeof FALAS_DUNAS)[number]["quando"]) => {
+      if (ditas.has(q)) return
+      ditas.add(q)
+      FALAS_DUNAS.filter((f) => f.quando === q).forEach((f, k) => setTimeout(() => falar(f.de, f.texto, 5200), k * 5600))
+    }
+    const iv = setInterval(() => {
+      const j = jogo.current
+      t += 0.3
+      if (fase === "casa") {
+        if (avisou || !j.voo || j.ar || j.wx === undefined) return
+        // chegou na porta: a Kombi para sozinha (a cena começa)
+        if (Math.hypot(j.wx - CASA.x, j.wz! - CASA.z) < RAIO_CASA + Math.min(20, Math.abs(j.v) * 0.3)) { avisou = true; j.v = 0; onHistoriaRef.current?.("casa") }
+        return
+      }
+      // as dunas
+      if (!j.voo) { if (!avisou) { avisou = true; onHistoriaRef.current?.("cidade") } return }
+      const r = Math.hypot(j.wx ?? 0, j.wz ?? 0)
+      if (t > 2) diz("inicio")
+      if (t > 12 && j.drift) diz("drift")
+      if (t > 22 && !ditas.has("drift") && !j.ar) diz("drift")
+      if (j.carga >= 1) diz("turbo")
+      if (t > 40 || r < 1700) diz("voo")
+      if (r < 1350) diz("cidade")
+      if (r < 1050) diz("perto")
+    }, 300)
+    return () => clearInterval(iv)
+  }, [fase, falar])
   // a noite repete: de tempos em tempos a 222 estranha junto com a pessoa
   useEffect(() => {
     if (!noiteRepete) return
@@ -983,7 +1045,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // TUTORIAL do som: o jogo ensina rádio × toca-discos na hora certa
   const temMusicaNoRadio = save.objetos.length > 0
   useEffect(() => {
-    if (pausado || cinemaRef.current || intro) return
+    if (pausado || cinemaRef.current || intro || (historia && historia.fase !== "livre")) return
     if (!dicas.includes("disco-1") && !temMusicaNoRadio && aparelho !== "disco") {
       const t = setTimeout(() => {
         onDica?.("disco-1")
@@ -1601,7 +1663,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "f" && on && !ev.repeat) document.querySelector<HTMLButtonElement>(".l-sair-kombi, .l-regar-btn.is-voltar")?.click()
       else if (k === "c" && on && !ev.repeat) trocarCamera()
       // (disco) H: liga e desliga o holo
-      else if (k === "h" && on && !ev.repeat && ehDisco) { setAjuda(false); alternarOculos() }
+      else if (k === "h" && on && !ev.repeat && ehDisco && !input.current.semHolo) { setAjuda(false); alternarOculos() }
       else return
       ev.preventDefault()
     }
@@ -1666,7 +1728,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${entrando ? "is-entrando" : ""} ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""} ${discoM ? `is-disco ${oculos ? "is-holo" : "is-holo-off"}` : ""}`}>
+    <div className={`l-viagem ${discoM && !holoOk ? "is-sem-holo" : ""} ${entrando ? "is-entrando" : ""} ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""} ${discoM ? `is-disco ${oculos ? "is-holo" : "is-holo-off"}` : ""}`}>
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -1692,7 +1754,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins }} viaApagada={viaApagada} luzPistas={luzPistas} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} />
         </Canvas>
       )}
 
@@ -2335,8 +2397,9 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null,
 }: {
+  faseHistoria?: string | null
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
@@ -3840,7 +3903,7 @@ function Cena({
     if (MD) {
       if (j.encaixar) { j.voo = false; j.propulsou = false }
       j.energia = j.energia ?? 1
-      inp.propulsor = (!!inp.espacoDesde && performance.now() - inp.espacoDesde > 220) || !!inp.propulsorBotao
+      inp.propulsor = ((!!inp.espacoDesde && performance.now() - inp.espacoDesde > 220) || !!inp.propulsorBotao) && !inp.semHolo
       // (19/10, LU2CA: "nem o propulsor funciona") a abertura que trava aqui é
       // a do mapa velho: no disco ela nunca termina (a abertura do disco, o
       // deserto, a D-Bee e a oficina, ainda não existe), e o propulsor ficava
@@ -4079,7 +4142,7 @@ function Cena({
         vib([20, 20, 50])
       }
     }
-    if (inp.turbo && temTurbo && j.carga >= 1 && j.turboT <= 0) {
+    if (inp.turbo && temTurbo && j.carga >= 1 && j.turboT <= 0 && !inp.semHolo) {
       j.turboT = 2.4
       j.carga = 0
       j.flash = 0.4
@@ -5074,6 +5137,7 @@ function Cena({
       )}
       {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
       {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} /></Seguro>}
+      {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} />}
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
           <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
