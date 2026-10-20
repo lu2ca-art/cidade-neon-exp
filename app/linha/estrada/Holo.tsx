@@ -33,7 +33,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 
 // o que cada coisa do holo é (o "?"): uma frase simples, sem manual
 export const INFO: Record<string, { t: string; d: string }> = {
-  ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair." },
+  ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
   camera: { t: "câmera", d: "de fora da Kombi ou de dentro, no banco do motorista (tecla C)." },
   radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: abre o menu da rádio (ligar, sintonizar as frequências que você já achou, e as mensagens das rádios piratas). ⏭ troca a faixa." },
@@ -48,6 +48,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   anel: { t: "as missões", d: "a missão que você está fazendo, ou quantas estão te esperando. toca pra ver todas." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
   agua: { t: "água", d: "a coisa mais valiosa num mundo seco. as gotas da pista viram água: rega as flores, paga a oficina, e a cada 100 gotas, duas viagens rápidas. a polícia leva 1/5 se te prender." },
+  controles: { t: "os controles", d: "no celular: um lado da tela vira pra ele; os dois juntos freiam (parado, dá ré). no ar: um lado gira, os dois juntos dão o mortal. no teclado: ↓ freia, Q é a manobra." },
   turbo: { t: "turbo", d: "segura um instante: a Kombi dispara. o drift, as manobras e os voos enchem a barra (no teclado, um toque no espaço). de patins, no ar, é o dash." },
   propulsor: { t: "propulsor", d: "segura: a Kombi voa. de patins, é o jato de ar das costas. a energia volta andando no chão (no teclado, segura o espaço)." },
   sair: { t: "sair da Kombi", d: "desce de patins. a Kombi fica estacionada te esperando (tecla F)." },

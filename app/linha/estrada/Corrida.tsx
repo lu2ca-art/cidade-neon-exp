@@ -330,7 +330,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
+type Input = { ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -1723,6 +1723,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     if (d && !e && !input.current.dir) input.current.toqueD = true
     input.current.esq = e && !d
     input.current.dir = d && !e
+    // (LU2CA 21/10) os dois lados ao mesmo tempo = freio (no chão) ou a manobra (no ar: o mortal)
+    input.current.ambos = e && d
   }
   useEffect(() => {
     const tecla = (ev: KeyboardEvent, on: boolean) => {
@@ -2270,7 +2272,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       <div ref={hudParado} className="l-hud-parado"><b>↑</b> ou <b>W</b> pra acelerar · <b>↓</b> dá ré</div>
 
       {/* celular: freio/ré (segurar). Drift é na direção: a finta */}
-      <div className={`l-pedais ${dentro ? "is-oculto" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
+      {/* (disco, LU2CA 21/10) sem freio/ré nem freio de mão na tela: frear é tocar os
+          dois lados; o "dar partida" só aparece com a Kombi parada (desligada) */}
+      {discoM ? (desligada && !dePatins && (
+        <div className="l-pedais" onPointerDown={(e) => e.stopPropagation()}>
+          <button type="button" className="l-pedal is-partida" onPointerDown={(e) => e.stopPropagation()} onClick={darPartida}>dar<br />partida</button>
+        </div>
+      )) : (      <div className={`l-pedais ${dentro ? "is-oculto" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
         {desligada && !dePatins ? (
           <button type="button" className="l-pedal is-partida" onPointerDown={(e) => e.stopPropagation()} onClick={darPartida}>dar<br />partida</button>
         ) : <button
@@ -2289,7 +2297,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerCancel={() => { input.current.mao = false }}
           onPointerLeave={() => { input.current.mao = false }}
         >freio<br />de mão</button>
-      </div>
+      </div>)}
 
       {dica && (
         <div className="l-hud-dica">
@@ -3606,6 +3614,11 @@ function Cena({
       const abAqui = ab.ativa && j.via === ab.via
       // 10 s sem tocar em nada: tira o pé, freia devagar e desliga (no
       // automático da primeira pessoa e com o celular aberto ela segue)
+      // (LU2CA 21/10) sem os botões de freio e de freio de mão: tocar os dois
+      // lados da tela ao mesmo tempo freia (ré parado); no ar, é o mortal
+      if (inp.ambos) { if (j.ar) { inp.mao = true; inp.freio = false } else { inp.freio = true; inp.mao = false } }
+      else if (inp.ambosAntes) { inp.freio = false; inp.mao = false }
+      inp.ambosAntes = !!inp.ambos
       if (inp.esq || inp.dir || inp.gas || inp.freio || inp.mao) inp.ultimo = performance.now()
       const ocioso = !auto && !abAqui && inp.ultimo > 0 && performance.now() - inp.ultimo > 10000
       if (ocioso && Math.abs(j.v) < 0.3) j.desligada = true
