@@ -62,7 +62,7 @@ export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
     if (disco && /palco/.test(estado.texto ?? "")) return PLANOS.palco
     if (estado.pos === 0) return PLANOS.entrada
     return PLANOS.balcao
-  }, [estado])
+  }, [estado, disco])
 
   // beber é a escolha errada: um copo só e a cena acaba (cena.tsx leva a
   // pessoa pra fora do bar). A noite volta pro começo, mais bonita e mais vazia
