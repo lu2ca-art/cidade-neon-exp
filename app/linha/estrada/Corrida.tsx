@@ -285,6 +285,8 @@ type Jogo = {
   // controle sai da mão (só vai, na via onde está); hyperT = há quanto tempo.
   // tresT = há quanto tempo acima de 3× (8 s despista o helicóptero)
   hyper?: boolean; hyperT?: number; tresT?: number; fugaGrande?: boolean
+  // (21/10) a Kombi indo sozinha pra missão pegada (ninguém tocou faz 6 s)
+  piloto?: boolean
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -324,6 +326,7 @@ type Evs = {
   caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim") => void
   estrelas: (n: number) => void
   chegou: () => void
+  piloto: (on: boolean) => void
   volta: (t: number) => void
   hud: (j: Jogo) => void
 }
@@ -622,6 +625,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [pertoKombi, setPertoKombi] = useState(false)
   // a Kombi desligada: no lugar da ré, "dar partida"
   const [desligada, setDesligada] = useState(false)
+  // (21/10) a Kombi indo sozinha pra missão (o aviso pequeno no canto)
+  const [piloto, setPiloto] = useState(false)
   const viajar = () => {
     const j = jogo.current
     if (!marca || aneis.viagens <= 0 || (aberturaRef.current.ativa && !("disco" in M)) || j.chegando) return false
@@ -1465,6 +1470,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         gota(getEstacao(id).n + 1)
       },
       chegou: () => setChegou({ ...jogo.current.st, tempo: jogo.current.tempo }),
+      piloto: (on) => setPiloto(on),
       volta: (t) => {
         falar("Notti", `volta em ${t.toFixed(1)}s!!`)
         onVolta?.(t)
@@ -1956,6 +1962,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <b>religar a antena da 222 no centro</b>
         </div>
       )}
+      {piloto && <div className="l-hud-piloto" aria-live="polite">indo sozinha pra missão · toca pra assumir</div>}
       {!caido && alvo && missaoAlvo && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: getEstacao(alvo.missao).cor }}>
           <small>{getEstacao(alvo.missao).personagem} · missão</small>
@@ -3590,7 +3597,12 @@ function Cena({
       // e pega sozinha a saída que leva pra missão; você só olha em volta
       // e com o celular aberto também: devagar, sem parar em lugar nenhum
       const noCel = celularRef.current
-      const auto = (dentroRef.current || noCel) && !cine
+      // (LU2CA 21/10, a feira de missões) com uma missão pegada, 6 s sem tocar
+      // em nada e a Kombi segue sozinha pra ela (a rota escolhe os cruzamentos e
+      // ela encosta na vaga); qualquer toque devolve o volante
+      const pilotoMissao = "disco" in M && !!vagaRef.current && j.naVaga !== vagaRef.current.id && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000
+      if (pilotoMissao !== !!j.piloto) { j.piloto = pilotoMissao; if (pilotoMissao) j.desligada = false; ev.piloto(pilotoMissao) }
+      const auto = (dentroRef.current || noCel || pilotoMissao) && !cine
       // no automático, chegando na vaga da missão: encosta e freia sozinha
       const vgA = auto && !noCel ? vagaRef.current : null
       const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity

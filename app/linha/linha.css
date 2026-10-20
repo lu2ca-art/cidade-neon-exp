@@ -954,6 +954,7 @@
 .l-garfo header span { font: 700 9px var(--mono); letter-spacing: 0.12em; color: #fff; }
 
 /* a missão valendo, no canto da estrada */
+.l-hud-piloto { position: absolute; left: 50%; top: calc(64px + env(safe-area-inset-top)); transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; background: rgba(5, 5, 16, 0.55); border: 1px solid rgba(224, 255, 79, 0.45); font: 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: #e0ff4f; pointer-events: none; white-space: nowrap; animation: l-sobe 0.4s both; }
 .l-hud-missao { position: absolute; left: 12px; bottom: calc(214px + env(safe-area-inset-bottom)); max-width: min(62%, 260px); padding: 8px 12px; border-radius: 14px; background: rgba(5, 5, 16, 0.62); border: 1px solid color-mix(in srgb, var(--cor) 60%, transparent); backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: 1px; pointer-events: none; animation: l-sobe 0.4s both; }
 .l-hud-missao small { font: 9px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--cor); }
 .l-hud-missao b { font: 700 14px/1.1 var(--cond); text-transform: uppercase; color: #fff; }
@@ -2574,3 +2575,17 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-viagem.is-sem-voo .l-propulsao { display: none !important; }
 /* (B18) as cenas do subúrbio acontecem na rua: o holo some durante a cena */
 .l-viagem.is-cinema .l-holo-som, .l-viagem.is-cinema .l-holo-destaque, .l-viagem.is-cinema .l-holo-apps, .l-viagem.is-cinema .l-holo-icones, .l-viagem.is-cinema .l-holo-clima, .l-viagem.is-cinema .l-ilha-holo, .l-viagem.is-cinema .l-propulsao, .l-viagem.is-cinema .l-sair-kombi { display: none !important; }
+
+/* (21/10) A FEIRA DE MISSÕES: as oportunidades que a cidade precisa (pegar ou largar) */
+.l-feira { position: absolute; z-index: 21; left: 12px; top: calc(112px + env(safe-area-inset-top)); width: min(280px, calc(100vw - 180px)); max-height: 52vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; animation: l-sobe 0.4s both; }
+.l-feira > small { font: 700 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: #ffc857; padding-left: 2px; }
+.l-feira-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.l-feira-lista li, .l-missoes .l-feira-lista li { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border-radius: 12px; background: rgba(6, 6, 16, 0.78); border: 1px solid color-mix(in srgb, var(--cor) 35%, transparent); border-left: 3px solid var(--cor); backdrop-filter: blur(8px); }
+.l-feira-quem { font: 800 13px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; color: var(--cor); }
+.l-feira-quem small { display: block; font: 400 10px var(--mono); letter-spacing: 0.06em; text-transform: none; color: rgba(255, 255, 255, 0.6); }
+.l-feira-lista li p, .l-missoes .l-feira-lista li p { margin: 0; font: 13px/1.3 var(--sans, system-ui); color: rgba(255, 255, 255, 0.9); }
+.l-feira-lista li em { font: 10px var(--mono); font-style: normal; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.55); }
+.l-feira-bts { display: flex; gap: 6px; margin-top: 4px; }
+.l-feira-bts button, .l-missoes .l-feira-bts button { grid-column: auto; grid-row: auto; flex: 1; padding: 8px 10px; border-radius: 9px; background: var(--cor) !important; color: #06060c !important; border: 0 !important; font: 800 12px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; }
+.l-feira-bts button.is-largar { flex: 0 0 auto; background: rgba(255, 255, 255, 0.08) !important; color: rgba(255, 255, 255, 0.7) !important; }
+.l-feira-largar { align-self: flex-start; margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.08) !important; border: 0 !important; color: rgba(255, 255, 255, 0.7) !important; font: 700 10px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }

@@ -119,3 +119,30 @@ export function missaoAgora(acesas: PistaId[], pecasFeitas: string[]): MissaoAgo
   passos.push({ nome: "o show (tocar ou cantar)", estado: alvo.tipo === "show" ? "agora" : "depois" })
   return { pista, passos, alvo }
 }
+
+// ── A FEIRA DE MISSÕES (LU2CA 21/10: "as missões aparecem sempre como
+// oportunidades, em widgets que você pode pegar ou largar: uma feira de missões
+// que a cidade precisa, e você se dispõe"). Cada linha acesa e ainda não feita
+// é uma oferta; pegou, ela vira a missão de agora (a checklist, a coluna de luz
+// e, parado, a Kombi vai sozinha); largou, volta pra feira. Toda oferta leva
+// pra uma música (a faixa da linha) ──
+// o que a cidade pede, na boca de quem pede (RASCUNHO: o LU2CA reescreve)
+export const PEDIDO: Record<PistaId, string> = {
+  nectar: "as flores do subúrbio tão secando",
+  sexta: "a balada perdeu o som. a sexta não pode ficar muda",
+  dopamina: "o fliperama apagou. ninguém joga mais nada",
+  ojala: "a casa da D-Bee precisa de música de novo",
+  swav: "a quadra tá vazia. falta o beat",
+  copo: "o bar quer o copo de volta. e a revanche",
+  ontem: "a casa de shows esqueceu como era ontem",
+  rollercoaster: "a montanha-russa parou no meio",
+  chuva: "o jardim escondido espera a chuva",
+}
+export interface Oferta { pista: PistaId; pedido: string; primeiro: string; feitas: number; total: number }
+export function ofertasDaFeira(acesas: PistaId[], pecasFeitas: string[]): Oferta[] {
+  return acesas.map((pista) => {
+    const m = missaoAgora([pista], pecasFeitas)!
+    const prox = m.passos.find((p) => p.estado === "agora") ?? m.passos[m.passos.length - 1]
+    return { pista, pedido: PEDIDO[pista], primeiro: prox.nome, feitas: m.passos.filter((p) => p.estado === "feita").length, total: m.passos.length }
+  })
+}
