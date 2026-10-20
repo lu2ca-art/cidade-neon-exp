@@ -11,7 +11,7 @@
 import type { EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 
-export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "casa-dbee" | "posto" | "plataforma"
+export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "casa-dbee" | "posto" | "plataforma" | "oficina"
 
 export interface Lugar {
   id: LugarId
@@ -38,6 +38,8 @@ export interface Lugar {
   // mora numa estrada que não é circuito (o deserto: estrada/mundo.ts),
   // pelo id da via; `area` continua dizendo pra onde as missões apontam
   via?: string
+  // (mapa-disco) só existe no disco (no mapa velho não é desenhado nem vai pro mapa)
+  soDisco?: true
 }
 
 export const LUGARES = {
@@ -113,3 +115,12 @@ export function lugar(id: LugarId) {
 
 // a vaga: um trecho da beira da pista, do lado do lugar
 export const VAGA = 18 // m de comprimento
+
+// (mapa-disco, LU2CA 20/10) a oficina na pista da Nectar: a missão 1 (o
+// sistema solar + turbo, e o show). A página da oficina (/oficina) mora no
+// mesmo lugar (paginas.ts)
+LUGARES.oficina = {
+  id: "oficina", nome: "a oficina", no: "na oficina", letreiro: "OFICINA", area: "suburbio", u: 1150, lado: 1, horario: "sempre",
+  cor: "#ff9000", acento: "#e0ff4f", soDisco: true,
+  gente: [{ quem: "o mecânico", cor: "#ff9000" }],
+}

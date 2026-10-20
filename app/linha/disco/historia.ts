@@ -34,8 +34,10 @@ export interface HistoriaDisco {
   nectar?: PassoNectar
   // os shows feitos (a carreira) e as manchetes do jornal
   shows?: Manchete[]
-  // as flores regadas (B9: quanto mais flores, mais água aparece)
+  // as flores regadas (B9: quanto mais flores, mais água aparece) e quantas
+  // tinha quando o passo de regar começou
   flores?: number
+  floresIni?: number
   // as compras com água na oficina (B10: o que é tecnologia)
   mods?: string[]
   // robôs espatifados (B12)
@@ -158,6 +160,32 @@ export const CENA_BAR_PROLOGO: Cena = {
     { t: "acao", texto: "ela aponta o fundo do bar: um palco pequeno, o pedestal sem ninguém, poeira na caixa de som" },
     { t: "fala", de: "ela", texto: "ninguém sobe naquele palco há anos" },
     { t: "fala", de: "ela", texto: "vai cantar" },
+    { t: "fim" },
+  ],
+}
+
+// ── A OFICINA (a Nectar, LU2CA 19–20/10): o segundo II. A Kombi vira solar +
+// turbo, e isso custa TODA a água coletada até ali. RASCUNHO ──
+export const CENA_OFICINA: Cena = {
+  lugar: "oficina",
+  titulo: "a oficina",
+  missao: "nectar",
+  passos: [
+    { t: "acao", texto: "a kombi entra no elevador da oficina tossindo. o mecânico nem levanta a cabeça" },
+    { t: "fala", de: "o mecânico", texto: "gasolina? em que ano vc tá vivendo" },
+    { t: "fala", de: "o mecânico", texto: "dá pra pôr painel no teto. e um turbo que bebe sol" },
+    { t: "fala", de: "o mecânico", texto: "mas aqui ninguém paga com neon. é água. toda a que vc tiver" },
+    {
+      t: "escolha",
+      opcoes: [
+        { label: "toda?", tom: "dormindo", resposta: [{ de: "o mecânico", texto: "toda. água é a única coisa que vale alguma coisa aqui" }] },
+        { label: "fechado", tom: "acordando", resposta: [{ de: "o mecânico", texto: "gostei de vc" }] },
+        { label: "e se eu precisar de água depois?", tom: "acordado", resposta: [{ de: "o mecânico", texto: "rega umas flores. a água volta. sempre volta" }] },
+      ],
+    },
+    { t: "acao", texto: "duas horas de solda, faísca e rádio velho. o painel sobe no teto. o motor para de tossir" },
+    { t: "ganha", titulo: "sistema solar + turbo", texto: "a kombi não bebe mais gasolina. o sol carrega, o drift e o voo enchem o turbo" },
+    { t: "fala", de: "o mecânico", texto: "agora toca alguma coisa pra gente. ninguém toca aqui faz tempo" },
     { t: "fim" },
   ],
 }

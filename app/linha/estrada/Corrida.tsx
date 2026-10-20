@@ -222,7 +222,7 @@ interface Props {
   historia?: HistoriaDisco | null
   onHistoria?: (e: EventoHistoria) => void
 }
-export type EventoHistoria = "casa" | "cidade" | "robo"
+export type EventoHistoria = "casa" | "cidade" | "robo" | "quebrou" | "flor" | "galao"
 
 const SEM_FLORES: string[] = []
 
@@ -581,6 +581,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const floresRef = useRef(new Set<string>())
   useEffect(() => { floresRef.current = new Set(flores.regadas.map((f) => f.id)) }, [flores])
   const regarFlor = (f: FlorAsfalto) => {
+    // (disco, LU2CA 19/10) regar é com água: uma gota de água por flor
+    if ("disco" in M) {
+      if (aguaRef.current < 1) { setMsgFlor("sem água · as gotas da pista são água"); setTimeout(() => setMsgFlor(""), 2600); return }
+      onAguaRef.current?.(-1)
+      onHistoriaRef.current?.("flor")
+    }
     setRegandoFlor({ id: f.id, desde: performance.now() })
     vib([10, 20, 10])
     setTimeout(() => {
@@ -921,6 +927,32 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 200)
     }, 1400)
   }
+  // (disco, a missão da Nectar, LU2CA 19–20/10) a Kombi quebra: patins; regar 3
+  // flores; o galão que a D-Bee deixou no posto (ela não fala: um bilhete); a oficina
+  const nectarPasso = discoM && historia?.fase === "nectar" ? historia.nectar ?? null : null
+  const kombiQuebrada = nectarPasso === "quebra" || nectarPasso === "regar" || nectarPasso === "galao"
+  const [pertoPostoNectar, setPertoPostoNectar] = useState(false)
+  useEffect(() => {
+    if (nectarPasso !== "galao") return
+    const t = setInterval(() => {
+      const cb = combRef.current, pp = poses.posto
+      setPertoPostoNectar(!!(cb.patins && cb.aqui && Math.hypot(cb.aqui.x - pp.vaga.x, cb.aqui.z - pp.vaga.z) < 22))
+    }, 300)
+    return () => clearInterval(t)
+  }, [nectarPasso, poses])
+  const pegarGalaoDbee = () => {
+    fadeCam.current?.classList.add("is-on")
+    setMsgPatins("o galão. um bilhete colado: \"achei petróleo. — D\"")
+    setTimeout(() => {
+      const c = combRef.current, p = c.parada, j = jogo.current
+      if (p) { const mudou = j.via !== p.via; j.via = p.via; j.u = p.u; j.x = p.x; if (mudou) evs.current?.via(p.via) }
+      j.v = 0; j.vx = 0; j.encostando = false; j.encaixar = true
+      c.patins = false; c.parada = null
+      setDePatins(false); setMsgPatins("")
+      onHistoriaRef.current?.("galao")
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 200)
+    }, 2200)
+  }
   const trocarCamera = useCallback(() => {
     if (trocando.current) return
     trocando.current = true
@@ -1008,6 +1040,23 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }, 300)
     return () => clearInterval(iv)
   }, [fase, falar])
+  // (a Nectar) uns segundos rodando depois do show do bar, a Kombi velha pifa:
+  // fumaça, para, e ele desce de patins (o patins e as manobras entram aqui)
+  const quebrouRef = useRef(false)
+  useEffect(() => {
+    if (nectarPasso !== "quebra" || pausado || quebrouRef.current) return
+    const t = setTimeout(() => {
+      quebrouRef.current = true
+      const j = jogo.current
+      j.v = 0; j.shake = 1; j.flash = 0.4
+      vib([60, 40, 120])
+      falar("222 FM", "essa kombi tossiu. motor velho a gasolina, num mundo sem gasolina", 4800)
+      setTimeout(() => { irDePatins(); falar("222 FM", "de patins então. segura o espaço: o jato. no ar, vira: gira", 5600) }, 1500)
+      onHistoriaRef.current?.("quebrou")
+    }, 9000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nectarPasso, pausado])
   // a noite repete: de tempos em tempos a 222 estranha junto com a pessoa
   useEffect(() => {
     if (!noiteRepete) return
@@ -1217,7 +1266,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           const total = a.total + 1
           return { total, viagens: a.viagens + (total % 100 === 0 ? 2 : 0) }
         })
-        if ("disco" in M) setAguaPend((x) => x + 1)
+        // (LU2CA 19/10) quanto mais flores, mais água aparece: a cada 5 flores
+        // regadas pela cidade, cada gota vale uma a mais (RASCUNHO da regra)
+        if ("disco" in M) setAguaPend((x) => x + 1 + Math.floor(floresRef.current.size / 5))
       },
       vaga: (id) => onVagaRef.current?.(id),
       // na chegada a cidade fica quieta: só o grupo fala
@@ -1678,6 +1729,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const falouDe = useRef("")
   useEffect(() => {
     const a = alvoRef.current
+    // (disco) a história fala do jeito dela (o rádio); a fala antiga da missão não
+    if (historia && historia.fase !== "livre") return
     if (!a || pausado || falouDe.current === alvoChave) return
     falouDe.current = alvoChave
     const e = getEstacao(a.missao)
@@ -1760,7 +1813,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
       {respirando && <Respirar jaSabe={dicas.includes("respirar")} onAprendeu={() => onDica?.("respirar")} onFeito={() => { respiroRef.current.feito = true }} />}
       {/* o vidro embaça de noite na chuva (Embacado.tsx) */}
-      {!abertura && <Embacado pedido={pedidoEmbaca} podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
+      {!abertura && !dePatins && <Embacado pedido={pedidoEmbaca} podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
       {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
@@ -1952,7 +2005,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <button type="button" className="l-regar-btn is-flor" onPointerDown={(e) => e.stopPropagation()} onClick={() => regarFlor(florPerto)}>regar a flor</button>
       )}
       {msgFlor && <p className="l-pagina-fechada is-flor">{msgFlor}</p>}
-      {dePatins && pertoKombi && !msgPatins && (
+      {/* (disco, a Nectar) a Kombi quebrada: o galão do posto e a água */}
+      {dePatins && nectarPasso === "galao" && pertoPostoNectar && !msgPatins && (
+        <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={pegarGalaoDbee}>pegar o galão</button>
+      )}
+      {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (
         <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>voltar pra Kombi</button>
       )}
       {dePatins && pertoComb && seco && (
@@ -2162,7 +2219,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
       {/* celular: freio/ré (segurar). Drift é na direção: a finta */}
       <div className={`l-pedais ${dentro ? "is-oculto" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
-        {desligada ? (
+        {desligada && !dePatins ? (
           <button type="button" className="l-pedal is-partida" onPointerDown={(e) => e.stopPropagation()} onClick={darPartida}>dar<br />partida</button>
         ) : <button
           type="button"

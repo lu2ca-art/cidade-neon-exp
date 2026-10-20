@@ -43,7 +43,8 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, comHistoria, historiaAtiva, historiaDe } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe } from "./disco/historia"
+import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
 import { VISOR, Visor, type VisorId } from "./disco/Visor"
@@ -137,7 +138,7 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   // inicio: a casa da D-Bee na abertura (CENA_INICIO)
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" } | null>(null)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -489,6 +490,12 @@ export default function LinhaPage() {
       const h = historiaDe(saveRef.current)
       if (cinema) return
       // (saiu do bar agora: não reabre parado na porta; tem que dar uma volta)
+      if (id === "oficina" && h.fase === "nectar" && h.nectar === "oficina") {
+        setAoVivo(null)
+        setCinema("lugar")
+        setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" })
+        return
+      }
       if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
         setAoVivo(null)
         setCinema("lugar")
@@ -534,6 +541,13 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
   }, [cinema, avisar, D])
   // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = o show
+  // (a Nectar) saiu da oficina: a Kombi solar + turbo, a água foi toda, e o show
+  const fimOficina = useCallback((r: ResultadoCena) => {
+    setCena(null)
+    setCinema(null)
+    if (!r.completa) return
+    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, nectar: "show", show: "oficina", mods: [...new Set([...(h.mods ?? []), "solar", "turbo"])] })))
+  }, [])
   const fimBarFeito = useRef(false)
   const fimBarDisco = useCallback((r: ResultadoCena) => {
     // (a cena pode avisar o fim duas vezes: beber e sair) conta uma vez só
@@ -674,7 +688,10 @@ export default function LinhaPage() {
   }, [save, nivel])
 
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
-  const alvoDisco: Alvo | null = hist.fase === "bar" ? { t: "lugar", missao: "copo", lugar: "bar", pegar: false } : null
+  const alvoDisco: Alvo | null = hist.fase === "bar" ? { t: "lugar", missao: "copo", lugar: "bar", pegar: false }
+    : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
+    : hist.fase === "nectar" && hist.nectar === "oficina" ? { t: "lugar", missao: "nectar", lugar: "oficina", pegar: false }
+    : null
   // (B8) o show marcado: o fim de cada missão (o prólogo é o do bar)
   const SHOWS: Record<string, { faixa: "copo" | "nectar"; lugar: string; cor: string }> = {
     bar: { faixa: "copo", lugar: "no bar", cor: "#ff6a35" },
@@ -684,11 +701,13 @@ export default function LinhaPage() {
   const fimShow = (r: ResultadoShow) => {
     const id = hist.show!, conf = SHOWS[id]
     const m = calcularManchete(r, id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
-    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m] })))
+    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
+    if (id === "oficina") setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
     setJornal(m)
   }
   // o que o anel do holo diz (curto: o lugar, não a explicação)
-  const objetivoDisco = hist.fase === "dunas" ? "a cidade" : hist.fase === "bar" ? "o bar" : null
+  const objetivoDisco = hist.fase === "dunas" ? "a cidade" : hist.fase === "bar" ? "o bar"
+    : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"] : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -877,7 +896,7 @@ export default function LinhaPage() {
     setTela({ t: "corrida", destino: null })
   }
   // (disco) a história avisa da estrada: chegou na casa, pousou na cidade…
-  const onHistoria = (e: "casa" | "cidade" | "robo") => {
+  const onHistoria = (e: EventoHistoria) => {
     const h = historiaDe(saveRef.current)
     if (e === "casa" && h.fase === "casa" && !cena) {
       setCinema("lugar")
@@ -889,6 +908,20 @@ export default function LinhaPage() {
       setTimeout(() => setFalaIntro({ id: Date.now(), de: "D-Bee", texto: "chegou. tem um bar nessa pista. vai lá. alguém te espera" }), 1500)
     }
     if (e === "robo") setSave((s) => comHistoria(s, (x) => ({ ...x, robos: (x.robos ?? 0) + 1 })))
+    // (a Nectar, B9) a Kombi quebrou → regar 3 flores de patins → o galão → a oficina → o show → o jardim
+    if (e === "quebrou" && h.fase === "nectar") setSave((s) => comHistoria(s, (x) => ({ ...x, nectar: "regar", floresIni: x.flores ?? 0 })))
+    if (e === "flor") {
+      const flores = (h.flores ?? 0) + 1
+      if (h.fase === "nectar" && h.nectar === "regar" && flores - (h.floresIni ?? 0) >= 3) {
+        setSave((s) => comHistoria(s, (x) => ({ ...x, flores, nectar: "galao" })))
+        setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "alguém deixou um galão no posto dessa pista. com um bilhete. sem nome" }), 1800)
+      } else if (h.fase === "nectar" && h.nectar === "flores" && flores - (h.floresIni ?? 0) >= 5) {
+        // a Nectar feita: o objeto dela no save; Sexta-Feira e DopaminA acendem
+        setSave((s) => comHistoria({ ...s, objetos: s.objetos.includes("nectar") ? s.objetos : [...s.objetos, "nectar"] }, (x) => ({ ...x, flores, nectar: "feita", fase: "carreira" })))
+        setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "a pista das flores tá florindo. e duas pistas acenderam lá do outro lado. quem fez isso?" }), 1500)
+      } else setSave((s) => comHistoria(s, (x) => ({ ...x, flores })))
+    }
+    if (e === "galao" && h.fase === "nectar" && h.nectar === "galao") setSave((s) => comHistoria(s, (x) => ({ ...x, nectar: "oficina" })))
   }
   // (disco) saiu da casa da D-Bee com o holo: as dunas, com o disco antigo tocando
   const fimCasaDisco = () => {
@@ -1338,7 +1371,7 @@ export default function LinhaPage() {
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "disco-casa" ? CENA_CASA_DISCO : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "disco-casa" ? CENA_CASA_DISCO : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -1346,7 +1379,7 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "disco-bar" ? fimBarDisco : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
+            onFim={cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
           />
         )}

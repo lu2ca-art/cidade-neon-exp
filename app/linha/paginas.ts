@@ -34,7 +34,7 @@ export const PAGINAS: LugarPagina[] = [
   { id: "shows", nome: "a casa de shows", rota: "/casa-de-shows", area: "live", u: 1250, lado: 1, horario: "noite", cor: "#ffc857", letreiro: "SHOW HOJE", chegada: "de noite · um amigo da 222 no palco", lugar: "casa-shows" },
   { id: "fliperama", nome: "o fliperama", rota: "/fliperama", area: "live", u: 1500, lado: -1, horario: "noite", cor: "#ff6a35", letreiro: "FLIPERAMA", chegada: "de noite · as fichas tilintando", exige: "rollercoaster" },
   // a oficina mora no subúrbio (o que é humano foi pra margem): pintura e neon da Kombi
-  { id: "oficina", nome: "a oficina", rota: "/oficina", area: "suburbio", u: 1150, lado: 1, horario: "sempre", cor: "#ff9000", letreiro: "OFICINA", chegada: "o cheiro de graxa · a Kombi sobe no elevador" },
+  { id: "oficina", lugar: "oficina", nome: "a oficina", rota: "/oficina", area: "suburbio", u: 1150, lado: 1, horario: "sempre", cor: "#ff9000", letreiro: "OFICINA", chegada: "o cheiro de graxa · a Kombi sobe no elevador" },
 ]
 
 // a página foi aberta a partir da cidade? então o "sair" volta pra estrada.

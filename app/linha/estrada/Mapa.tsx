@@ -55,7 +55,7 @@ function linhaDaRota(M: Mundo, r: Rota) {
 function blipsDo(M: Mundo): Blip[] {
   const b: Blip[] = []
   for (const l of Object.values(LUGARES)) {
-    if (l.segredo) continue
+    if (l.segredo || (l.soDisco && !("disco" in M))) continue
     const o = posicao(M, `lugar:${l.id}`, l.area, l.u, l.lado, l.via)
     if (o.via < 0) continue
     b.push({ id: l.id, nome: l.nome, cor: l.cor, via: o.via, u: o.u, tipo: l.id === "posto" ? "posto" : "lugar" })
