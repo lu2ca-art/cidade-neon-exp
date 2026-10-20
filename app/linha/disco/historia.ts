@@ -191,3 +191,12 @@ export const CENA_OFICINA: Cena = {
     { t: "fim" },
   ],
 }
+
+// ── OS DOIS PERSONAGENS ROBÔS (LU2CA 19/10): ganchos, ainda sem cena (RASCUNHO) ──
+// - a moça do bar: uma das máquinas que ganharam consciência. Não se revela;
+//   o jogo só deixa pistas (pisca sempre no mesmo tempo, o cabelo perfeito
+//   demais, "faz tempo que ninguém recusa"). Aparece no prólogo (CENA_BAR_PROLOGO)
+// - o robô de verdade: ainda não aparece. Ideia de gancho: o robô do ping pong
+//   da Sexta-Feira (disco/PingPong.tsx) é o primeiro a "piscar duas vezes" —
+//   o que gosta de jogar. Mais pra frente: a batalha de robôs gigantes no deserto
+export const ROBOS_PERSONAGENS = ["a moça do bar", "o robô do ping pong"] as const

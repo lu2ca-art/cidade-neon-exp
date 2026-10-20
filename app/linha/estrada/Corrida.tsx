@@ -41,6 +41,7 @@ import { geoJoia, matJoia } from "./joia"
 import { CASA, QUEDA, RAIO_CASA, SAIDA_CASA, FALAS_DUNAS, type HistoriaDisco } from "../disco/historia"
 import { CasaDeserto } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
+import { ROBOS, Robos } from "../disco/Robos"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
@@ -1058,9 +1059,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       if (t > 40 || r < 1700) diz("voo")
       if (r < 1350) diz("cidade")
       if (r < 1050) diz("perto")
+      if (j.wx !== undefined && ROBOS.some((b) => b.vivo && Math.hypot(b.x - j.wx!, b.z - j.wz!) < 160)) diz("robo")
     }, 300)
     return () => clearInterval(iv)
   }, [fase, falar])
+  // (B12) espatifou um robô no deserto: as peças voam; um prêmio pequeno (água: a tecnologia dele)
+  const roboRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    roboRef.current = () => {
+      if ("disco" in M) setAguaPend((x) => x + 2)
+      setPopup({ id: Math.random(), txt: "+2 água", cor: "#4fc3ff" })
+      onHistoriaRef.current?.("robo")
+    }
+  }, [M])
   // (a Nectar) uns segundos rodando depois do show do bar, a Kombi velha pifa:
   // fumaça, para, e ele desce de patins (o patins e as manobras entram aqui)
   const quebrouRef = useRef(false)
@@ -1828,7 +1839,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} onRobo={roboRef} />
         </Canvas>
       )}
 
@@ -2480,9 +2491,10 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo,
 }: {
   faseHistoria?: string | null
+  onRobo?: React.RefObject<() => void>
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
@@ -5261,6 +5273,7 @@ function Cena({
       {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
       {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} /></Seguro>}
       {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} />}
+      {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
           <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
