@@ -1077,7 +1077,8 @@ export default function LinhaPage() {
             onVaga={abrirCena}
             segredo={segredo}
             cenaLugar={cena?.lugar ?? null}
-            intro={!D && !save.completos.includes("abertura")}
+            // (disco, a história) a cidade quieta: só quem a história põe pra falar
+            intro={HIST || (!D && !save.completos.includes("abertura"))}
             fala={falaIntro}
             onIlha={() => {
               // o grupo rolando: abre a conversa inteira; depois disso, a

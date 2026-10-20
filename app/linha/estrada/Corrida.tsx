@@ -1239,7 +1239,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           setTravou(p)
           setNLib(freqsLiberadas(sinalRef.current).length)
           setTimeout(() => setTravou(null), 4200)
-          setTimeout(() => falar("D-Bee", `vc achou a ${p.freq}. o núcleo odeia essa`), 1800)
+          if (!introRef.current) setTimeout(() => falar("D-Bee", `vc achou a ${p.freq}. o núcleo odeia essa`), 1800)
         }
         onSinal(sinalRef.current)
         setProx(proximaFreq(sinalRef.current))
@@ -3374,6 +3374,7 @@ function Cena({
   const ambRef = useRef<THREE.AmbientLight>(null)
   const dirRef = useRef<THREE.DirectionalLight>(null)
   const diaNevoa = useMemo(() => new THREE.Color("#7f93ad"), [])
+  const desertoK = useRef(0)
   const alvoNevoa = useMemo(() => new THREE.Color(), [])
   const alvoCeu = useMemo(() => new THREE.Color(), [])
   const kTurbo = useRef(false)
@@ -4573,7 +4574,11 @@ function Cena({
     // (LU2CA 19/10) cada pista toca a faixa dela em loop, venha de qual torre
     // vier e em qualquer velocidade; nas torres continua a que estava; entrou na
     // pista de outra faixa, a faixa muda junto (fade curto)
-    if (faixasDisco.length) {
+    // (a história, casa e dunas) no deserto ninguém tem pista: o disco antigo
+    // da Kombi (a página liga) e o vento; a faixa da pista para
+    const semPista = faseHistoria === "casa" || faseHistoria === "dunas"
+    if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1 }
+    else if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]
       const k = inf && inf.pista >= 0 ? inf.pista : pistaTocando.current
       // (os atos, 20/10) pista apagada: o instrumental, abafado
@@ -4902,15 +4907,20 @@ function Cena({
     ceuMat.uniforms.noite.value = ch.noite
     alvoCeu.multiplyScalar(ch.tinta)
     alvoNevoa.lerp(diaNevoa, (1 - ch.noite) * 0.75)
-    if (ambRef.current) ambRef.current.intensity = 0.35 * ch.luz
-    if (dirRef.current) dirRef.current.intensity = 0.9 * ch.luz
+    // (disco, as dunas) longe da cidade, sol aberto: a areia aparece (a luz da
+    // cidade foi pensada pro asfalto escuro; no deserto ficava tudo preto)
+    const noDeserto = "disco" in M && !!j.voo && j.wx !== undefined && Math.hypot(j.wx, j.wz!) > 1250
+    desertoK.current += ((noDeserto ? 1 : 0) - desertoK.current) * Math.min(1, dt * 0.8)
+    const dk = desertoK.current
+    if (ambRef.current) ambRef.current.intensity = 0.35 * ch.luz * (1 + dk * 1.6)
+    if (dirRef.current) dirRef.current.intensity = 0.9 * ch.luz * (1 + dk * 1.2)
     const kk = Math.min(1, dt * (0.9 + j.impacto * 9))
     j.impacto = Math.max(0, j.impacto - dt * 0.8)
     const fog = scene.fog as THREE.Fog | null
     if (fog) fog.color.lerp(alvoNevoa, kk)
     // no deserto a névoa vai longe: a cidade inteira lá no horizonte
     if (fog) {
-      const longe = V.id === "deserto"
+      const longe = V.id === "deserto" || noDeserto
       fog.far += ((longe ? 5200 : 950) - fog.far) * Math.min(1, dt * 0.6)
       fog.near += ((longe ? 300 : 70) - fog.near) * Math.min(1, dt * 0.6)
     }
