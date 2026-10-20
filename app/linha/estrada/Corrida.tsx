@@ -45,7 +45,7 @@ import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
 import { DPR, ResolucaoDinamica } from "./resolucao"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloIcones, HoloLetreiro, HoloSom, type Clima } from "./Holo"
+import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloLetreiro, HoloSom, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -1864,10 +1864,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {discoM && oculos && (
         <>
           <HoloSom
-            radio={{ ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor }}
-            onRadio={() => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }}
+            radio={{ ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal }}
+            onLigar={() => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }}
             onProxima={() => proxFaixa.current(freqRef.current)}
+            // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
+            onSintonizar={(id) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); setTimeout(() => tocarProxima(id), 0) }}
           />
+          <HoloDestaque onApp={(id) => onApp?.(id)} />
           <HoloAnel missao={missaoHolo} onMissoes={() => onMissoes?.()} />
           <HoloClima ler={lerClima} />
           <HoloIcones onApp={(id) => onApp?.(id)} />

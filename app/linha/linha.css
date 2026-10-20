@@ -2208,6 +2208,95 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
   .l-holo-ajuda { top: calc(40px + env(safe-area-inset-top)); }
 }
 
+
+/* (LU2CA 20/10) o MENU DA RÁDIO: a sintonia mora aqui (as frequências e as piratas) */
+.l-holo-radio-novas { position: absolute; top: 6px; right: 8px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: grid; place-items: center; font: 800 10px var(--font-geist-mono), monospace; font-style: normal; color: #07060d; background: #ff3fb0; box-shadow: 0 0 10px #ff3fb0; animation: l-pisca-pirata 1.2s ease-in-out infinite alternate; }
+@keyframes l-pisca-pirata { to { box-shadow: 0 0 2px #ff3fb0; opacity: 0.75 } }
+.l-holo-radio-menu { grid-column: 1 / -1; display: grid; gap: 6px; margin: 2px 0 4px 8px; padding: 8px 10px 10px; border-radius: 12px; background: rgba(6, 8, 22, 0.72); border: 1px solid color-mix(in srgb, var(--cor) 35%, transparent); max-height: min(52vh, 420px); overflow-y: auto; scrollbar-width: none; animation: l-oculos 0.25s ease-out; }
+.l-holo-radio-menu header { display: flex; align-items: center; gap: 6px; }
+.l-holo-radio-menu header b { flex: 1; font: 800 11px var(--font-geist-mono), monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cor); }
+.l-holo-radio-menu header button { padding: 2px 8px !important; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2) !important; background: rgba(255, 255, 255, 0.05) !important; color: #dffbff !important; font: 700 10px var(--font-geist-mono), monospace !important; cursor: pointer; }
+.l-holo-radio-menu header button.is-on { border-color: var(--cor) !important; color: var(--cor) !important; box-shadow: 0 0 10px -4px var(--cor); }
+.l-holo-radio-freqs, .l-holo-radio-piratas { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.l-holo-radio-freqs button { width: 100% !important; display: flex; align-items: baseline; gap: 8px; padding: 5px 8px !important; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--c) 30%, transparent) !important; background: color-mix(in srgb, var(--c) 7%, transparent) !important; color: #dffbff !important; text-align: left; cursor: pointer; font: 600 11px var(--font-geist-mono), monospace !important; }
+.l-holo-radio-freqs button b { flex: none; color: var(--c); font-size: 13px; text-shadow: 0 0 8px var(--c); }
+.l-holo-radio-freqs button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-holo-radio-freqs button small { flex: none; opacity: 0.55; font-size: 10px; }
+.l-holo-radio-freqs button i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); align-self: center; }
+.l-holo-radio-freqs button.is-aqui { background: color-mix(in srgb, var(--c) 18%, transparent) !important; border-color: var(--c) !important; }
+.l-holo-radio-freqs button:disabled { opacity: 0.45; cursor: default; }
+.l-holo-radio-sub { margin-top: 2px; font: 800 9.5px var(--font-geist-mono), monospace; letter-spacing: 0.18em; text-transform: uppercase; color: #ff3fb0; opacity: 0.85; }
+.l-holo-radio-piratas li { display: grid; gap: 1px; padding: 4px 8px; border-left: 2px solid rgba(255, 63, 176, 0.35); font: 500 11.5px/1.35 system-ui, sans-serif; color: #e9e3ff; }
+.l-holo-radio-piratas li b { font: 700 9.5px var(--font-geist-mono), monospace; letter-spacing: 0.08em; color: #ff3fb0; opacity: 0.85; }
+.l-holo-radio-piratas li.is-nova { border-left-color: #ff3fb0; background: rgba(255, 63, 176, 0.08); animation: l-chiado-pirata 0.6s steps(3) 2; }
+@keyframes l-chiado-pirata { 50% { transform: translateX(2px); filter: blur(0.6px) } }
+
+/* (LU2CA 20/10) o DESTAQUE: B4TIDA e GUITAR DRIVER se revezando, logo abaixo da rádio */
+.l-holo-destaque { position: absolute; z-index: 6; left: 12px; top: calc(198px + env(safe-area-inset-top)); width: min(24vw, 250px) !important; display: grid; gap: 6px; padding: 8px !important; border-radius: 18px; text-align: left; border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent) !important; background: linear-gradient(170deg, color-mix(in srgb, var(--cor) 16%, rgba(8, 10, 24, 0.35)), rgba(8, 10, 24, 0.25)) !important; box-shadow: 0 0 30px -8px var(--cor), inset 0 0 22px -12px var(--cor); color: #fff !important; cursor: pointer; animation: l-oculos 0.45s ease-out; overflow: hidden; }
+.l-holo-destaque::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--cor) 10%, transparent) 0 1px, transparent 1px 4px); mix-blend-mode: screen; animation: l-varre-holo 3s linear infinite; }
+@keyframes l-varre-holo { to { background-position: 0 40px } }
+.l-holo-destaque-tela { position: relative; display: block; height: 132px; border-radius: 12px; overflow: hidden; background: radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--cor) 22%, transparent), transparent 70%), rgba(0, 0, 0, 0.35); }
+.l-holo-destaque.is-batida .l-mini-mpc { inset: 10px auto; left: 50%; transform: translateX(-50%); height: calc(100% - 20px); gap: 6px; }
+.l-holo-destaque.is-batida .l-mini-mpc i { border-radius: 5px; }
+.l-holo-destaque-rodape { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+.l-holo-destaque-rodape b { flex: 1; font: 800 12px var(--font-geist-mono), monospace; letter-spacing: 0.12em; color: var(--cor); text-shadow: 0 0 8px var(--cor); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-holo-destaque-cadeado { flex: none; width: 14px; height: 14px; color: var(--cor); }
+.l-holo-destaque.is-tranca .l-holo-destaque-tela { filter: saturate(0.8); }
+.l-holo-destaque.is-nega { animation: l-nega 0.35s ease-in-out; }
+@keyframes l-nega { 25% { transform: translateX(-4px) } 75% { transform: translateX(4px) } }
+/* o GUITAR DRIVER em miniatura: a trilha em perspectiva, 5 cordas, as notas descendo */
+.l-mini-trilha { position: absolute; inset: 0; perspective: 160px; overflow: hidden; }
+.l-mini-trilha .is-pista { position: absolute; left: 50%; bottom: -6px; width: 120px; height: 220px; margin-left: -60px; transform-origin: 50% 100%; transform: rotateX(58deg); background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--cor) 12%, rgba(10, 8, 20, 0.9)) 30%); border-left: 1px solid color-mix(in srgb, var(--cor) 60%, transparent); border-right: 1px solid color-mix(in srgb, var(--cor) 60%, transparent); }
+.l-mini-trilha .is-corda { position: absolute; top: 0; bottom: 0; left: calc(12px + var(--c) * 24px); width: 1px; background: color-mix(in srgb, var(--cor) 35%, transparent); }
+.l-mini-trilha .is-nota { position: absolute; top: -14px; left: calc(4px + var(--c) * 24px); width: 16px; height: 9px; border-radius: 50%; background: hsl(calc(var(--c) * 50deg + 10deg) 95% 60%); box-shadow: 0 0 10px hsl(calc(var(--c) * 50deg + 10deg) 95% 60%); animation: l-nota-desce 3.5s linear infinite; animation-delay: var(--d); }
+@keyframes l-nota-desce { from { transform: translateY(0) } to { transform: translateY(232px) } }
+.l-mini-trilha .is-casas { position: absolute; left: 0; right: 0; bottom: 22px; height: 12px; }
+.l-mini-trilha .is-casas i { position: absolute; left: calc(4px + var(--c) * 24px); width: 16px; height: 9px; border-radius: 50%; border: 2px solid hsl(calc(var(--c) * 50deg + 10deg) 95% 60%); }
+/* as propagandas novas: ACC3SS, _IRIS.EXE, FR3Q_, STR34M */
+.l-mini-acesso { position: absolute; inset: 0; display: grid; place-items: center; color: var(--cor); }
+.l-mini-acesso svg { width: 40px; height: 40px; filter: drop-shadow(0 0 8px var(--cor)); }
+.l-mini-acesso .is-arco { animation: l-abre 2.4s ease-in-out infinite; transform-origin: 26px 18px; }
+@keyframes l-abre { 0%, 45% { transform: none } 60%, 90% { transform: translateY(-3px) rotate(18deg) } }
+.l-mini-acesso .is-varre { position: absolute; left: 10%; right: 10%; height: 2px; top: 20%; background: var(--cor); box-shadow: 0 0 10px var(--cor); animation: l-varre 2.4s ease-in-out infinite; }
+@keyframes l-varre { 0% { top: 15% } 45% { top: 80% } 50%, 100% { top: 15%; opacity: 0 } }
+.l-mini-acesso b { position: absolute; bottom: 4px; font: 800 9px var(--font-geist-mono), monospace; letter-spacing: 0.3em; opacity: 0; animation: l-acesso-ok 2.4s steps(1) infinite; }
+@keyframes l-acesso-ok { 55% { opacity: 1 } 95% { opacity: 0 } }
+.l-mini-iris { position: absolute; inset: 0; display: grid; place-items: center; }
+.l-mini-iris .is-grade { position: absolute; inset: 6px 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.l-mini-iris .is-grade i { border-radius: 3px; background: linear-gradient(140deg, hsl(calc(270deg + var(--h)) 70% 45%), hsl(calc(320deg + var(--h)) 80% 30%)); opacity: 0.25; animation: l-foto 2.4s ease-in-out infinite; animation-delay: var(--d); }
+@keyframes l-foto { 50% { opacity: 0.85 } }
+.l-mini-iris .is-olho { position: relative; width: 44px; height: 26px; border-radius: 50% / 50%; border: 2px solid var(--cor); background: rgba(10, 6, 20, 0.85); display: grid; place-items: center; box-shadow: 0 0 12px var(--cor); animation: l-pisca-olho 3.2s ease-in-out infinite; }
+.l-mini-iris .is-olho i { width: 13px; height: 13px; border-radius: 50%; background: radial-gradient(circle, #07060d 0 3px, var(--cor) 3.5px 6px, transparent 6.5px); }
+@keyframes l-pisca-olho { 0%, 92%, 100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
+.l-mini-freq { position: absolute; inset: 0; overflow: hidden; }
+.l-mini-freq .is-fila { position: absolute; top: 8px; left: 0; display: flex; gap: 8px; animation: l-capas 12s linear infinite; }
+@keyframes l-capas { to { transform: translateX(calc(-4 * 62px)) } }
+.l-mini-freq .is-capa { position: relative; flex: none; width: 54px; height: 54px; border-radius: 4px; overflow: hidden; background: radial-gradient(circle at 70% 25%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 30%, #0b0814 85%); background-size: cover; background-position: center; box-shadow: 0 0 10px -2px var(--c); }
+.l-mini-freq .is-capa .is-sol { position: absolute; left: 50%; top: 52%; width: 24px; height: 24px; margin: -12px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.75); }
+.l-mini-freq .is-capa b { position: absolute; left: 3px; right: 3px; bottom: 2px; font: 800 6px var(--font-geist-mono), monospace; letter-spacing: 0.06em; color: #fff; line-height: 1.1; }
+.l-mini-freq .is-eq { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 6px; display: flex; gap: 3px; align-items: flex-end; }
+.l-mini-freq .is-eq i { flex: 1; height: 100%; background: var(--cor); transform-origin: bottom; animation: l-eq 0.5s ease-in-out infinite alternate; animation-delay: var(--d); }
+@keyframes l-eq { from { transform: scaleY(0.2) } to { transform: scaleY(1) } }
+.l-mini-stream { position: absolute; inset: 0; }
+.l-mini-stream .is-tela { position: absolute; inset: 6px 10px 16px; border-radius: 6px; overflow: hidden; background: #0b0814; }
+.l-mini-stream .is-tela i { position: absolute; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cor) 55%, transparent), transparent); animation: l-clipe 2.2s linear infinite; }
+.l-mini-stream .is-tela i:nth-child(2) { animation-delay: -0.7s; background: linear-gradient(90deg, transparent, rgba(255, 200, 87, 0.5), transparent); }
+.l-mini-stream .is-tela i:nth-child(3) { animation-delay: -1.4s; background: linear-gradient(90deg, transparent, rgba(47, 232, 255, 0.45), transparent); }
+@keyframes l-clipe { from { left: -30% } to { left: 100% } }
+.l-mini-stream .is-play { position: absolute; left: 50%; top: 42%; width: 0; height: 0; margin: -9px 0 0 -6px; border-left: 15px solid #fff; border-top: 9px solid transparent; border-bottom: 9px solid transparent; filter: drop-shadow(0 0 6px var(--cor)); }
+.l-mini-stream .is-barra { position: absolute; left: 10px; right: 10px; bottom: 7px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+.l-mini-stream .is-barra i { display: block; height: 100%; background: var(--cor); transform-origin: left; animation: l-barra-clipe 6s linear infinite; }
+@keyframes l-barra-clipe { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+@media (prefers-reduced-motion: reduce) { .l-mini-trilha *, .l-mini-acesso *, .l-mini-iris *, .l-mini-freq *, .l-mini-stream *, .l-holo-destaque::after { animation: none !important; } }
+.l-viagem.is-holo .l-sair-kombi { top: calc(372px + env(safe-area-inset-top)) !important; }
+@media (max-width: 600px) {
+  .l-holo-destaque { top: calc(246px + env(safe-area-inset-top)); width: min(44vw, 176px) !important; padding: 6px !important; }
+  .l-holo-destaque-tela { height: 96px; }
+  .l-holo-destaque-rodape b { font-size: 10.5px; }
+  .l-viagem.is-holo .l-sair-kombi { top: calc(384px + env(safe-area-inset-top)) !important; }
+  .l-holo-radio-menu { max-height: 46vh; }
+}
+
 /* (disco) a água: a gota no lugar do anel */
 /* (LU2CA 20/10) o ícone da água é furta-cor: iridescente, a cor corre por ele */
 .l-aneis.is-agua { border-color: rgba(200, 160, 255, 0.5); }
@@ -2226,3 +2315,4 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 
 /* (disco) sem frase explicando no PROCURADO */
 .l-viagem.is-disco .l-ilha-proc small { display: none; }
+.l-holo-som.is-menu { z-index: 9; }

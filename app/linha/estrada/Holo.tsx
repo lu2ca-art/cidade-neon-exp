@@ -10,8 +10,13 @@
 //     embaixo, os ícones pequenos dos apps, enfileirados
 //   - em cima, à direita: o mapa, com o anel das missões girando em volta, e o
 //     clima da região onde a Kombi está
-//   - embaixo, à esquerda: o widget que imita o app da vez (a MPC do B4TIDA, o
-//     show de rock do GUITAR DRIVER, o fone vibrando do OUVIR)
+//   - à esquerda, logo abaixo da rádio: o DESTAQUE (LU2CA 20/10), o B4TIDA e o
+//     GUITAR DRIVER se revezando ("tudo é sobre ele"; o GUITAR fica trancado
+//     até o fim da carreira)
+//   - embaixo, à esquerda: as "propagandas" do próprio aparelho (ACC3SS,
+//     _IRIS.EXE, FR3Q_, STR34M, OUVIR), uma de cada vez, cada uma imitando o app
+//   - a sintonia não é mais app: tocar no holograma da rádio abre o MENU DA
+//     RÁDIO (as frequências e as mensagens das rádios piratas)
 //   - embaixo, à direita: o turbo e o propulsor (Corrida, .l-propulsao)
 // Tudo é clicável. Nada de frase explicando: a explicação vem nas invasões da
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
@@ -22,6 +27,8 @@ import { horaTexto } from "../relogio"
 import { ondaMusica, pistaSom } from "../som"
 import type { Save } from "../estado"
 import { PISTAS } from "./pistas"
+import { FREQUENCIAS, type FreqId } from "../radio"
+import { TIER_META } from "@/lib/radio-tiers"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
@@ -30,7 +37,11 @@ export const INFO: Record<string, { t: string; d: string }> = {
   ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
   camera: { t: "câmera", d: "de fora da Kombi ou de dentro, no banco do motorista (tecla C)." },
-  radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: ela liga e invade a música. ⏭ troca a faixa." },
+  radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: abre o menu da rádio (ligar, sintonizar as frequências que você já achou, e as mensagens das rádios piratas). ⏭ troca a faixa." },
+  destaque: { t: "B4TIDA · GUITAR DRIVER", d: "os dois que importam. o B4TIDA toca o padrão aqui mesmo: toca nele e abre o criador de beats. o GUITAR DRIVER abre no fim da sua carreira." },
+  "app:batida": { t: "B4TIDA", d: "a MPC: toca nos quadrados pra abrir o criador de beats e montar a sua música por camadas." },
+  "app:guitar": { t: "GUITAR DRIVER", d: "o jogo das faixas ao vivo. por enquanto trancado: abre quando a sua carreira chegar lá." },
+  propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, STR34M e OUVIR, um de cada vez. toca pra abrir o da vez." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
   ilha: { t: "N3XO_", d: "as mensagens da cidade passam aqui. toca pra abrir as conversas." },
   mapa: { t: "o mapa", d: "toca pra abrir. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
@@ -42,12 +53,35 @@ export const INFO: Record<string, { t: string; d: string }> = {
   sair: { t: "sair da Kombi", d: "desce de patins. a Kombi fica estacionada te esperando (tecla F)." },
 }
 const infoApp = (id: AppId) => { const a = APPS.find((x) => x.id === id); return a ? { t: a.nome, d: a.desc } : null }
-export const infoDe = (chave: string) => (chave.startsWith("app:") ? infoApp(chave.slice(4) as AppId) : INFO[chave]) ?? null
+export const infoDe = (chave: string) => INFO[chave] ?? (chave.startsWith("app:") ? infoApp(chave.slice(4) as AppId) : null) ?? null
 
-type Radio = { ligada: boolean; freq: string; faixa: string; cor: string }
+type Radio = { ligada: boolean; freq: string; faixa: string; cor: string; id: FreqId; sinal: number }
 
-// em cima, à esquerda: a RÁDIO (o holograma com a onda sonora) e a faixa da pista
-export function HoloSom({ radio, onRadio, onProxima }: { radio: Radio; onRadio: () => void; onProxima: () => void }) {
+// (RASCUNHO, LU2CA 20/10) as mensagens das frequências piratas: chegam no menu
+// da rádio de tempos em tempos. Vagas de propósito: perigo e mistério, de leve
+const PIRATAS: { de: string; texto: string }[] = [
+  { de: "??.? fm", texto: "alguém aí? aqui embaixo a gente ainda toca disco" },
+  { de: "sem nome", texto: "as máquinas não dormem. a gente também não" },
+  { de: "103.? fm", texto: "vi uma kombi velha cortando as dunas. de onde ela veio?" },
+  { de: "ruído", texto: "...a casa no deserto... ela sabia que ele vinha..." },
+  { de: "47.1 fm", texto: "tem flor nascendo na pista da nectar. quem tá regando?" },
+  { de: "sem nome", texto: "carro vazio caindo do céu de novo. ninguém dentro. nunca tem ninguém dentro" },
+  { de: "??.? fm", texto: "se vc tá ouvindo isso, vc ainda é humano. ou quase" },
+  { de: "ruído", texto: "o palco do bar tá vazio faz anos. alguém devia subir lá" },
+]
+const DE_PIRATA = 38000 // ms entre uma mensagem pirata e outra
+
+// em cima, à esquerda: a RÁDIO (o holograma com a onda sonora) e a faixa da pista.
+// Tocar no holograma abre o MENU DA RÁDIO (LU2CA 20/10: a SINT0NIA virou isso)
+export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Radio; onLigar: () => void; onProxima: () => void; onSintonizar: (id: FreqId) => void }) {
+  const [menu, setMenu] = useState(false)
+  // as piratas: quantas já chegaram (a primeira chega logo) e quantas você não leu
+  const [piratas, setPiratas] = useState(1)
+  const [lidas, setLidas] = useState(0)
+  useEffect(() => { const t = setInterval(() => setPiratas((n) => Math.min(PIRATAS.length, n + 1)), DE_PIRATA); return () => clearInterval(t) }, [])
+  // (abrir e fechar o menu marca tudo como lido)
+  const novas = menu ? 0 : piratas - lidas
+  const alternarMenu = () => { setLidas(piratas); setMenu((m) => !m) }
   const [som, setSom] = useState<{ faixa: string; t: number; dur: number } | null>(null)
   const tela = useRef<HTMLCanvasElement>(null)
   const cor = useRef(radio.cor)
@@ -121,9 +155,10 @@ export function HoloSom({ radio, onRadio, onProxima }: { radio: Radio; onRadio: 
     return () => cancelAnimationFrame(raf)
   }, [])
   return (
-    <div className={`l-holo-som ${radio.ligada ? "is-on" : ""}`} style={{ ["--cor" as string]: radio.cor }} onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="l-holo-radio-holo" data-info="radio" onClick={onRadio} aria-label={radio.ligada ? "desligar a rádio" : "ligar a rádio"}>
+    <div className={`l-holo-som ${radio.ligada ? "is-on" : ""} ${menu ? "is-menu" : ""}`} style={{ ["--cor" as string]: radio.cor }} onPointerDown={(e) => e.stopPropagation()}>
+      <button type="button" className="l-holo-radio-holo" data-info="radio" onClick={alternarMenu} aria-label="o menu da rádio" aria-expanded={menu}>
         <canvas ref={tela} />
+        {novas > 0 && !menu && <em className="l-holo-radio-novas">{novas}</em>}
       </button>
       <div className="l-holo-som-info">
         <div className="l-holo-radio-linha" data-info="radio">
@@ -138,6 +173,31 @@ export function HoloSom({ radio, onRadio, onProxima }: { radio: Radio; onRadio: 
         </div>
         {som && <div className="l-holo-barra"><div style={{ transform: `scaleX(${Math.min(1, som.t / Math.max(1, som.dur))})` }} /></div>}
       </div>
+      {menu && (
+        <div className="l-holo-radio-menu" role="dialog" aria-label="o menu da rádio">
+          <header>
+            <b>sintonia</b>
+            <button type="button" className={radio.ligada ? "is-on" : ""} onClick={onLigar} aria-label={radio.ligada ? "desligar a rádio" : "ligar a rádio"}>{radio.ligada ? "ligada" : "desligada"}</button>
+            <button type="button" onClick={alternarMenu} aria-label="fechar">×</button>
+          </header>
+          <ul className="l-holo-radio-freqs">
+            {FREQUENCIAS.map((f) => {
+              const livre = f.custo <= radio.sinal, aqui = f.id === radio.id && radio.ligada
+              return (
+                <li key={f.id} style={{ ["--c" as string]: f.cor }}>
+                  <button type="button" disabled={!livre} className={aqui ? "is-aqui" : ""} onClick={() => onSintonizar(f.id)}>
+                    <b>{f.freq}</b><span>{livre ? f.nome : "· · ·"}</span>{!livre && <small>{f.custo - radio.sinal} de sinal</small>}{aqui && <i aria-hidden="true" />}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <small className="l-holo-radio-sub">piratas</small>
+          <ul className="l-holo-radio-piratas">
+            {PIRATAS.slice(0, piratas).reverse().map((m, i) => <li key={piratas - i} className={i < piratas - lidas ? "is-nova" : ""}><b>{m.de}</b><span>{m.texto}</span></li>)}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -161,8 +221,10 @@ export function HoloLetreiro({ save, nivel, hora }: { save: Save; nivel: number;
 }
 
 // os ícones pequenos, enfileirados no alto (menos os que já têm widget: a
-// rádio, o N3XO, o B4TIDA, o GUITAR DRIVER, o OUVIR; e a Kombi, que é aqui)
-const NO_WIDGET: AppId[] = ["kombi", "n3xo", "radio", "batida", "guitar", "ouvir"]
+// rádio, o N3XO, o destaque (B4TIDA, GUITAR DRIVER), as propagandas (ACC3SS,
+// _IRIS.EXE, FR3Q_, STR34M, OUVIR); a Kombi, que é aqui; e a SINT0NIA, que
+// virou o menu da rádio (LU2CA 20/10))
+const NO_WIDGET: AppId[] = ["kombi", "n3xo", "radio", "batida", "guitar", "ouvir", "sintonia", "access", "iris", "freq", "stream"]
 const ICONES = APPS.filter((a) => !NO_WIDGET.includes(a.id) && !ESCONDIDOS.includes(a.id) && (!DOCK.includes(a.id) || a.id === "linha"))
 export function HoloIcones({ onApp }: { onApp: (id: AppId) => void }) {
   return (
@@ -216,8 +278,6 @@ export function HoloAnel({ missao, onMissoes }: { missao: { texto: string; cor: 
   )
 }
 
-// embaixo, à esquerda: o widget que imita o app da vez (troca a cada 6 s)
-const VEZ: AppId[] = ["batida", "guitar", "ouvir"]
 // a MPC do B4TIDA: 16 pads tocando um padrão (bumbo, caixa, chimbal, o synth)
 const PADRAO = [0, 4, 8, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15]
 function MiniMpc() {
@@ -227,14 +287,17 @@ function MiniMpc() {
     </span>
   )
 }
-// o show de rock do GUITAR DRIVER: o palco, os canhões de luz varrendo, a banda e a galera pulando
-function MiniShow() {
+// o GUITAR DRIVER em miniatura: a trilha em perspectiva e as notas descendo
+// pras 5 casas lá embaixo (o jeito do jogo)
+const NOTAS = [[0, 0], [2, 0.35], [4, 0.7], [1, 1.05], [3, 1.4], [0, 1.75], [2, 2.1], [4, 2.45], [3, 2.8], [1, 3.15]]
+function MiniTrilha() {
   return (
-    <span className="l-mini-show" aria-hidden="true">
-      <i className="is-luz" /><i className="is-luz is-b" /><i className="is-luz is-c" />
-      <span className="is-banda"><i /><i className="is-guitarra" /><i /></span>
-      <span className="is-palco" />
-      <span className="is-galera">{Array.from({ length: 9 }, (_, i) => <i key={i} style={{ ["--d" as string]: `${(i * 0.137) % 0.5}s` }} />)}</span>
+    <span className="l-mini-trilha" aria-hidden="true">
+      <span className="is-pista">
+        {[0, 1, 2, 3, 4].map((c) => <i key={c} className="is-corda" style={{ ["--c" as string]: c }} />)}
+        {NOTAS.map(([c, d], k) => <i key={k} className="is-nota" style={{ ["--c" as string]: c, ["--d" as string]: `${d}s` }} />)}
+        <span className="is-casas">{[0, 1, 2, 3, 4].map((c) => <i key={c} style={{ ["--c" as string]: c }} />)}</span>
+      </span>
     </span>
   )
 }
@@ -247,16 +310,96 @@ function MiniFone() {
     </span>
   )
 }
+// o ACC3SS: a fechadura que lê e abre (a varredura e o "acesso" piscando)
+function MiniAcesso() {
+  return (
+    <span className="l-mini-acesso" aria-hidden="true">
+      <svg viewBox="0 0 40 40"><rect x="9" y="18" width="22" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="2.4" /><path className="is-arco" d="M14 18v-5a6 6 0 0 1 12 0v5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /><circle cx="20" cy="25" r="2.2" fill="currentColor" /><path d="M20 27v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+      <i className="is-varre" />
+      <b>ACESSO</b>
+    </span>
+  )
+}
+// o _IRIS.EXE: o olho piscando no meio de uma grade de fotos que acende uma a uma
+function MiniIris() {
+  return (
+    <span className="l-mini-iris" aria-hidden="true">
+      <span className="is-grade">{Array.from({ length: 9 }, (_, i) => <i key={i} style={{ ["--d" as string]: `${(i * 0.37) % 2.4}s`, ["--h" as string]: `${i * 40}deg` }} />)}</span>
+      <span className="is-olho"><i /></span>
+    </span>
+  )
+}
+// o FR3Q_: as capas dos projetos salvos no untitled passando (só a do álbum
+// existe no repo; as outras três são capas desenhadas, RASCUNHO até ele mandar)
+const CAPAS = [
+  { nome: "CIDADE NEON", img: "/images/album-cover.jpg", cor: TIER_META.full.color },
+  { nome: "SUBÚRBIO XÊNON", cor: TIER_META.suburbio.color },
+  { nome: "CIDADENEON.CRYPTO", cor: TIER_META.crypto.color },
+  { nome: "LIVE NEON", cor: TIER_META.live.color },
+]
+function MiniFreq() {
+  return (
+    <span className="l-mini-freq" aria-hidden="true">
+      <span className="is-fila">
+        {[...CAPAS, CAPAS[0]].map((c, i) => (
+          <span key={i} className="is-capa" style={{ ["--c" as string]: c.cor, ...(c.img ? { backgroundImage: `url(${c.img})` } : {}) }}>
+            {!c.img && <><i className="is-sol" /><b>{c.nome}</b></>}
+          </span>
+        ))}
+      </span>
+      <span className="is-eq">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ ["--d" as string]: `${(i * 0.13) % 0.5}s` }} />)}</span>
+    </span>
+  )
+}
+// o STR34M: um clipe rodando (a tela com as faixas de luz e a barra do vídeo)
+function MiniStream() {
+  return (
+    <span className="l-mini-stream" aria-hidden="true">
+      <span className="is-tela"><i /><i /><i /></span>
+      <span className="is-play" />
+      <span className="is-barra"><i /></span>
+    </span>
+  )
+}
+
+// embaixo, à esquerda: as PROPAGANDAS do próprio holo (LU2CA 20/10), uma de
+// cada vez (troca a cada 6 s), cada uma imitando o app
+const VEZ: AppId[] = ["access", "iris", "freq", "stream", "ouvir"]
+const MINI: Partial<Record<AppId, () => React.ReactElement>> = { access: MiniAcesso, iris: MiniIris, freq: MiniFreq, stream: MiniStream, ouvir: MiniFone }
 export function HoloApps({ onApp }: { onApp: (id: AppId) => void }) {
   const [k, setK] = useState(0)
   useEffect(() => { const t = setInterval(() => setK((x) => (x + 1) % VEZ.length), 6000); return () => clearInterval(t) }, [])
   const a = APPS.find((x) => x.id === VEZ[k])!
+  const Mini = MINI[a.id]!
   return (
     <button type="button" key={a.id} className={`l-holo-apps is-${a.id}`} data-info={`app:${a.id}`} style={{ ["--cor" as string]: a.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => onApp(a.id)}>
-      <span className="l-holo-apps-tela">{a.id === "batida" ? <MiniMpc /> : a.id === "guitar" ? <MiniShow /> : <MiniFone />}</span>
+      <span className="l-holo-apps-tela"><Mini /></span>
       <span className="l-holo-apps-rodape">
         <b>{a.nome}</b>
         <span className="l-holo-apps-pips">{VEZ.map((v, i) => <i key={v} className={i === k ? "is-on" : ""} />)}</span>
+      </span>
+    </button>
+  )
+}
+
+// o DESTAQUE (LU2CA 20/10): o B4TIDA e o GUITAR DRIVER se revezando, maiores,
+// com cara de holograma. O B4TIDA é só os quadrados da MPC tocando o padrão
+// (tocou, abre o criador de beats); o GUITAR DRIVER fica trancado até o fim da
+// carreira (B13), mas mostrando a trilha: "tudo é sobre ele"
+const DESTAQUE: AppId[] = ["batida", "guitar"]
+export function HoloDestaque({ onApp, guitarLivre = false }: { onApp: (id: AppId) => void; guitarLivre?: boolean }) {
+  const [k, setK] = useState(0)
+  const [nega, setNega] = useState(0)
+  useEffect(() => { const t = setInterval(() => setK((x) => (x + 1) % DESTAQUE.length), 7000); return () => clearInterval(t) }, [])
+  const a = APPS.find((x) => x.id === DESTAQUE[k])!
+  const tranca = a.id === "guitar" && !guitarLivre
+  return (
+    <button type="button" key={`${a.id}:${nega}`} className={`l-holo-destaque is-${a.id} ${tranca ? "is-tranca" : ""} ${nega ? "is-nega" : ""}`} data-info={`app:${a.id}`} style={{ ["--cor" as string]: a.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => (tranca ? setNega((n) => n + 1) : onApp(a.id))} aria-label={tranca ? `${a.nome} (trancado)` : a.nome}>
+      <span className="l-holo-destaque-tela">{a.id === "batida" ? <MiniMpc /> : <MiniTrilha />}</span>
+      <span className="l-holo-destaque-rodape">
+        <b>{a.nome}</b>
+        {tranca && <svg className="l-holo-destaque-cadeado" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2" /></svg>}
+        <span className="l-holo-apps-pips">{DESTAQUE.map((v, i) => <i key={v} className={i === k ? "is-on" : ""} />)}</span>
       </span>
     </button>
   )
