@@ -54,6 +54,7 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
 import { pecaAgora } from "./disco/missoes"
 import { PingPong } from "./disco/PingPong"
+import { guardarCapsula, guitarLivre } from "./disco/capsula"
 import { luzDasPistas, pistasFeitas } from "./estrada/atos"
 import { PISTAS } from "./estrada/pistas"
 
@@ -988,6 +989,12 @@ export default function LinhaPage() {
       return
     }
     if (id === "violao") setSave((s) => ({ ...s, jogados: { ...s.jogados, violao: 1 } }))
+    // (disco, B13) o GUITAR DRIVER fica trancado até o fim da carreira; no fim,
+    // abre como a cápsula do tempo (os shows dele vão junto)
+    if (D && id === "guitar") {
+      if (!guitarLivre(saveRef.current)) return
+      guardarCapsula(saveRef.current)
+    }
     // (disco) os de fora abrem no visualizador do holo (a página não sai)
     if (D && id in VISOR) { setVisor(id as VisorId); return }
     if (a.link) {

@@ -42,6 +42,7 @@ import { CASA, QUEDA, RAIO_CASA, SAIDA_CASA, FALAS_DUNAS, type HistoriaDisco } f
 import { CasaDeserto } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
+import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
@@ -2021,7 +2022,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
             onSintonizar={(id) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); setTimeout(() => tocarProxima(id), 0) }}
           />
-          <HoloDestaque onApp={(id) => onApp?.(id)} />
+          <HoloDestaque onApp={(id) => onApp?.(id)} guitarLivre={guitarLivre(save)} />
           <HoloAnel missao={missaoHolo} onMissoes={() => onMissoes?.()} />
           <HoloClima ler={lerClima} />
           <HoloIcones onApp={(id) => onApp?.(id)} />
