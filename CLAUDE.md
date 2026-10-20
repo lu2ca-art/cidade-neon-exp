@@ -122,18 +122,18 @@ O dono é um gênio criativo, NÃO técnico. Ele fala muita coisa de uma vez, fo
 Nunca peça a ele detalhes técnicos (scripts, métricas, ferramentas). Decidir isso é trabalho da equipe.
 Pergunte a ele só decisões de NEGÓCIO e de GOSTO (ex.: "mais sombrio ou mais colorido?").
 
-### Protocolo de entrada (sempre, para qualquer mensagem do dono)
-1. Acione o agente `diretor`.
-2. O diretor separa tudo que o dono disse em tópicos, cruza com BACKLOG.md (duplicados, relacionados) e ordena por impacto no jogador x esforço.
-3. O diretor delega cada item ao especialista certo. Um especialista = uma tarefa por vez.
-4. Especialistas medem ANTES e DEPOIS por conta própria e registram em RELATORIOS/.
-5. O diretor atualiza o BACKLOG.md e entrega ao dono um resumo curto, em linguagem comum: o que foi feito, o que melhorou (com números), o que precisa de decisão dele.
+### Protocolo de entrada
+1. Mensagem comum do dono vai direto pra área certa (sem passar pelo diretor). Plano completo: LU2CA/projetos/cidade-neon/plano-max.md.
+2. O agente `diretor` (Opus) só entra em dois casos: quando o dono despeja ideias (`/triagem`) e no fechamento do dia (ordena a fila do dia seguinte).
+3. Cada área trabalha nas pastas dela, com o modelo do cartão. Um especialista = uma tarefa por vez.
+4. Performance mede sempre com `scripts/desempenho` (headless, DPR 2, passo fixo), nunca com método próprio. QA roda os roteiros fixos do Playwright.
+5. Ao terminar: relatório curto em RELATORIOS/AAAA-MM-DD-area.md (o que fez, prova, pendente) e o cartão muda de seção no BACKLOG.md.
 
 ### Regras de ouro
 - Nada é "feito" sem prova (número, print ou teste rodando).
 - Item que depende de decisão do dono vai para a seção "Aguardando o dono" do BACKLOG.md, e a equipe segue com o resto.
 - Tarefas simples e repetitivas usam modelo menor. Tarefas de julgamento usam o modelo maior.
-- Uma tarefa por sessão. Terminou, registra e limpa o contexto.
+- Execução automática nunca faz merge na main, nunca publica, nunca posta, nunca manda e-mail, nunca gasta em ads. Deixa branch, prévia e relatório.
 - Se o dono pedir algo que prejudica o jogo, o agente discorda e explica o porquê antes de executar.
 
 Agentes em `.claude/agents/` (diretor, performance, arte-3d, audio, narrativa, qa); comando `/triagem`; fila em `BACKLOG.md`; provas em `RELATORIOS/`.
