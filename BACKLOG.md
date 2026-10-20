@@ -19,7 +19,7 @@
 - As perguntas do plano-noite-20-10.md (falas RASCUNHO, o bar na pista da Nectar, a música do show do prólogo, vol.2/CIDADE NEON no untitled, "mais flores, mais água", as 4 peças).
 
 ## Feito (com prova)
-- **2. Uma missão = uma música** (e2d813e) · RELATORIOS/audio-2026-10-21-uma-missao-uma-musica.md: na torre, antes nectar (a última) → depois sexta-inst abafada; fim do show → destaque com 4 plataformas + untitled por 14 s; a torre passa pra dopamina-inst; desempenho igual (draw calls 1394 → 1399, triângulos 1,27 M → 1,27 M).
+- **2. Uma missão = uma música** (e2d813e) · RELATORIOS/2026-10-21-audio.md: na torre, antes nectar (a última) → depois sexta-inst abafada; fim do show → destaque com 4 plataformas + untitled por 14 s; a torre passa pra dopamina-inst; desempenho igual (draw calls 1394 → 1399, triângulos 1,27 M → 1,27 M).
 - **1. Missões como feira** (badb52e) · Playwright com save na carreira: a feira mostra Sexta e DopaminA; pegar → checklist; 6 s parado → o piloto liga e a Kombi acelera; largar → volta pra feira.
 - **As prévias do vol.1 com 22 s** (2ddb77f) · ffprobe: as 9 com 22,000 s (Nectar, Sexta e Copo eram 21,5–21,8 s).
 - **A empresa-ia instalada** (c86f00f) · agentes, /triagem, BACKLOG, RELATORIOS, as regras no CLAUDE.md.
