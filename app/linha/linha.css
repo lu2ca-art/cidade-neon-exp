@@ -2562,3 +2562,10 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-freq-senha em { font: 12px system-ui, sans-serif; font-style: normal; color: #ff8a8a; }
 .l-freq-senha button { width: 100% !important; min-height: 42px; border-radius: 999px; border: 0 !important; background: #f2f2f4 !important; color: #1c1c1f !important; font: 600 14px system-ui, sans-serif !important; cursor: pointer; }
 .l-freq-senha button.is-sec { background: none !important; color: #8e8e95 !important; }
+
+/* (B19) a checklist da missão de agora no disco */
+.l-missoes.is-disco .l-missoes-check li { display: flex; align-items: center; gap: 8px; }
+.l-missoes.is-disco .l-missoes-check li em { margin-left: auto; font: 10px var(--mono); font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cor); }
+.l-missoes.is-disco .l-missoes-check li.is-breve { opacity: 0.45; }
+.l-missoes.is-disco .l-missoes-check li.is-breve em { color: var(--mut); }
+.l-missoes.is-disco .l-missoes-check li.is-agora { font-weight: 700; }

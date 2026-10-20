@@ -224,7 +224,9 @@ export function HoloLetreiro({ save, nivel, hora }: { save: Save; nivel: number;
 // rádio, o N3XO, o destaque (B4TIDA, GUITAR DRIVER), as propagandas (ACC3SS,
 // _IRIS.EXE, FR3Q_, STR34M, OUVIR); a Kombi, que é aqui; e a SINT0NIA, que
 // virou o menu da rádio (LU2CA 20/10))
-const NO_WIDGET: AppId[] = ["kombi", "n3xo", "radio", "batida", "guitar", "ouvir", "sintonia", "access", "iris", "freq", "stream"]
+// (LU2CA 21/10) o app RÁDIO 222 e o [UNTITLED] morreram no disco: a rádio é o
+// holograma (o menu dela) e o FR3Q_ faz o papel do untitled
+const NO_WIDGET: AppId[] = ["kombi", "n3xo", "radio", "batida", "guitar", "ouvir", "sintonia", "access", "iris", "freq", "stream", "untitled"]
 const ICONES = APPS.filter((a) => !NO_WIDGET.includes(a.id) && !ESCONDIDOS.includes(a.id) && (!DOCK.includes(a.id) || a.id === "linha"))
 export function HoloIcones({ onApp }: { onApp: (id: AppId) => void }) {
   return (

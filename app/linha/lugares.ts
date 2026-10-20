@@ -11,7 +11,7 @@
 import type { EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 
-export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "casa-dbee" | "posto" | "plataforma" | "oficina"
+export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "casa-dbee" | "posto" | "plataforma" | "oficina" | "palco-swav" | "palco-rollercoaster" | "palco-copo"
 
 export interface Lugar {
   id: LugarId
@@ -123,4 +123,10 @@ LUGARES.oficina = {
   id: "oficina", nome: "a oficina", no: "na oficina", letreiro: "OFICINA", area: "suburbio", u: 1150, lado: 1, horario: "sempre",
   cor: "#ff9000", acento: "#e0ff4f", soDisco: true,
   gente: [{ quem: "o mecânico", cor: "#ff9000" }],
+}
+
+// (mapa-disco) os palcos das linhas que não tinham lugar: o show no fim da
+// missão de cada faixa acontece aqui (RASCUNHO de onde fica cada um)
+for (const [id, nome, cor] of [["palco-swav", "o palco da Swav", "#ff3fb0"], ["palco-rollercoaster", "o palco da Rollercoaster", "#ff2436"], ["palco-copo", "o palco do Copo Americano", "#ffc857"]] as const) {
+  LUGARES[id] = { id, nome, no: `no ${nome.slice(2)}`, letreiro: "PALCO", area: "linha", u: 600, lado: 1, horario: "sempre", cor, acento: "#ffffff", soDisco: true, gente: [] }
 }

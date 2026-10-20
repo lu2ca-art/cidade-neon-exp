@@ -52,11 +52,12 @@ import { Freq } from "./disco/Freq"
 import { Show, type ResultadoShow } from "./disco/Show"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
-import { pecaAgora } from "./disco/missoes"
+import { missaoAgora, type MissaoAgora } from "./disco/missoes"
+import { COR_PISTA } from "./disco/historia"
 import { PingPong } from "./disco/PingPong"
 import { guardarCapsula, guitarLivre } from "./disco/capsula"
 import { luzDasPistas, pistasFeitas } from "./estrada/atos"
-import { PISTAS } from "./estrada/pistas"
+import { PISTAS, type PistaId } from "./estrada/pistas"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -97,6 +98,21 @@ type Tela =
   | { t: "final" }
 
 type Aviso = { id: number; titulo: string; texto: string; cor: string }
+
+// (B19) a missão de agora na carreira, direto do save: a 1ª linha acesa ainda não feita
+function missaoDoSave(s: Save): MissaoAgora | null {
+  const h = historiaDe(s)
+  if (h.fase !== "carreira") return null
+  const luz = luzDasPistas(pistasFeitas(s.objetos))
+  return missaoAgora(PISTAS.filter((p) => luz[p.faixa] === "aberta").map((p) => p.id), h.pecas ?? [])
+}
+// (B8/B19) o show de cada missão: o do bar e o da oficina (a história) e o de cada linha (no palco dela)
+function confShow(id: string): { faixa: PistaId; lugar: string; cor: string } | null {
+  if (id === "bar") return { faixa: "copo", lugar: "no bar", cor: "#ff6a35" }
+  if (id === "oficina") return { faixa: "nectar", lugar: "na oficina", cor: "#e0ff4f" }
+  const p = PISTAS.find((x) => x.id === id)
+  return p ? { faixa: p.id, lugar: `no palco da ${p.faixa}`, cor: COR_PISTA[p.faixa] ?? "#ffc857" } : null
+}
 
 export default function LinhaPage() {
   const [save, setSave] = useState<Save>(VAZIO)
@@ -502,7 +518,15 @@ export default function LinhaPage() {
         return
       }
       // (B11) a peça de destreza da carreira (o ping pong da Sexta-Feira)
-      if (h.fase === "carreira" && id === "casa-drewboy" && !(h.pecas ?? []).includes("sexta:pingpong") && Date.now() - barFechou.current > 8000) { setPingpong(true); return }
+      // (B19) a carreira: a vaga da peça de agora abre o jogo dela; a do palco, o show
+      if (h.fase === "carreira" && Date.now() - barFechou.current > 8000) {
+        const m = missaoDoSave(saveRef.current)
+        if (m && m.alvo.lugar === id) {
+          if (m.alvo.tipo === "peca" && m.alvo.peca?.id === "pingpong") { setPingpong(true); return }
+          if (m.alvo.tipo === "show") { barFechou.current = Date.now(); setSave((s) => comHistoria(s, (x) => ({ ...x, show: m.pista }))); return }
+        }
+        return
+      }
       if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
         setAoVivo(null)
         setCinema("lugar")
@@ -694,27 +718,23 @@ export default function LinhaPage() {
     return emTutorial(save) ? (feito(save, "posto") ? l.filter((m) => m.id === PRIMEIRA) : []) : l
   }, [save, nivel])
 
-  // (B11) a carreira: a próxima peça jogável das linhas acesas
-  const pecaCarreira = useMemo(() => {
-    if (hist.fase !== "carreira") return null
-    const luz = luzDasPistas(pistasFeitas(save.objetos))
-    return pecaAgora(PISTAS.filter((p) => luz[p.faixa] === "aberta").map((p) => p.id), hist.pecas ?? [])
-  }, [hist.fase, hist.pecas, save.objetos])
+  // (B11/B19) a carreira: a missão de agora (a checklist e o próximo lugar)
+  const missaoCarreira = useMemo(() => missaoDoSave(save), [save])
   const [pingpong, setPingpong] = useState(false)
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? { t: "lugar", missao: "copo", lugar: "bar", pegar: false }
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : hist.fase === "nectar" && hist.nectar === "oficina" ? { t: "lugar", missao: "nectar", lugar: "oficina", pegar: false }
-    : pecaCarreira?.peca.onde?.lugar ? { t: "lugar", missao: "sexta", lugar: pecaCarreira.peca.onde.lugar as LugarId, pegar: false }
+    : missaoCarreira ? { t: "lugar", missao: "sexta", lugar: missaoCarreira.alvo.lugar as LugarId, pegar: false }
     : null
   // (B8) o show marcado: o fim de cada missão (o prólogo é o do bar)
-  const SHOWS: Record<string, { faixa: "copo" | "nectar"; lugar: string; cor: string }> = {
-    bar: { faixa: "copo", lugar: "no bar", cor: "#ff6a35" },
-    oficina: { faixa: "nectar", lugar: "na oficina", cor: "#e0ff4f" },
-  }
-  const showAgora = HIST && hist.show && SHOWS[hist.show] && !cena && tela.t === "corrida" ? hist.show : null
+  const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
+  const showConf = showAgora ? confShow(showAgora)! : null
   const fimShow = (r: ResultadoShow) => {
-    const id = hist.show!, conf = SHOWS[id]
+    const id = hist.show!, conf = confShow(id)!
+    // (B19) o show de uma linha fecha a missão dela: o objeto da faixa no save (a próxima acende)
+    const linha = PISTAS.some((p) => p.id === id) ? (id as EstacaoId) : null
+    if (linha) setSave((s) => (s.objetos.includes(linha) ? s : { ...s, objetos: [...s.objetos, linha] }))
     const m = calcularManchete(r, id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
     setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
     if (id === "oficina") setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
@@ -723,7 +743,7 @@ export default function LinhaPage() {
   // o que o anel do holo diz (curto: o lugar, não a explicação)
   const objetivoDisco = hist.fase === "dunas" ? "a cidade" : hist.fase === "bar" ? "o bar"
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
-    : pecaCarreira ? pecaCarreira.peca.nome : null
+    : missaoCarreira ? (missaoCarreira.alvo.tipo === "show" ? `o show · ${PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa}` : missaoCarreira.alvo.peca!.nome) : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -995,6 +1015,9 @@ export default function LinhaPage() {
       if (!guitarLivre(saveRef.current)) return
       guardarCapsula(saveRef.current)
     }
+    // (disco, LU2CA 21/10) o app RÁDIO 222 e o [UNTITLED] morreram: quem chegar
+    // neles por outro caminho cai no FR3Q_ (a rádio mora no holograma do holo)
+    if (D && (id === "radio" || id === "untitled")) { setVisor("freq"); return }
     // (disco) os de fora abrem no visualizador do holo (a página não sai)
     if (D && id in VISOR) { setVisor(id as VisorId); return }
     if (a.link) {
@@ -1229,7 +1252,26 @@ export default function LinhaPage() {
             {listaMissoes.length > 0 && <em aria-label={`${listaMissoes.length} missões`}>{listaMissoes.length}</em>}
           </button>
         )}
-        {painelMissoes && !ligacao && tela.t === "corrida" && !emSala && (
+        {/* (B19) no disco, o painel das missões é a checklist da missão de agora */}
+        {painelMissoes && HIST && tela.t === "corrida" && !emSala && (
+          <div className="l-missoes is-disco" role="dialog" aria-label="Missão">
+            <header><b>missão</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
+            {missaoCarreira ? (
+              <section className="l-missoes-agora" style={{ ["--cor" as string]: COR_PISTA[PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa] }}>
+                <small>agora · {PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa} · {PISTAS.find((p) => p.id === missaoCarreira.pista)!.personagem}</small>
+                <ul className="l-missoes-check">
+                  {missaoCarreira.passos.map((p) => <li key={p.nome} className={`is-${p.estado === "em breve" ? "breve" : p.estado}`}><i aria-hidden="true">{p.estado === "feita" ? "✓" : ""}</i>{p.nome}<em>{p.estado === "agora" ? "agora" : p.estado === "em breve" ? "em breve" : ""}</em></li>)}
+                </ul>
+              </section>
+            ) : (
+              <section className="l-missoes-agora" style={{ ["--cor" as string]: "#e0ff4f" }}>
+                <small>agora</small>
+                <p>{objetivoDisco ?? "o mapa está aberto: explora"}</p>
+              </section>
+            )}
+          </div>
+        )}
+        {painelMissoes && !HIST && !ligacao && tela.t === "corrida" && !emSala && (
           <div className="l-missoes" role="dialog" aria-label="Missões">
             <header><b>missões</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
             {tut ? (
@@ -1294,13 +1336,13 @@ export default function LinhaPage() {
         )}
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
-        {showAgora && <Show key={showAgora} faixa={SHOWS[showAgora].faixa} lugar={SHOWS[showAgora].lugar} cor={SHOWS[showAgora].cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
+        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} cor={showConf!.cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()
           if (venceu) setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + 3), neon: (s.neon ?? 0) + 10 }, (h) => ({ ...h, pecas: [...new Set([...(h.pecas ?? []), "sexta:pingpong"])] })))
         }} />}
-        {jornal && <Jornal m={jornal} cor={SHOWS[jornal.missao]?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
+        {jornal && <Jornal m={jornal} cor={confShow(jornal.missao)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq save={save} /> : undefined}</Visor>}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (

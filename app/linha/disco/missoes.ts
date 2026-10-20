@@ -81,3 +81,31 @@ export function pecaAgora(acesas: PistaId[], feitas: string[]): { pista: PistaId
   for (const pista of acesas) for (const peca of MISSOES_DISCO[pista].pecas) if (peca.pronto && !feitas.includes(`${pista}:${peca.id}`)) return { pista, peca }
   return null
 }
+
+// ── A MISSÃO DE AGORA NA CARREIRA (B19, o bug "depois de uma missão não
+// aparece a outra"): a linha acesa que ainda não foi feita (na ordem dos atos),
+// com a checklist das 4 peças (feita / agora / em breve) e, no fim, o show no
+// palco da linha (tocar ou cantar); o show fecha a missão (o objeto da faixa
+// no save) e a próxima linha acende. Peça que ainda não tem jogo fica "em breve"
+// e não trava nada ──
+export const PALCO: Record<PistaId, string> = {
+  nectar: "oficina", sexta: "balada", dopamina: "topo", ojala: "casa-dbee", swav: "palco-swav", copo: "palco-copo",
+  ontem: "casa-shows", rollercoaster: "palco-rollercoaster", chuva: "escondido",
+}
+export type EstadoPasso = "feita" | "agora" | "depois" | "em breve"
+export interface MissaoAgora { pista: PistaId; passos: { nome: string; estado: EstadoPasso }[]; alvo: { tipo: "peca" | "show"; lugar: string; peca?: Peca } }
+export function missaoAgora(acesas: PistaId[], pecasFeitas: string[]): MissaoAgora | null {
+  const pista = acesas[0]
+  if (!pista) return null
+  const m = MISSOES_DISCO[pista]
+  let alvo: MissaoAgora["alvo"] | null = null
+  const passos = m.pecas.map((p) => {
+    const feita = pecasFeitas.includes(`${pista}:${p.id}`)
+    let estado: EstadoPasso = feita ? "feita" : p.pronto && p.onde?.lugar ? "depois" : "em breve"
+    if (!feita && p.pronto && p.onde?.lugar && !alvo) { alvo = { tipo: "peca", lugar: p.onde.lugar, peca: p }; estado = "agora" }
+    return { nome: p.nome, estado }
+  })
+  if (!alvo) alvo = { tipo: "show", lugar: PALCO[pista] }
+  passos.push({ nome: "o show (tocar ou cantar)", estado: alvo.tipo === "show" ? "agora" : "depois" })
+  return { pista, passos, alvo }
+}
