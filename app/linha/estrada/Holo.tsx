@@ -28,7 +28,6 @@ import { ondaMusica, pistaSom } from "../som"
 import type { Save } from "../estado"
 import { PISTAS } from "./pistas"
 import { FREQUENCIAS, type FreqId } from "../radio"
-import { TIER_META } from "@/lib/radio-tiers"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
@@ -329,22 +328,22 @@ function MiniIris() {
     </span>
   )
 }
-// o FR3Q_: as capas dos projetos salvos no untitled passando (só a do álbum
-// existe no repo; as outras três são capas desenhadas, RASCUNHO até ele mandar)
+// o FR3Q_: as capas dos projetos salvos no untitled passando, na ordem da
+// página dele (LU2CA 20/10, os prints: public/capas/untitled, 192×144)
 const CAPAS = [
-  { nome: "CIDADE NEON", img: "/images/album-cover.jpg", cor: TIER_META.full.color },
-  { nome: "SUBÚRBIO XÊNON", cor: TIER_META.suburbio.color },
-  { nome: "CIDADENEON.CRYPTO", cor: TIER_META.crypto.color },
-  { nome: "LIVE NEON", cor: TIER_META.live.color },
+  { nome: "cidade neon vol.1", img: "/capas/untitled/cidade-neon-vol1.jpg" },
+  { nome: "cidade neon vol.2", img: "/capas/untitled/cidade-neon-vol2.jpg" },
+  { nome: "CIDADE NEON", img: "/capas/untitled/cidade-neon.jpg" },
+  { nome: "cidadeneon.live", img: "/capas/untitled/cidadeneon-live.jpg" },
+  { nome: "SUBÚRBIO XENOM", img: "/capas/untitled/suburbio-xenom.jpg" },
+  { nome: "cidadeneon.crypto", img: "/capas/untitled/cidadeneon-crypto.jpg" },
 ]
 function MiniFreq() {
   return (
     <span className="l-mini-freq" aria-hidden="true">
       <span className="is-fila">
-        {[...CAPAS, CAPAS[0]].map((c, i) => (
-          <span key={i} className="is-capa" style={{ ["--c" as string]: c.cor, ...(c.img ? { backgroundImage: `url(${c.img})` } : {}) }}>
-            {!c.img && <><i className="is-sol" /><b>{c.nome}</b></>}
-          </span>
+        {[...CAPAS, ...CAPAS.slice(0, 3)].map((c, i) => (
+          <span key={i} className="is-capa" style={{ backgroundImage: `url(${c.img})` }} title={c.nome} />
         ))}
       </span>
       <span className="is-eq">{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ ["--d" as string]: `${(i * 0.13) % 0.5}s` }} />)}</span>

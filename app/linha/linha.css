@@ -2269,9 +2269,9 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-mini-iris .is-olho i { width: 13px; height: 13px; border-radius: 50%; background: radial-gradient(circle, #07060d 0 3px, var(--cor) 3.5px 6px, transparent 6.5px); }
 @keyframes l-pisca-olho { 0%, 92%, 100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
 .l-mini-freq { position: absolute; inset: 0; overflow: hidden; }
-.l-mini-freq .is-fila { position: absolute; top: 8px; left: 0; display: flex; gap: 8px; animation: l-capas 12s linear infinite; }
-@keyframes l-capas { to { transform: translateX(calc(-4 * 62px)) } }
-.l-mini-freq .is-capa { position: relative; flex: none; width: 54px; height: 54px; border-radius: 4px; overflow: hidden; background: radial-gradient(circle at 70% 25%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 30%, #0b0814 85%); background-size: cover; background-position: center; box-shadow: 0 0 10px -2px var(--c); }
+.l-mini-freq .is-fila { position: absolute; top: 6px; left: 0; display: flex; gap: 8px; animation: l-capas 18s linear infinite; }
+@keyframes l-capas { to { transform: translateX(calc(-6 * 80px)) } }
+.l-mini-freq .is-capa { position: relative; flex: none; width: 72px; height: 54px; border-radius: 4px; overflow: hidden; background: radial-gradient(circle at 70% 25%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 30%, #0b0814 85%); background-size: cover; background-position: center; box-shadow: 0 0 10px -2px var(--c); }
 .l-mini-freq .is-capa .is-sol { position: absolute; left: 50%; top: 52%; width: 24px; height: 24px; margin: -12px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.75); }
 .l-mini-freq .is-capa b { position: absolute; left: 3px; right: 3px; bottom: 2px; font: 800 6px var(--font-geist-mono), monospace; letter-spacing: 0.06em; color: #fff; line-height: 1.1; }
 .l-mini-freq .is-eq { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 6px; display: flex; gap: 3px; align-items: flex-end; }
