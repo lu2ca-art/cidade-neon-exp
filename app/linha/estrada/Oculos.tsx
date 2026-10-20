@@ -89,7 +89,7 @@ export function OculosHud({ aberto, save, nivel, tarefa, radio, onRadio, onProxi
 }
 
 // o mapa holográfico: aparece conforme a Kombi sobe (de 6 a 45 m acima do chão embaixo dela)
-export function OculosMapa({ M, jogo }: { M: MundoDisco; jogo: React.RefObject<JogoMin> }) {
+export function OculosMapa({ M, jogo, apagada = null }: { M: MundoDisco; jogo: React.RefObject<JogoMin>; apagada?: boolean[] | null }) {
   const tela = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const cv = tela.current
@@ -97,8 +97,9 @@ export function OculosMapa({ M, jogo }: { M: MundoDisco; jogo: React.RefObject<J
     const g = cv.getContext("2d")
     if (!g) return
     // as linhas, uma vez (a cada 6 m)
-    const linhas = M.vias.map((v) => {
-      const cor = (v as typeof v & { cor?: string }).cor ?? "#ffffff"
+    const linhas = M.vias.map((v, vi) => {
+      // (os atos) pista ainda apagada: um fio escuro
+      const cor = apagada?.[vi] ? "#2e2c40" : (v as typeof v & { cor?: string }).cor ?? "#ffffff"
       const pts: number[] = []
       for (let i = 0; i < v.n; i += 3) pts.push(v.px[i], v.pz[i])
       return { cor, pts, volta: !!v.rede && !v.rede.ida }
@@ -161,6 +162,6 @@ export function OculosMapa({ M, jogo }: { M: MundoDisco; jogo: React.RefObject<J
     }
     raf = requestAnimationFrame(quadro)
     return () => cancelAnimationFrame(raf)
-  }, [M, jogo])
+  }, [M, jogo, apagada])
   return <canvas ref={tela} className="l-oculos-mapa" aria-hidden="true" />
 }

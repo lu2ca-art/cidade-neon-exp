@@ -65,7 +65,8 @@ function por(g: THREE.BufferGeometry, x: number, y: number, z: number, rumo: num
   return g
 }
 
-export function Portoes({ M }: { M: MundoDisco }) {
+// apagada: as vias das pistas que o ato ainda não abriu (portão sem luz, sem placa)
+export function Portoes({ M, apagada = null }: { M: MundoDisco; apagada?: boolean[] | null }) {
   const cena = useMemo(() => {
     const { vias, info, pistas } = M
     const estrutura: THREE.BufferGeometry[] = [], neon: THREE.BufferGeometry[] = [], luz: THREE.BufferGeometry[] = [], letreiros: THREE.BufferGeometry[] = []
@@ -101,15 +102,16 @@ export function Portoes({ M }: { M: MundoDisco }) {
     vias.forEach((v, vi) => {
       const f = info[vi]
       if (f.parte !== "saida") return
-      const p = pistas[f.pista], dados = linhaDe(f.pista)
-      const r = itens.push({ nome: p.nome, sub: dados ? `${dados.bpm * 2} km/h · ${dados.personagem}` : "", cor: p.cor }) - 1
+      const p = pistas[f.pista], dados = linhaDe(f.pista), escuro = !!apagada?.[vi]
+      const cor = escuro ? "#3a3850" : p.cor
+      const r = itens.push({ nome: p.nome, sub: escuro ? "" : dados ? `${dados.bpm * 2} km/h · ${dados.personagem}` : "", cor }) - 1
       const i = v.n - 1
-      pórtico(v.px[i], v.py[i], v.pz[i], Math.atan2(v.tx[i], v.tz[i]), LARG, new THREE.Color(p.cor), r, true)
+      pórtico(v.px[i], v.py[i], v.pz[i], Math.atan2(v.tx[i], v.tz[i]), LARG, new THREE.Color(cor), r, !escuro)
     })
     // ── as placas da espiral: ANTES metros antes de cada saída ──
     vias.forEach((v, vi) => {
       const f = info[vi]
-      if (f.parte !== "saida") return
+      if (f.parte !== "saida" || apagada?.[vi]) return
       const de = v.rede!.de
       const antes = vias.findIndex((w, wi) => info[wi].parte === "sobe" && w.rede!.para === de)
       if (antes < 0) return
@@ -126,7 +128,7 @@ export function Portoes({ M }: { M: MundoDisco }) {
     }
     const junta = (l: THREE.BufferGeometry[]) => (l.length ? mergeGeometries(l, false) : null)
     return { estrutura: junta(estrutura), neon: junta(neon), luz: junta(luz), letreiros: junta(letreiros), tex: at.t }
-  }, [M])
+  }, [M, apagada])
   useEffect(() => () => { for (const g of [cena.estrutura, cena.neon, cena.luz, cena.letreiros]) g?.dispose(); cena.tex.dispose() }, [cena])
   return (
     <group>

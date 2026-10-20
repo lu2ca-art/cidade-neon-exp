@@ -85,8 +85,10 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar }: {
+export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar }: {
   M: Mundo
+  // (disco, os atos) as vias das pistas ainda apagadas: no mapa, um fio escuro
+  apagada?: boolean[] | null
   // a Kombi: via, u (m), x (lateral) e v (velocidade) — o jogo.current da Corrida
   pose: React.RefObject<PoseKombi>
   missao: LugarId | null
@@ -100,7 +102,7 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto, viagens = 0, 
   const grande = useRef<HTMLCanvasElement>(null)
   const [aberto, setAberto] = useState(false)
   const [distancia, setDistancia] = useState("")
-  const vias = useMemo(() => amostrarVias(M), [M])
+  const vias = useMemo(() => amostrarVias(M).map((v, i) => (apagada?.[i] ? { ...v, cor: "#2e2c40" } : v)), [M, apagada])
   // o mapa novo: a carta pintada (o v5) embaixo, no lugar das linhas soltas
   const [carta, setCarta] = useState<HTMLCanvasElement | null>(null)
   useEffect(() => {
@@ -109,7 +111,8 @@ export function Mapa({ M, pose, missao, marca, onMarcar, onAberto, viagens = 0, 
     const t = setTimeout(() => setCarta(pintarCarta()), 700)
     return () => clearTimeout(t)
   }, [M])
-  const blips = useMemo(() => blipsDo(M), [M])
+  // (os atos) os lugares de uma pista apagada também ficam apagados
+  const blips = useMemo(() => blipsDo(M).filter((b) => !apagada?.[b.via]), [M, apagada])
   // o destino: o que você marcou, senão o lugar da missão
   const destino = useMemo<Marca | null>(() => {
     if (marca) return marca

@@ -64,6 +64,10 @@ export interface Save {
   reliquias: string[]
   // NEON: a moeda do povo (fictícia). Compra o que é orgânico/artístico
   neon?: number
+  // A ÁGUA (LU2CA 19/10): a outra moeda, a mais valiosa num mundo seco. As
+  // gotas da pista (no lugar dos anéis); rega as flores, paga a oficina, e a
+  // polícia leva 1/5 quando te prende. Não dá turbo (o turbo vem do drift e do voo)
+  agua?: number
   // o quanto a cidade te conhece (0–100): enche a plateia dos shows (13/10)
   popularidade?: number
   // os discos comprados na loja (discos.ts)

@@ -12,13 +12,24 @@ import * as THREE from "three"
 
 const PELE = "#5a3a26"
 
-export function Patinador({ vel, steer }: { vel: () => number; steer: () => number }) {
+// (19/10) no ar ele encolhe (joelhos no peito, braços abertos pro equilíbrio)
+// e, no propulsor, o jato de ar das costas acende
+export function Patinador({ vel, steer, ar = () => false, jato = () => false }: { vel: () => number; steer: () => number; ar?: () => boolean; jato?: () => boolean }) {
   const corpo = useRef<THREE.Group>(null)
   const pernas = useRef<(THREE.Group | null)[]>([])
   const bracos = useRef<(THREE.Group | null)[]>([])
   const fase = useRef(0)
+  const enc = useRef(0)
+  const chama = useRef<THREE.Mesh>(null)
   useFrame((_, dt) => {
     const v = Math.abs(vel()), s = steer()
+    enc.current += ((ar() ? 1 : 0) - enc.current) * Math.min(1, dt * 10)
+    const e = enc.current
+    if (chama.current) {
+      const on = jato()
+      chama.current.visible = on
+      if (on) chama.current.scale.set(1, 0.8 + Math.random() * 0.5, 1)
+    }
     // a passada: mais rápida quanto mais rápido, e quase parada no embalo
     fase.current += dt * (1.6 + v * 0.22)
     const f = fase.current, forca = Math.min(1, v / 8)
@@ -31,10 +42,10 @@ export function Patinador({ vel, steer }: { vel: () => number; steer: () => numb
       if (!p) return
       const lado = i ? 1 : -1, empurra = Math.max(0, Math.sin(f + i * Math.PI))
       // empurra pra fora e pra trás, depois volta pra baixo do corpo
-      p.rotation.z = lado * empurra * 0.45 * forca
-      p.rotation.x = empurra * 0.35 * forca
+      p.rotation.z = lado * empurra * 0.45 * forca * (1 - e)
+      p.rotation.x = empurra * 0.35 * forca * (1 - e) - e * 1.1
     })
-    bracos.current.forEach((b, i) => { if (b) b.rotation.x = Math.sin(f + i * Math.PI) * 0.8 * forca })
+    bracos.current.forEach((b, i) => { if (b) { b.rotation.x = Math.sin(f + i * Math.PI) * 0.8 * forca * (1 - e); b.rotation.z = (i ? -1 : 1) * e * 1.2 } })
   })
   return (
     <group ref={corpo} scale={1.15}>
@@ -43,6 +54,12 @@ export function Patinador({ vel, steer }: { vel: () => number; steer: () => numb
       <mesh position={[0, 1.72, 0]}><sphereGeometry args={[0.15, 14, 10]} /><meshStandardMaterial color={PELE} /></mesh>
       <mesh position={[0, 1.83, 0.05]} rotation-x={-0.2}><cylinderGeometry args={[0.16, 0.16, 0.07, 14]} /><meshStandardMaterial color="#14121c" /></mesh>
       <mesh position={[0, 1.81, 0.2]}><boxGeometry args={[0.22, 0.02, 0.14]} /><meshStandardMaterial color="#14121c" /></mesh>
+      {/* o jato de ar das costas (o propulsor do patins) e a chama dele */}
+      <mesh position={[0, 1.36, -0.2]}><boxGeometry args={[0.3, 0.36, 0.14]} /><meshStandardMaterial color="#1b1530" emissive="#2fe8ff" emissiveIntensity={0.25} /></mesh>
+      <mesh ref={chama} position={[0, 0.96, -0.22]} rotation-x={Math.PI} visible={false}>
+        <coneGeometry args={[0.12, 0.6, 10, 1, true]} />
+        <meshBasicMaterial color="#7ff4ff" transparent opacity={0.85} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+      </mesh>
       {/* o mp3 com o fone */}
       <mesh position={[0.17, 1.72, 0]}><boxGeometry args={[0.04, 0.1, 0.1]} /><meshStandardMaterial color="#2fe8ff" emissive="#2fe8ff" emissiveIntensity={0.6} /></mesh>
       <mesh position={[-0.17, 1.72, 0]}><boxGeometry args={[0.04, 0.1, 0.1]} /><meshStandardMaterial color="#2fe8ff" emissive="#2fe8ff" emissiveIntensity={0.6} /></mesh>

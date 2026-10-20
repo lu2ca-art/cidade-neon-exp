@@ -1962,6 +1962,7 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 /* (disco) o óculos: holograma leve por cima da visão */
 .l-hud-cel.is-oculos { color: rgba(255, 255, 255, 0.6) !important; }
 .l-hud-cel.is-oculos.is-on { color: #2fe8ff !important; border-color: rgba(47, 232, 255, 0.6) !important; box-shadow: 0 0 14px rgba(47, 232, 255, 0.35); }
+.l-hud-cel.is-oculos.is-on { color: #2fe8ff !important; border-color: rgba(47, 232, 255, 0.6) !important; box-shadow: 0 0 14px rgba(47, 232, 255, 0.35); }
 .l-oculos { position: absolute; z-index: 6; left: 12px; top: calc(170px + env(safe-area-inset-top)); width: min(64vw, 270px); display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; color: #dffbff; background: linear-gradient(180deg, rgba(47, 232, 255, 0.10), rgba(47, 232, 255, 0.04)); border: 1px solid rgba(47, 232, 255, 0.35); box-shadow: 0 0 22px rgba(47, 232, 255, 0.12) inset; backdrop-filter: blur(2px); font: 600 11px var(--font-geist-mono), ui-monospace, monospace; animation: l-oculos 0.4s ease-out; }
 .l-oculos::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(47, 232, 255, 0.07) 0 1px, transparent 1px 4px); }
 .l-oculos-linha { display: grid; gap: 1px; min-width: 0; }
@@ -2052,33 +2053,17 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-viagem.is-disco .l-hud-dica, .l-viagem.is-disco .l-hud-parado, .l-viagem.is-disco .l-dica2, .l-viagem.is-disco .l-abertura-dica,
 .l-viagem.is-disco .l-guia, .l-viagem.is-disco .l-hud-missao, .l-viagem.is-disco .l-placa-espiral small, .l-viagem.is-disco .l-relogio { display: none !important; }
 :has(.l-viagem.is-disco) .l-caixa-missao { display: none !important; }
-/* desligado: só o óculos no canto (e o turbo e o propulsor, que ficam sempre) */
+/* desligado: só o óculos no canto (o turbo e o propulsor também são do holo) */
 .l-viagem.is-holo-off .l-hud-cam, .l-viagem.is-holo-off .l-mapa-mini, .l-viagem.is-holo-off .l-aneis, .l-viagem.is-holo-off .l-sair-kombi,
-.l-viagem.is-holo-off .l-ilha.is-quieta, .l-viagem.is-holo-off .l-placa-espiral { display: none !important; }
+.l-viagem.is-holo-off .l-ilha.is-quieta, .l-viagem.is-holo-off .l-placa-espiral, .l-viagem.is-holo-off .l-propulsao { display: none !important; }
 :has(.l-viagem.is-holo-off) .l-dormir { display: none !important; }
 
 /* o canto: o "?" e o desligar */
 .l-hud-cel.is-ajuda { font: 800 19px var(--font-geist-mono), ui-monospace, monospace; color: #2fe8ff !important; border-color: rgba(47, 232, 255, 0.55) !important; }
 .l-hud-cel.is-ajuda.is-on { background: rgba(47, 232, 255, 0.2) !important; box-shadow: 0 0 16px rgba(47, 232, 255, 0.5); }
-.l-hud-cel.is-desligar { color: rgba(255, 255, 255, 0.7) !important; }
 .l-hud-cel.is-oculos { color: rgba(255, 255, 255, 0.6) !important; }
+.l-hud-cel.is-oculos.is-on { color: #2fe8ff !important; border-color: rgba(47, 232, 255, 0.6) !important; box-shadow: 0 0 14px rgba(47, 232, 255, 0.35); }
 
-/* em cima, à esquerda: a faixa e a rádio */
-.l-holo-som { position: absolute; z-index: 6; left: 12px; top: calc(62px + env(safe-area-inset-top)); width: min(56vw, 250px); display: grid; gap: 5px; padding: 8px 10px; border-radius: 12px; color: #dffbff; background: linear-gradient(180deg, rgba(47, 232, 255, 0.10), rgba(47, 232, 255, 0.03)); border: 1px solid rgba(47, 232, 255, 0.32); backdrop-filter: blur(3px); font: 600 11px var(--font-geist-mono), ui-monospace, monospace; pointer-events: auto; animation: l-oculos 0.4s ease-out; }
-.l-holo-faixa { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.l-holo-faixa i { flex: none; width: 13px; height: 13px; border-radius: 50%; background: radial-gradient(circle, #2fe8ff 0 2px, #0b0a16 2.5px 4px, #1d1b30 4.5px); box-shadow: 0 0 0 1px rgba(47, 232, 255, 0.5); }
-.l-holo-faixa i.is-gira { animation: l-holo-gira 1.8s linear infinite; }
-.l-holo-faixa b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #fff; }
-.l-holo-faixa small { flex: none; opacity: 0.6; font-variant-numeric: tabular-nums; }
-.l-holo-barra { height: 2px; background: rgba(47, 232, 255, 0.18); border-radius: 1px; overflow: hidden; }
-.l-holo-barra > div { height: 100%; background: #2fe8ff; transform-origin: left; }
-.l-holo-radio { display: flex; gap: 5px; }
-.l-holo-radio button { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 8px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--cor) 40%, transparent) !important; background: color-mix(in srgb, var(--cor) 8%, transparent) !important; color: #fff !important; font: 700 10px var(--font-geist-mono), monospace !important; cursor: pointer; }
-.l-holo-radio button:first-child { flex: 1; }
-.l-holo-radio button b { color: var(--cor); }
-.l-holo-radio button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.55; }
-.l-holo-radio.is-on button span { opacity: 1; }
-.l-holo-radio.is-on button:first-child { border-color: var(--cor) !important; box-shadow: 0 0 10px -4px var(--cor); }
 .l-viagem.is-holo .l-sair-kombi { top: calc(150px + env(safe-area-inset-top)); }
 :has(.l-viagem.is-holo) .l-dormir { top: auto !important; bottom: calc(100px + env(safe-area-inset-bottom)); }
 
@@ -2107,13 +2092,6 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-viagem.is-disco .l-aneis { top: calc(156px + env(safe-area-inset-top)); pointer-events: auto; }
 @keyframes l-holo-gira { to { transform: rotate(360deg) } }
 
-/* embaixo, à esquerda: o widget que vai trocando de app */
-.l-holo-apps { position: absolute; z-index: 6; left: 12px; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(42vw, 210px) !important; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; row-gap: 5px; align-items: center; padding: 10px 12px !important; border-radius: 14px; text-align: left; border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent) !important; background: linear-gradient(135deg, color-mix(in srgb, var(--cor) 16%, rgba(8, 10, 24, 0.55)), rgba(8, 10, 24, 0.55)) !important; backdrop-filter: blur(8px); box-shadow: 0 0 20px -10px var(--cor); color: #fff !important; cursor: pointer; animation: l-oculos 0.45s ease-out; }
-.l-holo-apps > svg, .l-holo-apps > :first-child { grid-row: 1 / span 2; }
-.l-holo-apps b { font: 800 12px var(--font-geist-mono), monospace; letter-spacing: 0.1em; color: var(--cor); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.l-holo-apps-pips { display: flex; gap: 4px; }
-.l-holo-apps-pips i { width: 14px; height: 2px; border-radius: 1px; background: rgba(255, 255, 255, 0.2); }
-.l-holo-apps-pips i.is-on { background: var(--cor); box-shadow: 0 0 6px var(--cor); }
 
 /* embaixo, à direita: o turbo e o propulsor (o clique semi-longo enche a borda) */
 .l-viagem.is-disco .l-propulsao-bt small { display: none; }
@@ -2128,6 +2106,88 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-holo-ajuda b { font: 800 11px var(--font-geist-mono), monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #2fe8ff; }
 .l-viagem.is-holo:has(.l-holo-ajuda) [data-info] { outline: 1px dashed rgba(47, 232, 255, 0.75); outline-offset: 3px; }
 
+/* em cima, à esquerda: a RÁDIO em holograma (a onda sonora girando) e a faixa */
+.l-holo-som { position: absolute; z-index: 6; left: 12px; top: calc(62px + env(safe-area-inset-top)); width: min(32vw, 330px); display: grid; grid-template-columns: 116px 1fr; gap: 10px; align-items: center; padding: 6px 12px 6px 4px; border-radius: 16px; color: #dffbff; background: linear-gradient(100deg, color-mix(in srgb, var(--cor) 14%, transparent), rgba(47, 232, 255, 0.02)); border: 1px solid color-mix(in srgb, var(--cor) 30%, transparent); backdrop-filter: blur(3px); font: 600 11px var(--font-geist-mono), ui-monospace, monospace; pointer-events: auto; animation: l-oculos 0.4s ease-out; }
+.l-holo-radio-holo { position: relative; width: 116px !important; height: 116px; padding: 0 !important; border: 0 !important; background: none !important; cursor: pointer; filter: drop-shadow(0 0 14px color-mix(in srgb, var(--cor) 70%, transparent)) brightness(1.25); transition: transform 0.2s; }
+.l-holo-radio-holo:active { transform: scale(0.95); }
+.l-holo-radio-holo canvas { display: block; width: 100%; height: 100%; }
+.l-holo-som:not(.is-on) .l-holo-radio-holo { opacity: 0.85; }
+.l-holo-som-info { display: grid; gap: 5px; min-width: 0; }
+.l-holo-radio-linha { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.l-holo-radio-linha b { flex: none; font: 800 15px var(--font-geist-mono), monospace; color: var(--cor); text-shadow: 0 0 10px var(--cor); }
+.l-holo-radio-linha span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.6; }
+.l-holo-som.is-on .l-holo-radio-linha span { opacity: 1; }
+.l-holo-radio-linha button { flex: none; padding: 1px 6px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent) !important; background: color-mix(in srgb, var(--cor) 12%, transparent) !important; color: #fff !important; font-size: 11px !important; cursor: pointer; }
+.l-holo-faixa { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.l-holo-faixa i { flex: none; width: 13px; height: 13px; border-radius: 50%; background: radial-gradient(circle, #2fe8ff 0 2px, #0b0a16 2.5px 4px, #1d1b30 4.5px); box-shadow: 0 0 0 1px rgba(47, 232, 255, 0.5); }
+.l-holo-faixa i.is-gira { animation: l-holo-gira 1.8s linear infinite; }
+.l-holo-faixa b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #fff; }
+.l-holo-faixa small { flex: none; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.l-holo-barra { height: 2px; background: rgba(47, 232, 255, 0.18); border-radius: 1px; overflow: hidden; }
+.l-holo-barra > div { height: 100%; background: #2fe8ff; transform-origin: left; }
+.l-viagem.is-holo .l-sair-kombi { top: calc(196px + env(safe-area-inset-top)) !important; }
+
+/* em cima, no meio: os ícones pequenos enfileirados, embaixo da ilha */
+.l-holo-icones { position: absolute; z-index: 6; left: 50%; top: calc(46px + env(safe-area-inset-top)); transform: translateX(-50%); max-width: min(44vw, 520px); display: flex; gap: 6px; padding: 4px; overflow-x: auto; scrollbar-width: none; pointer-events: auto; animation: l-oculos 0.4s ease-out; }
+.l-holo-icones::-webkit-scrollbar { display: none; }
+.l-holo-icones button { flex: none; width: 30px !important; height: 30px; padding: 0 !important; display: grid; place-items: center; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--cor) 40%, transparent) !important; background: color-mix(in srgb, var(--cor) 10%, rgba(6, 8, 20, 0.5)) !important; box-shadow: 0 0 10px -6px var(--cor); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.l-holo-icones button:hover { transform: translateY(-2px); box-shadow: 0 0 14px -4px var(--cor); }
+.l-holo-icones button svg { width: 17px; height: 17px; }
+
+/* em cima, à direita: o clima da região */
+.l-holo-clima { position: absolute; z-index: 6; right: 14px; top: calc(152px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 6px; border-radius: 12px; color: #dffbff; background: rgba(8, 10, 24, 0.5); border: 1px solid rgba(47, 232, 255, 0.28); font: 600 10px var(--font-geist-mono), monospace; pointer-events: auto; animation: l-oculos 0.4s ease-out; }
+.l-holo-clima > b { font: 800 16px var(--font-geist-mono), monospace; color: #fff; }
+.l-holo-clima > span:last-child { display: grid; line-height: 1.15; }
+.l-holo-clima em { font-style: normal; color: #2fe8ff; text-transform: uppercase; letter-spacing: 0.08em; }
+.l-holo-clima small { opacity: 0.6; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-holo-clima-ic { position: relative; width: 22px; height: 22px; }
+.l-holo-clima-ic i { position: absolute; }
+.l-holo-clima.is-sol .l-holo-clima-ic i:first-child { inset: 4px; border-radius: 50%; background: #ffc857; box-shadow: 0 0 10px #ffc857; animation: l-pulsa 2.4s infinite; }
+.l-holo-clima.is-noite .l-holo-clima-ic i:first-child { inset: 4px; border-radius: 50%; box-shadow: inset -5px -2px 0 0 #dfe6ff; filter: drop-shadow(0 0 4px #b8c4ff); }
+.l-holo-clima.is-nublado .l-holo-clima-ic i:first-child, .l-holo-clima.is-chuva .l-holo-clima-ic i:first-child { left: 2px; right: 2px; top: 5px; height: 9px; border-radius: 6px; background: #9fb3d9; box-shadow: 0 0 8px rgba(159, 179, 217, 0.6); }
+.l-holo-clima.is-chuva .l-holo-clima-ic i:nth-child(n + 2) { top: 14px; width: 2px; height: 6px; border-radius: 1px; background: #4fc3ff; animation: l-holo-gota 0.7s linear infinite; }
+.l-holo-clima.is-chuva .l-holo-clima-ic i:nth-child(2) { left: 7px; }
+.l-holo-clima.is-chuva .l-holo-clima-ic i:nth-child(3) { left: 13px; animation-delay: 0.35s; }
+.l-holo-clima.is-chuva em { color: #4fc3ff; }
+@keyframes l-holo-gota { from { transform: translateY(-2px); opacity: 1 } to { transform: translateY(6px); opacity: 0 } }
+.l-viagem.is-disco .l-aneis { top: calc(196px + env(safe-area-inset-top)) !important; }
+
+/* embaixo, à esquerda: o widget que imita o app da vez */
+.l-holo-apps { position: absolute; z-index: 6; left: 12px; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(26vw, 230px) !important; display: grid; gap: 6px; padding: 8px !important; border-radius: 16px; text-align: left; border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent) !important; background: linear-gradient(160deg, color-mix(in srgb, var(--cor) 14%, rgba(8, 10, 24, 0.6)), rgba(8, 10, 24, 0.6)) !important; backdrop-filter: blur(8px); box-shadow: 0 0 22px -10px var(--cor); color: #fff !important; cursor: pointer; animation: l-oculos 0.45s ease-out; }
+.l-holo-apps-tela { position: relative; display: block; height: 78px; border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, 0.45); }
+.l-holo-apps-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px; }
+.l-holo-apps-rodape b { font: 800 11px var(--font-geist-mono), monospace; letter-spacing: 0.1em; color: var(--cor); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-holo-apps-pips { display: flex; gap: 4px; }
+.l-holo-apps-pips i { width: 12px; height: 2px; border-radius: 1px; background: rgba(255, 255, 255, 0.2); }
+.l-holo-apps-pips i.is-on { background: var(--cor); box-shadow: 0 0 6px var(--cor); }
+/* a MPC do B4TIDA */
+.l-mini-mpc { position: absolute; inset: 7px 0; margin: auto; aspect-ratio: 1; height: calc(100% - 14px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.l-mini-mpc i { border-radius: 3px; background: color-mix(in srgb, var(--cor) 22%, #15131f); filter: hue-rotate(var(--h)); animation: l-mpc 2.4s steps(1) infinite; animation-delay: var(--d); }
+@keyframes l-mpc { 0% { background: var(--cor); box-shadow: 0 0 10px var(--cor) } 6% { background: color-mix(in srgb, var(--cor) 55%, #15131f); box-shadow: none } 12%, 100% { background: color-mix(in srgb, var(--cor) 22%, #15131f) } }
+/* o show de rock do GUITAR DRIVER */
+.l-mini-show { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 50% 100%, color-mix(in srgb, var(--cor) 35%, transparent), transparent 70%), #07060d; }
+.l-mini-show .is-luz { position: absolute; top: -10px; left: 50%; width: 46px; height: 100px; margin-left: -23px; transform-origin: 50% 0; background: linear-gradient(180deg, rgba(255, 240, 200, 0.55), transparent 85%); clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); animation: l-show-luz 2.2s ease-in-out infinite alternate; mix-blend-mode: screen; }
+.l-mini-show .is-luz.is-b { left: 22%; background: linear-gradient(180deg, color-mix(in srgb, var(--cor) 80%, transparent), transparent 85%); animation-duration: 1.7s; animation-delay: -0.6s; }
+.l-mini-show .is-luz.is-c { left: 78%; background: linear-gradient(180deg, rgba(255, 63, 176, 0.6), transparent 85%); animation-duration: 1.9s; animation-delay: -1.1s; }
+@keyframes l-show-luz { from { transform: rotate(-28deg) } to { transform: rotate(28deg) } }
+.l-mini-show .is-palco { position: absolute; left: 6%; right: 6%; bottom: 20px; height: 4px; border-radius: 2px; background: var(--cor); box-shadow: 0 0 10px var(--cor); }
+.l-mini-show .is-banda { position: absolute; left: 0; right: 0; bottom: 24px; display: flex; justify-content: center; gap: 16px; }
+.l-mini-show .is-banda i { width: 7px; height: 18px; border-radius: 4px 4px 1px 1px; background: #f2eefa; animation: l-show-pula 0.48s ease-in-out infinite alternate; }
+.l-mini-show .is-banda i.is-guitarra { height: 21px; background: #fff; box-shadow: 6px 9px 0 -2px var(--cor); animation-duration: 0.24s; }
+@keyframes l-show-pula { from { transform: translateY(0) } to { transform: translateY(-3px) } }
+.l-mini-show .is-galera { position: absolute; left: 0; right: 0; bottom: 2px; display: flex; justify-content: space-evenly; }
+.l-mini-show .is-galera i { width: 9px; height: 13px; border-radius: 5px 5px 0 0; background: #1d1a2c; box-shadow: 0 -1px 0 0 color-mix(in srgb, var(--cor) 60%, transparent); animation: l-show-galera 0.48s ease-in-out infinite alternate; animation-delay: var(--d); }
+@keyframes l-show-galera { from { transform: translateY(0) } to { transform: translateY(-5px) } }
+/* o OUVIR: o fone vibrando, as ondas */
+.l-mini-fone { position: absolute; inset: 0; display: grid; place-items: center; color: var(--cor); }
+.l-mini-fone svg { width: 46px; height: 46px; filter: drop-shadow(0 0 8px var(--cor)); animation: l-fone-vibra 0.11s linear infinite; }
+@keyframes l-fone-vibra { 0% { transform: translate(0, 0) rotate(0) } 25% { transform: translate(1px, -1px) rotate(1.5deg) } 50% { transform: translate(-1px, 1px) rotate(-1deg) } 75% { transform: translate(1px, 1px) rotate(1deg) } }
+.l-mini-fone .is-onda { position: absolute; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--cor); opacity: 0; animation: l-fone-onda 1.5s ease-out infinite; }
+.l-mini-fone .is-onda.is-b { animation-delay: 0.5s; }
+.l-mini-fone .is-onda.is-c { animation-delay: 1s; }
+@keyframes l-fone-onda { from { transform: scale(0.8); opacity: 0.8 } to { transform: scale(2.4); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .l-mini-mpc i, .l-mini-show *, .l-mini-fone *, .l-holo-anel-gira, .l-holo-letreiro-faixa em { animation: none !important; } }
+
 /* celular em pé: a ilha ganha a faixa de cima só pra ela; o resto desce */
 @media (max-width: 600px) {
   .l-viagem.is-disco .l-hud-topo { padding-top: calc(44px + env(safe-area-inset-top)); }
@@ -2137,8 +2197,32 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
   .l-viagem.is-disco .l-ilha.is-letreiro { min-width: min(70vw, 320px); max-width: min(70vw, 320px); }
   .l-viagem.is-disco button.l-mapa-mini { top: calc(52px + env(safe-area-inset-top)); width: 104px !important; height: 104px; }
   .l-holo-anel { top: calc(38px + env(safe-area-inset-top)); right: 2px; width: 132px !important; height: 132px; }
-  .l-holo-som { top: calc(94px + env(safe-area-inset-top)); width: min(52vw, 230px); }
-  .l-viagem.is-holo .l-sair-kombi { top: calc(182px + env(safe-area-inset-top)); }
-  .l-viagem.is-disco .l-aneis { top: calc(176px + env(safe-area-inset-top)); }
+  .l-holo-icones { left: 12px; right: 140px; transform: none; max-width: none; top: calc(90px + env(safe-area-inset-top)); }
+  .l-holo-som { top: calc(130px + env(safe-area-inset-top)); width: min(64vw, 260px); grid-template-columns: 96px 1fr; }
+  .l-holo-radio-holo { width: 96px !important; height: 96px; }
+  .l-viagem.is-holo .l-sair-kombi { top: calc(248px + env(safe-area-inset-top)) !important; }
+  .l-holo-clima { top: calc(176px + env(safe-area-inset-top)); right: 10px; }
+  .l-viagem.is-disco .l-aneis { top: calc(218px + env(safe-area-inset-top)) !important; }
+  .l-holo-apps { width: min(46vw, 190px) !important; }
+  .l-holo-apps-tela { height: 66px; }
   .l-holo-ajuda { top: calc(40px + env(safe-area-inset-top)); }
 }
+
+/* (disco) a água: a gota no lugar do anel */
+/* (LU2CA 20/10) o ícone da água é furta-cor: iridescente, a cor corre por ele */
+.l-aneis.is-agua { border-color: rgba(200, 160, 255, 0.5); }
+.l-aneis.is-agua i { width: 11px; height: 14px; border: 0; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; clip-path: polygon(50% 0, 100% 62%, 100% 100%, 0 100%, 0 62%); background: conic-gradient(from 0deg, #4fc3ff, #b38cff, #ff3fb0, #ffc857, #5dffa0, #4fc3ff); box-shadow: 0 0 8px rgba(255, 255, 255, 0.6); animation: l-furta 3s linear infinite; }
+@keyframes l-furta { to { filter: hue-rotate(360deg) } }
+
+/* (disco, 20/10) o HYPERLAPSE: linhas de velocidade correndo do centro pra
+   fora (duas camadas defasadas, a física mexe nelas a cada quadro); no 10×
+   ganham cor e o centro fica branco de tanta luz */
+.l-hyper { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; mix-blend-mode: screen; }
+.l-hyper i { position: absolute; left: 50%; top: 46%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; border-radius: 50%; will-change: transform, opacity;
+  background: repeating-conic-gradient(from 0deg, rgba(220, 245, 255, 0.55) 0deg 0.35deg, transparent 0.35deg 2.6deg, rgba(160, 230, 255, 0.35) 2.6deg 2.8deg, transparent 2.8deg 6deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 9%, #000 26%, #000 60%, transparent 72%); mask: radial-gradient(circle, transparent 0 9%, #000 26%, #000 60%, transparent 72%); }
+.l-hyper.is-hyper i { background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.8) 0deg 0.5deg, transparent 0.5deg 2deg, rgba(255, 63, 176, 0.6) 2deg 2.3deg, transparent 2.3deg 4deg, rgba(47, 232, 255, 0.6) 4deg 4.3deg, transparent 4.3deg 6deg); }
+.l-hyper.is-hyper::after { content: ""; position: absolute; left: 50%; top: 46%; width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, 0.85), rgba(200, 240, 255, 0.25) 45%, transparent 70%); filter: blur(4px); }
+
+/* (disco) sem frase explicando no PROCURADO */
+.l-viagem.is-disco .l-ilha-proc small { display: none; }

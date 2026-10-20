@@ -35,11 +35,13 @@ import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { V_TORRE, geoChaoDisco, montarMundoDisco, naEspiral as naEspiralParte, naTorre, naTorreDaPonta, type MundoDisco, type SinaisEspiral } from "./mundoDisco"
 import { TorreCentral } from "./Torre"
 import { Portoes } from "./Portoes"
+import { VELO, intensidade } from "./velo"
+import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
 import { DPR, ResolucaoDinamica } from "./resolucao"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAjuda, HoloAnel, HoloApps, HoloLetreiro, HoloSom } from "./Holo"
+import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloIcones, HoloLetreiro, HoloSom, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -200,6 +202,11 @@ interface Props {
   onApp?: (id: AppId) => void
   onMissoes?: () => void
   missaoHolo?: { texto: string; cor: string; n: number } | null
+  // (disco) a água: o saldo (save) e o que entra/sai (as gotas, a polícia)
+  agua?: number
+  onAgua?: (d: number) => void
+  // (20/10) fugiu da polícia: a popularidade sobe (mais gente, mais neon$ nos shows)
+  onFuga?: (pontos: number) => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
 }
@@ -247,6 +254,16 @@ type Jogo = {
   // o modo arcade (17/10, LU2CA: "arcade, divertido, psicodélico, fidget"):
   // o combo de anéis, a onda psicodélica (0–1) e o giro da Kombi no ar
   combo?: number; comboT?: number; psi?: number; giroAr?: number
+  // as manobras no ar (19/10): o giro e o mortal com inércia, o combo de manobras, o dash do patins
+  vGiro?: number; flipAr?: number; vFlip?: number; trComboN?: number; trComboT?: number; dashou?: boolean
+  // (19/10) o EMBALO: a velocidade ganha com drift, manobra e voo, sem teto
+  // (m/s acima da velocidade da pista; cai devagar, o muro e o freio comem);
+  // vBase = a velocidade da pista agora (a polícia e o helicóptero medem por ela)
+  embalo?: number; vBase?: number
+  // (20/10) o HYPERLAPSE: chegou a 4× a velocidade da pista, pula pra 10× e o
+  // controle sai da mão (só vai, na via onde está); hyperT = há quanto tempo.
+  // tresT = há quanto tempo acima de 3× (8 s despista o helicóptero)
+  hyper?: boolean; hyperT?: number; tresT?: number; fugaGrande?: boolean
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -330,7 +347,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -365,6 +382,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const t = setTimeout(() => setDica2(false), 9000)
     return () => clearTimeout(t)
   }, [dica2])
+  // (disco) a água: cada gota soma na hora aqui e vai pro save a cada segundo
+  // (o save grava a cada mudança: gota a gota seria pesado)
+  const [aguaPend, setAguaPend] = useState(0)
+  const aguaVista = agua + aguaPend
+  const aguaRef = useRef(aguaVista)
+  const onAguaRef = useRef(onAgua)
+  const onFugaRef = useRef(onFuga)
+  useEffect(() => { aguaRef.current = aguaVista; onAguaRef.current = onAgua; onFugaRef.current = onFuga }, [aguaVista, onAgua, onFuga])
+  useEffect(() => {
+    if (!aguaPend) return
+    const t = setTimeout(() => { onAguaRef.current?.(aguaPend); setAguaPend(0) }, 1000)
+    return () => clearTimeout(t)
+  }, [aguaPend])
   const [aneis, setAneis] = useState<{ total: number; viagens: number }>(() => {
     try { const a = JSON.parse(localStorage.getItem("cn-aneis") ?? "null"); if (a && typeof a.total === "number") return a } catch {}
     return { total: 0, viagens: 0 }
@@ -764,6 +794,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [viaAtual, setViaAtual] = useState(() => jogo0.via)
   // (disco) no box da central: o elevador troca de linha (de andar)
   const discoM = "disco" in M ? (M as MundoDisco) : null
+  const ehDisco = !!discoM
+  // (LU2CA 20/10) os atos: só as pistas disponíveis acendem o neon; as feitas
+  // ficam acesas pra sempre; o resto, apagado (a torre é sempre acesa)
+  const luzPistas = useMemo(() => (discoM ? luzDasPistas(pistasFeitas(save.objetos)) : null), [discoM, save.objetos])
+  const viaApagada = useMemo(() => {
+    if (!discoM || !luzPistas) return null
+    return discoM.vias.map((_, vi) => { const f = discoM.info[vi]; return !!f && f.pista >= 0 && luzPistas[discoM.pistas[f.pista].nome] === "apagada" })
+  }, [discoM, luzPistas])
   // (disco) na torre (as espirais): o óculos não precisa do painel de missão
   const naCentral = !!discoM && (naTorre(discoM.info[viaAtual]) || naTorreDaPonta(discoM.info[viaAtual]))
   // a próxima saída da espiral (no fim do trecho onde a Kombi está)
@@ -771,13 +809,22 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     if (!discoM || discoM.info[viaAtual]?.parte !== "sobe") return null
     const prox = (M as MundoDisco).ligacoes.saidas[M.vias[viaAtual].rede!.para] ?? []
     const vi = prox.find((v) => discoM.info[v]?.parte === "saida")
-    if (vi === undefined) return null
+    if (vi === undefined || viaApagada?.[vi]) return null
     const p = discoM.pistas[discoM.info[vi].pista]
     return { nome: p.nome, cor: p.cor, lado: discoM.ladoSaida.get(vi) ?? 1 }
   })()
   // (disco) o óculos no lugar do celular: ligado por padrão, o botão liga e desliga
   const [oculos, setOculos] = useState(() => { try { return localStorage.getItem("cn-oculos") !== "off" } catch { return true } })
   const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
+  // (o holo) o clima de onde a Kombi está: a pista (o nome dela), a torre ou,
+  // voando sem pista embaixo, o deserto (que nunca chove)
+  const lerClima = useCallback((): Clima => {
+    const j = jogo.current, MD = "disco" in M ? (M as MundoDisco) : null
+    const f = MD?.info[j.via]
+    const deserto = MD ? !!j.voo && j.wx !== undefined && !MD.pousar(j.wx, j.wz!, j.y, 0, 0) : M.vias[j.via]?.id === "deserto"
+    const regiao = deserto ? "deserto" : f && f.pista >= 0 ? MD!.pistas[f.pista].nome : f && f.torre === 0 ? "a central" : f ? "a torre" : "a cidade"
+    return { chove: !deserto && chovendo(dia, horaRef.current), deserto, regiao, hora: horaRef.current }
+  }, [M, dia])
   // o "?" do holo: tocar numa coisa diz o que ela é
   const [ajuda, setAjuda] = useState(false)
   const sairAjuda = useCallback(() => setAjuda(false), [])
@@ -1095,10 +1142,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const evs = useRef<Evs>(null as unknown as Evs)
   useEffect(() => {
     evs.current = {
-      anel: () => setAneis((a) => {
-        const total = a.total + 1
-        return { total, viagens: a.viagens + (total % 100 === 0 ? 2 : 0) }
-      }),
+      anel: () => {
+        setAneis((a) => {
+          const total = a.total + 1
+          return { total, viagens: a.viagens + (total % 100 === 0 ? 2 : 0) }
+        })
+        if ("disco" in M) setAguaPend((x) => x + 1)
+      },
       vaga: (id) => onVagaRef.current?.(id),
       // na chegada a cidade fica quieta: só o grupo fala
       falar: (de, t) => { if (!introRef.current) falar(de, t) },
@@ -1162,7 +1212,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           jogo.current.flash = 0.8
           jogo.current.shake = 1.2
           vib([90, 40, 160])
-          setPopup({ id: Math.random(), txt: "conteúdo apreendido", cor: "#e6f0ff" })
+          // (LU2CA 19/10) a polícia leva a quinta parte da sua água
+          const perda = "disco" in M ? Math.floor(aguaRef.current / 5) : 0
+          if (perda > 0) onAguaRef.current?.(-perda)
+          setPopup({ id: Math.random(), txt: perda > 0 ? `a polícia levou ${perda} de água` : "conteúdo apreendido", cor: "#e6f0ff" })
           if (cacadoRef.current) {
             falar("NÚCLEO", "conteúdo apreendido e devolvido à origem. obrigado pela colaboração ✓")
             onApreendido?.()
@@ -1170,7 +1223,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         } else if (e === "despistou") {
           setCacando(false)
           confeteRef.current?.("#2fe8ff", 60)
-          falar("222 FM", "a kombi despistou o núcleo. respeito")
+          // (LU2CA 20/10) a fuga dá popularidade; a fuga grande (o helicóptero
+          // despistado na velocidade) dá muito mais
+          const grande = !!jogo.current.fugaGrande
+          jogo.current.fugaGrande = false
+          onFugaRef.current?.(grande ? 6 : 2)
+          setPopup({ id: Math.random(), txt: grande ? "despistou o helicóptero · +6 popularidade" : "despistou · +2 popularidade", cor: "#2fe8ff" })
+          falar("222 FM", grande ? "ninguém alcança essa kombi. a cidade inteira viu" : "a kombi despistou o núcleo. respeito")
           evs.current.sinal(5, "despistou · +5", "#2fe8ff")
         } else if (e === "perdeu") {
           setCacando(false)
@@ -1247,13 +1306,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         }
         if (hudDrift.current) {
           const em = j.dPts > 0, msg = j.tempo < j.dMsgT ? j.dMsg : ""
+          // (a manobra no ar: "★nome|+pontos")
+          const man = !em && msg.startsWith("★") ? msg.slice(1).split("|") : null
           hudDrift.current.classList.toggle("is-on", em || !!msg)
-          hudDrift.current.classList.toggle("is-ganhou", !em && msg.startsWith("+"))
-          hudDrift.current.classList.toggle("is-perdeu", !em && msg.startsWith("bateu"))
+          hudDrift.current.classList.toggle("is-ganhou", !em && (msg.startsWith("+") || !!man))
+          hudDrift.current.classList.toggle("is-perdeu", !em && (msg.startsWith("bateu") || msg === "caiu torto"))
           const [b, i, sm] = hudDrift.current.children as unknown as HTMLElement[]
-          b.textContent = em ? Math.round(j.dPts).toLocaleString("pt-BR") : msg.startsWith("+") ? msg : ""
-          i.textContent = em ? `×${j.dMult.toFixed(1)}` : ""
-          sm.textContent = em ? msg : msg.startsWith("+") ? `drift · ${j.dTotal.toLocaleString("pt-BR")} na noite` : msg
+          b.textContent = em ? Math.round(j.dPts).toLocaleString("pt-BR") : man ? man[0] : msg.startsWith("+") ? msg : ""
+          i.textContent = em ? `×${j.dMult.toFixed(1)}` : man ? man[1] : ""
+          sm.textContent = em ? msg : man ? "" : msg.startsWith("+") ? `drift · ${j.dTotal.toLocaleString("pt-BR")} na noite` : msg
         }
         const V = M.vias[j.via]
         const d = destinoRef.current
@@ -1532,7 +1593,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "f" && on && !ev.repeat) document.querySelector<HTMLButtonElement>(".l-sair-kombi, .l-regar-btn.is-voltar")?.click()
       else if (k === "c" && on && !ev.repeat) trocarCamera()
       // (disco) H: liga e desliga o holo
-      else if (k === "h" && on && !ev.repeat && "disco" in M) { setAjuda(false); alternarOculos() }
+      else if (k === "h" && on && !ev.repeat && ehDisco) { setAjuda(false); alternarOculos() }
       else return
       ev.preventDefault()
     }
@@ -1541,7 +1602,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     window.addEventListener("keydown", kd)
     window.addEventListener("keyup", ku)
     return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku) }
-  }, [trocarCamera])
+  }, [trocarCamera, ehDisco])
 
   // a missão fala com você quando a estrada começa: o que buscar e onde
   const falouDe = useRef("")
@@ -1623,7 +1684,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins }} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins }} viaApagada={viaApagada} />
         </Canvas>
       )}
 
@@ -1643,8 +1704,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <button type="button" data-info="ajuda" className={`l-hud-cel is-ajuda ${ajuda ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAjuda((x) => !x)} aria-label="o que é cada coisa">
                 ?{avisos > 0 && <em>{avisos}</em>}
               </button>
-              <button type="button" data-info="desligar" className="l-hud-cel is-desligar" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); alternarOculos() }} aria-label="desligar o holo">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v8" /><path d="M6.3 7.2a8 8 0 1 0 11.4 0" /></svg>
+              <button type="button" data-info="desligar" className="l-hud-cel is-oculos is-on" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); alternarOculos() }} aria-label="desligar o holo">
+                <svg width="22" height="18" viewBox="0 0 28 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="10" height="8" rx="3" /><rect x="16" y="6" width="10" height="8" rx="3" /><path d="M12 9.5c1.3-1 2.7-1 4 0M2 8 0.8 5.5M26 8l1.2-2.5" /></svg>
               </button>
             </>
           ) : (
@@ -1795,7 +1856,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
       {/* (disco) O HOLO (Holo.tsx): ligado, tudo nas bordas e o centro livre;
           desligado, nada. O mapa holográfico aparece subindo, no voo */}
-      {discoM && oculos && <OculosMapa M={discoM} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; x: number; y: number; voo?: boolean; wx?: number; wz?: number; rumo?: number }>} />}
+      {discoM && oculos && <OculosMapa M={discoM} apagada={viaApagada} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; x: number; y: number; voo?: boolean; wx?: number; wz?: number; rumo?: number }>} />}
       {discoM && oculos && (
         <>
           <HoloSom
@@ -1804,6 +1865,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             onProxima={() => proxFaixa.current(freqRef.current)}
           />
           <HoloAnel missao={missaoHolo} onMissoes={() => onMissoes?.()} />
+          <HoloClima ler={lerClima} />
+          <HoloIcones onApp={(id) => onApp?.(id)} />
           <HoloApps onApp={(id) => onApp?.(id)} />
         </>
       )}
@@ -1881,9 +1944,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {parque !== "andando" && (
-        <Mapa M={M} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} />
+        <Mapa M={M} apagada={viaApagada} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} />
       )}
       <div className="l-combo" aria-hidden />
+      {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
+      {discoM && <div className="l-hyper" aria-hidden="true" style={{ opacity: 0 }}><i /><i /></div>}
       {dica2 && !cinema && (
         <div className="l-dica2" role="status">
           <b>novo</b>
@@ -1892,7 +1957,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <span>100 anéis = 2 viagens rápidas pelo mapa</span>
         </div>
       )}
-      <div className="l-aneis" data-info="aneis" aria-label={`${aneis.total} anéis, ${aneis.viagens} viagens rápidas`}><i />{aneis.total % 100}<small>/100</small>{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
+      {discoM ? (
+        <div className="l-aneis is-agua" data-info="agua" aria-label={`${aguaVista} de água, ${aneis.viagens} viagens rápidas`}><i />{aguaVista}{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
+      ) : (
+        <div className="l-aneis" data-info="aneis" aria-label={`${aneis.total} anéis, ${aneis.viagens} viagens rápidas`}><i />{aneis.total % 100}<small>/100</small>{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
+      )}
       <div className="l-relogio" aria-label="relógio da cidade"><b ref={hudRelogio}>{horaTexto(hora)}</b><small ref={hudTurno}>dia {dia}</small></div>
 
       {/* (disco, LU2CA 19/10) o painel analógico sai: o rádio mora no óculos e o
@@ -2255,7 +2324,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada,
 }: {
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
@@ -2269,6 +2338,8 @@ function Cena({
   respiroRef: React.MutableRefObject<{ pode: boolean; feito: boolean }>
   marcaRef: React.RefObject<Marca | null>
   floresAsf: { leva: FlorAsfalto[]; regadas: FlorAsfalto[]; regando: { id: string; desde: number } | null; visivel: boolean }
+  // (disco) as vias das pistas apagadas (o ato ainda não chegou nelas)
+  viaApagada: boolean[] | null
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -2430,7 +2501,10 @@ function Cena({
     const doDisco = (p: Pista) => !!(p as Via & { disco?: boolean }).disco
     // (desempenho) o desenho das pistas do disco usa uma amostra a cada 6 m (a física, a cada 2)
     const passoD = (p: Pista) => (doDisco(p) ? 3 : 1)
-    const corDe = (p: Pista) => (p as Via & { cor?: string }).cor
+    // (os atos) pista apagada: o neon dela fica num cinza escuro
+    const indice = new Map((M.vias as Via[]).map((v, i) => [v, i]))
+    const corDe = (p: Pista) => (viaApagada?.[indice.get(p as Via) ?? -1] ? "#2a2838" : (p as Via & { cor?: string }).cor)
+    const coresApagadas = new Set(viaApagada && "disco" in M ? (M as MundoDisco).pistas.filter((pp) => viaApagada[pp.ida]).map((pp) => pp.cor) : [])
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
     // (e nas emendas da torre: as alças se separam da espiral e uma da outra)
     const gargalo = (p: Pista, i: number) => {
@@ -2465,7 +2539,7 @@ function Cena({
       vertical: true,
       incluir: lado < 0 ? trilhoE : trilhoD,
       // (disco) o guard rail na cor da linha
-      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb((p as Via & { cor?: string }).cor ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
+      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
     })
     const semEmenda = (p: Pista, i: number) => {
       const v = p as Via
@@ -2487,7 +2561,7 @@ function Cena({
       // (disco, sinalização) na espiral, a faixa da direita pintada na cor da
       // linha nos 150 m antes da saída dela: quem está nela, sai
       pintaSaida: fita(vias.filter((v) => ((v as Via & SinaisEspiral).pintaSaida ?? []).length), 4.5, 7.8, 0.035, {
-        incluir: (p, i) => ((p as Via & SinaisEspiral).pintaSaida ?? []).some((s) => U(i) >= s.u0 && U(i) < s.u1),
+        incluir: (p, i) => ((p as Via & SinaisEspiral).pintaSaida ?? []).some((s) => U(i) >= s.u0 && U(i) < s.u1 && !coresApagadas.has(s.cor)),
         cor: (p, i) => rgb(((p as Via & SinaisEspiral).pintaSaida ?? []).find((s) => U(i) >= s.u0 && U(i) < s.u1)!.cor),
       }),
       // (disco) a linha contínua branca no meio (o canteiro é aberto: só pintura)
@@ -2497,7 +2571,7 @@ function Cena({
       saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
       saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoD(p, i) }),
     }
-  }, [M, circuitos, distI, rgb])
+  }, [M, circuitos, distI, rgb, viaApagada])
 
   // ── cidade: cada lugar com a sua arquitetura e a cor do seu gás ──
   const cidade = useMemo(() => {
@@ -2899,7 +2973,15 @@ function Cena({
     const lista: { via: number; u: number; x: number; y: number }[] = []
     const porVia: number[][] = M.vias.map(() => [])
     M.vias.forEach((v, vi) => v.orbs.forEach((o) => { porVia[vi].push(lista.length); lista.push({ via: vi, u: o.u, x: o.x, y: o.y ?? 1.4 }) }))
-    const m = new THREE.InstancedMesh(new THREE.TorusGeometry(0.75, 0.14, 6, 16), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length) // (6×16: 192 triângulos por anel; eram 352)
+    // (disco, LU2CA 19/10) no lugar dos anéis, GOTAS d'água: a coisa mais
+    // valiosa num mundo seco (uma gota de ~1,3 m, 120 triângulos)
+    const gotaGeo = () => {
+      const pts: THREE.Vector2[] = []
+      for (let i = 0; i <= 5; i++) { const a = (i / 5) * (Math.PI / 2); pts.push(new THREE.Vector2(0.5 * Math.sin(a), -0.05 - 0.5 * Math.cos(a))) }
+      for (let i = 1; i <= 5; i++) { const t = i / 5; pts.push(new THREE.Vector2(0.5 * Math.pow(1 - t, 1.3), -0.05 + 0.8 * t)) }
+      return new THREE.LatheGeometry(pts, 12)
+    }
+    const m = new THREE.InstancedMesh("disco" in M ? gotaGeo() : new THREE.TorusGeometry(0.75, 0.14, 6, 16), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length) // (6×16: 192 triângulos por anel; eram 352)
     m.frustumCulled = false // (a esfera dela ficaria velha: quem escolhe os anéis perto é o useFrame)
     const pos = new Float32Array(lista.length * 3)
     const v3 = new THREE.Vector3()
@@ -2910,7 +2992,10 @@ function Cena({
     const halo = new THREE.BufferGeometry()
     halo.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     const haloMat = new THREE.PointsMaterial({ size: 4, map: tex.brilho, color: "#2fe8ff", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.6 })
-    return { m, pos, halo, haloMat, lista, porVia }
+    // (disco, LU2CA 20/10) cada gota na cor da pista dela
+    const cores = "disco" in M ? lista.map((o) => new THREE.Color((M.vias[o.via] as Via & { cor?: string }).cor ?? "#4fc3ff")) : null
+    if (cores) for (let i = 0; i < lista.length; i++) m.setColorAt(i, cores[i])
+    return { m, pos, halo, haloMat, lista, porVia, cores }
   }, [M, a, tex])
 
   // ── turbos no chão ──
@@ -3008,7 +3093,21 @@ function Cena({
     const farol = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.18, 0.06), new THREE.MeshBasicMaterial({ color: "#dff4ff", toneMapped: false }), n * 2)
     corpo.count = 0; barra.count = 0; farol.count = 0
     const carros = Array.from({ length: n }, (_, i) => ({ u: 0, x: [2, -2, 0][i % 3], v: 0 }))
-    return { corpo, barra, farol, carros, ativa: false, via: -1, perdidoT: 0, longeT: 0, espera: 0, cor: new THREE.Color() }
+    // (LU2CA 19/10) o HELICÓPTERO: a 2× da velocidade da pista ele entra na caça
+    const heli = new THREE.Group()
+    const casco = new THREE.Mesh(new THREE.CapsuleGeometry(1.4, 3.2, 4, 10).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: "#1a1d2e", metalness: 0.5, roughness: 0.3, emissive: "#22284a", emissiveIntensity: 0.4 }))
+    const cauda = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 4.6).translate(0, 0.3, -4.2), casco.material)
+    const helice = new THREE.Mesh(new THREE.BoxGeometry(11, 0.08, 0.35), new THREE.MeshBasicMaterial({ color: "#4a5070" }))
+    helice.position.y = 1.65
+    const sirene = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 0.4), new THREE.MeshBasicMaterial({ color: "#ff3b4e", toneMapped: false }))
+    sirene.position.set(0, -1.35, 0.6)
+    // o holofote: um cone de luz do helicóptero até a Kombi
+    // (só a face de fora: com a câmera dentro do cone ele some, não vira um borrão)
+    const facho = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1, 18, 1, true).translate(0, -0.5, 0), new THREE.MeshBasicMaterial({ color: "#e8f0ff", transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide, toneMapped: false }))
+    heli.add(casco, cauda, helice, sirene)
+    heli.visible = false; facho.visible = false
+    heli.frustumCulled = false; facho.frustumCulled = false
+    return { corpo, barra, farol, carros, ativa: false, via: -1, perdidoT: 0, longeT: 0, espera: 0, cor: new THREE.Color(), t: 0, heli, helice, sirene, facho, heliOn: false, heliT: 0, cobertoT: 0, heliPos: new THREE.Vector3() }
   }, [])
 
   // ── chuva (só visual), confete, faíscas ──
@@ -3168,11 +3267,14 @@ function Cena({
     qMarca: new THREE.Quaternion(), qDeriva: new THREE.Quaternion(), roda: new THREE.Vector3(),
     qDeitar: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2),
     sol: new THREE.Vector3(), lua: new THREE.Vector3(),
-    y0: new THREE.Vector3(0, 1, 0), z0: new THREE.Vector3(0, 0, 1), camUp: new THREE.Vector3(0, 1, 0), upMix: new THREE.Vector3(),
+    y0: new THREE.Vector3(0, 1, 0), z0: new THREE.Vector3(0, 0, 1), x0: new THREE.Vector3(1, 0, 0), qFlip: new THREE.Quaternion(), camUp: new THREE.Vector3(0, 1, 0), upMix: new THREE.Vector3(),
     c1: new THREE.Color(), c2: new THREE.Color(),
   }), [])
   const hudN = useRef(0)
   const comboEl = useRef<HTMLElement | null>(null)
+  // (disco) as linhas de velocidade do hyperlapse (no HUD, fora do canvas)
+  const hyperEl = useRef<HTMLElement | null>(null)
+  const hyperFase = useRef(0)
   const hemi = useRef<THREE.HemisphereLight>(null)
   const ambRef = useRef<THREE.AmbientLight>(null)
   const dirRef = useRef<THREE.DirectionalLight>(null)
@@ -3273,6 +3375,11 @@ function Cena({
       } else j.escolha = 0
       inp.toqueE = false
       inp.toqueD = false
+      // (20/10) quanto mais rápido (múltiplos da pista), menos o volante segura;
+      // no hyperlapse o controle sai da mão: ela só vai, na via onde está
+      const multV = "disco" in M && j.vBase ? Math.max(1, j.v / j.vBase) : 1
+      if (j.hyper) alvoSteer = 0
+      else if (multV > 1.2) alvoSteer /= Math.sqrt(multV)
       j.steer += (alvoSteer - j.steer) * Math.min(1, dt * 7)
       // nos viadutos entre lugares a pista é expressa
       // invasão do Núcleo: a estrada não para, mas o motor fica limitado
@@ -3285,6 +3392,7 @@ function Cena({
       const naEspiral = !!infV && naEspiralParte(infV.parte)
       const fxP = infV && !naEspiral ? faixasDisco[infV.pista] ?? null : null
       const vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      j.vBase = vmax
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -3308,7 +3416,25 @@ function Cena({
         const atrito = (2.2 + 0.006 * j.v * j.v) * dt
         j.v = Math.abs(j.v) <= atrito ? 0 : j.v - Math.sign(j.v) * atrito
       }
-      if (j.v > vmax) j.v += (vmax - j.v) * dt * 1.5
+      // (disco, LU2CA 19/10: "tirar o limite de velocidade que se pode ganhar
+      // com os drifts e manobras") o EMBALO: acima da velocidade da pista, o que
+      // veio de drift, manobra e voo não é puxado de volta; ele mesmo cai
+      // devagar (~6%/s), e o que a Kombi perde (muro, freio) sai dele
+      let emb = "disco" in M ? Math.min(j.embalo ?? 0, Math.max(0, j.v - vmax)) * Math.exp(-dt * 0.06) : 0
+      // (20/10) o HYPERLAPSE: chegou a 4×, pula pra 10× (o salto) e continua
+      // subindo (roda cada vez mais rápido); o freio tira ela de lá
+      if ("disco" in M) {
+        if (!j.hyper && j.v >= 4 * vmax && !j.ar) { j.hyper = true; j.hyperT = 0; j.v = 10 * vmax; emb = j.v - vmax; j.flash = 1; j.shake = 1.2; vib([30, 20, 30, 20, 120]); motor?.whoosh() }
+        if (j.hyper) {
+          j.hyperT = (j.hyperT ?? 0) + dt
+          j.v *= 1 + 0.06 * dt
+          emb = j.v - vmax
+          j.vx = 0
+          if (inp.freio || j.ar || j.v < 3 * vmax) { j.hyper = false; emb *= 0.5; j.v = vmax + emb }
+        }
+      }
+      j.embalo = emb
+      if (j.v > vmax + emb) j.v += (vmax + emb - j.v) * dt * 1.5
       if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
       // o tanque gasta andando (cheio dá uns 15 km)
       // (Kombi solar: a bateria não acaba)
@@ -3324,7 +3450,7 @@ function Cena({
         }
         if (ab.fase !== "dirige") j.v = 0
       }
-      j.v = Math.min(j.v, VTURBO * 1.08)
+      j.v = Math.min(j.v, "disco" in M ? vmax * 30 : VTURBO * 1.08) // (disco: o hyperlapse vai longe)
       if (j.turboT > 0) j.turboT -= dt
       // DRIFT DE VERDADE — sem botão, é a finta (o "pêndulo" do rali):
       // virar pra um lado joga o PESO da Kombi pra aquele lado. Se, com o
@@ -3338,7 +3464,7 @@ function Cena({
       const lado = (inp.dir ? 1 : 0) - (inp.esq ? 1 : 0)
       const pesoAnt = j.peso
       j.peso += ((j.ar ? 0 : j.steer * Math.min(1, Math.max(0, pct) * 1.6)) - j.peso) * Math.min(1, dt * 4)
-      if (!j.drift && !patins && lado !== 0 && lado !== j.ladoAnt && !j.ar && j.v > VDRIFT && -lado * pesoAnt > PESO_FINTA) {
+      if (!j.drift && (!patins || "disco" in M) && lado !== 0 && lado !== j.ladoAnt && !j.ar && j.v > VDRIFT && -lado * pesoAnt > PESO_FINTA) {
         // a finta: peso de um lado, volante pro outro. Quanto mais peso, mais
         // a carroceria gira de saída
         j.drift = lado as 1 | -1
@@ -3349,7 +3475,7 @@ function Cena({
       }
       // o freio de mão (Drift Max): segurando com a direção apertada, a
       // traseira solta na hora, sem precisar da finta
-      if (!j.drift && !patins && inp.mao && lado !== 0 && !j.ar && j.v > VDRIFT * 0.8) {
+      if (!j.drift && (!patins || "disco" in M) && inp.mao && lado !== 0 && !j.ar && j.v > VDRIFT * 0.8) {
         j.drift = lado as 1 | -1
         j.giro = lado * 2.2
         j.driftT = 0
@@ -3393,6 +3519,8 @@ function Cena({
           // aderência voltou
           if (j.driftT > 0.6) {
             j.turboT = Math.max(j.turboT, Math.min(1.8, 0.5 + j.driftT * 0.6))
+            // (disco) o drift longo vira embalo (sem teto: drift atrás de drift acelera)
+            if ("disco" in M) { const g = Math.min(12, j.driftT * 3.5); j.v += g; j.embalo = (j.embalo ?? 0) + g }
             j.flash = Math.max(j.flash, 0.35)
             motor?.whoosh()
             vib([15, 20, 40])
@@ -3416,7 +3544,9 @@ function Cena({
         j.vx += (alvoVx - j.vx) * Math.min(1, dt * 7)
       }
       const segura = 1 - Math.min(0.75, Math.abs(a.bank) * 2.4)
-      if (!j.ar) j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * segura) * dt
+      // (no hyperlapse ela fica travada na faixa: sem centrífuga, sem muro)
+      if (j.hyper) j.vx = 0
+      else if (!j.ar) j.x += (j.vx - a.curv * j.v * Math.abs(j.v) * 0.035 * segura) * dt
       else j.x += j.vx * 0.5 * dt
     }
     // ── A DIREÇÃO LIVRE (mapa novo, LU2CA 16/10: "liberdade de direção e
@@ -3500,7 +3630,10 @@ function Cena({
     // alça de meia pista, vindo da outra metade): ela desliza pra dentro em
     // ~0,4 s, sem tranco e sem raspar. Encostou no muro de verdade: raspa
     const fora = j.x < limE ? limE - j.x : j.x > limD ? j.x - limD : 0
-    if ("disco" in M && fora > 1.2) {
+    if (j.hyper && fora > 0) {
+      // no hyperlapse ela não encosta no muro: só se ajeita pra dentro
+      j.x += (j.x > limD ? -1 : 1) * Math.min(fora, 30 * dt)
+    } else if ("disco" in M && fora > 1.2) {
       j.x += (j.x > limD ? -1 : 1) * Math.min(fora, Math.max(1, fora) * 6 * dt)
       j.vx *= 0.5
     } else if (j.x < limE || j.x > limD) {
@@ -3511,7 +3644,7 @@ function Cena({
       j.dRaspa += dt
       if (j.dPts > 0 && j.dRaspa > 0.35) { j.dPts = 0; j.dMult = 1; j.dMsg = "bateu · perdeu o drift"; j.dMsgT = j.tempo + 1.4 }
       if (j.v > 8) {
-        j.v *= 1 - 0.55 * dt
+        j.v *= 1 - 0.55 * dt * ("disco" in M && j.vBase ? Math.max(1, j.v / j.vBase) : 1)
         j.shake = Math.max(j.shake, 0.25)
         falasT.current.raspa -= dt
         if (falasT.current.raspa <= 0) { vib(16); falasT.current.raspa = 0.14 }
@@ -3579,7 +3712,8 @@ function Cena({
           melhor = Infinity
           const ladoS = MD.ladoSaida.get(sai) ?? 1
           const naFaixa = j.x * ladoS > 4.4
-          prox = (lado !== 0 ? Math.sign(lado) === ladoS : naFaixa) ? sai : segue
+          // (no hyperlapse ela só segue; a saída de uma pista apagada fica fechada)
+          prox = !j.hyper && !viaApagada?.[sai] && (lado !== 0 ? Math.sign(lado) === ladoS : naFaixa) ? sai : segue
         }
       }
       for (const vi of cands) {
@@ -3679,19 +3813,22 @@ function Cena({
       // a do mapa velho: no disco ela nunca termina (a abertura do disco, o
       // deserto, a D-Bee e a oficina, ainda não existe), e o propulsor ficava
       // desligado pra sempre. No disco ela não trava
-      const quer = inp.propulsor && !cine && !j.desligada && !combRef.current.patins
+      // (LU2CA 19/10) de patins, o propulsor é o jato de ar das costas: sobe
+      // mais seco, gasta mais rápido e recarrega mais rápido (é leve)
+      const pat = !!combRef.current.patins
+      const quer = inp.propulsor && !cine && !j.desligada
       if (quer && j.energia > 0) {
-        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, 3); motor?.whoosh(); vib(18) }
-        j.vy = Math.min(16, j.vy + 34 * dt)
-        j.energia = Math.max(0, j.energia - 0.22 * dt)
+        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, pat ? 7 : 3); motor?.whoosh(); vib(18) }
+        j.vy = Math.min(pat ? 13 : 16, j.vy + (pat ? 48 : 34) * dt)
+        j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt)
         j.propulsou = true
-      } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + 0.1 * dt) // a energia solar volta na pista
+      } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + (pat ? 0.24 : 0.1) * dt) // a energia solar volta na pista
       if (j.ar && j.propulsou && !j.voo && j.y - yPista > 3.5) {
         const p = carro.current!.position
         j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = Math.atan2(a.tx, a.tz)
       }
       if (j.voo) {
-        j.rumo = (j.rumo ?? 0) - j.steer * dt * (j.ar ? 1.1 : 1.8)
+        j.rumo = (j.rumo ?? 0) - (inp.mao ? 0 : j.steer * dt * (j.ar ? 1.1 : 1.8))
         j.wx = j.wx! + Math.sin(j.rumo) * j.v * dt
         j.wz = j.wz! + Math.cos(j.rumo) * j.v * dt
         // os prédios: abaixo do topo, bate e escorrega
@@ -3736,9 +3873,39 @@ function Cena({
       }
     }
     if (inp.pulo && j.ar && j.tAr > 0.3 && j.vy < 0 && j.y - yPista > 2.2) inp.pulo = false // cedo demais: não guarda
-    // o GIRO no ar: virando durante o voo, a Kombi rodopia (só a carroceria)
-    if (j.ar && !j.voo) j.giroAr = (j.giroAr ?? 0) + j.steer * dt * 11
-    else if (j.giroAr) { j.giroAr *= Math.exp(-dt * 9); if (Math.abs(j.giroAr) < 0.01) j.giroAr = 0 }
+    // ── AS MANOBRAS NO AR (LU2CA 19/10: "as manobras no ar aprimoradas") ──
+    // no pulo, o volante gira a carroceria; segurando o freio de mão, o
+    // mortal (de costas; com ↑, pra frente) e, junto com o volante, o
+    // parafuso. No voo, só com o freio de mão (sem ele, o volante é o rumo).
+    // Com inércia: a rotação acelera e freia, tem peso. De patins, mais ágil
+    j.giroAr = j.giroAr ?? 0; j.vGiro = j.vGiro ?? 0; j.flipAr = j.flipAr ?? 0; j.vFlip = j.vFlip ?? 0
+    if (j.ar) {
+      const agil = combRef.current.patins ? 1.45 : 1
+      const manobra = (!j.voo || inp.mao) && !(inp.propulsor && j.voo)
+      // (num pulo de ~0,6 s, um 360 ou um mortal cabem se você entra na hora)
+      const alvoG = manobra ? j.steer * 14 * agil : 0
+      const alvoF = manobra && inp.mao ? (inp.gas && !inp.freio ? -1 : 1) * 13 * agil : 0
+      // soltou: a carroceria se ajeita pro giro completo mais perto (passou da
+      // metade, completa; antes, desfaz). Assim o pouso limpo depende de
+      // soltar na hora, não de adivinhar a inércia
+      const T = Math.PI * 2
+      const prumoG = alvoG ? alvoG : (Math.round(j.giroAr / T) * T - j.giroAr) * 7
+      const prumoF = alvoF ? alvoF : (Math.round(j.flipAr / T) * T - j.flipAr) * 7
+      j.vGiro += (prumoG - j.vGiro) * Math.min(1, dt * 10)
+      j.vFlip += (prumoF - j.vFlip) * Math.min(1, dt * 10)
+      j.giroAr += j.vGiro * dt
+      j.flipAr += j.vFlip * dt
+    } else {
+      j.vGiro = 0; j.vFlip = 0
+      if (j.giroAr) { j.giroAr *= Math.exp(-dt * 9); if (Math.abs(j.giroAr) < 0.01) j.giroAr = 0 }
+      if (j.flipAr) { j.flipAr *= Math.exp(-dt * 9); if (Math.abs(j.flipAr) < 0.01) j.flipAr = 0 }
+    }
+    // (patins) o dash: o turbo no ar empurra pra frente, uma vez por pulo
+    if (inp.turbo && combRef.current.patins && j.ar && !j.dashou) {
+      j.dashou = true; inp.turbo = false
+      j.v += 14; j.vy = Math.max(j.vy, 2.5)
+      j.flash = 0.3; motor?.whoosh(); vib([14, 10, 30])
+    }
     if (j.ar) {
       j.vy -= (j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
       // (disco) sem o propulsor, a Kombi plana (desce até 10 m/s): dá tempo de mirar numa pista
@@ -3761,20 +3928,42 @@ function Cena({
           if (mudou) { trocou = true; V = M.vias[j.via]; ev.via(j.via) }
         }
         j.propulsou = false
-        // pousou girando: 360 (ou mais) bem alinhado = turbo e onda; torto, só balança
-        if (j.giroAr) {
-          const voltas = Math.round(j.giroAr / (Math.PI * 2))
-          const sobra = j.giroAr - voltas * Math.PI * 2
-          if (voltas !== 0 && Math.abs(sobra) < 0.9) {
-            if (Math.abs(j.v) > 5) j.v += Math.sign(j.v) * 6 * Math.abs(voltas)
-            j.turboT = Math.max(j.turboT, 0.8)
-            j.psi = Math.min(1, (j.psi ?? 0) + 0.45)
-            ev.sinal(2 * Math.abs(voltas), `${Math.abs(voltas) * 360}°!`, "#ff5bd6")
+        j.dashou = false
+        // o pouso julga a manobra: alinhado = o nome dela, turbo, onda e o
+        // combo (manobra atrás de manobra, menos de 3 s, multiplica); torto =
+        // cambaleia e perde o embalo (nunca capota: é pra dar vontade de tentar)
+        {
+          const T = Math.PI * 2
+          const vg = Math.round((j.giroAr ?? 0) / T), sg = (j.giroAr ?? 0) - vg * T
+          const vf = Math.round((j.flipAr ?? 0) / T), sf = (j.flipAr ?? 0) - vf * T
+          if (vg || vf) {
+            if (Math.abs(sg) < 0.9 && Math.abs(sf) < 0.75) {
+              const ag = Math.abs(vg), af = Math.abs(vf)
+              const nome = af && ag ? `parafuso ${ag * 360}°` : af ? `${af > 1 ? `${af}× ` : ""}mortal${vf > 0 ? " de costas" : ""}` : `${ag * 360}°`
+              j.trComboN = j.tempo - (j.trComboT ?? -9) < 3 ? (j.trComboN ?? 0) + 1 : 1
+              j.trComboT = j.tempo
+              const mult = Math.min(5, j.trComboN)
+              const pts = (2 * ag + 3 * af) * mult
+              if (Math.abs(j.v) > 5) { const g = (5 * ag + 7 * af) * (1 + 0.25 * (mult - 1)); j.v += Math.sign(j.v) * g; j.embalo = (j.embalo ?? 0) + g }
+              j.turboT = Math.max(j.turboT, 0.8 + 0.3 * af)
+              j.carga = Math.min(1, j.carga + 0.1 * (ag + af))
+              j.psi = Math.min(1, (j.psi ?? 0) + 0.45)
+              ev.sinal(pts, `${nome}${mult > 1 ? ` ×${mult}` : ""}!`, af ? "#5dffa0" : "#ff5bd6")
+              j.dMsg = `★${nome}${mult > 1 ? ` ×${mult}` : ""}|+${pts}`; j.dMsgT = j.tempo + 1.8
+              vib([20, 20, 40])
+            } else {
+              j.trComboN = 0
+              j.v *= 0.55
+              j.shake = Math.max(j.shake, 1)
+              j.dMsg = "caiu torto"; j.dMsgT = j.tempo + 1.4
+              vib([60, 40, 60])
+            }
           }
-          j.giroAr = sobra
+          j.giroAr = sg; j.flipAr = sf
         }
         if (tempoAr > 1) j.psi = Math.min(1, (j.psi ?? 0) + 0.25)
-        if (tempoAr > 0.75 && Math.abs(j.v) > 5) { j.v += Math.sign(j.v) * Math.min(8, tempoAr * 4); j.carga = Math.min(1, j.carga + 0.08) }
+        // (o voo dá turbo: quanto mais tempo no ar, mais carga; e vira embalo)
+        if (tempoAr > 0.75 && Math.abs(j.v) > 5) { const g = Math.min(8, tempoAr * 4); j.v += Math.sign(j.v) * g; j.embalo = (j.embalo ?? 0) + g; j.carga = Math.min(1, j.carga + ("disco" in M ? Math.min(0.5, tempoAr * 0.12) : 0.08)) }
         motor?.baque()
         vib(tempoAr > 0.6 ? [40, 30, 60] : 30)
         j.st.ar += tempoAr
@@ -3826,7 +4015,7 @@ function Cena({
     // que pega é a da Kombi (~1 m de cada lado) mais o raio do anel
     const parO = "disco" in M && V.rede && V.rede.par >= 0 && !j.voo ? V.rede.par : -1
     for (const [vo, esp] of [[j.via, false], [parO, true]] as const) {
-    if (vo < 0) continue
+    if (vo < 0 || viaApagada?.[vo]) continue
     const Lp = M.vias[vo].L
     for (const i of orbs.porVia[vo]) {
       if (j.pegos.has(i)) continue
@@ -3846,7 +4035,7 @@ function Cena({
         j.psi = Math.min(0.8, (j.psi ?? 0) + (j.combo >= 8 ? 0.16 : j.combo >= 5 ? 0.06 : 0.02))
         // o anel: carrega o turbo, toca uma nota no tom da música e conta
         // pra viagem rápida (a cada 100, duas viagens)
-        j.carga = Math.min(1, j.carga + 0.12)
+        if (!("disco" in M)) j.carga = Math.min(1, j.carga + 0.12) // (disco: a água não dá turbo)
         gota(Math.min(14, (j.combo ?? 1) - 1))
         vib(8)
       }
@@ -3889,6 +4078,7 @@ function Cena({
         k.via = j.via
         k.perdidoT = 0
         k.longeT = 0
+        k.t = 0
         k.carros.forEach((c, i) => { c.u = j.u - 140 - i * 22; c.x = j.x + [2.2, -2.2, 0][i % 3]; c.v = Math.max(20, j.v) })
         ev.caca("comecou")
       } else if (!quer && k.ativa) {
@@ -3898,6 +4088,12 @@ function Cena({
         ev.caca("fim")
       }
       if (k.ativa) {
+        k.t += dt
+        // (LU2CA 19/10) a polícia começa 5% mais lenta e volta ao normal em
+        // ~30 s; e acompanha a velocidade da pista onde você está (no disco,
+        // cada pista tem a sua): fugir é questão de embalo
+        const forca = Math.min(1, 0.95 + 0.05 * (k.t / 30))
+        const vCap = Math.max(VMAX, j.vBase ?? VMAX) * 1.06 * forca
         if (k.via !== j.via) {
           // trocou de rua: eles vêm atrás (06/10: fugir ficou mais difícil) —
           // reaparecem atrás na rua nova, um pouco mais longe
@@ -3916,7 +4112,7 @@ function Cena({
             // perto: colam e encostam devagar
             // teto ABAIXO da velocidade máxima da Kombi: no talo dá pra fugir
             // (06/10: mais rápidos que a Kombi no talo; só o turbo abre distância)
-            let alvoV = d > 30 ? Math.min(VMAX * 1.06, Math.max(30, Math.abs(j.v) + 12)) : Math.max(4, Math.min(VMAX * 1.06, j.v + (d > 6 ? 4 : -1)))
+            let alvoV = d > 30 ? Math.min(vCap, Math.max(30, Math.abs(j.v) + 12) * forca) : Math.max(4, Math.min(vCap, j.v + (d > 6 ? 4 : -1)))
             // você parou no escuro longe deles: perderam de vista, procuram devagar
             if (respiroRef.current.pode) alvoV = Math.min(alvoV, 4)
             c.v += (alvoV - c.v) * Math.min(1, dt * 1.4)
@@ -3928,7 +4124,7 @@ function Cena({
               k.ativa = false
               k.espera = 12
               j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0)
-              j.v = Math.min(j.v, 10)
+              j.v = Math.min(j.v, 10); j.embalo = 0
               j.cacaGap = undefined
               ev.caca("pego")
               break
@@ -3943,12 +4139,48 @@ function Cena({
               respiroRef.current.pode = false
               k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou")
             }
-            k.longeT = gap > 350 ? k.longeT + dt : 0
+            // o helicóptero: a 2× da velocidade da pista ele entra. Enquanto ele
+            // te enxerga, a distância não despista. Ele te perde se você passar
+            // uns segundos embaixo de outra pista, ou volta pra base em 45 s
+            const MDh = "disco" in M ? (M as MundoDisco) : null
+            if (MDh && !k.heliOn && j.v >= 2 * (j.vBase ?? VMAX)) {
+              k.heliOn = true; k.heliT = 0; k.cobertoT = 0
+              k.heliPos.copy(carro.current!.position).add(tmp.p.set(0, 70, 0))
+              ev.popup("HELICÓPTERO", "#ff3b4e"); vib([40, 30, 40, 30, 80])
+            }
+            // (LU2CA 20/10) o helicóptero só é despistado na velocidade: 3× a
+            // da pista por 8 s seguidos. Aí a caça inteira acaba (a fuga grande)
+            if (k.heliOn) {
+              k.heliT += dt
+              j.tresT = j.v >= 3 * (j.vBase ?? VMAX) ? (j.tresT ?? 0) + dt : 0
+              if (j.tresT >= 8) {
+                k.heliOn = false; j.tresT = 0; j.fugaGrande = true
+                k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou")
+              }
+            }
+            k.longeT = gap > 350 && !k.heliOn ? k.longeT + dt : 0
             if (k.longeT > 6) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou") }
           }
         }
       }
-      if (!k.ativa) respiroRef.current.pode = false
+      if (!k.ativa) { respiroRef.current.pode = false; k.heliOn = false }
+      k.heli.visible = k.heliOn; k.facho.visible = k.heliOn
+      if (k.heliOn) {
+        const cp = carro.current!.position
+        tmp.f.set(0, 0, -1).applyQuaternion(carro.current!.quaternion) // a frente da Kombi
+        tmp.p.set(cp.x - tmp.f.x * 18, cp.y + 34, cp.z - tmp.f.z * 18)
+        k.heliPos.lerp(tmp.p, Math.min(1, dt * 1.6))
+        k.heli.position.copy(k.heliPos)
+        k.heli.lookAt(cp.x, k.heliPos.y - 6, cp.z)
+        k.helice.rotation.y += dt * 38
+        ;(k.sirene.material as THREE.MeshBasicMaterial).color.set(Math.floor(state.clock.elapsedTime * 5) % 2 ? "#ff3b4e" : "#4f7bff")
+        // o facho: do helicóptero até a Kombi (um cone esticado)
+        const dx = cp.x - k.heliPos.x, dy = cp.y - k.heliPos.y, dz = cp.z - k.heliPos.z
+        const L = Math.hypot(dx, dy, dz)
+        k.facho.position.copy(k.heliPos)
+        k.facho.scale.set(1, L, 1)
+        k.facho.quaternion.setFromUnitVectors(tmp.y0, tmp.f.set(-dx / L, -dy / L, -dz / L))
+      }
       const n = k.ativa ? k.carros.length : 0
       k.corpo.count = n; k.barra.count = n; k.farol.count = n * 2
       if (n) {
@@ -4023,7 +4255,7 @@ function Cena({
         c.v *= Math.exp(-dt * 2)
         if (c.caido <= 0) { c.x = c.x0; c.y = 0; c.vy = 0; c.vx = 0; c.giro = 0; c.v = c.v0; c.u = rede ? Math.random() * CV.L : (c.u + CV.L * 0.5) % CV.L }
       }
-      if (aqui && c.caido <= 0 && Math.abs(d) < 3.6 && Math.abs(cx - j.x) < 1.85 && !j.ar && c.bateu <= 0) {
+      if (aqui && c.caido <= 0 && Math.abs(d) < 3.6 && Math.abs(cx - j.x) < 1.85 && !j.ar && c.bateu <= 0 && !j.hyper) {
         // a batida (06/10, LU2CA): o carro da cidade voa pro lado, a Kombi segue
         c.bateu = 1
         c.caido = 7
@@ -4086,7 +4318,8 @@ function Cena({
     const yaw = (j.giroAr ?? 0) + (vivo ? -j.deriva - j.steer * 0.11 * Math.min(1, Math.abs(j.v) / 25) * Math.sign(j.v || 1) : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva)
     tmp.qYaw.setFromAxisAngle(tmp.y0, yaw)
     tmp.qRoll.setFromAxisAngle(tmp.z0, j.steer * 0.05 * Math.min(1, pct))
-    car.quaternion.multiply(tmp.qYaw).multiply(tmp.qRoll)
+    tmp.qFlip.setFromAxisAngle(tmp.x0, j.flipAr ?? 0)
+    car.quaternion.multiply(tmp.qYaw).multiply(tmp.qFlip).multiply(tmp.qRoll)
     if (vivo) car.position.set(j.wx!, j.y + 0.02, j.wz!)
     else car.position.set(a.x - a.tz * j.x * cb, j.y + 0.02, a.z + a.tx * j.x * cb)
     {
@@ -4497,10 +4730,35 @@ function Cena({
         if (w.__camLog.length > 4000) w.__camLog.shift()
       }
     }
+    // (disco, 20/10) o HYPERLAPSE: a intensidade segue o múltiplo da velocidade
+    // da pista; abre a câmera, a lente e as linhas de velocidade
+    if ("disco" in M) {
+      const mult = j.vBase ? Math.max(0, j.v / j.vBase) : 0
+      const alvoK = intensidade(mult, !!j.hyper, j.hyperT ?? 0)
+      VELO.k += (alvoK - VELO.k) * Math.min(1, dt * (alvoK > VELO.k ? 3 : 1.5))
+      if (j.hyper) j.psi = Math.max(j.psi ?? 0, Math.min(1, 0.5 + (j.hyperT ?? 0) * 0.05))
+      const hl = hyperEl.current ?? (hyperEl.current = document.querySelector<HTMLElement>(".l-hyper"))
+      if (hl) {
+        const k = VELO.k
+        hyperFase.current += dt * (0.6 + k * k * 6)
+        const op = Math.min(1, k * 1.1)
+        if (op < 0.01) { if (hl.style.opacity !== "0") hl.style.opacity = "0" }
+        else {
+          hl.style.opacity = op.toFixed(3)
+          const [a, b] = hl.children as unknown as HTMLElement[]
+          const f1 = hyperFase.current % 1, f2 = (hyperFase.current + 0.5) % 1
+          a.style.transform = `scale(${(1 + f1 * 1.6).toFixed(3)}) rotate(${(hyperFase.current * 3).toFixed(1)}deg)`
+          a.style.opacity = (Math.sin(f1 * Math.PI)).toFixed(3)
+          b.style.transform = `scale(${(1 + f2 * 1.6).toFixed(3)}) rotate(${(-hyperFase.current * 2).toFixed(1)}deg)`
+          b.style.opacity = (Math.sin(f2 * Math.PI)).toFixed(3)
+          hl.classList.toggle("is-hyper", !!j.hyper)
+        }
+      }
+    }
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
     const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 60 + Math.min(1.3, Math.abs(pct)) * 18 + (j.turboT > 0 ? 10 : 0) + Math.max(0, camDin.current.puxa) * 1.5
-    cam.fov += (fovAlvo - cam.fov) * Math.min(1, dt * 3)
+    cam.fov += (fovAlvo + ("disco" in M ? Math.min(45, VELO.k * 24) : 0) - cam.fov) * Math.min(1, dt * 3)
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
     j.flash = Math.max(0, j.flash - dt * 1.6)
@@ -4570,7 +4828,7 @@ function Cena({
     // orbs: na cor da rádio que está tocando, batendo no grave da música
     const t = state.clock.elapsedTime
     const corOrb = orbs.m.material as THREE.MeshBasicMaterial
-    corOrb.color.lerp(tmp.c1.set(corRadio.current), 0.08)
+    corOrb.color.lerp(tmp.c1.set("disco" in M ? "#ffffff" : corRadio.current), 0.08)
     orbs.haloMat.color.copy(corOrb.color)
     orbs.haloMat.size = 3 + grave * 5
     const bate = 0.8 + grave * 0.75
@@ -4580,16 +4838,18 @@ function Cena({
     const camP = state.camera.position, R2 = 450 * 450
     let n = 0
     for (let i = 0; i < orbs.lista.length; i++) {
-      if (j.pegos.has(i)) continue
+      if (j.pegos.has(i) || viaApagada?.[orbs.lista[i].via]) continue
       const dx = orbs.pos[i * 3] - camP.x, dy = orbs.pos[i * 3 + 1] - camP.y, dz = orbs.pos[i * 3 + 2] - camP.z
       if (dx * dx + dy * dy + dz * dz > R2) continue
       tmp.d.position.set(orbs.pos[i * 3], orbs.pos[i * 3 + 1] + Math.sin(t * 3 + i) * 0.2, orbs.pos[i * 3 + 2])
       tmp.d.rotation.set(0, t * 2 + i, 0)
       tmp.d.scale.set(bate, bate, bate)
       tmp.d.updateMatrix()
+      if (orbs.cores) orbs.m.setColorAt(n, orbs.cores[i])
       orbs.m.setMatrixAt(n++, tmp.d.matrix)
     }
     orbs.m.count = n
+    if (orbs.cores && orbs.m.instanceColor) { orbs.m.instanceColor.needsUpdate = true; orbs.m.instanceColor.clearUpdateRanges(); orbs.m.instanceColor.addUpdateRange(0, n * 3) }
     orbs.m.instanceMatrix.needsUpdate = true
     orbs.m.instanceMatrix.clearUpdateRanges()
     orbs.m.instanceMatrix.addUpdateRange(0, n * 16)
@@ -4764,7 +5024,7 @@ function Cena({
           <meshBasicMaterial vertexColors transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       )}
-      {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} /></Seguro>}
+      {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
           <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
@@ -4908,6 +5168,8 @@ function Cena({
       <primitive object={caca.corpo} frustumCulled={false} />
       <primitive object={caca.barra} frustumCulled={false} />
       <primitive object={caca.farol} frustumCulled={false} />
+      <primitive object={caca.heli} />
+      <primitive object={caca.facho} />
 
       <lineSegments ref={chuvaRef} geometry={chuva.g} frustumCulled={false}>
         <lineBasicMaterial color="#a8ccff" transparent opacity={0.28} />
@@ -4935,7 +5197,7 @@ function Cena({
           </Seguro>
         </group>
         <group ref={patinador} visible={false} rotation-y={Math.PI}>
-          <Patinador vel={() => jogo.current.v} steer={() => -jogo.current.steer} />
+          <Patinador vel={() => jogo.current.v} steer={() => -jogo.current.steer} ar={() => !!jogo.current.ar} jato={() => !!(jogo.current.ar && input.current.propulsor && (jogo.current.energia ?? 0) > 0)} />
         </group>
         <group ref={cabineG}>
           <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>

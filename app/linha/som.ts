@@ -61,6 +61,21 @@ export function abafar(sim: boolean) {
   abafando = Math.max(0, abafando + (sim ? 1 : -1))
   aplicarAbafo()
 }
+// a onda da música que está saindo (a pista, a rádio ou o disco: tudo passa
+// pelo abafo). O holo desenha a rádio com ela. false = nada tocando ainda
+let ondaA: AnalyserNode | null = null
+export function ondaMusica(buf: Uint8Array<ArrayBuffer>): boolean {
+  const c = audioCtx()
+  if (!c || !abafo() || !abafoG) return false
+  if (!ondaA) {
+    ondaA = c.createAnalyser()
+    ondaA.fftSize = 256
+    ondaA.smoothingTimeConstant = 0.5
+    abafoG.connect(ondaA)
+  }
+  ondaA.getByteTimeDomainData(buf)
+  return true
+}
 export function silenciar(sim: boolean) {
   silenciando = Math.max(0, silenciando + (sim ? 1 : -1))
   pistaSom.segurar(silenciando > 0)

@@ -8,12 +8,13 @@
 // 2 = tudo · 1 = só bloom + tonemapping · 0 = sem pós (tonemapping do renderer).
 
 import { PerformanceMonitor } from "@react-three/drei"
-import { useThree } from "@react-three/fiber"
+import { useFrame, useThree } from "@react-three/fiber"
 import { Bloom, BrightnessContrast, ChromaticAberration, EffectComposer, HueSaturation, Noise, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing"
 import { BlendFunction, ToneMappingMode } from "postprocessing"
 import { useEffect, useMemo, useState } from "react"
 import * as THREE from "three"
 import { POS } from "./luzes"
+import { VELO } from "./velo"
 
 export function Cinema() {
   // (medição: ?medir&lente=0|1|2 fixa o nível da lente)
@@ -28,6 +29,8 @@ export function Cinema() {
     POS.ativo = nivel > 0 // (luzes.tsx compila os shaders pro mesmo destino)
   }, [gl, nivel])
   const aberracao = useMemo(() => new THREE.Vector2(0.0009, 0.0006), [])
+  // (20/10) o hyperlapse abre a lente: a aberração cresce com a velocidade
+  useFrame(() => { const k = Math.min(2.5, VELO.k); aberracao.set(0.0009 + k * 0.0045, 0.0006 + k * 0.003) })
   // (19/10) o monitor só começa a julgar depois que o jogo assenta: carregando
   // (compilando shaders, decodificando modelos) todo aparelho engasga, e ele
   // desligava a lente de vez já no começo (sem bloom o resto do jogo)
