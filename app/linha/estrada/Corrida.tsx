@@ -3826,6 +3826,10 @@ function Cena({
         j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt)
         j.propulsou = true
       } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + (pat ? 0.24 : 0.1) * dt) // a energia solar volta na pista
+      // (LU2CA 20/10: "quando cai no deserto perde o poder de propulsão e fica
+      // preso") no chão do deserto ela segue no modo voo (sem pista embaixo),
+      // e a energia não voltava nunca. Lá é sol aberto: recarrega mais rápido
+      else if (!j.ar && j.voo) j.energia = Math.min(1, j.energia + (pat ? 0.4 : 0.25) * dt)
       if (j.ar && j.propulsou && !j.voo && j.y - yPista > 3.5) {
         const p = carro.current!.position
         j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = Math.atan2(a.tx, a.tz)
