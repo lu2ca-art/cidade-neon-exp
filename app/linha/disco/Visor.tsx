@@ -41,7 +41,7 @@ export function Visor({ id, onFechar, children }: { id: VisorId; onFechar: () =>
           <iframe src={c.src} title={c.titulo} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
         ) : (
           <div className="l-visor-fora">
-            {c.capa && <img src={c.capa} alt="" />}
+            {c.capa && <i className="l-visor-capa" style={{ backgroundImage: `url(${c.capa})` }} />}
             <p>{c.resumo}</p>
             <a href={c.fora} target="_blank" rel="noreferrer">abrir lá fora ↗</a>
           </div>
