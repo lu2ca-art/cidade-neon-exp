@@ -37,6 +37,7 @@ import { TorreCentral } from "./Torre"
 import { Portoes } from "./Portoes"
 import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
+import { geoJoia, matJoia } from "./joia"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
@@ -2999,14 +3000,11 @@ function Cena({
     const porVia: number[][] = M.vias.map(() => [])
     M.vias.forEach((v, vi) => v.orbs.forEach((o) => { porVia[vi].push(lista.length); lista.push({ via: vi, u: o.u, x: o.x, y: o.y ?? 1.4 }) }))
     // (disco, LU2CA 19/10) no lugar dos anéis, GOTAS d'água: a coisa mais
-    // valiosa num mundo seco (uma gota de ~1,3 m, 120 triângulos)
-    const gotaGeo = () => {
-      const pts: THREE.Vector2[] = []
-      for (let i = 0; i <= 5; i++) { const a = (i / 5) * (Math.PI / 2); pts.push(new THREE.Vector2(0.5 * Math.sin(a), -0.05 - 0.5 * Math.cos(a))) }
-      for (let i = 1; i <= 5; i++) { const t = i / 5; pts.push(new THREE.Vector2(0.5 * Math.pow(1 - t, 1.3), -0.05 + 0.8 * t)) }
-      return new THREE.LatheGeometry(pts, 12)
-    }
-    const m = new THREE.InstancedMesh("disco" in M ? gotaGeo() : new THREE.TorusGeometry(0.75, 0.14, 6, 16), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length) // (6×16: 192 triângulos por anel; eram 352)
+    // valiosa num mundo seco. (LU2CA 20/10) a gota é uma JOIA: lapidada,
+    // furta-cor, 1/8 da Kombi, com o tom da pista por cima (joia.ts)
+    const m = "disco" in M
+      ? new THREE.InstancedMesh(geoJoia(), matJoia(), lista.length)
+      : new THREE.InstancedMesh(new THREE.TorusGeometry(0.75, 0.14, 6, 16), new THREE.MeshBasicMaterial({ color: "#2fe8ff", toneMapped: false }), lista.length) // (6×16: 192 triângulos por anel; eram 352)
     m.frustumCulled = false // (a esfera dela ficaria velha: quem escolhe os anéis perto é o useFrame)
     const pos = new Float32Array(lista.length * 3)
     const v3 = new THREE.Vector3()
@@ -3016,7 +3014,7 @@ function Cena({
     })
     const halo = new THREE.BufferGeometry()
     halo.setAttribute("position", new THREE.BufferAttribute(pos, 3))
-    const haloMat = new THREE.PointsMaterial({ size: 4, map: tex.brilho, color: "#2fe8ff", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.6 })
+    const haloMat = new THREE.PointsMaterial({ size: "disco" in M ? 2.2 : 4, map: tex.brilho, color: "disco" in M ? "#e8f4ff" : "#2fe8ff", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: "disco" in M ? 0.45 : 0.6 })
     // (disco, LU2CA 20/10) cada gota na cor da pista dela
     const cores = "disco" in M ? lista.map((o) => new THREE.Color((M.vias[o.via] as Via & { cor?: string }).cor ?? "#4fc3ff")) : null
     if (cores) for (let i = 0; i < lista.length; i++) m.setColorAt(i, cores[i])
@@ -4857,11 +4855,16 @@ function Cena({
 
     // orbs: na cor da rádio que está tocando, batendo no grave da música
     const t = state.clock.elapsedTime
-    const corOrb = orbs.m.material as THREE.MeshBasicMaterial
-    corOrb.color.lerp(tmp.c1.set("disco" in M ? "#ffffff" : corRadio.current), 0.08)
-    orbs.haloMat.color.copy(corOrb.color)
-    orbs.haloMat.size = 3 + grave * 5
-    const bate = 0.8 + grave * 0.75
+    const joia = "disco" in M
+    if (joia) (orbs.m.material as THREE.ShaderMaterial).uniforms.tempo.value = t
+    else {
+      const corOrb = orbs.m.material as THREE.MeshBasicMaterial
+      corOrb.color.lerp(tmp.c1.set(corRadio.current), 0.08)
+      orbs.haloMat.color.copy(corOrb.color)
+    }
+    orbs.haloMat.size = joia ? 1.1 + grave * 1.4 : 3 + grave * 5
+    // (a joia pulsa pouco: quem marca o grave é o halo)
+    const bate = joia ? 1 + grave * 0.22 : 0.8 + grave * 0.75
     // (19/10, desempenho) só os anéis a até 450 m da câmera entram na malha (no
     // disco são 1142, 400 mil triângulos desenhados e reenviados todo quadro;
     // um anel de 1,5 m some de vista bem antes disso)
@@ -4871,8 +4874,8 @@ function Cena({
       if (j.pegos.has(i) || viaApagada?.[orbs.lista[i].via]) continue
       const dx = orbs.pos[i * 3] - camP.x, dy = orbs.pos[i * 3 + 1] - camP.y, dz = orbs.pos[i * 3 + 2] - camP.z
       if (dx * dx + dy * dy + dz * dz > R2) continue
-      tmp.d.position.set(orbs.pos[i * 3], orbs.pos[i * 3 + 1] + Math.sin(t * 3 + i) * 0.2, orbs.pos[i * 3 + 2])
-      tmp.d.rotation.set(0, t * 2 + i, 0)
+      tmp.d.position.set(orbs.pos[i * 3], orbs.pos[i * 3 + 1] + Math.sin(t * 3 + i) * (joia ? 0.12 : 0.2) - (joia ? 0.45 : 0), orbs.pos[i * 3 + 2])
+      tmp.d.rotation.set(0, t * (joia ? 1.3 : 2) + i, 0)
       tmp.d.scale.set(bate, bate, bate)
       tmp.d.updateMatrix()
       if (orbs.cores) orbs.m.setColorAt(n, orbs.cores[i])
