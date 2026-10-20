@@ -20,7 +20,7 @@
 
 import type { Save } from "../estado"
 
-export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "nectar" | "carreira" | "livre"
+export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "oficina" | "subir" | "nectar" | "carreira" | "livre"
 // os passos da Nectar (B9)
 export type PassoNectar = "quebra" | "regar" | "galao" | "oficina" | "show" | "flores" | "feita"
 
@@ -173,9 +173,10 @@ export const CENA_OFICINA: Cena = {
   titulo: "a oficina",
   missao: "nectar",
   passos: [
-    { t: "acao", texto: "a kombi entra no elevador da oficina tossindo. o mecânico nem levanta a cabeça" },
+    { t: "acao", texto: "uma garagem no chão, embaixo das pistas. a kombi entra tossindo. o mecânico nem levanta a cabeça" },
     { t: "fala", de: "o mecânico", texto: "gasolina? em que ano vc tá vivendo" },
-    { t: "fala", de: "o mecânico", texto: "dá pra pôr painel no teto. e um turbo que bebe sol" },
+    { t: "fala", de: "o mecânico", texto: "dá pra pôr painel no teto. um turbo e uns propulsores que bebem sol" },
+    { t: "fala", de: "o mecânico", texto: "aí ela voa. é o único jeito de subir pra cidade: ninguém fez estrada pra lá" },
     { t: "fala", de: "o mecânico", texto: "mas aqui ninguém paga com neon. é água. toda a que vc tiver" },
     {
       t: "escolha",
@@ -186,7 +187,7 @@ export const CENA_OFICINA: Cena = {
       ],
     },
     { t: "acao", texto: "duas horas de solda, faísca e rádio velho. o painel sobe no teto. o motor para de tossir" },
-    { t: "ganha", titulo: "sistema solar + turbo", texto: "a kombi não bebe mais gasolina. o sol carrega, o drift e o voo enchem o turbo" },
+    { t: "ganha", titulo: "sistema solar: turbo + propulsão", texto: "a kombi não bebe mais gasolina. o sol carrega. segura o espaço (ou o botão): ela voa" },
     { t: "fala", de: "o mecânico", texto: "agora toca alguma coisa pra gente. ninguém toca aqui faz tempo" },
     { t: "fim" },
   ],
@@ -200,3 +201,33 @@ export const CENA_OFICINA: Cena = {
 //   da Sexta-Feira (disco/PingPong.tsx) é o primeiro a "piscar duas vezes" —
 //   o que gosta de jogar. Mais pra frente: a batalha de robôs gigantes no deserto
 export const ROBOS_PERSONAGENS = ["a moça do bar", "o robô do ping pong"] as const
+
+// ── (LU2CA 21/10, B18) O COMEÇO DO MAPA: deserto → dunas → o lixão embaixo da
+// cidade → o SUBÚRBIO, no chão, embaixo das pistas. Missão 1 = o bar (no
+// subúrbio); missão 2 = a oficina (no subúrbio): o turbo e a propulsão solar,
+// pra subir pra cidade (antes disso a Kombi não voa: não tem estrada que
+// suba). As duas não abrem faixa do álbum. Depois, as 9 missões das faixas,
+// umas na cidade e outras no subúrbio (ORDEM_LUGAR); depois, o mapa aberto ──
+export const SUBURBIO = { x: -740, z: -680, r: 260 }
+// os lugares do chão do subúrbio (longe das pistas e das torres)
+export const CHAO_LUGARES = {
+  bar: { x: -737, z: -675, nome: "O COPO", cor: "#ff6a35" },
+  oficina: { x: -560, z: -626, nome: "OFICINA", cor: "#ff9000" },
+  palco: { x: -891, z: -536, nome: "PALCO", cor: "#e0ff4f" },
+} as const
+export type LugarChao = keyof typeof CHAO_LUGARES
+export const RAIO_CHAO = 22
+// a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)
+export const ORDEM_LUGAR: Record<number, "cidade" | "suburbio"> = { 3: "cidade", 4: "cidade", 5: "suburbio", 6: "cidade", 7: "cidade", 8: "suburbio", 9: "suburbio", 10: "cidade", 11: "cidade" }
+// a Kombi ainda não voa (nem tem turbo): antes da oficina do subúrbio
+export const semVoo = (h: HistoriaDisco | null | undefined) => !!h && (h.fase === "casa" || h.fase === "dunas" || h.fase === "bar" || h.fase === "oficina")
+
+// as falas das dunas (B18): sem estrada, e a Kombi ainda não voa (RASCUNHO)
+export const FALAS_DUNAS_SUB: typeof FALAS_DUNAS = [
+  { quando: "inicio", de: "D-Bee", texto: "não tem estrada daqui até lá. nunca teve" },
+  { quando: "inicio", de: "D-Bee", texto: "a cidade é pra lá. as luzes, tá vendo? lá em cima" },
+  { quando: "drift", de: "D-Bee", texto: "areia solta. vira e solta o carro de lado, ele escorrega" },
+  { quando: "robo", de: "D-Bee", texto: "as máquinas descem até aqui. pode passar por cima. elas não sentem nada" },
+  { quando: "cidade", de: "D-Bee", texto: "lá em cima não tem como subir. ainda. vai por baixo, pelo lixão" },
+  { quando: "perto", de: "D-Bee", texto: "embaixo das pistas tem gente. o subúrbio. tem um bar lá. vai" },
+]

@@ -43,7 +43,7 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, ORDEM_LUGAR, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
@@ -577,7 +577,7 @@ export default function LinhaPage() {
     setCena(null)
     setCinema(null)
     if (!r.completa) return
-    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, nectar: "show", show: "oficina", mods: [...new Set([...(h.mods ?? []), "solar", "turbo"])] })))
+    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "show" as const } : {}), show: "oficina", mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
   }, [])
   const fimBarFeito = useRef(false)
   const fimBarDisco = useCallback((r: ResultadoCena) => {
@@ -594,7 +594,8 @@ export default function LinhaPage() {
     }
     // saiu no meio, sem escolher: nada muda (o bar continua esperando)
     if (!r.completa) return
-    setSave((s) => comHistoria({ ...s, loops: { ...(s.loops ?? {}), bar: 0 } }, (h) => ({ ...h, fase: "nectar", nectar: "quebra", show: "bar" })))
+    // (B18) o bar é a missão 1 (no subúrbio); depois do show, a oficina (missão 2)
+    setSave((s) => comHistoria({ ...s, loops: { ...(s.loops ?? {}), bar: 0 } }, (h) => ({ ...h, fase: "oficina", show: "bar" })))
   }, [])
   const fimCena = useCallback((r: ResultadoCena) => {
     const c = cena
@@ -720,12 +721,16 @@ export default function LinhaPage() {
 
   // (B11/B19) a carreira: a missão de agora (a checklist e o próximo lugar)
   const missaoCarreira = useMemo(() => missaoDoSave(save), [save])
+  // (B18) a missão n (3 a 11) é na cidade ou no subúrbio: o show do subúrbio é no palco do chão
+  const nMissao = 3 + PISTAS.filter((p) => save.objetos.includes(p.id as EstacaoId)).length
+  const showNoSub = !!missaoCarreira && missaoCarreira.alvo.tipo === "show" && ORDEM_LUGAR[nMissao] === "suburbio"
+  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" && !hist.show ? "oficina" : showNoSub ? "palco" : null
   const [pingpong, setPingpong] = useState(false)
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
-  const alvoDisco: Alvo | null = hist.fase === "bar" ? { t: "lugar", missao: "copo", lugar: "bar", pegar: false }
+  const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : hist.fase === "nectar" && hist.nectar === "oficina" ? { t: "lugar", missao: "nectar", lugar: "oficina", pegar: false }
-    : missaoCarreira ? { t: "lugar", missao: "sexta", lugar: missaoCarreira.alvo.lugar as LugarId, pegar: false }
+    : missaoCarreira && !showNoSub ? { t: "lugar", missao: "sexta", lugar: missaoCarreira.alvo.lugar as LugarId, pegar: false }
     : null
   // (B8) o show marcado: o fim de cada missão (o prólogo é o do bar)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
@@ -736,14 +741,17 @@ export default function LinhaPage() {
     const linha = PISTAS.some((p) => p.id === id) ? (id as EstacaoId) : null
     if (linha) setSave((s) => (s.objetos.includes(linha) ? s : { ...s, objetos: [...s.objetos, linha] }))
     const m = calcularManchete(r, id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
-    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
-    if (id === "oficina") setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
+    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" && h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
+    if (id === "oficina" && hist.fase === "oficina") {
+      setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
+      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa" }), 2500)
+    } else if (id === "oficina") setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
     setJornal(m)
   }
   // o que o anel do holo diz (curto: o lugar, não a explicação)
-  const objetivoDisco = hist.fase === "dunas" ? "a cidade" : hist.fase === "bar" ? "o bar"
+  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? (hist.show ? "o show" : "a oficina · o subúrbio") : hist.fase === "subir" ? "a cidade · lá em cima"
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
-    : missaoCarreira ? (missaoCarreira.alvo.tipo === "show" ? `o show · ${PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa}` : missaoCarreira.alvo.peca!.nome) : null
+    : missaoCarreira ? (missaoCarreira.alvo.tipo === "show" ? `o show · ${PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa}${showNoSub ? " · no subúrbio" : ""}` : missaoCarreira.alvo.peca!.nome) : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -940,8 +948,17 @@ export default function LinhaPage() {
     }
     if (e === "cidade" && h.fase === "dunas") {
       setSave((s) => comHistoria(s, (x) => ({ ...x, fase: "bar" })))
-      // (RASCUNHO) a D-Bee pelo rádio: o bar fica na primeira pista acesa
-      setTimeout(() => setFalaIntro({ id: Date.now(), de: "D-Bee", texto: "chegou. tem um bar nessa pista. vai lá. alguém te espera" }), 1500)
+      // (RASCUNHO, B18) a D-Bee pelo rádio: o bar é no subúrbio, embaixo das pistas
+      setTimeout(() => setFalaIntro({ id: Date.now(), de: "D-Bee", texto: "chegou. o bar é aí embaixo: o letreiro laranja. alguém te espera" }), 1500)
+    }
+    // (B18) o subúrbio no chão: o bar (missão 1), a oficina (missão 2), o palco
+    if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
+    if (e === "chao:oficina" && h.fase === "oficina" && !h.show && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
+    if (e === "chao:palco" && h.fase === "carreira") { const m = missaoDoSave(saveRef.current); if (m && m.alvo.tipo === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: m.pista }))) }
+    // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
+    if (e === "subiu" && h.fase === "subir") {
+      setSave((s) => comHistoria(s, (x) => ({ ...x, fase: "carreira" })))
+      setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "uma kombi velha subiu do subúrbio. voando. alguém viu isso?" }), 1500)
     }
     if (e === "robo") setSave((s) => comHistoria(s, (x) => ({ ...x, robos: (x.robos ?? 0) + 1 })))
     // (a Nectar, B9) a Kombi quebrou → regar 3 flores de patins → o galão → a oficina → o show → o jardim
@@ -1159,6 +1176,7 @@ export default function LinhaPage() {
             teleporte={teleporte}
             abertura={!D && !save.casa}
             historia={D ? hist : null}
+            alvoChao={alvoChao}
             onHistoria={onHistoria}
             // (B10) a oficina vende com água (a tecnologia)
             onComprar={(id, preco) => setSave((s) => ((s.agua ?? 0) < preco ? s : comHistoria({ ...s, agua: (s.agua ?? 0) - preco }, (h) => ({ ...h, mods: [...new Set([...(h.mods ?? []), id])] }))))}
@@ -1214,7 +1232,8 @@ export default function LinhaPage() {
             onSair={sairDaCorrida}
             onVaga={abrirCena}
             segredo={segredo}
-            cenaLugar={cena?.lugar ?? null}
+            // (B18) as cenas do chão do subúrbio não puxam a câmera pra fachada da pista
+            cenaLugar={cena && cena.especial !== "disco-oficina" && !(cena.especial === "disco-bar" && hist.fase === "bar") ? cena.lugar : null}
             // (disco, a história) a cidade quieta: só quem a história põe pra falar
             intro={HIST || (!D && !save.completos.includes("abertura"))}
             fala={falaIntro}

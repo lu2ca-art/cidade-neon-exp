@@ -707,7 +707,7 @@ export function montarMundoDisco(): MundoDisco {
     // Copo Americano não é mais no bar)
     "lugar:bar": ["Nectar", 0.55], "lugar:casa-drewboy": ["Sexta-Feira", 0.45], "lugar:balada": ["Sexta-Feira", 0.9], "lugar:beco": ["Sexta-Feira", 0.7],
     "lugar:escondido": ["CHUVA", 0.85], "lugar:topo": ["DopaminA", 0.9], "lugar:casa-shows": ["Sabe Ontem?", 0.88],
-    "lugar:posto": ["Nectar", 0.68], "lugar:oficina": ["Nectar", 0.86], "lugar:palco-swav": ["Swav", 0.5], "lugar:palco-rollercoaster": ["Rollercoaster", 0.6], "lugar:palco-copo": ["Copo Americano", 0.6], "lugar:plataforma": ["Nectar", 0.42], "lugar:casa-dbee": ["Ojalá", 0.94],
+    "lugar:posto": ["Nectar", 0.68], "lugar:oficina": ["Nectar", 0.86], "lugar:palco-swav": ["Swav", 0.5], "lugar:palco-nectar": ["Nectar", 0.6], "lugar:palco-rollercoaster": ["Rollercoaster", 0.6], "lugar:palco-copo": ["Copo Americano", 0.6], "lugar:plataforma": ["Nectar", 0.42], "lugar:casa-dbee": ["Ojalá", 0.94],
     "pagina:oficina": ["Nectar", 0.86], "pagina:fliperama": ["DopaminA", 0.55], "pagina:galeria": ["Swav", 0.6], "pagina:ginasio": ["Rollercoaster", 0.4],
     "pagina:shows": ["Sabe Ontem?", 0.6], "parque": ["Rollercoaster", 0.8],
     "bomba:bomba-mirante": ["Swav", 0.3], "bomba:bomba-arena": ["Rollercoaster", 0.6], "bomba:bomba-avenida": ["Ojalá", 0.5],

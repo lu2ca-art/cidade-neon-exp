@@ -46,13 +46,15 @@ export interface Golpe {
   fim: { texto: string; rende: { pop: number; neon: number } }
 }
 
-export interface MissaoLinha { pista: PistaId; pecas: [Peca, Peca, Peca, Peca]; golpe?: Golpe }
+// (B18) as 4 peças: a missão 2 (a oficina do subúrbio) ganhou as dela tirando
+// uma peça de outras 3 missões (Nectar, DopaminA, Copo Americano ficam com 3)
+export interface MissaoLinha { pista: PistaId; pecas: Peca[]; golpe?: Golpe }
 
 const P = (tipo: TipoPeca, id: string, nome: string, extra: Partial<Peca> = {}): Peca => ({ tipo, id, nome, ...extra })
 
 export const MISSOES_DISCO: Record<PistaId, MissaoLinha> = {
   // ato 1
-  nectar: { pista: "nectar", pecas: [P("destreza", "patins", "patins entre as flores", { pronto: true }), P("consumo", "oficina", "a oficina: solar + turbo", { onde: { lugar: "oficina" }, pronto: true }), P("musical", "violao", "o violão", { onde: { app: "violao" } }), P("real", "ouvir-nectar", "ouvir a Nectar lá fora", { onde: { app: "ouvir" } })] },
+  nectar: { pista: "nectar", pecas: [P("destreza", "patins", "patins entre as flores"), P("musical", "violao", "o violão", { onde: { app: "violao" } }), P("real", "ouvir-nectar", "ouvir a Nectar lá fora", { onde: { app: "ouvir" } })] },
   sexta: {
     pista: "sexta", pecas: [P("destreza", "pingpong", "ping pong com o robô", { onde: { lugar: "casa-drewboy" }, rende: { pop: 3, neon: 10 }, pronto: true }), P("consumo", "brecho", "a roupa da sexta", { rende: { neon: -20 } }), P("musical", "batida", "um beat no B4TIDA", { onde: { app: "batida" } }), P("real", "clipe-sexta", "o clipe da Sexta-Feira", { onde: { app: "stream" } })],
     // (exemplo do modelo: um golpe pronto no papel, não jogável)
@@ -65,16 +67,24 @@ export const MISSOES_DISCO: Record<PistaId, MissaoLinha> = {
       fim: { texto: "a música volta pra pista. ninguém filma. todo mundo dança", rende: { pop: 8, neon: 30 } },
     },
   },
-  dopamina: { pista: "dopamina", pecas: [P("destreza", "cama-elastica", "a cama elástica no topo"), P("consumo", "fliperama", "o fliperama", { onde: { pagina: "fliperama" } }), P("musical", "guitar", "a batalha no Guitar Driver"), P("real", "ouvir-dopamina", "ouvir a DopaminA lá fora", { onde: { app: "ouvir" } })] },
+  dopamina: { pista: "dopamina", pecas: [P("consumo", "fliperama", "o fliperama", { onde: { pagina: "fliperama" } }), P("musical", "guitar", "a batalha no Guitar Driver"), P("real", "ouvir-dopamina", "ouvir a DopaminA lá fora", { onde: { app: "ouvir" } })] },
   // ato 2
   ojala: { pista: "ojala", pecas: [P("destreza", "xadrez", "o xadrez"), P("consumo", "loja", "o disco da loja", { onde: { app: "loja" } }), P("musical", "escola", "a escola de música"), P("real", "ouvir-ojala", "ouvir a Ojalá lá fora", { onde: { app: "ouvir" } })] },
   swav: { pista: "swav", pecas: [P("destreza", "basquete", "o basquete"), P("consumo", "guitarra", "a guitarra nova"), P("musical", "batida-swav", "o beat da Swav", { onde: { app: "batida" } }), P("real", "ouvir-swav", "ouvir a Swav lá fora", { onde: { app: "ouvir" } })] },
-  copo: { pista: "copo", pecas: [P("destreza", "pingpong-2", "a revanche no ping pong"), P("consumo", "copo", "o copo americano"), P("musical", "violao-copo", "o violão no balcão"), P("real", "ouvir-copo", "ouvir a Copo Americano lá fora", { onde: { app: "ouvir" } })] },
+  copo: { pista: "copo", pecas: [P("destreza", "pingpong-2", "a revanche no ping pong"), P("consumo", "copo", "o copo americano"), P("real", "ouvir-copo", "ouvir a Copo Americano lá fora", { onde: { app: "ouvir" } })] },
   // ato 3
   ontem: { pista: "ontem", pecas: [P("destreza", "caderno", "o caderno"), P("consumo", "ingresso", "o ingresso"), P("musical", "guitar-ontem", "o show no Guitar Driver"), P("real", "ouvir-ontem", "ouvir a Sabe Ontem? lá fora", { onde: { app: "ouvir" } })] },
   rollercoaster: { pista: "rollercoaster", pecas: [P("destreza", "montanha", "a montanha-russa"), P("consumo", "parque", "o parque"), P("musical", "batida-roller", "o beat da Rollercoaster", { onde: { app: "batida" } }), P("real", "ouvir-roller", "ouvir a Rollercoaster lá fora", { onde: { app: "ouvir" } })] },
   chuva: { pista: "chuva", pecas: [P("destreza", "regar", "a chuva que rega"), P("consumo", "jardim", "o jardim"), P("musical", "violao-chuva", "o violão na chuva"), P("real", "ouvir-chuva", "ouvir a CHUVA lá fora", { onde: { app: "ouvir" } })] },
 }
+
+// (B18) a missão 2, a oficina do subúrbio (não abre faixa): as peças que vieram de 3 outras
+export const MISSAO_OFICINA: Peca[] = [
+  P("consumo", "oficina", "a oficina: o sol, o turbo e a propulsão", { pronto: true }), // (era da Nectar)
+  P("destreza", "cama-elastica", "a cama elástica do subúrbio"), // (era da DopaminA)
+  P("musical", "violao-copo", "o violão na garagem"), // (era do Copo Americano)
+  P("real", "show-oficina", "o show na oficina", { pronto: true }),
+]
 
 // a peça jogável agora na carreira (a primeira pronta e não feita das linhas acesas)
 export function pecaAgora(acesas: PistaId[], feitas: string[]): { pista: PistaId; peca: Peca } | null {
@@ -89,7 +99,7 @@ export function pecaAgora(acesas: PistaId[], feitas: string[]): { pista: PistaId
 // no save) e a próxima linha acende. Peça que ainda não tem jogo fica "em breve"
 // e não trava nada ──
 export const PALCO: Record<PistaId, string> = {
-  nectar: "oficina", sexta: "balada", dopamina: "topo", ojala: "casa-dbee", swav: "palco-swav", copo: "palco-copo",
+  nectar: "palco-nectar", sexta: "balada", dopamina: "topo", ojala: "casa-dbee", swav: "palco-swav", copo: "palco-copo",
   ontem: "casa-shows", rollercoaster: "palco-rollercoaster", chuva: "escondido",
 }
 export type EstadoPasso = "feita" | "agora" | "depois" | "em breve"

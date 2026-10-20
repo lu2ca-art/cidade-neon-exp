@@ -2569,3 +2569,8 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-missoes.is-disco .l-missoes-check li.is-breve { opacity: 0.45; }
 .l-missoes.is-disco .l-missoes-check li.is-breve em { color: var(--mut); }
 .l-missoes.is-disco .l-missoes-check li.is-agora { font-weight: 700; }
+
+/* (B18) antes da oficina do subúrbio a Kombi não voa nem tem turbo */
+.l-viagem.is-sem-voo .l-propulsao { display: none !important; }
+/* (B18) as cenas do subúrbio acontecem na rua: o holo some durante a cena */
+.l-viagem.is-cinema .l-holo-som, .l-viagem.is-cinema .l-holo-destaque, .l-viagem.is-cinema .l-holo-apps, .l-viagem.is-cinema .l-holo-icones, .l-viagem.is-cinema .l-holo-clima, .l-viagem.is-cinema .l-ilha-holo, .l-viagem.is-cinema .l-propulsao, .l-viagem.is-cinema .l-sair-kombi { display: none !important; }
