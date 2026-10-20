@@ -439,3 +439,55 @@ export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => voi
     </div>
   )
 }
+
+// ── (LU2CA 21/10) NO CELULAR, OS WIDGETS NUMA ILHA SÓ, no canto de baixo à
+// esquerda, "pra não poluir a tela toda" (no computador nada muda). Fechada:
+// um widget de cada vez, revezando (os pontinhos). Tocou: abre a lista (a
+// rádio inteira com o menu dela, o destaque, as propagandas, os apps); tocar
+// fora fecha ──
+type CartaoIlha = "radio" | "destaque" | "propaganda" | "clima"
+const CARTOES: CartaoIlha[] = ["radio", "destaque", "propaganda", "clima"]
+export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, guitarLivre = false }: { radio: Radio; onLigar: () => void; onProxima: () => void; onSintonizar: (id: FreqId) => void; ler: () => Clima; onApp: (id: AppId) => void; guitarLivre?: boolean }) {
+  const [k, setK] = useState(0)
+  const [aberta, setAberta] = useState(false)
+  const [c, setC] = useState<Clima>(() => ler())
+  useEffect(() => { const t = setInterval(() => { setK((x) => (x + 1) % CARTOES.length); setC(ler()) }, 5000); return () => clearInterval(t) }, [ler])
+  const [kp, setKp] = useState(0)
+  useEffect(() => { const t = setInterval(() => setKp((x) => (x + 1) % VEZ.length), 5000); return () => clearInterval(t) }, [])
+  const prop = APPS.find((x) => x.id === VEZ[kp])!
+  const Mini = MINI[prop.id]!
+  const vez = CARTOES[k]
+  const destaque = k % 2 ? "guitar" : "batida"
+  const abrir = (id: AppId) => { setAberta(false); if (id === "guitar" && !guitarLivre) return; onApp(id) }
+  const temp = Math.round(c.deserto ? 23 + 15 * Math.sin(((c.hora - 9) / 24) * Math.PI * 2) : 21 + 6 * Math.sin(((c.hora - 9) / 24) * Math.PI * 2) - (c.chove ? 4 : 0))
+  return (
+    <>
+      {aberta && <div className="l-ilha-holo-fundo" onPointerDown={(e) => { e.stopPropagation(); setAberta(false) }} />}
+      {aberta ? (
+        <div className="l-ilha-holo is-aberta" onPointerDown={(e) => e.stopPropagation()} role="dialog" aria-label="os widgets do holo">
+          <HoloSom radio={radio} onLigar={onLigar} onProxima={onProxima} onSintonizar={onSintonizar} />
+          <div className="l-ilha-holo-grade">
+            <button type="button" className="is-grande" style={{ ["--cor" as string]: "#ff6b6b" }} onClick={() => abrir("batida")}><span className="l-ilha-holo-mini"><MiniMpc /></span><b>B4TIDA</b></button>
+            <button type="button" className={`is-grande ${guitarLivre ? "" : "is-tranca"}`} style={{ ["--cor" as string]: "#ff9000" }} onClick={() => abrir("guitar")}><span className="l-ilha-holo-mini"><MiniTrilha /></span><b>GUITAR DRIVER{guitarLivre ? "" : " 🔒"}</b></button>
+            {VEZ.map((id) => { const a = APPS.find((x) => x.id === id)!; return <button key={id} type="button" style={{ ["--cor" as string]: a.cor }} onClick={() => abrir(id)}><Glifo id={a.id} cor={a.cor} size={18} /><b>{id === "stream" ? "vid.stream" : a.nome}</b></button> })}
+            {ICONES.map((a) => <button key={a.id} type="button" style={{ ["--cor" as string]: a.cor }} onClick={() => abrir(a.id)}><Glifo id={a.id} cor={a.cor} size={18} /><b>{a.nome}</b></button>)}
+          </div>
+          <p className="l-ilha-holo-clima">{temp}° · {c.deserto ? "seco" : c.chove ? "chuva" : c.hora >= 19 || c.hora < 6 ? "céu aberto" : "nublado"} · {c.regiao}</p>
+        </div>
+      ) : (
+        <button type="button" className={`l-ilha-holo is-${vez}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAberta(true)} aria-label="abrir os widgets do holo" style={{ ["--cor" as string]: vez === "radio" ? radio.cor : vez === "propaganda" ? prop.cor : vez === "destaque" ? (destaque === "batida" ? "#ff6b6b" : "#ff9000") : "#2fe8ff" }}>
+          <span className="l-ilha-holo-tela">
+            {vez === "radio" && <span className="l-ilha-holo-radio"><b>{radio.freq}</b><small>{radio.ligada ? radio.faixa : "rádio desligada"}</small></span>}
+            {vez === "destaque" && (destaque === "batida" ? <MiniMpc /> : <MiniTrilha />)}
+            {vez === "propaganda" && <Mini />}
+            {vez === "clima" && <span className="l-ilha-holo-radio"><b>{temp}°</b><small>{c.regiao}</small></span>}
+          </span>
+          <span className="l-ilha-holo-rodape">
+            <b>{vez === "radio" ? "rádio 222" : vez === "destaque" ? (destaque === "batida" ? "B4TIDA" : "GUITAR DRIVER") : vez === "propaganda" ? (prop.id === "stream" ? "vid.stream" : prop.nome) : "clima"}</b>
+            <span className="l-holo-apps-pips">{CARTOES.map((x, i) => <i key={x} className={i === k ? "is-on" : ""} />)}</span>
+          </span>
+        </button>
+      )}
+    </>
+  )
+}

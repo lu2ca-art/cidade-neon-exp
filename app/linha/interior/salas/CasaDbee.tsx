@@ -31,6 +31,7 @@ const PLANOS: Record<string, Plano> = {
   // (disco) o tapete com os tambores e a parede dos instrumentos
   tapete: { pos: [1.2, 1.5, 1.6], olha: [-0.6, 0.35, -0.6], fov: 54 },
   parede: { pos: [0.4, 1.5, 1.4], olha: [0.2, 1.6, -2.4], fov: 58 },
+  dbeeDisco: { pos: [-1.1, 1.55, -0.6], olha: [0.55, 1.35, 0.75], fov: 52 },
 }
 
 const COISAS: Coisa[] = [
@@ -69,7 +70,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProp
       if (estado.pos === 0) return PLANOS.abertura
       if (estado.pos === 1 || /estante|livros/.test(estado.texto ?? "")) return PLANOS.parede
       if (estado.gesto === "tambores" || /tambor|tocam junto/.test(estado.texto ?? "")) return PLANOS.tapete
-      return estado.falando === "D-Bee" ? PLANOS.dbee : PLANOS.dentro
+      return estado.falando === "D-Bee" ? PLANOS.dbeeDisco : PLANOS.dentro
     }
     // a porta abre (plano aberto), depois ela de perto
     if (inicio) return estado.pos === 0 ? PLANOS.abertura : PLANOS.dbeePorta

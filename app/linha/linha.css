@@ -2468,3 +2468,72 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-pingpong header { position: absolute; left: 0; right: 0; top: calc(12px + env(safe-area-inset-top)); display: grid; justify-items: center; gap: 2px; pointer-events: none; }
 .l-pingpong header small { font: 11px var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--cor); }
 .l-pingpong header b { font: 800 26px var(--mono); color: #fff; }
+
+
+/* (B15, a versão de celular revisada) */
+/* a água virou botão (o perfil): continua com a cara de pílula */
+.l-viagem button.l-aneis { background: rgba(8, 10, 20, 0.62) !important; border: 1px solid rgba(200, 160, 255, 0.5) !important; padding: 3px 9px 3px 6px !important; min-height: 28px; pointer-events: auto; }
+@media (max-width: 600px) {
+  /* a ilha do N3XO com fala de 2 linhas cobria os botões de cima: tudo desce 22 px e a fala fica menor */
+  .l-viagem.is-disco .l-hud-topo { padding-top: calc(66px + env(safe-area-inset-top)); }
+  .l-viagem.is-disco .l-ilha { font-size: 13px; max-height: 58px; }
+  .l-viagem.is-disco button.l-mapa-mini { top: calc(74px + env(safe-area-inset-top)); }
+  .l-holo-anel { top: calc(60px + env(safe-area-inset-top)); }
+  .l-holo-icones { top: calc(112px + env(safe-area-inset-top)); }
+  .l-holo-som { top: calc(156px + env(safe-area-inset-top)); }
+  .l-holo-destaque { top: calc(272px + env(safe-area-inset-top)); }
+  .l-viagem.is-holo .l-sair-kombi { top: calc(410px + env(safe-area-inset-top)) !important; }
+  .l-holo-clima { top: calc(198px + env(safe-area-inset-top)); }
+  .l-viagem.is-disco .l-aneis { top: calc(242px + env(safe-area-inset-top)) !important; }
+  .l-perfil { top: calc(282px + env(safe-area-inset-top)); }
+}
+/* toque: os ícones do holo com 40 px (a fileira rola de lado) */
+@media (pointer: coarse) {
+  .l-holo-icones button { width: 40px !important; height: 40px; border-radius: 11px; }
+  .l-holo-icones button svg { width: 20px; height: 20px; }
+  .l-holo-radio-linha button, .l-visor-janela header button, .l-perfil header button { min-width: 40px; min-height: 40px; }
+  .l-holo-radio-menu header button { min-height: 36px; padding: 4px 12px !important; }
+}
+/* deitado (pouca altura): o holo encolhe e o destaque some pra deixar a estrada */
+@media (max-height: 480px) {
+  .l-holo-som { top: calc(54px + env(safe-area-inset-top)); grid-template-columns: 72px 1fr; width: min(36vw, 300px); }
+  .l-holo-radio-holo { width: 72px !important; height: 72px; }
+  .l-holo-destaque { display: none; }
+  .l-holo-apps { width: min(22vw, 190px) !important; }
+  .l-holo-apps-tela { height: 54px; }
+  .l-viagem.is-holo .l-sair-kombi { top: calc(150px + env(safe-area-inset-top)) !important; }
+  .l-holo-radio-menu { max-height: 60vh; }
+}
+
+/* (LU2CA 21/10) no celular, os widgets do holo numa ilha só, no canto de baixo à esquerda */
+.l-ilha-holo { position: absolute; z-index: 7; left: calc(12px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); width: 168px !important; display: grid; gap: 5px; padding: 7px !important; border-radius: 16px; text-align: left; border: 1px solid color-mix(in srgb, var(--cor, #2fe8ff) 50%, transparent) !important; background: linear-gradient(160deg, color-mix(in srgb, var(--cor, #2fe8ff) 14%, rgba(8, 10, 24, 0.7)), rgba(8, 10, 24, 0.7)) !important; backdrop-filter: blur(8px); box-shadow: 0 0 22px -10px var(--cor, #2fe8ff); color: #fff !important; cursor: pointer; animation: l-oculos 0.3s ease-out; }
+.l-ilha-holo-tela { position: relative; display: block; height: 62px; border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, 0.45); }
+.l-ilha-holo-tela .l-mini-mpc { inset: 5px 0; height: calc(100% - 10px); }
+.l-ilha-holo-radio { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 2px; padding: 0 8px; }
+.l-ilha-holo-radio b { font: 800 20px var(--mono); color: var(--cor); text-shadow: 0 0 10px var(--cor); }
+.l-ilha-holo-radio small { max-width: 100%; font: 11px var(--mono); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-ilha-holo-rodape { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.l-ilha-holo-rodape b { font: 800 10.5px var(--mono); letter-spacing: 0.08em; color: var(--cor); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-ilha-holo-fundo { position: absolute; inset: 0; z-index: 7; background: rgba(3, 4, 12, 0.35); }
+.l-ilha-holo.is-aberta { z-index: 8; width: min(calc(100vw - 24px), 380px) !important; max-height: calc(100% - 150px - env(safe-area-inset-top)); overflow-y: auto; cursor: default; gap: 10px; padding: 10px !important; --cor: #2fe8ff; }
+.l-ilha-holo.is-aberta .l-holo-som { position: static; width: auto; animation: none; }
+.l-ilha-holo-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.l-ilha-holo-grade button { min-height: 52px; display: grid; justify-items: center; align-content: center; gap: 4px; padding: 6px 4px !important; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 40%, transparent) !important; background: color-mix(in srgb, var(--cor) 10%, rgba(6, 8, 20, 0.6)) !important; color: #fff !important; cursor: pointer; }
+.l-ilha-holo-grade button b { font: 700 9.5px var(--mono); letter-spacing: 0.04em; color: var(--cor); text-align: center; line-height: 1.15; }
+.l-ilha-holo-grade button.is-grande { grid-column: span 3; grid-template-columns: 96px 1fr; justify-items: start; align-items: center; }
+.l-ilha-holo-grade button.is-grande b { font-size: 12px; }
+.l-ilha-holo-grade button.is-tranca { opacity: 0.8; }
+.l-ilha-holo-mini { position: relative; display: block; width: 96px; height: 54px; border-radius: 8px; overflow: hidden; background: rgba(0, 0, 0, 0.45); }
+.l-ilha-holo-mini .l-mini-mpc { inset: 4px 0; height: calc(100% - 8px); }
+.l-ilha-holo-clima { margin: 0; font: 11px var(--mono); color: var(--mut); text-align: center; }
+/* fora da ilha, no celular: só o "?" e o óculos, a ilha do N3XO, o mapa e o anel, a água, turbo/propulsor e os pedais */
+.l-viagem.is-holo-celular.is-holo .l-sair-kombi { top: calc(112px + env(safe-area-inset-top)) !important; }
+.l-viagem.is-holo-celular .l-perfil { top: calc(160px + env(safe-area-inset-top)); }
+@media (max-width: 600px) { .l-viagem.is-holo-celular .l-aneis { top: calc(198px + env(safe-area-inset-top)) !important; } }
+/* deitado: os pedais iam em cima do mapa e do clima: ficam na linha de baixo, à esquerda do turbo */
+@media (max-height: 480px) and (pointer: coarse) {
+  .l-viagem.is-disco .l-pedais { flex-direction: row; right: calc(208px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .l-viagem.is-disco .l-pedal { width: 62px; height: 62px; }
+  .l-viagem.is-holo-celular.is-holo .l-sair-kombi { top: calc(70px + env(safe-area-inset-top)) !important; left: calc(12px + env(safe-area-inset-left)); }
+  .l-viagem.is-disco .l-aneis { top: calc(150px + env(safe-area-inset-top)) !important; }
+}

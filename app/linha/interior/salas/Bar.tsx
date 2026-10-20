@@ -7,7 +7,7 @@
 // bonito (o neon sobe, dourado) e mais vazio (uma mesa some). Negar a oferta
 // tira os copos do balcão, e no lugar deles nasce a muda.
 
-import { useFrame } from "@react-three/fiber"
+import { useFrame, useThree } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { COPOS } from "../../cenas"
@@ -28,6 +28,7 @@ const PLANOS: Record<string, Plano> = {
   mubarak: { pos: [0.5, 1.5, -0.2], olha: [-1.4, 1.15, -1.8], fov: 46 },
   ela: { pos: [-0.2, 1.5, -0.6], olha: [0.6, 1.5, -3.6], fov: 44 },
   copos: { pos: [-0.1, 2.05, -0.55], olha: [-0.1, 1.08, -2.45], fov: 50 },
+  coposEstreito: { pos: [-0.1, 2.7, 1.6], olha: [-0.1, 1.08, -2.45], fov: 68 },
   palco: { pos: [1.2, 1.6, 2.2], olha: [4.4, 1.1, -2.6], fov: 52 },
 }
 
@@ -51,18 +52,20 @@ export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
   const [posGesto, setPosGesto] = useState<number | null>(null)
   if (estado.gesto === "copos" && posGesto === null) setPosGesto(estado.pos)
   const negou = posGesto !== null && estado.pos > posGesto
+  // (celular em pé) a tela estreita cortava os seis copos: a câmera recua
+  const estreita = useThree((t) => t.size.width / Math.max(1, t.size.height) < 0.8)
   const n = bebidos.length
 
   // a câmera segue a cena: quem fala, o gesto, o que ganhou
   const plano = useMemo(() => {
-    if (estado.gesto === "copos" || estado.ganha) return PLANOS.copos
+    if (estado.gesto === "copos" || estado.ganha) return estreita ? PLANOS.coposEstreito : PLANOS.copos
     if (estado.falando === "Mubarak") return PLANOS.mubarak
     if (estado.falando === "ela") return PLANOS.ela
     // (disco, o prólogo) o palco vazio no fundo do bar
     if (disco && /palco/.test(estado.texto ?? "")) return PLANOS.palco
     if (estado.pos === 0) return PLANOS.entrada
     return PLANOS.balcao
-  }, [estado, disco])
+  }, [estado, disco, estreita])
 
   // beber é a escolha errada: um copo só e a cena acaba (cena.tsx leva a
   // pessoa pra fora do bar). A noite volta pro começo, mais bonita e mais vazia

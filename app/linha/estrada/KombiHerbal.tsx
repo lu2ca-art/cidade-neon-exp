@@ -17,7 +17,9 @@ const URL = "/models/kombi-herbal.glb"
 const COMPRIMENTO = 4.5 // m, do para-choque ao para-choque (a Kombi da estrada)
 
 // tinta: a pintura da oficina (multiplica a cor da foto; branco = a de fábrica)
-export function KombiHerbal({ tinta = "#ffffff" }: { tinta?: string }) {
+// paineis: o painel solar no teto (no disco, só depois da oficina da Nectar:
+// antes disso a Kombi é a velha, a gasolina)
+export function KombiHerbal({ tinta = "#ffffff", paineis = true }: { tinta?: string; paineis?: boolean }) {
   const { scene } = useGLTF(URL)
   const kombi = useMemo(() => {
     const g = scene.clone(true)
@@ -59,7 +61,7 @@ export function KombiHerbal({ tinta = "#ffffff" }: { tinta?: string }) {
   return (
     <group>
       <primitive object={kombi.fora} />
-      <PaineisSolares alto={kombi.alto} larg={kombi.larg} comp={kombi.comp} />
+      {paineis && <PaineisSolares alto={kombi.alto} larg={kombi.larg} comp={kombi.comp} />}
     </group>
   )
 }
