@@ -2589,3 +2589,11 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-feira-bts button, .l-missoes .l-feira-bts button { grid-column: auto; grid-row: auto; flex: 1; padding: 8px 10px; border-radius: 9px; background: var(--cor) !important; color: #06060c !important; border: 0 !important; font: 800 12px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; }
 .l-feira-bts button.is-largar { flex: 0 0 auto; background: rgba(255, 255, 255, 0.08) !important; color: rgba(255, 255, 255, 0.7) !important; }
 .l-feira-largar { align-self: flex-start; margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.08) !important; border: 0 !important; color: rgba(255, 255, 255, 0.7) !important; font: 700 10px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* (21/10) o fim da missão de uma linha: ouvir lá fora ou comprar o disco (no holo, logo some) */
+.l-ouvir-fim { position: absolute; z-index: 23; left: 50%; top: calc(120px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(320px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 12px; border-radius: 16px; background: rgba(6, 6, 16, 0.86); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 28px color-mix(in srgb, var(--cor) 30%, transparent); backdrop-filter: blur(10px); animation: l-sobe 0.4s both; }
+.l-ouvir-fim small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-ouvir-fim b { font: 800 22px/1 var(--cond); text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+.l-ouvir-fim p { margin: 0; display: flex; gap: 8px; align-items: center; font: 12px var(--mono); color: rgba(255, 255, 255, 0.75); }
+.l-ouvir-fim-x { position: absolute; top: 6px; right: 8px; background: transparent !important; border: 0 !important; color: #fff !important; font-size: 20px; line-height: 1; padding: 2px 4px; }
+.l-ouvir-fim-disco { align-self: flex-start; margin-top: 2px; padding: 8px 12px; border-radius: 10px; background: var(--cor); color: #06060c; font: 800 12px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; }

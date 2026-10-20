@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "./linha.css"
-import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, type EstacaoId, type ProvaId } from "./data"
+import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
 import { ROTEIROS, type ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
@@ -34,6 +34,7 @@ import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player } from "./som"
 import { track } from "@/lib/analytics"
+import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
 import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
@@ -140,6 +141,9 @@ export default function LinhaPage() {
   const [visor, setVisor] = useState<VisorId | null>(null)
   // (disco, B8) o jornal do dia seguinte ao show
   const [jornal, setJornal] = useState<Manchete | null>(null)
+  // (21/10, "uma missão = uma música") acabou a missão de uma linha: o destaque
+  // de ouvir a faixa lá fora ou comprar o disco, no holo (depois do jornal; logo some)
+  const [ouvirFim, setOuvirFim] = useState<{ pista: PistaId; id: number } | null>(null)
   const [atalhoTeste, setAtalhoTeste] = useState<IrAtalho | null>(null)
   const [pronto, setPronto] = useState(false)
   const [tela, setTela] = useState<Tela>({ t: "entrada" })
@@ -745,6 +749,10 @@ export default function LinhaPage() {
     setLargadas((l) => l.filter((x) => x !== pista))
     track("mission_step", { mission_id: `disco-${pista}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
   }
+  // a música da próxima missão (a pegada, senão a 1ª da feira): a Corrida toca
+  // ela instrumental abafada fora das pistas, até ele pisar na pista dela
+  const musicaProxima: PistaId | null = HIST && hist.fase === "carreira" ? missaoCarreira?.pista ?? feira[0]?.pista ?? null : null
+  const fecharOuvir = useCallback(() => setOuvirFim(null), [])
   const largarMissao = () => {
     const m = hist.missao as PistaId | undefined
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: undefined })))
@@ -769,6 +777,7 @@ export default function LinhaPage() {
     // (B19) o show de uma linha fecha a missão dela: o objeto da faixa no save (a próxima acende)
     const linha = PISTAS.some((p) => p.id === id) ? (id as EstacaoId) : null
     if (linha) setSave((s) => (s.objetos.includes(linha) ? s : { ...s, objetos: [...s.objetos, linha] }))
+    if (linha) setOuvirFim({ pista: linha as PistaId, id: Date.now() })
     const m = calcularManchete(r, id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
     setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" && h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
     if (id === "oficina" && hist.fase === "oficina") {
@@ -1207,6 +1216,7 @@ export default function LinhaPage() {
             abertura={!D && !save.casa}
             historia={D ? hist : null}
             alvoChao={alvoChao}
+            musicaProxima={musicaProxima}
             onHistoria={onHistoria}
             // (B10) a oficina vende com água (a tecnologia)
             onComprar={(id, preco) => setSave((s) => ((s.agua ?? 0) < preco ? s : comHistoria({ ...s, agua: (s.agua ?? 0) - preco }, (h) => ({ ...h, mods: [...new Set([...(h.mods ?? []), id])] }))))}
@@ -1324,7 +1334,7 @@ export default function LinhaPage() {
           </div>
         )}
         {/* (21/10) A FEIRA: sem missão pegada, as oportunidades flutuam na tela (pegar ou largar) */}
-        {HIST && hist.fase === "carreira" && !missaoCarreira && feiraVisivel.length > 0 && !painelMissoes && tela.t === "corrida" && !emSala && !cinema && !cena && !showAgora && (
+        {HIST && hist.fase === "carreira" && !missaoCarreira && feiraVisivel.length > 0 && !ouvirFim && !painelMissoes && tela.t === "corrida" && !emSala && !cinema && !cena && !showAgora && (
           <aside className="l-feira" aria-label="A cidade precisa">
             <small>a cidade precisa</small>
             <FeiraOfertas ofertas={feiraVisivel} onPegar={pegarMissao} onLargar={(p) => setLargadas((l) => [...l, p])} />
@@ -1402,6 +1412,7 @@ export default function LinhaPage() {
           if (venceu) setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + 3), neon: (s.neon ?? 0) + 10 }, (h) => ({ ...h, pecas: [...new Set([...(h.pecas ?? []), "sexta:pingpong"])] })))
         }} />}
         {jornal && <Jornal m={jornal} cor={confShow(jornal.missao)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
+        {ouvirFim && !jornal && tela.t === "corrida" && <OuvirFim key={ouvirFim.id} pista={ouvirFim.pista} quando={ouvirFim.id} onFechar={fecharOuvir} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq save={save} /> : undefined}</Visor>}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (
@@ -1557,5 +1568,28 @@ function FeiraOfertas({ ofertas, onPegar, onLargar }: { ofertas: Oferta[]; onPeg
         )
       })}
     </ul>
+  )
+}
+
+// (21/10) o fim da missão de uma linha: a faixa é dele agora. Ouvir lá fora (as
+// plataformas; a que ainda não saiu, o pré-save e a data) ou comprar o disco
+function OuvirFim({ pista, quando, onFechar }: { pista: PistaId; quando: number; onFechar: () => void }) {
+  const p = PISTAS.find((x) => x.id === pista)!
+  const saiu = !!p.voz && (!p.lancamento || new Date(p.lancamento).getTime() <= quando)
+  // some sozinho 14 s depois de APARECER (ele só monta com o jornal já fechado)
+  useEffect(() => {
+    const t = setTimeout(onFechar, 14000)
+    return () => clearTimeout(t)
+  }, [onFechar])
+  return (
+    <aside className="l-ouvir-fim" style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }} aria-label={`ouvir a ${p.faixa}`}>
+      <button type="button" className="l-ouvir-fim-x" onClick={onFechar} aria-label="Fechar">×</button>
+      <small>a missão acabou · a música fica</small>
+      <b>{p.faixa}</b>
+      {saiu ? <Plataformas faixa={pista} lugar="disco-fim-missao" compacto /> : (
+        <p>sai {new Date(p.lancamento ?? quando).toLocaleDateString("pt-BR", { day: "numeric", month: "long" })} <PreSave faixa={pista} lugar="disco-fim-missao" /></p>
+      )}
+      <a className="l-ouvir-fim-disco" href={UNTITLED} target="_blank" rel="noopener noreferrer" onClick={() => track("external_link_click", { destination: "untitled", track_id: pista, place_id: "disco-fim-missao" })}>comprar o disco ↗</a>
+    </aside>
   )
 }
