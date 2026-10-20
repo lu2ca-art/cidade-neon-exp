@@ -851,7 +851,9 @@ class PistaSom {
   }
   // a cada quadro: em contato e andando, gira a 1; senão, freia até parar
   // radio: a rádio invadiu (a pista abaixa: rádio e disco nunca juntos no mesmo volume)
-  estado(contato: boolean, vel: number, dt: number, radio = false) {
+  // abafada (os atos, 20/10): numa pista ainda apagada, a faixa toca o
+  // instrumental abafado, como se viesse de longe (a cidade esquecida no tempo)
+  estado(contato: boolean, vel: number, dt: number, radio = false, abafada = false) {
     const el = this.el
     if (!el || !this.src) return
     // um jogo aberto no holo (silenciar): a faixa fica parada onde estava
@@ -872,8 +874,8 @@ class PistaSom {
     const c = audioCtx()
     if (c && this.filtro && this.gain) {
       // no ar o som abafa (o vento por cima); no chão, aberto
-      this.filtro.frequency.setTargetAtTime(contato ? 20000 : 700, c.currentTime, 0.08)
-      this.gain.gain.setTargetAtTime((contato ? 1 : 0.35) * (radio ? 0.12 : 1) * this.fade(), c.currentTime, 0.05)
+      this.filtro.frequency.setTargetAtTime(!contato ? 700 : abafada ? 900 : 20000, c.currentTime, 0.08)
+      this.gain.gain.setTargetAtTime((contato ? (abafada ? 0.55 : 1) : 0.35) * (radio ? 0.12 : 1) * this.fade(), c.currentTime, 0.05)
     }
   }
   parar() { this.el?.pause(); this.src = null }

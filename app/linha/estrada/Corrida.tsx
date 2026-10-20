@@ -38,6 +38,8 @@ import { Portoes } from "./Portoes"
 import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
+import { lixoNoChao } from "./chao"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
 import { DPR, ResolucaoDinamica } from "./resolucao"
 import { qualMapa } from "./qualMapa"
@@ -2453,11 +2455,28 @@ function Cena({
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
   const pistaTocando = useRef(-1)
+  const pistaEscura = useRef(false) // (os atos) a pista tocando agora está apagada?
   useEffect(() => () => pistaSom.parar(), [])
   const centro = M.vias[M.circuito.linha]
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
   const relevoNovo = useMemo(() => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null), [M])
+  // (disco, 20/10) o lixão: os carros despencados meio enterrados e os pneus
+  // (duas malhas instanciadas pro lixão inteiro)
+  const lixo = useMemo(() => {
+    if (!("disco" in M)) return null
+    const l = lixoNoChao((x, z) => M.livre(x, z, 3))
+    const corpo = new THREE.BoxGeometry(2, 1.1, 4.4).translate(0, 0.55, 0)
+    const cabine = new THREE.BoxGeometry(1.8, 0.8, 2.2).translate(0, 1.5, -0.2)
+    const carroGeo = mergeGeometries([corpo, cabine], false)!
+    const carros = new THREE.InstancedMesh(carroGeo, new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0.35 }), Math.max(1, l.carros.length))
+    l.carros.forEach((m, i) => { carros.setMatrixAt(i, m); carros.setColorAt(i, l.coresCarro[i]) })
+    carros.count = l.carros.length
+    const pneus = new THREE.InstancedMesh(new THREE.TorusGeometry(0.42, 0.18, 6, 12), new THREE.MeshStandardMaterial({ color: "#141217", roughness: 0.95 }), Math.max(1, l.pneus.length))
+    l.pneus.forEach((m, i) => pneus.setMatrixAt(i, m))
+    pneus.count = l.pneus.length
+    return { carros, pneus }
+  }, [M])
 
   useEffect(() => () => motor?.parar(), [motor])
   // a estática da sintonia (entre um lugar e outro)
@@ -2657,7 +2676,8 @@ function Cena({
         if (centrosLugares.some((c) => Math.hypot(c.x - bx, c.z - bz) < 24 + w * 0.7)) continue
         if (parqueChao.some((c) => Math.hypot(c.x - bx, c.z - bz) < 14 + w * 0.7)) continue
         // no mapa novo o prédio nasce no chão (o relevo do v5), não na água
-        const y0 = "chao" in M ? (M as MundoRede).chao(bx, bz) - 1 : -12
+        // (no disco, enterrado 4 m: as dunas inclinam)
+        const y0 = "chao" in M ? (M as MundoRede).chao(bx, bz) - ("disco" in M ? 4 : 1) : -12
         d.position.set(bx, y0 + h / 2, bz)
         if (h > 85) topos.push(bx, y0 + h + 1.5, bz)
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
@@ -2739,9 +2759,11 @@ function Cena({
     // (nunca em cima de outra pista: somem onde a saída descola e onde
     // outra encosta chegando)
     const ks: { v: Via; k: number; lado: number }[] = []
-    for (const v of M.vias) {
+    for (const [vi, v] of M.vias.entries()) {
       // (no mapa novo: um sentido só, e os postes a cada 40 m)
       if (v.tipo === "rua" && !v.rede?.ida) continue
+      // (os atos, 20/10) a pista apagada é escura de verdade: sem poste aceso
+      if (viaApagada?.[vi]) continue
       for (let k = 0; k < v.n; k += v.tipo === "rua" ? 20 : 12) {
         const u = k * PASSO
         if (v.tipo === "saida" && (u < 150 || u > v.L - 240)) continue
@@ -2816,7 +2838,7 @@ function Cena({
     const aviacaoMat = new THREE.PointsMaterial({ size: 5, map: tex.brilho, color: "#ff2a2a", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
 
     return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores }
-  }, [M, circuitos, tex, distI, centrosLugares])
+  }, [M, circuitos, tex, distI, centrosLugares, viaApagada])
 
   // ── colunas de luz: só onde a missão manda agora (a coisa pra buscar,
   // ou a estação de quem te chamou), dá pra ver de longe ──
@@ -3842,22 +3864,11 @@ function Cena({
         const emp = bater(j.wx, j.wz, 1.6, j.y)
         if (emp) { j.wx += emp[0]; j.wz += emp[1]; if (Math.abs(j.v) > 8) { j.v *= 1 - 1.2 * dt; j.shake = Math.max(j.shake, 0.3) } }
         pouso = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo))
-        // o ímã do pouso: descendo, com uma pista a até 24 m de lado lá embaixo,
-        // a Kombi vai pra cima dela e alinha o rumo (a mira generosa dos jogos)
-        if (j.ar && j.vy < 0 && !inp.propulsor) {
-          const im = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo), 24)
-          if (im && Math.abs(im.x) > 1.5) {
-            const k = Math.min(1, dt * 2.2), alvoX = im.cx - im.tz * Math.sign(im.x) * 2, alvoZ = im.cz + im.tx * Math.sign(im.x) * 2
-            j.wx += (alvoX - j.wx) * k; j.wz += (alvoZ - j.wz) * k
-          }
-          if (im) {
-            const lado = Math.sin(j.rumo) * im.tx + Math.cos(j.rumo) * im.tz >= 0 ? 0 : Math.PI
-            const alvoR = Math.atan2(im.tx, im.tz) + lado
-            j.rumo += Math.atan2(Math.sin(alvoR - j.rumo), Math.cos(alvoR - j.rumo)) * Math.min(1, dt * 1.5)
-          }
-          if (!pouso) pouso = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo))
-        }
-        yPista = pouso ? pouso.y : MD.chaoDeserto
+        // (LU2CA 20/10: "a exploração por propulsão bem livre, sem amarras aos
+        // percursos uma vez no ar; onde ele quiser pousar, ele pode") sem ímã:
+        // no ar a direção é só do player. Pousa onde cair: numa pista (acesa ou
+        // apagada) ou nas dunas
+        yPista = pouso ? pouso.y : MD.chaoEm(j.wx, j.wz) // (sem pista embaixo: as dunas)
       }
     }
     if (j.encaixar) { j.ar = false; j.y = yPista; j.vy = 0 } // teleporte (dev)
@@ -3985,7 +3996,8 @@ function Cena({
       const vyPista = Math.max(-40, Math.min(40, (yPista - j.y) / Math.max(dt, 1e-4)))
       // (mapa novo: sem pulo automático — a rua que cai não lança a Kombi;
       // só o pulo do jogador tira ela do chão)
-      if (!("ligacoes" in M) && vyPista < j.vy - G * dt * 2.2 && j.v > 20 && !trocou) {
+      // (disco, 20/10) nas dunas, sim: a crista lança a Kombi (o tutorial do voo)
+      if ((!("ligacoes" in M) || ("disco" in M && !!j.voo)) && vyPista < j.vy - G * dt * 2.2 && j.v > 20 && !trocou) {
         j.ar = true
         j.tAr = 0
         motor?.whoosh()
@@ -4311,10 +4323,18 @@ function Cena({
     amostra(V, j.u, a)
     const vivo = (livre && !!j.livreOk) || !!j.voo
     const plano = vivo && (j.livreFora || !!j.voo)
-    const cb = plano ? 1 : Math.cos(a.bank)
-    const sb = plano ? 0 : Math.sin(a.bank)
     const fx = vivo ? Math.sin(j.rumo!) : a.tx, fz = vivo ? Math.cos(j.rumo!) : a.tz
-    tmp.f.set(fx, j.ar ? Math.max(-0.2, Math.min(0.35, j.vy / Math.max(j.v, 1))) : plano ? 0 : a.ty, fz).normalize()
+    // (disco, 20/10) no chão das dunas ela acompanha o terreno: a rampa na
+    // frente e a inclinação de lado (duas amostras de 2 m)
+    let inclF = 0, inclR = 0
+    if ("disco" in M && j.voo && !j.ar && j.wx !== undefined) {
+      const MD2 = M as MundoDisco, h0 = MD2.chaoEm(j.wx, j.wz!)
+      inclF = (MD2.chaoEm(j.wx + fx * 2, j.wz! + fz * 2) - h0) / 2
+      inclR = (MD2.chaoEm(j.wx - fz * 2, j.wz! + fx * 2) - h0) / 2
+    }
+    const cb = plano ? 1 : Math.cos(a.bank)
+    const sb = plano ? -inclR : Math.sin(a.bank)
+    tmp.f.set(fx, j.ar ? Math.max(-0.2, Math.min(0.35, j.vy / Math.max(j.v, 1))) : plano ? inclF : a.ty, fz).normalize()
     tmp.r.set(-fz * cb, -sb, fx * cb).normalize()
     tmp.up.crossVectors(tmp.r, tmp.f).normalize()
     tmp.r.crossVectors(tmp.f, tmp.up).normalize()
@@ -4483,17 +4503,20 @@ function Cena({
     if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]
       const k = inf && inf.pista >= 0 ? inf.pista : pistaTocando.current
-      if (k !== pistaTocando.current && k >= 0) {
+      // (os atos, 20/10) pista apagada: o instrumental, abafado
+      const escura = inf && inf.pista >= 0 ? !!viaApagada?.[j.via] : pistaEscura.current
+      if ((k !== pistaTocando.current || escura !== pistaEscura.current) && k >= 0) {
         pistaTocando.current = k
+        pistaEscura.current = escura
         const fx = faixasDisco[k]
         if (fx) {
           if (fonteRef.current !== "radio") player.pausar()
           discoPainel.parar()
-          pistaSom.entrar(faixaDaPista(fx), 2)
+          pistaSom.entrar(escura ? fx.inst : faixaDaPista(fx), 2)
           definirTom(fx.tom)
         }
       }
-      pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio")
+      pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio", pistaEscura.current)
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins
@@ -5167,6 +5190,7 @@ function Cena({
 
       {/* o mapa novo: o relevo do v5 debaixo das ruas */}
       {relevoNovo && <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} /></mesh>}
+      {lixo && <><primitive object={lixo.carros} /><primitive object={lixo.pneus} /></>}
       <primitive object={orbs.m} />
       <primitive object={rastro.pts} />
       {outdoors.length > 0 && <Outdoors M={M} lista={outdoors} />}

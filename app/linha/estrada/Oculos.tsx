@@ -114,7 +114,7 @@ export function OculosMapa({ M, jogo, apagada = null }: { M: MundoDisco; jogo: R
       if (!j) return
       const p = pose(M, j)
       const baixo = M.pousar(p.x, p.z, j.y - 0.5, 0, 0)
-      const alt = j.y - (baixo ? baixo.y : M.chaoDeserto)
+      const alt = j.y - (baixo ? baixo.y : M.chaoEm(p.x, p.z))
       const alvo = j.voo ? Math.max(0, Math.min(1, (alt - 6) / 39)) : 0
       alfa += (alvo - alfa) * Math.min(1, dt * 3)
       const W = cv.clientWidth, H = cv.clientHeight

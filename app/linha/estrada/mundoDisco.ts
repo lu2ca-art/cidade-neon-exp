@@ -31,6 +31,7 @@ import type { Rede } from "../rede/rede"
 import type { FreqId } from "../radio"
 import { CANTEIROS } from "./canteiros"
 import DESENHO from "./polvo-desenho.json"
+import { chaoEm, geoChao } from "./chao"
 
 const MEIA_PISTA = 8.4 // meia largura da pista: 4 faixas, 2 por sentido, canteiro aberto (LU2CA 19/10)
 const BANK_K = 46 // quanto a curva deita por unidade de curvatura (Horizon: curva de corrida)
@@ -66,7 +67,7 @@ export type DiscoInfo = { pista: number; parte: ParteDisco; torre: number } // t
 export type CentralDisco = { x: number; z: number; raio: number; nucleo: number; topo: number; andares: { y: number; cor: string; nome: string; ang: number }[] }
 // onde a Kombi pousa vindo do ar: a via (no sentido do rumo), o u, o lado e a altura do asfalto
 export type Pouso = { via: number; u: number; x: number; y: number; cx: number; cz: number; tx: number; tz: number }
-export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; chaoDeserto: number }
+export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; chaoDeserto: number; chaoEm: (x: number, z: number) => number }
 // os trechos da espiral sabem onde a borda de fora se abre e a faixa pintada da saída
 export type SinaisEspiral = { abreFora?: [number, number][]; pintaSaida?: { u0: number; u1: number; cor: string }[] }
 // as espirais (qualquer torre): a Kombi passeia
@@ -622,7 +623,7 @@ export function montarMundoDisco(): MundoDisco {
   const projetar = (): Projecao | null => null
   const conflitos = sobra ? [`${sobra} trechos de pista com menos de ${FOLGA - 1} m de folga`] : []
   const torresOut: CentralDisco[] = torres.map((tw) => ({ x: tw.d.C.x, z: tw.d.C.z, raio: tw.d.R, nucleo: tw.d.nucleo, topo: tw.topo, andares: tw.alcas.map((a, i) => ({ y: a.hJ, cor: B[a.k].cor, nome: B[a.k].nome, ang: -tw.phiQ[i] })) }))
-  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: () => CHAO, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, pousar, chaoDeserto: CHAO + 0.4 }
+  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: chaoEm, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, pousar, chaoDeserto: CHAO + 0.4, chaoEm }
   return CACHE
 }
 
@@ -652,17 +653,5 @@ export function calcularRotaDisco(M: MundoDisco, de: { via: number; u: number },
   return { trechos, metros: dist.get(ate.via)! + ate.u }
 }
 
-// o chão: deserto até o horizonte
-export function geoChaoDisco() {
-  const geo = new THREE.PlaneGeometry(9000, 9000, 60, 60)
-  geo.rotateX(-Math.PI / 2)
-  const pos = geo.attributes.position, cor = new Float32Array(pos.count * 3)
-  for (let i = 0; i < pos.count; i++) {
-    const X = pos.getX(i), Z = pos.getZ(i)
-    pos.setY(i, CHAO - 0.5 + Math.sin(X * 0.004) * Math.cos(Z * 0.005) * 2.5)
-    const n = 0.85 + ((Math.sin(X * 0.013) + Math.cos(Z * 0.011)) * 0.5 + 1) * 0.08
-    cor[i * 3] = 0.62 * n; cor[i * 3 + 1] = 0.44 * n; cor[i * 3 + 2] = 0.27 * n
-  }
-  geo.setAttribute("color", new THREE.BufferAttribute(cor, 3)); geo.computeVertexNormals()
-  return geo
-}
+// o chão: as dunas e o lixão (chao.ts)
+export const geoChaoDisco = geoChao
