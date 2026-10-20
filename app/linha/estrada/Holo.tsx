@@ -40,7 +40,8 @@ export const INFO: Record<string, { t: string; d: string }> = {
   destaque: { t: "B4TIDA · GUITAR DRIVER", d: "os dois que importam. o B4TIDA toca o padrão aqui mesmo: toca nele e abre o criador de beats. o GUITAR DRIVER abre no fim da sua carreira." },
   "app:batida": { t: "B4TIDA", d: "a MPC: toca nos quadrados pra abrir o criador de beats e montar a sua música por camadas." },
   "app:guitar": { t: "GUITAR DRIVER", d: "o jogo das faixas ao vivo. por enquanto trancado: abre quando a sua carreira chegar lá." },
-  propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, STR34M e OUVIR, um de cada vez. toca pra abrir o da vez." },
+  "app:stream": { t: "vid.stream", d: "os clipes. abre aqui mesmo, no holo: a música da cidade para enquanto ele tá aberto." },
+  propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
   ilha: { t: "N3XO_", d: "as mensagens da cidade passam aqui. toca pra abrir as conversas." },
   mapa: { t: "o mapa", d: "toca pra abrir. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
@@ -370,11 +371,13 @@ export function HoloApps({ onApp }: { onApp: (id: AppId) => void }) {
   useEffect(() => { const t = setInterval(() => setK((x) => (x + 1) % VEZ.length), 6000); return () => clearInterval(t) }, [])
   const a = APPS.find((x) => x.id === VEZ[k])!
   const Mini = MINI[a.id]!
+  // (LU2CA 20/10) o STR34M agora é o vid.stream
+  const nome = a.id === "stream" ? "vid.stream" : a.nome
   return (
     <button type="button" key={a.id} className={`l-holo-apps is-${a.id}`} data-info={`app:${a.id}`} style={{ ["--cor" as string]: a.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => onApp(a.id)}>
       <span className="l-holo-apps-tela"><Mini /></span>
       <span className="l-holo-apps-rodape">
-        <b>{a.nome}</b>
+        <b>{nome}</b>
         <span className="l-holo-apps-pips">{VEZ.map((v, i) => <i key={v} className={i === k ? "is-on" : ""} />)}</span>
       </span>
     </button>

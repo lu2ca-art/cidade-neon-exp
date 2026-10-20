@@ -46,6 +46,7 @@ import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/ata
 import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, comHistoria, historiaAtiva, historiaDe } from "./disco/historia"
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
+import { VISOR, Visor, type VisorId } from "./disco/Visor"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -97,6 +98,8 @@ export default function LinhaPage() {
   const HIST = D && historiaAtiva(hist)
   // o buraco de minhoca rolando (B4)
   const [minhoca, setMinhoca] = useState(false)
+  // (disco, B15b) o visualizador: os links de fora abrem dentro do jogo
+  const [visor, setVisor] = useState<VisorId | null>(null)
   const [atalhoTeste, setAtalhoTeste] = useState<IrAtalho | null>(null)
   const [pronto, setPronto] = useState(false)
   const [tela, setTela] = useState<Tela>({ t: "entrada" })
@@ -919,6 +922,8 @@ export default function LinhaPage() {
       return
     }
     if (id === "violao") setSave((s) => ({ ...s, jogados: { ...s.jogados, violao: 1 } }))
+    // (disco) os de fora abrem no visualizador do holo (a página não sai)
+    if (D && id in VISOR) { setVisor(id as VisorId); return }
     if (a.link) {
       track("external_link_click", { destination: a.link.includes("instagram") ? "instagram" : a.link.includes("untitled") ? "untitled" : "other", place_id: "linha-home" })
       window.open(`${a.link}${a.link.includes("?") ? "&" : "?"}utm_source=cidade-neon&utm_medium=game&utm_campaign=linha-222`, "_blank")
@@ -1052,7 +1057,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
@@ -1214,6 +1219,7 @@ export default function LinhaPage() {
         )}
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
+        {visor && <Visor id={visor} onFechar={() => setVisor(null)} />}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (
           <Chat
