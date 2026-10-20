@@ -43,7 +43,7 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_CASA_DISCO, comHistoria, historiaAtiva, historiaDe } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, comHistoria, historiaAtiva, historiaDe } from "./disco/historia"
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
 
@@ -473,7 +473,20 @@ export default function LinhaPage() {
   const segredo = useMemo(() => (becoLivre ? { id: "beco" as LugarId, voltas: tomMaior === "acordado" ? 1 : tomMaior === "acordando" ? 2 : 3 } : null), [becoLivre, tomMaior])
 
   // encostou devagar na vaga do lugar da missão: a cena começa
+  const barFechou = useRef(0)
   const abrirCena = useCallback((id: LugarId) => {
+    // (disco) a história manda: cada fase abre só o lugar dela
+    if (D && historiaAtiva(historiaDe(saveRef.current))) {
+      const h = historiaDe(saveRef.current)
+      if (cinema) return
+      // (saiu do bar agora: não reabre parado na porta; tem que dar uma volta)
+      if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
+        setAoVivo(null)
+        setCinema("lugar")
+        setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" })
+      }
+      return
+    }
     // cada lugar tem a sua hora (relogio.ts): fora dela, fechado
     const hr = LUGARES[id]?.horario ?? "noite"
     const h = saveRef.current.hora ?? 18
@@ -510,7 +523,25 @@ export default function LinhaPage() {
     if (LUGARES[id].fora) setViagem({ lugar: id, missao: a.missao, pegar: a.pegar })
     else setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
-  }, [cinema, avisar])
+  }, [cinema, avisar, D])
+  // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = o show
+  const fimBarFeito = useRef(false)
+  const fimBarDisco = useCallback((r: ResultadoCena) => {
+    // (a cena pode avisar o fim duas vezes: beber e sair) conta uma vez só
+    if (fimBarFeito.current) return
+    fimBarFeito.current = true
+    barFechou.current = Date.now()
+    setTimeout(() => { fimBarFeito.current = false }, 1500)
+    setCena(null)
+    setCinema(null)
+    if (r.loop) {
+      setSave((s) => ({ ...s, loops: { ...(s.loops ?? {}), bar: (s.loops?.bar ?? 0) + 1 }, copos: r.copo === undefined ? s.copos : [...new Set([...(s.copos ?? []), r.copo])] }))
+      return
+    }
+    // saiu no meio, sem escolher: nada muda (o bar continua esperando)
+    if (!r.completa) return
+    setSave((s) => comHistoria({ ...s, loops: { ...(s.loops ?? {}), bar: 0 } }, (h) => ({ ...h, fase: "nectar", nectar: "quebra", show: "bar" })))
+  }, [])
   const fimCena = useCallback((r: ResultadoCena) => {
     const c = cena
     setCena(null)
@@ -633,6 +664,10 @@ export default function LinhaPage() {
     return emTutorial(save) ? (feito(save, "posto") ? l.filter((m) => m.id === PRIMEIRA) : []) : l
   }, [save, nivel])
 
+  // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
+  const alvoDisco: Alvo | null = hist.fase === "bar" ? { t: "lugar", missao: "copo", lugar: "bar", pegar: false } : null
+  // o que o anel do holo diz (curto: o lugar, não a explicação)
+  const objetivoDisco = hist.fase === "dunas" ? "a cidade" : hist.fase === "bar" ? "o bar" : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -1036,7 +1071,7 @@ export default function LinhaPage() {
             caido={save.nucleo.caido}
             onReligar={religar}
             onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
-            alvo={save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
+            alvo={HIST ? alvoDisco : save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
             levando={levarDrewboy(save) ? "copo" : null}
             tanque={save.tanque ?? 1}
             // (o zero sempre salva: antes o último pouquinho nunca virava 0 e a Kombi ficava na reserva pra sempre)
@@ -1069,7 +1104,7 @@ export default function LinhaPage() {
             agua={save.agua ?? 0}
             onFuga={(n) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) }))}
             onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
-            missaoHolo={resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null}
+            missaoHolo={HIST ? (objetivoDisco ? { texto: objetivoDisco, cor: "#e0ff4f", n: 1 } : null) : resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
             onDescer={descer}
@@ -1107,7 +1142,7 @@ export default function LinhaPage() {
         {/* AS MISSÕES NUMA CAIXA SÓ (LU2CA, 05/10): no canto, o que fazer agora
             e a bolinha com quantas estão abertas; tocando, a atual (ou a
             checklist do tutorial) e as disponíveis */}
-        {tela.t === "corrida" && !emSala && !cinema && !painelMissoes && resumoMissao && (
+        {tela.t === "corrida" && !emSala && !cinema && !painelMissoes && resumoMissao && !HIST && (
           <button type="button" className="l-caixa-missao" style={{ ["--cor" as string]: resumoMissao.cor }} onClick={() => setPainelMissoes(true)}>
             <small>{resumoMissao.rotulo}</small>
             <b>{resumoMissao.texto}</b>
@@ -1270,14 +1305,14 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa"} />
+          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar"} />
         )}
         {cena && (
           <CenaLugar
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "disco-casa" ? CENA_CASA_DISCO : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "disco-casa" ? CENA_CASA_DISCO : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -1285,7 +1320,7 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.especial === "disco-casa" ? fimCasaDisco : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
+            onFim={cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "disco-bar" ? fimBarDisco : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
           />
         )}

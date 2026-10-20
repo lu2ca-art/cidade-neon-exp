@@ -25,6 +25,8 @@ export interface ResultadoCena {
   loop?: boolean
   // o copo que bebeu (fica vazio no balcão)
   copo?: number
+  // (disco) a cena chegou no fim (não saiu no meio)
+  completa?: boolean
 }
 
 type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
@@ -199,7 +201,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
 
       {!atual && passo?.t === "fim" && (
         <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => onFim({ objeto: ganhos.objeto, reliquias: ganhos.reliquias, caca: !!passo.caca, perdeViolao: ganhos.perdeViolao })}>voltar pra kombi →</button>
+          <button type="button" onClick={() => onFim({ objeto: ganhos.objeto, reliquias: ganhos.reliquias, caca: !!passo.caca, perdeViolao: ganhos.perdeViolao, completa: true })}>voltar pra kombi →</button>
         </div>
       )}
     </div>

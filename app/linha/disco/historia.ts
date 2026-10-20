@@ -40,6 +40,8 @@ export interface HistoriaDisco {
   mods?: string[]
   // robôs espatifados (B12)
   robos?: number
+  // o show que está pra acontecer (B8): o fim de cada missão (o prólogo: "bar")
+  show?: string
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
@@ -128,6 +130,34 @@ export const CENA_CASA_DISCO: Cena = {
     { t: "ganha", titulo: "o holo", texto: "o celular de agora: a luz que fica no ar. música, mensagens, o mapa, tudo nele" },
     { t: "fala", de: "D-Bee", texto: "sem isso, lá na cidade, vc não existe" },
     { t: "fala", de: "D-Bee", texto: "não tem estrada daqui até lá. a kombi dá conta. eu falo com vc pelo rádio" },
+    { t: "fim" },
+  ],
+}
+
+// ── O PRÓLOGO: o bar (LU2CA 19–20/10). A moça do bar (a do copo: um jeito meio
+// robô, muito sensata; é uma das máquinas conscientes, mas não revela) oferece
+// o copo; beber = o loop (a noite volta); recusar e sair do loop: ela manda ele
+// cantar, ninguém sobe naquele palco há anos. Depois, o show. RASCUNHO ──
+export const CENA_BAR_PROLOGO: Cena = {
+  lugar: "bar",
+  titulo: "o bar · o prólogo",
+  missao: "copo",
+  passos: [
+    { t: "acao", texto: "um bar pendurado na pista. o letreiro pisca pela metade. lá dentro, quase ninguém", volta: "nao" },
+    { t: "acao", texto: "o bar. a mesma música, no mesmo trecho. a mesma moça no balcão", volta: "sim" },
+    { t: "acao", texto: "atrás do balcão, uma moça. o cabelo perfeito demais. ela pisca devagar, sempre no mesmo tempo" },
+    { t: "fala", de: "ela", texto: "boa noite. você não é daqui", volta: "nao" },
+    { t: "fala", de: "ela", texto: "boa noite. de novo", volta: "sim" },
+    { t: "fala", de: "ela", texto: "ninguém é daqui. senta" },
+    { t: "fala", de: "ela", texto: "você tá cansado. tenho seis copos. cada um resolve uma coisa", volta: "nao" },
+    { t: "fala", de: "ela", texto: "os seis ainda estão aqui. você sabe o que acontece quando bebe", volta: "sim" },
+    { t: "gesto", id: "copos" },
+    { t: "acao", texto: "ela inclina a cabeça. um segundo inteiro sem piscar" },
+    { t: "fala", de: "ela", texto: "você recusou. faz tempo que ninguém recusa" },
+    { t: "fala", de: "ela", texto: "então faz outra coisa" },
+    { t: "acao", texto: "ela aponta o fundo do bar: um palco pequeno, o pedestal sem ninguém, poeira na caixa de som" },
+    { t: "fala", de: "ela", texto: "ninguém sobe naquele palco há anos" },
+    { t: "fala", de: "ela", texto: "vai cantar" },
     { t: "fim" },
   ],
 }

@@ -703,7 +703,9 @@ export function montarMundoDisco(): MundoDisco {
   // ── onde mora cada coisa: na pista do personagem (fração da ida) ──
   const daPista = (nome: string) => pistas.find((p) => p.nome === nome)!
   const POS: Record<string, [string, number]> = {
-    "lugar:bar": ["Copo Americano", 0.82], "lugar:casa-drewboy": ["Sexta-Feira", 0.45], "lugar:balada": ["Sexta-Feira", 0.9], "lugar:beco": ["Sexta-Feira", 0.7],
+    // (LU2CA 20/10) o bar é o prólogo, na primeira pista acesa (a missão do
+    // Copo Americano não é mais no bar)
+    "lugar:bar": ["Nectar", 0.55], "lugar:casa-drewboy": ["Sexta-Feira", 0.45], "lugar:balada": ["Sexta-Feira", 0.9], "lugar:beco": ["Sexta-Feira", 0.7],
     "lugar:escondido": ["CHUVA", 0.85], "lugar:topo": ["DopaminA", 0.9], "lugar:casa-shows": ["Sabe Ontem?", 0.88],
     "lugar:posto": ["Nectar", 0.3], "lugar:plataforma": ["Nectar", 0.7], "lugar:casa-dbee": ["Ojalá", 0.94],
     "pagina:oficina": ["Copo Americano", 0.35], "pagina:fliperama": ["DopaminA", 0.55], "pagina:galeria": ["Swav", 0.6], "pagina:ginasio": ["Rollercoaster", 0.4],

@@ -28,6 +28,7 @@ const PLANOS: Record<string, Plano> = {
   mubarak: { pos: [0.5, 1.5, -0.2], olha: [-1.4, 1.15, -1.8], fov: 46 },
   ela: { pos: [-0.2, 1.5, -0.6], olha: [0.6, 1.5, -3.6], fov: 44 },
   copos: { pos: [-0.1, 2.05, -0.55], olha: [-0.1, 1.08, -2.45], fov: 50 },
+  palco: { pos: [1.2, 1.6, 2.2], olha: [4.4, 1.1, -2.6], fov: 52 },
 }
 
 // as cores dos líquidos: cada promessa brilha de um jeito
@@ -43,7 +44,7 @@ const MESAS: { pos: V3; vira: number; cor: string }[] = [
   { pos: [-4.6, 0.0, -0.4], vira: 0.4, cor: "#7a7a8c" },
 ]
 
-export function SalaBar({ estado, copos = [] }: SalaProps) {
+export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
   // os copos que já foram (de outras noites) ficam vazios no balcão
   const [bebidos, setBebidos] = useState<number[]>(copos)
   const [bebeuAgora, setBebeuAgora] = useState(false)
@@ -57,6 +58,8 @@ export function SalaBar({ estado, copos = [] }: SalaProps) {
     if (estado.gesto === "copos" || estado.ganha) return PLANOS.copos
     if (estado.falando === "Mubarak") return PLANOS.mubarak
     if (estado.falando === "ela") return PLANOS.ela
+    // (disco, o prólogo) o palco vazio no fundo do bar
+    if (disco && /palco/.test(estado.texto ?? "")) return PLANOS.palco
     if (estado.pos === 0) return PLANOS.entrada
     return PLANOS.balcao
   }, [estado])
@@ -128,7 +131,9 @@ export function SalaBar({ estado, copos = [] }: SalaProps) {
         </group>
       ))}
       {/* a gente */}
-      <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />
+      {!disco && <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />}
+      {/* (disco, o prólogo) o palco no canto do fundo: o pedestal sozinho, a caixa de som empoeirada */}
+      {disco && <Palco />}
       <Npc cor={ELA} pos={[0.6, 0, -3.65]} vira={0} pele="#3a2430" falando={estado.falando === "ela"} />
       {MESAS.map((m, i) => (
         <Npc key={i} cor={m.cor} pos={m.pos} vira={m.vira} pose="sentada" some={i < n} />
@@ -254,6 +259,22 @@ function Muda({ pos }: { pos: V3 }) {
           </mesh>
         ))}
       </group>
+    </group>
+  )
+}
+
+// (disco) o palco pequeno onde ninguém sobe há anos
+function Palco() {
+  return (
+    <group position={[4.4, 0, -3]}>
+      <Caixa pos={[0, 0.2, 0]} tam={[2.6, 0.4, 2]} cor="#2a1e22" rough={0.8} />
+      <Neon pos={[0, 0.42, 1.0]} comp={2.6} cor="#ff3f7a" luz={0.6} />
+      {/* o pedestal sem microfone */}
+      <Caixa pos={[0, 1.15, 0.2]} tam={[0.04, 1.5, 0.04]} cor="#55555e" metal={0.7} rough={0.3} />
+      <mesh position={[0, 0.42, 0.2]}><cylinderGeometry args={[0.22, 0.22, 0.03, 14]} /><meshStandardMaterial color="#33333a" metalness={0.6} /></mesh>
+      {/* a caixa de som com poeira */}
+      <Caixa pos={[-0.9, 0.85, -0.6]} tam={[0.6, 0.9, 0.5]} cor="#1a1a1e" />
+      <mesh position={[-0.9, 0.95, -0.34]}><circleGeometry args={[0.18, 16]} /><meshStandardMaterial color="#3a3a3a" roughness={1} /></mesh>
     </group>
   )
 }
