@@ -48,6 +48,9 @@ import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
 import { VISOR, Visor, type VisorId } from "./disco/Visor"
 import { Freq } from "./disco/Freq"
+import { Show, type ResultadoShow } from "./disco/Show"
+import { Jornal, calcularManchete } from "./disco/Jornal"
+import type { Manchete } from "./disco/historia"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -101,6 +104,8 @@ export default function LinhaPage() {
   const [minhoca, setMinhoca] = useState(false)
   // (disco, B15b) o visualizador: os links de fora abrem dentro do jogo
   const [visor, setVisor] = useState<VisorId | null>(null)
+  // (disco, B8) o jornal do dia seguinte ao show
+  const [jornal, setJornal] = useState<Manchete | null>(null)
   const [atalhoTeste, setAtalhoTeste] = useState<IrAtalho | null>(null)
   const [pronto, setPronto] = useState(false)
   const [tela, setTela] = useState<Tela>({ t: "entrada" })
@@ -670,6 +675,18 @@ export default function LinhaPage() {
 
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? { t: "lugar", missao: "copo", lugar: "bar", pegar: false } : null
+  // (B8) o show marcado: o fim de cada missão (o prólogo é o do bar)
+  const SHOWS: Record<string, { faixa: "copo" | "nectar"; lugar: string; cor: string }> = {
+    bar: { faixa: "copo", lugar: "no bar", cor: "#ff6a35" },
+    oficina: { faixa: "nectar", lugar: "na oficina", cor: "#e0ff4f" },
+  }
+  const showAgora = HIST && hist.show && SHOWS[hist.show] && !cena && tela.t === "corrida" ? hist.show : null
+  const fimShow = (r: ResultadoShow) => {
+    const id = hist.show!, conf = SHOWS[id]
+    const m = calcularManchete(r, id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
+    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m] })))
+    setJornal(m)
+  }
   // o que o anel do holo diz (curto: o lugar, não a explicação)
   const objetivoDisco = hist.fase === "dunas" ? "a cidade" : hist.fase === "bar" ? "o bar" : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
@@ -1058,7 +1075,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
@@ -1220,6 +1237,8 @@ export default function LinhaPage() {
         )}
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
+        {showAgora && <Show key={showAgora} faixa={SHOWS[showAgora].faixa} lugar={SHOWS[showAgora].lugar} cor={SHOWS[showAgora].cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
+        {jornal && <Jornal m={jornal} cor={SHOWS[jornal.missao]?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq /> : undefined}</Visor>}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (
