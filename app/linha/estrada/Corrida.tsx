@@ -40,6 +40,7 @@ import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
 import { CASA, QUEDA, RAIO_CASA, SAIDA_CASA, FALAS_DUNAS, type HistoriaDisco } from "../disco/historia"
 import { CasaDeserto } from "../disco/CasaDeserto"
+import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
@@ -221,6 +222,8 @@ interface Props {
   // onde a Kombi começa, se o holo existe, e o que acontece no deserto
   historia?: HistoriaDisco | null
   onHistoria?: (e: EventoHistoria) => void
+  // (B10) comprar uma modificação na oficina (com água)
+  onComprar?: (id: string, preco: number) => void
 }
 export type EventoHistoria = "casa" | "cidade" | "robo" | "quebrou" | "flor" | "galao"
 
@@ -325,7 +328,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
+type Input = { mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -362,7 +365,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -469,6 +472,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alvoChave])
 
+  const onHistoriaRef = useRef(onHistoria)
+  useEffect(() => { onHistoriaRef.current = onHistoria }, [onHistoria])
   const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false, mao: false, ultimo: 0 })
   const [jogo0] = useState(() => {
     const ret = retomarJogo(M, retomada)
@@ -579,6 +584,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
   }, [leva])
   const floresRef = useRef(new Set<string>())
+  const mangueiraRef = useRef(false)
+  const mangueiraT = useRef(0)
+  const regarFlorRef = useRef<(f: FlorAsfalto) => void>(() => {})
   useEffect(() => { floresRef.current = new Set(flores.regadas.map((f) => f.id)) }, [flores])
   const regarFlor = (f: FlorAsfalto) => {
     // (disco, LU2CA 19/10) regar é com água: uma gota de água por flor
@@ -602,6 +610,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       setRegandoFlor(null)
     }, 1700)
   }
+  useEffect(() => { regarFlorRef.current = regarFlor })
   const [seco, setSeco] = useState(false)
   const [pertoKombi, setPertoKombi] = useState(false)
   // a Kombi desligada: no lugar da ré, "dar partida"
@@ -717,6 +726,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const cb = combRef.current
         let fp: FlorAsfalto | null = null
         if (cb.patins && cb.aqui) { let dm = 10; for (const p of levaPos) { if (floresRef.current.has(p.f.id)) continue; const d = Math.hypot(p.x - cb.aqui.x, p.z - cb.aqui.z); if (d < dm) { dm = d; fp = p.f } } }
+        // (B10) a mangueira de bombeiro: da Kombi, as flores a até 14 m da pista bebem sozinhas
+        else if (mangueiraRef.current && cb.aqui && performance.now() - mangueiraT.current > 1800) {
+          for (const p of levaPos) {
+            if (floresRef.current.has(p.f.id) || Math.hypot(p.x - cb.aqui.x, p.z - cb.aqui.z) > 14) continue
+            mangueiraT.current = performance.now()
+            regarFlorRef.current(p.f)
+            break
+          }
+        }
         setFlorPerto((a) => (a?.id === fp?.id ? a : fp))
       }
       {
@@ -855,6 +873,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const holoOk = !historia || historia.holo
   const oculos = oculosLigado && holoOk
   useEffect(() => { input.current.semHolo = !!discoM && !holoOk }, [discoM, holoOk])
+  // (B10) as modificações compradas com água valem na física (o propulsor, o turbo)
+  const mods = useMemo(() => historia?.mods ?? [], [historia?.mods])
+  useEffect(() => { input.current.mods = mods; mangueiraRef.current = mods.includes("mangueira") }, [mods])
+  const [perfil, setPerfil] = useState(false)
+  const [oficinaAberta, setOficinaAberta] = useState(false)
   const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
   // (o holo) o clima de onde a Kombi está: a pista (o nome dela), a torre ou,
   // voando sem pista embaixo, o deserto (que nunca chove)
@@ -1006,8 +1029,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 
   // (disco, a história) o deserto: chegar na casa; nas dunas, a D-Bee pelo rádio
   // (curto, na hora certa) e pousar numa pista = chegou na cidade
-  const onHistoriaRef = useRef(onHistoria)
-  useEffect(() => { onHistoriaRef.current = onHistoria }, [onHistoria])
   const fase = discoM ? historia?.fase ?? null : null
   useEffect(() => {
     if (fase !== "casa" && fase !== "dunas") return
@@ -1807,7 +1828,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} />
         </Canvas>
       )}
 
@@ -2033,12 +2054,17 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <button type="button" className="is-seguir" onClick={() => { setNaBomba(false); setMsgBomba(""); jogo.current.encostando = false }}>seguir</button>
         </div>
       )}
+      {discoM && perfil && <Perfil agua={aguaVista} neon={save.neon ?? 0} pop={save.popularidade ?? 0} mods={mods} onFechar={() => setPerfil(false)} />}
+      {discoM && oficinaAberta && (
+        <OficinaLoja agua={aguaVista} mods={mods} onComprar={(id, preco) => onComprar?.(id, preco)} onFechar={() => { setOficinaAberta(false); jogo.current.encostando = false }}
+          onPintura={() => { setOficinaAberta(false); const lp = PAGINAS.find((x) => x.id === "oficina"); if (lp) entrar(lp) }} />
+      )}
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
         if (!lp || entrando || regando || parque === "andando") return null
         if (trancadaPelaHistoria(lp, save.objetos)) return <p className="l-pagina-fechada">{lp.nome} · de portas fechadas</p>
         return abertos[lp.id]
-          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrar(lp)}>entrar · {lp.nome}</button>
+          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { if (discoM && lp.id === "oficina" && holoOk) { jogo.current.encostando = true; setOficinaAberta(true) } else entrar(lp) }}>entrar · {lp.nome}</button>
           : <p className="l-pagina-fechada">{lp.nome} abre às {abreAs(lp.horario)}</p>
       })()}
       {entrando && (
@@ -2088,7 +2114,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {discoM ? (
-        <div className="l-aneis is-agua" data-info="agua" aria-label={`${aguaVista} de água, ${aneis.viagens} viagens rápidas`}><i />{aguaVista}{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
+        <button type="button" className="l-aneis is-agua" data-info="agua" onPointerDown={(e) => e.stopPropagation()} onClick={() => setPerfil((x) => !x)} aria-label={`${aguaVista} de água, ${aneis.viagens} viagens rápidas`}><i />{aguaVista}{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</button>
       ) : (
         <div className="l-aneis" data-info="aneis" aria-label={`${aneis.total} anéis, ${aneis.viagens} viagens rápidas`}><i />{aneis.total % 100}<small>/100</small>{aneis.viagens > 0 && <b>⚡{aneis.viagens}</b>}</div>
       )}
@@ -3657,7 +3683,7 @@ function Cena({
         const ang = d * j.deriva
         if (ang > 0.2) {
           j.driftT += dt
-          j.carga = Math.min(1, j.carga + dt * 0.22 * Math.min(1, ang / 0.5))
+          j.carga = Math.min(1, j.carga + dt * 0.22 * Math.min(1, ang / 0.5) * (inp.mods?.includes("turbo2") ? 1.5 : 1))
           // os pontos: ângulo × velocidade; o multiplicador sobe com o tempo de lado
           j.dMult = Math.min(5, j.dMult + dt * 0.1)
           j.dPts += ang * Math.abs(j.v) * dt * 12 * j.dMult
@@ -3973,7 +3999,7 @@ function Cena({
       if (quer && j.energia > 0) {
         if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, pat ? 7 : 3); motor?.whoosh(); vib(18) }
         j.vy = Math.min(pat ? 13 : 16, j.vy + (pat ? 48 : 34) * dt)
-        j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt)
+        j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt * (inp.mods?.includes("tanque") ? 0.65 : 1))
         j.propulsou = true
       } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + (pat ? 0.24 : 0.1) * dt) // a energia solar volta na pista
       // (LU2CA 20/10: "quando cai no deserto perde o poder de propulsão e fica

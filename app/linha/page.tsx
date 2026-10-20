@@ -1115,6 +1115,8 @@ export default function LinhaPage() {
             abertura={!D && !save.casa}
             historia={D ? hist : null}
             onHistoria={onHistoria}
+            // (B10) a oficina vende com água (a tecnologia)
+            onComprar={(id, preco) => setSave((s) => ((s.agua ?? 0) < preco ? s : comHistoria({ ...s, agua: (s.agua ?? 0) - preco }, (h) => ({ ...h, mods: [...new Set([...(h.mods ?? []), id])] }))))}
             onAbertura={() => { setCinema("lugar"); setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, inicio: true }) }}
             onArea={(id) => { if (id === "circuito:linha" && emTutorial(saveRef.current)) marcarTut("tanque") }}
             limitado={!!invasao}

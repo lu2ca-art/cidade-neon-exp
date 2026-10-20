@@ -2435,3 +2435,29 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-jornal p { margin: 0; font: italic 14px/1.4 Georgia, serif; }
 .l-jornal footer { display: flex; gap: 16px; font: 12px var(--mono); border-top: 1px solid #1a161244; padding-top: 8px; }
 .l-jornal button { justify-self: end; padding: 8px 14px !important; border-radius: 999px; background: #1a1612 !important; color: #efe9dc !important; border: 0 !important; font: 700 12px var(--mono) !important; cursor: pointer; }
+
+/* (disco, B10) rico do quê? as três moedas, e a oficina (o que a água compra) */
+button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
+.l-perfil { position: absolute; z-index: 40; right: 12px; top: calc(232px + env(safe-area-inset-top)); width: min(88vw, 320px); display: grid; gap: 10px; padding: 12px 14px; border-radius: 16px; background: rgba(6, 8, 22, 0.88); border: 1px solid rgba(200, 160, 255, 0.4); color: #e8efff; backdrop-filter: blur(6px); animation: l-oculos 0.25s ease-out; font: 12px var(--mono); }
+.l-perfil.is-oficina { left: 50%; right: auto; top: 50%; transform: translate(-50%, -50%); border-color: rgba(255, 144, 0, 0.6); }
+.l-perfil header { display: flex; align-items: center; justify-content: space-between; }
+.l-perfil header b { font: 800 12px var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
+.l-perfil header button { width: 26px !important; height: 26px; padding: 0 !important; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.2) !important; background: none !important; color: #fff !important; cursor: pointer; }
+.l-perfil section { display: grid; gap: 4px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.l-perfil section > span { display: flex; align-items: baseline; gap: 8px; }
+.l-perfil section > span b { font: 800 20px var(--mono); }
+.l-perfil section > span small { color: var(--mut); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
+.l-perfil section p { margin: 0; color: var(--mut); }
+.l-perfil .is-agua > span i { width: 12px; height: 16px; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; clip-path: polygon(50% 0, 100% 62%, 100% 100%, 0 100%, 0 62%); background: conic-gradient(from 0deg, #4fc3ff, #b38cff, #ff3fb0, #ffc857, #5dffa0, #4fc3ff); animation: l-furta 3s linear infinite; }
+.l-perfil .is-neon > span i { font-style: normal; color: #ffc857; font-weight: 800; }
+.l-perfil .is-pop > span i { width: 40px; height: 5px; border-radius: 3px; background: linear-gradient(90deg, #ff3fb0 var(--p), rgba(255, 255, 255, 0.12) var(--p)); align-self: center; }
+.l-perfil ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; }
+.l-perfil li { display: flex; align-items: center; justify-content: space-between; gap: 10px; opacity: 0.7; }
+.l-perfil li.is-tem { opacity: 1; color: #5dffa0; }
+.l-perfil li span { display: grid; gap: 1px; }
+.l-perfil li small { color: var(--mut); font: 11px system-ui, sans-serif; }
+.l-perfil li em { font-style: normal; color: var(--mut); }
+.l-perfil li button { padding: 5px 10px !important; border-radius: 999px; border: 1px solid #4fc3ff !important; background: rgba(79, 195, 255, 0.12) !important; color: #fff !important; font: 700 11px var(--mono) !important; cursor: pointer; white-space: nowrap; }
+.l-perfil li button:disabled { opacity: 0.4; cursor: default; }
+.l-perfil.is-oficina li { opacity: 1; }
+.l-perfil-pintura { justify-self: end; padding: 7px 12px !important; border-radius: 999px; border: 1px solid #ff9000 !important; background: none !important; color: #ff9000 !important; font: 700 11px var(--mono) !important; cursor: pointer; }
