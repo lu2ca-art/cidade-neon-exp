@@ -67,7 +67,7 @@ export type DiscoInfo = { pista: number; parte: ParteDisco; torre: number } // t
 export type CentralDisco = { x: number; z: number; raio: number; nucleo: number; topo: number; andares: { y: number; cor: string; nome: string; ang: number }[] }
 // onde a Kombi pousa vindo do ar: a via (no sentido do rumo), o u, o lado e a altura do asfalto
 export type Pouso = { via: number; u: number; x: number; y: number; cx: number; cz: number; tx: number; tz: number }
-export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; chaoDeserto: number; chaoEm: (x: number, z: number) => number }
+export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; teto: (x: number, z: number, y: number, margem?: number) => number | null; chaoDeserto: number; chaoEm: (x: number, z: number) => number }
 // os trechos da espiral sabem onde a borda de fora se abre e a faixa pintada da saída
 export type SinaisEspiral = { abreFora?: [number, number][]; pintaSaida?: { u0: number; u1: number; cor: string }[] }
 // as espirais (qualquer torre): a Kombi passeia
@@ -749,6 +749,27 @@ export function montarMundoDisco(): MundoDisco {
     }
     return melhor
   }
+  // (LU2CA 20/10, B15: "as pistas não têm física de baixo pra cima") o teto: a
+  // via mais baixa logo ACIMA da Kombi (o fundo do asfalto dela), na largura
+  // da pista. null = céu aberto
+  const teto = (x: number, z: number, y: number, margem = MEIA_PISTA + 0.6): number | null => {
+    const cx = Math.floor(x / CP), cz = Math.floor(z / CP), R = Math.ceil(margem / CP)
+    let menor: number | null = null
+    for (let a = -R; a <= R; a++) for (let b = -R; b <= R; b++) {
+      const l = gp.get(`${cx + a},${cz + b}`); if (!l) continue
+      for (let q = 0; q < l.length; q += 2) {
+        const v = vias[l[q]], i = l[q + 1]
+        const ox = x - v.px[i], oz = z - v.pz[i]
+        if (Math.abs(ox * v.tx[i] + oz * v.tz[i]) > 1.2) continue
+        const lat = ox * -v.tz[i] + oz * v.tx[i]
+        if (lat < v.esq[i] - 0.6 || lat > v.dir[i] + 0.6) continue
+        const ys = v.py[i] - lat * Math.sin(v.bank[i])
+        if (ys <= y) continue
+        if (menor === null || ys < menor) menor = ys
+      }
+    }
+    return menor
+  }
   const circuito = { linha: pistas[0].ida, suburbio: daPista("Sexta-Feira").ida, crypto: daPista("DopaminA").ida, live: daPista("Sabe Ontem?").ida, full: daPista("Swav").ida } as Record<FreqId, number>
   const rede: Rede = { nos: [], arestas: [], retornos: [] }
   const saidas = nos.map((n) => n.saem)
@@ -756,7 +777,7 @@ export function montarMundoDisco(): MundoDisco {
   const projetar = (): Projecao | null => null
   const conflitos = sobra ? [`${sobra} trechos de pista com menos de ${FOLGA - 1} m de folga`] : []
   const torresOut: CentralDisco[] = torres.map((tw) => ({ x: tw.d.C.x, z: tw.d.C.z, raio: tw.d.R, nucleo: tw.d.nucleo, topo: tw.topo, andares: tw.alcas.map((a, i) => ({ y: a.hJ, cor: B[a.k].cor, nome: B[a.k].nome, ang: -tw.phiQ[i] })) }))
-  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: chaoEm, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, pousar, chaoDeserto: CHAO + 0.4, chaoEm }
+  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: chaoEm, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, pousar, teto, chaoDeserto: CHAO + 0.4, chaoEm }
   return CACHE
 }
 

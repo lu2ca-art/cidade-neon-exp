@@ -3931,6 +3931,10 @@ function Cena({
         j.rumo = (j.rumo ?? 0) - (inp.mao ? 0 : j.steer * dt * (j.ar ? 1.1 : 1.8))
         j.wx = j.wx! + Math.sin(j.rumo) * j.v * dt
         j.wz = j.wz! + Math.cos(j.rumo) * j.v * dt
+        // (B15) o deserto é "infinito", mas o chão desenhado acaba a 4,5 km:
+        // a 3,9 km o vento empurra de volta, devagar (nunca chega na borda)
+        const rr = Math.hypot(j.wx, j.wz)
+        if (rr > 3900) { const k = (rr - 3900) / rr; j.wx -= j.wx * k; j.wz -= j.wz * k; j.v *= 1 - 0.8 * dt }
         // os prédios: abaixo do topo, bate e escorrega
         const emp = bater(j.wx, j.wz, 1.6, j.y)
         if (emp) { j.wx += emp[0]; j.wz += emp[1]; if (Math.abs(j.v) > 8) { j.v *= 1 - 1.2 * dt; j.shake = Math.max(j.shake, 0.3) } }
@@ -3999,7 +4003,23 @@ function Cena({
       j.vy -= (j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
       // (disco) sem o propulsor, a Kombi plana (desce até 10 m/s): dá tempo de mirar numa pista
       if (j.voo && !inp.propulsor) j.vy = Math.max(j.vy, -10)
+      const yAntes = j.y
       j.y += j.vy * dt
+      // (LU2CA 20/10, B15) subindo por baixo de uma pista, a Kombi bate no fundo
+      // dela (não atravessa): trava a subida, tranco, faísca
+      if (MD && j.vy > 0) {
+        let px: number, pz: number
+        if (j.voo && j.wx !== undefined) { px = j.wx; pz = j.wz! } else { amostra(V, j.u, a); px = a.x - a.tz * j.x; pz = a.z + a.tx * j.x }
+        const TETO_K = 2.3, LAJE = 0.7 // a altura da Kombi e a espessura do asfalto
+        const ty = MD.teto(px, pz, yAntes + TETO_K * 0.5)
+        if (ty !== null && j.y + TETO_K > ty - LAJE) {
+          j.y = ty - LAJE - TETO_K
+          j.vy = -Math.min(6, 2 + j.vy * 0.3)
+          j.shake = Math.max(j.shake, 0.5)
+          if (carro.current) { soltarFaiscas(faiscas, carro.current, 1); soltarFaiscas(faiscas, carro.current, -1) }
+          vib([20, 10, 30])
+        }
+      }
       j.tAr += dt
       if (j.y <= yPista) {
         const tempoAr = j.tAr
@@ -4821,6 +4841,13 @@ function Cena({
       camera.up.set(0, 1, 0)
       camera.lookAt(ce.olhar)
     }
+    // (LU2CA 20/10, B15: "o chão ainda é vazado") nas dunas a câmera ia pra baixo
+    // da areia nas encostas (atrás da Kombi, morro acima) e via o chão por baixo,
+    // vazado: ela nunca desce do chão
+    if ("disco" in M && !ce) {
+      const chC = (M as MundoDisco).chaoEm(camera.position.x, camera.position.z) + 1.8
+      if (camera.position.y < chC) { camera.position.y = chC; camera.lookAt(car.position.x, car.position.y + 1.2, car.position.z) }
+    }
     // teste (fora da produção): window.__vista = [x, y, z, olharX, olharY, olharZ]
     // segura a câmera num ponto (vista aérea pra conferir o mapa)
     if (process.env.NODE_ENV !== "production") {
@@ -4921,8 +4948,8 @@ function Cena({
     // no deserto a névoa vai longe: a cidade inteira lá no horizonte
     if (fog) {
       const longe = V.id === "deserto" || noDeserto
-      fog.far += ((longe ? 5200 : 950) - fog.far) * Math.min(1, dt * 0.6)
-      fog.near += ((longe ? 300 : 70) - fog.near) * Math.min(1, dt * 0.6)
+      fog.far += ((longe ? 3000 : 950) - fog.far) * Math.min(1, dt * 0.6)
+      fog.near += ((longe ? 250 : 70) - fog.near) * Math.min(1, dt * 0.6)
     }
     ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
     ceuMat.uniforms.nevoaC.value.lerp(alvoNevoa, kk)
@@ -5108,17 +5135,20 @@ function Cena({
         <sphereGeometry args={[2800, 32, 16]} />
       </mesh>
 
-      {/* o deserto: chão de areia em volta da cidade, pelo norte (mundo.ts) */}
-      <mesh rotation-x={-Math.PI / 2} position={[centroSub.x, -0.25, centroSub.z]}>
+      {/* o deserto: chão de areia em volta da cidade, pelo norte (mundo.ts)
+          (B15: no disco o chão são as dunas; este anel plano do mapa velho, a
+          0 m, cortava as dunas no meio e a água a −12 m brigava com o vale:
+          os dois eram o "chão vazado") */}
+      {!("disco" in M) && <mesh rotation-x={-Math.PI / 2} position={[centroSub.x, -0.25, centroSub.z]}>
         <ringGeometry args={[1350, 9000, 120, 1, -0.12, Math.PI + 0.24]} />
         <meshStandardMaterial color="#2e231e" roughness={1} />
-      </mesh>
+      </mesh>}
       <Caminhante abRef={aberturaRef} />
       {/* água */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, -12, 0]}>
+      {!("disco" in M) && <mesh rotation-x={-Math.PI / 2} position={[0, -12, 0]}>
         <planeGeometry args={[9000, 9000]} />
         <meshStandardMaterial color="#071430" metalness={0.85} roughness={0.22} />
-      </mesh>
+      </mesh>}
 
       {/* pista */}
       <mesh geometry={geo.chao} receiveShadow>
@@ -5281,7 +5311,10 @@ function Cena({
       ))}
 
       {/* o mapa novo: o relevo do v5 debaixo das ruas */}
-      {relevoNovo && <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} /></mesh>}
+      {/* (disco, B15) o chão tem uma luz própria fraquinha: de noite, embaixo das pistas, ele lia como um buraco preto */}
+      {relevoNovo && <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} emissive={"disco" in M ? "#3a2614" : "#000000"} emissiveIntensity={0.55} /></mesh>}
+      {/* (disco, B15) depois dos 9 km de dunas, a areia continua lisa até o horizonte (sem borda vazada) */}
+      {"disco" in M && <mesh rotation-x={-Math.PI / 2} position={[0, -15, 0]}><planeGeometry args={[60000, 60000]} /><meshStandardMaterial color="#8c6640" roughness={1} emissive="#3a2614" emissiveIntensity={0.55} /></mesh>}
       {lixo && <><primitive object={lixo.carros} /><primitive object={lixo.pneus} /></>}
       <primitive object={orbs.m} />
       <primitive object={rastro.pts} />
