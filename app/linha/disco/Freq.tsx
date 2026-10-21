@@ -16,9 +16,7 @@ import { PISTAS } from "../estrada/pistas"
 import type { Save } from "../estado"
 
 const PREVIA = 22
-// (RASCUNHO) a senha dos outros álbuns: troca aqui
-export const SENHA_ALBUNS = "neon222"
-const FORA = "https://untitled.stream/invite/CPq7Z1J2Og32UEDsFfK9k"
+// (a senha dos outros álbuns é conferida no servidor: app/api/album/senha)
 type Faixa = { id: string; titulo: string; src: string }
 type Projeto = { id: string; nome: string; capa: string; faixas: Faixa[]; senha?: boolean }
 
@@ -69,6 +67,7 @@ export function Freq(_props: { save: Pick<Save, "objetos"> }) {
   const [pedeSenha, setPedeSenha] = useState<Projeto | null>(null)
   const [senha, setSenha] = useState("")
   const [errou, setErrou] = useState(false)
+  const [checando, setChecando] = useState(false)
   const audio = useRef<HTMLAudioElement | null>(null)
   const vol1 = PROJETOS[0]
   const tocaveis = vol1.faixas.filter((f) => liberada(f.id))
@@ -107,12 +106,24 @@ export function Freq(_props: { save: Pick<Save, "objetos"> }) {
     if (!a || !faixa) { if (tocaveis[0]) setTocando(tocaveis[0].id); return }
     if (a.paused) { if (a.currentTime >= PREVIA) a.currentTime = 0; void a.play(); setPlay(true) } else { a.pause(); setPlay(false) }
   }
-  const conferir = (e: React.FormEvent) => {
+  const conferir = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (senha.trim().toLowerCase() !== SENHA_ALBUNS.toLowerCase()) { setErrou(true); return }
-    // (os outros álbuns moram no untitled: com a senha, abre lá)
-    window.open(FORA, "_blank", "noreferrer")
-    setPedeSenha(null)
+    if (checando) return
+    setChecando(true)
+    // (os outros álbuns moram no untitled: com a senha, abre lá). A janela abre
+    // já, no clique (senão o navegador bloqueia), e vai pro convite se acertar.
+    const janela = window.open("about:blank", "_blank")
+    if (janela) janela.opener = null
+    try {
+      const r = await fetch("/api/album/senha", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ senha }) })
+      const d = (await r.json().catch(() => ({}))) as { ok?: boolean; url?: string }
+      if (d.ok && d.url) {
+        if (janela) janela.location.href = d.url
+        else window.open(d.url, "_blank", "noreferrer")
+        setPedeSenha(null)
+      } else { janela?.close(); setErrou(true) }
+    } catch { janela?.close(); setErrou(true) }
+    setChecando(false)
   }
   const pos = t / PREVIA
   return (
