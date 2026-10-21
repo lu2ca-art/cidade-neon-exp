@@ -2,10 +2,10 @@
 (o diretor mantém; fonte das decisões: ~/repos/LU2CA/projetos/cidade-neon/mapa-disco-decisoes.md, "21/10 (2)" a "21/10 (5)". O dashboard vivo lê este arquivo: `bun scripts/empresa/status.mjs` → RELATORIOS/status.json)
 
 ## Em andamento
-- (nada agora: a noite fechou A1–A5; o próximo é o A5b, um jogo pra cada instrumento)
+- (nada agora: a noite fechou A1–A5b; o próximo depende das decisões do dono)
 
 ## Fila (ordenada por impacto no jogador × esforço)
-A5b. **Um jogo pra cada instrumento** · gameplay · cantar = o afinador (a voz desafina fora do meio, seguindo a melodia); guitarra = o Guitar Driver; baixo = a corda virtual; teclado = a trava-mente (a desenhar); bateria (a desenhar). Depende das notas do A5.
+A5c. **O teclado e a bateria com jogo próprio** · gameplay · hoje usam a pista do Guitar Driver com as notas deles; o teclado = a trava-mente (jogo binário de concentração) e a bateria esperam o desenho do dono.
 A6. **A missão do beat com o Alohan** · narrativa + gameplay · ele ensina, você faz o beat no B4TIDA, baixa o áudio, e ele te chama pra um show no Guitar Driver. Espera a decisão de quando ela vem.
 V1. **As vozes: o piloto** · narrativa + áudio · o plano está em ~/repos/LU2CA/projetos/cidade-neon/plano-vozes.md; o piloto proposto é a D-Bee nas dunas pelo rádio. Espera as decisões do plano.
 3c. **A câmera** · performance · ele gosta da de hoje: só otimizar se der pra aproveitar algo da Horizon (ver a mudança antiga staged no checkout principal antes).
@@ -22,6 +22,7 @@ V1. **As vozes: o piloto** · narrativa + áudio · o plano está em ~/repos/LU2
 - **As perguntas antigas do plano da noite de 20/10** (o bar na pista da Nectar, a música do show do prólogo, vol.2/CIDADE NEON no untitled, "mais flores, mais água", as 4 peças) · level
 
 ## Feito (com prova)
+- **A5b. Um jogo pra cada instrumento** (9ad113c) · gameplay · antes do show, a escolha; cantar = o afinador (a voz desafina fora do meio); baixo = a corda virtual; guitarra, teclado e bateria = a pista do Guitar Driver (GPU real: as 5 opções, cantar 63 notas, baixo 39, bateria 57).
 - **A5. O Guitar Driver 2: as notas** (4217d9f) · gameplay + áudio · as 9 faixas separadas no SSD; public/gd2 com voz, guitarra, baixo, teclado e bateria; bateria 84–100% e voz 100% em cima do ataque real; o maior buraco caiu de 3,3 s pra 1,7 s (RELATORIOS/2026-10-21-gameplay.md).
 - **3d. O dashboard vivo da empresa** · diretor · o painel lê este BACKLOG (status.json) e mostra o que precisa do dono, cada área e todos os itens.
 - **A2. O show é o Guitar Driver** (4217d9f) · gameplay · o fim da missão abre o Guitar Driver no palco do lugar, 22 s, com a plateia da popularidade (print com GPU real: a balada da Sexta, 30 pessoas, as 4 cores; o show fecha em 22 s).
