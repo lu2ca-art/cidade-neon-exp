@@ -43,7 +43,16 @@ interface Jogo {
   frases: Map<number, { total: number; acertos: number; falhou: boolean }>; buf: AudioBuffer | null
 }
 
-export function Show({ faixa, lugar, palco: palcoId, cor, popularidade, onFim }: { faixa: PistaId; lugar: string; palco?: string; cor: string; popularidade: number; onFim: (r: ResultadoShow) => void }) {
+export type InstrumentoShow = "voz" | "guitarra" | "baixo" | "teclado" | "bateria"
+export interface PropsShow { faixa: PistaId; lugar: string; palco?: string; cor: string; popularidade: number; onFim: (r: ResultadoShow) => void }
+// o chart novo (public/gd2): cada instrumento com os 4 níveis (a voz: a melodia) e a janela de 22 s de cada um
+export type ChartGd2 = ChartGd & { janelas?: Partial<Record<InstrumentoShow, number>>; voz?: { melodia: [number, number, number][] } } & Partial<Record<InstrumentoShow, unknown>>
+export const carregarChart = (faixa: PistaId) => fetch(`/gd2/${faixa}.json`).then((r) => (r.ok ? (r.json() as Promise<ChartGd2>) : Promise.reject()))
+export const NOME_INST: Record<InstrumentoShow, string> = { voz: "cantar", guitarra: "guitarra", baixo: "baixo", teclado: "teclado", bateria: "bateria" }
+
+// a pista do Guitar Driver (guitarra; o teclado e a bateria usam a mesma pista
+// com as notas deles até ganharem o jogo próprio)
+export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, inst = "guitarra" }: PropsShow & { inst?: "guitarra" | "teclado" | "bateria" }) {
   const [estado, setEstado] = useState<Estado>("carregando")
   const [fim, setFim] = useState<ResultadoShow | null>(null)
   const cvs = useRef<HTMLCanvasElement>(null)
@@ -71,7 +80,7 @@ export function Show({ faixa, lugar, palco: palcoId, cor, popularidade, onFim }:
   useEffect(() => {
     let vivo = true
     ac()
-    const chart = fetch(`/gd2/${faixa}.json`).then((r) => (r.ok ? r.json() : Promise.reject())).then((c: ChartGd & { janelas?: Record<string, number> }) => ({ c, ini: c.janelas?.guitarra ?? INICIO_ANTIGO }))
+    const chart = carregarChart(faixa).then((c) => ({ c: { ...c, guitarra: (c[inst] ?? c.guitarra) as ChartGd["guitarra"] } as ChartGd, ini: c.janelas?.[inst] ?? INICIO_ANTIGO }))
       .catch(() => fetch(`/gd/${faixa}.json`).then((r) => r.json()).then((c: ChartGd) => ({ c, ini: INICIO_ANTIGO })))
     Promise.all([chart, carregarBuffer(faixaDaPista(pista))]).then(([{ c, ini }, buf]) => {
       if (!vivo) return
@@ -84,7 +93,7 @@ export function Show({ faixa, lugar, palco: palcoId, cor, popularidade, onFim }:
       setEstado("contagem")
     }).catch(() => { if (vivo) setEstado("erro") })
     return () => { vivo = false }
-  }, [faixa, pista])
+  }, [faixa, pista, inst])
 
   // a contagem (4 tempos, as baquetas) e o show
   useEffect(() => {
@@ -225,7 +234,7 @@ export function Show({ faixa, lugar, palco: palcoId, cor, popularidade, onFim }:
     <div className="l-show is-gd" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
       <canvas ref={cvs} />
       <header className="l-show-topo"><small>o show · {lugar}</small><b>{pista.faixa}</b><span>{publico <= 3 ? "quase ninguém" : `${publico} pessoas`}</span></header>
-      {estado === "carregando" && <div className="l-show-carrega">afinando a guitarra…</div>}
+      {estado === "carregando" && <div className="l-show-carrega">{inst === "bateria" ? "ajustando as baquetas…" : inst === "teclado" ? "ligando o teclado…" : "afinando a guitarra…"}</div>}
       {estado === "erro" && (
         <div className="l-show-fim"><b>a guitarra não chegou</b><span>confere a internet</span><button type="button" onClick={() => onFim({ modo: "tocar", nota: 0, acertos: 0, total: 0, publico })}>seguir →</button></div>
       )}

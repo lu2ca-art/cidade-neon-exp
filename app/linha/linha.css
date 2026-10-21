@@ -2607,3 +2607,10 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 /* (21/10) o cartão da oferta em foco (a pista dela brilha no mapa) */
 .l-feira-lista li { cursor: pointer; }
 .l-feira-lista li.is-foco { border-color: var(--cor); box-shadow: 0 0 18px -6px var(--cor); }
+/* (21/10) a escolha do instrumento antes do show */
+.l-show.is-escolha { display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--cor) 18%, #05030a), #05030a 70%); }
+.l-show-banda { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; width: min(92vw, 640px); margin-top: 60px; }
+.l-show-banda button { display: grid; gap: 4px; text-align: left; padding: 16px 14px !important; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent) !important; background: color-mix(in srgb, var(--cor) 12%, rgba(8, 6, 16, 0.88)) !important; color: #fff !important; cursor: pointer; }
+.l-show-banda button:hover, .l-show-banda button:focus-visible { box-shadow: 0 0 22px -8px var(--cor); outline: none; }
+.l-show-banda b { font: 800 18px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--cor); }
+.l-show-banda small { font: 12px system-ui, sans-serif; opacity: 0.75; }
