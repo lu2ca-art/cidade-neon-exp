@@ -1,0 +1,336 @@
+{
+ "gerado": "2026-10-21T04:17:47.069Z",
+ "ultimoCommit": "4217d9f·2026-10-21T01:17:33-03:00·mapa-disco: o show é o Guitar Driver no palco da missão; as notas novas (gd2) de 5 instrumentos",
+ "rows": [
+  {
+   "id": "A5b-gameplay",
+   "item": "A5b",
+   "titulo": "Um jogo pra cada instrumento",
+   "area": "gameplay",
+   "estado": "na fila",
+   "ordem": 0,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "A6-narrativa",
+   "item": "A6",
+   "titulo": "A missão do beat com o Alohan",
+   "area": "narrativa",
+   "estado": "na fila",
+   "ordem": 1,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "A6-gameplay",
+   "item": "A6",
+   "titulo": "A missão do beat com o Alohan",
+   "area": "gameplay",
+   "estado": "na fila",
+   "ordem": 1,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "V1-narrativa",
+   "item": "V1",
+   "titulo": "As vozes: o piloto",
+   "area": "narrativa",
+   "estado": "na fila",
+   "ordem": 2,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "V1-áudio",
+   "item": "V1",
+   "titulo": "As vozes: o piloto",
+   "area": "áudio",
+   "estado": "na fila",
+   "ordem": 2,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "3c-performance",
+   "item": "3c",
+   "titulo": "A câmera",
+   "area": "performance",
+   "estado": "na fila",
+   "ordem": 3,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "4-arte-3d",
+   "item": "4",
+   "titulo": "As laterais da espiral e os monumentos",
+   "area": "arte-3d",
+   "estado": "na fila",
+   "ordem": 4,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "5-ui",
+   "item": "5",
+   "titulo": "O holo",
+   "area": "ui",
+   "estado": "na fila",
+   "ordem": 5,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "6-áudio",
+   "item": "6",
+   "titulo": "Sons e acabamento",
+   "area": "áudio",
+   "estado": "na fila",
+   "ordem": 6,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "6-arte-3d",
+   "item": "6",
+   "titulo": "Sons e acabamento",
+   "area": "arte-3d",
+   "estado": "na fila",
+   "ordem": 6,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "7-arte-3d",
+   "item": "7",
+   "titulo": "A Kombi por dentro",
+   "area": "arte-3d",
+   "estado": "na fila",
+   "ordem": 7,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "x8-narrativa",
+   "item": "",
+   "titulo": "A missão do beat: logo depois da Nectar ou na linha do Alohan (Sabe Ontem?)?",
+   "area": "narrativa",
+   "estado": "aguardando o dono",
+   "ordem": 8,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "x9-narrativa",
+   "item": "",
+   "titulo": "As vozes: as 10 decisões do plano",
+   "area": "narrativa",
+   "estado": "aguardando o dono",
+   "ordem": 9,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "x10-narrativa",
+   "item": "",
+   "titulo": "Um dia inteiro só pras falas e o roteiro: marcar o dia",
+   "area": "narrativa",
+   "estado": "aguardando o dono",
+   "ordem": 10,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "x11-diretor",
+   "item": "",
+   "titulo": "O disparador automático da empresa: ligar?",
+   "area": "diretor",
+   "estado": "aguardando o dono",
+   "ordem": 11,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "x12-level",
+   "item": "",
+   "titulo": "As perguntas antigas do plano da noite de 20/10",
+   "area": "level",
+   "estado": "aguardando o dono",
+   "ordem": 12,
+   "commit": null,
+   "prova": null
+  },
+  {
+   "id": "A5-gameplay",
+   "item": "A5",
+   "titulo": "O Guitar Driver 2: as notas",
+   "area": "gameplay",
+   "estado": "feito",
+   "ordem": 13,
+   "commit": "4217d9f",
+   "prova": "gameplay + áudio · as 9 faixas separadas no SSD; public/gd2 com voz, guitarra, baixo, teclado e bateria; bateria 84–100% e voz 100% em cima do ataque real; o maior buraco caiu de 3,3 s pra 1,7 s (RELATORIOS/2026-10-21-gameplay.md)."
+  },
+  {
+   "id": "A5-áudio",
+   "item": "A5",
+   "titulo": "O Guitar Driver 2: as notas",
+   "area": "áudio",
+   "estado": "feito",
+   "ordem": 13,
+   "commit": "4217d9f",
+   "prova": "gameplay + áudio · as 9 faixas separadas no SSD; public/gd2 com voz, guitarra, baixo, teclado e bateria; bateria 84–100% e voz 100% em cima do ataque real; o maior buraco caiu de 3,3 s pra 1,7 s (RELATORIOS/2026-10-21-gameplay.md)."
+  },
+  {
+   "id": "3d-diretor",
+   "item": "3d",
+   "titulo": "O dashboard vivo da empresa",
+   "area": "diretor",
+   "estado": "feito",
+   "ordem": 14,
+   "commit": null,
+   "prova": "diretor · o painel lê este BACKLOG (status.json) e mostra o que precisa do dono, cada área e todos os itens."
+  },
+  {
+   "id": "A2-gameplay",
+   "item": "A2",
+   "titulo": "O show é o Guitar Driver",
+   "area": "gameplay",
+   "estado": "feito",
+   "ordem": 15,
+   "commit": "4217d9f",
+   "prova": "gameplay · o fim da missão abre o Guitar Driver no palco do lugar, 22 s, com a plateia da popularidade (print com GPU real: a balada da Sexta, 30 pessoas, as 4 cores; o show fecha em 22 s)."
+  },
+  {
+   "id": "A1-ui",
+   "item": "A1",
+   "titulo": "O mapa que ensina",
+   "area": "ui",
+   "estado": "feito",
+   "ordem": 16,
+   "commit": "7ae7929",
+   "prova": "ui · a pista disponível pulsa; tocar na oferta da feira acende a pista dela e apaga o resto 50% (print com GPU real)."
+  },
+  {
+   "id": "A3-arte-3d",
+   "item": "A3",
+   "titulo": "As linhas do drift",
+   "area": "arte-3d",
+   "estado": "feito",
+   "ordem": 17,
+   "commit": "a31248b",
+   "prova": "arte-3d · a marca contínua no caminho de cada roda; de patins, os dois pés. A feira foi pra direita no computador (não cobre o holo)."
+  },
+  {
+   "id": "A4-gameplay",
+   "item": "A4",
+   "titulo": "Estudo: como o Guitar Hero fazia as notas",
+   "area": "gameplay",
+   "estado": "feito",
+   "ordem": 18,
+   "commit": "c519648",
+   "prova": "gameplay · docs/guitar-driver-estudo.md, com o método do Guitar Driver 2 e as fontes."
+  },
+  {
+   "id": "V0-narrativa",
+   "item": "V0",
+   "titulo": "O plano das vozes",
+   "area": "narrativa",
+   "estado": "feito",
+   "ordem": 19,
+   "commit": null,
+   "prova": "narrativa · as 14 fichas de voz, os três canais (áudio, ligação, rádio), a direção de arte e cinema, o pipeline no VoiceStudio (o modelo padrão dele é não comercial: trocar)."
+  },
+  {
+   "id": "x20-level",
+   "item": "",
+   "titulo": "As torres, os lançamentos, os 22 s",
+   "area": "level",
+   "estado": "feito",
+   "ordem": 20,
+   "commit": "cfd8f57",
+   "prova": "level · 102 ordens de jogo simuladas, nunca duas abertas na mesma torre; o FR3Q_ libera pelas lojas; o show em 22 s."
+  },
+  {
+   "id": "x21-ui",
+   "item": "",
+   "titulo": "O foco no mapa",
+   "area": "ui",
+   "estado": "feito",
+   "ordem": 21,
+   "commit": "4bd2c88",
+   "prova": "ui · com uma pista marcada, o resto apaga 50%."
+  },
+  {
+   "id": "3e-ui",
+   "item": "3e",
+   "titulo": "A marcação do mapa",
+   "area": "ui",
+   "estado": "feito",
+   "ordem": 22,
+   "commit": "bb545f6",
+   "prova": "ui · a rota brilha na cor de cada pista, sem o rosa."
+  },
+  {
+   "id": "3-gameplay",
+   "item": "3",
+   "titulo": "A física",
+   "area": "gameplay",
+   "estado": "feito",
+   "ordem": 23,
+   "commit": "a51410b",
+   "prova": "gameplay · gravidade 24 → 9,8 m/s²; o propulsor sai a 0,4 m/s (antes 3,4); o muro devolve a Kombi (41 → 43 m/s, antes 41 → 28)."
+  },
+  {
+   "id": "2b-áudio",
+   "item": "2b",
+   "titulo": "A música é o tema da missão",
+   "area": "áudio",
+   "estado": "feito",
+   "ordem": 24,
+   "commit": "798a1c7",
+   "prova": "áudio · sem missão, só os discos; na linha, a voz uma vez; depois, o instrumental."
+  },
+  {
+   "id": "2-áudio",
+   "item": "2",
+   "titulo": "Uma missão = uma música",
+   "area": "áudio",
+   "estado": "feito",
+   "ordem": 25,
+   "commit": "e2d813e",
+   "prova": "áudio · o destaque ouvir/comprar por 14 s no fim; desempenho igual."
+  },
+  {
+   "id": "1-ui",
+   "item": "1",
+   "titulo": "Missões como feira",
+   "area": "ui",
+   "estado": "feito",
+   "ordem": 26,
+   "commit": "badb52e",
+   "prova": "ui · pegar → checklist; 6 s parado → a Kombi vai sozinha; largar → volta pra feira."
+  },
+  {
+   "id": "x27-áudio",
+   "item": "",
+   "titulo": "As prévias do vol.1 com 22 s",
+   "area": "áudio",
+   "estado": "feito",
+   "ordem": 27,
+   "commit": "2ddb77f",
+   "prova": "áudio · as 9 com 22,000 s."
+  },
+  {
+   "id": "x28-diretor",
+   "item": "",
+   "titulo": "A empresa-ia instalada",
+   "area": "diretor",
+   "estado": "feito",
+   "ordem": 28,
+   "commit": "c86f00f",
+   "prova": "diretor · agentes, /triagem, BACKLOG, RELATORIOS, as regras no CLAUDE.md."
+  }
+ ]
+}
