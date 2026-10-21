@@ -1,15 +1,16 @@
 # BACKLOG
-(o diretor mantém; fonte das decisões: ~/repos/LU2CA/projetos/cidade-neon/mapa-disco-decisoes.md, "21/10 (2)", "21/10 (3)" e "21/10 (4)")
+(o diretor mantém; fonte das decisões: ~/repos/LU2CA/projetos/cidade-neon/mapa-disco-decisoes.md, "21/10 (2)" a "21/10 (5)")
 
 ## Em andamento
-- (nada: esperando o dono responder as 3 perguntas de "Aguardando o dono" pra começar o A1)
+- **A1. O mapa que acende e ensina** (a regra das torres já está feita: falta o visual)
 
 ## Fila (ordenada por impacto no jogador × esforço)
-A1. **O mapa que acende e ensina** · ui + level · a pista disponível acende (e pulsa), a feita fica colorida pra sempre, a trancada fica apagada; cada missão feita libera duas, de preferência em outras torres; tocar numa oferta da feira marca o caminho no mapa (com o foco de 50%). O mapa vai ficando colorido e a pessoa sabe por onde seguir. **Depende da pergunta 1.**
-A2. **O show é o Guitar Driver** · gameplay · sai a engine nova do Show.tsx; o fim da missão abre o Guitar Driver (app/drive) com o lugar da missão como palco; cada missão feita libera a música dela no Guitar Driver (desfaz o B13, "trancado até o fim"). **Pergunta 2.**
+A1. **O mapa que acende e ensina (o visual)** · ui + level · a pista disponível acende (e pulsa), a feita fica colorida pra sempre, a trancada apagada; tocar numa oferta da feira marca o caminho no mapa (com o foco de 50%). O mapa vai ficando colorido e a pessoa sabe por onde seguir.
+A2. **O show é o Guitar Driver** · gameplay · sai a engine nova do Show.tsx; o fim da missão abre o Guitar Driver (app/drive) com o lugar da missão como palco, 22 s; cada missão feita libera a música dela no Guitar Driver (desfaz o B13, "trancado até o fim"). A guitarra = o Guitar Driver de hoje.
 A3. **As linhas do drift** · arte-3d · mais contínuas e orgânicas; no patins, a linha são os dois pés (não as quatro rodas).
 A4. **Estudo: como o Guitar Hero fazia as notas** · gameplay + áudio · (só pesquisa, um documento) a autoria dos charts, as nuances (acordes, notas longas, HOPO, frases), a sincronia com o BPM, a redução por dificuldade, como não deixar vazio. Base pro A5.
-A5. **O Guitar Driver 2: as notas e a banda** · gameplay + áudio · refazer a captação das notas (hoje: public/gd/*.json, guitarra e baixo tirados das stems na grade do BPM); a banda com 4 instrumentos (piano, baixo, bateria, guitarra), a pessoa escolhe; uma diferença pequena na interface de cada um, mesmo funcionamento; nunca um vazio.
+A5. **O Guitar Driver 2: as notas e a banda** · gameplay + áudio · refazer a captação das notas (hoje: public/gd/*.json, guitarra e baixo tirados das stems na grade do BPM) por instrumento, incluindo a melodia da voz; a banda (voz, guitarra, baixo, teclado, bateria), a pessoa escolhe; nunca um vazio; sempre 22 s.
+A5b. **Um jogo pra cada instrumento** (o dono, 21/10 (5)) · gameplay · cada um tocado de um jeito: **cantar = um afinador** (equilibrar no meio senão a voz desafina, com o efeito na voz, seguindo a melodia); **guitarra = o Guitar Driver**; **baixo = uma corda virtual** que sobe e desce pra pegar faixas de notas coloridas; **teclado = uma trava-mente** binária de concentração (a desenhar); bateria (a desenhar). Depende do A5 (as notas de cada instrumento).
 A6. **A missão do beat com o Alohan** · narrativa + gameplay · ele ensina, você faz o beat no B4TIDA, baixa o áudio, e ele te chama pra um show no Guitar Driver. **Pergunta 3.**
 3d. **O dashboard vivo da empresa** · diretor · o status de cada área num painel; o dono quer ver antes de ligar o disparador.
 3c. **A câmera** · performance · ele gosta da de hoje: só otimizar se der pra aproveitar algo da Horizon (ver a mudança antiga staged no checkout principal antes).
@@ -19,14 +20,15 @@ A6. **A missão do beat com o Alohan** · narrativa + gameplay · ele ensina, vo
 7. **A Kombi por dentro** · arte-3d · toca-discos, MPC, rádio, painel antigo, objetos atrás, chão de grama, teto de madeira.
 
 ## Aguardando o dono (decisões de gosto/negócio)
-1. **Os 3 atos ou "cada missão libera duas de outras torres"?** Hoje: a Nectar libera Sexta (mesma torre) e DopaminA (outra); feitas as duas, abre a Ojalá; e assim por diante (os 3 atos de 20/10). A proposta da equipe, mantendo a Nectar no começo: cada missão feita acende duas de torres diferentes da dela — Nectar → DopaminA + Copo Americano; DopaminA → Sexta-Feira + CHUVA; Copo Americano → Swav + Ojalá; e as três últimas (Rollercoaster, Sabe Ontem? e a que sobrar) acendem conforme fecham as anteriores. O mapa fica colorido mais rápido e espalhado. (Torres: 1 = Nectar, Sexta, Ojalá · 2 = Rollercoaster, Swav, DopaminA · 3 = Copo Americano, CHUVA, Sabe Ontem?)
-2. **O "cantar" sai?** O show vira o Guitar Driver; o modo cantar (seguir a melodia) pode virar mais um instrumento da banda (a voz) no Guitar Driver 2, ou sair.
+~~1. Os 3 atos ou "cada missão libera duas de outras torres"?~~ (respondido 21/10 (5): sempre torres diferentes; feito cfd8f57)
+~~2. O "cantar" sai?~~ (respondido: vira o afinador, ver A5b)
 3. **A missão do beat é a do Alohan na linha dele (Sabe Ontem?, hoje no ato 3) ou ela vem logo depois da Nectar** (o Alohan aparece cedo como o professor)?
 - **Um dia inteiro só pras falas e o roteiro** (decidido 21/10): marcar o dia. Entram aí os pedidos da feira (RASCUNHO em app/linha/disco/missoes.ts, PEDIDO) e as falas RASCUNHO do plano-noite-20-10.md.
 - O disparador automático da empresa (plano-max): fica desligado até o dashboard existir e ele decidir a permissão.
 - As outras perguntas do plano-noite-20-10.md (o bar na pista da Nectar, a música do show do prólogo, vol.2/CIDADE NEON no untitled, "mais flores, mais água", as 4 peças).
 
 ## Feito (com prova)
+- **As torres, os lançamentos, os 22 s** (cfd8f57) · simulação das 102 ordens de jogo: todas chegam às 9, nunca duas abertas na mesma torre; GPU real: depois da Nectar a feira oferece Copo Americano + DopaminA; o FR3Q_ libera as lançadas e mostra a data das outras; o show tem 22 s.
 - **O foco no mapa** (4bd2c88) · com uma pista marcada, o resto apaga 50% (print com GPU real).
 - **3e. A marcação do mapa** (bb545f6) · print com GPU real: a rota brilha na cor de cada pista por onde passa, sem o rosa; o alfinete na cor da pista marcada.
 - **3. A física** (a51410b) · RELATORIOS/2026-10-21-gameplay.md: gravidade 24 → 9,8 m/s²; o propulsor sai do chão a 0,4 m/s (antes 3,4, o tranco) e acelera; o muro devolve a Kombi (41 → 43 m/s, antes 41 → 28).
