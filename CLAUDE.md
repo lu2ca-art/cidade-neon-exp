@@ -128,6 +128,7 @@ Pergunte a ele só decisões de NEGÓCIO e de GOSTO (ex.: "mais sombrio ou mais 
 3. Cada área trabalha nas pastas dela, com o modelo do cartão. Um especialista = uma tarefa por vez.
 4. Performance mede sempre com `scripts/desempenho` (headless, DPR 2, passo fixo), nunca com método próprio. QA roda os roteiros fixos do Playwright.
 5. Ao terminar: relatório curto em RELATORIOS/AAAA-MM-DD-area.md (o que fez, prova, pendente) e o cartão muda de seção no BACKLOG.md.
+6. O dashboard vivo da empresa (https://claude.ai/artifact/99GV8epcyppRGptjqtgdyV) lê o BACKLOG: depois de mexer nele, `bun scripts/empresa/status.mjs` (gera RELATORIOS/status.json), sobe o arquivo como asset no dashboard e atualiza o dataset `status` (url, updated) no banco dele.
 
 ### Regras de ouro
 - Nada é "feito" sem prova (número, print ou teste rodando).
