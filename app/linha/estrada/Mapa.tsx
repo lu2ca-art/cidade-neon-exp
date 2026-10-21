@@ -209,7 +209,8 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
       }
       g.globalAlpha = 1
       const rt = rota.current
-      if (rt) desenharRota(g, rt.segs, tela, 4.5)
+      // (LU2CA 21/10) com uma pista marcada, o resto do mapa apaga 50%: o foco na acesa
+      if (rt) { g.fillStyle = "rgba(8, 7, 16, 0.5)"; g.fillRect(0, 0, S, S); desenharRota(g, rt.segs, tela, 4.5) }
       for (const b of blips) {
         const w = noMundo(M, b)
         let [x, y] = tela(w.x, w.z)
@@ -272,7 +273,8 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
       }
       g.globalAlpha = 1
       const rt = rota.current
-      if (rt) desenharRota(g, rt.segs, tela, 4)
+      // (LU2CA 21/10) com uma pista marcada, o resto do mapa apaga 50%: o foco na acesa
+      if (rt) { g.fillStyle = "rgba(7, 6, 14, 0.5)"; g.fillRect(0, 0, W, H); desenharRota(g, rt.segs, tela, 4) }
       g.font = "700 11px ui-monospace, monospace"; g.textBaseline = "middle"
       for (const b of blips) {
         const w = noMundo(M, b); const [x, y] = tela(w.x, w.z); desenharBlip(g, x, y, b, 1.1)
