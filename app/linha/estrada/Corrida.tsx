@@ -229,9 +229,12 @@ interface Props {
   onComprar?: (id: string, preco: number) => void
   // (B18) o lugar do chão do subúrbio pra onde a história manda agora
   alvoChao?: LugarChao | null
-  // (21/10) a música da próxima missão (a pegada, senão a 1ª da feira): fora das
-  // pistas ela toca instrumental abafada até ele pisar na pista dela
-  musicaProxima?: string | null
+  // (LU2CA 21/10 (3)) a música é o TEMA da missão: na carreira (soTema), a
+  // missão pegada (temaMissao) toca o instrumental até ele achar a linha dela;
+  // na linha, a música toca UMA vez; depois, o instrumental de novo. Sem missão,
+  // nenhuma faixa de pista: só os discos
+  soTema?: boolean
+  temaMissao?: string | null
 }
 export type EventoHistoria = "casa" | "cidade" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
 
@@ -376,7 +379,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, musicaProxima = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -1891,7 +1894,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} musicaProxima={musicaProxima} onRobo={roboRef} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} onRobo={roboRef} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
         </Canvas>
       )}
 
@@ -2551,12 +2554,15 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, musicaProxima = null,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null,
 }: {
   alvoChao?: LugarChao | null
-  // (21/10) a música da próxima missão (a pegada, senão a 1ª da feira): fora das
-  // pistas ela toca instrumental abafada até ele pisar na pista dela
-  musicaProxima?: string | null
+  // (LU2CA 21/10 (3)) a música é o TEMA da missão: na carreira (soTema), a
+  // missão pegada (temaMissao) toca o instrumental até ele achar a linha dela;
+  // na linha, a música toca UMA vez; depois, o instrumental de novo. Sem missão,
+  // nenhuma faixa de pista: só os discos
+  soTema?: boolean
+  temaMissao?: string | null
   semPaineis?: boolean
   faseHistoria?: string | null
   onRobo?: React.RefObject<() => void>
@@ -2689,11 +2695,13 @@ function Cena({
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
   const pistaTocando = useRef(-1)
   const pistaEscura = useRef(false) // (os atos) a pista tocando agora está apagada?
-  // (21/10) a próxima música: o índice da pista dela e se ele já pisou nela
-  // (aí ela "abre" e segue tocando nas torres, como qualquer faixa)
-  const proximaK = useMemo(() => (musicaProxima ? faixasDisco.findIndex((f) => f?.id === musicaProxima) : -1), [musicaProxima, faixasDisco])
-  const proximaRef = useRef({ k: -1, ouviu: false })
-  useEffect(() => { proximaRef.current = { k: proximaK, ouviu: false } }, [proximaK])
+  // (21/10 (3)) o tema da missão: o índice da pista dela e em que ponto a
+  // música está (antes de achar a linha → tocando a voz uma vez → já tocou)
+  const temaK = useMemo(() => (temaMissao ? faixasDisco.findIndex((f) => f?.id === temaMissao) : -1), [temaMissao, faixasDisco])
+  const temaRef = useRef<{ k: number; voz: "antes" | "tocando" | "tocou"; chave: string }>({ k: -1, voz: "antes", chave: "" })
+  useEffect(() => { temaRef.current = { k: temaK, voz: "antes", chave: "" } }, [temaK])
+  const soTemaRef = useRef(soTema)
+  useEffect(() => { soTemaRef.current = soTema }, [soTema])
   useEffect(() => () => pistaSom.parar(), [])
   const centro = M.vias[M.circuito.linha]
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
@@ -4783,18 +4791,39 @@ function Cena({
     // da Kombi (a página liga) e o vento; a faixa da pista para
     const semPista = faseHistoria === "casa" || faseHistoria === "dunas"
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1 }
+    else if (faixasDisco.length && soTemaRef.current) {
+      // (LU2CA 21/10 (3)) A MÚSICA É O TEMA DA MISSÃO. Sem missão: nenhuma
+      // faixa de pista, só os discos. Com missão: o instrumental (a base das
+      // ruas) até ele achar a linha dela; entrou na linha, a música começa e
+      // toca UMA vez (venha de onde vier depois); acabou, volta o instrumental
+      const tm = temaRef.current
+      const fx = tm.k >= 0 ? faixasDisco[tm.k] : null
+      if (!fx) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1; tm.chave = "" }
+      else {
+        const inf = (M as MundoDisco).info[j.via]
+        const naLinha = !!inf && inf.pista === tm.k && !viaApagada?.[j.via]
+        if (tm.voz === "antes" && naLinha) tm.voz = "tocando"
+        if (tm.voz === "tocando" && pistaSom.acabou) tm.voz = "tocou"
+        const voz = tm.voz === "tocando"
+        const chave = `${tm.k}:${voz ? "voz" : "base"}`
+        if (chave !== tm.chave) {
+          tm.chave = chave
+          pistaTocando.current = tm.k
+          pistaEscura.current = !voz
+          if (fonteRef.current !== "radio") player.pausar()
+          discoPainel.parar()
+          pistaSom.entrar(voz ? faixaDaPista(fx) : fx.inst, 2, !voz)
+          definirTom(fx.tom)
+        }
+        pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio", !voz)
+      }
+    }
     else if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]
       const naPista = !!inf && inf.pista >= 0
-      // (LU2CA 21/10, "uma missão = uma música") fora das pistas, a música da
-      // próxima missão entra instrumental abafada; pisou na pista dela (acesa),
-      // ela toca com voz e daí segue como as outras
-      const px = proximaRef.current
-      if (naPista && inf.pista === px.k && !viaApagada?.[j.via]) px.ouviu = true
-      const chama = !naPista && px.k >= 0 && !px.ouviu
-      const k = naPista ? inf.pista : chama ? px.k : pistaTocando.current
+      const k = naPista ? inf.pista : pistaTocando.current
       // (os atos, 20/10) pista apagada: o instrumental, abafado
-      const escura = naPista ? !!viaApagada?.[j.via] : chama ? true : pistaEscura.current
+      const escura = naPista ? !!viaApagada?.[j.via] : pistaEscura.current
       if ((k !== pistaTocando.current || escura !== pistaEscura.current) && k >= 0) {
         pistaTocando.current = k
         pistaEscura.current = escura

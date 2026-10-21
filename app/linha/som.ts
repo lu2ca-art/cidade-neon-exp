@@ -830,9 +830,11 @@ class PistaSom {
     this.fadeIni = c ? c.currentTime : 0
     this.fadeDur = Math.max(0.01, seg)
   }
-  // a faixa da pista nova, do começo, subindo em fade (seg)
-  entrar(src: string, fadeSeg = 0) {
+  // a faixa da pista nova, do começo, subindo em fade (seg); loop = false toca
+  // uma vez só (o tema da missão, LU2CA 21/10: "ela toca uma vez só")
+  entrar(src: string, fadeSeg = 0, loop = true) {
     const el = this.garantir()
+    el.loop = loop
     if (this.src !== src) { el.src = src; this.src = src }
     el.currentTime = 0
     this.rate = 0.4 // começa girando (spin-up)
@@ -858,6 +860,8 @@ class PistaSom {
     if (!el || !this.src) return
     // um jogo aberto no holo (silenciar): a faixa fica parada onde estava
     if (this.segurando) { if (!el.paused) el.pause(); return }
+    // tocou uma vez e acabou (o tema): não recomeça sozinha
+    if (el.ended) return
     // (LU2CA 19/10) a música não depende da velocidade: no chão gira sempre; só o ar freia
     const gira = contato
     void vel
@@ -885,6 +889,8 @@ class PistaSom {
     if (sim) this.el?.pause()
   }
   get tocando() { return !!this.el && !this.el.paused }
+  // tocou até o fim (só acontece sem loop)
+  get acabou() { return !!this.el && this.el.ended }
   get nivelFade() { return this.fade() }
   // os graves da faixa (as luzes da cidade pulsam com isso)
   grave() {
@@ -898,5 +904,7 @@ class PistaSom {
 export const pistaSom = new PistaSom()
 // teste (fora da produção): o estado do toca-discos da pista
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-  ;(window as unknown as { __pistaSom?: () => unknown }).__pistaSom = () => ({ src: pistaSom.src, tocando: pistaSom.tocando, rate: pistaSom.el ? +pistaSom.el.playbackRate.toFixed(2) : null, fade: +pistaSom.nivelFade.toFixed(2), t: pistaSom.el ? +pistaSom.el.currentTime.toFixed(1) : null })
+  ;(window as unknown as { __pistaSom?: () => unknown }).__pistaSom = () => ({ src: pistaSom.src, tocando: pistaSom.tocando, rate: pistaSom.el ? +pistaSom.el.playbackRate.toFixed(2) : null, fade: +pistaSom.nivelFade.toFixed(2), t: pistaSom.el ? +pistaSom.el.currentTime.toFixed(1) : null, loop: pistaSom.el?.loop ?? null })
+  // teste: pula pro fim da faixa (o tema que toca uma vez)
+  ;(window as unknown as { __pistaSomFim?: () => void }).__pistaSomFim = () => { const el = pistaSom.el; if (el && el.duration) el.currentTime = Math.max(0, el.duration - 1.5) }
 }

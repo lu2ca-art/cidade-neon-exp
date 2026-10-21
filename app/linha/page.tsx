@@ -749,9 +749,10 @@ export default function LinhaPage() {
     setLargadas((l) => l.filter((x) => x !== pista))
     track("mission_step", { mission_id: `disco-${pista}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
   }
-  // a música da próxima missão (a pegada, senão a 1ª da feira): a Corrida toca
-  // ela instrumental abafada fora das pistas, até ele pisar na pista dela
-  const musicaProxima: PistaId | null = HIST && hist.fase === "carreira" ? missaoCarreira?.pista ?? feira[0]?.pista ?? null : null
+  // (LU2CA 21/10 (3)) na carreira, a música é o TEMA da missão pegada (sem
+  // missão, só os discos): a Corrida toca o instrumental até ele achar a linha
+  const soTema = HIST && hist.fase === "carreira"
+  const temaMissao: PistaId | null = soTema ? missaoCarreira?.pista ?? null : null
   const fecharOuvir = useCallback(() => setOuvirFim(null), [])
   const largarMissao = () => {
     const m = hist.missao as PistaId | undefined
@@ -1216,7 +1217,8 @@ export default function LinhaPage() {
             abertura={!D && !save.casa}
             historia={D ? hist : null}
             alvoChao={alvoChao}
-            musicaProxima={musicaProxima}
+            soTema={soTema}
+            temaMissao={temaMissao}
             onHistoria={onHistoria}
             // (B10) a oficina vende com água (a tecnologia)
             onComprar={(id, preco) => setSave((s) => ((s.agua ?? 0) < preco ? s : comHistoria({ ...s, agua: (s.agua ?? 0) - preco }, (h) => ({ ...h, mods: [...new Set([...(h.mods ?? []), id])] }))))}
