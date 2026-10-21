@@ -111,6 +111,11 @@ const VTURBO = 88
 const ACEL = 30
 const FREIO = 30
 const G = 24
+// (LU2CA 21/10 (2)) no mapa-disco, a gravidade da Terra: tudo cai a 9,8 m/s²
+// (a Kombi, o pulo, o propulsor solto, os carros arremessados)
+const G_TERRA = 9.8
+// o pulo no disco: os mesmos 2,5 m de altura, na gravidade da Terra (~1,4 s no ar)
+const V_PULO_TERRA = Math.sqrt(2 * G_TERRA * 2.5)
 
 export interface Stats {
   tempo: number
@@ -278,6 +283,9 @@ type Jogo = {
   // (disco, passo 3) o voo: solta da pista e voa livre (wx, wz, rumo); a energia
   // do propulsor (0–1, volta andando na pista); propulsou = este voo usou o propulsor
   voo?: boolean; energia?: number; propulsou?: boolean
+  // (21/10) há quanto tempo o propulsor está empurrando (o empuxo cresce em ~0,4 s);
+  // quique = a última batida de pinball (não quica duas vezes no mesmo encosto)
+  tProp?: number; quique?: number
   // o modo arcade (17/10, LU2CA: "arcade, divertido, psicodélico, fidget"):
   // o combo de anéis, a onda psicodélica (0–1) e o giro da Kombi no ar
   combo?: number; comboT?: number; psi?: number; giroAr?: number
@@ -314,6 +322,25 @@ type Jogo = {
   segAnt?: number
   segPassou?: number
   naSeg?: boolean
+}
+
+// (LU2CA 21/10 (2), o PINBALL) a Kombi no mundo livre (voo ou direção livre)
+// bateu num prédio: o rumo espelha na parede (como a bola no pinball) e ela
+// segue, perdendo pouco; um baque por batida (não treme encostada)
+function quicar(j: Jogo, emp: [number, number], kombi: THREE.Object3D | null) {
+  const L = Math.hypot(emp[0], emp[1])
+  if (!L || j.rumo === undefined) return
+  const nx = emp[0] / L, nz = emp[1] / L
+  const dx = Math.sin(j.rumo), dz = Math.cos(j.rumo), dn = dx * nx + dz * nz
+  if (dn >= 0) return // já está saindo da parede
+  const rx = dx - 2 * dn * nx, rz = dz - 2 * dn * nz
+  j.rumo = Math.atan2(rx, rz)
+  if (j.tempo - (j.quique ?? -9) > 0.35) {
+    j.quique = j.tempo
+    j.v *= 1 - 0.12 * Math.abs(dn)
+    j.shake = Math.max(j.shake, 0.35 * Math.abs(dn) + 0.1)
+    if (kombi) vib(16)
+  }
 }
 
 // ponto de busca de uma missão no mapa (a coluna de luz com a coisa)
@@ -3879,7 +3906,9 @@ function Cena({
       const sx = Math.sin(j.rumo!), cz = Math.cos(j.rumo!)
       let nx = j.wx! + sx * j.v * dt, nz = j.wz! + cz * j.v * dt
       const empurra = bater(nx, nz, 1.5)
-      if (empurra) {
+      // (disco) o pinball: o prédio devolve a Kombi (nunca fica raspando nele)
+      if (empurra && "disco" in M) { nx += empurra[0]; nz += empurra[1]; quicar(j, empurra, carro.current) }
+      else if (empurra) {
         nx += empurra[0]; nz += empurra[1]
         j.dRaspa += dt
         if (j.dPts > 0 && j.dRaspa > 0.35) { j.dPts = 0; j.dMult = 1; j.dMsg = "bateu · perdeu o drift"; j.dMsgT = j.tempo + 1.4 }
@@ -3925,6 +3954,22 @@ function Cena({
     } else if ("disco" in M && fora > 1.2) {
       j.x += (j.x > limD ? -1 : 1) * Math.min(fora, Math.max(1, fora) * 6 * dt)
       j.vx *= 0.5
+    } else if ("disco" in M && (j.x < limE || j.x > limD)) {
+      // (LU2CA 21/10 (2), o PINBALL: "tudo é de material sintético inquebrável,
+      // há um bounce [...] você nunca bate e fica travado") o guard rail devolve
+      // a Kombi pro meio, quase sem perder velocidade; segurando o volante contra
+      // ele, ela quica de novo (um baque por encosto)
+      const lado = j.x > limD ? 1 : -1
+      j.x = lado > 0 ? limD : limE
+      const forte = j.tempo - (j.quique ?? -9) > 0.35
+      j.vx = -lado * Math.max(Math.abs(j.vx) * 0.75, 3.5 + Math.abs(j.v) * 0.04)
+      if (forte) {
+        j.v *= 0.97
+        j.quique = j.tempo
+        j.shake = Math.max(j.shake, 0.22)
+        vib(14)
+        soltarFaiscas(faiscas, carro.current, lado)
+      }
     } else if (j.x < limE || j.x > limD) {
       const lado = j.x > limD ? 1 : -1
       j.x = lado > 0 ? limD : limE
@@ -4107,8 +4152,16 @@ function Cena({
       const pat = !!combRef.current.patins
       const quer = inp.propulsor && !cine && !j.desligada
       if (quer && j.energia > 0) {
-        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, pat ? 7 : 3); motor?.whoosh(); vib(18) }
-        j.vy = Math.min(pat ? 13 : 16, j.vy + (pat ? 48 : 34) * dt)
+        // (LU2CA 21/10 (2): "os objetos saem do chão com velocidade acelerando,
+        // não num tranco") sai do chão na velocidade do próprio chão (subindo a
+        // rampa, sobe junto) e o empuxo cresce em ~0,4 s: começa equilibrando o
+        // peso e vai até a força cheia (a mesma subida de antes, sobre 9,8 m/s²)
+        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, Math.max(0, a.ty * j.v) + 0.4); j.tProp = 0; motor?.whoosh(); vib(18) }
+        j.tProp = (j.tProp ?? 0) + dt
+        const e = Math.min(1, j.tProp / 0.4), suave = e * e * (3 - 2 * e)
+        const teto = pat ? 13 : 16, cheio = G_TERRA + (pat ? 30 : 16)
+        const empuxo = G_TERRA + 0.8 + (cheio - G_TERRA - 0.8) * suave * (1 - Math.max(0, j.vy) / (teto * 1.3))
+        j.vy = Math.min(teto, j.vy + empuxo * dt)
         j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt * (inp.mods?.includes("tanque") ? 0.65 : 1))
         j.propulsou = true
       } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + (pat ? 0.24 : 0.1) * dt) // a energia solar volta na pista
@@ -4130,7 +4183,7 @@ function Cena({
         if (rr > 3900) { const k = (rr - 3900) / rr; j.wx -= j.wx * k; j.wz -= j.wz * k; j.v *= 1 - 0.8 * dt }
         // os prédios: abaixo do topo, bate e escorrega
         const emp = bater(j.wx, j.wz, 1.6, j.y)
-        if (emp) { j.wx += emp[0]; j.wz += emp[1]; if (Math.abs(j.v) > 8) { j.v *= 1 - 1.2 * dt; j.shake = Math.max(j.shake, 0.3) } }
+        if (emp) { j.wx += emp[0]; j.wz += emp[1]; quicar(j, emp, carro.current) }
         pouso = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo))
         // (LU2CA 20/10: "a exploração por propulsão bem livre, sem amarras aos
         // percursos uma vez no ar; onde ele quiser pousar, ele pode") sem ímã:
@@ -4152,7 +4205,7 @@ function Cena({
       inp.pulo = false
       if (!cine && !(aberturaRef.current.ativa && !("disco" in M)) && !j.chegando && j.tPulo <= 0 && !j.desligada) { // (no disco a abertura velha não trava o pulo)
         j.ar = true; j.tAr = 0; j.pulou = true
-        j.vy = Math.max(0, coyote ? j.vy : 0) + 14.3
+        j.vy = Math.max(0, coyote ? j.vy : 0) + (MD ? V_PULO_TERRA : 14.3)
         j.y = Math.max(j.y, yPista) + 0.05
         j.shake = Math.max(j.shake, 0.18)
         motor?.whoosh(); vib(14)
@@ -4193,7 +4246,7 @@ function Cena({
       j.flash = 0.3; motor?.whoosh(); vib([14, 10, 30])
     }
     if (j.ar) {
-      j.vy -= (j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
+      j.vy -= (MD ? G_TERRA : j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
       // (disco) sem o propulsor, a Kombi plana (desce até 10 m/s): dá tempo de mirar numa pista
       if (j.voo && !inp.propulsor) j.vy = Math.max(j.vy, -10)
       const yAntes = j.y
@@ -4551,7 +4604,7 @@ function Cena({
         c.caido -= dt
         c.x += c.vx * dt
         c.vx *= Math.exp(-dt * 1.6)
-        c.vy -= 22 * dt
+        c.vy -= ("disco" in M ? G_TERRA : 22) * dt
         c.y = Math.max(0, c.y + c.vy * dt)
         if (c.y === 0) { c.vy = Math.abs(c.vy) * 0.25; c.vgiro *= 0.6 }
         c.giro += c.vgiro * dt
@@ -4568,7 +4621,8 @@ function Cena({
         c.vx = lado * (9 + 8 * forca)
         c.vy = 3 + 4 * forca
         c.vgiro = (Math.random() < 0.5 ? -1 : 1) * (3 + 4 * forca)
-        j.v *= 0.82
+        // (disco, o pinball) a Kombi também quica pro outro lado, sem frear muito
+        if ("disco" in M) { j.vx = -lado * (4 + 4 * forca); j.v *= 0.94 } else j.v *= 0.82
         j.shake = 1.1
         j.flash = 0.3
         motor?.baque()
