@@ -3483,6 +3483,12 @@ function Cena({
   }, [])
   const texFumaca = useMemo(() => texBrilho(), [])
   const RODAS = useMemo(() => [[-0.82, -1.35], [0.82, -1.35], [-0.82, 1.35], [0.82, 1.35]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
+  // (LU2CA 21/10: "no patins a linha do drift tem que ser os dois pés, não as quatro rodas")
+  const PES = useMemo(() => [[-0.16, 0.06], [0.16, -0.06]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
+  // (LU2CA 21/10: "as linhas do drift mais contínuas, orgânicas") onde cada roda
+  // (ou pé) deixou a última marca: a próxima liga daqui até onde ela está agora,
+  // seguindo o caminho de verdade da roda (sem tracejado, sem quina na curva)
+  const rastroPneu = useMemo(() => ({ ult: [0, 1, 2, 3].map(() => new THREE.Vector3()), ativo: false, pat: false }), [])
 
   const faiscas = useMemo(() => {
     const n = 90
@@ -4745,29 +4751,42 @@ function Cena({
     amostra(V, j.u, a)
     const grave = faixasDisco.length ? pistaSom.grave() : player.grave()
 
-    // as 4 rodas derrapando: marca no chão e fumaça em cada uma
+    // as rodas derrapando (de patins, os dois pés): a marca contínua no chão e a fumaça
+    const patM = !!combRef.current.patins
     if (j.drift && Math.abs(j.deriva) > 0.15 && !j.ar) {
       car.updateMatrixWorld()
-      // a marca segue pra onde a Kombi ANDA (sem a deriva), não pra onde aponta
-      tmp.qMarca.copy(car.quaternion).multiply(tmp.qDeriva.setFromAxisAngle(tmp.y0, j.deriva)).multiply(tmp.qDeitar)
       const forca = Math.min(1, Math.abs(j.deriva) / 0.6)
-      for (const r of RODAS) {
+      const rodas = patM ? PES : RODAS
+      const rp = rastroPneu
+      if (rp.pat !== patM) { rp.ativo = false; rp.pat = patM }
+      tmp.qMarca.copy(car.quaternion).invert() // pra levar o caminho da roda pro espaço da Kombi
+      rodas.forEach((r, k) => {
         tmp.roda.copy(r).applyMatrix4(car.matrixWorld)
-        tmp.d.position.copy(tmp.roda)
-        tmp.d.quaternion.copy(tmp.qMarca)
-        tmp.d.scale.set(1, Math.max(0.6, Math.abs(j.v) * dt / 0.95 * 1.15), 1)
+        const ult = rp.ult[k]
+        const d = rp.ativo ? tmp.roda.distanceTo(ult) : 0
+        // começou agora (ou teleportou): só guarda o ponto
+        if (!rp.ativo || d > 4) { ult.copy(tmp.roda); return }
+        if (d < 0.06) return
+        // o pedaço vai do último ponto até aqui, deitado no plano da Kombi (pega a
+        // inclinação da pista) e virado pro caminho da roda
+        tmp.p.subVectors(tmp.roda, ult).applyQuaternion(tmp.qMarca)
+        tmp.d.position.addVectors(tmp.roda, ult).multiplyScalar(0.5)
+        tmp.d.quaternion.copy(car.quaternion).multiply(tmp.qDeriva.setFromAxisAngle(tmp.y0, Math.atan2(-tmp.p.x, -tmp.p.z))).multiply(tmp.qDeitar)
+        tmp.d.scale.set(patM ? 0.38 : 1, (d + 0.1) / 0.95, 1)
         tmp.d.updateMatrix()
         marcas.m.setMatrixAt(marcas.prox++ % marcas.n, tmp.d.matrix)
-        if (FUMACA && Math.random() < 0.45 * forca) {
+        ult.copy(tmp.roda)
+        if (FUMACA && !patM && Math.random() < 0.45 * forca) {
           const i = fumaca.prox++ % fumaca.n
           fumaca.pos.set([tmp.roda.x, tmp.roda.y + 0.25, tmp.roda.z], i * 3)
           fumaca.vel.set([(Math.random() - 0.5) * 2, 0.8 + Math.random() * 1.4, (Math.random() - 0.5) * 2], i * 3)
           fumaca.vida[i] = 0.6 + Math.random() * 0.5
         }
-      }
+      })
+      rp.ativo = true
       tmp.d.scale.set(1, 1, 1)
       marcas.m.instanceMatrix.needsUpdate = true
-    }
+    } else rastroPneu.ativo = false
     for (let i = 0; i < fumaca.n; i++) {
       if (fumaca.vida[i] <= 0) { fumaca.pos[i * 3 + 1] = -999; continue }
       fumaca.vida[i] -= dt

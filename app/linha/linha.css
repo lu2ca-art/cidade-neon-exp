@@ -2421,6 +2421,9 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-show-botoes button { width: 66px !important; height: 66px; padding: 0 !important; border-radius: 50%; border: 3px solid var(--c) !important; background: color-mix(in srgb, var(--c) 18%, rgba(0, 0, 0, 0.6)) !important; color: #fff !important; cursor: pointer; }
 .l-show-botoes button:active { background: var(--c) !important; }
 .l-show-botoes kbd { font: 700 13px var(--mono); opacity: 0.8; }
+.l-show-toque { position: absolute; inset: 0; touch-action: none; }
+.l-show-carrega { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 13px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-show.is-gd .l-show-topo { top: calc(54px + env(safe-area-inset-top)); }
 .l-show-fim { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 10px; padding: 24px 28px; border-radius: 20px; background: rgba(8, 6, 16, 0.88); border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent); text-align: center; }
 .l-show-fim b { font: 800 24px var(--mono); color: var(--cor); }
 .l-show-fim span { font: 13px var(--mono); color: var(--mut); }
@@ -2597,3 +2600,7 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-ouvir-fim p { margin: 0; display: flex; gap: 8px; align-items: center; font: 12px var(--mono); color: rgba(255, 255, 255, 0.75); }
 .l-ouvir-fim-x { position: absolute; top: 6px; right: 8px; background: transparent !important; border: 0 !important; color: #fff !important; font-size: 20px; line-height: 1; padding: 2px 4px; }
 .l-ouvir-fim-disco { align-self: flex-start; margin-top: 2px; padding: 8px 12px; border-radius: 10px; background: var(--cor); color: #06060c; font: 800 12px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; }
+/* (21/10) no computador, a coluna da esquerda é dos widgets do holo: a feira vai pra direita, embaixo do mapa e do clima */
+@media (min-width: 760px) {
+  .l-feira { left: auto; right: 12px; top: calc(250px + env(safe-area-inset-top)); width: 270px; max-height: max(150px, calc(100vh - 470px)); }
+}
