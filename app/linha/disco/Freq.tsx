@@ -3,8 +3,8 @@
 // O FR3Q_ COM A CARA DO UNTITLED (LU2CA 20/10, o print da página dele): fundo
 // grafite, a grade de capas quadradas arredondadas com o play quadrado escuro
 // no canto, o título e "LU2CA" embaixo, e a barra de player flutuante.
-// (LU2CA 21/10) só as PRÉVIAS de 22 s das faixas liberadas no jogo (as que a
-// missão já foi feita); o resto aparece trancado. Nada de faixa inteira. Os
+// (LU2CA 21/10) só as PRÉVIAS de 22 s; (21/10 (5)) liberadas as faixas que já
+// estão nas lojas, as outras no dia do lançamento (com a data). Nada de faixa inteira. Os
 // outros álbuns pedem uma senha. Os ícones são desenhados (sem emoji).
 // As prévias (public/audio/previews) são cortes de 22 s: das faixas lançadas,
 // com voz (os cortes do próprio LU2CA, a pasta "22seg" dele); das que não
@@ -51,8 +51,14 @@ function Ico({ id, s = 18 }: { id: IcoId; s?: number }) {
   }
 }
 
-export function Freq({ save }: { save: Pick<Save, "objetos"> }) {
-  const liberada = (id: string) => save.objetos.includes(id as Save["objetos"][number])
+// quando a faixa sai (0 = já está nas lojas) e se já saiu
+const lancaEm = (id: string) => { const l = PISTAS.find((p) => p.id === id)?.lancamento; return l ? new Date(l).getTime() : 0 }
+const jaSaiu = (id: string) => lancaEm(id) <= Date.now()
+
+export function Freq(_props: { save: Pick<Save, "objetos"> }) {
+  // (LU2CA 21/10 (5)) o app libera as faixas que já estão nas lojas; as outras,
+  // no dia do lançamento (as missões seguem iguais, independente disso)
+  const liberada = jaSaiu
   const [aberto, setAberto] = useState<string | null>("vol1") // o projeto com a lista aberta
   const [tocando, setTocando] = useState<string | null>(null) // o id da faixa
   const [play, setPlay] = useState(false)
@@ -128,7 +134,7 @@ export function Freq({ save }: { save: Pick<Save, "objetos"> }) {
               return (
                 <li key={f.id}>
                   <button type="button" disabled={!ok} className={tocando === f.id ? "is-aqui" : ""} onClick={() => setTocando(f.id)}>
-                    <em>{i + 1}</em><b>{f.titulo}</b><small>{ok ? "prévia · 0:22" : "trancada"}</small>{ok ? <Ico id={tocando === f.id && play ? "pausa" : "play"} s={14} /> : <Ico id="cadeado" s={14} />}
+                    <em>{i + 1}</em><b>{f.titulo}</b><small>{ok ? "prévia · 0:22" : `sai ${new Date(lancaEm(f.id)).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}`}</small>{ok ? <Ico id={tocando === f.id && play ? "pausa" : "play"} s={14} /> : <Ico id="cadeado" s={14} />}
                   </button>
                 </li>
               )

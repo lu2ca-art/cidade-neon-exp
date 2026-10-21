@@ -20,7 +20,7 @@ import { PISTAS, type PistaId } from "../estrada/pistas"
 export type ResultadoShow = { modo: "tocar" | "cantar"; nota: number; acertos: number; total: number; publico: number }
 type NotaShow = { t: number; lane: number; ok: boolean; errou: boolean }
 
-const DUR = 42 // s de show (a versão curta)
+const DUR = 22 // s de show (LU2CA 21/10 (5): "é sempre 22 segundos, em qualquer modalidade")
 const INICIO = 28 // s da faixa onde o show começa (depois da introdução)
 const JANELA = 0.14
 const CORES = ["#2bd14f", "#ff2b3a", "#ffd21a", "#2a8cff"]

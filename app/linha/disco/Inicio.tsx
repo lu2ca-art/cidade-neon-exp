@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react"
 import type { Save } from "../estado"
 import { recomecar } from "../estado"
-import { ATOS, luzDasPistas, pistasFeitas } from "../estrada/atos"
+import { TORRES, luzDasPistas, pistasFeitas } from "../estrada/atos"
 import { NOME_NIVEL, QUALIDADE, refazerQualidade } from "../estrada/qualidade"
 import { COR_PISTA, MONUMENTO, historiaDe } from "./historia"
 
@@ -47,12 +47,12 @@ export function InicioDisco({ save, onEntrar }: { save: Save; onEntrar: () => vo
               <span className="is-pop"><i aria-hidden="true" style={{ ["--p" as string]: `${pop}%` }} /><b>{pop}</b><small>popularidade</small></span>
             </div>
             <ol className="l-inicio-atos">
-              {ATOS.map((a, k) => {
-                const linhas = [a.fixo, ...a.variaveis]
+              {/* (21/10 (5)) o progresso por torre: as missões acendem espalhadas */}
+              {TORRES.map((linhas, k) => {
                 const feitas = linhas.filter((n) => luz[n] === "feita").length
                 return (
-                  <li key={a.fixo} className={feitas === 3 ? "is-completo" : linhas.some((n) => luz[n] !== "apagada") ? "is-aberto" : ""}>
-                    <small>ato {k + 1} · {MONUMENTO[k]}</small>
+                  <li key={linhas[0]} className={feitas === 3 ? "is-completo" : linhas.some((n) => luz[n] !== "apagada") ? "is-aberto" : ""}>
+                    <small>torre {k + 1} · {MONUMENTO[k]}</small>
                     <span className="l-inicio-linhas">
                       {linhas.map((n) => <i key={n} className={`is-${luz[n] ?? "apagada"}`} style={{ ["--c" as string]: COR_PISTA[n] }} title={n} />)}
                     </span>
