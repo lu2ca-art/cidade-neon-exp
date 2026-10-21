@@ -42,6 +42,18 @@ function noMundo(M: Mundo, p: Ponto) {
   return { x: v.px[i], z: v.pz[i], tx: v.tx[i], tz: v.tz[i] }
 }
 
+// (21/10, o mapa que ensina) a pista disponível pulsa (brilho e espessura no
+// ritmo de ~1 s); a pista em foco brilha forte; a feita fica acesa e parada
+function pulso(g: CanvasRenderingContext2D, v: { cor: string; aberta?: boolean; foco?: boolean | null; saida?: boolean }, agora: number, k: number) {
+  if (v.saida) return
+  if (v.foco) { g.globalAlpha = 1; g.lineWidth += 2 * k; g.shadowColor = v.cor; g.shadowBlur = 12 * k; return }
+  if (!v.aberta) return
+  const s = 0.5 + 0.5 * Math.sin((agora / 1000) * Math.PI * 2)
+  g.globalAlpha = Math.max(g.globalAlpha, 0.75 + 0.25 * s)
+  g.lineWidth += (1 + 1.5 * s) * k
+  g.shadowColor = v.cor; g.shadowBlur = (4 + 10 * s) * k
+}
+
 // a cor de uma via (no disco, cada pista tem a da linha dela)
 const corDaVia = (M: Mundo, via: number) => ("disco" in M ? (M.vias[via] as { cor?: string }).cor : undefined) ?? ROTA_COR
 // a rota como trechos de pontos do mundo, cada um na cor da pista por onde passa
@@ -109,10 +121,14 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar }: {
+export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar }: {
   M: Mundo
   // (disco, os atos) as vias das pistas ainda apagadas: no mapa, um fio escuro
   apagada?: boolean[] | null
+  // (21/10, o mapa que ensina) as vias das pistas disponíveis agora (pulsam) e as
+  // da pista em foco (tocou na oferta da feira: ela brilha, o resto apaga 50%)
+  aberta?: boolean[] | null
+  foco?: boolean[] | null
   // a Kombi: via, u (m), x (lateral) e v (velocidade) — o jogo.current da Corrida
   pose: React.RefObject<PoseKombi>
   missao: LugarId | null
@@ -126,7 +142,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
   const grande = useRef<HTMLCanvasElement>(null)
   const [aberto, setAberto] = useState(false)
   const [distancia, setDistancia] = useState("")
-  const vias = useMemo(() => amostrarVias(M).map((v, i) => (apagada?.[i] ? { ...v, cor: "#2e2c40" } : v)), [M, apagada])
+  const vias = useMemo(() => amostrarVias(M).map((v, i) => ({ ...v, ...(apagada?.[i] ? { cor: "#2e2c40" } : {}), aberta: !!aberta?.[i], foco: foco ? !!foco[i] : null })), [M, apagada, aberta, foco])
   // o mapa novo: a carta pintada (o v5) embaixo, no lugar das linhas soltas
   const [carta, setCarta] = useState<HTMLCanvasElement | null>(null)
   useEffect(() => {
@@ -201,11 +217,13 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
         g.restore()
       }
       if (!carta) for (const v of vias) {
-        g.strokeStyle = v.saida ? "rgba(255,255,255,0.28)" : v.cor; g.globalAlpha = v.saida ? 1 : 0.55
+        g.strokeStyle = v.saida ? "rgba(255,255,255,0.28)" : v.cor; g.globalAlpha = (v.saida ? 1 : 0.55) * (v.foco === false ? 0.5 : 1)
         g.lineWidth = v.saida ? 2.5 : 3.5
+        pulso(g, v, agora, 1)
         g.beginPath()
         for (let i = 0; i < v.pts.length; i += 2) { const [x, y] = tela(v.pts[i], v.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
         g.stroke()
+        g.shadowBlur = 0
       }
       g.globalAlpha = 1
       const rt = rota.current
@@ -265,11 +283,13 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
         g.restore()
       }
       if (!carta) for (const v of vias) {
-        g.strokeStyle = v.saida ? "rgba(255,255,255,0.3)" : v.cor; g.globalAlpha = v.saida ? 1 : 0.7
+        g.strokeStyle = v.saida ? "rgba(255,255,255,0.3)" : v.cor; g.globalAlpha = (v.saida ? 1 : 0.7) * (v.foco === false ? 0.5 : 1)
         g.lineWidth = v.saida ? 2 : 3.5
+        pulso(g, v, performance.now(), 1.4)
         g.beginPath()
         for (let i = 0; i < v.pts.length; i += 2) { const [x, y] = tela(v.pts[i], v.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
         g.stroke()
+        g.shadowBlur = 0
       }
       g.globalAlpha = 1
       const rt = rota.current

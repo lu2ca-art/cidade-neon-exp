@@ -240,6 +240,8 @@ interface Props {
   // nenhuma faixa de pista: só os discos
   soTema?: boolean
   temaMissao?: string | null
+  // (21/10, o mapa que ensina) a pista em foco no mapa (tocou na oferta da feira)
+  pistaFoco?: string | null
 }
 export type EventoHistoria = "casa" | "cidade" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
 
@@ -406,7 +408,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -900,6 +902,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     if (!discoM || !luzPistas) return null
     return discoM.vias.map((_, vi) => { const f = discoM.info[vi]; return !!f && f.pista >= 0 && luzPistas[discoM.pistas[f.pista].nome] === "apagada" })
   }, [discoM, luzPistas])
+  // (21/10, o mapa que ensina) as vias das pistas disponíveis (pulsam no mapa) e as da pista em foco
+  const viaAberta = useMemo(() => {
+    if (!discoM || !luzPistas) return null
+    return discoM.vias.map((_, vi) => { const f = discoM.info[vi]; return !!f && f.pista >= 0 && luzPistas[discoM.pistas[f.pista].nome] === "aberta" })
+  }, [discoM, luzPistas])
+  const viaFoco = useMemo(() => {
+    const nome = pistaFoco ? PISTAS.find((p) => p.id === pistaFoco)?.faixa : null
+    if (!discoM || !nome) return null
+    return discoM.vias.map((_, vi) => { const f = discoM.info[vi]; return !!f && f.pista >= 0 && discoM.pistas[f.pista].nome === nome })
+  }, [discoM, pistaFoco])
   // (disco) na torre (as espirais): o óculos não precisa do painel de missão
   const naCentral = !!discoM && (naTorre(discoM.info[viaAtual]) || naTorreDaPonta(discoM.info[viaAtual]))
   // a próxima saída da espiral (no fim do trecho onde a Kombi está)
@@ -2195,7 +2207,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {parque !== "andando" && (
-        <Mapa M={M} apagada={viaApagada} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} />
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} />
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}

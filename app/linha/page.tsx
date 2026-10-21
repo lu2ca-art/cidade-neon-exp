@@ -53,7 +53,7 @@ import { Freq } from "./disco/Freq"
 import { Show, type ResultadoShow } from "./disco/Show"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
-import { missaoAgora, ofertasDaFeira, type MissaoAgora, type Oferta } from "./disco/missoes"
+import { PALCO, missaoAgora, ofertasDaFeira, type MissaoAgora, type Oferta } from "./disco/missoes"
 import { COR_PISTA } from "./disco/historia"
 import { PingPong } from "./disco/PingPong"
 import { guardarCapsula, guitarLivre } from "./disco/capsula"
@@ -120,11 +120,12 @@ function feiraDoSave(s: Save): Oferta[] {
   return ofertasDaFeira(acesasDoSave(s).filter((p) => p !== h.missao), h.pecas ?? [])
 }
 // (B8/B19) o show de cada missão: o do bar e o da oficina (a história) e o de cada linha (no palco dela)
-function confShow(id: string): { faixa: PistaId; lugar: string; cor: string } | null {
-  if (id === "bar") return { faixa: "copo", lugar: "no bar", cor: "#ff6a35" }
-  if (id === "oficina") return { faixa: "nectar", lugar: "na oficina", cor: "#e0ff4f" }
+// (21/10 (4)) o show é o Guitar Driver no lugar da missão: o palco é o id do lugar
+function confShow(id: string): { faixa: PistaId; lugar: string; cor: string; palco: string } | null {
+  if (id === "bar") return { faixa: "copo", lugar: "no bar", cor: "#ff6a35", palco: "bar" }
+  if (id === "oficina") return { faixa: "nectar", lugar: "na oficina", cor: "#e0ff4f", palco: "oficina" }
   const p = PISTAS.find((x) => x.id === id)
-  return p ? { faixa: p.id, lugar: `no palco da ${p.faixa}`, cor: COR_PISTA[p.faixa] ?? "#ffc857" } : null
+  return p ? { faixa: p.id, lugar: `no palco da ${p.faixa}`, cor: COR_PISTA[p.faixa] ?? "#ffc857", palco: PALCO[p.id] } : null
 }
 
 export default function LinhaPage() {
@@ -741,6 +742,9 @@ export default function LinhaPage() {
   // oferta só tira ela da frente até a próxima missão acabar
   const feira = useMemo(() => feiraDoSave(save), [save])
   const [largadas, setLargadas] = useState<PistaId[]>([])
+  // (21/10, o mapa que ensina) tocou no cartão de uma oferta: a pista dela brilha no mapa (some em 6 s)
+  const [focoFeira, setFocoFeira] = useState<PistaId | null>(null)
+  useEffect(() => { if (!focoFeira) return; const t = setTimeout(() => setFocoFeira(null), 6000); return () => clearTimeout(t) }, [focoFeira])
   const nFeitas = save.objetos.length
   useEffect(() => { setLargadas([]) }, [nFeitas])
   const feiraVisivel = feira.filter((o) => !largadas.includes(o.pista))
@@ -1218,6 +1222,7 @@ export default function LinhaPage() {
             historia={D ? hist : null}
             alvoChao={alvoChao}
             soTema={soTema}
+            pistaFoco={focoFeira}
             temaMissao={temaMissao}
             onHistoria={onHistoria}
             // (B10) a oficina vende com água (a tecnologia)
@@ -1339,7 +1344,7 @@ export default function LinhaPage() {
         {HIST && hist.fase === "carreira" && !missaoCarreira && feiraVisivel.length > 0 && !ouvirFim && !painelMissoes && tela.t === "corrida" && !emSala && !cinema && !cena && !showAgora && (
           <aside className="l-feira" aria-label="A cidade precisa">
             <small>a cidade precisa</small>
-            <FeiraOfertas ofertas={feiraVisivel} onPegar={pegarMissao} onLargar={(p) => setLargadas((l) => [...l, p])} />
+            <FeiraOfertas ofertas={feiraVisivel} onPegar={(p) => { setFocoFeira(null); pegarMissao(p) }} onLargar={(p) => { setFocoFeira(null); setLargadas((l) => [...l, p]) }} onFoco={setFocoFeira} foco={focoFeira} />
           </aside>
         )}
         {painelMissoes && !HIST && !ligacao && tela.t === "corrida" && !emSala && (
@@ -1407,7 +1412,7 @@ export default function LinhaPage() {
         )}
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
-        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} cor={showConf!.cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
+        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()
@@ -1552,13 +1557,13 @@ export default function LinhaPage() {
 
 // (21/10) as ofertas da feira: quem pede, o que a cidade precisa, o primeiro
 // passo e a música a que leva; pegar (vira a missão de agora) ou largar
-function FeiraOfertas({ ofertas, onPegar, onLargar }: { ofertas: Oferta[]; onPegar: (p: PistaId) => void; onLargar?: (p: PistaId) => void }) {
+function FeiraOfertas({ ofertas, onPegar, onLargar, onFoco, foco }: { ofertas: Oferta[]; onPegar: (p: PistaId) => void; onLargar?: (p: PistaId) => void; onFoco?: (p: PistaId) => void; foco?: PistaId | null }) {
   return (
     <ul className="l-feira-lista">
       {ofertas.map((o) => {
         const p = PISTAS.find((x) => x.id === o.pista)!
         return (
-          <li key={o.pista} style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }}>
+          <li key={o.pista} className={foco === o.pista ? "is-foco" : ""} style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o.pista) }}>
             <span className="l-feira-quem">{p.personagem}<small>leva à {p.faixa}{o.feitas ? ` · ${o.feitas}/${o.total}` : ""}</small></span>
             <p>{o.pedido}</p>
             <em>{o.primeiro}</em>

@@ -2604,3 +2604,6 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 @media (min-width: 760px) {
   .l-feira { left: auto; right: 12px; top: calc(250px + env(safe-area-inset-top)); width: 270px; max-height: max(150px, calc(100vh - 470px)); }
 }
+/* (21/10) o cartão da oferta em foco (a pista dela brilha no mapa) */
+.l-feira-lista li { cursor: pointer; }
+.l-feira-lista li.is-foco { border-color: var(--cor); box-shadow: 0 0 18px -6px var(--cor); }
