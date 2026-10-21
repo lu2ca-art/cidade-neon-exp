@@ -42,14 +42,38 @@ function noMundo(M: Mundo, p: Ponto) {
   return { x: v.px[i], z: v.pz[i], tx: v.tx[i], tz: v.tz[i] }
 }
 
-// a rota como uma linha de pontos do mundo
+// a cor de uma via (no disco, cada pista tem a da linha dela)
+const corDaVia = (M: Mundo, via: number) => ("disco" in M ? (M.vias[via] as { cor?: string }).cor : undefined) ?? ROTA_COR
+// a rota como trechos de pontos do mundo, cada um na cor da pista por onde passa
+// (LU2CA 21/10: "a marcação no mapa acende mais ainda a mesma cor da pista
+// selecionada. tira esse rosa que sobrepõe")
+type TrechoDesenho = { cor: string; pts: number[] }
 function linhaDaRota(M: Mundo, r: Rota) {
-  const pts: number[] = []
+  const out: TrechoDesenho[] = []
   for (const t of r.trechos) {
-    for (let u = t.u0; u <= t.u1; u += 8) { const p = noMundo(M, { via: t.via, u }); pts.push(p.x, p.z) }
-    const p = noMundo(M, { via: t.via, u: t.u1 }); pts.push(p.x, p.z)
+    const cor = corDaVia(M, t.via)
+    let seg = out[out.length - 1]
+    if (!seg || seg.cor !== cor) { const ult = seg?.pts.slice(-2) ?? []; seg = { cor, pts: [...ult] }; out.push(seg) }
+    for (let u = t.u0; u <= t.u1; u += 8) { const p = noMundo(M, { via: t.via, u }); seg.pts.push(p.x, p.z) }
+    const p = noMundo(M, { via: t.via, u: t.u1 }); seg.pts.push(p.x, p.z)
   }
-  return pts
+  return out
+}
+// desenha a rota: a pista marcada brilha na cor dela, acima das outras (um
+// halo largo e suave e o traço por cima, mais claro)
+function desenharRota(g: CanvasRenderingContext2D, segs: TrechoDesenho[], tela: (x: number, z: number) => [number, number], larg: number) {
+  for (const passe of [0, 1]) {
+    for (const s of segs) {
+      g.strokeStyle = s.cor
+      g.globalAlpha = passe ? 1 : 0.35
+      g.lineWidth = passe ? larg : larg * 2.6
+      g.shadowColor = s.cor; g.shadowBlur = passe ? larg * 2.2 : 0
+      g.beginPath()
+      for (let i = 0; i < s.pts.length; i += 2) { const [x, y] = tela(s.pts[i], s.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
+      g.stroke()
+    }
+  }
+  g.globalAlpha = 1; g.shadowBlur = 0
 }
 
 function blipsDo(M: Mundo): Blip[] {
@@ -119,7 +143,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
     const b = missao ? blips.find((x) => x.id === missao) : null
     return b ? { via: b.via, u: b.u, nome: b.nome, cor: b.cor } : null
   }, [marca, missao, blips])
-  const rota = useRef<{ pts: number[]; metros: number } | null>(null)
+  const rota = useRef<{ segs: TrechoDesenho[]; metros: number } | null>(null)
 
   // a rota se refaz a cada segundo (a Kombi andou, o destino mudou)
   useEffect(() => {
@@ -128,7 +152,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
       if (!destino || !p) { rota.current = null; setDistancia(""); return }
       const r = calcularRota(M, { via: p.via, u: p.u }, destino)
       if (!r) { rota.current = null; setDistancia(""); return }
-      rota.current = { pts: linhaDaRota(M, r), metros: r.metros }
+      rota.current = { segs: linhaDaRota(M, r), metros: r.metros }
       setDistancia(km(r.metros))
       // chegou no destino que você marcou: a marca some
       if (marca && r.metros < 40) onMarcar(null)
@@ -185,12 +209,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
       }
       g.globalAlpha = 1
       const rt = rota.current
-      if (rt) {
-        g.strokeStyle = ROTA_COR; g.lineWidth = 4.5
-        g.beginPath()
-        for (let i = 0; i < rt.pts.length; i += 2) { const [x, y] = tela(rt.pts[i], rt.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
-        g.stroke()
-      }
+      if (rt) desenharRota(g, rt.segs, tela, 4.5)
       for (const b of blips) {
         const w = noMundo(M, b)
         let [x, y] = tela(w.x, w.z)
@@ -205,7 +224,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
         let [x, y] = tela(w.x, w.z)
         const d = Math.hypot(x - R, y - R)
         if (d > R - 10) { x = R + ((x - R) / d) * (R - 10); y = R + ((y - R) / d) * (R - 10) }
-        g.fillStyle = ROTA_COR; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x - 6, y - 8); g.lineTo(x + 6, y - 8); g.closePath(); g.fill()
+        g.fillStyle = destino.cor ?? ROTA_COR; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x - 6, y - 8); g.lineTo(x + 6, y - 8); g.closePath(); g.fill()
       }
       g.restore()
       g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 2; g.beginPath(); g.arc(R, R, R - 1, 0, 7); g.stroke()
@@ -253,12 +272,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
       }
       g.globalAlpha = 1
       const rt = rota.current
-      if (rt) {
-        g.strokeStyle = ROTA_COR; g.lineWidth = 4
-        g.beginPath()
-        for (let i = 0; i < rt.pts.length; i += 2) { const [x, y] = tela(rt.pts[i], rt.pts[i + 1]); if (i) g.lineTo(x, y); else g.moveTo(x, y) }
-        g.stroke()
-      }
+      if (rt) desenharRota(g, rt.segs, tela, 4)
       g.font = "700 11px ui-monospace, monospace"; g.textBaseline = "middle"
       for (const b of blips) {
         const w = noMundo(M, b); const [x, y] = tela(w.x, w.z); desenharBlip(g, x, y, b, 1.1)
@@ -268,7 +282,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
       }
       if (destino) {
         const w = noMundo(M, destino); const [x, y] = tela(w.x, w.z)
-        g.fillStyle = ROTA_COR; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x - 8, y - 18); g.lineTo(x + 8, y - 18); g.closePath(); g.fill()
+        g.fillStyle = destino.cor ?? ROTA_COR; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x - 8, y - 18); g.lineTo(x + 8, y - 18); g.closePath(); g.fill()
       }
       const pk = pose.current
       if (pk) { const w = noMundo(M, pk); const [x, y] = tela(w.x, w.z); seta(g, x, y, Math.atan2(w.tx, -w.tz), 1.1) }
@@ -288,7 +302,7 @@ export function Mapa({ M, apagada = null, pose, missao, marca, onMarcar, onAbert
     for (const b of blips) { if (b.tipo === "flor") continue; const w = noMundo(M, b); const d = Math.hypot(w.x - x, w.z - z); if (d < dm) { dm = d; melhor = b } }
     if (melhor) { onMarcar({ via: melhor.via, u: melhor.u, nome: melhor.nome, cor: melhor.cor }); return }
     const p = pontoMaisPerto(M, x, z)
-    if (p && p.d < 60 / vv.esc + 40) onMarcar({ via: p.via, u: p.u, nome: "o ponto marcado", cor: ROTA_COR })
+    if (p && p.d < 60 / vv.esc + 40) onMarcar({ via: p.via, u: p.u, nome: "o ponto marcado", cor: corDaVia(M, p.via) })
   }
   const abrir = (v: boolean) => { setAberto(v); onAberto(v) }
 

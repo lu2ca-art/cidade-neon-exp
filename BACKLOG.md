@@ -2,7 +2,7 @@
 (o diretor mantém; a ordem combinada com o dono em 21/10 — fonte: ~/repos/LU2CA/projetos/cidade-neon/mapa-disco-decisoes.md, "21/10 (2)" e "21/10 (3)")
 
 ## Em andamento
-- **3e. A marcação do mapa** · ui · (o dono, 21/10) a marcação no mapa não pinta de rosa por cima: a pista marcada brilha mais, na cor dela.
+- (triagem da mensagem nova do dono: o mapa que acende, o show no Guitar Driver, a missão do beat)
 
 ## Fila (ordenada por prioridade)
 3b. **As linhas do drift** · arte-3d · mais contínuas e orgânicas; no patins, a linha são os dois pés (não as quatro rodas).
@@ -19,6 +19,7 @@
 - As outras perguntas do plano-noite-20-10.md (o bar na pista da Nectar, a música do show do prólogo, vol.2/CIDADE NEON no untitled, "mais flores, mais água", as 4 peças).
 
 ## Feito (com prova)
+- **3e. A marcação do mapa** · print com GPU real (o mapa grande com um ponto marcado): a rota brilha na cor de cada pista por onde passa (laranja nas torres, azul na linha), sem o rosa; o alfinete na cor da pista marcada.
 - **3. A física** · RELATORIOS/2026-10-21-gameplay.md: gravidade 24 → 9,8 m/s²; o propulsor sai do chão a 0,4 m/s (antes 3,4, o tranco) e acelera; o muro devolve a Kombi (41 → 43 m/s, antes 41 → 28).
 - **2b. A música é o tema da missão** · RELATORIOS/2026-10-21-audio.md (2ª parte): sem missão, nada (só os discos); pegou, o instrumental; na linha, a voz UMA vez; acabou ou demorou, o instrumental; a missão acabou, nada. Testado com GPU real.
 - **2. Uma missão = uma música** (e2d813e) · RELATORIOS/2026-10-21-audio.md: na torre, antes nectar (a última) → depois sexta-inst abafada; fim do show → destaque com 4 plataformas + untitled por 14 s; a torre passa pra dopamina-inst; desempenho igual (draw calls 1394 → 1399, triângulos 1,27 M → 1,27 M). (A regra da música foi refinada pelo dono: ver 2b.)
