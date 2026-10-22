@@ -11,7 +11,7 @@ import { useMemo } from "react"
 import * as THREE from "three"
 
 import { CREDITO_SUBURBIO } from "./creditos"
-import { Estatico } from "./estatico"
+import { Estatico, mesclarPorMaterial } from "./estatico"
 export { CREDITO_SUBURBIO }
 const URL = "/models/suburbio.glb"
 
@@ -27,6 +27,8 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
       if (!m.geometry.getAttribute("normal")) m.geometry.computeVertexNormals()
       m.frustumCulled = true
     })
+    // (perf 003) 154 malhas com 3 materiais: uma por material e célula (3×3)
+    mesclarPorMaterial(g, 3)
     return g
   }, [scene])
   return (

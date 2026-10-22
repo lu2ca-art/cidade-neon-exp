@@ -14,6 +14,7 @@
 
 import { useLayoutEffect, useRef, type ReactNode } from "react"
 import * as THREE from "three"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
 export function congelar(o: THREE.Object3D) {
   o.traverse((x) => {
@@ -31,3 +32,64 @@ export function Estatico({ children }: { children: ReactNode }) {
   return <group ref={g}>{children}</group>
 }
 
+// (22/10, perf 003) MESCLAR POR MATERIAL: um modelo importado (o subúrbio: 154
+// malhas, 117 delas com o mesmo material ATLAS) vira uma malha por material e
+// por célula de uma grade (`celulas` × `celulas` no plano XZ), pra continuar
+// cortando o que está fora da tela. Instâncias (InstancedMesh), malhas com
+// skin/morph e grupos com atributos diferentes ficam como estão.
+// Os atributos comprimidos (meshopt/quantizados, Int16 normalizado) viram Float32
+// antes de aplicar a matriz. Chamar com o modelo ainda sem pai (matriz do mundo = a dele).
+//
+// Uso: const g = scene.clone(true); mesclarPorMaterial(g, 3)
+export function mesclarPorMaterial(raiz: THREE.Object3D, celulas = 3): { antes: number; depois: number } {
+  raiz.updateMatrixWorld(true)
+  const inv = new THREE.Matrix4().copy(raiz.matrixWorld).invert()
+  const malhas: THREE.Mesh[] = []
+  raiz.traverse((o) => {
+    const m = o as THREE.Mesh
+    if (!m.isMesh || (m as THREE.InstancedMesh).isInstancedMesh || (m as THREE.SkinnedMesh).isSkinnedMesh || Array.isArray(m.material) || m.morphTargetInfluences?.length) return
+    malhas.push(m)
+  })
+  const caixa = new THREE.Box3()
+  for (const m of malhas) { m.geometry.computeBoundingBox(); caixa.union(m.geometry.boundingBox!.clone().applyMatrix4(m.matrixWorld)) }
+  const tam = caixa.getSize(new THREE.Vector3())
+  const c = new THREE.Vector3()
+  const grupos = new Map<string, THREE.Mesh[]>()
+  for (const m of malhas) {
+    m.geometry.boundingBox!.getCenter(c).applyMatrix4(m.matrixWorld)
+    const cx = Math.min(celulas - 1, Math.floor(((c.x - caixa.min.x) / Math.max(tam.x, 1e-6)) * celulas))
+    const cz = Math.min(celulas - 1, Math.floor(((c.z - caixa.min.z) / Math.max(tam.z, 1e-6)) * celulas))
+    const g = m.geometry
+    const k = `${(m.material as THREE.Material).uuid}|${cx},${cz}|${Object.keys(g.attributes).sort().join(",")}|${g.index ? 1 : 0}|${m.renderOrder}|${m.castShadow}${m.receiveShadow}`
+    const l = grupos.get(k) ?? []
+    l.push(m)
+    grupos.set(k, l)
+  }
+  const mat = new THREE.Matrix4()
+  let depois = 0
+  for (const l of grupos.values()) {
+    if (l.length < 2) { depois++; continue }
+    const geos = l.map((m) => {
+      const g = new THREE.BufferGeometry()
+      for (const [nome, a] of Object.entries(m.geometry.attributes)) {
+        const arr = new Float32Array(a.count * a.itemSize)
+        for (let i = 0; i < a.count; i++) for (let j = 0; j < a.itemSize; j++) arr[i * a.itemSize + j] = a.getComponent(i, j)
+        g.setAttribute(nome, new THREE.BufferAttribute(arr, a.itemSize))
+      }
+      if (m.geometry.index) g.setIndex(Array.from(m.geometry.index.array as ArrayLike<number>))
+      g.applyMatrix4(mat.multiplyMatrices(inv, m.matrixWorld))
+      return g
+    })
+    const junta = mergeGeometries(geos, false)
+    geos.forEach((g) => g.dispose())
+    if (!junta) { depois += l.length; continue }
+    junta.computeBoundingSphere()
+    const nova = new THREE.Mesh(junta, l[0].material)
+    nova.name = `mesclado:${(l[0].material as THREE.Material).name}`
+    nova.renderOrder = l[0].renderOrder; nova.castShadow = l[0].castShadow; nova.receiveShadow = l[0].receiveShadow
+    for (const m of l) m.removeFromParent()
+    raiz.add(nova)
+    depois++
+  }
+  return { antes: malhas.length, depois }
+}
