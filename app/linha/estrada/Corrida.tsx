@@ -91,6 +91,9 @@ import { FRASE_GERAL, Outdoors, type Outdoor } from "./Outdoors"
 // (16/10, LU2CA: "aumentar a velocidade como um todo") 46 → 55,6 m/s; (17/10,
 // REA do Horizon Drive: "a Kombi está muito lenta") 69,4 m/s = 250 km/h de verdade
 const VMAX = 69.4 // m/s
+// (22/10, 2.1) a chegada do buraco de minhoca: a velocidade de saída do túnel
+// e a que distância do centro da casa a Kombi para
+const CHEGADA_V0 = 220, CHEGADA_PARA = 19
 // o velocímetro marca numa escala própria: 110 km/h de verdade aparecem como
 // 60; os patins (150 de verdade) marcam ~82 e a Kombi a 250 marca ~136
 const K_VEL = 60 / 110
@@ -287,6 +290,9 @@ type Jogo = {
   // (disco, passo 3) o voo: solta da pista e voa livre (wx, wz, rumo); a energia
   // do propulsor (0–1, volta andando na pista); propulsou = este voo usou o propulsor
   voo?: boolean; energia?: number; propulsou?: boolean
+  // (22/10, 2.1/2.3) a chegada do buraco de minhoca: a Kombi vem numa
+  // velocidade insana, freia sozinha até a casa e para na frente dela
+  chegadaCasa?: boolean; chegadaV?: number
   // (21/10) há quanto tempo o propulsor está empurrando (o empuxo cresce em ~0,4 s);
   // quique = a última batida de pinball (não quica duas vezes no mesmo encosto)
   tProp?: number; quique?: number
@@ -531,7 +537,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       const MD = M as MundoDisco, p = historia.fase === "casa" ? QUEDA : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
       const ch = MD.chaoEm(p.x, p.z)
-      if (historia.fase === "casa") { j.ar = true; j.tAr = 0; j.y = ch + 70; j.vy = -6; j.v = 16 } else { j.ar = false; j.y = ch + 0.3; j.v = 0 }
+      if (historia.fase === "casa") {
+        // (22/10, 2.1/2.2) cai bem mais longe (~900 m), no mesmo rumo, a 220 m/s:
+        // a casa (e a coluna de luz) aparece lá na frente desde a queda
+        const ex = QUEDA.x - Math.sin(QUEDA.rumo) * 670, ez = QUEDA.z - Math.cos(QUEDA.rumo) * 670
+        j.wx = ex; j.wz = ez
+        j.ar = true; j.tAr = 0; j.y = MD.chaoEm(ex, ez) + 45; j.vy = -8; j.v = CHEGADA_V0; j.chegadaV = CHEGADA_V0; j.chegadaCasa = true
+      } else { j.ar = false; j.y = ch + 0.3; j.v = 0 }
     }
     return j
   })
@@ -1105,7 +1117,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     if (fase !== "casa" && fase !== "dunas" && fase !== "subir") return
     const ditas = new Set<string>()
-    let t = 0, avisou = false
+    let t = 0, avisou = false, parouT = -1
     const diz = (q: (typeof FALAS_DUNAS)[number]["quando"]) => {
       if (ditas.has(q)) return
       ditas.add(q)
@@ -1116,8 +1128,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       t += 0.3
       if (fase === "casa") {
         if (avisou || !j.voo || j.ar || j.wx === undefined) return
-        // chegou na porta: a Kombi para sozinha (a cena começa)
-        if (Math.hypot(j.wx - CASA.x, j.wz! - CASA.z) < RAIO_CASA + Math.min(20, Math.abs(j.v) * 0.3)) { avisou = true; j.v = 0; onHistoriaRef.current?.("casa") }
+        // (22/10, 2.3) chegou na porta: a Kombi para sozinha e fica um respiro
+        // parada (o motor assenta) antes da cena da porta começar
+        const perto = Math.hypot(j.wx - CASA.x, j.wz! - CASA.z) < RAIO_CASA + (j.chegadaCasa ? 0 : Math.min(20, Math.abs(j.v) * 0.3))
+        if (!perto) { parouT = -1; return }
+        if (!j.chegadaCasa) { avisou = true; j.v = 0; onHistoriaRef.current?.("casa"); return }
+        if (j.v > 0.3) return
+        if (parouT < 0) parouT = t
+        if (t - parouT >= 1.5) { avisou = true; j.v = 0; j.chegadaCasa = false; onHistoriaRef.current?.("casa") }
         return
       }
       // (B18) subindo pra cidade: pousou numa pista = chegou lá em cima
@@ -3580,7 +3598,9 @@ function Cena({
   }), [])
 
   useEffect(() => {
-    scene.fog = new THREE.Fog("#1a0f24", 70, 950)
+    // (22/10, 2.2) caindo do buraco de minhoca a névoa já começa longe: a casa
+    // aparece desde a queda, não de repente
+    scene.fog = jogo.current.chegadaCasa ? new THREE.Fog("#1a0f24", 250, 3000) : new THREE.Fog("#1a0f24", 70, 950)
     scene.background = new THREE.Color("#1a0f24")
     return () => { scene.fog = null; camera.up.set(0, 1, 0) }
   }, [scene, camera])
@@ -4196,6 +4216,15 @@ function Cena({
       }
       if (j.voo) {
         j.rumo = (j.rumo ?? 0) - (inp.mao ? 0 : j.steer * dt * (j.ar ? 1.1 : 1.8))
+        if (j.chegadaCasa && j.wx !== undefined) {
+          // (22/10, 2.1/2.3) o piloto da chegada: mira a porta e freia pela
+          // distância que falta (rápido longe, devagarinho perto), até parar
+          const dx = CASA.x - j.wx, dz = CASA.z - j.wz!, resto = Math.hypot(dx, dz) - CHEGADA_PARA
+          j.rumo = Math.atan2(dx, dz)
+          j.steer = 0
+          const vc = j.chegadaV ?? CHEGADA_V0
+          j.v = j.chegadaV = resto > 0 ? Math.min(vc, Math.max(2.2, resto * 1.15)) : Math.max(0, Math.min(vc, j.v) - 7 * dt)
+        }
         j.wx = j.wx! + Math.sin(j.rumo) * j.v * dt
         j.wz = j.wz! + Math.cos(j.rumo) * j.v * dt
         // (B15) o deserto é "infinito", mas o chão desenhado acaba a 4,5 km:
