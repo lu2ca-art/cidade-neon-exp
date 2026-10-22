@@ -54,7 +54,7 @@ import { NIVEIS, QUALIDADE } from "./qualidade"
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
+import { HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -960,8 +960,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return { chove: !deserto && chovendo(dia, horaRef.current), deserto, regiao, hora: horaRef.current }
   }, [M, dia])
   // o "?" do holo: tocar numa coisa diz o que ela é
-  const [ajuda, setAjuda] = useState(false)
-  const sairAjuda = useCallback(() => setAjuda(false), [])
   // o clique semi-longo do turbo e do propulsor: segurou SEMI_LONGO ms, aciona
   const SEMI_LONGO = 260
   const armados = useRef(new Map<HTMLElement, number>())
@@ -1839,7 +1837,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (k === "f" && on && !ev.repeat) document.querySelector<HTMLButtonElement>(".l-sair-kombi, .l-regar-btn.is-voltar")?.click()
       else if (k === "c" && on && !ev.repeat) trocarCamera()
       // (disco) H: liga e desliga o holo
-      else if (k === "h" && on && !ev.repeat && ehDisco && !input.current.semHolo) { setAjuda(false); alternarOculos() }
+      else if (k === "h" && on && !ev.repeat && ehDisco && !input.current.semHolo) alternarOculos()
       else return
       ev.preventDefault()
     }
@@ -1950,15 +1948,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       <div className="l-hud-topo">
         {/* o carro é a tela principal; o celular é um toque */}
         {discoM ? (
-          // (disco) desligado: o óculos (liga o holo). Ligado: no lugar dele, o
-          // "?" (toca nele e depois numa coisa: diz o que ela é) e o desligar
+          // (disco) o óculos liga e desliga o holo. (LU2CA 22/10: sem o "?" no HUD; a
+          // ajuda dos controles mora na página de ajustes: AjudaControles, Holo.tsx)
           oculos ? (
             <>
-              <button type="button" data-info="ajuda" className={`l-hud-cel is-ajuda ${ajuda ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAjuda((x) => !x)} aria-label="o que é cada coisa">
-                ?{avisos > 0 && <em>{avisos}</em>}
-              </button>
-              <button type="button" data-info="desligar" className="l-hud-cel is-oculos is-on" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); alternarOculos() }} aria-label="desligar o holo">
+              <button type="button" data-info="desligar" className="l-hud-cel is-oculos is-on" onPointerDown={(e) => e.stopPropagation()} onClick={alternarOculos} aria-label="desligar o holo">
                 <svg width="22" height="18" viewBox="0 0 28 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="10" height="8" rx="3" /><rect x="16" y="6" width="10" height="8" rx="3" /><path d="M12 9.5c1.3-1 2.7-1 4 0M2 8 0.8 5.5M26 8l1.2-2.5" /></svg>
+                {avisos > 0 && <em>{avisos}</em>}
               </button>
             </>
           ) : (
@@ -2128,7 +2124,6 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => onMissoes?.()} />
         </>
       )}
-      {discoM && ajuda && oculos && <HoloAjuda ativa onSair={sairAjuda} />}
       {/* sair a qualquer hora / voltar pra Kombi */}
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
         <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>sair da kombi</button>
