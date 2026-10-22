@@ -27,8 +27,8 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
       if (!m.geometry.getAttribute("normal")) m.geometry.computeVertexNormals()
       m.frustumCulled = true
     })
-    // (perf 003) 154 malhas com 3 materiais: uma por material e célula (3×3)
-    mesclarPorMaterial(g, 3)
+    // (perf 003) 154 malhas com 3 materiais: uma por material e célula (6×6: com 3×3 o corte por frustum piorava e os triângulos subiam ~75 mil)
+    mesclarPorMaterial(g, 6)
     return g
   }, [scene])
   return (
