@@ -1,6 +1,7 @@
 // mede o /linha num mapa: draw calls, triângulos, tempo de quadro e perfil de CPU
 import { chromium } from "playwright"
 import fs from "node:fs"
+import { semear, entrarDirigindo } from "./save.mjs"
 
 const mapa = process.argv[2] ?? "disco"
 const out = process.argv[3] ?? "."
@@ -51,11 +52,12 @@ const contador = () => {
 const browser = await chromium.launch({ headless: true, channel: "chrome", args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required", "--disable-frame-rate-limit=false"] })
 const page = await browser.newPage({ viewport: { width: +(process.env.W ?? 1280), height: +(process.env.H ?? 800) }, deviceScaleFactor: +(process.env.DPR ?? 1) })
 await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
+await semear(page)
 await page.addInitScript(contador)
 page.on("pageerror", (e) => console.log("ERRO", e.message))
 await page.goto(URL)
 await page.locator(".l-btn-entrar").click({ timeout: 20_000, force: true }).catch(() => console.log("(sem botão: entrou sozinho)"))
-await page.waitForTimeout(12_000)
+await entrarDirigindo(page, 12_000)
 const cdp = await page.context().newCDPSession(page)
 await cdp.send("Profiler.enable")
 await cdp.send("Profiler.setSamplingInterval", { interval: 200 })
@@ -68,6 +70,7 @@ await page.evaluate(() => { const s = window.__perf; s.quadros = []; s.dc = []; 
 if (!process.env.NOPROF) await cdp.send("Profiler.start")
 await page.evaluate(() => { window.__dens = []; setInterval(() => window.__gl && window.__dens.push(window.__gl.getPixelRatio()), 1000) })
 await page.waitForTimeout(+(process.env.DUR ?? 12_000))
+console.log("cena aberta no fim?", await page.locator(".l-cena").count())
 console.log("densidades", await page.evaluate(() => window.__dens.join(" ")))
 const { profile } = process.env.NOPROF ? { profile: { nodes: [], samples: [], timeDeltas: [] } } : await cdp.send("Profiler.stop")
 const r = await page.evaluate(() => {
