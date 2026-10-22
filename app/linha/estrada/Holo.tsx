@@ -58,6 +58,31 @@ export const INFO: Record<string, { t: string; d: string }> = {
 const infoApp = (id: AppId) => { const a = APPS.find((x) => x.id === id); return a ? { t: a.nome, d: a.desc } : null }
 export const infoDe = (chave: string) => INFO[chave] ?? (chave.startsWith("app:") ? infoApp(chave.slice(4) as AppId) : null) ?? null
 
+// (LU2CA 22/10 (2)) os AVISOS DA RÁDIO: as falas que ensinam controle não vão
+// mais pra tela; passam no display da rádio do holo (e ficam no menu dela).
+// Uma loja pequena fora do React: quem fala chama avisarRadio; a rádio ouve
+export type AvisoRadio = { id: number; de: string; texto: string; ms: number }
+let avisoN = 0
+export const AVISOS_RADIO: AvisoRadio[] = []
+const ouvintesAviso = new Set<(a: AvisoRadio) => void>()
+export function avisarRadio(de: string, texto: string, ms = 5200) {
+  const a = { id: ++avisoN, de, texto, ms }
+  AVISOS_RADIO.unshift(a)
+  if (AVISOS_RADIO.length > 6) AVISOS_RADIO.length = 6
+  ouvintesAviso.forEach((f) => f(a))
+}
+// o aviso que está passando agora (some depois de ms + um respiro)
+function useAvisoRadio() {
+  const [a, setA] = useState<AvisoRadio | null>(null)
+  useEffect(() => {
+    let t = 0 as unknown as ReturnType<typeof setTimeout>
+    const f = (x: AvisoRadio) => { clearTimeout(t); setA(x); t = setTimeout(() => setA(null), x.ms + 2500) }
+    ouvintesAviso.add(f)
+    return () => { ouvintesAviso.delete(f); clearTimeout(t) }
+  }, [])
+  return a
+}
+
 type Radio = { ligada: boolean; freq: string; faixa: string; cor: string; id: FreqId; sinal: number }
 
 // (RASCUNHO, LU2CA 20/10) as mensagens das frequências piratas: chegam no menu
@@ -86,6 +111,7 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
   const novas = menu ? 0 : piratas - lidas
   const alternarMenu = () => { setLidas(piratas); setMenu((m) => !m) }
   const [som, setSom] = useState<{ faixa: string; t: number; dur: number } | null>(null)
+  const aviso = useAvisoRadio()
   const tela = useRef<HTMLCanvasElement>(null)
   const cor = useRef(radio.cor)
   const ligada = useRef(radio.ligada)
@@ -164,9 +190,11 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
         {novas > 0 && !menu && <em className="l-holo-radio-novas">{novas}</em>}
       </button>
       <div className="l-holo-som-info">
-        <div className="l-holo-radio-linha" data-info="radio">
-          <b>{radio.freq} fm</b>
-          <span>{radio.ligada ? radio.faixa : "desligada"}</span>
+        <div className={`l-holo-radio-linha ${aviso ? "is-aviso" : ""}`} data-info="radio">
+          <b>{aviso ? aviso.de : `${radio.freq} fm`}</b>
+          {aviso ? (
+            <span key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></span>
+          ) : <span>{radio.ligada ? radio.faixa : "desligada"}</span>}
           {radio.ligada && <button type="button" onClick={onProxima} aria-label="próxima faixa">⏭</button>}
         </div>
         <div className="l-holo-faixa" data-info="faixa">
@@ -195,6 +223,12 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
               )
             })}
           </ul>
+          {AVISOS_RADIO.length > 0 && <>
+            <small className="l-holo-radio-sub">avisos</small>
+            <ul className="l-holo-radio-piratas is-avisos">
+              {AVISOS_RADIO.map((m) => <li key={m.id}><b>{m.de}</b><span>{m.texto}</span></li>)}
+            </ul>
+          </>}
           <small className="l-holo-radio-sub">piratas</small>
           <ul className="l-holo-radio-piratas">
             {PIRATAS.slice(0, piratas).reverse().map((m, i) => <li key={piratas - i} className={i < piratas - lidas ? "is-nova" : ""}><b>{m.de}</b><span>{m.texto}</span></li>)}
@@ -600,12 +634,14 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
   const [k, setK] = useState(0)
   const [aberta, setAberta] = useState(false)
   const [c, setC] = useState<Clima>(() => ler())
+  const aviso = useAvisoRadio()
   useEffect(() => { const t = setInterval(() => { setK((x) => (x + 1) % CARTOES.length); setC(ler()) }, 5000); return () => clearInterval(t) }, [ler])
   const [kp, setKp] = useState(0)
   useEffect(() => { const t = setInterval(() => setKp((x) => (x + 1) % VEZ.length), 5000); return () => clearInterval(t) }, [])
   const prop = APPS.find((x) => x.id === VEZ[kp])!
   const Mini = MINI[prop.id]!
-  const vez = CARTOES[k]
+  // um aviso da rádio chegando: a ilha mostra a rádio com ele
+  const vez = aviso ? "radio" : CARTOES[k]
   const destaque = k % 2 ? "guitar" : "batida"
   const abrir = (id: AppId) => { setAberta(false); if (id === "guitar" && !guitarLivre) return; onApp(id) }
   const temp = Math.round(c.deserto ? 23 + 15 * Math.sin(((c.hora - 9) / 24) * Math.PI * 2) : 21 + 6 * Math.sin(((c.hora - 9) / 24) * Math.PI * 2) - (c.chove ? 4 : 0))
@@ -626,7 +662,9 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
       ) : (
         <button type="button" className={`l-ilha-holo is-${vez}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAberta(true)} aria-label="abrir os widgets do holo" style={{ ["--cor" as string]: vez === "radio" ? radio.cor : vez === "propaganda" ? prop.cor : vez === "destaque" ? (destaque === "batida" ? "#ff6b6b" : "#ff9000") : "#2fe8ff" }}>
           <span className="l-ilha-holo-tela">
-            {vez === "radio" && <span className="l-ilha-holo-radio"><b>{radio.freq}</b><small>{radio.ligada ? radio.faixa : "rádio desligada"}</small></span>}
+            {vez === "radio" && (aviso
+              ? <span className="l-ilha-holo-radio is-aviso"><b>{aviso.de}</b><small key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></small></span>
+              : <span className="l-ilha-holo-radio"><b>{radio.freq}</b><small>{radio.ligada ? radio.faixa : "rádio desligada"}</small></span>)}
             {vez === "destaque" && (destaque === "batida" ? <MiniMpc /> : <MiniTrilha />)}
             {vez === "propaganda" && <Mini />}
             {vez === "clima" && <span className="l-ilha-holo-radio"><b>{temp}°</b><small>{c.regiao}</small></span>}

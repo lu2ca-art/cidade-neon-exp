@@ -54,7 +54,7 @@ import { NIVEIS, QUALIDADE, guardarQualidade, ouvirQualidade } from "./qualidade
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
+import { avisarRadio, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -167,7 +167,7 @@ interface Props {
   // a chegada (antes da D-Bee): a cidade fica quieta (sem falas soltas nem
   // tutorial) e quem fala na ilha é o grupo, de fora (fala)
   intro?: boolean
-  fala?: { id: number; de: string; texto: string } | null
+  fala?: { id: number; de: string; texto: string; ensina?: boolean } | null
   // tocar na ilha quando ela mostra uma mensagem
   onIlha?: () => void
   // encostou devagar na vaga de um lugar (a cena começa)
@@ -1110,6 +1110,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     setToasts((t) => [...t.slice(-3), { id, de, texto, ms }])
     gota(6)
   }, [])
+  // (LU2CA 22/10 (2)) as falas que ensinam controle (a 222, o mecânico, a D-Bee
+  // nas dunas): no disco deixam de ser texto grande na ilha; ficam SÓ como aviso
+  // no display da rádio do holo + uma legendinha mini que some sozinha
+  const [legenda, setLegenda] = useState<{ id: number; de: string; texto: string; ms: number } | null>(null)
+  const ensinar = useCallback((de: string, texto: string, ms = 5200) => {
+    if (!("disco" in M)) { falar(de, texto, ms); return }
+    avisarRadio(de, texto, ms)
+    setLegenda({ id: ++toastId.current, de, texto, ms })
+    gota(6)
+  }, [M, falar])
 
   // (disco, a história) o deserto: chegar na casa; nas dunas, a D-Bee pelo rádio
   // (curto, na hora certa) e pousar numa pista = chegou na cidade
@@ -1123,7 +1133,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const diz = (q: (typeof FALAS_DUNAS)[number]["quando"]) => {
       if (ditas.has(q)) return
       ditas.add(q)
-      ;(novoComeco ? FALAS_DUNAS_SUB : FALAS_DUNAS).filter((f) => f.quando === q).forEach((f, k) => setTimeout(() => falar(f.de, f.texto, 5200), k * 5600))
+      ;(novoComeco ? FALAS_DUNAS_SUB : FALAS_DUNAS).filter((f) => f.quando === q).forEach((f, k) => setTimeout(() => (f.ensina ? ensinar : falar)(f.de, f.texto, 5200), k * 5600))
     }
     const iv = setInterval(() => {
       const j = jogo.current
@@ -1185,7 +1195,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       j.v = 0; j.shake = 1; j.flash = 0.4
       vib([60, 40, 120])
       falar("222 FM", "essa kombi tossiu. motor velho a gasolina, num mundo sem gasolina", 4800)
-      setTimeout(() => { irDePatins(); falar("222 FM", "de patins então. segura o espaço: o jato. no ar, vira: gira", 5600) }, 1500)
+      setTimeout(() => { irDePatins(); ensinar("222 FM", "de patins então. segura o espaço: o jato. no ar, vira: gira", 5600) }, 1500)
       onHistoriaRef.current?.("quebrou")
     }, 9000)
     return () => clearTimeout(t)
@@ -1221,7 +1231,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const introRef = useRef(intro)
   useEffect(() => { introRef.current = intro }, [intro])
   useEffect(() => {
-    if (fala) falar(fala.de, fala.texto, 3000)
+    if (fala) (fala.ensina ? ensinar : falar)(fala.de, fala.texto, fala.ensina ? 5200 : 3000)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fala?.id])
 
@@ -1232,14 +1242,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     if (!dicas.includes("disco-1") && !temMusicaNoRadio && aparelho !== "disco") {
       const t = setTimeout(() => {
         onDica?.("disco-1")
-        falar("D-Bee", "a 222 tá fora do ar. mas tem um toca-discos aqui dentro, analógico, o núcleo não alcança. aperta DISCO lá embaixo e escolhe um", 10000)
+        ensinar("D-Bee", "a 222 tá fora do ar. mas tem um toca-discos aqui dentro, analógico, o núcleo não alcança. aperta DISCO lá embaixo e escolhe um", 10000)
       }, 4000)
       return () => clearTimeout(t)
     }
     if (!dicas.includes("radio-1") && temMusicaNoRadio && aparelho !== "radio") {
       const t = setTimeout(() => {
         onDica?.("radio-1")
-        falar("222 FM", "a 222 voltou com uma música que vc ganhou. aperta RÁDIO lá embaixo (o disco para: os dois juntos não dá)", 10000)
+        ensinar("222 FM", "a 222 voltou com uma música que vc ganhou. aperta RÁDIO lá embaixo (o disco para: os dois juntos não dá)", 10000)
       }, 3000)
       return () => clearTimeout(t)
     }
@@ -2146,6 +2156,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </>
       )}
       {discoM && ajuda && oculos && <HoloAjuda ativa onSair={sairAjuda} />}
+      {/* a legendinha mini das falas que ensinam (some sozinha: a animação acaba e ela sai) */}
+      {legenda && (
+        <div key={legenda.id} className="l-legenda" role="status" aria-live="polite" style={{ ["--ms" as string]: `${legenda.ms}ms`, ["--cor" as string]: VOZES[legenda.de] ?? "#2fe8ff" }} onAnimationEnd={(e) => { if (e.target === e.currentTarget) setLegenda(null) }}>
+          <b>{legenda.de}</b> {legenda.texto}
+        </div>
+      )}
       {discoM && ajustes && oculos && <HoloAjustes qual={qualHolo} onQual={(n) => guardarQualidade(n)} onFechar={fecharAjustes} />}
       {/* sair a qualquer hora / voltar pra Kombi */}
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (

@@ -75,12 +75,14 @@ export const RAIO_CASA = 26 // chegou na porta
 
 // ── as falas do caminho (o rádio, curtas; nada de frase explicando na tela) ──
 // as dunas: a D-Bee pelo rádio, ensinando sem manual (RASCUNHO)
-export const FALAS_DUNAS: { quando: "inicio" | "drift" | "voo" | "turbo" | "cidade" | "perto" | "robo"; de: string; texto: string }[] = [
+// (LU2CA 22/10 (2)) ensina: a fala ensina controle; no disco ela sai só como aviso
+// na rádio do holo + a legendinha mini (Corrida: ensinar)
+export const FALAS_DUNAS: { quando: "inicio" | "drift" | "voo" | "turbo" | "cidade" | "perto" | "robo"; de: string; texto: string; ensina?: true }[] = [
   { quando: "inicio", de: "D-Bee", texto: "não tem estrada daqui até lá. nunca teve" },
   { quando: "inicio", de: "D-Bee", texto: "a cidade é pra lá. as luzes, tá vendo?" },
-  { quando: "drift", de: "D-Bee", texto: "areia solta. vira e solta o carro de lado, ele escorrega. isso enche o turbo" },
-  { quando: "turbo", de: "D-Bee", texto: "turbo cheio. usa" },
-  { quando: "voo", de: "D-Bee", texto: "a kombi voa. segura o espaço. no ar ela também enche o turbo" },
+  { quando: "drift", de: "D-Bee", texto: "areia solta. vira e solta o carro de lado, ele escorrega. isso enche o turbo", ensina: true },
+  { quando: "turbo", de: "D-Bee", texto: "turbo cheio. usa", ensina: true },
+  { quando: "voo", de: "D-Bee", texto: "a kombi voa. segura o espaço. no ar ela também enche o turbo", ensina: true },
   { quando: "robo", de: "D-Bee", texto: "as máquinas descem até aqui. pode passar por cima. elas não sentem nada" },
   { quando: "cidade", de: "D-Bee", texto: "a cidade não tem entrada pelo chão. as pistas são lá em cima. voa" },
   { quando: "perto", de: "D-Bee", texto: "pousa numa pista acesa. as apagadas ninguém usa faz tempo" },
@@ -228,7 +230,7 @@ export const semVoo = (h: HistoriaDisco | null | undefined) => !!h && (h.fase ==
 export const FALAS_DUNAS_SUB: typeof FALAS_DUNAS = [
   { quando: "inicio", de: "D-Bee", texto: "não tem estrada daqui até lá. nunca teve" },
   { quando: "inicio", de: "D-Bee", texto: "a cidade é pra lá. as luzes, tá vendo? lá em cima" },
-  { quando: "drift", de: "D-Bee", texto: "areia solta. vira e solta o carro de lado, ele escorrega" },
+  { quando: "drift", de: "D-Bee", texto: "areia solta. vira e solta o carro de lado, ele escorrega", ensina: true },
   { quando: "robo", de: "D-Bee", texto: "as máquinas descem até aqui. pode passar por cima. elas não sentem nada" },
   { quando: "cidade", de: "D-Bee", texto: "lá em cima não tem como subir. ainda. vai por baixo, pelo lixão" },
   { quando: "perto", de: "D-Bee", texto: "embaixo das pistas tem gente. o subúrbio. tem um bar lá. vai" },

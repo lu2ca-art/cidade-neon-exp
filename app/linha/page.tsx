@@ -169,7 +169,7 @@ export default function LinhaPage() {
   // a chegada: o grupo 222 rola na ilha da Kombi, mensagem por mensagem.
   // null = não está rolando; número = a próxima mensagem
   const [introGrupo, setIntroGrupo] = useState<number | null>(null)
-  const [falaIntro, setFalaIntro] = useState<{ id: number; de: string; texto: string } | null>(null)
+  const [falaIntro, setFalaIntro] = useState<{ id: number; de: string; texto: string; ensina?: boolean } | null>(null)
   // conversa rolando no painel da Kombi (dirigindo). Quando precisa do
   // celular de verdade, vira tela cheia com a MESMA conversa
   const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
@@ -791,7 +791,7 @@ export default function LinhaPage() {
     setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" && h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
     if (id === "oficina" && hist.fase === "oficina") {
       setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
-      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa" }), 2500)
+      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa" , ensina: true }), 2500)
     } else if (id === "oficina") setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
     setJornal(m)
   }
