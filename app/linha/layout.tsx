@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import type { ReactNode } from "react"
 import { Barlow_Condensed } from "next/font/google"
+import { Caderno } from "./Caderno"
 
 // condensada pesada pros títulos médios — a Outward (identidade do Vol.1)
 // fica só nos títulos grandes, onde ela respira
@@ -21,5 +22,5 @@ export const viewport: Viewport = {
 }
 
 export default function LinhaLayout({ children }: { children: ReactNode }) {
-  return <div className={condensada.variable}>{children}</div>
+  return <div className={condensada.variable}>{children}<Caderno /></div>
 }

@@ -38,6 +38,7 @@ import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
 import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
+import { EVENTO_CADERNO } from "./Caderno"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
 import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
@@ -130,6 +131,13 @@ function confShow(id: string): { faixa: PistaId; lugar: string; cor: string; pal
 }
 
 export default function LinhaPage() {
+  // o caderno do dono aberto pausa a corrida (Caderno.tsx)
+  const [caderno, setCaderno] = useState(false)
+  useEffect(() => {
+    const f = (e: Event) => setCaderno(!!(e as CustomEvent<{ aberto: boolean }>).detail?.aberto)
+    window.addEventListener(EVENTO_CADERNO, f)
+    return () => window.removeEventListener(EVENTO_CADERNO, f)
+  }, [])
   const [save, setSave] = useState<Save>(VAZIO)
   // (mapa-disco, LU2CA 20/10) a história nova manda no disco (disco/historia.ts):
   // enquanto ela está ativa, a narrativa antiga (ligações, invasões, o tutorial
@@ -1221,7 +1229,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}

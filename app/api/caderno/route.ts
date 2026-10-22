@@ -1,0 +1,81 @@
+// O caderno do dono: cada observação que o LU2CA anota jogando (texto, etiquetas
+// e o estado do jogo naquele momento) chega aqui.
+// Vai pro PostHog como o evento "caderno_nota" (distinct_id fixo do dono), pelo
+// servidor, sem depender do consentimento do navegador. Rodando no Mac (dev), também
+// grava em RELATORIOS/caderno/AAAA-MM-DD.jsonl, pra ler sem abrir o PostHog.
+// Limites: 20 notas por minuto por IP, texto até 4000.
+
+import { NextResponse, type NextRequest } from "next/server"
+
+const JANELA = 60_000
+const MAX = 20
+const envios = new Map<string, number[]>()
+
+function liberado(ip: string) {
+  const agora = Date.now()
+  const rec = (envios.get(ip) ?? []).filter((t) => agora - t < JANELA)
+  if (rec.length >= MAX) { envios.set(ip, rec); return false }
+  rec.push(agora)
+  envios.set(ip, rec)
+  if (envios.size > 2000) for (const [k, v] of envios) if (!v.some((t) => agora - t < JANELA)) envios.delete(k)
+  return true
+}
+
+type Nota = { id: string; quando: string; texto: string; tags: string[]; estado?: Record<string, unknown> }
+
+function limpar(c: unknown): Nota | null {
+  if (!c || typeof c !== "object") return null
+  const o = c as Record<string, unknown>
+  const texto = typeof o.texto === "string" ? o.texto.slice(0, 4000) : ""
+  const tags = Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === "string").slice(0, 10).map((t) => t.slice(0, 30)) : []
+  if (!texto.trim() && !tags.length) return null
+  const estado = o.estado && typeof o.estado === "object" && JSON.stringify(o.estado).length < 20_000 ? (o.estado as Record<string, unknown>) : undefined
+  return {
+    id: typeof o.id === "string" ? o.id.slice(0, 60) : crypto.randomUUID(),
+    quando: typeof o.quando === "string" ? o.quando.slice(0, 40) : new Date().toISOString(),
+    texto, tags, estado,
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const headers = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" }
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "?"
+  if (!liberado(ip)) return NextResponse.json({ ok: false, espere: true }, { status: 429, headers })
+  let nota: Nota | null = null
+  try { nota = limpar(await req.json()) } catch { /* corpo inválido */ }
+  if (!nota) return NextResponse.json({ ok: false }, { status: 400, headers })
+
+  const destinos: string[] = []
+
+  if (process.env.NODE_ENV === "development") {
+    try {
+      const { appendFile, mkdir } = await import("node:fs/promises")
+      const pasta = `${process.cwd()}/RELATORIOS/caderno`
+      await mkdir(pasta, { recursive: true })
+      await appendFile(`${pasta}/${nota.quando.slice(0, 10)}.jsonl`, JSON.stringify(nota) + "\n")
+      destinos.push("arquivo")
+    } catch { /* segue pro PostHog */ }
+  }
+
+  const chave = process.env.NEXT_PUBLIC_POSTHOG_KEY
+  if (chave) {
+    try {
+      const r = await fetch("https://eu.i.posthog.com/capture/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: chave,
+          event: "caderno_nota",
+          distinct_id: "lu2ca-dono",
+          timestamp: nota.quando,
+          properties: { nota_id: nota.id, texto: nota.texto, tags: nota.tags, estado: nota.estado, $process_person_profile: false },
+        }),
+      })
+      if (r.ok) destinos.push("posthog")
+    } catch { /* fica só no arquivo / no aparelho */ }
+  }
+
+  return destinos.length
+    ? NextResponse.json({ ok: true, destinos }, { headers })
+    : NextResponse.json({ ok: false }, { status: 502, headers })
+}
