@@ -14,7 +14,7 @@
 // todos em ROTEIRO pra dar pra afinar o ritmo num lugar só.
 
 import { useEffect, useRef, useState } from "react"
-import { audioCtx, chiadoCurto, estatica, gota, player } from "./som"
+import { audioCtx, saidaEfeitos, chiadoCurto, estatica, gota, player } from "./som"
 import { VINIS } from "./radio"
 import { track } from "@/lib/analytics"
 
@@ -49,7 +49,7 @@ function estaloVinil() {
   hp.frequency.value = 900
   const g = c.createGain()
   g.gain.value = 0.18
-  src.connect(hp).connect(g).connect(c.destination)
+  src.connect(hp).connect(g).connect(saidaEfeitos() ?? c.destination)
   src.start()
   return {
     volume: (v: number) => g.gain.setTargetAtTime(v, c.currentTime, 0.2),
@@ -67,7 +67,7 @@ function clique() {
   o.frequency.value = 90
   g.gain.setValueAtTime(0.12, c.currentTime)
   g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.06)
-  o.connect(g).connect(c.destination)
+  o.connect(g).connect(saidaEfeitos() ?? c.destination)
   o.start()
   o.stop(c.currentTime + 0.07)
 }
@@ -99,7 +99,7 @@ function jingle(grave = false) {
     g.gain.setValueAtTime(0.0001, t0)
     g.gain.exponentialRampToValueAtTime(0.07, t0 + 0.02)
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5)
-    o.connect(g).connect(c.destination)
+    o.connect(g).connect(saidaEfeitos() ?? c.destination)
     o.start(t0)
     o.stop(t0 + 0.55)
   })

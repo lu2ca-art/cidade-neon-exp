@@ -24,7 +24,8 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { APPS, DOCK, ESCONDIDOS, Glifo, chamados, type AppId } from "../os"
 import { horaTexto } from "../relogio"
-import { ondaMusica, pistaSom } from "../som"
+import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "../som"
+import { NIVEIS, NOME_NIVEL, type NivelQualidade } from "./qualidade"
 import type { Save } from "../estado"
 import { PISTAS } from "./pistas"
 import { FREQUENCIAS, type FreqId } from "../radio"
@@ -34,6 +35,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 // o que cada coisa do holo é (o "?"): uma frase simples, sem manual
 export const INFO: Record<string, { t: string; d: string }> = {
   ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
+  ajustes: { t: "ajustes", d: "a engrenagem: o volume da música, dos efeitos e das vozes, a qualidade dos gráficos e a lista dos controles." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
   camera: { t: "câmera", d: "de fora da Kombi ou de dentro, no banco do motorista (tecla C)." },
   radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: abre o menu da rádio (ligar, sintonizar as frequências que você já achou, e as mensagens das rádios piratas). ⏭ troca a faixa." },
@@ -507,8 +509,7 @@ export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => voi
 }
 
 // (LU2CA 22/10) a lista inteira dos controles NUNCA vai por cima do HUD: é o
-// conteúdo da página de ajustes (a engrenagem). Não achei a engrenagem neste
-// branch, então AjudaControles está pronto mas ainda não montado
+// conteúdo da página de ajustes (a engrenagem, HoloAjustes logo abaixo)
 const CONTROLES: { t: string; itens: [string, string][] }[] = [
   { t: "dirigir", itens: [["toque", "um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré)"], ["teclado", "← → ou A D viram · ↑ ou W acelera · ↓ ou S freia e dá ré · Q é a manobra"], ["pular", "toque duplo, ou espaço duas vezes"]] },
   { t: "turbo e propulsor", itens: [["turbo", "segura o botão um instante (no teclado, um toque no espaço ou shift). drift, manobras e voos enchem a barra"], ["propulsor", "segura o botão: a Kombi voa (no teclado, segura o espaço). a energia volta andando no chão"], ["no ar", "um lado gira; os dois juntos dão o mortal. no voo, o mapa aparece no meio da tela"]] },
@@ -526,6 +527,64 @@ export function AjudaControles() {
           <dl>{g.itens.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
         </section>
       ))}
+    </div>
+  )
+}
+
+// ── (LU2CA 22/10 (2)) A ENGRENAGEM: a página de ajustes DE VERDADE, numa janela
+// do holo (o mesmo vidro do visualizador). O som mexe nos ganhos do grafo
+// (som.ts, "cn-volumes"); a qualidade é o nível que o jogo já mede
+// (qualidade.ts, "cn-qualidade": densidade de pixels, lente, gotas, carros) e
+// vale na hora; e a lista dos controles. Fechar (×, Esc, tocar fora) volta pro jogo ──
+const CANAIS: { k: CanalVolume; t: string; d: string }[] = [
+  { k: "musica", t: "música", d: "rádio, toca-discos, a pista" },
+  { k: "efeitos", t: "efeitos", d: "motor, notas, chiados" },
+  { k: "vozes", t: "vozes", d: "notas de voz, ligações" },
+]
+const LENTE = ["sem lente", "lente leve", "lente cheia"]
+export function HoloAjustes({ qual, onQual, onFechar }: { qual: NivelQualidade; onQual: (n: NivelQualidade) => void; onFechar: () => void }) {
+  const [vol, setVol] = useState(() => ({ ...VOLUMES }))
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar() }
+    window.addEventListener("keydown", k)
+    return () => window.removeEventListener("keydown", k)
+  }, [onFechar])
+  const mexer = (k: CanalVolume, v: number) => { definirVolume(k, v); setVol((o) => ({ ...o, [k]: v })) }
+  return (
+    <div className="l-visor l-ajustes" style={{ ["--cor" as string]: "#2fe8ff" }} onPointerDown={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onFechar() }} onKeyDown={(e) => { if (e.key !== "Escape") e.stopPropagation() }} role="dialog" aria-modal="true" aria-label="ajustes">
+      <div className="l-visor-janela">
+        <header>
+          <b>ajustes</b>
+          <button type="button" onClick={onFechar} aria-label="fechar e voltar pro jogo">×</button>
+        </header>
+        <div className="l-ajustes-corpo">
+          <section>
+            <small>som</small>
+            {CANAIS.map((c) => (
+              <label key={c.k} className="l-ajustes-vol">
+                <span><b>{c.t}</b><em>{c.d}</em></span>
+                <input type="range" min={0} max={100} step={5} value={Math.round(vol[c.k] * 100)} onChange={(e) => mexer(c.k, Number(e.target.value) / 100)} style={{ ["--v" as string]: `${vol[c.k] * 100}%` }} aria-label={`volume: ${c.t}`} />
+                <i>{Math.round(vol[c.k] * 100)}</i>
+              </label>
+            ))}
+          </section>
+          <section>
+            <small>gráficos</small>
+            <div className="l-ajustes-qual" role="radiogroup" aria-label="qualidade dos gráficos">
+              {(["alto", "medio", "baixo"] as const).map((n) => (
+                <button key={n} type="button" role="radio" aria-checked={qual === n} className={qual === n ? "is-on" : ""} onClick={() => onQual(n)}>
+                  <b>{NOME_NIVEL[n]}</b>
+                  <em>densidade até {String(NIVEIS[n].dprMax).replace(".", ",")}x · {LENTE[NIVEIS[n].lente]}</em>
+                </button>
+              ))}
+            </div>
+          </section>
+          <section>
+            <small>controles</small>
+            <AjudaControles />
+          </section>
+        </div>
+      </div>
     </div>
   )
 }

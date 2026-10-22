@@ -50,11 +50,11 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
 import { Estatico } from "./estatico"
 import { DPR, ResolucaoDinamica } from "./resolucao"
-import { NIVEIS, QUALIDADE } from "./qualidade"
+import { NIVEIS, QUALIDADE, guardarQualidade, ouvirQualidade } from "./qualidade"
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAjuda, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
+import { HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -969,6 +969,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [M, dia])
   // o "?" do holo: tocar numa coisa diz o que ela é
   const [ajuda, setAjuda] = useState(false)
+  // (LU2CA 22/10 (2)) a engrenagem: a página de ajustes no holo
+  const [ajustes, setAjustes] = useState(false)
+  const fecharAjustes = useCallback(() => setAjustes(false), [])
+  const [qualHolo, setQualHolo] = useState(QUALIDADE.nivel)
+  useEffect(() => ouvirQualidade(setQualHolo), [])
   const sairAjuda = useCallback(() => setAjuda(false), [])
   // o clique semi-longo do turbo e do propulsor: segurou SEMI_LONGO ms, aciona
   const SEMI_LONGO = 260
@@ -1968,6 +1973,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <button type="button" data-info="desligar" className="l-hud-cel is-oculos is-on" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); alternarOculos() }} aria-label="desligar o holo">
                 <svg width="22" height="18" viewBox="0 0 28 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="10" height="8" rx="3" /><rect x="16" y="6" width="10" height="8" rx="3" /><path d="M12 9.5c1.3-1 2.7-1 4 0M2 8 0.8 5.5M26 8l1.2-2.5" /></svg>
               </button>
+              {/* (LU2CA 22/10 (2)) a engrenagem: os ajustes de verdade, numa janela do holo */}
+              <button type="button" data-info="ajustes" className={`l-hud-cel is-ajustes ${ajustes ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); setAjustes(true) }} aria-label="ajustes">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /><circle cx="12" cy="12" r="6.6" /></svg>
+              </button>
             </>
           ) : (
             <button type="button" className="l-hud-cel is-oculos" onPointerDown={(e) => e.stopPropagation()} onClick={alternarOculos} aria-label="ligar o holo">
@@ -2137,6 +2146,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </>
       )}
       {discoM && ajuda && oculos && <HoloAjuda ativa onSair={sairAjuda} />}
+      {discoM && ajustes && oculos && <HoloAjustes qual={qualHolo} onQual={(n) => guardarQualidade(n)} onFechar={fecharAjustes} />}
       {/* sair a qualquer hora / voltar pra Kombi */}
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
         <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>sair da kombi</button>
@@ -2740,6 +2750,8 @@ function Cena({
   const a = useMemo(() => novaAmostra(), [])
   // (20/10) o nível de qualidade do aparelho (qualidade.ts): muda uma vez, quando a medida termina
   const [qual, setQual] = useState(QUALIDADE.nivel)
+  // (a engrenagem do holo muda o nível: vale na hora)
+  useEffect(() => ouvirQualidade(setQual), [])
   const motor = useMemo(() => montarMotor(), [])
   const reduz = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, [])
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando

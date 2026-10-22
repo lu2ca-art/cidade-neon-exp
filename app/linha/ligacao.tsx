@@ -10,7 +10,7 @@ import type { Tom } from "./roteiros"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { entender, type Fala, type Ligacao, type PassoLigacao } from "./ligacoes"
 import { VOZES } from "./roteiros"
-import { audioCtx, player, voz } from "./som"
+import { audioCtx, saidaEfeitos, player, voz } from "./som"
 import { track } from "@/lib/analytics"
 
 const MIC_NEGADO = "cn-linha-mic-negado"
@@ -41,7 +41,7 @@ function bipDesliga() {
     g.gain.setValueAtTime(0.0001, c.currentTime + d)
     g.gain.exponentialRampToValueAtTime(0.05, c.currentTime + d + 0.02)
     g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + d + 0.16)
-    o.connect(g).connect(c.destination)
+    o.connect(g).connect(saidaEfeitos() ?? c.destination)
     o.start(c.currentTime + d)
     o.stop(c.currentTime + d + 0.18)
   })
