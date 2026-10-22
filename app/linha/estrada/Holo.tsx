@@ -37,7 +37,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
   ajustes: { t: "ajustes", d: "a engrenagem: o volume da música, dos efeitos e das vozes, a qualidade dos gráficos e a lista dos controles." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
-  camera: { t: "câmera", d: "de fora da Kombi ou de dentro, no banco do motorista (tecla C)." },
+  camera: { t: "o olho (a câmera)", d: "o olhinho em cima do óculos: toca nele e a câmera troca, de fora da Kombi ou de dentro, no banco do motorista (tecla C). aberto e azul: de dentro." },
   radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: abre o menu da rádio (ligar, sintonizar as frequências que você já achou, e as mensagens das rádios piratas). ⏭ troca a faixa." },
   destaque: { t: "B4TIDA · GUITAR DRIVER", d: "os dois que importam. o B4TIDA toca o padrão aqui mesmo: toca nele e abre o criador de beats. o GUITAR DRIVER abre no fim da sua carreira." },
   "app:batida": { t: "B4TIDA", d: "a MPC: toca nos quadrados pra abrir o criador de beats e montar a sua música por camadas." },
@@ -668,7 +668,7 @@ export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => voi
 const CONTROLES: { t: string; itens: [string, string][] }[] = [
   { t: "dirigir", itens: [["toque", "um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré)"], ["teclado", "← → ou A D viram · ↑ ou W acelera · ↓ ou S freia e dá ré · Q é a manobra"], ["pular", "toque duplo, ou espaço duas vezes"]] },
   { t: "turbo e propulsor", itens: [["turbo", "segura o botão um instante (no teclado, um toque no espaço ou shift). drift, manobras e voos enchem a barra"], ["propulsor", "segura o botão: a Kombi voa (no teclado, segura o espaço). a energia volta andando no chão"], ["no ar", "um lado gira; os dois juntos dão o mortal. no voo, o mapa aparece no meio da tela"]] },
-  { t: "o holo", itens: [["óculos", "liga e desliga o holo (tecla H). desligado, fica só a estrada"], ["câmera", "de fora ou de dentro da Kombi (tecla C)"], ["sair da Kombi", "desce de patins; perto dela, volta (tecla F)"], ["widgets", "no celular moram na ilha de baixo: toca pra abrir"]] },
+  { t: "o holo", itens: [["óculos", "liga e desliga o holo (tecla H). desligado, fica só a estrada"], ["o olho", "o olhinho em cima do óculos troca a câmera: de fora ou de dentro da Kombi (tecla C)"], ["engrenagem", "os ajustes: volume, gráficos e esta lista"], ["sair da Kombi", "desce de patins; perto dela, volta (tecla F)"], ["widgets", "no celular moram na ilha de baixo: toca pra abrir"]] },
   { t: "rádio", itens: [["holograma", "toca nele: o menu da rádio (ligar, sintonizar as frequências achadas, as mensagens piratas)"], ["⏭", "troca a faixa"]] },
   { t: "missões e mapa", itens: [["o anel", "gira em volta do mapa com a missão de agora. toca nele, ou no mapa: abre o mapa com as missões"], ["no mapa", "cada ícone é uma missão: toca pra ver e pegar. tocar num lugar marca o caminho"], ["aceitou", "o anel abre com a checklist e depois volta a ser borda"]] },
   { t: "água", itens: [["gotas", "as gotas da pista viram água: rega as flores, paga a oficina; 100 gotas, duas viagens rápidas"]] },

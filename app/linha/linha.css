@@ -2772,3 +2772,27 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 @keyframes l-salsicha-recolhe { from { clip-path: inset(0 round calc(var(--D) / 2)); } to { clip-path: inset(0 0 calc(100% - var(--D)) 0 round calc(var(--D) / 2)); opacity: 0.4; } }
 @media (max-width: 600px) { .l-holo-anel { --D: 125px; --rb: 53px; } .l-holo-salsicha ol { padding-left: 11px; padding-right: 11px; } .l-holo-salsicha li { font-size: 10.5px; } }
 @media (prefers-reduced-motion: reduce) { .l-holo-anel.is-abre .l-holo-salsicha, .l-holo-anel.is-recolhe .l-holo-salsicha { animation: none; } .l-holo-anel.is-recolhe .l-holo-salsicha { display: none; } }
+
+/* ── (LU2CA 22/10 (3)) o alto à esquerda: o holo (óculos), a engrenagem, o "?". A câmera virou um OLHINHO
+   logo acima do óculos, que pisca (a pálpebra fecha e abre a cada uns segundos; só CSS, transform) ── */
+.l-hud-olho-col { position: relative; display: flex; flex-shrink: 0; pointer-events: none; }
+.l-hud-olho { position: absolute; left: 50%; bottom: calc(100% + 3px); width: 32px !important; height: 16px; margin-left: -16px; padding: 0 !important; border: 0 !important; background: none !important; color: #2fe8ff !important; cursor: pointer; pointer-events: auto; filter: drop-shadow(0 0 4px rgba(47, 232, 255, 0.55)); }
+.l-hud-olho::before { content: ""; position: absolute; inset: -7px -6px -3px; } /* a área do toque maior que o desenho */
+.l-hud-olho svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.l-hud-olho path { fill: rgba(0, 10, 20, 0.55); stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.l-hud-olho circle { fill: none; stroke: currentColor; stroke-width: 1.4; }
+.l-hud-olho circle.is-pupila { fill: currentColor; stroke: none; }
+.l-hud-olho:not(.is-dentro) { color: rgba(220, 240, 255, 0.85) !important; filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.8)); }
+.l-hud-olho.is-dentro circle:not(.is-pupila) { fill: color-mix(in srgb, currentColor 30%, transparent); }
+.l-hud-olho-g { transform-box: fill-box; transform-origin: 50% 50%; animation: l-olho-pisca 5.2s ease-in-out infinite; }
+@keyframes l-olho-pisca { 0%, 90%, 100% { transform: scaleY(1); } 93% { transform: scaleY(0.08); } 96% { transform: scaleY(1); } }
+.l-hud-olho:focus-visible { outline: 1px dashed #2fe8ff; outline-offset: 3px; }
+@media (min-width: 601px) and (pointer: fine) {
+  .l-viagem.is-disco.is-holo .l-hud-topo { padding-top: calc(24px + env(safe-area-inset-top)); }
+  .l-viagem.is-disco.is-holo .l-holo-som { top: calc(68px + env(safe-area-inset-top)); }
+}
+@media (max-height: 480px) {
+  .l-viagem.is-disco.is-holo .l-hud-topo { padding-top: calc(22px + env(safe-area-inset-top)); }
+  .l-viagem.is-disco.is-holo .l-holo-som { top: calc(66px + env(safe-area-inset-top)); }
+}
+@media (prefers-reduced-motion: reduce) { .l-hud-olho-g { animation: none; } }

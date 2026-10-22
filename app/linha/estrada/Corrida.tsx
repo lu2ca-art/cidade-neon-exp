@@ -1983,15 +1983,23 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           // "?" (toca nele e depois numa coisa: diz o que ela é) e o desligar
           oculos ? (
             <>
-              <button type="button" data-info="ajuda" className={`l-hud-cel is-ajuda ${ajuda ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAjuda((x) => !x)} aria-label="o que é cada coisa">
-                ?{avisos > 0 && <em>{avisos}</em>}
-              </button>
-              <button type="button" data-info="desligar" className="l-hud-cel is-oculos is-on" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); alternarOculos() }} aria-label="desligar o holo">
+              {/* (LU2CA 22/10 (3)) a ordem: o holo (óculos), a engrenagem, o "?" */}
+              {/* (LU2CA 22/10 (3)) a câmera não é mais ícone do holo: é um OLHINHO em cima
+                  do óculos, piscando de vez em quando (CSS); toca, troca a câmera (tecla C) */}
+              <span className="l-hud-olho-col">
+                <button type="button" data-info="camera" className={`l-hud-olho ${dentro ? "is-dentro" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={trocarCamera} aria-label={dentro ? "câmera de fora" : "câmera de dentro"} title="câmera (C)">
+                  <svg viewBox="0 0 32 16" aria-hidden="true"><g className="l-hud-olho-g"><path d="M2 8C7 1.5 25 1.5 30 8C25 14.5 7 14.5 2 8Z" /><circle cx="16" cy="8" r="4.2" /><circle className="is-pupila" cx="16" cy="8" r="1.7" /></g></svg>
+                </button>
+                <button type="button" data-info="desligar" className="l-hud-cel is-oculos is-on" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); alternarOculos() }} aria-label="desligar o holo">
                 <svg width="22" height="18" viewBox="0 0 28 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="10" height="8" rx="3" /><rect x="16" y="6" width="10" height="8" rx="3" /><path d="M12 9.5c1.3-1 2.7-1 4 0M2 8 0.8 5.5M26 8l1.2-2.5" /></svg>
-              </button>
+                </button>
+              </span>
               {/* (LU2CA 22/10 (2)) a engrenagem: os ajustes de verdade, numa janela do holo */}
               <button type="button" data-info="ajustes" className={`l-hud-cel is-ajustes ${ajustes ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); setAjustes(true) }} aria-label="ajustes">
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /><circle cx="12" cy="12" r="6.6" /></svg>
+              </button>
+              <button type="button" data-info="ajuda" className={`l-hud-cel is-ajuda ${ajuda ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAjuda((x) => !x)} aria-label="o que é cada coisa">
+                ?{avisos > 0 && <em>{avisos}</em>}
               </button>
             </>
           ) : (
@@ -2006,14 +2014,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           {avisos > 0 && <em>{avisos}</em>}
         </button>
         )}
-        <button type="button" data-info="camera" className={`l-hud-cam ${dentro ? "is-dentro" : ""} ${usouCam ? "" : "is-novo"}`} onPointerDown={(e) => e.stopPropagation()} onClick={trocarCamera} aria-label={dentro ? "câmera de fora" : "câmera de dentro"} title="câmera (C)">
+        {!(discoM && oculos) && <button type="button" data-info="camera" className={`l-hud-cam ${dentro ? "is-dentro" : ""} ${usouCam ? "" : "is-novo"}`} onPointerDown={(e) => e.stopPropagation()} onClick={trocarCamera} aria-label={dentro ? "câmera de fora" : "câmera de dentro"} title="câmera (C)">
           {dentro ? (
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 16V9a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v7" /><path d="M3 16h18" /><circle cx="7.5" cy="17.5" r="1.6" /><circle cx="16.5" cy="17.5" r="1.6" /></svg>
           ) : (
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="13" r="7" /><circle cx="12" cy="13" r="1.6" fill="currentColor" /><path d="M5.5 11h13M12 6v5" /></svg>
           )}
           <span>{dentro ? "de fora" : "1ª pessoa"}</span>
-        </button>
+        </button>}
         {/* guia de rota: a linha do que vem pela frente (as placas guiam
             na pista; aqui só a ordem das coisas e a distância) */}
         <div className="l-guia" style={{ ["--cor" as string]: fq.cor }}>
