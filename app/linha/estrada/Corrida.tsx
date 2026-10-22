@@ -48,6 +48,7 @@ import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
+import { Estatico } from "./estatico"
 import { DPR, ResolucaoDinamica } from "./resolucao"
 import { NIVEIS, QUALIDADE } from "./qualidade"
 import { MedirAparelho } from "./MedirAparelho"
@@ -5459,7 +5460,8 @@ function Cena({
         <meshStandardMaterial color="#071430" metalness={0.85} roughness={0.22} />
       </mesh>}
 
-      {/* pista */}
+      {/* pista (perf 003: o fixo fica congelado, estatico.tsx) */}
+      <Estatico>
       <mesh geometry={geo.chao} receiveShadow>
         <meshStandardMaterial map={tex.asfalto} roughness={0.38} metalness={0.3} color="#d6d9ff" side={THREE.DoubleSide} />
       </mesh>
@@ -5478,6 +5480,7 @@ function Cena({
           <meshBasicMaterial color="#ffffff" toneMapped={false} transparent opacity={0.8} />
         </mesh>
       ))}
+      </Estatico>
       {/* (disco) a faixa da saída pintada na cor da linha */}
       {geo.pintaSaida.index!.count > 0 && (
         <mesh geometry={geo.pintaSaida}>
@@ -5489,6 +5492,7 @@ function Cena({
       {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} />}
       {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
       {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}
+      <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
           <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
@@ -5501,18 +5505,21 @@ function Cena({
       ))}
 
       {cidade.predios.map((m, i) => <primitive key={i} object={m} />)}
+      </Estatico>
       {/* (disco) a central: a torre de onde saem todas as pistas */}
       {"disco" in M && (M as MundoDisco).torres.map((t, i) => <TorreCentral key={i} c={t} janelas={tex.janelas} />)}
       <points geometry={cidade.aviacao} material={cidade.aviacaoMat} />
+      <Estatico>
       <primitive object={cidade.arcos} />
       <primitive object={cidade.fitas} />
+      </Estatico>
       {cidade.outdoors.map((o, i) => (
         <mesh key={`out${i}`} position={o.pos} rotation={[0, o.rot, 0]}>
           <planeGeometry args={[28, 7]} />
           <meshBasicMaterial map={o.tex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
         </mesh>
       ))}
-      <primitive object={cidade.pilares} />
+      <Estatico><primitive object={cidade.pilares} /></Estatico>
       {/* (no mapa novo a Linha 9 ainda vai ganhar o traçado dela) */}
       {!relevoNovo && <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>}
       <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
@@ -5522,8 +5529,10 @@ function Cena({
       <Seguro nome="flores">{"ligacoes" in M ? <FloresAsfalto M={M} {...floresAsf} /> : <Flores M={M} regadas={regadas} />}</Seguro>
       <Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro>
       <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
+      <Estatico>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
+      </Estatico>
       <points geometry={cidade.luzes} material={cidade.luzMat} />
 
       {/* bifurcações: pórticos com três placas, setas no chão, faixa de
@@ -5538,6 +5547,7 @@ function Cena({
           <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
         </mesh>
       ))}
+      <Estatico>
       {placas.lista.map((g) => (
         <group key={g.id} position={g.pos} rotation={[0, g.rot, 0]}>
           {[-1, 1].map((l) => (
@@ -5584,6 +5594,7 @@ function Cena({
           ))}
         </group>
       ))}
+      </Estatico>
       {placas.setas.map((s, i) => (
         <mesh key={`s${i}`} position={s.p} rotation={[-Math.PI / 2, 0, s.rot]}>
           <planeGeometry args={[3.2, 6.4]} />

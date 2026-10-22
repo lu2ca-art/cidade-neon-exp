@@ -11,6 +11,7 @@ import { useMemo } from "react"
 import * as THREE from "three"
 
 import { CREDITO_SUBURBIO } from "./creditos"
+import { Estatico } from "./estatico"
 export { CREDITO_SUBURBIO }
 const URL = "/models/suburbio.glb"
 
@@ -35,8 +36,8 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
         <circleGeometry args={[raioChao, 64]} />
         <meshStandardMaterial color="#0c0d18" roughness={0.92} metalness={0.05} />
       </mesh>
-      {/* o miolo: centrado (o modelo vem com o centro em x 22, z 6) */}
-      <primitive object={modelo} position={[cx - 22 * 1.4, -11.8, cz - 6 * 1.4]} scale={1.4} />
+      {/* o miolo: centrado (o modelo vem com o centro em x 22, z 6). Congelado: não se mexe (perf 003) */}
+      <Estatico><primitive object={modelo} position={[cx - 22 * 1.4, -11.8, cz - 6 * 1.4]} scale={1.4} /></Estatico>
     </group>
   )
 }
