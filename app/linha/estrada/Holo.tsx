@@ -33,7 +33,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 
 // o que cada coisa do holo é (o "?"): uma frase simples, sem manual
 export const INFO: Record<string, { t: string; d: string }> = {
-  ajuda: { t: "?", d: "a ajuda: todos os controles. com ela aberta, toca numa coisa do holo pra saber o que é." },
+  ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
   camera: { t: "câmera", d: "de fora da Kombi ou de dentro, no banco do motorista (tecla C)." },
   radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: abre o menu da rádio (ligar, sintonizar as frequências que você já achou, e as mensagens das rádios piratas). ⏭ troca a faixa." },
@@ -473,10 +473,42 @@ export function HoloDestaque({ onApp, guitarLivre = false }: { onApp: (id: AppId
   )
 }
 
-// (LU2CA 22/10) o "?" é o ÚNICO lugar com texto explicando: abre a ajuda com
-// todos os controles do jogo. Com ela aberta, tocar numa coisa do holo (o que
-// tem data-info) diz o que ela é, em vez de fazer a ação; tocar fora, ou no
-// "?", fecha
+// o "?": ligado, tocar em qualquer coisa do holo (o que tem data-info) mostra
+// o que ela é, em vez de fazer a ação; tocar fora, ou no "?", sai
+export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => void }) {
+  const [card, setCard] = useState<{ t: string; d: string } | null>(null)
+  useEffect(() => {
+    if (!ativa) return
+    const alvo = (e: Event) => (e.target as Element | null)?.closest?.("[data-info]") as HTMLElement | null
+    // (na captura, antes do React: a ação do botão não acontece)
+    const desce = (e: PointerEvent) => {
+      const el = alvo(e)
+      if (!el) { onSair(); return }
+      e.stopPropagation(); e.preventDefault()
+    }
+    const toca = (e: MouseEvent) => {
+      const el = alvo(e)
+      if (!el) return
+      e.stopPropagation(); e.preventDefault()
+      const id = el.dataset.info!
+      if (id === "ajuda") { onSair(); return }
+      setCard(infoDe(id))
+    }
+    document.addEventListener("pointerdown", desce, true)
+    document.addEventListener("click", toca, true)
+    return () => { document.removeEventListener("pointerdown", desce, true); document.removeEventListener("click", toca, true) }
+  }, [ativa, onSair])
+  if (!ativa) return null
+  return (
+    <div className="l-holo-ajuda" role="status" aria-live="polite">
+      {card ? <><b>{card.t}</b><span>{card.d}</span></> : <b>toca em qualquer coisa</b>}
+    </div>
+  )
+}
+
+// (LU2CA 22/10) a lista inteira dos controles NUNCA vai por cima do HUD: é o
+// conteúdo da página de ajustes (a engrenagem). Não achei a engrenagem neste
+// branch, então AjudaControles está pronto mas ainda não montado
 const CONTROLES: { t: string; itens: [string, string][] }[] = [
   { t: "dirigir", itens: [["toque", "um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré)"], ["teclado", "← → ou A D viram · ↑ ou W acelera · ↓ ou S freia e dá ré · Q é a manobra"], ["pular", "toque duplo, ou espaço duas vezes"]] },
   { t: "turbo e propulsor", itens: [["turbo", "segura o botão um instante (no teclado, um toque no espaço ou shift). drift, manobras e voos enchem a barra"], ["propulsor", "segura o botão: a Kombi voa (no teclado, segura o espaço). a energia volta andando no chão"], ["no ar", "um lado gira; os dois juntos dão o mortal. no voo, o mapa aparece no meio da tela"]] },
@@ -485,39 +517,9 @@ const CONTROLES: { t: string; itens: [string, string][] }[] = [
   { t: "missões e mapa", itens: [["o anel", "gira em volta do mapa com a missão de agora. toca nele, ou no mapa: abre o mapa com as missões"], ["no mapa", "cada ícone é uma missão: toca pra ver e pegar. tocar num lugar marca o caminho"], ["aceitou", "o anel abre com a checklist e depois volta a ser borda"]] },
   { t: "água", itens: [["gotas", "as gotas da pista viram água: rega as flores, paga a oficina; 100 gotas, duas viagens rápidas"]] },
 ]
-export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => void }) {
-  const [card, setCard] = useState<{ t: string; d: string } | null>(null)
-  useEffect(() => {
-    if (!ativa) return
-    const alvo = (e: Event) => (e.target as Element | null)?.closest?.("[data-info]") as HTMLElement | null
-    const dentro = (e: Event) => !!(e.target as Element | null)?.closest?.(".l-holo-ajuda")
-    // (na captura, antes do React: a ação do botão não acontece)
-    const desce = (e: PointerEvent) => {
-      if (dentro(e)) return
-      const el = alvo(e)
-      if (!el) { onSair(); return }
-      e.stopPropagation(); e.preventDefault()
-    }
-    const toca = (e: MouseEvent) => {
-      if (dentro(e)) return
-      const el = alvo(e)
-      if (!el) return
-      e.stopPropagation(); e.preventDefault()
-      const id = el.dataset.info!
-      if (id === "ajuda") { onSair(); return }
-      setCard(infoDe(id))
-    }
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onSair() }
-    document.addEventListener("pointerdown", desce, true)
-    document.addEventListener("click", toca, true)
-    window.addEventListener("keydown", esc)
-    return () => { document.removeEventListener("pointerdown", desce, true); document.removeEventListener("click", toca, true); window.removeEventListener("keydown", esc) }
-  }, [ativa, onSair])
-  if (!ativa) return null
+export function AjudaControles() {
   return (
-    <div className="l-holo-ajuda" role="dialog" aria-label="ajuda: os controles">
-      <header><b>?</b><span>toca numa coisa do holo pra saber o que é</span><button type="button" onClick={onSair} aria-label="fechar a ajuda">×</button></header>
-      {card && <p className="l-holo-ajuda-card" role="status" aria-live="polite"><b>{card.t}</b>{card.d}</p>}
+    <div className="l-ajuda-controles" aria-label="os controles">
       {CONTROLES.map((g) => (
         <section key={g.t}>
           <small>{g.t}</small>
