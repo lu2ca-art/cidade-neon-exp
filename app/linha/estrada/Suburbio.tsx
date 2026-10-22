@@ -20,12 +20,14 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
   const { scene } = useGLTF(URL)
   const modelo = useMemo(() => {
     const g = scene.clone(true)
+    const semVidroCaro = new Map<THREE.Material, THREE.Material>()
     g.traverse((o) => {
       const m = o as THREE.Mesh
       if (!m.isMesh) return
       // sem normal no arquivo (tirada pra caber no celular): recalcula
       if (!m.geometry.getAttribute("normal")) m.geometry.computeVertexNormals()
       m.frustumCulled = true
+      m.material = vidroBarato(m.material as THREE.Material, semVidroCaro)
     })
     // (perf 003) 154 malhas com 3 materiais: uma por material e célula (6×6: com 3×3 o corte por frustum piorava e os triângulos subiam ~75 mil)
     mesclarPorMaterial(g, 6)
@@ -42,6 +44,30 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
       <Estatico><primitive object={modelo} position={[cx - 22 * 1.4, -11.8, cz - 6 * 1.4]} scale={1.4} /></Estatico>
     </group>
   )
+}
+
+// (perf 006) o vidro "cristal" do modelo (janelas) vinha com transmission=1:
+// com isso o three renderiza a cena opaca INTEIRA de novo num alvo à parte em
+// todo quadro (tela cheia, meio-float, MSAA 4x) e gera a cadeia de mipmaps
+// dele, 2x por quadro (DoubleSide = frente e costas). Com rugosidade 0,75 e
+// opacidade 0,25 o que a transmissão mostrava era o fundo borrado, quase o
+// mesmo fundo que já está atrás. Troca: sem transmissão, cor preta e mistura
+// aditiva = fundo + 0,25 x o brilho especular (o que sobrava do vidro).
+function vidroBarato(mat: THREE.Material, cache: Map<THREE.Material, THREE.Material>): THREE.Material {
+  const f = mat as THREE.MeshPhysicalMaterial
+  if (!f.isMeshPhysicalMaterial || !(f.transmission > 0)) return mat
+  let v = cache.get(mat)
+  if (!v) {
+    const n = f.clone()
+    n.transmission = 0
+    n.color.set(0x000000)
+    n.blending = THREE.AdditiveBlending
+    n.transparent = true
+    n.depthWrite = false
+    v = n
+    cache.set(mat, v)
+  }
+  return v
 }
 
 useGLTF.preload(URL)
