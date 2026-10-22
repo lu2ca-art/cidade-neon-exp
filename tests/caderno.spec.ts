@@ -18,11 +18,11 @@ test("o ✎ só aparece com ?caderno, abre, pausa e fecha", async ({ page }) => 
 
   await page.goto("/linha")
   await expect(page.locator(".l-btn-entrar")).toBeVisible({ timeout: 60_000 })
-  await expect(page.locator(".cdn-btn")).toHaveCount(0)
+  await expect(page.locator(".cdn-btn[aria-label=\"anotar\"]")).toHaveCount(0)
 
   await page.goto("/linha?caderno=1")
-  await expect(page.locator(".cdn-btn")).toBeVisible({ timeout: 60_000 })
-  await page.locator(".cdn-btn").click()
+  await expect(page.locator(".cdn-btn[aria-label=\"anotar\"]")).toBeVisible({ timeout: 60_000 })
+  await page.locator(".cdn-btn[aria-label=\"anotar\"]").click()
   await expect(page.locator(".cdn-caixa")).toBeVisible()
   // a parte do jogo, com nome de gente
   await expect(page.locator(".cdn-topo span")).toHaveText("a página inicial")
@@ -52,6 +52,6 @@ test("o ✎ só aparece com ?caderno, abre, pausa e fecha", async ({ page }) => 
 
   await page.goto("/linha?caderno=sair")
   await expect(page.locator(".l-btn-entrar")).toBeVisible({ timeout: 60_000 })
-  await expect(page.locator(".cdn-btn")).toHaveCount(0)
+  await expect(page.locator(".cdn-btn[aria-label=\"anotar\"]")).toHaveCount(0)
   expect(erros).toEqual([])
 })

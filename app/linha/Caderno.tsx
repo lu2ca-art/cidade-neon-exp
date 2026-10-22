@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { congelar, descongelar, instalarRelogio } from "./congelar"
 import { parteDe, type Onde } from "./parte"
+import { ligarReplay, replaySuportado, retomarReplay, ultimosSegundos } from "./replay"
 
 const LIGADO = "cn-caderno"
 const GUARDADAS = "cn-caderno-notas"
@@ -67,7 +68,7 @@ export function Caderno() {
     if (p === "sair") localStorage.removeItem(LIGADO)
     else if (p !== null) localStorage.setItem(LIGADO, "1")
     const sim = localStorage.getItem(LIGADO) === "1"
-    if (sim) instalarRelogio()
+    if (sim) { instalarRelogio(); ligarReplay() }
     setLigado(sim)
     setTotal(ler<Nota[]>(GUARDADAS, []).length)
   }, [])
@@ -81,6 +82,21 @@ export function Caderno() {
   }, [])
 
   const [mandando, setMandando] = useState("")
+  // o replay (⏪): os últimos segundos da cena, com o jogo congelado
+  const [replay, setReplay] = useState<string[] | null>(null)
+  const [trecho, setTrecho] = useState(0)
+  const video = useRef<HTMLVideoElement>(null)
+  const abrirReplay = useCallback(async () => {
+    congelar()
+    const blobs = await ultimosSegundos()
+    if (!blobs.length) { descongelar(); retomarReplay(); setAviso("ainda não tem replay (grava a cena depois de uns segundos)"); setTimeout(() => setAviso(""), 2200); return }
+    setTrecho(0)
+    setReplay(blobs.map((b) => URL.createObjectURL(b)))
+  }, [])
+  const fecharReplay = useCallback((paraAnotar: boolean) => {
+    setReplay((r) => { r?.forEach((u) => URL.revokeObjectURL(u)); return null })
+    if (!paraAnotar) { descongelar(); retomarReplay() }
+  }, [])
   const enviarTodas = useCallback(async () => {
     const todas = ler<Nota[]>(GUARDADAS, [])
     let ok = 0
@@ -92,8 +108,8 @@ export function Caderno() {
     setMandando(ok === todas.length ? `${ok} notas enviadas ✓` : `${ok} de ${todas.length} enviadas (tenta de novo depois)`)
   }, [])
 
-  const abrir = useCallback(() => {
-    estado.current = estadoAgora()
+  const abrir = useCallback((doReplay = false) => {
+    estado.current = { ...estadoAgora(), ...(doReplay ? { doReplay: true } : {}) }
     setTela(String(estado.current.parteNome ?? ""))
     congelar()
     setAberto(true)
@@ -105,6 +121,7 @@ export function Caderno() {
   const fechar = useCallback(() => {
     setAberto(false); setTexto(""); setTags([]); setMandando("")
     descongelar()
+    retomarReplay()
     window.dispatchEvent(new CustomEvent(EVENTO_CADERNO, { detail: { aberto: false } }))
   }, [])
 
@@ -139,10 +156,26 @@ export function Caderno() {
   return (
     <>
       <style>{CSS}</style>
-      {!aberto && (
-        <button type="button" className="cdn-btn" onClick={abrir} aria-label="anotar">
-          ✎{total ? <small>{total}</small> : null}
-        </button>
+      {replay && (
+        <div className="cdn-fundo" data-caderno>
+          <div className="cdn-caixa">
+            <div className="cdn-topo"><b>os últimos segundos</b><span>{replay.length > 1 ? `parte ${trecho + 1} de ${replay.length}` : ""}</span></div>
+            <video ref={video} className="cdn-video" src={replay[trecho]} autoPlay muted playsInline controls onEnded={() => { if (trecho < replay.length - 1) setTrecho(trecho + 1) }} />
+            <div className="cdn-acoes">
+              <button type="button" onClick={() => { setTrecho(0); if (video.current) { video.current.currentTime = 0; void video.current.play() } }}>ver de novo</button>
+              <button type="button" onClick={() => fecharReplay(false)}>voltar pro jogo</button>
+              <button type="button" className="cdn-ok" onClick={() => { fecharReplay(true); abrir(true) }}>anotar isso</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {!aberto && !replay && (
+        <div className="cdn-btns">
+          {replaySuportado() && <button type="button" className="cdn-btn" onClick={() => void abrirReplay()} aria-label="ver os últimos segundos de novo">⏪</button>}
+          <button type="button" className="cdn-btn" onClick={() => abrir()} aria-label="anotar">
+            ✎{total ? <small>{total}</small> : null}
+          </button>
+        </div>
       )}
       {aviso && <div className="cdn-aviso">{aviso}</div>}
       {aberto && (
@@ -176,7 +209,9 @@ export function Caderno() {
 }
 
 const CSS = `
-.cdn-btn{position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translateX(-50%);z-index:2147483000;width:40px;height:40px;border-radius:20px;border:1px solid #ffffff55;background:#0a0918cc;color:#fff;font:600 18px system-ui;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;gap:2px}
+.cdn-btns{position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translateX(-50%);z-index:2147483000;display:flex;gap:6px}
+.cdn-video{width:100%;max-height:55vh;border-radius:10px;background:#000}
+.cdn-btn{width:40px;height:40px;border-radius:20px;border:1px solid #ffffff55;background:#0a0918cc;color:#fff;font:600 18px system-ui;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;gap:2px}
 .cdn-btn small{font:600 9px ui-monospace,monospace;opacity:.7}
 .cdn-aviso{position:fixed;top:calc(env(safe-area-inset-top) + 56px);left:50%;transform:translateX(-50%);z-index:2147483000;padding:6px 12px;border-radius:14px;background:#0a0918e6;color:#fff;font:500 13px system-ui}
 .cdn-fundo{position:fixed;inset:0;z-index:2147483001;background:#000a;display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top) + 12px) 12px 12px;overflow:auto}

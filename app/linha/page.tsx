@@ -40,6 +40,7 @@ import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
 import { EVENTO_CADERNO } from "./Caderno"
 import type { Onde } from "./parte"
+import { aplicarParteDeTeste } from "./parteTeste"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
 import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
@@ -218,6 +219,8 @@ export default function LinhaPage() {
   }, [tela])
 
   useEffect(() => {
+    // ?parte=casa (fora da produção): o save pronto daquela parte da jornada (parteTeste.ts)
+    aplicarParteDeTeste()
     const s = carregar()
     const h = hoje()
     // hidratação do localStorage: só existe no cliente, depois do mount
