@@ -10,10 +10,11 @@
 //     carros despencados meio enterrados e pneus)
 
 import * as THREE from "three"
+import { CASA, SAIDA_CASA } from "../disco/historia"
 
 export const CHAO = -12
 const TAM = 9000 // m de lado
-const SEG = 200 // a grade (45 m por célula)
+const SEG = 256 // a grade (35 m por célula; os morros pedem um pouco mais que as dunas)
 
 function hash(ix: number, iz: number) { const s = Math.sin(ix * 127.1 + iz * 311.7) * 43758.5453; return s - Math.floor(s) }
 // ruído de valor suave (0–1)
@@ -31,12 +32,75 @@ function crista(x: number, z: number) {
   const ang = 0.6, u = x * Math.cos(ang) + z * Math.sin(ang)
   return 1 - Math.abs(Math.sin(u / 95 + fbm(x / 420, z / 420) * 5))
 }
-export function alturaExata(x: number, z: number) {
+function dunas(x: number, z: number) {
   const r = Math.hypot(x, z)
   const duna = Math.pow(crista(x, z), 1.8) * (0.5 + 0.8 * fbm(x / 260 + 7, z / 260 + 3))
   const onda = fbm(x / 900 + 11, z / 900 + 5)
   // na cidade, um terço da altura (o chão nunca chega perto das pistas)
   return CHAO + (duna * 11 + onda * 9 - 4) * (0.35 + 0.65 * suave(900, 1500, r))
+}
+
+// ── OS MORROS (LU2CA 22/10, 3.1/3.2: "um deserto de verdade: dunas e morros
+// enormes espalhados, não em todo lugar, que dão dinâmica à velocidade e pulos
+// altos"). Cada morro é uma duna gigante: comprida, com a crista afiada; o lado
+// do vento é a rampa (sobe devagar, ~0,3), o outro lado cai a pique (~0,6).
+// Vindo rápido pela rampa, a crista lança a Kombi (a física já decola quando o
+// chão cai mais rápido que a queda). Só fora da cidade (r > ~1,9 km) e longe da
+// casa da D-Bee. Sempre os mesmos, no mesmo lugar
+type Morro = { x: number; z: number; ca: number; sa: number; L: number; W: number; H: number }
+const VENTO = 0.6 // o mesmo rumo das cristas das dunas
+const MORROS: Morro[] = (() => {
+  const ms: Morro[] = []
+  const novo = (x: number, z: number, H: number, L: number, W: number, ang: number) => ms.push({ x, z, ca: Math.cos(ang), sa: Math.sin(ang), L, W, H })
+  // o primeiro: no caminho da casa pra cidade (~600 m), a rampa virada pra casa
+  // (o primeiro pulo grande; dá pra ver da queda)
+  const dx = -SAIDA_CASA.x, dz = -SAIDA_CASA.z, d = Math.hypot(dx, dz)
+  novo(CASA.x + (dx / d) * 620 + (dz / d) * 60, CASA.z + (dz / d) * 620 - (dx / d) * 60, 38, 300, 260, Math.atan2(dz, dx))
+  // dois de lado, perto da queda: a referência do relevo quando ela cai
+  novo(CASA.x - 520, CASA.z + 380, 52, 360, 300, VENTO + 0.3)
+  novo(CASA.x + 260, CASA.z - 560, 30, 260, 220, VENTO - 0.2)
+  // o resto, espalhado no anel do deserto
+  let k = 0
+  while (ms.length < 17 && k < 400) {
+    k++
+    const a = hash(k, 91) * Math.PI * 2, rr = 2000 + hash(k, 17) * 1600
+    const x = Math.cos(a) * rr, z = Math.sin(a) * rr
+    const H = 24 + hash(k, 5) * 34, L = 220 + hash(k, 7) * 220, W = 200 + hash(k, 9) * 140
+    if (Math.hypot(x - CASA.x, z - CASA.z) < L + 260) continue
+    if (ms.some((m) => Math.hypot(m.x - x, m.z - z) < m.L + L + 120)) continue
+    novo(x, z, H, L, W, VENTO + (hash(k, 3) - 0.5) * 0.8)
+  }
+  return ms
+})()
+// a altura dos morros num ponto (0 fora deles). u: através da crista (o vento
+// vem de u < 0), v: ao longo dela
+function morros(x: number, z: number) {
+  let h = 0
+  for (const m of MORROS) {
+    const px = x - m.x, pz = z - m.z
+    const v = (-px * m.sa + pz * m.ca) / m.L
+    if (v <= -1 || v >= 1) continue
+    const c = px * m.ca + pz * m.sa
+    const u = c < 0 ? -c / m.W : c / (m.W * 0.5)
+    if (u >= 1) continue
+    const tv = 1 - v * v, f = 1 - u
+    // a crista afiada (a curva vai a zero suave no pé) e as pontas arredondadas
+    h = Math.max(h, m.H * f * f * tv * tv * (0.85 + 0.15 * ruido(x / 60, z / 60)))
+  }
+  return h
+}
+
+// a casa e a saída dela: o chão plano (na altura da duna ali), pra nada ficar
+// enterrado nem voando; a transição suave até as dunas
+const CX = (CASA.x + SAIDA_CASA.x) / 2, CZ = (CASA.z + SAIDA_CASA.z) / 2
+const PLANO_R = 110, PLANO_T = 260
+let hCasa: number | null = null
+export function alturaExata(x: number, z: number) {
+  const h = dunas(x, z) + morros(x, z)
+  const dc = Math.hypot(x - CX, z - CZ)
+  if (dc >= PLANO_T) return h
+  hCasa ??= dunas(CX, CZ)
+  return hCasa + (h - hCasa) * suave(PLANO_R, PLANO_T, dc)
 }
 // o lixão (0–1): manchas dentro da cidade
 export function zonaLixo(x: number, z: number) {
@@ -79,7 +143,18 @@ export function geoChao() {
     const lr = 0.17 + ferr * 0.14 + m * 0.05, lg = 0.15 + ferr * 0.05 + m * 0.04, lb = 0.16 + m * 0.04
     cor[i * 3] = sr + (lr - sr) * l; cor[i * 3 + 1] = sg + (lg - sg) * l; cor[i * 3 + 2] = sb + (lb - sb) * l
   }
-  geo.setAttribute("color", new THREE.BufferAttribute(cor, 3)); geo.computeVertexNormals()
+  geo.computeVertexNormals()
+  // o relevo de longe (a queda): um sol baixo assado na cor (o material tem
+  // emissivo forte, que achata a luz) e a encosta íngreme mais escura
+  const nor = geo.attributes.normal, sx = -0.55, sy = 0.62, sz = -0.56
+  for (let i = 0; i < pos.count; i++) {
+    const nx = nor.getX(i), ny = nor.getY(i), nz = nor.getZ(i)
+    const luz = Math.max(0, nx * sx + ny * sy + nz * sz)
+    const alto = Math.max(0, Math.min(1, (pos.getY(i) - CHAO) / 50))
+    const k = (0.62 + 0.5 * luz) * (0.92 + 0.16 * alto) * (0.75 + 0.25 * ny)
+    cor[i * 3] *= k; cor[i * 3 + 1] *= k; cor[i * 3 + 2] *= k
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(cor, 3))
   return geo
 }
 
