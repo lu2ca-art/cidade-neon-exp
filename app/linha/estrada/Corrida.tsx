@@ -54,7 +54,7 @@ import { NIVEIS, QUALIDADE } from "./qualidade"
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloMissao, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
+import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -2125,8 +2125,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <HoloApps onApp={(id) => onApp?.(id)} />
             </>
           )}
-          <HoloAnel missao={missaoHolo} onMissoes={() => onMissoes?.()} />
-          <HoloMissao missao={checklistHolo} />
+          <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => onMissoes?.()} />
         </>
       )}
       {discoM && ajuda && oculos && <HoloAjuda ativa onSair={sairAjuda} />}

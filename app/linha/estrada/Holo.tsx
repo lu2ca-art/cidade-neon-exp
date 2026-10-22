@@ -261,90 +261,59 @@ export function HoloClima({ ler }: { ler: () => Clima }) {
   )
 }
 
-// o anel das missões, girando em volta do mapa: a missão de agora, ou quantas há
-export function HoloAnel({ missao, onMissoes }: { missao: { texto: string; cor: string; n: number } | null; onMissoes: () => void }) {
-  const txt = !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
-  const cor = missao?.cor ?? "#2fe8ff"
-  // o texto se repete pra dar a volta inteira
-  const volta = txt ? Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("") : ""
-  return (
-    <button type="button" className={`l-holo-anel ${txt ? "" : "is-vazio"}`} data-info="anel" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()} onClick={onMissoes} aria-label={txt || "missões"}>
-      <svg viewBox="0 0 160 160" aria-hidden="true">
-        <defs><path id="l-holo-anel-p" d="M80,80 m-70,0 a70,70 0 1,1 140,0 a70,70 0 1,1 -140,0" /></defs>
-        <circle cx="80" cy="80" r="76" />
-        <g className="l-holo-anel-gira">
-          <text><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
-        </g>
-        {missao && missao.n > 0 && <g className="l-holo-anel-n"><circle cx="138" cy="26" r="11" /><text x="138" y="26">{missao.n}</text></g>}
-      </svg>
-    </button>
-  )
-}
-
-// ── (LU2CA 21/10 (2), o holo) A MISSÃO É UM WIDGET FLUTUANDO, perene, com a
-// checklist. Pegou na feira: ele aparece onde a feira estava; uns segundos
-// depois (ou num toque) diminui e vira um PONTO DE LUZ que vai pro número da
-// missão, no anel do mapa (o número pulsa quando o ponto chega). Tocar no
-// número/anel abre a checklist junto ao mapa (o painel .l-missoes.is-disco).
-// Desempenho: o voo é uma Web Animation (compositor), com UMA leitura de
-// posição no começo; nada por quadro, nada de estado React por quadro ──
+// ── (LU2CA 22/10) O ANEL = O OMNITRIX (Ben 10). O anel das missões gira em volta
+// do mapa. Pegou uma missão: o anel gira e EXPANDE (com overshoot) mostrando a
+// checklist dela; a ABA atrelada à borda, da mesma cor da borda, é o "ponto de
+// luz". Depois de 4,5 s a checklist recolhe girando e volta a ser borda. Tocar
+// na aba reabre o mesmo movimento. Desempenho: só CSS (keyframes), um setState
+// por abrir/fechar, nada por quadro. "Reduzir movimento": abre e fecha sem giro ──
 export type ChecklistHolo = { chave: string; cor: string; titulo: string; passos: { nome: string; estado: string }[] }
-const ABERTO_MS = 5000 // quanto tempo o widget fica aberto antes de virar o ponto
-const VOO_MS = 700
-// a última missão que o widget já mostrou (entre montagens da Corrida: sair de
+const OMNI_MS = 4500 // quanto tempo a checklist fica aberta antes de recolher
+const RECOLHE_MS = 450
+// a última missão que o anel já mostrou (entre montagens da Corrida: sair de
 // uma sala não reabre). undefined = ainda não viu nenhuma (abrir o jogo com a
-// missão já pegada não abre o widget; só pegar uma nova)
+// missão já pegada não abre; só pegar uma nova)
 let jaMostrou: string | null | undefined
-export function HoloMissao({ missao }: { missao: ChecklistHolo | null }) {
-  const [fase, setFase] = useState<"aberto" | "indo" | null>(null)
-  const caixa = useRef<HTMLDivElement>(null)
-  const ponto = useRef<HTMLSpanElement>(null)
-  const chave = missao?.chave ?? null
+const calmo = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
+export function HoloAnel({ missao, checklist, onMissoes }: { missao: { texto: string; cor: string; n: number } | null; checklist?: ChecklistHolo | null; onMissoes: () => void }) {
+  const txt = !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
+  // a borda tem a cor da missão pegada (a aba é da mesma cor)
+  const cor = checklist?.cor ?? missao?.cor ?? "#2fe8ff"
+  const [omni, setOmni] = useState<"abre" | "recolhe" | null>(null)
+  const chave = checklist?.chave ?? null
   useEffect(() => {
     const antes = jaMostrou
     jaMostrou = chave
-    if (!chave) { setFase(null); return }
+    if (!chave) { setOmni(null); return }
     if (antes === undefined || antes === chave) return
-    setFase("aberto")
+    setOmni("abre")
   }, [chave])
-  // aberto: espera e vai
   useEffect(() => {
-    if (fase !== "aberto") return
-    const t = setTimeout(() => setFase("indo"), ABERTO_MS)
-    return () => clearTimeout(t)
-  }, [fase])
-  // indo: o ponto de luz voa até o número do anel
-  useEffect(() => {
-    if (fase !== "indo") return
-    const cx = caixa.current, pt = ponto.current
-    const alvo = document.querySelector(".l-holo-anel-n circle")
-    const anel = alvo?.closest(".l-holo-anel")
-    const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches
-    if (!cx || !pt || !alvo || calmo) { setFase(null); return }
-    const a = cx.getBoundingClientRect(), b = alvo.getBoundingClientRect()
-    const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2)
-    const voo = pt.animate(
-      [{ transform: "translate(-50%, -50%) scale(1)", opacity: 1 }, { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.5)`, opacity: 0.9 }],
-      { duration: VOO_MS, easing: "cubic-bezier(0.5, 0, 0.2, 1)", fill: "forwards" },
-    )
-    let pulso = 0
-    voo.onfinish = () => {
-      setFase(null)
-      anel?.classList.add("is-chegou")
-      pulso = window.setTimeout(() => anel?.classList.remove("is-chegou"), 700)
-    }
-    return () => { voo.cancel(); clearTimeout(pulso) }
-  }, [fase])
-  if (!missao || !fase) return null
+    if (omni === "abre") { const t = setTimeout(() => setOmni("recolhe"), OMNI_MS); return () => clearTimeout(t) }
+    if (omni === "recolhe") { const t = setTimeout(() => setOmni(null), calmo() ? 0 : RECOLHE_MS); return () => clearTimeout(t) }
+  }, [omni])
+  // o texto se repete pra dar a volta inteira
+  const volta = txt ? Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("") : ""
   return (
-    <div ref={caixa} className={`l-holo-missao is-${fase}`} style={{ ["--cor" as string]: missao.cor }} onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="l-holo-missao-caixa" data-info="anel" onClick={() => setFase("indo")} aria-label={`missão: ${missao.titulo}. tocar guarda no mapa`}>
-        <small>{missao.titulo}</small>
-        <ul>
-          {missao.passos.map((p) => <li key={p.nome} className={`is-${p.estado === "em breve" ? "breve" : p.estado}`}><i aria-hidden="true">{p.estado === "feita" ? "✓" : ""}</i>{p.nome}</li>)}
-        </ul>
+    <div className={`l-holo-anel ${txt ? "" : "is-vazio"} ${omni ? `is-omni is-${omni}` : ""}`} style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
+      <button type="button" className="l-holo-anel-bt" data-info="anel" onClick={() => (checklist ? setOmni("abre") : onMissoes())} aria-label={txt || "missões"}>
+        <svg viewBox="0 0 160 160" aria-hidden="true">
+          <defs><path id="l-holo-anel-p" d="M80,80 m-70,0 a70,70 0 1,1 140,0 a70,70 0 1,1 -140,0" /></defs>
+          <circle cx="80" cy="80" r="76" />
+          <g className="l-holo-anel-gira">
+            <text><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
+          </g>
+        </svg>
       </button>
-      <span ref={ponto} className="l-holo-missao-ponto" aria-hidden="true" />
+      {checklist && <button type="button" className="l-holo-omni-aba" data-info="anel" onClick={() => setOmni("abre")} aria-label={`missão: ${checklist.titulo}`} aria-expanded={omni === "abre"} />}
+      {checklist && omni && (
+        <div className="l-holo-omni" role="status" aria-live="polite" onClick={() => setOmni("recolhe")}>
+          <small>{checklist.titulo}</small>
+          <ul>
+            {checklist.passos.map((p) => <li key={p.nome} className={`is-${p.estado === "em breve" ? "breve" : p.estado}`}><i aria-hidden="true">{p.estado === "feita" ? "✓" : ""}</i>{p.nome}</li>)}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
