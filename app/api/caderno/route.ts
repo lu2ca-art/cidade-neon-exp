@@ -1,11 +1,13 @@
 // O caderno do dono: cada observação que o LU2CA anota jogando (texto, etiquetas
 // e o estado do jogo naquele momento) chega aqui.
-// Vai pro PostHog como o evento "caderno_nota" (distinct_id fixo do dono), pelo
-// servidor, sem depender do consentimento do navegador. Rodando no Mac (dev), também
-// grava em RELATORIOS/caderno/AAAA-MM-DD.jsonl, pra ler sem abrir o PostHog.
+// Cada nota vira um arquivo no Vercel Blob (caderno/AAAA-MM-DD/<id>.json: o mesmo id
+// sobrescreve, então reenviar não duplica) — funciona na prévia e na produção.
+// Também vai pro PostHog como "caderno_nota" onde a chave existir (só produção), e
+// rodando no Mac (dev) grava em RELATORIOS/caderno/AAAA-MM-DD.jsonl.
 // Limites: 20 notas por minuto por IP, texto até 4000.
 
 import { NextResponse, type NextRequest } from "next/server"
+import { put } from "@vercel/blob"
 
 const JANELA = 60_000
 const MAX = 20
@@ -31,7 +33,7 @@ function limpar(c: unknown): Nota | null {
   if (!texto.trim() && !tags.length) return null
   const estado = o.estado && typeof o.estado === "object" && JSON.stringify(o.estado).length < 20_000 ? (o.estado as Record<string, unknown>) : undefined
   return {
-    id: typeof o.id === "string" ? o.id.slice(0, 60) : crypto.randomUUID(),
+    id: typeof o.id === "string" && /^[\w-]{8,60}$/.test(o.id) ? o.id : crypto.randomUUID(),
     quando: typeof o.quando === "string" ? o.quando.slice(0, 40) : new Date().toISOString(),
     texto, tags, estado,
   }
@@ -46,6 +48,13 @@ export async function POST(req: NextRequest) {
   if (!nota) return NextResponse.json({ ok: false }, { status: 400, headers })
 
   const destinos: string[] = []
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      await put(`caderno/${nota.quando.slice(0, 10)}/${nota.id}.json`, JSON.stringify(nota), { access: "public", contentType: "application/json", addRandomSuffix: false, allowOverwrite: true })
+      destinos.push("blob")
+    } catch { /* segue pros outros */ }
+  }
 
   if (process.env.NODE_ENV === "development") {
     try {

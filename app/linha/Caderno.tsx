@@ -80,6 +80,18 @@ export function Caderno() {
     gravar(PENDENTES, ficam)
   }, [])
 
+  const [mandando, setMandando] = useState("")
+  const enviarTodas = useCallback(async () => {
+    const todas = ler<Nota[]>(GUARDADAS, [])
+    let ok = 0
+    for (let i = 0; i < todas.length; i++) {
+      setMandando(`enviando ${i + 1} de ${todas.length}…`)
+      try { if (await enviar(todas[i])) ok++ } catch { /* sem rede */ }
+    }
+    if (ok === todas.length) gravar(PENDENTES, [])
+    setMandando(ok === todas.length ? `${ok} notas enviadas ✓` : `${ok} de ${todas.length} enviadas (tenta de novo depois)`)
+  }, [])
+
   const abrir = useCallback(() => {
     estado.current = estadoAgora()
     setTela(String(estado.current.parteNome ?? ""))
@@ -91,7 +103,7 @@ export function Caderno() {
   }, [reenviar])
 
   const fechar = useCallback(() => {
-    setAberto(false); setTexto(""); setTags([])
+    setAberto(false); setTexto(""); setTags([]); setMandando("")
     descongelar()
     window.dispatchEvent(new CustomEvent(EVENTO_CADERNO, { detail: { aberto: false } }))
   }, [])
@@ -134,7 +146,7 @@ export function Caderno() {
       )}
       {aviso && <div className="cdn-aviso">{aviso}</div>}
       {aberto && (
-        <div className="cdn-fundo" data-caderno onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") fechar(); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void salvar() }}>
+        <div className="cdn-fundo" data-caderno onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") void salvar(); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void salvar() }}>
           <div className="cdn-caixa">
             <div className="cdn-topo">
               <b>caderno</b>
@@ -146,8 +158,14 @@ export function Caderno() {
                 <button key={t} type="button" className={tags.includes(t) ? "is-on" : ""} onClick={() => setTags((v) => (v.includes(t) ? v.filter((x) => x !== t) : [...v, t]))}>{t}</button>
               ))}
             </div>
+            {total > 0 && (
+              <div className="cdn-todas">
+                <span>{mandando || `${total} ${total === 1 ? "nota" : "notas"} neste aparelho`}</span>
+                <button type="button" onClick={() => void enviarTodas()}>enviar todas</button>
+              </div>
+            )}
             <div className="cdn-acoes">
-              <button type="button" onClick={fechar}>voltar pro jogo</button>
+              <button type="button" onClick={() => void salvar()}>voltar pro jogo</button>
               <button type="button" className="cdn-ok" onClick={() => void salvar()}>anotar e voltar</button>
             </div>
           </div>
@@ -169,6 +187,8 @@ const CSS = `
 .cdn-tags{display:flex;flex-wrap:wrap;gap:6px}
 .cdn-tags button{padding:6px 10px;border-radius:14px;border:1px solid #ffffff33;background:transparent;color:#fff;font:13px system-ui}
 .cdn-tags button.is-on{background:#ff3fa4;border-color:#ff3fa4}
+.cdn-todas{display:flex;justify-content:space-between;align-items:center;gap:8px;font:12px system-ui;opacity:.8}
+.cdn-todas button{padding:6px 10px;border-radius:12px;border:1px solid #ffffff44;background:transparent;color:#fff;font:600 12px system-ui}
 .cdn-acoes{display:flex;gap:8px}
 .cdn-acoes button{flex:1;padding:12px;border-radius:12px;border:1px solid #ffffff33;background:transparent;color:#fff;font:600 14px system-ui}
 .cdn-acoes .cdn-ok{background:#fff;color:#0a0918}
