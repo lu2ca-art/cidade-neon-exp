@@ -10,7 +10,7 @@
 //     carros despencados meio enterrados e pneus)
 
 import * as THREE from "three"
-import { CASA, SAIDA_CASA } from "../disco/historia"
+import { CASA, QUEDA, SAIDA_CASA } from "../disco/historia"
 
 export const CHAO = -12
 const TAM = 9000 // m de lado
@@ -87,7 +87,16 @@ function morros(x: number, z: number) {
     // a crista afiada (a curva vai a zero suave no pé) e as pontas arredondadas
     h = Math.max(h, m.H * f * f * tv * tv * (0.85 + 0.15 * ruido(x / 60, z / 60)))
   }
-  return h
+  return h ? h * suave(140, 320, corredorQueda(x, z)) : 0
+}
+// (22/10) a queda: a Kombi cai até ~900 m antes da casa, a ~45 m do chão, e
+// voa reto até ela. Nessa faixa (1,2 km atrás da casa, no rumo da queda) nenhum
+// morro: só as dunas. A distância (m) até essa faixa
+const QX = Math.sin(QUEDA.rumo), QZ = Math.cos(QUEDA.rumo)
+function corredorQueda(x: number, z: number) {
+  const px = x - CASA.x, pz = z - CASA.z
+  const t = Math.max(-1200, Math.min(0, px * QX + pz * QZ))
+  return Math.hypot(px - QX * t, pz - QZ * t)
 }
 
 // a casa e a saída dela: o chão plano (na altura da duna ali), pra nada ficar
