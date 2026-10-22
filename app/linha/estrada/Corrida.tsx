@@ -72,7 +72,7 @@ import { LUGARES, VAGA, type Lugar, type LugarId } from "../lugares"
 import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
 import { ESPECIES, Flores, canteiroPerto, canteiroPorId } from "./Flores"
 import type { Ir as IrAtalho } from "../../teste/atalhos"
-import { Mapa, type Marca } from "./Mapa"
+import { Mapa, type IconeMapa, type Marca } from "./Mapa"
 import { Parque, areaDoParque, novoPasseio, pertoDoParque, type PasseioParque } from "./Parque"
 import { Prova } from "../provas"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
@@ -222,6 +222,10 @@ interface Props {
   missaoHolo?: { texto: string; cor: string; n: number } | null
   // (21/10 (2)) a checklist da missão pegada: o widget que vira o ponto de luz
   checklistHolo?: ChecklistHolo | null
+  // (22/10) as missões moram no mapa: os ícones, o painel com as opções e o toque num ícone
+  mapaMissoes?: IconeMapa[] | null
+  mapaPainel?: React.ReactNode
+  onMapaIcone?: (id: string) => void
   // (disco) a água: o saldo (save) e o que entra/sai (as gotas, a polícia)
   agua?: number
   onAgua?: (d: number) => void
@@ -411,7 +415,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -942,6 +946,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [perfil, setPerfil] = useState(false)
   // (22/10, o Omnitrix) a bolinha (o mapa-mini) e o anel: com a missão recolhida, o toque abre a checklist em volta
   const anelApi = useRef<AnelApi | null>(null)
+  // (22/10) o anel e o mapa abrem a mesma tela: o mapa grande, com as missões
+  const [pedeMapa, setPedeMapa] = useState(0)
   // (LU2CA 21/10) celular (em pé ou deitado): os widgets do holo numa ilha só
   const [holoCelular, setHoloCelular] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 600px), (max-height: 480px)").matches)
   useEffect(() => {
@@ -2127,7 +2133,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <HoloApps onApp={(id) => onApp?.(id)} />
             </>
           )}
-          <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => onMissoes?.()} api={anelApi} />
+          <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
         </>
       )}
       {discoM && ajuda && oculos && <HoloAjuda ativa onSair={sairAjuda} />}
@@ -2213,7 +2219,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {parque !== "andando" && (
-        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} />
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} />
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}

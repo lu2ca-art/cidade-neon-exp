@@ -118,13 +118,16 @@ export function OculosMapa({ M, jogo, apagada = null }: { M: MundoDisco; jogo: R
       const alvo = j.voo ? Math.max(0, Math.min(1, (alt - 6) / 39)) : 0
       alfa += (alvo - alfa) * Math.min(1, dt * 3)
       const W = cv.clientWidth, H = cv.clientHeight
-      if (cv.width !== W * devicePixelRatio) { cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio }
+      // (22/10) confere a altura também: com a altura mudando (a barra do navegador), o mapa esticava
+      if (cv.width !== W * devicePixelRatio || cv.height !== H * devicePixelRatio) { cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio }
       g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
       g.clearRect(0, 0, W, H)
       if (alfa < 0.02) return
       // quanto mais alto, mais cidade cabe (de 0,6 a 0,22 px por metro)
-      const esc = 0.6 - 0.38 * Math.min(1, alt / 90)
-      const cx = W / 2, cy = H * 0.58
+      // (LU2CA 22/10) no voo, o mapa do holo fica CENTRALIZADO e aumenta proporcionalmente à tela
+      // (a mesma escala nos dois eixos: o menor lado da tela manda; 700 px = a escala de antes)
+      const esc = (0.6 - 0.38 * Math.min(1, alt / 90)) * (Math.min(W, H) / 700)
+      const cx = W / 2, cy = H / 2
       const s = Math.sin(p.rumo), c = Math.cos(p.rumo)
       // o rumo da Kombi aponta pra cima da tela
       const tela2 = (x: number, z: number) => { const dx = x - p.x, dz = z - p.z; return [cx + (-dx * c + dz * s) * esc, cy - (dx * s + dz * c) * esc] }

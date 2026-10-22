@@ -806,6 +806,27 @@ export default function LinhaPage() {
     const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
     return { chave: missaoCarreira.pista, cor: COR_PISTA[p.faixa], titulo: `${p.faixa} · ${p.personagem}`, nome: p.faixa, passos: missaoCarreira.passos }
   }, [HIST, missaoCarreira])
+  // (22/10) as missões moram no mapa: um ícone por missão (a pegada, ou as ofertas da feira) e,
+  // no painel do mapa, as opções pra clicar (a checklist da de agora, ou a feira)
+  const mapaMissoes = useMemo(() => {
+    if (!HIST || hist.fase !== "carreira") return null
+    const daPista = (id: PistaId, agora: boolean) => { const p = PISTAS.find((x) => x.id === id)!; return { id, faixa: p.faixa, cor: COR_PISTA[p.faixa] ?? "#ffc857", agora } }
+    return missaoCarreira ? [daPista(missaoCarreira.pista as PistaId, true)] : feiraVisivel.map((o) => daPista(o.pista, false))
+  }, [HIST, hist.fase, missaoCarreira, feiraVisivel])
+  const mapaPainel = !mapaMissoes ? null : missaoCarreira ? (() => {
+    const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
+    return (
+      <section className="l-missoes-agora" style={{ ["--cor" as string]: COR_PISTA[p.faixa] }}>
+        <small>agora · {p.faixa} · {p.personagem}</small>
+        <ul className="l-missoes-check">
+          {missaoCarreira.passos.map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}</li>)}
+        </ul>
+        <button type="button" className="l-feira-largar" onClick={largarMissao}>largar essa missão</button>
+      </section>
+    )
+  })() : feiraVisivel.length ? (
+    <FeiraOfertas ofertas={feiraVisivel} onPegar={(p) => { setFocoFeira(null); pegarMissao(p) }} onLargar={(p) => { setFocoFeira(null); setLargadas((l) => [...l, p]) }} onFoco={setFocoFeira} foco={focoFeira} />
+  ) : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -1283,6 +1304,9 @@ export default function LinhaPage() {
             onFuga={(n) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) }))}
             onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
             checklistHolo={checklistHolo}
+            mapaMissoes={mapaMissoes}
+            mapaPainel={mapaPainel}
+            onMapaIcone={(id) => setFocoFeira(id as PistaId)}
             missaoHolo={HIST ? (objetivoDisco ? { texto: objetivoDisco, cor: "#e0ff4f", n: 1 } : null) : resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
@@ -1351,13 +1375,7 @@ export default function LinhaPage() {
             {feira.length > 0 && <FeiraOfertas ofertas={feira} onPegar={(p) => { pegarMissao(p); setPainelMissoes(false) }} />}
           </div>
         )}
-        {/* (21/10) A FEIRA: sem missão pegada, as oportunidades flutuam na tela (pegar ou largar) */}
-        {HIST && hist.fase === "carreira" && !missaoCarreira && feiraVisivel.length > 0 && !ouvirFim && !painelMissoes && tela.t === "corrida" && !emSala && !cinema && !cena && !showAgora && (
-          <aside className="l-feira" aria-label="A cidade precisa">
-            <small>a cidade precisa</small>
-            <FeiraOfertas ofertas={feiraVisivel} onPegar={(p) => { setFocoFeira(null); pegarMissao(p) }} onLargar={(p) => { setFocoFeira(null); setLargadas((l) => [...l, p]) }} onFoco={setFocoFeira} foco={focoFeira} />
-          </aside>
-        )}
+        {/* (22/10) a feira saiu da tela: mora no mapa (o anel e o mapa abrem a mesma tela) */}
         {painelMissoes && !HIST && !ligacao && tela.t === "corrida" && !emSala && (
           <div className="l-missoes" role="dialog" aria-label="Missões">
             <header><b>missões</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
@@ -1574,12 +1592,12 @@ function FeiraOfertas({ ofertas, onPegar, onLargar, onFoco, foco }: { ofertas: O
       {ofertas.map((o) => {
         const p = PISTAS.find((x) => x.id === o.pista)!
         return (
-          <li key={o.pista} className={foco === o.pista ? "is-foco" : ""} style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o.pista) }}>
+          <li key={o.pista} ref={foco === o.pista ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined} className={foco === o.pista ? "is-foco" : ""} style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o.pista) }}>
             <span className="l-feira-quem">{p.personagem}<small>leva à {p.faixa}{o.feitas ? ` · ${o.feitas}/${o.total}` : ""}</small></span>
             <p>{o.pedido}</p>
             <em>{o.primeiro}</em>
             <div className="l-feira-bts">
-              <button type="button" onClick={() => onPegar(o.pista)}>pegar</button>
+              <button type="button" data-fecha-mapa onClick={() => onPegar(o.pista)}>pegar</button>
               {onLargar && <button type="button" className="is-largar" onClick={() => onLargar(o.pista)}>largar</button>}
             </div>
           </li>

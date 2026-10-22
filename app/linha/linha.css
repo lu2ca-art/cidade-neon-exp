@@ -2662,3 +2662,18 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 @media (min-width: 760px) {
   .l-raiz .l-missoes.is-disco { left: auto; width: 300px; top: calc(250px + env(safe-area-inset-top)) !important; max-height: max(180px, calc(100vh - 460px)); }
 }
+
+/* ── (LU2CA 22/10) AS MISSÕES MORAM NO MAPA: o anel e o mapa abrem a mesma tela (Mapa.tsx); as opções de
+   missão num painel (no computador à direita; no celular embaixo, acima dos botões) ── */
+.l-mapa-missoes { position: absolute; z-index: 2; right: 12px; top: calc(76px + env(safe-area-inset-top)); width: 300px; max-height: calc(100% - 170px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; display: flex; flex-direction: column; gap: 6px; touch-action: pan-y; animation: l-sobe 0.35s both; }
+.l-mapa-missoes .l-missoes-agora { margin: 0; background: rgba(6, 6, 16, 0.84); border: 1px solid color-mix(in srgb, var(--cor) 35%, transparent); border-left: 3px solid var(--cor); backdrop-filter: blur(8px); }
+.l-mapa-missoes .l-missoes-check li { font-size: 13px; }
+.l-mapa-missoes .l-missoes-check li i { border-color: var(--cor); color: #07060a; }
+.l-mapa-missoes .l-missoes-check li.is-feita { opacity: 0.5; text-decoration: line-through; }
+.l-mapa-missoes .l-missoes-check li.is-feita i { background: var(--cor); }
+.l-mapa-missoes .l-missoes-check li.is-breve { opacity: 0.45; }
+.l-mapa-missoes .l-missoes-check li.is-agora { font-weight: 700; }
+@media (max-width: 759px) {
+  .l-mapa-missoes { left: 12px; right: 12px; width: auto; top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); max-height: 38vh; }
+}
+@media (prefers-reduced-motion: reduce) { .l-mapa-missoes { animation: none; } }
