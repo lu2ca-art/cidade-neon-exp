@@ -21,7 +21,7 @@
 // Tudo é clicável. Nada de frase explicando: a explicação vem nas invasões da
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { APPS, DOCK, ESCONDIDOS, Glifo, chamados, type AppId } from "../os"
 import { horaTexto } from "../relogio"
 import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "../som"
@@ -239,14 +239,93 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
   )
 }
 
+// ── (LU2CA 22/10 (2)) O NOTCH DINÂMICO (estilo Dynamic Island): uma mensagem
+// (o passo da missão com nome longo, um passo cumprido, a legendinha das falas
+// que ensinam) entra da direita pra esquerda dentro do notch, rola se for longa
+// e some; o notch volta ao normal. Uma por vez (fila simples, sem repetir a
+// última, as velhas caem). Desempenho: um setState por mensagem (entra/sai), o
+// movimento é uma Web Animation (compositor), uma medida de largura por
+// mensagem. "Reduzir movimento": sem deslizar; aparece parada (até 2 linhas) e some ──
+type MsgNotch = { id: number; texto: string; cor: string; em: number }
+const FILA_NOTCH: MsgNotch[] = []
+let notchN = 0, notchUltima = ""
+const ouvintesNotch = new Set<() => void>()
+export function notch(texto: string, cor = "#2fe8ff") {
+  if (!texto || texto === notchUltima) return
+  notchUltima = texto
+  FILA_NOTCH.push({ id: ++notchN, texto, cor, em: Date.now() })
+  if (FILA_NOTCH.length > 5) FILA_NOTCH.shift()
+  ouvintesNotch.forEach((f) => f())
+}
+const NOTCH_VELHA = 25000 // ms: mensagem que esperou mais que isso na fila não passa mais
+function useNotch() {
+  const [msg, setMsg] = useState<MsgNotch | null>(null)
+  const livre = useRef(true)
+  const proxima = useRef(() => {})
+  proxima.current = () => {
+    if (!livre.current) return
+    let m = FILA_NOTCH.shift()
+    while (m && Date.now() - m.em > NOTCH_VELHA) m = FILA_NOTCH.shift()
+    if (!m) { notchUltima = ""; return }
+    livre.current = false
+    setMsg(m)
+  }
+  useEffect(() => {
+    const f = () => proxima.current()
+    ouvintesNotch.add(f)
+    f()
+    return () => { ouvintesNotch.delete(f) }
+  }, [])
+  const acabou = () => { livre.current = true; setMsg(null); setTimeout(() => proxima.current(), 250) }
+  return [msg, acabou] as const
+}
+function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
+  const caixa = useRef<HTMLSpanElement>(null)
+  const el = useRef<HTMLElement>(null)
+  const fim = useRef(onFim)
+  fim.current = onFim
+  const quieto = calmo()
+  useLayoutEffect(() => {
+    const c = caixa.current, e = el.current
+    if (!c || !e || typeof e.animate !== "function") { const t = setTimeout(() => fim.current(), 4000); return () => clearTimeout(t) }
+    let a: Animation
+    if (quieto) {
+      const dur = Math.min(9000, 2200 + msg.texto.length * 55)
+      a = e.animate([{ opacity: 0 }, { opacity: 1, offset: 0.06 }, { opacity: 1, offset: 0.94 }, { opacity: 0 }], { duration: dur, fill: "both" })
+    } else {
+      const W = c.clientWidth, T = e.scrollWidth, sobra = Math.max(0, T - W)
+      // entra (450 ms), respira, rola o que sobra a ~48 px/s, respira, some (300 ms)
+      const ent = 450, resp = 900, rola = (sobra / 48) * 1000, resp2 = sobra ? 1100 : 1400, sai = 300
+      const dur = ent + resp + rola + resp2 + sai
+      const o = (ms: number) => ms / dur
+      a = e.animate([
+        { transform: `translateX(${W}px)`, opacity: 1, easing: "cubic-bezier(0.2, 0.9, 0.3, 1)" },
+        { transform: "translateX(0)", opacity: 1, offset: o(ent) },
+        { transform: "translateX(0)", opacity: 1, offset: o(ent + resp), easing: "linear" },
+        { transform: `translateX(${-sobra}px)`, opacity: 1, offset: o(ent + resp + rola) },
+        { transform: `translateX(${-sobra}px)`, opacity: 1, offset: o(ent + resp + rola + resp2) },
+        { transform: `translateX(${-sobra}px)`, opacity: 0 },
+      ], { duration: dur, fill: "both" })
+    }
+    a.onfinish = () => fim.current()
+    return () => { a.onfinish = null; a.cancel() }
+  }, [msg.id, quieto, msg.texto])
+  return (
+    <span ref={caixa} className={`l-holo-letreiro-faixa is-msg ${quieto ? "is-calmo" : ""}`} role="status" aria-live="polite">
+      <em ref={el} className="l-notch-msg" style={{ ["--c" as string]: msg.cor }}>{msg.texto}</em>
+    </span>
+  )
+}
+
 // a ilha do N3XO: a hora e as mensagens passando como o letreiro de um ônibus
 export function HoloLetreiro({ save, nivel, hora }: { save: Save; nivel: number; hora: number }) {
   const msgs = useMemo(() => chamados(save, nivel), [save, nivel])
   const texto = msgs.map((m) => `${m.de}: ${m.texto}`).join("   ·   ")
+  const [msg, acabou] = useNotch()
   return (
-    <div className="l-ilha-conteudo l-holo-letreiro">
+    <div className={`l-ilha-conteudo l-holo-letreiro ${msg ? "is-msg" : ""}`} style={msg ? { ["--c" as string]: msg.cor } : undefined}>
       <b>{horaTexto(hora)}</b>
-      {texto ? (
+      {msg ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : texto ? (
         <span className="l-holo-letreiro-faixa">
           {/* duas cópias: o letreiro roda sem emenda */}
           <em style={{ ["--dur" as string]: `${Math.max(8, texto.length * 0.22)}s` }}>{texto}   ·   {texto}   ·   </em>
@@ -325,6 +404,13 @@ export const ICONE_MISSAO: Record<string, string> = {
 // uma sala não reabre). undefined = ainda não viu nenhuma (abrir o jogo com a
 // missão já pegada não abre; só pegar uma nova)
 let jaMostrou: string | null | undefined
+// no anel, os nomes longos ficam curtos (o texto inteiro passa pelo notch)
+const CURTO = 16
+const curto = (t: string, n = CURTO) => {
+  if (t.length <= n) return t
+  const c = t.slice(0, n), sp = c.lastIndexOf(" ")
+  return `${(sp > n * 0.5 ? c.slice(0, sp) : c).replace(/[\s·,:]+$/, "")}…`
+}
 const calmo = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
 // o que a bolinha faz num toque: com a missão recolhida, abre a checklist (true); senão, nada (false: abre o mapa)
 export type AnelApi = { toque: () => boolean }
@@ -343,15 +429,37 @@ export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { text
     if (omni === "recolhe") { const t = setTimeout(() => setOmni(null), calmo() ? 0 : RECOLHE_MS); return () => clearTimeout(t) }
   }, [omni])
   const aberto = !!checklist && omni === "abre"
+  // (LU2CA 22/10 (2)) o texto completo passa pelo notch: o passo de agora quando
+  // a missão é pegada ou a checklist abre, e cada passo cumprido
+  const antes = useRef<{ chave: string | null; estados: Map<string, string> } | null>(null)
+  useEffect(() => {
+    const est = new Map((checklist?.passos ?? []).map((p) => [p.nome, p.estado]))
+    const a = antes.current
+    antes.current = { chave, estados: est }
+    if (!a || !checklist) return
+    const cor = checklist.cor
+    if (a.chave !== chave) { const ag = checklist.passos.find((p) => p.estado === "agora"); notch(`${checklist.titulo} · ▸ ${ag?.nome ?? checklist.nome}`, cor); return }
+    for (const p of checklist.passos) {
+      const e0 = a.estados.get(p.nome)
+      if (p.estado === "feita" && e0 !== "feita") notch(`✓ ${p.nome}`, cor)
+      else if (p.estado === "agora" && e0 !== "agora") notch(`▸ ${p.nome}`, cor)
+    }
+  }, [checklist, chave])
   useEffect(() => {
     if (!api) return
-    api.current = { toque: () => { if (!checklist || aberto) return false; setOmni("abre"); return true } }
+    api.current = { toque: () => {
+      if (!checklist || aberto) return false
+      setOmni("abre")
+      const ag = checklist.passos.find((p) => p.estado === "agora")
+      if (ag && ag.nome.length > CURTO) notch(`▸ ${ag.nome}`, checklist.cor)
+      return true
+    } }
     return () => { api.current = null }
   }, [api, checklist, aberto])
   // o texto: aberto, a checklist; com missão, só o nome dela; sem, o que o jogo diz
   const txt = aberto
-    ? checklist!.passos.map((p) => `${p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"} ${p.nome}`).join("  ·  ")
-    : checklist ? checklist.nome : !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
+    ? checklist!.passos.map((p) => `${p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"} ${curto(p.nome)}`).join("  ·  ")
+    : checklist ? curto(checklist.nome, 22) : !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
   // a borda tem a cor da missão pegada
   const cor = checklist?.cor ?? missao?.cor ?? "#2fe8ff"
   // o texto se repete pra dar a volta inteira (a checklist dá uma volta só)

@@ -54,7 +54,7 @@ import { NIVEIS, QUALIDADE, guardarQualidade, ouvirQualidade } from "./qualidade
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { avisarRadio, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
+import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -936,6 +936,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // canto, nem o turbo e o propulsor (a Kombi velha ainda não tem)
   const holoOk = !historia || historia.holo
   const oculos = oculosLigado && holoOk
+  // (o notch dinâmico: as falas que ensinam sabem se o notch está na tela)
+  const holoLigadoRef = useRef(false)
+  useEffect(() => { holoLigadoRef.current = oculos }, [oculos])
   useEffect(() => { input.current.semHolo = !!discoM && !holoOk }, [discoM, holoOk])
   // (B18) antes da oficina do subúrbio a Kombi não voa (nem tem turbo)
   const voaNao = !!discoM && semVoo(historia)
@@ -1114,10 +1117,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // nas dunas): no disco deixam de ser texto grande na ilha; ficam SÓ como aviso
   // no display da rádio do holo + uma legendinha mini que some sozinha
   const [legenda, setLegenda] = useState<{ id: number; de: string; texto: string; ms: number } | null>(null)
+  // (o notch dinâmico) com o holo ligado, a legendinha passa DENTRO do notch;
+  // desligado (sem notch), fica a legendinha solta
   const ensinar = useCallback((de: string, texto: string, ms = 5200) => {
     if (!("disco" in M)) { falar(de, texto, ms); return }
     avisarRadio(de, texto, ms)
-    setLegenda({ id: ++toastId.current, de, texto, ms })
+    if (holoLigadoRef.current) notch(`${de}: ${texto}`, VOZES[de] ?? "#2fe8ff")
+    else setLegenda({ id: ++toastId.current, de, texto, ms })
     gota(6)
   }, [M, falar])
 
