@@ -2677,3 +2677,17 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
   .l-mapa-missoes { left: 12px; right: 12px; width: auto; top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); max-height: 38vh; }
 }
 @media (prefers-reduced-motion: reduce) { .l-mapa-missoes { animation: none; } }
+
+/* ── (LU2CA 22/10) A GALERIA DE WIDGETS UM POUCO MAIOR (~17%): escala na esquina onde cada um mora (sem mexer
+   no layout de ninguém); o destaque e o "sair da kombi" descem o que o widget de cima cresceu, pra não cobrir ── */
+.l-viagem.is-disco .l-holo-som { scale: 1.17; transform-origin: 0 0; }
+.l-viagem.is-disco .l-holo-destaque { scale: 1.17; transform-origin: 0 0; translate: 0 24px; }
+.l-viagem.is-disco .l-holo-apps { scale: 1.17; transform-origin: 0 100%; }
+.l-viagem.is-disco .l-holo-clima { scale: 1.15; transform-origin: 100% 0; }
+.l-viagem.is-disco.is-holo:not(.is-holo-celular) .l-sair-kombi { translate: 0 60px; }
+.l-viagem.is-disco .l-ilha-holo:not(.is-aberta) { scale: 1.18; transform-origin: 0 100%; }
+/* deitado (pouca altura): fica como era, senão cobre a estrada e os botões */
+@media (max-height: 480px) {
+  .l-viagem.is-disco .l-holo-som, .l-viagem.is-disco .l-holo-apps, .l-viagem.is-disco .l-holo-clima, .l-viagem.is-disco .l-ilha-holo:not(.is-aberta) { scale: none; }
+  .l-viagem.is-disco.is-holo:not(.is-holo-celular) .l-sair-kombi { translate: none; }
+}
