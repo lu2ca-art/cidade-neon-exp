@@ -281,6 +281,74 @@ export function HoloAnel({ missao, onMissoes }: { missao: { texto: string; cor: 
   )
 }
 
+// ── (LU2CA 21/10 (2), o holo) A MISSÃO É UM WIDGET FLUTUANDO, perene, com a
+// checklist. Pegou na feira: ele aparece onde a feira estava; uns segundos
+// depois (ou num toque) diminui e vira um PONTO DE LUZ que vai pro número da
+// missão, no anel do mapa (o número pulsa quando o ponto chega). Tocar no
+// número/anel abre a checklist junto ao mapa (o painel .l-missoes.is-disco).
+// Desempenho: o voo é uma Web Animation (compositor), com UMA leitura de
+// posição no começo; nada por quadro, nada de estado React por quadro ──
+export type ChecklistHolo = { chave: string; cor: string; titulo: string; passos: { nome: string; estado: string }[] }
+const ABERTO_MS = 5000 // quanto tempo o widget fica aberto antes de virar o ponto
+const VOO_MS = 700
+// a última missão que o widget já mostrou (entre montagens da Corrida: sair de
+// uma sala não reabre). undefined = ainda não viu nenhuma (abrir o jogo com a
+// missão já pegada não abre o widget; só pegar uma nova)
+let jaMostrou: string | null | undefined
+export function HoloMissao({ missao }: { missao: ChecklistHolo | null }) {
+  const [fase, setFase] = useState<"aberto" | "indo" | null>(null)
+  const caixa = useRef<HTMLDivElement>(null)
+  const ponto = useRef<HTMLSpanElement>(null)
+  const chave = missao?.chave ?? null
+  useEffect(() => {
+    const antes = jaMostrou
+    jaMostrou = chave
+    if (!chave) { setFase(null); return }
+    if (antes === undefined || antes === chave) return
+    setFase("aberto")
+  }, [chave])
+  // aberto: espera e vai
+  useEffect(() => {
+    if (fase !== "aberto") return
+    const t = setTimeout(() => setFase("indo"), ABERTO_MS)
+    return () => clearTimeout(t)
+  }, [fase])
+  // indo: o ponto de luz voa até o número do anel
+  useEffect(() => {
+    if (fase !== "indo") return
+    const cx = caixa.current, pt = ponto.current
+    const alvo = document.querySelector(".l-holo-anel-n circle")
+    const anel = alvo?.closest(".l-holo-anel")
+    const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches
+    if (!cx || !pt || !alvo || calmo) { setFase(null); return }
+    const a = cx.getBoundingClientRect(), b = alvo.getBoundingClientRect()
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2)
+    const voo = pt.animate(
+      [{ transform: "translate(-50%, -50%) scale(1)", opacity: 1 }, { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.5)`, opacity: 0.9 }],
+      { duration: VOO_MS, easing: "cubic-bezier(0.5, 0, 0.2, 1)", fill: "forwards" },
+    )
+    let pulso = 0
+    voo.onfinish = () => {
+      setFase(null)
+      anel?.classList.add("is-chegou")
+      pulso = window.setTimeout(() => anel?.classList.remove("is-chegou"), 700)
+    }
+    return () => { voo.cancel(); clearTimeout(pulso) }
+  }, [fase])
+  if (!missao || !fase) return null
+  return (
+    <div ref={caixa} className={`l-holo-missao is-${fase}`} style={{ ["--cor" as string]: missao.cor }} onPointerDown={(e) => e.stopPropagation()}>
+      <button type="button" className="l-holo-missao-caixa" data-info="anel" onClick={() => setFase("indo")} aria-label={`missão: ${missao.titulo}. tocar guarda no mapa`}>
+        <small>{missao.titulo}</small>
+        <ul>
+          {missao.passos.map((p) => <li key={p.nome} className={`is-${p.estado === "em breve" ? "breve" : p.estado}`}><i aria-hidden="true">{p.estado === "feita" ? "✓" : ""}</i>{p.nome}</li>)}
+        </ul>
+      </button>
+      <span ref={ponto} className="l-holo-missao-ponto" aria-hidden="true" />
+    </div>
+  )
+}
+
 // a MPC do B4TIDA: 16 pads tocando um padrão (bumbo, caixa, chimbal, o synth)
 const PADRAO = [0, 4, 8, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15]
 function MiniMpc() {

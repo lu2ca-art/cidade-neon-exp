@@ -53,7 +53,7 @@ import { NIVEIS, QUALIDADE } from "./qualidade"
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type Clima } from "./Holo"
+import { HoloAjuda, HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloMissao, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -219,6 +219,8 @@ interface Props {
   onApp?: (id: AppId) => void
   onMissoes?: () => void
   missaoHolo?: { texto: string; cor: string; n: number } | null
+  // (21/10 (2)) a checklist da missão pegada: o widget que vira o ponto de luz
+  checklistHolo?: ChecklistHolo | null
   // (disco) a água: o saldo (save) e o que entra/sai (as gotas, a polícia)
   agua?: number
   onAgua?: (d: number) => void
@@ -408,7 +410,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -2122,6 +2124,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             </>
           )}
           <HoloAnel missao={missaoHolo} onMissoes={() => onMissoes?.()} />
+          <HoloMissao missao={checklistHolo} />
         </>
       )}
       {discoM && ajuda && oculos && <HoloAjuda ativa onSair={sairAjuda} />}

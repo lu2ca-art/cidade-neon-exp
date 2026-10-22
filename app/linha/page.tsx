@@ -797,6 +797,12 @@ export default function LinhaPage() {
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
     : missaoCarreira ? (missaoCarreira.alvo.tipo === "show" ? `o show · ${PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa}${showNoSub ? " · no subúrbio" : ""}` : missaoCarreira.alvo.peca!.nome)
     : feira.length ? `a cidade precisa · ${feira.length}` : null
+  // (21/10 (2), o holo) a checklist da missão pegada vira o widget que voa pro número do anel
+  const checklistHolo = useMemo(() => {
+    if (!HIST || !missaoCarreira) return null
+    const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
+    return { chave: missaoCarreira.pista, cor: COR_PISTA[p.faixa], titulo: `${p.faixa} · ${p.personagem}`, passos: missaoCarreira.passos }
+  }, [HIST, missaoCarreira])
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -1273,6 +1279,7 @@ export default function LinhaPage() {
             agua={save.agua ?? 0}
             onFuga={(n) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) }))}
             onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
+            checklistHolo={checklistHolo}
             missaoHolo={HIST ? (objetivoDisco ? { texto: objetivoDisco, cor: "#e0ff4f", n: 1 } : null) : resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
