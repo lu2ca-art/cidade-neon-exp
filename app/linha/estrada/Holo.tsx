@@ -456,25 +456,38 @@ export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { text
     } }
     return () => { api.current = null }
   }, [api, checklist, aberto])
-  // o texto: aberto, a checklist; com missão, só o nome dela; sem, o que o jogo diz
+  // o texto: com missão, só o nome dela (LU2CA 22/10 (3): aberta, o anel só gira o
+  // texto que já estava nele; a checklist mora na salsicha); sem, o que o jogo diz
   const txt = aberto
-    ? checklist!.passos.map((p) => `${p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"} ${curto(p.nome)}`).join("  ·  ")
+    ? curto(checklist!.nome, 22)
     : checklist ? curto(checklist.nome, 22) : !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
   // a borda tem a cor da missão pegada
   const cor = checklist?.cor ?? missao?.cor ?? "#2fe8ff"
   // o texto se repete pra dar a volta inteira (a checklist dá uma volta só)
-  const volta = !txt ? "" : aberto ? `${txt.toUpperCase()}  ◆  ` : Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("")
+  const volta = !txt ? "" : Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("")
   const icone = checklist ? ICONE_MISSAO[checklist.chave] : null
   return (
     <div className={`l-holo-anel ${txt ? "" : "is-vazio"} ${checklist ? "is-missao" : ""} ${omni ? `is-omni is-${omni}` : ""}`} style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="l-holo-anel-bt" data-info="anel" onClick={() => { if (!api?.current?.toque()) onMissoes() }} aria-label={aberto ? `${checklist!.titulo}: ${txt}` : txt || "missões"} aria-expanded={aberto}>
+      {/* (LU2CA 22/10 (3)) a SALSICHA: o círculo fica do tamanho da bolinha e a borda
+          estica pra baixo numa cápsula; a checklist mora dentro, no fundo da cor da missão */}
+      {checklist && omni && (
+        <div className="l-holo-salsicha" aria-hidden="true">
+          <i className="l-holo-salsicha-topo" />
+          <ol>
+            {checklist.passos.map((p) => (
+              <li key={p.nome} className={`is-${p.estado}`}><b>{p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"}</b>{p.nome}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+      <button type="button" className="l-holo-anel-bt" data-info="anel" onClick={() => { if (!api?.current?.toque()) onMissoes() }} aria-label={aberto ? `${checklist!.titulo}: ${checklist!.passos.map((p) => `${p.estado === "feita" ? "feito" : p.estado === "agora" ? "agora" : "depois"}: ${p.nome}`).join("; ")}` : txt || "missões"} aria-expanded={aberto}>
         <svg viewBox="0 0 160 160" aria-hidden="true">
           <defs><path id="l-holo-anel-p" d="M80,80 m-70,0 a70,70 0 1,1 140,0 a70,70 0 1,1 -140,0" /></defs>
           {/* o fundo da missão: um aro na cor dela atrás do texto */}
           {checklist && <circle className="l-holo-anel-fundo" cx="80" cy="80" r="70" />}
           <circle cx="80" cy="80" r="76" />
           <g className="l-holo-anel-gira">
-            <text key={aberto ? "a" : "f"}><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
+            <text><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
           </g>
           {icone && (
             <g className="l-holo-anel-ic" transform="translate(9 9)">
