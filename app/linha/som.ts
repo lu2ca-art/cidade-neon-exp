@@ -27,6 +27,8 @@ function saida(): AudioNode | null {
   audioCtx()
   return master
 }
+// (tambor, 22/10) quem sintetiza som fora daqui sai pelo mesmo mestre (respeita o mudo)
+export function saidaSom(): AudioNode | null { return saida() }
 
 // A MÚSICA ABAFADA (05/10, LU2CA): durante a missão (dentro de um lugar) e
 // quando o telefone toca, o rádio e o toca-discos continuam, mais baixos e

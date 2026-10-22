@@ -2655,3 +2655,24 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 @media (min-width: 760px) {
   .l-raiz .l-missoes.is-disco { left: auto; width: 300px; top: calc(250px + env(safe-area-inset-top)) !important; max-height: max(180px, calc(100vh - 460px)); }
 }
+
+/* (disco, 2.5) o tambor na casa da D-Bee: ela toca a frase, você repete (disco/Tambor.tsx) */
+.l-tambor { position: relative; z-index: 2; margin: 0 16px calc(11vh + 16px); display: flex; flex-direction: column; align-items: center; gap: 14px; cursor: pointer; user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.l-tambor-titulo { font: 800 15px var(--cond); text-transform: uppercase; letter-spacing: 0.08em; color: #fff; min-height: 1.3em; text-align: center; }
+.l-tambor-roda { display: flex; align-items: center; gap: 22px; }
+.l-tambor-pele { --flash: 0; position: relative; width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: end center; padding-bottom: 10px; box-sizing: border-box; border: 3px solid #b06a2c; background: radial-gradient(circle at 50% 45%, rgb(255 228 180 / calc(0.25 + var(--flash) * 0.6)), rgb(120 70 30 / 0.55) 70%); box-shadow: 0 0 calc(8px + var(--flash) * 34px) rgb(255 190 110 / calc(0.2 + var(--flash) * 0.7)); }
+.l-tambor-pele span { font: 700 11px var(--mono); color: rgba(255,255,255,0.75); text-transform: lowercase; }
+.l-tambor-pele.is-dela { width: 96px; height: 96px; }
+.is-ela .l-tambor-pele.is-dela, .is-voce .l-tambor-pele.is-seu { border-color: #ffcf8a; }
+.l-tambor-pele.is-torto { animation: l-tambor-torto 0.25s ease-out; }
+@keyframes l-tambor-torto { 0%, 100% { translate: 0 0; } 30% { translate: -4px 0; filter: hue-rotate(-30deg) saturate(0.4); } 60% { translate: 3px 0; } }
+.l-tambor-pulso { width: 12px; height: 12px; border-radius: 50%; background: #ffcf8a; box-shadow: 0 0 12px #ffcf8a; opacity: 0.3; }
+.l-tambor-frase { display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.l-tambor-frase li { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.18); box-sizing: border-box; }
+.l-tambor-frase li.is-tempo { border-color: rgba(255,255,255,0.35); }
+.l-tambor-frase li.is-nota { border: 2px solid rgba(255,207,138,0.6); }
+.l-tambor-frase li.is-ela { background: rgba(255,207,138,0.35); }
+.l-tambor-frase li.is-seu { background: #ffcf8a; box-shadow: 0 0 10px #ffcf8a; }
+.l-tambor-frase li.is-quase { background: rgba(255,160,90,0.7); }
+.l-tambor-dica { font: 11px var(--mono); color: rgba(255,255,255,0.55); }
+@media (prefers-reduced-motion: reduce) { .l-tambor-pele.is-torto { animation: none; } }

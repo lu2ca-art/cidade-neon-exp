@@ -15,6 +15,7 @@ import { gota, mudo } from "./som"
 import { Prova } from "./provas"
 import { vib } from "./som-carro"
 import { ouvirSala, publicar, zerar } from "./interior/bus"
+import { Tambor } from "./disco/Tambor"
 
 export interface ResultadoCena {
   objeto?: EstacaoId
@@ -181,8 +182,8 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
       )}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
-      {/* (disco, a casa da D-Bee) os tambores do tapete: ela marca, ele responde */}
-      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tambores" && <Danca titulo="os tambores" rotulo="ela marca, você responde" total={8} cor="#ffcf8a" sobe onFim={() => setPos((p) => p + 1)} />}
+      {/* (disco, a casa da D-Bee) o tambor (2.5): ela toca a frase, ele repete — disco/Tambor.tsx */}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tambores" && <Tambor onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "ordem" && <Ordem frases={passo.frases} onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "silencio" && <Silencio semSom={semSom} onFim={() => setPos((p) => p + 1)} />}
