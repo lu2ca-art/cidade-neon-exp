@@ -786,3 +786,8 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
     </>
   )
 }
+
+// (só pros prints e testes, com ?teste-holo na URL) o aviso da rádio e o notch na mão
+if (typeof window !== "undefined" && location.search.includes("teste-holo")) {
+  (window as unknown as { __holo: unknown }).__holo = { avisarRadio, notch }
+}
