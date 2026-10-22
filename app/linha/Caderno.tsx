@@ -1,14 +1,17 @@
 "use client"
 
 // O caderno do dono (22/10): o LU2CA joga do começo ao fim e, a qualquer momento,
-// toca no ✎ — o jogo pausa, guarda onde ele está (tela, fase,
-// missão, aparelho) e ele escreve (ou dita pelo microfone do teclado) o que sentiu.
+// toca no ✎ — o jogo inteiro congela (imagem, som, animação: congelar.ts), a nota
+// sai presa à parte do jogo em que ele está (parte.ts: "Nectar › regar as flores")
+// e ele escreve (ou dita pelo microfone do teclado) o que sentiu.
 // Cada nota vai pra /api/caderno (PostHog + arquivo no Mac) e fica guardada no
 // aparelho; se a rede falhar, reenvia na próxima vez.
 // Só aparece pra quem abriu o jogo uma vez com ?caderno na URL (?caderno=sair desliga).
 // Atalho no computador: tecla N.
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { congelar, descongelar, instalarRelogio } from "./congelar"
+import { parteDe, type Onde } from "./parte"
 
 const LIGADO = "cn-caderno"
 const GUARDADAS = "cn-caderno-notas"
@@ -28,15 +31,16 @@ function estadoAgora(): Record<string, unknown> {
   const pega = (o: unknown) => {
     if (!o || typeof o !== "object") return undefined
     const r = o as Record<string, unknown>
-    return { fase: r.fase, missao: r.missao, holo: r.holo }
+    return { fase: r.fase, nectar: r.nectar, missao: r.missao, show: r.show, holo: r.holo } as Record<string, string | undefined>
   }
-  const telas = [...document.querySelectorAll("[class*='l-']")].slice(0, 400)
-    .flatMap((e) => [...e.classList]).filter((c) => /^l-[a-z-]+$/.test(c) || /^is-/.test(c))
+  const historia = pega(save.disco) ?? pega(save.historia)
+  const onde = (window as unknown as { __cnOnde?: Onde }).__cnOnde
+  const parte = parteDe(historia, onde)
   return {
+    parte: parte.id, parteNome: parte.nome, onde,
     url: location.pathname + location.search.replace(/([?&])caderno=[^&]*/, "$1").replace(/[?&]$/, ""),
-    historia: pega(save.historia) ?? pega(save.disco),
+    historia,
     xp: save.xp, agua: save.agua, neon: save.neon, popularidade: save.popularidade,
-    telas: [...new Set(telas)].slice(0, 40),
     tela: `${innerWidth}x${innerHeight}@${devicePixelRatio}`,
     ua: navigator.userAgent.slice(0, 160),
   }
@@ -62,7 +66,9 @@ export function Caderno() {
     const p = new URLSearchParams(location.search).get("caderno")
     if (p === "sair") localStorage.removeItem(LIGADO)
     else if (p !== null) localStorage.setItem(LIGADO, "1")
-    setLigado(localStorage.getItem(LIGADO) === "1")
+    const sim = localStorage.getItem(LIGADO) === "1"
+    if (sim) instalarRelogio()
+    setLigado(sim)
     setTotal(ler<Nota[]>(GUARDADAS, []).length)
   }, [])
 
@@ -76,7 +82,8 @@ export function Caderno() {
 
   const abrir = useCallback(() => {
     estado.current = estadoAgora()
-    setTela(String(estado.current.tela ?? ""))
+    setTela(String(estado.current.parteNome ?? ""))
+    congelar()
     setAberto(true)
     window.dispatchEvent(new CustomEvent(EVENTO_CADERNO, { detail: { aberto: true } }))
     setTimeout(() => area.current?.focus(), 50)
@@ -85,6 +92,7 @@ export function Caderno() {
 
   const fechar = useCallback(() => {
     setAberto(false); setTexto(""); setTags([])
+    descongelar()
     window.dispatchEvent(new CustomEvent(EVENTO_CADERNO, { detail: { aberto: false } }))
   }, [])
 
@@ -126,7 +134,7 @@ export function Caderno() {
       )}
       {aviso && <div className="cdn-aviso">{aviso}</div>}
       {aberto && (
-        <div className="cdn-fundo" onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") fechar(); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void salvar() }}>
+        <div className="cdn-fundo" data-caderno onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") fechar(); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void salvar() }}>
           <div className="cdn-caixa">
             <div className="cdn-topo">
               <b>caderno</b>
@@ -156,7 +164,7 @@ const CSS = `
 .cdn-fundo{position:fixed;inset:0;z-index:2147483001;background:#000a;display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top) + 12px) 12px 12px;overflow:auto}
 .cdn-caixa{width:100%;max-width:480px;background:#14122a;border:1px solid #ffffff2a;border-radius:16px;padding:12px;color:#fff;font:15px system-ui;display:flex;flex-direction:column;gap:10px}
 .cdn-topo{display:flex;justify-content:space-between;align-items:baseline}
-.cdn-topo span{font:11px ui-monospace,monospace;opacity:.5}
+.cdn-topo span{font:12px system-ui;opacity:.75;text-align:right}
 .cdn-caixa textarea{width:100%;box-sizing:border-box;background:#0a0918;color:#fff;border:1px solid #ffffff33;border-radius:10px;padding:10px;font:16px system-ui;resize:vertical}
 .cdn-tags{display:flex;flex-wrap:wrap;gap:6px}
 .cdn-tags button{padding:6px 10px;border-radius:14px;border:1px solid #ffffff33;background:transparent;color:#fff;font:13px system-ui}

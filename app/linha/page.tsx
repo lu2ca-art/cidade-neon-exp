@@ -39,6 +39,7 @@ import { Loja } from "./loja"
 import { PostoDentro } from "./posto"
 import { ACERVO, PRECO_DISCO } from "./discos"
 import { EVENTO_CADERNO } from "./Caderno"
+import type { Onde } from "./parte"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
 import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
@@ -786,6 +787,10 @@ export default function LinhaPage() {
   // (B8) o show marcado: o fim de cada missão (o prólogo é o do bar)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
   const showConf = showAgora ? confShow(showAgora)! : null
+  // onde o dono está (o caderno lê isso pra dizer a parte do jogo de cada nota)
+  useEffect(() => {
+    ;(window as unknown as { __cnOnde?: Onde }).__cnOnde = { tela: tela.t, cena: !!cena, show: showAgora ?? null, jornal: !!jornal, visor: visor ?? null, pingpong, celular: tela.t === "home" || tela.t === "app" || tela.t === "chat" }
+  }, [tela.t, cena, showAgora, jornal, visor, pingpong])
   const fimShow = (r: ResultadoShow) => {
     const id = hist.show!, conf = confShow(id)!
     // (B19) o show de uma linha fecha a missão dela: o objeto da faixa no save (a próxima acende)
