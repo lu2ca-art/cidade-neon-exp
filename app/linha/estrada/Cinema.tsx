@@ -14,6 +14,7 @@ import { BlendFunction, ToneMappingMode } from "postprocessing"
 import { useEffect, useMemo, useState } from "react"
 import * as THREE from "three"
 import { POS } from "./luzes"
+import { TROCA } from "./resolucao"
 import { VELO } from "./velo"
 
 // maxLente (20/10): o teto que a qualidade do aparelho dá (qualidade.ts)
@@ -46,7 +47,9 @@ export function Cinema({ maxLente = 2 }: { maxLente?: number }) {
           padrão do drei (numa tela de 120 Hz: abaixo de 50 desce, acima de 90
           sobe) virava gangorra a cada travadinha e, com 3 viradas, desligava a
           lente pra sempre: do 1 pro 0 TODOS os shaders recompilam (trava) */}
-      {vigiar && <PerformanceMonitor bounds={() => [30, 1000]} flipflops={Infinity} onDecline={() => setNivel((n) => Math.max(0, n - 1))} />}
+      {/* (22/10, perf 004) trocar a lente refaz as imagens dela (e os shaders), como
+          a troca de densidade: respeita o mesmo intervalo de 10 s (resolucao.tsx) */}
+      {vigiar && <PerformanceMonitor bounds={() => [30, 1000]} flipflops={Infinity} onDecline={() => { const ag = performance.now(); if (ag - TROCA.ult < 10_000) return; TROCA.ult = ag; setNivel((n) => Math.max(0, n - 1)) }} />}
       {nivel === 2 && (
         <EffectComposer multisampling={0} enableNormalPass={false}>
           <SMAA />

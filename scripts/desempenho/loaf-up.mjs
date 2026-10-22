@@ -1,5 +1,6 @@
 // os quadros longos (Long Animation Frames, Chrome): quem gastou o tempo
 import { chromium } from "playwright"
+import { semear, entrarDirigindo } from "./save.mjs"
 
 const mapa = process.argv[2] ?? "disco"
 const browser = await chromium.launch({ headless: true, channel: "chrome", args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"] })
@@ -25,10 +26,10 @@ await page.addInitScript(() => {
   }
   new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__loaf.push(e.toJSON()) }).observe({ type: "long-animation-frame", buffered: true })
 })
+await semear(page)
 await page.goto(`${process.env.BASE ?? "http://localhost:3110"}/linha?mapa=${mapa}&medir${process.env.Q ?? ""}`)
 await page.locator(".l-btn-entrar").click({ timeout: 20_000, force: true }).catch(() => {})
-await page.waitForTimeout(14_000)
-await page.keyboard.down("ArrowUp")
+await entrarDirigindo(page, 14_000)
 await page.waitForTimeout(3000)
 const t0 = await page.evaluate(() => performance.now())
 await page.waitForTimeout(25_000)

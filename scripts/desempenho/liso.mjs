@@ -1,16 +1,17 @@
 // lisura: a velocidade da câmera quadro a quadro (em dev, window.__cam)
 // com engasgos aleatórios de 0–15 ms injetados (o navegador real)
 import { chromium } from "playwright"
+import { semear, entrarDirigindo } from "./save.mjs"
 
 const porta = process.argv[2], mapa = process.argv[3] ?? "disco"
 const browser = await chromium.launch({ headless: true, channel: "chrome", args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"] })
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
+await semear(page)
 await page.goto(`${process.env.BASE ?? `http://localhost:${porta}`}/linha?mapa=${mapa}&medir`)
 await page.locator(".l-btn-entrar").click({ timeout: 30_000, force: true }).catch(() => {})
 await page.waitForFunction(() => window.__cam && window.__cena, null, { timeout: 180_000 })
-await page.waitForTimeout(10_000)
-await page.keyboard.down("ArrowUp")
+await entrarDirigindo(page, 10_000)
 await page.waitForTimeout(6000)
 const r = await page.evaluate(async () => {
   const cam = window.__cam

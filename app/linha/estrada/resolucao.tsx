@@ -11,9 +11,16 @@
 import { useFrame, useThree } from "@react-three/fiber"
 import { useEffect, useRef } from "react"
 
-const DEGRAU = 0.125
+// (22/10, perf 004) degraus de 0,25 (0,75 / 1 / 1,25 / 1,5): com 0,125 ela
+// trocava por ruído e cada troca realoca as imagens da lente (60-90 ms travado)
+const DEGRAU = 0.25
 const PISO = 0.75
-const MAX_TROCAS = 5
+const MAX_TROCAS = 2 // depois disso assenta e não mexe mais
+const JANELA = 3000 // ms: a média móvel que decide
+const INTERVALO = 10_000 // ms: no máximo 1 troca (densidade OU lente) a cada 10 s
+// a última troca que realoca imagens da tela, compartilhada com a lente
+// (Cinema.tsx): as duas respeitam o mesmo intervalo
+export const TROCA = { ult: 0 }
 // a densidade atual: o <Canvas> do R3F reaplica a prop dpr a cada render (e o
 // Corrida renderiza o tempo todo), então ele passa ESTE valor, não um fixo
 export const DPR: { v: number | null } = { v: null }
@@ -24,8 +31,8 @@ export function ResolucaoDinamica({ max = 1.5, fixa = null }: { max?: number; fi
   // começa em 1 (no retina, 1,5 de cara era sempre pesado: descia 4 vezes, cada
   // troca um tranco); com folga, sobe sozinha
   const inicio = Math.min(teto, 1)
-  const st = useRef({ dpr: DPR.v ?? inicio, tq: 0, quadros: [] as number[], desde: 0, folga: 0, ruins: 0, trocas: 0, ritmo: 1000 / 60 })
-  const mudar = (v: number) => { DPR.v = v; setDpr(v) }
+  const st = useRef({ dpr: DPR.v ?? inicio, tq: 0, quadros: [] as number[], janelas: [] as number[][], desde: 0, folga: 0, ruins: 0, trocas: 0, ritmo: 1000 / 60 })
+  const mudar = (v: number) => { DPR.v = v; TROCA.ult = performance.now(); setDpr(v) }
   useEffect(() => { if (fixa == null && DPR.v == null) { DPR.v = inicio; setDpr(inicio) } }, [inicio, fixa, setDpr])
   // (20/10, a qualidade medida) o teto baixou: a densidade desce junto na hora
   useEffect(() => { if (fixa == null && DPR.v != null && DPR.v > teto) { st.current.dpr = teto; DPR.v = teto; setDpr(teto) } }, [teto, fixa, setDpr])
@@ -39,8 +46,11 @@ export function ResolucaoDinamica({ max = 1.5, fixa = null }: { max?: number; fi
     // decide a cada ~1 s (e só depois dos primeiros 4 s: carregando, tudo engasga)
     if (tq - s.desde < 1000 || s.quadros.length < 20) return
     s.desde = tq
-    const q = s.quadros.sort((a, b) => a - b)
+    // a média móvel: os últimos ~3 s (3 janelas de ~1 s)
+    s.janelas.push(s.quadros)
     s.quadros = []
+    while (s.janelas.length > Math.round(JANELA / 1000)) s.janelas.shift()
+    const q = s.janelas.flat().sort((a, b) => a - b)
     if (performance.now() < 4000) return
     // o ritmo do monitor: o quadro mais rápido que se repete (p10), o menor já
     // visto; no mínimo, a meta é 60 quadros por segundo (rodando sempre a 30
@@ -55,17 +65,23 @@ export function ResolucaoDinamica({ max = 1.5, fixa = null }: { max?: number; fi
     // Então troca pouco: desce com 2 s ruins seguidos, sobe com 10 s de folga,
     // e depois de MAX_TROCAS ela assenta e não mexe mais)
     if (s.trocas >= MAX_TROCAS) return
+    // cada troca pede 2 decisões seguidas fora da faixa e 10 s desde a última
+    const cedo = performance.now() - TROCA.ult < INTERVALO
     const ruim = (p50 > monitor * 1.3 || p90 > monitor * 2.1) && s.dpr > PISO
     s.ruins = ruim ? s.ruins + 1 : 0
-    s.folga = !ruim && p90 < monitor * 1.15 && s.dpr < teto ? s.folga + 1 : 0
-    if (s.ruins >= 2) {
+    // (22/10) subir só se couber: o tempo de quadro aqui segue os pixels (a
+    // placa de vídeo é o gargalo), e 1 -> 1,25 são 56% a mais. Medido no Mac
+    // retina: p50 7,9 ms em 1, 12-13 ms em 1,25; subia com folga e engasgava
+    const cresce = ((s.dpr + DEGRAU) / s.dpr) ** 2
+    s.folga = !ruim && p90 * cresce < monitor * 1.15 && s.dpr < teto ? s.folga + 1 : 0
+    if (s.ruins >= 2 && !cedo) {
       // muito longe da meta: desce dois degraus de uma vez (menos trocas)
       s.dpr = Math.max(PISO, s.dpr - (p50 > monitor * 2 ? 2 : 1) * DEGRAU)
-      s.ruins = 0; s.trocas++
+      s.ruins = 0; s.trocas++; s.janelas = []
       mudar(s.dpr)
-    } else if (s.folga >= 10) {
+    } else if (s.folga >= 10 && !cedo) {
       s.dpr = Math.min(teto, s.dpr + DEGRAU)
-      s.folga = 0; s.trocas++
+      s.folga = 0; s.trocas++; s.janelas = []
       mudar(s.dpr)
     }
   })
