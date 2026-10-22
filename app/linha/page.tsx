@@ -800,11 +800,11 @@ export default function LinhaPage() {
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
     : missaoCarreira ? (missaoCarreira.alvo.tipo === "show" ? `o show · ${PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa}${showNoSub ? " · no subúrbio" : ""}` : missaoCarreira.alvo.peca!.nome)
     : feira.length ? `a cidade precisa · ${feira.length}` : null
-  // (21/10 (2), o holo) a checklist da missão pegada vira o widget que voa pro número do anel
+  // (22/10, o Omnitrix) a checklist da missão pegada gira em volta da bolinha (o anel do holo)
   const checklistHolo = useMemo(() => {
     if (!HIST || !missaoCarreira) return null
     const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
-    return { chave: missaoCarreira.pista, cor: COR_PISTA[p.faixa], titulo: `${p.faixa} · ${p.personagem}`, passos: missaoCarreira.passos }
+    return { chave: missaoCarreira.pista, cor: COR_PISTA[p.faixa], titulo: `${p.faixa} · ${p.personagem}`, nome: p.faixa, passos: missaoCarreira.passos }
   }, [HIST, missaoCarreira])
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }

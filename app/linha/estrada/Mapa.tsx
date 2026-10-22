@@ -121,7 +121,7 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar }: {
+export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini }: {
   M: Mundo
   // (disco, os atos) as vias das pistas ainda apagadas: no mapa, um fio escuro
   apagada?: boolean[] | null
@@ -137,6 +137,8 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   viagens?: number
   onViajar?: () => boolean
   onAberto: (aberto: boolean) => void
+  // (22/10, o Omnitrix) o toque na bolinha: se o anel usar (abre a checklist em volta), o mapa não abre
+  onToqueMini?: () => boolean
 }) {
   const mini = useRef<HTMLCanvasElement>(null)
   const grande = useRef<HTMLCanvasElement>(null)
@@ -330,7 +332,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
 
   return (
     <>
-      <button type="button" className="l-mapa-mini" data-info="mapa" aria-label="abrir o mapa" onPointerDown={(e) => e.stopPropagation()} onClick={() => abrir(true)}>
+      <button type="button" className="l-mapa-mini" data-info="mapa" aria-label="abrir o mapa" onPointerDown={(e) => e.stopPropagation()} onClick={() => { if (!onToqueMini?.()) abrir(true) }}>
         <canvas ref={mini} />
         {distancia && <span style={{ ["--cor" as string]: destino?.cor ?? ROTA_COR }}>{distancia}</span>}
       </button>

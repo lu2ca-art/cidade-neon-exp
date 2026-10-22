@@ -261,24 +261,38 @@ export function HoloClima({ ler }: { ler: () => Clima }) {
   )
 }
 
-// ── (LU2CA 22/10) O ANEL = O OMNITRIX (Ben 10). O anel das missões gira em volta
-// do mapa. Pegou uma missão: o anel gira e EXPANDE (com overshoot) mostrando a
-// checklist dela; a ABA atrelada à borda, da mesma cor da borda, é o "ponto de
-// luz". Depois de 4,5 s a checklist recolhe girando e volta a ser borda. Tocar
-// na aba reabre o mesmo movimento. Desempenho: só CSS (keyframes), um setState
-// por abrir/fechar, nada por quadro. "Reduzir movimento": abre e fecha sem giro ──
-export type ChecklistHolo = { chave: string; cor: string; titulo: string; passos: { nome: string; estado: string }[] }
-const OMNI_MS = 4500 // quanto tempo a checklist fica aberta antes de recolher
+// ── (LU2CA 22/10, o Omnitrix, como o dono descreveu) O ANEL das missões gira
+// em volta da bolinha (o mapa-mini). Pegou uma missão: o anel gira e expande
+// (overshoot), a parte da missão ganha um fundo e a CHECKLIST passa a ser o
+// texto girando em volta da bolinha, maior e mais clara. 6 s depois recolhe
+// girando e fica só o NOME da missão e o ÍCONE especial dela. Tocar na bolinha
+// (ou no anel) repete; tocar de novo com ele aberto abre o mapa. Desempenho: só
+// CSS (keyframes), um setState por abrir/fechar, nada por quadro. "Reduzir
+// movimento": troca sem giro nem escala ──
+export type ChecklistHolo = { chave: string; cor: string; titulo: string; nome: string; passos: { nome: string; estado: string }[] }
+const OMNI_MS = 6000 // quanto tempo a checklist fica girando em volta antes de recolher
 const RECOLHE_MS = 450
+// o ícone especial de cada missão (o objeto que ela dá), num quadro 24x24: o
+// mesmo desenho no anel (SVG) e no mapa (Path2D no canvas)
+export const ICONE_MISSAO: Record<string, string> = {
+  ontem: "M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z M8 4v16", // o caderno
+  copo: "M6 4h12l-2 16H8z M7 9h10", // o copo
+  swav: "M9 3h6v4l2 3v11H7V10l2-3z M10 14h4", // a lanterna
+  sexta: "M12 3a5 7 0 1 0 0.01 0z M12 17v4 M9 21h6", // o espelho
+  rollercoaster: "M3 12a9 9 0 0 1 18 0z M12 12v7a2 2 0 0 1-4 0", // o guarda-chuva
+  dopamina: "M12 4a8 8 0 1 0 0.01 0z M12 8v4l3 2", // o relógio
+  chuva: "M12 6a3 3 0 1 0 0.01 0z M12 12v10 M12 16l-4-2 M12 18l4-2", // a flor
+  ojala: "M8 3l-5 4 3 3 2-1v12h8V9l2 1 3-3-5-4a4 4 0 0 1-8 0z", // a camisa
+  nectar: "M14 3l5 5 M16.5 5.5l-6 6 M8.5 10.5a4.5 4.5 0 1 0 5 5 4.5 4.5 0 0 0-5-5z", // o violão
+}
 // a última missão que o anel já mostrou (entre montagens da Corrida: sair de
 // uma sala não reabre). undefined = ainda não viu nenhuma (abrir o jogo com a
 // missão já pegada não abre; só pegar uma nova)
 let jaMostrou: string | null | undefined
 const calmo = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
-export function HoloAnel({ missao, checklist, onMissoes }: { missao: { texto: string; cor: string; n: number } | null; checklist?: ChecklistHolo | null; onMissoes: () => void }) {
-  const txt = !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
-  // a borda tem a cor da missão pegada (a aba é da mesma cor)
-  const cor = checklist?.cor ?? missao?.cor ?? "#2fe8ff"
+// o que a bolinha faz num toque: com a missão recolhida, abre a checklist (true); senão, nada (false: abre o mapa)
+export type AnelApi = { toque: () => boolean }
+export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { texto: string; cor: string; n: number } | null; checklist?: ChecklistHolo | null; onMissoes: () => void; api?: React.MutableRefObject<AnelApi | null> }) {
   const [omni, setOmni] = useState<"abre" | "recolhe" | null>(null)
   const chave = checklist?.chave ?? null
   useEffect(() => {
@@ -292,28 +306,40 @@ export function HoloAnel({ missao, checklist, onMissoes }: { missao: { texto: st
     if (omni === "abre") { const t = setTimeout(() => setOmni("recolhe"), OMNI_MS); return () => clearTimeout(t) }
     if (omni === "recolhe") { const t = setTimeout(() => setOmni(null), calmo() ? 0 : RECOLHE_MS); return () => clearTimeout(t) }
   }, [omni])
-  // o texto se repete pra dar a volta inteira
-  const volta = txt ? Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("") : ""
+  const aberto = !!checklist && omni === "abre"
+  useEffect(() => {
+    if (!api) return
+    api.current = { toque: () => { if (!checklist || aberto) return false; setOmni("abre"); return true } }
+    return () => { api.current = null }
+  }, [api, checklist, aberto])
+  // o texto: aberto, a checklist; com missão, só o nome dela; sem, o que o jogo diz
+  const txt = aberto
+    ? checklist!.passos.map((p) => `${p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"} ${p.nome}`).join("  ·  ")
+    : checklist ? checklist.nome : !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
+  // a borda tem a cor da missão pegada
+  const cor = checklist?.cor ?? missao?.cor ?? "#2fe8ff"
+  // o texto se repete pra dar a volta inteira (a checklist dá uma volta só)
+  const volta = !txt ? "" : aberto ? `${txt.toUpperCase()}  ◆  ` : Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("")
+  const icone = checklist ? ICONE_MISSAO[checklist.chave] : null
   return (
-    <div className={`l-holo-anel ${txt ? "" : "is-vazio"} ${omni ? `is-omni is-${omni}` : ""}`} style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="l-holo-anel-bt" data-info="anel" onClick={() => (checklist ? setOmni("abre") : onMissoes())} aria-label={txt || "missões"}>
+    <div className={`l-holo-anel ${txt ? "" : "is-vazio"} ${checklist ? "is-missao" : ""} ${omni ? `is-omni is-${omni}` : ""}`} style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
+      <button type="button" className="l-holo-anel-bt" data-info="anel" onClick={() => { if (!api?.current?.toque()) onMissoes() }} aria-label={aberto ? `${checklist!.titulo}: ${txt}` : txt || "missões"} aria-expanded={aberto}>
         <svg viewBox="0 0 160 160" aria-hidden="true">
           <defs><path id="l-holo-anel-p" d="M80,80 m-70,0 a70,70 0 1,1 140,0 a70,70 0 1,1 -140,0" /></defs>
+          {/* o fundo da missão: um aro na cor dela atrás do texto */}
+          {checklist && <circle className="l-holo-anel-fundo" cx="80" cy="80" r="70" />}
           <circle cx="80" cy="80" r="76" />
           <g className="l-holo-anel-gira">
-            <text><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
+            <text key={aberto ? "a" : "f"}><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
           </g>
+          {icone && (
+            <g className="l-holo-anel-ic" transform="translate(9 9)">
+              <circle cx="12" cy="12" r="15" />
+              <path d={icone} />
+            </g>
+          )}
         </svg>
       </button>
-      {checklist && <button type="button" className="l-holo-omni-aba" data-info="anel" onClick={() => setOmni("abre")} aria-label={`missão: ${checklist.titulo}`} aria-expanded={omni === "abre"} />}
-      {checklist && omni && (
-        <div className="l-holo-omni" role="status" aria-live="polite" onClick={() => setOmni("recolhe")}>
-          <small>{checklist.titulo}</small>
-          <ul>
-            {checklist.passos.map((p) => <li key={p.nome} className={`is-${p.estado === "em breve" ? "breve" : p.estado}`}><i aria-hidden="true">{p.estado === "feita" ? "✓" : ""}</i>{p.nome}</li>)}
-          </ul>
-        </div>
-      )}
     </div>
   )
 }

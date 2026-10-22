@@ -54,7 +54,7 @@ import { NIVEIS, QUALIDADE } from "./qualidade"
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { HoloAnel, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
+import { HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
@@ -940,6 +940,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const mods = useMemo(() => historia?.mods ?? [], [historia?.mods])
   useEffect(() => { input.current.mods = mods; mangueiraRef.current = mods.includes("mangueira") }, [mods])
   const [perfil, setPerfil] = useState(false)
+  // (22/10, o Omnitrix) a bolinha (o mapa-mini) e o anel: com a missão recolhida, o toque abre a checklist em volta
+  const anelApi = useRef<AnelApi | null>(null)
   // (LU2CA 21/10) celular (em pé ou deitado): os widgets do holo numa ilha só
   const [holoCelular, setHoloCelular] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 600px), (max-height: 480px)").matches)
   useEffect(() => {
@@ -2121,7 +2123,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <HoloApps onApp={(id) => onApp?.(id)} />
             </>
           )}
-          <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => onMissoes?.()} />
+          <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => onMissoes?.()} api={anelApi} />
         </>
       )}
       {/* sair a qualquer hora / voltar pra Kombi */}
@@ -2206,7 +2208,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {parque !== "andando" && (
-        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} />
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} />
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
