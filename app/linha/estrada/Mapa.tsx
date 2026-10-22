@@ -324,8 +324,11 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     const W = c.clientWidth, H = c.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1)
     c.width = W * dpr; c.height = H * dpr
     // começa centrado na Kombi, com a cidade quase inteira na tela
-    const p = pose.current, k = p ? noMundo(M, p) : { x: 0, z: 0 }
+    const p = pose.current
+    let k = p ? noMundo(M, p) : { x: 0, z: 0, tx: 0, tz: 1 }
     // (no mapa novo abre mostrando mais da cidade)
+    // (22/10) com missões no mapa, abre no meio do caminho entre a Kombi e elas (o ícone não fica de fora)
+    if (icones.length) { let sx = k.x, sz = k.z; for (const ic of icones) { const w = noMundo(M, ic); sx += w.x; sz += w.z } k = { ...k, x: sx / (icones.length + 1), z: sz / (icones.length + 1) } }
     vista.current = { cx: k.x, cz: k.z, esc: Math.min(W / (caixa.x1 - caixa.x0), H / (caixa.z1 - caixa.z0)) * ("ligacoes" in M ? 1.15 : 1.6) }
     let raf = 0
     const desenhar = () => {
