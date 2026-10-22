@@ -369,13 +369,13 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
             onWheel={(e) => { const vv = vista.current; vv.esc = Math.max(0.02, Math.min(2, vv.esc * (e.deltaY < 0 ? 1.15 : 1 / 1.15))) }}
           />
           <header>
-            <b>{destino ? destino.nome : "toca num lugar pra marcar o caminho"}</b>
+            <b>{destino ? destino.nome : "o mapa"}</b>
             {distancia && <span>{distancia}</span>}
           </header>
           <footer>
             {marca && onViajar && (viagens > 0
               ? <button type="button" className="is-viagem" onClick={() => { if (onViajar()) abrir(false) }}>viagem rápida · {viagens}</button>
-              : <button type="button" className="is-viagem" disabled>viagem rápida: 100 anéis = 2</button>)}
+              : <button type="button" className="is-viagem" disabled>viagem rápida · 0</button>)}
             {marca && <button type="button" onClick={() => onMarcar(null)}>tirar a marca</button>}
             <button type="button" onClick={() => abrir(false)}>voltar pra estrada</button>
           </footer>

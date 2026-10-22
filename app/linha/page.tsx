@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
-import { ROTEIROS, type ChatId } from "./roteiros"
+import { ROTEIROS, VOZES, type ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
@@ -251,11 +251,14 @@ export default function LinhaPage() {
     setTimeout(() => { setAviso((x) => (x?.id === id ? null : x)); setTimeout(proximo, 250) }, 4200)
   }, [])
   const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
+    // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+neon",
+    // "regado"...): só passa quem fala (um personagem). O resto o "?" explica
+    if (D && !VOZES[titulo]) return
     // o mesmo aviso de novo, enquanto ainda tá na fila: não repete
     if (filaAvisos.current.some((a) => a.titulo === titulo && a.texto === texto)) return
     filaAvisos.current.push({ titulo, texto, cor })
     if (!avisando.current) proximoAviso()
-  }, [proximoAviso])
+  }, [proximoAviso, D])
 
   const ganharXp = useCallback((n: number) => {
     setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))

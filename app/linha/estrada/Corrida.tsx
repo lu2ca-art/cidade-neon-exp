@@ -1235,7 +1235,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // ganhou música nova ouvindo disco: o disco não para; só avisa
   const nObj = useRef(save.objetos.length)
   useEffect(() => {
-    if (save.objetos.length > nObj.current && fonteRef.current !== "radio") {
+    // (LU2CA 22/10) no disco, sem o aviso "liga o RÁDIO": a música nova chega na rádio do holo
+    if (save.objetos.length > nObj.current && fonteRef.current !== "radio" && !("disco" in M)) {
       const e = getEstacao(save.objetos[save.objetos.length - 1])
       falar("222 FM", `estreia na 222: ${e.faixa}. liga o RÁDIO pra ouvir`, 7000)
     }
@@ -2010,7 +2011,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <b>religar a antena da 222 no centro</b>
         </div>
       )}
-      {piloto && <div className="l-hud-piloto" aria-live="polite">indo sozinha pra missão · toca pra assumir</div>}
+      {/* (LU2CA 22/10) fora os avisos de texto: a Kombi indo sozinha pra missão não escreve mais nada (o "?" explica) */}
       {!caido && alvo && missaoAlvo && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: getEstacao(alvo.missao).cor }}>
           <small>{getEstacao(alvo.missao).personagem} · missão</small>
@@ -2147,7 +2148,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {dePatins && pertoComb && seco && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={voltarComGalao}>encher o galão e voltar pra Kombi</button>
       )}
-      {dePatins && !pertoComb && !pertoKombi && !msgPatins && <p className="l-pagina-fechada">{seco ? "de patins · o posto ou uma bomba no mapa" : "de patins · a Kombi ficou estacionada"}</p>}
+      {dePatins && !pertoComb && !pertoKombi && !msgPatins && !discoM && <p className="l-pagina-fechada">{seco ? "de patins · o posto ou uma bomba no mapa" : "de patins · a Kombi ficou estacionada"}</p>}
       {msgPatins && <p className="l-pagina-fechada">{msgPatins}</p>}
       {pertoComb && !dePatins && !naBomba && !entrando && !regando && parque !== "andando" && !postoAberto && !esperandoPosto && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={() => abastecer(pertoComb)}>
