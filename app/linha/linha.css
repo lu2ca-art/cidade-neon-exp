@@ -2604,6 +2604,11 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 @media (min-width: 760px) {
   .l-feira { left: auto; right: 12px; top: calc(250px + env(safe-area-inset-top)); width: 270px; max-height: max(150px, calc(100vh - 470px)); }
 }
+/* (22/10, QA gameplay-010) no celular em pé com o holo ligado, o "sair da kombi" mora em 112–140 px:
+   a feira desce pra logo abaixo dele (antes, o título "a cidade precisa" cobria o botão) */
+@media (max-width: 759px) and (min-height: 481px) {
+  .l-raiz:has(.l-viagem.is-holo-celular.is-holo) .l-feira { top: calc(150px + env(safe-area-inset-top)); max-height: min(52vh, calc(100% - 300px - env(safe-area-inset-top) - env(safe-area-inset-bottom))); }
+}
 /* (21/10) o cartão da oferta em foco (a pista dela brilha no mapa) */
 .l-feira-lista li { cursor: pointer; }
 .l-feira-lista li.is-foco { border-color: var(--cor); box-shadow: 0 0 18px -6px var(--cor); }
