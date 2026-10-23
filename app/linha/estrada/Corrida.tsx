@@ -260,6 +260,7 @@ const VCINEMA = 22 // m/s: de boa, ~80 km/h
 // tempo depois do último toque o automático volta e como ela mira no chão
 const V_PASSEIO = 20 // m/s, ~72 km/h
 const ASSUME_MS = 3000
+const PASSEIO_PISTA = 0.5 // fração da velocidade da pista
 const MIRA_CHAO = 2.2 // quanto o volante corrige por radiano de erro de rumo
 
 type Jogo = {
@@ -3811,7 +3812,8 @@ function Cena({
       const fxP = infV && !naEspiral ? faixasDisco[infV.pista] ?? null : null
       let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
-      if (auto1p) vmax = Math.min(vmax, V_PASSEIO)
+      // (no chão, a de passeio; nas pistas, metade da velocidade da pista)
+      if (auto1p) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
