@@ -19,12 +19,23 @@ import { PAGINAS } from "../paginas"
 import { pintarCarta } from "./carta"
 import { ESCALA, H as HU, W as WU } from "../rede/terreno"
 import { ICONE_MISSAO } from "./Holo"
+import { CHAO_LUGARES } from "../disco/historia"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
 interface PoseKombi { via: number; u: number; x: number; v: number; wx?: number; wz?: number; rumo?: number; livreOk?: boolean }
 
 const ROTA_COR = "#ff3fb0"
+// (23/10) os lugares do chão do subúrbio (a oficina, o bar, o palco) ficam fora das
+// pistas: no mapa, um ponto em coordenada de mundo, com halo pulsando pra achar
+const CHAO = Object.values(CHAO_LUGARES)
+function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: string, k: number, agora: number) {
+  const p = 0.5 + 0.5 * Math.sin(agora / 320)
+  g.globalAlpha = 0.18 + 0.22 * p; g.fillStyle = cor; g.beginPath(); g.arc(x, y, (10 + 5 * p) * k, 0, 7); g.fill(); g.globalAlpha = 1
+  g.fillStyle = "#0b0a12"; g.beginPath(); g.arc(x, y, 6.5 * k, 0, 7); g.fill()
+  g.strokeStyle = cor; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, 6.5 * k, 0, 7); g.stroke()
+  g.fillStyle = cor; g.fillRect(x - 2.6 * k, y - 2.6 * k, 5.2 * k, 5.2 * k)
+}
 // (22/10) as missões no mapa: um ícone por missão, na pista dela
 export interface IconeMapa { id: string; faixa: string; cor: string; agora: boolean }
 interface IconeDesenho extends IconeMapa, Ponto { forma: Path2D | null }
@@ -289,6 +300,12 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         if (d > R - 9) { x = R + ((x - R) / d) * (R - 9); y = R + ((y - R) / d) * (R - 9) }
         desenharBlip(g, x, y, b, 0.85)
       }
+      if ("disco" in M) for (const c of CHAO) {
+        let [x, y] = tela(c.x, c.z)
+        const d = Math.hypot(x - R, y - R)
+        if (d > R - 10) { x = R + ((x - R) / d) * (R - 10); y = R + ((y - R) / d) * (R - 10) }
+        desenharChao(g, x, y, c.cor, 0.8, agora)
+      }
       for (const ic of icones) {
         const w = noMundo(M, ic)
         let [x, y] = tela(w.x, w.z)
@@ -365,6 +382,12 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         if (b.tipo === "flor") continue
         g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(b.nome).width; g.fillRect(x + 10, y - 8, tw + 8, 16)
         g.fillStyle = "#e9e6f2"; g.fillText(b.nome, x + 14, y)
+      }
+      if ("disco" in M) for (const c of CHAO) {
+        const [x, y] = tela(c.x, c.z)
+        desenharChao(g, x, y, c.cor, 1.2, performance.now())
+        g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(c.nome).width; g.fillRect(x + 12, y - 8, tw + 8, 16)
+        g.fillStyle = c.cor; g.fillText(c.nome, x + 16, y)
       }
       if (destino) {
         const w = noMundo(M, destino); const [x, y] = tela(w.x, w.z)
