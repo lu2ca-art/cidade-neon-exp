@@ -256,6 +256,11 @@ const SEM_FLORES: string[] = []
 
 export type Cinema = "rodando" | "parando" | "lugar" | null
 const VCINEMA = 22 // m/s: de boa, ~80 km/h
+// (LU2CA 23/10) a 1ª pessoa leva pela missão: a velocidade de passeio, quanto
+// tempo depois do último toque o automático volta e como ela mira no chão
+const V_PASSEIO = 20 // m/s, ~72 km/h
+const ASSUME_MS = 3000
+const MIRA_CHAO = 2.2 // quanto o volante corrige por radiano de erro de rumo
 
 type Jogo = {
   via: number
@@ -284,6 +289,9 @@ type Jogo = {
   // a Kombi desligada (LU2CA 15/10): 10 s sem tocar em nada, ou chegou numa
   // missão; só anda de novo com "dar partida"
   desligada?: boolean
+  // (23/10) a última vez que mexeram na direção, no acelerador ou no freio
+  // (olhar em volta não conta): a 1ª pessoa devolve o volante por uns segundos
+  ultimoDir?: number
   // o mapa novo: pediu o retorno (troca pra outra mão da mesma rua)
   retorno?: boolean
   tVolta?: number // parado, segurando freio + um lado: quanto tempo (meia-volta)
@@ -2710,6 +2718,9 @@ function Cena({
 }) {
   // o lugar secreto já apareceu (Lugares acende a vaga dele)
   const [revelado, setRevelado] = useState<LugarId | null>(null)
+  // o lugar do chão da missão (a oficina, o bar, o palco): a 1ª pessoa leva até ele
+  const alvoChaoRef = useRef(alvoChao)
+  useEffect(() => { alvoChaoRef.current = alvoChao }, [alvoChao])
   const { camera, scene, gl } = useThree()
   // teste (fora da produção, ou com ?medir na URL): a cena e o renderizador, pra
   // medir o que pesa e a lisura (scripts de desempenho)
@@ -3720,13 +3731,37 @@ function Cena({
       // ela encosta na vaga); qualquer toque devolve o volante
       const pilotoMissao = "disco" in M && !!vagaRef.current && j.naVaga !== vagaRef.current.id && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000
       if (pilotoMissao !== !!j.piloto) { j.piloto = pilotoMissao; if (pilotoMissao) j.desligada = false; ev.piloto(pilotoMissao) }
-      const auto = (dentroRef.current || noCel || pilotoMissao) && !cine
+      // (LU2CA 23/10: "a visão de primeira pessoa tem que levar a pessoa pelo
+      // caminho da missão automaticamente") de dentro, com destino (o lugar do
+      // chão, a vaga da missão ou a marca do mapa), ela vai sozinha pela rota;
+      // qualquer toque devolve o volante e 3 s depois do último o automático
+      // volta. Sem destino, de dentro é manual
+      const chaoA = "disco" in M ? alvoChaoRef.current : null
+      const vg1 = vagaRef.current && j.naVaga !== vagaRef.current.id ? vagaRef.current : null
+      const destino1p = dentroRef.current && !noCel && !!(chaoA || vg1 || marcaRef.current)
+      const assumiu = (j.ultimoDir ?? 0) > 0 && performance.now() - j.ultimoDir! < ASSUME_MS
+      const auto1p = destino1p && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
+      if (auto1p && j.desligada) j.desligada = false // de dentro ela mesma dá a partida
+      const auto = (auto1p || noCel || pilotoMissao) && !cine
       // no automático, chegando na vaga da missão: encosta e freia sozinha
       const vgA = auto && !noCel ? vagaRef.current : null
       const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity
       const encostando = !!vgA && dVaga > -VAGA / 2 && dVaga < 90
       const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : 0
       let alvoSteer = auto ? Math.max(-1, Math.min(1, (xAuto - j.x) / 3)) : (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
+      // no chão (fora das pistas): mira no lugar do chão (ou, sem ele, embaixo da vaga)
+      let dChao = Infinity
+      if (auto1p && j.voo && j.wx !== undefined) {
+        let tx = 0, tz = 0, tem = false
+        if (chaoA) { tx = CHAO_LUGARES[chaoA].x; tz = CHAO_LUGARES[chaoA].z; tem = true }
+        else if (vg1) { const Vv = M.vias[vg1.via], iv = Math.max(0, Math.min(Vv.n - 1, Math.floor(vg1.u / PASSO))); tx = Vv.px[iv]; tz = Vv.pz[iv]; tem = true }
+        if (tem) {
+          const dx = tx - j.wx, dz = tz - j.wz!
+          if (chaoA) dChao = Math.hypot(dx, dz)
+          const dif = Math.atan2(dx, dz) - (j.rumo ?? 0)
+          alvoSteer = Math.max(-1, Math.min(1, -Math.atan2(Math.sin(dif), Math.cos(dif)) * MIRA_CHAO))
+        }
+      }
       // bifurcação: nos últimos 330m, um toque pro lado MARCA a saída e a
       // Kombi entra sozinha na faixa (antes tinha que acertar a faixa no
       // metro exato da divisão — era a trava). Toque do outro lado desmarca.
@@ -3774,8 +3809,9 @@ function Cena({
       const infV = faixasDisco.length ? (M as MundoDisco).info[j.via] : null
       const naEspiral = !!infV && naEspiralParte(infV.parte)
       const fxP = infV && !naEspiral ? faixasDisco[infV.pista] ?? null : null
-      const vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
+      if (auto1p) vmax = Math.min(vmax, V_PASSEIO)
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -3787,7 +3823,7 @@ function Cena({
       if (inp.ambos) { if (j.ar) { inp.mao = true; inp.freio = false } else { inp.freio = true; inp.mao = false } }
       else if (inp.ambosAntes) { inp.freio = false; inp.mao = false }
       inp.ambosAntes = !!inp.ambos
-      if (inp.esq || inp.dir || inp.gas || inp.freio || inp.mao) inp.ultimo = performance.now()
+      if (inp.esq || inp.dir || inp.gas || inp.freio || inp.mao) inp.ultimo = j.ultimoDir = performance.now()
       const ocioso = !auto && !abAqui && inp.ultimo > 0 && performance.now() - inp.ultimo > 10000
       if (ocioso && Math.abs(j.v) < 0.3) j.desligada = true
       const gas = !j.desligada && !ocioso && !(abAqui && (ab.semGas || ab.fase !== "dirige")) && (auto || inp.gas || (toqueTela && !inp.freio))
@@ -3824,6 +3860,8 @@ function Cena({
       j.embalo = emb
       if (j.v > vmax + emb) j.v += (vmax + emb - j.v) * dt * 1.5
       if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
+      // chegando no lugar do chão: tira o pé (a chegada normal para ela no raio)
+      if (dChao < 90) j.v = Math.min(j.v, Math.max(4, dChao * 0.3))
       // o tanque gasta andando (cheio dá uns 15 km)
       // (Kombi solar: a bateria não acaba)
       if (!aberturaRef.current.ativa) combRef.current.tanque = 1
