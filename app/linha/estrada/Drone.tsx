@@ -45,6 +45,9 @@ export const DRONE_CFG = {
   acesoNeon: 1.5,
   apagadoChao: 0.16,
   pintaChao: 0.7, // o asfalto da rota toma a cor da pista (0 = só as bordas acendem)
+  // desempenho: lá de cima some o miúdo (raio < miudoFrac × distância, e só o que tem raio < miudoMax m)
+  miudoFrac: 0.004,
+  miudoMax: 30,
   // a faixa do caminho
   faixaLarg: 3.4, // meia largura (m)
   faixaAlt: 0.5, // m acima da rua (sem z-fighting vista de longe)
@@ -217,6 +220,37 @@ function acenderVias(M: Mundo, vias: number[] | null) {
   _acTex.needsUpdate = true
 }
 
+// ── o miúdo some lá de cima (v2, desempenho) ──
+// Na subida: uma volta no grafo guarda as malhas soltas pequenas (raio < miudoMax)
+// que estavam visíveis. Enquanto o drone está no alto, some o que fica abaixo de
+// miudoFrac × a distância (≈ 1–2 px); aproximando (voar), elas voltam. Na
+// descida, devolve tudo. Só o flag visible (sem geometria, sem alocar por quadro)
+const MIUDO = { lista: [] as { o: THREE.Object3D; r: number }[], ativo: false, alt: 0 }
+function miudos(cena: THREE.Object3D, meu: THREE.Object3D, alt: number) {
+  const M_ = MIUDO, C = DRONE_CFG
+  if (!alt) {
+    if (M_.ativo) { for (const x of M_.lista) x.o.visible = true; M_.lista.length = 0; M_.ativo = false; M_.alt = 0 }
+    return
+  }
+  if (!M_.ativo) {
+    M_.ativo = true
+    cena.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (!(m.isMesh || (o as THREE.Line).isLine) || (o as THREE.InstancedMesh).isInstancedMesh || !o.visible) return
+      for (let p: THREE.Object3D | null = o; p; p = p.parent) { if (p === meu) return; if (!p.visible) return }
+      const geo = m.geometry
+      if (!geo) return
+      if (!geo.boundingSphere) geo.computeBoundingSphere()
+      const r = (geo.boundingSphere?.radius ?? 1e9) * o.matrixWorld.getMaxScaleOnAxis()
+      if (r < C.miudoMax) M_.lista.push({ o, r })
+    })
+  }
+  if (Math.abs(alt - M_.alt) < M_.alt * 0.08) return
+  M_.alt = alt
+  const lim = alt * C.miudoFrac
+  for (const x of M_.lista) x.o.visible = x.r >= lim
+}
+
 // o ícone da Kombi (a cara dela, de frente) e a seta do rumo, desenhados uma vez num canvas
 function texIcone(seta: boolean) {
   const c = document.createElement("canvas"); c.width = c.height = 256
@@ -337,7 +371,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       c.x0 = Math.min(c.x0, v.px[i]); c.x1 = Math.max(c.x1, v.px[i]); c.z0 = Math.min(c.z0, v.pz[i]); c.z1 = Math.max(c.z1, v.pz[i]); c.y0 = Math.min(c.y0, v.py[i]); c.y1 = Math.max(c.y1, v.py[i])
     }
     DRONE.caixa = c; DRONE.fit.key = ""; DRONE.rumoOk = false
-    return () => { DRONE.caixa = null; acenderVias(M, null); ACESO.k.value = 0 }
+    return () => { DRONE.caixa = null; acenderVias(M, null); ACESO.k.value = 0; miudos(M as unknown as THREE.Object3D, M as unknown as THREE.Object3D, 0) }
   }, [M])
   // (v2) o ícone da Kombi: a cara (de pé) e a seta do rumo (gira), tamanho constante na tela
   const icone = useMemo(() => {
@@ -486,6 +520,9 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
     if (!g) return
     const on = D.e > 0.01
     if (g.visible !== on) g.visible = on
+    // (v2, desempenho) lá de cima a cidade inteira cabe na tela: o detalhe menor que
+    // uns pixels (placas, postes, peças soltas) some enquanto o drone está no alto
+    miudos(state.scene, g, D.e > 0.6 ? D.alt : 0)
     // (v2) a força do apaga/acende das pistas (só um uniform)
     const kAc = on && st.current.temRota ? D.e : 0
     if (ACESO.k.value !== kAc) ACESO.k.value = kAc
