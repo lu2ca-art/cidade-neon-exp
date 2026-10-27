@@ -1036,6 +1036,8 @@ export default function LinhaPage() {
       setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "uma kombi velha subiu do subúrbio. voando. alguém viu isso?" }), 1500)
     }
     if (e === "robo") setSave((s) => comHistoria(s, (x) => ({ ...x, robos: (x.robos ?? 0) + 1 })))
+    // (27/10) a D-Bee deu o drone (nas dunas): a subida mostrada não se repete
+    if (e === "drone") setSave((s) => comHistoria(s, (x) => ({ ...x, drone: true })))
     // (a Nectar, B9) a Kombi quebrou → regar 3 flores de patins → o galão → a oficina → o show → o jardim
     if (e === "quebrou" && h.fase === "nectar") setSave((s) => comHistoria(s, (x) => ({ ...x, nectar: "regar", floresIni: x.flores ?? 0 })))
     if (e === "flor") {

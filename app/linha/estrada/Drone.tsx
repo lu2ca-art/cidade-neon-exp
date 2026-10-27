@@ -26,7 +26,7 @@ import type { LugarId } from "../lugares"
 export const DRONE_CFG = {
   inclinacao: 81, // graus abaixo do horizonte (90 = de cima)
   altura: 240, // m acima do carro na tela deitada; na tela em pé sobe (ver alturaDrone)
-  avanco: 0.24, // o ponto olhado fica à frente do carro (× altura): o carro desce na tela
+  avanco: 0.06, // o ponto olhado fica um pouco à frente do carro (× altura; menor que altura/tan(81°): o drone fica ATRÁS)
   fov: 50,
   transicao: 1, // s (sobe/desce)
   seguirRumo: 2.2, // 1/s: quão rápido o drone gira atrás do rumo do carro
@@ -305,6 +305,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       atualizarBarra()
     }
     refazer()
+    if (process.env.NODE_ENV !== "production") (window as unknown as Record<string, unknown>).__drone = { D: DRONE, st: st.current, faixa }
     const t = setInterval(refazer, 1000)
     return () => clearInterval(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps

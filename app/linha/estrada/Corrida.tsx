@@ -251,7 +251,7 @@ interface Props {
   // (21/10, o mapa que ensina) a pista em foco no mapa (tocou na oferta da feira)
   pistaFoco?: string | null
 }
-export type EventoHistoria = "casa" | "cidade" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
+export type EventoHistoria = "casa" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
 
 const SEM_FLORES: string[] = []
 
@@ -1158,6 +1158,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const fase = discoM ? historia?.fase ?? null : null
   // (B18) o começo novo (o subúrbio no chão); quem já estava nas dunas antes dele segue igual
   const novoComeco = true
+  // (27/10) o drone da D-Bee: nas dunas, a primeira vez (uma só, gravada no save)
+  const droneDado = useRef(!!historia?.drone)
+  droneDado.current = !!historia?.drone
   useEffect(() => {
     if (fase !== "casa" && fase !== "dunas" && fase !== "subir") return
     const ditas = new Set<string>()
@@ -1184,6 +1187,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       } else if (!j.voo) { if (!avisou) { avisou = true; onHistoriaRef.current?.("cidade") } return }
       const r = Math.hypot(j.wx ?? 0, j.wz ?? 0)
       if (t > 2) diz("inicio")
+      // (27/10, RASCUNHO) depois do "a cidade é pra lá", a D-Bee solta o drone: a câmera
+      // sai da Kombi, sobe e mostra o trajeto até o subúrbio; depois volta (o jogo não para)
+      if (fase === "dunas" && t > 18 && !droneDado.current && !ditas.has("drone")) {
+        ditas.add("drone"); droneDado.current = true
+        falar("D-Bee", "toma. um drone. ele vê tudo de cima. toca no mapa e ele sobe", 5200)
+        setTimeout(() => { mostrarDrone(); onHistoriaRef.current?.("drone") }, 1200)
+      }
       if (t > 12 && j.drift) diz("drift")
       if (t > 22 && !ditas.has("drift") && !j.ar) diz("drift")
       if (j.carga >= 1) diz("turbo")
