@@ -48,6 +48,8 @@ export interface HistoriaDisco {
   missao?: string
   // o show que está pra acontecer (B8): o fim de cada missão (o prólogo: "bar")
   show?: string
+  // (27/10) o drone GPS da D-Bee: ela dá nas dunas (a subida mostrada uma vez só)
+  drone?: boolean
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }

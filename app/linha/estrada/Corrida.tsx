@@ -61,6 +61,7 @@ import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
+import { DRONE, DRONE_CFG, HoloDrone, cameraDrone, ligarDrone, mostrarDrone } from "./Drone"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
@@ -412,6 +413,10 @@ const toqueTela = typeof window !== "undefined" && window.matchMedia("(pointer: 
 // medição (só com ?medir): ?dpr=1.25 fixa a densidade de pixels do canvas
 const testeMedir = typeof window !== "undefined" && /[?&]medir/.test(location.search)
 const testeMedirAparelho = typeof window !== "undefined" && /[?&]medirAparelho/.test(location.search)
+// nas dunas não tem rua: o drone aponta pro subúrbio
+const DUNAS_ALVO = { x: SUBURBIO.x, z: SUBURBIO.z, cor: "#ff6a35" }
+// (27/10) o mapa 2D grande antigo fica de reserva: ?mapa2d (sem isso, o mapa é o drone)
+const MAPA_2D = typeof window !== "undefined" && /[?&]mapa2d/.test(location.search)
 const testeDpr = (() => { if (typeof window === "undefined" || !/[?&]medir/.test(location.search)) return null; const v = Number(new URLSearchParams(location.search).get("dpr")); return v > 0 ? v : null })()
 
 const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
@@ -479,6 +484,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => { try { localStorage.setItem("cn-aneis", JSON.stringify(aneis)) } catch {} }, [aneis])
   const marcaRef = useRef<Marca | null>(null)
   useEffect(() => { marcaRef.current = marca }, [marca])
+  // (27/10) uma cena começando: o drone desce
+  useEffect(() => { if (cinema || cenaLugar) ligarDrone(false) }, [cinema, cenaLugar])
   // a vaga que vale agora (encostar nela começa a cena)
   const vagaRef = useRef<{ id: LugarId; via: number; u: number; lado: 1 | -1; nome: string; cor: string; quem: string } | null>(null)
   useEffect(() => {
@@ -960,6 +967,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const anelApi = useRef<AnelApi | null>(null)
   // (22/10) o anel e o mapa abrem a mesma tela: o mapa grande, com as missões
   const [pedeMapa, setPedeMapa] = useState(0)
+  // (27/10) o drone GPS: o mapa é a cidade vista do alto, ao vivo. A React só sabe
+  // se está ligado (o resto mora no DRONE, lido por quadro)
+  const [drone, setDrone] = useState(false)
+  const [dronePainel, setDronePainel] = useState(false)
+  useEffect(() => {
+    DRONE.ouvir = (on) => { setDrone(on); if (!on) setDronePainel(false) }
+    return () => { DRONE.ouvir = null; DRONE.alvo = 0; DRONE.k = 0; DRONE.e = 0; DRONE.mostra = -1 }
+  }, [])
+  // (27/10) o drone é da D-Bee: no disco, só depois que ela dá (nas dunas); quem já passou de lá já tem
+  const droneOk = !MAPA_2D && (!discoM || !historia || !!historia.drone || !(historia.fase === "minhoca" || historia.fase === "casa" || historia.fase === "dunas"))
   // (LU2CA 21/10) celular (em pé ou deitado): os widgets do holo numa ilha só
   const [holoCelular, setHoloCelular] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 600px), (max-height: 480px)").matches)
   useEffect(() => {
@@ -1975,7 +1992,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} onRobo={roboRef} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} onRobo={roboRef} missoesMapa={discoM ? mapaMissoes : null} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
         </Canvas>
       )}
 
@@ -2268,7 +2285,28 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {parque !== "andando" && (
-        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} />
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone}
+          onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
+      )}
+      {drone && (
+        <div className="l-drone" aria-label="a vista do drone">
+          <div className="l-drone-dist" aria-hidden="true"><i /></div>
+          {dronePainel && discoM && mapaPainel && (
+            <aside className="l-mapa-missoes l-drone-missoes" aria-label="as missões" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { if ((e.target as HTMLElement).closest("[data-fecha-mapa]")) setDronePainel(false) }}>
+              {mapaPainel}
+            </aside>
+          )}
+          <div className="l-drone-botoes" onPointerDown={(e) => e.stopPropagation()}>
+            {discoM && mapaPainel && (
+              <button type="button" aria-label="as missões" className={dronePainel ? "is-on" : ""} onClick={() => setDronePainel((v) => !v)}>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 6h14M5 12h14M5 18h9" /></svg>
+              </button>
+            )}
+            <button type="button" aria-label="voltar pra rua" onClick={() => ligarDrone(false)}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v13M6 11l6 6 6-6M5 21h14" /></svg>
+            </button>
+          </div>
+        </div>
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
@@ -2654,7 +2692,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, missoesMapa = null,
 }: {
   alvoChao?: LugarChao | null
   // (LU2CA 21/10 (3)) a música é o TEMA da missão: na carreira (soTema), a
@@ -2665,6 +2703,7 @@ function Cena({
   temaMissao?: string | null
   semPaineis?: boolean
   faseHistoria?: string | null
+  missoesMapa?: IconeMapa[] | null
   onRobo?: React.RefObject<() => void>
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
@@ -5248,6 +5287,8 @@ function Cena({
       const chC = (M as MundoDisco).chaoEm(camera.position.x, camera.position.z) + 1.8
       if (camera.position.y < chC) { camera.position.y = chC; camera.lookAt(car.position.x, car.position.y + 1.2, car.position.z) }
     }
+    // (27/10) o drone GPS: sobe pra ~81° atrás do carro, ao vivo (cenas, montanha-russa e portas mandam na câmera)
+    const eDr = ce || pq.andando || apeCam || cine ? DRONE.e : cameraDrone(camera as THREE.PerspectiveCamera, car.position, tmp.f, tmp.camOlhar, dt)
     // teste (fora da produção): window.__vista = [x, y, z, olharX, olharY, olharZ]
     // segura a câmera num ponto (vista aérea pra conferir o mapa)
     if (process.env.NODE_ENV !== "production") {
@@ -5293,7 +5334,8 @@ function Cena({
     const cam = camera as THREE.PerspectiveCamera
     if (j.soco) { cam.fov += reduz ? 0 : 16; j.soco = false }
     const fovAlvo = pq.andando ? 64 + Math.min(14, pq.v * 0.5) : cl ? 40 : cine ? 50 : primeira ? 86 + pct * 6 + (j.turboT > 0 ? 5 : 0) : 60 + Math.min(1.3, Math.abs(pct)) * 18 + (j.turboT > 0 ? 10 : 0) + Math.max(0, camDin.current.puxa) * 1.5
-    cam.fov += (fovAlvo + ("disco" in M ? Math.min(45, VELO.k * 24) : 0) - cam.fov) * Math.min(1, dt * 3)
+    const fovMix = eDr > 0 ? fovAlvo + (DRONE_CFG.fov - fovAlvo) * eDr : fovAlvo
+    cam.fov += (fovMix + ("disco" in M ? Math.min(45, VELO.k * 24) * (1 - eDr) : 0) - cam.fov) * Math.min(1, dt * (eDr > 0 && eDr < 1 ? 6 : 3))
     cam.updateProjectionMatrix()
     j.shake = Math.max(0, j.shake - dt * 2)
     j.flash = Math.max(0, j.flash - dt * 1.6)
@@ -5348,8 +5390,10 @@ function Cena({
     // no deserto a névoa vai longe: a cidade inteira lá no horizonte
     if (fog) {
       const longe = V.id === "deserto" || noDeserto
-      fog.far += ((longe ? 3000 : 950) - fog.far) * Math.min(1, dt * 0.6)
-      fog.near += ((longe ? 250 : 70) - fog.near) * Math.min(1, dt * 0.6)
+      // (27/10) no drone a névoa sobe junto (a rua embaixo fica nítida; o horizonte some)
+      const dA = DRONE.alt * DRONE.e, rf = Math.min(1, dt * (DRONE.k > 0 && DRONE.k < 1 ? 5 : 0.6))
+      fog.far += ((longe ? 3000 : 950) + dA * 1.6 - fog.far) * rf
+      fog.near += ((longe ? 250 : 70) + dA - fog.near) * rf
     }
     ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
     ceuMat.uniforms.nevoaC.value.lerp(alvoNevoa, kk)
@@ -5509,7 +5553,7 @@ function Cena({
     kVolante.current = Math.max(-1.3, Math.min(1.3, -kEsterco.current / 0.42))
     kBalanco.current = j.vx * 0.35 + a.curv * j.v * Math.abs(j.v) * 0.08 + j.deriva * 2
     // de dentro: some a carroceria de fora, aparece a cabine
-    const dentroAgora = dentroRef.current && !cine
+    const dentroAgora = dentroRef.current && !cine && DRONE.e < 0.3 // (no drone, a Kombi de fora aparece)
     if (corpoK.current) corpoK.current.visible = !dentroAgora && !combRef.current.patins
     // a herbal é fechada: a cabine (o interior) só aparece de dentro
     if (cabineG.current) cabineG.current.visible = dentroAgora && !combRef.current.patins
@@ -5581,6 +5625,8 @@ function Cena({
       {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} /></Seguro>}
       {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} />}
       {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
+      {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
+      <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
       {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (

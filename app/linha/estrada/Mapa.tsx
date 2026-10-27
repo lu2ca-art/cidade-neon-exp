@@ -79,7 +79,7 @@ function amostrarVias(M: Mundo) {
   })
 }
 
-function noMundo(M: Mundo, p: Ponto) {
+export function noMundo(M: Mundo, p: Ponto) {
   const v = M.vias[p.via]
   const i = v.fechada ? ((Math.round(p.u / PASSO) % v.n) + v.n) % v.n : Math.max(0, Math.min(v.n - 1, Math.round(p.u / PASSO)))
   return { x: v.px[i], z: v.pz[i], tx: v.tx[i], tz: v.tz[i] }
@@ -131,7 +131,7 @@ function desenharRota(g: CanvasRenderingContext2D, segs: TrechoDesenho[], tela: 
   g.globalAlpha = 1; g.shadowBlur = 0
 }
 
-function blipsDo(M: Mundo): Blip[] {
+export function blipsDo(M: Mundo): Blip[] {
   const b: Blip[] = []
   for (const l of Object.values(LUGARES)) {
     if (l.segredo || (l.soDisco && !("disco" in M))) continue
@@ -164,7 +164,7 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone }: {
+export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone }: {
   M: Mundo
   // (disco, os atos) as vias das pistas ainda apagadas: no mapa, um fio escuro
   apagada?: boolean[] | null
@@ -188,6 +188,9 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   missoes?: IconeMapa[] | null
   painel?: React.ReactNode
   onIcone?: (id: string) => void
+  // (27/10) o drone GPS: tocar na bolinha (ou o anel pedir as missões) liga a vista do
+  // drone em vez do mapa grande; devolve true se cuidou (sem ele, o mapa 2D de reserva)
+  onDrone?: (via: "mini" | "pedido") => boolean
 }) {
   const mini = useRef<HTMLCanvasElement>(null)
   const grande = useRef<HTMLCanvasElement>(null)
@@ -429,13 +432,13 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   useEffect(() => {
     if (pedido === pedidoAnt.current) return
     pedidoAnt.current = pedido
-    if (pedido) abrir(true)
+    if (pedido && !onDrone?.("pedido")) abrir(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedido])
 
   return (
     <>
-      <button type="button" className="l-mapa-mini" data-info="mapa" aria-label="abrir o mapa" onPointerDown={(e) => e.stopPropagation()} onClick={() => { if (!onToqueMini?.()) abrir(true) }}>
+      <button type="button" className="l-mapa-mini" data-info="mapa" aria-label="abrir o mapa" onPointerDown={(e) => e.stopPropagation()} onClick={() => { if (!onToqueMini?.() && !onDrone?.("mini")) abrir(true) }}>
         <canvas ref={mini} />
         {distancia && <span style={{ ["--cor" as string]: destino?.cor ?? ROTA_COR }}>{distancia}</span>}
       </button>
