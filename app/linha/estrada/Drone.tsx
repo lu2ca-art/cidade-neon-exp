@@ -24,17 +24,27 @@ import type { LugarId } from "../lugares"
 
 // ── os números (tudo que o designer ajusta mora aqui) ──
 export const DRONE_CFG = {
+  // (v2, 27/10 (2)) a câmera fica PARADA mostrando a cidade inteira, olhando pro norte (como o mapa 2D)
   inclinacao: 81, // graus abaixo do horizonte (90 = de cima)
-  altura: 240, // m acima do carro na tela deitada; na tela em pé sobe (ver alturaDrone)
-  avanco: 0.06, // o ponto olhado fica um pouco à frente do carro (× altura; menor que altura/tan(81°): o drone fica ATRÁS)
   fov: 50,
+  margemX: 0.92, // quanto da tela (NDC) a cidade ocupa na largura
+  margemY: 0.8, // e na altura (sobra pros botões e pro holo em cima/embaixo)
   transicao: 1, // s (sobe/desce)
-  seguirRumo: 2.2, // 1/s: quão rápido o drone gira atrás do rumo do carro
-  // a primeira vez (no deserto, quando a D-Bee dá): sobe devagar, bem alto, mostra o trajeto e volta
+  // voar pelo mapa (a mão): arrastar desloca, pinça/roda aproxima
+  zoomMin: 0.14, // × a distância da cidade inteira (o mais perto)
+  suavizar: 9, // 1/s: a vista corre atrás do dedo
+  // a primeira vez (no deserto, quando a D-Bee dá): sobe devagar, um pouco mais alto, e volta
   primeiraSubida: 2.6, // s
-  primeiraAlto: 2.4, // × a altura normal no começo da mostra
-  primeiraAltoAte: 5.5, // s: depois desce pra altura normal
+  primeiraAlto: 1.12, // × a distância normal no começo da mostra
+  primeiraAltoAte: 5.5, // s: depois assenta na cidade inteira
   primeiraFim: 10, // s: volta pra câmera da rua
+  // o ícone da Kombi (tamanho constante na tela)
+  iconePx: 54, // px (a cara); a seta do rumo em volta é 1,55×
+  // a cidade religada: as pistas da rota acendem, as outras apagam (× a cor delas)
+  apagadoNeon: 0.07,
+  acesoNeon: 1.5,
+  apagadoChao: 0.16,
+  pintaChao: 0.7, // o asfalto da rota toma a cor da pista (0 = só as bordas acendem)
   // a faixa do caminho
   faixaLarg: 3.4, // meia largura (m)
   faixaAlt: 0.5, // m acima da rua (sem z-fighting vista de longe)
@@ -55,29 +65,73 @@ export const DRONE = {
   alvo: 0, // 0 rua, 1 drone
   k: 0, // a transição (0..1)
   e: 0, // a transição suavizada (a que mistura a câmera)
-  rumo: 0,
-  rumoOk: false,
-  extra: 1, // × altura (a mostra da primeira vez)
+  rumoOk: false, // (a caixa desta subida já foi feita)
+  extra: 1, // × distância (a mostra da primeira vez)
   mostra: -1, // s desde o começo da primeira vez (-1: não está mostrando)
-  alt: 0, // a altura atual (m), pra névoa acompanhar
+  alt: 0, // a distância atual da câmera (m), pra névoa acompanhar
   metros: -1, // até o destino (a rota), -1 sem destino
   metros0: -1, // no começo dessa ida (a barrinha)
+  // a cidade (os limites das vias; HoloDrone preenche) e a desta subida (com a Kombi, se ela estiver fora)
+  caixa: null as null | { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number },
+  cj: { x0: 0, x1: 0, z0: 0, z1: 0, y0: 0, y1: 0 },
+  fit: { key: "", d: 1000, cx: 0, cz: 0, cy: 0, wpp: 1 },
+  // voar pelo mapa: o alvo (ox, oz, zoom) e o suavizado
+  px: 0, pz: 0, zoom: 1, ox: 0, oz: 0, zs: 1,
+  far0: 0,
+  // onde está a Kombi (o ícone lê)
+  carro: new THREE.Vector3(), frente: new THREE.Vector3(0, 0, 1),
   ouvir: null as ((ligado: boolean) => void) | null,
 }
 export function ligarDrone(on: boolean) {
   if (!!DRONE.alvo === on) return
   DRONE.alvo = on ? 1 : 0
+  if (!on) centrarDrone()
   DRONE.ouvir?.(on)
 }
 // a primeira vez: a câmera sai do carro e sobe, mostra o trajeto e volta
 export function mostrarDrone() { DRONE.mostra = 0; DRONE.extra = 1; ligarDrone(true) }
 
-export function alturaDrone(aspecto: number) {
-  // na tela em pé o campo é estreito: sobe mais pra caber um pedaço bom da cidade
-  return DRONE_CFG.altura * (aspecto < 1 ? 1 / Math.sqrt(Math.max(0.45, aspecto)) : 1)
+// ── voar pelo mapa ──
+// arrastar (px na tela): o mapa segue o dedo
+export function arrastarDrone(dx: number, dy: number) {
+  const D = DRONE, c = D.cj, w = D.fit.wpp * D.zs
+  D.px = Math.max(c.x0 - D.fit.cx, Math.min(c.x1 - D.fit.cx, D.px - dx * w))
+  D.pz = Math.max(c.z0 - D.fit.cz, Math.min(c.z1 - D.fit.cz, D.pz - dy * w / Math.sin((DRONE_CFG.inclinacao * Math.PI) / 180)))
+}
+// f > 1 afasta, < 1 aproxima (nunca mais longe que a cidade inteira)
+export function zoomDrone(f: number) { DRONE.zoom = Math.max(DRONE_CFG.zoomMin, Math.min(1, DRONE.zoom * f)) }
+export function centrarDrone() { DRONE.px = DRONE.pz = 0; DRONE.zoom = 1 }
+export const droneMovido = () => DRONE.zoom < 0.999 || Math.abs(DRONE.px) + Math.abs(DRONE.pz) > 1
+
+// a vista da cidade inteira: a distância e o ponto olhado que enquadram a caixa
+// (8 cantos projetados, umas voltas de ajuste). Só refaz quando muda a tela/caixa
+const _cam = new THREE.PerspectiveCamera(), _v = new THREE.Vector3()
+function vistaCidade(aspecto: number) {
+  const D = DRONE, C = DRONE_CFG, c = D.cj, F = D.fit
+  const key = `${aspecto.toFixed(3)}|${c.x0}|${c.x1}|${c.z0}|${c.z1}`
+  if (F.key === key) return F
+  F.key = key
+  _cam.fov = C.fov; _cam.aspect = aspecto; _cam.near = 1; _cam.far = 1e6; _cam.updateProjectionMatrix()
+  const th = (C.inclinacao * Math.PI) / 180, sy = Math.sin(th), sz = Math.cos(th), tg = Math.tan((C.fov * Math.PI) / 360)
+  let cx = (c.x0 + c.x1) / 2, cz = (c.z0 + c.z1) / 2, d = Math.max(c.x1 - c.x0, c.z1 - c.z0)
+  const cy = c.y0
+  for (let it = 0; it < 8; it++) {
+    _cam.position.set(cx, cy + d * sy, cz + d * sz); _cam.up.set(0, 1, 0); _cam.lookAt(cx, cy, cz); _cam.updateMatrixWorld(true)
+    let a = Infinity, b = -Infinity, e = Infinity, f = -Infinity
+    for (let k = 0; k < 8; k++) {
+      _v.set(k & 1 ? c.x1 : c.x0, k & 2 ? c.y1 : c.y0, k & 4 ? c.z1 : c.z0).project(_cam)
+      a = Math.min(a, _v.x); b = Math.max(b, _v.x); e = Math.min(e, _v.y); f = Math.max(f, _v.y)
+    }
+    cx += ((a + b) / 2) * d * tg * aspecto
+    cz -= ((e + f) / 2) * d * tg / sy
+    d *= Math.max((b - a) / 2 / C.margemX, (f - e) / 2 / C.margemY)
+  }
+  F.d = d; F.cx = cx; F.cz = cz; F.cy = cy
+  F.wpp = (2 * d * tg) / Math.max(1, typeof window !== "undefined" ? window.innerHeight : 800)
+  return F
 }
 
-const _p = new THREE.Vector3(), _o = new THREE.Vector3(), _l = new THREE.Vector3()
+const _p = new THREE.Vector3(), _l = new THREE.Vector3(), _o = new THREE.Vector3()
 // mistura a câmera da rua (já calculada no quadro) com a do drone. Devolve a mistura (0..1)
 export function cameraDrone(cam: THREE.PerspectiveCamera, car: THREE.Vector3, frente: THREE.Vector3, olhar: THREE.Vector3, dt: number) {
   const D = DRONE, C = DRONE_CFG
@@ -89,26 +143,118 @@ export function cameraDrone(cam: THREE.PerspectiveCamera, car: THREE.Vector3, fr
   D.k = D.alvo ? Math.min(1, D.k + dt / dur) : Math.max(0, D.k - dt / C.transicao)
   const extraAlvo = D.mostra >= 0 && D.mostra < C.primeiraAltoAte ? C.primeiraAlto : 1
   D.extra += (extraAlvo - D.extra) * Math.min(1, dt * 0.9)
-  if (D.k <= 0) { D.rumoOk = false; D.e = 0; D.alt = 0; return 0 }
-  const fr = Math.atan2(frente.x, frente.z)
-  if (!D.rumoOk) { D.rumo = fr; D.rumoOk = true }
-  let dr = fr - D.rumo
-  dr -= Math.round(dr / (Math.PI * 2)) * Math.PI * 2
-  D.rumo += dr * Math.min(1, dt * C.seguirRumo)
+  if (D.k <= 0) {
+    D.rumoOk = false; D.e = 0; D.alt = 0
+    if (D.far0 && cam.far !== D.far0) { cam.far = D.far0; cam.updateProjectionMatrix() }
+    return 0
+  }
+  D.carro.copy(car); D.frente.copy(frente)
+  if (!D.rumoOk) {
+    // a caixa desta subida: a cidade, e a Kombi se ela estiver fora (nas dunas)
+    D.rumoOk = true
+    const c = D.caixa ?? { x0: car.x - 400, x1: car.x + 400, z0: car.z - 400, z1: car.z + 400, y0: car.y, y1: car.y }, m = 60
+    D.cj.x0 = Math.min(c.x0, car.x - m); D.cj.x1 = Math.max(c.x1, car.x + m); D.cj.z0 = Math.min(c.z0, car.z - m); D.cj.z1 = Math.max(c.z1, car.z + m)
+    D.cj.y0 = Math.min(c.y0, car.y); D.cj.y1 = Math.max(c.y1, car.y)
+  }
   const e = D.k * D.k * (3 - 2 * D.k)
   D.e = e
-  const h = alturaDrone(cam.aspect) * D.extra
+  const F = vistaCidade(cam.aspect), s = Math.min(1, dt * C.suavizar)
+  D.ox += (D.px - D.ox) * s; D.oz += (D.pz - D.oz) * s; D.zs += (D.zoom - D.zs) * s
+  const h = F.d * D.zs * D.extra
   D.alt = h
-  const fx = Math.sin(D.rumo), fz = Math.cos(D.rumo)
-  // o ponto olhado (à frente do carro) e o drone atrás dele, na mesma reta
-  const av = h * C.avanco, atras = h / Math.tan((C.inclinacao * Math.PI) / 180)
-  _o.set(car.x + fx * av, car.y, car.z + fz * av)
-  _p.set(_o.x - fx * atras, car.y + h, _o.z - fz * atras)
+  const th = (C.inclinacao * Math.PI) / 180
+  _o.set(F.cx + D.ox, F.cy, F.cz + D.oz)
+  _p.set(_o.x, _o.y + h * Math.sin(th), _o.z + h * Math.cos(th))
   cam.position.lerp(_p, e)
   _l.copy(olhar).lerp(_o, e)
   cam.up.set(0, 1, 0)
   cam.lookAt(_l)
+  // o plano do fundo vai até a cidade inteira (só no drone; na rua volta pro de antes)
+  if (!D.far0) D.far0 = cam.far
+  cam.far = D.far0 + (Math.max(D.far0, h * 1.8) - D.far0) * e
   return e
+}
+
+// ── a cidade religada (v2): as pistas da rota acendem, as outras apagam ──
+// Uma textura 1×N (uma via por texel: 1 acesa) e um uniform de força; os
+// materiais das pistas multiplicam a cor (onBeforeCompile). Sem geometria nova
+// e sem trocar nada por quadro além do uniform.
+const NV = 256
+const _acTex = new THREE.DataTexture(new Uint8Array(NV * 4), NV, 1)
+_acTex.magFilter = _acTex.minFilter = THREE.NearestFilter
+export const ACESO = { k: { value: 0 }, tex: { value: _acTex }, n: { value: NV } }
+function acender(apagado: number, aceso: number, pinta = 0) {
+  // (o texel: rgb = a cor da pista, a = acesa). pinta > 0: o chão da rota vira a cor dela (de longe a rua toda acende)
+  return (sh: { uniforms: Record<string, THREE.IUniform>; vertexShader: string; fragmentShader: string }) => {
+    sh.uniforms.uAcK = ACESO.k; sh.uniforms.uAcTex = ACESO.tex; sh.uniforms.uAcN = ACESO.n
+    sh.uniforms.uAcApag = { value: apagado }; sh.uniforms.uAcAces = { value: aceso }; sh.uniforms.uAcPinta = { value: pinta }
+    sh.vertexShader = "attribute float aVia;\nuniform sampler2D uAcTex;\nuniform float uAcN;\nvarying vec4 vAc;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nvAc = texture2D(uAcTex, vec2((aVia + 0.5) / uAcN, 0.5));")
+    sh.fragmentShader = "uniform float uAcK;\nuniform float uAcApag;\nuniform float uAcAces;\nuniform float uAcPinta;\nvarying vec4 vAc;\n" + sh.fragmentShader
+      .replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= mix(1.0, mix(uAcApag, uAcAces, vAc.a), uAcK);")
+      .replace("#include <dithering_fragment>", "#include <dithering_fragment>\ngl_FragColor.rgb = mix(gl_FragColor.rgb, vAc.rgb * 1.15, uAcK * vAc.a * uAcPinta);")
+  }
+}
+export const ACENDE = {
+  neon: acender(DRONE_CFG.apagadoNeon, DRONE_CFG.acesoNeon),
+  branco: acender(DRONE_CFG.apagadoNeon, 1),
+  chao: acender(DRONE_CFG.apagadoChao, 1, DRONE_CFG.pintaChao),
+}
+// as vias da rota (a volta do disco é desenhada pela ida: acende as duas)
+const _ac = new THREE.Color()
+function acenderVias(M: Mundo, vias: number[] | null) {
+  const d = _acTex.image.data as Uint8Array
+  d.fill(0)
+  if (vias) {
+    const par = new Map<number, number>()
+    for (const p of (M as unknown as { pistas?: { ida: number; volta: number }[] }).pistas ?? []) { par.set(p.volta, p.ida); par.set(p.ida, p.volta) }
+    const marca = (v: number) => {
+      if (v >= NV) return
+      _ac.set((M.vias[v] as { cor?: string }).cor ?? "#2fe8ff")
+      d[v * 4] = _ac.r * 255; d[v * 4 + 1] = _ac.g * 255; d[v * 4 + 2] = _ac.b * 255; d[v * 4 + 3] = 255
+    }
+    for (const v of vias) { marca(v); const o = par.get(v); if (o !== undefined) marca(o) }
+  }
+  _acTex.needsUpdate = true
+}
+
+// o ícone da Kombi (a cara dela, de frente) e a seta do rumo, desenhados uma vez num canvas
+function texIcone(seta: boolean) {
+  const c = document.createElement("canvas"); c.width = c.height = 256
+  const g = c.getContext("2d")!
+  const R = 256 / 2
+  if (seta) {
+    // o anel com a ponta (aponta pra cima; o sprite gira pro rumo)
+    g.strokeStyle = "#2fe8ff"; g.lineWidth = 10; g.shadowColor = "#2fe8ff"; g.shadowBlur = 14
+    g.beginPath(); g.arc(R, R + 6, 78, 0, Math.PI * 2); g.stroke()
+    g.fillStyle = "#2fe8ff"
+    g.beginPath(); g.moveTo(R, 8); g.lineTo(R + 34, 66); g.lineTo(R - 34, 66); g.closePath(); g.fill()
+  } else {
+    // a placa redonda escura com a borda magenta
+    g.fillStyle = "#0b0716"; g.beginPath(); g.arc(R, R, 118, 0, Math.PI * 2); g.fill()
+    g.strokeStyle = "#ff3fb0"; g.lineWidth = 12; g.beginPath(); g.arc(R, R, 112, 0, Math.PI * 2); g.stroke()
+    // a Kombi de frente: a metade de cima clara, o V no nariz, os faróis redondos, o emblema
+    const x0 = 58, x1 = 198, y0 = 62, y1 = 196, r = 34
+    g.beginPath(); g.moveTo(x0 + r, y0); g.arcTo(x1, y0, x1, y1, r); g.arcTo(x1, y1, x0, y1, 18); g.arcTo(x0, y1, x0, y0, 18); g.arcTo(x0, y0, x1, y0, r); g.closePath()
+    g.fillStyle = "#ff3fb0"; g.fill()
+    g.save(); g.clip()
+    g.fillStyle = "#f4efe2"
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y0); g.lineTo(x1, 128); g.lineTo(R + 12, 128); g.lineTo(R, 150); g.lineTo(R - 12, 128); g.lineTo(x0, 128); g.closePath(); g.fill()
+    g.restore()
+    // o para-brisa (duas folhas)
+    g.fillStyle = "#2fe8ff"
+    g.fillRect(x0 + 14, y0 + 14, 50, 34); g.fillRect(R + 6, y0 + 14, 50, 34)
+    // os faróis
+    g.fillStyle = "#fff6c8"; g.shadowColor = "#fff6c8"; g.shadowBlur = 10
+    g.beginPath(); g.arc(x0 + 26, 166, 13, 0, Math.PI * 2); g.arc(x1 - 26, 166, 13, 0, Math.PI * 2); g.fill()
+    g.shadowBlur = 0
+    // o emblema
+    g.strokeStyle = "#0b0716"; g.lineWidth = 6; g.beginPath(); g.arc(R, 156, 15, 0, Math.PI * 2); g.stroke()
+    // o para-choque
+    g.fillStyle = "#0b0716"; g.fillRect(x0 - 6, y1 - 12, x1 - x0 + 12, 10)
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
 }
 
 // ── o holograma ──
@@ -184,6 +330,25 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
 }) {
   const chao = (M as MundoChao).chaoEm
   const yChao = (x: number, z: number, y0: number) => (chao ? chao(x, z) : y0)
+  // (v2) a caixa da cidade (os limites das vias): a câmera do drone enquadra ela inteira
+  useEffect(() => {
+    const c = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity, y0: Infinity, y1: -Infinity }
+    for (const v of M.vias) for (let i = 0; i < v.n; i += 4) {
+      c.x0 = Math.min(c.x0, v.px[i]); c.x1 = Math.max(c.x1, v.px[i]); c.z0 = Math.min(c.z0, v.pz[i]); c.z1 = Math.max(c.z1, v.pz[i]); c.y0 = Math.min(c.y0, v.py[i]); c.y1 = Math.max(c.y1, v.py[i])
+    }
+    DRONE.caixa = c; DRONE.fit.key = ""; DRONE.rumoOk = false
+    return () => { DRONE.caixa = null; acenderVias(M, null); ACESO.k.value = 0 }
+  }, [M])
+  // (v2) o ícone da Kombi: a cara (de pé) e a seta do rumo (gira), tamanho constante na tela
+  const icone = useMemo(() => {
+    const mk = (seta: boolean) => {
+      const m = new THREE.SpriteMaterial({ map: texIcone(seta), sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, toneMapped: false, fog: false })
+      const sp = new THREE.Sprite(m); sp.renderOrder = 30; sp.frustumCulled = false
+      return sp
+    }
+    return { cara: mk(false), seta: mk(true) }
+  }, [])
+  useEffect(() => () => { for (const sp of [icone.cara, icone.seta]) { sp.material.map?.dispose(); sp.material.dispose() } }, [icone])
   // a faixa: buffers do tamanho máximo, escritos só quando a rota muda
   const faixa = useMemo(() => {
     const g = new THREE.BufferGeometry()
@@ -224,7 +389,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
   useEffect(() => () => { faixa.g.dispose(); faixa.mat.dispose(); feixes.inst.geometry.dispose(); feixes.mat.dispose(); feixes.matD.dispose(); feixes.anel.geometry.dispose(); feixes.anelM.dispose() }, [faixa, feixes])
 
   const grupo = useRef<THREE.Group>(null)
-  const st = useRef({ sig: "", ini: 0, total: 0, pois: "", destKey: "" })
+  const st = useRef({ sig: "", ini: 0, total: 0, pois: "", destKey: "", temRota: false })
   const props = useRef({ alvoChao, lugarAlvo, alvoLivre, apagada, missoes })
   props.current = { alvoChao, lugarAlvo, alvoLivre, apagada, missoes }
 
@@ -274,7 +439,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       else if (pr.lugarAlvo) { const b = blips.find((x) => x.id === pr.lugarAlvo); if (b) { destVia = b; corD = b.cor; key = `l${b.id}` } }
       else if (pr.alvoLivre) { dx = pr.alvoLivre.x; dz = pr.alvoLivre.z; corD = pr.alvoLivre.cor; key = "livre" }
       const s = st.current
-      if (!key) { faixa.g.setDrawRange(0, 0); feixes.dest.visible = feixes.anel.visible = false; D.metros = D.metros0 = -1; s.sig = ""; atualizarBarra(); return }
+      if (!key) { if (s.temRota) { s.temRota = false; acenderVias(M, null) } faixa.g.setDrawRange(0, 0); feixes.dest.visible = feixes.anel.visible = false; D.metros = D.metros0 = -1; s.sig = ""; atualizarBarra(); return }
       if (destVia) { const w = noMundo(M, destVia); dx = w.x; dz = w.z }
       const iD = destVia ? pontoVia(M, destVia.via, destVia.u) : -1
       const dy = destVia ? M.vias[destVia.via].py[iD] : yChao(dx, dz, 0)
@@ -299,6 +464,9 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
         faixa.mat.uniforms.uTot.value = s.total
         faixa.mat.uniforms.uIni.value = 0
         corFaixa(M, rota, faixa, n, corD)
+        // (v2) a cidade religada: acendem as vias da rota (sem rota nas ruas, a cidade fica normal)
+        s.temRota = !!rota
+        acenderVias(M, rota ? rota.trechos.map((t) => t.via) : null)
       }
       D.metros = Math.max(0, s.total - s.ini)
       if (D.metros < 40 && mk) D.metros0 = -1
@@ -313,12 +481,23 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
   // mudou o que aparece (pista acesa, missão nova): os feixes se refazem na próxima volta
   useEffect(() => { st.current.pois = "" }, [apagada, missoes])
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     const g = grupo.current, D = DRONE
     if (!g) return
     const on = D.e > 0.01
     if (g.visible !== on) g.visible = on
+    // (v2) a força do apaga/acende das pistas (só um uniform)
+    const kAc = on && st.current.temRota ? D.e : 0
+    if (ACESO.k.value !== kAc) ACESO.k.value = kAc
     if (!on) return
+    // o ícone em cima da Kombi: tamanho fixo em px, a seta no rumo (a câmera olha pro norte: −z é pra cima)
+    const cam = state.camera as THREE.PerspectiveCamera, C = DRONE_CFG
+    const esc = ((C.iconePx / Math.max(1, state.size.height)) * 2 * Math.tan((cam.fov * Math.PI) / 360))
+    const op = Math.max(0, Math.min(1, (D.e - 0.4) / 0.4))
+    icone.cara.position.set(D.carro.x, D.carro.y + 3, D.carro.z); icone.seta.position.copy(icone.cara.position)
+    icone.cara.scale.setScalar(esc); icone.seta.scale.setScalar(esc * 1.55)
+    icone.seta.material.rotation = Math.atan2(-D.frente.x, -D.frente.z)
+    icone.cara.material.opacity = icone.seta.material.opacity = op
     const j = jogo.current, s = st.current
     if (j) { s.ini += Math.abs(j.v) * dt; faixa.mat.uniforms.uIni.value = Math.max(0, s.ini - 6) }
     const k = D.e
@@ -333,6 +512,8 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       <primitive object={feixes.inst} />
       <primitive object={feixes.dest} />
       <primitive object={feixes.anel} />
+      <primitive object={icone.seta} />
+      <primitive object={icone.cara} />
     </group>
   )
 }

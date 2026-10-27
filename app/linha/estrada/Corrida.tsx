@@ -61,7 +61,7 @@ import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
-import { DRONE, DRONE_CFG, HoloDrone, cameraDrone, ligarDrone, mostrarDrone } from "./Drone"
+import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
@@ -971,8 +971,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // se está ligado (o resto mora no DRONE, lido por quadro)
   const [drone, setDrone] = useState(false)
   const [dronePainel, setDronePainel] = useState(false)
+  // (v2) voar pelo mapa: com a mão ligada o dedo move a vista (sem ela, o toque é do volante)
+  const [voar, setVoar] = useState(false)
+  const [movido, setMovido] = useState(false)
+  const vooToques = useRef(new Map<number, { x: number; y: number }>())
+  const mexeu = useCallback(() => { if (droneMovido()) setMovido(true) }, [])
+  // a roda do mouse aproxima/afasta sempre (não briga com o volante)
   useEffect(() => {
-    DRONE.ouvir = (on) => { setDrone(on); if (!on) setDronePainel(false) }
+    if (!drone) return
+    const roda = (e: WheelEvent) => { zoomDrone(Math.exp(e.deltaY * 0.0015)); mexeu() }
+    window.addEventListener("wheel", roda, { passive: true })
+    return () => window.removeEventListener("wheel", roda)
+  }, [drone, mexeu])
+  useEffect(() => {
+    DRONE.ouvir = (on) => { setDrone(on); if (!on) { setDronePainel(false); setVoar(false); setMovido(false) } }
     return () => { DRONE.ouvir = null; DRONE.alvo = 0; DRONE.k = 0; DRONE.e = 0; DRONE.mostra = -1 }
   }, [])
   // (27/10) o drone é da D-Bee: no disco, só depois que ela dá (nas dunas); quem já passou de lá já tem
@@ -1825,6 +1837,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       evs.current?.via(o.via)
       return { via: M.vias[o.via].id, u: o.u }
     }
+    ;(w as Record<string, unknown>).__marcarVia = (via: number, u: number) => setMarca({ via, u, nome: "teste", cor: "#5dffa0" })
     ;(w as Record<string, unknown>).__marcar = (chave: string) => { const o = M.onde?.(chave); if (o) setMarca({ via: o.via, u: o.u, nome: chave, cor: "#5dffa0" }); return o }
     ;(w as Record<string, unknown>).__irRetorno = () => {
       if (!("ligacoes" in M)) return null
@@ -2306,7 +2319,37 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               {mapaPainel}
             </aside>
           )}
+          {voar && (
+            <div className="l-drone-voo" aria-label="arraste pra mover o mapa; pinça pra aproximar"
+              onPointerDown={(e) => { e.stopPropagation(); (e.target as HTMLElement).setPointerCapture?.(e.pointerId); vooToques.current.set(e.pointerId, { x: e.clientX, y: e.clientY }) }}
+              onPointerMove={(e) => {
+                const T = vooToques.current, a = T.get(e.pointerId)
+                if (!a) return
+                if (T.size === 1) arrastarDrone(e.clientX - a.x, e.clientY - a.y)
+                else {
+                  // a pinça: a distância entre os dois dedos (e o meio arrasta)
+                  let o: { x: number; y: number } | null = null
+                  for (const [id, p] of T) if (id !== e.pointerId) o = p
+                  if (o) {
+                    const d0 = Math.hypot(a.x - o.x, a.y - o.y), d1 = Math.hypot(e.clientX - o.x, e.clientY - o.y)
+                    if (d0 > 8 && d1 > 8) zoomDrone(d0 / d1)
+                    arrastarDrone((e.clientX - a.x) / 2, (e.clientY - a.y) / 2)
+                  }
+                }
+                a.x = e.clientX; a.y = e.clientY
+                mexeu()
+              }}
+              onPointerUp={(e) => vooToques.current.delete(e.pointerId)} onPointerCancel={(e) => vooToques.current.delete(e.pointerId)} />
+          )}
           <div className="l-drone-botoes" onPointerDown={(e) => e.stopPropagation()}>
+            {(voar || movido) && (
+              <button type="button" aria-label="centrar a cidade" onClick={() => { centrarDrone(); setMovido(false); setVoar(false) }}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="3.2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
+              </button>
+            )}
+            <button type="button" aria-label="mover o mapa" className={voar ? "is-on" : ""} onClick={() => setVoar((v) => !v)}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-8a1.5 1.5 0 0 1 3 0V12M14 11.5V5a1.5 1.5 0 0 1 3 0v7M17 8.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1.5a7 7 0 0 1-5.6-2.8L3.3 15.4a1.6 1.6 0 0 1 2.5-2L8 15.5" /></svg>
+            </button>
             {discoM && mapaPainel && (
               <button type="button" aria-label="as missões" className={dronePainel ? "is-on" : ""} onClick={() => setDronePainel((v) => !v)}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 6h14M5 12h14M5 18h9" /></svg>
@@ -2925,6 +2968,8 @@ function Cena({
     const passoD = (p: Pista) => (doDisco(p) ? 3 : 1)
     // (os atos) pista apagada: o neon dela fica num cinza escuro
     const indice = new Map((M.vias as Via[]).map((v, i) => [v, i]))
+    // (27/10, drone v2) cada vértice sabe a via (o drone acende só as da rota)
+    const via = (p: Pista) => indice.get(p as Via) ?? 0
     const corDe = (p: Pista) => (viaApagada?.[indice.get(p as Via) ?? -1] ? "#2a2838" : (p as Via & { cor?: string }).cor)
     const coresApagadas = new Set(viaApagada && "disco" in M ? (M as MundoDisco).pistas.filter((pp) => viaApagada[pp.ida]).map((pp) => pp.cor) : [])
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
@@ -2958,6 +3003,7 @@ function Cena({
     }
     const rails = (lado: number) => fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
       passo: passoD,
+      via,
       vertical: true,
       incluir: lado < 0 ? trilhoE : trilhoD,
       // (disco) o guard rail na cor da linha
@@ -2970,24 +3016,26 @@ function Cena({
     }
     // tracejado que separa a faixa de saída da pista que fica
     const divisoria = (lado: number) => fita(circuitos, lado * MEIA - 0.12, lado * MEIA + 0.12, 0.045, {
+      via,
       incluir: (p, i) => i % 5 < 3 && (p as Via).faixas.some((f) => f.lado === lado && U(i) > f.u - ABRE + 110 && U(i) < f.u),
     })
     return {
-      chao: fita(vias, (p, i) => p.esq[i] - 0.25, (p, i) => p.dir[i] + 0.25, 0.01, { passo: passoD }),
+      chao: fita(vias, (p, i) => p.esq[i] - 0.25, (p, i) => p.dir[i] + 0.25, 0.01, { passo: passoD, via }),
       // (disco) cada mão tem 2 faixas: um tracejado só, no meio dela
       // (disco) 4 faixas: o tracejado separa as duas de cada sentido (±4,2 m)
       // (alças: meia pista, só o tracejado de dentro dela)
-      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
+      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, via, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
       // (disco) as duas bordas na cor da linha
-      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
+      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
       // (disco, sinalização) na espiral, a faixa da direita pintada na cor da
       // linha nos 150 m antes da saída dela: quem está nela, sai
       pintaSaida: fita(vias.filter((v) => ((v as Via & SinaisEspiral).pintaSaida ?? []).length), 4.5, 7.8, 0.035, {
+        via,
         incluir: (p, i) => ((p as Via & SinaisEspiral).pintaSaida ?? []).some((s) => U(i) >= s.u0 && U(i) < s.u1 && !coresApagadas.has(s.cor)),
         cor: (p, i) => rgb(((p as Via & SinaisEspiral).pintaSaida ?? []).find((s) => U(i) >= s.u0 && U(i) < s.u1)!.cor),
       }),
       // (disco) a linha contínua branca no meio (o canteiro é aberto: só pintura)
-      linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { passo: passoD, incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
+      linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { passo: passoD, via, incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
       railE: rails(-1),
       railD: rails(1),
       saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
@@ -5402,8 +5450,9 @@ function Cena({
       const longe = V.id === "deserto" || noDeserto
       // (27/10) no drone a névoa sobe junto (a rua embaixo fica nítida; o horizonte some)
       const dA = DRONE.alt * DRONE.e, rf = Math.min(1, dt * (DRONE.k > 0 && DRONE.k < 1 ? 5 : 0.6))
-      fog.far += ((longe ? 3000 : 950) + dA * 1.6 - fog.far) * rf
-      fog.near += ((longe ? 250 : 70) + dA - fog.near) * rf
+      // (v2: a cidade inteira lá de cima; a névoa começa depois dela)
+      fog.far += ((longe ? 3000 : 950) + dA * 2.6 - fog.far) * rf
+      fog.near += ((longe ? 250 : 70) + dA * 1.1 - fog.near) * rf
     }
     ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
     ceuMat.uniforms.nevoaC.value.lerp(alvoNevoa, kk)
@@ -5607,28 +5656,28 @@ function Cena({
       {/* pista (perf 003: o fixo fica congelado, estatico.tsx) */}
       <Estatico>
       <mesh geometry={geo.chao} receiveShadow>
-        <meshStandardMaterial map={tex.asfalto} roughness={0.38} metalness={0.3} color="#d6d9ff" side={THREE.DoubleSide} />
+        <meshStandardMaterial map={tex.asfalto} roughness={0.38} metalness={0.3} color="#d6d9ff" side={THREE.DoubleSide} onBeforeCompile={ACENDE.chao} />
       </mesh>
       {geo.faixas.map((g, i) => (
         <mesh key={i} geometry={g}>
-          <meshBasicMaterial vertexColors toneMapped={false} transparent opacity={0.85} />
+          <meshBasicMaterial vertexColors toneMapped={false} transparent opacity={0.85} onBeforeCompile={ACENDE.neon} />
         </mesh>
       ))}
       {geo.bordas.map((g, i) => (
         <mesh key={i} geometry={g}>
-          <meshBasicMaterial vertexColors toneMapped={false} />
+          <meshBasicMaterial vertexColors toneMapped={false} onBeforeCompile={ACENDE.neon} />
         </mesh>
       ))}
       {geo.linhasGarfo.map((g, i) => (
         <mesh key={`lg${i}`} geometry={g}>
-          <meshBasicMaterial color="#ffffff" toneMapped={false} transparent opacity={0.8} />
+          <meshBasicMaterial color="#ffffff" toneMapped={false} transparent opacity={0.8} onBeforeCompile={ACENDE.branco} />
         </mesh>
       ))}
       </Estatico>
       {/* (disco) a faixa da saída pintada na cor da linha */}
       {geo.pintaSaida.index!.count > 0 && (
         <mesh geometry={geo.pintaSaida}>
-          <meshBasicMaterial vertexColors transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+          <meshBasicMaterial vertexColors transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} onBeforeCompile={ACENDE.neon} />
         </mesh>
       )}
       {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
@@ -5641,7 +5690,7 @@ function Cena({
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
-          <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
+          <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} onBeforeCompile={ACENDE.neon} />
         </mesh>
       ))}
       {[geo.saiaE, geo.saiaD].map((g, i) => (

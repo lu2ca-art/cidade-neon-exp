@@ -15,12 +15,14 @@ export function fita(
   x0: Lado,
   x1: Lado,
   dy: number,
-  opts: { incluir?: (v: Pista, i: number) => boolean; cor?: (v: Pista, i: number) => [number, number, number]; vertical?: boolean; uvEscala?: number; passo?: (v: Pista) => number } = {},
+  opts: { incluir?: (v: Pista, i: number) => boolean; cor?: (v: Pista, i: number) => [number, number, number]; vertical?: boolean; uvEscala?: number; passo?: (v: Pista) => number; via?: (v: Pista) => number } = {},
 ) {
   const pos: number[] = []
   const uv: number[] = []
   const cor: number[] = []
   const idx: number[] = []
+  // (27/10, drone v2) o índice da via em cada vértice: o drone acende só as da rota (por uniform)
+  const vid: number[] = []
   const esc = opts.uvEscala ?? 16
   const q = new THREE.Vector3()
   for (const p of vias) {
@@ -51,6 +53,7 @@ export function fita(
       uv.push(0, u0, 1, u0, 0, u1, 1, u1)
       const c = opts.cor ? opts.cor(p, i) : [1, 1, 1]
       for (let k = 0; k < 4; k++) cor.push(c[0], c[1], c[2])
+      if (opts.via) { const n = opts.via(p); vid.push(n, n, n, n) }
       idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2)
     }
   }
@@ -58,6 +61,7 @@ export function fita(
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3))
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2))
   g.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3))
+  if (opts.via) g.setAttribute("aVia", new THREE.Float32BufferAttribute(vid, 1))
   g.setIndex(idx)
   g.computeVertexNormals()
   return g
