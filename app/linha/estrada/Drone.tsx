@@ -224,7 +224,7 @@ function acenderVias(M: Mundo, vias: number[] | null) {
 // Na subida: uma volta no grafo guarda as malhas soltas pequenas (raio < miudoMax)
 // que estavam visíveis. Enquanto o drone está no alto, some o que fica abaixo de
 // miudoFrac × a distância (≈ 1–2 px); aproximando (voar), elas voltam. Na
-// descida, devolve tudo. Só o flag visible (sem geometria, sem alocar por quadro)
+// descida, devolve tudo. As linhas de contorno somem todas. Só o flag visible (sem geometria, sem alocar por quadro)
 const MIUDO = { lista: [] as { o: THREE.Object3D; r: number }[], ativo: false, alt: 0 }
 function miudos(cena: THREE.Object3D, meu: THREE.Object3D, alt: number) {
   const M_ = MIUDO, C = DRONE_CFG
@@ -242,7 +242,10 @@ function miudos(cena: THREE.Object3D, meu: THREE.Object3D, alt: number) {
       if (!geo) return
       if (!geo.boundingSphere) geo.computeBoundingSphere()
       const r = (geo.boundingSphere?.radius ?? 1e9) * o.matrixWorld.getMaxScaleOnAxis()
-      if (r < C.miudoMax) M_.lista.push({ o, r })
+      // (v2 desempenho) as linhas de contorno somem lá de cima a qualquer tamanho
+      // (r = -1: nunca passam do limite). Nenhuma delas é da pista acesa (ACENDE é só malha)
+      if ((o as THREE.Line).isLine) M_.lista.push({ o, r: -1 })
+      else if (r < C.miudoMax) M_.lista.push({ o, r })
     })
   }
   if (Math.abs(alt - M_.alt) < M_.alt * 0.08) return
