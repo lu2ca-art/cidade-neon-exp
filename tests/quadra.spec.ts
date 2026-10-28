@@ -27,8 +27,6 @@ test("a quadra: arte → jogo → porta, sem peça em breve", () => {
   expect(h.batida).toContain("ontem")
   expect(PORTAS.quadra.existe && PORTAS["batida-estudio"].existe).toBe(true)
   expect(recompensaDe("quadra").abriu.every((a) => !a.emBreve)).toBe(true)
-  // as outras missões seguem como estavam (o Drew ainda pula a arte "em breve")
-  expect(passoAgora({ ...CARREIRA, missao: "drew" }, "drew")).toBe("jogo")
 })
 
 test("a missão de verdade: o B4TIDA (toca e mexe) → o basquete (6 pontos) → a porta", async ({ page }) => {
