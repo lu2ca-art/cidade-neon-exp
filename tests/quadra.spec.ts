@@ -68,6 +68,7 @@ test("a missão de verdade: o B4TIDA (toca e mexe) → o basquete (6 pontos) →
     await page.mouse.move(x, y0)
     await page.mouse.down()
     await page.mouse.move(x, y0 - caixa.height * 0.45 * 0.64, { steps: 6 })
+    await page.waitForTimeout(500) // deixa o React desenhar a barra de força antes de soltar (Mac lento)
     await page.mouse.up()
     await expect(page.locator(".gi-placar b")).toHaveText(String((i + 1) * 2), { timeout: 15_000 })
     await page.waitForTimeout(1200)
