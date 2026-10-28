@@ -12,7 +12,14 @@ export type Onde = {
   celular?: boolean
 }
 
-type Historia = { fase?: string; nectar?: string; missao?: string; show?: string }
+type Historia = { fase?: string; nectar?: string; missao?: string; show?: string; passos13?: string[]; oficina?: { cena?: boolean; painel?: boolean } }
+
+// (T09) os passos da missão da oficina (os mesmos ids dos links ?parte=oficina.*)
+const PASSOS_OFICINA: Record<string, string> = { bancada: "a bancada (a reciclagem)", painel: "o painel no lixão", goteira: "a goteira", pagar: "pagar o mecânico" }
+function passoDaOficina(h: Historia) {
+  const p = h.passos13 ?? []
+  return p.includes("oficina:jogo") ? "pagar" : h.oficina?.painel ? "goteira" : p.includes("oficina:arte") ? "painel" : h.oficina?.cena ? "bancada" : null
+}
 
 const FASES: Record<string, string> = {
   minhoca: "o buraco de minhoca",
@@ -53,6 +60,8 @@ export function parteDe(h: Historia | undefined, onde: Onde | undefined): { id: 
   let id = fase
   let nome = FASES[fase] ?? fase
   if (fase === "nectar" && h?.nectar) { id = `nectar.${h.nectar}`; nome = `Nectar › ${PASSOS_NECTAR[h.nectar] ?? h.nectar}` }
+  const pOf = fase === "oficina" && h ? passoDaOficina(h) : null
+  if (pOf) { id = `oficina.${pOf}`; nome = `a oficina › ${PASSOS_OFICINA[pOf]}` }
   // (T02) a missão é uma das 13 (o id: drew, quadra…); save antigo: a faixa
   if ((fase === "carreira" || fase === "livre") && h?.missao) { id = `missao.${h.missao}`; nome = `missão ${QUEM13[h.missao] ?? PISTAS[h.missao] ?? h.missao}` }
   else if (fase === "carreira") { id = "carreira.feira"; nome = "a carreira › a feira (sem missão)" }

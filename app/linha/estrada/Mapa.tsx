@@ -19,7 +19,7 @@ import { PAGINAS } from "../paginas"
 import { pintarCarta } from "./carta"
 import { ESCALA, H as HU, W as WU } from "../rede/terreno"
 import { ICONE_MISSAO } from "./Holo"
-import { CHAO_LUGARES } from "../disco/historia"
+import { CHAO_FIXOS, CHAO_LUGARES } from "../disco/historia"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
@@ -28,7 +28,8 @@ interface PoseKombi { via: number; u: number; x: number; v: number; wx?: number;
 const ROTA_COR = "#ff3fb0"
 // (23/10) os lugares do chão do subúrbio (a oficina, o bar, o palco) ficam fora das
 // pistas: no mapa, um ponto em coordenada de mundo, com halo pulsando pra achar
-const CHAO = Object.values(CHAO_LUGARES)
+// (T09) os achados da oficina (o painel, a goteira) não são lugar: ficam fora do mapa fixo
+const CHAO = CHAO_FIXOS.map((k) => CHAO_LUGARES[k])
 function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: string, k: number, agora: number) {
   const p = 0.5 + 0.5 * Math.sin(agora / 320)
   g.globalAlpha = 0.18 + 0.22 * p; g.fillStyle = cor; g.beginPath(); g.arc(x, y, (10 + 5 * p) * k, 0, 7); g.fill(); g.globalAlpha = 1

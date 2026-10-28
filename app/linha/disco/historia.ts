@@ -67,6 +67,10 @@ export interface HistoriaDisco {
   // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
   aberta13?: string
   letras?: Record<string, string[]>
+  // (T09) a missão da oficina (disco/oficina.ts): a cena vista, o painel achado
+  // e o tanque do motor (as gotas da goteira); a água que a D-Bee deu (uma vez)
+  oficina?: { cena?: true; painel?: true; tanque?: number }
+  aguaDbee?: true
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
@@ -189,32 +193,8 @@ export const CENA_BAR_PROLOGO: Cena = {
   ],
 }
 
-// ── A OFICINA (a Nectar, LU2CA 19–20/10): o segundo II. A Kombi vira solar +
-// turbo, e isso custa TODA a água coletada até ali. RASCUNHO ──
-export const CENA_OFICINA: Cena = {
-  lugar: "oficina",
-  titulo: "a oficina",
-  missao: "nectar",
-  passos: [
-    { t: "acao", texto: "uma garagem no chão, embaixo das pistas. a kombi entra tossindo. o mecânico nem levanta a cabeça" },
-    { t: "fala", de: "o mecânico", texto: "gasolina? em que ano vc tá vivendo" },
-    { t: "fala", de: "o mecânico", texto: "dá pra pôr painel no teto. um turbo e uns propulsores que bebem sol" },
-    { t: "fala", de: "o mecânico", texto: "aí ela voa. é o único jeito de subir pra cidade: ninguém fez estrada pra lá" },
-    { t: "fala", de: "o mecânico", texto: "mas aqui ninguém paga com neon. é água. toda a que vc tiver" },
-    {
-      t: "escolha",
-      opcoes: [
-        { label: "toda?", tom: "dormindo", resposta: [{ de: "o mecânico", texto: "toda. água é a única coisa que vale alguma coisa aqui" }] },
-        { label: "fechado", tom: "acordando", resposta: [{ de: "o mecânico", texto: "gostei de vc" }] },
-        { label: "e se eu precisar de água depois?", tom: "acordado", resposta: [{ de: "o mecânico", texto: "rega umas flores. a água volta. sempre volta" }] },
-      ],
-    },
-    { t: "acao", texto: "duas horas de solda, faísca e rádio velho. o painel sobe no teto. o motor para de tossir" },
-    { t: "ganha", titulo: "sistema solar: turbo + propulsão", texto: "a kombi não bebe mais gasolina. o sol carrega. segura o espaço (ou o botão): ela voa" },
-    { t: "fala", de: "o mecânico", texto: "volta quando quiser mexer nela. aqui embaixo a gente paga em água" },
-    { t: "fim" },
-  ],
-}
+// ── A OFICINA: (T09) a cena mora em disco/oficina.ts (CENA_OFICINA), com o
+// mecânico provisório e configurável ──
 
 // ── OS DOIS PERSONAGENS ROBÔS (LU2CA 19/10): ganchos, ainda sem cena (RASCUNHO) ──
 // - a moça do bar: uma das máquinas que ganharam consciência. Não se revela;
@@ -240,8 +220,16 @@ export const CHAO_LUGARES = {
   // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
   quadra: { x: -860, z: -790, nome: "QUADRA", cor: "#ff6a35" },
   tuneis: { x: -610, z: -830, nome: "TÚNEIS", cor: "#9b8cff" },
+  // (T09) os achados da missão da oficina: o painel solar velho no lixão (a mancha
+  // de lixo a leste do subúrbio) e a goteira embaixo de uma pista. Só aparecem
+  // (e só vão pro mapa) quando é a vez deles. RASCUNHO de onde ficam
+  painel: { x: -360, z: -690, nome: "PAINEL", cor: "#4fc3ff" },
+  goteira: { x: -620, z: -730, nome: "GOTEIRA", cor: "#4fc3ff" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
+// (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
+export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "goteira"]
+export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)
 export const ORDEM_LUGAR: Record<number, "cidade" | "suburbio"> = { 3: "cidade", 4: "cidade", 5: "suburbio", 6: "cidade", 7: "cidade", 8: "suburbio", 9: "suburbio", 10: "cidade", 11: "cidade" }

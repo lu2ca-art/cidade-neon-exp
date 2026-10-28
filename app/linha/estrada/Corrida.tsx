@@ -45,6 +45,7 @@ import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
 import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
+import { feita13 } from "../disco/portas"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
@@ -567,7 +568,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // (disco, a história) a Kombi cai do buraco de minhoca no deserto, perto da
     // casa; depois da casa, sai dela de frente pra cidade (dirigindo nas dunas)
     // (B18) no bar e na oficina (o subúrbio, no chão) ela reaparece no subúrbio
-    const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina")
+    // (T09) e logo depois da oficina (subir), antes de pousar lá em cima, também
+    const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina" || historia.fase === "subir")
     if ("disco" in M && historia && (historia.fase === "casa" || historia.fase === "dunas" || noSub)) {
       const MD = M as MundoDisco, p = historia.fase === "casa" ? QUEDA : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
@@ -1024,6 +1026,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return () => mq.removeEventListener("change", f)
   }, [])
   const [oficinaAberta, setOficinaAberta] = useState(false)
+  // (T04, T09) a oficina mora só no chão do subúrbio: depois da missão dela (a porta
+  // das melhorias), parando perto, dá pra entrar e comprar desempenho com água
+  const [pertoOficina, setPertoOficina] = useState(false)
+  const oficinaLivre = !!discoM && !!historia && feita13(historia, "oficina") && alvoChao !== "oficina"
+  useEffect(() => {
+    if (!oficinaLivre) { setPertoOficina(false); return }
+    const l = CHAO_LUGARES.oficina
+    const iv = setInterval(() => {
+      const j = jogo.current
+      setPertoOficina(!!j.voo && j.wx !== undefined && !j.ar && Math.hypot(j.wx - l.x, j.wz! - l.z) < RAIO_CHAO * 1.6)
+    }, 400)
+    return () => clearInterval(iv)
+  }, [oficinaLivre])
   const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
   // (o holo) o clima de onde a Kombi está: a pista (o nome dela), a torre ou,
   // voando sem pista embaixo, o deserto (que nunca chove)
@@ -2297,6 +2312,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {discoM && perfil && <Perfil agua={aguaVista} neon={save.neon ?? 0} pop={save.popularidade ?? 0} mods={mods} onFechar={() => setPerfil(false)} />}
       {discoM && oficinaAberta && (
         <OficinaLoja agua={aguaVista} mods={mods} onComprar={(id, preco) => onComprar?.(id, preco)} onFechar={() => { setOficinaAberta(false); jogo.current.encostando = false }} />
+      )}
+      {discoM && pertoOficina && !oficinaAberta && !pausado && (
+        <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: CHAO_LUGARES.oficina.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setOficinaAberta(true) }}>entrar · a oficina</button>
       )}
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)

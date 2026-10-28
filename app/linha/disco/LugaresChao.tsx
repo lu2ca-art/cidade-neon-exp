@@ -8,7 +8,7 @@
 
 import { useMemo } from "react"
 import * as THREE from "three"
-import { CHAO_LUGARES, type LugarChao } from "./historia"
+import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "./historia"
 
 function texLetreiro(txt: string, cor: string) {
   const c = document.createElement("canvas"); c.width = 512; c.height = 128
@@ -57,6 +57,46 @@ function Fachada({ id, chao, alvo }: { id: LugarChao; chao: (x: number, z: numbe
   )
 }
 
+// (T09) os achados da missão da oficina: o painel solar velho meio enterrado no
+// lixão e a goteira (um cano que pinga de debaixo da pista num tambor). Só
+// existem na cena quando é a vez deles (uns 10 objetos simples, sem luz própria)
+function Achado({ id, chao }: { id: "painel" | "goteira"; chao: (x: number, z: number) => number }) {
+  const l = CHAO_LUGARES[id]
+  const y = useMemo(() => chao(l.x, l.z), [chao, l.x, l.z])
+  const mats = useMemo(() => ({
+    sujo: new THREE.MeshStandardMaterial({ color: "#5a4a3a", roughness: 0.95 }),
+    metal: new THREE.MeshStandardMaterial({ color: "#8a93b8", roughness: 0.5, metalness: 0.6 }),
+    celula: new THREE.MeshStandardMaterial({ color: "#1d3a6b", emissive: "#4fc3ff", emissiveIntensity: 0.5, roughness: 0.3 }),
+    agua: new THREE.MeshBasicMaterial({ color: "#4fc3ff", toneMapped: false }),
+    farol: new THREE.MeshBasicMaterial({ color: l.cor, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+  }), [l.cor])
+  return (
+    <group position={[l.x, y, l.z]}>
+      {id === "painel" ? (
+        <>
+          <mesh position={[0, 0.5, 0]} rotation={[-0.5, 0.4, 0.15]} material={mats.celula}><boxGeometry args={[3.2, 0.12, 2]} /></mesh>
+          <mesh position={[1.2, 0.35, 0.9]} rotation={[0.2, 0.8, 0.3]} material={mats.sujo}><boxGeometry args={[2.4, 0.7, 1.6]} /></mesh>
+          <mesh position={[-1.4, 0.3, -0.6]} rotation={[0.1, -0.5, -0.2]} material={mats.metal}><boxGeometry args={[1.6, 0.5, 1.2]} /></mesh>
+        </>
+      ) : (
+        <>
+          {/* o cano desce de debaixo da pista, entorta e pinga num tambor */}
+          <mesh position={[0, 9, 0]} material={mats.metal}><cylinderGeometry args={[0.35, 0.35, 14, 8]} /></mesh>
+          <mesh position={[0.6, 2.1, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.metal}><cylinderGeometry args={[0.3, 0.3, 1.4, 8]} /></mesh>
+          <mesh position={[1.3, 0.6, 0]} material={mats.sujo}><cylinderGeometry args={[0.7, 0.6, 1.2, 10]} /></mesh>
+          <mesh position={[1.3, 1.6, 0]} material={mats.agua}><sphereGeometry args={[0.12, 6, 4]} /></mesh>
+        </>
+      )}
+      <mesh position={[0, 70, 0]} material={mats.farol}><cylinderGeometry args={[2.4, 3.6, 140, 10, 1, true]} /></mesh>
+    </group>
+  )
+}
+
 export function LugaresChao({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: LugarChao | null }) {
-  return <>{(Object.keys(CHAO_LUGARES) as LugarChao[]).map((id) => <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}</>
+  return (
+    <>
+      {CHAO_FIXOS.map((id) => <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
+      {(alvo === "painel" || alvo === "goteira") && <Achado key={alvo} id={alvo} chao={chao} />}
+    </>
+  )
 }
