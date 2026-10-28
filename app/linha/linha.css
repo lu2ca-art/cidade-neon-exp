@@ -2488,7 +2488,6 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-perfil li button { padding: 5px 10px !important; border-radius: 999px; border: 1px solid #4fc3ff !important; background: rgba(79, 195, 255, 0.12) !important; color: #fff !important; font: 700 11px var(--mono) !important; cursor: pointer; white-space: nowrap; }
 .l-perfil li button:disabled { opacity: 0.4; cursor: default; }
 .l-perfil.is-oficina li { opacity: 1; }
-.l-perfil-pintura { justify-self: end; padding: 7px 12px !important; border-radius: 999px; border: 1px solid #ff9000 !important; background: none !important; color: #ff9000 !important; font: 700 11px var(--mono) !important; cursor: pointer; }
 
 /* (disco, B11) o ping pong com o robô */
 .l-pingpong { position: absolute; inset: 0; z-index: 72; background: #06040c; touch-action: none; }
@@ -2925,3 +2924,36 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
    baixo de um show que cobre tudo: medido em 1864×999 a 2x, 66–71 ms por
    quadro com ele, 17 ms sem. */
 .l-palco:has(.l-show) .l-viagem { visibility: hidden; }
+
+/* (T09) a missão da oficina: a bancada, o painel no lixão, a goteira e o pagamento (disco/Oficina.tsx) */
+.l-oficina { position: absolute; inset: 0; z-index: 74; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 3, 10, 0.62); backdrop-filter: blur(6px); animation: l-sobe 0.35s both; }
+.l-oficina-caixa { width: min(380px, 100%); max-height: calc(100% - 32px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px 18px 16px; border-radius: 18px; background: rgba(6, 6, 16, 0.92); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--cor) 30%, transparent); color: #fff; }
+.l-oficina-caixa > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-oficina-caixa > b { font-size: 24px; line-height: 1.1; }
+.l-oficina-msg { margin: 0; font-size: 13px; line-height: 1.4; color: rgba(255, 255, 255, 0.78); }
+.l-oficina-seguir { align-self: stretch; min-height: 44px; border-radius: 999px; border: 0; background: var(--cor); color: #07060c; font: 800 14px var(--mono); cursor: pointer; }
+.l-oficina-plano { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.l-oficina-plano li { flex: 1; padding: 8px 6px; border-radius: 10px; border: 1px dashed color-mix(in srgb, var(--cor) 60%, transparent); font: 700 11px var(--mono); text-align: center; color: rgba(255, 255, 255, 0.6); }
+.l-oficina-plano li.is-tem { border-style: solid; background: color-mix(in srgb, var(--cor) 22%, transparent); color: #fff; }
+.l-oficina-lixo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.l-oficina-lixo button { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font-size: 12px; text-align: left; cursor: pointer; transition: transform 0.2s, opacity 0.3s; }
+.l-oficina-lixo button i { flex: none; width: 18px; height: 18px; border-radius: 4px; background: var(--c); transform: rotate(12deg); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 50%, transparent); }
+.l-oficina-lixo button.is-saiu { opacity: 0.3; }
+.l-oficina-lixo button.is-errou { animation: l-oficina-treme 0.4s; }
+.l-oficina-lixo button.is-desmontando i { animation: l-oficina-gira 0.65s linear; }
+@keyframes l-oficina-treme { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes l-oficina-gira { to { transform: rotate(372deg) scale(0.6); } }
+.l-oficina-cova { position: relative; height: 120px; border-radius: 12px; overflow: hidden; background: linear-gradient(#2a2230, #17131d); }
+.l-oficina-painel { position: absolute; left: 22%; right: 22%; top: 30%; bottom: 18%; border-radius: 4px; transform: perspective(200px) rotateX(28deg); background: repeating-linear-gradient(90deg, #1d3a6b 0 18%, #4fc3ff 18% 19%), #1d3a6b; box-shadow: 0 0 calc(var(--p) * 30px) #4fc3ff; opacity: calc(0.25 + var(--p) * 0.75); }
+.l-oficina-entulho { position: absolute; inset: 0; background: radial-gradient(circle at 30% 70%, #5a4a3a 0 20%, transparent 21%), radial-gradient(circle at 70% 60%, #3d4a5c 0 24%, transparent 25%), radial-gradient(circle at 50% 45%, #6b6150 0 26%, transparent 27%); transform: translateY(calc(var(--p) * 100%)); transition: transform 0.3s; }
+.l-oficina-goteira { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; height: 220px; padding-top: 18px; }
+.l-oficina-cano { position: absolute; top: 0; left: 0; right: 0; height: 12px; border-radius: 6px; background: linear-gradient(#8a93b8, #4a5068); }
+.l-oficina-coluna { position: relative; border: 0; border-radius: 10px; background: rgba(79, 195, 255, 0.05); cursor: pointer; overflow: hidden; }
+.l-oficina-gota { position: absolute; inset: 0; pointer-events: none; will-change: transform; }
+.l-oficina-gota::before { content: ""; position: absolute; top: 0; left: 50%; width: 12px; height: 16px; margin-left: -6px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #4fc3ff; box-shadow: 0 0 10px #4fc3ff; }
+.l-oficina-balde { position: absolute; bottom: 6px; left: 50%; width: 48px; height: 40px; margin-left: -24px; border: 3px solid #c9d3e6; border-top: 0; border-radius: 0 0 10px 10px; background: linear-gradient(to top, #4fc3ff calc(var(--n) * 100%), transparent calc(var(--n) * 100%)); }
+.l-oficina-agua { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 10px 0; }
+.l-oficina-agua i { width: 22px; height: 28px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #4fc3ff; box-shadow: 0 0 16px #4fc3ff; }
+.l-oficina-agua b { font: 800 56px var(--mono); font-variant-numeric: tabular-nums; color: #4fc3ff; }
+.l-oficina-agua small { font: 700 12px var(--mono); color: rgba(255, 255, 255, 0.6); }
+.l-oficina-agua.is-fim b { color: #fff; }

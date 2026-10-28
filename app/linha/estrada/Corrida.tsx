@@ -46,6 +46,7 @@ import { ROBOS, Robos } from "../disco/Robos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
+import { feita13 } from "../disco/portas"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
@@ -57,10 +58,10 @@ import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
 import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
 import type { AppId } from "../os"
+import { PISTAS_LIBERADAS, srcDaVersao, type VersaoPista } from "../disco/pistasLiberadas"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
-import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
@@ -272,8 +273,15 @@ interface Props {
   // nenhuma faixa de pista: só os discos
   soTema?: boolean
   temaMissao?: string | null
+  // (T31) em que ponto do trajeto da missão está a música de cada pista (prévia, instrumental, subúrbio)
+  versoesPista?: Record<string, VersaoPista> | null
   // (21/10, o mapa que ensina) a pista em foco no mapa (tocou na oferta da feira)
   pistaFoco?: string | null
+  // (T15–T25, 28/10) o que a porta de uma missão ainda não abriu: o porquê, curto
+  // ("abre na missão do Drew"). O botão do lugar vira um aviso (disco/portas.ts)
+  trancas?: Partial<Record<"ginasio" | "radio" | "fliperama" | "parque" | "canteiros", string>>
+  // (T15) a Kombi está no conserto (a missão do Drew): de patins, com o jetpack; volta quando acaba
+  noConserto?: boolean
 }
 export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
 
@@ -470,7 +478,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -588,7 +596,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // (disco, a história) a Kombi cai do buraco de minhoca no deserto, perto da
     // casa; depois da casa, sai dela de frente pra cidade (dirigindo nas dunas)
     // (B18) no bar e na oficina (o subúrbio, no chão) ela reaparece no subúrbio
-    const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina")
+    // (T09) e logo depois da oficina (subir), antes de pousar lá em cima, também
+    const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina" || historia.fase === "subir")
     // (T37) a chegada: a primeira (fase casa) e a de cada login (quem já passou pela casa)
     const chega = !!historia && (historia.fase === "casa" || chegada)
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub)) {
@@ -1065,6 +1074,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return () => mq.removeEventListener("change", f)
   }, [])
   const [oficinaAberta, setOficinaAberta] = useState(false)
+  // (T04, T09) a oficina mora só no chão do subúrbio: depois da missão dela (a porta
+  // das melhorias), parando perto, dá pra entrar e comprar desempenho com água
+  const [pertoDaOficina, setPertoOficina] = useState(false)
+  const oficinaLivre = !!discoM && !!historia && feita13(historia, "oficina") && alvoChao !== "oficina"
+  const pertoOficina = oficinaLivre && pertoDaOficina
+  useEffect(() => {
+    if (!oficinaLivre) return
+    const l = CHAO_LUGARES.oficina
+    const iv = setInterval(() => {
+      const j = jogo.current
+      setPertoOficina(!!j.voo && j.wx !== undefined && !j.ar && Math.hypot(j.wx - l.x, j.wz! - l.z) < RAIO_CHAO * 1.6)
+    }, 400)
+    return () => clearInterval(iv)
+  }, [oficinaLivre])
   const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
   // (o holo) o clima de onde a Kombi está: a pista (o nome dela), a torre ou,
   // voando sem pista embaixo, o deserto (que nunca chove)
@@ -1145,7 +1168,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (disco, a missão da Nectar, LU2CA 19–20/10) a Kombi quebra: patins; regar 3
   // flores; o galão que a D-Bee deixou no posto (ela não fala: um bilhete); a oficina
   const nectarPasso = discoM && historia?.fase === "nectar" ? historia.nectar ?? null : null
-  const kombiQuebrada = nectarPasso === "quebra" || nectarPasso === "regar" || nectarPasso === "galao"
+  const kombiQuebrada = nectarPasso === "quebra" || nectarPasso === "regar" || nectarPasso === "galao" || noConserto
   const [pertoPostoNectar, setPertoPostoNectar] = useState(false)
   useEffect(() => {
     if (nectarPasso !== "galao") return
@@ -1352,6 +1375,25 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nectarPasso, pausado])
+  // (T15) a Kombi no conserto (a missão do Drew): desce de patins e a 222 ensina o
+  // jetpack (o jato das costas). Acabou a missão: a Kombi volta, ali mesmo
+  const consertoRef = useRef(false)
+  useEffect(() => {
+    if (noConserto && !consertoRef.current && !pausado) {
+      const t = setTimeout(() => {
+        consertoRef.current = true
+        falar("222 FM", "a Kombi ficou no conserto. hoje é de patins", 3800)
+        setTimeout(() => { if (!combRef.current.patins) irDePatins(); ensinar("222 FM", "segura o espaço: o jetpack nas costas. no ar, vira: gira. a casa do Drew tá no mapa", 6500) }, 1200)
+      }, 1500)
+      return () => clearTimeout(t)
+    }
+    if (!noConserto && consertoRef.current) {
+      consertoRef.current = false
+      // a Kombi vem até você (não volta pra onde ficou)
+      if (combRef.current.patins) { combRef.current.parada = null; entrarNaKombi(); setTimeout(() => falar("222 FM", "a Kombi voltou do conserto", 3200), 600) }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noConserto, pausado])
   // a noite repete: de tempos em tempos a 222 estranha junto com a pessoa
   useEffect(() => {
     if (!noiteRepete) return
@@ -2066,7 +2108,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const semSinalAviso = () => { if (!fonteSom.radioPega()) falar("222 FM", "sem sinal aqui: a rádio só pega perto das pistas. fica o disco", 4200) }
   const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(freqRef.current), 0) } }
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
-  const sintonizarHolo = (id: FreqId) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(id), 0) }
+  const sintonizarHolo = (id: FreqId) => {
+    // (T18) as outras frequências abrem na missão do Xeriff: até lá, só a 222
+    if (trancas?.radio && id !== freqRef.current) { chiadoCurto(); falar("222 FM", `só chiado. as frequências ${trancas.radio.replace("abre", "abrem")}`, 3600); return }
+    chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(id), 0)
+  }
   const V = M.vias[viaAtual]
   const lugarAqui = V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`
   const dest = destino ? getEstacao(destino) : null
@@ -2120,7 +2166,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} onRobo={roboRef} missoesMapa={discoM ? mapaMissoes : null} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} onRobo={roboRef} missoesMapa={discoM ? mapaMissoes : null} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
         </Canvas>
       )}
 
@@ -2369,15 +2415,19 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
       {discoM && perfil && <Perfil agua={aguaVista} neon={save.neon ?? 0} pop={save.popularidade ?? 0} mods={mods} onFechar={() => setPerfil(false)} />}
       {discoM && oficinaAberta && (
-        <OficinaLoja agua={aguaVista} mods={mods} onComprar={(id, preco) => onComprar?.(id, preco)} onFechar={() => { setOficinaAberta(false); jogo.current.encostando = false }}
-          onPintura={() => { setOficinaAberta(false); const lp = PAGINAS.find((x) => x.id === "oficina"); if (lp) entrar(lp) }} />
+        <OficinaLoja agua={aguaVista} mods={mods} onComprar={(id, preco) => onComprar?.(id, preco)} onFechar={() => { setOficinaAberta(false); jogo.current.encostando = false }} />
+      )}
+      {discoM && pertoOficina && !oficinaAberta && !pausado && (
+        <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: CHAO_LUGARES.oficina.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setOficinaAberta(true) }}>entrar · a oficina</button>
       )}
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
         if (!lp || entrando || regando || parque === "andando") return null
         if (trancadaPelaHistoria(lp, save.objetos)) return <p className="l-pagina-fechada">{lp.nome} · de portas fechadas</p>
+        const tranca = trancas?.[lp.id as keyof NonNullable<typeof trancas>]
+        if (tranca) return <p className="l-pagina-fechada">{lp.nome} · {tranca}</p>
         return abertos[lp.id]
-          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { if (discoM && lp.id === "oficina" && holoOk) { jogo.current.encostando = true; setOficinaAberta(true) } else entrar(lp) }}>entrar · {lp.nome}</button>
+          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrar(lp)}>entrar · {lp.nome}</button>
           : <p className="l-pagina-fechada">{lp.nome} abre às {abreAs(lp.horario)}</p>
       })()}
       {entrando && (
@@ -2387,8 +2437,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <span className={`l-entrada-barra${carregou ? " is-pronta" : ""}`} />
         </div>
       )}
-      {parque === "perto" && !regando && (
-        <button type="button" className="l-regar-btn is-parque" onPointerDown={(e) => e.stopPropagation()} onClick={andarMontanha}>andar na montanha-russa</button>
+      {parque === "perto" && !regando && (trancas?.parque
+        ? <p className="l-pagina-fechada">o parque · {trancas.parque}</p>
+        : <button type="button" className="l-regar-btn is-parque" onPointerDown={(e) => e.stopPropagation()} onClick={andarMontanha}>andar na montanha-russa</button>
       )}
       {parque === "andando" && (
         <>
@@ -2402,7 +2453,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </>
       )}
       {fotoParque && <p className="l-montanha-foto">{fotoParque}</p>}
-      {canteiro && !regando && parque !== "andando" && (
+      {canteiro && !regando && parque !== "andando" && trancas?.canteiros && <p className="l-pagina-fechada">os canteiros · {trancas.canteiros}</p>}
+      {canteiro && !regando && parque !== "andando" && !trancas?.canteiros && (
         <button type="button" className="l-regar-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setRegando(canteiro) }}>regar as flores</button>
       )}
       {regando && (
@@ -2748,7 +2800,6 @@ const CARREGAR_PAGINA: Record<LugarPagina["id"], () => Promise<unknown>> = {
   galeria: () => import("../../galeria/GaleriaScene"),
   fliperama: () => import("../../fliperama/page"),
   shows: () => import("../../casa-de-shows/Show"),
-  oficina: () => import("../../oficina/Elevador"),
 }
 
 export interface Comb {
@@ -2859,7 +2910,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, missoesMapa = null,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null,
 }: {
   alvoChao?: LugarChao | null
   // (LU2CA 21/10 (3)) a música é o TEMA da missão: na carreira (soTema), a
@@ -2868,6 +2919,7 @@ function Cena({
   // nenhuma faixa de pista: só os discos
   soTema?: boolean
   temaMissao?: string | null
+  versoesPista?: Record<string, VersaoPista> | null
   semPaineis?: boolean
   faseHistoria?: string | null
   missoesMapa?: IconeMapa[] | null
@@ -3012,6 +3064,10 @@ function Cena({
   const temaK = useMemo(() => (temaMissao ? faixasDisco.findIndex((f) => f?.id === temaMissao) : -1), [temaMissao, faixasDisco])
   const temaRef = useRef<{ k: number; voz: "antes" | "tocando" | "tocou"; chave: string }>({ k: -1, voz: "antes", chave: "" })
   useEffect(() => { temaRef.current = { k: temaK, voz: "antes", chave: "" } }, [temaK])
+  // (T31) a versão de cada pista agora (prévia, instrumental, subúrbio) e a que está tocando
+  const versoesRef = useRef(versoesPista)
+  useEffect(() => { versoesRef.current = versoesPista }, [versoesPista])
+  const versaoTocando = useRef<VersaoPista | "">("")
   const soTemaRef = useRef(soTema)
   useEffect(() => { soTemaRef.current = soTema }, [soTema])
   useEffect(() => () => pistaSom.parar(), [])
@@ -3918,8 +3974,6 @@ function Cena({
   const cabineG = useRef<THREE.Group>(null)
   const patinador = useRef<THREE.Group>(null)
   const kombiParada = useRef<THREE.Group>(null)
-  // o estilo da oficina (pintura e neon de baixo)
-  const [estiloK] = useState(() => lerEstilo())
   const kParadaT = useRef(false)
   const kParadaZero = useRef(0)
   const luzBaixo = useRef<THREE.PointLight>(null)
@@ -5303,7 +5357,8 @@ function Cena({
       fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
     }
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1 }
-    else if (faixasDisco.length && soTemaRef.current) {
+    // (T31) na carreira, sem missão pegada, a pista toca a versão que o trajeto já liberou (a prévia, o instrumental…)
+    else if (faixasDisco.length && soTemaRef.current && (temaRef.current.k >= 0 || !PISTAS_LIBERADAS.tocaForaDaMissao)) {
       // (LU2CA 21/10 (3)) A MÚSICA É O TEMA DA MISSÃO. Sem missão: nenhuma
       // faixa de pista, só os discos. Com missão: o instrumental (a base das
       // ruas) até ele achar a linha dela; entrou na linha, a música começa e
@@ -5324,7 +5379,7 @@ function Cena({
           pistaEscura.current = !voz
           if (fonteRef.current !== "radio") player.pausar()
           discoPainel.parar()
-          pistaSom.entrar(voz ? faixaDaPista(fx) : fx.inst, 2, !voz)
+          pistaSom.entrar(voz ? srcDaVersao(fx, "suburbio") : fx.inst, 2, !voz)
           definirTom(fx.tom)
         }
         pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio", !voz)
@@ -5336,14 +5391,18 @@ function Cena({
       const k = naPista ? inf.pista : pistaTocando.current
       // (os atos, 20/10) pista apagada: o instrumental, abafado
       const escura = naPista ? !!viaApagada?.[j.via] : pistaEscura.current
-      if ((k !== pistaTocando.current || escura !== pistaEscura.current) && k >= 0) {
+      // (T31) a versão do trajeto da missão: pista apagada = instrumental; senão a que a missão já liberou
+      const fxK = k >= 0 ? faixasDisco[k] : null
+      const versao: VersaoPista = escura ? "inst" : (fxK && versoesRef.current?.[fxK.id]) || "suburbio"
+      if ((k !== pistaTocando.current || escura !== pistaEscura.current || (k >= 0 && versao !== versaoTocando.current)) && k >= 0) {
         pistaTocando.current = k
         pistaEscura.current = escura
+        versaoTocando.current = versao
         const fx = faixasDisco[k]
         if (fx) {
           if (fonteRef.current !== "radio") player.pausar()
           discoPainel.parar()
-          pistaSom.entrar(escura ? fx.inst : faixaDaPista(fx), 2)
+          pistaSom.entrar(srcDaVersao(fx, versao), 2)
           definirTom(fx.tom)
         }
       }
@@ -6127,7 +6186,7 @@ function Cena({
               no aparelho, a desenhada à mão */}
           <Seguro nome="kombi" reserva={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
             <Suspense fallback={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
-              <KombiHerbal tinta={corPintura(estiloK)} paineis={!semPaineis} />
+              <KombiHerbal paineis={!semPaineis} />
               <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} soEfeitos />
             </Suspense>
           </Seguro>
@@ -6138,7 +6197,7 @@ function Cena({
         <group ref={cabineG}>
           <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>
         </group>
-        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color={corNeon(estiloK)} intensity={45} distance={10} decay={2} />
+        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
         <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />

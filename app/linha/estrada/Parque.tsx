@@ -2,9 +2,9 @@
 /* eslint-disable react-hooks/immutability -- three.js: o passeio, o carrinho e a câmera são do motor, mexidos a cada quadro */
 
 // O PARQUE NA AVENIDA (CN-19, LU2CA 14/10: "a montanha-russa em terceira
-// pessoa, integrada ao mapa"). O parque fica do lado de fora da avenida; o
-// trilho atravessa a pista por cima duas vezes (na grande descida e no
-// morrinho), faz a curva e o looping do outro lado e volta pra estação.
+// pessoa, integrada ao mapa"). O parque fica do lado de fora da avenida.
+// (T24, 28/10) o trilho não cruza mais a avenida: fica todo de um lado só
+// (PARQUE_CONF.umLado), com a grande descida, a curva, o looping e o morrinho.
 // De noite, chegando perto, dá pra andar: a Kombi encosta, a câmera vai pra
 // trás do carrinho (você e a Nizzy) e a volta acontece no mapa, com a
 // cidade em volta. A física é a do protótipo (app/parque/trilho.ts).
@@ -35,6 +35,15 @@ const TRACADO: [number, number, number][] = [
   [72, -56, 6], [50, -24, 19], [40, 0, 20], [32, 22, 11],     // o morrinho, por cima da avenida
   [18, 40, 4], [-6, 42, 2], [-18, 36, 1.5],                   // a volta pra estação
 ]
+// (T24, J2: 36 "a montanha-russa tá atravessando a estrada, tipo entrando") no
+// mapa-disco o traçado cruzava a avenida e, do outro lado, passava por dentro
+// de outra pista (a folga medida era 0 m). Agora o parque fica todo de um lado
+// só: o "pro lado" é espremido pra 30–93 m da avenida (a forma é a mesma, as
+// curvas mais fechadas). Medido no mapa-disco: nenhuma pista a menos de 17 m
+// por baixo do trilho. false = o traçado antigo, cruzando a avenida.
+export const PARQUE_CONF = { umLado: true }
+const ladoDe = (s: number) => (PARQUE_CONF.umLado ? 30 + (s + 84) * 0.5 : s)
+export const TRACADO_EM = (): [number, number, number][] => TRACADO.map(([a, s, h]) => [a, ladoDe(s), h])
 const I_CORRENTE = [1, 5]   // do fim da estação até o topo
 const VEL_CORRENTE = 5
 
@@ -68,12 +77,12 @@ function montar(M: Mundo) {
     const i = C.fechada ? (((i0 + Math.round(a / PASSO)) % C.n) + C.n) % C.n : Math.max(0, Math.min(C.n - 1, i0 + Math.round(a / PASSO)))
     return pontoI(C, i, o.lado * s, h, new THREE.Vector3())
   }
-  const pts = TRACADO.map(noMundo)
+  const pts = TRACADO_EM().map(noMundo)
   const tr = montarTrilho(1600, pts)
   const corrente = { ini: fracaoDe(tr, pts[I_CORRENTE[0]]), fim: fracaoDe(tr, pts[I_CORRENTE[1]]) }
   // a estação: entre o último ponto (chegando) e o primeiro (saindo)
-  const estacao = noMundo([6, 34, 0])
-  const roda = noMundo([70, 78, 0])
+  const estacao = noMundo([6, ladoDe(34), 0])
+  const roda = noMundo([70, ladoDe(78) + (PARQUE_CONF.umLado ? 14 : 0), 0])
   const rumo = (() => { const i = i0 % C.n; return Math.atan2(C.tx[i], C.tz[i]) })()
   return { tr, corrente, estacao, roda, rumo }
 }

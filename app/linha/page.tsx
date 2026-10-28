@@ -50,7 +50,9 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
+import { CENA_OFICINA, FALAS_OFICINA, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, passoOficina } from "./disco/oficina"
+import { Bancada, Goteira, Pagamento, PainelLixao } from "./disco/OficinaTelas"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
@@ -60,7 +62,10 @@ import { type ResultadoShow } from "./disco/Show"
 import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
-import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, type MissaoId, type Oferta13, type Recompensa13 } from "./disco/portas"
+import { aplicarRecompensa } from "./disco/recompensas"
+import { versoesDasPistas } from "./disco/pistasLiberadas"
+import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, kombiNoConserto, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { Letra } from "./disco/Letra"
 import { letraDe } from "./disco/letras"
@@ -576,12 +581,7 @@ export default function LinhaPage() {
       const h = historiaDe(saveRef.current)
       if (cinema) return
       // (saiu do bar agora: não reabre parado na porta; tem que dar uma volta)
-      if (id === "oficina" && h.fase === "nectar" && h.nectar === "oficina") {
-        setAoVivo(null)
-        setCinema("lugar")
-        setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" })
-        return
-      }
+      // (T04) a oficina não está mais nas pistas: o passo dela é no chão (chao:oficina)
       // (T02) a carreira: chegou no lugar da missão pegada: a peça de agora (ou a porta)
       if (h.fase === "carreira" && Date.now() - barFechou.current > 8000) {
         const m = missaoDoSave(saveRef.current)
@@ -635,18 +635,33 @@ export default function LinhaPage() {
   // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = a oficina
   // (T02) saiu da oficina: a Kombi solar + turbo, a água foi toda. É a porta da
   // missão da oficina (as melhorias da Kombi): a recompensa e, sem show, o jogo segue
+  // (T09) a missão da oficina: a cena (ele chega só com o plano) abre a bancada (a
+  // arte); depois o painel no lixão e a goteira (o jogo); de volta, o pagamento em
+  // água e a porta (as melhorias da Kombi). Na Nectar antiga (o mapa de antes), a
+  // cena segue fechando o passo dela como sempre
+  const [oficinaTela, setOficinaTela] = useState<"bancada" | "painel" | "goteira" | "pagar" | null>(null)
   const fimOficina = useCallback((r: ResultadoCena) => {
     setCena(null)
     setCinema(null)
     if (!r.completa) return
     const h0 = historiaDe(saveRef.current)
-    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}), mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
     if (h0.fase === "oficina") {
-      abrirPortaRef.current("oficina")
-      setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
-      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa", ensina: true }), 2500)
-    } else setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
+      setSave((s) => comHistoria(s, (h) => ({ ...h, oficina: { ...(h.oficina ?? {}), cena: true } })))
+      setOficinaTela("bancada")
+      return
+    }
+    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}), mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
+    setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
   }, [])
+  // a porta da oficina: pago o mecânico, o motor sai montado (solar + turbo + propulsão),
+  // a porta abre (a recompensa) e a Kombi já pode subir
+  const montarMotor = () => {
+    setOficinaTela(null)
+    setSave((s) => comHistoria(s, (h) => ({ ...h, mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
+    abrirPortaRef.current("oficina")
+    setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
+    setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.voa, ensina: true }), 2500)
+  }
   const fimBarFeito = useRef(false)
   const fimBarDisco = useCallback((r: ResultadoCena) => {
     // (a cena pode avisar o fim duas vezes: beber e sair) conta uma vez só
@@ -815,18 +830,19 @@ export default function LinhaPage() {
   // missão, só os discos): a Corrida toca o instrumental até ele achar a linha
   const soTema = HIST && hist.fase === "carreira"
   const temaMissao: PistaId | null = soTema ? m13?.faixa ?? null : null
+  // (T31) a música de cada pista vai de prévia a instrumental a versão subúrbio, pelo trajeto da missão
+  const versoesPista = useMemo(() => (HIST ? versoesDasPistas(hist) : null), [HIST, hist])
   const fecharOuvir = useCallback(() => setOuvirFim(null), [])
   const largarMissao = () => {
     const m = missaoCarreira
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: undefined })))
     if (m) setLargadas((l) => [...l, m])
   }
-  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? "oficina" : lugar13?.chao ?? null
+  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
-    : hist.fase === "nectar" && hist.nectar === "oficina" ? { t: "lugar", missao: "nectar", lugar: "oficina", pegar: false }
     : lugar13?.lugar ? { t: "lugar", missao: "sexta", lugar: lugar13.lugar, pegar: false }
     : null
   // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
@@ -840,6 +856,24 @@ export default function LinhaPage() {
     const conf = como?.t === "letra" ? letraDe(como.faixa) : null
     return conf && como?.t === "letra" ? { missao: mid, qual, faixa: como.faixa, conf } : null
   })()
+  // (T15–T25, T16) a peça de agora que abre por cima do jogo (disco/pecas/): a
+  // dança, a vinheta, a trilha, a máquina, o clipe, a horta, o prato, o disco, a sinuca
+  const cenaAgora = (() => {
+    if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return null
+    const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
+    const como = MISSOES13[mid]?.[qual]?.como
+    return como?.t === "cena" ? { missao: mid, qual, id: como.id as CenaId } : null
+  })()
+  // (T15–T25, T16) o que ainda está trancado (a porta de cada missão abre) e a
+  // Kombi no conserto (a missão do Drew vai de patins)
+  const trancasCorrida = useMemo(() => {
+    if (!HIST) return undefined
+    const t: Partial<Record<"ginasio" | "radio" | "fliperama" | "parque" | "canteiros", string>> = {}
+    const par: [keyof typeof t, PortaId][] = [["ginasio", "ginasio"], ["radio", "radio-frequencias"], ["fliperama", "fliperama"], ["parque", "parque"], ["canteiros", "canteiros"]]
+    for (const [k, porta] of par) { const m = trancado(h13, porta); if (m) t[k] = m }
+    return t
+  }, [HIST, h13])
+  const noConserto = HIST && kombiNoConserto(h13)
   // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
   const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
@@ -857,19 +891,17 @@ export default function LinhaPage() {
   // A missão da cidade acende a pista dela pra sempre (o objeto da faixa: as torres)
   const abrirPortaDe = (id: MissaoId) => {
     const s0 = saveRef.current
-    if (feita13(hist13(s0), id)) return
-    const m = MISSOES13[id], r = recompensaDe(id)
-    const faixaNaCidade = m.faixa && (m.onde === "cidade" || historiaDe(s0).fase === "carreira") ? (m.faixa as EstacaoId) : null
-    setSave((s) => comHistoria(
-      { ...ganhar(s, r.neon), objetos: faixaNaCidade && !s.objetos.includes(faixaNaCidade) ? [...s.objetos, faixaNaCidade] : s.objetos, violao: m.abre.includes("violao") ? true : s.violao },
-      (h) => abrirPorta(sincronizar(h, s.objetos), id),
-    ))
+    // (T30) a recompensa inteira (grana, faixa do Guitar Driver, referência do B4TIDA,
+    // as portas) é aplicada num lugar só: disco/recompensas.ts
+    const { recompensa: r } = aplicarRecompensa(s0, id)
+    if (!r) return
+    setSave((s) => aplicarRecompensa(s, id).save)
     setRecompensa(r)
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || cena) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || cenaAgora || cena) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     if (!pc) { abrirPortaDe(id); return }
     const como = pc.peca.como
@@ -879,7 +911,7 @@ export default function LinhaPage() {
     if (como.t === "pingpong") setPingpong(true)
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
     else if (como.t === "prova") setProvaMissao({ missao: id, qual: pc.qual, id: como.id, cor: MISSOES13[id].cor })
-    else if (como.t === "letra") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
+    else if (como.t === "letra" || como.t === "cena") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
   }
   // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
   const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
@@ -891,6 +923,27 @@ export default function LinhaPage() {
     }, 900)
   }
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe })
+  // (T15–T25, T16) só fora da produção, pros testes: chegar no lugar da missão
+  // pegada, terminar a peça aberta (o ping pong, a sinuca, a máquina) e contar um evento da rua
+  useEffect(() => {
+    if (!D || !atalhosLiberados()) return
+    const w = window as unknown as { __cnMissao?: unknown }
+    w.__cnMissao = {
+      chegou: () => { const m = missaoDoSave(saveRef.current); if (m) chegouRef.current(m) },
+      fimPeca: () => {
+        const h = hist13(saveRef.current)
+        const aberta = h.aberta13 ? (h.aberta13.split(":") as [MissaoId, "arte" | "jogo"]) : null
+        const p = pecaAberta.current ?? (aberta ? { missao: aberta[0], qual: aberta[1] } : null)
+        if (!p) return false
+        setPingpong(false); setProvaMissao(null)
+        setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined })))
+        pecaFeitaNaMissao(p.missao, p.qual)
+        return true
+      },
+      evento: (e: "montanha" | "flor") => eventoDaRua(e),
+    }
+    return () => { delete w.__cnMissao }
+  })
   // (T40) o SOM DA MISSÃO (J2: 5). Entrou no lugar da missão (a cena, o ping pong),
   // a música da Kombi cala e entra o som dela; saiu, a Kombi volta (a trilha sai
   // em fade, sem estalo). O arquivo é carregado antes, quando a missão é pegada
@@ -933,7 +986,7 @@ export default function LinhaPage() {
     setJornal(m)
   }
   // o que o anel do holo diz (curto: o lugar, não a explicação)
-  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? "a oficina · o subúrbio" : hist.fase === "subir" ? "a cidade · lá em cima"
+  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? OBJETIVO_OFICINA[passoOficina(hist)] : hist.fase === "subir" ? "a cidade · lá em cima"
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o jardim", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
     : m13 ? (passos13.find((x) => x.estado === "agora")?.nome.split(" · ")[1] ?? m13.quem)
     : feira.length ? `a cidade precisa · ${feira.length}` : null
@@ -1183,6 +1236,12 @@ export default function LinhaPage() {
     setTela({ t: "corrida", destino: null })
   }
   // (disco) a história avisa da estrada: chegou na casa, pousou na cidade…
+  // (T09, só fora da produção) os testes chegam num lugar do chão sem dirigir até lá
+  const onHistoriaTeste = useRef<(e: EventoHistoria) => void>(() => {})
+  useEffect(() => {
+    if (!atalhosLiberados()) return
+    ;(window as unknown as { __cnChao?: (id: LugarChao) => void }).__cnChao = (id) => onHistoriaTeste.current(`chao:${id}`)
+  }, [])
   const onHistoria = (e: EventoHistoria) => {
     const h = historiaDe(saveRef.current)
     // (T37) a chegada de um login acabou na porta: a D-Bee acenou, o jogo segue dali
@@ -1201,7 +1260,16 @@ export default function LinhaPage() {
     }
     // (B18) o subúrbio no chão: o bar (missão 1), a oficina (missão 2), o palco
     if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
-    if (e === "chao:oficina" && h.fase === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
+    if (e === "chao:oficina" && h.fase === "nectar" && h.nectar === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
+    // (T09) a missão da oficina: cada chegada abre o passo de agora
+    if (h.fase === "oficina" && !cena && !oficinaTela && e.startsWith("chao:")) {
+      const p = passoOficina(h)
+      if (e === "chao:oficina" && p === "chegar") { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
+      else if (e === "chao:oficina" && p === "reciclar") setOficinaTela("bancada")
+      else if (e === "chao:oficina" && p === "montar") setOficinaTela("pagar")
+      else if (e === "chao:painel" && p === "painel") setOficinaTela("painel")
+      else if (e === "chao:goteira" && p === "goteira") setOficinaTela("goteira")
+    }
     // (T02) o chão do subúrbio (a quadra, os túneis): chegou no lugar da missão pegada
     if (e.startsWith("chao:") && h.fase === "carreira") { const m = missaoDoSave(saveRef.current); if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m) }
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
@@ -1228,12 +1296,16 @@ export default function LinhaPage() {
     }
     if (e === "galao" && h.fase === "nectar" && h.nectar === "galao") setSave((s) => comHistoria(s, (x) => ({ ...x, nectar: "oficina" })))
   }
+  onHistoriaTeste.current = onHistoria
   // (disco) saiu da casa da D-Bee com o holo: as dunas, com o disco antigo tocando
   const fimCasaDisco = () => {
     setCena(null)
     setCinema(null)
     // (T02) a arte da missão da D-Bee (o tambor, na cena) ficou feita
     setSave((s) => comHistoria(s, (h) => ({ ...concluir(h, "dbee", "arte"), fase: "dunas", holo: true })))
+    // (T09, J2: 18) a D-Bee dá a água dela (não precisa): é o que paga o mecânico
+    setSave((s) => (historiaDe(s).aguaDbee ? s : comHistoria(ganhar(s, OFICINA_CFG.aguaDaDbee, "agua"), (h) => ({ ...h, aguaDbee: true }))))
+    setTimeout(() => avisar(`+${OFICINA_CFG.aguaDaDbee} de água`, `D-Bee: ${FALAS_OFICINA.dbeeAgua}`, "#4fc3ff"), 1200)
     fonteSom.set("disco")
     disco.tocarLista(ACERVO.faixas.map((f) => f.src))
   }
@@ -1270,6 +1342,13 @@ export default function LinhaPage() {
     if (a.nivel !== undefined && nivel < a.nivel) {
       avisar(a.nome, `abre no nível ${NIVEIS[a.nivel].nome}`, a.cor)
       return
+    }
+    // (T16, T18, T23) no jogo com história, o lugar que a porta de uma missão abre
+    // fica trancado até ela (portas.ts, CONFIG13.trancar): a loja, as frequências, o fliperama
+    if (HIST) {
+      const porta = ({ loja: "loja-discos", radio: "radio-frequencias", freq: "radio-frequencias", sintonia: "radio-frequencias", fliperama: "fliperama" } as Partial<Record<AppId, PortaId>>)[id]
+      const msg = porta ? trancado(hist13(saveRef.current), porta) : null
+      if (msg) { avisar(a.nome, msg, a.cor); return }
     }
     // recurso de missão: abre com o objeto daquela estação
     // (o violão vem da D-Bee, no fim da leitura NECTAR)
@@ -1425,17 +1504,20 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
             abertura={!D && !save.casa}
             historia={D ? hist : null}
             chegada={D && chegadaLogin}
+            trancas={trancasCorrida}
+            noConserto={noConserto}
             alvoChao={alvoChao}
             soTema={soTema}
             pistaFoco={focoFeira}
             temaMissao={temaMissao}
+            versoesPista={versoesPista}
             onHistoria={onHistoria}
             // (B10, T03) a oficina: o mecânico é pago em água, só desempenho (o preço vem da economia)
             onComprar={(id) => setSave((s) => { const r = comprarMelhoria(s, id); return r.ok ? r.save : s })}
@@ -1633,6 +1715,14 @@ export default function LinhaPage() {
           if (l.qual === "arte" && MISSOES13[l.missao].jogo.como?.t === "show") pecaAberta.current = { missao: l.missao, qual: "jogo" }
           else pecaFeitaNaMissao(l.missao, l.qual)
         }} />}
+        {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
+        {cenaAgora && <Peca key={`${cenaAgora.missao}:${cenaAgora.qual}`} id={cenaAgora.id} qual={cenaAgora.qual} cor={MISSOES13[cenaAgora.missao].cor} quem={MISSOES13[cenaAgora.missao].quem} onFim={(ok, obra) => {
+          const c = cenaAgora
+          setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined, obras13: obra ? { ...(x.obras13 ?? {}), [`${c.missao}:${c.qual}`]: obra } : x.obras13 })))
+          barFechou.current = Date.now()
+          track("mission_step", { mission_id: `disco-${c.missao}`, step: c.id, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          if (ok) pecaFeitaNaMissao(c.missao, c.qual)
+        }} />}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()
@@ -1656,11 +1746,33 @@ export default function LinhaPage() {
             }} />
           </div>
         )}
+        {/* (T09) a missão da oficina: a bancada (a arte), o painel e a goteira (o jogo), o pagamento (a porta) */}
+        {oficinaTela === "bancada" && <Bancada onFim={() => {
+          setOficinaTela(null)
+          setSave((s) => comHistoria(s, (h) => concluir(h, "oficina", "arte")))
+          setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.painel }), 900)
+          track("mission_step", { mission_id: "disco-oficina", step: "bancada", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+        }} />}
+        {oficinaTela === "painel" && <PainelLixao onFim={() => {
+          setOficinaTela(null)
+          setSave((s) => comHistoria(s, (h) => ({ ...h, oficina: { ...(h.oficina ?? {}), painel: true } })))
+          setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.goteira }), 900)
+          track("mission_step", { mission_id: "disco-oficina", step: "painel", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+        }} />}
+        {oficinaTela === "goteira" && <Goteira onFim={(gotas) => {
+          setOficinaTela(null)
+          setSave((s) => comHistoria(s, (h) => concluir({ ...h, oficina: { ...(h.oficina ?? {}), tanque: gotas } }, "oficina", "jogo")))
+          setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.voltar }), 900)
+          track("mission_step", { mission_id: "disco-oficina", step: "goteira", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+        }} />}
+        {oficinaTela === "pagar" && <Pagamento agua={save.agua ?? 0} onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={montarMotor} />}
         {/* (T02) a porta abriu: a recompensa, grande; "seguir" volta direto pro jogo */}
         {recompensa && <Recompensa r={recompensa} onSeguir={() => {
           const r = recompensa
           setRecompensa(null)
           const m = MISSOES13[r.missao]
+          // (T16) a loja de discos abriu: ela abre, pra comprar o primeiro disco com a grana
+          if (r.abriu.some((x) => x.id === "loja-discos")) { setTela({ t: "app", id: "loja" }); return }
           if (m.faixa && m.onde === "cidade") setOuvirFim({ pista: m.faixa, id: Date.now() })
         }} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}

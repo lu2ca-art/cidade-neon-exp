@@ -8,7 +8,6 @@ import "./teste.css"
 const PAGINAS = [
   { href: "/parque", nome: "parque (protótipo)", desc: "a montanha-russa sozinha, em 1ª pessoa" },
   { href: "/fliperama", nome: "fliperama", desc: "LINHA 9, KOMBI COBRA, INVASORES, PINGUE, QUEBRA-NEON, PRÉDIO, ATRAVESSA · 1 neon a ficha" },
-  { href: "/oficina", nome: "oficina", desc: "a pintura e o neon de baixo da Kombi" },
   { href: "/teste/flores", nome: "flores de perto", desc: "as 7 espécies dos canteiros da Ella" },
   { href: "/ginasio", nome: "ginásio", desc: "basquete, pingue-pongue, cama elástica" },
   { href: "/galeria/pintar", nome: "pintar", desc: "pinta e expõe · a obra vai pra parede da galeria" },

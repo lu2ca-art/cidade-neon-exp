@@ -9,6 +9,8 @@ const PARTES: [string, string | null][] = [
   ["carreira.meio", "carreira"], ["missao.nizzy", "carreira"], ["missao.xeriff", "carreira"], ["missao.lu2ca", "carreira"], ["missao.lu2ca.letra", "carreira"], ["missao.lu2ca.show", "carreira"], ["missao.ella", "carreira"], ["missao.quadra", "carreira"],
   // (T03) a loja aberta, com grana
   ["loja", "carreira"],
+  // (T09) a missão da oficina, passo a passo, e a lojinha das melhorias depois dela
+  ["oficina.bancada", "oficina"], ["oficina.painel", "oficina"], ["oficina.goteira", "oficina"], ["oficina.pagar", "oficina"], ["oficina.loja", "subir"],
   // (T20) os palcos: o menu aberto (o começo e o topo)
   ["palcos", "carreira"], ["palcos.topo", "carreira"],
   // (T37) a chegada de um login (save existente): o túnel e a casinha

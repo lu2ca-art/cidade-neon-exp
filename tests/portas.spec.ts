@@ -3,7 +3,7 @@ import { luzDasPistas, pistasFeitas } from "../app/linha/estrada/atos"
 import type { HistoriaDisco } from "../app/linha/disco/historia"
 import {
   CONFIG13, IDS13, MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, musicasDoGuitar,
-  normalizarMissao, passoAgora, recompensaDe, sincronizar,
+  kombiNoConserto, normalizarMissao, passoAgora, recompensaDe, sincronizar, trancado,
 } from "../app/linha/disco/portas"
 
 // (T02) o modelo das 13 missões, sem navegador: arte → jogo → a porta → a recompensa,
@@ -21,25 +21,47 @@ test("as 13 portas da tabela", () => {
 })
 
 test("arte → jogo → porta, com a peça em breve pulando", () => {
-  // o Drew: a arte (dançar) ainda não existe; o jogo é o ping pong
+  // (T15) o Drew: a arte (dançar, rascunho) e o jogo (de patins até ele, o ping pong)
   let h: HistoriaDisco = { ...CARREIRA, missao: "drew" }
-  expect(passoAgora(h, "drew")).toBe("jogo")
-  expect(checklist13(h, "drew").map((x) => x.estado)).toEqual(["em breve", "agora", "depois"])
+  expect(passoAgora(h, "drew")).toBe("arte")
+  expect(checklist13(h, "drew").map((x) => x.estado)).toEqual(["agora", "depois", "depois"])
   expect(alvo13(h, "drew")).toEqual({ lugar: "casa-drewboy" })
+  expect(kombiNoConserto(h)).toBe(true)
+  h = concluir(h, "drew", "arte")
+  expect(passoAgora(h, "drew")).toBe("jogo")
   h = concluir(h, "drew", "jogo")
   expect(passoAgora(h, "drew")).toBe("porta")
+  expect(trancado(h, "ginasio")).toBe("abre na missão do Drew")
   h = abrirPorta(h, "drew")
   expect(feita13(h, "drew")).toBe(true)
   expect(passoAgora(h, "drew")).toBeNull()
   expect(h.missao).toBeUndefined()
   expect(h.portas).toContain("ginasio")
+  expect(trancado(h, "ginasio")).toBeNull()
+  expect(kombiNoConserto(h)).toBe(false)
   expect(musicasDoGuitar(h)).toEqual(expect.arrayContaining(["nectar", "sexta"]))
   // a Ella: nada dela existe ainda: chegou, a porta abre direto
   expect(passoAgora(CARREIRA, "ella")).toBe("porta")
 })
 
+test("(T25) o Tony: o jogo antes da arte; (T24) o parque abre pra missão da Nizzy", () => {
+  let h: HistoriaDisco = { ...CARREIRA, missao: "tony" }
+  expect(passoAgora(h, "tony")).toBe("jogo")
+  expect(checklist13(h, "tony").map((x) => x.nome.split(" · ")[0])).toEqual(["o jogo", "a arte", "a porta"])
+  h = concluir(h, "tony", "jogo")
+  expect(passoAgora(h, "tony")).toBe("arte")
+  expect(trancado(CARREIRA, "parque")).toBe("abre na missão da Nizzy")
+  expect(trancado({ ...CARREIRA, missao: "nizzy" }, "parque")).toBeNull()
+  expect(trancado({ fase: "livre", holo: true }, "loja-discos")).toBeNull()
+  expect(trancado(CARREIRA, "loja-discos")).toBe("abre na missão do Mubarak")
+})
+
 test("a peça na rua conta eventos e não precisa de lugar", () => {
+  // (T24) a arte (o clipe) acontece no palco dela; depois o jogo é na rua
   let h: HistoriaDisco = { ...CARREIRA, missao: "nizzy" }
+  expect(passoAgora(h, "nizzy")).toBe("arte")
+  expect(alvo13(h, "nizzy")).toEqual({ lugar: "palco-rollercoaster" })
+  h = concluir(h, "nizzy", "arte")
   expect(alvo13(h, "nizzy")).toBeNull()
   h = contarEvento(h, "flor") // outro evento: não conta
   expect(passoAgora(h, "nizzy")).toBe("jogo")
