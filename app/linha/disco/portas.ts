@@ -126,7 +126,7 @@ export const CONFIG13 = {
   // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
   // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
   // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
-  trancar: ["ginasio", "radio-frequencias", "fliperama", "parque"] as PortaId[],
+  trancar: ["ginasio", "radio-frequencias", "fliperama", "parque", "canteiros"] as PortaId[],
   // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
   // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
   kombiNoConserto: ["drew"] as MissaoId[],
@@ -223,9 +223,10 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   tony: {
     id: "tony", n: 12, onde: "cidade", quem: "Tony Gordo", cor: "#ff3fb0", faixa: "swav", faixaSituacao: "decidido",
     lugar: { lugar: "palco-swav" }, pedido: "tudo aqui em cima tem gosto de nada", apresenta: "regar a horta atrás do restaurante",
-    arte: p("cozinhar um prato com o que nasceu", "proposta", { tarefa: "T25" }),
-    jogo: p("regar a horta atrás do restaurante", "decidido", { tarefa: "T25", existe: "as flores da pista (de patins)" }),
-    abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: PAGA.missao.tony }, requer: ["oficina"],
+    // (T25) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, COZINHAR)
+    arte: p("cozinhar um prato com o que nasceu", "proposta", { como: { t: "cena", id: "cozinhar" }, tarefa: "T25" }),
+    jogo: p("regar a horta atrás do restaurante", "decidido", { como: { t: "cena", id: "horta" }, tarefa: "T25" }),
+    abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: PAGA.missao.tony }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   // ── a 13ª ──
   final: {
