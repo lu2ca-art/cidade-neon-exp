@@ -44,6 +44,18 @@ test("arte → jogo → porta, com a peça em breve pulando", () => {
   expect(passoAgora(CARREIRA, "ella")).toBe("porta")
 })
 
+test("(T25) o Tony: o jogo antes da arte; (T24) o parque abre pra missão da Nizzy", () => {
+  let h: HistoriaDisco = { ...CARREIRA, missao: "tony" }
+  expect(passoAgora(h, "tony")).toBe("jogo")
+  expect(checklist13(h, "tony").map((x) => x.nome.split(" · ")[0])).toEqual(["o jogo", "a arte", "a porta"])
+  h = concluir(h, "tony", "jogo")
+  expect(passoAgora(h, "tony")).toBe("arte")
+  expect(trancado(CARREIRA, "parque")).toBe("abre na missão da Nizzy")
+  expect(trancado({ ...CARREIRA, missao: "nizzy" }, "parque")).toBeNull()
+  expect(trancado({ fase: "livre", holo: true }, "loja-discos")).toBeNull()
+  expect(trancado(CARREIRA, "loja-discos")).toBe("abre na missão do Mubarak")
+})
+
 test("a peça na rua conta eventos e não precisa de lugar", () => {
   // (T24) a arte (o clipe) acontece no palco dela; depois o jogo é na rua
   let h: HistoriaDisco = { ...CARREIRA, missao: "nizzy" }

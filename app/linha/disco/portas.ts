@@ -126,7 +126,7 @@ export const CONFIG13 = {
   // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
   // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
   // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
-  trancar: ["ginasio", "radio-frequencias", "fliperama", "parque", "canteiros"] as PortaId[],
+  trancar: ["ginasio", "radio-frequencias", "fliperama", "parque", "canteiros", "loja-discos"] as PortaId[],
   // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
   // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
   kombiNoConserto: ["drew"] as MissaoId[],
@@ -177,8 +177,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   mubarak: {
     id: "mubarak", n: 6, onde: "cidade", quem: "Mubarak", cor: "#ffc857", faixa: "copo", faixaSituacao: "decidido",
     lugar: { lugar: "palco-copo" }, pedido: "ele quer te mostrar um disco antigo", apresenta: "comprar um disco",
-    arte: p("apreciar um disco antigo", "decidido", { tarefa: "T16" }),
-    jogo: p("uma sinuca, no nível do 8 Ball Pool", "decidido", { tarefa: "T16", existe: "página de teste do T17" }),
+    arte: p("apreciar um disco antigo", "decidido", { como: { t: "cena", id: "disco-antigo" }, tarefa: "T16" }),
+    jogo: p("uma sinuca com ele, no nível do 8 Ball Pool", "decidido", { como: { t: "cena", id: "sinuca" }, tarefa: "T16", existe: "/teste/sinuca (T17)" }),
     abre: ["loja-discos"], recompensa: { guitar: "copo", batida: "copo", neon: PAGA.missao.mubarak }, requer: ["oficina"],
   },
   xeriff: {
