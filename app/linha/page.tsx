@@ -43,7 +43,7 @@ import { cacheDoShow, comprar, comprarMelhoria, ganhar, gastar } from "./economi
 import { PAGA, POSTO } from "./economia-rascunho"
 import { EVENTO_CADERNO } from "./Caderno"
 import type { Onde } from "./parte"
-import { aplicarParteDeTeste } from "./parteTeste"
+import { aplicarParteDeTeste, parteAberta } from "./parteTeste"
 import { BLOCOS, ITENS, NEON_POR_ITEM, PRIMEIRA, blocoAtual, emTutorial, feito, ligou, type ItemTutorial } from "./tutorial"
 import dynamic from "next/dynamic"
 import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
@@ -1181,7 +1181,7 @@ export default function LinhaPage() {
         return
       }
       if (f0 === "casa") { setMinhoca(true); return }
-      if (casaNoLogin(historiaDe(saveRef.current))) { player.pausar(); setChegadaLogin(true); setMinhoca(true); return }
+      if (casaNoLogin(historiaDe(saveRef.current)) && (!parteAberta || parteAberta === "chegada")) { player.pausar(); setChegadaLogin(true); setMinhoca(true); return }
       player.pausar()
       setEstrada(true)
       setTela({ t: "corrida", destino: null })

@@ -75,6 +75,10 @@ const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte
 export const OFICINA_PARTES = ["oficina.bancada", "oficina.painel", "oficina.goteira", "oficina.pagar", "oficina.loja"]
 export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", ...OFICINA_PARTES, "subir", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
+// (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
+// momento dele, sem a chegada do login na casinha (menos a própria "chegada")
+export let parteAberta: string | null = null
+
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {
   if (typeof window === "undefined" || !atalhosLiberados()) return false
@@ -83,6 +87,7 @@ export function aplicarParteDeTeste(): boolean {
   if (!parte) return false
   const disco = discoDa(parte)
   if (disco === undefined) return false
+  parteAberta = parte
   if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
