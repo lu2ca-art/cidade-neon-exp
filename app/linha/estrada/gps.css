@@ -1,0 +1,47 @@
+/* (T42) o GPS: a barra fininha em cima, embaixo do letreiro do N3XO (Gps.tsx) */
+.l-gps { position: absolute; z-index: 6; left: 50%; top: calc(46px + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; pointer-events: none; }
+.l-gps-barra { --cor: #2fe8ff; position: relative; width: min(40vw, 340px); height: 18px; border-radius: 9px; background:
+    repeating-linear-gradient(90deg, rgba(223, 251, 255, 0.28) 0 1px, transparent 1px 100%) left center / calc(100% / 12) 6px repeat-x,
+    linear-gradient(90deg, transparent, rgba(6, 6, 16, 0.55) 18%, rgba(6, 6, 16, 0.55) 82%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--cor) 45%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--cor) 45%, transparent);
+  -webkit-mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); overflow: visible; }
+.l-gps-barra.is-vazia { opacity: 0.35; }
+.l-gps-meio { position: absolute; left: 50%; top: -1px; width: 0; height: 0; margin-left: -5px; border: 5px solid transparent; border-top: 6px solid #fff; filter: drop-shadow(0 0 3px #fff); }
+.l-gps-alvo { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transition: transform 70ms linear; will-change: transform; }
+.l-gps-alvo svg { position: absolute; left: -11px; top: -11px; width: 22px; height: 22px; box-sizing: border-box; padding: 3px; border-radius: 50%; background: #07060c; border: 2px solid var(--cor); fill: none; stroke: var(--cor); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; box-shadow: 0 0 10px color-mix(in srgb, var(--cor) 70%, transparent); }
+.l-gps-alvo svg circle { fill: var(--cor); stroke: none; }
+.l-gps-alvo.is-mira svg { background: var(--cor); stroke: #07060c; }
+.l-gps-alvo.is-mira svg circle { fill: #07060c; }
+/* atrás: preso na borda, com a setinha pro lado de virar */
+.l-gps-alvo.is-borda svg { opacity: 0.75; }
+.l-gps-alvo.is-borda::before { content: "›"; position: absolute; top: -9px; left: 12px; color: var(--cor); font: 800 14px/1 ui-monospace, monospace; text-shadow: 0 0 6px var(--cor); }
+.l-gps-alvo.is-borda.is-esq::before { content: "‹"; left: -20px; }
+.l-gps-dist { position: absolute; top: 12px; left: 0; transform: translateX(-50%); white-space: nowrap; font: 700 9px var(--font-geist-mono), ui-monospace, monospace; color: #fff; text-shadow: 0 0 4px #000, 0 0 2px #000; }
+.l-gps-auto { pointer-events: auto; width: 30px; height: 22px; padding: 0 !important; border-radius: 11px; border: 1px solid rgba(47, 232, 255, 0.45) !important; background: rgba(6, 6, 16, 0.6) !important; color: #2fe8ff; font: 800 15px/1 ui-monospace, monospace; cursor: pointer; }
+.l-gps-auto.is-on { background: #2fe8ff !important; color: #07060e; box-shadow: 0 0 12px rgba(47, 232, 255, 0.6); }
+@media (max-width: 600px) {
+  .l-gps { top: calc(44px + env(safe-area-inset-top)); left: 44%; }
+  .l-gps-barra { width: 46vw; }
+}
+
+/* (J2:32) no drone, o próximo passo da missão */
+.l-proximo { --cor: #2fe8ff; position: absolute; left: 50%; top: calc(48px + env(safe-area-inset-top)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: min(78vw, 360px); padding: 8px 14px 8px 10px; border-radius: 14px; background: rgba(6, 6, 16, 0.78); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--cor) 30%, transparent); backdrop-filter: blur(6px); color: #fff; pointer-events: none; }
+.l-proximo svg { flex: none; width: 26px; height: 26px; fill: none; stroke: var(--cor); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.l-proximo div { display: grid; gap: 2px; min-width: 0; }
+.l-proximo small { font: 600 10px var(--font-geist-mono), ui-monospace, monospace; color: var(--cor); text-transform: lowercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-proximo b { font: 700 13px var(--font-geist-mono), ui-monospace, monospace; }
+
+/* no celular: à esquerda, embaixo dos botões do holo (o anel e o mapa ficam livres à direita) */
+@media (max-width: 600px) {
+  .l-proximo { left: 12px; top: calc(170px + env(safe-area-inset-top)); transform: none; max-width: calc(100% - 160px); }
+}
+
+/* (J1) as viagens rápidas pros minijogos, embaixo na vista do drone */
+.l-rapidas { position: absolute; left: 12px; bottom: calc(150px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: calc(100% - 90px); pointer-events: auto; }
+.l-rapidas > small { font: 700 10px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: #2fe8ff; text-shadow: 0 0 6px #000; }
+.l-rapidas button { --cor: #2fe8ff; display: grid; justify-items: start; gap: 1px; padding: 6px 12px !important; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 60%, transparent) !important; background: rgba(6, 6, 16, 0.72) !important; color: #fff; text-align: left; cursor: pointer; backdrop-filter: blur(6px); }
+.l-rapidas button b { font: 700 12px var(--font-geist-mono), ui-monospace, monospace; color: var(--cor); }
+.l-rapidas button em { font: 500 10px var(--font-geist-mono), ui-monospace, monospace; font-style: normal; color: rgba(255, 255, 255, 0.7); }
+
+/* (J2:32) o anel: só o próximo passo, com o "2 de 3" embaixo */
+.l-holo-salsicha li .l-salsicha-n { display: block; margin-top: 2px; font-size: 0.82em; opacity: 0.7; }

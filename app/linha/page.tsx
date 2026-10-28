@@ -919,7 +919,8 @@ export default function LinhaPage() {
     <section className="l-missoes-agora" style={{ ["--cor" as string]: m13.cor }}>
       <small>agora · {m13.quem}{m13.faixa ? ` · ${PISTAS.find((x) => x.id === m13.faixa)!.faixa}` : ""}</small>
       <ul className="l-missoes-check">
-        {passos13.map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}<em>{x.estado === "agora" ? (lugar13 ? "agora" : "agora · na rua") : x.estado === "em breve" ? "em breve" : ""}</em></li>)}
+        {/* (T42, J2:32) só o próximo passo */}
+        {passos13.filter((x, i, l) => x === (l.find((y) => y.estado === "agora") ?? l.find((y) => y.estado !== "feita"))).map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}<em>{x.estado === "agora" ? (lugar13 ? "agora" : "agora · na rua") : x.estado === "em breve" ? "em breve" : ""}</em></li>)}
       </ul>
       <button type="button" className="l-feira-largar" onClick={largarMissao}>largar essa missão</button>
     </section>
