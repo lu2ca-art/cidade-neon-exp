@@ -32,6 +32,8 @@ const PLANOS: Record<string, Plano> = {
   tapete: { pos: [1.2, 1.5, 1.6], olha: [-0.6, 0.35, -0.6], fov: 54 },
   parede: { pos: [0.4, 1.5, 1.4], olha: [0.2, 1.6, -2.4], fov: 58 },
   dbeeDisco: { pos: [-1.1, 1.55, -0.6], olha: [0.55, 1.35, 0.75], fov: 52 },
+  // (T07) a entrega do holo: ela de frente, a mão estendida pra ele (o holo na mão é o disco/EntregaHolo.tsx, por cima)
+  entrega: { pos: [-0.75, 1.5, 2.45], olha: [0.5, 1.2, 0.75], fov: 50 },
 }
 
 const COISAS: Coisa[] = [
@@ -68,6 +70,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProp
     // instrumentos, ela falando, os tambores
     if (disco) {
       if (estado.pos === 0) return PLANOS.abertura
+      if (estado.gesto === "holo" || /é seu|aparelho pequeno/.test(estado.texto ?? "")) return PLANOS.entrega
       if (estado.pos === 1 || /estante|livros/.test(estado.texto ?? "")) return PLANOS.parede
       if (estado.gesto === "tambores" || /tambor|tocam junto/.test(estado.texto ?? "")) return PLANOS.tapete
       return estado.falando === "D-Bee" ? PLANOS.dbeeDisco : PLANOS.dentro

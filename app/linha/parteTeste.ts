@@ -21,7 +21,9 @@ const GRANA = { neon: 420, agua: 40, popularidade: 35, economia: 1 }
 
 function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "inicio" || parte === "minhoca") return null // save novo: começa no buraco de minhoca
-  if (["casa"].includes(parte)) return { fase: "casa", holo: false }
+  if (["casa", "casa.holo"].includes(parte)) return { fase: "casa", holo: false }
+  // (T07) o tutorial do voo e do turbo: a Kombi já voa, os passos das dunas feitos
+  if (parte === "subir.voo") return { fase: "subir", holo: true, drone: true, mods: ["solar", "turbo", "propulsao"], tutorial: ["recompensa", "mapa", "rota", "gps", "drift", "anel"] }
   if (["dunas", "bar", "oficina", "subir"].includes(parte)) return { fase: parte, holo: true }
   if (parte === "nectar" || parte.startsWith("nectar.")) return { fase: "nectar", holo: true, nectar: parte.split(".")[1] || "quebra" }
   if (parte === "carreira.feira" || parte === "feira") return { fase: "carreira", holo: true }
@@ -49,7 +51,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
   return undefined as unknown as null
 }
 
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {
@@ -66,6 +68,8 @@ export function aplicarParteDeTeste(): boolean {
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos")) url.searchParams.set("app", "palcos")
+  // (T07) a cena da casa começa na entrega do holo (pula a chegada e o tambor)
+  if (parte === "casa.holo") url.searchParams.set("cena", "holo")
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")
   history.replaceState(null, "", url.pathname + (url.search ? url.search : ""))

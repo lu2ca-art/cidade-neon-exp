@@ -39,6 +39,7 @@ import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
 import { CASA, QUEDA, RAIO_CASA, SAIDA_CASA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
+import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
 import { CasaDeserto } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
@@ -1236,7 +1237,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const diz = (q: (typeof FALAS_DUNAS)[number]["quando"]) => {
       if (ditas.has(q)) return
       ditas.add(q)
-      ;(novoComeco ? FALAS_DUNAS_SUB : FALAS_DUNAS).filter((f) => f.quando === q).forEach((f, k) => setTimeout(() => (f.ensina ? ensinar : falar)(f.de, f.texto, 5200), k * 5600))
+      // (T07) com o tutorial ensinando, a D-Bee não repete a instrução (só fala da vida)
+      ;(novoComeco ? FALAS_DUNAS_SUB : FALAS_DUNAS).filter((f) => f.quando === q && !(f.ensina && ensinaTut.current)).forEach((f, k) => setTimeout(() => (f.ensina ? ensinar : falar)(f.de, f.texto, 5200), k * 5600))
     }
     const iv = setInterval(() => {
       const j = jogo.current
@@ -1278,6 +1280,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }, 300)
     return () => clearInterval(iv)
   }, [fase, falar, novoComeco])
+  // (T07) o tutorial do holo lê a Kombi daqui (disco/tutorialConf.ts): só olha, não mexe
+  const ensinaTut = useRef(false)
+  ensinaTut.current = !!discoM && tutorialEnsina(historia)
+  const tutLigado = ensinaTut.current
+  useEffect(() => {
+    if (!tutLigado) return
+    const iv = setInterval(() => lerPoseTutorial(jogo.current, input.current), 100)
+    return () => clearInterval(iv)
+  }, [tutLigado])
   // (B18) chegou num lugar do chão do subúrbio (o bar, a oficina, o palco)
   useEffect(() => {
     if (!alvoChao || pausado) return

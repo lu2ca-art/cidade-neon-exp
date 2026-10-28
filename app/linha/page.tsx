@@ -49,7 +49,7 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
@@ -61,6 +61,8 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
 import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, type MissaoId, type Oferta13, type Recompensa13 } from "./disco/portas"
 import { Recompensa } from "./disco/Recompensa"
+import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
+import { CONFIG_TUTORIAL, faltaRecompensaHolo, tutorialEnsina } from "./disco/tutorialConf"
 import { Letra } from "./disco/Letra"
 import { letraDe } from "./disco/letras"
 import { Palcos } from "./disco/MenuPalcos"
@@ -261,6 +263,8 @@ export default function LinhaPage() {
     if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "loja") setTela({ t: "app", id: "loja" })
     // (T20) ?parte=palcos: o menu dos palcos abre assim que ele entra no jogo
     if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "palcos") palcosAoEntrar.current = true
+    // (T07) ?parte=casa.holo: a cena da casa começa na entrega do holo
+    if (atalhosLiberados() && new URLSearchParams(location.search).get("cena") === "holo") setCenaHolo(true)
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -641,7 +645,8 @@ export default function LinhaPage() {
     if (h0.fase === "oficina") {
       abrirPortaRef.current("oficina")
       setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
-      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa", ensina: true }), 2500)
+      // (T07, T41: D13) com o Nexo ensinando, o "segura o espaço" é um passo do tutorial
+      if (!(CONFIG_TUTORIAL.quem === "nexo" && tutorialEnsina({ ...h0, fase: "subir" }))) setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa", ensina: true }), 2500)
     } else setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
   }, [])
   const fimBarFeito = useRef(false)
@@ -841,6 +846,9 @@ export default function LinhaPage() {
   const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
   const [recompensa, setRecompensa] = useState<Recompensa13 | null>(null)
+  // (T07) o tutorial do holo: a tela lá fora e os passos feitos (no save, recarregar não perde)
+  const [cenaHolo, setCenaHolo] = useState(false)
+  const marcarTutorial = useCallback((id: string) => setSave((s) => comHistoria(s, (h) => ((h.tutorial ?? []).includes(id) ? h : { ...h, tutorial: [...(h.tutorial ?? []), id] }))), [])
   const [rua, setRua] = useState(false)
   useEffect(() => {
     if (palcosAoEntrar.current && tela.t === "corrida" && !cena) { palcosAoEntrar.current = false; setRua(true) }
@@ -1199,7 +1207,8 @@ export default function LinhaPage() {
     setCena(null)
     setCinema(null)
     // (T02) a arte da missão da D-Bee (o tambor, na cena) ficou feita
-    setSave((s) => comHistoria(s, (h) => ({ ...concluir(h, "dbee", "arte"), fase: "dunas", holo: true })))
+    // (T07) com o tutorial, o holo já vem com o mapa (o drone): é ele que ensina a subir
+    setSave((s) => comHistoria(s, (h) => ({ ...concluir(h, "dbee", "arte"), fase: "dunas", holo: true, ...(CONFIG_TUTORIAL.ligado ? { drone: true } : {}) })))
     fonteSom.set("disco")
     disco.tocarLista(ACERVO.faixas.map((f) => f.src))
   }
@@ -1628,6 +1637,9 @@ export default function LinhaPage() {
           const m = MISSOES13[r.missao]
           if (m.faixa && m.onde === "cidade") setOuvirFim({ pista: m.faixa, id: Date.now() })
         }} />}
+        {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
+        {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
+        {HIST && tela.t === "corrida" && <TutorialHolo hist={hist} pausado={!!cena || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor} onFeito={marcarTutorial} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
         {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} />}
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
@@ -1731,7 +1743,7 @@ export default function LinhaPage() {
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "disco-casa" ? CENA_CASA_DISCO : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : CENA_CASA_DISCO) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}

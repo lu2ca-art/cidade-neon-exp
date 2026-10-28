@@ -11,6 +11,8 @@ const PARTES: [string, string | null][] = [
   ["loja", "carreira"],
   // (T20) os palcos: o menu aberto (o começo e o topo)
   ["palcos", "carreira"], ["palcos.topo", "carreira"],
+  // (T07) a entrega do holo (a cena da casa a partir dela) e o tutorial do voo
+  ["casa.holo", "casa"], ["subir.voo", "subir"],
 ]
 
 for (const [parte, fase] of PARTES) {

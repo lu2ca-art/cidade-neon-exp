@@ -71,6 +71,9 @@ export interface HistoriaDisco {
   // (T20) os palcos como Guitar Hero (disco/palcos.ts): a melhor estrela (1–5)
   // de cada música em cada palco ("bar:copo" → 3). A soma abre o palco de cima
   palcos?: Record<string, number>
+  // (T07) o tutorial do holo: a tela de recompensa vista ("recompensa") e os
+  // passos feitos (disco/tutorialConf.ts: "mapa", "gps", "drift"…)
+  tutorial?: string[]
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
@@ -131,6 +134,7 @@ export const MONUMENTO = ["o violão", "a camisa", "o caderno"]
 // cidade e se mudou pro deserto; guardou tecnologias dos velhos tempos; os dois
 // se conectam nos tambores; ela dá o HOLO. Tudo RASCUNHO ──
 import type { Cena } from "../cenas"
+import { CONFIG_TUTORIAL } from "./tutorialConf"
 export const CENA_CASA_DISCO: Cena = {
   lugar: "casa-dbee",
   titulo: "a casinha no meio do nada",
@@ -157,13 +161,22 @@ export const CENA_CASA_DISCO: Cena = {
     { t: "acao", texto: "por um minuto, os dois tocam junto. a casa inteira treme" },
     { t: "fala", de: "D-Bee", texto: "é. vc é quem eu achei que era" },
     { t: "fala", de: "D-Bee", texto: "guardei umas coisas dos velhos tempos. pra vc é tudo novo" },
-    { t: "acao", texto: "de uma caixa ela tira um aparelho pequeno, quase sem peso. liga. a luz sobe e fica parada no ar, na frente dos seus olhos" },
-    { t: "ganha", titulo: "o holo", texto: "o celular de agora: a luz que fica no ar. música, mensagens, o mapa, tudo nele" },
+    // (T07, J1: 6) a entrega de verdade: da mão dela pra dele (disco/EntregaHolo.tsx);
+    // o destaque do que ganhou é lá fora (disco/TutorialHolo.tsx, RecompensaHolo)
+    { t: "acao", texto: "de uma caixa ela tira um aparelho pequeno, quase sem peso. liga. uma luz sobe e fica parada em cima da mão dela" },
+    { t: "fala", de: "D-Bee", texto: "toma. é seu" },
+    { t: "gesto", id: "holo" },
+    { t: "acao", texto: "na sua mão ele não pesa nada. a luz sobe e fica parada no ar, na frente dos seus olhos" },
+    ...(CONFIG_TUTORIAL.cartaoNaCena ? [{ t: "ganha" as const, titulo: "o holo", texto: "o celular de agora: a luz que fica no ar. a música, o mapa, tudo nele" }] : []),
     { t: "fala", de: "D-Bee", texto: "sem isso, lá na cidade, vc não existe" },
     { t: "fala", de: "D-Bee", texto: "não tem estrada daqui até lá. a kombi dá conta. eu falo com vc pelo rádio" },
     { t: "fim" },
   ],
 }
+
+// (T07) o pedaço da cena a partir da entrega do holo (o link de teste
+// ?parte=casa.holo: pula a chegada e o tambor, que são do T37 e do T06)
+export const CENA_CASA_HOLO: Cena = { ...CENA_CASA_DISCO, passos: CENA_CASA_DISCO.passos.slice(CENA_CASA_DISCO.passos.findIndex((p) => p.t === "fala" && p.texto === "guardei umas coisas dos velhos tempos. pra vc é tudo novo")) }
 
 // ── O PRÓLOGO: o bar (LU2CA 19–20/10). A moça do bar (a do copo: um jeito meio
 // robô, muito sensata; é uma das máquinas conscientes, mas não revela) oferece
