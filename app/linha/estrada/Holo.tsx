@@ -473,10 +473,15 @@ export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { text
       {checklist && omni && (
         <div className="l-holo-salsicha" aria-hidden="true">
           <i className="l-holo-salsicha-topo" />
+          {/* (T42, J2:32) só o próximo passo (não todos de uma vez) */}
           <ol>
-            {checklist.passos.map((p) => (
-              <li key={p.nome} className={`is-${p.estado}`}><b>{p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"}</b>{p.nome}</li>
-            ))}
+            {(() => {
+              const i = checklist.passos.findIndex((p) => p.estado === "agora"), k = i >= 0 ? i : checklist.passos.findIndex((p) => p.estado !== "feita")
+              const p = checklist.passos[k]
+              return p
+                ? <li key={p.nome} className={`is-${p.estado}`}><b>▸</b>{p.nome}<small className="l-salsicha-n">{k + 1} de {checklist.passos.length}</small></li>
+                : <li className="is-feita"><b>✓</b>tudo feito</li>
+            })()}
           </ol>
         </div>
       )}

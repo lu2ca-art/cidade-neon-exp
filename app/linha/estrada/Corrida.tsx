@@ -63,6 +63,7 @@ import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
+import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
@@ -421,7 +422,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { semVoo?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
+type Input = { semVoo?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean; infinito?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -733,6 +734,22 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     vib([20, 30, 60])
     return true
   }
+  // (T42, J1) as viagens rápidas pros minijogos: na hora, sem gastar as viagens dos
+  // anéis; a Kombi aparece um pouco antes do lugar, com ele marcado no mapa
+  const viajarPara = (r: Rapida) => {
+    const j = jogo.current
+    if (j.chegando || (aberturaRef.current.ativa && !("disco" in M))) return
+    j.via = r.via; j.u = Math.max(0, r.u - 70); j.x = 0; j.v = Math.min(j.v, 20); j.encaixar = true; j.livreOk = false
+    evs.current?.via(r.via)
+    setMarca({ via: r.via, u: r.u, nome: r.nome, cor: r.cor })
+    ligarDrone(false)
+    vib([20, 30, 60])
+  }
+  // (T42, J1: "deixar no automático infinito, só aproveitando") o piloto automático
+  // infinito: a Kombi segue a pista sozinha, sem parar e sem desligar; mexer no
+  // volante assume por uns segundos e ele volta. O ∞ do lado do GPS liga e desliga
+  const [infinito, setInfinito] = useState(false)
+  useEffect(() => { input.current.infinito = infinito; if (infinito) { jogo.current.desligada = false; setDesligada(false) } }, [infinito])
   const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
   useEffect(() => {
     // qualquer toque ou tecla conta como "tem gente dirigindo"
@@ -2359,6 +2376,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {drone && (
         <div className="l-drone" aria-label="a vista do drone">
           <div className="l-drone-dist" aria-hidden="true"><i /></div>
+          {/* (T42, J2:32) o checklist pelo mapa de longe: só o próximo passo; (J1) as viagens rápidas pros minijogos */}
+          {discoM && checklistHolo && !dronePainel && <ProximoPasso checklist={checklistHolo} />}
+          {discoM && !voar && !dronePainel && <ViagensRapidas lista={rapidasDo(M, viaApagada)} onViajar={viajarPara} />}
           {dronePainel && discoM && mapaPainel && (
             <aside className="l-mapa-missoes l-drone-missoes" aria-label="as missões" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { if ((e.target as HTMLElement).closest("[data-fecha-mapa]")) setDronePainel(false) }}>
               {mapaPainel}
@@ -2405,6 +2425,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             </button>
           </div>
         </div>
+      )}
+      {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o ∞ (o automático infinito) */}
+      {discoM && oculos && (
+        <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null }} icone={checklistHolo?.chave ?? null}
+          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} />
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
@@ -3898,7 +3923,7 @@ function Cena({
       // (LU2CA 21/10, a feira de missões) com uma missão pegada, 6 s sem tocar
       // em nada e a Kombi segue sozinha pra ela (a rota escolhe os cruzamentos e
       // ela encosta na vaga); qualquer toque devolve o volante
-      const pilotoMissao = "disco" in M && (!!vagaRef.current || !!alvoChaoRef.current) && (!vagaRef.current || j.naVaga !== vagaRef.current.id) && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000
+      const pilotoMissao = "disco" in M && (!!vagaRef.current || !!alvoChaoRef.current) && (!vagaRef.current || j.naVaga !== vagaRef.current.id) && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000 && !inp.infinito
       if (pilotoMissao !== !!j.piloto) { j.piloto = pilotoMissao; if (pilotoMissao) j.desligada = false; ev.piloto(pilotoMissao) }
       // (LU2CA 23/10: "a visão de primeira pessoa tem que levar a pessoa pelo
       // caminho da missão automaticamente") de dentro, com destino (o lugar do
@@ -3911,9 +3936,12 @@ function Cena({
       const assumiu = (j.ultimoDir ?? 0) > 0 && performance.now() - j.ultimoDir! < ASSUME_MS
       const auto1p = destino1p && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
       if (auto1p && j.desligada) j.desligada = false // de dentro ela mesma dá a partida
-      const auto = (auto1p || noCel || pilotoMissao) && !cine
-      // no automático, chegando na vaga da missão: encosta e freia sozinha
-      const vgA = auto && !noCel ? vagaRef.current : null
+      // (T42) o automático infinito: segue a pista sem parar (mexeu no volante, assume 3 s)
+      const infAuto = !!inp.infinito && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
+      if (infAuto && j.desligada) j.desligada = false
+      const auto = (auto1p || noCel || pilotoMissao || infAuto) && !cine
+      // no automático, chegando na vaga da missão: encosta e freia sozinha (o infinito não para)
+      const vgA = auto && !noCel && !infAuto ? vagaRef.current : null
       const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity
       const encostando = !!vgA && dVaga > -VAGA / 2 && dVaga < 90
       const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : 0
@@ -3984,7 +4012,7 @@ function Cena({
       let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
       // (no chão, a de passeio; nas pistas, metade da velocidade da pista)
-      if (auto1p || (pilotoMissao && j.voo)) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
+      if (auto1p || (pilotoMissao && j.voo) || infAuto) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
