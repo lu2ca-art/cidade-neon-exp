@@ -1,0 +1,23 @@
+/* (T44) os rachas: o botão que pisca, o placar do racha e o resultado (Rachas.tsx) */
+.l-racha-btn { --cor: #ff3fb0; position: absolute; z-index: 7; left: 50%; bottom: calc(176px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: grid; justify-items: center; gap: 2px; min-width: 210px; max-width: min(82vw, 340px); padding: 10px 18px 11px !important; border-radius: 16px; background: rgba(6, 6, 16, 0.82) !important; border: 2px solid var(--cor) !important; color: #fff; cursor: pointer; pointer-events: auto; box-shadow: 0 0 18px color-mix(in srgb, var(--cor) 55%, transparent); animation: l-racha-pisca 0.62s steps(2, jump-none) infinite; }
+.l-racha-btn small { font: 600 10px var(--font-geist-mono), ui-monospace, monospace; color: var(--cor); text-transform: lowercase; }
+.l-racha-btn b { font: 900 19px/1.1 var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.02em; text-transform: uppercase; color: #fff; text-shadow: 0 0 10px var(--cor); }
+.l-racha-btn em { font: italic 500 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(255, 255, 255, 0.78); }
+@keyframes l-racha-pisca { 0% { box-shadow: 0 0 6px color-mix(in srgb, var(--cor) 40%, transparent); border-color: color-mix(in srgb, var(--cor) 55%, transparent); } 100% { box-shadow: 0 0 26px var(--cor), inset 0 0 14px color-mix(in srgb, var(--cor) 40%, transparent); border-color: var(--cor); } }
+@media (prefers-reduced-motion: reduce) { .l-racha-btn { animation: none; } }
+
+.l-racha-placar { --cor: #ff3fb0; position: absolute; z-index: 6; right: 12px; top: calc(84px + env(safe-area-inset-top)); display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 10px; row-gap: 1px; padding: 8px 12px; border-radius: 12px; background: rgba(6, 6, 16, 0.72); border: 1px solid color-mix(in srgb, var(--cor) 60%, transparent); color: #fff; pointer-events: none; }
+.l-racha-placar small { grid-column: 1 / -1; font: 600 10px var(--font-geist-mono), ui-monospace, monospace; color: var(--cor); text-transform: lowercase; }
+.l-racha-placar b { font: 900 22px/1 var(--font-geist-mono), ui-monospace, monospace; }
+.l-racha-placar[data-pos="2"] b { color: var(--cor); }
+.l-racha-placar em { font: 600 11px var(--font-geist-mono), ui-monospace, monospace; font-style: normal; opacity: 0.85; }
+.l-racha-conta { position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); font: 900 64px/1 var(--font-geist-mono), ui-monospace, monospace; color: #fff; text-shadow: 0 0 22px var(--cor), 0 0 4px #000; animation: l-racha-conta 0.9s ease-out both; pointer-events: none; }
+.l-racha-conta.is-valendo { font-size: 44px; text-transform: uppercase; animation-duration: 1.4s; animation-fill-mode: forwards; }
+@keyframes l-racha-conta { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); } }
+
+.l-racha-fim { --cor: #ff3fb0; position: absolute; z-index: 7; left: 50%; top: 30%; transform: translateX(-50%); display: grid; justify-items: center; gap: 4px; min-width: 230px; max-width: min(86vw, 360px); padding: 14px 20px; border-radius: 18px; background: rgba(6, 6, 16, 0.86); border: 1px solid color-mix(in srgb, var(--cor) 60%, transparent); color: #fff; text-align: center; pointer-events: none; }
+.l-racha-fim small { font: 600 10px var(--font-geist-mono), ui-monospace, monospace; color: var(--cor); }
+.l-racha-fim b { font: 900 22px/1.15 var(--font-geist-mono), ui-monospace, monospace; }
+.l-racha-fim.is-venceu b { text-shadow: 0 0 14px var(--cor); }
+.l-racha-fim em { font: 800 14px var(--font-geist-mono), ui-monospace, monospace; font-style: normal; color: #ffe27a; }
+.l-racha-fim i { font: italic 500 12px var(--font-geist-mono), ui-monospace, monospace; opacity: 0.8; }

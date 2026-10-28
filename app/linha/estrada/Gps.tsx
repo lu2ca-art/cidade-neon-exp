@@ -36,11 +36,15 @@ export interface RefsAlvo {
   vaga: React.RefObject<{ via: number; u: number; cor: string; nome: string } | null>
   chao: LugarChao | null
   livre: { x: number; z: number; cor: string } | null
+  // (T44) um racha valendo: a chegada vem antes de tudo
+  racha?: React.RefObject<{ alvo: AlvoGps | null } | null>
 }
 
 // o destino em metros do mundo: a mesma ordem do drone e do automático
 // (a marca do mapa, a vaga da missão, o lugar do chão, o ponto livre das dunas)
 export function destinoMundo(M: Mundo, r: RefsAlvo): AlvoGps | null {
+  const rc = r.racha?.current?.alvo
+  if (rc) return { x: rc.x, z: rc.z, cor: rc.cor, nome: rc.nome, via: rc.via, u: rc.u }
   const mk = r.marca.current
   if (mk) { const w = noMundo(M, mk); return { x: w.x, z: w.z, cor: mk.cor, nome: mk.nome, via: mk.via, u: mk.u } }
   const vg = r.vaga.current

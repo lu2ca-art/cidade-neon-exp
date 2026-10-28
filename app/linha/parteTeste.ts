@@ -81,14 +81,15 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte.startsWith("xenom.") && xenomPorId(parte.slice(6))) return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], show: `xenom:${parte.slice(6)}` }
   // (T03) a loja aberta, com grana no bolso (o resto do save é o meio da carreira)
   if (parte === "loja") return MEIO
-  if (parte === "livre" || parte === "final") return { fase: "livre", holo: true }
+  // (T44) os rachas: a cidade livre, com um dos carros do mecânico logo à frente
+  if (parte === "livre" || parte === "final" || parte === "rachas") return { fase: "livre", holo: true }
   return undefined as unknown as null
 }
 
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.bancada", "oficina.painel", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -110,6 +111,7 @@ export function aplicarParteDeTeste(): boolean {
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
+  if (parte === "rachas") url.searchParams.set("racha", "perto")
   // (T07) a cena da casa começa na entrega do holo (pula a chegada e o tambor)
   if (parte === "casa.holo") url.searchParams.set("cena", "holo")
   // tira o ?parte da URL: recarregar não troca o save de novo
