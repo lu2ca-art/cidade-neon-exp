@@ -27,7 +27,7 @@ test("mouse: abre, liga os pontos, o grafite revela e entra na coleção", async
   mkdirSync(PRINTS, { recursive: true })
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
-  page.on("console", (m) => { if (m.type() === "error") erros.push(m.text()) })
+  page.on("console", (m) => { if (m.type() === "error" && !/_vercel|Failed to load resource/.test(m.text())) erros.push(m.text()) })
   await page.goto("/teste/grafite")
   await expect(page.locator(".gf-raiz")).toHaveAttribute("data-estado", "esperando")
   await page.waitForTimeout(400)

@@ -13,7 +13,7 @@ interface Particula { x: number; y: number; vx: number; vy: number; vida: number
 const MAX_PART = 140
 const DURACAO_ALVO = 3.6 // segundos de spray (sem as pausas)
 
-declare global { interface Window { __grafite?: { quadros: number[]; estado: Estado; pontos: Pt[]; caixa: { x: number; y: number; s: number } } } }
+declare global { interface Window { __grafite?: { quadros: number[]; trabalho: number[]; estado: Estado; pontos: Pt[]; caixa: { x: number; y: number; s: number } } } }
 
 const tam = (t: Traco) => t.pts.reduce((a, p, i) => (i ? a + Math.hypot(p[0] - t.pts[i - 1][0], p[1] - t.pts[i - 1][1]) : 0), 0)
 
@@ -45,7 +45,7 @@ export class Motor {
     fx.addEventListener("pointermove", this.mexe)
     fx.addEventListener("pointerup", this.solta)
     fx.addEventListener("pointercancel", this.solta)
-    window.__grafite = { quadros: [], estado: "esperando", pontos: [], caixa: { x: 0, y: 0, s: 0 } }
+    window.__grafite = { quadros: [], trabalho: [], estado: "esperando", pontos: [], caixa: { x: 0, y: 0, s: 0 } }
   }
 
   destruir() {
@@ -179,7 +179,7 @@ export class Motor {
     this.ti = 0; this.d = 0; this.pausa = 0.5
     const total = this.comp.reduce((a, l, i) => a + l / (this.g!.tracos[i].vel ?? 1), 0)
     this.veloc = Math.max(70, total / DURACAO_ALVO)
-    if (window.__grafite) window.__grafite.quadros = []
+    if (window.__grafite) { window.__grafite.quadros = []; window.__grafite.trabalho = [] }
     chocalho(0.45)
   }
 
@@ -194,7 +194,7 @@ export class Motor {
   }
 
   // pinta o trecho [d0,d1] do traço (em unidades da caixa) nas camadas arte e brilho
-  private pintar(t: Traco, d0: number, d1: number) {
+  private trecho(t: Traco, d0: number, d1: number): Pt[] {
     const lista: Pt[] = [this.pontoEm(t, d0)]
     let acc = 0
     for (let i = 1; i < t.pts.length; i++) {
@@ -202,18 +202,30 @@ export class Motor {
       if (acc > d0 && acc < d1) lista.push(t.pts[i])
     }
     lista.push(this.pontoEm(t, d1))
-    const P = lista.map(this.px)
+    return lista.map(this.px)
+  }
+  private linha(x: CanvasRenderingContext2D, P: Pt[]) {
+    x.beginPath(); x.moveTo(P[0][0], P[0][1])
+    for (let i = 1; i < P.length; i++) x.lineTo(P[i][0], P[i][1])
+    if (P.length === 1) x.lineTo(P[0][0] + 0.1, P[0][1])
+    x.stroke()
+  }
+
+  // pinta o trecho [d0,d1] do traço (em unidades da caixa) nas camadas arte e brilho
+  private pintar(t: Traco, d0: number, d1: number) {
+    const P = this.trecho(t, d0, d1)
     const w = (t.largura / 100) * this.S
     const { arte, brilho } = this.cx
     // brilho: largo e opaco (o CSS borra), sem acumular alpha
     brilho.strokeStyle = t.cor; brilho.lineCap = "round"; brilho.lineJoin = "round"; brilho.lineWidth = w * 2.8
-    brilho.beginPath(); brilho.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) brilho.lineTo(P[i][0], P[i][1]); if (P.length === 1) brilho.lineTo(P[0][0] + 0.1, P[0][1]); brilho.stroke()
-    // arte: o traço de tinta e o miolo quente
+    this.linha(brilho, P)
+    // arte: o traço de tinta e, por cima, o miolo quente (refeito um pouco pra trás: a ponta redonda
+    // do traço novo cobre o fim do miolo anterior)
     arte.lineCap = "round"; arte.lineJoin = "round"
     arte.strokeStyle = t.cor; arte.lineWidth = w
-    arte.beginPath(); arte.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) arte.lineTo(P[i][0], P[i][1]); if (P.length === 1) arte.lineTo(P[0][0] + 0.1, P[0][1]); arte.stroke()
-    arte.strokeStyle = "rgba(255,255,255,0.5)"; arte.lineWidth = Math.max(1, w * 0.3)
-    arte.beginPath(); arte.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) arte.lineTo(P[i][0], P[i][1]); if (P.length === 1) arte.lineTo(P[0][0] + 0.1, P[0][1]); arte.stroke()
+    this.linha(arte, P)
+    arte.strokeStyle = clarear(t.cor); arte.lineWidth = Math.max(1, w * 0.3)
+    this.linha(arte, d0 > 0 ? this.trecho(t, Math.max(0, d0 - t.largura), d1) : P)
     // respingos de spray em volta
     let compPx = 0
     for (let i = 1; i < P.length; i++) compPx += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1])
@@ -276,6 +288,7 @@ export class Motor {
 
   private laco = (agora: number) => {
     this.raf = 0
+    const ini = performance.now()
     const bruto = this.ultimo ? agora - this.ultimo : 0
     this.ultimo = agora
     const dt = Math.min(bruto / 1000, 1 / 30) // passo limitado: um engasgo não pula a animação
@@ -288,6 +301,7 @@ export class Motor {
     this.part = this.part.filter((p) => p.vida < p.max)
     if (this.brilhoFinal > 0) this.brilhoFinal = Math.max(0, this.brilhoFinal - dt * 1.6)
     this.desenhar()
+    if (this.estado === "revelando" && window.__grafite) window.__grafite.trabalho.push(performance.now() - ini)
     const vivo = this.estado !== "pronto" || this.part.length > 0 || this.brilhoFinal > 0
     if (vivo) this.raf = requestAnimationFrame(this.laco)
   }
@@ -338,4 +352,11 @@ function distSeg(p: Pt, a: Pt, b: Pt) {
   const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy
   const u = l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0
   return Math.hypot(p[0] - (a[0] + dx * u), p[1] - (a[1] + dy * u))
+}
+
+// o miolo quente do traço: a cor misturada com branco, OPACA (translúcida deixaria bolinhas nas emendas)
+function clarear(hex: string) {
+  const n = parseInt(hex.slice(1), 16)
+  const m = (v: number) => Math.round(v + (255 - v) * 0.6)
+  return `rgb(${m((n >> 16) & 255)},${m((n >> 8) & 255)},${m(n & 255)})`
 }
