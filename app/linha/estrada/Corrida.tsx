@@ -119,8 +119,14 @@ const G = 24
 // (LU2CA 21/10 (2)) no mapa-disco, a gravidade da Terra: tudo cai a 9,8 m/s²
 // (a Kombi, o pulo, o propulsor solto, os carros arremessados)
 const G_TERRA = 9.8
-// o pulo no disco: os mesmos 2,5 m de altura, na gravidade da Terra (~1,4 s no ar)
-const V_PULO_TERRA = Math.sqrt(2 * G_TERRA * 2.5)
+// (T36, 28/10, J2:31, "deixar a gravidade mais pesada") a gravidade do mapa-disco
+// é a da Terra mais 28%: tudo cai mais rápido (a Kombi, o pulo, o propulsor
+// solto, os carros arremessados). Antes: 9,8 m/s². É a constante pra girar o
+// gosto: 9,8 = Terra; 12,5 = agora; 15 = bem pesada
+const G_DISCO = 12.5
+// o pulo no disco: os mesmos 2,5 m de altura (a subida não muda), mas com a
+// gravidade mais pesada o tempo no ar cai de ~1,4 s pra ~1,26 s
+const V_PULO_TERRA = Math.sqrt(2 * G_DISCO * 2.5)
 
 export interface Stats {
   tempo: number
@@ -4388,8 +4394,8 @@ function Cena({
         if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, Math.max(0, a.ty * j.v) + 0.4); j.tProp = 0; motor?.whoosh(); vib(18) }
         j.tProp = (j.tProp ?? 0) + dt
         const e = Math.min(1, j.tProp / 0.4), suave = e * e * (3 - 2 * e)
-        const teto = pat ? 13 : 16, cheio = G_TERRA + (pat ? 30 : 16)
-        const empuxo = G_TERRA + 0.8 + (cheio - G_TERRA - 0.8) * suave * (1 - Math.max(0, j.vy) / (teto * 1.3))
+        const teto = pat ? 13 : 16, cheio = G_DISCO + (pat ? 30 : 16)
+        const empuxo = G_DISCO + 0.8 + (cheio - G_DISCO - 0.8) * suave * (1 - Math.max(0, j.vy) / (teto * 1.3))
         j.vy = Math.min(teto, j.vy + empuxo * dt)
         j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt * (inp.mods?.includes("tanque") ? 0.65 : 1))
         j.propulsou = true
@@ -4484,7 +4490,7 @@ function Cena({
       j.flash = 0.3; motor?.whoosh(); vib([14, 10, 30])
     }
     if (j.ar) {
-      j.vy -= (MD ? G_TERRA : j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
+      j.vy -= (MD ? G_DISCO : j.pulou ? (j.vy > 0 ? 40.8 : 69) : G) * dt
       // (disco) sem o propulsor, a Kombi plana (desce até 10 m/s): dá tempo de mirar numa pista
       if (j.voo && !inp.propulsor) j.vy = Math.max(j.vy, -10)
       const yAntes = j.y
@@ -4842,7 +4848,7 @@ function Cena({
         c.caido -= dt
         c.x += c.vx * dt
         c.vx *= Math.exp(-dt * 1.6)
-        c.vy -= ("disco" in M ? G_TERRA : 22) * dt
+        c.vy -= ("disco" in M ? G_DISCO : 22) * dt
         c.y = Math.max(0, c.y + c.vy * dt)
         if (c.y === 0) { c.vy = Math.abs(c.vy) * 0.25; c.vgiro *= 0.6 }
         c.giro += c.vgiro * dt
