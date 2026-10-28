@@ -81,6 +81,9 @@ export interface HistoriaDisco {
   // (T07) o tutorial do holo: a tela de recompensa vista ("recompensa") e os
   // passos feitos (disco/tutorialConf.ts: "mapa", "gps", "drift"…)
   tutorial?: string[]
+  // (T27) a Kombi que quebra (disco/quebra.ts): está na oficina agora, quantas vezes
+  // quebrou e quantos sorteios faltam pra ela poder quebrar de novo
+  quebra?: { quebrada?: true; vezes?: number; folga?: number }
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }

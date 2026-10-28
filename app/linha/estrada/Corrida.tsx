@@ -283,8 +283,12 @@ interface Props {
   trancas?: Partial<Record<"ginasio" | "radio" | "fliperama" | "parque" | "canteiros", string>>
   // (T15) a Kombi está no conserto (a missão do Drew): de patins, com o jetpack; volta quando acaba
   noConserto?: boolean
+  // (T27) a Kombi quebrou (disco/quebra.ts): ela aparece na oficina do subúrbio. `sorteioMs` é o
+  // intervalo do sorteio (0 = não sorteia). `noConserto` também fica true
+  quebrou?: boolean
+  sorteioMs?: number
 }
-export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
+export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | `chao:${LugarChao}`
 
 const SEM_FLORES: string[] = []
 
@@ -479,7 +483,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0 }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -1389,8 +1393,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (T15) a Kombi no conserto (a missão do Drew): desce de patins e a 222 ensina o
   // jetpack (o jato das costas). Acabou a missão: a Kombi volta, ali mesmo
   const consertoRef = useRef(false)
+  combRef.current.quebrada = quebrou
   useEffect(() => {
     if (noConserto && !consertoRef.current && !pausado) {
+      if (quebrou) {
+        // (T27) quebrou rodando: o aviso (fumaça, tranco, o motor tossindo) e, já em seguida, de patins
+        consertoRef.current = true
+        const j = jogo.current
+        j.v = 0; j.shake = 1; j.flash = 0.4
+        vib([60, 40, 120])
+        falar("222 FM", "a Kombi tossiu. fumaça no capô", 3200)
+        setTimeout(() => falar("222 FM", "a Kombi pifou de vez. já mandaram ela pra oficina do subúrbio", 4200), 2600)
+        setTimeout(() => { if (!combRef.current.patins) irDePatins(); ensinar("222 FM", "de patins até a oficina: a luz laranja no mapa. o metrô: em breve", 6000) }, 3200)
+        return
+      }
       const t = setTimeout(() => {
         consertoRef.current = true
         falar("222 FM", "a Kombi ficou no conserto. hoje é de patins", 3800)
@@ -1405,6 +1421,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noConserto, pausado])
+  // (T27) o sorteio da quebra: só conta tempo rodando de verdade (nada aberto, de Kombi, no ar ou no chão)
+  useEffect(() => {
+    if (!sorteioMs || noConserto || pausado) return
+    const iv = setInterval(() => {
+      if (!combRef.current.patins && !cinemaRef.current && jogo.current.v > 4) onHistoriaRef.current?.("sorteio-quebra")
+    }, sorteioMs)
+    return () => clearInterval(iv)
+  }, [sorteioMs, noConserto, pausado])
   // a noite repete: de tempos em tempos a 222 estranha junto com a pessoa
   useEffect(() => {
     if (!noiteRepete) return
@@ -2822,6 +2846,8 @@ export interface Comb {
   t: number // último aviso pro page (guardar no save)
   // a gasolina acabou e você foi de patins (Patins.tsx): onde a Kombi ficou
   patins?: boolean
+  // (T27) a Kombi quebrada espera na oficina do subúrbio
+  quebrada?: boolean
   parada?: { pos: THREE.Vector3; quat: THREE.Quaternion; via: number; u: number; x: number } | null
   aqui?: THREE.Vector3 // onde você está agora (pra saber se está perto da Kombi parada)
 }
@@ -5161,8 +5187,16 @@ function Cena({
       if (cabineG.current && cb2.patins) cabineG.current.visible = false
       if (patinador.current) patinador.current.visible = !!cb2.patins
       if (kombiParada.current) {
-        kombiParada.current.visible = !!(cb2.patins && cb2.parada)
-        if (cb2.parada) { kombiParada.current.position.copy(cb2.parada.pos); kombiParada.current.quaternion.copy(cb2.parada.quat) }
+        if (cb2.quebrada && cb2.patins && (M as MundoDisco).chaoEm) {
+          // (T27) quebrada: a Kombi está na oficina do subúrbio, esperando o conserto
+          const lo = CHAO_LUGARES.oficina
+          kombiParada.current.visible = true
+          kombiParada.current.position.set(lo.x + 7, (M as MundoDisco).chaoEm!(lo.x + 7, lo.z) + 0.02, lo.z)
+          kombiParada.current.rotation.set(0, Math.PI / 2, 0)
+        } else {
+          kombiParada.current.visible = !!(cb2.patins && cb2.parada)
+          if (cb2.parada) { kombiParada.current.position.copy(cb2.parada.pos); kombiParada.current.quaternion.copy(cb2.parada.quat) }
+        }
       }
     }
     return { cine, pct }
