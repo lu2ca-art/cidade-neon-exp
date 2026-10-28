@@ -5668,7 +5668,7 @@ function Cena({
           <Patinador vel={() => jogo.current.v} steer={() => -jogo.current.steer} ar={() => !!jogo.current.ar} jato={() => !!(jogo.current.ar && input.current.propulsor && (jogo.current.energia ?? 0) > 0)} />
         </group>
         <group ref={cabineG}>
-          <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>
+          <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta={corPintura(estiloK)} neon={corNeon(estiloK)} /></Seguro>
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color={corNeon(estiloK)} intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
