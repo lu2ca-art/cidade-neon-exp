@@ -6,7 +6,7 @@ import { ATALHOS, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados, saveDo, type Atalho 
 import "./teste.css"
 
 const PAGINAS = [
-  { href: "/teste/trincheiras", nome: "as trincheiras: a corrida (T11, T13)", desc: "os túneis embaixo do subúrbio: escolha BMX, patins ou skate e corra a volta dos 3 rios secos contra 3 rivais e o seu fantasma" },
+  { href: "/teste/trincheiras", nome: "as trincheiras: a corrida (T11, T13, T14)", desc: "os túneis embaixo do subúrbio: escolha BMX, patins ou skate e corra a volta dos 3 rios secos contra 3 rivais e o seu fantasma. A moto (T14) chega depois: ?motos libera" },
   { href: "/parque", nome: "parque (protótipo)", desc: "a montanha-russa sozinha, em 1ª pessoa" },
   { href: "/fliperama", nome: "fliperama", desc: "LINHA 9, KOMBI COBRA, INVASORES, PINGUE, QUEBRA-NEON, PRÉDIO, ATRAVESSA · 1 neon a ficha" },
   { href: "/oficina", nome: "oficina", desc: "a pintura e o neon de baixo da Kombi" },

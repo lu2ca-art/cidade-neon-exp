@@ -35,11 +35,17 @@
 .tr-escolha, .tr-fim { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 16px; background: rgba(10, 6, 16, 0.62); backdrop-filter: blur(4px); overflow-y: auto; }
 .tr-escolha h1, .tr-fim h2 { margin: 0; text-align: center; font: 900 clamp(22px, 6vw, 34px) "Arial Black", system-ui, sans-serif; color: #9b8cff; letter-spacing: 0.04em; text-shadow: 0 0 18px rgba(155, 140, 255, 0.6); }
 .tr-escolha > p { margin: 0; max-width: 460px; text-align: center; font-size: 14px; line-height: 1.5; color: rgba(242, 238, 250, 0.85); }
-.tr-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 200px)); gap: 12px; width: 100%; justify-content: center; }
+.tr-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 200px)); gap: 12px; width: 100%; justify-content: center; }
 .tr-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(20, 14, 32, 0.85); color: #f2eefa; text-align: left; cursor: pointer; font-family: inherit; }
 .tr-card strong { font: 900 24px "Arial Black", system-ui, sans-serif; }
 .tr-card span { font-size: 13px; line-height: 1.4; color: rgba(242, 238, 250, 0.8); }
 .tr-card em { font: 700 11px var(--font-geist-mono), ui-monospace, monospace; font-style: normal; color: #ffc857; }
+.tr-card.is-moto strong { color: #ff4d4d; }
+.tr-card.is-trancada { opacity: 0.45; cursor: not-allowed; border-style: dashed; }
+.tr-card.is-trancada strong { color: rgba(242, 238, 250, 0.6); }
+/* T14: o nariz da moto (no ar: verde = vai cair alinhado) */
+.tr-nariz { display: block; width: 56px; height: 18px; margin-top: 6px; position: relative; }
+.tr-nariz span { position: absolute; left: 8px; right: 8px; top: 8px; height: 3px; border-radius: 2px; background: rgba(242, 238, 250, 0.5); transform-origin: 50% 50%; }
 .tr-card.is-bmx strong { color: #ff7a3c; } .tr-card.is-patins strong { color: #ff3fb0; } .tr-card.is-skate strong { color: #7dffb0; }
 .tr-card:hover, .tr-card:focus-visible { border-color: #fff; outline: none; }
 .tr-passeio { font: 700 11px var(--font-geist-mono), ui-monospace, monospace !important; color: rgba(242, 238, 250, 0.6) !important; }
@@ -52,6 +58,7 @@
 .tr-fim li i { width: 10px; height: 10px; border-radius: 50%; } .tr-fim li span { margin-left: auto; font-variant-numeric: tabular-nums; }
 .tr-fim-parciais { margin: 0; text-align: center; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(242, 238, 250, 0.6); }
 .tr-fim-botoes button { padding: 10px 18px; font-size: 13px; }
+@media (max-width: 900px) { .tr-cards { grid-template-columns: repeat(2, minmax(0, 200px)); } }
 @media (max-width: 640px) {
   .tr-cards { grid-template-columns: 1fr; max-width: 360px; }
   .tr-card { padding: 12px 14px; }

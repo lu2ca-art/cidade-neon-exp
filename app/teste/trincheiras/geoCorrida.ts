@@ -94,7 +94,19 @@ export function geoCorredor(veiculo: Veiculo, corHex: string): THREE.BufferGeome
   const neon = cor.clone().lerp(branco, 0.35)
   const g: THREE.BufferGeometry[] = []
   const cabeca = (y: number, z = 0) => { const s = new THREE.SphereGeometry(0.15, 10, 8); s.translate(0, y, z); g.push(pintar(s, pele)); g.push(caixa(0.32, 0.07, 0.32, 0, y + 0.11, z, escuro)) }
-  if (veiculo === "bmx") {
+  if (veiculo === "moto") {
+    // a moto: pneus grossos, o tanque e o banco, o paralama alto; o piloto de capacete
+    g.push(roda(0.38, 0, 0.38, 0.66, escuro, 0.16), roda(0.38, 0, 0.38, -0.62, escuro, 0.16))
+    g.push(roda(0.18, 0, 0.38, 0.66, neon, 0.17), roda(0.18, 0, 0.38, -0.62, neon, 0.17))
+    g.push(caixa(0.2, 0.3, 0.5, 0, 0.5, 0, escuro), caixa(0.32, 0.2, 0.42, 0, 0.82, 0.18, cor), caixa(0.22, 0.08, 0.6, 0, 0.86, -0.32, escuro))
+    g.push(caixa(0.2, 0.03, 0.42, 0, 0.8, -0.78, cor, 0.35), caixa(0.06, 0.9, 0.06, 0, 0.75, 0.55, branco, -0.42), caixa(0.7, 0.04, 0.04, 0, 1.25, 0.38, escuro))
+    g.push(caixa(0.26, 0.22, 0.03, 0, 1.15, 0.5, branco, -0.35))
+    g.push(caixa(0.13, 0.7, 0.15, -0.2, 0.78, -0.05, escuro, 0.25), caixa(0.13, 0.7, 0.15, 0.2, 0.78, -0.05, escuro, 0.25))
+    g.push(caixa(0.42, 0.58, 0.26, 0, 1.38, 0.08, cor, 0.6))
+    g.push(caixa(0.1, 0.48, 0.1, -0.28, 1.38, 0.34, cor, 1.15), caixa(0.1, 0.48, 0.1, 0.28, 1.38, 0.34, cor, 1.15))
+    const cap = new THREE.SphereGeometry(0.19, 10, 8); cap.translate(0, 1.8, 0.3); g.push(pintar(cap, branco))
+    g.push(caixa(0.24, 0.08, 0.08, 0, 1.82, 0.46, neon))
+  } else if (veiculo === "bmx") {
     // a bicicleta: duas rodas, o quadro e o guidão; o piloto em pé nos pedais
     g.push(roda(0.3, 0, 0.3, 0.52, escuro, 0.06), roda(0.3, 0, 0.3, -0.5, escuro, 0.06))
     g.push(roda(0.12, 0, 0.3, 0.52, neon, 0.07), roda(0.12, 0, 0.3, -0.5, neon, 0.07))

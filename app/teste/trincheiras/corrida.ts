@@ -8,10 +8,11 @@
 // Só a lógica (sem React nem three): a física de cada veículo, os portões,
 // os rivais, o fantasma e os recordes.
 
-import { AVENIDAS, CURVA, LEITO, NOME_AVENIDA, PRACA, TORRES, VOLTA, perfil, type P2 } from "./mapa"
+import { AVENIDAS, CURVA, LEITO, NOME_AVENIDA, PRACA, SUBIDA_MAX, TETO, TORRES, VOLTA, perfil, type P2 } from "./mapa"
 
-export type Veiculo = "bmx" | "patins" | "skate"
-export const VEICULOS: Veiculo[] = ["bmx", "patins", "skate"]
+// T14: a moto chega depois (trancada na escolha; ?motos libera)
+export type Veiculo = "bmx" | "patins" | "skate" | "moto"
+export const VEICULOS: Veiculo[] = ["bmx", "patins", "skate", "moto"]
 
 // a sensação de cada um (m/s, m/s², 1/s). Patins = o que já existia no T11.
 export type Fisica = {
@@ -29,12 +30,16 @@ export type Fisica = {
   durManobra: number
   grind: boolean // skate: segura o botão na beira de cima da parede e desliza no trilho
   embalo: number // skate: subiu na parede e voltou pro leito, ganha (m/s por metro de altura)
+  moto: boolean // T14: a física da moto (moto.ts): peso pra frente/trás e wall-ride
 }
 
 export const FISICA: Record<Veiculo, Fisica> = {
-  patins: { vmax: 30, acel: 15, excesso: 8, rolar: 1.2, aderencia: 7, pulo: 7.5, voo: 0.9, giroAr: 4.2, bonus: 0, jato: true, manobras: [], durManobra: 0, grind: false, embalo: 0 },
-  bmx: { vmax: 29, acel: 17, excesso: 3.5, rolar: 1.6, aderencia: 10, pulo: 9.8, voo: 1.15, giroAr: 5.6, bonus: 3.2, jato: false, manobras: ["BARSPIN", "TAILWHIP", "SUPERMAN"], durManobra: 0.5, grind: false, embalo: 0 },
-  skate: { vmax: 26, acel: 11, excesso: 1.4, rolar: 0.35, aderencia: 6, pulo: 7.2, voo: 0.95, giroAr: 4.6, bonus: 2, jato: false, manobras: ["KICKFLIP", "HEELFLIP"], durManobra: 0.42, grind: true, embalo: 1.6 },
+  patins: { vmax: 30, acel: 15, excesso: 8, rolar: 1.2, aderencia: 7, pulo: 7.5, voo: 0.9, giroAr: 4.2, bonus: 0, jato: true, manobras: [], durManobra: 0, grind: false, embalo: 0, moto: false },
+  bmx: { vmax: 29, acel: 17, excesso: 3.5, rolar: 1.6, aderencia: 10, pulo: 9.8, voo: 1.15, giroAr: 5.6, bonus: 3.2, jato: false, manobras: ["BARSPIN", "TAILWHIP", "SUPERMAN"], durManobra: 0.5, grind: false, embalo: 0, moto: false },
+  skate: { vmax: 26, acel: 11, excesso: 1.4, rolar: 0.35, aderencia: 6, pulo: 7.2, voo: 0.95, giroAr: 4.6, bonus: 2, jato: false, manobras: ["KICKFLIP", "HEELFLIP"], durManobra: 0.42, grind: true, embalo: 1.6, moto: false },
+  // a moto: motocross leve (pula alto, gira fácil no ar), mas a mais rápida;
+  // o resto da sensação (empinar, pouso, wall-ride) fica em AJUSTE_MOTO (moto.ts)
+  moto: { vmax: 35, acel: 19, excesso: 3, rolar: 2.2, aderencia: 9, pulo: 8.5, voo: 1.05, giroAr: 3.2, bonus: 2.6, jato: false, manobras: [], durManobra: 0, grind: false, embalo: 0, moto: true },
 }
 export const V_TETO = 38 // ninguém passa disso (138 km/h)
 export const V_GRIND = 36
@@ -44,6 +49,7 @@ export const INFO: Record<Veiculo, { nome: string; frase: string; acao: string; 
   bmx: { nome: "BMX", frase: "pulos e manobras: no ar, aperte a manobra; caia limpo e ganhe embalo", acao: "manobra", teclas: "espaço pula · shift ou E: manobra no ar (barspin, tailwhip, superman) · setas giram no ar: 360 também vale" },
   patins: { nome: "PATINS", frase: "o jato das costas e as paredes: suba rápido e voe da borda", acao: "jato", teclas: "espaço pula · shift ou E: o jato · suba nas paredes, rápido você voa" },
   skate: { nome: "SKATE", frase: "grind e embalo: desça as paredes pra ganhar velocidade e deslize no trilho lá em cima", acao: "grind", teclas: "zigue-zague nas paredes dá embalo · segure shift ou E na beira de cima: grind no trilho · no ar: kickflip" },
+  moto: { nome: "MOTO", frase: "motocross leve: suba rápido na parede e ande nela; no ar, jogue o peso e caia de rodas no chão", acao: "empina", teclas: "suba rápido na parede: anda nela (vire pra parede pra subir) · shift ou E empina · no ar: ▲ peso pra frente, ▼ peso pra trás · caia alinhado" },
 }
 
 // ── a volta: o comprimento acumulado de cada ponto da linha do meio ──
@@ -67,11 +73,14 @@ export function naVolta(d: number, lado: number, out: Pose): Pose {
   const tx = (b.x - a.x) / (seg || 1), tz = (b.z - a.z) / (seg || 1)
   const nx = tz, nz = -tx // a direita de quem anda (yaw = atan2(tx, tz))
   const e = Math.abs(lado) - LEITO, p = perfil(e), s = Math.sign(lado) || 1
-  out.x = a.x + (b.x - a.x) * f + nx * lado
-  out.z = a.z + (b.z - a.z) * f + nz * lado
-  out.y = p.y
+  // T14: passou da curva = andando na parede (as motos rivais): sobe na parede em pé
+  const naParede = e > SUBIDA_MAX
+  const l = naParede ? s * (LEITO + CURVA - 0.05) : lado
+  out.x = a.x + (b.x - a.x) * f + nx * l
+  out.z = a.z + (b.z - a.z) * f + nz * l
+  out.y = naParede ? Math.min(TETO - 1.6, p.y + (e - SUBIDA_MAX) * 1.5) : p.y
   out.yaw = Math.atan2(tx, tz)
-  out.incl = p.incl
+  out.incl = naParede ? 12 : p.incl
   out.nx = nx * s; out.nz = nz * s
   return out
 }
@@ -113,25 +122,40 @@ const RIVAIS_BASE: Omit<Rival, "d" | "v" | "lado" | "fim" | "ant">[] = [
   { nome: "CORUJA", veiculo: "skate", cor: "#7dffb0", base: 27.2, fase: 2.2 },
   { nome: "RATO", veiculo: "patins", cor: "#c08cff", base: 27.8, fase: 4.3 },
 ]
-const ladoDe = (r: { fase: number }, d: number) => 8 * Math.sin(d * 0.008 + r.fase) + 2.5 * Math.sin(d * 0.027 + r.fase * 2)
-export function criarRivais(): Rival[] {
-  return RIVAIS_BASE.map((r, i) => { const d = -3 - i * 2.5, lado = ladoDe(r, d); return { ...r, d, v: 0, lado, fim: null, ant: { d, lado } } })
+// T14: as motos rivais (RASCUNHO: nomes e cores). Mais rápidas e mais
+// juntas (corrida pesada): o elástico aperta mais, e elas sobem nas paredes
+const RIVAIS_MOTO: Omit<Rival, "d" | "v" | "lado" | "fim" | "ant">[] = [
+  { nome: "TROVÃO", veiculo: "moto", cor: "#ff4d4d", base: 33.4, fase: 0.3 },
+  { nome: "VESPA", veiculo: "moto", cor: "#ffd23f", base: 32.9, fase: 1.9 },
+  { nome: "LAMA", veiculo: "moto", cor: "#9cff57", base: 32.4, fase: 3.4 },
+  { nome: "SOMBRA", veiculo: "moto", cor: "#8f7bff", base: 31.8, fase: 5.0 },
+]
+const ladoDe = (r: { fase: number; veiculo: Veiculo }, d: number) => {
+  if (r.veiculo !== "moto") return 8 * Math.sin(d * 0.008 + r.fase) + 2.5 * Math.sin(d * 0.027 + r.fase * 2)
+  // a moto: serpenteia no leito e, de vez em quando, sobe e anda na parede
+  const base = 6.5 * Math.sin(d * 0.009 + r.fase), parede = 9.5 * Math.max(0, Math.sin(d * 0.0105 + r.fase * 3)) ** 6
+  return base + (Math.sign(base) || 1) * parede
+}
+export function criarRivais(veiculo: Veiculo = "patins"): Rival[] {
+  const lista = veiculo === "moto" ? RIVAIS_MOTO : RIVAIS_BASE
+  return lista.map((r, i) => { const d = -3 - i * 2.5, lado = ladoDe(r, d); return { ...r, d, v: 0, lado, fim: null, ant: { d, lado } } })
 }
 // anda um passo: corre na base (com um balanço) e, se o jogador ficou muito
 // pra trás ou muito na frente, o elástico aperta (a corrida fica disputada)
-export function passoRival(r: Rival, dt: number, tempo: number, progJogador: number, correndo: boolean) {
+export function passoRival(r: Rival, dt: number, tempo: number, progJogador: number, correndo: boolean, voltas = 1) {
   r.ant.d = r.d; r.ant.lado = r.lado
   let alvo = 0
   if (correndo && r.fim == null) {
     alvo = r.base * (1 + 0.05 * Math.sin(tempo * 0.37 + r.fase))
     const dif = r.d - progJogador
-    if (dif > 90) alvo *= 0.93
-    else if (dif < -70) alvo *= 1.08
+    const moto = r.veiculo === "moto" // corrida pesada: o bolo fica mais junto
+    if (dif > (moto ? 60 : 90)) alvo *= moto ? 0.9 : 0.93
+    else if (dif < (moto ? -45 : -70)) alvo *= moto ? 1.12 : 1.08
   }
   r.v += Math.max(-8 * dt, Math.min(5 * dt, alvo - r.v))
   r.d += r.v * dt
   r.lado = ladoDe(r, r.d)
-  if (correndo && r.fim == null && r.d >= L_VOLTA) r.fim = tempo
+  if (correndo && r.fim == null && r.d >= L_VOLTA * voltas) r.fim = tempo
 }
 
 // ── o fantasma e os recordes (no aparelho) ──

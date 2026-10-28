@@ -15,6 +15,9 @@
 // ?medir expõe __gl/__cena/__cam/__estado; ?auto liga o piloto automático;
 // ?livre (ou ?auto sozinho) = passeio sem corrida; ?veiculo=bmx|patins|skate
 // larga direto; ?corrida com ?auto: mostra a escolha e o piloto corre.
+// T14: a MOTO é o 4º cartão, trancado (as motos chegam depois); ?motos libera
+// (e ?motos&veiculo=moto larga direto). ?parede: o piloto automático da moto
+// anda nas paredes. 4 motos rivais, 2 voltas, tranco.
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import Link from "next/link"
@@ -36,7 +39,8 @@ import {
 import { geoAtlas, geoConcreto, geoNeon, geoPoeira, geoVidro, raizes, texturaAtlas } from "./geo"
 import { geoCorredor, geoPortao, geoTrilho } from "./geoCorrida"
 import { AVENIDAS, COR_AVENIDA, NOME_AVENIDA, NOME_TORRE, PRACA, TETO, TORRES, ondeEsta, perfil } from "./mapa"
-import { Ciclista, Skatista, type Manobra } from "./Pilotos"
+import { pilotoMoto } from "./moto"
+import { Ciclista, Motoqueiro, Skatista, type Manobra } from "./Pilotos"
 import "./trincheiras.css"
 
 const NEVOA = "#1a0f24"
@@ -44,11 +48,10 @@ const NEVOA = "#1a0f24"
 function nomeDe(o: Estado["onde"]) { return o.tipo === "praca" ? NOME_TORRE[o.i] : NOME_AVENIDA[o.i] }
 
 const PORTOES = [LARGADA, ...CHECKPOINTS, CHEGADA]
-const CORES_RIVAIS = criarRivais().map((r) => r.cor)
 type Painel = { recordeAntes: number | null; fantasma: boolean; resultado: Corrida["resultado"]; parciais: number[] }
 
-function Mundo({ rodada, st, entrada, auto, veiculo, corrida, mudouFase }: {
-  rodada: number; st: React.MutableRefObject<Estado>; entrada: React.MutableRefObject<Entrada>; auto: boolean; veiculo: Veiculo
+function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase }: {
+  rodada: number; st: React.MutableRefObject<Estado>; entrada: React.MutableRefObject<Entrada>; auto: boolean; parede: boolean; veiculo: Veiculo
   corrida: React.MutableRefObject<Corrida>; mudouFase: (f: Fase) => void
 }) {
   const { scene, camera, gl } = useThree()
@@ -61,7 +64,7 @@ function Mundo({ rodada, st, entrada, auto, veiculo, corrida, mudouFase }: {
   const rz = useMemo(() => raizes(), [])
   const portoes = useMemo(() => PORTOES.map(geoPortao), [])
   const trilho = useMemo(() => geoTrilho(), [])
-  const corpos = useMemo(() => criarRivais().map((r) => geoCorredor(r.veiculo, r.cor)), [])
+  const corpos = useMemo(() => criarRivais(veiculo).map((r) => geoCorredor(r.veiculo, r.cor)), [veiculo])
   const corpoFantasma = useMemo(() => geoCorredor(veiculo, "#bff6ff"), [veiculo])
   const raizRef = useRef<THREE.InstancedMesh>(null)
   const corpo = useRef<THREE.Group>(null)
@@ -71,7 +74,7 @@ function Mundo({ rodada, st, entrada, auto, veiculo, corrida, mudouFase }: {
   const ultCp = useRef(-1)
   const acc = useRef(0)
   const cam = useRef({ p: new THREE.Vector3(), olhar: new THREE.Vector3(), ok: false })
-  const tmp = useMemo(() => ({ q: new THREE.Quaternion(), qy: new THREE.Quaternion(), n: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), alvo: new THREE.Vector3(), olha: new THREE.Vector3(), pose: { x: 0, z: 0, y: 0, yaw: 0, incl: 0, nx: 0, nz: 0 } as Pose, fp: { x: 0, z: 0, y: 0, yaw: 0 } }), [])
+  const tmp = useMemo(() => ({ q: new THREE.Quaternion(), qy: new THREE.Quaternion(), n: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), alvo: new THREE.Vector3(), olha: new THREE.Vector3(), pose: { x: 0, z: 0, y: 0, yaw: 0, incl: 0, nx: 0, nz: 0 } as Pose, fp: { x: 0, z: 0, y: 0, yaw: 0 }, m: new THREE.Matrix4(), f: new THREE.Vector3(), w: new THREE.Vector3(), r: new THREE.Vector3() }), [])
   const V = FISICA[veiculo]
   const emCorrida = corrida.current.fase !== "livre"
 
@@ -97,7 +100,7 @@ function Mundo({ rodada, st, entrada, auto, veiculo, corrida, mudouFase }: {
     acc.current = Math.min(acc.current + Math.min(dtq, 0.1), 0.25)
     const travado = c.fase === "contagem" || c.fase === "escolha"
     while (acc.current >= PASSO) {
-      const ent = c.fase === "chegou" ? PARADO : auto ? piloto(s) : entrada.current
+      const ent = c.fase === "chegou" ? PARADO : auto ? (V.moto ? pilotoMoto(s, parede) : piloto(s)) : entrada.current
       passo(s, ent, PASSO, V, travado, c.fase === "livre" ? s.dist : c.tempo + (CONTAGEM - c.conta))
       if (c.fase !== "livre") passoCorrida(c, s, PASSO, veiculo, mudouFase)
       acc.current -= PASSO
@@ -114,6 +117,17 @@ function Mundo({ rodada, st, entrada, auto, veiculo, corrida, mudouFase }: {
       tmp.q.setFromUnitVectors(tmp.up, tmp.n)
       tmp.qy.setFromAxisAngle(tmp.up, yaw)
       g.quaternion.copy(tmp.q).multiply(tmp.qy)
+      if (s.parede) {
+        // T14: na parede, as rodas na parede e o nariz na direção em que anda (subindo ou descendo)
+        tmp.f.set(Math.sin(yaw), 0, Math.cos(yaw))
+        tmp.w.crossVectors(tmp.f, tmp.n).normalize(); if (tmp.w.y < 0) tmp.w.negate()
+        const a = Math.max(-0.6, Math.min(0.6, s.pitch))
+        tmp.f.multiplyScalar(Math.cos(a)).addScaledVector(tmp.w, Math.sin(a))
+        tmp.f.addScaledVector(tmp.n, -tmp.f.dot(tmp.n)).normalize()
+        tmp.r.crossVectors(tmp.n, tmp.f).normalize()
+        tmp.m.makeBasis(tmp.r, tmp.n, tmp.f)
+        g.quaternion.setFromRotationMatrix(tmp.m)
+      }
     }
     if (emCorrida) {
       // os rivais (interpolados igual) e o fantasma
@@ -165,6 +179,8 @@ function Mundo({ rodada, st, entrada, auto, veiculo, corrida, mudouFase }: {
   const steer = () => (entrada.current.esq ? 1 : 0) - (entrada.current.dir ? 1 : 0)
   const noAr = () => st.current.ar
   const manobra = (): Manobra => { const m = st.current.manobra; return m ? { tipo: m.tipo, p: Math.min(1, m.t / (V.durManobra || 1)) } : null }
+  // o nariz da moto em relação ao corpo: no chão, a empinada; no ar, o nariz todo; na parede, a base já faz
+  const pitchMoto = () => { const m = st.current; return m.parede ? 0 : m.ar ? m.pitch : m.pitch - m.pitchChao }
   return (
     <>
       <hemisphereLight args={["#8a68b8", "#2a1f3c", 2]} />
@@ -200,6 +216,7 @@ function Mundo({ rodada, st, entrada, auto, veiculo, corrida, mudouFase }: {
         )}
         {veiculo === "bmx" && <Ciclista vel={vel} steer={steer} ar={noAr} manobra={manobra} />}
         {veiculo === "skate" && <Skatista vel={vel} steer={steer} ar={noAr} manobra={manobra} grind={() => st.current.grind} empurra={() => st.current.empurrando} />}
+        {veiculo === "moto" && <Motoqueiro vel={vel} steer={steer} ar={noAr} pitch={pitchMoto} empurra={() => entrada.current.frente || auto} />}
       </group>
     </>
   )
@@ -219,9 +236,9 @@ function Mapinha({ ponto, rivais, cores }: { ponto: React.RefObject<SVGCircleEle
   )
 }
 
-function lerVeiculo(q: URLSearchParams): Veiculo | null {
+function lerVeiculo(q: URLSearchParams, motos: boolean): Veiculo | null {
   const v = q.get("veiculo")
-  return v === "bmx" || v === "patins" || v === "skate" ? v : null
+  return v === "bmx" || v === "patins" || v === "skate" || (v === "moto" && motos) ? v : null
 }
 
 export function Trincheiras() {
@@ -229,6 +246,8 @@ export function Trincheiras() {
   const entrada = useRef<Entrada>({ frente: false, re: false, esq: false, dir: false, pulo: false, jato: false })
   const corrida = useRef<Corrida>(corridaInicial("escolha"))
   const [auto, setAuto] = useState(false)
+  const [parede, setParede] = useState(false)
+  const [motos, setMotos] = useState(false) // T14: as motos chegam depois (?motos libera)
   const [fixa, setFixa] = useState<number | null>(null)
   const [intro, setIntro] = useState(false)
   const [fase, setFase] = useState<Fase>("escolha")
@@ -247,12 +266,14 @@ export function Trincheiras() {
   const jatoRef = useRef<HTMLSpanElement>(null)
   const ponto = useRef<SVGCircleElement>(null)
   const pontosRivais = useRef<(SVGCircleElement | null)[]>([])
+  const narizRef = useRef<HTMLSpanElement>(null)
+  const coresRivais = useMemo(() => criarRivais(veiculo).map((r) => r.cor), [veiculo])
 
   // larga: zera o piloto e a corrida, carrega o fantasma, começa a contagem
   const largar = (v: Veiculo) => {
     const recs = lerRecordes(), r = recs[v]
     st.current = estadoInicial()
-    const c = corridaInicial("contagem")
+    const c = corridaInicial("contagem", v)
     c.fantasma = r ?? null
     c.recordeAntes = r ? r.ms / 1000 : null
     corrida.current = c
@@ -261,7 +282,7 @@ export function Trincheiras() {
   }
   const passear = (v: Veiculo) => {
     st.current = estadoInicial()
-    corrida.current = corridaInicial("livre")
+    corrida.current = corridaInicial("livre", v)
     setVeiculo(v); setFase("livre"); setIntro(true); setRodada((n) => n + 1)
   }
   const escolher = () => { corrida.current = corridaInicial("escolha"); st.current = estadoInicial(); setRecordes(lerRecordes()); setFase("escolha"); setIntro(false); setRodada((n) => n + 1) }
@@ -272,9 +293,11 @@ export function Trincheiras() {
 
   useEffect(() => {
     const q = new URLSearchParams(location.search)
-    const v = lerVeiculo(q)
+    const v = lerVeiculo(q, q.has("motos"))
     /* eslint-disable react-hooks/set-state-in-effect -- lê a URL uma vez, no cliente */
     if (q.has("auto")) setAuto(true)
+    if (q.has("parede")) setParede(true)
+    if (q.has("motos")) setMotos(true)
     const d = q.get("dpr"); if (q.has("medir") && d) setFixa(+d)
     setRecordes(lerRecordes())
     // ?livre, ou ?auto sozinho (a medição e o teste do T11): passeio
@@ -288,6 +311,8 @@ export function Trincheiras() {
         x: +s.x.toFixed(1), z: +s.z.toFixed(1), y: +s.y.toFixed(2), kmh: Math.round(Math.hypot(s.vx, s.vz) * 3.6), dist: Math.round(s.dist), ar: s.ar, onde: nomeDe(s.onde), voos: s.voos,
         fase: c.fase, cp: c.cp, tempo: +c.tempo.toFixed(2), lugar: c.lugar, grind: s.grind, manobras: s.total.manobras, grinds: s.total.grinds, tombos: s.total.tombos,
         rivais: c.rivais.map((r) => ({ nome: r.nome, d: Math.round(r.d), fim: r.fim })), resultado: c.resultado,
+        // T14: a moto
+        volta: c.volta, voltas: c.voltas, parede: s.parede, paredes: s.total.paredes, paredeMaxT: +s.paredeMaxT.toFixed(2), pousos: s.total.pousos, flips: s.total.flips, pitch: +s.pitch.toFixed(2),
       }
     }
   }, [])
@@ -315,11 +340,18 @@ export function Trincheiras() {
         torreRef.current.textContent = perto ? `${NOME_TORRE[perto.i]} · a porta sobe pra rua (em breve)` : ""
       }
       if (jatoRef.current) jatoRef.current.style.transform = `scaleX(${Math.max(0, 1 - s.jatoT / 2.5)})`
+      // a moto: o nariz (no ar, pra acertar o pouso: verde = alinhado com o chão embaixo)
+      if (narizRef.current) {
+        const dif = Math.abs(Math.atan2(Math.sin(s.pitch - s.pitchChao), Math.cos(s.pitch - s.pitchChao)))
+        narizRef.current.style.transform = `rotate(${(-s.pitch * 180 / Math.PI).toFixed(0)}deg)`
+        narizRef.current.style.background = s.parede ? "#ffc857" : !s.ar ? "rgba(242,238,250,0.5)" : dif < 0.22 ? "#7dffb0" : dif < 0.55 ? "#ffc857" : "#ff4d4d"
+      }
       const agora = c.fase === "livre" ? s.dist : c.tempo + (CONTAGEM - c.conta)
       if (avisoRef.current) avisoRef.current.textContent = s.aviso && s.aviso.ate > agora ? s.aviso.txt : ""
       if (c.fase === "livre" || c.fase === "escolha") return
       if (tempoRef.current) tempoRef.current.textContent = relogio(c.resultado ? c.resultado.tempo : c.tempo)
-      if (cpRef.current) cpRef.current.textContent = c.cp < CHECKPOINTS.length ? `portão ${c.cp}/${CHECKPOINTS.length} · próximo: ${CHECKPOINTS[c.cp].nome}` : "3/3 · volte pra TORRE 1"
+      const vt = c.voltas > 1 ? `volta ${c.volta}/${c.voltas} · ` : ""
+      if (cpRef.current) cpRef.current.textContent = vt + (c.cp < CHECKPOINTS.length ? `portão ${c.cp}/${CHECKPOINTS.length} · próximo: ${CHECKPOINTS[c.cp].nome}` : `3/3 · volte pra TORRE 1${c.volta < c.voltas ? " (mais uma volta)" : ""}`)
       if (lugarRef.current) lugarRef.current.textContent = `${c.lugar}º de ${c.rivais.length + 1}`
       if (contaRef.current) contaRef.current.textContent = c.fase === "contagem" ? String(Math.max(1, Math.ceil(c.conta))) : c.fase === "correndo" && c.tempo < 0.8 ? "VAI!" : ""
       c.rivais.forEach((r, i) => {
@@ -345,7 +377,7 @@ export function Trincheiras() {
   return (
     <div className="tr-raiz">
       <Canvas className="tr-cvs" dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: 600 }}>
-        <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
+        <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
       </Canvas>
@@ -354,7 +386,8 @@ export function Trincheiras() {
         <div className="tr-vel">
           <span ref={velRef} className="tr-vel-n">0</span><small>km/h · {INFO[veiculo].nome.toLowerCase()}</small>
           {veiculo === "patins" && <span className="tr-jato" aria-hidden><span ref={jatoRef} /></span>}
-          {emCorrida && <span ref={lugarRef} className="tr-lugar">1º de 4</span>}
+          {veiculo === "moto" && <span className="tr-nariz" aria-hidden><span ref={narizRef} /></span>}
+          {emCorrida && <span ref={lugarRef} className="tr-lugar">1º de {coresRivais.length + 1}</span>}
         </div>
         <p className="tr-onde"><span ref={ondeRef}>{NOME_TORRE[0]}</span></p>
         {emCorrida && (
@@ -364,7 +397,7 @@ export function Trincheiras() {
             <span className="tr-rec">recorde {INFO[veiculo].nome}: {relogio(painel.recordeAntes)}{painel.fantasma ? " · o fantasma corre junto" : ""}</span>
           </div>
         )}
-        <Mapinha ponto={ponto} rivais={pontosRivais} cores={emCorrida ? CORES_RIVAIS : null} />
+        <Mapinha ponto={ponto} rivais={pontosRivais} cores={emCorrida ? coresRivais : null} />
         <p ref={torreRef} className="tr-torre" />
         <p ref={contaRef} className="tr-conta" />
         <p ref={avisoRef} className="tr-aviso" />
@@ -373,17 +406,20 @@ export function Trincheiras() {
       {fase === "escolha" && (
         <div className="tr-escolha">
           <h1>A CORRIDA DAS TRINCHEIRAS</h1>
-          <p>uma volta no triângulo: larga na TORRE 1, passa pelos 3 rios secos e volta. Três rivais e o seu fantasma.</p>
+          <p>uma volta no triângulo: larga na TORRE 1, passa pelos 3 rios secos e volta. Três rivais e o seu fantasma.{motos ? " De moto: duas voltas contra quatro motos." : ""}</p>
           <div className="tr-cards">
-            {VEICULOS.map((v) => (
-              <button key={v} type="button" className={`tr-card is-${v}`} onClick={() => largar(v)} data-veiculo={v}>
-                <strong>{INFO[v].nome}</strong>
-                <span>{INFO[v].frase}</span>
-                <em>recorde: {relogio(recordes[v] ? recordes[v]!.ms / 1000 : null)}</em>
-              </button>
-            ))}
+            {VEICULOS.map((v) => {
+              const trancada = v === "moto" && !motos
+              return (
+                <button key={v} type="button" className={`tr-card is-${v}${trancada ? " is-trancada" : ""}`} onClick={() => largar(v)} data-veiculo={v} disabled={trancada} aria-disabled={trancada}>
+                  <strong>{INFO[v].nome}</strong>
+                  <span>{trancada ? "as motos chegam depois" : INFO[v].frase}</span>
+                  <em>{trancada ? "trancada · em breve" : `recorde: ${relogio(recordes[v] ? recordes[v]!.ms / 1000 : null)}`}</em>
+                </button>
+              )
+            })}
           </div>
-          <p className="tr-passeio">ou só passear: {VEICULOS.map((v) => <button key={v} type="button" onClick={() => passear(v)}>{INFO[v].nome.toLowerCase()}</button>)}</p>
+          <p className="tr-passeio">ou só passear: {VEICULOS.filter((v) => v !== "moto" || motos).map((v) => <button key={v} type="button" onClick={() => passear(v)}>{INFO[v].nome.toLowerCase()}</button>)}</p>
         </div>
       )}
 

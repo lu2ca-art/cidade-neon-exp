@@ -10,6 +10,7 @@ import {
 } from "./corrida"
 import { TRILHO_E, TRILHO_Y } from "./geoCorrida"
 import { AVENIDAS, SUBIDA_MAX, TORRES, VOLTA, batenaTorre, ondeEsta, perfil } from "./mapa"
+import { AJUSTE_MOTO, passoMoto, tranco } from "./moto"
 
 export const PASSO = 1 / 120
 export const G = 22 // gravidade (forte: o pulo é seco, como nos jogos de patins)
@@ -25,13 +26,18 @@ export type Estado = {
   // T13: as manobras, o grind, o tombo
   acaoAnt: boolean; manobra: { tipo: string; t: number } | null; limpas: number; giro: number; tombo: number
   grind: boolean; grindT: number; empurrando: boolean; paredeMax: number
-  aviso: { txt: string; ate: number } | null; total: { manobras: number; grinds: number; tombos: number }
+  aviso: { txt: string; ate: number } | null; total: { manobras: number; grinds: number; tombos: number; paredes: number; pousos: number; flips: number }
+  // T14: a moto. pitch = o nariz (rad, + pra cima, em relação ao horizonte); pitchChao = o do chão na direção em que anda;
+  // parede = andando na parede (wall-ride), com a altura em y e a velocidade de subir em vy
+  pitch: number; wPitch: number; pitchChao: number; rotAr: number; parede: boolean; paredeT: number; paredeMaxT: number; trancoT: number
+  gasNeutro: boolean // o acelerador segurado desde o chão não joga o peso pra frente no ar (só depois de soltar e apertar de novo)
 }
 export type Fase = "escolha" | "contagem" | "correndo" | "chegou" | "livre"
 export type Corrida = {
   fase: Fase; conta: number; tempo: number; cp: number; parciais: number[]
   rivais: Rival[]; rastro: number[]; proxRastro: number
   fantasma: Recorde | null; recordeAntes: number | null; lugar: number; progresso: number
+  volta: number; voltas: number // T14: a moto corre mais de uma volta
   resultado: { tempo: number; lugar: number; novo: boolean; rivais: { nome: string; cor: string; fim: number | null }[] } | null
 }
 
@@ -41,11 +47,12 @@ export function estadoInicial(): Estado {
   const yaw = Math.atan2(a.x - t.x, a.z - t.z)
   return {
     x: t.x, z: t.z, y: 0, vx: 0, vz: 0, vy: 0, yaw, ar: false, incl: 0, nx: 0, nz: 1, dist: 0, jatoT: 0, ant: { x: t.x, z: t.z, y: 0, yaw }, onde: ondeEsta(t.x, t.z), iVolta: 0, voos: 0,
-    acaoAnt: false, manobra: null, limpas: 0, giro: 0, tombo: 0, grind: false, grindT: 0, empurrando: false, paredeMax: 0, aviso: null, total: { manobras: 0, grinds: 0, tombos: 0 },
+    acaoAnt: false, manobra: null, limpas: 0, giro: 0, tombo: 0, grind: false, grindT: 0, empurrando: false, paredeMax: 0, aviso: null, total: { manobras: 0, grinds: 0, tombos: 0, paredes: 0, pousos: 0, flips: 0 },
+    pitch: 0, wPitch: 0, pitchChao: 0, rotAr: 0, parede: false, paredeT: 0, paredeMaxT: 0, trancoT: 0, gasNeutro: true,
   }
 }
-export function corridaInicial(fase: Fase): Corrida {
-  return { fase, conta: CONTAGEM, tempo: 0, cp: 0, parciais: [], rivais: criarRivais(), rastro: [], proxRastro: 0, fantasma: null, recordeAntes: null, lugar: 1, progresso: 0, resultado: null }
+export function corridaInicial(fase: Fase, veiculo: Veiculo = "patins"): Corrida {
+  return { fase, conta: CONTAGEM, tempo: 0, cp: 0, parciais: [], rivais: criarRivais(veiculo), rastro: [], proxRastro: 0, fantasma: null, recordeAntes: null, lugar: 1, progresso: 0, resultado: null, volta: 1, voltas: veiculo === "moto" ? AJUSTE_MOTO.voltas : 1 }
 }
 
 // o piloto automático: mira 22 m à frente na linha do meio da volta
@@ -85,6 +92,7 @@ export function passoGrind(s: Estado, e: Entrada, dt: number, V: Fisica, agora: 
 }
 
 export function passo(s: Estado, e: Entrada, dt: number, V: Fisica, travado: boolean, agora: number) {
+  if (V.moto) { passoMoto(s, e, dt, V, travado, agora); return }
   s.ant = { x: s.x, z: s.z, y: s.y, yaw: s.yaw }
   const acaoNova = e.jato && !s.acaoAnt
   s.acaoAnt = e.jato
@@ -220,6 +228,10 @@ export function passoCorrida(c: Corrida, s: Estado, dt: number, veiculo: Veiculo
         c.parciais.push(c.tempo); c.cp++
         avisar(s, `${g.nome} · ${c.cp}/${CHECKPOINTS.length}`, c.tempo + CONTAGEM, 1.6)
       }
+    } else if (Math.hypot(s.x - TORRES[0].c.x, s.z - TORRES[0].c.z) < RAIO_CHEGADA && c.volta < c.voltas) {
+      // T14: mais uma volta (a moto)
+      c.volta++; c.cp = 0
+      avisar(s, `VOLTA ${c.volta}/${c.voltas}`, c.tempo + CONTAGEM, 1.6)
     } else if (Math.hypot(s.x - TORRES[0].c.x, s.z - TORRES[0].c.z) < RAIO_CHEGADA) {
       c.fase = "chegou"
       const novo = c.recordeAntes == null || c.tempo < c.recordeAntes
@@ -235,9 +247,11 @@ export function passoCorrida(c: Corrida, s: Estado, dt: number, veiculo: Veiculo
   let prog = CUM[s.iVolta]
   if (c.cp === 0 && prog > L_VOLTA / 2) prog -= L_VOLTA
   if (c.cp === CHECKPOINTS.length && prog < L_VOLTA / 2) prog += L_VOLTA
+  prog += (c.volta - 1) * L_VOLTA
   c.progresso = prog
   const correndo = c.fase === "correndo" || c.fase === "chegou"
-  for (const r of c.rivais) passoRival(r, dt, c.tempo, prog, correndo)
+  for (const r of c.rivais) passoRival(r, dt, c.tempo, prog, correndo, c.voltas)
+  if (veiculo === "moto" && c.fase === "correndo") tranco(s, c.rivais, c.tempo + CONTAGEM)
   if (c.fase === "correndo") c.lugar = 1 + c.rivais.filter((r) => r.fim != null || r.d > prog).length
 }
 

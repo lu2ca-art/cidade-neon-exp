@@ -5,7 +5,7 @@ import { PASSO, corridaInicial, estadoInicial, passo, passoCorrida, piloto } fro
 
 console.log("volta:", Math.round(L_VOLTA), "m")
 for (const v of VEICULOS) {
-  const s = estadoInicial(), c = corridaInicial("contagem")
+  const s = estadoInicial(), c = corridaInicial("contagem", v)
   let t = 0
   while (c.fase !== "chegou" && t < 200) {
     passo(s, piloto(s), PASSO, FISICA[v], c.fase === "contagem", c.tempo)

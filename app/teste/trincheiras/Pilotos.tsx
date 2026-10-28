@@ -173,3 +173,93 @@ export function Skatista({ vel, steer, ar, manobra, grind = () => false, empurra
     </group>
   )
 }
+
+// T14: a moto (motocross leve). Pneus com cravo, garfo comprido, tanque,
+// banco e o paralama alto; o piloto de capacete e em pé nas pedaleiras. O
+// nariz (peso pra frente/trás, a empinada) gira em torno da roda de trás no
+// chão e do meio da moto no ar.
+const MOTO = "#ff3fb0", PLASTICO = "#f2eefa"
+function PneuCravo({ r }: { r: React.RefObject<THREE.Group | null> }) {
+  return (
+    <group ref={r}>
+      <mesh rotation-y={Math.PI / 2}><torusGeometry args={[0.31, 0.085, 6, 16]} /><meshStandardMaterial color={ESCURO} roughness={0.95} /></mesh>
+      <mesh rotation-z={Math.PI / 2}><cylinderGeometry args={[0.2, 0.2, 0.04, 10]} /><meshBasicMaterial color={NEON} transparent opacity={0.4} toneMapped={false} /></mesh>
+      <mesh rotation-z={Math.PI / 2}><cylinderGeometry args={[0.05, 0.05, 0.14, 8]} /><meshStandardMaterial color="#c9c3d6" metalness={0.6} roughness={0.3} /></mesh>
+    </group>
+  )
+}
+export function Motoqueiro({ vel, steer, ar, pitch, empurra = () => false }: { vel: () => number; steer: () => number; ar: () => boolean; pitch: () => number; empurra?: () => boolean }) {
+  const corpo = useRef<THREE.Group>(null)
+  const pivo = useRef<THREE.Group>(null)
+  const nariz = useRef<THREE.Group>(null)
+  const piloto = useRef<THREE.Group>(null)
+  const rodaF = useRef<THREE.Group>(null)
+  const rodaT = useRef<THREE.Group>(null)
+  const garfo = useRef<THREE.Group>(null)
+  const enc = useRef(0)
+  useFrame((_, dt) => {
+    const v = vel(), s = steer(), noAr = ar(), p = pitch()
+    enc.current += ((noAr ? 1 : 0) - enc.current) * Math.min(1, dt * 10)
+    // no ar a roda gira solta (com o acelerador, mais)
+    const giro = noAr ? (empurra() ? 30 : 12) * dt : (v * dt) / 0.39
+    if (rodaF.current) rodaF.current.rotation.x += giro
+    if (rodaT.current) rodaT.current.rotation.x += giro
+    const forca = Math.min(1, v / 10)
+    if (corpo.current) corpo.current.rotation.z = -s * 0.38 * forca * (1 - enc.current)
+    if (garfo.current) garfo.current.rotation.y = s * 0.22 * (1 - enc.current)
+    // o pivô: a roda de trás no chão (empinada), o meio da moto no ar
+    const zp = -0.62 * (1 - enc.current), yp = 0.4 * enc.current
+    if (pivo.current) pivo.current.position.set(0, yp, zp)
+    if (nariz.current) { nariz.current.position.set(0, -yp, -zp); }
+    if (pivo.current) pivo.current.rotation.x = -p
+    // o piloto: no ar encolhe; o peso vai pra trás quando o nariz sobe
+    if (piloto.current) {
+      piloto.current.position.z = -Math.max(-0.25, Math.min(0.25, p * 0.2))
+      piloto.current.position.y = -enc.current * 0.08
+    }
+  })
+  return (
+    <group ref={corpo}>
+      <group ref={pivo}>
+        <group ref={nariz}>
+          <group position={[0, 0.39, -0.62]}><PneuCravo r={rodaT} /></group>
+          {/* o garfo e a roda da frente (viram com a direção) */}
+          <group ref={garfo} position={[0, 0.39, 0.66]}>
+            <group><PneuCravo r={rodaF} /></group>
+            {[-1, 1].map((l) => (
+              <mesh key={l} position={[l * 0.1, 0.42, -0.12]} rotation-x={-0.42}><cylinderGeometry args={[0.035, 0.035, 0.95, 6]} /><meshStandardMaterial color="#ffc857" metalness={0.5} roughness={0.35} /></mesh>
+            ))}
+            <mesh position={[0, 0.34, 0.05]} rotation-x={-0.25}><boxGeometry args={[0.2, 0.03, 0.42]} /><meshStandardMaterial color={MOTO} /></mesh>
+            <mesh position={[0, 0.88, -0.32]}><boxGeometry args={[0.72, 0.04, 0.04]} /><meshStandardMaterial color={ESCURO} /></mesh>
+            {/* a placa do número */}
+            <mesh position={[0, 0.78, -0.2]} rotation-x={-0.35}><boxGeometry args={[0.26, 0.22, 0.03]} /><meshStandardMaterial color={PLASTICO} /></mesh>
+          </group>
+          {/* o quadro, o motor, o tanque, o banco e o paralama de trás */}
+          <mesh position={[0, 0.48, 0]} rotation-x={0.08}><boxGeometry args={[0.2, 0.3, 0.5]} /><meshStandardMaterial color={ESCURO} metalness={0.5} roughness={0.4} /></mesh>
+          <mesh position={[0, 0.82, 0.18]} rotation-x={-0.1}><boxGeometry args={[0.32, 0.2, 0.42]} /><meshStandardMaterial color={MOTO} roughness={0.5} /></mesh>
+          <mesh position={[0, 0.86, -0.32]} rotation-x={0.08}><boxGeometry args={[0.22, 0.08, 0.62]} /><meshStandardMaterial color={ESCURO} /></mesh>
+          <mesh position={[0, 0.8, -0.78]} rotation-x={0.35}><boxGeometry args={[0.2, 0.03, 0.42]} /><meshStandardMaterial color={MOTO} /></mesh>
+          <mesh position={[0, 0.58, -0.4]} rotation-x={0.5}><boxGeometry args={[0.06, 0.06, 0.55]} /><meshStandardMaterial color="#c9c3d6" metalness={0.6} roughness={0.3} /></mesh>
+          {/* o escape */}
+          <mesh position={[0.17, 0.62, -0.42]} rotation-x={Math.PI / 2 - 0.25}><cylinderGeometry args={[0.05, 0.06, 0.5, 8]} /><meshStandardMaterial color="#8f8aa0" metalness={0.7} roughness={0.25} /></mesh>
+          {/* o piloto em pé nas pedaleiras, braços no guidão */}
+          <group ref={piloto} position={[0, 0.4, -0.05]}>
+            {[-1, 1].map((l) => (
+              <mesh key={l} position={[l * 0.2, 0.36, -0.02]} rotation-x={0.25}><boxGeometry args={[0.15, 0.72, 0.17]} /><meshStandardMaterial color={CALCA} /></mesh>
+            ))}
+            <mesh position={[0, 0.98, 0.1]} rotation-x={0.6}><boxGeometry args={[0.44, 0.6, 0.27]} /><meshStandardMaterial color={CASACO} roughness={0.7} /></mesh>
+            {[-1, 1].map((l) => (
+              <mesh key={l} position={[l * 0.3, 0.98, 0.36]} rotation-x={1.15}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshStandardMaterial color={CASACO} /></mesh>
+            ))}
+            {/* o capacete com a viseira neon */}
+            <group position={[0, 1.4, 0.32]}>
+              <mesh><sphereGeometry args={[0.19, 14, 10]} /><meshStandardMaterial color={PLASTICO} roughness={0.35} /></mesh>
+              <mesh position={[0, 0.02, 0.15]}><boxGeometry args={[0.24, 0.08, 0.08]} /><meshStandardMaterial color={NEON} emissive={NEON} emissiveIntensity={0.8} /></mesh>
+              <mesh position={[0, 0.12, 0.17]} rotation-x={-0.3}><boxGeometry args={[0.26, 0.03, 0.16]} /><meshStandardMaterial color={MOTO} /></mesh>
+            </group>
+          </group>
+        </group>
+      </group>
+    </group>
+  )
+}
