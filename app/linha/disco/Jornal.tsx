@@ -1,6 +1,6 @@
 "use client"
 
-// O JORNAL (LU2CA 19/10: "o jornal do final representa a mídia que falou do
+// O JORNAL, que se chama SUBURBANDAS (LU2CA 28/10, J2:35). (LU2CA 19/10: "o jornal do final representa a mídia que falou do
 // show. Um sistema de mídia: prints e imagens de notícia, poucos e pontuais, e
 // eles definem a popularidade do player"). A manchete sai do show (a nota, o
 // tamanho da plateia, tocou ou cantou); o "print" é arte procedural em canvas
@@ -53,7 +53,7 @@ export function Jornal({ m, cor, onFechar }: { m: Manchete; cor: string; onFecha
   return (
     <div className="l-jornal" onPointerDown={(e) => e.stopPropagation()}>
       <article>
-        <header><b>O NEON DE AMANHÃ</b><small>{data}</small></header>
+        <header><b>SUBURBANDAS</b><small>{data}</small></header>
         <h2>{m.titulo}</h2>
         <canvas ref={foto} aria-label="a foto do show" />
         <p>{m.linha}</p>

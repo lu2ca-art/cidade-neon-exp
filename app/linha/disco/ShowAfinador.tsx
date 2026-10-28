@@ -192,7 +192,7 @@ export function ShowAfinador({ faixa, lugar, cor, popularidade, onFim }: PropsSh
         <div className="l-show-fim">
           <b>{fim.nota > 0.75 ? "afinadíssimo" : fim.nota > 0.5 ? "deu bom" : fim.nota > 0.25 ? "quase lá" : "pelo menos você subiu"}</b>
           <span>{Math.round(fim.nota * 100)}% afinado · {fim.acertos} de {fim.total} notas</span>
-          <button type="button" onClick={() => onFim(fim)}>o jornal de amanhã →</button>
+          <button type="button" onClick={() => onFim(fim)}>o Suburbandas de amanhã →</button>
         </div>
       )}
     </div>

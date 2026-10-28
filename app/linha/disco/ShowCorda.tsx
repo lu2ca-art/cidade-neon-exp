@@ -182,7 +182,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
         <div className="l-show-fim">
           <b>{fim.nota > 0.8 ? "o grave segurou a casa" : fim.nota > 0.5 ? "deu bom" : fim.nota > 0.2 ? "foi" : "pelo menos você subiu"}</b>
           <span>{fim.acertos} de {fim.total} notas</span>
-          <button type="button" onClick={() => onFim(fim)}>o jornal de amanhã →</button>
+          <button type="button" onClick={() => onFim(fim)}>o Suburbandas de amanhã →</button>
         </div>
       )}
     </div>
