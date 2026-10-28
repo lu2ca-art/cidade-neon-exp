@@ -26,6 +26,8 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "nectar" || parte.startsWith("nectar.")) return { fase: "nectar", holo: true, nectar: parte.split(".")[1] || "quebra" }
   if (parte === "carreira.feira" || parte === "feira") return { fase: "carreira", holo: true }
   if (parte === "carreira.meio") return MEIO
+  // (T37) a chegada de um login: quem já passou pela casa entra pelo túnel e cai nela de novo
+  if (parte === "chegada") return MEIO
   if (parte.startsWith("missao.")) {
     // (T19) a peça aberta direto: missao.lu2ca.letra (a arte) e missao.lu2ca.show (o live, com a letra escrita)
     const [mId, sub] = parte.slice(7).split(".")
@@ -49,7 +51,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
   return undefined as unknown as null
 }
 
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {

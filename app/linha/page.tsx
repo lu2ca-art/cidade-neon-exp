@@ -49,7 +49,7 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
@@ -170,6 +170,8 @@ export default function LinhaPage() {
   const [minhoca, setMinhoca] = useState(false)
   // (22/10, 2.1) os fachos do túnel seguem por cima da queda, freando, uns 2,6 s
   const [rastroMinhoca, setRastroMinhoca] = useState(false)
+  // (T37) este login cai na casinha (quem já passou por ela): a Corrida faz a chegada
+  const [chegadaLogin, setChegadaLogin] = useState(false)
   // (disco, B15b) o visualizador: os links de fora abrem dentro do jogo
   const [visor, setVisor] = useState<VisorId | null>(null)
   // (disco, B8) o jornal do dia seguinte ao show
@@ -1098,7 +1100,12 @@ export default function LinhaPage() {
     // (mapa-disco) a história nova: save novo começa no buraco de minhoca; o
     // resto entra direto na Kombi, onde estava
     if (D) {
-      if (historiaDe(saveRef.current).fase === "minhoca") { setMinhoca(true); return }
+      // (T37, J1: "toda vez que a pessoa entrar, ela vai passar por ele") todo
+      // login passa pelo buraco de minhoca; quem já passou pela casa cai nela de
+      // novo (CHEGADA.casaNoLogin) e segue dali
+      const f0 = historiaDe(saveRef.current).fase
+      if (f0 === "minhoca" || f0 === "casa") { setMinhoca(true); return }
+      if (casaNoLogin(historiaDe(saveRef.current))) { player.pausar(); setChegadaLogin(true); setMinhoca(true); return }
       player.pausar()
       setEstrada(true)
       setTela({ t: "corrida", destino: null })
@@ -1143,15 +1150,20 @@ export default function LinhaPage() {
     setMinhoca(false)
     setRastroMinhoca(true)
     setTimeout(() => setRastroMinhoca(false), 2700)
-    // (o começo é de tarde: o deserto aparece, e a cidade acende quando escurece)
-    setSave((s) => ({ ...comHistoria(s, (h) => ({ ...h, fase: "casa" as const })), hora: 16.5 }))
-    setSaltoHora({ h: 16.5, id: Date.now() })
+    // (T37, J1/J2: 4: "refletir o céu atual da hora") o céu da chegada é o da hora
+    // de quem joga (CHEGADA.ceu; antes era sempre 16h30, de tarde)
+    const hr = horaDaChegada(saveRef.current.hora)
+    const primeira = historiaDe(saveRef.current).fase === "minhoca"
+    setSave((s) => ({ ...(primeira ? comHistoria(s, (h) => ({ ...h, fase: "casa" as const })) : s), hora: hr }))
+    setSaltoHora({ h: hr, id: Date.now() })
     setEstrada(true)
     setTela({ t: "corrida", destino: null })
   }
   // (disco) a história avisa da estrada: chegou na casa, pousou na cidade…
   const onHistoria = (e: EventoHistoria) => {
     const h = historiaDe(saveRef.current)
+    // (T37) a chegada de um login acabou na porta: a D-Bee acenou, o jogo segue dali
+    if (e === "chegou") setChegadaLogin(false)
     if (e === "casa" && h.fase === "casa" && !cena) {
       setCinema("lugar")
       setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, especial: "disco-casa" })
@@ -1396,6 +1408,7 @@ export default function LinhaPage() {
             teleporte={teleporte}
             abertura={!D && !save.casa}
             historia={D ? hist : null}
+            chegada={D && chegadaLogin}
             alvoChao={alvoChao}
             soTema={soTema}
             pistaFoco={focoFeira}
@@ -1578,7 +1591,7 @@ export default function LinhaPage() {
           />
         )}
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
-        {minhoca && <Minhoca onFim={fimMinhoca} />}
+        {minhoca && <Minhoca onFim={fimMinhoca} dur={chegadaLogin ? CHEGADA.minhocaMsVolta : CHEGADA.minhocaMs} />}
         {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
         {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={save.popularidade ?? 0} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
         {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}

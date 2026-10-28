@@ -38,9 +38,9 @@ import { Portoes } from "./Portoes"
 import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
-import { CASA, QUEDA, RAIO_CASA, SAIDA_CASA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
+import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
 import { LugaresChao } from "../disco/LugaresChao"
-import { CasaDeserto } from "../disco/CasaDeserto"
+import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
@@ -95,8 +95,8 @@ import { FRASE_GERAL, Outdoors, type Outdoor } from "./Outdoors"
 // REA do Horizon Drive: "a Kombi está muito lenta") 69,4 m/s = 250 km/h de verdade
 const VMAX = 69.4 // m/s
 // (22/10, 2.1) a chegada do buraco de minhoca: a velocidade de saída do túnel
-// e a que distância do centro da casa a Kombi para
-const CHEGADA_V0 = 220, CHEGADA_PARA = 19
+// (T37: agora em disco/historia.ts, CHEGADA; a Kombi para em PARADA_CASA)
+const CHEGADA_V0 = CHEGADA.v0
 // o velocímetro marca numa escala própria: 110 km/h de verdade aparecem como
 // 60; os patins (150 de verdade) marcam ~82 e a Kombi a 250 marca ~136
 const K_VEL = 60 / 110
@@ -257,6 +257,9 @@ interface Props {
   // onde a Kombi começa, se o holo existe, e o que acontece no deserto
   historia?: HistoriaDisco | null
   onHistoria?: (e: EventoHistoria) => void
+  // (T37) a chegada de um login: o túnel acabou e a Kombi cai na casinha (quem
+  // já passou por ela); no fim avisa "chegou"
+  chegada?: boolean
   // (B10) comprar uma modificação na oficina (com água)
   onComprar?: (id: string, preco: number) => void
   // (B18) o lugar do chão do subúrbio pra onde a história manda agora
@@ -270,7 +273,7 @@ interface Props {
   // (21/10, o mapa que ensina) a pista em foco no mapa (tocou na oferta da feira)
   pistaFoco?: string | null
 }
-export type EventoHistoria = "casa" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
+export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
 
 const SEM_FLORES: string[] = []
 
@@ -324,6 +327,9 @@ type Jogo = {
   // (22/10, 2.1/2.3) a chegada do buraco de minhoca: a Kombi vem numa
   // velocidade insana, freia sozinha até a casa e para na frente dela
   chegadaCasa?: boolean; chegadaV?: number
+  // (T37) a chegada: quando começou a cena de lado (o tempo do jogo), se é a
+  // chegada de um login (quem já conhece a D-Bee) e se a poeira da saída já subiu
+  chegadaCut?: number; chegadaLogin?: boolean; chegadaPoeira?: boolean
   // (21/10) há quanto tempo o propulsor está empurrando (o empuxo cresce em ~0,4 s);
   // quique = a última batida de pinball (não quica duas vezes no mesmo encosto)
   tProp?: number; rampaProp?: number; quique?: number
@@ -462,7 +468,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -581,16 +587,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // casa; depois da casa, sai dela de frente pra cidade (dirigindo nas dunas)
     // (B18) no bar e na oficina (o subúrbio, no chão) ela reaparece no subúrbio
     const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina")
-    if ("disco" in M && historia && (historia.fase === "casa" || historia.fase === "dunas" || noSub)) {
-      const MD = M as MundoDisco, p = historia.fase === "casa" ? QUEDA : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
+    // (T37) a chegada: a primeira (fase casa) e a de cada login (quem já passou pela casa)
+    const chega = !!historia && (historia.fase === "casa" || chegada)
+    if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub)) {
+      const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
       const ch = MD.chaoEm(p.x, p.z)
-      if (historia.fase === "casa") {
-        // (22/10, 2.1/2.2) cai bem mais longe (~900 m), no mesmo rumo, a 220 m/s:
-        // a casa (e a coluna de luz) aparece lá na frente desde a queda
-        const ex = QUEDA.x - Math.sin(QUEDA.rumo) * 670, ez = QUEDA.z - Math.cos(QUEDA.rumo) * 670
-        j.wx = ex; j.wz = ez
-        j.ar = true; j.tAr = 0; j.y = MD.chaoEm(ex, ez) + 45; j.vy = -8; j.v = CHEGADA_V0; j.chegadaV = CHEGADA_V0; j.chegadaCasa = true
+      if (chega) {
+        // (T37, J2: 1: "não tem que ter ela no ar. chega já acelerando no deserto,
+        // como se tivesse saído do buraco de minhoca e já acelerado no chão") sai
+        // do túnel ~900 m antes, NO CHÃO, a 220 m/s, correndo paralela à frente da
+        // casa (a casa e a coluna de luz lá na frente desde o começo); freia sozinha
+        j.ar = false; j.tAr = 0; j.y = ch + 0.3; j.vy = 0; j.v = CHEGADA_V0; j.chegadaV = CHEGADA_V0; j.chegadaCasa = true
+        j.chegadaLogin = historia.fase !== "casa"; j.chegadaCut = undefined; j.chegadaPoeira = false
+        PORTA_CASA.alvo = 0; PORTA_CASA.abre = 0; PORTA_CASA.recebe = true
       } else { j.ar = false; j.y = ch + 0.3; j.v = 0 }
     }
     return j
@@ -1215,7 +1225,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     if (fase !== "casa" && fase !== "dunas" && fase !== "subir") return
     const ditas = new Set<string>()
-    let t = 0, avisou = false, parouT = -1
+    let t = 0, avisou = false
     const diz = (q: (typeof FALAS_DUNAS)[number]["quando"]) => {
       if (ditas.has(q)) return
       ditas.add(q)
@@ -1223,17 +1233,15 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
     const iv = setInterval(() => {
       const j = jogo.current
+      // (T37) chegando na casinha (num login): as dunas e a subida esperam a cena acabar
+      if (j.chegadaCasa && fase !== "casa") return
       t += 0.3
       if (fase === "casa") {
         if (avisou || !j.voo || j.ar || j.wx === undefined) return
-        // (22/10, 2.3) chegou na porta: a Kombi para sozinha e fica um respiro
-        // parada (o motor assenta) antes da cena da porta começar
-        const perto = Math.hypot(j.wx - CASA.x, j.wz! - CASA.z) < RAIO_CASA + (j.chegadaCasa ? 0 : Math.min(20, Math.abs(j.v) * 0.3))
-        if (!perto) { parouT = -1; return }
-        if (!j.chegadaCasa) { avisou = true; j.v = 0; onHistoriaRef.current?.("casa"); return }
-        if (j.v > 0.3) return
-        if (parouT < 0) parouT = t
-        if (t - parouT >= 1.5) { avisou = true; j.v = 0; j.chegadaCasa = false; onHistoriaRef.current?.("casa") }
+        // (T37) a chegada do túnel (a cena de lado, a porta) mora no efeito da chegada
+        if (j.chegadaCasa) return
+        const perto = Math.hypot(j.wx - CASA.x, j.wz! - CASA.z) < RAIO_CASA + Math.min(20, Math.abs(j.v) * 0.3)
+        if (perto) { avisou = true; j.v = 0; onHistoriaRef.current?.("casa") }
         return
       }
       // (B18) subindo pra cidade: pousou numa pista = chegou lá em cima
@@ -1261,6 +1269,32 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }, 300)
     return () => clearInterval(iv)
   }, [fase, falar, novoComeco])
+  // (T37) A CHEGADA: a Kombi para sozinha na frente da varanda (a cena de lado já
+  // rolando), um respiro, a porta abre e a D-Bee aparece nela; só então a cena
+  // da porta (a primeira vez) ou o mapa (os logins). As faixas de cinema e o HUD
+  // escondido valem enquanto a câmera está de lado
+  const [corte, setCorte] = useState(false)
+  const chegando = "disco" in M && !!historia && (historia.fase === "casa" || chegada)
+  useEffect(() => {
+    if (!chegando) return
+    let t = 0, parouT = -1, foi = false
+    const iv = setInterval(() => {
+      const j = jogo.current
+      t += 0.25
+      setCorte(!!j.chegadaCasa && j.chegadaCut !== undefined)
+      if (foi || !j.chegadaCasa || j.ar || j.wx === undefined || Math.abs(j.v) > 0.3) return
+      if (parouT < 0) { parouT = t; setTimeout(() => { PORTA_CASA.alvo = 1 }, 450) }
+      if (t - parouT < 2.4) return
+      foi = true
+      const login = !!j.chegadaLogin
+      j.v = 0; j.chegadaCasa = false; j.chegadaCut = undefined; j.chegadaLogin = false
+      setCorte(false)
+      onHistoriaRef.current?.(login ? "chegou" : "casa")
+      if (login && CHEGADA.depoisDoLogin === "mapa") setTimeout(() => setPedeMapa((n) => n + 1), 600)
+      setTimeout(() => { PORTA_CASA.recebe = false }, 7000)
+    }, 250)
+    return () => clearInterval(iv)
+  }, [chegando])
   // (B18) chegou num lugar do chão do subúrbio (o bar, a oficina, o palco)
   useEffect(() => {
     if (!alvoChao || pausado) return
@@ -2034,7 +2068,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [portal])
 
   return (
-    <div className={`l-viagem ${voaNao ? "is-sem-voo" : ""} ${discoM && holoCelular ? "is-holo-celular" : ""} ${discoM && !holoOk ? "is-sem-holo" : ""} ${entrando ? "is-entrando" : ""} ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema ? "is-cinema" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""} ${discoM ? `is-disco ${oculos ? "is-holo" : "is-holo-off"}` : ""}`}>
+    <div className={`l-viagem ${voaNao ? "is-sem-voo" : ""} ${discoM && holoCelular ? "is-holo-celular" : ""} ${discoM && !holoOk ? "is-sem-holo" : ""} ${entrando ? "is-entrando" : ""} ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema || corte ? "is-cinema" : ""} ${corte ? "is-corte" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""} ${discoM ? `is-disco ${oculos ? "is-holo" : "is-holo-off"}` : ""}`}>
+      {/* (T37) a cena de lado da chegada: as faixas de cinema */}
+      {corte && <div className="l-corte" aria-hidden="true"><i /><i /></div>}
       {fonte && (
         <Canvas
           className="l-viagem-cvs"
@@ -3724,7 +3760,7 @@ function Cena({
     const g = new THREE.BufferGeometry()
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     g.setAttribute("color", new THREE.BufferAttribute(cor, 4))
-    return { n, pos, cor, vel, vida, tot, g, vivos: 0 }
+    return { n, pos, cor, vel, vida, tot, g, vivos: 0, prox: 0, acc: 0 }
   }, [])
   const RODAS = useMemo(() => [[-0.82, -1.35], [0.82, -1.35], [-0.82, 1.35], [0.82, 1.35]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
   // (LU2CA 21/10: "no patins a linha do drift tem que ser os dois pés, não as quatro rodas")
@@ -4470,11 +4506,14 @@ function Cena({
         if (j.chegadaCasa && j.wx !== undefined) {
           // (22/10, 2.1/2.3) o piloto da chegada: mira a porta e freia pela
           // distância que falta (rápido longe, devagarinho perto), até parar
-          const dx = CASA.x - j.wx, dz = CASA.z - j.wz!, resto = Math.hypot(dx, dz) - CHEGADA_PARA
-          j.rumo = Math.atan2(dx, dz)
+          // (T37) o alvo é a frente da varanda (PARADA_CASA); o resto é medido no
+          // rumo da chegada (passou do ponto = freia, nunca volta)
+          const dx = PARADA_CASA.x - j.wx, dz = PARADA_CASA.z - j.wz!
+          const resto = dx * Math.sin(PARADA_CASA.rumo) + dz * Math.cos(PARADA_CASA.rumo)
+          j.rumo = resto > 30 ? Math.atan2(dx, dz) : PARADA_CASA.rumo
           j.steer = 0
           const vc = j.chegadaV ?? CHEGADA_V0
-          j.v = j.chegadaV = resto > 0 ? Math.min(vc, Math.max(2.2, resto * 1.15)) : Math.max(0, Math.min(vc, j.v) - 7 * dt)
+          j.v = j.chegadaV = resto > 0.5 ? Math.min(vc, Math.max(2.2, resto * 1.15)) : Math.max(0, Math.min(vc, j.v) - 7 * dt)
         }
         j.wx = j.wx! + Math.sin(j.rumo) * j.v * dt
         j.wz = j.wz! + Math.cos(j.rumo) * j.v * dt
@@ -4656,7 +4695,7 @@ function Cena({
       // (mapa novo: sem pulo automático — a rua que cai não lança a Kombi;
       // só o pulo do jogador tira ela do chão)
       // (disco, 20/10) nas dunas, sim: a crista lança a Kombi (o tutorial do voo)
-      if ((!("ligacoes" in M) || ("disco" in M && !!j.voo)) && vyPista < j.vy - G * dt * 2.2 && j.v > 20 && !trocou) {
+      if ((!("ligacoes" in M) || ("disco" in M && !!j.voo)) && vyPista < j.vy - G * dt * 2.2 && j.v > 20 && !trocou && !j.chegadaCasa) {
         j.ar = true
         j.tAr = 0
         motor?.whoosh()
@@ -5111,6 +5150,29 @@ function Cena({
       fumaca.pos[i * 3 + 2] += fumaca.vel[i * 3 + 2] * dt
     }
     fumaca.g.attributes.position.needsUpdate = true
+    // (T37) a chegada no chão: a Kombi sai do túnel levantando um rolo de poeira e
+    // deixa um rastro dela (os mesmos 56 pontos da poeira do pouso, em rodízio)
+    if (jogo.current.chegadaCasa && !jogo.current.ar && carro.current) {
+      const jc = jogo.current, cp = carro.current.position, vv = Math.abs(jc.v)
+      const sai = (n: number, forte: number) => {
+        for (let k = 0; k < n; k++) {
+          const i = (poeira.prox = (poeira.prox + 1) % poeira.n)
+          const a = Math.random() * Math.PI * 2, d = 0.6 + Math.random() * 1.6, vh = (1 + Math.random() * 3) * forte
+          const atras = -Math.min(3, vv * 0.02)
+          poeira.pos.set([cp.x + Math.cos(a) * d + Math.sin(jc.rumo ?? 0) * atras, cp.y + 0.2 + Math.random() * 0.5, cp.z + Math.sin(a) * d + Math.cos(jc.rumo ?? 0) * atras], i * 3)
+          poeira.vel.set([Math.cos(a) * vh, 0.5 + Math.random() * 1.6 * forte, Math.sin(a) * vh], i * 3)
+          poeira.tot[i] = poeira.vida[i] = 1.4 + Math.random() * 1.2
+          poeira.cor.set([0.24, 0.19, 0.21, 0], i * 4)
+        }
+        poeira.vivos = poeira.n
+      }
+      if (!jc.chegadaPoeira) { jc.chegadaPoeira = true; sai(44, 1.8) }
+      else if (vv > 3) {
+        poeira.acc += dt * Math.min(30, 6 + vv * 0.12)
+        const n = Math.floor(poeira.acc)
+        if (n > 0) { poeira.acc -= n; sai(n, 0.7) }
+      }
+    }
     if (poeira.vivos > 0) {
       let vivos = 0
       for (let i = 0; i < poeira.n; i++) {
@@ -5446,6 +5508,28 @@ function Cena({
         tmp.olhar.y = p.y + 1.4
         camera.up.set(0, 1, 0)
         camera.lookAt(tmp.olhar)
+      }
+    }
+    // (T37, J1/J2: 4: "uma cut scene bem cinematográfica lateral da Kombi chegando
+    // do lado da casinha, parando, aí sim corta pra ela recebendo ele") a ~150 m
+    // da varanda a câmera corta pra um ponto fixo do outro lado, baixo: a Kombi
+    // entra de lado, freia e para na frente da casa acesa. A câmera só gira
+    // seguindo a Kombi e anda um pouquinho (um travelling lento)
+    if (j.chegadaCasa && j.wx !== undefined && "disco" in M) {
+      const resto = Math.hypot(PARADA_CASA.x - j.wx, PARADA_CASA.z - j.wz!)
+      if (j.chegadaCut === undefined && resto < CHEGADA.corte) j.chegadaCut = j.tempo
+      if (j.chegadaCut !== undefined) {
+        const k = Math.min(1, (j.tempo - j.chegadaCut) / 8), e = k * k * (3 - 2 * k)
+        const cx = CAM_CHEGADA.de.x + (CAM_CHEGADA.ate.x - CAM_CHEGADA.de.x) * e
+        const cz = CAM_CHEGADA.de.z + (CAM_CHEGADA.ate.z - CAM_CHEGADA.de.z) * e
+        camera.position.set(cx, (M as MundoDisco).chaoEm(cx, cz) + 1.6 + e * 0.5, cz)
+        // olha a Kombi, puxado um pouco pra porta (a casa entra no quadro quando ela chega)
+        tmp.olhar.set(car.position.x * 0.78 + CASA.x * 0.22, car.position.y + 1.3, car.position.z * 0.78 + CASA.z * 0.22)
+        if (j.chegadaCut === j.tempo) tmp.camOlhar.copy(tmp.olhar)
+        else tmp.camOlhar.lerp(tmp.olhar, 1 - Math.exp(-dt * 6))
+        camera.up.set(0, 1, 0)
+        tmp.camUp.set(0, 1, 0)
+        camera.lookAt(tmp.camOlhar)
       }
     }
     // a montanha-russa: a câmera vai pra trás do carrinho (terceira pessoa)
@@ -5814,7 +5898,7 @@ function Cena({
       )}
       {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
       {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} /></Seguro>}
-      {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} />}
+      {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} />}
       {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
