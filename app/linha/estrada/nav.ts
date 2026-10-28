@@ -206,7 +206,9 @@ export function refazerNav(M: Mundo, p: PoseNav | null, destino: DestinoNav | nu
   const livre = !!(p.voo || p.livreOk) && p.wx !== undefined
   // saiu da rota? (a via de agora não é nenhuma das que a rota esperava)
   if (!livre && p.via !== N.viaAnt) {
-    if (N.viaAnt >= 0 && N.esperado.length && !N.esperado.includes(p.via)) { N.recalc = performance.now(); N.recalculos++ }
+    // (a próxima via da rota, ou uma logo depois: a 4×/s uma via curtinha pode passar entre duas olhadas)
+    const i = N.esperado.indexOf(N.viaAnt), k = N.esperado.indexOf(p.via)
+    if (N.viaAnt >= 0 && N.esperado.length && !(i >= 0 && k > i && k <= i + 3)) { N.recalc = performance.now(); N.recalculos++ }
     N.viaAnt = p.via
   }
   if (livre) N.viaAnt = -1

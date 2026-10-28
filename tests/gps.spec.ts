@@ -213,8 +213,9 @@ async function porNaPista(page: Page, via: number, u: number) {
     const j = (window as unknown as W).__jogo
     Object.assign(j, { voo: false, ar: false, via, u, x: 0, v: 0, vy: 0, steer: 0, encaixar: true })
   }, { via, u })
-  // o NAV se refaz 4×/s
+  // o NAV se refaz 4×/s (o teleporte pode contar como "saiu da rota": espera o aviso passar)
   await page.waitForTimeout(700)
+  await expect(page.locator(".l-gps-nav")).not.toHaveClass(/is-recalc/, { timeout: 4_000 })
 }
 const lerNav = (page: Page) => page.evaluate(() => JSON.parse(JSON.stringify((window as unknown as W).__nav)) as Nav)
 
