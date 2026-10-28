@@ -155,6 +155,20 @@ test("o automático infinito anda sozinho sem parar", async ({ page }) => {
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
   await entrar(page, "livre")
+  // (T37) todo login cai na casinha, no deserto: o automático infinito segue pista,
+  // então o teste espera a chegada acabar e põe a Kombi numa pista
+  await expect(page.locator(".l-corte")).toBeHidden({ timeout: 60_000 })
+  await page.waitForFunction(() => !(window as unknown as W).__jogo.chegadaCasa, null, { timeout: 60_000 })
+  // o mapa abre depois da casinha (CHEGADA.depoisDoLogin): volta pra rua
+  await page.waitForTimeout(1500)
+  const voltar = page.locator(".l-drone-botoes button[aria-label='voltar pra rua']")
+  if (await voltar.count()) await voltar.first().click({ force: true }).catch(() => {})
+  await page.keyboard.press("Escape").catch(() => {})
+  await page.evaluate(() => {
+    const w = window as unknown as W, j = w.__jogo
+    j.voo = false; j.ar = false; j.via = w.__M.pistas[0].ida; j.u = 20; j.x = 0; j.v = 20; j.encaixar = true
+  })
+  await page.waitForTimeout(800)
   const auto = page.locator(".l-gps-auto")
   await expect(auto).toBeVisible({ timeout: 20_000 })
   await auto.click()
