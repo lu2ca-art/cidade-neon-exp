@@ -19,6 +19,7 @@
 // Tudo que é fala aqui é RASCUNHO (o LU2CA reescreve).
 
 import type { Save } from "../estado"
+import type { MissaoId, PortaId } from "./portas"
 
 export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "oficina" | "subir" | "nectar" | "carreira" | "livre"
 // os passos da Nectar (B9)
@@ -46,10 +47,22 @@ export interface HistoriaDisco {
   pecas?: string[]
   // (21/10, a feira) a missão que ele pegou (a linha); sem ela, a feira oferece as acesas
   missao?: string
-  // o show que está pra acontecer (B8): o fim de cada missão (o prólogo: "bar")
+  // o show que está pra acontecer: (T02) não é mais o fim da missão. É o Guitar
+  // Driver aberto agora: "rua:<faixa>" (a oportunidade na rua) ou
+  // "missao:<id>" (a peça de uma missão que é tocar ao vivo, a do LU2CA)
   show?: string
   // (27/10) o drone GPS da D-Bee: ela dá nas dunas (a subida mostrada uma vez só)
   drone?: boolean
+  // (T02, 28/10) as 13 missões (disco/portas.ts): `missao` passa a ser o id da
+  // missão (dbee, drew…); as peças feitas ("drew:jogo"), as missões feitas, as
+  // portas abertas, as músicas liberadas no Guitar Driver, as referências do
+  // BATIDA e a contagem das peças de rua ("nizzy:jogo" → 1)
+  passos13?: string[]
+  feitas13?: MissaoId[]
+  portas?: PortaId[]
+  guitar?: string[]
+  batida?: string[]
+  conta13?: Record<string, number>
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
@@ -194,7 +207,7 @@ export const CENA_OFICINA: Cena = {
     },
     { t: "acao", texto: "duas horas de solda, faísca e rádio velho. o painel sobe no teto. o motor para de tossir" },
     { t: "ganha", titulo: "sistema solar: turbo + propulsão", texto: "a kombi não bebe mais gasolina. o sol carrega. segura o espaço (ou o botão): ela voa" },
-    { t: "fala", de: "o mecânico", texto: "agora toca alguma coisa pra gente. ninguém toca aqui faz tempo" },
+    { t: "fala", de: "o mecânico", texto: "volta quando quiser mexer nela. aqui embaixo a gente paga em água" },
     { t: "fim" },
   ],
 }
@@ -220,6 +233,9 @@ export const CHAO_LUGARES = {
   bar: { x: -737, z: -675, nome: "O COPO", cor: "#ff6a35" },
   oficina: { x: -560, z: -626, nome: "OFICINA", cor: "#ff9000" },
   palco: { x: -891, z: -536, nome: "PALCO", cor: "#e0ff4f" },
+  // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
+  quadra: { x: -860, z: -790, nome: "QUADRA", cor: "#ff6a35" },
+  tuneis: { x: -610, z: -830, nome: "TÚNEIS", cor: "#9b8cff" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 export const RAIO_CHAO = 22
