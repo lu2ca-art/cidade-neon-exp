@@ -50,6 +50,8 @@ import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { feita13 } from "../disco/portas"
+import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
+import type { ResultadoRacha } from "../disco/corredores"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
@@ -59,7 +61,7 @@ import { NIVEIS, QUALIDADE, guardarQualidade, ouvirQualidade } from "./qualidade
 import { MedirAparelho } from "./MedirAparelho"
 import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
-import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, type ChecklistHolo, type Clima } from "./Holo"
+import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, INFO, useNexoTutorial, type ChecklistHolo, type Clima, type NexoAgora } from "./Holo"
 import type { AppId } from "../os"
 import { PISTAS_LIBERADAS, srcDaVersao, type VersaoPista } from "../disco/pistasLiberadas"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
@@ -289,6 +291,8 @@ interface Props {
   // intervalo do sorteio (0 = não sorteia). `noConserto` também fica true
   quebrou?: boolean
   sorteioMs?: number
+  // (T44) acabou um racha com um dos corredores do mecânico: o prêmio (neon$ e prestígio)
+  onRacha?: (r: ResultadoRacha) => void
 }
 export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | `chao:${LugarChao}`
 
@@ -485,7 +489,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0 }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -1087,6 +1091,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // das melhorias), parando perto, dá pra entrar e comprar desempenho com água
   const [pertoDaOficina, setPertoOficina] = useState(false)
   const oficinaLivre = !!discoM && !!historia && feita13(historia, "oficina") && alvoChao !== "oficina"
+  // (T44) os rachas: os carros do mecânico rodam lá em cima depois que ele te conta deles (a oficina)
+  const rachaRef = useRef<EstadoRacha>(novoEstadoRacha())
+  const rachasOk = !!discoM && (!historia || historia.fase === "livre" || historia.fase === "carreira" || feita13(historia, "oficina")) && !cinema && !cenaLugar && !intro && !abertura && !chegada && !noConserto && !quebrou // (T27) a Kombi quebrada/no conserto: de patins, sem racha
   const pertoOficina = oficinaLivre && pertoDaOficina
   useEffect(() => {
     if (!oficinaLivre) return
@@ -1115,6 +1122,32 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [qualHolo, setQualHolo] = useState(QUALIDADE.nivel)
   useEffect(() => ouvirQualidade(setQualHolo), [])
   const sairAjuda = useCallback(() => setAjuda(false), [])
+  // (T56) o notch aberto: a explicação da coisa tocada (null: a do que está no notch)
+  const [cardAjuda, setCardAjuda] = useState<{ t: string; d: string } | null>(null)
+  // (T56) o tutorial fala no notch; o que dá pra fazer agora, fora dele: o próximo
+  // passo da missão ou o que o anel diz (sem chat, sem "chamados" do jogo velho)
+  const tutNexo = useNexoTutorial()
+  const nexoAgora = useMemo<NexoAgora | null>(() => {
+    if (checklistHolo) {
+      const ps = checklistHolo.passos
+      const i = ps.findIndex((p) => p.estado === "agora")
+      const p = ps[i >= 0 ? i : ps.findIndex((x) => x.estado !== "feita")]
+      const lista = ps.map((x) => `${x.estado === "feita" ? "✓" : x.estado === "agora" ? "▸" : "·"} ${x.nome}`).join("   ")
+      return { texto: p ? `▸ ${p.nome}` : `✓ ${checklistHolo.nome}`, cor: checklistHolo.cor, ajuda: { t: checklistHolo.titulo, d: `${lista}. o anel em volta do mapa repete o passo; o mapa mostra o caminho.` } }
+    }
+    if (missaoHolo?.texto) return { texto: `▸ ${missaoHolo.texto}`, cor: missaoHolo.cor, ajuda: INFO.anel }
+    if (missaoHolo?.n) return { texto: `${missaoHolo.n} ${missaoHolo.n === 1 ? "missão" : "missões"} no mapa`, cor: missaoHolo.cor, ajuda: INFO.mapa }
+    return null
+  }, [checklistHolo, missaoHolo])
+  // (T56) com o tutorial no notch, as falas soltas (a D-Bee nas dunas) passam no
+  // display da rádio, uma vez cada (T41: D2, D4 são rádio)
+  const falaNoRadio = useRef(0)
+  const t0Fala = toasts[0]
+  useEffect(() => {
+    if (!discoM || !tutNexo || !t0Fala || falaNoRadio.current >= t0Fala.id) return
+    falaNoRadio.current = t0Fala.id
+    avisarRadio(t0Fala.de, t0Fala.texto, t0Fala.ms)
+  }, [discoM, tutNexo, t0Fala])
   // o clique semi-longo do turbo e do propulsor: segurou SEMI_LONGO ms, aciona
   const SEMI_LONGO = 260
   const armados = useRef(new Map<HTMLElement, number>())
@@ -2211,6 +2244,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onContextMenu={(e) => e.preventDefault()}
         >
           <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} onRobo={roboRef} missoesMapa={discoM ? mapaMissoes : null} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
         </Canvas>
       )}
 
@@ -2242,9 +2276,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
               <button type="button" data-info="ajustes" className={`l-hud-cel is-ajustes ${ajustes ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => { setAjuda(false); setAjustes(true) }} aria-label="ajustes">
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /><circle cx="12" cy="12" r="6.6" /></svg>
               </button>
-              <button type="button" data-info="ajuda" className={`l-hud-cel is-ajuda ${ajuda ? "is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAjuda((x) => !x)} aria-label="o que é cada coisa">
-                ?{avisos > 0 && <em>{avisos}</em>}
-              </button>
+              {/* (T56) o "?" mudou pra dentro do notch (HoloLetreiro); o numerinho de chat velho saiu (T41 C4) */}
             </>
           ) : (
             <button type="button" className="l-hud-cel is-oculos" onPointerDown={(e) => e.stopPropagation()} onClick={alternarOculos} aria-label="ligar o holo">
@@ -2310,10 +2342,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           bifurcação > conversa (no painel) > falas (em fila) > PROCURADO > quieta */}
       {(() => {
         // na chegada, o grupo falando vem antes do aviso de bifurcação
-        const modo = intro && toasts[0] ? "fala" : garfo ? "garfo" : conversa ? "conversa" : toasts[0] ? "fala" : cacando ? "procurado" : "quieta"
-        const t0 = toasts[0]
+        // (T56) enquanto o tutorial fala no notch, a fala solta não toma o lugar
+        // dele: vai pro display da rádio (o efeito logo acima) e o notch fica com o passo
+        const falaNaIlha = !!toasts[0] && !(discoM && tutNexo)
+        const modo = intro && falaNaIlha ? "fala" : garfo ? "garfo" : conversa ? "conversa" : falaNaIlha ? "fala" : cacando ? "procurado" : "quieta"
+        const t0 = falaNaIlha ? toasts[0] : undefined
         // (disco, holo ligado) a ilha quieta é o letreiro do N3XO
-        const letreiro = modo === "quieta" && !!discoM && oculos
+        // (T56) com o holo desligado, o notch ainda aparece enquanto o tutorial fala
+        const letreiro = modo === "quieta" && !!discoM && (oculos || !!tutNexo)
         const C = garfo ? M.vias[garfo.via] : null
         const op = (f: Faixa | undefined, k: number) => {
           if (!f) return <div key={k} ref={(el) => { garfoEls.current[k] = el }} className="l-garfo-op is-vazia" />
@@ -2344,7 +2380,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             data-info={letreiro ? "ilha" : undefined}
             style={{ ["--cor" as string]: t0 ? VOZES[t0.de] ?? "#fff" : "#2fe8ff" }}
             onPointerDown={(modo === "fala" && onIlha) || letreiro ? (e) => e.stopPropagation() : undefined}
-            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => onApp?.("n3xo") : undefined}
+            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => setAjuda((x) => !x) : undefined}
           >
             {modo === "garfo" && C && (
               <div key="garfo" className="l-ilha-conteudo">
@@ -2371,7 +2407,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
                 <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
               </div>
             )}
-            {modo === "quieta" && (letreiro ? <HoloLetreiro key="q" save={save} nivel={nivel} hora={hora} /> : <div key="q" className="l-ilha-conteudo l-ilha-quieta" />)}
+            {modo === "quieta" && (letreiro ? <HoloLetreiro key="q" hora={hora} agora={nexoAgora} aberto={ajuda} card={cardAjuda} onAbrir={() => setAjuda((x) => !x)} /> : <div key="q" className="l-ilha-conteudo l-ilha-quieta" />)}
           </div>
         )
       })()}
@@ -2413,7 +2449,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
         </>
       )}
-      {discoM && ajuda && oculos && <HoloAjuda ativa onSair={sairAjuda} />}
+      {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} onCard={setCardAjuda} />}
       {/* a legendinha mini das falas que ensinam (some sozinha: a animação acaba e ela sai) */}
       {legenda && (
         <div key={legenda.id} className="l-legenda" role="status" aria-live="polite" style={{ ["--ms" as string]: `${legenda.ms}ms`, ["--cor" as string]: VOZES[legenda.de] ?? "#2fe8ff" }} onAnimationEnd={(e) => { if (e.target === e.currentTarget) setLegenda(null) }}>
@@ -2567,9 +2603,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
       {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o ∞ (o automático infinito) */}
       {discoM && oculos && (
-        <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null }} icone={checklistHolo?.chave ?? null}
+        <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null, racha: rachaRef }} icone={checklistHolo?.chave ?? null}
           escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} />
       )}
+      {/* (T44) os rachas: o botão "tirar um racha" pisca quando você emparelha com um dos carros do mecânico */}
+      {discoM && <RachasHud estado={rachaRef} onFim={(r) => onRacha?.(r)} escondido={drone || !!cinema || !!cenaLugar || noConserto || quebrou} />}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
       {discoM && <div className="l-hyper" aria-hidden="true" style={{ opacity: 0 }}><i /><i /></div>}
