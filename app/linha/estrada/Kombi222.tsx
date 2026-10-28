@@ -172,6 +172,8 @@ const JANELAS: [number, number][] = [[-1.42, 0.62], [-0.5, 0.82], [0.42, 0.82], 
 // e a da direita fora da lataria: agora encostam na traseira, a 0,15 m de cada quina.
 const X_RODA_ESQ = -0.92
 const X_RODA_DIR = 0.47
+const X_LANTERNA_ESCANEADA = [-0.92, 0.46]
+const Z_LANTERNA_ESCANEADA = 2.12
 
 // esterco: ângulo das rodas da frente (rad, + = pra esquerda). No drift elas
 // apontam pra onde a Kombi ANDA — o contraesterço que mostra que ela tá de lado
@@ -259,8 +261,8 @@ export function Kombi222({ turbo, velocidade, esterco, soEfeitos = false }: { tu
         <meshBasicMaterial map={placa} toneMapped={false} />
       </mesh>
       </>)}
-      {[-0.76, 0.76].map((x) => (
-        <group key={x} position={[x, 0.98, 2.27]}>
+      {(soEfeitos ? X_LANTERNA_ESCANEADA : [-0.76, 0.76]).map((x) => (
+        <group key={x} position={[x, 0.98, soEfeitos ? Z_LANTERNA_ESCANEADA : 2.27]}>
           <mesh rotation-x={Math.PI / 2}>
             <cylinderGeometry args={[0.09, 0.09, 0.05, 20]} />
             <meshBasicMaterial color="#ff2436" toneMapped={false} />
