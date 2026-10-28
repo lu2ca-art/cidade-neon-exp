@@ -78,9 +78,15 @@ export interface HistoriaDisco {
   // (T20) os palcos como Guitar Hero (disco/palcos.ts): a melhor estrela (1–5)
   // de cada música em cada palco ("bar:copo" → 3). A soma abre o palco de cima
   palcos?: Record<string, number>
+  // (T21) os 4 shows do subúrbio xenom (disco/xenom.ts): a melhor estrela, se o
+  // objetivo do multiverso já foi cumprido (paga o bônus uma vez) e quantas vezes tocou
+  xenom?: Record<string, { melhor: number; cumprida: boolean; vezes: number }>
   // (T07) o tutorial do holo: a tela de recompensa vista ("recompensa") e os
   // passos feitos (disco/tutorialConf.ts: "mapa", "gps", "drift"…)
   tutorial?: string[]
+  // (T27) a Kombi que quebra (disco/quebra.ts): está na oficina agora, quantas vezes
+  // quebrou e quantos sorteios faltam pra ela poder quebrar de novo
+  quebra?: { quebrada?: true; vezes?: number; folga?: number }
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }

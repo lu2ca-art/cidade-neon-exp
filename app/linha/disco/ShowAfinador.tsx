@@ -20,11 +20,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { silenciar } from "../som"
-import { PISTAS, faixaDaPista } from "../estrada/pistas"
 import { desenharHud } from "../../neon-tiles/cena"
 import { novoPlacar, type Placar } from "../../neon-tiles/motor"
 import { ac, carregarBuffer, montarShow, type Show as SomShow } from "../../neon-tiles/som"
-import { ajustarShow, carregarChart, type PropsShow, type ResultadoShow } from "./Show"
+import { ajustarShow, carregarChart, musicaDoShow, type PropsShow, type ResultadoShow } from "./Show"
 
 const DUR = 22
 const VER = 3.2 // segundos de melodia que aparecem na linha de baixo
@@ -49,7 +48,7 @@ export function ShowAfinador({ faixa, lugar, cor, popularidade, onFim, letra }: 
   const [estado, setEstado] = useState<"carregando" | "tocando" | "fim" | "erro">("carregando")
   const [fim, setFim] = useState<ResultadoShow | null>(null)
   const cvs = useRef<HTMLCanvasElement>(null)
-  const pista = PISTAS.find((p) => p.id === faixa)!
+  const pista = musicaDoShow(faixa)
   const publico = Math.round(2 + (Math.min(100, popularidade) / 100) * 70)
   const jogo = useRef({
     notas: [] as NotaVoz[], placar: novoPlacar() as Placar, galera: null as SomShow | null, buf: null as AudioBuffer | null, inicio: 0,
@@ -65,7 +64,7 @@ export function ShowAfinador({ faixa, lugar, cor, popularidade, onFim, letra }: 
   useEffect(() => {
     let vivo = true
     ac()
-    Promise.all([carregarChart(faixa), carregarBuffer(faixaDaPista(pista))]).then(([c, buf]) => {
+    Promise.all([carregarChart(faixa), carregarBuffer(pista.src)]).then(([c, buf]) => {
       if (!vivo || !c.voz) { if (vivo) setEstado("erro"); return }
       const inicio = Math.max(0, Math.min(c.janelas?.voz ?? 28, buf.duration - DUR))
       const notas = c.voz.melodia.filter(([t]) => t >= inicio && t < inicio + DUR).map(([t, midi, dur]) => ({ t, midi, dur: Math.max(0.12, dur), dentro: 0 }))

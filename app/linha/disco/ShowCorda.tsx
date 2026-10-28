@@ -21,13 +21,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { silenciar } from "../som"
-import { PISTAS, faixaDaPista } from "../estrada/pistas"
 import { COR_LANE, desenharHud, desenharPalco } from "../../neon-tiles/cena"
 import { multiplicador, novoPlacar, type NotaGd, type Placar } from "../../neon-tiles/motor"
 import { ac, atrasoEstimado, carregarBuffer, montarShow, type Show as SomShow } from "../../neon-tiles/som"
 import { MODELOS, PALCOS, type Palco } from "../../neon-tiles/dados"
 import { imagemInstrumento } from "../../neon-tiles/instrumentos"
-import { ajustarShow, carregarChart, type PropsShow, type ResultadoShow } from "./Show"
+import { ajustarShow, carregarChart, musicaDoShow, type PropsShow, type ResultadoShow } from "./Show"
 
 const DUR = 22
 const JAN = 0.13 // a folga de cada lado da linha (s)
@@ -48,7 +47,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   const [estado, setEstado] = useState<"carregando" | "tocando" | "fim" | "erro">("carregando")
   const [fim, setFim] = useState<ResultadoShow | null>(null)
   const cvs = useRef<HTMLCanvasElement>(null)
-  const pista = PISTAS.find((p) => p.id === faixa)!
+  const pista = musicaDoShow(faixa)
   const publico = Math.round(2 + (Math.min(100, popularidade) / 100) * 70)
   const jogo = useRef({ notas: [] as NotaCorda[], placar: novoPlacar() as Placar, som: null as SomShow | null, buf: null as AudioBuffer | null, inicio: 0, bpm: 100, t0: 0, alvo: 1.5, corda: 1.5, vib: 0, aviso: null as { texto: string; ate: number; cor: string } | null,
     // (T19) o dedo na tela (toque contínuo), o teclado, o segurar ↑ ↓ e quando a corda chegou na faixa de agora
@@ -63,7 +62,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   useEffect(() => {
     let vivo = true
     ac()
-    Promise.all([carregarChart(faixa), carregarBuffer(faixaDaPista(pista))]).then(([c, buf]) => {
+    Promise.all([carregarChart(faixa), carregarBuffer(pista.src)]).then(([c, buf]) => {
       if (!vivo) return
       const inicio = Math.max(0, Math.min(c.janelas?.baixo ?? 28, buf.duration - DUR))
       const lista = ((c.baixo as Record<string, NotaGd[]> | undefined)?.medio ?? []) as NotaGd[]

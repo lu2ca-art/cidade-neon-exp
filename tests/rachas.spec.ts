@@ -154,3 +154,13 @@ test("o racha: o carro aparece, o botão pisca, começa, termina e paga", async 
   expect((await neonDoSave(page)).neon).toBe(depois.neon)
   expect(erros).toEqual([])
 })
+
+// (T27) a Kombi no conserto (de patins): os rachas não oferecem racha
+test("no conserto não tem racha", async ({ page }) => {
+  test.setTimeout(240_000)
+  await entrar(page, "quebra.oficina")
+  await naPista(page)
+  for (let i = 0; i < 6; i++) { await page.evaluate(() => (window as unknown as W).__rachas.perto(0, 4)); await page.waitForTimeout(400) }
+  expect((await estado(page)).fase).toBe("solto")
+  await expect(page.locator(".l-racha-btn")).toHaveCount(0)
+})
