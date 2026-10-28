@@ -45,7 +45,11 @@ test("arte → jogo → porta, com a peça em breve pulando", () => {
 })
 
 test("a peça na rua conta eventos e não precisa de lugar", () => {
+  // (T24) a arte (o clipe) acontece no palco dela; depois o jogo é na rua
   let h: HistoriaDisco = { ...CARREIRA, missao: "nizzy" }
+  expect(passoAgora(h, "nizzy")).toBe("arte")
+  expect(alvo13(h, "nizzy")).toEqual({ lugar: "palco-rollercoaster" })
+  h = concluir(h, "nizzy", "arte")
   expect(alvo13(h, "nizzy")).toBeNull()
   h = contarEvento(h, "flor") // outro evento: não conta
   expect(passoAgora(h, "nizzy")).toBe("jogo")

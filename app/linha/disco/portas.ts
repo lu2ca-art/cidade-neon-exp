@@ -126,7 +126,7 @@ export const CONFIG13 = {
   // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
   // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
   // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
-  trancar: ["ginasio", "radio-frequencias", "fliperama"] as PortaId[],
+  trancar: ["ginasio", "radio-frequencias", "fliperama", "parque"] as PortaId[],
   // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
   // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
   kombiNoConserto: ["drew"] as MissaoId[],
@@ -215,7 +215,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   nizzy: {
     id: "nizzy", n: 11, onde: "cidade", quem: "Nizzy", cor: "#ff2436", faixa: "rollercoaster", faixaSituacao: "decidido",
     lugar: { lugar: "palco-rollercoaster" }, pedido: "a montanha-russa parou no meio", apresenta: "a montanha-russa",
-    arte: p("filmar o clipe vertical da Rollercoaster", "proposta", { tarefa: "T24" }),
+    // (T24) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, CLIPE)
+    arte: p("filmar o clipe vertical da Rollercoaster", "proposta", { como: { t: "cena", id: "clipe" }, tarefa: "T24" }),
     jogo: p("andar na montanha-russa (no parque)", "decidido", { como: { t: "evento", evento: "montanha", n: 1 }, tarefa: "T24" }),
     abre: ["parque"], recompensa: { guitar: "rollercoaster", batida: "rollercoaster", neon: PAGA.missao.nizzy }, requer: ["oficina"],
   },

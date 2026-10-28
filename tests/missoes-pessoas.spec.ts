@@ -85,3 +85,20 @@ test("T23 · Notti: a trilha 8 bits → a máquina → as 7 máquinas", async ({
   await porta(page, "notti", "fliperama")
   expect(erros).toEqual([])
 })
+
+test("T24 · Nizzy: o clipe → a montanha-russa → o parque", async ({ page }) => {
+  const erros = await abrir(page, "missao.nizzy.arte")
+  const c = page.locator(".l-peca.is-clipe")
+  await expect(c).toBeVisible({ timeout: 30_000 })
+  for (const k of ["2", "3", "1", "2", "3", "1", "2", "3"]) { await page.keyboard.press(k); await page.waitForTimeout(300) }
+  await expect(c.locator(".l-clipe-fita li")).toHaveCount(8)
+  await page.screenshot({ path: `${PASTA}/nizzy-1-clipe.png` })
+  await c.locator(".is-seguir").click()
+  // o jogo é na rua: andar na montanha-russa (o evento), depois a porta no palco dela
+  await page.waitForFunction(() => !!(window as unknown as { __cnMissao?: unknown }).__cnMissao)
+  await page.evaluate(() => (window as unknown as { __cnMissao: { evento: (e: string) => void } }).__cnMissao.evento("montanha"))
+  await expect.poll(async () => (await save(page)).disco.passos13).toContain("nizzy:jogo")
+  await gancho(page, "chegou")
+  await porta(page, "nizzy", "parque")
+  expect(erros).toEqual([])
+})
