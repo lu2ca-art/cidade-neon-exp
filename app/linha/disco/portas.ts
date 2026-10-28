@@ -126,7 +126,7 @@ export const CONFIG13 = {
   // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
   // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
   // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
-  trancar: ["ginasio", "radio-frequencias"] as PortaId[],
+  trancar: ["ginasio", "radio-frequencias", "fliperama"] as PortaId[],
   // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
   // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
   kombiNoConserto: ["drew"] as MissaoId[],
@@ -207,8 +207,9 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   notti: {
     id: "notti", n: 10, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "dopamina", faixaSituacao: "decidido",
     lugar: { lugar: "topo" }, pedido: "o fliperama apagou. ninguém joga mais nada", apresenta: "uma máquina do fliperama",
-    arte: p("a trilha de 8 bits da máquina, no BATIDA", "proposta", { tarefa: "T23" }),
-    jogo: p("uma máquina do fliperama", "decidido", { como: { t: "prova", id: "respira" }, tarefa: "T23" }),
+    // (T23) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, TRILHA8)
+    arte: p("a trilha de 8 bits da máquina", "proposta", { como: { t: "cena", id: "trilha8" }, tarefa: "T23" }),
+    jogo: p("uma máquina do fliperama", "decidido", { como: { t: "cena", id: "maquina" }, tarefa: "T23", existe: "/fliperama" }),
     abre: ["fliperama"], recompensa: { guitar: "dopamina", batida: "dopamina", neon: PAGA.missao.notti }, requer: ["oficina"],
   },
   nizzy: {
