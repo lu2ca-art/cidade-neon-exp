@@ -239,10 +239,19 @@ function bufferViolao(c: AudioContext, freq: number) {
 
 // pré-calcula as notas (o Karplus-Strong custa alguns ms na primeira vez de cada
 // nota; o toque nunca deve pagar isso). Chamar quando o tom muda.
+let aquecendo = 0
 export function aquecerViolao(freqs: number[]) {
   const c = audioCtx()
   if (!c) return
-  for (const f of freqs) bufferViolao(c, f)
+  // duas notas por vez (~7 ms cada), pra o aquecimento nunca virar tarefa longa
+  const fila = [...new Set(freqs.map((f) => Math.round(f * 10)))].map((k) => k / 10).filter((f) => !notasViolao.has(Math.round(f * 10)))
+  const id = ++aquecendo
+  const passo = () => {
+    if (id !== aquecendo) return
+    for (let i = 0; i < 2 && fila.length; i++) bufferViolao(c, fila.shift()!)
+    if (fila.length) setTimeout(passo, 4)
+  }
+  passo()
 }
 // quanto o aparelho atrasa entre o "start" e o som sair (segundos)
 export function latenciaSaida() {

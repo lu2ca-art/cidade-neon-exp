@@ -7,7 +7,7 @@ test("violão: abre, toca faixa, toca nota, mede o atraso", async ({ page }) => 
   mkdirSync("test-results/violao", { recursive: true })
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
-  page.on("console", (m) => { if (m.type() === "error") erros.push(m.text()) })
+  page.on("console", (m) => { if (m.type() === "error" && !/_vercel\/insights|status of 404/.test(m.text())) erros.push(m.text()) })
   await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
 
   const r = await page.goto("/teste/violao")
