@@ -98,10 +98,11 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   // lugar sem palco desenhado usa a casa de shows com o nome e a cor da missão
   const palco = useMemo<Palco>(() => {
     const p = PALCOS.find((x) => x.id === palcoId)
-    if (p) return p
+    // (T21) no multiverso, a fachada é a da faixa xenom
+    if (p) return xenom ? { ...p, nome: xenom.multiverso, cor, fachada: pista.faixa.toUpperCase() } : p
     const base = PALCOS.find((x) => x.id === "casa-shows") ?? PALCOS[0]
     return { ...base, nome: lugar.replace(/^(no|na) /, ""), cor, fachada: pista.faixa.toUpperCase(), capacidade: Math.max(base.capacidade, publico) }
-  }, [palcoId, lugar, cor, pista.faixa, publico])
+  }, [palcoId, lugar, cor, pista.faixa, publico, xenom])
   const modelo = MODELOS[0]
   const imgs = useMemo(() => (typeof window === "undefined" ? {} : { guitarra: imagemInstrumento(modelo.id, modelo.visual, "guitarra", "liso") }), [modelo])
   const atraso = useMemo(() => atrasoEstimado(), [])
@@ -277,7 +278,7 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   return (
     <div className="l-show is-gd" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
       <canvas ref={cvs} />
-      <header className="l-show-topo"><small>{xenom ? `${xenom.multiverso} · ${xenom.objetivo.texto}` : `o show · ${lugar}`}</small><b>{pista.faixa}</b><span>{publico <= 3 ? "quase ninguém" : `${publico} pessoas`}</span></header>
+      <header className="l-show-topo"><small>{xenom ? xenom.multiverso : `o show · ${lugar}`}</small><b>{pista.faixa}</b><span>{xenom ? `missão: ${xenom.objetivo.texto}` : publico <= 3 ? "quase ninguém" : `${publico} pessoas`}</span></header>
       {estado === "carregando" && <div className="l-show-carrega">{inst === "bateria" ? "ajustando as baquetas…" : inst === "teclado" ? "ligando o teclado…" : "afinando a guitarra…"}</div>}
       {estado === "erro" && (
         <div className="l-show-fim"><b>a guitarra não chegou</b><span>confere a internet</span><button type="button" onClick={() => onFim({ modo: "tocar", nota: 0, acertos: 0, total: 0, publico })}>seguir →</button></div>
