@@ -2459,7 +2459,11 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-jornal header b { font: 900 20px Georgia, "Times New Roman", serif; letter-spacing: 0.04em; }
 .l-jornal header small { font: italic 11px Georgia, serif; }
 .l-jornal h2 { margin: 0; font: 800 24px/1.1 Georgia, "Times New Roman", serif; }
-.l-jornal canvas { width: 100%; aspect-ratio: 8 / 5; display: block; filter: contrast(1.05); }
+.l-jornal canvas { width: 100%; aspect-ratio: 8 / 5; display: block; }
+.l-jornal-foto { position: relative; line-height: 0; overflow: hidden; border: 1px solid #1a161255; }
+.l-jornal-img { width: 100%; aspect-ratio: 8 / 5; object-fit: cover; display: block; filter: grayscale(1) contrast(1.35) brightness(0.95) sepia(0.28); }
+/* grão e vinheta por cima da imagem de arquivo (a cena procedural já vem tratada no canvas) */
+.l-jornal-grao { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: 0.55; background: radial-gradient(ellipse at center, transparent 55%, rgba(20,14,8,0.65) 100%), repeating-conic-gradient(rgba(0,0,0,0.07) 0 25%, rgba(255,255,255,0.05) 0 50%) 0 0 / 3px 3px; }
 .l-jornal p { margin: 0; font: italic 14px/1.4 Georgia, serif; }
 .l-jornal footer { display: flex; gap: 16px; font: 12px var(--mono); border-top: 1px solid #1a161244; padding-top: 8px; }
 .l-jornal button { justify-self: end; padding: 8px 14px !important; border-radius: 999px; background: #1a1612 !important; color: #efe9dc !important; border: 0 !important; font: 700 12px var(--mono) !important; cursor: pointer; }

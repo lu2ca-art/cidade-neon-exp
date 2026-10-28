@@ -25,7 +25,7 @@ export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "oficina" | "subi
 // os passos da Nectar (B9)
 export type PassoNectar = "quebra" | "regar" | "galao" | "oficina" | "show" | "flores" | "feita"
 
-export type Manchete = { id: number; missao: string; titulo: string; linha: string; pop: number; neon: number; modo: "tocar" | "cantar"; nota: number; publico: number }
+export type Manchete = { id: number; missao: string; titulo: string; linha: string; pop: number; neon: number; modo: "tocar" | "cantar"; nota: number; publico: number; imagem?: string }
 
 export interface HistoriaDisco {
   fase: FaseDisco
