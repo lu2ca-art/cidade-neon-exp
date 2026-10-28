@@ -3877,7 +3877,7 @@ function Cena({
       // (LU2CA 21/10, a feira de missões) com uma missão pegada, 6 s sem tocar
       // em nada e a Kombi segue sozinha pra ela (a rota escolhe os cruzamentos e
       // ela encosta na vaga); qualquer toque devolve o volante
-      const pilotoMissao = "disco" in M && !!vagaRef.current && j.naVaga !== vagaRef.current.id && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000
+      const pilotoMissao = "disco" in M && (!!vagaRef.current || !!alvoChaoRef.current) && (!vagaRef.current || j.naVaga !== vagaRef.current.id) && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000
       if (pilotoMissao !== !!j.piloto) { j.piloto = pilotoMissao; if (pilotoMissao) j.desligada = false; ev.piloto(pilotoMissao) }
       // (LU2CA 23/10: "a visão de primeira pessoa tem que levar a pessoa pelo
       // caminho da missão automaticamente") de dentro, com destino (o lugar do
@@ -3899,7 +3899,10 @@ function Cena({
       let alvoSteer = auto ? Math.max(-1, Math.min(1, (xAuto - j.x) / 3)) : (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
       // no chão (fora das pistas): mira no lugar do chão (ou, sem ele, embaixo da vaga)
       let dChao = Infinity
-      if (auto1p && j.voo && j.wx !== undefined) {
+      // (T36, J2:14) o piloto de 6 s parado também mira no chão: antes só a primeira
+        // pessoa mirava, e o piloto de fora, no chão do deserto/subúrbio (sem pista
+        // embaixo), andava na velocidade da última pista e sem rumo, "pro deserto"
+      if ((auto1p || pilotoMissao) && j.voo && j.wx !== undefined) {
         let tx = 0, tz = 0, tem = false
         if (chaoA) { tx = CHAO_LUGARES[chaoA].x; tz = CHAO_LUGARES[chaoA].z; tem = true }
         else if (vg1) { const Vv = M.vias[vg1.via], iv = Math.max(0, Math.min(Vv.n - 1, Math.floor(vg1.u / PASSO))); tx = Vv.px[iv]; tz = Vv.pz[iv]; tem = true }
@@ -3960,7 +3963,7 @@ function Cena({
       let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
       // (no chão, a de passeio; nas pistas, metade da velocidade da pista)
-      if (auto1p) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
+      if (auto1p || (pilotoMissao && j.voo)) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -4597,7 +4600,7 @@ function Cena({
             poeira.pos.set([carro.current.position.x + Math.cos(a) * d, carro.current.position.y + 0.3 + Math.random() * 0.6, carro.current.position.z + Math.sin(a) * d], i * 3)
             poeira.vel.set([Math.cos(a) * vh, 0.6 + Math.random() * 1.8, Math.sin(a) * vh], i * 3)
             poeira.tot[i] = poeira.vida[i] = 1.6 + Math.random() * 1.2
-            poeira.cor.set([0.5, 0.4, 0.4, 0], i * 4)
+            poeira.cor.set([0.22, 0.17, 0.2, 0], i * 4)
           }
           poeira.vivos = poeira.n
         }
@@ -5087,7 +5090,7 @@ function Cena({
         poeira.pos[i * 3 + 1] += poeira.vel[i * 3 + 1] * dt
         poeira.pos[i * 3 + 2] += poeira.vel[i * 3 + 2] * dt
         const idade = 1 - poeira.vida[i] / poeira.tot[i]
-        poeira.cor[i * 4 + 3] = 0.7 * Math.min(1, idade * 8) * (1 - idade) * (1 - idade)
+        poeira.cor[i * 4 + 3] = 0.9 * Math.min(1, idade * 8) * (1 - idade) * (1 - idade)
       }
       poeira.vivos = vivos
       poeira.g.attributes.position.needsUpdate = true
@@ -5949,7 +5952,7 @@ function Cena({
         <pointsMaterial size={1.1} map={texFumaca} color="#b4bbd6" transparent opacity={0.22} depthWrite={false} />
       </points>
       <points geometry={poeira.g} frustumCulled={false}>
-        <pointsMaterial size={4.5} map={texFumaca} vertexColors transparent depthWrite={false} />
+        <pointsMaterial size={6} map={texFumaca} vertexColors transparent depthWrite={false} />
       </points>
       <points geometry={faiscas.g} frustumCulled={false}>
         <pointsMaterial size={0.35} color="#ffb454" transparent blending={THREE.AdditiveBlending} depthWrite={false} />
