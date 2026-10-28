@@ -184,6 +184,8 @@ export const BOCA = {
   fundo: 6.5, // quanto desce (m)
   meia: 6.5, // a meia largura da vala (m)
   plano: 6, // o trecho plano lá embaixo, antes da porta
+  porta: 4.6, // a meia largura da porta (o vão do túnel)
+  tunel: 27.5, // quanto o túnel entra embaixo do chão, depois da porta
 }
 // s: ao longo da rampa (0 na porta, negativo subindo); v: de lado
 export function naBocaLocal(x: number, z: number) {
@@ -201,6 +203,13 @@ export function fundoBoca(x: number, z: number) {
   const lado = 1 - suave(BOCA.meia, BOCA.meia + 1.5, Math.abs(v))
   const porta = 1 - suave(0, 0.6, s)
   return desce * lado * porta
+}
+// (só o desenho) depois da porta o chão continua lá embaixo (o vão do túnel),
+// coberto pela tampa (o mesmo chão, por cima): a física segue a parede da porta
+function valaDoTunel(x: number, z: number) {
+  const { s, v } = naBocaLocal(x, z)
+  if (s < 0 || s > BOCA.tunel || Math.abs(v) > BOCA.porta + 1.5) return 0
+  return BOCA.fundo * (1 - suave(BOCA.porta + 0.3, BOCA.porta + 1.5, Math.abs(v)))
 }
 // está lá embaixo, na frente da porta (onde ela leva pras trincheiras)
 export function naBoca(x: number, z: number) {
@@ -222,21 +231,45 @@ export function geoBoca() {
   const cx = -TAM / 2 + ((RECORTE.ix0 + RECORTE.ix1) / 2) * c, cz = -TAM / 2 + ((RECORTE.iz0 + RECORTE.iz1) / 2) * c
   geo.translate(cx, 0, cz)
   const pos = geo.attributes.position
-  for (let i = 0; i < pos.count; i++) pos.setY(i, chaoEm(pos.getX(i), pos.getZ(i)))
+  for (let i = 0; i < pos.count; i++) { const X = pos.getX(i), Z = pos.getZ(i); pos.setY(i, chaoEm(X, Z) - valaDoTunel(X, Z)) }
   geo.computeVertexNormals()
+  pintarChao(geo)
+  // a tampa: o chão por cima do túnel (a mesma cor do chão em volta)
+  const L = BOCA.tunel - 0.6, W = (BOCA.porta + 1.6) * 2
+  const tampa = new THREE.PlaneGeometry(W, L, 8, 16)
+  tampa.rotateX(-Math.PI / 2)
+  const tp = tampa.attributes.position
+  for (let i = 0; i < tp.count; i++) {
+    const lx = tp.getX(i), s = 0.6 + L / 2 + tp.getZ(i)
+    const X = BOCA.x + BOCA.ax * s + BOCA.az * lx, Z = BOCA.z + BOCA.az * s - BOCA.ax * lx
+    tp.setXYZ(i, X, chaoGrade(X, Z), Z)
+  }
+  tampa.computeVertexNormals()
+  pintarChao(tampa, false)
+  const junto = new THREE.BufferGeometry()
+  const a = geo.toNonIndexed(), b = tampa.toNonIndexed()
+  for (const k of ["position", "normal", "color"]) {
+    const A = a.attributes[k].array as Float32Array, B = b.attributes[k].array as Float32Array, J = new Float32Array(A.length + B.length)
+    J.set(A); J.set(B, A.length)
+    junto.setAttribute(k, new THREE.BufferAttribute(J, 3))
+  }
+  geo.dispose(); tampa.dispose(); a.dispose(); b.dispose()
+  return junto
+}
+function pintarChao(geo: THREE.BufferGeometry, vala = true) {
+  const pos = geo.attributes.position
   const cor = new Float32Array(pos.count * 3), nor = geo.attributes.normal
   for (let i = 0; i < pos.count; i++) {
     const X = pos.getX(i), Z = pos.getZ(i)
     corDoChao(X, Z, pos.getY(i), nor.getX(i), nor.getY(i), nor.getZ(i), cor, i)
     // a vala: concreto escuro, mais escuro lá no fundo
-    const f = Math.min(1, fundoBoca(X, Z) / 0.8)
+    const fb = vala ? fundoBoca(X, Z) + valaDoTunel(X, Z) : 0, f = Math.min(1, fb / 0.8)
     if (f > 0) {
-      const k = 1 - 0.35 * (fundoBoca(X, Z) / BOCA.fundo)
+      const k = 1 - 0.35 * Math.min(1, fb / BOCA.fundo)
       cor[i * 3] += (0.2 * k - cor[i * 3]) * f; cor[i * 3 + 1] += (0.19 * k - cor[i * 3 + 1]) * f; cor[i * 3 + 2] += (0.23 * k - cor[i * 3 + 2]) * f
     }
   }
   geo.setAttribute("color", new THREE.BufferAttribute(cor, 3))
-  return geo
 }
 
 // o desenho do chão: a areia (mais clara na crista, mais escura no vale) e o

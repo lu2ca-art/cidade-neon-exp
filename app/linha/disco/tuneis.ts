@@ -18,13 +18,21 @@ export function irTrincheiras(missao: string | null) {
   location.assign(`${ROTA_TRINCHEIRAS}?volta=disco${missao ? `&missao=${missao}` : ""}`)
 }
 
-// voltou das trincheiras? (e correu uma volta inteira lá embaixo?)
-export function voltaDasTrincheiras(busca = typeof location === "undefined" ? "" : location.search) {
-  const q = new URLSearchParams(busca)
+// voltou das trincheiras? (e correu uma volta inteira lá embaixo?) A barra é lida
+// quando o jogo carrega (o ?parte= de teste limpa a barra logo depois)
+const NA_ENTRADA = typeof location === "undefined" ? "" : location.search
+let consumida = false
+export function voltaDasTrincheiras(busca?: string) {
+  if (busca === undefined && consumida) return null
+  const q = new URLSearchParams(busca ?? NA_ENTRADA)
   return q.get("de") === "tuneis" ? { corrida: q.has("corrida") } : null
 }
-// tira o "de=tuneis" da barra (recarregar não repete a volta)
+// (a Corrida) nascer na boca do túnel: só logo depois de a página carregar
+// vindo de lá (o jogo monta a estrada mais de uma vez no começo)
+export const nascerNoTunel = () => typeof performance !== "undefined" && performance.now() < 30000 && !!voltaDasTrincheiras(NA_ENTRADA)
+// a volta já foi tratada: tira o "de=tuneis" da barra (recarregar não repete)
 export function limparVoltaDasTrincheiras() {
+  consumida = true
   const u = new URL(location.href)
   u.searchParams.delete("de"); u.searchParams.delete("corrida")
   history.replaceState(history.state, "", u.pathname + u.search + u.hash)

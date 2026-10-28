@@ -55,7 +55,7 @@ import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebr
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { definirChaoAtivos, ehPeca } from "./disco/achados"
-import { irTrincheiras, limparVoltaDasTrincheiras, voltaDasTrincheiras } from "./disco/tuneis"
+import { irTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
@@ -1254,7 +1254,8 @@ export default function LinhaPage() {
         return
       }
       if (f0 === "casa") { setMinhoca(true); return }
-      if (casaNoLogin(historiaDe(saveRef.current)) && (!parteAberta || parteAberta === "chegada")) { player.pausar(); setChegadaLogin(true); setMinhoca(true); return }
+      // (T57) quem volta das trincheiras sai da boca do túnel, sem a chegada do login
+      if (casaNoLogin(historiaDe(saveRef.current)) && !nascerNoTunel() && (!parteAberta || parteAberta === "chegada")) { player.pausar(); setChegadaLogin(true); setMinhoca(true); return }
       player.pausar()
       setEstrada(true)
       setTela({ t: "corrida", destino: null })

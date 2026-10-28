@@ -42,7 +42,7 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
-import { saidaDoTunel, voltaDasTrincheiras } from "../disco/tuneis"
+import { nascerNoTunel, saidaDoTunel } from "../disco/tuneis"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
@@ -606,9 +606,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // (T09) e logo depois da oficina (subir), antes de pousar lá em cima, também
     const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina" || historia.fase === "subir")
     // (T37) a chegada: a primeira (fase casa) e a de cada login (quem já passou pela casa)
-    const chega = !!historia && (historia.fase === "casa" || chegada)
-    // (T57) voltou das trincheiras: sai da boca do túnel, no alto da rampa
-    const doTunel = "disco" in M && !!historia && !chega && !!voltaDasTrincheiras()
+    // (T57) voltou das trincheiras: sai da boca do túnel, no alto da rampa (no lugar da chegada do login)
+    const doTunel = "disco" in M && !!historia && historia.fase !== "casa" && nascerNoTunel()
+    const chega = !!historia && !doTunel && (historia.fase === "casa" || chegada)
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
       const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : doTunel ? saidaDoTunel() : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false

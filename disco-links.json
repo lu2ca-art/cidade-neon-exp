@@ -1,0 +1,891 @@
+[
+ {
+  "t": 3866,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDepthEXT gl_FragDepth\n#define texture2D texture\n#define textureCube texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#define t ||| uniform sampler2D morphTexture; uniform vec3 sol; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC; uniform float tempo; uniform vec3 topoC; uniform vec3 meioC; uniform float noite;"
+ },
+ {
+  "t": 3870,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3873,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 3886,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 3890,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 3894,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 3896,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3897,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3899,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3900,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3901,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3903,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3905,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3908,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3909,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3911,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3912,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3915,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3917,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3918,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3919,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3920,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3921,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3921,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3922,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() { vD = aD; vL = aL; vC = aCor; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDepthEXT gl_FragDepth\n#define texture2D texture\n#define textureCube texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#def ||| uniform sampler2D morphTexture; uniform float uT; uniform float uIni; uniform float uK; uniform float uTot; uniform float uVel; uniform float uPer; uniform float uMarco; uniform float uLarg;"
+ },
+ {
+  "t": 3922,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,COLOR",
+  "code": "void main() {\n  vY = uv.y;\n  #ifdef USE_INSTANCING_COLOR\n  vC = instanceColor;\n  #else\n  vC = vec3(1.0);\n  #endif\n  vec4 p = vec4(position, 1.0);\n  #ifdef USE_INSTANCING\n  p = instanceMatrix * p;\n  #endif\n  gl_Position = projectionMatrix * modelViewMatrix * p;\n}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDep ||| uniform sampler2D morphTexture; uniform float uK; uniform float uForca; uniform vec3 uCor; uniform float uT;"
+ },
+ {
+  "t": 3922,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n  vY = uv.y;\n  #ifdef USE_INSTANCING_COLOR\n  vC = instanceColor;\n  #else\n  vC = vec3(1.0);\n  #endif\n  vec4 p = vec4(position, 1.0);\n  #ifdef USE_INSTANCING\n  p = instanceMatrix * p;\n  #endif\n  gl_Position = projectionMatrix * modelViewMatrix * p;\n}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDep ||| uniform sampler2D morphTexture; uniform float uK; uniform float uForca; uniform vec3 uCor; uniform float uT;"
+ },
+ {
+  "t": 3922,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n  vY = uv.y;\n  #ifdef USE_INSTANCING_COLOR\n  vC = instanceColor;\n  #else\n  vC = vec3(1.0);\n  #endif\n  vec4 p = vec4(position, 1.0);\n  #ifdef USE_INSTANCING\n  p = instanceMatrix * p;\n  #endif\n  gl_Position = projectionMatrix * modelViewMatrix * p;\n}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDep ||| uniform sampler2D morphTexture; uniform float uK; uniform vec3 uCor; uniform float uT;"
+ },
+ {
+  "t": 3923,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform float rotation; uniform vec2 center; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform; uniform mat3 emissiveMapTransform; uniform mat3 metalnessMapTransform;"
+ },
+ {
+  "t": 3923,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING",
+  "code": "void main() {\n  vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.0);\n  vec3 s = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));\n  // x = a volta em metros (contínua de uma parede pra outra), y = 0 no chão, 1 no topo\n  vP = vec2(position.x * s.x + position.z * s.z, position.y + 0.5);\n  vW = w.xyz;\n  gl_Position = projectionMatrix * viewMatr ||| uniform sampler2D morphTexture; uniform vec3 uK; uniform float uT; uniform vec4 uToque; uniform vec3 uCor;"
+ },
+ {
+  "t": 3925,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3926,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3927,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 3929,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3931,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING,EMISSIVEMAP,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3934,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "EMISSIVEMAP,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3934,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3939,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 3940,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3979,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 3996,
+  "nome": "ATLAS",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4009,
+  "nome": "ATLAS_PROPS",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "MAP,EMISSIVEMAP,MAP,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4063,
+  "nome": "cristal",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4066,
+  "nome": "cristal",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4068,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,MAP,MAP,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4068,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,COLOR,MAP,COLOR",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4069,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4073,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING,INSTANCING,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4074,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,COLOR",
+  "code": "void main() {\n        mat4 mi = modelMatrix;\n        #ifdef USE_INSTANCING\n          mi = modelMatrix * instanceMatrix;\n        #endif\n        vec4 wp = mi * vec4(position, 1.0);\n        vN = normalize(mat3(mi) * normal);\n        vV = normalize(cameraPosition - wp.xyz);\n        #ifdef USE_INSTANCING_COLOR\n          vC = instanceColor;\n        #else\n          vC = vec3(0.3, 0.8, 1.0);\n        #endi ||| uniform sampler2D morphTexture; uniform float tempo; uniform float brilho;"
+ },
+ {
+  "t": 4075,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4076,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4076,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4089,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING,COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4091,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,COLOR,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4095,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4096,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4097,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,COLOR,COLOR,MAP,COLOR,COLOR",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4098,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4101,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4110,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "MAP,EMISSIVEMAP,MAP,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4492,
+  "nome": "ATLAS_PROPS",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,MAP,EMISSIVEMAP,FOG,MAP,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4520,
+  "nome": "ATLAS",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4545,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING,FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4564,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4570,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4586,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4604,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,MAP,EMISSIVEMAP,FOG,MAP,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4621,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4650,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4664,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4669,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4674,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4680,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4685,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4690,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4700,
+  "nome": "cristal",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4716,
+  "nome": "cristal",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4732,
+  "nome": "EdgeDetectionMaterial",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){vUv=position.xy*0.5+0.5;vUv0=vUv+texelSize*vec2(-1.0,0.0);vUv1=vUv+texelSize*vec2(0.0,-1.0);\n#if EDGE_DETECTION_MODE != 0\nvUv2=vUv+texelSize*vec2(1.0,0.0);vUv3=vUv+texelSize*vec2(0.0,1.0);vUv4=vUv+texelSize*vec2(-2.0,0.0);vUv5=vUv+texelSize*vec2(0.0,-2.0);\n#endif\ngl_Position=vec4(position.xy,1.0,1.0);}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor; ||| uniform sampler2D morphTexture; uniform vec2 texelSize; uniform highp sampler2D depthBuffer; uniform mediump sampler2D depthBuffer; uniform sampler2D predicationBuffer; uniform sampler2D inputBuffer;"
+ },
+ {
+  "t": 4737,
+  "nome": "SMAAWeightsMaterial",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){vUv=position.xy*0.5+0.5;vPixCoord=vUv*resolution;vOffset[0]=vUv.xyxy+texelSize.xyxy*vec4(-0.25,-0.125,1.25,-0.125);vOffset[1]=vUv.xyxy+texelSize.xyxy*vec4(-0.125,-0.25,-0.125,1.25);vOffset[2]=vec4(vOffset[0].xz,vOffset[1].yw)+vec4(-2.0,2.0,-2.0,2.0)*texelSize.xxyy*MAX_SEARCH_STEPS_FLOAT;gl_Position=vec4(position.xy,1.0,1.0);}\n#version 300 es\n#define varying in\nlayout(location = 0) out  ||| uniform sampler2D morphTexture; uniform vec2 texelSize; uniform vec2 resolution; uniform mediump sampler2D inputBuffer; uniform lowp sampler2D inputBuffer; uniform lowp sampler2D areaTexture; uniform lowp sampler2D searchTexture; uniform vec2 texelSize; uniform vec2 resolution;"
+ },
+ {
+  "t": 4745,
+  "nome": "LuminanceMaterial",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){vUv=position.xy*0.5+0.5;gl_Position=vec4(position.xy,1.0,1.0);}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDepthEXT gl_FragDepth\n#define texture2D texture\n#define textureCube texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#define texture2DProjLodEXT textureProjLod\n#d ||| uniform sampler2D morphTexture; uniform mediump sampler2D inputBuffer; uniform lowp sampler2D inputBuffer; uniform vec2 range; uniform float threshold; uniform float smoothing;"
+ },
+ {
+  "t": 4750,
+  "nome": "DownsamplingMaterial",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){vUv=position.xy*0.5+0.5;vUv00=vUv+texelSize*vec2(-1.0,1.0);vUv01=vUv+texelSize*vec2(1.0,1.0);vUv02=vUv+texelSize*vec2(-1.0,-1.0);vUv03=vUv+texelSize*vec2(1.0,-1.0);vUv04=vUv+texelSize*vec2(-2.0,2.0);vUv05=vUv+texelSize*vec2(0.0,2.0);vUv06=vUv+texelSize*vec2(2.0,2.0);vUv07=vUv+texelSize*vec2(-2.0,0.0);vUv08=vUv+texelSize*vec2(2.0,0.0);vUv09=vUv+texelSize*vec2(-2.0,-2.0);vUv10=vUv+texelS ||| uniform sampler2D morphTexture; uniform vec2 texelSize; uniform mediump sampler2D inputBuffer; uniform lowp sampler2D inputBuffer;"
+ },
+ {
+  "t": 4754,
+  "nome": "UpsamplingMaterial",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){vUv=position.xy*0.5+0.5;vUv0=vUv+texelSize*vec2(-1.0,1.0);vUv1=vUv+texelSize*vec2(0.0,1.0);vUv2=vUv+texelSize*vec2(1.0,1.0);vUv3=vUv+texelSize*vec2(-1.0,0.0);vUv4=vUv+texelSize*vec2(1.0,0.0);vUv5=vUv+texelSize*vec2(-1.0,-1.0);vUv6=vUv+texelSize*vec2(0.0,-1.0);vUv7=vUv+texelSize*vec2(1.0,-1.0);gl_Position=vec4(position.xy,1.0,1.0);}\n#version 300 es\n#define varying in\nlayout(location = 0 ||| uniform sampler2D morphTexture; uniform vec2 texelSize; uniform mediump sampler2D inputBuffer; uniform mediump sampler2D supportBuffer; uniform lowp sampler2D inputBuffer; uniform lowp sampler2D supportBuffer; uniform float radius;"
+ },
+ {
+  "t": 4760,
+  "nome": "EffectMaterial",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){vUv=position.xy*0.5+0.5;e0MainSupport(vUv); gl_Position=vec4(position.xy,1.0,1.0);}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDepthEXT gl_FragDepth\n#define texture2D texture\n#define textureCube texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#define texture2DProjLodE ||| uniform sampler2D morphTexture; uniform vec2 resolution; uniform vec2 texelSize; uniform float cameraNear; uniform float cameraFar; uniform float aspect; uniform float time; uniform mediump sampler2D inputBuffer; uniform lowp sampler2D inputBuffer; uniform lowp sampler2D depthBuffer; uniform highp sampler2D depthBuffer; uniform mediump sampler2D depthBuffer;"
+ },
+ {
+  "t": 4766,
+  "nome": "EffectMaterial",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){vUv=position.xy*0.5+0.5;e0MainSupport(vUv); gl_Position=vec4(position.xy,1.0,1.0);}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDepthEXT gl_FragDepth\n#define texture2D texture\n#define textureCube texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#define texture2DProjLodE ||| uniform sampler2D morphTexture; uniform vec2 resolution; uniform vec2 texelSize; uniform float cameraNear; uniform float cameraFar; uniform float aspect; uniform float time; uniform vec2 e0Offset; uniform mediump sampler2D inputBuffer; uniform lowp sampler2D inputBuffer; uniform lowp sampler2D depthBuffer; uniform highp sampler2D depthBuffer;"
+ },
+ {
+  "t": 4789,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDepthEXT gl_FragDepth\n#define texture2D texture\n#define textureCube texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#define t ||| uniform sampler2D morphTexture; uniform vec3 sol; uniform vec3 lua; uniform vec3 tinta; uniform vec3 nevoaC; uniform float tempo; uniform vec3 topoC; uniform vec3 meioC; uniform float noite;"
+ },
+ {
+  "t": 4791,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 4792,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 4793,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 4793,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 4794,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4794,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4795,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4796,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4796,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4798,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4798,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4799,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4800,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4800,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4801,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4801,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4801,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() { vD = aD; vL = aL; vC = aCor; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDepthEXT gl_FragDepth\n#define texture2D texture\n#define textureCube texture\n#define texture2DProj textureProj\n#define texture2DLodEXT textureLod\n#def ||| uniform sampler2D morphTexture; uniform float uT; uniform float uIni; uniform float uK; uniform float uTot; uniform float uVel; uniform float uPer; uniform float uMarco; uniform float uLarg;"
+ },
+ {
+  "t": 4802,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,COLOR",
+  "code": "void main() {\n  vY = uv.y;\n  #ifdef USE_INSTANCING_COLOR\n  vC = instanceColor;\n  #else\n  vC = vec3(1.0);\n  #endif\n  vec4 p = vec4(position, 1.0);\n  #ifdef USE_INSTANCING\n  p = instanceMatrix * p;\n  #endif\n  gl_Position = projectionMatrix * modelViewMatrix * p;\n}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDep ||| uniform sampler2D morphTexture; uniform float uK; uniform float uForca; uniform vec3 uCor; uniform float uT;"
+ },
+ {
+  "t": 4802,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n  vY = uv.y;\n  #ifdef USE_INSTANCING_COLOR\n  vC = instanceColor;\n  #else\n  vC = vec3(1.0);\n  #endif\n  vec4 p = vec4(position, 1.0);\n  #ifdef USE_INSTANCING\n  p = instanceMatrix * p;\n  #endif\n  gl_Position = projectionMatrix * modelViewMatrix * p;\n}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDep ||| uniform sampler2D morphTexture; uniform float uK; uniform float uForca; uniform vec3 uCor; uniform float uT;"
+ },
+ {
+  "t": 4802,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "",
+  "code": "void main() {\n  vY = uv.y;\n  #ifdef USE_INSTANCING_COLOR\n  vC = instanceColor;\n  #else\n  vC = vec3(1.0);\n  #endif\n  vec4 p = vec4(position, 1.0);\n  #ifdef USE_INSTANCING\n  p = instanceMatrix * p;\n  #endif\n  gl_Position = projectionMatrix * modelViewMatrix * p;\n}\n#version 300 es\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define gl_FragDep ||| uniform sampler2D morphTexture; uniform float uK; uniform vec3 uCor; uniform float uT;"
+ },
+ {
+  "t": 4802,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "MAP,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform float rotation; uniform vec2 center; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform; uniform mat3 emissiveMapTransform; uniform mat3 metalnessMapTransform;"
+ },
+ {
+  "t": 4802,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING",
+  "code": "void main() {\n  vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.0);\n  vec3 s = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));\n  // x = a volta em metros (contínua de uma parede pra outra), y = 0 no chão, 1 no topo\n  vP = vec2(position.x * s.x + position.z * s.z, position.y + 0.5);\n  vW = w.xyz;\n  gl_Position = projectionMatrix * viewMatr ||| uniform sampler2D morphTexture; uniform vec3 uK; uniform float uT; uniform vec4 uToque; uniform vec3 uCor;"
+ },
+ {
+  "t": 4803,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform sampler2D uAcTex; uniform float uAcN; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform;"
+ },
+ {
+  "t": 4805,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING,FOG,EMISSIVEMAP,FOG,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4806,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,EMISSIVEMAP,FOG,EMISSIVEMAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4807,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4816,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4820,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,FOG,MAP,FOG,MAP,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4821,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,COLOR,FOG,MAP,COLOR",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4821,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4823,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING,INSTANCING,FOG,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4823,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,FOG,FOG,COLOR",
+  "code": "void main() {\n        mat4 mi = modelMatrix;\n        #ifdef USE_INSTANCING\n          mi = modelMatrix * instanceMatrix;\n        #endif\n        vec4 wp = mi * vec4(position, 1.0);\n        vN = normalize(mat3(mi) * normal);\n        vV = normalize(cameraPosition - wp.xyz);\n        #ifdef USE_INSTANCING_COLOR\n          vC = instanceColor;\n        #else\n          vC = vec3(0.3, 0.8, 1.0);\n        #endi ||| uniform sampler2D morphTexture; uniform float tempo; uniform float brilho;"
+ },
+ {
+  "t": 4824,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4824,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,FOG,MAP",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4824,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4827,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "INSTANCING,FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4828,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,FOG,COLOR,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4829,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,INSTANCING,FOG,FOG,COLOR",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4830,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "INSTANCING,FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ },
+ {
+  "t": 4830,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,MAP,COLOR,COLOR,FOG,MAP,COLOR,COLOR",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4831,
+  "nome": "custom",
+  "luzes": "",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n\t#ifdef USE_POINTS_UV\n\t\tvUv = ( uvTransform * vec3( uv, 1 ) ).xy;\n\t#endif\n#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA ) || defined( USE_INSTANCING_COLOR ) || defined( USE_BATCHING_COLOR )\n\tvColor = vec4( 1.0 );\n#endif\n#ifdef USE_COLOR_ALPHA\n\tvColor *= color;\n#elif defined( USE_COLOR )\n\tvColor.rgb *= color;\n#endif\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb *= instanceColor.rgb;\n ||| uniform sampler2D morphTexture; uniform float size; uniform float scale; uniform float morphTargetBaseInfluence; uniform float morphTargetInfluences[ MORPHTARGETS_COUNT ]; uniform sampler2DArray morphTargetsTexture; uniform ivec2 morphTargetsTextureSize; uniform mat3 uvTransform; uniform vec3 diffuse; uniform float opacity; uniform mat3 uvTransform; uniform sampler2D map;"
+ },
+ {
+  "t": 4833,
+  "nome": "custom",
+  "luzes": "DirectionalLight directionalLights[ 1 ],PointLight pointLights[ 7 ],SpotLight spotLights[ 0 ],HemisphereLight hemisphereLights[ 1 ]",
+  "sh": "FOG,FOG",
+  "code": "void main() {\n#if defined( USE_UV ) || defined( USE_ANISOTROPY )\n\tvUv = vec3( uv, 1 ).xy;\n#endif\n#ifdef USE_MAP\n\tvMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_ALPHAMAP\n\tvAlphaMapUv = ( alphaMapTransform * vec3( ALPHAMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_LIGHTMAP\n\tvLightMapUv = ( lightMapTransform * vec3( LIGHTMAP_UV, 1 ) ).xy;\n#endif\n#ifdef USE_AOMAP\n\tvAoMapUv = ( aoMapTransfor ||| uniform sampler2D morphTexture; uniform int _gl_DrawID; uniform highp sampler2D batchingTexture; uniform highp usampler2D batchingIdTexture; uniform sampler2D batchingColorTexture; uniform mat3 mapTransform; uniform mat3 alphaMapTransform; uniform mat3 lightMapTransform; uniform mat3 aoMapTransform; uniform mat3 bumpMapTransform; uniform mat3 normalMapTransform; uniform mat3 displacementMapTransform;"
+ }
+]
