@@ -23,10 +23,14 @@ for (const p of PERFIS) {
   const page = await ctx.newPage()
   const erros = []
   page.on("pageerror", (e) => erros.push(e.message))
+  await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
   if (p.cpu > 1) { const cdp = await ctx.newCDPSession(page); await cdp.send("Emulation.setCPUThrottlingRate", { rate: p.cpu }) }
   await page.goto(`http://localhost:${porta}/teste/sinuca?modo=mubarak`)
   await page.waitForFunction(() => !!window.__sinuca)
   await page.waitForTimeout(1500)
+  // o primeiro toque (acorda o som, como um jogador de verdade antes da quebra)
+  const vp = p.viewport
+  if (p.hasTouch) await page.touchscreen.tap(vp.width * 0.8, vp.height * 0.5); else await page.mouse.click(vp.width * 0.8, vp.height * 0.5)
   // parado (mirando, nada mexendo): quanto custa a mesa quieta
   await page.evaluate(() => window.__sinuca.zerar())
   await page.waitForTimeout(3000)

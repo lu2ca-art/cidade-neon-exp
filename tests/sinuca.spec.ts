@@ -9,6 +9,7 @@ const PRINTS = process.env.PRINTS
 test("sinuca: treino, a quebra pelo puxador", async ({ page }) => {
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
+  await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
   await page.goto("/teste/sinuca?modo=pratica")
   await page.waitForFunction(() => !!window.__sinuca)
   await page.waitForTimeout(500)
@@ -36,6 +37,7 @@ test("sinuca: treino, a quebra pelo puxador", async ({ page }) => {
 test("sinuca: contra o Mubarak, ele joga a vez dele", async ({ page }) => {
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
+  await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
   await page.goto("/teste/sinuca?modo=mubarak")
   await page.waitForFunction(() => !!window.__sinuca)
   await page.evaluate(() => window.__sinuca.tacar(0, 1))

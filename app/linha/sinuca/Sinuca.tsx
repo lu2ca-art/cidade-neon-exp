@@ -64,6 +64,7 @@ export function Sinuca({ modo: modoFixo, onFim, expor }: { modo?: Modo; onFim?: 
   const puxa = useRef<{ x: number; y: number; id: number; larg: number } | null>(null)
   const puxDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
+    jogo.current?.puxar(0)
     puxa.current = { x: e.clientX, y: e.clientY, id: e.pointerId, larg: Math.max(120, r.width * 0.85) }
     e.currentTarget.setPointerCapture(e.pointerId)
   }

@@ -103,4 +103,4 @@ export function somClique() {
 }
 
 // acorda o áudio no primeiro toque (política de autoplay)
-export function acordarSom() { audioCtx() }
+export function acordarSom() { const c = audioCtx(); if (c) bufRuido(c) }

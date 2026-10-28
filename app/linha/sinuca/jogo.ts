@@ -140,6 +140,7 @@ export class Jogo {
 
   // ── o que o componente chama ──
   puxar(f: number) {
+    acordarSom()
     if (!this.minhaVez) return
     this.forca = Math.max(0, Math.min(1, f)); this.sujo = true
   }
@@ -401,6 +402,7 @@ export class Jogo {
   }
 
   private tecla = (e: KeyboardEvent) => {
+    acordarSom()
     if (!this.minhaVez) return
     const k = e.shiftKey ? 0.02 : 0.002
     if (e.key === "ArrowLeft") this.ang += k
