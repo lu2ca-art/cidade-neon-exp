@@ -126,7 +126,9 @@ test("?parte=oficina.pagar: o mecânico pago em água e a porta das melhorias", 
   await expect(pg).toBeVisible()
   // a água sai do save na hora; o contador desce na tela até 0
   await expect.poll(async () => (await saveDe(page)).agua).toBe(0)
-  await expect(pg.locator("[data-agua]")).toHaveAttribute("data-agua", "0", { timeout: 10_000 })
+  // (no GitHub, sem placa de vídeo, os primeiros segundos depois de chegar são lentos:
+  // o contador leva ~3 s no Mac e passou de 10 s lá; a regra é a mesma, só a folga cresce)
+  await expect(pg.locator("[data-agua]")).toHaveAttribute("data-agua", "0", { timeout: 30_000 })
   await pg.getByRole("button", { name: "montar o motor →" }).click()
   const porta = page.getByRole("dialog", { name: "a porta abriu" })
   await expect(porta).toBeVisible()
