@@ -146,8 +146,9 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   oficina: {
     id: "oficina", n: 2, onde: "suburbio", quem: "o mecânico", cor: "#ff9000", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "oficina" }, pedido: "a kombi não sobe sem motor novo", apresenta: "montar o motor com o mecânico",
-    arte: p("a reciclagem: o lixo vira tecnologia", "decidido", { tarefa: "T09" }),
-    jogo: p("achar o painel solar no lixão e a goteira", "decidido", { tarefa: "T09" }),
+    // (T09) a fase "oficina" da história joga as duas (disco/oficina.ts): a bancada, o painel e a goteira
+    arte: p("a reciclagem: o lixo vira tecnologia", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
+    jogo: p("achar o painel solar no lixão e a goteira", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
     abre: ["kombi-melhorias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.oficina }, requer: ["dbee"], prologo: true,
   },
   quadra: {

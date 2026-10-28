@@ -8,7 +8,7 @@ import type { FreqId } from "./radio"
 import type { LugarId } from "./lugares"
 
 export interface LugarPagina {
-  id: "ginasio" | "galeria" | "fliperama" | "shows" | "oficina"
+  id: "ginasio" | "galeria" | "fliperama" | "shows"
   nome: string // "o ginásio"
   rota: string
   area: FreqId
@@ -33,8 +33,8 @@ export const PAGINAS: LugarPagina[] = [
   { id: "galeria", nome: "a galeria", rota: "/galeria", area: "crypto", u: 1550, lado: 1, horario: "dia", cor: "#3d7bff", letreiro: "GALERIA", chegada: "de dia · as paredes esperando quadro" },
   { id: "shows", nome: "a casa de shows", rota: "/casa-de-shows", area: "live", u: 1250, lado: 1, horario: "noite", cor: "#ffc857", letreiro: "SHOW HOJE", chegada: "de noite · um amigo da 222 no palco", lugar: "casa-shows" },
   { id: "fliperama", nome: "o fliperama", rota: "/fliperama", area: "live", u: 1500, lado: -1, horario: "noite", cor: "#ff6a35", letreiro: "FLIPERAMA", chegada: "de noite · as fichas tilintando", exige: "rollercoaster" },
-  // a oficina mora no subúrbio (o que é humano foi pra margem): pintura e neon da Kombi
-  { id: "oficina", lugar: "oficina", nome: "a oficina", rota: "/oficina", area: "suburbio", u: 1150, lado: 1, horario: "sempre", cor: "#ff9000", letreiro: "OFICINA", chegada: "o cheiro de graxa · a Kombi sobe no elevador" },
+  // (T04) a oficina saiu daqui: ela mora só no chão do subúrbio (disco/historia.ts,
+  // CHAO_LUGARES) e não vende nada estético (a página /oficina, da pintura, saiu)
 ]
 
 // a página foi aberta a partir da cidade? então o "sair" volta pra estrada.
