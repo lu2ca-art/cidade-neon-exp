@@ -2479,7 +2479,6 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-perfil li button { padding: 5px 10px !important; border-radius: 999px; border: 1px solid #4fc3ff !important; background: rgba(79, 195, 255, 0.12) !important; color: #fff !important; font: 700 11px var(--mono) !important; cursor: pointer; white-space: nowrap; }
 .l-perfil li button:disabled { opacity: 0.4; cursor: default; }
 .l-perfil.is-oficina li { opacity: 1; }
-.l-perfil-pintura { justify-self: end; padding: 7px 12px !important; border-radius: 999px; border: 1px solid #ff9000 !important; background: none !important; color: #ff9000 !important; font: 700 11px var(--mono) !important; cursor: pointer; }
 
 /* (disco, B11) o ping pong com o robô */
 .l-pingpong { position: absolute; inset: 0; z-index: 72; background: #06040c; touch-action: none; }

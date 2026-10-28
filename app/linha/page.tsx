@@ -566,12 +566,7 @@ export default function LinhaPage() {
       const h = historiaDe(saveRef.current)
       if (cinema) return
       // (saiu do bar agora: não reabre parado na porta; tem que dar uma volta)
-      if (id === "oficina" && h.fase === "nectar" && h.nectar === "oficina") {
-        setAoVivo(null)
-        setCinema("lugar")
-        setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" })
-        return
-      }
+      // (T04) a oficina não está mais nas pistas: o passo dela é no chão (chao:oficina)
       // (T02) a carreira: chegou no lugar da missão pegada: a peça de agora (ou a porta)
       if (h.fase === "carreira" && Date.now() - barFechou.current > 8000) {
         const m = missaoDoSave(saveRef.current)
@@ -811,12 +806,11 @@ export default function LinhaPage() {
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: undefined })))
     if (m) setLargadas((l) => [...l, m])
   }
-  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? "oficina" : lugar13?.chao ?? null
+  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? "oficina" : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
-    : hist.fase === "nectar" && hist.nectar === "oficina" ? { t: "lugar", missao: "nectar", lugar: "oficina", pegar: false }
     : lugar13?.lugar ? { t: "lugar", missao: "sexta", lugar: lugar13.lugar, pegar: false }
     : null
   // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
@@ -1147,7 +1141,7 @@ export default function LinhaPage() {
     }
     // (B18) o subúrbio no chão: o bar (missão 1), a oficina (missão 2), o palco
     if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
-    if (e === "chao:oficina" && h.fase === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
+    if (e === "chao:oficina" && (h.fase === "oficina" || (h.fase === "nectar" && h.nectar === "oficina")) && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
     // (T02) o chão do subúrbio (a quadra, os túneis): chegou no lugar da missão pegada
     if (e.startsWith("chao:") && h.fase === "carreira") { const m = missaoDoSave(saveRef.current); if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m) }
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
