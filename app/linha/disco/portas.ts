@@ -43,6 +43,8 @@ export type ComoJoga =
   | { t: "prova"; id: ProvaId }
   // na rua, em qualquer lugar: conta os eventos da estrada (n vezes)
   | { t: "evento"; evento: "montanha" | "flor"; n: number }
+  // (T19) escrever a letra da faixa (disco/Letra.tsx; os versos em disco/letras.ts)
+  | { t: "letra"; faixa: PistaId }
 
 export interface Peca {
   nome: string
@@ -172,7 +174,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   lu2ca: {
     id: "lu2ca", n: 8, onde: "cidade", quem: "LU2CA", cor: "#e0ff4f", faixa: "nectar", faixaSituacao: "decidido",
     lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar uma faixa ao vivo no Guitar Driver",
-    arte: p("escrever a letra", "proposta", { tarefa: "T19" }),
+    // (T19) a arte ainda é proposta: joga como rascunho (disco/letras.ts); o dono decide
+    arte: p("escrever a letra", "proposta", { como: { t: "letra", faixa: "nectar" }, tarefa: "T19" }),
     jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "nectar" }, tarefa: "T19" }),
     abre: ["shows-live"], recompensa: { guitar: null, batida: "nectar", neon: NEON }, requer: ["oficina"],
   },

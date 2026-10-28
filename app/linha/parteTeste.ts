@@ -7,6 +7,7 @@
 import { BASE_TESTE, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
 
 import { IDS13, MISSOES13, normalizarMissao } from "./disco/portas"
+import { LETRAS } from "./disco/letras"
 
 // (T02) as missões: o id das 13 (missao.drew) ou, como antes, a faixa (missao.sexta → a do Drew)
 const MISSOES = ["sexta", "dopamina", "ojala", "swav", "copo", "ontem", "rollercoaster", "chuva", "nectar"]
@@ -23,17 +24,23 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "carreira.feira" || parte === "feira") return { fase: "carreira", holo: true }
   if (parte === "carreira.meio") return MEIO
   if (parte.startsWith("missao.")) {
-    const m = normalizarMissao(parte.slice(7))
+    // (T19) a peça aberta direto: missao.lu2ca.letra (a arte) e missao.lu2ca.show (o live, com a letra escrita)
+    const [mId, sub] = parte.slice(7).split(".")
+    const m = normalizarMissao(mId)
     if (!m || MISSOES13[m].prologo) return undefined as unknown as null
     // (a missão da cidade precisa da pista acesa e de quem ela pede antes: o save já vem com isso)
     const feitas13 = [...new Set(["dbee", "oficina", ...MISSOES13[m].requer])].filter((x) => x !== m)
-    return { fase: "carreira", holo: true, missao: m, feitas13 }
+    const base = { fase: "carreira", holo: true, missao: m, feitas13 }
+    if (m === "lu2ca" && sub === "letra") return { ...base, aberta13: "lu2ca:arte" }
+    if (m === "lu2ca" && sub === "show") return { ...base, passos13: ["lu2ca:arte"], letras: { nectar: LETRAS.nectar!.versos.map((v) => v.opcoes[0]) }, show: "missao:lu2ca" }
+    if (sub) return undefined as unknown as null
+    return base
   }
   if (parte === "livre" || parte === "final") return { fase: "livre", holo: true }
   return undefined as unknown as null
 }
 
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", ...MISSOES_FEIRA.map((m) => `missao.${m}`), ...MISSOES.map((m) => `missao.${m}`), "livre"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {

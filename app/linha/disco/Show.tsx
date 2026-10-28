@@ -29,11 +29,21 @@ const INICIO_ANTIGO = 28 // sem o chart novo: o trecho do chart antigo (public/g
 const DIF = "medio" as const
 const TECLAS = ["d", "f", "j", "k"]
 
-function ajustar(c: HTMLCanvasElement) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr)
+// (T19, J2: 24 "o show tá lento") o show é 2D: cada quadro redesenha o palco, a
+// galera, o braço e os brilhos (shadowBlur) na tela inteira. Em 2x numa tela de
+// notebook (1864×999) o canvas passava de 7 milhões de pixels. Teto de pixels:
+// acima dele a densidade cai (nunca abaixo de 1x). ?showpx=N troca o teto (medir).
+export const SHOW_MAX_PX = 2_600_000
+let tetoPx = 0
+export function ajustarShow(c: HTMLCanvasElement) {
+  if (!tetoPx) tetoPx = Number(new URLSearchParams(location.search).get("showpx")) || SHOW_MAX_PX
+  const cw = Math.max(1, c.clientWidth), ch = Math.max(1, c.clientHeight)
+  let dpr = Math.min(window.devicePixelRatio || 1, 2)
+  if (cw * ch * dpr * dpr > tetoPx) dpr = Math.max(1, Math.sqrt(tetoPx / (cw * ch)))
+  const w = Math.round(cw * dpr), h = Math.round(ch * dpr)
   if (c.width !== w || c.height !== h) { c.width = w; c.height = h }
 }
+const ajustar = ajustarShow
 
 type Estado = "carregando" | "contagem" | "tocando" | "fim" | "erro"
 interface Jogo {
@@ -44,7 +54,9 @@ interface Jogo {
 }
 
 export type InstrumentoShow = "voz" | "guitarra" | "baixo" | "teclado" | "bateria"
-export interface PropsShow { faixa: PistaId; lugar: string; palco?: string; cor: string; popularidade: number; onFim: (r: ResultadoShow) => void }
+export interface PropsShow { faixa: PistaId; lugar: string; palco?: string; cor: string; popularidade: number; onFim: (r: ResultadoShow) => void
+  // (T19) a letra que ele escreveu (a arte do LU2CA): aparece no cantar
+  letra?: string[] }
 // o chart novo (public/gd2): cada instrumento com os 4 níveis (a voz: a melodia) e a janela de 22 s de cada um
 export type ChartGd2 = ChartGd & { janelas?: Partial<Record<InstrumentoShow, number>>; voz?: { melodia: [number, number, number][] } } & Partial<Record<InstrumentoShow, unknown>>
 export const carregarChart = (faixa: PistaId) => fetch(`/gd2/${faixa}.json`).then((r) => (r.ok ? (r.json() as Promise<ChartGd2>) : Promise.reject()))

@@ -2858,3 +2858,30 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-prova-missao { flex-direction: column; gap: 10px; }
 .l-prova-missao > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
 .l-prova-missao > .l-prova { width: min(420px, 100%); max-height: 70vh; overflow: auto; padding: 12px; border-radius: 16px; background: rgba(5, 5, 14, 0.9); border: 1px solid rgba(255, 255, 255, 0.14); }
+
+/* (T19) a arte do LU2CA: escrever a letra (disco/Letra.tsx) */
+.l-letra { position: absolute; inset: 0; z-index: 74; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 3, 10, 0.7); backdrop-filter: blur(6px); animation: l-sobe 0.35s both; }
+.l-letra-caixa { width: min(440px, 100%); max-height: calc(100% - 32px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px 18px 16px; border-radius: 18px; background: rgba(6, 6, 16, 0.94); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--cor) 25%, transparent); color: #fff; }
+.l-letra-caixa > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-letra-caixa > b { font: 800 clamp(28px, 8vw, 38px)/0.95 var(--cond); text-transform: uppercase; letter-spacing: 0.03em; }
+.l-letra-mote { margin: 0; font: 13px/1.4 system-ui, sans-serif; color: rgba(255, 255, 255, 0.7); }
+.l-letra-papel { display: grid; gap: 4px; padding: 14px 16px; border-radius: 10px; background: #f1ece0; color: #17131f; transform: rotate(-0.6deg); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
+.l-letra-papel em { font: 700 11px var(--mono); font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.55; }
+.l-letra-papel p { margin: 0; min-height: 1.35em; font: 600 16px/1.35 "Georgia", serif; border-bottom: 1px solid rgba(23, 19, 31, 0.12); }
+.l-letra-papel p.is-agora { color: rgba(23, 19, 31, 0.4); }
+.l-letra-papel p.is-escrito { animation: l-sobe 0.3s both; }
+.l-letra-opcoes { display: grid; gap: 8px; }
+.l-letra-opcoes > small { font: 700 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cor); }
+.l-letra-opcoes button, .l-letra-livre button, .l-letra-fim button { display: flex; gap: 10px; align-items: baseline; text-align: left; padding: 11px 12px !important; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent) !important; background: color-mix(in srgb, var(--cor) 10%, rgba(8, 6, 16, 0.9)) !important; color: #fff !important; font: 15px/1.3 system-ui, sans-serif !important; cursor: pointer; }
+.l-letra-opcoes button:hover, .l-letra-opcoes button:focus-visible { box-shadow: 0 0 18px -6px var(--cor); outline: none; }
+.l-letra-opcoes kbd { font: 700 11px var(--mono); color: var(--cor); }
+.l-letra-opcoes .is-livre { justify-content: center; border-style: dashed !important; opacity: 0.85; }
+.l-letra-livre { display: flex; gap: 8px; }
+.l-letra-livre input { flex: 1; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); background: rgba(255, 255, 255, 0.06); color: #fff; font: 15px system-ui, sans-serif; }
+.l-letra-fim { display: flex; gap: 8px; justify-content: space-between; }
+.l-letra-fim .is-volta, .l-letra-livre .is-volta { opacity: 0.7; font-size: 12px !important; }
+.l-letra-fim .is-subir { margin-left: auto; background: var(--cor) !important; color: #07060d !important; font-weight: 700 !important; }
+
+/* (T19) o prelúdio do show: o filmezinho antes da escolha do instrumento */
+.l-show.is-preludio { cursor: pointer; }
+.l-show-pular { position: absolute; right: 16px; bottom: calc(12% + env(safe-area-inset-bottom)); font: 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); pointer-events: none; }
