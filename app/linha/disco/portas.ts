@@ -126,10 +126,10 @@ export const CONFIG13 = {
   // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
   // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
   // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
-  trancar: [] as PortaId[],
+  trancar: ["ginasio"] as PortaId[],
   // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
   // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
-  kombiNoConserto: [] as MissaoId[],
+  kombiNoConserto: ["drew"] as MissaoId[],
 }
 
 const p = (nome: string, situacao: Situacao, extra: Partial<Peca> = {}): Peca => ({ nome, situacao, ...extra })
@@ -168,8 +168,10 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   drew: {
     id: "drew", n: 5, onde: "cidade", quem: "Drew", cor: "#6d7bff", faixa: "sexta", faixaSituacao: "decidido",
     lugar: { lugar: "casa-drewboy" }, pedido: "sexta e eu em casa de novo", apresenta: "o jetpack, depois o ping pong",
-    arte: p("dançar na balada, marcando o ritmo", "proposta", { tarefa: "T15" }),
-    jogo: p("o ping pong com o robô", "decidido", { como: { t: "pingpong" }, tarefa: "T15 (o jetpack e o skate)" }),
+    // (T15) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, DANCA)
+    arte: p("dançar na balada, marcando o ritmo", "proposta", { como: { t: "cena", id: "danca" }, tarefa: "T15" }),
+    // o caminho até ele é de patins (a Kombi no conserto, CONFIG13.kombiNoConserto) e apresenta o jetpack
+    jogo: p("de patins e jetpack até ele, depois o ping pong", "decidido", { como: { t: "pingpong" }, tarefa: "T15" }),
     abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: PAGA.missao.drew }, requer: ["oficina"],
   },
   mubarak: {
