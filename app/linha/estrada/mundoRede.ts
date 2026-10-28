@@ -157,7 +157,7 @@ export function montarMundoRede(): MundoRede {
     "lugar:bar": [640, 920], "lugar:casa-drewboy": [705, 875], "lugar:escondido": [915, 1100], "lugar:beco": [610, 1010],
     "lugar:balada": [915, 590], "lugar:posto": [1105, 615], "lugar:plataforma": [1010, 495],
     "lugar:topo": [1610, 305], "lugar:casa-shows": [1630, 715], "lugar:casa-dbee": [115, 985],
-    "pagina:ginasio": [1000, 945], "pagina:galeria": [830, 655], "pagina:fliperama": [715, 1085], "pagina:oficina": [990, 1175],
+    "pagina:ginasio": [1000, 945], "pagina:galeria": [830, 655], "pagina:fliperama": [715, 1085],
     "parque": [1440, 1080],
     "bomba:bomba-mirante": [1450, 440], "bomba:bomba-arena": [1500, 780], "bomba:bomba-avenida": [1250, 1160],
   }

@@ -46,6 +46,7 @@ import { ROBOS, Robos } from "../disco/Robos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
+import { feita13 } from "../disco/portas"
 import { lixoNoChao } from "./chao"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
@@ -60,7 +61,6 @@ import type { AppId } from "../os"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
-import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
@@ -582,7 +582,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // (disco, a história) a Kombi cai do buraco de minhoca no deserto, perto da
     // casa; depois da casa, sai dela de frente pra cidade (dirigindo nas dunas)
     // (B18) no bar e na oficina (o subúrbio, no chão) ela reaparece no subúrbio
-    const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina")
+    // (T09) e logo depois da oficina (subir), antes de pousar lá em cima, também
+    const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina" || historia.fase === "subir")
     if ("disco" in M && historia && (historia.fase === "casa" || historia.fase === "dunas" || noSub)) {
       const MD = M as MundoDisco, p = historia.fase === "casa" ? QUEDA : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
@@ -1055,6 +1056,20 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return () => mq.removeEventListener("change", f)
   }, [])
   const [oficinaAberta, setOficinaAberta] = useState(false)
+  // (T04, T09) a oficina mora só no chão do subúrbio: depois da missão dela (a porta
+  // das melhorias), parando perto, dá pra entrar e comprar desempenho com água
+  const [pertoDaOficina, setPertoOficina] = useState(false)
+  const oficinaLivre = !!discoM && !!historia && feita13(historia, "oficina") && alvoChao !== "oficina"
+  const pertoOficina = oficinaLivre && pertoDaOficina
+  useEffect(() => {
+    if (!oficinaLivre) return
+    const l = CHAO_LUGARES.oficina
+    const iv = setInterval(() => {
+      const j = jogo.current
+      setPertoOficina(!!j.voo && j.wx !== undefined && !j.ar && Math.hypot(j.wx - l.x, j.wz! - l.z) < RAIO_CHAO * 1.6)
+    }, 400)
+    return () => clearInterval(iv)
+  }, [oficinaLivre])
   const alternarOculos = () => setOculos((o) => { try { localStorage.setItem("cn-oculos", o ? "off" : "on") } catch {} ; chiadoCurto(); return !o })
   // (o holo) o clima de onde a Kombi está: a pista (o nome dela), a torre ou,
   // voando sem pista embaixo, o deserto (que nunca chove)
@@ -2333,15 +2348,17 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
       {discoM && perfil && <Perfil agua={aguaVista} neon={save.neon ?? 0} pop={save.popularidade ?? 0} mods={mods} onFechar={() => setPerfil(false)} />}
       {discoM && oficinaAberta && (
-        <OficinaLoja agua={aguaVista} mods={mods} onComprar={(id, preco) => onComprar?.(id, preco)} onFechar={() => { setOficinaAberta(false); jogo.current.encostando = false }}
-          onPintura={() => { setOficinaAberta(false); const lp = PAGINAS.find((x) => x.id === "oficina"); if (lp) entrar(lp) }} />
+        <OficinaLoja agua={aguaVista} mods={mods} onComprar={(id, preco) => onComprar?.(id, preco)} onFechar={() => { setOficinaAberta(false); jogo.current.encostando = false }} />
+      )}
+      {discoM && pertoOficina && !oficinaAberta && !pausado && (
+        <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: CHAO_LUGARES.oficina.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setOficinaAberta(true) }}>entrar · a oficina</button>
       )}
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
         if (!lp || entrando || regando || parque === "andando") return null
         if (trancadaPelaHistoria(lp, save.objetos)) return <p className="l-pagina-fechada">{lp.nome} · de portas fechadas</p>
         return abertos[lp.id]
-          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { if (discoM && lp.id === "oficina" && holoOk) { jogo.current.encostando = true; setOficinaAberta(true) } else entrar(lp) }}>entrar · {lp.nome}</button>
+          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrar(lp)}>entrar · {lp.nome}</button>
           : <p className="l-pagina-fechada">{lp.nome} abre às {abreAs(lp.horario)}</p>
       })()}
       {entrando && (
@@ -2712,7 +2729,6 @@ const CARREGAR_PAGINA: Record<LugarPagina["id"], () => Promise<unknown>> = {
   galeria: () => import("../../galeria/GaleriaScene"),
   fliperama: () => import("../../fliperama/page"),
   shows: () => import("../../casa-de-shows/Show"),
-  oficina: () => import("../../oficina/Elevador"),
 }
 
 export interface Comb {
@@ -3882,8 +3898,6 @@ function Cena({
   const cabineG = useRef<THREE.Group>(null)
   const patinador = useRef<THREE.Group>(null)
   const kombiParada = useRef<THREE.Group>(null)
-  // o estilo da oficina (pintura e neon de baixo)
-  const [estiloK] = useState(() => lerEstilo())
   const kParadaT = useRef(false)
   const kParadaZero = useRef(0)
   const luzBaixo = useRef<THREE.PointLight>(null)
@@ -6043,7 +6057,7 @@ function Cena({
               no aparelho, a desenhada à mão */}
           <Seguro nome="kombi" reserva={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
             <Suspense fallback={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
-              <KombiHerbal tinta={corPintura(estiloK)} paineis={!semPaineis} />
+              <KombiHerbal paineis={!semPaineis} />
               <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} soEfeitos />
             </Suspense>
           </Seguro>
@@ -6054,7 +6068,7 @@ function Cena({
         <group ref={cabineG}>
           <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} /></Seguro>
         </group>
-        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color={corNeon(estiloK)} intensity={45} distance={10} decay={2} />
+        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
         {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
         <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />
