@@ -65,6 +65,7 @@ import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
 import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
+import { RotaPista } from "./RotaPista"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -2559,7 +2560,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o ∞ (o automático infinito) */}
       {discoM && oculos && (
         <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null }} icone={checklistHolo?.chave ?? null}
-          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} />
+          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} apagada={viaApagada} />
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
@@ -6047,6 +6048,8 @@ function Cena({
       {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} />}
       {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
+      {/* (T58) o GPS tipo Waze: a faixa da rota no chão da pista, à frente (1 draw, só com destino) */}
+      {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
       {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
       {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}

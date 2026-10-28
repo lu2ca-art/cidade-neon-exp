@@ -20,10 +20,11 @@ import { pintarCarta } from "./carta"
 import { ESCALA, H as HU, W as WU } from "../rede/terreno"
 import { ICONE_MISSAO } from "./Holo"
 import { CHAO_FIXOS, CHAO_LUGARES } from "../disco/historia"
+import { NAV } from "./nav"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
-interface PoseKombi { via: number; u: number; x: number; v: number; wx?: number; wz?: number; rumo?: number; livreOk?: boolean }
+interface PoseKombi { via: number; u: number; x: number; v: number; wx?: number; wz?: number; rumo?: number; livreOk?: boolean; voo?: boolean }
 
 const ROTA_COR = "#ff3fb0"
 // (23/10) os lugares do chão do subúrbio (a oficina, o bar, o palco) ficam fora das
@@ -230,10 +231,25 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     })
   }, [missoes, M, apagada])
 
-  // a rota se refaz a cada segundo (a Kombi andou, o destino mudou)
+  // (T58) com o GPS ligado, o minimapa mostra a MESMA rota dele (a vaga da missão,
+  // o lugar do chão, a marca): antes ele só via a marca e o lugar da missão
+  const destNav = useRef<{ x: number; z: number; cor: string } | null>(null)
+  // a rota se refaz a cada meio segundo (a Kombi andou, o destino mudou)
   useEffect(() => {
     const refazer = () => {
       const p = pose.current
+      if (NAV.ativo && NAV.destino && p && !marca) {
+        const D = NAV.destino
+        const segs = NAV.rota ? linhaDaRota(M, NAV.rota) : []
+        // o pedaço fora da pista (até o lugar do chão) ou a reta (voando, no chão)
+        const de = NAV.rota ? NAV.saida : p.wx !== undefined && (p.livreOk || p.voo) ? { x: p.wx, z: p.wz! } : null
+        if (de) segs.push({ cor: D.cor, pts: [de.x, de.z, D.x, D.z] })
+        rota.current = segs.length ? { segs, metros: NAV.metros } : null
+        destNav.current = { x: D.x, z: D.z, cor: D.cor }
+        setDistancia(NAV.metros >= 0 ? km(NAV.metros) : "")
+        return
+      }
+      destNav.current = null
       if (!destino || !p) { rota.current = null; setDistancia(""); return }
       const r = calcularRota(M, { via: p.via, u: p.u }, destino)
       if (!r) { rota.current = null; setDistancia(""); return }
@@ -243,7 +259,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       if (marca && r.metros < 40) onMarcar(null)
     }
     refazer()
-    const t = setInterval(refazer, 1000)
+    const t = setInterval(refazer, 500)
     return () => clearInterval(t)
   }, [M, destino, marca, onMarcar, pose])
 
@@ -262,7 +278,8 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       const g = c.getContext("2d")!
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
       // (direção livre) a Kombi tem posição e rumo próprios: o minimapa gira com ela
-      const livre = p.livreOk && p.wx !== undefined
+      // (T58) e no disco, fora da pista (o chão do subúrbio, as dunas, voando): a posição de verdade
+      const livre = (p.livreOk || p.voo) && p.wx !== undefined
       const k = livre ? { x: p.wx!, z: p.wz!, tx: Math.sin(p.rumo!), tz: Math.cos(p.rumo!) } : noMundo(M, p)
       const ox = livre ? k.x : k.x - k.tz * p.x, oz = livre ? k.z : k.z + k.tx * p.x
       const alvoZoom = 240 + Math.min(260, Math.abs(p.v) * 9)
@@ -320,16 +337,18 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         if (d > R - 12) { x = R + ((x - R) / d) * (R - 12); y = R + ((y - R) / d) * (R - 12) }
         desenharIcone(g, x, y, ic, 0.6, agora)
       }
-      if (destino) {
-        const w = noMundo(M, destino)
-        let [x, y] = tela(w.x, w.z)
+      const dn = destNav.current ?? (destino ? { ...noMundo(M, destino), cor: destino.cor } : null)
+      if (dn) {
+        let [x, y] = tela(dn.x, dn.z)
         const d = Math.hypot(x - R, y - R)
         if (d > R - 10) { x = R + ((x - R) / d) * (R - 10); y = R + ((y - R) / d) * (R - 10) }
-        g.fillStyle = destino.cor ?? ROTA_COR; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x - 6, y - 8); g.lineTo(x + 6, y - 8); g.closePath(); g.fill()
+        g.fillStyle = dn.cor ?? ROTA_COR; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x - 6, y - 8); g.lineTo(x + 6, y - 8); g.closePath(); g.fill()
       }
       g.restore()
       g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 2; g.beginPath(); g.arc(R, R, R - 1, 0, 7); g.stroke()
-      seta(g, R, R, 0, 0.9)
+      // (T58) a Kombi: a seta com um halo, a frente sempre pra cima (o mapa gira com ela)
+      g.fillStyle = "rgba(47, 232, 255, 0.22)"; g.beginPath(); g.arc(R, R, 13, 0, 7); g.fill()
+      seta(g, R, R, 0, 1.1)
     }
     raf = requestAnimationFrame(desenhar)
     return () => cancelAnimationFrame(raf)
@@ -396,9 +415,10 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(c.nome).width; g.fillRect(x + 12, y - 8, tw + 8, 16)
         g.fillStyle = c.cor; g.fillText(c.nome, x + 16, y)
       }
-      if (destino) {
-        const w = noMundo(M, destino); const [x, y] = tela(w.x, w.z)
-        g.fillStyle = destino.cor ?? ROTA_COR; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x - 8, y - 18); g.lineTo(x + 8, y - 18); g.closePath(); g.fill()
+      const dn = destNav.current ?? (destino ? { ...noMundo(M, destino), cor: destino.cor } : null)
+      if (dn) {
+        const [x, y] = tela(dn.x, dn.z)
+        g.fillStyle = dn.cor ?? ROTA_COR; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x - 8, y - 18); g.lineTo(x + 8, y - 18); g.closePath(); g.fill()
       }
       g.font = "800 11px ui-monospace, monospace"
       for (const ic of icones) {
@@ -409,7 +429,8 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         g.fillStyle = ic.cor; g.textAlign = "center"; g.fillText(ic.faixa, x, y + 32); g.textAlign = "start"
       }
       const pk = pose.current
-      if (pk) { const w = noMundo(M, pk); const [x, y] = tela(w.x, w.z); seta(g, x, y, Math.atan2(w.tx, -w.tz), 1.1) }
+      // (T58) fora da pista, a posição e o rumo de verdade
+      if (pk) { const fora = (pk.livreOk || pk.voo) && pk.wx !== undefined; const w = fora ? { x: pk.wx!, z: pk.wz!, tx: Math.sin(pk.rumo ?? 0), tz: Math.cos(pk.rumo ?? 0) } : noMundo(M, pk); const [x, y] = tela(w.x, w.z); seta(g, x, y, Math.atan2(w.tx, -w.tz), 1.1) }
     }
     desenhar()
     return () => cancelAnimationFrame(raf)

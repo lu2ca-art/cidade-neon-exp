@@ -7,8 +7,12 @@ import { mkdirSync } from "node:fs"
 // 3) a viagem rápida leva ao minijogo; os lugares de uma pista ficam espaçados por igual;
 // 4) o automático infinito anda sozinho sem parar.
 const PASTA = "test-results/gps"
+// dirige a cena 3D: no Mac, metal (fora do CI, que não tem placa)
+test.use({ launchOptions: { executablePath: process.env.CHROME_PATH || undefined, args: ["--use-angle=metal", "--autoplay-policy=no-user-gesture-required"] } })
 
-type W = { __jogo: Record<string, number | boolean | undefined>; __M: { onde: (k: string) => { via: number; u: number } | null; vias: { L: number }[]; pistas: { nome: string; ida: number }[]; chaoEm: (x: number, z: number) => number } }
+type Rede = { de: number; para: number; par: number }
+type Nav = { ativo: boolean; rota: { trechos: { via: number; u0: number; u1: number }[]; metros: number } | null; destino: { via?: number; u?: number; nome: string } | null; manobras: { dist: number; tipo: string; lado: number; via: number; texto: string }[]; proxima: { dist: number; tipo: string; via: number; texto: string } | null; recalculos: number; metros: number; alvoTeste: { via: number; u: number } | null }
+type W = { __jogo: Record<string, number | boolean | undefined>; __nav: Nav; __rotaPista: { st: { n: number }; faixa: { pos: Float32Array } }; __M: { onde: (k: string) => { via: number; u: number } | null; vias: { L: number; n: number; px: Float32Array; pz: Float32Array; rede?: Rede }[]; pistas: { nome: string; ida: number; volta: number }[]; chaoEm: (x: number, z: number) => number; ligacoes: { saidas: number[][] } } }
 
 async function entrar(page: Page, parte: string) {
   await page.addInitScript(() => { localStorage.setItem("cidade-neon-analytics-consent", "essential") })
@@ -76,6 +80,12 @@ test("o GPS aponta pro alvo da missão", async ({ page }) => {
     else expect(Math.sign(x), "o ícone do lado do alvo").toBe(Math.sign(exp))
     if (Math.abs(exp) > 100) await expect(alvo).toHaveClass(/is-borda/)
   }
+  // (T58) o cartão tipo Waze: a manobra (no chão, a mira) e quanto falta (km e min)
+  const nav = page.locator(".l-gps-nav")
+  await expect(nav).toHaveClass(/is-on/)
+  await expect(nav.locator(".l-gps-nav-km")).toHaveText(/\d+ m|km/)
+  await expect(nav.locator(".l-gps-nav-min")).toHaveText(/min/)
+  await expect(nav.locator(".l-gps-nav-txt")).toContainText(/oficina/i)
   await page.screenshot({ path: `${PASTA}/1-gps.png` })
   expect(erros).toEqual([])
 })
@@ -192,5 +202,105 @@ test("o automático infinito anda sozinho sem parar", async ({ page }) => {
   expect(r.vMin, "não para").toBeGreaterThan(5)
   await auto.click()
   await expect(auto).toHaveAttribute("aria-pressed", "false")
+  expect(erros).toEqual([])
+})
+
+// (T58) o GPS tipo Waze: a rota pelas vias, a seta antes da curva, o recalcular
+// a Kombi parada num ponto (via, u) da pista, com "alguém dirigindo" (o piloto de 6 s não mexe nela)
+async function porNaPista(page: Page, via: number, u: number) {
+  await page.keyboard.press("Shift")
+  await page.evaluate(({ via, u }) => {
+    const j = (window as unknown as W).__jogo
+    Object.assign(j, { voo: false, ar: false, via, u, x: 0, v: 0, vy: 0, steer: 0, encaixar: true })
+  }, { via, u })
+  // o NAV se refaz 4×/s
+  await page.waitForTimeout(700)
+}
+const lerNav = (page: Page) => page.evaluate(() => JSON.parse(JSON.stringify((window as unknown as W).__nav)) as Nav)
+
+test("a rota leva do ponto A ao alvo; a seta aparece antes da curva; recalcula ao sair", async ({ page }) => {
+  test.setTimeout(300_000)
+  mkdirSync(PASTA, { recursive: true })
+  const erros: string[] = []
+  page.on("pageerror", (e) => erros.push(e.message))
+  await entrar(page, "carreira.meio")
+  await expect(page.locator(".l-gps-barra")).toBeVisible({ timeout: 20_000 })
+  // o alvo: o lugar de uma pista longe (o mesmo destino que o mapa marca, posto pelo teste)
+  // (uma pista acesa: nas apagadas a rota não entra)
+  const nPistas = await page.evaluate(() => (window as unknown as W).__M.pistas.length)
+  let alvo = { via: -1, u: 0 }
+  for (let i = nPistas - 1; i >= 0 && alvo.via < 0; i--) {
+    const t = await page.evaluate((i) => {
+      const w = window as unknown as W, M = w.__M, p = M.pistas[i]
+      w.__nav.alvoTeste = { via: p.ida, u: Math.round(M.vias[p.ida].L * 0.6) }
+      return w.__nav.alvoTeste
+    }, i)
+    await porNaPista(page, (await page.evaluate((i) => (window as unknown as W).__M.pistas[(i + 2) % (window as unknown as W).__M.pistas.length].ida, i)), 15)
+    if ((await lerNav(page)).rota) alvo = t
+  }
+  expect(alvo.via, "uma pista acesa pra ser o alvo").toBeGreaterThanOrEqual(0)
+  // o ponto A: o começo de outra pista, que tenha manobra no caminho
+  const As = await page.evaluate((alvo) => { const M = (window as unknown as W).__M; return M.pistas.flatMap((p) => [p.ida, p.volta]).filter((v) => v !== alvo.via) }, alvo)
+  let A = -1, nav: Nav | null = null
+  for (const a of As) {
+    await porNaPista(page, a, 15)
+    const n = await lerNav(page)
+    if (n.rota && n.manobras.some((m) => m.tipo !== "chega" && m.dist > 220)) { A = a; nav = n; break }
+  }
+  expect(A, "um ponto A com curva no caminho").toBeGreaterThanOrEqual(0)
+  // 1) a rota: começa na Kombi, termina no alvo, e cada trecho emenda no próximo (pelo cruzamento)
+  const tr = nav!.rota!.trechos
+  expect(tr[0].via).toBe(A)
+  expect(Math.abs(tr[0].u0 - 15)).toBeLessThan(2)
+  expect(tr[tr.length - 1].via).toBe(alvo.via)
+  expect(Math.abs(tr[tr.length - 1].u1 - alvo.u)).toBeLessThan(2)
+  const emenda = await page.evaluate((tr) => { const M = (window as unknown as W).__M; return tr.slice(1).every((t, i) => M.vias[tr[i].via].rede!.para === M.vias[t.via].rede!.de) }, tr)
+  expect(emenda, "os trechos emendam nos cruzamentos").toBe(true)
+  console.log(`rota: ${tr.length} trechos, ${Math.round(nav!.rota!.metros)} m; manobras: ${nav!.manobras.map((m) => `${Math.round(m.dist)} m ${m.texto}`).join(" | ")}`)
+  // a faixa no chão: desenhada, começando na Kombi
+  const faixa = await page.evaluate((A) => { const w = window as unknown as W, v = w.__M.vias[A], i = Math.round(15 / ((v.L) / (v.n - 1))), f = w.__rotaPista.faixa.pos; return { n: w.__rotaPista.st.n, d: Math.hypot((f[0] + f[3]) / 2 - v.px[i], (f[2] + f[5]) / 2 - v.pz[i]) } }, A)
+  expect(faixa.n, "a faixa da rota no chão").toBeGreaterThan(20)
+  expect(faixa.d, "a faixa começa na Kombi").toBeLessThan(8)
+  // o minimapa mostra a distância da mesma rota
+  const card = page.locator(".l-gps-nav")
+  await expect(card).toHaveClass(/is-on/)
+  await page.screenshot({ path: `${PASTA}/4-rota.png` })
+
+  // 2) a seta antes da curva: 150 m antes do cruzamento da 1ª manobra
+  const m = nav!.manobras.find((x) => x.tipo !== "chega")!
+  const k = (() => { let d = 0; for (let i = 0; i < tr.length; i++) { d += tr[i].u1 - tr[i].u0; if (Math.abs(d - m.dist) < 1) return i } return -1 })()
+  expect(k, "a manobra fica no fim de um trecho").toBeGreaterThanOrEqual(0)
+  const viaK = tr[k].via, LK = await page.evaluate((v) => (window as unknown as W).__M.vias[v].L, viaK)
+  const antes = Math.min(150, Math.floor(LK - 5))
+  await porNaPista(page, viaK, LK - antes)
+  const n2 = await lerNav(page)
+  expect(n2.proxima?.via, "a próxima manobra é a do cruzamento").toBe(m.via)
+  expect(Math.abs(n2.proxima!.dist - antes)).toBeLessThan(6)
+  await expect(card).toHaveAttribute("data-tipo", m.tipo)
+  const txt = (await card.getAttribute("aria-label")) ?? ""
+  console.log(`a ${antes} m: "${txt}"`)
+  expect(txt).toMatch(new RegExp(`^em \\d+ m, ${m.texto}`))
+  await page.screenshot({ path: `${PASTA}/5-seta.png` })
+  // em cima da curva: "agora"
+  await porNaPista(page, viaK, LK - 12)
+  await expect(card.locator(".l-gps-nav-dist")).toHaveText("agora")
+
+  // 3) saiu da rota: pega outra saída do cruzamento. Recalcula (o cartão avisa) e a rota nova sai de onde ela está
+  const errada = await page.evaluate(({ a, certa }) => { const M = (window as unknown as W).__M, V = M.vias[a]; return M.ligacoes.saidas[V.rede!.para].find((w) => w !== certa && w !== V.rede!.par) ?? -1 }, { a: viaK, certa: m.via })
+  expect(errada, "o cruzamento tem outra saída").toBeGreaterThanOrEqual(0)
+  const antesR = (await lerNav(page)).recalculos
+  await page.keyboard.press("Shift")
+  await page.evaluate((v) => { Object.assign((window as unknown as W).__jogo, { via: v, u: 4, x: 0, v: 0 }) }, errada)
+  await expect(card).toHaveClass(/is-recalc/, { timeout: 2_000 })
+  await expect(card.locator(".l-gps-nav-txt")).toHaveText(/recalculando/)
+  await page.screenshot({ path: `${PASTA}/6-recalcula.png` })
+  await page.waitForTimeout(700)
+  const n3 = await lerNav(page)
+  expect(n3.recalculos).toBe(antesR + 1)
+  expect(n3.rota!.trechos[0].via, "a rota nova sai de onde a Kombi está").toBe(errada)
+  expect(n3.rota!.trechos[n3.rota!.trechos.length - 1].via, "e ainda leva ao alvo").toBe(alvo.via)
+  // seguir a rota não conta como sair dela: a Kombi na via seguinte da rota nova
+  const segue = n3.rota!.trechos[1]?.via
+  if (segue !== undefined) { await porNaPista(page, segue, 3); expect((await lerNav(page)).recalculos).toBe(antesR + 1) }
   expect(erros).toEqual([])
 })

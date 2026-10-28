@@ -20,6 +20,7 @@ import type { Mundo } from "./mundo"
 import { noMundo, type Marca } from "./Mapa"
 import { ICONE_MISSAO, type ChecklistHolo } from "./Holo"
 import { CHAO_LUGARES, type LugarChao } from "../disco/historia"
+import { NAV, NAV_CFG, fmtMetros, fmtTempo, refazerNav, type DestinoNav, type Manobra } from "./nav"
 
 // ── os números ──
 export const GPS_CFG = {
@@ -29,7 +30,7 @@ export const GPS_CFG = {
 }
 
 export interface PoseGps { via: number; u: number; x: number; v: number; voo?: boolean; livreOk?: boolean; wx?: number; wz?: number; rumo?: number }
-export interface AlvoGps { x: number; z: number; cor: string; nome: string }
+export interface AlvoGps { x: number; z: number; cor: string; nome: string; via?: number; u?: number }
 export interface RefsAlvo {
   marca: React.RefObject<Marca | null>
   vaga: React.RefObject<{ via: number; u: number; cor: string; nome: string } | null>
@@ -41,11 +42,14 @@ export interface RefsAlvo {
 // (a marca do mapa, a vaga da missão, o lugar do chão, o ponto livre das dunas)
 export function destinoMundo(M: Mundo, r: RefsAlvo): AlvoGps | null {
   const mk = r.marca.current
-  if (mk) { const w = noMundo(M, mk); return { x: w.x, z: w.z, cor: mk.cor, nome: mk.nome } }
+  if (mk) { const w = noMundo(M, mk); return { x: w.x, z: w.z, cor: mk.cor, nome: mk.nome, via: mk.via, u: mk.u } }
   const vg = r.vaga.current
-  if (vg) { const w = noMundo(M, vg); return { x: w.x, z: w.z, cor: vg.cor, nome: vg.nome } }
+  if (vg) { const w = noMundo(M, vg); return { x: w.x, z: w.z, cor: vg.cor, nome: vg.nome, via: vg.via, u: vg.u } }
   if (r.chao && "disco" in M) { const c = CHAO_LUGARES[r.chao]; return { x: c.x, z: c.z, cor: c.cor, nome: c.nome.toLowerCase() } }
   if (r.livre) return { x: r.livre.x, z: r.livre.z, cor: r.livre.cor, nome: "o subúrbio" }
+  // (T58, só com ?medir) o destino posto à mão pelo teste/medida
+  const t = NAV.alvoTeste
+  if (t && M.vias[t.via]) { const w = noMundo(M, t); return { x: w.x, z: w.z, cor: "#2fe8ff", nome: "o ponto do teste", via: t.via, u: t.u } }
   return null
 }
 
@@ -62,9 +66,34 @@ export function anguloAlvo(pose: { x: number; z: number; rumo: number }, alvo: {
   return (-Math.atan2(Math.sin(dif), Math.cos(dif)) * 180) / Math.PI
 }
 
-const metros = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.max(10, Math.round(m / 10) * 10)} m`)
+const metros = fmtMetros
 
-export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfinito }: {
+// (T58) as setas do cartão (24×24, traço): uma por manobra
+const SETAS: Record<string, string> = {
+  reto: "M12 20V5M6 11l6-6 6 6",
+  "vira:1": "M7 20v-7a4 4 0 0 1 4-4h8M15 5l4 4-4 4",
+  "vira:-1": "M17 20v-7a4 4 0 0 0-4-4H5M9 5L5 9l4 4",
+  "rampa:1": "M8 21V4M8 15c0-5 3-8 9-10M13 4h4.5v4.5",
+  "rampa:-1": "M16 21V4M16 15c0-5-3-8-9-10M11 4H6.5v4.5",
+  torre: "M12 21v-5M12 16a4 4 0 1 1 4-4 7 7 0 1 1-7-7",
+  chega: "M12 21s-6-6-6-11a6 6 0 0 1 12 0c0 5-6 11-6 11zM12 10h.01",
+  sai: "M12 4v11M7 11l5 5 5-5M5 21h14",
+  recalc: "M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4h-4",
+}
+const setaDe = (m: Manobra | null) => !m ? SETAS.reto
+  : m.tipo === "vira" || m.tipo === "mira" ? (m.lado ? SETAS[`vira:${m.lado}`] : SETAS.reto)
+  : m.tipo === "rampa" ? SETAS[`rampa:${m.lado || 1}`]
+  : m.tipo === "torre" ? SETAS.torre : m.tipo === "chega" ? SETAS.chega : m.tipo === "sai" ? SETAS.sai : SETAS.reto
+// "em 120 m, pega a rampa à direita"
+export function frase(m: Manobra | null, recalc = false) {
+  if (recalc) return { dist: "", txt: "recalculando a rota…" }
+  if (!m) return { dist: "", txt: "" }
+  const agora = m.dist < 25 && m.tipo !== "chega" && m.tipo !== "sai"
+  const txt = m.texto + (m.pista && m.tipo === "rampa" ? ` · ${m.pista}` : "")
+  return { dist: agora ? "agora" : metros(m.dist), txt }
+}
+
+export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfinito, apagada = null }: {
   M: Mundo
   pose: React.RefObject<PoseGps>
   refs: RefsAlvo
@@ -73,8 +102,13 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
   escondido?: boolean
   infinito: boolean
   onInfinito: () => void
+  // (T58) as pistas apagadas (a rota não entra nelas)
+  apagada?: boolean[] | null
 }) {
   const barra = useRef<HTMLDivElement>(null)
+  const navEl = useRef<HTMLDivElement>(null)
+  const apagadaRef = useRef(apagada)
+  apagadaRef.current = apagada
   const alvoEl = useRef<HTMLSpanElement>(null)
   const distEl = useRef<HTMLElement>(null)
   const [alvo, setAlvo] = useState<{ cor: string; nome: string } | null>(null)
@@ -82,15 +116,46 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
   refsAtual.current = refs
 
   useEffect(() => {
-    if (escondido) return
-    let ultimo = "", vivo = true
+    if (escondido) { refazerNav(M, null, null, 0, 0); return }
+    if (typeof window !== "undefined" && /[?&]medir/.test(location.search)) (window as unknown as Record<string, unknown>).__nav = NAV
+    let ultimo = "", vivo = true, tNav = 0, frase0 = ""
     const passo = () => {
       if (!vivo) return
       const p = pose.current
       const d = p ? destinoMundo(M, refsAtual.current) : null
       const chave = d ? `${d.cor}|${d.nome}` : ""
-      if (chave !== ultimo) { ultimo = chave; setAlvo(d ? { cor: d.cor, nome: d.nome } : null) }
+      if (chave !== ultimo) { ultimo = chave; setAlvo(d ? { cor: d.cor, nome: d.nome } : null); tNav = 0 }
       const b = barra.current, a = alvoEl.current
+      const agora = performance.now()
+      // (T58) a rota pelas vias, as manobras, o tempo: 4×/s
+      if (agora - tNav >= NAV_CFG.refazMs) {
+        const dtN = tNav ? (agora - tNav) / 1000 : 0
+        tNav = agora
+        const k0 = d && p ? poseMundo(M, p) : null
+        refazerNav(M, p ?? null, d as DestinoNav | null, dtN, k0 && d ? anguloAlvo(k0, d) : 0, apagadaRef.current)
+        const el = navEl.current
+        if (el) {
+          const recalc = agora - NAV.recalc < NAV_CFG.recalcMs && NAV.recalculos > 0
+          const m = NAV.proxima, f = frase(m, recalc)
+          el.classList.toggle("is-on", !!d && !!m)
+          el.classList.toggle("is-recalc", recalc)
+          el.dataset.tipo = recalc ? "recalc" : m?.tipo ?? ""
+          el.dataset.lado = String(m?.lado ?? 0)
+          el.dataset.dist = m ? String(Math.round(m.dist)) : ""
+          const q = (s: string) => el.querySelector<HTMLElement>(s)
+          const path = el.querySelector("path")
+          path?.setAttribute("d", recalc ? SETAS.recalc : setaDe(m))
+          const fr = `${f.dist}|${f.txt}`
+          if (fr !== frase0) {
+            frase0 = fr
+            q(".l-gps-nav-dist")!.textContent = f.dist
+            q(".l-gps-nav-txt")!.textContent = f.txt
+            el.setAttribute("aria-label", recalc ? f.txt : m ? `${f.dist === "agora" ? "agora" : `em ${f.dist}`}, ${f.txt}` : "")
+          }
+          q(".l-gps-nav-km")!.textContent = NAV.metros >= 0 ? metros(NAV.metros) : ""
+          q(".l-gps-nav-min")!.textContent = fmtTempo(NAV.segundos)
+        }
+      }
       if (!d || !p || !b || !a) return
       const k = poseMundo(M, p)
       const ang = anguloAlvo(k, d)
@@ -106,7 +171,7 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
     }
     passo()
     const t = setInterval(passo, GPS_CFG.passoMs)
-    return () => { vivo = false; clearInterval(t) }
+    return () => { vivo = false; clearInterval(t); refazerNav(M, null, null, 0, 0) }
   }, [M, pose, escondido])
 
   if (escondido) return null
@@ -121,6 +186,12 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
             <b ref={distEl} className="l-gps-dist" />
           </span>
         )}
+      </div>
+      {/* (T58) o cartão tipo Waze: a próxima manobra (a seta, "em 120 m", o que fazer) e quanto falta (km e min) */}
+      <div ref={navEl} className="l-gps-nav" role="status" style={{ ["--cor" as string]: alvo?.cor ?? "#2fe8ff" }}>
+        <svg className="l-gps-nav-seta" viewBox="0 0 24 24" aria-hidden="true"><path d={SETAS.reto} /></svg>
+        <div className="l-gps-nav-o"><b className="l-gps-nav-dist" /><span className="l-gps-nav-txt" /></div>
+        <div className="l-gps-nav-eta" aria-hidden="true"><b className="l-gps-nav-km" /><small className="l-gps-nav-min" /></div>
       </div>
       <button type="button" className={`l-gps-auto${infinito ? " is-on" : ""}`} aria-pressed={infinito} aria-label={infinito ? "desligar o piloto automático" : "piloto automático infinito"} title={infinito ? "o automático está levando: toca pra pegar o volante" : "deixar no automático (pra só curtir)"} onClick={onInfinito}>∞</button>
     </div>
