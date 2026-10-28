@@ -54,6 +54,8 @@ export type ComoJoga =
   // vinheta, a trilha 8 bits, a máquina, o clipe, a horta, o prato, o disco
   // antigo, a sinuca. Os rascunhos de cada uma moram em disco/pecas/conf.ts
   | { t: "cena"; id: CenaId }
+  // (T57) descer a rampa da boca do túnel: a corrida lá embaixo, nas trincheiras (disco/tuneis.ts)
+  | { t: "trincheiras" }
 
 export type CenaId = "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "horta" | "cozinhar" | "disco-antigo" | "sinuca"
 
@@ -150,9 +152,10 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   oficina: {
     id: "oficina", n: 2, onde: "suburbio", quem: "o mecânico", cor: "#ff9000", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "oficina" }, pedido: "a kombi não sobe sem motor novo", apresenta: "montar o motor com o mecânico",
-    // (T09) a fase "oficina" da história joga as duas (disco/oficina.ts): a bancada, o painel e a goteira
-    arte: p("a reciclagem: o lixo vira tecnologia", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
-    jogo: p("achar o painel solar no lixão e a goteira", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
+    // (T09) a fase "oficina" da história joga as duas (disco/oficina.ts). (T57) a arte
+    // é catar o lixo espalhado no lixão (no mundo) e a oficina monta; o jogo, a goteira
+    arte: p("a reciclagem: catar o lixo no lixão e virar tecnologia", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
+    jogo: p("a goteira: a água do motor", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
     abre: ["kombi-melhorias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.oficina }, requer: ["dbee"], prologo: true,
   },
   quadra: {
@@ -166,7 +169,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     id: "tuneis", n: 4, onde: "suburbio", quem: "os túneis", cor: "#9b8cff", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "tuneis" }, pedido: "embaixo das raízes tem corrida", apresenta: "a corrida de BMX, patins ou skate nas trincheiras",
     arte: p("o grafite: um gesto assina o desenho", "decidido", { tarefa: "T12", existe: "página de teste do T12" }),
-    jogo: p("a corrida de BMX, patins ou skate", "decidido", { tarefa: "T13" }),
+    // (T57) a boca do túnel no subúrbio leva às trincheiras (a página do T11/T13); voltar com a volta feita conta
+    jogo: p("a corrida de BMX, patins ou skate", "decidido", { como: { t: "trincheiras" }, tarefa: "T13", existe: "/teste/trincheiras" }),
     abre: ["corridas", "motos"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.tuneis }, requer: ["oficina"],
   },
   // ── a cidade (8) ──

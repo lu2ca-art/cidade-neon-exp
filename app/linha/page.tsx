@@ -52,8 +52,10 @@ import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
-import { CENA_OFICINA, FALAS_OFICINA, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, passoOficina } from "./disco/oficina"
-import { Bancada, Goteira, Pagamento, PainelLixao } from "./disco/OficinaTelas"
+import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
+import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
+import { definirChaoAtivos, ehPeca } from "./disco/achados"
+import { irTrincheiras, limparVoltaDasTrincheiras, voltaDasTrincheiras } from "./disco/tuneis"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
@@ -652,7 +654,7 @@ export default function LinhaPage() {
   // arte); depois o painel no lixão e a goteira (o jogo); de volta, o pagamento em
   // água e a porta (as melhorias da Kombi). Na Nectar antiga (o mapa de antes), a
   // cena segue fechando o passo dela como sempre
-  const [oficinaTela, setOficinaTela] = useState<"bancada" | "painel" | "goteira" | "pagar" | "conserto" | null>(null)
+  const [oficinaTela, setOficinaTela] = useState<"bancada" | "goteira" | "pagar" | "conserto" | null>(null)
   const fimOficina = useCallback((r: ResultadoCena) => {
     setCena(null)
     setCinema(null)
@@ -660,7 +662,8 @@ export default function LinhaPage() {
     const h0 = historiaDe(saveRef.current)
     if (h0.fase === "oficina") {
       setSave((s) => comHistoria(s, (h) => ({ ...h, oficina: { ...(h.oficina ?? {}), cena: true } })))
-      setOficinaTela("bancada")
+      // (T57) a reciclagem é no mundo: o lixo bom está espalhado no lixão (a luz mostra onde)
+      setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.catar, ensina: true }), 900)
       return
     }
     setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}), mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
@@ -858,6 +861,13 @@ export default function LinhaPage() {
   const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
   const [basquete, setBasquete] = useState<{ n: number; pontos: number; tempo: number; livre: boolean } | null>(null)
   const quadraLivreEm = useRef(0)
+  // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
+  // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis"] : [])].join(",")
+  useEffect(() => {
+    definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
+    return () => definirChaoAtivos([])
+  }, [chaoExtra])
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
@@ -937,6 +947,8 @@ export default function LinhaPage() {
     else if (como.t === "letra" || como.t === "cena") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
     else if (como.t === "batida") setBatidaMissao({ missao: id, clima: como.clima })
     else if (como.t === "basquete") setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
+    // (T57) desceu a rampa da boca do túnel: a corrida é lá embaixo, nas trincheiras
+    else if (como.t === "trincheiras") irTrincheiras(id)
   }
   // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
   const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
@@ -948,6 +960,20 @@ export default function LinhaPage() {
     }, 900)
   }
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe })
+  // (T57) voltou das trincheiras pela boca do túnel: se correu uma volta lá
+  // embaixo, o jogo da missão dos túneis fica feito (e a porta segue)
+  const voltouTuneis = useRef(false)
+  useEffect(() => {
+    if (!HIST || voltouTuneis.current || tela.t !== "corrida" || cena) return
+    const v = voltaDasTrincheiras()
+    if (!v) return
+    voltouTuneis.current = true
+    limparVoltaDasTrincheiras()
+    const pc = pecaAgora13(hist13(saveRef.current), "tuneis")
+    if (v.corrida && missaoDoSave(saveRef.current) === "tuneis" && pc?.peca.como?.t === "trincheiras") pecaFeitaNaMissao("tuneis", pc.qual)
+    else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "voltou lá de baixo. as raízes seguem lá, é só descer a rampa de novo" }), 1200)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [HIST, tela.t, cena])
   // (T10) o link de teste (?parte=missao.quadra.batida / .basquete) deixa a peça marcada aberta no save: abre aqui
   useEffect(() => {
     if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return
@@ -1033,7 +1059,7 @@ export default function LinhaPage() {
     setJornal(m)
   }
   // o que o anel do holo diz (curto: o lugar, não a explicação)
-  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? OBJETIVO_OFICINA[passoOficina(hist)] : hist.fase === "subir" ? "a cidade · lá em cima"
+  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? `${OBJETIVO_OFICINA[passoOficina(hist)]}${passoOficina(hist) === "catar" ? ` · ${pecasCatadas(hist).length}/${LIXO.length}` : ""}` : hist.fase === "subir" ? "a cidade · lá em cima"
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o jardim", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
     : m13 ? (passos13.find((x) => x.estado === "agora")?.nome.split(" · ")[1] ?? m13.quem)
     : feira.length ? `a cidade precisa · ${feira.length}` : null
@@ -1316,7 +1342,15 @@ export default function LinhaPage() {
       if (e === "chao:oficina" && p === "chegar") { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
       else if (e === "chao:oficina" && p === "reciclar") setOficinaTela("bancada")
       else if (e === "chao:oficina" && p === "montar") setOficinaTela("pagar")
-      else if (e === "chao:painel" && p === "painel") setOficinaTela("painel")
+      // (T57) pegou uma peça no lixão (passando, sem parar): com as quatro, de volta pra oficina
+      else if (p === "catar" && ehPeca(e.slice(5)) && pecasFaltando(h).includes(e.slice(5) as never)) {
+        const id = e.slice(5), it = lixoDe(id)!
+        const falta = pecasFaltando(h).length - 1
+        setSave((s) => comHistoria(s, (x) => ({ ...x, oficina: { ...(x.oficina ?? {}), pecas: [...new Set([...(x.oficina?.pecas ?? []), id])], ...(id === "painel" ? { painel: true as const } : {}) } })))
+        moeda()
+        setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: falta ? `${it.nome}: ${FALAS_OFICINA.pegou} (${LIXO.length - falta}/${LIXO.length})` : FALAS_OFICINA.catou })
+        track("mission_step", { mission_id: "disco-oficina", step: `peca-${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+      }
       else if (e === "chao:goteira" && p === "goteira") setOficinaTela("goteira")
     }
     // (T27) o sorteio da Kombi quebrar (o Corrida chama de tempos em tempos, rodando de verdade)
@@ -1330,6 +1364,8 @@ export default function LinhaPage() {
     if (e.startsWith("chao:") && h.fase === "carreira") {
       const m = missaoDoSave(saveRef.current)
       if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m)
+      // (T57) desceu a rampa da boca do túnel (sem a missão dos túneis): as trincheiras, pra passear
+      else if (e === "chao:tuneis" && !cena && !recompensa) irTrincheiras(null)
       // (T10) a porta da quadra abriu: de volta lá, dá pra jogar basquete quando quiser (a cada 90 s no máximo)
       else if (e === "chao:quadra" && portaAberta(h, "quadra") && !cena && !recompensa && !pingpong && !batidaMissao && Date.now() - quadraLivreEm.current > 90000 && Date.now() - barFechou.current > 8000) {
         quadraLivreEm.current = Date.now()
@@ -1845,17 +1881,11 @@ export default function LinhaPage() {
           </div>
         )}
         {/* (T09) a missão da oficina: a bancada (a arte), o painel e a goteira (o jogo), o pagamento (a porta) */}
-        {oficinaTela === "bancada" && <Bancada onFim={() => {
+        {oficinaTela === "bancada" && <Montagem onFim={() => {
           setOficinaTela(null)
           setSave((s) => comHistoria(s, (h) => concluir(h, "oficina", "arte")))
-          setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.painel }), 900)
-          track("mission_step", { mission_id: "disco-oficina", step: "bancada", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
-        }} />}
-        {oficinaTela === "painel" && <PainelLixao onFim={() => {
-          setOficinaTela(null)
-          setSave((s) => comHistoria(s, (h) => ({ ...h, oficina: { ...(h.oficina ?? {}), painel: true } })))
           setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.goteira }), 900)
-          track("mission_step", { mission_id: "disco-oficina", step: "painel", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          track("mission_step", { mission_id: "disco-oficina", step: "montagem", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
         }} />}
         {oficinaTela === "goteira" && <Goteira onFim={(gotas) => {
           setOficinaTela(null)

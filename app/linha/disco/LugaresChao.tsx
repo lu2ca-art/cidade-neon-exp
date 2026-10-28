@@ -5,9 +5,18 @@
 // 2) e o palco do subúrbio (os shows das missões que acontecem aqui). Uma
 // fachada baixa com o letreiro em neon e, quando é pra lá que a história
 // manda, uma coluna de luz que se vê de longe.
+// (T57, o dono 28/10: "as coisas acontecem no mundo, de verdade; nada de
+// estabelecimento com placa") a QUADRA e os TÚNEIS deixaram de ser fachada: a
+// quadra é um piso com as linhas, as cestas e o alambrado; os túneis, uma boca
+// no chão (a rampa desce até a porta escura com o neon dentro). E o lixo da
+// reciclagem fica espalhado no lixão, pra pegar passando. Tudo em poucos
+// desenhos (geometrias juntadas, sem luz própria).
 
-import { useMemo } from "react"
+import { useMemo, useSyncExternalStore } from "react"
 import * as THREE from "three"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
+import { BOCA, QUADRA, geoBoca } from "../estrada/chao"
+import { PECAS_CHAO, chaoAtivos, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
 import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "./historia"
 
 function texLetreiro(txt: string, cor: string) {
@@ -57,37 +66,265 @@ function Fachada({ id, chao, alvo }: { id: LugarChao; chao: (x: number, z: numbe
   )
 }
 
-// (T09) os achados da missão da oficina: o painel solar velho meio enterrado no
-// lixão e a goteira (um cano que pinga de debaixo da pista num tambor). Só
-// existem na cena quando é a vez deles (uns 10 objetos simples, sem luz própria)
-function Achado({ id, chao }: { id: "painel" | "goteira"; chao: (x: number, z: number) => number }) {
-  const l = CHAO_LUGARES[id]
+// ── um pedaço juntado: várias caixas/cilindros, cada um com a sua cor, num desenho só ──
+type Peca3 = { g: THREE.BufferGeometry; cor?: string; p?: [number, number, number]; r?: [number, number, number] }
+const _o = new THREE.Object3D()
+function juntar(pecas: Peca3[], uv = false) {
+  const gs = pecas.map(({ g, cor, p = [0, 0, 0], r = [0, 0, 0] }) => {
+    _o.position.set(...p); _o.rotation.set(...r); _o.updateMatrix()
+    const n = (g.index ? g.toNonIndexed() : g.clone()).applyMatrix4(_o.matrix)
+    for (const k of Object.keys(n.attributes)) if (!["position", "normal", ...(uv ? ["uv"] : [])].includes(k)) n.deleteAttribute(k)
+    if (cor) {
+      const c = new THREE.Color(cor), a = new Float32Array(n.attributes.position.count * 3)
+      for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b }
+      n.setAttribute("color", new THREE.BufferAttribute(a, 3))
+    }
+    g.dispose()
+    return n
+  })
+  return mergeGeometries(gs, false)!
+}
+const caixa = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
+const cil = (r0: number, r1: number, h: number, n = 10) => new THREE.CylinderGeometry(r0, r1, h, n)
+
+// a coluna de luz (o alvo) e o farol do chão
+function Farol({ cor, y = 70 }: { cor: string; y?: number }) {
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: cor, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), [cor])
+  return <mesh position={[0, y, 0]} material={mat}><cylinderGeometry args={[2.4, 3.6, 140, 10, 1, true]} /></mesh>
+}
+
+// ── A BOCA DO TÚNEL: a rampa (o chão mesmo: estrada/chao.ts, geoBoca), os muros
+// de arrimo, a porta de concreto e, dentro, o escuro com o neon das trincheiras
+// e a luz lá no fim. 5 desenhos ──
+const COR_TUNEL = CHAO_LUGARES.tuneis.cor
+function BocaTunel({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: boolean }) {
+  const d = useMemo(() => {
+    const yFundo = chao(BOCA.x, BOCA.z)
+    const yTopo = yFundo + BOCA.fundo
+    const M = BOCA.meia, A = 5.2, LA = 4.6 // a porta: 5,2 m de alto, 9,2 de largo
+    const fundoT = 26 // o túnel entra 26 m (some embaixo do chão)
+    const alto = yTopo + 0.6 - (yFundo - 0.6) // o muro: do fundo até 0,6 m acima do chão
+    const concreto = juntar([
+      // os muros de arrimo dos dois lados da rampa
+      ...[-1, 1].map((k): Peca3 => ({ g: caixa(0.6, alto, BOCA.comp + 1), p: [k * (M + 0.3), (yFundo - 0.6 + yTopo + 0.6) / 2 - yFundo, -BOCA.comp / 2] })),
+      // a testa da porta: os dois pilares e a viga em cima
+      ...[-1, 1].map((k): Peca3 => ({ g: caixa(M + 1.6 - LA, BOCA.fundo + 3.4, 1.4), p: [k * (LA + (M + 1.6 - LA) / 2), (BOCA.fundo + 3.4) / 2 - 0.6, 0.5] })),
+      { g: caixa(LA * 2, BOCA.fundo + 2.8 - A, 1.4), p: [0, A + (BOCA.fundo + 2.8 - A) / 2, 0.5] },
+      // a mureta em cima da testa (o chão de cima continua por trás)
+      { g: caixa((M + 1.6) * 2, 0.5, 2.4), p: [0, BOCA.fundo + 2.55, 1.2] },
+    ])
+    // o neon: as bordas dos muros, o contorno da porta, as faixas e os anéis lá dentro
+    const neon: Peca3[] = [
+      ...[-1, 1].map((k): Peca3 => ({ g: caixa(0.12, 0.12, BOCA.comp + 1), p: [k * (M + 0.3), BOCA.fundo + 0.62, -BOCA.comp / 2] })),
+      ...[-1, 1].map((k): Peca3 => ({ g: caixa(0.16, A, 0.16), p: [k * LA, A / 2, -0.25] })),
+      { g: caixa(LA * 2 + 0.16, 0.16, 0.16), p: [0, A, -0.25] },
+      ...[-1, 1].flatMap((k): Peca3[] => [
+        { g: caixa(0.1, 0.1, fundoT), p: [k * (LA - 0.15), A - 0.15, fundoT / 2 + 1] },
+        { g: caixa(0.08, 0.08, fundoT), p: [k * (LA - 0.1), 0.12, fundoT / 2 + 1] },
+      ]),
+      ...[5, 11, 17, 23].flatMap((z): Peca3[] => [
+        { g: caixa(LA * 2, 0.1, 0.1), p: [0, A - 0.08, z] },
+        ...[-1, 1].map((k): Peca3 => ({ g: caixa(0.1, A, 0.1), p: [k * (LA - 0.06), A / 2, z] })),
+      ]),
+    ]
+    return {
+      y: yFundo, rot: Math.atan2(BOCA.ax, BOCA.az), A, LA, fundoT,
+      patch: geoBoca(),
+      concreto, neon: juntar(neon),
+      mats: {
+        chao: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, emissive: "#3a2614", emissiveIntensity: 0.55 }),
+        concreto: new THREE.MeshStandardMaterial({ color: "#4a4652", roughness: 0.9, emissive: "#1a1622", emissiveIntensity: 0.6 }),
+        neon: new THREE.MeshBasicMaterial({ color: COR_TUNEL, toneMapped: false }),
+        // dentro: o escuro (só as faces de dentro; a de fora, na porta, some)
+        dentro: new THREE.MeshBasicMaterial({ color: "#0d0a16", side: THREE.BackSide }),
+        fim: new THREE.MeshBasicMaterial({ color: "#ffb36b", transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+      },
+    }
+  }, [chao])
+  return (
+    <>
+      {/* a rampa: o chão do subúrbio com a vala (mesma cor do chão em volta) */}
+      <mesh geometry={d.patch} material={d.mats.chao} />
+      <group position={[BOCA.x, d.y, BOCA.z]} rotation={[0, d.rot, 0]}>
+        <mesh geometry={d.concreto} material={d.mats.concreto} />
+        <mesh geometry={d.neon} material={d.mats.neon} />
+        <mesh position={[0, d.A / 2, 0.6 + d.fundoT / 2]} material={d.mats.dentro}><boxGeometry args={[d.LA * 2, d.A, d.fundoT]} /></mesh>
+        {/* a luz lá no fim (o sol das trincheiras passando pelo vidro) */}
+        <mesh position={[0, d.A / 2, d.fundoT - 0.5]} rotation={[0, Math.PI, 0]} material={d.mats.fim}><planeGeometry args={[d.LA * 1.4, d.A * 0.7]} /></mesh>
+        {alvo && <Farol cor={COR_TUNEL} />}
+      </group>
+    </>
+  )
+}
+
+// a quadra pintada (o piso, as linhas, o garrafão laranja)
+function texQuadra() {
+  const c = document.createElement("canvas"); c.width = 256; c.height = 480
+  const g = c.getContext("2d")!, k = 480 / 28 // px por metro (28 × 15)
+  g.fillStyle = "#24324a"; g.fillRect(0, 0, 256, 480)
+  g.fillStyle = "#3a2a2e"
+  for (const y of [0, 480 - 5.8 * k]) g.fillRect(128 - 2.45 * k, y, 4.9 * k, 5.8 * k)
+  g.strokeStyle = "#e9edf6"; g.lineWidth = 3
+  g.strokeRect(4, 4, 248, 472)
+  g.beginPath(); g.moveTo(4, 240); g.lineTo(252, 240); g.stroke()
+  g.beginPath(); g.arc(128, 240, 1.8 * k, 0, Math.PI * 2); g.stroke()
+  for (const [y, dir] of [[1.575 * k, 1], [480 - 1.575 * k, -1]] as const) {
+    g.strokeRect(128 - 2.45 * k, dir > 0 ? 4 : 480 - 5.8 * k, 4.9 * k, 5.8 * k - 4)
+    g.beginPath(); g.arc(128, y, 6.75 * k, dir > 0 ? 0.12 : Math.PI + 0.12, dir > 0 ? Math.PI - 0.12 : Math.PI * 2 - 0.12); g.stroke()
+    g.beginPath(); g.arc(128, y + dir * 4.225 * k, 1.8 * k, dir > 0 ? 0 : Math.PI, dir > 0 ? Math.PI : Math.PI * 2); g.stroke()
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4
+  return t
+}
+// o alambrado: a tela em losango (transparente)
+function texAlambrado() {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 64
+  const g = c.getContext("2d")!
+  g.strokeStyle = "#c9d0dc"; g.lineWidth = 3
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(64, 64); g.moveTo(64, 0); g.lineTo(0, 64); g.stroke()
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping
+  return t
+}
+
+// ── A QUADRA DO ALOHAN: o piso de cimento (o chão assenta nele: estrada/chao.ts),
+// as linhas, as duas cestas, o alambrado com a entrada virada pro subúrbio e dois
+// postes de luz. 5 desenhos ──
+const COR_QUADRA = CHAO_LUGARES.quadra.cor
+function Quadra({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: boolean }) {
+  const d = useMemo(() => {
+    const topo = chao(QUADRA.x, QUADRA.z)
+    const X = 10.4, Z = 16.9, H = 3.6 // o alambrado: em volta do piso, 3,6 m
+    const ferro: Peca3[] = []
+    const tela: Peca3[] = []
+    // os lados do alambrado (o -x olha pro subúrbio: ali fica a entrada, 9 m)
+    const lado = (x0: number, z0: number, x1: number, z1: number) => {
+      const L = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(x1 - x0, z1 - z0)
+      const pl = new THREE.PlaneGeometry(L, H), uv = pl.attributes.uv
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * L / 0.9, uv.getY(i) * H / 0.9)
+      tela.push({ g: pl, p: [(x0 + x1) / 2, H / 2, (z0 + z1) / 2], r: [0, ang - Math.PI / 2, 0] })
+      ferro.push({ g: caixa(0.06, 0.06, L), cor: "#6a7080", p: [(x0 + x1) / 2, H, (z0 + z1) / 2], r: [0, ang, 0] })
+      const n = Math.max(1, Math.round(L / 3.5))
+      for (let i = 0; i <= n; i++) ferro.push({ g: cil(0.05, 0.05, H, 6), cor: "#6a7080", p: [x0 + ((x1 - x0) * i) / n, H / 2, z0 + ((z1 - z0) * i) / n] })
+    }
+    lado(X, -Z, X, Z); lado(-X, Z, X, Z); lado(-X, -Z, X, -Z)
+    lado(-X, -Z, -X, -4.5); lado(-X, 4.5, -X, Z)
+    // as cestas: o poste atrás da linha de fundo, o braço, a tabela e o aro
+    const brilho: Peca3[] = []
+    for (const k of [-1, 1]) {
+      ferro.push({ g: caixa(0.22, 3.6, 0.22), cor: "#3b4252", p: [0, 1.8, k * 15.3] })
+      ferro.push({ g: caixa(0.14, 0.14, 1.7), cor: "#3b4252", p: [0, 3.5, k * 14.5] })
+      ferro.push({ g: caixa(1.8, 1.05, 0.06), cor: "#e9edf6", p: [0, 3.45, k * 13.65] })
+      ferro.push({ g: caixa(0.6, 0.45, 0.07), cor: "#ff6a35", p: [0, 3.3, k * 13.64] })
+      brilho.push({ g: new THREE.TorusGeometry(0.23, 0.022, 6, 16), cor: "#ff6a35", p: [0, 3.05, k * 13.37], r: [Math.PI / 2, 0, 0] })
+    }
+    // dois postes de luz nas quinas do fundo (a lâmpada acesa)
+    for (const k of [-1, 1]) {
+      ferro.push({ g: cil(0.1, 0.14, 9, 6), cor: "#3b4252", p: [X + 0.6, 4.5, k * Z] })
+      ferro.push({ g: caixa(1.4, 0.12, 0.12), cor: "#3b4252", p: [X - 0.1, 9, k * Z] })
+      brilho.push({ g: caixa(0.9, 0.18, 0.5), cor: "#fff1c4", p: [X - 0.6, 8.88, k * Z] })
+    }
+    const alambrado = texAlambrado()
+    return {
+      topo,
+      ferro: juntar(ferro), tela: juntar(tela, true), brilho: juntar(brilho),
+      mats: {
+        piso: new THREE.MeshStandardMaterial({ color: "#3b3f4a", roughness: 0.92, emissive: "#14161c", emissiveIntensity: 0.6 }),
+        linhas: new THREE.MeshBasicMaterial({ map: texQuadra(), toneMapped: false, color: "#9aa4b8" }),
+        ferro: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.4, emissive: "#20232c", emissiveIntensity: 0.6 }),
+        tela: new THREE.MeshBasicMaterial({ map: alambrado, alphaMap: alambrado, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, color: "#8a93a8", depthWrite: false }),
+        brilho: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+      },
+    }
+  }, [chao])
+  return (
+    <group position={[QUADRA.x, d.topo, QUADRA.z]} rotation={[0, QUADRA.rot, 0]}>
+      <mesh position={[0, -0.8, 0]} material={d.mats.piso}><boxGeometry args={[QUADRA.larg, 1.6, QUADRA.comp]} /></mesh>
+      <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]} material={d.mats.linhas}><planeGeometry args={[15, 28]} /></mesh>
+      <mesh geometry={d.ferro} material={d.mats.ferro} />
+      <mesh geometry={d.tela} material={d.mats.tela} />
+      <mesh geometry={d.brilho} material={d.mats.brilho} />
+      {alvo && <Farol cor={COR_QUADRA} />}
+    </group>
+  )
+}
+
+// ── O LIXO DA RECICLAGEM (T57): espalhado no lixão; pega passando (Corrida,
+// disco/achados.ts). Cada um é um desenho só (as cores no vértice), 1,8× o
+// tamanho de verdade pra achar de longe; a coluna de luz e um anel no chão em
+// cada um que falta ──
+function modeloPeca(id: PecaChao) {
+  if (id === "painel") return juntar([
+    { g: caixa(3.2, 0.12, 2), cor: "#2a5aa8", p: [0, 0.5, 0], r: [-0.5, 0.4, 0.15] },
+    { g: caixa(2.4, 0.7, 1.6), cor: "#5a4a3a", p: [1.2, 0.35, 0.9], r: [0.2, 0.8, 0.3] },
+    { g: caixa(1.6, 0.5, 1.2), cor: "#8a93b8", p: [-1.4, 0.3, -0.6], r: [0.1, -0.5, -0.2] },
+  ])
+  if (id === "lavadora") return juntar([
+    { g: caixa(0.85, 0.9, 0.65), cor: "#d9dee8", p: [0, 0.33, 0], r: [0, 0.3, Math.PI / 2 - 0.15] },
+    { g: cil(0.28, 0.28, 0.06, 16), cor: "#2a4a6b", p: [-0.02, 0.38, 0.33], r: [Math.PI / 2, 0, 0] },
+    { g: caixa(0.5, 0.3, 0.4), cor: "#5a4a3a", p: [0.7, 0.15, -0.3], r: [0.2, 0.6, 0.1] },
+  ])
+  if (id === "ventilador") return juntar([
+    { g: cil(0.3, 0.32, 0.06, 14), cor: "#3a3440", p: [-0.55, 0.15, 0], r: [0, 0, Math.PI / 2 - 0.2] },
+    { g: cil(0.03, 0.03, 1.1, 6), cor: "#8a93b8", p: [0, 0.12, 0], r: [0, 0, Math.PI / 2] },
+    { g: cil(0.13, 0.13, 0.22, 10), cor: "#4fc3ff", p: [0.55, 0.32, 0], r: [0, 0, Math.PI / 2] },
+    { g: new THREE.TorusGeometry(0.42, 0.025, 6, 20), cor: "#c9d3e6", p: [0.7, 0.42, 0], r: [0, Math.PI / 2, 0] },
+    ...[0, 1, 2].map((i): Peca3 => ({ g: caixa(0.02, 0.32, 0.12), cor: "#4fc3ff", p: [0.7, 0.42 + Math.cos((i * Math.PI * 2) / 3) * 0.2, Math.sin((i * Math.PI * 2) / 3) * 0.2], r: [(i * Math.PI * 2) / 3, 0, 0] })),
+  ])
+  return juntar([
+    { g: caixa(0.7, 0.4, 0.22), cor: "#7a3b1f", p: [0, 0.2, 0], r: [0, 0.5, -0.2] },
+    { g: caixa(0.36, 0.26, 0.03), cor: "#1a1418", p: [-0.08, 0.2, 0.11], r: [0, 0.5, -0.2] },
+    { g: cil(0.012, 0.012, 0.9, 4), cor: "#c9d3e6", p: [0.25, 0.75, -0.05], r: [0.3, 0, -0.5] },
+    { g: cil(0.05, 0.05, 0.04, 8), cor: "#ff6a35", p: [0.22, 0.26, 0.14], r: [Math.PI / 2, 0, 0] },
+  ])
+}
+const assinar = (f: () => void) => ouvirChaoAtivos(f)
+const VAZIO: readonly LugarChao[] = []
+function LixoNoLixao({ chao }: { chao: (x: number, z: number) => number }) {
+  const ativos = useSyncExternalStore(assinar, chaoAtivos, () => VAZIO)
+  const pecas = useMemo(() => ativos.filter(ehPeca), [ativos])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.2, emissive: "#3a3446", emissiveIntensity: 0.7 }), [])
+  const modelos = useMemo(() => Object.fromEntries(PECAS_CHAO.map((id) => [id, modeloPeca(id)])) as Record<PecaChao, THREE.BufferGeometry>, [])
+  // os faróis e os anéis no chão de todas as que faltam: um desenho só
+  const luz = useMemo(() => {
+    if (!pecas.length) return null
+    return juntar(pecas.flatMap((id): Peca3[] => {
+      const l = CHAO_LUGARES[id], y = chao(l.x, l.z)
+      const tubo = new THREE.CylinderGeometry(1.6, 2.6, 140, 10, 1, true)
+      const anel = new THREE.RingGeometry(3.2, 3.8, 24)
+      return [{ g: tubo, cor: l.cor, p: [l.x, y + 70, l.z] }, { g: anel, cor: l.cor, p: [l.x, y + 0.15, l.z], r: [-Math.PI / 2, 0, 0] }]
+    }))
+  }, [pecas, chao])
+  const matLuz = useMemo(() => new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }), [])
+  if (!pecas.length) return null
+  return (
+    <>
+      {pecas.map((id) => {
+        const l = CHAO_LUGARES[id]
+        return <mesh key={id} geometry={modelos[id]} material={mat} position={[l.x, chao(l.x, l.z), l.z]} scale={1.8} name={`peca-${id}`} />
+      })}
+      {luz && <mesh geometry={luz} material={matLuz} />}
+    </>
+  )
+}
+
+// (T09) a goteira: um cano que pinga de debaixo da pista num tambor. Só existe
+// na cena quando é a vez dela (4 objetos simples, sem luz própria)
+function Goteira({ chao }: { chao: (x: number, z: number) => number }) {
+  const l = CHAO_LUGARES.goteira
   const y = useMemo(() => chao(l.x, l.z), [chao, l.x, l.z])
   const mats = useMemo(() => ({
     sujo: new THREE.MeshStandardMaterial({ color: "#5a4a3a", roughness: 0.95 }),
     metal: new THREE.MeshStandardMaterial({ color: "#8a93b8", roughness: 0.5, metalness: 0.6 }),
-    celula: new THREE.MeshStandardMaterial({ color: "#1d3a6b", emissive: "#4fc3ff", emissiveIntensity: 0.5, roughness: 0.3 }),
     agua: new THREE.MeshBasicMaterial({ color: "#4fc3ff", toneMapped: false }),
-    farol: new THREE.MeshBasicMaterial({ color: l.cor, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
-  }), [l.cor])
+  }), [])
   return (
     <group position={[l.x, y, l.z]}>
-      {id === "painel" ? (
-        <>
-          <mesh position={[0, 0.5, 0]} rotation={[-0.5, 0.4, 0.15]} material={mats.celula}><boxGeometry args={[3.2, 0.12, 2]} /></mesh>
-          <mesh position={[1.2, 0.35, 0.9]} rotation={[0.2, 0.8, 0.3]} material={mats.sujo}><boxGeometry args={[2.4, 0.7, 1.6]} /></mesh>
-          <mesh position={[-1.4, 0.3, -0.6]} rotation={[0.1, -0.5, -0.2]} material={mats.metal}><boxGeometry args={[1.6, 0.5, 1.2]} /></mesh>
-        </>
-      ) : (
-        <>
-          {/* o cano desce de debaixo da pista, entorta e pinga num tambor */}
-          <mesh position={[0, 9, 0]} material={mats.metal}><cylinderGeometry args={[0.35, 0.35, 14, 8]} /></mesh>
-          <mesh position={[0.6, 2.1, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.metal}><cylinderGeometry args={[0.3, 0.3, 1.4, 8]} /></mesh>
-          <mesh position={[1.3, 0.6, 0]} material={mats.sujo}><cylinderGeometry args={[0.7, 0.6, 1.2, 10]} /></mesh>
-          <mesh position={[1.3, 1.6, 0]} material={mats.agua}><sphereGeometry args={[0.12, 6, 4]} /></mesh>
-        </>
-      )}
-      <mesh position={[0, 70, 0]} material={mats.farol}><cylinderGeometry args={[2.4, 3.6, 140, 10, 1, true]} /></mesh>
+      {/* o cano desce de debaixo da pista, entorta e pinga num tambor */}
+      <mesh position={[0, 9, 0]} material={mats.metal}><cylinderGeometry args={[0.35, 0.35, 14, 8]} /></mesh>
+      <mesh position={[0.6, 2.1, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.metal}><cylinderGeometry args={[0.3, 0.3, 1.4, 8]} /></mesh>
+      <mesh position={[1.3, 0.6, 0]} material={mats.sujo}><cylinderGeometry args={[0.7, 0.6, 1.2, 10]} /></mesh>
+      <mesh position={[1.3, 1.6, 0]} material={mats.agua}><sphereGeometry args={[0.12, 6, 4]} /></mesh>
+      <Farol cor={l.cor} />
     </group>
   )
 }
@@ -95,8 +332,11 @@ function Achado({ id, chao }: { id: "painel" | "goteira"; chao: (x: number, z: n
 export function LugaresChao({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: LugarChao | null }) {
   return (
     <>
-      {CHAO_FIXOS.map((id) => <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
-      {(alvo === "painel" || alvo === "goteira") && <Achado key={alvo} id={alvo} chao={chao} />}
+      {CHAO_FIXOS.map((id) => id === "tuneis" ? <BocaTunel key={id} chao={chao} alvo={alvo === id} />
+        : id === "quadra" ? <Quadra key={id} chao={chao} alvo={alvo === id} />
+        : <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
+      {alvo === "goteira" && <Goteira chao={chao} />}
+      <LixoNoLixao chao={chao} />
     </>
   )
 }

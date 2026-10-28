@@ -29,9 +29,11 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // (T09) a missão da oficina, passo a passo (a água que a D-Bee deu já no bolso)
   const D_FEITA = ["dbee:arte", "dbee:jogo"]
   if (parte === "oficina" || parte === "oficina.cena") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA }
-  if (parte === "oficina.bancada") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true } }
-  if (parte === "oficina.painel") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte"], oficina: { cena: true } }
-  if (parte === "oficina.goteira") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte"], oficina: { cena: true, painel: true } }
+  // (T57) catar: o lixo espalhado no lixão (pega passando); .painel = só falta o painel; bancada = com as quatro, a oficina monta
+  if (parte === "oficina.catar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true } }
+  if (parte === "oficina.painel") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true, pecas: ["lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.bancada") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.goteira") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte"], oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
   if (parte === "oficina.pagar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte", "oficina:jogo"], oficina: { cena: true, painel: true, tanque: 10 } }
   // depois da porta: a Kombi voa, ainda no subúrbio; parando na oficina, a lojinha das melhorias (com água)
   if (parte === "oficina.loja" || parte === "subir") return { fase: "subir", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte", "oficina:jogo"], feitas13: ["dbee", "oficina"], portas: ["holo", "violao", "kombi-melhorias"], mods: ["solar", "turbo", "propulsao"] }
@@ -87,7 +89,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
 
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
-export const OFICINA_PARTES = ["oficina.bancada", "oficina.painel", "oficina.goteira", "oficina.pagar", "oficina.loja"]
+export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
 export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao

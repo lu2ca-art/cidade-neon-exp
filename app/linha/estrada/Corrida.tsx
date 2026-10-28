@@ -41,6 +41,8 @@ import { geoJoia, matJoia } from "./joia"
 import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
 import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
+import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
+import { saidaDoTunel, voltaDasTrincheiras } from "../disco/tuneis"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
@@ -605,8 +607,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina" || historia.fase === "subir")
     // (T37) a chegada: a primeira (fase casa) e a de cada login (quem já passou pela casa)
     const chega = !!historia && (historia.fase === "casa" || chegada)
-    if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub)) {
-      const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
+    // (T57) voltou das trincheiras: sai da boca do túnel, no alto da rampa
+    const doTunel = "disco" in M && !!historia && !chega && !!voltaDasTrincheiras()
+    if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
+      const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : doTunel ? saidaDoTunel() : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
       const ch = MD.chaoEm(p.x, p.z)
       if (chega) {
@@ -1352,18 +1356,23 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return () => clearInterval(iv)
   }, [chegando])
   // (B18) chegou num lugar do chão do subúrbio (o bar, a oficina, o palco)
+  // (T57) e os outros que valem agora (disco/achados.ts): as peças do lixão (pega
+  // passando, sem parar) e a boca do túnel (lá embaixo, na frente da porta)
   useEffect(() => {
-    if (!alvoChao || pausado) return
-    let dentro = false
+    if (pausado || !("disco" in M)) return
+    const dentro = new Set<string>()
     const iv = setInterval(() => {
-      const j = jogo.current, l = CHAO_LUGARES[alvoChao]
-      if (!j.voo || j.wx === undefined) { dentro = false; return }
-      const d = Math.hypot(j.wx - l.x, j.wz! - l.z)
-      if (d > RAIO_CHAO * 3) dentro = false
-      if (!dentro && d < RAIO_CHAO && !j.ar) { dentro = true; j.v = 0; onHistoriaRef.current?.(`chao:${alvoChao}`) }
-    }, 250)
+      const j = jogo.current
+      if (!j.voo || j.wx === undefined) { dentro.clear(); return }
+      const ids = alvoChao ? [alvoChao, ...chaoAtivos().filter((x) => x !== alvoChao)] : chaoAtivos()
+      for (const id of ids) {
+        const l = CHAO_LUGARES[id], perto = pertoDoChao(id, j.wx, j.wz!)
+        if (!perto && Math.hypot(j.wx - l.x, j.wz! - l.z) > RAIO_CHAO * 3) dentro.delete(id)
+        if (!dentro.has(id) && perto && !j.ar) { dentro.add(id); if (!ehPeca(id)) j.v = 0; onHistoriaRef.current?.(`chao:${id}`) }
+      }
+    }, 150)
     return () => clearInterval(iv)
-  }, [alvoChao, pausado])
+  }, [alvoChao, pausado, M])
   // (B12) espatifou um robô no deserto: as peças voam; um prêmio pequeno (água: a tecnologia dele)
   const roboRef = useRef<() => void>(() => {})
   useEffect(() => {

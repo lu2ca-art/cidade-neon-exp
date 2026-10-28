@@ -43,7 +43,7 @@
 .tr-card.is-bmx strong { color: #ff7a3c; } .tr-card.is-patins strong { color: #ff3fb0; } .tr-card.is-skate strong { color: #7dffb0; }
 .tr-card:hover, .tr-card:focus-visible { border-color: #fff; outline: none; }
 .tr-passeio { font: 700 11px var(--font-geist-mono), ui-monospace, monospace !important; color: rgba(242, 238, 250, 0.6) !important; }
-.tr-passeio button, .tr-fim-botoes button, .tr-correr { margin: 0 4px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(155, 140, 255, 0.5); background: rgba(10, 6, 16, 0.7); color: #f2eefa; font: 700 12px var(--font-geist-mono), ui-monospace, monospace; cursor: pointer; }
+.tr-passeio button, .tr-fim-botoes button, .tr-fim-botoes a, .tr-correr { margin: 0 4px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(155, 140, 255, 0.5); background: rgba(10, 6, 16, 0.7); color: #f2eefa; font: 700 12px var(--font-geist-mono), ui-monospace, monospace; cursor: pointer; }
 .tr-correr { position: absolute; top: calc(108px + env(safe-area-inset-top)); right: 16px; margin: 0; }
 .tr-fim-tempo { margin: 0; font: 900 26px "Arial Black", system-ui, sans-serif; color: #fff; }
 .tr-fim-tempo b { color: #7dffb0; } .tr-fim-tempo span { font-size: 14px; color: rgba(242, 238, 250, 0.6); }
@@ -51,7 +51,8 @@
 .tr-fim li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font: 800 14px var(--font-geist-mono), ui-monospace, monospace; }
 .tr-fim li i { width: 10px; height: 10px; border-radius: 50%; } .tr-fim li span { margin-left: auto; font-variant-numeric: tabular-nums; }
 .tr-fim-parciais { margin: 0; text-align: center; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(242, 238, 250, 0.6); }
-.tr-fim-botoes button { padding: 10px 18px; font-size: 13px; }
+.tr-fim-botoes button, .tr-fim-botoes a { padding: 10px 18px; font-size: 13px; }
+.tr-fim-botoes a { display: inline-block; text-decoration: none; background: #9b8cff; color: #0a0610; }
 @media (max-width: 640px) {
   .tr-cards { grid-template-columns: 1fr; max-width: 360px; }
   .tr-card { padding: 12px 14px; }

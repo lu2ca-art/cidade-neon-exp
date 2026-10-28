@@ -2,16 +2,16 @@
 
 // A MISSÃO DA OFICINA (T09): as telas por cima do jogo (leves, sem 3D; o jogo
 // embaixo fica pausado enquanto uma delas está aberta).
-//   Bancada   → a arte: a reciclagem (o lixo vira as peças do plano)
-//   Painel    → o jogo, 1: cavar no lixão até o painel solar velho aparecer
-//   Goteira   → o jogo, 2: o balde embaixo da goteira enche o tanque do motor
+//   Montagem  → a arte, o fim: o lixo que ele catou no lixão (T57: no mundo,
+//               de Kombi ou de patins) vira as peças do plano
+//   Goteira   → o jogo: o balde embaixo da goteira enche o tanque do motor
 //   Pagamento → a porta: o mecânico é pago em água; o contador desce e, a cada
 //               10, faz um som de água (J2: 18, 19)
 // Os textos e os números moram em oficina.ts (RASCUNHO; o mecânico é provisório).
 
 import { useEffect, useRef, useState } from "react"
 import { audioCtx, gota, moeda, saidaSom } from "../som"
-import { BANCADA, FALAS_OFICINA, MECANICO, OFICINA_CFG, PLANO, pagamentoMotor } from "./oficina"
+import { FALAS_OFICINA, LIXO, MECANICO, OFICINA_CFG, pagamentoMotor } from "./oficina"
 
 // o som de água: um "ploc" (a bolha sobe de tom) com um chiado curto de respingo
 export function somDeAgua(vol = 0.22) {
@@ -49,77 +49,33 @@ function Caixa({ titulo, sub, children, rotulo }: { titulo: string; sub: string;
   )
 }
 
-// ── a arte: a bancada da reciclagem ──
-export function Bancada({ onFim }: { onFim: () => void }) {
-  const [feitas, setFeitas] = useState<string[]>([])
-  const [msg, setMsg] = useState("o plano pede três peças. qual lixo esconde cada uma?")
-  const [errou, setErrou] = useState<string | null>(null)
-  const [desmontando, setDesmontando] = useState<string | null>(null)
-  const pronto = feitas.length >= PLANO.length
-  const tocar = (id: string) => {
-    if (desmontando || pronto) return
-    const it = BANCADA.find((x) => x.id === id)!
-    if (!it.vira || feitas.includes(it.vira)) {
-      setErrou(id); setMsg(it.vira ? `${it.nome}: essa peça já saiu` : `${it.nome}: não tem nada aí dentro`)
-      setTimeout(() => setErrou(null), 450)
-      return
-    }
-    setDesmontando(id); setMsg(`desmontando ${it.nome}…`)
-    setTimeout(() => {
-      setDesmontando(null)
-      setFeitas((f) => [...f, it.vira!])
-      setMsg(`${it.nome} → ${it.vira}`)
-      moeda()
-    }, 650)
-  }
-  return (
-    <Caixa titulo="o lixo vira tecnologia" sub={`a arte · a bancada de ${MECANICO.nome}`} rotulo="a bancada da reciclagem">
-      <ul className="l-oficina-plano" aria-label="o plano">
-        {PLANO.map((p) => <li key={p} className={feitas.includes(p) ? "is-tem" : ""}>{p}{feitas.includes(p) ? " ✓" : ""}</li>)}
-      </ul>
-      <div className="l-oficina-lixo">
-        {BANCADA.map((it) => {
-          const saiu = !!it.vira && feitas.includes(it.vira)
-          return (
-            <button key={it.id} type="button" data-lixo={it.id} disabled={saiu || pronto}
-              className={`${saiu ? "is-saiu" : ""} ${errou === it.id ? "is-errou" : ""} ${desmontando === it.id ? "is-desmontando" : ""}`}
-              style={{ ["--c" as string]: it.cor }} onClick={() => tocar(it.id)}>
-              <i aria-hidden="true" />{it.nome}
-            </button>
-          )
-        })}
-      </div>
-      <p className="l-oficina-msg" aria-live="polite">{pronto ? "as três peças na bancada. o motor tá montado: falta o sol e a água" : msg}</p>
-      {pronto && <button type="button" className="l-oficina-seguir" autoFocus onClick={onFim}>pronto →</button>}
-    </Caixa>
-  )
-}
-
-// ── o jogo, 1: o painel solar enterrado no lixão ──
-export function PainelLixao({ onFim }: { onFim: () => void }) {
+// ── a arte, o fim: com o lixo que ele catou no lixão (T57), a oficina monta.
+// Sem toque nenhum: o mecânico desmonta cada um e a peça sai; depois, "seguir" ──
+export function Montagem({ onFim }: { onFim: () => void }) {
   const [n, setN] = useState(0)
-  const achou = n >= OFICINA_CFG.cavadas
-  const cavar = () => { if (achou) return; setN((x) => x + 1); gota(n) }
+  const pronto = n >= LIXO.length
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (achou) onFim(); else cavar() } }
-    window.addEventListener("keydown", k)
-    return () => window.removeEventListener("keydown", k)
-  })
+    if (pronto) return
+    const t = setTimeout(() => { setN((x) => x + 1); moeda() }, n === 0 ? 900 : 750)
+    return () => clearTimeout(t)
+  }, [n, pronto])
   return (
-    <Caixa titulo={achou ? "um painel solar velho" : "alguma coisa brilha embaixo das carcaças"} sub="o jogo · o lixão" rotulo="o painel no lixão">
-      <div className={`l-oficina-cova ${achou ? "is-achou" : ""}`} style={{ ["--p" as string]: `${Math.min(1, n / OFICINA_CFG.cavadas)}` }} aria-hidden="true">
-        <i className="l-oficina-painel" />
-        <i className="l-oficina-entulho" />
+    <Caixa titulo="o lixo vira tecnologia" sub={`a arte · a oficina de ${MECANICO.nome}`} rotulo="a oficina monta">
+      <p className="l-oficina-msg">{FALAS_OFICINA.monta}</p>
+      <div className="l-oficina-lixo">
+        {LIXO.map((it, i) => (
+          <span key={it.id} data-lixo={it.id} className={`l-oficina-peca ${i < n ? "is-saiu" : i === n ? "is-desmontando" : ""}`} style={{ ["--c" as string]: it.cor }}>
+            <i aria-hidden="true" />{i < n ? it.vira : it.nome}
+          </span>
+        ))}
       </div>
-      <p className="l-oficina-msg" aria-live="polite">{achou ? "rachado, mas a célula ainda acende" : `tira o entulho de cima (${n}/${OFICINA_CFG.cavadas})`}</p>
-      {achou
-        ? <button type="button" className="l-oficina-seguir" autoFocus onClick={onFim}>levar o painel →</button>
-        : <button type="button" className="l-oficina-seguir" data-cavar onClick={cavar}>cavar</button>}
+      <p className="l-oficina-msg" aria-live="polite">{pronto ? "as quatro na bancada. o motor tá montado: falta a água" : `desmontando ${LIXO[n].nome}…`}</p>
+      {pronto && <button type="button" className="l-oficina-seguir" autoFocus onClick={onFim}>seguir →</button>}
     </Caixa>
   )
 }
 
-// ── o jogo, 2: a goteira. O balde (3 posições) pega as gotas que caem do cano ──
+// ── o jogo: a goteira. O balde (3 posições) pega as gotas que caem do cano ──
 const COLUNAS = 3
 export function Goteira({ onFim, onGota }: { onFim: (gotas: number) => void; onGota?: (n: number) => void }) {
   const meta = OFICINA_CFG.gotasDaGoteira
