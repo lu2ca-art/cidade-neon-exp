@@ -58,7 +58,8 @@ import { InicioDisco } from "./disco/Inicio"
 import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
 import { VISOR, Visor, type VisorId } from "./disco/Visor"
 import { Freq } from "./disco/Freq"
-import { type ResultadoShow } from "./disco/Show"
+import { type FaixaShow, type ResultadoShow } from "./disco/Show"
+import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } from "./disco/xenom"
 import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
@@ -145,7 +146,10 @@ function feiraDoSave(s: Save): Oferta13[] {
 }
 // (T02) o show não fecha mais missão: é o Guitar Driver aberto agora. "rua:<faixa>"
 // = a oportunidade na rua (paga); "missao:<id>" = a peça de tocar ao vivo (a do LU2CA)
-function confShow(id: string): { faixa: PistaId; lugar: string; cor: string; palco: string } | null {
+function confShow(id: string): { faixa: FaixaShow; lugar: string; cor: string; palco: string } | null {
+  // (T21) um show do subúrbio xenom: "xenom:<id>" (disco/xenom.ts), no palco do multiverso dele
+  const xs = lerShowXenom(id)
+  if (xs) return { faixa: faixaXenom(xs.id), lugar: `no ${xs.multiverso.replace(/^o /, "")}`, cor: xs.cor, palco: xs.gd }
   // (T20) um palco da carreira: "palco:<palco>:<faixa>" (disco/palcos.ts)
   const pc = lerShowDoPalco(id)
   if (pc) return { faixa: pc.faixa, lugar: nomeDoPalco(pc.palco).no, cor: pc.palco.cor, palco: pc.palco.gd }
@@ -994,6 +998,17 @@ export default function LinhaPage() {
     // (T20) num palco da carreira: o cachê vezes o palco, a melhor estrela e o nível
     const pc = lerShowDoPalco(id)
     const base = cacheDoShow(r.nota, popAntes)
+    // (T21) um show xenom: o cachê vezes o multiverso; cumpriu a missão a primeira vez, o bônus e o prestígio
+    const xs = lerShowXenom(id)
+    const rx = xs ? registrarXenom(hist13(saveRef.current), xs.id, { nota: r.nota, maxSeq: r.maxSeq ?? 0, galera: r.galera ?? 0 }, base) : null
+    if (xs && rx) {
+      const mx = { ...calcularManchete(r, xs.faixa, conf.lugar, popAntes, Date.now()), neon: rx.neon }
+      setSave((s) => comHistoria({ ...ganhar(s, mx.neon), popularidade: Math.min(100, (s.popularidade ?? 0) + mx.pop + rx.prestigio) }, (h) => ({ ...registrarXenom(h, xs.id, { nota: r.nota, maxSeq: r.maxSeq ?? 0, galera: r.galera ?? 0 }, base).h, show: undefined, shows: [...(h.shows ?? []), mx] })))
+      if (rx.primeira) setTimeout(() => avisar("222 FM", `missão cumprida ${conf.lugar} · +${rx.neon} neon$ · +${rx.prestigio + mx.pop} de prestígio`, xs.cor), 300)
+      if (rx.album) setTimeout(() => avisar("222 FM", `os 4 multiversos cumpridos: o álbum ${XENOM_CONFIG.album.nome} é seu, no untitled`, xs.cor), 2400)
+      setJornal(mx)
+      return
+    }
     const faixaDoJornal = pc ? pc.faixa : id.startsWith("rua:") ? id.slice(4) : id
     const m = { ...calcularManchete(r, faixaDoJornal, conf.lugar, popAntes, Date.now()), neon: pc ? cacheNoPalco(base, pc.palco) : base }
     const reg = pc ? registrarShow(hist13(saveRef.current), pc.palco.id, pc.faixa, r.nota) : null
@@ -1843,12 +1858,12 @@ export default function LinhaPage() {
           // (T16) a loja de discos abriu: ela abre, pra comprar o primeiro disco com a grana
           if (r.abriu.some((x) => x.id === "loja-discos")) { setTela({ t: "app", id: "loja" }); return }
           if (m.faixa && m.onde === "cidade") setOuvirFim({ pista: m.faixa, id: Date.now() })
-        }} />}
+        }} onXenom={hist.fase === "carreira" ? () => { setRecompensa(null); setRua(true) } : undefined} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {HIST && tela.t === "corrida" && <TutorialHolo hist={hist} pausado={!!cena || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor} onFeito={marcarTutorial} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
-        {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} />}
+        {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} onXenom={(id) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showXenom(id) }))) }} />}
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
         {ouvirFim && !jornal && tela.t === "corrida" && <OuvirFim key={ouvirFim.id} pista={ouvirFim.pista} quando={ouvirFim.id} onFechar={fecharOuvir} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq save={save} /> : undefined}</Visor>}

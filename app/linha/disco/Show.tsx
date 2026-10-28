@@ -21,8 +21,26 @@ import { JANELA, PERFEITO, VISIVEL, multiplicador, notasDoChart, novoPlacar, typ
 import { ac, atrasoEstimado, carregarBuffer, montarShow, type Show as SomShow } from "../../neon-tiles/som"
 import { MODELOS, PALCOS, type Palco } from "../../neon-tiles/dados"
 import { imagemInstrumento } from "../../neon-tiles/instrumentos"
+import { cumpriu, notaDosJurados, xenomDaFaixa, type FaixaXenom } from "./xenom"
 
-export type ResultadoShow = { modo: "tocar" | "cantar"; nota: number; acertos: number; total: number; publico: number }
+export type ResultadoShow = { modo: "tocar" | "cantar"; nota: number; acertos: number; total: number; publico: number
+  // (T21) pro objetivo dos shows xenom: a maior sequência e a galera no fim (0–1)
+  maxSeq?: number; galera?: number }
+
+// (T21) a música do show: uma faixa das pistas ou uma das 4 do Subúrbio Xenom
+// (disco/xenom.ts). O mesmo objeto sempre (os efeitos dependem dele)
+export type FaixaShow = PistaId | FaixaXenom
+const MUSICAS = new Map<string, { faixa: string; src: string }>()
+export function musicaDoShow(faixa: FaixaShow): { faixa: string; src: string } {
+  let m = MUSICAS.get(faixa)
+  if (!m) {
+    const x = xenomDaFaixa(faixa)
+    const p = PISTAS.find((q) => q.id === faixa)
+    m = x ? { faixa: x.faixa, src: x.src } : p ? { faixa: p.faixa, src: faixaDaPista(p) } : { faixa, src: "" }
+    MUSICAS.set(faixa, m)
+  }
+  return m
+}
 
 const DUR = 22 // s ("é sempre 22 segundos, em qualquer modalidade")
 const INICIO_ANTIGO = 28 // sem o chart novo: o trecho do chart antigo (public/gd)
@@ -54,12 +72,12 @@ interface Jogo {
 }
 
 export type InstrumentoShow = "voz" | "guitarra" | "baixo" | "teclado" | "bateria"
-export interface PropsShow { faixa: PistaId; lugar: string; palco?: string; cor: string; popularidade: number; onFim: (r: ResultadoShow) => void
+export interface PropsShow { faixa: FaixaShow; lugar: string; palco?: string; cor: string; popularidade: number; onFim: (r: ResultadoShow) => void
   // (T19) a letra que ele escreveu (a arte do LU2CA): aparece no cantar
   letra?: string[] }
 // o chart novo (public/gd2): cada instrumento com os 4 níveis (a voz: a melodia) e a janela de 22 s de cada um
 export type ChartGd2 = ChartGd & { janelas?: Partial<Record<InstrumentoShow, number>>; voz?: { melodia: [number, number, number][] } } & Partial<Record<InstrumentoShow, unknown>>
-export const carregarChart = (faixa: PistaId) => fetch(`/gd2/${faixa}.json`).then((r) => (r.ok ? (r.json() as Promise<ChartGd2>) : Promise.reject()))
+export const carregarChart = (faixa: FaixaShow) => fetch(`/gd2/${faixa}.json`).then((r) => (r.ok ? (r.json() as Promise<ChartGd2>) : Promise.reject()))
 export const NOME_INST: Record<InstrumentoShow, string> = { voz: "cantar", guitarra: "guitarra", baixo: "baixo", teclado: "teclado", bateria: "bateria" }
 
 // a pista do Guitar Driver (guitarra; o teclado e a bateria usam a mesma pista
@@ -70,7 +88,10 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   const cvs = useRef<HTMLCanvasElement>(null)
   const toques = useRef(new Map<number, number>())
   const jogo = useRef<Jogo>({ notas: [], placar: novoPlacar(), som: null, ini: 0, bpm: 100, t0: 0, inicio: 0, apertadas: [false, false, false, false], flashes: [], particulas: [], tremor: 0, aviso: null, frases: new Map(), buf: null })
-  const pista = PISTAS.find((p) => p.id === faixa)!
+  const pista = musicaDoShow(faixa)
+  // (T21) o multiverso do show xenom: a regra que muda o jogo
+  const xenom = xenomDaFaixa(faixa)
+  const regra = xenom?.regra.t ?? null
   // a plateia: quantas pessoas (a popularidade de agora)
   const publico = Math.round(2 + (Math.min(100, popularidade) / 100) * 70)
   // o palco: o lugar da missão (os palcos do Guitar Driver têm os ids dos lugares do jogo);
@@ -94,7 +115,7 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
     ac()
     const chart = carregarChart(faixa).then((c) => ({ c: { ...c, guitarra: (c[inst] ?? c.guitarra) as ChartGd["guitarra"] } as ChartGd, ini: c.janelas?.[inst] ?? INICIO_ANTIGO }))
       .catch(() => fetch(`/gd/${faixa}.json`).then((r) => r.json()).then((c: ChartGd) => ({ c, ini: INICIO_ANTIGO })))
-    Promise.all([chart, carregarBuffer(faixaDaPista(pista))]).then(([{ c, ini }, buf]) => {
+    Promise.all([chart, carregarBuffer(pista.src)]).then(([{ c, ini }, buf]) => {
       if (!vivo) return
       const inicio = Math.max(0, Math.min(ini, buf.duration - DUR))
       const notas = notasDoChart(c, "guitarra", DIF).filter((n) => n.t >= inicio + 0.3 && n.t < inicio + DUR - 0.2)
@@ -133,7 +154,7 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
 
   const acabar = useCallback(() => {
     const j = jogo.current, p = j.placar
-    const r: ResultadoShow = { modo: "tocar", nota: p.total ? p.acertos / p.total : 0, acertos: p.acertos, total: p.total, publico }
+    const r: ResultadoShow = { modo: "tocar", nota: p.total ? p.acertos / p.total : 0, acertos: p.acertos, total: p.total, publico, maxSeq: p.maxSeq, galera: p.galera }
     j.som?.grito(r.nota > 0.5)
     j.som?.galera(r.nota > 0.5 ? 1 : 0.1)
     setTimeout(() => j.som?.parar(), 1800)
@@ -171,7 +192,9 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
       p.pontos += (perfeito ? 50 : 40) * multiplicador(p)
       p.galera = Math.min(1, p.galera + 0.025)
       j.flashes.push({ lane, ate: agora + 0.35, tipo: "ok", perfeito })
-      if (c) soltarFaiscas(j.particulas, c.width, c.height, lane, COR_LANE[lane], perfeito ? 12 : 6)
+      if (c) soltarFaiscas(j.particulas, c.width, c.height, lane, COR_LANE[lane], (perfeito ? 12 : 6) * (regra === "explosao" ? 3 : 1), regra === "espelho")
+      // (T21) o multiverso que explode: cada acerto perfeito sacode a tela
+      if (regra === "explosao" && perfeito) j.tremor = Math.max(j.tremor, 0.45)
       j.som.acertou(); j.som.galera(p.galera)
       if (alvo.frase !== undefined) {
         const fr = j.frases.get(alvo.frase)
@@ -183,9 +206,9 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
       p.galera = Math.max(0, p.galera - 0.02)
       j.flashes.push({ lane, ate: agora + 0.25, tipo: "erro" })
       j.som.errou(); j.som.galera(p.galera)
-      j.tremor = 0.6
+      j.tremor = regra === "explosao" ? 1.6 : 0.6
     }
-  }, [estado, atraso])
+  }, [estado, atraso, regra])
 
   // o show: 22 s
   useEffect(() => {
@@ -219,9 +242,16 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
       ajustar(c)
       const w = c.width, h = c.height
       desenharPalco(g, w, h, { palco, energia: p.galera, neon: false, batida, t: agora, instrumento: "guitarra", modelo, imgs, vaia: p.galera < 0.15, publico, show: true })
+      // (T21) o multiverso cinza: o palco perde a cor; a galera acesa devolve (o braço segue colorido)
+      if (regra === "cinza") {
+        g.globalCompositeOperation = "saturation"
+        g.fillStyle = `hsla(0,0%,50%,${Math.max(0, Math.min(1, 1.15 - p.galera * 1.4)).toFixed(3)})`
+        g.fillRect(0, 0, w, h)
+        g.globalCompositeOperation = "source-over"
+      }
       g.fillStyle = "rgba(4,3,12,0.42)"
       g.fillRect(0, 0, w, h)
-      desenharBraco(g, w, h, { notas: j.notas, agora, janela: VISIVEL[DIF], apertadas: j.apertadas, neon: false, modelo, flashes: j.flashes, multi: multiplicador(p), bpm: j.bpm, t0: j.t0, particulas: j.particulas, invertido: false, apagao: false, tremor: j.tremor })
+      desenharBraco(g, w, h, { notas: j.notas, agora, janela: VISIVEL[DIF], apertadas: j.apertadas, neon: false, modelo, flashes: j.flashes, multi: multiplicador(p), bpm: j.bpm, t0: j.t0, particulas: j.particulas, invertido: regra === "espelho", apagao: regra === "jurados", tremor: j.tremor })
       desenharHud(g, w, h, { pontos: p.pontos, seq: p.seq, multi: multiplicador(p), galera: p.galera, neon: p.neon, neonAtivo: false, aviso: j.aviso, agora, progresso: Math.min(1, (agora - j.inicio) / DUR), duelo: null })
       if (agora >= j.inicio + DUR) { acabar(); return }
       raf = requestAnimationFrame(loop)
@@ -232,20 +262,22 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
     window.addEventListener("keydown", kd, true)
     window.addEventListener("keyup", ku, true)
     return () => { cancelAnimationFrame(raf); window.removeEventListener("keydown", kd, true); window.removeEventListener("keyup", ku, true) }
-  }, [estado, palco, modelo, imgs, publico, atraso, tocar, acabar])
+  }, [estado, palco, modelo, imgs, publico, atraso, tocar, acabar, regra])
 
   // o toque na pista: a coluna inteira (vários dedos ao mesmo tempo)
   const posDoToque = (e: React.PointerEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const gb = geometriaBraco(r.width, r.height)
     const x = e.clientX - r.left - (gb.cx - gb.baseW / 2)
-    return Math.max(0, Math.min(LANES - 1, Math.floor((x / gb.baseW) * LANES)))
+    const col = Math.max(0, Math.min(LANES - 1, Math.floor((x / gb.baseW) * LANES)))
+    // (T21) no braço espelhado, o dedo vai onde a nota está (o teclado fica do avesso)
+    return regra === "espelho" ? LANES - 1 - col : col
   }
 
   return (
     <div className="l-show is-gd" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
       <canvas ref={cvs} />
-      <header className="l-show-topo"><small>o show · {lugar}</small><b>{pista.faixa}</b><span>{publico <= 3 ? "quase ninguém" : `${publico} pessoas`}</span></header>
+      <header className="l-show-topo"><small>{xenom ? `${xenom.multiverso} · ${xenom.objetivo.texto}` : `o show · ${lugar}`}</small><b>{pista.faixa}</b><span>{publico <= 3 ? "quase ninguém" : `${publico} pessoas`}</span></header>
       {estado === "carregando" && <div className="l-show-carrega">{inst === "bateria" ? "ajustando as baquetas…" : inst === "teclado" ? "ligando o teclado…" : "afinando a guitarra…"}</div>}
       {estado === "erro" && (
         <div className="l-show-fim"><b>a guitarra não chegou</b><span>confere a internet</span><button type="button" onClick={() => onFim({ modo: "tocar", nota: 0, acertos: 0, total: 0, publico })}>seguir →</button></div>
@@ -263,7 +295,9 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
         <div className="l-show-fim">
           <b>{fim.nota > 0.8 ? "a casa veio abaixo" : fim.nota > 0.5 ? "deu bom" : fim.nota > 0.2 ? "foi" : "pelo menos você subiu"}</b>
           <span>{fim.acertos} de {fim.total} notas</span>
-          <button type="button" onClick={() => onFim(fim)}>o Suburbandas de amanhã →</button>
+          {regra === "jurados" && <span className="l-xenom-jurados">os jurados: {[0, 0.5, -0.5].map((d) => notaDosJurados(Math.max(0, Math.min(1, fim.nota + d / 10))).toLocaleString("pt-BR")).join(" · ")}</span>}
+          {xenom && <span className={`l-xenom-objetivo${cumpriu(xenom, { nota: fim.nota, maxSeq: fim.maxSeq ?? 0, galera: fim.galera ?? 0 }) ? " is-ok" : ""}`} data-cumpriu={cumpriu(xenom, { nota: fim.nota, maxSeq: fim.maxSeq ?? 0, galera: fim.galera ?? 0 }) ? "1" : "0"}>{cumpriu(xenom, { nota: fim.nota, maxSeq: fim.maxSeq ?? 0, galera: fim.galera ?? 0 }) ? "missão cumprida" : "a missão não foi dessa vez"}: {xenom.objetivo.texto}</span>}
+          <button type="button" onClick={() => onFim(fim)}>{xenom ? "voltar pro nosso mundo →" : "o Suburbandas de amanhã →"}</button>
         </div>
       )}
     </div>

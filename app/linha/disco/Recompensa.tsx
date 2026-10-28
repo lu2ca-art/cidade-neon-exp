@@ -9,8 +9,10 @@
 
 import { useEffect } from "react"
 import type { Recompensa13 } from "./portas"
+import { xenomDaMissao } from "./xenom"
 
-export function Recompensa({ r, onSeguir }: { r: Recompensa13; onSeguir: () => void }) {
+export function Recompensa({ r, onSeguir, onXenom }: { r: Recompensa13; onSeguir: () => void; onXenom?: () => void }) {
+  const xs = xenomDaMissao(r.missao)
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === "Enter" || e.key === "Escape" || e.key === " ") onSeguir() }
     window.addEventListener("keydown", k)
@@ -29,9 +31,12 @@ export function Recompensa({ r, onSeguir }: { r: Recompensa13; onSeguir: () => v
         <ul className="l-recompensa-ganhos">
           {r.guitar && <li><small>Guitar Driver</small>{r.guitar.nome} liberada pra tocar na rua</li>}
           {r.batida && <li><small>B4TIDA</small>a referência da {r.batida.nome}</li>}
+          {/* (T21) a missão do subúrbio libera o show xenom da faixa dela */}
+          {xs && <li className="l-recompensa-xenom"><small>Guitar Driver · xenom</small>o show {xs.faixa}: {xs.multiverso}, nos palcos</li>}
           {r.neon > 0 && <li><small>neon$</small>+{r.neon}</li>}
         </ul>
         <button type="button" onClick={onSeguir} autoFocus>seguir →</button>
+        {xs && onXenom && <button type="button" className="l-recompensa-ir" data-xenom-ir={xs.id} onClick={onXenom}>tocar {xs.faixa} agora →</button>}
       </div>
     </div>
   )
