@@ -214,6 +214,20 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   },
 }
 export const IDS13 = Object.keys(MISSOES13) as MissaoId[]
+
+// ── a missão do metrô (T26), fora das 13: a fuga em que você perde o violão (e
+// depois a loja passa a vender instrumentos). No mapa ela segue "em breve" (sem
+// `como`): a fuga já existe solta em /teste/metro e só entra no fluxo depois que
+// o dono aprovar. Pra ligar: um `como` novo (ex.: { t: "metro" }) tratado em
+// `chegouNaMissao` da page.tsx, com o <Metro onFim> de app/linha/metro/Metro.tsx.
+export const MISSAO_METRO = {
+  id: "metro" as const,
+  quem: "o guarda do Núcleo",
+  lugar: { lugar: "plataforma" as LugarId },
+  jogo: p("a fuga: correr até a porta antes do guarda (referência: Subway Midnight)", "decidido", { tarefa: "T26", existe: "/teste/metro" }),
+  perde: "violao" as PortaId,
+  abre: "os instrumentos na loja (em breve, T03)",
+}
 export const ehMissao13 = (id: string | null | undefined): id is MissaoId => !!id && id in MISSOES13
 
 // save antigo (ou link ?parte=missao.sexta): a missão pegada era a faixa

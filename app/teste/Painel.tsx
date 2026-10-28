@@ -6,6 +6,7 @@ import { ATALHOS, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados, saveDo, type Atalho 
 import "./teste.css"
 
 const PAGINAS = [
+  { href: "/teste/metro", nome: "o metrô (T26)", desc: "a fuga: corre até a porta antes do guarda · em breve na missão do metrô" },
   { href: "/parque", nome: "parque (protótipo)", desc: "a montanha-russa sozinha, em 1ª pessoa" },
   { href: "/fliperama", nome: "fliperama", desc: "LINHA 9, KOMBI COBRA, INVASORES, PINGUE, QUEBRA-NEON, PRÉDIO, ATRAVESSA · 1 neon a ficha" },
   { href: "/oficina", nome: "oficina", desc: "a pintura e o neon de baixo da Kombi" },
