@@ -51,6 +51,7 @@ import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
+import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CENA_OFICINA, FALAS_OFICINA, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, passoOficina } from "./disco/oficina"
 import { Bancada, Goteira, Pagamento, PainelLixao } from "./disco/OficinaTelas"
 import type { EventoHistoria } from "./estrada/Corrida"
@@ -647,7 +648,7 @@ export default function LinhaPage() {
   // arte); depois o painel no lixão e a goteira (o jogo); de volta, o pagamento em
   // água e a porta (as melhorias da Kombi). Na Nectar antiga (o mapa de antes), a
   // cena segue fechando o passo dela como sempre
-  const [oficinaTela, setOficinaTela] = useState<"bancada" | "painel" | "goteira" | "pagar" | null>(null)
+  const [oficinaTela, setOficinaTela] = useState<"bancada" | "painel" | "goteira" | "pagar" | "conserto" | null>(null)
   const fimOficina = useCallback((r: ResultadoCena) => {
     setCena(null)
     setCinema(null)
@@ -847,7 +848,7 @@ export default function LinhaPage() {
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: undefined })))
     if (m) setLargadas((l) => [...l, m])
   }
-  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : lugar13?.chao ?? null
+  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : quebrada(hist) ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
   // (T10) a quadra: o B4TIDA aberto (a arte) e o basquete (o jogo, ou a quadra livre depois da porta)
   const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
@@ -886,7 +887,9 @@ export default function LinhaPage() {
     for (const [k, porta] of par) { const m = trancado(h13, porta); if (m) t[k] = m }
     return t
   }, [HIST, h13])
-  const noConserto = HIST && kombiNoConserto(h13)
+  // (T27) a Kombi quebrou: também fica no conserto (a mesma ida de patins)
+  const kombiQuebrou = HIST && quebrada(h13)
+  const noConserto = HIST && (kombiNoConserto(h13) || kombiQuebrou)
   // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
   const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
@@ -1270,6 +1273,8 @@ export default function LinhaPage() {
   useEffect(() => {
     if (!atalhosLiberados()) return
     ;(window as unknown as { __cnChao?: (id: LugarChao) => void }).__cnChao = (id) => onHistoriaTeste.current(`chao:${id}`)
+    // (T27) forçar a quebra da Kombi (teste): sem sorteio
+    ;(window as unknown as { __cnQuebrar?: () => void }).__cnQuebrar = () => setSave((s) => comHistoria(s, quebrar))
   }, [])
   const onHistoria = (e: EventoHistoria) => {
     const h = historiaDe(saveRef.current)
@@ -1299,6 +1304,13 @@ export default function LinhaPage() {
       else if (e === "chao:painel" && p === "painel") setOficinaTela("painel")
       else if (e === "chao:goteira" && p === "goteira") setOficinaTela("goteira")
     }
+    // (T27) o sorteio da Kombi quebrar (o Corrida chama de tempos em tempos, rodando de verdade)
+    if (e === "sorteio-quebra" && !cena && !oficinaTela && !recompensa) {
+      const r = sortearQuebra(h, Math.random())
+      if (r.h !== h) setSave((s) => comHistoria(s, () => r.h))
+    }
+    // (T27) a Kombi quebrada espera na oficina: chegou lá, o mecânico cobra o conserto (em água)
+    if (e === "chao:oficina" && quebrada(h) && !cena && !oficinaTela) { setAoVivo(null); setOficinaTela("conserto") }
     // (T02) o chão do subúrbio (a quadra, os túneis): chegou no lugar da missão pegada
     if (e.startsWith("chao:") && h.fase === "carreira") {
       const m = missaoDoSave(saveRef.current)
@@ -1551,6 +1563,8 @@ export default function LinhaPage() {
             chegada={D && chegadaLogin}
             trancas={trancasCorrida}
             noConserto={noConserto}
+            quebrou={kombiQuebrou}
+            sorteioMs={HIST && CONFIG_QUEBRA.ligada && !cena && !oficinaTela ? CONFIG_QUEBRA.cadaMs : 0}
             alvoChao={alvoChao}
             soTema={soTema}
             pistaFoco={focoFeira}
@@ -1834,6 +1848,7 @@ export default function LinhaPage() {
           setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.voltar }), 900)
           track("mission_step", { mission_id: "disco-oficina", step: "goteira", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
         }} />}
+        {oficinaTela === "conserto" && <Pagamento agua={save.agua ?? 0} preco={CONFIG_QUEBRA.precoAgua} titulo="o conserto" sub={`a Kombi quebrou · ${MECANICO.nome}`} fala={FALAS_QUEBRA.pagar} falaPago={FALAS_QUEBRA.pago} falaFiado={FALAS_QUEBRA.fiado} botao="pegar a Kombi →" onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={() => { setOficinaTela(null); setSave((s) => comHistoria(s, consertar)) }} />}
         {oficinaTela === "pagar" && <Pagamento agua={save.agua ?? 0} onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={montarMotor} />}
         {/* (T02) a porta abriu: a recompensa, grande; "seguir" volta direto pro jogo */}
         {recompensa && <Recompensa r={recompensa} onSeguir={() => {

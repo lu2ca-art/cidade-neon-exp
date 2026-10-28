@@ -182,8 +182,12 @@ export function Goteira({ onFim, onGota }: { onFim: (gotas: number) => void; onG
 }
 
 // ── a porta: o pagamento do mecânico, em água ──
-export function Pagamento({ agua, onPago, onFim }: { agua: number; onPago: (pago: number) => void; onFim: () => void }) {
-  const [conta] = useState(() => pagamentoMotor(agua))
+export function Pagamento({ agua, onPago, onFim, preco, titulo = "o serviço", sub = `a porta · ${MECANICO.nome}`, fala = FALAS_OFICINA.pagar, falaPago = FALAS_OFICINA.pago, falaFiado = FALAS_OFICINA.fiado, botao = "montar o motor →" }: {
+  agua: number; onPago: (pago: number) => void; onFim: () => void
+  // (T27) o mesmo pagamento serve pro conserto da Kombi que quebrou: outro preço e outras falas
+  preco?: number; titulo?: string; sub?: string; fala?: string; falaPago?: string; falaFiado?: string; botao?: string
+}) {
+  const [conta] = useState(() => pagamentoMotor(agua, preco))
   const [v, setV] = useState(conta.de)
   const pagouRef = useRef(false)
   const acabou = v <= conta.para
@@ -201,13 +205,13 @@ export function Pagamento({ agua, onPago, onFim }: { agua: number; onPago: (pago
     return () => clearTimeout(t)
   }, [v, acabou])
   return (
-    <Caixa titulo={acabou ? FALAS_OFICINA.pago : "o serviço"} sub={`a porta · ${MECANICO.nome}`} rotulo="o pagamento do mecânico">
-      <p className="l-oficina-msg">{FALAS_OFICINA.pagar}</p>
+    <Caixa titulo={acabou ? falaPago : titulo} sub={sub} rotulo="o pagamento do mecânico">
+      <p className="l-oficina-msg">{fala}</p>
       <div className={`l-oficina-agua ${acabou ? "is-fim" : ""}`} aria-live="off">
         <i aria-hidden="true" /><b data-agua={v}>{v}</b><small>água</small>
       </div>
-      <p className="l-oficina-msg">{acabou ? (conta.falta > 0 ? FALAS_OFICINA.fiado : `−${conta.pago} de água`) : `−${conta.pago}`}</p>
-      {acabou && <button type="button" className="l-oficina-seguir" autoFocus onClick={onFim}>montar o motor →</button>}
+      <p className="l-oficina-msg">{acabou ? (conta.falta > 0 ? falaFiado : `−${conta.pago} de água`) : `−${conta.pago}`}</p>
+      {acabou && <button type="button" className="l-oficina-seguir" autoFocus onClick={onFim}>{botao}</button>}
     </Caixa>
   )
 }
