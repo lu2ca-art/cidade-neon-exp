@@ -3,9 +3,16 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    # (28/10) os branches de trabalho também: os andares do Prédio LU2CA testam aqui,
+    # nas máquinas do GitHub, e o Mac fica só com os testes que precisam de placa de vídeo
+    branches: [main, "feature/**", "area/**"]
   schedule:
     - cron: "0 9 * * 1"
+
+# um envio novo no mesmo branch cancela o teste do envio anterior
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -28,6 +35,8 @@ jobs:
 
       - name: Vulnerabilidades em produção
         run: bun audit --prod
+        # nos branches de trabalho só avisa (a correção é uma tarefa própria); no main barra
+        continue-on-error: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Modelos 3D dentro do orçamento
         run: node scripts/verificar-modelos.mjs
@@ -42,7 +51,8 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Teste de fumaça
-        run: bun run test
+        # sem os testes que dirigem a cena 3D (precisam de placa de vídeo: rodam no Mac, com --use-angle=metal)
+        run: bunx playwright test tests/fumaca.spec.ts tests/partes.spec.ts tests/portas.spec.ts tests/caderno.spec.ts
 
       - uses: actions/upload-artifact@v4
         if: failure()
