@@ -27,6 +27,7 @@ import type { Luz } from "../estrada/atos"
 import type { LugarId } from "../lugares"
 import type { ProvaId } from "../data"
 import type { HistoriaDisco, LugarChao } from "./historia"
+import { PAGA } from "../economia-rascunho"
 
 export type MissaoId = "dbee" | "oficina" | "quadra" | "tuneis" | "drew" | "mubarak" | "xeriff" | "lu2ca" | "ella" | "notti" | "nizzy" | "tony" | "final"
 export type Situacao = "decidido" | "proposta" | "em aberto"
@@ -107,14 +108,12 @@ export const CONFIG13 = {
   // (em aberto) as músicas que o Guitar Driver já tem no começo. A Nectar é a
   // do próprio LU2CA; cada missão libera a faixa de quem ajudou
   musicasDoInicio: ["nectar"] as PistaId[],
-  // (proposta) o neon$ de cada missão (o T03 acerta a economia)
-  neonPorMissao: 50,
+  // (T03) o neon$ de cada missão mora em economia-rascunho.ts (PAGA.missao)
   // (decidido 21/10, as torres) a missão da cidade só aparece com a pista
   // dela acesa (estrada/atos.ts): o mapa vai colorindo espalhado
   soComPistaAcesa: true,
 }
 
-const NEON = CONFIG13.neonPorMissao
 const p = (nome: string, situacao: Situacao, extra: Partial<Peca> = {}): Peca => ({ nome, situacao, ...extra })
 
 export const MISSOES13: Record<MissaoId, Missao13> = {
@@ -124,28 +123,28 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     lugar: { lugar: "casa-dbee" }, pedido: "ela tava te esperando", apresenta: "tocar tambor junto com ela",
     arte: p("o tambor com a D-Bee", "decidido", { como: { t: "historia" }, tarefa: "T06" }),
     jogo: p("o drift e o holo: a travessia até o subúrbio", "decidido", { como: { t: "historia" }, tarefa: "T07" }),
-    abre: ["holo", "violao"], recompensa: { guitar: "ojala", batida: "ojala", neon: NEON }, requer: [], prologo: true,
+    abre: ["holo", "violao"], recompensa: { guitar: "ojala", batida: "ojala", neon: PAGA.missao.dbee }, requer: [], prologo: true,
   },
   oficina: {
     id: "oficina", n: 2, onde: "suburbio", quem: "o mecânico", cor: "#ff9000", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "oficina" }, pedido: "a kombi não sobe sem motor novo", apresenta: "montar o motor com o mecânico",
     arte: p("a reciclagem: o lixo vira tecnologia", "decidido", { tarefa: "T09" }),
     jogo: p("achar o painel solar no lixão e a goteira", "decidido", { tarefa: "T09" }),
-    abre: ["kombi-melhorias"], recompensa: { guitar: null, batida: null, neon: NEON }, requer: ["dbee"], prologo: true,
+    abre: ["kombi-melhorias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.oficina }, requer: ["dbee"], prologo: true,
   },
   quadra: {
     id: "quadra", n: 3, onde: "suburbio", quem: "Alohan", cor: "#ff6a35", faixa: "ontem", faixaSituacao: "proposta",
     lugar: { chao: "quadra" }, pedido: "a quadra tá vazia. falta o beat", apresenta: "o Alohan apresenta o BATIDA",
     arte: p("um instrumental no BATIDA pra galera", "decidido", { tarefa: "T10", existe: "/batida" }),
     jogo: p("a partida de basquete", "decidido", { tarefa: "T10", existe: "/ginasio (basquete.tsx)" }),
-    abre: ["quadra", "batida-estudio"], recompensa: { guitar: "ontem", batida: "ontem", neon: NEON }, requer: ["oficina"],
+    abre: ["quadra", "batida-estudio"], recompensa: { guitar: "ontem", batida: "ontem", neon: PAGA.missao.quadra }, requer: ["oficina"],
   },
   tuneis: {
     id: "tuneis", n: 4, onde: "suburbio", quem: "os túneis", cor: "#9b8cff", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "tuneis" }, pedido: "embaixo das raízes tem corrida", apresenta: "a corrida de BMX, patins ou skate nas trincheiras",
     arte: p("o grafite: um gesto assina o desenho", "decidido", { tarefa: "T12", existe: "página de teste do T12" }),
     jogo: p("a corrida de BMX, patins ou skate", "decidido", { tarefa: "T13" }),
-    abre: ["corridas", "motos"], recompensa: { guitar: null, batida: null, neon: NEON }, requer: ["oficina"],
+    abre: ["corridas", "motos"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.tuneis }, requer: ["oficina"],
   },
   // ── a cidade (8) ──
   drew: {
@@ -153,56 +152,56 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     lugar: { lugar: "casa-drewboy" }, pedido: "sexta e eu em casa de novo", apresenta: "o jetpack, depois o ping pong",
     arte: p("dançar na balada, marcando o ritmo", "proposta", { tarefa: "T15" }),
     jogo: p("o ping pong com o robô", "decidido", { como: { t: "pingpong" }, tarefa: "T15 (o jetpack e o skate)" }),
-    abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: NEON }, requer: ["oficina"],
+    abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: PAGA.missao.drew }, requer: ["oficina"],
   },
   mubarak: {
     id: "mubarak", n: 6, onde: "cidade", quem: "Mubarak", cor: "#ffc857", faixa: "copo", faixaSituacao: "decidido",
     lugar: { lugar: "palco-copo" }, pedido: "ele quer te mostrar um disco antigo", apresenta: "comprar um disco",
     arte: p("apreciar um disco antigo", "decidido", { tarefa: "T16" }),
     jogo: p("uma sinuca, no nível do 8 Ball Pool", "decidido", { tarefa: "T16", existe: "página de teste do T17" }),
-    abre: ["loja-discos"], recompensa: { guitar: "copo", batida: "copo", neon: NEON }, requer: ["oficina"],
+    abre: ["loja-discos"], recompensa: { guitar: "copo", batida: "copo", neon: PAGA.missao.mubarak }, requer: ["oficina"],
   },
   xeriff: {
     id: "xeriff", n: 7, onde: "cidade", quem: "Xeriff", cor: "#c9d3e6", faixa: null, faixaSituacao: "em aberto",
     lugar: { lugar: "plataforma" }, pedido: "a polícia fala numa frequência que ninguém pega", apresenta: "sintonizar a frequência da polícia",
     arte: p("gravar a vinheta da rádio pirata", "proposta", { tarefa: "T18" }),
     jogo: p("sintonizar a frequência da polícia", "decidido", { como: { t: "prova", id: "sintonia" }, tarefa: "T18" }),
-    abre: ["radio-frequencias"], recompensa: { guitar: null, batida: null, neon: NEON }, requer: ["lu2ca"],
+    abre: ["radio-frequencias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.xeriff }, requer: ["lu2ca"],
   },
   lu2ca: {
     id: "lu2ca", n: 8, onde: "cidade", quem: "LU2CA", cor: "#e0ff4f", faixa: "nectar", faixaSituacao: "decidido",
     lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar uma faixa ao vivo no Guitar Driver",
     arte: p("escrever a letra", "proposta", { tarefa: "T19" }),
     jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "nectar" }, tarefa: "T19" }),
-    abre: ["shows-live"], recompensa: { guitar: null, batida: "nectar", neon: NEON }, requer: ["oficina"],
+    abre: ["shows-live"], recompensa: { guitar: null, batida: "nectar", neon: PAGA.missao.lu2ca }, requer: ["oficina"],
   },
   ella: {
     id: "ella", n: 9, onde: "cidade", quem: "Ella", cor: "#4fc3ff", faixa: "chuva", faixaSituacao: "decidido",
     lugar: { lugar: "escondido" }, pedido: "ela pinta, mas ninguém vê", apresenta: "pintar e expor um quadro",
     arte: p("pintar e expor um quadro", "decidido", { tarefa: "T22", existe: "/galeria/pintar" }),
     jogo: p("o jogo da Ella", "em aberto", { tarefa: "T22" }),
-    abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: NEON }, requer: ["oficina"],
+    abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: PAGA.missao.ella }, requer: ["oficina"],
   },
   notti: {
     id: "notti", n: 10, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "dopamina", faixaSituacao: "decidido",
     lugar: { lugar: "topo" }, pedido: "o fliperama apagou. ninguém joga mais nada", apresenta: "uma máquina do fliperama",
     arte: p("a trilha de 8 bits da máquina, no BATIDA", "proposta", { tarefa: "T23" }),
     jogo: p("uma máquina do fliperama", "decidido", { como: { t: "prova", id: "respira" }, tarefa: "T23" }),
-    abre: ["fliperama"], recompensa: { guitar: "dopamina", batida: "dopamina", neon: NEON }, requer: ["oficina"],
+    abre: ["fliperama"], recompensa: { guitar: "dopamina", batida: "dopamina", neon: PAGA.missao.notti }, requer: ["oficina"],
   },
   nizzy: {
     id: "nizzy", n: 11, onde: "cidade", quem: "Nizzy", cor: "#ff2436", faixa: "rollercoaster", faixaSituacao: "decidido",
     lugar: { lugar: "palco-rollercoaster" }, pedido: "a montanha-russa parou no meio", apresenta: "a montanha-russa",
     arte: p("filmar o clipe vertical da Rollercoaster", "proposta", { tarefa: "T24" }),
     jogo: p("andar na montanha-russa (no parque)", "decidido", { como: { t: "evento", evento: "montanha", n: 1 }, tarefa: "T24" }),
-    abre: ["parque"], recompensa: { guitar: "rollercoaster", batida: "rollercoaster", neon: NEON }, requer: ["oficina"],
+    abre: ["parque"], recompensa: { guitar: "rollercoaster", batida: "rollercoaster", neon: PAGA.missao.nizzy }, requer: ["oficina"],
   },
   tony: {
     id: "tony", n: 12, onde: "cidade", quem: "Tony Gordo", cor: "#ff3fb0", faixa: "swav", faixaSituacao: "decidido",
     lugar: { lugar: "palco-swav" }, pedido: "tudo aqui em cima tem gosto de nada", apresenta: "regar a horta atrás do restaurante",
     arte: p("cozinhar um prato com o que nasceu", "proposta", { tarefa: "T25" }),
     jogo: p("regar a horta atrás do restaurante", "decidido", { tarefa: "T25", existe: "as flores da pista (de patins)" }),
-    abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: NEON }, requer: ["oficina"],
+    abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: PAGA.missao.tony }, requer: ["oficina"],
   },
   // ── a 13ª ──
   final: {

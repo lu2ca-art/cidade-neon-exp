@@ -7,6 +7,7 @@ import { montarFio, type Perfil } from "./missoes"
 import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
 import type { HistoriaDisco } from "./disco/historia"
+import { migrarEconomia } from "./economia"
 
 export type Item =
   | { k: "msg"; texto: string; de?: string; eu?: boolean }
@@ -73,6 +74,11 @@ export interface Save {
   popularidade?: number
   // os discos comprados na loja (discos.ts)
   discos?: string[]
+  // (T03) o resto que se compra na loja com neon$: "instrumento:guitarra",
+  // "carro:luxo", "roupa:bone" (economia.ts; os itens em economia-rascunho.ts)
+  compras?: string[]
+  // (T03) a versão da economia no save: o carregar acerta o save antigo uma vez
+  economia?: number
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>
@@ -112,6 +118,7 @@ export interface Save {
 }
 
 const CHAVE = "cn-linha-222"
+const CHAVE_GD = "cn-gd-neon"
 // sobe quando o começo do jogo muda a ponto de save antigo não fazer sentido.
 // 2 (05/10): o novo começo (a casa da D-Bee, a reta, o tutorial) — o LU2CA
 // zerou o save de todo mundo
@@ -168,9 +175,23 @@ export function carregar(): Save {
     // (só em save antigo, de antes do campo existir: depois do ep. 2 o
     // violão pode ter ficado no trem mesmo com a estação 6 feita)
     if (bruto.violao === undefined && s.objetos.includes("nectar")) s.violao = true
-    return s
+    // (T03) a economia: o save antigo vira o modelo novo (os saldos, a grana
+    // que o Guitar Driver guardou fora do jogo, os discos), uma vez só
+    return migrarEconomia(s, tirarGuardadoFora())
   } catch {
     return VAZIO
+  }
+}
+
+// a conta própria do Guitar Driver de quando ainda não tinha save (neon-tiles/neon.ts):
+// entra no neon$ do jogo e some, pra não contar duas vezes
+function tirarGuardadoFora(): number {
+  try {
+    const n = Number(localStorage.getItem(CHAVE_GD) || 0)
+    if (n) localStorage.removeItem(CHAVE_GD)
+    return Number.isFinite(n) && n > 0 ? n : 0
+  } catch {
+    return 0
   }
 }
 

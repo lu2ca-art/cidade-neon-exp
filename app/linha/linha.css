@@ -1616,6 +1616,12 @@
 .l-loja-faixas li b { display: block; font: 600 14px/1.25 var(--sans, system-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .l-loja-faixas li small { display: block; font: 11px var(--mono); color: rgba(255,255,255,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .l-loja-faixas li em { font: 11px var(--mono); font-style: normal; color: rgba(255,255,255,0.45); font-variant-numeric: tabular-nums; }
+/* (T03) as abas da loja: discos, instrumentos, carros, roupas */
+.l-loja-abas { display: flex; gap: 6px; padding: 4px 16px 10px; overflow-x: auto; scrollbar-width: none; }
+.l-loja-abas button { flex-shrink: 0; padding: 7px 13px; border-radius: 999px; background: rgba(255,255,255,0.06) !important; border: 1px solid rgba(255,255,255,0.14) !important; color: rgba(255,255,255,0.75) !important; font: 700 12px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.l-loja-abas button.is-on { background: rgba(255, 200, 87, 0.16) !important; border-color: #ffc857 !important; color: #ffc857 !important; }
+.l-loja-icone { display: block; aspect-ratio: 1; border-radius: 10px; box-shadow: 0 10px 24px -10px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06); }
+.l-loja-grade.is-itens button.is-meu .l-loja-icone { box-shadow: 0 10px 24px -10px rgba(0,0,0,0.9), 0 0 0 2px #5dffa0; }
 .l-estante-capa svg { width: 44px; height: 44px; }
 .l-estante-loja { display: block; padding: 8px 4px 2px; font: 10px var(--mono); letter-spacing: 0.08em; color: rgba(255,200,87,0.8); text-transform: uppercase; }
 .l-estante-capa:has(svg) { border-radius: 3px; background: none; box-shadow: none; width: 44px; height: 44px; overflow: hidden; }
