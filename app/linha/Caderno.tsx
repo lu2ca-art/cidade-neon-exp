@@ -100,11 +100,19 @@ export function Caderno() {
   const enviarTodas = useCallback(async () => {
     const todas = ler<Nota[]>(GUARDADAS, [])
     let ok = 0
+    const falharam: Nota[] = []
+    // uma a cada 0,4 s, com até 3 tentativas: o firewall da Vercel barra rajadas
     for (let i = 0; i < todas.length; i++) {
       setMandando(`enviando ${i + 1} de ${todas.length}…`)
-      try { if (await enviar(todas[i])) ok++ } catch { /* sem rede */ }
+      let foi = false
+      for (let t = 0; t < 3 && !foi; t++) {
+        try { foi = await enviar(todas[i]) } catch { /* sem rede */ }
+        if (!foi) await new Promise((r) => setTimeout(r, 3000 * (t + 1)))
+      }
+      if (foi) ok++; else falharam.push(todas[i])
+      await new Promise((r) => setTimeout(r, 400))
     }
-    if (ok === todas.length) gravar(PENDENTES, [])
+    gravar(PENDENTES, falharam)
     setMandando(ok === todas.length ? `${ok} notas enviadas ✓` : `${ok} de ${todas.length} enviadas (tenta de novo depois)`)
   }, [])
 

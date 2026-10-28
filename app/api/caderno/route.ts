@@ -4,13 +4,13 @@
 // sobrescreve, então reenviar não duplica) — funciona na prévia e na produção.
 // Também vai pro PostHog como "caderno_nota" onde a chave existir (só produção), e
 // rodando no Mac (dev) grava em RELATORIOS/caderno/AAAA-MM-DD.jsonl.
-// Limites: 20 notas por minuto por IP, texto até 4000.
+// Limites: 120 notas por minuto por IP (o "enviar todas" manda dezenas de uma vez), texto até 4000.
 
 import { NextResponse, type NextRequest } from "next/server"
 import { put } from "@vercel/blob"
 
 const JANELA = 60_000
-const MAX = 20
+const MAX = 120
 const envios = new Map<string, number[]>()
 
 function liberado(ip: string) {
