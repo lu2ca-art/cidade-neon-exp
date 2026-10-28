@@ -40,6 +40,9 @@ export interface Lugar {
   via?: string
   // (mapa-disco) só existe no disco (no mapa velho não é desenhado nem vai pro mapa)
   soDisco?: true
+  // (T04) mora só no chão do subúrbio (disco/historia.ts, CHAO_LUGARES): não tem
+  // fachada nem ponto nas pistas da cidade; o id segue valendo pras cenas
+  soChao?: true
 }
 
 export const LUGARES = {
@@ -116,12 +119,11 @@ export function lugar(id: LugarId) {
 // a vaga: um trecho da beira da pista, do lado do lugar
 export const VAGA = 18 // m de comprimento
 
-// (mapa-disco, LU2CA 20/10) a oficina na pista da Nectar: a missão 1 (o
-// sistema solar + turbo, e o show). A página da oficina (/oficina) mora no
-// mesmo lugar (paginas.ts)
+// (mapa-disco) a oficina. (T04, decidido 27/10) existe só no subúrbio: a fachada
+// é a do chão (CHAO_LUGARES); aqui fica o id pras cenas, sem nada nas pistas
 LUGARES.oficina = {
   id: "oficina", nome: "a oficina", no: "na oficina", letreiro: "OFICINA", area: "suburbio", u: 1150, lado: 1, horario: "sempre",
-  cor: "#ff9000", acento: "#e0ff4f", soDisco: true,
+  cor: "#ff9000", acento: "#e0ff4f", soDisco: true, soChao: true,
   gente: [{ quem: "o mecânico", cor: "#ff9000" }],
 }
 

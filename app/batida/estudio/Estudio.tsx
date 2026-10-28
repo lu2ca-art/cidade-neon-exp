@@ -23,9 +23,12 @@ import { apagarMusica, converterV1, lerVoz, listarMusicas, salvarMusica, salvarV
 import { OPCOES_CLIMA, musicaNoClima } from "./climas"
 import { compartilharOuBaixar, mp3, renderizar, wav } from "./exportar"
 import { Gaveta } from "./Gaveta"
+import { carregar } from "../../linha/estado"
+import { historiaDe } from "../../linha/disco/historia"
+import { referenciasDoBatida, type ReferenciaBatida } from "../../linha/disco/recompensas"
 import "./estudio.css"
 
-type Popup = null | "menu" | "musicas" | "comecar" | "bpm" | "tom" | "exportar" | "enviar" | "ajuda" | { secao: string } | { arranjo: number }
+type Popup = null | "menu" | "referencias" | "musicas" | "comecar" | "bpm" | "tom" | "exportar" | "enviar" | "ajuda" | { secao: string } | { arranjo: number }
 
 export default function Estudio() {
   const router = useRouter()
@@ -42,6 +45,23 @@ export default function Estudio() {
   const [ocupado, setOcupado] = useState("")
   const [addInst, setAddInst] = useState(false)
   const motor = useRef<Motor | null>(null)
+  // (T30) as faixas de referência que as missões do jogo liberaram (ouvir antes de fazer o beat)
+  const [refs, setRefs] = useState<ReferenciaBatida[]>([])
+  const [refTocando, setRefTocando] = useState<string | null>(null)
+  const refAudio = useRef<HTMLAudioElement | null>(null)
+  useEffect(() => {
+    try { setRefs(referenciasDoBatida(historiaDe(carregar()).batida)) } catch { setRefs([]) }
+    return () => { refAudio.current?.pause() }
+  }, [])
+  const tocarRef = (r: ReferenciaBatida) => {
+    if (!refAudio.current) refAudio.current = new Audio()
+    const a = refAudio.current
+    if (refTocando === r.id) { a.pause(); setRefTocando(null); return }
+    a.src = r.src
+    a.onended = () => setRefTocando(null)
+    void a.play().catch(() => {})
+    setRefTocando(r.id)
+  }
   const [mo, setMo] = useState<Motor | null>(null) // o mesmo motor, pra tela
   const desfazer = useRef<Musica[]>([])
   const refazer = useRef<Musica[]>([])
@@ -277,7 +297,7 @@ export default function Estudio() {
   if (!m) {
     return (
       <div className="es-raiz">
-        {popup === "comecar" ? <Comecar onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n); void abrirMusica(n) }} /> : <p className="es-carrega">abrindo o estúdio…</p>}
+        {popup === "comecar" ? <Comecar refs={refs} refTocando={refTocando} onRef={tocarRef} onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n); void abrirMusica(n) }} /> : <p className="es-carrega">abrindo o estúdio…</p>}
       </div>
     )
   }
@@ -397,10 +417,17 @@ export default function Estudio() {
                 <b className="es-pop-tit">B4TIDA</b>
                 <button type="button" onClick={() => setPopup("musicas")}>minhas músicas ({lista.length})</button>
                 <button type="button" onClick={() => setPopup("comecar")}>nova música</button>
+                {refs.length > 0 && <button type="button" data-refs onClick={() => setPopup("referencias")}>referências das missões ({refs.length})</button>}
                 <button type="button" onClick={() => setPopup("exportar")}>exportar / compartilhar</button>
                 <button type="button" onClick={() => setPopup("enviar")}>mandar pra cidade</button>
                 <button type="button" onClick={() => setPopup("ajuda")}>como funciona</button>
                 {ehAdmin() && <button type="button" onClick={() => router.push("/batida/biblioteca")}>biblioteca (o que a cidade mandou)</button>}
+              </>
+            )}
+            {popup === "referencias" && (
+              <>
+                <b className="es-pop-tit">referências das missões</b>
+                <Referencias refs={refs} tocando={refTocando} onTocar={tocarRef} />
               </>
             )}
             {popup === "musicas" && (
@@ -414,7 +441,7 @@ export default function Estudio() {
                 ))}
               </>
             )}
-            {popup === "comecar" && <Comecar onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} />}
+            {popup === "comecar" && <Comecar refs={refs} refTocando={refTocando} onRef={tocarRef} onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} />}
             {popup === "bpm" && (
               <>
                 <b className="es-pop-tit">andamento · {m.bpm} bpm</b>
@@ -593,7 +620,19 @@ function MiniFaixa({ secao, faixa, inst, cor, pos, onClick }: { secao?: Secao; f
   return <canvas ref={cvs} className="es-mini" onClick={onClick} />
 }
 
-function Comecar({ onClima, onZero }: { onClima: (id: string) => void; onZero: () => void }) {
+function Referencias({ refs, tocando, onTocar }: { refs: ReferenciaBatida[]; tocando: string | null; onTocar: (r: ReferenciaBatida) => void }) {
+  return (
+    <>
+      {refs.map((r) => (
+        <div key={r.id} className="es-linha-musica" data-ref={r.id}>
+          <button type="button" onClick={() => onTocar(r)}><b>{tocando === r.id ? "■ " : "▶ "}{r.nome}</b><small>{r.quem} · {r.bpm} bpm · instrumental</small></button>
+        </div>
+      ))}
+    </>
+  )
+}
+
+function Comecar({ onClima, onZero, refs, refTocando, onRef }: { onClima: (id: string) => void; onZero: () => void; refs: ReferenciaBatida[]; refTocando: string | null; onRef: (r: ReferenciaBatida) => void }) {
   return (
     <div className="es-comecar">
       <b className="es-logo">B4TIDA</b>
@@ -606,6 +645,12 @@ function Comecar({ onClima, onZero }: { onClima: (id: string) => void; onZero: (
         ))}
       </div>
       <button type="button" className="es-zero" onClick={onZero}>começar do zero</button>
+      {refs.length > 0 && (
+        <div className="es-pop" style={{ marginTop: 16 }}>
+          <b className="es-pop-tit">referências das missões</b>
+          <Referencias refs={refs} tocando={refTocando} onTocar={onRef} />
+        </div>
+      )}
     </div>
   )
 }

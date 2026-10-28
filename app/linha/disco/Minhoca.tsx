@@ -8,6 +8,9 @@
 // No fim, o clarão e a Kombi cai no deserto (a queda é no Corrida). ~7 s; um
 // toque pula. `saida`: os mesmos fachos por cima do deserto, freando e sumindo
 // (2.1: o hyperlapse continua na queda, sem corte seco).
+// (T37, J2: 1: "precisa de uma transição mais sutil entre a luz branca e a
+// Kombi") a saída começa no branco do clarão e o branco se desfaz em ~1,5 s,
+// por cima da Kombi já correndo no chão. `dur`: o túnel dura menos nos logins.
 
 import { useEffect, useRef } from "react"
 import { vento } from "../som"
@@ -17,7 +20,7 @@ const SAIDA = 2600
 
 const VERT = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}"
 const FRAG = `precision mediump float;
-uniform vec2 R;uniform float T,F,P,A,S;
+uniform vec2 R;uniform float T,F,P,A,S,W;
 float h(float n){return fract(sin(n*127.1)*43758.5453);}
 void main(){
   vec2 uv=(gl_FragCoord.xy-.5*R)/min(R.x,R.y);
@@ -44,10 +47,11 @@ void main(){
   vec3 fundo=vec3(.016,.008,.047)*(1.-S);
   c=c*A+fundo;
   float al=S>.5?min(1.,max(c.r,max(c.g,c.b))):1.;
+  c=mix(c,vec3(1.,.98,.95),W);al=max(al,W);
   gl_FragColor=vec4(c,al);
 }`
 
-export function Minhoca({ onFim, saida = false }: { onFim: () => void; saida?: boolean }) {
+export function Minhoca({ onFim, saida = false, dur = DUR }: { onFim: () => void; saida?: boolean; dur?: number }) {
   const tela = useRef<HTMLCanvasElement>(null)
   const hyper = useRef<HTMLDivElement>(null)
   const fim = useRef(onFim)
@@ -66,14 +70,14 @@ export function Minhoca({ onFim, saida = false }: { onFim: () => void; saida?: b
       const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b)
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
       const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
-      for (const k of ["R", "T", "F", "P", "A", "S"]) u[k] = gl.getUniformLocation(pr, k)
+      for (const k of ["R", "T", "F", "P", "A", "S", "W"]) u[k] = gl.getUniformLocation(pr, k)
     }
     let raf = 0, acabou = false, F = 0, ant = performance.now()
     const t0 = ant
     const quadro = (agora: number) => {
       const ms = Math.max(0, agora - t0)
       const dt = Math.max(0, Math.min(0.1, (agora - ant) / 1000)); ant = agora
-      const p = saida ? 1 : Math.min(1, ms / DUR)
+      const p = saida ? 1 : Math.min(1, ms / dur)
       const q = saida ? Math.min(1, ms / SAIDA) : 0
       // a velocidade dos fachos: acelera no túnel; na saída, freia junto com a Kombi
       const vel = saida ? 4.6 * Math.exp(-q * 3.2) : 0.35 + p * p * 4.2
@@ -84,6 +88,9 @@ export function Minhoca({ onFim, saida = false }: { onFim: () => void; saida?: b
         gl.uniform2f(u.R, cv.width, cv.height)
         gl.uniform1f(u.T, ms / 1000); gl.uniform1f(u.F, F); gl.uniform1f(u.P, p)
         gl.uniform1f(u.A, saida ? (1 - q) * (1 - q) : 1); gl.uniform1f(u.S, saida ? 1 : 0)
+        // o branco do clarão se desfaz devagar (ease-out) nos primeiros ~1,5 s da saída
+        const wb = saida ? Math.max(0, 1 - ms / 1500) : 0
+        gl.uniform1f(u.W, wb * wb * (3 - 2 * wb))
         gl.drawArrays(gl.TRIANGLES, 0, 3)
       }
       // os anéis do hyperlapse (o mesmo desenho da pista), só no túnel
@@ -108,7 +115,7 @@ export function Minhoca({ onFim, saida = false }: { onFim: () => void; saida?: b
   }, [saida])
   if (saida) return <div className="l-minhoca is-saida" aria-hidden="true"><canvas ref={tela} /></div>
   return (
-    <div className="l-minhoca" onPointerDown={acabar} role="presentation">
+    <div className="l-minhoca" onPointerDown={acabar} role="presentation" style={{ ["--dur" as string]: `${dur}ms` }}>
       <canvas ref={tela} />
       <div ref={hyper} className="l-hyper is-hyper" aria-hidden="true"><i /><i /></div>
       <div className="l-minhoca-clarao" aria-hidden="true" />
