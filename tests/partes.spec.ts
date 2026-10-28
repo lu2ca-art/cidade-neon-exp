@@ -5,6 +5,8 @@ import { expect, test } from "@playwright/test"
 const PARTES: [string, string | null][] = [
   ["minhoca", null], ["casa", "casa"], ["dunas", "dunas"], ["bar", "bar"], ["oficina", "oficina"],
   ["nectar", "nectar"], ["carreira.feira", "carreira"], ["missao.sexta", "carreira"], ["missao.chuva", "carreira"], ["livre", "livre"],
+  // (T02) as 13 missões: o meio da carreira e uma de cada jeito (peça na rua, prova, Guitar ao vivo, só "em breve", subúrbio)
+  ["carreira.meio", "carreira"], ["missao.nizzy", "carreira"], ["missao.xeriff", "carreira"], ["missao.lu2ca", "carreira"], ["missao.ella", "carreira"], ["missao.quadra", "carreira"],
 ]
 
 for (const [parte, fase] of PARTES) {

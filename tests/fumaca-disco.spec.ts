@@ -87,7 +87,20 @@ test("mapa-disco jogado: entrar, dirigir, feira, holo, sem pageerror", async ({ 
     await page.waitForTimeout(800)
   })
 
-  await passo("5-sem-erros", async () => {
+  await passo("5-rua", async () => {
+    // (T02) o show saiu da missão: cantar na rua (Guitar Driver) fica aberto desde o começo,
+    // no mesmo painel da missão; a Nectar já vem liberada, as outras dizem quem libera
+    const painel = page.locator(".l-drone .l-mapa-missoes, .l-mapa-grande .l-mapa-missoes")
+    await painel.locator(".l-rua-bts button").first().click()
+    const rua = page.locator(".l-rua")
+    await expect(rua).toBeVisible()
+    await expect(rua.getByRole("button", { name: /Nectar/ })).toBeVisible()
+    await expect(rua.locator("li.is-fechada").first()).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(rua).toBeHidden()
+  })
+
+  await passo("6-sem-erros", async () => {
     expect(erros).toEqual([])
   })
   console.log("TEMPOS\n" + tempos.join("\n"))
@@ -97,5 +110,7 @@ test("mapa-disco jogado: entrar, dirigir, feira, holo, sem pageerror", async ({ 
 // dunas, bar, oficina) até a feira aparecer. É roteirizado, tem cenas e minijogos
 // (ping pong, robôs) e precisa de input preciso; sem hack frágil não dá.
 test.fixme("do zero: o prólogo até a feira abrir", async () => {})
-// Pegar a feira e CUMPRIR a missão (peça jogável + show + jornal): mesmo motivo.
-test.fixme("cumprir uma missão da feira até o jornal", async () => {})
+// Pegar a feira e CUMPRIR a missão (a peça jogável + a porta + a recompensa): mesmo
+// motivo (dirigir até a vaga). (T02) A lógica das missões tem o teste próprio, sem
+// navegador: tests/portas.spec.ts.
+test.fixme("cumprir uma missão da feira até a recompensa", async () => {})

@@ -1,0 +1,72 @@
+import { expect, test } from "@playwright/test"
+import { luzDasPistas, pistasFeitas } from "../app/linha/estrada/atos"
+import type { HistoriaDisco } from "../app/linha/disco/historia"
+import {
+  CONFIG13, IDS13, MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, musicasDoGuitar,
+  normalizarMissao, passoAgora, recompensaDe, sincronizar,
+} from "../app/linha/disco/portas"
+
+// (T02) o modelo das 13 missões, sem navegador: arte → jogo → a porta → a recompensa,
+// a peça "em breve" que não trava, a feira e as músicas do Guitar Driver
+const CARREIRA: HistoriaDisco = { fase: "carreira", holo: true }
+const luz = (objetos: string[]) => luzDasPistas(pistasFeitas(objetos as never))
+
+test("as 13 portas da tabela", () => {
+  expect(IDS13).toHaveLength(13)
+  expect(IDS13.filter((id) => MISSOES13[id].onde === "suburbio")).toEqual(["dbee", "oficina", "quadra", "tuneis"])
+  // cada faixa do Vol.1 é liberada uma vez só no Guitar Driver (a Nectar já vem aberta)
+  const faixas = IDS13.map((id) => MISSOES13[id].recompensa.guitar).filter(Boolean)
+  expect(new Set(faixas).size).toBe(faixas.length)
+  expect(faixas).not.toContain(CONFIG13.musicasDoInicio[0])
+})
+
+test("arte → jogo → porta, com a peça em breve pulando", () => {
+  // o Drew: a arte (dançar) ainda não existe; o jogo é o ping pong
+  let h: HistoriaDisco = { ...CARREIRA, missao: "drew" }
+  expect(passoAgora(h, "drew")).toBe("jogo")
+  expect(checklist13(h, "drew").map((x) => x.estado)).toEqual(["em breve", "agora", "depois"])
+  expect(alvo13(h, "drew")).toEqual({ lugar: "casa-drewboy" })
+  h = concluir(h, "drew", "jogo")
+  expect(passoAgora(h, "drew")).toBe("porta")
+  h = abrirPorta(h, "drew")
+  expect(feita13(h, "drew")).toBe(true)
+  expect(passoAgora(h, "drew")).toBeNull()
+  expect(h.missao).toBeUndefined()
+  expect(h.portas).toContain("ginasio")
+  expect(musicasDoGuitar(h)).toEqual(expect.arrayContaining(["nectar", "sexta"]))
+  // a Ella: nada dela existe ainda: chegou, a porta abre direto
+  expect(passoAgora(CARREIRA, "ella")).toBe("porta")
+})
+
+test("a peça na rua conta eventos e não precisa de lugar", () => {
+  let h: HistoriaDisco = { ...CARREIRA, missao: "nizzy" }
+  expect(alvo13(h, "nizzy")).toBeNull()
+  h = contarEvento(h, "flor") // outro evento: não conta
+  expect(passoAgora(h, "nizzy")).toBe("jogo")
+  h = contarEvento(h, "montanha")
+  expect(passoAgora(h, "nizzy")).toBe("porta")
+  expect(alvo13(h, "nizzy")).toEqual({ lugar: "palco-rollercoaster" })
+})
+
+test("a feira: o LU2CA primeiro na cidade, o subúrbio aberto, a final por último", () => {
+  const ini = disponiveis(CARREIRA, luz([]))
+  expect(ini).toEqual(expect.arrayContaining(["quadra", "tuneis", "lu2ca"]))
+  expect(ini).not.toContain("drew") // a pista da Sexta-Feira ainda apagada (as torres)
+  expect(ini).not.toContain("xeriff") // pede o LU2CA antes
+  expect(ini).not.toContain("final")
+  const h = abrirPorta(CARREIRA, "lu2ca")
+  expect(disponiveis(h, luz(["nectar"]))).toContain("xeriff")
+  // tudo feito: só sobra a final
+  let fim: HistoriaDisco = CARREIRA
+  for (const id of IDS13) if (id !== "final") fim = abrirPorta(fim, id)
+  expect(disponiveis(fim, null)).toEqual(["final"])
+})
+
+test("save antigo: a faixa feita conta e a missão pegada era a faixa", () => {
+  expect(normalizarMissao("sexta")).toBe("drew")
+  expect(normalizarMissao("chuva")).toBe("ella")
+  expect(feita13(sincronizar(CARREIRA, ["copo"]), "mubarak")).toBe(true)
+  // a recompensa diz o que ainda não existe
+  const r = recompensaDe("tuneis")
+  expect(r.abriu.every((a) => a.emBreve)).toBe(true)
+})
