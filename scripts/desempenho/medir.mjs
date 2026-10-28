@@ -58,6 +58,8 @@ page.on("pageerror", (e) => console.log("ERRO", e.message))
 await page.goto(URL)
 await page.locator(".l-btn-entrar").click({ timeout: 20_000, force: true }).catch(() => console.log("(sem botão: entrou sozinho)"))
 await entrarDirigindo(page, 12_000)
+// DRONE=1: mede com a vista do drone ligada (toca na bolinha do mapa)
+if (process.env.DRONE) { await page.locator(".l-mapa-mini").click({ force: true }).catch(() => console.log("(sem bolinha do mapa)")); await page.waitForTimeout(2_000) }
 const cdp = await page.context().newCDPSession(page)
 await cdp.send("Profiler.enable")
 await cdp.send("Profiler.setSamplingInterval", { interval: 200 })

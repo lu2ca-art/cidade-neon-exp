@@ -21,10 +21,11 @@
 // Tudo é clicável. Nada de frase explicando: a explicação vem nas invasões da
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { APPS, DOCK, ESCONDIDOS, Glifo, chamados, type AppId } from "../os"
 import { horaTexto } from "../relogio"
-import { ondaMusica, pistaSom } from "../som"
+import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "../som"
+import { NIVEIS, NOME_NIVEL, type NivelQualidade } from "./qualidade"
 import type { Save } from "../estado"
 import { PISTAS } from "./pistas"
 import { FREQUENCIAS, type FreqId } from "../radio"
@@ -34,8 +35,9 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 // o que cada coisa do holo é (o "?"): uma frase simples, sem manual
 export const INFO: Record<string, { t: string; d: string }> = {
   ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
+  ajustes: { t: "ajustes", d: "a engrenagem: o volume da música, dos efeitos e das vozes, a qualidade dos gráficos e a lista dos controles." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
-  camera: { t: "câmera", d: "de fora da Kombi ou de dentro, no banco do motorista (tecla C)." },
+  camera: { t: "o olho (a câmera)", d: "o olhinho em cima do óculos: toca nele e a câmera troca, de fora da Kombi ou de dentro, no banco do motorista (tecla C). aberto e azul: de dentro." },
   radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: abre o menu da rádio (ligar, sintonizar as frequências que você já achou, e as mensagens das rádios piratas). ⏭ troca a faixa." },
   destaque: { t: "B4TIDA · GUITAR DRIVER", d: "os dois que importam. o B4TIDA toca o padrão aqui mesmo: toca nele e abre o criador de beats. o GUITAR DRIVER abre no fim da sua carreira." },
   "app:batida": { t: "B4TIDA", d: "a MPC: toca nos quadrados pra abrir o criador de beats e montar a sua música por camadas." },
@@ -44,8 +46,8 @@ export const INFO: Record<string, { t: string; d: string }> = {
   propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
   ilha: { t: "N3XO_", d: "as mensagens da cidade passam aqui. toca pra abrir as conversas." },
-  mapa: { t: "o mapa", d: "toca pra abrir. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
-  anel: { t: "as missões", d: "a missão que você está fazendo, ou quantas estão te esperando. toca pra ver todas." },
+  mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
+  anel: { t: "as missões", d: "a missão de agora gira em volta do mapa: o nome e o ícone dela. toca: a checklist dá a volta; toca de novo: o mapa com as missões." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
   agua: { t: "água", d: "a coisa mais valiosa num mundo seco. as gotas da pista viram água: rega as flores, paga a oficina, e a cada 100 gotas, duas viagens rápidas. a polícia leva 1/5 se te prender." },
   controles: { t: "os controles", d: "no celular: um lado da tela vira pra ele; os dois juntos freiam (parado, dá ré). no ar: um lado gira, os dois juntos dão o mortal. no teclado: ↓ freia, Q é a manobra." },
@@ -55,6 +57,31 @@ export const INFO: Record<string, { t: string; d: string }> = {
 }
 const infoApp = (id: AppId) => { const a = APPS.find((x) => x.id === id); return a ? { t: a.nome, d: a.desc } : null }
 export const infoDe = (chave: string) => INFO[chave] ?? (chave.startsWith("app:") ? infoApp(chave.slice(4) as AppId) : null) ?? null
+
+// (LU2CA 22/10 (2)) os AVISOS DA RÁDIO: as falas que ensinam controle não vão
+// mais pra tela; passam no display da rádio do holo (e ficam no menu dela).
+// Uma loja pequena fora do React: quem fala chama avisarRadio; a rádio ouve
+export type AvisoRadio = { id: number; de: string; texto: string; ms: number }
+let avisoN = 0
+export const AVISOS_RADIO: AvisoRadio[] = []
+const ouvintesAviso = new Set<(a: AvisoRadio) => void>()
+export function avisarRadio(de: string, texto: string, ms = 5200) {
+  const a = { id: ++avisoN, de, texto, ms }
+  AVISOS_RADIO.unshift(a)
+  if (AVISOS_RADIO.length > 6) AVISOS_RADIO.length = 6
+  ouvintesAviso.forEach((f) => f(a))
+}
+// o aviso que está passando agora (some depois de ms + um respiro)
+function useAvisoRadio() {
+  const [a, setA] = useState<AvisoRadio | null>(null)
+  useEffect(() => {
+    let t = 0 as unknown as ReturnType<typeof setTimeout>
+    const f = (x: AvisoRadio) => { clearTimeout(t); setA(x); t = setTimeout(() => setA(null), x.ms + 2500) }
+    ouvintesAviso.add(f)
+    return () => { ouvintesAviso.delete(f); clearTimeout(t) }
+  }, [])
+  return a
+}
 
 type Radio = { ligada: boolean; freq: string; faixa: string; cor: string; id: FreqId; sinal: number }
 
@@ -84,6 +111,7 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
   const novas = menu ? 0 : piratas - lidas
   const alternarMenu = () => { setLidas(piratas); setMenu((m) => !m) }
   const [som, setSom] = useState<{ faixa: string; t: number; dur: number } | null>(null)
+  const aviso = useAvisoRadio()
   const tela = useRef<HTMLCanvasElement>(null)
   const cor = useRef(radio.cor)
   const ligada = useRef(radio.ligada)
@@ -162,9 +190,11 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
         {novas > 0 && !menu && <em className="l-holo-radio-novas">{novas}</em>}
       </button>
       <div className="l-holo-som-info">
-        <div className="l-holo-radio-linha" data-info="radio">
-          <b>{radio.freq} fm</b>
-          <span>{radio.ligada ? radio.faixa : "desligada"}</span>
+        <div className={`l-holo-radio-linha ${aviso ? "is-aviso" : ""}`} data-info="radio">
+          <b>{aviso ? aviso.de : `${radio.freq} fm`}</b>
+          {aviso ? (
+            <span key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></span>
+          ) : <span>{radio.ligada ? radio.faixa : "desligada"}</span>}
           {radio.ligada && <button type="button" onClick={onProxima} aria-label="próxima faixa">⏭</button>}
         </div>
         <div className="l-holo-faixa" data-info="faixa">
@@ -193,6 +223,12 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
               )
             })}
           </ul>
+          {AVISOS_RADIO.length > 0 && <>
+            <small className="l-holo-radio-sub">avisos</small>
+            <ul className="l-holo-radio-piratas is-avisos">
+              {AVISOS_RADIO.map((m) => <li key={m.id}><b>{m.de}</b><span>{m.texto}</span></li>)}
+            </ul>
+          </>}
           <small className="l-holo-radio-sub">piratas</small>
           <ul className="l-holo-radio-piratas">
             {PIRATAS.slice(0, piratas).reverse().map((m, i) => <li key={piratas - i} className={i < piratas - lidas ? "is-nova" : ""}><b>{m.de}</b><span>{m.texto}</span></li>)}
@@ -203,14 +239,93 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
   )
 }
 
+// ── (LU2CA 22/10 (2)) O NOTCH DINÂMICO (estilo Dynamic Island): uma mensagem
+// (o passo da missão com nome longo, um passo cumprido, a legendinha das falas
+// que ensinam) entra da direita pra esquerda dentro do notch, rola se for longa
+// e some; o notch volta ao normal. Uma por vez (fila simples, sem repetir a
+// última, as velhas caem). Desempenho: um setState por mensagem (entra/sai), o
+// movimento é uma Web Animation (compositor), uma medida de largura por
+// mensagem. "Reduzir movimento": sem deslizar; aparece parada (até 2 linhas) e some ──
+type MsgNotch = { id: number; texto: string; cor: string; em: number }
+const FILA_NOTCH: MsgNotch[] = []
+let notchN = 0, notchUltima = ""
+const ouvintesNotch = new Set<() => void>()
+export function notch(texto: string, cor = "#2fe8ff") {
+  if (!texto || texto === notchUltima) return
+  notchUltima = texto
+  FILA_NOTCH.push({ id: ++notchN, texto, cor, em: Date.now() })
+  if (FILA_NOTCH.length > 5) FILA_NOTCH.shift()
+  ouvintesNotch.forEach((f) => f())
+}
+const NOTCH_VELHA = 25000 // ms: mensagem que esperou mais que isso na fila não passa mais
+function useNotch() {
+  const [msg, setMsg] = useState<MsgNotch | null>(null)
+  const livre = useRef(true)
+  const proxima = useRef(() => {})
+  proxima.current = () => {
+    if (!livre.current) return
+    let m = FILA_NOTCH.shift()
+    while (m && Date.now() - m.em > NOTCH_VELHA) m = FILA_NOTCH.shift()
+    if (!m) { notchUltima = ""; return }
+    livre.current = false
+    setMsg(m)
+  }
+  useEffect(() => {
+    const f = () => proxima.current()
+    ouvintesNotch.add(f)
+    f()
+    return () => { ouvintesNotch.delete(f) }
+  }, [])
+  const acabou = () => { livre.current = true; setMsg(null); setTimeout(() => proxima.current(), 250) }
+  return [msg, acabou] as const
+}
+function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
+  const caixa = useRef<HTMLSpanElement>(null)
+  const el = useRef<HTMLElement>(null)
+  const fim = useRef(onFim)
+  fim.current = onFim
+  const quieto = calmo()
+  useLayoutEffect(() => {
+    const c = caixa.current, e = el.current
+    if (!c || !e || typeof e.animate !== "function") { const t = setTimeout(() => fim.current(), 4000); return () => clearTimeout(t) }
+    let a: Animation
+    if (quieto) {
+      const dur = Math.min(9000, 2200 + msg.texto.length * 55)
+      a = e.animate([{ opacity: 0 }, { opacity: 1, offset: 0.06 }, { opacity: 1, offset: 0.94 }, { opacity: 0 }], { duration: dur, fill: "both" })
+    } else {
+      const W = c.clientWidth, T = e.scrollWidth, sobra = Math.max(0, T - W)
+      // entra (450 ms), respira, rola o que sobra a ~48 px/s, respira, some (300 ms)
+      const ent = 450, resp = 900, rola = (sobra / 48) * 1000, resp2 = sobra ? 1100 : 1400, sai = 300
+      const dur = ent + resp + rola + resp2 + sai
+      const o = (ms: number) => ms / dur
+      a = e.animate([
+        { transform: `translateX(${W}px)`, opacity: 1, easing: "cubic-bezier(0.2, 0.9, 0.3, 1)" },
+        { transform: "translateX(0)", opacity: 1, offset: o(ent) },
+        { transform: "translateX(0)", opacity: 1, offset: o(ent + resp), easing: "linear" },
+        { transform: `translateX(${-sobra}px)`, opacity: 1, offset: o(ent + resp + rola) },
+        { transform: `translateX(${-sobra}px)`, opacity: 1, offset: o(ent + resp + rola + resp2) },
+        { transform: `translateX(${-sobra}px)`, opacity: 0 },
+      ], { duration: dur, fill: "both" })
+    }
+    a.onfinish = () => fim.current()
+    return () => { a.onfinish = null; a.cancel() }
+  }, [msg.id, quieto, msg.texto])
+  return (
+    <span ref={caixa} className={`l-holo-letreiro-faixa is-msg ${quieto ? "is-calmo" : ""}`} role="status" aria-live="polite">
+      <em ref={el} className="l-notch-msg" style={{ ["--c" as string]: msg.cor }}>{msg.texto}</em>
+    </span>
+  )
+}
+
 // a ilha do N3XO: a hora e as mensagens passando como o letreiro de um ônibus
 export function HoloLetreiro({ save, nivel, hora }: { save: Save; nivel: number; hora: number }) {
   const msgs = useMemo(() => chamados(save, nivel), [save, nivel])
   const texto = msgs.map((m) => `${m.de}: ${m.texto}`).join("   ·   ")
+  const [msg, acabou] = useNotch()
   return (
-    <div className="l-ilha-conteudo l-holo-letreiro">
+    <div className={`l-ilha-conteudo l-holo-letreiro ${msg ? "is-msg" : ""}`} style={msg ? { ["--c" as string]: msg.cor } : undefined}>
       <b>{horaTexto(hora)}</b>
-      {texto ? (
+      {msg ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : texto ? (
         <span className="l-holo-letreiro-faixa">
           {/* duas cópias: o letreiro roda sem emenda */}
           <em style={{ ["--dur" as string]: `${Math.max(8, texto.length * 0.22)}s` }}>{texto}   ·   {texto}   ·   </em>
@@ -261,90 +376,127 @@ export function HoloClima({ ler }: { ler: () => Clima }) {
   )
 }
 
-// o anel das missões, girando em volta do mapa: a missão de agora, ou quantas há
-export function HoloAnel({ missao, onMissoes }: { missao: { texto: string; cor: string; n: number } | null; onMissoes: () => void }) {
-  const txt = !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
-  const cor = missao?.cor ?? "#2fe8ff"
-  // o texto se repete pra dar a volta inteira
-  const volta = txt ? Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("") : ""
-  return (
-    <button type="button" className={`l-holo-anel ${txt ? "" : "is-vazio"}`} data-info="anel" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()} onClick={onMissoes} aria-label={txt || "missões"}>
-      <svg viewBox="0 0 160 160" aria-hidden="true">
-        <defs><path id="l-holo-anel-p" d="M80,80 m-70,0 a70,70 0 1,1 140,0 a70,70 0 1,1 -140,0" /></defs>
-        <circle cx="80" cy="80" r="76" />
-        <g className="l-holo-anel-gira">
-          <text><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
-        </g>
-        {missao && missao.n > 0 && <g className="l-holo-anel-n"><circle cx="138" cy="26" r="11" /><text x="138" y="26">{missao.n}</text></g>}
-      </svg>
-    </button>
-  )
+// ── (LU2CA 22/10, o Omnitrix, como o dono descreveu) O ANEL das missões gira
+// em volta da bolinha (o mapa-mini). Pegou uma missão: o anel gira e expande
+// (overshoot), a parte da missão ganha um fundo e a CHECKLIST passa a ser o
+// texto girando em volta da bolinha, maior e mais clara. 6 s depois recolhe
+// girando e fica só o NOME da missão e o ÍCONE especial dela. Tocar na bolinha
+// (ou no anel) repete; tocar de novo com ele aberto abre o mapa. Desempenho: só
+// CSS (keyframes), um setState por abrir/fechar, nada por quadro. "Reduzir
+// movimento": troca sem giro nem escala ──
+export type ChecklistHolo = { chave: string; cor: string; titulo: string; nome: string; passos: { nome: string; estado: string }[] }
+const OMNI_MS = 6000 // quanto tempo a checklist fica girando em volta antes de recolher
+const RECOLHE_MS = 450
+// o ícone especial de cada missão (o objeto que ela dá), num quadro 24x24: o
+// mesmo desenho no anel (SVG) e no mapa (Path2D no canvas)
+export const ICONE_MISSAO: Record<string, string> = {
+  ontem: "M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z M8 4v16", // o caderno
+  copo: "M6 4h12l-2 16H8z M7 9h10", // o copo
+  swav: "M9 3h6v4l2 3v11H7V10l2-3z M10 14h4", // a lanterna
+  sexta: "M12 3a5 7 0 1 0 0.01 0z M12 17v4 M9 21h6", // o espelho
+  rollercoaster: "M3 12a9 9 0 0 1 18 0z M12 12v7a2 2 0 0 1-4 0", // o guarda-chuva
+  dopamina: "M12 4a8 8 0 1 0 0.01 0z M12 8v4l3 2", // o relógio
+  chuva: "M12 6a3 3 0 1 0 0.01 0z M12 12v10 M12 16l-4-2 M12 18l4-2", // a flor
+  ojala: "M8 3l-5 4 3 3 2-1v12h8V9l2 1 3-3-5-4a4 4 0 0 1-8 0z", // a camisa
+  nectar: "M14 3l5 5 M16.5 5.5l-6 6 M8.5 10.5a4.5 4.5 0 1 0 5 5 4.5 4.5 0 0 0-5-5z", // o violão
 }
-
-// ── (LU2CA 21/10 (2), o holo) A MISSÃO É UM WIDGET FLUTUANDO, perene, com a
-// checklist. Pegou na feira: ele aparece onde a feira estava; uns segundos
-// depois (ou num toque) diminui e vira um PONTO DE LUZ que vai pro número da
-// missão, no anel do mapa (o número pulsa quando o ponto chega). Tocar no
-// número/anel abre a checklist junto ao mapa (o painel .l-missoes.is-disco).
-// Desempenho: o voo é uma Web Animation (compositor), com UMA leitura de
-// posição no começo; nada por quadro, nada de estado React por quadro ──
-export type ChecklistHolo = { chave: string; cor: string; titulo: string; passos: { nome: string; estado: string }[] }
-const ABERTO_MS = 5000 // quanto tempo o widget fica aberto antes de virar o ponto
-const VOO_MS = 700
-// a última missão que o widget já mostrou (entre montagens da Corrida: sair de
+// a última missão que o anel já mostrou (entre montagens da Corrida: sair de
 // uma sala não reabre). undefined = ainda não viu nenhuma (abrir o jogo com a
-// missão já pegada não abre o widget; só pegar uma nova)
+// missão já pegada não abre; só pegar uma nova)
 let jaMostrou: string | null | undefined
-export function HoloMissao({ missao }: { missao: ChecklistHolo | null }) {
-  const [fase, setFase] = useState<"aberto" | "indo" | null>(null)
-  const caixa = useRef<HTMLDivElement>(null)
-  const ponto = useRef<HTMLSpanElement>(null)
-  const chave = missao?.chave ?? null
+// no anel, os nomes longos ficam curtos (o texto inteiro passa pelo notch)
+const CURTO = 16
+const curto = (t: string, n = CURTO) => {
+  if (t.length <= n) return t
+  const c = t.slice(0, n), sp = c.lastIndexOf(" ")
+  return `${(sp > n * 0.5 ? c.slice(0, sp) : c).replace(/[\s·,:]+$/, "")}…`
+}
+const calmo = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
+// o que a bolinha faz num toque: com a missão recolhida, abre a checklist (true); senão, nada (false: abre o mapa)
+export type AnelApi = { toque: () => boolean }
+export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { texto: string; cor: string; n: number } | null; checklist?: ChecklistHolo | null; onMissoes: () => void; api?: React.MutableRefObject<AnelApi | null> }) {
+  const [omni, setOmni] = useState<"abre" | "recolhe" | null>(null)
+  const chave = checklist?.chave ?? null
   useEffect(() => {
     const antes = jaMostrou
     jaMostrou = chave
-    if (!chave) { setFase(null); return }
+    if (!chave) { setOmni(null); return }
     if (antes === undefined || antes === chave) return
-    setFase("aberto")
+    setOmni("abre")
   }, [chave])
-  // aberto: espera e vai
   useEffect(() => {
-    if (fase !== "aberto") return
-    const t = setTimeout(() => setFase("indo"), ABERTO_MS)
-    return () => clearTimeout(t)
-  }, [fase])
-  // indo: o ponto de luz voa até o número do anel
+    if (omni === "abre") { const t = setTimeout(() => setOmni("recolhe"), OMNI_MS); return () => clearTimeout(t) }
+    if (omni === "recolhe") { const t = setTimeout(() => setOmni(null), calmo() ? 0 : RECOLHE_MS); return () => clearTimeout(t) }
+  }, [omni])
+  const aberto = !!checklist && omni === "abre"
+  // (LU2CA 22/10 (2)) o texto completo passa pelo notch: o passo de agora quando
+  // a missão é pegada ou a checklist abre, e cada passo cumprido
+  const antes = useRef<{ chave: string | null; estados: Map<string, string> } | null>(null)
   useEffect(() => {
-    if (fase !== "indo") return
-    const cx = caixa.current, pt = ponto.current
-    const alvo = document.querySelector(".l-holo-anel-n circle")
-    const anel = alvo?.closest(".l-holo-anel")
-    const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches
-    if (!cx || !pt || !alvo || calmo) { setFase(null); return }
-    const a = cx.getBoundingClientRect(), b = alvo.getBoundingClientRect()
-    const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2)
-    const voo = pt.animate(
-      [{ transform: "translate(-50%, -50%) scale(1)", opacity: 1 }, { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.5)`, opacity: 0.9 }],
-      { duration: VOO_MS, easing: "cubic-bezier(0.5, 0, 0.2, 1)", fill: "forwards" },
-    )
-    let pulso = 0
-    voo.onfinish = () => {
-      setFase(null)
-      anel?.classList.add("is-chegou")
-      pulso = window.setTimeout(() => anel?.classList.remove("is-chegou"), 700)
+    const est = new Map((checklist?.passos ?? []).map((p) => [p.nome, p.estado]))
+    const a = antes.current
+    antes.current = { chave, estados: est }
+    if (!a || !checklist) return
+    const cor = checklist.cor
+    if (a.chave !== chave) { const ag = checklist.passos.find((p) => p.estado === "agora"); notch(`${checklist.titulo} · ▸ ${ag?.nome ?? checklist.nome}`, cor); return }
+    for (const p of checklist.passos) {
+      const e0 = a.estados.get(p.nome)
+      if (p.estado === "feita" && e0 !== "feita") notch(`✓ ${p.nome}`, cor)
+      else if (p.estado === "agora" && e0 !== "agora") notch(`▸ ${p.nome}`, cor)
     }
-    return () => { voo.cancel(); clearTimeout(pulso) }
-  }, [fase])
-  if (!missao || !fase) return null
+  }, [checklist, chave])
+  useEffect(() => {
+    if (!api) return
+    api.current = { toque: () => {
+      if (!checklist || aberto) return false
+      setOmni("abre")
+      const ag = checklist.passos.find((p) => p.estado === "agora")
+      if (ag && ag.nome.length > CURTO) notch(`▸ ${ag.nome}`, checklist.cor)
+      return true
+    } }
+    return () => { api.current = null }
+  }, [api, checklist, aberto])
+  // o texto: com missão, só o nome dela (LU2CA 22/10 (3): aberta, o anel só gira o
+  // texto que já estava nele; a checklist mora na salsicha); sem, o que o jogo diz
+  const txt = aberto
+    ? curto(checklist!.nome, 22)
+    : checklist ? curto(checklist.nome, 22) : !missao ? "" : missao.texto ? missao.texto : `${missao.n} ${missao.n === 1 ? "missão" : "missões"}`
+  // a borda tem a cor da missão pegada
+  const cor = checklist?.cor ?? missao?.cor ?? "#2fe8ff"
+  // o texto se repete pra dar a volta inteira (a checklist dá uma volta só)
+  const volta = !txt ? "" : Array.from({ length: Math.max(1, Math.floor(120 / (txt.length + 5))) }, () => `${txt.toUpperCase()}  ◆  `).join("")
+  const icone = checklist ? ICONE_MISSAO[checklist.chave] : null
   return (
-    <div ref={caixa} className={`l-holo-missao is-${fase}`} style={{ ["--cor" as string]: missao.cor }} onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="l-holo-missao-caixa" data-info="anel" onClick={() => setFase("indo")} aria-label={`missão: ${missao.titulo}. tocar guarda no mapa`}>
-        <small>{missao.titulo}</small>
-        <ul>
-          {missao.passos.map((p) => <li key={p.nome} className={`is-${p.estado === "em breve" ? "breve" : p.estado}`}><i aria-hidden="true">{p.estado === "feita" ? "✓" : ""}</i>{p.nome}</li>)}
-        </ul>
+    <div className={`l-holo-anel ${txt ? "" : "is-vazio"} ${checklist ? "is-missao" : ""} ${omni ? `is-omni is-${omni}` : ""}`} style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()}>
+      {/* (LU2CA 22/10 (3)) a SALSICHA: o círculo fica do tamanho da bolinha e a borda
+          estica pra baixo numa cápsula; a checklist mora dentro, no fundo da cor da missão */}
+      {checklist && omni && (
+        <div className="l-holo-salsicha" aria-hidden="true">
+          <i className="l-holo-salsicha-topo" />
+          <ol>
+            {checklist.passos.map((p) => (
+              <li key={p.nome} className={`is-${p.estado}`}><b>{p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"}</b>{p.nome}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+      <button type="button" className="l-holo-anel-bt" data-info="anel" onClick={() => { if (!api?.current?.toque()) onMissoes() }} aria-label={aberto ? `${checklist!.titulo}: ${checklist!.passos.map((p) => `${p.estado === "feita" ? "feito" : p.estado === "agora" ? "agora" : "depois"}: ${p.nome}`).join("; ")}` : txt || "missões"} aria-expanded={aberto}>
+        <svg viewBox="0 0 160 160" aria-hidden="true">
+          <defs><path id="l-holo-anel-p" d="M80,80 m-70,0 a70,70 0 1,1 140,0 a70,70 0 1,1 -140,0" /></defs>
+          {/* o fundo da missão: um aro na cor dela atrás do texto */}
+          {checklist && <circle className="l-holo-anel-fundo" cx="80" cy="80" r="70" />}
+          <circle cx="80" cy="80" r="76" />
+          <g className="l-holo-anel-gira">
+            <text><textPath href="#l-holo-anel-p" textLength="438" lengthAdjust="spacingAndGlyphs">{volta}</textPath></text>
+          </g>
+          {icone && (
+            <g className="l-holo-anel-ic" transform="translate(9 9)">
+              <circle cx="12" cy="12" r="15" />
+              <path d={icone} />
+            </g>
+          )}
+        </svg>
       </button>
-      <span ref={ponto} className="l-holo-missao-ponto" aria-hidden="true" />
     </div>
   )
 }
@@ -511,6 +663,87 @@ export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => voi
   )
 }
 
+// (LU2CA 22/10) a lista inteira dos controles NUNCA vai por cima do HUD: é o
+// conteúdo da página de ajustes (a engrenagem, HoloAjustes logo abaixo)
+const CONTROLES: { t: string; itens: [string, string][] }[] = [
+  { t: "dirigir", itens: [["toque", "um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré)"], ["teclado", "← → ou A D viram · ↑ ou W acelera · ↓ ou S freia e dá ré · Q é a manobra"], ["pular", "toque duplo, ou espaço duas vezes"]] },
+  { t: "turbo e propulsor", itens: [["turbo", "segura o botão um instante (no teclado, um toque no espaço ou shift). drift, manobras e voos enchem a barra"], ["propulsor", "segura o botão: a Kombi voa (no teclado, segura o espaço). a energia volta andando no chão"], ["no ar", "um lado gira; os dois juntos dão o mortal. no voo, o mapa aparece no meio da tela"]] },
+  { t: "o holo", itens: [["óculos", "liga e desliga o holo (tecla H). desligado, fica só a estrada"], ["o olho", "o olhinho em cima do óculos troca a câmera: de fora ou de dentro da Kombi (tecla C)"], ["engrenagem", "os ajustes: volume, gráficos e esta lista"], ["sair da Kombi", "desce de patins; perto dela, volta (tecla F)"], ["widgets", "no celular moram na ilha de baixo: toca pra abrir"]] },
+  { t: "rádio", itens: [["holograma", "toca nele: o menu da rádio (ligar, sintonizar as frequências achadas, as mensagens piratas)"], ["⏭", "troca a faixa"]] },
+  { t: "missões e mapa", itens: [["o anel", "gira em volta do mapa com a missão de agora. toca nele, ou no mapa: abre o mapa com as missões"], ["no mapa", "cada ícone é uma missão: toca pra ver e pegar. tocar num lugar marca o caminho"], ["aceitou", "o anel abre com a checklist e depois volta a ser borda"]] },
+  { t: "água", itens: [["gotas", "as gotas da pista viram água: rega as flores, paga a oficina; 100 gotas, duas viagens rápidas"]] },
+]
+export function AjudaControles() {
+  return (
+    <div className="l-ajuda-controles" aria-label="os controles">
+      {CONTROLES.map((g) => (
+        <section key={g.t}>
+          <small>{g.t}</small>
+          <dl>{g.itens.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+// ── (LU2CA 22/10 (2)) A ENGRENAGEM: a página de ajustes DE VERDADE, numa janela
+// do holo (o mesmo vidro do visualizador). O som mexe nos ganhos do grafo
+// (som.ts, "cn-volumes"); a qualidade é o nível que o jogo já mede
+// (qualidade.ts, "cn-qualidade": densidade de pixels, lente, gotas, carros) e
+// vale na hora; e a lista dos controles. Fechar (×, Esc, tocar fora) volta pro jogo ──
+const CANAIS: { k: CanalVolume; t: string; d: string }[] = [
+  { k: "musica", t: "música", d: "rádio, toca-discos, a pista" },
+  { k: "efeitos", t: "efeitos", d: "motor, notas, chiados" },
+  { k: "vozes", t: "vozes", d: "notas de voz, ligações" },
+]
+const LENTE = ["sem lente", "lente leve", "lente cheia"]
+export function HoloAjustes({ qual, onQual, onFechar }: { qual: NivelQualidade; onQual: (n: NivelQualidade) => void; onFechar: () => void }) {
+  const [vol, setVol] = useState(() => ({ ...VOLUMES }))
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar() }
+    window.addEventListener("keydown", k)
+    return () => window.removeEventListener("keydown", k)
+  }, [onFechar])
+  const mexer = (k: CanalVolume, v: number) => { definirVolume(k, v); setVol((o) => ({ ...o, [k]: v })) }
+  return (
+    <div className="l-visor l-ajustes" style={{ ["--cor" as string]: "#2fe8ff" }} onPointerDown={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onFechar() }} onKeyDown={(e) => { if (e.key !== "Escape") e.stopPropagation() }} role="dialog" aria-modal="true" aria-label="ajustes">
+      <div className="l-visor-janela">
+        <header>
+          <b>ajustes</b>
+          <button type="button" onClick={onFechar} aria-label="fechar e voltar pro jogo">×</button>
+        </header>
+        <div className="l-ajustes-corpo">
+          <section>
+            <small>som</small>
+            {CANAIS.map((c) => (
+              <label key={c.k} className="l-ajustes-vol">
+                <span><b>{c.t}</b><em>{c.d}</em></span>
+                <input type="range" min={0} max={100} step={5} value={Math.round(vol[c.k] * 100)} onChange={(e) => mexer(c.k, Number(e.target.value) / 100)} style={{ ["--v" as string]: `${vol[c.k] * 100}%` }} aria-label={`volume: ${c.t}`} />
+                <i>{Math.round(vol[c.k] * 100)}</i>
+              </label>
+            ))}
+          </section>
+          <section>
+            <small>gráficos</small>
+            <div className="l-ajustes-qual" role="radiogroup" aria-label="qualidade dos gráficos">
+              {(["alto", "medio", "baixo"] as const).map((n) => (
+                <button key={n} type="button" role="radio" aria-checked={qual === n} className={qual === n ? "is-on" : ""} onClick={() => onQual(n)}>
+                  <b>{NOME_NIVEL[n]}</b>
+                  <em>densidade até {String(NIVEIS[n].dprMax).replace(".", ",")}x · {LENTE[NIVEIS[n].lente]}</em>
+                </button>
+              ))}
+            </div>
+          </section>
+          <section>
+            <small>controles</small>
+            <AjudaControles />
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── (LU2CA 21/10) NO CELULAR, OS WIDGETS NUMA ILHA SÓ, no canto de baixo à
 // esquerda, "pra não poluir a tela toda" (no computador nada muda). Fechada:
 // um widget de cada vez, revezando (os pontinhos). Tocou: abre a lista (a
@@ -522,12 +755,14 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
   const [k, setK] = useState(0)
   const [aberta, setAberta] = useState(false)
   const [c, setC] = useState<Clima>(() => ler())
+  const aviso = useAvisoRadio()
   useEffect(() => { const t = setInterval(() => { setK((x) => (x + 1) % CARTOES.length); setC(ler()) }, 5000); return () => clearInterval(t) }, [ler])
   const [kp, setKp] = useState(0)
   useEffect(() => { const t = setInterval(() => setKp((x) => (x + 1) % VEZ.length), 5000); return () => clearInterval(t) }, [])
   const prop = APPS.find((x) => x.id === VEZ[kp])!
   const Mini = MINI[prop.id]!
-  const vez = CARTOES[k]
+  // um aviso da rádio chegando: a ilha mostra a rádio com ele
+  const vez = aviso ? "radio" : CARTOES[k]
   const destaque = k % 2 ? "guitar" : "batida"
   const abrir = (id: AppId) => { setAberta(false); if (id === "guitar" && !guitarLivre) return; onApp(id) }
   const temp = Math.round(c.deserto ? 23 + 15 * Math.sin(((c.hora - 9) / 24) * Math.PI * 2) : 21 + 6 * Math.sin(((c.hora - 9) / 24) * Math.PI * 2) - (c.chove ? 4 : 0))
@@ -548,7 +783,9 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
       ) : (
         <button type="button" className={`l-ilha-holo is-${vez}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setAberta(true)} aria-label="abrir os widgets do holo" style={{ ["--cor" as string]: vez === "radio" ? radio.cor : vez === "propaganda" ? prop.cor : vez === "destaque" ? (destaque === "batida" ? "#ff6b6b" : "#ff9000") : "#2fe8ff" }}>
           <span className="l-ilha-holo-tela">
-            {vez === "radio" && <span className="l-ilha-holo-radio"><b>{radio.freq}</b><small>{radio.ligada ? radio.faixa : "rádio desligada"}</small></span>}
+            {vez === "radio" && (aviso
+              ? <span className="l-ilha-holo-radio is-aviso"><b>{aviso.de}</b><small key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></small></span>
+              : <span className="l-ilha-holo-radio"><b>{radio.freq}</b><small>{radio.ligada ? radio.faixa : "rádio desligada"}</small></span>)}
             {vez === "destaque" && (destaque === "batida" ? <MiniMpc /> : <MiniTrilha />)}
             {vez === "propaganda" && <Mini />}
             {vez === "clima" && <span className="l-ilha-holo-radio"><b>{temp}°</b><small>{c.regiao}</small></span>}
@@ -561,4 +798,9 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
       )}
     </>
   )
+}
+
+// (só pros prints e testes, com ?teste-holo na URL) o aviso da rádio e o notch na mão
+if (typeof window !== "undefined" && location.search.includes("teste-holo")) {
+  (window as unknown as { __holo: unknown }).__holo = { avisarRadio, notch }
 }

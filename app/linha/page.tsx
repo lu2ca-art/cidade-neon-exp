@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
-import { ROTEIROS, type ChatId } from "./roteiros"
+import { ROTEIROS, VOZES, type ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
@@ -179,7 +179,7 @@ export default function LinhaPage() {
   // a chegada: o grupo 222 rola na ilha da Kombi, mensagem por mensagem.
   // null = não está rolando; número = a próxima mensagem
   const [introGrupo, setIntroGrupo] = useState<number | null>(null)
-  const [falaIntro, setFalaIntro] = useState<{ id: number; de: string; texto: string } | null>(null)
+  const [falaIntro, setFalaIntro] = useState<{ id: number; de: string; texto: string; ensina?: boolean } | null>(null)
   // conversa rolando no painel da Kombi (dirigindo). Quando precisa do
   // celular de verdade, vira tela cheia com a MESMA conversa
   const [aoVivo, setAoVivo] = useState<ChatRoteiro | null>(null)
@@ -263,11 +263,14 @@ export default function LinhaPage() {
     setTimeout(() => { setAviso((x) => (x?.id === id ? null : x)); setTimeout(proximo, 250) }, 4200)
   }, [])
   const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
+    // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+neon",
+    // "regado"...): só passa quem fala (um personagem). O resto o "?" explica
+    if (D && !VOZES[titulo]) return
     // o mesmo aviso de novo, enquanto ainda tá na fila: não repete
     if (filaAvisos.current.some((a) => a.titulo === titulo && a.texto === texto)) return
     filaAvisos.current.push({ titulo, texto, cor })
     if (!avisando.current) proximoAviso()
-  }, [proximoAviso])
+  }, [proximoAviso, D])
 
   const ganharXp = useCallback((n: number) => {
     setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))
@@ -804,7 +807,7 @@ export default function LinhaPage() {
     setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" && h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
     if (id === "oficina" && hist.fase === "oficina") {
       setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
-      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa" }), 2500)
+      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa" , ensina: true }), 2500)
     } else if (id === "oficina") setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
     setJornal(m)
   }
@@ -813,12 +816,33 @@ export default function LinhaPage() {
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
     : missaoCarreira ? (missaoCarreira.alvo.tipo === "show" ? `o show · ${PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa}${showNoSub ? " · no subúrbio" : ""}` : missaoCarreira.alvo.peca!.nome)
     : feira.length ? `a cidade precisa · ${feira.length}` : null
-  // (21/10 (2), o holo) a checklist da missão pegada vira o widget que voa pro número do anel
+  // (22/10, o Omnitrix) a checklist da missão pegada gira em volta da bolinha (o anel do holo)
   const checklistHolo = useMemo(() => {
     if (!HIST || !missaoCarreira) return null
     const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
-    return { chave: missaoCarreira.pista, cor: COR_PISTA[p.faixa], titulo: `${p.faixa} · ${p.personagem}`, passos: missaoCarreira.passos }
+    return { chave: missaoCarreira.pista, cor: COR_PISTA[p.faixa], titulo: `${p.faixa} · ${p.personagem}`, nome: p.faixa, passos: missaoCarreira.passos }
   }, [HIST, missaoCarreira])
+  // (22/10) as missões moram no mapa: um ícone por missão (a pegada, ou as ofertas da feira) e,
+  // no painel do mapa, as opções pra clicar (a checklist da de agora, ou a feira)
+  const mapaMissoes = useMemo(() => {
+    if (!HIST || hist.fase !== "carreira") return null
+    const daPista = (id: PistaId, agora: boolean) => { const p = PISTAS.find((x) => x.id === id)!; return { id, faixa: p.faixa, cor: COR_PISTA[p.faixa] ?? "#ffc857", agora } }
+    return missaoCarreira ? [daPista(missaoCarreira.pista as PistaId, true)] : feiraVisivel.map((o) => daPista(o.pista, false))
+  }, [HIST, hist.fase, missaoCarreira, feiraVisivel])
+  const mapaPainel = !mapaMissoes ? null : missaoCarreira ? (() => {
+    const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
+    return (
+      <section className="l-missoes-agora" style={{ ["--cor" as string]: COR_PISTA[p.faixa] }}>
+        <small>agora · {p.faixa} · {p.personagem}</small>
+        <ul className="l-missoes-check">
+          {missaoCarreira.passos.map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}</li>)}
+        </ul>
+        <button type="button" className="l-feira-largar" onClick={largarMissao}>largar essa missão</button>
+      </section>
+    )
+  })() : feiraVisivel.length ? (
+    <FeiraOfertas ofertas={feiraVisivel} onPegar={(p) => { setFocoFeira(null); pegarMissao(p) }} onLargar={(p) => { setFocoFeira(null); setLargadas((l) => [...l, p]) }} onFoco={setFocoFeira} foco={focoFeira} />
+  ) : null
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -1028,6 +1052,8 @@ export default function LinhaPage() {
       setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "uma kombi velha subiu do subúrbio. voando. alguém viu isso?" }), 1500)
     }
     if (e === "robo") setSave((s) => comHistoria(s, (x) => ({ ...x, robos: (x.robos ?? 0) + 1 })))
+    // (27/10) a D-Bee deu o drone (nas dunas): a subida mostrada não se repete
+    if (e === "drone") setSave((s) => comHistoria(s, (x) => ({ ...x, drone: true })))
     // (a Nectar, B9) a Kombi quebrou → regar 3 flores de patins → o galão → a oficina → o show → o jardim
     if (e === "quebrou" && h.fase === "nectar") setSave((s) => comHistoria(s, (x) => ({ ...x, nectar: "regar", floresIni: x.flores ?? 0 })))
     if (e === "flor") {
@@ -1296,6 +1322,9 @@ export default function LinhaPage() {
             onFuga={(n) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) }))}
             onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
             checklistHolo={checklistHolo}
+            mapaMissoes={mapaMissoes}
+            mapaPainel={mapaPainel}
+            onMapaIcone={(id) => setFocoFeira(id as PistaId)}
             missaoHolo={HIST ? (objetivoDisco ? { texto: objetivoDisco, cor: "#e0ff4f", n: 1 } : null) : resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null}
             onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
@@ -1364,13 +1393,7 @@ export default function LinhaPage() {
             {feira.length > 0 && <FeiraOfertas ofertas={feira} onPegar={(p) => { pegarMissao(p); setPainelMissoes(false) }} />}
           </div>
         )}
-        {/* (21/10) A FEIRA: sem missão pegada, as oportunidades flutuam na tela (pegar ou largar) */}
-        {HIST && hist.fase === "carreira" && !missaoCarreira && feiraVisivel.length > 0 && !ouvirFim && !painelMissoes && tela.t === "corrida" && !emSala && !cinema && !cena && !showAgora && (
-          <aside className="l-feira" aria-label="A cidade precisa">
-            <small>a cidade precisa</small>
-            <FeiraOfertas ofertas={feiraVisivel} onPegar={(p) => { setFocoFeira(null); pegarMissao(p) }} onLargar={(p) => { setFocoFeira(null); setLargadas((l) => [...l, p]) }} onFoco={setFocoFeira} foco={focoFeira} />
-          </aside>
-        )}
+        {/* (22/10) a feira saiu da tela: mora no mapa (o anel e o mapa abrem a mesma tela) */}
         {painelMissoes && !HIST && !ligacao && tela.t === "corrida" && !emSala && (
           <div className="l-missoes" role="dialog" aria-label="Missões">
             <header><b>missões</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
@@ -1587,12 +1610,12 @@ function FeiraOfertas({ ofertas, onPegar, onLargar, onFoco, foco }: { ofertas: O
       {ofertas.map((o) => {
         const p = PISTAS.find((x) => x.id === o.pista)!
         return (
-          <li key={o.pista} className={foco === o.pista ? "is-foco" : ""} style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o.pista) }}>
+          <li key={o.pista} ref={foco === o.pista ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined} className={foco === o.pista ? "is-foco" : ""} style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o.pista) }}>
             <span className="l-feira-quem">{p.personagem}<small>leva à {p.faixa}{o.feitas ? ` · ${o.feitas}/${o.total}` : ""}</small></span>
             <p>{o.pedido}</p>
             <em>{o.primeiro}</em>
             <div className="l-feira-bts">
-              <button type="button" onClick={() => onPegar(o.pista)}>pegar</button>
+              <button type="button" data-fecha-mapa onClick={() => onPegar(o.pista)}>pegar</button>
               {onLargar && <button type="button" className="is-largar" onClick={() => onLargar(o.pista)}>largar</button>}
             </div>
           </li>

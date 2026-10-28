@@ -5,7 +5,7 @@
 // quase somem com o pé fora. Quem dá a sensação de acelerar é a vibração
 // (tremor), não o volume.
 
-import { audioCtx } from "./som"
+import { audioCtx, saidaEfeitos } from "./som"
 
 export const MARCHAS = [0, 0.2, 0.4, 0.6, 0.8, 1.45]
 
@@ -41,7 +41,7 @@ export function montarMotor() {
   out.gain.value = 0
   // mistura do carro bem abaixo da música (pedido do LU2CA)
   out.gain.setTargetAtTime(0.28, c.currentTime, 0.6)
-  out.connect(c.destination)
+  out.connect(saidaEfeitos() ?? c.destination)
 
   // dois tons graves e limpos (fundamental e quinta), sem harmônico áspero
   const o1 = c.createOscillator()

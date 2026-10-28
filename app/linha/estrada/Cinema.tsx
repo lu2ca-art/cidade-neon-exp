@@ -16,6 +16,7 @@ import * as THREE from "three"
 import { POS } from "./luzes"
 import { TROCA } from "./resolucao"
 import { VELO } from "./velo"
+import { DRONE } from "./Drone"
 
 // maxLente (20/10): o teto que a qualidade do aparelho dá (qualidade.ts)
 export function Cinema({ maxLente = 2 }: { maxLente?: number }) {
@@ -35,7 +36,16 @@ export function Cinema({ maxLente = 2 }: { maxLente?: number }) {
   }, [gl, nivel])
   const aberracao = useMemo(() => new THREE.Vector2(0.0009, 0.0006), [])
   // (20/10) o hyperlapse abre a lente: a aberração cresce com a velocidade
-  useFrame(() => { const k = Math.min(2.5, VELO.k); aberracao.set(0.0009 + k * 0.0045, 0.0006 + k * 0.003) })
+  // (27/10, drone v2 desempenho) com o drone no alto (a cidade inteira a km, a
+  // maior parte quase preta) saem o SMAA (2 passes a mais na tela toda) e a
+  // aberração; o resto da lente (bloom, cor, vinheta, grão) fica igual. A troca
+  // refaz só os passes (não as imagens) e cai no meio da subida/descida de 1 s
+  const [alto, setAlto] = useState(false)
+  useFrame(() => {
+    const k = Math.min(2.5, VELO.k); aberracao.set(0.0009 + k * 0.0045, 0.0006 + k * 0.003)
+    const a = DRONE.e > 0.5
+    if (a !== alto) setAlto(a)
+  })
   // (19/10) o monitor só começa a julgar depois que o jogo assenta: carregando
   // (compilando shaders, decodificando modelos) todo aparelho engasga, e ele
   // desligava a lente de vez já no começo (sem bloom o resto do jogo)
@@ -52,9 +62,9 @@ export function Cinema({ maxLente = 2 }: { maxLente?: number }) {
       {vigiar && <PerformanceMonitor bounds={() => [30, 1000]} flipflops={Infinity} onDecline={() => { const ag = performance.now(); if (ag - TROCA.ult < 10_000) return; TROCA.ult = ag; setNivel((n) => Math.max(0, n - 1)) }} />}
       {nivel === 2 && (
         <EffectComposer multisampling={0} enableNormalPass={false}>
-          <SMAA />
+          {!alto && <SMAA />}
           <Bloom mipmapBlur intensity={1.05} luminanceThreshold={0.62} luminanceSmoothing={0.25} radius={0.72} />
-          <ChromaticAberration offset={aberracao} radialModulation modulationOffset={0.35} />
+          {!alto && <ChromaticAberration offset={aberracao} radialModulation modulationOffset={0.35} />}
           <ToneMapping mode={ToneMappingMode.AGX} />
           {/* o AgX é honesto mas lava o neon: devolve contraste e cor */}
           <BrightnessContrast brightness={0.01} contrast={0.07} />

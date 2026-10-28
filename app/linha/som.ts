@@ -8,6 +8,24 @@ import { track, type MusicSource } from "@/lib/analytics"
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
+// (LU2CA 22/10, a engrenagem do holo) três volumes de verdade, cada um num
+// GainNode antes do master: a música (rádio, toca-discos, a pista), os efeitos
+// (notas, motor, chiados) e as vozes (notas de voz, ligação). Guardados em
+// localStorage ("cn-volumes"), 0–1
+export type CanalVolume = "musica" | "efeitos" | "vozes"
+const CHAVE_VOL = "cn-volumes"
+export const VOLUMES: Record<CanalVolume, number> = { musica: 1, efeitos: 1, vozes: 1 }
+try {
+  const v = typeof localStorage !== "undefined" ? JSON.parse(localStorage.getItem(CHAVE_VOL) ?? "null") : null
+  if (v) for (const k of ["musica", "efeitos", "vozes"] as const) if (typeof v[k] === "number") VOLUMES[k] = Math.max(0, Math.min(1, v[k]))
+} catch {}
+const bus: Partial<Record<CanalVolume, GainNode>> = {}
+export function definirVolume(k: CanalVolume, v: number) {
+  VOLUMES[k] = Math.max(0, Math.min(1, v))
+  const g = bus[k]
+  if (g && ctx) g.gain.setTargetAtTime(VOLUMES[k], ctx.currentTime, 0.05)
+  try { localStorage.setItem(CHAVE_VOL, JSON.stringify(VOLUMES)) } catch {}
+}
 
 export function audioCtx(): AudioContext | null {
   if (typeof window === "undefined") return null
@@ -18,14 +36,26 @@ export function audioCtx(): AudioContext | null {
     master = ctx.createGain()
     master.gain.value = 1
     master.connect(ctx.destination)
+    for (const k of ["musica", "efeitos", "vozes"] as const) {
+      const g = ctx.createGain()
+      g.gain.value = VOLUMES[k]
+      g.connect(master)
+      bus[k] = g
+    }
   }
   if (ctx.state === "suspended") ctx.resume().catch(() => {})
   return ctx
 }
 
+// os efeitos (e o que não tem canal próprio) saem pelo volume dos efeitos
 function saida(): AudioNode | null {
   audioCtx()
-  return master
+  return bus.efeitos ?? master
+}
+export const saidaEfeitos = saida
+function saidaCanal(k: CanalVolume): AudioNode | null {
+  audioCtx()
+  return bus[k] ?? master
 }
 
 // A MÚSICA ABAFADA (05/10, LU2CA): durante a missão (dentro de um lugar) e
@@ -35,7 +65,7 @@ let abafoF: BiquadFilterNode | null = null
 let abafoG: GainNode | null = null
 function abafo(): AudioNode | null {
   const c = audioCtx()
-  const out = saida()
+  const out = saidaCanal("musica")
   if (!c || !out) return null
   if (!abafoF || !abafoG) {
     abafoF = c.createBiquadFilter()
@@ -630,10 +660,10 @@ class Voz {
     el.addEventListener("ended", () => this.parou())
     el.addEventListener("pause", () => { if (this.tocando && !el.ended) this.parou() })
     const c = audioCtx()
-    const out = saida()
+    const out = saidaCanal("vozes")
     if (c && out) {
       try { c.createMediaElementSource(el).connect(out) } catch {}
-    }
+    } else el.volume = VOLUMES.vozes
     this.el = el
     return el
   }
@@ -656,6 +686,7 @@ class Voz {
       u.lang = "pt-BR"
       u.pitch = tom
       u.rate = 1.05
+      u.volume = VOLUMES.vozes
       u.onend = () => this.parou()
       u.onerror = () => this.parou()
       this.sintese = u
