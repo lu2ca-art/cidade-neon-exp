@@ -13,7 +13,9 @@ const PASTA = "test-results/tutorial-holo"
 type J = Record<string, number | boolean | undefined>
 const jogo = (page: Page) => page.evaluate(() => (window as unknown as { __jogo: J }).__jogo)
 const historia = (page: Page) => page.evaluate(() => (JSON.parse(localStorage.getItem("cn-linha-222") ?? "null")?.disco ?? null) as { fase: string; tutorial?: string[]; drone?: boolean } | null)
-const passo = (page: Page) => page.locator(".l-tut[data-passo]")
+// (T56) o passo fala dentro do notch (um notch só)
+const passo = (page: Page) => page.locator(".l-holo-letreiro[data-passo]")
+const fimTut = (page: Page) => page.locator(".l-holo-letreiro.is-fim")
 
 async function entrar(page: Page, parte: string) {
   await page.addInitScript(() => { localStorage.setItem("cidade-neon-analytics-consent", "essential") })
@@ -134,8 +136,8 @@ test("do holo entregue até o fim do tutorial das dunas", async ({ page }) => {
 
   // 5) o anel: o próximo passo
   await page.locator('[data-info="anel"]').click({ force: true })
-  await expect(page.locator(".l-tut.is-fim")).toBeVisible({ timeout: 5_000 })
-  await expect(page.locator(".l-tut.is-fim")).toHaveText(/GPS/)
+  await expect(fimTut(page)).toBeVisible({ timeout: 5_000 })
+  await expect(fimTut(page).locator(".l-nexo-passo")).toHaveText(/GPS/)
   const h = await historia(page)
   expect(h?.tutorial).toEqual(expect.arrayContaining(["recompensa", "mapa", "rota", "gps", "drift", "anel"]))
   expect(h?.drone).toBe(true)
@@ -165,8 +167,8 @@ test("o tutorial do voo e do turbo (depois da oficina)", async ({ page }) => {
   const b = await bt.boundingBox()
   await page.mouse.move(b!.x + b!.width / 2, b!.y + b!.height / 2)
   await page.mouse.down(); await page.waitForTimeout(450); await page.mouse.up()
-  await expect(page.locator(".l-tut.is-fim")).toBeVisible({ timeout: 8_000 })
-  await expect(page.locator(".l-tut.is-fim")).toHaveText(/pista acesa|o mapa diz o resto/)
+  await expect(fimTut(page)).toBeVisible({ timeout: 8_000 })
+  await expect(fimTut(page).locator(".l-nexo-passo")).toHaveText(/pista acesa|o mapa diz o resto/)
   const h = await historia(page)
   expect(h?.tutorial).toEqual(expect.arrayContaining(["voo", "turbo"]))
   await page.screenshot({ path: `${PASTA}/6-voo-fim.png` })

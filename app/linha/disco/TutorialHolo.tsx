@@ -6,17 +6,17 @@
 // - RecompensaHolo: saiu da casa com o holo na mão. Texto grande, o que ganhou e
 //   como funciona (J1: 6). O botão "?" fecha e o tutorial começa destacando só o
 //   ícone do holo (o mapa): o resto da tela escurece, ele toca ali.
-// - TutorialHolo: um passo por vez. O texto fica num cartão fininho embaixo do
-//   GPS (e passa uma vez no notch, como toda linha do Nexo); um anel pulsando em
-//   volta da coisa que ele precisa tocar. Só avança quando ele faz. Não mexe no
-//   jogo: lê a Kombi (POSE_TUT, a Corrida escreve), o drone (DRONE) e a tela.
+// - TutorialHolo: um passo por vez. (T56) O texto fala DENTRO do notch do Nexo
+//   (nexoTutorial: o passo vira a linha do notch, com o "2 de 5" discreto; o "?"
+//   do notch explica o passo), sem cartão separado; um anel pulsando em volta da
+//   coisa que ele precisa tocar. Só avança quando ele faz. Não mexe no jogo: lê a
+//   Kombi (POSE_TUT, a Corrida escreve), o drone (DRONE) e a tela.
 // Desempenho: um intervalo de 120 ms só enquanto há passo; um setState quando o
 // alvo muda de lugar ou o passo fica feito. Nada no WebGL.
 
 import { useEffect, useRef, useState } from "react"
 import { DRONE } from "../estrada/Drone"
-import { avisarRadio, notch } from "../estrada/Holo"
-import { VOZES } from "../roteiros"
+import { avisarRadio, infoDe, nexoTutorial } from "../estrada/Holo"
 import { gota } from "../som"
 import { vib } from "../som-carro"
 import type { FaseDisco, HistoriaDisco } from "./historia"
@@ -77,13 +77,12 @@ export function TutorialHolo({ hist, pausado, onFeito }: { hist: Pick<HistoriaDi
   useEffect(() => { feito.current = onFeito })
   const id = pausado ? null : passo?.id ?? null
 
-  // o passo novo: passa uma vez no notch (e, com a D-Bee ensinando, no rádio)
+  // o passo novo (com a D-Bee ensinando, ela também fala no rádio; o notch mostra
+  // o passo nos dois casos)
   useEffect(() => {
     if (!id || !passo) return
     teve.current = passo.desde
-    const txt = textoDo(passo, toqueTela())
-    if (CONFIG_TUTORIAL.quem === "dbee") { avisarRadio("D-Bee", txt); notch(`D-Bee: ${txt}`, VOZES["D-Bee"] ?? "#3d7bff") }
-    else notch(txt, "#2fe8ff")
+    if (CONFIG_TUTORIAL.quem === "dbee") avisarRadio("D-Bee", textoDo(passo, toqueTela()))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -96,7 +95,6 @@ export function TutorialHolo({ hist, pausado, onFeito }: { hist: Pick<HistoriaDi
     if (!f) return
     // (já pousou na cidade: a última linha do voo não manda pousar)
     const txt = fase === "carreira" ? "▸ a cidade é sua. o mapa diz o resto" : CONFIG_TUTORIAL.quem === "dbee" ? f.dbee : f.nexo
-    notch(txt, "#2fe8ff")
     setFim(txt)
     const t = setTimeout(() => setFim(null), 5000)
     return () => clearTimeout(t)
@@ -151,29 +149,47 @@ export function TutorialHolo({ hist, pausado, onFeito }: { hist: Pick<HistoriaDi
     return () => { clearInterval(iv); document.removeEventListener("click", clique, true) }
   }, [id, passo])
 
-  if (fim && !passo && !pausado) return <div className="l-tut is-fim" role="status"><b>{fim}</b></div>
+  // (T56) o notch é quem fala: o passo de agora (ou a última linha) vai pra ele
+  const c = passo ? contagem(hist, passo.id) : null
+  const txt = passo ? (espera && passo.espera ? passo.espera : textoDo(passo, toqueTela())) : null
+  const feitoAgora = !!passo && ok === passo.id
+  const dbee = CONFIG_TUTORIAL.quem === "dbee"
+  const pid = id ? passo!.id : null
+  const mostraFim = !!fim && !passo && !pausado
+  const conta = c ? `${dbee ? "D-Bee · " : ""}${c.n} de ${c.de}` : null
+  useEffect(() => {
+    if (pid && txt && conta) {
+      const p = PASSO_INFO[pid]
+      nexoTutorial({ passo: pid, texto: txt, conta, ok: feitoAgora, cor: dbee ? "#7fa6ff" : "#2fe8ff", ajuda: { t: passo!.rotulo ?? "o tutorial", d: p ?? txt } })
+    } else if (mostraFim) nexoTutorial({ passo: "fim", texto: fim!, fim: true, ajuda: { t: "o tutorial", d: "acabou. o anel em volta do mapa diz o próximo passo; o mapa mostra o caminho." } })
+    else nexoTutorial(null)
+  }, [pid, txt, conta, feitoAgora, dbee, mostraFim, fim, passo])
+  // saiu da tela (a corrida acabou, a cena abriu): o notch esquece o passo
+  useEffect(() => () => nexoTutorial(null), [])
+
   if (!id || !passo) return null
-  const c = contagem(hist, passo.id)
-  const txt = espera && passo.espera ? passo.espera : textoDo(passo, toqueTela())
-  const feitoAgora = ok === passo.id
-  return (
-    <>
-      {alvo && <Destaque alvo={alvo} passo={passo} escuro={!!passo.destaque && !feitoAgora} />}
-      <div className={`l-tut ${feitoAgora ? "is-ok" : ""} ${CONFIG_TUTORIAL.quem === "dbee" ? "is-dbee" : ""}`} role="status" aria-live="polite" data-passo={passo.id}>
-        <small>{CONFIG_TUTORIAL.quem === "dbee" ? "D-Bee · rádio" : "N3XO_"} · {c.n} de {c.de}</small>
-        <b>{feitoAgora ? "✓ isso" : txt}</b>
-      </div>
-    </>
-  )
+  return alvo ? <Destaque alvo={alvo} escuro={!!passo.destaque && !feitoAgora} /> : null
+}
+
+// (T56) o que o "?" do notch diz de cada passo (a explicação do passo, não o passo de novo)
+const PASSO_INFO: Partial<Record<PassoTutId, string>> = {
+  mapa: infoDe("mapa")?.d,
+  rota: "com o drone no alto, a faixa acesa é o caminho até onde você precisa ir. o mapa de novo: a câmera volta pra rua.",
+  gps: "a barra lá em cima: o ícone do lugar no meio é o rumo certo. aceso no meio e acelerando, você está indo pra lá.",
+  drift: "na areia solta a Kombi escorrega: vira forte e solta de lado (no teclado, Q + seta). o drift enche o turbo.",
+  anel: infoDe("anel")?.d,
+  voo: infoDe("propulsor")?.d,
+  turbo: infoDe("turbo")?.d,
 }
 
 // o anel em volta da coisa; no primeiro passo (o "?"), o resto da tela escurece
-// e só o ícone do holo fica aceso, com o "?" do lado
-function Destaque({ alvo, passo, escuro }: { alvo: Caixa; passo: PassoTut; escuro: boolean }) {
+// e só o ícone do holo fica aceso (e o notch, que diz o passo), com o "?" do lado.
+// (T56) sem rótulo próprio: quem diz o que fazer é o notch
+function Destaque({ alvo, escuro }: { alvo: Caixa; escuro: boolean }) {
   const m = 8
   return (
     <div className={`l-tut-alvo ${escuro ? "is-escuro" : ""}`} aria-hidden="true" style={{ left: alvo.x - m, top: alvo.y - m, width: alvo.w + m * 2, height: alvo.h + m * 2 }}>
-      {escuro && <><i className="l-tut-alvo-q">?</i><span className="l-tut-alvo-rot">{passo.rotulo}<em>toca aqui</em></span></>}
+      {escuro && <i className="l-tut-alvo-q">?</i>}
     </div>
   )
 }
