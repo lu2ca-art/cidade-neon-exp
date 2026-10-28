@@ -126,7 +126,7 @@ export const CONFIG13 = {
   // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
   // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
   // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
-  trancar: ["ginasio"] as PortaId[],
+  trancar: ["ginasio", "radio-frequencias"] as PortaId[],
   // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
   // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
   kombiNoConserto: ["drew"] as MissaoId[],
@@ -184,7 +184,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   xeriff: {
     id: "xeriff", n: 7, onde: "cidade", quem: "Xeriff", cor: "#c9d3e6", faixa: null, faixaSituacao: "em aberto",
     lugar: { lugar: "plataforma" }, pedido: "a polícia fala numa frequência que ninguém pega", apresenta: "sintonizar a frequência da polícia",
-    arte: p("gravar a vinheta da rádio pirata", "proposta", { tarefa: "T18" }),
+    // (T18) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, VINHETA)
+    arte: p("gravar a vinheta da rádio pirata", "proposta", { como: { t: "cena", id: "vinheta" }, tarefa: "T18" }),
     jogo: p("sintonizar a frequência da polícia", "decidido", { como: { t: "prova", id: "sintonia" }, tarefa: "T18" }),
     abre: ["radio-frequencias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.xeriff }, requer: ["lu2ca"],
   },
