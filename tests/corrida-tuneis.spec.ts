@@ -57,6 +57,8 @@ test("uma volta de patins: chega, mostra o resultado e guarda o recorde", async 
   expect(rec.patins.rastro.length).toBeGreaterThan(400)
   // correr de novo: o fantasma (o recorde) corre junto
   await page.getByRole("button", { name: "correr de novo" }).click()
-  await expect(page.getByText("o fantasma corre junto")).toBeVisible()
+  // (no celular o recorde fica escondido pra caber; o texto está lá)
+  await expect(page.locator(".tr-rec")).toContainText("o fantasma corre junto")
+  await page.waitForFunction(() => (window as unknown as { __estado: () => Est }).__estado().fase === "correndo", null, { timeout: 30_000 })
   expect(erros).toEqual([])
 })
