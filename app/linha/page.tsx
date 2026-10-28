@@ -37,7 +37,9 @@ import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
 import { PostoDentro } from "./posto"
-import { ACERVO, PRECO_DISCO } from "./discos"
+import { ACERVO } from "./discos"
+import { cacheDoShow, comprar, comprarMelhoria, ganhar, gastar } from "./economia"
+import { PAGA, POSTO } from "./economia-rascunho"
 import { EVENTO_CADERNO } from "./Caderno"
 import type { Onde } from "./parte"
 import { aplicarParteDeTeste } from "./parteTeste"
@@ -82,14 +84,14 @@ type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: 
 
 // quanto NEON rende acordar uma pessoa (uma missão inteira)
 // cada missão completa vale 50 NEON; cada item do tutorial, 10 (LU2CA, 05/10)
-const NEON_POR_PESSOA = 50
+const NEON_POR_PESSOA = PAGA.pessoaAcordada // (T03) economia-rascunho.ts
 // o tutorial: depois de resgatar o Mubarak, levar ele até a casa do Drewboy
 const levarDrewboy = (s: Save) => emTutorial(s) && s.objetos.includes("copo") && !feito(s, "drewboy")
 // o tutorial: chegou na cidade, encher o tanque no posto
 const irAoPosto = (s: Save) => emTutorial(s) && feito(s, "tanque") && !feito(s, "posto")
 // o combustível (06/10, LU2CA)
-const PRECO_TANQUE = 25
-const PRECO_GALAO = 10
+const PRECO_TANQUE = POSTO.tanque // (T03) economia-rascunho.ts
+const PRECO_GALAO = POSTO.galao
 const GALAO = 0.35 // o quanto um galão põe no tanque (dá pra chegar na cidade)
 
 type Tela =
@@ -251,6 +253,8 @@ export default function LinhaPage() {
     }
     // atalho de teste (/teste): fora da produção, a Kombi aparece num ponto
     if (atalhosLiberados()) setAtalhoTeste(atalhoPorId(new URLSearchParams(location.search).get("atalho"))?.ir ?? null)
+    // (T03) ?parte=loja: o jogo abre com a loja no celular (só fora da produção)
+    if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "loja") setTela({ t: "app", id: "loja" })
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -288,7 +292,7 @@ export default function LinhaPage() {
   }, [proximoAviso, D])
 
   const ganharXp = useCallback((n: number) => {
-    setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))
+    setSave((s) => ganhar(s, n))
     setXpFlutua({ id: Date.now(), n })
   }, [])
 
@@ -388,7 +392,7 @@ export default function LinhaPage() {
       const delta = Math.round(Number(e.data.delta) || 0)
       const atual = saveRef.current.neon ?? 0
       const ok = delta >= 0 || atual + delta >= 0
-      if (ok && delta) setSave((s) => ({ ...s, neon: Math.max(0, (s.neon ?? 0) + delta) }))
+      if (ok && delta) setSave((s) => (delta > 0 ? ganhar(s, delta) : gastar(s, -delta) ?? s))
       ;(e.source as Window | null)?.postMessage({ tipo: "cn-neon-saldo", neon: ok ? atual + delta : atual, ok, id: e.data.id }, window.location.origin)
     }
     window.addEventListener("message", h)
@@ -739,11 +743,13 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: "linha-tutorial", step: "drewboy", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
   }, [])
 
-  // a loja de discos: todo disco custa o mesmo em NEON
-  const comprarDisco = (id: string) => {
+  // (T03) a loja: discos, instrumentos, carros e roupas, em neon$ (economia.ts).
+  // O id é "categoria:nome" ("disco:rock", "roupa:bone")
+  const comprarNaLoja = (id: string) => {
     const s = saveRef.current
-    if ((s.neon ?? 0) < PRECO_DISCO || (s.discos ?? []).includes(id)) return false
-    setSave((x) => ({ ...x, neon: (x.neon ?? 0) - PRECO_DISCO, discos: [...(x.discos ?? []), id] }))
+    const r = comprar(s, id)
+    if (!r.ok) return false
+    setSave((x) => { const y = comprar(x, id); return y.ok ? y.save : x })
     track("mission_step", { mission_id: "linha-loja", step: `comprou:${id}`, perfil: s.perfil ?? "?", fio_pos: -1 })
     return true
   }
@@ -762,10 +768,10 @@ export default function LinhaPage() {
     const regadas = { ...s0.regadas, [id]: s0.dia ?? 1 }
     const total = CANTEIROS.length, feitos = CANTEIROS.filter((c) => regadas[c.id] !== undefined).length
     const conquista = feitos >= total && !(s0.conquistas ?? []).includes("jardim-da-ella")
-    setSave((s) => ({ ...s, regadas: { ...s.regadas, [id]: s.dia ?? 1 }, neon: (s.neon ?? 0) + 2, conquistas: conquista ? [...(s.conquistas ?? []), "jardim-da-ella"] : s.conquistas }))
+    setSave((s) => ({ ...ganhar(s, PAGA.regarCanteiro), regadas: { ...s.regadas, [id]: s.dia ?? 1 }, conquistas: conquista ? [...(s.conquistas ?? []), "jardim-da-ella"] : s.conquistas }))
     const c = canteiroPorId(id)
     if (conquista) avisar("conquista · o jardim da Ella", `você regou os ${total} canteiros da cidade`, "#ffc857")
-    else avisar(c ? `${ESPECIES[c.especie].nome} · regado` : "regado", `${feitos} de ${total} canteiros da Ella · +2 neon`, c ? ESPECIES[c.especie].cor : "#2fe8ff")
+    else avisar(c ? `${ESPECIES[c.especie].nome} · regado` : "regado", `${feitos} de ${total} canteiros da Ella · +${PAGA.regarCanteiro} neon`, c ? ESPECIES[c.especie].cor : "#2fe8ff")
   }, [avisar])
   const regadasHoje = useMemo(() => Object.entries(save.regadas ?? {}).filter(([, d]) => d === (save.dia ?? 1)).map(([id]) => id), [save.regadas, save.dia])
   const listaMissoes = useMemo(() => {
@@ -842,7 +848,7 @@ export default function LinhaPage() {
     const m = MISSOES13[id], r = recompensaDe(id)
     const faixaNaCidade = m.faixa && (m.onde === "cidade" || historiaDe(s0).fase === "carreira") ? (m.faixa as EstacaoId) : null
     setSave((s) => comHistoria(
-      { ...s, objetos: faixaNaCidade && !s.objetos.includes(faixaNaCidade) ? [...s.objetos, faixaNaCidade] : s.objetos, neon: (s.neon ?? 0) + r.neon, violao: m.abre.includes("violao") ? true : s.violao },
+      { ...ganhar(s, r.neon), objetos: faixaNaCidade && !s.objetos.includes(faixaNaCidade) ? [...s.objetos, faixaNaCidade] : s.objetos, violao: m.abre.includes("violao") ? true : s.violao },
       (h) => abrirPorta(sincronizar(h, s.objetos), id),
     ))
     setRecompensa(r)
@@ -876,8 +882,10 @@ export default function LinhaPage() {
   const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
   const fimShow = (r: ResultadoShow) => {
     const id = hist.show!, conf = confShow(id)!
-    const m = calcularManchete(r, id.startsWith("rua:") ? id.slice(4) : id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
-    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m] })))
+    const popAntes = saveRef.current.popularidade ?? 0
+    // (T03) o cachê do show vem da economia (a nota e a fama de antes)
+    const m = { ...calcularManchete(r, id.startsWith("rua:") ? id.slice(4) : id, conf.lugar, popAntes, Date.now()), neon: cacheDoShow(r.nota, popAntes) }
+    setSave((s) => comHistoria({ ...ganhar(s, m.neon), popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop) }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m] })))
     // a peça de uma missão (tocar ao vivo): conta como feita e a missão segue
     if (id.startsWith("missao:")) {
       // (a peça vem do save: recarregar a página no meio do show não perde a missão)
@@ -955,15 +963,16 @@ export default function LinhaPage() {
     if (primeira) {
       setSave((x) => ({ ...x, tutorial: [...new Set([...(x.tutorial ?? []), "lu2ca-posto"])] }))
       // a loja de discos chama (rascunho): o disco novo que ele falou
-      setTimeout(() => avisar("LOJA DE DISCOS", "tem disco novo na prateleira · abre no celular", "#ffc857"), 2500)
+      setTimeout(() => avisar("LOJA", "tem disco novo na prateleira · abre no celular", "#ffc857"), 2500)
     }
   }, [noPosto, avisar])
   const encherTanque = useCallback(() => setSave((s) => {
-    if ((s.neon ?? 0) < PRECO_TANQUE || (s.tanque ?? 1) > 0.97) return s
+    const pago = (s.tanque ?? 1) > 0.97 ? null : gastar(s, PRECO_TANQUE)
+    if (!pago) return s
     track("mission_step", { mission_id: "linha-posto", step: "tanque", perfil: s.perfil ?? "?", fio_pos: -1 })
-    return { ...s, neon: (s.neon ?? 0) - PRECO_TANQUE, tanque: 1 }
+    return { ...pago, tanque: 1 }
   }), [])
-  const encherGalao = () => setSave((s) => ((s.neon ?? 0) < PRECO_GALAO || s.galao !== "vazio" ? s : { ...s, neon: (s.neon ?? 0) - PRECO_GALAO, galao: "cheio" }))
+  const encherGalao = () => setSave((s) => { const pago = s.galao !== "vazio" ? null : gastar(s, PRECO_GALAO); return pago ? { ...pago, galao: "cheio" } : s })
 
   // a missão de agora e o resumo da caixa (no canto da tela)
   const missaoAgora = quemChama ? listaMissoes.find((m) => m.id === quemChama) ?? null : null
@@ -1373,8 +1382,8 @@ export default function LinhaPage() {
             pistaFoco={focoFeira}
             temaMissao={temaMissao}
             onHistoria={onHistoria}
-            // (B10) a oficina vende com água (a tecnologia)
-            onComprar={(id, preco) => setSave((s) => ((s.agua ?? 0) < preco ? s : comHistoria({ ...s, agua: (s.agua ?? 0) - preco }, (h) => ({ ...h, mods: [...new Set([...(h.mods ?? []), id])] }))))}
+            // (B10, T03) a oficina: o mecânico é pago em água, só desempenho (o preço vem da economia)
+            onComprar={(id) => setSave((s) => { const r = comprarMelhoria(s, id); return r.ok ? r.save : s })}
             onAbertura={() => { setCinema("lugar"); setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, inicio: true }) }}
             onArea={(id) => { if (id === "circuito:linha" && emTutorial(saveRef.current)) marcarTut("tanque") }}
             limitado={!!invasao}
@@ -1399,7 +1408,7 @@ export default function LinhaPage() {
             saltoHora={saltoHora}
             regadas={regadasHoje}
             onRegar={regouCanteiro}
-            onMontanha={(n) => { setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n })); if (n >= 2) eventoDaRua("montanha") }}
+            onMontanha={(n) => { setSave((s) => ganhar(s, n)); if (n >= 2) eventoDaRua("montanha") }}
             onAbastecer={(o) => {
               const s0 = saveRef.current
               // de patins (a gasolina acabou): o galão vai direto no tanque; se já tinha um cheio, só despeja
@@ -1531,7 +1540,7 @@ export default function LinhaPage() {
               precoGalao={PRECO_GALAO}
               onEncherTanque={encherTanque}
               onEncherGalao={encherGalao}
-              onPresente={(n) => setSave((x) => ({ ...x, neon: (x.neon ?? 0) + n }))}
+              onPresente={(n) => setSave((x) => ganhar(x, n))}
               onSair={sairDoPosto}
             />
           </>
@@ -1575,7 +1584,7 @@ export default function LinhaPage() {
           const p = pecaAberta.current
           pecaAberta.current = null
           if (venceu) {
-            setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + 3), neon: (s.neon ?? 0) + 10 }))
+            setSave((s) => ({ ...ganhar(s, 10), popularidade: Math.min(100, (s.popularidade ?? 0) + 3) }))
             if (p) pecaFeitaNaMissao(p.missao, p.qual)
           }
         }} />}
@@ -1679,7 +1688,7 @@ export default function LinhaPage() {
         )}
         {tela.t === "app" && tela.id === "violao" && <Violao onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "ouvir" && <Ouvir onVoltar={() => setTela({ t: "home" })} />}
-        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarDisco} onVoltar={() => setTela({ t: "home" })} />}
+        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarNaLoja} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
           <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (s.tanque ?? 0) + GALAO) } : s))} />
         )}
@@ -1711,7 +1720,7 @@ export default function LinhaPage() {
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
-            onNeon={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
+            onNeon={(n) => setSave((s) => ganhar(s, n))}
           />
         )}
         {viagem && (
