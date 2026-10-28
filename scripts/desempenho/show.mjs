@@ -40,7 +40,7 @@ for (const modo of ["preludio", ...MODOS]) {
   await page.addInitScript(relogio)
   const erros = []
   page.on("pageerror", (e) => erros.push(e.message))
-  await page.goto(`${BASE}/linha?mapa=disco&parte=missao.lu2ca.show`)
+  await page.goto(`${BASE}/linha?mapa=disco&parte=missao.lu2ca.show${process.env.Q ?? ""}`)
   await page.locator(".l-btn-entrar").click({ timeout: 30_000 }).catch(() => {})
   await page.locator(".l-show.is-preludio").waitFor({ timeout: 60_000 })
   if (modo === "preludio") {

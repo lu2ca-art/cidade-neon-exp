@@ -67,7 +67,7 @@ test("missao.lu2ca.show: pular o prelúdio, o baixo com o dedo na tela e ↑ ↓
   const preludio = page.locator(".l-show.is-preludio")
   await expect(preludio).toBeVisible({ timeout: 30_000 })
   // um toque pula
-  await preludio.click()
+  await page.mouse.click(200, 420)
   await expect(page.locator(".l-show-banda")).toBeVisible()
   await page.locator(".l-show-banda button", { hasText: "baixo" }).click()
   await expect(page.locator(".l-show-carrega")).toBeHidden({ timeout: 60_000 })

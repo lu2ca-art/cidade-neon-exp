@@ -193,7 +193,7 @@ export function ShowAfinador({ faixa, lugar, cor, popularidade, onFim, letra }: 
       if (letra?.length) {
         const k = Math.min(letra.length - 1, Math.floor((Math.max(0, tt) / DUR) * letra.length))
         g.fillStyle = "#ffffff"; g.globalAlpha = 0.9; g.font = `600 ${15 * dpr}px system-ui, sans-serif`; g.textAlign = "center"
-        g.fillText(letra[k], w / 2, h * 0.9, w * 0.9)
+        g.fillText(letra[k], w / 2, h * 0.865, w * 0.9)
         g.globalAlpha = 1
       }
       desenharHud(g, w, h, { pontos: p.pontos, seq: Math.floor(p.seq / 10), multi: 1 + Math.min(3, Math.floor(p.seq / 200)), galera: p.galera, neon: 0, neonAtivo: false, aviso: null, agora, progresso: Math.min(1, (agora - j.inicio) / DUR), duelo: null })

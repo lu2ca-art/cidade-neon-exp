@@ -1556,10 +1556,18 @@ export default function LinhaPage() {
         {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}
         {letraAgora && <Letra conf={letraAgora.conf} cor={MISSOES13[letraAgora.missao].cor} quem={MISSOES13[letraAgora.missao].quem} onFim={(linhas: string[]) => {
           const l = letraAgora
-          setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined, letras: { ...(x.letras ?? {}), [l.faixa]: linhas } })))
+          // a letra fica no save e, ainda no palco, a próxima peça segue direto na mesma
+          // gravação (o show ao vivo: sem esperar o relógio, que num aparelho lento chega antes do save)
+          setSave((s) => comHistoria(s, (x) => {
+            const h = concluir({ ...x, aberta13: undefined, letras: { ...(x.letras ?? {}), [l.faixa]: linhas } }, l.missao, l.qual)
+            const prox = pecaAgora13(h, l.missao)
+            return prox?.peca.como?.t === "show" ? { ...h, show: `missao:${l.missao}` } : h
+          }))
           barFechou.current = Date.now()
           track("mission_step", { mission_id: `disco-${l.missao}`, step: "letra", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
-          pecaFeitaNaMissao(l.missao, l.qual)
+          // (sem show depois: a porta ou a próxima peça seguem pelo caminho de sempre)
+          if (l.qual === "arte" && MISSOES13[l.missao].jogo.como?.t === "show") pecaAberta.current = { missao: l.missao, qual: "jogo" }
+          else pecaFeitaNaMissao(l.missao, l.qual)
         }} />}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)

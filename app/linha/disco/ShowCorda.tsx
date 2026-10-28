@@ -53,7 +53,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   const jogo = useRef({ notas: [] as NotaCorda[], placar: novoPlacar() as Placar, som: null as SomShow | null, buf: null as AudioBuffer | null, inicio: 0, bpm: 100, t0: 0, alvo: 1.5, corda: 1.5, vib: 0, aviso: null as { texto: string; ate: number; cor: string } | null,
     // (T19) o dedo na tela (toque contínuo), o teclado, o segurar ↑ ↓ e quando a corda chegou na faixa de agora
     dedo: false, teclado: false, segura: 0 as -1 | 0 | 1, seguraDesde: 0, laneSegura: 0, laneAntes: -1, chegou: -99, toque: null as { texto: string; ate: number; cor: string } | null })
-  const palco = useMemo<Palco>(() => PALCOS.find((x) => x.id === palcoId) ?? { ...(PALCOS.find((x) => x.id === "casa-shows") ?? PALCOS[0]), nome: lugar.replace(/^(no|na) /, ""), cor }, [palcoId, lugar, cor])
+  const palco = useMemo<Palco>(() => PALCOS.find((x) => x.id === palcoId) ?? { ...(PALCOS.find((x) => x.id === "casa-shows") ?? PALCOS[0]), nome: lugar.replace(/^(no|na) /, ""), cor, fachada: pista.faixa.toUpperCase() }, [palcoId, lugar, cor, pista.faixa])
   const modelo = MODELOS.find((m) => m.tipo === "baixo") ?? MODELOS[0]
   const imgs = useMemo(() => (typeof window === "undefined" ? {} : { baixo: imagemInstrumento(modelo.id, modelo.visual, "baixo", "liso") }), [modelo])
   const atraso = useMemo(() => atrasoEstimado(), [])

@@ -60,7 +60,7 @@ function Preludio({ faixa, lugar, palco: palcoId, cor, onFim }: { faixa: string;
       som?.galera(Math.min(0.6, 0.15 + tt * 0.09))
       ajustarShow(c)
       const w = c.width, h = c.height
-      desenharTomada(g, w, h, atual.t, tl, { palco, modelo, imgs, titulo: palco.nome, sub: `${lugar} · hoje: LU2CA`, publico: 20 })
+      desenharTomada(g, w, h, atual.t, tl, { palco, modelo, imgs, titulo: palco.nome, sub: `hoje: LU2CA · ${faixa}`, publico: 20 })
       // o fade de entrada e o de saída
       const fade = Math.max(0, 1 - tt / 0.35, (tt - (DUR_PRELUDIO - 0.4)) / 0.4)
       if (fade > 0) { g.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; g.fillRect(0, 0, w, h) }

@@ -2885,3 +2885,10 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 /* (T19) o prelúdio do show: o filmezinho antes da escolha do instrumento */
 .l-show.is-preludio { cursor: pointer; }
 .l-show-pular { position: absolute; right: 16px; bottom: calc(12% + env(safe-area-inset-bottom)); font: 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); pointer-events: none; }
+
+/* (T19, J2: 24 "o show tá lento") com o show aberto, o jogo embaixo some de vez.
+   A Kombi já parava (frameloop "never"), mas o resto da tela de baixo (o HUD, os
+   blurs, as animações, o mapa-mini) seguia sendo composto a cada quadro, por
+   baixo de um show que cobre tudo: medido em 1864×999 a 2x, 66–71 ms por
+   quadro com ele, 17 ms sem. */
+.l-palco:has(.l-show) .l-viagem { visibility: hidden; }
