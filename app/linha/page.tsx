@@ -47,7 +47,7 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, ORDEM_LUGAR, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { Minhoca } from "./disco/Minhoca"
@@ -57,7 +57,9 @@ import { type ResultadoShow } from "./disco/Show"
 import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
-import { PALCO, missaoAgora, ofertasDaFeira, type MissaoAgora, type Oferta } from "./disco/missoes"
+import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, type MissaoId, type Oferta13, type Recompensa13 } from "./disco/portas"
+import { Recompensa } from "./disco/Recompensa"
+import { Rua } from "./disco/Rua"
 import { COR_PISTA } from "./disco/historia"
 import { PingPong } from "./disco/PingPong"
 import { guardarCapsula, guitarLivre } from "./disco/capsula"
@@ -104,32 +106,41 @@ type Tela =
 
 type Aviso = { id: number; titulo: string; texto: string; cor: string }
 
-// (B19) as linhas acesas e ainda não feitas (as ofertas da feira)
-function acesasDoSave(s: Save): PistaId[] {
-  const luz = luzDasPistas(pistasFeitas(s.objetos))
-  return PISTAS.filter((p) => luz[p.faixa] === "aberta").map((p) => p.id)
+// (T02) AS 13 MISSÕES (disco/portas.ts): arte → jogo → a porta abre → a
+// recompensa. A história do save, com as faixas antigas já feitas contando
+function hist13(s: Save) { return sincronizar(historiaDe(s), s.objetos) }
+// a luz das pistas (as torres, atos.ts): a missão da cidade só aparece com a pista acesa
+const luzDoSave = (s: Save) => luzDasPistas(pistasFeitas(s.objetos))
+// (21/10, a feira) a missão de agora na carreira: a que ele PEGOU na feira; sem
+// ela, nenhuma: a feira oferece
+function missaoDoSave(s: Save): MissaoId | null {
+  const h = hist13(s)
+  if (h.fase !== "carreira") return null
+  const id = normalizarMissao(h.missao)
+  return id && !feita13(h, id) ? id : null
 }
-// (21/10, a feira) a missão de agora na carreira: a linha que ele PEGOU na feira
-// (enquanto ainda está acesa); sem ela, nenhuma: a feira oferece
-function missaoDoSave(s: Save): MissaoAgora | null {
-  const h = historiaDe(s)
-  if (h.fase !== "carreira" || !h.missao) return null
-  const pega = h.missao as PistaId
-  return acesasDoSave(s).includes(pega) ? missaoAgora([pega], h.pecas ?? []) : null
-}
-// as ofertas da feira: as acesas que ele não pegou
-function feiraDoSave(s: Save): Oferta[] {
-  const h = historiaDe(s)
+// as ofertas da feira: as disponíveis que ele não pegou
+function feiraDoSave(s: Save): Oferta13[] {
+  const h = hist13(s)
   if (h.fase !== "carreira") return []
-  return ofertasDaFeira(acesasDoSave(s).filter((p) => p !== h.missao), h.pecas ?? [])
+  const pega = missaoDoSave(s)
+  return ofertas13(h, disponiveis(h, luzDoSave(s)).filter((id) => id !== pega))
 }
-// (B8/B19) o show de cada missão: o do bar e o da oficina (a história) e o de cada linha (no palco dela)
-// (21/10 (4)) o show é o Guitar Driver no lugar da missão: o palco é o id do lugar
+// (T02) o show não fecha mais missão: é o Guitar Driver aberto agora. "rua:<faixa>"
+// = a oportunidade na rua (paga); "missao:<id>" = a peça de tocar ao vivo (a do LU2CA)
 function confShow(id: string): { faixa: PistaId; lugar: string; cor: string; palco: string } | null {
-  if (id === "bar") return { faixa: "copo", lugar: "no bar", cor: "#ff6a35", palco: "bar" }
-  if (id === "oficina") return { faixa: "nectar", lugar: "na oficina", cor: "#e0ff4f", palco: "oficina" }
-  const p = PISTAS.find((x) => x.id === id)
-  return p ? { faixa: p.id, lugar: `no palco da ${p.faixa}`, cor: COR_PISTA[p.faixa] ?? "#ffc857", palco: PALCO[p.id] } : null
+  if (id.startsWith("rua:")) {
+    const p = PISTAS.find((x) => x.id === id.slice(4))
+    return p ? { faixa: p.id, lugar: "na rua", cor: COR_PISTA[p.faixa] ?? "#ffc857", palco: "rua" } : null
+  }
+  if (id.startsWith("missao:")) {
+    const m = MISSOES13[id.slice(7) as MissaoId]
+    const como = m && [m.arte.como, m.jogo.como].find((c) => c?.t === "show")
+    if (!m || !como || como.t !== "show") return null
+    const lugar = m.lugar.lugar ? LUGARES[m.lugar.lugar] : null
+    return { faixa: como.faixa, lugar: lugar?.no ?? "no subúrbio", cor: m.cor, palco: m.lugar.lugar ?? "rua" }
+  }
+  return null
 }
 
 export default function LinhaPage() {
@@ -540,6 +551,9 @@ export default function LinhaPage() {
 
   // encostou devagar na vaga do lugar da missão: a cena começa
   const barFechou = useRef(0)
+  // (T02) chegou no lugar da missão pegada (a função mora mais embaixo: chegouNaMissao)
+  const chegouRef = useRef<(m: MissaoId) => void>(() => {})
+  const abrirPortaRef = useRef<(m: MissaoId) => void>(() => {})
   const abrirCena = useCallback((id: LugarId) => {
     // (disco) a história manda: cada fase abre só o lugar dela
     if (D && historiaAtiva(historiaDe(saveRef.current))) {
@@ -552,14 +566,10 @@ export default function LinhaPage() {
         setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" })
         return
       }
-      // (B11) a peça de destreza da carreira (o ping pong da Sexta-Feira)
-      // (B19) a carreira: a vaga da peça de agora abre o jogo dela; a do palco, o show
+      // (T02) a carreira: chegou no lugar da missão pegada: a peça de agora (ou a porta)
       if (h.fase === "carreira" && Date.now() - barFechou.current > 8000) {
         const m = missaoDoSave(saveRef.current)
-        if (m && m.alvo.lugar === id) {
-          if (m.alvo.tipo === "peca" && m.alvo.peca?.id === "pingpong") { setPingpong(true); return }
-          if (m.alvo.tipo === "show") { barFechou.current = Date.now(); setSave((s) => comHistoria(s, (x) => ({ ...x, show: m.pista }))); return }
-        }
+        if (m && alvo13(hist13(saveRef.current), m)?.lugar === id) chegouRef.current(m)
         return
       }
       if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
@@ -606,13 +616,20 @@ export default function LinhaPage() {
     else setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
   }, [cinema, avisar, D])
-  // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = o show
-  // (a Nectar) saiu da oficina: a Kombi solar + turbo, a água foi toda, e o show
+  // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = a oficina
+  // (T02) saiu da oficina: a Kombi solar + turbo, a água foi toda. É a porta da
+  // missão da oficina (as melhorias da Kombi): a recompensa e, sem show, o jogo segue
   const fimOficina = useCallback((r: ResultadoCena) => {
     setCena(null)
     setCinema(null)
     if (!r.completa) return
-    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "show" as const } : {}), show: "oficina", mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
+    const h0 = historiaDe(saveRef.current)
+    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}), mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
+    if (h0.fase === "oficina") {
+      abrirPortaRef.current("oficina")
+      setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
+      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa", ensina: true }), 2500)
+    } else setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
   }, [])
   const fimBarFeito = useRef(false)
   const fimBarDisco = useCallback((r: ResultadoCena) => {
@@ -629,8 +646,9 @@ export default function LinhaPage() {
     }
     // saiu no meio, sem escolher: nada muda (o bar continua esperando)
     if (!r.completa) return
-    // (B18) o bar é a missão 1 (no subúrbio); depois do show, a oficina (missão 2)
-    setSave((s) => comHistoria({ ...s, loops: { ...(s.loops ?? {}), bar: 0 } }, (h) => ({ ...h, fase: "oficina", show: "bar" })))
+    // (T02) negou os copos: sai do bar direto pro jogo (sem show); a próxima é a oficina
+    setSave((s) => comHistoria({ ...s, loops: { ...(s.loops ?? {}), bar: 0 } }, (h) => ({ ...h, fase: "oficina", show: undefined })))
+    setTimeout(() => setFalaIntro({ id: Date.now(), de: "D-Bee", texto: "a kombi não sobe assim. tem uma oficina aqui embaixo: a luz laranja" }), 1500)
   }, [])
   const fimCena = useCallback((r: ResultadoCena) => {
     const c = cena
@@ -754,97 +772,155 @@ export default function LinhaPage() {
     return emTutorial(save) ? (feito(save, "posto") ? l.filter((m) => m.id === PRIMEIRA) : []) : l
   }, [save, nivel])
 
-  // (B11/B19) a carreira: a missão de agora (a checklist e o próximo lugar)
+  // (T02) a carreira: a missão pegada (das 13), a checklist dela (arte, jogo, a porta) e pra onde ir
+  const h13 = useMemo(() => hist13(save), [save])
   const missaoCarreira = useMemo(() => missaoDoSave(save), [save])
+  const m13 = missaoCarreira ? MISSOES13[missaoCarreira] : null
+  const passos13 = useMemo(() => (missaoCarreira ? checklist13(h13, missaoCarreira) : []), [h13, missaoCarreira])
+  const lugar13 = missaoCarreira ? alvo13(h13, missaoCarreira) : null
   // (21/10) a feira: o que a cidade precisa agora (pegar ou largar). Largar uma
   // oferta só tira ela da frente até a próxima missão acabar
   const feira = useMemo(() => feiraDoSave(save), [save])
-  const [largadas, setLargadas] = useState<PistaId[]>([])
+  const [largadas, setLargadas] = useState<MissaoId[]>([])
   // (21/10, o mapa que ensina) tocou no cartão de uma oferta: a pista dela brilha no mapa (some em 6 s)
   const [focoFeira, setFocoFeira] = useState<PistaId | null>(null)
   useEffect(() => { if (!focoFeira) return; const t = setTimeout(() => setFocoFeira(null), 6000); return () => clearTimeout(t) }, [focoFeira])
-  const nFeitas = save.objetos.length
+  const nFeitas = (h13.feitas13 ?? []).length
   useEffect(() => { setLargadas([]) }, [nFeitas])
-  const feiraVisivel = feira.filter((o) => !largadas.includes(o.pista))
-  const pegarMissao = (pista: PistaId) => {
-    setSave((s) => comHistoria(s, (h) => ({ ...h, missao: pista })))
-    setLargadas((l) => l.filter((x) => x !== pista))
-    track("mission_step", { mission_id: `disco-${pista}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
+  const feiraVisivel = feira.filter((o) => !largadas.includes(o.id))
+  const pegarMissao = (id: MissaoId) => {
+    setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id })))
+    setLargadas((l) => l.filter((x) => x !== id))
+    track("mission_step", { mission_id: `disco-${id}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
   }
   // (LU2CA 21/10 (3)) na carreira, a música é o TEMA da missão pegada (sem
   // missão, só os discos): a Corrida toca o instrumental até ele achar a linha
   const soTema = HIST && hist.fase === "carreira"
-  const temaMissao: PistaId | null = soTema ? missaoCarreira?.pista ?? null : null
+  const temaMissao: PistaId | null = soTema ? m13?.faixa ?? null : null
   const fecharOuvir = useCallback(() => setOuvirFim(null), [])
   const largarMissao = () => {
-    const m = hist.missao as PistaId | undefined
+    const m = missaoCarreira
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: undefined })))
     if (m) setLargadas((l) => [...l, m])
   }
-  // (B18) a missão n (3 a 11) é na cidade ou no subúrbio: o show do subúrbio é no palco do chão
-  const nMissao = 3 + PISTAS.filter((p) => save.objetos.includes(p.id as EstacaoId)).length
-  const showNoSub = !!missaoCarreira && missaoCarreira.alvo.tipo === "show" && ORDEM_LUGAR[nMissao] === "suburbio"
-  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" && !hist.show ? "oficina" : showNoSub ? "palco" : null
+  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : hist.fase === "nectar" && hist.nectar === "oficina" ? { t: "lugar", missao: "nectar", lugar: "oficina", pegar: false }
-    : missaoCarreira && !showNoSub ? { t: "lugar", missao: "sexta", lugar: missaoCarreira.alvo.lugar as LugarId, pegar: false }
+    : lugar13?.lugar ? { t: "lugar", missao: "sexta", lugar: lugar13.lugar, pegar: false }
     : null
-  // (B8) o show marcado: o fim de cada missão (o prólogo é o do bar)
+  // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
   const showConf = showAgora ? confShow(showAgora)! : null
+  // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
+  const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
+  const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
+  const [recompensa, setRecompensa] = useState<Recompensa13 | null>(null)
+  const [rua, setRua] = useState(false)
   // onde o dono está (o caderno lê isso pra dizer a parte do jogo de cada nota)
   useEffect(() => {
     ;(window as unknown as { __cnOnde?: Onde }).__cnOnde = { tela: tela.t, cena: !!cena, show: showAgora ?? null, jornal: !!jornal, visor: visor ?? null, pingpong, celular: tela.t === "home" || tela.t === "app" || tela.t === "chat" }
   }, [tela.t, cena, showAgora, jornal, visor, pingpong])
+  // A PORTA ABRE: a missão fica feita, a recompensa entra no save (a faixa no
+  // Guitar Driver, a referência no BATIDA, o neon$) e aparece grande na tela.
+  // A missão da cidade acende a pista dela pra sempre (o objeto da faixa: as torres)
+  const abrirPortaDe = (id: MissaoId) => {
+    const s0 = saveRef.current
+    if (feita13(hist13(s0), id)) return
+    const m = MISSOES13[id], r = recompensaDe(id)
+    const faixaNaCidade = m.faixa && (m.onde === "cidade" || historiaDe(s0).fase === "carreira") ? (m.faixa as EstacaoId) : null
+    setSave((s) => comHistoria(
+      { ...s, objetos: faixaNaCidade && !s.objetos.includes(faixaNaCidade) ? [...s.objetos, faixaNaCidade] : s.objetos, neon: (s.neon ?? 0) + r.neon, violao: m.abre.includes("violao") ? true : s.violao },
+      (h) => abrirPorta(sincronizar(h, s.objetos), id),
+    ))
+    setRecompensa(r)
+    track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
+  }
+  // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
+  const chegouNaMissao = (id: MissaoId) => {
+    if (recompensa || pingpong || provaMissao || showAgora || cena) return
+    const pc = pecaAgora13(hist13(saveRef.current), id)
+    if (!pc) { abrirPortaDe(id); return }
+    const como = pc.peca.como
+    barFechou.current = Date.now()
+    if (!como || como.t === "historia" || como.t === "evento") return
+    pecaAberta.current = { missao: id, qual: pc.qual }
+    if (como.t === "pingpong") setPingpong(true)
+    else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
+    else if (como.t === "prova") setProvaMissao({ missao: id, qual: pc.qual, id: como.id, cor: MISSOES13[id].cor })
+  }
+  // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
+  const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
+    pecaAberta.current = null
+    setSave((s) => comHistoria(s, (h) => concluir(h, id, qual)))
+    setTimeout(() => {
+      const h = hist13(saveRef.current)
+      if (normalizarMissao(h.missao) === id && !feita13(h, id) && alvo13(h, id)) chegouRef.current(id)
+    }, 900)
+  }
+  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe })
+  // um evento da rua conta pra peça de agora (a montanha-russa da Nizzy…)
+  const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
   const fimShow = (r: ResultadoShow) => {
     const id = hist.show!, conf = confShow(id)!
-    // (B19) o show de uma linha fecha a missão dela: o objeto da faixa no save (a próxima acende)
-    const linha = PISTAS.some((p) => p.id === id) ? (id as EstacaoId) : null
-    if (linha) setSave((s) => (s.objetos.includes(linha) ? s : { ...s, objetos: [...s.objetos, linha] }))
-    if (linha) setOuvirFim({ pista: linha as PistaId, id: Date.now() })
-    const m = calcularManchete(r, id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
-    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m], ...(id === "oficina" && h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}) })))
-    if (id === "oficina" && hist.fase === "oficina") {
-      setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
-      setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "agora ela voa. segura o espaço. a cidade é lá em cima: pousa numa pista acesa" , ensina: true }), 2500)
-    } else if (id === "oficina") setTimeout(() => setFalaIntro({ id: Date.now(), de: "o mecânico", texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
+    const m = calcularManchete(r, id.startsWith("rua:") ? id.slice(4) : id, conf.lugar, saveRef.current.popularidade ?? 0, Date.now())
+    setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop), neon: (s.neon ?? 0) + m.neon }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m] })))
+    // a peça de uma missão (tocar ao vivo): conta como feita e a missão segue
+    if (id.startsWith("missao:")) {
+      // (a peça vem do save: recarregar a página no meio do show não perde a missão)
+      const mid = normalizarMissao(id.slice(7))
+      const pc = mid ? pecaAgora13(hist13(saveRef.current), mid) : null
+      if (mid && pc?.peca.como?.t === "show") pecaFeitaNaMissao(mid, pc.qual)
+      else pecaAberta.current = null
+      return
+    }
+    // o show na rua: o trampo. Paga, e o jornal do dia seguinte fala dele
     setJornal(m)
   }
   // o que o anel do holo diz (curto: o lugar, não a explicação)
-  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? (hist.show ? "o show" : "a oficina · o subúrbio") : hist.fase === "subir" ? "a cidade · lá em cima"
-    : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o show", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
-    : missaoCarreira ? (missaoCarreira.alvo.tipo === "show" ? `o show · ${PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa}${showNoSub ? " · no subúrbio" : ""}` : missaoCarreira.alvo.peca!.nome)
+  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? "a oficina · o subúrbio" : hist.fase === "subir" ? "a cidade · lá em cima"
+    : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o jardim", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
+    : m13 ? (passos13.find((x) => x.estado === "agora")?.nome.split(" · ")[1] ?? m13.quem)
     : feira.length ? `a cidade precisa · ${feira.length}` : null
   // (22/10, o Omnitrix) a checklist da missão pegada gira em volta da bolinha (o anel do holo)
   const checklistHolo = useMemo(() => {
-    if (!HIST || !missaoCarreira) return null
-    const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
-    return { chave: missaoCarreira.pista, cor: COR_PISTA[p.faixa], titulo: `${p.faixa} · ${p.personagem}`, nome: p.faixa, passos: missaoCarreira.passos }
-  }, [HIST, missaoCarreira])
-  // (22/10) as missões moram no mapa: um ícone por missão (a pegada, ou as ofertas da feira) e,
+    if (!HIST || !m13) return null
+    return { chave: m13.id, cor: m13.cor, titulo: `${m13.quem}${m13.faixa ? ` · ${PISTAS.find((x) => x.id === m13.faixa)!.faixa}` : ""}`, nome: m13.quem, passos: passos13 }
+  }, [HIST, m13, passos13])
+  // (22/10) as missões moram no mapa: um ícone por missão com pista (a pegada, ou as ofertas da feira) e,
   // no painel do mapa, as opções pra clicar (a checklist da de agora, ou a feira)
   const mapaMissoes = useMemo(() => {
     if (!HIST || hist.fase !== "carreira") return null
-    const daPista = (id: PistaId, agora: boolean) => { const p = PISTAS.find((x) => x.id === id)!; return { id, faixa: p.faixa, cor: COR_PISTA[p.faixa] ?? "#ffc857", agora } }
-    return missaoCarreira ? [daPista(missaoCarreira.pista as PistaId, true)] : feiraVisivel.map((o) => daPista(o.pista, false))
-  }, [HIST, hist.fase, missaoCarreira, feiraVisivel])
-  const mapaPainel = !mapaMissoes ? null : missaoCarreira ? (() => {
-    const p = PISTAS.find((x) => x.id === missaoCarreira.pista)!
-    return (
-      <section className="l-missoes-agora" style={{ ["--cor" as string]: COR_PISTA[p.faixa] }}>
-        <small>agora · {p.faixa} · {p.personagem}</small>
-        <ul className="l-missoes-check">
-          {missaoCarreira.passos.map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}</li>)}
-        </ul>
-        <button type="button" className="l-feira-largar" onClick={largarMissao}>largar essa missão</button>
-      </section>
-    )
-  })() : feiraVisivel.length ? (
-    <FeiraOfertas ofertas={feiraVisivel} onPegar={(p) => { setFocoFeira(null); pegarMissao(p) }} onLargar={(p) => { setFocoFeira(null); setLargadas((l) => [...l, p]) }} onFoco={setFocoFeira} foco={focoFeira} />
+    const daPista = (id: PistaId | null, cor: string, agora: boolean) => { const p = id ? PISTAS.find((x) => x.id === id) : null; return p ? [{ id: p.id, faixa: p.faixa, cor, agora }] : [] }
+    return m13 ? daPista(m13.faixa, m13.cor, true) : feiraVisivel.flatMap((o) => daPista(o.faixa, o.cor, false))
+  }, [HIST, hist.fase, m13, feiraVisivel])
+  const painelMissao13 = m13 ? (
+    <section className="l-missoes-agora" style={{ ["--cor" as string]: m13.cor }}>
+      <small>agora · {m13.quem}{m13.faixa ? ` · ${PISTAS.find((x) => x.id === m13.faixa)!.faixa}` : ""}</small>
+      <ul className="l-missoes-check">
+        {passos13.map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}<em>{x.estado === "agora" ? (lugar13 ? "agora" : "agora · na rua") : x.estado === "em breve" ? "em breve" : ""}</em></li>)}
+      </ul>
+      <button type="button" className="l-feira-largar" onClick={largarMissao}>largar essa missão</button>
+    </section>
   ) : null
+  // (T02, J2: 23, 26) a rua: cantar (Guitar Driver) e fazer beat, abertos desde o começo
+  const ruaBotoes = HIST && hist.fase === "carreira" ? (
+    <div className="l-rua-bts">
+      <small className="l-missoes-sub">na rua · ganhar uma grana</small>
+      <button type="button" data-fecha-mapa onClick={() => setRua(true)}>cantar · Guitar Driver</button>
+      <button type="button" data-fecha-mapa onClick={() => abrirApp("batida")}>fazer um beat · B4TIDA</button>
+    </div>
+  ) : null
+  const mapaPainel = !mapaMissoes ? null : m13 ? <>{painelMissao13}{ruaBotoes}</> : (
+    <>
+      {feiraVisivel.length ? (
+        <FeiraOfertas ofertas={feiraVisivel} onPegar={(id) => { setFocoFeira(null); pegarMissao(id) }} onLargar={(id) => { setFocoFeira(null); setLargadas((l) => [...l, id]) }} onFoco={(o) => setFocoFeira(o.faixa)} foco={focoFeira} />
+      ) : null}
+      {ruaBotoes}
+    </>
+  )
   // o tutorial depois do bar: o Mubarak vai de carona até a casa do Drewboy
   const alvoTut: Alvo | null = irAoPosto(save) ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : levarDrewboy(save) ? { t: "lugar", missao: "copo", lugar: "casa-drewboy", pegar: false } : null
@@ -1042,14 +1118,18 @@ export default function LinhaPage() {
       setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, especial: "disco-casa" })
     }
     if (e === "cidade" && h.fase === "dunas") {
-      setSave((s) => comHistoria(s, (x) => ({ ...x, fase: "bar" })))
+      // (T02) a missão da D-Bee: a travessia era o jogo (o drift e o holo). A porta
+      // abre (o holo e o violão) e a recompensa aparece; depois, o bar
+      setSave((s) => comHistoria(s, (x) => ({ ...concluir(x, "dbee", "jogo"), fase: "bar" })))
+      abrirPortaDe("dbee")
       // (RASCUNHO, B18) a D-Bee pelo rádio: o bar é no subúrbio, embaixo das pistas
       setTimeout(() => setFalaIntro({ id: Date.now(), de: "D-Bee", texto: "chegou. o bar é aí embaixo: o letreiro laranja. alguém te espera" }), 1500)
     }
     // (B18) o subúrbio no chão: o bar (missão 1), a oficina (missão 2), o palco
     if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
-    if (e === "chao:oficina" && h.fase === "oficina" && !h.show && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
-    if (e === "chao:palco" && h.fase === "carreira") { const m = missaoDoSave(saveRef.current); if (m && m.alvo.tipo === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: m.pista }))) }
+    if (e === "chao:oficina" && h.fase === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
+    // (T02) o chão do subúrbio (a quadra, os túneis): chegou no lugar da missão pegada
+    if (e.startsWith("chao:") && h.fase === "carreira") { const m = missaoDoSave(saveRef.current); if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m) }
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
     if (e === "subiu" && h.fase === "subir") {
       setSave((s) => comHistoria(s, (x) => ({ ...x, fase: "carreira" })))
@@ -1060,12 +1140,13 @@ export default function LinhaPage() {
     if (e === "drone") setSave((s) => comHistoria(s, (x) => ({ ...x, drone: true })))
     // (a Nectar, B9) a Kombi quebrou → regar 3 flores de patins → o galão → a oficina → o show → o jardim
     if (e === "quebrou" && h.fase === "nectar") setSave((s) => comHistoria(s, (x) => ({ ...x, nectar: "regar", floresIni: x.flores ?? 0 })))
+    if (e === "flor") eventoDaRua("flor")
     if (e === "flor") {
       const flores = (h.flores ?? 0) + 1
       if (h.fase === "nectar" && h.nectar === "regar" && flores - (h.floresIni ?? 0) >= 3) {
         setSave((s) => comHistoria(s, (x) => ({ ...x, flores, nectar: "galao" })))
         setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "alguém deixou um galão no posto dessa pista. com um bilhete. sem nome" }), 1800)
-      } else if (h.fase === "nectar" && h.nectar === "flores" && flores - (h.floresIni ?? 0) >= 5) {
+      } else if (h.fase === "nectar" && (h.nectar === "flores" || h.nectar === "show") && flores - (h.floresIni ?? 0) >= 5) {
         // a Nectar feita: o objeto dela no save; Sexta-Feira e DopaminA acendem
         setSave((s) => comHistoria({ ...s, objetos: s.objetos.includes("nectar") ? s.objetos : [...s.objetos, "nectar"] }, (x) => ({ ...x, flores, nectar: "feita", fase: "carreira" })))
         setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "a pista das flores tá florindo. e duas pistas acenderam lá do outro lado. quem fez isso?" }), 1500)
@@ -1077,7 +1158,8 @@ export default function LinhaPage() {
   const fimCasaDisco = () => {
     setCena(null)
     setCinema(null)
-    setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "dunas", holo: true })))
+    // (T02) a arte da missão da D-Bee (o tambor, na cena) ficou feita
+    setSave((s) => comHistoria(s, (h) => ({ ...concluir(h, "dbee", "arte"), fase: "dunas", holo: true })))
     fonteSom.set("disco")
     disco.tocarLista(ACERVO.faixas.map((f) => f.src))
   }
@@ -1123,11 +1205,13 @@ export default function LinhaPage() {
       return
     }
     if (id === "violao") setSave((s) => ({ ...s, jogados: { ...s.jogados, violao: 1 } }))
-    // (disco, B13) o GUITAR DRIVER fica trancado até o fim da carreira; no fim,
-    // abre como a cápsula do tempo (os shows dele vão junto)
+    // (T02, J2: 23, 26) no disco, o GUITAR DRIVER é aberto desde o começo: cantar
+    // na rua, com as músicas que as missões já liberaram (a cápsula do tempo do
+    // fim, B13, segue guardando os shows)
     if (D && id === "guitar") {
-      if (!guitarLivre(saveRef.current)) return
-      guardarCapsula(saveRef.current)
+      if (guitarLivre(saveRef.current)) guardarCapsula(saveRef.current)
+      setRua(true)
+      return
     }
     // (disco, LU2CA 21/10) o app RÁDIO 222 e o [UNTITLED] morreram: quem chegar
     // neles por outro caminho cai no FR3Q_ (a rádio mora no holograma do holo)
@@ -1267,7 +1351,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
@@ -1304,7 +1388,7 @@ export default function LinhaPage() {
             saltoHora={saltoHora}
             regadas={regadasHoje}
             onRegar={regouCanteiro}
-            onMontanha={(n) => setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n }))}
+            onMontanha={(n) => { setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n })); if (n >= 2) eventoDaRua("montanha") }}
             onAbastecer={(o) => {
               const s0 = saveRef.current
               // de patins (a gasolina acabou): o galão vai direto no tanque; se já tinha um cheio, só despeja
@@ -1379,22 +1463,15 @@ export default function LinhaPage() {
         {painelMissoes && HIST && tela.t === "corrida" && !emSala && (
           <div className="l-missoes is-disco" role="dialog" aria-label="Missão">
             <header><b>missão</b><button type="button" onClick={() => setPainelMissoes(false)} aria-label="Fechar">×</button></header>
-            {missaoCarreira ? (
-              <section className="l-missoes-agora" style={{ ["--cor" as string]: COR_PISTA[PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa] }}>
-                <small>agora · {PISTAS.find((p) => p.id === missaoCarreira.pista)!.faixa} · {PISTAS.find((p) => p.id === missaoCarreira.pista)!.personagem}</small>
-                <ul className="l-missoes-check">
-                  {missaoCarreira.passos.map((p) => <li key={p.nome} className={`is-${p.estado === "em breve" ? "breve" : p.estado}`}><i aria-hidden="true">{p.estado === "feita" ? "✓" : ""}</i>{p.nome}<em>{p.estado === "agora" ? "agora" : p.estado === "em breve" ? "em breve" : ""}</em></li>)}
-                </ul>
-                <button type="button" className="l-feira-largar" onClick={largarMissao}>largar essa missão</button>
-              </section>
-            ) : feira.length ? null : (
+            {painelMissao13 ?? (feira.length ? null : (
               <section className="l-missoes-agora" style={{ ["--cor" as string]: "#e0ff4f" }}>
                 <small>agora</small>
                 <p>{objetivoDisco ?? "o mapa está aberto: explora"}</p>
               </section>
-            )}
-            {feira.length > 0 && <small className="l-missoes-sub">a cidade precisa</small>}
-            {feira.length > 0 && <FeiraOfertas ofertas={feira} onPegar={(p) => { pegarMissao(p); setPainelMissoes(false) }} />}
+            ))}
+            {!m13 && feira.length > 0 && <small className="l-missoes-sub">a cidade precisa</small>}
+            {!m13 && feira.length > 0 && <FeiraOfertas ofertas={feira} onPegar={(id) => { pegarMissao(id); setPainelMissoes(false) }} />}
+            {ruaBotoes}
           </div>
         )}
         {/* (22/10) a feira saiu da tela: mora no mapa (o anel e o mapa abrem a mesma tela) */}
@@ -1468,9 +1545,36 @@ export default function LinhaPage() {
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()
-          if (venceu) setSave((s) => comHistoria({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + 3), neon: (s.neon ?? 0) + 10 }, (h) => ({ ...h, pecas: [...new Set([...(h.pecas ?? []), "sexta:pingpong"])] })))
+          const p = pecaAberta.current
+          pecaAberta.current = null
+          if (venceu) {
+            setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + 3), neon: (s.neon ?? 0) + 10 }))
+            if (p) pecaFeitaNaMissao(p.missao, p.qual)
+          }
         }} />}
-        {jornal && <Jornal m={jornal} cor={confShow(jornal.missao)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
+        {/* (T02) a peça de uma missão que é um minijogo do fliperama (sintonizar, respirar…) */}
+        {provaMissao && (
+          <div className="l-prova-missao" role="dialog" aria-label={`a missão de ${MISSOES13[provaMissao.missao].quem}`} onPointerDown={(e) => e.stopPropagation()}>
+            <small>{MISSOES13[provaMissao.missao].quem} · {MISSOES13[provaMissao.missao][provaMissao.qual].nome}</small>
+            <Prova id={provaMissao.id} cor={provaMissao.cor} onFim={() => {
+              // (pular também vale: a prova tem o "pular, sem culpa" dela; nada trava)
+              const p = provaMissao
+              setProvaMissao(null)
+              barFechou.current = Date.now()
+              pecaFeitaNaMissao(p.missao, p.qual)
+            }} />
+          </div>
+        )}
+        {/* (T02) a porta abriu: a recompensa, grande; "seguir" volta direto pro jogo */}
+        {recompensa && <Recompensa r={recompensa} onSeguir={() => {
+          const r = recompensa
+          setRecompensa(null)
+          const m = MISSOES13[r.missao]
+          if (m.faixa && m.onde === "cidade") setOuvirFim({ pista: m.faixa, id: Date.now() })
+        }} />}
+        {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
+        {rua && <Rua h={h13} onFechar={() => setRua(false)} onTocar={(f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: `rua:${f}` }))) }} />}
+        {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
         {ouvirFim && !jornal && tela.t === "corrida" && <OuvirFim key={ouvirFim.id} pista={ouvirFim.pista} quando={ouvirFim.id} onFechar={fecharOuvir} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq save={save} /> : undefined}</Visor>}
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
@@ -1609,19 +1713,19 @@ export default function LinhaPage() {
 
 // (21/10) as ofertas da feira: quem pede, o que a cidade precisa, o primeiro
 // passo e a música a que leva; pegar (vira a missão de agora) ou largar
-function FeiraOfertas({ ofertas, onPegar, onLargar, onFoco, foco }: { ofertas: Oferta[]; onPegar: (p: PistaId) => void; onLargar?: (p: PistaId) => void; onFoco?: (p: PistaId) => void; foco?: PistaId | null }) {
+function FeiraOfertas({ ofertas, onPegar, onLargar, onFoco, foco }: { ofertas: Oferta13[]; onPegar: (id: MissaoId) => void; onLargar?: (id: MissaoId) => void; onFoco?: (o: Oferta13) => void; foco?: PistaId | null }) {
   return (
     <ul className="l-feira-lista">
       {ofertas.map((o) => {
-        const p = PISTAS.find((x) => x.id === o.pista)!
+        const emFoco = !!foco && foco === o.faixa
         return (
-          <li key={o.pista} ref={foco === o.pista ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined} className={foco === o.pista ? "is-foco" : ""} style={{ ["--cor" as string]: COR_PISTA[p.faixa] ?? "#ffc857" }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o.pista) }}>
-            <span className="l-feira-quem">{p.personagem}<small>leva à {p.faixa}{o.feitas ? ` · ${o.feitas}/${o.total}` : ""}</small></span>
+          <li key={o.id} ref={emFoco ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined} className={emFoco ? "is-foco" : ""} style={{ ["--cor" as string]: o.cor }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o) }}>
+            <span className="l-feira-quem">{o.quem}<small>leva {o.leva}{o.feitas ? ` · ${o.feitas}/${o.total}` : ""}</small></span>
             <p>{o.pedido}</p>
             <em>{o.primeiro}</em>
             <div className="l-feira-bts">
-              <button type="button" data-fecha-mapa onClick={() => onPegar(o.pista)}>pegar</button>
-              {onLargar && <button type="button" className="is-largar" onClick={() => onLargar(o.pista)}>largar</button>}
+              <button type="button" data-fecha-mapa onClick={() => onPegar(o.id)}>pegar</button>
+              {onLargar && <button type="button" className="is-largar" onClick={() => onLargar(o.id)}>largar</button>}
             </div>
           </li>
         )
