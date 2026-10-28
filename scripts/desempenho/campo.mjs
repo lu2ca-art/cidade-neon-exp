@@ -7,7 +7,7 @@ import { chromium } from "playwright"
 import { semear, entrarDirigindo } from "./save.mjs"
 
 const URL = `${process.env.BASE ?? "http://localhost:3110"}/linha?mapa=disco&medir${process.env.Q ?? ""}`
-const browser = await chromium.launch({ headless: true, channel: "chrome", args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"] })
+const browser = await chromium.launch({ headless: true, channel: "chrome", args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required", "--disable-frame-rate-limit=false"] })
 const page = await browser.newPage({ viewport: { width: +(process.env.W ?? 1280), height: +(process.env.H ?? 800) }, deviceScaleFactor: +(process.env.DPR ?? 1) })
 await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
 await semear(page)
@@ -44,7 +44,7 @@ await page.evaluate(() => { window.__campo.q = [] })
 await page.waitForTimeout(+(process.env.DUR ?? 20_000))
 const r = await page.evaluate(() => {
   const q = window.__campo.q.slice(1).sort((a, b) => a - b), med = q.reduce((a, b) => a + b, 0) / q.length
-  return { quadros: q.length, msMedio: +med.toFixed(1), p50: +q[Math.floor(q.length / 2)].toFixed(1), p95: +q[Math.floor(q.length * 0.95)].toFixed(1), draws: window.__gl.info.render.calls }
+  return { quadros: q.length, msMedio: +med.toFixed(1), p50: +q[Math.floor(q.length / 2)].toFixed(1), p95: +q[Math.floor(q.length * 0.95)].toFixed(1) }
 })
 await page.keyboard.up("ArrowUp")
 await page.screenshot({ path: process.env.FOTO ?? "campo.png" }).catch(() => {})

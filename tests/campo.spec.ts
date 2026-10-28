@@ -65,10 +65,12 @@ async function preparar(page: Page, ang: number, dist: number) {
   }, { ang, dist })
 }
 
-async function amostrar(page: Page, k: number, ms: number): Promise<Amostra[]> {
-  return page.evaluate(({ k, ms }) => new Promise<Amostra[]>((pronto) => {
+// amostra até a Kombi rodar `seg` segundos de JOGO (no navegador sem placa de
+// vídeo do teste o quadro é lento; o relógio do jogo é o que vale), no máximo 90 s reais
+async function amostrar(page: Page, k: number, seg: number): Promise<Amostra[]> {
+  return page.evaluate(({ k, seg }) => new Promise<Amostra[]>((pronto) => {
     const w = window as unknown as { __jogo: { wx: number; wz: number; v: number; tempo: number }; __colisores: number[] }
-    const c = w.__colisores, out: Amostra[] = [], t0 = performance.now()
+    const c = w.__colisores, out: Amostra[] = [], t0 = performance.now(), j0 = w.__jogo.tempo
     const dist = (x: number, z: number) => {
       const dx = x - c[k], dz = z - c[k + 1], tx = c[k + 2], tz = c[k + 3]
       const lx = Math.abs(dx * tz - dz * tx) - c[k + 4], lz = Math.abs(dx * tx + dz * tz) - c[k + 5]
@@ -76,14 +78,15 @@ async function amostrar(page: Page, k: number, ms: number): Promise<Amostra[]> {
     }
     const passo = () => {
       const j = w.__jogo
-      out.push({ x: j.wx, z: j.wz, v: j.v, d: dist(j.wx, j.wz), t: j.tempo })
-      if (performance.now() - t0 < ms) requestAnimationFrame(passo); else pronto(out)
+      if (!out.length || out[out.length - 1].t !== j.tempo) out.push({ x: j.wx, z: j.wz, v: j.v, d: dist(j.wx, j.wz), t: j.tempo })
+      if (j.tempo - j0 < seg && performance.now() - t0 < 90_000) requestAnimationFrame(passo); else pronto(out)
     }
     passo()
-  }), { k, ms })
+  }), { k, seg })
 }
 
 function conferir(nome: string, a: Amostra[]) {
+  if (process.env.DEBUG_CAMPO) console.log(nome, a.filter((_, i) => i % 5 === 0).map((s) => `${s.d.toFixed(1)}/${s.v.toFixed(0)}/${s.t.toFixed(1)}`).join(" "))
   const toca = a.findIndex((s) => s.d < 1.75)
   expect(toca, `${nome}: chegou na cerca`).toBeGreaterThanOrEqual(0)
   // nunca entra no prédio (o raio da Kombi é 1,6 m da parede)
@@ -105,7 +108,7 @@ function conferir(nome: string, a: Amostra[]) {
 }
 
 test("o campo de força: bate num prédio e segue sem travar", async ({ page }) => {
-  test.setTimeout(180_000)
+  test.setTimeout(300_000)
   mkdirSync(PASTA, { recursive: true })
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
@@ -115,14 +118,14 @@ test("o campo de força: bate num prédio e segue sem travar", async ({ page }) 
   // 1) de frente (o pior caso do pinball: voltava pelo mesmo caminho)
   const k1 = await preparar(page, 0.04, 14)
   expect(k1, "achou um prédio isolado no chão").toBeGreaterThanOrEqual(0)
-  const a1 = await amostrar(page, k1, 5_000)
+  const a1 = await amostrar(page, k1, 4)
   await page.screenshot({ path: `${PASTA}/1-de-frente.png` })
   conferir("de frente", a1)
 
   // 2) de lado, segurando o volante contra a parede: gruda e desliza
   const k2 = await preparar(page, -0.6, 14)
   await page.keyboard.down("ArrowLeft")
-  const a2 = await amostrar(page, k2, 5_000)
+  const a2 = await amostrar(page, k2, 4)
   await page.screenshot({ path: `${PASTA}/2-de-lado.png` })
   await page.keyboard.up("ArrowLeft")
   conferir("de lado, volante contra", a2)
