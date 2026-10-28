@@ -9,6 +9,8 @@ const PARTES: [string, string | null][] = [
   ["carreira.meio", "carreira"], ["missao.nizzy", "carreira"], ["missao.xeriff", "carreira"], ["missao.lu2ca", "carreira"], ["missao.lu2ca.letra", "carreira"], ["missao.lu2ca.show", "carreira"], ["missao.ella", "carreira"], ["missao.quadra", "carreira"],
   // (T03) a loja aberta, com grana
   ["loja", "carreira"],
+  // (T20) os palcos: o menu aberto (o começo e o topo)
+  ["palcos", "carreira"], ["palcos.topo", "carreira"],
 ]
 
 for (const [parte, fase] of PARTES) {
