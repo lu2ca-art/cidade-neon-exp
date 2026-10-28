@@ -4,6 +4,7 @@
 // simplesmente não acontecem no celular.
 
 import { TONS } from "./tons"
+import { Trilha, aplicarFadeMinhoca, curvaDistorcao, curvaMinhoca, type CtxLike, type DepsTrilha, type NosFade } from "./disco/trilha"
 import { track, type MusicSource } from "@/lib/analytics"
 
 let ctx: AudioContext | null = null
@@ -59,6 +60,9 @@ function saidaCanal(k: CanalVolume): AudioNode | null {
 }
 // (tambor, 22/10) quem sintetiza som fora daqui sai pelo mesmo mestre (respeita o mudo)
 export function saidaSom(): AudioNode | null { return saida() }
+// (T40) a trilha das missões sai pelo volume da música (respeita o mudo), mas
+// SEM o abafo: o som da missão é o som do lugar, não vem "de outro cômodo"
+export function saidaMusicaLimpa(): AudioNode | null { return saidaCanal("musica") }
 
 // A MÚSICA ABAFADA (05/10, LU2CA): durante a missão (dentro de um lugar) e
 // quando o telefone toca, o rádio e o toca-discos continuam, mais baixos e
@@ -82,10 +86,13 @@ let abafando = 0
 // (LU2CA 19/10) um jogo aberto no holo: a música PARA (o jogo tem o som dele);
 // fechou, ela volta de onde estava. A voz de um personagem só abafa
 let silenciando = 0
+// (T40) a Kombi cala porque o som de uma missão entrou: a música para, mas a
+// trilha da missão (que também sai por aqui) segue
+let silenciandoKombi = 0
 function aplicarAbafo() {
   const c = audioCtx()
   if (!c || !abafo() || !abafoF || !abafoG) return
-  const on = abafando > 0, mudo = silenciando > 0
+  const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0
   abafoF.frequency.setTargetAtTime(on ? 650 : 20000, c.currentTime, on ? 0.2 : 0.5)
   abafoG.gain.setTargetAtTime(mudo ? 0 : on ? 0.4 : 1, c.currentTime, on || mudo ? 0.2 : 0.5)
 }
@@ -108,9 +115,15 @@ export function ondaMusica(buf: Uint8Array<ArrayBuffer>): boolean {
   ondaA.getByteTimeDomainData(buf)
   return true
 }
+export function silenciarKombi(sim: boolean) {
+  silenciandoKombi = Math.max(0, silenciandoKombi + (sim ? 1 : -1))
+  pistaSom.segurar(silenciando > 0 || silenciandoKombi > 0)
+  aplicarAbafo()
+}
 export function silenciar(sim: boolean) {
   silenciando = Math.max(0, silenciando + (sim ? 1 : -1))
-  pistaSom.segurar(silenciando > 0)
+  pistaSom.segurar(silenciando > 0 || silenciandoKombi > 0)
+  trilha.segurar(silenciando > 0)
   aplicarAbafo()
 }
 
@@ -733,6 +746,8 @@ export const voz = new Voz()
 type OuvinteDisco = (s: { src: string | null; tocando: boolean }) => void
 class Disco {
   el: HTMLAudioElement | null = null
+  fx: { nivel: GainNode; molhado: GainNode; seco: GainNode; filtro: BiquadFilterNode; shaper: WaveShaperNode } | null = null
+  private minhocaTimer: ReturnType<typeof setInterval> | null = null
   src: string | null = null
   private ouvintes = new Set<OuvinteDisco>()
   private garantir() {
@@ -745,9 +760,25 @@ class Disco {
     const dst = abafo()
     if (c && dst) {
       try {
+        // (T40) a entrada do buraco de minhoca: passa-baixa + um caminho distorcido
+        // que se mistura com o limpo. Fora da minhoca é transparente (nivel 1,
+        // seco 1, molhado desligado)
         const g = c.createGain()
         g.gain.value = 0.9
-        c.createMediaElementSource(el).connect(g).connect(dst)
+        const filtro = c.createBiquadFilter()
+        filtro.type = "lowpass"
+        filtro.frequency.value = 20000
+        const seco = c.createGain()
+        const molhado = c.createGain()
+        molhado.gain.value = 0
+        const nivel = c.createGain()
+        const shaper = c.createWaveShaper()
+        shaper.curve = curvaDistorcao()
+        c.createMediaElementSource(el).connect(filtro)
+        filtro.connect(seco).connect(nivel)
+        shaper.connect(molhado).connect(nivel)
+        nivel.connect(g).connect(dst)
+        this.fx = { nivel, molhado, seco, filtro, shaper }
       } catch { el.volume = 0.9 }
     } else el.volume = 0.9
     // o disco toca inteiro: acabou uma faixa, entra a próxima
@@ -782,6 +813,33 @@ class Disco {
     this.emitir()
   }
   parar() { this.el?.pause(); this.emitir() }
+  // (T40) o fade-in do buraco de minhoca: a faixa chega distorcida, abafada e
+  // baixinha e vai ficando limpa em `seg` segundos. Tudo agendado no relógio do
+  // áudio; o ritmo (a velocidade da faixa) acompanha por um timer leve
+  entradaMinhoca(seg: number) {
+    const el = this.garantir()
+    const c = audioCtx()
+    const fx = this.fx
+    if (!c || !fx) return
+    const k = aplicarFadeMinhoca(c, fx, seg)
+    try { fx.filtro.connect(fx.shaper) } catch {}
+    const pitch = el as HTMLAudioElement & { preservesPitch?: boolean }
+    pitch.preservesPitch = false
+    const ini = performance.now()
+    if (this.minhocaTimer) clearInterval(this.minhocaTimer)
+    const fim = () => {
+      if (this.minhocaTimer) clearInterval(this.minhocaTimer)
+      this.minhocaTimer = null
+      el.playbackRate = 1
+      pitch.preservesPitch = true
+      try { fx.filtro.disconnect(fx.shaper) } catch {} // o caminho distorcido sai de cena (desempenho)
+    }
+    this.minhocaTimer = setInterval(() => {
+      const p = (performance.now() - ini) / (seg * 1000)
+      if (p >= 1) return fim()
+      el.playbackRate = k.ritmo[Math.min(k.ritmo.length - 1, Math.floor(p * (k.ritmo.length - 1)))]
+    }, 100)
+  }
   emitir() { const s = { src: this.src, tocando: this.tocando }; this.ouvintes.forEach((f) => f(s)) }
   ouvir(f: OuvinteDisco) { this.ouvintes.add(f); return () => { this.ouvintes.delete(f) } }
 }
@@ -792,19 +850,41 @@ export type Fonte = "radio" | "disco" | "off"
 const CHAVE_FONTE = "cn-linha-fonte"
 let fonteAtual: Fonte = "off"
 try { const f = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_FONTE) : null; if (f === "radio" || f === "disco") fonteAtual = f } catch {}
-const ouvintesFonte = new Set<(f: Fonte) => void>()
+const ouvintesFonte = new Set<(f: Fonte, auto?: boolean) => void>()
+// (T40) A RÁDIO SÓ PEGA PERTO DAS PISTAS. Fora do alcance (no deserto, ou longe
+// das pistas), ligar a rádio deixa no toca-discos; chegou perto de uma pista, a
+// rádio que a pessoa quis volta sozinha (auto = true avisa quem toca a faixa).
+// `discoPadrao`: o disco que toca se o toca-discos ainda não tem nenhum
+let radioPega = true
+let radioAdiada = false
+const retomarDisco = () => {
+  if (disco.el && disco.src) disco.el.play().catch(() => {})
+  else if (fonteSom.discoPadrao.length) disco.tocarLista(fonteSom.discoPadrao)
+}
 export const fonteSom = {
+  discoPadrao: [] as string[],
   get: () => fonteAtual,
-  set(f: Fonte) {
-    if (f === fonteAtual) return
+  radioPega: () => radioPega,
+  set(f: Fonte, auto = false) {
+    let voltaDisco = auto
+    if (f === "radio" && !radioPega) { radioAdiada = true; f = "disco"; voltaDisco = true }
+    else if (!auto) radioAdiada = false
+    if (f === fonteAtual) { if (f === "disco" && voltaDisco && !disco.tocando) retomarDisco(); return }
     fonteAtual = f
     // nunca os dois juntos
     if (f !== "disco") disco.parar()
     if (f !== "radio") player.pausar()
+    if (f === "disco" && voltaDisco) retomarDisco()
     try { localStorage.setItem(CHAVE_FONTE, f) } catch {}
-    ouvintesFonte.forEach((o) => o(f))
+    ouvintesFonte.forEach((o) => o(f, auto))
   },
-  ouvir(o: (f: Fonte) => void) { ouvintesFonte.add(o); return () => { ouvintesFonte.delete(o) } },
+  pega(sim: boolean) {
+    if (sim === radioPega) return
+    radioPega = sim
+    if (!sim && fonteAtual === "radio") { radioAdiada = true; this.set("disco", true) }
+    else if (sim && radioAdiada) { radioAdiada = false; this.set("radio", true) }
+  },
+  ouvir(o: (f: Fonte, auto?: boolean) => void) { ouvintesFonte.add(o); return () => { ouvintesFonte.delete(o) } },
 }
 
 // ── A PISTA É O TOCA-DISCOS (mapa-disco, LU2CA 18/10) ───────────────────────
@@ -941,3 +1021,12 @@ if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
   // teste: pula pro fim da faixa (o tema que toca uma vez)
   ;(window as unknown as { __pistaSomFim?: () => void }).__pistaSomFim = () => { const el = pistaSom.el; if (el && el.duration) el.currentTime = Math.max(0, el.duration - 1.5) }
 }
+
+// ── (T40) a trilha das missões, ligada ao contexto de áudio do jogo ──
+export const trilha = new Trilha({
+  ctx: () => audioCtx() as unknown as CtxLike | null,
+  saida: () => saidaMusicaLimpa(),
+  novoAudio: () => new Audio() as unknown as ReturnType<DepsTrilha["novoAudio"]>,
+})
+export { curvaMinhoca }
+export type { NosFade }
