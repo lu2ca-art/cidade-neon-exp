@@ -160,10 +160,10 @@ function Cena({ lugar, voo, bracos, balanco, bonus, fogo }: { lugar: THREE.Vecto
   )
 }
 
-export function Basquete({ onFim }: { onFim: (pontos: number, cestas: number) => void }) {
+export function Basquete({ onFim, tempo = TEMPO }: { onFim: (pontos: number, cestas: number) => void; tempo?: number }) {
   const [pontos, setPontos] = useState(0)
   const [cestas, setCestas] = useState(0)
-  const [resta, setResta] = useState(TEMPO)
+  const [resta, setResta] = useState(tempo)
   const [forca, setForca] = useState<number | null>(null)
   const [bonus, setBonus] = useState(false)
   const [seguidas, setSeguidas] = useState(0)
@@ -180,9 +180,9 @@ export function Basquete({ onFim }: { onFim: (pontos: number, cestas: number) =>
 
   useEffect(() => {
     t0.current = performance.now()
-    const t = setInterval(() => { const r = Math.max(0, TEMPO - (performance.now() - t0.current) / 1000); setResta(Math.ceil(r)); if (r <= 0 && !voo.current.voando) { clearInterval(t); setAcabou(true) } }, 200)
+    const t = setInterval(() => { const r = Math.max(0, tempo - (performance.now() - t0.current) / 1000); setResta(Math.ceil(r)); if (r <= 0 && !voo.current.voando) { clearInterval(t); setAcabou(true) } }, 200)
     return () => clearInterval(t)
-  }, [])
+  }, [tempo])
 
   const arremessar = (f: number, lado: number) => {
     const de = new THREE.Vector3(lugar.x + 0.05, 2.4, lugar.z - 0.3)
@@ -247,11 +247,11 @@ export function Basquete({ onFim }: { onFim: (pontos: number, cestas: number) =>
         {forca !== null && <b className="bq-nivel" style={{ height: `${forca * 100}%` }} />}
       </div>
       {msg && <p className="gi-dica" style={{ top: "calc(110px + env(safe-area-inset-top))" }}>{msg}</p>}
-      {!acabou && cestas === 0 && resta > 54 && !msg && <p className="gi-dica">arrasta pra cima até o verde e solta</p>}
+      {!acabou && cestas === 0 && resta > tempo - 6 && !msg && <p className="gi-dica">arrasta pra cima até o verde e solta</p>}
       {acabou && (
         <div className="gi-fim">
           <b>{pontos}</b>
-          <small>pontos · {cestas} cestas em 60 segundos</small>
+          <small>pontos · {cestas} cestas em {tempo} segundos</small>
           <button type="button" className="gi-btn" onClick={() => onFim(pontos, cestas)}>continuar</button>
         </div>
       )}

@@ -708,12 +708,13 @@ export function montarMundoDisco(): MundoDisco {
     "lugar:bar": ["Nectar", 0.55], "lugar:casa-drewboy": ["Sexta-Feira", 0.45], "lugar:balada": ["Sexta-Feira", 0.9], "lugar:beco": ["Sexta-Feira", 0.7],
     "lugar:escondido": ["CHUVA", 0.85], "lugar:topo": ["DopaminA", 0.9], "lugar:casa-shows": ["Sabe Ontem?", 0.88],
     "lugar:posto": ["Nectar", 0.68], "lugar:oficina": ["Nectar", 0.86], "lugar:palco-swav": ["Swav", 0.5], "lugar:palco-nectar": ["Nectar", 0.6], "lugar:palco-rollercoaster": ["Rollercoaster", 0.6], "lugar:palco-copo": ["Copo Americano", 0.6], "lugar:plataforma": ["Nectar", 0.42], "lugar:casa-dbee": ["Ojalá", 0.94],
-    "pagina:oficina": ["Nectar", 0.86], "pagina:fliperama": ["DopaminA", 0.55], "pagina:galeria": ["Swav", 0.6], "pagina:ginasio": ["Rollercoaster", 0.4],
+    "pagina:fliperama": ["DopaminA", 0.55], "pagina:galeria": ["Swav", 0.6], "pagina:ginasio": ["Rollercoaster", 0.4],
     "pagina:shows": ["Sabe Ontem?", 0.6], "parque": ["Rollercoaster", 0.8],
     "bomba:bomba-mirante": ["Swav", 0.3], "bomba:bomba-arena": ["Rollercoaster", 0.6], "bomba:bomba-avenida": ["Ojalá", 0.5],
   }
   const tabela = new Map<string, Onde>()
   for (const [k, [nome, f]] of Object.entries(POS)) { const vi = daPista(nome).ida; tabela.set(k, { via: vi, u: vias[vi].L * f, lado: 1 }) }
+  espalharNaPista(POS, pistas, vias, tabela)
   // a pista da Nectar é a das flores (LU2CA 18/10): os canteiros moram nela
   const nec = daPista("Nectar")
   CANTEIROS.forEach((c, i) => {
@@ -809,3 +810,33 @@ export function calcularRotaDisco(M: MundoDisco, de: { via: number; u: number },
 
 // o chão: as dunas e o lixão (chao.ts)
 export const geoChaoDisco = geoChao
+
+// (T42, J2:15: "no mapa tem várias informações muito juntas, tem que espalhar
+// mais as localidades, por igual entre uma e outra numa mesma pista") a tabela
+// acima diz a ORDEM de cada coisa na pista; aqui elas se espalham por igual
+// entre ESPALHA_DE e ESPALHA_ATE da ida. O ícone da missão da pista (o ponto
+// onde ela é pega no mapa) entra na conta como mais um lugar: a chave
+// `missao:<nome da pista>`. O que mora no mesmo ponto (a oficina e a página
+// dela) segue junto. A casa da D-Bee fica onde está (é o fim da estrada do deserto).
+export const ESPALHA_DE = 0.3
+export const ESPALHA_ATE = 0.92
+const FIXOS_NA_PISTA = new Set(["lugar:casa-dbee"])
+export function espalharNaPista(pos: Record<string, [string, number]>, pistas: { nome: string; ida: number }[], vias: { L: number }[], tabela: Map<string, Onde>) {
+  for (const p of pistas) {
+    // os pontos desta pista: a fração (a ordem) → as chaves que moram ali
+    const pontos = new Map<number, string[]>([[0.551, [`missao:${p.nome}`]]])
+    for (const [k, [nome, f]] of Object.entries(pos)) {
+      if (nome !== p.nome || FIXOS_NA_PISTA.has(k)) continue
+      const l = pontos.get(f)
+      if (l) l.push(k)
+      else pontos.set(f, [k])
+    }
+    // em ordem (a missão fica logo depois do que estava em 0,55)
+    const ordem = [...pontos.entries()].sort((a, b) => a[0] - b[0])
+    const L = vias[p.ida].L, n = ordem.length
+    ordem.forEach(([, chaves], i) => {
+      const u = L * (ESPALHA_DE + (ESPALHA_ATE - ESPALHA_DE) * ((i + 0.5) / n))
+      for (const k of chaves) tabela.set(k, { via: p.ida, u, lado: 1 })
+    })
+  }
+}

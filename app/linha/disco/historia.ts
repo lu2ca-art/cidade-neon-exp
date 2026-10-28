@@ -25,7 +25,7 @@ export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "oficina" | "subi
 // os passos da Nectar (B9)
 export type PassoNectar = "quebra" | "regar" | "galao" | "oficina" | "show" | "flores" | "feita"
 
-export type Manchete = { id: number; missao: string; titulo: string; linha: string; pop: number; neon: number; modo: "tocar" | "cantar"; nota: number; publico: number }
+export type Manchete = { id: number; missao: string; titulo: string; linha: string; pop: number; neon: number; modo: "tocar" | "cantar"; nota: number; publico: number; imagem?: string }
 
 export interface HistoriaDisco {
   fase: FaseDisco
@@ -49,7 +49,8 @@ export interface HistoriaDisco {
   missao?: string
   // o show que está pra acontecer: (T02) não é mais o fim da missão. É o Guitar
   // Driver aberto agora: "rua:<faixa>" (a oportunidade na rua) ou
-  // "missao:<id>" (a peça de uma missão que é tocar ao vivo, a do LU2CA)
+  // "missao:<id>" (a peça de uma missão que é tocar ao vivo, a do LU2CA) ou
+  // (T20) "palco:<palco>:<faixa>" (um palco da carreira, disco/palcos.ts)
   show?: string
   // (27/10) o drone GPS da D-Bee: ela dá nas dunas (a subida mostrada uma vez só)
   drone?: boolean
@@ -63,6 +64,30 @@ export interface HistoriaDisco {
   guitar?: string[]
   batida?: string[]
   conta13?: Record<string, number>
+  // (T19) a peça de escrever aberta agora ("lu2ca:arte"; fica no save: recarregar
+  // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
+  aberta13?: string
+  letras?: Record<string, string[]>
+  // (T15–T25, T16) o que cada arte deixou ("nizzy:arte" → os cortes do clipe;
+  // "tony:arte" → o prato; "xeriff:arte" → a vinheta…)
+  obras13?: Record<string, string[]>
+  // (T09) a missão da oficina (disco/oficina.ts): a cena vista, o painel achado
+  // e o tanque do motor (as gotas da goteira); a água que a D-Bee deu (uma vez)
+  // (T57) pecas: as peças da reciclagem que ele já catou no lixão (disco/achados.ts)
+  oficina?: { cena?: true; painel?: true; tanque?: number; pecas?: string[] }
+  aguaDbee?: true
+  // (T20) os palcos como Guitar Hero (disco/palcos.ts): a melhor estrela (1–5)
+  // de cada música em cada palco ("bar:copo" → 3). A soma abre o palco de cima
+  palcos?: Record<string, number>
+  // (T21) os 4 shows do subúrbio xenom (disco/xenom.ts): a melhor estrela, se o
+  // objetivo do multiverso já foi cumprido (paga o bônus uma vez) e quantas vezes tocou
+  xenom?: Record<string, { melhor: number; cumprida: boolean; vezes: number }>
+  // (T07) o tutorial do holo: a tela de recompensa vista ("recompensa") e os
+  // passos feitos (disco/tutorialConf.ts: "mapa", "gps", "drift"…)
+  tutorial?: string[]
+  // (T27) a Kombi que quebra (disco/quebra.ts): está na oficina agora, quantas vezes
+  // quebrou e quantos sorteios faltam pra ela poder quebrar de novo
+  quebra?: { quebrada?: true; vezes?: number; folga?: number }
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
@@ -87,6 +112,58 @@ export const QUEDA = { x: -2140, z: -1900, rumo: Math.atan2(CASA.x - -2140, CASA
 // a travessia: depois da casa, a Kombi sai de frente pra cidade
 export const SAIDA_CASA = { x: -1930, z: -1690, rumo: Math.atan2(0 - -1930, 0 - -1690) }
 export const RAIO_CASA = 26 // chegou na porta
+
+// ── (T37, 28/10) A CHEGADA: do buraco de minhoca à casinha ──
+// (J1) "toda vez que a pessoa entrar, ela vai passar por ele"; "sempre vamos
+// cair aí na casinha da D-Bee toda vez que entrar no jogo, e tem que ir até a
+// cidade"; (J2: 1) "não tem que ter ela no ar: chega já acelerando no
+// deserto, como se tivesse saído do buraco de minhoca"; (J2: 4) "uma cut scene
+// bem cinematográfica lateral da Kombi chegando do lado da casinha, parando,
+// aí sim corta pra ela recebendo ele". O que ainda é gosto do dono fica aqui.
+export const CHEGADA = {
+  // quem já passou pela casa: "sempre" (todo login cai na casinha), "comPropulsao"
+  // (só depois de liberar o voo, J1: "depois de liberar a propulsão fica de boa")
+  // ou "nunca" (entra onde parou, como antes)
+  casaNoLogin: "sempre" as "sempre" | "comPropulsao" | "nunca",
+  // quanto dura o túnel: na primeira vez e nas outras entradas (um toque pula)
+  minhocaMs: 7200,
+  minhocaMsVolta: 5200,
+  // o céu na chegada: "real" (a hora do relógio de quem joga), "save" (a hora
+  // em que ele parou no jogo) ou "tarde" (16h30, o começo de antes)
+  ceu: "real" as "real" | "save" | "tarde",
+  // depois da casinha, quem já conhece a D-Bee: "mapa" (o mapa abre com o
+  // próximo passo) ou "dirigir" (só devolve o volante)
+  depoisDoLogin: "mapa" as "mapa" | "dirigir",
+  // a velocidade de quem sai do túnel (m/s) e onde começa a cena de lado (m)
+  v0: 220,
+  corte: 150,
+}
+// a casa olha pra cidade; as coisas da chegada ficam em volta dela
+export const ROT_CASA = Math.atan2(-CASA.x, -CASA.z)
+const naCasa = (lx: number, lz: number) => ({
+  x: CASA.x + Math.cos(ROT_CASA) * lx + Math.sin(ROT_CASA) * lz,
+  z: CASA.z - Math.sin(ROT_CASA) * lx + Math.cos(ROT_CASA) * lz,
+})
+// a Kombi corre paralela à frente da casa e para na frente da varanda, de lado
+// pra câmera; a câmera fica do outro lado, baixa, com a casa acesa no fundo
+const RUMO_CHEGADA = Math.atan2(Math.cos(ROT_CASA), -Math.sin(ROT_CASA))
+export const PARADA_CASA = { ...naCasa(1.4, 12.5), rumo: RUMO_CHEGADA }
+export const ENTRA_CHEGADA = { ...naCasa(1.4 - 900, 12.5), rumo: RUMO_CHEGADA }
+export const CAM_CHEGADA = { de: naCasa(-3, 31), ate: naCasa(3.5, 28.5) }
+
+// quem já passou pela casa cai nela de novo neste login?
+export function casaNoLogin(h: HistoriaDisco): boolean {
+  if (h.fase === "minhoca" || h.fase === "casa") return false // a primeira vez já é a chegada
+  if (CHEGADA.casaNoLogin === "nunca") return false
+  if (CHEGADA.casaNoLogin === "comPropulsao") return !semVoo(h)
+  return true
+}
+// a hora do céu quando a Kombi sai do túnel
+export function horaDaChegada(horaSave: number | undefined, agora = new Date()): number {
+  if (CHEGADA.ceu === "tarde") return 16.5
+  if (CHEGADA.ceu === "save") return horaSave ?? 16.5
+  return agora.getHours() + agora.getMinutes() / 60
+}
 
 // ── as falas do caminho (o rádio, curtas; nada de frase explicando na tela) ──
 // as dunas: a D-Bee pelo rádio, ensinando sem manual (RASCUNHO)
@@ -123,6 +200,7 @@ export const MONUMENTO = ["o violão", "a camisa", "o caderno"]
 // cidade e se mudou pro deserto; guardou tecnologias dos velhos tempos; os dois
 // se conectam nos tambores; ela dá o HOLO. Tudo RASCUNHO ──
 import type { Cena } from "../cenas"
+import { CONFIG_TUTORIAL } from "./tutorialConf"
 export const CENA_CASA_DISCO: Cena = {
   lugar: "casa-dbee",
   titulo: "a casinha no meio do nada",
@@ -149,13 +227,22 @@ export const CENA_CASA_DISCO: Cena = {
     { t: "acao", texto: "por um minuto, os dois tocam junto. a casa inteira treme" },
     { t: "fala", de: "D-Bee", texto: "é. vc é quem eu achei que era" },
     { t: "fala", de: "D-Bee", texto: "guardei umas coisas dos velhos tempos. pra vc é tudo novo" },
-    { t: "acao", texto: "de uma caixa ela tira um aparelho pequeno, quase sem peso. liga. a luz sobe e fica parada no ar, na frente dos seus olhos" },
-    { t: "ganha", titulo: "o holo", texto: "o celular de agora: a luz que fica no ar. música, mensagens, o mapa, tudo nele" },
+    // (T07, J1: 6) a entrega de verdade: da mão dela pra dele (disco/EntregaHolo.tsx);
+    // o destaque do que ganhou é lá fora (disco/TutorialHolo.tsx, RecompensaHolo)
+    { t: "acao", texto: "de uma caixa ela tira um aparelho pequeno, quase sem peso. liga. uma luz sobe e fica parada em cima da mão dela" },
+    { t: "fala", de: "D-Bee", texto: "toma. é seu" },
+    { t: "gesto", id: "holo" },
+    { t: "acao", texto: "na sua mão ele não pesa nada. a luz sobe e fica parada no ar, na frente dos seus olhos" },
+    ...(CONFIG_TUTORIAL.cartaoNaCena ? [{ t: "ganha" as const, titulo: "o holo", texto: "o celular de agora: a luz que fica no ar. a música, o mapa, tudo nele" }] : []),
     { t: "fala", de: "D-Bee", texto: "sem isso, lá na cidade, vc não existe" },
     { t: "fala", de: "D-Bee", texto: "não tem estrada daqui até lá. a kombi dá conta. eu falo com vc pelo rádio" },
     { t: "fim" },
   ],
 }
+
+// (T07) o pedaço da cena a partir da entrega do holo (o link de teste
+// ?parte=casa.holo: pula a chegada e o tambor, que são do T37 e do T06)
+export const CENA_CASA_HOLO: Cena = { ...CENA_CASA_DISCO, passos: CENA_CASA_DISCO.passos.slice(CENA_CASA_DISCO.passos.findIndex((p) => p.t === "fala" && p.texto === "guardei umas coisas dos velhos tempos. pra vc é tudo novo")) }
 
 // ── O PRÓLOGO: o bar (LU2CA 19–20/10). A moça do bar (a do copo: um jeito meio
 // robô, muito sensata; é uma das máquinas conscientes, mas não revela) oferece
@@ -185,32 +272,8 @@ export const CENA_BAR_PROLOGO: Cena = {
   ],
 }
 
-// ── A OFICINA (a Nectar, LU2CA 19–20/10): o segundo II. A Kombi vira solar +
-// turbo, e isso custa TODA a água coletada até ali. RASCUNHO ──
-export const CENA_OFICINA: Cena = {
-  lugar: "oficina",
-  titulo: "a oficina",
-  missao: "nectar",
-  passos: [
-    { t: "acao", texto: "uma garagem no chão, embaixo das pistas. a kombi entra tossindo. o mecânico nem levanta a cabeça" },
-    { t: "fala", de: "o mecânico", texto: "gasolina? em que ano vc tá vivendo" },
-    { t: "fala", de: "o mecânico", texto: "dá pra pôr painel no teto. um turbo e uns propulsores que bebem sol" },
-    { t: "fala", de: "o mecânico", texto: "aí ela voa. é o único jeito de subir pra cidade: ninguém fez estrada pra lá" },
-    { t: "fala", de: "o mecânico", texto: "mas aqui ninguém paga com neon. é água. toda a que vc tiver" },
-    {
-      t: "escolha",
-      opcoes: [
-        { label: "toda?", tom: "dormindo", resposta: [{ de: "o mecânico", texto: "toda. água é a única coisa que vale alguma coisa aqui" }] },
-        { label: "fechado", tom: "acordando", resposta: [{ de: "o mecânico", texto: "gostei de vc" }] },
-        { label: "e se eu precisar de água depois?", tom: "acordado", resposta: [{ de: "o mecânico", texto: "rega umas flores. a água volta. sempre volta" }] },
-      ],
-    },
-    { t: "acao", texto: "duas horas de solda, faísca e rádio velho. o painel sobe no teto. o motor para de tossir" },
-    { t: "ganha", titulo: "sistema solar: turbo + propulsão", texto: "a kombi não bebe mais gasolina. o sol carrega. segura o espaço (ou o botão): ela voa" },
-    { t: "fala", de: "o mecânico", texto: "volta quando quiser mexer nela. aqui embaixo a gente paga em água" },
-    { t: "fim" },
-  ],
-}
+// ── A OFICINA: (T09) a cena mora em disco/oficina.ts (CENA_OFICINA), com o
+// mecânico provisório e configurável ──
 
 // ── OS DOIS PERSONAGENS ROBÔS (LU2CA 19/10): ganchos, ainda sem cena (RASCUNHO) ──
 // - a moça do bar: uma das máquinas que ganharam consciência. Não se revela;
@@ -234,10 +297,25 @@ export const CHAO_LUGARES = {
   oficina: { x: -560, z: -626, nome: "OFICINA", cor: "#ff9000" },
   palco: { x: -891, z: -536, nome: "PALCO", cor: "#e0ff4f" },
   // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
+  // (T57) a quadra é um lugar de verdade (o piso, as cestas, o alambrado) e os
+  // túneis, uma boca no chão: o ponto é a porta, no fundo da rampa (estrada/chao.ts, BOCA)
   quadra: { x: -860, z: -790, nome: "QUADRA", cor: "#ff6a35" },
   tuneis: { x: -610, z: -830, nome: "TÚNEIS", cor: "#9b8cff" },
+  // (T09) os achados da missão da oficina: o painel solar velho no lixão (a mancha
+  // de lixo a leste do subúrbio) e a goteira embaixo de uma pista. Só aparecem
+  // (e só vão pro mapa) quando é a vez deles. RASCUNHO de onde ficam
+  // (T57) a reciclagem no deserto: o painel e mais três peças espalhadas no lixão
+  // (pega passando, de Kombi ou de patins; disco/achados.ts)
+  painel: { x: -360, z: -690, nome: "PAINEL", cor: "#4fc3ff" },
+  lavadora: { x: -208, z: -754, nome: "MÁQUINA DE LAVAR", cor: "#c9d3e6" },
+  ventilador: { x: -278, z: -523, nome: "VENTILADOR", cor: "#4fc3ff" },
+  radio: { x: -410, z: -366, nome: "RÁDIO", cor: "#ff6a35" },
+  goteira: { x: -620, z: -730, nome: "GOTEIRA", cor: "#4fc3ff" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
+// (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
+export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira"]
+export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)
 export const ORDEM_LUGAR: Record<number, "cidade" | "suburbio"> = { 3: "cidade", 4: "cidade", 5: "suburbio", 6: "cidade", 7: "cidade", 8: "suburbio", 9: "suburbio", 10: "cidade", 11: "cidade" }

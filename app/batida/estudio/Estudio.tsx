@@ -23,9 +23,12 @@ import { apagarMusica, converterV1, lerVoz, listarMusicas, salvarMusica, salvarV
 import { OPCOES_CLIMA, musicaNoClima } from "./climas"
 import { compartilharOuBaixar, mp3, renderizar, wav } from "./exportar"
 import { Gaveta } from "./Gaveta"
+import { carregar } from "../../linha/estado"
+import { historiaDe } from "../../linha/disco/historia"
+import { referenciasDoBatida, type ReferenciaBatida } from "../../linha/disco/recompensas"
 import "./estudio.css"
 
-type Popup = null | "menu" | "musicas" | "comecar" | "bpm" | "tom" | "exportar" | "enviar" | "ajuda" | { secao: string } | { arranjo: number }
+type Popup = null | "menu" | "referencias" | "musicas" | "comecar" | "bpm" | "tom" | "exportar" | "enviar" | "ajuda" | { secao: string } | { arranjo: number }
 
 export default function Estudio() {
   const router = useRouter()
@@ -42,6 +45,23 @@ export default function Estudio() {
   const [ocupado, setOcupado] = useState("")
   const [addInst, setAddInst] = useState(false)
   const motor = useRef<Motor | null>(null)
+  // (T30) as faixas de referência que as missões do jogo liberaram (ouvir antes de fazer o beat)
+  const [refs, setRefs] = useState<ReferenciaBatida[]>([])
+  const [refTocando, setRefTocando] = useState<string | null>(null)
+  const refAudio = useRef<HTMLAudioElement | null>(null)
+  useEffect(() => {
+    try { setRefs(referenciasDoBatida(historiaDe(carregar()).batida)) } catch { setRefs([]) }
+    return () => { refAudio.current?.pause() }
+  }, [])
+  const tocarRef = (r: ReferenciaBatida) => {
+    if (!refAudio.current) refAudio.current = new Audio()
+    const a = refAudio.current
+    if (refTocando === r.id) { a.pause(); setRefTocando(null); return }
+    a.src = r.src
+    a.onended = () => setRefTocando(null)
+    void a.play().catch(() => {})
+    setRefTocando(r.id)
+  }
   const [mo, setMo] = useState<Motor | null>(null) // o mesmo motor, pra tela
   const desfazer = useRef<Musica[]>([])
   const refazer = useRef<Musica[]>([])
@@ -49,6 +69,18 @@ export default function Estudio() {
   const mRef = useRef<Musica | null>(null)
   const pos = useRef<{ secao: string; passo: number; bloco: number } | null>(null)
   const [posUi, setPosUi] = useState<{ secao: string; passo: number; bloco: number; contagem: boolean } | null>(null)
+
+  // (T10) aberto de dentro da missão do Alohan (?missao=1&clima=ontem): parte de uma música pronta e
+  // avisa o jogo (postMessage) se já tocou e se já mexeu nela
+  const daMissao = useRef<{ clima: string } | null>(null)
+  const [emMissao, setEmMissao] = useState(false)
+  const prog = useRef({ tocou: false, mexeu: false })
+  const avisarMissao = useCallback(() => {
+    if (!daMissao.current || window.parent === window) return
+    const x = mRef.current
+    const faixas = x ? x.faixas.filter((f) => x.secoes.some((s) => (s.eventos[f.id]?.length ?? 0) > 0)).length : 0
+    window.parent.postMessage({ cn: "batida-missao", tocou: prog.current.tocou, mexeu: prog.current.mexeu, faixas }, window.location.origin)
+  }, [])
 
   const garantirMotor = useCallback(() => {
     if (!motor.current) {
@@ -87,6 +119,19 @@ export default function Estudio() {
   useEffect(() => {
     let vivo = true
     ;(async () => {
+      const q = new URLSearchParams(window.location.search)
+      if (q.get("missao")) {
+        daMissao.current = { clima: q.get("clima") || "ontem" }
+        setEmMissao(true)
+        const n = musicaNoClima(daMissao.current.clima)
+        n.nome = "pra galera da quadra"
+        await salvarMusica(n)
+        if (!vivo) return
+        setLista(await listarMusicas())
+        await abrirMusica(n)
+        avisarMissao()
+        return
+      }
       let l = await listarMusicas()
       // primeira vez no estúdio novo: as músicas da versão antiga vêm junto
       if (!l.length) {
@@ -109,13 +154,15 @@ export default function Estudio() {
     const atual = mRef.current
     if (!atual) return
     const nova = { ...f(atual), atualizadaEm: Date.now() }
+    prog.current.mexeu = true
     if (registrar) { desfazer.current.push(atual); if (desfazer.current.length > 80) desfazer.current.shift(); refazer.current = []; setHist({ d: desfazer.current.length, r: 0 }) }
     mRef.current = nova
     setM(nova)
     motor.current?.setMusica(nova)
+    avisarMissao()
     if (salvarT.current) clearTimeout(salvarT.current)
     salvarT.current = window.setTimeout(() => { void salvarMusica(nova).then(() => listarMusicas().then(setLista)) }, 700)
-  }, [])
+  }, [avisarMissao])
   const voltar = () => { const v = desfazer.current.pop(); if (!v || !mRef.current) return; refazer.current.push(mRef.current); mRef.current = v; setM(v); motor.current?.setMusica(v); void salvarMusica(v); setHist({ d: desfazer.current.length, r: refazer.current.length }) }
   const avancar = () => { const v = refazer.current.pop(); if (!v || !mRef.current) return; desfazer.current.push(mRef.current); mRef.current = v; setM(v); motor.current?.setMusica(v); void salvarMusica(v); setHist({ d: desfazer.current.length, r: refazer.current.length }) }
 
@@ -145,6 +192,8 @@ export default function Estudio() {
     mt.configurar({ modo, secao, metronomo: metronomo || contar })
     mt.tocar(contar)
     setTocando(true)
+    prog.current.tocou = true
+    avisarMissao()
   }
   const parar = () => { motor.current?.parar(); setTocando(false); setGravando(false) }
   const alternarGravar = () => {
@@ -248,7 +297,7 @@ export default function Estudio() {
   if (!m) {
     return (
       <div className="es-raiz">
-        {popup === "comecar" ? <Comecar onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n); void abrirMusica(n) }} /> : <p className="es-carrega">abrindo o estúdio…</p>}
+        {popup === "comecar" ? <Comecar refs={refs} refTocando={refTocando} onRef={tocarRef} onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n); void abrirMusica(n) }} /> : <p className="es-carrega">abrindo o estúdio…</p>}
       </div>
     )
   }
@@ -257,7 +306,7 @@ export default function Estudio() {
     <div className="es-raiz">
       {/* topo */}
       <header className="es-topo">
-        <button type="button" className="es-ic" aria-label="sair" onClick={() => { parar(); router.push("/?screen=home") }}>‹</button>
+        {emMissao ? <span className="es-ic" aria-hidden="true" /> : <button type="button" className="es-ic" aria-label="sair" onClick={() => { parar(); router.push("/?screen=home") }}>‹</button>}
         <button type="button" className="es-nome" onClick={() => { const n = window.prompt("nome da música", m.nome); if (n !== null) mudar((x) => ({ ...x, nome: n.slice(0, 60) })) }}>
           {m.nome || "sem nome"}<small>✎</small>
         </button>
@@ -368,10 +417,17 @@ export default function Estudio() {
                 <b className="es-pop-tit">B4TIDA</b>
                 <button type="button" onClick={() => setPopup("musicas")}>minhas músicas ({lista.length})</button>
                 <button type="button" onClick={() => setPopup("comecar")}>nova música</button>
+                {refs.length > 0 && <button type="button" data-refs onClick={() => setPopup("referencias")}>referências das missões ({refs.length})</button>}
                 <button type="button" onClick={() => setPopup("exportar")}>exportar / compartilhar</button>
                 <button type="button" onClick={() => setPopup("enviar")}>mandar pra cidade</button>
                 <button type="button" onClick={() => setPopup("ajuda")}>como funciona</button>
                 {ehAdmin() && <button type="button" onClick={() => router.push("/batida/biblioteca")}>biblioteca (o que a cidade mandou)</button>}
+              </>
+            )}
+            {popup === "referencias" && (
+              <>
+                <b className="es-pop-tit">referências das missões</b>
+                <Referencias refs={refs} tocando={refTocando} onTocar={tocarRef} />
               </>
             )}
             {popup === "musicas" && (
@@ -385,7 +441,7 @@ export default function Estudio() {
                 ))}
               </>
             )}
-            {popup === "comecar" && <Comecar onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} />}
+            {popup === "comecar" && <Comecar refs={refs} refTocando={refTocando} onRef={tocarRef} onClima={(id) => { const n = musicaNoClima(id); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} onZero={() => { const n = musicaVazia(); void salvarMusica(n).then(() => listarMusicas().then(setLista)); void abrirMusica(n) }} />}
             {popup === "bpm" && (
               <>
                 <b className="es-pop-tit">andamento · {m.bpm} bpm</b>
@@ -564,7 +620,19 @@ function MiniFaixa({ secao, faixa, inst, cor, pos, onClick }: { secao?: Secao; f
   return <canvas ref={cvs} className="es-mini" onClick={onClick} />
 }
 
-function Comecar({ onClima, onZero }: { onClima: (id: string) => void; onZero: () => void }) {
+function Referencias({ refs, tocando, onTocar }: { refs: ReferenciaBatida[]; tocando: string | null; onTocar: (r: ReferenciaBatida) => void }) {
+  return (
+    <>
+      {refs.map((r) => (
+        <div key={r.id} className="es-linha-musica" data-ref={r.id}>
+          <button type="button" onClick={() => onTocar(r)}><b>{tocando === r.id ? "■ " : "▶ "}{r.nome}</b><small>{r.quem} · {r.bpm} bpm · instrumental</small></button>
+        </div>
+      ))}
+    </>
+  )
+}
+
+function Comecar({ onClima, onZero, refs, refTocando, onRef }: { onClima: (id: string) => void; onZero: () => void; refs: ReferenciaBatida[]; refTocando: string | null; onRef: (r: ReferenciaBatida) => void }) {
   return (
     <div className="es-comecar">
       <b className="es-logo">B4TIDA</b>
@@ -577,6 +645,12 @@ function Comecar({ onClima, onZero }: { onClima: (id: string) => void; onZero: (
         ))}
       </div>
       <button type="button" className="es-zero" onClick={onZero}>começar do zero</button>
+      {refs.length > 0 && (
+        <div className="es-pop" style={{ marginTop: 16 }}>
+          <b className="es-pop-tit">referências das missões</b>
+          <Referencias refs={refs} tocando={refTocando} onTocar={onRef} />
+        </div>
+      )}
     </div>
   )
 }

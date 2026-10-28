@@ -21,20 +21,19 @@
 // Tudo é clicável. Nada de frase explicando: a explicação vem nas invasões da
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { APPS, DOCK, ESCONDIDOS, Glifo, chamados, type AppId } from "../os"
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
+import { APPS, DOCK, ESCONDIDOS, Glifo, type AppId } from "../os"
 import { horaTexto } from "../relogio"
 import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "../som"
 import { NIVEIS, NOME_NIVEL, type NivelQualidade } from "./qualidade"
-import type { Save } from "../estado"
-import { PISTAS } from "./pistas"
+import { pistaDoArquivo, rotuloDoArquivo } from "../disco/pistasLiberadas"
 import { FREQUENCIAS, type FreqId } from "../radio"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
 // o que cada coisa do holo é (o "?"): uma frase simples, sem manual
 export const INFO: Record<string, { t: string; d: string }> = {
-  ajuda: { t: "?", d: "toca aqui e depois em qualquer coisa do holo pra saber o que é. toca de novo pra sair. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
+  ajuda: { t: "?", d: "o ? mora no notch: toca nele e o notch abre explicando o que está nele; aberto, toca em qualquer coisa do holo pra saber o que é. toca no ? de novo pra fechar. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
   ajustes: { t: "ajustes", d: "a engrenagem: o volume da música, dos efeitos e das vozes, a qualidade dos gráficos e a lista dos controles." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
   camera: { t: "o olho (a câmera)", d: "o olhinho em cima do óculos: toca nele e a câmera troca, de fora da Kombi ou de dentro, no banco do motorista (tecla C). aberto e azul: de dentro." },
@@ -45,7 +44,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   "app:stream": { t: "vid.stream", d: "os clipes. abre aqui mesmo, no holo: a música da cidade para enquanto ele tá aberto." },
   propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
-  ilha: { t: "N3XO_", d: "as mensagens da cidade passam aqui. toca pra abrir as conversas." },
+  ilha: { t: "N3XO_ · o notch", d: "o que dá pra fazer agora passa aqui: o passo de agora, o lugar, o que acabou de acontecer. toca nele (ou no ?) e ele abre explicando." },
   mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
   anel: { t: "as missões", d: "a missão de agora gira em volta do mapa: o nome e o ícone dela. toca: a checklist dá a volta; toca de novo: o mapa com as missões." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
@@ -119,9 +118,9 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
   useEffect(() => {
     const ler = () => {
       const src = pistaSom.src
-      const p = src ? PISTAS.find((x) => x.voz === src || x.inst === src) : null
+      const p = pistaDoArquivo(src)?.pista ?? null
       const el = pistaSom.el
-      setSom(p && el ? { faixa: `${p.faixa}${src === p.inst ? " · inst" : ""}`, t: el.currentTime, dur: el.duration || p.duracao } : null)
+      setSom(p && el ? { faixa: `${p.faixa}${rotuloDoArquivo(src)?.slice(p.faixa.length) ?? ""}`, t: el.currentTime, dur: el.duration || p.duracao } : null)
     }
     ler()
     const t = setInterval(ler, 500)
@@ -317,21 +316,55 @@ function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
   )
 }
 
-// a ilha do N3XO: a hora e as mensagens passando como o letreiro de um ônibus
-export function HoloLetreiro({ save, nivel, hora }: { save: Save; nivel: number; hora: number }) {
-  const msgs = useMemo(() => chamados(save, nivel), [save, nivel])
-  const texto = msgs.map((m) => `${m.de}: ${m.texto}`).join("   ·   ")
+// ── (T56, dono 28/10) O NEXO COM UM NOTCH SÓ. O notch é o único lugar do Nexo:
+// a hora, o que dá pra fazer agora (o passo do tutorial, o próximo passo da
+// missão, o lugar) e o "?" dentro dele. Tocar no notch ou no "?" abre o notch
+// (ele cresce pra baixo) com a explicação do que está nele; aberto, tocar numa
+// coisa do holo explica ela ali mesmo. Nada de cartão separado nem de chat
+// (T41: C1, C3, C4, C8). O tutorial (disco/TutorialHolo.tsx) fala por aqui: ele
+// escreve em nexoTutorial(), e o notch mostra o passo com o "2 de 5" discreto.
+// Desempenho: uma loja fora do React, um setState quando o passo muda ──
+export type NexoTut = { passo: string; texto: string; conta?: string; ok?: boolean; fim?: boolean; cor?: string; ajuda?: { t: string; d: string } }
+let NEXO_TUT: NexoTut | null = null
+const ouvintesTut = new Set<() => void>()
+export function nexoTutorial(x: NexoTut | null) {
+  const a = NEXO_TUT
+  if (a === x || (a && x && a.passo === x.passo && a.texto === x.texto && a.conta === x.conta && !!a.ok === !!x.ok && !!a.fim === !!x.fim)) return
+  NEXO_TUT = x
+  ouvintesTut.forEach((f) => f())
+}
+export function useNexoTutorial() {
+  return useSyncExternalStore((f) => { ouvintesTut.add(f); return () => { ouvintesTut.delete(f) } }, () => NEXO_TUT, () => null)
+}
+// o que dá pra fazer agora, fora do tutorial (a Corrida monta: a missão, o lugar)
+export type NexoAgora = { texto: string; cor: string; ajuda: { t: string; d: string } }
+export function HoloLetreiro({ hora, agora, aberto, card, onAbrir }: { hora: number; agora: NexoAgora | null; aberto: boolean; card: { t: string; d: string } | null; onAbrir: () => void }) {
+  const tut = useNexoTutorial()
   const [msg, acabou] = useNotch()
+  // o passo do tutorial manda; a mensagem que passa espera ele (ou passa entre um e outro)
+  const passando = msg && !tut
+  const cor = tut ? (tut.ok ? "#5dffa0" : tut.cor ?? "#2fe8ff") : passando ? msg.cor : agora?.cor ?? "#2fe8ff"
+  // aberto: o que está no notch, explicado (o preview); tocou numa coisa, ela
+  const exp = card ?? tut?.ajuda ?? agora?.ajuda ?? INFO.ilha
   return (
-    <div className={`l-ilha-conteudo l-holo-letreiro ${msg ? "is-msg" : ""}`} style={msg ? { ["--c" as string]: msg.cor } : undefined}>
-      <b>{horaTexto(hora)}</b>
-      {msg ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : texto ? (
-        <span className="l-holo-letreiro-faixa">
-          {/* duas cópias: o letreiro roda sem emenda */}
-          <em style={{ ["--dur" as string]: `${Math.max(8, texto.length * 0.22)}s` }}>{texto}   ·   {texto}   ·   </em>
-        </span>
-      ) : <span className="l-holo-letreiro-vazio">N3XO_</span>}
-      {msgs.length > 0 && <i>{msgs.length}</i>}
+    <div className={`l-ilha-conteudo l-holo-letreiro ${passando ? "is-msg" : ""} ${tut ? "is-tut" : ""} ${tut?.ok ? "is-ok" : ""} ${tut?.fim ? "is-fim" : ""} ${aberto ? "is-aberto" : ""}`} style={{ ["--c" as string]: cor }} data-passo={tut && !tut.fim ? tut.passo : undefined}>
+      <div className="l-holo-letreiro-linha">
+        <b>{horaTexto(hora)}</b>
+        {tut ? (
+          <span className="l-nexo-passo" role="status" aria-live="polite"><em>{tut.ok ? "✓ isso" : tut.texto}</em></span>
+        ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : agora ? (
+          <span className="l-nexo-agora"><em>{agora.texto}</em></span>
+        ) : <span className="l-holo-letreiro-vazio">N3XO_</span>}
+        {tut?.conta && <small className="l-nexo-conta">{tut.conta}</small>}
+        <button type="button" data-info="ajuda" className={`l-nexo-q ${aberto ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onAbrir() }} aria-label="o que é isso" aria-expanded={aberto}>?</button>
+      </div>
+      {aberto && (
+        <div className="l-nexo-ajuda" role="status" aria-live="polite">
+          <b>{exp.t}</b>
+          <span>{exp.d}</span>
+          <small>toca em qualquer coisa do holo pra saber o que é · o ? fecha</small>
+        </div>
+      )}
     </div>
   )
 }
@@ -473,10 +506,15 @@ export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { text
       {checklist && omni && (
         <div className="l-holo-salsicha" aria-hidden="true">
           <i className="l-holo-salsicha-topo" />
+          {/* (T42, J2:32) só o próximo passo (não todos de uma vez) */}
           <ol>
-            {checklist.passos.map((p) => (
-              <li key={p.nome} className={`is-${p.estado}`}><b>{p.estado === "feita" ? "✓" : p.estado === "agora" ? "▸" : "○"}</b>{p.nome}</li>
-            ))}
+            {(() => {
+              const i = checklist.passos.findIndex((p) => p.estado === "agora"), k = i >= 0 ? i : checklist.passos.findIndex((p) => p.estado !== "feita")
+              const p = checklist.passos[k]
+              return p
+                ? <li key={p.nome} className={`is-${p.estado}`}><b>▸</b>{p.nome}<small className="l-salsicha-n">{k + 1} de {checklist.passos.length}</small></li>
+                : <li className="is-feita"><b>✓</b>tudo feito</li>
+            })()}
           </ol>
         </div>
       )}
@@ -631,11 +669,12 @@ export function HoloDestaque({ onApp, guitarLivre = false }: { onApp: (id: AppId
 }
 
 // o "?": ligado, tocar em qualquer coisa do holo (o que tem data-info) mostra
-// o que ela é, em vez de fazer a ação; tocar fora, ou no "?", sai
-export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => void }) {
-  const [card, setCard] = useState<{ t: string; d: string } | null>(null)
+// o que ela é, em vez de fazer a ação; tocar fora, ou no "?", sai. (T56) A
+// explicação não é mais um cartão: vai pro notch aberto (onCard)
+export function HoloAjuda({ ativa, onSair, onCard }: { ativa: boolean; onSair: () => void; onCard: (c: { t: string; d: string } | null) => void }) {
   useEffect(() => {
     if (!ativa) return
+    onCard(null)
     const alvo = (e: Event) => (e.target as Element | null)?.closest?.("[data-info]") as HTMLElement | null
     // (na captura, antes do React: a ação do botão não acontece)
     const desce = (e: PointerEvent) => {
@@ -649,18 +688,14 @@ export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => voi
       e.stopPropagation(); e.preventDefault()
       const id = el.dataset.info!
       if (id === "ajuda") { onSair(); return }
-      setCard(infoDe(id))
+      // o próprio notch: volta a explicar o que está nele
+      onCard(id === "ilha" ? null : infoDe(id))
     }
     document.addEventListener("pointerdown", desce, true)
     document.addEventListener("click", toca, true)
     return () => { document.removeEventListener("pointerdown", desce, true); document.removeEventListener("click", toca, true) }
-  }, [ativa, onSair])
-  if (!ativa) return null
-  return (
-    <div className="l-holo-ajuda" role="status" aria-live="polite">
-      {card ? <><b>{card.t}</b><span>{card.d}</span></> : <b>toca em qualquer coisa</b>}
-    </div>
-  )
+  }, [ativa, onSair, onCard])
+  return null
 }
 
 // (LU2CA 22/10) a lista inteira dos controles NUNCA vai por cima do HUD: é o

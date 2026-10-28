@@ -27,6 +27,7 @@ import type { Luz } from "../estrada/atos"
 import type { LugarId } from "../lugares"
 import type { ProvaId } from "../data"
 import type { HistoriaDisco, LugarChao } from "./historia"
+import { PAGA } from "../economia-rascunho"
 
 export type MissaoId = "dbee" | "oficina" | "quadra" | "tuneis" | "drew" | "mubarak" | "xeriff" | "lu2ca" | "ella" | "notti" | "nizzy" | "tony" | "final"
 export type Situacao = "decidido" | "proposta" | "em aberto"
@@ -43,6 +44,20 @@ export type ComoJoga =
   | { t: "prova"; id: ProvaId }
   // na rua, em qualquer lugar: conta os eventos da estrada (n vezes)
   | { t: "evento"; evento: "montanha" | "flor"; n: number }
+  // (T19) escrever a letra da faixa (disco/Letra.tsx; os versos em disco/letras.ts)
+  | { t: "letra"; faixa: PistaId }
+  // (T10) o B4TIDA aberto pra produzir um instrumental (disco/BatidaMissao.tsx); `clima` = a música de onde ele parte
+  | { t: "batida"; clima: string }
+  // (T10) o basquete do ginásio (app/ginasio/basquete.tsx): `pontos` pra passar em `tempo` segundos (senão joga de novo)
+  | { t: "basquete"; pontos: number; tempo: number }
+  // (T15–T25, T16) uma peça que abre por cima do jogo (disco/pecas/): a dança, a
+  // vinheta, a trilha 8 bits, a máquina, o clipe, a horta, o prato, o disco
+  // antigo, a sinuca. Os rascunhos de cada uma moram em disco/pecas/conf.ts
+  | { t: "cena"; id: CenaId }
+  // (T57) descer a rampa da boca do túnel: a corrida lá embaixo, nas trincheiras (disco/tuneis.ts)
+  | { t: "trincheiras" }
+
+export type CenaId = "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "horta" | "cozinhar" | "disco-antigo" | "sinuca"
 
 export interface Peca {
   nome: string
@@ -63,14 +78,14 @@ export const PORTAS: Record<PortaId, { nome: string; existe: boolean; tarefa?: s
   holo: { nome: "o holo: o mapa interativo", existe: true, tarefa: "T07" },
   violao: { nome: "o violão: acompanha qualquer música", existe: true, tarefa: "T08" },
   "kombi-melhorias": { nome: "as melhorias da Kombi", existe: true, tarefa: "T09" },
-  quadra: { nome: "a quadra", existe: false, tarefa: "T10" },
+  quadra: { nome: "a quadra: basquete quando quiser", existe: true, tarefa: "T10" },
   "batida-estudio": { nome: "o BATIDA pra produzir mais", existe: true, tarefa: "T10" },
   corridas: { nome: "as corridas nos túneis", existe: false, tarefa: "T13" },
   motos: { nome: "as motos", existe: false, tarefa: "T14" },
   ginasio: { nome: "o ginásio: basquete e cama elástica", existe: true, tarefa: "T15" },
   "loja-discos": { nome: "a loja de discos", existe: true, tarefa: "T16" },
   "radio-frequencias": { nome: "a rádio e as frequências", existe: true, tarefa: "T18" },
-  "shows-live": { nome: "os 5 shows do LIVE", existe: false, tarefa: "T20" },
+  "shows-live": { nome: "os palcos da cidade: subir até o alto das torres", existe: true, tarefa: "T20" },
   galeria: { nome: "a galeria", existe: true, tarefa: "T22" },
   fliperama: { nome: "as 7 máquinas do fliperama", existe: true, tarefa: "T23" },
   parque: { nome: "o parque", existe: true, tarefa: "T24" },
@@ -100,6 +115,9 @@ export interface Missao13 {
   requer: MissaoId[]
   // feita pela história do começo (a casa e as dunas; a oficina): não vai pra feira
   prologo?: true
+  // (T25) a ordem das peças, quando não é arte → jogo (o Tony: regar a horta
+  // primeiro, depois cozinhar com o que nasceu)
+  ordem?: ["jogo", "arte"]
 }
 
 // ── o que ainda é decisão do dono (troca aqui; o resto segue sozinho) ──
@@ -107,14 +125,19 @@ export const CONFIG13 = {
   // (em aberto) as músicas que o Guitar Driver já tem no começo. A Nectar é a
   // do próprio LU2CA; cada missão libera a faixa de quem ajudou
   musicasDoInicio: ["nectar"] as PistaId[],
-  // (proposta) o neon$ de cada missão (o T03 acerta a economia)
-  neonPorMissao: 50,
+  // (T03) o neon$ de cada missão mora em economia-rascunho.ts (PAGA.missao)
   // (decidido 21/10, as torres) a missão da cidade só aparece com a pista
   // dela acesa (estrada/atos.ts): o mapa vai colorindo espalhado
   soComPistaAcesa: true,
+  // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
+  // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
+  // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
+  trancar: ["ginasio", "radio-frequencias", "fliperama", "parque", "canteiros", "loja-discos"] as PortaId[],
+  // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
+  // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
+  kombiNoConserto: ["drew"] as MissaoId[],
 }
 
-const NEON = CONFIG13.neonPorMissao
 const p = (nome: string, situacao: Situacao, extra: Partial<Peca> = {}): Peca => ({ nome, situacao, ...extra })
 
 export const MISSOES13: Record<MissaoId, Missao13> = {
@@ -124,85 +147,95 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     lugar: { lugar: "casa-dbee" }, pedido: "ela tava te esperando", apresenta: "tocar tambor junto com ela",
     arte: p("o tambor com a D-Bee", "decidido", { como: { t: "historia" }, tarefa: "T06" }),
     jogo: p("o drift e o holo: a travessia até o subúrbio", "decidido", { como: { t: "historia" }, tarefa: "T07" }),
-    abre: ["holo", "violao"], recompensa: { guitar: "ojala", batida: "ojala", neon: NEON }, requer: [], prologo: true,
+    abre: ["holo", "violao"], recompensa: { guitar: "ojala", batida: "ojala", neon: PAGA.missao.dbee }, requer: [], prologo: true,
   },
   oficina: {
     id: "oficina", n: 2, onde: "suburbio", quem: "o mecânico", cor: "#ff9000", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "oficina" }, pedido: "a kombi não sobe sem motor novo", apresenta: "montar o motor com o mecânico",
-    arte: p("a reciclagem: o lixo vira tecnologia", "decidido", { tarefa: "T09" }),
-    jogo: p("achar o painel solar no lixão e a goteira", "decidido", { tarefa: "T09" }),
-    abre: ["kombi-melhorias"], recompensa: { guitar: null, batida: null, neon: NEON }, requer: ["dbee"], prologo: true,
+    // (T09) a fase "oficina" da história joga as duas (disco/oficina.ts). (T57) a arte
+    // é catar o lixo espalhado no lixão (no mundo) e a oficina monta; o jogo, a goteira
+    arte: p("a reciclagem: catar o lixo no lixão e virar tecnologia", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
+    jogo: p("a goteira: a água do motor", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
+    abre: ["kombi-melhorias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.oficina }, requer: ["dbee"], prologo: true,
   },
   quadra: {
     id: "quadra", n: 3, onde: "suburbio", quem: "Alohan", cor: "#ff6a35", faixa: "ontem", faixaSituacao: "proposta",
     lugar: { chao: "quadra" }, pedido: "a quadra tá vazia. falta o beat", apresenta: "o Alohan apresenta o BATIDA",
-    arte: p("um instrumental no BATIDA pra galera", "decidido", { tarefa: "T10", existe: "/batida" }),
-    jogo: p("a partida de basquete", "decidido", { tarefa: "T10", existe: "/ginasio (basquete.tsx)" }),
-    abre: ["quadra", "batida-estudio"], recompensa: { guitar: "ontem", batida: "ontem", neon: NEON }, requer: ["oficina"],
+    arte: p("um instrumental no BATIDA pra galera", "decidido", { como: { t: "batida", clima: "ontem" }, tarefa: "T10", existe: "/batida" }),
+    jogo: p("a partida de basquete", "decidido", { como: { t: "basquete", pontos: 6, tempo: 45 }, tarefa: "T10", existe: "/ginasio (basquete.tsx)" }),
+    abre: ["quadra", "batida-estudio"], recompensa: { guitar: "ontem", batida: "ontem", neon: PAGA.missao.quadra }, requer: ["oficina"],
   },
   tuneis: {
     id: "tuneis", n: 4, onde: "suburbio", quem: "os túneis", cor: "#9b8cff", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "tuneis" }, pedido: "embaixo das raízes tem corrida", apresenta: "a corrida de BMX, patins ou skate nas trincheiras",
     arte: p("o grafite: um gesto assina o desenho", "decidido", { tarefa: "T12", existe: "página de teste do T12" }),
-    jogo: p("a corrida de BMX, patins ou skate", "decidido", { tarefa: "T13" }),
-    abre: ["corridas", "motos"], recompensa: { guitar: null, batida: null, neon: NEON }, requer: ["oficina"],
+    // (T57) a boca do túnel no subúrbio leva às trincheiras (a página do T11/T13); voltar com a volta feita conta
+    jogo: p("a corrida de BMX, patins ou skate", "decidido", { como: { t: "trincheiras" }, tarefa: "T13", existe: "/teste/trincheiras" }),
+    abre: ["corridas", "motos"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.tuneis }, requer: ["oficina"],
   },
   // ── a cidade (8) ──
   drew: {
     id: "drew", n: 5, onde: "cidade", quem: "Drew", cor: "#6d7bff", faixa: "sexta", faixaSituacao: "decidido",
     lugar: { lugar: "casa-drewboy" }, pedido: "sexta e eu em casa de novo", apresenta: "o jetpack, depois o ping pong",
-    arte: p("dançar na balada, marcando o ritmo", "proposta", { tarefa: "T15" }),
-    jogo: p("o ping pong com o robô", "decidido", { como: { t: "pingpong" }, tarefa: "T15 (o jetpack e o skate)" }),
-    abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: NEON }, requer: ["oficina"],
+    // (T15) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, DANCA)
+    arte: p("dançar na balada, marcando o ritmo", "proposta", { como: { t: "cena", id: "danca" }, tarefa: "T15" }),
+    // o caminho até ele é de patins (a Kombi no conserto, CONFIG13.kombiNoConserto) e apresenta o jetpack
+    jogo: p("de patins e jetpack até ele, depois o ping pong", "decidido", { como: { t: "pingpong" }, tarefa: "T15" }),
+    abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: PAGA.missao.drew }, requer: ["oficina"],
   },
   mubarak: {
     id: "mubarak", n: 6, onde: "cidade", quem: "Mubarak", cor: "#ffc857", faixa: "copo", faixaSituacao: "decidido",
     lugar: { lugar: "palco-copo" }, pedido: "ele quer te mostrar um disco antigo", apresenta: "comprar um disco",
-    arte: p("apreciar um disco antigo", "decidido", { tarefa: "T16" }),
-    jogo: p("uma sinuca, no nível do 8 Ball Pool", "decidido", { tarefa: "T16", existe: "página de teste do T17" }),
-    abre: ["loja-discos"], recompensa: { guitar: "copo", batida: "copo", neon: NEON }, requer: ["oficina"],
+    arte: p("apreciar um disco antigo", "decidido", { como: { t: "cena", id: "disco-antigo" }, tarefa: "T16" }),
+    jogo: p("uma sinuca com ele, no nível do 8 Ball Pool", "decidido", { como: { t: "cena", id: "sinuca" }, tarefa: "T16", existe: "/teste/sinuca (T17)" }),
+    abre: ["loja-discos"], recompensa: { guitar: "copo", batida: "copo", neon: PAGA.missao.mubarak }, requer: ["oficina"],
   },
   xeriff: {
     id: "xeriff", n: 7, onde: "cidade", quem: "Xeriff", cor: "#c9d3e6", faixa: null, faixaSituacao: "em aberto",
     lugar: { lugar: "plataforma" }, pedido: "a polícia fala numa frequência que ninguém pega", apresenta: "sintonizar a frequência da polícia",
-    arte: p("gravar a vinheta da rádio pirata", "proposta", { tarefa: "T18" }),
+    // (T18) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, VINHETA)
+    arte: p("gravar a vinheta da rádio pirata", "proposta", { como: { t: "cena", id: "vinheta" }, tarefa: "T18" }),
     jogo: p("sintonizar a frequência da polícia", "decidido", { como: { t: "prova", id: "sintonia" }, tarefa: "T18" }),
-    abre: ["radio-frequencias"], recompensa: { guitar: null, batida: null, neon: NEON }, requer: ["lu2ca"],
+    abre: ["radio-frequencias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.xeriff }, requer: ["lu2ca"],
   },
   lu2ca: {
     id: "lu2ca", n: 8, onde: "cidade", quem: "LU2CA", cor: "#e0ff4f", faixa: "nectar", faixaSituacao: "decidido",
     lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar uma faixa ao vivo no Guitar Driver",
-    arte: p("escrever a letra", "proposta", { tarefa: "T19" }),
+    // (T19) a arte ainda é proposta: joga como rascunho (disco/letras.ts); o dono decide
+    arte: p("escrever a letra", "proposta", { como: { t: "letra", faixa: "nectar" }, tarefa: "T19" }),
     jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "nectar" }, tarefa: "T19" }),
-    abre: ["shows-live"], recompensa: { guitar: null, batida: "nectar", neon: NEON }, requer: ["oficina"],
+    abre: ["shows-live"], recompensa: { guitar: null, batida: "nectar", neon: PAGA.missao.lu2ca }, requer: ["oficina"],
   },
   ella: {
     id: "ella", n: 9, onde: "cidade", quem: "Ella", cor: "#4fc3ff", faixa: "chuva", faixaSituacao: "decidido",
     lugar: { lugar: "escondido" }, pedido: "ela pinta, mas ninguém vê", apresenta: "pintar e expor um quadro",
     arte: p("pintar e expor um quadro", "decidido", { tarefa: "T22", existe: "/galeria/pintar" }),
     jogo: p("o jogo da Ella", "em aberto", { tarefa: "T22" }),
-    abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: NEON }, requer: ["oficina"],
+    abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: PAGA.missao.ella }, requer: ["oficina"],
   },
   notti: {
     id: "notti", n: 10, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "dopamina", faixaSituacao: "decidido",
     lugar: { lugar: "topo" }, pedido: "o fliperama apagou. ninguém joga mais nada", apresenta: "uma máquina do fliperama",
-    arte: p("a trilha de 8 bits da máquina, no BATIDA", "proposta", { tarefa: "T23" }),
-    jogo: p("uma máquina do fliperama", "decidido", { como: { t: "prova", id: "respira" }, tarefa: "T23" }),
-    abre: ["fliperama"], recompensa: { guitar: "dopamina", batida: "dopamina", neon: NEON }, requer: ["oficina"],
+    // (T23) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, TRILHA8)
+    arte: p("a trilha de 8 bits da máquina", "proposta", { como: { t: "cena", id: "trilha8" }, tarefa: "T23" }),
+    jogo: p("uma máquina do fliperama", "decidido", { como: { t: "cena", id: "maquina" }, tarefa: "T23", existe: "/fliperama" }),
+    abre: ["fliperama"], recompensa: { guitar: "dopamina", batida: "dopamina", neon: PAGA.missao.notti }, requer: ["oficina"],
   },
   nizzy: {
     id: "nizzy", n: 11, onde: "cidade", quem: "Nizzy", cor: "#ff2436", faixa: "rollercoaster", faixaSituacao: "decidido",
     lugar: { lugar: "palco-rollercoaster" }, pedido: "a montanha-russa parou no meio", apresenta: "a montanha-russa",
-    arte: p("filmar o clipe vertical da Rollercoaster", "proposta", { tarefa: "T24" }),
+    // (T24) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, CLIPE)
+    arte: p("filmar o clipe vertical da Rollercoaster", "proposta", { como: { t: "cena", id: "clipe" }, tarefa: "T24" }),
     jogo: p("andar na montanha-russa (no parque)", "decidido", { como: { t: "evento", evento: "montanha", n: 1 }, tarefa: "T24" }),
-    abre: ["parque"], recompensa: { guitar: "rollercoaster", batida: "rollercoaster", neon: NEON }, requer: ["oficina"],
+    abre: ["parque"], recompensa: { guitar: "rollercoaster", batida: "rollercoaster", neon: PAGA.missao.nizzy }, requer: ["oficina"],
   },
   tony: {
     id: "tony", n: 12, onde: "cidade", quem: "Tony Gordo", cor: "#ff3fb0", faixa: "swav", faixaSituacao: "decidido",
     lugar: { lugar: "palco-swav" }, pedido: "tudo aqui em cima tem gosto de nada", apresenta: "regar a horta atrás do restaurante",
-    arte: p("cozinhar um prato com o que nasceu", "proposta", { tarefa: "T25" }),
-    jogo: p("regar a horta atrás do restaurante", "decidido", { tarefa: "T25", existe: "as flores da pista (de patins)" }),
-    abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: NEON }, requer: ["oficina"],
+    // (T25) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, COZINHAR)
+    arte: p("cozinhar um prato com o que nasceu", "proposta", { como: { t: "cena", id: "cozinhar" }, tarefa: "T25" }),
+    jogo: p("regar a horta atrás do restaurante", "decidido", { como: { t: "cena", id: "horta" }, tarefa: "T25" }),
+    abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: PAGA.missao.tony }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   // ── a 13ª ──
   final: {
@@ -239,9 +272,10 @@ export const pecaFeita = (h: HistoriaDisco, id: MissaoId, qual: "arte" | "jogo")
 export function passoAgora(h: HistoriaDisco, id: MissaoId): Passo | null {
   if (feita13(h, id)) return null
   const m = MISSOES13[id]
-  for (const qual of ["arte", "jogo"] as const) if (!emBreve(m[qual]) && !pecaFeita(h, id, qual)) return qual
+  for (const qual of ordemDe(id)) if (!emBreve(m[qual]) && !pecaFeita(h, id, qual)) return qual
   return "porta"
 }
+export const ordemDe = (id: MissaoId): ("arte" | "jogo")[] => MISSOES13[id].ordem ?? ["arte", "jogo"]
 
 export type EstadoPasso = "feita" | "agora" | "depois" | "em breve"
 // a checklist (o anel do holo, o painel da missão): arte, jogo e a porta
@@ -255,8 +289,7 @@ export function checklist13(h: HistoriaDisco, id: MissaoId): { nome: string; est
     return qual === agora ? "agora" : "depois"
   }
   return [
-    { nome: `a arte · ${m.arte.nome}`, estado: estado("arte") },
-    { nome: `o jogo · ${m.jogo.nome}`, estado: estado("jogo") },
+    ...ordemDe(id).map((qual) => ({ nome: `${qual === "arte" ? "a arte" : "o jogo"} · ${m[qual].nome}`, estado: estado(qual) })),
     { nome: `a porta · ${m.abre.map((a) => PORTAS[a].nome).join(" e ")}`, estado: estado("porta") },
   ]
 }
@@ -328,6 +361,23 @@ export function abrirPorta(h: HistoriaDisco, id: MissaoId): HistoriaDisco {
   }
 }
 export const portaAberta = (h: HistoriaDisco, porta: PortaId) => (h.portas ?? []).includes(porta)
+
+// (T15–T25, T16) o lugar ainda trancado (CONFIG13.trancar): a porta não abriu e
+// a missão que abre ele não está pegada (a da Nizzy precisa do parque pra andar
+// na montanha-russa). Devolve o porquê, curto, ou null (aberto).
+export function trancado(h: HistoriaDisco | null, porta: PortaId): string | null {
+  if (!h || h.fase === "livre" || h.fase === "minhoca") return null
+  if (!CONFIG13.trancar.includes(porta) || portaAberta(h, porta)) return null
+  const dona = IDS13.find((id) => MISSOES13[id].abre.includes(porta))
+  if (!dona) return null
+  if (normalizarMissao(h.missao) === dona && porta === "parque") return null
+  return `abre na missão ${dona === "nizzy" || dona === "ella" || dona === "dbee" ? "da" : "do"} ${MISSOES13[dona].quem}`
+}
+// (T15) a Kombi está no conserto agora? (a missão pegada pede patins até a porta abrir)
+export function kombiNoConserto(h: HistoriaDisco | null): boolean {
+  const id = normalizarMissao(h?.missao)
+  return !!h && h.fase === "carreira" && !!id && CONFIG13.kombiNoConserto.includes(id) && !feita13(h, id)
+}
 
 // save de antes do T02: a faixa da cidade já feita (o objeto dela no save) conta
 // como a missão feita (senão a pista fica "feita" e a missão nunca aparece)

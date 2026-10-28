@@ -1616,6 +1616,12 @@
 .l-loja-faixas li b { display: block; font: 600 14px/1.25 var(--sans, system-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .l-loja-faixas li small { display: block; font: 11px var(--mono); color: rgba(255,255,255,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .l-loja-faixas li em { font: 11px var(--mono); font-style: normal; color: rgba(255,255,255,0.45); font-variant-numeric: tabular-nums; }
+/* (T03) as abas da loja: discos, instrumentos, carros, roupas */
+.l-loja-abas { display: flex; gap: 6px; padding: 4px 16px 10px; overflow-x: auto; scrollbar-width: none; }
+.l-loja-abas button { flex-shrink: 0; padding: 7px 13px; border-radius: 999px; background: rgba(255,255,255,0.06) !important; border: 1px solid rgba(255,255,255,0.14) !important; color: rgba(255,255,255,0.75) !important; font: 700 12px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.l-loja-abas button.is-on { background: rgba(255, 200, 87, 0.16) !important; border-color: #ffc857 !important; color: #ffc857 !important; }
+.l-loja-icone { display: block; aspect-ratio: 1; border-radius: 10px; box-shadow: 0 10px 24px -10px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06); }
+.l-loja-grade.is-itens button.is-meu .l-loja-icone { box-shadow: 0 10px 24px -10px rgba(0,0,0,0.9), 0 0 0 2px #5dffa0; }
 .l-estante-capa svg { width: 44px; height: 44px; }
 .l-estante-loja { display: block; padding: 8px 4px 2px; font: 10px var(--mono); letter-spacing: 0.08em; color: rgba(255,200,87,0.8); text-transform: uppercase; }
 .l-estante-capa:has(svg) { border-radius: 3px; background: none; box-shadow: none; width: 44px; height: 44px; overflow: hidden; }
@@ -2077,7 +2083,26 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-holo-letreiro-faixa { flex: 1; min-width: 0; overflow: hidden; -webkit-mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
 .l-holo-letreiro-faixa em { display: inline-block; white-space: pre; font-style: normal; color: #ffc857; text-shadow: 0 0 6px rgba(255, 200, 87, 0.6); animation: l-holo-letreiro var(--dur, 14s) linear infinite; }
 .l-holo-letreiro-vazio { flex: 1; text-align: center; letter-spacing: 0.2em; color: #5dffa0; opacity: 0.7; }
-.l-holo-letreiro > i { flex: none; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; background: #ff3fb0; color: #fff; font: 700 9px/15px var(--font-geist-mono), monospace; font-style: normal; text-align: center; }
+/* (T56) um notch só: a linha (a hora, o que dá pra fazer agora, o "2 de 5", o "?") e, aberto, a explicação */
+.l-holo-letreiro { display: block; height: auto; padding: 0; }
+.l-holo-letreiro-linha { display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 0 4px 0 10px; }
+.l-holo-letreiro-linha > b { flex: none; color: #fff; font-variant-numeric: tabular-nums; }
+.l-nexo-agora, .l-nexo-passo { flex: 1; min-width: 0; }
+.l-nexo-agora em { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: normal; color: var(--c); text-shadow: 0 0 6px color-mix(in srgb, var(--c) 60%, transparent); }
+.l-nexo-passo em { display: block; padding: 4px 0; font: 700 11px/1.3 var(--font-geist-mono), ui-monospace, monospace; font-style: normal; color: #fff; text-shadow: 0 0 6px var(--c); animation: l-nexo-entra 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.l-nexo-conta { flex: none; font: 600 8.5px var(--font-geist-mono), monospace; letter-spacing: 0.08em; color: var(--c); opacity: 0.6; white-space: nowrap; }
+.l-nexo-q { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin: 2px 0; padding: 0; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--c, #2fe8ff) 55%, transparent); background: transparent; color: var(--c, #2fe8ff); font: 800 12px var(--font-geist-mono), monospace; cursor: pointer; }
+.l-nexo-q.is-on { background: var(--c, #2fe8ff); color: #000; box-shadow: 0 0 10px var(--c, #2fe8ff); }
+.l-viagem.is-disco .l-ilha.is-letreiro:has(.l-holo-letreiro.is-tut) { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 1px color-mix(in srgb, var(--c, #2fe8ff) 55%, transparent), 0 0 18px -6px var(--c, #2fe8ff); }
+.l-viagem.is-disco .l-ilha.is-letreiro:has(.l-holo-letreiro.is-tut), .l-viagem.is-disco .l-ilha.is-letreiro:has(.l-holo-letreiro.is-aberto) { border-radius: 16px; }
+/* aberto, o notch cresce por cima do resto (no celular a ilha tem teto de 58 px: aberto, não) */
+.l-viagem.is-disco .l-ilha.is-letreiro:has(.l-holo-letreiro.is-aberto) { max-height: none; z-index: 40; }
+.l-holo-letreiro.is-ok .l-nexo-passo em { color: #5dffa0; }
+.l-holo-letreiro.is-fim .l-nexo-passo em { animation: l-nexo-entra 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.l-nexo-ajuda { display: grid; gap: 4px; padding: 6px 12px 10px; border-top: 1px solid color-mix(in srgb, var(--c, #2fe8ff) 25%, transparent); font: 500 12px/1.4 system-ui, sans-serif; color: #dffbff; animation: l-notch-abre 0.3s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+.l-nexo-ajuda b { font: 800 10px var(--font-geist-mono), monospace; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c, #2fe8ff); }
+.l-nexo-ajuda small { font: 600 8.5px var(--font-geist-mono), monospace; letter-spacing: 0.06em; color: rgba(223, 251, 255, 0.5); }
+@keyframes l-nexo-entra { from { opacity: 0; transform: translateX(24px); } }
 @keyframes l-holo-letreiro { from { transform: translateX(-50%) } to { transform: translateX(0) } }
 
 /* em cima, à direita: o mapa e o anel das missões girando em volta */
@@ -2113,7 +2138,7 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-ajuda-controles dd { margin: 0; color: rgba(223, 251, 255, 0.8); }
 /* (LU2CA 22/10) fora os avisos de texto no disco: as dicas de sistema somem (o "?" explica) */
 .l-viagem.is-disco .l-ilha-proc small, .l-viagem.is-disco .l-ilha.is-garfo header span, .l-viagem.is-disco .l-embacado-dica, .l-viagem.is-disco .l-respirar > small { display: none !important; }
-.l-viagem.is-holo:has(.l-holo-ajuda) [data-info] { outline: 1px dashed rgba(47, 232, 255, 0.75); outline-offset: 3px; }
+.l-viagem.is-holo:has(.l-holo-letreiro.is-aberto) [data-info] { outline: 1px dashed rgba(47, 232, 255, 0.75); outline-offset: 3px; }
 
 /* em cima, à esquerda: a RÁDIO em holograma (a onda sonora girando) e a faixa */
 .l-holo-som { position: absolute; z-index: 6; left: 12px; top: calc(62px + env(safe-area-inset-top)); width: min(32vw, 330px); display: grid; grid-template-columns: 116px 1fr; gap: 10px; align-items: center; padding: 6px 12px 6px 4px; border-radius: 16px; color: #dffbff; background: linear-gradient(100deg, color-mix(in srgb, var(--cor) 14%, transparent), rgba(47, 232, 255, 0.02)); border: 1px solid color-mix(in srgb, var(--cor) 30%, transparent); backdrop-filter: blur(3px); font: 600 11px var(--font-geist-mono), ui-monospace, monospace; pointer-events: auto; animation: l-oculos 0.4s ease-out; }
@@ -2195,7 +2220,7 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-mini-fone .is-onda.is-b { animation-delay: 0.5s; }
 .l-mini-fone .is-onda.is-c { animation-delay: 1s; }
 @keyframes l-fone-onda { from { transform: scale(0.8); opacity: 0.8 } to { transform: scale(2.4); opacity: 0 } }
-@media (prefers-reduced-motion: reduce) { .l-mini-mpc i, .l-mini-show *, .l-mini-fone *, .l-holo-anel-gira, .l-holo-letreiro-faixa em { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .l-mini-mpc i, .l-mini-show *, .l-mini-fone *, .l-holo-anel-gira, .l-holo-letreiro-faixa em, .l-nexo-passo em, .l-nexo-ajuda { animation: none !important; } }
 
 /* celular em pé: a ilha ganha a faixa de cima só pra ela; o resto desce */
 @media (max-width: 600px) {
@@ -2365,8 +2390,17 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-minhoca { position: absolute; inset: 0; z-index: 80; background: #04020c; overflow: hidden; cursor: pointer; }
 .l-minhoca canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .l-minhoca .l-hyper { opacity: 0.3; }
-.l-minhoca.is-saida { background: transparent; pointer-events: none; cursor: default; z-index: 60; }
-.l-minhoca-clarao { position: absolute; inset: 0; background: #fff; opacity: 0; animation: l-clarao 7.2s ease-in forwards; pointer-events: none; }
+.l-minhoca.is-saida { background: transparent; pointer-events: none; cursor: default; z-index: 60; animation: l-saida-branco 1.5s ease-out both; }
+/* (T37) o branco do clarão segura o primeiro quadro e se desfaz (sem buraco entre o túnel e o deserto) */
+@keyframes l-saida-branco { from { background: #fffaf2 } to { background: transparent } }
+.l-minhoca-clarao { position: absolute; inset: 0; background: #fff; opacity: 0; animation: l-clarao var(--dur, 7.2s) ease-in forwards; pointer-events: none; }
+/* (T37) a cena de lado da chegada: as faixas de cinema entram devagar (o HUD some com o is-cinema) */
+.l-corte { position: absolute; inset: 0; z-index: 55; pointer-events: none; }
+.l-corte i { position: absolute; left: 0; right: 0; height: 11vh; background: #000; animation: l-corte-entra 0.9s cubic-bezier(.2,.7,.2,1) both; }
+.l-corte i:first-child { top: 0; transform-origin: top; }
+.l-corte i:last-child { bottom: 0; transform-origin: bottom; }
+@keyframes l-corte-entra { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+@media (prefers-reduced-motion: reduce) { .l-corte i { animation: none; } }
 @keyframes l-clarao { 0%, 88% { opacity: 0 } 100% { opacity: 1 } }
 @media (prefers-reduced-motion: reduce) { .l-inicio-disco-vinil, .l-inicio-disco-vinil i, .l-inicio-linhas i { animation: none !important; } }
 
@@ -2444,7 +2478,11 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-jornal header b { font: 900 20px Georgia, "Times New Roman", serif; letter-spacing: 0.04em; }
 .l-jornal header small { font: italic 11px Georgia, serif; }
 .l-jornal h2 { margin: 0; font: 800 24px/1.1 Georgia, "Times New Roman", serif; }
-.l-jornal canvas { width: 100%; aspect-ratio: 8 / 5; display: block; filter: contrast(1.05); }
+.l-jornal canvas { width: 100%; aspect-ratio: 8 / 5; display: block; }
+.l-jornal-foto { position: relative; line-height: 0; overflow: hidden; border: 1px solid #1a161255; }
+.l-jornal-img { width: 100%; aspect-ratio: 8 / 5; object-fit: cover; display: block; filter: grayscale(1) contrast(1.35) brightness(0.95) sepia(0.28); }
+/* grão e vinheta por cima da imagem de arquivo (a cena procedural já vem tratada no canvas) */
+.l-jornal-grao { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: 0.55; background: radial-gradient(ellipse at center, transparent 55%, rgba(20,14,8,0.65) 100%), repeating-conic-gradient(rgba(0,0,0,0.07) 0 25%, rgba(255,255,255,0.05) 0 50%) 0 0 / 3px 3px; }
 .l-jornal p { margin: 0; font: italic 14px/1.4 Georgia, serif; }
 .l-jornal footer { display: flex; gap: 16px; font: 12px var(--mono); border-top: 1px solid #1a161244; padding-top: 8px; }
 .l-jornal button { justify-self: end; padding: 8px 14px !important; border-radius: 999px; background: #1a1612 !important; color: #efe9dc !important; border: 0 !important; font: 700 12px var(--mono) !important; cursor: pointer; }
@@ -2473,7 +2511,6 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-perfil li button { padding: 5px 10px !important; border-radius: 999px; border: 1px solid #4fc3ff !important; background: rgba(79, 195, 255, 0.12) !important; color: #fff !important; font: 700 11px var(--mono) !important; cursor: pointer; white-space: nowrap; }
 .l-perfil li button:disabled { opacity: 0.4; cursor: default; }
 .l-perfil.is-oficina li { opacity: 1; }
-.l-perfil-pintura { justify-self: end; padding: 7px 12px !important; border-radius: 999px; border: 1px solid #ff9000 !important; background: none !important; color: #ff9000 !important; font: 700 11px var(--mono) !important; cursor: pointer; }
 
 /* (disco, B11) o ping pong com o robô */
 .l-pingpong { position: absolute; inset: 0; z-index: 72; background: #06040c; touch-action: none; }
@@ -2855,6 +2892,121 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-rua-caixa li.is-fechada { opacity: 0.5; }
 .l-rua-bts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .l-rua-bts button { padding: 9px 11px; border-radius: 12px; border: 1px solid rgba(255, 144, 0, 0.5); background: rgba(6, 6, 16, 0.78); color: #fff; font: 700 13px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; text-align: left; cursor: pointer; }
+/* (T20) os palcos: a escada (o topo em cima; com a proposta, a altura na cidade) e o menu do palco */
+.l-palcos-caixa { width: min(400px, 100%); gap: 10px; }
+.l-palcos-caixa header span { font: 11px var(--mono); letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.7); }
+.l-palcos-escada { list-style: none; margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 5px; position: relative; }
+.l-palcos-escada.is-sobe::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(to top, #ff9000, #b38cff, #2fe8ff, #ff3fb0); opacity: 0.7; }
+.l-palcos-escada li { position: relative; }
+.l-palcos-escada.is-sobe li::before { content: ""; position: absolute; left: -13px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--cor); box-shadow: 0 0 8px var(--cor); }
+.l-palcos-escada li.is-fechado::before { background: #333; box-shadow: none; }
+.l-palcos-escada button { width: 100%; display: grid; grid-template-columns: 1fr auto; grid-template-areas: "a e" "n e"; align-items: center; column-gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid color-mix(in srgb, var(--cor) 30%, transparent); color: #fff; text-align: left; font: inherit; cursor: pointer; }
+.l-palcos-escada li.is-sel button { background: color-mix(in srgb, var(--cor) 18%, transparent); border-color: var(--cor); }
+.l-palcos-escada li.is-fechado button { opacity: 0.55; }
+.l-palcos-escada small { grid-area: a; font: 9px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--cor); }
+.l-palcos-escada b { grid-area: n; font: 800 14px var(--cond); text-transform: uppercase; letter-spacing: 0.04em; }
+.l-palcos-escada em { grid-area: e; font: 10px var(--mono); font-style: normal; color: rgba(255, 255, 255, 0.65); white-space: nowrap; }
+.l-palcos-menu { display: flex; flex-direction: column; gap: 6px; }
+.l-palcos-menu > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-palcos-estrelas { font-style: normal; letter-spacing: 1px; color: #ffd23a; }
+.l-palcos-estrelas span { color: rgba(255, 255, 255, 0.2); }
+/* (T21) os shows do subúrbio xenom: os 4 multiversos embaixo do menu do palco */
+.l-xenom { padding-top: 8px; border-top: 1px dashed rgba(255, 95, 174, 0.35); --cor: #ff5fae; }
+.l-xenom li { list-style: none; }
+.l-xenom ul { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.l-xenom li b em { font: 600 11px var(--mono); font-style: normal; text-transform: none; letter-spacing: 0; color: var(--cor); }
+.l-xenom li small { font: 10px var(--mono); color: rgba(255, 255, 255, 0.7); }
+.l-xenom li.is-cumprida > button { border-left-width: 6px; }
+.l-xenom-album { display: block; padding: 9px 11px; border-radius: 12px; background: var(--cor); color: #10060c; font: 800 13px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; text-align: center; }
+.l-show-fim .l-xenom-objetivo { max-width: 300px; color: #ff8a8a; }
+.l-show-fim .l-xenom-objetivo.is-ok { color: #6dff9a; }
+.l-show-fim .l-xenom-jurados { color: #fff; letter-spacing: 0.08em; }
+.l-recompensa-caixa > button.l-recompensa-ir { margin-top: 0; background: transparent; color: #fff; border: 1px solid #ff5fae; }
 .l-prova-missao { flex-direction: column; gap: 10px; }
+/* (T10) a arte da quadra: o B4TIDA numa janela por cima do jogo, com a barra do Alohan em cima */
+.l-batida-missao { position: absolute; inset: 0; z-index: 74; display: flex; flex-direction: column; background: #000; animation: l-sobe 0.35s both; }
+.l-batida-missao > header { display: flex; align-items: center; gap: 12px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; background: rgba(8, 6, 16, 0.96); border-bottom: 2px solid var(--cor); }
+.l-batida-missao > header > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.l-batida-missao small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-batida-missao b { font: 800 15px/1.2 var(--sans, system-ui); color: #fff; }
+.l-batida-missao span { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.l-batida-missao i { font: normal 11px var(--mono); color: rgba(255, 255, 255, 0.6); }
+.l-batida-missao i.is-ok { color: #6dff9a; }
+.l-batida-missao button { flex: none; padding: 10px 14px; border-radius: 999px; font: 800 12px var(--mono); background: var(--cor); color: #140a00; cursor: pointer; }
+.l-batida-missao button:disabled { opacity: 0.35; cursor: default; }
+.l-batida-missao iframe { flex: 1; width: 100%; border: 0; background: #000; }
+.l-batida-carrega { position: absolute; inset: 90px 0 0; margin: 0; display: flex; align-items: center; justify-content: center; font: 12px var(--mono); color: rgba(255, 255, 255, 0.6); pointer-events: none; }
 .l-prova-missao > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
 .l-prova-missao > .l-prova { width: min(420px, 100%); max-height: 70vh; overflow: auto; padding: 12px; border-radius: 16px; background: rgba(5, 5, 14, 0.9); border: 1px solid rgba(255, 255, 255, 0.14); }
+
+/* (T19) a arte do LU2CA: escrever a letra (disco/Letra.tsx) */
+.l-letra { position: absolute; inset: 0; z-index: 74; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 3, 10, 0.7); backdrop-filter: blur(6px); animation: l-sobe 0.35s both; }
+.l-letra-caixa { width: min(440px, 100%); max-height: calc(100% - 32px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px 18px 16px; border-radius: 18px; background: rgba(6, 6, 16, 0.94); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--cor) 25%, transparent); color: #fff; }
+.l-letra-caixa > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-letra-caixa > b { font: 800 clamp(28px, 8vw, 38px)/0.95 var(--cond); text-transform: uppercase; letter-spacing: 0.03em; }
+.l-letra-mote { margin: 0; font: 13px/1.4 system-ui, sans-serif; color: rgba(255, 255, 255, 0.7); }
+.l-letra-papel { display: grid; gap: 4px; padding: 14px 16px; border-radius: 10px; background: #f1ece0; color: #17131f; transform: rotate(-0.6deg); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
+.l-letra-papel em { font: 700 11px var(--mono); font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.55; }
+.l-letra-papel p { margin: 0; min-height: 1.35em; font: 600 16px/1.35 "Georgia", serif; border-bottom: 1px solid rgba(23, 19, 31, 0.12); }
+.l-letra-papel p.is-agora { color: rgba(23, 19, 31, 0.4); }
+.l-letra-papel p.is-escrito { animation: l-sobe 0.3s both; }
+.l-letra-opcoes { display: grid; gap: 8px; }
+.l-letra-opcoes > small { font: 700 10px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cor); }
+.l-letra-opcoes button, .l-letra-livre button, .l-letra-fim button { display: flex; gap: 10px; align-items: baseline; text-align: left; padding: 11px 12px !important; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent) !important; background: color-mix(in srgb, var(--cor) 10%, rgba(8, 6, 16, 0.9)) !important; color: #fff !important; font: 15px/1.3 system-ui, sans-serif !important; cursor: pointer; }
+.l-letra-opcoes button:hover, .l-letra-opcoes button:focus-visible { box-shadow: 0 0 18px -6px var(--cor); outline: none; }
+.l-letra-opcoes kbd { font: 700 11px var(--mono); color: var(--cor); }
+.l-letra-opcoes .is-livre { justify-content: center; border-style: dashed !important; opacity: 0.85; }
+.l-letra-livre { display: flex; gap: 8px; }
+.l-letra-livre input { flex: 1; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); background: rgba(255, 255, 255, 0.06); color: #fff; font: 15px system-ui, sans-serif; }
+.l-letra-fim { display: flex; gap: 8px; justify-content: space-between; }
+.l-letra-fim .is-volta, .l-letra-livre .is-volta { opacity: 0.7; font-size: 12px !important; }
+.l-letra-fim .is-subir { margin-left: auto; background: var(--cor) !important; color: #07060d !important; font-weight: 700 !important; }
+
+/* (T19) o prelúdio do show: o filmezinho antes da escolha do instrumento */
+.l-show.is-preludio { cursor: pointer; }
+.l-show-pular { position: absolute; right: 16px; bottom: calc(12% + env(safe-area-inset-bottom)); font: 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); pointer-events: none; }
+
+/* (T19, J2: 24 "o show tá lento") com o show aberto, o jogo embaixo some de vez.
+   A Kombi já parava (frameloop "never"), mas o resto da tela de baixo (o HUD, os
+   blurs, as animações, o mapa-mini) seguia sendo composto a cada quadro, por
+   baixo de um show que cobre tudo: medido em 1864×999 a 2x, 66–71 ms por
+   quadro com ele, 17 ms sem. */
+.l-palco:has(.l-show) .l-viagem { visibility: hidden; }
+
+/* (T09) a missão da oficina: a bancada, o painel no lixão, a goteira e o pagamento (disco/Oficina.tsx) */
+.l-oficina { position: absolute; inset: 0; z-index: 74; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 3, 10, 0.62); backdrop-filter: blur(6px); animation: l-sobe 0.35s both; }
+.l-oficina-caixa { width: min(380px, 100%); max-height: calc(100% - 32px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px 18px 16px; border-radius: 18px; background: rgba(6, 6, 16, 0.92); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 40px color-mix(in srgb, var(--cor) 30%, transparent); color: #fff; }
+.l-oficina-caixa > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-oficina-caixa > b { font-size: 24px; line-height: 1.1; }
+.l-oficina-msg { margin: 0; font-size: 13px; line-height: 1.4; color: rgba(255, 255, 255, 0.78); }
+.l-oficina-seguir { align-self: stretch; min-height: 44px; border-radius: 999px; border: 0; background: var(--cor); color: #07060c; font: 800 14px var(--mono); cursor: pointer; }
+.l-oficina-plano { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.l-oficina-plano li { flex: 1; padding: 8px 6px; border-radius: 10px; border: 1px dashed color-mix(in srgb, var(--cor) 60%, transparent); font: 700 11px var(--mono); text-align: center; color: rgba(255, 255, 255, 0.6); }
+.l-oficina-plano li.is-tem { border-style: solid; background: color-mix(in srgb, var(--cor) 22%, transparent); color: #fff; }
+.l-oficina-lixo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.l-oficina-lixo button { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font-size: 12px; text-align: left; cursor: pointer; transition: transform 0.2s, opacity 0.3s; }
+.l-oficina-lixo button i { flex: none; width: 18px; height: 18px; border-radius: 4px; background: var(--c); transform: rotate(12deg); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 50%, transparent); }
+.l-oficina-lixo button.is-saiu { opacity: 0.3; }
+/* (T57) a montagem: o lixo catado no lixão vira peça, sozinho */
+.l-oficina-peca { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.7); font-size: 12px; }
+.l-oficina-peca i { flex: none; width: 18px; height: 18px; border-radius: 4px; background: var(--c); transform: rotate(12deg); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 50%, transparent); }
+.l-oficina-peca.is-desmontando i { animation: l-oficina-gira 0.75s linear infinite; }
+.l-oficina-peca.is-saiu { border-color: color-mix(in srgb, var(--c) 60%, transparent); background: color-mix(in srgb, var(--c) 16%, transparent); color: #fff; font-weight: 700; }
+.l-oficina-lixo button.is-errou { animation: l-oficina-treme 0.4s; }
+.l-oficina-lixo button.is-desmontando i { animation: l-oficina-gira 0.65s linear; }
+@keyframes l-oficina-treme { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes l-oficina-gira { to { transform: rotate(372deg) scale(0.6); } }
+.l-oficina-cova { position: relative; height: 120px; border-radius: 12px; overflow: hidden; background: linear-gradient(#2a2230, #17131d); }
+.l-oficina-painel { position: absolute; left: 22%; right: 22%; top: 30%; bottom: 18%; border-radius: 4px; transform: perspective(200px) rotateX(28deg); background: repeating-linear-gradient(90deg, #1d3a6b 0 18%, #4fc3ff 18% 19%), #1d3a6b; box-shadow: 0 0 calc(var(--p) * 30px) #4fc3ff; opacity: calc(0.25 + var(--p) * 0.75); }
+.l-oficina-entulho { position: absolute; inset: 0; background: radial-gradient(circle at 30% 70%, #5a4a3a 0 20%, transparent 21%), radial-gradient(circle at 70% 60%, #3d4a5c 0 24%, transparent 25%), radial-gradient(circle at 50% 45%, #6b6150 0 26%, transparent 27%); transform: translateY(calc(var(--p) * 100%)); transition: transform 0.3s; }
+.l-oficina-goteira { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; height: 220px; padding-top: 18px; }
+.l-oficina-cano { position: absolute; top: 0; left: 0; right: 0; height: 12px; border-radius: 6px; background: linear-gradient(#8a93b8, #4a5068); }
+.l-oficina-coluna { position: relative; border: 0; border-radius: 10px; background: rgba(79, 195, 255, 0.05); cursor: pointer; overflow: hidden; }
+.l-oficina-gota { position: absolute; inset: 0; pointer-events: none; will-change: transform; }
+.l-oficina-gota::before { content: ""; position: absolute; top: 0; left: 50%; width: 12px; height: 16px; margin-left: -6px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #4fc3ff; box-shadow: 0 0 10px #4fc3ff; }
+.l-oficina-balde { position: absolute; bottom: 6px; left: 50%; width: 48px; height: 40px; margin-left: -24px; border: 3px solid #c9d3e6; border-top: 0; border-radius: 0 0 10px 10px; background: linear-gradient(to top, #4fc3ff calc(var(--n) * 100%), transparent calc(var(--n) * 100%)); }
+.l-oficina-agua { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 10px 0; }
+.l-oficina-agua i { width: 22px; height: 28px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #4fc3ff; box-shadow: 0 0 16px #4fc3ff; }
+.l-oficina-agua b { font: 800 56px var(--mono); font-variant-numeric: tabular-nums; color: #4fc3ff; }
+.l-oficina-agua small { font: 700 12px var(--mono); color: rgba(255, 255, 255, 0.6); }
+.l-oficina-agua.is-fim b { color: #fff; }

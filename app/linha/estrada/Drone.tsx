@@ -18,8 +18,8 @@ import * as THREE from "three"
 import type { Mundo } from "./mundo"
 import { PASSO } from "./pista"
 import { calcularRota } from "./rota"
-import { blipsDo, noMundo, type IconeMapa, type Marca } from "./Mapa"
-import { CHAO_LUGARES, type LugarChao } from "../disco/historia"
+import { blipsDo, noMundo, uDaMissao, type IconeMapa, type Marca } from "./Mapa"
+import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
 import type { LugarId } from "../lugares"
 
 // ── os números (tudo que o designer ajusta mora aqui) ──
@@ -447,13 +447,13 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
         I.setMatrixAt(n, mtx); I.setColorAt(n, cor.set(c)); n++
       }
       for (const b of blips) { if (ap?.[b.via]) continue; const i = pontoVia(M, b.via, b.u), v = M.vias[b.via]; por(v.px[i], v.py[i], v.pz[i], b.cor) }
-      if ("disco" in M) for (const c of Object.values(CHAO_LUGARES)) por(c.x, yChao(c.x, c.z, 0), c.z, c.cor, 0.8)
+      if ("disco" in M) for (const k of CHAO_FIXOS) { const c = CHAO_LUGARES[k]; por(c.x, yChao(c.x, c.z, 0), c.z, c.cor, 0.8) }
       if (pr.missoes && "disco" in M) {
         const D = M as unknown as { pistas: { nome: string; ida: number }[] }
         for (const m of pr.missoes) {
           const p = D.pistas.find((x) => x.nome === m.faixa)
           if (!p || ap?.[p.ida]) continue
-          const v = M.vias[p.ida], i = pontoVia(M, p.ida, (v.n - 1) * PASSO * 0.55)
+          const v = M.vias[p.ida], i = pontoVia(M, p.ida, uDaMissao(M, p.nome, v.n))
           por(v.px[i], v.py[i], v.pz[i], m.cor, 1.3)
         }
       }

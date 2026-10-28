@@ -10,7 +10,7 @@
 //     carros despencados meio enterrados e pneus)
 
 import * as THREE from "three"
-import { CASA, QUEDA, SAIDA_CASA } from "../disco/historia"
+import { CASA, CHAO_LUGARES, QUEDA, SAIDA_CASA, SUBURBIO } from "../disco/historia"
 
 export const CHAO = -12
 const TAM = 9000 // m de lado
@@ -125,13 +125,151 @@ function grade() {
   for (let iz = 0; iz < n; iz++) for (let ix = 0; ix < n; ix++) g[iz * n + ix] = alturaExata(-TAM / 2 + (ix / SEG) * TAM, -TAM / 2 + (iz / SEG) * TAM)
   return (GRADE = g)
 }
-export function chaoEm(x: number, z: number) {
+// o chão da grade (sem a boca do túnel)
+function chaoGrade(x: number, z: number) {
   const g = grade(), n = SEG + 1, c = TAM / SEG
   const fx = Math.max(0, Math.min(SEG - 1e-6, (x + TAM / 2) / c)), fz = Math.max(0, Math.min(SEG - 1e-6, (z + TAM / 2) / c))
   const ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz
   const a = g[iz * n + ix], b = g[iz * n + ix + 1], d = g[(iz + 1) * n + ix], e = g[(iz + 1) * n + ix + 1]
   // (o mesmo triângulo da PlaneGeometry: a diagonal vai de (ix, iz+1) a (ix+1, iz))
   return tx + tz <= 1 ? a + (b - a) * tx + (d - a) * tz : e + (d - e) * (1 - tx) + (b - e) * (1 - tz)
+}
+// a altura do chão (a física e o desenho): a grade, menos a rampa da boca do túnel
+export function chaoEm(x: number, z: number) {
+  return naQuadra(x, z, chaoGrade(x, z)) - fundoBoca(x, z)
+}
+
+// ── (T57) A QUADRA (a do Alohan, T10): um piso de cimento plano no chão do
+// subúrbio, com as linhas, as duas cestas e o alambrado (disco/LugaresChao).
+// O chão em volta assenta no piso (a Kombi roda nele, sem degrau) ──
+const QL = CHAO_LUGARES.quadra
+export const QUADRA = {
+  x: QL.x, z: QL.z,
+  // o comprimento da quadra aponta pro centro do subúrbio (de lado pra quem chega)
+  rot: Math.atan2(SUBURBIO.x - QL.x, SUBURBIO.z - QL.z) + Math.PI / 2,
+  comp: 34, larg: 21, // o piso (a quadra 28 × 15 e a folga em volta)
+  topo: 0,
+}
+export function quadraLocal(x: number, z: number) {
+  const dx = x - QUADRA.x, dz = z - QUADRA.z, c = Math.cos(QUADRA.rot), sn = Math.sin(QUADRA.rot)
+  return { a: dx * c - dz * sn, b: dx * sn + dz * c }
+}
+function naQuadra(x: number, z: number, h: number) {
+  const { a, b } = quadraLocal(x, z)
+  const fora = Math.max(Math.abs(a) - QUADRA.larg / 2, Math.abs(b) - QUADRA.comp / 2)
+  if (fora > 3) return h
+  if (!QUADRA.topo) {
+    let mx = -1e9
+    for (let i = -1; i <= 1; i += 0.125) for (let j = -1; j <= 1; j += 0.125) {
+      const pa = (i * QUADRA.larg) / 2, pb = (j * QUADRA.comp) / 2, c = Math.cos(QUADRA.rot), sn = Math.sin(QUADRA.rot)
+      mx = Math.max(mx, chaoGrade(QUADRA.x + pa * c + pb * sn, QUADRA.z - pa * sn + pb * c))
+    }
+    QUADRA.topo = mx + 0.12
+  }
+  return fora <= 0 ? QUADRA.topo : QUADRA.topo + (h - QUADRA.topo) * suave(0, 3, fora)
+}
+
+// ── (T57) A BOCA DO TÚNEL (o dono, 28/10: "as coisas acontecem no mundo, de
+// verdade"): no subúrbio, o chão afunda numa rampa até a entrada escura das
+// trincheiras. É o chão mesmo (a Kombi desce a rampa): um pedaço do relevo com
+// a vala, desenhado mais fino que a grade (o resto da grade ali afunda e fica
+// escondido embaixo dele). O fundo da rampa é a porta: CHAO_LUGARES.tuneis ──
+const BP = CHAO_LUGARES.tuneis
+const BL = Math.hypot(BP.x - SUBURBIO.x, BP.z - SUBURBIO.z)
+// o rumo da rampa (desce indo do subúrbio pra porta) e o de lado
+export const BOCA = {
+  x: BP.x, z: BP.z,
+  ax: (BP.x - SUBURBIO.x) / BL, az: (BP.z - SUBURBIO.z) / BL,
+  comp: 40, // o comprimento da rampa (m)
+  fundo: 6.5, // quanto desce (m)
+  meia: 6.5, // a meia largura da vala (m)
+  plano: 6, // o trecho plano lá embaixo, antes da porta
+  porta: 4.6, // a meia largura da porta (o vão do túnel)
+  tunel: 27.5, // quanto o túnel entra embaixo do chão, depois da porta
+}
+// s: ao longo da rampa (0 na porta, negativo subindo); v: de lado
+export function naBocaLocal(x: number, z: number) {
+  const dx = x - BOCA.x, dz = z - BOCA.z
+  return { s: dx * BOCA.ax + dz * BOCA.az, v: -dx * BOCA.az + dz * BOCA.ax }
+}
+// quanto o chão desce num ponto (0 fora da vala)
+export function fundoBoca(x: number, z: number) {
+  const { s, v } = naBocaLocal(x, z)
+  if (s > 0.6 || s < -BOCA.comp - 0.5 || Math.abs(v) > BOCA.meia + 1.6) return 0
+  // a rampa (suave nas duas pontas) e o plano lá embaixo
+  const t = Math.max(0, Math.min(1, (s + BOCA.comp) / (BOCA.comp - BOCA.plano)))
+  const desce = BOCA.fundo * t * t * (3 - 2 * t)
+  // a parede da porta (s > 0) e as paredes de lado (o muro de arrimo cobre a quina)
+  const lado = 1 - suave(BOCA.meia, BOCA.meia + 1.5, Math.abs(v))
+  const porta = 1 - suave(0, 0.6, s)
+  return desce * lado * porta
+}
+// (só o desenho) depois da porta o chão continua lá embaixo (o vão do túnel),
+// coberto pela tampa (o mesmo chão, por cima): a física segue a parede da porta
+function valaDoTunel(x: number, z: number) {
+  const { s, v } = naBocaLocal(x, z)
+  if (s < 0 || s > BOCA.tunel || Math.abs(v) > BOCA.porta + 1.5) return 0
+  return BOCA.fundo * (1 - suave(BOCA.porta + 0.3, BOCA.porta + 1.5, Math.abs(v)))
+}
+// está lá embaixo, na frente da porta (onde ela leva pras trincheiras)
+export function naBoca(x: number, z: number) {
+  const { s, v } = naBocaLocal(x, z)
+  return s > -BOCA.plano - 6 && s < 1.5 && Math.abs(v) < BOCA.meia + 0.5
+}
+// o pedaço da grade que a boca ocupa (células inteiras: a borda bate com o chão em volta)
+const RECORTE = (() => {
+  const c = TAM / SEG, m = BOCA.comp + 30
+  const i0 = (v: number) => Math.floor((v + TAM / 2) / c), i1 = (v: number) => Math.ceil((v + TAM / 2) / c)
+  return { ix0: i0(BOCA.x - m), ix1: i1(BOCA.x + m), iz0: i0(BOCA.z - m), iz1: i1(BOCA.z + m) }
+})()
+// o desenho do pedaço com a vala (a mesma cor do chão; a vala, de concreto)
+export function geoBoca() {
+  const c = TAM / SEG, K = 16
+  const nx = RECORTE.ix1 - RECORTE.ix0, nz = RECORTE.iz1 - RECORTE.iz0
+  const geo = new THREE.PlaneGeometry(nx * c, nz * c, nx * K, nz * K)
+  geo.rotateX(-Math.PI / 2)
+  const cx = -TAM / 2 + ((RECORTE.ix0 + RECORTE.ix1) / 2) * c, cz = -TAM / 2 + ((RECORTE.iz0 + RECORTE.iz1) / 2) * c
+  geo.translate(cx, 0, cz)
+  const pos = geo.attributes.position
+  for (let i = 0; i < pos.count; i++) { const X = pos.getX(i), Z = pos.getZ(i); pos.setY(i, chaoEm(X, Z) - valaDoTunel(X, Z)) }
+  geo.computeVertexNormals()
+  pintarChao(geo)
+  // a tampa: o chão por cima do túnel (a mesma cor do chão em volta)
+  const L = BOCA.tunel - 0.6, W = (BOCA.porta + 1.6) * 2
+  const tampa = new THREE.PlaneGeometry(W, L, 8, 16)
+  tampa.rotateX(-Math.PI / 2)
+  const tp = tampa.attributes.position
+  for (let i = 0; i < tp.count; i++) {
+    const lx = tp.getX(i), s = 0.6 + L / 2 + tp.getZ(i)
+    const X = BOCA.x + BOCA.ax * s + BOCA.az * lx, Z = BOCA.z + BOCA.az * s - BOCA.ax * lx
+    tp.setXYZ(i, X, chaoGrade(X, Z), Z)
+  }
+  tampa.computeVertexNormals()
+  pintarChao(tampa, false)
+  const junto = new THREE.BufferGeometry()
+  const a = geo.toNonIndexed(), b = tampa.toNonIndexed()
+  for (const k of ["position", "normal", "color"]) {
+    const A = a.attributes[k].array as Float32Array, B = b.attributes[k].array as Float32Array, J = new Float32Array(A.length + B.length)
+    J.set(A); J.set(B, A.length)
+    junto.setAttribute(k, new THREE.BufferAttribute(J, 3))
+  }
+  geo.dispose(); tampa.dispose(); a.dispose(); b.dispose()
+  return junto
+}
+function pintarChao(geo: THREE.BufferGeometry, vala = true) {
+  const pos = geo.attributes.position
+  const cor = new Float32Array(pos.count * 3), nor = geo.attributes.normal
+  for (let i = 0; i < pos.count; i++) {
+    const X = pos.getX(i), Z = pos.getZ(i)
+    corDoChao(X, Z, pos.getY(i), nor.getX(i), nor.getY(i), nor.getZ(i), cor, i)
+    // a vala: concreto escuro, mais escuro lá no fundo
+    const fb = vala ? fundoBoca(X, Z) + valaDoTunel(X, Z) : 0, f = Math.min(1, fb / 0.8)
+    if (f > 0) {
+      const k = 1 - 0.35 * Math.min(1, fb / BOCA.fundo)
+      cor[i * 3] += (0.2 * k - cor[i * 3]) * f; cor[i * 3 + 1] += (0.19 * k - cor[i * 3 + 1]) * f; cor[i * 3 + 2] += (0.23 * k - cor[i * 3 + 2]) * f
+    }
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(cor, 3))
 }
 
 // o desenho do chão: a areia (mais clara na crista, mais escura no vale) e o
@@ -145,26 +283,33 @@ export function geoChao() {
     const X = pos.getX(i), Z = pos.getZ(i)
     const ix = Math.round((X + TAM / 2) / (TAM / SEG)), iz = Math.round((Z + TAM / 2) / (TAM / SEG))
     pos.setY(i, g[iz * n + ix])
-    const c = crista(X, Z), l = zonaLixo(X, Z), m = ruido(X / 35, Z / 35)
-    const areia = 0.72 + c * 0.28 - m * 0.06
-    const sr = 0.66 * areia, sg = 0.48 * areia, sb = 0.3 * areia
-    const ferr = m > 0.62 ? 1 : 0
-    const lr = 0.17 + ferr * 0.14 + m * 0.05, lg = 0.15 + ferr * 0.05 + m * 0.04, lb = 0.16 + m * 0.04
-    cor[i * 3] = sr + (lr - sr) * l; cor[i * 3 + 1] = sg + (lg - sg) * l; cor[i * 3 + 2] = sb + (lb - sb) * l
   }
   geo.computeVertexNormals()
-  // o relevo de longe (a queda): um sol baixo assado na cor (o material tem
-  // emissivo forte, que achata a luz) e a encosta íngreme mais escura
-  const nor = geo.attributes.normal, sx = -0.55, sy = 0.62, sz = -0.56
-  for (let i = 0; i < pos.count; i++) {
-    const nx = nor.getX(i), ny = nor.getY(i), nz = nor.getZ(i)
-    const luz = Math.max(0, nx * sx + ny * sy + nz * sz)
-    const alto = Math.max(0, Math.min(1, (pos.getY(i) - CHAO) / 50))
-    const k = (0.62 + 0.5 * luz) * (0.92 + 0.16 * alto) * (0.75 + 0.25 * ny)
-    cor[i * 3] *= k; cor[i * 3 + 1] *= k; cor[i * 3 + 2] *= k
-  }
+  const nor = geo.attributes.normal
+  for (let i = 0; i < pos.count; i++) corDoChao(pos.getX(i), pos.getZ(i), pos.getY(i), nor.getX(i), nor.getY(i), nor.getZ(i), cor, i)
   geo.setAttribute("color", new THREE.BufferAttribute(cor, 3))
+  // (T57) embaixo do pedaço da boca do túnel, a grade afunda (fica escondida; as
+  // normais e as cores ficam as de antes, pra borda não mudar de luz)
+  for (let iz = RECORTE.iz0 + 1; iz < RECORTE.iz1; iz++) for (let ix = RECORTE.ix0 + 1; ix < RECORTE.ix1; ix++) {
+    const i = iz * n + ix
+    pos.setY(i, pos.getY(i) - 30)
+  }
   return geo
+}
+// a cor do chão num ponto: a areia (mais clara na crista) ou o lixão, e o
+// relevo de longe (a queda): um sol baixo assado na cor (o material tem
+// emissivo forte, que achata a luz) e a encosta íngreme mais escura
+function corDoChao(X: number, Z: number, y: number, nx: number, ny: number, nz: number, cor: Float32Array, i: number) {
+  const c = crista(X, Z), l = zonaLixo(X, Z), m = ruido(X / 35, Z / 35)
+  const areia = 0.72 + c * 0.28 - m * 0.06
+  const sr = 0.66 * areia, sg = 0.48 * areia, sb = 0.3 * areia
+  const ferr = m > 0.62 ? 1 : 0
+  const lr = 0.17 + ferr * 0.14 + m * 0.05, lg = 0.15 + ferr * 0.05 + m * 0.04, lb = 0.16 + m * 0.04
+  const sx = -0.55, sy = 0.62, sz = -0.56
+  const luz = Math.max(0, nx * sx + ny * sy + nz * sz)
+  const alto = Math.max(0, Math.min(1, (y - CHAO) / 50))
+  const k = (0.62 + 0.5 * luz) * (0.92 + 0.16 * alto) * (0.75 + 0.25 * ny)
+  cor[i * 3] = (sr + (lr - sr) * l) * k; cor[i * 3 + 1] = (sg + (lg - sg) * l) * k; cor[i * 3 + 2] = (sb + (lb - sb) * l) * k
 }
 
 // os objetos do lixão: carros despencados (que não carregavam ninguém) meio

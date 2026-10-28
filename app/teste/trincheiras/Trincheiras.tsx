@@ -254,6 +254,9 @@ export function Trincheiras() {
   const [veiculo, setVeiculo] = useState<Veiculo>("patins")
   const [recordes, setRecordes] = useState<Partial<Record<Veiculo, Recorde>>>({})
   const [rodada, setRodada] = useState(0) // muda a cada largada
+  // (T57) veio do mapa pela boca do túnel (?volta=disco): a volta sobe pro subúrbio; correu = conta pra missão
+  const [volta, setVolta] = useState(false)
+  const [correu, setCorreu] = useState(false)
   const [painel, setPainel] = useState<Painel>({ recordeAntes: null, fantasma: false, resultado: null, parciais: [] })
   const velRef = useRef<HTMLSpanElement>(null)
   const ondeRef = useRef<HTMLSpanElement>(null)
@@ -288,7 +291,7 @@ export function Trincheiras() {
   const escolher = () => { corrida.current = corridaInicial("escolha"); st.current = estadoInicial(); setRecordes(lerRecordes()); setFase("escolha"); setIntro(false); setRodada((n) => n + 1) }
   const mudouFase = (f: Fase) => {
     setFase(f)
-    if (f === "chegou") { const c = corrida.current; setRecordes(lerRecordes()); setPainel((p) => ({ ...p, resultado: c.resultado, parciais: [...c.parciais] })) }
+    if (f === "chegou") { setCorreu(true); const c = corrida.current; setRecordes(lerRecordes()); setPainel((p) => ({ ...p, resultado: c.resultado, parciais: [...c.parciais] })) }
   }
 
   useEffect(() => {
@@ -298,6 +301,7 @@ export function Trincheiras() {
     if (q.has("auto")) setAuto(true)
     if (q.has("parede")) setParede(true)
     if (q.has("motos")) setMotos(true)
+    if (q.get("volta") === "disco") setVolta(true)
     const d = q.get("dpr"); if (q.has("medir") && d) setFixa(+d)
     setRecordes(lerRecordes())
     // ?livre, ou ?auto sozinho (a medição e o teste do T11): passeio
@@ -382,7 +386,9 @@ export function Trincheiras() {
         <Cinema maxLente={QUALIDADE.lente} />
       </Canvas>
       <div className="tr-hud">
-        <Link href="/teste" className="tr-voltar">← teste</Link>
+        {volta
+          ? <a href={`/linha?mapa=disco&de=tuneis${correu ? "&corrida=1" : ""}`} className="tr-voltar" data-subir>↑ subir pro subúrbio</a>
+          : <Link href="/teste" className="tr-voltar">← teste</Link>}
         <div className="tr-vel">
           <span ref={velRef} className="tr-vel-n">0</span><small>km/h · {INFO[veiculo].nome.toLowerCase()}</small>
           {veiculo === "patins" && <span className="tr-jato" aria-hidden><span ref={jatoRef} /></span>}
@@ -438,6 +444,7 @@ export function Trincheiras() {
           <div className="tr-fim-botoes">
             <button type="button" onClick={() => largar(veiculo)}>correr de novo</button>
             <button type="button" onClick={escolher}>trocar de veículo</button>
+            {volta && <a href="/linha?mapa=disco&de=tuneis&corrida=1" data-subir>subir pro subúrbio</a>}
           </div>
         </div>
       )}
