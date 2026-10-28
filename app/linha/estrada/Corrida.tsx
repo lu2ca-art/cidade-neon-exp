@@ -1028,10 +1028,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [oficinaAberta, setOficinaAberta] = useState(false)
   // (T04, T09) a oficina mora só no chão do subúrbio: depois da missão dela (a porta
   // das melhorias), parando perto, dá pra entrar e comprar desempenho com água
-  const [pertoOficina, setPertoOficina] = useState(false)
+  const [pertoDaOficina, setPertoOficina] = useState(false)
   const oficinaLivre = !!discoM && !!historia && feita13(historia, "oficina") && alvoChao !== "oficina"
+  const pertoOficina = oficinaLivre && pertoDaOficina
   useEffect(() => {
-    if (!oficinaLivre) { setPertoOficina(false); return }
+    if (!oficinaLivre) return
     const l = CHAO_LUGARES.oficina
     const iv = setInterval(() => {
       const j = jogo.current
