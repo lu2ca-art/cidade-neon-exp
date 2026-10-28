@@ -79,6 +79,8 @@ export interface Save {
   compras?: string[]
   // (T03) a versão da economia no save: o carregar acerta o save antigo uma vez
   economia?: number
+  // (T44) os rachas: por corredor (disco/corredores.ts), quantas você ganhou (v) e perdeu (d)
+  rachas?: Record<string, { v: number; d: number }>
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>

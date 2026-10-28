@@ -8,6 +8,7 @@
 // versão anterior), a Kombi pra rodar a cidade quando quiser, e os níveis
 // liberando coisa nova aos poucos.
 
+import { registrarRacha } from "./disco/corredores"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
@@ -1603,6 +1604,7 @@ export default function LinhaPage() {
             onMissoes={() => setPainelMissoes(true)}
             agua={save.agua ?? 0}
             onFuga={(n) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) }))}
+            onRacha={(r) => setSave((s) => registrarRacha(s, r))}
             onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
             checklistHolo={checklistHolo}
             mapaMissoes={mapaMissoes}
