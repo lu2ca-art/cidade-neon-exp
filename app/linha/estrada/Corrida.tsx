@@ -43,6 +43,7 @@ import { LugaresChao } from "../disco/LugaresChao"
 import { CasaDeserto } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
+import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
@@ -62,6 +63,7 @@ import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
+import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
@@ -81,6 +83,7 @@ import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
+import { radioPega, type MemoriaRadio } from "../disco/sons"
 import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
@@ -364,23 +367,34 @@ type Jogo = {
   naSeg?: boolean
 }
 
-// (LU2CA 21/10 (2), o PINBALL) a Kombi no mundo livre (voo ou direção livre)
-// bateu num prédio: o rumo espelha na parede (como a bola no pinball) e ela
-// segue, perdendo pouco; um baque por batida (não treme encostada)
-function quicar(j: Jogo, emp: [number, number], kombi: THREE.Object3D | null) {
+// (T43, 28/10, J2:28: "o bounce dos prédios tá muito ruim [...] ao invés de
+// bouncear, o carro meio que gruda nela e segue o rumo mais próximo") O CAMPO
+// DE FORÇA. Antes (21/10, o pinball) o rumo espelhava na parede: entre dois
+// prédios, ou numa quina, a Kombi ia e voltava e travava. Agora ela encosta na
+// cerca e o rumo vira, em ~0,1 s, pro lado da parede mais perto do que ela já
+// apontava (de frente: o lado que contorna mais rápido); enquanto apontar pra
+// dentro, continua grudada deslizando. Perde um pouco de velocidade só no
+// primeiro toque. Devolve true no primeiro toque (o baque, o som, a faísca)
+// o prédio da última batida (o mais fundo), pra saber o lado de contornar
+const BATEU_EM = { x: 0, z: 0 }
+function grudar(j: Jogo, emp: [number, number], dt: number): boolean {
   const L = Math.hypot(emp[0], emp[1])
-  if (!L || j.rumo === undefined) return
-  const nx = emp[0] / L, nz = emp[1] / L
-  const dx = Math.sin(j.rumo), dz = Math.cos(j.rumo), dn = dx * nx + dz * nz
-  if (dn >= 0) return // já está saindo da parede
-  const rx = dx - 2 * dn * nx, rz = dz - 2 * dn * nz
-  j.rumo = Math.atan2(rx, rz)
-  if (j.tempo - (j.quique ?? -9) > 0.35) {
-    j.quique = j.tempo
-    j.v *= 1 - 0.12 * Math.abs(dn)
-    j.shake = Math.max(j.shake, 0.35 * Math.abs(dn) + 0.1)
-    if (kombi) vib(16)
+  if (!L || j.rumo === undefined || j.wx === undefined || j.wz === undefined) return false
+  const nx = emp[0] / L, nz = emp[1] / L, sg = j.v < 0 ? -1 : 1
+  const dx = Math.sin(j.rumo) * sg, dz = Math.cos(j.rumo) * sg, dn = dx * nx + dz * nz
+  if (dn > -0.02) return false // já paralela ou saindo: solta
+  let tx = -nz, tz = nx, s = dx * tx + dz * tz
+  if (Math.abs(s) < 0.2) { const lado = (j.wx - BATEU_EM.x) * tx + (j.wz - BATEU_EM.z) * tz; s = lado || 1 }
+  if (s < 0) { tx = -tx; tz = -tz }
+  const alvo = Math.atan2(tx * sg, tz * sg), dif = Math.atan2(Math.sin(alvo - j.rumo), Math.cos(alvo - j.rumo))
+  j.rumo += dif * Math.min(1, dt * 14)
+  const novo = j.tempo - (j.quique ?? -9) > 0.35
+  j.quique = j.tempo
+  if (novo) {
+    j.v *= 1 - 0.18 * dn * dn
+    j.shake = Math.max(j.shake, 0.1 + 0.15 * -dn)
   }
+  return novo
 }
 
 // ponto de busca de uma missão no mapa (a coluna de luz com a coisa)
@@ -409,7 +423,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { semVoo?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
+type Input = { semVoo?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean; infinito?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -721,6 +735,22 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     vib([20, 30, 60])
     return true
   }
+  // (T42, J1) as viagens rápidas pros minijogos: na hora, sem gastar as viagens dos
+  // anéis; a Kombi aparece um pouco antes do lugar, com ele marcado no mapa
+  const viajarPara = (r: Rapida) => {
+    const j = jogo.current
+    if (j.chegando || (aberturaRef.current.ativa && !("disco" in M))) return
+    j.via = r.via; j.u = Math.max(0, r.u - 70); j.x = 0; j.v = Math.min(j.v, 20); j.encaixar = true; j.livreOk = false
+    evs.current?.via(r.via)
+    setMarca({ via: r.via, u: r.u, nome: r.nome, cor: r.cor })
+    ligarDrone(false)
+    vib([20, 30, 60])
+  }
+  // (T42, J1: "deixar no automático infinito, só aproveitando") o piloto automático
+  // infinito: a Kombi segue a pista sozinha, sem parar e sem desligar; mexer no
+  // volante assume por uns segundos e ele volta. O ∞ do lado do GPS liga e desliga
+  const [infinito, setInfinito] = useState(false)
+  useEffect(() => { input.current.infinito = infinito; if (infinito) { jogo.current.desligada = false; setDesligada(false) } }, [infinito])
   const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
   useEffect(() => {
     // qualquer toque ou tecla conta como "tem gente dirigindo"
@@ -1300,7 +1330,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // nada interrompe; o rádio é a 222 (locutor, Núcleo, estreias, sintonia)
   const [aparelho, setAparelho] = useState<Fonte>(fonteSom.get())
   const fonteRef = useRef(aparelho)
-  useEffect(() => fonteSom.ouvir((f) => { fonteRef.current = f; setAparelho(f) }), [])
+  // (T40) a rádio voltou sozinha (chegou perto de uma pista): a programação retoma
+  useEffect(() => fonteSom.ouvir((f, auto) => {
+    fonteRef.current = f; setAparelho(f)
+    if (auto && f === "radio") setTimeout(() => proxFaixa.current(freqRef.current), 0)
+  }), [])
   const [discoAgora, setDiscoAgora] = useState<{ src: string | null; tocando: boolean }>({ src: disco.src, tocando: disco.tocando })
   useEffect(() => disco.ouvir(setDiscoAgora), [])
   useEffect(() => { discoRef.current = discoAgora.tocando }, [discoAgora.tocando])
@@ -1994,9 +2028,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const fq = freqDe(freq)
   // (o holo) a rádio: o mesmo pros widgets do computador e a ilha do celular
   const radioHolo = { ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal }
-  const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }
+  // (T40) a rádio só pega perto das pistas: fora delas fica o disco e a Kombi avisa
+  const semSinalAviso = () => { if (!fonteSom.radioPega()) falar("222 FM", "sem sinal aqui: a rádio só pega perto das pistas. fica o disco", 4200) }
+  const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(freqRef.current), 0) } }
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
-  const sintonizarHolo = (id: FreqId) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); setTimeout(() => tocarProxima(id), 0) }
+  const sintonizarHolo = (id: FreqId) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(id), 0) }
   const V = M.vias[viaAtual]
   const lugarAqui = V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`
   const dest = destino ? getEstacao(destino) : null
@@ -2347,6 +2383,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {drone && (
         <div className="l-drone" aria-label="a vista do drone">
           <div className="l-drone-dist" aria-hidden="true"><i /></div>
+          {/* (T42, J2:32) o checklist pelo mapa de longe: só o próximo passo; (J1) as viagens rápidas pros minijogos */}
+          {discoM && checklistHolo && !dronePainel && <ProximoPasso checklist={checklistHolo} />}
+          {discoM && !voar && !dronePainel && <ViagensRapidas lista={rapidasDo(M, viaApagada)} onViajar={viajarPara} />}
           {dronePainel && discoM && mapaPainel && (
             <aside className="l-mapa-missoes l-drone-missoes" aria-label="as missões" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { if ((e.target as HTMLElement).closest("[data-fecha-mapa]")) setDronePainel(false) }}>
               {mapaPainel}
@@ -2393,6 +2432,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             </button>
           </div>
         </div>
+      )}
+      {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o ∞ (o automático infinito) */}
+      {discoM && oculos && (
+        <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null }} icone={checklistHolo?.chave ?? null}
+          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} />
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
@@ -2482,6 +2526,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <button type="button" className={aparelho === "radio" ? "is-on" : ""} onClick={() => {
             if (aparelho === "radio") return fonteSom.set("off")
             fonteSom.set("radio")
+            semSinalAviso()
             setTimeout(() => tocarProxima(freqRef.current), 0)
           }}>RÁDIO</button>
           <button type="button" className={aparelho === "disco" ? "is-on" : ""} onClick={() => {
@@ -2924,6 +2969,7 @@ function Cena({
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
   const pistaTocando = useRef(-1)
+  const memRadio = useRef<MemoriaRadio>({ resto: 0 })
   const pistaEscura = useRef(false) // (os atos) a pista tocando agora está apagada?
   // (21/10 (3)) o tema da missão: o índice da pista dela e em que ponto a
   // música está (antes de achar a linha → tocando a voz uma vez → já tocou)
@@ -3174,7 +3220,8 @@ function Cena({
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
         const fundo = e.w[0] + r() * (e.w[1] - e.w[0])
         d.scale.set(w, h, fundo)
-        if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h) }
+        // (T43) + o chão e o topo do campo de força: até a altura da pista ao lado (uns metros acima), ou o topo se o prédio for mais baixo
+        if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h, y0, Math.min(y0 + h, Math.max(C.py[k], y0 + 14) + 4)) }
         d.updateMatrix()
         doGrupo.push(d.matrix.clone())
         i++
@@ -3524,15 +3571,22 @@ function Cena({
 
   // ── tráfego: cada circuito com o seu ──
   // (direção livre) bater num prédio: devolve o empurrão pra fora, ou null
+  // (T43) onde a Kombi encostou no campo de força por último (o brilho da cerca)
+  const campoToque = useRef<ToqueCampo>({ t: -9, x: 0, y: 0, z: 0 })
+  // teste (?medir): os prédios (o teste bate num e confere que segue sem travar)
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" && !/[?&]medir/.test(location.search)) return
+    ;(window as unknown as Record<string, unknown>).__colisores = cidade.colisores
+  }, [cidade])
   const bater = useMemo(() => {
     const c = cidade.colisores, g = new Map<string, number[]>(), CEL = 24
     // (cada prédio: centro, rumo, meia largura, meio fundo e a altura do topo)
-    for (let k = 0; k < c.length; k += 7) { const key = `${Math.floor(c[k] / CEL)},${Math.floor(c[k + 1] / CEL)}`; let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k) }
+    for (let k = 0; k < c.length; k += COL_PASSO) { const key = `${Math.floor(c[k] / CEL)},${Math.floor(c[k + 1] / CEL)}`; let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k) }
     // y: a altura de quem testa (a câmera numa pista elevada passa por cima do prédio baixo)
     return (x: number, z: number, raio: number, y = -Infinity): [number, number] | null => {
       const cx = Math.floor(x / CEL), cz = Math.floor(z / CEL)
       // a caixa do prédio, girada com a rua: z local = a tangente, x local = o lado
-      let ex = 0, ez = 0, bateu = false
+      let ex = 0, ez = 0, bateu = false, fundo = 0
       for (let a2 = -2; a2 <= 2; a2++) for (let b2 = -2; b2 <= 2; b2++) for (const k of g.get(`${cx + a2},${cz + b2}`) ?? []) {
         if (y > c[k + 6] + 1) continue
         const dx = x + ex - c[k], dz = z + ez - c[k + 1], tx = c[k + 2], tz = c[k + 3], hw = c[k + 4], hd = c[k + 5]
@@ -3546,6 +3600,7 @@ function Cena({
           if (sx < sz) { px = Math.sign(lx) || 1; pz = 0; d = -sx } else { px = 0; pz = Math.sign(lz) || 1; d = -sz }
         } else { px /= d; pz /= d }
         const m = raio - d
+        if (m > fundo) { fundo = m; BATEU_EM.x = c[k]; BATEU_EM.z = c[k + 1] }
         ex += (px * tz + pz * tx) * m; ez += (-px * tx + pz * tz) * m; bateu = true
       }
       return bateu ? [ex, ez] : null
@@ -3877,7 +3932,7 @@ function Cena({
       // (LU2CA 21/10, a feira de missões) com uma missão pegada, 6 s sem tocar
       // em nada e a Kombi segue sozinha pra ela (a rota escolhe os cruzamentos e
       // ela encosta na vaga); qualquer toque devolve o volante
-      const pilotoMissao = "disco" in M && (!!vagaRef.current || !!alvoChaoRef.current) && (!vagaRef.current || j.naVaga !== vagaRef.current.id) && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000
+      const pilotoMissao = "disco" in M && (!!vagaRef.current || !!alvoChaoRef.current) && (!vagaRef.current || j.naVaga !== vagaRef.current.id) && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000 && !inp.infinito
       if (pilotoMissao !== !!j.piloto) { j.piloto = pilotoMissao; if (pilotoMissao) j.desligada = false; ev.piloto(pilotoMissao) }
       // (LU2CA 23/10: "a visão de primeira pessoa tem que levar a pessoa pelo
       // caminho da missão automaticamente") de dentro, com destino (o lugar do
@@ -3890,9 +3945,12 @@ function Cena({
       const assumiu = (j.ultimoDir ?? 0) > 0 && performance.now() - j.ultimoDir! < ASSUME_MS
       const auto1p = destino1p && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
       if (auto1p && j.desligada) j.desligada = false // de dentro ela mesma dá a partida
-      const auto = (auto1p || noCel || pilotoMissao) && !cine
-      // no automático, chegando na vaga da missão: encosta e freia sozinha
-      const vgA = auto && !noCel ? vagaRef.current : null
+      // (T42) o automático infinito: segue a pista sem parar (mexeu no volante, assume 3 s)
+      const infAuto = !!inp.infinito && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
+      if (infAuto && j.desligada) j.desligada = false
+      const auto = (auto1p || noCel || pilotoMissao || infAuto) && !cine
+      // no automático, chegando na vaga da missão: encosta e freia sozinha (o infinito não para)
+      const vgA = auto && !noCel && !infAuto ? vagaRef.current : null
       const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity
       const encostando = !!vgA && dVaga > -VAGA / 2 && dVaga < 90
       const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : 0
@@ -3963,7 +4021,7 @@ function Cena({
       let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
       // (no chão, a de passeio; nas pistas, metade da velocidade da pista)
-      if (auto1p || (pilotoMissao && j.voo)) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
+      if (auto1p || (pilotoMissao && j.voo) || infAuto) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -4177,8 +4235,8 @@ function Cena({
       const sx = Math.sin(j.rumo!), cz = Math.cos(j.rumo!)
       let nx = j.wx! + sx * j.v * dt, nz = j.wz! + cz * j.v * dt
       const empurra = bater(nx, nz, 1.5)
-      // (disco) o pinball: o prédio devolve a Kombi (nunca fica raspando nele)
-      if (empurra && "disco" in M) { nx += empurra[0]; nz += empurra[1]; quicar(j, empurra, carro.current) }
+      // (disco, T43) o campo de força: gruda e segue o rumo mais perto
+      if (empurra && "disco" in M) { nx += empurra[0]; nz += empurra[1]; if (grudar(j, empurra, dt)) vib(10) }
       else if (empurra) {
         nx += empurra[0]; nz += empurra[1]
         j.dRaspa += dt
@@ -4461,9 +4519,13 @@ function Cena({
         // a 3,9 km o vento empurra de volta, devagar (nunca chega na borda)
         const rr = Math.hypot(j.wx, j.wz)
         if (rr > 3900) { const k = (rr - 3900) / rr; j.wx -= j.wx * k; j.wz -= j.wz * k; j.v *= 1 - 0.8 * dt }
-        // os prédios: abaixo do topo, bate e escorrega
+        // (T43) os prédios: o campo de força em volta, a Kombi gruda e desliza (não quica)
         const emp = bater(j.wx, j.wz, 1.6, j.y)
-        if (emp) { j.wx += emp[0]; j.wz += emp[1]; quicar(j, emp, carro.current) }
+        if (emp) {
+          j.wx += emp[0]; j.wz += emp[1]
+          if (grudar(j, emp, dt)) vib(10)
+          const tq = campoToque.current; tq.t = j.tempo; tq.x = j.wx - emp[0] * 0.6 / Math.hypot(emp[0], emp[1]); tq.y = j.y + 1; tq.z = j.wz - emp[1] * 0.6 / Math.hypot(emp[0], emp[1])
+        }
         pouso = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo))
         // (LU2CA 20/10: "a exploração por propulsão bem livre, sem amarras aos
         // percursos uma vez no ar; onde ele quiser pousar, ele pode") sem ímã:
@@ -5173,6 +5235,11 @@ function Cena({
     // (a história, casa e dunas) no deserto ninguém tem pista: o disco antigo
     // da Kombi (a página liga) e o vento; a faixa da pista para
     const semPista = faseHistoria === "casa" || faseHistoria === "dunas"
+    // (T40) a rádio só pega perto das pistas: no deserto e longe delas, fica o disco
+    if (faixasDisco.length) {
+      const infR = (M as MundoDisco).info[j.via]
+      fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
+    }
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1 }
     else if (faixasDisco.length && soTemaRef.current) {
       // (LU2CA 21/10 (3)) A MÚSICA É O TEMA DA MISSÃO. Sem missão: nenhuma
@@ -5793,6 +5860,7 @@ function Cena({
       {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
+      {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
       {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (

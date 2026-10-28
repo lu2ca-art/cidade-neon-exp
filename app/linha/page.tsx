@@ -32,7 +32,8 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player } from "./som"
+import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player, silenciarKombi, trilha } from "./som"
+import { somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
@@ -52,7 +53,7 @@ import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/ata
 import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
-import { Minhoca } from "./disco/Minhoca"
+import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
 import { VISOR, Visor, type VisorId } from "./disco/Visor"
 import { Freq } from "./disco/Freq"
 import { type ResultadoShow } from "./disco/Show"
@@ -63,7 +64,8 @@ import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, dis
 import { Recompensa } from "./disco/Recompensa"
 import { Letra } from "./disco/Letra"
 import { letraDe } from "./disco/letras"
-import { Rua } from "./disco/Rua"
+import { Palcos } from "./disco/MenuPalcos"
+import { NIVEL_MAX, cacheNoPalco, lerShowDoPalco, nomeDoPalco, registrarShow, showDoPalco, PALCOS_CARREIRA } from "./disco/palcos"
 import { COR_PISTA } from "./disco/historia"
 import { PingPong } from "./disco/PingPong"
 import "../ginasio/ginasio.css"
@@ -137,6 +139,9 @@ function feiraDoSave(s: Save): Oferta13[] {
 // (T02) o show não fecha mais missão: é o Guitar Driver aberto agora. "rua:<faixa>"
 // = a oportunidade na rua (paga); "missao:<id>" = a peça de tocar ao vivo (a do LU2CA)
 function confShow(id: string): { faixa: PistaId; lugar: string; cor: string; palco: string } | null {
+  // (T20) um palco da carreira: "palco:<palco>:<faixa>" (disco/palcos.ts)
+  const pc = lerShowDoPalco(id)
+  if (pc) return { faixa: pc.faixa, lugar: nomeDoPalco(pc.palco).no, cor: pc.palco.cor, palco: pc.palco.gd }
   if (id.startsWith("rua:")) {
     const p = PISTAS.find((x) => x.id === id.slice(4))
     return p ? { faixa: p.id, lugar: "na rua", cor: COR_PISTA[p.faixa] ?? "#ffc857", palco: "rua" } : null
@@ -259,6 +264,8 @@ export default function LinhaPage() {
     if (atalhosLiberados()) setAtalhoTeste(atalhoPorId(new URLSearchParams(location.search).get("atalho"))?.ir ?? null)
     // (T03) ?parte=loja: o jogo abre com a loja no celular (só fora da produção)
     if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "loja") setTela({ t: "app", id: "loja" })
+    // (T20) ?parte=palcos: o menu dos palcos abre assim que ele entra no jogo
+    if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "palcos") palcosAoEntrar.current = true
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -285,6 +292,7 @@ export default function LinhaPage() {
     setAviso({ id, ...a })
     setTimeout(() => { setAviso((x) => (x?.id === id ? null : x)); setTimeout(proximo, 250) }, 4200)
   }, [])
+  const palcosAoEntrar = useRef(false)
   const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
     // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+neon",
     // "regado"...): só passa quem fala (um personagem). O resto o "?" explica
@@ -323,7 +331,7 @@ export default function LinhaPage() {
 
   // a música abafada (LU2CA): dentro de um lugar (a missão) e com o telefone
   // tocando, o rádio e o disco seguem mais baixos e sem agudo
-  const emCena = !!cena
+  const emCena = !!cena && !somDoLugar(cena.lugar)
   useEffect(() => {
     if (!emCena) return
     abafar(true)
@@ -843,6 +851,9 @@ export default function LinhaPage() {
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
   const [recompensa, setRecompensa] = useState<Recompensa13 | null>(null)
   const [rua, setRua] = useState(false)
+  useEffect(() => {
+    if (palcosAoEntrar.current && tela.t === "corrida" && !cena) { palcosAoEntrar.current = false; setRua(true) }
+  }, [tela.t, cena])
   // onde o dono está (o caderno lê isso pra dizer a parte do jogo de cada nota)
   useEffect(() => {
     ;(window as unknown as { __cnOnde?: Onde }).__cnOnde = { tela: tela.t, cena: !!cena, show: showAgora ?? null, jornal: !!jornal, visor: visor ?? null, pingpong, celular: tela.t === "home" || tela.t === "app" || tela.t === "chat" }
@@ -899,14 +910,35 @@ export default function LinhaPage() {
     if (como.t === "batida") setBatidaMissao({ missao: mid, clima: como.clima })
     else setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
   }, [HIST, hist.aberta13, cena, tela.t])
+  // (T40) o SOM DA MISSÃO (J2: 5). Entrou no lugar da missão (a cena, o ping pong),
+  // a música da Kombi cala e entra o som dela; saiu, a Kombi volta (a trilha sai
+  // em fade, sem estalo). O arquivo é carregado antes, quando a missão é pegada
+  useEffect(() => { fonteSom.discoPadrao = ACERVO.faixas.map((f) => f.src) }, [])
+  const somAgora = cena ? somDoLugar(cena.lugar) : pingpong ? somDaMissao("drew") : null
+  useEffect(() => {
+    if (!somAgora) return
+    silenciarKombi(true)
+    trilha.entrar(somAgora)
+    return () => { trilha.sair(); silenciarKombi(false) }
+  }, [somAgora])
+  useEffect(() => { if (missaoCarreira) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
   // um evento da rua conta pra peça de agora (a montanha-russa da Nizzy…)
   const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
   const fimShow = (r: ResultadoShow) => {
     const id = hist.show!, conf = confShow(id)!
     const popAntes = saveRef.current.popularidade ?? 0
     // (T03) o cachê do show vem da economia (a nota e a fama de antes)
-    const m = { ...calcularManchete(r, id.startsWith("rua:") ? id.slice(4) : id, conf.lugar, popAntes, Date.now()), neon: cacheDoShow(r.nota, popAntes) }
-    setSave((s) => comHistoria({ ...ganhar(s, m.neon), popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop) }, (h) => ({ ...h, show: undefined, shows: [...(h.shows ?? []), m] })))
+    // (T20) num palco da carreira: o cachê vezes o palco, a melhor estrela e o nível
+    const pc = lerShowDoPalco(id)
+    const base = cacheDoShow(r.nota, popAntes)
+    const faixaDoJornal = pc ? pc.faixa : id.startsWith("rua:") ? id.slice(4) : id
+    const m = { ...calcularManchete(r, faixaDoJornal, conf.lugar, popAntes, Date.now()), neon: pc ? cacheNoPalco(base, pc.palco) : base }
+    const reg = pc ? registrarShow(hist13(saveRef.current), pc.palco.id, pc.faixa, r.nota) : null
+    setSave((s) => comHistoria({ ...ganhar(s, m.neon), popularidade: Math.min(100, (s.popularidade ?? 0) + m.pop) }, (h) => ({ ...(pc ? registrarShow(h, pc.palco.id, pc.faixa, r.nota).h : h), show: undefined, shows: [...(h.shows ?? []), m] })))
+    if (reg && reg.nivel > reg.nivelAntes) {
+      const novo = PALCOS_CARREIRA[reg.nivel - 1]
+      setTimeout(() => avisar(`nível ${reg.nivel} de ${NIVEL_MAX}`, reg.nivel === NIVEL_MAX ? `você chegou no topo: ${nomeDoPalco(novo).nome}` : `abriu ${nomeDoPalco(novo).nome}`, novo.cor), 400)
+    }
     // a peça de uma missão (tocar ao vivo): conta como feita e a missão segue
     if (id.startsWith("missao:")) {
       // (a peça vem do save: recarregar a página no meio do show não perde a missão)
@@ -940,7 +972,8 @@ export default function LinhaPage() {
     <section className="l-missoes-agora" style={{ ["--cor" as string]: m13.cor }}>
       <small>agora · {m13.quem}{m13.faixa ? ` · ${PISTAS.find((x) => x.id === m13.faixa)!.faixa}` : ""}</small>
       <ul className="l-missoes-check">
-        {passos13.map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}<em>{x.estado === "agora" ? (lugar13 ? "agora" : "agora · na rua") : x.estado === "em breve" ? "em breve" : ""}</em></li>)}
+        {/* (T42, J2:32) só o próximo passo */}
+        {passos13.filter((x, i, l) => x === (l.find((y) => y.estado === "agora") ?? l.find((y) => y.estado !== "feita"))).map((x) => <li key={x.nome} className={`is-${x.estado === "em breve" ? "breve" : x.estado}`}><i aria-hidden="true">{x.estado === "feita" ? "✓" : ""}</i>{x.nome}<em>{x.estado === "agora" ? (lugar13 ? "agora" : "agora · na rua") : x.estado === "em breve" ? "em breve" : ""}</em></li>)}
       </ul>
       <button type="button" className="l-feira-largar" onClick={largarMissao}>largar essa missão</button>
     </section>
@@ -1100,7 +1133,15 @@ export default function LinhaPage() {
     // (mapa-disco) a história nova: save novo começa no buraco de minhoca; o
     // resto entra direto na Kombi, onde estava
     if (D) {
-      if (historiaDe(saveRef.current).fase === "minhoca") { setMinhoca(true); return }
+      if (historiaDe(saveRef.current).fase === "minhoca") {
+        // (T40, J2: 5) a música da Kombi já vem tocando desde o buraco de minhoca:
+        // entra em fade, distorcida, e vai ficando limpa até o fim da queda
+        fonteSom.set("disco")
+        disco.entradaMinhoca(DUR_MINHOCA / 1000)
+        disco.tocarLista(ACERVO.faixas.map((f) => f.src))
+        setMinhoca(true)
+        return
+      }
       player.pausar()
       setEstrada(true)
       setTela({ t: "corrida", destino: null })
@@ -1669,7 +1710,7 @@ export default function LinhaPage() {
           if (m.faixa && m.onde === "cidade") setOuvirFim({ pista: m.faixa, id: Date.now() })
         }} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
-        {rua && <Rua h={h13} onFechar={() => setRua(false)} onTocar={(f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: `rua:${f}` }))) }} />}
+        {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} />}
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
         {ouvirFim && !jornal && tela.t === "corrida" && <OuvirFim key={ouvirFim.id} pista={ouvirFim.pista} quando={ouvirFim.id} onFechar={fecharOuvir} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq save={save} /> : undefined}</Visor>}
@@ -1704,7 +1745,8 @@ export default function LinhaPage() {
             onRadioToggle={() => {
               if (radio?.tocando) return fonteSom.set("off")
               fonteSom.set("radio") // o disco para: os dois juntos não
-              tocarRadio((save.freq as FreqId) || "linha")
+              // (T40) fora das pistas a rádio não pega: ficou o disco
+              if (fonteSom.get() === "radio") tocarRadio((save.freq as FreqId) || "linha")
             }}
           />
         )}

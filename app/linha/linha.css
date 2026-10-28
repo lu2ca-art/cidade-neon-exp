@@ -2861,6 +2861,24 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-rua-caixa li.is-fechada { opacity: 0.5; }
 .l-rua-bts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .l-rua-bts button { padding: 9px 11px; border-radius: 12px; border: 1px solid rgba(255, 144, 0, 0.5); background: rgba(6, 6, 16, 0.78); color: #fff; font: 700 13px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; text-align: left; cursor: pointer; }
+/* (T20) os palcos: a escada (o topo em cima; com a proposta, a altura na cidade) e o menu do palco */
+.l-palcos-caixa { width: min(400px, 100%); gap: 10px; }
+.l-palcos-caixa header span { font: 11px var(--mono); letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.7); }
+.l-palcos-escada { list-style: none; margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 5px; position: relative; }
+.l-palcos-escada.is-sobe::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(to top, #ff9000, #b38cff, #2fe8ff, #ff3fb0); opacity: 0.7; }
+.l-palcos-escada li { position: relative; }
+.l-palcos-escada.is-sobe li::before { content: ""; position: absolute; left: -13px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--cor); box-shadow: 0 0 8px var(--cor); }
+.l-palcos-escada li.is-fechado::before { background: #333; box-shadow: none; }
+.l-palcos-escada button { width: 100%; display: grid; grid-template-columns: 1fr auto; grid-template-areas: "a e" "n e"; align-items: center; column-gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid color-mix(in srgb, var(--cor) 30%, transparent); color: #fff; text-align: left; font: inherit; cursor: pointer; }
+.l-palcos-escada li.is-sel button { background: color-mix(in srgb, var(--cor) 18%, transparent); border-color: var(--cor); }
+.l-palcos-escada li.is-fechado button { opacity: 0.55; }
+.l-palcos-escada small { grid-area: a; font: 9px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--cor); }
+.l-palcos-escada b { grid-area: n; font: 800 14px var(--cond); text-transform: uppercase; letter-spacing: 0.04em; }
+.l-palcos-escada em { grid-area: e; font: 10px var(--mono); font-style: normal; color: rgba(255, 255, 255, 0.65); white-space: nowrap; }
+.l-palcos-menu { display: flex; flex-direction: column; gap: 6px; }
+.l-palcos-menu > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-palcos-estrelas { font-style: normal; letter-spacing: 1px; color: #ffd23a; }
+.l-palcos-estrelas span { color: rgba(255, 255, 255, 0.2); }
 .l-prova-missao { flex-direction: column; gap: 10px; }
 /* (T10) a arte da quadra: o B4TIDA numa janela por cima do jogo, com a barra do Alohan em cima */
 .l-batida-missao { position: absolute; inset: 0; z-index: 74; display: flex; flex-direction: column; background: #000; animation: l-sobe 0.35s both; }
