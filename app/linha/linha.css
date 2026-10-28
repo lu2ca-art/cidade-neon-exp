@@ -2891,6 +2891,18 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-palcos-menu > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
 .l-palcos-estrelas { font-style: normal; letter-spacing: 1px; color: #ffd23a; }
 .l-palcos-estrelas span { color: rgba(255, 255, 255, 0.2); }
+/* (T21) os shows do subúrbio xenom: os 4 multiversos embaixo do menu do palco */
+.l-xenom { padding-top: 8px; border-top: 1px dashed rgba(255, 95, 174, 0.35); --cor: #ff5fae; }
+.l-xenom li { list-style: none; }
+.l-xenom ul { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.l-xenom li b em { font: 600 11px var(--mono); font-style: normal; text-transform: none; letter-spacing: 0; color: var(--cor); }
+.l-xenom li small { font: 10px var(--mono); color: rgba(255, 255, 255, 0.7); }
+.l-xenom li.is-cumprida > button { border-left-width: 6px; }
+.l-xenom-album { display: block; padding: 9px 11px; border-radius: 12px; background: var(--cor); color: #10060c; font: 800 13px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; text-align: center; }
+.l-show-fim .l-xenom-objetivo { max-width: 300px; color: #ff8a8a; }
+.l-show-fim .l-xenom-objetivo.is-ok { color: #6dff9a; }
+.l-show-fim .l-xenom-jurados { color: #fff; letter-spacing: 0.08em; }
+.l-recompensa-caixa > button.l-recompensa-ir { margin-top: 0; background: transparent; color: #fff; border: 1px solid #ff5fae; }
 .l-prova-missao { flex-direction: column; gap: 10px; }
 /* (T10) a arte da quadra: o B4TIDA numa janela por cima do jogo, com a barra do Alohan em cima */
 .l-batida-missao { position: absolute; inset: 0; z-index: 74; display: flex; flex-direction: column; background: #000; animation: l-sobe 0.35s both; }

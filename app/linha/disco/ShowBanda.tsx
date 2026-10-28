@@ -20,8 +20,8 @@
 // PRELUDIO.
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { PISTAS } from "../estrada/pistas"
-import { NOME_INST, ShowPista, ajustarShow, carregarChart, type InstrumentoShow, type PropsShow } from "./Show"
+import { NOME_INST, ShowPista, ajustarShow, carregarChart, musicaDoShow, type InstrumentoShow, type PropsShow } from "./Show"
+import { xenomDaFaixa } from "./xenom"
 import { desenharTomada, type Tomada } from "../../neon-tiles/cena"
 import { MODELOS, PALCOS, type Palco } from "../../neon-tiles/dados"
 import { imagemInstrumento } from "../../neon-tiles/instrumentos"
@@ -35,7 +35,7 @@ export const PRELUDIO: { t: Tomada; dur: number }[] = [
 ]
 const DUR_PRELUDIO = PRELUDIO.reduce((a, x) => a + x.dur, 0)
 
-function Preludio({ faixa, lugar, palco: palcoId, cor, onFim }: { faixa: string; lugar: string; palco?: string; cor: string; onFim: () => void }) {
+function Preludio({ faixa, lugar, palco: palcoId, cor, onFim, sub }: { faixa: string; lugar: string; palco?: string; cor: string; onFim: () => void; sub?: string }) {
   const cvs = useRef<HTMLCanvasElement>(null)
   const fim = useRef(onFim)
   useEffect(() => { fim.current = onFim })
@@ -60,7 +60,7 @@ function Preludio({ faixa, lugar, palco: palcoId, cor, onFim }: { faixa: string;
       som?.galera(Math.min(0.6, 0.15 + tt * 0.09))
       ajustarShow(c)
       const w = c.width, h = c.height
-      desenharTomada(g, w, h, atual.t, tl, { palco, modelo, imgs, titulo: palco.nome, sub: `hoje: LU2CA · ${faixa}`, publico: 20 })
+      desenharTomada(g, w, h, atual.t, tl, { palco, modelo, imgs, titulo: palco.nome, sub: sub ?? `hoje: LU2CA · ${faixa}`, publico: 20 })
       // o fade de entrada e o de saída
       const fade = Math.max(0, 1 - tt / 0.35, (tt - (DUR_PRELUDIO - 0.4)) / 0.4)
       if (fade > 0) { g.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; g.fillRect(0, 0, w, h) }
@@ -72,7 +72,7 @@ function Preludio({ faixa, lugar, palco: palcoId, cor, onFim }: { faixa: string;
     window.addEventListener("keydown", k, true)
     ;(window as unknown as { __cnPreludio?: () => void }).__cnPreludio = sair
     return () => { acabou = true; cancelAnimationFrame(raf); window.removeEventListener("keydown", k, true); som?.parar() }
-  }, [palco, modelo, imgs, lugar])
+  }, [palco, modelo, imgs, lugar, sub])
   return (
     <div className="l-show is-preludio" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => { e.stopPropagation(); fim.current() }} aria-label="o prelúdio do show">
       <canvas ref={cvs} />
@@ -95,13 +95,16 @@ export function Show(props: PropsShow) {
   const [preludio, setPreludio] = useState(true)
   const [inst, setInst] = useState<InstrumentoShow | null>(null)
   const [temVoz, setTemVoz] = useState<boolean | null>(null)
-  const pista = PISTAS.find((p) => p.id === props.faixa)!
+  const pista = musicaDoShow(props.faixa)
+  // (T21) o show xenom: o prelúdio conta o multiverso e o jogo é o Guitar Driver com a regra dele
+  const xenom = xenomDaFaixa(props.faixa)
   useEffect(() => {
     let vivo = true
     carregarChart(props.faixa).then((c) => { if (vivo) setTemVoz(!!c.voz?.melodia?.length) }).catch(() => { if (vivo) setTemVoz(false) })
     return () => { vivo = false }
   }, [props.faixa])
-  if (preludio) return <Preludio faixa={pista.faixa} lugar={props.lugar} palco={props.palco} cor={props.cor} onFim={() => setPreludio(false)} />
+  if (preludio) return <Preludio faixa={pista.faixa} lugar={props.lugar} palco={props.palco} cor={props.cor} sub={xenom ? `${xenom.preludio} · ${pista.faixa}` : undefined} onFim={() => setPreludio(false)} />
+  if (xenom) return <ShowPista {...props} inst="guitarra" />
   if (inst === "voz") return <ShowAfinador {...props} />
   if (inst === "baixo") return <ShowCorda {...props} />
   if (inst) return <ShowPista {...props} inst={inst} />

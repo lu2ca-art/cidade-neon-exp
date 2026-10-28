@@ -8,6 +8,7 @@ import { BASE_TESTE, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados } from "../teste/a
 
 import { IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
 import { LETRAS } from "./disco/letras"
+import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
 
 // (T02) as missões: o id das 13 (missao.drew) ou, como antes, a faixa (missao.sexta → a do Drew)
 const MISSOES = ["sexta", "dopamina", "ojala", "swav", "copo", "ontem", "rollercoaster", "chuva", "nectar"]
@@ -72,6 +73,12 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // música a mais e o bar abre); "palcos.topo" = todos abertos, no alto das torres
   if (parte === "palcos") return { ...MEIO, palcos: { "calcada:ojala": 2 } }
   if (parte === "palcos.topo") return { ...MEIO, palcos: { "calcada:nectar": 5, "bar:nectar": 5, "balada:nectar": 4, "terraco:nectar": 4, "calcada:ojala": 3 } }
+  // (T21) os shows do subúrbio xenom: "xenom" = o menu dos palcos com 3 das 4
+  // missões do subúrbio feitas (os túneis faltando); "xenom.<id>" = o show daquele
+  // multiverso já aberto (as 4 feitas); "xenom.album" = os 4 cumpridos, o álbum liberado
+  if (parte === "xenom") return MEIO
+  if (parte === "xenom.album") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], xenom: Object.fromEntries(SHOWS_XENOM.map((x) => [x.id, { melhor: 4, cumprida: true, vezes: 1 }])) }
+  if (parte.startsWith("xenom.") && xenomPorId(parte.slice(6))) return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], show: `xenom:${parte.slice(6)}` }
   // (T03) a loja aberta, com grana no bolso (o resto do save é o meio da carreira)
   if (parte === "loja") return MEIO
   if (parte === "livre" || parte === "final") return { fase: "livre", holo: true }
@@ -81,7 +88,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.bancada", "oficina.painel", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -99,10 +106,10 @@ export function aplicarParteDeTeste(): boolean {
   if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("palcos") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
-  if (parte.startsWith("palcos")) url.searchParams.set("app", "palcos")
+  if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
   // (T07) a cena da casa começa na entrega do holo (pula a chegada e o tambor)
   if (parte === "casa.holo") url.searchParams.set("cena", "holo")
   // tira o ?parte da URL: recarregar não troca o save de novo

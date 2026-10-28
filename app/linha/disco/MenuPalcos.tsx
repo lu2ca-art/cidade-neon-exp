@@ -11,11 +11,12 @@ import { useEffect, useMemo, useState } from "react"
 import type { PistaId } from "../estrada/pistas"
 import { COR_PISTA, type HistoriaDisco } from "./historia"
 import { MISSOES13, quemLibera } from "./portas"
+import { SHOWS_XENOM, XENOM_CONFIG, albumLiberado, travaXenom, xenomAberto, xenomCumpridos, type XenomId } from "./xenom"
 import { NIVEL_MAX, NOME_ALTURA, PALCOS_CARREIRA, PALCOS_CONFIG, alturaDe, estrelasDoPalco, estrelasTotais, menuDo, nivelDe, nomeDoPalco, travaDo } from "./palcos"
 
 const Estrelas = ({ n }: { n: number }) => <i className="l-palcos-estrelas" aria-label={`${n} de 5 estrelas`}>{"★".repeat(n)}<span>{"★".repeat(5 - n)}</span></i>
 
-export function Palcos({ h, onTocar, onFechar }: { h: HistoriaDisco; onTocar: (palco: string, f: PistaId) => void; onFechar: () => void }) {
+export function Palcos({ h, onTocar, onFechar, onXenom }: { h: HistoriaDisco; onTocar: (palco: string, f: PistaId) => void; onFechar: () => void; onXenom?: (id: XenomId) => void }) {
   const nivel = nivelDe(h)
   const total = estrelasTotais(h)
   const prox = PALCOS_CARREIRA[nivel] ?? null
@@ -77,6 +78,30 @@ export function Palcos({ h, onTocar, onFechar }: { h: HistoriaDisco; onTocar: (p
               )
             })}
           </ul>
+        </section>
+        {/* (T21) os 4 shows do subúrbio xenom: cada missão do subúrbio libera o
+            show-missão da faixa dela, um multiverso com a sua regra (disco/xenom.ts) */}
+        <section className="l-palcos-menu l-xenom" aria-label="os shows do subúrbio xenom">
+          <small>os shows do subúrbio · xenom · {xenomCumpridos(h)} de {SHOWS_XENOM.length} multiversos</small>
+          <ul>
+            {SHOWS_XENOM.map((x) => {
+              const aberto = xenomAberto(h, x)
+              const feito = h.xenom?.[x.id]
+              return (
+                <li key={x.id} style={{ ["--cor" as string]: x.cor }} className={aberto ? (feito?.cumprida ? "is-cumprida" : "") : "is-fechada"}>
+                  {aberto && onXenom ? (
+                    <button type="button" data-xenom={x.id} onClick={() => onXenom(x.id)}>
+                      <b>{x.faixa} <em>· {x.multiverso}</em></b>
+                      <small>{feito ? <Estrelas n={feito.melhor} /> : null}{feito ? " · " : ""}{feito?.cumprida ? "missão cumprida · cachê ×" + x.paga : `missão: ${x.objetivo.texto} · +${x.bonus} neon$ e prestígio`}</small>
+                    </button>
+                  ) : (
+                    <span><b>{x.faixa} <em>· {x.multiverso}</em></b><small>{travaXenom(x)}</small></span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+          {albumLiberado(h) && <a className="l-xenom-album" href={XENOM_CONFIG.album.link} target="_blank" rel="noreferrer">o álbum {XENOM_CONFIG.album.nome} é seu · ouvir no untitled →</a>}
         </section>
       </div>
     </div>
