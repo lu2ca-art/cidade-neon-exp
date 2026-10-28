@@ -38,7 +38,7 @@ export function Palcos({ h, onTocar, onFechar }: { h: HistoriaDisco; onTocar: (p
           <b className="l-palcos-nivel">nível {nivel} de {NIVEL_MAX}</b>
           <span className="l-palcos-prox">
             ★ {total}
-            {!prox ? " · você chegou no topo" : travaProx?.t === "live" ? ` · ${nomeProx} abre com a missão do LU2CA` : travaProx?.t === "estrelas" ? ` · faltam ${travaProx.faltam} ★ pra ${nomeProx}` : ""}
+            {!prox ? " · você chegou no topo" : travaProx?.t === "live" ? ` · ${nomeProx} abre com a missão do LU2CA` : travaProx?.t === "estrelas" ? ` · faltam ${travaProx.faltam} ★ pra abrir ${nomeProx}` : ""}
           </span>
           <button type="button" onClick={onFechar} aria-label="Fechar">×</button>
         </header>

@@ -259,8 +259,8 @@ export default function LinhaPage() {
     if (atalhosLiberados()) setAtalhoTeste(atalhoPorId(new URLSearchParams(location.search).get("atalho"))?.ir ?? null)
     // (T03) ?parte=loja: o jogo abre com a loja no celular (só fora da produção)
     if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "loja") setTela({ t: "app", id: "loja" })
-    // (T20) ?parte=palcos: o menu dos palcos já aberto
-    if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "palcos") setRua(true)
+    // (T20) ?parte=palcos: o menu dos palcos abre assim que ele entra no jogo
+    if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "palcos") palcosAoEntrar.current = true
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -287,6 +287,7 @@ export default function LinhaPage() {
     setAviso({ id, ...a })
     setTimeout(() => { setAviso((x) => (x?.id === id ? null : x)); setTimeout(proximo, 250) }, 4200)
   }, [])
+  const palcosAoEntrar = useRef(false)
   const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
     // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+neon",
     // "regado"...): só passa quem fala (um personagem). O resto o "?" explica
@@ -841,6 +842,9 @@ export default function LinhaPage() {
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
   const [recompensa, setRecompensa] = useState<Recompensa13 | null>(null)
   const [rua, setRua] = useState(false)
+  useEffect(() => {
+    if (palcosAoEntrar.current && tela.t === "corrida" && !cena) { palcosAoEntrar.current = false; setRua(true) }
+  }, [tela.t, cena])
   // onde o dono está (o caderno lê isso pra dizer a parte do jogo de cada nota)
   useEffect(() => {
     ;(window as unknown as { __cnOnde?: Onde }).__cnOnde = { tela: tela.t, cena: !!cena, show: showAgora ?? null, jornal: !!jornal, visor: visor ?? null, pingpong, celular: tela.t === "home" || tela.t === "app" || tela.t === "chat" }
