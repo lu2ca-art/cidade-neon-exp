@@ -11,7 +11,7 @@ export const WL = 15 // comprimento do vagão
 export const GANG = 1.2 // a passagem entre dois vagões
 export const MEIA = 1.3 // meia largura por dentro
 export const BANCO = 0.85 // até onde vai o corredor onde tem banco
-export const PASSAGEM = 0.45 // meia largura da passagem
+export const PASSAGEM = 0.65 // meia largura da passagem (o trem do Núcleo é aberto de ponta a ponta)
 export const ALTURA = 2.3
 export const RAIO = 0.24 // você e o guarda (círculo no chão)
 // as duas baias de porta de cada vagão (z local)

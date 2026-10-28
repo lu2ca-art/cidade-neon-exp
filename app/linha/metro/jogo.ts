@@ -102,6 +102,7 @@ export class Fuga {
     const a = this.apagao
     const antes = a.proximo - this.t
     this.luz = a.ate ? 0 : antes < 0.4 && this.fase === "fuga" ? (Math.sin(this.t * 90) > 0.2 ? 1 : 0.15) : 1
+    if (this.fase === "pulou") this.luz = 1
     if (this.fase === "intro") { this.animarGente(dt); return }
     if (this.fase === "pulou" || this.fase === "pego") { this.animarGente(dt); this.andarGuarda(dt, true); return }
 

@@ -71,7 +71,7 @@ function boneco(roupa: string, calca: string, pele: string, extra?: (g: THREE.Gr
   const pe = perna(-1), pd = perna(1), be = braco(-1), bd = braco(1)
   g.add(tronco, cabeca, pe, pd, be, bd)
   extra?.(g, mat)
-  return { g, tronco, cabeca, pe, pd, be, bd }
+  return { g, tronco, cabeca, pe, pd, be, bd, mats: [...cache.values()] as THREE.MeshLambertMaterial[], opaco: 1 }
 }
 type Boneco = ReturnType<typeof boneco>
 
@@ -85,10 +85,17 @@ function andar(b: Boneco, passo: number, vel: number) {
   b.tronco.position.y = 1.18 + pulo; b.cabeca.position.y = 1.62 + pulo
 }
 
+// as duas folhas da portinha (0 fechada, 1 aberta)
+function for2(a: THREE.Mesh, b: THREE.Mesh, aberta: number) {
+  const x = PASSAGEM / 2 + aberta * (PASSAGEM - 0.04)
+  a.position.x = X(-x); b.position.x = X(x); a.updateMatrix(); b.updateMatrix()
+}
+
 export class Cena {
   r: THREE.WebGLRenderer
   cena = new THREE.Scene()
-  cam = new THREE.PerspectiveCamera(68, 1, 0.08, 40)
+  // near de 0,5 m: o poste e o banco colados na câmera somem (o truque da terceira pessoa)
+  cam = new THREE.PerspectiveCamera(68, 1, 0.5, 40)
   ceu: THREE.HemisphereLight
   lanterna: THREE.SpotLight
   alvoLanterna = new THREE.Object3D()
@@ -124,16 +131,18 @@ export class Cena {
     this.montarTunel()
 
     // as portinhas da passagem
-    const gPort = new THREE.BoxGeometry(PASSAGEM * 2, 2.0, 0.05); gPort.translate(0, 1.0, 0)
+    // (duas folhas que correm pra dentro das paredes)
+    const gPort = new THREE.BoxGeometry(PASSAGEM, ALTURA, 0.05); gPort.translate(0, ALTURA / 2, 0)
     const mPort = new THREE.MeshLambertMaterial({ color: C.porta })
-    for (const z of f.planta.portinhas) { const m = new THREE.Mesh(gPort, mPort); m.position.z = z; m.matrixAutoUpdate = false; m.updateMatrix(); this.portinhas.push(m); this.cena.add(m) }
+    for (const z of f.planta.portinhas) for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(gPort, mPort); m.position.z = z; m.matrixAutoUpdate = false; m.updateMatrix(); this.portinhas.push(m); this.cena.add(m) }
     // a porta da curva: duas folhas que correm, e a luz lá fora
     const gFolha = new THREE.BoxGeometry(0.06, 2.0, 0.7); gFolha.translate(0, 1.0, 0)
     const mFolha = new THREE.MeshLambertMaterial({ color: C.porta })
     this.saidaE = new THREE.Mesh(gFolha, mFolha); this.saidaD = new THREE.Mesh(gFolha, mFolha)
     this.saidaE.position.set(X(MEIA + 0.04), 0, Z_PORTA - 0.35); this.saidaD.position.set(X(MEIA + 0.04), 0, Z_PORTA + 0.35)
-    this.fora = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 2.0), new THREE.MeshBasicMaterial({ color: "#ffd9a0", fog: false }))
-    this.fora.rotation.y = Math.PI / 2; this.fora.position.set(X(MEIA + 0.5), 1.0, Z_PORTA); this.fora.visible = false
+    // lá fora, na curva: a luz quente da cidade entrando pela porta
+    this.fora = new THREE.Mesh(new THREE.PlaneGeometry(4, 3.2), new THREE.MeshBasicMaterial({ color: "#ffd9a0", fog: false }))
+    this.fora.rotation.y = Math.PI / 2; this.fora.position.set(X(MEIA + 0.6), 1.2, Z_PORTA); this.fora.visible = false
     this.cena.add(this.saidaE, this.saidaD, this.fora)
 
     // quem está em pé (instanciado: o corpo tinge pela roupa, a cabeça pela pele)
@@ -177,8 +186,8 @@ export class Cena {
     this.sombraV.position.y = this.sombraG.position.y = 0.012
     this.cena.add(this.sombraV, this.sombraG)
 
-    this.camPos.set(0, 2, f.voce.z - 3.2)
-    this.camOlha.set(0, 1.2, f.voce.z + 4)
+    this.camPos.set(X(-0.35), 1.72, f.voce.z + 2.6)
+    this.camOlha.set(X(f.guarda.x), 1.2, f.guarda.z)
   }
 
   private montarTrem(f: Fuga) {
@@ -228,12 +237,13 @@ export class Cena {
       // as paredes do fundo e da frente, com o vão da passagem
       for (const [za, zb, cheia] of [[z0 - 0.06, z0, i === 0], [z1, z1 + 0.06, i === NV - 1]] as [number, number, boolean][]) {
         if (cheia) L.push(caixa(-MEIA, MEIA, 0, ALTURA, za, zb, C.parede))
-        else { L.push(caixa(-MEIA, -PASSAGEM, 0, ALTURA, za, zb, C.parede), caixa(PASSAGEM, MEIA, 0, ALTURA, za, zb, C.parede), caixa(-PASSAGEM, PASSAGEM, 2.02, ALTURA, za, zb, C.parede)) }
+        else { L.push(caixa(-MEIA, -PASSAGEM, 0, ALTURA, za, zb, C.parede), caixa(PASSAGEM, MEIA, 0, ALTURA, za, zb, C.parede)) }
       }
       if (i < NV - 1) {
         // o fole da passagem
-        L.push(caixa(-PASSAGEM - 0.06, -PASSAGEM, 0, 2.05, z1, z1 + GANG, C.fole), caixa(PASSAGEM, PASSAGEM + 0.06, 0, 2.05, z1, z1 + GANG, C.fole))
-        L.push(caixa(-PASSAGEM, PASSAGEM, 2.02, 2.08, z1, z1 + GANG, C.fole), caixa(-PASSAGEM, PASSAGEM, -0.06, 0, z1, z1 + GANG, C.chao))
+        // (sem verga em cima: o trem é um tubo só, a câmera passa sem bater)
+        L.push(caixa(-PASSAGEM - 0.07, -PASSAGEM - 0.01, 0, ALTURA, z1 + 0.07, z1 + GANG - 0.07, C.fole), caixa(PASSAGEM + 0.01, PASSAGEM + 0.07, 0, ALTURA, z1 + 0.07, z1 + GANG - 0.07, C.fole))
+        L.push(caixa(-PASSAGEM, PASSAGEM, ALTURA, ALTURA + 0.06, z1, z1 + GANG, C.fole), caixa(-PASSAGEM, PASSAGEM, -0.06, 0, z1, z1 + GANG, C.chao))
       }
     }
     for (const p of f.planta.postes) L.push(cano(p.x, p.z, 0, ALTURA, p.r * 0.8, C.cano))
@@ -324,7 +334,7 @@ export class Cena {
     this.emergencia.color.setRGB(0.2 + alarme * 0.8, 0.02, 0.02)
 
     // as portinhas e a porta da curva
-    f.portinhas.forEach((p, i) => { const m = this.portinhas[i]; m.position.x = X(p.aberta * (PASSAGEM * 2 + 0.02)); m.updateMatrix() })
+    f.portinhas.forEach((p, i) => for2(this.portinhas[i * 2], this.portinhas[i * 2 + 1], p.aberta))
     this.saidaE.position.z = Z_PORTA - 0.35 - f.saida * 0.66
     this.saidaD.position.z = Z_PORTA + 0.35 + f.saida * 0.66
     this.fora.visible = f.saida > 0
@@ -366,15 +376,21 @@ export class Cena {
     // a câmera: atrás e acima de você; treme quando ele chega perto; quando te pega, vira pra ele
     const k = 1 - Math.exp(-dt * 7)
     const d = f.distancia
-    if (f.fase === "pego") {
+    if (f.fase === "intro") {
+      // o começo: de frente pra você, olhando o fundo do vagão (ele está lá, sentado, olhando)
+      this.camPos.lerp(this.v3.set(X(vx - 0.35), 1.72, vz + 2.6), k)
+      this.camOlha.lerp(this.v3.set(X(gx), 1.2, gz), k)
+    } else if (f.fase === "pego") {
       this.camPos.lerp(this.v3.set(X(vx + 0.9), 1.6, vz + 1.6), 1 - Math.exp(-dt * 3))
       this.camOlha.lerp(this.v3.set(X(gx), 1.5, gz), 1 - Math.exp(-dt * 4))
     } else if (f.fase === "pulou" || f.fase === "porta") {
-      this.camOlha.lerp(this.v3.set(X(MEIA + 2), 1.0, Z_PORTA + 1), 1 - Math.exp(-dt * 3))
-      this.camPos.lerp(this.v3.set(X(0.2), 1.8, Z_PORTA - 2.4), 1 - Math.exp(-dt * 2))
+      // de lado, do outro lado do corredor: você sai pela porta, pra luz
+      this.camOlha.lerp(this.v3.set(X(MEIA + 1.2), 1.1, Z_PORTA + 0.2), 1 - Math.exp(-dt * 4))
+      this.camPos.lerp(this.v3.set(X(-0.45), 1.85, Z_PORTA - 1.6), 1 - Math.exp(-dt * 3))
     } else {
-      this.camPos.lerp(this.v3.set(X(vx * 0.55), 1.98, vz - 3.1), k)
-      this.camOlha.lerp(this.v3.set(X(vx * 0.25), 1.15, vz + 4.5), k)
+      // por cima do ombro direito (o poste do meio não fica na frente da câmera)
+      this.camPos.lerp(this.v3.set(X(vx * 0.5 + 0.28), 2.1, vz - 2.9), k)
+      this.camOlha.lerp(this.v3.set(X(vx * 0.25 + 0.1), 1.1, vz + 4.5), k)
     }
     const medo = ativo && f.fase === "fuga" ? Math.max(0, 1 - d / 4.5) : 0
     const tt = f.odometro
@@ -386,6 +402,13 @@ export class Cena {
     const fov = 66 + Math.min(1, v.vz / 6.5) * 5 + (f.embalo > 0 ? 4 : 0)
     if (Math.abs(this.cam.fov - fov) > 0.05) { this.cam.fov += (fov - this.cam.fov) * k; this.cam.updateProjectionMatrix() }
 
+    // ele colado na câmera: fica translúcido (senão tampa você e o corredor)
+    const dc = Math.hypot(this.cam.position.x - X(gx), this.cam.position.z - gz)
+    const op = f.fase === "pego" ? 1 : Math.max(0.22, Math.min(1, (dc - 0.9) / 1.2))
+    if (Math.abs(op - this.guarda.opaco) > 0.02) {
+      this.guarda.opaco = op
+      for (const m of this.guarda.mats) { const t = op < 0.99; if (m.transparent !== t) { m.transparent = t; m.depthWrite = !t; m.needsUpdate = true } m.opacity = op }
+    }
     this.r.render(this.cena, this.cam)
     this.calls = this.r.info.render.calls; this.tris = this.r.info.render.triangles
     void tela

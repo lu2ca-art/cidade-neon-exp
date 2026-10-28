@@ -106,7 +106,7 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro }: { o
       if (pEle.current) pEle.current.style.transform = `translateX(${Math.max(0, Math.min(1, (f.guarda.z - z0) / L)) * 100}cqw)`
       const ativo = f.fase === "fuga"
       const medo = ativo ? Math.max(0, Math.min(1, 1 - (f.distancia - 1) / 6)) : f.fase === "pego" ? 1 : 0
-      if (medoEl.current) medoEl.current.style.opacity = (medo * 0.9).toFixed(2)
+      if (medoEl.current) medoEl.current.style.opacity = (medo * 0.75).toFixed(2)
       som.quadro(medo, t / 1000, ativo)
       const vg = vagaoDe(f.voce.z)
       if (vg >= 0 && vg + 1 !== ultVagao) { ultVagao = vg + 1; setVagao(ultVagao) }

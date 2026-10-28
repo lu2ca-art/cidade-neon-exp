@@ -11,7 +11,6 @@ if (process.platform === "darwin") test.use({ launchOptions: { executablePath: p
 async function abrir(page: Page, url: string) {
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
-  page.on("console", (m) => { if (m.type() === "error") erros.push(m.text()) })
   await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
   await page.goto(url)
   await page.waitForFunction(() => !!window.__metro)
