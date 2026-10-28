@@ -2987,6 +2987,11 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-oficina-lixo button { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font-size: 12px; text-align: left; cursor: pointer; transition: transform 0.2s, opacity 0.3s; }
 .l-oficina-lixo button i { flex: none; width: 18px; height: 18px; border-radius: 4px; background: var(--c); transform: rotate(12deg); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 50%, transparent); }
 .l-oficina-lixo button.is-saiu { opacity: 0.3; }
+/* (T57) a montagem: o lixo catado no lixão vira peça, sozinho */
+.l-oficina-peca { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.7); font-size: 12px; }
+.l-oficina-peca i { flex: none; width: 18px; height: 18px; border-radius: 4px; background: var(--c); transform: rotate(12deg); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 50%, transparent); }
+.l-oficina-peca.is-desmontando i { animation: l-oficina-gira 0.75s linear infinite; }
+.l-oficina-peca.is-saiu { border-color: color-mix(in srgb, var(--c) 60%, transparent); background: color-mix(in srgb, var(--c) 16%, transparent); color: #fff; font-weight: 700; }
 .l-oficina-lixo button.is-errou { animation: l-oficina-treme 0.4s; }
 .l-oficina-lixo button.is-desmontando i { animation: l-oficina-gira 0.65s linear; }
 @keyframes l-oficina-treme { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }

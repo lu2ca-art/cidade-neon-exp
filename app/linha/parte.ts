@@ -12,13 +12,15 @@ export type Onde = {
   celular?: boolean
 }
 
-type Historia = { fase?: string; nectar?: string; missao?: string; show?: string; passos13?: string[]; oficina?: { cena?: boolean; painel?: boolean } }
+type Historia = { fase?: string; nectar?: string; missao?: string; show?: string; passos13?: string[]; oficina?: { cena?: boolean; painel?: boolean; pecas?: string[] } }
 
 // (T09) os passos da missão da oficina (os mesmos ids dos links ?parte=oficina.*)
-const PASSOS_OFICINA: Record<string, string> = { bancada: "a bancada (a reciclagem)", painel: "o painel no lixão", goteira: "a goteira", pagar: "pagar o mecânico" }
+// (T57) catar = pegar o lixo espalhado no lixão; bancada = com as quatro peças, a oficina monta
+const PASSOS_OFICINA: Record<string, string> = { catar: "catar o lixo no lixão", bancada: "a oficina monta (a reciclagem)", goteira: "a goteira", pagar: "pagar o mecânico" }
 function passoDaOficina(h: Historia) {
   const p = h.passos13 ?? []
-  return p.includes("oficina:jogo") ? "pagar" : h.oficina?.painel ? "goteira" : p.includes("oficina:arte") ? "painel" : h.oficina?.cena ? "bancada" : null
+  const pecas = new Set([...(h.oficina?.pecas ?? []), ...(h.oficina?.painel ? ["painel"] : [])])
+  return p.includes("oficina:jogo") ? "pagar" : p.includes("oficina:arte") ? "goteira" : pecas.size >= 4 ? "bancada" : h.oficina?.cena ? "catar" : null
 }
 
 const FASES: Record<string, string> = {

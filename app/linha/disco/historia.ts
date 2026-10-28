@@ -73,7 +73,8 @@ export interface HistoriaDisco {
   obras13?: Record<string, string[]>
   // (T09) a missão da oficina (disco/oficina.ts): a cena vista, o painel achado
   // e o tanque do motor (as gotas da goteira); a água que a D-Bee deu (uma vez)
-  oficina?: { cena?: true; painel?: true; tanque?: number }
+  // (T57) pecas: as peças da reciclagem que ele já catou no lixão (disco/achados.ts)
+  oficina?: { cena?: true; painel?: true; tanque?: number; pecas?: string[] }
   aguaDbee?: true
   // (T20) os palcos como Guitar Hero (disco/palcos.ts): a melhor estrela (1–5)
   // de cada música em cada palco ("bar:copo" → 3). A soma abre o palco de cima
@@ -296,17 +297,24 @@ export const CHAO_LUGARES = {
   oficina: { x: -560, z: -626, nome: "OFICINA", cor: "#ff9000" },
   palco: { x: -891, z: -536, nome: "PALCO", cor: "#e0ff4f" },
   // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
+  // (T57) a quadra é um lugar de verdade (o piso, as cestas, o alambrado) e os
+  // túneis, uma boca no chão: o ponto é a porta, no fundo da rampa (estrada/chao.ts, BOCA)
   quadra: { x: -860, z: -790, nome: "QUADRA", cor: "#ff6a35" },
   tuneis: { x: -610, z: -830, nome: "TÚNEIS", cor: "#9b8cff" },
   // (T09) os achados da missão da oficina: o painel solar velho no lixão (a mancha
   // de lixo a leste do subúrbio) e a goteira embaixo de uma pista. Só aparecem
   // (e só vão pro mapa) quando é a vez deles. RASCUNHO de onde ficam
+  // (T57) a reciclagem no deserto: o painel e mais três peças espalhadas no lixão
+  // (pega passando, de Kombi ou de patins; disco/achados.ts)
   painel: { x: -360, z: -690, nome: "PAINEL", cor: "#4fc3ff" },
+  lavadora: { x: -208, z: -754, nome: "MÁQUINA DE LAVAR", cor: "#c9d3e6" },
+  ventilador: { x: -278, z: -523, nome: "VENTILADOR", cor: "#4fc3ff" },
+  radio: { x: -410, z: -366, nome: "RÁDIO", cor: "#ff6a35" },
   goteira: { x: -620, z: -730, nome: "GOTEIRA", cor: "#4fc3ff" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 // (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
-export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "goteira"]
+export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira"]
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)

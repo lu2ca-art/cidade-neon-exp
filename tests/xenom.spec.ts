@@ -78,12 +78,9 @@ async function abrir(page: Page, parte: string) {
 test("no jogo: a missão dos túneis libera o show 10 D3 10, que abre no multiverso dele e paga", async ({ page }) => {
   test.setTimeout(240_000)
   mkdirSync(PASTA, { recursive: true })
-  const erros = await abrir(page, "missao.tuneis")
-  // as peças dos túneis ainda são "em breve" (o T13 vive na página de teste): chegou, a porta abre
-  await page.waitForFunction(() => {
-    const m = (window as unknown as { __cnMissao?: { chegou: () => unknown } }).__cnMissao
-    return !!m && m.chegou() !== false
-  }, null, { timeout: 30_000 })
+  // (T57) o jogo dos túneis é descer a boca pras trincheiras (a página do T13); a volta
+  // com a corrida feita (de=tuneis&corrida=1) fecha o jogo e a porta abre
+  const erros = await abrir(page, "missao.tuneis&de=tuneis&corrida=1")
   const r = page.locator(".l-recompensa")
   await expect(r).toBeVisible({ timeout: 30_000 })
   await expect(r.locator(".l-recompensa-xenom")).toContainText("10 D3 10")

@@ -5,6 +5,12 @@
 //   a ARTE  = a reciclagem: pegar lixo e transformar em tecnologia (a bancada)
 //   o JOGO  = achar um painel solar velho no lixão e depois uma goteira pra
 //             coletar a água do motor
+//
+// (T57, o dono 28/10: "as coisas acontecem no mundo, de verdade") a reciclagem
+// saiu da bancada de menu: o lixo (o ventilador, a máquina de lavar, o rádio
+// velho e o painel solar) fica ESPALHADO no lixão, e ele pega cada um no mundo,
+// de Kombi ou de patins (a coluna de luz e o GPS mostram onde). Com as quatro, a
+// oficina monta (a arte). O jogo fica a goteira; o resto do T09 segue igual
 //   a PORTA = as melhorias de desempenho da Kombi (o mecânico, pago em água)
 //
 // Das jogadas (J2: 18, 19): o mecânico é pago em água, a que a D-Bee deu (ela
@@ -15,6 +21,7 @@
 // As funções são puras (recebem a história do save): a page.tsx só chama.
 
 import type { Cena } from "../cenas"
+import { PECAS_CHAO, type PecaChao } from "./achados"
 import type { HistoriaDisco, LugarChao } from "./historia"
 import { feita13, pecaFeita } from "./portas"
 
@@ -33,34 +40,40 @@ export const OFICINA_CFG = {
   precoMotor: 60,
   // quantas gotas a goteira enche no tanque do motor
   gotasDaGoteira: 10,
-  // quantas vezes cavar até o painel aparecer
-  cavadas: 4,
   // o contador do pagamento: um passo a cada tantos ms; o som de água a cada 10
   passoMs: 45,
   somACada: 10,
 }
 
-// ── a arte: a bancada da reciclagem (RASCUNHO) ──
-// o plano tem 3 peças; o lixo da bancada tem as 3 escondidas e uns que não servem
-export interface LixoBancada { id: string; nome: string; vira: string | null; cor: string }
-export const PLANO = ["a bobina", "a bomba d'água", "a fiação"] as const
-export const BANCADA: LixoBancada[] = [
-  { id: "ventilador", nome: "um ventilador quebrado", vira: "a bobina", cor: "#4fc3ff" },
-  { id: "lata", nome: "uma lata amassada", vira: null, cor: "#8a7d6a" },
+// ── a arte: a reciclagem (RASCUNHO) ──
+// o lixo espalhado no lixão (a ordem é a da rota que o GPS sugere) e a peça do
+// plano que sai de cada um. Os lugares moram em historia.ts (CHAO_LUGARES)
+export interface LixoChao { id: PecaChao; nome: string; vira: string; cor: string }
+export const LIXO: LixoChao[] = [
+  { id: "painel", nome: "um painel solar velho", vira: "a célula do sol", cor: "#4fc3ff" },
   { id: "lavadora", nome: "uma máquina de lavar", vira: "a bomba d'água", cor: "#c9d3e6" },
-  { id: "pneu", nome: "um pneu careca", vira: null, cor: "#3a3440" },
+  { id: "ventilador", nome: "um ventilador quebrado", vira: "a bobina", cor: "#4fc3ff" },
   { id: "radio", nome: "um rádio velho", vira: "a fiação", cor: "#ff6a35" },
-  { id: "tenis", nome: "um tênis sem par", vira: null, cor: "#ff3fb0" },
 ]
+export const PLANO = LIXO.map((l) => l.vira)
+export const lixoDe = (id: string) => LIXO.find((l) => l.id === id)
+// as que ele já catou (só as que existem) e as que faltam, na ordem da rota
+export const pecasCatadas = (h: HistoriaDisco) => PECAS_CHAO.filter((id) => (h.oficina?.pecas ?? []).includes(id) || (id === "painel" && !!h.oficina?.painel))
+export const pecasFaltando = (h: HistoriaDisco) => LIXO.map((l) => l.id).filter((id) => !pecasCatadas(h).includes(id))
 
 // ── as falas (RASCUNHO) ──
 export const FALAS_OFICINA = {
   // a D-Bee ao dar a água (no fim da cena da casa)
   dbeeAgua: "leva essa água. eu não preciso dela. vc vai",
-  // depois da bancada: o motor montado; falta o painel
-  painel: "o motor tá aí. falta o que faz ele andar: um painel. tem um velho enterrado no lixão, pro lado das carcaças",
-  // achou o painel: agora a água
-  goteira: "isso aí. agora a água do motor: tem uma goteira embaixo da pista, aqui pertinho. enche o tanque",
+  // (T57) depois da cena: o lixo bom está lá fora, espalhado no lixão
+  catar: "o que presta tá no lixão, pro leste: um painel solar velho, uma máquina de lavar, um ventilador e um rádio. vai de kombi ou de patins. a luz mostra onde",
+  // pegou uma (o nome do lixo entra no começo) e pegou a última
+  pegou: "isso serve",
+  catou: "tudo aí? traz pra oficina que eu monto",
+  // a oficina monta: o lixo vira as peças do motor (a arte)
+  monta: "segura aí. o ventilador tem bobina, a máquina tem bomba, o rádio tem fio. e o sol, a gente pega do painel",
+  // montou: agora a água
+  goteira: "o motor tá aí. agora a água dele: tem uma goteira embaixo da pista, aqui pertinho. enche o tanque",
   // a goteira encheu: de volta pra oficina
   voltar: "tanque cheio. traz pra cá que eu monto",
   // na hora de pagar
@@ -75,25 +88,25 @@ export const FALAS_OFICINA = {
 }
 
 // ── o passo da missão (o que a história pede agora) ──
-export type PassoOficina = "chegar" | "reciclar" | "painel" | "goteira" | "montar" | "feita"
+// (T57) catar = pegar o lixo espalhado no lixão; reciclar = com as quatro, a oficina monta
+export type PassoOficina = "chegar" | "catar" | "reciclar" | "goteira" | "montar" | "feita"
 export function passoOficina(h: HistoriaDisco): PassoOficina {
   if (feita13(h, "oficina")) return "feita"
   if (!h.oficina?.cena) return "chegar"
-  if (!pecaFeita(h, "oficina", "arte")) return "reciclar"
-  if (!h.oficina?.painel) return "painel"
+  if (!pecaFeita(h, "oficina", "arte")) return pecasFaltando(h).length ? "catar" : "reciclar"
   if (!pecaFeita(h, "oficina", "jogo")) return "goteira"
   return "montar"
 }
-// pra onde ir no chão do subúrbio (a coluna de luz, o drone, a chegada)
+// pra onde ir no chão do subúrbio (a coluna de luz, o drone, a chegada): catando, a próxima peça da rota
 export function alvoOficina(h: HistoriaDisco): LugarChao | null {
   const p = passoOficina(h)
-  return p === "feita" ? null : p === "painel" ? "painel" : p === "goteira" ? "goteira" : "oficina"
+  return p === "feita" ? null : p === "catar" ? pecasFaltando(h)[0] : p === "goteira" ? "goteira" : "oficina"
 }
 // o objetivo no topo da tela
 export const OBJETIVO_OFICINA: Record<PassoOficina, string> = {
   chegar: "a oficina · o subúrbio",
-  reciclar: "a bancada · a oficina",
-  painel: "o painel solar · o lixão",
+  catar: "o lixo bom · o lixão",
+  reciclar: "volta pra oficina · ela monta",
   goteira: "a goteira · embaixo da pista",
   montar: "volta pra oficina",
   feita: "a cidade · lá em cima",
@@ -139,7 +152,7 @@ export const CENA_OFICINA: Cena = {
     { t: "fala", de: M, texto: "esses aí são os meninos. passaram tudo por aqui. rodam a cidade a noite inteira" },
     { t: "fala", de: M, texto: "de vez em quando se trombam lá em cima e tiram um racha. ninguém sabe de onde eles vêm" },
     { t: "fala", de: M, texto: "um deles jura que veio de outro tempo. igual vc, né? vai saber" },
-    { t: "fala", de: M, texto: "bora. primeiro a bancada: me ajuda a achar o que presta nesse lixo" },
+    { t: "fala", de: M, texto: "bora. o lixo que presta não tá aqui dentro. tá lá fora, jogado no lixão" },
     { t: "fim" },
   ],
 }

@@ -1,14 +1,16 @@
 import { expect, test, type Page } from "@playwright/test"
 import type { HistoriaDisco } from "../app/linha/disco/historia"
 import { CHAO_FIXOS, CHAO_LUGARES } from "../app/linha/disco/historia"
-import { BANCADA, MECANICO, OFICINA_CFG, PLANO, alvoOficina, pagamentoMotor, passoOficina, sonsDoContador } from "../app/linha/disco/oficina"
+import { LIXO, MECANICO, OFICINA_CFG, PLANO, alvoOficina, pagamentoMotor, passoOficina, pecasFaltando, sonsDoContador } from "../app/linha/disco/oficina"
+import { PECAS_CHAO } from "../app/linha/disco/achados"
 import { abrirPorta, checklist13, concluir, feita13, portaAberta } from "../app/linha/disco/portas"
 import { PAGINAS } from "../app/linha/paginas"
 import { LUGARES } from "../app/linha/lugares"
 
 // (T04, T09) a oficina só no subúrbio e a missão dela: a cena (só o plano) → a
-// bancada (a arte: a reciclagem) → o painel no lixão e a goteira (o jogo) → o
-// mecânico pago em água → a porta (as melhorias da Kombi)
+// reciclagem (a arte; T57: catar o lixo espalhado no lixão, no mundo, e a
+// oficina monta) → a goteira (o jogo) → o mecânico pago em água → a porta (as
+// melhorias da Kombi)
 
 test("T04: a oficina não está mais na cidade nem vende pintura", () => {
   expect(PAGINAS.map((p) => p.id)).not.toContain("oficina")
@@ -21,13 +23,18 @@ test("T09: os passos da missão, na ordem, e pra onde cada um manda", () => {
   expect(passoOficina(h)).toBe("chegar")
   expect(alvoOficina(h)).toBe("oficina")
   h = { ...h, oficina: { cena: true } }
+  // (T57) catar: o lixo está espalhado no lixão; o alvo é a próxima peça da rota
+  expect(passoOficina(h)).toBe("catar")
+  expect(alvoOficina(h)).toBe("painel")
+  expect(checklist13(h, "oficina").map((x) => x.estado)).toEqual(["agora", "depois", "depois"])
+  h = { ...h, oficina: { ...h.oficina, pecas: ["painel", "ventilador"] } }
+  expect(pecasFaltando(h)).toEqual(["lavadora", "radio"])
+  expect(alvoOficina(h)).toBe("lavadora")
+  h = { ...h, oficina: { ...h.oficina, pecas: [...PECAS_CHAO] } }
+  // com as quatro: de volta pra oficina, que monta (a arte)
   expect(passoOficina(h)).toBe("reciclar")
   expect(alvoOficina(h)).toBe("oficina")
-  expect(checklist13(h, "oficina").map((x) => x.estado)).toEqual(["agora", "depois", "depois"])
   h = concluir(h, "oficina", "arte")
-  expect(passoOficina(h)).toBe("painel")
-  expect(alvoOficina(h)).toBe("painel")
-  h = { ...h, oficina: { ...h.oficina, painel: true } }
   expect(passoOficina(h)).toBe("goteira")
   expect(alvoOficina(h)).toBe("goteira")
   h = concluir(h, "oficina", "jogo")
@@ -39,8 +46,9 @@ test("T09: os passos da missão, na ordem, e pra onde cada um manda", () => {
   expect(passoOficina(h)).toBe("feita")
   expect(alvoOficina(h)).toBeNull()
   // os achados ficam fora dos lugares fixos (o mapa, os feixes do drone)
-  expect(CHAO_FIXOS).not.toContain("painel")
-  expect(CHAO_FIXOS).not.toContain("goteira")
+  for (const id of [...PECAS_CHAO, "goteira"] as const) expect(CHAO_FIXOS).not.toContain(id)
+  // save de antes do T57 (o painel já achado no T09, sem pecas): o painel conta
+  expect(pecasFaltando({ fase: "oficina", holo: true, oficina: { cena: true, painel: true } })).not.toContain("painel")
 })
 
 test("T09: o mecânico é pago em água, e o contador pinga a cada 10", () => {
@@ -55,8 +63,10 @@ test("T09: o mecânico é pago em água, e o contador pinga a cada 10", () => {
   expect(sonsDoContador(60, 0)).toBe(6)
   expect(sonsDoContador(85, 25)).toBe(6)
   expect(sonsDoContador(5, 0)).toBe(1)
-  // a bancada esconde as três peças do plano
-  expect(BANCADA.map((b) => b.vira).filter(Boolean).sort()).toEqual([...PLANO].sort())
+  // (T57) o lixo do lixão: as quatro peças, cada uma vira uma peça do plano, e cada uma tem lugar no chão
+  expect(LIXO.map((l) => l.id).sort()).toEqual([...PECAS_CHAO].sort())
+  expect(PLANO).toHaveLength(4)
+  for (const l of LIXO) expect(CHAO_LUGARES[l.id]).toBeTruthy()
   expect(MECANICO.nome.length).toBeGreaterThan(0)
   expect(CHAO_LUGARES.painel && CHAO_LUGARES.goteira).toBeTruthy()
 })
@@ -77,29 +87,45 @@ async function abrir(page: Page, parte: string) {
   return erros
 }
 
-test("?parte=oficina.bancada: a arte, a reciclagem", async ({ page }) => {
-  const erros = await abrir(page, "oficina.bancada")
-  await chegar(page, "oficina")
-  const banc = page.getByRole("dialog", { name: "a bancada da reciclagem" })
-  await expect(banc).toBeVisible()
-  // um lixo que não serve não conta
-  await banc.locator('[data-lixo="pneu"]').click()
-  for (const it of BANCADA.filter((b) => b.vira)) { await banc.locator(`[data-lixo="${it.id}"]`).click(); await page.waitForTimeout(800) }
-  await banc.getByRole("button", { name: "pronto →" }).click()
-  await expect(banc).toBeHidden()
-  const s = await saveDe(page)
-  expect(s.disco.passos13).toContain("oficina:arte")
+// (T57) pegar as peças no deserto completa a reciclagem: a Kombi passa por cada
+// uma (a mesma checagem da Corrida que vale dirigindo ou de patins; o teste só
+// põe a Kombi no lugar) e, de volta na oficina, ela monta
+const kombiEm = (page: Page, x: number, z: number) => page.evaluate(([x, z]) => {
+  const j = (window as unknown as { __jogo: { wx: number; wz: number; v: number; ar: boolean } }).__jogo
+  j.wx = x; j.wz = z; j.v = 0; j.ar = false
+}, [x, z])
+test("?parte=oficina.catar: pegar as peças no lixão completa a reciclagem", async ({ page }) => {
+  test.setTimeout(180_000)
+  const erros = await abrir(page, "oficina.catar&medir")
+  await page.waitForFunction(() => !!(window as unknown as { __jogo?: unknown }).__jogo)
+  // as quatro estão na cena, espalhadas
+  await expect.poll(() => page.evaluate(() => {
+    const c = (window as unknown as { __cena: { getObjectByName: (n: string) => unknown } }).__cena
+    return ["painel", "lavadora", "ventilador", "radio"].filter((id) => !!c.getObjectByName(`peca-${id}`)).length
+  }), { timeout: 30_000 }).toBe(4)
+  for (const [i, l] of LIXO.entries()) {
+    const p = CHAO_LUGARES[l.id]
+    await kombiEm(page, p.x + 4, p.z + 3)
+    await expect.poll(async () => ((await saveDe(page)).disco.oficina?.pecas ?? []).length, { timeout: 20_000 }).toBe(i + 1)
+    // pegou: sumiu da cena
+    await expect.poll(() => page.evaluate((id) => !!(window as unknown as { __cena: { getObjectByName: (n: string) => unknown } }).__cena.getObjectByName(`peca-${id}`), l.id)).toBe(false)
+  }
+  const s0 = await saveDe(page)
+  expect(s0.disco.oficina.painel).toBe(true)
+  expect(s0.disco.passos13 ?? []).not.toContain("oficina:arte")
+  // de volta na oficina: ela monta (sem toque, só o "seguir" no fim)
+  const of = CHAO_LUGARES.oficina
+  await kombiEm(page, of.x + 6, of.z + 6)
+  const monta = page.getByRole("dialog", { name: "a oficina monta" })
+  await expect(monta).toBeVisible({ timeout: 20_000 })
+  await monta.getByRole("button", { name: "seguir →" }).click({ timeout: 20_000 })
+  await expect(monta).toBeHidden()
+  expect((await saveDe(page)).disco.passos13).toContain("oficina:arte")
   expect(erros).toEqual([])
 })
 
-test("?parte=oficina.painel e ?parte=oficina.goteira: o jogo", async ({ page }) => {
-  const erros = await abrir(page, "oficina.painel")
-  await chegar(page, "painel")
-  const cova = page.getByRole("dialog", { name: "o painel no lixão" })
-  await expect(cova).toBeVisible()
-  for (let i = 0; i < OFICINA_CFG.cavadas; i++) await cova.locator("[data-cavar]").click()
-  await cova.getByRole("button", { name: "levar o painel →" }).click()
-  expect((await saveDe(page)).disco.oficina.painel).toBe(true)
+test("?parte=oficina.goteira: o jogo", async ({ page }) => {
+  const erros = await abrir(page, "oficina.goteira")
   // a goteira: o balde vai pra coluna da gota até o tanque encher
   await chegar(page, "goteira")
   const got = page.getByRole("dialog", { name: "a goteira" })
