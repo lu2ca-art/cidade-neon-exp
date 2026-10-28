@@ -149,6 +149,8 @@ export default function LinhaPage() {
   const HIST = D && historiaAtiva(hist)
   // o buraco de minhoca rolando (B4)
   const [minhoca, setMinhoca] = useState(false)
+  // (22/10, 2.1) os fachos do túnel seguem por cima da queda, freando, uns 2,6 s
+  const [rastroMinhoca, setRastroMinhoca] = useState(false)
   // (disco, B15b) o visualizador: os links de fora abrem dentro do jogo
   const [visor, setVisor] = useState<VisorId | null>(null)
   // (disco, B8) o jornal do dia seguinte ao show
@@ -1024,6 +1026,8 @@ export default function LinhaPage() {
   // (disco) o buraco de minhoca acabou: a Kombi cai no deserto, perto da casa
   const fimMinhoca = () => {
     setMinhoca(false)
+    setRastroMinhoca(true)
+    setTimeout(() => setRastroMinhoca(false), 2700)
     // (o começo é de tarde: o deserto aparece, e a cidade acende quando escurece)
     setSave((s) => ({ ...comHistoria(s, (h) => ({ ...h, fase: "casa" as const })), hora: 16.5 }))
     setSaltoHora({ h: 16.5, id: Date.now() })
@@ -1459,6 +1463,7 @@ export default function LinhaPage() {
         )}
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
+        {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
         {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)

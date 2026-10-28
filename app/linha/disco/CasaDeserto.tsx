@@ -18,7 +18,8 @@ export function CasaDeserto({ chao, farol = true }: { chao: (x: number, z: numbe
     telhado: new THREE.MeshStandardMaterial({ color: "#3a2a26", roughness: 0.8 }),
     luz: new THREE.MeshBasicMaterial({ color: "#ffcf8a", toneMapped: false }),
     metal: new THREE.MeshStandardMaterial({ color: "#8a8f9a", metalness: 0.6, roughness: 0.4 }),
-    farol: new THREE.MeshBasicMaterial({ color: "#ffb35c", transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+    // (22/10, 2.2) sem névoa: a coluna é o que se vê da casa lá de longe, desde a queda
+    farol: new THREE.MeshBasicMaterial({ color: "#ffb35c", transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false }),
   }), [])
   const telhado = useMemo(() => {
     // o telhado de duas águas: um prisma triangular
@@ -46,7 +47,7 @@ export function CasaDeserto({ chao, farol = true }: { chao: (x: number, z: numbe
       <mesh position={[5.6, 3.3, -2.2]} material={mats.metal}><cylinderGeometry args={[1.1, 1.1, 1.6, 10]} /></mesh>
       <mesh position={[5.6, 1.25, -2.2]} material={mats.madeira}><boxGeometry args={[1.6, 2.5, 1.6]} /></mesh>
       {/* de longe: a coluna de luz quente (até ele chegar na porta) */}
-      {farol && <mesh position={[0, 60, 0]} material={mats.farol}><cylinderGeometry args={[2.2, 3.4, 120, 10, 1, true]} /></mesh>}
+      {farol && <mesh position={[0, 110, 0]} material={mats.farol}><cylinderGeometry args={[3, 4.6, 220, 10, 1, true]} /></mesh>}
     </group>
   )
 }
