@@ -62,7 +62,9 @@ import { type ResultadoShow } from "./disco/Show"
 import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
-import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, kombiNoConserto, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { aplicarRecompensa } from "./disco/recompensas"
+import { versoesDasPistas } from "./disco/pistasLiberadas"
+import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, kombiNoConserto, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { Letra } from "./disco/Letra"
@@ -826,6 +828,8 @@ export default function LinhaPage() {
   // missão, só os discos): a Corrida toca o instrumental até ele achar a linha
   const soTema = HIST && hist.fase === "carreira"
   const temaMissao: PistaId | null = soTema ? m13?.faixa ?? null : null
+  // (T31) a música de cada pista vai de prévia a instrumental a versão subúrbio, pelo trajeto da missão
+  const versoesPista = useMemo(() => (HIST ? versoesDasPistas(hist) : null), [HIST, hist])
   const fecharOuvir = useCallback(() => setOuvirFim(null), [])
   const largarMissao = () => {
     const m = missaoCarreira
@@ -885,13 +889,11 @@ export default function LinhaPage() {
   // A missão da cidade acende a pista dela pra sempre (o objeto da faixa: as torres)
   const abrirPortaDe = (id: MissaoId) => {
     const s0 = saveRef.current
-    if (feita13(hist13(s0), id)) return
-    const m = MISSOES13[id], r = recompensaDe(id)
-    const faixaNaCidade = m.faixa && (m.onde === "cidade" || historiaDe(s0).fase === "carreira") ? (m.faixa as EstacaoId) : null
-    setSave((s) => comHistoria(
-      { ...ganhar(s, r.neon), objetos: faixaNaCidade && !s.objetos.includes(faixaNaCidade) ? [...s.objetos, faixaNaCidade] : s.objetos, violao: m.abre.includes("violao") ? true : s.violao },
-      (h) => abrirPorta(sincronizar(h, s.objetos), id),
-    ))
+    // (T30) a recompensa inteira (grana, faixa do Guitar Driver, referência do B4TIDA,
+    // as portas) é aplicada num lugar só: disco/recompensas.ts
+    const { recompensa: r } = aplicarRecompensa(s0, id)
+    if (!r) return
+    setSave((s) => aplicarRecompensa(s, id).save)
     setRecompensa(r)
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
   }
@@ -1501,6 +1503,7 @@ export default function LinhaPage() {
             soTema={soTema}
             pistaFoco={focoFeira}
             temaMissao={temaMissao}
+            versoesPista={versoesPista}
             onHistoria={onHistoria}
             // (B10, T03) a oficina: o mecânico é pago em água, só desempenho (o preço vem da economia)
             onComprar={(id) => setSave((s) => { const r = comprarMelhoria(s, id); return r.ok ? r.save : s })}
