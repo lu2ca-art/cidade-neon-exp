@@ -49,7 +49,8 @@ export interface HistoriaDisco {
   missao?: string
   // o show que está pra acontecer: (T02) não é mais o fim da missão. É o Guitar
   // Driver aberto agora: "rua:<faixa>" (a oportunidade na rua) ou
-  // "missao:<id>" (a peça de uma missão que é tocar ao vivo, a do LU2CA)
+  // "missao:<id>" (a peça de uma missão que é tocar ao vivo, a do LU2CA) ou
+  // (T20) "palco:<palco>:<faixa>" (um palco da carreira, disco/palcos.ts)
   show?: string
   // (27/10) o drone GPS da D-Bee: ela dá nas dunas (a subida mostrada uma vez só)
   drone?: boolean
@@ -71,6 +72,9 @@ export interface HistoriaDisco {
   // e o tanque do motor (as gotas da goteira); a água que a D-Bee deu (uma vez)
   oficina?: { cena?: true; painel?: true; tanque?: number }
   aguaDbee?: true
+  // (T20) os palcos como Guitar Hero (disco/palcos.ts): a melhor estrela (1–5)
+  // de cada música em cada palco ("bar:copo" → 3). A soma abre o palco de cima
+  palcos?: Record<string, number>
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }

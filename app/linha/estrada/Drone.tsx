@@ -18,7 +18,7 @@ import * as THREE from "three"
 import type { Mundo } from "./mundo"
 import { PASSO } from "./pista"
 import { calcularRota } from "./rota"
-import { blipsDo, noMundo, type IconeMapa, type Marca } from "./Mapa"
+import { blipsDo, noMundo, uDaMissao, type IconeMapa, type Marca } from "./Mapa"
 import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
 import type { LugarId } from "../lugares"
 
@@ -453,7 +453,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
         for (const m of pr.missoes) {
           const p = D.pistas.find((x) => x.nome === m.faixa)
           if (!p || ap?.[p.ida]) continue
-          const v = M.vias[p.ida], i = pontoVia(M, p.ida, (v.n - 1) * PASSO * 0.55)
+          const v = M.vias[p.ida], i = pontoVia(M, p.ida, uDaMissao(M, p.nome, v.n))
           por(v.px[i], v.py[i], v.pz[i], m.cor, 1.3)
         }
       }

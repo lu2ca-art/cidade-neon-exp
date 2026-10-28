@@ -73,7 +73,7 @@ export const PORTAS: Record<PortaId, { nome: string; existe: boolean; tarefa?: s
   ginasio: { nome: "o ginásio: basquete e cama elástica", existe: true, tarefa: "T15" },
   "loja-discos": { nome: "a loja de discos", existe: true, tarefa: "T16" },
   "radio-frequencias": { nome: "a rádio e as frequências", existe: true, tarefa: "T18" },
-  "shows-live": { nome: "os 5 shows do LIVE", existe: false, tarefa: "T20" },
+  "shows-live": { nome: "os palcos da cidade: subir até o alto das torres", existe: true, tarefa: "T20" },
   galeria: { nome: "a galeria", existe: true, tarefa: "T22" },
   fliperama: { nome: "as 7 máquinas do fliperama", existe: true, tarefa: "T23" },
   parque: { nome: "o parque", existe: true, tarefa: "T24" },

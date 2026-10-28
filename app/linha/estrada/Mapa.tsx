@@ -80,6 +80,9 @@ function amostrarVias(M: Mundo) {
   })
 }
 
+// (T42, J2:15) o ícone da missão na pista: o ponto dela no espalhar (mundoDisco), senão a pouco mais da metade
+export const uDaMissao = (M: Mundo, pista: string, n: number) => M.onde?.(`missao:${pista}`)?.u ?? (n - 1) * PASSO * 0.55
+
 export function noMundo(M: Mundo, p: Ponto) {
   const v = M.vias[p.via]
   const i = v.fechada ? ((Math.round(p.u / PASSO) % v.n) + v.n) % v.n : Math.max(0, Math.min(v.n - 1, Math.round(p.u / PASSO)))
@@ -223,7 +226,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       const p = D.pistas.find((x) => x.nome === m.faixa)
       if (!p || apagada?.[p.ida]) return []
       const v = M.vias[p.ida]
-      return [{ ...m, via: p.ida, u: (v.n - 1) * PASSO * 0.55, forma: ICONE_MISSAO[m.id] && typeof Path2D !== "undefined" ? new Path2D(ICONE_MISSAO[m.id]) : null }]
+      return [{ ...m, via: p.ida, u: uDaMissao(M, p.nome, v.n), forma: ICONE_MISSAO[m.id] && typeof Path2D !== "undefined" ? new Path2D(ICONE_MISSAO[m.id]) : null }]
     })
   }, [missoes, M, apagada])
 

@@ -48,6 +48,10 @@ function discoDa(parte: string): Record<string, unknown> | null {
     if (sub) return undefined as unknown as null
     return base
   }
+  // (T20) os palcos: o menu aberto. "palcos" = o meio da carreira com 2 ★ (uma
+  // música a mais e o bar abre); "palcos.topo" = todos abertos, no alto das torres
+  if (parte === "palcos") return { ...MEIO, palcos: { "calcada:ojala": 2 } }
+  if (parte === "palcos.topo") return { ...MEIO, palcos: { "calcada:nectar": 5, "bar:nectar": 5, "balada:nectar": 4, "terraco:nectar": 4, "calcada:ojala": 3 } }
   // (T03) a loja aberta, com grana no bolso (o resto do save é o meio da carreira)
   if (parte === "loja") return MEIO
   if (parte === "livre" || parte === "final") return { fase: "livre", holo: true }
@@ -55,7 +59,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
 }
 
 export const OFICINA_PARTES = ["oficina.bancada", "oficina.painel", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", ...OFICINA_PARTES, "subir", "nectar", "carreira.feira", "carreira.meio", "loja", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", ...OFICINA_PARTES, "subir", "nectar", "carreira.feira", "carreira.meio", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {
@@ -68,9 +72,10 @@ export function aplicarParteDeTeste(): boolean {
   if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("oficina") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("palcos") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("oficina") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
+  if (parte.startsWith("palcos")) url.searchParams.set("app", "palcos")
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")
   history.replaceState(null, "", url.pathname + (url.search ? url.search : ""))
