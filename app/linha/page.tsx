@@ -59,7 +59,8 @@ import { type ResultadoShow } from "./disco/Show"
 import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
-import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, type MissaoId, type Oferta13, type Recompensa13 } from "./disco/portas"
+import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, kombiNoConserto, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { Letra } from "./disco/Letra"
 import { letraDe } from "./disco/letras"
@@ -837,6 +838,24 @@ export default function LinhaPage() {
     const conf = como?.t === "letra" ? letraDe(como.faixa) : null
     return conf && como?.t === "letra" ? { missao: mid, qual, faixa: como.faixa, conf } : null
   })()
+  // (T15–T25, T16) a peça de agora que abre por cima do jogo (disco/pecas/): a
+  // dança, a vinheta, a trilha, a máquina, o clipe, a horta, o prato, o disco, a sinuca
+  const cenaAgora = (() => {
+    if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return null
+    const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
+    const como = MISSOES13[mid]?.[qual]?.como
+    return como?.t === "cena" ? { missao: mid, qual, id: como.id as CenaId } : null
+  })()
+  // (T15–T25, T16) o que ainda está trancado (a porta de cada missão abre) e a
+  // Kombi no conserto (a missão do Drew vai de patins)
+  const trancasCorrida = useMemo(() => {
+    if (!HIST) return undefined
+    const t: Partial<Record<"ginasio" | "radio" | "fliperama" | "parque" | "canteiros", string>> = {}
+    const par: [keyof typeof t, PortaId][] = [["ginasio", "ginasio"], ["radio", "radio-frequencias"], ["fliperama", "fliperama"], ["parque", "parque"], ["canteiros", "canteiros"]]
+    for (const [k, porta] of par) { const m = trancado(h13, porta); if (m) t[k] = m }
+    return t
+  }, [HIST, h13])
+  const noConserto = HIST && kombiNoConserto(h13)
   // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
   const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
@@ -866,7 +885,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || cena) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || cenaAgora || cena) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     if (!pc) { abrirPortaDe(id); return }
     const como = pc.peca.como
@@ -876,7 +895,7 @@ export default function LinhaPage() {
     if (como.t === "pingpong") setPingpong(true)
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
     else if (como.t === "prova") setProvaMissao({ missao: id, qual: pc.qual, id: como.id, cor: MISSOES13[id].cor })
-    else if (como.t === "letra") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
+    else if (como.t === "letra" || como.t === "cena") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
   }
   // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
   const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
@@ -888,6 +907,27 @@ export default function LinhaPage() {
     }, 900)
   }
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe })
+  // (T15–T25, T16) só fora da produção, pros testes: chegar no lugar da missão
+  // pegada, terminar a peça aberta (o ping pong, a sinuca, a máquina) e contar um evento da rua
+  useEffect(() => {
+    if (!D || !atalhosLiberados()) return
+    const w = window as unknown as { __cnMissao?: unknown }
+    w.__cnMissao = {
+      chegou: () => { const m = missaoDoSave(saveRef.current); if (m) chegouRef.current(m) },
+      fimPeca: () => {
+        const h = hist13(saveRef.current)
+        const aberta = h.aberta13 ? (h.aberta13.split(":") as [MissaoId, "arte" | "jogo"]) : null
+        const p = pecaAberta.current ?? (aberta ? { missao: aberta[0], qual: aberta[1] } : null)
+        if (!p) return false
+        setPingpong(false); setProvaMissao(null)
+        setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined })))
+        pecaFeitaNaMissao(p.missao, p.qual)
+        return true
+      },
+      evento: (e: "montanha" | "flor") => eventoDaRua(e),
+    }
+    return () => { delete w.__cnMissao }
+  })
   // um evento da rua conta pra peça de agora (a montanha-russa da Nizzy…)
   const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
   const fimShow = (r: ResultadoShow) => {
@@ -1236,6 +1276,13 @@ export default function LinhaPage() {
       avisar(a.nome, `abre no nível ${NIVEIS[a.nivel].nome}`, a.cor)
       return
     }
+    // (T16, T18, T23) no jogo com história, o lugar que a porta de uma missão abre
+    // fica trancado até ela (portas.ts, CONFIG13.trancar): a loja, as frequências, o fliperama
+    if (HIST) {
+      const porta = ({ loja: "loja-discos", radio: "radio-frequencias", freq: "radio-frequencias", sintonia: "radio-frequencias", fliperama: "fliperama" } as Partial<Record<AppId, PortaId>>)[id]
+      const msg = porta ? trancado(hist13(saveRef.current), porta) : null
+      if (msg) { avisar(a.nome, msg, a.cor); return }
+    }
     // recurso de missão: abre com o objeto daquela estação
     // (o violão vem da D-Bee, no fim da leitura NECTAR)
     if (a.precisa && !(a.id === "violao" ? save.violao : save.objetos.includes(a.precisa))) {
@@ -1396,6 +1443,8 @@ export default function LinhaPage() {
             teleporte={teleporte}
             abertura={!D && !save.casa}
             historia={D ? hist : null}
+            trancas={trancasCorrida}
+            noConserto={noConserto}
             alvoChao={alvoChao}
             soTema={soTema}
             pistaFoco={focoFeira}
@@ -1597,6 +1646,14 @@ export default function LinhaPage() {
           if (l.qual === "arte" && MISSOES13[l.missao].jogo.como?.t === "show") pecaAberta.current = { missao: l.missao, qual: "jogo" }
           else pecaFeitaNaMissao(l.missao, l.qual)
         }} />}
+        {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
+        {cenaAgora && <Peca key={`${cenaAgora.missao}:${cenaAgora.qual}`} id={cenaAgora.id} qual={cenaAgora.qual} cor={MISSOES13[cenaAgora.missao].cor} quem={MISSOES13[cenaAgora.missao].quem} onFim={(ok, obra) => {
+          const c = cenaAgora
+          setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined, obras13: obra ? { ...(x.obras13 ?? {}), [`${c.missao}:${c.qual}`]: obra } : x.obras13 })))
+          barFechou.current = Date.now()
+          track("mission_step", { mission_id: `disco-${c.missao}`, step: c.id, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          if (ok) pecaFeitaNaMissao(c.missao, c.qual)
+        }} />}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()
@@ -1625,6 +1682,8 @@ export default function LinhaPage() {
           const r = recompensa
           setRecompensa(null)
           const m = MISSOES13[r.missao]
+          // (T16) a loja de discos abriu: ela abre, pra comprar o primeiro disco com a grana
+          if (r.abriu.some((x) => x.id === "loja-discos")) { setTela({ t: "app", id: "loja" }); return }
           if (m.faixa && m.onde === "cidade") setOuvirFim({ pista: m.faixa, id: Date.now() })
         }} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}

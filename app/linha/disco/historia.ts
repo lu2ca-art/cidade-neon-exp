@@ -68,6 +68,9 @@ export interface HistoriaDisco {
   // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
   aberta13?: string
   letras?: Record<string, string[]>
+  // (T15–T25, T16) o que cada arte deixou ("nizzy:arte" → os cortes do clipe;
+  // "tony:arte" → o prato; "xeriff:arte" → a vinheta…)
+  obras13?: Record<string, string[]>
   // (T20) os palcos como Guitar Hero (disco/palcos.ts): a melhor estrela (1–5)
   // de cada música em cada palco ("bar:copo" → 3). A soma abre o palco de cima
   palcos?: Record<string, number>

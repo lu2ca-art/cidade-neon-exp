@@ -46,6 +46,12 @@ export type ComoJoga =
   | { t: "evento"; evento: "montanha" | "flor"; n: number }
   // (T19) escrever a letra da faixa (disco/Letra.tsx; os versos em disco/letras.ts)
   | { t: "letra"; faixa: PistaId }
+  // (T15–T25, T16) uma peça que abre por cima do jogo (disco/pecas/): a dança, a
+  // vinheta, a trilha 8 bits, a máquina, o clipe, a horta, o prato, o disco
+  // antigo, a sinuca. Os rascunhos de cada uma moram em disco/pecas/conf.ts
+  | { t: "cena"; id: CenaId }
+
+export type CenaId = "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "horta" | "cozinhar" | "disco-antigo" | "sinuca"
 
 export interface Peca {
   nome: string
@@ -103,6 +109,9 @@ export interface Missao13 {
   requer: MissaoId[]
   // feita pela história do começo (a casa e as dunas; a oficina): não vai pra feira
   prologo?: true
+  // (T25) a ordem das peças, quando não é arte → jogo (o Tony: regar a horta
+  // primeiro, depois cozinhar com o que nasceu)
+  ordem?: ["jogo", "arte"]
 }
 
 // ── o que ainda é decisão do dono (troca aqui; o resto segue sozinho) ──
@@ -114,6 +123,13 @@ export const CONFIG13 = {
   // (decidido 21/10, as torres) a missão da cidade só aparece com a pista
   // dela acesa (estrada/atos.ts): o mapa vai colorindo espalhado
   soComPistaAcesa: true,
+  // (T15–T25, T16, 28/10) o que fica TRANCADO até a porta da missão abrir. Só no
+  // jogo com história (o mapa-disco) e antes do fim (fase "livre" abre tudo).
+  // Tirar uma porta daqui = o lugar volta a ficar aberto desde o começo
+  trancar: [] as PortaId[],
+  // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
+  // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
+  kombiNoConserto: [] as MissaoId[],
 }
 
 const p = (nome: string, situacao: Situacao, extra: Partial<Peca> = {}): Peca => ({ nome, situacao, ...extra })
@@ -241,9 +257,10 @@ export const pecaFeita = (h: HistoriaDisco, id: MissaoId, qual: "arte" | "jogo")
 export function passoAgora(h: HistoriaDisco, id: MissaoId): Passo | null {
   if (feita13(h, id)) return null
   const m = MISSOES13[id]
-  for (const qual of ["arte", "jogo"] as const) if (!emBreve(m[qual]) && !pecaFeita(h, id, qual)) return qual
+  for (const qual of ordemDe(id)) if (!emBreve(m[qual]) && !pecaFeita(h, id, qual)) return qual
   return "porta"
 }
+export const ordemDe = (id: MissaoId): ("arte" | "jogo")[] => MISSOES13[id].ordem ?? ["arte", "jogo"]
 
 export type EstadoPasso = "feita" | "agora" | "depois" | "em breve"
 // a checklist (o anel do holo, o painel da missão): arte, jogo e a porta
@@ -257,8 +274,7 @@ export function checklist13(h: HistoriaDisco, id: MissaoId): { nome: string; est
     return qual === agora ? "agora" : "depois"
   }
   return [
-    { nome: `a arte · ${m.arte.nome}`, estado: estado("arte") },
-    { nome: `o jogo · ${m.jogo.nome}`, estado: estado("jogo") },
+    ...ordemDe(id).map((qual) => ({ nome: `${qual === "arte" ? "a arte" : "o jogo"} · ${m[qual].nome}`, estado: estado(qual) })),
     { nome: `a porta · ${m.abre.map((a) => PORTAS[a].nome).join(" e ")}`, estado: estado("porta") },
   ]
 }
@@ -330,6 +346,23 @@ export function abrirPorta(h: HistoriaDisco, id: MissaoId): HistoriaDisco {
   }
 }
 export const portaAberta = (h: HistoriaDisco, porta: PortaId) => (h.portas ?? []).includes(porta)
+
+// (T15–T25, T16) o lugar ainda trancado (CONFIG13.trancar): a porta não abriu e
+// a missão que abre ele não está pegada (a da Nizzy precisa do parque pra andar
+// na montanha-russa). Devolve o porquê, curto, ou null (aberto).
+export function trancado(h: HistoriaDisco | null, porta: PortaId): string | null {
+  if (!h || h.fase === "livre" || h.fase === "minhoca") return null
+  if (!CONFIG13.trancar.includes(porta) || portaAberta(h, porta)) return null
+  const dona = IDS13.find((id) => MISSOES13[id].abre.includes(porta))
+  if (!dona) return null
+  if (normalizarMissao(h.missao) === dona && porta === "parque") return null
+  return `abre na missão ${dona === "nizzy" || dona === "ella" || dona === "dbee" ? "da" : "do"} ${MISSOES13[dona].quem}`
+}
+// (T15) a Kombi está no conserto agora? (a missão pegada pede patins até a porta abrir)
+export function kombiNoConserto(h: HistoriaDisco | null): boolean {
+  const id = normalizarMissao(h?.missao)
+  return !!h && h.fase === "carreira" && !!id && CONFIG13.kombiNoConserto.includes(id) && !feita13(h, id)
+}
 
 // save de antes do T02: a faixa da cidade já feita (o objeto dela no save) conta
 // como a missão feita (senão a pista fica "feita" e a missão nunca aparece)

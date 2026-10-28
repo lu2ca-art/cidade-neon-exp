@@ -269,6 +269,11 @@ interface Props {
   temaMissao?: string | null
   // (21/10, o mapa que ensina) a pista em foco no mapa (tocou na oferta da feira)
   pistaFoco?: string | null
+  // (T15–T25, 28/10) o que a porta de uma missão ainda não abriu: o porquê, curto
+  // ("abre na missão do Drew"). O botão do lugar vira um aviso (disco/portas.ts)
+  trancas?: Partial<Record<"ginasio" | "radio" | "fliperama" | "parque" | "canteiros", string>>
+  // (T15) a Kombi está no conserto (a missão do Drew): de patins, com o jetpack; volta quando acaba
+  noConserto?: boolean
 }
 export type EventoHistoria = "casa" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | `chao:${LugarChao}`
 
@@ -462,7 +467,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, onComprar, alvoChao = null, soTema = false, temaMissao = null, pistaFoco = null, trancas, noConserto = false }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -1117,7 +1122,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (disco, a missão da Nectar, LU2CA 19–20/10) a Kombi quebra: patins; regar 3
   // flores; o galão que a D-Bee deixou no posto (ela não fala: um bilhete); a oficina
   const nectarPasso = discoM && historia?.fase === "nectar" ? historia.nectar ?? null : null
-  const kombiQuebrada = nectarPasso === "quebra" || nectarPasso === "regar" || nectarPasso === "galao"
+  const kombiQuebrada = nectarPasso === "quebra" || nectarPasso === "regar" || nectarPasso === "galao" || noConserto
   const [pertoPostoNectar, setPertoPostoNectar] = useState(false)
   useEffect(() => {
     if (nectarPasso !== "galao") return
@@ -1300,6 +1305,25 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nectarPasso, pausado])
+  // (T15) a Kombi no conserto (a missão do Drew): desce de patins e a 222 ensina o
+  // jetpack (o jato das costas). Acabou a missão: a Kombi volta, ali mesmo
+  const consertoRef = useRef(false)
+  useEffect(() => {
+    if (noConserto && !consertoRef.current && !pausado) {
+      const t = setTimeout(() => {
+        consertoRef.current = true
+        falar("222 FM", "a Kombi ficou no conserto. hoje é de patins", 3800)
+        setTimeout(() => { if (!combRef.current.patins) irDePatins(); ensinar("222 FM", "segura o espaço: o jetpack nas costas. no ar, vira: gira. a casa do Drew tá no mapa", 6500) }, 1200)
+      }, 1500)
+      return () => clearTimeout(t)
+    }
+    if (!noConserto && consertoRef.current) {
+      consertoRef.current = false
+      // a Kombi vem até você (não volta pra onde ficou)
+      if (combRef.current.patins) { combRef.current.parada = null; entrarNaKombi(); setTimeout(() => falar("222 FM", "a Kombi voltou do conserto", 3200), 600) }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noConserto, pausado])
   // a noite repete: de tempos em tempos a 222 estranha junto com a pessoa
   useEffect(() => {
     if (!noiteRepete) return
@@ -2008,7 +2032,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const radioHolo = { ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal }
   const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
-  const sintonizarHolo = (id: FreqId) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); setTimeout(() => tocarProxima(id), 0) }
+  const sintonizarHolo = (id: FreqId) => {
+    // (T18) as outras frequências abrem na missão do Xeriff: até lá, só a 222
+    if (trancas?.radio && id !== freqRef.current) { chiadoCurto(); falar("222 FM", `só chiado. as frequências ${trancas.radio.replace("abre", "abrem")}`, 3600); return }
+    chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); setTimeout(() => tocarProxima(id), 0)
+  }
   const V = M.vias[viaAtual]
   const lugarAqui = V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`
   const dest = destino ? getEstacao(destino) : null
@@ -2316,6 +2344,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
         if (!lp || entrando || regando || parque === "andando") return null
         if (trancadaPelaHistoria(lp, save.objetos)) return <p className="l-pagina-fechada">{lp.nome} · de portas fechadas</p>
+        const tranca = trancas?.[lp.id as keyof NonNullable<typeof trancas>]
+        if (tranca) return <p className="l-pagina-fechada">{lp.nome} · {tranca}</p>
         return abertos[lp.id]
           ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { if (discoM && lp.id === "oficina" && holoOk) { jogo.current.encostando = true; setOficinaAberta(true) } else entrar(lp) }}>entrar · {lp.nome}</button>
           : <p className="l-pagina-fechada">{lp.nome} abre às {abreAs(lp.horario)}</p>
@@ -2327,8 +2357,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <span className={`l-entrada-barra${carregou ? " is-pronta" : ""}`} />
         </div>
       )}
-      {parque === "perto" && !regando && (
-        <button type="button" className="l-regar-btn is-parque" onPointerDown={(e) => e.stopPropagation()} onClick={andarMontanha}>andar na montanha-russa</button>
+      {parque === "perto" && !regando && (trancas?.parque
+        ? <p className="l-pagina-fechada">o parque · {trancas.parque}</p>
+        : <button type="button" className="l-regar-btn is-parque" onPointerDown={(e) => e.stopPropagation()} onClick={andarMontanha}>andar na montanha-russa</button>
       )}
       {parque === "andando" && (
         <>
@@ -2342,7 +2373,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </>
       )}
       {fotoParque && <p className="l-montanha-foto">{fotoParque}</p>}
-      {canteiro && !regando && parque !== "andando" && (
+      {canteiro && !regando && parque !== "andando" && trancas?.canteiros && <p className="l-pagina-fechada">os canteiros · {trancas.canteiros}</p>}
+      {canteiro && !regando && parque !== "andando" && !trancas?.canteiros && (
         <button type="button" className="l-regar-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setRegando(canteiro) }}>regar as flores</button>
       )}
       {regando && (

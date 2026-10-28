@@ -6,7 +6,7 @@
 
 import { BASE_TESTE, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
 
-import { IDS13, MISSOES13, normalizarMissao } from "./disco/portas"
+import { IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
 import { LETRAS } from "./disco/letras"
 
 // (T02) as missões: o id das 13 (missao.drew) ou, como antes, a faixa (missao.sexta → a do Drew)
@@ -36,6 +36,16 @@ function discoDa(parte: string): Record<string, unknown> | null {
     const base = { fase: "carreira", holo: true, missao: m, feitas13 }
     if (m === "lu2ca" && sub === "letra") return { ...base, aberta13: "lu2ca:arte" }
     if (m === "lu2ca" && sub === "show") return { ...base, passos13: ["lu2ca:arte"], letras: { nectar: LETRAS.nectar!.versos.map((v) => v.opcoes[0]) }, show: "missao:lu2ca" }
+    // (T15–T25, T16) a peça aberta direto: missao.<id>.arte / .jogo (as peças de
+    // antes já feitas; a que abre por cima do jogo já vem aberta) e .porta (as duas
+    // feitas: chegou no lugar, a porta abre)
+    if (sub === "arte" || sub === "jogo" || sub === "porta") {
+      const ordem = ordemDe(m)
+      const antes = sub === "porta" ? ordem : ordem.slice(0, ordem.indexOf(sub))
+      const passos13 = antes.map((q) => `${m}:${q}`)
+      const como = sub === "porta" ? null : MISSOES13[m][sub].como
+      return { ...base, passos13, ...(como && (como.t === "cena" || como.t === "letra") ? { aberta13: `${m}:${sub}` } : {}) }
+    }
     if (sub) return undefined as unknown as null
     return base
   }
@@ -49,7 +59,9 @@ function discoDa(parte: string): Record<string, unknown> | null {
   return undefined as unknown as null
 }
 
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
+// (T15–T25, T16) as peças novas, uma de cada, abertas direto
+const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "loja", "palcos", "palcos.topo", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {
