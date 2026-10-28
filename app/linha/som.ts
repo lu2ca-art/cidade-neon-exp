@@ -237,6 +237,20 @@ function bufferViolao(c: AudioContext, freq: number) {
   return buf
 }
 
+// pré-calcula as notas (o Karplus-Strong custa alguns ms na primeira vez de cada
+// nota; o toque nunca deve pagar isso). Chamar quando o tom muda.
+export function aquecerViolao(freqs: number[]) {
+  const c = audioCtx()
+  if (!c) return
+  for (const f of freqs) bufferViolao(c, f)
+}
+// quanto o aparelho atrasa entre o "start" e o som sair (segundos)
+export function latenciaSaida() {
+  const c = audioCtx()
+  if (!c) return 0
+  return (c.baseLatency || 0) + ((c as unknown as { outputLatency?: number }).outputLatency || 0)
+}
+
 export function violao(freq: number, vol = 0.32, quando = 0) {
   const c = audioCtx()
   const out = saida()

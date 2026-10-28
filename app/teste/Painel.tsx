@@ -14,6 +14,7 @@ const PAGINAS = [
   { href: "/galeria/pintar", nome: "pintar", desc: "pinta e expõe · a obra vai pra parede da galeria" },
   { href: "/galeria", nome: "galeria", desc: "anda pela galeria (no celular: arrasta e segura as setas)" },
   { href: "/neon-tiles", nome: "guitar driver", desc: "os palcos e a popularidade (o áudio só toca no lu2ca.art)" },
+  { href: "/teste/violao", nome: "violão da D-bee", desc: "T08: o violão acompanha a música que toca, nas notas do tom (tons: detectado, conferir)" },
   { href: "/batida", nome: "B4TIDA", desc: "o estúdio" },
 ]
 
