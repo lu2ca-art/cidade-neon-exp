@@ -11,7 +11,7 @@ import { pistaSom } from "../som"
 import { NIVEIS } from "../data"
 import { chamados } from "../os"
 import type { Save } from "../estado"
-import { PISTAS } from "./pistas"
+import { pistaDoArquivo, rotuloDoArquivo } from "../disco/pistasLiberadas"
 import type { MundoDisco } from "./mundoDisco"
 
 type JogoMin = { via: number; u: number; x: number; y: number; voo?: boolean; wx?: number; wz?: number; rumo?: number }
@@ -36,9 +36,9 @@ export function OculosHud({ aberto, save, nivel, tarefa, radio, onRadio, onProxi
     if (!aberto) return
     const lerSom = () => {
       const src = pistaSom.src
-      const p = src ? PISTAS.find((x) => x.voz === src || x.inst === src) : null
+      const p = pistaDoArquivo(src)?.pista ?? null
       const el = pistaSom.el
-      setSom(p && el ? { faixa: `${p.faixa}${src === p.inst ? " · inst" : ""}`, t: el.currentTime, dur: el.duration || p.duracao, cor: "#2fe8ff" } : null)
+      setSom(p && el ? { faixa: `${p.faixa}${rotuloDoArquivo(src)?.slice(p.faixa.length) ?? ""}`, t: el.currentTime, dur: el.duration || p.duracao, cor: "#2fe8ff" } : null)
     }
     lerSom()
     const t = setInterval(lerSom, 500)

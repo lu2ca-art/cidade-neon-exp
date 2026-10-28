@@ -27,7 +27,7 @@ import { horaTexto } from "../relogio"
 import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "../som"
 import { NIVEIS, NOME_NIVEL, type NivelQualidade } from "./qualidade"
 import type { Save } from "../estado"
-import { PISTAS } from "./pistas"
+import { pistaDoArquivo, rotuloDoArquivo } from "../disco/pistasLiberadas"
 import { FREQUENCIAS, type FreqId } from "../radio"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
@@ -119,9 +119,9 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
   useEffect(() => {
     const ler = () => {
       const src = pistaSom.src
-      const p = src ? PISTAS.find((x) => x.voz === src || x.inst === src) : null
+      const p = pistaDoArquivo(src)?.pista ?? null
       const el = pistaSom.el
-      setSom(p && el ? { faixa: `${p.faixa}${src === p.inst ? " · inst" : ""}`, t: el.currentTime, dur: el.duration || p.duracao } : null)
+      setSom(p && el ? { faixa: `${p.faixa}${rotuloDoArquivo(src)?.slice(p.faixa.length) ?? ""}`, t: el.currentTime, dur: el.duration || p.duracao } : null)
     }
     ler()
     const t = setInterval(ler, 500)
