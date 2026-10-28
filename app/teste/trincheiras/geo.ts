@@ -14,7 +14,7 @@ const ALTO_TORRE = 160
 // um ponto do perfil da seção: lateral (do meio), altura e cor
 type Pf = { l: number; y: number; c: THREE.Color }
 const C = (h: string) => new THREE.Color(h)
-const LEITO_COR = C("#1b1522"), PAREDE_COR = C("#2a2036"), ALTO_COR = C("#17121f")
+const LEITO_COR = C("#3d3348"), PAREDE_COR = C("#55436a"), ALTO_COR = C("#4a3d63")
 
 // meia seção, do meio pra fora
 function meiaSecao(): Pf[] {
@@ -164,8 +164,8 @@ export function geoConcreto() {
     geos.push(...paredePraca(t.i))
     // a laje em volta (pra o vidro da praça encostar)
     // a torre: sobe atravessando o vidro, até a rua lá em cima
-    const tor = new THREE.CylinderGeometry(TORRE_R, TORRE_R * 1.15, ALTO_TORRE, 20, 1, true); tor.translate(t.torre.x, ALTO_TORRE / 2, t.torre.z)
-    geos.push(pintar(semUV(tor), C("#221c36")))
+    const tor = new THREE.CylinderGeometry(TORRE_R, TORRE_R, ALTO_TORRE, 20, 1, true); tor.translate(t.torre.x, ALTO_TORRE / 2, t.torre.z)
+    geos.push(pintar(semUV(tor), C("#3a3058")))
   }
   const todos = geos.map(soPosCor)
   const g = mergeGeometries(todos, false)!
@@ -222,11 +222,11 @@ export function geoVidro() {
     const nrm = normais(av.pts)
     const [k0, k1] = trecho(av.pts, TORRES[av.de].c, TORRES[av.ate].c, Math.sqrt(PRACA * PRACA - (LEITO + CURVA) ** 2) - 1.5)
     // o sol passa pela areia do vidro em manchas
-    const sol = av.pts.map((_, k) => { const v = 0.5 + 0.5 * Math.sin(k * 0.07 + av.i) * Math.sin(k * 0.023 + 1.3); return C("#ff9a3c").multiplyScalar(0.05 + v * 0.16 + r() * 0.03) })
+    const sol = av.pts.map((_, k) => { const v = 0.5 + 0.5 * Math.sin(k * 0.07 + av.i) * Math.sin(k * 0.023 + 1.3); return C("#ff9a3c").multiplyScalar(0.02 + v * 0.07 + r() * 0.015) })
     geos.push(fita(av.pts, nrm, k0, k1, -(LEITO + CURVA), LEITO + CURVA, TETO, TETO, (k) => sol[k]))
   }
   for (const t of TORRES) {
-    const v = anelChao(t.c.x, t.c.z, 0, PRACA, TETO, 0, Math.PI * 2, C("#ff9a3c").multiplyScalar(0.12), 40)
+    const v = anelChao(t.c.x, t.c.z, 0, PRACA, TETO, 0, Math.PI * 2, C("#ff9a3c").multiplyScalar(0.06), 40)
     geos.push(v)
     // o facho que desce da rua pela torre (mais forte em cima)
     const f = new THREE.CylinderGeometry(TORRE_R + 3, TORRE_R + 7, TETO, 20, 1, true); f.translate(t.torre.x, TETO / 2, t.torre.z)
@@ -328,8 +328,8 @@ export function geoAtlas() {
   for (const t of TORRES) {
     const dx = t.c.x - t.torre.x, dz = t.c.z - t.torre.z, d = Math.hypot(dx, dz), nx = dx / d, nz = dz / d
     // o nome da torre, alto, e o "subir" em cima da porta
-    geos.push(quadro(t.torre.x + nx * (TORRE_R + 0.3), 8.4, t.torre.z + nz * (TORRE_R + 0.3), nx, nz, 8, 2, branco, uvPlaca(t.i)))
-    geos.push(quadro(t.torre.x + nx * (TORRE_R + 0.2), 3.8, t.torre.z + nz * (TORRE_R + 0.2), nx, nz, 3.2, 0.8, branco, uvPlaca(6)))
+    geos.push(quadro(t.torre.x + nx * (TORRE_R + 1.6), 8.4, t.torre.z + nz * (TORRE_R + 1.6), nx, nz, 8, 2, branco, uvPlaca(t.i)))
+    geos.push(quadro(t.torre.x + nx * (TORRE_R + 0.5), 3.8, t.torre.z + nz * (TORRE_R + 0.5), nx, nz, 3.2, 0.8, branco, uvPlaca(6)))
   }
   // o nome de cada avenida, na boca, dos dois lados
   for (const av of AVENIDAS) {

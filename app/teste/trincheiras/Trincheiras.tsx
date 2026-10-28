@@ -68,12 +68,15 @@ function passo(s: Estado, e: Entrada, dt: number) {
   s.yaw += virar * (s.ar ? 4.2 : 2.6 / (1 + Math.abs(v) / 22) + 0.5) * dt
   if (!s.ar) {
     const teto = e.jato && s.jatoT < 2.5 ? VJATO : VMAX
-    if (e.frente && v < teto) v += (e.jato ? 22 : 15) * (1 - Math.max(0, v) / (teto * 1.08)) * dt
+    // subindo a parede, as pernas empurram menos (senão ele "gruda" lá em cima)
+    const empurra = 1 / (1 + s.incl * s.incl)
+    if (e.frente && v < teto) v += (e.jato ? 22 : 15) * empurra * (1 - Math.max(0, v) / (teto * 1.08)) * dt
     else if (v > teto) v -= 8 * dt
     if (e.re) v -= Math.sign(v) * Math.min(Math.abs(v), 26 * dt)
     if (!e.frente && !e.re) v -= Math.sign(v) * Math.min(Math.abs(v), 1.2 * dt)
     // a aderência das rodas: o de lado morre rápido (um pouco de deslize)
-    lat *= Math.exp(-7 * dt)
+    // (na parede íngreme as rodas seguram menos: ele escorrega de volta)
+    lat *= Math.exp(-7 * dt / (1 + s.incl * s.incl))
   }
   // o jato tem fôlego (2,5 s) e recarrega
   s.jatoT = e.jato && e.frente ? Math.min(3, s.jatoT + dt) : Math.max(0, s.jatoT - dt * 0.6)
@@ -189,7 +192,7 @@ function Mundo({ st, entrada, auto }: { st: React.MutableRefObject<Estado>; entr
   const s = st.current
   return (
     <>
-      <hemisphereLight args={["#7a58a8", "#0d0a14", 1.5]} />
+      <hemisphereLight args={["#8a68b8", "#2a1f3c", 2]} />
       <directionalLight position={[0.3, 1, 0.2]} intensity={0.9} color="#ffb070" />
       <mesh geometry={concreto} matrixAutoUpdate={false}><meshStandardMaterial vertexColors roughness={0.9} metalness={0.05} side={THREE.DoubleSide} /></mesh>
       <mesh geometry={neon} matrixAutoUpdate={false}><meshBasicMaterial vertexColors toneMapped={false} side={THREE.DoubleSide} /></mesh>
