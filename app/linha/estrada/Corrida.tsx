@@ -3690,6 +3690,21 @@ function Cena({
     return { n, pos, vel, vida, g, prox: 0 }
   }, [])
   const texFumaca = useMemo(() => texBrilho(), [])
+  // (T36, J2:3) a poeira do pouso da chegada: uma fumaça que sobe, se abre e se
+  // desfaz (alfa por ponto), no lugar do confete da rádio liberada. Só roda
+  // enquanto tem poeira viva
+  const poeira = useMemo(() => {
+    const n = 56
+    const pos = new Float32Array(n * 3).fill(-999)
+    const cor = new Float32Array(n * 4)
+    const vel = new Float32Array(n * 3)
+    const vida = new Float32Array(n)
+    const tot = new Float32Array(n).fill(1)
+    const g = new THREE.BufferGeometry()
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
+    g.setAttribute("color", new THREE.BufferAttribute(cor, 4))
+    return { n, pos, cor, vel, vida, tot, g, vivos: 0 }
+  }, [])
   const RODAS = useMemo(() => [[-0.82, -1.35], [0.82, -1.35], [-0.82, 1.35], [0.82, 1.35]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
   // (LU2CA 21/10: "no patins a linha do drift tem que ser os dois pés, não as quatro rodas")
   const PES = useMemo(() => [[-0.16, 0.06], [0.16, -0.06]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
@@ -4569,13 +4584,30 @@ function Cena({
           }
           j.giroAr = sg; j.flipAr = sf
         }
-        if (tempoAr > 1) j.psi = Math.min(1, (j.psi ?? 0) + 0.25)
+        // (T36, J2:3, "tem um confete escroto que sai do carro quando chega, não
+        // é pra ter, é mais tipo fumaça que vai embora") o voo da chegada não é
+        // manobra do jogador: não vale sinal, e o sinal dele (11) abria a
+        // rádio 222.x na hora, com o confete de 160 pedaços. Agora só levanta
+        // a poeira do pouso
+        const chegadaScript = !!j.chegadaCasa
+        if (chegadaScript && carro.current) {
+          for (let k = 0; k < 40; k++) {
+            const i = k % poeira.n
+            const a = Math.random() * Math.PI * 2, d = 0.8 + Math.random() * 1.8, vh = 1.5 + Math.random() * 4.5
+            poeira.pos.set([carro.current.position.x + Math.cos(a) * d, carro.current.position.y + 0.3 + Math.random() * 0.6, carro.current.position.z + Math.sin(a) * d], i * 3)
+            poeira.vel.set([Math.cos(a) * vh, 0.6 + Math.random() * 1.8, Math.sin(a) * vh], i * 3)
+            poeira.tot[i] = poeira.vida[i] = 1.6 + Math.random() * 1.2
+            poeira.cor.set([0.5, 0.4, 0.4, 0], i * 4)
+          }
+          poeira.vivos = poeira.n
+        }
+        if (tempoAr > 1 && !chegadaScript) j.psi = Math.min(1, (j.psi ?? 0) + 0.25)
         // (o voo dá turbo: quanto mais tempo no ar, mais carga; e vira embalo)
-        if (tempoAr > 0.75 && Math.abs(j.v) > 5) { const g = Math.min(8, tempoAr * 4); j.v += Math.sign(j.v) * g; j.embalo = (j.embalo ?? 0) + g; j.carga = Math.min(1, j.carga + ("disco" in M ? Math.min(0.5, tempoAr * 0.12) : 0.08)) }
+        if (tempoAr > 0.75 && Math.abs(j.v) > 5 && !chegadaScript) { const g = Math.min(8, tempoAr * 4); j.v += Math.sign(j.v) * g; j.embalo = (j.embalo ?? 0) + g; j.carga = Math.min(1, j.carga + ("disco" in M ? Math.min(0.5, tempoAr * 0.12) : 0.08)) }
         motor?.baque()
         vib(tempoAr > 0.6 ? [40, 30, 60] : 30)
         j.st.ar += tempoAr
-        if (tempoAr > 0.5) {
+        if (tempoAr > 0.5 && !chegadaScript) {
           const n = Math.round(tempoAr * 3)
           ev.sinal(n, `voou ${tempoAr.toFixed(1)}s · +${n}`, "#ffc857")
           if (Math.random() < 0.5) ev.falar("Notti", "A KOMBI VOA???")
@@ -5042,6 +5074,25 @@ function Cena({
       fumaca.pos[i * 3 + 2] += fumaca.vel[i * 3 + 2] * dt
     }
     fumaca.g.attributes.position.needsUpdate = true
+    if (poeira.vivos > 0) {
+      let vivos = 0
+      for (let i = 0; i < poeira.n; i++) {
+        if (poeira.vida[i] <= 0) { poeira.cor[i * 4 + 3] = 0; continue }
+        poeira.vida[i] -= dt
+        if (poeira.vida[i] <= 0) { poeira.pos[i * 3 + 1] = -999; poeira.cor[i * 4 + 3] = 0; continue }
+        vivos++
+        const f = 1 - dt * 1.3
+        poeira.vel[i * 3] *= f; poeira.vel[i * 3 + 1] *= f; poeira.vel[i * 3 + 2] *= f
+        poeira.pos[i * 3] += poeira.vel[i * 3] * dt
+        poeira.pos[i * 3 + 1] += poeira.vel[i * 3 + 1] * dt
+        poeira.pos[i * 3 + 2] += poeira.vel[i * 3 + 2] * dt
+        const idade = 1 - poeira.vida[i] / poeira.tot[i]
+        poeira.cor[i * 4 + 3] = 0.7 * Math.min(1, idade * 8) * (1 - idade) * (1 - idade)
+      }
+      poeira.vivos = vivos
+      poeira.g.attributes.position.needsUpdate = true
+      poeira.g.attributes.color.needsUpdate = true
+    }
 
     // o lugar da missão: avisa quando tá chegando, e PASSAR NA FRENTE dele
     // (em qualquer faixa, em qualquer velocidade) abre a cena — a Kombi
@@ -5896,6 +5947,9 @@ function Cena({
       <primitive object={marcas.m} />
       <points geometry={fumaca.g} frustumCulled={false}>
         <pointsMaterial size={1.1} map={texFumaca} color="#b4bbd6" transparent opacity={0.22} depthWrite={false} />
+      </points>
+      <points geometry={poeira.g} frustumCulled={false}>
+        <pointsMaterial size={4.5} map={texFumaca} vertexColors transparent depthWrite={false} />
       </points>
       <points geometry={faiscas.g} frustumCulled={false}>
         <pointsMaterial size={0.35} color="#ffb454" transparent blending={THREE.AdditiveBlending} depthWrite={false} />
