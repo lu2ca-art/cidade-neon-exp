@@ -43,6 +43,7 @@ import { LugaresChao } from "../disco/LugaresChao"
 import { CasaDeserto } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
+import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { lixoNoChao } from "./chao"
@@ -364,23 +365,34 @@ type Jogo = {
   naSeg?: boolean
 }
 
-// (LU2CA 21/10 (2), o PINBALL) a Kombi no mundo livre (voo ou direção livre)
-// bateu num prédio: o rumo espelha na parede (como a bola no pinball) e ela
-// segue, perdendo pouco; um baque por batida (não treme encostada)
-function quicar(j: Jogo, emp: [number, number], kombi: THREE.Object3D | null) {
+// (T43, 28/10, J2:28: "o bounce dos prédios tá muito ruim [...] ao invés de
+// bouncear, o carro meio que gruda nela e segue o rumo mais próximo") O CAMPO
+// DE FORÇA. Antes (21/10, o pinball) o rumo espelhava na parede: entre dois
+// prédios, ou numa quina, a Kombi ia e voltava e travava. Agora ela encosta na
+// cerca e o rumo vira, em ~0,1 s, pro lado da parede mais perto do que ela já
+// apontava (de frente: o lado que contorna mais rápido); enquanto apontar pra
+// dentro, continua grudada deslizando. Perde um pouco de velocidade só no
+// primeiro toque. Devolve true no primeiro toque (o baque, o som, a faísca)
+// o prédio da última batida (o mais fundo), pra saber o lado de contornar
+const BATEU_EM = { x: 0, z: 0 }
+function grudar(j: Jogo, emp: [number, number], dt: number): boolean {
   const L = Math.hypot(emp[0], emp[1])
-  if (!L || j.rumo === undefined) return
-  const nx = emp[0] / L, nz = emp[1] / L
-  const dx = Math.sin(j.rumo), dz = Math.cos(j.rumo), dn = dx * nx + dz * nz
-  if (dn >= 0) return // já está saindo da parede
-  const rx = dx - 2 * dn * nx, rz = dz - 2 * dn * nz
-  j.rumo = Math.atan2(rx, rz)
-  if (j.tempo - (j.quique ?? -9) > 0.35) {
-    j.quique = j.tempo
-    j.v *= 1 - 0.12 * Math.abs(dn)
-    j.shake = Math.max(j.shake, 0.35 * Math.abs(dn) + 0.1)
-    if (kombi) vib(16)
+  if (!L || j.rumo === undefined || j.wx === undefined || j.wz === undefined) return false
+  const nx = emp[0] / L, nz = emp[1] / L, sg = j.v < 0 ? -1 : 1
+  const dx = Math.sin(j.rumo) * sg, dz = Math.cos(j.rumo) * sg, dn = dx * nx + dz * nz
+  if (dn > -0.02) return false // já paralela ou saindo: solta
+  let tx = -nz, tz = nx, s = dx * tx + dz * tz
+  if (Math.abs(s) < 0.2) { const lado = (j.wx - BATEU_EM.x) * tx + (j.wz - BATEU_EM.z) * tz; s = lado || 1 }
+  if (s < 0) { tx = -tx; tz = -tz }
+  const alvo = Math.atan2(tx * sg, tz * sg), dif = Math.atan2(Math.sin(alvo - j.rumo), Math.cos(alvo - j.rumo))
+  j.rumo += dif * Math.min(1, dt * 14)
+  const novo = j.tempo - (j.quique ?? -9) > 0.35
+  j.quique = j.tempo
+  if (novo) {
+    j.v *= 1 - 0.18 * dn * dn
+    j.shake = Math.max(j.shake, 0.1 + 0.15 * -dn)
   }
+  return novo
 }
 
 // ponto de busca de uma missão no mapa (a coluna de luz com a coisa)
@@ -3174,7 +3186,8 @@ function Cena({
         d.rotation.set(0, Math.atan2(C.tx[k], C.tz[k]), 0)
         const fundo = e.w[0] + r() * (e.w[1] - e.w[0])
         d.scale.set(w, h, fundo)
-        if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h) }
+        // (T43) + o chão e o topo do campo de força: até a altura da pista ao lado (uns metros acima), ou o topo se o prédio for mais baixo
+        if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h, y0, Math.min(y0 + h, Math.max(C.py[k], y0 + 14) + 4)) }
         d.updateMatrix()
         doGrupo.push(d.matrix.clone())
         i++
@@ -3524,15 +3537,22 @@ function Cena({
 
   // ── tráfego: cada circuito com o seu ──
   // (direção livre) bater num prédio: devolve o empurrão pra fora, ou null
+  // (T43) onde a Kombi encostou no campo de força por último (o brilho da cerca)
+  const campoToque = useRef<ToqueCampo>({ t: -9, x: 0, y: 0, z: 0 })
+  // teste (?medir): os prédios (o teste bate num e confere que segue sem travar)
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" && !/[?&]medir/.test(location.search)) return
+    ;(window as unknown as Record<string, unknown>).__colisores = cidade.colisores
+  }, [cidade])
   const bater = useMemo(() => {
     const c = cidade.colisores, g = new Map<string, number[]>(), CEL = 24
     // (cada prédio: centro, rumo, meia largura, meio fundo e a altura do topo)
-    for (let k = 0; k < c.length; k += 7) { const key = `${Math.floor(c[k] / CEL)},${Math.floor(c[k + 1] / CEL)}`; let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k) }
+    for (let k = 0; k < c.length; k += COL_PASSO) { const key = `${Math.floor(c[k] / CEL)},${Math.floor(c[k + 1] / CEL)}`; let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k) }
     // y: a altura de quem testa (a câmera numa pista elevada passa por cima do prédio baixo)
     return (x: number, z: number, raio: number, y = -Infinity): [number, number] | null => {
       const cx = Math.floor(x / CEL), cz = Math.floor(z / CEL)
       // a caixa do prédio, girada com a rua: z local = a tangente, x local = o lado
-      let ex = 0, ez = 0, bateu = false
+      let ex = 0, ez = 0, bateu = false, fundo = 0
       for (let a2 = -2; a2 <= 2; a2++) for (let b2 = -2; b2 <= 2; b2++) for (const k of g.get(`${cx + a2},${cz + b2}`) ?? []) {
         if (y > c[k + 6] + 1) continue
         const dx = x + ex - c[k], dz = z + ez - c[k + 1], tx = c[k + 2], tz = c[k + 3], hw = c[k + 4], hd = c[k + 5]
@@ -3546,6 +3566,7 @@ function Cena({
           if (sx < sz) { px = Math.sign(lx) || 1; pz = 0; d = -sx } else { px = 0; pz = Math.sign(lz) || 1; d = -sz }
         } else { px /= d; pz /= d }
         const m = raio - d
+        if (m > fundo) { fundo = m; BATEU_EM.x = c[k]; BATEU_EM.z = c[k + 1] }
         ex += (px * tz + pz * tx) * m; ez += (-px * tx + pz * tz) * m; bateu = true
       }
       return bateu ? [ex, ez] : null
@@ -4177,8 +4198,8 @@ function Cena({
       const sx = Math.sin(j.rumo!), cz = Math.cos(j.rumo!)
       let nx = j.wx! + sx * j.v * dt, nz = j.wz! + cz * j.v * dt
       const empurra = bater(nx, nz, 1.5)
-      // (disco) o pinball: o prédio devolve a Kombi (nunca fica raspando nele)
-      if (empurra && "disco" in M) { nx += empurra[0]; nz += empurra[1]; quicar(j, empurra, carro.current) }
+      // (disco, T43) o campo de força: gruda e segue o rumo mais perto
+      if (empurra && "disco" in M) { nx += empurra[0]; nz += empurra[1]; if (grudar(j, empurra, dt)) vib(10) }
       else if (empurra) {
         nx += empurra[0]; nz += empurra[1]
         j.dRaspa += dt
@@ -4461,9 +4482,13 @@ function Cena({
         // a 3,9 km o vento empurra de volta, devagar (nunca chega na borda)
         const rr = Math.hypot(j.wx, j.wz)
         if (rr > 3900) { const k = (rr - 3900) / rr; j.wx -= j.wx * k; j.wz -= j.wz * k; j.v *= 1 - 0.8 * dt }
-        // os prédios: abaixo do topo, bate e escorrega
+        // (T43) os prédios: o campo de força em volta, a Kombi gruda e desliza (não quica)
         const emp = bater(j.wx, j.wz, 1.6, j.y)
-        if (emp) { j.wx += emp[0]; j.wz += emp[1]; quicar(j, emp, carro.current) }
+        if (emp) {
+          j.wx += emp[0]; j.wz += emp[1]
+          if (grudar(j, emp, dt)) vib(10)
+          const tq = campoToque.current; tq.t = j.tempo; tq.x = j.wx - emp[0] * 0.6 / Math.hypot(emp[0], emp[1]); tq.y = j.y + 1; tq.z = j.wz - emp[1] * 0.6 / Math.hypot(emp[0], emp[1])
+        }
         pouso = MD.pousar(j.wx, j.wz, j.y, Math.sin(j.rumo), Math.cos(j.rumo))
         // (LU2CA 20/10: "a exploração por propulsão bem livre, sem amarras aos
         // percursos uma vez no ar; onde ele quiser pousar, ele pode") sem ímã:
@@ -5793,6 +5818,7 @@ function Cena({
       {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
+      {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
       {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (
