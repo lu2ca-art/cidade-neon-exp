@@ -4014,6 +4014,15 @@ function Cena({
       if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
       // chegando no lugar do chão: tira o pé (a chegada normal para ela no raio)
       if (dChao < 90) j.v = Math.min(j.v, Math.max(4, dChao * 0.3))
+      // (T36, J2:2, "quando eu clico pra frente no ar ele já voa pra caramba, passa da
+      // casa") na parte da casa, perto dela, a Kombi sob o comando do jogador (a
+      // chegada sozinha já freia pela distância) não passa de uma velocidade que
+      // deixe parar na porta: o acelerador, que no voo usa a velocidade da última
+      // pista, não faz mais ela varar a casa
+      if (faseHistoria === "casa" && j.voo && j.wx !== undefined && !j.chegadaCasa) {
+        const dCasa = Math.hypot(CASA.x - j.wx, CASA.z - j.wz!)
+        if (dCasa < 160) j.v = Math.min(j.v, Math.max(3, (dCasa - RAIO_CASA + 8) * 0.4))
+      }
       // o tanque gasta andando (cheio dá uns 15 km)
       // (Kombi solar: a bateria não acaba)
       if (!aberturaRef.current.ativa) combRef.current.tanque = 1
