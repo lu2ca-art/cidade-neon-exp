@@ -32,7 +32,8 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player } from "./som"
+import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player, silenciarKombi, trilha } from "./som"
+import { somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
@@ -52,7 +53,7 @@ import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/ata
 import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_OFICINA, comHistoria, historiaAtiva, historiaDe, type LugarChao } from "./disco/historia"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
-import { Minhoca } from "./disco/Minhoca"
+import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
 import { VISOR, Visor, type VisorId } from "./disco/Visor"
 import { Freq } from "./disco/Freq"
 import { type ResultadoShow } from "./disco/Show"
@@ -326,7 +327,7 @@ export default function LinhaPage() {
 
   // a música abafada (LU2CA): dentro de um lugar (a missão) e com o telefone
   // tocando, o rádio e o disco seguem mais baixos e sem agudo
-  const emCena = !!cena
+  const emCena = !!cena && !somDoLugar(cena.lugar)
   useEffect(() => {
     if (!emCena) return
     abafar(true)
@@ -888,6 +889,18 @@ export default function LinhaPage() {
     }, 900)
   }
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe })
+  // (T40) o SOM DA MISSÃO (J2: 5). Entrou no lugar da missão (a cena, o ping pong),
+  // a música da Kombi cala e entra o som dela; saiu, a Kombi volta (a trilha sai
+  // em fade, sem estalo). O arquivo é carregado antes, quando a missão é pegada
+  useEffect(() => { fonteSom.discoPadrao = ACERVO.faixas.map((f) => f.src) }, [])
+  const somAgora = cena ? somDoLugar(cena.lugar) : pingpong ? somDaMissao("drew") : null
+  useEffect(() => {
+    if (!somAgora) return
+    silenciarKombi(true)
+    trilha.entrar(somAgora)
+    return () => { trilha.sair(); silenciarKombi(false) }
+  }, [somAgora])
+  useEffect(() => { if (missaoCarreira) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
   // um evento da rua conta pra peça de agora (a montanha-russa da Nizzy…)
   const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
   const fimShow = (r: ResultadoShow) => {
@@ -1099,7 +1112,15 @@ export default function LinhaPage() {
     // (mapa-disco) a história nova: save novo começa no buraco de minhoca; o
     // resto entra direto na Kombi, onde estava
     if (D) {
-      if (historiaDe(saveRef.current).fase === "minhoca") { setMinhoca(true); return }
+      if (historiaDe(saveRef.current).fase === "minhoca") {
+        // (T40, J2: 5) a música da Kombi já vem tocando desde o buraco de minhoca:
+        // entra em fade, distorcida, e vai ficando limpa até o fim da queda
+        fonteSom.set("disco")
+        disco.entradaMinhoca(DUR_MINHOCA / 1000)
+        disco.tocarLista(ACERVO.faixas.map((f) => f.src))
+        setMinhoca(true)
+        return
+      }
       player.pausar()
       setEstrada(true)
       setTela({ t: "corrida", destino: null })
@@ -1664,7 +1685,8 @@ export default function LinhaPage() {
             onRadioToggle={() => {
               if (radio?.tocando) return fonteSom.set("off")
               fonteSom.set("radio") // o disco para: os dois juntos não
-              tocarRadio((save.freq as FreqId) || "linha")
+              // (T40) fora das pistas a rádio não pega: ficou o disco
+              if (fonteSom.get() === "radio") tocarRadio((save.freq as FreqId) || "linha")
             }}
           />
         )}

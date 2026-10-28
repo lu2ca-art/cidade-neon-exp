@@ -83,6 +83,7 @@ import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
+import { radioPega, type MemoriaRadio } from "../disco/sons"
 import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
@@ -1329,7 +1330,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // nada interrompe; o rádio é a 222 (locutor, Núcleo, estreias, sintonia)
   const [aparelho, setAparelho] = useState<Fonte>(fonteSom.get())
   const fonteRef = useRef(aparelho)
-  useEffect(() => fonteSom.ouvir((f) => { fonteRef.current = f; setAparelho(f) }), [])
+  // (T40) a rádio voltou sozinha (chegou perto de uma pista): a programação retoma
+  useEffect(() => fonteSom.ouvir((f, auto) => {
+    fonteRef.current = f; setAparelho(f)
+    if (auto && f === "radio") setTimeout(() => proxFaixa.current(freqRef.current), 0)
+  }), [])
   const [discoAgora, setDiscoAgora] = useState<{ src: string | null; tocando: boolean }>({ src: disco.src, tocando: disco.tocando })
   useEffect(() => disco.ouvir(setDiscoAgora), [])
   useEffect(() => { discoRef.current = discoAgora.tocando }, [discoAgora.tocando])
@@ -2023,9 +2028,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const fq = freqDe(freq)
   // (o holo) a rádio: o mesmo pros widgets do computador e a ilha do celular
   const radioHolo = { ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal }
-  const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }
+  // (T40) a rádio só pega perto das pistas: fora delas fica o disco e a Kombi avisa
+  const semSinalAviso = () => { if (!fonteSom.radioPega()) falar("222 FM", "sem sinal aqui: a rádio só pega perto das pistas. fica o disco", 4200) }
+  const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(freqRef.current), 0) } }
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
-  const sintonizarHolo = (id: FreqId) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); setTimeout(() => tocarProxima(id), 0) }
+  const sintonizarHolo = (id: FreqId) => { chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(id), 0) }
   const V = M.vias[viaAtual]
   const lugarAqui = V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`
   const dest = destino ? getEstacao(destino) : null
@@ -2519,6 +2526,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <button type="button" className={aparelho === "radio" ? "is-on" : ""} onClick={() => {
             if (aparelho === "radio") return fonteSom.set("off")
             fonteSom.set("radio")
+            semSinalAviso()
             setTimeout(() => tocarProxima(freqRef.current), 0)
           }}>RÁDIO</button>
           <button type="button" className={aparelho === "disco" ? "is-on" : ""} onClick={() => {
@@ -2961,6 +2969,7 @@ function Cena({
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
   const pistaTocando = useRef(-1)
+  const memRadio = useRef<MemoriaRadio>({ resto: 0 })
   const pistaEscura = useRef(false) // (os atos) a pista tocando agora está apagada?
   // (21/10 (3)) o tema da missão: o índice da pista dela e em que ponto a
   // música está (antes de achar a linha → tocando a voz uma vez → já tocou)
@@ -5226,6 +5235,11 @@ function Cena({
     // (a história, casa e dunas) no deserto ninguém tem pista: o disco antigo
     // da Kombi (a página liga) e o vento; a faixa da pista para
     const semPista = faseHistoria === "casa" || faseHistoria === "dunas"
+    // (T40) a rádio só pega perto das pistas: no deserto e longe delas, fica o disco
+    if (faixasDisco.length) {
+      const infR = (M as MundoDisco).info[j.via]
+      fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
+    }
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1 }
     else if (faixasDisco.length && soTemaRef.current) {
       // (LU2CA 21/10 (3)) A MÚSICA É O TEMA DA MISSÃO. Sem missão: nenhuma
