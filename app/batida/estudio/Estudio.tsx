@@ -50,6 +50,18 @@ export default function Estudio() {
   const pos = useRef<{ secao: string; passo: number; bloco: number } | null>(null)
   const [posUi, setPosUi] = useState<{ secao: string; passo: number; bloco: number; contagem: boolean } | null>(null)
 
+  // (T10) aberto de dentro da missão do Alohan (?missao=1&clima=ontem): parte de uma música pronta e
+  // avisa o jogo (postMessage) se já tocou e se já mexeu nela
+  const daMissao = useRef<{ clima: string } | null>(null)
+  const [emMissao, setEmMissao] = useState(false)
+  const prog = useRef({ tocou: false, mexeu: false })
+  const avisarMissao = useCallback(() => {
+    if (!daMissao.current || window.parent === window) return
+    const x = mRef.current
+    const faixas = x ? x.faixas.filter((f) => x.secoes.some((s) => (s.eventos[f.id]?.length ?? 0) > 0)).length : 0
+    window.parent.postMessage({ cn: "batida-missao", tocou: prog.current.tocou, mexeu: prog.current.mexeu, faixas }, window.location.origin)
+  }, [])
+
   const garantirMotor = useCallback(() => {
     if (!motor.current) {
       motor.current = new Motor()
@@ -87,6 +99,19 @@ export default function Estudio() {
   useEffect(() => {
     let vivo = true
     ;(async () => {
+      const q = new URLSearchParams(window.location.search)
+      if (q.get("missao")) {
+        daMissao.current = { clima: q.get("clima") || "ontem" }
+        setEmMissao(true)
+        const n = musicaNoClima(daMissao.current.clima)
+        n.nome = "pra galera da quadra"
+        await salvarMusica(n)
+        if (!vivo) return
+        setLista(await listarMusicas())
+        await abrirMusica(n)
+        avisarMissao()
+        return
+      }
       let l = await listarMusicas()
       // primeira vez no estúdio novo: as músicas da versão antiga vêm junto
       if (!l.length) {
@@ -109,13 +134,15 @@ export default function Estudio() {
     const atual = mRef.current
     if (!atual) return
     const nova = { ...f(atual), atualizadaEm: Date.now() }
+    prog.current.mexeu = true
     if (registrar) { desfazer.current.push(atual); if (desfazer.current.length > 80) desfazer.current.shift(); refazer.current = []; setHist({ d: desfazer.current.length, r: 0 }) }
     mRef.current = nova
     setM(nova)
     motor.current?.setMusica(nova)
+    avisarMissao()
     if (salvarT.current) clearTimeout(salvarT.current)
     salvarT.current = window.setTimeout(() => { void salvarMusica(nova).then(() => listarMusicas().then(setLista)) }, 700)
-  }, [])
+  }, [avisarMissao])
   const voltar = () => { const v = desfazer.current.pop(); if (!v || !mRef.current) return; refazer.current.push(mRef.current); mRef.current = v; setM(v); motor.current?.setMusica(v); void salvarMusica(v); setHist({ d: desfazer.current.length, r: refazer.current.length }) }
   const avancar = () => { const v = refazer.current.pop(); if (!v || !mRef.current) return; desfazer.current.push(mRef.current); mRef.current = v; setM(v); motor.current?.setMusica(v); void salvarMusica(v); setHist({ d: desfazer.current.length, r: refazer.current.length }) }
 
@@ -145,6 +172,8 @@ export default function Estudio() {
     mt.configurar({ modo, secao, metronomo: metronomo || contar })
     mt.tocar(contar)
     setTocando(true)
+    prog.current.tocou = true
+    avisarMissao()
   }
   const parar = () => { motor.current?.parar(); setTocando(false); setGravando(false) }
   const alternarGravar = () => {
@@ -257,7 +286,7 @@ export default function Estudio() {
     <div className="es-raiz">
       {/* topo */}
       <header className="es-topo">
-        <button type="button" className="es-ic" aria-label="sair" onClick={() => { parar(); router.push("/?screen=home") }}>‹</button>
+        {emMissao ? <span className="es-ic" aria-hidden="true" /> : <button type="button" className="es-ic" aria-label="sair" onClick={() => { parar(); router.push("/?screen=home") }}>‹</button>}
         <button type="button" className="es-nome" onClick={() => { const n = window.prompt("nome da música", m.nome); if (n !== null) mudar((x) => ({ ...x, nome: n.slice(0, 60) })) }}>
           {m.nome || "sem nome"}<small>✎</small>
         </button>

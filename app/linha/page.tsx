@@ -59,13 +59,14 @@ import { type ResultadoShow } from "./disco/Show"
 import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
-import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, type MissaoId, type Oferta13, type Recompensa13 } from "./disco/portas"
+import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, normalizarMissao, portaAberta, ofertas13, pecaAgora13, recompensaDe, sincronizar, type MissaoId, type Oferta13, type Recompensa13 } from "./disco/portas"
 import { Recompensa } from "./disco/Recompensa"
 import { Letra } from "./disco/Letra"
 import { letraDe } from "./disco/letras"
 import { Rua } from "./disco/Rua"
 import { COR_PISTA } from "./disco/historia"
 import { PingPong } from "./disco/PingPong"
+import "../ginasio/ginasio.css"
 import { guardarCapsula, guitarLivre } from "./disco/capsula"
 import { luzDasPistas, pistasFeitas } from "./estrada/atos"
 import { PISTAS, type PistaId } from "./estrada/pistas"
@@ -75,6 +76,9 @@ import { PISTAS, type PistaId } from "./estrada/pistas"
 // sala ao passar na frente do lugar, a viagem no ep. 3). A tela inicial, o
 // celular e as conversas abrem sem three.js.
 const Corrida = dynamic(() => import("./estrada/Corrida").then((m) => m.Corrida), { ssr: false })
+// (T10) a quadra: o basquete (3D) e o B4TIDA só carregam quando a peça abre
+const Basquete = dynamic(() => import("../ginasio/basquete").then((m) => m.Basquete), { ssr: false })
+const BatidaMissao = dynamic(() => import("./disco/BatidaMissao").then((m) => m.BatidaMissao), { ssr: false })
 const Interior = dynamic(() => import("./interior/Interior").then((m) => m.Interior), { ssr: false })
 const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: false })
 
@@ -813,6 +817,10 @@ export default function LinhaPage() {
   }
   const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
+  // (T10) a quadra: o B4TIDA aberto (a arte) e o basquete (o jogo, ou a quadra livre depois da porta)
+  const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
+  const [basquete, setBasquete] = useState<{ n: number; pontos: number; tempo: number; livre: boolean } | null>(null)
+  const quadraLivreEm = useRef(0)
   // (disco) pra onde a história manda agora (a coluna de luz, a vaga, o mapa)
   const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
@@ -856,7 +864,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || cena) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cena) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     if (!pc) { abrirPortaDe(id); return }
     const como = pc.peca.como
@@ -867,6 +875,8 @@ export default function LinhaPage() {
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
     else if (como.t === "prova") setProvaMissao({ missao: id, qual: pc.qual, id: como.id, cor: MISSOES13[id].cor })
     else if (como.t === "letra") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
+    else if (como.t === "batida") setBatidaMissao({ missao: id, clima: como.clima })
+    else if (como.t === "basquete") setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
   }
   // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
   const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
@@ -878,6 +888,17 @@ export default function LinhaPage() {
     }, 900)
   }
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe })
+  // (T10) o link de teste (?parte=missao.quadra.batida / .basquete) deixa a peça marcada aberta no save: abre aqui
+  useEffect(() => {
+    if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return
+    const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
+    const como = MISSOES13[mid]?.[qual]?.como
+    if (como?.t !== "batida" && como?.t !== "basquete") return
+    setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined })))
+    pecaAberta.current = { missao: mid, qual }
+    if (como.t === "batida") setBatidaMissao({ missao: mid, clima: como.clima })
+    else setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
+  }, [HIST, hist.aberta13, cena, tela.t])
   // um evento da rua conta pra peça de agora (a montanha-russa da Nizzy…)
   const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
   const fimShow = (r: ResultadoShow) => {
@@ -1149,7 +1170,15 @@ export default function LinhaPage() {
     if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
     if (e === "chao:oficina" && h.fase === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
     // (T02) o chão do subúrbio (a quadra, os túneis): chegou no lugar da missão pegada
-    if (e.startsWith("chao:") && h.fase === "carreira") { const m = missaoDoSave(saveRef.current); if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m) }
+    if (e.startsWith("chao:") && h.fase === "carreira") {
+      const m = missaoDoSave(saveRef.current)
+      if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m)
+      // (T10) a porta da quadra abriu: de volta lá, dá pra jogar basquete quando quiser (a cada 90 s no máximo)
+      else if (e === "chao:quadra" && portaAberta(h, "quadra") && !cena && !recompensa && !pingpong && !batidaMissao && Date.now() - quadraLivreEm.current > 90000 && Date.now() - barFechou.current > 8000) {
+        quadraLivreEm.current = Date.now()
+        setBasquete((b) => b ?? { n: 1, pontos: 0, tempo: 60, livre: true })
+      }
+    }
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
     if (e === "subiu" && h.fase === "subir") {
       setSave((s) => comHistoria(s, (x) => ({ ...x, fase: "carreira" })))
@@ -1578,6 +1607,37 @@ export default function LinhaPage() {
           if (l.qual === "arte" && MISSOES13[l.missao].jogo.como?.t === "show") pecaAberta.current = { missao: l.missao, qual: "jogo" }
           else pecaFeitaNaMissao(l.missao, l.qual)
         }} />}
+        {/* (T10) a arte da quadra: o Alohan apresenta o B4TIDA; entregou o instrumental, o basquete segue direto */}
+        {batidaMissao && <BatidaMissao cor={MISSOES13[batidaMissao.missao].cor} quem={MISSOES13[batidaMissao.missao].quem} clima={batidaMissao.clima} onFim={() => {
+          const b = batidaMissao
+          setBatidaMissao(null)
+          barFechou.current = Date.now()
+          pecaAberta.current = null
+          track("mission_step", { mission_id: `disco-${b.missao}`, step: "batida", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          pecaFeitaNaMissao(b.missao, "arte")
+        }} />}
+        {/* (T10) o jogo da quadra: basquete. Fez os pontos, a peça fica feita; senão joga de novo. Depois da porta, a quadra é livre */}
+        {basquete && (
+          <div className="l-basquete" style={{ position: "absolute", inset: 0, zIndex: 74 }}>
+            <div className="gi-raiz" style={{ position: "absolute" }}>
+              <Basquete key={basquete.n} tempo={basquete.tempo} onFim={(pontos, cestas) => {
+                const b = basquete
+                barFechou.current = Date.now()
+                if (b.livre) {
+                  setBasquete(null)
+                  setSave((s) => ({ ...ganhar(s, Math.floor(pontos / 6)), popularidade: Math.min(100, (s.popularidade ?? 0) + (pontos >= 12 ? 1 : 0)) }))
+                  avisar("QUADRA", `${pontos} pontos · ${cestas} cestas`, "#ff6a35")
+                  return
+                }
+                if (pontos < b.pontos) { setBasquete({ ...b, n: b.n + 1 }); avisar("QUADRA", `faz ${b.pontos} pontos pra passar · de novo`, "#ff6a35"); return }
+                setBasquete(null)
+                const p = pecaAberta.current
+                pecaAberta.current = null
+                if (p) pecaFeitaNaMissao(p.missao, p.qual)
+              }} />
+            </div>
+          </div>
+        )}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()

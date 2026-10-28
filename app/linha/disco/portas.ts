@@ -46,6 +46,10 @@ export type ComoJoga =
   | { t: "evento"; evento: "montanha" | "flor"; n: number }
   // (T19) escrever a letra da faixa (disco/Letra.tsx; os versos em disco/letras.ts)
   | { t: "letra"; faixa: PistaId }
+  // (T10) o B4TIDA aberto pra produzir um instrumental (disco/BatidaMissao.tsx); `clima` = a música de onde ele parte
+  | { t: "batida"; clima: string }
+  // (T10) o basquete do ginásio (app/ginasio/basquete.tsx): `pontos` pra passar em `tempo` segundos (senão joga de novo)
+  | { t: "basquete"; pontos: number; tempo: number }
 
 export interface Peca {
   nome: string
@@ -66,7 +70,7 @@ export const PORTAS: Record<PortaId, { nome: string; existe: boolean; tarefa?: s
   holo: { nome: "o holo: o mapa interativo", existe: true, tarefa: "T07" },
   violao: { nome: "o violão: acompanha qualquer música", existe: true, tarefa: "T08" },
   "kombi-melhorias": { nome: "as melhorias da Kombi", existe: true, tarefa: "T09" },
-  quadra: { nome: "a quadra", existe: false, tarefa: "T10" },
+  quadra: { nome: "a quadra: basquete quando quiser", existe: true, tarefa: "T10" },
   "batida-estudio": { nome: "o BATIDA pra produzir mais", existe: true, tarefa: "T10" },
   corridas: { nome: "as corridas nos túneis", existe: false, tarefa: "T13" },
   motos: { nome: "as motos", existe: false, tarefa: "T14" },
@@ -137,8 +141,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   quadra: {
     id: "quadra", n: 3, onde: "suburbio", quem: "Alohan", cor: "#ff6a35", faixa: "ontem", faixaSituacao: "proposta",
     lugar: { chao: "quadra" }, pedido: "a quadra tá vazia. falta o beat", apresenta: "o Alohan apresenta o BATIDA",
-    arte: p("um instrumental no BATIDA pra galera", "decidido", { tarefa: "T10", existe: "/batida" }),
-    jogo: p("a partida de basquete", "decidido", { tarefa: "T10", existe: "/ginasio (basquete.tsx)" }),
+    arte: p("um instrumental no BATIDA pra galera", "decidido", { como: { t: "batida", clima: "ontem" }, tarefa: "T10", existe: "/batida" }),
+    jogo: p("a partida de basquete", "decidido", { como: { t: "basquete", pontos: 6, tempo: 45 }, tarefa: "T10", existe: "/ginasio (basquete.tsx)" }),
     abre: ["quadra", "batida-estudio"], recompensa: { guitar: "ontem", batida: "ontem", neon: PAGA.missao.quadra }, requer: ["oficina"],
   },
   tuneis: {

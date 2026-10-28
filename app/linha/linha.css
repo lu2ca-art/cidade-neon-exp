@@ -2862,6 +2862,19 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-rua-bts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .l-rua-bts button { padding: 9px 11px; border-radius: 12px; border: 1px solid rgba(255, 144, 0, 0.5); background: rgba(6, 6, 16, 0.78); color: #fff; font: 700 13px var(--cond); text-transform: uppercase; letter-spacing: 0.05em; text-align: left; cursor: pointer; }
 .l-prova-missao { flex-direction: column; gap: 10px; }
+/* (T10) a arte da quadra: o B4TIDA numa janela por cima do jogo, com a barra do Alohan em cima */
+.l-batida-missao { position: absolute; inset: 0; z-index: 74; display: flex; flex-direction: column; background: #000; animation: l-sobe 0.35s both; }
+.l-batida-missao > header { display: flex; align-items: center; gap: 12px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; background: rgba(8, 6, 16, 0.96); border-bottom: 2px solid var(--cor); }
+.l-batida-missao > header > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.l-batida-missao small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+.l-batida-missao b { font: 800 15px/1.2 var(--sans, system-ui); color: #fff; }
+.l-batida-missao span { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.l-batida-missao i { font: normal 11px var(--mono); color: rgba(255, 255, 255, 0.6); }
+.l-batida-missao i.is-ok { color: #6dff9a; }
+.l-batida-missao button { flex: none; padding: 10px 14px; border-radius: 999px; font: 800 12px var(--mono); background: var(--cor); color: #140a00; cursor: pointer; }
+.l-batida-missao button:disabled { opacity: 0.35; cursor: default; }
+.l-batida-missao iframe { flex: 1; width: 100%; border: 0; background: #000; }
+.l-batida-carrega { position: absolute; inset: 90px 0 0; margin: 0; display: flex; align-items: center; justify-content: center; font: 12px var(--mono); color: rgba(255, 255, 255, 0.6); pointer-events: none; }
 .l-prova-missao > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
 .l-prova-missao > .l-prova { width: min(420px, 100%); max-height: 70vh; overflow: auto; padding: 12px; border-radius: 16px; background: rgba(5, 5, 14, 0.9); border: 1px solid rgba(255, 255, 255, 0.14); }
 

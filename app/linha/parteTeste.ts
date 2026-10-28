@@ -34,6 +34,9 @@ function discoDa(parte: string): Record<string, unknown> | null {
     // (a missão da cidade precisa da pista acesa e de quem ela pede antes: o save já vem com isso)
     const feitas13 = [...new Set(["dbee", "oficina", ...MISSOES13[m].requer])].filter((x) => x !== m)
     const base = { fase: "carreira", holo: true, missao: m, feitas13 }
+    // (T10) a quadra: a arte (o B4TIDA) e o jogo (o basquete) abertos direto
+    if (m === "quadra" && sub === "batida") return { ...base, aberta13: "quadra:arte" }
+    if (m === "quadra" && sub === "basquete") return { ...base, passos13: ["quadra:arte"], aberta13: "quadra:jogo" }
     if (m === "lu2ca" && sub === "letra") return { ...base, aberta13: "lu2ca:arte" }
     if (m === "lu2ca" && sub === "show") return { ...base, passos13: ["lu2ca:arte"], letras: { nectar: LETRAS.nectar!.versos.map((v) => v.opcoes[0]) }, show: "missao:lu2ca" }
     if (sub) return undefined as unknown as null
@@ -45,7 +48,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
   return undefined as unknown as null
 }
 
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "loja", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", ...MISSOES.map((m) => `missao.${m}`), "livre"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira.feira", "carreira.meio", "loja", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...MISSOES.map((m) => `missao.${m}`), "livre"]
 
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {
