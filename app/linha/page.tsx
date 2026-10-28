@@ -59,6 +59,8 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { Manchete } from "./disco/historia"
 import { MISSOES13, abrirPorta, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, normalizarMissao, ofertas13, pecaAgora13, recompensaDe, sincronizar, type MissaoId, type Oferta13, type Recompensa13 } from "./disco/portas"
 import { Recompensa } from "./disco/Recompensa"
+import { Letra } from "./disco/Letra"
+import { letraDe } from "./disco/letras"
 import { Rua } from "./disco/Rua"
 import { COR_PISTA } from "./disco/historia"
 import { PingPong } from "./disco/PingPong"
@@ -814,6 +816,14 @@ export default function LinhaPage() {
   // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
   const showConf = showAgora ? confShow(showAgora)! : null
+  // (T19) a peça de escrever a letra aberta agora (a arte do LU2CA)
+  const letraAgora = (() => {
+    if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return null
+    const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
+    const como = MISSOES13[mid]?.[qual]?.como
+    const conf = como?.t === "letra" ? letraDe(como.faixa) : null
+    return conf && como?.t === "letra" ? { missao: mid, qual, faixa: como.faixa, conf } : null
+  })()
   // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
   const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
@@ -840,7 +850,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId) => {
-    if (recompensa || pingpong || provaMissao || showAgora || cena) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || cena) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     if (!pc) { abrirPortaDe(id); return }
     const como = pc.peca.como
@@ -850,6 +860,7 @@ export default function LinhaPage() {
     if (como.t === "pingpong") setPingpong(true)
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
     else if (como.t === "prova") setProvaMissao({ missao: id, qual: pc.qual, id: como.id, cor: MISSOES13[id].cor })
+    else if (como.t === "letra") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
   }
   // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
   const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
@@ -1351,7 +1362,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
@@ -1541,7 +1552,23 @@ export default function LinhaPage() {
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} />}
         {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
-        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={save.popularidade ?? 0} onFim={fimShow} />}
+        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={save.popularidade ?? 0} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
+        {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}
+        {letraAgora && <Letra conf={letraAgora.conf} cor={MISSOES13[letraAgora.missao].cor} quem={MISSOES13[letraAgora.missao].quem} onFim={(linhas: string[]) => {
+          const l = letraAgora
+          // a letra fica no save e, ainda no palco, a próxima peça segue direto na mesma
+          // gravação (o show ao vivo: sem esperar o relógio, que num aparelho lento chega antes do save)
+          setSave((s) => comHistoria(s, (x) => {
+            const h = concluir({ ...x, aberta13: undefined, letras: { ...(x.letras ?? {}), [l.faixa]: linhas } }, l.missao, l.qual)
+            const prox = pecaAgora13(h, l.missao)
+            return prox?.peca.como?.t === "show" ? { ...h, show: `missao:${l.missao}` } : h
+          }))
+          barFechou.current = Date.now()
+          track("mission_step", { mission_id: `disco-${l.missao}`, step: "letra", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          // (sem show depois: a porta ou a próxima peça seguem pelo caminho de sempre)
+          if (l.qual === "arte" && MISSOES13[l.missao].jogo.como?.t === "show") pecaAberta.current = { missao: l.missao, qual: "jogo" }
+          else pecaFeitaNaMissao(l.missao, l.qual)
+        }} />}
         {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()

@@ -63,6 +63,10 @@ export interface HistoriaDisco {
   guitar?: string[]
   batida?: string[]
   conta13?: Record<string, number>
+  // (T19) a peça de escrever aberta agora ("lu2ca:arte"; fica no save: recarregar
+  // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
+  aberta13?: string
+  letras?: Record<string, string[]>
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
