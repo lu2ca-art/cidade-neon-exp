@@ -38,7 +38,8 @@ test("a missão de verdade: o B4TIDA (toca e mexe) → o basquete (6 pontos) →
   await page.addInitScript(() => localStorage.setItem("cidade-neon-analytics-consent", "essential"))
   await page.goto("/linha?mapa=disco&parte=missao.quadra.batida")
   const entrar = page.locator(".l-btn-entrar")
-  if (await entrar.isVisible({ timeout: 30_000 }).catch(() => false)) await entrar.click()
+  await expect(entrar).toBeVisible({ timeout: 60_000 })
+  await entrar.click()
   // a arte: o estúdio abre dentro da janela do Alohan, já com a música; entregar trancado
   const janela = page.locator(".l-batida-missao")
   await expect(janela).toBeVisible({ timeout: 30_000 })
