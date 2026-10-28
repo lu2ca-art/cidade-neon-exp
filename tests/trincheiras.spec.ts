@@ -10,7 +10,7 @@ test("/teste/trincheiras abre e anda de patins sem erro", async ({ page }) => {
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
   await page.addInitScript(consentimento)
-  const r = await page.goto("/teste/trincheiras")
+  const r = await page.goto("/teste/trincheiras?livre")
   expect(r?.status()).toBe(200)
   await expect(page.getByText("AS TRINCHEIRAS")).toBeVisible()
   await page.waitForFunction(() => "__estado" in window, null, { timeout: 60_000 })
