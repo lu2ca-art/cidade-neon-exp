@@ -93,7 +93,7 @@ export function PingPong({ cor, onFim }: { cor: string; onFim: (venceu: boolean)
         <div className="l-show-fim">
           <b>{fim ? "ganhou do robô" : "o robô ganhou"}</b>
           <span>{fim ? "ele pisca duas vezes. parece contente" : "ele não comemora. só espera a próxima"}</span>
-          <button type="button" onClick={() => onFim(fim)}>{fim ? "voltar pra kombi →" : "de novo depois →"}</button>
+          <button type="button" onClick={() => onFim(fim)}>{fim ? "seguir →" : "de novo depois →"}</button>
         </div>
       )}
     </div>

@@ -1,3 +1,8 @@
+// (T02, 28/10) SUBSTITUÍDO por disco/portas.ts: as 13 missões (arte → jogo →
+// a porta → a recompensa), sem o show obrigatório no fim. Ninguém mais importa
+// este arquivo; fica como referência do modelo das 4 peças e do Golpe (o
+// modelo dos golpes estilo GTA ainda não tem lugar no jogo novo).
+//
 // AS MISSÕES VARIÁVEIS: O ESQUELETO DAS 4 PEÇAS (LU2CA 19/10, DIREÇÃO).
 // Cada missão de linha tem quatro peças:
 //   1. destreza  — um item interativo de aprendizado, foco (ping pong, cama

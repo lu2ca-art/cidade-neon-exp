@@ -61,7 +61,7 @@ export function Jornal({ m, cor, onFechar }: { m: Manchete; cor: string; onFecha
           <span>popularidade <b>+{m.pop}</b></span>
           <span>neon$ <b>+{m.neon}</b></span>
         </footer>
-        <button type="button" onClick={onFechar}>voltar pra kombi →</button>
+        <button type="button" onClick={onFechar}>seguir →</button>
       </article>
     </div>
   )
