@@ -126,6 +126,15 @@ const G_TERRA = 9.8
 const G_DISCO = 12.5
 // o pulo no disco: os mesmos 2,5 m de altura (a subida não muda), mas com a
 // gravidade mais pesada o tempo no ar cai de ~1,4 s pra ~1,26 s
+// (T36, J2:25, "a propulsão ainda tá insana, tá saindo do meio do nada: no deserto
+// você aperta espaço e ela te joga lá pra cima imediato") no chão do deserto o
+// propulsor (1) herdava a inclinação da última pista (a=amostra da pista parada
+// no u antigo) vezes a velocidade: até 16 m/s de subida no primeiro quadro;
+// (2) ligava com 0,22 s de espaço (o turbo é um toque; passar disso por um
+// instante já ligava) e (3) o empuxo cheio chegava em 0,4 s. Agora no chão do
+// deserto: sem a inclinação da pista, segura 0,45 s e o empuxo cresce em 1,2 s
+const SEGURA_PROP_CHAO_MS = 450
+const RAMPA_PROP_CHAO = 1.2
 const V_PULO_TERRA = Math.sqrt(2 * G_DISCO * 2.5)
 
 export interface Stats {
@@ -316,7 +325,7 @@ type Jogo = {
   chegadaCasa?: boolean; chegadaV?: number
   // (21/10) há quanto tempo o propulsor está empurrando (o empuxo cresce em ~0,4 s);
   // quique = a última batida de pinball (não quica duas vezes no mesmo encosto)
-  tProp?: number; quique?: number
+  tProp?: number; rampaProp?: number; quique?: number
   // o modo arcade (17/10, LU2CA: "arcade, divertido, psicodélico, fidget"):
   // o combo de anéis, a onda psicodélica (0–1) e o giro da Kombi no ar
   combo?: number; comboT?: number; psi?: number; giroAr?: number
@@ -4377,7 +4386,7 @@ function Cena({
     if (MD) {
       if (j.encaixar) { j.voo = false; j.propulsou = false }
       j.energia = j.energia ?? 1
-      inp.propulsor = ((!!inp.espacoDesde && performance.now() - inp.espacoDesde > 220) || !!inp.propulsorBotao) && !inp.semHolo && !inp.semVoo
+      inp.propulsor = ((!!inp.espacoDesde && performance.now() - inp.espacoDesde > (j.voo && !j.ar ? SEGURA_PROP_CHAO_MS : 220)) || !!inp.propulsorBotao) && !inp.semHolo && !inp.semVoo
       // (19/10, LU2CA: "nem o propulsor funciona") a abertura que trava aqui é
       // a do mapa velho: no disco ela nunca termina (a abertura do disco, o
       // deserto, a D-Bee e a oficina, ainda não existe), e o propulsor ficava
@@ -4391,9 +4400,9 @@ function Cena({
         // não num tranco") sai do chão na velocidade do próprio chão (subindo a
         // rampa, sobe junto) e o empuxo cresce em ~0,4 s: começa equilibrando o
         // peso e vai até a força cheia (a mesma subida de antes, sobre 9,8 m/s²)
-        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, Math.max(0, a.ty * j.v) + 0.4); j.tProp = 0; motor?.whoosh(); vib(18) }
+        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, (j.voo ? 0 : Math.max(0, a.ty * j.v)) + 0.4); j.tProp = 0; j.rampaProp = j.voo ? RAMPA_PROP_CHAO : 0.4; motor?.whoosh(); vib(18) }
         j.tProp = (j.tProp ?? 0) + dt
-        const e = Math.min(1, j.tProp / 0.4), suave = e * e * (3 - 2 * e)
+        const e = Math.min(1, j.tProp / (j.rampaProp ?? 0.4)), suave = e * e * (3 - 2 * e)
         const teto = pat ? 13 : 16, cheio = G_DISCO + (pat ? 30 : 16)
         const empuxo = G_DISCO + 0.8 + (cheio - G_DISCO - 0.8) * suave * (1 - Math.max(0, j.vy) / (teto * 1.3))
         j.vy = Math.min(teto, j.vy + empuxo * dt)
