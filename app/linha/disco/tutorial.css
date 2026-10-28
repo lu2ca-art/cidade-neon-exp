@@ -37,26 +37,15 @@
 .l-rec-holo-caixa > .l-rec-holo-bt { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .l-rec-holo-bt i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #06060c; color: var(--cor); font: 800 14px var(--mono); font-style: normal; }
 
-/* ── o tutorial: o cartão embaixo do GPS e o anel em volta do alvo ── */
-.l-tut { position: fixed; z-index: 72; left: 50%; top: calc(84px + env(safe-area-inset-top)); transform: translateX(-50%); display: grid; gap: 3px; max-width: min(86vw, 360px); padding: 8px 14px; border-radius: 12px; background: rgba(6, 10, 26, 0.84); border: 1px solid rgba(47, 232, 255, 0.55); box-shadow: 0 0 22px -6px #2fe8ff; color: #dffbff; pointer-events: none; text-align: center; animation: l-sobe 0.3s both; }
-.l-tut small { font: 700 9.5px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: #2fe8ff; }
-.l-tut b { font: 700 13.5px/1.35 var(--mono); }
-.l-tut.is-dbee { border-color: rgba(61, 123, 255, 0.7); box-shadow: 0 0 22px -6px #3d7bff; }
-.l-tut.is-dbee small { color: #7fa6ff; }
-.l-tut.is-ok { border-color: #5dffa0; box-shadow: 0 0 26px -4px #5dffa0; }
-.l-tut.is-ok b { color: #5dffa0; }
-.l-tut.is-fim { animation: l-sobe 0.3s both, l-tut-some 0.6s ease-in 4.4s forwards; }
-@keyframes l-tut-some { to { opacity: 0; } }
+/* ── o tutorial: (T56) o texto fala dentro do notch (linha.css, .l-holo-letreiro.is-tut); aqui só o anel em volta do alvo ── */
 .l-tut-alvo { position: fixed; z-index: 71; border-radius: 999px; border: 2px solid #2fe8ff; box-shadow: 0 0 16px #2fe8ff, inset 0 0 12px rgba(47, 232, 255, 0.45); pointer-events: none; animation: l-tut-pulsa 1.2s ease-in-out infinite; }
 /* o "?" (J1: 6): o resto da tela escurece, só o ícone do holo fica aceso */
 .l-tut-alvo.is-escuro { box-shadow: 0 0 0 200vmax rgba(2, 3, 10, 0.66), 0 0 22px #2fe8ff, inset 0 0 14px rgba(47, 232, 255, 0.5); animation: l-tut-pulsa-anel 1.2s ease-in-out infinite; }
 .l-tut-alvo-q { position: absolute; left: -12px; top: -12px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #2fe8ff; color: #06060c; font: 800 15px var(--mono); font-style: normal; box-shadow: 0 0 12px #2fe8ff; }
-.l-tut-alvo-rot { position: absolute; top: calc(100% + 10px); right: 0; display: grid; gap: 2px; width: max-content; max-width: 60vw; padding: 7px 11px; border-radius: 10px; background: rgba(6, 10, 26, 0.92); border: 1px solid rgba(47, 232, 255, 0.6); font: 800 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: #2fe8ff; text-align: right; }
-.l-tut-alvo-rot em { font: 600 12px var(--mono); font-style: normal; letter-spacing: 0.02em; text-transform: none; color: #fff; }
 @keyframes l-tut-pulsa { 50% { transform: scale(1.08); opacity: 0.7; } }
 @keyframes l-tut-pulsa-anel { 50% { border-color: #fff; } }
-/* no celular o mapa fica no canto de cima: o cartão desce pra não cobrir */
-@media (max-width: 600px) { .l-tut { top: calc(196px + env(safe-area-inset-top)); } }
+/* o destaque escuro não apaga o notch: é ele que diz o passo */
+:root:has(.l-tut-alvo.is-escuro) .l-viagem.is-disco .l-ilha.is-letreiro { z-index: 72; }
 @media (prefers-reduced-motion: reduce) {
   .l-tut-alvo, .l-tut-alvo.is-escuro, .l-entrega-luz b, .l-entrega-luz i, .l-rec-holo-gira, .l-rec-holo-bola { animation: none; }
 }
