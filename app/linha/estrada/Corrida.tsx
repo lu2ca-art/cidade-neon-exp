@@ -63,6 +63,7 @@ import { astros, ceuNaHora } from "../ceu"
 import { corNeon, corPintura, lerEstilo } from "../../oficina/estilo"
 import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
+import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
@@ -82,6 +83,7 @@ import { VOZES } from "../roteiros"
 import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Frequencia } from "../radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
+import { radioPega, type MemoriaRadio } from "../disco/sons"
 import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
@@ -426,7 +428,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { semVoo?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean }
+type Input = { semVoo?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean; infinito?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -738,6 +740,22 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     vib([20, 30, 60])
     return true
   }
+  // (T42, J1) as viagens rápidas pros minijogos: na hora, sem gastar as viagens dos
+  // anéis; a Kombi aparece um pouco antes do lugar, com ele marcado no mapa
+  const viajarPara = (r: Rapida) => {
+    const j = jogo.current
+    if (j.chegando || (aberturaRef.current.ativa && !("disco" in M))) return
+    j.via = r.via; j.u = Math.max(0, r.u - 70); j.x = 0; j.v = Math.min(j.v, 20); j.encaixar = true; j.livreOk = false
+    evs.current?.via(r.via)
+    setMarca({ via: r.via, u: r.u, nome: r.nome, cor: r.cor })
+    ligarDrone(false)
+    vib([20, 30, 60])
+  }
+  // (T42, J1: "deixar no automático infinito, só aproveitando") o piloto automático
+  // infinito: a Kombi segue a pista sozinha, sem parar e sem desligar; mexer no
+  // volante assume por uns segundos e ele volta. O ∞ do lado do GPS liga e desliga
+  const [infinito, setInfinito] = useState(false)
+  useEffect(() => { input.current.infinito = infinito; if (infinito) { jogo.current.desligada = false; setDesligada(false) } }, [infinito])
   const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
   useEffect(() => {
     // qualquer toque ou tecla conta como "tem gente dirigindo"
@@ -1336,7 +1354,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // nada interrompe; o rádio é a 222 (locutor, Núcleo, estreias, sintonia)
   const [aparelho, setAparelho] = useState<Fonte>(fonteSom.get())
   const fonteRef = useRef(aparelho)
-  useEffect(() => fonteSom.ouvir((f) => { fonteRef.current = f; setAparelho(f) }), [])
+  // (T40) a rádio voltou sozinha (chegou perto de uma pista): a programação retoma
+  useEffect(() => fonteSom.ouvir((f, auto) => {
+    fonteRef.current = f; setAparelho(f)
+    if (auto && f === "radio") setTimeout(() => proxFaixa.current(freqRef.current), 0)
+  }), [])
   const [discoAgora, setDiscoAgora] = useState<{ src: string | null; tocando: boolean }>({ src: disco.src, tocando: disco.tocando })
   useEffect(() => disco.ouvir(setDiscoAgora), [])
   useEffect(() => { discoRef.current = discoAgora.tocando }, [discoAgora.tocando])
@@ -2030,12 +2052,14 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const fq = freqDe(freq)
   // (o holo) a rádio: o mesmo pros widgets do computador e a ilha do celular
   const radioHolo = { ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal }
-  const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); setTimeout(() => tocarProxima(freqRef.current), 0) } }
+  // (T40) a rádio só pega perto das pistas: fora delas fica o disco e a Kombi avisa
+  const semSinalAviso = () => { if (!fonteSom.radioPega()) falar("222 FM", "sem sinal aqui: a rádio só pega perto das pistas. fica o disco", 4200) }
+  const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(freqRef.current), 0) } }
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
   const sintonizarHolo = (id: FreqId) => {
     // (T18) as outras frequências abrem na missão do Xeriff: até lá, só a 222
     if (trancas?.radio && id !== freqRef.current) { chiadoCurto(); falar("222 FM", `só chiado. as frequências ${trancas.radio.replace("abre", "abrem")}`, 3600); return }
-    chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); setTimeout(() => tocarProxima(id), 0)
+    chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(id), 0)
   }
   const V = M.vias[viaAtual]
   const lugarAqui = V.tipo === "circuito" ? territorio(V.t).lugar : `indo ${praDe(V.t)}`
@@ -2391,6 +2415,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {drone && (
         <div className="l-drone" aria-label="a vista do drone">
           <div className="l-drone-dist" aria-hidden="true"><i /></div>
+          {/* (T42, J2:32) o checklist pelo mapa de longe: só o próximo passo; (J1) as viagens rápidas pros minijogos */}
+          {discoM && checklistHolo && !dronePainel && <ProximoPasso checklist={checklistHolo} />}
+          {discoM && !voar && !dronePainel && <ViagensRapidas lista={rapidasDo(M, viaApagada)} onViajar={viajarPara} />}
           {dronePainel && discoM && mapaPainel && (
             <aside className="l-mapa-missoes l-drone-missoes" aria-label="as missões" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { if ((e.target as HTMLElement).closest("[data-fecha-mapa]")) setDronePainel(false) }}>
               {mapaPainel}
@@ -2437,6 +2464,11 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             </button>
           </div>
         </div>
+      )}
+      {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o ∞ (o automático infinito) */}
+      {discoM && oculos && (
+        <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null }} icone={checklistHolo?.chave ?? null}
+          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} />
       )}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
@@ -2526,6 +2558,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <button type="button" className={aparelho === "radio" ? "is-on" : ""} onClick={() => {
             if (aparelho === "radio") return fonteSom.set("off")
             fonteSom.set("radio")
+            semSinalAviso()
             setTimeout(() => tocarProxima(freqRef.current), 0)
           }}>RÁDIO</button>
           <button type="button" className={aparelho === "disco" ? "is-on" : ""} onClick={() => {
@@ -2968,6 +3001,7 @@ function Cena({
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
   const pistaTocando = useRef(-1)
+  const memRadio = useRef<MemoriaRadio>({ resto: 0 })
   const pistaEscura = useRef(false) // (os atos) a pista tocando agora está apagada?
   // (21/10 (3)) o tema da missão: o índice da pista dela e em que ponto a
   // música está (antes de achar a linha → tocando a voz uma vez → já tocou)
@@ -3930,7 +3964,7 @@ function Cena({
       // (LU2CA 21/10, a feira de missões) com uma missão pegada, 6 s sem tocar
       // em nada e a Kombi segue sozinha pra ela (a rota escolhe os cruzamentos e
       // ela encosta na vaga); qualquer toque devolve o volante
-      const pilotoMissao = "disco" in M && (!!vagaRef.current || !!alvoChaoRef.current) && (!vagaRef.current || j.naVaga !== vagaRef.current.id) && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000
+      const pilotoMissao = "disco" in M && (!!vagaRef.current || !!alvoChaoRef.current) && (!vagaRef.current || j.naVaga !== vagaRef.current.id) && !combRef.current.patins && !aberturaRef.current.ativa && inp.ultimo > 0 && performance.now() - inp.ultimo > 6000 && !inp.infinito
       if (pilotoMissao !== !!j.piloto) { j.piloto = pilotoMissao; if (pilotoMissao) j.desligada = false; ev.piloto(pilotoMissao) }
       // (LU2CA 23/10: "a visão de primeira pessoa tem que levar a pessoa pelo
       // caminho da missão automaticamente") de dentro, com destino (o lugar do
@@ -3943,9 +3977,12 @@ function Cena({
       const assumiu = (j.ultimoDir ?? 0) > 0 && performance.now() - j.ultimoDir! < ASSUME_MS
       const auto1p = destino1p && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
       if (auto1p && j.desligada) j.desligada = false // de dentro ela mesma dá a partida
-      const auto = (auto1p || noCel || pilotoMissao) && !cine
-      // no automático, chegando na vaga da missão: encosta e freia sozinha
-      const vgA = auto && !noCel ? vagaRef.current : null
+      // (T42) o automático infinito: segue a pista sem parar (mexeu no volante, assume 3 s)
+      const infAuto = !!inp.infinito && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
+      if (infAuto && j.desligada) j.desligada = false
+      const auto = (auto1p || noCel || pilotoMissao || infAuto) && !cine
+      // no automático, chegando na vaga da missão: encosta e freia sozinha (o infinito não para)
+      const vgA = auto && !noCel && !infAuto ? vagaRef.current : null
       const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity
       const encostando = !!vgA && dVaga > -VAGA / 2 && dVaga < 90
       const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : 0
@@ -4016,7 +4053,7 @@ function Cena({
       let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
       // (no chão, a de passeio; nas pistas, metade da velocidade da pista)
-      if (auto1p || (pilotoMissao && j.voo)) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
+      if (auto1p || (pilotoMissao && j.voo) || infAuto) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -5230,6 +5267,11 @@ function Cena({
     // (a história, casa e dunas) no deserto ninguém tem pista: o disco antigo
     // da Kombi (a página liga) e o vento; a faixa da pista para
     const semPista = faseHistoria === "casa" || faseHistoria === "dunas"
+    // (T40) a rádio só pega perto das pistas: no deserto e longe delas, fica o disco
+    if (faixasDisco.length) {
+      const infR = (M as MundoDisco).info[j.via]
+      fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
+    }
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1 }
     else if (faixasDisco.length && soTemaRef.current) {
       // (LU2CA 21/10 (3)) A MÚSICA É O TEMA DA MISSÃO. Sem missão: nenhuma

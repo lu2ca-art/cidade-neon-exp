@@ -12,7 +12,7 @@
 import { useEffect, useRef } from "react"
 import { vento } from "../som"
 
-const DUR = 7200
+export const DUR = 7200
 const SAIDA = 2600
 
 const VERT = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}"
