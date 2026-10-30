@@ -1,15 +1,16 @@
 import { expect, test } from "@playwright/test"
 import { mkdirSync } from "node:fs"
 
-// (T22) a missão da Ella, inteira, na casa dela (a galeria): o diálogo, olhar a
-// planta, olhar os quadros, pintar na tela, a tela pendurada tocando, a escolha
+// (T22, T22b) a missão da Ella, inteira, na casa dela (a galeria), na ordem do
+// dono: o filminho da planta (o provisório: as falas em legenda), conhecer os
+// quadros, pintar na luz da planta, a tela pendurada tocando, a escolha
 // e a porta (a galeria). Os gestos em 3D vão pelo gancho de teste (__gesto, só
 // fora da produção); a fala avança tocando na legenda, como o jogador.
 // Cena 3D: rode no Mac com Chrome de verdade (--use-angle=metal).
 const PASTA = "test-results/galeria-ella"
 test.beforeAll(() => mkdirSync(PASTA, { recursive: true }))
 
-test("T22 · Ella: a planta → os quadros → pintar → a galeria", async ({ page }) => {
+test("T22b · Ella: o filme da planta → os quadros → pintar na luz dela → a galeria", async ({ page }) => {
   test.setTimeout(180_000)
   const erros: string[] = []
   page.on("pageerror", (e) => erros.push(e.message))
@@ -24,6 +25,16 @@ test("T22 · Ella: a planta → os quadros → pintar → a galeria", async ({ p
   const fotos = new Set<string>()
   const foto = async (nome: string) => { if (fotos.has(nome)) return; fotos.add(nome); await page.waitForTimeout(1800); await page.screenshot({ path: `${PASTA}/${nome}.png` }) }
   await foto("0-entrada")
+  // 1. o filme: o provisório (as falas em legenda, no tempo de cada uma), pedido no gancho
+  const filme = page.locator(".l-filme")
+  await expect(filme).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator(".l-filme-fala")).toBeVisible({ timeout: 8_000 })
+  await foto("0b-filme")
+  const pedidos = await page.evaluate(() => (window as unknown as { __cenasPedidas?: { tipo: string; id?: string }[] }).__cenasPedidas ?? [])
+  expect(pedidos).toContainEqual(expect.objectContaining({ tipo: "filme", id: "ella-planta" }))
+  // tocar passa as falas (quem já viu não espera)
+  for (let i = 0; i < 20 && (await filme.isVisible().catch(() => false)); i++) { await filme.click(); await page.waitForTimeout(150) }
+  await expect(filme).toBeHidden()
   const gestos: string[] = []
   for (let i = 0; i < 160; i++) {
     if (await page.locator(".l-recompensa").isVisible()) break
@@ -32,7 +43,7 @@ test("T22 · Ella: a planta → os quadros → pintar → a galeria", async ({ p
     const dica = page.locator(".l-dica3d small")
     if (await dica.isVisible().catch(() => false)) {
       const txt = (await dica.textContent()) ?? ""
-      const qual = /pinta/.test(txt) ? "pintar" : /quadros/.test(txt) ? "quadros" : "planta"
+      const qual = /pinta/.test(txt) ? "pintar" : "quadros"
       if (!gestos.includes(qual)) { gestos.push(qual); await foto(`${gestos.length}-${qual}`) }
       await page.evaluate(() => (window as unknown as { __gesto?: () => void }).__gesto?.())
       await page.waitForTimeout(qual === "pintar" ? 2400 : 400)
@@ -46,7 +57,7 @@ test("T22 · Ella: a planta → os quadros → pintar → a galeria", async ({ p
     }
     await page.waitForTimeout(300)
   }
-  expect(gestos).toEqual(["planta", "quadros", "pintar"])
+  expect(gestos).toEqual(["quadros", "pintar"])
   // a porta: a galeria abre, a CHUVA no Guitar Driver; a obra foi pra parede da galeria
   await expect(page.locator(".l-recompensa")).toBeVisible({ timeout: 20_000 })
   await page.screenshot({ path: `${PASTA}/4-porta.png` })

@@ -40,7 +40,7 @@ export const GESTOS_3D: Partial<Record<SalaId, string[]>> = {
   escondido: ["prova:regar"],
   beco: ["ordem"],
   "casa-dbee": ["casa", "casa-inicio"],
-  "galeria-ella": ["planta", "quadros", "pintar"],
+  "galeria-ella": ["quadros", "pintar"],
 }
 
 // baixa antes de precisar: o motor das salas + a sala do lugar. Chamado

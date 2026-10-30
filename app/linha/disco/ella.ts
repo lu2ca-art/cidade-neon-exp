@@ -1,30 +1,47 @@
-// A MISSÃO DA ELLA (T22, coordenadas do dono em 29/10). A casa dela é a galeria:
-// enorme, proibida (como a planta). Ela mostra a planta do Criador, achada nos
-// aposentos dele e cultivada aqui; virou moda depois que ele partiu; a gente
-// guardou amostras, então é a mesma planta (e é ela que salva o mundo no final:
-// isso NÃO é dito, regra de ouro 6). Perto dela dá vontade de criar. A Ella
-// guarda o segredo e convida a pintar ali mesmo. Entrou, só sai depois de
-// passar por tudo (regra 9): o diálogo, a planta, os quadros, pintar, o som.
+// A MISSÃO DA ELLA (T22, coordenadas do dono em 29/10; a ordem, T22b, 30/10).
+// A casa dela é a galeria: enorme, proibida (como a planta). Entrou, só sai
+// depois de passar por tudo (regra 9), nesta ordem:
+//   1. o FILMINHO: a Ella fala da planta do Criador (FILME_ELLA, abaixo). Hoje
+//      é o provisório (as falas em legenda, a câmera chegando devagar na
+//      planta); amanhã é vídeo de IA (T70): o arquivo entra em FILME_ELLA.video
+//   2. conhecer a GALERIA: os quadros que ela guardou (o gesto "quadros")
+//   3. PINTAR, iluminado pela planta: a planta é a luz da tela (o gesto "pintar")
 //
-// Tudo o que é RASCUNHO mora aqui, num lugar só: as falas (o dono aprova ou
-// reescreve), o que cada quadro e a planta contam, e os números do pintar. A
-// sala em 3D é interior/salas/GaleriaElla.tsx; o pintar reaproveita o som da
-// tela de app/galeria/pintar/som.ts (cada cor é um instrumento) e a obra vai
-// pra parede da galeria de verdade (app/galeria/obras.ts).
+// Tudo o que é RASCUNHO mora aqui, num lugar só: o roteiro do filme e as falas
+// (o dono aprova ou reescreve), o que cada quadro conta e os números do
+// pintar. A sala em 3D é interior/salas/GaleriaElla.tsx; o pintar reaproveita
+// o som da tela de app/galeria/pintar/som.ts (cada cor é um instrumento) e a
+// obra vai pra parede da galeria de verdade (app/galeria/obras.ts).
 
 import type { Cena } from "../cenas"
 import type { Coisa } from "../interior/comum"
+import type { Filme } from "../estrada/ganchoCena"
 
 export const ELLA_COR = "#4fc3ff"
 
-// ── a planta (o gesto "planta"): tocar no que chamar a atenção. RASCUNHO ──
-export const PLANTA: Coisa[] = [
-  { id: "vaso", pos: [0, 0.55, -6.2], raio: 0.32, falas: [{ texto: "um vaso de barro rachado. na etiqueta, à mão: \"dos aposentos dele\"", tipo: "acao" }] },
-  { id: "folhas", pos: [0.05, 1.45, -6.2], raio: 0.38, falas: [{ texto: "as folhas viram devagar pro seu lado. não tem vento aqui dentro", tipo: "acao" }] },
-  { id: "amostras", pos: [1.25, 1.15, -6.55], raio: 0.3, falas: [{ texto: "potinhos de vidro numa prateleira. semente, galho, terra. cada um com uma data", tipo: "acao" }] },
-]
-// quantas coisas da planta precisa ver pra seguir
-export const PLANTA_PRECISA = 3
+// ── 1. O FILMINHO (T22b, o dono em 30/10). RASCUNHO do roteiro ──
+// A Ella fala da planta. O Criador deixou nela o que sabia (conhecimento
+// escondido) e dizia que ela salvaria o mundo do mal que já estava previsto.
+// Ela conta o que ouviu dizer; não sabe que quem está ali é ele.
+// A voz dela (plano-vozes.md): suave, baixa, frases que terminam antes do fim.
+// ~44 s: 3 de imagem + as falas (39) + 2 de imagem. Chuva no vidro o tempo todo.
+export const FILME_ELLA: Filme = {
+  id: "ella-planta",
+  // ── O VÍDEO (T70) ENTRA AQUI: "/cenas/ella-planta.mp4" (public/cenas/ella-planta.mp4) ──
+  video: null,
+  abertura: 3,
+  fecho: 2,
+  falas: [
+    { de: "Ella", texto: "essa era dele. do criador", seg: 4 },
+    { de: "Ella", texto: "tava nos aposentos dele quando ele partiu", seg: 4 },
+    { de: "Ella", texto: "ele não deixou livro. nem carta. deixou ela", seg: 5 },
+    { de: "Ella", texto: "o que ele sabia, ele guardou aqui dentro. numa folha. onde ninguém ia procurar", seg: 6 },
+    { de: "Ella", texto: "ele dizia que vinha um mal. que já tava previsto", seg: 5 },
+    { de: "Ella", texto: "e que ela ia salvar o mundo disso", seg: 5 },
+    { de: "Ella", texto: "depois virou moda. depois proibiram. essa é a mesma. eu guardei", seg: 6 },
+    { texto: "as folhas viram devagar pro seu lado. não tem vento aqui dentro", seg: 4, tipo: "acao" },
+  ],
+}
 
 // ── os quadros que ela guardou (o gesto "quadros"). RASCUNHO ──
 // `lado`: a parede (-1 esquerda, 1 direita); `z`: onde no salão; `cores`: a
@@ -38,10 +55,11 @@ export const QUADROS: QuadroElla[] = [
   { id: "branco", lado: -1, z: -4.2, y: 2.4, larg: 1.3, alto: 1.7, cores: ["#efe8da"], falas: [{ texto: "uma tela branca. só a assinatura, embaixo", tipo: "acao" }] },
   { id: "flor", lado: 1, z: -4.6, y: 2.6, larg: 1.5, alto: 1.5, cores: ["#14121c", "#b38cff", "#5dffa0", "#ff3fb0"], falas: [{ texto: "a mesma planta, pintada de memória por alguém que nunca viu ela", tipo: "acao" }] },
 ]
-// quantos quadros precisa olhar pra seguir (os outros ficam pra quando voltar)
-export const QUADROS_PRECISA = 3
+// 2. conhecer a galeria: a câmera leva você por todos, um de cada vez
+export const QUADROS_PRECISA = QUADROS.length
 
-// ── pintar (o gesto "pintar"): a tela em branco no cavalete, os potes de tinta ──
+// ── 3. pintar (o gesto "pintar"): a tela em branco no cavalete, do lado da
+// planta (ela é a luz da pintura), os potes de tinta ──
 export const PINTAR = {
   // as cores dos potes: são cores da paleta do pintar (som.ts), cada uma toca um
   // instrumento (a tela é creme, que toca como o branco: por isso não tem pote branco)
@@ -64,24 +82,16 @@ export const CENA_GALERIA_ELLA: Cena = {
   titulo: "a casa da ella",
   missao: "chuva",
   passos: [
-    { t: "acao", texto: "uma porta de ferro, sem placa. dentro, um salão enorme. quadros até o teto. chove no vidro lá em cima" },
-    { t: "fala", de: "Ella", texto: "entra. fecha devagar" },
-    { t: "fala", de: "Ella", texto: "aqui é proibido. tudo aqui" },
-    { t: "acao", texto: "um balde embaixo de cada goteira. ninguém joga a chuva fora" },
-    { t: "fala", de: "Ella", texto: "vem. lá no fundo" },
-    { t: "gesto", id: "planta" },
-    { t: "fala", de: "Ella", texto: "era dele. do criador" },
-    { t: "fala", de: "Ella", texto: "tava nos aposentos dele quando ele partiu" },
-    { t: "fala", de: "Ella", texto: "depois virou moda. todo mundo queria uma muda. aí proibiram" },
-    { t: "fala", de: "Ella", texto: "a gente guardou as amostras. é a mesma. eu sei que é" },
-    { t: "fala", de: "Ella", texto: "chega perto. sente?" },
-    { t: "acao", texto: "uma coceira nas mãos. vontade de fazer alguma coisa. qualquer coisa" },
+    // 1. o filme (CenaFilme.tsx toca; a sala põe a câmera devagar na planta)
+    { t: "gesto", id: "filme", filme: "ella-planta" },
     { t: "fala", de: "Ella", texto: "ninguém sabe que ela tá aqui. agora vc sabe" },
-    { t: "fala", de: "Ella", texto: "esses eu guardei. ninguém mais ia guardar" },
+    { t: "fala", de: "Ella", texto: "e esses eu guardei. ninguém mais ia guardar" },
+    // 2. a galeria
     { t: "gesto", id: "quadros" },
     { t: "nucleo", texto: "acervo sem curadoria detectado. 0 visualizações ✓" },
-    { t: "fala", de: "Ella", texto: "tem uma tela em branco ali. é sua" },
-    { t: "fala", de: "Ella", texto: "perto dela sai sozinho" },
+    { t: "fala", de: "Ella", texto: "tem uma tela em branco ali. do lado dela. é sua" },
+    { t: "fala", de: "Ella", texto: "a luz é dela. perto dela sai sozinho" },
+    // 3. pintar, na luz da planta
     { t: "gesto", id: "pintar" },
     { t: "acao", texto: "ela pendura a sua do lado das dela. a tela toca" },
     { t: "fala", de: "Ella", texto: "…" },
@@ -91,7 +101,7 @@ export const CENA_GALERIA_ELLA: Cena = {
       opcoes: [
         { label: "por que vc me mostrou?", tom: "dormindo", resposta: [{ de: "Ella", texto: "alguém tinha que ver" }] },
         { label: "e se descobrirem?", tom: "acordando", resposta: [{ de: "Ella", texto: "descobrem. ela fica" }] },
-        { label: "ela era dele mesmo?", tom: "acordado", resposta: [{ de: "Ella", texto: "era" }, { de: "Ella", texto: "e ele nem sabe o que deixou" }] },
+        { label: "ela era dele mesmo?", tom: "acordado", resposta: [{ de: "Ella", texto: "era" }, { de: "Ella", texto: "às vezes eu acho que ele ainda volta pra buscar" }] },
       ],
     },
     { t: "acao", texto: "lá fora, a chuva continua. aqui dentro, menos" },

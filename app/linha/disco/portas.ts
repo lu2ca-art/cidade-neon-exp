@@ -223,11 +223,12 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     id: "ella", n: 9, onde: "cidade", quem: "Ella", cor: "#4fc3ff", faixa: "chuva", faixaSituacao: "decidido",
     lugar: { lugar: "escondido" }, pedido: "ela pinta, mas ninguém vê", apresenta: "pintar e expor um quadro",
     // (T22, o dono em 29/10) tudo na casa dela, que é a galeria (proibida, como a
-    // planta): observar a planta do Criador e os quadros que ela guardou (o jogo,
-    // a proposta) e pintar ali mesmo (a arte); a obra fica exposta na galeria.
+    // planta). (T22b, 30/10) a ordem: o filminho da planta do Criador, conhecer
+    // os quadros que ela guardou (o jogo) e pintar na luz da planta (a arte); a
+    // obra fica exposta na galeria.
     // Uma cena só (interior/salas/GaleriaElla.tsx, cenas.ts CENA_GALERIA_ELLA)
     arte: p("pintar um quadro ali mesmo e expor", "decidido", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22", existe: "/galeria/pintar" }),
-    jogo: p("observar a planta do Criador e os quadros que ela guardou", "proposta", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22" }),
+    jogo: p("o filme da planta do Criador e conhecer os quadros que ela guardou", "proposta", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22" }),
     abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: PAGA.missao.ella }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   notti: {
