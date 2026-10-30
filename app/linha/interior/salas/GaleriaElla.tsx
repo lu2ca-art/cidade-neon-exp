@@ -29,7 +29,7 @@ import { Caixa, Chuva, Npc, Toque, useExplorar, type V3 } from "../comum"
 import { Camera, olhar, type Plano, type SalaProps } from "../motor"
 
 const LARG = 9, FUNDO = 16, ALTO = 7
-const PAREDE = "#141824"
+const PAREDE = "#222a3a"
 const VERDE = "#5dffa0"
 const ROXO = "#b38cff"
 const QUENTE = "#ffcf9a"
@@ -38,7 +38,7 @@ const QUENTE = "#ffcf9a"
 const PLANTA_POS: V3 = [0, 0, -6.2]
 const CAVALETE: { pos: V3; rot: number } = { pos: [-1.5, 0, -4.5], rot: 0.38 }
 const TELA = { larg: 0.8, alto: 1.0, y: 1.5 } // no cavalete
-const PAREDE_OBRA: V3 = [-2.5, 2.35, -7.94] // onde ela pendura a sua (fundo, do lado da planta)
+const PAREDE_OBRA: V3 = [2.6, 2.35, -7.94] // onde ela pendura a sua (fundo, do lado da planta)
 const BALDES: V3[] = [[2.7, 0, 3.0], [-2.4, 0, -0.4], [2.2, 0, -3.6]]
 
 // em que passo da cena está cada gesto (o resto da câmera se acha pelo texto)
@@ -49,9 +49,9 @@ const I_PLANTA = IDX("planta"), I_QUADROS = IDX("quadros"), I_PINTAR = IDX("pint
 const ELLA_EM: Record<"porta" | "planta" | "quadros" | "tela" | "fim", { pos: V3; vira: number }> = {
   porta: { pos: [0.9, 0, 5.1], vira: Math.PI * 0.85 },
   planta: { pos: [1.15, 0, -5.3], vira: -2.4 },
-  quadros: { pos: [-0.9, 0, 0.6], vira: Math.PI },
+  quadros: { pos: [0.4, 0, -2.4], vira: 0 },
   tela: { pos: [-0.35, 0, -5.1], vira: -0.9 },
-  fim: { pos: [-1.1, 0, -6.6], vira: 0.5 },
+  fim: { pos: [1.0, 0, -6.4], vira: -0.5 },
 }
 
 const PLANOS: Record<string, Plano> = {
@@ -64,19 +64,22 @@ const PLANOS: Record<string, Plano> = {
   perto: { pos: [0.05, 1.35, -5.05], olha: [0, 1.25, -6.2], fov: 56 },
   quadros: { pos: [0, 1.75, 4.6], olha: [0, 2.2, -2], fov: 64 },
   ellaQuadros: { pos: [0.6, 1.6, 2.6], olha: [-0.9, 1.45, 0.6], fov: 48 },
-  pendurar: { pos: [-0.6, 1.8, -3.3], olha: [-2.3, 2.1, -7.9], fov: 54 },
-  ellaFim: { pos: [0.7, 1.55, -4.4], olha: [-1.1, 1.45, -6.6], fov: 48 },
-  fim: { pos: [0.2, 2.3, -2.2], olha: [-0.6, 1.7, -7.6], fov: 58 },
+  pendurar: { pos: [0.9, 1.8, -3.6], olha: [2.4, 2.1, -7.9], fov: 54 },
+  ellaFim: { pos: [-0.5, 1.55, -4.4], olha: [1.0, 1.45, -6.4], fov: 48 },
+  fim: { pos: [-0.4, 2.3, -2.4], olha: [1.0, 1.7, -7.6], fov: 58 },
 }
 // de frente pro cavalete (pintar sem a câmera torta)
 const N_TELA = new THREE.Vector3(Math.sin(CAVALETE.rot), 0, Math.cos(CAVALETE.rot))
 PLANOS.tela = {
-  pos: [CAVALETE.pos[0] + N_TELA.x * 1.3, TELA.y - 0.02, CAVALETE.pos[2] + N_TELA.z * 1.3],
-  olha: [CAVALETE.pos[0], TELA.y - 0.12, CAVALETE.pos[2]],
+  pos: [CAVALETE.pos[0] + N_TELA.x * 1.6, TELA.y + 0.02, CAVALETE.pos[2] + N_TELA.z * 1.6],
+  olha: [CAVALETE.pos[0], TELA.y - 0.02, CAVALETE.pos[2]],
   fov: 52,
 }
-// de perto num quadro (o último que você tocou)
-const planoDoQuadro = (q: QuadroElla): Plano => ({ pos: [q.lado * 1.4, 1.7, q.z + 0.4], olha: [q.lado * (LARG / 2), q.y, q.z], fov: 48 })
+// os quadros: a câmera leva você de um em um, do meio do salão (com o celular
+// em pé, as duas paredes não cabem juntas); tocou, ela chega perto
+const planoDoQuadro = (q: QuadroElla, perto: boolean): Plano => perto
+  ? { pos: [q.lado * 1.7, 1.7, q.z + 0.8], olha: [q.lado * (LARG / 2), q.y, q.z], fov: 48 }
+  : { pos: [-q.lado * 0.3, 1.7, q.z + 1.6], olha: [q.lado * (LARG / 2), q.y - 0.1, q.z], fov: 56 }
 
 export function SalaGaleriaElla({ estado }: SalaProps) {
   const pos = estado.pos
@@ -109,12 +112,16 @@ export function SalaGaleriaElla({ estado }: SalaProps) {
       if (/guardei/.test(tx)) return PLANOS.ellaQuadros
       return estado.falando === "Ella" ? PLANOS.ellaPlanta : PLANOS.planta
     }
-    if (fase === "quadros") return estado.texto && ultimoQuadro ? planoDoQuadro(ultimoQuadro) : PLANOS.quadros
+    if (fase === "quadros") {
+      if (estado.texto && ultimoQuadro) return planoDoQuadro(ultimoQuadro, true)
+      const prox = QUADROS.find((q) => !quadros.vistas.includes(q.id))
+      return prox ? planoDoQuadro(prox, false) : PLANOS.quadros
+    }
     if (fase === "antes") return /tela|sozinho/.test(tx) ? PLANOS.tela : PLANOS.quadros
     if (fase === "pintar") return tela === "branca" ? PLANOS.tela : PLANOS.pendurar
     if (estado.escolha || estado.falando === "você") return PLANOS.fim
     return estado.falando === "Ella" ? PLANOS.ellaFim : PLANOS.pendurar
-  }, [estado, fase, pos, ultimoQuadro, tela])
+  }, [estado, fase, pos, ultimoQuadro, tela, quadros.vistas])
 
   const ellaEm = fase === "chegada" ? ELLA_EM.porta : fase === "planta" || fase === "planta-fala" ? (/guardei/.test(estado.texto ?? "") ? ELLA_EM.quadros : ELLA_EM.planta) : fase === "quadros" ? ELLA_EM.quadros : fase === "antes" || fase === "pintar" ? ELLA_EM.tela : ELLA_EM.fim
 
@@ -146,8 +153,8 @@ export function SalaGaleriaElla({ estado }: SalaProps) {
     <>
       <color attach="background" args={["#05060a"]} />
       <fog attach="fog" args={["#06080e", 9, 28]} />
-      <ambientLight intensity={0.22} color="#9fb8e0" />
-      <hemisphereLight args={["#8fb0e8", "#0a0806", 0.32]} />
+      <ambientLight intensity={0.38} color="#9fb8e0" />
+      <hemisphereLight args={["#8fb0e8", "#0a0806", 0.45]} />
       <Camera plano={plano} />
       <Salao />
       <Telhado />
@@ -325,7 +332,7 @@ function Encostados() {
   )
 }
 
-// ── os quadros que ela guardou: a pintura (provisória, desenhada em código), a moldura e o foco de luz ──
+// ── os quadros que ela guardou: a pintura (provisória, desenhada em código) e a moldura ──
 function Quadros({ vistas, ativo, onVer }: { vistas: string[]; ativo: boolean; onVer: (id: string) => void }) {
   const texturas = useMemo(() => QUADROS.map((q) => pintura(q)), [])
   useEffect(() => () => texturas.forEach((t) => t.dispose()), [texturas])
@@ -339,11 +346,6 @@ function Quadros({ vistas, ativo, onVer }: { vistas: string[]; ativo: boolean; o
             <group position={[x, q.y, q.z]} rotation-y={ry}>
               <mesh position={[0, 0, -0.02]}><boxGeometry args={[q.larg + 0.12, q.alto + 0.12, 0.05]} /><meshStandardMaterial color="#0c0d12" roughness={0.6} metalness={0.4} /></mesh>
               <mesh position={[0, 0, 0.01]}><planeGeometry args={[q.larg, q.alto]} /><meshBasicMaterial map={texturas[i]} color={vistas.includes(q.id) ? "#ffffff" : "#c9cfdb"} /></mesh>
-              {/* o foco de galeria: um cone de luz falso (sem luz de verdade) */}
-              <mesh position={[0, q.alto / 2 + 0.9, 0.55]} rotation-x={0.45}>
-                <coneGeometry args={[q.larg * 0.62, 1.9, 18, 1, true]} />
-                <meshBasicMaterial color="#dfe9ff" transparent opacity={0.05} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} blending={THREE.AdditiveBlending} />
-              </mesh>
             </group>
             <Toque pos={[q.lado * (LARG / 2 - 0.15), q.y, q.z]} raio={0.42} cor={ELLA_COR} ativo={ativo && !vistas.includes(q.id)} onToque={() => onVer(q.id)} />
           </group>

@@ -36,9 +36,10 @@ test("T22 · Ella: a planta → os quadros → pintar → a galeria", async ({ p
       if (!gestos.includes(qual)) { gestos.push(qual); await foto(`${gestos.length}-${qual}`) }
       await page.evaluate(() => (window as unknown as { __gesto?: () => void }).__gesto?.())
       await page.waitForTimeout(qual === "pintar" ? 2400 : 400)
+      if (qual === "pintar") await foto("3b-pendurada")
       continue
     }
-    if (await page.locator(".l-cena-legenda").isVisible().catch(() => false)) {
+    if (await page.locator(".l-cena-legenda, .l-cena-nucleo").first().isVisible().catch(() => false)) {
       await page.locator(".l-cena").click({ position: { x: 40, y: 200 } })
       await page.waitForTimeout(120)
       continue
