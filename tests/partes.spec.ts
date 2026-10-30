@@ -25,6 +25,8 @@ const PARTES: [string, string | null][] = [
   ["perseguicao", "carreira"], ["perseguicao.escolher", "carreira"],
   // (T44) os rachas: a cidade livre com um carro do mecânico logo à frente
   ["rachas", "livre"],
+  // (T61) a rotatória de cima: chegando na central e numa torre da ponta
+  ["torre", "carreira"], ["torre.ponta", "carreira"],
 ]
 
 for (const [parte, fase] of PARTES) {

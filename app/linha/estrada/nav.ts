@@ -12,7 +12,7 @@
 
 import type { Mundo } from "./mundo"
 import type { MundoDisco } from "./mundoDisco"
-import { naEspiral } from "./mundoDisco"
+import { naAnel } from "./mundoDisco"
 import { PASSO } from "./pista"
 import type { Rota, Trecho } from "./rota"
 
@@ -136,12 +136,13 @@ export function manobrasDa(M: Mundo, r: Rota, destino: DestinoNav | null): Manob
     const ib = D.info?.[b], ia = D.info?.[a]
     const nomePista = ib && ib.pista >= 0 ? D.pistas?.[ib.pista]?.nome : undefined
     const sai = cands.find((w) => D.info?.[w]?.parte === "saida")
-    const segue = cands.find((w) => naEspiral(D.info?.[w]?.parte))
+    const segue = cands.find((w) => naAnel(D.info?.[w]?.parte))
     if (sai !== undefined && segue !== undefined) {
-      // a espiral da torre: sem nada, ela segue subindo/descendo; a rampa é a faixa pintada
+      // (T61) a rotatória de cima: sem nada, ela segue dando a volta; a saída é a
+      // faixa pintada (e a borda da direita na cor dela)
       if (b === sai) {
         const l = D.ladoSaida?.get(sai) ?? 1
-        out.push({ dist, tipo: "rampa", lado: l, via: b, texto: `pega a rampa ${LADO(l)}`, pista: nomePista })
+        out.push({ dist, tipo: "rampa", lado: l, via: b, texto: nomePista ? `sai da rotatória ${LADO(l)} · ${nomePista}` : `sai da rotatória ${LADO(l)}`, pista: nomePista })
       }
       continue
     }
@@ -151,8 +152,8 @@ export function manobrasDa(M: Mundo, r: Rota, destino: DestinoNav | null): Manob
     const ang = curva(M, a, b)
     if (b === maisReta && Math.abs(ang) < NAV_CFG.retoGraus * 2) continue
     const lado: -1 | 0 | 1 = Math.abs(ang) < NAV_CFG.retoGraus ? 0 : ang > 0 ? 1 : -1
-    const torre = ib && (ib.parte === "entrada" || naEspiral(ib.parte)) && !(ia && naEspiral(ia.parte))
-    if (torre) out.push({ dist, tipo: "torre", lado, via: b, texto: lado ? `entra na torre ${LADO(lado)}` : "entra na torre", pista: nomePista })
+    const torre = ib && (ib.parte === "entrada" || naAnel(ib.parte)) && !(ia && naAnel(ia.parte))
+    if (torre) out.push({ dist, tipo: "torre", lado, via: b, texto: lado ? `entra na rotatória ${LADO(lado)}` : "entra na rotatória", pista: nomePista })
     else if (lado === 0) out.push({ dist, tipo: "reto", lado, via: b, texto: "segue reto no cruzamento", pista: nomePista })
     else out.push({ dist, tipo: "vira", lado, via: b, texto: `vira ${LADO(lado)}`, pista: nomePista })
   }

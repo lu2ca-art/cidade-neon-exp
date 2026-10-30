@@ -32,7 +32,9 @@ import { MODELOS, montarModelos } from "./carros"
 import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
-import { V_TORRE, geoChaoDisco, montarMundoDisco, naEspiral as naEspiralParte, naTorre, naTorreDaPonta, type MundoDisco, type SinaisEspiral } from "./mundoDisco"
+import { V_TORRE, chegadaNaTorre, geoChaoDisco, montarMundoDisco, naEspiral as naEspiralParte, naTorre, naTorreDaPonta, type AnelDisco, type MundoDisco, type SinaisEspiral } from "./mundoDisco"
+import { corNoAnel } from "./anel"
+import { irTorreAgora, limparIrTorre } from "../parteTeste"
 import { TorreCentral } from "./Torre"
 import { Portoes } from "./Portoes"
 import { Monumentos } from "./Monumentos"
@@ -620,7 +622,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => { onHistoriaRef.current = onHistoria }, [onHistoria])
   const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false, mao: false, ultimo: 0 })
   const [jogo0] = useState(() => {
-    const ret = retomarJogo(M, retomada)
+    // (T61, ?parte=torre) o link de teste começa na alça de uma linha, chegando na rotatória
+    const ir = "disco" in M && !retomada ? irTorreAgora() : null
+    const ret = retomarJogo(M, retomada ?? (ir ? chegadaNaTorre(M as MundoDisco, ir.torre, ir.pista) : null))
     const j = ret ?? novoJogo(M, destino, save.estacao, abertura)
     // (disco, a história) a Kombi cai do buraco de minhoca no deserto, perto da
     // casa; depois da casa, sai dela de frente pra cidade (dirigindo nas dunas)
@@ -647,6 +651,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
     return j
   })
+  useEffect(() => { const t = window.setTimeout(limparIrTorre, 3000); return () => clearTimeout(t) }, [])
   // a abertura: onde a casa fica e em que pé a pessoa está
   const casaPose = poses["casa-dbee"]
   const aberturaRef = useRef<Abertura>({ ativa: abertura, via: casaPose.via, u: LUGARES["casa-dbee"].u, porta: new THREE.Vector3(casaPose.porta.x, casaPose.vaga.y, casaPose.porta.z), fase: "dirige", pe: 0, semGas: false, t0: 0, de: null, onPorta: () => {} })
@@ -1044,9 +1049,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   }, [discoM, pistaFoco])
   // (disco) na torre (as espirais): o óculos não precisa do painel de missão
   const naCentral = !!discoM && (naTorre(discoM.info[viaAtual]) || naTorreDaPonta(discoM.info[viaAtual]))
-  // a próxima saída da espiral (no fim do trecho onde a Kombi está)
+  // a próxima saída da rotatória (no fim do trecho onde a Kombi está)
   const placaEspiral = (() => {
-    if (!discoM || discoM.info[viaAtual]?.parte !== "sobe") return null
+    if (!discoM || discoM.info[viaAtual]?.parte !== "anel") return null
     const prox = (M as MundoDisco).ligacoes.saidas[M.vias[viaAtual].rede!.para] ?? []
     const vi = prox.find((v) => discoM.info[v]?.parte === "saida")
     if (vi === undefined || viaApagada?.[vi]) return null
@@ -3301,6 +3306,11 @@ function Cena({
     const via = (p: Pista) => indice.get(p as Via) ?? 0
     const corDe = (p: Pista) => (viaApagada?.[indice.get(p as Via) ?? -1] ? "#2a2838" : (p as Via & { cor?: string }).cor)
     const coresApagadas = new Set(viaApagada && "disco" in M ? (M as MundoDisco).pistas.filter((pp) => viaApagada[pp.ida]).map((pp) => pp.cor) : [])
+    // (T61) a rotatória de cima: a borda da direita na cor da próxima saída
+    // aberta, a da esquerda na da seguinte, em degradê (anel.ts)
+    const anelDaVia = new Map<number, { an: AnelDisco; k: number; sds: AnelDisco["saidas"] }>()
+    if ("disco" in M) for (const an of (M as MundoDisco).aneis) { const sds = an.saidas.filter((sd) => !viaApagada?.[sd.via]); an.vias.forEach((vi, k) => anelDaVia.set(vi, { an, k, sds })) }
+    const corAnel = (p: Pista, i: number, lado: number) => { const r = anelDaVia.get(indice.get(p as Via) ?? -1); return r ? corNoAnel(r.an, r.sds, r.an.ini[r.k] + U(i), lado) : null }
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
     // (e nas emendas da torre: as alças se separam da espiral e uma da outra)
     const gargalo = (p: Pista, i: number) => {
@@ -3336,7 +3346,7 @@ function Cena({
       vertical: true,
       incluir: lado < 0 ? trilhoE : trilhoD,
       // (disco) o guard rail na cor da linha
-      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
+      cor: (p, i) => (Math.floor(i / 10) % 2 ? corAnel(p, i, lado) ?? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
     })
     const semEmenda = (p: Pista, i: number) => {
       const v = p as Via
@@ -3355,7 +3365,7 @@ function Cena({
       // (alças: meia pista, só o tracejado de dentro dela)
       faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, via, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
       // (disco) as duas bordas na cor da linha
-      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
+      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p, i) => (doDisco(p) ? corAnel(p, i, l) ?? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
       // (disco, sinalização) na espiral, a faixa da direita pintada na cor da
       // linha nos 150 m antes da saída dela: quem está nela, sai
       pintaSaida: fita(vias.filter((v) => ((v as Via & SinaisEspiral).pintaSaida ?? []).length), 4.5, 7.8, 0.035, {
@@ -6243,7 +6253,7 @@ function Cena({
         </mesh>
       )}
       {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
-      {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} /></Seguro>}
+      {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} /></Seguro>}
       {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} />}
       {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
