@@ -80,7 +80,7 @@ export const MESA: Cartao[] = [
     nome: "O patins: rodas de gel e linhas finas",
     data: "2026-10-30",
     tarefa: "T62",
-    olhar: "A Kombi quebrou e você está de patins. Ouça as rodinhas, dê um drift (2 linhas finas) e pule pra ouvir o vento neon. As gotas vêm sem o brilho em volta.",
+    olhar: "O som inteiro foi arrumado: nunca duas músicas juntas, a voz abaixa a música, o vento do parque para. O patins ficou bem mais baixo (17% do de antes) e mais macio.",
     perguntas: [
       "O som do patins (volume e timbre) está no ponto?",
       "As linhas do drift: azul claro ou cinza?",
