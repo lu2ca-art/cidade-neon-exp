@@ -1,13 +1,15 @@
 "use client"
 /* eslint-disable react-hooks/immutability -- three.js: o piloto, os rivais e a câmera mudam a cada passo */
 
-// /teste/trincheiras (T11 + T13): os túneis, as raízes da cidade-árvore. 3
+// As trincheiras (T11 + T13): os túneis, as raízes da cidade-árvore. 3
 // rios secos em triângulo; nas pontas, as torres que sobem pra rua. As paredes
 // são curvas: dá pra subir nelas e, rápido o bastante, voar da borda e voltar.
 // T13: a corrida. Escolhe BMX, patins ou skate; larga na TORRE 1, passa pelos
 // 3 rios (um portão em cada) e chega de volta, contra 3 rivais e o próprio
-// fantasma (o recorde, salvo no aparelho). Experiência solta (regra 5): entra
-// no mapa depois que o dono aprovar.
+// fantasma (o recorde, salvo no aparelho).
+// T63: moram DENTRO do jogo. O /linha monta este componente quando o jogador
+// desce a boca do túnel no subúrbio (noJogo: a missão pegada e a subida de
+// volta); /teste/trincheiras segue só fora da produção, pros testes e medições.
 //
 // Desempenho: a física anda em passos fixos de 1/120 s e a tela interpola
 // (o relógio do jogo); o mapa inteiro sai em 6 desenhos, sem luz de ponto; a
@@ -241,7 +243,12 @@ function lerVeiculo(q: URLSearchParams, motos: boolean): Veiculo | null {
   return v === "bmx" || v === "patins" || v === "skate" || (v === "moto" && motos) ? v : null
 }
 
-export function Trincheiras() {
+// (T63) dentro do jogo: com a missão dos túneis pegada, a corrida (a escolha do
+// veículo); sem ela, só passear (de patins; "correr" segue ali). Subir = de volta
+// pro subúrbio, contando se correu uma volta inteira
+export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void }
+
+export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const st = useRef<Estado>(estadoInicial())
   const entrada = useRef<Entrada>({ frente: false, re: false, esq: false, dir: false, pulo: false, jato: false })
   const corrida = useRef<Corrida>(corridaInicial("escolha"))
@@ -257,6 +264,7 @@ export function Trincheiras() {
   // (T57) veio do mapa pela boca do túnel (?volta=disco): a volta sobe pro subúrbio; correu = conta pra missão
   const [volta, setVolta] = useState(false)
   const [correu, setCorreu] = useState(false)
+  const [subindo, setSubindo] = useState(false)
   const [painel, setPainel] = useState<Painel>({ recordeAntes: null, fantasma: false, resultado: null, parciais: [] })
   const velRef = useRef<HTMLSpanElement>(null)
   const ondeRef = useRef<HTMLSpanElement>(null)
@@ -301,11 +309,11 @@ export function Trincheiras() {
     if (q.has("auto")) setAuto(true)
     if (q.has("parede")) setParede(true)
     if (q.has("motos")) setMotos(true)
-    if (q.get("volta") === "disco") setVolta(true)
+    if (q.get("volta") === "disco" || noJogo) setVolta(true)
     const d = q.get("dpr"); if (q.has("medir") && d) setFixa(+d)
     setRecordes(lerRecordes())
     // ?livre, ou ?auto sozinho (a medição e o teste do T11): passeio
-    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v)) passear(v ?? "patins")
+    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? "patins")
     else if (v) largar(v)
     /* eslint-enable react-hooks/set-state-in-effect */
     const w = window as unknown as Record<string, unknown>
@@ -319,6 +327,7 @@ export function Trincheiras() {
         volta: c.volta, voltas: c.voltas, parede: s.parede, paredes: s.total.paredes, paredeMaxT: +s.paredeMaxT.toFixed(2), pousos: s.total.pousos, flips: s.total.flips, pitch: +s.pitch.toFixed(2),
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- uma vez, ao descer
   }, [])
   useEffect(() => { if (!intro) return; const t = setTimeout(() => setIntro(false), 6000); return () => clearTimeout(t) }, [intro])
 
@@ -376,10 +385,19 @@ export function Trincheiras() {
   )
   const emCorrida = fase !== "livre" && fase !== "escolha"
   const res = painel.resultado
+  // (T63) subir pro subúrbio: no jogo, escurece a subida e devolve pro /linha (sem trocar de página)
+  const subir = (contou: boolean) => {
+    if (!noJogo || subindo) return
+    setSubindo(true)
+    setTimeout(() => noJogo.onSubir(contou), 700)
+  }
+  const linkSubir = (contou: boolean, cls?: string, rotulo = "subir pro subúrbio") => noJogo
+    ? <button type="button" className={cls} onClick={() => subir(contou)} data-subir>{rotulo}</button>
+    : <a href={`/linha?mapa=disco&de=tuneis${contou ? "&corrida=1" : ""}`} className={cls} data-subir>{rotulo}</a>
   const rec = recordes[veiculo]
 
   return (
-    <div className="tr-raiz">
+    <div className={`tr-raiz${noJogo ? " is-jogo" : ""}${subindo ? " is-subindo" : ""}`}>
       <Canvas className="tr-cvs" dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: 600 }}>
         <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
@@ -387,7 +405,7 @@ export function Trincheiras() {
       </Canvas>
       <div className="tr-hud">
         {volta
-          ? <a href={`/linha?mapa=disco&de=tuneis${correu ? "&corrida=1" : ""}`} className="tr-voltar" data-subir>↑ subir pro subúrbio</a>
+          ? linkSubir(correu, "tr-voltar", "↑ subir pro subúrbio")
           : <Link href="/teste" className="tr-voltar">← teste</Link>}
         <div className="tr-vel">
           <span ref={velRef} className="tr-vel-n">0</span><small>km/h · {INFO[veiculo].nome.toLowerCase()}</small>
@@ -444,7 +462,7 @@ export function Trincheiras() {
           <div className="tr-fim-botoes">
             <button type="button" onClick={() => largar(veiculo)}>correr de novo</button>
             <button type="button" onClick={escolher}>trocar de veículo</button>
-            {volta && <a href="/linha?mapa=disco&de=tuneis&corrida=1" data-subir>subir pro subúrbio</a>}
+            {volta && linkSubir(true)}
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
 // simula as motos das trincheiras (T14) sem tela: o piloto automático da moto
 // dá as 2 voltas pela linha do meio e depois pelas paredes; confere portões,
 // voltas, chegada, rivais, wall-ride e pousos. bun scripts/sim-motos.ts
-import { FISICA } from "../app/teste/trincheiras/corrida"
-import { PASSO, corridaInicial, estadoInicial, passo, passoCorrida } from "../app/teste/trincheiras/fisica"
-import { pilotoMoto } from "../app/teste/trincheiras/moto"
+import { FISICA } from "../app/linha/trincheiras/corrida"
+import { PASSO, corridaInicial, estadoInicial, passo, passoCorrida } from "../app/linha/trincheiras/fisica"
+import { pilotoMoto } from "../app/linha/trincheiras/moto"
 
 for (const parede of [false, true]) {
   const s = estadoInicial(), c = corridaInicial("contagem", "moto")
@@ -25,8 +25,8 @@ for (const parede of [false, true]) {
 }
 
 // as manobras: pulo no leito (sem mexer, nivelando, segurando o peso pra trás), a empinada e um voo da parede com backflip
-import { AVENIDAS } from "../app/teste/trincheiras/mapa"
-import type { Entrada } from "../app/teste/trincheiras/fisica"
+import { AVENIDAS } from "../app/linha/trincheiras/mapa"
+import type { Entrada } from "../app/linha/trincheiras/fisica"
 const V = FISICA.moto
 function noLeito(vel: number) {
   const s = estadoInicial(), a = AVENIDAS[0].pts[60], b = AVENIDAS[0].pts[61]

@@ -3010,3 +3010,7 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-oficina-agua b { font: 800 56px var(--mono); font-variant-numeric: tabular-nums; color: #4fc3ff; }
 .l-oficina-agua small { font: 700 12px var(--mono); color: rgba(255, 255, 255, 0.6); }
 .l-oficina-agua.is-fim b { color: #fff; }
+
+/* (T63) a porta da boca do túnel: o escuro da descida pras trincheiras */
+.l-tunel-desce { position: fixed; inset: 0; z-index: 72; background: #000; pointer-events: all; animation: l-tunel-desce 0.8s ease-in both; }
+@keyframes l-tunel-desce { from { opacity: 0; } to { opacity: 1; } }
