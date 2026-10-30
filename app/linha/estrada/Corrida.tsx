@@ -46,6 +46,7 @@ import { nascerNoTunel, saidaDoTunel } from "../disco/tuneis"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
+import { RobosCaidos } from "../disco/RobosCaidos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
@@ -53,6 +54,7 @@ import { feita13 } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import type { ResultadoRacha } from "../disco/corredores"
 import { lixoNoChao } from "./chao"
+import { materialAreia } from "./areia"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
 import { Estatico } from "./estatico"
@@ -3160,6 +3162,10 @@ function Cena({
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
   const relevoNovo = useMemo(() => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null), [M])
+  // (T39) a areia com cara de areia (areia.ts): as ondulações, o grão, as manchas e o brilho
+  const areiaMats = useMemo(() => ("disco" in M ? { chao: materialAreia({ vertexColors: true, mascara: true }), longe: materialAreia({ color: "#8c6640" }) } : null), [M])
+  // (T39) onde cabe um robô caído (fora das pistas e dos lugares)
+  const livreCaidos = useMemo(() => ("disco" in M ? (x: number, z: number) => M.livre(x, z, 4) : null), [M])
   // (disco, 20/10) o lixão: os carros despencados meio enterrados e os pneus
   // (duas malhas instanciadas pro lixão inteiro)
   const lixo = useMemo(() => {
@@ -6099,6 +6105,7 @@ function Cena({
       {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
       {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
+      {"disco" in M && livreCaidos && <Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} /></Seguro>}
       {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (
@@ -6242,9 +6249,9 @@ function Cena({
 
       {/* o mapa novo: o relevo do v5 debaixo das ruas */}
       {/* (disco, B15) o chão tem uma luz própria fraquinha: de noite, embaixo das pistas, ele lia como um buraco preto */}
-      {relevoNovo && <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} emissive={"disco" in M ? "#3a2614" : "#000000"} emissiveIntensity={0.55} /></mesh>}
+      {relevoNovo && ("disco" in M && areiaMats ? <mesh geometry={relevoNovo} material={areiaMats.chao} /> : <mesh geometry={relevoNovo}><meshStandardMaterial vertexColors roughness={0.95} emissive={"disco" in M ? "#3a2614" : "#000000"} emissiveIntensity={0.55} /></mesh>)}
       {/* (disco, B15) depois dos 9 km de dunas, a areia continua lisa até o horizonte (sem borda vazada) */}
-      {"disco" in M && <mesh rotation-x={-Math.PI / 2} position={[0, -15, 0]}><planeGeometry args={[60000, 60000]} /><meshStandardMaterial color="#8c6640" roughness={1} emissive="#3a2614" emissiveIntensity={0.55} /></mesh>}
+      {"disco" in M && areiaMats && <mesh rotation-x={-Math.PI / 2} position={[0, -15, 0]} material={areiaMats.longe}><planeGeometry args={[60000, 60000]} /></mesh>}
       {lixo && <><primitive object={lixo.carros} /><primitive object={lixo.pneus} /></>}
       <primitive object={orbs.m} />
       <primitive object={rastro.pts} />

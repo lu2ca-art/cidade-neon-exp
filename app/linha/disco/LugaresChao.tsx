@@ -16,6 +16,7 @@ import { useMemo, useSyncExternalStore } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { BOCA, QUADRA, geoBoca } from "../estrada/chao"
+import { materialAreia } from "../estrada/areia"
 import { PECAS_CHAO, chaoAtivos, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
 import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "./historia"
 
@@ -132,7 +133,7 @@ function BocaTunel({ chao, alvo }: { chao: (x: number, z: number) => number; alv
       patch: geoBoca(),
       concreto, neon: juntar(neon),
       mats: {
-        chao: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, emissive: "#3a2614", emissiveIntensity: 0.55 }),
+        chao: materialAreia({ vertexColors: true, mascara: true }), // (T39) a mesma areia do chão
         concreto: new THREE.MeshStandardMaterial({ color: "#4a4652", roughness: 0.9, emissive: "#1a1622", emissiveIntensity: 0.6 }),
         neon: new THREE.MeshBasicMaterial({ color: COR_TUNEL, toneMapped: false }),
         // dentro: o escuro (só as faces de dentro; a de fora, na porta, some)

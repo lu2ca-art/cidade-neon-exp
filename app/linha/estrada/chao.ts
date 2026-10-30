@@ -248,28 +248,30 @@ export function geoBoca() {
   pintarChao(tampa, false)
   const junto = new THREE.BufferGeometry()
   const a = geo.toNonIndexed(), b = tampa.toNonIndexed()
-  for (const k of ["position", "normal", "color"]) {
+  for (const k of ["position", "normal", "color", "areia"]) {
     const A = a.attributes[k].array as Float32Array, B = b.attributes[k].array as Float32Array, J = new Float32Array(A.length + B.length)
     J.set(A); J.set(B, A.length)
-    junto.setAttribute(k, new THREE.BufferAttribute(J, 3))
+    junto.setAttribute(k, new THREE.BufferAttribute(J, k === "areia" ? 1 : 3))
   }
   geo.dispose(); tampa.dispose(); a.dispose(); b.dispose()
   return junto
 }
 function pintarChao(geo: THREE.BufferGeometry, vala = true) {
   const pos = geo.attributes.position
-  const cor = new Float32Array(pos.count * 3), nor = geo.attributes.normal
+  const cor = new Float32Array(pos.count * 3), nor = geo.attributes.normal, areia = new Float32Array(pos.count)
   for (let i = 0; i < pos.count; i++) {
     const X = pos.getX(i), Z = pos.getZ(i)
-    corDoChao(X, Z, pos.getY(i), nor.getX(i), nor.getY(i), nor.getZ(i), cor, i)
+    corDoChao(X, Z, pos.getY(i), nor.getX(i), nor.getY(i), nor.getZ(i), cor, i, areia)
     // a vala: concreto escuro, mais escuro lá no fundo
     const fb = vala ? fundoBoca(X, Z) + valaDoTunel(X, Z) : 0, f = Math.min(1, fb / 0.8)
     if (f > 0) {
+      areia[i] *= 1 - f
       const k = 1 - 0.35 * Math.min(1, fb / BOCA.fundo)
       cor[i * 3] += (0.2 * k - cor[i * 3]) * f; cor[i * 3 + 1] += (0.19 * k - cor[i * 3 + 1]) * f; cor[i * 3 + 2] += (0.23 * k - cor[i * 3 + 2]) * f
     }
   }
   geo.setAttribute("color", new THREE.BufferAttribute(cor, 3))
+  geo.setAttribute("areia", new THREE.BufferAttribute(areia, 1))
 }
 
 // o desenho do chão: a areia (mais clara na crista, mais escura no vale) e o
@@ -278,7 +280,7 @@ export function geoChao() {
   const g = grade(), n = SEG + 1
   const geo = new THREE.PlaneGeometry(TAM, TAM, SEG, SEG)
   geo.rotateX(-Math.PI / 2)
-  const pos = geo.attributes.position, cor = new Float32Array(pos.count * 3)
+  const pos = geo.attributes.position, cor = new Float32Array(pos.count * 3), areia = new Float32Array(pos.count)
   for (let i = 0; i < pos.count; i++) {
     const X = pos.getX(i), Z = pos.getZ(i)
     const ix = Math.round((X + TAM / 2) / (TAM / SEG)), iz = Math.round((Z + TAM / 2) / (TAM / SEG))
@@ -286,8 +288,9 @@ export function geoChao() {
   }
   geo.computeVertexNormals()
   const nor = geo.attributes.normal
-  for (let i = 0; i < pos.count; i++) corDoChao(pos.getX(i), pos.getZ(i), pos.getY(i), nor.getX(i), nor.getY(i), nor.getZ(i), cor, i)
+  for (let i = 0; i < pos.count; i++) corDoChao(pos.getX(i), pos.getZ(i), pos.getY(i), nor.getX(i), nor.getY(i), nor.getZ(i), cor, i, areia)
   geo.setAttribute("color", new THREE.BufferAttribute(cor, 3))
+  geo.setAttribute("areia", new THREE.BufferAttribute(areia, 1))
   // (T57) embaixo do pedaço da boca do túnel, a grade afunda (fica escondida; as
   // normais e as cores ficam as de antes, pra borda não mudar de luz)
   for (let iz = RECORTE.iz0 + 1; iz < RECORTE.iz1; iz++) for (let ix = RECORTE.ix0 + 1; ix < RECORTE.ix1; ix++) {
@@ -299,8 +302,10 @@ export function geoChao() {
 // a cor do chão num ponto: a areia (mais clara na crista) ou o lixão, e o
 // relevo de longe (a queda): um sol baixo assado na cor (o material tem
 // emissivo forte, que achata a luz) e a encosta íngreme mais escura
-function corDoChao(X: number, Z: number, y: number, nx: number, ny: number, nz: number, cor: Float32Array, i: number) {
+function corDoChao(X: number, Z: number, y: number, nx: number, ny: number, nz: number, cor: Float32Array, i: number, mascara?: Float32Array) {
   const c = crista(X, Z), l = zonaLixo(X, Z), m = ruido(X / 35, Z / 35)
+  // (T39) a máscara da textura de areia (estrada/areia.ts): 1 areia, 0 lixão
+  if (mascara) mascara[i] = 1 - l
   const areia = 0.72 + c * 0.28 - m * 0.06
   const sr = 0.66 * areia, sg = 0.48 * areia, sb = 0.3 * areia
   const ferr = m > 0.62 ? 1 : 0
