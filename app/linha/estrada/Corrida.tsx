@@ -3887,7 +3887,30 @@ function Cena({
         }
       })
     }
-    return { lista, setas, barreiras }
+    // (leveza A, problema 8) as partes fixas de todos os pórticos numa malha
+    // só por material: a estrutura (2 pés + a viga), os fundos escuros e as
+    // barras de cor. Os textos (uma textura cada) e as bolinhas seguem à parte
+    const est: THREE.BufferGeometry[] = [], fundos: THREE.BufferGeometry[] = [], barras: THREE.BufferGeometry[] = []
+    const mg = new THREE.Matrix4(), mp = new THREE.Matrix4(), ml = new THREE.Matrix4(), cor = new THREE.Color()
+    const giro = new THREE.Matrix4().makeRotationY(Math.PI)
+    for (const g of lista) {
+      mg.makeRotationY(g.rot).setPosition(g.pos)
+      for (const l of [-1, 1]) est.push(new THREE.BoxGeometry(0.6, 13.2, 0.6).applyMatrix4(ml.makeTranslation(l * (MEIA + FAIXA + 1.2), 6.6, 0).premultiply(mg)))
+      est.push(new THREE.BoxGeometry((MEIA + FAIXA + 1.2) * 2, 0.6, 0.6).applyMatrix4(ml.makeTranslation(0, 12.1, 0).premultiply(mg)))
+      for (const pn of g.paineis) {
+        mp.makeTranslation(-pn.x, 8.8, -0.3).multiply(giro).premultiply(mg)
+        fundos.push(new THREE.PlaneGeometry(7.6, 5.6).applyMatrix4(ml.makeTranslation(0, 0, -0.05).premultiply(mp)))
+        const b = new THREE.PlaneGeometry(7.6, 0.22).applyMatrix4(ml.makeTranslation(0, -2.95, 0).premultiply(mp))
+        cor.set(pn.cor)
+        const n = b.getAttribute("position").count, cs = new Float32Array(n * 3)
+        for (let i = 0; i < n; i++) { cs[i * 3] = cor.r; cs[i * 3 + 1] = cor.g; cs[i * 3 + 2] = cor.b }
+        b.setAttribute("color", new THREE.BufferAttribute(cs, 3))
+        barras.push(b)
+      }
+    }
+    const juntar = (gs: THREE.BufferGeometry[]) => { const m = gs.length ? mergeGeometries(gs, false) : null; for (const x of gs) x.dispose(); return m }
+    const fixas = { estrutura: juntar(est), fundos: juntar(fundos), barras: juntar(barras) }
+    return { lista, setas, barreiras, fixas }
   }), [M, circuitos, a, nLib])
 
   // embaixo de cada placa, uma bolinha por missão em aberto naquela área:
@@ -6521,36 +6544,21 @@ function Cena({
           <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
         </mesh>
       ))}
+      {placas.fixas.estrutura && <mesh geometry={placas.fixas.estrutura}><meshStandardMaterial color="#1c1f3a" /></mesh>}
+      {placas.fixas.fundos && <mesh geometry={placas.fixas.fundos}><meshBasicMaterial color="#070817" transparent opacity={0.9} side={THREE.DoubleSide} /></mesh>}
+      {placas.fixas.barras && <mesh geometry={placas.fixas.barras}><meshBasicMaterial vertexColors toneMapped={false} /></mesh>}
       <Estatico>
       {placas.lista.map((g) => (
         <group key={g.id} position={g.pos} rotation={[0, g.rot, 0]}>
-          {[-1, 1].map((l) => (
-            <mesh key={l} position={[l * (MEIA + FAIXA + 1.2), 6.6, 0]}>
-              <boxGeometry args={[0.6, 13.2, 0.6]} />
-              <meshStandardMaterial color="#1c1f3a" />
-            </mesh>
-          ))}
-          <mesh position={[0, 12.1, 0]}>
-            <boxGeometry args={[(MEIA + FAIXA + 1.2) * 2, 0.6, 0.6]} />
-            <meshStandardMaterial color="#1c1f3a" />
-          </mesh>
           <mesh position={[0, 13.4, -0.3]} rotation={[0, Math.PI, 0]}>
             <planeGeometry args={[16, 2]} />
             <meshBasicMaterial map={g.topo} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
           </mesh>
           {g.paineis.map((p, i) => (
             <group key={i} position={[-p.x, 8.8, -0.3]} rotation={[0, Math.PI, 0]}>
-              <mesh position={[0, 0, -0.05]}>
-                <planeGeometry args={[7.6, 5.6]} />
-                <meshBasicMaterial color="#070817" transparent opacity={0.9} side={THREE.DoubleSide} />
-              </mesh>
               <mesh>
                 <planeGeometry args={[7.4, 5.1]} />
                 <meshBasicMaterial map={p.tex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
-              </mesh>
-              <mesh position={[0, -2.95, 0]}>
-                <planeGeometry args={[7.6, 0.22]} />
-                <meshBasicMaterial color={p.cor} toneMapped={false} />
               </mesh>
               {p.area && tagTex[p.area] && (
                 <group position={[0, -3.75, 0]}>
@@ -6584,12 +6592,13 @@ function Cena({
 
       {colunas.map((c) => (
         <group key={`col${c.id}`} position={c.pos}>
-          <mesh position={[0, 140, 0]}>
-            <cylinderGeometry args={[2.2, 2.2, 280, 16, 1, true]} />
+          {/* (leveza A, problema 8) colunas de 160 m (eram 280): ainda passam dos prédios do bairro, com menos pixel aditivo */}
+          <mesh position={[0, 80, 0]}>
+            <cylinderGeometry args={[2.2, 2.2, 160, 16, 1, true]} />
             <meshBasicMaterial color={c.cor} transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
           </mesh>
-          <mesh position={[0, 140, 0]}>
-            <cylinderGeometry args={[0.6, 0.6, 280, 10, 1, true]} />
+          <mesh position={[0, 80, 0]}>
+            <cylinderGeometry args={[0.6, 0.6, 160, 10, 1, true]} />
             <meshBasicMaterial color={c.cor} transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
           </mesh>
           <mesh position={[0, 0.08, 0]} rotation-x={-Math.PI / 2}>
