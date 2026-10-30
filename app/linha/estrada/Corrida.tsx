@@ -4347,7 +4347,8 @@ function Cena({
   const kParadaT = useRef(false)
   const vModelo = useMemo(() => veiculoPorId(veiculo), [veiculo])
   const kParadaZero = useRef(0)
-  const luzBaixo = useRef<THREE.PointLight>(null)
+  // (leveza A, problema 5) o neon rosa de baixo virou brilho no chão (sem luz)
+  const luzBaixo = useRef<THREE.Mesh>(null)
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
 
@@ -6388,7 +6389,7 @@ function Cena({
     // a herbal é fechada: a cabine (o interior) só aparece de dentro
     if (cabineG.current) cabineG.current.visible = dentroAgora && !combRef.current.patins
     // a luz magenta de baixo (o brilho no asfalto) pintava a cabine de rosa
-    if (luzBaixo.current) luzBaixo.current.intensity = dentroAgora ? 0 : 45
+    if (luzBaixo.current) luzBaixo.current.visible = !dentroAgora
     hudN.current++
     if (hudN.current % 4 === 0) ev.hud(j)
   })
@@ -6665,10 +6666,16 @@ function Cena({
           {/* (leveza A) a cabine (kombi-interior.glb) só monta com a câmera de dentro */}
           <SoQuando teste={dentroDeVerdade}><Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta="#ffffff" neon="#ff3fb0" /></Seguro></SoQuando>
         </group>
-        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
-        <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
-        {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
-        <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />
+        {/* (leveza A, problema 5) eram 3 luzes pontuais presas na Kombi (o neon
+            rosa de baixo, a luz quente da frente e o recorte azul de cima), e cada
+            pixel iluminado pagava as 3. Agora: o neon de baixo é um brilho aditivo
+            no chão (sem luz) e a frente + o recorte viraram 1 luz só, um pouco
+            acima e atrás do meio (ilumina a traseira que a câmera vê e o asfalto) */}
+        <mesh ref={luzBaixo} position={[0, 0.06, 0]} rotation-x={-Math.PI / 2} renderOrder={1}>
+          <planeGeometry args={[6.5, 9]} />
+          <meshBasicMaterial map={tex.brilho} color="#ff3fb0" transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <pointLight position={[0, 2.6, 0.8]} color="#ffe9e4" intensity={75} distance={26} decay={2} />
       </group>
       <Seguro nome="lente"><Cinema maxLente={NIVEIS[qual].lente} /></Seguro>
     </>
