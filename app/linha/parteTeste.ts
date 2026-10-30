@@ -1,0 +1,153 @@
+// Abrir o jogo direto numa parte da jornada (22/10): /linha?mapa=disco&parte=casa
+// troca o save por um pronto pra aquela parte (os ids de parte.ts e do mapa do
+// jogo). O save de verdade fica guardado em CHAVE_REAL (o /teste devolve).
+// Só vale fora da produção, como os atalhos do /teste. A mesa de montagem usa
+// estes links pra cada momento ter o seu "testar".
+
+import { BASE_TESTE, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
+
+import { CONFIG13, IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
+import { LETRAS } from "./disco/letras"
+import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
+
+// (T02) as missões: o id das 13 (missao.drew) ou, como antes, a faixa (missao.sexta → a do Drew)
+const MISSOES = ["sexta", "dopamina", "ojala", "swav", "copo", "ontem", "rollercoaster", "chuva", "nectar"]
+// as que vão pra feira (as duas do começo, a D-Bee e a oficina, são as fases casa/dunas e oficina)
+const MISSOES_FEIRA = IDS13.filter((id) => !MISSOES13[id].prologo)
+// (T02) o meio da carreira: 4 missões feitas, o Guitar Driver com 4 músicas, a feira com as próximas
+const MEIO = { fase: "carreira", holo: true, feitas13: ["dbee", "oficina", "lu2ca", "drew", "quadra"], portas: ["holo", "violao", "kombi-melhorias", "shows-live", "ginasio", "quadra", "batida-estudio"], guitar: ["ojala", "sexta", "ontem"], batida: ["ojala", "nectar", "sexta", "ontem"] }
+
+// (T03) o bolso de quem vai às compras: dá pra comprar um disco, uma guitarra e roupa, mas não um carro
+const GRANA = { neon: 420, agua: 40, popularidade: 35, economia: 1 }
+
+function discoDa(parte: string): Record<string, unknown> | null {
+  if (parte === "inicio" || parte === "minhoca") return null // save novo: começa no buraco de minhoca
+  if (["casa", "casa.holo", "casa.tambor"].includes(parte)) return { fase: "casa", holo: false }
+  // (T07) o tutorial do voo e do turbo: a Kombi já voa, os passos das dunas feitos
+  if (parte === "subir.voo") return { fase: "subir", holo: true, drone: true, aguaDbee: true, passos13: ["dbee:arte", "dbee:jogo", "oficina:arte", "oficina:jogo"], feitas13: ["dbee", "oficina"], portas: ["holo", "violao", "kombi-melhorias"], mods: ["solar", "turbo", "propulsao"], tutorial: ["recompensa", "mapa", "rota", "gps", "drift", "anel"] }
+  if (["dunas", "bar"].includes(parte)) return { fase: parte, holo: true }
+  // (T09) a missão da oficina, passo a passo (a água que a D-Bee deu já no bolso)
+  const D_FEITA = ["dbee:arte", "dbee:jogo"]
+  if (parte === "oficina" || parte === "oficina.cena") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA }
+  // (T57) catar: o lixo espalhado no lixão (pega passando); .painel = só falta o painel; bancada = com as quatro, a oficina monta
+  if (parte === "oficina.catar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true } }
+  if (parte === "oficina.painel") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true, pecas: ["lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.bancada") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.goteira") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte"], oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.pagar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte", "oficina:jogo"], oficina: { cena: true, painel: true, tanque: 10 } }
+  // depois da porta: a Kombi voa, ainda no subúrbio; parando na oficina, a lojinha das melhorias (com água)
+  if (parte === "oficina.loja" || parte === "subir") return { fase: "subir", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte", "oficina:jogo"], feitas13: ["dbee", "oficina"], portas: ["holo", "violao", "kombi-melhorias"], mods: ["solar", "turbo", "propulsao"] }
+  // (T27) a Kombi que quebra: a carreira sem missão pegada (força a quebra com window.__cnQuebrar) e já quebrada
+  if (parte === "quebra") return MEIO
+  if (parte === "quebra.oficina") return { ...MEIO, quebra: { quebrada: true, vezes: 1 } }
+  // (T28) a perseguição da Kombi: já com a polícia atrás; .escolher = a Kombi já foi
+  // jogada, os 3 veículos na pista; .gatilho = a fama e as missões no ponto (vem sozinha)
+  if (parte === "perseguicao") return { ...MEIO, perseguicao: { fase: "agora" } }
+  if (parte === "perseguicao.escolher") return { ...MEIO, perseguicao: { fase: "escolher" } }
+  if (parte === "perseguicao.gatilho") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"] }
+  if (parte === "nectar" || parte.startsWith("nectar.")) return { fase: "nectar", holo: true, nectar: parte.split(".")[1] || "quebra" }
+  if (parte === "carreira.feira" || parte === "feira") return { fase: "carreira", holo: true }
+  if (parte === "carreira.meio") return MEIO
+  // (T37) a chegada de um login: quem já passou pela casa entra pelo túnel e cai nela de novo
+  if (parte === "chegada") return MEIO
+  if (parte.startsWith("missao.")) {
+    // (T19) a peça aberta direto: missao.lu2ca.letra (a arte) e missao.lu2ca.show (o live, com a letra escrita)
+    const [mId, sub] = parte.slice(7).split(".")
+    const m = normalizarMissao(mId)
+    if (!m || MISSOES13[m].prologo) return undefined as unknown as null
+    // (a missão da cidade precisa da pista acesa e de quem ela pede antes: o save já vem com isso)
+    const feitas13 = [...new Set(["dbee", "oficina", ...MISSOES13[m].requer])].filter((x) => x !== m)
+    // (T22) a casa nova de uma missão em teste (a da Ella) joga com este link
+    const base = { fase: "carreira", holo: true, missao: m, feitas13, ...(CONFIG13.soNoTeste.includes(m) ? { teste13: [m] } : {}) }
+    // (T22) missao.ella.casa: direto dentro da casa (a primeira peça aberta)
+    if (sub === "casa" && MISSOES13[m][ordemDe(m)[0]].como?.t === "casa") return { ...base, aberta13: `${m}:${ordemDe(m)[0]}` }
+    // (T10) a quadra: a arte (o B4TIDA) e o jogo (o basquete) abertos direto
+    if (m === "quadra" && sub === "batida") return { ...base, aberta13: "quadra:arte" }
+    if (m === "quadra" && sub === "basquete") return { ...base, passos13: ["quadra:arte"], aberta13: "quadra:jogo" }
+    // (T63) a missão dos túneis já lá embaixo: o jogo desce direto pras trincheiras (dentro do jogo)
+    if (m === "tuneis" && sub === "trincheiras") return base
+    if (m === "lu2ca" && sub === "letra") return { ...base, aberta13: "lu2ca:arte" }
+    if (m === "lu2ca" && sub === "show") return { ...base, passos13: ["lu2ca:arte"], letras: { nectar: LETRAS.nectar!.versos.map((v) => v.opcoes[0]) }, show: "missao:lu2ca" }
+    // (T15–T25, T16) a peça aberta direto: missao.<id>.arte / .jogo (as peças de
+    // antes já feitas; a que abre por cima do jogo já vem aberta) e .porta (as duas
+    // feitas: chegou no lugar, a porta abre)
+    if (sub === "arte" || sub === "jogo" || sub === "porta") {
+      const ordem = ordemDe(m)
+      const antes = sub === "porta" ? ordem : ordem.slice(0, ordem.indexOf(sub))
+      const passos13 = antes.map((q) => `${m}:${q}`)
+      const como = sub === "porta" ? null : MISSOES13[m][sub].como
+      return { ...base, passos13, ...(como && (como.t === "cena" || como.t === "letra") ? { aberta13: `${m}:${sub}` } : {}) }
+    }
+    if (sub) return undefined as unknown as null
+    return base
+  }
+  // (T20) os palcos: o menu aberto. "palcos" = o meio da carreira com 2 ★ (uma
+  // música a mais e o bar abre); "palcos.topo" = todos abertos, no alto das torres
+  if (parte === "palcos") return { ...MEIO, palcos: { "calcada:ojala": 2 } }
+  if (parte === "palcos.topo") return { ...MEIO, palcos: { "calcada:nectar": 5, "bar:nectar": 5, "balada:nectar": 4, "terraco:nectar": 4, "calcada:ojala": 3 } }
+  // (T21) os shows do subúrbio xenom: "xenom" = o menu dos palcos com 3 das 4
+  // missões do subúrbio feitas (os túneis faltando); "xenom.<id>" = o show daquele
+  // multiverso já aberto (as 4 feitas); "xenom.album" = os 4 cumpridos, o álbum liberado
+  if (parte === "xenom") return MEIO
+  if (parte === "xenom.album") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], xenom: Object.fromEntries(SHOWS_XENOM.map((x) => [x.id, { melhor: 4, cumprida: true, vezes: 1 }])) }
+  if (parte.startsWith("xenom.") && xenomPorId(parte.slice(6))) return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], show: `xenom:${parte.slice(6)}` }
+  // (T61) a rotatória de cima: o meio da carreira (2 músicas feitas, 2 abertas:
+  // os monumentos), começando na alça de uma linha que chega na torre central
+  // ("torre") ou numa das pontas ("torre.ponta", a de 3 saídas)
+  if (parte === "torre" || parte === "torre.ponta") return MEIO
+  // (T03) a loja aberta, com grana no bolso (o resto do save é o meio da carreira)
+  if (parte === "loja") return MEIO
+  // (T44) os rachas: a cidade livre, com um dos carros do mecânico logo à frente
+  if (parte === "livre" || parte === "final" || parte === "rachas") return { fase: "livre", holo: true }
+  return undefined as unknown as null
+}
+
+// (T15–T25, T16) as peças novas, uma de cada, abertas direto
+const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
+export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta"]
+
+// (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
+// momento dele, sem a chegada do login na casinha (menos a própria "chegada")
+export let parteAberta: string | null = null
+
+// (T61) ?parte=torre: onde a Kombi começa (a alça de uma linha chegando numa torre)
+let irTorre: { torre: number; pista: string } | null = null
+// (vale pra corrida que ficar montada: a primeira que fica 3 s na tela apaga)
+export const irTorreAgora = () => irTorre
+export function limparIrTorre() { irTorre = null }
+
+// chamado antes de o jogo ler o save; devolve true se trocou
+export function aplicarParteDeTeste(): boolean {
+  if (typeof window === "undefined" || !atalhosLiberados()) return false
+  const url = new URL(location.href)
+  const parte = url.searchParams.get("parte")
+  if (!parte) return false
+  const disco = discoDa(parte)
+  if (disco === undefined) return false
+  parteAberta = parte
+  if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
+  if (disco === null) localStorage.removeItem(CHAVE_SAVE)
+  // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  // (T03) a loja já abre no celular
+  if (parte === "loja") url.searchParams.set("app", "loja")
+  if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
+  if (parte === "rachas") url.searchParams.set("racha", "perto")
+  // (T07) a cena da casa começa na entrega do holo (pula a chegada e o tambor)
+  if (parte === "casa.holo") url.searchParams.set("cena", "holo")
+  // (T06) a cena da casa começa no tambor (ela senta no tapete e chama)
+  if (parte === "casa.tambor") url.searchParams.set("cena", "tambor")
+  // (T63) as trincheiras: entrou no jogo, desce direto pela boca do túnel
+  if (parte === "missao.tuneis.trincheiras") url.searchParams.set("descer", "tuneis")
+  // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
+  // ponta é a da Nectar, a Sexta-Feira e a Ojalá) e o nascimento dos monumentos aparece de novo
+  if (parte.startsWith("torre")) {
+    irTorre = parte === "torre.ponta" ? { torre: 1, pista: "Nectar" } : { torre: 0, pista: "Nectar" }
+    localStorage.removeItem("cn-monumentos-cena")
+  }
+  // tira o ?parte da URL: recarregar não troca o save de novo
+  url.searchParams.delete("parte")
+  history.replaceState(null, "", url.pathname + (url.search ? url.search : ""))
+  return true
+}

@@ -8,17 +8,18 @@
 // na mesma altura e deitando juntas na curva). Por baixo, como as ruas do mapa
 // novo (mundoRede.ts), são vias de mão única no mesmo eixo.
 //
-// A TORRE (LU2CA 19/10: "as pistas começam em volta da torre, da mesma maneira
-// que terminam, numa rotatória; a espiral liga todos os andares"):
-//   - a espiral de fora sobe em volta da torre (mão única, o centro sempre à
-//     esquerda). Cada linha se liga nela no seu ângulo por UMA alça de 4
-//     faixas (o tronco, que começa no PORTÃO da linha): as 2 faixas da direita
-//     de quem sai, as 2 de quem chega. Perto da espiral o tronco se abre em
-//     dois ramos: primeiro a saída (pela direita), depois a chegada (entra
-//     pela direita). Nada se sobrepõe; entre uma linha e a próxima há VAO
-//     metros de espiral livre (a placa, ver o portão e decidir)
-//   - no topo, uma curva leva pra espiral de dentro, que desce até a base e
-//     volta pra espiral de fora: dá pra chegar em qualquer andar
+// A TORRE (T61, LU2CA 29/10: "a espiral confunde pra achar a via. Sem
+// espiral: só a torre e a rotatória de cima, a única que liga as 3 linhas de
+// cada torre. O jogador escolhe entre as saídas, sem rodar vários andares"):
+//   - em cima de cada torre, uma rotatória plana (mão única, o centro sempre à
+//     esquerda). Cada linha se liga nela por UMA alça de 4 faixas (o tronco,
+//     que começa no PORTÃO da linha): as 2 faixas da direita de quem sai, as 2
+//     de quem chega. Perto do anel o tronco se abre em dois ramos: primeiro a
+//     saída (pela direita), depois a chegada (entra pela direita)
+//   - as bordas do anel dizem o caminho (item 4 da ordem combinada): a da
+//     direita tem a cor da próxima saída, a da esquerda a da seguinte, em
+//     degradê (Corrida.tsx, corDoAnel)
+//   - antes (19/10–29/10) era uma espiral de vários andares: saiu
 // Uma volta na pista (saída → ida → balão → volta → entrada) dura meia música
 // na velocidade da pista (2 × BPM km/h): o desenho é aparado ou ampliado.
 // As bordas são parede (pista de Gran Turismo: quem quiser sair, voa).
@@ -44,38 +45,40 @@ const TETO = 140 // nenhuma pista acima disso
 const CHAO = -12 // o deserto embaixo de tudo
 const R_BALAO = 45 // raio do balão da ponta (a 200 km/h, com a curva deitada)
 const D_BALAO = 100 // do fim da pista até o centro do balão
-// a torre (LU2CA 19/10, 2ª rodada: "a espiral com um diâmetro bem maior, tempo
-// de ver qual a entrada e decidir; o tanto de volta deixa tonto")
-const R_SOBE = 130 // a espiral de fora (sobe), raio do eixo
-const R_DESCE = 92 // a espiral de dentro (desce)
+// a torre: o anel da rotatória (o raio do eixo dele) e o prédio no meio
+const R_SOBE = 130
 const NUCLEO = 52 // o prédio da torre
 const RA_CABECA = 195 // a torre principal ocupa a cabeça do desenho (a torre 3 fica a 304 m: não cresce mais que isso)
-const PASSO_ESPIRAL = 11 // metros que a espiral sobe por volta (folga entre as voltas)
-const Y_BASE = 8 // a base da espiral
-const RAMO = 50 // m: do eixo da espiral até onde a alça vira tronco (e o arco que o ramo come)
-const VAO = 150 // m de espiral livre entre o portão de uma linha e a saída da próxima (a placa, ver e decidir)
-const TRANSF = 0.8 // rad da curva entre as duas espirais
-export const V_TORRE = 26 // m/s na torre (~95 km/h): a espiral é de passear
+const Y_ANEL = 30 // a altura da rotatória da central (todas as linhas chegam nela no mesmo andar)
+const Y_ANEL_PONTA = 42 // a das torres das pontas (mais alta: perto da central, o portão de uma torre não encosta no da outra)
+const RAMO = 50 // m: do eixo do anel até onde a alça vira tronco (e o arco que o ramo come)
+const VAO_ANEL = 22 // m de anel livre, no mínimo, entre a chegada de uma linha e a saída da próxima
+export const V_TORRE = 26 // m/s na torre (~95 km/h): a rotatória é de passear
 // as torres das pontas (LU2CA 19/10): cada uma junta 3 linhas pelo fim
 const R_PONTA = 66
 const RA_PONTA = 118 // até onde a torre da ponta ocupa (as linhas chegam nessa borda)
 const RAMO_PONTA = 36
 const GRUPOS = [["Nectar", "Sexta-Feira", "Ojalá"], ["Rollercoaster", "Swav", "DopaminA"], ["Copo Americano", "CHUVA", "Sabe Ontem?"]]
 
-export type ParteDisco = "ida" | "volta" | "balao" | "saida" | "entrada" | "sobe" | "desce" | "transf"
+export type ParteDisco = "ida" | "volta" | "balao" | "saida" | "entrada" | "anel"
 export type DiscoInfo = { pista: number; parte: ParteDisco; torre: number } // torre: 0 = a principal, 1–3 = as das pontas, -1 = pista
 export type CentralDisco = { x: number; z: number; raio: number; nucleo: number; topo: number; andares: { y: number; cor: string; nome: string; ang: number }[] }
 // onde a Kombi pousa vindo do ar: a via (no sentido do rumo), o u, o lado e a altura do asfalto
 export type Pouso = { via: number; u: number; x: number; y: number; cx: number; cz: number; tx: number; tz: number }
-export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; teto: (x: number, z: number, y: number, margem?: number) => number | null; chaoDeserto: number; chaoEm: (x: number, z: number) => number }
-// os trechos da espiral sabem onde a borda de fora se abre e a faixa pintada da saída
+export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; aneis: AnelDisco[]; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; teto: (x: number, z: number, y: number, margem?: number) => number | null; chaoDeserto: number; chaoEm: (x: number, z: number) => number }
+// os trechos do anel sabem onde a borda de fora se abre e a faixa pintada da saída
+// (T61) o anel de cada torre: as vias dele em ordem (com o u de onde cada uma
+// começa), o comprimento da volta e as saídas (onde, no anel, e de que pista)
+export type AnelDisco = { torre: number; vias: number[]; ini: number[]; L: number; saidas: { u: number; via: number; pista: number; cor: string }[] }
 export type SinaisEspiral = { abreFora?: [number, number][]; pintaSaida?: { u0: number; u1: number; cor: string }[] }
-// as espirais (qualquer torre): a Kombi passeia
-export const naEspiral = (p: ParteDisco | undefined) => p === "sobe" || p === "desce" || p === "transf"
+// o anel da rotatória (qualquer torre): a Kombi passeia
+export const naAnel = (p: ParteDisco | undefined) => p === "anel"
+// (o nome antigo, de quando era espiral: os outros andares ainda chamam assim)
+export const naEspiral = naAnel
 // a torre principal (sem a música da pista: ela some e volta em fade)
-export const naTorre = (i: DiscoInfo | undefined) => !!i && i.torre === 0 && (naEspiral(i.parte) || i.parte === "entrada")
+export const naTorre = (i: DiscoInfo | undefined) => !!i && i.torre === 0 && (naAnel(i.parte) || i.parte === "entrada")
 // uma torre da ponta (a música da pista continua tocando)
-export const naTorreDaPonta = (i: DiscoInfo | undefined) => !!i && i.torre > 0 && (naEspiral(i.parte) || i.parte === "entrada")
+export const naTorreDaPonta = (i: DiscoInfo | undefined) => !!i && i.torre > 0 && (naAnel(i.parte) || i.parte === "entrada")
 
 const P = (x: number, y: number) => new THREE.Vector2((x - 500) * ESCALA, (y - 500) * ESCALA)
 
@@ -413,8 +416,8 @@ function hermite(t: number, y0: number, m0: number, y1: number, m1: number, L: n
 }
 
 // uma cúbica de Bézier entre dois pontos com as tangentes dadas (a cada ~2 m)
-function bezier(a: THREE.Vector2, ta: THREE.Vector2, b: THREE.Vector2, tb: THREE.Vector2, forca = 0.4) {
-  const L = a.distanceTo(b), a1 = a.clone().addScaledVector(ta, L * forca), b1 = b.clone().addScaledVector(tb, -L * forca), pts: THREE.Vector2[] = []
+function bezier(a: THREE.Vector2, ta: THREE.Vector2, b: THREE.Vector2, tb: THREE.Vector2, forca = 0.4, forcaB = forca) {
+  const L = a.distanceTo(b), a1 = a.clone().addScaledVector(ta, L * forca), b1 = b.clone().addScaledVector(tb, -L * forcaB), pts: THREE.Vector2[] = []
   const n = Math.max(4, Math.ceil(L / 2))
   for (let q = 0; q <= n; q++) {
     const t = q / n, m = 1 - t
@@ -422,6 +425,55 @@ function bezier(a: THREE.Vector2, ta: THREE.Vector2, b: THREE.Vector2, tb: THREE
   }
   return pts
 }
+
+// (T61) ângulos num círculo, cada um o mais perto do seu que der, com no
+// mínimo `sep` entre vizinhos (a ordem fica a mesma): empurra os que estão
+// perto demais, metade pra cada lado, até caber
+export function espacarNoCirculo(alvo: number[], sep: number) {
+  const n = alvo.length, dois = Math.PI * 2
+  if (n < 2) return [...alvo]
+  const ordem = alvo.map((a, i) => ({ i, a: ((a % dois) + dois) % dois })).sort((x, y) => x.a - y.a)
+  const a = ordem.map((o) => o.a)
+  const s = Math.min(sep, (dois / n) * 0.999)
+  for (let it = 0; it < 2000; it++) {
+    let mexeu = false
+    for (let k = 0; k < n; k++) {
+      const k2 = (k + 1) % n, gap = a[k2] + (k2 === 0 ? dois : 0) - a[k]
+      if (gap >= s - 1e-6) continue
+      const d = (s - gap) / 2 + 1e-5
+      a[k] -= d; a[k2] += d; mexeu = true
+    }
+    if (!mexeu) break
+  }
+  // cada um volta pro índice dele, com o mesmo giro do alvo (só o resto de 2π mudou)
+  const out = new Array<number>(n)
+  ordem.forEach((o, k) => { out[o.i] = alvo[o.i] + (a[k] - o.a) })
+  return out
+}
+
+// (T61) o menor raio de curva de um traçado (a cada ~2 m, olhando ±6 m)
+function raioMin(pts: THREE.Vector2[]) {
+  let mn = Infinity
+  for (let i = 3; i < pts.length - 3; i++) {
+    const a = pts[i - 3], b = pts[i], c = pts[i + 3]
+    const area2 = Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))
+    if (area2 > 1e-6) mn = Math.min(mn, (a.distanceTo(b) * b.distanceTo(c) * a.distanceTo(c)) / (2 * area2))
+  }
+  return mn
+}
+// (T61) o tronco da alça: do Q (logo fora do anel) até o portão. Com o Q
+// deslocado do portão (as linhas se espremem num lado da torre), a curva
+// precisa de folga: entre algumas forças de Bézier, fica a de curva mais aberta
+// (a força de cada ponta é escolhida à parte: a curva pode "esperar" pra virar)
+function curvaSuave(Q: THREE.Vector2, tq: THREE.Vector2, P: THREE.Vector2, tp: THREE.Vector2) {
+  let melhor: THREE.Vector2[] = [], r = -1
+  for (const fa of FORCAS) for (const fb of FORCAS) {
+    const c = bezier(Q, tq, P, tp, fa, fb), rr = raioMin(c)
+    if (rr > r) { r = rr; melhor = c }
+  }
+  return melhor
+}
+const FORCAS = [0.3, 0.45, 0.6, 0.8]
 
 let CACHE: MundoDisco | null = null
 export function montarMundoDisco(): MundoDisco {
@@ -439,8 +491,8 @@ export function montarMundoDisco(): MundoDisco {
   const pontaLonge = (k: number) => { const c = brutos[k]; return c[0].distanceTo(cabeca) > c[c.length - 1].distanceTo(cabeca) ? "inicio" as const : "fim" as const }
   const ptDe = (k: number, ponta: "inicio" | "fim") => (ponta === "inicio" ? brutos[k][0] : brutos[k][brutos[k].length - 1])
   type Membro = { k: number; ponta: "inicio" | "fim" }
-  const defs: { C: { x: number; z: number }; R: number; Rd: number; RA: number; nucleo: number; ramo: number; membros: Membro[]; nome: string }[] = [
-    { C, R: R_SOBE, Rd: R_DESCE, RA: RA_CABECA, nucleo: NUCLEO, ramo: RAMO, membros: [], nome: "central" },
+  const defs: { C: { x: number; z: number }; R: number; y: number; RA: number; nucleo: number; ramo: number; membros: Membro[]; nome: string }[] = [
+    { C, R: R_SOBE, y: Y_ANEL, RA: RA_CABECA, nucleo: NUCLEO, ramo: RAMO, membros: [], nome: "central" },
   ]
   GRUPOS.forEach((nomes, g) => {
     const ks = nomes.map(idDe).filter((k) => k >= 0)
@@ -451,7 +503,7 @@ export function montarMundoDisco(): MundoDisco {
     // andares. A que fica colada na cabeça encolhe pra não encostar na central)
     const RA = Math.min(RA_PONTA, Math.hypot(cx - C.x, cz - C.z) - RA_CABECA - 6)
     const R = Math.min(R_PONTA, RA - RAMO_PONTA - 12)
-    defs.push({ C: { x: cx, z: cz }, R, Rd: R - 24, RA, nucleo: R - 24 - MEIA_PISTA - 8, ramo: RAMO_PONTA, membros: ms, nome: `torre ${g + 1}` })
+    defs.push({ C: { x: cx, z: cz }, R, y: Y_ANEL_PONTA, RA, nucleo: R - 24 - MEIA_PISTA - 8, ramo: RAMO_PONTA, membros: ms, nome: `torre ${g + 1}` })
   })
   // a outra ponta de cada linha liga na torre principal
   B.forEach((_, k) => {
@@ -484,49 +536,53 @@ export function montarMundoDisco(): MundoDisco {
       return m.ponta === "inicio" ? { ...m, P: tt.pos[0], fora: tt.tan[0].clone() } : { ...m, P: tt.pos[tt.n - 1], fora: tt.tan[tt.n - 1].clone().negate() }
     })
     const sDe = liga.map((l) => -Math.atan2(l.P.y - d.C.z, l.P.x - d.C.x))
-    // cada linha ocupa uma janela [saída, chegada] em volta do ângulo do portão;
-    // entre uma janela e a próxima, VAO metros de espiral livre
-    const w = d.ramo / d.R, vao = VAO / d.R
-    // a subida começa logo depois do maior vão entre os portões
-    const ordem = sDe.map((a, i) => ({ i, a })).sort((x, y) => x.a - y.a)
-    let maiorVao = -1, iv = 0
-    ordem.forEach((o, i) => { const prox = ordem[(i + 1) % ordem.length].a + (i === ordem.length - 1 ? Math.PI * 2 : 0); if (prox - o.a > maiorVao) { maiorVao = prox - o.a; iv = (i + 1) % ordem.length } })
-    const phiIni = ordem[iv].a - w - 0.5
-    // a varredura: subindo, a próxima janela é a do portão que vem primeiro e
-    // ainda cabe (assim cada volta junta quantas linhas couberem: poucas voltas)
-    const phiQ: number[] = [], phiS: number[] = [], phiE: number[] = []
-    let cursor = phiIni + 0.5 - 1e-6
-    const resta = new Set(liga.map((_, i) => i))
-    while (resta.size) {
-      let melhor = -1, qMelhor = Infinity
-      for (const i of resta) {
-        let q = sDe[i]
-        while (q - w < cursor) q += Math.PI * 2
-        while (q - Math.PI * 2 - w >= cursor) q -= Math.PI * 2
-        if (q < qMelhor) { qMelhor = q; melhor = i }
-      }
-      resta.delete(melhor)
-      phiQ[melhor] = qMelhor; phiS[melhor] = qMelhor - w; phiE[melhor] = qMelhor + w
-      cursor = phiE[melhor] + vao
-    }
-    const phiFim = Math.max(cursor - vao + 0.6, phiIni + Math.PI * 2)
-    const yEsp = (s: number) => Y_BASE + PASSO_ESPIRAL * (s - phiIni) / (Math.PI * 2)
-    // a alça: o tronco (portão → o ponto Q, logo fora da espiral) e dois ramos.
-    // A saída vem da espiral (antes do Q) e a chegada vai pra ela (depois do Q),
+    // (T61) cada linha liga na rotatória no ponto Q (o mais perto do portão
+    // dela que der); entre um Q e o próximo, no mínimo a janela da linha (a
+    // saída e a chegada) e um vão livre (ver a placa e decidir). Os Qs ficam na
+    // ordem dos portões: os troncos nunca se cruzam
+    const n = liga.length
+    // a alça: o tronco (portão → o ponto Q, logo fora do anel) e dois ramos.
+    // A saída vem do anel (antes do Q) e a chegada vai pra ele (depois do Q),
     // cada uma com as 2 faixas da direita do mesmo eixo: lado a lado, sem nunca
-    // se sobrepor. O tronco é plano, na altura do portão
-    const alcas = liga.map((l, i) => {
-      const Q = naEsp(phiQ[i], d.R + d.ramo), rq = radial(phiQ[i])
-      const tronco = bezier(Q, rq, l.P, l.fora, 0.35)
-      const ramoS = bezier(naEsp(phiS[i]), tanEsp(phiS[i]), Q, rq, 0.45)
-      const ramoE = bezier(Q, rq.clone().negate(), naEsp(phiE[i]), tanEsp(phiE[i]), 0.45)
-      const saida = juntar(ramoS, tronco), entrada = juntar([...tronco].reverse(), ramoE)
-      return { ...l, saida, entrada, nTronco: tronco.length, hJ: yEsp(phiQ[i]), ySai: yEsp(phiS[i]), yEnt: yEsp(phiE[i]), hs: [] as number[], he: [] as number[] }
-    })
-    return { t, d, naEsp, phiE, phiS, phiQ, phiIni, phiFim, yEsp, topo: yEsp(phiFim), alcas }
+    // se sobrepor. Tudo plano, na altura do anel
+    const montar = (R: number, ramo: number) => {
+      const naR = (s: number, r = R) => new THREE.Vector2(d.C.x + r * Math.cos(s), d.C.z - r * Math.sin(s))
+      const w = ramo / R, sep = (2 * ramo + VAO_ANEL) / R
+      const phiQ = espacarNoCirculo(sDe, sep)
+      const phiS = phiQ.map((q) => q - w), phiE = phiQ.map((q) => q + w)
+      let pior = Infinity
+      const alcas = liga.map((l, i) => {
+        const Q = naR(phiQ[i], R + ramo), rq = radial(phiQ[i])
+        const tronco = curvaSuave(Q, rq, l.P, l.fora)
+        const ramoS = curvaSuave(naR(phiS[i]), tanEsp(phiS[i]), Q, rq)
+        const ramoE = curvaSuave(Q, rq.clone().negate(), naR(phiE[i]), tanEsp(phiE[i]))
+        const saida = juntar(ramoS, tronco), entrada = juntar([...tronco].reverse(), ramoE)
+        pior = Math.min(pior, raioMin(saida), raioMin(entrada))
+        return { ...l, saida, entrada, nTronco: tronco.length, hJ: d.y, ySai: d.y, yEnt: d.y, hs: [] as number[], he: [] as number[] }
+      })
+      return { R, phiQ, phiS, phiE, alcas, pior }
+    }
+    // o raio do anel e o tamanho do ramo: entre os que cabem (o Q com folga
+    // até o portão), o de curva mais aberta (as linhas espremidas num lado da
+    // torre pedem um tronco que faça a curva com calma)
+    let esc: ReturnType<typeof montar> | null = null
+    for (let R = d.R; R >= d.R * 0.5; R -= 6) for (let ramo = d.ramo; ramo >= 20; ramo -= 6) {
+      if (2 * ramo + VAO_ANEL > (Math.PI * 2 * R) / n || R + ramo > d.RA - 10) continue
+      const m = montar(R, ramo)
+      if (!esc || m.pior > esc.pior + 0.5) esc = m
+    }
+    if (!esc) esc = montar(d.R, Math.max(12, Math.min(d.ramo, ((Math.PI * 2 * d.R) / n - VAO_ANEL) / 2)))
+    d.R = esc.R
+    d.nucleo = Math.min(d.nucleo, d.R - MEIA_PISTA - 12)
+    const { phiQ, phiS, phiE, alcas } = esc
+    // o anel começa (a emenda da via) no meio do maior vão entre as linhas
+    const ordem = phiQ.map((a, i) => ({ i, a: ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) })).sort((x, y) => x.a - y.a)
+    let maiorVao = -1, phiIni = 0
+    ordem.forEach((o, i) => { const prox = ordem[(i + 1) % n].a + (i === n - 1 ? Math.PI * 2 : 0); if (prox - o.a > maiorVao) { maiorVao = prox - o.a; phiIni = o.a + (prox - o.a) / 2 } })
+    return { t, d, naEsp, phiE, phiS, phiQ, phiIni, topo: d.y, alcas }
   })
   // ── as alturas: as pistas e as alças juntas (cada alça presa na espiral e na pista) ──
-  const fios: Fio[] = T.map((tt, k) => ({ pos: tt.pos, tan: tt.tan, hIni: Y_BASE, hFim: null, dono: k, gota: fimDe[k] < 0, isenta: -1, onda: true }))
+  const fios: Fio[] = T.map((tt, k) => ({ pos: tt.pos, tan: tt.tan, hIni: Y_ANEL, hFim: null, dono: k, gota: fimDe[k] < 0, isenta: -1, onda: true }))
   for (const tw of torres) for (const a of tw.alcas) {
     if (a.ponta === "inicio") fios[a.k].hIni = a.hJ; else fios[a.k].hFim = a.hJ
     const Lt = comprimento(a.saida.slice(a.saida.length - a.nTronco))
@@ -535,8 +591,8 @@ export function montarMundoDisco(): MundoDisco {
     // o tronco plano na altura do portão; o ramo vai até a altura da espiral
     const ramo = rs.L - Lt
     // (20/10) o ramo sai da espiral com a rampa dela e chega no tronco plano
-    // sem quina (Hermite), e a chegada faz o caminho inverso
-    const mEsp = PASSO_ESPIRAL / (Math.PI * 2 * tw.d.R)
+    // sem quina (Hermite), e a chegada faz o caminho inverso (T61: o anel é plano)
+    const mEsp = 0
     const ps = rs.L / (rs.n - 1), pe = re.L / (re.n - 1)
     a.hs = rs.pos.map((_, q) => (q * ps >= ramo ? a.hJ : hermite(q * ps / ramo, a.ySai, mEsp, a.hJ, 0, ramo)))
     a.he = re.pos.map((_, q) => (q * pe <= Lt ? a.hJ : hermite((q * pe - Lt) / (re.L - Lt), a.hJ, 0, a.yEnt, mEsp, re.L - Lt)))
@@ -557,66 +613,45 @@ export function montarMundoDisco(): MundoDisco {
   const pistas: MundoDisco["pistas"] = []
   const COR_TORRE = "#ff6a35"
 
-  // ── as espirais de cada torre (partidas nos pontos de entrada e saída) ──
+  // ── (T61) a rotatória de cima de cada torre: um anel plano, mão única (o
+  // centro à esquerda), partido nos pontos onde cada linha sai e chega. Fecha
+  // em si mesmo: dá a volta quantas vezes quiser, sem andares ──
+  const anelDe: MundoDisco["aneis"] = []
   const noTorre = torres.map((tw) => {
-    const { t, d, naEsp, phiE, phiS, phiIni, phiFim, yEsp } = tw
-    const marcos = [phiIni, ...d.membros.flatMap((_, i) => [phiE[i], phiS[i]]), phiFim].sort((a, b) => a - b)
-    const noDe = new Map<number, number>()
-    for (const m of marcos) noDe.set(m, no())
-    const trecho = (a: number, b: number, R: number, ya: number, yb: number) => {
+    const { t, d, naEsp, phiE, phiS, phiIni } = tw
+    const dois = Math.PI * 2
+    const norm = (a: number) => phiIni + ((((a - phiIni) % dois) + dois) % dois)
+    // os marcos do anel: onde cada linha sai (S) e chega (E), em ordem a partir do phiIni
+    const marcos = d.membros.flatMap((_, i) => [{ a: norm(phiS[i]), i, sai: true }, { a: norm(phiE[i]), i, sai: false }]).sort((x, y) => x.a - y.a)
+    const nos = marcos.map(() => no())
+    const noDe = new Map<string, number>()
+    marcos.forEach((m, k) => noDe.set(`${m.sai ? "S" : "E"}${m.i}`, nos[k]))
+    const trecho = (a: number, b: number, R: number, y: number) => {
       const pts: THREE.Vector3[] = [], n = Math.max(3, Math.ceil(((b - a) * R) / 5))
-      for (let q = 0; q <= n; q++) { const phi = a + (b - a) * (q / n); pts.push(V3(naEsp(phi, R), ya + (yb - ya) * (q / n))) }
+      for (let q = 0; q <= n; q++) { const phi = a + (b - a) * (q / n); pts.push(V3(naEsp(phi, R), y)) }
       return pts
     }
-    // de quem é cada saída / chegada (a cor da linha)
-    const corS = new Map(tw.alcas.map((al, i) => [phiS[i], B[al.k].cor]))
-    const temE = new Set(phiE)
-    for (let i = 0; i < marcos.length - 1; i++) {
-      const a = marcos[i], b = marcos[i + 1]
-      const v = viaDe(trecho(a, b, d.R, yEsp(a), yEsp(b)), `disco:torre${t}:sobe${i}`, "rampa", "disco", COR_TORRE, true)
+    const anel: MundoDisco["aneis"][number] = { torre: t, vias: [], ini: [], L: 0, saidas: [] }
+    let U0 = 0
+    for (let k = 0; k < marcos.length; k++) {
+      const A = marcos[k], Bm = marcos[(k + 1) % marcos.length]
+      const a = A.a, b = k === marcos.length - 1 ? Bm.a + dois : Bm.a
+      const v = viaDe(trecho(a, b, d.R, d.y), `disco:torre${t}:anel${k}`, "rampa", "disco", COR_TORRE, true)
       // (sinalização) onde a borda de fora se abre (a alça sai ou chega: sem
       // guard rail) e a faixa da direita pintada na cor da linha até a saída
+      const corDe = (m: typeof A) => B[tw.alcas[m.i].k].cor
       const abre: [number, number][] = [], pinta: { u0: number; u1: number; cor: string }[] = []
-      if (corS.has(a)) { abre.push([0, Math.min(v.L, 75)]); pinta.push({ u0: 0, u1: Math.min(v.L, 30), cor: corS.get(a)! }) }
-      if (temE.has(b)) abre.push([Math.max(0, v.L - 75), v.L])
-      if (corS.has(b)) pinta.push({ u0: Math.max(0, v.L - 150), u1: v.L, cor: corS.get(b)! })
+      if (A.sai) { abre.push([0, Math.min(v.L, 60)]); pinta.push({ u0: 0, u1: Math.min(v.L, 24), cor: corDe(A) }) }
+      if (!Bm.sai) abre.push([Math.max(0, v.L - 60), v.L])
+      if (Bm.sai) pinta.push({ u0: Math.max(0, v.L - 120), u1: v.L, cor: corDe(Bm) })
       Object.assign(v, { abreFora: abre, pintaSaida: pinta })
-      const vi = nova(v, { pista: -1, parte: "sobe", torre: t })
-      ligar(vi, noDe.get(a)!, noDe.get(b)!)
+      const vi = nova(v, { pista: -1, parte: "anel", torre: t })
+      ligar(vi, nos[k], nos[(k + 1) % marcos.length])
+      if (A.sai) anel.saidas.push({ u: U0, via: -1, pista: tw.alcas[A.i].k, cor: corDe(A) })
+      anel.vias.push(vi); anel.ini.push(U0); U0 += v.L
     }
-    const yTopo = yEsp(phiFim)
-    // (20/10) a curva entre as espirais chega com a rampa de uma e sai com a da
-    // outra (antes era plana: uma quina de até 6% de rampa no topo e na base)
-    const curvaEntre = (phiA: number, rA: number, rB: number, y: number, m0 = 0, m1 = 0) => {
-      const pts: THREE.Vector3[] = [], n = 24, Lc = TRANSF * (rA + rB) / 2
-      for (let q = 0; q <= n; q++) { const s2 = q / n, e = s2 * s2 * (3 - 2 * s2); pts.push(V3(naEsp(phiA + TRANSF * s2, rA + (rB - rA) * e), hermite(s2, y, m0, y, m1, Lc))) }
-      return pts
-    }
-    const nTopo2 = no(), nDesce = no()
-    // a descida tem o passo da subida (11 m por volta: nunca encosta nela mesma)
-    // e nunca é mais íngreme que 7,5%; a curva do topo (onde nada passa em cima)
-    // cobre o ângulo que faltar pra descida acabar bem na base da espiral de fora
-    // a descida fecha o ângulo (acaba bem na base da espiral de fora): entre a
-    // rampa máxima da torre (9%) e o passo mínimo (9,5 m por volta), o mais perto de 11 m
-    const dyT = yTopo - Y_BASE
-    const lo = dyT / (0.09 * d.Rd), hi = (Math.PI * 2 * dyT) / 9.5, ideal = (Math.PI * 2 * dyT) / PASSO_ESPIRAL
-    const alvoFim = phiIni - TRANSF
-    let desce = ideal
-    {
-      let melhor = Infinity
-      const base0 = phiFim + TRANSF
-      for (let m = -20; m <= 20; m++) {
-        let dd = alvoFim - base0 + m * Math.PI * 2
-        if (dd < lo || dd > hi) continue
-        if (Math.abs(dd - ideal) < melhor) { melhor = Math.abs(dd - ideal); desce = dd }
-      }
-    }
-    const angTopo = TRANSF
-    const mSobe = PASSO_ESPIRAL / (Math.PI * 2 * d.R), mDesce = -(yTopo - Y_BASE) / (desce * d.Rd)
-    ligar(nova(viaDe(curvaEntre(phiFim, d.R, d.Rd, yTopo, mSobe, mDesce), `disco:torre${t}:topo`, "rampa", "disco", COR_TORRE, true), { pista: -1, parte: "transf", torre: t }), noDe.get(phiFim)!, nTopo2)
-    const ini2 = phiFim + angTopo
-    ligar(nova(viaDe(trecho(ini2, ini2 + desce, d.Rd, yTopo, Y_BASE), `disco:torre${t}:desce`, "rampa", "disco", COR_TORRE, true), { pista: -1, parte: "desce", torre: t }), nTopo2, nDesce)
-    ligar(nova(viaDe(curvaEntre(ini2 + desce, d.Rd, d.R, Y_BASE, mDesce, mSobe), `disco:torre${t}:base`, "rampa", "disco", COR_TORRE, true), { pista: -1, parte: "transf", torre: t }), nDesce, noDe.get(phiIni)!)
+    anel.L = U0
+    anelDe.push(anel)
     return noDe
   })
 
@@ -636,8 +671,8 @@ export function montarMundoDisco(): MundoDisco {
     const t0 = ini.tw.t
     const iSai = nova(viaDe(alca3(ini.a.saida, ini.a.hs), `disco:${k}:saida${t0}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "saida", torre: t0 })
     const iEnt = nova(viaDe(alca3(ini.a.entrada, ini.a.he), `disco:${k}:entrada${t0}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "entrada", torre: t0 })
-    ligar(iSai, noTorre[t0].get(ini.tw.phiS[ini.i])!, nIda0)
-    ligar(iEnt, nVolta1, noTorre[t0].get(ini.tw.phiE[ini.i])!)
+    ligar(iSai, noTorre[t0].get(`S${ini.i}`)!, nIda0)
+    ligar(iEnt, nVolta1, noTorre[t0].get(`E${ini.i}`)!)
     const iIda = nova(viaDe(ida, `disco:${k}:ida`, "avenida", bairro, b.cor), { pista: k, parte: "ida", torre: -1 })
     const iVolta = nova(viaDe(volta, `disco:${k}:volta`, "avenida", bairro, b.cor), { pista: k, parte: "volta", torre: -1 })
     ligar(iIda, nIda0, nIda1); ligar(iVolta, nVolta0, nVolta1)
@@ -646,8 +681,8 @@ export function montarMundoDisco(): MundoDisco {
       const t = fim.tw.t
       const iE2 = nova(viaDe(alca3(fim.a.entrada, fim.a.he), `disco:${k}:entrada${t}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "entrada", torre: t })
       const iS2 = nova(viaDe(alca3(fim.a.saida, fim.a.hs), `disco:${k}:saida${t}`, "rampa", "disco", b.cor, true, true), { pista: k, parte: "saida", torre: t })
-      ligar(iE2, nIda1, noTorre[t].get(fim.tw.phiE[fim.i])!)
-      ligar(iS2, noTorre[t].get(fim.tw.phiS[fim.i])!, nVolta0)
+      ligar(iE2, nIda1, noTorre[t].get(`E${fim.i}`)!)
+      ligar(iS2, noTorre[t].get(`S${fim.i}`)!, nVolta0)
     } else {
       const iBp = nova(viaDe(gota(tt.pos[tt.n - 1], tt.tan[tt.n - 1]).map((p) => V3(p, h[tt.n - 1])), `disco:${k}:balao`, "rampa", "disco", b.cor), { pista: k, parte: "balao", torre: -1 })
       ligar(iBp, nIda1, nVolta0)
@@ -660,7 +695,9 @@ export function montarMundoDisco(): MundoDisco {
     const lado: 1 | -1 = (vs.px[q] - vs.px[0]) * -vs.tz[0] + (vs.pz[q] - vs.pz[0]) * vs.tx[0] >= 0 ? 1 : -1
     pistas.push({ nome: b.nome, cor: b.cor, ida: iIda, volta: iVolta, saida: iSai, entrada: iEnt, lado })
   })
-  // o lado de cada alça de saída (de qualquer torre), pra placa da espiral
+  // (T61) a via de cada saída dos anéis
+  for (const an of anelDe) for (const sd of an.saidas) sd.via = info.findIndex((f) => f.parte === "saida" && f.torre === an.torre && f.pista === sd.pista)
+  // o lado de cada alça de saída (de qualquer torre), pra placa do anel
   const ladoSaida = new Map<number, 1 | -1>()
   vias.forEach((vs, vi) => { if (info[vi].parte !== "saida") return; const q = Math.min(vs.n - 1, 12); ladoSaida.set(vi, (vs.px[q] - vs.px[0]) * -vs.tz[0] + (vs.pz[q] - vs.pz[0]) * vs.tx[0] >= 0 ? 1 : -1) })
 
@@ -708,12 +745,13 @@ export function montarMundoDisco(): MundoDisco {
     "lugar:bar": ["Nectar", 0.55], "lugar:casa-drewboy": ["Sexta-Feira", 0.45], "lugar:balada": ["Sexta-Feira", 0.9], "lugar:beco": ["Sexta-Feira", 0.7],
     "lugar:escondido": ["CHUVA", 0.85], "lugar:topo": ["DopaminA", 0.9], "lugar:casa-shows": ["Sabe Ontem?", 0.88],
     "lugar:posto": ["Nectar", 0.68], "lugar:oficina": ["Nectar", 0.86], "lugar:palco-swav": ["Swav", 0.5], "lugar:palco-nectar": ["Nectar", 0.6], "lugar:palco-rollercoaster": ["Rollercoaster", 0.6], "lugar:palco-copo": ["Copo Americano", 0.6], "lugar:plataforma": ["Nectar", 0.42], "lugar:casa-dbee": ["Ojalá", 0.94],
-    "pagina:oficina": ["Nectar", 0.86], "pagina:fliperama": ["DopaminA", 0.55], "pagina:galeria": ["Swav", 0.6], "pagina:ginasio": ["Rollercoaster", 0.4],
+    "pagina:fliperama": ["DopaminA", 0.55], "pagina:galeria": ["Swav", 0.6], "pagina:ginasio": ["Rollercoaster", 0.4],
     "pagina:shows": ["Sabe Ontem?", 0.6], "parque": ["Rollercoaster", 0.8],
     "bomba:bomba-mirante": ["Swav", 0.3], "bomba:bomba-arena": ["Rollercoaster", 0.6], "bomba:bomba-avenida": ["Ojalá", 0.5],
   }
   const tabela = new Map<string, Onde>()
   for (const [k, [nome, f]] of Object.entries(POS)) { const vi = daPista(nome).ida; tabela.set(k, { via: vi, u: vias[vi].L * f, lado: 1 }) }
+  espalharNaPista(POS, pistas, vias, tabela)
   // a pista da Nectar é a das flores (LU2CA 18/10): os canteiros moram nela
   const nec = daPista("Nectar")
   CANTEIROS.forEach((c, i) => {
@@ -777,8 +815,16 @@ export function montarMundoDisco(): MundoDisco {
   const projetar = (): Projecao | null => null
   const conflitos = sobra ? [`${sobra} trechos de pista com menos de ${FOLGA - 1} m de folga`] : []
   const torresOut: CentralDisco[] = torres.map((tw) => ({ x: tw.d.C.x, z: tw.d.C.z, raio: tw.d.R, nucleo: tw.d.nucleo, topo: tw.topo, andares: tw.alcas.map((a, i) => ({ y: a.hJ, cor: B[a.k].cor, nome: B[a.k].nome, ang: -tw.phiQ[i] })) }))
-  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: chaoEm, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, pousar, teto, chaoDeserto: CHAO + 0.4, chaoEm }
+  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: chaoEm, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, aneis: anelDe, pousar, teto, chaoDeserto: CHAO + 0.4, chaoEm }
   return CACHE
+}
+
+// (T61, os links de teste) o começo da alça de uma linha que chega numa torre
+// (no portão, na faixa da direita): a Kombi entra na rotatória dali
+export function chegadaNaTorre(M: MundoDisco, torre: number, pista: string) {
+  const k = M.pistas.findIndex((p) => p.nome === pista)
+  const vi = M.info.findIndex((f) => f.parte === "entrada" && f.torre === torre && f.pista === k)
+  return vi < 0 ? null : { via: M.vias[vi].id, u: 4, x: 4.2 }
 }
 
 // a rota no disco: mão única, pelo grafo das vias (o mais curto em metros)
@@ -809,3 +855,33 @@ export function calcularRotaDisco(M: MundoDisco, de: { via: number; u: number },
 
 // o chão: as dunas e o lixão (chao.ts)
 export const geoChaoDisco = geoChao
+
+// (T42, J2:15: "no mapa tem várias informações muito juntas, tem que espalhar
+// mais as localidades, por igual entre uma e outra numa mesma pista") a tabela
+// acima diz a ORDEM de cada coisa na pista; aqui elas se espalham por igual
+// entre ESPALHA_DE e ESPALHA_ATE da ida. O ícone da missão da pista (o ponto
+// onde ela é pega no mapa) entra na conta como mais um lugar: a chave
+// `missao:<nome da pista>`. O que mora no mesmo ponto (a oficina e a página
+// dela) segue junto. A casa da D-Bee fica onde está (é o fim da estrada do deserto).
+export const ESPALHA_DE = 0.3
+export const ESPALHA_ATE = 0.92
+const FIXOS_NA_PISTA = new Set(["lugar:casa-dbee"])
+export function espalharNaPista(pos: Record<string, [string, number]>, pistas: { nome: string; ida: number }[], vias: { L: number }[], tabela: Map<string, Onde>) {
+  for (const p of pistas) {
+    // os pontos desta pista: a fração (a ordem) → as chaves que moram ali
+    const pontos = new Map<number, string[]>([[0.551, [`missao:${p.nome}`]]])
+    for (const [k, [nome, f]] of Object.entries(pos)) {
+      if (nome !== p.nome || FIXOS_NA_PISTA.has(k)) continue
+      const l = pontos.get(f)
+      if (l) l.push(k)
+      else pontos.set(f, [k])
+    }
+    // em ordem (a missão fica logo depois do que estava em 0,55)
+    const ordem = [...pontos.entries()].sort((a, b) => a[0] - b[0])
+    const L = vias[p.ida].L, n = ordem.length
+    ordem.forEach(([, chaves], i) => {
+      const u = L * (ESPALHA_DE + (ESPALHA_ATE - ESPALHA_DE) * ((i + 0.5) / n))
+      for (const k of chaves) tabela.set(k, { via: p.ida, u, lado: 1 })
+    })
+  }
+}

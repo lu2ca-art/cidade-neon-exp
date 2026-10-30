@@ -8,7 +8,8 @@ import faixasJson from "./discos.json"
 import vinis from "./vinis.json"
 import type { Motivo } from "./capa"
 
-export const PRECO_DISCO = 100
+// (T03) o preço mora no rascunho da economia
+export { PRECO_DISCO } from "./economia-rascunho"
 
 export interface Faixa { titulo: string; autor: string; src: string; dur: number }
 export interface DiscoLoja { id: string; titulo: string; motivo: Motivo; a: string; b: string; faixas: Faixa[]; gratis?: boolean }

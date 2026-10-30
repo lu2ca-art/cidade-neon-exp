@@ -47,3 +47,6 @@ public/gd-local/
 # testes
 test-results/
 playwright-report/
+
+# notas do caderno do dono gravadas no dev (vão pro PostHog também)
+RELATORIOS/caderno/

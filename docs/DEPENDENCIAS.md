@@ -52,7 +52,7 @@ Gerado por `node scripts/gerar-dependencias.mjs`. Não editar à mão: a explica
 | framer-motion | ^14.0.0 | prod | animações de interface | 1 |
 | input-otp | 1.4.1 | prod | campo de código (shadcn) | 1 |
 | lucide-react | ^0.454.0 | prod | ícones | 23 |
-| next | ^16.3.5 | prod | framework web (rotas, build, deploy na Vercel) | 52 |
+| next | 16.4.1 | prod | framework web (rotas, build, deploy na Vercel) | 54 |
 | next-themes | ^0.4.6 | prod | tema claro/escuro | 2 |
 | posthog-js | ^1.427.2 | prod | analytics do jogo (PostHog EU) | 4 |
 | postprocessing | ^6.39.5 | prod | base dos efeitos de tela | 1 |
@@ -67,7 +67,7 @@ Gerado por `node scripts/gerar-dependencias.mjs`. Não editar à mão: a explica
 | tailwindcss-animate | ^1.0.7 | prod | animações utilitárias do Tailwind | 0 |
 | three | ^0.185.1 | prod | motor 3D (renderiza o jogo) | 62 |
 | vaul | ^1.1.2 | prod | gaveta de baixo pra cima (shadcn) | 1 |
-| zod | 3.25.76 | prod | validação de dados | 0 |
+| zod | 4.6.6 | prod | validação de dados | 0 |
 
 ## Só pra desenvolver
 | pacote | versão | grupo | pra quê | arquivos que importam |
@@ -79,7 +79,7 @@ Gerado por `node scripts/gerar-dependencias.mjs`. Não editar à mão: a explica
 | @types/react-dom | ^19 | dev | tipos | 0 |
 | @types/three | ^0.185.1 | dev | tipos do Three.js | 0 |
 | eslint | ^9 | dev | análise estática | 0 |
-| eslint-config-next | ^16.3.5 | dev | regras de lint do Next | 0 |
+| eslint-config-next | 16.4.1 | dev | regras de lint do Next | 0 |
 | postcss | ^8.5 | dev | processa o CSS | 0 |
 | tailwindcss | ^4.1.9 | dev | estilos | 2 |
 | tw-animate-css | 1.3.3 | dev | animações utilitárias do Tailwind 4 | 2 |

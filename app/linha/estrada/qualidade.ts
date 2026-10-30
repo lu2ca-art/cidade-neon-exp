@@ -44,9 +44,13 @@ function ler(): Qualidade {
 // o nível vale pro jogo todo (lido uma vez; mudou, o jogo relê na próxima entrada)
 export const QUALIDADE: Qualidade = typeof window === "undefined" ? { nivel: "alto", ...NIVEIS.alto, medido: false } : ler()
 
+// quem quer saber quando o nível muda (a cena: a densidade e a lente; a engrenagem do holo)
+const ouvintes = new Set<(n: NivelQualidade) => void>()
+export function ouvirQualidade(f: (n: NivelQualidade) => void) { ouvintes.add(f); return () => { ouvintes.delete(f) } }
 export function guardarQualidade(nivel: NivelQualidade, comoMedida = true) {
   Object.assign(QUALIDADE, { nivel, ...NIVEIS[nivel], medido: comoMedida })
   try { localStorage.setItem(CHAVE, JSON.stringify({ nivel, em: Date.now() })) } catch {}
+  ouvintes.forEach((f) => f(nivel))
 }
 // refazer: esquece a medida (a próxima partida mede de novo)
 export function refazerQualidade() {

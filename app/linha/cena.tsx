@@ -15,6 +15,8 @@ import { gota, mudo } from "./som"
 import { Prova } from "./provas"
 import { vib } from "./som-carro"
 import { ouvirSala, publicar, zerar } from "./interior/bus"
+import { Tambor } from "./disco/Tambor"
+import { EntregaHolo } from "./disco/EntregaHolo"
 
 export interface ResultadoCena {
   objeto?: EstacaoId
@@ -110,7 +112,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   // explorar só existe com a sala em 3D: sem ela (aparelho que não aguentou),
   // a cena segue sozinha
   useEffect(() => {
-    if ((gestoAgora !== "quarto" && gestoAgora !== "casa" && gestoAgora !== "casa-inicio") || gesto3d) return
+    if (!gestoAgora || !["quarto", "casa", "casa-inicio", "planta", "quadros", "pintar"].includes(gestoAgora) || gesto3d) return
     const t = setTimeout(() => setPos((p) => p + 1), 0)
     return () => clearTimeout(t)
   }, [gestoAgora, gesto3d])
@@ -127,6 +129,16 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave])
 
+
+  // (T02, J2: 11) acabou a cena: volta direto pro jogo, sem "voltar pra Kombi"
+  const noFim = !atual && passo?.t === "fim"
+  const fimRef = useRef(() => {})
+  useEffect(() => { fimRef.current = () => { if (passo?.t === "fim") onFim({ objeto: ganhos.objeto, reliquias: ganhos.reliquias, caca: !!passo.caca, perdeViolao: ganhos.perdeViolao, completa: true }) } })
+  useEffect(() => {
+    if (!noFim) return
+    const t = setTimeout(() => fimRef.current(), 450)
+    return () => clearTimeout(t)
+  }, [noFim])
 
   const avancar = () => {
     if (!atual) return
@@ -172,17 +184,19 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
-      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} onSair={() => onFim({ reliquias: [], caca: false })} />}
+      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} />}
       {!gesto3d && !saida && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} onBeber={() => setSaida(true)} podeNegar={loops > 0 || esperou} />}
       {saida && !atual && (
         <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => onFim({ reliquias: [], caca: false, loop: true, copo: copoRef.current })}>sair do bar →</button>
+          <button type="button" onClick={() => onFim({ reliquias: [], caca: false, loop: true, copo: copoRef.current })}>a noite volta →</button>
         </div>
       )}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "danca" && <Danca onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tocar" && <Danca titulo="toca no ritmo" rotulo="artistas olhando pela janela" total={9} cor="#e6f0ff" sobe onFim={() => setPos((p) => p + 1)} />}
-      {/* (disco, a casa da D-Bee) os tambores do tapete: ela marca, ele responde */}
-      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tambores" && <Danca titulo="os tambores" rotulo="ela marca, você responde" total={8} cor="#ffcf8a" sobe onFim={() => setPos((p) => p + 1)} />}
+      {/* (disco, a casa da D-Bee) o tambor (2.5): ela toca a frase, ele repete — disco/Tambor.tsx */}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "tambores" && <Tambor onFim={() => setPos((p) => p + 1)} />}
+      {/* (T07) a D-Bee entrega o holo: da mão dela pra dele — disco/EntregaHolo.tsx */}
+      {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "holo" && <EntregaHolo onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "fuga" && <Fuga onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "ordem" && <Ordem frases={passo.frases} onFim={() => setPos((p) => p + 1)} />}
       {!gesto3d && !atual && passo?.t === "gesto" && passo.id === "silencio" && <Silencio semSom={semSom} onFim={() => setPos((p) => p + 1)} />}
@@ -199,11 +213,6 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         <Ganho objeto={mostrando.objeto} reliquia={mostrando.reliquia} titulo={mostrando.titulo} texto={mostrando.texto} memoria={mostrando.objeto ? memoria : null} onOk={fecharGanho} />
       )}
 
-      {!atual && passo?.t === "fim" && (
-        <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => onFim({ objeto: ganhos.objeto, reliquias: ganhos.reliquias, caca: !!passo.caca, perdeViolao: ganhos.perdeViolao, completa: true })}>voltar pra kombi →</button>
-        </div>
-      )}
     </div>
   )
 }
@@ -220,10 +229,14 @@ const DICAS_3D: Record<string, string> = {
   casa: "procura pela casa. toca no que chamar sua atenção",
   quarto: "olha o quarto. toca no que chamar sua atenção",
   "casa-inicio": "olha em volta. toca no que chamar sua atenção",
+  planta: "chega perto. toca no que chamar sua atenção",
+  quadros: "anda pela galeria. toca nos quadros",
+  pintar: "pinta na tela. os potes trocam a cor. pronta, toca no prego",
 }
-function Dica3d({ id, podeNegar, onNegar, onSair }: { id: string; podeNegar: boolean; onNegar: () => void; onSair: () => void }) {
+function Dica3d({ id, podeNegar, onNegar }: { id: string; podeNegar: boolean; onNegar: () => void }) {
   // o bar (06/10, LU2CA): a saída é a palavra ESCOLHA, em amarelo — quem
-  // repara toca nela e diz não. "sair do bar" só sai: a missão não se cumpre
+  // repara toca nela e diz não. (T02, J2: 21) não tem mais "sair do bar": no
+  // bar, você aprende a negar pra sair
   const [sn, setSn] = useState(false)
   if (id === "copos") return (
     <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
@@ -236,7 +249,6 @@ function Dica3d({ id, podeNegar, onNegar, onSair }: { id: string; podeNegar: boo
           <button type="button" onClick={onNegar}>não</button>
         </span>
       )}
-      <button type="button" className="l-copos-sair" onClick={onSair}>sair do bar</button>
     </div>
   )
   return (

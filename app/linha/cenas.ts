@@ -48,11 +48,13 @@ export type PassoCena =
   | { t: "nucleo"; texto: string }
   | { t: "escolha"; opcoes: { label: string; tom: Tom; resposta: FalaCena[] }[] }
   // o gesto do lugar (cena.tsx desenha cada um)
-  | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" | "tocar" | "fuga" | "tambores" }
+  | { t: "gesto"; id: "copos" | "danca" | "silencio" | "linha" | "tocar" | "fuga" | "tambores" | "holo" }
   // pôr frases soltas na ordem (a moradora do beco fala em pedaços)
   | { t: "gesto"; id: "ordem"; frases: string[] }
   // explorar a sala: tocar nas coisas (interior/: o quarto do Drewboy, a casa da D-Bee)
   | { t: "gesto"; id: "quarto" | "casa" | "casa-inicio" }
+  // (T22) a casa da Ella: olhar a planta, olhar os quadros, pintar na tela (interior/salas/GaleriaElla.tsx)
+  | { t: "gesto"; id: "planta" | "quadros" | "pintar" }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o

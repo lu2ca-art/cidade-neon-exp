@@ -1,13 +1,13 @@
 "use client"
 
-// OS PORTÕES E AS PLACAS DA ESPIRAL (LU2CA 19/10, 2ª rodada: "destacar
+// OS PORTÕES E AS PLACAS DA ROTATÓRIA (LU2CA 19/10, 2ª rodada: "destacar
 // exatamente a entrada de cada via como se fosse um portão de entrada daquela
 // pista"; "não tem sinalização"; "intuitivo saber pra onde temos que ir")
 //
 // - o PORTÃO: onde a alça vira a pista, nas duas pontas de cada linha. Atravessa
 //   as 4 faixas, na cor da linha, com o nome e o BPM no alto (dos dois lados) e
-//   duas colunas de luz que se veem de longe (da espiral, do ar)
-// - a PLACA: na espiral, 130 m antes de cada saída, um pórtico com o nome da
+//   duas colunas de luz que se veem de longe (da rotatória, do ar)
+// - a PLACA: na rotatória (T61; antes, na espiral), 45 m antes de cada saída, um pórtico com o nome da
 //   linha e a seta pra direita. A faixa da direita, pintada na cor da linha
 //   (Corrida, geo.pintaSaida), leva até a saída
 //
@@ -22,7 +22,7 @@ import { PISTAS } from "./pistas"
 
 const LARG = 8.4 + 1.6 // do eixo do tronco até cada pilar
 const ALTO = 9.5 // a viga do portão
-const ANTES = 130 // m antes da saída: a placa da espiral
+const ANTES = 45 // m antes da saída: a placa da rotatória (T61: as saídas do anel ficam a ~60 m uma da outra)
 const LUZ = 150 // altura das colunas de luz
 
 // o atlas: uma linha por letreiro (o nome grande, o detalhe embaixo)
@@ -108,18 +108,17 @@ export function Portoes({ M, apagada = null }: { M: MundoDisco; apagada?: boolea
       const i = v.n - 1
       pórtico(v.px[i], v.py[i], v.pz[i], Math.atan2(v.tx[i], v.tz[i]), LARG, new THREE.Color(cor), r, !escuro)
     })
-    // ── as placas da espiral: ANTES metros antes de cada saída ──
-    vias.forEach((v, vi) => {
-      const f = info[vi]
-      if (f.parte !== "saida" || apagada?.[vi]) return
-      const de = v.rede!.de
-      const antes = vias.findIndex((w, wi) => info[wi].parte === "sobe" && w.rede!.para === de)
-      if (antes < 0) return
-      const W = vias[antes], u = Math.max(0, W.L - ANTES), i = Math.round(u / 2)
-      const p = pistas[f.pista]
+    // ── (T61) as placas da rotatória: ANTES metros antes de cada saída, pelo anel ──
+    for (const an of M.aneis) for (const sd of an.saidas) {
+      if (sd.via < 0 || apagada?.[sd.via]) continue
+      const U = (((sd.u - ANTES) % an.L) + an.L) % an.L
+      let k = an.ini.findIndex((u0, q) => U >= u0 && U < u0 + vias[an.vias[q]].L)
+      if (k < 0) k = 0
+      const W = vias[an.vias[k]], i = Math.max(0, Math.min(W.n - 1, Math.round((U - an.ini[k]) / 2)))
+      const p = pistas[sd.pista]
       const r = itens.push({ nome: `${p.nome}  ↗`, sub: "faixa da direita · sai", cor: p.cor }) - 1
       pórtico(W.px[i], W.py[i], W.pz[i], Math.atan2(W.tx[i], W.tz[i]), 8.4 + 1.4, new THREE.Color(p.cor), r, false)
-    })
+    }
     const at = atlas(itens)
     // agora o v de cada letreiro: a fatia r ocupa [1 - (r+1)/n, 1 - r/n]
     for (const g of letreiros) {

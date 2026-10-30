@@ -12,7 +12,13 @@ import { useFrame } from "@react-three/fiber"
 import { useEffect, useLayoutEffect, useRef } from "react"
 import * as THREE from "three"
 
-const LUZES_POOL = 6 // (o beco tem 5 luzes juntas: lâmpada, 3 letreiros, poste)
+// (22/10, perf 003) era 6. Cada pointLight custa em TODO pixel iluminado
+// (o shader percorre todas, mesmo apagadas), e a GPU por pixel é o gargalo.
+// Medido no trajeto: a câmera fica a 25–45 m de altura e quase sempre só 0–2
+// luzes registradas alcançam algo perto dela; as outras do pool iam pra
+// vitrines a 150–500 m (alcance 11–12 m: não iluminavam nada). Com 4, o beco
+// (5 juntas) perde só a mais longe da câmera, que entra quando chega perto.
+const LUZES_POOL = 4
 
 type Registro = { obj: THREE.Object3D; cor: THREE.Color; intensidade: number; distancia: number; decay: number; p: THREE.Vector3 }
 const REGISTRO = new Set<Registro>()
@@ -114,7 +120,16 @@ export function LuzesProximas() {
   const dono = useRef<(Registro | null)[]>([])
   const fade = useRef<number[]>(Array(LUZES_POOL).fill(0))
   useEffect(() => () => { dono.current = [] }, [])
+  // medição (só com ?medir): as luzes registradas, [distância até a câmera, alcance, intensidade, tem luz do pool]
+  const cam = useRef(new THREE.Vector3())
+  useEffect(() => {
+    if (!/[?&]medir/.test(location.search)) return
+    const w = window as unknown as { __luzReg?: () => number[][] }
+    w.__luzReg = () => [...REGISTRO].map((r) => [+r.p.distanceTo(cam.current).toFixed(1), r.distancia, r.intensidade, dono.current.includes(r) ? 1 : 0])
+    return () => { delete w.__luzReg }
+  }, [])
   useFrame(({ camera }, dt) => {
+    cam.current.copy(camera.position)
     // a nota de cada luz: a distância da câmera até a borda do alcance dela
     const cands: [number, Registro][] = []
     for (const r of REGISTRO) {

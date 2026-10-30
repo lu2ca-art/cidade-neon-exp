@@ -58,6 +58,17 @@ page.on("pageerror", (e) => console.log("ERRO", e.message))
 await page.goto(URL)
 await page.locator(".l-btn-entrar").click({ timeout: 20_000, force: true }).catch(() => console.log("(sem botão: entrou sozinho)"))
 await entrarDirigindo(page, 12_000)
+// GPS=1 (T58): mede com um destino longe (o GPS tipo Waze ligado: a faixa da rota no chão, o cartão)
+if (process.env.GPS) console.log("gps:", await page.evaluate(() => {
+  const M = window.__M, j = window.__jogo, n = window.__nav
+  if (!M || !j || !n) return "sem __nav"
+  const ps = M.pistas, i = Math.max(0, ps.findIndex((p) => p.ida === j.via || p.volta === j.via))
+  const p = ps[(i + Math.floor(ps.length / 2)) % ps.length]
+  n.alvoTeste = { via: p.ida, u: M.vias[p.ida].L * 0.6 }
+  return `destino ${p.nome}`
+}))
+// DRONE=1: mede com a vista do drone ligada (toca na bolinha do mapa)
+if (process.env.DRONE) { await page.locator(".l-mapa-mini").click({ force: true }).catch(() => console.log("(sem bolinha do mapa)")); await page.waitForTimeout(2_000) }
 const cdp = await page.context().newCDPSession(page)
 await cdp.send("Profiler.enable")
 await cdp.send("Profiler.setSamplingInterval", { interval: 200 })
@@ -71,6 +82,7 @@ if (!process.env.NOPROF) await cdp.send("Profiler.start")
 await page.evaluate(() => { window.__dens = []; setInterval(() => window.__gl && window.__dens.push(window.__gl.getPixelRatio()), 1000) })
 await page.waitForTimeout(+(process.env.DUR ?? 12_000))
 console.log("cena aberta no fim?", await page.locator(".l-cena").count())
+if (process.env.GPS) console.log("gps no fim:", await page.evaluate(() => { const n = window.__nav, r = window.__rotaPista; return n ? `ativo ${n.ativo}, ${Math.round(n.metros)} m, faixa ${r?.st?.n ?? "?"} pontos, recalculos ${n.recalculos}` : "sem __nav" }))
 console.log("densidades", await page.evaluate(() => window.__dens.join(" ")))
 const { profile } = process.env.NOPROF ? { profile: { nodes: [], samples: [], timeDeltas: [] } } : await cdp.send("Profiler.stop")
 const r = await page.evaluate(() => {

@@ -30,7 +30,7 @@ export const LUGARES_CIDADE: LugarCidade[] = [
   { id: "fliperama", nome: "o fliperama", letreiro: "FLIPERAMA", cor: "#ff6a35", x: 715, y: 1085, lado: 1, rota: "/fliperama", horario: "noite", exige: "rollercoaster" },
   { id: "ginasio", nome: "o ginásio", letreiro: "GINÁSIO", cor: "#ff9000", x: 1000, y: 945, lado: 1, rota: "/ginasio", horario: "dia" },
   { id: "brecho", nome: "o brechó", letreiro: "BRECHÓ", cor: "#ffc857", x: 860, y: 1148, lado: -1, horario: "dia", nota: "a roupa do Drewboy mora aqui" },
-  { id: "oficina", nome: "a oficina", letreiro: "OFICINA", cor: "#ff9000", x: 990, y: 1175, lado: 1, rota: "/oficina", horario: "sempre" },
+  { id: "oficina", nome: "a oficina", letreiro: "OFICINA", cor: "#ff9000", x: 990, y: 1175, lado: 1, horario: "sempre", nota: "o mecânico: só desempenho, pago em água" },
   { id: "drewboy", nome: "a casa do Drewboy", letreiro: "AP 222", cor: "#ff3fb0", x: 705, y: 875, lado: -1, horario: "sempre", nota: "a história passa aqui de noite" },
   { id: "ella", nome: "a casa da Ella", letreiro: "· · ·", cor: "#5dffa0", x: 915, y: 1100, lado: 1, horario: "sempre", nota: "a história passa aqui de noite" },
   // a cidade neon

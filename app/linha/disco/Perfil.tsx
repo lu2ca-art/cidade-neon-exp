@@ -11,12 +11,12 @@ export function Perfil({ agua, neon, pop, mods, onFechar }: { agua: number; neon
       <header><b>rico do quê?</b><button type="button" onClick={onFechar} aria-label="fechar">×</button></header>
       <section className="is-agua">
         <span><i aria-hidden="true" /><b>{agua}</b><small>água</small></span>
-        <p>tecnologia: a Kombi, você, o holo</p>
+        <p>paga o mecânico: só desempenho da Kombi</p>
         <ul>{MODS.map((m) => <li key={m.id} className={mods.includes(m.id) ? "is-tem" : ""}>{m.nome}<em>{mods.includes(m.id) ? "✓" : `${m.preco} água`}</em></li>)}</ul>
       </section>
       <section className="is-neon">
         <span><i aria-hidden="true">$</i><b>{neon}</b><small>neon$</small></span>
-        <p>o analógico: discos, roupas, guitarras</p>
+        <p>a grana dos shows e das missões: discos, instrumentos, carros, roupas</p>
       </section>
       <section className="is-pop">
         <span><i aria-hidden="true" style={{ ["--p" as string]: `${Math.min(100, pop)}%` }} /><b>{Math.round(pop)}</b><small>popularidade</small></span>
@@ -27,9 +27,10 @@ export function Perfil({ agua, neon, pop, mods, onFechar }: { agua: number; neon
   )
 }
 
-// A OFICINA (o que se compra com água). A pintura e o neon (a oficina de
-// antes, /oficina) continuam lá dentro
-export function OficinaLoja({ agua, mods, onComprar, onPintura, onFechar }: { agua: number; mods: string[]; onComprar: (id: string, preco: number) => void; onPintura: () => void; onFechar: () => void }) {
+// A OFICINA (o que se compra com água): só desempenho. (T04, decidido 27/10) a
+// oficina mora só no subúrbio e a Kombi não tem nada estético: a pintura e o
+// neon de antes (/oficina, na cidade) saíram
+export function OficinaLoja({ agua, mods, onComprar, onFechar }: { agua: number; mods: string[]; onComprar: (id: string, preco: number) => void; onFechar: () => void }) {
   return (
     <div className="l-perfil is-oficina" onPointerDown={(e) => e.stopPropagation()} role="dialog" aria-label="a oficina">
       <header><b>a oficina</b><button type="button" onClick={onFechar} aria-label="fechar">×</button></header>
@@ -47,7 +48,6 @@ export function OficinaLoja({ agua, mods, onComprar, onPintura, onFechar }: { ag
           })}
         </ul>
       </section>
-      <button type="button" className="l-perfil-pintura" onClick={onPintura}>pintura e neon →</button>
     </div>
   )
 }

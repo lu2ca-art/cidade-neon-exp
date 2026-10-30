@@ -9,7 +9,7 @@
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
-interface Perfil {
+export interface Perfil {
   nome: string
   L: number; W: number; H: number // comprimento, largura, altura do teto
   cint: number // a linha de cintura (onde começa o vidro)
@@ -50,7 +50,12 @@ const juntar = (gs: THREE.BufferGeometry[]) => {
 export interface Modelo { perfil: Perfil; pintada: THREE.BufferGeometry; escura: THREE.BufferGeometry; luzes: THREE.BufferGeometry }
 
 export function montarModelos(): Modelo[] {
-  return MODELOS.map((p) => {
+  return MODELOS.map((p) => montarModelo(p))
+}
+
+// (T44) um modelo só, de qualquer perfil (os carros mexidos dos rachas usam o mesmo molde)
+export function montarModelo(p: Perfil, extras: { pintadas?: THREE.BufferGeometry[]; luzes?: THREE.BufferGeometry[] } = {}): Modelo {
+  {
     const { L, W, H, cint, capo, cab, incl, roda } = p, x0 = -L / 2, x1 = L / 2, cl = roda * 0.75
     // a carroceria: o porta-malas, a cintura e o capô caindo pra frente
     const corpo: [number, number][] = p.cacamba
@@ -78,6 +83,8 @@ export function montarModelos(): Modelo[] {
       const t = new THREE.BoxGeometry(0.38, 0.16, 0.06); t.translate(z * (W / 2 - 0.3), cint - 0.2, x0 - 0.02); luzes.push(pintar(t, "#ff2a36"))
     }
     if (p.luminoso) { const s = new THREE.BoxGeometry(0.7, 0.18, 0.3); s.translate(0, H + 0.1, (cab[0] + cab[1]) / 2); luzes.push(pintar(s, "#fff2a0")) }
+    pintadas.push(...(extras.pintadas ?? []))
+    luzes.push(...(extras.luzes ?? []).map((g) => (g.attributes.color ? g : pintar(g, "#ffffff"))))
     return { perfil: p, pintada: juntar(pintadas.map((g) => pintar(g, "#ffffff"))), escura: juntar(escuras), luzes: juntar(luzes) }
-  })
+  }
 }

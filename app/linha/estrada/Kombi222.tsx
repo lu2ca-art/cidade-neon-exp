@@ -162,6 +162,19 @@ function janela(w: number, h: number, r = 0.09) {
 // [z, largura]: porta da cabine e as 3 do salão
 const JANELAS: [number, number][] = [[-1.42, 0.62], [-0.5, 0.82], [0.42, 0.82], [1.34, 0.82]]
 
+// (T36, 28/10, J2:20 e J2:22) a Kombi escaneada NÃO é simétrica em torno do 0: o
+// modelo é centrado na caixa que inclui a porta de correr aberta (que sai pro
+// lado +x), então a lataria fica de x = -1,07 (esquerda) a x = +0,61 (direita),
+// centro em -0,23 (medido nos vértices do .glb, sistema do carro). A roda do
+// lado da porta estava em +0,72, alinhada com a porta aberta e pra fora da
+// lataria; agora é o espelho da outra em torno do centro da lataria. As
+// lanternas ficavam em ±0,76, a 0,18 m atrás da traseira (z = 2,09 de verdade)
+// e a da direita fora da lataria: agora encostam na traseira, a 0,15 m de cada quina.
+const X_RODA_ESQ = -0.92
+const X_RODA_DIR = 0.47
+const X_LANTERNA_ESCANEADA = [-0.92, 0.46]
+const Z_LANTERNA_ESCANEADA = 2.12
+
 // esterco: ângulo das rodas da frente (rad, + = pra esquerda). No drift elas
 // apontam pra onde a Kombi ANDA — o contraesterço que mostra que ela tá de lado
 export function Kombi222({ turbo, velocidade, esterco, soEfeitos = false }: { turbo: React.MutableRefObject<boolean>; velocidade: React.MutableRefObject<number>; esterco?: React.MutableRefObject<number>; soEfeitos?: boolean }) {
@@ -248,8 +261,8 @@ export function Kombi222({ turbo, velocidade, esterco, soEfeitos = false }: { tu
         <meshBasicMaterial map={placa} toneMapped={false} />
       </mesh>
       </>)}
-      {[-0.76, 0.76].map((x) => (
-        <group key={x} position={[x, 0.98, 2.27]}>
+      {(soEfeitos ? X_LANTERNA_ESCANEADA : [-0.76, 0.76]).map((x) => (
+        <group key={x} position={[x, 0.98, soEfeitos ? Z_LANTERNA_ESCANEADA : 2.27]}>
           <mesh rotation-x={Math.PI / 2}>
             <cylinderGeometry args={[0.09, 0.09, 0.05, 20]} />
             <meshBasicMaterial color="#ff2436" toneMapped={false} />
@@ -287,10 +300,10 @@ export function Kombi222({ turbo, velocidade, esterco, soEfeitos = false }: { tu
       {/* a Kombi escaneada é uma peça só (as rodas dela não giram): rodas de
           verdade por cima das dela, um dedo pra fora pra cobrir */}
       {soEfeitos && (<>
-        <Roda x={0.72} z={-1.14} r={0.34} giro={giro} esterco={esterco} />
-        <Roda x={-0.92} z={-1.14} r={0.34} giro={giro} esterco={esterco} />
-        <Roda x={0.72} z={1.38} r={0.34} giro={giro} />
-        <Roda x={-0.92} z={1.38} r={0.34} giro={giro} />
+        <Roda x={X_RODA_DIR} z={-1.14} r={0.34} giro={giro} esterco={esterco} />
+        <Roda x={X_RODA_ESQ} z={-1.14} r={0.34} giro={giro} esterco={esterco} />
+        <Roda x={X_RODA_DIR} z={1.38} r={0.34} giro={giro} />
+        <Roda x={X_RODA_ESQ} z={1.38} r={0.34} giro={giro} />
       </>)}
       {!soEfeitos && (<>
       <Roda x={-0.82} z={-1.35} giro={giro} esterco={esterco} />

@@ -13,7 +13,7 @@ export const CHAVE_SAVE = "cn-linha-222"
 export const CHAVE_REAL = "cn-linha-222-antes-do-teste"
 
 // alguém que já passou da abertura e do tutorial, com sinal pra abrir todas as saídas
-const BASE = {
+export const BASE_TESTE = {
   versao: 2, casa: true, tutorial: ["fim", "posto"], tanque: 1, nome: "teste", estacao: "chuva", pesos: {}, linha: "", xp: 0, dias: [],
   sinal: 400, freq: "linha", logs: {}, recordes: {}, legado: [], melhorVolta: 0, jogados: {}, perfil: "estrada", itens: [],
   ligacoes: ["dbee-0", "dbee-1"], modos: {}, ultimoModo: "texto", nucleo: { invasoes: 9, caido: false }, jardim: [], papel: false,
@@ -38,7 +38,7 @@ export const ATALHOS: Atalho[] = [
   { id: "balada-cheia", nome: "a balada cheia", desc: "popularidade 90 · a pista inteira pula junto com você", save: { reliquias: ["muda"], itens: ["carona:sexta"], pausas: { sexta: 15 }, popularidade: 90 }, ir: { area: "linha", u: 2045 } },
 ]
 
-export const saveDo = (a: Atalho) => ({ ...BASE, ...a.save })
+export const saveDo = (a: Atalho) => ({ ...BASE_TESTE, ...a.save })
 
 // fora da produção? (a Vercel diz o ambiente; e o domínio de verdade nunca)
 export function atalhosLiberados() {
