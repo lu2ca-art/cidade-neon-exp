@@ -37,12 +37,12 @@ export const MESA: Cartao[] = [
   },
   {
     parte: "torre",
-    nome: "A rotatória lá no alto e os monumentos",
+    nome: "A rotatória central: mais larga, portais e a linha no chão",
     data: "2026-10-30",
     tarefa: "T61",
-    olhar: "Sem espiral: uma rotatória plana no alto da torre. A borda da direita tem a cor da próxima saída. No céu, um monumento por música; os 2 primeiros nascem logo que você entra.",
+    olhar: "As 9 entradas num anel só, mais largo. Sem placas: cada entrada tem um portal pequeno, e a linha da cor da pista no chão guia. A da próxima entrada na faixa da direita, a seguinte no meio.",
     perguntas: [
-      "A torre do meio tem 9 saídas numa rotatória só. Fica assim, ou vira 3 rotatórias, uma em cima da outra?",
+      "Dá pra saber onde entrar só pela linha e pelo portal?",
     ],
     mais: [{ parte: "torre.ponta", nome: "numa torre da ponta (3 saídas)" }],
   },
