@@ -28,6 +28,7 @@ import * as THREE from "three"
 import { Cinema } from "@/app/linha/estrada/Cinema"
 import { Patinador } from "@/app/linha/estrada/Patins"
 import { QUALIDADE } from "@/app/linha/estrada/qualidade"
+import { montarPatins } from "@/app/linha/som-carro"
 import { DPR, ResolucaoDinamica } from "@/app/linha/estrada/resolucao"
 import {
   CHECKPOINTS, CHEGADA, FISICA, INFO, LARGADA, VEICULOS,
@@ -79,6 +80,14 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
   const tmp = useMemo(() => ({ q: new THREE.Quaternion(), qy: new THREE.Quaternion(), n: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), alvo: new THREE.Vector3(), olha: new THREE.Vector3(), pose: { x: 0, z: 0, y: 0, yaw: 0, incl: 0, nx: 0, nz: 0 } as Pose, fp: { x: 0, z: 0, y: 0, yaw: 0 }, m: new THREE.Matrix4(), f: new THREE.Vector3(), w: new THREE.Vector3(), r: new THREE.Vector3() }), [])
   const V = FISICA[veiculo]
   const emCorrida = corrida.current.fase !== "livre"
+  // (T62) de patins: o barulhinho das rodas de gel; no ar, o vento neon (o mesmo som do patins da rua)
+  const somPatins = useRef<ReturnType<typeof montarPatins>>(null)
+  useEffect(() => {
+    if (veiculo !== "patins") return
+    const som = montarPatins()
+    somPatins.current = som
+    return () => { som?.parar(); somPatins.current = null }
+  }, [veiculo])
 
   useEffect(() => {
     scene.fog = new THREE.Fog(NEVOA, 25, 260)
@@ -107,6 +116,7 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
       if (c.fase !== "livre") passoCorrida(c, s, PASSO, veiculo, mudouFase)
       acc.current -= PASSO
     }
+    somPatins.current?.atualizar(Math.hypot(s.vx, s.vz) / V.vmax, !s.ar && !travado, s.ar)
     const k = acc.current / PASSO
     const x = s.ant.x + (s.x - s.ant.x) * k, z = s.ant.z + (s.z - s.ant.z) * k, y = s.ant.y + (s.y - s.ant.y) * k
     let dy = s.yaw - s.ant.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy))
