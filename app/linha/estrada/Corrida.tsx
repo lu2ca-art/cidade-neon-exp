@@ -24,7 +24,7 @@ import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
 import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
@@ -1033,11 +1033,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const ehDisco = !!discoM
   // (LU2CA 20/10) os atos: só as pistas disponíveis acendem o neon; as feitas
   // ficam acesas pra sempre; o resto, apagado (a torre é sempre acesa)
-  const luzPistas = useMemo(() => (discoM ? luzDasPistas(pistasFeitas(save.objetos)) : null), [discoM, save.objetos])
-  const viaApagada = useMemo(() => {
+  // (leveza A, 30/10) pegar um item muda save.objetos, mas quase nunca a luz das
+  // pistas: a chave em texto segura a MESMA referência enquanto o conteúdo não
+  // muda, e a cidade (geo, cidade, portões) não é refeita à toa
+  const luzPistasNova = useMemo(() => (discoM ? luzDasPistas(pistasFeitas(save.objetos)) : null), [discoM, save.objetos])
+  const luzPistas = useMesmo(luzPistasNova, luzPistasNova ? JSON.stringify(luzPistasNova) : "")
+  const viaApagadaNova = useMemo(() => {
     if (!discoM || !luzPistas) return null
     return discoM.vias.map((_, vi) => { const f = discoM.info[vi]; return !!f && f.pista >= 0 && luzPistas[discoM.pistas[f.pista].nome] === "apagada" })
   }, [discoM, luzPistas])
+  const viaApagada = useMesmo(viaApagadaNova, chaveApagada(viaApagadaNova))
   // (21/10, o mapa que ensina) as vias das pistas disponíveis (pulsam no mapa) e as da pista em foco
   const viaAberta = useMemo(() => {
     if (!discoM || !luzPistas) return null
@@ -2927,6 +2932,26 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 // libera a memória da placa de vídeo). O mundo montado fica em cache e a
 // posição da Kombi fica guardada aqui, pra ela voltar no mesmo ponto
 let MUNDO: Mundo | null = null
+
+/**
+ * (leveza A) Devolve sempre a MESMA referência enquanto `chave` não muda.
+ * Serve para arrays/objetos recalculados a cada render que, na prática, quase
+ * nunca mudam de conteúdo (ex.: as pistas apagadas): quem depende deles num
+ * useMemo/memo não é refeito à toa.
+ * @example const apagada = useMesmo(arrayNovo, chaveApagada(arrayNovo))
+ */
+function useMesmo<T>(valor: T, chave: string): T {
+  const r = useRef<{ chave: string; valor: T } | null>(null)
+  if (!r.current || r.current.chave !== chave) r.current = { chave, valor }
+  return r.current.valor
+}
+/** A chave em texto das vias apagadas ("0110…"); "" quando não há atos. */
+function chaveApagada(a: boolean[] | null): string {
+  if (!a) return ""
+  let s = ""
+  for (let i = 0; i < a.length; i++) s += a[i] ? "1" : "0"
+  return s
+}
 // o mapa novo (a rede de ruas do v5) atrás do /linha?mapa=novo; fica marcado na sessão
 // (18/10, LU2CA: "a pior versão até hoje" — sem guard rail, a Kombi sai da rua
 // e entra nos prédios, a cidade no chão) o mapa VELHO volta a ser o padrão; o
@@ -3063,6 +3088,48 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    cena R3F: useFrame muta geometria, instâncias e uniforms do three.js a
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
+// ── (leveza A) pistas que acendem/apagam sem refazer a malha ──
+const COR_APAGADA = hexRgb("#2a2838")
+/**
+ * Guarda a cor acesa de uma fita (e, opcional, quais quads tingem) em userData,
+ * para `tingirApagadas` trocar a cor no atributo que já existe.
+ * @example const g = guardarCor(fita(vias, ..., { via, cor }), acesoPorQuad)
+ */
+function guardarCor(g: THREE.BufferGeometry, tinge?: number[]) {
+  g.userData.cor0 = Float32Array.from((g.getAttribute("color") as THREE.BufferAttribute).array as Float32Array)
+  if (tinge) g.userData.tinge = Uint8Array.from(tinge)
+  return g
+}
+/** Pinta de cinza escuro os vértices das vias apagadas (aVia); o resto volta à cor acesa. Não aloca. */
+function tingirApagadas(g: THREE.BufferGeometry, apagada: boolean[] | null) {
+  const cor0 = g.userData.cor0 as Float32Array | undefined
+  const via = g.getAttribute("aVia") as THREE.BufferAttribute | undefined
+  const at = g.getAttribute("color") as THREE.BufferAttribute | undefined
+  if (!cor0 || !via || !at) return
+  const tinge = g.userData.tinge as Uint8Array | undefined
+  const arr = at.array as Float32Array
+  for (let v = 0; v < via.count; v++) {
+    const o = v * 3
+    if (apagada && apagada[via.getX(v)] && (!tinge || tinge[v >> 2] === 1)) { arr[o] = COR_APAGADA[0]; arr[o + 1] = COR_APAGADA[1]; arr[o + 2] = COR_APAGADA[2] }
+    else { arr[o] = cor0[o]; arr[o + 1] = cor0[o + 1]; arr[o + 2] = cor0[o + 2] }
+  }
+  at.needsUpdate = true
+}
+/** Os postes (e o reflexo e a luz) das vias apagadas somem: matriz zerada e luz preta (aditiva). */
+function apagarPostes(c: { postes: THREE.InstancedMesh; reflexos: THREE.InstancedMesh; luzes: THREE.BufferGeometry; postesAcesos: { via: Int32Array; poste: Float32Array; reflexo: Float32Array; luz: Float32Array } }, apagada: boolean[] | null) {
+  const { via, poste, reflexo, luz } = c.postesAcesos
+  const mp = c.postes.instanceMatrix.array as Float32Array, mr = c.reflexos.instanceMatrix.array as Float32Array
+  const cor = c.luzes.getAttribute("color") as THREE.BufferAttribute, lc = cor.array as Float32Array
+  for (let n = 0; n < via.length; n++) {
+    const fora = !!apagada && !!apagada[via[n]]
+    for (let k = 0; k < 16; k++) { const o = n * 16 + k; mp[o] = fora ? 0 : poste[o]; mr[o] = fora ? 0 : reflexo[o] }
+    for (let k = 0; k < 3; k++) lc[n * 3 + k] = fora ? 0 : luz[n * 3 + k]
+  }
+  c.postes.instanceMatrix.needsUpdate = true
+  c.reflexos.instanceMatrix.needsUpdate = true
+  cor.needsUpdate = true
+}
+
 function Cena({
   tags,
   M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null,
@@ -3306,32 +3373,9 @@ function Cena({
     const indice = new Map((M.vias as Via[]).map((v, i) => [v, i]))
     // (27/10, drone v2) cada vértice sabe a via (o drone acende só as da rota)
     const via = (p: Pista) => indice.get(p as Via) ?? 0
-    const corDe = (p: Pista) => (viaApagada?.[indice.get(p as Via) ?? -1] ? "#2a2838" : (p as Via & { cor?: string }).cor)
-    // (T61b) a rotatória de cima: as linhas no chão (anel.ts). A da próxima
-    // saída aberta na faixa da direita, a da seguinte na do meio; passando uma
-    // saída, a do meio escorrega pra direita. Uma malha só, montada uma vez
-    const anelDaVia = new Map<number, { an: AnelDisco; k: number; sds: AnelDisco["saidas"] }>()
-    if ("disco" in M) for (const an of (M as MundoDisco).aneis) { const sds = an.saidas.filter((sd) => !viaApagada?.[sd.via]); an.vias.forEach((vi, k) => anelDaVia.set(vi, { an, k, sds })) }
-    // (no último ponto de um trecho, um tiquinho antes: a saída ali ainda é a próxima)
-    const guia = (p: Pista, i: number, q: 0 | 1) => { const r = anelDaVia.get(indice.get(p as Via) ?? -1); return r ? linhasNoAnel(r.an, r.sds, r.an.ini[r.k] + Math.min(U(i), p.L - 0.05))[q] : null }
-    const linhasGuia = () => {
-      if (!("disco" in M)) return null
-      const MD = M as MundoDisco, meia = ANEL_CFG.largura / 2
-      const doAnel = [...anelDaVia.keys()].map((vi) => M.vias[vi] as Via)
-      const partes = ([0, 1] as const).map((q) => fita(doAnel, (p, i) => (guia(p, i, q)?.x ?? 0) - meia, (p, i) => (guia(p, i, q)?.x ?? 0) + meia, 0.05, {
-        passo: passoD, via,
-        incluir: (p, i) => !!guia(p, i, q),
-        cor: (p, i) => { const g = guia(p, i, q)!; return [g.cor[0] * g.brilho, g.cor[1] * g.brilho, g.cor[2] * g.brilho] },
-      }))
-      // a linha da saída continua na alça dela (da faixa da direita até o meio da alça) e leva até a pista
-      const saidas = MD.aneis.flatMap((an) => an.saidas.filter((sd) => sd.via >= 0 && !viaApagada?.[sd.via]).map((sd) => M.vias[sd.via] as Via))
-      const xAlca = (p: Pista, i: number) => { const k = Math.min(1, U(i) / 40), t = k * k * (3 - 2 * k); return ANEL_CFG.xDireita + ((p.esq[i] + p.dir[i]) / 2 - ANEL_CFG.xDireita) * t }
-      partes.push(fita(saidas, (p, i) => xAlca(p, i) - meia, (p, i) => xAlca(p, i) + meia, 0.05, { passo: passoD, via, cor: (p) => rgb((p as Via & { cor: string }).cor) }))
-      const cheias = partes.filter((x) => x.index!.count > 0)
-      const g = cheias.length ? mergeGeometries(cheias, false) : null
-      for (const x of partes) x.dispose()
-      return g
-    }
+    // (leveza A) a cor ACESA de sempre: o cinza das apagadas é pintado por cima,
+    // no atributo de cor da malha que já existe (tingirApagadas), sem refazer a pista
+    const corDe = (p: Pista) => (p as Via & { cor?: string }).cor
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
     // (e nas emendas da torre: as alças se separam da espiral e uma da outra)
     const gargalo = (p: Pista, i: number) => {
@@ -3361,14 +3405,19 @@ function Cena({
       if (v.tipo === "circuito") return !divide(v, i, 1) && !chegando(v, i)
       return !(v.lado! < 0 && u < 90)
     }
-    const rails = (lado: number) => fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
-      passo: passoD,
-      via,
-      vertical: true,
-      incluir: lado < 0 ? trilhoE : trilhoD,
-      // (disco) o guard rail na cor da linha
-      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
-    })
+    const rails = (lado: number) => {
+      // (leveza A) quais quads são o trecho aceso da listra (o escuro fica escuro)
+      const aceso: number[] = []
+      const g = fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
+        passo: passoD,
+        via,
+        vertical: true,
+        incluir: lado < 0 ? trilhoE : trilhoD,
+        // (disco) o guard rail na cor da linha
+        cor: (p, i) => { const k = Math.floor(i / 10) % 2; aceso.push(k); return k ? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12] },
+      })
+      return guardarCor(g, aceso)
+    }
     const semEmenda = (p: Pista, i: number) => {
       const v = p as Via
       if (v.tipo === "circuito") return !divide(v, i, -1) && !divide(v, i, 1)
@@ -3384,11 +3433,9 @@ function Cena({
       // (disco) cada mão tem 2 faixas: um tracejado só, no meio dela
       // (disco) 4 faixas: o tracejado separa as duas de cada sentido (±4,2 m)
       // (alças: meia pista, só o tracejado de dentro dela)
-      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, via, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
+      faixas: [-MEIA / 3, MEIA / 3].map((x) => guardarCor(fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, via, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) }))),
       // (disco) as duas bordas na cor da linha
-      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
-      // (T61b) as linhas no chão da rotatória (antes, a faixa da direita pintada antes da saída)
-      linhasGuia: linhasGuia(),
+      bordas: [-1, 1].map((l) => guardarCor(fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) }))),
       // (disco) a linha contínua branca no meio (o canteiro é aberto: só pintura)
       linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { passo: passoD, via, incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
       railE: rails(-1),
@@ -3396,7 +3443,46 @@ function Cena({
       saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
       saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoD(p, i) }),
     }
-  }, [M, circuitos, distI, rgb, viaApagada])
+  }, [M, circuitos, distI, rgb])
+  // (leveza A) pista que acende/apaga: só a cor do atributo muda (sem refazer a malha)
+  useLayoutEffect(() => {
+    for (const g of [geo.railE, geo.railD, ...geo.faixas, ...geo.bordas]) tingirApagadas(g, viaApagada)
+  }, [geo, viaApagada])
+  // (T61b) as linhas no chão da rotatória: dependem de quais saídas estão abertas
+  // (a chave de viaApagada é estável: só refaz quando uma pista acende de verdade)
+  const linhasGuia = useMemo(() => {
+    const U = (i: number) => i * PASSO
+    const passoD = (p: Pista) => ((p as Via & { disco?: boolean }).disco ? 3 : 1)
+    const indice = new Map((M.vias as Via[]).map((v, i) => [v, i]))
+    const via = (p: Pista) => indice.get(p as Via) ?? 0
+    // (T61b) a rotatória de cima: as linhas no chão (anel.ts). A da próxima
+    // saída aberta na faixa da direita, a da seguinte na do meio; passando uma
+    // saída, a do meio escorrega pra direita. Uma malha só, montada uma vez
+    const anelDaVia = new Map<number, { an: AnelDisco; k: number; sds: AnelDisco["saidas"] }>()
+    if ("disco" in M) for (const an of (M as MundoDisco).aneis) { const sds = an.saidas.filter((sd) => !viaApagada?.[sd.via]); an.vias.forEach((vi, k) => anelDaVia.set(vi, { an, k, sds })) }
+    // (no último ponto de um trecho, um tiquinho antes: a saída ali ainda é a próxima)
+    const guia = (p: Pista, i: number, q: 0 | 1) => { const r = anelDaVia.get(indice.get(p as Via) ?? -1); return r ? linhasNoAnel(r.an, r.sds, r.an.ini[r.k] + Math.min(U(i), p.L - 0.05))[q] : null }
+    const linhasGuia = () => {
+      if (!("disco" in M)) return null
+      const MD = M as MundoDisco, meia = ANEL_CFG.largura / 2
+      const doAnel = [...anelDaVia.keys()].map((vi) => M.vias[vi] as Via)
+      const partes = ([0, 1] as const).map((q) => fita(doAnel, (p, i) => (guia(p, i, q)?.x ?? 0) - meia, (p, i) => (guia(p, i, q)?.x ?? 0) + meia, 0.05, {
+        passo: passoD, via,
+        incluir: (p, i) => !!guia(p, i, q),
+        cor: (p, i) => { const g = guia(p, i, q)!; return [g.cor[0] * g.brilho, g.cor[1] * g.brilho, g.cor[2] * g.brilho] },
+      }))
+      // a linha da saída continua na alça dela (da faixa da direita até o meio da alça) e leva até a pista
+      const saidas = MD.aneis.flatMap((an) => an.saidas.filter((sd) => sd.via >= 0 && !viaApagada?.[sd.via]).map((sd) => M.vias[sd.via] as Via))
+      const xAlca = (p: Pista, i: number) => { const k = Math.min(1, U(i) / 40), t = k * k * (3 - 2 * k); return ANEL_CFG.xDireita + ((p.esq[i] + p.dir[i]) / 2 - ANEL_CFG.xDireita) * t }
+      partes.push(fita(saidas, (p, i) => xAlca(p, i) - meia, (p, i) => xAlca(p, i) + meia, 0.05, { passo: passoD, via, cor: (p) => rgb((p as Via & { cor: string }).cor) }))
+      const cheias = partes.filter((x) => x.index!.count > 0)
+      const g = cheias.length ? mergeGeometries(cheias, false) : null
+      for (const x of partes) x.dispose()
+      return g
+    }
+    return linhasGuia()
+  }, [M, rgb, viaApagada])
+  useEffect(() => () => linhasGuia?.dispose(), [linhasGuia])
 
   // ── cidade: cada lugar com a sua arquitetura e a cor do seu gás ──
   const cidade = useMemo(() => {
@@ -3572,12 +3658,12 @@ function Cena({
     // fita do teto)
     // (nunca em cima de outra pista: somem onde a saída descola e onde
     // outra encosta chegando)
-    const ks: { v: Via; k: number; lado: number }[] = []
+    const ks: { v: Via; k: number; lado: number; vi: number }[] = []
     for (const [vi, v] of M.vias.entries()) {
       // (no mapa novo: um sentido só, e os postes a cada 40 m)
       if (v.tipo === "rua" && !v.rede?.ida) continue
       // (os atos, 20/10) a pista apagada é escura de verdade: sem poste aceso
-      if (viaApagada?.[vi]) continue
+      // (leveza A: todos montados; os das apagadas somem em apagarPostes)
       for (let k = 0; k < v.n; k += v.tipo === "rua" ? 20 : 12) {
         const u = k * PASSO
         if (v.tipo === "saida" && (u < 150 || u > v.L - 240)) continue
@@ -3590,7 +3676,7 @@ function Cena({
             if (v.faixas.some((f) => f.lado === lado && u > f.u - 4 && u < f.u + 140)) continue
             if (lado > 0 && v.chegadas.some((c) => u > c.u - 240 && u < c.u + 10)) continue
           }
-          ks.push({ v, k, lado })
+          ks.push({ v, k, lado, vi })
         }
       }
     }
@@ -3605,7 +3691,9 @@ function Cena({
     )
     const c = new THREE.Color()
     let n = 0
-    for (const { v, k, lado } of ks) {
+    const posteVia = new Int32Array(nL)
+    for (const { v, k, lado, vi } of ks) {
+      posteVia[n] = vi
       const ds = distI(v, k)
       {
         const borda = lado < 0 ? v.esq[k] : v.dir[k]
@@ -3651,8 +3739,11 @@ function Cena({
     aviacao.setAttribute("position", new THREE.BufferAttribute(new Float32Array(topos), 3))
     const aviacaoMat = new THREE.PointsMaterial({ size: 5, map: tex.brilho, color: "#ff2a2a", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
 
-    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores }
-  }, [M, circuitos, tex, distI, centrosLugares, viaApagada])
+    // (leveza A) as matrizes/cores acesas de cada poste, pra apagar/acender sem refazer
+    const postesAcesos = { via: posteVia, poste: Float32Array.from(postes.instanceMatrix.array), reflexo: Float32Array.from(reflexos.instanceMatrix.array), luz: Float32Array.from(luzCor) }
+    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesAcesos }
+  }, [M, circuitos, tex, distI, centrosLugares])
+  useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
 
   // ── colunas de luz: só onde a missão manda agora (a coisa pra buscar,
   // ou a estação de quem te chamou), dá pra ver de longe ──
@@ -6264,8 +6355,8 @@ function Cena({
       ))}
       </Estatico>
       {/* (T61b) as linhas no chão da rotatória: uma malha só, aditiva (o preto some) */}
-      {geo.linhasGuia && (
-        <mesh geometry={geo.linhasGuia}>
+      {linhasGuia && (
+        <mesh geometry={linhasGuia}>
           <meshBasicMaterial vertexColors transparent opacity={0.95} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} onBeforeCompile={ACENDE.neon} />
         </mesh>
       )}
