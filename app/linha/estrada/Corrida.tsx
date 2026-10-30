@@ -36,7 +36,8 @@ import { V_TORRE, chegadaNaTorre, geoChaoDisco, montarMundoDisco, naEspiral as n
 import { ANEL_CFG, linhasNoAnel } from "./anel"
 import { irTorreAgora, limparIrTorre } from "../parteTeste"
 import { TorreCentral } from "./Torre"
-import { Portoes } from "./Portoes"
+import { PORTAL_CFG, Portoes } from "./Portoes"
+import { Perto, SoQuando, type PontoXZ } from "./Perto"
 import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
@@ -3388,6 +3389,34 @@ function Cena({
     return { x, z, r: r - MEIA - 4 }
   }, [M])
   // (leveza A) as texturas de base moram no módulo: remontar a estrada não refaz
+  // (leveza A, problema 3) onde fica cada bloco da cidade, pro <Perto>
+  const pertoDe = useMemo(() => {
+    const MD = "disco" in M ? (M as MundoDisco) : null
+    const portoes: PontoXZ[] = [], monumentos: PontoXZ[] = []
+    if (MD) {
+      MD.vias.forEach((v, vi) => {
+        if (MD.info[vi]?.parte !== "saida") return
+        const i = Math.min(v.n - 1, Math.round(PORTAL_CFG.u / 2))
+        portoes.push({ x: v.px[i], z: v.pz[i] })
+      })
+      for (const p of MD.pistas) {
+        const o = MD.onde?.(`missao:${p.nome}`) ?? { via: p.ida, u: MD.vias[p.ida].L * 0.55 }
+        const V = MD.vias[o.via], i = Math.max(0, Math.min(V.n - 1, Math.round(o.u / 2)))
+        monumentos.push({ x: V.px[i], z: V.pz[i] })
+      }
+    }
+    return {
+      portoes, monumentos,
+      casa: [{ x: CASA.x, z: CASA.z }],
+      chao: Object.values(CHAO_LUGARES).map((l) => ({ x: l.x, z: l.z })),
+      lugares: centrosLugares.map((c) => ({ x: c.x, z: c.z })),
+      bombas: BOMBAS.map((b) => { const c = poseLugar(M, { area: b.area, u: b.u, lado: b.lado } as Lugar, `bomba:${b.id}`).centro; return { x: c.x, z: c.z } }),
+      fachadas: PAGINAS.filter((p) => !p.lugar).map((p) => { const c = poseLugar(M, { area: p.area, u: p.u, lado: p.lado } as Lugar, `pagina:${p.id}`).centro; return { x: c.x, z: c.z } }),
+      parque: areaDoParque(M),
+      suburbio: [{ x: centroSub.x, z: centroSub.z }],
+      centro: [{ x: 0, z: 0 }],
+    }
+  }, [M, centrosLugares, centroSub])
   const tex = useMemo(() => TEX_BASE ?? (TEX_BASE = { asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
 
   // cor de cada trecho: o lugar do circuito; nas saídas, metade de cada lado
@@ -4295,6 +4324,9 @@ function Cena({
   const kBalanco = useRef(0)
   const corpoK = useRef<THREE.Group>(null)
   const cabineG = useRef<THREE.Group>(null)
+  const dentroDeVerdade = useCallback(() => dentroRef.current, [dentroRef])
+  // (leveza A) robôs desmontados (longe do deserto): nenhum fica "vivo" no ROBOS
+  const robosFora = useCallback(() => { for (const b of ROBOS) b.vivo = false }, [])
   const patinador = useRef<THREE.Group>(null)
   const kombiParada = useRef<THREE.Group>(null)
   const kParadaT = useRef(false)
@@ -6404,17 +6436,20 @@ function Cena({
           <meshBasicMaterial vertexColors transparent opacity={0.95} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} onBeforeCompile={ACENDE.neon} />
         </mesh>
       )}
-      {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
-      {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} /></Seguro>}
-      {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} />}
-      {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
+      {/* (leveza A) cada bloco da cidade só fica montado com a câmera perto (Perto.tsx) */}
+      {"disco" in M && <Perto nome="portões" raio={700} pontos={pertoDe.portoes}><Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro></Perto>}
+      {"disco" in M && <Perto nome="monumentos" raio={900} pontos={pertoDe.monumentos}><Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} /></Seguro></Perto>}
+      {/* (na fase da casa, o farol guia de longe: aí a casa fica sempre montada) */}
+      {"disco" in M && <Perto nome="casa do deserto" raio={faseHistoria === "casa" ? 1e7 : 800} pontos={pertoDe.casa}><CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} /></Perto>}
+      {"disco" in M && <Perto nome="lugares do chão" raio={600} pontos={pertoDe.chao}><LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} /></Perto>}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
       {/* (T58) o GPS tipo Waze: a faixa da rota no chão da pista, à frente (1 draw, só com destino) */}
       {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
       {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
-      {"disco" in M && livreCaidos && <Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} onAtropelou={atropelouRobo} /></Seguro>}
-      {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onAtropelou={atropelouRobo} /></Seguro>}
+      {/* (os robôs só vivem no deserto, a mais de 1,3 km do centro: no miolo, desmontados) */}
+      {"disco" in M && livreCaidos && <Perto nome="robôs caídos" raio={1000} pontos={pertoDe.centro} fora><Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} onAtropelou={atropelouRobo} /></Seguro></Perto>}
+      {"disco" in M && <Perto nome="robôs" raio={1000} pontos={pertoDe.centro} fora aoSair={robosFora}><Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onAtropelou={atropelouRobo} /></Seguro></Perto>}
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
@@ -6445,13 +6480,13 @@ function Cena({
       <Estatico><primitive object={cidade.pilares} /></Estatico>
       {/* (no mapa novo a Linha 9 ainda vai ganhar o traçado dela) */}
       {!relevoNovo && <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>}
-      <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
-      <Seguro nome="bombas"><Bombas M={M} /></Seguro>
-      <Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro>
-      {/* no mapa novo: as flores do asfalto (só de patins); no de sempre, os canteiros */}
-      <Seguro nome="flores">{"ligacoes" in M ? <FloresAsfalto M={M} {...floresAsf} /> : <Flores M={M} regadas={regadas} />}</Seguro>
-      <Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro>
-      <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
+      <Perto nome="lugares" raio={700} pontos={pertoDe.lugares}><Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro></Perto>
+      <Perto nome="bombas" raio={600} pontos={pertoDe.bombas}><Seguro nome="bombas"><Bombas M={M} /></Seguro></Perto>
+      <Perto nome="fachadas" raio={600} pontos={pertoDe.fachadas}><Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro></Perto>
+      {/* no mapa novo: as flores do asfalto (só de patins, uma malha pelo mapa todo); no de sempre, os canteiros (medidos pelo Perto) */}
+      {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
+      <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>
+      <Perto nome="subúrbio" raio={centroSub.r + 700} pontos={pertoDe.suburbio}><Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro></Perto>
       <Estatico>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
@@ -6612,7 +6647,8 @@ function Cena({
             desde o T04: a lata é a da Kombi de fora (o branco da KombiHerbal) e o
             neon é o rosa da luz de baixo */}
         <group ref={cabineG}>
-          <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta="#ffffff" neon="#ff3fb0" /></Seguro>
+          {/* (leveza A) a cabine (kombi-interior.glb) só monta com a câmera de dentro */}
+          <SoQuando teste={dentroDeVerdade}><Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta="#ffffff" neon="#ff3fb0" /></Seguro></SoQuando>
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
