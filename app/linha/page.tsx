@@ -9,7 +9,7 @@
 // liberando coisa nova aos poucos.
 
 import { registrarRacha } from "./disco/corredores"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useInsertionEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
 import { ROTEIROS, VOZES, type ChatId } from "./roteiros"
@@ -27,7 +27,7 @@ import { proximaFreq } from "./radio"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
 import { Jardim, Violao } from "./recursos"
-import type { Cinema, Stats } from "./estrada/Corrida"
+import type { Cinema, Corrida as CorridaTipo, Stats } from "./estrada/Corrida"
 import { qualMapa } from "./estrada/qualMapa"
 import { Chegada } from "./chegada"
 import { LigacaoNaKombi, type Transcricao } from "./ligacao"
@@ -101,6 +101,9 @@ const Interior = dynamic(() => import("./interior/Interior").then((m) => m.Inter
 const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: false })
 // (T63) as trincheiras (os túneis do T11, a corrida do T13, as motos do T14), dentro do jogo
 const Trincheiras = dynamic(carregarTrincheiras, { ssr: false })
+
+// (leveza B) o save no localStorage: no máximo uma gravação a cada ~3 s
+const ESPERA_GRAVAR = 3000
 
 type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
 
@@ -177,6 +180,34 @@ function confShow(id: string): { faixa: FaixaShow; lugar: string; cor: string; p
   return null
 }
 
+// (leveza B) uma função que não muda entre os redesenhos e chama sempre a versão
+// mais nova (o <Corrida> e a <Cena> não redesenham por função nova à toa)
+function useFixo<A extends unknown[], R>(f: (...a: A) => R): (...a: A) => R {
+  const ref = useRef(f)
+  useInsertionEffect(() => { ref.current = f })
+  return useCallback((...a: A) => ref.current(...a), [])
+}
+// (leveza B) o mesmo objeto enquanto o conteúdo for o mesmo (dados simples, sem função)
+function useMesmo<T>(v: T): T {
+  const k = JSON.stringify(v) ?? ""
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => v, [k])
+}
+
+// (leveza B) a hora que a estrada mostra (o letreiro do holo) anda a cada 10 s
+// aqui dentro: só a estrada redesenha, a página não (a hora mora numa ref)
+function RelogioVivo({ hora, ouvinteRef, children }: { hora: number; ouvinteRef: RefObject<((h: number) => void) | null>; children: (hora: number) => ReactNode }) {
+  const [h, setH] = useState(hora)
+  // o save mudou a hora (marco, dormir, a chegada): segue o save
+  const [doSave, setDoSave] = useState(hora)
+  if (hora !== doSave) { setDoSave(hora); setH(hora) }
+  useEffect(() => {
+    ouvinteRef.current = setH
+    return () => { if (ouvinteRef.current === setH) ouvinteRef.current = null }
+  }, [ouvinteRef])
+  return <>{children(h)}</>
+}
+
 export default function LinhaPage() {
   // o caderno do dono aberto pausa a corrida (Caderno.tsx)
   const [caderno, setCaderno] = useState(false)
@@ -186,6 +217,8 @@ export default function LinhaPage() {
     return () => window.removeEventListener(EVENTO_CADERNO, f)
   }, [])
   const [save, setSave] = useState<Save>(VAZIO)
+  const saveRef = useRef(save)
+  useEffect(() => { saveRef.current = save }, [save])
   // (mapa-disco, LU2CA 20/10) a história nova manda no disco (disco/historia.ts):
   // enquanto ela está ativa, a narrativa antiga (ligações, invasões, o tutorial
   // do posto, as conversas chamando) fica quieta
@@ -305,9 +338,101 @@ export default function LinhaPage() {
     track("place_entered", { place_id: "linha-222", place_type: "linha" })
   }, [])
 
+  // (leveza B) o save vai pro localStorage com folga: a primeira mudança marca e,
+  // até ESPERA_GRAVAR depois, grava uma vez só (o JSON inteiro). Ao sair da
+  // página, esconder a aba, abrir um app ou o caderno: grava na hora
+  const gravarTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const gravarSujo = useRef(false)
+  // (leveza B) a hora (a cada 10 s) e o tanque (a cada 3 s) que a estrada manda
+  // moram aqui; o save só recebe nos marcos (troca de turno, virada do dia,
+  // tanque na reserva/cheio/seco). O localStorage grava sempre com eles
+  const vivo = useRef<{ hora?: number; tanque?: number }>({})
+  // (leveza B) o sinal de cada orb junta aqui e sobe junto, no máximo 1 vez por
+  // segundo (ou na hora: trocou de bairro/rádio, ou chegou água)
+  const sinalPend = useRef<{ total: number; freq?: string } | null>(null)
+  const sinalTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // o save com o que ainda mora nas refs (vale pras contas que leem a hora ou o tanque)
+  const comVivo = useCallback((s: Save): Save => {
+    const v = vivo.current
+    const hora = v.hora ?? s.hora, tanque = v.tanque ?? s.tanque
+    return hora === s.hora && tanque === s.tanque ? s : { ...s, hora, tanque }
+  }, [])
+  // o que vai pro disco: o save com o que ainda mora nas refs (o sinal juntando também)
+  const gravarComo = useRef((s: Save) => s)
+  gravarComo.current = (s: Save) => {
+    const p = sinalPend.current
+    const v = comVivo(s)
+    return p ? { ...v, sinal: p.total, freq: p.freq ?? v.freq } : v
+  }
+  const gravarJa = useCallback(() => {
+    if (gravarTimer.current) { clearTimeout(gravarTimer.current); gravarTimer.current = null }
+    if (!gravarSujo.current) return
+    gravarSujo.current = false
+    gravar(gravarComo.current(saveRef.current))
+  }, [])
+  const agendarGravar = useCallback(() => {
+    gravarSujo.current = true
+    if (!gravarTimer.current) gravarTimer.current = setTimeout(gravarJa, ESPERA_GRAVAR)
+  }, [gravarJa])
   useEffect(() => {
-    if (pronto) gravar(save)
-  }, [save, pronto])
+    if (pronto) agendarGravar()
+  }, [save, pronto, agendarGravar])
+  useEffect(() => {
+    const sair = () => gravarJa()
+    const escondeu = () => { if (document.visibilityState === "hidden") gravarJa() }
+    window.addEventListener("pagehide", sair)
+    document.addEventListener("visibilitychange", escondeu)
+    return () => {
+      window.removeEventListener("pagehide", sair)
+      document.removeEventListener("visibilitychange", escondeu)
+      gravarJa()
+    }
+  }, [gravarJa])
+  // o caderno e os apps do celular (janelas) leem o save do localStorage: abriu, grava antes
+  useEffect(() => { if (caderno) gravarJa() }, [caderno, gravarJa])
+  useEffect(() => { if (tela.t === "app") gravarJa() }, [tela.t, gravarJa])
+  // o sinal juntado sobe pro save (antes de qualquer conta que some no sinal)
+  const assentarSinal = useCallback(() => {
+    if (sinalTimer.current) { clearTimeout(sinalTimer.current); sinalTimer.current = null }
+    const p = sinalPend.current
+    if (!p) return
+    sinalPend.current = null
+    setSave((s) => ({ ...s, sinal: p.total, freq: p.freq ?? s.freq }))
+  }, [])
+  useEffect(() => () => { if (sinalTimer.current) clearTimeout(sinalTimer.current) }, [])
+  const onSinal = useCallback((total: number, freq?: FreqId) => {
+    sinalPend.current = { total, freq: freq ?? sinalPend.current?.freq }
+    if (freq) assentarSinal()
+    else if (!sinalTimer.current) { sinalTimer.current = setTimeout(assentarSinal, 1000); agendarGravar() }
+  }, [assentarSinal, agendarGravar])
+  // a água já chega juntada da estrada (1 vez por segundo): sobe na hora, e leva o sinal junto
+  const onAgua = useCallback((d: number) => {
+    assentarSinal()
+    setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))
+  }, [assentarSinal])
+  // mudou no save por outro caminho (a chegada, o posto, o galão): a ref segue o save
+  useEffect(() => { vivo.current.hora = save.hora }, [save.hora])
+  useEffect(() => { vivo.current.tanque = save.tanque }, [save.tanque])
+  const horaViva = useCallback(() => vivo.current.hora ?? saveRef.current.hora ?? 18, [])
+  // o relógio da estrada na tela (o letreiro do holo) segue a cada 10 s sem redesenhar a página
+  const ouvinteHora = useRef<((h: number) => void) | null>(null)
+  const onHora = useCallback((h: number) => {
+    const antes = vivo.current.hora ?? saveRef.current.hora ?? 18
+    vivo.current.hora = h
+    ouvinteHora.current?.(h)
+    const virou = virouODia(antes, h)
+    if (virou || turnoDe(antes) !== turnoDe(h)) setSave((s) => ({ ...s, hora: h, dia: virou ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))
+    else agendarGravar()
+  }, [agendarGravar])
+  // (o zero sempre sobe: antes o último pouquinho nunca virava 0 e a Kombi ficava na reserva pra sempre)
+  const onTanque = useCallback((n: number) => {
+    const salvo = saveRef.current.tanque ?? 1
+    const antes = vivo.current.tanque ?? salvo
+    vivo.current.tanque = n
+    const marco = (n <= 0 && salvo > 0) || Math.abs(salvo - n) >= 0.05 || (n < 0.1) !== (salvo < 0.1) || (n > 0.97) !== (salvo > 0.97)
+    if (marco) setSave((s) => ({ ...s, tanque: n }))
+    else if (Math.abs(antes - n) >= 0.005) agendarGravar()
+  }, [agendarGravar])
 
   const atualizar = useCallback((f: (s: Save) => Save) => setSave(f), [])
 
@@ -408,8 +533,6 @@ export default function LinhaPage() {
     }
   }, [pronto, podeInvadir, save.nucleo.invasoes, save.objetos.length, tela.t])
 
-  const saveRef = useRef(save)
-  useEffect(() => { saveRef.current = save }, [save])
 
   // O RELÓGIO DA CIDADE (relogio.ts, 13/10): dormir na Kombi pula pras 8h do
   // dia seguinte; cochilar (de dia) pula pras 19h. A tela escurece e mostra
@@ -548,11 +671,12 @@ export default function LinhaPage() {
 
   const fimInvasao = useCallback((venceu: boolean) => {
     setInvasao(null)
+    assentarSinal()
     setSave((s) => ({ ...s, sinal: s.sinal + (venceu ? 8 : 0), nucleo: { invasoes: s.nucleo.invasoes + 1, caido: !venceu } }))
     track("mission_step", { mission_id: "linha-nucleo", step: venceu ? "invasao:repelida" : "invasao:caiu", perfil: save.perfil ?? "?", fio_pos: -1 })
     if (venceu) avisar("D-Bee", "vc segurou eles. +8 de sinal", "#3d7bff")
     else setTimeout(() => avisar("D-Bee", "derrubaram a 222. religa a antena no centro, de kombi", "#3d7bff"), 400)
-  }, [avisar, save.perfil])
+  }, [avisar, save.perfil, assentarSinal])
 
   // a caça: a partir da 3ª missão, carregar o contrabando (o que foi buscado,
   // ou alguém de carona) até a estação atrai os carros brancos do Núcleo.
@@ -627,7 +751,7 @@ export default function LinhaPage() {
     }
     // cada lugar tem a sua hora (relogio.ts): fora dela, fechado
     const hr = LUGARES[id]?.horario ?? "noite"
-    const h = saveRef.current.hora ?? 18
+    const h = horaViva()
     if (!abertoAgora(hr, h)) {
       avisar(LUGARES[id].nome, turnoDe(h) === "ocio" ? "a cidade dorme. só música até as 8h" : `fechado agora. abre às ${abreAs(hr)}`, "#8a93b8")
       return
@@ -661,7 +785,7 @@ export default function LinhaPage() {
     if (LUGARES[id].fora) setViagem({ lugar: id, missao: a.missao, pegar: a.pegar })
     else setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
-  }, [cinema, avisar, D])
+  }, [cinema, avisar, D, horaViva])
   // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = a oficina
   // (T02) saiu da oficina: a Kombi solar + turbo, a água foi toda. É a porta da
   // missão da oficina (as melhorias da Kombi): a recompensa e, sem show, o jogo segue
@@ -728,6 +852,7 @@ export default function LinhaPage() {
       track("mission_step", { mission_id: `linha-${est}`, step: `loop:${c.lugar}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
       return
     }
+    assentarSinal()
     setSave((s) => {
       let objetos = s.objetos
       let sinal = s.sinal
@@ -767,7 +892,7 @@ export default function LinhaPage() {
       setPerseguido(true)
       setTimeout(() => setPerseguido(false), 60000)
     }
-  }, [cena, avisar])
+  }, [cena, avisar, assentarSinal])
 
   // saiu da casa da D-Bee (a abertura): o tanque cheio, o tutorial começa.
   // O começo antigo (o grupo rolando, as ligações dbee-0/1, a abertura com o
@@ -812,9 +937,10 @@ export default function LinhaPage() {
   }
 
   const religar = useCallback(() => {
+    assentarSinal()
     setSave((s) => ({ ...s, sinal: s.sinal + 10, nucleo: { ...s.nucleo, caido: false } }))
     track("mission_step", { mission_id: "linha-nucleo", step: "antena:religou", perfil: save.perfil ?? "?", fio_pos: -1 })
-  }, [save.perfil])
+  }, [save.perfil, assentarSinal])
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
@@ -1207,19 +1333,20 @@ export default function LinhaPage() {
     setNoPosto(null)
     // o item "Encha o tanque no posto" (e os +10) só conta saindo — lá dentro
     // o saldo tem que zerar no tanque (o galão dá "saldo insuficiente")
-    setSave((x) => (emTutorial(x) && (x.tanque ?? 0) > 0.97 ? { ...x, tutorial: [...new Set([...(x.tutorial ?? []), "posto"])] } : x))
+    setSave((x) => (emTutorial(x) && (comVivo(x).tanque ?? 0) > 0.97 ? { ...x, tutorial: [...new Set([...(x.tutorial ?? []), "posto"])] } : x))
     if (primeira) {
       setSave((x) => ({ ...x, tutorial: [...new Set([...(x.tutorial ?? []), "lu2ca-posto"])] }))
       // a loja de discos chama (rascunho): o disco novo que ele falou
       setTimeout(() => avisar("LOJA", "tem disco novo na prateleira · abre no celular", "#ffc857"), 2500)
     }
-  }, [noPosto, avisar])
-  const encherTanque = useCallback(() => setSave((s) => {
+  }, [noPosto, avisar, comVivo])
+  const encherTanque = useCallback(() => setSave((s0) => {
+    const s = comVivo(s0)
     const pago = (s.tanque ?? 1) > 0.97 ? null : gastar(s, PRECO_TANQUE)
     if (!pago) return s
     track("mission_step", { mission_id: "linha-posto", step: "tanque", perfil: s.perfil ?? "?", fio_pos: -1 })
     return { ...pago, tanque: 1 }
-  }), [])
+  }), [comVivo])
   const encherGalao = () => setSave((s) => { const pago = s.galao !== "vazio" ? null : gastar(s, PRECO_GALAO); return pago ? { ...pago, galao: "cheio" } : s })
 
   // a missão de agora e o resumo da caixa (no canto da tela)
@@ -1306,6 +1433,7 @@ export default function LinhaPage() {
   // minigames da versão anterior: quem completa ganha luz e sinal (uma vez)
   const conferirLegado = useCallback(() => {
     const feitos = legadoFeito()
+    assentarSinal()
     setSave((s) => {
       const novos = LEGADO.filter((l) => feitos.includes(l.id) && !s.legado.includes(l.id))
       if (!novos.length) return s
@@ -1317,7 +1445,7 @@ export default function LinhaPage() {
       }, 0)
       return { ...s, legado: [...s.legado, ...novos.map((l) => l.id)], neon: (s.neon ?? 0) + luz, sinal: s.sinal + sinal }
     })
-  }, [avisar])
+  }, [avisar, assentarSinal])
 
   // já fez o quiz = está dentro da cidade
   const dentro = !!save.estacao || !!save.casa
@@ -1389,7 +1517,7 @@ export default function LinhaPage() {
     setTimeout(() => setRastroMinhoca(false), 2700)
     // (T37, J1/J2: 4: "refletir o céu atual da hora") o céu da chegada é o da hora
     // de quem joga (CHEGADA.ceu; antes era sempre 16h30, de tarde)
-    const hr = horaDaChegada(saveRef.current.hora)
+    const hr = horaDaChegada(vivo.current.hora ?? saveRef.current.hora)
     const primeira = historiaDe(saveRef.current).fase === "minhoca"
     setSave((s) => ({ ...(primeira ? comHistoria(s, (h) => ({ ...h, fase: "casa" as const })) : s), hora: hr }))
     setSaltoHora({ h: hr, id: Date.now() })
@@ -1651,6 +1779,64 @@ export default function LinhaPage() {
     mudo(m)
   }
 
+  // (leveza B) as props do <Corrida>: funções fixas e objetos que só mudam quando o conteúdo muda
+  const cOnHistoria = useFixo(onHistoria)
+  const cOnComprar = useFixo((id: Parameters<typeof comprarMelhoria>[1]) => setSave((s) => { const r = comprarMelhoria(s, id); return r.ok ? r.save : s }))
+  const cOnAbertura = useFixo(() => { setCinema("lugar"); setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, inicio: true }) })
+  const cOnArea = useFixo((id: string) => { if (id === "circuito:linha" && emTutorial(saveRef.current)) marcarTut("tanque") })
+  const cOnDica = useFixo((d: string) => setSave((s) => (s.dicas.includes(d) ? s : { ...s, dicas: [...s.dicas, d] })))
+  const cOnApreendido = useFixo(apreender)
+  const cOnReligar = useFixo(religar)
+  const cOnPosto = useFixo(() => abrirPostoRef.current())
+  const cOnRegar = useFixo(regouCanteiro)
+  const cOnMontanha = useFixo((n: number) => { setSave((s) => ganhar(s, n)); if (n >= 2) eventoDaRua("montanha") })
+  const cOnAbastecer = useFixo((o: "tanque" | "galao" | "despejar"): boolean => {
+    const s0 = comVivo(saveRef.current)
+    // de patins (a gasolina acabou): o galão vai direto no tanque; se já tinha um cheio, só despeja
+    if (o === "despejar") {
+      const tinha = s0.galao === "cheio"
+      if (!tinha && (s0.neon ?? 0) < PRECO_GALAO) return false
+      setSave((s) => ({ ...s, neon: (s.neon ?? 0) - (tinha ? 0 : PRECO_GALAO), galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) }))
+      return true
+    }
+    if (o === "tanque" ? (s0.neon ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.neon ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
+    if (o === "tanque") encherTanque(); else encherGalao()
+    return true
+  })
+  const cOnApp = useFixo(abrirApp)
+  const cOnMissoes = useFixo(() => setPainelMissoes(true))
+  const cOnFuga = useFixo((n: number) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) })))
+  const cOnRacha = useFixo((r: Parameters<typeof registrarRacha>[1]) => setSave((s) => registrarRacha(s, r)))
+  const cOnPerseguicao = useFixo((...[e, id]: Parameters<NonNullable<ComponentProps<typeof CorridaTipo>["onPerseguicao"]>>) => {
+    if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
+    else if (id) {
+      setSave((s) => comHistoria(s, (h) => escolherVeiculo(h, id)))
+      const v = veiculoPorId(id)
+      if (v) setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: v.nome }), 900)
+    }
+  })
+  const cOnMapaIcone = useFixo((id: string) => setFocoFeira(id as PistaId))
+  const cOnPegar = useFixo((k: string) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] })))
+  const cOnDescer = useFixo(descer)
+  const cOnSair = useFixo(sairDaCorrida)
+  const cOnVaga = useFixo(abrirCena)
+  const cOnIlha = useFixo(() => {
+    // o grupo rolando: abre a conversa inteira; depois disso, a
+    // ilha abre o celular (como o ícone)
+    if (introGrupo !== null) {
+      setIntroGrupo(null)
+      setTela({ t: "chat", id: "grupo", volta: { t: "corrida", destino: null } })
+    } else sairDaCorrida()
+  })
+  const cOnVolta = useFixo((t: number) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t })))
+  const cHistoria = useMesmo(D ? hist : null)
+  const cTrancas = useMesmo(trancasCorrida)
+  const cVersoesPista = useMesmo(versoesPista)
+  const cAlvo = useMesmo(HIST ? alvoDisco : save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel))
+  const cChecklistHolo = useMesmo(checklistHolo)
+  const cMapaMissoes = useMesmo(mapaMissoes)
+  const cMissaoHolo = useMesmo(HIST ? (objetivoDisco ? { texto: objetivoDisco, cor: "#e0ff4f", n: 1 } : null) : resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null)
+
   if (!pronto) return <div className="l-raiz" />
 
   // atalho de desenvolvimento: /linha?corrida=1 abre direto a estrada
@@ -1658,7 +1844,7 @@ export default function LinhaPage() {
     return (
       <div className="l-raiz">
         <div className="l-palco">
-          <Corrida save={save} nivel={nivel} destino={null} onSinal={(total) => setSave((s) => ({ ...s, sinal: total }))} onDescer={() => {}} onSair={() => {}} />
+          <Corrida save={save} nivel={nivel} destino={null} onSinal={onSinal} onDescer={() => {}} onSair={() => {}} />
         </div>
       </div>
     )
@@ -1694,6 +1880,7 @@ export default function LinhaPage() {
       <div className="l-palco">
         {/* camada de baixo: a estrada (pausa quando o celular está aberto) */}
         {(estrada || tela.t === "corrida") && !emSala && (
+          <RelogioVivo hora={save.hora ?? 18} ouvinteRef={ouvinteHora}>{(horaTela) => (
           <Corrida
             save={save}
             nivel={nivel}
@@ -1703,9 +1890,9 @@ export default function LinhaPage() {
             retomar={voltaDaSala}
             teleporte={teleporte}
             abertura={!D && !save.casa}
-            historia={D ? hist : null}
+            historia={cHistoria}
             chegada={D && chegadaLogin}
-            trancas={trancasCorrida}
+            trancas={cTrancas}
             noConserto={noConserto}
             quebrou={kombiQuebrou}
             sorteioMs={HIST && CONFIG_QUEBRA.ligada && !cena && !oficinaTela ? CONFIG_QUEBRA.cadaMs : 0}
@@ -1713,98 +1900,72 @@ export default function LinhaPage() {
             soTema={soTema}
             pistaFoco={focoFeira}
             temaMissao={temaMissao}
-            versoesPista={versoesPista}
-            onHistoria={onHistoria}
+            versoesPista={cVersoesPista}
+            onHistoria={cOnHistoria}
             // (B10, T03) a oficina: o mecânico é pago em água, só desempenho (o preço vem da economia)
-            onComprar={(id) => setSave((s) => { const r = comprarMelhoria(s, id); return r.ok ? r.save : s })}
-            onAbertura={() => { setCinema("lugar"); setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, inicio: true }) }}
-            onArea={(id) => { if (id === "circuito:linha" && emTutorial(saveRef.current)) marcarTut("tanque") }}
+            onComprar={cOnComprar}
+            onAbertura={cOnAbertura}
+            onArea={cOnArea}
             limitado={!!invasao}
             cacado={cacado || perseguido}
             conversa={!!aoVivo}
             onBifurca={setBifurcando}
             dicas={save.dicas}
-            onDica={(d) => setSave((s) => (s.dicas.includes(d) ? s : { ...s, dicas: [...s.dicas, d] }))}
-            onApreendido={apreender}
+            onDica={cOnDica}
+            onApreendido={cOnApreendido}
             caido={save.nucleo.caido}
-            onReligar={religar}
-            onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
-            alvo={HIST ? alvoDisco : save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
+            onReligar={cOnReligar}
+            onSinal={onSinal}
+            alvo={cAlvo}
             levando={levarDrewboy(save) ? "copo" : null}
             tanque={save.tanque ?? 1}
-            // (o zero sempre salva: antes o último pouquinho nunca virava 0 e a Kombi ficava na reserva pra sempre)
-            onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 && !(n <= 0 && (s.tanque ?? 1) > 0) ? s : { ...s, tanque: n }))}
-            onPosto={() => abrirPostoRef.current()}
-            hora={save.hora ?? 18}
-            onHora={(h) => setSave((s) => ({ ...s, hora: h, dia: virouODia(s.hora ?? 18, h) ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))}
+            onTanque={onTanque}
+            onPosto={cOnPosto}
+            hora={horaTela}
+            onHora={onHora}
             dia={save.dia ?? 1}
             saltoHora={saltoHora}
             regadas={regadasHoje}
-            onRegar={regouCanteiro}
-            onMontanha={(n) => { setSave((s) => ganhar(s, n)); if (n >= 2) eventoDaRua("montanha") }}
-            onAbastecer={(o) => {
-              const s0 = saveRef.current
-              // de patins (a gasolina acabou): o galão vai direto no tanque; se já tinha um cheio, só despeja
-              if (o === "despejar") {
-                const tinha = s0.galao === "cheio"
-                if (!tinha && (s0.neon ?? 0) < PRECO_GALAO) return false
-                setSave((s) => ({ ...s, neon: (s.neon ?? 0) - (tinha ? 0 : PRECO_GALAO), galao: "vazio", tanque: Math.min(1, (s.tanque ?? 0) + GALAO) }))
-                return true
-              }
-              if (o === "tanque" ? (s0.neon ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.neon ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
-              if (o === "tanque") encherTanque(); else encherGalao()
-              return true
-            }}
+            onRegar={cOnRegar}
+            onMontanha={cOnMontanha}
+            onAbastecer={cOnAbastecer}
             postoAberto={!!noPosto}
             atalho={atalhoTeste}
-            onApp={abrirApp}
-            onMissoes={() => setPainelMissoes(true)}
+            onApp={cOnApp}
+            onMissoes={cOnMissoes}
             agua={save.agua ?? 0}
-            onFuga={(n) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) }))}
-            onRacha={(r) => setSave((s) => registrarRacha(s, r))}
+            onFuga={cOnFuga}
+            onRacha={cOnRacha}
             perseguicao={perseguicaoAgora}
             esperaPolicia={podeVirPolicia && !cena && !oficinaTela ? CONFIG_PERSEGUICAO.esperaMs : 0}
             semKombi={semKombi}
             veiculo={veiculoAgora}
-            onPerseguicao={(e, id) => {
-              if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
-              else if (id) {
-                setSave((s) => comHistoria(s, (h) => escolherVeiculo(h, id)))
-                const v = veiculoPorId(id)
-                if (v) setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: v.nome }), 900)
-              }
-            }}
-            onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
-            checklistHolo={checklistHolo}
-            mapaMissoes={mapaMissoes}
+            onPerseguicao={cOnPerseguicao}
+            onAgua={onAgua}
+            checklistHolo={cChecklistHolo}
+            mapaMissoes={cMapaMissoes}
             mapaPainel={mapaPainel}
-            onMapaIcone={(id) => setFocoFeira(id as PistaId)}
-            missaoHolo={HIST ? (objetivoDisco ? { texto: objetivoDisco, cor: "#e0ff4f", n: 1 } : null) : resumoMissao ? { texto: listaMissoes.length > 1 && !missaoAgora ? "" : resumoMissao.texto, cor: resumoMissao.cor, n: listaMissoes.length } : listaMissoes.length ? { texto: "", cor: "#ffc857", n: listaMissoes.length } : null}
-            onPegar={(k) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] }))}
+            onMapaIcone={cOnMapaIcone}
+            missaoHolo={cMissaoHolo}
+            onPegar={cOnPegar}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
-            onDescer={descer}
-            onSair={sairDaCorrida}
-            onVaga={abrirCena}
+            onDescer={cOnDescer}
+            onSair={cOnSair}
+            onVaga={cOnVaga}
             segredo={segredo}
             // (B18) as cenas do chão do subúrbio não puxam a câmera pra fachada da pista
             cenaLugar={cena && cena.especial !== "disco-oficina" && !(cena.especial === "disco-bar" && hist.fase === "bar") ? cena.lugar : null}
             // (disco, a história) a cidade quieta: só quem a história põe pra falar
             intro={HIST || (!D && !save.completos.includes("abertura"))}
             fala={falaIntro}
-            onIlha={() => {
-              // o grupo rolando: abre a conversa inteira; depois disso, a
-              // ilha abre o celular (como o ícone)
-              if (introGrupo !== null) {
-                setIntroGrupo(null)
-                setTela({ t: "chat", id: "grupo", volta: { t: "corrida", destino: null } })
-              } else sairDaCorrida()
-            }}
-            onVolta={(t) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t }))}
+            onIlha={cOnIlha}
+            onVolta={cOnVolta}
             cinema={cinema}
             cinza={cinza}
             noiteRepete={save.objetos.includes("copo") ? 0 : (save.loops?.bar ?? 0)}
             foraDoAr={apagao}
           />
+          )}</RelogioVivo>
         )}
         {/* O RELÓGIO (13/10): de dia dá pra cochilar até a noite; de noite e
             na madrugada, dormir na Kombi (o dia seguinte começa às 8h) */}
@@ -2096,7 +2257,7 @@ export default function LinhaPage() {
         {tela.t === "app" && tela.id === "ouvir" && <Ouvir onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarNaLoja} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
-          <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (s.tanque ?? 0) + GALAO) } : s))} />
+          <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) } : s))} />
         )}
 
         {tela.t === "final" && <Final save={save} onVoltar={() => setTela({ t: "home" })} />}
