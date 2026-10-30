@@ -111,36 +111,41 @@ function useKit() {
   return useMemo(() => (kit ??= criarKit()), [])
 }
 
-// a onda e o brilho de um golpe na pele (uma por tambor, reaproveitada)
-function useGolpe() {
-  const onda = useRef<THREE.Mesh>(null)
-  const ponto = useRef<THREE.Mesh>(null)
-  const mats = useMemo(() => ({
-    onda: new THREE.MeshBasicMaterial({ color: "#fff2d0", transparent: true, opacity: 0, depthWrite: false, toneMapped: false }),
-    ponto: new THREE.MeshBasicMaterial({ color: "#ffd890", transparent: true, opacity: 0, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }),
-    pele: (() => { const k = kit!; return new THREE.MeshStandardMaterial({ map: k.texPele, roughness: 0.85, emissive: new THREE.Color("#ffb060"), emissiveIntensity: 0 }) })(),
-  }), [])
-  useEffect(() => () => { mats.onda.dispose(); mats.ponto.dispose(); mats.pele.dispose() }, [mats])
+// a onda e o brilho de um golpe na pele (uma por tambor, reaproveitada).
+// Tudo criado uma vez aqui dentro; a cena só mostra (<primitive>)
+function criarGolpe() {
+  const k = kit!
+  const matOnda = new THREE.MeshBasicMaterial({ color: "#fff2d0", transparent: true, opacity: 0, depthWrite: false, toneMapped: false })
+  const matPonto = new THREE.MeshBasicMaterial({ color: "#ffd890", transparent: true, opacity: 0, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending })
+  const pele = new THREE.MeshStandardMaterial({ map: k.texPele, roughness: 0.85, emissive: new THREE.Color("#ffb060"), emissiveIntensity: 0 })
+  const onda = new THREE.Mesh(k.onda, matOnda)
+  const ponto = new THREE.Mesh(k.ponto, matPonto)
+  onda.visible = ponto.visible = false
   // anima o último golpe (desde `dt` segundos)
   const mostrar = (t: Toque | null, dt: number) => {
-    const o = onda.current, p = ponto.current
-    if (!o || !p) return
     if (!t || dt < 0 || dt > 0.6) {
-      o.visible = false; p.visible = false; mats.pele.emissiveIntensity = 0
+      onda.visible = false; ponto.visible = false; pele.emissiveIntensity = 0
       return
     }
     const x = Math.cos(t.ang) * t.r * R * 0.95, z = Math.sin(t.ang) * t.r * R * 0.95
-    const k = dt / 0.6
-    o.visible = true; p.visible = true
-    o.position.set(x, ALTO + 0.003, z)
-    o.scale.setScalar(0.01 + (1 - Math.pow(1 - k, 2)) * R * (0.45 + 0.8 * t.forca))
-    mats.onda.opacity = (1 - k) * (0.35 + 0.5 * t.forca)
-    p.position.set(x, ALTO + 0.004, z)
-    p.scale.setScalar(0.018 + 0.02 * t.forca)
-    mats.ponto.opacity = Math.exp(-dt / 0.12) * (0.5 + 0.5 * t.forca)
-    mats.pele.emissiveIntensity = Math.exp(-dt / 0.1) * (0.12 + 0.35 * t.forca)
+    const q = dt / 0.6
+    onda.visible = true; ponto.visible = true
+    onda.position.set(x, ALTO + 0.003, z)
+    onda.scale.setScalar(0.01 + (1 - Math.pow(1 - q, 2)) * R * (0.45 + 0.8 * t.forca))
+    matOnda.opacity = (1 - q) * (0.35 + 0.5 * t.forca)
+    ponto.position.set(x, ALTO + 0.004, z)
+    ponto.scale.setScalar(0.018 + 0.02 * t.forca)
+    matPonto.opacity = Math.exp(-dt / 0.12) * (0.5 + 0.5 * t.forca)
+    pele.emissiveIntensity = Math.exp(-dt / 0.1) * (0.12 + 0.35 * t.forca)
   }
-  return { onda, ponto, mats, mostrar }
+  const liberar = () => { matOnda.dispose(); matPonto.dispose(); pele.dispose() }
+  return { onda, ponto, pele, mostrar, liberar }
+}
+function useGolpe() {
+  useKit()
+  const g = useMemo(() => criarGolpe(), [])
+  useEffect(() => g.liberar, [g])
+  return g
 }
 
 function Corpo({ pele }: { pele: THREE.Material }) {
@@ -189,9 +194,9 @@ export function DjembeSeu({ pos, vira = 0 }: { pos: V3; vira?: number }) {
   }
   return (
     <group ref={grupo} position={pos} rotation-y={vira}>
-      <Corpo pele={golpe.mats.pele} />
-      <mesh ref={golpe.onda} geometry={k.onda} material={golpe.mats.onda} visible={false} />
-      <mesh ref={golpe.ponto} geometry={k.ponto} material={golpe.mats.ponto} visible={false} />
+      <Corpo pele={golpe.pele} />
+      <primitive object={golpe.onda} />
+      <primitive object={golpe.ponto} />
       {/* onde o toque pega: a pele e uma folga em volta (fora da pele conta como a borda) */}
       <mesh geometry={k.pega} position={[0, ALTO + 0.01, 0]} onPointerDown={bater} visible={false} />
     </group>
@@ -202,9 +207,17 @@ export function DjembeSeu({ pos, vira = 0 }: { pos: V3; vira?: number }) {
 export function DjembeDela({ pos, vira = 0, cor = "#3d7bff" }: { pos: V3; vira?: number; cor?: string }) {
   const k = useKit()
   const golpe = useGolpe()
-  const maos = [useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null)]
-  const matMao = useMemo(() => new THREE.MeshStandardMaterial({ color: "#2c2838", emissive: cor, emissiveIntensity: 0.5, roughness: 0.6 }), [cor])
-  useEffect(() => () => matMao.dispose(), [matMao])
+  // as duas mãos dela (criadas uma vez)
+  const maos = useMemo(() => {
+    const mat = new THREE.MeshStandardMaterial({ color: "#2c2838", emissive: cor, emissiveIntensity: 0.5, roughness: 0.6 })
+    return [1, -1].map((l) => {
+      const m = new THREE.Mesh(k.mao, mat)
+      m.scale.set(0.04, 0.016, 0.055)
+      m.position.set(l * 0.08, ALTO + 0.13, 0.1)
+      return m
+    })
+  }, [cor, k])
+  useEffect(() => () => (maos[0].material as THREE.Material).dispose(), [maos])
   const fila = useRef({ lista: null as Toque[] | null, i: 0 })
   useFrame((_, dt) => {
     const lista = TAMBOR_VIVO.dela
@@ -218,8 +231,7 @@ export function DjembeDela({ pos, vira = 0, cor = "#3d7bff" }: { pos: V3; vira?:
     golpe.mostrar(ult, ult ? agora - ult.quando : -1)
     // as mãos: cada uma vai pro próximo golpe do lado dela, sobe e desce no tempo
     for (let m = 0; m < 2; m++) {
-      const mao = maos[m].current
-      if (!mao) continue
+      const mao = maos[m]
       const esq = m === 1
       let prox: Toque | null = null, ant: Toque | null = null
       if (vivo) {
@@ -242,12 +254,11 @@ export function DjembeDela({ pos, vira = 0, cor = "#3d7bff" }: { pos: V3; vira?:
   })
   return (
     <group position={pos} rotation-y={vira}>
-      <Corpo pele={golpe.mats.pele} />
-      <mesh ref={golpe.onda} geometry={k.onda} material={golpe.mats.onda} visible={false} />
-      <mesh ref={golpe.ponto} geometry={k.ponto} material={golpe.mats.ponto} visible={false} />
-      {maos.map((m, i) => (
-        <mesh key={i} ref={m} geometry={k.mao} material={matMao} scale={[0.04, 0.016, 0.055]} position={[(i ? -1 : 1) * 0.08, ALTO + 0.13, 0.1]} />
-      ))}
+      <Corpo pele={golpe.pele} />
+      <primitive object={golpe.onda} />
+      <primitive object={golpe.ponto} />
+      <primitive object={maos[0]} />
+      <primitive object={maos[1]} />
     </group>
   )
 }

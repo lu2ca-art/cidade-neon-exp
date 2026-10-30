@@ -15,7 +15,7 @@ export function Vitrine() {
   return (
     <div className="l-raiz" style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "#0a0610" }}>
       {!so2d && (
-        <Canvas style={{ position: "absolute", inset: 0 }} dpr={[1, 1.5]} camera={{ position: [0.05, 1.22, 0.78], fov: 56 }} onCreated={({ camera }) => camera.lookAt(-0.62, 0.5, -1.05)}>
+        <Canvas style={{ position: "absolute", inset: 0 }} dpr={[1, 1.5]} camera={{ position: [0.12, 1.42, 1.08], fov: 56 }} onCreated={({ camera }) => camera.lookAt(-0.6, 0.42, -1.0)}>
           <color attach="background" args={["#140c0a"]} />
           <ambientLight intensity={0.35} color="#ffcf8a" />
           <hemisphereLight args={["#ffcf8a", "#100a08", 0.4]} />

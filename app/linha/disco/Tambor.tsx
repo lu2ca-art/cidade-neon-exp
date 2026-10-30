@@ -173,7 +173,10 @@ export function Tambor({ onFim }: { onFim: () => void }) {
     silenciar(true)
     void carregarTambor()
     window.addEventListener("pointermove", seguirMovimento, { passive: true })
-    return () => { silenciar(false); window.removeEventListener("pointermove", seguirMovimento) }
+    // qualquer toque destrava o áudio (se ainda não estava)
+    const destrava = () => { audioCtx() }
+    window.addEventListener("pointerdown", destrava, { passive: true })
+    return () => { silenciar(false); window.removeEventListener("pointermove", seguirMovimento); window.removeEventListener("pointerdown", destrava) }
   }, [])
 
   useEffect(() => {
