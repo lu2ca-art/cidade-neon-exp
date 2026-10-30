@@ -3019,7 +3019,8 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-oficina-agua.is-fim b { color: #fff; }
 
 /* (T63) a porta da boca do túnel: o escuro da descida pras trincheiras */
-.l-tunel-desce { position: fixed; inset: 0; z-index: 72; background: #000; pointer-events: all; animation: l-tunel-desce 0.8s ease-in both; }
+.l-tunel-desce { position: fixed; inset: 0; z-index: 72; background: #000; pointer-events: all; animation: l-tunel-desce 0.8s ease-in both; display: flex; align-items: flex-end; justify-content: center; }
+.l-tunel-desce p { margin: 0 0 18vh; color: #9b8cff; font-size: 14px; letter-spacing: 0.04em; }
 @keyframes l-tunel-desce { from { opacity: 0; } to { opacity: 1; } }
 
 /* (T22b) o filminho dentro da cena (CenaFilme.tsx): o vídeo por cima de tudo, ou

@@ -42,7 +42,7 @@ export interface HistoriaDisco {
   // as compras com água na oficina (B10: o que é tecnologia)
   mods?: string[]
   // robôs espatifados (B12)
-  robos?: number
+  robos?: number // (antigo: a conta dos robôs espatifados; desde 30/10 eles não contam nada)
   // (B11) as peças das missões já feitas ("sexta:pingpong")
   pecas?: string[]
   // (21/10, a feira) a missão que ele pegou (a linha); sem ela, a feira oferece as acesas

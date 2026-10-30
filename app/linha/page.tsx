@@ -59,6 +59,8 @@ import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { definirChaoAtivos, ehPeca } from "./disco/achados"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
+// (30/10) a volta do túnel: a Kombi esperou na porta
+const FALA_VOLTA_TUNEL = "voltou lá de baixo. a kombi tava te esperando na porta. as raízes seguem lá"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
@@ -953,14 +955,15 @@ export default function LinhaPage() {
   }
   // (T63) desceu a rampa da boca do túnel: a porta escurece e, lá embaixo, as
   // trincheiras (no mesmo jogo, sem trocar de página). A estrada sai da cena
-  // quando o escuro cobre tudo
+  // quando o escuro cobre tudo. (30/10, o dono) A Kombi fica parada lá fora,
+  // na porta: ele desce sem ela
   const descerTrincheiras = (missao: MissaoId | null) => {
     if (trincheiras) return
     setAoVivo(null)
     setTrincheiras({ missao, descendo: true })
     setTimeout(() => setTrincheiras((t) => (t ? { ...t, descendo: false } : t)), 800)
   }
-  // subiu de volta: a Kombi sai da boca, no alto da rampa. Correu uma volta
+  // subiu de volta: a Kombi está na porta, onde ficou parada. Correu uma volta
   // inteira lá embaixo = o jogo da missão dos túneis fica feito (e a porta segue)
   const subirDasTrincheiras = (correu: boolean) => {
     subiuDoTunel()
@@ -968,7 +971,7 @@ export default function LinhaPage() {
     setTrincheiras(null)
     const pc = pecaAgora13(hist13(saveRef.current), "tuneis")
     if (correu && missao === "tuneis" && missaoDoSave(saveRef.current) === "tuneis" && pc?.peca.como?.t === "trincheiras") setTimeout(() => pecaFeitaNaMissaoRef.current("tuneis", pc.qual), 600)
-    else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "voltou lá de baixo. as raízes seguem lá, é só descer a rampa de novo" }), 1200)
+    else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: FALA_VOLTA_TUNEL }), 1200)
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId) => {
@@ -1045,7 +1048,7 @@ export default function LinhaPage() {
     limparVoltaDasTrincheiras()
     const pc = pecaAgora13(hist13(saveRef.current), "tuneis")
     if (v.corrida && missaoDoSave(saveRef.current) === "tuneis" && pc?.peca.como?.t === "trincheiras") pecaFeitaNaMissao("tuneis", pc.qual)
-    else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "voltou lá de baixo. as raízes seguem lá, é só descer a rampa de novo" }), 1200)
+    else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: FALA_VOLTA_TUNEL }), 1200)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [HIST, tela.t, cena])
   // (T10) o link de teste (?parte=missao.quadra.batida / .basquete) deixa a peça marcada aberta no save: abre aqui
@@ -1467,7 +1470,6 @@ export default function LinhaPage() {
       setSave((s) => comHistoria(s, (x) => ({ ...x, fase: "carreira" })))
       setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "uma kombi velha subiu do subúrbio. voando. alguém viu isso?" }), 1500)
     }
-    if (e === "robo") setSave((s) => comHistoria(s, (x) => ({ ...x, robos: (x.robos ?? 0) + 1 })))
     // (27/10) a D-Bee deu o drone (nas dunas): a subida mostrada não se repete
     if (e === "drone") setSave((s) => comHistoria(s, (x) => ({ ...x, drone: true })))
     // (a Nectar, B9) a Kombi quebrou → regar 3 flores de patins → o galão → a oficina → o show → o jardim
@@ -2128,7 +2130,7 @@ export default function LinhaPage() {
           />
         )}
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
-        {trincheiras?.descendo && <div className="l-tunel-desce" aria-hidden />}
+        {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
         {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras }} />}
         {viagem && (
           <Viagem
