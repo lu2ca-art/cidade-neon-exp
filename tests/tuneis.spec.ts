@@ -5,8 +5,11 @@ import { MISSOES13 } from "../app/linha/disco/portas"
 import { saidaDoTunel, voltaDasTrincheiras } from "../app/linha/disco/tuneis"
 
 // (T57) a boca do túnel de verdade no subúrbio: o chão desce numa rampa até a
-// porta escura; lá embaixo, ela leva às trincheiras (a página do T11/T13) e a
-// volta sai da boca. E a quadra é um piso de verdade (o chão assenta nele).
+// porta escura; lá embaixo, ela leva às trincheiras e a volta sai da boca.
+// E a quadra é um piso de verdade (o chão assenta nele).
+// (T63) as trincheiras abrem DENTRO do jogo: a página não muda.
+// Dirige a cena 3D (a estrada e as trincheiras): no Mac, metal.
+test.use({ launchOptions: { executablePath: process.env.CHROME_PATH || undefined, args: ["--use-angle=metal", "--autoplay-policy=no-user-gesture-required"] } })
 
 test("T57: a rampa é o chão mesmo (a física desce junto) e a quadra é plana", () => {
   const no = (s: number) => [BOCA.x + BOCA.ax * s, BOCA.z + BOCA.az * s] as const
@@ -48,7 +51,7 @@ async function abrir(page: Page, url: string) {
   return erros
 }
 
-test("entrar na boca do túnel leva às trincheiras; a volta sai da boca e conta a corrida", async ({ page }) => {
+test("entrar na boca do túnel leva às trincheiras dentro do jogo; a volta sai da boca e conta a corrida", async ({ page }) => {
   test.setTimeout(240_000)
   // a missão dos túneis pegada; a volta (de=tuneis) já põe a Kombi no alto da rampa
   const erros = await abrir(page, "/linha?mapa=disco&parte=missao.tuneis&de=tuneis&medir")
@@ -59,11 +62,26 @@ test("entrar na boca do túnel leva às trincheiras; a volta sai da boca e conta
   // desce a rampa: a Kombi vai pro fundo (a física pisa na vala) e a porta leva às trincheiras
   const s = -BOCA.plano + 1, fx = BOCA.x + BOCA.ax * s, fz = BOCA.z + BOCA.az * s
   await page.evaluate(([x, z]) => { const j = (window as unknown as { __jogo: { wx: number; wz: number; v: number; ar: boolean } }).__jogo; j.wx = x; j.wz = z; j.v = 0; j.ar = false }, [fx, fz])
-  await page.waitForURL(/\/teste\/trincheiras\?volta=disco&missao=tuneis/, { timeout: 30_000 })
-  // lá embaixo: as trincheiras, com a subida de volta pro subúrbio
-  const subir = page.locator("a[data-subir]").first()
-  await expect(subir).toBeVisible({ timeout: 60_000 })
-  await expect(subir).toHaveAttribute("href", "/linha?mapa=disco&de=tuneis")
+  // (T63) lá embaixo: as trincheiras no mesmo jogo (a página não troca), a estrada fora da cena
+  await expect(page.locator(".tr-raiz.is-jogo")).toBeVisible({ timeout: 60_000 })
+  expect(new URL(page.url()).pathname).toBe("/linha")
+  // com a missão dos túneis: a escolha do veículo (a moto segue trancada)
+  await expect(page.locator(".tr-escolha")).toBeVisible()
+  await expect(page.locator('.tr-card[data-veiculo="moto"]')).toBeDisabled()
+  // a estrada saiu da cena: um canvas só (o das trincheiras)
+  await expect.poll(() => page.evaluate(() => document.querySelectorAll("canvas").length), { timeout: 20_000 }).toBe(1)
+  // larga de patins e anda um pouco (o relógio fixo das trincheiras roda)
+  await page.locator('.tr-card[data-veiculo="patins"]').click()
+  await expect(page.locator(".tr-tempo")).toBeVisible()
+  // sobe sem terminar: volta pro subúrbio, a Kombi sai da boca, no alto da rampa, e o jogo não conta
+  await page.evaluate(() => { (window as unknown as { __jogo?: unknown }).__jogo = undefined })
+  await page.locator("button[data-subir]").first().click()
+  await expect(page.locator(".tr-raiz")).toHaveCount(0, { timeout: 10_000 })
+  await page.waitForFunction(() => !!(window as unknown as { __jogo?: unknown }).__jogo, null, { timeout: 60_000 })
+  await page.waitForTimeout(1500)
+  const p1 = await pos()
+  expect(Math.hypot(p1.x - sd.x, p1.z - sd.z)).toBeLessThan(30)
+  expect((await saveDe(page)).disco.passos13 ?? []).not.toContain("tuneis:jogo")
   // a volta depois de uma corrida inteira (a corrida em si é testada no corrida-tuneis.spec):
   // sai da boca do túnel e o jogo da missão fica feito; a porta abre
   await page.goto("/linha?mapa=disco&de=tuneis&corrida=1&medir")
@@ -75,5 +93,23 @@ test("entrar na boca do túnel leva às trincheiras; a volta sai da boca e conta
   expect(sv.disco.feitas13).toContain("tuneis")
   // a barra fica limpa (recarregar não repete a volta)
   expect(page.url()).not.toContain("de=tuneis")
+  expect(erros).toEqual([])
+})
+
+test("T63: ?parte=missao.tuneis.trincheiras começa lá embaixo; uma volta inteira e subir = o jogo dos túneis feito", async ({ page }) => {
+  test.setTimeout(300_000)
+  // ?auto&veiculo=patins: as trincheiras largam direto e o piloto automático corre a volta
+  const erros = await abrir(page, "/linha?mapa=disco&parte=missao.tuneis.trincheiras&auto&veiculo=patins&medir")
+  await expect(page.locator(".tr-raiz.is-jogo")).toBeVisible({ timeout: 60_000 })
+  expect(new URL(page.url()).pathname).toBe("/linha")
+  expect(page.url()).not.toContain("descer=")
+  // chegou: o fim da corrida tem "subir pro subúrbio"
+  const subir = page.locator(".tr-fim button[data-subir]")
+  await expect(subir).toBeVisible({ timeout: 180_000 })
+  await subir.click()
+  // de volta ao subúrbio: o jogo da missão fica feito e a porta abre
+  await expect(page.locator(".l-recompensa")).toBeVisible({ timeout: 60_000 })
+  const sv = await saveDe(page)
+  expect(sv.disco.passos13).toContain("tuneis:jogo")
   expect(erros).toEqual([])
 })

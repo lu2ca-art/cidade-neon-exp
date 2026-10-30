@@ -1,7 +1,7 @@
 // confere o grind e o embalo do skate e as manobras da BMX, sem tela
-import { FISICA } from "../app/teste/trincheiras/corrida"
-import { PASSO, estadoInicial, passo, type Entrada } from "../app/teste/trincheiras/fisica"
-import { AVENIDAS, VOLTA } from "../app/teste/trincheiras/mapa"
+import { FISICA } from "../app/linha/trincheiras/corrida"
+import { PASSO, estadoInicial, passo, type Entrada } from "../app/linha/trincheiras/fisica"
+import { AVENIDAS, VOLTA } from "../app/linha/trincheiras/mapa"
 
 const E = (o: Partial<Entrada>): Entrada => ({ frente: false, re: false, esq: false, dir: false, pulo: false, jato: false, ...o })
 function noRio(v: "skate" | "bmx" | "patins", kmh: number, angulo: number) {

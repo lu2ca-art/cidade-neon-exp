@@ -88,7 +88,7 @@ test("save antigo: a faixa feita conta e a missão pegada era a faixa", () => {
   expect(normalizarMissao("sexta")).toBe("drew")
   expect(normalizarMissao("chuva")).toBe("ella")
   expect(feita13(sincronizar(CARREIRA, ["copo"]), "mubarak")).toBe(true)
-  // a recompensa diz o que ainda não existe
+  // a recompensa diz o que ainda não existe: (T63) as corridas nos túneis já estão no jogo; as motos, em breve
   const r = recompensaDe("tuneis")
-  expect(r.abriu.every((a) => a.emBreve)).toBe(true)
+  expect(Object.fromEntries(r.abriu.map((a) => [a.id, a.emBreve]))).toEqual({ corridas: false, motos: true })
 })

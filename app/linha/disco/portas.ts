@@ -80,7 +80,8 @@ export const PORTAS: Record<PortaId, { nome: string; existe: boolean; tarefa?: s
   "kombi-melhorias": { nome: "as melhorias da Kombi", existe: true, tarefa: "T09" },
   quadra: { nome: "a quadra: basquete quando quiser", existe: true, tarefa: "T10" },
   "batida-estudio": { nome: "o BATIDA pra produzir mais", existe: true, tarefa: "T10" },
-  corridas: { nome: "as corridas nos túneis", existe: false, tarefa: "T13" },
+  // (T63) as trincheiras estão no jogo: descer a rampa da boca do túnel e correr quando quiser
+  corridas: { nome: "as corridas nos túneis", existe: true, tarefa: "T63" },
   motos: { nome: "as motos", existe: false, tarefa: "T14" },
   ginasio: { nome: "o ginásio: basquete e cama elástica", existe: true, tarefa: "T15" },
   "loja-discos": { nome: "a loja de discos", existe: true, tarefa: "T16" },
@@ -169,8 +170,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     id: "tuneis", n: 4, onde: "suburbio", quem: "os túneis", cor: "#9b8cff", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "tuneis" }, pedido: "embaixo das raízes tem corrida", apresenta: "a corrida de BMX, patins ou skate nas trincheiras",
     arte: p("o grafite: um gesto assina o desenho", "decidido", { tarefa: "T12", existe: "página de teste do T12" }),
-    // (T57) a boca do túnel no subúrbio leva às trincheiras (a página do T11/T13); voltar com a volta feita conta
-    jogo: p("a corrida de BMX, patins ou skate", "decidido", { como: { t: "trincheiras" }, tarefa: "T13", existe: "/teste/trincheiras" }),
+    // (T57, T63) a boca do túnel no subúrbio leva às trincheiras (dentro do jogo); voltar com a volta feita conta
+    jogo: p("a corrida de BMX, patins ou skate", "decidido", { como: { t: "trincheiras" }, tarefa: "T13", existe: "dentro do jogo, pela boca do túnel (T63)" }),
     abre: ["corridas", "motos"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.tuneis }, requer: ["oficina"],
   },
   // ── a cidade (8) ──

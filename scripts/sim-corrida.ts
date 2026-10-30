@@ -1,7 +1,7 @@
 // simula a corrida das trincheiras (T13) sem tela: o piloto automático dá a
 // volta com cada veículo; confere portões, chegada, rivais. bun scripts/sim-corrida.ts
-import { FISICA, L_VOLTA, VEICULOS } from "../app/teste/trincheiras/corrida"
-import { PASSO, corridaInicial, estadoInicial, passo, passoCorrida, piloto } from "../app/teste/trincheiras/fisica"
+import { FISICA, L_VOLTA, VEICULOS } from "../app/linha/trincheiras/corrida"
+import { PASSO, corridaInicial, estadoInicial, passo, passoCorrida, piloto } from "../app/linha/trincheiras/fisica"
 
 console.log("volta:", Math.round(L_VOLTA), "m")
 for (const v of VEICULOS) {

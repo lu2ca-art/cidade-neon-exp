@@ -56,7 +56,7 @@ import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebr
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { definirChaoAtivos, ehPeca } from "./disco/achados"
-import { irTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, voltaDasTrincheiras } from "./disco/tuneis"
+import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
@@ -95,6 +95,8 @@ const Basquete = dynamic(() => import("../ginasio/basquete").then((m) => m.Basqu
 const BatidaMissao = dynamic(() => import("./disco/BatidaMissao").then((m) => m.BatidaMissao), { ssr: false })
 const Interior = dynamic(() => import("./interior/Interior").then((m) => m.Interior), { ssr: false })
 const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: false })
+// (T63) as trincheiras (os túneis do T11, a corrida do T13, as motos do T14), dentro do jogo
+const Trincheiras = dynamic(carregarTrincheiras, { ssr: false })
 
 type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
 
@@ -245,6 +247,8 @@ export default function LinhaPage() {
   const [adiadas, setAdiadas] = useState<string[]>([])
   const [teleporte, setTeleporte] = useState<{ chave: number; area: FreqId; lugar?: LugarId; frac?: number } | null>(null)
   const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; chegou?: boolean } | null>(null)
+  // (T63) lá embaixo, nas trincheiras: "descendo" = o escuro da porta (a estrada ainda na cena); depois, só as trincheiras
+  const [trincheiras, setTrincheiras] = useState<{ missao: MissaoId | null; descendo: boolean } | null>(null)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
   // a ilha do topo virou bifurcação: a conversa do painel se recolhe
@@ -287,6 +291,8 @@ export default function LinhaPage() {
     if (atalhosLiberados() && new URLSearchParams(location.search).get("cena") === "holo") setCenaHolo(true)
     // (T06) ?parte=casa.tambor: a cena da casa começa no tambor
     if (atalhosLiberados() && new URLSearchParams(location.search).get("cena") === "tambor") setCenaTambor(true)
+    // (T63) ?parte=missao.tuneis.trincheiras: ele já começa lá embaixo, nas trincheiras
+    if (atalhosLiberados() && new URLSearchParams(location.search).get("descer") === "tuneis") descerAoEntrar.current = true
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -314,6 +320,7 @@ export default function LinhaPage() {
     setTimeout(() => { setAviso((x) => (x?.id === id ? null : x)); setTimeout(proximo, 250) }, 4200)
   }, [])
   const palcosAoEntrar = useRef(false)
+  const descerAoEntrar = useRef(false)
   const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
     // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+neon",
     // "regado"...): só passa quem fala (um personagem). O resto o "?" explica
@@ -548,7 +555,8 @@ export default function LinhaPage() {
   // Pego = a coisa volta pro lugar de origem (busca de novo; sem game over)
   const alvoAgora = save.nucleo.caido ? null : alvoDe(save, nivelDe(save))
   const cacado = alvoAgora?.t === "entrega" && save.objetos.length >= 2
-  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto
+  // (T63) nas trincheiras a estrada sai da cena (a memória e a GPU ficam pra elas); na volta, retoma
+  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || (!!trincheiras && !trincheiras.descendo)
   // entrou numa sala: a próxima estrada que montar retoma de onde parou;
   // foi pra outra tela (celular, início): a estrada começa do jeito normal
   const [emSalaAnt, setEmSalaAnt] = useState(emSala)
@@ -936,9 +944,28 @@ export default function LinhaPage() {
     setRecompensa(r)
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
   }
+  // (T63) desceu a rampa da boca do túnel: a porta escurece e, lá embaixo, as
+  // trincheiras (no mesmo jogo, sem trocar de página). A estrada sai da cena
+  // quando o escuro cobre tudo
+  const descerTrincheiras = (missao: MissaoId | null) => {
+    if (trincheiras) return
+    setAoVivo(null)
+    setTrincheiras({ missao, descendo: true })
+    setTimeout(() => setTrincheiras((t) => (t ? { ...t, descendo: false } : t)), 800)
+  }
+  // subiu de volta: a Kombi sai da boca, no alto da rampa. Correu uma volta
+  // inteira lá embaixo = o jogo da missão dos túneis fica feito (e a porta segue)
+  const subirDasTrincheiras = (correu: boolean) => {
+    subiuDoTunel()
+    const missao = trincheiras?.missao ?? null
+    setTrincheiras(null)
+    const pc = pecaAgora13(hist13(saveRef.current), "tuneis")
+    if (correu && missao === "tuneis" && missaoDoSave(saveRef.current) === "tuneis" && pc?.peca.como?.t === "trincheiras") setTimeout(() => pecaFeitaNaMissaoRef.current("tuneis", pc.qual), 600)
+    else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: "voltou lá de baixo. as raízes seguem lá, é só descer a rampa de novo" }), 1200)
+  }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     if (!pc) { abrirPortaDe(id); return }
     const como = pc.peca.como
@@ -952,7 +979,7 @@ export default function LinhaPage() {
     else if (como.t === "batida") setBatidaMissao({ missao: id, clima: como.clima })
     else if (como.t === "basquete") setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
     // (T57) desceu a rampa da boca do túnel: a corrida é lá embaixo, nas trincheiras
-    else if (como.t === "trincheiras") irTrincheiras(id)
+    else if (como.t === "trincheiras") descerTrincheiras(id)
   }
   // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
   const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
@@ -963,7 +990,17 @@ export default function LinhaPage() {
       if (normalizarMissao(h.missao) === id && !feita13(h, id) && alvo13(h, id)) chegouRef.current(id)
     }, 900)
   }
-  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe })
+  const pecaFeitaNaMissaoRef = useRef(pecaFeitaNaMissao)
+  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao })
+  // (T63) ?parte=missao.tuneis.trincheiras: entrou no jogo, desce direto (sem dirigir até a boca)
+  useEffect(() => {
+    if (!HIST || !descerAoEntrar.current || tela.t !== "corrida" || cena) return
+    descerAoEntrar.current = false
+    const u = new URL(location.href); u.searchParams.delete("descer"); history.replaceState(history.state, "", u.pathname + u.search + u.hash)
+    setTimeout(() => chegouRef.current("tuneis"), 1500)
+  }, [HIST, tela.t, cena])
+  // (T63) as trincheiras baixam antes: com a missão dos túneis pegada, ou já no subúrbio
+  useEffect(() => { if (HIST && missaoCarreira === "tuneis") void carregarTrincheiras() }, [HIST, missaoCarreira])
   // (T57) voltou das trincheiras pela boca do túnel: se correu uma volta lá
   // embaixo, o jogo da missão dos túneis fica feito (e a porta segue)
   const voltouTuneis = useRef(false)
@@ -1014,7 +1051,8 @@ export default function LinhaPage() {
   // a música da Kombi cala e entra o som dela; saiu, a Kombi volta (a trilha sai
   // em fade, sem estalo). O arquivo é carregado antes, quando a missão é pegada
   useEffect(() => { fonteSom.discoPadrao = ACERVO.faixas.map((f) => f.src) }, [])
-  const somAgora = cena ? somDoLugar(cena.lugar) : pingpong ? somDaMissao("drew") : null
+  // (T63) nas trincheiras, o som dos túneis (10 D3 10)
+  const somAgora = cena ? somDoLugar(cena.lugar) : pingpong ? somDaMissao("drew") : trincheiras && !trincheiras.descendo ? somDaMissao("tuneis") : null
   useEffect(() => {
     if (!somAgora) return
     silenciarKombi(true)
@@ -1370,7 +1408,7 @@ export default function LinhaPage() {
       const m = missaoDoSave(saveRef.current)
       if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m)
       // (T57) desceu a rampa da boca do túnel (sem a missão dos túneis): as trincheiras, pra passear
-      else if (e === "chao:tuneis" && !cena && !recompensa) irTrincheiras(null)
+      else if (e === "chao:tuneis" && !cena && !recompensa && !trincheiras) descerTrincheiras(null)
       // (T10) a porta da quadra abriu: de volta lá, dá pra jogar basquete quando quiser (a cada 90 s no máximo)
       else if (e === "chao:quadra" && portaAberta(h, "quadra") && !cena && !recompensa && !pingpong && !batidaMissao && Date.now() - quadraLivreEm.current > 90000 && Date.now() - barFechou.current > 8000) {
         quadraLivreEm.current = Date.now()
@@ -1610,7 +1648,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela}
+            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
@@ -1912,7 +1950,7 @@ export default function LinhaPage() {
         }} onXenom={hist.fase === "carreira" ? () => { setRecompensa(null); setRua(true) } : undefined} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
-        {HIST && tela.t === "corrida" && <TutorialHolo hist={hist} pausado={!!cena || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor} onFeito={marcarTutorial} />}
+        {HIST && tela.t === "corrida" && <TutorialHolo hist={hist} pausado={!!cena || !!trincheiras || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor} onFeito={marcarTutorial} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
         {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} onXenom={(id) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showXenom(id) }))) }} />}
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
@@ -2029,6 +2067,9 @@ export default function LinhaPage() {
             onNeon={(n) => setSave((s) => ganhar(s, n))}
           />
         )}
+        {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
+        {trincheiras?.descendo && <div className="l-tunel-desce" aria-hidden />}
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras }} />}
         {viagem && (
           <Viagem
             chegou={!!viagem.chegou}
