@@ -53,6 +53,8 @@ export type PassoCena =
   | { t: "gesto"; id: "ordem"; frases: string[] }
   // explorar a sala: tocar nas coisas (interior/: o quarto do Drewboy, a casa da D-Bee)
   | { t: "gesto"; id: "quarto" | "casa" | "casa-inicio" }
+  // (T22) a casa da Ella: olhar a planta, olhar os quadros, pintar na tela (interior/salas/GaleriaElla.tsx)
+  | { t: "gesto"; id: "planta" | "quadros" | "pintar" }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o

@@ -56,6 +56,13 @@ export type ComoJoga =
   | { t: "cena"; id: CenaId }
   // (T57) descer a rampa da boca do túnel: a corrida lá embaixo, nas trincheiras (disco/tuneis.ts)
   | { t: "trincheiras" }
+  // (T22) entrar na casa da pessoa (uma sala em 3D, interior/salas/) e só sair
+  // depois de passar por tudo: o diálogo, o que se observa, o que se faz, o som
+  // (regra 9). Uma casa só joga as peças que apontam pra ela, juntas, numa cena
+  | { t: "casa"; sala: SalaMissao }
+
+// (T22) as casas das missões (interior/registro.ts carrega cada uma)
+export type SalaMissao = "galeria-ella"
 
 export type CenaId = "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "horta" | "cozinhar" | "disco-antigo" | "sinuca"
 
@@ -136,6 +143,11 @@ export const CONFIG13 = {
   // (T15, decidido 28/10) na missão do Drew a Kombi está no conserto: vai de
   // patins (o jetpack é o jato das costas) até a casa dele; a Kombi volta quando a porta abre
   kombiNoConserto: ["drew"] as MissaoId[],
+  // (T22, regra 5) a experiência nova nasce em teste: a casa destas missões só
+  // joga com o link de teste (?parte=missao.ella); no mapa, até o dono aprovar,
+  // a missão segue como antes (as peças "em breve", a porta direto). Aprovou:
+  // tira daqui e ela entra no mapa
+  soNoTeste: ["ella"] as MissaoId[],
 }
 
 const p = (nome: string, situacao: Situacao, extra: Partial<Peca> = {}): Peca => ({ nome, situacao, ...extra })
@@ -209,9 +221,13 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   ella: {
     id: "ella", n: 9, onde: "cidade", quem: "Ella", cor: "#4fc3ff", faixa: "chuva", faixaSituacao: "decidido",
     lugar: { lugar: "escondido" }, pedido: "ela pinta, mas ninguém vê", apresenta: "pintar e expor um quadro",
-    arte: p("pintar e expor um quadro", "decidido", { tarefa: "T22", existe: "/galeria/pintar" }),
-    jogo: p("o jogo da Ella", "em aberto", { tarefa: "T22" }),
-    abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: PAGA.missao.ella }, requer: ["oficina"],
+    // (T22, o dono em 29/10) tudo na casa dela, que é a galeria (proibida, como a
+    // planta): observar a planta do Criador e os quadros que ela guardou (o jogo,
+    // a proposta) e pintar ali mesmo (a arte); a obra fica exposta na galeria.
+    // Uma cena só (interior/salas/GaleriaElla.tsx, cenas.ts CENA_GALERIA_ELLA)
+    arte: p("pintar um quadro ali mesmo e expor", "decidido", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22", existe: "/galeria/pintar" }),
+    jogo: p("observar a planta do Criador e os quadros que ela guardou", "proposta", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22" }),
+    abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: PAGA.missao.ella }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   notti: {
     id: "notti", n: 10, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "dopamina", faixaSituacao: "decidido",
@@ -258,7 +274,10 @@ export function normalizarMissao(id: string | null | undefined): MissaoId | null
 
 // ── o progresso (fica em save.disco: passos13, feitas13, portas, guitar, batida, conta13) ──
 export type Passo = "arte" | "jogo" | "porta"
-export const emBreve = (pc: Peca) => !pc.como
+// (T22) a casa de uma missão que ainda é só teste (CONFIG13.soNoTeste) conta
+// como "em breve" fora do link de teste (o save ganha `teste13` com ele)
+export const emTeste = (h: HistoriaDisco | null | undefined, id: MissaoId) => !CONFIG13.soNoTeste.includes(id) || (h?.teste13 ?? []).includes(id)
+export const emBreve = (pc: Peca, h?: HistoriaDisco | null, id?: MissaoId) => !pc.como || (pc.como.t === "casa" && !!id && !emTeste(h, id))
 const chave = (id: MissaoId, qual: "arte" | "jogo") => `${id}:${qual}`
 // as duas do começo contam como feitas quando a história já passou delas (save
 // de antes do T02, ou um link ?parte= que começa depois)
@@ -272,7 +291,7 @@ export const pecaFeita = (h: HistoriaDisco, id: MissaoId, qual: "arte" | "jogo")
 export function passoAgora(h: HistoriaDisco, id: MissaoId): Passo | null {
   if (feita13(h, id)) return null
   const m = MISSOES13[id]
-  for (const qual of ordemDe(id)) if (!emBreve(m[qual]) && !pecaFeita(h, id, qual)) return qual
+  for (const qual of ordemDe(id)) if (!emBreve(m[qual], h, id) && !pecaFeita(h, id, qual)) return qual
   return "porta"
 }
 export const ordemDe = (id: MissaoId): ("arte" | "jogo")[] => MISSOES13[id].ordem ?? ["arte", "jogo"]
@@ -284,7 +303,7 @@ export function checklist13(h: HistoriaDisco, id: MissaoId): { nome: string; est
   const agora = passoAgora(h, id)
   const estado = (qual: Passo): EstadoPasso => {
     if (agora === null) return "feita"
-    if (qual !== "porta" && emBreve(m[qual])) return "em breve"
+    if (qual !== "porta" && emBreve(m[qual], h, id)) return "em breve"
     if (qual !== "porta" && pecaFeita(h, id, qual)) return "feita"
     return qual === agora ? "agora" : "depois"
   }

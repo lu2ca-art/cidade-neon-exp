@@ -120,7 +120,9 @@ export function Npc({ cor, pos, vira = 0, pose = "em-pe", falando = false, danca
     // quem fala vira pra câmera (devagar); quem não fala volta pro lugar
     let alvoY = vira
     if (falando) {
-      tmp.set(camera.position.x - pos[0], 0, camera.position.z - pos[2])
+      // (T22) a posição de verdade no mundo: quem anda pela sala (um grupo por fora) vira certo
+      g.current.getWorldPosition(tmp)
+      tmp.set(camera.position.x - tmp.x, 0, camera.position.z - tmp.z)
       alvoY = Math.atan2(tmp.x, tmp.z)
     }
     let dy = alvoY - g.current.rotation.y

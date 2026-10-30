@@ -6,7 +6,7 @@ const PARTES: [string, string | null][] = [
   ["minhoca", null], ["casa", "casa"], ["dunas", "dunas"], ["bar", "bar"], ["oficina", "oficina"],
   ["nectar", "nectar"], ["carreira.feira", "carreira"], ["missao.sexta", "carreira"], ["missao.chuva", "carreira"], ["livre", "livre"],
   // (T02) as 13 missões: o meio da carreira e uma de cada jeito (peça na rua, prova, Guitar ao vivo, só "em breve", subúrbio)
-  ["carreira.meio", "carreira"], ["missao.nizzy", "carreira"], ["missao.xeriff", "carreira"], ["missao.lu2ca", "carreira"], ["missao.lu2ca.letra", "carreira"], ["missao.lu2ca.show", "carreira"], ["missao.ella", "carreira"], ["missao.quadra", "carreira"], ["missao.quadra.batida", "carreira"], ["missao.quadra.basquete", "carreira"],
+  ["carreira.meio", "carreira"], ["missao.nizzy", "carreira"], ["missao.xeriff", "carreira"], ["missao.lu2ca", "carreira"], ["missao.lu2ca.letra", "carreira"], ["missao.lu2ca.show", "carreira"], ["missao.ella", "carreira"], ["missao.ella.casa", "carreira"], ["missao.quadra", "carreira"], ["missao.quadra.batida", "carreira"], ["missao.quadra.basquete", "carreira"],
   // (T03) a loja aberta, com grana
   ["loja", "carreira"],
   // (T09) a missão da oficina, passo a passo, e a lojinha das melhorias depois dela

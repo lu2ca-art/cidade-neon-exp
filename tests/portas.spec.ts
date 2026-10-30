@@ -44,6 +44,24 @@ test("arte → jogo → porta, com a peça em breve pulando", () => {
   expect(passoAgora(CARREIRA, "ella")).toBe("porta")
 })
 
+test("(T22) a casa da Ella: só joga com o link de teste; lá dentro, o jogo e a arte juntos, depois a porta", () => {
+  // no mapa (até o dono aprovar): as duas peças "em breve", a porta direto, como antes
+  expect(CONFIG13.soNoTeste).toContain("ella")
+  expect(passoAgora({ ...CARREIRA, missao: "ella" }, "ella")).toBe("porta")
+  expect(checklist13({ ...CARREIRA, missao: "ella" }, "ella").map((x) => x.estado)).toEqual(["em breve", "em breve", "agora"])
+  // com o link de teste: primeiro olhar (o jogo), depois pintar (a arte), na casa dela
+  let h: HistoriaDisco = { ...CARREIRA, missao: "ella", teste13: ["ella"] }
+  expect(passoAgora(h, "ella")).toBe("jogo")
+  expect(MISSOES13.ella.jogo.como).toEqual({ t: "casa", sala: "galeria-ella" })
+  expect(MISSOES13.ella.arte.como).toEqual({ t: "casa", sala: "galeria-ella" })
+  expect(alvo13(h, "ella")).toEqual({ lugar: "escondido" })
+  h = concluir(concluir(h, "ella", "jogo"), "ella", "arte")
+  expect(passoAgora(h, "ella")).toBe("porta")
+  h = abrirPorta(h, "ella")
+  expect(h.portas).toContain("galeria")
+  expect(h.guitar).toContain("chuva")
+})
+
 test("(T25) o Tony: o jogo antes da arte; (T24) o parque abre pra missão da Nizzy", () => {
   let h: HistoriaDisco = { ...CARREIRA, missao: "tony" }
   expect(passoAgora(h, "tony")).toBe("jogo")
