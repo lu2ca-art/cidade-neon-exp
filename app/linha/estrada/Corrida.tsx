@@ -3341,9 +3341,11 @@ function Cena({
   const centro = M.vias[M.circuito.linha]
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
-  const relevoNovo = useMemo(() => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null), [M])
+  // (leveza A) o chão (9 km de dunas) também fica no módulo: remontar não refaz
+  const relevoNovo = useMemo(() => guardado("relevo", M, "", () => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null)), [M])
   // (T39) a areia com cara de areia (areia.ts): as ondulações, o grão, as manchas e o brilho
   const areiaMats = useMemo(() => ("disco" in M ? { chao: materialAreia({ vertexColors: true, mascara: true }), longe: materialAreia({ color: "#8c6640" }) } : null), [M])
+  useEffect(() => () => soltar(areiaMats), [areiaMats]) // (leveza A) dispose ao trocar/desmontar
   // (T39) onde cabe um robô caído (fora das pistas e dos lugares)
   const livreCaidos = useMemo(() => ("disco" in M ? (x: number, z: number) => M.livre(x, z, 4) : null), [M])
   // (disco, 20/10) o lixão: os carros despencados meio enterrados e os pneus
@@ -3362,6 +3364,7 @@ function Cena({
     pneus.count = l.pneus.length
     return { carros, pneus }
   }, [M])
+  useEffect(() => () => soltar(lixo), [lixo]) // (leveza A) dispose ao trocar/desmontar
 
   useEffect(() => () => motor?.parar(), [motor])
   // (T62) o som do patins (rodas de gel; no ar, o vento neon): montado na 1ª vez que desce de patins
@@ -3939,6 +3942,7 @@ function Cena({
     })
     return { faixas: [pint(-1), pint(1)], muros: [muro(-1), muro(1)] }
   }, [circuitos, nLib])
+  useEffect(() => () => soltar(pinturas), [pinturas]) // (leveza A) dispose ao trocar/desmontar
 
   // ── o rastro neon do pulo (o dash do inFamous): uma fita de luz que fica
   // no ar por onde a Kombi passou voando e apaga em ~1 s ──
@@ -3950,6 +3954,7 @@ function Cena({
     const pts = new THREE.Points(g, mat); pts.frustumCulled = false
     return { N, pos, cor, g, pts, cab: 0 }
   }, [tex])
+  useEffect(() => () => soltar(rastro), [rastro]) // (leveza A) dispose ao trocar/desmontar
   // ── os outdoors surrealistas (mapa novo): o chamado de cada missão perto
   // do lugar dela, e a frase do LU2CA nas vias rápidas ──
   const outdoors = useMemo<Outdoor[]>(() => {
@@ -3996,6 +4001,7 @@ function Cena({
     if (cores) for (let i = 0; i < lista.length; i++) m.setColorAt(i, cores[i])
     return { m, pos, halo, haloMat, lista, porVia, cores }
   }, [M, a, tex])
+  useEffect(() => () => soltar(orbs), [orbs]) // (leveza A) dispose ao trocar/desmontar
 
   // ── turbos no chão ──
   const turbos = useMemo(() => {
@@ -4117,6 +4123,7 @@ function Cena({
     heli.frustumCulled = false; facho.frustumCulled = false
     return { corpo, barra, farol, carros, ativa: false, via: -1, perdidoT: 0, longeT: 0, espera: 0, cor: new THREE.Color(), t: 0, heli, helice, sirene, facho, heliOn: false, heliT: 0, cobertoT: 0, heliPos: new THREE.Vector3() }
   }, [])
+  useEffect(() => () => soltar(caca), [caca]) // (leveza A) dispose ao trocar/desmontar
 
   // ── chuva (só visual), confete, faíscas ──
   const chuvaRef = useRef<THREE.LineSegments>(null)
@@ -4129,6 +4136,7 @@ function Cena({
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     return { n, pos, base, g }
   }, [])
+  useEffect(() => () => soltar(chuva), [chuva]) // (leveza A) dispose ao trocar/desmontar
 
   const confete = useMemo(() => {
     const n = 260
@@ -4140,6 +4148,7 @@ function Cena({
     for (let i = 0; i < n; i++) { m.setMatrixAt(i, d.matrix); m.setColorAt(i, new THREE.Color("#fff")) }
     return { m, s, d, prox: 0 }
   }, [])
+  useEffect(() => () => soltar(confete), [confete]) // (leveza A) dispose ao trocar/desmontar
 
   useEffect(() => {
     confeteRef.current = (cor: string, qt: number) => {
@@ -4179,6 +4188,7 @@ function Cena({
     for (let i = 0; i < n; i++) { m.setMatrixAt(i, zero); m.setColorAt(i, pneu) }
     return { m, n, prox: 0, pneu, gel }
   }, [])
+  useEffect(() => () => soltar(marcas), [marcas]) // (leveza A) dispose ao trocar/desmontar
   const fumaca = useMemo(() => {
     const n = 160
     const pos = new Float32Array(n * 3).fill(-999)
@@ -4188,7 +4198,9 @@ function Cena({
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     return { n, pos, vel, vida, g, prox: 0 }
   }, [])
+  useEffect(() => () => soltar(fumaca), [fumaca]) // (leveza A) dispose ao trocar/desmontar
   const texFumaca = useMemo(() => texBrilho(), [])
+  useEffect(() => () => soltar(texFumaca), [texFumaca]) // (leveza A) dispose ao trocar/desmontar
   // (T36, J2:3) a poeira do pouso da chegada: uma fumaça que sobe, se abre e se
   // desfaz (alfa por ponto), no lugar do confete da rádio liberada. Só roda
   // enquanto tem poeira viva
@@ -4204,6 +4216,7 @@ function Cena({
     g.setAttribute("color", new THREE.BufferAttribute(cor, 4))
     return { n, pos, cor, vel, vida, tot, g, vivos: 0, prox: 0, acc: 0 }
   }, [])
+  useEffect(() => () => soltar(poeira), [poeira]) // (leveza A) dispose ao trocar/desmontar
   const RODAS = useMemo(() => [[-0.82, -1.35], [0.82, -1.35], [-0.82, 1.35], [0.82, 1.35]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
   // (LU2CA 21/10: "no patins a linha do drift tem que ser os dois pés, não as quatro rodas")
   const PES = useMemo(() => [[-0.16, 0.06], [0.16, -0.06]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
@@ -4221,6 +4234,7 @@ function Cena({
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     return { n, pos, vel, vida, g, prox: 0 }
   }, [])
+  useEffect(() => () => soltar(faiscas), [faiscas]) // (leveza A) dispose ao trocar/desmontar
 
   // céu de cidade grande à noite: gradiente, poluição luminosa no horizonte
   // (sódio laranja + a cor do bairro), um teto de nuvens baixas acesas POR
@@ -4285,6 +4299,7 @@ function Cena({
         gl_FragColor = vec4(c, 1.0);
       }`,
   }), [])
+  useEffect(() => () => soltar(ceuMat), [ceuMat]) // (leveza A) dispose ao trocar/desmontar
 
   useEffect(() => {
     // (22/10, 2.2) caindo do buraco de minhoca a névoa já começa longe: a casa
