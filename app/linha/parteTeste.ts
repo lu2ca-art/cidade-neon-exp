@@ -83,6 +83,10 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "xenom") return MEIO
   if (parte === "xenom.album") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], xenom: Object.fromEntries(SHOWS_XENOM.map((x) => [x.id, { melhor: 4, cumprida: true, vezes: 1 }])) }
   if (parte.startsWith("xenom.") && xenomPorId(parte.slice(6))) return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], show: `xenom:${parte.slice(6)}` }
+  // (T61) a rotatória de cima: o meio da carreira (2 músicas feitas, 2 abertas:
+  // os monumentos), começando na alça de uma linha que chega na torre central
+  // ("torre") ou numa das pontas ("torre.ponta", a de 3 saídas)
+  if (parte === "torre" || parte === "torre.ponta") return MEIO
   // (T03) a loja aberta, com grana no bolso (o resto do save é o meio da carreira)
   if (parte === "loja") return MEIO
   // (T44) os rachas: a cidade livre, com um dos carros do mecânico logo à frente
@@ -93,11 +97,17 @@ function discoDa(parte: string): Record<string, unknown> | null {
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
 export let parteAberta: string | null = null
+
+// (T61) ?parte=torre: onde a Kombi começa (a alça de uma linha chegando numa torre)
+let irTorre: { torre: number; pista: string } | null = null
+// (vale pra corrida que ficar montada: a primeira que fica 3 s na tela apaga)
+export const irTorreAgora = () => irTorre
+export function limparIrTorre() { irTorre = null }
 
 // chamado antes de o jogo ler o save; devolve true se trocou
 export function aplicarParteDeTeste(): boolean {
@@ -111,7 +121,7 @@ export function aplicarParteDeTeste(): boolean {
   if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
@@ -122,6 +132,12 @@ export function aplicarParteDeTeste(): boolean {
   if (parte === "casa.tambor") url.searchParams.set("cena", "tambor")
   // (T63) as trincheiras: entrou no jogo, desce direto pela boca do túnel
   if (parte === "missao.tuneis.trincheiras") url.searchParams.set("descer", "tuneis")
+  // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
+  // ponta é a da Nectar, a Sexta-Feira e a Ojalá) e o nascimento dos monumentos aparece de novo
+  if (parte.startsWith("torre")) {
+    irTorre = parte === "torre.ponta" ? { torre: 1, pista: "Nectar" } : { torre: 0, pista: "Nectar" }
+    localStorage.removeItem("cn-monumentos-cena")
+  }
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")
   history.replaceState(null, "", url.pathname + (url.search ? url.search : ""))
