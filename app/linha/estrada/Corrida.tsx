@@ -6456,8 +6456,11 @@ function Cena({
         <group ref={patinador} visible={false} rotation-y={Math.PI}>
           <Patinador vel={() => jogo.current.v} steer={() => -jogo.current.steer} ar={() => !!jogo.current.ar} jato={() => !!(jogo.current.ar && input.current.propulsor && (jogo.current.energia ?? 0) > 0)} />
         </group>
+        {/* (T59) por dentro: o interior modelado. Sem pintura nem neon estético
+            desde o T04: a lata é a da Kombi de fora (o branco da KombiHerbal) e o
+            neon é o rosa da luz de baixo */}
         <group ref={cabineG}>
-          <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta={corPintura(estiloK)} neon={corNeon(estiloK)} /></Seguro>
+          <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta="#ffffff" neon="#ff3fb0" /></Seguro>
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />

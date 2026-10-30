@@ -68,8 +68,9 @@ export function InteriorModelado({ tinta, onPronto }: Props) {
   const malha = (p: (typeof partes)["lata"], m: THREE.Material, k?: string) =>
     p && <mesh key={k} geometry={p.geo} material={m} position={p.pos} quaternion={p.quat} scale={p.esc} />
 
+  // (o nome: o teste acha o interior na cena)
   return (
-    <group>
+    <group name="kombi-interior">
       {malha(partes.lata, mats.lata)}
       {malha(partes.fosco, mats.fosco)}
       {malha(partes.cromo, mats.cromo)}

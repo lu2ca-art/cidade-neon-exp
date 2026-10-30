@@ -27,6 +27,8 @@ const PARTES: [string, string | null][] = [
   ["rachas", "livre"],
   // (T61) a rotatória de cima: chegando na central e numa torre da ponta
   ["torre", "carreira"], ["torre.ponta", "carreira"],
+  // (T59) a Kombi por dentro: a cidade livre na 1ª pessoa
+  ["kombi.dentro", "livre"],
 ]
 
 for (const [parte, fase] of PARTES) {

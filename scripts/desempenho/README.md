@@ -18,7 +18,7 @@ abre na história do começo (a casinha parada, ~65 draws, 4–6 ms, `velMedia` 
 os números não servem pra comparar. `SAVE=novo` mede o começo de propósito.
 
 Variáveis: `SAVE` (`livre` por padrão; `novo` = save vazio), `DPR` (densidade do aparelho; o Mac retina é 2), `DUR` (ms medidos),
-`NOPROF=1` (sem o profiler, que pesa), `Q` (mais parâmetros na URL:
+`CAM` (`dentro` = na 1ª pessoa, a Kombi por dentro; `fora`), `NOPROF=1` (sem o profiler, que pesa), `Q` (mais parâmetros na URL:
 `&dpr=1.25` fixa a densidade, `&lente=0|1|2` fixa a lente), `BASE` (outra URL).
 
 Referência (21/10, M1, retina, mapa-disco, build de produção, save "livre",

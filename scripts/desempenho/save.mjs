@@ -5,6 +5,9 @@
 export const comSave = () => (process.env.SAVE ?? "livre") !== "novo"
 
 export async function semear(page) {
+  // CAM=dentro (T59): mede na 1ª pessoa (a Kombi por dentro); CAM=fora, de fora
+  const cam = process.env.CAM
+  if (cam) await page.addInitScript((c) => localStorage.setItem("cn-linha-cam", c), cam)
   if (!comSave()) return
   await page.addInitScript(() => localStorage.setItem("cn-linha-222", JSON.stringify({ versao: 2, nome: "Medir", disco: { fase: "livre", holo: true } })))
 }
