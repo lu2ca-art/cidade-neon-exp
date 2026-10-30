@@ -4337,7 +4337,7 @@ function CenaBase({
 
   // ── loop ──
   const tmp = useMemo(() => ({
-    f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3(),
+    f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3(), tras: new THREE.Vector3(),
     cor: new THREE.Color(), alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(), q2: new THREE.Vector3(),
     qYaw: new THREE.Quaternion(), qRoll: new THREE.Quaternion(), camOlhar: new THREE.Vector3(), d: new THREE.Object3D(),
     qMarca: new THREE.Quaternion(), qDeriva: new THREE.Quaternion(), roda: new THREE.Vector3(),
@@ -5553,7 +5553,8 @@ function CenaBase({
     tmp.up.crossVectors(tmp.r, tmp.f).normalize()
     tmp.r.crossVectors(tmp.f, tmp.up).normalize()
     // base: x = direita, y = cima, z = trás (a Kombi aponta pra -Z)
-    tmp.m.makeBasis(tmp.r, tmp.up, tmp.f.clone().negate())
+    // (leveza A, problema 10) sem clone() no quadro: o -f vai num vetor reaproveitado
+    tmp.m.makeBasis(tmp.r, tmp.up, tmp.tras.copy(tmp.f).negate())
     const car = carro.current!
     car.quaternion.setFromRotationMatrix(tmp.m)
     const yaw = (j.giroAr ?? 0) + (vivo ? -j.deriva - j.steer * 0.11 * Math.min(1, Math.abs(j.v) / 25) * Math.sign(j.v || 1) : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva)
@@ -6710,13 +6711,20 @@ const FALAS = [
   { de: "Drewboy", texto: "sobe a rampa com tudo" },
 ]
 
+// (leveza A, problema 10) o vetor do lado é reaproveitado e os buffers são
+// escritos direto (antes: um new Vector3 e dois arrays por chamada, no quadro)
+const LADO_FAISCA = new THREE.Vector3()
 function soltarFaiscas(f: { n: number; pos: Float32Array; vel: Float32Array; vida: Float32Array; prox: number }, car: THREE.Group | null, lado: number) {
   if (!car) return
-  const r = new THREE.Vector3(1, 0, 0).applyQuaternion(car.quaternion)
+  const r = LADO_FAISCA.set(1, 0, 0).applyQuaternion(car.quaternion)
   for (let k = 0; k < 3; k++) {
-    const i = f.prox++ % f.n
-    f.pos.set([car.position.x + r.x * lado * 0.95, car.position.y + 0.4, car.position.z + r.z * lado * 0.95], i * 3)
-    f.vel.set([r.x * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3, 2 + Math.random() * 4, r.z * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3], i * 3)
+    const i = f.prox++ % f.n, o = i * 3
+    f.pos[o] = car.position.x + r.x * lado * 0.95
+    f.pos[o + 1] = car.position.y + 0.4
+    f.pos[o + 2] = car.position.z + r.z * lado * 0.95
+    f.vel[o] = r.x * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3
+    f.vel[o + 1] = 2 + Math.random() * 4
+    f.vel[o + 2] = r.z * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3
     f.vida[i] = 0.5 + Math.random() * 0.4
   }
 }
