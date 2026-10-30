@@ -230,6 +230,9 @@ export const CENA_CASA_DISCO: Cena = {
     // (T07, J1: 6) a entrega de verdade: da mão dela pra dele (disco/EntregaHolo.tsx);
     // o destaque do que ganhou é lá fora (disco/TutorialHolo.tsx, RecompensaHolo)
     { t: "acao", texto: "de uma caixa ela tira um aparelho pequeno, quase sem peso. liga. uma luz sobe e fica parada em cima da mão dela" },
+    // (T62, a fala do dono de 21/10) por que ela dá o holo. Só texto: a voz é do T60
+    { t: "fala", de: "D-Bee", texto: "eu já usei isso aqui demais. escutei tudo que tem aí" },
+    { t: "fala", de: "D-Bee", texto: "mas vc é novo na cidade. isso vai te ajudar a não se perder por lá" },
     { t: "fala", de: "D-Bee", texto: "toma. é seu" },
     { t: "gesto", id: "holo" },
     { t: "acao", texto: "na sua mão ele não pesa nada. a luz sobe e fica parada no ar, na frente dos seus olhos" },

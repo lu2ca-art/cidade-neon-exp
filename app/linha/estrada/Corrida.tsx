@@ -94,7 +94,7 @@ import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { radioPega, type MemoriaRadio } from "../disco/sons"
 import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
-import { MARCHAS, montarMotor, tremor, vib } from "../som-carro"
+import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
@@ -3184,12 +3184,15 @@ function Cena({
   }, [M])
 
   useEffect(() => () => motor?.parar(), [motor])
+  // (T62) o som do patins (rodas de gel; no ar, o vento neon): montado na 1ª vez que desce de patins
+  const somPatins = useRef<ReturnType<typeof montarPatins>>(null)
+  useEffect(() => () => { somPatins.current?.parar(); somPatins.current = null }, [])
   // a estática da sintonia (entre um lugar e outro)
   const chiado = useRef<ReturnType<typeof estatica>>(null)
   const calar = useCallback(() => { chiado.current?.parar(); chiado.current = null }, [])
   useEffect(() => () => calar(), [calar])
   useEffect(() => {
-    if (pausado) { calar(); motor?.atualizar(0, false, false) }
+    if (pausado) { calar(); motor?.atualizar(0, false, false); somPatins.current?.atualizar(0, false, false) }
   }, [pausado, calar, motor])
 
   const metro = useMemo(() => montarMetro(M), [M])
@@ -3910,13 +3913,17 @@ function Cena({
     const n = 1600
     const m = new THREE.InstancedMesh(
       new THREE.PlaneGeometry(0.3, 0.95),
-      new THREE.MeshBasicMaterial({ color: "#030308", transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+      new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
       n,
     )
     m.frustumCulled = false
     const zero = new THREE.Matrix4().makeScale(0, 0, 0)
-    for (let i = 0; i < n; i++) m.setMatrixAt(i, zero)
-    return { m, n, prox: 0 }
+    // (T62) a cor vai por marca: o pneu da Kombi escuro; o patins (LU2CA 29/10:
+    // "só duas linhas finas, não marca de pneu") um risco claro de gel. A
+    // mesma malha: nenhum desenho a mais por quadro
+    const pneu = new THREE.Color("#030308"), gel = new THREE.Color("#bfeaff")
+    for (let i = 0; i < n; i++) { m.setMatrixAt(i, zero); m.setColorAt(i, pneu) }
+    return { m, n, prox: 0, pneu, gel }
   }, [])
   const fumaca = useMemo(() => {
     const n = 160
@@ -5317,9 +5324,12 @@ function Cena({
         tmp.p.subVectors(tmp.roda, ult).applyQuaternion(tmp.qMarca)
         tmp.d.position.addVectors(tmp.roda, ult).multiplyScalar(0.5)
         tmp.d.quaternion.copy(car.quaternion).multiply(tmp.qDeriva.setFromAxisAngle(tmp.y0, Math.atan2(-tmp.p.x, -tmp.p.z))).multiply(tmp.qDeitar)
-        tmp.d.scale.set(patM ? 0.38 : 1, (d + 0.1) / 0.95, 1)
+        // (T62) o patins: um fio de 3,5 cm por pé (era 11 cm, e lia como pneu)
+        tmp.d.scale.set(patM ? 0.12 : 1, (d + (patM ? 0.03 : 0.1)) / 0.95, 1)
         tmp.d.updateMatrix()
-        marcas.m.setMatrixAt(marcas.prox++ % marcas.n, tmp.d.matrix)
+        const im = marcas.prox++ % marcas.n
+        marcas.m.setMatrixAt(im, tmp.d.matrix)
+        marcas.m.setColorAt(im, patM ? marcas.gel : marcas.pneu)
         ult.copy(tmp.roda)
         if (FUMACA && !patM && Math.random() < 0.45 * forca) {
           const i = fumaca.prox++ % fumaca.n
@@ -5331,6 +5341,7 @@ function Cena({
       rp.ativo = true
       tmp.d.scale.set(1, 1, 1)
       marcas.m.instanceMatrix.needsUpdate = true
+      if (marcas.m.instanceColor) marcas.m.instanceColor.needsUpdate = true
     } else rastroPneu.ativo = false
     for (let i = 0; i < fumaca.n; i++) {
       if (fumaca.vida[i] <= 0) { fumaca.pos[i * 3 + 1] = -999; continue }
@@ -5878,8 +5889,15 @@ function Cena({
     cidade.aviacaoMat.opacity = Math.sin(ceuMat.uniforms.tempo.value * Math.PI) > 0 ? 1 : 0.08
     if (hemi.current) hemi.current.color.lerp(alvoCeu, kk * 0.5)
 
-    // som: só o motor
-    motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (cine ? cine === "rodando" : inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
+    // som: só o motor (T62: de patins, o motor cala e entram as rodas de gel e, no ar, o vento neon)
+    if (patM) {
+      motor?.atualizar(0, false, false)
+      if (!somPatins.current) somPatins.current = montarPatins()
+      somPatins.current?.atualizar(Math.abs(j.v) / (150 / 3.6), !j.ar && !cine, !!j.ar)
+    } else {
+      motor?.atualizar(Math.min(1.45, Math.abs(j.v) / VMAX), (cine ? cine === "rodando" : inp.gas || toqueTela || inp.freio) && !j.chegando, j.turboT > 0)
+      somPatins.current?.atualizar(0, false, false)
+    }
     // vibração leve enquanto acelera, mais forte quanto mais rápido (não no
     // cinema da chegada, não no ar, não freando)
     tremor(!cine && !j.ar && !j.chegando && !inp.freio && (inp.gas || toqueTela) && j.v > 1, Math.abs(j.v) / VMAX)
@@ -5893,8 +5911,8 @@ function Cena({
       corOrb.color.lerp(tmp.c1.set(corRadio.current), 0.08)
       orbs.haloMat.color.copy(corOrb.color)
     }
-    orbs.haloMat.size = joia ? 1.1 + grave * 1.4 : 3 + grave * 5
-    // (a joia pulsa pouco: quem marca o grave é o halo)
+    if (!joia) orbs.haloMat.size = 3 + grave * 5
+    // (a joia pulsa pouco no grave; T62: no disco ela vai sem o halo)
     const bate = joia ? 1 + grave * 0.22 : 0.8 + grave * 0.75
     // (19/10, desempenho) só os anéis a até 450 m da câmera entram na malha (no
     // disco são 1142, 400 mil triângulos desenhados e reenviados todo quadro;
@@ -6256,7 +6274,8 @@ function Cena({
       <primitive object={orbs.m} />
       <primitive object={rastro.pts} />
       {outdoors.length > 0 && <Outdoors M={M} lista={outdoors} />}
-      <points geometry={orbs.halo} material={orbs.haloMat} />
+      {/* (T62, LU2CA 21/10: "tirar o spray de luz em volta das gotas: só elas já estão perfeitas") no disco, só a joia; o halo fica pros anéis do mapa velho */}
+      {!("disco" in M) && <points geometry={orbs.halo} material={orbs.haloMat} />}
 
       {trafego.malhas.flat().map((m, i) => <primitive key={i} object={m} />)}
       <primitive object={caca.corpo} frustumCulled={false} />
