@@ -1,20 +1,29 @@
-// AS BORDAS DA ROTATÓRIA (T61, item 4 da ordem combinada, LU2CA 21/10: "a
-// face da direita da pista tem sempre a cor da próxima entrada e a da
-// esquerda, a da próxima depois dela, alternando num degradê: o que era da
-// esquerda passa pra direita, vira entrada, e aquela cor some").
+// AS LINHAS NO CHÃO DA ROTATÓRIA (T61b, LU2CA 30/10: "quem guia é uma linha
+// no chão na cor da pista daquela entrada. A linha da próxima entrada fica
+// sempre na faixa da direita; a da entrada seguinte a ela, na faixa do meio.
+// Quando você passa uma entrada, a do meio vira a próxima e a linha dela vai
+// para a direita").
 //
-// Na rotatória de cima (sem espiral, 29/10), andando no anel: a borda da
-// direita mostra a cor da próxima saída; a da esquerda, a da saída seguinte.
-// Logo depois de passar uma saída, as cores escorregam: a da esquerda vem pra
-// direita e a da saída seguinte entra na esquerda (o degradê). Só contam as
-// saídas abertas (a de uma pista apagada fica fechada, sem cor).
-// A conta é pura (sem desenho): o Corrida.tsx pinta as bordas e os trilhos.
+// Andando no anel (mão única, o centro à esquerda), o asfalto tem até duas
+// linhas de neon:
+//   - a da PRÓXIMA saída, na faixa da direita (seguindo nela, você sai);
+//   - a da saída SEGUINTE, na faixa do meio.
+// Logo depois de passar uma saída, a linha do meio escorrega pra direita (ela
+// virou a próxima) e a linha da nova seguinte acende no meio (degradê). Só
+// contam as saídas abertas (a de uma pista apagada fica fechada, sem linha).
+// Antes (T61) quem dizia isso eram as bordas e os guard rails; agora as bordas
+// ficam na cor da torre e quem guia é o chão.
+// A conta é pura (sem desenho): o Corrida.tsx monta as linhas UMA vez, numa
+// malha só, quando a pista é montada (nada por quadro).
 
 import { hexRgb } from "./distritos"
 import type { AnelDisco } from "./mundoDisco"
 
 export const ANEL_CFG = {
-  degrade: 0.45, // fração do trecho entre duas saídas em que as cores escorregam (logo depois de passar a saída)
+  degrade: 0.45, // fração do trecho entre duas saídas em que a linha escorrega do meio pra direita (logo depois de passar a saída)
+  xDireita: 6.3, // o meio da faixa da direita (a pista tem 4 faixas: ±2,1 e ±6,3 m do eixo)
+  xMeio: 2.1, // o meio da faixa do meio (a segunda, contando da direita)
+  largura: 0.8, // m: a largura da linha no chão
 }
 
 type Saida = AnelDisco["saidas"][number]
@@ -32,14 +41,17 @@ export function saidasEmVolta(an: { L: number }, sds: Saida[], U: number) {
   return { ant, prox, seg, f: Math.min(1, de / gap) }
 }
 
-const mix = (a: [number, number, number], b: [number, number, number], t: number): [number, number, number] => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
+export type LinhaGuia = { x: number; cor: [number, number, number]; brilho: number }
 
-// a cor da borda (lado +1 = direita, −1 = esquerda) no ponto U do anel
-export function corNoAnel(an: { L: number }, sds: Saida[], U: number, lado: number): [number, number, number] | null {
-  if (!sds.length) return null
-  const { ant, prox, seg, f } = saidasEmVolta(an, sds, U)
+// as duas linhas no ponto U do anel: [a da próxima saída, a da seguinte]
+// (null: sem linha ali). x: o deslocamento do eixo (+ = direita); brilho 0–1
+export function linhasNoAnel(an: { L: number }, sds: Saida[], U: number): [LinhaGuia | null, LinhaGuia | null] {
+  if (!sds.length) return [null, null]
+  const { prox, seg, f } = saidasEmVolta(an, sds, U)
+  // com uma saída só, ela já é a próxima desde sempre (fica na direita)
+  if (sds.length === 1) return [{ x: ANEL_CFG.xDireita, cor: hexRgb(prox.cor), brilho: 1 }, null]
   const k = Math.min(1, f / ANEL_CFG.degrade), t = k * k * (3 - 2 * k)
-  // antes do degradê: a direita ainda é a que acabou de passar, a esquerda a próxima
-  if (lado > 0) return mix(hexRgb(ant.cor), hexRgb(prox.cor), sds.length > 1 ? t : 1)
-  return mix(hexRgb(prox.cor), hexRgb(seg.cor), sds.length > 1 ? t : 1)
+  const proxima: LinhaGuia = { x: ANEL_CFG.xMeio + (ANEL_CFG.xDireita - ANEL_CFG.xMeio) * t, cor: hexRgb(prox.cor), brilho: 1 }
+  const seguinte: LinhaGuia | null = t > 0.02 ? { x: ANEL_CFG.xMeio, cor: hexRgb(seg.cor), brilho: t } : null
+  return [proxima, seguinte]
 }

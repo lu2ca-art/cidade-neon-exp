@@ -33,7 +33,7 @@ import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
 import { geoRelevoRede, montarMundoRede, type MundoRede } from "./mundoRede"
 import { V_TORRE, chegadaNaTorre, geoChaoDisco, montarMundoDisco, naEspiral as naEspiralParte, naTorre, naTorreDaPonta, type AnelDisco, type MundoDisco, type SinaisEspiral } from "./mundoDisco"
-import { corNoAnel } from "./anel"
+import { ANEL_CFG, linhasNoAnel } from "./anel"
 import { irTorreAgora, limparIrTorre } from "../parteTeste"
 import { TorreCentral } from "./Torre"
 import { Portoes } from "./Portoes"
@@ -3305,12 +3305,31 @@ function Cena({
     // (27/10, drone v2) cada vértice sabe a via (o drone acende só as da rota)
     const via = (p: Pista) => indice.get(p as Via) ?? 0
     const corDe = (p: Pista) => (viaApagada?.[indice.get(p as Via) ?? -1] ? "#2a2838" : (p as Via & { cor?: string }).cor)
-    const coresApagadas = new Set(viaApagada && "disco" in M ? (M as MundoDisco).pistas.filter((pp) => viaApagada[pp.ida]).map((pp) => pp.cor) : [])
-    // (T61) a rotatória de cima: a borda da direita na cor da próxima saída
-    // aberta, a da esquerda na da seguinte, em degradê (anel.ts)
+    // (T61b) a rotatória de cima: as linhas no chão (anel.ts). A da próxima
+    // saída aberta na faixa da direita, a da seguinte na do meio; passando uma
+    // saída, a do meio escorrega pra direita. Uma malha só, montada uma vez
     const anelDaVia = new Map<number, { an: AnelDisco; k: number; sds: AnelDisco["saidas"] }>()
     if ("disco" in M) for (const an of (M as MundoDisco).aneis) { const sds = an.saidas.filter((sd) => !viaApagada?.[sd.via]); an.vias.forEach((vi, k) => anelDaVia.set(vi, { an, k, sds })) }
-    const corAnel = (p: Pista, i: number, lado: number) => { const r = anelDaVia.get(indice.get(p as Via) ?? -1); return r ? corNoAnel(r.an, r.sds, r.an.ini[r.k] + U(i), lado) : null }
+    // (no último ponto de um trecho, um tiquinho antes: a saída ali ainda é a próxima)
+    const guia = (p: Pista, i: number, q: 0 | 1) => { const r = anelDaVia.get(indice.get(p as Via) ?? -1); return r ? linhasNoAnel(r.an, r.sds, r.an.ini[r.k] + Math.min(U(i), p.L - 0.05))[q] : null }
+    const linhasGuia = () => {
+      if (!("disco" in M)) return null
+      const MD = M as MundoDisco, meia = ANEL_CFG.largura / 2
+      const doAnel = [...anelDaVia.keys()].map((vi) => M.vias[vi] as Via)
+      const partes = ([0, 1] as const).map((q) => fita(doAnel, (p, i) => (guia(p, i, q)?.x ?? 0) - meia, (p, i) => (guia(p, i, q)?.x ?? 0) + meia, 0.05, {
+        passo: passoD, via,
+        incluir: (p, i) => !!guia(p, i, q),
+        cor: (p, i) => { const g = guia(p, i, q)!; return [g.cor[0] * g.brilho, g.cor[1] * g.brilho, g.cor[2] * g.brilho] },
+      }))
+      // a linha da saída continua na alça dela (da faixa da direita até o meio da alça) e leva até a pista
+      const saidas = MD.aneis.flatMap((an) => an.saidas.filter((sd) => sd.via >= 0 && !viaApagada?.[sd.via]).map((sd) => M.vias[sd.via] as Via))
+      const xAlca = (p: Pista, i: number) => { const k = Math.min(1, U(i) / 40), t = k * k * (3 - 2 * k); return ANEL_CFG.xDireita + ((p.esq[i] + p.dir[i]) / 2 - ANEL_CFG.xDireita) * t }
+      partes.push(fita(saidas, (p, i) => xAlca(p, i) - meia, (p, i) => xAlca(p, i) + meia, 0.05, { passo: passoD, via, cor: (p) => rgb((p as Via & { cor: string }).cor) }))
+      const cheias = partes.filter((x) => x.index!.count > 0)
+      const g = cheias.length ? mergeGeometries(cheias, false) : null
+      for (const x of partes) x.dispose()
+      return g
+    }
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
     // (e nas emendas da torre: as alças se separam da espiral e uma da outra)
     const gargalo = (p: Pista, i: number) => {
@@ -3346,7 +3365,7 @@ function Cena({
       vertical: true,
       incluir: lado < 0 ? trilhoE : trilhoD,
       // (disco) o guard rail na cor da linha
-      cor: (p, i) => (Math.floor(i / 10) % 2 ? corAnel(p, i, lado) ?? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
+      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
     })
     const semEmenda = (p: Pista, i: number) => {
       const v = p as Via
@@ -3365,14 +3384,9 @@ function Cena({
       // (alças: meia pista, só o tracejado de dentro dela)
       faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, via, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
       // (disco) as duas bordas na cor da linha
-      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p, i) => (doDisco(p) ? corAnel(p, i, l) ?? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
-      // (disco, sinalização) na espiral, a faixa da direita pintada na cor da
-      // linha nos 150 m antes da saída dela: quem está nela, sai
-      pintaSaida: fita(vias.filter((v) => ((v as Via & SinaisEspiral).pintaSaida ?? []).length), 4.5, 7.8, 0.035, {
-        via,
-        incluir: (p, i) => ((p as Via & SinaisEspiral).pintaSaida ?? []).some((s) => U(i) >= s.u0 && U(i) < s.u1 && !coresApagadas.has(s.cor)),
-        cor: (p, i) => rgb(((p as Via & SinaisEspiral).pintaSaida ?? []).find((s) => U(i) >= s.u0 && U(i) < s.u1)!.cor),
-      }),
+      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
+      // (T61b) as linhas no chão da rotatória (antes, a faixa da direita pintada antes da saída)
+      linhasGuia: linhasGuia(),
       // (disco) a linha contínua branca no meio (o canteiro é aberto: só pintura)
       linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { passo: passoD, via, incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
       railE: rails(-1),
@@ -6246,10 +6260,10 @@ function Cena({
         </mesh>
       ))}
       </Estatico>
-      {/* (disco) a faixa da saída pintada na cor da linha */}
-      {geo.pintaSaida.index!.count > 0 && (
-        <mesh geometry={geo.pintaSaida}>
-          <meshBasicMaterial vertexColors transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} onBeforeCompile={ACENDE.neon} />
+      {/* (T61b) as linhas no chão da rotatória: uma malha só, aditiva (o preto some) */}
+      {geo.linhasGuia && (
+        <mesh geometry={geo.linhasGuia}>
+          <meshBasicMaterial vertexColors transparent opacity={0.95} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} onBeforeCompile={ACENDE.neon} />
         </mesh>
       )}
       {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
