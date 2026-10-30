@@ -14,7 +14,9 @@ const CHAVE = "cn-qualidade"
 export const NIVEIS: Record<NivelQualidade, Omit<Qualidade, "nivel" | "medido">> = {
   alto: { dprMax: 1.5, lente: 2, gotas: 450, carros: 900 },
   medio: { dprMax: 1.25, lente: 1, gotas: 300, carros: 500 },
-  baixo: { dprMax: 1, lente: 1, gotas: 190, carros: 300 },
+  // (30/10, leveza C) leve sem lente: o bloom de tela cheia era o que mais pesava
+  // no iPhone; sem pós, o tonemapping AgX fica no próprio renderer
+  baixo: { dprMax: 1, lente: 0, gotas: 190, carros: 300 },
 }
 export const NOME_NIVEL: Record<NivelQualidade, string> = { alto: "alta", medio: "média", baixo: "leve" }
 
