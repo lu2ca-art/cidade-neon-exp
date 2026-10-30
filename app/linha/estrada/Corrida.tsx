@@ -2516,7 +2516,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {discoM && ajustes && oculos && <HoloAjustes qual={qualHolo} onQual={(n) => guardarQualidade(n)} onFechar={fecharAjustes} />}
       {/* sair a qualquer hora / voltar pra Kombi */}
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
-        <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>sair da kombi</button>
+        <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>{veiculo ? "descer" : "sair da kombi"}</button>
       )}
       {dePatins && florPerto && !regandoFlor && (
         <button type="button" className="l-regar-btn is-flor" onPointerDown={(e) => e.stopPropagation()} onClick={() => regarFlor(florPerto)}>regar a flor</button>
@@ -2527,7 +2527,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={pegarGalaoDbee}>pegar o galão</button>
       )}
       {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (
-        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>voltar pra Kombi</button>
+        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : "voltar pra Kombi"}</button>
       )}
       {dePatins && pertoComb && seco && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={voltarComGalao}>encher o galão e voltar pra Kombi</button>
@@ -5364,7 +5364,7 @@ function Cena({
         // o helicóptero em cima dela (o facho = o cabo de luz que segura); soltou, ele sobe e vai embora
         hk.heli.visible = t < 9
         if (cai > 0) {
-          if (!q.soltou) { q.soltou = true; ev.falar("NÚCLEO", FALAS_PERSEGUICAO.solta) }
+          q.soltou = true
           hk.heli.position.y += dt * 9
           hk.facho.visible = false
         } else {

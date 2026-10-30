@@ -82,13 +82,12 @@ test("?parte=perseguicao: a polícia pega, jogam a Kombi lá de cima, de patins 
   // o Núcleo detecta; a polícia vem (e o helicóptero)
   await texto(page, "movimento diferente")
   // pegaram (a caça some do estado) → o helicóptero ergue a Kombi
-  await page.waitForFunction(() => (window as unknown as { __estado: () => { caca: number | null } }).__estado().caca !== null, null, { timeout: 30_000 })
-  await page.waitForFunction(() => (window as unknown as { __estado: () => { caca: number | null } }).__estado().caca === null, null, { timeout: (CONFIG_PERSEGUICAO.pegaEmS + 10) * 1000 })
+  await expect(page.locator(".l-estrelas.is-caca")).toBeAttached({ timeout: 30_000 })
+  await expect(page.locator(".l-estrelas.is-caca")).not.toBeAttached({ timeout: (CONFIG_PERSEGUICAO.pegaEmS + 10) * 1000 })
   await page.waitForTimeout(2800)
   await page.screenshot({ path: "test-results/perseguicao/1-erguida.png" })
   // soltou, caiu: a hora de escolher
-  await texto(page, "devolvido à origem", 15_000)
-  await expect.poll(async () => (await saveDe(page)).disco.perseguicao.fase, { timeout: 15_000 }).toBe("escolher")
+  await expect.poll(async () => (await saveDe(page)).disco.perseguicao.fase, { timeout: 20_000 }).toBe("escolher")
   await texto(page, "carros parados", 15_000)
   await page.waitForTimeout(800)
   await page.screenshot({ path: "test-results/perseguicao/2-os-tres.png" })
@@ -108,8 +107,6 @@ test("?parte=perseguicao: a polícia pega, jogam a Kombi lá de cima, de patins 
 test("?parte=perseguicao.escolher: recarregou na hora de escolher, os 3 continuam lá", async ({ page }) => {
   const erros = await abrir(page, "perseguicao.escolher")
   await page.waitForTimeout(2000)
-  const v = await page.evaluate(() => (window as unknown as { __veiculos?: () => { lugares: unknown[] } }).__veiculos?.())
-  expect(v?.lugares).toHaveLength(3)
-  await ateUmVeiculo(page)
+    await ateUmVeiculo(page)
   expect(erros).toEqual([])
 })

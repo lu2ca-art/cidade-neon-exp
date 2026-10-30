@@ -83,8 +83,6 @@ export const VEICULOS: Veiculo[] = [
 export const FALAS_PERSEGUICAO = {
   // a voz do Núcleo quando começa (no estilo das outras: seca, com o ✓)
   nucleo: "movimento diferente detectado. origem: kombi 0222 ✓",
-  // quando soltam a Kombi
-  solta: "veículo devolvido à origem ✓",
   // a 222, depois, de patins (uma frase, nada explicado)
   veiculos: "mais pra frente, uns carros parados. a chave no contato",
   // o botão de pegar (encostou num veículo)
