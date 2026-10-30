@@ -37,7 +37,9 @@ export const olhar = { yaw: 0, pitch: 0, arrastando: false, travado: false }
 // ── a câmera da sala: vai até o plano pedido, devagar, e respira ──
 export interface Plano { pos: V3; olha: V3; fov?: number }
 
-export function Camera({ plano, rapido = false }: { plano: Plano; rapido?: boolean }) {
+// `vel`: quão rápido ela chega (1,6 é o normal; T22b: o filme da Ella usa bem
+// devagar, a câmera vai chegando na planta durante as falas)
+export function Camera({ plano, rapido = false, vel }: { plano: Plano; rapido?: boolean; vel?: number }) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const alvoPos = useMemo(() => new THREE.Vector3(), [])
   const alvoOlha = useMemo(() => new THREE.Vector3(), [])
@@ -48,7 +50,7 @@ export function Camera({ plano, rapido = false }: { plano: Plano; rapido?: boole
     alvoOlha.set(...plano.olha)
   }, [plano, alvoPos, alvoOlha])
   useFrame((s, dt) => {
-    const k = Math.min(1, dt * (rapido ? 4 : 1.6))
+    const k = Math.min(1, dt * (vel ?? (rapido ? 4 : 1.6)))
     camera.position.lerp(alvoPos, k)
     if (!olhaAgora.current) olhaAgora.current = alvoOlha.clone()
     olhaAgora.current.lerp(alvoOlha, k)

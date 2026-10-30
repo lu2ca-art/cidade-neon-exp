@@ -15,6 +15,8 @@ import { gota, mudo } from "./som"
 import { Prova } from "./provas"
 import { vib } from "./som-carro"
 import { ouvirSala, publicar, zerar } from "./interior/bus"
+import { CenaFilme } from "./CenaFilme"
+import { FILMES } from "./filmes"
 import { Tambor } from "./disco/Tambor"
 import { EntregaHolo } from "./disco/EntregaHolo"
 
@@ -112,7 +114,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
   // explorar só existe com a sala em 3D: sem ela (aparelho que não aguentou),
   // a cena segue sozinha
   useEffect(() => {
-    if (!gestoAgora || !["quarto", "casa", "casa-inicio", "planta", "quadros", "pintar"].includes(gestoAgora) || gesto3d) return
+    if (!gestoAgora || !["quarto", "casa", "casa-inicio", "quadros", "pintar"].includes(gestoAgora) || gesto3d) return
     const t = setTimeout(() => setPos((p) => p + 1), 0)
     return () => clearTimeout(t)
   }, [gestoAgora, gesto3d])
@@ -184,6 +186,8 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
+      {/* (T22b) o filminho: o vídeo, ou (hoje) as falas em legenda sobre a cena parada */}
+      {!atual && passo?.t === "gesto" && passo.id === "filme" && <CenaFilme key={pos} filme={FILMES[passo.filme]} onFim={() => setPos((p) => p + 1)} />}
       {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} />}
       {!gesto3d && !saida && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} onBeber={() => setSaida(true)} podeNegar={loops > 0 || esperou} />}
       {saida && !atual && (
@@ -231,7 +235,7 @@ const DICAS_3D: Record<string, string> = {
   "casa-inicio": "olha em volta. toca no que chamar sua atenção",
   planta: "chega perto. toca no que chamar sua atenção",
   quadros: "anda pela galeria. toca nos quadros",
-  pintar: "pinta na tela. os potes trocam a cor. pronta, toca no prego",
+  pintar: "pinta na luz da planta. os potes trocam a cor. pronta, toca no prego",
 }
 function Dica3d({ id, podeNegar, onNegar }: { id: string; podeNegar: boolean; onNegar: () => void }) {
   // o bar (06/10, LU2CA): a saída é a palavra ESCOLHA, em amarelo — quem

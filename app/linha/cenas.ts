@@ -10,6 +10,7 @@
 import type { EstacaoId, ProvaId } from "./data"
 import type { LugarId } from "./lugares"
 import type { Tom } from "./roteiros"
+import type { FilmeId } from "./estrada/ganchoCena"
 
 // as seis relíquias do ritual do deserto (o jogo original): cada uma nasce
 // num lugar e todas se juntam no fim
@@ -53,8 +54,12 @@ export type PassoCena =
   | { t: "gesto"; id: "ordem"; frases: string[] }
   // explorar a sala: tocar nas coisas (interior/: o quarto do Drewboy, a casa da D-Bee)
   | { t: "gesto"; id: "quarto" | "casa" | "casa-inicio" }
-  // (T22) a casa da Ella: olhar a planta, olhar os quadros, pintar na tela (interior/salas/GaleriaElla.tsx)
-  | { t: "gesto"; id: "planta" | "quadros" | "pintar" }
+  // (T22) a casa da Ella: conhecer os quadros, pintar na tela (interior/salas/GaleriaElla.tsx)
+  | { t: "gesto"; id: "quadros" | "pintar" }
+  // (T22b) um filminho (estrada/ganchoCena.ts): hoje as falas em legenda sobre a
+  // cena parada, amanhã o vídeo (T70). Quem toca é CenaFilme.tsx; a sala, se
+  // tiver, põe a câmera devagar no assunto
+  | { t: "gesto"; id: "filme"; filme: FilmeId }
   // um dos minijogos que já existiam (provas.tsx), agora feito no lugar
   | { t: "gesto"; id: "prova"; prova: ProvaId }
   // titulo/texto: quando o cartão não deve dizer o nome do objeto (o

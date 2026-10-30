@@ -7,15 +7,21 @@
 // chuva fora). No fundo, sob uma redoma, a planta do Criador. Do lado, um
 // cavalete com uma tela em branco.
 //
-// Três gestos, na ordem da cena (disco/ella.ts): olhar a planta, olhar os
-// quadros que ela guardou, pintar na tela. Pintar reaproveita o som da tela
-// do pintar (app/galeria/pintar/som.ts: cada cor é um instrumento, a altura é
-// a nota); pronta, toca no prego e ela vai pra parede, do lado da planta, e
-// fica tocando até você sair. A obra vai pra galeria de verdade (obras.ts).
+// A ordem (T22b, o dono em 30/10; a cena em disco/ella.ts):
+//   1. o FILMINHO da planta (CenaFilme.tsx toca as falas; aqui a câmera vai
+//      chegando devagar na planta, que acende)
+//   2. conhecer a GALERIA: os quadros que ela guardou, um de cada vez
+//   3. PINTAR na luz da planta: o cavalete fica do lado dela, a sala apaga e a
+//      planta vira a luz da tela (brilho barato: as folhas emissivas, um halo
+//      e uma mancha de luz no chão, aditivos; a única luz pontual da sala é a
+//      dela, só muda de força). Pintar reaproveita o som da tela do pintar
+//      (app/galeria/pintar/som.ts: cada cor é um instrumento, a altura é a
+//      nota); pronta, toca no prego e ela vai pra parede, do lado da planta, e
+//      fica tocando até você sair. A obra vai pra galeria de verdade (obras.ts).
 //
 // MODELOS PROVISÓRIOS em código (regra 10: os finais vêm do Tripo 3D). O
-// orçamento: 2 luzes pontuais, as coisas repetidas instanciadas, as
-// pinturas desenhadas uma vez só em telinhas de 128 px.
+// orçamento: 1 luz pontual (a da planta), as coisas repetidas instanciadas,
+// as pinturas desenhadas uma vez só em telinhas de 128 px.
 
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -23,7 +29,7 @@ import * as THREE from "three"
 import { CORES, INSTRUMENTOS, corDaPaleta, criarEco, freqDaAltura, notasDaColuna, tocar } from "../../../galeria/pintar/som"
 import { guardarObra } from "../../../galeria/obras"
 import { atalhosLiberados } from "../../../teste/atalhos"
-import { CENA_GALERIA_ELLA, ELLA_COR, PINTAR, PLANTA, PLANTA_PRECISA, QUADROS, QUADROS_PRECISA, type QuadroElla } from "../../disco/ella"
+import { CENA_GALERIA_ELLA, ELLA_COR, PINTAR, QUADROS, QUADROS_PRECISA, type QuadroElla } from "../../disco/ella"
 import { sinalizar } from "../bus"
 import { Caixa, Chuva, Npc, Toque, useExplorar, type V3 } from "../comum"
 import { Camera, olhar, type Plano, type SalaProps } from "../motor"
@@ -36,32 +42,29 @@ const QUENTE = "#ffcf9a"
 
 // onde fica cada coisa
 const PLANTA_POS: V3 = [0, 0, -6.2]
-const CAVALETE: { pos: V3; rot: number } = { pos: [-1.5, 0, -4.5], rot: 0.38 }
+// o cavalete do lado da planta: a luz da tela é ela (T22b)
+const CAVALETE: { pos: V3; rot: number } = { pos: [-1.05, 0, -5.35], rot: 0.5 }
 const TELA = { larg: 0.8, alto: 1.0, y: 1.5 } // no cavalete
 const PAREDE_OBRA: V3 = [2.6, 2.35, -7.94] // onde ela pendura a sua (fundo, do lado da planta)
 const BALDES: V3[] = [[2.7, 0, 3.0], [-2.4, 0, -0.4], [2.2, 0, -3.6]]
 
 // em que passo da cena está cada gesto (o resto da câmera se acha pelo texto)
 const IDX = (id: string) => CENA_GALERIA_ELLA.passos.findIndex((p) => p.t === "gesto" && p.id === id)
-const I_PLANTA = IDX("planta"), I_QUADROS = IDX("quadros"), I_PINTAR = IDX("pintar")
+const I_FILME = IDX("filme"), I_QUADROS = IDX("quadros"), I_PINTAR = IDX("pintar")
 
 // a Ella anda pela casa: um lugar pra cada parte da cena
-const ELLA_EM: Record<"porta" | "planta" | "quadros" | "tela" | "fim", { pos: V3; vira: number }> = {
-  porta: { pos: [0.9, 0, 5.1], vira: Math.PI * 0.85 },
+const ELLA_EM: Record<"planta" | "quadros" | "tela" | "fim", { pos: V3; vira: number }> = {
   planta: { pos: [1.15, 0, -5.3], vira: -2.4 },
   quadros: { pos: [0.4, 0, -2.4], vira: 0 },
-  tela: { pos: [-0.35, 0, -5.1], vira: -0.9 },
+  tela: { pos: [1.15, 0, -4.6], vira: -2.2 },
   fim: { pos: [1.0, 0, -6.4], vira: -0.5 },
 }
 
 const PLANOS: Record<string, Plano> = {
   entrada: { pos: [0, 1.7, 7.4], olha: [0, 2.7, -4], fov: 62 },
-  ella: { pos: [-0.5, 1.6, 7.0], olha: [0.9, 1.45, 5.1], fov: 46 },
-  baldes: { pos: [0.6, 1.5, 5.4], olha: [2.7, 0.3, 3.0], fov: 52 },
-  caminho: { pos: [0, 1.75, 3.6], olha: [0, 1.3, -6.2], fov: 56 },
-  planta: { pos: [0.35, 1.5, -4.0], olha: [0.15, 1.05, -6.3], fov: 52 },
+  // o filme: a câmera sai da porta e vai chegando na planta, devagar, durante as falas
+  filme: { pos: [0.3, 1.45, -4.1], olha: [0, 1.35, -6.2], fov: 46 },
   ellaPlanta: { pos: [-0.7, 1.55, -3.7], olha: [1.15, 1.4, -5.3], fov: 46 },
-  perto: { pos: [0.05, 1.35, -5.05], olha: [0, 1.25, -6.2], fov: 56 },
   quadros: { pos: [0, 1.75, 4.6], olha: [0, 2.2, -2], fov: 64 },
   ellaQuadros: { pos: [0.6, 1.6, 2.6], olha: [-0.9, 1.45, 0.6], fov: 48 },
   pendurar: { pos: [0.9, 1.8, -3.6], olha: [2.4, 2.1, -7.9], fov: 54 },
@@ -72,6 +75,7 @@ const PLANOS: Record<string, Plano> = {
 const N_TELA = new THREE.Vector3(Math.sin(CAVALETE.rot), 0, Math.cos(CAVALETE.rot))
 PLANOS.tela = {
   pos: [CAVALETE.pos[0] + N_TELA.x * 1.6, TELA.y + 0.02, CAVALETE.pos[2] + N_TELA.z * 1.6],
+  // (a planta fica na beira direita: o halo e os esporos entram na tela)
   olha: [CAVALETE.pos[0], TELA.y - 0.02, CAVALETE.pos[2]],
   fov: 52,
 }
@@ -83,11 +87,10 @@ const planoDoQuadro = (q: QuadroElla, perto: boolean): Plano => perto
 
 export function SalaGaleriaElla({ estado }: SalaProps) {
   const pos = estado.pos
-  const fase = pos < I_PLANTA ? "chegada" : pos === I_PLANTA ? "planta" : pos < I_QUADROS ? "planta-fala" : pos === I_QUADROS ? "quadros" : pos < I_PINTAR ? "antes" : pos === I_PINTAR ? "pintar" : "fim"
-  const olhandoPlanta = estado.gesto === "planta"
+  // 1. o filme → 2. a galeria → 3. pintar → o fim (a escolha, a porta)
+  const fase = pos <= I_FILME ? "filme" : pos < I_QUADROS ? "planta-fala" : pos === I_QUADROS ? "quadros" : pos < I_PINTAR ? "antes" : pos === I_PINTAR ? "pintar" : "fim"
   const olhandoQuadros = estado.gesto === "quadros"
   const pintando = estado.gesto === "pintar"
-  const planta = useExplorar(olhandoPlanta, PLANTA, PLANTA_PRECISA, sinalizar)
   const coisasQuadros = useMemo(() => QUADROS.map((q) => ({ id: q.id, pos: [q.lado * (LARG / 2 - 0.12), q.y, q.z] as V3, raio: 0.45, falas: q.falas })), [])
   const quadros = useExplorar(olhandoQuadros, coisasQuadros, QUADROS_PRECISA, sinalizar)
   const ultimoQuadro = QUADROS.find((q) => q.id === quadros.vistas[quadros.vistas.length - 1])
@@ -100,38 +103,27 @@ export function SalaGaleriaElla({ estado }: SalaProps) {
 
   const plano = useMemo(() => {
     const tx = estado.texto ?? ""
-    if (fase === "chegada") {
-      if (pos === 0) return PLANOS.entrada
-      if (/balde|goteira/.test(tx)) return PLANOS.baldes
-      if (/fundo/.test(tx)) return PLANOS.caminho
-      return estado.falando === "Ella" ? PLANOS.ella : PLANOS.entrada
-    }
-    if (fase === "planta") return PLANOS.planta
-    if (fase === "planta-fala") {
-      if (/perto|coceira|mãos/.test(tx)) return PLANOS.perto
-      if (/guardei/.test(tx)) return PLANOS.ellaQuadros
-      return estado.falando === "Ella" ? PLANOS.ellaPlanta : PLANOS.planta
-    }
+    if (fase === "filme") return PLANOS.filme
+    if (fase === "planta-fala") return /guardei/.test(tx) ? PLANOS.ellaQuadros : PLANOS.ellaPlanta
     if (fase === "quadros") {
       if (estado.texto && ultimoQuadro) return planoDoQuadro(ultimoQuadro, true)
       const prox = QUADROS.find((q) => !quadros.vistas.includes(q.id))
       return prox ? planoDoQuadro(prox, false) : PLANOS.quadros
     }
-    if (fase === "antes") return /tela|sozinho/.test(tx) ? PLANOS.tela : PLANOS.quadros
+    if (fase === "antes") return /tela|luz|sozinho/.test(tx) ? PLANOS.tela : PLANOS.quadros
     if (fase === "pintar") return tela === "branca" ? PLANOS.tela : PLANOS.pendurar
     if (estado.escolha || estado.falando === "você") return PLANOS.fim
     return estado.falando === "Ella" ? PLANOS.ellaFim : PLANOS.pendurar
-  }, [estado, fase, pos, ultimoQuadro, tela, quadros.vistas])
+  }, [estado, fase, ultimoQuadro, tela, quadros.vistas])
 
-  const ellaEm = fase === "chegada" ? ELLA_EM.porta : fase === "planta" || fase === "planta-fala" ? (/guardei/.test(estado.texto ?? "") ? ELLA_EM.quadros : ELLA_EM.planta) : fase === "quadros" ? ELLA_EM.quadros : fase === "antes" || fase === "pintar" ? ELLA_EM.tela : ELLA_EM.fim
+  const ellaEm = fase === "filme" ? ELLA_EM.planta : fase === "planta-fala" ? (/guardei/.test(estado.texto ?? "") ? ELLA_EM.quadros : ELLA_EM.planta) : fase === "quadros" ? ELLA_EM.quadros : fase === "antes" || fase === "pintar" ? ELLA_EM.tela : ELLA_EM.fim
 
-  // atalho de teste (só onde os atalhos valem: fora da produção): __gesto() faz o gesto de agora (olha a
-  // próxima coisa da planta, o próximo quadro; na tela, pinta e pendura)
+  // atalho de teste (só onde os atalhos valem: fora da produção): __gesto() faz o gesto de agora (olha o
+  // próximo quadro; na tela, pinta e pendura)
   const gestoRef = useRef(() => {})
   useEffect(() => {
     gestoRef.current = () => {
-      if (olhandoPlanta) { const c = PLANTA.find((x) => !planta.vistas.includes(x.id)); if (c) planta.ver(c.id) }
-      else if (olhandoQuadros) { const q = QUADROS.find((x) => !quadros.vistas.includes(x.id)); if (q) quadros.ver(q.id) }
+      if (olhandoQuadros) { const q = QUADROS.find((x) => !quadros.vistas.includes(x.id)); if (q) quadros.ver(q.id) }
       else if (pintando) (window as unknown as { __pintarElla?: () => void }).__pintarElla?.()
     }
   })
@@ -139,7 +131,7 @@ export function SalaGaleriaElla({ estado }: SalaProps) {
     if (!atalhosLiberados()) return
     const w = window as unknown as Record<string, unknown>
     w.__gesto = () => gestoRef.current()
-    // (o useExplorar também põe um __gesto: este, que vem depois, vale pros três gestos)
+    // (o useExplorar também põe um __gesto: este, que vem depois, vale pros dois gestos)
   }, [fase])
 
   // pintar: o arrasto é da tela, não do olhar
@@ -149,25 +141,58 @@ export function SalaGaleriaElla({ estado }: SalaProps) {
     return () => { olhar.travado = false }
   }, [pintando, tela])
 
+  // quanto a planta brilha (0..1): acende no filme, é a luz de tudo no pintar
+  const brilho = fase === "filme" ? 0.6 : fase === "antes" || fase === "pintar" ? 1 : fase === "fim" ? 0.75 : 0.35
+
   return (
     <>
       <color attach="background" args={["#05060a"]} />
       <fog attach="fog" args={["#06080e", 9, 28]} />
-      <ambientLight intensity={0.38} color="#9fb8e0" />
-      <hemisphereLight args={["#8fb0e8", "#0a0806", 0.45]} />
-      <Camera plano={plano} />
+      <LuzDaSala brilho={brilho} />
+      <Camera plano={plano} vel={fase === "filme" ? 0.11 : undefined} />
       <Salao />
       <Telhado />
       <Goteiras audio={audio} />
       <Encostados />
       <Quadros vistas={quadros.vistas} ativo={olhandoQuadros} onVer={quadros.ver} />
-      <Planta audio={audio} perto={fase === "planta" || fase === "planta-fala"} criando={fase === "antes" || fase === "pintar"} vistas={planta.vistas} ativo={olhandoPlanta} onVer={planta.ver} />
+      <Planta audio={audio} perto={fase === "filme" || fase === "planta-fala"} criando={fase === "antes" || fase === "pintar"} brilho={brilho} />
       <Cavalete ativo={pintando} tela={tela} pendurada={pendurada} audio={audio}
         onPendurar={() => setTela("voando")}
         onChegou={() => { setTela("pendurada"); sinalizar({ t: "fim-gesto" }) }} />
       <EllaAndando alvo={ellaEm} falando={estado.falando === "Ella"} />
     </>
   )
+}
+
+// ── a luz da sala: o ambiente apaga quando a planta acende (pintar na luz
+// dela). Só mexe em intensidades (uniforms): nenhuma luz nasce nem some ──
+function LuzDaSala({ brilho }: { brilho: number }) {
+  const amb = useRef<THREE.AmbientLight>(null)
+  const hemi = useRef<THREE.HemisphereLight>(null)
+  useFrame((_, dt) => {
+    const k = Math.min(1, dt * 0.8)
+    // brilho 0,35 → a sala como era; 1 → quase só a planta
+    const alvo = 1 - Math.max(0, brilho - 0.35) / 0.65 * 0.6
+    if (amb.current) amb.current.intensity += (0.38 * alvo - amb.current.intensity) * k
+    if (hemi.current) hemi.current.intensity += (0.45 * alvo - hemi.current.intensity) * k
+  })
+  return (
+    <>
+      <ambientLight ref={amb} intensity={0.38} color="#9fb8e0" />
+      <hemisphereLight ref={hemi} args={["#8fb0e8", "#0a0806", 0.45]} />
+    </>
+  )
+}
+
+// o halo da planta: um gradiente redondo desenhado uma vez (64 px)
+function texturaHalo(): THREE.CanvasTexture {
+  const c = document.createElement("canvas"); c.width = c.height = 64
+  const g = c.getContext("2d")!
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+  r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.35, "rgba(255,255,255,0.45)"); r.addColorStop(1, "rgba(255,255,255,0)")
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64)
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
+  return t
 }
 
 // ── o som: um AudioContext pra casa toda, ligado no primeiro toque ──
@@ -409,8 +434,16 @@ function pintura(q: QuadroElla): THREE.CanvasTexture {
 // a redoma, a luz de cultivo, as amostras na prateleira e os esporos no ar ──
 const N_FOLHAS = 44
 const N_ESPOROS = 90
-function Planta({ audio, perto, criando, vistas, ativo, onVer }: { audio: AudioCasa; perto: boolean; criando: boolean; vistas: string[]; ativo: boolean; onVer: (id: string) => void }) {
+const LUZ_PLANTA = "#c8ffdc"
+function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: boolean; criando: boolean; brilho: number }) {
   const copa = useRef<THREE.Group>(null)
+  const matFolhas = useRef<THREE.MeshStandardMaterial>(null)
+  const luz = useRef<THREE.PointLight>(null)
+  const halo = useRef<THREE.Sprite>(null)
+  const chao = useRef<THREE.Mesh>(null)
+  const brilhoAgora = useRef(brilho)
+  const tHalo = useMemo(() => texturaHalo(), [])
+  useEffect(() => () => tHalo.dispose(), [tHalo])
   const folhas = useRef<THREE.InstancedMesh>(null)
   const esporos = useRef<THREE.Points>(null)
   const camera = useThree((s) => s.camera)
@@ -443,6 +476,13 @@ function Planta({ audio, perto, criando, vistas, ativo, onVer }: { audio: AudioC
   useFrame((s, dt) => {
     const t = s.clock.elapsedTime
     const d = Math.min(dt, 0.05)
+    // o brilho dela chega devagar no pedido (e pulsa de leve, viva)
+    brilhoAgora.current += (brilho - brilhoAgora.current) * Math.min(1, d * 0.7)
+    const b = brilhoAgora.current * (1 + Math.sin(t * 1.3) * 0.05)
+    if (matFolhas.current) matFolhas.current.emissiveIntensity = 0.15 + b * 0.85
+    if (luz.current) luz.current.intensity = 2 + b * 7
+    if (halo.current) { halo.current.scale.setScalar(1.2 + b * 1.6); halo.current.material.opacity = 0.12 + b * 0.38 }
+    if (chao.current) (chao.current.material as THREE.MeshBasicMaterial).opacity = b * 0.13
     if (copa.current) {
       // respira; perto, as folhas viram devagar pro seu lado
       copa.current.scale.setScalar(1 + Math.sin(t * 0.8) * 0.015)
@@ -484,7 +524,7 @@ function Planta({ audio, perto, criando, vistas, ativo, onVer }: { audio: AudioC
         <mesh position={[0, 0.6, 0]}><cylinderGeometry args={[0.012, 0.02, 1.2, 6]} /><meshStandardMaterial color="#2f6a3e" roughness={0.8} /></mesh>
         <instancedMesh ref={folhas} args={[undefined, undefined, N_FOLHAS]}>
           <sphereGeometry args={[1, 8, 4]} />
-          <meshStandardMaterial color="#2fbf6e" emissive={VERDE} emissiveIntensity={0.22} roughness={0.6} />
+          <meshStandardMaterial ref={matFolhas} color="#2fbf6e" emissive={VERDE} emissiveIntensity={0.22} roughness={0.6} />
         </instancedMesh>
       </group>
       {/* a redoma (vidro barato: transparente, sem refração): um sino de vidro por cima de tudo */}
@@ -496,9 +536,18 @@ function Planta({ audio, perto, criando, vistas, ativo, onVer }: { audio: AudioC
         <sphereGeometry args={[0.58, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial color="#bfe3ff" transparent opacity={0.1} roughness={0.05} metalness={0.6} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
-      {/* a barra da luz de cultivo, roxa, e a luz que ela joga */}
+      {/* a barra da luz de cultivo, roxa (só a peça: quem ilumina é a planta) */}
       <mesh position={[0, 2.7, 0]}><boxGeometry args={[0.9, 0.04, 0.12]} /><meshBasicMaterial color={ROXO} toneMapped={false} /></mesh>
-      <pointLight position={[0, 2.4, 0.3]} color="#c9a2ff" intensity={6} distance={5.5} decay={2} />
+      {/* A LUZ DA PLANTA: a única luz pontual da sala (só muda de força), o halo
+          e a mancha no chão (aditivos, sem luz nova) */}
+      <pointLight ref={luz} position={[0, 1.45, 0.25]} color={LUZ_PLANTA} intensity={4} distance={6} decay={2} />
+      <sprite ref={halo} position={[0, 1.3, 0]} scale={1.6} renderOrder={2}>
+        <spriteMaterial map={tHalo} color={LUZ_PLANTA} transparent opacity={0.3} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </sprite>
+      <mesh ref={chao} position={[-0.5, 0.012, 0.1]} rotation-x={-Math.PI / 2} scale={[2.4, 1.8, 1]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial map={tHalo} color={LUZ_PLANTA} transparent opacity={0.1} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
       {/* as amostras: o armarinho, a prateleira, os potinhos com data */}
       <Caixa pos={[1.25, 0.5, -0.35]} tam={[0.75, 1.0, 0.3]} cor="#1b1f2a" metal={0.3} />
       <Caixa pos={[1.25, 1.02, -0.35]} tam={[0.7, 0.04, 0.25]} cor="#2a2f3a" />
@@ -507,10 +556,6 @@ function Planta({ audio, perto, criando, vistas, ativo, onVer }: { audio: AudioC
         <bufferGeometry><bufferAttribute attach="attributes-position" args={[posEsporos, 3]} /></bufferGeometry>
         <pointsMaterial color="#d9ffe9" size={0.025} transparent opacity={0.7} depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} />
       </points>
-      {/* o que dá pra tocar (relativo à planta) */}
-      {PLANTA.map((c) => (
-        <Toque key={c.id} pos={[c.pos[0] - PLANTA_POS[0], c.pos[1] - PLANTA_POS[1], c.pos[2] - PLANTA_POS[2]]} raio={c.raio ?? 0.3} cor={VERDE} ativo={ativo && !vistas.includes(c.id)} onToque={() => onVer(c.id)} />
-      ))}
     </group>
   )
 }
@@ -685,7 +730,8 @@ function Cavalete({ ativo, tela, pendurada, audio, onPendurar, onChegou }: { ati
         <mesh position={[0, 0, -0.025]}><boxGeometry args={[TELA.larg + 0.06, TELA.alto + 0.06, 0.04]} /><meshStandardMaterial color="#d8d0c0" roughness={0.9} /></mesh>
         <mesh onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up}>
           <planeGeometry args={[TELA.larg, TELA.alto]} />
-          <meshBasicMaterial map={tex} />
+          {/* a tela é desenhada sem luz (a tinta sai fiel); o tom verdinho é o da planta */}
+          <meshBasicMaterial map={tex} color="#eefff3" />
         </mesh>
         {/* a linha que toca */}
         <mesh ref={cabeca} position={[0, 0, 0.004]} visible={false}>
@@ -693,8 +739,6 @@ function Cavalete({ ativo, tela, pendurada, audio, onPendurar, onChegou }: { ati
           <meshBasicMaterial color={ELLA_COR} toneMapped={false} transparent opacity={0.9} />
         </mesh>
       </group>
-      {/* a luz quente do cavalete */}
-      <pointLight position={[CAVALETE.pos[0] + 0.6, 2.4, CAVALETE.pos[2] + 0.9]} color={QUENTE} intensity={3.2} distance={4.5} decay={2} />
     </group>
   )
 }

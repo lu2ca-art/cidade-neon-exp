@@ -3021,3 +3021,15 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 /* (T63) a porta da boca do túnel: o escuro da descida pras trincheiras */
 .l-tunel-desce { position: fixed; inset: 0; z-index: 72; background: #000; pointer-events: all; animation: l-tunel-desce 0.8s ease-in both; }
 @keyframes l-tunel-desce { from { opacity: 0; } to { opacity: 1; } }
+
+/* (T22b) o filminho dentro da cena (CenaFilme.tsx): o vídeo por cima de tudo, ou
+   (hoje) as falas em legenda de cinema sobre a cena parada */
+.l-filme { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: pointer; background: linear-gradient(to top, rgba(0,0,0,0.6) 11vh, rgba(0,0,0,0.35) calc(11vh + 90px), transparent calc(11vh + 200px)); }
+.l-filme.is-video { background: #000; justify-content: center; }
+.l-filme.is-video video { width: 100%; height: 100%; object-fit: contain; }
+.l-filme-pular { position: absolute; top: calc(11vh + 12px); right: 18px; font: 700 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+.l-filme-fala { margin: 0 24px calc(11vh + 22px); max-width: 560px; text-align: center; font: 500 19px/1.4 var(--sans, system-ui); color: #fff; text-shadow: 0 1px 10px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.8); animation: l-filme-entra 0.9s ease-out both; }
+.l-filme-fala small { display: block; margin-bottom: 6px; font: 700 10px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--cor); }
+.l-filme-fala.is-acao { font-style: italic; font-size: 16px; color: rgba(255,255,255,0.8); }
+.l-filme-barra { position: absolute; left: 0; bottom: 11vh; height: 2px; background: rgba(255,255,255,0.35); transition: width 0.8s ease; }
+@keyframes l-filme-entra { from { opacity: 0; transform: translateY(6px); } }
