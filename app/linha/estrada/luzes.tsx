@@ -8,8 +8,8 @@
 // quadro, pras mais perto da câmera. Cada luz alcança 10–30 m: de longe ela
 // já não ilumina nada, então a troca não aparece.
 
-import { useFrame } from "@react-three/fiber"
-import { useEffect, useLayoutEffect, useRef } from "react"
+import { useFrame, useThree } from "@react-three/fiber"
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 
 // (22/10, perf 003) era 6. Cada pointLight custa em TODO pixel iluminado
@@ -86,30 +86,74 @@ export function compilarSemTravar(gl: THREE.WebGLRenderer, o: THREE.Object3D, ca
   })
 }
 
+// (30/10, leveza C) antes, um scene.traverse em TODO quadro (milhares de
+// objetos da cidade, 60x por segundo) só pra achar material novo. Agora o
+// Object3D.add avisa quem entrou (NOVOS) e o quadro olha só esses galhos; a
+// cada 30 quadros uma varredura inteira pega o resto (material trocado num
+// objeto que já estava na cena). Sem nada novo, o quadro não percorre nada
+const NOVOS: THREE.Object3D[] = []
+let ouvindo = 0 // (só junta enquanto a estrada está montada: fora dela não segura objeto nenhum)
+const comAviso = THREE.Object3D.prototype as THREE.Object3D & { __avisaNovo?: boolean }
+if (!comAviso.__avisaNovo) {
+  comAviso.__avisaNovo = true
+  const addOriginal = THREE.Object3D.prototype.add
+  THREE.Object3D.prototype.add = function (this: THREE.Object3D, ...objs: THREE.Object3D[]) {
+    for (let i = 0; i < objs.length; i++) if (ouvindo > 0 && NOVOS.length < 4096) NOVOS.push(objs[i])
+    return addOriginal.apply(this, objs)
+  }
+}
+const VARREDURA = 30
+
+function naCena(o: THREE.Object3D, scene: THREE.Scene) {
+  let p: THREE.Object3D | null = o
+  while (p) { if (p === scene) return true; p = p.parent }
+  return false
+}
+
 export function CompilaSemTravar() {
-  const prontos = useRef(new WeakSet<THREE.Material>())
-  const esperando = useRef(new WeakSet<THREE.Object3D>())
-  useFrame(({ gl, scene, camera }) => {
-    scene.traverse((o) => {
+  const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
+  const scene = useThree((s) => s.scene)
+  // a checagem de um objeto, criada uma vez (nada de função nova por quadro)
+  const checar = useMemo(() => {
+    const prontos = new WeakSet<THREE.Material>()
+    const esperando = new WeakSet<THREE.Object3D>()
+    const cam = { atual: camera }
+    const pronto = (mat: THREE.Material) => {
+      if (prontos.has(mat)) return true
+      if ((gl.properties.get(mat) as { currentProgram?: unknown }).currentProgram) { prontos.add(mat); return true }
+      return false
+    }
+    const f = (o: THREE.Object3D) => {
       const m = (o as THREE.Mesh).material
-      if (!m || esperando.current.has(o)) return
-      const ms = Array.isArray(m) ? m : [m]
+      if (!m || esperando.has(o)) return
       let falta = false
-      for (const mat of ms) {
-        if (prontos.current.has(mat)) continue
-        if ((gl.properties.get(mat) as { currentProgram?: unknown }).currentProgram) prontos.current.add(mat)
-        else falta = true
-      }
+      if (Array.isArray(m)) { for (let i = 0; i < m.length; i++) if (!pronto(m[i])) falta = true }
+      else falta = !pronto(m)
       if (!falta) return
-      esperando.current.add(o)
+      esperando.add(o)
       const camadas = o.layers.mask
       o.layers.mask = 0
-      compilarSemTravar(gl, o, camera, scene).finally(() => {
-        for (const mat of ms) prontos.current.add(mat) // (o programa só vira "atual" quando desenha)
+      compilarSemTravar(gl, o, cam.atual, scene).finally(() => {
+        const mm = (o as THREE.Mesh).material
+        if (Array.isArray(mm)) for (const x of mm) prontos.add(x)
+        else if (mm) prontos.add(mm) // (o programa só vira "atual" quando desenha)
         o.layers.mask = camadas
-        esperando.current.delete(o)
+        esperando.delete(o)
       })
-    })
+    }
+    return { f, cam }
+  }, [gl, scene, camera])
+  const quadro = useRef(0)
+  useEffect(() => { ouvindo++; return () => { ouvindo--; NOVOS.length = 0 } }, [])
+  useFrame(({ camera: c }) => {
+    checar.cam.atual = c
+    // 1º quadro e a cada 30: a cena toda (o que já estava antes de montar, material trocado)
+    if (quadro.current++ % VARREDURA === 0) { NOVOS.length = 0; scene.traverse(checar.f); return }
+    if (!NOVOS.length) return
+    // só os galhos que entraram (o que entrou fora desta cena fica pra varredura)
+    for (let i = 0; i < NOVOS.length; i++) { const o = NOVOS[i]; if (naCena(o, scene)) o.traverse(checar.f) }
+    NOVOS.length = 0
   })
   return null
 }
