@@ -333,15 +333,23 @@ export default function LinhaPage() {
   // moram aqui; o save só recebe nos marcos (troca de turno, virada do dia,
   // tanque na reserva/cheio/seco). O localStorage grava sempre com eles
   const vivo = useRef<{ hora?: number; tanque?: number }>({})
+  // (leveza B) o sinal de cada orb junta aqui e sobe junto, no máximo 1 vez por
+  // segundo (ou na hora: trocou de bairro/rádio, ou chegou água)
+  const sinalPend = useRef<{ total: number; freq?: string } | null>(null)
+  const sinalTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // o save com o que ainda mora nas refs (vale pras contas que leem a hora ou o tanque)
   const comVivo = useCallback((s: Save): Save => {
     const v = vivo.current
     const hora = v.hora ?? s.hora, tanque = v.tanque ?? s.tanque
     return hora === s.hora && tanque === s.tanque ? s : { ...s, hora, tanque }
   }, [])
-  // o que vai pro disco: o save com o que ainda mora nas refs
+  // o que vai pro disco: o save com o que ainda mora nas refs (o sinal juntando também)
   const gravarComo = useRef((s: Save) => s)
-  gravarComo.current = comVivo
+  gravarComo.current = (s: Save) => {
+    const p = sinalPend.current
+    const v = comVivo(s)
+    return p ? { ...v, sinal: p.total, freq: p.freq ?? v.freq } : v
+  }
   const gravarJa = useCallback(() => {
     if (gravarTimer.current) { clearTimeout(gravarTimer.current); gravarTimer.current = null }
     if (!gravarSujo.current) return
@@ -369,6 +377,25 @@ export default function LinhaPage() {
   // o caderno e os apps do celular (janelas) leem o save do localStorage: abriu, grava antes
   useEffect(() => { if (caderno) gravarJa() }, [caderno, gravarJa])
   useEffect(() => { if (tela.t === "app") gravarJa() }, [tela.t, gravarJa])
+  // o sinal juntado sobe pro save (antes de qualquer conta que some no sinal)
+  const assentarSinal = useCallback(() => {
+    if (sinalTimer.current) { clearTimeout(sinalTimer.current); sinalTimer.current = null }
+    const p = sinalPend.current
+    if (!p) return
+    sinalPend.current = null
+    setSave((s) => ({ ...s, sinal: p.total, freq: p.freq ?? s.freq }))
+  }, [])
+  useEffect(() => () => { if (sinalTimer.current) clearTimeout(sinalTimer.current) }, [])
+  const onSinal = useCallback((total: number, freq?: FreqId) => {
+    sinalPend.current = { total, freq: freq ?? sinalPend.current?.freq }
+    if (freq) assentarSinal()
+    else if (!sinalTimer.current) { sinalTimer.current = setTimeout(assentarSinal, 1000); agendarGravar() }
+  }, [assentarSinal, agendarGravar])
+  // a água já chega juntada da estrada (1 vez por segundo): sobe na hora, e leva o sinal junto
+  const onAgua = useCallback((d: number) => {
+    assentarSinal()
+    setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))
+  }, [assentarSinal])
   // mudou no save por outro caminho (a chegada, o posto, o galão): a ref segue o save
   useEffect(() => { vivo.current.hora = save.hora }, [save.hora])
   useEffect(() => { vivo.current.tanque = save.tanque }, [save.tanque])
@@ -630,11 +657,12 @@ export default function LinhaPage() {
 
   const fimInvasao = useCallback((venceu: boolean) => {
     setInvasao(null)
+    assentarSinal()
     setSave((s) => ({ ...s, sinal: s.sinal + (venceu ? 8 : 0), nucleo: { invasoes: s.nucleo.invasoes + 1, caido: !venceu } }))
     track("mission_step", { mission_id: "linha-nucleo", step: venceu ? "invasao:repelida" : "invasao:caiu", perfil: save.perfil ?? "?", fio_pos: -1 })
     if (venceu) avisar("D-Bee", "vc segurou eles. +8 de sinal", "#3d7bff")
     else setTimeout(() => avisar("D-Bee", "derrubaram a 222. religa a antena no centro, de kombi", "#3d7bff"), 400)
-  }, [avisar, save.perfil])
+  }, [avisar, save.perfil, assentarSinal])
 
   // a caça: a partir da 3ª missão, carregar o contrabando (o que foi buscado,
   // ou alguém de carona) até a estação atrai os carros brancos do Núcleo.
@@ -810,6 +838,7 @@ export default function LinhaPage() {
       track("mission_step", { mission_id: `linha-${est}`, step: `loop:${c.lugar}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(est) })
       return
     }
+    assentarSinal()
     setSave((s) => {
       let objetos = s.objetos
       let sinal = s.sinal
@@ -849,7 +878,7 @@ export default function LinhaPage() {
       setPerseguido(true)
       setTimeout(() => setPerseguido(false), 60000)
     }
-  }, [cena, avisar])
+  }, [cena, avisar, assentarSinal])
 
   // saiu da casa da D-Bee (a abertura): o tanque cheio, o tutorial começa.
   // O começo antigo (o grupo rolando, as ligações dbee-0/1, a abertura com o
@@ -894,9 +923,10 @@ export default function LinhaPage() {
   }
 
   const religar = useCallback(() => {
+    assentarSinal()
     setSave((s) => ({ ...s, sinal: s.sinal + 10, nucleo: { ...s.nucleo, caido: false } }))
     track("mission_step", { mission_id: "linha-nucleo", step: "antena:religou", perfil: save.perfil ?? "?", fio_pos: -1 })
-  }, [save.perfil])
+  }, [save.perfil, assentarSinal])
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
@@ -1389,6 +1419,7 @@ export default function LinhaPage() {
   // minigames da versão anterior: quem completa ganha luz e sinal (uma vez)
   const conferirLegado = useCallback(() => {
     const feitos = legadoFeito()
+    assentarSinal()
     setSave((s) => {
       const novos = LEGADO.filter((l) => feitos.includes(l.id) && !s.legado.includes(l.id))
       if (!novos.length) return s
@@ -1400,7 +1431,7 @@ export default function LinhaPage() {
       }, 0)
       return { ...s, legado: [...s.legado, ...novos.map((l) => l.id)], neon: (s.neon ?? 0) + luz, sinal: s.sinal + sinal }
     })
-  }, [avisar])
+  }, [avisar, assentarSinal])
 
   // já fez o quiz = está dentro da cidade
   const dentro = !!save.estacao || !!save.casa
@@ -1741,7 +1772,7 @@ export default function LinhaPage() {
     return (
       <div className="l-raiz">
         <div className="l-palco">
-          <Corrida save={save} nivel={nivel} destino={null} onSinal={(total) => setSave((s) => ({ ...s, sinal: total }))} onDescer={() => {}} onSair={() => {}} />
+          <Corrida save={save} nivel={nivel} destino={null} onSinal={onSinal} onDescer={() => {}} onSair={() => {}} />
         </div>
       </div>
     )
@@ -1812,7 +1843,7 @@ export default function LinhaPage() {
             onApreendido={apreender}
             caido={save.nucleo.caido}
             onReligar={religar}
-            onSinal={(total, freq) => setSave((s) => ({ ...s, sinal: total, freq: freq ?? s.freq }))}
+            onSinal={onSinal}
             alvo={HIST ? alvoDisco : save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
             levando={levarDrewboy(save) ? "copo" : null}
             tanque={save.tanque ?? 1}
@@ -1857,7 +1888,7 @@ export default function LinhaPage() {
                 if (v) setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: v.nome }), 900)
               }
             }}
-            onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
+            onAgua={onAgua}
             checklistHolo={checklistHolo}
             mapaMissoes={mapaMissoes}
             mapaPainel={mapaPainel}
