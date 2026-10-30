@@ -15,6 +15,7 @@
 import type { HistoriaDisco } from "./historia"
 import { feita13, normalizarMissao } from "./portas"
 import { pagamentoMotor } from "./oficina"
+import { quebraVale } from "./perseguicao"
 
 export const CONFIG_QUEBRA = {
   // liga/desliga (false = a Kombi nunca quebra sozinha)
@@ -51,6 +52,8 @@ export const quebrada = (h: HistoriaDisco | null): boolean => !!h?.quebra?.quebr
 export function podeQuebrar(h: HistoriaDisco | null): boolean {
   if (!CONFIG_QUEBRA.ligada || !h || h.fase !== "carreira") return false
   if (quebrada(h)) return false
+  // (T28) a Kombi foi jogada lá de cima: sem Kombi, sem quebra (o veículo novo, se o dono quiser)
+  if (!quebraVale(h)) return false
   const m = normalizarMissao(h.missao)
   if (m && !feita13(h, m)) return false
   return (h.quebra?.folga ?? 0) <= 0

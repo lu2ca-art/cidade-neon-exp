@@ -21,6 +21,8 @@ const PARTES: [string, string | null][] = [
   ["casa.tambor", "casa"],
   // (T27) a Kombi que quebra: antes e já na oficina
   ["quebra", "carreira"], ["quebra.oficina", "carreira"],
+  // (T28) a perseguição da Kombi: a polícia já atrás e, depois, a hora de escolher o veículo
+  ["perseguicao", "carreira"], ["perseguicao.escolher", "carreira"],
   // (T44) os rachas: a cidade livre com um carro do mecânico logo à frente
   ["rachas", "livre"],
 ]

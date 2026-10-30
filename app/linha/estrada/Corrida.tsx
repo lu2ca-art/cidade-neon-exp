@@ -52,6 +52,8 @@ import { guitarLivre } from "../disco/capsula"
 import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { feita13 } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
+import { VeiculoModelo, VeiculosCena, VeiculosHud, novoEstadoVeiculos, type EstadoVeiculos } from "../disco/Veiculos"
+import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, veiculoPorId } from "../disco/perseguicao"
 import type { ResultadoRacha } from "../disco/corredores"
 import { lixoNoChao } from "./chao"
 import { materialAreia } from "./areia"
@@ -296,8 +298,17 @@ interface Props {
   sorteioMs?: number
   // (T44) acabou um racha com um dos corredores do mecânico: o prêmio (neon$ e prestígio)
   onRacha?: (r: ResultadoRacha) => void
+  // (T28) a perseguição da Kombi, uma vez só (disco/perseguicao.ts): `perseguicao` = a
+  // polícia atrás agora (o jogador perde); `semKombi` = jogaram a Kombi lá de cima, de
+  // patins até os 3 veículos; `veiculo` = o escolhido (no lugar da Kombi)
+  perseguicao?: boolean
+  // (T28) o gatilho bateu: depois de tantos ms rodando de verdade, avisa "perseguicao" (0 = não)
+  esperaPolicia?: number
+  semKombi?: boolean
+  veiculo?: string | null
+  onPerseguicao?: (e: "jogada" | "escolheu", id?: string) => void
 }
-export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | `chao:${LugarChao}`
+export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | "perseguicao" | `chao:${LugarChao}`
 
 const SEM_FLORES: string[] = []
 
@@ -325,8 +336,8 @@ type Jogo = {
   dPts: number; dMult: number; dFim: number; dTotal: number; dMsg: string; dMsgT: number; dRaspa: number
   // caça do Núcleo: distância do carro branco mais perto (m, atrás)
   cacaGap?: number
-  // as batidas no trânsito (06/10, LU2CA): cada uma acende uma estrela; na
-  // 3ª a polícia vem. As estrelas apagam devagar sem bater
+  // as estrelas da polícia (06/10). (T28) bater não acende mais estrela: só o
+  // atalho de teste (procurado) liga a caça antiga. As estrelas apagam devagar
   batidas?: number
   batidaT?: number
   procurado?: boolean
@@ -438,7 +449,9 @@ type Evs = {
   portal: (id: EstacaoId) => void
   pegar: (chave: string) => void
   anel: () => void
-  caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim") => void
+  caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim" | "jogada") => void
+  // (T28) a Kombi caiu lá de cima (acabou a queda)
+  perseguicao?: (e: "jogada") => void
   estrelas: (n: number) => void
   chegou: () => void
   piloto: (on: boolean) => void
@@ -492,7 +505,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -533,6 +546,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const aguaVista = agua + aguaPend
   const aguaRef = useRef(aguaVista)
   const onAguaRef = useRef(onAgua)
+  const onPerseguicaoRef = useRef(onPerseguicao)
+  useEffect(() => { onPerseguicaoRef.current = onPerseguicao }, [onPerseguicao])
   const onFugaRef = useRef(onFuga)
   useEffect(() => { aguaRef.current = aguaVista; onAguaRef.current = onAgua; onFugaRef.current = onFuga }, [aguaVista, onAgua, onFuga])
   useEffect(() => {
@@ -1096,7 +1111,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const oficinaLivre = !!discoM && !!historia && feita13(historia, "oficina") && alvoChao !== "oficina"
   // (T44) os rachas: os carros do mecânico rodam lá em cima depois que ele te conta deles (a oficina)
   const rachaRef = useRef<EstadoRacha>(novoEstadoRacha())
-  const rachasOk = !!discoM && (!historia || historia.fase === "livre" || historia.fase === "carreira" || feita13(historia, "oficina")) && !cinema && !cenaLugar && !intro && !abertura && !chegada && !noConserto && !quebrou // (T27) a Kombi quebrada/no conserto: de patins, sem racha
+  const rachasOk = !!discoM && (!historia || historia.fase === "livre" || historia.fase === "carreira" || feita13(historia, "oficina")) && !cinema && !cenaLugar && !intro && !abertura && !chegada && !noConserto && !quebrou && !perseguicao && !semKombi // (T27, T28) a Kombi quebrada/no conserto: de patins, sem racha
   const pertoOficina = oficinaLivre && pertoDaOficina
   useEffect(() => {
     if (!oficinaLivre) return
@@ -1466,6 +1481,36 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noConserto, pausado])
+  // (T28) a perseguição: a Cena lê pelo combRef (a polícia atrás, sem Kombi, o veículo)
+  const veiculoAntes = useRef(veiculo)
+  useEffect(() => {
+    const cb = combRef.current
+    cb.perseguicao = perseguicao
+    if (semKombi) cb.semKombi = true
+    else if (!perseguicao) cb.semKombi = false
+    cb.vel = veiculoPorId(veiculo)?.vel ?? 1
+    // jogaram a Kombi (ou recarregou na hora de escolher): de patins, e a 222 uma vez
+    if (semKombi && !cb.queda) {
+      if (!cb.patins) irDePatins()
+      const t = setTimeout(() => falar("222 FM", FALAS_PERSEGUICAO.veiculos, 5200), 1600)
+      return () => clearTimeout(t)
+    }
+    // escolheu: sobe no veículo ali mesmo
+    if (veiculo && veiculo !== veiculoAntes.current && cb.patins) { cb.parada = null; entrarNaKombi() }
+    veiculoAntes.current = veiculo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perseguicao, semKombi, veiculo])
+  const veiculosRef = useRef<EstadoVeiculos>(novoEstadoVeiculos())
+  // (T28) o gatilho: conta só o tempo rodando de verdade (de Kombi, andando, sem cena)
+  useEffect(() => {
+    if (!esperaPolicia || pausado || noConserto) return
+    let ms = 0
+    const iv = setInterval(() => {
+      if (!combRef.current.patins && !cinemaRef.current && jogo.current.v > 4 && !jogo.current.voo) ms += 1000
+      if (ms >= esperaPolicia) { ms = 0; onHistoriaRef.current?.("perseguicao") }
+    }, 1000)
+    return () => clearInterval(iv)
+  }, [esperaPolicia, pausado, noConserto])
   // (T27) o sorteio da quebra: só conta tempo rodando de verdade (nada aberto, de Kombi, no ar ou no chão)
   useEffect(() => {
     if (!sorteioMs || noConserto || pausado) return
@@ -1744,11 +1789,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         gota(4)
       },
       estrelas: (n) => setEstrelas(n),
+      perseguicao: (e) => onPerseguicaoRef.current?.(e),
       caca: (e) => {
         if (e === "comecou") {
           setCacando(true)
           // (rascunho da voz do Núcleo: batidas no trânsito)
-          falar("NÚCLEO", cacadoRef.current ? "veículo transportando conteúdo não licenciado. aguarde a otimização ✓" : "colisões registradas. veículo em processo de otimização ✓")
+          falar("NÚCLEO", combRef.current.perseguicao ? FALAS_PERSEGUICAO.nucleo : cacadoRef.current ? "veículo transportando conteúdo não licenciado. aguarde a otimização ✓" : "colisões registradas. veículo em processo de otimização ✓")
           vib([60, 40, 60])
         } else if (e === "pego") {
           setCacando(false)
@@ -1763,6 +1809,13 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             falar("NÚCLEO", "conteúdo apreendido e devolvido à origem. obrigado pela colaboração ✓")
             onApreendido?.()
           } else falar("NÚCLEO", "veículo identificado. desta vez, só um aviso ✓")
+        } else if (e === "jogada") {
+          // (T28) pegaram: tiram ele da Kombi (de patins, sem texto) e o helicóptero leva ela
+          setCacando(false)
+          jogo.current.flash = 0.8
+          jogo.current.shake = 1.2
+          vib([90, 40, 160, 40, 220])
+          irDePatins()
         } else if (e === "despistou") {
           setCacando(false)
           confeteRef.current?.("#2fe8ff", 60)
@@ -2246,8 +2299,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} onRobo={roboRef} missoesMapa={discoM ? mapaMissoes : null} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} onRobo={roboRef} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
           {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
+          {discoM && semKombi && <Seguro nome="veiculos"><VeiculosCena M={M} jogo={jogo} estado={veiculosRef} ativo={semKombi} /></Seguro>}
         </Canvas>
       )}
 
@@ -2462,7 +2516,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {discoM && ajustes && oculos && <HoloAjustes qual={qualHolo} onQual={(n) => guardarQualidade(n)} onFechar={fecharAjustes} />}
       {/* sair a qualquer hora / voltar pra Kombi */}
       {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
-        <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>sair da kombi</button>
+        <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>{veiculo ? "descer" : "sair da kombi"}</button>
       )}
       {dePatins && florPerto && !regandoFlor && (
         <button type="button" className="l-regar-btn is-flor" onPointerDown={(e) => e.stopPropagation()} onClick={() => regarFlor(florPerto)}>regar a flor</button>
@@ -2473,7 +2527,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={pegarGalaoDbee}>pegar o galão</button>
       )}
       {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (
-        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>voltar pra Kombi</button>
+        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : "voltar pra Kombi"}</button>
       )}
       {dePatins && pertoComb && seco && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={voltarComGalao}>encher o galão e voltar pra Kombi</button>
@@ -2610,7 +2664,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} apagada={viaApagada} />
       )}
       {/* (T44) os rachas: o botão "tirar um racha" pisca quando você emparelha com um dos carros do mecânico */}
-      {discoM && <RachasHud estado={rachaRef} onFim={(r) => onRacha?.(r)} escondido={drone || !!cinema || !!cenaLugar || noConserto || quebrou} />}
+      {discoM && <RachasHud estado={rachaRef} onFim={(r) => onRacha?.(r)} escondido={drone || !!cinema || !!cenaLugar || noConserto || quebrou || perseguicao || semKombi} />}
+      {discoM && semKombi && <VeiculosHud estado={veiculosRef} onPegar={(id) => onPerseguicao?.("escolheu", id)} escondido={drone || !!cinema || !!cenaLugar} />}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
       {discoM && <div className="l-hyper" aria-hidden="true" style={{ opacity: 0 }}><i /><i /></div>}
@@ -2900,6 +2955,13 @@ export interface Comb {
   quebrada?: boolean
   parada?: { pos: THREE.Vector3; quat: THREE.Quaternion; via: number; u: number; x: number } | null
   aqui?: THREE.Vector3 // onde você está agora (pra saber se está perto da Kombi parada)
+  // (T28) a perseguição: a polícia atrás agora (não dá pra despistar); sem Kombi (foi
+  // jogada lá de cima); a queda dela (o helicóptero ergue, leva pro lado e solta)
+  perseguicao?: boolean
+  semKombi?: boolean
+  queda?: { t: number; p0: THREE.Vector3; q0: THREE.Quaternion; lado: THREE.Vector3; frente: THREE.Vector3; recuou?: boolean; soltou?: boolean } | null
+  // (T28) quanto o veículo escolhido anda (1 = a Kombi)
+  vel?: number
 }
 
 export interface Abertura {
@@ -2997,8 +3059,10 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null,
 }: {
+  // (T28) o veículo escolhido depois da perseguição (no lugar da Kombi)
+  veiculo?: string | null
   alvoChao?: LugarChao | null
   // (LU2CA 21/10 (3)) a música é o TEMA da missão: na carreira (soTema), a
   // missão pegada (temaMissao) toca o instrumental até ele achar a linha dela;
@@ -4073,6 +4137,7 @@ function Cena({
   const patinador = useRef<THREE.Group>(null)
   const kombiParada = useRef<THREE.Group>(null)
   const kParadaT = useRef(false)
+  const vModelo = useMemo(() => veiculoPorId(veiculo), [veiculo])
   const kParadaZero = useRef(0)
   const luzBaixo = useRef<THREE.PointLight>(null)
   const camInit = useRef(false)
@@ -4208,6 +4273,8 @@ function Cena({
       const fxP = infV && !naEspiral ? faixasDisco[infV.pista] ?? null : null
       let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
+      // (T28) o veículo escolhido depois da perseguição anda mais ou menos que a Kombi
+      if (!patins && combRef.current.vel) vmax *= combRef.current.vel
       // (no chão, a de passeio; nas pistas, metade da velocidade da pista)
       if (auto1p || (pilotoMissao && j.voo) || infAuto) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
@@ -4977,7 +5044,25 @@ function Cena({
         j.batidaT = (j.batidaT ?? 0) + dt
         if (j.batidaT > 25) { j.batidaT = 0; j.batidas = (j.batidas ?? 1) - 1; ev.estrelas(j.batidas) }
       }
-      const quer = (cacadoRef.current || !!j.procurado) && !cine && k.espera <= 0
+      // (T28) a perseguição da Kombi (uma vez só): começa com ela na pista e não acaba
+      // até pegarem (não dá pra despistar; o tempo máximo fecha o cerco)
+      const cbP = combRef.current
+      const perseg = !!cbP.perseguicao && !cbP.queda && !cbP.semKombi
+      const jogar = () => {
+        k.ativa = false; k.espera = 12; k.heliOn = false
+        j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0)
+        j.v = 0; j.vx = 0; j.embalo = 0
+        j.cacaGap = undefined
+        const cq = carro.current!
+        const fr = new THREE.Vector3(0, 0, -1).applyQuaternion(cq.quaternion).setY(0)
+        if (fr.lengthSq() < 1e-4) fr.set(0, 0, -1)
+        fr.normalize()
+        const ld = new THREE.Vector3(-fr.z, 0, fr.x).multiplyScalar(j.x >= 0 ? 1 : -1)
+        cbP.semKombi = true
+        cbP.queda = { t: 0, p0: cq.position.clone(), q0: cq.quaternion.clone(), lado: ld, frente: fr }
+        ev.caca("jogada")
+      }
+      const quer = ((cacadoRef.current || !!j.procurado) && k.espera <= 0 || perseg && (k.ativa || (!j.voo && !j.ar))) && !cine
       if (quer && !k.ativa) {
         // aparecem no retrovisor, 140m atrás
         k.ativa = true
@@ -4987,6 +5072,8 @@ function Cena({
         k.t = 0
         k.carros.forEach((c, i) => { c.u = j.u - 140 - i * 22; c.x = j.x + [2.2, -2.2, 0][i % 3]; c.v = Math.max(20, j.v) })
         ev.caca("comecou")
+        // (T28) na perseguição o helicóptero já vem junto
+        if (perseg && "disco" in M) { k.heliOn = true; k.heliT = 0; k.cobertoT = 0; k.heliPos.copy(carro.current!.position).add(tmp.p.set(0, 70, 0)) }
       } else if (!quer && k.ativa) {
         // entregou (ou a 222 caiu): a caça acaba sem alarde
         k.ativa = false
@@ -4999,7 +5086,9 @@ function Cena({
         // ~30 s; e acompanha a velocidade da pista onde você está (no disco,
         // cada pista tem a sua): fugir é questão de embalo
         const forca = Math.min(1, 0.95 + 0.05 * (k.t / 30))
-        const vCap = Math.max(VMAX, j.vBase ?? VMAX) * 1.06 * forca
+        // (T28) na perseguição eles são sempre mais rápidos que você (o turbo só adia)
+        const vCap = perseg ? Math.max(VMAX, j.vBase ?? VMAX, Math.abs(j.v) * 1.2 + 12) * 1.06 : Math.max(VMAX, j.vBase ?? VMAX) * 1.06 * forca
+        if (perseg && k.t > CONFIG_PERSEGUICAO.pegaEmS) jogar()
         if (k.via !== j.via) {
           // trocou de rua: eles vêm atrás (06/10: fugir ficou mais difícil) —
           // reaparecem atrás na rua nova, um pouco mais longe
@@ -5026,7 +5115,8 @@ function Cena({
             if (CV.fechada) c.u = ((c.u % CV.L) + CV.L) % CV.L
             c.x += (j.x - c.x) * Math.min(1, dt * (d < 25 ? 1.8 : 0.6))
             gap = Math.min(gap, d)
-            if (d > -2 && d < 3.6 && Math.abs(c.x - j.x) < 2.3 && !j.ar) {
+            if (k.ativa && perseg && d > -2 && d < 3.6 && Math.abs(c.x - j.x) < 2.3) { jogar(); break }
+            if (k.ativa && d > -2 && d < 3.6 && Math.abs(c.x - j.x) < 2.3 && !j.ar) {
               k.ativa = false
               k.espera = 12
               j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0)
@@ -5039,7 +5129,9 @@ function Cena({
           if (k.ativa) {
             j.cacaGap = gap
             // respirar (Respirar.tsx): parado e com eles longe, o círculo abre
-            respiroRef.current.pode = Math.abs(j.v) < 1.2 && (respiroRef.current.pode ? gap > 40 : gap > 120)
+            respiroRef.current.pode = !perseg && Math.abs(j.v) < 1.2 && (respiroRef.current.pode ? gap > 40 : gap > 120)
+            // (T28) longe demais: eles sempre te acham (reaparecem mais perto)
+            if (perseg && gap > 160) k.carros.forEach((c, i) => { c.u = j.u - 70 - i * 14; c.v = Math.max(c.v, Math.abs(j.v)) })
             if (respiroRef.current.feito) {
               respiroRef.current.feito = false
               respiroRef.current.pode = false
@@ -5059,13 +5151,13 @@ function Cena({
             if (k.heliOn) {
               k.heliT += dt
               j.tresT = j.v >= 3 * (j.vBase ?? VMAX) ? (j.tresT ?? 0) + dt : 0
-              if (j.tresT >= 8) {
+              if (j.tresT >= 8 && !perseg) {
                 k.heliOn = false; j.tresT = 0; j.fugaGrande = true
                 k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou")
               }
             }
             k.longeT = gap > 350 && !k.heliOn ? k.longeT + dt : 0
-            if (k.longeT > 6) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou") }
+            if (k.longeT > 6 && !perseg) { k.ativa = false; k.espera = 40; j.cacaGap = undefined; j.procurado = false; j.batidas = 0; j.batidaT = 0; ev.estrelas(0); ev.caca("despistou") }
           }
         }
       }
@@ -5177,13 +5269,8 @@ function Cena({
         j.flash = 0.3
         motor?.baque()
         vib([50, 30, 80])
-        // a estrela: na 3ª, a polícia vem
-        if (!j.procurado) {
-          j.batidas = Math.min(3, (j.batidas ?? 0) + 1)
-          j.batidaT = 0
-          ev.estrelas(j.batidas)
-          if (j.batidas >= 3) j.procurado = true
-        }
+        // (T28, 30/10) a regra antiga saiu: bater em 3 carros não chama mais a polícia.
+        // A polícia vem uma vez só no jogo (disco/perseguicao.ts)
       }
       if (aqui && antes > 0 && d <= 0) {
         if (!c.passou && c.bateu <= 0 && Math.abs(cx - j.x) < 3.3 && j.v > 30) {
@@ -5242,7 +5329,7 @@ function Cena({
     else car.position.set(a.x - a.tz * j.x * cb, j.y + 0.02, a.z + a.tx * j.x * cb)
     {
       const cb2 = combRef.current
-      if (cb2.patins && !cb2.parada) cb2.parada = { pos: car.position.clone(), quat: car.quaternion.clone(), via: j.via, u: j.u, x: j.x }
+      if (cb2.patins && !cb2.parada && !cb2.semKombi) cb2.parada = { pos: car.position.clone(), quat: car.quaternion.clone(), via: j.via, u: j.u, x: j.x }
       ;(cb2.aqui ??= new THREE.Vector3()).copy(car.position)
       if (corpoK.current) corpoK.current.visible = !cb2.patins
       if (cabineG.current && cb2.patins) cabineG.current.visible = false
@@ -5258,6 +5345,47 @@ function Cena({
           kombiParada.current.visible = !!(cb2.patins && cb2.parada)
           if (cb2.parada) { kombiParada.current.position.copy(cb2.parada.pos); kombiParada.current.quaternion.copy(cb2.parada.quat) }
         }
+      }
+      // (T28) a queda: o helicóptero ergue a Kombi, leva pro lado da pista (sobre o
+      // vazio) e solta. Ela cai girando e some lá embaixo. Sem texto: só o que se vê
+      const q = cb2.queda
+      if (q && kombiParada.current) {
+        q.t += dt
+        const C = CONFIG_PERSEGUICAO, t = q.t, kp = kombiParada.current, hk = caca
+        // (sob o escuro da troca pros patins) o jogador fica uns metros atrás, de frente pra ela
+        if (!q.recuou && t > 0.36) {
+          q.recuou = true
+          const V = M.vias[j.via]
+          j.u = V.fechada ? j.u - 24 : Math.max(0, j.u - 24); j.v = 0; j.vx = 0; j.encaixar = true
+        }
+        const ease = (x: number) => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x)
+        const sobe = ease((t - 0.6) / 2.4) * C.subida
+        const vai = ease((t - 3.0) / 1.6)
+        const cai = t > 4.8 ? t - 4.8 : 0
+        kp.visible = cai < 5
+        kp.position.copy(q.p0).addScaledVector(q.lado, vai * C.lado).addScaledVector(q.frente, vai * 8)
+        kp.position.y += sobe - 0.5 * 18 * cai * cai
+        kp.quaternion.copy(q.q0)
+        if (cai > 0) { kp.rotateX(cai * 1.3); kp.rotateZ(cai * 0.7 * Math.sign(q.lado.x || 1)) }
+        else kp.rotateZ(Math.sin(t * 2.3) * 0.05 * ease(t - 0.6))
+        // o helicóptero em cima dela (o facho = o cabo de luz que segura); soltou, ele sobe e vai embora
+        hk.heli.visible = t < 9
+        if (cai > 0) {
+          q.soltou = true
+          hk.heli.position.y += dt * 9
+          hk.facho.visible = false
+        } else {
+          tmp.p.copy(kp.position); tmp.p.y += 9
+          hk.heliPos.lerp(tmp.p, Math.min(1, dt * (t < 0.6 ? 2 : 6)))
+          hk.heli.position.copy(hk.heliPos)
+          // o facho aponta pra baixo (o cone nasce no helicóptero e desce até ela)
+          hk.facho.visible = true
+          hk.facho.position.copy(hk.heliPos)
+          hk.facho.scale.set(0.7, Math.max(0.5, hk.heliPos.y - kp.position.y - 1), 0.7)
+          hk.facho.quaternion.identity()
+        }
+        hk.helice.rotation.y += dt * 38
+        if (t > 9.5) { cb2.queda = null; kp.visible = false; hk.heli.visible = false; hk.facho.visible = false; ev.perseguicao?.("jogada") }
       }
     }
     return { cine, pct }
@@ -6300,17 +6428,20 @@ function Cena({
       </points>
 
       {/* a Kombi que ficou sem gasolina, esperando o galão */}
-      <group ref={kombiParada} visible={false}><Kombi222 turbo={kParadaT} velocidade={kParadaZero} esterco={kParadaZero} /></group>
+      <group ref={kombiParada} visible={false}>{vModelo ? <VeiculoModelo v={vModelo} /> : <Kombi222 turbo={kParadaT} velocidade={kParadaZero} esterco={kParadaZero} />}</group>
       <group ref={carro}>
         <group ref={corpoK}>
           {/* a Kombi de verdade (escaneada); enquanto carrega, ou se falhar
               no aparelho, a desenhada à mão */}
+          {/* (T28) depois da perseguição: o veículo escolhido (provisório, até o Tripo 3D) */}
+          {vModelo ? <VeiculoModelo v={vModelo} /> : (
           <Seguro nome="kombi" reserva={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
             <Suspense fallback={<><Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} /><Cupula /></>}>
               <KombiHerbal paineis={!semPaineis} />
               <Kombi222 turbo={kTurbo} velocidade={kVel} esterco={kEsterco} soEfeitos />
             </Suspense>
           </Seguro>
+          )}
         </group>
         <group ref={patinador} visible={false} rotation-y={Math.PI}>
           <Patinador vel={() => jogo.current.v} steer={() => -jogo.current.steer} ar={() => !!jogo.current.ar} jato={() => !!(jogo.current.ar && input.current.propulsor && (jogo.current.energia ?? 0) > 0)} />

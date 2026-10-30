@@ -54,6 +54,7 @@ import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_TAMBOR, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
+import { CONFIG_PERSEGUICAO, emPerseguicao, escolherVeiculo, escolhendoVeiculo, kombiJogada, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { definirChaoAtivos, ehPeca } from "./disco/achados"
@@ -916,6 +917,11 @@ export default function LinhaPage() {
   // (T27) a Kombi quebrou: também fica no conserto (a mesma ida de patins)
   const kombiQuebrou = HIST && quebrada(h13)
   const noConserto = HIST && (kombiNoConserto(h13) || kombiQuebrou)
+  // (T28) a perseguição da Kombi, uma vez só (disco/perseguicao.ts)
+  const perseguicaoAgora = HIST && emPerseguicao(h13)
+  const semKombi = HIST && escolhendoVeiculo(h13)
+  const veiculoAgora = HIST ? veiculoDe(h13)?.id ?? null : null
+  const podeVirPolicia = HIST && podePerseguir(h13, save.popularidade ?? 0)
   // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
   const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
@@ -1395,6 +1401,8 @@ export default function LinhaPage() {
     ;(window as unknown as { __cnChao?: (id: LugarChao) => void }).__cnChao = (id) => onHistoriaTeste.current(`chao:${id}`)
     // (T27) forçar a quebra da Kombi (teste): sem sorteio
     ;(window as unknown as { __cnQuebrar?: () => void }).__cnQuebrar = () => setSave((s) => comHistoria(s, quebrar))
+    // (T28) começar a perseguição da Kombi agora (teste): sem esperar o gatilho
+    ;(window as unknown as { __cnPerseguir?: () => void }).__cnPerseguir = () => setSave((s) => comHistoria(s, perseguir))
   }, [])
   const onHistoria = (e: EventoHistoria) => {
     const h = historiaDe(saveRef.current)
@@ -1437,6 +1445,9 @@ export default function LinhaPage() {
       const r = sortearQuebra(h, Math.random())
       if (r.h !== h) setSave((s) => comHistoria(s, () => r.h))
     }
+    // (T28) o gatilho da perseguição: a fama e o movimento passaram do ponto e o jogador
+    // rodou um tempo de verdade (o Corrida avisa). Uma vez só
+    if (e === "perseguicao" && !cena && !oficinaTela && !recompensa && podePerseguir(h, saveRef.current.popularidade ?? 0)) setSave((s) => comHistoria(s, perseguir))
     // (T27) a Kombi quebrada espera na oficina: chegou lá, o mecânico cobra o conserto (em água)
     if (e === "chao:oficina" && quebrada(h) && !cena && !oficinaTela) { setAoVivo(null); setOficinaTela("conserto") }
     // (T02) o chão do subúrbio (a quadra, os túneis): chegou no lugar da missão pegada
@@ -1671,6 +1682,7 @@ export default function LinhaPage() {
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
+  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras
 
   // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
   // celular translúcido por cima da cidade (LU2CA 19/10)
@@ -1684,7 +1696,7 @@ export default function LinhaPage() {
             save={save}
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
-            pausado={(tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras}
+            pausado={corridaPausada}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
@@ -1748,6 +1760,18 @@ export default function LinhaPage() {
             agua={save.agua ?? 0}
             onFuga={(n) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) }))}
             onRacha={(r) => setSave((s) => registrarRacha(s, r))}
+            perseguicao={perseguicaoAgora}
+            esperaPolicia={podeVirPolicia && !cena && !oficinaTela ? CONFIG_PERSEGUICAO.esperaMs : 0}
+            semKombi={semKombi}
+            veiculo={veiculoAgora}
+            onPerseguicao={(e, id) => {
+              if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
+              else if (id) {
+                setSave((s) => comHistoria(s, (h) => escolherVeiculo(h, id)))
+                const v = veiculoPorId(id)
+                if (v) setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: v.nome }), 900)
+              }
+            }}
             onAgua={(d) => setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))}
             checklistHolo={checklistHolo}
             mapaMissoes={mapaMissoes}
