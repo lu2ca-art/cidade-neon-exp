@@ -220,13 +220,19 @@ function acertarPausas(p: Save["pausas"]): Save["pausas"] {
   return out
 }
 
+// (leveza B) depois do "começar do zero", nada grava o save de volta (a página
+// grava com folga e ao sair: o reload não pode devolver o progresso apagado)
+let travado = false
+
 export function gravar(s: Save) {
+  if (travado) return
   try {
     localStorage.setItem(CHAVE, JSON.stringify(s))
   } catch {}
 }
 
 export function apagar() {
+  travado = true
   try {
     localStorage.removeItem(CHAVE)
   } catch {}

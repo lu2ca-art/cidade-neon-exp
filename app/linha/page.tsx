@@ -102,6 +102,9 @@ const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: fa
 // (T63) as trincheiras (os túneis do T11, a corrida do T13, as motos do T14), dentro do jogo
 const Trincheiras = dynamic(carregarTrincheiras, { ssr: false })
 
+// (leveza B) o save no localStorage: no máximo uma gravação a cada ~3 s
+const ESPERA_GRAVAR = 3000
+
 type ChatRoteiro = Exclude<ChatId, "ojala" | "swav" | "rollercoaster">
 
 type Volta = { t: "home" } | { t: "app"; id: AppId } | { t: "corrida"; destino: null }
@@ -186,6 +189,8 @@ export default function LinhaPage() {
     return () => window.removeEventListener(EVENTO_CADERNO, f)
   }, [])
   const [save, setSave] = useState<Save>(VAZIO)
+  const saveRef = useRef(save)
+  useEffect(() => { saveRef.current = save }, [save])
   // (mapa-disco, LU2CA 20/10) a história nova manda no disco (disco/historia.ts):
   // enquanto ela está ativa, a narrativa antiga (ligações, invasões, o tutorial
   // do posto, as conversas chamando) fica quieta
@@ -305,9 +310,40 @@ export default function LinhaPage() {
     track("place_entered", { place_id: "linha-222", place_type: "linha" })
   }, [])
 
+  // (leveza B) o save vai pro localStorage com folga: a primeira mudança marca e,
+  // até ESPERA_GRAVAR depois, grava uma vez só (o JSON inteiro). Ao sair da
+  // página, esconder a aba, abrir um app ou o caderno: grava na hora
+  const gravarTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const gravarSujo = useRef(false)
+  // o que vai pro disco: o save com o que ainda mora nas refs (gravarComo, mais embaixo)
+  const gravarComo = useRef((s: Save) => s)
+  const gravarJa = useCallback(() => {
+    if (gravarTimer.current) { clearTimeout(gravarTimer.current); gravarTimer.current = null }
+    if (!gravarSujo.current) return
+    gravarSujo.current = false
+    gravar(gravarComo.current(saveRef.current))
+  }, [])
+  const agendarGravar = useCallback(() => {
+    gravarSujo.current = true
+    if (!gravarTimer.current) gravarTimer.current = setTimeout(gravarJa, ESPERA_GRAVAR)
+  }, [gravarJa])
   useEffect(() => {
-    if (pronto) gravar(save)
-  }, [save, pronto])
+    if (pronto) agendarGravar()
+  }, [save, pronto, agendarGravar])
+  useEffect(() => {
+    const sair = () => gravarJa()
+    const escondeu = () => { if (document.visibilityState === "hidden") gravarJa() }
+    window.addEventListener("pagehide", sair)
+    document.addEventListener("visibilitychange", escondeu)
+    return () => {
+      window.removeEventListener("pagehide", sair)
+      document.removeEventListener("visibilitychange", escondeu)
+      gravarJa()
+    }
+  }, [gravarJa])
+  // o caderno e os apps do celular (janelas) leem o save do localStorage: abriu, grava antes
+  useEffect(() => { if (caderno) gravarJa() }, [caderno, gravarJa])
+  useEffect(() => { if (tela.t === "app") gravarJa() }, [tela.t, gravarJa])
 
   const atualizar = useCallback((f: (s: Save) => Save) => setSave(f), [])
 
@@ -408,8 +444,6 @@ export default function LinhaPage() {
     }
   }, [pronto, podeInvadir, save.nucleo.invasoes, save.objetos.length, tela.t])
 
-  const saveRef = useRef(save)
-  useEffect(() => { saveRef.current = save }, [save])
 
   // O RELÓGIO DA CIDADE (relogio.ts, 13/10): dormir na Kombi pula pras 8h do
   // dia seguinte; cochilar (de dia) pula pras 19h. A tela escurece e mostra
