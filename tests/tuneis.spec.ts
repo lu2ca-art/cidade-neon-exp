@@ -6,7 +6,10 @@ import { saidaDoTunel, voltaDasTrincheiras } from "../app/linha/disco/tuneis"
 
 // (T57) a boca do túnel de verdade no subúrbio: o chão desce numa rampa até a
 // porta escura; lá embaixo, ela leva às trincheiras e a volta sai da boca.
-// (T63) as trincheiras abrem DENTRO do jogo: a página não muda. E a quadra é um piso de verdade (o chão assenta nele).
+// E a quadra é um piso de verdade (o chão assenta nele).
+// (T63) as trincheiras abrem DENTRO do jogo: a página não muda.
+// Dirige a cena 3D (a estrada e as trincheiras): no Mac, metal.
+test.use({ launchOptions: { executablePath: process.env.CHROME_PATH || undefined, args: ["--use-angle=metal", "--autoplay-policy=no-user-gesture-required"] } })
 
 test("T57: a rampa é o chão mesmo (a física desce junto) e a quadra é plana", () => {
   const no = (s: number) => [BOCA.x + BOCA.ax * s, BOCA.z + BOCA.az * s] as const
@@ -90,5 +93,23 @@ test("entrar na boca do túnel leva às trincheiras dentro do jogo; a volta sai 
   expect(sv.disco.feitas13).toContain("tuneis")
   // a barra fica limpa (recarregar não repete a volta)
   expect(page.url()).not.toContain("de=tuneis")
+  expect(erros).toEqual([])
+})
+
+test("T63: ?parte=missao.tuneis.trincheiras começa lá embaixo; uma volta inteira e subir = o jogo dos túneis feito", async ({ page }) => {
+  test.setTimeout(300_000)
+  // ?auto&veiculo=patins: as trincheiras largam direto e o piloto automático corre a volta
+  const erros = await abrir(page, "/linha?mapa=disco&parte=missao.tuneis.trincheiras&auto&veiculo=patins&medir")
+  await expect(page.locator(".tr-raiz.is-jogo")).toBeVisible({ timeout: 60_000 })
+  expect(new URL(page.url()).pathname).toBe("/linha")
+  expect(page.url()).not.toContain("descer=")
+  // chegou: o fim da corrida tem "subir pro subúrbio"
+  const subir = page.locator(".tr-fim button[data-subir]")
+  await expect(subir).toBeVisible({ timeout: 180_000 })
+  await subir.click()
+  // de volta ao subúrbio: o jogo da missão fica feito e a porta abre
+  await expect(page.locator(".l-recompensa")).toBeVisible({ timeout: 60_000 })
+  const sv = await saveDe(page)
+  expect(sv.disco.passos13).toContain("tuneis:jogo")
   expect(erros).toEqual([])
 })
