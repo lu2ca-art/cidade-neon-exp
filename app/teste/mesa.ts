@@ -1,0 +1,133 @@
+// A MESA DE TESTES (30/10): o que está pronto pro dono testar, num endereço só
+// (/teste). Cada cartão abre o jogo direto na parte dele
+// (/linha?mapa=disco&parte=<parte>, os ids de app/linha/parteTeste.ts).
+//
+// PRA ACRESCENTAR UM CARTÃO: copie um bloco e cole NO TOPO da lista (o mais
+// novo em cima). A página também ordena pela data, a mais nova primeiro.
+//   parte     o id do ?parte= (tem que estar em PARTES_TESTE; o teste confere)
+//   nome      em português simples, como o dono fala ("A Kombi por dentro")
+//   data      "AAAA-MM-DD", o dia em que ficou pronto
+//   tarefa    o número da tarefa (só uma etiqueta pequena)
+//   olhar     o que olhar, em 1 ou 2 frases curtas
+//   perguntas o que o dono precisa responder (curtas, uma por linha)
+//   mais      (opcional) outras partes do mesmo assunto, num botão menor
+// Sem chave, senha ou endereço de prévia aqui: os links são relativos.
+
+export interface Cartao {
+  parte: string
+  nome: string
+  data: string
+  tarefa?: string
+  olhar: string
+  perguntas: string[]
+  mais?: { parte: string; nome: string }[]
+}
+
+export const MESA: Cartao[] = [
+  {
+    parte: "torre",
+    nome: "A rotatória lá no alto e os monumentos",
+    data: "2026-10-30",
+    tarefa: "T61",
+    olhar: "Sem espiral: uma rotatória plana no alto da torre. A borda da direita tem a cor da próxima saída. No céu, um monumento por música; os 2 primeiros nascem logo que você entra.",
+    perguntas: [
+      "A torre do meio tem 9 saídas numa rotatória só. Fica assim, ou vira 3 rotatórias, uma em cima da outra?",
+    ],
+    mais: [{ parte: "torre.ponta", nome: "numa torre da ponta (3 saídas)" }],
+  },
+  {
+    parte: "perseguicao",
+    nome: "A perseguição da Kombi",
+    data: "2026-10-30",
+    tarefa: "T28",
+    olhar: "A polícia vem e sempre te pega. O helicóptero ergue a Kombi e solta no vazio. Você sai de patins e, mais à frente, escolhe um de 3 carros parados.",
+    perguntas: [
+      "Os 3 carros (opala preto, picape do lixão, buggy das dunas) servem? Quais você quer?",
+      "A polícia vem com popularidade 50 e 6 missões feitas. Está bom?",
+      "A Kombi cai onde te pegaram, ou num lugar certo?",
+      "Os 3 carros ficam na pista ou na oficina do mecânico?",
+      "O carro novo voa e quebra como a Kombi?",
+    ],
+    mais: [
+      { parte: "perseguicao.escolher", nome: "já na hora de escolher" },
+      { parte: "perseguicao.gatilho", nome: "a polícia vem sozinha (~20 s)" },
+    ],
+  },
+  {
+    parte: "missao.ella.casa",
+    nome: "A casa da Ella (a galeria escondida)",
+    data: "2026-10-30",
+    tarefa: "T22",
+    olhar: "Um salão escuro cheio de quadros, chuva no vidro e baldes. Você olha a planta e 3 quadros, pinta com o dedo (cada cor é um instrumento) e o quadro vai pra parede.",
+    perguntas: [
+      "As falas da Ella: aprova ou reescreve?",
+      "O jogo dela é olhar e pintar. Fecha assim, ou quer um joguinho (cuidar da planta)?",
+      "Olhar 3 de 6 quadros e 8 pinceladas: está bom?",
+      "O nome do quadro na galeria: fixo (\"na casa da ella\") ou o jogador escolhe?",
+      "Aprovou? Aí ela entra no mapa.",
+    ],
+    mais: [{ parte: "missao.ella", nome: "começar na rua" }],
+  },
+  {
+    parte: "quebra.oficina",
+    nome: "O patins: rodas de gel e linhas finas",
+    data: "2026-10-30",
+    tarefa: "T62",
+    olhar: "A Kombi quebrou e você está de patins. Ouça as rodinhas, dê um drift (2 linhas finas) e pule pra ouvir o vento neon. As gotas vêm sem o brilho em volta.",
+    perguntas: [
+      "O som do patins (volume e timbre) está no ponto?",
+      "As linhas do drift: azul claro ou cinza?",
+    ],
+    mais: [{ parte: "casa.holo", nome: "a fala nova da D-Bee no holo" }],
+  },
+  {
+    parte: "missao.tuneis.trincheiras",
+    nome: "As trincheiras dentro do jogo",
+    data: "2026-10-30",
+    tarefa: "T63",
+    olhar: "Você desce pros túneis sem trocar de página. Corra uma volta e toque em \"subir pro subúrbio\": a porta da missão abre.",
+    perguntas: [
+      "Quando as motos chegam? (ex.: depois de ganhar a corrida)",
+      "A descida é um escuro rápido. Quer ver a Kombi entrando no túnel antes?",
+    ],
+  },
+  {
+    parte: "dunas",
+    nome: "O deserto e os robôs caídos",
+    data: "2026-10-30",
+    tarefa: "T39",
+    olhar: "A areia com ondas do vento e grãos que brilham. No caminho pra cidade, 44 robôs meio enterrados tremem e voam quando a Kombi passa por cima.",
+    perguntas: [
+      "As ondas da areia estão fortes, fracas ou no ponto? E o brilho dos grãos?",
+      "Os robôs caídos (quantos e como se mexem) estão bons por enquanto?",
+      "Falta você jogar os pulos dos morros.",
+    ],
+  },
+  {
+    parte: "casa.tambor",
+    nome: "O tambor de verdade com a D-Bee",
+    data: "2026-10-30",
+    tarefa: "T06",
+    olhar: "Dois tambores no tapete. Acompanhe as mãos dela: no centro sai o grave, na borda o tapa, e bater forte soa mais forte.",
+    perguntas: [
+      "O som serve até o seu sample chegar? Dá pra sentir centro e borda, fraco e forte?",
+      "Gosta da D-Bee sentada atrás do tambor e das mãos batendo?",
+      "Tem atraso no iPhone?",
+      "Quando puder, mande o seu sample (6 arquivos).",
+    ],
+  },
+]
+
+// os mais novos em cima (a ordem da lista desempata)
+export const mesaOrdenada = () =>
+  MESA.map((c, i) => ({ c, i }))
+    .sort((a, b) => b.c.data.localeCompare(a.c.data) || a.i - b.i)
+    .map(({ c }) => c)
+
+export const linkDa = (parte: string) => `/linha?mapa=disco&parte=${encodeURIComponent(parte)}`
+
+// "2026-10-30" → "30/10"
+export const dataCurta = (d: string) => {
+  const [, m, dia] = d.split("-")
+  return `${dia}/${m}`
+}

@@ -52,7 +52,7 @@ jobs:
 
       - name: Teste de fumaça
         # sem os testes que dirigem a cena 3D (precisam de placa de vídeo: rodam no Mac, com --use-angle=metal)
-        run: bunx playwright test tests/fumaca.spec.ts tests/partes.spec.ts tests/portas.spec.ts tests/caderno.spec.ts tests/oficina.spec.ts tests/rotatoria.spec.ts
+        run: bunx playwright test tests/fumaca.spec.ts tests/partes.spec.ts tests/portas.spec.ts tests/caderno.spec.ts tests/oficina.spec.ts tests/rotatoria.spec.ts tests/mesa.spec.ts
 
       - uses: actions/upload-artifact@v4
         if: failure()
