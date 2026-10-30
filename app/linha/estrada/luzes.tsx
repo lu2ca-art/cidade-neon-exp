@@ -9,8 +9,9 @@
 // já não ilumina nada, então a troca não aparece.
 
 import { useFrame, useThree } from "@react-three/fiber"
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { QUALIDADE, type NivelQualidade } from "./qualidade"
 
 // (22/10, perf 003) era 6. Cada pointLight custa em TODO pixel iluminado
 // (o shader percorre todas, mesmo apagadas), e a GPU por pixel é o gargalo.
@@ -18,7 +19,11 @@ import * as THREE from "three"
 // luzes registradas alcançam algo perto dela; as outras do pool iam pra
 // vitrines a 150–500 m (alcance 11–12 m: não iluminavam nada). Com 4, o beco
 // (5 juntas) perde só a mais longe da câmera, que entra quando chega perto.
+// (30/10, leveza C) pela qualidade: 4 no alto, 2 no médio e no leve (no celular
+// cada luz pesa em todo pixel). Lido na montagem da estrada e fixo até ela
+// desmontar: mudar o número de luzes recompila todos os materiais
 const LUZES_POOL = 4
+const POOL_POR_NIVEL: Record<NivelQualidade, number> = { alto: 4, medio: 2, baixo: 2 }
 
 type Registro = { obj: THREE.Object3D; cor: THREE.Color; intensidade: number; distancia: number; decay: number; p: THREE.Vector3 }
 const REGISTRO = new Set<Registro>()
@@ -158,12 +163,31 @@ export function CompilaSemTravar() {
   return null
 }
 
-// as luzes de verdade: sempre LUZES_POOL (o número nunca muda: nada recompila)
+// a escolha do quadro, sem alocar nada (antes: array, sort, Set, slice e map a
+// cada quadro): as N melhores notas numa lista fixa, por inserção (N ≤ 4)
+const TOP_NOTA = new Float64Array(LUZES_POOL)
+const TOP_REG: (Registro | null)[] = Array(LUZES_POOL).fill(null)
+const TOP_USADO: boolean[] = Array(LUZES_POOL).fill(false)
+const LIVRES = new Int8Array(LUZES_POOL)
+const ESCOLHA = { n: 0, max: LUZES_POOL, cam: new THREE.Vector3() }
+function notar(r: Registro) {
+  if (r.intensidade <= 0) return
+  r.obj.getWorldPosition(r.p)
+  // a nota: a distância da câmera até a borda do alcance (limitado: a luz enorme da torre não toma o lugar das de perto)
+  const nota = r.p.distanceTo(ESCOLHA.cam) - Math.min(r.distancia || 40, 40)
+  let i = ESCOLHA.n
+  if (i === ESCOLHA.max) { if (nota >= TOP_NOTA[i - 1]) return; i-- } else ESCOLHA.n++
+  while (i > 0 && TOP_NOTA[i - 1] > nota) { TOP_NOTA[i] = TOP_NOTA[i - 1]; TOP_REG[i] = TOP_REG[i - 1]; i-- }
+  TOP_NOTA[i] = nota; TOP_REG[i] = r
+}
+
+// as luzes de verdade: N do nível (o número nunca muda com a estrada montada: nada recompila)
 export function LuzesProximas() {
+  const [pool] = useState(() => Math.min(LUZES_POOL, POOL_POR_NIVEL[QUALIDADE.nivel] ?? LUZES_POOL))
   const luzes = useRef<(THREE.PointLight | null)[]>([])
-  const dono = useRef<(Registro | null)[]>([])
-  const fade = useRef<number[]>(Array(LUZES_POOL).fill(0))
-  useEffect(() => () => { dono.current = [] }, [])
+  const dono = useRef<(Registro | null)[]>(Array(pool).fill(null))
+  const fade = useRef<number[]>(Array(pool).fill(0))
+  useEffect(() => () => { dono.current.fill(null) }, [])
   // medição (só com ?medir): as luzes registradas, [distância até a câmera, alcance, intensidade, tem luz do pool]
   const cam = useRef(new THREE.Vector3())
   useEffect(() => {
@@ -174,24 +198,23 @@ export function LuzesProximas() {
   }, [])
   useFrame(({ camera }, dt) => {
     cam.current.copy(camera.position)
-    // a nota de cada luz: a distância da câmera até a borda do alcance dela
-    const cands: [number, Registro][] = []
-    for (const r of REGISTRO) {
-      if (r.intensidade <= 0) continue
-      r.obj.getWorldPosition(r.p)
-      cands.push([r.p.distanceTo(camera.position) - Math.min(r.distancia || 40, 40), r]) // (alcance limitado na nota: a luz enorme da torre não toma o lugar das de perto)
-    }
-    cands.sort((a, b) => a[0] - b[0])
-    const escolhidas = new Set(cands.slice(0, LUZES_POOL).map((c) => c[1]))
+    ESCOLHA.cam.copy(camera.position); ESCOLHA.n = 0; ESCOLHA.max = pool
+    REGISTRO.forEach(notar)
+    const n = ESCOLHA.n
+    for (let k = 0; k < n; k++) TOP_USADO[k] = false
     // quem já tem luz e continua escolhido fica com ela (sem piscar)
-    const livres: number[] = []
-    for (let i = 0; i < LUZES_POOL; i++) {
+    let nLivres = 0
+    for (let i = 0; i < pool; i++) {
       const d = dono.current[i]
-      if (d && escolhidas.has(d) && REGISTRO.has(d)) escolhidas.delete(d)
-      else { dono.current[i] = null; fade.current[i] = 0; livres.push(i) }
+      let k = -1
+      if (d && REGISTRO.has(d)) for (let j = 0; j < n; j++) if (TOP_REG[j] === d) { k = j; break }
+      if (k >= 0) TOP_USADO[k] = true
+      else { dono.current[i] = null; fade.current[i] = 0; LIVRES[nLivres++] = i }
     }
-    for (const r of escolhidas) { const i = livres.shift(); if (i === undefined) break; dono.current[i] = r }
-    for (let i = 0; i < LUZES_POOL; i++) {
+    let l = 0
+    for (let k = 0; k < n && l < nLivres; k++) if (!TOP_USADO[k]) dono.current[LIVRES[l++]] = TOP_REG[k]
+    for (let k = 0; k < n; k++) TOP_REG[k] = null // (não segura registro de luz que sai de cena)
+    for (let i = 0; i < pool; i++) {
       const L = luzes.current[i], r = dono.current[i]
       if (!L) continue
       if (!r) { L.intensity = 0; continue }
@@ -203,7 +226,7 @@ export function LuzesProximas() {
   })
   return (
     <>
-      {Array.from({ length: LUZES_POOL }, (_, i) => (
+      {Array.from({ length: pool }, (_, i) => (
         <pointLight key={i} ref={(l) => { luzes.current[i] = l }} intensity={0} />
       ))}
     </>
