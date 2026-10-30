@@ -44,10 +44,11 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
-import { nascerNoTunel, saidaDoTunel } from "../disco/tuneis"
+import { nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
+import { ATROPELO, forcaAtropelo, G_DISCO, VIB_ATROPELO } from "./atropelo"
 import { RobosCaidos } from "../disco/RobosCaidos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
@@ -139,7 +140,7 @@ const G_TERRA = 9.8
 // é a da Terra mais 28%: tudo cai mais rápido (a Kombi, o pulo, o propulsor
 // solto, os carros arremessados). Antes: 9,8 m/s². É a constante pra girar o
 // gosto: 9,8 = Terra; 12,5 = agora; 15 = bem pesada
-const G_DISCO = 12.5
+// (30/10) a constante G_DISCO mora em estrada/atropelo.ts (os robôs do deserto caem com ela)
 // o pulo no disco: os mesmos 2,5 m de altura (a subida não muda), mas com a
 // gravidade mais pesada o tempo no ar cai de ~1,4 s pra ~1,26 s
 // (T36, J2:25, "a propulsão ainda tá insana, tá saindo do meio do nada: no deserto
@@ -310,7 +311,7 @@ interface Props {
   veiculo?: string | null
   onPerseguicao?: (e: "jogada" | "escolheu", id?: string) => void
 }
-export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "robo" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | "perseguicao" | `chao:${LugarChao}`
+export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | "perseguicao" | `chao:${LugarChao}`
 
 const SEM_FLORES: string[] = []
 
@@ -632,7 +633,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // (T09) e logo depois da oficina (subir), antes de pousar lá em cima, também
     const noSub = historia && (historia.fase === "bar" || historia.fase === "oficina" || historia.fase === "subir")
     // (T37) a chegada: a primeira (fase casa) e a de cada login (quem já passou pela casa)
-    // (T57) voltou das trincheiras: sai da boca do túnel, no alto da rampa (no lugar da chegada do login)
+    // (T57) voltou das trincheiras: a Kombi está na boca do túnel, onde ficou parada (no lugar da chegada do login)
     const doTunel = "disco" in M && !!historia && historia.fase !== "casa" && nascerNoTunel()
     const chega = !!historia && !doTunel && (historia.fase === "casa" || chegada)
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
@@ -1417,27 +1418,27 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => {
     if (pausado || !("disco" in M)) return
     const dentro = new Set<string>()
+    // (30/10) acabou de subir do túnel: a Kombi está parada na porta. Só desce de
+    // novo depois de sair da frente dela
+    if (nascerNoTunel()) dentro.add("tuneis")
     const iv = setInterval(() => {
       const j = jogo.current
       if (!j.voo || j.wx === undefined) { dentro.clear(); return }
       const ids = alvoChao ? [alvoChao, ...chaoAtivos().filter((x) => x !== alvoChao)] : chaoAtivos()
       for (const id of ids) {
         const l = CHAO_LUGARES[id], perto = pertoDoChao(id, j.wx, j.wz!)
-        if (!perto && Math.hypot(j.wx - l.x, j.wz! - l.z) > RAIO_CHAO * 3) dentro.delete(id)
-        if (!dentro.has(id) && perto && !j.ar) { dentro.add(id); if (!ehPeca(id)) j.v = 0; onHistoriaRef.current?.(`chao:${id}`) }
+        if (!perto && (id === "tuneis" || Math.hypot(j.wx - l.x, j.wz! - l.z) > RAIO_CHAO * 3)) dentro.delete(id)
+        if (!dentro.has(id) && perto && !j.ar) {
+          dentro.add(id); if (!ehPeca(id)) j.v = 0
+          // (30/10, o dono) a Kombi não entra no túnel: fica parada aqui fora, na porta
+          if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx, j.wz!, j.rumo ?? 0) }
+          onHistoriaRef.current?.(`chao:${id}`)
+        }
       }
     }, 150)
     return () => clearInterval(iv)
   }, [alvoChao, pausado, M])
-  // (B12) espatifou um robô no deserto: as peças voam; um prêmio pequeno (água: a tecnologia dele)
-  const roboRef = useRef<() => void>(() => {})
-  useEffect(() => {
-    roboRef.current = () => {
-      if ("disco" in M) setAguaPend((x) => x + 2)
-      setPopup({ id: Math.random(), txt: "+2 água", cor: "#4fc3ff" })
-      onHistoriaRef.current?.("robo")
-    }
-  }, [M])
+  // (30/10, o dono) os robôs do deserto não dão nada: só voam (estrada/atropelo.ts)
   // (a Nectar) uns segundos rodando depois do show do bar, a Kombi velha pifa:
   // fumaça, para, e ele desce de patins (o patins e as manobras entram aqui)
   const quebrouRef = useRef(false)
@@ -2304,7 +2305,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} onRobo={roboRef} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
           {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
           {discoM && semKombi && <Seguro nome="veiculos"><VeiculosCena M={M} jogo={jogo} estado={veiculosRef} ativo={semKombi} /></Seguro>}
         </Canvas>
@@ -3064,7 +3065,7 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
 /* ─── cena ──────────────────────────────────────────────── */
 function Cena({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, onRobo, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null,
 }: {
   // (T28) o veículo escolhido depois da perseguição (no lugar da Kombi)
   veiculo?: string | null
@@ -3079,7 +3080,6 @@ function Cena({
   semPaineis?: boolean
   faseHistoria?: string | null
   missoesMapa?: IconeMapa[] | null
-  onRobo?: React.RefObject<() => void>
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
   aberturaRef: React.MutableRefObject<Abertura>
   celularRef: React.MutableRefObject<boolean>
@@ -3209,6 +3209,8 @@ function Cena({
   // (a engrenagem do holo muda o nível: vale na hora)
   useEffect(() => ouvirQualidade(setQual), [])
   const motor = useMemo(() => montarMotor(), [])
+  // (30/10) a Kombi pegou um robô no deserto: o mesmo baque e o mesmo tremor do carro (sem prêmio)
+  const atropelouRobo = useCallback(() => { motor?.baque(); vib(VIB_ATROPELO) }, [motor])
   const reduz = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, [])
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
@@ -5255,30 +5257,31 @@ function Cena({
       if (c.caido > 0) {
         c.caido -= dt
         c.x += c.vx * dt
-        c.vx *= Math.exp(-dt * 1.6)
+        c.vx *= Math.exp(-dt * ATROPELO.freioLateral)
         c.vy -= ("disco" in M ? G_DISCO : 22) * dt
         c.y = Math.max(0, c.y + c.vy * dt)
-        if (c.y === 0) { c.vy = Math.abs(c.vy) * 0.25; c.vgiro *= 0.6 }
+        if (c.y === 0) { c.vy = Math.abs(c.vy) * ATROPELO.quique; c.vgiro *= ATROPELO.quiqueGiro }
         c.giro += c.vgiro * dt
-        c.v *= Math.exp(-dt * 2)
+        c.v *= Math.exp(-dt * ATROPELO.freioFrente)
         if (c.caido <= 0) { c.x = c.x0; c.y = 0; c.vy = 0; c.vx = 0; c.giro = 0; c.v = c.v0; c.u = rede ? Math.random() * CV.L : (c.u + CV.L * 0.5) % CV.L }
       }
       if (aqui && c.caido <= 0 && Math.abs(d) < 3.6 && Math.abs(cx - j.x) < 1.85 && !j.ar && c.bateu <= 0 && !j.hyper) {
         // a batida (06/10, LU2CA): o carro da cidade voa pro lado, a Kombi segue
+        // (os números em estrada/atropelo.ts: os robôs do deserto voam igual)
         c.bateu = 1
-        c.caido = 7
+        c.caido = ATROPELO.fora
         const lado = Math.sign(cx - j.x) || (Math.random() < 0.5 ? -1 : 1)
         // de frente (contramão) a batida é mais forte
-        const forca = Math.min(1.6, 0.5 + Math.abs(j.v + (par ? c.v : -c.v)) / 25)
-        c.vx = lado * (9 + 8 * forca)
-        c.vy = 3 + 4 * forca
-        c.vgiro = (Math.random() < 0.5 ? -1 : 1) * (3 + 4 * forca)
+        const forca = forcaAtropelo(j.v + (par ? c.v : -c.v))
+        c.vx = lado * (ATROPELO.lateral + ATROPELO.lateralForca * forca)
+        c.vy = ATROPELO.subida + ATROPELO.subidaForca * forca
+        c.vgiro = (Math.random() < 0.5 ? -1 : 1) * (ATROPELO.giro + ATROPELO.giroForca * forca)
         // (disco, o pinball) a Kombi também quica pro outro lado, sem frear muito
-        if ("disco" in M) { j.vx = -lado * (4 + 4 * forca); j.v *= 0.94 } else j.v *= 0.82
-        j.shake = 1.1
-        j.flash = 0.3
+        if ("disco" in M) { j.vx = -lado * (ATROPELO.empurraKombi + ATROPELO.empurraKombiForca * forca); j.v *= ATROPELO.freioKombiDisco } else j.v *= ATROPELO.freioKombi
+        j.shake = ATROPELO.shake
+        j.flash = ATROPELO.flash
         motor?.baque()
-        vib([50, 30, 80])
+        vib(VIB_ATROPELO)
         // (T28, 30/10) a regra antiga saiu: bater em 3 carros não chama mais a polícia.
         // A polícia vem uma vez só no jogo (disco/perseguicao.ts)
       }
@@ -5297,7 +5300,7 @@ function Cena({
       const p = noMundo(CV, c.u, c.x, 0.02, a, tmp.p)
       p.y += c.y
       tmp.d.position.copy(p)
-      tmp.d.rotation.set(0, Math.atan2(a.tx, a.tz) + c.giro, c.caido > 0 ? Math.sin(c.giro) * 0.3 : 0)
+      tmp.d.rotation.set(0, Math.atan2(a.tx, a.tz) + c.giro, c.caido > 0 ? Math.sin(c.giro) * ATROPELO.tombo : 0)
       // (20/10) longe da câmera (além do que a qualidade do aparelho desenha) o carro some
       const cp = state.camera.position, dc2 = (p.x - cp.x) ** 2 + (p.z - cp.z) ** 2
       const sc = dc2 > QUALIDADE.carros * QUALIDADE.carros ? 0 : 1
@@ -6261,8 +6264,8 @@ function Cena({
       {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
       {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
-      {"disco" in M && livreCaidos && <Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} /></Seguro>}
-      {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onEspatifou={() => onRobo?.current?.()} /></Seguro>}
+      {"disco" in M && livreCaidos && <Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} onAtropelou={atropelouRobo} /></Seguro>}
+      {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onAtropelou={atropelouRobo} /></Seguro>}
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
