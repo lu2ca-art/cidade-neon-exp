@@ -88,6 +88,10 @@ export interface HistoriaDisco {
   // (T27) a Kombi que quebra (disco/quebra.ts): está na oficina agora, quantas vezes
   // quebrou e quantos sorteios faltam pra ela poder quebrar de novo
   quebra?: { quebrada?: true; vezes?: number; folga?: number }
+  // (T28) a perseguição da Kombi, uma vez só (disco/perseguicao.ts): "agora" = a
+  // polícia atrás; "escolher" = a Kombi foi jogada lá de cima, os 3 veículos na
+  // pista; "feita" = escolheu `veiculo`
+  perseguicao?: { fase: "agora" | "escolher" | "feita"; veiculo?: string }
 }
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
