@@ -17,7 +17,7 @@ import type { CentralDisco } from "./mundoDisco"
 import { LuzPonto } from "./luzes"
 
 const CHAO = -12
-const N_PILARES = 10 // pilares por anel
+const N_PILARES = 12 // pilares por anel (T61b: a central ficou mais larga)
 
 function comCor(g: THREE.BufferGeometry, cor: THREE.Color) {
   const n = g.attributes.position.count, c = new Float32Array(n * 3)

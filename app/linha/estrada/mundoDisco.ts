@@ -46,13 +46,18 @@ const CHAO = -12 // o deserto embaixo de tudo
 const R_BALAO = 45 // raio do balão da ponta (a 200 km/h, com a curva deitada)
 const D_BALAO = 100 // do fim da pista até o centro do balão
 // a torre: o anel da rotatória (o raio do eixo dele) e o prédio no meio
-const R_SOBE = 130
+// (T61b, LU2CA 30/10: "a rotatória central mais larga, pra caber as 9 entradas num anel só")
+// o anel da central não encolhe abaixo de R_MIN_CENTRAL (era ~118 m; agora ~174 m: ~80–200 m entre as saídas)
+const R_SOBE = 180
+const R_MIN_CENTRAL = 170
 const NUCLEO = 52 // o prédio da torre
-const RA_CABECA = 195 // a torre principal ocupa a cabeça do desenho (a torre 3 fica a 304 m: não cresce mais que isso)
+const RA_CABECA = 240 // (T61b) a torre principal ocupa a cabeça do desenho (era 195; as alças vão até aqui)
+const RA_VIZINHA = 195 // o limite antigo da central, que a torre da ponta colada nela (a 304 m) ainda respeita: ela fica do mesmo tamanho, mais alta (42 m) que as alças da central (30 m)
 const Y_ANEL = 30 // a altura da rotatória da central (todas as linhas chegam nela no mesmo andar)
 const Y_ANEL_PONTA = 42 // a das torres das pontas (mais alta: perto da central, o portão de uma torre não encosta no da outra)
 const RAMO = 50 // m: do eixo do anel até onde a alça vira tronco (e o arco que o ramo come)
 const VAO_ANEL = 22 // m de anel livre, no mínimo, entre a chegada de uma linha e a saída da próxima
+const VAO_CENTRAL = 30 // (T61b) o mesmo na central (mais folga: o anel é maior)
 export const V_TORRE = 26 // m/s na torre (~95 km/h): a rotatória é de passear
 // as torres das pontas (LU2CA 19/10): cada uma junta 3 linhas pelo fim
 const R_PONTA = 66
@@ -66,11 +71,11 @@ export type CentralDisco = { x: number; z: number; raio: number; nucleo: number;
 // onde a Kombi pousa vindo do ar: a via (no sentido do rumo), o u, o lado e a altura do asfalto
 export type Pouso = { via: number; u: number; x: number; y: number; cx: number; cz: number; tx: number; tz: number }
 export type MundoDisco = MundoRede & { disco: true; pistas: { nome: string; cor: string; ida: number; volta: number; saida: number; entrada: number; lado: 1 | -1 }[]; info: DiscoInfo[]; central: CentralDisco; torres: CentralDisco[]; ladoSaida: Map<number, 1 | -1>; aneis: AnelDisco[]; pousar: (x: number, z: number, y: number, dx: number, dz: number, margem?: number) => Pouso | null; teto: (x: number, z: number, y: number, margem?: number) => number | null; chaoDeserto: number; chaoEm: (x: number, z: number) => number }
-// os trechos do anel sabem onde a borda de fora se abre e a faixa pintada da saída
+// os trechos do anel sabem onde a borda de fora se abre
 // (T61) o anel de cada torre: as vias dele em ordem (com o u de onde cada uma
 // começa), o comprimento da volta e as saídas (onde, no anel, e de que pista)
 export type AnelDisco = { torre: number; vias: number[]; ini: number[]; L: number; saidas: { u: number; via: number; pista: number; cor: string }[] }
-export type SinaisEspiral = { abreFora?: [number, number][]; pintaSaida?: { u0: number; u1: number; cor: string }[] }
+export type SinaisEspiral = { abreFora?: [number, number][] }
 // o anel da rotatória (qualquer torre): a Kombi passeia
 export const naAnel = (p: ParteDisco | undefined) => p === "anel"
 // (o nome antigo, de quando era espiral: os outros andares ainda chamam assim)
@@ -501,7 +506,7 @@ export function montarMundoDisco(): MundoDisco {
     const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length, cz = pts.reduce((a, p) => a + p.y, 0) / pts.length
     // (cada linha chega no seu andar: um estacionamento com a espiral ligando os
     // andares. A que fica colada na cabeça encolhe pra não encostar na central)
-    const RA = Math.min(RA_PONTA, Math.hypot(cx - C.x, cz - C.z) - RA_CABECA - 6)
+    const RA = Math.min(RA_PONTA, Math.hypot(cx - C.x, cz - C.z) - RA_VIZINHA - 6)
     const R = Math.min(R_PONTA, RA - RAMO_PONTA - 12)
     defs.push({ C: { x: cx, z: cz }, R, y: Y_ANEL_PONTA, RA, nucleo: R - 24 - MEIA_PISTA - 8, ramo: RAMO_PONTA, membros: ms, nome: `torre ${g + 1}` })
   })
@@ -541,13 +546,14 @@ export function montarMundoDisco(): MundoDisco {
     // saída e a chegada) e um vão livre (ver a placa e decidir). Os Qs ficam na
     // ordem dos portões: os troncos nunca se cruzam
     const n = liga.length
+    const vao = t === 0 ? VAO_CENTRAL : VAO_ANEL, rMin = t === 0 ? R_MIN_CENTRAL : 0
     // a alça: o tronco (portão → o ponto Q, logo fora do anel) e dois ramos.
     // A saída vem do anel (antes do Q) e a chegada vai pra ele (depois do Q),
     // cada uma com as 2 faixas da direita do mesmo eixo: lado a lado, sem nunca
     // se sobrepor. Tudo plano, na altura do anel
     const montar = (R: number, ramo: number) => {
       const naR = (s: number, r = R) => new THREE.Vector2(d.C.x + r * Math.cos(s), d.C.z - r * Math.sin(s))
-      const w = ramo / R, sep = (2 * ramo + VAO_ANEL) / R
+      const w = ramo / R, sep = (2 * ramo + vao) / R
       const phiQ = espacarNoCirculo(sDe, sep)
       const phiS = phiQ.map((q) => q - w), phiE = phiQ.map((q) => q + w)
       let pior = Infinity
@@ -566,12 +572,12 @@ export function montarMundoDisco(): MundoDisco {
     // até o portão), o de curva mais aberta (as linhas espremidas num lado da
     // torre pedem um tronco que faça a curva com calma)
     let esc: ReturnType<typeof montar> | null = null
-    for (let R = d.R; R >= d.R * 0.5; R -= 6) for (let ramo = d.ramo; ramo >= 20; ramo -= 6) {
-      if (2 * ramo + VAO_ANEL > (Math.PI * 2 * R) / n || R + ramo > d.RA - 10) continue
+    for (let R = d.R; R >= Math.max(rMin, d.R * 0.5); R -= 6) for (let ramo = d.ramo; ramo >= 20; ramo -= 6) {
+      if (2 * ramo + vao > (Math.PI * 2 * R) / n || R + ramo > d.RA - 10) continue
       const m = montar(R, ramo)
       if (!esc || m.pior > esc.pior + 0.5) esc = m
     }
-    if (!esc) esc = montar(d.R, Math.max(12, Math.min(d.ramo, ((Math.PI * 2 * d.R) / n - VAO_ANEL) / 2)))
+    if (!esc) esc = montar(d.R, Math.max(12, Math.min(d.ramo, ((Math.PI * 2 * d.R) / n - vao) / 2)))
     d.R = esc.R
     d.nucleo = Math.min(d.nucleo, d.R - MEIA_PISTA - 12)
     const { phiQ, phiS, phiE, alcas } = esc
@@ -638,13 +644,13 @@ export function montarMundoDisco(): MundoDisco {
       const a = A.a, b = k === marcos.length - 1 ? Bm.a + dois : Bm.a
       const v = viaDe(trecho(a, b, d.R, d.y), `disco:torre${t}:anel${k}`, "rampa", "disco", COR_TORRE, true)
       // (sinalização) onde a borda de fora se abre (a alça sai ou chega: sem
-      // guard rail) e a faixa da direita pintada na cor da linha até a saída
+      // guard rail). (T61b) a faixa pintada antes da saída saiu: quem guia são as
+      // linhas no chão (anel.ts, desenhadas no Corrida.tsx)
       const corDe = (m: typeof A) => B[tw.alcas[m.i].k].cor
-      const abre: [number, number][] = [], pinta: { u0: number; u1: number; cor: string }[] = []
-      if (A.sai) { abre.push([0, Math.min(v.L, 60)]); pinta.push({ u0: 0, u1: Math.min(v.L, 24), cor: corDe(A) }) }
+      const abre: [number, number][] = []
+      if (A.sai) abre.push([0, Math.min(v.L, 60)])
       if (!Bm.sai) abre.push([Math.max(0, v.L - 60), v.L])
-      if (Bm.sai) pinta.push({ u0: Math.max(0, v.L - 120), u1: v.L, cor: corDe(Bm) })
-      Object.assign(v, { abreFora: abre, pintaSaida: pinta })
+      Object.assign(v, { abreFora: abre })
       const vi = nova(v, { pista: -1, parte: "anel", torre: t })
       ligar(vi, nos[k], nos[(k + 1) % marcos.length])
       if (A.sai) anel.saidas.push({ u: U0, via: -1, pista: tw.alcas[A.i].k, cor: corDe(A) })

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test"
-import { corNoAnel } from "../app/linha/estrada/anel"
+import { ANEL_CFG, linhasNoAnel } from "../app/linha/estrada/anel"
 import { hexRgb } from "../app/linha/estrada/distritos"
 import { calcularRotaDisco, espacarNoCirculo, montarMundoDisco } from "../app/linha/estrada/mundoDisco"
 
@@ -47,20 +47,34 @@ test("T61: os Qs se espaçam no círculo sem trocar a ordem", () => {
   expect(a[3]).toBeCloseTo(3, 1)
 })
 
-test("T61: as bordas do anel — direita a próxima saída, esquerda a seguinte, em degradê", () => {
+test("T61b: as linhas no chão — a próxima na faixa da direita, a seguinte na do meio; passando, a do meio vai pra direita", () => {
   const sds = [{ u: 0, via: 1, pista: 0, cor: "#ff0000" }, { u: 100, via: 2, pista: 1, cor: "#00ff00" }, { u: 200, via: 3, pista: 2, cor: "#0000ff" }]
   const an = { L: 300 }
-  // logo antes da saída verde: a direita é verde, a esquerda azul
-  expect(corNoAnel(an, sds, 95, 1)).toEqual(hexRgb("#00ff00"))
-  expect(corNoAnel(an, sds, 95, -1)).toEqual(hexRgb("#0000ff"))
-  // logo depois de passar a verde, as cores escorregam: a direita vai pra azul, a esquerda pra vermelha
-  const d = corNoAnel(an, sds, 110, 1)!, e = corNoAnel(an, sds, 110, -1)!
-  expect(d[1]).toBeGreaterThan(0.5); expect(d[2]).toBeGreaterThan(0)
-  expect(e[2]).toBeGreaterThan(0.5); expect(e[0]).toBeGreaterThan(0)
-  // passando a volta (u depois da última): a próxima é a vermelha (u = 0)
-  expect(corNoAnel(an, sds, 290, 1)).toEqual(hexRgb("#ff0000"))
-  // sem saída aberta: sem cor (fica a da torre)
-  expect(corNoAnel(an, [], 10, 1)).toBeNull()
+  // logo antes da saída verde: a verde na direita, a azul no meio
+  const [p1, s1] = linhasNoAnel(an, sds, 95)
+  expect(p1!.cor).toEqual(hexRgb("#00ff00")); expect(p1!.x).toBeCloseTo(ANEL_CFG.xDireita)
+  expect(s1!.cor).toEqual(hexRgb("#0000ff")); expect(s1!.x).toBeCloseTo(ANEL_CFG.xMeio); expect(s1!.brilho).toBeCloseTo(1)
+  // logo depois de passar a verde: a azul (que estava no meio) vira a próxima e começa no meio
+  const [p2, s2] = linhasNoAnel(an, sds, 100.5)
+  expect(p2!.cor).toEqual(hexRgb("#0000ff")); expect(p2!.x).toBeLessThan(ANEL_CFG.xMeio + 0.2)
+  expect(s2).toBeNull()
+  // no meio do degradê: a azul a caminho da direita, a vermelha acendendo no meio
+  const [p3, s3] = linhasNoAnel(an, sds, 120)
+  expect(p3!.x).toBeGreaterThan(ANEL_CFG.xMeio); expect(p3!.x).toBeLessThan(ANEL_CFG.xDireita)
+  expect(s3!.cor).toEqual(hexRgb("#ff0000")); expect(s3!.brilho).toBeGreaterThan(0); expect(s3!.brilho).toBeLessThan(1)
+  // passando a volta: a próxima é a vermelha (u = 0), na direita
+  const [p4] = linhasNoAnel(an, sds, 290)
+  expect(p4!.cor).toEqual(hexRgb("#ff0000")); expect(p4!.x).toBeCloseTo(ANEL_CFG.xDireita)
+  // sem saída aberta: sem linha
+  expect(linhasNoAnel(an, [], 10)).toEqual([null, null])
+})
+
+test("T61b: a rotatória central é larga (as 9 saídas com folga entre si)", () => {
+  const M = montarMundoDisco()
+  const an = M.aneis[0], u = an.saidas.map((s) => s.u).sort((a, b) => a - b)
+  expect(an.saidas.length).toBe(9)
+  expect(M.torres[0].raio).toBeGreaterThanOrEqual(170)
+  for (let k = 0; k < u.length; k++) expect(((u[(k + 1) % u.length] - u[k]) % an.L + an.L) % an.L).toBeGreaterThan(75)
 })
 
 // ── a cena 3D (no Mac, metal; o CI não tem placa) ──
