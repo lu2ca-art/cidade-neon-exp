@@ -24,7 +24,7 @@ import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
 import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
@@ -36,7 +36,8 @@ import { V_TORRE, chegadaNaTorre, geoChaoDisco, montarMundoDisco, naEspiral as n
 import { ANEL_CFG, linhasNoAnel } from "./anel"
 import { irTorreAgora, limparIrTorre } from "../parteTeste"
 import { TorreCentral } from "./Torre"
-import { Portoes } from "./Portoes"
+import { PORTAL_CFG, Portoes } from "./Portoes"
+import { Perto, SoQuando, type PontoXZ } from "./Perto"
 import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
@@ -1033,11 +1034,16 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const ehDisco = !!discoM
   // (LU2CA 20/10) os atos: só as pistas disponíveis acendem o neon; as feitas
   // ficam acesas pra sempre; o resto, apagado (a torre é sempre acesa)
-  const luzPistas = useMemo(() => (discoM ? luzDasPistas(pistasFeitas(save.objetos)) : null), [discoM, save.objetos])
-  const viaApagada = useMemo(() => {
+  // (leveza A, 30/10) pegar um item muda save.objetos, mas quase nunca a luz das
+  // pistas: a chave em texto segura a MESMA referência enquanto o conteúdo não
+  // muda, e a cidade (geo, cidade, portões) não é refeita à toa
+  const luzPistasNova = useMemo(() => (discoM ? luzDasPistas(pistasFeitas(save.objetos)) : null), [discoM, save.objetos])
+  const luzPistas = useMesmo(luzPistasNova, luzPistasNova ? JSON.stringify(luzPistasNova) : "")
+  const viaApagadaNova = useMemo(() => {
     if (!discoM || !luzPistas) return null
     return discoM.vias.map((_, vi) => { const f = discoM.info[vi]; return !!f && f.pista >= 0 && luzPistas[discoM.pistas[f.pista].nome] === "apagada" })
   }, [discoM, luzPistas])
+  const viaApagada = useMesmo(viaApagadaNova, chaveApagada(viaApagadaNova))
   // (21/10, o mapa que ensina) as vias das pistas disponíveis (pulsam no mapa) e as da pista em foco
   const viaAberta = useMemo(() => {
     if (!discoM || !luzPistas) return null
@@ -2927,6 +2933,67 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 // libera a memória da placa de vídeo). O mundo montado fica em cache e a
 // posição da Kombi fica guardada aqui, pra ela voltar no mesmo ponto
 let MUNDO: Mundo | null = null
+
+// ── (leveza A, problema 2) o que a estrada constrói fica no módulo, como o MUNDO:
+// sair de uma sala desmonta o <Corrida>, e a volta só reusa (o three re-sobe
+// os buffers no contexto novo; a CPU não refaz nada). Um valor só é jogado fora
+// (com dispose) quando é trocado por outro (M ou chave diferente).
+// Só a main thread (como todo o grafo do three).
+let TEX_BASE: { asfalto: THREE.Texture; janelas: THREE.Texture; brilho: THREE.Texture; turbo: THREE.Texture } | null = null
+const GUARDADOS = new Map<string, { M: object; chave: string; valor: unknown }>()
+/**
+ * Devolve o valor guardado com esse nome se M e a chave são os mesmos; senão
+ * cria, solta (dispose) o antigo e guarda o novo.
+ * @example const geo = useMemo(() => guardado("geo", M, "", () => montarGeo()), [M])
+ */
+function guardado<T>(nome: string, M: object, chave: string, criar: () => T): T {
+  const g = GUARDADOS.get(nome)
+  if (g && g.M === M && g.chave === chave) return g.valor as T
+  const valor = criar()
+  if (g) soltar(g.valor)
+  GUARDADOS.set(nome, { M, chave, valor })
+  return valor
+}
+/**
+ * (leveza A, problema 9) dispose de tudo do three que estiver num valor montado
+ * à mão: geometrias, materiais, texturas, malhas (geometria + material) e
+ * InstancedMesh, dentro de arrays e objetos simples. Não entra no `map` dos
+ * materiais (as texturas de base são compartilhadas).
+ * @example useEffect(() => () => soltar(chuva), [chuva])
+ */
+function soltar(x: unknown, vistos: Set<unknown> = new Set()) {
+  if (!x || typeof x !== "object" || vistos.has(x)) return
+  vistos.add(x)
+  if (x instanceof THREE.Mesh || x instanceof THREE.Points || x instanceof THREE.Line) {
+    soltar(x.geometry, vistos)
+    soltar(x.material, vistos)
+    if (x instanceof THREE.InstancedMesh) x.dispose()
+    return
+  }
+  if (x instanceof THREE.BufferGeometry || x instanceof THREE.Material || x instanceof THREE.Texture) { x.dispose(); return }
+  if (Array.isArray(x)) { for (const y of x) soltar(y, vistos); return }
+  if (Object.getPrototypeOf(x) === Object.prototype) for (const y of Object.values(x)) soltar(y, vistos)
+}
+
+/**
+ * (leveza A) Devolve sempre a MESMA referência enquanto `chave` não muda.
+ * Serve para arrays/objetos recalculados a cada render que, na prática, quase
+ * nunca mudam de conteúdo (ex.: as pistas apagadas): quem depende deles num
+ * useMemo/memo não é refeito à toa.
+ * @example const apagada = useMesmo(arrayNovo, chaveApagada(arrayNovo))
+ */
+function useMesmo<T>(valor: T, chave: string): T {
+  const r = useRef<{ chave: string; valor: T } | null>(null)
+  if (!r.current || r.current.chave !== chave) r.current = { chave, valor }
+  return r.current.valor
+}
+/** A chave em texto das vias apagadas ("0110…"); "" quando não há atos. */
+function chaveApagada(a: boolean[] | null): string {
+  if (!a) return ""
+  let s = ""
+  for (let i = 0; i < a.length; i++) s += a[i] ? "1" : "0"
+  return s
+}
 // o mapa novo (a rede de ruas do v5) atrás do /linha?mapa=novo; fica marcado na sessão
 // (18/10, LU2CA: "a pior versão até hoje" — sem guard rail, a Kombi sai da rua
 // e entra nos prédios, a cidade no chão) o mapa VELHO volta a ser o padrão; o
@@ -3063,6 +3130,48 @@ function novoJogo(M: Mundo, destino: EstacaoId | null, estacao: EstacaoId | null
    cena R3F: useFrame muta geometria, instâncias e uniforms do three.js a
    60fps por design; nada disso é estado do React */
 /* ─── cena ──────────────────────────────────────────────── */
+// ── (leveza A) pistas que acendem/apagam sem refazer a malha ──
+const COR_APAGADA = hexRgb("#2a2838")
+/**
+ * Guarda a cor acesa de uma fita (e, opcional, quais quads tingem) em userData,
+ * para `tingirApagadas` trocar a cor no atributo que já existe.
+ * @example const g = guardarCor(fita(vias, ..., { via, cor }), acesoPorQuad)
+ */
+function guardarCor(g: THREE.BufferGeometry, tinge?: number[]) {
+  g.userData.cor0 = Float32Array.from((g.getAttribute("color") as THREE.BufferAttribute).array as Float32Array)
+  if (tinge) g.userData.tinge = Uint8Array.from(tinge)
+  return g
+}
+/** Pinta de cinza escuro os vértices das vias apagadas (aVia); o resto volta à cor acesa. Não aloca. */
+function tingirApagadas(g: THREE.BufferGeometry, apagada: boolean[] | null) {
+  const cor0 = g.userData.cor0 as Float32Array | undefined
+  const via = g.getAttribute("aVia") as THREE.BufferAttribute | undefined
+  const at = g.getAttribute("color") as THREE.BufferAttribute | undefined
+  if (!cor0 || !via || !at) return
+  const tinge = g.userData.tinge as Uint8Array | undefined
+  const arr = at.array as Float32Array
+  for (let v = 0; v < via.count; v++) {
+    const o = v * 3
+    if (apagada && apagada[via.getX(v)] && (!tinge || tinge[v >> 2] === 1)) { arr[o] = COR_APAGADA[0]; arr[o + 1] = COR_APAGADA[1]; arr[o + 2] = COR_APAGADA[2] }
+    else { arr[o] = cor0[o]; arr[o + 1] = cor0[o + 1]; arr[o + 2] = cor0[o + 2] }
+  }
+  at.needsUpdate = true
+}
+/** Os postes (e o reflexo e a luz) das vias apagadas somem: matriz zerada e luz preta (aditiva). */
+function apagarPostes(c: { postes: THREE.InstancedMesh; reflexos: THREE.InstancedMesh; luzes: THREE.BufferGeometry; postesAcesos: { via: Int32Array; poste: Float32Array; reflexo: Float32Array; luz: Float32Array } }, apagada: boolean[] | null) {
+  const { via, poste, reflexo, luz } = c.postesAcesos
+  const mp = c.postes.instanceMatrix.array as Float32Array, mr = c.reflexos.instanceMatrix.array as Float32Array
+  const cor = c.luzes.getAttribute("color") as THREE.BufferAttribute, lc = cor.array as Float32Array
+  for (let n = 0; n < via.length; n++) {
+    const fora = !!apagada && !!apagada[via[n]]
+    for (let k = 0; k < 16; k++) { const o = n * 16 + k; mp[o] = fora ? 0 : poste[o]; mr[o] = fora ? 0 : reflexo[o] }
+    for (let k = 0; k < 3; k++) lc[n * 3 + k] = fora ? 0 : luz[n * 3 + k]
+  }
+  c.postes.instanceMatrix.needsUpdate = true
+  c.reflexos.instanceMatrix.needsUpdate = true
+  cor.needsUpdate = true
+}
+
 function Cena({
   tags,
   M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null,
@@ -3232,9 +3341,11 @@ function Cena({
   const centro = M.vias[M.circuito.linha]
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
-  const relevoNovo = useMemo(() => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null), [M])
+  // (leveza A) o chão (9 km de dunas) também fica no módulo: remontar não refaz
+  const relevoNovo = useMemo(() => guardado("relevo", M, "", () => ("disco" in M ? geoChaoDisco() : "ligacoes" in M ? geoRelevoRede(M as MundoRede) : null)), [M])
   // (T39) a areia com cara de areia (areia.ts): as ondulações, o grão, as manchas e o brilho
   const areiaMats = useMemo(() => ("disco" in M ? { chao: materialAreia({ vertexColors: true, mascara: true }), longe: materialAreia({ color: "#8c6640" }) } : null), [M])
+  useEffect(() => () => soltar(areiaMats), [areiaMats]) // (leveza A) dispose ao trocar/desmontar
   // (T39) onde cabe um robô caído (fora das pistas e dos lugares)
   const livreCaidos = useMemo(() => ("disco" in M ? (x: number, z: number) => M.livre(x, z, 4) : null), [M])
   // (disco, 20/10) o lixão: os carros despencados meio enterrados e os pneus
@@ -3253,6 +3364,7 @@ function Cena({
     pneus.count = l.pneus.length
     return { carros, pneus }
   }, [M])
+  useEffect(() => () => soltar(lixo), [lixo]) // (leveza A) dispose ao trocar/desmontar
 
   useEffect(() => () => motor?.parar(), [motor])
   // (T62) o som do patins (rodas de gel; no ar, o vento neon): montado na 1ª vez que desce de patins
@@ -3279,7 +3391,36 @@ function Cena({
     for (let i = 0; i < v.n; i++) r = Math.min(r, Math.hypot(v.px[i] - x, v.pz[i] - z))
     return { x, z, r: r - MEIA - 4 }
   }, [M])
-  const tex = useMemo(() => ({ asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
+  // (leveza A) as texturas de base moram no módulo: remontar a estrada não refaz
+  // (leveza A, problema 3) onde fica cada bloco da cidade, pro <Perto>
+  const pertoDe = useMemo(() => {
+    const MD = "disco" in M ? (M as MundoDisco) : null
+    const portoes: PontoXZ[] = [], monumentos: PontoXZ[] = []
+    if (MD) {
+      MD.vias.forEach((v, vi) => {
+        if (MD.info[vi]?.parte !== "saida") return
+        const i = Math.min(v.n - 1, Math.round(PORTAL_CFG.u / 2))
+        portoes.push({ x: v.px[i], z: v.pz[i] })
+      })
+      for (const p of MD.pistas) {
+        const o = MD.onde?.(`missao:${p.nome}`) ?? { via: p.ida, u: MD.vias[p.ida].L * 0.55 }
+        const V = MD.vias[o.via], i = Math.max(0, Math.min(V.n - 1, Math.round(o.u / 2)))
+        monumentos.push({ x: V.px[i], z: V.pz[i] })
+      }
+    }
+    return {
+      portoes, monumentos,
+      casa: [{ x: CASA.x, z: CASA.z }],
+      chao: Object.values(CHAO_LUGARES).map((l) => ({ x: l.x, z: l.z })),
+      lugares: centrosLugares.map((c) => ({ x: c.x, z: c.z })),
+      bombas: BOMBAS.map((b) => { const c = poseLugar(M, { area: b.area, u: b.u, lado: b.lado } as Lugar, `bomba:${b.id}`).centro; return { x: c.x, z: c.z } }),
+      fachadas: PAGINAS.filter((p) => !p.lugar).map((p) => { const c = poseLugar(M, { area: p.area, u: p.u, lado: p.lado } as Lugar, `pagina:${p.id}`).centro; return { x: c.x, z: c.z } }),
+      parque: areaDoParque(M),
+      suburbio: [{ x: centroSub.x, z: centroSub.z }],
+      centro: [{ x: 0, z: 0 }],
+    }
+  }, [M, centrosLugares, centroSub])
+  const tex = useMemo(() => TEX_BASE ?? (TEX_BASE = { asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
 
   // cor de cada trecho: o lugar do circuito; nas saídas, metade de cada lado
   const distI = useCallback((v: Via, i: number): Distrito => distritoDe(v.tipo === "saida" && i < v.n / 2 ? v.de! : v.t), [])
@@ -3290,7 +3431,7 @@ function Cena({
   }, [])
 
   // ── pista ──
-  const geo = useMemo(() => {
+  const geo = useMemo(() => guardado("geo", M, "", () => {
     // (disco) a volta é o mesmo asfalto da ida: desenha uma vez só
     const vias = (M.vias as Via[]).filter((v) => !((v as Via & { disco?: boolean }).disco && v.rede && !v.rede.ida))
     const U = (i: number) => i * PASSO
@@ -3306,32 +3447,9 @@ function Cena({
     const indice = new Map((M.vias as Via[]).map((v, i) => [v, i]))
     // (27/10, drone v2) cada vértice sabe a via (o drone acende só as da rota)
     const via = (p: Pista) => indice.get(p as Via) ?? 0
-    const corDe = (p: Pista) => (viaApagada?.[indice.get(p as Via) ?? -1] ? "#2a2838" : (p as Via & { cor?: string }).cor)
-    // (T61b) a rotatória de cima: as linhas no chão (anel.ts). A da próxima
-    // saída aberta na faixa da direita, a da seguinte na do meio; passando uma
-    // saída, a do meio escorrega pra direita. Uma malha só, montada uma vez
-    const anelDaVia = new Map<number, { an: AnelDisco; k: number; sds: AnelDisco["saidas"] }>()
-    if ("disco" in M) for (const an of (M as MundoDisco).aneis) { const sds = an.saidas.filter((sd) => !viaApagada?.[sd.via]); an.vias.forEach((vi, k) => anelDaVia.set(vi, { an, k, sds })) }
-    // (no último ponto de um trecho, um tiquinho antes: a saída ali ainda é a próxima)
-    const guia = (p: Pista, i: number, q: 0 | 1) => { const r = anelDaVia.get(indice.get(p as Via) ?? -1); return r ? linhasNoAnel(r.an, r.sds, r.an.ini[r.k] + Math.min(U(i), p.L - 0.05))[q] : null }
-    const linhasGuia = () => {
-      if (!("disco" in M)) return null
-      const MD = M as MundoDisco, meia = ANEL_CFG.largura / 2
-      const doAnel = [...anelDaVia.keys()].map((vi) => M.vias[vi] as Via)
-      const partes = ([0, 1] as const).map((q) => fita(doAnel, (p, i) => (guia(p, i, q)?.x ?? 0) - meia, (p, i) => (guia(p, i, q)?.x ?? 0) + meia, 0.05, {
-        passo: passoD, via,
-        incluir: (p, i) => !!guia(p, i, q),
-        cor: (p, i) => { const g = guia(p, i, q)!; return [g.cor[0] * g.brilho, g.cor[1] * g.brilho, g.cor[2] * g.brilho] },
-      }))
-      // a linha da saída continua na alça dela (da faixa da direita até o meio da alça) e leva até a pista
-      const saidas = MD.aneis.flatMap((an) => an.saidas.filter((sd) => sd.via >= 0 && !viaApagada?.[sd.via]).map((sd) => M.vias[sd.via] as Via))
-      const xAlca = (p: Pista, i: number) => { const k = Math.min(1, U(i) / 40), t = k * k * (3 - 2 * k); return ANEL_CFG.xDireita + ((p.esq[i] + p.dir[i]) / 2 - ANEL_CFG.xDireita) * t }
-      partes.push(fita(saidas, (p, i) => xAlca(p, i) - meia, (p, i) => xAlca(p, i) + meia, 0.05, { passo: passoD, via, cor: (p) => rgb((p as Via & { cor: string }).cor) }))
-      const cheias = partes.filter((x) => x.index!.count > 0)
-      const g = cheias.length ? mergeGeometries(cheias, false) : null
-      for (const x of partes) x.dispose()
-      return g
-    }
+    // (leveza A) a cor ACESA de sempre: o cinza das apagadas é pintado por cima,
+    // no atributo de cor da malha que já existe (tingirApagadas), sem refazer a pista
+    const corDe = (p: Pista) => (p as Via & { cor?: string }).cor
     // o começo e o fim do balão: as duas pernas ainda se sobrepõem (sem trilho lá)
     // (e nas emendas da torre: as alças se separam da espiral e uma da outra)
     const gargalo = (p: Pista, i: number) => {
@@ -3361,14 +3479,19 @@ function Cena({
       if (v.tipo === "circuito") return !divide(v, i, 1) && !chegando(v, i)
       return !(v.lado! < 0 && u < 90)
     }
-    const rails = (lado: number) => fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
-      passo: passoD,
-      via,
-      vertical: true,
-      incluir: lado < 0 ? trilhoE : trilhoD,
-      // (disco) o guard rail na cor da linha
-      cor: (p, i) => (Math.floor(i / 10) % 2 ? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12]),
-    })
+    const rails = (lado: number) => {
+      // (leveza A) quais quads são o trecho aceso da listra (o escuro fica escuro)
+      const aceso: number[] = []
+      const g = fita(vias, (p, i) => (lado < 0 ? p.esq[i] - 0.25 : p.dir[i] + 0.25), 0.75, 0, {
+        passo: passoD,
+        via,
+        vertical: true,
+        incluir: lado < 0 ? trilhoE : trilhoD,
+        // (disco) o guard rail na cor da linha
+        cor: (p, i) => { const k = Math.floor(i / 10) % 2; aceso.push(k); return k ? rgb(corDe(p) ?? distI(p as Via, i).trilho[lado < 0 ? 0 : 1]) : [0.05, 0.05, 0.12] },
+      })
+      return guardarCor(g, aceso)
+    }
     const semEmenda = (p: Pista, i: number) => {
       const v = p as Via
       if (v.tipo === "circuito") return !divide(v, i, -1) && !divide(v, i, 1)
@@ -3384,11 +3507,9 @@ function Cena({
       // (disco) cada mão tem 2 faixas: um tracejado só, no meio dela
       // (disco) 4 faixas: o tracejado separa as duas de cada sentido (±4,2 m)
       // (alças: meia pista, só o tracejado de dentro dela)
-      faixas: [-MEIA / 3, MEIA / 3].map((x) => fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, via, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) })),
+      faixas: [-MEIA / 3, MEIA / 3].map((x) => guardarCor(fita(vias, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) - 0.1, (p) => (doDisco(p) ? Math.sign(x) * 4.2 : x) + 0.1, 0.04, { passo: passoD, via, incluir: (p, i) => i % 6 < 3 && (doDisco(p) ? !gargalo(p, i) && (x < 0 ? p.esq[i] < -4.2 : p.dir[i] > 4.2) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : CIANO) }))),
       // (disco) as duas bordas na cor da linha
-      bordas: [-1, 1].map((l) => fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) })),
-      // (T61b) as linhas no chão da rotatória (antes, a faixa da direita pintada antes da saída)
-      linhasGuia: linhasGuia(),
+      bordas: [-1, 1].map((l) => guardarCor(fita(vias, (p, i) => (l < 0 ? p.esq[i] + 0.23 : p.dir[i] - 0.47), (p, i) => (l < 0 ? p.esq[i] + 0.47 : p.dir[i] - 0.23), 0.04, { passo: passoD, via, incluir: (p, i) => (doDisco(p) ? !gargalo(p, i) && !(l > 0 && abertoFora(p, i)) : semEmenda(p, i)), cor: (p) => (doDisco(p) ? rgb(corDe(p)!) : l < 0 ? CIANO : ROSA) }))),
       // (disco) a linha contínua branca no meio (o canteiro é aberto: só pintura)
       linhasGarfo: [divisoria(-1), divisoria(1), fita(vias, -0.14, 0.14, 0.045, { passo: passoD, via, incluir: (p, i) => doDisco(p) && !gargalo(p, i) })],
       railE: rails(-1),
@@ -3396,10 +3517,48 @@ function Cena({
       saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
       saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoD(p, i) }),
     }
-  }, [M, circuitos, distI, rgb, viaApagada])
+  }), [M, circuitos, distI, rgb])
+  // (leveza A) pista que acende/apaga: só a cor do atributo muda (sem refazer a malha)
+  useLayoutEffect(() => {
+    for (const g of [geo.railE, geo.railD, ...geo.faixas, ...geo.bordas]) tingirApagadas(g, viaApagada)
+  }, [geo, viaApagada])
+  // (T61b) as linhas no chão da rotatória: dependem de quais saídas estão abertas
+  // (a chave de viaApagada é estável: só refaz quando uma pista acende de verdade)
+  const linhasGuia = useMemo(() => guardado("linhasGuia", M, chaveApagada(viaApagada), () => {
+    const U = (i: number) => i * PASSO
+    const passoD = (p: Pista) => ((p as Via & { disco?: boolean }).disco ? 3 : 1)
+    const indice = new Map((M.vias as Via[]).map((v, i) => [v, i]))
+    const via = (p: Pista) => indice.get(p as Via) ?? 0
+    // (T61b) a rotatória de cima: as linhas no chão (anel.ts). A da próxima
+    // saída aberta na faixa da direita, a da seguinte na do meio; passando uma
+    // saída, a do meio escorrega pra direita. Uma malha só, montada uma vez
+    const anelDaVia = new Map<number, { an: AnelDisco; k: number; sds: AnelDisco["saidas"] }>()
+    if ("disco" in M) for (const an of (M as MundoDisco).aneis) { const sds = an.saidas.filter((sd) => !viaApagada?.[sd.via]); an.vias.forEach((vi, k) => anelDaVia.set(vi, { an, k, sds })) }
+    // (no último ponto de um trecho, um tiquinho antes: a saída ali ainda é a próxima)
+    const guia = (p: Pista, i: number, q: 0 | 1) => { const r = anelDaVia.get(indice.get(p as Via) ?? -1); return r ? linhasNoAnel(r.an, r.sds, r.an.ini[r.k] + Math.min(U(i), p.L - 0.05))[q] : null }
+    const linhasGuia = () => {
+      if (!("disco" in M)) return null
+      const MD = M as MundoDisco, meia = ANEL_CFG.largura / 2
+      const doAnel = [...anelDaVia.keys()].map((vi) => M.vias[vi] as Via)
+      const partes = ([0, 1] as const).map((q) => fita(doAnel, (p, i) => (guia(p, i, q)?.x ?? 0) - meia, (p, i) => (guia(p, i, q)?.x ?? 0) + meia, 0.05, {
+        passo: passoD, via,
+        incluir: (p, i) => !!guia(p, i, q),
+        cor: (p, i) => { const g = guia(p, i, q)!; return [g.cor[0] * g.brilho, g.cor[1] * g.brilho, g.cor[2] * g.brilho] },
+      }))
+      // a linha da saída continua na alça dela (da faixa da direita até o meio da alça) e leva até a pista
+      const saidas = MD.aneis.flatMap((an) => an.saidas.filter((sd) => sd.via >= 0 && !viaApagada?.[sd.via]).map((sd) => M.vias[sd.via] as Via))
+      const xAlca = (p: Pista, i: number) => { const k = Math.min(1, U(i) / 40), t = k * k * (3 - 2 * k); return ANEL_CFG.xDireita + ((p.esq[i] + p.dir[i]) / 2 - ANEL_CFG.xDireita) * t }
+      partes.push(fita(saidas, (p, i) => xAlca(p, i) - meia, (p, i) => xAlca(p, i) + meia, 0.05, { passo: passoD, via, cor: (p) => rgb((p as Via & { cor: string }).cor) }))
+      const cheias = partes.filter((x) => x.index!.count > 0)
+      const g = cheias.length ? mergeGeometries(cheias, false) : null
+      for (const x of partes) x.dispose()
+      return g
+    }
+    return linhasGuia()
+  }), [M, rgb, viaApagada])
 
   // ── cidade: cada lugar com a sua arquitetura e a cor do seu gás ──
-  const cidade = useMemo(() => {
+  const cidade = useMemo(() => guardado("cidade", M, "", () => {
     const r = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646 })()
     const d = new THREE.Object3D()
     const ESTILO: Record<Distrito["predio"], { n: number; h: [number, number]; w: [number, number]; off: [number, number]; brilho: number }> = {
@@ -3572,12 +3731,12 @@ function Cena({
     // fita do teto)
     // (nunca em cima de outra pista: somem onde a saída descola e onde
     // outra encosta chegando)
-    const ks: { v: Via; k: number; lado: number }[] = []
+    const ks: { v: Via; k: number; lado: number; vi: number }[] = []
     for (const [vi, v] of M.vias.entries()) {
       // (no mapa novo: um sentido só, e os postes a cada 40 m)
       if (v.tipo === "rua" && !v.rede?.ida) continue
       // (os atos, 20/10) a pista apagada é escura de verdade: sem poste aceso
-      if (viaApagada?.[vi]) continue
+      // (leveza A: todos montados; os das apagadas somem em apagarPostes)
       for (let k = 0; k < v.n; k += v.tipo === "rua" ? 20 : 12) {
         const u = k * PASSO
         if (v.tipo === "saida" && (u < 150 || u > v.L - 240)) continue
@@ -3590,7 +3749,7 @@ function Cena({
             if (v.faixas.some((f) => f.lado === lado && u > f.u - 4 && u < f.u + 140)) continue
             if (lado > 0 && v.chegadas.some((c) => u > c.u - 240 && u < c.u + 10)) continue
           }
-          ks.push({ v, k, lado })
+          ks.push({ v, k, lado, vi })
         }
       }
     }
@@ -3605,7 +3764,9 @@ function Cena({
     )
     const c = new THREE.Color()
     let n = 0
-    for (const { v, k, lado } of ks) {
+    const posteVia = new Int32Array(nL)
+    for (const { v, k, lado, vi } of ks) {
+      posteVia[n] = vi
       const ds = distI(v, k)
       {
         const borda = lado < 0 ? v.esq[k] : v.dir[k]
@@ -3651,8 +3812,11 @@ function Cena({
     aviacao.setAttribute("position", new THREE.BufferAttribute(new Float32Array(topos), 3))
     const aviacaoMat = new THREE.PointsMaterial({ size: 5, map: tex.brilho, color: "#ff2a2a", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
 
-    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores }
-  }, [M, circuitos, tex, distI, centrosLugares, viaApagada])
+    // (leveza A) as matrizes/cores acesas de cada poste, pra apagar/acender sem refazer
+    const postesAcesos = { via: posteVia, poste: Float32Array.from(postes.instanceMatrix.array), reflexo: Float32Array.from(reflexos.instanceMatrix.array), luz: Float32Array.from(luzCor) }
+    return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesAcesos }
+  }), [M, circuitos, tex, distI, centrosLugares])
+  useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
 
   // ── colunas de luz: só onde a missão manda agora (a coisa pra buscar,
   // ou a estação de quem te chamou), dá pra ver de longe ──
@@ -3665,7 +3829,7 @@ function Cena({
 
   // ── placas: cada bifurcação tem dois pórticos (aviso e "agora"), com
   // três placas — ← saída da esquerda, ↑ fica, saída da direita → ──
-  const placas = useMemo(() => {
+  const placas = useMemo(() => guardado("placas", M, String(nLib), () => {
     const lista: {
       id: string; pos: THREE.Vector3; rot: number; topo: THREE.Texture
       paineis: { x: number; cor: string; tex: THREE.Texture; area?: FreqId }[]
@@ -3724,11 +3888,12 @@ function Cena({
       })
     }
     return { lista, setas, barreiras }
-  }, [M, circuitos, a, nLib])
+  }), [M, circuitos, a, nLib])
 
   // embaixo de cada placa, uma bolinha por missão em aberto naquela área:
   // a cor e a inicial de quem chama (sem nome)
-  const tagTex = useMemo(() => {
+  const chaveTags = JSON.stringify(tags)
+  const tagTex = useMemo(() => guardado("tagTex", M, chaveTags, () => {
     const out: Partial<Record<FreqId, THREE.Texture>> = {}
     for (const [area, q] of Object.entries(tags) as [FreqId, { nome: string; cor: string }[]][]) {
       if (!q.length) continue
@@ -3755,7 +3920,8 @@ function Cena({
       out[area] = t
     }
     return out
-  }, [tags])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [M, chaveTags])
 
   // faixa de saída pintada na cor da rádio (cinza se trancada) e muro
   // listrado na trancada (física: ver limite no loop)
@@ -3776,6 +3942,7 @@ function Cena({
     })
     return { faixas: [pint(-1), pint(1)], muros: [muro(-1), muro(1)] }
   }, [circuitos, nLib])
+  useEffect(() => () => soltar(pinturas), [pinturas]) // (leveza A) dispose ao trocar/desmontar
 
   // ── o rastro neon do pulo (o dash do inFamous): uma fita de luz que fica
   // no ar por onde a Kombi passou voando e apaga em ~1 s ──
@@ -3787,6 +3954,7 @@ function Cena({
     const pts = new THREE.Points(g, mat); pts.frustumCulled = false
     return { N, pos, cor, g, pts, cab: 0 }
   }, [tex])
+  useEffect(() => () => soltar(rastro), [rastro]) // (leveza A) dispose ao trocar/desmontar
   // ── os outdoors surrealistas (mapa novo): o chamado de cada missão perto
   // do lugar dela, e a frase do LU2CA nas vias rápidas ──
   const outdoors = useMemo<Outdoor[]>(() => {
@@ -3833,6 +4001,7 @@ function Cena({
     if (cores) for (let i = 0; i < lista.length; i++) m.setColorAt(i, cores[i])
     return { m, pos, halo, haloMat, lista, porVia, cores }
   }, [M, a, tex])
+  useEffect(() => () => soltar(orbs), [orbs]) // (leveza A) dispose ao trocar/desmontar
 
   // ── turbos no chão ──
   const turbos = useMemo(() => {
@@ -3882,7 +4051,8 @@ function Cena({
       return bateu ? [ex, ez] : null
     }
   }, [cidade])
-  const trafego = useMemo(() => {
+  // (leveza A) no módulo também: ao remontar, o trânsito segue de onde estava
+  const trafego = useMemo(() => guardado("trafego", M, "", () => {
     // (06/10: o dobro de carros; batida arremessa pro lado — vx, voo, giro)
     // (16/10: carros de verdade — carros.ts — e, no mapa novo, ~120 carros pela rede, cada um na mão dele)
     type Carro = { via: number; u: number; x: number; v: number; v0: number; x0: number; passou: boolean; bateu: number; vx: number; y: number; vy: number; giro: number; vgiro: number; caido: number; modelo: number; slot: number }
@@ -3913,7 +4083,7 @@ function Cena({
       return [pint, esc, luz]
     })
     return { carros, malhas }
-  }, [M, circuitos])
+  }), [M, circuitos])
   // teste: a Kombi logo atrás de um carro do trânsito, mais rápida (bate)
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return
@@ -3953,6 +4123,7 @@ function Cena({
     heli.frustumCulled = false; facho.frustumCulled = false
     return { corpo, barra, farol, carros, ativa: false, via: -1, perdidoT: 0, longeT: 0, espera: 0, cor: new THREE.Color(), t: 0, heli, helice, sirene, facho, heliOn: false, heliT: 0, cobertoT: 0, heliPos: new THREE.Vector3() }
   }, [])
+  useEffect(() => () => soltar(caca), [caca]) // (leveza A) dispose ao trocar/desmontar
 
   // ── chuva (só visual), confete, faíscas ──
   const chuvaRef = useRef<THREE.LineSegments>(null)
@@ -3965,6 +4136,7 @@ function Cena({
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     return { n, pos, base, g }
   }, [])
+  useEffect(() => () => soltar(chuva), [chuva]) // (leveza A) dispose ao trocar/desmontar
 
   const confete = useMemo(() => {
     const n = 260
@@ -3976,6 +4148,7 @@ function Cena({
     for (let i = 0; i < n; i++) { m.setMatrixAt(i, d.matrix); m.setColorAt(i, new THREE.Color("#fff")) }
     return { m, s, d, prox: 0 }
   }, [])
+  useEffect(() => () => soltar(confete), [confete]) // (leveza A) dispose ao trocar/desmontar
 
   useEffect(() => {
     confeteRef.current = (cor: string, qt: number) => {
@@ -4015,6 +4188,7 @@ function Cena({
     for (let i = 0; i < n; i++) { m.setMatrixAt(i, zero); m.setColorAt(i, pneu) }
     return { m, n, prox: 0, pneu, gel }
   }, [])
+  useEffect(() => () => soltar(marcas), [marcas]) // (leveza A) dispose ao trocar/desmontar
   const fumaca = useMemo(() => {
     const n = 160
     const pos = new Float32Array(n * 3).fill(-999)
@@ -4024,7 +4198,9 @@ function Cena({
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     return { n, pos, vel, vida, g, prox: 0 }
   }, [])
+  useEffect(() => () => soltar(fumaca), [fumaca]) // (leveza A) dispose ao trocar/desmontar
   const texFumaca = useMemo(() => texBrilho(), [])
+  useEffect(() => () => soltar(texFumaca), [texFumaca]) // (leveza A) dispose ao trocar/desmontar
   // (T36, J2:3) a poeira do pouso da chegada: uma fumaça que sobe, se abre e se
   // desfaz (alfa por ponto), no lugar do confete da rádio liberada. Só roda
   // enquanto tem poeira viva
@@ -4040,6 +4216,7 @@ function Cena({
     g.setAttribute("color", new THREE.BufferAttribute(cor, 4))
     return { n, pos, cor, vel, vida, tot, g, vivos: 0, prox: 0, acc: 0 }
   }, [])
+  useEffect(() => () => soltar(poeira), [poeira]) // (leveza A) dispose ao trocar/desmontar
   const RODAS = useMemo(() => [[-0.82, -1.35], [0.82, -1.35], [-0.82, 1.35], [0.82, 1.35]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
   // (LU2CA 21/10: "no patins a linha do drift tem que ser os dois pés, não as quatro rodas")
   const PES = useMemo(() => [[-0.16, 0.06], [0.16, -0.06]].map(([x, z]) => new THREE.Vector3(x, 0.03, z)), [])
@@ -4057,6 +4234,7 @@ function Cena({
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
     return { n, pos, vel, vida, g, prox: 0 }
   }, [])
+  useEffect(() => () => soltar(faiscas), [faiscas]) // (leveza A) dispose ao trocar/desmontar
 
   // céu de cidade grande à noite: gradiente, poluição luminosa no horizonte
   // (sódio laranja + a cor do bairro), um teto de nuvens baixas acesas POR
@@ -4121,6 +4299,7 @@ function Cena({
         gl_FragColor = vec4(c, 1.0);
       }`,
   }), [])
+  useEffect(() => () => soltar(ceuMat), [ceuMat]) // (leveza A) dispose ao trocar/desmontar
 
   useEffect(() => {
     // (22/10, 2.2) caindo do buraco de minhoca a névoa já começa longe: a casa
@@ -4160,6 +4339,9 @@ function Cena({
   const kBalanco = useRef(0)
   const corpoK = useRef<THREE.Group>(null)
   const cabineG = useRef<THREE.Group>(null)
+  const dentroDeVerdade = useCallback(() => dentroRef.current, [dentroRef])
+  // (leveza A) robôs desmontados (longe do deserto): nenhum fica "vivo" no ROBOS
+  const robosFora = useCallback(() => { for (const b of ROBOS) b.vivo = false }, [])
   const patinador = useRef<THREE.Group>(null)
   const kombiParada = useRef<THREE.Group>(null)
   const kParadaT = useRef(false)
@@ -6264,22 +6446,25 @@ function Cena({
       ))}
       </Estatico>
       {/* (T61b) as linhas no chão da rotatória: uma malha só, aditiva (o preto some) */}
-      {geo.linhasGuia && (
-        <mesh geometry={geo.linhasGuia}>
+      {linhasGuia && (
+        <mesh geometry={linhasGuia}>
           <meshBasicMaterial vertexColors transparent opacity={0.95} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} onBeforeCompile={ACENDE.neon} />
         </mesh>
       )}
-      {"disco" in M && <Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro>}
-      {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} /></Seguro>}
-      {"disco" in M && <CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} />}
-      {"disco" in M && <LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} />}
+      {/* (leveza A) cada bloco da cidade só fica montado com a câmera perto (Perto.tsx) */}
+      {"disco" in M && <Perto nome="portões" raio={700} pontos={pertoDe.portoes}><Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro></Perto>}
+      {"disco" in M && <Perto nome="monumentos" raio={900} pontos={pertoDe.monumentos}><Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} /></Seguro></Perto>}
+      {/* (na fase da casa, o farol guia de longe: aí a casa fica sempre montada) */}
+      {"disco" in M && <Perto nome="casa do deserto" raio={faseHistoria === "casa" ? 1e7 : 800} pontos={pertoDe.casa}><CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} /></Perto>}
+      {"disco" in M && <Perto nome="lugares do chão" raio={600} pontos={pertoDe.chao}><LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} /></Perto>}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
       {/* (T58) o GPS tipo Waze: a faixa da rota no chão da pista, à frente (1 draw, só com destino) */}
       {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}
       <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
       {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
-      {"disco" in M && livreCaidos && <Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} onAtropelou={atropelouRobo} /></Seguro>}
-      {"disco" in M && <Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onAtropelou={atropelouRobo} /></Seguro>}
+      {/* (os robôs só vivem no deserto, a mais de 1,3 km do centro: no miolo, desmontados) */}
+      {"disco" in M && livreCaidos && <Perto nome="robôs caídos" raio={1000} pontos={pertoDe.centro} fora><Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} onAtropelou={atropelouRobo} /></Seguro></Perto>}
+      {"disco" in M && <Perto nome="robôs" raio={1000} pontos={pertoDe.centro} fora aoSair={robosFora}><Seguro nome="robôs"><Robos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} onAtropelou={atropelouRobo} /></Seguro></Perto>}
       <Estatico>
       {[geo.railE, geo.railD].map((g, i) => (
         <mesh key={i} geometry={g}>
@@ -6310,13 +6495,13 @@ function Cena({
       <Estatico><primitive object={cidade.pilares} /></Estatico>
       {/* (no mapa novo a Linha 9 ainda vai ganhar o traçado dela) */}
       {!relevoNovo && <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>}
-      <Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro>
-      <Seguro nome="bombas"><Bombas M={M} /></Seguro>
-      <Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro>
-      {/* no mapa novo: as flores do asfalto (só de patins); no de sempre, os canteiros */}
-      <Seguro nome="flores">{"ligacoes" in M ? <FloresAsfalto M={M} {...floresAsf} /> : <Flores M={M} regadas={regadas} />}</Seguro>
-      <Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro>
-      <Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro>
+      <Perto nome="lugares" raio={700} pontos={pertoDe.lugares}><Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro></Perto>
+      <Perto nome="bombas" raio={600} pontos={pertoDe.bombas}><Seguro nome="bombas"><Bombas M={M} /></Seguro></Perto>
+      <Perto nome="fachadas" raio={600} pontos={pertoDe.fachadas}><Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro></Perto>
+      {/* no mapa novo: as flores do asfalto (só de patins, uma malha pelo mapa todo); no de sempre, os canteiros (medidos pelo Perto) */}
+      {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
+      <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>
+      <Perto nome="subúrbio" raio={centroSub.r + 700} pontos={pertoDe.suburbio}><Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro></Perto>
       <Estatico>
       <primitive object={cidade.postes} />
       <primitive object={cidade.reflexos} />
@@ -6477,7 +6662,8 @@ function Cena({
             desde o T04: a lata é a da Kombi de fora (o branco da KombiHerbal) e o
             neon é o rosa da luz de baixo */}
         <group ref={cabineG}>
-          <Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta="#ffffff" neon="#ff3fb0" /></Seguro>
+          {/* (leveza A) a cabine (kombi-interior.glb) só monta com a câmera de dentro */}
+          <SoQuando teste={dentroDeVerdade}><Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta="#ffffff" neon="#ff3fb0" /></Seguro></SoQuando>
         </group>
         <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
         <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
