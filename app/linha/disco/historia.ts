@@ -247,6 +247,9 @@ export const CENA_CASA_DISCO: Cena = {
 // ?parte=casa.holo: pula a chegada e o tambor, que são do T37 e do T06)
 export const CENA_CASA_HOLO: Cena = { ...CENA_CASA_DISCO, passos: CENA_CASA_DISCO.passos.slice(CENA_CASA_DISCO.passos.findIndex((p) => p.t === "fala" && p.texto === "guardei umas coisas dos velhos tempos. pra vc é tudo novo")) }
 
+// (T06) o pedaço a partir do tambor (?parte=casa.tambor): ela senta no tapete e chama
+export const CENA_CASA_TAMBOR: Cena = { ...CENA_CASA_DISCO, passos: CENA_CASA_DISCO.passos.slice(CENA_CASA_DISCO.passos.findIndex((p) => p.t === "gesto" && p.id === "tambores") - 1) }
+
 // ── O PRÓLOGO: o bar (LU2CA 19–20/10). A moça do bar (a do copo: um jeito meio
 // robô, muito sensata; é uma das máquinas conscientes, mas não revela) oferece
 // o copo; beber = o loop (a noite volta); recusar e sair do loop: ela manda ele

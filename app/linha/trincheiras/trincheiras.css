@@ -1,4 +1,4 @@
-/* /teste/trincheiras (T11) */
+/* as trincheiras (T11; T63: dentro do jogo, app/linha/trincheiras) */
 .tr-raiz { position: fixed; inset: 0; background: #1a0f24; color: #f2eefa; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; font-family: var(--font-geist-sans), system-ui, sans-serif; }
 .tr-cvs { position: absolute !important; inset: 0; }
 .tr-hud { position: absolute; inset: 0; pointer-events: none; padding: calc(12px + env(safe-area-inset-top)) 16px 16px; }
@@ -67,3 +67,12 @@
   .tr-tempo { font-size: 22px; }
   .tr-rec { display: none; }
 }
+
+/* T63: dentro do jogo. Por cima do /linha; chega do escuro da descida e volta pro escuro na subida */
+.tr-raiz.is-jogo { z-index: 72; }
+.tr-raiz.is-jogo::after { content: ""; position: absolute; inset: 0; background: #000; pointer-events: none; animation: tr-chega 1.1s ease-out forwards; }
+.tr-raiz.is-subindo::after { animation: tr-sobe 0.7s ease-in forwards; pointer-events: all; }
+@keyframes tr-chega { from { opacity: 1; } to { opacity: 0; } }
+@keyframes tr-sobe { from { opacity: 0; } to { opacity: 1; } }
+.tr-fim-botoes button[data-subir] { background: #9b8cff; color: #0a0610; border: 0; }
+button.tr-voltar { border: 0; cursor: pointer; }

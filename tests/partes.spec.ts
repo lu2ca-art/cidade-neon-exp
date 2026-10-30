@@ -6,7 +6,7 @@ const PARTES: [string, string | null][] = [
   ["minhoca", null], ["casa", "casa"], ["dunas", "dunas"], ["bar", "bar"], ["oficina", "oficina"],
   ["nectar", "nectar"], ["carreira.feira", "carreira"], ["missao.sexta", "carreira"], ["missao.chuva", "carreira"], ["livre", "livre"],
   // (T02) as 13 missões: o meio da carreira e uma de cada jeito (peça na rua, prova, Guitar ao vivo, só "em breve", subúrbio)
-  ["carreira.meio", "carreira"], ["missao.nizzy", "carreira"], ["missao.xeriff", "carreira"], ["missao.lu2ca", "carreira"], ["missao.lu2ca.letra", "carreira"], ["missao.lu2ca.show", "carreira"], ["missao.ella", "carreira"], ["missao.ella.casa", "carreira"], ["missao.quadra", "carreira"], ["missao.quadra.batida", "carreira"], ["missao.quadra.basquete", "carreira"],
+  ["carreira.meio", "carreira"], ["missao.nizzy", "carreira"], ["missao.xeriff", "carreira"], ["missao.lu2ca", "carreira"], ["missao.lu2ca.letra", "carreira"], ["missao.lu2ca.show", "carreira"], ["missao.ella", "carreira"], ["missao.ella.casa", "carreira"], ["missao.quadra", "carreira"], ["missao.quadra.batida", "carreira"], ["missao.quadra.basquete", "carreira"], ["missao.tuneis.trincheiras", "carreira"],
   // (T03) a loja aberta, com grana
   ["loja", "carreira"],
   // (T09) a missão da oficina, passo a passo, e a lojinha das melhorias depois dela
@@ -17,6 +17,8 @@ const PARTES: [string, string | null][] = [
   ["chegada", "carreira"],
   // (T07) a entrega do holo (a cena da casa a partir dela) e o tutorial do voo
   ["casa.holo", "casa"], ["subir.voo", "subir"],
+  // (T06) o tambor de verdade: a cena da casa a partir do tambor
+  ["casa.tambor", "casa"],
   // (T27) a Kombi que quebra: antes e já na oficina
   ["quebra", "carreira"], ["quebra.oficina", "carreira"],
   // (T44) os rachas: a cidade livre com um carro do mecânico logo à frente
