@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { ATALHOS, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados, saveDo, type Atalho } from "./atalhos"
 import "./teste.css"
@@ -17,7 +17,8 @@ const PAGINAS = [
   { href: "/batida", nome: "B4TIDA", desc: "o estúdio" },
 ]
 
-export function Painel() {
+// (30/10) children: a mesa de testes (Cartoes.tsx), no topo da página
+export function Painel({ children }: { children?: ReactNode }) {
   const router = useRouter()
   const [liberado, setLiberado] = useState(true)
   const [temReal, setTemReal] = useState(false)
@@ -67,10 +68,12 @@ export function Painel() {
   return (
     <main className="ts-raiz">
       <header>
-        <h1>atalhos de teste</h1>
-        <p>Só existe fora do lu2ca.art. Cada atalho troca o save por um pronto; o seu fica guardado e volta no botão lá embaixo. Depois de abrir, toca em <b>entrar</b> e a Kombi aparece no lugar.</p>
+        <h1>mesa de testes</h1>
+        <p>O que está pronto pra você testar, o mais novo em cima. <b>Abrir</b> leva direto pro ponto do jogo; o seu save fica guardado e volta no botão “voltar o meu save”, lá embaixo.</p>
       </header>
-      <h2>dentro do jogo</h2>
+      {children}
+      <h2>atalhos antigos (dentro do jogo)</h2>
+      <p className="ts-nota">Cada atalho troca o save por um pronto. Depois de abrir, toca em <b>entrar</b> e a Kombi aparece no lugar.</p>
       <div className="ts-lista">
         {ATALHOS.map((a) => (
           <button key={a.id} type="button" className="ts-item" onClick={() => ir(a)}>
