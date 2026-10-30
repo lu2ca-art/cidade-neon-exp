@@ -7,57 +7,24 @@ import { TONS } from "./tons"
 import { Trilha, aplicarFadeMinhoca, curvaDistorcao, curvaMinhoca, type CtxLike, type DepsTrilha, type NosFade } from "./disco/trilha"
 import { track, type MusicSource } from "@/lib/analytics"
 
-let ctx: AudioContext | null = null
-let master: GainNode | null = null
-// (LU2CA 22/10, a engrenagem do holo) três volumes de verdade, cada um num
-// GainNode antes do master: a música (rádio, toca-discos, a pista), os efeitos
-// (notas, motor, chiados) e as vozes (notas de voz, ligação). Guardados em
-// localStorage ("cn-volumes"), 0–1
-export type CanalVolume = "musica" | "efeitos" | "vozes"
-const CHAVE_VOL = "cn-volumes"
-export const VOLUMES: Record<CanalVolume, number> = { musica: 1, efeitos: 1, vozes: 1 }
-try {
-  const v = typeof localStorage !== "undefined" ? JSON.parse(localStorage.getItem(CHAVE_VOL) ?? "null") : null
-  if (v) for (const k of ["musica", "efeitos", "vozes"] as const) if (typeof v[k] === "number") VOLUMES[k] = Math.max(0, Math.min(1, v[k]))
-} catch {}
-const bus: Partial<Record<CanalVolume, GainNode>> = {}
-export function definirVolume(k: CanalVolume, v: number) {
-  VOLUMES[k] = Math.max(0, Math.min(1, v))
-  const g = bus[k]
-  if (g && ctx) g.gain.setTargetAtTime(VOLUMES[k], ctx.currentTime, 0.05)
-  try { localStorage.setItem(CHAVE_VOL, JSON.stringify(VOLUMES)) } catch {}
-}
+// (T40b) A MESA DE MIXAGEM (lib/mesa.ts): o AudioContext único do jogo, os 4
+// canais (música, ambiente, efeitos, vozes), o volume geral, o mudo, a
+// prioridade (a voz abaixa a música) e o limitador no fim. Aqui só se usa
+import { CANAIS, VOLUMES, canal, definirVolume, mesaCtx, mudo as mudoMesa, registrarSegurar, volumeEfetivo, vozAbaixa, type Canal, type CanalVolume } from "@/lib/mesa"
+export { VOLUMES, definirVolume, CANAIS, type CanalVolume, type Canal }
 
+let ctx: AudioContext | null = null
 export function audioCtx(): AudioContext | null {
-  if (typeof window === "undefined") return null
-  if (!ctx) {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    if (!AC) return null
-    ctx = new AC()
-    master = ctx.createGain()
-    master.gain.value = 1
-    master.connect(ctx.destination)
-    for (const k of ["musica", "efeitos", "vozes"] as const) {
-      const g = ctx.createGain()
-      g.gain.value = VOLUMES[k]
-      g.connect(master)
-      bus[k] = g
-    }
-  }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {})
+  ctx = mesaCtx()
   return ctx
 }
 
 // os efeitos (e o que não tem canal próprio) saem pelo volume dos efeitos
-function saida(): AudioNode | null {
-  audioCtx()
-  return bus.efeitos ?? master
-}
+function saida(): AudioNode | null { return canal("efeitos") }
 export const saidaEfeitos = saida
-function saidaCanal(k: CanalVolume): AudioNode | null {
-  audioCtx()
-  return bus[k] ?? master
-}
+function saidaCanal(k: Canal): AudioNode | null { return canal(k) }
+// (T40b) o vento, a chuva: o canal do ambiente
+export const saidaAmbiente = () => canal("ambiente")
 // (tambor, 22/10) quem sintetiza som fora daqui sai pelo mesmo mestre (respeita o mudo)
 export function saidaSom(): AudioNode | null { return saida() }
 // (T40) a trilha das missões sai pelo volume da música (respeita o mudo), mas
@@ -126,6 +93,9 @@ export function silenciar(sim: boolean) {
   trilha.segurar(silenciando > 0)
   aplicarAbafo()
 }
+// (T40b) "nunca duas músicas": um app solto (o Guitar Driver, o fliperama) que
+// toca a música dele segura a do jogo pela mesa
+registrarSegurar(silenciar)
 
 // ── Ambiente ────────────────────────────────────────────────
 // Sem ruído de fundo: o LU2CA pediu silêncio fora da música e do motor
@@ -135,9 +105,8 @@ export function ligarChuva() {}
 export function volumeChuva(_v: number, _seg = 0.8) {}
 
 export function mudo(m: boolean) {
-  const c = audioCtx()
-  if (!c || !master) return
-  master.gain.setTargetAtTime(m ? 0 : 1, c.currentTime, 0.1)
+  audioCtx()
+  mudoMesa(m)
 }
 
 // ── Notas ───────────────────────────────────────────────────
@@ -353,7 +322,7 @@ export function moeda() {
 // o vento do deserto (a abertura): ruído grave que sobe e desce devagar
 export function vento(v0 = 0.16) {
   const c = audioCtx()
-  const out = saida()
+  const out = saidaAmbiente()
   if (!c || !out) return null
   const src = c.createBufferSource()
   const buf = c.createBuffer(1, c.sampleRate * 4, c.sampleRate)
@@ -547,9 +516,6 @@ class Player {
   el: HTMLAudioElement | null = null
   detector: DetectorDeTom | null = null
   gain: GainNode | null = null
-  // ducking: abaixa a música por baixo de um áudio de voz (separado do
-  // volume, que a estrada e a chegada mexem)
-  abaixo: GainNode | null = null
   src: string | null = null
   ouvintes = new Set<Ouvinte>()
   private fontes = new WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>()
@@ -571,11 +537,10 @@ class Player {
         const node = c.createMediaElementSource(el)
         this.fontes.set(el, node)
         this.gain = c.createGain()
-        this.abaixo = c.createGain()
         this.analyser = c.createAnalyser()
         this.analyser.fftSize = 256
         this.analyser.smoothingTimeConstant = 0.6
-        node.connect(this.gain).connect(this.abaixo).connect(abafo() ?? out)
+        node.connect(this.gain).connect(abafo() ?? out)
         this.gain.connect(this.analyser)
         const ouvido = c.createAnalyser()
         ouvido.fftSize = 16384
@@ -619,14 +584,10 @@ class Player {
   }
 
   // música lá embaixo enquanto alguém fala, e volta devagar depois. Conta
-  // quem pediu (nota de voz, ligação inteira): só volta quando todos soltam
-  private abaixando = 0
-  abaixar(sim: boolean) {
-    this.abaixando = Math.max(0, this.abaixando + (sim ? 1 : -1))
-    const baixo = this.abaixando > 0
-    if (this.abaixo && ctx) this.abaixo.gain.setTargetAtTime(baixo ? 0.12 : 1, ctx.currentTime, baixo ? 0.15 : 0.6)
-    else if (this.el) this.el.volume = baixo ? 0.12 : 1
-  }
+  // quem pediu (nota de voz, ligação inteira): só volta quando todos soltam.
+  // (T40b) agora é a prioridade da mesa: abaixa TODA a música (a trilha da
+  // missão também, que antes passava por cima da voz) e o ambiente
+  abaixar(sim: boolean) { vozAbaixa(sim) }
 
   pausar() { this.el?.pause() }
   // volta a tocar o que tava tocando, sem mexer no que vem depois
@@ -678,7 +639,7 @@ class Voz {
     const out = saidaCanal("vozes")
     if (c && out) {
       try { c.createMediaElementSource(el).connect(out) } catch {}
-    } else el.volume = VOLUMES.vozes
+    } else el.volume = volumeEfetivo("vozes")
     this.el = el
     return el
   }
@@ -701,7 +662,7 @@ class Voz {
       u.lang = "pt-BR"
       u.pitch = tom
       u.rate = 1.05
-      u.volume = VOLUMES.vozes
+      u.volume = volumeEfetivo("vozes") // (T40b) a voz do navegador fica fora do grafo: respeita o geral e o mudo assim
       u.onend = () => this.parou()
       u.onerror = () => this.parou()
       this.sintese = u
@@ -900,6 +861,8 @@ class PistaSom {
   private analyser: AnalyserNode | null = null
   private dados = new Uint8Array(128)
   private rate = 1
+  private ultCorte = -1
+  private ultAlvo = -1
   private garantir() {
     if (this.el) return this.el
     const el = new Audio()
@@ -991,8 +954,12 @@ class PistaSom {
     const c = audioCtx()
     if (c && this.filtro && this.gain) {
       // no ar o som abafa (o vento por cima); no chão, aberto
-      this.filtro.frequency.setTargetAtTime(!contato ? 700 : abafada ? 900 : 20000, c.currentTime, 0.08)
-      this.gain.gain.setTargetAtTime((contato ? (abafada ? 0.55 : 1) : 0.35) * (radio ? 0.12 : 1) * this.fade(), c.currentTime, 0.05)
+      // (T40b) a rádio ligada CALA a pista (antes ficava a 12% por baixo: duas
+      // músicas juntas). E só manda alvo novo quando ele muda (não a cada quadro)
+      const corte = !contato ? 700 : abafada ? 900 : 20000
+      const alvo = Math.round((contato ? (abafada ? 0.55 : 1) : 0.35) * (radio ? 0 : 1) * this.fade() * 100) / 100
+      if (corte !== this.ultCorte) { this.ultCorte = corte; this.filtro.frequency.setTargetAtTime(corte, c.currentTime, 0.08) }
+      if (alvo !== this.ultAlvo) { this.ultAlvo = alvo; this.gain.gain.setTargetAtTime(alvo, c.currentTime, radio ? 0.25 : 0.05) }
     }
   }
   parar() { this.el?.pause(); this.src = null }

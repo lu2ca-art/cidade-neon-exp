@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { silenciar } from "../som"
+import { canal } from "@/lib/mesa"
 import { desenharHud } from "../../neon-tiles/cena"
 import { novoPlacar, type Placar } from "../../neon-tiles/motor"
 import { ac, carregarBuffer, montarShow, type Show as SomShow } from "../../neon-tiles/som"
@@ -99,7 +100,7 @@ export function ShowAfinador({ faixa, lugar, cor, popularidade, onFim, letra }: 
     const prof = ctx.createGain(); prof.gain.value = 0
     lfo.connect(prof).connect(atr.delayTime)
     const vol = ctx.createGain(); vol.gain.value = 0.95
-    src.connect(atr).connect(vol).connect(ctx.destination)
+    src.connect(atr).connect(vol).connect(canal("musica") ?? ctx.destination)
     const ini = ctx.currentTime + 0.08
     src.start(ini, j.inicio); lfo.start(ini)
     j.profundidade = prof.gain

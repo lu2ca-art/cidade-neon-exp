@@ -4,18 +4,11 @@
 // como no Guitar Hero. Sem stems, a mix passa por um filtro que abafa. A galera é ruído filtrado
 // que cresce com o medidor. Baquetas no count-in, grito no fim.
 
-let ctx: AudioContext | null = null
+import { canal, mesaCtx } from "@/lib/mesa"
 
-export function ac() {
-  if (typeof window === "undefined") return null
-  if (!ctx) {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    if (!AC) return null
-    ctx = new AC()
-  }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {})
-  return ctx
-}
+// (T40b) o contexto é o da mesa de mixagem (lib/mesa.ts): um só no jogo inteiro,
+// com o volume geral, o mudo e o limitador
+export function ac() { return mesaCtx() }
 
 function ruido(c: AudioContext, seg = 2) {
   const b = c.createBuffer(1, c.sampleRate * seg, c.sampleRate)
@@ -81,7 +74,7 @@ export function montarShow(): Show | null {
   const c = ac()
   if (!c) return null
   const out = c.createGain()
-  out.connect(c.destination)
+  out.connect(canal("musica") ?? c.destination)
   const filtro = c.createBiquadFilter()
   filtro.type = "lowpass"
   filtro.frequency.value = 20000
@@ -218,7 +211,7 @@ export function clique(c: AudioContext, quando: number, forte = false) {
   g.gain.setValueAtTime(0, quando)
   g.gain.linearRampToValueAtTime(0.35, quando + 0.002)
   g.gain.exponentialRampToValueAtTime(0.0001, quando + 0.06)
-  o.connect(g).connect(c.destination)
+  o.connect(g).connect(canal("efeitos") ?? c.destination)
   o.start(quando)
   o.stop(quando + 0.08)
 }

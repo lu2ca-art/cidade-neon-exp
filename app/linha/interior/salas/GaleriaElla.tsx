@@ -23,6 +23,7 @@
 // orçamento: 1 luz pontual (a da planta), as coisas repetidas instanciadas,
 // as pinturas desenhadas uma vez só em telinhas de 128 px.
 
+import { canal, mesaCtx } from "@/lib/mesa"
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
@@ -198,17 +199,20 @@ function texturaHalo(): THREE.CanvasTexture {
 // ── o som: um AudioContext pra casa toda, ligado no primeiro toque ──
 interface AudioCasa { ac: () => AudioContext | null; saida: () => GainNode | null }
 function useAudioCasa(): AudioCasa {
-  const r = useRef<{ ac: AudioContext | null; saida: GainNode | null; chuva: AudioBufferSourceNode | null }>({ ac: null, saida: null, chuva: null })
+  const r = useRef<{ ac: AudioContext | null; saida: GainNode | null; chuva: AudioBufferSourceNode | null; nos: AudioNode[] }>({ ac: null, saida: null, chuva: null, nos: [] })
   const gl = useThree((s) => s.gl)
   useEffect(() => {
     const m = r.current
     const ligar = () => {
       if (!m.ac) {
         try {
-          const ac = new AudioContext()
+          // (T40b) o contexto da mesa (antes um AudioContext próprio, direto na caixa,
+          // fora do mudo e dos volumes): as notas no canal dos efeitos, a chuva no do ambiente
+          const ac = mesaCtx(), fx = canal("efeitos"), amb = canal("ambiente")
+          if (!ac || !fx || !amb) return
           const saida = ac.createGain(); saida.gain.value = 0.7
           const eco = criarEco(ac), molhado = ac.createGain(); molhado.gain.value = 0.32
-          saida.connect(ac.destination); saida.connect(eco).connect(molhado).connect(ac.destination)
+          saida.connect(fx); saida.connect(eco).connect(molhado).connect(fx)
           // a chuva no vidro: ruído filtrado, baixinho, sempre (a voz dela tem chuva atrás)
           const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = buf.getChannelData(0)
           let ult = 0
@@ -216,8 +220,8 @@ function useAudioCasa(): AudioCasa {
           const src = ac.createBufferSource(); src.buffer = buf; src.loop = true
           const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400
           const g = ac.createGain(); g.gain.value = 0.16
-          src.connect(lp).connect(g).connect(ac.destination); src.start()
-          m.ac = ac; m.saida = saida; m.chuva = src
+          src.connect(lp).connect(g).connect(amb); src.start()
+          m.ac = ac; m.saida = saida; m.chuva = src; m.nos = [saida, molhado, g]
         } catch { return }
       }
       if (m.ac.state === "suspended") void m.ac.resume()
@@ -230,8 +234,9 @@ function useAudioCasa(): AudioCasa {
       el.removeEventListener("pointerdown", ligar)
       window.removeEventListener("pointerdown", ligar)
       try { m.chuva?.stop() } catch {}
-      void m.ac?.close()
-      m.ac = null; m.saida = null; m.chuva = null
+      // a mesa é do jogo todo: não fecha o contexto, só solta os nós da casa
+      for (const n of m.nos) { try { n.disconnect() } catch {} }
+      m.ac = null; m.saida = null; m.chuva = null; m.nos = []
     }
   }, [gl])
   return useMemo(() => ({ ac: () => (r.current.ac?.state === "running" ? r.current.ac : null), saida: () => r.current.saida }), [])

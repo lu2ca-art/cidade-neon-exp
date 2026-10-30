@@ -12,6 +12,7 @@
 // no repo antes do lançamento).
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { ligarElemento } from "@/lib/mesa"
 import { PISTAS } from "../estrada/pistas"
 import type { Save } from "../estado"
 
@@ -83,7 +84,9 @@ export function Freq(_props: { save: Pick<Save, "objetos"> }) {
   useEffect(() => { pularRef.current = pular })
   useEffect(() => {
     if (!faixa) return
+    // (T40b) a prévia passa pelo canal da música da mesa (o volume, o mudo, o limitador)
     const a = audio.current ?? (audio.current = new Audio())
+    ligarElemento(a, "musica")
     a.src = faixa.src
     a.currentTime = 0
     a.volume = vol

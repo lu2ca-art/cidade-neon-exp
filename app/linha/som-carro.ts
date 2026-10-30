@@ -137,17 +137,34 @@ function ruido(c: AudioContext) {
   return (ruidoBuf = b)
 }
 
+// (T40b, 30/10: o dono, "tá horrível, tem que ser muuuito mais baixo") o
+// volume caiu pra ~17% do T62 (0,28 → 0,048) e o timbre ficou mais macio:
+// as rodas passam num passa-baixa (antes um passa-banda que chiava no agudo),
+// o "tec" das emendas é metade, o vento é um passa-baixa e o brilho do neon
+// está bem mais baixo. Os números moram aqui, num lugar só.
+export const PATINS = {
+  volume: 0.048, // o T62 era 0.28
+  rodaMin: 0.05, rodaMax: 0.16, // o rolar (antes de `volume`)
+  rodaCorte: 320, rodaCorteVel: 520, // Hz: o passa-baixa das rodas abre com a velocidade
+  tec: 0.12, // a profundidade do "tec" das emendas (era 0.25)
+  ventoMin: 0.05, ventoMax: 0.18,
+  ventoCorte: 500, ventoCorteVel: 900, // Hz
+  neonMin: 0.001, neonMax: 0.0015, // o brilho fino no ar (era 0.0025 + 0.004)
+}
+
 export function montarPatins() {
   const c = audioCtx()
   if (!c) return null
+  const P = PATINS
   const out = c.createGain()
-  out.gain.value = 0.28 // a mesma mistura do motor: bem embaixo da música
+  out.gain.value = 0
+  out.gain.setTargetAtTime(P.volume, c.currentTime, 0.3) // entra de mansinho
   out.connect(saidaEfeitos() ?? c.destination)
   const nb = ruido(c)
 
-  // as rodas: ruído num passa-banda largo + um zumbido grave e macio (o gel)
+  // as rodas: ruído num passa-baixa macio + um zumbido grave (o gel)
   const sR = c.createBufferSource(); sR.buffer = nb; sR.loop = true
-  const bpR = c.createBiquadFilter(); bpR.type = "bandpass"; bpR.frequency.value = 700; bpR.Q.value = 0.8
+  const bpR = c.createBiquadFilter(); bpR.type = "lowpass"; bpR.frequency.value = P.rodaCorte; bpR.Q.value = 0.4
   const gR = c.createGain(); gR.gain.value = 0
   const hum = c.createOscillator(); hum.type = "sine"; hum.frequency.value = 95
   const gH = c.createGain(); gH.gain.value = 0.25
@@ -160,10 +177,10 @@ export function montarPatins() {
   hum.connect(gH).connect(gR)
   rodas.connect(out)
 
-  // o vento neon: ruído num passa-banda que sobe com a velocidade + dois
-  // tons finos levemente desafinados (o tremido do neon)
+  // o vento neon: ruído num passa-baixa que abre com a velocidade + dois
+  // tons finos levemente desafinados (o tremido do neon), bem lá embaixo
   const sV = c.createBufferSource(); sV.buffer = nb; sV.loop = true; sV.loopStart = 0.7
-  const bpV = c.createBiquadFilter(); bpV.type = "bandpass"; bpV.frequency.value = 900; bpV.Q.value = 0.6
+  const bpV = c.createBiquadFilter(); bpV.type = "lowpass"; bpV.frequency.value = P.ventoCorte; bpV.Q.value = 0.3
   const gV = c.createGain(); gV.gain.value = 0
   const n1 = c.createOscillator(); n1.type = "sine"; n1.frequency.value = 1760
   const n2 = c.createOscillator(); n2.type = "sine"; n2.frequency.value = 1766.5
@@ -180,16 +197,16 @@ export function montarPatins() {
       if (agora - ult < 66) return
       ult = agora
       const t = c.currentTime, v = Math.max(0, Math.min(1, v01))
-      const roda = chao && v > 0.01 ? 0.05 + v * 0.11 : 0
-      gR.gain.setTargetAtTime(roda, t, roda ? 0.08 : 0.05)
-      bpR.frequency.setTargetAtTime(520 + v * 1100, t, 0.1)
-      hum.frequency.setTargetAtTime(80 + v * 70, t, 0.1)
+      const roda = chao && v > 0.01 ? P.rodaMin + v * (P.rodaMax - P.rodaMin) : 0
+      gR.gain.setTargetAtTime(roda, t, roda ? 0.12 : 0.08)
+      bpR.frequency.setTargetAtTime(P.rodaCorte + v * P.rodaCorteVel, t, 0.15)
+      hum.frequency.setTargetAtTime(80 + v * 70, t, 0.15)
       tec.frequency.setTargetAtTime(1.5 + v * 7, t, 0.2)
-      gTec.gain.setTargetAtTime(chao ? 0.25 : 0, t, 0.1)
-      const vento = ar ? 0.05 + v * 0.13 : 0
-      gV.gain.setTargetAtTime(vento, t, ar ? 0.25 : 0.12)
-      bpV.frequency.setTargetAtTime(700 + v * 1500, t, 0.3)
-      gN.gain.setTargetAtTime(ar ? 0.0025 + v * 0.004 : 0, t, ar ? 0.4 : 0.12)
+      gTec.gain.setTargetAtTime(chao ? P.tec : 0, t, 0.15)
+      const vento = ar ? P.ventoMin + v * (P.ventoMax - P.ventoMin) : 0
+      gV.gain.setTargetAtTime(vento, t, ar ? 0.3 : 0.15)
+      bpV.frequency.setTargetAtTime(P.ventoCorte + v * P.ventoCorteVel, t, 0.3)
+      gN.gain.setTargetAtTime(ar ? P.neonMin + v * P.neonMax : 0, t, ar ? 0.5 : 0.15)
     },
     parar() {
       out.gain.setTargetAtTime(0, c.currentTime, 0.15)
