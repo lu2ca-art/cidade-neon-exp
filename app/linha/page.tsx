@@ -9,7 +9,7 @@
 // liberando coisa nova aos poucos.
 
 import { registrarRacha } from "./disco/corredores"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
 import { ROTEIROS, VOZES, type ChatId } from "./roteiros"
@@ -180,6 +180,20 @@ function confShow(id: string): { faixa: FaixaShow; lugar: string; cor: string; p
   return null
 }
 
+// (leveza B) a hora que a estrada mostra (o letreiro do holo) anda a cada 10 s
+// aqui dentro: só a estrada redesenha, a página não (a hora mora numa ref)
+function RelogioVivo({ hora, ouvinteRef, children }: { hora: number; ouvinteRef: RefObject<((h: number) => void) | null>; children: (hora: number) => ReactNode }) {
+  const [h, setH] = useState(hora)
+  // o save mudou a hora (marco, dormir, a chegada): segue o save
+  const [doSave, setDoSave] = useState(hora)
+  if (hora !== doSave) { setDoSave(hora); setH(hora) }
+  useEffect(() => {
+    ouvinteRef.current = setH
+    return () => { if (ouvinteRef.current === setH) ouvinteRef.current = null }
+  }, [ouvinteRef])
+  return <>{children(h)}</>
+}
+
 export default function LinhaPage() {
   // o caderno do dono aberto pausa a corrida (Caderno.tsx)
   const [caderno, setCaderno] = useState(false)
@@ -315,8 +329,19 @@ export default function LinhaPage() {
   // página, esconder a aba, abrir um app ou o caderno: grava na hora
   const gravarTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const gravarSujo = useRef(false)
-  // o que vai pro disco: o save com o que ainda mora nas refs (gravarComo, mais embaixo)
+  // (leveza B) a hora (a cada 10 s) e o tanque (a cada 3 s) que a estrada manda
+  // moram aqui; o save só recebe nos marcos (troca de turno, virada do dia,
+  // tanque na reserva/cheio/seco). O localStorage grava sempre com eles
+  const vivo = useRef<{ hora?: number; tanque?: number }>({})
+  // o save com o que ainda mora nas refs (vale pras contas que leem a hora ou o tanque)
+  const comVivo = useCallback((s: Save): Save => {
+    const v = vivo.current
+    const hora = v.hora ?? s.hora, tanque = v.tanque ?? s.tanque
+    return hora === s.hora && tanque === s.tanque ? s : { ...s, hora, tanque }
+  }, [])
+  // o que vai pro disco: o save com o que ainda mora nas refs
   const gravarComo = useRef((s: Save) => s)
+  gravarComo.current = comVivo
   const gravarJa = useCallback(() => {
     if (gravarTimer.current) { clearTimeout(gravarTimer.current); gravarTimer.current = null }
     if (!gravarSujo.current) return
@@ -344,6 +369,29 @@ export default function LinhaPage() {
   // o caderno e os apps do celular (janelas) leem o save do localStorage: abriu, grava antes
   useEffect(() => { if (caderno) gravarJa() }, [caderno, gravarJa])
   useEffect(() => { if (tela.t === "app") gravarJa() }, [tela.t, gravarJa])
+  // mudou no save por outro caminho (a chegada, o posto, o galão): a ref segue o save
+  useEffect(() => { vivo.current.hora = save.hora }, [save.hora])
+  useEffect(() => { vivo.current.tanque = save.tanque }, [save.tanque])
+  const horaViva = useCallback(() => vivo.current.hora ?? saveRef.current.hora ?? 18, [])
+  // o relógio da estrada na tela (o letreiro do holo) segue a cada 10 s sem redesenhar a página
+  const ouvinteHora = useRef<((h: number) => void) | null>(null)
+  const onHora = useCallback((h: number) => {
+    const antes = vivo.current.hora ?? saveRef.current.hora ?? 18
+    vivo.current.hora = h
+    ouvinteHora.current?.(h)
+    const virou = virouODia(antes, h)
+    if (virou || turnoDe(antes) !== turnoDe(h)) setSave((s) => ({ ...s, hora: h, dia: virou ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))
+    else agendarGravar()
+  }, [agendarGravar])
+  // (o zero sempre sobe: antes o último pouquinho nunca virava 0 e a Kombi ficava na reserva pra sempre)
+  const onTanque = useCallback((n: number) => {
+    const salvo = saveRef.current.tanque ?? 1
+    const antes = vivo.current.tanque ?? salvo
+    vivo.current.tanque = n
+    const marco = (n <= 0 && salvo > 0) || Math.abs(salvo - n) >= 0.05 || (n < 0.1) !== (salvo < 0.1) || (n > 0.97) !== (salvo > 0.97)
+    if (marco) setSave((s) => ({ ...s, tanque: n }))
+    else if (Math.abs(antes - n) >= 0.005) agendarGravar()
+  }, [agendarGravar])
 
   const atualizar = useCallback((f: (s: Save) => Save) => setSave(f), [])
 
@@ -661,7 +709,7 @@ export default function LinhaPage() {
     }
     // cada lugar tem a sua hora (relogio.ts): fora dela, fechado
     const hr = LUGARES[id]?.horario ?? "noite"
-    const h = saveRef.current.hora ?? 18
+    const h = horaViva()
     if (!abertoAgora(hr, h)) {
       avisar(LUGARES[id].nome, turnoDe(h) === "ocio" ? "a cidade dorme. só música até as 8h" : `fechado agora. abre às ${abreAs(hr)}`, "#8a93b8")
       return
@@ -695,7 +743,7 @@ export default function LinhaPage() {
     if (LUGARES[id].fora) setViagem({ lugar: id, missao: a.missao, pegar: a.pegar })
     else setCena({ lugar: id, missao: a.missao, pegar: a.pegar })
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
-  }, [cinema, avisar, D])
+  }, [cinema, avisar, D, horaViva])
   // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = a oficina
   // (T02) saiu da oficina: a Kombi solar + turbo, a água foi toda. É a porta da
   // missão da oficina (as melhorias da Kombi): a recompensa e, sem show, o jogo segue
@@ -1241,19 +1289,20 @@ export default function LinhaPage() {
     setNoPosto(null)
     // o item "Encha o tanque no posto" (e os +10) só conta saindo — lá dentro
     // o saldo tem que zerar no tanque (o galão dá "saldo insuficiente")
-    setSave((x) => (emTutorial(x) && (x.tanque ?? 0) > 0.97 ? { ...x, tutorial: [...new Set([...(x.tutorial ?? []), "posto"])] } : x))
+    setSave((x) => (emTutorial(x) && (comVivo(x).tanque ?? 0) > 0.97 ? { ...x, tutorial: [...new Set([...(x.tutorial ?? []), "posto"])] } : x))
     if (primeira) {
       setSave((x) => ({ ...x, tutorial: [...new Set([...(x.tutorial ?? []), "lu2ca-posto"])] }))
       // a loja de discos chama (rascunho): o disco novo que ele falou
       setTimeout(() => avisar("LOJA", "tem disco novo na prateleira · abre no celular", "#ffc857"), 2500)
     }
-  }, [noPosto, avisar])
-  const encherTanque = useCallback(() => setSave((s) => {
+  }, [noPosto, avisar, comVivo])
+  const encherTanque = useCallback(() => setSave((s0) => {
+    const s = comVivo(s0)
     const pago = (s.tanque ?? 1) > 0.97 ? null : gastar(s, PRECO_TANQUE)
     if (!pago) return s
     track("mission_step", { mission_id: "linha-posto", step: "tanque", perfil: s.perfil ?? "?", fio_pos: -1 })
     return { ...pago, tanque: 1 }
-  }), [])
+  }), [comVivo])
   const encherGalao = () => setSave((s) => { const pago = s.galao !== "vazio" ? null : gastar(s, PRECO_GALAO); return pago ? { ...pago, galao: "cheio" } : s })
 
   // a missão de agora e o resumo da caixa (no canto da tela)
@@ -1423,7 +1472,7 @@ export default function LinhaPage() {
     setTimeout(() => setRastroMinhoca(false), 2700)
     // (T37, J1/J2: 4: "refletir o céu atual da hora") o céu da chegada é o da hora
     // de quem joga (CHEGADA.ceu; antes era sempre 16h30, de tarde)
-    const hr = horaDaChegada(saveRef.current.hora)
+    const hr = horaDaChegada(vivo.current.hora ?? saveRef.current.hora)
     const primeira = historiaDe(saveRef.current).fase === "minhoca"
     setSave((s) => ({ ...(primeira ? comHistoria(s, (h) => ({ ...h, fase: "casa" as const })) : s), hora: hr }))
     setSaltoHora({ h: hr, id: Date.now() })
@@ -1728,6 +1777,7 @@ export default function LinhaPage() {
       <div className="l-palco">
         {/* camada de baixo: a estrada (pausa quando o celular está aberto) */}
         {(estrada || tela.t === "corrida") && !emSala && (
+          <RelogioVivo hora={save.hora ?? 18} ouvinteRef={ouvinteHora}>{(horaTela) => (
           <Corrida
             save={save}
             nivel={nivel}
@@ -1766,23 +1816,22 @@ export default function LinhaPage() {
             alvo={HIST ? alvoDisco : save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel)}
             levando={levarDrewboy(save) ? "copo" : null}
             tanque={save.tanque ?? 1}
-            // (o zero sempre salva: antes o último pouquinho nunca virava 0 e a Kombi ficava na reserva pra sempre)
-            onTanque={(n) => setSave((s) => (Math.abs((s.tanque ?? 1) - n) < 0.005 && !(n <= 0 && (s.tanque ?? 1) > 0) ? s : { ...s, tanque: n }))}
+            onTanque={onTanque}
             onPosto={() => abrirPostoRef.current()}
-            hora={save.hora ?? 18}
-            onHora={(h) => setSave((s) => ({ ...s, hora: h, dia: virouODia(s.hora ?? 18, h) ? (s.dia ?? 1) + 1 : s.dia ?? 1 }))}
+            hora={horaTela}
+            onHora={onHora}
             dia={save.dia ?? 1}
             saltoHora={saltoHora}
             regadas={regadasHoje}
             onRegar={regouCanteiro}
             onMontanha={(n) => { setSave((s) => ganhar(s, n)); if (n >= 2) eventoDaRua("montanha") }}
             onAbastecer={(o) => {
-              const s0 = saveRef.current
+              const s0 = comVivo(saveRef.current)
               // de patins (a gasolina acabou): o galão vai direto no tanque; se já tinha um cheio, só despeja
               if (o === "despejar") {
                 const tinha = s0.galao === "cheio"
                 if (!tinha && (s0.neon ?? 0) < PRECO_GALAO) return false
-                setSave((s) => ({ ...s, neon: (s.neon ?? 0) - (tinha ? 0 : PRECO_GALAO), galao: "vazio", tanque: Math.min(1, (s.tanque ?? 0) + GALAO) }))
+                setSave((s) => ({ ...s, neon: (s.neon ?? 0) - (tinha ? 0 : PRECO_GALAO), galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) }))
                 return true
               }
               if (o === "tanque" ? (s0.neon ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.neon ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
@@ -1839,6 +1888,7 @@ export default function LinhaPage() {
             noiteRepete={save.objetos.includes("copo") ? 0 : (save.loops?.bar ?? 0)}
             foraDoAr={apagao}
           />
+          )}</RelogioVivo>
         )}
         {/* O RELÓGIO (13/10): de dia dá pra cochilar até a noite; de noite e
             na madrugada, dormir na Kombi (o dia seguinte começa às 8h) */}
@@ -2130,7 +2180,7 @@ export default function LinhaPage() {
         {tela.t === "app" && tela.id === "ouvir" && <Ouvir onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarNaLoja} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
-          <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (s.tanque ?? 0) + GALAO) } : s))} />
+          <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) } : s))} />
         )}
 
         {tela.t === "final" && <Final save={save} onVoltar={() => setTela({ t: "home" })} />}
