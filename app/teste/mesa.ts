@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "kombi.dentro",
+    nome: "A Kombi por dentro",
+    data: "2026-10-30",
+    tarefa: "T59",
+    olhar: "Você já começa sentado dentro dela, na 1ª pessoa: toca-discos, MPC, rádio, painel antigo, chão de grama e teto de madeira. Dirija um pouco e veja se fica leve.",
+    perguntas: [
+      "Por dentro a lata fica branca como a de fora, ou azul?",
+      "O para-brisa dividido, com a coluna no meio, fica?",
+    ],
+  },
+  {
     parte: "torre",
     nome: "A rotatória lá no alto e os monumentos",
     data: "2026-10-30",
