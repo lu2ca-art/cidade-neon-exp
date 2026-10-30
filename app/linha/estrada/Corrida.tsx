@@ -24,7 +24,7 @@ import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
 import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
@@ -1080,6 +1080,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   useEffect(() => { input.current.semVoo = voaNao }, [voaNao])
   // (B10) as modificações compradas com água valem na física (o propulsor, o turbo)
   const mods = useMemo(() => historia?.mods ?? [], [historia?.mods])
+  // (leveza A, problema 7) props estáveis pra <Cena> (memo): sem objeto/função nova a cada render
+  const floresAsf = useMemo(() => ({ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }), [leva, flores.regadas, regandoFlor, dePatins, mods])
+  const abrirEstante = useCallback(() => setEstante(true), [])
   useEffect(() => { input.current.mods = mods; mangueiraRef.current = mods.includes("mangueira") }, [mods])
   const [perfil, setPerfil] = useState(false)
   // (22/10, o Omnitrix) a bolinha (o mapa-mini) e o anel: com a missão recolhida, o toque abre a checklist em volta
@@ -2311,7 +2314,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={() => setEstante(true)} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={{ leva, regadas: flores.regadas, regando: regandoFlor, visivel: dePatins || mods.includes("mangueira") }} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
           {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
           {discoM && semKombi && <Seguro nome="veiculos"><VeiculosCena M={M} jogo={jogo} estado={veiculosRef} ativo={semKombi} /></Seguro>}
         </Canvas>
@@ -3172,7 +3175,7 @@ function apagarPostes(c: { postes: THREE.InstancedMesh; reflexos: THREE.Instance
   cor.needsUpdate = true
 }
 
-function Cena({
+function CenaBase({
   tags,
   M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null,
 }: {
@@ -3887,7 +3890,30 @@ function Cena({
         }
       })
     }
-    return { lista, setas, barreiras }
+    // (leveza A, problema 8) as partes fixas de todos os pórticos numa malha
+    // só por material: a estrutura (2 pés + a viga), os fundos escuros e as
+    // barras de cor. Os textos (uma textura cada) e as bolinhas seguem à parte
+    const est: THREE.BufferGeometry[] = [], fundos: THREE.BufferGeometry[] = [], barras: THREE.BufferGeometry[] = []
+    const mg = new THREE.Matrix4(), mp = new THREE.Matrix4(), ml = new THREE.Matrix4(), cor = new THREE.Color()
+    const giro = new THREE.Matrix4().makeRotationY(Math.PI)
+    for (const g of lista) {
+      mg.makeRotationY(g.rot).setPosition(g.pos)
+      for (const l of [-1, 1]) est.push(new THREE.BoxGeometry(0.6, 13.2, 0.6).applyMatrix4(ml.makeTranslation(l * (MEIA + FAIXA + 1.2), 6.6, 0).premultiply(mg)))
+      est.push(new THREE.BoxGeometry((MEIA + FAIXA + 1.2) * 2, 0.6, 0.6).applyMatrix4(ml.makeTranslation(0, 12.1, 0).premultiply(mg)))
+      for (const pn of g.paineis) {
+        mp.makeTranslation(-pn.x, 8.8, -0.3).multiply(giro).premultiply(mg)
+        fundos.push(new THREE.PlaneGeometry(7.6, 5.6).applyMatrix4(ml.makeTranslation(0, 0, -0.05).premultiply(mp)))
+        const b = new THREE.PlaneGeometry(7.6, 0.22).applyMatrix4(ml.makeTranslation(0, -2.95, 0).premultiply(mp))
+        cor.set(pn.cor)
+        const n = b.getAttribute("position").count, cs = new Float32Array(n * 3)
+        for (let i = 0; i < n; i++) { cs[i * 3] = cor.r; cs[i * 3 + 1] = cor.g; cs[i * 3 + 2] = cor.b }
+        b.setAttribute("color", new THREE.BufferAttribute(cs, 3))
+        barras.push(b)
+      }
+    }
+    const juntar = (gs: THREE.BufferGeometry[]) => { const m = gs.length ? mergeGeometries(gs, false) : null; for (const x of gs) x.dispose(); return m }
+    const fixas = { estrutura: juntar(est), fundos: juntar(fundos), barras: juntar(barras) }
+    return { lista, setas, barreiras, fixas }
   }), [M, circuitos, a, nLib])
 
   // embaixo de cada placa, uma bolinha por missão em aberto naquela área:
@@ -4311,7 +4337,7 @@ function Cena({
 
   // ── loop ──
   const tmp = useMemo(() => ({
-    f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3(),
+    f: new THREE.Vector3(), r: new THREE.Vector3(), up: new THREE.Vector3(), p: new THREE.Vector3(), tras: new THREE.Vector3(),
     cor: new THREE.Color(), alvo: new THREE.Vector3(), olhar: new THREE.Vector3(), m: new THREE.Matrix4(), q: new THREE.Quaternion(), q2: new THREE.Vector3(),
     qYaw: new THREE.Quaternion(), qRoll: new THREE.Quaternion(), camOlhar: new THREE.Vector3(), d: new THREE.Object3D(),
     qMarca: new THREE.Quaternion(), qDeriva: new THREE.Quaternion(), roda: new THREE.Vector3(),
@@ -4347,7 +4373,8 @@ function Cena({
   const kParadaT = useRef(false)
   const vModelo = useMemo(() => veiculoPorId(veiculo), [veiculo])
   const kParadaZero = useRef(0)
-  const luzBaixo = useRef<THREE.PointLight>(null)
+  // (leveza A, problema 5) o neon rosa de baixo virou brilho no chão (sem luz)
+  const luzBaixo = useRef<THREE.Mesh>(null)
   const camInit = useRef(false)
   const falasT = useRef({ prox: 6, i: 0, raspa: 0 })
 
@@ -5526,7 +5553,8 @@ function Cena({
     tmp.up.crossVectors(tmp.r, tmp.f).normalize()
     tmp.r.crossVectors(tmp.f, tmp.up).normalize()
     // base: x = direita, y = cima, z = trás (a Kombi aponta pra -Z)
-    tmp.m.makeBasis(tmp.r, tmp.up, tmp.f.clone().negate())
+    // (leveza A, problema 10) sem clone() no quadro: o -f vai num vetor reaproveitado
+    tmp.m.makeBasis(tmp.r, tmp.up, tmp.tras.copy(tmp.f).negate())
     const car = carro.current!
     car.quaternion.setFromRotationMatrix(tmp.m)
     const yaw = (j.giroAr ?? 0) + (vivo ? -j.deriva - j.steer * 0.11 * Math.min(1, Math.abs(j.v) / 25) * Math.sign(j.v || 1) : -Math.atan2(j.vx, Math.max(Math.abs(j.v), 4)) * Math.sign(j.v || 1) - a.curv * j.v * Math.abs(j.v) * 0.0025 - j.deriva)
@@ -6388,7 +6416,7 @@ function Cena({
     // a herbal é fechada: a cabine (o interior) só aparece de dentro
     if (cabineG.current) cabineG.current.visible = dentroAgora && !combRef.current.patins
     // a luz magenta de baixo (o brilho no asfalto) pintava a cabine de rosa
-    if (luzBaixo.current) luzBaixo.current.intensity = dentroAgora ? 0 : 45
+    if (luzBaixo.current) luzBaixo.current.visible = !dentroAgora
     hudN.current++
     if (hudN.current % 4 === 0) ev.hud(j)
   })
@@ -6520,36 +6548,21 @@ function Cena({
           <meshBasicMaterial vertexColors side={THREE.DoubleSide} toneMapped={false} />
         </mesh>
       ))}
+      {placas.fixas.estrutura && <mesh geometry={placas.fixas.estrutura}><meshStandardMaterial color="#1c1f3a" /></mesh>}
+      {placas.fixas.fundos && <mesh geometry={placas.fixas.fundos}><meshBasicMaterial color="#070817" transparent opacity={0.9} side={THREE.DoubleSide} /></mesh>}
+      {placas.fixas.barras && <mesh geometry={placas.fixas.barras}><meshBasicMaterial vertexColors toneMapped={false} /></mesh>}
       <Estatico>
       {placas.lista.map((g) => (
         <group key={g.id} position={g.pos} rotation={[0, g.rot, 0]}>
-          {[-1, 1].map((l) => (
-            <mesh key={l} position={[l * (MEIA + FAIXA + 1.2), 6.6, 0]}>
-              <boxGeometry args={[0.6, 13.2, 0.6]} />
-              <meshStandardMaterial color="#1c1f3a" />
-            </mesh>
-          ))}
-          <mesh position={[0, 12.1, 0]}>
-            <boxGeometry args={[(MEIA + FAIXA + 1.2) * 2, 0.6, 0.6]} />
-            <meshStandardMaterial color="#1c1f3a" />
-          </mesh>
           <mesh position={[0, 13.4, -0.3]} rotation={[0, Math.PI, 0]}>
             <planeGeometry args={[16, 2]} />
             <meshBasicMaterial map={g.topo} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
           </mesh>
           {g.paineis.map((p, i) => (
             <group key={i} position={[-p.x, 8.8, -0.3]} rotation={[0, Math.PI, 0]}>
-              <mesh position={[0, 0, -0.05]}>
-                <planeGeometry args={[7.6, 5.6]} />
-                <meshBasicMaterial color="#070817" transparent opacity={0.9} side={THREE.DoubleSide} />
-              </mesh>
               <mesh>
                 <planeGeometry args={[7.4, 5.1]} />
                 <meshBasicMaterial map={p.tex} transparent toneMapped={false} side={THREE.DoubleSide} depthWrite={false} />
-              </mesh>
-              <mesh position={[0, -2.95, 0]}>
-                <planeGeometry args={[7.6, 0.22]} />
-                <meshBasicMaterial color={p.cor} toneMapped={false} />
               </mesh>
               {p.area && tagTex[p.area] && (
                 <group position={[0, -3.75, 0]}>
@@ -6583,12 +6596,13 @@ function Cena({
 
       {colunas.map((c) => (
         <group key={`col${c.id}`} position={c.pos}>
-          <mesh position={[0, 140, 0]}>
-            <cylinderGeometry args={[2.2, 2.2, 280, 16, 1, true]} />
+          {/* (leveza A, problema 8) colunas de 160 m (eram 280): ainda passam dos prédios do bairro, com menos pixel aditivo */}
+          <mesh position={[0, 80, 0]}>
+            <cylinderGeometry args={[2.2, 2.2, 160, 16, 1, true]} />
             <meshBasicMaterial color={c.cor} transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
           </mesh>
-          <mesh position={[0, 140, 0]}>
-            <cylinderGeometry args={[0.6, 0.6, 280, 10, 1, true]} />
+          <mesh position={[0, 80, 0]}>
+            <cylinderGeometry args={[0.6, 0.6, 160, 10, 1, true]} />
             <meshBasicMaterial color={c.cor} transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
           </mesh>
           <mesh position={[0, 0.08, 0]} rotation-x={-Math.PI / 2}>
@@ -6665,10 +6679,16 @@ function Cena({
           {/* (leveza A) a cabine (kombi-interior.glb) só monta com a câmera de dentro */}
           <SoQuando teste={dentroDeVerdade}><Seguro nome="cabine"><Cabine balanco={kBalanco} disco={disco} objetos={objetos} carona={carona} onTocaDiscos={onTocaDiscos} volante={kVolante} vel={kVel} tinta="#ffffff" neon="#ff3fb0" /></Seguro></SoQuando>
         </group>
-        <pointLight ref={luzBaixo} position={[0, 0.3, 0]} color="#ff3fb0" intensity={45} distance={10} decay={2} />
-        <pointLight position={[0, 1, -4]} color="#fff1d6" intensity={60} distance={26} decay={2} />
-        {/* luz de recorte vinda da cidade, pra Kombi não sumir no escuro */}
-        <pointLight position={[0, 4, 4]} color="#9fd8ff" intensity={25} distance={9} decay={2} />
+        {/* (leveza A, problema 5) eram 3 luzes pontuais presas na Kombi (o neon
+            rosa de baixo, a luz quente da frente e o recorte azul de cima), e cada
+            pixel iluminado pagava as 3. Agora: o neon de baixo é um brilho aditivo
+            no chão (sem luz) e a frente + o recorte viraram 1 luz só, um pouco
+            acima e atrás do meio (ilumina a traseira que a câmera vê e o asfalto) */}
+        <mesh ref={luzBaixo} position={[0, 0.06, 0]} rotation-x={-Math.PI / 2} renderOrder={1}>
+          <planeGeometry args={[6.5, 9]} />
+          <meshBasicMaterial map={tex.brilho} color="#ff3fb0" transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <pointLight position={[0, 2.6, 0.8]} color="#ffe9e4" intensity={75} distance={26} decay={2} />
       </group>
       <Seguro nome="lente"><Cinema maxLente={NIVEIS[qual].lente} /></Seguro>
     </>
@@ -6676,6 +6696,11 @@ function Cena({
 }
 
 /* eslint-enable react-hooks/immutability, react-hooks/purity */
+
+// (leveza A, problema 7) a cena só re-renderiza quando uma prop muda de verdade
+// (o save que sobe a cada poucos segundos não redesenha a cidade). Depende das
+// props estáveis: callbacks com useCallback e objetos com useMemo (lote B, page.tsx)
+const Cena = memo(CenaBase)
 
 const FALAS = [
   { de: "D-Bee", texto: "o núcleo apagou os radares nessa rua. aproveita" },
@@ -6686,13 +6711,20 @@ const FALAS = [
   { de: "Drewboy", texto: "sobe a rampa com tudo" },
 ]
 
+// (leveza A, problema 10) o vetor do lado é reaproveitado e os buffers são
+// escritos direto (antes: um new Vector3 e dois arrays por chamada, no quadro)
+const LADO_FAISCA = new THREE.Vector3()
 function soltarFaiscas(f: { n: number; pos: Float32Array; vel: Float32Array; vida: Float32Array; prox: number }, car: THREE.Group | null, lado: number) {
   if (!car) return
-  const r = new THREE.Vector3(1, 0, 0).applyQuaternion(car.quaternion)
+  const r = LADO_FAISCA.set(1, 0, 0).applyQuaternion(car.quaternion)
   for (let k = 0; k < 3; k++) {
-    const i = f.prox++ % f.n
-    f.pos.set([car.position.x + r.x * lado * 0.95, car.position.y + 0.4, car.position.z + r.z * lado * 0.95], i * 3)
-    f.vel.set([r.x * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3, 2 + Math.random() * 4, r.z * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3], i * 3)
+    const i = f.prox++ % f.n, o = i * 3
+    f.pos[o] = car.position.x + r.x * lado * 0.95
+    f.pos[o + 1] = car.position.y + 0.4
+    f.pos[o + 2] = car.position.z + r.z * lado * 0.95
+    f.vel[o] = r.x * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3
+    f.vel[o + 1] = 2 + Math.random() * 4
+    f.vel[o + 2] = r.z * lado * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3
     f.vida[i] = 0.5 + Math.random() * 0.4
   }
 }
