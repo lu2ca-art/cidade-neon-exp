@@ -92,7 +92,7 @@ export const MESA: Cartao[] = [
     nome: "As trincheiras dentro do jogo",
     data: "2026-10-30",
     tarefa: "T63",
-    olhar: "Você desce pros túneis sem trocar de página. Corra uma volta e toque em \"subir pro subúrbio\": a porta da missão abre.",
+    olhar: "A Kombi para na boca do túnel; você entra sem ela.",
     perguntas: [
       "Quando as motos chegam? (ex.: depois de ganhar a corrida)",
       "A descida é um escuro rápido. Quer ver a Kombi entrando no túnel antes?",
@@ -103,7 +103,7 @@ export const MESA: Cartao[] = [
     nome: "O deserto e os robôs caídos",
     data: "2026-10-30",
     tarefa: "T39",
-    olhar: "A areia com ondas do vento e grãos que brilham. No caminho pra cidade, 44 robôs meio enterrados tremem e voam quando a Kombi passa por cima.",
+    olhar: "Os robôs zumbis não dão nada: é só atropelar e eles saem voando, igual aos carros.",
     perguntas: [
       "As ondas da areia estão fortes, fracas ou no ponto? E o brilho dos grãos?",
       "Os robôs caídos (quantos e como se mexem) estão bons por enquanto?",
