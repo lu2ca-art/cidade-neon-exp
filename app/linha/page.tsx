@@ -51,7 +51,7 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_TAMBOR, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
@@ -285,6 +285,8 @@ export default function LinhaPage() {
     if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "palcos") palcosAoEntrar.current = true
     // (T07) ?parte=casa.holo: a cena da casa começa na entrega do holo
     if (atalhosLiberados() && new URLSearchParams(location.search).get("cena") === "holo") setCenaHolo(true)
+    // (T06) ?parte=casa.tambor: a cena da casa começa no tambor
+    if (atalhosLiberados() && new URLSearchParams(location.search).get("cena") === "tambor") setCenaTambor(true)
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -911,6 +913,7 @@ export default function LinhaPage() {
   const [recompensa, setRecompensa] = useState<Recompensa13 | null>(null)
   // (T07) o tutorial do holo: a tela lá fora e os passos feitos (no save, recarregar não perde)
   const [cenaHolo, setCenaHolo] = useState(false)
+  const [cenaTambor, setCenaTambor] = useState(false)
   const marcarTutorial = useCallback((id: string) => setSave((s) => comHistoria(s, (h) => ((h.tutorial ?? []).includes(id) ? h : { ...h, tutorial: [...(h.tutorial ?? []), id] }))), [])
   const [rua, setRua] = useState(false)
   useEffect(() => {
@@ -2014,7 +2017,7 @@ export default function LinhaPage() {
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : CENA_CASA_DISCO) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}

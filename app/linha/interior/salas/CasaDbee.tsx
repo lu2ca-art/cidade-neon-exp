@@ -13,6 +13,7 @@ import * as THREE from "three"
 import { sinalizar } from "../bus"
 import { Caixa, Npc, Sala, Toque, useExplorar, type Coisa, type V3 } from "../comum"
 import { Camera, type Plano, type SalaProps } from "../motor"
+import { DjembeDela, DjembeSeu } from "./Djembe"
 
 const AZUL = "#3d7bff"
 const QUENTE = "#ffcf8a"
@@ -32,6 +33,8 @@ const PLANOS: Record<string, Plano> = {
   tapete: { pos: [1.2, 1.5, 1.6], olha: [-0.6, 0.35, -0.6], fov: 54 },
   parede: { pos: [0.4, 1.5, 1.4], olha: [0.2, 1.6, -2.4], fov: 58 },
   dbeeDisco: { pos: [-1.1, 1.55, -0.6], olha: [0.55, 1.35, 0.75], fov: 52 },
+  // (T06) o tambor: sentado atrás do seu djembê, ela do outro lado com o dela
+  tambor: { pos: [0.05, 1.22, 0.78], olha: [-0.62, 0.5, -1.05], fov: 56 },
   // (T07) a entrega do holo: ela de frente, a mão estendida pra ele (o holo na mão é o disco/EntregaHolo.tsx, por cima)
   entrega: { pos: [-0.75, 1.5, 2.45], olha: [0.5, 1.2, 0.75], fov: 50 },
 }
@@ -72,7 +75,8 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProp
       if (estado.pos === 0) return PLANOS.abertura
       if (estado.gesto === "holo" || /é seu|aparelho pequeno/.test(estado.texto ?? "")) return PLANOS.entrega
       if (estado.pos === 1 || /estante|livros/.test(estado.texto ?? "")) return PLANOS.parede
-      if (estado.gesto === "tambores" || /tambor|tocam junto/.test(estado.texto ?? "")) return PLANOS.tapete
+      if (estado.gesto === "tambores") return PLANOS.tambor
+      if (/tambor|tocam junto/.test(estado.texto ?? "")) return PLANOS.tapete
       return estado.falando === "D-Bee" ? PLANOS.dbeeDisco : PLANOS.dentro
     }
     // a porta abre (plano aberto), depois ela de perto
@@ -132,7 +136,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProp
       {inicio && <Npc cor={AZUL} pos={[0, 0, 2.2]} vira={0} falando={estado.falando === "D-Bee"} />}
       {inicio && <pointLight position={[0.2, 1.8, 3.6]} color="#ffb070" intensity={5} distance={4} decay={2} />}
       {/* (disco) a D-Bee em casa, os instrumentos na parede, os tambores no tapete */}
-      {disco && <CasaDisco falando={estado.falando === "D-Bee"} />}
+      {disco && <CasaDisco falando={estado.falando === "D-Bee"} tocando={estado.gesto === "tambores" || /senta no tapete|tocam junto|é quem eu achei/.test(estado.texto ?? "")} />}
       {/* quem chega */}
       {GRUPO.filter((g) => chegaram.includes(g.quem)).map((g) => (
         <Npc key={g.quem} cor={g.cor} pos={g.pos} vira={Math.PI} falando={estado.falando === g.quem} />
@@ -257,11 +261,15 @@ function Janela({ pos, deserto = false }: { pos: V3; deserto?: boolean }) {
 }
 
 // (disco, LU2CA 20/10: "instrumentos na parede, tambores no tapete")
-function CasaDisco({ falando }: { falando: boolean }) {
+const DBEE_SENTADA: V3 = [-1.05, 0, -1.42]
+function CasaDisco({ falando, tocando }: { falando: boolean; tocando: boolean }) {
   return (
     <>
-      <Npc cor={AZUL} pos={[0.55, 0, 0.75]} vira={-2.4} falando={falando} />
-      {/* o tapete redondo e os três tambores */}
+      {/* (T06) no tambor ela senta no banquinho atrás do djembê dela; antes e depois, de pé */}
+      {tocando
+        ? <Npc cor={AZUL} pos={DBEE_SENTADA} pose="sentada" vira={0.59} falando={falando} />
+        : <Npc cor={AZUL} pos={[0.55, 0, 0.75]} vira={-2.4} falando={falando} />}
+      {/* o tapete redondo */}
       <mesh rotation-x={-Math.PI / 2} position={[-0.5, 0.01, -0.5]}>
         <circleGeometry args={[1.05, 24]} />
         <meshStandardMaterial color="#7a2a34" roughness={1} />
@@ -270,12 +278,15 @@ function CasaDisco({ falando }: { falando: boolean }) {
         <ringGeometry args={[0.8, 0.92, 24]} />
         <meshStandardMaterial color="#e0b060" roughness={1} />
       </mesh>
-      {([[-0.9, -0.8, 0.22, 0.5], [-0.25, -0.95, 0.18, 0.4], [-0.55, -0.15, 0.15, 0.32]] as const).map(([x, z, r, h], i) => (
-        <group key={i} position={[x, 0, z]}>
-          <mesh position={[0, h / 2, 0]}><cylinderGeometry args={[r, r * 0.85, h, 16]} /><meshStandardMaterial color={["#8a5a2c", "#a0683a", "#6a4424"][i]} /></mesh>
-          <mesh position={[0, h + 0.005, 0]} rotation-x={-Math.PI / 2}><circleGeometry args={[r * 0.96, 16]} /><meshStandardMaterial color="#efe4cc" roughness={0.9} /></mesh>
-        </group>
-      ))}
+      {/* (T06) os dois djembês (Djembe.tsx): o dela, virado pra ela, e o seu, na sua frente */}
+      <DjembeDela pos={[-0.88, 0.01, -0.98]} vira={Math.PI + 0.37} cor={AZUL} />
+      <DjembeSeu pos={[-0.18, 0.01, -0.12]} vira={0.25} />
+      <Caixa pos={[DBEE_SENTADA[0], 0.19, DBEE_SENTADA[2]]} tam={[0.34, 0.38, 0.3]} cor="#4a3020" />
+      {/* um tamborzinho velho encostado */}
+      <group position={[-1.3, 0, -0.2]}>
+        <mesh position={[0, 0.16, 0]}><cylinderGeometry args={[0.15, 0.13, 0.32, 16]} /><meshStandardMaterial color="#6a4424" /></mesh>
+        <mesh position={[0, 0.325, 0]} rotation-x={-Math.PI / 2}><circleGeometry args={[0.144, 16]} /><meshStandardMaterial color="#efe4cc" roughness={0.9} /></mesh>
+      </group>
       {/* na parede do fundo: duas guitarras, um violino e um pandeiro */}
       {([[-1.4, 1.55, 0.25], [-0.75, 1.5, -0.2]] as const).map(([x, y, rz], i) => (
         <group key={i} position={[x, y, -2.44]} rotation={[0, 0, rz]}>

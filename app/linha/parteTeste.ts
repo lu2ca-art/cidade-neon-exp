@@ -22,7 +22,7 @@ const GRANA = { neon: 420, agua: 40, popularidade: 35, economia: 1 }
 
 function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "inicio" || parte === "minhoca") return null // save novo: começa no buraco de minhoca
-  if (["casa", "casa.holo"].includes(parte)) return { fase: "casa", holo: false }
+  if (["casa", "casa.holo", "casa.tambor"].includes(parte)) return { fase: "casa", holo: false }
   // (T07) o tutorial do voo e do turbo: a Kombi já voa, os passos das dunas feitos
   if (parte === "subir.voo") return { fase: "subir", holo: true, drone: true, aguaDbee: true, passos13: ["dbee:arte", "dbee:jogo", "oficina:arte", "oficina:jogo"], feitas13: ["dbee", "oficina"], portas: ["holo", "violao", "kombi-melhorias"], mods: ["solar", "turbo", "propulsao"], tutorial: ["recompensa", "mapa", "rota", "gps", "drift", "anel"] }
   if (["dunas", "bar"].includes(parte)) return { fase: parte, holo: true }
@@ -91,7 +91,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -116,6 +116,8 @@ export function aplicarParteDeTeste(): boolean {
   if (parte === "rachas") url.searchParams.set("racha", "perto")
   // (T07) a cena da casa começa na entrega do holo (pula a chegada e o tambor)
   if (parte === "casa.holo") url.searchParams.set("cena", "holo")
+  // (T06) a cena da casa começa no tambor (ela senta no tapete e chama)
+  if (parte === "casa.tambor") url.searchParams.set("cena", "tambor")
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")
   history.replaceState(null, "", url.pathname + (url.search ? url.search : ""))

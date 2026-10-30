@@ -17,6 +17,8 @@ const PARTES: [string, string | null][] = [
   ["chegada", "carreira"],
   // (T07) a entrega do holo (a cena da casa a partir dela) e o tutorial do voo
   ["casa.holo", "casa"], ["subir.voo", "subir"],
+  // (T06) o tambor de verdade: a cena da casa a partir do tambor
+  ["casa.tambor", "casa"],
   // (T27) a Kombi que quebra: antes e já na oficina
   ["quebra", "carreira"], ["quebra.oficina", "carreira"],
   // (T44) os rachas: a cidade livre com um carro do mecânico logo à frente

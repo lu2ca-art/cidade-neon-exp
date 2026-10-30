@@ -2867,6 +2867,13 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-tambor-frase li.is-quase { background: rgba(255,160,90,0.7); }
 .l-tambor-dica { font: 11px var(--mono); color: rgba(255,255,255,0.55); }
 @media (prefers-reduced-motion: reduce) { .l-tambor-pele.is-torto { animation: none; } }
+/* (T06) o tipo de cada nota da frase: grave = bolinha cheia maior (centro), tapa = losango (borda) */
+.l-tambor-frase li.is-grave { width: 18px; height: 18px; margin-top: -2px; border-color: rgba(255,150,80,0.75); }
+.l-tambor-frase li.is-tapa { border-radius: 3px; rotate: 45deg; width: 12px; height: 12px; margin-top: 1px; border-color: rgba(255,240,200,0.85); }
+/* (T06) com os djembês em 3D na sala: o toque é na pele lá; aqui só o tempo e a frase */
+.l-tambor.is-3d, .l-cena.is-livre > .l-tambor.is-3d { pointer-events: none; cursor: default; }
+.l-tambor.is-3d .l-tambor-pele { display: none; }
+.l-tambor.is-3d .l-tambor-roda { min-height: 16px; }
 
 /* ── (T02, 28/10) as 13 missões: a recompensa (a porta abriu), a rua (o Guitar Driver
    aberto desde o começo) e a prova de uma missão ── */
