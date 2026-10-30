@@ -241,9 +241,10 @@ function Copo({ pos, cor, bebido, ativo, onToque }: { pos: V3; cor: string; bebi
 }
 
 // a muda: um vasinho com três folhas crescendo devagar
+const UM = new THREE.Vector3(1, 1, 1) // (leveza C: nada de new no quadro)
 function Muda({ pos }: { pos: V3 }) {
   const g = useRef<THREE.Group>(null)
-  useFrame((_, dt) => { if (g.current) g.current.scale.lerp(new THREE.Vector3(1, 1, 1), Math.min(1, dt * 1.2)) })
+  useFrame((_, dt) => { if (g.current) g.current.scale.lerp(UM, Math.min(1, dt * 1.2)) })
   return (
     <group position={pos}>
       <mesh position={[0, 0.06, 0]}>

@@ -36,6 +36,7 @@ export const olhar = { yaw: 0, pitch: 0, arrastando: false, travado: false }
 
 // ── a câmera da sala: vai até o plano pedido, devagar, e respira ──
 export interface Plano { pos: V3; olha: V3; fov?: number }
+const EIXO_Y = new THREE.Vector3(0, 1, 0) // (leveza C: nada de new no quadro)
 
 // `vel`: quão rápido ela chega (1,6 é o normal; T22b: o filme da Ella usa bem
 // devagar, a câmera vai chegando na planta durante as falas)
@@ -43,7 +44,8 @@ export function Camera({ plano, rapido = false, vel }: { plano: Plano; rapido?: 
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const alvoPos = useMemo(() => new THREE.Vector3(), [])
   const alvoOlha = useMemo(() => new THREE.Vector3(), [])
-  const olhaAgora = useRef<THREE.Vector3 | null>(null)
+  const olhaAgora = useMemo(() => new THREE.Vector3(), [])
+  const comecou = useRef(false)
   const dir = useMemo(() => new THREE.Vector3(), [])
   useEffect(() => {
     alvoPos.set(...plano.pos)
@@ -52,15 +54,15 @@ export function Camera({ plano, rapido = false, vel }: { plano: Plano; rapido?: 
   useFrame((s, dt) => {
     const k = Math.min(1, dt * (vel ?? (rapido ? 4 : 1.6)))
     camera.position.lerp(alvoPos, k)
-    if (!olhaAgora.current) olhaAgora.current = alvoOlha.clone()
-    olhaAgora.current.lerp(alvoOlha, k)
+    if (!comecou.current) { comecou.current = true; olhaAgora.copy(alvoOlha) }
+    olhaAgora.lerp(alvoOlha, k)
     // respiração da câmera na mão
     const t = s.clock.elapsedTime
     camera.position.y += Math.sin(t * 0.9) * 0.002
     // olhar em volta: solta e volta pro plano
     if (!olhar.arrastando) { olhar.yaw *= 1 - Math.min(1, dt * 1.5); olhar.pitch *= 1 - Math.min(1, dt * 1.5) }
-    dir.copy(olhaAgora.current).sub(camera.position)
-    dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), olhar.yaw)
+    dir.copy(olhaAgora).sub(camera.position)
+    dir.applyAxisAngle(EIXO_Y, olhar.yaw)
     dir.y += olhar.pitch * dir.length()
     camera.lookAt(camera.position.x + dir.x, camera.position.y + dir.y, camera.position.z + dir.z)
     // o fov do plano é pensado deitado; com o celular em pé a imagem fica
