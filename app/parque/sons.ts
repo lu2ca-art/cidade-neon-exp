@@ -1,13 +1,12 @@
 // Os sons da montanha-russa, sintetizados: a corrente estalando na subida, o
 // vento que cresce com a velocidade e o ronco das rodas no trilho.
 
-let ctx: AudioContext | null = null
-export function ac() {
-  if (typeof window === "undefined") return null
-  if (!ctx) { const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext; if (!AC) return null; ctx = new AC() }
-  if (ctx.state === "suspended") void ctx.resume()
-  return ctx
-}
+import { canal, mesaCtx } from "@/lib/mesa"
+
+// (T40b) o contexto e a saída são os da mesa de mixagem (lib/mesa.ts): um só
+// no jogo inteiro, com o volume, o mudo e o limitador
+export function ac() { return mesaCtx() }
+const fx = (c: AudioContext) => canal("efeitos") ?? c.destination
 
 function ruido(c: AudioContext, seg: number) {
   const b = c.createBuffer(1, Math.ceil(c.sampleRate * seg), c.sampleRate)
@@ -16,12 +15,14 @@ function ruido(c: AudioContext, seg: number) {
   return b
 }
 
+// (T40b) o ruído do estalo é feito uma vez (antes: um buffer novo a cada estalo)
+let estaloBuf: AudioBuffer | null = null
 export function estalo() {
   const c = ac(); if (!c) return
   const t = c.currentTime, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain()
-  s.buffer = ruido(c, 0.04); f.type = "bandpass"; f.frequency.value = 2400; f.Q.value = 3
+  s.buffer = estaloBuf && estaloBuf.sampleRate === c.sampleRate ? estaloBuf : (estaloBuf = ruido(c, 0.04)); f.type = "bandpass"; f.frequency.value = 2400; f.Q.value = 3
   g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.035)
-  s.connect(f).connect(g).connect(c.destination); s.start(t)
+  s.connect(f).connect(g).connect(fx(c)); s.start(t)
 }
 
 // vento + rodas: um laço contínuo, o volume e o brilho seguem a velocidade
@@ -30,11 +31,11 @@ export function criarVento() {
   const vento = c.createBufferSource(); vento.buffer = ruido(c, 2); vento.loop = true
   const fv = c.createBiquadFilter(); fv.type = "lowpass"; fv.frequency.value = 300
   const gv = c.createGain(); gv.gain.value = 0
-  vento.connect(fv).connect(gv).connect(c.destination)
+  vento.connect(fv).connect(gv).connect(canal("ambiente") ?? c.destination) // (T40b) o vento é ambiente
   const roda = c.createOscillator(); roda.type = "sawtooth"; roda.frequency.value = 40
   const fr = c.createBiquadFilter(); fr.type = "lowpass"; fr.frequency.value = 160
   const gr = c.createGain(); gr.gain.value = 0
-  roda.connect(fr).connect(gr).connect(c.destination)
+  roda.connect(fr).connect(gr).connect(fx(c))
   vento.start(); roda.start()
   return {
     vel(v: number) {
@@ -59,6 +60,6 @@ export function sino() {
     const o = c.createOscillator(), g = c.createGain()
     o.type = "triangle"; o.frequency.value = f
     g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.6)
-    o.connect(g).connect(c.destination); o.start(t + d); o.stop(t + d + 0.7)
+    o.connect(g).connect(fx(c)); o.start(t + d); o.stop(t + d + 0.7)
   }
 }

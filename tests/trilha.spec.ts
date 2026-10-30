@@ -181,3 +181,38 @@ test("fonteSom: pedir a rádio fora do alcance fica no disco e volta sozinha per
   expect(fonteSom.get()).toBe("off")
   void disco
 })
+
+// ── (T40b) a mesa de mixagem ──
+test("T40b: um AudioContext só no jogo (a mesa); ninguém mais liga direto na caixa", async () => {
+  const { readFileSync, readdirSync, statSync } = await import("node:fs")
+  const arquivos: string[] = []
+  const andar = (d: string) => {
+    for (const n of readdirSync(d)) {
+      const p = join(d, n)
+      if (statSync(p).isDirectory()) andar(p)
+      else if (/\.(ts|tsx)$/.test(n)) arquivos.push(p)
+    }
+  }
+  for (const d of ["app/linha", "app/fliperama"]) andar(join(process.cwd(), d))
+  for (const f of ["app/neon-tiles/som.ts", "app/parque/sons.ts", "app/ginasio/sons.ts"]) arquivos.push(join(process.cwd(), f))
+  const contextos = arquivos.filter((f) => /new (AudioContext|AC|webkitAudioContext)\(\)/.test(readFileSync(f, "utf8")))
+  expect(contextos).toEqual([])
+})
+
+test("T40b: a mesa tem 4 canais, a voz abaixa a música e o limitador só pega o pico", async () => {
+  const { CANAIS, MESA, VOLUMES } = await import("../lib/mesa")
+  expect([...CANAIS]).toEqual(["musica", "ambiente", "efeitos", "vozes"])
+  expect(Object.keys(VOLUMES).sort()).toEqual(["ambiente", "efeitos", "geral", "musica", "vozes"])
+  expect(MESA.duckMusica).toBeGreaterThan(0)
+  expect(MESA.duckMusica).toBeLessThan(0.5)
+  expect(MESA.limiar).toBeLessThan(0)
+  expect(MESA.limiar).toBeGreaterThan(-4)
+  expect(MESA.razao).toBeGreaterThanOrEqual(12)
+})
+
+test("T40b: o patins está a ~15–20% do volume do T62 (0,28)", async () => {
+  const { PATINS } = await import("../app/linha/som-carro")
+  const razao = PATINS.volume / 0.28
+  expect(razao).toBeGreaterThanOrEqual(0.15)
+  expect(razao).toBeLessThanOrEqual(0.2)
+})

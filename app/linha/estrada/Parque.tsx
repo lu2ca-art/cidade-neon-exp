@@ -208,6 +208,8 @@ export function Parque({ M, passeio }: { M: Mundo; passeio: React.RefObject<Pass
   const bracos = useRef(false)
   const st = useRef({ u: 0, v: 0, E: 0, fase: "parado" as "parado" | "estacao" | "corrente" | "solto" | "freio", velMax: 0, bracoT: 0, descidaT: 0, tique: 0 })
   const som = useRef<ReturnType<typeof criarVento>>(null)
+  // (T40b) saiu do parque no meio da volta: o vento e as rodas param (antes ficavam em loop)
+  useEffect(() => () => { som.current?.parar(); som.current = null }, [])
   const mat = useMemo(() => new THREE.Matrix4(), [])
   const descida = useMemo(() => ({ ini: corrente.fim, fim: corrente.fim + 0.09 }), [corrente])
 

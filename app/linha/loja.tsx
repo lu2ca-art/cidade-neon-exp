@@ -13,7 +13,8 @@ import { DISCOS, PRECO_DISCO, duracao, type DiscoLoja } from "./discos"
 import type { Save } from "./estado"
 import { CATEGORIAS, daCategoria, saldo, tem as temItem, type ItemLoja } from "./economia"
 import type { Categoria } from "./economia-rascunho"
-import { disco as toca, fonteSom } from "./som"
+import { disco as toca, fonteSom, silenciar } from "./som"
+import { ligarElemento } from "@/lib/mesa"
 import { AppTopo } from "./os"
 import { track } from "@/lib/analytics"
 
@@ -124,8 +125,16 @@ function Detalhe({ d, tem, neon, onComprar, onFechar }: { d: DiscoLoja; tem: boo
   const [ouvindo, setOuvindo] = useState<number | null>(null)
   const [comprou, setComprou] = useState(false)
   useEffect(() => () => { audio.current?.pause() }, [])
+  // (T40b) ouvindo um trecho: a música do jogo (a pista, a rádio, a trilha) cala,
+  // e o trecho passa pelo canal da música da mesa. Nunca duas músicas juntas
+  const ouvindoAlgo = ouvindo !== null
+  useEffect(() => {
+    if (!ouvindoAlgo) return
+    silenciar(true)
+    return () => silenciar(false)
+  }, [ouvindoAlgo])
   const ouvir = (i: number) => {
-    if (!audio.current) audio.current = new Audio()
+    if (!audio.current) { audio.current = new Audio(); ligarElemento(audio.current, "musica") }
     const el = audio.current
     if (ouvindo === i) { el.pause(); setOuvindo(null); return }
     // o toca-discos e a rádio param enquanto ouve o trecho

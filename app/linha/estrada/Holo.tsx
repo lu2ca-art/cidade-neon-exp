@@ -726,9 +726,12 @@ export function AjudaControles() {
 // (som.ts, "cn-volumes"); a qualidade é o nível que o jogo já mede
 // (qualidade.ts, "cn-qualidade": densidade de pixels, lente, gotas, carros) e
 // vale na hora; e a lista dos controles. Fechar (×, Esc, tocar fora) volta pro jogo ──
+// (T40b) a mesa de mixagem: o volume geral e os 4 canais
 const CANAIS: { k: CanalVolume; t: string; d: string }[] = [
-  { k: "musica", t: "música", d: "rádio, toca-discos, a pista" },
-  { k: "efeitos", t: "efeitos", d: "motor, notas, chiados" },
+  { k: "geral", t: "geral", d: "tudo junto" },
+  { k: "musica", t: "música", d: "rádio, toca-discos, a pista, a missão" },
+  { k: "ambiente", t: "ambiente", d: "vento, chuva" },
+  { k: "efeitos", t: "efeitos", d: "motor, patins, notas, chiados" },
   { k: "vozes", t: "vozes", d: "notas de voz, ligações" },
 ]
 const LENTE = ["sem lente", "lente leve", "lente cheia"]

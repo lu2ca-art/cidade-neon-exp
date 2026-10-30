@@ -3,7 +3,8 @@
 // num <audio> no volume da música, e o jogo embaixo fica em silêncio.
 
 import { useEffect, useMemo, useRef } from "react"
-import { VOLUMES, audioCtx, saidaSom, silenciar } from "../../som"
+import { audioCtx, saidaSom, silenciar } from "../../som"
+import { ligarElemento } from "@/lib/mesa"
 
 export function bip(f: number, dur = 0.08, tipo: OscillatorType = "square", vol = 0.12, quando = 0, fFim?: number) {
   const c = audioCtx(), out = saidaSom()
@@ -46,6 +47,17 @@ export const palma = (quando = 0) => { ruido(0.05, 0.18, quando, 6000); ruido(0.
 // a música da faixa num <audio> (o volume da música). `tempo()` é o relógio da
 // peça em segundos: o do áudio quando ele toca; senão, o do bpm (aparelho mudo,
 // navegador sem som): nada trava.
+let elP: HTMLAudioElement | null = null
+function elPeca() {
+  if (elP) return elP
+  const a = new Audio()
+  a.preload = "auto"
+  a.crossOrigin = "anonymous"
+  a.volume = 0.9
+  ligarElemento(a, "musica")
+  return (elP = a)
+}
+
 export function useMusica(src: string | null, ligado = true) {
   const audio = useRef<HTMLAudioElement | null>(null)
   const t0 = useRef(0)
@@ -57,12 +69,14 @@ export function useMusica(src: string | null, ligado = true) {
     if (!ligado) return
     t0.current = performance.now()
     if (!src) return
-    const a = new Audio(src)
-    a.volume = Math.max(0, Math.min(1, VOLUMES.musica * 0.9))
-    a.preload = "auto"
+    // (T40b) um <audio> só pra todas as peças, ligado no canal da música da
+    // mesa (antes: um novo por peça, fora do grafo, surdo ao mudo e ao volume)
+    const a = elPeca()
+    a.src = src
+    a.currentTime = 0
     audio.current = a
     a.play().catch(() => { audio.current = null })
-    return () => { a.pause(); a.src = ""; audio.current = null }
+    return () => { a.pause(); audio.current = null }
   }, [src, ligado])
   return useMemo(() => ({
     tempo: () => {
