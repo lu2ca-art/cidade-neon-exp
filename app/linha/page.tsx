@@ -20,6 +20,7 @@ import { Chat, type Destino } from "./chat"
 import { MISSOES, abertas, alvoDe, ativa, etapaDe, type Alvo, POPULARIDADE } from "./missoes"
 import { CenaLugar, type ResultadoCena } from "./cena"
 import { CENA_INICIO, CENA_MUBARAK_DREW, cenaDe, type Reliquia } from "./cenas"
+import { CENA_GALERIA_ELLA } from "./disco/ella"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
 import { LUGARES, type LugarId } from "./lugares"
 import { proximaFreq } from "./radio"
@@ -66,10 +67,10 @@ import { type FaixaShow, type ResultadoShow } from "./disco/Show"
 import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } from "./disco/xenom"
 import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
-import type { Manchete } from "./disco/historia"
+import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
-import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, feita13, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
@@ -232,7 +233,7 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   // inicio: a casa da D-Bee na abertura (CENA_INICIO)
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" } | null>(null)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -980,6 +981,32 @@ export default function LinhaPage() {
     else if (como.t === "basquete") setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
     // (T57) desceu a rampa da boca do túnel: a corrida é lá embaixo, nas trincheiras
     else if (como.t === "trincheiras") descerTrincheiras(id)
+    // (T22) a casa da pessoa: entra e só sai depois de passar por tudo
+    else if (como.t === "casa") entrarNaCasa(id)
+  }
+  // (T22) a casa de uma missão (a galeria da Ella): a sala em 3D e a cena dela.
+  // As peças que apontam pra casa ficam feitas juntas no fim (fimCasaMissao)
+  const casaAberta = useRef<MissaoId | null>(null)
+  const entrarNaCasa = (id: MissaoId) => {
+    const lugar = MISSOES13[id].lugar.lugar
+    if (!lugar) return
+    casaAberta.current = id
+    setAoVivo(null)
+    setCinema("lugar")
+    setCena({ lugar, missao: MISSOES13[id].faixa ?? "chuva", pegar: false, especial: "ella-galeria" })
+    track("mission_step", { mission_id: `disco-${id}`, step: "casa", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }
+  const fimCasaMissao = (r: ResultadoCena) => {
+    const id = casaAberta.current
+    casaAberta.current = null
+    pecaAberta.current = null
+    setCena(null)
+    setCinema(null)
+    if (!id || !r.completa) return
+    const casa = (q: "arte" | "jogo") => MISSOES13[id][q].como?.t === "casa"
+    setSave((s) => comHistoria(s, (h) => ordemDe(id).filter(casa).reduce<HistoriaDisco>((x, q) => concluir(x, id, q), { ...h, aberta13: undefined })))
+    // ainda no lugar: a porta (a recompensa) abre direto
+    setTimeout(() => chegouRef.current(id), 900)
   }
   // a peça acabou bem: fica feita e, ainda no lugar, a próxima (ou a porta) segue direto
   const pecaFeitaNaMissao = (id: MissaoId, qual: "arte" | "jogo") => {
@@ -1020,9 +1047,11 @@ export default function LinhaPage() {
     if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return
     const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
     const como = MISSOES13[mid]?.[qual]?.como
-    if (como?.t !== "batida" && como?.t !== "basquete") return
+    if (como?.t !== "batida" && como?.t !== "basquete" && como?.t !== "casa") return
     setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined })))
     pecaAberta.current = { missao: mid, qual }
+    // (T22) ?parte=missao.ella.casa: direto dentro da casa
+    if (como.t === "casa") { entrarNaCasa(mid); return }
     if (como.t === "batida") setBatidaMissao({ missao: mid, clima: como.clima })
     else setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
   }, [HIST, hist.aberta13, cena, tela.t])
@@ -1060,6 +1089,13 @@ export default function LinhaPage() {
     return () => { trilha.sair(); silenciarKombi(false) }
   }, [somAgora])
   useEffect(() => { if (missaoCarreira) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
+  // (T22) a casa da missão pegada começa a baixar enquanto a Kombi ainda está longe
+  useEffect(() => {
+    if (!missaoCarreira) return
+    const m = MISSOES13[missaoCarreira]
+    const como = [m.jogo.como, m.arte.como].find((c) => c?.t === "casa")
+    if (como?.t === "casa" && emTeste(hist13(saveRef.current), missaoCarreira)) precarregarSala(como.sala)
+  }, [missaoCarreira])
   // um evento da rua conta pra peça de agora (a montanha-russa da Nizzy…)
   const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
   const fimShow = (r: ResultadoShow) => {
@@ -2048,14 +2084,14 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}`} lugar={cena.lugar} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar"} />
+          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar"} />
         )}
         {cena && (
           <CenaLugar
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
-            gestos3d={GESTOS_3D[cena.lugar] ?? []}
+            gestos3d={GESTOS_3D[cena.especial === "ella-galeria" ? "galeria-ella" : cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -2063,7 +2099,7 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
+            onFim={cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
           />
         )}

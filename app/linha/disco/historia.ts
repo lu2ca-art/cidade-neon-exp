@@ -71,6 +71,9 @@ export interface HistoriaDisco {
   // (T15–T25, T16) o que cada arte deixou ("nizzy:arte" → os cortes do clipe;
   // "tony:arte" → o prato; "xeriff:arte" → a vinheta…)
   obras13?: Record<string, string[]>
+  // (T22) as missões cuja casa nova joga neste save (o link de teste liga; ver
+  // CONFIG13.soNoTeste em portas.ts)
+  teste13?: string[]
   // (T09) a missão da oficina (disco/oficina.ts): a cena vista, o painel achado
   // e o tanque do motor (as gotas da goteira); a água que a D-Bee deu (uma vez)
   // (T57) pecas: as peças da reciclagem que ele já catou no lixão (disco/achados.ts)

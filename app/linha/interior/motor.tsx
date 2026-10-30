@@ -31,7 +31,8 @@ export function useToqueLivre(f: (() => void) | null) {
 export function chamarToqueLivre() { toqueLivre?.() }
 
 // olhar em volta: arrastar gira a câmera um pouco (volta sozinha)
-export const olhar = { yaw: 0, pitch: 0, arrastando: false }
+// `travado`: a sala pede o arrasto pra ela (T22: pintar na tela não gira a câmera)
+export const olhar = { yaw: 0, pitch: 0, arrastando: false, travado: false }
 
 // ── a câmera da sala: vai até o plano pedido, devagar, e respira ──
 export interface Plano { pos: V3; olha: V3; fov?: number }

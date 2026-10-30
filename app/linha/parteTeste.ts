@@ -6,7 +6,7 @@
 
 import { BASE_TESTE, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
 
-import { IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
+import { CONFIG13, IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
 import { LETRAS } from "./disco/letras"
 import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
 
@@ -52,7 +52,10 @@ function discoDa(parte: string): Record<string, unknown> | null {
     if (!m || MISSOES13[m].prologo) return undefined as unknown as null
     // (a missão da cidade precisa da pista acesa e de quem ela pede antes: o save já vem com isso)
     const feitas13 = [...new Set(["dbee", "oficina", ...MISSOES13[m].requer])].filter((x) => x !== m)
-    const base = { fase: "carreira", holo: true, missao: m, feitas13 }
+    // (T22) a casa nova de uma missão em teste (a da Ella) joga com este link
+    const base = { fase: "carreira", holo: true, missao: m, feitas13, ...(CONFIG13.soNoTeste.includes(m) ? { teste13: [m] } : {}) }
+    // (T22) missao.ella.casa: direto dentro da casa (a primeira peça aberta)
+    if (sub === "casa" && MISSOES13[m][ordemDe(m)[0]].como?.t === "casa") return { ...base, aberta13: `${m}:${ordemDe(m)[0]}` }
     // (T10) a quadra: a arte (o B4TIDA) e o jogo (o basquete) abertos direto
     if (m === "quadra" && sub === "batida") return { ...base, aberta13: "quadra:arte" }
     if (m === "quadra" && sub === "basquete") return { ...base, passos13: ["quadra:arte"], aberta13: "quadra:jogo" }
@@ -93,7 +96,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
