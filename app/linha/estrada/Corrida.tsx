@@ -2933,6 +2933,47 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
 // posição da Kombi fica guardada aqui, pra ela voltar no mesmo ponto
 let MUNDO: Mundo | null = null
 
+// ── (leveza A, problema 2) o que a estrada constrói fica no módulo, como o MUNDO:
+// sair de uma sala desmonta o <Corrida>, e a volta só reusa (o three re-sobe
+// os buffers no contexto novo; a CPU não refaz nada). Um valor só é jogado fora
+// (com dispose) quando é trocado por outro (M ou chave diferente).
+// Só a main thread (como todo o grafo do three).
+let TEX_BASE: { asfalto: THREE.Texture; janelas: THREE.Texture; brilho: THREE.Texture; turbo: THREE.Texture } | null = null
+const GUARDADOS = new Map<string, { M: object; chave: string; valor: unknown }>()
+/**
+ * Devolve o valor guardado com esse nome se M e a chave são os mesmos; senão
+ * cria, solta (dispose) o antigo e guarda o novo.
+ * @example const geo = useMemo(() => guardado("geo", M, "", () => montarGeo()), [M])
+ */
+function guardado<T>(nome: string, M: object, chave: string, criar: () => T): T {
+  const g = GUARDADOS.get(nome)
+  if (g && g.M === M && g.chave === chave) return g.valor as T
+  const valor = criar()
+  if (g) soltar(g.valor)
+  GUARDADOS.set(nome, { M, chave, valor })
+  return valor
+}
+/**
+ * (leveza A, problema 9) dispose de tudo do three que estiver num valor montado
+ * à mão: geometrias, materiais, texturas, malhas (geometria + material) e
+ * InstancedMesh, dentro de arrays e objetos simples. Não entra no `map` dos
+ * materiais (as texturas de base são compartilhadas).
+ * @example useEffect(() => () => soltar(chuva), [chuva])
+ */
+function soltar(x: unknown, vistos: Set<unknown> = new Set()) {
+  if (!x || typeof x !== "object" || vistos.has(x)) return
+  vistos.add(x)
+  if (x instanceof THREE.Mesh || x instanceof THREE.Points || x instanceof THREE.Line) {
+    soltar(x.geometry, vistos)
+    soltar(x.material, vistos)
+    if (x instanceof THREE.InstancedMesh) x.dispose()
+    return
+  }
+  if (x instanceof THREE.BufferGeometry || x instanceof THREE.Material || x instanceof THREE.Texture) { x.dispose(); return }
+  if (Array.isArray(x)) { for (const y of x) soltar(y, vistos); return }
+  if (Object.getPrototypeOf(x) === Object.prototype) for (const y of Object.values(x)) soltar(y, vistos)
+}
+
 /**
  * (leveza A) Devolve sempre a MESMA referência enquanto `chave` não muda.
  * Serve para arrays/objetos recalculados a cada render que, na prática, quase
@@ -3346,7 +3387,8 @@ function Cena({
     for (let i = 0; i < v.n; i++) r = Math.min(r, Math.hypot(v.px[i] - x, v.pz[i] - z))
     return { x, z, r: r - MEIA - 4 }
   }, [M])
-  const tex = useMemo(() => ({ asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
+  // (leveza A) as texturas de base moram no módulo: remontar a estrada não refaz
+  const tex = useMemo(() => TEX_BASE ?? (TEX_BASE = { asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
 
   // cor de cada trecho: o lugar do circuito; nas saídas, metade de cada lado
   const distI = useCallback((v: Via, i: number): Distrito => distritoDe(v.tipo === "saida" && i < v.n / 2 ? v.de! : v.t), [])
@@ -3357,7 +3399,7 @@ function Cena({
   }, [])
 
   // ── pista ──
-  const geo = useMemo(() => {
+  const geo = useMemo(() => guardado("geo", M, "", () => {
     // (disco) a volta é o mesmo asfalto da ida: desenha uma vez só
     const vias = (M.vias as Via[]).filter((v) => !((v as Via & { disco?: boolean }).disco && v.rede && !v.rede.ida))
     const U = (i: number) => i * PASSO
@@ -3443,14 +3485,14 @@ function Cena({
       saiaE: fita(vias, (p, i) => p.esq[i] - 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoE(p, i) }),
       saiaD: fita(vias, (p, i) => p.dir[i] + 0.25, 1.8, -1.8, { vertical: true, passo: passoD, incluir: (p, i) => semEmenda(p, i) && trilhoD(p, i) }),
     }
-  }, [M, circuitos, distI, rgb])
+  }), [M, circuitos, distI, rgb])
   // (leveza A) pista que acende/apaga: só a cor do atributo muda (sem refazer a malha)
   useLayoutEffect(() => {
     for (const g of [geo.railE, geo.railD, ...geo.faixas, ...geo.bordas]) tingirApagadas(g, viaApagada)
   }, [geo, viaApagada])
   // (T61b) as linhas no chão da rotatória: dependem de quais saídas estão abertas
   // (a chave de viaApagada é estável: só refaz quando uma pista acende de verdade)
-  const linhasGuia = useMemo(() => {
+  const linhasGuia = useMemo(() => guardado("linhasGuia", M, chaveApagada(viaApagada), () => {
     const U = (i: number) => i * PASSO
     const passoD = (p: Pista) => ((p as Via & { disco?: boolean }).disco ? 3 : 1)
     const indice = new Map((M.vias as Via[]).map((v, i) => [v, i]))
@@ -3481,11 +3523,10 @@ function Cena({
       return g
     }
     return linhasGuia()
-  }, [M, rgb, viaApagada])
-  useEffect(() => () => linhasGuia?.dispose(), [linhasGuia])
+  }), [M, rgb, viaApagada])
 
   // ── cidade: cada lugar com a sua arquitetura e a cor do seu gás ──
-  const cidade = useMemo(() => {
+  const cidade = useMemo(() => guardado("cidade", M, "", () => {
     const r = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646 })()
     const d = new THREE.Object3D()
     const ESTILO: Record<Distrito["predio"], { n: number; h: [number, number]; w: [number, number]; off: [number, number]; brilho: number }> = {
@@ -3742,7 +3783,7 @@ function Cena({
     // (leveza A) as matrizes/cores acesas de cada poste, pra apagar/acender sem refazer
     const postesAcesos = { via: posteVia, poste: Float32Array.from(postes.instanceMatrix.array), reflexo: Float32Array.from(reflexos.instanceMatrix.array), luz: Float32Array.from(luzCor) }
     return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesAcesos }
-  }, [M, circuitos, tex, distI, centrosLugares])
+  }), [M, circuitos, tex, distI, centrosLugares])
   useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
 
   // ── colunas de luz: só onde a missão manda agora (a coisa pra buscar,
@@ -3756,7 +3797,7 @@ function Cena({
 
   // ── placas: cada bifurcação tem dois pórticos (aviso e "agora"), com
   // três placas — ← saída da esquerda, ↑ fica, saída da direita → ──
-  const placas = useMemo(() => {
+  const placas = useMemo(() => guardado("placas", M, String(nLib), () => {
     const lista: {
       id: string; pos: THREE.Vector3; rot: number; topo: THREE.Texture
       paineis: { x: number; cor: string; tex: THREE.Texture; area?: FreqId }[]
@@ -3815,11 +3856,12 @@ function Cena({
       })
     }
     return { lista, setas, barreiras }
-  }, [M, circuitos, a, nLib])
+  }), [M, circuitos, a, nLib])
 
   // embaixo de cada placa, uma bolinha por missão em aberto naquela área:
   // a cor e a inicial de quem chama (sem nome)
-  const tagTex = useMemo(() => {
+  const chaveTags = JSON.stringify(tags)
+  const tagTex = useMemo(() => guardado("tagTex", M, chaveTags, () => {
     const out: Partial<Record<FreqId, THREE.Texture>> = {}
     for (const [area, q] of Object.entries(tags) as [FreqId, { nome: string; cor: string }[]][]) {
       if (!q.length) continue
@@ -3846,7 +3888,8 @@ function Cena({
       out[area] = t
     }
     return out
-  }, [tags])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [M, chaveTags])
 
   // faixa de saída pintada na cor da rádio (cinza se trancada) e muro
   // listrado na trancada (física: ver limite no loop)
@@ -3973,7 +4016,8 @@ function Cena({
       return bateu ? [ex, ez] : null
     }
   }, [cidade])
-  const trafego = useMemo(() => {
+  // (leveza A) no módulo também: ao remontar, o trânsito segue de onde estava
+  const trafego = useMemo(() => guardado("trafego", M, "", () => {
     // (06/10: o dobro de carros; batida arremessa pro lado — vx, voo, giro)
     // (16/10: carros de verdade — carros.ts — e, no mapa novo, ~120 carros pela rede, cada um na mão dele)
     type Carro = { via: number; u: number; x: number; v: number; v0: number; x0: number; passou: boolean; bateu: number; vx: number; y: number; vy: number; giro: number; vgiro: number; caido: number; modelo: number; slot: number }
@@ -4004,7 +4048,7 @@ function Cena({
       return [pint, esc, luz]
     })
     return { carros, malhas }
-  }, [M, circuitos])
+  }), [M, circuitos])
   // teste: a Kombi logo atrás de um carro do trânsito, mais rápida (bate)
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return
