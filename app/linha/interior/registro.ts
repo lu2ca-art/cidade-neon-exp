@@ -41,7 +41,7 @@ export const GESTOS_3D: Partial<Record<SalaId, string[]>> = {
   "casa-drewboy": ["quarto"],
   escondido: ["prova:regar"],
   beco: ["ordem"],
-  "casa-dbee": ["casa", "casa-inicio"],
+  "casa-dbee": ["casa", "casa-inicio", "instrumentos"],
   "galeria-ella": ["quadros", "pintar"],
   elevador: ["elevador"],
 }
