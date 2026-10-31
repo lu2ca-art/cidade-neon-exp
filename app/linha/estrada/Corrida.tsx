@@ -45,6 +45,8 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
+import { temJetpack } from "../disco/metro"
+import { falaMetroQuebra } from "../disco/quebra"
 import { nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
@@ -468,7 +470,7 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
-type Input = { semVoo?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean; infinito?: boolean }
+type Input = { semVoo?: boolean; semJato?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean; infinito?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
 function amortece<K extends string>(atual: number, alvo: number, o: Record<K, number>, k: K, tempo: number, dt: number) {
@@ -1078,6 +1080,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (B18) antes da oficina do subúrbio a Kombi não voa (nem tem turbo)
   const voaNao = !!discoM && semVoo(historia)
   useEffect(() => { input.current.semVoo = voaNao }, [voaNao])
+  // (T64, lote D) tomaram o jetpack (o metrô, disco/metro.ts): de patins, sem o jato das costas
+  const jatoNao = !!discoM && (!temJetpack(historia) || !!historia?.jetpackTomado)
+  useEffect(() => { input.current.semJato = jatoNao }, [jatoNao])
   // (B10) as modificações compradas com água valem na física (o propulsor, o turbo)
   const mods = useMemo(() => historia?.mods ?? [], [historia?.mods])
   // (leveza A, problema 7) props estáveis pra <Cena> (memo): sem objeto/função nova a cada render
@@ -1482,7 +1487,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         vib([60, 40, 120])
         falar("222 FM", "a Kombi tossiu. fumaça no capô", 3200)
         setTimeout(() => falar("222 FM", "a Kombi pifou de vez. já mandaram ela pra oficina do subúrbio", 4200), 2600)
-        setTimeout(() => { if (!combRef.current.patins) irDePatins(); ensinar("222 FM", "de patins até a oficina: a luz laranja no mapa. o metrô: em breve", 6000) }, 3200)
+        setTimeout(() => { if (!combRef.current.patins) irDePatins(); ensinar("222 FM", `de patins até a oficina: a luz laranja no mapa. ${falaMetroQuebra(historia)}`, 6000) }, 3200)
         return
       }
       const t = setTimeout(() => {
@@ -4964,7 +4969,7 @@ function CenaBase({
     if (MD) {
       if (j.encaixar) { j.voo = false; j.propulsou = false }
       j.energia = j.energia ?? 1
-      inp.propulsor = ((!!inp.espacoDesde && performance.now() - inp.espacoDesde > (j.voo && !j.ar ? SEGURA_PROP_CHAO_MS : 220)) || !!inp.propulsorBotao) && !inp.semHolo && !inp.semVoo
+      inp.propulsor = ((!!inp.espacoDesde && performance.now() - inp.espacoDesde > (j.voo && !j.ar ? SEGURA_PROP_CHAO_MS : 220)) || !!inp.propulsorBotao) && !inp.semHolo && !inp.semVoo && !(inp.semJato && combRef.current.patins)
       // (19/10, LU2CA: "nem o propulsor funciona") a abertura que trava aqui é
       // a do mapa velho: no disco ela nunca termina (a abertura do disco, o
       // deserto, a D-Bee e a oficina, ainda não existe), e o propulsor ficava

@@ -53,13 +53,16 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
+import { perderViolao, tomarJetpack } from "./disco/historia"
 import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
-import { CONFIG_PERSEGUICAO, emPerseguicao, escolherVeiculo, escolhendoVeiculo, kombiJogada, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
+import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
+import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
+import { MetroFuga } from "./disco/MetroFuga"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 // (30/10) a volta do túnel: a Kombi esperou na porta
 const FALA_VOLTA_TUNEL = "voltou lá de baixo. a kombi tava te esperando na porta. as raízes seguem lá"
@@ -696,7 +699,9 @@ export default function LinhaPage() {
   const alvoAgora = save.nucleo.caido ? null : alvoDe(save, nivelDe(save))
   const cacado = alvoAgora?.t === "entrega" && save.objetos.length >= 2
   // (T63) nas trincheiras a estrada sai da cena (a memória e a GPU ficam pra elas); na volta, retoma
-  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || noElevador || (!!trincheiras && !trincheiras.descendo)
+  // (T64, lote D) a fuga do metrô tem o 3D dela: o mundo sai de cena (nada de dois canvas juntos)
+  const noMetro = HIST && emMetro(hist)
+  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || noElevador || noMetro || (!!trincheiras && !trincheiras.descendo)
   // entrou numa sala: a próxima estrada que montar retoma de onde parou;
   // foi pra outra tela (celular, início): a estrada começa do jeito normal
   const [emSalaAnt, setEmSalaAnt] = useState(emSala)
@@ -1063,7 +1068,31 @@ export default function LinhaPage() {
   const noConserto = HIST && (kombiNoConserto(h13) || kombiQuebrou)
   // (T28) a perseguição da Kombi, uma vez só (disco/perseguicao.ts)
   const perseguicaoAgora = HIST && emPerseguicao(h13)
-  const semKombi = HIST && escolhendoVeiculo(h13)
+  // (T64) os 3 veículos só depois do metrô (perseguicao.ts: veiculosLiberados)
+  const semKombi = HIST && veiculosLiberados(h13)
+  // (T64, lote D) O METRÔ: a Kombi foi jogada (a perseguição no "escolher"): tomam o
+  // jetpack (o evento jetpackTomado vai pro save; a Corrida lê temJetpack) e a fuga
+  // começa. Na fuga ele perde o violão (perdeuViolao: save.violao = false)
+  const metroPode = HIST && podeMetro(h13)
+  useEffect(() => {
+    if (!metroPode) return
+    setSave((s) => comHistoria(s, (h) => {
+      const p = entrarNoMetro(h)
+      return p.eventos.includes("jetpackTomado") ? tomarJetpack(p.h) : p.h
+    }))
+    setFalaIntro({ id: Date.now(), de: "222 FM", texto: FALAS_PERSEGUICAO.jetpack })
+  }, [metroPode])
+  const fimMetroPasso = (p: PassoMetro) => {
+    const perdeu = p.eventos.includes("perdeuViolao")
+    setSave((s) => {
+      const s2 = comHistoria(s, (h) => { const x = { ...h, metro: p.h.metro }; return perdeu ? perderViolao(x) : x })
+      return perdeu ? { ...s2, violao: false } : s2
+    })
+  }
+  const sairDoMetro = () => {
+    // fugiu: a 222 e, mais pra frente, os 3 veículos
+    if (metroFeito(hist13(saveRef.current))) setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: FALAS_PERSEGUICAO.depoisMetro }), 1200)
+  }
   const veiculoAgora = HIST ? veiculoDe(h13)?.id ?? null : null
   const podeVirPolicia = HIST && podePerseguir(h13, save.popularidade ?? 0)
   // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
@@ -2244,6 +2273,8 @@ export default function LinhaPage() {
         }} />}
         {oficinaTela === "conserto" && <Pagamento agua={save.agua ?? 0} preco={CONFIG_QUEBRA.precoAgua} titulo="o conserto" sub={`a Kombi quebrou · ${MECANICO.nome}`} fala={FALAS_QUEBRA.pagar} falaPago={FALAS_QUEBRA.pago} falaFiado={FALAS_QUEBRA.fiado} botao="pegar a Kombi →" onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={() => { setOficinaTela(null); setSave((s) => comHistoria(s, consertar)) }} />}
         {oficinaTela === "pagar" && <Pagamento agua={save.agua ?? 0} onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={montarMotor} />}
+        {/* (T64, lote D) a fuga do metrô: no lugar do mundo (o canvas dele sai, emSala) */}
+        {noMetro && <MetroFuga historia={h13} onPasso={fimMetroPasso} onSair={sairDoMetro} />}
         {/* (T64, lote D) o violão: o botão aparece com o disco ou a rádio tocando (só com o violão no save) */}
         {D && tela.t === "corrida" && <ViolaoMundo temViolao={!!save.violao} escondido={emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
         {/* (T02) a porta abriu: a recompensa, grande; "seguir" volta direto pro jogo */}
