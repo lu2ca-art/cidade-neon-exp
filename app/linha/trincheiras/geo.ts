@@ -7,6 +7,8 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import {
   AVENIDAS, COR_AVENIDA, COR_TORRE, CURVA, LEITO, NOME_AVENIDA, NOME_TORRE, PRACA, TETO, TORRES, TORRE_R, type P2,
 } from "./mapa"
+import { GRAFITES } from "../grafite/grafites"
+import type { Grafite } from "../grafite/tipos"
 
 const BEIRA = 4 // a laje do teto pra fora da parede
 const ALTO_TORRE = 160
@@ -271,27 +273,75 @@ export function raizes(): { geo: THREE.BufferGeometry; mats: THREE.Matrix4[]; co
   return { geo, mats, cores }
 }
 
-// ── 5. os grafites (lugar do T12) e as placas: um desenho, uma textura ──
-// a textura: 4 grafites (512×256) em cima e 8 placas (512×128) embaixo
+// ── 5. os grafites (T12/T64) e as placas: um desenho, uma textura ──
+// a textura: 4 grafites (512×256) em cima e 8 placas (512×128) embaixo.
+// (T64) os 3 primeiros espaços são os grafites do T12 (GRAFITES, os rascunhos até o
+// dono mandar os desenhos): sem assinar, a parede mostra os PONTOS (o gesto, numerado,
+// pra o jogador ligar); assinado, a arte pintada. O 4º espaço é a tag fixa "LU2CA".
+// Assinar repinta só aquele pedaço da textura (uma vez, nada por quadro):
+// definirGrafitesAssinados (ao carregar o save) e assinarGrafiteNaParede (no gesto).
+const TAG_FIXA: [string, string, string] = ["LU2CA", "#ff3fb0", "#2fe8ff"]
+export const GRAFITES_NA_PAREDE: Grafite[] = GRAFITES.slice(0, 3)
+const assinados = new Set<string>()
+let atlasAtual: { c: HTMLCanvasElement; t: THREE.CanvasTexture } | null = null
+
+function pintarTag(g: CanvasRenderingContext2D, i: number, [txt, a, b]: [string, string, string]) {
+  const x0 = (i % 2) * 512, y0 = Math.floor(i / 2) * 256
+  g.save(); g.translate(x0 + 256, y0 + 128); g.rotate((i % 2 ? 1 : -1) * 0.06)
+  g.font = `900 ${txt.length > 4 ? 120 : 150}px ui-sans-serif, system-ui, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"
+  g.lineJoin = "round"
+  g.lineWidth = 26; g.strokeStyle = "#0b0812"; g.strokeText(txt, 0, 0)
+  g.lineWidth = 12; g.strokeStyle = b; g.strokeText(txt, 0, 0)
+  const gr = g.createLinearGradient(0, -70, 0, 70); gr.addColorStop(0, a); gr.addColorStop(1, b)
+  g.fillStyle = gr; g.fillText(txt, 0, 0)
+  // os escorridos
+  g.fillStyle = a
+  for (let k = 0; k < 7; k++) { const x = -180 + k * 60 + (k % 3) * 9; g.fillRect(x, 40, 5, 30 + ((k * 37) % 50)) }
+  g.restore()
+}
+
+// um grafite do T12 no espaço i do atlas: a arte (assinado) ou os pontos do gesto
+function pintarGrafite(g: CanvasRenderingContext2D, i: number, gr: Grafite, feito: boolean) {
+  const x0 = (i % 2) * 512, y0 = Math.floor(i / 2) * 256
+  g.save()
+  g.fillStyle = "#000"; g.fillRect(x0, y0, 512, 256)
+  // a caixa 0..100 do grafite vira um quadrado de 236 px no meio do espaço
+  const S = 236, ox = x0 + 256 - S / 2, oy = y0 + 10
+  const m = (p: [number, number]): [number, number] => [ox + (p[0] / 100) * S, oy + (p[1] / 100) * S]
+  g.lineCap = "round"; g.lineJoin = "round"
+  if (feito) {
+    for (const t of gr.tracos) {
+      g.strokeStyle = t.cor; g.lineWidth = Math.max(2, (t.largura / 100) * S)
+      g.shadowColor = t.cor; g.shadowBlur = 10
+      g.beginPath(); t.pts.forEach((p, k) => { const [a, b] = m(p); if (k) g.lineTo(a, b); else g.moveTo(a, b) }); g.stroke()
+    }
+    g.shadowBlur = 0
+  } else {
+    // os pontos: a guia tracejada, os círculos numerados (o 1 em amarelo)
+    g.setLineDash([10, 12]); g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 4
+    g.beginPath(); gr.gesto.forEach((p, k) => { const [a, b] = m(p); if (k) g.lineTo(a, b); else g.moveTo(a, b) }); g.stroke(); g.setLineDash([])
+    gr.gesto.forEach((p, k) => {
+      const [a, b] = m(p)
+      g.beginPath(); g.arc(a, b, 15, 0, 6.283); g.fillStyle = "#0a0812"; g.fill()
+      g.lineWidth = 4; g.strokeStyle = k === 0 ? "#ffd23f" : "#22e6ff"; g.shadowColor = g.strokeStyle; g.shadowBlur = 12; g.stroke(); g.shadowBlur = 0
+      g.fillStyle = "#fff"; g.font = "800 18px ui-sans-serif, system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"
+      g.fillText(String(k + 1), a, b + 1)
+    })
+  }
+  g.restore()
+}
+
+function pintarEspaco(g: CanvasRenderingContext2D, i: number) {
+  const gr = GRAFITES_NA_PAREDE[i]
+  if (gr) pintarGrafite(g, i, gr, assinados.has(gr.id))
+  else pintarTag(g, i, TAG_FIXA)
+}
+
 export function texturaAtlas() {
   const c = document.createElement("canvas"); c.width = 1024; c.height = 1024
   const g = c.getContext("2d")!
   g.fillStyle = "#000"; g.fillRect(0, 0, 1024, 1024)
-  const tags: [string, string, string][] = [["LU2CA", "#ff3fb0", "#2fe8ff"], ["XENOM", "#b4ff8a", "#9b8cff"], ["222", "#ffc857", "#ff3fb0"], ["RAIZ", "#2fe8ff", "#ffc857"]]
-  tags.forEach(([txt, a, b], i) => {
-    const x0 = (i % 2) * 512, y0 = Math.floor(i / 2) * 256
-    g.save(); g.translate(x0 + 256, y0 + 128); g.rotate((i % 2 ? 1 : -1) * 0.06)
-    g.font = `900 ${txt.length > 4 ? 120 : 150}px ui-sans-serif, system-ui, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"
-    g.lineJoin = "round"
-    g.lineWidth = 26; g.strokeStyle = "#0b0812"; g.strokeText(txt, 0, 0)
-    g.lineWidth = 12; g.strokeStyle = b; g.strokeText(txt, 0, 0)
-    const gr = g.createLinearGradient(0, -70, 0, 70); gr.addColorStop(0, a); gr.addColorStop(1, b)
-    g.fillStyle = gr; g.fillText(txt, 0, 0)
-    // os escorridos
-    g.fillStyle = a
-    for (let k = 0; k < 7; k++) { const x = -180 + k * 60 + (k % 3) * 9; g.fillRect(x, 40, 5, 30 + ((k * 37) % 50)) }
-    g.restore()
-  })
+  for (let i = 0; i < 4; i++) pintarEspaco(g, i)
   const placa = (txt: string, cor: string, slot: number) => {
     const x0 = (slot % 2) * 512, y0 = 512 + Math.floor(slot / 2) * 128
     g.fillStyle = "#07060c"; g.fillRect(x0 + 4, y0 + 4, 504, 120)
@@ -302,29 +352,65 @@ export function texturaAtlas() {
   NOME_AVENIDA.forEach((n, i) => placa(n, COR_AVENIDA[i], 3 + i))
   placa("SUBIR · RUA", "#ffcf8a", 6)
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4
+  atlasAtual = { c, t }
   return t
+}
+
+// repinta os espaços dos grafites (só os que mudaram) e manda a textura de novo pra GPU
+function repintar(ids: string[]) {
+  if (!atlasAtual || !ids.length) return
+  const g = atlasAtual.c.getContext("2d")!
+  GRAFITES_NA_PAREDE.forEach((gr, i) => { if (ids.includes(gr.id)) pintarEspaco(g, i) })
+  atlasAtual.t.needsUpdate = true
+}
+// os grafites já assinados (do save): chamar ao entrar nos túneis
+export function definirGrafitesAssinados(ids: readonly string[]) {
+  const mudou = GRAFITES_NA_PAREDE.filter((gr) => ids.includes(gr.id) !== assinados.has(gr.id)).map((gr) => gr.id)
+  assinados.clear(); ids.forEach((id) => assinados.add(id))
+  repintar(mudou)
+}
+// o jogador acabou de assinar um: a parede passa a mostrar a arte
+export function assinarGrafiteNaParede(id: string) {
+  if (assinados.has(id)) return
+  assinados.add(id)
+  repintar([id])
 }
 const uvGrafite = (i: number): [number, number, number, number] => { const x = (i % 2) * 0.5, y = 1 - (Math.floor(i / 2) + 1) * 0.25; return [x, y, x + 0.5, y + 0.25] }
 const uvPlaca = (s: number): [number, number, number, number] => { const x = (s % 2) * 0.5, y = 0.5 - (Math.floor(s / 2) + 1) * 0.125; return [x, y, x + 0.5, y + 0.125] }
 
-// os lugares de grafite (o T12 troca o desenho e o gesto)
-export type LugarGrafite = { x: number; y: number; z: number; nx: number; nz: number; av: number }
+// os lugares de grafite. (T64) `slot` é o espaço do atlas (0..3) e `grafite` o id
+// do grafite do T12 que mora ali (null = a tag fixa, nada pra assinar)
+export type LugarGrafite = { x: number; y: number; z: number; nx: number; nz: number; av: number; slot: number; grafite: string | null }
 export function lugaresGrafite(): LugarGrafite[] {
   const l: LugarGrafite[] = []
   for (const av of AVENIDAS) {
     const nrm = normais(av.pts)
     for (let k = 40, lado = 1; k < av.pts.length - 40; k += 45, lado = -lado) {
       const p = av.pts[k], n = nrm[k], d = lado * (LEITO + CURVA - 0.06)
-      l.push({ x: p.x + n.x * d, y: 8.1 - 0.0, z: p.z + n.z * d, nx: -n.x * lado, nz: -n.z * lado, av: av.i })
+      const slot = l.length % 4
+      l.push({ x: p.x + n.x * d, y: 8.1 - 0.0, z: p.z + n.z * d, nx: -n.x * lado, nz: -n.z * lado, av: av.i, slot, grafite: GRAFITES_NA_PAREDE[slot]?.id ?? null })
     }
   }
   return l
+}
+let lugaresCache: LugarGrafite[] | null = null
+// (T64) o lugar de grafite mais perto de (x, z), até `raio` metros no chão (o grafite
+// fica no alto da parede: conta só a distância no plano). Só os que têm grafite
+export function grafitePerto(x: number, z: number, raio = 10): LugarGrafite | null {
+  lugaresCache ??= lugaresGrafite()
+  let melhor: LugarGrafite | null = null, d2m = raio * raio
+  for (const l of lugaresCache) {
+    if (!l.grafite) continue
+    const d2 = (l.x - x) ** 2 + (l.z - z) ** 2
+    if (d2 < d2m) { d2m = d2; melhor = l }
+  }
+  return melhor
 }
 
 export function geoAtlas() {
   const geos: THREE.BufferGeometry[] = []
   const branco = C("#ffffff")
-  lugaresGrafite().forEach((g, i) => geos.push(quadro(g.x, g.y - 0.2, g.z, g.nx, g.nz, 7, 3.5, C("#d8d0e8"), uvGrafite(i % 4))))
+  lugaresGrafite().forEach((g) => geos.push(quadro(g.x, g.y - 0.2, g.z, g.nx, g.nz, 7, 3.5, C("#d8d0e8"), uvGrafite(g.slot))))
   for (const t of TORRES) {
     const dx = t.c.x - t.torre.x, dz = t.c.z - t.torre.z, d = Math.hypot(dx, dz), nx = dx / d, nz = dz / d
     // o nome da torre, alto, e o "subir" em cima da porta
