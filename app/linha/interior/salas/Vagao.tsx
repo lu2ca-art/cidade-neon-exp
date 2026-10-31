@@ -10,6 +10,10 @@
 // Dois gestos, os dois na sala: TOCAR (o violão na sua mão; cada batida
 // certa, um artista levanta a cabeça) e FUGIR (cada toque é um passo pelo
 // corredor até a porta, o policial vindo atrás).
+//
+// (T64) igual à fuga do metrô (app/linha/metro, disco/metro.ts): no meio da
+// fuga o policial alcança e ARRANCA o violão das suas costas; você solta e
+// corre. Depois disso o violão fica na mão dele (e no trem, quando você pula).
 
 import { useFrame } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -24,6 +28,8 @@ const BRANCO = "#eef2fb"
 const LILAS = "#b38cff"
 const META = 8
 const PASSOS = 14
+// (T64) em que passo da fuga o policial arranca o violão
+const ARRANCA = Math.round(PASSOS / 2)
 
 // o vagão vai de z −9 a z 9; a porta da plataforma fica no lado +x, em z 0
 const PLANOS: Record<string, Plano> = {
@@ -66,6 +72,7 @@ export function SalaVagao({ estado }: SalaProps) {
       vib(10)
       const n = passos + 1
       setPassos(n)
+      if (n === ARRANCA) { vib([30, 40, 60]); gota(1) }
       if (n >= PASSOS) setTimeout(() => sinalizar({ t: "fim-gesto" }), 500)
     }
   })
@@ -101,6 +108,8 @@ export function SalaVagao({ estado }: SalaProps) {
 
   // o policial: no fundo; levanta depois do toque e vem vindo na fuga
   const zPolicia = fase === "fugindo" ? -8.4 + (passos / PASSOS) * 7.5 : -8.4
+  // (T64) o violão: arrancado no meio da fuga (fica na mão do policial)
+  const arrancou = fase === "pulou" || (fase === "fugindo" && passos >= ARRANCA)
 
   return (
     <>
@@ -140,7 +149,8 @@ export function SalaVagao({ estado }: SalaProps) {
       ))}
       <Npc cor={BRANCO} pos={[0, 0, zPolicia]} vira={0} pele="#c8ccd8" falando={estado.falando === "NÚCLEO"} />
       {/* o violão na sua mão (enquanto ele é seu) */}
-      {fase !== "pulou" && fase !== "fugindo" && (fase !== "plataforma") && <ViolaoNaMao tocando={tocando} />}
+      {fase !== "plataforma" && !arrancou && <ViolaoNaMao tocando={tocando} />}
+      {arrancou && <ViolaoDoGuarda z={zPolicia} />}
       <AnelRitmo pos={[0, 0.05, 1.4]} cor={LILAS} fase={faseRitmo} raio={0.9} ativo={tocando && acertos < META} />
       <Camera plano={plano} rapido={fase === "fugindo"} />
     </>
@@ -212,6 +222,19 @@ function Artista({ a, acordado, falando }: { a: (typeof ARTISTAS)[number]; acord
           <meshStandardMaterial color="#111" />
         </mesh>
       )}
+    </group>
+  )
+}
+
+// (T64) o violão na mão do policial, depois de arrancado (parado, pendurado do lado)
+function ViolaoDoGuarda({ z }: { z: number }) {
+  return (
+    <group position={[0.32, 0.55, z + 0.15]} rotation={[0.2, 0, -0.25]} scale={0.6}>
+      <mesh scale={[1, 1.2, 0.35]}>
+        <sphereGeometry args={[0.16, 10, 8]} />
+        <meshStandardMaterial color="#8a5a2c" roughness={0.5} />
+      </mesh>
+      <Caixa pos={[0, 0.45, 0.02]} tam={[0.045, 0.55, 0.03]} cor="#3a2414" />
     </group>
   )
 }
