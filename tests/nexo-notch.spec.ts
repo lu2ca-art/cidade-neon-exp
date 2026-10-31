@@ -3,9 +3,11 @@ import { mkdirSync } from "node:fs"
 
 // (T56) O NEXO COM UM NOTCH SÓ: no topo há só o notch (nada de cartão do tutorial
 // por baixo, nem cartão do "?", nem o "?" solto no canto); o passo do tutorial
-// aparece dentro dele com o "1 de 5" discreto; o "?" do notch abre a explicação
-// no próprio notch (ele cresce), tocar numa coisa do holo troca a explicação, e o
-// "?" fecha. ?parte=dunas começa na tela do holo lá fora, antes do tutorial.
+// aparece dentro dele com o "1 de 5" discreto. (T41 B2/B3, lote D) tocar no notch
+// expande ele (o objetivo inteiro e uma dica) e tocar de novo recolhe; o "?" é
+// outra coisa: o notch diz "clique em qualquer lugar para saber mais" e tocar numa
+// coisa do holo mostra a explicação POR CIMA dela (.l-explica), sem fazer a ação;
+// o "?" de novo sai. ?parte=dunas começa na tela do holo lá fora, antes do tutorial.
 const PASTA = "test-results/nexo-notch"
 
 async function entrar(page: Page, parte: string) {
@@ -51,25 +53,39 @@ test("um notch só: o passo do tutorial fala nele e o ? explica nele", async ({ 
   await notch.screenshot({ path: `${PASTA}/1-notch-passo.png` })
   await page.screenshot({ path: `${PASTA}/1-tela-passo.png` })
 
-  // o "?" do notch: o notch abre com a explicação do passo (o mapa), sem outro cartão
+  // tocar no notch: ele expande com o objetivo inteiro (o passo do tutorial: o mapa)
   const altura0 = (await notch.boundingBox())!.height
-  await nexo.locator(".l-nexo-q").click()
-  const exp = nexo.locator(".l-nexo-ajuda")
-  await expect(exp).toBeVisible()
+  await nexo.locator(".l-holo-letreiro-linha > b").click()
+  const aberto = nexo.locator(".l-nexo-ajuda")
+  await expect(aberto).toBeVisible()
   await expect(nexo).toHaveClass(/is-aberto/)
-  await expect(exp.locator("b")).toContainText(/mapa/i)
-  await expect(exp.locator("span")).toContainText(/missões|caminho/)
+  await expect(aberto.locator("b")).toContainText(/mapa/i)
   expect((await notch.boundingBox())!.height, "o notch cresceu").toBeGreaterThan(altura0 + 20)
   await expect(page.locator(".l-holo-ajuda")).toHaveCount(0)
   await page.waitForTimeout(400)
   await notch.screenshot({ path: `${PASTA}/2-notch-aberto.png` })
-  // aberto, tocar numa coisa do holo explica ela ali (e não faz a ação)
+  // tocar de novo recolhe
+  await nexo.locator(".l-holo-letreiro-linha > b").click()
+  await expect(aberto).toHaveCount(0)
+  await expect(nexo).not.toHaveClass(/is-aberto/)
+
+  // o "?": o notch pergunta; tocar numa coisa do holo explica por cima dela (e não faz a ação)
+  await nexo.locator(".l-nexo-q").click()
+  await expect(nexo).toHaveClass(/is-explica/)
+  await expect(nexo.locator(".l-nexo-agora")).toContainText(/clique em qualquer lugar/)
+  await expect(aberto).toHaveCount(0)
   await page.locator('[data-info="camera"]').first().click({ force: true })
+  const exp = page.locator(".l-explica")
+  await expect(exp).toBeVisible()
   await expect(exp.locator("b")).toHaveText(/olho|câmera/i)
+  await expect(page.locator(".l-explica-alvo")).toBeVisible()
   await expect(page.locator(".l-ilha")).toHaveCount(1)
-  // o "?" fecha; o passo continua no notch, sem avançar
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: `${PASTA}/2b-tela-explica.png` })
+  // o "?" de novo sai; o passo continua no notch, sem avançar
   await nexo.locator(".l-nexo-q").click()
   await expect(exp).toHaveCount(0)
+  await expect(nexo).not.toHaveClass(/is-explica/)
   await expect(nexo).toHaveAttribute("data-passo", "mapa")
 
   // feito o passo, o próximo entra no mesmo notch ("2 de 5")

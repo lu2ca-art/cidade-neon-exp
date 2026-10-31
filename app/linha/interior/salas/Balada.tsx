@@ -74,7 +74,7 @@ export function SalaBalada({ estado, objetos, popularidade = 0 }: SalaProps) {
 
   const plano = useMemo(() => {
     if (dancando || estado.ganha) return PLANOS.pista
-    if (estado.falando === "Drewboy" || estado.falando === "você") return PLANOS.drewboy
+    if ((estado.falando === "Drew" || estado.falando === "Drewboy") || estado.falando === "você") return PLANOS.drewboy
     if (estado.pos === 0) return PLANOS.entrada
     if (bar && (estado.pos === 1 || estado.pos === 2)) return PLANOS.camarote
     if (estado.falando === null && estado.pos <= 5) return PLANOS.dj
@@ -105,7 +105,7 @@ export function SalaBalada({ estado, objetos, popularidade = 0 }: SalaProps) {
       {bar && <Npc cor="#ff6a35" pos={[8.6, 0, -6.5]} vira={-2.2} falando={estado.falando === "Mubarak"} />}
       {/* a gente */}
       <Multidao gente={gente} celulares={celulares} copiam={Math.round(gente.length * Math.min(1, 0.08 + popularidade / 45))} pulso={pulso} />
-      <Npc cor={ROSA} pos={[0, 0, 0]} vira={0} pose={dancando || dancou ? "danca" : "em-pe"} dancando={dancando || dancou} falando={estado.falando === "Drewboy"} />
+      <Npc cor={ROSA} pos={[0, 0, 0]} vira={0} pose={dancando || dancou ? "danca" : "em-pe"} dancando={dancando || dancou} falando={(estado.falando === "Drew" || estado.falando === "Drewboy")} />
       <AnelRitmo pos={[0, 0.03, 0]} cor={ROSA} fase={fase} ativo={dancando && acertos < META} />
       <Camera plano={plano} />
     </>

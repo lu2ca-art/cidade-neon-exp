@@ -66,7 +66,7 @@ export const MISSOES_DISCO: Record<PistaId, MissaoLinha> = {
     golpe: {
       id: "sexta-som", titulo: "o som da balada",
       planos: [
-        { modo: "stealth", nome: "pela porta dos fundos", passos: [{ t: "info", id: "senha", de: "Drewboy", texto: "a senha muda toda sexta. a moça do bar sabe" }, { t: "item", id: "crachá", nome: "o crachá de técnico", onde: "lugar:bar" }, { t: "ir", lugar: "balada" }] },
+        { modo: "stealth", nome: "pela porta dos fundos", passos: [{ t: "info", id: "senha", de: "Drew", texto: "a senha muda toda sexta. a moça do bar sabe" }, { t: "item", id: "crachá", nome: "o crachá de técnico", onde: "lugar:bar" }, { t: "ir", lugar: "balada" }] },
         { modo: "agressivo", nome: "pela pista", passos: [{ t: "item", id: "caixa", nome: "a caixa de som do palco do bar", onde: "lugar:bar" }, { t: "fazer", peca: "pingpong" }, { t: "ir", lugar: "balada" }] },
       ],
       fim: { texto: "a música volta pra pista. ninguém filma. todo mundo dança", rende: { pop: 8, neon: 30 } },

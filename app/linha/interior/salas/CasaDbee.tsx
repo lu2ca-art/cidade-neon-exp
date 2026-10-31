@@ -53,7 +53,7 @@ const COISAS: Coisa[] = [
 const GRUPO: { quem: string; cor: string; pos: V3 }[] = [
   { quem: "Ella", cor: "#2fe8ff", pos: [0.2, 0, 2.2] },
   { quem: "Notti", cor: "#5dffa0", pos: [1, 0, 2.6] },
-  { quem: "Drewboy", cor: "#ff3fb0", pos: [-0.6, 0, 2.7] },
+  { quem: "Drew", cor: "#ff3fb0", pos: [-0.6, 0, 2.7] },
   { quem: "Alohan", cor: "#ffc857", pos: [1.6, 0, 1.6] },
   { quem: "LU2CA", cor: "#b38cff", pos: [-1.2, 0, 2.2] },
   { quem: "Tony Gordo", cor: "#ffe14d", pos: [0.6, 0, 3.4] },

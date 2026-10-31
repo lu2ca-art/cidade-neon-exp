@@ -54,12 +54,12 @@ export const LUGARES = {
   "casa-drewboy": {
     id: "casa-drewboy", nome: "a casa do Drewboy", no: "na casa do Drewboy", letreiro: "AP 222", area: "suburbio", u: 560, lado: -1,
     cor: "#ff3fb0", acento: "#7fe8ff", dono: "sexta",
-    gente: [{ quem: "Drewboy", cor: "#ff3fb0" }],
+    gente: [{ quem: "Drew", cor: "#ff3fb0" }],
   },
   balada: {
     id: "balada", nome: "a balada", no: "na balada", letreiro: "SEXTA", area: "linha", u: 2185, lado: 1,
     cor: "#ff3fb0", acento: "#b38cff", dono: "sexta",
-    gente: [{ quem: "Drewboy", cor: "#ff3fb0" }],
+    gente: [{ quem: "Drew", cor: "#ff3fb0" }],
   },
 } as Record<LugarId, Lugar>
 

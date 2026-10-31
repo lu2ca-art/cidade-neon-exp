@@ -50,7 +50,7 @@ export const PISTAS: Pista[] = [
     tom: { tonica: 2, modo: "maior" }, campanhas: ["Criatividade Eminente", "Reflexos", "Salto de Fé"],
   },
   {
-    id: "sexta", faixa: "Sexta-Feira", personagem: "Drewboy", objeto: "o espelho", tema: "público",
+    id: "sexta", faixa: "Sexta-Feira", personagem: "Drew", objeto: "o espelho", tema: "público",
     bpm: 88, duracao: 201.8, voz: A + "sexta.mp3", inst: A + "sexta-inst.mp3", lancamento: null,
     tom: { tonica: 9, modo: "menor" }, campanhas: ["Multidão Vazia", "Bateria Esgotada", "Aceita e Dança"],
   },

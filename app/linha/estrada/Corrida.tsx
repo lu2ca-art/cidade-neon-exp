@@ -5518,7 +5518,7 @@ function CenaBase({
           motor?.whoosh()
           vib(25)
           ev.sinal(3, "quase · +3", "#ff3fb0")
-          if (j.st.quase === 1 || Math.random() < 0.3) ev.falar(["Notti", "Mubarak", "Drewboy"][j.st.quase % 3], ["KKKK QUASE", "doido", "respira mano"][j.st.quase % 3])
+          if (j.st.quase === 1 || Math.random() < 0.3) ev.falar(["Notti", "Mubarak", "Drew"][j.st.quase % 3], ["KKKK QUASE", "doido", "respira mano"][j.st.quase % 3])
         }
         c.passou = true
       }
@@ -6711,7 +6711,7 @@ const FALAS = [
   { de: "Mubarak", texto: "a Kombi aguenta. confia" },
   { de: "Notti", texto: "pega as bolinhas!! as bolinhas!!" },
   { de: "Alohan", texto: "repara nas luzes. elas batem junto com a música." },
-  { de: "Drewboy", texto: "sobe a rampa com tudo" },
+  { de: "Drew", texto: "sobe a rampa com tudo" },
 ]
 
 // (leveza A, problema 10) o vetor do lado é reaproveitado e os buffers são

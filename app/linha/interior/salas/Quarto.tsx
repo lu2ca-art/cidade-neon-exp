@@ -28,9 +28,9 @@ const PLANOS: Record<string, Plano> = {
 }
 
 const COISAS: Coisa[] = [
-  { id: "espelho", pos: [-0.2, 1.4, -2.15], raio: 0.3, falas: [{ texto: "o espelho é maior que a janela", tipo: "acao" }, { de: "Drewboy", texto: "ele me vê mais do que todo mundo junto" }] },
-  { id: "tenis", pos: [1.3, 0.12, -1.3], raio: 0.22, falas: [{ texto: "um tênis novo, ainda na caixa", tipo: "acao" }, { de: "Drewboy", texto: "comprei pra sair. nunca saí com ele" }] },
-  { id: "janela", pos: [1.95, 1.5, -0.3], raio: 0.35, falas: [{ texto: "lá fora, a cidade. de longe, o grave abafado de uma balada", tipo: "acao" }, { de: "Drewboy", texto: "dá pra ouvir a SEXTA daqui. toda sexta" }] },
+  { id: "espelho", pos: [-0.2, 1.4, -2.15], raio: 0.3, falas: [{ texto: "o espelho é maior que a janela", tipo: "acao" }, { de: "Drew", texto: "ele me vê mais do que todo mundo junto" }] },
+  { id: "tenis", pos: [1.3, 0.12, -1.3], raio: 0.22, falas: [{ texto: "um tênis novo, ainda na caixa", tipo: "acao" }, { de: "Drew", texto: "comprei pra sair. nunca saí com ele" }] },
+  { id: "janela", pos: [1.95, 1.5, -0.3], raio: 0.35, falas: [{ texto: "lá fora, a cidade. de longe, o grave abafado de uma balada", tipo: "acao" }, { de: "Drew", texto: "dá pra ouvir a SEXTA daqui. toda sexta" }] },
 ]
 
 export function SalaQuarto({ estado }: SalaProps) {
@@ -51,7 +51,7 @@ export function SalaQuarto({ estado }: SalaProps) {
   const plano = useMemo(() => {
     if (olhando || estado.escolha) return PLANOS.quarto
     if (estado.falando === "Mubarak") return PLANOS.mubarak
-    if (estado.falando === "Drewboy" || estado.falando === "você") return PLANOS.drewboy
+    if ((estado.falando === "Drew" || estado.falando === "Drewboy") || estado.falando === "você") return PLANOS.drewboy
     return PLANOS.porta
   }, [estado, olhando])
   return (
@@ -95,7 +95,7 @@ export function SalaQuarto({ estado }: SalaProps) {
       <pointLight position={[-1.2, 2.1, 0.6]} color="#ffc857" intensity={1.4} distance={4} decay={2} />
       {mubarak && <Npc cor="#ff6a35" pos={[-1.3, 0, 0.3]} vira={2.36} falando={estado.falando === "Mubarak"} />}
       {/* ele, sentado na cama de frente pro espelho (sai quando desce) */}
-      {!saiu && <Npc cor={ROSA} pos={[-0.3, 0.12, -0.7]} vira={Math.PI} pose="sentada" falando={estado.falando === "Drewboy"} />}
+      {!saiu && <Npc cor={ROSA} pos={[-0.3, 0.12, -0.7]} vira={Math.PI} pose="sentada" falando={(estado.falando === "Drew" || estado.falando === "Drewboy")} />}
       {COISAS.map((c) => (
         <Toque key={c.id} pos={c.pos} raio={c.raio} cor={ROSA} ativo={olhando && !vistas.includes(c.id)} onToque={() => ver(c.id)} />
       ))}
