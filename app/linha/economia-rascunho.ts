@@ -13,6 +13,7 @@
 //   popularidade = não se gasta. Sobe com o show e aumenta o cachê.
 
 import type { MissaoId } from "./disco/portas"
+import type { HistoriaDisco } from "./disco/historia"
 
 export type Categoria = "disco" | "instrumento" | "carro" | "roupa"
 
@@ -52,17 +53,26 @@ export const MELHORIAS: { id: MelhoriaId; nome: string; agua: number; faz: strin
 // os discos: todos pelo mesmo preço (quais discos vendem mora em discos.json)
 export const PRECO_DISCO = 100
 
-export interface ItemRascunho { id: string; nome: string; preco: number; desc: string; cor: string }
+// `soDepois`: o item só aparece na loja depois que isso aconteceu na história
+// (A8: a guitarra, depois de perder o violão no metrô)
+export interface ItemRascunho { id: string; nome: string; preco: number; desc: string; cor: string; soDepois?: "perdeu-violao" }
 
 // os instrumentos. O violão vem da D-Bee (não se compra). Quando ele perde o
 // violão no metrô, "logo ele junta grana pra comprar uma guitarra" (28/10)
 export const INSTRUMENTOS: ItemRascunho[] = [
-  { id: "guitarra", nome: "guitarra", preco: 250, desc: "a que ele junta grana pra comprar depois de perder o violão", cor: "#ff5b3a" },
+  { id: "guitarra", nome: "guitarra", preco: 250, desc: "a que ele junta grana pra comprar depois de perder o violão", cor: "#ff5b3a", soDepois: "perdeu-violao" },
   { id: "baixo", nome: "baixo", preco: 300, desc: "quatro cordas grossas, o chão do show", cor: "#b38cff" },
   { id: "teclado", nome: "teclado", preco: 350, desc: "um sintetizador de lata, remendado no subúrbio", cor: "#2fe8ff" },
   { id: "sampler", nome: "sampler", preco: 400, desc: "a máquina de beat: leva o B4TIDA pro palco", cor: "#ffc857" },
   { id: "tambor", nome: "tambor", preco: 180, desc: "igual ao da D-Bee, feito de tonel", cor: "#ff9f1c" },
 ]
+
+// (A8) o item aparece na loja agora? (sem história, o mapa velho: aparece tudo)
+export function naLoja(item: { soDepois?: ItemRascunho["soDepois"] }, h: HistoriaDisco | null | undefined): boolean {
+  if (!item.soDepois || !h || h.fase === "livre") return true
+  if (item.soDepois === "perdeu-violao") return !!h.perdeuViolao
+  return true
+}
 
 // os carros. Os nomes são de rascunho: o dono escolhe quais (e o T44, os
 // rachas, usa os do mecânico). Ainda só ficam guardados; dirigir vem depois
