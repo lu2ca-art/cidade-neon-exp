@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "metro",
+    nome: "O violão, o metrô e o grafite",
+    data: "2026-10-31",
+    tarefa: "T64",
+    olhar: "Metrô: a Kombi já foi jogada, tomam o jetpack e você foge pelo trem; no fim o violão fica lá e a guitarra aparece na loja. Violão: com o disco ou a rádio tocando, o botão do violão aparece. Grafite: nas trincheiras, chegue perto de uma parede com pontos e ligue os pontos para assinar.",
+    perguntas: [
+      "A fuga do metrô logo depois da perseguição está no lugar certo da história?",
+    ],
+    mais: [{ parte: "violao", nome: "o violão no mundo" }, { parte: "grafite", nome: "o grafite nas trincheiras" }],
+  },
+  {
     parte: "missao.drew",
     nome: "As missões novas (Drew moda, Xeriff ping pong, a Ella no mapa)",
     data: "2026-10-31",

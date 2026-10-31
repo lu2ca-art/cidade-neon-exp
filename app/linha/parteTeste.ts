@@ -9,6 +9,8 @@ import { BASE_TESTE, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados } from "../teste/a
 import { CONFIG13, IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
 import { LETRAS } from "./disco/letras"
 import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
+import { prepararMetro } from "./disco/metro"
+import type { HistoriaDisco } from "./disco/historia"
 
 // (T02) as missões: o id das 13 (missao.drew) ou, como antes, a faixa (missao.sexta → a do Drew)
 const MISSOES = ["sexta", "dopamina", "ojala", "swav", "copo", "ontem", "rollercoaster", "chuva", "nectar"]
@@ -101,6 +103,12 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "livre" || parte === "final" || parte === "rachas") return { fase: "livre", holo: true }
   // (T59) a Kombi por dentro: a cidade livre, já na 1ª pessoa (o interior modelado)
   if (parte === "kombi.dentro") return { fase: "livre", holo: true }
+  // (T64, lote D) o metrô: a Kombi já foi jogada, a fuga começa ao entrar (prepararMetro);
+  // o violão: o meio da carreira com o violão no save (o botão aparece com o disco tocando);
+  // o grafite: a missão dos túneis pegada, desce direto pras trincheiras (a arte é o grafite)
+  if (parte === "metro") return prepararMetro(MEIO as unknown as HistoriaDisco) as unknown as Record<string, unknown>
+  if (parte === "violao") return MEIO
+  if (parte === "grafite") return { fase: "carreira", holo: true, missao: "tuneis", feitas13: ["dbee", "oficina"] }
   // (T47, lote D) o elevador de terror: o meio da carreira, a sala abre ao entrar
   if (parte === "elevador") return MEIO
   // (T49, lote D) a casa da D-Bee com instrumentos no save (dois ainda não vistos:
@@ -114,7 +122,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "elevador", "casa.instrumentos", "recompensa.instrumento"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "grafite", "elevador", "casa.instrumentos", "recompensa.instrumento"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -138,7 +146,7 @@ export function aplicarParteDeTeste(): boolean {
   if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
@@ -150,7 +158,7 @@ export function aplicarParteDeTeste(): boolean {
   // (T06) a cena da casa começa no tambor (ela senta no tapete e chama)
   if (parte === "casa.tambor") url.searchParams.set("cena", "tambor")
   // (T63) as trincheiras: entrou no jogo, desce direto pela boca do túnel
-  if (parte === "missao.tuneis.trincheiras") url.searchParams.set("descer", "tuneis")
+  if (parte === "missao.tuneis.trincheiras" || parte === "grafite") url.searchParams.set("descer", "tuneis")
   // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
   // ponta é a da Nectar, a Sexta-Feira e a Ojalá) e o nascimento dos monumentos aparece de novo
   if (parte.startsWith("torre")) {
