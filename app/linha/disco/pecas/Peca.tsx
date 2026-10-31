@@ -2,11 +2,13 @@
 
 // AS PEÇAS DAS MISSÕES DAS PESSOAS (T15, T18, T23, T24, T25, T16 — 28/10): o
 // que abre por cima do jogo quando a peça da missão é `{ t: "cena", id }`
-// (portas.ts). Cada uma é a ARTE ou o JOGO de alguém; acabou, `onFim(true)` e
+// (portas.ts). (30/10) A moda é a arte do Drew; a dança e a vinheta saíram do
+// mapa e ficam aqui pro link de teste. Cada uma é a ARTE ou o JOGO de alguém; acabou, `onFim(true)` e
 // a missão segue sozinha (a próxima peça ou a porta). Os rascunhos: conf.ts.
 
 import type { CenaId } from "../portas"
 import { Danca } from "./Danca"
+import { Moda } from "./Moda"
 import { Vinheta } from "./Vinheta"
 import { Trilha8 } from "./Trilha8"
 import { Maquina } from "./Maquina"
@@ -22,6 +24,7 @@ export interface PecaProps { cor: string; quem: string; onFim: (ok: boolean, obr
 
 const PECAS: Record<CenaId, { titulo: string; C: (p: PecaProps) => React.ReactNode; tela?: "cheia" }> = {
   danca: { titulo: "dançar na balada", C: Danca },
+  moda: { titulo: "o look reciclado", C: Moda },
   vinheta: { titulo: "gravar a vinheta", C: Vinheta },
   trilha8: { titulo: "a trilha de 8 bits", C: Trilha8 },
   maquina: { titulo: "a máquina do Notti", C: Maquina, tela: "cheia" },

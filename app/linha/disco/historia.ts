@@ -20,6 +20,7 @@
 
 import type { Save } from "../estado"
 import type { MissaoId, PortaId } from "./portas"
+import type { InstrumentoId } from "./instrumentos"
 
 export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "oficina" | "subir" | "nectar" | "carreira" | "livre"
 // os passos da Nectar (B9)
@@ -64,6 +65,9 @@ export interface HistoriaDisco {
   guitar?: string[]
   batida?: string[]
   conta13?: Record<string, number>
+  // (T49) os instrumentos ancestrais ganhos nas portas (disco/instrumentos.ts);
+  // tocam na casa da D-Bee
+  instrumentos?: InstrumentoId[]
   // (T19) a peça de escrever aberta agora ("lu2ca:arte"; fica no save: recarregar
   // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
   aberta13?: string
@@ -95,7 +99,16 @@ export interface HistoriaDisco {
   // polícia atrás; "escolher" = a Kombi foi jogada lá de cima, os 3 veículos na
   // pista; "feita" = escolheu `veiculo`
   perseguicao?: { fase: "agora" | "escolher" | "feita"; veiculo?: string }
+  // (T64, bloco 1 · A8) o metrô (o C2): quando pegam ele, tomam o jetpack; na fuga
+  // pelo metrô ele perde o violão. Depois disso a guitarra aparece na loja
+  // (economia-rascunho.ts, `naLoja`)
+  perdeuViolao?: true
+  jetpackTomado?: true
 }
+
+// (A8) o que o metrô tira dele: fica no save de uma vez (puras, o C2 e a page.tsx chamam)
+export const tomarJetpack = (h: HistoriaDisco): HistoriaDisco => (h.jetpackTomado ? h : { ...h, jetpackTomado: true })
+export const perderViolao = (h: HistoriaDisco): HistoriaDisco => (h.perdeuViolao ? h : { ...h, perdeuViolao: true })
 
 export const INICIO: HistoriaDisco = { fase: "minhoca", holo: false }
 

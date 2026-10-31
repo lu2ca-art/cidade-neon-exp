@@ -10,6 +10,8 @@
 //   a pista        a música da pista passa de prévia/instrumental pra versão
 //                  subúrbio (T31, pistasLiberadas.ts, lê `feitas13`)
 //   as portas      o que a missão abre (portas.ts `abrirPorta`)
+//   o instrumento  (T49) o instrumento ancestral da pessoa (`h.instrumentos`,
+//                  disco/instrumentos.ts); toca na casa da D-Bee
 //
 // A tabela de quem dá o quê continua sendo a de portas.ts (MISSOES13[].recompensa),
 // pro dono ter um lugar só pra mudar. Aqui só se aplica, uma vez por missão.

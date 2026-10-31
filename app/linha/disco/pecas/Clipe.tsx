@@ -1,6 +1,6 @@
 "use client"
 
-// T24 · A ARTE DA NIZZY (PROPOSTA, rascunho): filmar o clipe vertical da
+// T24 · A ARTE DA NIZZY (aprovada 30/10): filmar o clipe vertical da
 // Rollercoaster. A música toca; três câmeras (a Nizzy de frente, o trilho de
 // cima, a cidade passando). Você corta de uma pra outra (toque ou 1 2 3) no
 // tempo da batida. O clipe fica com os cortes. Rascunho: conf.ts (CLIPE).
