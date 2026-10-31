@@ -14,6 +14,7 @@ import { sinalizar } from "../bus"
 import { Caixa, Npc, Sala, Toque, useExplorar, type Coisa, type V3 } from "../comum"
 import { Camera, type Plano, type SalaProps } from "../motor"
 import { DjembeDela, DjembeSeu } from "./Djembe"
+import { INSTRUMENTOS_MOCK, InstrumentosCasa, type InstrumentoId } from "../../disco/InstrumentosCasa"
 
 const AZUL = "#3d7bff"
 const QUENTE = "#ffcf8a"
@@ -37,6 +38,8 @@ const PLANOS: Record<string, Plano> = {
   tambor: { pos: [0.28, 1.4, 0.62], olha: [0.0, 0.4, -1.6], fov: 56 },
   // (T07) a entrega do holo: ela de frente, a mão estendida pra ele (o holo na mão é o disco/EntregaHolo.tsx, por cima)
   entrega: { pos: [-0.75, 1.5, 2.45], olha: [0.5, 1.2, 0.75], fov: 50 },
+  // (T49) os instrumentos ganhos: o banco e as prateleiras na parede da direita
+  instrumentos: { pos: [0.55, 1.45, 0.95], olha: [2.3, 0.9, -0.6], fov: 56 },
 }
 
 const COISAS: Coisa[] = [
@@ -56,7 +59,10 @@ const GRUPO: { quem: string; cor: string; pos: V3 }[] = [
   { quem: "Tony Gordo", cor: "#ffe14d", pos: [0.6, 0, 3.4] },
 ]
 
-export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProps) {
+// (T49) `instrumentos`: os ganhos (o save, h.instrumentos do lote A). Sem a
+// prop (ainda não ligada no Interior/page), fora da produção vale o mock
+export function SalaCasaDbee({ estado, inicio = false, disco = false, instrumentos }: SalaProps & { instrumentos?: InstrumentoId[] }) {
+  const ganhos = instrumentos ?? (process.env.NODE_ENV !== "production" ? INSTRUMENTOS_MOCK : [])
   const coisas = inicio ? [] : COISAS
   const procurando = estado.gesto === (inicio ? "casa-inicio" : "casa")
   const { vistas, ver } = useExplorar(procurando, coisas, inicio ? 2 : 3, sinalizar)
@@ -73,6 +79,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProp
     // instrumentos, ela falando, os tambores
     if (disco) {
       if (estado.pos === 0) return PLANOS.abertura
+      if (estado.gesto === "instrumentos") return PLANOS.instrumentos
       if (estado.gesto === "holo" || /é seu|aparelho pequeno/.test(estado.texto ?? "")) return PLANOS.entrega
       if (estado.gesto === "tambores") return PLANOS.tambor
       if (estado.pos === 1 || /estante|livros/.test(estado.texto ?? "")) return PLANOS.parede
@@ -137,6 +144,8 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false }: SalaProp
       {inicio && <pointLight position={[0.2, 1.8, 3.6]} color="#ffb070" intensity={5} distance={4} decay={2} />}
       {/* (disco) a D-Bee em casa, os instrumentos na parede, os tambores no tapete */}
       {disco && <CasaDisco falando={estado.falando === "D-Bee"} tocando={estado.gesto === "tambores" || /senta no tapete|tocam junto|é quem eu achei/.test(estado.texto ?? "")} />}
+      {/* (T49) os instrumentos ganhos: ficam na casa e cada um toca */}
+      {disco && <InstrumentosCasa ids={ganhos} gesto={estado.gesto === "instrumentos"} />}
       {/* quem chega */}
       {GRUPO.filter((g) => chegaram.includes(g.quem)).map((g) => (
         <Npc key={g.quem} cor={g.cor} pos={g.pos} vira={Math.PI} falando={estado.falando === g.quem} />
