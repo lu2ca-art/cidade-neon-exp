@@ -25,6 +25,38 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.drew",
+    nome: "As missões novas (Drew moda, Xeriff ping pong, a Ella no mapa)",
+    data: "2026-10-31",
+    tarefa: "T15 · T18 · T22",
+    olhar: "Drew: chegar até a casa dele de patins e jetpack já conta, depois a moda (montar um look reciclado). Xeriff: o ping pong com a cor dele. A Ella agora aparece no mapa sem link de teste.",
+    perguntas: [
+      "A moda do Drew e o ping pong do Xeriff ficam assim?",
+    ],
+    mais: [{ parte: "missao.drew.arte", nome: "a moda do Drew direto" }, { parte: "missao.xeriff.arte", nome: "o ping pong do Xeriff" }, { parte: "missao.ella", nome: "a missão da Ella" }],
+  },
+  {
+    parte: "casa.instrumentos",
+    nome: "Os instrumentos na casa da D-Bee",
+    data: "2026-10-31",
+    tarefa: "T49",
+    olhar: "Os instrumentos ganhos ficam no banco da parede. Com instrumento novo, a D-Bee pede pra tocar cada novo; sem novo, a visita é livre. Toque em cada um e ouça.",
+    perguntas: [
+      "Os sons provisórios servem até chegar a lista de sons de verdade?",
+    ],
+    mais: [{ parte: "recompensa.instrumento", nome: "a recompensa com um instrumento (o sitar)" }],
+  },
+  {
+    parte: "elevador",
+    nome: "O elevador de terror",
+    data: "2026-10-31",
+    tarefa: "T47",
+    olhar: "O elevador sobe, a porta abre num andar escuro com robôs dormindo e humanos encubados. Segure a tela pra andar e arraste pra virar; no fundo, a sala fecha sozinha. No jogo, a porta da torre fica na beira oeste do subúrbio (provisório).",
+    perguntas: [
+      "Onde fica a porta da torre no mapa?",
+    ],
+  },
+  {
     parte: "livre",
     nome: "O Nexo só informa",
     data: "2026-10-31",
