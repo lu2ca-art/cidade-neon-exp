@@ -62,7 +62,7 @@ export function Loja({ save, comprar, onVoltar }: { save: Save; comprar: (id: st
         </ul>
       ) : (
         <ul className="l-loja-grade is-itens">
-          {daCategoria(aba).map((it) => {
+          {daCategoria(aba, save).map((it) => {
             const tem = temItem(save, it.id)
             return (
               <li key={it.id}>

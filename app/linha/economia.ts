@@ -15,11 +15,11 @@
 import type { Save } from "./estado"
 import { DISCOS } from "./discos"
 import { comHistoria, historiaDe } from "./disco/historia"
-import { CARROS, INSTRUMENTOS, MELHORIAS, PAGA, PRECO_DISCO, ROUPAS, type Categoria, type MelhoriaId } from "./economia-rascunho"
+import { CARROS, INSTRUMENTOS, MELHORIAS, PAGA, PRECO_DISCO, ROUPAS, naLoja, type Categoria, type ItemRascunho, type MelhoriaId } from "./economia-rascunho"
 
 export type Moeda = "neon" | "agua"
 
-export interface ItemLoja { id: string; cat: Categoria; nome: string; preco: number; desc: string; cor: string }
+export interface ItemLoja { id: string; cat: Categoria; nome: string; preco: number; desc: string; cor: string; soDepois?: ItemRascunho["soDepois"] }
 
 export const CATEGORIAS: { id: Categoria; nome: string }[] = [
   { id: "disco", nome: "discos" },
@@ -36,7 +36,8 @@ export const CATALOGO: ItemLoja[] = [
   ...ROUPAS.map((i) => ({ ...i, id: `roupa:${i.id}`, cat: "roupa" as const })),
 ]
 export const itemPorId = (id: string) => CATALOGO.find((i) => i.id === id) ?? null
-export const daCategoria = (cat: Categoria) => CATALOGO.filter((i) => i.cat === cat)
+// (A8, lote D) com o save, só o que já aparece na loja (a guitarra, depois de perder o violão)
+export const daCategoria = (cat: Categoria, s?: Save) => CATALOGO.filter((i) => i.cat === cat && (!s || naLoja(i, historiaDe(s))))
 
 // ── o saldo ──
 const inteiro = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0)
@@ -65,7 +66,7 @@ export function tem(s: Save, id: string): boolean {
 export type Compra = { ok: true; save: Save } | { ok: false; motivo: "nao-existe" | "ja-tem" | "sem-grana" }
 export function comprar(s: Save, id: string): Compra {
   const it = itemPorId(id)
-  if (!it) return { ok: false, motivo: "nao-existe" }
+  if (!it || !naLoja(it, historiaDe(s))) return { ok: false, motivo: "nao-existe" }
   if (tem(s, id)) return { ok: false, motivo: "ja-tem" }
   const pago = gastar(s, it.preco)
   if (!pago) return { ok: false, motivo: "sem-grana" }
