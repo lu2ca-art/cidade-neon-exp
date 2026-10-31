@@ -94,7 +94,7 @@ function calcularEstacao(pesos: Partial<Record<EstacaoId, number>>): EstacaoId {
 
 const SISTEMA = "__sistema"
 
-const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
+const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = { ...Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id])), Drew: "sexta" } // (T41 B4) o Drewboy agora é o Drew
 
 // (T41 B1) no jogo novo, a conversa não abre: a tela cheia volta pra onde
 // estava, o painel da Kombi some quieto. O roteiro fica guardado (vira texto-base
@@ -857,7 +857,7 @@ function Revelacao({ estacao, vivo, nome }: { estacao: EstacaoId; vivo: boolean;
 }
 
 // tom da voz do navegador por pessoa (só vale enquanto não tem áudio gravado)
-const TOM: Record<string, number> = { "D-Bee": 1.25, Ella: 1.2, Mubarak: 0.8, Notti: 1.1, Drewboy: 0.9, Alohan: 0.85, LU2CA: 0.95 }
+const TOM: Record<string, number> = { "D-Bee": 1.25, Ella: 1.2, Mubarak: 0.8, Notti: 1.1, Drew: 0.9, Drewboy: 0.9, Alohan: 0.85, LU2CA: 0.95 }
 
 // nota de voz: canal separado — a música abaixa e volta, não para
 function VozBolha({ it, de, auto, compacta }: { it: Extract<Item, { k: "voz" }>; de: string; auto: boolean; compacta?: boolean }) {

@@ -85,7 +85,7 @@ export const MISSOES: Partial<Record<EstacaoId, MissaoDef>> = {
   sexta: {
     id: "sexta", estilo: "estrada",
     chamado: "sexta e eu em casa de novo. me busca?",
-    tarefa: "buscar o Drewboy em casa e levar ele na balada",
+    tarefa: "buscar o Drew em casa e levar ele na balada",
     carona: "casa-drewboy",
     lugar: "balada",
     caminho: [
