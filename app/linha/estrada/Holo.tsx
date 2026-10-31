@@ -338,31 +338,67 @@ export function useNexoTutorial() {
 }
 // o que dá pra fazer agora, fora do tutorial (a Corrida monta: a missão, o lugar)
 export type NexoAgora = { texto: string; cor: string; ajuda: { t: string; d: string } }
-export function HoloLetreiro({ hora, agora, aberto, card, onAbrir }: { hora: number; agora: NexoAgora | null; aberto: boolean; card: { t: string; d: string } | null; onAbrir: () => void }) {
+// ── (T41 B2, dono 29/10) O NEXO É A CENTRAL DAS NOTIFICAÇÕES: o objetivo da
+// missão, as dicas do jogo e o tutorial do "?". Nada de fala de personagem nem
+// de mensagem: só o que dá pra fazer agora.
+//   - a linha do notch: o passo do tutorial, ou o objetivo da missão, ou (sem
+//     missão) uma dica, trocando devagar
+//   - tocar no notch: ele expande pra baixo com o objetivo inteiro e uma dica
+//   - tocar no "?": o notch diz "clique em qualquer lugar para saber mais"; aí
+//     tocar numa coisa da tela mostra a explicação por cima dela, como
+//     realidade aumentada do holo (HoloAjuda, logo abaixo). O "?" de novo sai
+// Desempenho: nada por quadro. A dica troca num setInterval de 18 s, e só
+// enquanto a linha está livre ──
+// (RASCUNHO, o dono reescreve) as dicas do jogo: curtas, uma coisa por vez
+export const DICAS: string[] = [
+  "dica · segura o propulsor: a Kombi voa",
+  "dica · no ar, um lado da tela gira; os dois juntos dão o mortal",
+  "dica · as gotas da pista viram água: rega as flores, paga a oficina",
+  "dica · o drift, as manobras e os voos enchem o turbo",
+  "dica · toca no mapa: cada ícone é uma missão",
+  "dica · o óculos desliga o holo e deixa só a estrada (H)",
+  "dica · o olho em cima do óculos troca a câmera (C)",
+  "dica · o holograma da rádio abre as frequências que você já achou",
+]
+const DE_DICA = 18000
+const NEXO_PERGUNTA = "clique em qualquer lugar para saber mais"
+function useDica(ativa: boolean) {
+  const [k, setK] = useState(() => Math.floor(Math.random() * DICAS.length))
+  useEffect(() => {
+    if (!ativa) return
+    const t = setInterval(() => setK((x) => (x + 1) % DICAS.length), DE_DICA)
+    return () => clearInterval(t)
+  }, [ativa])
+  return DICAS[k]
+}
+export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }: { hora: number; agora: NexoAgora | null; expandido: boolean; explicando: boolean; onExplicar: () => void }) {
   const tut = useNexoTutorial()
   const [msg, acabou] = useNotch()
   // o passo do tutorial manda; a mensagem que passa espera ele (ou passa entre um e outro)
-  const passando = msg && !tut
-  const cor = tut ? (tut.ok ? "#5dffa0" : tut.cor ?? "#2fe8ff") : passando ? msg.cor : agora?.cor ?? "#2fe8ff"
-  // aberto: o que está no notch, explicado (o preview); tocou numa coisa, ela
-  const exp = card ?? tut?.ajuda ?? agora?.ajuda ?? INFO.ilha
+  const passando = msg && !tut && !explicando
+  const livre = !tut && !passando && !agora && !explicando
+  const dica = useDica(livre || expandido)
+  const cor = explicando ? "#2fe8ff" : tut ? (tut.ok ? "#5dffa0" : tut.cor ?? "#2fe8ff") : passando ? msg.cor : agora?.cor ?? "#2fe8ff"
+  // expandido: o objetivo inteiro (o passo do tutorial ou a missão) e uma dica
+  const obj = tut?.ajuda ?? agora?.ajuda ?? null
   return (
-    <div className={`l-ilha-conteudo l-holo-letreiro ${passando ? "is-msg" : ""} ${tut ? "is-tut" : ""} ${tut?.ok ? "is-ok" : ""} ${tut?.fim ? "is-fim" : ""} ${aberto ? "is-aberto" : ""}`} style={{ ["--c" as string]: cor }} data-passo={tut && !tut.fim ? tut.passo : undefined}>
+    <div className={`l-ilha-conteudo l-holo-letreiro ${passando ? "is-msg" : ""} ${tut ? "is-tut" : ""} ${tut?.ok ? "is-ok" : ""} ${tut?.fim ? "is-fim" : ""} ${expandido ? "is-aberto" : ""} ${explicando ? "is-explica" : ""}`} style={{ ["--c" as string]: cor }} data-passo={tut && !tut.fim ? tut.passo : undefined}>
       <div className="l-holo-letreiro-linha">
         <b>{horaTexto(hora)}</b>
-        {tut ? (
+        {explicando ? (
+          <span className="l-nexo-agora" role="status" aria-live="polite"><em>{NEXO_PERGUNTA}</em></span>
+        ) : tut ? (
           <span className="l-nexo-passo" role="status" aria-live="polite"><em>{tut.ok ? "✓ isso" : tut.texto}</em></span>
         ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : agora ? (
           <span className="l-nexo-agora"><em>{agora.texto}</em></span>
-        ) : <span className="l-holo-letreiro-vazio">N3XO_</span>}
-        {tut?.conta && <small className="l-nexo-conta">{tut.conta}</small>}
-        <button type="button" data-info="ajuda" className={`l-nexo-q ${aberto ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onAbrir() }} aria-label="o que é isso" aria-expanded={aberto}>?</button>
+        ) : <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>}
+        {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
+        <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>
       </div>
-      {aberto && (
+      {expandido && !explicando && (
         <div className="l-nexo-ajuda" role="status" aria-live="polite">
-          <b>{exp.t}</b>
-          <span>{exp.d}</span>
-          <small>toca em qualquer coisa do holo pra saber o que é · o ? fecha</small>
+          {obj ? <><b>{obj.t}</b><span>{obj.d}</span></> : <b>N3XO_</b>}
+          <small>{dica}</small>
         </div>
       )}
     </div>

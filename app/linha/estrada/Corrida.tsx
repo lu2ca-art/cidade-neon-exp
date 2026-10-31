@@ -1155,8 +1155,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [qualHolo, setQualHolo] = useState(QUALIDADE.nivel)
   useEffect(() => ouvirQualidade(setQualHolo), [])
   const sairAjuda = useCallback(() => setAjuda(false), [])
-  // (T56) o notch aberto: a explicação da coisa tocada (null: a do que está no notch)
-  const [cardAjuda, setCardAjuda] = useState<{ t: string; d: string } | null>(null)
+  // (T41 B2) tocar no notch expande ele (o objetivo inteiro e uma dica); o "?" é
+  // outra coisa: o modo de explicar (HoloAjuda), e fecha o notch expandido
+  const [notchAberto, setNotchAberto] = useState(false)
+  const alternarAjuda = useCallback(() => { setNotchAberto(false); setAjuda((x) => !x) }, [])
   // (T56) o tutorial fala no notch; o que dá pra fazer agora, fora dele: o próximo
   // passo da missão ou o que o anel diz (sem chat, sem "chamados" do jogo velho)
   const tutNexo = useNexoTutorial()
@@ -1325,7 +1327,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const ensinar = useCallback((de: string, texto: string, ms = 5200) => {
     if (!("disco" in M)) { falar(de, texto, ms); return }
     avisarRadio(de, texto, ms)
-    if (holoLigadoRef.current) notch(`${de}: ${texto}`, VOZES[de] ?? "#2fe8ff")
+    // (T41 B2) no notch, o Nexo só informa: a instrução, sem o nome de quem fala
+    if (holoLigadoRef.current) notch(texto, VOZES[de] ?? "#2fe8ff")
     else setLegenda({ id: ++toastId.current, de, texto, ms })
     gota(6)
   }, [M, falar])
@@ -2452,7 +2455,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
             data-info={letreiro ? "ilha" : undefined}
             style={{ ["--cor" as string]: t0 ? VOZES[t0.de] ?? "#fff" : "#2fe8ff" }}
             onPointerDown={(modo === "fala" && onIlha) || letreiro ? (e) => e.stopPropagation() : undefined}
-            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => setAjuda((x) => !x) : undefined}
+            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => setNotchAberto((x) => !x) : undefined}
           >
             {modo === "garfo" && C && (
               <div key="garfo" className="l-ilha-conteudo">
@@ -2479,7 +2482,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
                 <div className="l-procurado-barra"><div ref={hudCacaBarra} /></div>
               </div>
             )}
-            {modo === "quieta" && (letreiro ? <HoloLetreiro key="q" hora={hora} agora={nexoAgora} aberto={ajuda} card={cardAjuda} onAbrir={() => setAjuda((x) => !x)} /> : <div key="q" className="l-ilha-conteudo l-ilha-quieta" />)}
+            {modo === "quieta" && (letreiro ? <HoloLetreiro key="q" hora={hora} agora={nexoAgora} expandido={notchAberto} explicando={ajuda} onExplicar={alternarAjuda} /> : <div key="q" className="l-ilha-conteudo l-ilha-quieta" />)}
           </div>
         )
       })()}
@@ -2521,7 +2524,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
         </>
       )}
-      {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} onCard={setCardAjuda} />}
+      {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} onCard={() => {}} />}
       {/* a legendinha mini das falas que ensinam (some sozinha: a animação acaba e ela sai) */}
       {legenda && (
         <div key={legenda.id} className="l-legenda" role="status" aria-live="polite" style={{ ["--ms" as string]: `${legenda.ms}ms`, ["--cor" as string]: VOZES[legenda.de] ?? "#2fe8ff" }} onAnimationEnd={(e) => { if (e.target === e.currentTarget) setLegenda(null) }}>
