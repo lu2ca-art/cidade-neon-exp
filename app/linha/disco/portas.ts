@@ -97,6 +97,8 @@ export const PORTAS: Record<PortaId, { nome: string; existe: boolean; tarefa?: s
   "batida-estudio": { nome: "o BATIDA pra produzir mais", existe: true, tarefa: "T10" },
   // (T63) as trincheiras estão no jogo: descer a rampa da boca do túnel e correr quando quiser
   corridas: { nome: "as corridas nos túneis", existe: true, tarefa: "T63" },
+  // (bloco 1 · A6, conferido 30/10) a moto está nas trincheiras, mas ainda trancada
+  // na escolha ("as motos chegam depois"; só ?motos libera): segue "em breve"
   motos: { nome: "as motos", existe: false, tarefa: "T14" },
   ginasio: { nome: "o ginásio: basquete e cama elástica", existe: true, tarefa: "T15" },
   "loja-discos": { nome: "a loja de discos", existe: true, tarefa: "T16" },
@@ -157,7 +159,11 @@ export const CONFIG13 = {
   // joga com o link de teste (?parte=missao.ella); no mapa, até o dono aprovar,
   // a missão segue como antes (as peças "em breve", a porta direto). Aprovou:
   // tira daqui e ela entra no mapa
-  soNoTeste: ["ella"] as MissaoId[],
+  // (bloco 1 · A7, 30/10) o dono decidiu o jogo da Ella: a casa dela entrou no mapa
+  soNoTeste: [] as MissaoId[],
+  // (bloco 1 · A6) o grafite dos túneis joga no mapa (o C3 pronto e a page.tsx
+  // abrindo o Grafite.tsx: o lote D liga). Desligado, a arte dos túneis fica "em breve"
+  grafiteNoMapa: false,
 }
 
 const p = (nome: string, situacao: Situacao, extra: Partial<Peca> = {}): Peca => ({ nome, situacao, ...extra })
@@ -190,7 +196,9 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   tuneis: {
     id: "tuneis", n: 4, onde: "suburbio", quem: "os túneis", cor: "#9b8cff", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "tuneis" }, pedido: "embaixo das raízes tem corrida", apresenta: "a corrida de BMX, patins ou skate nas trincheiras",
-    arte: p("o grafite: um gesto assina o desenho", "decidido", { tarefa: "T12", existe: "página de teste do T12" }),
+    // (bloco 1 · A6) o grafite nas paredes das trincheiras (disco/Grafite.tsx, o C3).
+    // Fica "em breve" até CONFIG13.grafiteNoMapa ligar (o lote D, com o C3 pronto)
+    arte: p("o grafite: um gesto assina o desenho", "decidido", { como: { t: "grafite" }, tarefa: "T12", existe: "página de teste do T12" }),
     // (T57, T63) a boca do túnel no subúrbio leva às trincheiras (dentro do jogo); voltar com a volta feita conta
     jogo: p("a corrida de BMX, patins ou skate", "decidido", { como: { t: "trincheiras" }, tarefa: "T13", existe: "dentro do jogo, pela boca do túnel (T63)" }),
     abre: ["corridas", "motos"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.tuneis, instrumento: null }, requer: ["oficina"],
@@ -240,7 +248,7 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     // obra fica exposta na galeria.
     // Uma cena só (interior/salas/GaleriaElla.tsx, cenas.ts CENA_GALERIA_ELLA)
     arte: p("pintar um quadro ali mesmo e expor", "decidido", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22", existe: "/galeria/pintar" }),
-    jogo: p("o filme da planta do Criador e conhecer os quadros que ela guardou", "proposta", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22" }),
+    jogo: p("o filme da planta do Criador e conhecer os quadros que ela guardou", "decidido", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22" }),
     abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: PAGA.missao.ella, instrumento: "flauta-bambu" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   notti: {
@@ -291,7 +299,8 @@ export type Passo = "arte" | "jogo" | "porta"
 // (T22) a casa de uma missão que ainda é só teste (CONFIG13.soNoTeste) conta
 // como "em breve" fora do link de teste (o save ganha `teste13` com ele)
 export const emTeste = (h: HistoriaDisco | null | undefined, id: MissaoId) => !CONFIG13.soNoTeste.includes(id) || (h?.teste13 ?? []).includes(id)
-export const emBreve = (pc: Peca, h?: HistoriaDisco | null, id?: MissaoId) => !pc.como || (pc.como.t === "casa" && !!id && !emTeste(h, id))
+export const emBreve = (pc: Peca, h?: HistoriaDisco | null, id?: MissaoId) =>
+  !pc.como || (pc.como.t === "casa" && !!id && !emTeste(h, id)) || (pc.como.t === "grafite" && !CONFIG13.grafiteNoMapa)
 const chave = (id: MissaoId, qual: "arte" | "jogo") => `${id}:${qual}`
 // as duas do começo contam como feitas quando a história já passou delas (save
 // de antes do T02, ou um link ?parte= que começa depois)
