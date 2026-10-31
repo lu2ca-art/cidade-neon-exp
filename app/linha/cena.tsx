@@ -236,6 +236,7 @@ const DICAS_3D: Record<string, string> = {
   planta: "chega perto. toca no que chamar sua atenção",
   quadros: "anda pela galeria. toca nos quadros",
   pintar: "pinta na luz da planta. os potes trocam a cor. pronta, toca no prego",
+  instrumentos: "toca nos instrumentos do banco",
 }
 function Dica3d({ id, podeNegar, onNegar }: { id: string; podeNegar: boolean; onNegar: () => void }) {
   // o bar (06/10, LU2CA): a saída é a palavra ESCOLHA, em amarelo — quem

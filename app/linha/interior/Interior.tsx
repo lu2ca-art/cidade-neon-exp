@@ -17,6 +17,7 @@ import type { EstacaoId } from "../data"
 import type { LugarId } from "../lugares"
 import { useEstadoCena } from "./bus"
 import { chamarToqueLivre, olhar, type SalaProps } from "./motor"
+import type { InstrumentoId } from "../disco/instrumentos"
 import { CARREGAR, type SalaId } from "./registro"
 
 // re-exporta o motor pra quem ainda importa daqui
@@ -28,7 +29,7 @@ const SALAS = Object.fromEntries(
   Object.entries(CARREGAR).map(([id, c]) => [id, lazy(() => c!().then((C) => ({ default: C })))]),
 ) as Partial<Record<SalaId, LazyExoticComponent<ComponentType<SalaProps>>>>
 
-export function Interior({ lugar, sala, objetos = [], inicio = false, copos = [], popularidade = 0, disco = false }: { lugar: LugarId; sala?: SalaId; objetos?: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number; disco?: boolean }) {
+export function Interior({ lugar, sala, objetos = [], inicio = false, copos = [], popularidade = 0, disco = false, instrumentos, novos }: { lugar: LugarId; sala?: SalaId; objetos?: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number; disco?: boolean; instrumentos?: InstrumentoId[]; novos?: InstrumentoId[] }) {
   // a sala vem num pedaço próprio do pacote (registro.ts); `sala` troca a do
   // lugar pela casa de uma missão (T22: a galeria da Ella)
   const S = SALAS[sala ?? lugar]
@@ -50,7 +51,7 @@ export function Interior({ lugar, sala, objetos = [], inicio = false, copos = []
     >
       <Canvas className="l-interior-cvs" dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 50, near: 0.05, far: 200, position: [0, 1.6, 6] }}>
         <Suspense fallback={null}>
-          <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} inicio={inicio} copos={copos} popularidade={popularidade} disco={disco} /></Seguro>
+          <Seguro nome={`sala-${lugar}`}><S estado={estado} objetos={objetos} inicio={inicio} copos={copos} popularidade={popularidade} disco={disco} instrumentos={instrumentos} novos={novos} /></Seguro>
         </Suspense>
         <Seguro nome="lente-sala"><Cinema /></Seguro>
         {process.env.NODE_ENV !== "production" && <Medidor />}

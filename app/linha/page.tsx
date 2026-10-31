@@ -52,7 +52,7 @@ import { CANTEIROS, ESPECIES, canteiroPorId } from "./estrada/canteiros"
 import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "./relogio"
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_TAMBOR, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
+import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CONFIG_PERSEGUICAO, emPerseguicao, escolherVeiculo, escolhendoVeiculo, kombiJogada, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
@@ -73,7 +73,7 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
-import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
@@ -140,6 +140,8 @@ type Aviso = { id: number; titulo: string; texto: string; cor: string }
 // (T02) AS 13 MISSÕES (disco/portas.ts): arte → jogo → a porta abre → a
 // recompensa. A história do save, com as faixas antigas já feitas contando
 function hist13(s: Save) { return sincronizar(historiaDe(s), s.objetos) }
+// (T49, lote D) os instrumentos ganhos que ele ainda não viu na casa da D-Bee
+const instrumentosNovos = (h: HistoriaDisco) => instrumentosGanhos(h).filter((x) => !(h.instrumentosVistos ?? []).includes(x))
 // a luz das pistas (as torres, atos.ts): a missão da cidade só aparece com a pista acesa
 const luzDoSave = (s: Save) => luzDasPistas(pistasFeitas(s.objetos))
 // (21/10, a feira) a missão de agora na carreira: a que ele PEGOU na feira; sem
@@ -269,7 +271,7 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   // inicio: a casa da D-Bee na abertura (CENA_INICIO)
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" } | null>(null)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" | "dbee-instrumentos" } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -740,6 +742,8 @@ export default function LinhaPage() {
       if (h.fase === "carreira" && Date.now() - barFechou.current > 8000) {
         const m = missaoDoSave(saveRef.current)
         if (m && alvo13(hist13(saveRef.current), m)?.lugar === id) chegouRef.current(m)
+        // (T49, lote D) sem missão lá, a casa da D-Bee com instrumento novo: a volta dos instrumentos
+        else if (id === "casa-dbee" && instrumentosNovos(hist13(saveRef.current)).length) abrirCasaInstrumentosRef.current()
         return
       }
       if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
@@ -1013,6 +1017,8 @@ export default function LinhaPage() {
   const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : lugar13?.lugar ? { t: "lugar", missao: "sexta", lugar: lugar13.lugar, pegar: false }
+    // (T49, lote D) sem missão pegada e com instrumento novo: a casa da D-Bee chama
+    : hist.fase === "carreira" && !missaoCarreira && instrumentosNovos(h13).length ? { t: "lugar", missao: "sexta", lugar: "casa-dbee", pegar: false }
     : null
   // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
@@ -1541,6 +1547,8 @@ export default function LinhaPage() {
     const h = historiaDe(saveRef.current)
     // (T37) a chegada de um login acabou na porta: a D-Bee acenou, o jogo segue dali
     if (e === "chegou") setChegadaLogin(false)
+    // (T49, lote D) o login chega na casa da D-Bee: com instrumento novo, entra e toca
+    if (e === "chegou" && h.fase === "carreira" && !cena && instrumentosNovos(hist13(saveRef.current)).length) setTimeout(() => abrirCasaInstrumentosRef.current(), 400)
     if (e === "casa" && h.fase === "casa" && !cena) {
       setCinema("lugar")
       setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, especial: "disco-casa" })
@@ -1631,6 +1639,26 @@ export default function LinhaPage() {
     setTimeout(() => avisar(`+${OFICINA_CFG.aguaDaDbee} de água`, `D-Bee: ${FALAS_OFICINA.dbeeAgua}`, "#4fc3ff"), 1200)
     fonteSom.set("disco")
     disco.tocarLista(ACERVO.faixas.map((f) => f.src))
+  }
+
+  // (T49, lote D) a volta na casa da D-Bee: os instrumentos ganhos no banco. Com
+  // novo, a cena pede pra tocar cada novo; sem novo, a visita livre. No fim, todos ficam vistos
+  const casaNovos = useRef(false)
+  const abrirCasaInstrumentos = () => {
+    if (cena || cinema) return
+    casaNovos.current = instrumentosNovos(hist13(saveRef.current)).length > 0
+    setAoVivo(null)
+    setCinema("lugar")
+    setCena({ lugar: "casa-dbee", missao: "ojala", pegar: false, especial: "dbee-instrumentos" })
+    track("mission_step", { mission_id: "disco-instrumentos", step: "casa", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }
+  const abrirCasaInstrumentosRef = useRef(abrirCasaInstrumentos)
+  useEffect(() => { abrirCasaInstrumentosRef.current = abrirCasaInstrumentos })
+  const fimCasaInstrumentos = () => {
+    setCena(null)
+    setCinema(null)
+    barFechou.current = Date.now()
+    setSave((s) => comHistoria(s, (h) => ({ ...h, instrumentosVistos: instrumentosGanhos(h) })))
   }
 
   const abrirChat = (id: ChatId, volta: Volta = { t: "home" }, estacaoAqui = false) => {
@@ -2273,14 +2301,14 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar"} />
+          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
         )}
         {cena && (
           <CenaLugar
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.especial === "ella-galeria" ? "galeria-ella" : cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "dbee-instrumentos" ? (casaNovos.current ? CENA_CASA_INSTRUMENTOS : CENA_CASA_VISITA) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -2288,7 +2316,7 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
+            onFim={cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
           />
         )}

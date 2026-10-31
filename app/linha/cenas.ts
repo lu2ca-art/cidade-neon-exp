@@ -54,6 +54,8 @@ export type PassoCena =
   | { t: "gesto"; id: "ordem"; frases: string[] }
   // explorar a sala: tocar nas coisas (interior/: o quarto do Drewboy, a casa da D-Bee)
   | { t: "gesto"; id: "quarto" | "casa" | "casa-inicio" }
+  // (T49) tocar os instrumentos ganhos na casa da D-Bee (disco/InstrumentosCasa.tsx)
+  | { t: "gesto"; id: "instrumentos" }
   // (T22) a casa da Ella: conhecer os quadros, pintar na tela (interior/salas/GaleriaElla.tsx)
   | { t: "gesto"; id: "quadros" | "pintar" }
   // (T22b) um filminho (estrada/ganchoCena.ts): hoje as falas em legenda sobre a

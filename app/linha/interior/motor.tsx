@@ -11,9 +11,12 @@ import * as THREE from "three"
 import type { EstacaoId } from "../data"
 import type { EstadoCena } from "./bus"
 import type { V3 } from "./comum"
+import type { InstrumentoId } from "../disco/instrumentos"
 
 // `inicio`: a sala no começo do jogo (a casa da D-Bee com ela dentro)
-export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number; disco?: boolean }
+// (T49, lote D) `instrumentos`: os instrumentos ancestrais ganhos (a casa da D-Bee);
+// `novos`: os que chegaram desde a última visita
+export interface SalaProps { estado: EstadoCena; objetos: EstacaoId[]; inicio?: boolean; copos?: number[]; popularidade?: number; disco?: boolean; instrumentos?: InstrumentoId[]; novos?: InstrumentoId[] }
 
 // toque livre na tela (fora dos objetos): a sala que quiser escuta
 // (a balada e o vagão: tocar no ritmo em qualquer lugar)

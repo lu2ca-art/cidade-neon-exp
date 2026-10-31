@@ -13,8 +13,9 @@
 // os sons de verdade (lista-mestra T49: "precisa do som de cada instrumento").
 //
 // A LISTA vem por prop (`ids`): quem sabe o que foi ganho é o save
-// (disco/instrumentos.ts, lote A: h.instrumentos). Até ele existir, o tipo
-// aqui é um texto e a casa usa INSTRUMENTOS_MOCK fora da produção. Um id que
+// (disco/instrumentos.ts, lote A: h.instrumentos; portas.ts instrumentosGanhos).
+// (lote D) os ids são os do A; o SOM é o do A (tocarInstrumento, o mesmo da tela
+// de recompensa) e o MODELO é o daqui (SINONIMO: o id do A → a forma). Um id que
 // esta tabela não conhece toca e aparece como um tamborzinho (nada quebra).
 
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
@@ -24,17 +25,18 @@ import { audioCtx, saidaSom } from "../som"
 import { sinalizar } from "../interior/bus"
 import type { V3 } from "../interior/comum"
 
-// (lote D) trocar por `import type { InstrumentoId } from "./instrumentos"`
-export type InstrumentoId = string
+import { ehInstrumento, tocarInstrumento, type InstrumentoId } from "./instrumentos"
+export type { InstrumentoId }
 
-// o mock local (só fora da produção, até o save ter a lista de verdade)
-export const INSTRUMENTOS_MOCK: InstrumentoId[] = ["kalimba", "berimbau", "flauta", "maraca", "udu", "agogo", "pau-de-chuva", "tigela"]
+// o mock (os links de teste: ?parte=casa.instrumentos)
+export const INSTRUMENTOS_MOCK: InstrumentoId[] = ["djembe", "tambor-agua", "udu", "caxixi", "sitar", "berimbau", "flauta-bambu", "kalimba"]
 
 type Forma = "kalimba" | "berimbau" | "flauta" | "maraca" | "caxixi" | "pau-de-chuva" | "udu" | "agogo" | "didgeridoo" | "tigela" | "tambor-falante" | "tamborzinho"
 const FORMAS: Forma[] = ["kalimba", "berimbau", "flauta", "maraca", "caxixi", "pau-de-chuva", "udu", "agogo", "didgeridoo", "tigela", "tambor-falante", "tamborzinho"]
 // o id do save → a forma e o som (aceita sinônimos; o resto vira tamborzinho)
-const SINONIMO: Record<string, Forma> = { "mbira": "kalimba", "xequere": "maraca", "shekere": "maraca", "chocalho": "maraca", "rainstick": "pau-de-chuva", "sino": "tigela", "tigela-tibetana": "tigela", "flauta-de-bambu": "flauta", "talking-drum": "tambor-falante" }
-const formaDe = (id: InstrumentoId): Forma => (FORMAS as string[]).includes(id) ? id as Forma : SINONIMO[id] ?? "tamborzinho"
+// (lote D) os ids do A (disco/instrumentos.ts) → a forma daqui
+const SINONIMO: Record<string, Forma> = { "djembe": "tamborzinho", "tambor-agua": "udu", "sitar": "berimbau", "flauta-bambu": "flauta", "ocarina": "udu", "handpan": "tigela", "mbira": "kalimba", "xequere": "maraca", "shekere": "maraca", "chocalho": "maraca", "rainstick": "pau-de-chuva", "sino": "tigela", "tigela-tibetana": "tigela", "flauta-de-bambu": "flauta", "talking-drum": "tambor-falante" }
+const formaDe = (id: string): Forma => (FORMAS as string[]).includes(id) ? id as Forma : SINONIMO[id] ?? "tamborzinho"
 
 // tudo que dá pra afinar fica aqui
 export const CASA_INSTRUMENTOS = {
@@ -46,7 +48,9 @@ export const CASA_INSTRUMENTOS = {
   alturas: [0.47, 1.12, 1.72], // o tampo do banco, a 1ª e a 2ª prateleira
   // a escala (pentatônica menor de lá) que os melódicos percorrem
   escala: [0, 3, 5, 7, 10, 12, 15],
-  // no gesto "instrumentos", a cena segue depois de tocar cada um pelo menos uma vez
+  // no gesto "instrumentos": com instrumento novo, a cena segue depois de tocar
+  // cada novo; na visita livre, depois de tocar este tanto de instrumentos
+  visitaLivre: 2,
 }
 
 // ── o som de cada um (sintetizado: barato e sem atraso) ──
@@ -193,8 +197,10 @@ function vaga(i: number): V3 {
   return [C.x, C.alturas[fil], C.z0 + (i % C.porFileira) * C.passo]
 }
 
-// `gesto`: a cena pediu "toque os instrumentos" (no fim de tocar cada um, ela segue)
-export function InstrumentosCasa({ ids, gesto = false }: { ids: InstrumentoId[]; gesto?: boolean }) {
+// `gesto`: a cena pediu "toque os instrumentos". (lote D) Com `novos` (os que
+// chegaram desde a última visita), ela segue depois de tocar cada novo; sem
+// novos (a visita livre), depois de tocar uns (CASA_INSTRUMENTOS.visitaLivre)
+export function InstrumentosCasa({ ids, gesto = false, novos = [] }: { ids: InstrumentoId[]; gesto?: boolean; novos?: InstrumentoId[] }) {
   const lista = useMemo(() => [...new Set(ids)], [ids])
   const grupos = useRef<(THREE.Group | null)[]>([])
   const bateu = useRef<number[]>([])
@@ -207,9 +213,13 @@ export function InstrumentosCasa({ ids, gesto = false }: { ids: InstrumentoId[];
     e.stopPropagation()
     const n = vezes.current[id] ?? 0
     vezes.current[id] = n + 1
-    tocarSom(formaDe(id), n)
+    // o som do A (o mesmo da recompensa); um id que ele não conhece, o sintetizado daqui
+    if (ehInstrumento(id)) tocarInstrumento(id, n)
+    else tocarSom(formaDe(id), n)
     bateu.current[i] = performance.now() / 1000
-    if (gesto && !fimMandado.current && lista.every((x) => (vezes.current[x] ?? 0) > 0)) {
+    const novosAqui = novos.filter((x) => lista.includes(x))
+    const pronto = novosAqui.length ? novosAqui.every((x) => (vezes.current[x] ?? 0) > 0) : Object.keys(vezes.current).length >= Math.min(CASA_INSTRUMENTOS.visitaLivre, lista.length)
+    if (gesto && !fimMandado.current && pronto) {
       fimMandado.current = true
       sinalizar({ t: "fim-gesto" })
     }

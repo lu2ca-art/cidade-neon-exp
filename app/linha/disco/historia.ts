@@ -68,6 +68,9 @@ export interface HistoriaDisco {
   // (T49) os instrumentos ancestrais ganhos nas portas (disco/instrumentos.ts);
   // tocam na casa da D-Bee
   instrumentos?: InstrumentoId[]
+  // (lote D) os que ele já viu na casa da D-Bee: o resto é "novo" (a cena pede
+  // pra tocar cada novo; sem novo, a visita é livre)
+  instrumentosVistos?: InstrumentoId[]
   // (T19) a peça de escrever aberta agora ("lu2ca:arte"; fica no save: recarregar
   // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
   aberta13?: string
@@ -269,6 +272,35 @@ export const CENA_CASA_HOLO: Cena = { ...CENA_CASA_DISCO, passos: CENA_CASA_DISC
 
 // (T06) o pedaço a partir do tambor (?parte=casa.tambor): ela senta no tapete e chama
 export const CENA_CASA_TAMBOR: Cena = { ...CENA_CASA_DISCO, passos: CENA_CASA_DISCO.passos.slice(CENA_CASA_DISCO.passos.findIndex((p) => p.t === "gesto" && p.id === "tambores") - 1) }
+
+// (T49, lote D) a volta na casa da D-Bee com os instrumentos ganhos. Com
+// instrumento novo (ganhou numa porta e ainda não viu aqui): ela mostra e pede
+// pra tocar cada novo. Sem novo: a visita livre (toca uns, ela fala, sai). RASCUNHO
+export const CENA_CASA_INSTRUMENTOS: Cena = {
+  lugar: "casa-dbee",
+  titulo: "a casa da d-bee",
+  missao: "ojala",
+  passos: [
+    { t: "acao", texto: "a porta tá aberta. no banco da parede, coisa nova do lado das velhas" },
+    { t: "fala", de: "D-Bee", texto: "trouxeram pra cá o que vc ganhou. aqui eles ficam seguros" },
+    { t: "fala", de: "D-Bee", texto: "toca. cada um tem um jeito de acordar" },
+    { t: "gesto", id: "instrumentos" },
+    { t: "fala", de: "D-Bee", texto: "isso. a casa lembra de cada som que entra nela" },
+    { t: "fim" },
+  ],
+}
+export const CENA_CASA_VISITA: Cena = {
+  lugar: "casa-dbee",
+  titulo: "a casa da d-bee",
+  missao: "ojala",
+  passos: [
+    { t: "acao", texto: "a porta tá aberta. o banco, os instrumentos, a lâmpada quente" },
+    { t: "fala", de: "D-Bee", texto: "voltou. senta. toca o que quiser" },
+    { t: "gesto", id: "instrumentos" },
+    { t: "fala", de: "D-Bee", texto: "a cidade espera. a casa também" },
+    { t: "fim" },
+  ],
+}
 
 // ── O PRÓLOGO: o bar (LU2CA 19–20/10). A moça do bar (a do copo: um jeito meio
 // robô, muito sensata; é uma das máquinas conscientes, mas não revela) oferece

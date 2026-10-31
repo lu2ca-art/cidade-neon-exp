@@ -14,7 +14,7 @@ import { sinalizar } from "../bus"
 import { Caixa, Npc, Sala, Toque, useExplorar, type Coisa, type V3 } from "../comum"
 import { Camera, type Plano, type SalaProps } from "../motor"
 import { DjembeDela, DjembeSeu } from "./Djembe"
-import { INSTRUMENTOS_MOCK, InstrumentosCasa, type InstrumentoId } from "../../disco/InstrumentosCasa"
+import { InstrumentosCasa } from "../../disco/InstrumentosCasa"
 
 const AZUL = "#3d7bff"
 const QUENTE = "#ffcf8a"
@@ -59,10 +59,10 @@ const GRUPO: { quem: string; cor: string; pos: V3 }[] = [
   { quem: "Tony Gordo", cor: "#ffe14d", pos: [0.6, 0, 3.4] },
 ]
 
-// (T49) `instrumentos`: os ganhos (o save, h.instrumentos do lote A). Sem a
-// prop (ainda não ligada no Interior/page), fora da produção vale o mock
-export function SalaCasaDbee({ estado, inicio = false, disco = false, instrumentos }: SalaProps & { instrumentos?: InstrumentoId[] }) {
-  const ganhos = instrumentos ?? (process.env.NODE_ENV !== "production" ? INSTRUMENTOS_MOCK : [])
+// (T49) `instrumentos`: os ganhos (portas.ts instrumentosGanhos, ligado pela
+// page.tsx); `novos`: os que chegaram desde a última visita
+export function SalaCasaDbee({ estado, inicio = false, disco = false, instrumentos = [], novos = [] }: SalaProps) {
+  const ganhos = instrumentos
   const coisas = inicio ? [] : COISAS
   const procurando = estado.gesto === (inicio ? "casa-inicio" : "casa")
   const { vistas, ver } = useExplorar(procurando, coisas, inicio ? 2 : 3, sinalizar)
@@ -145,7 +145,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false, instrument
       {/* (disco) a D-Bee em casa, os instrumentos na parede, os tambores no tapete */}
       {disco && <CasaDisco falando={estado.falando === "D-Bee"} tocando={estado.gesto === "tambores" || /senta no tapete|tocam junto|é quem eu achei/.test(estado.texto ?? "")} />}
       {/* (T49) os instrumentos ganhos: ficam na casa e cada um toca */}
-      {disco && <InstrumentosCasa ids={ganhos} gesto={estado.gesto === "instrumentos"} />}
+      {disco && <InstrumentosCasa ids={ganhos} novos={novos} gesto={estado.gesto === "instrumentos"} />}
       {/* quem chega */}
       {GRUPO.filter((g) => chegaram.includes(g.quem)).map((g) => (
         <Npc key={g.quem} cor={g.cor} pos={g.pos} vira={Math.PI} falando={estado.falando === g.quem} />
