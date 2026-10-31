@@ -20,6 +20,7 @@
 
 import type { Save } from "../estado"
 import type { MissaoId, PortaId } from "./portas"
+import type { InstrumentoId } from "./instrumentos"
 
 export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "oficina" | "subir" | "nectar" | "carreira" | "livre"
 // os passos da Nectar (B9)
@@ -64,6 +65,9 @@ export interface HistoriaDisco {
   guitar?: string[]
   batida?: string[]
   conta13?: Record<string, number>
+  // (T49) os instrumentos ancestrais ganhos nas portas (disco/instrumentos.ts);
+  // tocam na casa da D-Bee
+  instrumentos?: InstrumentoId[]
   // (T19) a peça de escrever aberta agora ("lu2ca:arte"; fica no save: recarregar
   // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
   aberta13?: string
