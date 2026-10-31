@@ -1,6 +1,6 @@
 "use client"
 
-// T25 · A ARTE DO TONY GORDO (PROPOSTA, rascunho): cozinhar um prato com o
+// T25 · A ARTE DO TONY GORDO (aprovada 30/10): cozinhar um prato com o
 // que nasceu na horta. Escolhe 3 do que nasceu; segura o fogo até o ponto
 // (solta na faixa clara); o Tony prova. O prato fica no save. conf.ts (COZINHAR).
 

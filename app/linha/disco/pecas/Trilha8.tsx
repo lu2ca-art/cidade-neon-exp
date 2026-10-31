@@ -1,6 +1,6 @@
 "use client"
 
-// T23 · A ARTE DO NOTTI (PROPOSTA, rascunho): fazer a trilha de 8 bits da
+// T23 · A ARTE DO NOTTI (aprovada 30/10): fazer a trilha de 8 bits da
 // máquina. Uma grade de 4 vozes × 8 passos (melodia, baixo, pulso, ruído) em
 // onda quadrada, tocando em loop no bpm da DopaminA. Acende os quadrados, ouve,
 // e grava na máquina (a trilha fica no save). Rascunho: conf.ts (TRILHA8).

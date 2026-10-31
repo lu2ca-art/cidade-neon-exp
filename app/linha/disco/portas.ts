@@ -226,8 +226,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   lu2ca: {
     id: "lu2ca", n: 8, onde: "cidade", quem: "LU2CA", cor: "#e0ff4f", faixa: "nectar", faixaSituacao: "decidido",
     lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar uma faixa ao vivo no Guitar Driver",
-    // (T19) a arte ainda é proposta: joga como rascunho (disco/letras.ts); o dono decide
-    arte: p("escrever a letra", "proposta", { como: { t: "letra", faixa: "nectar" }, tarefa: "T19" }),
+    // (T19, aprovada 30/10) escrever a letra (disco/letras.ts)
+    arte: p("escrever a letra", "decidido", { como: { t: "letra", faixa: "nectar" }, tarefa: "T19" }),
     jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "nectar" }, tarefa: "T19" }),
     abre: ["shows-live"], recompensa: { guitar: null, batida: "nectar", neon: PAGA.missao.lu2ca, instrumento: "berimbau" }, requer: ["oficina"],
   },
@@ -246,24 +246,24 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   notti: {
     id: "notti", n: 10, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "dopamina", faixaSituacao: "decidido",
     lugar: { lugar: "topo" }, pedido: "o fliperama apagou. ninguém joga mais nada", apresenta: "uma máquina do fliperama",
-    // (T23) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, TRILHA8)
-    arte: p("a trilha de 8 bits da máquina", "proposta", { como: { t: "cena", id: "trilha8" }, tarefa: "T23" }),
+    // (T23, aprovada 30/10) a trilha 8 bits (disco/pecas/conf.ts, TRILHA8)
+    arte: p("a trilha de 8 bits da máquina", "decidido", { como: { t: "cena", id: "trilha8" }, tarefa: "T23" }),
     jogo: p("uma máquina do fliperama", "decidido", { como: { t: "cena", id: "maquina" }, tarefa: "T23", existe: "/fliperama" }),
     abre: ["fliperama"], recompensa: { guitar: "dopamina", batida: "dopamina", neon: PAGA.missao.notti, instrumento: "ocarina" }, requer: ["oficina"],
   },
   nizzy: {
     id: "nizzy", n: 11, onde: "cidade", quem: "Nizzy", cor: "#ff2436", faixa: "rollercoaster", faixaSituacao: "decidido",
     lugar: { lugar: "palco-rollercoaster" }, pedido: "a montanha-russa parou no meio", apresenta: "a montanha-russa",
-    // (T24) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, CLIPE)
-    arte: p("filmar o clipe vertical da Rollercoaster", "proposta", { como: { t: "cena", id: "clipe" }, tarefa: "T24" }),
+    // (T24, aprovada 30/10) o clipe vertical (disco/pecas/conf.ts, CLIPE)
+    arte: p("filmar o clipe vertical da Rollercoaster", "decidido", { como: { t: "cena", id: "clipe" }, tarefa: "T24" }),
     jogo: p("andar na montanha-russa (no parque)", "decidido", { como: { t: "evento", evento: "montanha", n: 1 }, tarefa: "T24" }),
     abre: ["parque"], recompensa: { guitar: "rollercoaster", batida: "rollercoaster", neon: PAGA.missao.nizzy, instrumento: "handpan" }, requer: ["oficina"],
   },
   tony: {
     id: "tony", n: 12, onde: "cidade", quem: "Tony Gordo", cor: "#ff3fb0", faixa: "swav", faixaSituacao: "decidido",
     lugar: { lugar: "palco-swav" }, pedido: "tudo aqui em cima tem gosto de nada", apresenta: "regar a horta atrás do restaurante",
-    // (T25) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, COZINHAR)
-    arte: p("cozinhar um prato com o que nasceu", "proposta", { como: { t: "cena", id: "cozinhar" }, tarefa: "T25" }),
+    // (T25, aprovada 30/10) cozinhar (disco/pecas/conf.ts, COZINHAR)
+    arte: p("cozinhar um prato com o que nasceu", "decidido", { como: { t: "cena", id: "cozinhar" }, tarefa: "T25" }),
     jogo: p("regar a horta atrás do restaurante", "decidido", { como: { t: "cena", id: "horta" }, tarefa: "T25" }),
     abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: PAGA.missao.tony, instrumento: "kalimba" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
