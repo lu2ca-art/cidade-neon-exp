@@ -130,3 +130,25 @@
 .l-sinuca-fim p { margin: 0; font: 14px/1.4 system-ui, sans-serif; }
 .l-sinuca-fim em { opacity: 0.55; font-style: normal; font-size: 12px; }
 .l-peca.is-sinuca .sn-raiz { z-index: 80; }
+
+/* T15 · a moda do Drew (bloco 1 · A3): o manequim e as peças recicladas */
+.l-peca-moda { display: flex; flex-direction: column; gap: 10px; }
+.l-moda-manequim { position: relative; align-self: center; width: 90px; height: 170px; }
+.l-moda-manequim i { position: absolute; left: 50%; transform: translateX(-50%); transition: background 0.2s; }
+.l-moda-manequim .is-cabeca { top: 0; width: 40px; height: 18px; border-radius: 20px 20px 4px 4px; z-index: 2; }
+.l-moda-manequim .is-rosto { top: 10px; width: 30px; height: 30px; border-radius: 50%; background: #c98a5a; }
+.l-moda-manequim .is-tronco { top: 42px; width: 58px; height: 52px; border-radius: 14px 14px 6px 6px; }
+.l-moda-manequim .is-acessorio { top: 44px; width: 22px; height: 22px; border-radius: 50%; margin-left: 14px; box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); }
+.l-moda-manequim .is-pernas { top: 94px; width: 48px; height: 56px; border-radius: 4px 4px 2px 2px; }
+.l-moda-manequim .is-pes { top: 150px; width: 58px; height: 12px; border-radius: 6px; }
+.l-moda-manequim.is-desfile { animation: l-moda-passo 0.84s ease-in-out infinite alternate; filter: drop-shadow(0 0 12px var(--cor)); }
+@keyframes l-moda-passo { from { transform: translateX(-10px) rotate(-1.5deg); } to { transform: translateX(10px) rotate(1.5deg); } }
+.l-moda-partes { display: flex; flex-wrap: wrap; gap: 4px; }
+.l-moda-partes button { padding: 6px 9px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.14); background: transparent; color: rgba(255, 255, 255, 0.7); font: 700 11px var(--mono, ui-monospace); cursor: pointer; }
+.l-moda-partes button.is-feita { color: #fff; border-color: color-mix(in srgb, var(--cor) 50%, transparent); }
+.l-moda-partes button.is-agora { background: var(--cor); color: #06060c; border-color: transparent; }
+.l-moda-opcoes { display: flex; flex-direction: column; gap: 6px; }
+.l-moda-opcoes button { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font: 13px system-ui, sans-serif; text-align: left; cursor: pointer; }
+.l-moda-opcoes button i { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.l-moda-opcoes button.is-esc { border-color: var(--cor); background: color-mix(in srgb, var(--cor) 28%, transparent); }
+.l-moda-look { font: 800 15px var(--cond, system-ui) !important; text-transform: uppercase; color: var(--cor) !important; }

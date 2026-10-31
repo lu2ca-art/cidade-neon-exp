@@ -1,12 +1,54 @@
 // AS PEÇAS DAS MISSÕES DAS PESSOAS (T15, T18, T23, T24, T25, T16 — 28/10).
 // Tudo o que é RASCUNHO mora aqui, num lugar só: o dono decide, a gente troca
-// o número (ou o texto) sem mexer no resto. As artes marcadas "proposta" no
-// retomar-mundo.md (a dança do Drew, a vinheta do Xeriff, a trilha 8 bits do
-// Notti, o clipe da Nizzy, o prato do Tony) jogam assim até ele aprovar.
+// o número (ou o texto) sem mexer no resto. (Bloco 1, 30/10) As artes do Notti
+// (a trilha 8 bits), da Nizzy (o clipe) e do Tony (o prato) foram aprovadas
+// como estão; a do Drew virou a moda (MODA) e a do Xeriff, o ping pong.
 
 import type { PistaId } from "../../estrada/pistas"
 
-// ── T15 · Drew · a arte (PROPOSTA): dançar na balada, marcando o ritmo ──
+// ── T15 · Drew · a arte (decidido 30/10, bloco 1 · A3): moda sustentável e
+// high fashion. Montar um look com o que sobrou no subúrbio (as roupas e os
+// restos do lixão, reciclados como a oficina recicla a tecnologia) e desfilar.
+// Uma peça por parte do corpo; o Drew olha o conjunto. RASCUNHO dos nomes ──
+export const MODA = {
+  partes: [
+    { id: "cabeca", nome: "a cabeça", opcoes: [
+      { nome: "turbante de lona de outdoor", cor: "#ffc857" },
+      { nome: "boné de câmara de pneu", cor: "#2a2a30" },
+      { nome: "tiara de tampinhas", cor: "#ff3fb0" },
+    ] },
+    { id: "tronco", nome: "o tronco", opcoes: [
+      { nome: "jaqueta de capa de banco da Kombi", cor: "#ff6a35" },
+      { nome: "colete de rede de pesca", cor: "#5dffa0" },
+      { nome: "blazer de saco de café", cor: "#b38c5a" },
+    ] },
+    { id: "pernas", nome: "as pernas", opcoes: [
+      { nome: "calça de jeans remendado", cor: "#3d7bff" },
+      { nome: "saia de guarda-chuva quebrado", cor: "#6d7bff" },
+      { nome: "bermuda de lona de caminhão", cor: "#4fc3ff" },
+    ] },
+    { id: "pes", nome: "os pés", opcoes: [
+      { nome: "tênis de sola de pneu", cor: "#1a1a1e" },
+      { nome: "bota de câmara de ar", cor: "#3a3a44" },
+      { nome: "sandália de cinto velho", cor: "#8a5a2a" },
+    ] },
+    { id: "acessorio", nome: "o detalhe", opcoes: [
+      { nome: "colar de fio de cobre", cor: "#ff9000" },
+      { nome: "óculos de tela de celular", cor: "#7fe8ff" },
+      { nome: "bolsa de lacres de lata", cor: "#c9d3e6" },
+    ] },
+  ],
+  // o que o Drew diz no desfile (pela quantidade de cores diferentes no look)
+  falas: {
+    ousado: "isso não é roupa. é manifesto. a cidade inteira vai querer, e não vai achar pra comprar.",
+    certo: "lixo nenhum. isso aí é alta costura do subúrbio.",
+    calmo: "discreto. mas cada peça tem história. dá pra ver.",
+  },
+}
+
+// ── (até 30/10) T15 · Drew · a arte antiga, a dança (saiu do mapa; fica pro
+// link de teste e pra reaproveitar) ──
+// dançar na balada, marcando o ritmo
 // as batidas chegam num anel; você bate (toque, espaço) quando ela fecha.
 export const DANCA = {
   faixa: "sexta" as PistaId,
@@ -22,7 +64,9 @@ export const DANCA = {
   // quando o som não toca (aparelho mudo), o relógio segue o bpm da faixa
 }
 
-// ── T18 · Xeriff · a arte (PROPOSTA): gravar a vinheta da rádio pirata ──
+// ── (até 30/10) T18 · Xeriff · a arte antiga, a vinheta da rádio pirata. Desde o
+// bloco 1 · A4 a arte dele é a dos esportes: o ping pong (disco/PingPong.tsx),
+// que saiu do Drew. A vinheta fica pro link de teste e pra reaproveitar ──
 // 4 trilhas, uma escolha em cada; "gravar" toca a vinheta inteira em REC.
 export const VINHETA = {
   nome: "RÁDIO PIRATA 222",
@@ -34,7 +78,7 @@ export const VINHETA = {
   ],
 }
 
-// ── T23 · Notti · a arte (PROPOSTA): a trilha de 8 bits da máquina ──
+// ── T23 · Notti · a arte (decidido 30/10): a trilha de 8 bits da máquina ──
 // uma grade de 4 vozes × 8 passos, onda quadrada; tocando em loop.
 export const TRILHA8 = {
   bpm: 125, // o da DopaminA
@@ -57,7 +101,7 @@ export const MAQUINA = {
   pontosMin: 0,
 }
 
-// ── T24 · Nizzy · a arte (PROPOSTA): filmar o clipe vertical da Rollercoaster ──
+// ── T24 · Nizzy · a arte (decidido 30/10): filmar o clipe vertical da Rollercoaster ──
 // 3 câmeras; você corta no tempo da música. O clipe fica com os cortes.
 export const CLIPE = {
   faixa: "rollercoaster" as PistaId,
@@ -81,7 +125,7 @@ export const HORTA = {
   demaisS: 2.4,
 }
 
-// ── T25 · Tony Gordo · a arte (PROPOSTA): cozinhar um prato com o que nasceu ──
+// ── T25 · Tony Gordo · a arte (decidido 30/10): cozinhar um prato com o que nasceu ──
 export const COZINHAR = {
   escolher: 3, // quantos ingredientes vão no prato
   // o fogo: segura até a barra chegar no ponto (0–1); o ponto certo é esta faixa

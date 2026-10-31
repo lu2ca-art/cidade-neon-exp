@@ -56,6 +56,12 @@ export type ComoJoga =
   // vinheta, a trilha 8 bits, a máquina, o clipe, a horta, o prato, o disco
   // antigo, a sinuca. Os rascunhos de cada uma moram em disco/pecas/conf.ts
   | { t: "cena"; id: CenaId }
+  // (bloco 1 · A3) chegar no lugar da missão já é a peça: o caminho de patins e
+  // jetpack até o Drew (a Kombi no conserto). A page.tsx conclui ao chegar
+  | { t: "chegar" }
+  // (bloco 1 · A6) o grafite nas paredes das trincheiras: ligar os pontos assina o
+  // desenho (disco/Grafite.tsx, o C3)
+  | { t: "grafite" }
   // (T57) descer a rampa da boca do túnel: a corrida lá embaixo, nas trincheiras (disco/tuneis.ts)
   | { t: "trincheiras" }
   // (T22) entrar na casa da pessoa (uma sala em 3D, interior/salas/) e só sair
@@ -66,7 +72,7 @@ export type ComoJoga =
 // (T22) as casas das missões (interior/registro.ts carrega cada uma)
 export type SalaMissao = "galeria-ella"
 
-export type CenaId = "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "horta" | "cozinhar" | "disco-antigo" | "sinuca"
+export type CenaId = "moda" | "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "horta" | "cozinhar" | "disco-antigo" | "sinuca"
 
 export interface Peca {
   nome: string
@@ -192,12 +198,14 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   // ── a cidade (8) ──
   drew: {
     id: "drew", n: 5, onde: "cidade", quem: "Drew", cor: "#6d7bff", faixa: "sexta", faixaSituacao: "decidido",
-    lugar: { lugar: "casa-drewboy" }, pedido: "sexta e eu em casa de novo", apresenta: "o jetpack, depois o ping pong",
-    // (T15) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, DANCA)
-    arte: p("dançar na balada, marcando o ritmo", "proposta", { como: { t: "cena", id: "danca" }, tarefa: "T15" }),
-    // o caminho até ele é de patins (a Kombi no conserto, CONFIG13.kombiNoConserto) e apresenta o jetpack
-    jogo: p("de patins e jetpack até ele, depois o ping pong", "decidido", { como: { t: "pingpong" }, tarefa: "T15" }),
-    abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: PAGA.missao.drew, instrumento: "caxixi" }, requer: ["oficina"],
+    lugar: { lugar: "casa-drewboy" }, pedido: "sexta e eu em casa de novo", apresenta: "o jetpack, depois a moda",
+    // (T15, bloco 1 · A3, 30/10) a arte é a moda sustentável e high fashion: montar
+    // um look com as roupas recicladas do subúrbio (disco/pecas/Moda.tsx, conf.ts MODA)
+    arte: p("montar um look com roupas recicladas: moda sustentável e high fashion", "decidido", { como: { t: "cena", id: "moda" }, tarefa: "T15" }),
+    // o jogo é o caminho até ele, de patins e jetpack (a Kombi no conserto,
+    // CONFIG13.kombiNoConserto); o ping pong foi pro Xeriff (A4)
+    jogo: p("de patins e jetpack até a casa dele", "decidido", { como: { t: "chegar" }, tarefa: "T15" }),
+    abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: PAGA.missao.drew, instrumento: "caxixi" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   mubarak: {
     id: "mubarak", n: 6, onde: "cidade", quem: "Mubarak", cor: "#ffc857", faixa: "copo", faixaSituacao: "decidido",
@@ -209,8 +217,9 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   xeriff: {
     id: "xeriff", n: 7, onde: "cidade", quem: "Xeriff", cor: "#c9d3e6", faixa: null, faixaSituacao: "em aberto",
     lugar: { lugar: "plataforma" }, pedido: "a polícia fala numa frequência que ninguém pega", apresenta: "sintonizar a frequência da polícia",
-    // (T18) a arte ainda é proposta: joga como rascunho (disco/pecas/conf.ts, VINHETA)
-    arte: p("gravar a vinheta da rádio pirata", "proposta", { como: { t: "cena", id: "vinheta" }, tarefa: "T18" }),
+    // (T18, bloco 1 · A4, 30/10) a arte é a dos esportes: o ping pong com o robô
+    // (disco/PingPong.tsx), que saiu do Drew. A vinheta fica fora do mapa
+    arte: p("a arte dos esportes: o ping pong com o robô", "decidido", { como: { t: "pingpong" }, tarefa: "T18" }),
     jogo: p("sintonizar a frequência da polícia", "decidido", { como: { t: "prova", id: "sintonia" }, tarefa: "T18" }),
     abre: ["radio-frequencias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.xeriff, instrumento: "didgeridoo" }, requer: ["lu2ca"],
   },
@@ -335,6 +344,14 @@ export function pecaAgora13(h: HistoriaDisco, id: MissaoId): { qual: "arte" | "j
 
 export function concluir(h: HistoriaDisco, id: MissaoId, qual: "arte" | "jogo"): HistoriaDisco {
   return pecaFeita(h, id, qual) ? h : { ...h, passos13: [...(h.passos13 ?? []), chave(id, qual)] }
+}
+
+// (bloco 1 · A3) chegou no lugar da missão: a peça `{ t: "chegar" }` de agora
+// (o caminho de patins e jetpack até o Drew) fica feita. A page.tsx chama no
+// chegouNaMissao antes de abrir a próxima peça (o lote D liga)
+export function chegou13(h: HistoriaDisco, id: MissaoId): HistoriaDisco {
+  const pc = pecaAgora13(h, id)
+  return pc?.peca.como?.t === "chegar" ? concluir(h, id, pc.qual) : h
 }
 
 // um evento da rua (a montanha-russa, uma flor regada): conta pra peça de agora
