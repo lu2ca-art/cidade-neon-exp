@@ -10,12 +10,13 @@
 //   · nunca no meio de uma missão (a pegada e ainda não feita), nem antes da carreira
 //   · nunca 2 vezes seguidas: depois do conserto vêm `folga` sorteios sem quebrar
 //   · o conserto é pago em água (`precoAgua`); faltou, fica fiado (nada trava)
-//   · o metrô é a outra saída, mas ainda é "em breve" (T26 está fora do mapa)
+//   · o metrô é a outra saída (T64): só depois que a fuga do metrô aconteceu na
+//     história (disco/metro.ts); antes disso, "em breve"
 
 import type { HistoriaDisco } from "./historia"
 import { feita13, normalizarMissao } from "./portas"
 import { pagamentoMotor } from "./oficina"
-import { quebraVale } from "./perseguicao"
+import { metroFeito, quebraVale } from "./perseguicao"
 
 export const CONFIG_QUEBRA = {
   // liga/desliga (false = a Kombi nunca quebra sozinha)
@@ -28,15 +29,17 @@ export const CONFIG_QUEBRA = {
   folga: 3,
   // o conserto, em água (o mesmo dinheiro do mecânico da missão); faltou = fiado
   precoAgua: 20,
-  // o metrô como saída (T26): só vira "true" quando ele entrar no mapa
-  metro: false,
+  // o metrô como saída (T26/T64): ligado; vale depois que a fuga do metrô
+  // aconteceu na história (metroComoSaida). false = sempre "em breve"
+  metro: true,
 }
 
 export const FALAS_QUEBRA = {
   aviso: "a Kombi tossiu. fumaça no capô",
   quebrou: "a Kombi pifou de vez. já mandaram ela pra oficina do subúrbio",
   vai: "de patins até a oficina. a luz laranja no mapa",
-  metro: "o metrô: em breve",
+  metro: "ou o metrô da linha 9. o trem branco passa pela estação mais perto",
+  metroEmBreve: "o metrô: em breve",
   mecanico: "pifou, né? essas velhas pifam. deixa comigo",
   pagar: "o conserto é em água. aqui embaixo ninguém paga com neon",
   pago: "pronto. ela tá nova. quer dizer, velha, mas anda",
@@ -47,6 +50,11 @@ export const FALAS_QUEBRA = {
 type Quebra = NonNullable<HistoriaDisco["quebra"]>
 
 export const quebrada = (h: HistoriaDisco | null): boolean => !!h?.quebra?.quebrada
+
+// o metrô vale como saída da quebra? (depois da fuga do metrô na história)
+export const metroComoSaida = (h: HistoriaDisco | null): boolean => CONFIG_QUEBRA.metro && metroFeito(h)
+// a fala do metrô na quebra (a saída ou o "em breve")
+export const falaMetroQuebra = (h: HistoriaDisco | null) => (metroComoSaida(h) ? FALAS_QUEBRA.metro : FALAS_QUEBRA.metroEmBreve)
 
 // pode quebrar agora? (a Kombi inteira, na carreira, sem missão no meio e sem folga)
 export function podeQuebrar(h: HistoriaDisco | null): boolean {

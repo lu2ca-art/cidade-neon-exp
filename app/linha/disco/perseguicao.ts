@@ -18,6 +18,12 @@
 //   "agora"    → a polícia está atrás (recarregar recomeça a perseguição)
 //   "escolher" → a Kombi foi jogada lá de cima; de patins, os 3 veículos na pista
 //   "feita"    → escolheu (`veiculo`); nunca mais acontece
+//
+// (T64, bloco 1) O METRÔ entra entre o "pegaram" e os 3 veículos: a Kombi jogada lá
+// de cima, eles tomam o jetpack, ele foge pelo metrô da linha 9 e perde o violão
+// (disco/metro.ts guarda as regras; disco/MetroFuga.tsx é a fuga no mundo). Só
+// depois do metrô os 3 veículos aparecem (veiculosLiberados). CONFIG_PERSEGUICAO.metro
+// = false volta ao jeito antigo (direto pros veículos).
 
 import type { HistoriaDisco } from "./historia"
 import type { Perfil } from "../estrada/carros"
@@ -46,6 +52,9 @@ export const CONFIG_PERSEGUICAO = {
   entre: 13,
   // depois da perseguição, o veículo novo também quebra de vez em quando (T27)?
   quebraNoVeiculo: false,
+  // (T64) depois de pegarem: tomam o jetpack e ele foge pelo metrô (perde o violão),
+  // e só então os 3 veículos. false = direto pros veículos, como antes
+  metro: true,
 }
 
 // UM VEÍCULO (PROVISÓRIO): o molde (o mesmo dos carros da cidade, estrada/carros.ts),
@@ -87,6 +96,11 @@ export const FALAS_PERSEGUICAO = {
   veiculos: "mais pra frente, uns carros parados. a chave no contato",
   // o botão de pegar (encostou num veículo)
   pegar: "pegar",
+  // (T64) pegaram: tomam o jetpack e sobra o metrô (RASCUNHO)
+  jetpack: "jetpack apreendido. conteúdo não licenciado ✓",
+  metro: "a estação da linha 9 tá logo ali. o trem branco. entra",
+  // depois do metrô, a 222 (antes dos 3 veículos)
+  depoisMetro: "o violão ficou no trem. tudo bem. mais pra frente, uns carros parados",
 }
 
 export type FasePerseguicao = NonNullable<HistoriaDisco["perseguicao"]>["fase"]
@@ -96,6 +110,13 @@ export const emPerseguicao = (h: HistoriaDisco | null) => fasePerseguicao(h) ===
 export const escolhendoVeiculo = (h: HistoriaDisco | null) => fasePerseguicao(h) === "escolher"
 // a Kombi ainda existe? (depois de jogada, nunca mais: ela volta só no final, no quintal da D-bee)
 export const temKombi = (h: HistoriaDisco | null) => { const f = fasePerseguicao(h); return f !== "escolher" && f !== "feita" }
+
+// (T64) os 3 veículos só depois do metrô (se o metrô estiver ligado). O estado do
+// metrô mora em `h.metro` (disco/metro.ts: HistoriaComMetro); aqui só se lê a fase
+export const metroFeito = (h: HistoriaDisco | null) => (h as (HistoriaDisco & { metro?: { fase: string } }) | null)?.metro?.fase === "feita"
+export const veiculosLiberados = (h: HistoriaDisco | null) => escolhendoVeiculo(h) && (!CONFIG_PERSEGUICAO.metro || metroFeito(h))
+// o metrô está esperando? (a Kombi foi jogada e a fuga do metrô ainda não acabou)
+export const esperandoMetro = (h: HistoriaDisco | null) => CONFIG_PERSEGUICAO.metro && escolhendoVeiculo(h) && !metroFeito(h)
 
 export const veiculoPorId = (id: string | null | undefined): Veiculo | null => VEICULOS.find((v) => v.id === id) ?? null
 export const veiculoDe = (h: HistoriaDisco | null): Veiculo | null => (fasePerseguicao(h) === "feita" ? veiculoPorId(h!.perseguicao!.veiculo) : null)
