@@ -2524,7 +2524,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
           <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
         </>
       )}
-      {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} onCard={() => {}} />}
+      {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} />}
       {/* a legendinha mini das falas que ensinam (some sozinha: a animação acaba e ela sai) */}
       {legenda && (
         <div key={legenda.id} className="l-legenda" role="status" aria-live="polite" style={{ ["--ms" as string]: `${legenda.ms}ms`, ["--cor" as string]: VOZES[legenda.de] ?? "#2fe8ff" }} onAnimationEnd={(e) => { if (e.target === e.currentTarget) setLegenda(null) }}>

@@ -22,6 +22,7 @@
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
 import { APPS, DOCK, ESCONDIDOS, Glifo, appDesligado, type AppId } from "../os"
 import { horaTexto } from "../relogio"
 import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "../som"
@@ -33,7 +34,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 
 // o que cada coisa do holo é (o "?"): uma frase simples, sem manual
 export const INFO: Record<string, { t: string; d: string }> = {
-  ajuda: { t: "?", d: "o ? mora no notch: toca nele e o notch abre explicando o que está nele; aberto, toca em qualquer coisa do holo pra saber o que é. toca no ? de novo pra fechar. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
+  ajuda: { t: "?", d: "toca no ? e depois em qualquer coisa da tela: a explicação aparece por cima dela. toca no ? de novo (ou fora) pra sair. os controles: um lado da tela vira pra ele; os dois lados juntos freiam (parado, dá ré); no ar, um lado gira e os dois juntos dão o mortal. no teclado, ↓ freia e Q é a manobra." },
   ajustes: { t: "ajustes", d: "a engrenagem: o volume da música, dos efeitos e das vozes, a qualidade dos gráficos e a lista dos controles." },
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
   camera: { t: "o olho (a câmera)", d: "o olhinho em cima do óculos: toca nele e a câmera troca, de fora da Kombi ou de dentro, no banco do motorista (tecla C). aberto e azul: de dentro." },
@@ -44,7 +45,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   "app:stream": { t: "vid.stream", d: "os clipes. abre aqui mesmo, no holo: a música da cidade para enquanto ele tá aberto." },
   propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
-  ilha: { t: "N3XO_ · o notch", d: "o que dá pra fazer agora passa aqui: o passo de agora, o lugar, o que acabou de acontecer. toca nele (ou no ?) e ele abre explicando." },
+  ilha: { t: "N3XO_ · o notch", d: "o Nexo: o objetivo da missão, o passo de agora e as dicas passam aqui. toca nele e ele abre com o objetivo inteiro." },
   mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
   anel: { t: "as missões", d: "a missão de agora gira em volta do mapa: o nome e o ícone dela. toca: a checklist dá a volta; toca de novo: o mapa com as missões." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
@@ -708,12 +709,56 @@ export function HoloDestaque({ onApp, guitarLivre = false }: { onApp: (id: AppId
 }
 
 // o "?": ligado, tocar em qualquer coisa do holo (o que tem data-info) mostra
-// o que ela é, em vez de fazer a ação; tocar fora, ou no "?", sai. (T56) A
-// explicação não é mais um cartão: vai pro notch aberto (onCard)
-export function HoloAjuda({ ativa, onSair, onCard }: { ativa: boolean; onSair: () => void; onCard: (c: { t: string; d: string } | null) => void }) {
+// o que ela é, em vez de fazer a ação; tocar fora, ou no "?", sai.
+// ── (T41 B3, dono 29/10) A EXPLICAÇÃO POR CIMA DO ITEM: nada de balão preto do
+// Nexo nem de cartão no meio da tela. Tocou numa coisa, a explicação aparece
+// colada nela, como realidade aumentada do holo: um cantoneiro em volta da
+// coisa e um texto curto, transparente, ao lado (embaixo dela se ela está em
+// cima da tela, em cima se está embaixo). Não pega toque (pointer-events: none)
+// e nunca vai pro meio da tela: a navegação fica livre. Desempenho: uma medida
+// (getBoundingClientRect) por toque, nada por quadro ──
+type Explica = { t: string; d: string; x: number; y: number; w: number; h: number; cor: string; id: number }
+const EXPLICA_CSS = `
+.l-explica-alvo { position: fixed; z-index: 90; pointer-events: none; border-radius: 6px; --c: #2fe8ff;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 10px 1.5px no-repeat, linear-gradient(var(--c), var(--c)) top left / 1.5px 10px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 10px 1.5px no-repeat, linear-gradient(var(--c), var(--c)) top right / 1.5px 10px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 10px 1.5px no-repeat, linear-gradient(var(--c), var(--c)) bottom left / 1.5px 10px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 10px 1.5px no-repeat, linear-gradient(var(--c), var(--c)) bottom right / 1.5px 10px no-repeat;
+  filter: drop-shadow(0 0 4px var(--c)); animation: l-explica-alvo 0.28s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+.l-explica { position: fixed; z-index: 91; pointer-events: none; width: max-content; max-width: min(260px, calc(100vw - 32px)); padding: 7px 10px 8px;
+  border-left: 1.5px solid var(--c); background: linear-gradient(90deg, color-mix(in srgb, var(--c) 16%, transparent), transparent 85%);
+  color: #e6fdff; font: 500 12px/1.4 system-ui, sans-serif; text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
+  animation: l-explica-entra 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.l-explica b { display: block; margin-bottom: 2px; font: 800 9.5px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c); text-shadow: 0 0 6px var(--c); }
+@keyframes l-explica-alvo { from { opacity: 0; transform: scale(1.15); } }
+@keyframes l-explica-entra { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) { .l-explica, .l-explica-alvo { animation: none; } }
+`
+const GUTTER = 16
+function ExplicaPorCima({ e }: { e: Explica }) {
+  const vw = window.innerWidth, vh = window.innerHeight
+  const embaixo = e.y + e.h / 2 < vh / 2
+  const larg = Math.min(260, vw - GUTTER * 2)
+  const left = Math.max(GUTTER, Math.min(vw - GUTTER - larg, e.x))
+  const pos: React.CSSProperties = embaixo ? { top: Math.min(vh - GUTTER - 60, e.y + e.h + 8), left } : { bottom: Math.max(GUTTER, vh - e.y + 8), left }
+  return createPortal(
+    <>
+      <style>{EXPLICA_CSS}</style>
+      <div key={`a${e.id}`} className="l-explica-alvo" style={{ left: e.x - 4, top: e.y - 4, width: e.w + 8, height: e.h + 8, ["--c" as string]: e.cor }} aria-hidden="true" />
+      <div key={`t${e.id}`} className="l-explica" style={{ ...pos, ["--c" as string]: e.cor }} role="status" aria-live="polite">
+        <b>{e.t}</b>
+        {e.d}
+      </div>
+    </>,
+    document.body,
+  )
+}
+export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => void }) {
+  const [exp, setExp] = useState<Explica | null>(null)
+  const n = useRef(0)
   useEffect(() => {
-    if (!ativa) return
-    onCard(null)
+    if (!ativa) { setExp(null); return }
     const alvo = (e: Event) => (e.target as Element | null)?.closest?.("[data-info]") as HTMLElement | null
     // (na captura, antes do React: a ação do botão não acontece)
     const desce = (e: PointerEvent) => {
@@ -727,14 +772,17 @@ export function HoloAjuda({ ativa, onSair, onCard }: { ativa: boolean; onSair: (
       e.stopPropagation(); e.preventDefault()
       const id = el.dataset.info!
       if (id === "ajuda") { onSair(); return }
-      // o próprio notch: volta a explicar o que está nele
-      onCard(id === "ilha" ? null : infoDe(id))
+      const info = infoDe(id)
+      if (!info) { setExp(null); return }
+      const r = el.getBoundingClientRect()
+      const cor = getComputedStyle(el).getPropertyValue("--cor").trim() || "#2fe8ff"
+      setExp({ ...info, x: r.left, y: r.top, w: r.width, h: r.height, cor, id: ++n.current })
     }
     document.addEventListener("pointerdown", desce, true)
     document.addEventListener("click", toca, true)
     return () => { document.removeEventListener("pointerdown", desce, true); document.removeEventListener("click", toca, true) }
-  }, [ativa, onSair, onCard])
-  return null
+  }, [ativa, onSair])
+  return ativa && exp ? <ExplicaPorCima e={exp} /> : null
 }
 
 // (LU2CA 22/10) a lista inteira dos controles NUNCA vai por cima do HUD: é o
