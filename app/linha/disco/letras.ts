@@ -1,5 +1,5 @@
-// A ARTE DA MISSÃO DO LU2CA: ESCREVER A LETRA (T19, 28/10). RASCUNHO
-// CONFIGURÁVEL: a arte ainda é "proposta" no retomar-mundo.md (o dono decide).
+// A ARTE DA MISSÃO DO LU2CA: ESCREVER A LETRA (T19, 28/10; aprovada pelo dono em 30/10).
+// Os versos continuam configuráveis aqui (LETRAS).
 //
 // Como joga: antes de subir no palco, ele escreve a estrofe que vai cantar.
 // São 4 versos; em cada um, escolhe um dos 3 pedaços (ou escreve o dele, se
