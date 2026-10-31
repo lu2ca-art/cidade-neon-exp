@@ -2126,7 +2126,7 @@ export default function LinhaPage() {
           track("mission_step", { mission_id: `disco-${c.missao}`, step: c.id, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
           if (ok) pecaFeitaNaMissao(c.missao, c.qual)
         }} />}
-        {pingpong && <PingPong cor="#6d7bff" onFim={(venceu) => {
+        {pingpong && <PingPong cor={MISSOES13[pecaAberta.current?.missao ?? "xeriff"].cor} onFim={(venceu) => {
           setPingpong(false)
           barFechou.current = Date.now()
           const p = pecaAberta.current
