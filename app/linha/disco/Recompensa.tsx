@@ -10,6 +10,7 @@
 import { useEffect } from "react"
 import type { Recompensa13 } from "./portas"
 import { xenomDaMissao } from "./xenom"
+import { tocarInstrumento } from "./instrumentos"
 
 export function Recompensa({ r, onSeguir, onXenom }: { r: Recompensa13; onSeguir: () => void; onXenom?: () => void }) {
   const xs = xenomDaMissao(r.missao)
@@ -34,6 +35,14 @@ export function Recompensa({ r, onSeguir, onXenom }: { r: Recompensa13; onSeguir
           {/* (T21) a missão do subúrbio libera o show xenom da faixa dela */}
           {xs && <li className="l-recompensa-xenom"><small>Guitar Driver · xenom</small>o show {xs.faixa}: {xs.multiverso}, nos palcos</li>}
           {r.neon > 0 && <li><small>neon$</small>+{r.neon}</li>}
+          {/* (T49) o instrumento ancestral que a pessoa deu: toca na casa da D-Bee */}
+          {r.instrumento && (
+            <li className="l-recompensa-instrumento" data-instrumento={r.instrumento.id} style={{ flexWrap: "wrap" }}>
+              <small>instrumento</small>ganhou o {r.instrumento.nome}; toque na casa da D-Bee
+              <em style={{ flexBasis: "100%", paddingLeft: 102, fontSize: 11, opacity: 0.7 }}>{r.instrumento.origem}</em>
+              <button type="button" className="l-recompensa-ouvir" style={{ marginLeft: 102, padding: "4px 10px", font: "700 10px var(--mono)", letterSpacing: "0.1em", textTransform: "uppercase", background: "transparent", color: "var(--cor, #ffc857)", border: "1px solid currentColor", borderRadius: 999 }} onClick={() => { const id = r.instrumento!.id; [0, 1, 2].forEach((i) => setTimeout(() => tocarInstrumento(id, i), i * 260)) }}>ouvir</button>
+            </li>
+          )}
         </ul>
         <button type="button" onClick={onSeguir} autoFocus>seguir →</button>
         {xs && onXenom && <button type="button" className="l-recompensa-ir" data-xenom-ir={xs.id} onClick={onXenom}>tocar {xs.faixa} agora →</button>}
