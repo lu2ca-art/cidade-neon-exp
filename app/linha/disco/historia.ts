@@ -369,10 +369,15 @@ export const CHAO_LUGARES = {
   ventilador: { x: -278, z: -523, nome: "VENTILADOR", cor: "#4fc3ff" },
   radio: { x: -410, z: -366, nome: "RÁDIO", cor: "#ff6a35" },
   goteira: { x: -620, z: -730, nome: "GOTEIRA", cor: "#4fc3ff" },
+  // (T47, lote D) a porta da torre do elevador de terror (lugares.ts "elevador",
+  // soChao): só o gatilho de chegada, sem fachada nem ponto no mapa até chegar o
+  // vídeo da torre. RASCUNHO de onde fica: na beira oeste do subúrbio
+  torre: { x: -960, z: -700, nome: "TORRE", cor: "#ff2436" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 // (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
-export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira"]
+// (lote D) a torre também: é só a porta (o gatilho), sem fachada
+export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre"]
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)

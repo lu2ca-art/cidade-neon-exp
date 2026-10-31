@@ -22,6 +22,7 @@ import { CenaLugar, type ResultadoCena } from "./cena"
 import { CENA_INICIO, CENA_MUBARAK_DREW, cenaDe, type Reliquia } from "./cenas"
 import { CENA_GALERIA_ELLA } from "./disco/ella"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
+import { ouvirSala } from "./interior/bus"
 import { LUGARES, type LugarId } from "./lugares"
 import { proximaFreq } from "./radio"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
@@ -280,6 +281,11 @@ export default function LinhaPage() {
   const [painelMissoes, setPainelMissoes] = useState(false)
   // dentro do posto (posto.tsx): primeira = a apresentação do LU2CA
   const [noPosto, setNoPosto] = useState<{ primeira: boolean } | null>(null)
+  // (T47, lote D) o elevador de terror: a sala própria (como o posto), passeio
+  // livre. Abre na porta da torre (chao:torre) ou no ?parte=elevador; fecha no
+  // fim-gesto da sala (chegou no fundo do andar)
+  const [noElevador, setNoElevador] = useState(false)
+  const [falaElevador, setFalaElevador] = useState<string | null>(null)
   const abrirPostoRef = useRef(() => {})
   // conversas que chegaram numa pergunta no painel: esperam no N3XO (não
   // chamam de novo na estrada até a pessoa abrir e responder)
@@ -332,6 +338,8 @@ export default function LinhaPage() {
     if (atalhosLiberados() && new URLSearchParams(location.search).get("cena") === "tambor") setCenaTambor(true)
     // (T63) ?parte=missao.tuneis.trincheiras: ele já começa lá embaixo, nas trincheiras
     if (atalhosLiberados() && new URLSearchParams(location.search).get("descer") === "tuneis") descerAoEntrar.current = true
+    // (lote D) ?parte=elevador / casa.instrumentos / recompensa.instrumento…: o que abre ao entrar no jogo
+    if (atalhosLiberados()) abrirAoEntrar.current = new URLSearchParams(location.search).get("abrir")
     if (process.env.NODE_ENV !== "production") {
       const q = new URLSearchParams(location.search)
       setProvaDev(q.get("prova") as ProvaId | null)
@@ -452,6 +460,7 @@ export default function LinhaPage() {
   }, [])
   const palcosAoEntrar = useRef(false)
   const descerAoEntrar = useRef(false)
+  const abrirAoEntrar = useRef<string | null>(null)
   const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
     // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+neon",
     // "regado"...): só passa quem fala (um personagem). O resto o "?" explica
@@ -686,7 +695,7 @@ export default function LinhaPage() {
   const alvoAgora = save.nucleo.caido ? null : alvoDe(save, nivelDe(save))
   const cacado = alvoAgora?.t === "entrega" && save.objetos.length >= 2
   // (T63) nas trincheiras a estrada sai da cena (a memória e a GPU ficam pra elas); na volta, retoma
-  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || (!!trincheiras && !trincheiras.descendo)
+  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || noElevador || (!!trincheiras && !trincheiras.descendo)
   // entrou numa sala: a próxima estrada que montar retoma de onde parou;
   // foi pra outra tela (celular, início): a estrada começa do jeito normal
   const [emSalaAnt, setEmSalaAnt] = useState(emSala)
@@ -1008,7 +1017,7 @@ export default function LinhaPage() {
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
-  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis"] : [])].join(",")
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : [])].join(",")
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])
@@ -1169,6 +1178,39 @@ export default function LinhaPage() {
     const u = new URL(location.href); u.searchParams.delete("descer"); history.replaceState(history.state, "", u.pathname + u.search + u.hash)
     setTimeout(() => chegouRef.current("tuneis"), 1500)
   }, [HIST, tela.t, cena])
+  // (lote D) os links de teste novos: entrou no jogo, a parte abre direto
+  useEffect(() => {
+    const qual = abrirAoEntrar.current
+    if (!HIST || !qual || tela.t !== "corrida" || cena) return
+    abrirAoEntrar.current = null
+    const u = new URL(location.href); u.searchParams.delete("abrir"); history.replaceState(history.state, "", u.pathname + u.search + u.hash)
+    setTimeout(() => {
+      if (qual === "elevador") abrirElevadorRef.current()
+      else if (qual === "casa") abrirCasaInstrumentosRef.current()
+      else if (qual === "recompensa") abrirPortaRef.current("mubarak")
+    }, 1200)
+  }, [HIST, tela.t, cena])
+  // (T47) o elevador: abre (como o posto) e fecha no fim-gesto da sala; as falas
+  // que a sala manda (bus.ts) aparecem na legenda dele
+  const abrirElevador = () => {
+    if (cinema || cena || noPosto || noElevador) return
+    setAoVivo(null)
+    setPainelMissoes(false)
+    setFalaElevador(null)
+    setNoElevador(true)
+    track("mission_step", { mission_id: "linha-elevador", step: "entrou", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }
+  const abrirElevadorRef = useRef(abrirElevador)
+  useEffect(() => { abrirElevadorRef.current = abrirElevador })
+  useEffect(() => {
+    if (!noElevador) return
+    let t: ReturnType<typeof setTimeout> | undefined
+    const sair = ouvirSala((sn) => {
+      if (sn.t === "fala") setFalaElevador(sn.texto)
+      else if (sn.t === "fim-gesto") t = setTimeout(() => { setNoElevador(false); setFalaElevador(null); barFechou.current = Date.now() }, 3500)
+    })
+    return () => { sair(); if (t) clearTimeout(t) }
+  }, [noElevador])
   // (T63) as trincheiras baixam antes: com a missão dos túneis pegada, ou já no subúrbio
   useEffect(() => { if (HIST && missaoCarreira === "tuneis") void carregarTrincheiras() }, [HIST, missaoCarreira])
   // (T57) voltou das trincheiras pela boca do túnel: se correu uma volta lá
@@ -1562,6 +1604,8 @@ export default function LinhaPage() {
       setTimeout(() => setFalaIntro({ id: Date.now(), de: "D-Bee", texto: "chegou. o bar é aí embaixo: o letreiro laranja. alguém te espera" }), 1500)
     }
     // (B18) o subúrbio no chão: o bar (missão 1), a oficina (missão 2), o palco
+    // (T47, lote D) a porta da torre: o elevador de terror (passeio livre)
+    if (e === "chao:torre" && (h.fase === "carreira" || h.fase === "livre")) abrirElevadorRef.current()
     if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
     if (e === "chao:oficina" && h.fase === "nectar" && h.nectar === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
     // (T09) a missão da oficina: cada chegada abre o passo de agora
@@ -2064,6 +2108,13 @@ export default function LinhaPage() {
               })}
             </ul>
           </div>
+        )}
+        {/* (T47, lote D) o elevador de terror: a sala própria; fecha no fim-gesto */}
+        {noElevador && (
+          <>
+            <Interior key="sala:elevador" lugar="elevador" objetos={save.objetos} />
+            {falaElevador && <div className="l-dica3d"><small>{falaElevador}</small></div>}
+          </>
         )}
         {noPosto && (
           <>
