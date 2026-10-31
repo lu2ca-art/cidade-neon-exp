@@ -21,6 +21,7 @@
 import type { Save } from "../estado"
 import type { MissaoId, PortaId } from "./portas"
 import type { InstrumentoId } from "./instrumentos"
+import type { EstadoMetro } from "./metro"
 
 export type FaseDisco = "minhoca" | "casa" | "dunas" | "bar" | "oficina" | "subir" | "nectar" | "carreira" | "livre"
 // os passos da Nectar (B9)
@@ -107,6 +108,10 @@ export interface HistoriaDisco {
   // (economia-rascunho.ts, `naLoja`)
   perdeuViolao?: true
   jetpackTomado?: true
+  // (T64, lote D) a fuga do metrô (disco/metro.ts: "agora" = no metrô, "feita" = fugiu)
+  metro?: EstadoMetro
+  // (T64, lote D) os grafites assinados nas paredes das trincheiras (disco/Grafite.tsx)
+  grafites?: string[]
 }
 
 // (A8) o que o metrô tira dele: fica no save de uma vez (puras, o C2 e a page.tsx chamam)
