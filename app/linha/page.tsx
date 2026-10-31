@@ -1107,6 +1107,8 @@ export default function LinhaPage() {
     const como = pc.peca.como
     barFechou.current = Date.now()
     if (!como || como.t === "historia" || como.t === "evento") return
+    // (bloco 1 · D) chegar já é a peça (o caminho de patins e jetpack até o Drew): fica feita e a próxima segue
+    if (como.t === "chegar") { pecaFeitaNaMissao(id, pc.qual); return }
     pecaAberta.current = { missao: id, qual: pc.qual }
     if (como.t === "pingpong") setPingpong(true)
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
