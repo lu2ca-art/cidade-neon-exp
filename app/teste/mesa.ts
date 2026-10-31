@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "O Nexo só informa",
+    data: "2026-10-31",
+    tarefa: "T41",
+    olhar: "Sem chats nem mensagens de IA. O notch mostra o objetivo ou uma dica; tocar nele abre mais. O \"?\" faz o notch dizer \"clique em qualquer lugar para saber mais\": toque num item e a explicação aparece do lado dele, sem balão preto.",
+    perguntas: [
+      "As dicas do notch são rascunho: quer trocar alguma?",
+    ],
+  },
+  {
     parte: "kombi.dentro",
     nome: "A Kombi por dentro",
     data: "2026-10-30",
