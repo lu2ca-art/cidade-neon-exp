@@ -7,6 +7,7 @@
 
 import type { Save } from "./estado"
 import type { EstacaoId } from "./data"
+import { jogoVelho } from "./roteiros"
 
 export type ItemTutorial = "tanque" | "posto" | "mubarak" | "drewboy"
 
@@ -45,7 +46,10 @@ export function feito(s: Save, i: ItemTutorial): boolean {
 }
 
 // o tutorial vale pra quem começou pela casa da D-Bee e ainda não terminou
+// (T41 B1) no jogo novo o tutorial velho (tanque, posto, Mubarak) não roda: quem
+// ensina é o Nexo, no notch (disco/TutorialHolo.tsx)
 export function emTutorial(s: Save) {
+  if (!jogoVelho()) return false
   return !!s.casa && !(s.tutorial ?? []).includes("fim")
 }
 

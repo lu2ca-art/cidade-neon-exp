@@ -13,14 +13,17 @@
 // ligação. O roteiro é o mesmo (roteiros.ts): ligacaoDaMissao() transforma
 // o começo da conversa (até o pedido) numa ligação.
 
-import { ROTEIROS, type Ctx, type Passo, type Tom } from "./roteiros"
+import { ROTEIROS, jogoVelho, type Ctx, type Passo, type Tom } from "./roteiros"
 import type { EstacaoId } from "./data"
 
 export type Modo = "ligacao" | "texto" | "audio"
 export const MODOS: Modo[] = ["ligacao", "texto", "audio"]
 
 // sorteia o jeito da próxima pessoa, sem repetir o anterior
+// (T41 B1) no jogo novo não tem ligação nem nota de voz de chat: sempre "texto"
+// (e o chat também está desligado lá, chat.tsx)
 export function sortearModo(anterior: Modo | null): Modo {
+  if (!jogoVelho()) return "texto"
   const l = MODOS.filter((m) => m !== anterior)
   return l[Math.floor(Math.random() * l.length)]
 }
@@ -196,6 +199,8 @@ function palavrasDe(label: string) {
 }
 
 export function ligacaoDaMissao(id: EstacaoId, quem: string, c: Ctx): { lig: Ligacao; tarefa: number } | null {
+  // (T41 B1) no jogo novo a conversa de missão não vira ligação
+  if (!jogoVelho()) return null
   const r = ROTEIROS[id as keyof typeof ROTEIROS]
   if (!r) return null
   const tarefa = r.passos.findIndex((p) => p.t === "tarefa" || p.t === "lugar")

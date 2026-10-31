@@ -9,7 +9,7 @@
 import type { Tom } from "./roteiros"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { entender, type Fala, type Ligacao, type PassoLigacao } from "./ligacoes"
-import { VOZES } from "./roteiros"
+import { VOZES, jogoVelho } from "./roteiros"
 import { audioCtx, saidaEfeitos, player, voz } from "./som"
 import { track } from "@/lib/analytics"
 
@@ -50,7 +50,21 @@ function bipDesliga() {
 // o que foi dito na ligação, pra virar histórico da conversa no N3XO
 export type Transcricao = { texto: string; eu?: boolean }[]
 
-export function LigacaoNaKombi({ lig, onFim, onTom }: { lig: Ligacao; onFim: (atendeu: boolean, dito: Transcricao) => void; onTom?: (tom: Tom) => void }) {
+type PropsLigacao = { lig: Ligacao; onFim: (atendeu: boolean, dito: Transcricao) => void; onTom?: (tom: Tom) => void }
+// (T41 B1) no jogo novo não toca ligação: ela some sem tela e sem toque, e conta
+// como encerrada (sem o "não atendeu" virando aviso). O roteiro fica guardado
+// (as partes da história da D-Bee viram rádio depois); a chave é jogoVelho()
+export function LigacaoNaKombi(props: PropsLigacao) {
+  if (!jogoVelho()) return <LigacaoDesligada onFim={props.onFim} />
+  return <LigacaoVelha {...props} />
+}
+function LigacaoDesligada({ onFim }: Pick<PropsLigacao, "onFim">) {
+  const fim = useRef(onFim)
+  useEffect(() => { fim.current(true, []) }, [])
+  return null
+}
+
+function LigacaoVelha({ lig, onFim, onTom }: PropsLigacao) {
   const id = lig.id
   const transcricao = useRef<Transcricao>([])
   const [fase, setFase] = useState<"tocando" | "falando" | "ouvindo" | "fim">("tocando")

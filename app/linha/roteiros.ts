@@ -29,6 +29,24 @@
 
 import type { EstacaoId, ProvaId } from "./data"
 import type { Perfil } from "./missoes"
+import { qualMapa } from "./estrada/qualMapa"
+
+// ── (T41 B1, dono 29/10) A CHAVE DO JOGO VELHO. No jogo novo (o mapa-disco) não
+// tem mensagem nem diálogo de IA: só encontros, invasões e rádio, e o Nexo só
+// informa. Então, no disco, o jogo velho fica DESLIGADO (não apagado): os
+// chats, o grupo 222, o app N3XO_ de conversas, a LINHA 9, as ligações, os
+// "chamados", o tutorial velho e as missões velhas. O mapa velho (o lu2ca.art de
+// hoje) segue igual. Pra religar tudo no disco (teste, comparação), é virar
+// VELHO_NO_DISCO pra true. Quem desliga lê jogoVelho() (o mapa é lido uma vez
+// por aba: ele não muda sem recarregar a página) ──
+export const VELHO_NO_DISCO = false
+let mapaLido: ReturnType<typeof qualMapa> | null = null
+export function jogoVelho(): boolean {
+  if (VELHO_NO_DISCO) return true
+  if (typeof window === "undefined") return true
+  if (mapaLido === null) mapaLido = qualMapa()
+  return mapaLido !== "disco"
+}
 
 export type ChatId = "abertura" | "grupo" | EstacaoId
 

@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId, type ProvaId } from "./data"
-import { ECOS, ROTEIROS, VOZES, type ChatId } from "./roteiros"
+import { ECOS, ROTEIROS, VOZES, jogoVelho, type ChatId } from "./roteiros"
 import { sequencia, type Save } from "./estado"
 import { FREQUENCIAS, freqsLiberadas } from "./radio"
 import { Objeto } from "./objetos"
@@ -74,6 +74,11 @@ export const DOCK: AppId[] = ["kombi", "n3xo", "linha", "radio"]
 // O fliperama saiu em 14/10 (LU2CA): as máquinas ficam só no estabelecimento
 // do fliperama (/fliperama), e os minigames viraram momentos do mundo
 export const ESCONDIDOS: AppId[] = ["museu", "feelgood", "galeria", "salabranca", "jardim", "fliperama"]
+// (T41 B1) os apps do jogo velho que no jogo novo não aparecem (nem no holo, nem
+// no celular): o N3XO_ (as conversas) e a LINHA 9 (o mapa da Linha 222 com o
+// grupo). Ficam no código; a chave é jogoVelho() (roteiros.ts)
+export const APPS_VELHOS: AppId[] = ["n3xo", "linha"]
+export const appDesligado = (id: AppId) => APPS_VELHOS.includes(id) && !jogoVelho()
 
 export function Glifo({ id, cor, size = 26 }: { id: AppId; cor: string; size?: number }) {
   const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: cor, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const }
@@ -139,6 +144,8 @@ export function legadoFeito(): string[] {
 // está valendo. O resto (minigames antigos, rádio) só aparece depois que a
 // pessoa já fez a primeira missão — antes disso é ruído.
 export function chamados(save: Save, nivel: number): Chamado[] {
+  // (T41 B1) no jogo novo ninguém te chama por mensagem: o Nexo só informa (o notch)
+  if (!jogoVelho()) return []
   const out: Chamado[] = []
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   if (ecos) out.push({ id: "ecos", de: "222", cor: "#2fe8ff", texto: `${ecos} ${ecos === 1 ? "mensagem nova" : "mensagens novas"} no grupo`, acao: { chat: "grupo" } })
@@ -197,7 +204,7 @@ export function Home({
 
   const b = lista.length ? lista[banner % lista.length] : null
   // todos os apps na página inicial (06/10, LU2CA)
-  const grade = APPS.filter((a) => !DOCK.includes(a.id) && !ESCONDIDOS.includes(a.id))
+  const grade = APPS.filter((a) => !DOCK.includes(a.id) && !ESCONDIDOS.includes(a.id) && !appDesligado(a.id))
 
   return (
     <section className="l-os">
@@ -269,7 +276,7 @@ export function Home({
 
 
       <div className="l-os-dock">
-        {DOCK.map((id) => <IconeApp key={id} a={APPS.find((x) => x.id === id)!} nivel={nivel} onApp={onApp} semNome />)}
+        {DOCK.filter((id) => !appDesligado(id)).map((id) => <IconeApp key={id} a={APPS.find((x) => x.id === id)!} nivel={nivel} onApp={onApp} semNome />)}
         <button type="button" className="l-os-central" onClick={() => setCentral(true)}>
           missões{lista.length > 0 && <em>{lista.length}</em>}
         </button>
@@ -365,7 +372,18 @@ export function AppJanela({ app, onFechar, rota }: { app: AppDef; onFechar: () =
 }
 
 /* ─── N3XO: as conversas ───────────────────────────────── */
-export function N3xo({ save, nivel, onChat, onVoltar }: { save: Save; nivel: number; onChat: (id: ChatId) => void; onVoltar: () => void }) {
+type PropsN3xo = { save: Save; nivel: number; onChat: (id: ChatId) => void; onVoltar: () => void }
+// (T41 B1) no jogo novo o app de conversas não abre: volta pra onde estava
+export function N3xo(props: PropsN3xo) {
+  if (appDesligado("n3xo")) return <Volta onVoltar={props.onVoltar} />
+  return <N3xoVelho {...props} />
+}
+export function Volta({ onVoltar }: { onVoltar?: () => void }) {
+  const f = useRef(onVoltar)
+  useEffect(() => { f.current?.() }, [])
+  return null
+}
+function N3xoVelho({ save, nivel, onChat, onVoltar }: PropsN3xo) {
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length
   const linhas: { id: ChatId | null; nome: string; cor: string; objeto?: EstacaoId; texto: string; estado: "novo" | "feito" | "trancado" | "escuro"; }[] = []
   const membros = ["D-Bee", ...save.objetos.filter((o) => o !== "ojala" && o !== "nectar").map((o) => getEstacao(o).personagem)]
@@ -530,7 +548,7 @@ export function Objetos({ save, onVoltar, onChat, onUsarGalao }: { save: Save; o
                 <p>{MEMORIAS[save.objetos.indexOf(s.id)]}</p>
               </blockquote>
             )}
-            {s.id in ROTEIROS && save.objetos.includes(s.id) && (
+            {s.id in ROTEIROS && save.objetos.includes(s.id) && jogoVelho() && (
               <button type="button" className="l-btn" onClick={() => onChat(s.id)}>
                 reler a conversa
               </button>

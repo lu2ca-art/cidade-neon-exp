@@ -7,14 +7,14 @@ import { CREDITO_KOMBI, CREDITO_SUBURBIO } from "./estrada/creditos"
 import { useEffect, useMemo, useState } from "react"
 import { ESTACOES, NIVEIS, UNTITLED, dataCurta, estacao as getEstacao, lancada, missao, type Estacao, type EstacaoId } from "./data"
 import { ativa, conhecidos } from "./missoes"
-import { ECOS, VOZES } from "./roteiros"
+import { ECOS, VOZES, jogoVelho } from "./roteiros"
 import { recomecar, sequencia, type Save } from "./estado"
 import { FREQUENCIAS, faixasDe, freqsLiberadas, proximaFreq, type FreqId } from "./radio"
 import { Objeto } from "./objetos"
 import { gota, player } from "./som"
 import { compartilhar, icsHref } from "./util"
 import { track } from "@/lib/analytics"
-import { AppTopo } from "./os"
+import { AppTopo, Volta, appDesligado } from "./os"
 import { PreSave, Plataformas } from "./plataformas"
 
 export const ROTEIRO_IDS: EstacaoId[] = ["chuva", "copo", "dopamina", "sexta", "ontem", "nectar"]
@@ -67,7 +67,12 @@ export function Entrada({ save, onEntrar }: { save: Save; onEntrar: () => void }
 }
 
 /* ─── TELA DE BLOQUEIO ──────────────────────────────────── */
+// (T41 B1) no jogo novo não tem a tela de bloqueio com a mensagem do N3XO: passa direto
 export function Bloqueio({ onAbrir }: { onAbrir: () => void }) {
+  if (!jogoVelho()) return <Volta onVoltar={onAbrir} />
+  return <BloqueioVelho onAbrir={onAbrir} />
+}
+function BloqueioVelho({ onAbrir }: { onAbrir: () => void }) {
   const [n, setN] = useState(0)
   const agora = new Date()
   useEffect(() => {
@@ -111,9 +116,7 @@ export function Bloqueio({ onAbrir }: { onAbrir: () => void }) {
 }
 
 /* ─── MAPA: A LINHA 222 ─────────────────────────────────── */
-export function Mapa({
-  save, nivel, atualizar, onGrupo, onViajar, onEstacao, onFinal, onVoltar,
-}: {
+type PropsMapa = {
   save: Save
   nivel: number
   atualizar: (f: (s: Save) => Save) => void
@@ -122,7 +125,16 @@ export function Mapa({
   onViajar: (id: EstacaoId) => void
   onEstacao: (id: EstacaoId) => void
   onFinal: () => void
-}) {
+}
+// (T41 B1) no jogo novo a LINHA 9 (o mapa da Linha 222, com o grupo 222 e as
+// estações que abrem chat) não abre: volta pra onde estava
+export function Mapa(props: PropsMapa) {
+  if (appDesligado("linha")) return <Volta onVoltar={props.onVoltar} />
+  return <MapaVelho {...props} />
+}
+function MapaVelho({
+  save, nivel, atualizar, onGrupo, onViajar, onEstacao, onFinal, onVoltar,
+}: PropsMapa) {
   const [aberta, setAberta] = useState<EstacaoId | null>(null)
   const [radio, setRadio] = useState(false)
   const ecos = save.objetos.filter((o) => !save.ecosVistos.includes(o) && ECOS[o]).length

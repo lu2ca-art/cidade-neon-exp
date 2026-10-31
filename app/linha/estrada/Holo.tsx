@@ -22,7 +22,7 @@
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
-import { APPS, DOCK, ESCONDIDOS, Glifo, type AppId } from "../os"
+import { APPS, DOCK, ESCONDIDOS, Glifo, appDesligado, type AppId } from "../os"
 import { horaTexto } from "../relogio"
 import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "../som"
 import { NIVEIS, NOME_NIVEL, type NivelQualidade } from "./qualidade"
@@ -376,11 +376,14 @@ export function HoloLetreiro({ hora, agora, aberto, card, onAbrir }: { hora: num
 // (LU2CA 21/10) o app RÁDIO 222 e o [UNTITLED] morreram no disco: a rádio é o
 // holograma (o menu dela) e o FR3Q_ faz o papel do untitled
 const NO_WIDGET: AppId[] = ["kombi", "n3xo", "radio", "batida", "guitar", "ouvir", "sintonia", "access", "iris", "freq", "stream", "untitled"]
-const ICONES = APPS.filter((a) => !NO_WIDGET.includes(a.id) && !ESCONDIDOS.includes(a.id) && (!DOCK.includes(a.id) || a.id === "linha"))
+const TODOS_ICONES = APPS.filter((a) => !NO_WIDGET.includes(a.id) && !ESCONDIDOS.includes(a.id) && (!DOCK.includes(a.id) || a.id === "linha"))
+// (T41 B1) a LINHA 9 é do jogo velho: no jogo novo não vira ícone (lido uma vez, na 1ª montagem)
+let iconesVivos: typeof TODOS_ICONES | null = null
+const iconesHolo = () => (iconesVivos ??= TODOS_ICONES.filter((a) => !appDesligado(a.id)))
 export function HoloIcones({ onApp }: { onApp: (id: AppId) => void }) {
   return (
     <nav className="l-holo-icones" aria-label="apps" onPointerDown={(e) => e.stopPropagation()}>
-      {ICONES.map((a) => (
+      {iconesHolo().map((a) => (
         <button key={a.id} type="button" data-info={`app:${a.id}`} style={{ ["--cor" as string]: a.cor }} onClick={() => onApp(a.id)} aria-label={a.nome} title={a.nome}>
           <Glifo id={a.id} cor={a.cor} size={17} />
         </button>
@@ -814,7 +817,7 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
             <button type="button" className="is-grande" style={{ ["--cor" as string]: "#ff6b6b" }} onClick={() => abrir("batida")}><span className="l-ilha-holo-mini"><MiniMpc /></span><b>B4TIDA</b></button>
             <button type="button" className={`is-grande ${guitarLivre ? "" : "is-tranca"}`} style={{ ["--cor" as string]: "#ff9000" }} onClick={() => abrir("guitar")}><span className="l-ilha-holo-mini"><MiniTrilha /></span><b>GUITAR DRIVER{guitarLivre ? "" : " 🔒"}</b></button>
             {VEZ.map((id) => { const a = APPS.find((x) => x.id === id)!; return <button key={id} type="button" style={{ ["--cor" as string]: a.cor }} onClick={() => abrir(id)}><Glifo id={a.id} cor={a.cor} size={18} /><b>{id === "stream" ? "vid.stream" : a.nome}</b></button> })}
-            {ICONES.map((a) => <button key={a.id} type="button" style={{ ["--cor" as string]: a.cor }} onClick={() => abrir(a.id)}><Glifo id={a.id} cor={a.cor} size={18} /><b>{a.nome}</b></button>)}
+            {iconesHolo().map((a) => <button key={a.id} type="button" style={{ ["--cor" as string]: a.cor }} onClick={() => abrir(a.id)}><Glifo id={a.id} cor={a.cor} size={18} /><b>{a.nome}</b></button>)}
           </div>
           <p className="l-ilha-holo-clima">{temp}° · {c.deserto ? "seco" : c.chove ? "chuva" : c.hora >= 19 || c.hora < 6 ? "céu aberto" : "nublado"} · {c.regiao}</p>
         </div>

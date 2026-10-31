@@ -4,7 +4,7 @@ import { LUGARES } from "./lugares"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, estacao as getEstacao, lancada, dataCurta, nivelDe, type EstacaoId } from "./data"
-import { ECOS, ROTEIROS, VOZES, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
+import { ECOS, ROTEIROS, VOZES, jogoVelho, type ChatId, type Ctx, type Fala, type Passo } from "./roteiros"
 import type { Item, Save } from "./estado"
 import { MEMORIAS, MISSOES, ativa, itensFaltando, montarFio, type Perfil } from "./missoes"
 import { FREQUENCIAS, proximaFreq } from "./radio"
@@ -96,7 +96,20 @@ const SISTEMA = "__sistema"
 
 const PERSONAGEM_ESTACAO: Record<string, EstacaoId> = Object.fromEntries(ESTACOES.map((e) => [e.personagem, e.id]))
 
-export function Chat({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onAdiar, onLoop, oculto, jeito = "texto", naEstacao = false }: Props) {
+// (T41 B1) no jogo novo, a conversa não abre: a tela cheia volta pra onde
+// estava, o painel da Kombi some quieto. O roteiro fica guardado (vira texto-base
+// dos encontros); a chave é jogoVelho() em roteiros.ts
+export function Chat(props: Props) {
+  if (!jogoVelho()) return <ChatDesligado modo={props.modo} onVoltar={props.onVoltar} onAdiar={props.onAdiar} />
+  return <ChatVelho {...props} />
+}
+function ChatDesligado({ modo = "tela", onVoltar, onAdiar }: Pick<Props, "modo" | "onVoltar" | "onAdiar">) {
+  const sair = useRef(modo === "tela" ? onVoltar : onAdiar)
+  useEffect(() => { sair.current?.() }, [])
+  return null
+}
+
+function ChatVelho({ id, save, atualizar, onFim, onVoltar, onXp, modo = "tela", onPrecisaTela, onAdiar, onLoop, oculto, jeito = "texto", naEstacao = false }: Props) {
   const router = useRouter()
   const roteiro = ROTEIROS[id]
   const jaFeito = save.completos.includes(id)
