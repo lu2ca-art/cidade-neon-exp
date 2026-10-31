@@ -27,6 +27,8 @@ export const CARREGAR: Partial<Record<SalaId, Carga>> = {
   "casa-dbee": () => import("./salas/CasaDbee").then((m) => m.SalaCasaDbee),
   // (T22) a casa da Ella, que é a galeria: a planta, os quadros, a tela em branco
   "galeria-ella": () => import("./salas/GaleriaElla").then((m) => m.SalaGaleriaElla),
+  // (T47) o elevador de terror: sobe, a porta abre, você atravessa o andar das máquinas dormindo
+  elevador: () => import("./salas/Elevador").then((m) => m.SalaElevador),
 }
 
 export function temSala(id: SalaId) { return !!CARREGAR[id] }
@@ -41,6 +43,7 @@ export const GESTOS_3D: Partial<Record<SalaId, string[]>> = {
   beco: ["ordem"],
   "casa-dbee": ["casa", "casa-inicio"],
   "galeria-ella": ["quadros", "pintar"],
+  elevador: ["elevador"],
 }
 
 // baixa antes de precisar: o motor das salas + a sala do lugar. Chamado

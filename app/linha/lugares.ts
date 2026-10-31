@@ -11,7 +11,7 @@
 import type { EstacaoId } from "./data"
 import type { FreqId } from "./radio"
 
-export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "casa-dbee" | "posto" | "plataforma" | "oficina" | "palco-swav" | "palco-rollercoaster" | "palco-copo" | "palco-nectar"
+export type LugarId = "bar" | "casa-drewboy" | "balada" | "escondido" | "topo" | "casa-shows" | "beco" | "casa-dbee" | "posto" | "plataforma" | "oficina" | "palco-swav" | "palco-rollercoaster" | "palco-copo" | "palco-nectar" | "elevador"
 
 export interface Lugar {
   id: LugarId
@@ -131,4 +131,15 @@ LUGARES.oficina = {
 // missão de cada faixa acontece aqui (RASCUNHO de onde fica cada um)
 for (const [id, nome, cor] of [["palco-nectar", "o palco da Nectar", "#e0ff4f"], ["palco-swav", "o palco da Swav", "#ff3fb0"], ["palco-rollercoaster", "o palco da Rollercoaster", "#ff2436"], ["palco-copo", "o palco do Copo Americano", "#ffc857"]] as const) {
   LUGARES[id] = { id, nome, no: `no ${nome.slice(2)}`, letreiro: "PALCO", area: "linha", u: 600, lado: 1, horario: "sempre", cor, acento: "#ffffff", soDisco: true, gente: [] }
+}
+
+// (T47) a torre do elevador de terror: UM prédio só, passeio livre (a sala é
+// interior/salas/Elevador.tsx). Sem fachada nas pistas por enquanto (soChao,
+// sem ponto no mapa): até chegar o vídeo da torre (referência do dono), quem
+// abre a sala é a página (lote D) ou o link de teste ?parte=elevador.
+// RASCUNHO de onde fica: na área das criptos, depois do terraço
+LUGARES.elevador = {
+  id: "elevador", nome: "a torre", no: "na torre", letreiro: "TORRE", area: "crypto", u: 1700, lado: 1,
+  cor: "#ff2436", acento: "#2fe8ff", soDisco: true, soChao: true,
+  gente: [],
 }
