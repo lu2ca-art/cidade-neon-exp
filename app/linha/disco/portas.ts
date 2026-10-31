@@ -163,7 +163,7 @@ export const CONFIG13 = {
   soNoTeste: [] as MissaoId[],
   // (bloco 1 · A6) o grafite dos túneis joga no mapa (o C3 pronto e a page.tsx
   // abrindo o Grafite.tsx: o lote D liga). Desligado, a arte dos túneis fica "em breve"
-  grafiteNoMapa: false,
+  grafiteNoMapa: true, // (lote D, 31/10) ligado: o Grafite.tsx do C3 está nas trincheiras
 }
 
 const p = (nome: string, situacao: Situacao, extra: Partial<Peca> = {}): Peca => ({ nome, situacao, ...extra })

@@ -106,6 +106,8 @@ const Interior = dynamic(() => import("./interior/Interior").then((m) => m.Inter
 const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: false })
 // (T63) as trincheiras (os túneis do T11, a corrida do T13, as motos do T14), dentro do jogo
 const Trincheiras = dynamic(carregarTrincheiras, { ssr: false })
+// (T64, lote D) o grafite das trincheiras (puxa o geo.ts delas: só baixa junto)
+const GrafiteTrincheiras = dynamic(() => import("./disco/Grafite").then((m) => m.GrafiteTrincheiras), { ssr: false })
 
 // (leveza B) o save no localStorage: no máximo uma gravação a cada ~3 s
 const ESPERA_GRAVAR = 3000
@@ -1144,6 +1146,18 @@ export default function LinhaPage() {
     if (correu && missao === "tuneis" && missaoDoSave(saveRef.current) === "tuneis" && pc?.peca.como?.t === "trincheiras") setTimeout(() => pecaFeitaNaMissaoRef.current("tuneis", pc.qual), 600)
     else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: FALA_VOLTA_TUNEL }), 1200)
   }
+  // (T64, lote D) assinou um grafite: fica no save; todos assinados = a arte dos
+  // túneis feita (ainda lá embaixo: a corrida, o jogo, segue dali)
+  const assinouGrafite = async (id: string) => {
+    const { todosAssinados } = await import("./disco/Grafite")
+    setSave((s) => comHistoria(s, (h) => {
+      const grafites = [...new Set([...(h.grafites ?? []), id])]
+      const h2 = { ...h, grafites }
+      const pc = missaoDoSave(s) === "tuneis" ? pecaAgora13(sincronizar(h2, s.objetos), "tuneis") : null
+      return pc?.peca.como?.t === "grafite" && todosAssinados(grafites) ? concluir(h2, "tuneis", pc.qual) : h2
+    }))
+    track("mission_step", { mission_id: "disco-tuneis", step: `grafite:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId) => {
     if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras) return
@@ -1163,6 +1177,8 @@ export default function LinhaPage() {
     else if (como.t === "basquete") setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
     // (T57) desceu a rampa da boca do túnel: a corrida é lá embaixo, nas trincheiras
     else if (como.t === "trincheiras") descerTrincheiras(id)
+    // (T64, lote D) o grafite: nas paredes das trincheiras (assinar todos faz a arte)
+    else if (como.t === "grafite") descerTrincheiras(id)
     // (T22) a casa da pessoa: entra e só sai depois de passar por tudo
     else if (como.t === "casa") entrarNaCasa(id)
   }
@@ -2408,6 +2424,8 @@ export default function LinhaPage() {
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
         {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras }} />}
+        {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}
+        {trincheiras && !trincheiras.descendo && <GrafiteTrincheiras assinados={hist.grafites ?? []} onAssinou={assinouGrafite} />}
         {viagem && (
           <Viagem
             chegou={!!viagem.chegou}
