@@ -9,7 +9,8 @@
 
 import { MISSOES13, trancado, type MissaoId, type PortaId } from "./portas"
 import type { HistoriaDisco } from "./historia"
-import type { Cena } from "../cenas"
+import { cenaDe, type Cena } from "../cenas"
+import { LUGARES, type LugarId } from "../lugares"
 
 // "da D-Bee", "do Drew", "do mecânico", "dos túneis"
 export function daMissao(id: MissaoId): string {
@@ -49,4 +50,24 @@ export function trancaSinuca(h: HistoriaDisco | null): string | null {
   if (!h || h.fase === "livre") return null
   if ((h.feitas13 ?? []).includes("mubarak")) return null
   return `treino livre · ${facaMissao("mubarak", "jogar com ele")}`
+}
+
+// ── (vitrine, parte 2) as salas da cidade fora da missão: entra, olha, e o que
+// é da missão aparece com o cadeado. A casa da D-Bee tem a visita dela
+// (CENA_CASA_VISITA, pela page.tsx); estas são as outras ──
+export const SALAS_VISITA: LugarId[] = ["balada", "casa-drewboy", "topo", "casa-shows", "casa-dbee"]
+export function cenaVisita(id: LugarId, h: HistoriaDisco | null): Cena {
+  const L = LUGARES[id]
+  const base = cenaDe(id)
+  const dona = (Object.keys(MISSOES13) as MissaoId[]).find((m) => MISSOES13[m].lugar.lugar === id && !(h?.feitas13 ?? []).includes(m))
+  return {
+    lugar: id,
+    titulo: L?.nome ?? id,
+    missao: base?.missao ?? "sexta",
+    passos: [
+      { t: "acao", texto: `${L?.nome ?? "o lugar"}. a porta tá aberta: dá pra olhar à vontade` },
+      ...(dona ? [{ t: "acao" as const, texto: `trancado · ${facaMissao(dona, "ver o que acontece aqui")}` }] : []),
+      { t: "fim" },
+    ],
+  }
 }

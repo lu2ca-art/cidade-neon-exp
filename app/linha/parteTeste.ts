@@ -120,13 +120,18 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // e vê a corrida com o cadeado; e o bar do subúrbio na carreira, com a sinuca aberta
   if (parte === "vitrine.tunel") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA }
   if (parte === "vitrine.bar") return MEIO
+  // (vitrine, parte 2) as salas da cidade fora da missão e a casa da D-Bee: a visita abre ao entrar
+  if (parte in VISITAS) return MEIO
   return undefined as unknown as null
 }
+
+// (vitrine, parte 2) ?parte=vitrine.<sala> → a visita que abre ao entrar
+const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.drewboy": "casa-drewboy", "vitrine.terraco": "topo", "vitrine.shows": "casa-shows", "vitrine.casa": "casa-dbee" }
 
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "grafite", "elevador", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "grafite", "elevador", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS)]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -172,6 +177,7 @@ export function aplicarParteDeTeste(): boolean {
   // (lote D) o que abre direto ao entrar no jogo (page.tsx, abrirAoEntrar)
   const abrir: Record<string, string> = { elevador: "elevador", "casa.instrumentos": "casa", "recompensa.instrumento": "recompensa", "vitrine.tunel": "tunel", "vitrine.bar": "sinuca" }
   if (abrir[parte]) url.searchParams.set("abrir", abrir[parte])
+  if (VISITAS[parte]) url.searchParams.set("abrir", `visita:${VISITAS[parte]}`)
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")
   history.replaceState(null, "", url.pathname + (url.search ? url.search : ""))

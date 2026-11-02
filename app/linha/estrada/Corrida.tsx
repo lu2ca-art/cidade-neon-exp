@@ -108,7 +108,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
-import { donaDaFaixa, facaMissao } from "../disco/vitrine"
+import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
@@ -216,6 +216,8 @@ interface Props {
   // encostou devagar na vaga de um lugar (a cena começa)
   // (02/11) `repete`: ainda parado no lugar, tentando de novo (não é uma chegada nova)
   onVaga?: (id: LugarId, repete?: boolean) => void
+  // (vitrine) perto de uma sala da cidade fora da missão: o botão "entrar · ver"
+  onVisitar?: (id: LugarId) => void
   // o lugar secreto liberado (o beco): aparece depois de `voltas` passadas
   segredo?: { id: LugarId; voltas: number } | null
   // a 222 saiu do ar (ep. 3, a delação): sem rádio até o fim da missão
@@ -518,7 +520,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao }: Props) {
+export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -731,6 +733,10 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // a entrada (a cutscene espera a página carregar em paralelo)
   const router = useRouter()
   const [paginaPerto, setPaginaPerto] = useState<string | null>(null)
+  // (vitrine) a sala da cidade perto (fora da missão): dá pra entrar e ver
+  const [salaPerto, setSalaPerto] = useState<LugarId | null>(null)
+  const visitarRef = useRef(onVisitar)
+  useEffect(() => { visitarRef.current = onVisitar }, [onVisitar])
   const missaoLugarRef = useRef<LugarId | null>(null)
   useEffect(() => { missaoLugarRef.current = lugarDaMissao }, [lugarDaMissao])
   const [abertos, setAbertos] = useState<Record<string, boolean>>({})
@@ -904,6 +910,18 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       }
       setAbertos((a) => (PAGINAS.every((lp) => a[lp.id] === ab[lp.id]) ? a : ab))
       setPaginaPerto(pp)
+      // (vitrine) as salas da cidade: perto de uma (que não é a da missão), o botão de visitar
+      let sp: LugarId | null = null
+      if (visitarRef.current && "disco" in M) {
+        const Vs = M.vias[j.via]
+        for (const id of SALAS_VISITA) {
+          if (id === missaoLugarRef.current) continue
+          const L = LUGARES[id]
+          const os = posicao(M, `lugar:${id}`, L.area, L.u, L.lado, L.via)
+          if (os.via === j.via && pertoDe(Vs.L, !!Vs.fechada, os.u, j.u)) sp = id
+        }
+      }
+      setSalaPerto(sp)
       // o posto (sempre aberto) e as bombas de rua
       const Vb = M.vias[j.via]
       let combustivel: string | null = null
@@ -2667,6 +2685,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       )}
       {discoM && pertoOficina && !oficinaAberta && !pausado && (
         <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: CHAO_LUGARES.oficina.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setOficinaAberta(true) }}>entrar · a oficina</button>
+      )}
+      {salaPerto && !paginaPerto && !entrando && !regando && parque !== "andando" && onVisitar && (
+        <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ffc857" }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { onVisitar(salaPerto); setSalaPerto(null) }}>entrar · {LUGARES[salaPerto].nome}</button>
       )}
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)

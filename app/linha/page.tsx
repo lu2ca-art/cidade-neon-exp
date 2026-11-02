@@ -65,7 +65,7 @@ import { definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
-import { CENA_BAR_VISITA, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
+import { CENA_BAR_VISITA, cenaVisita, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 // (30/10) a volta do túnel: a Kombi esperou na porta
 const FALA_VOLTA_TUNEL = "voltou lá de baixo. a kombi tava te esperando na porta. as raízes seguem lá"
@@ -283,7 +283,7 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   // inicio: a casa da D-Bee na abertura (CENA_INICIO)
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" | "dbee-instrumentos" | "visita-bar" } | null>(null)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" | "dbee-instrumentos" | "visita-bar" | "visita" } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -1261,6 +1261,7 @@ export default function LinhaPage() {
       // (vitrine) o túnel no começo e a sinuca do bar
       else if (qual === "tunel") descerTrincheiras(null)
       else if (qual === "sinuca") setSinucaBar(true)
+      else if (qual.startsWith("visita:")) visitarSalaRef.current(qual.slice(7) as LugarId)
     }, 1200)
   }, [HIST, tela.t, cena])
   // (T47) o elevador: abre (como o posto) e fecha no fim-gesto da sala; as falas
@@ -1675,6 +1676,11 @@ export default function LinhaPage() {
     setCinema("lugar")
     setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "visita-bar" })
   }
+  const fimVisita = () => {
+    setCena(null)
+    setCinema(null)
+    barFechou.current = Date.now()
+  }
   const fimVisitaBar = () => {
     setCena(null)
     setCinema(null)
@@ -2007,6 +2013,19 @@ export default function LinhaPage() {
   const cOnDescer = useFixo(descer)
   const cOnSair = useFixo(sairDaCorrida)
   const cOnVaga = useFixo(abrirCena)
+  // (vitrine, parte 2) as salas da cidade fora da missão e a casa da D-Bee: visita livre
+  const visitarSala = (id: LugarId) => {
+    if (cena || cinema || recompensa || trincheiras) return
+    if (id === "casa-dbee") { abrirCasaInstrumentosRef.current(); return }
+    const base = cenaDe(id)
+    if (!base) return
+    setAoVivo(null)
+    setCinema("lugar")
+    setCena({ lugar: id, missao: base.missao, pegar: false, especial: "visita" })
+  }
+  const cOnVisitar = useFixo(visitarSala)
+  const visitarSalaRef = useRef(visitarSala)
+  useEffect(() => { visitarSalaRef.current = visitarSala })
   const cOnIlha = useFixo(() => {
     // o grupo rolando: abre a conversa inteira; depois disso, a
     // ilha abre o celular (como o ícone)
@@ -2140,6 +2159,7 @@ export default function LinhaPage() {
             onDescer={cOnDescer}
             onSair={cOnSair}
             onVaga={cOnVaga}
+            onVisitar={HIST && hist.fase === "carreira" && !chegadaLogin && !minhoca ? cOnVisitar : undefined}
             segredo={segredo}
             // (B18) as cenas do chão do subúrbio não puxam a câmera pra fachada da pista
             cenaLugar={cena && cena.especial !== "disco-oficina" && cena.especial !== "visita-bar" && !(cena.especial === "disco-bar" && hist.fase === "bar") ? cena.lugar : null}
@@ -2478,7 +2498,7 @@ export default function LinhaPage() {
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.especial === "ella-galeria" ? "galeria-ella" : cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "visita-bar" ? CENA_BAR_VISITA : cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "dbee-instrumentos" ? (casaNovos.current ? CENA_CASA_INSTRUMENTOS : CENA_CASA_VISITA) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "visita" ? cenaVisita(cena.lugar, h13) : cena.especial === "visita-bar" ? CENA_BAR_VISITA : cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "dbee-instrumentos" ? (casaNovos.current ? CENA_CASA_INSTRUMENTOS : CENA_CASA_VISITA) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -2486,7 +2506,7 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
+            onFim={cena.especial === "visita" ? fimVisita : cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
           />
         )}
