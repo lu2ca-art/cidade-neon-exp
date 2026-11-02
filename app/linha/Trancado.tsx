@@ -30,3 +30,15 @@ export function lerTranca(): string | null {
   const t = new URLSearchParams(location.search).get(PARAM_TRANCA)
   return t ? t.slice(0, 120) : null
 }
+
+// (vitrine, parte 2) o app aberto ainda trancado (o violão, o jardim): dá pra
+// ver tudo, mas os toques param aqui (menos o "início" e o aviso)
+export function travarToques(tranca: string | null | undefined) {
+  if (!tranca) return {}
+  const parar = (e: React.SyntheticEvent) => {
+    if ((e.target as HTMLElement).closest?.(".l-app-topo, .cn-trancado")) return
+    e.stopPropagation()
+    e.preventDefault()
+  }
+  return { onPointerDownCapture: parar, onPointerMoveCapture: parar, onClickCapture: parar }
+}

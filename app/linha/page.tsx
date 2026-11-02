@@ -65,7 +65,7 @@ import { definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
-import { CENA_BAR_VISITA, cenaVisita, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
+import { CENA_BAR_VISITA, cenaVisita, donaDaFaixa, facaMissao, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 // (30/10) a volta do túnel: a Kombi esperou na porta
 const FALA_VOLTA_TUNEL = "voltou lá de baixo. a kombi tava te esperando na porta. as raízes seguem lá"
@@ -1848,6 +1848,7 @@ export default function LinhaPage() {
   const [trancaApp, setTrancaApp] = useState<string | null>(null)
   const abrirApp = (id: AppId) => {
     const a = APPS.find((x) => x.id === id)!
+    setTrancaApp(null)
     if (a.nivel !== undefined && nivel < a.nivel) {
       avisar(a.nome, `abre no nível ${NIVEIS[a.nivel].nome}`, a.cor)
       return
@@ -1867,7 +1868,14 @@ export default function LinhaPage() {
     // (o violão vem da D-Bee, no fim da leitura NECTAR)
     if (a.precisa && !(a.id === "violao" ? save.violao : save.objetos.includes(a.precisa))) {
       const e = getEstacao(a.precisa)
-      avisar(a.nome, save.objetos.length || save.pausas[a.precisa] !== undefined ? `abre quando ${e.personagem} te der ${e.objetoNome}` : "abre com uma missão da cidade", a.cor)
+      // (vitrine, parte 2) o violão e o jardim abrem do mesmo jeito: dá pra ver, com o aviso do que libera
+      const h = hist13(saveRef.current)
+      const dona = a.id === "violao" ? "dbee" as const : donaDaFaixa(a.precisa)
+      const msg = HIST
+        ? (a.id === "violao" && feita13(h, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : dona ? facaMissao(dona, a.id === "violao" ? "tocar" : "regar") : "abre com uma missão da cidade")
+        : save.objetos.length || save.pausas[a.precisa] !== undefined ? `abre quando ${e.personagem} te der ${e.objetoNome}` : "abre com uma missão da cidade"
+      avisar(a.nome, msg, a.cor)
+      if (a.id === "violao" || a.id === "jardim") { setTrancaApp(msg); setTela({ t: "app", id }); return }
       return
     }
     if (id === "violao") setSave((s) => ({ ...s, jogados: { ...s.jogados, violao: 1 } }))
@@ -2471,9 +2479,9 @@ export default function LinhaPage() {
           />
         )}
         {tela.t === "app" && tela.id === "jardim" && (
-          <Jardim save={save} atualizar={atualizar} onVoltar={() => setTela({ t: "home" })} />
+          <Jardim save={save} atualizar={atualizar} tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />
         )}
-        {tela.t === "app" && tela.id === "violao" && <Violao onVoltar={() => setTela({ t: "home" })} />}
+        {tela.t === "app" && tela.id === "violao" && <Violao tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "ouvir" && <Ouvir onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={trancaApp ? () => { avisar("LOJA", trancaApp, "#ffc857"); return false } : comprarNaLoja} tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (

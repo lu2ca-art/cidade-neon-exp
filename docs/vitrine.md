@@ -31,10 +31,10 @@ O que libera continua igual: as regras estão em `app/linha/disco/portas.ts` (`t
 | Parque (montanha-russa) | `trancas.parque` (missão da Nizzy) | o texto com cadeado: "o parque · faça a missão da Nizzy pra andar" (andar segue na missão) |
 | Canteiros (regar) | `trancas.canteiros` (missão do Tony) | o texto com cadeado: "faça a missão do Tony Gordo pra regar" |
 | **Elevador de terror** (a torre do subúrbio) | `chao:torre` só na carreira e na cidade livre | abre em toda fase depois da chegada |
-| Casa da D-Bee | no prólogo é a cena da casa; na carreira só abre com instrumento novo (ou visita sem novos, pela mesma cena) | **falta**: a cena de visita livre já existe (`CENA_CASA_VISITA`), mas na carreira só abre com instrumento novo. Abrir sempre mexe na chegada do login (a Kombi nasce na porta dela): ficou pra conferir junto com o agente das missões |
-| Salas da cidade (balada, casa do Drewboy, terraço, casa de shows) | no jogo com história só abrem quando a missão aponta pra elas | **falta**: precisam de uma cena de visita cada (e conferir se a fachada aparece no mapa-disco) |
+| Casa da D-Bee | no prólogo é a cena da casa; na carreira só abre com instrumento novo (ou visita sem novos, pela mesma cena) | (parte 2) Na carreira, perto da casa (fora da chegada do login), "entrar · a casa da d-bee": com instrumento novo, a cena dos novos; sem, a visita livre. `?parte=vitrine.casa` |
+| Salas da cidade (balada, casa do Drewboy, terraço, casa de shows) | no jogo com história só abrem quando a missão aponta pra elas | (parte 2) Na carreira, passando perto de uma delas (fora da missão), aparece "entrar · <lugar>": a sala abre numa visita curta e, se tem missão ali, o aviso "trancado · faça a missão do X pra ver o que acontece aqui". O gatilho da missão (alvoMissao.ts) não mudou. Links: `?parte=vitrine.balada`, `vitrine.drewboy`, `vitrine.terraco`, `vitrine.shows` |
 | Beco e casa escondida | segredos (o beco depois da volta no mirante) | igual de propósito (segredo) |
-| Violão, Jardim (apps) | `precisa`: o objeto da missão | igual (falta: abrir com o aviso) |
+| Violão, Jardim (apps) | `precisa`: o objeto da missão | (parte 2) abrem sempre: dá pra ver o app, os toques param e o aviso diz o que libera ("faça a missão da D-Bee pra tocar", "faça a missão da Ella pra regar"; sem violão depois do metrô: "o violão ficou no metrô") |
 | Sala branca | nível 4 (o fim) | igual (o fim) |
 | Torres das trincheiras ("a porta sobe pra rua") | "em breve" | igual (não existe ainda) |
 
