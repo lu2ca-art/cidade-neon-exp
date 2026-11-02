@@ -12,6 +12,7 @@ import {
 import { svgInstrumento, type Acabamento } from "./instrumentos"
 import { densidade, type ChartGd } from "./motor"
 import { ac, clique } from "./som"
+import { tentarSenha, travarDeNovo, tudoLiberado } from "./liberar"
 import type { Tela } from "./page"
 
 export interface Resultado {
@@ -132,7 +133,7 @@ export function Setlist({ save, linha, neon, popularidade, palco, onFaixa, onVol
   const abertas = palco.setlist.filter((f) => pronta(fx(f)))
   const tocou = (f: string) => Object.keys(save.estrelas).some((k) => k.startsWith(`${palco.id}:${f}:`) && save.estrelas[k] > 0)
   const rival = palco.rival
-  const podeDuelo = !!rival && abertas.length > 0 && abertas.every(tocou) && pronta(fx(rival.faixa))
+  const podeDuelo = !!rival && (tudoLiberado() || (abertas.length > 0 && abertas.every(tocou))) && pronta(fx(rival.faixa))
   const gente = publicoDe(palco, popularidade)
   const venceu = save.batalhas.includes(palco.id)
   return (
@@ -372,6 +373,14 @@ export function Opcoes({ save, salvar, editor, onCalibrar, onEditor, onVoltar }:
   save: Save; salvar: (f: (s: Save) => Save) => void; editor: boolean; onCalibrar: () => void; onEditor: () => void; onVoltar: () => void
 }) {
   const ms = save.atraso === null ? null : Math.round(save.atraso * 1000)
+  const [tudo, setTudo] = useState(false)
+  const [senha, setSenha] = useState("")
+  const [aviso, setAviso] = useState("")
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setTudo(tudoLiberado()) }, [])
+  const enviar = async () => {
+    if (await tentarSenha(senha)) { setTudo(true); setSenha(""); setAviso("") } else setAviso("senha errada")
+  }
   return (
     <section className="gd-menu">
       <header className="gd-topo"><button type="button" onClick={onVoltar}>‹ voltar</button><b>OPÇÕES</b><span /></header>
@@ -385,6 +394,21 @@ export function Opcoes({ save, salvar, editor, onCalibrar, onEditor, onVoltar }:
             <button type="button" onClick={() => salvar((s) => ({ ...s, atraso: Math.min(0.5, (s.atraso ?? 0.04) + 0.01) }))}>+ 10 ms</button>
           </div>
           <small>se as notas parecem chegar antes do som, aumente; se chegam depois, diminua.</small>
+        </div>
+        <div className="gd-opcao">
+          <b>senha</b>
+          {tudo ? (
+            <>
+              <small>tudo liberado neste aparelho: todos os palcos, faixas e duelos. O seu save não muda.</small>
+              <button type="button" className="gd-btn" onClick={() => { travarDeNovo(); setTudo(false) }}>travar de novo</button>
+            </>
+          ) : (
+            <form className="gd-ajuste" onSubmit={(e) => { e.preventDefault(); enviar() }}>
+              <input className="gd-senha" type="password" autoComplete="off" value={senha} onChange={(e) => { setSenha(e.target.value); setAviso("") }} placeholder="digite a senha" aria-label="senha" />
+              <button type="submit" className="gd-btn" disabled={!senha.trim()}>abrir</button>
+            </form>
+          )}
+          {aviso && <small>{aviso}</small>}
         </div>
         {editor && (
           <button type="button" className="gd-opcao is-botao" onClick={onEditor}>

@@ -7,6 +7,7 @@
 // depois, sem mexer na lógica.
 
 import type { Acabamento, Visual } from "./instrumentos"
+import { tudoLiberado } from "./liberar"
 
 export type Instrumento = "guitarra" | "baixo"
 
@@ -38,14 +39,14 @@ export const FAIXAS: Faixa[] = [
 ]
 
 export function faixaAberta(f: Faixa, agora = Date.now()) {
-  return !f.abre || new Date(f.abre).getTime() <= agora
+  return tudoLiberado() || !f.abre || new Date(f.abre).getTime() <= agora
 }
 
 // cada missão cumprida libera a faixa da pessoa (como na rádio): a faixa só
 // toca aqui depois da missão E do lançamento. Sem anúncio: o que ainda não
 // foi conquistado aparece como "???"
 export function faixaConquistada(f: Faixa, l: { objetos?: string[] }) {
-  return !!l.objetos?.includes(f.id)
+  return tudoLiberado() || !!l.objetos?.includes(f.id)
 }
 
 export interface Rival {
@@ -213,7 +214,7 @@ export const SAVE_VAZIO: Save = {
 
 // um palco abre quando você conhece o lugar no jogo
 export function palcoAberto(l: SaveLinha, p: Palco) {
-  return p.abre(l)
+  return tudoLiberado() || p.abre(l)
 }
 
 const CHAVE = "cn-guitar-driver"

@@ -239,3 +239,4 @@
 .gd-resultado.is-jornal .gd-jornal dl div { background: none; border: 2px solid var(--tinta); border-radius: 0; }
 .gd-resultado.is-jornal .gd-jornal dt { color: var(--tinta); opacity: 0.7; }
 .gd-resultado.is-jornal .gd-jornal dd { font: 900 26px Georgia, serif; }
+.gd-senha { min-width: 0; padding: 12px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.35); color: inherit; font: 700 14px var(--mono); }
