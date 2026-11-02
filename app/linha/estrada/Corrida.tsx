@@ -105,6 +105,8 @@ import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, 
 import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
+import { Cadeado, PARAM_TRANCA } from "../Trancado"
+import { donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
 import { DISTRITOS, hexRgb, type Distrito } from "./distritos"
@@ -845,7 +847,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   const [carregou, setCarregou] = useState(false)
   // a câmera da entrada: do outro lado da rua, olhando a fachada (como nas cenas)
   const camEntrada = useRef<{ cam: THREE.Vector3; olhar: THREE.Vector3 } | null>(null)
-  const entrar = (lp: LugarPagina) => {
+  const entrar = (lp: LugarPagina, tranca?: string) => {
     jogo.current.encostando = true
     const pose = poseLugar(M, { area: lp.area, u: lp.u, lado: lp.lado } as Lugar, `pagina:${lp.id}`)
     camEntrada.current = { cam: pose.cam.clone(), olhar: pose.porta.clone().setY(pose.porta.y + 2.5) }
@@ -853,7 +855,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     router.prefetch(lp.rota)
     // a cena dura pelo menos 3,2 s (o tempo de ver o letreiro e a fachada)
     const pagina = CARREGAR_PAGINA[lp.id]().catch(() => null).then(() => setCarregou(true))
-    void Promise.all([pagina, new Promise((r) => setTimeout(r, 3200))]).then(() => { marcarDaCidade(); router.push(`${lp.rota}?de=cidade`) })
+    void Promise.all([pagina, new Promise((r) => setTimeout(r, 3200))]).then(() => { marcarDaCidade(); router.push(`${lp.rota}?de=cidade${tranca ? `&${PARAM_TRANCA}=${encodeURIComponent(tranca)}` : ""}`) })
   }
   // a montanha-russa: perto (dá pra andar) ou andando
   const passeio = useRef<PasseioParque>(novoPasseio())
@@ -2266,7 +2268,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
   const sintonizarHolo = (id: FreqId) => {
     // (T18) as outras frequências abrem na missão do Xeriff: até lá, só a 222
-    if (trancas?.radio && id !== freqRef.current) { chiadoCurto(); falar("222 FM", `só chiado. as frequências ${trancas.radio.replace("abre", "abrem")}`, 3600); return }
+    if (trancas?.radio && id !== freqRef.current) { chiadoCurto(); falar("222 FM", `só chiado. ${trancas.radio}`, 3600); return }
     chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(id), 0)
   }
   const V = M.vias[viaAtual]
@@ -2583,11 +2585,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
         if (!lp || entrando || regando || parque === "andando") return null
-        if (trancadaPelaHistoria(lp, save.objetos)) return <p className="l-pagina-fechada">{lp.nome} · de portas fechadas</p>
-        const tranca = trancas?.[lp.id as keyof NonNullable<typeof trancas>]
-        if (tranca) return <p className="l-pagina-fechada">{lp.nome} · {tranca}</p>
+        // (vitrine, 02/11) trancado não fecha a porta: entra e vê as máquinas, com
+        // o cadeado e o que libera (o aviso vai junto pra página: ?tranca=)
+        const dona = lp.exige && trancadaPelaHistoria(lp, save.objetos) ? donaDaFaixa(lp.exige) : null
+        const tranca = trancas?.[lp.id as keyof NonNullable<typeof trancas>] ?? (dona ? facaMissao(dona, "jogar") : lp.exige && trancadaPelaHistoria(lp, save.objetos) ? "ainda trancado pra jogar" : undefined)
         return abertos[lp.id]
-          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrar(lp)}>entrar · {lp.nome}</button>
+          ? <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: lp.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrar(lp, tranca)}>{tranca && <Cadeado />}entrar · {lp.nome}{tranca ? " · ver" : ""}</button>
           : <p className="l-pagina-fechada">{lp.nome} abre às {abreAs(lp.horario)}</p>
       })()}
       {entrando && (
@@ -2598,7 +2601,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </div>
       )}
       {parque === "perto" && !regando && (trancas?.parque
-        ? <p className="l-pagina-fechada">o parque · {trancas.parque}</p>
+        ? <p className="l-pagina-fechada"><Cadeado />o parque · {trancas.parque}</p>
         : <button type="button" className="l-regar-btn is-parque" onPointerDown={(e) => e.stopPropagation()} onClick={andarMontanha}>andar na montanha-russa</button>
       )}
       {parque === "andando" && (
@@ -2613,7 +2616,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         </>
       )}
       {fotoParque && <p className="l-montanha-foto">{fotoParque}</p>}
-      {canteiro && !regando && parque !== "andando" && trancas?.canteiros && <p className="l-pagina-fechada">os canteiros · {trancas.canteiros}</p>}
+      {canteiro && !regando && parque !== "andando" && trancas?.canteiros && <p className="l-pagina-fechada"><Cadeado />os canteiros · {trancas.canteiros}</p>}
       {canteiro && !regando && parque !== "andando" && !trancas?.canteiros && (
         <button type="button" className="l-regar-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setRegando(canteiro) }}>regar as flores</button>
       )}

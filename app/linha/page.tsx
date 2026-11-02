@@ -63,6 +63,7 @@ import { definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
+import { pedidoDaPorta } from "./disco/vitrine"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 // (30/10) a volta do túnel: a Kombi esperou na porta
 const FALA_VOLTA_TUNEL = "voltou lá de baixo. a kombi tava te esperando na porta. as raízes seguem lá"
@@ -1061,8 +1062,9 @@ export default function LinhaPage() {
   const trancasCorrida = useMemo(() => {
     if (!HIST) return undefined
     const t: Partial<Record<"ginasio" | "radio" | "fliperama" | "parque" | "canteiros", string>> = {}
-    const par: [keyof typeof t, PortaId][] = [["ginasio", "ginasio"], ["radio", "radio-frequencias"], ["fliperama", "fliperama"], ["parque", "parque"], ["canteiros", "canteiros"]]
-    for (const [k, porta] of par) { const m = trancado(h13, porta); if (m) t[k] = m }
+    // (vitrine, 02/11) o aviso já vem como pedido: "faça a missão do Notti pra jogar"
+    const par: [keyof typeof t, PortaId, string][] = [["ginasio", "ginasio", "jogar"], ["radio", "radio-frequencias", "sintonizar"], ["fliperama", "fliperama", "jogar"], ["parque", "parque", "andar"], ["canteiros", "canteiros", "regar"]]
+    for (const [k, porta, pra] of par) { const m = pedidoDaPorta(h13, porta, pra); if (m) t[k] = m }
     return t
   }, [HIST, h13])
   // (T27) a Kombi quebrou: também fica no conserto (a mesma ida de patins)

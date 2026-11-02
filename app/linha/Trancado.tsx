@@ -14,11 +14,19 @@ export function Cadeado({ size = 12 }: { size?: number }) {
   )
 }
 
-// a faixa do aviso: "🔒 trancado · faça a missão do Notti pra jogar"
+// a faixa do aviso: "(cadeado) trancado · faça a missão do Notti pra jogar"
 export function Trancado({ texto, className = "" }: { texto: string; className?: string }) {
   return (
     <p className={`cn-trancado ${className}`} role="note">
       <Cadeado /><b>trancado</b><span>{texto}</span>
     </p>
   )
+}
+
+// o aviso vai junto pra página do lugar (/fliperama, /ginasio): ?tranca=<texto>
+export const PARAM_TRANCA = "tranca"
+export function lerTranca(): string | null {
+  if (typeof location === "undefined") return null
+  const t = new URLSearchParams(location.search).get(PARAM_TRANCA)
+  return t ? t.slice(0, 120) : null
 }

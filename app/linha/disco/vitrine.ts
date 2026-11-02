@@ -4,7 +4,7 @@
 // curto do que libera ("faça a missão do Notti pra jogar"), em vez de sumir,
 // não deixar entrar ou dizer "em breve". O que libera continua igual
 // (portas.ts: trancado, CONFIG13.trancar): aqui só o texto do aviso e o
-// transporte dele até as páginas (?tranca=). Leve: sem three.js, sem React.
+// transporte dele até as páginas (?tranca=, Trancado.tsx). Leve: sem three.js, sem React.
 // O inventário (lugar → o que bloqueava → como ficou) mora em docs/vitrine.md.
 
 import { MISSOES13, trancado, type MissaoId, type PortaId } from "./portas"
@@ -29,10 +29,5 @@ export function pedidoDaPorta(h: HistoriaDisco | null, porta: PortaId, pra: stri
   return dona ? facaMissao(dona, pra) : `ainda trancado pra ${pra}`
 }
 
-// o aviso vai junto pra página do lugar (/fliperama, /ginasio): ?tranca=<texto>
-export const PARAM_TRANCA = "tranca"
-export function lerTranca(): string | null {
-  if (typeof location === "undefined") return null
-  const t = new URLSearchParams(location.search).get(PARAM_TRANCA)
-  return t ? t.slice(0, 120) : null
-}
+// a missão que libera uma faixa (o fliperama antigo exigia a Rollercoaster)
+export const donaDaFaixa = (faixa: string): MissaoId | null => (Object.keys(MISSOES13) as MissaoId[]).find((id) => MISSOES13[id].faixa === faixa) ?? null
