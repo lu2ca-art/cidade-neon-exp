@@ -212,7 +212,8 @@ interface Props {
   // tocar na ilha quando ela mostra uma mensagem
   onIlha?: () => void
   // encostou devagar na vaga de um lugar (a cena começa)
-  onVaga?: (id: LugarId) => void
+  // (02/11) `repete`: ainda parado no lugar, tentando de novo (não é uma chegada nova)
+  onVaga?: (id: LugarId, repete?: boolean) => void
   // o lugar secreto liberado (o beco): aparece depois de `voltas` passadas
   segredo?: { id: LugarId; voltas: number } | null
   // a 222 saiu do ar (ep. 3, a delação): sem rádio até o fim da missão
@@ -1501,7 +1502,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       if (alvoL.lugar && !pausado) {
         // (parado no lugar e nada abriu, ex.: a recompensa de antes ainda na tela: tenta de novo a cada 12 s)
         const livre = !cinemaRef.current && !celularRef.current
-        if (r === "sim" && livre && (j.naVaga !== alvoL.lugar || performance.now() - ultimaVez > 12000)) { j.naVaga = alvoL.lugar; ultimaVez = performance.now(); onVagaRef.current?.(alvoL.lugar) }
+        // (o page.tsx não reabre o que ele fechou de propósito: só depois de sair do raio e voltar)
+        if (r === "sim" && livre && (j.naVaga !== alvoL.lugar || performance.now() - ultimaVez > 12000)) { const repete = j.naVaga === alvoL.lugar; j.naVaga = alvoL.lugar; ultimaVez = performance.now(); onVagaRef.current?.(alvoL.lugar, repete) }
         else if (!r && d > CHEGADA_MISSAO.lugar * 2 && j.naVaga === alvoL.lugar && j.via !== pt.via) j.naVaga = false
       }
     }, 300)

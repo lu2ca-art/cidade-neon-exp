@@ -749,8 +749,12 @@ export default function LinhaPage() {
   const barFechou = useRef(0)
   // (T02) chegou no lugar da missão pegada (a função mora mais embaixo: chegouNaMissao)
   const chegouRef = useRef<(m: MissaoId) => void>(() => {})
+  // (missões claras, 02/11) nesta visita ao lugar já abriu uma peça (ou a porta):
+  // a tentativa repetida (parado no lugar) não reabre o que ele fechou de
+  // propósito. Zera a cada chegada nova (saiu do raio e voltou)
+  const visitaAbriu = useRef<MissaoId | null>(null)
   const abrirPortaRef = useRef<(m: MissaoId) => void>(() => {})
-  const abrirCena = useCallback((id: LugarId) => {
+  const abrirCena = useCallback((id: LugarId, repete = false) => {
     // (disco) a história manda: cada fase abre só o lugar dela
     if (D && historiaAtiva(historiaDe(saveRef.current))) {
       const h = historiaDe(saveRef.current)
@@ -760,9 +764,13 @@ export default function LinhaPage() {
       // (T02) a carreira: chegou no lugar da missão pegada: a peça de agora (ou a porta)
       if (h.fase === "carreira" && Date.now() - barFechou.current > 8000) {
         const m = missaoDoSave(saveRef.current)
-        if (m && alvo13(hist13(saveRef.current), m)?.lugar === id) chegouRef.current(m)
+        if (m && alvo13(hist13(saveRef.current), m)?.lugar === id) {
+          if (repete && visitaAbriu.current === m) return
+          if (!repete) visitaAbriu.current = null
+          chegouRef.current(m)
+        }
         // (T49, lote D) sem missão lá, a casa da D-Bee com instrumento novo: a volta dos instrumentos
-        else if (id === "casa-dbee" && instrumentosNovos(hist13(saveRef.current)).length) abrirCasaInstrumentosRef.current()
+        else if (!repete && id === "casa-dbee" && instrumentosNovos(hist13(saveRef.current)).length) abrirCasaInstrumentosRef.current()
         return
       }
       if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
@@ -1164,6 +1172,7 @@ export default function LinhaPage() {
   const chegouNaMissao = (id: MissaoId) => {
     if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
+    visitaAbriu.current = id
     if (!pc) { abrirPortaDe(id); return }
     const como = pc.peca.como
     barFechou.current = Date.now()
