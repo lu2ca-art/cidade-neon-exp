@@ -10,7 +10,9 @@
 import { useEffect, useMemo, useState } from "react"
 import type { PistaId } from "../estrada/pistas"
 import { COR_PISTA, type HistoriaDisco } from "./historia"
-import { MISSOES13, quemLibera } from "./portas"
+import { quemLibera } from "./portas"
+import { facaMissao } from "./vitrine"
+import { Cadeado } from "../Trancado"
 import { SHOWS_XENOM, XENOM_CONFIG, albumLiberado, travaXenom, xenomAberto, xenomCumpridos, type XenomId } from "./xenom"
 import { NIVEL_MAX, NOME_ALTURA, PALCOS_CARREIRA, PALCOS_CONFIG, alturaDe, estrelasDoPalco, estrelasTotais, menuDo, nivelDe, nomeDoPalco, travaDo } from "./palcos"
 
@@ -54,7 +56,7 @@ export function Palcos({ h, onTocar, onFechar, onXenom }: { h: HistoriaDisco; on
                 <button type="button" data-palco={p.id} aria-pressed={p.id === palco.id} onClick={() => setSel(p.id)}>
                   <small>{NOME_ALTURA[altura]}{metros ? ` · ${metros} m` : ""}</small>
                   <b>{nome}</b>
-                  <em>{tr.t === "aberto" ? <>★ {estrelasDoPalco(h, p.id)} · cachê ×{p.paga}</> : tr.t === "live" ? "abre com a missão do LU2CA" : `faltam ${tr.faltam} ★`}</em>
+                  <em>{tr.t === "aberto" ? <>★ {estrelasDoPalco(h, p.id)} · cachê ×{p.paga}</> : tr.t === "live" ? <><Cadeado />{facaMissao("lu2ca", "subir")}</> : <><Cadeado />faltam {tr.faltam} ★</>}</em>
                 </button>
               </li>
             )
@@ -72,7 +74,7 @@ export function Palcos({ h, onTocar, onFechar, onXenom }: { h: HistoriaDisco; on
                   {m.livre && aberto ? (
                     <button type="button" data-faixa={m.faixa} onClick={() => onTocar(palco.id, m.faixa)}><b>{m.nome}</b><small><Estrelas n={m.estrelas} /> · cantar ou tocar · 22 s</small></button>
                   ) : (
-                    <span><b>{m.nome}</b><small>{!aberto ? "o palco ainda está fechado" : quem ? `abre na missão de ${MISSOES13[quem].quem}` : "em breve"}</small></span>
+                    <span className="cn-card-trancado"><b><Cadeado />{m.nome}</b><small>{!aberto ? "o palco ainda está fechado" : quem ? facaMissao(quem, "tocar") : "ainda trancada"}</small></span>
                   )}
                 </li>
               )

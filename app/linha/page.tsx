@@ -1028,7 +1028,7 @@ export default function LinhaPage() {
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
-  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar"] : [])].join(",")
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar"] : [])].join(",")
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])
@@ -1674,7 +1674,8 @@ export default function LinhaPage() {
     }
     // (B18) o subúrbio no chão: o bar (missão 1), a oficina (missão 2), o palco
     // (T47, lote D) a porta da torre: o elevador de terror (passeio livre)
-    if (e === "chao:torre" && (h.fase === "carreira" || h.fase === "livre")) abrirElevadorRef.current()
+    // (vitrine, 02/11) em toda fase depois da chegada (antes só na carreira e na cidade livre)
+    if (e === "chao:torre" && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras) abrirElevadorRef.current()
     if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
     if (e === "chao:oficina" && h.fase === "nectar" && h.nectar === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
     // (T09) a missão da oficina: cada chegada abre o passo de agora
