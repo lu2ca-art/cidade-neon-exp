@@ -1238,6 +1238,9 @@ export default function LinhaPage() {
       if (qual === "elevador") abrirElevadorRef.current()
       else if (qual === "casa") abrirCasaInstrumentosRef.current()
       else if (qual === "recompensa") abrirPortaRef.current("mubarak")
+      // (vitrine) o túnel no começo e a sinuca do bar
+      else if (qual === "tunel") descerTrincheiras(null)
+      else if (qual === "sinuca") setSinucaBar(true)
     }, 1200)
   }, [HIST, tela.t, cena])
   // (T47) o elevador: abre (como o posto) e fecha no fim-gesto da sala; as falas
