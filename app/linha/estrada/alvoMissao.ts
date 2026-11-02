@@ -11,6 +11,7 @@
 // mesmo que o GPS (destinoMundo) e o automático já usam. O do chão é o
 // CHAO_LUGARES (o mesmo do gatilho do chão).
 
+import { useSyncExternalStore } from "react"
 import { posicao, type Mundo } from "./mundo"
 import { PASSO } from "./pista"
 import { LUGARES, type LugarId } from "../lugares"
@@ -20,7 +21,7 @@ export type LugarMissao = { lugar?: LugarId; chao?: LugarChao }
 export interface PontoAlvo { x: number; y: number; z: number; via?: number; u?: number }
 
 // ── os números da chegada (o designer ajusta aqui) ──
-export const CHEGADA = {
+export const CHEGADA_MISSAO = {
   // raio (m, no plano) em volta do ponto que já conta como "chegou"
   lugar: 38, // um lugar da cidade (de Kombi, de patins, voando, em qualquer faixa)
   chao: 32, // um lugar do chão do subúrbio
@@ -58,8 +59,26 @@ export function pontoDoAlvo(M: Mundo, l: LugarMissao | null | undefined): PontoA
 
 // chegou? (x, y, z = onde o jogador está agora: a Kombi ou o patins)
 export function chegouNoAlvo(l: LugarMissao, p: PontoAlvo, x: number, y: number, z: number): "sim" | "alto" | "baixo" | null {
-  const r = l.chao ? CHEGADA.chao : CHEGADA.lugar
+  const r = l.chao ? CHEGADA_MISSAO.chao : CHEGADA_MISSAO.lugar
   if (Math.hypot(x - p.x, z - p.z) > r) return null
-  const dy = y - p.y, lim = l.chao ? CHEGADA.alturaChao : CHEGADA.alturaLugar
+  const dy = y - p.y, lim = l.chao ? CHEGADA_MISSAO.alturaChao : CHEGADA_MISSAO.alturaLugar
   return dy > lim ? "alto" : dy < -lim ? "baixo" : "sim"
 }
+
+// ── O GUIA (o Nexo lê daqui): a distância até o alvo da missão e, perto dele
+// sem ter começado, o que fazer ali. Uma loja fora do React: a Corrida escreve
+// (de 300 em 300 ms) e só o pedacinho do notch se refaz, quando o texto muda ──
+export type Guia = { metros: number; dica: string }
+let GUIA: Guia = { metros: -1, dica: "" }
+const ouvintes = new Set<() => void>()
+export function escreverGuia(metros: number, dica: string) {
+  // de 10 em 10 m perto; de 50 em 50 longe (menos troca de texto)
+  const m = metros < 0 ? -1 : metros < 300 ? Math.round(metros / 10) * 10 : Math.round(metros / 50) * 50
+  if (m === GUIA.metros && dica === GUIA.dica) return
+  GUIA = { metros: m, dica }
+  ouvintes.forEach((f) => f())
+}
+export function useGuia(): Guia {
+  return useSyncExternalStore((f) => { ouvintes.add(f); return () => { ouvintes.delete(f) } }, () => GUIA, () => GUIA)
+}
+export const textoMetros = (m: number) => (m < 0 ? "" : m <= 30 ? "aqui" : m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${m} m`)

@@ -45,6 +45,7 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
+import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
 import { nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
@@ -1438,23 +1439,68 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     // (30/10) acabou de subir do túnel: a Kombi está parada na porta. Só desce de
     // novo depois de sair da frente dela
     if (nascerNoTunel()) dentro.add("tuneis")
+    // (missões claras, 02/11) o lugar da MISSÃO (o alvo) vale de Kombi, de patins
+    // ou voando baixo, num raio maior (estrada/alvoMissao.ts, o mesmo ponto do
+    // mapa); o túnel da missão vale já na rampa. Os outros (as peças, a boca do
+    // túnel pra passear, a torre) seguem como eram: no chão, de pé no lugar
+    const alvoPt = alvoChao && !ehPeca(alvoChao) ? pontoDoAlvo(M, { chao: alvoChao }) : null
     const iv = setInterval(() => {
-      const j = jogo.current
-      if (!j.voo || j.wx === undefined) { dentro.clear(); return }
+      const j = jogo.current, a = combRef.current.aqui
+      const noChao = !!j.voo && j.wx !== undefined
+      if (!noChao) for (const id of [...dentro]) if (id !== alvoChao) dentro.delete(id)
       const ids = alvoChao ? [alvoChao, ...chaoAtivos().filter((x) => x !== alvoChao)] : chaoAtivos()
       for (const id of ids) {
-        const l = CHAO_LUGARES[id], perto = pertoDoChao(id, j.wx, j.wz!)
-        if (!perto && (id === "tuneis" || Math.hypot(j.wx - l.x, j.wz! - l.z) > RAIO_CHAO * 3)) dentro.delete(id)
-        if (!dentro.has(id) && perto && !j.ar) {
+        const l = CHAO_LUGARES[id]
+        let perto: boolean, longe: boolean
+        if (alvoPt && id === alvoChao && a) {
+          perto = chegouNoAlvo({ chao: id }, alvoPt, a.x, a.y, a.z) === "sim" || (noChao && !j.ar && pertoDoChao(id, j.wx!, j.wz!))
+          longe = Math.hypot(a.x - alvoPt.x, a.z - alvoPt.z) > CHEGADA_MISSAO.chao * 2.5
+        } else {
+          if (!noChao) continue
+          perto = pertoDoChao(id, j.wx!, j.wz!) && !j.ar
+          longe = !pertoDoChao(id, j.wx!, j.wz!) && (id === "tuneis" || Math.hypot(j.wx! - l.x, j.wz! - l.z) > RAIO_CHAO * 3)
+        }
+        if (longe) dentro.delete(id)
+        if (!dentro.has(id) && perto) {
           dentro.add(id); if (!ehPeca(id)) j.v = 0
           // (30/10, o dono) a Kombi não entra no túnel: fica parada aqui fora, na porta
-          if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx, j.wz!, j.rumo ?? 0) }
+          if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx ?? a?.x ?? l.x, j.wz ?? a?.z ?? l.z, j.rumo ?? 0) }
           onHistoriaRef.current?.(`chao:${id}`)
         }
       }
     }, 150)
     return () => clearInterval(iv)
   }, [alvoChao, pausado, M])
+  // (missões claras, 02/11) A CHEGADA PELO MUNDO. O gatilho da vaga (no quadro,
+  // mais embaixo) só valia na MESMA pista da vaga: de patins/jetpack, voando, ou
+  // na outra mão, passava em cima do lugar e nada. Aqui, de 300 em 300 ms: perto
+  // do ponto da missão (o mesmo do mapa: estrada/alvoMissao.ts), em qualquer
+  // jeito de chegar, começa. E escreve o guia do Nexo: a distância e, perto sem
+  // ter começado, o que fazer ali
+  useEffect(() => {
+    if (!("disco" in M)) return
+    const alvoL: LugarMissao | null = lugarDaMissao ? { lugar: lugarDaMissao } : alvoChao ? { chao: alvoChao } : null
+    const pt = alvoL ? pontoDoAlvo(M, alvoL) : null
+    if (!alvoL || !pt) { escreverGuia(-1, ""); return }
+    const iv = setInterval(() => {
+      const a = combRef.current.aqui, j = jogo.current
+      if (!a) return
+      const d = Math.hypot(a.x - pt.x, a.z - pt.z)
+      const r = chegouNoAlvo(alvoL, pt, a.x, a.y, a.z)
+      let dica = ""
+      if (r === "alto") dica = alvoL.chao ? "desce: o lugar é aqui embaixo, no chão" : "desce na pista: o lugar é aqui"
+      else if (r === "baixo") dica = "sobe pra pista: o lugar é lá em cima"
+      else if (r === "sim" && celularRef.current) dica = "fecha o celular: a missão começa aqui"
+      else if (alvoL.chao === "tuneis" && d < CHEGADA_MISSAO.avisar && !r) dica = "desce a rampa até a porta do túnel"
+      escreverGuia(d, dica)
+      // o lugar da cidade: começa (o do chão começa no intervalo do chão, logo acima)
+      if (alvoL.lugar && !pausado) {
+        if (r === "sim" && !cinemaRef.current && !celularRef.current && j.naVaga !== alvoL.lugar) { j.naVaga = alvoL.lugar; onVagaRef.current?.(alvoL.lugar) }
+        else if (!r && d > CHEGADA_MISSAO.lugar * 2 && j.naVaga === alvoL.lugar && j.via !== pt.via) j.naVaga = false
+      }
+    }, 300)
+    return () => { clearInterval(iv); escreverGuia(-1, "") }
+  }, [M, lugarDaMissao, alvoChao, pausado])
   // (30/10, o dono) os robôs do deserto não dão nada: só voam (estrada/atropelo.ts)
   // (a Nectar) uns segundos rodando depois do show do bar, a Kombi velha pifa:
   // fumaça, para, e ele desce de patins (o patins e as manobras entram aqui)
