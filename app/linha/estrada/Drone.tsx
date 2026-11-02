@@ -21,6 +21,7 @@ import { calcularRota } from "./rota"
 import { blipsDo, noMundo, uDaMissao, type IconeMapa, type Marca } from "./Mapa"
 import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
 import type { LugarId } from "../lugares"
+import { pontoDoAlvo } from "./alvoMissao"
 
 // ── os números (tudo que o designer ajusta mora aqui) ──
 export const DRONE_CFG = {
@@ -436,7 +437,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
     // os pontos de interesse (feixes suaves): refeitos só quando muda o que aparece
     const pontosDeInteresse = () => {
       const pr = props.current, ap = pr.apagada
-      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => m.id).join(",") ?? ""}`
+      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => `${m.id}${m.agora ? "!" : m.feita ? "." : ""}`).join(",") ?? ""}`
       if (key === st.current.pois) return
       st.current.pois = key
       const C = DRONE_CFG, I = feixes.inst
@@ -451,6 +452,9 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       if (pr.missoes && "disco" in M) {
         const D = M as unknown as { pistas: { nome: string; ida: number }[] }
         for (const m of pr.missoes) {
+          // (missões claras) no lugar da missão (o mesmo ponto do gatilho); a feita não ganha feixe
+          if (m.feita) continue
+          if (m.lugar) { const w = pontoDoAlvo(M, m.lugar); if (w) por(w.x, w.y, w.z, m.cor, m.agora ? 1.6 : 1.1); continue }
           const p = D.pistas.find((x) => x.nome === m.faixa)
           if (!p || ap?.[p.ida]) continue
           const v = M.vias[p.ida], i = pontoVia(M, p.ida, uDaMissao(M, p.nome, v.n))

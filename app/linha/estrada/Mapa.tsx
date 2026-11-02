@@ -21,6 +21,7 @@ import { ESCALA, H as HU, W as WU } from "../rede/terreno"
 import { ICONE_MISSAO } from "./Holo"
 import { CHAO_FIXOS, CHAO_LUGARES } from "../disco/historia"
 import { NAV } from "./nav"
+import { pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
@@ -38,9 +39,13 @@ function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: st
   g.strokeStyle = cor; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, 6.5 * k, 0, 7); g.stroke()
   g.fillStyle = cor; g.fillRect(x - 2.6 * k, y - 2.6 * k, 5.2 * k, 5.2 * k)
 }
-// (22/10) as missões no mapa: um ícone por missão, na pista dela
-export interface IconeMapa { id: string; faixa: string; cor: string; agora: boolean }
-interface IconeDesenho extends IconeMapa, Ponto { forma: Path2D | null }
+// (22/10) as missões no mapa: um ícone por missão
+// (missões claras, 02/11) no LUGAR da missão (estrada/alvoMissao.ts: o mesmo ponto
+// do gatilho), não mais na pista da faixa. `agora` = a pegada (maior, pulsando,
+// com o nome); `feita` = apagada; o resto, as que dá pra pegar. `icone` = a
+// chave do desenho (ICONE_MISSAO, a faixa); `faixa` = o rótulo embaixo
+export interface IconeMapa { id: string; faixa: string; cor: string; agora: boolean; feita?: boolean; icone?: string; lugar?: LugarMissao }
+interface IconeDesenho extends IconeMapa { x: number; z: number; forma: Path2D | null }
 const DASH = [14, 22], SEM_DASH: number[] = []
 // o caminho acendendo: um tracejado claro correndo por cima da rota, no sentido da Kombi pro destino
 function acenderRota(g: CanvasRenderingContext2D, segs: TrechoDesenho[], tela: (x: number, z: number) => [number, number], larg: number, agora: number) {
@@ -54,11 +59,19 @@ function acenderRota(g: CanvasRenderingContext2D, segs: TrechoDesenho[], tela: (
   g.setLineDash(SEM_DASH); g.globalAlpha = 1
 }
 function desenharIcone(g: CanvasRenderingContext2D, x: number, y: number, ic: IconeDesenho, k: number, agora: number) {
-  const r = (ic.agora ? 15 : 13) * k
-  // o halo pulsando (o destaque)
-  const s = 0.5 + 0.5 * Math.sin(agora / 320)
-  g.globalAlpha = 0.18 + 0.22 * s; g.fillStyle = ic.cor
-  g.beginPath(); g.arc(x, y, r + (5 + 5 * s) * k, 0, 7); g.fill()
+  const r = (ic.agora ? 19 : ic.feita ? 9 : 13) * k
+  // (missões claras) a feita: só um anel apagado com o ✓
+  if (ic.feita) {
+    g.globalAlpha = 0.45; g.fillStyle = "#07060c"; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill()
+    g.strokeStyle = ic.cor; g.lineWidth = 1.5 * k; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke()
+    g.beginPath(); g.moveTo(x - 4 * k, y); g.lineTo(x - 1 * k, y + 3 * k); g.lineTo(x + 4.5 * k, y - 3.5 * k); g.stroke()
+    g.globalAlpha = 1
+    return
+  }
+  // o halo pulsando (o destaque): a de agora pulsa mais forte e mais largo
+  const s = 0.5 + 0.5 * Math.sin(agora / (ic.agora ? 220 : 320))
+  g.globalAlpha = ic.agora ? 0.3 + 0.35 * s : 0.14 + 0.16 * s; g.fillStyle = ic.cor
+  g.beginPath(); g.arc(x, y, r + (ic.agora ? 8 + 10 * s : 4 + 4 * s) * k, 0, 7); g.fill()
   g.globalAlpha = 1
   g.fillStyle = "#07060c"; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill()
   g.strokeStyle = ic.cor; g.lineWidth = 2.5 * k; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke()
@@ -223,11 +236,14 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   const icones = useMemo<IconeDesenho[]>(() => {
     if (!missoes || !("disco" in M)) return []
     const D = M as unknown as { pistas: { nome: string; ida: number }[] }
+    const forma = (k?: string) => (k && ICONE_MISSAO[k] && typeof Path2D !== "undefined" ? new Path2D(ICONE_MISSAO[k]) : null)
     return missoes.flatMap((m) => {
+      // (missões claras) no lugar da missão: o mesmo ponto do gatilho
+      if (m.lugar) { const w = pontoDoAlvo(M, m.lugar); return w ? [{ ...m, x: w.x, z: w.z, forma: forma(m.icone ?? m.id) }] : [] }
       const p = D.pistas.find((x) => x.nome === m.faixa)
       if (!p || apagada?.[p.ida]) return []
-      const v = M.vias[p.ida]
-      return [{ ...m, via: p.ida, u: uDaMissao(M, p.nome, v.n), forma: ICONE_MISSAO[m.id] && typeof Path2D !== "undefined" ? new Path2D(ICONE_MISSAO[m.id]) : null }]
+      const v = M.vias[p.ida], w = noMundo(M, { via: p.ida, u: uDaMissao(M, p.nome, v.n) })
+      return [{ ...m, x: w.x, z: w.z, forma: forma(m.icone ?? m.id) }]
     })
   }, [missoes, M, apagada])
 
@@ -331,8 +347,8 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         desenharChao(g, x, y, c.cor, 0.8, agora)
       }
       for (const ic of icones) {
-        const w = noMundo(M, ic)
-        let [x, y] = tela(w.x, w.z)
+        if (ic.feita) continue
+        let [x, y] = tela(ic.x, ic.z)
         const d = Math.hypot(x - R, y - R)
         if (d > R - 12) { x = R + ((x - R) / d) * (R - 12); y = R + ((y - R) / d) * (R - 12) }
         desenharIcone(g, x, y, ic, 0.6, agora)
@@ -371,7 +387,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     let k = p ? noMundo(M, p) : { x: 0, z: 0, tx: 0, tz: 1 }
     // (no mapa novo abre mostrando mais da cidade)
     // (22/10) com missões no mapa, abre no meio do caminho entre a Kombi e elas (o ícone não fica de fora)
-    if (icones.length) { let sx = k.x, sz = k.z; for (const ic of icones) { const w = noMundo(M, ic); sx += w.x; sz += w.z } k = { ...k, x: sx / (icones.length + 1), z: sz / (icones.length + 1) } }
+    if (icones.length) { let sx = k.x, sz = k.z; for (const ic of icones) { sx += ic.x; sz += ic.z } k = { ...k, x: sx / (icones.length + 1), z: sz / (icones.length + 1) } }
     vista.current = { cx: k.x, cz: k.z, esc: Math.min(W / (caixa.x1 - caixa.x0), H / (caixa.z1 - caixa.z0)) * ("ligacoes" in M ? 1.15 : 1.6) }
     let raf = 0
     const desenhar = () => {
@@ -421,16 +437,24 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         g.fillStyle = dn.cor ?? ROTA_COR; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x - 8, y - 18); g.lineTo(x + 8, y - 18); g.closePath(); g.fill()
       }
       g.font = "800 11px ui-monospace, monospace"
+      // (missões claras) as feitas embaixo, a de agora por cima de tudo
+      for (const ic of icones) if (ic.feita) { const [x, y] = tela(ic.x, ic.z); desenharIcone(g, x, y, ic, 1.2, performance.now()) }
       for (const ic of icones) {
-        const w = noMundo(M, ic); const [x, y] = tela(w.x, w.z)
+        if (ic.feita) continue
+        const [x, y] = tela(ic.x, ic.z)
         desenharIcone(g, x, y, ic, 1.2, performance.now())
-        const tw = g.measureText(ic.faixa).width
-        g.fillStyle = "rgba(7,6,14,0.8)"; g.fillRect(x - tw / 2 - 5, y + 24, tw + 10, 16)
-        g.fillStyle = ic.cor; g.textAlign = "center"; g.fillText(ic.faixa, x, y + 32); g.textAlign = "start"
+        g.font = ic.agora ? "800 13px ui-monospace, monospace" : "800 11px ui-monospace, monospace"
+        const tw = g.measureText(ic.faixa).width, dy = ic.agora ? 38 : 32
+        g.fillStyle = "rgba(7,6,14,0.85)"; g.fillRect(x - tw / 2 - 5, y + dy - 8, tw + 10, ic.agora ? 18 : 16)
+        g.fillStyle = ic.agora ? "#ffffff" : ic.cor; g.textAlign = "center"; g.fillText(ic.faixa, x, y + dy + (ic.agora ? 1 : 0)); g.textAlign = "start"
       }
       const pk = pose.current
       // (T58) fora da pista, a posição e o rumo de verdade
-      if (pk) { const fora = (pk.livreOk || pk.voo) && pk.wx !== undefined; const w = fora ? { x: pk.wx!, z: pk.wz!, tx: Math.sin(pk.rumo ?? 0), tz: Math.cos(pk.rumo ?? 0) } : noMundo(M, pk); const [x, y] = tela(w.x, w.z); seta(g, x, y, Math.atan2(w.tx, -w.tz), 1.1) }
+      if (pk) { const fora = (pk.livreOk || pk.voo) && pk.wx !== undefined; const w = fora ? { x: pk.wx!, z: pk.wz!, tx: Math.sin(pk.rumo ?? 0), tz: Math.cos(pk.rumo ?? 0) } : noMundo(M, pk); const [x, y] = tela(w.x, w.z)
+        // (missões claras) você: um halo ciano e a seta maior, com "você" embaixo
+        g.fillStyle = "rgba(47, 232, 255, 0.28)"; g.beginPath(); g.arc(x, y, 18, 0, 7); g.fill()
+        seta(g, x, y, Math.atan2(w.tx, -w.tz), 1.6)
+        g.font = "800 11px ui-monospace, monospace"; g.textAlign = "center"; g.fillStyle = "rgba(7,6,14,0.85)"; g.fillRect(x - 20, y + 16, 40, 15); g.fillStyle = "#2fe8ff"; g.fillText("você", x, y + 24); g.textAlign = "start" }
     }
     desenhar()
     return () => cancelAnimationFrame(raf)
@@ -443,7 +467,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     const r = c.getBoundingClientRect(), vv = vista.current
     const x = vv.cx + (sx - r.left - r.width / 2) / vv.esc, z = vv.cz + (sy - r.top - r.height / 2) / vv.esc
     // (22/10) um ícone de missão perto do dedo: a missão em foco (a pista brilha, o cartão acende)
-    for (const ic of icones) { const w = noMundo(M, ic); if (Math.hypot(w.x - x, w.z - z) < 26 / vv.esc) { onIcone?.(ic.id); return } }
+    for (const ic of icones) { if (!ic.feita && Math.hypot(ic.x - x, ic.z - z) < 26 / vv.esc) { onIcone?.(ic.id); return } }
     // um lugar perto do dedo ganha; senão, a rua mais perto
     let melhor: Blip | null = null, dm = 28 / vv.esc
     for (const b of blips) { if (b.tipo === "flor") continue; const w = noMundo(M, b); const d = Math.hypot(w.x - x, w.z - z); if (d < dm) { dm = d; melhor = b } }

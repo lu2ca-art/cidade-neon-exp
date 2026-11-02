@@ -24,6 +24,7 @@ import { CENA_GALERIA_ELLA } from "./disco/ella"
 import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
 import { ouvirSala } from "./interior/bus"
 import { LUGARES, type LugarId } from "./lugares"
+import type { IconeMapa } from "./estrada/Mapa"
 import { proximaFreq } from "./radio"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
@@ -78,7 +79,7 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
-import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
@@ -1379,11 +1380,18 @@ export default function LinhaPage() {
   }, [HIST, m13, passos13])
   // (22/10) as missões moram no mapa: um ícone por missão com pista (a pegada, ou as ofertas da feira) e,
   // no painel do mapa, as opções pra clicar (a checklist da de agora, ou a feira)
-  const mapaMissoes = useMemo(() => {
+  // (missões claras, 02/11) o ícone fica no LUGAR da missão (o mesmo ponto do
+  // gatilho: estrada/alvoMissao.ts), não mais na pista da faixa. A pegada: maior,
+  // pulsando, "AGORA · quem"; as que dá pra pegar: o nome; as feitas: apagadas
+  const mapaMissoes = useMemo<IconeMapa[] | null>(() => {
     if (!HIST || hist.fase !== "carreira") return null
-    const daPista = (id: PistaId | null, cor: string, agora: boolean) => { const p = id ? PISTAS.find((x) => x.id === id) : null; return p ? [{ id: p.id, faixa: p.faixa, cor, agora }] : [] }
-    return m13 ? daPista(m13.faixa, m13.cor, true) : feiraVisivel.flatMap((o) => daPista(o.faixa, o.cor, false))
-  }, [HIST, hist.fase, m13, feiraVisivel])
+    const ic = (id: MissaoId, x: Partial<IconeMapa>, lugar: IconeMapa["lugar"]): IconeMapa => ({ id, faixa: MISSOES13[id].quem, cor: MISSOES13[id].cor, agora: false, icone: MISSOES13[id].faixa ?? undefined, lugar, ...x })
+    const out: IconeMapa[] = []
+    for (const id of IDS13) if (id !== "final" && feita13(h13, id)) out.push(ic(id, { feita: true }, MISSOES13[id].lugar))
+    for (const o of feiraVisivel) out.push(ic(o.id, {}, MISSOES13[o.id].lugar))
+    if (m13 && lugar13) out.push(ic(m13.id, { agora: true, faixa: `AGORA · ${m13.quem}` }, lugar13))
+    return out
+  }, [HIST, hist.fase, m13, lugar13, feiraVisivel, h13])
   const painelMissao13 = m13 ? (
     <section className="l-missoes-agora" style={{ ["--cor" as string]: m13.cor }}>
       <small>agora · {m13.quem}{m13.faixa ? ` · ${PISTAS.find((x) => x.id === m13.faixa)!.faixa}` : ""}</small>
@@ -1935,7 +1943,7 @@ export default function LinhaPage() {
       if (v) setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: v.nome }), 900)
     }
   })
-  const cOnMapaIcone = useFixo((id: string) => setFocoFeira(id as PistaId))
+  const cOnMapaIcone = useFixo((id: string) => { const f = ehMissao13(id) ? MISSOES13[id].faixa : (id as PistaId); if (f) setFocoFeira(f) })
   const cOnPegar = useFixo((k: string) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] })))
   const cOnDescer = useFixo(descer)
   const cOnSair = useFixo(sairDaCorrida)
