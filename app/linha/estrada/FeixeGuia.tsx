@@ -4,7 +4,8 @@
 // longe, de qualquer canto da cidade. A coluna de luz que já existia (Lugares,
 // LugaresChao) só monta perto (600–700 m) e tem 44 m; esta é uma só, alta,
 // sempre montada, no MESMO ponto do mapa e do gatilho (estrada/alvoMissao.ts).
-// Embaixo, o anel no chão marca o raio da chegada: entrou nele, a missão começa.
+// No chão do subúrbio, o anel marca o raio da chegada: entrou nele, a missão
+// começa (na cidade, só o feixe: o anel ficava flutuando fora da pista).
 //
 // Desempenho: UM desenho (o feixe e o anel juntos numa geometria), material
 // aditivo sem luz, nada por quadro. Só se refaz quando o alvo muda.
@@ -28,10 +29,13 @@ export function FeixeGuia({ M, lugar, chao, oculto = false }: { M: Mundo; lugar:
   const alvo = lugar ? { lugar } : chao ? { chao } : null
   const pt = useMemo(() => (alvo ? pontoDoAlvo(M, alvo) : null), [M, lugar, chao]) // eslint-disable-line react-hooks/exhaustive-deps
   const cor = lugar ? LUGARES[lugar]?.cor ?? "#2fe8ff" : chao ? CHAO_LUGARES[chao].cor : "#2fe8ff"
-  const r = chao ? CHEGADA_MISSAO.chao : CHEGADA_MISSAO.lugar
+  // (02/11) o anel só no chão: na cidade, com 38 m de raio, ele passava da borda
+  // da pista e ficava flutuando no ar. Lá em cima vai só o feixe
+  const r = chao ? CHEGADA_MISSAO.chao : 0
   const geo = useMemo(() => {
     const C = FEIXE_CFG
     const feixe = new THREE.CylinderGeometry(C.raio, C.raio * 1.6, C.alto, 10, 1, true).translate(0, C.alto / 2, 0)
+    if (!r) return feixe
     const anel = new THREE.RingGeometry(r - C.anel, r, 48, 1).rotateX(-Math.PI / 2).translate(0, 0.4, 0)
     feixe.deleteAttribute("uv"); anel.deleteAttribute("uv")
     const g = mergeGeometries([feixe.toNonIndexed(), anel.toNonIndexed()], false)!
