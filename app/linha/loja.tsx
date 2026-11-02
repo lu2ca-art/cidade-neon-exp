@@ -7,6 +7,7 @@
 // antigo já mora lá). A Kombi não está aqui: ela só ganha melhoria de
 // desempenho, com o mecânico, paga em água. Preços e itens: economia-rascunho.ts.
 
+import { Trancado } from "./Trancado"
 import { useEffect, useRef, useState } from "react"
 import { Capa } from "./capa"
 import { DISCOS, PRECO_DISCO, duracao, type DiscoLoja } from "./discos"
@@ -25,7 +26,7 @@ const TEXTO: Record<Categoria, string> = {
   roupa: "a roupa do palco e da rua",
 }
 
-export function Loja({ save, comprar, onVoltar }: { save: Save; comprar: (id: string) => boolean; onVoltar: () => void }) {
+export function Loja({ save, comprar, onVoltar, tranca }: { save: Save; comprar: (id: string) => boolean; onVoltar: () => void; tranca?: string | null }) {
   const [aba, setAba] = useState<Categoria>("disco")
   const [aberto, setAberto] = useState<DiscoLoja | null>(null)
   const [item, setItem] = useState<ItemLoja | null>(null)
@@ -42,6 +43,7 @@ export function Loja({ save, comprar, onVoltar }: { save: Save; comprar: (id: st
       <header className="l-loja-cab">
         <div>
           <p>{TEXTO[aba]}</p>
+          {tranca && <Trancado texto={tranca} />}
         </div>
         <span className="l-loja-saldo" aria-label={`${neon} neon`}><i aria-hidden="true">$</i>{neon}<small>neon$</small></span>
       </header>

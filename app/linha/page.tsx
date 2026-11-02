@@ -79,7 +79,7 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
-import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
@@ -1784,6 +1784,8 @@ export default function LinhaPage() {
     setTela({ t: "chat", id: id as ChatRoteiro, volta })
   }
 
+  // (vitrine) o aviso do app aberto ainda trancado (a loja, o fliperama)
+  const [trancaApp, setTrancaApp] = useState<string | null>(null)
   const abrirApp = (id: AppId) => {
     const a = APPS.find((x) => x.id === id)!
     if (a.nivel !== undefined && nivel < a.nivel) {
@@ -1794,8 +1796,12 @@ export default function LinhaPage() {
     // fica trancado até ela (portas.ts, CONFIG13.trancar): a loja, as frequências, o fliperama
     if (HIST) {
       const porta = ({ loja: "loja-discos", radio: "radio-frequencias", freq: "radio-frequencias", sintonia: "radio-frequencias", fliperama: "fliperama" } as Partial<Record<AppId, PortaId>>)[id]
-      const msg = porta ? trancado(hist13(saveRef.current), porta) : null
-      if (msg) { avisar(a.nome, msg, a.cor); return }
+      // (vitrine, 02/11) trancado abre do mesmo jeito: a loja e o fliperama mostram
+      // o que tem, com o cadeado e o que libera; o FR3Q_ (as prévias) abre e avisa.
+      // Só a SINT0NIA (trocar de frequência) segue fechada até a porta
+      const msg = porta ? pedidoDaPorta(hist13(saveRef.current), porta, id === "loja" ? "comprar" : id === "fliperama" ? "jogar" : "sintonizar") : null
+      setTrancaApp(msg)
+      if (msg) { avisar(a.nome, msg, a.cor); if (id === "sintonia") return }
     }
     // recurso de missão: abre com o objeto daquela estação
     // (o violão vem da D-Bee, no fim da leitura NECTAR)
@@ -2380,6 +2386,7 @@ export default function LinhaPage() {
         {tela.t === "app" && tela.id === "fliperama" && (
           <Fliperama
             save={save}
+            tranca={trancaApp}
             onApp={abrirApp}
             onVoltar={() => setTela({ t: "home" })}
             onJogou={(id, pulou) => {
@@ -2392,7 +2399,7 @@ export default function LinhaPage() {
         )}
         {tela.t === "app" && tela.id === "violao" && <Violao onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "ouvir" && <Ouvir onVoltar={() => setTela({ t: "home" })} />}
-        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarNaLoja} onVoltar={() => setTela({ t: "home" })} />}
+        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={trancaApp ? () => { avisar("LOJA", trancaApp, "#ffc857"); return false } : comprarNaLoja} tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
           <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) } : s))} />
         )}
