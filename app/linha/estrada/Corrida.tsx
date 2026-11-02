@@ -45,6 +45,7 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
+import { FeixeGuia } from "./FeixeGuia"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
@@ -6541,6 +6542,8 @@ function CenaBase({
       {/* (na fase da casa, o farol guia de longe: aí a casa fica sempre montada) */}
       {"disco" in M && <Perto nome="casa do deserto" raio={faseHistoria === "casa" ? 1e7 : 800} pontos={pertoDe.casa}><CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} /></Perto>}
       {"disco" in M && <Perto nome="lugares do chão" raio={600} pontos={pertoDe.chao}><LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} /></Perto>}
+      {/* (missões claras) o feixe-guia: o lugar da missão de agora, visto de longe (1 desenho) */}
+      {"disco" in M && <Seguro nome="feixe-guia"><FeixeGuia M={M} lugar={lugarAlvoId} chao={alvoChao} oculto={!!cenaLugar} /></Seguro>}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
       {/* (T58) o GPS tipo Waze: a faixa da rota no chão da pista, à frente (1 draw, só com destino) */}
       {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}

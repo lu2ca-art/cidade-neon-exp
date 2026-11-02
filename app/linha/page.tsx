@@ -1373,7 +1373,7 @@ export default function LinhaPage() {
   const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? `${OBJETIVO_OFICINA[passoOficina(hist)]}${passoOficina(hist) === "catar" ? ` · ${pecasCatadas(hist).length}/${LIXO.length}` : ""}` : hist.fase === "subir" ? "a cidade · lá em cima"
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o jardim", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
     : m13 ? (passos13.find((x) => x.estado === "agora")?.nome.split(" · ")[1] ?? m13.quem)
-    : feira.length ? `a cidade precisa · ${feira.length}` : null
+    : feira.length ? `pega uma missão no mapa · ${feira.length}` : null
   // (22/10, o Omnitrix) a checklist da missão pegada gira em volta da bolinha (o anel do holo)
   const checklistHolo = useMemo(() => {
     if (!HIST || !m13) return null
