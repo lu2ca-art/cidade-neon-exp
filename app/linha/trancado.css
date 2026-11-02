@@ -6,3 +6,7 @@
 /* um card trancado (a máquina, o veículo, a música): visível, mas sem jogar */
 .cn-card-trancado { opacity: 0.55; cursor: default; }
 .cn-card-trancado .cn-cadeado { margin-right: 4px; }
+/* a sinuca do bar (disco/SinucaBar.tsx): o sair e o aviso por cima da mesa, embaixo do placar */
+.l-sinuca-bar-topo { position: fixed; z-index: 2; left: 12px; right: 12px; top: calc(64px + env(safe-area-inset-top)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: none; }
+.l-sinuca-bar-topo > * { pointer-events: auto; }
+.l-sinuca-bar-topo button { padding: 7px 12px; border: 1px solid rgba(255, 200, 87, 0.5); border-radius: 999px; background: rgba(11, 10, 18, 0.85); color: #ffc857; font: 800 12px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }

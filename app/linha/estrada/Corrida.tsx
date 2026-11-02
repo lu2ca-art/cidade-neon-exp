@@ -1448,7 +1448,8 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
         const l = CHAO_LUGARES[id], perto = pertoDoChao(id, j.wx, j.wz!)
         if (!perto && (id === "tuneis" || Math.hypot(j.wx - l.x, j.wz! - l.z) > RAIO_CHAO * 3)) dentro.delete(id)
         if (!dentro.has(id) && perto && !j.ar) {
-          dentro.add(id); if (!ehPeca(id)) j.v = 0
+          // (vitrine) o bar fora do prólogo não para a Kombi: só aparece o "entrar · o bar"
+          dentro.add(id); if (!ehPeca(id) && (id !== "bar" || alvoChao === "bar")) j.v = 0
           // (30/10, o dono) a Kombi não entra no túnel: fica parada aqui fora, na porta
           if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx, j.wz!, j.rumo ?? 0) }
           onHistoriaRef.current?.(`chao:${id}`)

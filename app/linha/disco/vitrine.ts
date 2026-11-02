@@ -9,6 +9,7 @@
 
 import { MISSOES13, trancado, type MissaoId, type PortaId } from "./portas"
 import type { HistoriaDisco } from "./historia"
+import type { Cena } from "../cenas"
 
 // "da D-Bee", "do Drew", "do mecânico", "dos túneis"
 export function daMissao(id: MissaoId): string {
@@ -31,3 +32,21 @@ export function pedidoDaPorta(h: HistoriaDisco | null, porta: PortaId, pra: stri
 
 // a missão que libera uma faixa (o fliperama antigo exigia a Rollercoaster)
 export const donaDaFaixa = (faixa: string): MissaoId | null => (Object.keys(MISSOES13) as MissaoId[]).find((id) => MISSOES13[id].faixa === faixa) ?? null
+
+// ── o bar do subúrbio depois do prólogo: entra, olha, e a mesa de sinuca no fundo ──
+export const CENA_BAR_VISITA: Cena = {
+  lugar: "bar",
+  titulo: "o copo",
+  missao: "copo",
+  passos: [
+    { t: "acao", texto: "o bar de sempre. o balcão aceso, as mesas, e no fundo a mesa de sinuca" },
+    { t: "fala", de: "ela", texto: "a mesa tá livre. treina à vontade" },
+    { t: "fim" },
+  ],
+}
+// a partida de verdade é a do Mubarak (a peça da missão dele): null = já liberada
+export function trancaSinuca(h: HistoriaDisco | null): string | null {
+  if (!h || h.fase === "livre") return null
+  if ((h.feitas13 ?? []).includes("mubarak")) return null
+  return `treino livre · ${facaMissao("mubarak", "jogar com ele")}`
+}
