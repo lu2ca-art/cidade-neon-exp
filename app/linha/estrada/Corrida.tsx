@@ -1485,6 +1485,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     const alvoL: LugarMissao | null = lugarDaMissao ? { lugar: lugarDaMissao } : alvoChao ? { chao: alvoChao } : null
     const pt = alvoL ? pontoDoAlvo(M, alvoL) : null
     if (!alvoL || !pt) { escreverGuia(-1, ""); return }
+    let ultimaVez = 0
     const iv = setInterval(() => {
       const a = combRef.current.aqui, j = jogo.current
       if (!a) return
@@ -1498,7 +1499,9 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       escreverGuia(d, dica)
       // o lugar da cidade: começa (o do chão começa no intervalo do chão, logo acima)
       if (alvoL.lugar && !pausado) {
-        if (r === "sim" && !cinemaRef.current && !celularRef.current && j.naVaga !== alvoL.lugar) { j.naVaga = alvoL.lugar; onVagaRef.current?.(alvoL.lugar) }
+        // (parado no lugar e nada abriu, ex.: a recompensa de antes ainda na tela: tenta de novo a cada 12 s)
+        const livre = !cinemaRef.current && !celularRef.current
+        if (r === "sim" && livre && (j.naVaga !== alvoL.lugar || performance.now() - ultimaVez > 12000)) { j.naVaga = alvoL.lugar; ultimaVez = performance.now(); onVagaRef.current?.(alvoL.lugar) }
         else if (!r && d > CHEGADA_MISSAO.lugar * 2 && j.naVaga === alvoL.lugar && j.via !== pt.via) j.naVaga = false
       }
     }, 300)
