@@ -41,8 +41,14 @@ Onde começa: a chave do lugar (a posição vem de `M.onde`, a tabela do mundoDi
 - **O guia no mundo** (`estrada/FeixeGuia.tsx`): um desenho só, sempre montado: um feixe de 420 m na cor do lugar e, no chão, o anel do raio da chegada (entrou no anel, começa). Material aditivo, sem luz, nada por quadro. Some durante a cena do lugar.
 - **O Nexo** (`disco/agora.ts`, `estrada/Holo.tsx` `AgoraNexo`): sempre "Agora: ..." com o passo concreto ("vai até o palco do Copo Americano: apreciar um disco antigo", "de patins e jetpack até a casa do Drew", "vai até a boca do túnel, no chão do subúrbio, e desce a rampa…") e a distância do lado (de 10 em 10 m perto, 50 em 50 longe; "aqui" ao chegar). Perto sem ter começado, troca pelo que fazer ali: "desce: o lugar é aqui embaixo, no chão", "sobe pra pista: o lugar é lá em cima", "fecha o celular: a missão começa aqui", "desce a rampa até a porta do túnel". Sem missão: "Agora: pega uma missão no mapa · N". Só o pedacinho do notch se refaz (uma loja fora do React).
 
+## Depois (decidido pelo coordenador, 02/11)
+
+- **Missão disponível e não pega:** chegou no lugar dela sem outra ativa, ela é pega e começa ali (`onPegarAqui`, a Corrida confere as ofertas de 500 em 500 ms). Com outra ativa, o Nexo diz "a missão do X é aqui: termina a atual ou troca no mapa".
+- **A tentativa repetida (12 s parado no lugar)** não reabre a peça que ele fechou de propósito: só depois de sair do raio e voltar (`visitaAbriu` no page.tsx; a Corrida avisa `repete`).
+- **O feixe na cidade:** só o feixe, sem o anel (ele ficava flutuando fora da pista). O anel fica no chão do subúrbio.
+
 ## O que ficou faltando
 
-- Chegar no lugar de uma missão que **não foi pega** (só disponível) não faz nada. Proposta: com nenhuma missão pegada, chegar lá pega e começa (ou o Nexo diz "a missão do X é aqui: pega no mapa"). Precisa do sim do dono.
 - O "Agora" das missões que ainda são decisão do dono (a moda do Drew, a arte do Xeriff) usa o nome da peça em `portas.ts`; quando a peça mudar, a frase segue sozinha.
 - Ninguém jogou isto ainda: os raios (38/32 m) e a altura (26/14 m) são palpite; ajustar em `CHEGADA_MISSAO` depois do teste do dono.
+- `tests/nexo-notch.spec.ts` pode esperar o texto antigo do notch ("▸ ..."); não rodei.

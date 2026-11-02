@@ -266,6 +266,8 @@ interface Props {
   checklistHolo?: ChecklistHolo | null
   // (22/10) as missões moram no mapa: os ícones, o painel com as opções e o toque num ícone
   mapaMissoes?: IconeMapa[] | null
+  // (02/11) chegou no lugar de uma missão disponível (não pega), sem outra ativa: pega e começa
+  onPegarAqui?: (id: string) => void
   mapaPainel?: React.ReactNode
   onMapaIcone?: (id: string) => void
   // (disco) a água: o saldo (save) e o que entra/sai (as gotas, a polícia)
@@ -514,7 +516,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao }: Props) {
+export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -1475,6 +1477,34 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
     }, 150)
     return () => clearInterval(iv)
   }, [alvoChao, pausado, M])
+  // (missões claras, 02/11) AS MISSÕES DISPONÍVEIS (não pegas): chegou no lugar
+  // de uma, sem outra ativa, ela é pega e começa ali. Com outra ativa, o Nexo
+  // avisa (o intervalo do guia, logo abaixo, lê ofertaAqui). De 500 em 500 ms,
+  // só umas poucas contas de distância (as ofertas da feira)
+  const ofertaAqui = useRef("")
+  const onPegarAquiRef = useRef(onPegarAqui)
+  useEffect(() => { onPegarAquiRef.current = onPegarAqui }, [onPegarAqui])
+  const temMissaoAtiva = !!checklistHolo
+  const chaveOfertas = mapaMissoes?.filter((m) => !m.agora && !m.feita && m.lugar).map((m) => m.id).join(",") ?? ""
+  useEffect(() => {
+    ofertaAqui.current = ""
+    if (!("disco" in M) || !chaveOfertas || pausado) return
+    const ofs = (mapaMissoes ?? []).filter((m) => !m.agora && !m.feita && m.lugar).flatMap((m) => { const p = pontoDoAlvo(M, m.lugar); return p ? [{ id: m.id, quem: m.faixa, lugar: m.lugar!, p }] : [] })
+    let dentroDe: string | null = null
+    const iv = setInterval(() => {
+      const a = combRef.current.aqui
+      if (!a) return
+      const aqui = ofs.find((o) => chegouNoAlvo(o.lugar, o.p, a.x, a.y, a.z) === "sim")
+      if (!aqui) { dentroDe = null; ofertaAqui.current = ""; return }
+      if (temMissaoAtiva) { ofertaAqui.current = `a missão ${/^(Ella|Nizzy|D-Bee)$/.test(aqui.quem) ? "da" : "do"} ${aqui.quem} é aqui: termina a atual ou troca no mapa`; return }
+      ofertaAqui.current = ""
+      if (dentroDe === aqui.id || cinemaRef.current || celularRef.current) return
+      dentroDe = aqui.id
+      onPegarAquiRef.current?.(aqui.id)
+    }, 500)
+    return () => { clearInterval(iv); ofertaAqui.current = "" }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [M, chaveOfertas, temMissaoAtiva, pausado])
   // (missões claras, 02/11) A CHEGADA PELO MUNDO. O gatilho da vaga (no quadro,
   // mais embaixo) só valia na MESMA pista da vaga: de patins/jetpack, voando, ou
   // na outra mão, passava em cima do lugar e nada. Aqui, de 300 em 300 ms: perto
@@ -1497,6 +1527,7 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       else if (r === "baixo") dica = "sobe pra pista: o lugar é lá em cima"
       else if (r === "sim" && celularRef.current) dica = "fecha o celular: a missão começa aqui"
       else if (alvoL.chao === "tuneis" && d < CHEGADA_MISSAO.avisar && !r) dica = "desce a rampa até a porta do túnel"
+      if (!dica && ofertaAqui.current) dica = ofertaAqui.current
       escreverGuia(d, dica)
       // o lugar da cidade: começa (o do chão começa no intervalo do chão, logo acima)
       if (alvoL.lugar && !pausado) {

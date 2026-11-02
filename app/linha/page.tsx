@@ -1010,6 +1010,15 @@ export default function LinhaPage() {
   const nFeitas = (h13.feitas13 ?? []).length
   useEffect(() => { setLargadas([]) }, [nFeitas])
   const feiraVisivel = feira.filter((o) => !largadas.includes(o.id))
+  // (missões claras, 02/11) chegou no lugar de uma missão disponível, sem outra
+  // pegada: pega e já começa ali (a Corrida só chama sem missão ativa)
+  const pegarAqui = (id: string) => {
+    if (!ehMissao13(id) || missaoDoSave(saveRef.current) || !feiraDoSave(saveRef.current).some((o) => o.id === id)) return
+    // pegou: ela vira o alvo e o gatilho de chegada (já dentro do raio) abre a
+    // peça sozinho, uma vez (chamar aqui também abriria duas vezes)
+    visitaAbriu.current = null
+    pegarMissao(id)
+  }
   const pegarMissao = (id: MissaoId) => {
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id })))
     setLargadas((l) => l.filter((x) => x !== id))
@@ -1953,6 +1962,7 @@ export default function LinhaPage() {
       if (v) setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: v.nome }), 900)
     }
   })
+  const cOnPegarAqui = useFixo(pegarAqui)
   const cOnMapaIcone = useFixo((id: string) => { const f = ehMissao13(id) ? MISSOES13[id].faixa : (id as PistaId); if (f) setFocoFeira(f) })
   const cOnPegar = useFixo((k: string) => setSave((s) => (s.itens.includes(k) ? s : { ...s, itens: [...s.itens, k] })))
   const cOnDescer = useFixo(descer)
@@ -2084,6 +2094,7 @@ export default function LinhaPage() {
             mapaMissoes={cMapaMissoes}
             mapaPainel={mapaPainel}
             onMapaIcone={cOnMapaIcone}
+            onPegarAqui={cOnPegarAqui}
             missaoHolo={cMissaoHolo}
             onPegar={cOnPegar}
             avisos={chamados(save, nivel).filter((c) => c.id === "ecos" || c.id === "antena" || c.id.startsWith("est-")).length}
