@@ -1,0 +1,8 @@
+/* o aviso de trancado (modo vitrine, 02/11): Trancado.tsx */
+.cn-trancado { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0; padding: 6px 11px; border-radius: 999px; background: rgba(11, 10, 18, 0.82); border: 1px solid rgba(255, 200, 87, 0.45); color: rgba(255, 255, 255, 0.86); font: 700 11px var(--font-geist-mono), ui-monospace, monospace; line-height: 1.3; max-width: 100%; }
+.cn-trancado b { color: #ffc857; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+.cn-trancado span { overflow-wrap: anywhere; }
+.cn-cadeado { flex: none; color: #ffc857; vertical-align: -1px; }
+/* um card trancado (a máquina, o veículo, a música): visível, mas sem jogar */
+.cn-card-trancado { opacity: 0.55; cursor: default; }
+.cn-card-trancado .cn-cadeado { margin-right: 4px; }

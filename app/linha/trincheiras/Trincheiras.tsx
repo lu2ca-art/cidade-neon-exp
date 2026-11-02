@@ -45,6 +45,7 @@ import { AVENIDAS, COR_AVENIDA, NOME_AVENIDA, NOME_TORRE, PRACA, TETO, TORRES, o
 import { pilotoMoto } from "./moto"
 import { Ciclista, Motoqueiro, Skatista, type Manobra } from "./Pilotos"
 import "./trincheiras.css"
+import { Cadeado, Trancado } from "../Trancado"
 
 const NEVOA = "#1a0f24"
 
@@ -256,7 +257,9 @@ function lerVeiculo(q: URLSearchParams, motos: boolean): Veiculo | null {
 // (T63) dentro do jogo: com a missão dos túneis pegada, a corrida (a escolha do
 // veículo); sem ela, só passear (de patins; "correr" segue ali). Subir = de volta
 // pro subúrbio, contando se correu uma volta inteira
-export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void }
+// (vitrine, 02/11) `tranca`: a corrida ainda não abriu (o aviso do que libera);
+// dá pra entrar e passear, e a escolha mostra os veículos com o cadeado
+export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void; tranca?: string | null }
 
 export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const st = useRef<Estado>(estadoInicial())
@@ -443,16 +446,17 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
           <p>uma volta no triângulo: larga na TORRE 1, passa pelos 3 rios secos e volta. Três rivais e o seu fantasma.{motos ? " De moto: duas voltas contra quatro motos." : ""}</p>
           <div className="tr-cards">
             {VEICULOS.map((v) => {
-              const trancada = v === "moto" && !motos
+              const trancada = (v === "moto" && !motos) || !!noJogo?.tranca
               return (
-                <button key={v} type="button" className={`tr-card is-${v}${trancada ? " is-trancada" : ""}`} onClick={() => largar(v)} data-veiculo={v} disabled={trancada} aria-disabled={trancada}>
-                  <strong>{INFO[v].nome}</strong>
-                  <span>{trancada ? "as motos chegam depois" : INFO[v].frase}</span>
-                  <em>{trancada ? "trancada · em breve" : `recorde: ${relogio(recordes[v] ? recordes[v]!.ms / 1000 : null)}`}</em>
+                <button key={v} type="button" className={`tr-card is-${v}${trancada ? " is-trancada cn-card-trancado" : ""}`} onClick={() => largar(v)} data-veiculo={v} disabled={trancada} aria-disabled={trancada}>
+                  <strong>{trancada && <Cadeado />}{INFO[v].nome}</strong>
+                  <span>{v === "moto" && !motos ? "as motos chegam depois" : INFO[v].frase}</span>
+                  <em>{v === "moto" && !motos ? "trancada · em breve" : trancada ? "trancada" : `recorde: ${relogio(recordes[v] ? recordes[v]!.ms / 1000 : null)}`}</em>
                 </button>
               )
             })}
           </div>
+          {noJogo?.tranca && <Trancado texto={noJogo.tranca} />}
           <p className="tr-passeio">ou só passear: {VEICULOS.filter((v) => v !== "moto" || motos).map((v) => <button key={v} type="button" onClick={() => passear(v)}>{INFO[v].nome.toLowerCase()}</button>)}</p>
         </div>
       )}
@@ -484,7 +488,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
           <p className="tr-teclas">setas ou WASD · {INFO[veiculo].teclas}</p>
         </div>
       )}
-      {fase === "livre" && <button type="button" className="tr-correr" onClick={escolher}>correr</button>}
+      {fase === "livre" && <button type="button" className="tr-correr" onClick={escolher}>{noJogo?.tranca && <Cadeado />}correr</button>}
 
       <div className="tr-toque">
         <div className="tr-lado">{botao("esq", "◀")}{botao("dir", "▶")}</div>

@@ -1025,7 +1025,7 @@ export default function LinhaPage() {
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
-  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : [])].join(",")
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis"] : [])].join(",")
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])
@@ -1693,6 +1693,10 @@ export default function LinhaPage() {
         setBasquete((b) => b ?? { n: 1, pontos: 0, tempo: 60, livre: true })
       }
     }
+    // (vitrine, 02/11) a boca do túnel leva pra dentro SEMPRE: antes só valia na
+    // carreira (no começo e na cidade livre a rampa não fazia nada). Fora da
+    // carreira desce pra passear; a corrida mostra o cadeado se ainda não abriu
+    if (e === "chao:tuneis" && h.fase !== "carreira" && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras) descerTrincheiras(null)
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
     if (e === "subiu" && h.fase === "subir") {
       setSave((s) => comHistoria(s, (x) => ({ ...x, fase: "carreira" })))
@@ -2423,7 +2427,7 @@ export default function LinhaPage() {
         )}
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
-        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras }} />}
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null }} />}
         {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}
         {trincheiras && !trincheiras.descendo && <GrafiteTrincheiras assinados={hist.grafites ?? []} onAssinou={assinouGrafite} />}
         {viagem && (
