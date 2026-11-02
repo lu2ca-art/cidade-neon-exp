@@ -1174,10 +1174,12 @@ export function Corrida({ save, nivel, destino: destinoInicial, alvo = null, onP
       const i = ps.findIndex((p) => p.estado === "agora")
       const p = ps[i >= 0 ? i : ps.findIndex((x) => x.estado !== "feita")]
       const lista = ps.map((x) => `${x.estado === "feita" ? "✓" : x.estado === "agora" ? "▸" : "·"} ${x.nome}`).join("   ")
-      return { texto: p ? `▸ ${p.nome}` : `✓ ${checklistHolo.nome}`, cor: checklistHolo.cor, ajuda: { t: checklistHolo.titulo, d: `${lista}. o anel em volta do mapa repete o passo; o mapa mostra o caminho.` } }
+      // (missões claras) sempre "Agora: " + o próximo passo concreto (onde ir, o que fazer)
+      const agora = checklistHolo.agora ?? p?.nome.split(" · ")[1] ?? p?.nome
+      return { texto: agora ? `Agora: ${agora}` : `✓ ${checklistHolo.nome}`, cor: checklistHolo.cor, ajuda: { t: checklistHolo.titulo, d: `${agora ? `agora: ${agora}. ` : ""}${lista}. a coluna de luz e o ícone grande no mapa marcam o lugar; chegou perto, começa.` } }
     }
-    if (missaoHolo?.texto) return { texto: `▸ ${missaoHolo.texto}`, cor: missaoHolo.cor, ajuda: INFO.anel }
-    if (missaoHolo?.n) return { texto: `${missaoHolo.n} ${missaoHolo.n === 1 ? "missão" : "missões"} no mapa`, cor: missaoHolo.cor, ajuda: INFO.mapa }
+    if (missaoHolo?.texto) return { texto: `Agora: ${missaoHolo.texto}`, cor: missaoHolo.cor, ajuda: INFO.anel }
+    if (missaoHolo?.n) return { texto: `Agora: abre o mapa e pega uma missão · ${missaoHolo.n} no mapa`, cor: missaoHolo.cor, ajuda: INFO.mapa }
     return null
   }, [checklistHolo, missaoHolo])
   // (T56) com o tutorial no notch, as falas soltas (a D-Bee nas dunas) passam no

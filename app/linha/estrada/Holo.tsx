@@ -21,6 +21,7 @@
 // Tudo é clicável. Nada de frase explicando: a explicação vem nas invasões da
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
 
+import { textoMetros, useGuia } from "./alvoMissao"
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { APPS, DOCK, ESCONDIDOS, Glifo, appDesligado, type AppId } from "../os"
@@ -372,6 +373,19 @@ function useDica(ativa: boolean) {
   }, [ativa])
   return DICAS[k]
 }
+// (missões claras, 02/11) a linha "Agora: ..." com a distância até o alvo (o guia,
+// estrada/alvoMissao.ts). Perto do lugar sem ter começado, o guia manda a frase
+// do que fazer ali. Só este pedacinho se refaz quando o guia muda
+function AgoraNexo({ texto }: { texto: string }) {
+  const g = useGuia()
+  const m = g.dica ? "" : textoMetros(g.metros)
+  return (
+    <span className="l-nexo-agora">
+      <em>{g.dica ? `Agora: ${g.dica}` : texto}</em>
+      {m && <small className="l-nexo-conta">{m}</small>}
+    </span>
+  )
+}
 export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }: { hora: number; agora: NexoAgora | null; expandido: boolean; explicando: boolean; onExplicar: () => void }) {
   const tut = useNexoTutorial()
   const [msg, acabou] = useNotch()
@@ -391,7 +405,7 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
         ) : tut ? (
           <span className="l-nexo-passo" role="status" aria-live="polite"><em>{tut.ok ? "✓ isso" : tut.texto}</em></span>
         ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : agora ? (
-          <span className="l-nexo-agora"><em>{agora.texto}</em></span>
+          <AgoraNexo texto={agora.texto} />
         ) : <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>}
         {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
         <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>
@@ -457,7 +471,8 @@ export function HoloClima({ ler }: { ler: () => Clima }) {
 // (ou no anel) repete; tocar de novo com ele aberto abre o mapa. Desempenho: só
 // CSS (keyframes), um setState por abrir/fechar, nada por quadro. "Reduzir
 // movimento": troca sem giro nem escala ──
-export type ChecklistHolo = { chave: string; cor: string; titulo: string; nome: string; passos: { nome: string; estado: string }[] }
+// (missões claras) `agora`: o próximo passo concreto, numa frase (disco/agora.ts)
+export type ChecklistHolo = { chave: string; cor: string; titulo: string; nome: string; passos: { nome: string; estado: string }[]; agora?: string }
 const OMNI_MS = 6000 // quanto tempo a checklist fica girando em volta antes de recolher
 const RECOLHE_MS = 450
 // o ícone especial de cada missão (o objeto que ela dá), num quadro 24x24: o

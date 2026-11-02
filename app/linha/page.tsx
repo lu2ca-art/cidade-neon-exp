@@ -25,6 +25,7 @@ import { GESTOS_3D, precarregarSala, temSala } from "./interior/registro"
 import { ouvirSala } from "./interior/bus"
 import { LUGARES, type LugarId } from "./lugares"
 import type { IconeMapa } from "./estrada/Mapa"
+import { agoraDaMissao } from "./disco/agora"
 import { proximaFreq } from "./radio"
 import { InvasaoNucleo, type Invasao } from "./nucleo"
 import { Prova } from "./provas"
@@ -1376,8 +1377,8 @@ export default function LinhaPage() {
   // (22/10, o Omnitrix) a checklist da missão pegada gira em volta da bolinha (o anel do holo)
   const checklistHolo = useMemo(() => {
     if (!HIST || !m13) return null
-    return { chave: m13.id, cor: m13.cor, titulo: `${m13.quem}${m13.faixa ? ` · ${PISTAS.find((x) => x.id === m13.faixa)!.faixa}` : ""}`, nome: m13.quem, passos: passos13 }
-  }, [HIST, m13, passos13])
+    return { chave: m13.id, cor: m13.cor, titulo: `${m13.quem}${m13.faixa ? ` · ${PISTAS.find((x) => x.id === m13.faixa)!.faixa}` : ""}`, nome: m13.quem, passos: passos13, agora: agoraDaMissao(h13, m13.id) }
+  }, [HIST, m13, passos13, h13])
   // (22/10) as missões moram no mapa: um ícone por missão com pista (a pegada, ou as ofertas da feira) e,
   // no painel do mapa, as opções pra clicar (a checklist da de agora, ou a feira)
   // (missões claras, 02/11) o ícone fica no LUGAR da missão (o mesmo ponto do
