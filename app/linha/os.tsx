@@ -10,6 +10,7 @@
 // pra home antiga ("/", que agora redireciona pra /linha, ou "/drive"), a
 // janela fecha e você volta pra cá.
 
+import { Trancado } from "./Trancado"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId, type ProvaId } from "./data"
 import { ECOS, ROTEIROS, VOZES, jogoVelho, type ChatId } from "./roteiros"
@@ -437,7 +438,7 @@ const PROVAS_FLIPER: { id: ProvaId; nome: string; est: EstacaoId }[] = [
   { id: "violao", nome: "violão", est: "nectar" },
 ]
 
-export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onApp: (id: AppId) => void; onVoltar: () => void; onJogou: (id: string, pulou?: boolean) => void }) {
+export function Fliperama({ save, onApp, onVoltar, onJogou, tranca }: { save: Save; onApp: (id: AppId) => void; onVoltar: () => void; onJogou: (id: string, pulou?: boolean) => void; tranca?: string | null }) {
   const [jogando, setJogando] = useState<ProvaId | null>(null)
   const feitos = legadoFeito()
   const e = jogando ? getEstacao(PROVAS_FLIPER.find((p) => p.id === jogando)!.est) : null
@@ -446,11 +447,12 @@ export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onAp
       <AppTopo titulo="FLIPERAMA" cor="#ff6a35" onVoltar={onVoltar} />
       <div className="l-fliper-corpo">
         <p className="l-rotulo">da cidade · jogue quantas vezes quiser</p>
+        {tranca && <Trancado texto={tranca} />}
         <div className="l-fliper-grade">
           {PROVAS_FLIPER.map((p) => {
             const est = getEstacao(p.est)
             return (
-              <button key={p.id} type="button" className="l-fliper-card" style={{ ["--cor" as string]: est.cor }} onClick={() => setJogando(p.id)}>
+              <button key={p.id} type="button" className={`l-fliper-card${tranca ? " cn-card-trancado" : ""}`} style={{ ["--cor" as string]: est.cor }} onClick={() => { if (!tranca) setJogando(p.id) }} aria-disabled={!!tranca}>
                 <Objeto id={est.objeto} cor={est.cor} size={30} />
                 <b>{p.nome}</b>
                 <small>{est.faixa.toLowerCase()} · {save.jogados[p.id] ?? 0}x</small>
@@ -464,7 +466,7 @@ export function Fliperama({ save, onApp, onVoltar, onJogou }: { save: Save; onAp
             const a = APPS.find((x) => x.id === id)!
             const l = LEGADO.find((x) => x.app === id)
             return (
-              <button key={id} type="button" className="l-fliper-card" style={{ ["--cor" as string]: a.cor }} onClick={() => onApp(id)}>
+              <button key={id} type="button" className={`l-fliper-card${tranca ? " cn-card-trancado" : ""}`} style={{ ["--cor" as string]: a.cor }} onClick={() => { if (!tranca) onApp(id) }} aria-disabled={!!tranca}>
                 <Glifo id={id} cor={a.cor} size={30} />
                 <b>{a.nome}</b>
                 <small>{l ? (feitos.includes(l.id) ? "✓ completo" : `+${l.luz} neon`) : a.desc}</small>

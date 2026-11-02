@@ -25,6 +25,28 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Missões que começam e o caminho claro",
+    data: "2026-11-02",
+    olhar: "No Nexo sempre aparece \"Agora: ...\" com o próximo passo e a distância. No mapa, a missão ativa pulsa com o nome e as feitas ficam apagadas. No mundo, um feixe de luz alto marca o destino. Chegou perto (de Kombi, a pé, de patins ou voando baixo), a missão começa; se você ainda não pegou nenhuma, chegar no lugar já pega.",
+    perguntas: [
+      "Dá pra saber o que fazer agora, sem ajuda?",
+      "A missão começou ao chegar? Em qual não começou?",
+      "O raio de chegada está bom, ou tem que chegar perto demais?",
+    ],
+  },
+  {
+    parte: "vitrine.tunel",
+    nome: "Tudo aberto pra visitar (vitrine)",
+    data: "2026-11-02",
+    olhar: "A boca do túnel leva pras trincheiras sempre (a Kombi fica na porta). O bar abre pra visitar e a sinuca no treino. O fliperama, o ginásio, a loja e o app de música abrem; o que não foi liberado aparece com cadeado e diz qual missão libera.",
+    perguntas: [
+      "Ficou faltando algum lugar que você quer mostrar e não abre?",
+      "O aviso do cadeado está claro?",
+    ],
+    mais: [{ parte: "vitrine.bar", nome: "o bar e a sinuca" }, { parte: "palcos", nome: "as músicas (Guitar Driver)" }],
+  },
+  {
     parte: "metro",
     nome: "O violão, o metrô e o grafite",
     data: "2026-10-31",

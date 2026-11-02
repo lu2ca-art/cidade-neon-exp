@@ -65,6 +65,7 @@ import { definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
+import { CENA_BAR_VISITA, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 // (30/10) a volta do túnel: a Kombi esperou na porta
 const FALA_VOLTA_TUNEL = "voltou lá de baixo. a kombi tava te esperando na porta. as raízes seguem lá"
@@ -108,6 +109,8 @@ const Interior = dynamic(() => import("./interior/Interior").then((m) => m.Inter
 const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: false })
 // (T63) as trincheiras (os túneis do T11, a corrida do T13, as motos do T14), dentro do jogo
 const Trincheiras = dynamic(carregarTrincheiras, { ssr: false })
+// (vitrine, 02/11) a sinuca do bar do subúrbio, no treino: só baixa quando abre
+const SinucaBar = dynamic(() => import("./disco/SinucaBar").then((m) => m.SinucaBar), { ssr: false })
 // (T64, lote D) o grafite das trincheiras (puxa o geo.ts delas: só baixa junto)
 const GrafiteTrincheiras = dynamic(() => import("./disco/Grafite").then((m) => m.GrafiteTrincheiras), { ssr: false })
 
@@ -280,7 +283,7 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   // inicio: a casa da D-Bee na abertura (CENA_INICIO)
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" | "dbee-instrumentos" } | null>(null)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" | "dbee-instrumentos" | "visita-bar" } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -1044,7 +1047,7 @@ export default function LinhaPage() {
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
-  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : [])].join(",")
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar"] : [])].join(",")
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])
@@ -1080,8 +1083,9 @@ export default function LinhaPage() {
   const trancasCorrida = useMemo(() => {
     if (!HIST) return undefined
     const t: Partial<Record<"ginasio" | "radio" | "fliperama" | "parque" | "canteiros", string>> = {}
-    const par: [keyof typeof t, PortaId][] = [["ginasio", "ginasio"], ["radio", "radio-frequencias"], ["fliperama", "fliperama"], ["parque", "parque"], ["canteiros", "canteiros"]]
-    for (const [k, porta] of par) { const m = trancado(h13, porta); if (m) t[k] = m }
+    // (vitrine, 02/11) o aviso já vem como pedido: "faça a missão do Notti pra jogar"
+    const par: [keyof typeof t, PortaId, string][] = [["ginasio", "ginasio", "jogar"], ["radio", "radio-frequencias", "sintonizar"], ["fliperama", "fliperama", "jogar"], ["parque", "parque", "andar"], ["canteiros", "canteiros", "regar"]]
+    for (const [k, porta, pra] of par) { const m = pedidoDaPorta(h13, porta, pra); if (m) t[k] = m }
     return t
   }, [HIST, h13])
   // (T27) a Kombi quebrou: também fica no conserto (a mesma ida de patins)
@@ -1254,6 +1258,9 @@ export default function LinhaPage() {
       if (qual === "elevador") abrirElevadorRef.current()
       else if (qual === "casa") abrirCasaInstrumentosRef.current()
       else if (qual === "recompensa") abrirPortaRef.current("mubarak")
+      // (vitrine) o túnel no começo e a sinuca do bar
+      else if (qual === "tunel") descerTrincheiras(null)
+      else if (qual === "sinuca") setSinucaBar(true)
     }, 1200)
   }, [HIST, tela.t, cena])
   // (T47) o elevador: abre (como o posto) e fecha no fim-gesto da sala; as falas
@@ -1658,6 +1665,22 @@ export default function LinhaPage() {
     // (T28) começar a perseguição da Kombi agora (teste): sem esperar o gatilho
     ;(window as unknown as { __cnPerseguir?: () => void }).__cnPerseguir = () => setSave((s) => comHistoria(s, perseguir))
   }, [])
+  // (vitrine) o bar do subúrbio: a porta perto (o botão), a visita e a sinuca aberta
+  const [portaBar, setPortaBar] = useState(false)
+  const [sinucaBar, setSinucaBar] = useState(false)
+  const entrarNoBar = () => {
+    if (cena || cinema) return
+    setPortaBar(false)
+    setAoVivo(null)
+    setCinema("lugar")
+    setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "visita-bar" })
+  }
+  const fimVisitaBar = () => {
+    setCena(null)
+    setCinema(null)
+    barFechou.current = Date.now()
+    setSinucaBar(true)
+  }
   const onHistoria = (e: EventoHistoria) => {
     const h = historiaDe(saveRef.current)
     // (T37) a chegada de um login acabou na porta: a D-Bee acenou, o jogo segue dali
@@ -1678,7 +1701,8 @@ export default function LinhaPage() {
     }
     // (B18) o subúrbio no chão: o bar (missão 1), a oficina (missão 2), o palco
     // (T47, lote D) a porta da torre: o elevador de terror (passeio livre)
-    if (e === "chao:torre" && (h.fase === "carreira" || h.fase === "livre")) abrirElevadorRef.current()
+    // (vitrine, 02/11) em toda fase depois da chegada (antes só na carreira e na cidade livre)
+    if (e === "chao:torre" && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras) abrirElevadorRef.current()
     if (e === "chao:bar" && h.fase === "bar" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" }) }
     if (e === "chao:oficina" && h.fase === "nectar" && h.nectar === "oficina" && !cena) { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "oficina", missao: "nectar", pegar: false, especial: "disco-oficina" }) }
     // (T09) a missão da oficina: cada chegada abre o passo de agora
@@ -1719,6 +1743,15 @@ export default function LinhaPage() {
         quadraLivreEm.current = Date.now()
         setBasquete((b) => b ?? { n: 1, pontos: 0, tempo: 60, livre: true })
       }
+    }
+    // (vitrine, 02/11) a boca do túnel leva pra dentro SEMPRE: antes só valia na
+    // carreira (no começo e na cidade livre a rampa não fazia nada). Fora da
+    // carreira desce pra passear; a corrida mostra o cadeado se ainda não abriu
+    if (e === "chao:tuneis" && h.fase !== "carreira" && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras) descerTrincheiras(null)
+    // (vitrine) o bar do subúrbio depois do prólogo: a porta aberta (o botão "entrar"), a sinuca no fundo
+    if (e === "chao:bar" && h.fase !== "bar" && !cena && !recompensa && !trincheiras && Date.now() - barFechou.current > 8000) {
+      setPortaBar(true)
+      setTimeout(() => setPortaBar(false), 8000)
     }
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
     if (e === "subiu" && h.fase === "subir") {
@@ -1805,6 +1838,8 @@ export default function LinhaPage() {
     setTela({ t: "chat", id: id as ChatRoteiro, volta })
   }
 
+  // (vitrine) o aviso do app aberto ainda trancado (a loja, o fliperama)
+  const [trancaApp, setTrancaApp] = useState<string | null>(null)
   const abrirApp = (id: AppId) => {
     const a = APPS.find((x) => x.id === id)!
     if (a.nivel !== undefined && nivel < a.nivel) {
@@ -1815,8 +1850,12 @@ export default function LinhaPage() {
     // fica trancado até ela (portas.ts, CONFIG13.trancar): a loja, as frequências, o fliperama
     if (HIST) {
       const porta = ({ loja: "loja-discos", radio: "radio-frequencias", freq: "radio-frequencias", sintonia: "radio-frequencias", fliperama: "fliperama" } as Partial<Record<AppId, PortaId>>)[id]
-      const msg = porta ? trancado(hist13(saveRef.current), porta) : null
-      if (msg) { avisar(a.nome, msg, a.cor); return }
+      // (vitrine, 02/11) trancado abre do mesmo jeito: a loja e o fliperama mostram
+      // o que tem, com o cadeado e o que libera; o FR3Q_ (as prévias) abre e avisa.
+      // Só a SINT0NIA (trocar de frequência) segue fechada até a porta
+      const msg = porta ? pedidoDaPorta(hist13(saveRef.current), porta, id === "loja" ? "comprar" : id === "fliperama" ? "jogar" : "sintonizar") : null
+      setTrancaApp(msg)
+      if (msg) { avisar(a.nome, msg, a.cor); if (id === "sintonia") return }
     }
     // recurso de missão: abre com o objeto daquela estação
     // (o violão vem da D-Bee, no fim da leitura NECTAR)
@@ -2018,7 +2057,7 @@ export default function LinhaPage() {
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
-  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras
+  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar
 
   // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
   // celular translúcido por cima da cidade (LU2CA 19/10)
@@ -2103,7 +2142,7 @@ export default function LinhaPage() {
             onVaga={cOnVaga}
             segredo={segredo}
             // (B18) as cenas do chão do subúrbio não puxam a câmera pra fachada da pista
-            cenaLugar={cena && cena.especial !== "disco-oficina" && !(cena.especial === "disco-bar" && hist.fase === "bar") ? cena.lugar : null}
+            cenaLugar={cena && cena.especial !== "disco-oficina" && cena.especial !== "visita-bar" && !(cena.especial === "disco-bar" && hist.fase === "bar") ? cena.lugar : null}
             // (disco, a história) a cidade quieta: só quem a história põe pra falar
             intro={HIST || (!D && !save.completos.includes("abertura"))}
             fala={falaIntro}
@@ -2403,6 +2442,7 @@ export default function LinhaPage() {
         {tela.t === "app" && tela.id === "fliperama" && (
           <Fliperama
             save={save}
+            tranca={trancaApp}
             onApp={abrirApp}
             onVoltar={() => setTela({ t: "home" })}
             onJogou={(id, pulou) => {
@@ -2415,7 +2455,7 @@ export default function LinhaPage() {
         )}
         {tela.t === "app" && tela.id === "violao" && <Violao onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "ouvir" && <Ouvir onVoltar={() => setTela({ t: "home" })} />}
-        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={comprarNaLoja} onVoltar={() => setTela({ t: "home" })} />}
+        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={trancaApp ? () => { avisar("LOJA", trancaApp, "#ffc857"); return false } : comprarNaLoja} tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "objetos" && (
           <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) } : s))} />
         )}
@@ -2431,14 +2471,14 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
+          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
         )}
         {cena && (
           <CenaLugar
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.especial === "ella-galeria" ? "galeria-ella" : cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "dbee-instrumentos" ? (casaNovos.current ? CENA_CASA_INSTRUMENTOS : CENA_CASA_VISITA) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "visita-bar" ? CENA_BAR_VISITA : cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "dbee-instrumentos" ? (casaNovos.current ? CENA_CASA_INSTRUMENTOS : CENA_CASA_VISITA) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -2446,13 +2486,15 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
+            onFim={cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
           />
         )}
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
-        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras }} />}
+        {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
+        {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null }} />}
         {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}
         {trincheiras && !trincheiras.descendo && <GrafiteTrincheiras assinados={hist.grafites ?? []} onAssinou={assinouGrafite} />}
         {viagem && (
