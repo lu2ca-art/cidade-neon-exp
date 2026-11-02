@@ -39,12 +39,12 @@ export const MESA: Cartao[] = [
     parte: "vitrine.tunel",
     nome: "Tudo aberto pra visitar (vitrine)",
     data: "2026-11-02",
-    olhar: "A boca do túnel leva pras trincheiras sempre (a Kombi fica na porta). O bar abre pra visitar e a sinuca no treino. O fliperama, o ginásio, a loja e o app de música abrem; o que não foi liberado aparece com cadeado e diz qual missão libera.",
+    olhar: "A boca do túnel leva pras trincheiras sempre (a Kombi fica na porta). O bar abre pra visitar e a sinuca no treino. O fliperama, o ginásio, a loja, o app de música, as salas da cidade, a casa da D-Bee e os apps do violão e do jardim abrem; o que não foi liberado aparece com cadeado e diz qual missão libera.",
     perguntas: [
       "Ficou faltando algum lugar que você quer mostrar e não abre?",
       "O aviso do cadeado está claro?",
     ],
-    mais: [{ parte: "vitrine.bar", nome: "o bar e a sinuca" }, { parte: "palcos", nome: "as músicas (Guitar Driver)" }],
+    mais: [{ parte: "vitrine.bar", nome: "o bar e a sinuca" }, { parte: "palcos", nome: "as músicas (Guitar Driver)" }, { parte: "vitrine.casa", nome: "a casa da D-Bee" }, { parte: "vitrine.balada", nome: "a balada" }, { parte: "vitrine.drewboy", nome: "a casa do Drew" }, { parte: "vitrine.terraco", nome: "o terraço" }, { parte: "vitrine.shows", nome: "a casa de shows" }],
   },
   {
     parte: "metro",
