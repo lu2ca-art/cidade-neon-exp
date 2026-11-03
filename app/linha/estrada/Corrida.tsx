@@ -5093,7 +5093,11 @@ function CenaBase({
         // não num tranco") sai do chão na velocidade do próprio chão (subindo a
         // rampa, sobe junto) e o empuxo cresce em ~0,4 s: começa equilibrando o
         // peso e vai até a força cheia (a mesma subida de antes, sobre 9,8 m/s²)
-        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = Math.max(j.y, yPista) + 0.05; j.vy = Math.max(j.vy, (j.voo ? 0 : Math.max(0, a.ty * j.v)) + 0.4); j.tProp = 0; j.rampaProp = j.voo ? RAMPA_PROP_CHAO : 0.4; motor?.whoosh(); vib(18) }
+        // (notas 03/11, "a subida pra cidade": "um salto do y=0 pro y=muito") no voo
+        // (o chão do deserto ou do subúrbio) o yPista aqui ainda é o da última pista
+        // (a amostra da via antiga, lá no alto): o max levava a Kombi direto pra
+        // altura dela. No voo ela sai de onde está (j.y já é o chão) e sobe no empuxo
+        if (!j.ar) { j.ar = true; j.tAr = 0; j.pulou = false; j.y = (j.voo ? j.y : Math.max(j.y, yPista)) + 0.05; j.vy = Math.max(j.vy, (j.voo ? 0 : Math.max(0, a.ty * j.v)) + 0.4); j.tProp = 0; j.rampaProp = j.voo ? RAMPA_PROP_CHAO : 0.4; motor?.whoosh(); vib(18) }
         j.tProp = (j.tProp ?? 0) + dt
         const e = Math.min(1, j.tProp / (j.rampaProp ?? 0.4)), suave = e * e * (3 - 2 * e)
         const teto = pat ? 13 : 16, cheio = G_DISCO + (pat ? 30 : 16)
