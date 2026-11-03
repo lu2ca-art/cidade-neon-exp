@@ -66,6 +66,13 @@ export function linkDaFaixa(id: string | null | undefined): string | null {
 /** o nome da faixa (pro texto do botão) */
 export const nomeDaFaixa = (id: string | null | undefined) => PISTAS.find((x) => x.id === id)?.faixa ?? ""
 
+/** a faixa do vol. 1 de um título da rádio ("CHUVA · ao vivo" → "chuva"), ou null */
+export function faixaDoTitulo(titulo: string | null | undefined): PistaId | null {
+  if (!titulo) return null
+  const t = titulo.toLowerCase()
+  return PISTAS.find((p) => t.startsWith(p.faixa.toLowerCase()))?.id ?? null
+}
+
 /** o toque no "♥ salvar": abre o app/a página e conta (PostHog, se a pessoa
  *  aceitou). `onde` = de onde veio o toque (nexo, guitar, radio) */
 export function salvarFaixa(id: string, onde: string) {

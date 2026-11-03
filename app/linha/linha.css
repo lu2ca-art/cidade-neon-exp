@@ -2160,6 +2160,7 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-holo-radio-linha span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.6; }
 .l-holo-som.is-on .l-holo-radio-linha span { opacity: 1; }
 .l-holo-radio-linha button { flex: none; padding: 1px 6px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent) !important; background: color-mix(in srgb, var(--cor) 12%, transparent) !important; color: #fff !important; font-size: 11px !important; cursor: pointer; }
+.l-holo-radio-linha button.l-radio-salvar { color: #ff7fbf !important; border-color: color-mix(in srgb, #ff4fa3 55%, transparent) !important; background: transparent !important; }
 .l-holo-faixa { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .l-holo-faixa i { flex: none; width: 13px; height: 13px; border-radius: 50%; background: radial-gradient(circle, #2fe8ff 0 2px, #0b0a16 2.5px 4px, #1d1b30 4.5px); box-shadow: 0 0 0 1px rgba(47, 232, 255, 0.5); }
 .l-holo-faixa i.is-gira { animation: l-holo-gira 1.8s linear infinite; }

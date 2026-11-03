@@ -31,7 +31,7 @@ import { NIVEIS, NOME_NIVEL, type NivelQualidade } from "./qualidade"
 import { pistaDoArquivo, rotuloDoArquivo } from "../disco/pistasLiberadas"
 import { FREQUENCIAS, type FreqId } from "../radio"
 import { lerFaixaRua, ouvirFaixaRua } from "../disco/musicaContinua"
-import { linkDaFaixa, nomeDaFaixa, salvarFaixa } from "../disco/linksFaixas"
+import { faixaDoTitulo, linkDaFaixa, nomeDaFaixa, salvarFaixa } from "../disco/linksFaixas"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
@@ -103,6 +103,12 @@ const PIRATAS: { de: string; texto: string }[] = [
 ]
 const DE_PIRATA = 38000 // ms entre uma mensagem pirata e outra
 
+// (salvar no app, 03/11) a rádio tocando uma faixa do vol. 1: o ♥ ao lado do ⏭
+function SalvarRadio({ titulo }: { titulo: string }) {
+  const id = faixaDoTitulo(titulo)
+  if (!id || !linkDaFaixa(id)) return null
+  return <button type="button" data-info="salvar" className="l-radio-salvar" onClick={(e) => { e.stopPropagation(); salvarFaixa(id, "radio") }} aria-label={`salvar ${nomeDaFaixa(id)} no seu app de música`}>♥</button>
+}
 // em cima, à esquerda: a RÁDIO (o holograma com a onda sonora) e a faixa da pista.
 // Tocar no holograma abre o MENU DA RÁDIO (LU2CA 20/10: a SINT0NIA virou isso)
 export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Radio; onLigar: () => void; onProxima: () => void; onSintonizar: (id: FreqId) => void }) {
@@ -199,6 +205,7 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
           {aviso ? (
             <span key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></span>
           ) : <span>{radio.ligada ? radio.faixa : "desligada"}</span>}
+          {radio.ligada && !aviso && <SalvarRadio titulo={radio.faixa} />}
           {radio.ligada && <button type="button" onClick={onProxima} aria-label="próxima faixa">⏭</button>}
         </div>
         <div className="l-holo-faixa" data-info="faixa">
