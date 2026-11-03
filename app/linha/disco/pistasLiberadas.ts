@@ -16,6 +16,7 @@
 import { PISTAS, faixaDaPista, type Pista, type PistaId } from "../estrada/pistas"
 import type { HistoriaDisco } from "./historia"
 import { CONFIG13, IDS13, MISSOES13, feita13, normalizarMissao, pecaFeita } from "./portas"
+import type { FaixaContinua } from "./musicaContinua"
 
 export type VersaoPista = "previa" | "inst" | "suburbio"
 export const ORDEM_VERSAO: VersaoPista[] = ["previa", "inst", "suburbio"]
@@ -70,4 +71,11 @@ export function pistaDoArquivo(src: string | null | undefined): { pista: Pista; 
 export const rotuloDoArquivo = (src: string | null | undefined) => {
   const x = pistaDoArquivo(src)
   return x ? `${x.pista.faixa}${x.versao === "previa" ? " · prévia" : x.versao === "inst" ? " · inst" : ""}` : null
+}
+
+/** (música contínua, 03/11) a faixa da pista pro toca-discos: a completa (a voz,
+ *  se já saiu; senão o instrumental) e o instrumental. Ver disco/musicaContinua.ts */
+export function faixaContinua(p: Pista, agora = Date.now()): FaixaContinua {
+  const completa = srcDaVersao(p, "suburbio", agora)
+  return { id: p.id, completa, inst: p.inst || completa, semInst: !p.inst, dur: p.duracao }
 }

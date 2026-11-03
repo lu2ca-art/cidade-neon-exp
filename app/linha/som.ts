@@ -6,6 +6,7 @@
 import { TONS } from "./tons"
 import { Trilha, aplicarFadeMinhoca, curvaDistorcao, curvaMinhoca, type CtxLike, type DepsTrilha, type NosFade } from "./disco/trilha"
 import { track, type MusicSource } from "@/lib/analytics"
+import { CROSSFADE, VOL_SEM_INST, albumComprado, comecaPelaCompleta, marcarCompletaOuvida, type FaixaContinua } from "./disco/musicaContinua"
 
 // (T40b) A MESA DE MIXAGEM (lib/mesa.ts): o AudioContext único do jogo, os 4
 // canais (música, ambiente, efeitos, vozes), o volume geral, o mudo, a
@@ -848,133 +849,259 @@ export const fonteSom = {
   ouvir(o: (f: Fonte, auto?: boolean) => void) { ouvintesFonte.add(o); return () => { ouvintesFonte.delete(o) } },
 }
 
-// ── A PISTA É O TOCA-DISCOS (mapa-disco, LU2CA 18/10) ───────────────────────
-// Entrou numa pista, a faixa dela dá play (do começo). Enquanto a Kombi está em
-// contato com a pista, toca normal; parou ou saiu do chão (propulsor, pulo),
-// a rotação cai como um vinil freando (o scratch) e o som some no vento; voltou,
-// gira de novo. É o canal analógico: o rádio e o toca-discos do painel calam.
+// ── A PISTA É O TOCA-DISCOS (mapa-disco 18/10; MÚSICA CONTÍNUA 03/11) ────────
+// Entrou numa pista, a faixa dela toca do começo, completa, UMA vez inteira:
+// nada pausa (missão, peça, cena, turbo, celular), no máximo abaixa e volta. A
+// missão troca, em crossfade, pro instrumental da MESMA faixa no MESMO ponto; a
+// completa acabou, fica o instrumental em loop. A regra mora em
+// disco/musicaContinua.ts; aqui é o som (docs/musica-continua.md).
+//
+// Dois <audio> ("decks") reaproveitados pra sempre: um soa, o outro espera com a
+// outra versão já carregando. Os dois só tocam juntos durante o crossfade
+// (iPhone: nada de duas músicas soando por mais que isso). Volume só por GainNode.
+type Papel = "completa" | "inst"
+interface Deck { el: HTMLAudioElement; gain: GainNode | null; src: string | null; parada: ReturnType<typeof setTimeout> | null }
+// um silêncio de 10 ms: destrava os decks no primeiro toque (iOS barra play() de
+// um <audio> que nunca tocou dentro de um toque)
+const SILENCIO = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=="
+const tocarSemErro = (el: HTMLAudioElement) => { try { const r = el.play(); if (r && typeof r.catch === "function") r.catch(() => {}) } catch {} }
 class PistaSom {
-  el: HTMLAudioElement | null = null
-  src: string | null = null
-  private gain: GainNode | null = null
+  private decks: Deck[] = []
+  private ativo = -1
+  private grafo = false
+  private mestre: GainNode | null = null
   private filtro: BiquadFilterNode | null = null
   private analyser: AnalyserNode | null = null
   private dados = new Uint8Array(128)
-  private rate = 1
+  /** a faixa da pista agora (null = nada tocando) */
+  faixa: FaixaContinua | null = null
+  /** o que soa: a completa ou o instrumental */
+  modo: Papel = "completa"
+  // a experiência da completa ainda está valendo (tocando ela, ou o instrumental
+  // no lugar dela durante a missão); false = já acabou, fica o instrumental
+  private completaViva = false
+  private emMissao = 0
+  private aplicarAgendado = false
+  private segurando = false
+  // o "duck" do mestre (no ar, rádio por cima, pista apagada): só volume/filtro
+  private noAr = false
+  private radio = false
+  private abafada = false
   private ultCorte = -1
   private ultAlvo = -1
+
+  private criarDecks() {
+    if (this.decks.length || typeof window === "undefined") return
+    for (let i = 0; i < 2; i++) {
+      const el = new Audio()
+      el.preload = "auto"
+      el.crossOrigin = "anonymous"
+      const d: Deck = { el, gain: null, src: null, parada: null }
+      el.addEventListener("ended", () => this.fimDoDeck(d))
+      medir(el, "toca-discos")
+      this.decks.push(d)
+    }
+  }
   private garantir() {
-    if (this.el) return this.el
-    const el = new Audio()
-    el.preload = "auto"
-    el.crossOrigin = "anonymous"
-    ;(el as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = false // o tom cai junto (vinil)
+    this.criarDecks()
+    if (this.grafo) return
     const c = audioCtx(), dst = abafo()
-    if (c && dst) {
+    if (!c || !dst) return
+    try {
+      this.mestre = c.createGain()
+      this.filtro = c.createBiquadFilter()
+      this.filtro.type = "lowpass"
+      this.filtro.frequency.value = 20000
+      this.analyser = c.createAnalyser()
+      this.analyser.fftSize = 256
+      this.analyser.smoothingTimeConstant = 0.6
+      this.filtro.connect(this.mestre).connect(dst)
+      this.mestre.connect(this.analyser)
+      for (const d of this.decks) {
+        d.gain = c.createGain()
+        d.gain.gain.value = 0
+        c.createMediaElementSource(d.el).connect(d.gain).connect(this.filtro)
+      }
+      this.grafo = true
+      this.aplicarMestre(true)
+    } catch {}
+  }
+  /** primeiro toque na página: um play/pause mudo de um silêncio em cada deck */
+  destravar() {
+    this.criarDecks()
+    for (const d of this.decks) {
+      if (d.src) continue
+      const el = d.el
+      el.muted = true
+      el.src = SILENCIO
       try {
-        this.gain = c.createGain()
-        this.filtro = c.createBiquadFilter()
-        this.filtro.type = "lowpass"
-        this.filtro.frequency.value = 20000
-        this.analyser = c.createAnalyser()
-        this.analyser.fftSize = 256
-        this.analyser.smoothingTimeConstant = 0.6
-        c.createMediaElementSource(el).connect(this.filtro).connect(this.gain).connect(dst)
-        this.gain.connect(this.analyser)
-      } catch {}
-    }
-    el.loop = true // a faixa da pista recomeça se você ficar mais de uma música nela
-    medir(el, "toca-discos")
-    this.el = el
-    return el
-  }
-  // o fade (0–1): sobe na entrada, desce na saída (segundos do relógio do áudio)
-  private fadeDe = 0
-  private fadePara = 1
-  private fadeIni = 0
-  private fadeDur = 0.01
-  private fade() {
-    const c = audioCtx()
-    if (!c) return this.fadePara
-    const t = Math.min(1, (c.currentTime - this.fadeIni) / this.fadeDur)
-    return this.fadeDe + (this.fadePara - this.fadeDe) * t
-  }
-  private comecarFade(para: number, seg: number) {
-    const c = audioCtx()
-    this.fadeDe = this.fade()
-    this.fadePara = para
-    this.fadeIni = c ? c.currentTime : 0
-    this.fadeDur = Math.max(0.01, seg)
-  }
-  // a faixa da pista nova, do começo, subindo em fade (seg); loop = false toca
-  // uma vez só (o tema da missão, LU2CA 21/10: "ela toca uma vez só")
-  entrar(src: string, fadeSeg = 0, loop = true) {
-    const el = this.garantir()
-    el.loop = loop
-    if (this.src !== src) { el.src = src; this.src = src }
-    el.currentTime = 0
-    this.rate = 0.4 // começa girando (spin-up)
-    el.playbackRate = this.rate
-    this.fadeDe = 0
-    this.comecarFade(1, fadeSeg)
-    this.fadeDe = 0
-    el.play().catch(() => {})
-  }
-  // voltou pra torre: a faixa some em fade e para
-  sair(fadeSeg = 2) {
-    if (!this.src) return
-    this.comecarFade(0, fadeSeg)
-    const src = this.src
-    setTimeout(() => { if (this.src === src && this.fadePara === 0) this.parar() }, fadeSeg * 1000 + 50)
-  }
-  // a cada quadro: em contato e andando, gira a 1; senão, freia até parar
-  // radio: a rádio invadiu (a pista abaixa: rádio e disco nunca juntos no mesmo volume)
-  // abafada (os atos, 20/10): numa pista ainda apagada, a faixa toca o
-  // instrumental abafado, como se viesse de longe (a cidade esquecida no tempo)
-  estado(contato: boolean, vel: number, dt: number, radio = false, abafada = false) {
-    const el = this.el
-    if (!el || !this.src) return
-    // um jogo aberto no holo (silenciar): a faixa fica parada onde estava
-    if (this.segurando) { if (!el.paused) el.pause(); return }
-    // tocou uma vez e acabou (o tema): não recomeça sozinha
-    if (el.ended) return
-    // (LU2CA 19/10) a música não depende da velocidade: no chão gira sempre; só o ar freia
-    const gira = contato
-    void vel
-    const alvo = gira ? 1 : 0
-    // freia rápido (o scratch é curto), acelera um pouco mais devagar
-    this.rate += (alvo - this.rate) * Math.min(1, dt * (gira ? 5 : 7))
-    if (this.rate < 0.12) {
-      if (!el.paused) el.pause()
-      this.rate = Math.max(this.rate, 0.0625)
-    } else {
-      if (el.paused) el.play().catch(() => {})
-      el.playbackRate = Math.max(0.0625, Math.min(1, this.rate))
-    }
-    const c = audioCtx()
-    if (c && this.filtro && this.gain) {
-      // no ar o som abafa (o vento por cima); no chão, aberto
-      // (T40b) a rádio ligada CALA a pista (antes ficava a 12% por baixo: duas
-      // músicas juntas). E só manda alvo novo quando ele muda (não a cada quadro)
-      const corte = !contato ? 700 : abafada ? 900 : 20000
-      const alvo = Math.round((contato ? (abafada ? 0.55 : 1) : 0.35) * (radio ? 0 : 1) * this.fade() * 100) / 100
-      if (corte !== this.ultCorte) { this.ultCorte = corte; this.filtro.frequency.setTargetAtTime(corte, c.currentTime, 0.08) }
-      if (alvo !== this.ultAlvo) { this.ultAlvo = alvo; this.gain.gain.setTargetAtTime(alvo, c.currentTime, radio ? 0.25 : 0.05) }
+        const r = el.play()
+        const fim = () => { if (!d.src) { el.pause(); el.removeAttribute("src") } el.muted = false }
+        if (r && typeof r.then === "function") r.then(fim, fim)
+        else fim()
+      } catch { el.muted = false }
     }
   }
-  parar() { this.el?.pause(); this.src = null }
-  private segurando = false
+
+  // ── volume de cada deck (rampas no relógio do áudio: sem estalo) ──
+  private rampa(d: Deck, para: number, seg: number) {
+    const c = audioCtx()
+    if (!d.gain || !c) { d.el.volume = Math.max(0, Math.min(1, para)); return }
+    const g = d.gain.gain, t = c.currentTime
+    g.cancelScheduledValues(t)
+    g.setValueAtTime(g.value, t)
+    if (seg <= 0.01) g.setValueAtTime(para, t)
+    else g.linearRampToValueAtTime(para, t + seg)
+  }
+  // posiciona no segundo `t` (se o arquivo ainda não carregou, assim que carregar,
+  // contando o tempo que passou: a troca da missão cai no mesmo ponto)
+  private posicionar(el: HTMLAudioElement, t: number) {
+    if (el.readyState >= 1) { try { el.currentTime = t } catch {} ; return }
+    const t0 = performance.now()
+    el.addEventListener("loadedmetadata", () => {
+      try { el.currentTime = t > 0 ? t + (performance.now() - t0) / 1000 : 0 } catch {}
+    }, { once: true })
+  }
+  private volDe(papel: Papel) {
+    return papel === "inst" && this.faixa?.semInst ? VOL_SEM_INST : 1
+  }
+
+  // põe o `papel` da faixa pra soar a partir de `desde` (null = do ponto onde o
+  // deck que soa está), em crossfade de `fade` segundos
+  private tocar(papel: Papel, desde: number | null, fade: number, loop: boolean) {
+    const f = this.faixa
+    if (!f) return
+    this.garantir()
+    if (!this.decks.length) return
+    const src = papel === "completa" ? f.completa : f.inst
+    const vol = this.volDe(papel)
+    const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
+    this.modo = papel
+    // mesmo arquivo (a faixa sem voz ainda: a completa É o instrumental): sem troca
+    if (cur && cur.src === src) {
+      if (cur.parada) { clearTimeout(cur.parada); cur.parada = null }
+      cur.el.loop = loop
+      if (desde !== null) this.posicionar(cur.el, desde)
+      if (cur.el.paused) tocarSemErro(cur.el)
+      this.rampa(cur, vol, fade)
+      return
+    }
+    const ponto = desde ?? (cur ? cur.el.currentTime : 0)
+    const novo = cur ? this.decks[1 - this.ativo] : this.decks[0]
+    if (novo.parada) { clearTimeout(novo.parada); novo.parada = null }
+    this.rampa(novo, 0, 0)
+    if (novo.src !== src) { novo.el.src = src; novo.src = src }
+    novo.el.loop = loop
+    this.posicionar(novo.el, ponto)
+    tocarSemErro(novo.el)
+    this.rampa(novo, vol, fade)
+    this.ativo = this.decks.indexOf(novo)
+    if (cur) {
+      this.rampa(cur, 0, fade)
+      // o que saiu para depois do fade e fica esperando com a outra versão
+      cur.parada = setTimeout(() => { cur.parada = null; cur.el.pause(); this.prepararOcioso() }, fade * 1000 + 80)
+    } else setTimeout(() => this.prepararOcioso(), 2500)
+  }
+  // o deck parado já carrega a outra versão (completa ⇄ instrumental) pra troca
+  // da missão sair sem atraso
+  private prepararOcioso() {
+    const f = this.faixa
+    if (!f || !this.completaViva || this.ativo < 0 || f.inst === f.completa) return
+    const ocioso = this.decks[1 - this.ativo]
+    if (!ocioso || ocioso.parada || !ocioso.el.paused) return
+    const src = this.modo === "completa" ? f.inst : f.completa
+    if (ocioso.src !== src) { ocioso.el.preload = "auto"; ocioso.el.src = src; ocioso.src = src }
+  }
+
+  /** entrou numa pista: a faixa dela do início (a mesma faixa: segue tocando) */
+  tocarFaixa(f: FaixaContinua, fade = CROSSFADE) {
+    if (this.faixa && this.faixa.id === f.id && this.tocando) return
+    this.faixa = f
+    this.completaViva = comecaPelaCompleta(f.id)
+    const papel: Papel = this.completaViva && this.emMissao === 0 ? "completa" : "inst"
+    this.tocar(papel, 0, fade, papel === "inst" ? !this.completaViva : albumComprado())
+  }
+  /** missão/peça/cena começou (true) ou terminou (false). Conta quem pediu e
+   *  decide um tique depois: cena → cena não faz vai-e-volta */
+  missao(sim: boolean) {
+    this.emMissao = Math.max(0, this.emMissao + (sim ? 1 : -1))
+    if (this.aplicarAgendado) return
+    this.aplicarAgendado = true
+    setTimeout(() => { this.aplicarAgendado = false; this.aplicarMissao() }, 0)
+  }
+  private aplicarMissao() {
+    const f = this.faixa
+    if (!f || !this.completaViva || this.ativo < 0) return
+    const quer: Papel = this.emMissao > 0 ? "inst" : "completa"
+    if (quer === this.modo) return
+    const el = this.decks[this.ativo].el
+    const t = el.currentTime
+    const dur = el.duration && isFinite(el.duration) && this.modo === "completa" ? el.duration : f.dur
+    if (quer === "completa" && t >= dur - CROSSFADE) {
+      // a completa já teria acabado: fica o instrumental, em loop
+      marcarCompletaOuvida(f.id)
+      this.completaViva = albumComprado()
+      if (!this.completaViva) { el.loop = true; return }
+    }
+    // o instrumental no lugar da completa toca uma vez (o fim dele = o fim dela)
+    this.tocar(quer, t, CROSSFADE, quer === "inst" ? false : albumComprado())
+  }
+  // um deck chegou ao fim (só acontece sem loop: a completa, ou o instrumental no lugar dela)
+  private fimDoDeck(d: Deck) {
+    const f = this.faixa
+    if (!f || this.decks[this.ativo] !== d) return
+    marcarCompletaOuvida(f.id)
+    if (albumComprado()) {
+      const papel: Papel = this.emMissao > 0 ? "inst" : "completa"
+      return this.tocar(papel, 0, CROSSFADE, papel === "completa")
+    }
+    this.completaViva = false
+    this.tocar("inst", 0, CROSSFADE, true)
+  }
+
+  /** a cada quadro (barato: só manda alvo novo quando muda). Não pausa nem muda
+   *  o ritmo: no ar abafa e abaixa, a rádio ligada cala por cima, pista apagada abafa */
+  estado(noAr: boolean, radio = false, abafada = false) {
+    if (noAr === this.noAr && radio === this.radio && abafada === this.abafada) return
+    this.noAr = noAr; this.radio = radio; this.abafada = abafada
+    this.aplicarMestre(false)
+  }
+  private aplicarMestre(forcar: boolean) {
+    const c = audioCtx()
+    if (!c || !this.filtro || !this.mestre) return
+    const corte = this.noAr ? 700 : this.abafada ? 900 : 20000
+    const alvo = this.segurando || this.radio ? 0 : this.noAr ? 0.4 : this.abafada ? 0.6 : 1
+    if (forcar || corte !== this.ultCorte) { this.ultCorte = corte; this.filtro.frequency.setTargetAtTime(corte, c.currentTime, 0.08) }
+    if (forcar || alvo !== this.ultAlvo) { this.ultAlvo = alvo; this.mestre.gain.setTargetAtTime(alvo, c.currentTime, this.radio || this.segurando ? 0.25 : 0.08) }
+  }
+  /** um jogo no holo / um show com o som dele: abaixa a zero, a faixa SEGUE andando */
   segurar(sim: boolean) {
+    if (sim === this.segurando) return
     this.segurando = sim
-    if (sim) this.el?.pause()
+    this.aplicarMestre(false)
   }
-  get tocando() { return !!this.el && !this.el.paused }
-  // tocou até o fim (só acontece sem loop)
-  get acabou() { return !!this.el && this.el.ended }
-  get nivelFade() { return this.fade() }
+  /** saiu da cidade (o deserto): some em fade e para */
+  sair(fadeSeg = 2) {
+    if (!this.faixa || this.ativo < 0) return
+    const d = this.decks[this.ativo]
+    this.faixa = null
+    this.rampa(d, 0, fadeSeg)
+    if (d.parada) clearTimeout(d.parada)
+    d.parada = setTimeout(() => { d.parada = null; if (!this.faixa) d.el.pause() }, fadeSeg * 1000 + 80)
+  }
+  /** para já (fora da página) */
+  parar() {
+    this.faixa = null
+    for (const d of this.decks) { if (d.parada) { clearTimeout(d.parada); d.parada = null } d.el.pause() }
+  }
+  /** o arquivo que soa agora (o holo e os óculos mostram) */
+  get src() { return this.faixa && this.ativo >= 0 ? this.decks[this.ativo].src : null }
+  get el() { return this.ativo >= 0 ? this.decks[this.ativo]?.el ?? null : null }
+  get tocando() { const e = this.el; return !!this.faixa && !!e && !e.paused }
   // os graves da faixa (as luzes da cidade pulsam com isso)
   grave() {
-    if (!this.analyser || !this.el || this.el.paused) return 0
+    const e = this.el
+    if (!this.analyser || !e || e.paused) return 0
     this.analyser.getByteFrequencyData(this.dados)
     let s = 0
     for (let i = 1; i < 7; i++) s += this.dados[i]
@@ -982,10 +1109,17 @@ class PistaSom {
   }
 }
 export const pistaSom = new PistaSom()
+if (typeof window !== "undefined") {
+  const destravar = () => {
+    pistaSom.destravar()
+    for (const ev of ["pointerdown", "touchend", "keydown"]) window.removeEventListener(ev, destravar, true)
+  }
+  for (const ev of ["pointerdown", "touchend", "keydown"]) window.addEventListener(ev, destravar, true)
+}
 // teste (fora da produção): o estado do toca-discos da pista
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-  ;(window as unknown as { __pistaSom?: () => unknown }).__pistaSom = () => ({ src: pistaSom.src, tocando: pistaSom.tocando, rate: pistaSom.el ? +pistaSom.el.playbackRate.toFixed(2) : null, fade: +pistaSom.nivelFade.toFixed(2), t: pistaSom.el ? +pistaSom.el.currentTime.toFixed(1) : null, loop: pistaSom.el?.loop ?? null })
-  // teste: pula pro fim da faixa (o tema que toca uma vez)
+  ;(window as unknown as { __pistaSom?: () => unknown }).__pistaSom = () => ({ faixa: pistaSom.faixa?.id ?? null, src: pistaSom.src, modo: pistaSom.modo, tocando: pistaSom.tocando, t: pistaSom.el ? +pistaSom.el.currentTime.toFixed(1) : null, loop: pistaSom.el?.loop ?? null })
+  // teste: pula pro fim da faixa (ver a troca pro instrumental em loop)
   ;(window as unknown as { __pistaSomFim?: () => void }).__pistaSomFim = () => { const el = pistaSom.el; if (el && el.duration) el.currentTime = Math.max(0, el.duration - 1.5) }
 }
 

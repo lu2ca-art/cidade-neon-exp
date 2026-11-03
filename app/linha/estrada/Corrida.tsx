@@ -75,7 +75,7 @@ import { qualMapa } from "./qualMapa"
 import { OculosMapa } from "./Oculos"
 import { avisarRadio, notch, HoloAjuda, HoloAjustes, HoloAnel, type AnelApi, HoloApps, HoloClima, HoloDestaque, HoloIcones, HoloIlha, HoloLetreiro, HoloSom, INFO, useNexoTutorial, type ChecklistHolo, type Clima, type NexoAgora } from "./Holo"
 import type { AppId } from "../os"
-import { PISTAS_LIBERADAS, srcDaVersao, type VersaoPista } from "../disco/pistasLiberadas"
+import { faixaContinua, type VersaoPista } from "../disco/pistasLiberadas"
 import { PISTAS, faixaDaPista, velocidade as velPista, type Pista as PistaFaixa } from "./pistas"
 import { calcularRota } from "./rota"
 import { astros, ceuNaHora } from "../ceu"
@@ -3447,18 +3447,8 @@ function CenaBase({
   const pistaTocando = useRef(-1)
   const memRadio = useRef<MemoriaRadio>({ resto: 0 })
   const pistaEscura = useRef(false) // (os atos) a pista tocando agora está apagada?
-  // (21/10 (3)) o tema da missão: o índice da pista dela e em que ponto a
-  // música está (antes de achar a linha → tocando a voz uma vez → já tocou)
-  const temaK = useMemo(() => (temaMissao ? faixasDisco.findIndex((f) => f?.id === temaMissao) : -1), [temaMissao, faixasDisco])
-  const temaRef = useRef<{ k: number; voz: "antes" | "tocando" | "tocou"; chave: string }>({ k: -1, voz: "antes", chave: "" })
-  useEffect(() => { temaRef.current = { k: temaK, voz: "antes", chave: "" } }, [temaK])
-  // (T31) a versão de cada pista agora (prévia, instrumental, subúrbio) e a que está tocando
-  const versoesRef = useRef(versoesPista)
-  useEffect(() => { versoesRef.current = versoesPista }, [versoesPista])
-  const versaoTocando = useRef<VersaoPista | "">("")
-  const soTemaRef = useRef(soTema)
-  useEffect(() => { soTemaRef.current = soTema }, [soTema])
-  useEffect(() => () => pistaSom.parar(), [])
+  // (música contínua, 03/11) a faixa NÃO para quando a Corrida desmonta (entrar
+  // numa sala de missão): ela segue no instrumental e volta; quem para é a página
   const centro = M.vias[M.circuito.linha]
   // no mapa novo, as "voltas" de prédio e trânsito são as ruas (uma mão só)
   const circuitos = useMemo(() => M.vias.filter((v) => v.tipo === "circuito" || (v.tipo === "rua" && v.rede?.ida)), [M])
@@ -5953,57 +5943,28 @@ function CenaBase({
       const infR = (M as MundoDisco).info[j.via]
       fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
     }
-    if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1 }
-    // (T31) na carreira, sem missão pegada, a pista toca a versão que o trajeto já liberou (a prévia, o instrumental…)
-    else if (faixasDisco.length && soTemaRef.current && (temaRef.current.k >= 0 || !PISTAS_LIBERADAS.tocaForaDaMissao)) {
-      // (LU2CA 21/10 (3)) A MÚSICA É O TEMA DA MISSÃO. Sem missão: nenhuma
-      // faixa de pista, só os discos. Com missão: o instrumental (a base das
-      // ruas) até ele achar a linha dela; entrou na linha, a música começa e
-      // toca UMA vez (venha de onde vier depois); acabou, volta o instrumental
-      const tm = temaRef.current
-      const fx = tm.k >= 0 ? faixasDisco[tm.k] : null
-      if (!fx) { if (pistaSom.src) pistaSom.parar(); pistaTocando.current = -1; tm.chave = "" }
-      else {
-        const inf = (M as MundoDisco).info[j.via]
-        const naLinha = !!inf && inf.pista === tm.k && !viaApagada?.[j.via]
-        if (tm.voz === "antes" && naLinha) tm.voz = "tocando"
-        if (tm.voz === "tocando" && pistaSom.acabou) tm.voz = "tocou"
-        const voz = tm.voz === "tocando"
-        const chave = `${tm.k}:${voz ? "voz" : "base"}`
-        if (chave !== tm.chave) {
-          tm.chave = chave
-          pistaTocando.current = tm.k
-          pistaEscura.current = !voz
-          if (fonteRef.current !== "radio") player.pausar()
-          discoPainel.parar()
-          pistaSom.entrar(voz ? srcDaVersao(fx, "suburbio") : fx.inst, 2, !voz)
-          definirTom(fx.tom)
-        }
-        pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio", !voz)
-      }
-    }
+    // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
+    if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }
+    // (música contínua, 03/11, o dono: "cada música é uma experiência que dura o
+    // tamanho da faixa") entrou numa pista, a faixa DELA do início, completa, uma
+    // vez inteira; nas torres continua a que estava. Nada aqui pausa nem muda o
+    // ritmo (turbo, pulo, missão): no ar só abafa. A missão troca pro
+    // instrumental no mesmo ponto (page.tsx → pistaSom.missao). Substitui o tema
+    // da missão (21/10) e a prévia/instrumental/subúrbio do trajeto (T31)
     else if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]
       const naPista = !!inf && inf.pista >= 0
       const k = naPista ? inf.pista : pistaTocando.current
-      // (os atos, 20/10) pista apagada: o instrumental, abafado
-      const escura = naPista ? !!viaApagada?.[j.via] : pistaEscura.current
-      // (T31) a versão do trajeto da missão: pista apagada = instrumental; senão a que a missão já liberou
-      const fxK = k >= 0 ? faixasDisco[k] : null
-      const versao: VersaoPista = escura ? "inst" : (fxK && versoesRef.current?.[fxK.id]) || "suburbio"
-      if ((k !== pistaTocando.current || escura !== pistaEscura.current || (k >= 0 && versao !== versaoTocando.current)) && k >= 0) {
+      if (naPista) pistaEscura.current = !!viaApagada?.[j.via]
+      const fx = k >= 0 ? faixasDisco[k] : null
+      if (fx && (k !== pistaTocando.current || !pistaSom.faixa)) {
         pistaTocando.current = k
-        pistaEscura.current = escura
-        versaoTocando.current = versao
-        const fx = faixasDisco[k]
-        if (fx) {
-          if (fonteRef.current !== "radio") player.pausar()
-          discoPainel.parar()
-          pistaSom.entrar(srcDaVersao(fx, versao), 2)
-          definirTom(fx.tom)
-        }
+        if (fonteRef.current !== "radio") player.pausar()
+        discoPainel.parar()
+        pistaSom.tocarFaixa(faixaContinua(fx))
+        definirTom(fx.tom)
       }
-      pistaSom.estado(!j.ar && !j.voo && !combRef.current.patins && !pausado, Math.abs(j.v), dt, fonteRef.current === "radio", pistaEscura.current)
+      pistaSom.estado(!!(j.ar || j.voo || combRef.current.patins), fonteRef.current === "radio", pistaEscura.current)
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins
