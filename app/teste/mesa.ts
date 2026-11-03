@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "palcos",
+    nome: "O botão ♥ salvar (levar pro seu streaming)",
+    data: "2026-11-03",
+    olhar: "Um \"♥ salvar\" no notch enquanto a faixa da rua toca (brilha quando a versão completa acaba), em cada música do Guitar Driver e na rádio do holo. Ele só aparece quando a faixa tem link: os links reais ainda não estão. Pra ver agora, abra o jogo com ?links=teste no fim do endereço.",
+    perguntas: [
+      "O botão cabe bem no notch e na hora certa?",
+      "No iPhone, o toque abriu o app do Spotify?",
+    ],
+  },
+  {
     parte: "livre",
     nome: "A música contínua (cada rua é uma faixa)",
     data: "2026-11-03",
