@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "A música contínua (cada rua é uma faixa)",
+    data: "2026-11-03",
+    olhar: "Entrou numa rua: a faixa dela começa do início e toca inteira, sem nada pausar. Começou uma missão: passa suave pro instrumental no mesmo ponto; acabou a missão, volta pra versão com voz. Acabou a faixa: fica o instrumental até trocar de rua. Turbo e pulo só abafam, não param.",
+    perguntas: [
+      "A música segue sem cortar quando entra a missão?",
+      "Sentiu falta da prévia de 22 s e do tema da missão (que saíram)?",
+      "Com o rádio ligado, a faixa da rua fica correndo muda por baixo: tudo bem?",
+    ],
+  },
+  {
     parte: "dunas",
     nome: "As suas notas de 03/11 (holo, subida, música)",
     data: "2026-11-03",
