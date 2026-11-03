@@ -17,14 +17,18 @@ export type SomMissao =
 
 const faixa = (nome: string, src: string, vol = 0.8): SomMissao => ({ tipo: "faixa", nome, src, vol })
 
+// (notas 03/11, o dono: "vamos nos ater às músicas do vol 1 como background das
+// missões"; Hollywood é do vol 2 e não pode tocar por enquanto) só instrumentais do
+// vol. 1 aqui: a oficina (era Boom Boom K), os túneis (era 10 D3 10), o Xeriff (era
+// Quem é você?) e o bar (era Hollywood) trocaram
 export const SOM_MISSAO: Record<MissaoId, SomMissao> = {
   dbee: { tipo: "tambor", nome: "a batida do tambor dela", bpm: 84, vol: 0.9 },
-  oficina: faixa("Boom Boom K (o catálogo do subúrbio)", "/audio/tracks/boom-boom-k.mp3"),
+  oficina: faixa("Sabe Ontem? · instrumental", "/audio/pistas/ontem-inst.mp3"),
   quadra: faixa("Sabe Ontem? · instrumental", "/audio/pistas/ontem-inst.mp3"),
-  tuneis: faixa("10 D3 10 (o catálogo do subúrbio)", "/audio/tracks/10de10.mp3"),
+  tuneis: faixa("DopaminA · instrumental", "/audio/pistas/dopamina-inst.mp3"),
   drew: faixa("Sexta-Feira · instrumental", "/audio/pistas/sexta-inst.mp3"),
   mubarak: faixa("Copo Americano · instrumental", "/audio/pistas/copo-inst.mp3"),
-  xeriff: faixa("Quem é você? (o arquivo da rádio)", "/audio/tracks/qm-e-vc.mp3"),
+  xeriff: faixa("Rollercoaster · instrumental", "/audio/pistas/rollercoaster-inst.mp3"),
   lu2ca: faixa("Nectar · instrumental", "/audio/pistas/nectar-inst.mp3"),
   ella: faixa("CHUVA · instrumental", "/audio/pistas/chuva-inst.mp3"),
   notti: faixa("DopaminA · instrumental", "/audio/pistas/dopamina-inst.mp3"),
@@ -34,7 +38,8 @@ export const SOM_MISSAO: Record<MissaoId, SomMissao> = {
 }
 
 // o bar não é uma das 13, mas é um lugar da história e também tem som
-export const SOM_BAR: SomMissao = faixa("Hollywood (o arquivo da rádio)", "/audio/tracks/hollywood.mp3", 0.7)
+// (o bar é do Mubarak, a missão do Copo: o instrumental do Copo Americano)
+export const SOM_BAR: SomMissao = faixa("Copo Americano · instrumental", "/audio/pistas/copo-inst.mp3", 0.7)
 
 export const somDaMissao = (id: MissaoId): SomMissao => SOM_MISSAO[id]
 
