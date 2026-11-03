@@ -5,6 +5,9 @@
 // aceso em cima; ele toca no holo (ou puxa pra baixo, pra si) e o holo vem pra
 // mão dele: sobe, cresce, um clarão, e a cena segue. A sala em 3D (CasaDbee)
 // enquadra ela de frente, a mão estendida (plano "entrega").
+// (notas 03/11, o dono: "a mão que entrega o holo está bem estranha") a mão
+// desenhada (2D, por cima da sala 3D) saiu: o holo surge flutuando sozinho na
+// frente dela, balança de leve e, tocado, vem pro jogador
 
 import { useEffect, useRef, useState } from "react"
 import { vib } from "../som-carro"
@@ -39,14 +42,10 @@ export function EntregaHolo({ onFim }: { onFim: () => void }) {
       onPointerDown={(e) => { ini.current = e.clientY }}
       onPointerMove={(e) => { if (ini.current !== null && e.clientY - ini.current > PUXAR_PX) { ini.current = null; pegar() } }}
       onPointerUp={() => { ini.current = null }}>
-      <button type="button" className="l-entrega-holo" onClick={pegar} aria-label="pegar o holo da mão dela">
+      <button type="button" className="l-entrega-holo" onClick={pegar} aria-label="pegar o holo">
         <span className="l-entrega-luz" aria-hidden="true"><i /><i /><b /></span>
-        <svg className="l-entrega-mao" viewBox="0 0 120 70" aria-hidden="true">
-          {/* a mão dela, aberta, de palma pra cima */}
-          <path d="M8 44c14-6 26-10 42-10h30c10 0 18 2 26 6 4 2 6 6 4 9-2 3-6 3-10 2l-14-3c4 3 6 6 4 9-1 3-5 4-9 3H44c-12 0-24 2-36 6z" />
-        </svg>
       </button>
-      <small className="l-entrega-dica">{pegou ? "é seu" : "toca no holo: pega da mão dela"}</small>
+      <small className="l-entrega-dica">{pegou ? "é seu" : "toca no holo: pega"}</small>
       {pegou && <i className="l-entrega-clarao" aria-hidden="true" />}
     </div>
   )

@@ -1,19 +1,17 @@
 /* (T07) a entrega do holo (EntregaHolo.tsx), a tela do holo lá fora e o tutorial (TutorialHolo.tsx) */
 
-/* ── a entrega: a mão dela com o holo aceso; ele toca e o holo vem pra ele ── */
+/* ── a entrega: o holo aceso flutuando (sem mão desenhada, notas 03/11); ele toca e o holo vem pra ele ── */
 .l-entrega { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 14px; padding-bottom: calc(120px + env(safe-area-inset-bottom)); touch-action: none; }
 .l-entrega-holo { position: relative; width: 190px; height: 190px; padding: 0; border: 0; background: none; cursor: pointer; animation: l-entrega-chega 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
-.l-entrega-mao { position: absolute; left: 50%; bottom: 8px; width: 150px; transform: translateX(-50%); fill: #3a3348; filter: drop-shadow(0 0 10px rgba(61, 123, 255, 0.55)); }
-.l-entrega-luz { position: absolute; left: 50%; bottom: 46px; width: 120px; height: 120px; transform: translateX(-50%); }
+.l-entrega-luz { position: absolute; left: 50%; bottom: 35px; width: 120px; height: 120px; transform: translateX(-50%); animation: l-entrega-flutua 2.6s ease-in-out infinite; }
 .l-entrega-luz b { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: radial-gradient(circle, #fff 0 22%, #2fe8ff 45%, rgba(47, 232, 255, 0) 72%); box-shadow: 0 0 26px #2fe8ff; animation: l-entrega-pulsa 1.4s ease-in-out infinite; }
 .l-entrega-luz i { position: absolute; inset: 14px; border-radius: 50%; border: 2px solid #3d7bff; border-top-color: transparent; box-shadow: 0 0 12px #3d7bff; animation: l-entrega-gira 2.4s linear infinite; }
 .l-entrega-luz i + i { inset: 0; border: 1px dashed rgba(47, 232, 255, 0.75); animation-duration: 5s; animation-direction: reverse; }
-.l-entrega-luz::after { content: ""; position: absolute; left: 50%; bottom: -30px; width: 96px; height: 70px; transform: translateX(-50%); background: linear-gradient(to top, rgba(47, 232, 255, 0.4), transparent); clip-path: polygon(44% 100%, 56% 100%, 100% 0, 0 0); }
 .l-entrega-dica { padding: 6px 12px; border-radius: 10px; background: rgba(6, 6, 16, 0.72); font: 700 11px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: #2fe8ff; pointer-events: none; }
 .l-entrega.is-pegou .l-entrega-luz { animation: l-entrega-vem 0.9s cubic-bezier(0.5, 0, 0.7, 0.4) forwards; }
-.l-entrega.is-pegou .l-entrega-mao { transition: opacity 0.5s, transform 0.6s; opacity: 0; transform: translate(-50%, 40px); }
 .l-entrega-clarao { position: absolute; inset: 0; background: radial-gradient(circle at 50% 70%, rgba(47, 232, 255, 0.85), rgba(47, 232, 255, 0) 65%); animation: l-entrega-clarao 1s ease-out 0.55s both; pointer-events: none; }
 @keyframes l-entrega-chega { from { opacity: 0; transform: translateY(60px) scale(0.85); } to { opacity: 1; transform: none; } }
+@keyframes l-entrega-flutua { 50% { transform: translate(-50%, -9px); } }
 @keyframes l-entrega-pulsa { 50% { transform: scale(1.18); } }
 @keyframes l-entrega-gira { to { transform: rotate(360deg); } }
 @keyframes l-entrega-vem { to { transform: translate(-50%, 260px) scale(2.6); opacity: 0; } }
@@ -57,5 +55,5 @@
 @keyframes l-tut-pulsa { 50% { transform: scale(1.08); opacity: 0.7; } }
 @keyframes l-tut-pulsa-anel { 50% { border-color: #fff; } }
 @media (prefers-reduced-motion: reduce) {
-  .l-tut-alvo, .l-tut-alvo.is-escuro, .l-tut-balao, .l-entrega-luz b, .l-entrega-luz i, .l-rec-holo-gira, .l-rec-holo-bola { animation: none; }
+  .l-tut-alvo, .l-tut-alvo.is-escuro, .l-tut-balao, .l-entrega-luz, .l-entrega-luz b, .l-entrega-luz i, .l-rec-holo-gira, .l-rec-holo-bola { animation: none; }
 }
