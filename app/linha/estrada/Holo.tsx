@@ -30,6 +30,8 @@ import { VOLUMES, definirVolume, ondaMusica, pistaSom, type CanalVolume } from "
 import { NIVEIS, NOME_NIVEL, type NivelQualidade } from "./qualidade"
 import { pistaDoArquivo, rotuloDoArquivo } from "../disco/pistasLiberadas"
 import { FREQUENCIAS, type FreqId } from "../radio"
+import { lerFaixaRua, ouvirFaixaRua } from "../disco/musicaContinua"
+import { linkDaFaixa, nomeDaFaixa, salvarFaixa } from "../disco/linksFaixas"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
@@ -45,6 +47,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   "app:guitar": { t: "GUITAR DRIVER", d: "o jogo das faixas ao vivo. por enquanto trancado: abre quando a sua carreira chegar lá." },
   "app:stream": { t: "vid.stream", d: "os clipes. abre aqui mesmo, no holo: a música da cidade para enquanto ele tá aberto." },
   propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
+  salvar: { t: "♥ salvar", d: "a faixa que toca na rua, no seu app de música: um toque abre o app (ou a página com todos) pra salvar ou pôr na sua playlist. só se você quiser." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
   ilha: { t: "N3XO_ · o notch", d: "o Nexo: o objetivo da missão, o passo de agora e as dicas passam aqui. toca nele e ele abre com o objetivo inteiro." },
   mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
@@ -386,6 +389,21 @@ function AgoraNexo({ texto }: { texto: string }) {
     </span>
   )
 }
+// (salvar no app, 03/11, bíblia §7) o "♥ salvar" da faixa que toca na rua: um
+// toque abre o app de música da pessoa. Sem link (disco/linksFaixas.ts), nada.
+// Quando a completa acaba de tocar inteira, ele brilha de leve ~8 s com o nome
+// da faixa. Só se refaz quando a faixa troca ou o brilho muda
+function SalvarNexo() {
+  const r = useSyncExternalStore(ouvirFaixaRua, lerFaixaRua, lerFaixaRua)
+  const id = r.id
+  if (!id || !linkDaFaixa(id)) return null
+  const nome = nomeDaFaixa(id)
+  return (
+    <button type="button" data-info="salvar" className={`l-nexo-salvar ${r.brilho ? "is-brilho" : ""}`} onClick={(e) => { e.stopPropagation(); salvarFaixa(id, "nexo") }} aria-label={`salvar ${nome} no seu app de música`} title={`salvar ${nome} no seu app`}>
+      <i aria-hidden="true">♥</i>{r.brilho ? `salvar ${nome}` : "salvar"}
+    </button>
+  )
+}
 export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }: { hora: number; agora: NexoAgora | null; expandido: boolean; explicando: boolean; onExplicar: () => void }) {
   const tut = useNexoTutorial()
   const [msg, acabou] = useNotch()
@@ -408,6 +426,7 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
           <AgoraNexo texto={agora.texto} />
         ) : <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>}
         {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
+        {!tut && !explicando && <SalvarNexo />}
         <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>
       </div>
       {expandido && !explicando && (

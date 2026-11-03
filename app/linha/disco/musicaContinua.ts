@@ -37,7 +37,34 @@ export interface FaixaContinua {
 // as faixas cuja completa já tocou inteira nesta sessão (a página aberta)
 const ouvidas = new Set<string>()
 export const completaJaTocou = (id: string) => ouvidas.has(id)
-export function marcarCompletaOuvida(id: string) { ouvidas.add(id) }
+export function marcarCompletaOuvida(id: string) {
+  if (ouvidas.has(id)) return
+  ouvidas.add(id)
+  // (salvar no app, 03/11) o momento natural: a completa acabou de tocar inteira
+  if (faixaRua.id === id) { clearTimeout(brilhoT); mudarRua({ id, brilho: true }); brilhoT = setTimeout(() => { if (faixaRua.brilho) mudarRua({ id: faixaRua.id, brilho: false }) }, BRILHO_MS) }
+}
+
+// ── (salvar no app, 03/11) A FAIXA DA RUA, pra tela: qual toca agora e se o
+// "♥ salvar" brilha (os ~8 s logo depois da completa acabar). Uma loja fora do
+// React: o PistaSom avisa quando a faixa troca; nada por quadro ──
+export const BRILHO_MS = 8000
+export type FaixaRua = { id: string | null; brilho: boolean }
+let faixaRua: FaixaRua = { id: null, brilho: false }
+let brilhoT: ReturnType<typeof setTimeout> | undefined
+const ouvintesRua = new Set<() => void>()
+function mudarRua(x: FaixaRua) {
+  if (x.id === faixaRua.id && x.brilho === faixaRua.brilho) return
+  faixaRua = x
+  ouvintesRua.forEach((f) => f())
+}
+/** o PistaSom chama quando a faixa da pista troca (null = parou) */
+export function definirFaixaRua(id: string | null) {
+  if (id === faixaRua.id) return
+  clearTimeout(brilhoT)
+  mudarRua({ id, brilho: false })
+}
+export const ouvirFaixaRua = (f: () => void) => { ouvintesRua.add(f); return () => { ouvintesRua.delete(f) } }
+export const lerFaixaRua = () => faixaRua
 
 /** entrou na pista: começa pela completa ou (já tocou) direto pelo instrumental */
 export function comecaPelaCompleta(id: string): boolean {

@@ -2093,6 +2093,14 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-nexo-conta { flex: none; font: 600 8.5px var(--font-geist-mono), monospace; letter-spacing: 0.08em; color: var(--c); opacity: 0.6; white-space: nowrap; }
 .l-nexo-q { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin: 2px 0; padding: 0; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--c, #2fe8ff) 55%, transparent); background: transparent; color: var(--c, #2fe8ff); font: 800 12px var(--font-geist-mono), monospace; cursor: pointer; }
 .l-nexo-q.is-on { background: var(--c, #2fe8ff); color: #000; box-shadow: 0 0 10px var(--c, #2fe8ff); }
+/* (salvar no app, 03/11) o "♥ salvar" da faixa da rua, no notch; brilha ~8 s quando a completa acaba */
+.l-nexo-salvar { position: relative; flex: none; display: inline-flex; align-items: center; gap: 4px; max-width: 46%; height: 20px; margin: 2px 0; padding: 0 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, #ff4fa3 50%, transparent); background: transparent; color: #ff7fbf; font: 700 9.5px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.l-nexo-salvar i { font-style: normal; font-size: 10px; }
+.l-nexo-salvar::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 12px #ff4fa3, inset 0 0 8px rgba(255, 79, 163, 0.45); opacity: 0; pointer-events: none; }
+.l-nexo-salvar.is-brilho { color: #fff; border-color: #ff4fa3; }
+.l-nexo-salvar.is-brilho::after { animation: l-salvar-brilha 2.6s ease-in-out 3 both; }
+@keyframes l-salvar-brilha { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .l-nexo-salvar.is-brilho::after { animation: none; opacity: 0.8; } }
 .l-viagem.is-disco .l-ilha.is-letreiro:has(.l-holo-letreiro.is-tut) { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 1px color-mix(in srgb, var(--c, #2fe8ff) 55%, transparent), 0 0 18px -6px var(--c, #2fe8ff); }
 .l-viagem.is-disco .l-ilha.is-letreiro:has(.l-holo-letreiro.is-tut), .l-viagem.is-disco .l-ilha.is-letreiro:has(.l-holo-letreiro.is-aberto) { border-radius: 16px; }
 /* aberto, o notch cresce por cima do resto (no celular a ilha tem teto de 58 px: aberto, não) */

@@ -6,7 +6,7 @@
 import { TONS } from "./tons"
 import { Trilha, aplicarFadeMinhoca, curvaDistorcao, curvaMinhoca, type CtxLike, type DepsTrilha, type NosFade } from "./disco/trilha"
 import { track, type MusicSource } from "@/lib/analytics"
-import { CROSSFADE, VOL_SEM_INST, albumComprado, comecaPelaCompleta, marcarCompletaOuvida, type FaixaContinua } from "./disco/musicaContinua"
+import { CROSSFADE, VOL_SEM_INST, albumComprado, comecaPelaCompleta, definirFaixaRua, marcarCompletaOuvida, type FaixaContinua } from "./disco/musicaContinua"
 
 // (T40b) A MESA DE MIXAGEM (lib/mesa.ts): o AudioContext único do jogo, os 4
 // canais (música, ambiente, efeitos, vozes), o volume geral, o mudo, a
@@ -1018,6 +1018,7 @@ class PistaSom {
   tocarFaixa(f: FaixaContinua, fade = CROSSFADE) {
     if (this.faixa && this.faixa.id === f.id && this.tocando) return
     this.faixa = f
+    definirFaixaRua(f.id)
     this.completaViva = comecaPelaCompleta(f.id)
     const papel: Papel = this.completaViva && this.emMissao === 0 ? "completa" : "inst"
     this.tocar(papel, 0, fade, papel === "inst" ? !this.completaViva : albumComprado())
@@ -1086,6 +1087,7 @@ class PistaSom {
     if (!this.faixa || this.ativo < 0) return
     const d = this.decks[this.ativo]
     this.faixa = null
+    definirFaixaRua(null)
     this.rampa(d, 0, fadeSeg)
     if (d.parada) clearTimeout(d.parada)
     d.parada = setTimeout(() => { d.parada = null; if (!this.faixa) d.el.pause() }, fadeSeg * 1000 + 80)
@@ -1093,6 +1095,7 @@ class PistaSom {
   /** para já (fora da página) */
   parar() {
     this.faixa = null
+    definirFaixaRua(null)
     for (const d of this.decks) { if (d.parada) { clearTimeout(d.parada); d.parada = null } d.el.pause() }
   }
   /** o arquivo que soa agora (o holo e os óculos mostram) */
