@@ -492,6 +492,7 @@ function medir(el: HTMLAudioElement, source: MusicSource) {
   let marcos = new Set<number>()
   const atual = () => { try { return new URL(el.currentSrc || el.src).pathname } catch { return el.src } }
   el.addEventListener("playing", () => {
+    if ((el.currentSrc || el.src).startsWith("data:")) return // o silêncio que destrava o deck no iPhone
     const src = atual()
     if (src === contada) return
     contada = src

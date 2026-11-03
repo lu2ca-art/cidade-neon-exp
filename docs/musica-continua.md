@@ -81,3 +81,24 @@ delas hoje é o instrumental, então a missão não muda nada nelas):
 - **Ojalá** — a data de lançamento (30/10) já passou, mas `voz` ainda é `null`
   (existe `public/audio/tracks/ojala.mp3`, não ligado). Falta o dono confirmar
   o arquivo da voz e pôr `public/audio/pistas/ojala.mp3`.
+
+## Para testar (no iPhone)
+
+1. Entrar numa pista com voz (Sabe Ontem, Copo, Sexta, DopaminA, CHUVA, Nectar):
+   a faixa começa do zero, com voz.
+2. Pegar turbo, pular, abrir o celular: a música não para (no ar só abafa).
+3. Entrar numa missão/cena/peça no meio: em ~1,5 s vira o instrumental, sem
+   voltar pro começo. Sair: a voz volta no mesmo ponto.
+4. Deixar a faixa acabar: fica o instrumental em loop. Sair da pista e voltar:
+   só instrumental. Outra pista: a faixa nova do zero.
+5. No console (dev): `__pistaSom()` mostra faixa, modo, tempo e loop;
+   `__pistaSomFim()` pula pro fim da faixa.
+
+## Falta
+
+- Teste do dono no iPhone (nada medido nem rodado aqui; só `tsc`). O cartão da
+  Mesa (`app/teste/mesa.ts`) não foi mexido.
+- Ojalá com voz: ligar o arquivo quando o dono confirmar.
+- `soTema`, `temaMissao` e `versoesPista` ainda chegam na Corrida, mas não
+  decidem mais a música (dá pra limpar depois, ou religar se o dono quiser a
+  prévia de volta antes da missão).
