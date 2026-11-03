@@ -7,7 +7,7 @@
 // Limites: 120 notas por minuto por IP (o "enviar todas" manda dezenas de uma vez), texto até 4000.
 
 import { NextResponse, type NextRequest } from "next/server"
-import { put } from "@vercel/blob"
+import { list, put } from "@vercel/blob"
 
 const JANELA = 60_000
 const MAX = 120
@@ -87,4 +87,23 @@ export async function POST(req: NextRequest) {
   return destinos.length
     ? NextResponse.json({ ok: true, destinos }, { headers })
     : NextResponse.json({ ok: false }, { status: 502, headers })
+}
+
+// (03/11) o Claude lê as últimas notas pela prévia (protegida pela Vercel):
+// GET /api/caderno?n=50 → as N mais novas, da mais nova pra mais velha.
+// Na produção não responde (as notas não ficam públicas).
+export async function GET(req: NextRequest) {
+  const headers = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" }
+  if (process.env.VERCEL_ENV === "production" || !process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ ok: false }, { status: 404, headers })
+  const n = Math.min(200, Math.max(1, Number(req.nextUrl.searchParams.get("n")) || 50))
+  const blobs: { url: string; uploadedAt: Date }[] = []
+  let cursor: string | undefined
+  do {
+    const r = await list({ prefix: "caderno/", limit: 1000, cursor })
+    blobs.push(...r.blobs)
+    cursor = r.hasMore ? r.cursor : undefined
+  } while (cursor)
+  blobs.sort((a, b) => +new Date(b.uploadedAt) - +new Date(a.uploadedAt))
+  const notas = await Promise.all(blobs.slice(0, n).map(async (b) => { try { return await (await fetch(b.url, { cache: "no-store" })).json() } catch { return null } }))
+  return NextResponse.json({ ok: true, total: blobs.length, notas: notas.filter(Boolean) }, { headers })
 }

@@ -112,8 +112,12 @@ export function Caderno() {
       if (foi) ok++; else falharam.push(todas[i])
       await new Promise((r) => setTimeout(r, 400))
     }
+    // (03/11, o dono) o que foi enviado sai da caixa: só ficam as que falharam,
+    // pra o próximo "enviar todas" não mandar de novo o que já chegou
+    gravar(GUARDADAS, falharam)
     gravar(PENDENTES, falharam)
-    setMandando(ok === todas.length ? `${ok} notas enviadas ✓` : `${ok} de ${todas.length} enviadas (tenta de novo depois)`)
+    setTotal(falharam.length)
+    setMandando(ok === todas.length ? `${ok} notas enviadas ✓ · caixa zerada` : `${ok} de ${todas.length} enviadas (as outras ficam pra tentar de novo)`)
   }, [])
 
   const abrir = useCallback((doReplay = false) => {
