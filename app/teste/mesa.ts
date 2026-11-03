@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "dunas",
+    nome: "As suas notas de 03/11 (holo, subida, música)",
+    data: "2026-11-03",
+    olhar: "O holo surge flutuando, sem a mão, e sem tela escura. Ao sair da casa da D-Bee não tem mais tela explicando: o mapa pisca e o ícone da missão pulsa com \"toca aqui\". A Kombi sobe do chão de forma contínua. No bar toca o instrumental de Copo Americano (vol 1).",
+    perguntas: [
+      "A subida chega até a cidade sem travar?",
+      "Ainda sobrou alguma tela preta explicando?",
+      "As músicas de fundo trocadas (oficina: Sabe Ontem?, túneis: DopaminA, Xeriff: Rollercoaster) servem?",
+    ],
+    mais: [{ parte: "subir.voo", nome: "a subida pra cidade" }, { parte: "bar", nome: "o bar (a música)" }],
+  },
+  {
     parte: "livre",
     nome: "Missões que começam e o caminho claro",
     data: "2026-11-02",
