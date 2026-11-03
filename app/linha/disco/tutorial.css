@@ -39,13 +39,12 @@
 
 /* ── o tutorial: (T56) o texto fala dentro do notch (linha.css, .l-holo-letreiro.is-tut); aqui só o anel em volta do alvo ── */
 .l-tut-alvo { position: fixed; z-index: 71; border-radius: 999px; border: 2px solid #2fe8ff; box-shadow: 0 0 16px #2fe8ff, inset 0 0 12px rgba(47, 232, 255, 0.45); pointer-events: none; animation: l-tut-pulsa 1.2s ease-in-out infinite; }
-/* o "?" (J1: 6): o resto da tela escurece, só o ícone do holo fica aceso */
-.l-tut-alvo.is-escuro { box-shadow: 0 0 0 200vmax rgba(2, 3, 10, 0.66), 0 0 22px #2fe8ff, inset 0 0 14px rgba(47, 232, 255, 0.5); animation: l-tut-pulsa-anel 1.2s ease-in-out infinite; }
+/* o primeiro contato com o holo: (notas 03/11, o dono: "um overlay escurecendo a
+   tela que não é pra ter") a tela NÃO escurece mais; só o anel mais forte em volta do ícone */
+.l-tut-alvo.is-escuro { box-shadow: 0 0 22px #2fe8ff, inset 0 0 14px rgba(47, 232, 255, 0.5); animation: l-tut-pulsa-anel 1.2s ease-in-out infinite; }
 .l-tut-alvo-q { position: absolute; left: -12px; top: -12px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #2fe8ff; color: #06060c; font: 800 15px var(--mono); font-style: normal; box-shadow: 0 0 12px #2fe8ff; }
 @keyframes l-tut-pulsa { 50% { transform: scale(1.08); opacity: 0.7; } }
 @keyframes l-tut-pulsa-anel { 50% { border-color: #fff; } }
-/* o destaque escuro não apaga o notch: é ele que diz o passo */
-:root:has(.l-tut-alvo.is-escuro) .l-viagem.is-disco .l-ilha.is-letreiro { z-index: 72; }
 @media (prefers-reduced-motion: reduce) {
   .l-tut-alvo, .l-tut-alvo.is-escuro, .l-entrega-luz b, .l-entrega-luz i, .l-rec-holo-gira, .l-rec-holo-bola { animation: none; }
 }
