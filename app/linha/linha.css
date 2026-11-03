@@ -2923,6 +2923,10 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-palcos-escada em { grid-area: e; font: 10px var(--mono); font-style: normal; color: rgba(255, 255, 255, 0.65); white-space: nowrap; }
 .l-palcos-menu { display: flex; flex-direction: column; gap: 6px; }
 .l-palcos-menu > small { font: 700 10px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cor); }
+/* (salvar no app, 03/11) o ♥ salvar de cada música do menu: no canto, sem tampar */
+.l-palcos-menu li.tem-salvar { position: relative; }
+.l-palcos-menu li.tem-salvar > button:first-child, .l-palcos-menu li.tem-salvar > span:first-child { padding-right: 78px; }
+.l-palcos-salvar { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); padding: 4px 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, #ff4fa3 55%, transparent); background: rgba(0, 0, 0, 0.35); color: #ff7fbf; font: 700 10px var(--mono); letter-spacing: 0.04em; white-space: nowrap; cursor: pointer; }
 .l-palcos-estrelas { font-style: normal; letter-spacing: 1px; color: #ffd23a; }
 .l-palcos-estrelas span { color: rgba(255, 255, 255, 0.2); }
 /* (T21) os shows do subúrbio xenom: os 4 multiversos embaixo do menu do palco */
