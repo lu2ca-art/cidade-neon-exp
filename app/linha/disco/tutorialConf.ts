@@ -22,7 +22,9 @@ export const CONFIG_TUTORIAL = {
   // pelo rádio, como antes (o mesmo passo, com a voz dela)
   quem: "nexo" as "nexo" | "dbee",
   // a tela de recompensa do holo lá fora (J1: 6); sem ela, o tutorial começa direto
-  recompensa: true,
+  // (notas 03/11, o dono: "não quero telas com fundo preto explicando nada") desligada:
+  // lá fora o mapa pisca de leve e o "toca aqui" aponta pro ícone; o "?" do notch explica
+  recompensa: false,
   // o cartão "você ganhou" de dentro da cena sai (a entrega é na mão; o destaque é lá fora)
   cartaoNaCena: false,
   // quanto tempo o drift precisa durar pra contar (s)
@@ -80,7 +82,7 @@ const n = (f: FaseDisco) => ORDEM.indexOf(f)
 // entregue, não vê tutorial nenhum
 const FASES_TUT: FaseDisco[] = ["dunas", "bar", "oficina", "subir"]
 const roda = (h: Pick<HistoriaDisco, "fase" | "holo" | "tutorial">) =>
-  CONFIG_TUTORIAL.ligado && h.holo && (FASES_TUT.includes(h.fase) || (h.fase === "carreira" && (h.tutorial ?? []).includes("recompensa")))
+  CONFIG_TUTORIAL.ligado && h.holo && (FASES_TUT.includes(h.fase) || (h.fase === "carreira" && ((h.tutorial ?? []).includes("recompensa") || (h.tutorial ?? []).includes("mapa"))))
 
 // o próximo passo pra essa história (null: nada pra ensinar agora)
 export function passoAgora(h: Pick<HistoriaDisco, "fase" | "holo" | "tutorial">): PassoTut | null {

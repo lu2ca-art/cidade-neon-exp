@@ -1139,6 +1139,7 @@ export default function LinhaPage() {
   // A PORTA ABRE: a missão fica feita, a recompensa entra no save (a faixa no
   // Guitar Driver, a referência no BATIDA, o neon$) e aparece grande na tela.
   // A missão da cidade acende a pista dela pra sempre (o objeto da faixa: as torres)
+  const PORTA_CALADA: MissaoId[] = ["dbee", "oficina"]
   const abrirPortaDe = (id: MissaoId) => {
     const s0 = saveRef.current
     // (T30) a recompensa inteira (grana, faixa do Guitar Driver, referência do B4TIDA,
@@ -1146,7 +1147,10 @@ export default function LinhaPage() {
     const { recompensa: r } = aplicarRecompensa(s0, id)
     if (!r) return
     setSave((s) => aplicarRecompensa(s, id).save)
-    setRecompensa(r)
+    // (notas 03/11, o dono: "uma página que abre na lata mostrando tudo que liberou —
+    // não gosto de nada super explicado") no começo (a D-Bee, antes do bar; a oficina)
+    // a porta abre calada: a recompensa entra no save, sem a tela por cima do jogo
+    if (!PORTA_CALADA.includes(id)) setRecompensa(r)
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
   }
   // (T63) desceu a rampa da boca do túnel: a porta escurece e, lá embaixo, as

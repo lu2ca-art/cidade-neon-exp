@@ -43,8 +43,19 @@
    tela que não é pra ter") a tela NÃO escurece mais; só o anel mais forte em volta do ícone */
 .l-tut-alvo.is-escuro { box-shadow: 0 0 22px #2fe8ff, inset 0 0 14px rgba(47, 232, 255, 0.5); animation: l-tut-pulsa-anel 1.2s ease-in-out infinite; }
 .l-tut-alvo-q { position: absolute; left: -12px; top: -12px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #2fe8ff; color: #06060c; font: 800 15px var(--mono); font-style: normal; box-shadow: 0 0 12px #2fe8ff; }
+/* (notas 03/11) o balão curto preso no alvo ("toca aqui"), sem fundo escuro na tela */
+.l-tut-balao { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap; padding: 5px 10px; border-radius: 10px; background: #2fe8ff; color: #06060c; font: 800 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 0 12px rgba(47, 232, 255, 0.7); animation: l-tut-balao 1.2s ease-in-out infinite; }
+.l-tut-balao::before { content: ""; position: absolute; left: 50%; top: -5px; margin-left: -5px; border: 5px solid transparent; border-top: 0; border-bottom-color: #2fe8ff; }
+.l-tut-balao.is-cima { top: auto; bottom: calc(100% + 10px); }
+.l-tut-balao.is-cima::before { top: auto; bottom: -5px; border-bottom: 0; border-top: 5px solid #2fe8ff; }
+/* o mapa do holo pisca de leve no passo do mapa; o ícone da missão de agora (no anel) pulsa */
+:root:has(.l-tut-alvo.is-mapa) .l-mapa-mini { animation: l-tut-pisca 1.6s ease-in-out infinite; }
+:root:has(.l-tut-alvo) .l-holo-anel-ic circle { animation: l-tut-ic 1.2s ease-in-out infinite; }
+@keyframes l-tut-balao { 50% { transform: translateX(-50%) translateY(-3px); } }
+@keyframes l-tut-pisca { 50% { opacity: 0.72; } }
+@keyframes l-tut-ic { 50% { stroke-width: 3.6; opacity: 0.75; } }
 @keyframes l-tut-pulsa { 50% { transform: scale(1.08); opacity: 0.7; } }
 @keyframes l-tut-pulsa-anel { 50% { border-color: #fff; } }
 @media (prefers-reduced-motion: reduce) {
-  .l-tut-alvo, .l-tut-alvo.is-escuro, .l-entrega-luz b, .l-entrega-luz i, .l-rec-holo-gira, .l-rec-holo-bola { animation: none; }
+  .l-tut-alvo, .l-tut-alvo.is-escuro, .l-tut-balao, .l-entrega-luz b, .l-entrega-luz i, .l-rec-holo-gira, .l-rec-holo-bola { animation: none; }
 }

@@ -168,7 +168,9 @@ export function TutorialHolo({ hist, pausado, onFeito }: { hist: Pick<HistoriaDi
   useEffect(() => () => nexoTutorial(null), [])
 
   if (!id || !passo) return null
-  return alvo ? <Destaque alvo={alvo} escuro={!!passo.destaque && !feitoAgora} /> : null
+  // (notas 03/11) sem tela escura: o alvo pulsa e um balão curto ("toca aqui") fica preso nele
+  const balao = !feitoAgora && TOCA_AQUI.includes(passo.id) ? "toca aqui" : null
+  return alvo ? <Destaque alvo={alvo} escuro={!!passo.destaque && !feitoAgora} passo={passo.id} balao={balao} /> : null
 }
 
 // (T56) o que o "?" do notch diz de cada passo (a explicação do passo, não o passo de novo)
@@ -185,11 +187,15 @@ const PASSO_INFO: Partial<Record<PassoTutId, string>> = {
 // o anel em volta da coisa; no primeiro passo (o "?"), o resto da tela escurece
 // e só o ícone do holo fica aceso (e o notch, que diz o passo), com o "?" do lado.
 // (T56) sem rótulo próprio: quem diz o que fazer é o notch
-function Destaque({ alvo, escuro }: { alvo: Caixa; escuro: boolean }) {
+// os passos em que o alvo é pra tocar (o balão "toca aqui" aparece neles)
+const TOCA_AQUI: PassoTutId[] = ["mapa", "rota", "anel"]
+function Destaque({ alvo, escuro, passo, balao }: { alvo: Caixa; escuro: boolean; passo: PassoTutId; balao: string | null }) {
   const m = 8
+  // o balão vai pro lado de dentro da tela (o alvo na metade de baixo: o balão em cima)
+  const emCima = typeof window !== "undefined" && alvo.y > window.innerHeight / 2
   return (
-    <div className={`l-tut-alvo ${escuro ? "is-escuro" : ""}`} aria-hidden="true" style={{ left: alvo.x - m, top: alvo.y - m, width: alvo.w + m * 2, height: alvo.h + m * 2 }}>
-      {escuro && <i className="l-tut-alvo-q">?</i>}
+    <div className={`l-tut-alvo is-${passo} ${escuro ? "is-escuro" : ""}`} aria-hidden="true" style={{ left: alvo.x - m, top: alvo.y - m, width: alvo.w + m * 2, height: alvo.h + m * 2 }}>
+      {balao && <span className={`l-tut-balao ${emCima ? "is-cima" : ""}`}>{balao}</span>}
     </div>
   )
 }
