@@ -37,7 +37,7 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, player, silenciarKombi, trilha } from "./som"
+import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
 import { somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
@@ -510,9 +510,11 @@ export default function LinhaPage() {
 
   // a música abafada (LU2CA): dentro de um lugar (a missão) e com o telefone
   // tocando, o rádio e o disco seguem mais baixos e sem agudo
+  // (música contínua, 03/11) com a faixa da pista tocando, a cena não abafa: a
+  // faixa vira o instrumental dela, limpo (ver pistaSom.missao lá embaixo)
   const emCena = !!cena && !somDoLugar(cena.lugar)
   useEffect(() => {
-    if (!emCena) return
+    if (!emCena || pistaSom.tocando) return
     abafar(true)
     return () => abafar(false)
   }, [emCena])
@@ -1345,13 +1347,19 @@ export default function LinhaPage() {
   useEffect(() => { fonteSom.discoPadrao = ACERVO.faixas.map((f) => f.src) }, [])
   // (T63) nas trincheiras, o som dos túneis (10 D3 10)
   const somAgora = cena ? somDoLugar(cena.lugar) : pingpong ? somDaMissao("drew") : trincheiras && !trincheiras.descendo ? somDaMissao("tuneis") : null
+  // (música contínua, 03/11) com a faixa de uma pista tocando, a missão NÃO troca
+  // de música: a mesma faixa passa pro instrumental no mesmo ponto (abaixo). A
+  // trilha da missão só entra sem faixa de pista (o deserto: casa, dunas)
   useEffect(() => {
-    if (!somAgora) return
+    if (!somAgora || pistaSom.tocando) return
     silenciarKombi(true)
     trilha.entrar(somAgora)
     return () => { trilha.sair(); silenciarKombi(false) }
   }, [somAgora])
-  useEffect(() => { if (missaoCarreira) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
+  // a faixa da pista vive na página (não na estrada, que desmonta numa sala): sai da página, para
+  useEffect(() => () => pistaSom.parar(), [])
+  // (só baixa o som da missão se ele vai tocar: sem faixa de pista, no deserto)
+  useEffect(() => { if (missaoCarreira && !pistaSom.tocando) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
   // (T22) a casa da missão pegada começa a baixar enquanto a Kombi ainda está longe
   useEffect(() => {
     if (!missaoCarreira) return
@@ -1673,6 +1681,15 @@ export default function LinhaPage() {
   // (vitrine) o bar do subúrbio: a porta perto (o botão), a visita e a sinuca aberta
   const [portaBar, setPortaBar] = useState(false)
   const [sinucaBar, setSinucaBar] = useState(false)
+  // (música contínua, 03/11) missão, peça ou cena começou no meio da faixa: o
+  // instrumental da MESMA faixa no MESMO ponto (crossfade); terminou, volta a
+  // completa se ela ainda não acabou. Nada disso pausa a faixa
+  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora
+  useEffect(() => {
+    if (!momentoMissao) return
+    pistaSom.missao(true)
+    return () => pistaSom.missao(false)
+  }, [momentoMissao])
   const entrarNoBar = () => {
     if (cena || cinema) return
     setPortaBar(false)
