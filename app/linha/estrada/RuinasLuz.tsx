@@ -301,7 +301,9 @@ export function RuinasLuz({ luzes }: { luzes: LuzesRuinas }) {
       for (let k = 1; k < n; k++) {
         const [x, y, z] = em(k / n)
         // varal 0: todo quente; 1: colorido; 2: quente com uma colorida a cada três
-        const c = va.cores === 0 ? QUENTE : va.cores === 1 ? NEON[(k + Math.round(va.ax)) % NEON.length] : k % 3 ? QUENTE : NEON[k % NEON.length]
+        // (ci 05/11) o varal do lado negativo do x dava índice negativo (o % do JS
+        // mantém o sinal): cor undefined e o subúrbio caía com "e.c is not iterable"
+        const c = va.cores === 0 ? QUENTE : va.cores === 1 ? NEON[(((k + Math.round(va.ax)) % NEON.length) + NEON.length) % NEON.length] : k % 3 ? QUENTE : NEON[k % NEON.length]
         bs.push({ x, y: y - 0.12, z, sx: 0.55, sy: 0.55, tipo: 0, fase: (k * 0.37 + va.ax) % 1, c })
       }
     }

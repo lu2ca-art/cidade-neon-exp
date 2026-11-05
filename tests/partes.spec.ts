@@ -33,6 +33,10 @@ const PARTES: [string, string | null][] = [
   ["kombi.dentro", "livre"],
 ]
 
+// (T64, 30/10) a perseguição no "escolher" já é a hora do metrô: a fuga começa ao
+// abrir (disco/metro.ts, podeMetro), por cima da tela de entrada
+const ABRE_NO_METRO = ["perseguicao.escolher"]
+
 for (const [parte, fase] of PARTES) {
   test(`?parte=${parte}`, async ({ page }) => {
     const erros: string[] = []
@@ -49,8 +53,15 @@ for (const [parte, fase] of PARTES) {
     if (fase) expect(save?.disco?.fase).toBe(fase)
     expect(await saveReal(page)).toBe(REAL)
     expect(page.url()).not.toContain("parte=")
-    const entrar = page.locator(".l-btn-entrar")
-    if (await entrar.isVisible().catch(() => false)) { await entrar.click(); await page.waitForTimeout(4000) }
+    const metro = page.locator(".mt-raiz")
+    if (ABRE_NO_METRO.includes(parte)) {
+      await expect(metro).toBeVisible()
+      await expect.poll(async () => (await saveDoJogo(page))?.disco?.metro?.fase, { timeout: 15_000 }).toBe("agora")
+    } else {
+      await expect(metro).toHaveCount(0)
+      const entrar = page.locator(".l-btn-entrar")
+      if (await entrar.isVisible().catch(() => false)) { await entrar.click({ timeout: 20_000 }); await page.waitForTimeout(4000) }
+    }
     expect(await saveReal(page)).toBe(REAL)
     expect(erros).toEqual([])
   })
