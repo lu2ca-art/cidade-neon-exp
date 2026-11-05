@@ -2766,7 +2766,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         </div>
       )}
       {parque !== "andando" && (
-        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone}
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao}
           onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
       )}
       {drone && (
@@ -6604,7 +6604,7 @@ function CenaBase({
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}
       {/* (T58) o GPS tipo Waze: a faixa da rota no chão da pista, à frente (1 draw, só com destino) */}
       {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}
-      <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} />
+      <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} fase={faseHistoria} />
       {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
       {/* (os robôs só vivem no deserto, a mais de 1,3 km do centro: no miolo, desmontados) */}
       {"disco" in M && livreCaidos && <Perto nome="robôs caídos" raio={1000} pontos={pertoDe.centro} fora><Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} onAtropelou={atropelouRobo} /></Seguro></Perto>}

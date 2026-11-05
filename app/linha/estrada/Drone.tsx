@@ -19,7 +19,10 @@ import type { Mundo } from "./mundo"
 import { PASSO } from "./pista"
 import { calcularRota } from "./rota"
 import { blipsDo, noMundo, uDaMissao, type IconeMapa, type Marca } from "./Mapa"
-import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
+import { CHAO_LUGARES, type LugarChao } from "../disco/historia"
+import { pontosDoMapa } from "./pontosMapa"
+// (notas 04/11) a cor de uma missão feita no drone: a mesma, bem mais escura
+const apagar = (cor: string) => `#${new THREE.Color(cor).multiplyScalar(0.3).getHexString()}`
 import type { LugarId } from "../lugares"
 import { pontoDoAlvo } from "./alvoMissao"
 
@@ -354,7 +357,7 @@ function pontoVia(M: Mundo, via: number, u: number) {
   return i
 }
 
-export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alvoLivre, apagada, missoes }: {
+export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase = null }: {
   M: Mundo
   jogo: React.RefObject<PoseJogo>
   marcaRef: React.RefObject<Marca | null>
@@ -365,6 +368,8 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
   alvoLivre?: { x: number; z: number; cor: string } | null
   apagada?: boolean[] | null
   missoes?: IconeMapa[] | null
+  // (notas 04/11) a fase da história: o que o mapa mostra (pontosMapa.ts, o mesmo do minimapa)
+  fase?: string | null
 }) {
   const chao = (M as MundoChao).chaoEm
   const yChao = (x: number, z: number, y0: number) => (chao ? chao(x, z) : y0)
@@ -428,8 +433,8 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
 
   const grupo = useRef<THREE.Group>(null)
   const st = useRef({ sig: "", ini: 0, total: 0, pois: "", destKey: "", temRota: false })
-  const props = useRef({ alvoChao, lugarAlvo, alvoLivre, apagada, missoes })
-  props.current = { alvoChao, lugarAlvo, alvoLivre, apagada, missoes }
+  const props = useRef({ alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase })
+  props.current = { alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase }
 
   useEffect(() => {
     const blips = blipsDo(M).filter((b) => b.tipo !== "flor")
@@ -437,7 +442,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
     // os pontos de interesse (feixes suaves): refeitos só quando muda o que aparece
     const pontosDeInteresse = () => {
       const pr = props.current, ap = pr.apagada
-      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => `${m.id}${m.agora ? "!" : m.feita ? "." : ""}`).join(",") ?? ""}`
+      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => `${m.id}${m.agora ? "!" : m.feita ? "." : ""}`).join(",") ?? ""}|${pr.fase ?? ""}|${pr.alvoChao ?? ""}`
       if (key === st.current.pois) return
       st.current.pois = key
       const C = DRONE_CFG, I = feixes.inst
@@ -447,19 +452,11 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
         mtx.makeScale(C.feixeRaio, C.feixeAlt * alto, C.feixeRaio).setPosition(x, y, z)
         I.setMatrixAt(n, mtx); I.setColorAt(n, cor.set(c)); n++
       }
-      for (const b of blips) { if (ap?.[b.via]) continue; const i = pontoVia(M, b.via, b.u), v = M.vias[b.via]; por(v.px[i], v.py[i], v.pz[i], b.cor) }
-      if ("disco" in M) for (const k of CHAO_FIXOS) { const c = CHAO_LUGARES[k]; por(c.x, yChao(c.x, c.z, 0), c.z, c.cor, 0.8) }
-      if (pr.missoes && "disco" in M) {
-        const D = M as unknown as { pistas: { nome: string; ida: number }[] }
-        for (const m of pr.missoes) {
-          // (missões claras) no lugar da missão (o mesmo ponto do gatilho); a feita não ganha feixe
-          if (m.feita) continue
-          if (m.lugar) { const w = pontoDoAlvo(M, m.lugar); if (w) por(w.x, w.y, w.z, m.cor, m.agora ? 1.6 : 1.1); continue }
-          const p = D.pistas.find((x) => x.nome === m.faixa)
-          if (!p || ap?.[p.ida]) continue
-          const v = M.vias[p.ida], i = pontoVia(M, p.ida, uDaMissao(M, p.nome, v.n))
-          por(v.px[i], v.py[i], v.pz[i], m.cor, 1.3)
-        }
+      // (notas 04/11) os mesmos pontos do minimapa (pontosMapa.ts): a missão de agora
+      // mais alta, as que dá pra pegar, as feitas baixinhas e apagadas
+      for (const p of pontosDoMapa(M, { apagada: ap, missoes: pr.missoes, fase: pr.fase, alvoChao: pr.alvoChao })) {
+        if (p.tipo === "missao") por(p.x, p.y, p.z, p.feita ? apagar(p.cor) : p.cor, p.agora ? 1.6 : p.feita ? 0.45 : 1.1)
+        else por(p.x, p.tipo === "chao" ? yChao(p.x, p.z, p.y) : p.y, p.z, p.cor, p.tipo === "chao" ? 0.8 : 1)
       }
       I.count = n
       I.instanceMatrix.needsUpdate = true
@@ -520,7 +517,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [M, faixa, feixes, jogo, marcaRef, vagaRef])
   // mudou o que aparece (pista acesa, missão nova): os feixes se refazem na próxima volta
-  useEffect(() => { st.current.pois = "" }, [apagada, missoes])
+  useEffect(() => { st.current.pois = "" }, [apagada, missoes, fase, alvoChao])
 
   useFrame((state, dt) => {
     const g = grupo.current, D = DRONE

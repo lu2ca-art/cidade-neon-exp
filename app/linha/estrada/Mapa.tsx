@@ -19,9 +19,10 @@ import { PAGINAS } from "../paginas"
 import { pintarCarta } from "./carta"
 import { ESCALA, H as HU, W as WU } from "../rede/terreno"
 import { ICONE_MISSAO } from "./Holo"
-import { CHAO_FIXOS, CHAO_LUGARES } from "../disco/historia"
+import type { LugarChao } from "../disco/historia"
 import { NAV } from "./nav"
-import { pontoDoAlvo, type LugarMissao } from "./alvoMissao"
+import { pontosDoMapa, type IconeMapa } from "./pontosMapa"
+export type { IconeMapa } from "./pontosMapa"
 
 export interface Marca extends Ponto { nome: string; cor: string }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
@@ -31,7 +32,6 @@ const ROTA_COR = "#ff3fb0"
 // (23/10) os lugares do chão do subúrbio (a oficina, o bar, o palco) ficam fora das
 // pistas: no mapa, um ponto em coordenada de mundo, com halo pulsando pra achar
 // (T09) os achados da oficina (o painel, a goteira) não são lugar: ficam fora do mapa fixo
-const CHAO = CHAO_FIXOS.map((k) => CHAO_LUGARES[k])
 function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: string, k: number, agora: number) {
   const p = 0.5 + 0.5 * Math.sin(agora / 320)
   g.globalAlpha = 0.18 + 0.22 * p; g.fillStyle = cor; g.beginPath(); g.arc(x, y, (10 + 5 * p) * k, 0, 7); g.fill(); g.globalAlpha = 1
@@ -44,7 +44,6 @@ function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: st
 // do gatilho), não mais na pista da faixa. `agora` = a pegada (maior, pulsando,
 // com o nome); `feita` = apagada; o resto, as que dá pra pegar. `icone` = a
 // chave do desenho (ICONE_MISSAO, a faixa); `faixa` = o rótulo embaixo
-export interface IconeMapa { id: string; faixa: string; cor: string; agora: boolean; feita?: boolean; icone?: string; lugar?: LugarMissao }
 interface IconeDesenho extends IconeMapa { x: number; z: number; forma: Path2D | null }
 const DASH = [14, 22], SEM_DASH: number[] = []
 // o caminho acendendo: um tracejado claro correndo por cima da rota, no sentido da Kombi pro destino
@@ -182,8 +181,11 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone }: {
+export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone, fase = null, alvoChao = null }: {
   M: Mundo
+  // (notas 04/11) a fase da história e o lugar do chão de agora: o que o mapa mostra (pontosMapa.ts)
+  fase?: string | null
+  alvoChao?: LugarChao | null
   // (disco, os atos) as vias das pistas ainda apagadas: no mapa, um fio escuro
   apagada?: boolean[] | null
   // (21/10, o mapa que ensina) as vias das pistas disponíveis agora (pulsam) e as
@@ -225,6 +227,10 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   }, [M])
   // (os atos) os lugares de uma pista apagada também ficam apagados
   const blips = useMemo(() => blipsDo(M).filter((b) => !apagada?.[b.via]), [M, apagada])
+  // (notas 04/11) O QUE APARECE: os mesmos pontos do drone (pontosMapa.ts)
+  const pontos = useMemo(() => pontosDoMapa(M, { apagada, missoes, fase, alvoChao }), [M, apagada, missoes, fase, alvoChao])
+  const lugaresVis = useMemo(() => pontos.filter((p) => p.tipo === "lugar" || p.tipo === "posto" || p.tipo === "parque") as (typeof pontos[number] & { via: number; u: number })[], [pontos])
+  const chaoVis = useMemo(() => pontos.filter((p) => p.tipo === "chao"), [pontos])
   // o destino: o que você marcou, senão o lugar da missão
   const destino = useMemo<Marca | null>(() => {
     if (marca) return marca
@@ -234,18 +240,10 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   const rota = useRef<{ segs: TrechoDesenho[]; metros: number } | null>(null)
   // os ícones das missões: na pista de cada uma (no disco, a ida dela, a pouco mais da metade)
   const icones = useMemo<IconeDesenho[]>(() => {
-    if (!missoes || !("disco" in M)) return []
-    const D = M as unknown as { pistas: { nome: string; ida: number }[] }
     const forma = (k?: string) => (k && ICONE_MISSAO[k] && typeof Path2D !== "undefined" ? new Path2D(ICONE_MISSAO[k]) : null)
-    return missoes.flatMap((m) => {
-      // (missões claras) no lugar da missão: o mesmo ponto do gatilho
-      if (m.lugar) { const w = pontoDoAlvo(M, m.lugar); return w ? [{ ...m, x: w.x, z: w.z, forma: forma(m.icone ?? m.id) }] : [] }
-      const p = D.pistas.find((x) => x.nome === m.faixa)
-      if (!p || apagada?.[p.ida]) return []
-      const v = M.vias[p.ida], w = noMundo(M, { via: p.ida, u: uDaMissao(M, p.nome, v.n) })
-      return [{ ...m, x: w.x, z: w.z, forma: forma(m.icone ?? m.id) }]
-    })
-  }, [missoes, M, apagada])
+    // (missões claras) no lugar da missão: o mesmo ponto do gatilho
+    return pontos.filter((p) => p.tipo === "missao").map((p) => ({ id: p.id, faixa: p.nome, cor: p.cor, agora: !!p.agora, feita: p.feita, icone: p.icone, x: p.x, z: p.z, forma: forma(p.icone) }))
+  }, [pontos])
 
   // (T58) com o GPS ligado, o minimapa mostra a MESMA rota dele (a vaga da missão,
   // o lugar do chão, a marca): antes ele só via a marca e o lugar da missão
@@ -331,26 +329,25 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       const rt = rota.current
       // (LU2CA 21/10) com uma pista marcada, o resto do mapa apaga 50%: o foco na acesa
       if (rt) { g.fillStyle = "rgba(8, 7, 16, 0.5)"; g.fillRect(0, 0, S, S); desenharRota(g, rt.segs, tela, 4.5); acenderRota(g, rt.segs, tela, 4.5, agora) }
-      for (const b of blips) {
-        const w = noMundo(M, b)
-        let [x, y] = tela(w.x, w.z)
-        const d = Math.hypot(x - R, y - R)
-        if (b.tipo === "flor" && d > R - 4) continue
-        // fora do círculo: o lugar fica preso na borda (como no GTA)
-        if (d > R - 9) { x = R + ((x - R) / d) * (R - 9); y = R + ((y - R) / d) * (R - 9) }
-        desenharBlip(g, x, y, b, 0.85)
+      // (notas 04/11) os mesmos pontos do mapa grande e do drone (pontosMapa.ts). Só o
+      // que está dentro do círculo; preso na borda (como no GTA) fica só a missão de agora
+      for (const b of lugaresVis) {
+        const [x, y] = tela(b.x, b.z)
+        if (Math.hypot(x - R, y - R) > R - 9) continue
+        desenharBlip(g, x, y, b as { cor: string; tipo: Blip["tipo"] }, 0.85)
       }
-      if ("disco" in M) for (const c of CHAO) {
-        let [x, y] = tela(c.x, c.z)
-        const d = Math.hypot(x - R, y - R)
-        if (d > R - 10) { x = R + ((x - R) / d) * (R - 10); y = R + ((y - R) / d) * (R - 10) }
+      for (const c of chaoVis) {
+        const [x, y] = tela(c.x, c.z)
+        if (Math.hypot(x - R, y - R) > R - 10) continue
         desenharChao(g, x, y, c.cor, 0.8, agora)
       }
       for (const ic of icones) {
-        if (ic.feita) continue
         let [x, y] = tela(ic.x, ic.z)
         const d = Math.hypot(x - R, y - R)
-        if (d > R - 12) { x = R + ((x - R) / d) * (R - 12); y = R + ((y - R) / d) * (R - 12) }
+        if (d > R - 12) {
+          if (!ic.agora) continue
+          x = R + ((x - R) / d) * (R - 12); y = R + ((y - R) / d) * (R - 12)
+        }
         desenharIcone(g, x, y, ic, 0.6, agora)
       }
       const dn = destNav.current ?? (destino ? { ...noMundo(M, destino), cor: destino.cor } : null)
@@ -368,7 +365,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     }
     raf = requestAnimationFrame(desenhar)
     return () => cancelAnimationFrame(raf)
-  }, [M, vias, blips, destino, pose, carta, icones])
+  }, [M, vias, lugaresVis, chaoVis, destino, pose, carta, icones])
 
   // o mapa grande: a cidade inteira, norte pra cima
   const caixa = useMemo(() => {
@@ -416,16 +413,15 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       // (LU2CA 21/10) com uma pista marcada, o resto do mapa apaga 50%: o foco na acesa
       if (rt) { g.fillStyle = "rgba(7, 6, 14, 0.5)"; g.fillRect(0, 0, W, H); desenharRota(g, rt.segs, tela, 4); acenderRota(g, rt.segs, tela, 4, performance.now()) }
       g.font = "700 11px ui-monospace, monospace"; g.textBaseline = "middle"
-      for (const b of blips) {
-        const w = noMundo(M, b); const [x, y] = tela(w.x, w.z)
+      for (const b of lugaresVis) {
+        const [x, y] = tela(b.x, b.z)
         // (22/10) os pontos de interesse em destaque: um halo na cor do lugar
-        if (b.tipo !== "flor") { g.globalAlpha = 0.22; g.fillStyle = b.cor; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill(); g.globalAlpha = 1 }
-        desenharBlip(g, x, y, b, 1.1)
-        if (b.tipo === "flor") continue
+        g.globalAlpha = 0.22; g.fillStyle = b.cor; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill(); g.globalAlpha = 1
+        desenharBlip(g, x, y, b as { cor: string; tipo: Blip["tipo"] }, 1.1)
         g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(b.nome).width; g.fillRect(x + 10, y - 8, tw + 8, 16)
         g.fillStyle = "#e9e6f2"; g.fillText(b.nome, x + 14, y)
       }
-      if ("disco" in M) for (const c of CHAO) {
+      for (const c of chaoVis) {
         const [x, y] = tela(c.x, c.z)
         desenharChao(g, x, y, c.cor, 1.2, performance.now())
         g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(c.nome).width; g.fillRect(x + 12, y - 8, tw + 8, 16)
@@ -458,7 +454,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     }
     desenhar()
     return () => cancelAnimationFrame(raf)
-  }, [aberto, M, vias, blips, destino, caixa, pose, carta, icones])
+  }, [aberto, M, vias, lugaresVis, chaoVis, destino, caixa, pose, carta, icones])
 
   // arrastar move, pinça/roda aproxima, tocar marca
   const gesto = useRef<{ x: number; y: number; moveu: boolean; dedos: Map<number, { x: number; y: number }>; dist: number }>({ x: 0, y: 0, moveu: false, dedos: new Map(), dist: 0 })
@@ -470,7 +466,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     for (const ic of icones) { if (!ic.feita && Math.hypot(ic.x - x, ic.z - z) < 26 / vv.esc) { onIcone?.(ic.id); return } }
     // um lugar perto do dedo ganha; senão, a rua mais perto
     let melhor: Blip | null = null, dm = 28 / vv.esc
-    for (const b of blips) { if (b.tipo === "flor") continue; const w = noMundo(M, b); const d = Math.hypot(w.x - x, w.z - z); if (d < dm) { dm = d; melhor = b } }
+    for (const b of lugaresVis) { const d = Math.hypot(b.x - x, b.z - z); if (d < dm) { dm = d; melhor = { id: b.id, nome: b.nome, cor: b.cor, via: b.via, u: b.u, tipo: b.tipo as Blip["tipo"] } } }
     if (melhor) { onMarcar({ via: melhor.via, u: melhor.u, nome: melhor.nome, cor: melhor.cor }); return }
     const p = pontoMaisPerto(M, x, z)
     if (p && p.d < 60 / vv.esc + 40) onMarcar({ via: p.via, u: p.u, nome: "o ponto marcado", cor: corDaVia(M, p.via) })
