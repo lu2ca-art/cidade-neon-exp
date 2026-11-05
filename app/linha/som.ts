@@ -701,7 +701,10 @@ class Player {
   }
 
   // entrada (s): a música entra em fade (a troca de estação, rádios.ts); 0 = direto
+  /** quantas vezes tocar() foi chamado (a troca de estação confere se algo entrou) */
+  tocadas = 0
   tocar(src: string, aoFim?: () => void, vol = 1, entrada = 0) {
+    this.tocadas++
     const el = this.garantir()
     this.aoFim = aoFim ?? null
     if (this.src !== src) {
