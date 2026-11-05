@@ -157,6 +157,8 @@ function Tela({ inicio }: { inicio: PistaId }) {
     let faixaAqui = inicio
     const trocando = { current: false }
     const estado = (e: YTEvento) => {
+      // (revisão 05/11) um evento que chega depois de fechar não cala a música do jogo
+      if (!vivo) return
       if (e.data === 1) { trocando.current = false; calarPraTv(true); return }
       if (e.data === 0) {
         // playlist do álbum: o YouTube segue sozinho até o último vídeo dela
