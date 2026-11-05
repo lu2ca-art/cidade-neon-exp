@@ -22,6 +22,7 @@ import { ICONE_MISSAO } from "./Holo"
 import type { LugarChao } from "../disco/historia"
 import { NAV } from "./nav"
 import { pontosDoMapa, type IconeMapa } from "./pontosMapa"
+import { brilha } from "../disco/brilho"
 export type { IconeMapa } from "./pontosMapa"
 
 export interface Marca extends Ponto { nome: string; cor: string }
@@ -344,9 +345,16 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       for (const ic of icones) {
         let [x, y] = tela(ic.x, ic.z)
         const d = Math.hypot(x - R, y - R)
+        // (trilha de pedras) o que acabou de abrir brilha no próprio lugar (e fica preso na borda)
+        const b = brilha(ic.id)
         if (d > R - 12) {
-          if (!ic.agora) continue
+          if (!ic.agora && !b) continue
           x = R + ((x - R) / d) * (R - 12); y = R + ((y - R) / d) * (R - 12)
+        }
+        if (b) {
+          const s = 0.5 + 0.5 * Math.sin(agora / 170)
+          g.globalAlpha = 0.35 + 0.5 * s; g.strokeStyle = ic.cor; g.lineWidth = 2.5
+          g.beginPath(); g.arc(x, y, 12 + 7 * s, 0, 7); g.stroke(); g.globalAlpha = 1
         }
         desenharIcone(g, x, y, ic, 0.6, agora)
       }

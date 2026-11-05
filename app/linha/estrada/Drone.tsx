@@ -21,6 +21,7 @@ import { calcularRota } from "./rota"
 import { blipsDo, noMundo, uDaMissao, type IconeMapa, type Marca } from "./Mapa"
 import { CHAO_LUGARES, type LugarChao } from "../disco/historia"
 import { pontosDoMapa } from "./pontosMapa"
+import { brilha, chaveBrilho } from "../disco/brilho"
 // (notas 04/11) a cor de uma missão feita no drone: a mesma, bem mais escura
 const apagar = (cor: string) => `#${new THREE.Color(cor).multiplyScalar(0.3).getHexString()}`
 import type { LugarId } from "../lugares"
@@ -442,7 +443,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
     // os pontos de interesse (feixes suaves): refeitos só quando muda o que aparece
     const pontosDeInteresse = () => {
       const pr = props.current, ap = pr.apagada
-      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => `${m.id}${m.agora ? "!" : m.feita ? "." : ""}`).join(",") ?? ""}|${pr.fase ?? ""}|${pr.alvoChao ?? ""}`
+      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => `${m.id}${m.agora ? "!" : m.feita ? "." : ""}`).join(",") ?? ""}|${pr.fase ?? ""}|${pr.alvoChao ?? ""}|${chaveBrilho()}`
       if (key === st.current.pois) return
       st.current.pois = key
       const C = DRONE_CFG, I = feixes.inst
@@ -455,7 +456,8 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       // (notas 04/11) os mesmos pontos do minimapa (pontosMapa.ts): a missão de agora
       // mais alta, as que dá pra pegar, as feitas baixinhas e apagadas
       for (const p of pontosDoMapa(M, { apagada: ap, missoes: pr.missoes, fase: pr.fase, alvoChao: pr.alvoChao })) {
-        if (p.tipo === "missao") por(p.x, p.y, p.z, p.feita ? apagar(p.cor) : p.cor, p.agora ? 1.6 : p.feita ? 0.45 : 1.1)
+        // (trilha de pedras) o que acabou de abrir: o feixe mais alto, no próprio lugar
+        if (p.tipo === "missao") por(p.x, p.y, p.z, p.feita && !brilha(p.id) ? apagar(p.cor) : p.cor, p.agora ? 1.6 : brilha(p.id) ? 2.4 : p.feita ? 0.45 : 1.1)
         else por(p.x, p.tipo === "chao" ? yChao(p.x, p.z, p.y) : p.y, p.z, p.cor, p.tipo === "chao" ? 0.8 : 1)
       }
       I.count = n

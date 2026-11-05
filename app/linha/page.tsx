@@ -87,7 +87,9 @@ import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
-import { Recompensa } from "./disco/Recompensa"
+import { brilhar } from "./disco/brilho"
+import { notch } from "./estrada/Holo"
+import { vib } from "./som-carro"
 import { RecompensaHolo } from "./disco/TutorialHolo"
 import { CONFIG_TUTORIAL, faltaRecompensaHolo } from "./disco/tutorialConf"
 import { TrilhaPedras } from "./disco/TrilhaPedrasTela"
@@ -1150,7 +1152,9 @@ export default function LinhaPage() {
   // (T02) a peça aberta agora (o ping pong, o show, a prova), a recompensa na tela e a rua
   const pecaAberta = useRef<{ missao: MissaoId; qual: "arte" | "jogo" } | null>(null)
   const [provaMissao, setProvaMissao] = useState<{ missao: MissaoId; qual: "arte" | "jogo"; id: ProvaId; cor: string } | null>(null)
-  const [recompensa, setRecompensa] = useState<Recompensa13 | null>(null)
+  // (trilha de pedras, 05/11) a tela "a porta abriu" saiu: o que liberou brilha no mapa
+  // (mostrarLiberou, logo abaixo). Fica o nome, pra quem ainda pergunta "tem tela por cima?"
+  const recompensa = null as Recompensa13 | null
   // (T07) o tutorial do holo: a tela lá fora e os passos feitos (no save, recarregar não perde)
   const [cenaHolo, setCenaHolo] = useState(false)
   const [cenaTambor, setCenaTambor] = useState(false)
@@ -1167,17 +1171,31 @@ export default function LinhaPage() {
   // Guitar Driver, a referência no BATIDA, o neon$) e aparece grande na tela.
   // A missão da cidade acende a pista dela pra sempre (o objeto da faixa: as torres)
   const PORTA_CALADA: MissaoId[] = ["dbee", "oficina"]
+  // O QUE LIBEROU, NO LUGAR (sem a tela "a porta abriu"): as missões novas e o lugar
+  // da que acabou brilham no mapa (disco/brilho.ts) e o nome curto passa no notch;
+  // a música da missão fica (o "ouvir até o fim", pequeno, no canto)
+  const mostrarLiberou = (r: Recompensa13, novas: string[]) => {
+    brilhar([r.missao, ...novas], r.cor)
+    const nomes = [...r.abriu.filter((a) => !a.emBreve).map((a) => a.nome), ...(r.guitar ? [`${r.guitar.nome} no Guitar Driver`] : []), ...(r.instrumento ? [r.instrumento.nome] : [])]
+    vib([20, 40, 20])
+    notch(nomes.length ? `abriu · ${nomes[0]}${nomes.length > 1 ? ` +${nomes.length - 1}` : ""}` : `✓ ${r.quem}`, r.cor)
+    if (r.neon > 0) setTimeout(() => notch(`+${r.neon} neon$`, r.cor), 400)
+    const m = MISSOES13[r.missao]
+    if (m.faixa && m.onde === "cidade") { const f = m.faixa; setTimeout(() => setOuvirFim({ pista: f, id: Date.now() }), 4500) }
+  }
   const abrirPortaDe = (id: MissaoId) => {
     const s0 = saveRef.current
     // (T30) a recompensa inteira (grana, faixa do Guitar Driver, referência do B4TIDA,
     // as portas) é aplicada num lugar só: disco/recompensas.ts
-    const { recompensa: r } = aplicarRecompensa(s0, id)
+    const { recompensa: r, save: s1 } = aplicarRecompensa(s0, id)
     if (!r) return
     setSave((s) => aplicarRecompensa(s, id).save)
     // (notas 03/11, o dono: "uma página que abre na lata mostrando tudo que liberou —
     // não gosto de nada super explicado") no começo (a D-Bee, antes do bar; a oficina)
-    // a porta abre calada: a recompensa entra no save, sem a tela por cima do jogo
-    if (!PORTA_CALADA.includes(id)) setRecompensa(r)
+    // a porta abre calada: a recompensa entra no save, sem a tela por cima do jogo.
+    // (trilha de pedras, 05/11) nas da cidade também não tem mais tela: o que abriu
+    // brilha no próprio lugar do mapa e o nome curto passa no notch
+    if (!PORTA_CALADA.includes(id)) mostrarLiberou(r, feiraDoSave(s1).map((o) => o.id).filter((x) => !feiraDoSave(s0).some((o) => o.id === x)))
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
   }
   // (T63) desceu a rampa da boca do túnel: a porta escurece e, lá embaixo, as
@@ -2485,15 +2503,6 @@ export default function LinhaPage() {
         {noMetro && <MetroFuga historia={h13} onPasso={fimMetroPasso} onSair={sairDoMetro} />}
         {/* (T64, lote D) o violão: o botão aparece com o disco ou a rádio tocando (só com o violão no save) */}
         {D && tela.t === "corrida" && <ViolaoMundo temViolao={!!save.violao} escondido={emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
-        {/* (T02) a porta abriu: a recompensa, grande; "seguir" volta direto pro jogo */}
-        {recompensa && <Recompensa r={recompensa} onSeguir={() => {
-          const r = recompensa
-          setRecompensa(null)
-          const m = MISSOES13[r.missao]
-          // (T16) a loja de discos abriu: ela abre, pra comprar o primeiro disco com a grana
-          if (r.abriu.some((x) => x.id === "loja-discos")) { setTela({ t: "app", id: "loja" }); return }
-          if (m.faixa && m.onde === "cidade") setOuvirFim({ pista: m.faixa, id: Date.now() })
-        }} onXenom={hist.fase === "carreira" ? () => { setRecompensa(null); setRua(true) } : undefined} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}
