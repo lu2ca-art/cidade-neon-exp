@@ -32,6 +32,7 @@ import { pistaDoArquivo, rotuloDoArquivo } from "../disco/pistasLiberadas"
 import { FREQUENCIAS, type FreqId } from "../radio"
 import { lerFaixaRua, ouvirFaixaRua } from "../disco/musicaContinua"
 import { faixaDoTitulo, linkDaFaixa, nomeDaFaixa, salvarFaixa } from "../disco/linksFaixas"
+import { BotaoTv } from "../disco/TvHolo"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
@@ -47,6 +48,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   "app:guitar": { t: "GUITAR DRIVER", d: "o jogo das faixas ao vivo. por enquanto trancado: abre quando a sua carreira chegar lá." },
   "app:stream": { t: "vid.stream", d: "os clipes. abre aqui mesmo, no holo: a música da cidade para enquanto ele tá aberto." },
   propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
+  tv: { t: "📺 TV", d: "a TV do holo: o vídeo da faixa que toca, no YouTube, num cantinho. o jogo continua; a música do jogo abaixa enquanto a TV toca. arrasta pelo topo pra outro canto; × fecha." },
   salvar: { t: "♥ salvar", d: "a faixa que toca na rua, no seu app de música: um toque abre o app (ou a página com todos) pra salvar ou pôr na sua playlist. só se você quiser." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
   ilha: { t: "N3XO_ · o notch", d: "o Nexo: o objetivo da missão, o passo de agora e as dicas passam aqui. toca nele e ele abre com o objetivo inteiro." },
@@ -434,6 +436,7 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
         ) : <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>}
         {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
         {!tut && !explicando && <SalvarNexo />}
+        {!tut && !explicando && <BotaoTv aviso={notch} />}
         <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>
       </div>
       {expandido && !explicando && (

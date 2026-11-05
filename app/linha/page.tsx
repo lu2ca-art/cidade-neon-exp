@@ -77,6 +77,7 @@ import type { EventoHistoria } from "./estrada/Corrida"
 import { InicioDisco } from "./disco/Inicio"
 import { DUR as DUR_MINHOCA, Minhoca } from "./disco/Minhoca"
 import { VISOR, Visor, type VisorId } from "./disco/Visor"
+import { TvHolo } from "./disco/TvHolo"
 import { Freq } from "./disco/Freq"
 import { type FaixaShow, type ResultadoShow } from "./disco/Show"
 import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } from "./disco/xenom"
@@ -2514,6 +2515,8 @@ export default function LinhaPage() {
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
         {ouvirFim && !jornal && tela.t === "corrida" && <OuvirFim key={ouvirFim.id} pista={ouvirFim.pista} quando={ouvirFim.id} onFechar={fecharOuvir} />}
         {visor && <Visor id={visor} onFechar={() => setVisor(null)}>{visor === "freq" ? <Freq save={save} /> : undefined}</Visor>}
+        {/* (05/11, bíblia §7) a TV do holo: o vídeo da faixa no YouTube, num canto (só existe aberta) */}
+        <TvHolo />
         {tela.t === "bloqueio" && <Bloqueio onAbrir={() => setTela({ t: "chat", id: save.completos.includes("grupo") ? "abertura" : "grupo", volta: { t: "home" } })} />}
         {(tela.t === "chat" || aoVivo) && (
           <Chat
