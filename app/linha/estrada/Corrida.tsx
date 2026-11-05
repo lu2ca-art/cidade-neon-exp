@@ -1759,7 +1759,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     let espera = 0
     const iv = setInterval(() => {
       const j = jogo.current, c = combRef.current
-      const z = zonaDoJogo(j.voo, j.wx, j.wz, zonaRef.current)
+      // (revisão 05/11) no ar fica a zona de antes (voando acima da pista o j.voo já liga)
+      const z = j.ar ? zonaRef.current : zonaDoJogo(j.voo, j.wx, j.wz, zonaRef.current)
       if (z !== zonaRef.current) { zonaRef.current = z; setZona(z) }
       const agora = performance.now()
       if (agora < espera || j.ar || aberturaRef.current.ativa || cinemaRef.current) return
@@ -6172,7 +6173,10 @@ function CenaBase({
       const infR = (M as MundoDisco).info[j.via]
       fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
       // (trilha sonora, 05/11) a zona do som: no subúrbio a rádio soa antiga; na cidade, limpa
-      definirZonaSom(zonaDoSom(!!j.voo, j.wx, j.wz))
+      // (revisão 05/11) no ar a zona não muda: o propulsor acima de 3,5 m da pista já
+      // liga o voo livre (j.voo), e cada voo na cidade virava "subúrbio" (o filtro de
+      // rádio antigo na hora; mais de 4 s, a troca pra Rádio Xenom). Muda quando pousa
+      if (!j.ar) definirZonaSom(zonaDoSom(!!j.voo, j.wx, j.wz))
     }
     // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }
