@@ -92,30 +92,35 @@ amostras de cada rua e a distância de cada rua até as ruínas. Um commit por c
   e conta o toque no ♥ do menu (o menu sai num portal, mas o clique é ouvido no
   `document`, na captura, e o botão ainda está no DOM).
 
-## Suspeitas (não mexi)
+## Parte 2b: as decisões do coordenador (05/11)
 
-- **Trocar de rua-manifesto direto (sem sair):** o host troca na hora, sem fade; se a
-  rua de antes era Sabe Ontem? ou CHUVA, o céu volta pra hora do jogo e a chuva pro
-  clima num quadro só (`CEU_MANIFESTO.k`/`CHUVA_MANIFESTO.k` zeram ao desmontar).
-  Só acontece se der pra passar de uma rua pra outra pelo anel sem voar.
-- **Engasgo ao entrar numa rua pela primeira vez:** cada manifesto compila os
-  ShaderMaterial dele e monta as malhas na entrada (o Rollercoaster monta ~33 mil
-  vértices em JS). O three guarda o programa compilado (só a primeira entrada paga),
-  mas no iPhone isso pode ser um tranco visível. Saída: pré-compilar (`gl.compileAsync`)
-  ou montar invisível alguns segundos antes da rua.
-- **Corrida de rua segura a pose fora do passo da física:** na contagem
-  `CorridaRuaCena` escreve `j.wx/j.wz/j.v` num `useFrame` (não no `passo(dt)`); a ordem
-  depende de quando o `<Perto>` montou (antes ou depois do Corrida). Com `v = 0` não
-  anda, mas a interpolação da tela pode tremer um quadro na largada.
-- **CHUVA sem som de chuva:** a rua deixa a chuva visível e mais grossa, mas o que o
-  jogo usa pra "está chovendo" (`chovendo(dia, hora)`: o vidro embaçado, o som) segue
-  o clima. Decisão de design.
+| item | o quê | onde | commit |
+|---|---|---|---|
+| 1 | Passar de uma rua-manifesto direto pra outra: a antiga sai em fade (1,6 s; o céu de Sabe Ontem? e a chuva da CHUVA voltam suave, pois seguem `ctx.dentro`) e só depois a nova monta e entra em fade. Voltar pra antiga no meio do fade traz ela de volta | `estrada/manifestos/Manifestos.tsx:99` (`ficando`) e a troca logo acima | `d827c3e` |
+| 2a | O tranco da entrada: o three apaga o programa quando o material é descartado, então TODA entrada numa rua compilava de novo, não só a primeira. O host agora prende (`usedTimes + 1`) os programas de cada rua que já desenhou, e parado numa rotatória (sem rua montada) aquece uma rua por vez: monta com `dentro = 0` (o mesmo 1º quadro de uma entrada de verdade), desenha 3 quadros, prende e desmonta; 0,6 s até a próxima. O tranco vai pra rotatória, uma vez por rua por sessão. Escolhi o aquecimento de verdade (desenhar) em vez de `gl.compile`: com a lente ligada a cena vai pra um render target e a chave do programa muda; desenhando, a chave é a mesma da entrada | `Manifestos.tsx:40` (`prenderProgramas`), `:84` e `:97` | `3fcb266`, `ef95d28` |
+| 2b | Rollercoaster: o eixo e a malha do trilho (~33 mil vértices) são gerados uma vez por sessão e guardados no módulo (só os números; a textura e a geometria nascem a cada montagem e saem no dispose) | `Rollercoaster.tsx:194` (`CACHE_RC`), `:220` | `1bc9c6c` |
+| 3 | A largada da corrida de rua segura a grade dentro do `passo(dt)` da física (antes era num `useFrame`, fora dela); `CorridaDeRua.tsx` só conta e desenha | `estrada/Corrida.tsx:4717`, `disco/CorridaDeRua.tsx` (a contagem) | `b9717a1` |
+| 4 | `densidadeRua` = 0,75 no médio (o palpite do celular): 3/4 da gente, das flores, das telas, dos holofotes; 85% dos prismas | `comum.ts:14` | `1e01b96` |
+| 5 | Na rua CHUVA o vidro embaça parado (como na chuva do clima) e o holo diz "chuva", a partir de `CHUVA_MANIFESTO.k > 0,25` (a garoa do começo é 0,3). **O som de chuva não existe**: `volumeChuva`/`ligarChuva` (`som.ts:183`) são vazios desde que a chuva sintetizada virou "ruído infernal"; não há o que ligar | `Corrida.tsx:1071` (`molhado`) e `:1262` (o clima do holo) | `459726d` |
+
+O que olhar na Mesa (2b): parar numa rotatória uns 6 s e entrar numa rua (sem
+tranco na entrada; um tranquinho na rotatória é o esperado, uma vez por rua);
+entrar duas vezes na mesma rua; passar de Sabe Ontem? pra outra rua pelo anel (o céu
+volta em ~1,6 s); a largada da corrida de rua; o vidro embaçando parado na CHUVA.
+
+## Suspeitas
+
+- **Aquecer gasta memória da rua por 3 quadros:** a rua aquecida sobe as malhas pra
+  GPU e descarta logo; só os programas ficam (~20 no total, pequenos).
+- **A rotatória não sabe pra que rua você vai:** aquece todas, na ordem do mapa. Quem
+  sai da rotatória antes de ~6 s pode entrar numa rua ainda fria (o tranco fica
+  como antes, só na primeira vez; daí ela fica presa).
+- **Aquecer com a lente trocando:** se a qualidade mudar depois (lente liga/desliga),
+  a chave do programa muda e a primeira entrada compila de novo (uma vez).
 - **A primeira pessoa e o drone também desligam o Copo:** com a correção 1 o porre não
   balança a câmera de dentro da Kombi. Se o dono quiser o porre na primeira pessoa,
   é só tirar `!primeira` de `CAMERA_RUA.livre`.
-- **Médio no iPhone:** o palpite de celular é "médio" (não reduz as ruas); só o leve
-  reduz. Se a Sexta pesar no médio, dá pra usar 0,75 no médio em `densidadeRua`.
 
-Sem teste no jogo (regra). Na Mesa: a Sexta-Feira e a CHUVA no leve (`?qualidade=baixo`),
+Sem teste no jogo (regra). Na Mesa (parte 1): a Sexta-Feira e a CHUVA no leve (`?qualidade=baixo`) e no médio (`?qualidade=medio`),
 abrir o drone no meio do Rollercoaster/Copo (o mapa reto), e a rua Sabe Ontem? de
 manhã olhando o subúrbio (as ruínas apagadas).
