@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "O subúrbio maior e destruído (ruínas com colisão)",
+    data: "2026-11-05",
+    olhar: "Em volta do bar, da oficina, da quadra e da entrada dos túneis agora tem quadras de ruínas: 183 prédios (inteiros, com o topo desmoronado ou com um andar faltando) e montes de entulho, com ruas de 12 m pra andar a pé, de patins e de moto. Tudo tem colisão. Leve: ~25 mil triângulos.",
+    perguntas: [
+      "A escala das ruas e prédios ficou boa a pé e de moto?",
+      "As ruínas ficam escuras de noite: quer neon/janelas acesas nelas?",
+      "Ficou no lugar certo (em volta do bar e da oficina)?",
+    ],
+  },
+  {
     parte: "livre",
     nome: "A moto no mundo aberto",
     data: "2026-11-05",
