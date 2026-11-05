@@ -102,6 +102,7 @@ amostras de cada rua e a distância de cada rua até as ruínas. Um commit por c
 | 3 | A largada da corrida de rua segura a grade dentro do `passo(dt)` da física (antes era num `useFrame`, fora dela); `CorridaDeRua.tsx` só conta e desenha | `estrada/Corrida.tsx:4717`, `disco/CorridaDeRua.tsx` (a contagem) | `b9717a1` |
 | 4 | `densidadeRua` = 0,75 no médio (o palpite do celular): 3/4 da gente, das flores, das telas, dos holofotes; 85% dos prismas | `comum.ts:14` | `1e01b96` |
 | 5 | Na rua CHUVA o vidro embaça parado (como na chuva do clima) e o holo diz "chuva", a partir de `CHUVA_MANIFESTO.k > 0,25` (a garoa do começo é 0,3). **O som de chuva não existe**: `volumeChuva`/`ligarChuva` (`som.ts:183`) são vazios desde que a chuva sintetizada virou "ruído infernal"; não há o que ligar | `Corrida.tsx:1071` (`molhado`) e `:1262` (o clima do holo) | `459726d` |
+| 6 | (pedido extra) A vida no subúrbio recebe a posição de verdade do jogador: no quadro, junto da zona do som, fora da Kombi e a menos de `SUBURBIO.r + 300` m do centro, o Corrida escreve `VIDA_JOGADOR` (x, z, `ate` = relógio do three + 0,5 s). Longe, a vida segue com a estimativa pela câmera | `Corrida.tsx:6260` | `c49f414` |
 
 O que olhar na Mesa (2b): parar numa rotatória uns 6 s e entrar numa rua (sem
 tranco na entrada; um tranquinho na rotatória é o esperado, uma vez por rua);
