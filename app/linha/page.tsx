@@ -41,6 +41,7 @@ import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
 import { introDe } from "./disco/introMissoes"
 import { IntroMissao } from "./disco/IntroMissao"
+import { CHEGADA_MISSAO, lerGuia } from "./estrada/alvoMissao"
 import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha, voz } from "./som"
 import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
@@ -1082,8 +1083,22 @@ export default function LinhaPage() {
   const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : quebrada(hist) ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
   // (trilha sonora, 05/11) a introdução da missão aberta (o balão por cima do mundo)
-  const [introMissao, setIntroMissao] = useState<{ id: MissaoId; quem: string; texto: string } | null>(null)
+  // (revisão 05/11) m0/ativa0: a distância até o lugar e a missão pegada quando o balão abriu
+  const [introMissao, setIntroMissao] = useState<{ id: MissaoId; quem: string; texto: string; m0: number; ativa0: MissaoId | null } | null>(null)
   const introVista = useRef(new Set<MissaoId>())
+  // (revisão 05/11) a introdução é da missão de agora, ali. Trocou de missão (o mapa,
+  // o celular) ou foi embora do lugar: o balão fecha (antes ficava, e o "bora" abria a
+  // peça no meio da cidade ou descia pro túnel de longe). Os links de teste que abrem
+  // de longe seguem valendo: conta o quanto ele se afastou desde que o balão abriu
+  useEffect(() => {
+    if (!introMissao) return
+    if (missaoCarreira !== introMissao.ativa0) { setIntroMissao(null); return }
+    const iv = setInterval(() => {
+      const m = lerGuia().metros
+      if (m >= 0 && m > Math.max(0, introMissao.m0) + CHEGADA_MISSAO.avisar) setIntroMissao(null)
+    }, 500)
+    return () => clearInterval(iv)
+  }, [introMissao, missaoCarreira])
   // (T10) a quadra: o B4TIDA aberto (a arte) e o basquete (o jogo, ou a quadra livre depois da porta)
   const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
   const [basquete, setBasquete] = useState<{ n: number; pontos: number; tempo: number; livre: boolean } | null>(null)
@@ -1262,7 +1277,7 @@ export default function LinhaPage() {
       const h = hist13(saveRef.current)
       const jaViu = introVista.current.has(id) || ordemDe(id).some((q) => pecaFeita(h, id, q))
       const fala = introDe(id, jaViu)
-      if (fala) { setAoVivo(null); setIntroMissao({ id, ...fala }); return }
+      if (fala) { setAoVivo(null); setIntroMissao({ id, ...fala, m0: lerGuia().metros, ativa0: missaoDoSave(saveRef.current) }); return }
     }
     pecaAberta.current = { missao: id, qual: pc.qual }
     if (como.t === "pingpong") setPingpong(true)
@@ -2517,7 +2532,7 @@ export default function LinhaPage() {
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}
-        {HIST && tela.t === "corrida" && <TrilhaPedras base={baseTrilha} pausado={!!cena || !!trincheiras || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor || celularAberto || !!jornal || rua || !!oficinaTela || !!letraAgora} onFeito={marcarTutorial} />}
+        {HIST && tela.t === "corrida" && <TrilhaPedras base={baseTrilha} pausado={!!cena || !!introMissao || !!trincheiras || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor || celularAberto || !!jornal || rua || !!oficinaTela || !!letraAgora} onFeito={marcarTutorial} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
         {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} onXenom={(id) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showXenom(id) }))) }} />}
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}

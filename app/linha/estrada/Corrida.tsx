@@ -48,7 +48,7 @@ import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
-import { gravarOndeParou, lerOndeParou } from "./ondeParou"
+import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { NAV, ladoDaFaixa } from "./nav"
@@ -666,6 +666,12 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     // em qualquer fase depois da casa. Não vale na chegada, na volta do túnel, no
     // atalho de teste nem na volta de uma sala (essa já tem a retomada dela)
     const parou = "disco" in M && !!historia && !chega && !doTunel && !retomada && !ir && !atalho && !abertura && historia.fase !== "minhoca" && historia.fase !== "casa" ? lerOndeParou() : null
+    if (ret && retomada?.chao) {
+      const MD = M as MundoDisco, c = retomada.chao
+      j.voo = true; j.wx = c.x; j.wz = c.z; j.rumo = c.rumo; j.propulsou = true; j.encaixar = false
+      j.ar = false; j.y = MD.chaoEm(c.x, c.z) + 0.3; j.v = 0
+      nasceuOndeParou(c.x, c.z) // (como o naVaga da pista: a porta de onde ele saiu não reabre parada)
+    }
     if (parou?.t === "pista") {
       const jp = retomarJogo(M, { via: parou.via, u: parou.u, x: parou.x })
       if (jp) return jp
@@ -674,6 +680,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const MD = M as MundoDisco
       j.voo = true; j.wx = parou.x; j.wz = parou.z; j.rumo = parou.rumo; j.propulsou = true; j.encaixar = false
       j.ar = false; j.y = MD.chaoEm(parou.x, parou.z) + 0.3; j.v = 0
+      nasceuOndeParou(parou.x, parou.z)
       return j
     }
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
@@ -996,7 +1003,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // ao sair da tela, guarda onde a Kombi estava
   useEffect(() => () => {
     const j = jogo.current
-    RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg }
+    // (revisão 05/11) no chão (a casa da D-Bee no deserto, o bar do subúrbio): volta no
+    // chão, onde estava; antes voltava na última pista lá em cima da cidade
+    const chao = "disco" in M && j.voo && !j.ar && j.wx !== undefined && j.wz !== undefined ? { x: j.wx, z: j.wz, rumo: j.rumo ?? 0 } : undefined
+    RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg, chao }
   }, [M])
   // (notas 04/11) e entre uma visita e outra (ondeParou.ts): de 4 em 4 s, ao
   // esconder a aba e ao sair. No ar, na chegada e na abertura não grava
@@ -1546,6 +1556,9 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     // (30/10) acabou de subir do túnel: a Kombi está parada na porta. Só desce de
     // novo depois de sair da frente dela
     if (nascerNoTunel()) dentro.add("tuneis")
+    // (revisão 05/11) voltou pro jogo em cima de um lugar do chão (ondeParou.ts): idem
+    const nasceuEm = ondeNasceu()
+    if (nasceuEm) for (const id of Object.keys(CHAO_LUGARES) as LugarChao[]) if (pertoDoChao(id, nasceuEm.x, nasceuEm.z) || Math.hypot(nasceuEm.x - CHAO_LUGARES[id].x, nasceuEm.z - CHAO_LUGARES[id].z) < CHEGADA_MISSAO.chao) dentro.add(id)
     // (missões claras, 02/11) o lugar da MISSÃO (o alvo) vale de Kombi, de patins
     // ou voando baixo, num raio maior (estrada/alvoMissao.ts, o mesmo ponto do
     // mapa); o túnel da missão vale já na rampa. Os outros (as peças, a boca do
@@ -1757,7 +1770,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     let espera = 0
     const iv = setInterval(() => {
       const j = jogo.current, c = combRef.current
-      const z = zonaDoJogo(j.voo, j.wx, j.wz, zonaRef.current)
+      // (revisão 05/11) no ar fica a zona de antes (voando acima da pista o j.voo já liga)
+      const z = j.ar ? zonaRef.current : zonaDoJogo(j.voo, j.wx, j.wz, zonaRef.current)
       if (z !== zonaRef.current) { zonaRef.current = z; setZona(z) }
       const agora = performance.now()
       if (agora < espera || j.ar || aberturaRef.current.ativa || cinemaRef.current) return
@@ -3302,7 +3316,8 @@ function mundo() {
   const q = qualMapa()
   return (MUNDO = q === "disco" ? montarMundoDisco() : q === "novo" ? montarMundoRede() : montarMundo())
 }
-export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
+// (revisão 05/11) chao: estava no chão (o deserto, o subúrbio) quando entrou na sala
+export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean; chao?: { x: number; z: number; rumo: number } }
 let RETOMAR: Retomada | null = null
 
 // as páginas robustas dos lugares: baixadas durante a cutscene de entrada
@@ -6170,7 +6185,10 @@ function CenaBase({
       const infR = (M as MundoDisco).info[j.via]
       fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
       // (trilha sonora, 05/11) a zona do som: no subúrbio a rádio soa antiga; na cidade, limpa
-      definirZonaSom(zonaDoSom(!!j.voo, j.wx, j.wz))
+      // (revisão 05/11) no ar a zona não muda: o propulsor acima de 3,5 m da pista já
+      // liga o voo livre (j.voo), e cada voo na cidade virava "subúrbio" (o filtro de
+      // rádio antigo na hora; mais de 4 s, a troca pra Rádio Xenom). Muda quando pousa
+      if (!j.ar) definirZonaSom(zonaDoSom(!!j.voo, j.wx, j.wz))
     }
     // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }

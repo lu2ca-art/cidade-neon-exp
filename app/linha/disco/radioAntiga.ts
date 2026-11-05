@@ -11,17 +11,22 @@
 // Barato: o Corrida chama definirZonaSom a cada quadro; só faz algo quando muda.
 
 import { radioAntiga } from "../som"
+import { alemDaCidade } from "../estrada/raioCidade"
 
 export type ZonaSom = "cidade" | "suburbio" | "deserto" | "tuneis"
 
 // o mesmo raio que o clima usa (Corrida.tsx): no chão e mais longe que isso do
 // centro do mapa, é deserto (a casa da D-Bee fica a ~2600 m; o subúrbio, a ~1000 m)
+// (revisão 05/11) medido como o clima mede desde as ruas do tamanho da faixa:
+// alemDaCidade (raioCidade.ts), a distância descontado o quanto a cidade cresceu
+// naquele rumo. Com o raio cru, o chão embaixo da cidade nova (1,3 a 2 km) virava
+// "deserto" pro som (Rádio Xenom, sem filtro) e "cidade" pro clima
 export const RAIO_DESERTO = 1300
 
 /** onde a Kombi está, pro som: `livre` = fora das vias (no chão), wx/wz = a posição */
 export function zonaDoSom(livre: boolean, wx: number | undefined, wz: number | undefined): ZonaSom {
   if (!livre || wx === undefined || wz === undefined) return "cidade"
-  return wx * wx + wz * wz > RAIO_DESERTO * RAIO_DESERTO ? "deserto" : "suburbio"
+  return alemDaCidade(wx, wz) > RAIO_DESERTO ? "deserto" : "suburbio"
 }
 
 // o filtro de rádio antigo vale aqui

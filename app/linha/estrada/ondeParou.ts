@@ -36,3 +36,17 @@ export function apagarOndeParou() {
   ultima = ""
   try { localStorage.removeItem(chave()) } catch {}
 }
+
+// (revisão 05/11) a Kombi acabou de nascer aqui (a volta pro jogo). Os lugares do
+// chão em que ela já nasce em cima (a porta do túnel, a casa, o bar…) só valem
+// depois que ela sair deles e voltar: senão abrir o jogo de quem fechou a aba nas
+// trincheiras (a Corrida grava a boca ao desmontar) descia direto pro túnel
+let nasceu: { x: number; z: number; em: number } | null = null
+export function nasceuOndeParou(x: number, z: number) {
+  nasceu = { x, z, em: typeof performance === "undefined" ? 0 : performance.now() }
+}
+/** onde a Kombi nasceu pelo ondeParou, nos primeiros 8 s (null = não nasceu assim) */
+export function ondeNasceu(): { x: number; z: number } | null {
+  if (!nasceu || typeof performance === "undefined" || performance.now() - nasceu.em > 8000) return null
+  return nasceu
+}
