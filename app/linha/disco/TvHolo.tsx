@@ -141,35 +141,6 @@ function Tela({ inicio }: { inicio: PistaId }) {
   const yt = useRef<YTPlayer | null>(null)
   const de = useRef<{ x: number; y: number; id: number } | null>(null)
 
-  // os estados do YouTube: -1 sem começar, 0 acabou, 1 tocando, 2 pausado, 3 carregando, 5 pronto
-  const estado = useRef((e: YTEvento) => {})
-  // (como rádio) o vídeo acabou: a TV passa sozinha pra próxima faixa que tem
-  // vídeo, sempre visível. Deu a volta inteira (chegou de novo na faixa em que
-  // a TV abriu): ela só deixa o vídeo pronto e espera o play da pessoa (nada de
-  // laço automático sem fim). Fechou, parou
-  const volta = useRef<PistaId>(inicio)
-  const trocando = useRef(false)
-  estado.current = (e: YTEvento) => {
-    if (e.data === 1) { trocando.current = false; calarPraTv(true); return }
-    if (e.data === 0) {
-      // playlist do álbum: o YouTube segue sozinho até o último vídeo dela
-      const lista = e.target.getPlaylist?.()
-      if (lista && lista.length > 1 && e.target.getPlaylistIndex() < lista.length - 1) return
-      const prox = proximaComVideo(faixa)
-      if (!prox || prox === faixa) { calarPraTv(false); return }
-      const tocar = prox !== volta.current
-      if (tocar) trocando.current = true
-      else calarPraTv(false)
-      setFaixa(prox)
-      setErro(false)
-      carregar(e.target, prox, tocar)
-      return
-    }
-    // (entre um vídeo e outro a música do jogo não volta)
-    if (trocando.current && (e.data === -1 || e.data === 3 || e.data === 5)) return
-    if (e.data === 2 || e.data === 5 || e.data === -1) calarPraTv(false)
-  }
-
   // o player: um só, criado quando a TV abre e destruído quando ela fecha
   useEffect(() => {
     let vivo = true
@@ -177,6 +148,38 @@ function Tela({ inicio }: { inicio: PistaId }) {
     if (!box) return
     const v = videoDaFaixa(inicio)
     if (!v) return
+    // os estados do YouTube: -1 sem começar, 0 acabou, 1 tocando, 2 pausado, 3 carregando, 5 pronto
+    // (como rádio) o vídeo acabou: a TV passa sozinha pra próxima faixa que tem
+    // vídeo, sempre visível. Deu a volta inteira (chegou de novo na faixa em que
+    // a TV abriu): ela só deixa o vídeo pronto e espera o play da pessoa (nada de
+    // laço automático sem fim). Fechou, parou
+    const volta = inicio
+    let faixaAqui = inicio
+    const trocando = { current: false }
+    const estado = (e: YTEvento) => {
+      if (e.data === 1) { trocando.current = false; calarPraTv(true); return }
+      if (e.data === 0) {
+        // playlist do álbum: o YouTube segue sozinho até o último vídeo dela
+        const lista = e.target.getPlaylist?.()
+        if (lista && lista.length > 1 && e.target.getPlaylistIndex() < lista.length - 1) return
+        const prox = proximaComVideo(faixaAqui)
+        if (!prox || prox === faixaAqui) { calarPraTv(false); return }
+        const tocar = prox !== volta
+        if (tocar) {
+          trocando.current = true
+          // o navegador não deixou o próximo tocar sozinho: a música do jogo volta e a TV espera o play
+          setTimeout(() => { if (trocando.current) { trocando.current = false; calarPraTv(false) } }, 5000)
+        } else calarPraTv(false)
+        faixaAqui = prox
+        setFaixa(prox)
+        setErro(false)
+        carregar(e.target, prox, tocar)
+        return
+      }
+      // (entre um vídeo e outro a música do jogo não volta)
+      if (trocando.current && (e.data === -1 || e.data === 3 || e.data === 5)) return
+      if (e.data === 2 || e.data === 5 || e.data === -1) calarPraTv(false)
+    }
     carregarApi().then((YT) => {
       if (!vivo) return
       const host = document.createElement("div")
@@ -189,7 +192,7 @@ function Tela({ inicio }: { inicio: PistaId }) {
         playerVars: { autoplay: 0, playsinline: 1, rel: 0, origin: window.location.origin, ...(v.videoId ? {} : { listType: "playlist", list: v.playlistId }) },
         events: {
           // tocando: a música do jogo vai a zero (fade); pausou, parou ou acabou: volta
-          onStateChange: (e: YTEvento) => estado.current(e),
+          onStateChange: estado,
           onError: () => { calarPraTv(false); setErro(true) },
         },
       })
