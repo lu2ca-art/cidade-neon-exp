@@ -88,8 +88,10 @@ import { versoesDasPistas } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
-import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
-import { CONFIG_TUTORIAL, faltaRecompensaHolo, tutorialEnsina } from "./disco/tutorialConf"
+import { RecompensaHolo } from "./disco/TutorialHolo"
+import { CONFIG_TUTORIAL, faltaRecompensaHolo } from "./disco/tutorialConf"
+import { TrilhaPedras } from "./disco/TrilhaPedrasTela"
+import { trilhaEnsina } from "./disco/trilhaPedras"
 import { Letra } from "./disco/Letra"
 import { letraDe } from "./disco/letras"
 import { Palcos } from "./disco/MenuPalcos"
@@ -868,7 +870,7 @@ export default function LinhaPage() {
     abrirPortaRef.current("oficina")
     setSave((s) => comHistoria(s, (h) => ({ ...h, fase: "subir" })))
     // (T07, T41: D13) com o Nexo ensinando, o "segura o espaço" é um passo do tutorial
-    if (!(CONFIG_TUTORIAL.quem === "nexo" && tutorialEnsina({ ...historiaDe(saveRef.current), fase: "subir" }))) setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.voa, ensina: true }), 2500)
+    if (!(CONFIG_TUTORIAL.quem === "nexo" && trilhaEnsina({ ...historiaDe(saveRef.current), fase: "subir" }))) setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.voa, ensina: true }), 2500)
   }
   const fimBarFeito = useRef(false)
   const fimBarDisco = useCallback((r: ResultadoCena) => {
@@ -1031,6 +1033,10 @@ export default function LinhaPage() {
   const nFeitas = (h13.feitas13 ?? []).length
   useEffect(() => { setLargadas([]) }, [nFeitas])
   const feiraVisivel = feira.filter((o) => !largadas.includes(o.id))
+  // (trilha de pedras) o que a trilha precisa do save: a fase, o que já viu, a missão
+  const passoTrilha = passos13.find((x) => x.estado === "agora")?.nome ?? ""
+  const feitasCidade = (h13.feitas13 ?? []).filter((x) => x !== "dbee" && x !== "oficina").length
+  const baseTrilha = useMemo(() => ({ fase: hist.fase, holo: hist.holo, feitos: hist.tutorial ?? [], missao: missaoCarreira, ofertas: feiraVisivel.length, feitasCidade, passo: passoTrilha }), [hist.fase, hist.holo, hist.tutorial, missaoCarreira, feiraVisivel.length, feitasCidade, passoTrilha])
   // (missões claras, 02/11) chegou no lugar de uma missão disponível, sem outra
   // pegada: pega e já começa ali (a Corrida só chama sem missão ativa)
   const pegarAqui = (id: string) => {
@@ -2490,7 +2496,8 @@ export default function LinhaPage() {
         }} onXenom={hist.fase === "carreira" ? () => { setRecompensa(null); setRua(true) } : undefined} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
-        {HIST && tela.t === "corrida" && <TutorialHolo hist={hist} pausado={!!cena || !!trincheiras || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor} onFeito={marcarTutorial} />}
+        {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}
+        {HIST && tela.t === "corrida" && <TrilhaPedras base={baseTrilha} pausado={!!cena || !!trincheiras || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor || celularAberto || !!jornal || rua || !!oficinaTela || !!letraAgora} onFeito={marcarTutorial} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
         {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} onXenom={(id) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showXenom(id) }))) }} />}
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}

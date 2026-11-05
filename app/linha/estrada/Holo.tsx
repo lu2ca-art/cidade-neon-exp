@@ -795,9 +795,22 @@ function ExplicaPorCima({ e }: { e: Explica }) {
     document.body,
   )
 }
+// (trilha de pedras) o "?" ligado, pra quem está fora da Corrida (disco/TrilhaPedras.tsx:
+// com o "?" ligado, a trilha mostra a pedra de agora e deixa voltar nas que passaram)
+let AJUDA_ON = false
+const ouvintesAjuda = new Set<() => void>()
+function avisarAjuda(on: boolean) {
+  if (on === AJUDA_ON) return
+  AJUDA_ON = on
+  ouvintesAjuda.forEach((f) => f())
+}
+export function useAjudaAtiva() {
+  return useSyncExternalStore((f) => { ouvintesAjuda.add(f); return () => { ouvintesAjuda.delete(f) } }, () => AJUDA_ON, () => false)
+}
 export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => void }) {
   const [exp, setExp] = useState<Explica | null>(null)
   const n = useRef(0)
+  useEffect(() => { avisarAjuda(ativa); return () => avisarAjuda(false) }, [ativa])
   useEffect(() => {
     if (!ativa) { setExp(null); return }
     const alvo = (e: Event) => (e.target as Element | null)?.closest?.("[data-info]") as HTMLElement | null

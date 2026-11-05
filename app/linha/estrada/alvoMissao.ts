@@ -85,6 +85,8 @@ export function escreverVira(lado: number) {
   GUIA = { ...GUIA, vira: v }
   ouvintes.forEach((f) => f())
 }
+// (trilha de pedras) quem olha de fora do React (de tempos em tempos) lê direto
+export const lerGuia = (): Guia => GUIA
 export function useGuia(): Guia {
   return useSyncExternalStore((f) => { ouvintes.add(f); return () => { ouvintes.delete(f) } }, () => GUIA, () => GUIA)
 }

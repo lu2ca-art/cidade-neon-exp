@@ -118,7 +118,7 @@ export function VeiculosHud({ estado, onPegar, escondido = false }: { estado: Re
   }, [v, escondido])
   if (!v || escondido) return null
   return (
-    <button type="button" className="l-racha-btn" style={{ ["--cor" as string]: v.neon }} onPointerDown={(e) => e.stopPropagation()} onClick={() => pegar.current(v.id)} aria-label={`${FALAS_PERSEGUICAO.pegar} ${v.nome}`}>
+    <button type="button" data-trilha="veiculo" className="l-racha-btn" style={{ ["--cor" as string]: v.neon }} onPointerDown={(e) => e.stopPropagation()} onClick={() => pegar.current(v.id)} aria-label={`${FALAS_PERSEGUICAO.pegar} ${v.nome}`}>
       <small>{v.frase}</small>
       <b>{FALAS_PERSEGUICAO.pegar} {v.nome}</b>
     </button>

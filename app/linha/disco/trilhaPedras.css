@@ -1,0 +1,23 @@
+/* (trilha de pedras, notas 03/11) o balão pequeno preso no alvo e o alvo pulsando
+   de leve. Nada escurece, nada pega toque. Só transform e opacity animam */
+.l-trilha-alvo { position: fixed; z-index: 71; border-radius: 999px; border: 2px solid #2fe8ff; box-shadow: 0 0 14px rgba(47, 232, 255, 0.8), inset 0 0 10px rgba(47, 232, 255, 0.35); pointer-events: none; animation: l-trilha-pulsa 1.3s ease-in-out infinite; }
+.l-trilha-alvo.is-ok { border-color: #5dffa0; box-shadow: 0 0 14px rgba(93, 255, 160, 0.8); animation: none; }
+.l-trilha-balao { --seta: 50%; --c: #2fe8ff; position: fixed; z-index: 72; display: flex; align-items: center; gap: 7px; max-width: min(240px, calc(100vw - 32px)); padding: 5px 10px 5px 6px; border-radius: 12px; background: var(--c); color: #06060c; font: 800 11px/1.2 var(--mono, ui-monospace, monospace); letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 0 12px rgba(47, 232, 255, 0.6); pointer-events: none; animation: l-trilha-entra 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both, l-trilha-boia 1.6s ease-in-out 0.35s infinite; }
+.l-trilha-balao em { font-style: normal; }
+.l-trilha-balao::before { content: ""; position: absolute; left: var(--seta); top: -5px; margin-left: -5px; border: 5px solid transparent; border-top: 0; border-bottom-color: var(--c); }
+.l-trilha-balao.is-cima::before { top: auto; bottom: -5px; border-bottom: 0; border-top: 5px solid var(--c); }
+.l-trilha-balao.is-solto::before { display: none; }
+.l-trilha-balao.is-ok { --c: #5dffa0; }
+/* o que mais mexe, de leve: o mapa balança; o ícone da missão (no anel) pisca; o notch respira */
+html[data-trilha-mexe="mapa"] .l-mapa-mini { animation: l-trilha-mexe 1.8s ease-in-out infinite; }
+html[data-trilha-mexe="icone"] .l-holo-anel-ic { animation: l-trilha-pisca 1s ease-in-out infinite; }
+html[data-trilha-mexe="notch"] .l-ilha.is-letreiro { animation: l-trilha-respira 1.8s ease-in-out infinite; }
+@keyframes l-trilha-pulsa { 50% { transform: scale(1.07); opacity: 0.65; } }
+@keyframes l-trilha-entra { from { opacity: 0; transform: translateY(6px) scale(0.9); } }
+@keyframes l-trilha-boia { 50% { transform: translateY(-3px); } }
+@keyframes l-trilha-mexe { 0%, 60%, 100% { transform: none; } 70% { transform: rotate(-6deg) scale(1.04); } 80% { transform: rotate(5deg) scale(1.04); } 90% { transform: rotate(-2deg); } }
+@keyframes l-trilha-pisca { 50% { opacity: 0.35; } }
+@keyframes l-trilha-respira { 50% { transform: translateX(-50%) scale(1.03); } }
+@media (prefers-reduced-motion: reduce) {
+  .l-trilha-alvo, .l-trilha-balao, html[data-trilha-mexe] .l-mapa-mini, html[data-trilha-mexe] .l-holo-anel-ic, html[data-trilha-mexe] .l-ilha.is-letreiro { animation: none; }
+}

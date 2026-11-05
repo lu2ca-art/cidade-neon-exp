@@ -42,7 +42,8 @@ import { Monumentos } from "./Monumentos"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
 import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
-import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
+import { lerPoseTutorial } from "../disco/tutorialConf"
+import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
 import { gravarOndeParou, lerOndeParou } from "./ondeParou"
@@ -1456,7 +1457,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   }, [fase, falar, novoComeco])
   // (T07) o tutorial do holo lê a Kombi daqui (disco/tutorialConf.ts): só olha, não mexe
   const ensinaTut = useRef(false)
-  ensinaTut.current = !!discoM && tutorialEnsina(historia)
+  ensinaTut.current = !!discoM && trilhaEnsina(historia)
   const tutLigado = ensinaTut.current
   useEffect(() => {
     if (!tutLigado) return

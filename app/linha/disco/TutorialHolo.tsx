@@ -1,5 +1,9 @@
 "use client"
 
+// (05/11) O TUTORIAL DAQUI SAIU DE CENA: quem ensina agora é a trilha de pedras
+// (disco/trilhaPedras.ts + TrilhaPedrasTela.tsx), com os mesmos ids no save.
+// Fica o RecompensaHolo (desligado em CONFIG_TUTORIAL.recompensa).
+
 // (T07) A TELA DO HOLO LÁ FORA e O TUTORIAL, passo a passo (disco/tutorialConf.ts
 // tem a ordem, os textos e a configuração).
 //
