@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "As ruínas acesas de noite",
+    data: "2026-11-05",
+    olhar: "De noite (das 17h às 19h acende) as ruínas do subúrbio ganham vida: janelas acesas (quentes, algumas neon, umas piscando de TV), letreiros neon (BAR, DISCOS, BAILE, BRECHÓ, FLORES, 24H…), tambores de fogo nas ruas e varais de lâmpadas atravessando as ruas. Sem luz pesada: tudo leve.",
+    perguntas: [
+      "Ficou com cara de lugar vivo de noite?",
+      "Algum letreiro flutuando fora da parede?",
+    ],
+  },
+  {
     parte: "livre",
     nome: "A TVzinha do YouTube no holo",
     data: "2026-11-05",
