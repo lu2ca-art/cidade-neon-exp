@@ -6,10 +6,16 @@
 #   npx @gltf-transform/cli optimize bruto.glb public/models/kombi-interior.glb \
 #     --compress meshopt --simplify false --join false --instance false --flatten false
 
-import bpy, bmesh
+# Headless (os dois scripts no mesmo Blender):
+#   blender -b --factory-startup --python blender/scripts/kombi_interior.py \
+#     --python blender/scripts/kombi_interior_bake.py -- blender/cenas/kombi-interior-bruto.glb
+
+import bpy, bmesh, sys
 from mathutils import Color
 
 SAIDA = "/Users/lu2ca/cidade-neon-exp-disco/blender/exports/kombi-interior-bruto.glb"
+if "--" in sys.argv and len(sys.argv) > sys.argv.index("--") + 1:
+    SAIDA = sys.argv[sys.argv.index("--") + 1]
 
 def lin(h):
     c = Color((int(h[1:3], 16) / 255, int(h[3:5], 16) / 255, int(h[5:7], 16) / 255))
@@ -47,7 +53,7 @@ for o in SRC.objects:
         bm = bmesh.new()
         bm.from_mesh(me)
         for passo in range(4):
-            longas = [e for e in bm.edges if e.calc_length() > 0.13]
+            longas = [e for e in bm.edges if e.calc_length() > 0.2]
             if not longas:
                 break
             bmesh.ops.subdivide_edges(bm, edges=longas, cuts=1, use_grid_fill=True)
@@ -57,6 +63,7 @@ for o in SRC.objects:
     me.color_attributes.active_color = ao
     novos.append(n)
 SRC.hide_viewport = True
+SRC.hide_render = True  # senão a cópia original, no mesmo lugar, tapa a sombra (fica tudo escuro e com ruído)
 
 sc = bpy.context.scene
 sc.render.engine = "CYCLES"
@@ -73,12 +80,32 @@ for o in novos:
 vl.objects.active = novos[0]
 print(bpy.ops.object.bake(type="AO", target="VERTEX_COLORS"))
 
+ALVO = 24000  # triângulos no arquivo final
+
+def marca_costura_de_cor(me, base):
+    # estampa: aresta entre faces de cor diferente vira costura (o dissolve
+    # planar não cruza costura, então o desenho fica igual)
+    cor_face = [tuple(round(c, 4) for c in base.data[p.loop_start].color[:3]) for p in me.polygons]
+    for e in me.edges:
+        e.use_seam = False
+    face_da_aresta = {}
+    for p in me.polygons:
+        for k in p.edge_keys:
+            face_da_aresta.setdefault(k, []).append(p.index)
+    for e in me.edges:
+        fs = face_da_aresta.get(e.key, [])
+        if len(fs) == 2 and cor_face[fs[0]] != cor_face[fs[1]]:
+            e.use_seam = True
+
 grupos = {}
+tri_obj = {}
 for o in novos:
     me = o.data
     g = o["grupo"]
     base = me.color_attributes["Base"]
     ao = me.color_attributes["AO"]
+    if o["estampa"]:
+        marca_costura_de_cor(me, base)
     col = me.color_attributes.new("Col", "FLOAT_COLOR", "CORNER")
     for i in range(len(col.data)):
         a = ao.data[i].color[0]
@@ -93,11 +120,31 @@ for o in novos:
     me.color_attributes.remove(me.color_attributes["AO"])
     me.color_attributes.active_color = me.color_attributes["Col"]
     me.color_attributes.render_color_index = me.color_attributes.active_color_index
+    if o["estampa"]:
+        # só dissolve planar, dentro de cada quadrado/listra
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bmesh.ops.dissolve_limit(bm, angle_limit=0.035, use_dissolve_boundaries=False,
+                                 verts=bm.verts, edges=bm.edges, delimit={"SEAM"})
+        bmesh.ops.triangulate(bm, faces=bm.faces)
+        bm.to_mesh(me)
+        bm.free()
     ntri = sum(len(p.vertices) - 2 for p in me.polygons)
-    if ntri > 400 and not o["estampa"]:
-        m = o.modifiers.new("dec", "DECIMATE")
-        m.ratio = 0.4
+    tri_obj[o.name] = ntri
+    print("PECA", o.name, g, o["estampa"], ntri)
     grupos.setdefault(g, []).append(o)
+
+# as lisas (sem estampa) dividem o que sobra do alvo: uma razão só, com piso
+fixo = sum(t for o in novos for t in [tri_obj[o.name]] if o["estampa"] or t <= 60)
+livre = sum(t for o in novos for t in [tri_obj[o.name]] if not o["estampa"] and t > 60)
+razao = max(0.05, min(1.0, (ALVO - fixo) / max(livre, 1)))
+print("RAZAO", round(razao, 3), "fixo", fixo, "livre", livre)
+for o in novos:
+    t = tri_obj[o.name]
+    if o["estampa"] or t <= 60 or razao >= 0.98:
+        continue
+    m = o.modifiers.new("dec", "DECIMATE")
+    m.ratio = max(razao, 48 / t)
 
 for g, obs in grupos.items():
     for o in vl.objects:
