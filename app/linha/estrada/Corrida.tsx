@@ -1597,7 +1597,11 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     if (nascerNoTunel()) dentro.add("tuneis")
     // (revisão 05/11) voltou pro jogo em cima de um lugar do chão (ondeParou.ts): idem
     const nasceuEm = ondeNasceu()
-    if (nasceuEm) for (const id of Object.keys(CHAO_LUGARES) as LugarChao[]) if (pertoDoChao(id, nasceuEm.x, nasceuEm.z) || Math.hypot(nasceuEm.x - CHAO_LUGARES[id].x, nasceuEm.z - CHAO_LUGARES[id].z) < CHEGADA_MISSAO.chao) dentro.add(id)
+    // (começo novo, 05/11) menos o lugar do passo de AGORA (o bar do prólogo, a oficina, a
+    // goteira, a quadra da missão): quem fechou a aba no meio da cena dele reabre ali, e a
+    // cena tem que voltar (senão fica parado em cima do alvo, "aqui", e nada acontece).
+    // O túnel segue protegido (descer de novo sozinho é o que a proteção evita)
+    if (nasceuEm) for (const id of Object.keys(CHAO_LUGARES) as LugarChao[]) if ((id !== alvoChao || id === "tuneis") && (pertoDoChao(id, nasceuEm.x, nasceuEm.z) || Math.hypot(nasceuEm.x - CHAO_LUGARES[id].x, nasceuEm.z - CHAO_LUGARES[id].z) < CHEGADA_MISSAO.chao)) dentro.add(id)
     // (missões claras, 02/11) o lugar da MISSÃO (o alvo) vale de Kombi, de patins
     // ou voando baixo, num raio maior (estrada/alvoMissao.ts, o mesmo ponto do
     // mapa); o túnel da missão vale já na rampa. Os outros (as peças, a boca do
