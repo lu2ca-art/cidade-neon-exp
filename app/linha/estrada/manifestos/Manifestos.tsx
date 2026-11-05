@@ -62,7 +62,7 @@ export function Manifestos({ M, jogo, input, carro }: {
   }), [M])
   const [k, setK] = useState(-1)
   const ctx = useRef<CtxManifesto>({ t: 0, dur: 1, prog: 0, batida: 0, dentro: 0, idade: 0, v: 0, mult: 1, acel: 0, gas: false, freio: false, turbo: false, drift: false, ar: false, via: 0, u: 0, relogio: 0 }).current
-  const st = useRef({ fora: 0, vAnt: 0, tProprio: 0, kVivo: -1, quadrosVivo: 0, quadrosAq: 0, esperaAq: 0 }).current
+  const st = useRef({ fora: 0, vAnt: 0, tProprio: 0, kVivo: -1, quadrosVivo: 0, preso: false, quadrosAq: 0, esperaAq: 0 }).current
   const gl = useThree((s) => s.gl)
   const grupo = useRef<THREE.Group>(null)
   const grupoAq = useRef<THREE.Group>(null)
@@ -88,13 +88,13 @@ export function Manifestos({ M, jogo, input, carro }: {
     // montada, a antiga sai em fade (o céu e a chuva dela voltam suave) e a nova
     // entra depois, em fade
     if (aqui >= 0 && aqui !== st.kVivo && (st.kVivo < 0 || ctx.dentro <= 0)) {
-      st.kVivo = aqui; st.fora = 0; st.tProprio = 0; st.quadrosVivo = 0
+      st.kVivo = aqui; st.fora = 0; st.tProprio = 0; st.quadrosVivo = 0; st.preso = false
       ctx.dentro = 0; ctx.idade = 0
       setK(aqui)
     }
     if (st.kVivo < 0) return
     // a rua de verdade também prende os programas dela (entrou sem aquecer)
-    if (++st.quadrosVivo === QUADROS_AQUECE + 1 && k === st.kVivo) { prenderProgramas(gl, grupo.current); AQUECIDAS.add(pistas[st.kVivo]!.id) }
+    if (!st.preso && ++st.quadrosVivo > QUADROS_AQUECE && k === st.kVivo) { st.preso = true; prenderProgramas(gl, grupo.current); AQUECIDAS.add(pistas[st.kVivo]!.id) }
     st.fora = aqui === st.kVivo ? 0 : st.fora + dt
     const ficando = st.fora < CARENCIA && !(aqui >= 0 && aqui !== st.kVivo)
     ctx.dentro = ficando ? Math.min(1, ctx.dentro + dt / FADE_IN) : Math.max(0, ctx.dentro - dt / FADE_OUT)
