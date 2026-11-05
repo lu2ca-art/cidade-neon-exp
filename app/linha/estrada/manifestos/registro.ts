@@ -13,6 +13,7 @@ import { Nectar } from "./Nectar"
 import { Ojala } from "./Ojala"
 import { Swav } from "./Swav"
 import { Sexta } from "./Sexta"
+import { Rollercoaster } from "./Rollercoaster"
 
 export const MANIFESTOS: Record<PistaId, Manifesto> = {
   // vício: a rua que pede mais um. Telas que pipocam com o acelerador; soltou, esvazia
@@ -31,10 +32,8 @@ export const MANIFESTOS: Record<PistaId, Manifesto> = {
   swav: { id: "swav", ideia: "reflexos e salto de fé", Componente: Swav },
   // a multidão dançando no BPM, cheia de longe e oca de perto; holofotes; o drift faz ela pular junto e encher
   sexta: { id: "sexta", ideia: "a balada: multidão vazia, aceita e dança", Componente: Sexta },
-
-  // ── ainda só ideia (o comentário é o ponto de partida) ──
-  // Rollercoaster: a montanha-russa, o parque, o clipe vertical (os altos e baixos)
-  rollercoaster: { id: "rollercoaster", ideia: "a montanha-russa: os altos e baixos", Componente: null },
+  // o trilho de luz ao lado da pista, com morros da altura da energia da faixa; carrinhos; frio na barriga nas descidas; propulsor no topo = braço pra cima
+  rollercoaster: { id: "rollercoaster", ideia: "a montanha-russa: os altos e baixos", Componente: Rollercoaster },
 }
 
 export const manifestoDe = (id: PistaId | null | undefined) => (id ? MANIFESTOS[id] ?? null : null)
