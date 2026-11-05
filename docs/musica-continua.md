@@ -94,6 +94,15 @@ delas hoje é o instrumental, então a missão não muda nada nelas):
 5. No console (dev): `__pistaSom()` mostra faixa, modo, tempo e loop;
    `__pistaSomFim()` pula pro fim da faixa.
 
+## A corrida de rua do subúrbio (05/11)
+
+Bíblia §9: a trilha não para. A corrida de rua (`disco/CorridaDeRua.tsx`,
+docs/corrida-suburbio.md) acontece no mundo aberto, na própria `Corrida`: não
+abre tela, não liga `pausado`, não chama `segurar()` nem `parar()`. A rádio que
+estava tocando segue tocando do começo ao fim da corrida, e o circuito inteiro
+fica dentro do subúrbio (zona de som "suburbio", `disco/radioAntiga.ts`), então
+o filtro de rádio antiga continua ligado o tempo todo.
+
 ## Falta
 
 - Teste do dono no iPhone (nada medido nem rodado aqui; só `tsc`). O cartão da
