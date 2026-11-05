@@ -5,10 +5,11 @@
 
 import type { PistaId } from "../pistas"
 import type { Manifesto } from "./tipos"
+import { DopaminA } from "./DopaminA"
 
 export const MANIFESTOS: Record<PistaId, Manifesto> = {
   // vício: a rua que pede mais um. Telas que pipocam com o acelerador; soltou, esvazia
-  dopamina: { id: "dopamina", ideia: "a rua que pede mais um (vício)", Componente: null },
+  dopamina: { id: "dopamina", ideia: "a rua que pede mais um (vício)", Componente: DopaminA },
   // tempo: o dia inteiro passa na volta; a Kombi deixa "ontens" no ar; frear segura o tempo
   ontem: { id: "ontem", ideia: "a rua do tempo que não volta", Componente: null },
 
