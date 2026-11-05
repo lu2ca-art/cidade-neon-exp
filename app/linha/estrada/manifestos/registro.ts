@@ -11,6 +11,7 @@ import { Chuva } from "./Chuva"
 import { CopoAmericano } from "./CopoAmericano"
 import { Nectar } from "./Nectar"
 import { Ojala } from "./Ojala"
+import { Swav } from "./Swav"
 
 export const MANIFESTOS: Record<PistaId, Manifesto> = {
   // vício: a rua que pede mais um. Telas que pipocam com o acelerador; soltou, esvazia
@@ -25,10 +26,10 @@ export const MANIFESTOS: Record<PistaId, Manifesto> = {
   nectar: { id: "nectar", ideia: "a letra e as flores: tentativa e erro", Componente: Nectar },
   // rajadas de fita e confete passam no compasso; desejos aparecem lá na frente e o vento os leva antes de você chegar; tocar segura um por um instante
   ojala: { id: "ojala", ideia: "fugaz como o vento: o que passa e não fica", Componente: Ojala },
+  // prismas que crescem, a pista vira espelho (reflete os prismas de verdade), vãos onde ela some; acelerar no vão = salto de fé
+  swav: { id: "swav", ideia: "reflexos e salto de fé", Componente: Swav },
 
   // ── ainda só ideia (o comentário é o ponto de partida) ──
-  // Swav: criatividade, reflexos, salto de fé (a rua de espelhos; confiar no salto)
-  swav: { id: "swav", ideia: "a experiência da Swav: reflexos e salto de fé", Componente: null },
   // Sexta-Feira: a balada; multidão vazia, bateria esgotada, aceita e dança
   sexta: { id: "sexta", ideia: "a balada: multidão vazia, aceita e dança", Componente: null },
   // Rollercoaster: a montanha-russa, o parque, o clipe vertical (os altos e baixos)
