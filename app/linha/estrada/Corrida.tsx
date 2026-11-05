@@ -48,7 +48,7 @@ import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
-import { gravarOndeParou, lerOndeParou } from "./ondeParou"
+import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { NAV, ladoDaFaixa } from "./nav"
@@ -672,6 +672,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const MD = M as MundoDisco
       j.voo = true; j.wx = parou.x; j.wz = parou.z; j.rumo = parou.rumo; j.propulsou = true; j.encaixar = false
       j.ar = false; j.y = MD.chaoEm(parou.x, parou.z) + 0.3; j.v = 0
+      nasceuOndeParou(parou.x, parou.z)
       return j
     }
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
@@ -1544,6 +1545,9 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     // (30/10) acabou de subir do túnel: a Kombi está parada na porta. Só desce de
     // novo depois de sair da frente dela
     if (nascerNoTunel()) dentro.add("tuneis")
+    // (revisão 05/11) voltou pro jogo em cima de um lugar do chão (ondeParou.ts): idem
+    const nasceuEm = ondeNasceu()
+    if (nasceuEm) for (const id of Object.keys(CHAO_LUGARES) as LugarChao[]) if (pertoDoChao(id, nasceuEm.x, nasceuEm.z) || Math.hypot(nasceuEm.x - CHAO_LUGARES[id].x, nasceuEm.z - CHAO_LUGARES[id].z) < CHEGADA_MISSAO.chao) dentro.add(id)
     // (missões claras, 02/11) o lugar da MISSÃO (o alvo) vale de Kombi, de patins
     // ou voando baixo, num raio maior (estrada/alvoMissao.ts, o mesmo ponto do
     // mapa); o túnel da missão vale já na rampa. Os outros (as peças, a boca do
