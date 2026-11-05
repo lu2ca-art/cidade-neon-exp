@@ -108,7 +108,8 @@ import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { radioPega, type MemoriaRadio } from "../disco/sons"
 import { definirZonaSom, zonaDoSom } from "../disco/radioAntiga"
-import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
+import { estacaoDaFreq, pedirFaixaDaRua, radioFreq, registrarTocador } from "../disco/radios"
+import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, voz, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -520,6 +521,7 @@ const MAPA_2D = typeof window !== "undefined" && /[?&]mapa2d/.test(location.sear
 const testeDpr = (() => { if (typeof window === "undefined" || !/[?&]medir/.test(location.search)) return null; const v = Number(new URLSearchParams(location.search).get("dpr")); return v > 0 ? v : null })()
 
 const freqDe = (id: FreqId) => FREQUENCIAS.find((f) => f.id === id)!
+const fqCor = (id: FreqId) => freqDe(id).cor
 const lugarDe = (d: FreqId) => territorio(d).lugar
 const praDe = (d: FreqId) => territorio(d).pra
 // saída aberta = rádio do destino já destravada
@@ -1094,6 +1096,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const [passando, setPassando] = useState<{ id: EstacaoId; t: number } | null>(null)
   const [travou, setTravou] = useState<Frequencia | null>(null)
   const [freq, setFreq] = useState<FreqId>(() => {
+    // (rádios, 05/11) no disco a estação é uma só pro jogo inteiro (disco/radios.ts)
+    if ("disco" in M) return radioFreq.get()
     const v = M.vias[jogo0.via]
     return v.tipo === "circuito" ? v.t : v.de ?? v.t
   })
@@ -1395,6 +1399,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const sinalRef = useRef(save.sinal)
   const freqRef = useRef(freq)
   useEffect(() => { freqRef.current = freq }, [freq])
+  // (rádios, 05/11) a estação muda com a zona (disco/radios.ts): a estrada acompanha;
+  // e o que a estrada sintoniza (o menu) vale pro jogo inteiro
+  useEffect(() => radioFreq.ouvir((f) => { freqRef.current = f; setFreq(f) }), [])
+  useEffect(() => { if ("disco" in M) radioFreq.set(freq) }, [M, freq])
   const corRadio = useRef(freqDe("linha").cor)
   useEffect(() => { corRadio.current = freqDe(freq).cor }, [freq])
   const nLibRef = useRef(nLib)
@@ -1854,7 +1862,9 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // rádio: a programação do lugar onde você está (programa.ts) — sacola
   // sem repetição, estreias e vinhetas do locutor entre as músicas
   const proxFaixa = useRef<(id: FreqId) => void>(() => {})
-  const tocarProxima = useCallback((id: FreqId, vol = 1) => {
+  // entrada: a troca de estação pela zona (disco/radios.ts) — o chiado já passou e a
+  // música entra em fade
+  const tocarProxima = useCallback((id: FreqId, vol = 1, entrada = false) => {
     if (fonteRef.current !== "radio") return
     if (caidoRef.current || foraRef.current) { player.pausar(); setFaixa(foraRef.current ? "a 222 saiu do ar" : ""); return }
     const a = alvoRef.current
@@ -1863,12 +1873,18 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     if (!p) { setFaixa(""); return }
     const tocar = () => {
       setFaixa(p.faixa.titulo)
-      player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol)
+      player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol, entrada ? 1.2 : 0)
     }
     if (!p.vinheta) return tocar()
     // entre uma música e outra: um chiado de dial e o locutor (ou o Núcleo)
-    chiadoCurto()
-    falar(p.vinheta.de, p.vinheta.texto)
+    if (!entrada) chiadoCurto()
+    // (rádios, 05/11) no disco o locutor é legenda curta: no display da rádio e no
+    // notch, ~5 s (a voz gravada, quando houver, toca por cima: a música abaixa)
+    if ("disco" in M) {
+      avisarRadio(p.vinheta.de, p.vinheta.texto, 5000)
+      if (holoLigadoRef.current) notch(p.vinheta.texto, p.vinheta.cor ?? fqCor(id))
+      if (p.vinheta.audio) { const a = p.vinheta.audio; setTimeout(() => voz.tocar("vinheta-radio", a), 900) }
+    } else falar(p.vinheta.de, p.vinheta.texto)
     if (p.estreia) {
       jogo.current.flash = 0.7
       confeteRef.current?.(getEstacao(p.estreia).cor, 70)
@@ -1877,6 +1893,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
      
   }, [save.objetos, save.nome, falar])
   useEffect(() => { proxFaixa.current = (id) => tocarProxima(id) }, [tocarProxima])
+  // (rádios, 05/11) com a estrada montada, é ela quem toca a estação nova da zona
+  const tocarProximaRef = useRef(tocarProxima)
+  useEffect(() => { tocarProximaRef.current = tocarProxima }, [tocarProxima])
+  useEffect(() => registrarTocador((f, entrada) => tocarProximaRef.current(f, 1, entrada)), [])
   useEffect(() => {
     // liga o rádio ao entrar no carro (efeito externo: áudio)
      
@@ -2498,14 +2518,15 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
 
   const fq = freqDe(freq)
   // (o holo) a rádio: o mesmo pros widgets do computador e a ilha do celular
-  const radioHolo = { ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal }
+  const radioHolo = { ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal, nome: "disco" in M ? fq.nome : undefined }
   // (T40) a rádio só pega perto das pistas: fora delas fica o disco e a Kombi avisa
   const semSinalAviso = () => { if (!fonteSom.radioPega()) falar("222 FM", "sem sinal aqui: a rádio só pega perto das pistas. fica o disco", 4200) }
   const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(freqRef.current), 0) } }
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
   const sintonizarHolo = (id: FreqId) => {
     // (T18) as outras frequências abrem na missão do Xeriff: até lá, só a 222
-    if (trancas?.radio && id !== freqRef.current) { chiadoCurto(); falar("222 FM", `só chiado. ${trancas.radio}`, 3600); return }
+    // (rádios, 05/11) as duas rádios (Xenom e Cidade Neon) são livres desde o começo
+    if (trancas?.radio && id !== freqRef.current && !estacaoDaFreq(id)) { chiadoCurto(); falar("222 FM", `só chiado. ${trancas.radio}`, 3600); return }
     chiadoCurto(); setFreq(id); freqRef.current = id; fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(id), 0)
   }
   const V = M.vias[viaAtual]
@@ -6147,6 +6168,8 @@ function CenaBase({
         discoPainel.parar()
         pistaSom.tocarFaixa(faixaContinua(fx))
         definirTom(fx.tom)
+        // (rádios, 05/11) com a Rádio Cidade Neon ligada, a faixa da rua é a próxima dela
+        pedirFaixaDaRua(fx.id)
       }
       pistaSom.estado(!!(j.ar || j.voo || combRef.current.patins), fonteRef.current === "radio", pistaEscura.current)
     }

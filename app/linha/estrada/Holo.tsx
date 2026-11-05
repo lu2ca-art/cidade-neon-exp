@@ -87,7 +87,8 @@ function useAvisoRadio() {
   return a
 }
 
-type Radio = { ligada: boolean; freq: string; faixa: string; cor: string; id: FreqId; sinal: number }
+// nome: a estação (Rádio Xenom, Rádio Cidade Neon: disco/radios.ts)
+type Radio = { ligada: boolean; freq: string; faixa: string; cor: string; id: FreqId; sinal: number; nome?: string }
 
 // (RASCUNHO, LU2CA 20/10) as mensagens das frequências piratas: chegam no menu
 // da rádio de tempos em tempos. Vagas de propósito: perigo e mistério, de leve
@@ -201,7 +202,7 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
       </button>
       <div className="l-holo-som-info">
         <div className={`l-holo-radio-linha ${aviso ? "is-aviso" : ""}`} data-info="radio">
-          <b>{aviso ? aviso.de : `${radio.freq} fm`}</b>
+          <b>{aviso ? aviso.de : radio.nome ? `${radio.nome.toLowerCase()} · ${radio.freq}` : `${radio.freq} fm`}</b>
           {aviso ? (
             <span key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></span>
           ) : <span>{radio.ligada ? radio.faixa : "desligada"}</span>}
@@ -974,7 +975,7 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
             {vez === "clima" && <span className="l-ilha-holo-radio"><b>{temp}°</b><small>{c.regiao}</small></span>}
           </span>
           <span className="l-ilha-holo-rodape">
-            <b>{vez === "radio" ? "rádio 222" : vez === "destaque" ? (destaque === "batida" ? "B4TIDA" : "GUITAR DRIVER") : vez === "propaganda" ? (prop.id === "stream" ? "vid.stream" : prop.nome) : "clima"}</b>
+            <b>{vez === "radio" ? (radio.nome?.toLowerCase() ?? "rádio 222") : vez === "destaque" ? (destaque === "batida" ? "B4TIDA" : "GUITAR DRIVER") : vez === "propaganda" ? (prop.id === "stream" ? "vid.stream" : prop.nome) : "clima"}</b>
             <span className="l-holo-apps-pips">{CARTOES.map((x, i) => <i key={x} className={i === k ? "is-on" : ""} />)}</span>
           </span>
         </button>

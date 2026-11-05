@@ -41,7 +41,7 @@ import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
 import { introDe } from "./disco/introMissoes"
 import { IntroMissao } from "./disco/IntroMissao"
-import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
+import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha, voz } from "./som"
 import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
@@ -89,7 +89,8 @@ import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEven
 import { motoLiberada } from "./estrada/zonas"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
-import { notch } from "./estrada/Holo"
+import { avisarRadio, notch } from "./estrada/Holo"
+import { definirContextoRadio, ligarRadiosPorZona, radioFreq, registrarTocador } from "./disco/radios"
 import { vib } from "./som-carro"
 import { RecompensaHolo } from "./disco/TutorialHolo"
 import { CONFIG_TUTORIAL, faltaRecompensaHolo } from "./disco/tutorialConf"
@@ -554,13 +555,31 @@ export default function LinhaPage() {
   }), [])
 
   // o widget da home toca a mesma programação da estrada (programa.ts)
-  const proxRadio = useRef<(id: FreqId) => void>(() => {})
-  const tocarRadio = useCallback((id: FreqId) => {
+  const proxRadio = useRef<(id: FreqId, entrada?: boolean) => void>(() => {})
+  // (rádios, 05/11) entrada = a troca de estação pela zona: a música entra em fade
+  const tocarRadio = useCallback((id: FreqId, entrada = false) => {
     if (ehDoLugar(id, player.src, save.objetos)) return player.tocar(player.src!, () => proxRadio.current(id))
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando: null })
-    if (p) player.tocar(p.faixa.src, () => proxRadio.current(id))
-  }, [save.objetos, save.nome])
+    if (!p) return
+    // o locutor (as vinhetas da Xenom, a Cidade Neon): legenda curta no display da rádio e no notch
+    if (D && p.vinheta) {
+      avisarRadio(p.vinheta.de, p.vinheta.texto, 5000)
+      notch(p.vinheta.texto, p.vinheta.cor)
+      if (p.vinheta.audio) voz.tocar("vinheta-radio", p.vinheta.audio)
+    }
+    player.tocar(p.faixa.src, () => proxRadio.current(D ? radioFreq.get() : id), 1, entrada ? 1.2 : 0)
+  }, [save.objetos, save.nome, D])
   useEffect(() => { proxRadio.current = tocarRadio }, [tocarRadio])
+  // (rádios, 05/11) as duas rádios: a estação muda com a zona (disco/radios.ts). A
+  // página toca quando a estrada não está montada (túneis, salas); montada, a estrada
+  // registra o tocador dela por cima
+  useEffect(() => {
+    if (!D) return
+    const sair = ligarRadiosPorZona()
+    const solta = registrarTocador((f, entrada) => proxRadio.current(f, entrada), true)
+    return () => { solta(); sair() }
+  }, [D])
+  useEffect(() => { if (D) definirContextoRadio({ h: hist, objetos: save.objetos }) }, [D, hist, save.objetos])
 
   // O Núcleo invade: 1ª vez depois da 2ª missão (dá pra repelir), 2ª depois
   // da 3ª (derruba a 222 — o primeiro apagão). E só: é um easter egg, duas
@@ -1434,7 +1453,7 @@ export default function LinhaPage() {
     if (radioManda) fonteSom.set("off")
     else {
       fonteSom.set("radio")
-      if (fonteSom.get() === "radio") tocarRadio((save.freq as FreqId) || "linha")
+      if (fonteSom.get() === "radio") tocarRadio(D ? radioFreq.get() : (save.freq as FreqId) || "linha")
     }
     // a faixa da rua (que mora na página) fica muda por baixo da rádio, como na estrada
     pistaSom.estado(false, fonteSom.get() === "radio")
@@ -2546,7 +2565,7 @@ export default function LinhaPage() {
               if (radio?.tocando) return fonteSom.set("off")
               fonteSom.set("radio") // o disco para: os dois juntos não
               // (T40) fora das pistas a rádio não pega: ficou o disco
-              if (fonteSom.get() === "radio") tocarRadio((save.freq as FreqId) || "linha")
+              if (fonteSom.get() === "radio") tocarRadio(D ? radioFreq.get() : (save.freq as FreqId) || "linha")
             }}
           />
         )}

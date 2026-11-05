@@ -11,6 +11,8 @@
 
 import { ESTACOES, estacao, type EstacaoId } from "./data"
 import { FREQUENCIAS, VINIS, faixasDe, type FreqId } from "./radio"
+import { jogoVelho } from "./roteiros"
+import { estacaoDaFreq, ehDaEstacao, faixasDaEstacao, proximaDaEstacao } from "./disco/radios"
 
 export interface Faixa { titulo: string; src: string }
 
@@ -52,11 +54,17 @@ function embaralhar(l: string[], evitarPrimeiro?: string) {
 export interface Proxima {
   faixa: Faixa
   estreia?: EstacaoId
-  vinheta: { de: string; texto: string } | null
+  vinheta: { de: string; texto: string; audio?: string | null; cor?: string } | null
 }
+
+// (rádios, 05/11) no jogo novo, a 222.0 é a Rádio Cidade Neon e a 69.9 é a Rádio
+// Xenom: a programação delas mora em disco/radios.ts
+const estacaoNova = (id: FreqId) => (jogoVelho() ? null : estacaoDaFreq(id))
 
 // a próxima música do lugar (e o que o locutor fala antes dela)
 export function proxima(id: FreqId, objetos: EstacaoId[], ctx: Contexto): Proxima | null {
+  const nova = estacaoNova(id)
+  if (nova) return proximaDaEstacao(nova)
   const e = ler()
   let lista = faixasDe(FREQUENCIAS.find((f) => f.id === id)!, objetos, null)
   if (!lista.length) lista = faixasDe(FREQUENCIAS[0], objetos, null)
@@ -161,6 +169,8 @@ function vinhetaEstreia(id: EstacaoId) {
 // se a música tocando agora é deste lugar (pra não trocar à toa ao voltar)
 export function ehDoLugar(id: FreqId, src: string | null, objetos: EstacaoId[]) {
   if (!src) return false
+  const nova = estacaoNova(id)
+  if (nova) return ehDaEstacao(nova, src)
   return faixasDe(FREQUENCIAS.find((f) => f.id === id)!, objetos, null).some((f) => f.src === src)
 }
 
@@ -168,4 +178,5 @@ export const TODAS_FAIXAS: Faixa[] = [
   ...VINIS,
   ...FREQUENCIAS.flatMap((f) => f.faixas),
   ...ESTACOES.map((e) => ({ titulo: e.faixa, src: e.audio })),
+  ...faixasDaEstacao("cidade"),
 ]
