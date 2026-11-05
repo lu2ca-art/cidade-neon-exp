@@ -8,15 +8,27 @@
 
 import { chaveSave } from "../chaveSave"
 
-export type OndeParou =
+// (revisão 05/11) FORA DA KOMBI: de patins ou de moto, com a Kombi estacionada onde
+// ficou (o subúrbio é a pé: ela fica na entrada). A volta (abrir o jogo, sair de uma
+// sala, subir do túnel) começa assim, sem tirar e pôr ele na Kombi
+export interface KombiParada { x: number; y: number; z: number; q: [number, number, number, number]; via: string; u: number; xl: number }
+export interface Desembarque { modo: "patins" | "moto"; kombi: KombiParada }
+const desembarqueOk = (d: unknown): d is Desembarque => {
+  const o = d as Desembarque | null
+  return !!o && (o.modo === "patins" || o.modo === "moto") && !!o.kombi && Number.isFinite(o.kombi.x) && Number.isFinite(o.kombi.z) && Array.isArray(o.kombi.q) && o.kombi.q.length === 4
+}
+
+export type OndeParou = (
   | { t: "pista"; via: string; u: number; x: number }
   | { t: "chao"; x: number; z: number; rumo: number }
+) & { fora?: Desembarque }
 
 const chave = () => `${chaveSave()}-onde`
 
 export function lerOndeParou(): OndeParou | null {
   try {
     const r = JSON.parse(localStorage.getItem(chave()) ?? "null")
+    if (r && r.fora !== undefined && !desembarqueOk(r.fora)) delete r.fora
     if (r && r.t === "pista" && typeof r.via === "string" && Number.isFinite(r.u)) return r
     if (r && r.t === "chao" && Number.isFinite(r.x) && Number.isFinite(r.z)) return r
   } catch {}

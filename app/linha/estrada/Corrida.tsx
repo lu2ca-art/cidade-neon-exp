@@ -48,13 +48,13 @@ import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
-import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu } from "./ondeParou"
+import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desembarque } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { NAV, ladoDaFaixa } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
-import { nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
+import { foraNaBoca, nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
@@ -648,7 +648,9 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const onHistoriaRef = useRef(onHistoria)
   useEffect(() => { onHistoriaRef.current = onHistoria }, [onHistoria])
   const input = useRef<Input>({ esq: false, dir: false, gas: false, freio: false, turbo: false, toqueE: false, toqueD: false, mao: false, ultimo: 0 })
-  const [jogo0] = useState(() => {
+  // (revisão 05/11) nasce: a Kombi/o jogador e, se ele estava fora dela (de patins ou de
+  // moto, a Kombi estacionada), o desembarque: a volta começa assim, sem trocar na tela
+  const [nasce] = useState(() => { let fora: Desembarque | null = null; const j = (() => {
     // (T61, ?parte=torre) o link de teste começa na alça de uma linha, chegando na rotatória
     const ir = "disco" in M && !retomada ? irTorreAgora() : null
     const ret = retomarJogo(M, retomada ?? (ir ? chegadaNaTorre(M as MundoDisco, ir.torre, ir.pista) : null))
@@ -672,9 +674,12 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       j.ar = false; j.y = MD.chaoEm(c.x, c.z) + 0.3; j.v = 0
       nasceuOndeParou(c.x, c.z) // (como o naVaga da pista: a porta de onde ele saiu não reabre parada)
     }
+    if (ret && retomada?.fora) fora = retomada.fora
+    if (parou?.fora) fora = parou.fora
     if (parou?.t === "pista") {
       const jp = retomarJogo(M, { via: parou.via, u: parou.u, x: parou.x })
       if (jp) return jp
+      fora = null
     }
     if (parou?.t === "chao") {
       const MD = M as MundoDisco
@@ -684,6 +689,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       return j
     }
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
+      // (revisão 05/11) subiu do túnel: a pé/de moto como desceu, a Kombi na entrada do subúrbio
+      fora = doTunel ? foraNaBoca() : null
       const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : doTunel ? saidaDoTunel() : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
       const ch = MD.chaoEm(p.x, p.z)
@@ -698,7 +705,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       } else { j.ar = false; j.y = ch + 0.3; j.v = 0 }
     }
     return j
-  })
+  })(); return { j, fora: "disco" in M ? fora : null } })
+  const jogo0 = nasce.j
   useEffect(() => { const t = window.setTimeout(limparIrTorre, 3000); return () => clearTimeout(t) }, [])
   // a abertura: onde a casa fica e em que pé a pessoa está
   const casaPose = poses["casa-dbee"]
@@ -721,7 +729,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // voltando de dentro do posto, a Kombi tá parada na frente dele: não abre de novo
   // (17/10, LU2CA: a Kombi virou ELÉTRICA, com painéis solares: não acaba,
   // não abastece) fora da abertura o "tanque" é a bateria, sempre cheia
-  const combRef = useRef<Comb>({ tanque: abertura ? tanque : 1, via: postoPose.via, u: LUGARES.posto.u, avisou: jogo0.via === postoPose.via && Math.abs(du(M.vias[jogo0.via], jogo0.u, LUGARES.posto.u)) < 60, onPosto: () => {}, t: 0 })
+  const combRef = useRef<Comb>({ tanque: abertura ? tanque : 1, via: postoPose.via, u: LUGARES.posto.u, avisou: jogo0.via === postoPose.via && Math.abs(du(M.vias[jogo0.via], jogo0.u, LUGARES.posto.u)) < 60, onPosto: () => {}, t: 0,
+    ...(nasce.fora ? { patins: true, moto: nasce.fora.modo === "moto", parada: paradaDe(M, nasce.fora) } : {}) })
   const onTanqueRef = useRef(onTanque)
   useEffect(() => { onTanqueRef.current = onTanque }, [onTanque])
   useEffect(() => { combRef.current.onPosto = () => onPosto?.() }, [onPosto])
@@ -782,9 +791,9 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const [msgBomba, setMsgBomba] = useState("")
   const [esperandoPosto, setEsperandoPosto] = useState(false)
   // a gasolina acabou: de patins até o posto ou uma bomba, e volta com o galão
-  const [dePatins, setDePatins] = useState(false)
+  const [dePatins, setDePatins] = useState(() => !!nasce.fora)
   // (moto, 05/11) fora da Kombi de moto: é o patins com outra física e outro corpo (combRef.moto)
-  const [deMoto, setDeMoto] = useState(false)
+  const [deMoto, setDeMoto] = useState(() => nasce.fora?.modo === "moto")
   useEffect(() => { naMoto.agora = deMoto }, [deMoto])
   // as flores do asfalto (mapa novo, LU2CA 16/10): só de patins; 10 por vez, sem fim
   const [flores, setFlores] = useState(() => lerFlores())
@@ -1006,7 +1015,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     // (revisão 05/11) no chão (a casa da D-Bee no deserto, o bar do subúrbio): volta no
     // chão, onde estava; antes voltava na última pista lá em cima da cidade
     const chao = "disco" in M && j.voo && !j.ar && j.wx !== undefined && j.wz !== undefined ? { x: j.wx, z: j.wz, rumo: j.rumo ?? 0 } : undefined
-    RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg, chao }
+    RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg, chao, fora: desembarqueDe(M, combRef.current) ?? undefined }
   }, [M])
   // (notas 04/11) e entre uma visita e outra (ondeParou.ts): de 4 em 4 s, ao
   // esconder a aba e ao sair. No ar, na chegada e na abertura não grava
@@ -1015,8 +1024,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     const guardar = () => {
       const j = jogo.current
       if (j.ar || j.chegadaCasa || aberturaRef.current.ativa) return
-      if (j.voo && j.wx !== undefined && j.wz !== undefined) gravarOndeParou({ t: "chao", x: j.wx, z: j.wz, rumo: j.rumo ?? 0 })
-      else if (!j.voo && M.vias[j.via]) gravarOndeParou({ t: "pista", via: M.vias[j.via].id, u: j.u, x: j.x })
+      // (revisão 05/11) e se estava fora da Kombi (de patins, de moto) e onde ela ficou
+      const fora = desembarqueDe(M, combRef.current) ?? undefined
+      if (j.voo && j.wx !== undefined && j.wz !== undefined) gravarOndeParou({ t: "chao", x: j.wx, z: j.wz, rumo: j.rumo ?? 0, fora })
+      else if (!j.voo && M.vias[j.via]) gravarOndeParou({ t: "pista", via: M.vias[j.via].id, u: j.u, x: j.x, fora })
     }
     const iv = setInterval(guardar, 4000)
     const escondeu = () => { if (document.visibilityState === "hidden") guardar() }
@@ -1294,7 +1305,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // tocando um vinil da Kombi (não uma faixa da rádio): o cartão diz isso
   const discoRef = useRef(false)
   // câmera: de fora (atrás da Kombi) ou de dentro (primeira pessoa). Lembra
-  const [dentro, setDentro] = useState(() => { try { return localStorage.getItem("cn-linha-cam") === "dentro" } catch { return false } })
+  const [dentro, setDentro] = useState(() => { if (nasce.fora) return false; try { return localStorage.getItem("cn-linha-cam") === "dentro" } catch { return false } })
   const dentroRef = useRef(dentro)
   // a troca é um corte suave: a tela apaga, a câmera muda no escuro e volta,
   // com um chiado de rádio quase inaudível por baixo
@@ -1585,7 +1596,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
           // (vitrine) o bar fora do prólogo não para a Kombi: só aparece o "entrar · o bar"
           dentro.add(id); if (!ehPeca(id) && (id !== "bar" || alvoChao === "bar")) j.v = 0
           // (30/10, o dono) a Kombi não entra no túnel: fica parada aqui fora, na porta
-          if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx ?? a?.x ?? l.x, j.wz ?? a?.z ?? l.z, j.rumo ?? 0) }
+          if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx ?? a?.x ?? l.x, j.wz ?? a?.z ?? l.z, j.rumo ?? 0, desembarqueDe(M, combRef.current)) }
           onHistoriaRef.current?.(`chao:${id}`)
         }
       }
@@ -3317,7 +3328,18 @@ function mundo() {
   return (MUNDO = q === "disco" ? montarMundoDisco() : q === "novo" ? montarMundoRede() : montarMundo())
 }
 // (revisão 05/11) chao: estava no chão (o deserto, o subúrbio) quando entrou na sala
-export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean; chao?: { x: number; z: number; rumo: number } }
+export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean; chao?: { x: number; z: number; rumo: number }; fora?: Desembarque }
+
+// (revisão 05/11) fora da Kombi (de patins/moto, a Kombi estacionada) ⇄ o que se guarda
+function desembarqueDe(M: Mundo, c: Comb): Desembarque | null {
+  if (!("disco" in M) || !c.patins || !c.parada || c.semKombi || c.quebrada) return null
+  const p = c.parada, q = p.quat
+  return { modo: c.moto ? "moto" : "patins", kombi: { x: p.pos.x, y: p.pos.y, z: p.pos.z, q: [q.x, q.y, q.z, q.w], via: M.vias[p.via]?.id ?? "", u: p.u, xl: p.x } }
+}
+function paradaDe(M: Mundo, d: Desembarque): NonNullable<Comb["parada"]> {
+  const k = d.kombi, vi = M.vias.findIndex((v) => v.id === k.via)
+  return { pos: new THREE.Vector3(k.x, k.y, k.z), quat: new THREE.Quaternion(k.q[0], k.q[1], k.q[2], k.q[3]), via: Math.max(0, vi), u: k.u, x: k.xl }
+}
 let RETOMAR: Retomada | null = null
 
 // as páginas robustas dos lugares: baixadas durante a cutscene de entrada
