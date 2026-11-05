@@ -23,13 +23,15 @@ Dois protótipos: **DopaminA** (o vício) e **Sabe Ontem?** (o tempo). As outras
 | `manifestos/ceu.ts` | `CEU_MANIFESTO` e `horaDoCeu`: a rua pode puxar o céu para a hora dela. |
 | `manifestos/DopaminA.tsx`, `manifestos/SabeOntem.tsx` | Os dois protótipos. |
 
-O que mudou fora da pasta (só `Corrida.tsx`, três toques):
+O que mudou fora da pasta (só `Corrida.tsx`):
 - 1 import e 1 linha na `Cena`, ao lado da `RotaPista`:
   `<Seguro nome="manifestos"><Manifestos M jogo input carro /></Seguro>`
 - No bloco "A HORA DO JOGO", `ceuNaHora` e `astros` agora recebem `horaDoCeu(horaRef.current)`.
   A hora do jogo (`horaRef`) continua andando normalmente; só o céu, a névoa e a
   luz do sol e da lua seguem a hora da rua. Fora de uma rua com manifesto,
   `k = 0` e a função devolve a hora do jogo sem mudar nada.
+- (CHUVA) No bloco da chuva, a visibilidade e a opacidade das linhas usam
+  `Math.max(clima.k, CHUVA_MANIFESTO.k)` (2 linhas + o import). Fora da rua, `k = 0`.
 
 Nenhum arquivo de poste, asfalto, pilar, prédio ou quadra (`mundoDisco`, `Postes` etc.) foi tocado.
 
@@ -98,6 +100,26 @@ Nenhum arquivo de poste, asfalto, pilar, prédio ou quadra (`mundoDisco`, `Poste
   tempo escapa. Quando você solta, o tempo cobra: o céu e os ponteiros correm
   (60% do atraso por segundo) até alcançar a faixa.
 - **Ajustes:** `ONTEM_CFG` (horas, passo, relógios no céu, fantasmas, ritmos).
+
+## CHUVA: a chuva que rega a cidade
+
+- **A chuva fina que engrossa:** a rua não desenha gota nova. Ela puxa a chuva
+  que o jogo já desenha (as 700 linhas que seguem a câmera, `Corrida.tsx`) por
+  `CHUVA_MANIFESTO.k` (`ceu.ts`): o jogo usa o maior entre o clima e a rua. Fina
+  no começo da faixa (0,3 da pancada do clima) e grossa no fim (1,8).
+- **Os anéis na pista:** onde as gotas caem nascem anéis de luz no asfalto, cada
+  um no seu ritmo (meia, uma ou duas batidas). Quanto mais grossa a chuva, mais anéis.
+- **As flores de luz:** na beira da pista, nos canteiros e nos prédios (de 3 a
+  29 m de altura). Antes de cada flor nascer, uma gota desce até o broto nas 2
+  batidas antes. Depois ela cresce um degrau a cada batida (6 batidas até
+  inteira) e respira no compasso. As do começo da rua nascem antes, mas com
+  sorteio: ao longo de 92% da faixa a rua inteira floresce. Quando a faixa
+  recomeça (o instrumental em loop), o que choveu fica.
+- **O guarda-chuva (segurar o propulsor ou o freio):** abre uma cúpula de luz
+  sobre a Kombi, com varetas e as gotas respingando nela. O trecho que ela cobre
+  (24 m em volta) floresce mais: as flores ficam maiores, mais abertas e mais
+  acesas, e continuam assim depois de fechar (até 8 trechos; o mais velho dá lugar).
+- **Ajustes:** `CHUVA_CFG` (passos, força fina e grossa, degraus, raio do guarda-chuva e da rega).
 
 ## Custo estimado
 

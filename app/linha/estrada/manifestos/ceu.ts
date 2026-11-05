@@ -14,3 +14,10 @@ export function horaDoCeu(hJogo: number): number {
   d -= Math.round(d / 24) * 24
   return (((hJogo + d * Math.min(1, k)) % 24) + 24) % 24
 }
+
+// A CHUVA DE UMA RUA-MANIFESTO: a rua pode pedir chuva (CHUVA: começa fina e
+// engrossa com a faixa). Não desenha gota nova: puxa a chuva que já existe
+// (Corrida.tsx, as 700 linhas que seguem a câmera e já são calculadas todo
+// quadro) pelo máximo entre o clima e isto. k = 0: só o clima; 1 = a pancada
+// cheia do clima; até ~1,8 = mais grossa que ela.
+export const CHUVA_MANIFESTO = { k: 0 }
