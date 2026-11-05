@@ -29,7 +29,7 @@ import "./corridaRua.css"
 import {
   CORRIDA_RUA_CFG as CFG, L_RUA, MEIA_RUA, PORTOES_RUA, RAIO_PORTAO_RUA, RUA, SEQ_RUA, VOLTAS_RUA, VOLTA_RUA,
   acompanharRua, criarRivaisRua, distNaVolta, naVoltaRua, novoEstadoRua, passoRivalRua, pilotosRua, placarComCorrida, portaoDaVolta, voltaDe,
-  type PlacarRua, type ResultadoRua, type VeiculoRua,
+  type EstadoRua, type PlacarRua, type ResultadoRua, type VeiculoRua,
 } from "./corridaRua"
 
 type JogoMin = { wx?: number; wz?: number; rumo?: number; v: number; vx?: number; voo?: boolean; tempo: number }
@@ -115,6 +115,17 @@ function texPlaca() {
   return t
 }
 
+// a corrida acabou (chegou, desistiu, saiu): o resultado e a fase "fim". Fora do
+// useFrame (revisão 3): antes era uma closure nova a cada quadro no subúrbio
+function acabarRua(E: EstadoRua, agora: number, motivo: string | null) {
+  const fimJ = motivo ? null : E.tempo
+  const lista = E.rivais.map((r) => ({ nome: r.nome, cor: r.cor, fim: r.fim == null ? null : r.fim - E.t0 }))
+  const antes = lista.filter((r) => r.fim != null && (fimJ == null || r.fim < fimJ)).length
+  const lugar = motivo ? lista.length + 1 : antes + 1
+  E.resultado = { veiculo: E.veiculo, tempo: fimJ, lugar, de: lista.length + 1, venceu: !motivo && lugar === 1, motivo: motivo ?? undefined, rivais: lista }
+  E.fase = "fim"; E.ate = agora + CFG.mostraS
+}
+
 /** A cena da corrida de rua (no Canvas). Monta dentro do <Perto> das ruínas. */
 export function CorridaRuaCena({ chao, jogo, comb }: { chao: (x: number, z: number) => number; jogo: React.RefObject<JogoMin>; comb: React.RefObject<CombMin> }) {
   const S = PORTOES_RUA[0]
@@ -176,15 +187,6 @@ export function CorridaRuaCena({ chao, jogo, comb }: { chao: (x: number, z: numb
     const veic: VeiculoRua = cb.moto ? "moto" : "patins"
     const x = j.wx ?? 1e9, z = j.wz ?? 1e9
 
-    const acabar = (motivo: string | null) => {
-      const fimJ = motivo ? null : E.tempo
-      const lista = E.rivais.map((r) => ({ nome: r.nome, cor: r.cor, fim: r.fim == null ? null : r.fim - E.t0 }))
-      const antes = lista.filter((r) => r.fim != null && (fimJ == null || r.fim < fimJ)).length
-      const lugar = motivo ? lista.length + 1 : antes + 1
-      E.resultado = { veiculo: E.veiculo, tempo: fimJ, lugar, de: lista.length + 1, venceu: !motivo && lugar === 1, motivo: motivo ?? undefined, rivais: lista }
-      E.fase = "fim"; E.ate = j.tempo + CFG.mostraS
-    }
-
     if (E.fase === "fora" || E.fase === "perto") {
       const perto = solto && Math.hypot(x - S.x, z - S.z) < CFG.pertoLargada
       E.fase = perto ? "perto" : "fora"
@@ -201,7 +203,7 @@ export function CorridaRuaCena({ chao, jogo, comb }: { chao: (x: number, z: numb
         E.conta = Math.max(1, Math.ceil(E.ate - j.tempo))
         E.k = 0
         if (j.tempo >= E.ate) E.fase = "valendo"
-        if (desistiu) acabar(E.desistir ? "desistiu" : "saiu da moto/patins")
+        if (desistiu) acabarRua(E, j.tempo, E.desistir ? "desistiu" : "saiu da moto/patins")
       } else {
         E.tempo = j.tempo - E.t0
         // onde está na volta e os portões, na ordem
@@ -217,11 +219,14 @@ export function CorridaRuaCena({ chao, jogo, comb }: { chao: (x: number, z: numb
         const p = VOLTA_RUA[E.k]
         E.fora = Math.hypot(p.x - x, p.z - z) > CFG.foraM ? E.fora + dt : 0
         for (const r of E.rivais) passoRivalRua(r, dt, j.tempo, E.prog, true)
-        E.lugar = 1 + E.rivais.filter((r) => (r.fim != null ? 1e9 : r.d) > E.prog).length
-        if (E.cp >= SEQ_RUA.length) acabar(null)
-        else if (desistiu) acabar(E.desistir ? "desistiu" : "saiu da moto/patins")
-        else if (E.fora > CFG.foraS) acabar("saiu do circuito")
-        else if (E.tempo > CFG.tempoMaxS) acabar("o tempo acabou")
+        // (revisão 3) sem filter nem closure por quadro: um for
+        let na = 1
+        for (const r of E.rivais) if ((r.fim != null ? 1e9 : r.d) > E.prog) na++
+        E.lugar = na
+        if (E.cp >= SEQ_RUA.length) acabarRua(E, j.tempo, null)
+        else if (desistiu) acabarRua(E, j.tempo, E.desistir ? "desistiu" : "saiu da moto/patins")
+        else if (E.fora > CFG.foraS) acabarRua(E, j.tempo, "saiu do circuito")
+        else if (E.tempo > CFG.tempoMaxS) acabarRua(E, j.tempo, "o tempo acabou")
       }
     } else if (E.fase === "fim") {
       // os rivais terminam a volta deles enquanto o resultado aparece
