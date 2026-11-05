@@ -95,6 +95,7 @@ import { CHUVA_MANIFESTO, horaDoCeu } from "./manifestos/ceu"
 // a rua CHUVA conta como chuva (vidro, holo) a partir daqui (a garoa do começo é 0,3)
 const CHUVA_RUA_MIN = 0.25
 import { CAMERA_RUA } from "./manifestos/comum"
+import { VIDA_JOGADOR } from "./VidaSuburbio"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -6255,6 +6256,8 @@ function CenaBase({
       // liga o voo livre (j.voo), e cada voo na cidade virava "subúrbio" (o filtro de
       // rádio antigo na hora; mais de 4 s, a troca pra Rádio Xenom). Muda quando pousa
       if (!j.ar) definirZonaSom(zonaDoSom(!!j.voo, j.wx, j.wz))
+      // (vida no subúrbio) a posição de verdade pra gente abrir caminho (VidaSuburbio.tsx); só perto dele
+      if (j.voo && j.wx !== undefined && Math.hypot(j.wx - SUBURBIO.x, j.wz! - SUBURBIO.z) < SUBURBIO.r + 300) { VIDA_JOGADOR.x = j.wx; VIDA_JOGADOR.z = j.wz!; VIDA_JOGADOR.ate = state.clock.elapsedTime + 0.5 }
     }
     // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }
