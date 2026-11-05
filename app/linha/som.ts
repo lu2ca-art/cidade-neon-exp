@@ -66,7 +66,19 @@ const VOL_DUCK_LEVE = 0.7
 // por baixo (a música contínua não para nem perde o ponto); a TV pausou ou
 // fechou, ela volta. Ver disco/TvHolo.tsx
 let pelaTv = false
+// (revisão 05/11) a voz do locutor da rádio (as vinhetas com áudio) cala junto com a
+// música: a TV tocando e o fazer música (silenciar) zeram este ganho. As outras vozes
+// (ligação, nota de voz, personagens) passam sempre
+let vozLocutorG: GainNode | null = null
+let vozEhLocutor = false
+function aplicarLocutor() {
+  const c = audioCtx()
+  if (!c || !vozLocutorG) return
+  const mudo = vozEhLocutor && (silenciando > 0 || pelaTv)
+  vozLocutorG.gain.setTargetAtTime(mudo ? 0 : 1, c.currentTime, 0.2)
+}
 function aplicarAbafo() {
+  aplicarLocutor()
   const c = audioCtx()
   if (!c || !abafo() || !abafoF || !abafoG) return
   const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0 || pelaTv, leve = abaixando > 0
@@ -789,7 +801,7 @@ class Voz {
     const c = audioCtx()
     const out = saidaCanal("vozes")
     if (c && out) {
-      try { c.createMediaElementSource(el).connect(out) } catch {}
+      try { const g = c.createGain(); c.createMediaElementSource(el).connect(g).connect(out); vozLocutorG = g } catch {}
     } else el.volume = volumeEfetivo("vozes")
     this.el = el
     return el
@@ -800,11 +812,13 @@ class Voz {
     this.parar()
     this.id = id
     this.tocando = true
+    vozEhLocutor = id === "vinheta-radio"
     player.abaixar(true)
     // (LU2CA 19/10) um personagem falando: a música da pista abafa por baixo
     abafar(true)
     if (src) {
       const el = this.garantir()
+      aplicarLocutor()
       el.src = src
       el.currentTime = 0
       el.play().catch(() => this.parou())
