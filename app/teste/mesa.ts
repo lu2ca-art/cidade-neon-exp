@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "A cidade maior mais leve (pista e postes por perto)",
+    data: "2026-11-05",
+    olhar: "Com a cidade maior, a pista, os postes, os pilares e a chuva agora só mandam pra tela o que está perto (a menos de ~1,3 km): ~1500 postes em vez de ~2400, e menos peso por vista. Nada deve mudar no visual. Também saiu código velho do tutorial antigo.",
+    perguntas: [
+      "Ficou mais liso dirigindo na cidade?",
+      "Viu algum pedaço de pista ou poste surgindo do nada na frente?",
+    ],
+  },
+  {
     parte: "bar",
     nome: "As ruínas acesas de noite",
     data: "2026-11-05",
