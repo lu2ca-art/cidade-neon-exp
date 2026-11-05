@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "dunas",
+    nome: "O começo pra quem nunca jogou (sem travas)",
+    data: "2026-11-05",
+    olhar: "Segui o caminho de um jogador novo até a 2ª missão e destravei: fechar e reabrir no meio da cena do bar/oficina agora reabre o lugar; beber no bar abre de novo; o disco das dunas toca ao reabrir; a D-Bee não fala por cima dos balões da trilha; a pedra do turbo vem depois. Chegando no subúrbio, o disco sai em fade e a rádio Xenom entra em fade; no iPhone, se o som não sair, toca no próximo toque. \"Depois\" na introdução deixa no notch \"a missão do X tá aqui · toca pra começar\".",
+    perguntas: [
+      "Mostre pra alguém que nunca jogou: a pessoa chegou na 1ª missão sozinha?",
+      "No iPhone, a rádio tocou ao chegar no subúrbio?",
+    ],
+    mais: [{ parte: "bar", nome: "o bar do prólogo" }],
+  },
+  {
     parte: "livre",
     nome: "Revisão 3: as zonas valem na carreira, D-Bee fala, final sem tranco",
     data: "2026-11-05",
