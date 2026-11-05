@@ -1765,6 +1765,9 @@ export default function LinhaPage() {
         setMinhoca(true)
         return
       }
+      // (começo novo, 05/11) reabrir na casa ou nas dunas: o disco antigo volta a tocar
+      // (antes ficava mudo até a rádio Xenom ligar no subúrbio)
+      if (f0 === "casa" || f0 === "dunas") { fonteSom.set("disco"); disco.tocarLista(ACERVO.faixas.map((f) => f.src)) }
       if (f0 === "casa") { setMinhoca(true); return }
       // (T57) quem volta das trincheiras sai da boca do túnel, sem a chegada do login
       // (notas 04/11) a chegada do login agora é só o link de teste dela (CHEGADA.casaNoLogin = "nunca")
