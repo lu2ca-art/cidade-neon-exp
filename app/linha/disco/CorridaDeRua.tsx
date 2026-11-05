@@ -197,10 +197,7 @@ export function CorridaRuaCena({ chao, jogo, comb }: { chao: (x: number, z: numb
     } else if (E.fase === "contagem" || E.fase === "valendo") {
       const desistiu = E.desistir || !solto || veic !== E.veiculo
       if (E.fase === "contagem") {
-        const [gd, gl] = CFG.gradeJogador
-        naVoltaRua(gd, gl, tmp.pose)
-        j.wx = tmp.pose.x; j.wz = tmp.pose.z; j.rumo = tmp.pose.yaw; j.v = 0
-        if (j.vx !== undefined) j.vx = 0
+        // (revisão 2b) a grade segura o jogador no passo fixo da física (Corrida.tsx, passo)
         E.conta = Math.max(1, Math.ceil(E.ate - j.tempo))
         E.k = 0
         if (j.tempo >= E.ate) E.fase = "valendo"

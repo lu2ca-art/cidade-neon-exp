@@ -66,7 +66,8 @@ import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { feita13 } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import { CorridaRuaCena, CorridaRuaHud } from "../disco/CorridaDeRua"
-import type { ResultadoRua } from "../disco/corridaRua"
+import { CORRIDA_RUA_CFG, RUA, naVoltaRua, type PoseRua, type ResultadoRua } from "../disco/corridaRua"
+const POSE_GRADE: PoseRua = { x: 0, z: 0, yaw: 0 }
 import { VeiculoModelo, VeiculosCena, VeiculosHud, novoEstadoVeiculos, type EstadoVeiculos } from "../disco/Veiculos"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, veiculoPorId } from "../disco/perseguicao"
 import type { ResultadoRacha } from "../disco/corredores"
@@ -4711,6 +4712,12 @@ function CenaBase({
     const inp = input.current
     const ev = evs.current!
     j.tempo += dt
+    // (revisão 2b) a largada da corrida de rua: a grade segura dentro do passo fixo
+    // (antes era no quadro, fora da física; CorridaDeRua.tsx só conta e desenha)
+    if (RUA.e.fase === "contagem" && j.voo && j.wx !== undefined) {
+      naVoltaRua(CORRIDA_RUA_CFG.gradeJogador[0], CORRIDA_RUA_CFG.gradeJogador[1], POSE_GRADE)
+      j.wx = POSE_GRADE.x; j.wz = POSE_GRADE.z; j.rumo = POSE_GRADE.yaw; j.v = 0; j.vx = 0
+    }
     let V = M.vias[j.via]
 
     // ── física na via ──
