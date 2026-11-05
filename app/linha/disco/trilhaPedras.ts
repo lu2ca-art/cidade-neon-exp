@@ -98,7 +98,8 @@ export const ALVO = {
   turbo: '[data-info="turbo"]',
   propulsor: '[data-info="propulsor"]',
   radio: '[data-info="radio"]',
-  salvar: '[data-info="salvar"]',
+  // (revisão 05/11) o ♥ do notch mora no menu ♪: a pedra aponta pro ♪ (com link), ou pro ♥ da rádio
+  salvar: '.l-nexo-musica.tem-salvar, [data-info="salvar"]',
   sair: '[data-info="sair"]',
   veiculo: '[data-trilha="veiculo"]',
   voltarRua: '.l-drone-botoes [aria-label="voltar pra rua"]',
