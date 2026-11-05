@@ -814,13 +814,17 @@ export function HoloAjuda({ ativa, onSair }: { ativa: boolean; onSair: () => voi
   useEffect(() => {
     if (!ativa) { setExp(null); return }
     const alvo = (e: Event) => (e.target as Element | null)?.closest?.("[data-info]") as HTMLElement | null
+    // (trilha de pedras) as setas da trilha (‹ ›) passam: elas são o próprio "?"
+    const daTrilha = (e: Event) => !!(e.target as Element | null)?.closest?.("[data-trilha-nav]")
     // (na captura, antes do React: a ação do botão não acontece)
     const desce = (e: PointerEvent) => {
+      if (daTrilha(e)) return
       const el = alvo(e)
       if (!el) { onSair(); return }
       e.stopPropagation(); e.preventDefault()
     }
     const toca = (e: MouseEvent) => {
+      if (daTrilha(e)) return
       const el = alvo(e)
       if (!el) return
       e.stopPropagation(); e.preventDefault()

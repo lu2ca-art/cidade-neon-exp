@@ -10,14 +10,14 @@
 // texto ou o lugar do alvo mudam. O balão se ajusta na borda da tela escrevendo
 // direto no estilo (sem render).
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { DRONE } from "../estrada/Drone"
 import { lerGuia } from "../estrada/alvoMissao"
 import { useAjudaAtiva } from "../estrada/Holo"
 import { gota } from "../som"
 import { vib } from "../som-carro"
 import { POSE_TUT } from "./tutorialConf"
-import { PEDRAS, TRILHA_CFG, ancoraDe, pedraAgora, pedraDe, pulada, textoDaPedra, type CtxTrilha, type MemPedra, type PedraId } from "./trilhaPedras"
+import { ALVO, PEDRAS, TRILHA_CFG, ancoraDe, pedraAgora, pedraDe, pedrasFeitas, pulada, textoDaPedra, type CtxTrilha, type MemPedra, type PedraId } from "./trilhaPedras"
 import "./trilhaPedras.css"
 
 // o que vem do save (a page monta)
@@ -61,6 +61,10 @@ export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pau
   // dá pra ter pedra? (só o save: barato, a cada render da page)
   const vivo = !pausado && !ajuda && restam(ctxBase(base, toque))
 
+  // a pedra do "?" conta no toque nele (com o "?" ligado a trilha para de olhar)
+  const idAgora = agora?.id ?? null
+  useEffect(() => { if (ajuda && idAgora === "ajuda") feito.current("ajuda") }, [ajuda, idAgora])
+
   useEffect(() => {
     if (!vivo) { setAgora(null); return }
     const mem: MemPedra & { id: PedraId | null; feitoJa: boolean } = { id: null, feitoJa: false, acc: 0, ini: 0, metros0: -1, passo0: "", drone: false, cliques: new Set() }
@@ -100,6 +104,8 @@ export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pau
     return () => { clearInterval(iv); document.removeEventListener("click", clique, true); document.documentElement.removeAttribute("data-trilha-mexe") }
   }, [vivo, toque])
 
+  // (3) o "?" é a trilha: ligado, mostra a pedra de agora e deixa voltar nas que passaram
+  if (ajuda && !pausado && base.holo) return <TrilhaNoQ base={base} toque={toque} />
   if (!agora || (!agora.alvo && !agora.semAlvo)) return null
   return <Balao id={agora.id} texto={ok === agora.id ? "✓ isso" : agora.texto} alvo={agora.alvo} ok={ok === agora.id} />
 }
@@ -136,5 +142,51 @@ export function Balao({ id, texto, alvo, ok = false, children }: { id: string; t
         {children}
       </div>
     </>
+  )
+}
+
+// ── (3) O "?" É A PRÓPRIA TRILHA. Tocou no "?": a pedra de agora aparece de novo
+// no lugar dela (como se fosse a primeira vez); ‹ volta nas que já passaram, uma
+// por vez, cada uma presa na coisa dela (se a coisa não está na tela agora, fica
+// presa no próprio "?"). O "?" de novo (ou tocar fora) fecha, como sempre.
+// Desempenho: a lista é montada uma vez por abertura; o alvo é medido a cada
+// 400 ms só enquanto o "?" está ligado ──
+function TrilhaNoQ({ base, toque }: { base: BaseTrilha; toque: boolean }) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const lista = useMemo(() => {
+    // (a pedra do próprio "?" não se repete aqui dentro)
+    const ag = pedraAgora(ctxAoVivo(base, false, toque))
+    const fs = pedrasFeitas(base.feitos).filter((x) => x.id !== "ajuda")
+    return ag && ag.id !== "ajuda" ? [...fs, ag] : fs
+  }, [])
+  const [i, setI] = useState(lista.length - 1)
+  const [alvo, setAlvo] = useState<Caixa | null>(null)
+  const p = lista[i] ?? null
+  const baseRef = useRef(base)
+  baseRef.current = base
+  useEffect(() => {
+    const medir = () => {
+      const sel = p ? ancoraDe(p, ctxAoVivo(baseRef.current, true, toque)) : null
+      const c = caixaDe(sel) ?? caixaDe(ALVO.ajuda)
+      setAlvo((a) => (igual(a, c) ? a : c))
+    }
+    medir()
+    const iv = setInterval(medir, 400)
+    if (p?.mexe) document.documentElement.setAttribute("data-trilha-mexe", p.mexe)
+    return () => { clearInterval(iv); document.documentElement.removeAttribute("data-trilha-mexe") }
+  }, [p, toque])
+  if (!alvo) return null
+  if (!p) return <Balao id="vazio" texto="tudo em dia: segue o anel" alvo={alvo} />
+  const n = lista.length
+  return (
+    <Balao key={p.id} id={p.id} texto={textoDaPedra(p, { toque })} alvo={alvo}>
+      {n > 1 && (
+        <span className="l-trilha-nav" onPointerDown={(e) => e.stopPropagation()}>
+          <button type="button" data-trilha-nav="volta" disabled={i === 0} onClick={() => setI((x) => Math.max(0, x - 1))} aria-label="a pedra de antes">‹</button>
+          <small>{i + 1}/{n}</small>
+          <button type="button" data-trilha-nav="vai" disabled={i === n - 1} onClick={() => setI((x) => Math.min(n - 1, x + 1))} aria-label="a próxima pedra">›</button>
+        </span>
+      )}
+    </Balao>
   )
 }

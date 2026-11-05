@@ -8,6 +8,11 @@
 .l-trilha-balao.is-cima::before { top: auto; bottom: -5px; border-bottom: 0; border-top: 5px solid var(--c); }
 .l-trilha-balao.is-solto::before { display: none; }
 .l-trilha-balao.is-ok { --c: #5dffa0; }
+/* (o "?") as setas pra voltar nas pedras que passaram: só elas pegam toque */
+.l-trilha-nav { display: inline-flex; align-items: center; gap: 2px; margin-left: 4px; pointer-events: auto; }
+.l-trilha-nav button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: rgba(6, 6, 12, 0.85); color: var(--c); font: 800 15px var(--mono, ui-monospace, monospace); cursor: pointer; }
+.l-trilha-nav button:disabled { opacity: 0.3; cursor: default; }
+.l-trilha-nav small { min-width: 26px; text-align: center; font: 700 9px var(--mono, ui-monospace, monospace); opacity: 0.75; }
 /* o que mais mexe, de leve: o mapa balança; o ícone da missão (no anel) pisca; o notch respira */
 html[data-trilha-mexe="mapa"] .l-mapa-mini { animation: l-trilha-mexe 1.8s ease-in-out infinite; }
 html[data-trilha-mexe="icone"] .l-holo-anel-ic { animation: l-trilha-pisca 1s ease-in-out infinite; }
