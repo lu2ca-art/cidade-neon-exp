@@ -134,10 +134,6 @@ export const PEDRAS: Pedra[] = [
   // depois da oficina a Kombi voa
   { id: "voo", fases: CIDADE, quando: (c) => !c.drone && c.tem(ALVO.propulsor), ancora: ALVO.propulsor, texto: "segura: a Kombi voa",
     feita: (c, m, dt) => { if (c.poseViva && c.pose.ar && c.pose.propulsor) m.acc += dt; return m.acc >= TRILHA_CFG.vooS } },
-  // (a primeira vez na cidade, se ainda não usou) o turbo
-  { id: "turbo", fases: CIDADE, quando: (c) => !c.drone && c.tem(ALVO.turbo), ancora: ALVO.turbo, texto: "turbo cheio: toca",
-    espera: { se: (c) => c.poseViva && c.pose.carga < 1 && !c.pose.turbo, texto: "drift e voo enchem o turbo" },
-    feita: (c) => c.poseViva && c.pose.turbo },
   // lá em cima: onde descer
   // (passou da subida sem pousar: a fase troca e ela some sozinha, sem ir pro save)
   { id: "pousa", fases: ["subir"], depois: ["voo"], quando: (c) => !c.drone, ancora: ALVO.notch, texto: "pousa numa pista acesa",
@@ -151,11 +147,20 @@ export const PEDRAS: Pedra[] = [
     feita: (c, m) => { if (m.metros0 < 0) m.metros0 = c.metros; return c.metros >= 0 && (m.metros0 - c.metros >= TRILHA_CFG.andou || c.metros <= TRILHA_CFG.perto || !!c.dica) }, passou: veterano },
   // perto: desce (de patins, ou só entra; a peça começa ali)
   { id: "chegou", fases: ["carreira"], quando: (c) => !!c.missao && !c.drone && (!!c.dica || (c.metros >= 0 && c.metros <= TRILHA_CFG.perto)),
-    ancora: (c) => (c.tem(ALVO.sair) ? ALVO.sair : ALVO.notch), texto: "chegou: desce aqui",
+    // (começo novo) com a dica do guia no notch (na pista em cima do lugar do chão: "desce:
+    // o lugar é aqui embaixo"; "desce a rampa"), aponta pro notch, não pro "sair da Kombi"
+    ancora: (c) => (!c.dica && c.tem(ALVO.sair) ? ALVO.sair : ALVO.notch), texto: "chegou: desce aqui",
     feita: (c, m) => clicou(m, "sair") || c.passo !== m.passo0 || !c.missao || c.metros > TRILHA_CFG.longe, passou: veterano },
   // a primeira missão da cidade feita: o que abriu brilha no próprio mapa (sem lista)
   { id: "liberou", fases: ["carreira"], quando: (c) => c.feitasCidade >= 1 && !c.drone, ancora: ALVO.mapa, texto: "abriu coisa nova: olha", mexe: "mapa",
     feita: (c) => c.drone, passou: (c) => c.feitasCidade >= 2 },
+  // (a primeira vez na cidade, se ainda não usou) o turbo
+  // (começo novo, 05/11) depois do caminho (pousa, escolhe, linha, chegou, liberou):
+  // antes, quem chegava na cidade sem ter usado o turbo via "turbo cheio: toca" no
+  // lugar de "pousa numa pista acesa" e de "escolhe a missão" até disparar o turbo
+  { id: "turbo", fases: CIDADE, quando: (c) => !c.drone && c.tem(ALVO.turbo), ancora: ALVO.turbo, texto: "turbo cheio: toca",
+    espera: { se: (c) => c.poseViva && c.pose.carga < 1 && !c.pose.turbo, texto: "drift e voo enchem o turbo" },
+    feita: (c) => c.poseViva && c.pose.turbo },
   // a rádio da região
   { id: "radio", fases: ["carreira"], depois: ["liberou"], quando: (c) => !c.drone && c.tem(ALVO.radio), ancora: ALVO.radio, texto: "toca: o menu da rádio",
     feita: (_c, m) => clicou(m, "radio") },
