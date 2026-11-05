@@ -137,3 +137,5 @@ e a linha `SETORES` em `raioCidade.ts`.
   e instâncias. São geometria leve, mas é o primeiro lugar a olhar se a Mesa medir
   queda. Partir por quadras do mesmo jeito dos prédios é o próximo passo (os postes
   têm `posteVia`/`apagarPostes` presos ao índice da instância: dá mais trabalho).
+  **Feito (05/11):** docs/leveza-cidade-grande.md (quadras de 300 m, uma draw call
+  por material).

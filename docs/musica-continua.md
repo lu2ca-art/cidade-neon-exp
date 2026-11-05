@@ -99,6 +99,6 @@ delas hoje é o instrumental, então a missão não muda nada nelas):
 - Teste do dono no iPhone (nada medido nem rodado aqui; só `tsc`). O cartão da
   Mesa (`app/teste/mesa.ts`) não foi mexido.
 - Ojalá com voz: ligar o arquivo quando o dono confirmar.
-- `soTema`, `temaMissao` e `versoesPista` ainda chegam na Corrida, mas não
-  decidem mais a música (dá pra limpar depois, ou religar se o dono quiser a
-  prévia de volta antes da missão).
+- ~~`soTema`, `temaMissao` e `versoesPista` ainda chegam na Corrida~~: tirados
+  (05/11, docs/leveza-cidade-grande.md). `versoesDasPistas` continua em
+  `pistasLiberadas.ts` (os testes usam) se o dono quiser religar a prévia.

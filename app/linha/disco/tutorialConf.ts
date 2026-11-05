@@ -69,12 +69,6 @@ export const PASSOS_TUTORIAL: PassoTut[] = [
   { id: "turbo", desde: "subir", nexo: "▸ turbo cheio: um toque no espaço", toque: "▸ turbo cheio: toca no turbo", dbee: "turbo cheio. usa", alvo: '[data-info="turbo"]', rotulo: "o turbo", espera: "▸ drift e voo enchem o turbo" },
 ]
 
-// a última linha (o Nexo), quando os passos de uma fase acabam
-export const FIM_TUTORIAL: Partial<Record<FaseDisco, { nexo: string; dbee: string }>> = {
-  dunas: { nexo: "▸ segue o GPS até o subúrbio", dbee: "agora é com vc. o subúrbio é pra lá" },
-  subir: { nexo: "▸ pousa numa pista acesa", dbee: "pousa numa pista acesa. as apagadas ninguém usa" },
-}
-
 const ORDEM: FaseDisco[] = ["minhoca", "casa", "dunas", "bar", "oficina", "subir", "nectar", "carreira", "livre"]
 const n = (f: FaseDisco) => ORDEM.indexOf(f)
 // as fases em que o tutorial roda; na carreira, só termina o que começou (quem
@@ -90,18 +84,12 @@ export function passoAgora(h: Pick<HistoriaDisco, "fase" | "holo" | "tutorial">)
   const feitos = h.tutorial ?? []
   return PASSOS_TUTORIAL.find((p) => n(p.desde) <= n(h.fase) && !feitos.includes(p.id)) ?? null
 }
-// "2 de 5": entre os passos que já valem nesta fase
-export function contagem(h: Pick<HistoriaDisco, "fase" | "tutorial">, id: PassoTutId) {
-  const doBloco = PASSOS_TUTORIAL.filter((p) => p.desde === PASSOS_TUTORIAL.find((x) => x.id === id)!.desde)
-  return { n: doBloco.findIndex((p) => p.id === id) + 1, de: doBloco.length }
-}
 // a tela de recompensa do holo ainda não foi vista (aparece uma vez, lá fora)
 export const faltaRecompensaHolo = (h: Pick<HistoriaDisco, "fase" | "holo" | "tutorial">) =>
   CONFIG_TUTORIAL.ligado && CONFIG_TUTORIAL.recompensa && h.holo && h.fase === "dunas" && !(h.tutorial ?? []).includes("recompensa")
 // o tutorial está ensinando agora (a D-Bee pelo rádio não repete a instrução)
 export const tutorialEnsina = (h: Pick<HistoriaDisco, "fase" | "holo" | "tutorial"> | null | undefined) =>
   !!h && roda(h) && !!passoAgora(h)
-export const textoDo = (p: PassoTut, toque: boolean) => (CONFIG_TUTORIAL.quem === "dbee" ? p.dbee : toque && p.toque ? p.toque : p.nexo)
 
 // ── a Kombi, lida pela Corrida (uns quadros por segundo, só enquanto o
 // tutorial está ligado): o tutorial não mexe no jogo, só olha ──
