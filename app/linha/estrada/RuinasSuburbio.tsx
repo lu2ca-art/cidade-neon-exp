@@ -18,6 +18,7 @@ import { ruinasNoMundo } from "./ruinas"
 import { PECAS_RUINAS } from "./ruinasDados"
 import { sortearLuzes } from "./luzesRuinas"
 import { RuinasLuz, U, acesoNaNoite, janelasAcesas } from "./RuinasLuz"
+import { VidaSuburbio } from "./VidaSuburbio"
 
 const URL = "/models/suburbio-ruinas.glb"
 type MundoMin = Parameters<typeof ruinasNoMundo>[0]
@@ -67,6 +68,7 @@ export function RuinasSuburbio({ M, hora }: { M: MundoMin; hora?: React.RefObjec
     <Estatico>
       <primitive object={grupo} />
       <RuinasLuz luzes={luzes} />
+      <VidaSuburbio M={M} luzes={luzes} />
     </Estatico>
   )
 }
