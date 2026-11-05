@@ -17,7 +17,7 @@ import { ligarReplay, replaySuportado, retomarReplay, ultimosSegundos } from "./
 const LIGADO = "cn-caderno"
 const GUARDADAS = "cn-caderno-notas"
 const PENDENTES = "cn-caderno-pendentes"
-const SAVE = "cn-linha-222"
+import { chaveSave } from "./chaveSave"
 const TAGS = ["bug", "lento", "feio", "lindo", "confuso", "ideia", "missão", "narrativa", "som", "controle"]
 
 export const EVENTO_CADERNO = "cn-caderno"
@@ -28,7 +28,7 @@ const ler = <T,>(k: string, padrao: T): T => { try { const r = localStorage.getI
 const gravar = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* cheio: segue */ } }
 
 function estadoAgora(): Record<string, unknown> {
-  const save = ler<Record<string, unknown>>(SAVE, {})
+  const save = ler<Record<string, unknown>>(chaveSave(), {})
   const pega = (o: unknown) => {
     if (!o || typeof o !== "object") return undefined
     const r = o as Record<string, unknown>

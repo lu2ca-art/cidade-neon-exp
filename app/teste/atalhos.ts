@@ -9,8 +9,8 @@ import type { FreqId } from "../linha/radio"
 export interface Ir { area: FreqId; u: number; parado?: boolean; procurado?: boolean; embacar?: boolean }
 export interface Atalho { id: string; nome: string; desc: string; save: Record<string, unknown>; ir: Ir }
 
-export const CHAVE_SAVE = "cn-linha-222"
-export const CHAVE_REAL = "cn-linha-222-antes-do-teste"
+// (notas 04/11) os testes gravam no save de teste, separado do de verdade (linha/chaveSave.ts)
+export { CHAVE_SAVE_TESTE as CHAVE_SAVE, CHAVE_SAVE_ANTES as CHAVE_REAL } from "../linha/chaveSave"
 
 // alguém que já passou da abertura e do tutorial, com sinal pra abrir todas as saídas
 export const BASE_TESTE = {

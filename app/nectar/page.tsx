@@ -18,6 +18,7 @@ import { CAMPANHAS, FAIXAS, FASE_NOME, NOS, OBJETOS, TOTAL_PERGUNTAS, ler, type 
 import { ac, ligarDrone, nota, vib } from "./som"
 import { Forma } from "./formas"
 import { Rasgo, TextoSobe } from "./originkit"
+import { chaveSave } from "../linha/chaveSave"
 
 type Resp = { no: string; opcao: number }
 type Tela = "abertura" | "pergunta" | "cerimonia" | "resultado"
@@ -27,7 +28,7 @@ const ATO: Record<string, string> = { chegada: "I · a chegada", travessia: "II 
 
 function nomeDoJogador(): string {
   try {
-    return (JSON.parse(localStorage.getItem("cn-linha-222") || "{}").nome as string) || ""
+    return (JSON.parse(localStorage.getItem(chaveSave()) || "{}").nome as string) || ""
   } catch {
     return ""
   }

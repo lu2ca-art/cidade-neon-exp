@@ -119,7 +119,8 @@ export interface Save {
   disco?: HistoriaDisco
 }
 
-const CHAVE = "cn-linha-222"
+// (notas 04/11) a chave muda com o modo da aba: o save de verdade ou o de teste (chaveSave.ts)
+import { chaveSave } from "./chaveSave"
 const CHAVE_GD = "cn-gd-neon"
 // sobe quando o começo do jogo muda a ponto de save antigo não fazer sentido.
 // 2 (05/10): o novo começo (a casa da D-Bee, a reta, o tutorial) — o LU2CA
@@ -165,7 +166,7 @@ export const VAZIO: Save = {
 export function carregar(): Save {
   if (typeof window === "undefined") return VAZIO
   try {
-    const raw = localStorage.getItem(CHAVE)
+    const raw = localStorage.getItem(chaveSave())
     if (!raw) return VAZIO
     const bruto = JSON.parse(raw)
     if (bruto.versao !== VERSAO) return VAZIO
@@ -227,14 +228,15 @@ let travado = false
 export function gravar(s: Save) {
   if (travado) return
   try {
-    localStorage.setItem(CHAVE, JSON.stringify(s))
+    localStorage.setItem(chaveSave(), JSON.stringify(s))
   } catch {}
 }
 
 export function apagar() {
   travado = true
   try {
-    localStorage.removeItem(CHAVE)
+    localStorage.removeItem(chaveSave())
+    localStorage.removeItem(`${chaveSave()}-onde`) // (notas 04/11) onde a Kombi parou (estrada/ondeParou.ts)
   } catch {}
 }
 

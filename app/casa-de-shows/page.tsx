@@ -13,6 +13,7 @@ import { ESTACOES, lancada } from "../linha/data"
 import { sairDaPagina } from "../linha/paginas"
 import type { Atracao } from "./Show"
 import "./shows.css"
+import { chaveSave } from "../linha/chaveSave"
 
 const Show = dynamic(() => import("./Show").then((m) => m.Show), { ssr: false })
 
@@ -34,7 +35,7 @@ export default function CasaDeShows() {
   const som = useRef<HTMLAudioElement | null>(null)
   useEffect(() => {
     let s: { popularidade?: number; objetos?: string[]; dia?: number } = {}
-    try { s = JSON.parse(localStorage.getItem("cn-linha-222") || "{}") } catch {}
+    try { s = JSON.parse(localStorage.getItem(chaveSave()) || "{}") } catch {}
     const e = quemToca(s.objetos ?? [], s.dia ?? 1)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setInfo({ atracao: { nome: e.personagem, faixa: e.faixa, cor: e.cor, bpm: BPM[e.id] ?? 110 }, audio: e.audio, pop: Math.max(0, Math.min(100, s.popularidade ?? 0)) })

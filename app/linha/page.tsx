@@ -14,6 +14,7 @@ import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
 import { ROTEIROS, VOZES, type ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
+import { decidirModoSave } from "./chaveSave"
 import { ARQUIVO, type FreqId } from "./radio"
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "./programa"
 import { Chat, type Destino } from "./chat"
@@ -322,6 +323,8 @@ export default function LinhaPage() {
   }, [tela])
 
   useEffect(() => {
+    // (notas 04/11) qual save vale nesta aba: o de verdade, ou o de teste (?parte, ?teste=1)
+    decidirModoSave()
     // ?parte=casa (fora da produção): o save pronto daquela parte da jornada (parteTeste.ts)
     aplicarParteDeTeste()
     const s = carregar()
@@ -1613,7 +1616,8 @@ export default function LinhaPage() {
       }
       if (f0 === "casa") { setMinhoca(true); return }
       // (T57) quem volta das trincheiras sai da boca do túnel, sem a chegada do login
-      if (casaNoLogin(historiaDe(saveRef.current)) && !nascerNoTunel() && (!parteAberta || parteAberta === "chegada")) { player.pausar(); setChegadaLogin(true); setMinhoca(true); return }
+      // (notas 04/11) a chegada do login agora é só o link de teste dela (CHEGADA.casaNoLogin = "nunca")
+      if (!nascerNoTunel() && (parteAberta === "chegada" || (casaNoLogin(historiaDe(saveRef.current)) && !parteAberta))) { player.pausar(); setChegadaLogin(true); setMinhoca(true); return }
       player.pausar()
       setEstrada(true)
       setTela({ t: "corrida", destino: null })

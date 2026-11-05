@@ -5,11 +5,12 @@
 // saldo novo. Aberto sozinho (lu2ca.art/neon-tiles), mexe direto no save do
 // jogo no aparelho.
 
-const CHAVE = "cn-linha-222"
+// (notas 04/11) o save de verdade ou o de teste, conforme a aba (linha/chaveSave.ts)
+import { chaveSave } from "../linha/chaveSave"
 
 function lerLocal(): number {
   try {
-    const s = JSON.parse(localStorage.getItem(CHAVE) || "{}")
+    const s = JSON.parse(localStorage.getItem(chaveSave()) || "{}")
     return Math.max(0, Math.round(s.neon ?? 0))
   } catch {
     return 0
@@ -18,7 +19,7 @@ function lerLocal(): number {
 
 function gravarLocal(delta: number): { ok: boolean; neon: number } {
   try {
-    const raw = localStorage.getItem(CHAVE)
+    const raw = localStorage.getItem(chaveSave())
     const s = raw ? JSON.parse(raw) : null
     const atual = Math.max(0, Math.round(s?.neon ?? 0))
     if (delta < 0 && atual + delta < 0) return { ok: false, neon: atual }
@@ -29,7 +30,7 @@ function gravarLocal(delta: number): { ok: boolean; neon: number } {
       return { ok: true, neon: n }
     }
     s.neon = atual + delta
-    localStorage.setItem(CHAVE, JSON.stringify(s))
+    localStorage.setItem(chaveSave(), JSON.stringify(s))
     return { ok: true, neon: s.neon }
   } catch {
     return { ok: false, neon: 0 }
@@ -65,17 +66,17 @@ export function mudarNeon(delta: number): Promise<{ ok: boolean; neon: number }>
 /* ─── a popularidade (o quanto a cidade te conhece, 0–100) ─── */
 // mora no save do jogo; o Guitar Driver lê dali e pede pra mudar como o NEON
 export function lerLinha(): { casa?: boolean; tutorial?: string[]; objetos?: string[]; reliquias?: string[]; popularidade?: number } {
-  try { return JSON.parse(localStorage.getItem(CHAVE) || "{}") } catch { return {} }
+  try { return JSON.parse(localStorage.getItem(chaveSave()) || "{}") } catch { return {} }
 }
 
 export function mudarPopularidade(delta: number): Promise<number> {
   if (!dentroDoJogo()) {
     try {
-      const raw = localStorage.getItem(CHAVE)
+      const raw = localStorage.getItem(chaveSave())
       if (!raw) return Promise.resolve(0)
       const s = JSON.parse(raw)
       s.popularidade = Math.max(0, Math.min(100, (s.popularidade ?? 0) + delta))
-      localStorage.setItem(CHAVE, JSON.stringify(s))
+      localStorage.setItem(chaveSave(), JSON.stringify(s))
       return Promise.resolve(s.popularidade)
     } catch { return Promise.resolve(0) }
   }

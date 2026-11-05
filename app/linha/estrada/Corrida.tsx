@@ -45,6 +45,7 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial, tutorialEnsina } from "../disco/tutorialConf"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
+import { gravarOndeParou, lerOndeParou } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { temJetpack } from "../disco/metro"
@@ -648,6 +649,20 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     // (T57) voltou das trincheiras: a Kombi está na boca do túnel, onde ficou parada (no lugar da chegada do login)
     const doTunel = "disco" in M && !!historia && historia.fase !== "casa" && nascerNoTunel()
     const chega = !!historia && !doTunel && (historia.fase === "casa" || chegada)
+    // (notas 04/11) voltou pro jogo: a Kombi aparece onde parou (na pista ou no chão),
+    // em qualquer fase depois da casa. Não vale na chegada, na volta do túnel, no
+    // atalho de teste nem na volta de uma sala (essa já tem a retomada dela)
+    const parou = "disco" in M && !!historia && !chega && !doTunel && !retomada && !ir && !atalho && !abertura && historia.fase !== "minhoca" && historia.fase !== "casa" ? lerOndeParou() : null
+    if (parou?.t === "pista") {
+      const jp = retomarJogo(M, { via: parou.via, u: parou.u, x: parou.x })
+      if (jp) return jp
+    }
+    if (parou?.t === "chao") {
+      const MD = M as MundoDisco
+      j.voo = true; j.wx = parou.x; j.wz = parou.z; j.rumo = parou.rumo; j.propulsou = true; j.encaixar = false
+      j.ar = false; j.y = MD.chaoEm(parou.x, parou.z) + 0.3; j.v = 0
+      return j
+    }
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
       const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : doTunel ? saidaDoTunel() : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
@@ -963,6 +978,22 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     const j = jogo.current
     RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg }
   }, [M])
+  // (notas 04/11) e entre uma visita e outra (ondeParou.ts): de 4 em 4 s, ao
+  // esconder a aba e ao sair. No ar, na chegada e na abertura não grava
+  useEffect(() => {
+    if (!("disco" in M) || !historia || historia.fase === "minhoca" || historia.fase === "casa") return
+    const guardar = () => {
+      const j = jogo.current
+      if (j.ar || j.chegadaCasa || aberturaRef.current.ativa) return
+      if (j.voo && j.wx !== undefined && j.wz !== undefined) gravarOndeParou({ t: "chao", x: j.wx, z: j.wz, rumo: j.rumo ?? 0 })
+      else if (!j.voo && M.vias[j.via]) gravarOndeParou({ t: "pista", via: M.vias[j.via].id, u: j.u, x: j.x })
+    }
+    const iv = setInterval(guardar, 4000)
+    const escondeu = () => { if (document.visibilityState === "hidden") guardar() }
+    window.addEventListener("pagehide", guardar)
+    document.addEventListener("visibilitychange", escondeu)
+    return () => { clearInterval(iv); window.removeEventListener("pagehide", guardar); document.removeEventListener("visibilitychange", escondeu); guardar() }
+  }, [M, historia?.fase])
   const cinemaRef = useRef<Cinema>(cinema)
   useEffect(() => { cinemaRef.current = cinema }, [cinema])
   // respirar com o Núcleo na cola (Respirar.tsx): a Cena diz quando pode

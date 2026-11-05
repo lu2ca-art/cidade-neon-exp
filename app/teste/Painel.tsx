@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { ATALHOS, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados, saveDo, type Atalho } from "./atalhos"
+import { CHAVE_SAVE_REAL, desligarTeste, emTeste, ligarTeste } from "../linha/chaveSave"
 import "./teste.css"
 
 const PAGINAS = [
@@ -26,7 +27,7 @@ export function Painel({ children }: { children?: ReactNode }) {
   const [msg, setMsg] = useState("")
   const ler = () => {
     try {
-      setTemReal(localStorage.getItem(CHAVE_REAL) !== null)
+      setTemReal(emTeste() || localStorage.getItem(CHAVE_REAL) !== null)
       setNeon(JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null")?.neon ?? null)
     } catch {}
   }
@@ -37,26 +38,30 @@ export function Painel({ children }: { children?: ReactNode }) {
 
   const ir = (a: Atalho) => {
     try {
-      // guarda o save de verdade uma vez só (o primeiro atalho), pra poder voltar
-      if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
+      // (notas 04/11) o atalho grava no save de TESTE: o de verdade fica onde está
+      ligarTeste()
       localStorage.setItem(CHAVE_SAVE, JSON.stringify(saveDo(a)))
       localStorage.setItem("cn-linha-cam", "fora")
     } catch {}
-    router.push(`/linha?atalho=${a.id}`)
+    router.push(`/linha?atalho=${a.id}&teste=1`)
   }
   const restaurar = () => {
     try {
+      // (notas 04/11) sai do modo teste: a aba volta a ler o save de verdade.
+      // (o jeito antigo) se o de verdade estava guardado à parte, ele volta pro lugar
+      desligarTeste()
       const r = localStorage.getItem(CHAVE_REAL)
-      if (r === null) return
-      if (r) localStorage.setItem(CHAVE_SAVE, r); else localStorage.removeItem(CHAVE_SAVE)
-      localStorage.removeItem(CHAVE_REAL)
+      if (r !== null) {
+        if (r) localStorage.setItem(CHAVE_SAVE_REAL, r); else localStorage.removeItem(CHAVE_SAVE_REAL)
+        localStorage.removeItem(CHAVE_REAL)
+      }
     } catch {}
     ler(); setMsg("o seu save voltou")
   }
   const darNeon = () => {
     try {
       const s = JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null") ?? {}
-      if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
+      ligarTeste()
       s.neon = (s.neon ?? 0) + 50
       localStorage.setItem(CHAVE_SAVE, JSON.stringify(s))
     } catch {}

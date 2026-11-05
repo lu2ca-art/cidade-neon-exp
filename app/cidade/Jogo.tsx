@@ -17,6 +17,7 @@ import { marcarDaCidade } from "../linha/paginas"
 import type { FreqId } from "../linha/radio"
 import { NOME_BAIRRO, montarMundo, ux, uy } from "./mundo"
 import "./cidade.css"
+import { chaveSave } from "../linha/chaveSave"
 
 const COR_VIA: Record<string, string> = { expressa: "#ff3fb0", avenida: "#d8b8ff", orla: "#33d6c8", principal: "#ffc857", rua: "#cfcadf", beco: "#ff9a5c", tunel: "#8a8aa8", serpentina: "#b4ff8a", terra: "#c8904a", rampa: "#ff8ad0" }
 
@@ -31,7 +32,7 @@ export function Jogo() {
   const ent = useRef<Entrada>({ esq: false, dir: false, gas: false, freio: false, toque: false })
   const [hud, setHud] = useState({ kmh: 0, area: "", retorno: false, desligada: false, eta: "", chegou: false, hora: "", chove: false, lugar: -1, aberto: false })
   // o save do jogo (as missões, a hora, o dia): só lê
-  const save = useMemo(() => { try { return JSON.parse(localStorage.getItem("cn-linha-222") || "{}") as { objetos?: string[]; hora?: number; dia?: number } } catch { return {} } }, [])
+  const save = useMemo(() => { try { return JSON.parse(localStorage.getItem(chaveSave()) || "{}") as { objetos?: string[]; hora?: number; dia?: number } } catch { return {} } }, [])
   const objetos = useMemo(() => save.objetos ?? [], [save])
   const ceu = useRef<Ceu>({ hora: save.hora ?? 20, dia: save.dia ?? 1, noite: 1, chove: false })
   // a rádio (etapa 3): liga no primeiro toque

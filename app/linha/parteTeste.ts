@@ -1,10 +1,13 @@
 // Abrir o jogo direto numa parte da jornada (22/10): /linha?mapa=disco&parte=casa
 // troca o save por um pronto pra aquela parte (os ids de parte.ts e do mapa do
-// jogo). O save de verdade fica guardado em CHAVE_REAL (o /teste devolve).
+// jogo). (notas 04/11) O save pronto vai pro save de TESTE (chaveSave.ts): o de
+// verdade fica onde está, e abrir o /linha sem ?parte volta pra ele.
 // Só vale fora da produção, como os atalhos do /teste. A mesa de montagem usa
 // estes links pra cada momento ter o seu "testar".
 
-import { BASE_TESTE, CHAVE_REAL, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
+import { BASE_TESTE, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
+import { ligarTeste } from "./chaveSave"
+import { apagarOndeParou } from "./estrada/ondeParou"
 
 import { CONFIG13, IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
 import { LETRAS } from "./disco/letras"
@@ -152,7 +155,10 @@ export function aplicarParteDeTeste(): boolean {
   const disco = discoDa(parte)
   if (disco === undefined) return false
   parteAberta = parte
-  if (localStorage.getItem(CHAVE_REAL) === null) localStorage.setItem(CHAVE_REAL, localStorage.getItem(CHAVE_SAVE) ?? "")
+  // (notas 04/11) o save do teste mora separado (CHAVE_SAVE = "cn-linha-222-teste"):
+  // o save de verdade do dono não é tocado. A aba fica no modo teste (?teste=1)
+  ligarTeste()
+  apagarOndeParou() // o teste começa onde a parte manda, não onde o último teste parou
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
   else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
@@ -180,6 +186,7 @@ export function aplicarParteDeTeste(): boolean {
   if (VISITAS[parte]) url.searchParams.set("abrir", `visita:${VISITAS[parte]}`)
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")
+  url.searchParams.set("teste", "1")
   history.replaceState(null, "", url.pathname + (url.search ? url.search : ""))
   return true
 }

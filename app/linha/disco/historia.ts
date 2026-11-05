@@ -152,7 +152,9 @@ export const CHEGADA = {
   // quem já passou pela casa: "sempre" (todo login cai na casinha), "comPropulsao"
   // (só depois de liberar o voo, J1: "depois de liberar a propulsão fica de boa")
   // ou "nunca" (entra onde parou, como antes)
-  casaNoLogin: "sempre" as "sempre" | "comPropulsao" | "nunca",
+  // (notas 04/11, o dono: "a ideia é ir só no início. O certo é voltar pra onde
+  // a gente tava toda vez que voltar pro game") "nunca": a casinha só no save novo
+  casaNoLogin: "nunca" as "sempre" | "comPropulsao" | "nunca",
   // quanto dura o túnel: na primeira vez e nas outras entradas (um toque pula)
   minhocaMs: 7200,
   minhocaMsVolta: 5200,
