@@ -6797,17 +6797,22 @@ function CenaBase({
       chuvaRef.current.visible = (V.id !== "deserto" || FINAL_VIVO.momento !== null) && Math.max(clima.k, CHUVA_MANIFESTO.k) > 0.02 // (rua CHUVA) manifestos/ceu.ts
       ;(chuvaRef.current.material as THREE.LineBasicMaterial).opacity = 0.28 * Math.max(clima.k, CHUVA_MANIFESTO.k)
     }
-    const cp = camera.position
-    for (let i = 0; i < chuva.n; i++) {
-      let y = chuva.base[i * 3 + 1] - dt * (38 + j.v * 0.2)
-      if (y < 0) y += 40
-      chuva.base[i * 3 + 1] = y
-      const x = cp.x + chuva.base[i * 3]
-      const z = cp.z + chuva.base[i * 3 + 2]
-      const yy = cp.y - 18 + y
-      chuva.pos.set([x, yy, z, x - tmp.f.x * j.v * 0.03, yy - 1.1, z - tmp.f.z * j.v * 0.03], i * 6)
+    // (revisão 3) sem chuva na tela, nada: antes eram 700 arrays novos e o upload
+    // do buffer a cada quadro, chovendo ou não. Escreve direto no Float32Array
+    if (chuvaRef.current?.visible) {
+      const cp = camera.position, P = chuva.pos, B = chuva.base
+      const ix = tmp.f.x * j.v * 0.03, iz = tmp.f.z * j.v * 0.03
+      for (let i = 0; i < chuva.n; i++) {
+        let y = B[i * 3 + 1] - dt * (38 + j.v * 0.2)
+        if (y < 0) y += 40
+        B[i * 3 + 1] = y
+        const x = cp.x + B[i * 3]
+        const z = cp.z + B[i * 3 + 2]
+        const yy = cp.y - 18 + y, o = i * 6
+        P[o] = x; P[o + 1] = yy; P[o + 2] = z; P[o + 3] = x - ix; P[o + 4] = yy - 1.1; P[o + 5] = z - iz
+      }
+      chuva.g.attributes.position.needsUpdate = true
     }
-    chuva.g.attributes.position.needsUpdate = true
 
     // confete
     for (let i = 0; i < confete.s.length; i++) {
