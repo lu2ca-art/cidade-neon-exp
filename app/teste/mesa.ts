@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "casa.instrumentos",
+    nome: "As suas notas de 04/11 (save, casa da D-Bee, rádio, mapa)",
+    data: "2026-11-05",
+    olhar: "O jogo volta pra onde você parou (a Kombi no mesmo lugar) e os links de teste agora usam um save separado: não mexem mais no seu. A casa da D-Bee só abre na casa dela; instrumento ganho na cidade espera você chegar lá. A D-Bee fica ao lado dos instrumentos. A rádio liga em qualquer lugar (nos túneis e salas tem um botão no canto). O minimapa e o mapa grande mostram os mesmos pontos, e no começo só o que já existe.",
+    perguntas: [
+      "Fechou e abriu o jogo: voltou no mesmo lugar?",
+      "O minimapa ficou limpo no começo?",
+      "A rádio tocou nos túneis?",
+    ],
+    mais: [{ parte: "bar", nome: "o minimapa no começo" }, { parte: "missao.tuneis.trincheiras", nome: "a rádio nas trincheiras" }],
+  },
+  {
     parte: "palcos",
     nome: "O botão ♥ salvar (levar pro seu streaming)",
     data: "2026-11-03",
