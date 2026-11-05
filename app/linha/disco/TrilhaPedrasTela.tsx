@@ -17,7 +17,7 @@ import { useAjudaAtiva } from "../estrada/Holo"
 import { gota } from "../som"
 import { vib } from "../som-carro"
 import { POSE_TUT } from "./tutorialConf"
-import { ALVO, PEDRAS, TRILHA_CFG, ancoraDe, pedraAgora, pedraDe, pedrasFeitas, pedrasPuladas, pulada, textoDaPedra, type CtxTrilha, type MemPedra, type PedraId } from "./trilhaPedras"
+import { ALVO, PEDRAS, TRILHA_CFG, TRILHA_NA_TELA, ancoraDe, pedraAgora, pedraDe, pedrasFeitas, pedrasPuladas, pulada, textoDaPedra, type CtxTrilha, type MemPedra, type PedraId } from "./trilhaPedras"
 import { iconeDaPedra } from "./iconesPedras"
 import "./trilhaPedras.css"
 
@@ -71,7 +71,7 @@ export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pau
   useEffect(() => { if (ajuda && idAgora === "ajuda") feito.current(["ajuda"]) }, [ajuda, idAgora])
 
   useEffect(() => {
-    if (!vivo) { setAgora(null); return }
+    if (!vivo) { setAgora(null); TRILHA_NA_TELA.pedra = null; return }
     const mem: MemPedra & { id: PedraId | null; feitoJa: boolean } = { id: null, feitoJa: false, acc: 0, ini: 0, metros0: -1, passo0: "", drone: false, cliques: new Set() }
     let ult = performance.now()
     // o toque nas coisas reais conta (antes do jogo agir)
@@ -87,6 +87,7 @@ export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pau
       const c = ctxAoVivo(baseRef.current, false, toque)
       // (feita: o ✓ fica o respiro; quando o save já tem ela, vem a próxima)
       const p = mem.feitoJa && mem.id && !c.feitos.includes(mem.id) ? pedraDe(mem.id) : pedraAgora(c)
+      TRILHA_NA_TELA.pedra = p?.id ?? null
       if (!p) { mem.id = null; setAgora(null); document.documentElement.removeAttribute("data-trilha-mexe"); return }
       if (p.id !== mem.id) {
         mem.id = p.id; mem.acc = 0; mem.ini = t; mem.metros0 = -1; mem.passo0 = c.passo; mem.drone = false; mem.cliques.clear(); mem.feitoJa = false
@@ -106,7 +107,7 @@ export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pau
     }
     olhar()
     const iv = setInterval(olhar, TRILHA_CFG.pollMs)
-    return () => { clearInterval(iv); document.removeEventListener("click", clique, true); document.documentElement.removeAttribute("data-trilha-mexe") }
+    return () => { clearInterval(iv); TRILHA_NA_TELA.pedra = null; document.removeEventListener("click", clique, true); document.documentElement.removeAttribute("data-trilha-mexe") }
   }, [vivo, toque])
 
   // (3) o "?" é a trilha: ligado, mostra a pedra de agora e deixa voltar nas que passaram

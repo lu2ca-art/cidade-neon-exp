@@ -167,6 +167,10 @@ export const PEDRAS: Pedra[] = [
     feita: (_c, m) => clicou(m, "veiculo") },
 ]
 
+// (começo novo, 05/11) a pedra que está na tela agora (a TrilhaPedras escreve; a D-Bee
+// sugere lê: não fala por cima de uma pedra). Antes ela lia lerNexoTutorial(), que
+// ninguém mais escreve desde a trilha: a D-Bee falava com a pedra "escolhe" na tela
+export const TRILHA_NA_TELA: { pedra: PedraId | null } = { pedra: null }
 export const pedraDe = (id: string) => PEDRAS.find((p) => p.id === id) ?? null
 const feita = (c: Pick<CtxTrilha, "feitos">, id: PedraId) => c.feitos.includes(id)
 export const pulada = (c: CtxTrilha, p: Pedra) => !!p.passou?.(c)
