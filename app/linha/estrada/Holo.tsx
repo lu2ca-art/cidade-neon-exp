@@ -392,7 +392,7 @@ function AgoraNexo({ texto }: { texto: string }) {
   return (
     <span className="l-nexo-agora">
       <em>{g.dica ? `Agora: ${g.dica}` : texto}</em>
-      {m && <small className="l-nexo-conta">{m}</small>}
+      {m && <small className="l-nexo-conta">{g.vira ? <i aria-label={g.vira > 0 ? "vira à direita" : "vira à esquerda"}>{g.vira > 0 ? "↱ " : "↰ "}</i> : null}{m}</small>}
     </span>
   )
 }

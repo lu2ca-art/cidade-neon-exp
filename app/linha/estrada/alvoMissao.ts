@@ -68,14 +68,21 @@ export function chegouNoAlvo(l: LugarMissao, p: PontoAlvo, x: number, y: number,
 // ── O GUIA (o Nexo lê daqui): a distância até o alvo da missão e, perto dele
 // sem ter começado, o que fazer ali. Uma loja fora do React: a Corrida escreve
 // (de 300 em 300 ms) e só o pedacinho do notch se refaz, quando o texto muda ──
-export type Guia = { metros: number; dica: string }
-let GUIA: Guia = { metros: -1, dica: "" }
+export type Guia = { metros: number; dica: string; vira: -1 | 0 | 1 }
+let GUIA: Guia = { metros: -1, dica: "", vira: 0 }
 const ouvintes = new Set<() => void>()
 export function escreverGuia(metros: number, dica: string) {
   // de 10 em 10 m perto; de 50 em 50 longe (menos troca de texto)
   const m = metros < 0 ? -1 : metros < 300 ? Math.round(metros / 10) * 10 : Math.round(metros / 50) * 50
   if (m === GUIA.metros && dica === GUIA.dica) return
-  GUIA = { metros: m, dica }
+  GUIA = { metros: m, dica, vira: GUIA.vira }
+  ouvintes.forEach((f) => f())
+}
+// (05/11) sem o cartão de GPS: a setinha da próxima curva (o Gps escreve; 0 = reto)
+export function escreverVira(lado: number) {
+  const v = (lado > 0 ? 1 : lado < 0 ? -1 : 0) as Guia["vira"]
+  if (v === GUIA.vira) return
+  GUIA = { ...GUIA, vira: v }
   ouvintes.forEach((f) => f())
 }
 export function useGuia(): Guia {

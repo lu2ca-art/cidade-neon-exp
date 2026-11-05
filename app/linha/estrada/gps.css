@@ -46,26 +46,4 @@
 /* (J2:32) o anel: só o próximo passo, com o "2 de 3" embaixo */
 .l-holo-salsicha li .l-salsicha-n { display: block; margin-top: 2px; font-size: 0.82em; opacity: 0.7; }
 
-/* (T58) o cartão tipo Waze, embaixo da barra: a seta da manobra, "120 m", o que fazer; à direita, quanto falta */
-.l-gps-nav { --cor: #2fe8ff; position: absolute; top: calc(100% + 10px); left: 50%; transform: translate(-50%, -4px); display: none; align-items: center; gap: 10px; width: max-content; max-width: min(88vw, 360px); padding: 7px 12px 7px 8px; border-radius: 14px; background: rgba(6, 6, 16, 0.74); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--cor) 28%, transparent); backdrop-filter: blur(6px); color: #fff; pointer-events: none; opacity: 0; transition: opacity 0.25s, transform 0.25s, border-color 0.25s; }
-.l-gps-nav.is-on { display: flex; opacity: 1; transform: translate(-50%, 0); }
-.l-gps-nav-seta { flex: none; width: 34px; height: 34px; padding: 4px; box-sizing: border-box; border-radius: 10px; background: var(--cor); fill: none; stroke: #07060c; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.l-gps-nav-o { display: grid; gap: 1px; min-width: 0; }
-.l-gps-nav-dist { font: 800 16px/1.05 var(--font-geist-mono), ui-monospace, monospace; color: #fff; }
-.l-gps-nav-dist:empty { display: none; }
-.l-gps-nav-txt { font: 600 11px/1.2 var(--font-geist-mono), ui-monospace, monospace; color: color-mix(in srgb, var(--cor) 55%, #fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.l-gps-nav-eta { display: grid; white-space: nowrap; justify-items: end; gap: 1px; margin-left: 4px; padding-left: 10px; border-left: 1px solid rgba(255, 255, 255, 0.16); }
-.l-gps-nav-km { font: 700 12px/1.1 var(--font-geist-mono), ui-monospace, monospace; color: #fff; }
-.l-gps-nav-min { font: 600 10px/1.1 var(--font-geist-mono), ui-monospace, monospace; color: rgba(255, 255, 255, 0.62); }
-/* manobra de verdade (virar, rampa, torre): a borda acende */
-.l-gps-nav[data-tipo="rampa"], .l-gps-nav[data-tipo="vira"], .l-gps-nav[data-tipo="torre"] { border-color: var(--cor); }
-.l-gps-nav.is-recalc { --cor: #ffd23f; }
-.l-gps-nav.is-recalc .l-gps-nav-seta { animation: l-gps-gira 0.9s linear infinite; }
-@keyframes l-gps-gira { to { transform: rotate(360deg); } }
-/* no celular: encostado à esquerda, embaixo dos botões do holo (o minimapa fica livre à direita) */
-@media (max-width: 600px) {
-  .l-gps-nav { top: calc(100% + 34px); left: calc(50% + 12px - 44vw); transform: translate(0, -4px); max-width: calc(100vw - 162px); }
-  .l-gps-nav.is-on { transform: none; }
-  .l-gps-nav-txt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-}
-@media (prefers-reduced-motion: reduce) { .l-gps-nav, .l-gps-nav.is-on { transition: none; } .l-gps-nav.is-recalc .l-gps-nav-seta { animation: none; } }
+/* (05/11) o cartão tipo Waze saiu: a navegação fica só no notch */

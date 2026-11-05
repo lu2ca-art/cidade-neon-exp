@@ -80,12 +80,8 @@ test("o GPS aponta pro alvo da missão", async ({ page }) => {
     else expect(Math.sign(x), "o ícone do lado do alvo").toBe(Math.sign(exp))
     if (Math.abs(exp) > 100) await expect(alvo).toHaveClass(/is-borda/)
   }
-  // (T58) o cartão tipo Waze: a manobra (no chão, a mira) e quanto falta (km e min)
-  const nav = page.locator(".l-gps-nav")
-  await expect(nav).toHaveClass(/is-on/)
-  await expect(nav.locator(".l-gps-nav-km")).toHaveText(/\d+ m|km/)
-  await expect(nav.locator(".l-gps-nav-min")).toHaveText(/min/)
-  await expect(nav.locator(".l-gps-nav-txt")).toContainText(/oficina/i)
+  // (05/11) o cartão tipo Waze saiu (o dono): a navegação fica só no notch
+  await expect(page.locator(".l-gps-nav")).toHaveCount(0)
   await page.screenshot({ path: `${PASTA}/1-gps.png` })
   expect(erros).toEqual([])
 })
@@ -215,7 +211,7 @@ async function porNaPista(page: Page, via: number, u: number) {
   }, { via, u })
   // o NAV se refaz 4×/s (o teleporte pode contar como "saiu da rota": espera o aviso passar)
   await page.waitForTimeout(700)
-  await expect(page.locator(".l-gps-nav")).not.toHaveClass(/is-recalc/, { timeout: 4_000 })
+  await page.waitForTimeout(1_200)
 }
 const lerNav = (page: Page) => page.evaluate(() => JSON.parse(JSON.stringify((window as unknown as W).__nav)) as Nav)
 
@@ -263,8 +259,6 @@ test("a rota leva do ponto A ao alvo; a seta aparece antes da curva; recalcula a
   expect(faixa.n, "a faixa da rota no chão").toBeGreaterThan(20)
   expect(faixa.d, "a faixa começa na Kombi").toBeLessThan(8)
   // o minimapa mostra a distância da mesma rota
-  const card = page.locator(".l-gps-nav")
-  await expect(card).toHaveClass(/is-on/)
   await page.screenshot({ path: `${PASTA}/4-rota.png` })
 
   // 2) a seta antes da curva: 150 m antes do cruzamento da 1ª manobra
@@ -277,14 +271,11 @@ test("a rota leva do ponto A ao alvo; a seta aparece antes da curva; recalcula a
   const n2 = await lerNav(page)
   expect(n2.proxima?.via, "a próxima manobra é a do cruzamento").toBe(m.via)
   expect(Math.abs(n2.proxima!.dist - antes)).toBeLessThan(6)
-  await expect(card).toHaveAttribute("data-tipo", m.tipo)
-  const txt = (await card.getAttribute("aria-label")) ?? ""
-  console.log(`a ${antes} m: "${txt}"`)
-  expect(txt).toMatch(new RegExp(`^em \\d+ m, ${m.texto}`))
+  expect(n2.proxima?.tipo).toBe(m.tipo)
   await page.screenshot({ path: `${PASTA}/5-seta.png` })
   // em cima da curva: "agora"
   await porNaPista(page, viaK, LK - 12)
-  await expect(card.locator(".l-gps-nav-dist")).toHaveText("agora")
+  await expect.poll(async () => (await lerNav(page)).proxima?.dist ?? 99).toBeLessThan(25)
 
   // 3) saiu da rota: pega outra saída do cruzamento. Recalcula (o cartão avisa) e a rota nova sai de onde ela está
   const errada = await page.evaluate(({ a, certa }) => { const M = (window as unknown as W).__M, V = M.vias[a]; return M.ligacoes.saidas[V.rede!.para].find((w) => w !== certa && w !== V.rede!.par) ?? -1 }, { a: viaK, certa: m.via })
@@ -292,8 +283,7 @@ test("a rota leva do ponto A ao alvo; a seta aparece antes da curva; recalcula a
   const antesR = (await lerNav(page)).recalculos
   await page.keyboard.press("Shift")
   await page.evaluate((v) => { Object.assign((window as unknown as W).__jogo, { via: v, u: 4, x: 0, v: 0 }) }, errada)
-  await expect(card).toHaveClass(/is-recalc/, { timeout: 2_000 })
-  await expect(card.locator(".l-gps-nav-txt")).toHaveText(/recalculando/)
+  await expect.poll(async () => (await lerNav(page)).recalculos, { timeout: 2_000 }).toBe(antesR + 1)
   await page.screenshot({ path: `${PASTA}/6-recalcula.png` })
   await page.waitForTimeout(700)
   const n3 = await lerNav(page)
