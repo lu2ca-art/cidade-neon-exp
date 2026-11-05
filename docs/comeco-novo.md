@@ -73,27 +73,32 @@ Sem build, sem Playwright: só leitura e `npx tsc --noEmit -p .`. Um commit por 
 - **Os sinais `roteiro`/`intro`:** os rachas e as zonas só na carreira e no livre; a
   D-Bee só na carreira e no livre, sem missão.
 
-## Suspeitas (não corrigidas)
+## Parte 2: as decisões do coordenador (05/11)
 
-- **A rádio Xenom entra seca:** `disco.parar()` corta o disco antigo sem fade, chiado,
-  900 ms de silêncio e a música Xenom em volume cheio (`som.ts`). E a fala da D-Bee
-  "lá em cima não tem como subir…" cai junto da primeira vinheta (as duas a ~1,3 km).
-- **Vinheta e chiado por baixo das cenas:** a troca de música da rádio (`tocarProxima`)
-  não olha `cinema`: no meio da cena do bar ou da oficina, quando a faixa acaba, toca o
-  chiado e a vinheta aparece no notch. (O "a mesma música, no mesmo trecho" do bar
-  também não bate mais: a rádio segue andando.)
-- **iPhone:** o `<audio>` da rádio nasce e toca pela primeira vez no quadro (sem toque);
-  o iOS pode bloquear esse primeiro `play()` (o erro é engolido).
-- **Fechou antes de gravar `radioXenom`** e reabriu dentro do subúrbio: a rádio não liga
-  sozinha (a zona nasce sem a de antes).
-- **"Depois" na introdução:** fecha o balão; a missão só abre de novo saindo ~80 m (chão)
-  ou pelo `visitaAbriu` (cidade). É de propósito, mas nada diz isso.
-- **B4TIDA, basquete e as peças de cena** não entram no `corridaPausada` nem na pausa da
-  trilha: o mundo segue andando por baixo (o espaço também é o propulsor).
-- **O Nectar no save:** pelo caminho novo (sem a fase `nectar`) o objeto "nectar" nunca
-  entra em `save.objetos`. Não trava nada no começo; a conferir onde ele é lido.
+| item | o quê | onde | commit |
+|---|---|---|---|
+| 1 | **A entrada da Xenom:** o disco antigo sai em fade de 2 s (`disco.sairEmFade`) e só então a rádio liga; ela entra em fade de 2 s, sem chiado e sem os 900 ms de silêncio (`tocarProxima(…, 2)`, o `fonteSom.ouvir` da rádio que liga sozinha). A vinheta espera a fala que está na tela (a D-Bee nas dunas) acabar: `falaAte` (escrito por `falar`/`ensinar`), até 8 s | `som.ts` (`Disco.sairEmFade`), `page.tsx` (`aoChegarNoSuburbio`), `estrada/Corrida.tsx` (`tocarProxima`, `falaAte`) | `795e798` |
+| 2 | **Rádio nas cenas:** com cena, peça, sala ou cinema aberto (`somCena.aberta`, a página marca: `momentoMissao`, `cinema`, `emSala`) a faixa troca sem o chiado e sem a vinheta (pulada, não guardada). Vale também pra Corrida desmontada (a sala do bar), porque a marca mora no `som.ts` | `som.ts` (`somCena`), `page.tsx`, `Corrida.tsx` | `795e798` |
+| 3 | **iPhone:** o play que o navegador recusa (sem gesto) não falha calado: tenta de novo no próximo toque/tecla (`pointerdown`, `touchend`, `keydown`, com o `AudioContext.resume()`), e no seguinte se falhar de novo, enquanto aquele som ainda for o que devia tocar (`tocarOuNoGesto`). Vale pra rádio e pro disco antigo | `som.ts` (`tocarOuNoGesto`, `armarNoGesto`) | `795e798` |
+| 4 | **`radioXenom`** vai pro localStorage na hora em que a rádio liga (`gravar(...)` direto, sem esperar a folga do save) | `page.tsx` | `795e798` |
+| 5 | **"Depois" na introdução:** enquanto ele está no raio do lugar, o guia escreve no notch "Agora: a missão do X tá aqui · toca pra começar"; tocar no notch (em vez de abrir o objetivo) reabre o balão. Saiu do raio, a frase sai (volta se ele voltar). Trocar de missão ou abrir a peça limpa | `estrada/alvoMissao.ts` (`INTRO_ADIADA`), `Corrida.tsx` (o guia e o toque no notch), `page.tsx` (`onDepois`, `chegouNaMissao`) | `7faca72` |
+| 6 | **O objeto "nectar":** conferido. Quem lê: `estado.ts:188` (save antigo: dá o violão), `os.tsx` e `Cabine.tsx` (tiram ele das listas), `atos.ts` (`pistasFeitas`: a luz das pistas). No caminho novo o equivalente já existe: a missão do LU2CA (`faixa: "nectar"`, na cidade) dá o objeto na porta (`aplicarRecompensa`), e antes disso a Nectar ser a única pista "aberta" é o desenho de agora (a missão do LU2CA é no palco da Nectar). A rádio do jogo novo não depende dos objetos (`radios.ts`, estações Cidade/Xenom). Nada a mudar | — | — |
 
-Na Mesa: fechar a aba no meio da cena do bar e reabrir (o bar abre); beber um copo (o bar
+## Suspeitas que ficam
+
+- **A vinheta pulada na cena** some de vez (a decisão permitia guardar ou pular; pulei).
+- **`falaAte`** só sabe das falas que já estão na tela: uma fala da D-Bee agendada (as
+  dunas soltam algumas em sequência, 5,6 s uma da outra) pode cair por cima da vinheta.
+- **O fade do disco** precisa do grafo de áudio (o `AudioContext`); sem ele, o disco para
+  direto e a rádio liga na hora.
+- **O toque no notch** com a frase do "depois" reabre o balão em vez de abrir o objetivo
+  inteiro (o expandido): pra ver o objetivo ali, só depois de começar ou sair do raio.
+- **"Depois" e a rádio por cima:** sem mudança (o balão não é cena).
+- (da parte 1, de propósito) o mundo segue andando por baixo do B4TIDA, do basquete e das peças.
+
+Na Mesa (parte 2): chegar do deserto no subúrbio (o disco sai em fade, a Xenom entra em fade, a vinheta depois da fala da D-Bee); no iPhone, a rádio tocando no primeiro toque depois de chegar; uma troca de faixa no meio da cena do bar (sem chiado, sem vinheta); "depois" no balão do Alohan e tocar no notch.
+
+Na Mesa (parte 1): fechar a aba no meio da cena do bar e reabrir (o bar abre); beber um copo (o bar
 abre de novo); fechar nas dunas e reabrir (o disco toca); a primeira carreira sem ter
 usado o turbo (a pedra "escolhe a missão" logo depois de pousar); a D-Bee calada com a
 pedra na tela; na pista em cima da quadra, a pedra "chegou" no notch.
