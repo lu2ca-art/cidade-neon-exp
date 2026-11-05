@@ -108,6 +108,7 @@ import "../ginasio/ginasio.css"
 import { guardarCapsula, guitarLivre } from "./disco/capsula"
 import { luzDasPistas, pistasFeitas } from "./estrada/atos"
 import { PISTAS, type PistaId } from "./estrada/pistas"
+import { definirMemoriaDbee, ouvirMemoriaDbee } from "./disco/sugestoesDbee"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -340,6 +341,8 @@ export default function LinhaPage() {
     aplicarParteDeTeste()
     const s = carregar()
     const h = hoje()
+    // (dbee-sugere) a memória da D-Bee vem do save
+    definirMemoriaDbee(s.dbee)
     // hidratação do localStorage: só existe no cliente, depois do mount
      
     setSave(s.dias.includes(h) ? s : { ...s, dias: [...s.dias, h].slice(-60) })
@@ -470,6 +473,8 @@ export default function LinhaPage() {
   }, [agendarGravar])
 
   const atualizar = useCallback((f: (s: Save) => Save) => setSave(f), [])
+  // (dbee-sugere) a D-Bee lembrou de algo (sugeriu, ele fez, ouviu uma rua inteira): vai pro save
+  useEffect(() => ouvirMemoriaDbee((m) => setSave((s) => ({ ...s, dbee: m }))), [])
 
   // os avisos entram em FILA (um não apaga o outro: o LU2CA no posto e o
   // +10 NEON chegando juntos)

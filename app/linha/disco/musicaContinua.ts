@@ -37,9 +37,13 @@ export interface FaixaContinua {
 // as faixas cuja completa já tocou inteira nesta sessão (a página aberta)
 const ouvidas = new Set<string>()
 export const completaJaTocou = (id: string) => ouvidas.has(id)
+// (dbee-sugere) quem quer saber quando uma completa tocou inteira (a D-Bee lembra no save)
+const ouvintesCompleta = new Set<(id: string) => void>()
+export const aoOuvirCompleta = (f: (id: string) => void) => { ouvintesCompleta.add(f); return () => { ouvintesCompleta.delete(f) } }
 export function marcarCompletaOuvida(id: string) {
   if (ouvidas.has(id)) return
   ouvidas.add(id)
+  ouvintesCompleta.forEach((f) => f(id))
   // (salvar no app, 03/11) o momento natural: a completa acabou de tocar inteira
   if (faixaRua.id === id) { clearTimeout(brilhoT); mudarRua({ id, brilho: true }); brilhoT = setTimeout(() => { if (faixaRua.brilho) mudarRua({ id: faixaRua.id, brilho: false }) }, BRILHO_MS) }
 }

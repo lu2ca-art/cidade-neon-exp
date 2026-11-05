@@ -17,6 +17,7 @@ import type { ZonaSom } from "./radioAntiga"
 import { CHAO_LUGARES, type FaseDisco, type HistoriaDisco, type LugarChao } from "./historia"
 import { PORTOES_RUA, type PlacarRua } from "./corridaRua"
 import { MISSOES13, feita13, type MissaoId } from "./portas"
+import { aoOuvirCompleta } from "./musicaContinua"
 
 // ── os números (o dono afina) ──
 export const DBEE_CFG = {
@@ -293,3 +294,5 @@ export function mudarMemoriaDbee(f: (m: MemoriaDbee) => MemoriaDbee) {
   ouvintesMem.forEach((o) => o(MEM))
 }
 export const ouvirMemoriaDbee = (o: (m: MemoriaDbee) => void) => { ouvintesMem.add(o); return () => { ouvintesMem.delete(o) } }
+// a faixa completa de uma rua tocou inteira: a D-Bee não sugere mais aquela rua
+aoOuvirCompleta((id) => mudarMemoriaDbee((m) => comOuvida(m, id)))

@@ -8,6 +8,7 @@ import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
 import type { HistoriaDisco } from "./disco/historia"
 import type { PlacarRua } from "./disco/corridaRua"
+import type { MemoriaDbee } from "./disco/sugestoesDbee"
 import { migrarEconomia } from "./economia"
 
 export type Item =
@@ -85,6 +86,9 @@ export interface Save {
   // (05/11) a corrida de rua do subúrbio (disco/corridaRua.ts): o melhor tempo
   // por veículo (moto, patins), as vitórias e quantas correu
   ruaSuburbio?: PlacarRua
+  // (05/11) a D-Bee sugere (disco/sugestoesDbee.ts): o que ela já sugeriu (quantas
+  // vezes, a última), o que ele já fez e as ruas cuja faixa ele ouviu inteira
+  dbee?: MemoriaDbee
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>
