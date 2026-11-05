@@ -66,13 +66,9 @@ import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { feita13 } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import { CorridaRuaCena, CorridaRuaHud } from "../disco/CorridaDeRua"
-<<<<<<< HEAD
 import { CORRIDA_RUA_CFG, RUA, naVoltaRua, type PoseRua, type ResultadoRua } from "../disco/corridaRua"
 const POSE_GRADE: PoseRua = { x: 0, z: 0, yaw: 0 }
-=======
 import { DbeeSugere } from "../disco/DbeeSugere"
-import type { ResultadoRua } from "../disco/corridaRua"
->>>>>>> origin/feature/game/dbee-sugere
 import { VeiculoModelo, VeiculosCena, VeiculosHud, novoEstadoVeiculos, type EstadoVeiculos } from "../disco/Veiculos"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, veiculoPorId } from "../disco/perseguicao"
 import type { ResultadoRacha } from "../disco/corredores"
