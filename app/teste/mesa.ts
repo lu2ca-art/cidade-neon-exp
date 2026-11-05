@@ -26,6 +26,16 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "bar",
+    nome: "Gente nas ruínas (a vida no subúrbio)",
+    data: "2026-11-05",
+    olhar: "70 pessoas andando pelas calçadas das ruínas, rodinhas em volta dos tambores de fogo e na porta do bar, gente dançando na frente do palco no ritmo da rádio, gatos e cachorros, roupa no varal. De dia a rua enche; de noite o povo vai pro fogo, pro bar e pro palco. Chegou perto, abrem caminho. Na corrida de rua ninguém fica no traçado.",
+    perguntas: [
+      "O subúrbio ficou com cara de lugar vivo?",
+      "As silhuetas combinam com o estilo do jogo, ou quer outro desenho de gente?",
+    ],
+  },
+  {
+    parte: "bar",
     nome: "A corrida de rua nas ruínas do subúrbio",
     data: "2026-11-05",
     olhar: "Perto do bar tem um arco neon CORRIDA. De moto ou de patins, chegue perto e toque em \"correr\": 2 voltas de ~1,6 km pelas ruas das ruínas, 11 portões de luz, 3 rivais (de moto: Trovão, Vespa e Lama). A rádio não para. O melhor tempo fica guardado; a primeira vitória dá +40 neon$. O ponto aparece no mapa depois que você chega no subúrbio.",
