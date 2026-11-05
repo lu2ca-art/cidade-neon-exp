@@ -46,6 +46,8 @@ A trilha sempre mostra a **primeira** pedra da lista que cumpre quatro coisas:
 | 15 | `salvar` | carreira e néctar, depois de 13 | com o "♥ salvar" na tela (a faixa tem link) | o ♥ salvar | curtiu? ♥ salva a música | tocou no ♥ | coração batendo |
 | 16 | `veiculo` | carreira | sem a Kombi, com um veículo pra pegar (depois da perseguição) | o botão de pegar o veículo | pega um veículo | pegou | rodas girando |
 
+**A ordem de verdade (05/11, `docs/comeco-novo.md`):** na lista do código o `turbo` (8) vem depois do `liberou` (13): o caminho (pousa, escolhe, linha, chegou, liberou) aparece antes dele. E o `chegou` (12) aponta pro notch quando o guia tem uma dica lá ("desce: o lugar é aqui embaixo").
+
 **Quem já passou não vê de novo.** Um save que já tem missão da cidade feita pula estas pedras: 1, 2, 5, 6, 10, 11 e 12. A pedra 13 é pulada a partir da segunda missão. As pedras puladas entram no save como vistas, e o "?" também passa por elas.
 
 ## Depois de cada missão da cidade (o que entrou no lugar da tela "a porta abriu")
