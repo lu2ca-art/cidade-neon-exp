@@ -40,6 +40,9 @@ const PLANOS: Record<string, Plano> = {
   entrega: { pos: [-0.75, 1.5, 2.45], olha: [0.5, 1.2, 0.75], fov: 50 },
   // (T49) os instrumentos ganhos: o banco e as prateleiras na parede da direita
   instrumentos: { pos: [0.55, 1.45, 0.95], olha: [2.3, 0.9, -0.6], fov: 56 },
+  // (notas 04/11) ela falando na cena dos instrumentos: de pé no fim do banco,
+  // o banco à direita do quadro
+  dbeeInstrumentos: { pos: [0.1, 1.5, 0.3], olha: [1.85, 1.15, -1.15], fov: 54 },
 }
 
 const COISAS: Coisa[] = [
@@ -73,6 +76,8 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false, instrument
   const [viuFoto, setViuFoto] = useState(false)
   if (!viuFoto && estado.texto?.includes("uma foto")) setViuFoto(true)
   const naFoto = !!estado.texto && /foto|relicário/.test(estado.texto)
+  // (notas 04/11) a cena dos instrumentos (a volta e a visita): ela fica do lado do banco
+  const naCenaInstrumentos = disco && (estado.gesto === "instrumentos" || /no banco|trouxeram|cada um tem um jeito|a casa lembra|toca o que quiser|a casa também/.test(estado.texto ?? ""))
 
   const plano = useMemo(() => {
     // (disco, LU2CA 20/10) a casinha no deserto: a porta, a parede dos
@@ -80,6 +85,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false, instrument
     if (disco) {
       if (estado.pos === 0) return PLANOS.abertura
       if (estado.gesto === "instrumentos") return PLANOS.instrumentos
+      if (naCenaInstrumentos) return estado.falando === "D-Bee" ? PLANOS.dbeeInstrumentos : PLANOS.instrumentos
       if (estado.gesto === "holo" || /é seu|aparelho pequeno/.test(estado.texto ?? "")) return PLANOS.entrega
       if (estado.gesto === "tambores") return PLANOS.tambor
       if (estado.pos === 1 || /estante|livros/.test(estado.texto ?? "")) return PLANOS.parede
@@ -94,7 +100,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false, instrument
     if (naFoto) return PLANOS.foto
     if (estado.pos === 0) return PLANOS.porta
     return PLANOS.dentro
-  }, [estado, procurando, chegaram, naFoto, inicio, disco])
+  }, [estado, procurando, chegaram, naFoto, inicio, disco, naCenaInstrumentos])
 
   return (
     <>
@@ -143,7 +149,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false, instrument
       {inicio && <Npc cor={AZUL} pos={[0, 0, 2.2]} vira={0} falando={estado.falando === "D-Bee"} />}
       {inicio && <pointLight position={[0.2, 1.8, 3.6]} color="#ffb070" intensity={5} distance={4} decay={2} />}
       {/* (disco) a D-Bee em casa, os instrumentos na parede, os tambores no tapete */}
-      {disco && <CasaDisco falando={estado.falando === "D-Bee"} tocando={estado.gesto === "tambores" || /senta no tapete|tocam junto|é quem eu achei/.test(estado.texto ?? "")} />}
+      {disco && <CasaDisco falando={estado.falando === "D-Bee"} tocando={estado.gesto === "tambores" || /senta no tapete|tocam junto|é quem eu achei/.test(estado.texto ?? "")} instrumentos={naCenaInstrumentos} />}
       {/* (T49) os instrumentos ganhos: ficam na casa e cada um toca */}
       {disco && <InstrumentosCasa ids={ganhos} novos={novos} gesto={estado.gesto === "instrumentos"} />}
       {/* quem chega */}
@@ -271,12 +277,18 @@ function Janela({ pos, deserto = false }: { pos: V3; deserto?: boolean }) {
 
 // (disco, LU2CA 20/10: "instrumentos na parede, tambores no tapete")
 const DBEE_SENTADA: V3 = [-0.15, 0, -1.9]
-function CasaDisco({ falando, tocando }: { falando: boolean; tocando: boolean }) {
+// (notas 04/11, o dono: "a D-Bee tá bem na frente dos instrumentos") no plano dos
+// instrumentos ela sai da frente da câmera: fica de pé no fim do banco, do lado
+// esquerdo do quadro, meio virada pra ele (o banco inteiro à vista)
+const DBEE_INSTRUMENTOS: V3 = [1.6, 0, -1.65]
+function CasaDisco({ falando, tocando, instrumentos = false }: { falando: boolean; tocando: boolean; instrumentos?: boolean }) {
   return (
     <>
       {/* (T06) no tambor ela senta no banquinho atrás do djembê dela; antes e depois, de pé */}
       {tocando
         ? <Npc cor={AZUL} pos={DBEE_SENTADA} pose="sentada" vira={0.42} falando={falando} />
+        : instrumentos
+        ? <Npc key="instrumentos" cor={AZUL} pos={DBEE_INSTRUMENTOS} vira={-0.35} falando={falando} />
         : <Npc cor={AZUL} pos={[0.55, 0, 0.75]} vira={-2.4} falando={falando} />}
       {/* o tapete redondo */}
       <mesh rotation-x={-Math.PI / 2} position={[0.15, 0.01, -0.95]}>
