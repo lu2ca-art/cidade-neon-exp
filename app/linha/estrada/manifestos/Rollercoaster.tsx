@@ -188,6 +188,23 @@ void main() {
   ${NEVOA_FRAG}
 }`
 
+// (revisão 2b) o eixo e a malha do trilho, guardados por rua (só números: a
+// textura e a geometria nascem de novo a cada montagem e saem no dispose)
+type DadosRC = { dados: Float32Array; linhas: number; I: Float32Array; O: Float32Array; Tp: Float32Array; idx: Uint16Array | Uint32Array }
+const CACHE_RC = new Map<string, DadosRC>()
+function malhaRC(d: DadosRC) {
+  const tex = new THREE.DataTexture(d.dados, 1024, d.linhas, THREE.RGBAFormat, THREE.FloatType)
+  tex.minFilter = tex.magFilter = THREE.NearestFilter
+  tex.needsUpdate = true
+  const g = new THREE.BufferGeometry()
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(d.I.length * 3), 3)) // o shader faz a posição
+  g.setAttribute("aI", new THREE.BufferAttribute(d.I, 1))
+  g.setAttribute("aOff", new THREE.BufferAttribute(d.O, 3))
+  g.setAttribute("aTipo", new THREE.BufferAttribute(d.Tp, 1))
+  g.setIndex(new THREE.BufferAttribute(d.idx, 1))
+  return { tex, g }
+}
+
 export function Rollercoaster({ M, k, ctx }: PropsManifesto) {
   const C = RC_CFG
   const { camera } = useThree()
@@ -198,12 +215,13 @@ export function Rollercoaster({ M, k, ctx }: PropsManifesto) {
     const n = v.n
     const L = (n - 1) * PASSO
     const lat = C.lateral
+    // (revisão 2b) os vértices (~33 mil) saem uma vez por sessão: o cache do módulo
+    const chave = `${k}|${n}|${lat}|${C.dormente}|${C.pilar}`
+    const guardado = CACHE_RC.get(chave)
+    if (guardado) return { ...malhaRC(guardado), n, L }
     const linhas = Math.ceil(n / 1024)
     const dados = new Float32Array(1024 * linhas * 4)
     for (let i = 0; i < n; i++) dados.set([v.px[i] - v.tz[i] * lat, yNaPista(v, i, MEIA_PISTA), v.pz[i] + v.tx[i] * lat, 0], i * 4)
-    const tex = new THREE.DataTexture(dados, 1024, linhas, THREE.RGBAFormat, THREE.FloatType)
-    tex.minFilter = tex.magFilter = THREE.NearestFilter
-    tex.needsUpdate = true
 
     const I: number[] = [], O: number[] = [], Tp: number[] = [], idx: number[] = []
     const vert = (i: number, x: number, y: number, z: number, tipo: number) => { I.push(i); O.push(x, y, z); Tp.push(tipo); return I.length - 1 }
@@ -231,13 +249,9 @@ export function Rollercoaster({ M, k, ctx }: PropsManifesto) {
         quad(a, b, c, d)
       }
     }
-    const g = new THREE.BufferGeometry()
-    g.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(I.length * 3), 3)) // o shader faz a posição
-    g.setAttribute("aI", new THREE.Float32BufferAttribute(I, 1))
-    g.setAttribute("aOff", new THREE.Float32BufferAttribute(O, 3))
-    g.setAttribute("aTipo", new THREE.Float32BufferAttribute(Tp, 1))
-    g.setIndex(idx)
-    return { tex, n, L, g }
+    const dadosRC: DadosRC = { dados, linhas, I: new Float32Array(I), O: new Float32Array(O), Tp: new Float32Array(Tp), idx: I.length > 65535 ? new Uint32Array(idx) : new Uint16Array(idx) }
+    CACHE_RC.set(chave, dadosRC)
+    return { ...malhaRC(dadosRC), n, L }
   }, [M, k, C.lateral, C.dormente, C.pilar])
 
   const obj = useMemo(() => {
