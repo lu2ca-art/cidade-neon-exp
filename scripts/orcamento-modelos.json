@@ -3,8 +3,5 @@
   "maxTriangulos": 40000,
   "maxTexturas": 4,
   "maxLadoTextura": 2048,
-  "legado": [
-    "kombi-herbal.glb",
-    "van.glb"
-  ]
+  "legado": []
 }

@@ -167,3 +167,12 @@ Workbench, chão liso; no jogo o chão é o relevo das dunas.
 - **Ruas sem asfalto:** as ruas são o chão das dunas mesmo; não tem calçada nem rua desenhada.
 - **Sem objeto solto:** não há latas nem pedaços dinâmicos (o jogo não tem física pra isso). O entulho é estático, com colisão.
 - **Sem luz:** as ruínas não acendem (sem neon nem janela acesa). De noite ficam escuras como o modelo antigo.
+
+## Parte 3: kombi-herbal.glb e van.glb fora do legado (o `legado` ficou vazio)
+| arquivo | triângulos | tamanho | texturas | o que foi feito |
+|---|---|---|---|---|
+| kombi-herbal.glb | 47.174 → 33.013 | 958 → 849 KB | 1 (2048) | meshoptimizer (razão 0,7, erro 0,2%) respeitando a costura de UV (`glb_simplificar.mjs`) |
+| van.glb | 21.382 (igual) | 2.275 → 366 KB | 6 → 4 | `van_orcamento.mjs`: sai o mapa de normal e o de metal/rugosidade das rodas; o resto vai pra 1024 webp + meshopt |
+
+- **kombi-herbal:** o modelo (fotogrametria, sem normal) segue sem normal, e o `KombiHerbal.tsx` recalcula como antes. Retratos: `kombi-herbal-antes.png` / `-depois.png`; quase não muda.
+- **van:** só a `/van-preview` usa. Retratos: `van-antes.png` / `van-depois.png`.
