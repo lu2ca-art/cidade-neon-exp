@@ -6,6 +6,7 @@ import { PECAS_CHAO } from "../app/linha/disco/achados"
 import { abrirPorta, checklist13, concluir, feita13, portaAberta } from "../app/linha/disco/portas"
 import { PAGINAS } from "../app/linha/paginas"
 import { LUGARES } from "../app/linha/lugares"
+import { saveDoJogo } from "./saveDoJogo"
 
 // (T04, T09) a oficina só no subúrbio e a missão dela: a cena (só o plano) → a
 // reciclagem (a arte; T57: catar o lixo espalhado no lixão, no mundo, e a
@@ -72,7 +73,8 @@ test("T09: o mecânico é pago em água, e o contador pinga a cada 10", () => {
 })
 
 // ── no navegador: a missão inteira pelos links ?parte=oficina.* ──
-const saveDe = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem("cn-linha-222") ?? "null"))
+// (04/11) o ?parte= grava no save de teste: lê o save que a aba está usando
+const saveDe = saveDoJogo
 const chegar = (page: Page, id: string) => page.evaluate((x) => (window as unknown as { __cnChao: (id: string) => void }).__cnChao(x), id)
 
 async function abrir(page: Page, parte: string) {
