@@ -55,6 +55,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
   agua: { t: "água", d: "a coisa mais valiosa num mundo seco. as gotas da pista viram água: rega as flores, paga a oficina, e a cada 100 gotas, duas viagens rápidas." },
   controles: { t: "os controles", d: "no celular: um lado da tela vira pra ele; os dois juntos freiam (parado, dá ré). no ar: um lado gira, os dois juntos dão o mortal. no teclado: ↓ freia, Q é a manobra." },
+  piloto: { t: "piloto", d: "o volante do lado do GPS: a Kombi dirige sozinha. com destino (uma missão ou um ponto no mapa), vai pela rota, troca de pista sozinha e para lá. sem destino, passeia pela rua (pra ouvir a música inteira). virou, acelerou ou freou: o volante volta pra você na hora. só de Kombi." },
   turbo: { t: "turbo", d: "segura um instante: a Kombi dispara. o drift, as manobras e os voos enchem a barra (no teclado, um toque no espaço). de patins, no ar, é o dash." },
   propulsor: { t: "propulsor", d: "segura: a Kombi voa. de patins, é o jato de ar das costas. a energia volta andando no chão (no teclado, segura o espaço)." },
   sair: { t: "sair da Kombi", d: "desce de patins. a Kombi fica estacionada te esperando (tecla F)." },
@@ -386,8 +387,20 @@ function useDica(ativa: boolean) {
 // (missões claras, 02/11) a linha "Agora: ..." com a distância até o alvo (o guia,
 // estrada/alvoMissao.ts). Perto do lugar sem ter começado, o guia manda a frase
 // do que fazer ali. Só este pedacinho se refaz quando o guia muda
-function AgoraNexo({ texto }: { texto: string }) {
+// (piloto, 05/11) com o piloto do botão levando, a linha diz isso: "piloto · até
+// o palco do Copo" (e a distância); sem destino, "piloto · passeando"
+function AgoraNexo({ texto, dica }: { texto: string | null; dica: string }) {
   const g = useGuia()
+  if (g.piloto) {
+    const mp = g.piloto !== "piloto · passeando" && !g.dica ? textoMetros(g.metros) : ""
+    return (
+      <span className="l-nexo-agora is-piloto">
+        <em>{g.dica ? `Agora: ${g.dica}` : g.piloto}</em>
+        {mp && <small className="l-nexo-conta">{mp}</small>}
+      </span>
+    )
+  }
+  if (texto === null) return <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>
   const m = g.dica ? "" : textoMetros(g.metros)
   return (
     <span className="l-nexo-agora">
@@ -429,9 +442,7 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
           <span className="l-nexo-agora" role="status" aria-live="polite"><em>{NEXO_PERGUNTA}</em></span>
         ) : tut ? (
           <span className="l-nexo-passo" role="status" aria-live="polite"><em>{tut.ok ? "✓ isso" : tut.texto}</em></span>
-        ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : agora ? (
-          <AgoraNexo texto={agora.texto} />
-        ) : <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>}
+        ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : <AgoraNexo texto={agora ? agora.texto : null} dica={dica} />}
         {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
         {!tut && !explicando && <SalvarNexo />}
         <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>

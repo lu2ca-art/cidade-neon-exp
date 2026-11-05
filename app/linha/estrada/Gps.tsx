@@ -9,7 +9,10 @@
 //
 // E (J2:32) o checklist pelo mapa: na vista do drone, um cartão com SÓ o
 // próximo passo; e (J1) as viagens rápidas pros minijogos e o piloto
-// automático infinito (o botão ∞ do lado da barra).
+// automático (o volante do lado da barra; era o ∞). (piloto, 05/11, o dono:
+// "o mapa é como se fosse um copiloto") com destino, o piloto leva a Kombi pela
+// rota e para lá; sem, passeia pela rua. Só de Kombi (a pé/patins/moto, some).
+// Ver docs/piloto.md.
 //
 // Desempenho: nada na cena 3D. É DOM; a barra se atualiza ~15×/s escrevendo
 // só um transform e um texto (sem React por quadro).
@@ -73,7 +76,7 @@ export function anguloAlvo(pose: { x: number; z: number; rumo: number }, alvo: {
 
 const metros = fmtMetros
 
-export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfinito, apagada = null }: {
+export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfinito, semPiloto = false, apagada = null }: {
   M: Mundo
   pose: React.RefObject<PoseGps>
   refs: RefsAlvo
@@ -82,6 +85,8 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
   escondido?: boolean
   infinito: boolean
   onInfinito: () => void
+  // (piloto) a pé, de patins, de moto ou noutro veículo: sem o botão
+  semPiloto?: boolean
   // (T58) as pistas apagadas (a rota não entra nelas)
   apagada?: boolean[] | null
 }) {
@@ -95,7 +100,8 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
   refsAtual.current = refs
 
   useEffect(() => {
-    if (escondido) { refazerNav(M, null, null, 0, 0); return }
+    if (escondido) { refazerNav(M, null, null, 0, 0); NAV.vivo = false; return }
+    NAV.vivo = true
     if (typeof window !== "undefined" && /[?&]medir/.test(location.search)) (window as unknown as Record<string, unknown>).__nav = NAV
     let ultimo = "", vivo = true, tNav = 0
     const passo = () => {
@@ -132,7 +138,7 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
     }
     passo()
     const t = setInterval(passo, GPS_CFG.passoMs)
-    return () => { vivo = false; clearInterval(t); refazerNav(M, null, null, 0, 0); escreverVira(0) }
+    return () => { vivo = false; NAV.vivo = false; clearInterval(t); refazerNav(M, null, null, 0, 0); escreverVira(0) }
   }, [M, pose, escondido])
 
   if (escondido) return null
@@ -148,7 +154,11 @@ export function Gps({ M, pose, refs, icone, escondido = false, infinito, onInfin
           </span>
         )}
       </div>
-      <button type="button" className={`l-gps-auto${infinito ? " is-on" : ""}`} aria-pressed={infinito} aria-label={infinito ? "desligar o piloto automático" : "piloto automático infinito"} title={infinito ? "o automático está levando: toca pra pegar o volante" : "deixar no automático (pra só curtir)"} onClick={onInfinito}>∞</button>
+      {!semPiloto && (
+        <button type="button" data-info="piloto" className={`l-gps-auto${infinito ? " is-on" : ""}`} aria-pressed={infinito} aria-label={infinito ? "desligar o piloto" : "piloto automático"} title={infinito ? "o piloto está levando: toca, vira ou acelera pra pegar o volante" : alvo ? `piloto: leva até ${alvo.nome}` : "piloto: passeia pela rua (pra curtir a música)"} onClick={onInfinito}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2" /><path d="M3.8 11.2h6.3M13.9 11.2h6.3M12 14v6.4" /></svg>
+        </button>
+      )}
     </div>
   )
 }
