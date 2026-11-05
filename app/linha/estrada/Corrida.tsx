@@ -29,6 +29,7 @@ import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
+import { Motoqueiro } from "../trincheiras/Pilotos"
 import { MODELOS, montarModelos } from "./carros"
 import { FloresAsfalto } from "./FloresAsfalto"
 import { POR_VEZ, guardarFlores, levaDe, lerFlores, type FlorAsfalto } from "./floresDaRua"
@@ -122,6 +123,9 @@ import { FRASE_GERAL, Outdoors, type Outdoor } from "./Outdoors"
 // (16/10, LU2CA: "aumentar a velocidade como um todo") 46 → 55,6 m/s; (17/10,
 // REA do Horizon Drive: "a Kombi está muito lenta") 69,4 m/s = 250 km/h de verdade
 const VMAX = 69.4 // m/s
+// (moto, 05/11) a moto: mais rápida que o patins (150 km/h), arranca mais e vira
+// mais que a Kombi; sem propulsor e sem dash (não voa). Pula rampa normal
+const MOTO = { vmax: 185 / 3.6, acel: 1.4, vira: 1.35, giroAr: 1.25 }
 // (22/10, 2.1) a chegada do buraco de minhoca: a velocidade de saída do túnel
 // (T37: agora em disco/historia.ts, CHEGADA; a Kombi para em PARADA_CASA)
 const CHEGADA_V0 = CHEGADA.v0
@@ -767,6 +771,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const [esperandoPosto, setEsperandoPosto] = useState(false)
   // a gasolina acabou: de patins até o posto ou uma bomba, e volta com o galão
   const [dePatins, setDePatins] = useState(false)
+  // (moto, 05/11) fora da Kombi de moto: é o patins com outra física e outro corpo (combRef.moto)
+  const [deMoto, setDeMoto] = useState(false)
   // as flores do asfalto (mapa novo, LU2CA 16/10): só de patins; 10 por vez, sem fim
   const [flores, setFlores] = useState(() => lerFlores())
   const leva = useMemo(() => ("ligacoes" in M ? levaDe(M, flores.geracao) : []), [M, flores.geracao])
@@ -1277,11 +1283,35 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     fadeCam.current?.classList.add("is-on")
     setTimeout(() => {
       if (dentroRef.current) { dentroRef.current = false; setDentro(false) }
-      combRef.current.patins = true; combRef.current.parada = null
+      combRef.current.patins = true; combRef.current.moto = false; combRef.current.parada = null
       jogo.current.v = 0; jogo.current.encostando = false
-      setDePatins(true)
+      setDePatins(true); setDeMoto(false)
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 120)
     }, 350)
+  }
+  // (moto, 05/11) a moto sai da Kombi (vem guardada nela). Saindo da Kombi, ela
+  // fica parada ali (como no patins); já de patins perto dela, a parada segue a mesma
+  const irDeMoto = () => {
+    fadeCam.current?.classList.add("is-on")
+    setTimeout(() => {
+      if (dentroRef.current) { dentroRef.current = false; setDentro(false) }
+      const c = combRef.current
+      if (!c.patins) c.parada = null
+      c.patins = true; c.moto = true
+      jogo.current.encostando = false
+      if (jogo.current.v < 0) jogo.current.v = 0
+      setDePatins(true); setDeMoto(true)
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 120)
+    }, 350)
+  }
+  // guarda a moto na Kombi e segue a pé / de patins (no subúrbio, onde a Kombi não entra)
+  const guardarMoto = () => {
+    fadeCam.current?.classList.add("is-on")
+    setTimeout(() => {
+      combRef.current.moto = false; jogo.current.v = 0
+      setDeMoto(false)
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 120)
+    }, 300)
   }
   // sair da Kombi a qualquer hora (LU2CA 16/10): ela fica estacionada, você
   // segue de patins; perto dela de novo, "voltar pra Kombi"
@@ -1291,8 +1321,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const c = combRef.current, p = c.parada, j = jogo.current
       if (p) { const mudou = j.via !== p.via; j.via = p.via; j.u = p.u; j.x = p.x; if (mudou) evs.current?.via(p.via) }
       j.v = 0; j.vx = 0; j.encaixar = true
-      c.patins = false; c.parada = null
-      setDePatins(false); setPertoKombi(false)
+      c.patins = false; c.moto = false; c.parada = null
+      setDePatins(false); setDeMoto(false); setPertoKombi(false)
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 150)
     }, 300)
   }
@@ -1304,8 +1334,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const c = combRef.current, p = c.parada, j = jogo.current
       if (p) { const mudou = j.via !== p.via; j.via = p.via; j.u = p.u; j.x = p.x; if (mudou) evs.current?.via(p.via) }
       j.v = 0; j.vx = 0; j.encostando = false; j.encaixar = true
-      c.patins = false; c.parada = null
-      setDePatins(false); setMsgPatins("")
+      c.patins = false; c.moto = false; c.parada = null
+      setDePatins(false); setDeMoto(false); setMsgPatins("")
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 200)
     }, 1400)
   }
@@ -1329,8 +1359,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const c = combRef.current, p = c.parada, j = jogo.current
       if (p) { const mudou = j.via !== p.via; j.via = p.via; j.u = p.u; j.x = p.x; if (mudou) evs.current?.via(p.via) }
       j.v = 0; j.vx = 0; j.encostando = false; j.encaixar = true
-      c.patins = false; c.parada = null
-      setDePatins(false); setMsgPatins("")
+      c.patins = false; c.moto = false; c.parada = null
+      setDePatins(false); setDeMoto(false); setMsgPatins("")
       onHistoriaRef.current?.("galao")
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 200)
     }, 2200)
@@ -1672,6 +1702,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const [zona, setZona] = useState<Zona>("cidade")
   const zonaRef = useRef<Zona>("cidade")
   const [motoAviso, setMotoAviso] = useState(false)
+  // (moto) ?motos libera pra testar
+  const [motosTeste, setMotosTeste] = useState(false)
+  useEffect(() => { try { setMotosTeste(new URLSearchParams(location.search).has("motos")) } catch { /* sem url */ } }, [])
+  const motoOk = !!discoM && motosTeste
   // sem Kombi agora (quebrada, no conserto, jogada, sem gasolina) ou numa cena: a regra espera
   const regraZona = useRef(false)
   regraZona.current = !kombiQuebrada && !quebrou && !noConserto && !semKombi && !perseguicao && !seco && !cinema && !cenaLugar && !intro && !abertura && !chegada && !entrando
@@ -1686,8 +1720,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         j.wx = p.pos.x; j.wz = p.pos.z; j.rumo = Math.atan2(f.x, f.z)
       }
       j.v = 0; j.vx = 0
-      c.patins = false; c.parada = null
-      setDePatins(false); setPertoKombi(false)
+      c.patins = false; c.moto = false; c.parada = null
+      setDePatins(false); setDeMoto(false); setPertoKombi(false)
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 150)
     }, 300)
   }
@@ -1702,7 +1736,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       if (z !== zonaRef.current) { zonaRef.current = z; setZona(z) }
       const agora = performance.now()
       if (agora < espera || j.ar || !regraZona.current || aberturaRef.current.ativa || cinemaRef.current) return
-      const modo: Modo = c.patins ? "patins" : veiculo ? "carro" : "kombi"
+      const modo: Modo = c.moto ? "moto" : c.patins ? "patins" : veiculo ? "carro" : "kombi"
       if (permitido(z, modo)) return
       espera = agora + 1500
       if (c.patins) { notch(FALA_ZONA.subir, "#ffc857"); trocaZona.current.kombiAqui() }
@@ -2510,7 +2544,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} soTema={soTema} temaMissao={temaMissao} versoesPista={versoesPista} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} temMoto={motoOk} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} />
           {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
           {discoM && semKombi && <Seguro nome="veiculos"><VeiculosCena M={M} jogo={jogo} estado={veiculosRef} ativo={semKombi} /></Seguro>}
         </Canvas>
@@ -2730,7 +2764,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>{veiculo ? "descer" : "sair da kombi"}</button>
       )}
       {/* (05/11) no deserto e no subúrbio, o lugar do botão é da moto (trancada até T14) */}
-      {discoM && !MOTO_LIBERADA && zona !== "cidade" && !seco && !entrando && !regando && !naBomba && (
+      {motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
+        <button type="button" className={`l-sair-kombi is-moto${permitido(zona, "patins") ? " is-segundo" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>moto</button>
+      )}
+      {discoM && !motoOk && !MOTO_LIBERADA && zona !== "cidade" && !seco && !entrando && !regando && !naBomba && (
         <button type="button" className="l-sair-kombi is-trancado" aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
       )}
       {motoAviso && <p className="l-pagina-fechada"><Cadeado />a moto · {TRANCA_MOTO}</p>}
@@ -2743,7 +2780,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={pegarGalaoDbee}>pegar o galão</button>
       )}
       {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (!discoM || permitido(zona, veiculo ? "carro" : "kombi")) && (
-        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : "voltar pra Kombi"}</button>
+        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : deMoto ? "guardar a moto · voltar pra Kombi" : "voltar pra Kombi"}</button>
       )}
       {dePatins && pertoComb && seco && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={voltarComGalao}>encher o galão e voltar pra Kombi</button>
@@ -3232,6 +3269,8 @@ export interface Comb {
   t: number // último aviso pro page (guardar no save)
   // a gasolina acabou e você foi de patins (Patins.tsx): onde a Kombi ficou
   patins?: boolean
+  // (moto) junto com `patins`: fora da Kombi, mas de moto (a física e o corpo da moto)
+  moto?: boolean
   // (T27) a Kombi quebrada espera na oficina do subúrbio
   quebrada?: boolean
   parada?: { pos: THREE.Vector3; quat: THREE.Quaternion; via: number; u: number; x: number } | null
@@ -3382,7 +3421,7 @@ function apagarPostes(c: { postes: THREE.InstancedMesh; reflexos: THREE.Instance
 
 function CenaBase({
   tags,
-  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null,
+  M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, semPaineis = false, alvoChao = null, soTema = false, temaMissao = null, versoesPista = null, missoesMapa = null, veiculo = null, temMoto = false,
 }: {
   // (T28) o veículo escolhido depois da perseguição (no lugar da Kombi)
   veiculo?: string | null
@@ -3395,6 +3434,7 @@ function CenaBase({
   temaMissao?: string | null
   versoesPista?: Record<string, VersaoPista> | null
   semPaineis?: boolean
+  temMoto?: boolean
   faseHistoria?: string | null
   missoesMapa?: IconeMapa[] | null
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
@@ -4590,6 +4630,7 @@ function CenaBase({
   // (leveza A) robôs desmontados (longe do deserto): nenhum fica "vivo" no ROBOS
   const robosFora = useCallback(() => { for (const b of ROBOS) b.vivo = false }, [])
   const patinador = useRef<THREE.Group>(null)
+  const motoG = useRef<THREE.Group>(null)
   const kombiParada = useRef<THREE.Group>(null)
   const kParadaT = useRef(false)
   const vModelo = useMemo(() => veiculoPorId(veiculo), [veiculo])
@@ -4727,7 +4768,8 @@ function CenaBase({
       const infV = faixasDisco.length ? (M as MundoDisco).info[j.via] : null
       const naEspiral = !!infV && naEspiralParte(infV.parte)
       const fxP = infV && !naEspiral ? faixasDisco[infV.pista] ?? null : null
-      let vmax = patins ? 150 / 3.6 : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
+      const deMoto = patins && !!combRef.current.moto
+      let vmax = patins ? (deMoto ? MOTO.vmax : 150 / 3.6) : naEspiral ? V_TORRE * (j.turboT > 0 && !seco ? 1.25 : 1) : fxP ? velPista(fxP) * (j.turboT > 0 && !seco ? 1.25 : 1) : (j.turboT > 0 && !seco ? VTURBO : VMAX) * (V.tipo === "saida" ? 1.2 : 1) * (limitadoRef.current ? 0.45 : 1) * (auto ? 0.78 : 1) * (noCel ? 0.5 : 1) * (seco ? 0.22 : 1)
       j.vBase = vmax
       // (T28) o veículo escolhido depois da perseguição anda mais ou menos que a Kombi
       if (!patins && combRef.current.vel) vmax *= combRef.current.vel
@@ -4755,7 +4797,7 @@ function CenaBase({
         else j.v = Math.max(-VRE, j.v - 9 * dt)
       } else if (gas || j.turboT > 0) {
         if (j.v < 0) j.v = Math.min(0, j.v + FREIO * dt)
-        else j.v += (ACEL * Math.max(0, 1 - j.v / vmax) + (j.turboT > 0 ? 16 : 0)) * dt
+        else j.v += (ACEL * (deMoto ? MOTO.acel : 1) * Math.max(0, 1 - j.v / vmax) + (j.turboT > 0 ? 16 : 0)) * dt
       } else {
         // solto: a Kombi vai perdendo embalo sozinha
         const atrito = (2.2 + 0.006 * j.v * j.v) * dt
@@ -5182,7 +5224,7 @@ function CenaBase({
     if (MD) {
       if (j.encaixar) { j.voo = false; j.propulsou = false }
       j.energia = j.energia ?? 1
-      inp.propulsor = ((!!inp.espacoDesde && performance.now() - inp.espacoDesde > (j.voo && !j.ar ? SEGURA_PROP_CHAO_MS : 220)) || !!inp.propulsorBotao) && !inp.semHolo && !inp.semVoo && !(inp.semJato && combRef.current.patins)
+      inp.propulsor = ((!!inp.espacoDesde && performance.now() - inp.espacoDesde > (j.voo && !j.ar ? SEGURA_PROP_CHAO_MS : 220)) || !!inp.propulsorBotao) && !inp.semHolo && !inp.semVoo && !(inp.semJato && combRef.current.patins) && !combRef.current.moto
       // (19/10, LU2CA: "nem o propulsor funciona") a abertura que trava aqui é
       // a do mapa velho: no disco ela nunca termina (a abertura do disco, o
       // deserto, a D-Bee e a oficina, ainda não existe), e o propulsor ficava
@@ -5218,7 +5260,7 @@ function CenaBase({
         j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = Math.atan2(a.tx, a.tz)
       }
       if (j.voo) {
-        j.rumo = (j.rumo ?? 0) - (inp.mao ? 0 : j.steer * dt * (j.ar ? 1.1 : 1.8))
+        j.rumo = (j.rumo ?? 0) - (inp.mao ? 0 : j.steer * dt * (j.ar ? 1.1 : 1.8) * (combRef.current.moto && !j.ar ? MOTO.vira : 1))
         if (j.chegadaCasa && j.wx !== undefined) {
           // (22/10, 2.1/2.3) o piloto da chegada: mira a porta e freia pela
           // distância que falta (rápido longe, devagarinho perto), até parar
@@ -5279,7 +5321,7 @@ function CenaBase({
     // Com inércia: a rotação acelera e freia, tem peso. De patins, mais ágil
     j.giroAr = j.giroAr ?? 0; j.vGiro = j.vGiro ?? 0; j.flipAr = j.flipAr ?? 0; j.vFlip = j.vFlip ?? 0
     if (j.ar) {
-      const agil = combRef.current.patins ? 1.45 : 1
+      const agil = combRef.current.moto ? MOTO.giroAr : combRef.current.patins ? 1.45 : 1
       const manobra = (!j.voo || inp.mao) && !(inp.propulsor && j.voo)
       // (num pulo de ~0,6 s, um 360 ou um mortal cabem se você entra na hora)
       const alvoG = manobra ? j.steer * 14 * agil : 0
@@ -5300,7 +5342,7 @@ function CenaBase({
       if (j.flipAr) { j.flipAr *= Math.exp(-dt * 9); if (Math.abs(j.flipAr) < 0.01) j.flipAr = 0 }
     }
     // (patins) o dash: o turbo no ar empurra pra frente, uma vez por pulo
-    if (inp.turbo && combRef.current.patins && j.ar && !j.dashou) {
+    if (inp.turbo && combRef.current.patins && !combRef.current.moto && j.ar && !j.dashou) {
       j.dashou = true; inp.turbo = false
       j.v += 14; j.vy = Math.max(j.vy, 2.5)
       j.flash = 0.3; motor?.whoosh(); vib([14, 10, 30])
@@ -5797,7 +5839,8 @@ function CenaBase({
       ;(cb2.aqui ??= new THREE.Vector3()).copy(car.position)
       if (corpoK.current) corpoK.current.visible = !cb2.patins
       if (cabineG.current && cb2.patins) cabineG.current.visible = false
-      if (patinador.current) patinador.current.visible = !!cb2.patins
+      if (patinador.current) patinador.current.visible = !!cb2.patins && !cb2.moto
+      if (motoG.current) motoG.current.visible = !!cb2.patins && !!cb2.moto
       if (kombiParada.current) {
         if (cb2.quebrada && cb2.patins && (M as MundoDisco).chaoEm) {
           // (T27) quebrada: a Kombi está na oficina do subúrbio, esperando o conserto
@@ -6085,6 +6128,7 @@ function CenaBase({
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins
+    const deMotoC = dePatins && !!combRef.current.moto
     const cd = camDin.current
     // (17/10, LU2CA: "a câmera tá muito insana de ruim, toda descontrolada")
     // no mapa novo, de fora: a câmera CALMA. Um atraso só (o rumo), a altura
@@ -6128,7 +6172,7 @@ function CenaBase({
         const cz = cd.cz
         const wNariz = livreCam ? (j.drift ? 0.15 : 0.06) : 0.12
         const yawAlvo = Math.atan2(tmp.f.x * (1 - wNariz) + cd.carF.x * wNariz, tmp.f.z * (1 - wNariz) + cd.carF.z * wNariz)
-        const atrasD = dePatins ? 6.4 + vel * 1.4 : 8 + vel * 1.6 + cd.puxa
+        const atrasD = deMotoC ? 7 + vel * 1.5 : dePatins ? 6.4 + vel * 1.4 : 8 + vel * 1.6 + cd.puxa
         const altoD = dePatins ? 2.5 - o.pitch * 2 : 2.9 - vel * 0.25 - o.pitch * 2.5
         if (!cz.ok || j.encaixar || !camInit.current) {
           cz.yaw = yawAlvo; cz.dist = atrasD; cz.alt = altoD; cz.y = car.position.y
@@ -6180,8 +6224,8 @@ function CenaBase({
       // (17/10, sem o atraso que afastava a câmera na velocidade: a distância
       // agora é a de verdade. Na tela em pé do celular, a 8 m a Kombi tomava
       // meia tela — "não deixar perto demais")
-      const atras = dePatins ? 5 + vel * 1.6 : calma ? 8.2 + vel * 2.4 + cd.puxa : 7.6 + vel * 3 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
-      const alto = dePatins ? 2.2 : calma ? 3.0 - vel * 0.3 - o.pitch * 2.5 : 3.1 - vel * 0.45 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
+      const atras = deMotoC ? 5.8 + vel * 1.7 : dePatins ? 5 + vel * 1.6 : calma ? 8.2 + vel * 2.4 + cd.puxa : 7.6 + vel * 3 + cd.puxa + (cd.parada > 3 ? 1.8 : 0)
+      const alto = deMotoC ? 2.4 : dePatins ? 2.2 : calma ? 3.0 - vel * 0.3 - o.pitch * 2.5 : 3.1 - vel * 0.45 + (cd.parada > 3 ? 0.7 : 0) - o.pitch * 2.5
       // a altura de referência: a da Kombi, suavizada (lombada e morro não sacodem)
       if (!cd.ySok || j.encaixar) { cd.yS = car.position.y; cd.ySok = true }
       cd.yS += (car.position.y - cd.yS) * Math.min(1, dt * (calma ? 4 : 30))
@@ -6466,7 +6510,11 @@ function CenaBase({
     if (hemi.current) hemi.current.color.lerp(alvoCeu, kk * 0.5)
 
     // som: só o motor (T62: de patins, o motor cala e entram as rodas de gel e, no ar, o vento neon)
-    if (patM) {
+    if (patM && combRef.current.moto) {
+      // (moto) o motor da Kombi, mais agudo (a rotação sobe antes)
+      motor?.atualizar(Math.min(1.45, Math.abs(j.v) / (MOTO.vmax * 0.8)), (inp.gas || toqueTela) && !cine, false)
+      somPatins.current?.atualizar(0, false, false)
+    } else if (patM) {
       motor?.atualizar(0, false, false)
       if (!somPatins.current) somPatins.current = montarPatins()
       somPatins.current?.atualizar(Math.abs(j.v) / (150 / 3.6), !j.ar && !cine, !!j.ar)
@@ -6885,6 +6933,12 @@ function CenaBase({
         <group ref={patinador} visible={false} rotation-y={Math.PI}>
           <Patinador vel={() => jogo.current.v} steer={() => -jogo.current.steer} ar={() => !!jogo.current.ar} jato={() => !!(jogo.current.ar && input.current.propulsor && (jogo.current.energia ?? 0) > 0)} />
         </group>
+        {/* (moto, 05/11) a moto das trincheiras (Pilotos.tsx): só monta quando ela está liberada */}
+        {temMoto && (
+          <group ref={motoG} visible={false} rotation-y={Math.PI}>
+            <Motoqueiro vel={() => jogo.current.v} steer={() => -jogo.current.steer} ar={() => !!jogo.current.ar} pitch={() => 0} empurra={() => !!input.current.gas} />
+          </group>
+        )}
         {/* (T59) por dentro: o interior modelado. Sem pintura nem neon estético
             desde o T04: a lata é a da Kombi de fora (o branco da KombiHerbal) e o
             neon é o rosa da luz de baixo */}
