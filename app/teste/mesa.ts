@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.dopamina",
+    nome: "As ruas-manifesto: DopaminA (vício) e Sabe Ontem? (tempo)",
+    data: "2026-11-05",
+    olhar: "DopaminA: telas e celulares ao longo da rua pipocam notificações, coração no ritmo e um número que só sobe; quanto mais você fica, acelera ou usa turbo, mais elas se multiplicam até estourar; soltou o acelerador, tudo esvazia. Tocar numa tela dá um like: brilha e depois fica mais vazio. Sabe Ontem?: o céu passa de 5h às 22h durante a faixa, relógios certos, adiantados e ao contrário nos prédios e no céu, e fantasmas da Kombi ficam no ar como ontem. Freou forte: o tempo segura.",
+    perguntas: [
+      "Dá pra sentir a música e o tema sem ninguém explicar?",
+      "Qual das duas tem mais a sua cara? Sigo nesse caminho pras outras 7 ruas?",
+    ],
+    mais: [{ parte: "missao.ontem", nome: "a rua Sabe Ontem?" }],
+  },
+  {
     parte: "livre",
     nome: "A cidade maior mais leve (pista e postes por perto)",
     data: "2026-11-05",
