@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "final",
+    nome: "O final do jogo (as ações, sem os vídeos ainda)",
+    data: "2026-11-05",
+    olhar: "Com as 10 missões feitas, o final começa na casa da D-Bee: a câmera roda a casa (o sinal); os nove aparecem um por um, cada um sob o monumento da sua faixa; os nove feixes acendem juntos e a chuva toma a cidade; a despedida do Criador é o espaço do vídeo (falas em RASCUNHO); e a Kombi fica no quintal da D-Bee com as plantas voltando no deserto. Os nove são cápsulas coloridas até chegarem os modelos.",
+    perguntas: [
+      "A ordem e o ritmo dos momentos estão certos?",
+      "O que a despedida do Criador diz? (as 2 falas são rascunho)",
+      "Que música toca em cada momento do final?",
+    ],
+    mais: [{ parte: "final.nove", nome: "os nove" }, { parte: "final.chuva", nome: "a chuva" }, { parte: "final.quintal", nome: "o quintal" }],
+  },
+  {
     parte: "livre",
     nome: "A D-Bee sugere o que fazer",
     data: "2026-11-05",
