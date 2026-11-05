@@ -3778,11 +3778,29 @@ function CenaBase({
     const topos: number[] = []
     // (mapa novo, direção livre) o contorno de cada prédio: a Kombi não atravessa
     const colisores: number[] = []
-    const ocupados: [number, number, number][] = [] // (B18) onde já tem prédio no disco
+    // (B18) onde já tem prédio no disco. (ruas-faixa) numa grade de 50 m: com as
+    // ruas do tamanho da faixa são ~2× mais prédios, e a lista inteira a cada
+    // tentativa (n²) pesava na montagem
+    const ocupados = new Map<string, number[]>()
+    const CEL_OC = 50
+    const ocupado = (bx: number, bz: number, w: number) => {
+      const cx = Math.floor(bx / CEL_OC), cz = Math.floor(bz / CEL_OC)
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+        const l = ocupados.get(`${cx + a},${cz + b}`); if (!l) continue
+        for (let q = 0; q < l.length; q += 3) if (Math.hypot(l[q] - bx, l[q + 1] - bz) < l[q + 2] + w * 0.6 + 16) return true
+      }
+      return false
+    }
     // (19/10, desempenho) os prédios de todas as ruas com a mesma cara (a cor
     // da janela e o brilho do bairro) numa malha só: no disco eram ~100 malhas
     // (uma por via, cada uma com o seu material), ~100 draw calls por quadro
+    // (ruas-faixa) e, no disco, cada cara também partida em quadras de 900 m: o
+    // mundo ficou ~2× maior e uma malha do tamanho dele era desenhada inteira
+    // sempre (a esfera dela pegava tudo). Partida, o que está atrás da câmera ou
+    // depois da névoa nem vai pra placa (useFrame: cidade.predios, visible)
     const grupos = new Map<string, { mat: THREE.MeshStandardMaterial; mats: THREE.Matrix4[] }>()
+    const QUADRA = "disco" in M ? 900 : Infinity
+    const quadras = new Map<string, { mat: THREE.MeshStandardMaterial; mats: THREE.Matrix4[] }>()
     circuitos.forEach((C) => {
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
@@ -3842,10 +3860,10 @@ function CenaBase({
         // no disco, cada prédio guarda uma folga de 16 m dos outros; o subúrbio
         // (no chão, embaixo das pistas) é de casas baixas e deixa os lugares livres
         if ("disco" in M) {
-          if (ocupados.some(([ox, oz, or]) => Math.hypot(ox - bx, oz - bz) < or + w * 0.6 + 16)) continue
+          if (ocupado(bx, bz, w)) continue
           if (Object.values(CHAO_LUGARES).some((l) => Math.hypot(l.x - bx, l.z - bz) < 34 + w * 0.6)) continue
           if (Math.hypot(bx - SUBURBIO.x, bz - SUBURBIO.z) < SUBURBIO.r + 60) { h = 5 + r() * 10; w = Math.min(w, 12) }
-          ocupados.push([bx, bz, w * 0.6])
+          { const kk = `${Math.floor(bx / CEL_OC)},${Math.floor(bz / CEL_OC)}`; let l = ocupados.get(kk); if (!l) ocupados.set(kk, (l = [])); l.push(bx, bz, w * 0.6) }
         }
         if (parqueChao.some((c) => Math.hypot(c.x - bx, c.z - bz) < 14 + w * 0.7)) continue
         // no mapa novo o prédio nasce no chão (o relevo do v5), não na água
@@ -3859,11 +3877,15 @@ function CenaBase({
         // (T43) + o chão e o topo do campo de força: até a altura da pista ao lado (uns metros acima), ou o topo se o prédio for mais baixo
         if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h, y0, Math.min(y0 + h, Math.max(C.py[k], y0 + 14) + 4)) }
         d.updateMatrix()
-        doGrupo.push(d.matrix.clone())
+        if (QUADRA < Infinity) {
+          const kq = `${chave}|${Math.floor(bx / QUADRA)},${Math.floor(bz / QUADRA)}`
+          let q = quadras.get(kq); if (!q) quadras.set(kq, (q = { mat: gp.mat, mats: [] }))
+          q.mats.push(d.matrix.clone())
+        } else doGrupo.push(d.matrix.clone())
         i++
       }
     })
-    const predios = [...grupos.values()].filter((g) => g.mats.length).map(({ mat, mats }) => {
+    const predios = [...grupos.values(), ...quadras.values()].filter((g) => g.mats.length).map(({ mat, mats }) => {
       const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, mats.length)
       mats.forEach((x, k) => m.setMatrixAt(k, x))
       m.computeBoundingSphere()
@@ -6422,6 +6444,17 @@ function CenaBase({
       // (v2: a cidade inteira lá de cima; a névoa começa depois dela)
       fog.far += ((longe ? 3000 : 950) + dA * 2.6 - fog.far) * rf
       fog.near += ((longe ? 250 : 70) + dA * 1.1 - fog.near) * rf
+    }
+    // (ruas-faixa) as quadras de prédios depois da névoa não vão pra placa (o
+    // prédio alto aparece por cima dela: folga de 400 m + o tamanho da quadra)
+    if ("disco" in M) {
+      const cp = state.camera.position, lim = (fog ? fog.far : 3000) + 400
+      for (const m of cidade.predios) {
+        const e = m.boundingSphere
+        if (!e) continue
+        const r = lim + e.radius
+        m.visible = e.center.distanceToSquared(cp) < r * r
+      }
     }
     ;(scene.background as THREE.Color | null)?.lerp(alvoNevoa, kk)
     ceuMat.uniforms.nevoaC.value.lerp(alvoNevoa, kk)
