@@ -23,6 +23,7 @@ import type { Mundo } from "./mundo"
 import { noMundo, type Marca } from "./Mapa"
 import { ICONE_MISSAO, type ChecklistHolo } from "./Holo"
 import { CHAO_LUGARES, type LugarChao } from "../disco/historia"
+import { PORTOES_RUA, RUA, SEQ_RUA } from "../disco/corridaRua"
 import { NAV, NAV_CFG, fmtMetros, refazerNav, type DestinoNav } from "./nav"
 import { escreverVira } from "./alvoMissao"
 
@@ -49,6 +50,12 @@ export interface RefsAlvo {
 export function destinoMundo(M: Mundo, r: RefsAlvo): AlvoGps | null {
   const rc = r.racha?.current?.alvo
   if (rc) return { x: rc.x, z: rc.z, cor: rc.cor, nome: rc.nome, via: rc.via, u: rc.u }
+  // (revisão 3) a corrida de rua valendo: o próximo portão (não a marca da D-Bee nem a missão)
+  const er = RUA.e
+  if (er.fase === "contagem" || er.fase === "valendo") {
+    const g = PORTOES_RUA[SEQ_RUA[er.cp] ?? 0]
+    if (g) return { x: g.x, z: g.z, cor: "#2fe8ff", nome: er.cp >= SEQ_RUA.length - 1 ? "a chegada" : "o próximo portão" }
+  }
   const mk = r.marca.current
   if (mk && mk.wx !== undefined && mk.wz !== undefined) return { x: mk.wx, z: mk.wz, cor: mk.cor, nome: mk.nome }
   if (mk) { const w = noMundo(M, mk); return { x: w.x, z: w.z, cor: mk.cor, nome: mk.nome, via: mk.via, u: mk.u } }
