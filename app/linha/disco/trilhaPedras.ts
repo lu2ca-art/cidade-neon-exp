@@ -190,7 +190,7 @@ export const ancoraDe = (p: Pedra, c: CtxTrilha) => (typeof p.ancora === "functi
 export const textoDaPedra = (p: Pedra, c: Pick<CtxTrilha, "toque">) => (c.toque && p.toque ? p.toque : p.texto)
 
 // a Corrida escreve a pose da Kombi (POSE_TUT) só enquanto alguma pedra precisa dela
-const DE_POSE: PedraId[] = ["gps", "drift", "voo", "turbo"]
+const DE_POSE: PedraId[] = ["gps", "drift", "voo", "turbo", "pousa"]
 export function trilhaEnsina(h: Pick<HistoriaDisco, "fase" | "holo" | "tutorial"> | null | undefined): boolean {
   if (!h || !TRILHA_CFG.ligada || !h.holo || !DEPOIS_DA_CASA.includes(h.fase)) return false
   const f = h.tutorial ?? []
