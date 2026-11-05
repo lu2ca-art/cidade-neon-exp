@@ -7,10 +7,11 @@ import { PASSO } from "../pista"
 import type { Via } from "../mundo"
 import { QUALIDADE } from "../qualidade"
 
-/** (revisão 2) quanto da rua se desenha: 1 no alto e no médio, 0,5 no leve (o
- *  celular fraco: metade da gente, das flores, das telas, dos holofotes). Lido na
- *  montagem (a rua remonta a cada entrada; trocar a qualidade vale na próxima) */
-export const densidadeRua = () => (QUALIDADE.nivel === "baixo" ? 0.5 : 1)
+/** (revisão 2) quanto da rua se desenha: 1 no alto, 0,75 no médio (o palpite do
+ *  celular), 0,5 no leve (o celular fraco: metade da gente, das flores, das telas,
+ *  dos holofotes). Lido na montagem (a rua remonta a cada entrada; trocar a
+ *  qualidade vale na próxima) */
+export const densidadeRua = () => (QUALIDADE.nivel === "baixo" ? 0.5 : QUALIDADE.nivel === "medio" ? 0.75 : 1)
 
 /** meia largura da pista (mundoDisco.ts MEIA_PISTA): a parede fica aqui */
 export const MEIA_PISTA = 8.4
