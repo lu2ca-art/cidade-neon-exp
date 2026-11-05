@@ -1,6 +1,6 @@
 "use client"
 
-// CHUVA (faixa 7 do disco, a Ella, "a flor"): a chuva que rega a cidade.
+// CHUVA (a Ella, "a flor"): a chuva que rega a cidade.
 //
 // - a chuva começa fina e engrossa com a faixa. Não há gota nova: a rua puxa a
 //   chuva que o jogo já desenha (ceu.ts CHUVA_MANIFESTO → Corrida.tsx)

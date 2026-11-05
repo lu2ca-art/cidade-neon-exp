@@ -1,6 +1,6 @@
 "use client"
 
-// COPO AMERICANO (faixa 2 do disco, o Mubarak): o que enche e esvazia.
+// COPO AMERICANO (o Mubarak): o que enche e esvazia.
 //
 // - copos americanos gigantes (o clássico do bar, facetado embaixo e liso na
 //   boca) nos canteiros e nos prédios ao longo da rua, enchendo de líquido

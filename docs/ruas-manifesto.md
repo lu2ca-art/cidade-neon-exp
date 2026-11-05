@@ -9,8 +9,9 @@ faixa. A rua-manifesto é uma camada visual e interativa ao longo da pista, pres
 no tempo da faixa. Não conta uma história passo a passo e não tem texto: você
 sente enquanto a faixa toca.
 
-Dois protótipos: **DopaminA** (o vício) e **Sabe Ontem?** (o tempo). As outras
-7 ruas estão no registro, vazias, com a ideia de partida.
+Cinco prontas: **DopaminA** (o vício), **Sabe Ontem?** (o tempo), **CHUVA** (a
+chuva que rega), **Copo Americano** (o que enche e esvazia) e **Nectar** (a letra
+e as flores). As outras 4 ruas estão no registro, vazias, com a ideia de partida.
 
 ## Onde mora
 
@@ -21,7 +22,7 @@ Dois protótipos: **DopaminA** (o vício) e **Sabe Ontem?** (o tempo). As outras
 | `manifestos/Manifestos.tsx` | O host: descobre a rua, monta e desmonta o manifesto dela e escreve o `ctx`. |
 | `manifestos/comum.ts` | O tempo da faixa (`tempoDaFaixa`), as posições ao lado da rua e a névoa dos shaders. |
 | `manifestos/ceu.ts` | `CEU_MANIFESTO` e `horaDoCeu`: a rua pode puxar o céu para a hora dela. |
-| `manifestos/DopaminA.tsx`, `manifestos/SabeOntem.tsx` | Os dois protótipos. |
+| `manifestos/DopaminA.tsx`, `SabeOntem.tsx`, `Chuva.tsx`, `CopoAmericano.tsx`, `Nectar.tsx` | As cinco ruas. |
 
 O que mudou fora da pasta (só `Corrida.tsx`):
 - 1 import e 1 linha na `Cena`, ao lado da `RotaPista`:
@@ -143,21 +144,50 @@ Nenhum arquivo de poste, asfalto, pilar, prédio ou quadra (`mundoDisco`, `Poste
   desfaz o próprio giro antes de girar de novo, e devolve tudo ao sair. Nada fora da pasta foi tocado.
 - **Ajustes:** `COPO_CFG` (passo, proporção, ritmos de encher e esvaziar, o porre, o raio do brinde).
 
+## Nectar: a letra e as flores (tentativa e erro)
+
+- **As palavras-pétala:** as palavras vêm da letra da Nectar que já está no
+  código (`disco/letras.ts`, a estrofe da missão de escrever a letra, que ainda
+  é rascunho). Se o dono reescrever lá, a rua acompanha. Se faltar, entram
+  palavras curtas neutras (flor, chuva, raiz, gota, verso...). Ficam em grupos
+  de 4 a 6, um grupo a cada ~30 m, ao lado da rua (de 4 a 13 m de altura). Elas
+  flutuam, giram e viram como pétalas, sempre de frente para a câmera.
+- **Os versos (tentativa e erro):** a cada 4 compassos (16 batidas), cada grupo
+  no seu tempo, as palavras se juntam num verso. Em ~45% das vezes ele dá certo:
+  fica reto e acende cor de mel na batida. Nas outras, sai torto, treme e
+  apaga, e se desfaz mais cedo. Dando certo ou não, ele se desfaz e as palavras
+  voltam a ser pétalas. As palavras do verso são sorteadas da letra, então ele
+  não forma uma frase pronta.
+- **As flores:** nos canteiros e nas fachadas, um a cada ~7 m. Abrem e murcham
+  no compasso, numa onda que corre a rua. Murchando, as pétalas caem para
+  baixo, perdem a cor e uma pétala se solta. Perto de um verso que deu certo,
+  elas abrem inteiras e não murcham.
+- **Tocar numa palavra a prende no céu:** ela sobe num arco e vira parte de um
+  verso lá em cima, à frente e acima da câmera (a ~120 m, 42 m acima), com as
+  palavras na ordem em que você tocou, em linhas centradas. São até 12; depois,
+  a mais velha volta a ser pétala. O verso fica até o fim da volta: quando a
+  faixa recomeça, ele se apaga em 2 s e as palavras voltam para a rua.
+- **Ajustes:** `NECTAR_CFG` (passos, ciclo do verso, chance de erro, tamanho e largura no céu, raio do toque).
+
 ## Custo estimado
 
 Medição local fica fora deste trabalho (regra: o dono testa na Mesa). A estimativa:
 
-| | DopaminA | Sabe Ontem? |
-|---|---|---|
-| Desenhos (draw calls) | 1 (InstancedMesh) | 2 (relógios, fantasmas) |
-| Instâncias | ~430 telas × 2 (o eco fica colapsado a 0 fora do excesso) ≈ 860 quads | ~48 quads + 14 Kombis de ~150 triângulos |
-| Vértices | ~3,5 mil | ~0,2 mil + ~2 mil |
-| Texturas | nenhuma (tudo no shader) | nenhuma |
-| Luzes novas | nenhuma | nenhuma (usa a luz do céu que já existe) |
-| CPU por quadro | ~10 uniforms | ~12 uniforms, 1 `ceuNaHora` (busca numa tabela) e, a cada ~3 s, 1 matriz + 1 número para a GPU |
-| CPU na montagem | ~430 matrizes (uma vez) | ~48 matrizes (uma vez) |
-| Interação | projeta ~430 pontos **só no toque** | nenhuma extra (lê o freio do ctx) |
-| Fora da rua | **nada montado** | **nada montado** (o céu volta para a hora do jogo) |
+| | DopaminA | Sabe Ontem? | CHUVA | Copo Americano | Nectar |
+|---|---|---|---|---|---|
+| Desenhos (draw calls) | 1 (InstancedMesh) | 2 (relógios, fantasmas) | 3 (flores, anéis, guarda-chuva; este só aberto) | 1 (InstancedMesh) | 2 (palavras, flores) |
+| Instâncias | ~430 telas × 2 (o eco fica colapsado a 0 fora do excesso) ≈ 860 quads | ~48 quads + 14 Kombis de ~150 triângulos | ~600 flores (2 quads cruzados) + ~450 anéis | ~180 copos (cilindro de 16 lados com tampas) | ~150 palavras + ~300 flores (1 quad cada) |
+| Vértices | ~3,5 mil | ~0,2 mil + ~2 mil | ~4,8 mil + ~1,8 mil + ~150 | ~12 mil | ~1,8 mil |
+| Texturas | nenhuma (tudo no shader) | nenhuma | nenhuma | nenhuma | 1 canvas de 1024 × ≤ 1024 px (as palavras, escritas uma vez) |
+| Luzes novas | nenhuma | nenhuma (usa a luz do céu que já existe) | nenhuma | nenhuma | nenhuma |
+| CPU por quadro | ~10 uniforms | ~12 uniforms, 1 `ceuNaHora` (busca numa tabela) e, a cada ~3 s, 1 matriz + 1 número para a GPU | ~10 uniforms + a posição do guarda-chuva (aberto) | ~6 uniforms + 2 rotações na câmera (no porre) | ~6 uniforms + o ponto do céu (2 vetores) |
+| CPU na montagem | ~430 matrizes (uma vez) | ~48 matrizes (uma vez) | ~1050 matrizes (uma vez) | ~180 matrizes (uma vez) | o canvas das palavras e ~450 posições (uma vez) |
+| Interação | projeta ~430 pontos **só no toque** | nenhuma extra (lê o freio do ctx) | nenhuma extra (lê o propulsor e o freio) | projeta ~180 pontos **só no toque** | projeta ~150 pontos **só no toque** |
+| Fora da rua | **nada montado** | **nada montado** (o céu volta para a hora do jogo) | **nada montado** (a chuva volta para o clima) | **nada montado** (a câmera é devolvida) | **nada montado** |
+
+A chuva da CHUVA não custa nada novo: as 700 linhas da chuva do jogo já são
+calculadas todo quadro (mesmo quando invisíveis). A rua só as deixa visíveis e
+mais opacas.
 
 O que pesa na GPU é o fragment shader das telas, porque são transparentes e se
 sobrepõem quando a fome está alta. As telas ficam ao lado da rua e a névoa
@@ -166,16 +196,13 @@ apaga as de longe (a cor e a transparência somem com ela). Com `frustumCulled =
 cortados pela GPU, que é barato com esses números.
 Se pesar no celular, o primeiro ajuste é `DOPAMINA_CFG.niveis = 2` e `passo = 26`.
 
-## As outras 7 ruas (vazias, com a ideia de partida)
+## As outras 4 ruas (vazias, com a ideia de partida)
 
 Tiradas de nova-ordem.md e da bíblia. São propostas: o tema de cada rua é do dono.
-- **Nectar:** a letra e as flores. Regar faz a rua florescer (tentativa e erro).
-- **Copo Americano:** o copo que enche e esvazia na mesa do bar.
 - **Ojalá:** amor de carnaval, fugaz como o vento.
 - **Swav:** reflexos e salto de fé.
 - **Sexta-Feira:** a balada. Multidão vazia, aceita e dança.
 - **Rollercoaster:** a montanha-russa, os altos e baixos.
-- **CHUVA:** a chuva que rega a cidade.
 
 ## O que ainda não foi visto
 
@@ -184,3 +211,6 @@ Nada foi rodado nem visto: só `tsc`. Pontos para olhar na Mesa:
 - se o toque nas telas briga com a direção por toque no celular
 - se o fade do céu ao entrar e sair da rua de Sabe Ontem? fica suave
 - o tamanho dos fantasmas contra a Kombi escaneada (o perfil é aproximado: 4,3 × 1,6 × 2 m)
+- CHUVA: se o guarda-chuva no propulsor briga com o vento do turbo; se a chuva grossa (1,8) não fica pesada demais; se as flores da beira da pista atrapalham a leitura da pista
+- Copo Americano: se o balanço do porre (0,8°) é sutil o bastante ou pouco demais; se o copo facetado lê como copo americano de longe; se o toque no copo briga com a direção por toque
+- Nectar: se as palavras são legíveis em movimento; o lugar do verso no céu (120 m à frente, 42 m acima); se o toque numa palavra briga com a direção por toque

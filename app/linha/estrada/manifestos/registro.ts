@@ -9,6 +9,7 @@ import { DopaminA } from "./DopaminA"
 import { SabeOntem } from "./SabeOntem"
 import { Chuva } from "./Chuva"
 import { CopoAmericano } from "./CopoAmericano"
+import { Nectar } from "./Nectar"
 
 export const MANIFESTOS: Record<PistaId, Manifesto> = {
   // vício: a rua que pede mais um. Telas que pipocam com o acelerador; soltou, esvazia
@@ -19,10 +20,10 @@ export const MANIFESTOS: Record<PistaId, Manifesto> = {
   chuva: { id: "chuva", ideia: "a chuva que rega a cidade", Componente: Chuva },
   // copos gigantes enchendo no ritmo; acelerar demais transborda (a rua embriaga); tocar = brinde
   copo: { id: "copo", ideia: "o copo americano: o que enche e esvazia", Componente: CopoAmericano },
+  // palavras da letra flutuam como pétalas, se juntam em versos que dão certo ou não; flores no compasso; tocar prende no céu
+  nectar: { id: "nectar", ideia: "a letra e as flores: tentativa e erro", Componente: Nectar },
 
   // ── ainda só ideia (o comentário é o ponto de partida) ──
-  // Nectar: escrever a letra; regar faz a rua florescer e a aurora enfeita a noite (tentativa e erro)
-  nectar: { id: "nectar", ideia: "a letra e as flores: tentativa e erro", Componente: null },
   // Ojalá: amor de carnaval, fugaz como o vento (o que passa e não fica na rua)
   ojala: { id: "ojala", ideia: "a experiência da Ojalá: fugaz como o vento", Componente: null },
   // Swav: criatividade, reflexos, salto de fé (a rua de espelhos; confiar no salto)
