@@ -9,11 +9,11 @@
 // Crédito no jogo.
 
 import { useGLTF } from "@react-three/drei"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import * as THREE from "three"
 
 import { CREDITO_SUBURBIO } from "./creditos"
-import { Estatico, mesclarPorMaterial } from "./estatico"
+import { Estatico, descartarMescladas, mesclarPorMaterial } from "./estatico"
 export { CREDITO_SUBURBIO }
 const URL = "/models/suburbio.glb"
 
@@ -33,6 +33,8 @@ export function Suburbio({ cx, cz, raioChao }: { cx: number; cz: number; raioCha
     mesclarPorMaterial(g, 6)
     return g
   }, [scene])
+  // (revisão 05/11) desmontou (o <Perto>): as geometrias mescladas saem da GPU; as do glb (cache) ficam
+  useEffect(() => () => descartarMescladas(modelo, scene), [modelo, scene])
   return (
     <group>
       {/* o chão do bairro (fora dele, a cidade é água) */}

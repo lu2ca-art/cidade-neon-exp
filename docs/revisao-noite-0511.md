@@ -74,7 +74,31 @@ frentes se cruzam. Sem build, sem Playwright, sem medição: só leitura e
   abrem a missão de longe (`?parte=missao.tuneis.trincheiras`) seguirem valendo.
 - Commit `994cc00`.
 
-## Suspeitas abertas (não corrigidas)
+## Parte 2: as decisões do coordenador (05/11)
+
+O que era suspeita virou tarefa. Um commit por item (2 e 3 juntos: são o mesmo
+mecanismo).
+
+| item | o quê | onde | commit |
+|---|---|---|---|
+| 1a | Uma música por vez: entrar no Guitar Driver, na batida, no tambor, nos instrumentos da D-Bee, num jogo do holo ou numa peça com música (ou no ritmo da rua) fecha a TV do holo antes. `silenciar(true)` chama `musicaPropria()`; a peça com `sync` chama direto; a TV ouve com `aoMusicaPropria(fecharTv)` | `som.ts`, `pecas/sons.ts`, `TvHolo.tsx` | `ef5d227` |
+| 1b | A TV ignora eventos do YouTube que chegam depois de fechar (`if (!vivo) return`) | `TvHolo.tsx` | `20368b3` |
+| 1c | A troca de estação pela zona confere (`player.tocadas`) se algo novo tocou em 1,65 s; se não, a faixa de antes volta ao volume | `radios.ts`, `som.ts` | `6946624` |
+| 1d | Fazendo música (depois do fade de 0,9 s), `player.tocar`, o próximo disco e as trocas do `PistaSom` (completa ⇄ instrumental, faixa nova) trocam o arquivo e ficam parados; entram quando ele sai | `som.ts` (`musicaPausada`) | `001d3ed` |
+| 1e | A voz do locutor (`voz.tocar("vinheta-radio", …)`) passa por um ganho próprio que a TV e o fazer música zeram; as outras vozes não | `som.ts` (`vozLocutorG`) | `40c1905` |
+| 2 + 3 | Fora da Kombi a volta começa fora da Kombi. O `ondeParou`, a retomada da sala e a boca do túnel guardam o desembarque (patins ou moto, e a pose da Kombi estacionada). Reabrir, sair da sala ou subir do túnel nasce de patins/moto, com a Kombi onde ficou (no túnel, na entrada do subúrbio): sem nascer na Kombi e ser tirado dela no quadro seguinte, sem o fade da troca | `ondeParou.ts` (`Desembarque`), `tuneis.ts` (`foraNaBoca`), `Corrida.tsx` (`nasce`, `desembarqueDe`, `paradaDe`) | `eb54675` |
+| 4 | O piloto no chão contorna o anel do subúrbio (tangente do lado em que já vira; colado na borda, pra fora), passeando ou indo pra um destino fora dele | `Corrida.tsx` (depois da "volta larga") | `b6b7017` |
+| 5 | Ruínas: conferido com a transformação de verdade (`ruinasNoMundo`, com o filtro `livre`): **nenhuma** peça encosta num pilar (0 cruzamentos, folga de 4 m). Os 3–4 da parte 1 vinham do meu script, com o giro trocado e sem o filtro: nada a tirar. `RuinasSuburbio` e `Suburbio` descartam as geometrias mescladas (e os materiais de noite das ruínas) ao desmontar, sem tocar nas do glb em cache (`descartarMescladas`) | `RuinasSuburbio.tsx`, `Suburbio.tsx`, `estatico.tsx` | `fd67c16` |
+| 6 | ♥ salvar e 📺 TV viram o **♪** no notch, com um mini-menu de dois itens (fixo na tela, embaixo do ♪: a ilha corta o que passa dela). O brilho do fim da faixa passa pro ♪. A pedra "salvar" da trilha aponta pro ♪ (`.l-nexo-musica.tem-salvar`) e conta no toque no ♥ do menu. "?" no ♪ explica os dois | `Holo.tsx` (`MusicaNexo`), `TvHolo.tsx` (`alternarTv`, `useTvAberta`), `linha.css`, `trilhaPedras.ts` | `ea7adaa` |
+| 7 | Canto padrão da TV: **md**, na direita, logo acima do turbo/propulsor (bottom 110 px). A esquerda tem a rádio, o "sair da Kombi" e o "dormir"; em cima, notch e mapa. Com o balão da introdução aberto: celular em pé (< 560 px), a TV dos cantos de baixo sobe pra 236 px; tela larga, o balão vai pro lado oposto da TV. Celular deitado não tem 232 px livres na direita: a TV cobre parte do minimapa (dá pra arrastar) | `TvHolo.tsx`, `tvHolo.css`, `IntroMissao.tsx` (`.l-intro-missao`) | `00cdeff` |
+| 8 | O Enter/espaço/Esc da introdução escutam na captura e param a propagação: não chegam na estrada (turbo/propulsor) | `IntroMissao.tsx` | `905e643` |
+
+Sem teste no jogo (regra: só código + tsc). A conferir na Mesa: o ♪ e o menu no
+celular, a TV no canto novo com o balão da introdução, e reabrir o jogo de moto no
+subúrbio / subir do túnel de patins.
+
+## Suspeitas da parte 1 (resolvidas na parte 2, mantidas pro histórico)
+
 
 ### Áudio
 - **TV do holo × fazer música / peças:** com a TV tocando, abrir o Guitar Driver, a
@@ -114,7 +138,7 @@ frentes se cruzam. Sem build, sem Playwright, sem medição: só leitura e
   cidade maior há mais chão embaixo dela). Lá não dá pra sair da Kombi.
 
 ### Mundo
-- **Pilares nas ruínas:** 3 ou 4 pilares de pista (`pilaresDoMundo`) caem dentro da
+- **Pilares nas ruínas (falso, ver parte 2, item 5):** 3 ou 4 pilares de pista (`pilaresDoMundo`) caem dentro da
   pegada de prédios das ruínas (perto de (−682, −459), (−595, −665), (−624, −591),
   (−659, −480)). Só visual (pilar atravessando o prédio); conferido com um script contra
   `ruinasDados.ts`, a rotação das peças pode estar trocada no script.

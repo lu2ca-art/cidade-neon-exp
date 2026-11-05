@@ -66,7 +66,19 @@ const VOL_DUCK_LEVE = 0.7
 // por baixo (a música contínua não para nem perde o ponto); a TV pausou ou
 // fechou, ela volta. Ver disco/TvHolo.tsx
 let pelaTv = false
+// (revisão 05/11) a voz do locutor da rádio (as vinhetas com áudio) cala junto com a
+// música: a TV tocando e o fazer música (silenciar) zeram este ganho. As outras vozes
+// (ligação, nota de voz, personagens) passam sempre
+let vozLocutorG: GainNode | null = null
+let vozEhLocutor = false
+function aplicarLocutor() {
+  const c = audioCtx()
+  if (!c || !vozLocutorG) return
+  const mudo = vozEhLocutor && (silenciando > 0 || pelaTv)
+  vozLocutorG.gain.setTargetAtTime(mudo ? 0 : 1, c.currentTime, 0.2)
+}
 function aplicarAbafo() {
+  aplicarLocutor()
   const c = audioCtx()
   if (!c || !abafo() || !abafoF || !abafoG) return
   const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0 || pelaTv, leve = abaixando > 0
@@ -108,7 +120,14 @@ export function silenciarKombi(sim: boolean) {
   pistaSom.segurar(silenciando > 0 || silenciandoKombi > 0)
   aplicarAbafo()
 }
+// (revisão 05/11) UMA MÚSICA POR VEZ: entrou algo com música própria (um jogo do holo,
+// o Guitar Driver, a batida, o tambor, uma peça com a faixa dela ou no ritmo da rua),
+// quem toca por fora do grafo e não dá pra calar (a TV do holo, o YouTube) fecha antes
+const aoMusicaPropriaF = new Set<() => void>()
+export function aoMusicaPropria(f: () => void) { aoMusicaPropriaF.add(f); return () => { aoMusicaPropriaF.delete(f) } }
+export function musicaPropria() { aoMusicaPropriaF.forEach((f) => f()) }
 export function silenciar(sim: boolean) {
+  if (sim) musicaPropria()
   silenciando = Math.max(0, silenciando + (sim ? 1 : -1))
   pistaSom.segurar(silenciando > 0 || silenciandoKombi > 0)
   trilha.segurar(silenciando > 0)
@@ -126,6 +145,10 @@ registrarSegurar(silenciar)
 let fazendo = 0
 let pausaFazer: ReturnType<typeof setTimeout> | null = null
 const pausadosFazer = { radio: false, disco: false }
+// (revisão 05/11) a pausa do fazer música já valeu (passou o fade): o que mandarem
+// tocar agora (a troca de estação pela zona, a troca completa ⇄ instrumental, o
+// próximo disco) fica pronto e parado, e entra junto quando ele sai
+let musicaPausada = false
 export function fazerMusica(sim: boolean) {
   const antes = fazendo
   fazendo = Math.max(0, fazendo + (sim ? 1 : -1))
@@ -135,12 +158,14 @@ export function fazerMusica(sim: boolean) {
     pausaFazer = setTimeout(() => {
       pausaFazer = null
       if (fazendo === 0) return
+      musicaPausada = true
       if (player.tocando) { pausadosFazer.radio = true; player.pausar() }
       if (disco.tocando) { pausadosFazer.disco = true; disco.el?.pause() }
       pistaSom.pausarPraMusica()
     }, 900)
   } else if (antes > 0 && fazendo === 0) {
     if (pausaFazer) { clearTimeout(pausaFazer); pausaFazer = null }
+    musicaPausada = false
     if (pausadosFazer.radio) { pausadosFazer.radio = false; player.retomar() }
     if (pausadosFazer.disco) { pausadosFazer.disco = false; disco.el?.play().catch(() => {}) }
     pistaSom.voltarDaMusica()
@@ -701,7 +726,10 @@ class Player {
   }
 
   // entrada (s): a música entra em fade (a troca de estação, rádios.ts); 0 = direto
+  /** quantas vezes tocar() foi chamado (a troca de estação confere se algo entrou) */
+  tocadas = 0
   tocar(src: string, aoFim?: () => void, vol = 1, entrada = 0) {
+    this.tocadas++
     const el = this.garantir()
     this.aoFim = aoFim ?? null
     if (this.src !== src) {
@@ -715,6 +743,7 @@ class Player {
       if (entrada > 0) { g.setValueAtTime(0, t); g.setTargetAtTime(vol, t, entrada / 3) }
       else g.setValueAtTime(vol, t)
     }
+    if (musicaPausada) { pausadosFazer.radio = true; this.emitir(); return }
     el.play().catch(() => {})
   }
 
@@ -779,7 +808,7 @@ class Voz {
     const c = audioCtx()
     const out = saidaCanal("vozes")
     if (c && out) {
-      try { c.createMediaElementSource(el).connect(out) } catch {}
+      try { const g = c.createGain(); c.createMediaElementSource(el).connect(g).connect(out); vozLocutorG = g } catch {}
     } else el.volume = volumeEfetivo("vozes")
     this.el = el
     return el
@@ -790,11 +819,13 @@ class Voz {
     this.parar()
     this.id = id
     this.tocando = true
+    vozEhLocutor = id === "vinheta-radio"
     player.abaixar(true)
     // (LU2CA 19/10) um personagem falando: a música da pista abafa por baixo
     abafar(true)
     if (src) {
       const el = this.garantir()
+      aplicarLocutor()
       el.src = src
       el.currentTime = 0
       el.play().catch(() => this.parou())
@@ -911,7 +942,8 @@ class Disco {
     const el = this.garantir()
     if (this.src !== src) { el.src = src; this.src = src }
     el.currentTime = 0
-    el.play().catch(() => {})
+    if (musicaPausada) pausadosFazer.disco = true
+    else el.play().catch(() => {})
     this.emitir()
   }
   parar() { this.el?.pause(); this.emitir() }
@@ -1115,6 +1147,9 @@ class PistaSom {
     if (!this.decks.length) return
     const src = papel === "completa" ? f.completa : f.inst
     const vol = this.volDe(papel)
+    // (revisão 05/11) fazendo música: troca o deck parado, sem tocar; volta junto (voltarDaMusica)
+    const calado = musicaPausada
+    if (calado) { this.pausadaPraMusica = true; fade = 0 }
     const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
     this.modo = papel
     // mesmo arquivo (a faixa sem voz ainda: a completa É o instrumental): sem troca
@@ -1122,7 +1157,7 @@ class PistaSom {
       if (cur.parada) { clearTimeout(cur.parada); cur.parada = null }
       cur.el.loop = loop
       if (desde !== null) this.posicionar(cur.el, desde)
-      if (cur.el.paused) tocarSemErro(cur.el)
+      if (cur.el.paused && !calado) tocarSemErro(cur.el)
       this.rampa(cur, vol, fade)
       return
     }
@@ -1133,10 +1168,14 @@ class PistaSom {
     if (novo.src !== src) { novo.el.src = src; novo.src = src }
     novo.el.loop = loop
     this.posicionar(novo.el, ponto)
-    tocarSemErro(novo.el)
+    if (!calado) tocarSemErro(novo.el)
     this.rampa(novo, vol, fade)
     this.ativo = this.decks.indexOf(novo)
-    if (cur) {
+    if (cur && calado) {
+      this.rampa(cur, 0, 0)
+      if (cur.parada) { clearTimeout(cur.parada); cur.parada = null }
+      cur.el.pause()
+    } else if (cur) {
       this.rampa(cur, 0, fade)
       // o que saiu para depois do fade e fica esperando com a outra versão
       cur.parada = setTimeout(() => { cur.parada = null; cur.el.pause(); this.prepararOcioso() }, fade * 1000 + 80)

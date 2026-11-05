@@ -12,6 +12,7 @@
 // parada, de frente pra porta, esperando. Sem cena da Kombi entrando.
 
 import { BOCA } from "../estrada/chao"
+import type { Desembarque } from "../estrada/ondeParou"
 
 // o caminho antigo (T57, a página /teste/trincheiras): a volta vinha pela barra
 // (/linha?mapa=disco&de=tuneis). Ficou pro link de teste (?parte=missao.tuneis&de=tuneis)
@@ -49,7 +50,11 @@ export function limparVoltaDasTrincheiras() {
 }
 // onde a Kombi ficou parada na boca (a Corrida marca quando ela chega na porta)
 const parada = { x: 0, z: 0, rumo: 0, tem: false }
-export function pararNaBoca(x: number, z: number, rumo: number) { parada.x = x; parada.z = z; parada.rumo = rumo; parada.tem = true }
+// (revisão 05/11) fora: chegou na porta de patins/moto (o subúrbio é a pé), com a Kombi
+// estacionada na entrada. Na volta ele sobe do mesmo jeito e a Kombi segue lá
+let fora: Desembarque | null = null
+export function pararNaBoca(x: number, z: number, rumo: number, f: Desembarque | null = null) { parada.x = x; parada.z = z; parada.rumo = rumo; parada.tem = true; fora = f }
+export const foraNaBoca = () => (parada.tem ? fora : null)
 // onde a Kombi está na volta: onde ficou parada; sem isso (o link de teste, o
 // atalho que já começa lá embaixo), estacionada na frente da porta, de frente pra ela
 export const PARADA_PADRAO_S = -BOCA.plano - 4

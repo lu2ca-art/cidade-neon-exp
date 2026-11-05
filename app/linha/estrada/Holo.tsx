@@ -32,7 +32,7 @@ import { pistaDoArquivo, rotuloDoArquivo } from "../disco/pistasLiberadas"
 import { FREQUENCIAS, type FreqId } from "../radio"
 import { lerFaixaRua, ouvirFaixaRua } from "../disco/musicaContinua"
 import { faixaDoTitulo, linkDaFaixa, nomeDaFaixa, salvarFaixa } from "../disco/linksFaixas"
-import { BotaoTv } from "../disco/TvHolo"
+import { alternarTv, useTvAberta } from "../disco/TvHolo"
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
 
@@ -48,6 +48,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   "app:guitar": { t: "GUITAR DRIVER", d: "o jogo das faixas ao vivo. por enquanto trancado: abre quando a sua carreira chegar lá." },
   "app:stream": { t: "vid.stream", d: "os clipes. abre aqui mesmo, no holo: a música da cidade para enquanto ele tá aberto." },
   propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
+  musica: { t: "♪ a música", d: "a faixa que toca: ♥ salva no seu app de música, 📺 abre o vídeo dela na TV do holo. brilha quando uma faixa acaba de tocar inteira." },
   tv: { t: "📺 TV", d: "a TV do holo: o vídeo da faixa que toca, no YouTube, num cantinho. o jogo continua; a música do jogo abaixa enquanto a TV toca. arrasta pelo topo pra outro canto; × fecha." },
   salvar: { t: "♥ salvar", d: "a faixa que toca na rua, no seu app de música: um toque abre o app (ou a página com todos) pra salvar ou pôr na sua playlist. só se você quiser." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
@@ -412,19 +413,46 @@ function AgoraNexo({ texto, dica }: { texto: string | null; dica: string }) {
     </span>
   )
 }
-// (salvar no app, 03/11, bíblia §7) o "♥ salvar" da faixa que toca na rua: um
-// toque abre o app de música da pessoa. Sem link (disco/linksFaixas.ts), nada.
-// Quando a completa acaba de tocar inteira, ele brilha de leve ~8 s com o nome
-// da faixa. Só se refaz quando a faixa troca ou o brilho muda
-function SalvarNexo() {
+// (revisão 05/11) O ♪ DO NOTCH: o ♥ salvar e o 📺 TV num botão só (o notch não cabia
+// "Agora", distância, ♥, TV e "?" numa linha). Um toque abre um mini-menu de dois
+// itens; escolher (ou tocar fora) fecha. O brilho do fim da faixa (a completa acabou
+// de tocar inteira, ~8 s) passa pro ♪, com o nome da faixa no ♥ do menu.
+// Só se refaz quando a faixa troca, o brilho muda, a TV abre/fecha ou o menu abre
+function MusicaNexo() {
   const r = useSyncExternalStore(ouvirFaixaRua, lerFaixaRua, lerFaixaRua)
-  const id = r.id
-  if (!id || !linkDaFaixa(id)) return null
-  const nome = nomeDaFaixa(id)
+  const tv = useTvAberta()
+  // aberto: onde o menu cai (fixo na tela, embaixo do ♪: a ilha corta o que passa dela)
+  const [aberto, setAberto] = useState<{ x: number; y: number } | null>(null)
+  const caixa = useRef<HTMLSpanElement>(null)
+  const menu = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!aberto) return
+    const fora = (e: PointerEvent) => { const t = e.target as Node; if (!caixa.current?.contains(t) && !menu.current?.contains(t)) setAberto(null) }
+    window.addEventListener("pointerdown", fora, true)
+    return () => window.removeEventListener("pointerdown", fora, true)
+  }, [aberto])
+  const id = r.id && linkDaFaixa(r.id) ? r.id : null
+  const nome = id ? nomeDaFaixa(id) : ""
   return (
-    <button type="button" data-info="salvar" className={`l-nexo-salvar ${r.brilho ? "is-brilho" : ""}`} onClick={(e) => { e.stopPropagation(); salvarFaixa(id, "nexo") }} aria-label={`salvar ${nome} no seu app de música`} title={`salvar ${nome} no seu app`}>
-      <i aria-hidden="true">♥</i>{r.brilho ? `salvar ${nome}` : "salvar"}
-    </button>
+    <span ref={caixa} className="l-nexo-musica-caixa">
+      <button type="button" data-info="musica" className={`l-nexo-musica ${id ? "tem-salvar" : ""} ${r.brilho && id ? "is-brilho" : ""} ${tv ? "is-tv" : ""}`} aria-expanded={!!aberto} aria-haspopup="menu"
+        onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setAberto((a) => (a ? null : { x: Math.round(r.right), y: Math.round(r.bottom + 6) })) }} aria-label="a música: salvar no seu app, ou ver o vídeo na TV" title={id ? `${nome}: salvar ou ver na TV` : "a TV do holo"}>
+        <i aria-hidden="true">♪</i>
+      </button>
+      {aberto && typeof document !== "undefined" && createPortal(
+        <span ref={menu} className="l-nexo-musica-menu" role="menu" style={{ top: aberto.y, right: Math.max(8, window.innerWidth - aberto.x) }} onPointerDown={(e) => e.stopPropagation()}>
+          {id && (
+            <button type="button" role="menuitem" data-info="salvar" className="l-nexo-salvar" onClick={(e) => { e.stopPropagation(); setAberto(null); salvarFaixa(id, "nexo") }} aria-label={`salvar ${nome} no seu app de música`}>
+              <i aria-hidden="true">♥</i>salvar {nome}
+            </button>
+          )}
+          <button type="button" role="menuitem" data-info="tv" className={`l-nexo-tv ${tv ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); setAberto(null); alternarTv(notch) }}>
+            <i aria-hidden="true">📺</i>{tv ? "fechar a TV" : "ver na TV"}
+          </button>
+        </span>,
+        document.body,
+      )}
+    </span>
   )
 }
 export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }: { hora: number; agora: NexoAgora | null; expandido: boolean; explicando: boolean; onExplicar: () => void }) {
@@ -447,8 +475,7 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
           <span className="l-nexo-passo" role="status" aria-live="polite"><em>{tut.ok ? "✓ isso" : tut.texto}</em></span>
         ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : <AgoraNexo texto={agora ? agora.texto : null} dica={dica} />}
         {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
-        {!tut && !explicando && <SalvarNexo />}
-        {!tut && !explicando && <BotaoTv aviso={notch} />}
+        {!tut && !explicando && <MusicaNexo />}
         <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>
       </div>
       {expandido && !explicando && (

@@ -6,7 +6,7 @@ YouTube, só com player visível e play dado pela pessoa."
 
 ## Como funciona
 
-- No notch (N3XO), ao lado do ♥ salvar, tem o botão **📺 TV**.
+- No notch (N3XO), o botão **♪** abre um mini-menu com **♥ salvar** e **📺 ver na TV** (revisão 05/11: eram dois botões e o notch não cabia).
 - Toque nele: abre uma TV num canto da tela, com o vídeo da faixa que está
   tocando (a da rádio, se ela está no ar com uma faixa do vol. 1; senão a da rua).
   Sem faixa tocando, a TV começa pela primeira faixa que tem vídeo.
@@ -14,7 +14,9 @@ YouTube, só com player visível e play dado pela pessoa."
 - A TV abre parada. **O play é da pessoa**, no próprio player do YouTube.
 - O jogo continua rodando atrás. A TV começa embaixo à esquerda (onde ficam as
   propagandas do holo, nada essencial). Arrasta pelo topo e solta: ela vai pro
-  canto mais perto (e lembra o canto). × (ou Esc) fecha. Tocar no 📺 de novo também fecha.
+  canto mais perto (e lembra o canto). × (ou Esc) fecha. "📺 fechar a TV" no ♪ também fecha.
+- Canto padrão (revisão 05/11): **md**, na direita, logo acima do turbo/propulsor. Com o balão da introdução da missão aberto, no celular em pé a TV sobe pra cima dele; em tela larga o balão vai pro outro lado (`tvHolo.css`). Celular deitado não tem espaço livre de 232 px de altura: a TV cobre parte do minimapa.
+- Uma música por vez: Guitar Driver, batida, tambor, os instrumentos da D-Bee e as peças com música fecham a TV (`som.ts`, `musicaPropria`).
 - Enquanto o vídeo toca, a música do jogo (pista, rádio, disco) vai a zero em
   fade e **segue andando por baixo** (a música contínua não perde o ponto). Pausou,
   acabou ou fechou: a música do jogo volta.

@@ -18,7 +18,7 @@ import { createPortal } from "react-dom"
 import { PISTAS, type PistaId } from "../estrada/pistas"
 import { ESTACOES } from "../data"
 import { FREQUENCIAS } from "../radio"
-import { calarPraTv, player } from "../som"
+import { aoMusicaPropria, calarPraTv, player } from "../som"
 import { lerFaixaRua } from "./musicaContinua"
 import { faixaDoTitulo, nomeDaFaixa } from "./linksFaixas"
 import { proximaComVideo, videoDaFaixa } from "./videosFaixas"
@@ -35,6 +35,9 @@ const lerTv = () => tv
 export const tvAberta = () => tv.faixa !== null
 export function abrirTv(id: PistaId) { mudar({ faixa: id, n: tv.n + 1 }) }
 export function fecharTv() { if (tv.faixa) mudar({ faixa: null, n: tv.n }) }
+// (revisão 05/11) uma música por vez: o Guitar Driver, a batida, o tambor, os
+// instrumentos da D-Bee, uma peça com música (som.ts, silenciar/musicaPropria) fecham a TV
+if (typeof window !== "undefined") aoMusicaPropria(fecharTv)
 
 // ── a faixa que toca agora: a da rádio (se ela está no ar com uma do vol. 1), senão a da rua ──
 function faixaDoSrc(src: string | null): PistaId | null {
@@ -52,26 +55,20 @@ export function faixaAgora(): PistaId | null {
   return r ?? ((lerFaixaRua().id as PistaId | null) || null)
 }
 
-// ── o botão 📺 TV (no notch). Sem vídeo: avisa e não abre ──
-export function BotaoTv({ aviso }: { aviso: (texto: string, cor?: string) => void }) {
+// ── o 📺 TV (revisão 05/11: mora no menu ♪ do notch, junto do ♥ salvar; Holo.tsx). Sem vídeo: avisa e não abre ──
+export function useTvAberta() {
   const t = useSyncExternalStore(ouvirTv, lerTv, lerTv)
-  const aberta = t.faixa !== null
-  const tocar = (e: { stopPropagation: () => void }) => {
-    e.stopPropagation()
-    if (aberta) { fecharTv(); return }
-    const agora = faixaAgora()
-    // nenhuma faixa tocando: a TV começa pela primeira que tem vídeo
-    const id = agora ?? proximaComVideo(null)
-    if (!id || !videoDaFaixa(id)) { aviso("📺 essa faixa ainda não tem vídeo", "#ff4040"); return }
-    abrirTv(id)
-    // o evento que já existe (o mesmo do ♥ salvar e das plataformas)
-    track("external_link_click", { destination: "youtube", track_id: id, place_id: "tv-holo", utm_source: "cidade-neon", utm_campaign: "tv_holo" })
-  }
-  return (
-    <button type="button" data-info="tv" className={`l-nexo-tv ${aberta ? "is-on" : ""}`} onClick={tocar} aria-pressed={aberta} aria-label={aberta ? "fechar a TV" : "abrir a TV (o vídeo da faixa no YouTube)"}>
-      <i aria-hidden="true">📺</i>TV
-    </button>
-  )
+  return t.faixa !== null
+}
+export function alternarTv(aviso: (texto: string, cor?: string) => void) {
+  if (tvAberta()) { fecharTv(); return }
+  const agora = faixaAgora()
+  // nenhuma faixa tocando: a TV começa pela primeira que tem vídeo
+  const id = agora ?? proximaComVideo(null)
+  if (!id || !videoDaFaixa(id)) { aviso("📺 essa faixa ainda não tem vídeo", "#ff4040"); return }
+  abrirTv(id)
+  // o evento que já existe (o mesmo do ♥ salvar e das plataformas)
+  track("external_link_click", { destination: "youtube", track_id: id, place_id: "tv-holo", utm_source: "cidade-neon", utm_campaign: "tv_holo" })
 }
 
 // ── a IFrame Player API do YouTube: o script entra só quando a TV abre pela primeira vez ──
@@ -116,13 +113,16 @@ function carregar(p: YTPlayer, id: PistaId, tocar: boolean) {
 }
 
 // ── os cantos (arrasta pelo topo e solta: ela vai pro canto mais perto) ──
-// Padrão embaixo à esquerda (as propagandas do holo, nada essencial): em cima
-// moram a rádio, o notch e o mapa; embaixo à direita, o turbo e o propulsor
-type Canto = "ie" | "id" | "se" | "sd"
+// (revisão 05/11) PADRÃO: "md", na direita, logo acima do turbo/propulsor
+// (bottom 110 px). Em cima moram a rádio, o notch e o mapa; à esquerda a rádio, o
+// "sair da Kombi" e o "dormir"; embaixo à direita o turbo e o propulsor; embaixo,
+// no meio, o balão da introdução da missão. Com o balão aberto, a TV sobe (celular
+// em pé) ou o balão vai pro lado (tela larga): tvHolo.css, ".l-intro-missao"
+type Canto = "ie" | "id" | "se" | "sd" | "md"
 const CHAVE_CANTO = "cn-tv-canto"
 function lerCanto(): Canto {
-  try { const c = localStorage.getItem(CHAVE_CANTO); if (c === "ie" || c === "id" || c === "se" || c === "sd") return c } catch {}
-  return "ie"
+  try { const c = localStorage.getItem(CHAVE_CANTO); if (c === "ie" || c === "id" || c === "se" || c === "sd" || c === "md") return c } catch {}
+  return "md"
 }
 
 export function TvHolo() {
@@ -157,6 +157,8 @@ function Tela({ inicio }: { inicio: PistaId }) {
     let faixaAqui = inicio
     const trocando = { current: false }
     const estado = (e: YTEvento) => {
+      // (revisão 05/11) um evento que chega depois de fechar não cala a música do jogo
+      if (!vivo) return
       if (e.data === 1) { trocando.current = false; calarPraTv(true); return }
       if (e.data === 0) {
         // playlist do álbum: o YouTube segue sozinho até o último vídeo dela
@@ -232,7 +234,8 @@ function Tela({ inicio }: { inicio: PistaId }) {
     setArrasto(null)
     if (!r) return
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2
-    const c: Canto = `${cy < window.innerHeight / 2 ? "s" : "i"}${cx < window.innerWidth / 2 ? "e" : "d"}` as Canto
+    // (revisão 05/11) na direita, no terço do meio: o padrão (acima do turbo)
+    const c: Canto = cx >= window.innerWidth / 2 && cy > window.innerHeight / 3 && cy < (window.innerHeight * 2) / 3 ? "md" : `${cy < window.innerHeight / 2 ? "s" : "i"}${cx < window.innerWidth / 2 ? "e" : "d"}` as Canto
     setCanto(c)
     try { localStorage.setItem(CHAVE_CANTO, c) } catch {}
   }, [])

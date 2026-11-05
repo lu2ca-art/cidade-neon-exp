@@ -98,7 +98,11 @@ function trocarPara(f: FreqId) {
   if (fonteSom.get() !== "radio") return
   chiadoCurto()
   player.volume(0, FADE_TROCA / 3)
+  const n = player.tocadas
   setTimeout(() => tocadores[tocadores.length - 1]?.(f, true), FADE_TROCA * 1000)
+  // (revisão 05/11) ninguém tocou nada (sem próxima, a 222 fora do ar, sem tocador):
+  // a faixa de antes não fica a zero, volta. (+1 s: o locutor atrasa o play em 0,9 s)
+  setTimeout(() => { if (player.tocadas === n) player.volume(1, 0.3) }, FADE_TROCA * 1000 + 1200)
 }
 
 let ligada = false

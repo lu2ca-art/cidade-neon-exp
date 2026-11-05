@@ -3,7 +3,7 @@
 // num <audio> no volume da música, e o jogo embaixo fica em silêncio.
 
 import { useEffect, useMemo, useRef } from "react"
-import { audioCtx, fonteSom, pistaSom, player, saidaSom, silenciar } from "../../som"
+import { audioCtx, fonteSom, musicaPropria, pistaSom, player, saidaSom, silenciar } from "../../som"
 import { ligarElemento } from "@/lib/mesa"
 
 export function bip(f: number, dur = 0.08, tipo: OscillatorType = "square", vol = 0.12, quando = 0, fFim?: number) {
@@ -73,7 +73,8 @@ export function useMusica(src: string | null, ligado = true, sync?: SyncPeca) {
   if (naRua.current === null) naRua.current = !!sync && pistaSom.tocando && pistaSom.faixa?.id === sync.faixa && !(fonteSom.get() === "radio" && player.tocando)
   const rua = useRef({ t0: 0, ult: 0 })
   useEffect(() => {
-    if (naRua.current) return
+    // (revisão 05/11) no ritmo da rua a peça não cala nada, mas a TV do holo fecha (uma música por vez)
+    if (naRua.current) { musicaPropria(); return }
     silenciar(true)
     return () => silenciar(false)
   }, [])
