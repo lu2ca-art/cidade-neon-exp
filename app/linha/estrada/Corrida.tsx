@@ -66,8 +66,13 @@ import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
 import { feita13 } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import { CorridaRuaCena, CorridaRuaHud } from "../disco/CorridaDeRua"
+<<<<<<< HEAD
 import { CORRIDA_RUA_CFG, RUA, naVoltaRua, type PoseRua, type ResultadoRua } from "../disco/corridaRua"
 const POSE_GRADE: PoseRua = { x: 0, z: 0, yaw: 0 }
+=======
+import { DbeeSugere } from "../disco/DbeeSugere"
+import type { ResultadoRua } from "../disco/corridaRua"
+>>>>>>> origin/feature/game/dbee-sugere
 import { VeiculoModelo, VeiculosCena, VeiculosHud, novoEstadoVeiculos, type EstadoVeiculos } from "../disco/Veiculos"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, veiculoPorId } from "../disco/perseguicao"
 import type { ResultadoRacha } from "../disco/corredores"
@@ -3017,6 +3022,9 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       {discoM && <RachasHud estado={rachaRef} onFim={(r) => onRacha?.(r)} escondido={drone || !!cinema || !!cenaLugar || noConserto || quebrou || perseguicao || semKombi} />}
       {/* (05/11) a corrida de rua do subúrbio: o botão "correr" perto do arco de largada (de moto ou de patins) */}
       {discoM && <CorridaRuaHud placar={save.ruaSuburbio} onFim={(r) => onCorridaRua?.(r)} escondido={drone || !!cinema || !!cenaLugar || perseguicao} />}
+      {/* (05/11) a D-Bee sugere o que dá pra fazer agora, no notch (disco/DbeeSugere.tsx; não desenha nada) */}
+      {discoM && <DbeeSugere M={M} jogo={jogo} comb={combRef} input={input} horaRef={horaRef} marcaRef={marcaRef} onMarcar={setMarca} racha={rachaRef} historia={historia} missoes={mapaMissoes} apagada={viaApagada} corridaRua={corridaNoMapa} motoOk={motoOk} ruaSuburbio={save.ruaSuburbio}
+        ocupado={pausado || intro || !!fala || !!cinema || !!cenaLugar || abertura || chegada || perseguicao || conversa || celular || drone || noConserto || quebrou || parque === "andando"} />}
       {discoM && semKombi && <VeiculosHud estado={veiculosRef} onPegar={(id) => onPerseguicao?.("escolheu", id)} escondido={drone || !!cinema || !!cenaLugar} />}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}

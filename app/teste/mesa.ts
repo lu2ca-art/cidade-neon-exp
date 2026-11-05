@@ -26,6 +26,16 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "livre",
+    nome: "A D-Bee sugere o que fazer",
+    data: "2026-11-05",
+    olhar: "Sem missão e passeando (45 s solto, ou logo depois de acabar algo), a D-Bee aparece no notch com uma ideia do que fazer agora: a corrida de rua, a sinuca, uma rua que você ainda não ouviu inteira, a TV, o piloto, o grafite, a moto, uma missão perto. No máximo uma a cada 90 s. Tocar na frase marca o lugar no mapa e o GPS leva até lá. As falas são rascunho.",
+    perguntas: [
+      "A D-Bee fala na medida, ou é muito/pouco?",
+      "As falas têm a voz dela? Qual reescrever?",
+    ],
+  },
+  {
+    parte: "livre",
     nome: "Revisão 2: ruas sem tranco, câmera reta, celular mais leve",
     data: "2026-11-05",
     olhar: "As ruas-manifesto não entortam mais o mapa do drone nem a primeira pessoa. Passar de uma rua pra outra é suave (fade). Parado uns segundos na rotatória, o jogo prepara as ruas pra não dar tranco na entrada. No celular médio/leve as ruas pesadas mostram menos coisas. Na rua CHUVA o vidro embaça. Largada da corrida de rua mais firme.",

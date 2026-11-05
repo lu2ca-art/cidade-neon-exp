@@ -169,7 +169,7 @@ export function manobrasDa(M: Mundo, r: Rota, destino: DestinoNav | null): Manob
 
 // o ponto da via mais perto de um lugar do chão (cache por lugar): a rota leva até ali
 const _perto = new Map<string, { via: number; u: number; d: number }>()
-function pistaPerto(M: Mundo, chave: string, x: number, z: number, apagada?: boolean[] | null) {
+export function pistaPerto(M: Mundo, chave: string, x: number, z: number, apagada?: boolean[] | null) {
   const k = `${chave}|${apagada?.map((a) => (a ? 1 : 0)).join("") ?? ""}`
   const c = _perto.get(k)
   if (c) return c

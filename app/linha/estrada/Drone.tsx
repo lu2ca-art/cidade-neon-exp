@@ -475,7 +475,8 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       if (!j) return
       const mk = marcaRef.current, vg = vagaRef.current
       let destVia: { via: number; u: number } | null = null, dx = 0, dz = 0, corD = "#ff3fb0", key = ""
-      if (mk) { destVia = mk; corD = mk.cor; key = `m${mk.via}:${Math.round(mk.u)}` }
+      if (mk && mk.wx !== undefined && mk.wz !== undefined) { dx = mk.wx; dz = mk.wz; corD = mk.cor; key = `m${Math.round(mk.wx)}:${Math.round(mk.wz)}` }
+      else if (mk) { destVia = mk; corD = mk.cor; key = `m${mk.via}:${Math.round(mk.u)}` }
       else if (vg) { destVia = vg; corD = vg.cor; key = `v${vg.via}:${Math.round(vg.u)}` }
       else if (pr.alvoChao && "disco" in M) { const c = CHAO_LUGARES[pr.alvoChao]; dx = c.x; dz = c.z; corD = c.cor; key = `c${pr.alvoChao}` }
       else if (pr.lugarAlvo) { const b = blips.find((x) => x.id === pr.lugarAlvo); if (b) { destVia = b; corD = b.cor; key = `l${b.id}` } }

@@ -262,14 +262,16 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
 // última, as velhas caem). Desempenho: um setState por mensagem (entra/sai), o
 // movimento é uma Web Animation (compositor), uma medida de largura por
 // mensagem. "Reduzir movimento": sem deslizar; aparece parada (até 2 linhas) e some ──
-type MsgNotch = { id: number; texto: string; cor: string; em: number }
+// (dbee-sugere, 05/11) `toque`: a frase vira um botão (tocar faz isso, sem abrir o
+// notch); `fica`: ms a mais respirando parada antes de sair
+type MsgNotch = { id: number; texto: string; cor: string; em: number; toque?: () => void; fica?: number }
 const FILA_NOTCH: MsgNotch[] = []
 let notchN = 0, notchUltima = ""
 const ouvintesNotch = new Set<() => void>()
-export function notch(texto: string, cor = "#2fe8ff") {
+export function notch(texto: string, cor = "#2fe8ff", opc?: { toque?: () => void; fica?: number }) {
   if (!texto || texto === notchUltima) return
   notchUltima = texto
-  FILA_NOTCH.push({ id: ++notchN, texto, cor, em: Date.now() })
+  FILA_NOTCH.push({ id: ++notchN, texto, cor, em: Date.now(), toque: opc?.toque, fica: opc?.fica })
   if (FILA_NOTCH.length > 5) FILA_NOTCH.shift()
   ouvintesNotch.forEach((f) => f())
 }
@@ -306,12 +308,12 @@ function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
     if (!c || !e || typeof e.animate !== "function") { const t = setTimeout(() => fim.current(), 4000); return () => clearTimeout(t) }
     let a: Animation
     if (quieto) {
-      const dur = Math.min(9000, 2200 + msg.texto.length * 55)
+      const dur = Math.min(9000, 2200 + msg.texto.length * 55) + (msg.fica ?? 0)
       a = e.animate([{ opacity: 0 }, { opacity: 1, offset: 0.06 }, { opacity: 1, offset: 0.94 }, { opacity: 0 }], { duration: dur, fill: "both" })
     } else {
       const W = c.clientWidth, T = e.scrollWidth, sobra = Math.max(0, T - W)
       // entra (450 ms), respira, rola o que sobra a ~48 px/s, respira, some (300 ms)
-      const ent = 450, resp = 900, rola = (sobra / 48) * 1000, resp2 = sobra ? 1100 : 1400, sai = 300
+      const ent = 450, resp = 900, rola = (sobra / 48) * 1000, resp2 = (sobra ? 1100 : 1400) + (msg.fica ?? 0), sai = 300
       const dur = ent + resp + rola + resp2 + sai
       const o = (ms: number) => ms / dur
       a = e.animate([
@@ -325,9 +327,12 @@ function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
     }
     a.onfinish = () => fim.current()
     return () => { a.onfinish = null; a.cancel() }
-  }, [msg.id, quieto, msg.texto])
+  }, [msg.id, quieto, msg.texto, msg.fica])
+  const toque = msg.toque
   return (
-    <span ref={caixa} className={`l-holo-letreiro-faixa is-msg ${quieto ? "is-calmo" : ""}`} role="status" aria-live="polite">
+    <span ref={caixa} className={`l-holo-letreiro-faixa is-msg ${quieto ? "is-calmo" : ""} ${toque ? "is-toque" : ""}`} role="status" aria-live="polite"
+      onPointerDown={toque ? (e) => e.stopPropagation() : undefined}
+      onClick={toque ? (e) => { e.stopPropagation(); toque(); fim.current() } : undefined}>
       <em ref={el} className="l-notch-msg" style={{ ["--c" as string]: msg.cor }}>{msg.texto}</em>
     </span>
   )
@@ -350,6 +355,8 @@ export function nexoTutorial(x: NexoTut | null) {
   NEXO_TUT = x
   ouvintesTut.forEach((f) => f())
 }
+// (dbee-sugere) quem não é React pergunta se tem pedra da trilha na tela agora
+export const lerNexoTutorial = () => NEXO_TUT
 export function useNexoTutorial() {
   return useSyncExternalStore((f) => { ouvintesTut.add(f); return () => { ouvintesTut.delete(f) } }, () => NEXO_TUT, () => null)
 }

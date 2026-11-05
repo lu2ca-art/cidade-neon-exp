@@ -25,7 +25,9 @@ import { pontosDoMapa, type IconeMapa } from "./pontosMapa"
 import { brilha } from "../disco/brilho"
 export type { IconeMapa } from "./pontosMapa"
 
-export interface Marca extends Ponto { nome: string; cor: string }
+// (dbee-sugere) wx/wz: a marca de um ponto do chão (fora das pistas). via/u ficam
+// na pista mais perto dele (o piloto e a viagem vão até ali); o GPS mira o chão
+export interface Marca extends Ponto { nome: string; cor: string; wx?: number; wz?: number }
 interface Blip extends Ponto { id: string; nome: string; cor: string; tipo: "lugar" | "posto" | "parque" | "flor" }
 interface PoseKombi { via: number; u: number; x: number; v: number; wx?: number; wz?: number; rumo?: number; livreOk?: boolean; voo?: boolean }
 
@@ -255,7 +257,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   useEffect(() => {
     const refazer = () => {
       const p = pose.current
-      if (NAV.ativo && NAV.destino && p && !marca) {
+      if (NAV.ativo && NAV.destino && p && (!marca || marca.wx !== undefined)) {
         const D = NAV.destino
         const segs = NAV.rota ? linhaDaRota(M, NAV.rota) : []
         // o pedaço fora da pista (até o lugar do chão) ou a reta (voando, no chão)

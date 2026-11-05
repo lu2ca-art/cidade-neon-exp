@@ -50,6 +50,7 @@ export function destinoMundo(M: Mundo, r: RefsAlvo): AlvoGps | null {
   const rc = r.racha?.current?.alvo
   if (rc) return { x: rc.x, z: rc.z, cor: rc.cor, nome: rc.nome, via: rc.via, u: rc.u }
   const mk = r.marca.current
+  if (mk && mk.wx !== undefined && mk.wz !== undefined) return { x: mk.wx, z: mk.wz, cor: mk.cor, nome: mk.nome }
   if (mk) { const w = noMundo(M, mk); return { x: w.x, z: w.z, cor: mk.cor, nome: mk.nome, via: mk.via, u: mk.u } }
   const vg = r.vaga.current
   if (vg) { const w = noMundo(M, vg); return { x: w.x, z: w.z, cor: vg.cor, nome: vg.nome, via: vg.via, u: vg.u } }
