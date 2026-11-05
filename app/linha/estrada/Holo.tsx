@@ -264,7 +264,9 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
 // mensagem. "Reduzir movimento": sem deslizar; aparece parada (até 2 linhas) e some ──
 // (dbee-sugere, 05/11) `toque`: a frase vira um botão (tocar faz isso, sem abrir o
 // notch); `fica`: ms a mais respirando parada antes de sair
-type MsgNotch = { id: number; texto: string; cor: string; em: number; toque?: () => void; fica?: number }
+// (revisão 3) `pos`: onde a animação parou quando uma pedra da trilha (ou o "?") tomou
+// o notch no meio dela; quando ele volta, a mensagem retoma dali, com o tempo que faltava
+type MsgNotch = { id: number; texto: string; cor: string; em: number; toque?: () => void; fica?: number; pos?: number }
 const FILA_NOTCH: MsgNotch[] = []
 let notchN = 0, notchUltima = ""
 const ouvintesNotch = new Set<() => void>()
@@ -325,8 +327,14 @@ function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
         { transform: `translateX(${-sobra}px)`, opacity: 0 },
       ], { duration: dur, fill: "both" })
     }
+    if (msg.pos) a.currentTime = msg.pos
     a.onfinish = () => fim.current()
-    return () => { a.onfinish = null; a.cancel() }
+    return () => {
+      a.onfinish = null
+      const t = a.currentTime
+      if (typeof t === "number" && a.playState !== "finished") msg.pos = t
+      a.cancel()
+    }
   }, [msg.id, quieto, msg.texto, msg.fica])
   const toque = msg.toque
   return (
