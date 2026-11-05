@@ -87,45 +87,39 @@ sem Playwright, sem medir quadro. Um commit por correção. `app/teste/mesa.ts` 
   FinalNove (dispose das instanciadas e do mato; a câmera e a chuva soltas ao desmontar),
   CorridaRuaHud (`setInterval` de 100 ms, limpo).
 
-## Suspeitas (não mexi)
+## Parte 2: as decisões do coordenador (05/11)
 
-1. **O `intro` do disco desliga também a regra das zonas e os rachas na carreira.**
-   `Corrida.tsx:1247` (`rachasOk` lista `historia.fase === "carreira"` e logo depois
-   `!intro`, que na carreira é sempre verdade: a cláusula da carreira nunca vale),
-   `:1773` (`regraZona`) e `:1794` (`motoZona`). Na carreira: sem racha, e o "subúrbio é a
-   pé"/"deserto só Kombi" não acontecem (só no jogo livre). É a mesma causa da correção 1,
-   mas mexe em jogo de verdade (zonas e rachas a carreira toda): decisão do coordenador.
-   Se for pra valer, a troca é `!intro` → `!(intro && historia?.fase !== "carreira")`
-   (ou passar um `quieta` separado do `intro` na página).
-2. **A pedra da trilha no meio da mensagem.** Se uma pedra aparece enquanto uma mensagem
-   do notch passa (uma frase da D-Bee, ou qualquer outra), a mensagem fica guardada e
-   recomeça do início quando a pedra sai (e de novo a cada pedra seguinte, se houver um
-   instante sem pedra entre elas). Não some, mas pode piscar e voltar velha. A D-Bee já
-   não começa com pedra na tela, então é raro. Uma saída: a mensagem guardada por mais de
-   `NOTCH_VELHA` cai (`Holo.tsx`, `useNotch`).
-3. **A marca do chão da D-Bee e o piloto de novo.** O piloto entrega na pista mais perto e
-   desliga. Enquanto a marca do chão existir (ela só sai a 45 m do lugar, e o mapa não tira
-   marca com `wx` com o GPS ligado: `Mapa.tsx:260`), ligar o piloto ali mesmo desliga na
-   hora (o destino está a menos de 26 m). Ele precisa ir até o lugar (a reta) ou "tirar a
-   marca". É a mesma regra dos destinos de missão, mas a marca da D-Bee é um convite: se o
-   dono quiser, o piloto pode passear quando o destino de agora é o mesmo que ele acabou
-   de entregar (`j.pilD`, ~4 linhas em `Corrida.tsx:4790` e na escolha do cruzamento `:5252`).
-4. **O final pula de bairro em bairro (os nove).** Os `<Perto>` medem pela câmera. No "nove"
-   a câmera corta pra outro monumento a cada 2,6 s e no "CHUVA" fica a 520 m da torre
-   central: cada corte pode montar blocos da cidade (fachadas, monumentos) na hora, com
-   tranco. Não medi (regra). Se tranca na Mesa: montar os blocos dos nove pontos antes
-   (no "sinal") ou segurar os `<Perto>` montados enquanto `FINAL_VIVO.momento` existe.
-5. **O vídeo da despedida e a música.** `CenaFilme` não cala a música do jogo. Hoje o filme
-   é só legenda (`video: null`); quando o vídeo de IA entrar, o som dele vai tocar por cima
-   da rádio/faixa. Chamar `musicaPropria()`/`silenciar` ao abrir o filme (e soltar no fim).
-6. **Duas Kombis depois do final.** O quintal ganha a Kombi da memória para sempre, e a do
-   jogador continua estacionada na frente da casa. Se a do quintal é "a mesma", o dono decide.
-7. **A marca da D-Bee na corrida de rua.** Com uma marca dela no mapa, o GPS segue apontando
-   pra ela durante a corrida (a corrida de rua não usa o alvo do GPS como os rachas).
-   Não atrapalha a regra, só a barra.
-8. **Alocação rara:** `vidaNasRuas.ts`, `proximaRua` faz dois `filter` quando alguém troca de
-   rua (uns poucos por segundo com ~130 andando). Pequeno; deixei.
+As suspeitas 1 a 7 da parte 1 viraram tarefa. Um commit por item.
 
-Sem teste no jogo (regra). Na Mesa: a D-Bee falando na carreira (sem missão, ~45 s parado),
+| item | o quê | onde | commit |
+|---|---|---|---|
+| 1 | **As zonas e os rachas valem na carreira.** Novo sinal `roteiro` no Corrida: é o `intro` da página só fora da carreira e do livre (o prólogo, do buraco de minhoca até subir pra cidade). Ele entra no lugar do `intro` no `rachasOk`, na `regraZona` e na `motoZona`. As cenas de verdade continuam com os sinais delas (cinema, cenaLugar, abertura, chegada, perseguição, quebra, conserto, `semKombi`). Conferido lendo: na perseguição e com a Kombi quebrada ou no conserto a regra espera, como antes; o fim do conserto traz a Kombi até ele e, no subúrbio, a zona o põe de patins/moto com a Kombi ali (o mesmo do livre); a chegada do lugar do chão (`chao:*`) vale de patins; o prólogo (dunas, bar, oficina, subir) não muda | `estrada/Corrida.tsx:1252` (`roteiro`), `:1259`, `:1785`, `:1800` | `17331c9` |
+| 2 | **A mensagem interrompida retoma.** Se a pedra da trilha (ou o "?") toma o notch no meio de uma mensagem, a posição da animação fica guardada na mensagem (`pos`). Quando o notch volta, ela continua dali, com o tempo que faltava | `estrada/Holo.tsx` (`MsgNotch.pos`, `MsgNoNotch`) | `c28820d` |
+| 3 | **O piloto na marca do chão.** Entregou na pista mais perto de uma marca com `wx/wz` (a da D-Bee): o notch diz "desce aqui: o lugar é lá embaixo" e o piloto guarda a trava (`j.pilTrava`). Ligar de novo ali, com o mesmo destino, desliga na hora e repete o aviso. A trava sai a mais de 90 m de rota (`PILOTO_TRAVA_M`) ou quando o destino muda | `estrada/Corrida.tsx` (`PILOTO_DESCE`, `pilTrava`, perto da escolha do destino do piloto e da chegada) | `f36a0d6` |
+| 4 | **O final aquece os nove pontos.** `PERTO_EXTRA` em `Perto.tsx`: pontos que contam como câmera pros blocos normais (os de `fora` ignoram). Durante o "sinal" (8 s), o FinalNove põe um ponto por vez (os nove e a torre central), e o tranco de montar se espalha no sinal. No "nove" e no "CHUVA" ficam todos; na despedida, saem. Vazio no resto do jogo (custo zero) | `estrada/Perto.tsx`, `estrada/FinalNove.tsx` (`aquecer`) | `de3406e` |
+| 5 | **O vídeo com som cala a música.** `CenaFilme` chama `fazerMusica(true)` enquanto o vídeo toca: a música do jogo some em fade e pausa (e a TV do holo fecha), e volta de onde estava no fim, ao pular ou se o vídeo falhar. `Filme.semSom` pra um vídeo só de imagem. Hoje nenhum filme tem vídeo (o provisório não mexe no som) | `CenaFilme.tsx`, `estrada/ganchoCena.ts` | `8226c74` |
+| 6 | **Uma Kombi só depois do final.** Na despedida (a câmera na frente da casa), o Corrida põe a Kombi DO JOGADOR no quintal (`QUINTAL_FINAL`), estacionada, e o "quintal" já a mostra lá. A cópia (`KombiHerbal` no quintal) saiu. Depois do final ele está na Kombi, no quintal. O mato continua | `estrada/Corrida.tsx` (antes da câmera roteirizada), `estrada/FinalNove.tsx`, `docs/final.md` | `bb0a45a` |
+| 7 | **O GPS na corrida de rua.** Na contagem e na corrida, `destinoMundo` devolve o próximo portão ("o próximo portão", e na última "a chegada"), antes da marca e da missão. O GPS, o drone e a reta seguem ele; acabou, volta o que estava | `estrada/Gps.tsx` (`destinoMundo`) | `8b7416c` |
+
+## Suspeitas que ficam
+
+- **Zonas na carreira (item 1), a conferir na Mesa:** a missão do bar, da quadra e dos túneis de Kombi
+  (agora ele desce na borda do subúrbio e vai a pé/de patins/de moto); a Kombi voltando do
+  conserto dentro do subúrbio; os rachas oferecendo durante uma missão pegada (a regra deles
+  não olha a missão).
+- **Item 2:** se a mensagem guardada esperar muito (uma trilha longa), ela volta velha.
+  Não tem prazo (o pedido foi retomar).
+- **Item 3:** a trava é só pra marca do chão. O destino de missão no chão (o bar, a casa) segue a
+  regra de antes: o piloto entrega, e religar ali para na hora.
+- **Item 4:** com os pontos extras, os blocos da cidade ficam montados longe da câmera durante o
+  nove e o CHUVA (memória e algum desenho a mais, por ~40 s). Pular o "sinal" com um toque leva
+  o tranco todo pro primeiro corte.
+- **Item 6:** o rumo da Kombi no quintal (`ROT_CASA + 1,5π`) é a conta do modelo olhando pra -z.
+  Pode ficar de ré em vez de "de lado"; é um número em `QUINTAL_FINAL`. Quem chega de patins na
+  casa (o deserto é só Kombi, então não deveria) não é movido.
+- **Alocação rara:** `vidaNasRuas.ts`, `proximaRua` faz dois `filter` quando alguém troca de rua
+  (uns poucos por segundo com ~130 andando). Pequeno; deixei.
+
+Sem teste no jogo (regra). Na Mesa: as zonas e os rachas na carreira; a D-Bee falando na carreira (sem missão, ~45 s parado); o piloto até uma marca da D-Bee no chão; o final inteiro (o nove sem tranco, a Kombi no quintal); a corrida de rua com o GPS;
 a chuva do final e da rua CHUVA (a chuva da câmera agora só anda quando aparece), e voltar
 ao subúrbio algumas vezes (a vida remonta).
