@@ -113,7 +113,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
-import { FALA_ZONA, MOTO_LIBERADA, TRANCA_MOTO, motoLiberada, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
+import { FALA_ZONA, TRANCA_MOTO, motoLiberada, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
 import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
@@ -1658,7 +1658,11 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         vib([60, 40, 120])
         falar("222 FM", "a Kombi tossiu. fumaça no capô", 3200)
         setTimeout(() => falar("222 FM", "a Kombi pifou de vez. já mandaram ela pra oficina do subúrbio", 4200), 2600)
-        setTimeout(() => { if (!combRef.current.patins) irDePatins(); ensinar("222 FM", `de patins até a oficina: a luz laranja no mapa. ${falaMetroQuebra(historia)}`, 6000) }, 3200)
+        setTimeout(() => {
+          // (moto) liberada: ela vinha guardada na Kombi, sai antes do guincho
+          if (motoOk) { if (!combRef.current.moto) irDeMoto(); ensinar("222 FM", "de moto até a oficina: a luz laranja no mapa", 6000); return }
+          if (!combRef.current.patins) irDePatins(); ensinar("222 FM", `de patins até a oficina: a luz laranja no mapa. ${falaMetroQuebra(historia)}`, 6000)
+        }, 3200)
         return
       }
       const t = setTimeout(() => {
@@ -1725,8 +1729,13 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       setTimeout(() => fadeCam.current?.classList.remove("is-on"), 150)
     }, 300)
   }
-  const trocaZona = useRef({ irDePatins, kombiAqui })
-  trocaZona.current = { irDePatins, kombiAqui }
+  // (moto) com a moto liberada: o subúrbio também é dela (a Kombi para na entrada e
+  // ele segue de moto), e a Kombi quebrada (T27, a caminho da oficina) deixa a moto
+  // com ele: no deserto sem Kombi, a moto é o veículo
+  const motoZona = useRef({ ok: false, semKombi: false })
+  motoZona.current = { ok: motoOk, semKombi: motoOk && quebrou && !perseguicao && !semKombi && !cinema && !cenaLugar && !intro && !abertura && !chegada && !entrando }
+  const trocaZona = useRef({ irDePatins, kombiAqui, irDeMoto })
+  trocaZona.current = { irDePatins, kombiAqui, irDeMoto }
   useEffect(() => {
     if (!discoM || pausado) return
     let espera = 0
@@ -1735,11 +1744,18 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const z = zonaDoJogo(j.voo, j.wx, j.wz, zonaRef.current)
       if (z !== zonaRef.current) { zonaRef.current = z; setZona(z) }
       const agora = performance.now()
-      if (agora < espera || j.ar || !regraZona.current || aberturaRef.current.ativa || cinemaRef.current) return
+      if (agora < espera || j.ar || aberturaRef.current.ativa || cinemaRef.current) return
       const modo: Modo = c.moto ? "moto" : c.patins ? "patins" : veiculo ? "carro" : "kombi"
       if (permitido(z, modo)) return
+      const mz = motoZona.current
+      if (!regraZona.current) {
+        // sem Kombi (quebrada): no deserto de patins, a moto sai da mochila da Kombi
+        if (mz.semKombi && c.patins && !c.moto) { espera = agora + 1500; notch(FALA_ZONA.moto, "#ff3fb0"); trocaZona.current.irDeMoto() }
+        return
+      }
       espera = agora + 1500
       if (c.patins) { notch(FALA_ZONA.subir, "#ffc857"); trocaZona.current.kombiAqui() }
+      else if (mz.ok && !veiculo) { notch(FALA_ZONA.descerMoto, "#ff3fb0"); trocaZona.current.irDeMoto() }
       else { notch(FALA_ZONA.descer, "#ffc857"); trocaZona.current.irDePatins() }
     }, 250)
     return () => clearInterval(iv)
@@ -2767,7 +2783,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       {motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
         <button type="button" className={`l-sair-kombi is-moto${permitido(zona, "patins") ? " is-segundo" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>moto</button>
       )}
-      {discoM && !motoOk && !MOTO_LIBERADA && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
+      {discoM && !motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
         <button type="button" className={`l-sair-kombi is-trancado${permitido(zona, "patins") ? " is-segundo" : ""}`} aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
       )}
       {motoAviso && <p className="l-pagina-fechada"><Cadeado />a moto · {TRANCA_MOTO}</p>}

@@ -6,8 +6,9 @@
 //     No deserto não se sai da Kombi
 //   - subúrbio e túneis (lá embaixo): só a pé / patins (e bmx, skate nas
 //     trincheiras), mais a moto. A Kombi para na entrada
-// A moto anda no deserto e nos túneis. Ela ainda está trancada (T14): a regra
-// já conta com ela; o botão aparece com o cadeado até MOTO_LIBERADA.
+// A moto anda no deserto, no subúrbio, nos túneis e na cidade. Ela vem guardada
+// na Kombi e libera na missão dos túneis (motoLiberada, abaixo); antes disso o
+// botão aparece com o cadeado e o aviso (TRANCA_MOTO). Ver docs/moto.md
 // Leve: só contas de distância, sem three.js.
 
 import { SUBURBIO, type HistoriaDisco } from "../disco/historia"
@@ -56,4 +57,7 @@ export function zonaDoJogo(voo: boolean | undefined, wx: number | undefined, wz:
 export const FALA_ZONA = {
   descer: "o subúrbio é a pé: a Kombi fica aqui na entrada",
   subir: "o deserto é de Kombi: sobe nela",
+  // (moto) com a moto liberada
+  descerMoto: "a Kombi fica na entrada: segue de moto",
+  moto: "sem Kombi, o deserto é de moto",
 }
