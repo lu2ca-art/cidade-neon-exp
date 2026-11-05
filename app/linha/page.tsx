@@ -88,6 +88,8 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { FinalTela } from "./disco/FinalTela"
+import { definirFinalFeito, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
@@ -1088,6 +1090,8 @@ export default function LinhaPage() {
   }
   const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : quebrada(hist) ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
+  // (T29) o final passando agora: o momento em que ele começou (disco/Final.tsx toca o resto)
+  const [finalAgora, setFinalAgora] = useState<MomentoFinal | null>(null)
   // (trilha sonora, 05/11) a introdução da missão aberta (o balão por cima do mundo)
   // (revisão 05/11) m0/ativa0: a distância até o lugar e a missão pegada quando o balão abriu
   const [introMissao, setIntroMissao] = useState<{ id: MissaoId; quem: string; texto: string; m0: number; ativa0: MissaoId | null } | null>(null)
@@ -1268,7 +1272,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId, semIntro = false) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras || (introMissao && !semIntro)) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     visitaAbriu.current = id
     if (!pc) { abrirPortaDe(id); return }
@@ -1298,6 +1302,25 @@ export default function LinhaPage() {
     else if (como.t === "grafite") descerTrincheiras(id)
     // (T22) a casa da pessoa: entra e só sai depois de passar por tudo
     else if (como.t === "casa") entrarNaCasa(id)
+    // (T29) o final: a sequência na casa da D-Bee (disco/final.ts)
+    else if (como.t === "final") abrirFinal("sinal")
+  }
+  // (T29) O FINAL: o jogo atrás com as faixas de cinema, a câmera roteirizada
+  // (estrada/FinalNove.tsx) e a tela dos momentos (disco/FinalTela.tsx). Acabou: as
+  // duas peças do final ficam feitas e a porta (o mundo depois) abre, ali mesmo
+  const abrirFinal = (m: MomentoFinal) => {
+    setAoVivo(null)
+    setIntroMissao(null)
+    setCinema("lugar")
+    setFinalAgora(m)
+    track("mission_step", { mission_id: "disco-final", step: `final:${m}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }
+  const fimFinal = () => {
+    setFinalAgora(null)
+    setCinema(null)
+    setSave((s) => comHistoria(s, (h) => ordemDe("final").reduce<HistoriaDisco>((x, q) => concluir(x, "final", q), h)))
+    track("mission_step", { mission_id: "disco-final", step: "final:fim", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+    setTimeout(() => chegouRef.current("final"), 900)
   }
   // (T22) a casa de uma missão (a galeria da Ella): a sala em 3D e a cena dela.
   // As peças que apontam pra casa ficam feitas juntas no fim (fimCasaMissao)
@@ -1336,7 +1359,11 @@ export default function LinhaPage() {
   const chegouSemIntro = useRef<(m: MissaoId) => void>(() => {})
   useEffect(() => { chegouSemIntro.current = (m) => chegouNaMissao(m, true) })
   const pecaFeitaNaMissaoRef = useRef(pecaFeitaNaMissao)
-  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao })
+  const abrirFinalRef = useRef<(m: MomentoFinal) => void>(() => {})
+  useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao; abrirFinalRef.current = abrirFinal })
+  // (T29) o final já visto neste save: o quintal da D-Bee fica com a Kombi e o mato (FinalNove.tsx)
+  const finalFeito = HIST && feita13(hist13(save), "final")
+  useEffect(() => { definirFinalFeito(!!finalFeito) }, [finalFeito])
   // (T63) ?parte=missao.tuneis.trincheiras: entrou no jogo, desce direto (sem dirigir até a boca)
   useEffect(() => {
     if (!HIST || !descerAoEntrar.current || tela.t !== "corrida" || cena) return
@@ -1354,6 +1381,8 @@ export default function LinhaPage() {
       if (qual === "elevador") abrirElevadorRef.current()
       else if (qual === "casa") abrirCasaInstrumentosRef.current()
       else if (qual === "recompensa") abrirPortaRef.current("mubarak")
+      // (T29) ?parte=final e final.<momento>: a sequência começa direto naquele momento
+      else if (qual.startsWith("final:")) abrirFinalRef.current(qual.slice(6) as MomentoFinal)
       // (vitrine) o túnel no começo e a sinuca do bar
       else if (qual === "tunel") descerTrincheiras(null)
       else if (qual === "sinuca") setSinucaBar(true)
@@ -2486,6 +2515,8 @@ export default function LinhaPage() {
           </div>
         )}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
+        {/* (T29) o final: a legenda de cada momento ou o filme da despedida, com o jogo atrás */}
+        {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} />}
         {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
           onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
           onDepois={() => setIntroMissao(null)} />}

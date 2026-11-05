@@ -68,6 +68,9 @@ export type ComoJoga =
   // depois de passar por tudo: o diálogo, o que se observa, o que se faz, o som
   // (regra 9). Uma casa só joga as peças que apontam pra ela, juntas, numa cena
   | { t: "casa"; sala: SalaMissao }
+  // (T29) o final: a sequência na casa da D-Bee (disco/final.ts, disco/FinalTela.tsx).
+  // As duas peças do final apontam pra ela e ficam feitas juntas no fim
+  | { t: "final" }
 
 // (T22) as casas das missões (interior/registro.ts carrega cada uma)
 export type SalaMissao = "galeria-ella"
@@ -279,8 +282,10 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   final: {
     id: "final", n: 13, onde: "cidade", quem: "os nove e a D-Bee", cor: "#ffffff", faixa: null, faixaSituacao: "decidido",
     lugar: { chao: "casa" }, pedido: "os nove nos seus pontos", apresenta: "os nove nos pontos e a D-Bee chegando pra acionar o CHUVA",
-    arte: p("a música da D-Bee, o sinal dos nove", "proposta", { tarefa: "T29" }),
-    jogo: p("o CHUVA", "decidido", { tarefa: "T29" }),
+    // (T29) a sequência inteira mora em disco/final.ts: o sinal, os nove, o CHUVA,
+    // a despedida (o vídeo) e o quintal. Chegou na casa da D-Bee: começa
+    arte: p("a música da D-Bee, o sinal dos nove", "proposta", { como: { t: "final" }, tarefa: "T29" }),
+    jogo: p("o CHUVA", "decidido", { como: { t: "final" }, tarefa: "T29" }),
     abre: ["mundo-depois"], recompensa: { guitar: null, batida: null, neon: 0, instrumento: null }, requer: ["quadra", "tuneis", "drew", "mubarak", "xeriff", "lu2ca", "ella", "notti", "nizzy", "tony"],
   },
 }

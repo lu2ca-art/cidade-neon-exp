@@ -3052,6 +3052,10 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-filme-fala.is-acao { font-style: italic; font-size: 16px; color: rgba(255,255,255,0.8); }
 .l-filme-barra { position: absolute; left: 0; bottom: 11vh; height: 2px; background: rgba(255,255,255,0.35); transition: width 0.8s ease; }
 @keyframes l-filme-entra { from { opacity: 0; transform: translateY(6px); } }
+/* (T29) o final (disco/Final.tsx): o jogo atrás, a legenda do momento ou o filme da despedida */
+.l-final { position: absolute; inset: 0; z-index: 30; }
+.l-final .l-filme { background: linear-gradient(to top, rgba(0,0,0,0.45) 11vh, transparent calc(11vh + 160px)); }
+.l-final-rascunho { display: block; margin-top: 6px; font: 700 9px var(--mono); letter-spacing: 0.2em; color: rgba(255,255,255,0.45) !important; }
 
 /* (notas 04/11) a rádio livre: liga também nos túneis e nas salas */
 .l-radio-livre { position: fixed; z-index: 60; top: calc(92px + env(safe-area-inset-top)); left: 16px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255, 200, 87, 0.45); background: rgba(10, 6, 16, 0.6); color: #f2eefa; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.06em; }

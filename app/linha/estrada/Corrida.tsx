@@ -41,6 +41,8 @@ import { TorreCentral } from "./Torre"
 import { PORTAL_CFG, Portoes } from "./Portoes"
 import { Perto, SoQuando, type PontoXZ } from "./Perto"
 import { Monumentos } from "./Monumentos"
+import { FinalNove } from "./FinalNove"
+import { CAM_ROTEIRO, FINAL_VIVO } from "../disco/final"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
 import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
@@ -6556,6 +6558,12 @@ function CenaBase({
     CAMERA_RUA.livre = !cine && !primeira && !ce && !pq.andando && !apeCam && j.chegadaCut === undefined && eDr < 0.01
     // teste (fora da produção): window.__vista = [x, y, z, olharX, olharY, olharZ]
     // segura a câmera num ponto (vista aérea pra conferir o mapa)
+    // (T29) o final: a câmera roteirizada manda (estrada/FinalNove.tsx escreve o ponto e o olhar)
+    if (CAM_ROTEIRO.ativo) {
+      camera.position.set(CAM_ROTEIRO.px, CAM_ROTEIRO.py, CAM_ROTEIRO.pz)
+      camera.up.set(0, 1, 0)
+      camera.lookAt(CAM_ROTEIRO.ox, CAM_ROTEIRO.oy, CAM_ROTEIRO.oz)
+    }
     if (process.env.NODE_ENV !== "production") {
       const vw = (window as unknown as { __vista?: number[] }).__vista
       if (vw) { camera.position.set(vw[0], vw[1], vw[2]); camera.up.set(0, 1, 0); camera.lookAt(vw[3], vw[4], vw[5]) }
@@ -6783,7 +6791,7 @@ function CenaBase({
     const clima = climaRef.current
     clima.k += ((clima.chove ? 1 : 0) - clima.k) * Math.min(1, dt / 12)
     if (chuvaRef.current) {
-      chuvaRef.current.visible = V.id !== "deserto" && Math.max(clima.k, CHUVA_MANIFESTO.k) > 0.02 // (rua CHUVA) manifestos/ceu.ts
+      chuvaRef.current.visible = (V.id !== "deserto" || FINAL_VIVO.momento !== null) && Math.max(clima.k, CHUVA_MANIFESTO.k) > 0.02 // (rua CHUVA) manifestos/ceu.ts
       ;(chuvaRef.current.material as THREE.LineBasicMaterial).opacity = 0.28 * Math.max(clima.k, CHUVA_MANIFESTO.k)
     }
     const cp = camera.position
@@ -6900,6 +6908,8 @@ function CenaBase({
       {/* (leveza A) cada bloco da cidade só fica montado com a câmera perto (Perto.tsx) */}
       {"disco" in M && <Perto nome="portões" raio={700} pontos={pertoDe.portoes}><Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro></Perto>}
       {"disco" in M && <Perto nome="monumentos" raio={900} pontos={pertoDe.monumentos}><Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} /></Seguro></Perto>}
+      {/* (T29) o final: os nove nos pontos, os fachos do CHUVA, o quintal da D-Bee e a câmera roteirizada */}
+      {"disco" in M && <Seguro nome="final"><FinalNove M={M as MundoDisco} /></Seguro>}
       {/* (na fase da casa, o farol guia de longe: aí a casa fica sempre montada) */}
       {"disco" in M && <Perto nome="casa do deserto" raio={faseHistoria === "casa" ? 1e7 : 800} pontos={pertoDe.casa}><CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} /></Perto>}
       {"disco" in M && <Perto nome="lugares do chão" raio={600} pontos={pertoDe.chao}><LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} /></Perto>}
