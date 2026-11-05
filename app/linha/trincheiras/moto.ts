@@ -19,7 +19,7 @@
 
 import { acompanhar, naVolta, type Fisica, type Pose, type Rival } from "./corrida"
 import type { Entrada, Estado } from "./fisica"
-import { CURVA, SUBIDA_MAX, TETO, VOLTA, batenaTorre, ondeEsta, perfil } from "./mapa"
+import { CURVA, MEIA, SUBIDA_MAX, TETO, VOLTA, batenaTorre, ondeEsta, perfil } from "./mapa"
 
 const G = 22 // a mesma gravidade do fisica.ts
 
@@ -288,7 +288,7 @@ export function pilotoMoto(s: Estado, parede: boolean): Entrada {
   let ax = a.x, az = a.z
   if (parede) {
     const L = Math.hypot(b.x - a.x, b.z - a.z) || 1
-    ax += ((b.z - a.z) / L) * 14; az += (-(b.x - a.x) / L) * 14
+    ax += ((b.z - a.z) / L) * (MEIA + 0.5); az += (-(b.x - a.x) / L) * (MEIA + 0.5)
   }
   const dif = ang(Math.atan2(ax - s.x, az - s.z) - s.yaw)
   ent.esq = dif > 0.04; ent.dir = dif < -0.04
