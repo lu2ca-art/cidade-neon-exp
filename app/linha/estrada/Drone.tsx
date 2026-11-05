@@ -299,7 +299,7 @@ function texIcone(seta: boolean) {
 }
 
 // ── o holograma ──
-const MAXP = 4096
+const MAXP = 8192 // (ruas-faixa) a 4 m por amostra, 32 km de rota (a volta da Rollercoaster sozinha tem 17 km)
 const VERT_FAIXA = /* glsl */ `
 attribute float aD; attribute float aL; attribute vec3 aCor;
 varying float vD; varying float vL; varying vec3 vC;

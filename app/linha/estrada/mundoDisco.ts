@@ -490,8 +490,8 @@ const FORCAS = [0.3, 0.45, 0.6, 0.8]
 // Os números saem de `bun scripts/medir-ruas.ts --ajustar` (a volta em
 // 2 × BPM km/h ≈ a faixa que toca, docs/ruas-faixa.md). Mudou a faixa ou o
 // desenho: roda de novo e cola aqui
-export const ESCALA_GRUPO = [1.38, 1.584, 1.129] // na ordem de GRUPOS (a torre 1, 2, 3)
-export const ALONGA: Record<string, number> = { Nectar: 1.654, "Ojalá": 1.697, Rollercoaster: 3.787, Swav: 1.473, "Copo Americano": 1.424, CHUVA: 1.48 }
+export const ESCALA_GRUPO = [1, 1.584, 1.129] // na ordem de GRUPOS (a torre 1, 2, 3). A torre 1 fica onde estava: o subúrbio, a casa da D-Bee e o deserto moram embaixo e em volta dela
+export const ALONGA: Record<string, number> = { Nectar: 2.446, "Sexta-Feira": 1.824, "Ojalá": 2.577, Rollercoaster: 3.787, Swav: 1.473, "Copo Americano": 1.425, CHUVA: 1.48 }
 export type AjusteDisco = { escala?: number[]; alonga?: Record<string, number> }
 // do fim de cada ponta até onde o alongamento entra por inteiro (a parte dentro
 // da torre e o portão ficam como no desenho)

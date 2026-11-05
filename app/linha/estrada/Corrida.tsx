@@ -18,6 +18,7 @@ import { PAGINAS, marcarDaCidade, trancadaPelaHistoria, type LugarPagina } from 
 import { Fachadas } from "./Fachadas"
 import { Bombas } from "./Bombas"
 import { BOMBAS, pertoDe } from "./postos"
+import { alemDaCidade, centrosDaCidade } from "./raioCidade"
 import { useRouter } from "next/navigation"
 import { Embacado } from "./Embacado"
 import { Respirar } from "./Respirar"
@@ -1018,7 +1019,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const j = jogo.current as Jogo & { encostando?: boolean; noMapa?: boolean }, c = climaRef.current
       // (disco) voando/andando nas dunas sem pista embaixo também é deserto (nunca chove)
       const MDc = "disco" in M ? (M as MundoDisco) : null
-      const deserto = M.vias[j.via]?.id === "deserto" || (!!MDc && !!j.voo && j.wx !== undefined && Math.hypot(j.wx, j.wz!) > 1300)
+      const deserto = M.vias[j.via]?.id === "deserto" || (!!MDc && !!j.voo && j.wx !== undefined && alemDaCidade(j.wx, j.wz!) > 1300)
       c.chove = !deserto && chovendo(dia, horaRef.current)
       // parada de verdade: não conta quando a parada já tem outra coisa na tela
       const ocupado = !!cinemaRef.current || !!j.encostando || !!j.noMapa || respiroRef.current.pode
@@ -1435,7 +1436,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       if (novoComeco) {
         if (j.wx !== undefined && Math.hypot(j.wx - SUBURBIO.x, j.wz! - SUBURBIO.z) < SUBURBIO.r && !avisou) { avisou = true; onHistoriaRef.current?.("cidade"); return }
       } else if (!j.voo) { if (!avisou) { avisou = true; onHistoriaRef.current?.("cidade") } return }
-      const r = Math.hypot(j.wx ?? 0, j.wz ?? 0)
+      const r = alemDaCidade(j.wx ?? 0, j.wz ?? 0) // (ruas-faixa) a distância à borda de cada rumo
       if (t > 2) diz("inicio")
       // (27/10, RASCUNHO) depois do "a cidade é pra lá", a D-Bee solta o drone: a câmera
       // sai da Kombi, sobe e mostra o trajeto até o subúrbio; depois volta (o jogo não para)
@@ -3578,6 +3579,9 @@ function CenaBase({
   const centrosLugares = useMemo(() => Object.values(LUGARES).map((l) => poseLugar(M, l).centro), [M])
   // o subúrbio mora no meio do anel da cidade: o centro e até onde vai o chão
   const centroSub = useMemo(() => {
+    // (ruas-faixa, 05/11) no disco o modelo do subúrbio fica onde sempre esteve
+    // (era o centro da 1ª pista; as pistas cresceram e ele andaria ~50 m)
+    if ("disco" in M) return { x: -65.3, z: -404.6, r: 6.6 }
     const v = M.vias[M.circuito.linha]
     let x = 0, z = 0
     for (let i = 0; i < v.n; i++) { x += v.px[i]; z += v.pz[i] }
@@ -3613,7 +3617,8 @@ function CenaBase({
       fachadas: PAGINAS.filter((p) => !p.lugar).map((p) => { const c = poseLugar(M, { area: p.area, u: p.u, lado: p.lado } as Lugar, `pagina:${p.id}`).centro; return { x: c.x, z: c.z } }),
       parque: areaDoParque(M),
       suburbio: [{ x: centroSub.x, z: centroSub.z }],
-      centro: [{ x: 0, z: 0 }],
+      // (ruas-faixa) o centro e a borda que cresceu: longe de todos = o deserto de verdade
+      centro: centrosDaCidade(),
     }
   }, [M, centrosLugares, centroSub])
   const tex = useMemo(() => TEX_BASE ?? (TEX_BASE = { asfalto: texAsfalto(), janelas: texJanelas(), brilho: texBrilho(), turbo: texTurbo() }), [])
@@ -5662,9 +5667,11 @@ function CenaBase({
           const k = Math.min(CV.n - 1, Math.floor(c.u / PASSO))
           if (Math.hypot(CV.px[k] - car0.x, CV.pz[k] - car0.z) > 650) {
             for (let t = 0; t < 30; t++) {
-              const vi = Math.floor(Math.random() * M.vias.length), W2 = M.vias[vi]
+              // (ruas-faixa) as primeiras tentativas na rua da Kombi (as pistas do disco ficaram longas: sorteando a rua inteira, quase nunca cai perto)
+              const naDela = t < 10 && !j.voo
+              const vi = naDela ? j.via : Math.floor(Math.random() * M.vias.length), W2 = M.vias[vi]
               if (W2.tipo !== "rua" || W2.rede!.tipo === "terra") continue
-              const u = Math.random() * W2.L, q = Math.min(W2.n - 1, Math.floor(u / PASSO)), dd = Math.hypot(W2.px[q] - car0.x, W2.pz[q] - car0.z)
+              const u = naDela ? Math.min(W2.L - 1, Math.max(0, j.u + (Math.random() - 0.5) * 1000)) : Math.random() * W2.L, q = Math.min(W2.n - 1, Math.floor(u / PASSO)), dd = Math.hypot(W2.px[q] - car0.x, W2.pz[q] - car0.z)
               if (dd > 140 && dd < 520) { c.via = vi; c.u = u; CV = W2; c.caido = 0; c.y = 0; c.giro = 0; c.x = c.x0; break }
             }
           }
@@ -6398,7 +6405,7 @@ function CenaBase({
     alvoNevoa.lerp(diaNevoa, (1 - ch.noite) * 0.75)
     // (disco, as dunas) longe da cidade, sol aberto: a areia aparece (a luz da
     // cidade foi pensada pro asfalto escuro; no deserto ficava tudo preto)
-    const noDeserto = "disco" in M && !!j.voo && j.wx !== undefined && Math.hypot(j.wx, j.wz!) > 1250
+    const noDeserto = "disco" in M && !!j.voo && j.wx !== undefined && alemDaCidade(j.wx, j.wz!) > 1250
     desertoK.current += ((noDeserto ? 1 : 0) - desertoK.current) * Math.min(1, dt * 0.8)
     const dk = desertoK.current
     if (ambRef.current) ambRef.current.intensity = 0.35 * ch.luz * (1 + dk * 1.6)

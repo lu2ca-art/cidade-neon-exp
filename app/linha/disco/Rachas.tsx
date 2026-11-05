@@ -129,9 +129,14 @@ function RachasVivos({ M, jogo, estado, ativo }: {
       tmp.primeiro = true
       if (u < L - 200) { c.via = j.via; c.u = u; c.vivo = true; return }
     }
+    // (ruas-faixa) as pistas ficaram longas: sorteando a via inteira, quase nunca
+    // cai perto. As primeiras tentativas são na via da Kombi (à frente ou atrás)
+    const perto = viasSet.has(j.via) && !j.voo
     for (let t = 0; t < 40; t++) {
-      const vi = vias[Math.floor(rnd() * vias.length)], V = M.vias[vi]
-      const u = rnd() * (V.L - 120)
+      const naDela = perto && t < 12
+      const vi = naDela ? j.via : vias[Math.floor(rnd() * vias.length)], V = M.vias[vi]
+      const u = naDela ? j.u + (rnd() < 0.7 ? 1 : -1) * (RACHA_CFG.nascerDe + rnd() * (RACHA_CFG.nascerAte - RACHA_CFG.nascerDe)) : rnd() * (V.L - 120)
+      if (u < 0 || u > V.L - 120) continue
       const p = noMundo(V, u, 0, 0, tmp.a, tmp.p), d = Math.hypot(p.x - k.x, p.z - k.z)
       if (d > RACHA_CFG.nascerDe && d < RACHA_CFG.nascerAte) { c.via = vi; c.u = u; c.vivo = true; return }
     }

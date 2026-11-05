@@ -3,6 +3,7 @@
 //   bun scripts/medir-ruas.ts            a tabela do mundo como está
 //   bun scripts/medir-ruas.ts --ajustar  acha ESCALA_GRUPO e ALONGA (mundoDisco.ts)
 //                                        pra cada volta ≈ a faixa (um pouco mais)
+//   bun scripts/medir-ruas.ts --ajustar --fixa=0   idem, sem mexer na torre 1 (o subúrbio embaixo dela)
 // docs/ruas-faixa.md
 import { ESCALA_GRUPO, V_TORRE, montarMundoDisco, type MundoDisco } from "../app/linha/estrada/mundoDisco"
 import { PISTAS, velocidade } from "../app/linha/estrada/pistas"
@@ -49,6 +50,10 @@ function tabela(M: MundoDisco) {
   console.log("| pista | ida (m) | volta inteira (m) | km/h | volta (s) | faixa (s) | volta / faixa |\n|---|---|---|---|---|---|---|")
   for (const m of r) console.log(`| ${m.nome} | ${Math.round(m.ida)} | ${Math.round(m.volta)} | ${m.kmh.toFixed(0)} | ${m.t.toFixed(0)} | ${m.alvo.toFixed(0)} | ${m.razao.toFixed(2).replace(".", ",")} |`)
   console.log(`mundo: x ${Math.round(e.xmin)}…${Math.round(e.xmax)}, z ${Math.round(e.zmin)}…${Math.round(e.zmax)}; conflitos: ${JSON.stringify(M.conflitos)}`)
+  // o raio da cidade por setor de 10° (a partir de −π): raioCidade.ts
+  const sec = new Array(36).fill(0)
+  for (const v of M.vias) for (let i = 0; i < v.n; i++) { const a = Math.atan2(v.pz[i], v.px[i]), k = Math.floor(((a + Math.PI) / (2 * Math.PI)) * 36) % 36; sec[k] = Math.max(sec[k], Math.hypot(v.px[i], v.pz[i])) }
+  console.log("SETORES (raioCidade.ts):", JSON.stringify(sec.map(Math.round)))
   console.log("torres:", M.torres.map((t) => `(${Math.round(t.x)}, ${Math.round(t.z)}) r${Math.round(t.raio)}`).join(" | "))
 }
 
@@ -62,7 +67,9 @@ if (process.argv.includes("--ajustar")) {
     const r = medir(montarMundoDisco({ escala: s, alonga: {} }))
     GRUPOS.forEach((nomes, g) => { const mx = Math.max(...nomes.map((n) => r.find((m) => m.nome === n)!.razao)); if (mx < META) lo[g] = s[g]; else hi[g] = s[g] })
   }
-  const esc = lo.map((_, g) => +((lo[g] + hi[g]) / 2).toFixed(3))
+  // --fixa=0,2: esses grupos não se afastam (a torre da ponta fica onde está)
+  const fixa = (process.argv.find((a) => a.startsWith("--fixa="))?.slice(7).split(",") ?? []).map(Number)
+  const esc = lo.map((_, g) => (fixa.includes(g) ? 1 : +((lo[g] + hi[g]) / 2).toFixed(3)))
   // 2) o alongamento de cada linha (as do grupo que ainda não chegam)
   const nomes = GRUPOS.flat(), al: Record<string, number> = {}, alo: Record<string, number> = {}, ahi: Record<string, number> = {}
   for (const n of nomes) { alo[n] = 1; ahi[n] = 8 }

@@ -19,6 +19,7 @@ import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
 import { ATROPELO, lancar, voar, type Voo } from "../estrada/atropelo"
+import { alemDaCidade, cresceuNoRumo } from "../estrada/raioCidade"
 import { CASA, SAIDA_CASA } from "./historia"
 
 /* eslint-disable react-hooks/immutability --
@@ -81,7 +82,7 @@ export function RobosCaidos({ jogo, chao, livre, onAtropelou }: { jogo: React.Re
     const yaw = new THREE.Quaternion(), lie = new THREE.Quaternion(), eixo = new THREE.Vector3()
     const POSES: [number, number, number][] = [[1, 0, 0], [-1, 0, 0], [0, 0, 1]] // de bruços, de costas, de lado
     const por = (x: number, z: number) => {
-      if (Math.hypot(x, z) < 1380 || !livre(x, z)) return false
+      if (alemDaCidade(x, z) < 1380 || !livre(x, z)) return false
       if (Math.hypot(x - CASA.x, z - CASA.z) < 120) return false // o quintal da D-Bee fica limpo
       if (lista.some((b) => Math.hypot(b.x - x, b.z - z) < 14)) return false
       const p = POSES[Math.floor(r() * 3)]
@@ -105,7 +106,7 @@ export function RobosCaidos({ jogo, chao, livre, onAtropelou }: { jogo: React.Re
     }
     // o resto espalhado no anel do deserto
     for (let k = 0; lista.length < N_CAIDOS && k < 2000; k++) {
-      const a = r() * Math.PI * 2, rr = 1500 + r() * 2400
+      const a = r() * Math.PI * 2, rr = Math.min(3850, 1500 + cresceuNoRumo(Math.cos(a), Math.sin(a)) + r() * 2400)
       por(Math.cos(a) * rr, Math.sin(a) * rr)
     }
     return { lista }
