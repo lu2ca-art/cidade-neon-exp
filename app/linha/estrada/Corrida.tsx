@@ -119,7 +119,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
-import { FALA_ZONA, TRANCA_MOTO, motoLiberada, naMoto, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
+import { BORDA_SUBURBIO, FALA_ZONA, TRANCA_MOTO, motoLiberada, naMoto, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
 import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
@@ -4795,6 +4795,23 @@ function CenaBase({
       }
       // (piloto) sem destino, no chão do deserto: uma volta larga (não some no horizonte)
       if (infAuto && !destP && j.voo) alvoSteer = 0.05
+      // (revisão 05/11) o piloto no chão não entra no subúrbio (lá é a pé: a regra das
+      // zonas tiraria ele da Kombi e o piloto desligaria): perto da borda, contorna o
+      // anel pelo lado que já está virado; colado nela, se afasta. Só se o destino não é lá dentro
+      if (infAuto && j.voo && j.wx !== undefined && (!destP || Math.hypot(destP.x - SUBURBIO.x, destP.z - SUBURBIO.z) > SUBURBIO.r + BORDA_SUBURBIO)) {
+        const ox = j.wx - SUBURBIO.x, oz = j.wz! - SUBURBIO.z, d = Math.hypot(ox, oz), borda = SUBURBIO.r + BORDA_SUBURBIO
+        if (d < borda + 160 && d > 1) {
+          const fx = Math.sin(j.rumo ?? 0), fz = Math.cos(j.rumo ?? 0)
+          // entrando (indo pro centro): a tangente do lado do rumo; colado na borda, pra fora
+          if (fx * ox + fz * oz < 0 || d < borda + 40) {
+            const lado = fx * oz - fz * ox > 0 ? 1 : -1
+            const fora = Math.max(0, Math.min(1, (borda + 160 - d) / 120))
+            const mx = (oz * lado) / d * (1 - fora) + (ox / d) * fora, mz = (-ox * lado) / d * (1 - fora) + (oz / d) * fora
+            const dif = Math.atan2(mx, mz) - (j.rumo ?? 0)
+            alvoSteer = Math.max(-1, Math.min(1, -Math.atan2(Math.sin(dif), Math.cos(dif)) * MIRA_CHAO))
+          }
+        }
+      }
       // bifurcação: nos últimos 330m, um toque pro lado MARCA a saída e a
       // Kombi entra sozinha na faixa (antes tinha que acertar a faixa no
       // metro exato da divisão — era a trava). Toque do outro lado desmarca.
