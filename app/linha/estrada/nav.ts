@@ -41,6 +41,9 @@ export interface DestinoNav { x: number; z: number; cor: string; nome: string; v
 // o estado (mutável, fora do React: quem desenha lê quando quer)
 export const NAV = {
   ativo: false,
+  // (piloto, 05/11) o GPS está de pé (montado e à vista): sem ele, NAV.ativo
+  // false não quer dizer "acabou o destino" (o piloto segue o último que viu)
+  vivo: false,
   versao: 0, // muda a cada refeita (a faixa no chão se reescreve)
   destino: null as DestinoNav | null,
   rota: null as Rota | null, // pelas vias (null: em linha reta, no chão/voando)

@@ -55,6 +55,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
   agua: { t: "água", d: "a coisa mais valiosa num mundo seco. as gotas da pista viram água: rega as flores, paga a oficina, e a cada 100 gotas, duas viagens rápidas." },
   controles: { t: "os controles", d: "no celular: um lado da tela vira pra ele; os dois juntos freiam (parado, dá ré). no ar: um lado gira, os dois juntos dão o mortal. no teclado: ↓ freia, Q é a manobra." },
+  piloto: { t: "piloto", d: "o volante do lado do GPS: a Kombi dirige sozinha. com destino (uma missão ou um ponto no mapa), vai pela rota, troca de pista sozinha e para lá. sem destino, passeia pela rua (pra ouvir a música inteira). virou, acelerou ou freou: o volante volta pra você na hora. só de Kombi." },
   turbo: { t: "turbo", d: "segura um instante: a Kombi dispara. o drift, as manobras e os voos enchem a barra (no teclado, um toque no espaço). de patins, no ar, é o dash." },
   propulsor: { t: "propulsor", d: "segura: a Kombi voa. de patins, é o jato de ar das costas. a energia volta andando no chão (no teclado, segura o espaço)." },
   sair: { t: "sair da Kombi", d: "desce de patins. a Kombi fica estacionada te esperando (tecla F)." },

@@ -50,7 +50,8 @@ import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
 import { gravarOndeParou, lerOndeParou } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
-import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
+import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
+import { NAV, ladoDaFaixa } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
 import { nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
@@ -407,6 +408,9 @@ type Jogo = {
   hyper?: boolean; hyperT?: number; tresT?: number; fugaGrande?: boolean
   // (21/10) a Kombi indo sozinha pra missão pegada (ninguém tocou faz 6 s)
   piloto?: boolean
+  // (piloto, 05/11) o piloto do botão: o último destino visto (segue nele com o
+  // GPS escondido, ex.: no drone), o nome que está no notch e a câmera de passeio
+  pilD?: { x: number; z: number; nome: string } | null; pilNome?: string | null; pilCam?: boolean
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -479,6 +483,8 @@ type Evs = {
   estrelas: (n: number) => void
   chegou: () => void
   piloto: (on: boolean) => void
+  // (piloto, 05/11) o piloto do botão desligou sozinho (chegou, ou mexeram no volante)
+  pilotoBotao?: (on: boolean) => void
   volta: (t: number) => void
   hud: (j: Jogo) => void
 }
@@ -849,6 +855,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // volante assume por uns segundos e ele volta. O ∞ do lado do GPS liga e desliga
   const [infinito, setInfinito] = useState(false)
   useEffect(() => { input.current.infinito = infinito; if (infinito) { jogo.current.desligada = false; setDesligada(false) } }, [infinito])
+  // (piloto, 05/11) só de Kombi: a pé, de patins, de moto ou noutro veículo, desliga (e o botão some)
+  const semPiloto = dePatins || semKombi || quebrou || noConserto
+  useEffect(() => { if (semPiloto) setInfinito(false) }, [semPiloto])
+  useEffect(() => () => { escreverPiloto("") }, [])
   const darPartida = () => { jogo.current.desligada = false; input.current.ultimo = performance.now(); vib([20, 30, 20]); setDesligada(false) }
   useEffect(() => {
     // qualquer toque ou tecla conta como "tem gente dirigindo"
@@ -2135,6 +2145,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       },
       chegou: () => setChegou({ ...jogo.current.st, tempo: jogo.current.tempo }),
       piloto: (on) => setPiloto(on),
+      pilotoBotao: (on) => setInfinito(on),
       volta: (t) => {
         falar("Notti", `volta em ${t.toFixed(1)}s!!`)
         onVolta?.(t)
@@ -2939,10 +2950,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
           </div>
         </div>
       )}
-      {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o ∞ (o automático infinito) */}
+      {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o volante (o piloto, docs/piloto.md) */}
       {discoM && oculos && (
         <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null, racha: rachaRef }} icone={checklistHolo?.chave ?? null}
-          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} apagada={viaApagada} />
+          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} semPiloto={semPiloto} apagada={viaApagada} />
       )}
       {/* (T44) os rachas: o botão "tirar um racha" pisca quando você emparelha com um dos carros do mecânico */}
       {discoM && <RachasHud estado={rachaRef} onFim={(r) => onRacha?.(r)} escondido={drone || !!cinema || !!cenaLugar || noConserto || quebrou || perseguicao || semKombi} />}
@@ -4719,24 +4730,46 @@ function CenaBase({
       const assumiu = (j.ultimoDir ?? 0) > 0 && performance.now() - j.ultimoDir! < ASSUME_MS
       const auto1p = destino1p && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
       if (auto1p && j.desligada) j.desligada = false // de dentro ela mesma dá a partida
-      // (T42) o automático infinito: segue a pista sem parar (mexeu no volante, assume 3 s)
-      const infAuto = !!inp.infinito && !assumiu && !combRef.current.patins && !aberturaRef.current.ativa && !j.chegando
+      // (T42 → piloto, 05/11, o dono: "o mapa é como se fosse um copiloto mesmo,
+      // que não só mostra como ir, como também leva ao destino") o PILOTO do botão
+      // (o volante do lado do GPS): com destino (o mesmo do GPS, NAV.destino), vai
+      // pela rota (a rota escolhe o cruzamento e a saída da rotatória, lá embaixo),
+      // na velocidade da pista, sem turbo, e para no ponto (a missão começa pela
+      // regra de chegada de sempre). Sem destino, passeia pela rua. Só de Kombi.
+      // Virou, acelerou, freou, turbo, propulsor: desliga na hora (docs/piloto.md)
+      let infAuto = !!inp.infinito && !combRef.current.patins && !combRef.current.semKombi && !aberturaRef.current.ativa && !j.chegando
+      if (infAuto && (inp.esq || inp.dir || inp.gas || inp.freio || inp.mao || inp.turbo || inp.propulsorBotao || inp.propulsor || inp.ambos)) {
+        infAuto = false; inp.infinito = false; ev.pilotoBotao?.(false)
+      }
+      // o destino: o do GPS; com o GPS escondido (o drone aberto), o último que ele viu
+      let destP: { x: number; z: number; nome: string } | null = null
+      if (infAuto) {
+        if (NAV.ativo && NAV.destino) { destP = NAV.destino; if (!j.pilD || j.pilD.nome !== destP.nome || j.pilD.x !== destP.x) j.pilD = { x: destP.x, z: destP.z, nome: destP.nome } }
+        else if (j.pilD && !NAV.vivo) destP = j.pilD
+        else if (j.pilD) { infAuto = false; inp.infinito = false; j.pilD = null; ev.pilotoBotao?.(false) } // o destino acabou (a missão começou): devolve o volante
+      } else j.pilD = null
       if (infAuto && j.desligada) j.desligada = false
+      // o notch: "piloto · até o palco do Copo" (só escreve quando muda)
+      const nomeP = infAuto ? destP?.nome ?? "" : null
+      if (nomeP !== j.pilNome) { j.pilNome = nomeP; escreverPiloto(nomeP === null ? "" : nomeP ? `piloto · até ${nomeP}` : "piloto · passeando") }
+      j.pilCam = infAuto && !j.voo
       const auto = (auto1p || noCel || pilotoMissao || infAuto) && !cine
-      // no automático, chegando na vaga da missão: encosta e freia sozinha (o infinito não para)
-      const vgA = auto && !noCel && !infAuto ? vagaRef.current : null
+      // no automático, chegando na vaga da missão: encosta e freia sozinha (o piloto sem destino não para)
+      const vgA = auto && !noCel && !(infAuto && !destP) ? vagaRef.current : null
       const dVaga = vgA && vgA.via === j.via ? du(V, j.u, vgA.u) : Infinity
       const encostando = !!vgA && dVaga > -VAGA / 2 && dVaga < 90
-      const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : 0
+      // (piloto) perto da saída da rotatória, já puxa pra faixa da saída (a mesma faixa pintada no chão)
+      const xAuto = encostando ? vgA!.lado * MEIA * 0.55 : infAuto && destP && NAV.ativo ? ladoDaFaixa(0) : 0
       let alvoSteer = auto ? Math.max(-1, Math.min(1, (xAuto - j.x) / 3)) : (inp.esq ? -1 : 0) + (inp.dir ? 1 : 0)
       // no chão (fora das pistas): mira no lugar do chão (ou, sem ele, embaixo da vaga)
       let dChao = Infinity
       // (T36, J2:14) o piloto de 6 s parado também mira no chão: antes só a primeira
         // pessoa mirava, e o piloto de fora, no chão do deserto/subúrbio (sem pista
         // embaixo), andava na velocidade da última pista e sem rumo, "pro deserto"
-      if ((auto1p || pilotoMissao) && j.voo && j.wx !== undefined) {
+      if ((auto1p || pilotoMissao || (infAuto && destP)) && j.voo && j.wx !== undefined) {
         let tx = 0, tz = 0, tem = false
-        if (chaoA) { tx = CHAO_LUGARES[chaoA].x; tz = CHAO_LUGARES[chaoA].z; tem = true }
+        if (infAuto && destP) { tx = destP.x; tz = destP.z; tem = true }
+        else if (chaoA) { tx = CHAO_LUGARES[chaoA].x; tz = CHAO_LUGARES[chaoA].z; tem = true }
         else if (vg1) { const Vv = M.vias[vg1.via], iv = Math.max(0, Math.min(Vv.n - 1, Math.floor(vg1.u / PASSO))); tx = Vv.px[iv]; tz = Vv.pz[iv]; tem = true }
         if (tem) {
           const dx = tx - j.wx, dz = tz - j.wz!
@@ -4745,6 +4778,8 @@ function CenaBase({
           alvoSteer = Math.max(-1, Math.min(1, -Math.atan2(Math.sin(dif), Math.cos(dif)) * MIRA_CHAO))
         }
       }
+      // (piloto) sem destino, no chão do deserto: uma volta larga (não some no horizonte)
+      if (infAuto && !destP && j.voo) alvoSteer = 0.05
       // bifurcação: nos últimos 330m, um toque pro lado MARCA a saída e a
       // Kombi entra sozinha na faixa (antes tinha que acertar a faixa no
       // metro exato da divisão — era a trava). Toque do outro lado desmarca.
@@ -4798,7 +4833,7 @@ function CenaBase({
       // (T28) o veículo escolhido depois da perseguição anda mais ou menos que a Kombi
       if (!patins && combRef.current.vel) vmax *= combRef.current.vel
       // (no chão, a de passeio; nas pistas, metade da velocidade da pista)
-      if (auto1p || (pilotoMissao && j.voo) || infAuto) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
+      if (auto1p || (pilotoMissao && j.voo) || (infAuto && j.voo)) vmax = Math.min(vmax, j.voo ? V_PASSEIO : Math.max(V_PASSEIO, vmax * PASSEIO_PISTA))
       // acelerador, freio e RÉ: perdeu a entrada, freia e volta de ré
       // a abertura: sem combustível o pedal não responde
       const ab = aberturaRef.current
@@ -4849,6 +4884,13 @@ function CenaBase({
       if (encostando) j.v = Math.min(j.v, Math.max(2.5, dVaga * 0.3))
       // chegando no lugar do chão: tira o pé (a chegada normal para ela no raio)
       if (dChao < 90) j.v = Math.min(j.v, Math.max(4, dChao * 0.3))
+      // (piloto) chegando no destino: tira o pé e para a uns 10 m dele (a conta é a
+      // da rota, pela pista; no chão, em linha reta). Parou: devolve o volante
+      if (infAuto && destP) {
+        const falta = j.voo && j.wx !== undefined ? Math.hypot(destP.x - j.wx, destP.z - j.wz!) : NAV.ativo && NAV.rota ? NAV.rota.metros : Infinity
+        if (falta < 110) j.v = Math.min(j.v, Math.max(0, (falta - 10) * 0.32))
+        if (falta < 26 && Math.abs(j.v) < 1.2) { inp.infinito = false; j.pilD = null; ev.pilotoBotao?.(false) }
+      }
       // (T36, J2:2, "quando eu clico pra frente no ar ele já voa pra caramba, passa da
       // casa") na parte da casa, perto dela, a Kombi sob o comando do jogador (a
       // chegada sozinha já freia pela distância) não passa de uma velocidade que
@@ -5137,9 +5179,16 @@ function CenaBase({
       const lado = (inp.dir ? 1 : 0) - (inp.esq ? 1 : 0)
       let prox = V.rede.par, melhor = -Infinity
       // com destino (o que você marcou no mapa, senão a vaga da missão): a rota escolhe
-      const alvoR = marcaRef.current ?? vagaRef.current
+      // (piloto, 05/11) com o piloto do botão, vale a rota do GPS (o NAV: vai até o
+      // lugar do chão, o racha, a marca ou a vaga, a mesma da faixa no chão)
+      let pelaRota: number | undefined
+      if (inp.infinito && !lado && NAV.ativo && NAV.rota) {
+        const ts = NAV.rota.trechos
+        for (let i = 0; i < ts.length - 1; i++) if (ts[i].via === j.via) { pelaRota = ts[i + 1].via; break }
+      }
+      const alvoR = pelaRota === undefined ? marcaRef.current ?? vagaRef.current : null
       const rr = alvoR && !lado ? calcularRota(M, { via: j.via, u: V.L }, { via: alvoR.via, u: alvoR.u }) : null
-      const pelaRota = rr?.trechos[1]?.via
+      if (pelaRota === undefined) pelaRota = rr?.trechos[1]?.via
       if (pelaRota !== undefined && cands.includes(pelaRota)) { melhor = Infinity; prox = pelaRota }
       // (disco) na espiral: a rota marcada decide; senão, sai quem está na
       // faixa pintada da linha (a da direita) ou vira pro lado da saída; virando
