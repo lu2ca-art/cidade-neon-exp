@@ -1,0 +1,8 @@
+/* (05/11) a corrida de rua do subúrbio (CorridaDeRua.tsx): reaproveita o desenho dos rachas (rachas-tela.css) */
+.l-racha-btn.is-rua { animation: none; box-shadow: 0 0 22px color-mix(in srgb, var(--cor) 60%, transparent); }
+.l-racha-placar.is-rua small { max-width: 46vw; }
+.l-rua-desistir { position: absolute; z-index: 6; right: 12px; top: calc(146px + env(safe-area-inset-top)); padding: 4px 10px !important; border-radius: 10px; background: rgba(6, 6, 16, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.25) !important; color: rgba(255, 255, 255, 0.75); font: 600 10px var(--font-geist-mono), ui-monospace, monospace; cursor: pointer; pointer-events: auto; }
+.l-rua-ordem { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; min-width: 180px; counter-reset: rua; }
+.l-rua-ordem li { counter-increment: rua; display: flex; justify-content: space-between; gap: 12px; font: 700 12px var(--font-geist-mono), ui-monospace, monospace; }
+.l-rua-ordem li::before { content: counter(rua) "º"; opacity: 0.6; margin-right: 6px; }
+.l-rua-ordem li span { margin-left: auto; color: rgba(255, 255, 255, 0.8); font-weight: 500; }

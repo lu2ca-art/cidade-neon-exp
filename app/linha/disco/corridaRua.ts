@@ -170,3 +170,117 @@ export const PORTOES_RUA: PortaoRua[] = (() => {
 })()
 // passou a menos disso do meio do portão: valeu (a rua tem 12 m)
 export const RAIO_PORTAO_RUA = MEIA_RUA + 2.5
+
+// ── a corrida: os rivais, o placar e o estado (a cena escreve, a tela lê) ──
+
+// RASCUNHO: os números da corrida (o dono afina na Mesa)
+export const CORRIDA_RUA_CFG = {
+  pertoLargada: 22, // m da linha: aparece o botão "correr"
+  contagemS: 3,
+  mostraS: 8, // o resultado fica na tela
+  foraM: 60, // longe do circuito mais que isso…
+  foraS: 6, // …por esse tempo: desistiu
+  tempoMaxS: 8 * 60,
+  premioNeon: 40, // a primeira vitória (uma vez só)
+  // a grade: [m antes da linha, lado] (o jogador larga atrás, do lado direito)
+  grade: [[-4, -2.4], [-4, 2.4], [-9, -2.4]] as [number, number][],
+  gradeJogador: [-9, 2.4] as [number, number],
+}
+
+// os rivais: os mesmos pilotos das trincheiras (trincheiras/corrida.ts), no
+// veículo de quem corre: de moto, as motos; de patins, o patins, a BMX e o skate
+// (o subúrbio deixa: zonas.ts). base = m/s na reta; curva = a aceleração de lado
+// que eles aguentam (a velocidade na curva é √(curva·raio))
+export type VeiculoRua = "moto" | "patins"
+type PilotoRua = { nome: string; veiculo: "moto" | "patins" | "bmx" | "skate"; cor: string; base: number; curva: number; fase: number }
+const RIVAIS_RUA: Record<VeiculoRua, PilotoRua[]> = {
+  moto: [
+    { nome: "TROVÃO", veiculo: "moto", cor: "#ff4d4d", base: 41, curva: 34, fase: 0.3 },
+    { nome: "VESPA", veiculo: "moto", cor: "#ffd23f", base: 39.5, curva: 36, fase: 1.9 },
+    { nome: "LAMA", veiculo: "moto", cor: "#9cff57", base: 38, curva: 33, fase: 3.4 },
+  ],
+  patins: [
+    { nome: "RATO", veiculo: "patins", cor: "#c08cff", base: 33, curva: 30, fase: 4.3 },
+    { nome: "FAÍSCA", veiculo: "bmx", cor: "#ff7a3c", base: 32, curva: 32, fase: 0.4 },
+    { nome: "CORUJA", veiculo: "skate", cor: "#7dffb0", base: 30.5, curva: 28, fase: 2.2 },
+  ],
+}
+export type RivalRua = PilotoRua & { d: number; v: number; lado: number; fim: number | null; ant: { d: number; lado: number } }
+export const pilotosRua = (v: VeiculoRua) => RIVAIS_RUA[v]
+
+export function criarRivaisRua(v: VeiculoRua): RivalRua[] {
+  return RIVAIS_RUA[v].map((r, i) => {
+    const [d, lado] = CORRIDA_RUA_CFG.grade[i] ?? [-14 - i * 4, 0]
+    return { ...r, d, v: 0, lado, fim: null, ant: { d, lado } }
+  })
+}
+// um passo do rival: corre na base, freia antes das curvas, e o elástico
+// aperta (muito na frente, alivia; muito atrás, força)
+export function passoRivalRua(r: RivalRua, dt: number, tempo: number, progJogador: number, correndo: boolean) {
+  r.ant.d = r.d; r.ant.lado = r.lado
+  let alvo = 0
+  if (correndo && r.fim == null) {
+    alvo = r.base * (1 + 0.04 * Math.sin(tempo * 0.41 + r.fase))
+    const k = curvaAdiante(r.d, 18 + r.v * 0.9)
+    if (k > 1e-3) alvo = Math.min(alvo, Math.sqrt(r.curva / k) + 3)
+    const dif = r.d - progJogador
+    if (dif > 70) alvo *= 0.9
+    else if (dif < -50) alvo *= 1.12
+  }
+  r.v += Math.max(-20 * dt, Math.min(10 * dt, alvo - r.v))
+  r.d += r.v * dt
+  // a faixa: de um lado pro outro da rua, sem encostar na parede
+  const grade = r.d < 30 ? Math.max(0, 1 - r.d / 30) : 0
+  r.lado = r.ant.lado * grade + (1 - grade) * 2.2 * Math.sin(r.d * 0.011 + r.fase)
+  if (correndo && r.fim == null && r.d >= L_RUA * VOLTAS_RUA) r.fim = tempo
+}
+
+// a ordem dos portões numa corrida: os do meio, depois a linha (a chegada), duas voltas
+export const SEQ_RUA: number[] = Array.from({ length: VOLTAS_RUA }, () => [...PORTOES_RUA.keys()].slice(1).concat(0)).flat()
+
+export type FaseRua = "fora" | "perto" | "contagem" | "valendo" | "fim"
+export interface ResultadoRua {
+  veiculo: VeiculoRua
+  tempo: number | null // null: desistiu
+  lugar: number
+  de: number
+  venceu: boolean
+  motivo?: string
+  rivais: { nome: string; cor: string; fim: number | null }[]
+}
+export interface EstadoRua {
+  fase: FaseRua
+  veiculo: VeiculoRua
+  t0: number // a largada (o tempo do jogo)
+  ate: number // a contagem acaba / o resultado some
+  conta: number
+  tempo: number // o relógio da corrida
+  cp: number // quantos portões da SEQ_RUA já passou
+  k: number // o ponto da volta mais perto do jogador
+  prog: number // m andados na corrida (pra ordem)
+  lugar: number
+  fora: number // s longe do circuito
+  rivais: RivalRua[]
+  resultado: ResultadoRua | null
+  comecar: boolean // a tela pediu (o botão)
+  desistir: boolean
+}
+export const novoEstadoRua = (): EstadoRua => ({ fase: "fora", veiculo: "patins", t0: 0, ate: 0, conta: 0, tempo: 0, cp: 0, k: 0, prog: 0, lugar: 1, fora: 0, rivais: [], resultado: null, comecar: false, desistir: false })
+// um só no jogo (a cena e a tela leem daqui; a cena monta e desmonta com o <Perto>)
+export const RUA: { e: EstadoRua } = { e: novoEstadoRua() }
+
+// a volta e o portão em que está (pra tela)
+export const voltaDe = (cp: number) => Math.min(VOLTAS_RUA, Math.floor(cp / PORTOES_RUA.length) + 1)
+export const portaoDaVolta = (cp: number) => (cp % PORTOES_RUA.length) + 1
+
+// ── o placar no save: o melhor tempo (por veículo) e as vitórias ──
+export type PlacarRua = { melhor?: Partial<Record<VeiculoRua, number>>; vitorias?: number; corridas?: number }
+/** registra uma corrida no placar: o melhor tempo e, na primeira vitória, o prêmio (devolve quanto pagou) */
+export function placarComCorrida(p: PlacarRua | undefined, r: ResultadoRua): { placar: PlacarRua; premio: number } {
+  const antes = p ?? {}
+  const melhor = { ...(antes.melhor ?? {}) }
+  if (r.tempo != null && (melhor[r.veiculo] == null || r.tempo < melhor[r.veiculo]!)) melhor[r.veiculo] = Math.round(r.tempo * 100) / 100
+  const vitorias = (antes.vitorias ?? 0) + (r.venceu ? 1 : 0)
+  const premio = r.venceu && !(antes.vitorias ?? 0) ? CORRIDA_RUA_CFG.premioNeon : 0
+  return { placar: { melhor, vitorias, corridas: (antes.corridas ?? 0) + 1 }, premio }
+}
