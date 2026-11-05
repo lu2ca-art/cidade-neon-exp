@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "As ruas do tamanho da faixa (a cidade maior)",
+    data: "2026-11-05",
+    olhar: "Cada rua cresceu pra que uma volta, sem turbo, dure a faixa inteira (ex.: Rollercoaster de 1,6 km pra 8,2 km de ida; Nectar de 1,4 pra 3,1 km). A cidade foi de ~1,9 km pra ~3,4 km de lado. O desenho é o seu, esticado: olhe pelo drone (mapa) antes de aprovar.",
+    perguntas: [
+      "O desenho esticado das ruas ficou bom no drone? Qual rua estranhou?",
+      "Rodou liso no iPhone, mesmo com a cidade maior?",
+      "As missões ficaram longe demais umas das outras?",
+    ],
+  },
+  {
     parte: "dunas",
     nome: "A trilha de pedras (o tutorial sem telas)",
     data: "2026-11-05",
