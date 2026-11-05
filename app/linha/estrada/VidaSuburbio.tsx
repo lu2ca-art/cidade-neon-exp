@@ -234,7 +234,9 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
 
     const roupas = criarRoupas(luzes, Q.roupas)
     const fumaca = criarFumaca(luzes, Q.fumaca, Q.tambores)
-    const descartar = [geo, mat, geoB, matB, roupas.geo, roupas.mat, fumaca.geo, fumaca.mat]
+    // (revisão 3) as 4 instanciadas também: o dispose delas solta o buffer das matrizes
+    // (e das cores) na GPU, que senão ficava a cada vez que o <Perto> das ruínas remonta
+    const descartar: { dispose: () => void }[] = [geo, mat, geoB, matB, roupas.geo, roupas.mat, fumaca.geo, fumaca.mat, gente, bichos, roupas.malha, fumaca.malha]
     return { R, rnd, andantes, parados, gente, aVida, soltos, bichos, aVidaB, roupas: roupas.malha, fumaca: fumaca.malha, descartar, batida: { media: 0, ultimo: 0, periodo: 0.5 }, jog: { x: 0, z: 0 }, evitar: (e: number) => R.ar[e].corrida }
   }, [M, luzes])
   useEffect(() => () => { for (const x of vida.descartar) x.dispose() }, [vida])
