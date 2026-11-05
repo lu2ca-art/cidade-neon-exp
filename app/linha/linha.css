@@ -3053,3 +3053,6 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 /* (notas 04/11) a rádio livre: liga também nos túneis e nas salas */
 .l-radio-livre { position: fixed; z-index: 60; top: calc(92px + env(safe-area-inset-top)); left: 16px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255, 200, 87, 0.45); background: rgba(10, 6, 16, 0.6); color: #f2eefa; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.06em; }
 .l-radio-livre.is-on { border-color: #ffc857; color: #ffc857; }
+/* (moto, 05/11) o botão da moto embaixo do "sair da kombi" quando os dois aparecem */
+.l-sair-kombi.is-segundo { transform: translateY(34px); }
+.l-regar-btn.is-moto-btn { top: calc(250px + env(safe-area-inset-top)); background: #ff3fb0 !important; color: #14121c !important; box-shadow: 0 0 20px rgba(255, 63, 176, 0.6); }

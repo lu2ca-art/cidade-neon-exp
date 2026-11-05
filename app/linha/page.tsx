@@ -86,6 +86,7 @@ import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { motoLiberada } from "./estrada/zonas"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
 import { notch } from "./estrada/Holo"
@@ -2629,7 +2630,7 @@ export default function LinhaPage() {
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
-        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null }} />}
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist) }} />}
         {/* (notas 04/11) a rádio livre: fora da estrada (túneis, salas) ela também liga */}
         {D && emSala && !trincheiras?.descendo && <button type="button" className={`l-radio-livre${radioManda ? " is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarRadioLivre}>{radioManda ? "rádio · desligar" : "rádio · ligar"}</button>}
         {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}
