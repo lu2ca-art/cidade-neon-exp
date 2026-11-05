@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "dunas",
+    nome: "A trilha de pedras (o tutorial sem telas)",
+    data: "2026-11-05",
+    olhar: "Uma coisa por vez: um balão pequeno com setinha preso na coisa real (mapa, anel, notch, turbo, propulsor, rádio, ♥), que pulsa de leve; some quando você faz. Sem tela escura. O \"?\" mostra a pedra de agora e as setas ‹ › voltam nas anteriores. Nas missões da cidade, a tela \"a porta abriu\" saiu: o que liberou brilha no mapa e aparece no notch. Os textos são rascunho.",
+    perguntas: [
+      "Dá pra seguir sem errar o caminho? Alguma pedra sobrou ou faltou?",
+      "Os ícones animados ficaram bons no iPhone?",
+      "Antes a recompensa abria a loja de discos sozinha; agora só avisa no notch. Tudo bem?",
+    ],
+    mais: [{ parte: "livre", nome: "na cidade" }],
+  },
+  {
     parte: "missao.tuneis.trincheiras",
     nome: "Os túneis bem maiores",
     data: "2026-11-05",
