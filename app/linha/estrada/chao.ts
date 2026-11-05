@@ -11,6 +11,7 @@
 
 import * as THREE from "three"
 import { CASA, CHAO_LUGARES, QUEDA, SAIDA_CASA, SUBURBIO } from "../disco/historia"
+import { cresceuNoRumo } from "./raioCidade"
 
 export const CHAO = -12
 const TAM = 9000 // m de lado
@@ -37,7 +38,8 @@ function dunas(x: number, z: number) {
   const duna = Math.pow(crista(x, z), 1.8) * (0.5 + 0.8 * fbm(x / 260 + 7, z / 260 + 3))
   const onda = fbm(x / 900 + 11, z / 900 + 5)
   // na cidade, um terço da altura (o chão nunca chega perto das pistas)
-  return CHAO + (duna * 11 + onda * 9 - 4) * (0.35 + 0.65 * suave(900, 1500, r))
+  // (ruas-faixa) a borda da cidade é a de cada rumo: onde as ruas cresceram, as dunas inteiras começam depois delas
+  return CHAO + (duna * 11 + onda * 9 - 4) * (0.35 + 0.65 * suave(900, 1500, r - cresceuNoRumo(x, z)))
 }
 
 // ── OS MORROS (LU2CA 22/10, 3.1/3.2: "um deserto de verdade: dunas e morros
@@ -63,7 +65,8 @@ const MORROS: Morro[] = (() => {
   let k = 0
   while (ms.length < 17 && k < 400) {
     k++
-    const a = hash(k, 91) * Math.PI * 2, rr = 2000 + hash(k, 17) * 1600
+    // (ruas-faixa) o anel começa depois da borda da cidade naquele rumo (nenhum morro embaixo das ruas novas)
+    const a = hash(k, 91) * Math.PI * 2, rr = Math.min(3700, 2000 + cresceuNoRumo(Math.cos(a), Math.sin(a)) + hash(k, 17) * 1600)
     const x = Math.cos(a) * rr, z = Math.sin(a) * rr
     const H = 24 + hash(k, 5) * 34, L = 220 + hash(k, 7) * 220, W = 200 + hash(k, 9) * 140
     if (Math.hypot(x - CASA.x, z - CASA.z) < L + 260) continue

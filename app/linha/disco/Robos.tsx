@@ -16,6 +16,7 @@ import { useMemo, useRef } from "react"
 import * as THREE from "three"
 
 import { ATROPELO, lancar, voar, type Voo } from "../estrada/atropelo"
+import { alemDaCidade, cresceuNoRumo } from "../estrada/raioCidade"
 
 /* eslint-disable react-hooks/immutability --
    cena R3F: o estado dos robôs, das peças e dos carros muda a cada quadro
@@ -40,8 +41,9 @@ export function Robos({ jogo, chao, onAtropelou }: { jogo: React.RefObject<JogoM
   const nascer = (k: number, perto?: { x: number; z: number }) => {
     const b = st.robos[k]
     if (perto) { const a = r() * Math.PI * 2, d = 160 + r() * 260; b.x = perto.x + Math.cos(a) * d; b.z = perto.z + Math.sin(a) * d }
-    else { const a = -2.4 + (r() - 0.5) * 1.6, d = 1350 + r() * 1500; b.x = Math.cos(a) * d; b.z = Math.sin(a) * d }
-    if (Math.hypot(b.x, b.z) < 1300) { const m = 1300 / Math.hypot(b.x, b.z); b.x *= m; b.z *= m }
+    else { const a = -2.4 + (r() - 0.5) * 1.6, d = 1350 + cresceuNoRumo(Math.cos(a), Math.sin(a)) + r() * 1500; b.x = Math.cos(a) * d; b.z = Math.sin(a) * d }
+    // (ruas-faixa) a borda da cidade é a de cada rumo (raioCidade.ts)
+    if (alemDaCidade(b.x, b.z) < 1300) { const m = (1300 + cresceuNoRumo(b.x, b.z)) / Math.hypot(b.x, b.z); b.x *= m; b.z *= m }
     b.rumo = r() * Math.PI * 2; b.voo.fora = 0
   }
   useMemo(() => { for (let k = 0; k < N; k++) nascer(k) }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -79,7 +81,7 @@ export function Robos({ jogo, chao, onAtropelou }: { jogo: React.RefObject<JogoM
       } else {
         b.rumo += Math.sin(t * 0.3 + b.fase) * dt * 0.4
         b.x += Math.sin(b.rumo) * 1.1 * dt; b.z += Math.cos(b.rumo) * 1.1 * dt
-        if (Math.hypot(b.x, b.z) < 1300) b.rumo += Math.PI
+        if (alemDaCidade(b.x, b.z) < 1300) b.rumo += Math.PI
       }
       const y = o.fora > 0 ? o.y : chao(b.x, b.z)
       const rb = ROBOS[k]; rb.x = b.x; rb.z = b.z; rb.vivo = o.fora <= 0

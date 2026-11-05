@@ -20,8 +20,8 @@
 //     direita tem a cor da próxima saída, a da esquerda a da seguinte, em
 //     degradê (Corrida.tsx, corDoAnel)
 //   - antes (19/10–29/10) era uma espiral de vários andares: saiu
-// Uma volta na pista (saída → ida → balão → volta → entrada) dura meia música
-// na velocidade da pista (2 × BPM km/h): o desenho é aparado ou ampliado.
+// (ruas-faixa, 05/11) uma volta na pista (saída → ida → torre da ponta → volta →
+// entrada) dura a faixa inteira na velocidade da pista (2 × BPM km/h): ESCALA_GRUPO/ALONGA.
 // As bordas são parede (pista de Gran Turismo: quem quiser sair, voa).
 
 import * as THREE from "three"
@@ -480,11 +480,53 @@ function curvaSuave(Q: THREE.Vector2, tq: THREE.Vector2, P: THREE.Vector2, tp: T
 }
 const FORCAS = [0.3, 0.45, 0.6, 0.8]
 
+// ── (ruas-faixa, 05/11, bíblia 1/3/7: "uma volta na rua, na velocidade
+// normal, dura pelo menos a faixa inteira") o desenho cresce. Duas mãos:
+//   - cada grupo de 3 linhas (a torre da ponta delas) se afasta do centro numa
+//     escala só (o desenho do grupo inteiro cresce igual, as 3 juntas)
+//   - dentro do grupo, cada linha se alonga: o desenho dela estica de lado,
+//     atravessado na reta entre as duas pontas (as curvas abrem mais), com as
+//     pontas presas (os portões e a chegada nas torres não mudam de jeito)
+// Os números saem de `bun scripts/medir-ruas.ts --ajustar --fixa=0` (a volta em
+// 2 × BPM km/h ≈ a faixa que toca, docs/ruas-faixa.md). Mudou a faixa ou o
+// desenho: roda de novo e cola aqui
+export const ESCALA_GRUPO = [1, 1.584, 1.129] // na ordem de GRUPOS (a torre 1, 2, 3). A torre 1 fica onde estava: o subúrbio, a casa da D-Bee e o deserto moram embaixo e em volta dela
+export const ALONGA: Record<string, number> = { Nectar: 2.446, "Sexta-Feira": 1.824, "Ojalá": 2.577, Rollercoaster: 3.787, Swav: 1.473, "Copo Americano": 1.425, CHUVA: 1.48 }
+export type AjusteDisco = { escala?: number[]; alonga?: Record<string, number> }
+// do fim de cada ponta até onde o alongamento entra por inteiro (a parte dentro
+// da torre e o portão ficam como no desenho)
+const PRESO_CENTRAL = RA_CABECA + 40, PRESO_PONTA = RA_PONTA + 40, RAMPA_ALONGA = 260
+function crescer(c: THREE.Vector2[], s: number, a: number, presoIni: number, presoFim: number) {
+  const p = c.map((q) => q.clone().multiplyScalar(s))
+  if (a === 1 || p.length < 3) return p
+  const acc = [0]
+  for (let i = 1; i < p.length; i++) acc.push(acc[i - 1] + p[i].distanceTo(p[i - 1]))
+  const L = acc[acc.length - 1], A = p[0].clone(), eixo = p[p.length - 1].clone().sub(A).normalize()
+  const liso = (x: number) => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t) }
+  return p.map((q, i) => {
+    const w = liso((acc[i] - presoIni) / RAMPA_ALONGA) * liso((L - acc[i] - presoFim) / RAMPA_ALONGA)
+    if (!w) return q
+    // só o que sai da reta, de lado (um esticão do desenho atravessado na reta)
+    const d = q.clone().sub(A), lado = d.clone().addScaledVector(eixo, -d.dot(eixo))
+    return q.clone().addScaledVector(lado, w * (a - 1))
+  })
+}
+
 let CACHE: MundoDisco | null = null
-export function montarMundoDisco(): MundoDisco {
-  if (CACHE) return CACHE
+export function montarMundoDisco(ajuste?: AjusteDisco): MundoDisco {
+  if (CACHE && !ajuste) return CACHE
   const B = DESENHO.bracos
-  const brutos = B.map((b) => tracado(b.pts))
+  const escalaG = ajuste?.escala ?? ESCALA_GRUPO, alonga = ajuste?.alonga ?? ALONGA
+  const grupoDe = (nome: string) => GRUPOS.findIndex((g) => g.includes(nome))
+  const brutos0 = B.map((b) => tracado(b.pts))
+  const cabeca0 = P(500, 500)
+  // a ponta de cada linha que fica na cabeça (presa na central) e a outra
+  const brutos = brutos0.map((c, k) => {
+    const g = grupoDe(B[k].nome), sg = g >= 0 ? escalaG[g] ?? 1 : 1, a = alonga[B[k].nome] ?? 1
+    const iniNaCabeca = c[0].distanceTo(cabeca0) < c[c.length - 1].distanceTo(cabeca0)
+    const out = crescer(c.map((q) => q.clone().sub(cabeca0)), sg, a, iniNaCabeca ? PRESO_CENTRAL : PRESO_PONTA, iniNaCabeca ? PRESO_PONTA : PRESO_CENTRAL)
+    return out.map((q) => q.add(cabeca0))
+  })
   const idDe = (nome: string) => B.findIndex((b) => b.nome === nome)
   // ── (LU2CA 19/10: "atenha exatamente ao desenho, isso é minha arte também")
   // a torre principal fica na CABEÇA do desenho (o círculo do editor); as das
@@ -821,8 +863,9 @@ export function montarMundoDisco(): MundoDisco {
   const projetar = (): Projecao | null => null
   const conflitos = sobra ? [`${sobra} trechos de pista com menos de ${FOLGA - 1} m de folga`] : []
   const torresOut: CentralDisco[] = torres.map((tw) => ({ x: tw.d.C.x, z: tw.d.C.z, raio: tw.d.R, nucleo: tw.d.nucleo, topo: tw.topo, andares: tw.alcas.map((a, i) => ({ y: a.hJ, cor: B[a.k].cor, nome: B[a.k].nome, ang: -tw.phiQ[i] })) }))
-  CACHE = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: chaoEm, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, aneis: anelDe, pousar, teto, chaoDeserto: CHAO + 0.4, chaoEm }
-  return CACHE
+  const pronto: MundoDisco = { vias, circuito, livre, vao, conflitos, onde, ligacoes: { rede, saidas }, chao: chaoEm, projetar, disco: true, pistas, info, central: torresOut[0], torres: torresOut, ladoSaida, aneis: anelDe, pousar, teto, chaoDeserto: CHAO + 0.4, chaoEm }
+  if (!ajuste) CACHE = pronto
+  return pronto
 }
 
 // (T61, os links de teste) o começo da alça de uma linha que chega numa torre
