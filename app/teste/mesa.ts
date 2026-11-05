@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.ojala",
+    nome: "As 4 últimas ruas-manifesto: Ojalá, Swav, Sexta-Feira e Rollercoaster",
+    data: "2026-11-05",
+    olhar: "Ojalá: fitas e confete no vento, e desejos (coração, estrela, pipa) que somem antes de você chegar; tocar num segura por 2 s, mas ele vai. Swav: a pista vira espelho e abre vãos de abismo; acelerar no vão é o salto de fé. Sexta-Feira: multidão dançando no ritmo, cheia de longe e oca de perto; o drift faz ela pular junto. Rollercoaster: um trilho de montanha-russa sobe e desce com a energia da música; segure o propulsor no topo. Agora as 9 ruas têm a sua.",
+    perguntas: [
+      "Alguma rua pesou no iPhone (a Sexta tem ~2 mil silhuetas)?",
+      "Swav: dá pra ler a pista com o espelho e os vãos?",
+    ],
+    mais: [{ parte: "missao.swav", nome: "Swav" }, { parte: "missao.sexta", nome: "Sexta-Feira" }, { parte: "missao.rollercoaster", nome: "Rollercoaster" }],
+  },
+  {
     parte: "livre",
     nome: "Revisão da noite: 14 correções onde as partes se cruzavam",
     data: "2026-11-05",
