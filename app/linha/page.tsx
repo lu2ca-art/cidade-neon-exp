@@ -758,7 +758,9 @@ export default function LinhaPage() {
   const cacado = alvoAgora?.t === "entrega" && save.objetos.length >= 2
   // (T63) nas trincheiras a estrada sai da cena (a memória e a GPU ficam pra elas); na volta, retoma
   // (T64, lote D) a fuga do metrô tem o 3D dela: o mundo sai de cena (nada de dois canvas juntos)
-  const noMetro = HIST && emMetro(hist)
+  // (05/11) a fuga só aparece com ele dentro do jogo (depois do "continuar"); na tela
+  // de entrada fica esperando. Só o atalho de teste ?parte=metro abre direto nela
+  const noMetro = HIST && emMetro(hist) && (tela.t !== "entrada" || parteAberta === "metro")
   const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || noElevador || noMetro || (!!trincheiras && !trincheiras.descendo)
   // entrou numa sala: a próxima estrada que montar retoma de onde parou;
   // foi pra outra tela (celular, início): a estrada começa do jeito normal
@@ -1178,7 +1180,9 @@ export default function LinhaPage() {
   // (T64, lote D) O METRÔ: a Kombi foi jogada (a perseguição no "escolher"): tomam o
   // jetpack (o evento jetpackTomado vai pro save; a Corrida lê temJetpack) e a fuga
   // começa. Na fuga ele perde o violão (perdeuViolao: save.violao = false)
-  const metroPode = HIST && podeMetro(h13)
+  // (05/11) só começa depois que ele toca em "continuar" (entrou no jogo), como as
+  // outras cenas: antes começava ao abrir, por cima da tela de entrada
+  const metroPode = HIST && podeMetro(h13) && tela.t === "corrida"
   useEffect(() => {
     if (!metroPode) return
     setSave((s) => comHistoria(s, (h) => {
