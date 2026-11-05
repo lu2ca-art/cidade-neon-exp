@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.tuneis.trincheiras",
+    nome: "Os túneis bem maiores",
+    data: "2026-11-05",
+    olhar: "De ~1,7 km pra ~5,7 km: um pentágono de 5 rios, salões altos (o do metrô com o trem parado, o do grafite com as trincheiras), bifurcações e uma rampa de descida de 300 m da porta. A corrida agora tem ~4 km e 5 portões. Túneis com 40 m de largura e 22 m de altura.",
+    perguntas: [
+      "Ficou com cara de mundo subterrâneo grande? Rodou liso no iPhone?",
+      "A volta de moto (2 voltas, ~4 min) é longa demais? Vira 1 volta?",
+      "Os nomes (Salão do Grafite, Galeria do Atalho, Rio Seco) servem ou você quer outros?",
+    ],
+  },
+  {
     parte: "bar",
     nome: "A trilha que não para (rádio antiga e as introduções)",
     data: "2026-11-05",
