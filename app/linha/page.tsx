@@ -85,7 +85,6 @@ import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
-import { versoesDasPistas } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { motoLiberada } from "./estrada/zonas"
 import { Peca } from "./disco/pecas/Peca"
@@ -1074,12 +1073,6 @@ export default function LinhaPage() {
     setLargadas((l) => l.filter((x) => x !== id))
     track("mission_step", { mission_id: `disco-${id}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
   }
-  // (LU2CA 21/10 (3)) na carreira, a música é o TEMA da missão pegada (sem
-  // missão, só os discos): a Corrida toca o instrumental até ele achar a linha
-  const soTema = HIST && hist.fase === "carreira"
-  const temaMissao: PistaId | null = soTema ? m13?.faixa ?? null : null
-  // (T31) a música de cada pista vai de prévia a instrumental a versão subúrbio, pelo trajeto da missão
-  const versoesPista = useMemo(() => (HIST ? versoesDasPistas(hist) : null), [HIST, hist])
   const fecharOuvir = useCallback(() => setOuvirFim(null), [])
   const largarMissao = () => {
     const m = missaoCarreira
@@ -2178,7 +2171,6 @@ export default function LinhaPage() {
   const cOnVolta = useFixo((t: number) => setSave((s) => ({ ...s, melhorVolta: s.melhorVolta ? Math.min(s.melhorVolta, t) : t })))
   const cHistoria = useMesmo(D ? hist : null)
   const cTrancas = useMesmo(trancasCorrida)
-  const cVersoesPista = useMesmo(versoesPista)
   const cAlvo = useMesmo(HIST ? alvoDisco : save.nucleo.caido ? null : alvoTut ?? alvoDe(save, nivel))
   const cChecklistHolo = useMesmo(checklistHolo)
   const cMapaMissoes = useMesmo(mapaMissoes)
@@ -2244,10 +2236,7 @@ export default function LinhaPage() {
             quebrou={kombiQuebrou}
             sorteioMs={HIST && CONFIG_QUEBRA.ligada && !cena && !oficinaTela ? CONFIG_QUEBRA.cadaMs : 0}
             alvoChao={alvoChao}
-            soTema={soTema}
             pistaFoco={focoFeira}
-            temaMissao={temaMissao}
-            versoesPista={cVersoesPista}
             onHistoria={cOnHistoria}
             // (B10, T03) a oficina: o mecânico é pago em água, só desempenho (o preço vem da economia)
             onComprar={cOnComprar}

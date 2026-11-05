@@ -64,6 +64,21 @@ Por material (depois, média): asfalto 21 mil · faixas 20 mil · neon 82 mil ·
 - `--q=200,300,450` compara o tamanho da quadra (200: 229 mil; 450: 262 mil). 300
   é o meio-termo entre vértice e troca de índice.
 
+## Limpeza (código morto das mudanças recentes)
+
+Tirado só o que o `tsc` e o grep confirmaram sem uso:
+
+- `disco/TutorialHolo.tsx`: o componente `TutorialHolo` (e o `Destaque`, os textos
+  do "?" e os imports dele). Fica o `RecompensaHolo` (a page importa).
+- `disco/tutorialConf.ts`: `FIM_TUTORIAL`, `contagem`, `textoDo` (só o componente
+  usava). O resto fica: a trilha de pedras, a história, a page e a Corrida usam.
+- `disco/Recompensa.tsx`: o arquivo (ninguém importava).
+- `estrada/Suburbio.tsx`: `vidroBarato` (o glb novo não tem material com transmissão).
+- Corrida/page: as props `soTema`, `temaMissao`, `versoesPista` (não decidiam
+  mais nada, docs/musica-continua.md).
+- Ficou: `nexoTutorial`/`useNexoTutorial` no Holo.tsx (agora ninguém escreve
+  nele; o notch ainda lê). Tirar mexe no notch: fica pra quem cuidar dele.
+
 ## Pra Mesa conferir
 
 - Rodando reto numa pista longa: asfalto, faixas, guard rails, postes e pilares
