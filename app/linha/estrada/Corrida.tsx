@@ -410,7 +410,7 @@ type Jogo = {
   piloto?: boolean
   // (piloto, 05/11) o piloto do botão: o último destino visto (segue nele com o
   // GPS escondido, ex.: no drone), o nome que está no notch e a câmera de passeio
-  pilD?: { x: number; z: number; nome: string } | null; pilNome?: string | null; pilCam?: boolean
+  pilD?: { x: number; z: number; nome: string } | null; pilNome?: string | null; pilCam?: boolean; pilPista?: number
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -5189,6 +5189,23 @@ function CenaBase({
       const alvoR = pelaRota === undefined ? marcaRef.current ?? vagaRef.current : null
       const rr = alvoR && !lado ? calcularRota(M, { via: j.via, u: V.L }, { via: alvoR.via, u: alvoR.u }) : null
       if (pelaRota === undefined) pelaRota = rr?.trechos[1]?.via
+      // (piloto, 05/11) sem destino, o piloto passeia pela RUA de agora (a mesma
+      // pista, a mesma faixa tocando): a ida, a torre da ponta, a volta e de novo,
+      // pegando na rotatória a saída da mesma pista. A música vai inteira
+      if ("disco" in M && inp.infinito && !lado) {
+        const MD = M as MundoDisco, pAqui = MD.info[j.via]?.pista ?? -1
+        if (pAqui >= 0) j.pilPista = pAqui
+        const pk = j.pilPista ?? -1
+        if (pelaRota === undefined && pk >= 0) {
+          let nota = -Infinity
+          for (const vi of cands) {
+            const f = MD.info[vi]
+            if (!f || f.pista !== pk || f.parte === "entrada" || viaApagada?.[vi]) continue
+            const C = M.vias[vi], q8 = Math.min(C.n - 1, 8), reto = tx * C.tx[q8] + tz * C.tz[q8]
+            if (reto > nota) { nota = reto; pelaRota = vi }
+          }
+        }
+      }
       if (pelaRota !== undefined && cands.includes(pelaRota)) { melhor = Infinity; prox = pelaRota }
       // (disco) na espiral: a rota marcada decide; senão, sai quem está na
       // faixa pintada da linha (a da direita) ou vira pro lado da saída; virando
