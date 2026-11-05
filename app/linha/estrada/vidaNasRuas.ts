@@ -120,6 +120,8 @@ export function ruasDoSuburbio(M: MundoMin, colisores: number[]): Ruas {
   for (let i = -2; i <= 12; i++) for (let j = -7; j <= 7; j++) {
     const x = EIXOS.x0 + EIXOS.passo * i, z = EIXOS.z0 + EIXOS.passo * j
     if ((x - SUBURBIO.x) ** 2 + (z - SUBURBIO.z) ** 2 > R * R) continue
+    // o cruzamento é onde se atravessa: sem pilar de pista nem lugar no meio
+    if (!M.livre(x, z, 2.5) || noLugar(x, z)) continue
     idx.set(`${i}:${j}`, nos.length)
     nos.push({ x, z, ar: [] })
   }
