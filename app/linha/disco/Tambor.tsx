@@ -19,7 +19,7 @@
 // (sem setState por quadro). setState só na troca de compasso.
 
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react"
-import { audioCtx, saidaSom, silenciar } from "../som"
+import { audioCtx, saidaSom, fazerMusica } from "../som"
 import { vib } from "../som-carro"
 import { R_GOLPE, baterAmostra, carregarTambor, type Golpe } from "./tamborSom"
 import { TAMBOR_VIVO, forcaDoToque, lembrarSeu, seguirMovimento } from "./tamborVivo"
@@ -170,13 +170,13 @@ export function Tambor({ onFim }: { onFim: () => void }) {
   // a música para enquanto os dois tocam; as amostras já vêm (normalmente já
   // vieram quando a casa abriu); a força do mouse segue o movimento
   useEffect(() => {
-    silenciar(true)
+    fazerMusica(true)
     void carregarTambor()
     window.addEventListener("pointermove", seguirMovimento, { passive: true })
     // qualquer toque destrava o áudio (se ainda não estava)
     const destrava = () => { audioCtx() }
     window.addEventListener("pointerdown", destrava, { passive: true })
-    return () => { silenciar(false); window.removeEventListener("pointermove", seguirMovimento); window.removeEventListener("pointerdown", destrava) }
+    return () => { fazerMusica(false); window.removeEventListener("pointermove", seguirMovimento); window.removeEventListener("pointerdown", destrava) }
   }, [])
 
   useEffect(() => {

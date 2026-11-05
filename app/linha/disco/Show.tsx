@@ -14,7 +14,7 @@
 // Os 4 botões: toque nas colunas, ou D F J K.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { silenciar } from "../som"
+import { fazerMusica } from "../som"
 import { PISTAS, faixaDaPista, type PistaId } from "../estrada/pistas"
 import { COR_LANE, LANES, andarParticulas, desenharBraco, desenharHud, desenharPalco, desenharTomada, geometriaBraco, soltarFaiscas, type Nota, type Particula } from "../../neon-tiles/cena"
 import { JANELA, PERFEITO, VISIVEL, multiplicador, notasDoChart, novoPlacar, type ChartGd, type Placar } from "../../neon-tiles/motor"
@@ -108,7 +108,7 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   const atraso = useMemo(() => atrasoEstimado(), [])
 
   // a música do lugar fica quieta durante o show
-  useEffect(() => { const j = jogo.current; silenciar(true); return () => { silenciar(false); j.som?.parar() } }, [])
+  useEffect(() => { const j = jogo.current; fazerMusica(true); return () => { fazerMusica(false); j.som?.parar() } }, [])
 
   // carrega o chart (o novo; sem ele, o antigo) e a faixa do jogo
   useEffect(() => {

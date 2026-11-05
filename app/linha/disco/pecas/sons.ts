@@ -3,7 +3,7 @@
 // num <audio> no volume da música, e o jogo embaixo fica em silêncio.
 
 import { useEffect, useMemo, useRef } from "react"
-import { audioCtx, saidaSom, silenciar } from "../../som"
+import { audioCtx, fonteSom, pistaSom, player, saidaSom, silenciar } from "../../som"
 import { ligarElemento } from "@/lib/mesa"
 
 export function bip(f: number, dur = 0.08, tipo: OscillatorType = "square", vol = 0.12, quando = 0, fFim?: number) {
@@ -58,16 +58,33 @@ function elPeca() {
   return (elP = a)
 }
 
-export function useMusica(src: string | null, ligado = true) {
+// (trilha sonora, 05/11; bíblia 9: a trilha não para) peça de ritmo com `sync`
+// (a dança, o clipe): se a faixa que toca na rua É a da peça, ela não corta nada:
+// o relógio da peça vira o da faixa da rua (que já passou pro instrumental no
+// mesmo ponto), alinhado na batida. Só fora da pista dela a peça toca a própria
+// faixa (o ritmo precisa da música certa). Sem `sync` (o disco antigo do Mubarak:
+// escolher o disco É a peça), a peça toca o dela como antes
+export type SyncPeca = { faixa: string; bpm: number }
+export function useMusica(src: string | null, ligado = true, sync?: SyncPeca) {
   const audio = useRef<HTMLAudioElement | null>(null)
   const t0 = useRef(0)
+  // decidido uma vez, ao abrir: a faixa da rua é a da peça?
+  const naRua = useRef<boolean | null>(null)
+  if (naRua.current === null) naRua.current = !!sync && pistaSom.tocando && pistaSom.faixa?.id === sync.faixa && !(fonteSom.get() === "radio" && player.tocando)
+  const rua = useRef({ t0: 0, ult: 0 })
   useEffect(() => {
+    if (naRua.current) return
     silenciar(true)
     return () => silenciar(false)
   }, [])
   useEffect(() => {
     if (!ligado) return
     t0.current = performance.now()
+    if (naRua.current) {
+      const e = pistaSom.el, beat = 60 / (sync?.bpm || 120)
+      rua.current = { t0: e ? Math.floor(e.currentTime / beat) * beat : 0, ult: 0 }
+      return
+    }
     if (!src) return
     // (T40b) um <audio> só pra todas as peças, ligado no canal da música da
     // mesa (antes: um novo por peça, fora do grafo, surdo ao mudo e ao volume)
@@ -77,13 +94,26 @@ export function useMusica(src: string | null, ligado = true) {
     audio.current = a
     a.play().catch(() => { audio.current = null })
     return () => { a.pause(); audio.current = null }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, ligado])
   return useMemo(() => ({
     tempo: () => {
+      if (naRua.current) {
+        const e = pistaSom.el, r = rua.current
+        if (e && !e.paused) {
+          let t = e.currentTime - r.t0
+          // a faixa voltou pro começo (a completa acabou, entrou o instrumental do 0): segue contando na batida
+          if (t < r.ult - 0.5) { const beat = 60 / (sync?.bpm || 120); r.t0 = e.currentTime - Math.ceil(r.ult / beat) * beat; t = e.currentTime - r.t0 }
+          r.ult = t
+          return t
+        }
+        return r.ult // parada: segura o tempo
+      }
       const a = audio.current
       if (a && !a.paused && a.currentTime > 0) return a.currentTime
       return (performance.now() - t0.current) / 1000
     },
     parar: () => { const a = audio.current; if (a) { a.pause() } },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [])
 }

@@ -19,7 +19,7 @@
 // números moram em AFINADOR. A letra que ele escreveu (a arte) passa embaixo.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { silenciar } from "../som"
+import { fazerMusica } from "../som"
 import { canal } from "@/lib/mesa"
 import { desenharHud } from "../../neon-tiles/cena"
 import { novoPlacar, type Placar } from "../../neon-tiles/motor"
@@ -60,7 +60,7 @@ export function ShowAfinador({ faixa, lugar, cor, popularidade, onFim, letra }: 
   })
   const atraso = useMemo(() => 0.03, [])
 
-  useEffect(() => { const j = jogo.current; silenciar(true); return () => { silenciar(false); j.parar?.(); j.galera?.parar() } }, [])
+  useEffect(() => { const j = jogo.current; fazerMusica(true); return () => { fazerMusica(false); j.parar?.(); j.galera?.parar() } }, [])
 
   useEffect(() => {
     let vivo = true

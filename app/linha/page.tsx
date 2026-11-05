@@ -39,8 +39,8 @@ import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
-import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
-import { somDaMissao, somDoLugar } from "./disco/sons"
+import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
+import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
@@ -516,12 +516,22 @@ export default function LinhaPage() {
   // tocando, o rádio e o disco seguem mais baixos e sem agudo
   // (música contínua, 03/11) com a faixa da pista tocando, a cena não abafa: a
   // faixa vira o instrumental dela, limpo (ver pistaSom.missao lá embaixo)
-  const emCena = !!cena && !somDoLugar(cena.lugar)
+  // (trilha sonora, 05/11; bíblia 9) a trilha não para e faz parte do cenário: numa
+  // cena (sala, casa, missão) a música segue no lugar, só um pouco mais baixa (sem abafar)
+  const emCena = !!cena
   useEffect(() => {
-    if (!emCena || pistaSom.tocando) return
-    abafar(true)
-    return () => abafar(false)
+    if (!emCena) return
+    abaixarUmPouco(true)
+    return () => abaixarUmPouco(false)
   }, [emCena])
+  // (trilha sonora, 05/11) a exceção: tocar os instrumentos na casa da D-Bee é FAZER
+  // música. A do jogo para (fade) e volta de onde estava quando ele sai
+  const tocandoInstrumentos = cena?.especial === "dbee-instrumentos"
+  useEffect(() => {
+    if (!tocandoInstrumentos) return
+    fazerMusica(true)
+    return () => fazerMusica(false)
+  }, [tocandoInstrumentos])
   const telefone = !!ligacao
   useEffect(() => {
     if (!telefone) return
@@ -1357,8 +1367,10 @@ export default function LinhaPage() {
   // (notas 04/11) a rádio ligada manda: nos túneis, nas salas e nas cenas ela
   // segue tocando e o som da missão não entra por cima (a faixa da rua já fica muda por baixo)
   const radioManda = D && fonteSom.get() === "radio" && !!radio?.tocando
+  // (trilha sonora, 05/11; bíblia 9) desligado: a missão não troca a música que está
+  // tocando (TRILHA_PROPRIA_DAS_MISSOES em disco/sons.ts volta a regra antiga)
   useEffect(() => {
-    if (!somAgora || pistaSom.tocando || radioManda) return
+    if (!TRILHA_PROPRIA_DAS_MISSOES || !somAgora || pistaSom.tocando || radioManda) return
     silenciarKombi(true)
     trilha.entrar(somAgora)
     return () => { trilha.sair(); silenciarKombi(false) }
@@ -1388,7 +1400,7 @@ export default function LinhaPage() {
   // a faixa da pista vive na página (não na estrada, que desmonta numa sala): sai da página, para
   useEffect(() => () => pistaSom.parar(), [])
   // (só baixa o som da missão se ele vai tocar: sem faixa de pista, no deserto)
-  useEffect(() => { if (missaoCarreira && !pistaSom.tocando) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
+  useEffect(() => { if (TRILHA_PROPRIA_DAS_MISSOES && missaoCarreira && !pistaSom.tocando) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
   // (T22) a casa da missão pegada começa a baixar enquanto a Kombi ainda está longe
   useEffect(() => {
     if (!missaoCarreira) return
@@ -1714,7 +1726,8 @@ export default function LinhaPage() {
   // (música contínua, 03/11) missão, peça ou cena começou no meio da faixa: o
   // instrumental da MESMA faixa no MESMO ponto (crossfade); terminou, volta a
   // completa se ela ainda não acabou. Nada disso pausa a faixa
-  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora
+  // (trilha sonora, 05/11) as peças, a letra e o basquete também (antes cortavam a música)
+  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!letraAgora || !!basquete
   useEffect(() => {
     if (!momentoMissao) return
     pistaSom.missao(true)

@@ -11,7 +11,7 @@ import { CROSSFADE, VOL_SEM_INST, albumComprado, comecaPelaCompleta, definirFaix
 // (T40b) A MESA DE MIXAGEM (lib/mesa.ts): o AudioContext único do jogo, os 4
 // canais (música, ambiente, efeitos, vozes), o volume geral, o mudo, a
 // prioridade (a voz abaixa a música) e o limitador no fim. Aqui só se usa
-import { CANAIS, VOLUMES, canal, definirVolume, mesaCtx, mudo as mudoMesa, registrarSegurar, volumeEfetivo, vozAbaixa, type Canal, type CanalVolume } from "@/lib/mesa"
+import { CANAIS, VOLUMES, canal, definirVolume, mesaCtx, mudo as mudoMesa, registrarMusicaTocando, registrarSegurar, volumeEfetivo, vozAbaixa, type Canal, type CanalVolume } from "@/lib/mesa"
 export { VOLUMES, definirVolume, CANAIS, type CanalVolume, type Canal }
 
 let ctx: AudioContext | null = null
@@ -57,12 +57,21 @@ let silenciando = 0
 // (T40) a Kombi cala porque o som de uma missão entrou: a música para, mas a
 // trilha da missão (que também sai por aqui) segue
 let silenciandoKombi = 0
+// (trilha sonora, 05/11) o "duck" leve: uma cena, uma peça, a introdução de uma
+// missão. A música segue no lugar (faz parte do cenário), só um pouco mais baixa
+let abaixando = 0
+const VOL_DUCK_LEVE = 0.7
 function aplicarAbafo() {
   const c = audioCtx()
   if (!c || !abafo() || !abafoF || !abafoG) return
-  const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0
+  const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0, leve = abaixando > 0
   abafoF.frequency.setTargetAtTime(on ? 650 : 20000, c.currentTime, on ? 0.2 : 0.5)
-  abafoG.gain.setTargetAtTime(mudo ? 0 : on ? 0.4 : 1, c.currentTime, on || mudo ? 0.2 : 0.5)
+  abafoG.gain.setTargetAtTime(mudo ? 0 : on ? 0.4 : leve ? VOL_DUCK_LEVE : 1, c.currentTime, on || mudo || leve ? 0.2 : 0.5)
+}
+/** abaixa um pouco a música (sem abafar): a cena, a peça, a introdução da missão */
+export function abaixarUmPouco(sim: boolean) {
+  abaixando = Math.max(0, abaixando + (sim ? 1 : -1))
+  aplicarAbafo()
 }
 export function abafar(sim: boolean) {
   abafando = Math.max(0, abafando + (sim ? 1 : -1))
@@ -97,6 +106,39 @@ export function silenciar(sim: boolean) {
 // (T40b) "nunca duas músicas": um app solto (o Guitar Driver, o fliperama) que
 // toca a música dele segura a do jogo pela mesa
 registrarSegurar(silenciar)
+
+// ── A MÚSICA SÓ PARA PRA FAZER MÚSICA (trilha sonora, 05/11; bíblia 9) ──
+// A batida, o Guitar Driver, o tambor e os instrumentos na casa da D-Bee: a
+// música do jogo (a rádio, o toca-discos, a faixa da rua) some em fade e PAUSA
+// (não fica andando muda); saiu, volta de onde estava. Conta quem pediu.
+// Fora disso nada para: missão, peça, sala e cena só abaixam um pouco.
+let fazendo = 0
+let pausaFazer: ReturnType<typeof setTimeout> | null = null
+const pausadosFazer = { radio: false, disco: false }
+export function fazerMusica(sim: boolean) {
+  const antes = fazendo
+  fazendo = Math.max(0, fazendo + (sim ? 1 : -1))
+  if (antes === 0 && fazendo > 0) {
+    silenciar(true) // o fade (setTargetAtTime no grafo)
+    if (pausaFazer) clearTimeout(pausaFazer)
+    pausaFazer = setTimeout(() => {
+      pausaFazer = null
+      if (fazendo === 0) return
+      if (player.tocando) { pausadosFazer.radio = true; player.pausar() }
+      if (disco.tocando) { pausadosFazer.disco = true; disco.el?.pause() }
+      pistaSom.pausarPraMusica()
+    }, 900)
+  } else if (antes > 0 && fazendo === 0) {
+    if (pausaFazer) { clearTimeout(pausaFazer); pausaFazer = null }
+    if (pausadosFazer.radio) { pausadosFazer.radio = false; player.retomar() }
+    if (pausadosFazer.disco) { pausadosFazer.disco = false; disco.el?.play().catch(() => {}) }
+    pistaSom.voltarDaMusica()
+    silenciar(false)
+  }
+}
+export const fazendoMusica = () => fazendo > 0
+// o fliperama (lib/mesa) pergunta antes de tocar o laço dele
+registrarMusicaTocando(() => fazendo === 0 && (player.tocando || disco.tocando || pistaSom.tocando))
 
 // ── Ambiente ────────────────────────────────────────────────
 // Sem ruído de fundo: o LU2CA pediu silêncio fora da música e do motor
@@ -1151,6 +1193,19 @@ class PistaSom {
     const alvo = this.segurando || this.radio ? 0 : this.noAr ? 0.4 : this.abafada ? 0.6 : 1
     if (forcar || corte !== this.ultCorte) { this.ultCorte = corte; this.filtro.frequency.setTargetAtTime(corte, c.currentTime, 0.08) }
     if (forcar || alvo !== this.ultAlvo) { this.ultAlvo = alvo; this.mestre.gain.setTargetAtTime(alvo, c.currentTime, this.radio || this.segurando ? 0.25 : 0.08) }
+  }
+  // (trilha sonora, 05/11) fazer música (som.ts fazerMusica): a faixa pausa de
+  // verdade (já em silêncio) e volta do mesmo ponto
+  private pausadaPraMusica = false
+  pausarPraMusica() {
+    const e = this.el
+    if (this.faixa && e && !e.paused) { e.pause(); this.pausadaPraMusica = true }
+  }
+  voltarDaMusica() {
+    if (!this.pausadaPraMusica) return
+    this.pausadaPraMusica = false
+    const e = this.el
+    if (this.faixa && e && e.paused) tocarSemErro(e)
   }
   /** um jogo no holo / um show com o som dele: abaixa a zero, a faixa SEGUE andando */
   segurar(sim: boolean) {

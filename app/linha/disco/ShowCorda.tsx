@@ -20,7 +20,7 @@
 //     dentro da folga (JAN), e o jogo diz "no tempo", "quase" ou "atrasou".
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { silenciar } from "../som"
+import { fazerMusica } from "../som"
 import { COR_LANE, desenharHud, desenharPalco } from "../../neon-tiles/cena"
 import { multiplicador, novoPlacar, type NotaGd, type Placar } from "../../neon-tiles/motor"
 import { ac, atrasoEstimado, carregarBuffer, montarShow, type Show as SomShow } from "../../neon-tiles/som"
@@ -57,7 +57,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
   const imgs = useMemo(() => (typeof window === "undefined" ? {} : { baixo: imagemInstrumento(modelo.id, modelo.visual, "baixo", "liso") }), [modelo])
   const atraso = useMemo(() => atrasoEstimado(), [])
 
-  useEffect(() => { const j = jogo.current; silenciar(true); return () => { silenciar(false); j.som?.parar() } }, [])
+  useEffect(() => { const j = jogo.current; fazerMusica(true); return () => { fazerMusica(false); j.som?.parar() } }, [])
 
   useEffect(() => {
     let vivo = true

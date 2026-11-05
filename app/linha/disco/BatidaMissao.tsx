@@ -9,14 +9,14 @@
 // B4TIDA (é o primeiro beat do jogador). Os textos são RASCUNHO (o LU2CA reescreve).
 
 import { useEffect, useState } from "react"
-import { silenciar } from "../som"
+import { fazerMusica } from "../som"
 
 export function BatidaMissao({ cor, quem, clima, onFim }: { cor: string; quem: string; clima: string; onFim: () => void }) {
   const [p, setP] = useState({ tocou: false, mexeu: false, faixas: 0 })
   const [carregou, setCarregou] = useState(false)
   useEffect(() => {
-    silenciar(true)
-    return () => silenciar(false)
+    fazerMusica(true)
+    return () => fazerMusica(false)
   }, [])
   useEffect(() => {
     const ouvir = (e: MessageEvent) => {

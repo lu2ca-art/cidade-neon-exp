@@ -2,7 +2,7 @@
 // tombo, e um laço de 8 bits de fundo (provisório: as trilhas das faixas do
 // LU2CA em 8 bits entram depois).
 
-import { canal, mesaCtx, segurarMusica } from "@/lib/mesa"
+import { canal, mesaCtx, musicaDoJogoTocando } from "@/lib/mesa"
 
 // (T40b) o contexto e a saída são os da mesa de mixagem (lib/mesa.ts): um só
 // no jogo inteiro, com o volume, o mudo e o limitador
@@ -27,9 +27,11 @@ const NOTAS = [57, 57, 60, 62, 53, 53, 57, 60, 55, 55, 59, 62, 52, 52, 55, 59]
 const hz = (m: number) => 440 * 2 ** ((m - 69) / 12)
 export function laco(bpm = 132) {
   const c = ac(); if (!c) return () => {}
-  // (T40b) o laço é música: canal da música, e a do jogo (a trilha da missão) cala enquanto ele toca
+  // (trilha sonora, 05/11; bíblia 9: a trilha não para) dentro do jogo, com a música
+  // dele tocando (a rádio, a faixa da rua), a máquina não toca o laço por cima nem
+  // corta nada: a trilha segue. Sem música (ou no /fliperama solto), o laço de sempre
+  if (musicaDoJogoTocando()) return () => {}
   const g = c.createGain(); g.gain.value = 0.05; g.connect(canal("musica") ?? c.destination)
-  segurarMusica(true)
   let passo = 0, prox = c.currentTime + 0.05, vivo = true
   const seg = 60 / bpm / 2
   const tic = () => {
@@ -49,7 +51,6 @@ export function laco(bpm = 132) {
   return () => {
     if (!vivo) return
     vivo = false; g.gain.setTargetAtTime(0, c.currentTime, 0.05)
-    segurarMusica(false)
     setTimeout(() => g.disconnect(), 400)
   }
 }
