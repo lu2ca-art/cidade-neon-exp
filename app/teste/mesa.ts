@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Veículos por zona e sem o banner do GPS",
+    data: "2026-11-05",
+    olhar: "O banner grande de GPS saiu: fica só o notch (com uma setinha quando vem curva). Na cidade vale tudo; no deserto só a Kombi (não dá pra sair dela); no subúrbio e nos túneis a pé/patins (a Kombi fica na entrada). A moto aparece com cadeado.",
+    perguntas: [
+      "Entrar no subúrbio de Kombi e ela ficar na entrada ficou natural?",
+      "Sentiu falta de alguma informação do banner?",
+    ],
+    mais: [{ parte: "dunas", nome: "o deserto" }, { parte: "bar", nome: "o subúrbio" }],
+  },
+  {
     parte: "casa.instrumentos",
     nome: "As suas notas de 04/11 (save, casa da D-Bee, rádio, mapa)",
     data: "2026-11-05",
