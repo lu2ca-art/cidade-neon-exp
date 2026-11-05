@@ -491,6 +491,16 @@ export const MESA: Cartao[] = [
   },
 ]
 
+// (05/11) um nome curto pro dia, no título da seção da Mesa ("05/11 · madrugada").
+// Opcional: o dia sem nome aqui aparece só com a data.
+export const ROTULO_DIA: Record<string, string> = {
+  "2026-11-05": "madrugada",
+}
+
+// um id estável pro cartão (o "✓ testei" guardado no aparelho usa ele;
+// a mesma parte aparece em mais de um cartão, então entra a data e o nome)
+export const idDo = (c: Cartao) => `${c.data}|${c.parte}|${c.nome}`
+
 // os mais novos em cima (a ordem da lista desempata)
 export const mesaOrdenada = () =>
   MESA.map((c, i) => ({ c, i }))
