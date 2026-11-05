@@ -3554,7 +3554,7 @@ function CenaBase({
   // relação ao da Kombi (nas curvas e no drift aparece a lateral), a distância
   // respira com a aceleração, olha pra dentro da curva, deita um pouco com ela,
   // e parada dá uma volta lenta de cinema
-  const camDin = useRef({ f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3(), off: new THREE.Vector3(), offOk: false, yS: 0, ySok: false, enc: 1,
+  const camDin = useRef({ pil: 0, f: new THREE.Vector3(0, 0, -1), vAnt: 0, puxa: 0, parada: 0, orbita: 0, roll: 0, lado: 0, ok: false, carF: new THREE.Vector3(), dir: new THREE.Vector3(), off: new THREE.Vector3(), offOk: false, yS: 0, ySok: false, enc: 1,
     cz: { ok: false, ant: false, patins: false, t: 1, yaw: 0, vYaw: 0, dist: 8, vDist: 0, alt: 3, vAlt: 0, y: 0, vY: 0, de: new THREE.Vector3(), deOlhar: new THREE.Vector3() } })
   useEffect(() => {
     const el = gl.domElement
@@ -6245,8 +6245,12 @@ function CenaBase({
         const cz = cd.cz
         const wNariz = livreCam ? (j.drift ? 0.15 : 0.06) : 0.12
         const yawAlvo = Math.atan2(tmp.f.x * (1 - wNariz) + cd.carF.x * wNariz, tmp.f.z * (1 - wNariz) + cd.carF.z * wNariz)
-        const atrasD = deMotoC ? 7 + vel * 1.5 : dePatins ? 6.4 + vel * 1.4 : 8 + vel * 1.6 + cd.puxa
-        const altoD = dePatins ? 2.5 - o.pitch * 2 : 2.9 - vel * 0.25 - o.pitch * 2.5
+        // (piloto, 05/11) com o piloto levando, a câmera de passeio: mais alta, mais
+        // longe e um pouco de lado, entrando devagar (~2 s). É a hora da música
+        cd.pil += ((j.pilCam && !dePatins ? 1 : 0) - cd.pil) * Math.min(1, dt * 0.55)
+        const pil = cd.pil * cd.pil * (3 - 2 * cd.pil)
+        const atrasD = (deMotoC ? 7 + vel * 1.5 : dePatins ? 6.4 + vel * 1.4 : 8 + vel * 1.6 + cd.puxa) + pil * 3.4
+        const altoD = (dePatins ? 2.5 - o.pitch * 2 : 2.9 - vel * 0.25 - o.pitch * 2.5) + pil * 2.6
         if (!cz.ok || j.encaixar || !camInit.current) {
           cz.yaw = yawAlvo; cz.dist = atrasD; cz.alt = altoD; cz.y = car.position.y
           cz.vYaw = cz.vDist = cz.vAlt = cz.vY = 0; cz.ok = true; cz.t = 1
@@ -6268,6 +6272,8 @@ function CenaBase({
         cd.dir.copy(cd.f).applyAxisAngle(tmp.y0, o.yaw)
         cd.lado = 0; cd.roll = 0
         tmp.alvo.copy(car.position).setY(cz.y).addScaledVector(cd.dir, -cz.dist).addScaledVector(tmp.y0, cz.alt)
+        // (piloto) de lado, balançando bem devagar (uma vez a cada ~2 min e pouco)
+        if (pil > 0.001) { const ld = pil * (2.6 + Math.sin(j.tempo * 0.045) * 1.1); tmp.alvo.x -= cd.dir.z * ld; tmp.alvo.z += cd.dir.x * ld }
         // prédio no caminho: entra NA HORA (nunca atravessa parede) e volta devagar
         const dx = tmp.alvo.x - car.position.x, dz = tmp.alvo.z - car.position.z, L = Math.hypot(dx, dz)
         let fAlvo = 1
