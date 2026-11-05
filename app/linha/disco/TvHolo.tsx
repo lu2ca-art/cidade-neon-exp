@@ -18,7 +18,7 @@ import { createPortal } from "react-dom"
 import { PISTAS, type PistaId } from "../estrada/pistas"
 import { ESTACOES } from "../data"
 import { FREQUENCIAS } from "../radio"
-import { player } from "../som"
+import { calarPraTv, player } from "../som"
 import { lerFaixaRua } from "./musicaContinua"
 import { faixaDoTitulo, nomeDaFaixa } from "./linksFaixas"
 import { proximaComVideo, videoDaFaixa } from "./videosFaixas"
@@ -127,6 +127,13 @@ function Tela({ inicio }: { inicio: PistaId }) {
   const yt = useRef<YTPlayer | null>(null)
   const de = useRef<{ x: number; y: number; id: number } | null>(null)
 
+  // os estados do YouTube: -1 sem começar, 0 acabou, 1 tocando, 2 pausado, 3 carregando, 5 pronto
+  const estado = useRef((e: YTEvento) => {})
+  estado.current = (e: YTEvento) => {
+    if (e.data === 1) calarPraTv(true)
+    else if (e.data === 2 || e.data === 5 || e.data === -1 || e.data === 0) calarPraTv(false)
+  }
+
   // o player: um só, criado quando a TV abre e destruído quando ela fecha
   useEffect(() => {
     let vivo = true
@@ -145,12 +152,15 @@ function Tela({ inicio }: { inicio: PistaId }) {
         // autoplay 0: o play é da pessoa, no próprio player (regra do YouTube)
         playerVars: { autoplay: 0, playsinline: 1, rel: 0, origin: window.location.origin, ...(v.videoId ? {} : { listType: "playlist", list: v.playlistId }) },
         events: {
-          onError: () => setErro(true),
+          // tocando: a música do jogo vai a zero (fade); pausou, parou ou acabou: volta
+          onStateChange: (e: YTEvento) => estado.current(e),
+          onError: () => { calarPraTv(false); setErro(true) },
         },
       })
     }).catch(() => { if (vivo) setErro(true) })
     return () => {
       vivo = false
+      calarPraTv(false)
       try { yt.current?.destroy() } catch {}
       yt.current = null
       box.innerHTML = ""
