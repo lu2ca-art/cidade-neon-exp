@@ -43,7 +43,7 @@ import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
 import { introDe } from "./disco/introMissoes"
 import { IntroMissao } from "./disco/IntroMissao"
 import { CHEGADA_MISSAO, lerGuia } from "./estrada/alvoMissao"
-import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha, voz } from "./som"
+import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, somCena, trilha, voz } from "./som"
 import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
@@ -1495,8 +1495,13 @@ export default function LinhaPage() {
     const s = saveRef.current
     if (!HIST || historiaDe(s).radioXenom) return
     setSave((x) => comHistoria(x, (h) => ({ ...h, radioXenom: true })))
-    // auto = true: a estrada (Corrida) põe a programação da frequência pra tocar
-    fonteSom.set("radio", true)
+    // (começo novo, 05/11) gravado na hora (não espera a folga do save): fechou a aba logo
+    // depois, a volta não liga a rádio de novo nem perde que ela já ligou
+    gravar(gravarComo.current(comHistoria(s, (h) => ({ ...h, radioXenom: true }))))
+    // auto = true: a estrada (Corrida) põe a programação da frequência pra tocar (em fade
+    // de 2 s, sem chiado). (começo novo) O disco antigo sai antes, em fade de 2 s
+    if (fonteSom.get() === "disco" && disco.tocando) disco.sairEmFade(2, () => { if (fonteSom.get() === "disco") fonteSom.set("radio", true) })
+    else fonteSom.set("radio", true)
   }), [HIST])
   // nas trincheiras (lá embaixo) a rádio também soa antiga; subiu, a estrada diz a zona de novo
   useEffect(() => { if (trincheiras && !trincheiras.descendo) definirZonaSom("tuneis") }, [trincheiras])
@@ -1844,6 +1849,10 @@ export default function LinhaPage() {
   // completa se ela ainda não acabou. Nada disso pausa a faixa
   // (trilha sonora, 05/11) as peças, a letra e o basquete também (antes cortavam a música)
   const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!letraAgora || !!basquete
+  // (começo novo, 05/11) cena/peça/sala aberta: a rádio troca de faixa sem chiado e sem vinheta
+  const somDeCena = momentoMissao || !!cinema || emSala
+  useEffect(() => { somCena.aberta = somDeCena }, [somDeCena])
+  useEffect(() => () => { somCena.aberta = false }, [])
   useEffect(() => {
     if (!momentoMissao) return
     pistaSom.missao(true)

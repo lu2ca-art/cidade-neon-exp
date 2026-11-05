@@ -127,7 +127,7 @@ import type { Save } from "../estado"
 import { radioPega, type MemoriaRadio } from "../disco/sons"
 import { definirZonaSom, zonaDoSom } from "../disco/radioAntiga"
 import { estacaoDaFreq, pedirFaixaDaRua, radioFreq, registrarTocador } from "../disco/radios"
-import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, voz, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
+import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, voz, type Fonte, definirTom, pistaSom, somCena, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -1475,7 +1475,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     return () => { vivo = false; clearTimeout(t) }
   }, [])
 
+  // (começo novo, 05/11) até quando uma fala está na tela: a vinheta da rádio espera
+  const falaAte = useRef(0)
   const falar = useCallback((de: string, texto: string, ms = 3600) => {
+    falaAte.current = Math.max(falaAte.current, performance.now() + ms)
     const id = ++toastId.current
     setToasts((t) => [...t.slice(-3), { id, de, texto, ms }])
     gota(6)
@@ -1488,6 +1491,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // desligado (sem notch), fica a legendinha solta
   const ensinar = useCallback((de: string, texto: string, ms = 5200) => {
     if (!("disco" in M)) { falar(de, texto, ms); return }
+    falaAte.current = Math.max(falaAte.current, performance.now() + ms)
     avisarRadio(de, texto, ms)
     // (T41 B2) no notch, o Nexo só informa: a instrução, sem o nome de quem fala
     if (holoLigadoRef.current) notch(texto, VOZES[de] ?? "#2fe8ff")
@@ -1872,7 +1876,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // (T40) a rádio voltou sozinha (chegou perto de uma pista): a programação retoma
   useEffect(() => fonteSom.ouvir((f, auto) => {
     fonteRef.current = f; setAparelho(f)
-    if (auto && f === "radio") setTimeout(() => proxFaixa.current(freqRef.current), 0)
+    // (começo novo, 05/11) a rádio que liga sozinha entra em fade de 2 s, sem o chiado
+    if (auto && f === "radio") setTimeout(() => tocarProximaRef.current(freqRef.current, 1, 2), 0)
   }), [])
   const [discoAgora, setDiscoAgora] = useState<{ src: string | null; tocando: boolean }>({ src: disco.src, tocando: disco.tocando })
   useEffect(() => disco.ouvir(setDiscoAgora), [])
@@ -1932,7 +1937,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const proxFaixa = useRef<(id: FreqId) => void>(() => {})
   // entrada: a troca de estação pela zona (disco/radios.ts) — o chiado já passou e a
   // música entra em fade
-  const tocarProxima = useCallback((id: FreqId, vol = 1, entrada = false) => {
+  // (começo novo, 05/11) entrada em número: os segundos do fade (a rádio Xenom chegando: 2 s)
+  const tocarProxima = useCallback((id: FreqId, vol = 1, entrada: boolean | number = false) => {
     if (fonteRef.current !== "radio") return
     if (caidoRef.current || foraRef.current) { player.pausar(); setFaixa(foraRef.current ? "a 222 saiu do ar" : ""); return }
     const a = alvoRef.current
@@ -1941,23 +1947,35 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     if (!p) { setFaixa(""); return }
     const tocar = () => {
       setFaixa(p.faixa.titulo)
-      player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol, entrada ? 1.2 : 0)
+      player.tocar(p.faixa.src, () => proxFaixa.current(freqRef.current), vol, typeof entrada === "number" ? entrada : entrada ? 1.2 : 0)
     }
-    if (!p.vinheta) return tocar()
+    // (começo novo, 05/11) com uma cena/peça/sala aberta: a faixa troca sem o chiado e
+    // sem a vinheta (pulada: não aparece por cima da fala nem depois)
+    if (!p.vinheta || somCena.aberta) return tocar()
     // entre uma música e outra: um chiado de dial e o locutor (ou o Núcleo)
     if (!entrada) chiadoCurto()
     // (rádios, 05/11) no disco o locutor é legenda curta: no display da rádio e no
     // notch, ~5 s (a voz gravada, quando houver, toca por cima: a música abaixa)
     if ("disco" in M) {
-      avisarRadio(p.vinheta.de, p.vinheta.texto, 5000)
-      if (holoLigadoRef.current) notch(p.vinheta.texto, p.vinheta.cor ?? fqCor(id))
-      if (p.vinheta.audio) { const a = p.vinheta.audio; setTimeout(() => voz.tocar("vinheta-radio", a), 900) }
+      const v = p.vinheta
+      const mostrar = () => {
+        if (somCena.aberta) return
+        avisarRadio(v.de, v.texto, 5000)
+        if (holoLigadoRef.current) notch(v.texto, v.cor ?? fqCor(id))
+        if (v.audio) { const a = v.audio; setTimeout(() => voz.tocar("vinheta-radio", a), 900) }
+      }
+      // (começo novo) uma fala na tela (a D-Bee nas dunas): a vinheta espera ela acabar (até 8 s)
+      const espera = Math.min(8000, falaAte.current - performance.now())
+      if (espera > 0) setTimeout(mostrar, espera + 300)
+      else mostrar()
     } else falar(p.vinheta.de, p.vinheta.texto)
     if (p.estreia) {
       jogo.current.flash = 0.7
       confeteRef.current?.(getEstacao(p.estreia).cor, 70)
     }
-    setTimeout(tocar, 900)
+    // (a rádio Xenom chegando: a música entra já, em fade; o disco antigo saiu em fade)
+    if (typeof entrada === "number") tocar()
+    else setTimeout(tocar, 900)
      
   }, [save.objetos, save.nome, falar])
   useEffect(() => { proxFaixa.current = (id) => tocarProxima(id) }, [tocarProxima])

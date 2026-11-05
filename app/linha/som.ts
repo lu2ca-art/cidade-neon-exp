@@ -668,6 +668,32 @@ export function radioAntiga(sim: boolean) {
   aplicarRadioAntiga()
 }
 
+// (começo novo, 05/11) O PLAY QUE O NAVEGADOR BARROU não falha calado. No iPhone o
+// primeiro play() fora de um toque (a rádio Xenom liga sozinha no quadro, ao chegar no
+// subúrbio) é recusado: aí ele acontece no próximo toque/tecla do jogador; se falhar
+// de novo, no seguinte. `ainda()` diz se aquele som ainda é o que devia tocar
+const GESTOS_SOM = ["pointerdown", "touchend", "keydown"] as const
+const armadosSom = new WeakSet<HTMLAudioElement>()
+function armarNoGesto(el: HTMLAudioElement, ainda: () => boolean) {
+  if (typeof window === "undefined" || armadosSom.has(el)) return
+  armadosSom.add(el)
+  const tenta = () => {
+    for (const ev of GESTOS_SOM) window.removeEventListener(ev, tenta, true)
+    armadosSom.delete(el)
+    if (!ainda() || !el.paused) return
+    try { void audioCtx()?.resume() } catch {}
+    el.play().catch((e: { name?: string } | undefined) => { if (e?.name !== "AbortError") armarNoGesto(el, ainda) })
+  }
+  for (const ev of GESTOS_SOM) window.addEventListener(ev, tenta, true)
+}
+export function tocarOuNoGesto(el: HTMLAudioElement, ainda: () => boolean) {
+  el.play().catch((e: { name?: string } | undefined) => { if (e?.name !== "AbortError") armarNoGesto(el, ainda) })
+}
+
+// (começo novo, 05/11) uma cena, peça ou sala aberta (a página marca): a rádio troca de
+// faixa sem o chiado do dial e sem a vinheta no notch (a vinheta é pulada)
+export const somCena = { aberta: false }
+
 class Player {
   el: HTMLAudioElement | null = null
   detector: DetectorDeTom | null = null
@@ -744,7 +770,7 @@ class Player {
       else g.setValueAtTime(vol, t)
     }
     if (musicaPausada) { pausadosFazer.radio = true; this.emitir(); return }
-    el.play().catch(() => {})
+    tocarOuNoGesto(el, () => this.el === el && this.src === src && fonteAtual === "radio" && !musicaPausada)
   }
 
   // seg: a constante de tempo do fade (o padrão é quase na hora)
@@ -943,10 +969,32 @@ class Disco {
     if (this.src !== src) { el.src = src; this.src = src }
     el.currentTime = 0
     if (musicaPausada) pausadosFazer.disco = true
-    else el.play().catch(() => {})
+    else tocarOuNoGesto(el, () => this.el === el && this.src === src && fonteAtual === "disco" && !musicaPausada)
     this.emitir()
   }
-  parar() { this.el?.pause(); this.emitir() }
+  parar() { this.saindo = null; this.el?.pause(); this.emitir() }
+  // (começo novo, 05/11) a rádio Xenom chegando: o disco antigo sai em fade (seg) e
+  // para. `depois` roda no fim (quem liga a rádio). Sem o grafo, para direto
+  private saindo: ReturnType<typeof setTimeout> | null = null
+  sairEmFade(seg: number, depois: () => void) {
+    const el = this.el, fx = this.fx, c = ctx
+    if (!el || el.paused || !fx || !c) { depois(); return }
+    const g = fx.nivel.gain, t = c.currentTime
+    g.cancelScheduledValues(t)
+    g.setValueAtTime(g.value, t)
+    g.linearRampToValueAtTime(0, t + seg)
+    const id = setTimeout(() => {
+      if (this.saindo !== id) return
+      this.saindo = null
+      el.pause()
+      const t2 = c.currentTime
+      g.cancelScheduledValues(t2)
+      g.setValueAtTime(1, t2)
+      this.emitir()
+      depois()
+    }, seg * 1000)
+    this.saindo = id
+  }
   // (T40) o fade-in do buraco de minhoca: a faixa chega distorcida, abafada e
   // baixinha e vai ficando limpa em `seg` segundos. Tudo agendado no relógio do
   // áudio; o ritmo (a velocidade da faixa) acompanha por um timer leve
