@@ -64,7 +64,8 @@ export interface Pedra {
   // o que mais mexe na tela, de leve (o mapa balança, o ícone da missão pisca)
   mexe?: Mexe
   feita: (c: CtxTrilha, m: MemPedra, dt: number) => boolean
-  // quem já passou daqui (save antigo, já fez missões): pula sem mostrar
+  // quem já passou daqui (save antigo, já fez missões): pula sem mostrar e entra
+  // no save como vista (só regras que não voltam atrás: as missões feitas só crescem)
   passou?: (c: CtxTrilha) => boolean
 }
 
@@ -137,8 +138,9 @@ export const PEDRAS: Pedra[] = [
     espera: { se: (c) => c.poseViva && c.pose.carga < 1 && !c.pose.turbo, texto: "drift e voo enchem o turbo" },
     feita: (c) => c.poseViva && c.pose.turbo },
   // lá em cima: onde descer
+  // (passou da subida sem pousar: a fase troca e ela some sozinha, sem ir pro save)
   { id: "pousa", fases: ["subir"], depois: ["voo"], quando: (c) => !c.drone, ancora: ALVO.notch, texto: "pousa numa pista acesa",
-    feita: (c) => c.fase !== "subir", passou: (c) => c.fase !== "subir" },
+    feita: (c, m) => { if (c.poseViva && c.pose.ar) m.acc = 1; return m.acc === 1 && c.poseViva && !c.pose.ar && c.pose.v > 3 } },
   // a cidade: sem missão, o ícone da missão pisca; o mapa abre e a lista diz qual
   { id: "escolhe", fases: ["carreira"], quando: (c) => !c.missao && c.ofertas > 0,
     ancora: (c) => (c.painel ? ALVO.pegar : c.drone ? ALVO.missoesDrone : ALVO.anel), texto: "escolhe a missão", mexe: "icone",
@@ -180,6 +182,8 @@ export function pedraAgora(c: CtxTrilha): Pedra | null {
   }
   return null
 }
+// (6) as que esse save já passou sem precisar ver (vão pro save de uma vez)
+export const pedrasPuladas = (c: CtxTrilha) => PEDRAS.filter((p) => !c.feitos.includes(p.id) && pulada(c, p)).map((p) => p.id)
 // as que já passaram (feitas), na ordem: o "?" volta por elas
 export const pedrasFeitas = (feitos: readonly string[]) => PEDRAS.filter((p) => feitos.includes(p.id))
 export const ancoraDe = (p: Pedra, c: CtxTrilha) => (typeof p.ancora === "function" ? p.ancora(c) : p.ancora)

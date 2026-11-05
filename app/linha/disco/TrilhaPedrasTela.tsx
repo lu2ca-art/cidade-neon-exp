@@ -17,7 +17,7 @@ import { useAjudaAtiva } from "../estrada/Holo"
 import { gota } from "../som"
 import { vib } from "../som-carro"
 import { POSE_TUT } from "./tutorialConf"
-import { ALVO, PEDRAS, TRILHA_CFG, ancoraDe, pedraAgora, pedraDe, pedrasFeitas, pulada, textoDaPedra, type CtxTrilha, type MemPedra, type PedraId } from "./trilhaPedras"
+import { ALVO, PEDRAS, TRILHA_CFG, ancoraDe, pedraAgora, pedraDe, pedrasFeitas, pedrasPuladas, pulada, textoDaPedra, type CtxTrilha, type MemPedra, type PedraId } from "./trilhaPedras"
 import { iconeDaPedra } from "./iconesPedras"
 import "./trilhaPedras.css"
 
@@ -49,7 +49,8 @@ export function ctxAoVivo(b: BaseTrilha, ajuda: boolean, toque: boolean): CtxTri
 // ainda há pedra possível nesta fase (senão, nem olha)
 const restam = (c: CtxTrilha) => c.holo && TRILHA_CFG.ligada && PEDRAS.some((p) => !c.feitos.includes(p.id) && p.fases.includes(c.fase) && !pulada(c, p))
 
-export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pausado: boolean; onFeito: (id: PedraId) => void }) {
+// onFeito: as pedras feitas (ou já passadas) entram no save (historia.tutorial)
+export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pausado: boolean; onFeito: (ids: PedraId[]) => void }) {
   const ajuda = useAjudaAtiva()
   const [agora, setAgora] = useState<{ id: PedraId; texto: string; alvo: Caixa | null; semAlvo: boolean } | null>(null)
   const [ok, setOk] = useState<PedraId | null>(null)
@@ -58,13 +59,16 @@ export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pau
   const feito = useRef(onFeito)
   useEffect(() => { feito.current = onFeito })
   const [toque] = useState(ehToque)
+  // (6) quem já passou (save antigo, já fez missões da cidade) não vê o começo de novo: entra no save como vista
+  const puladas = pedrasPuladas(ctxBase(base, toque)).join(",")
+  useEffect(() => { if (puladas) feito.current(puladas.split(",") as PedraId[]) }, [puladas])
 
   // dá pra ter pedra? (só o save: barato, a cada render da page)
   const vivo = !pausado && !ajuda && restam(ctxBase(base, toque))
 
   // a pedra do "?" conta no toque nele (com o "?" ligado a trilha para de olhar)
   const idAgora = agora?.id ?? null
-  useEffect(() => { if (ajuda && idAgora === "ajuda") feito.current("ajuda") }, [ajuda, idAgora])
+  useEffect(() => { if (ajuda && idAgora === "ajuda") feito.current(["ajuda"]) }, [ajuda, idAgora])
 
   useEffect(() => {
     if (!vivo) { setAgora(null); return }
@@ -93,7 +97,7 @@ export function TrilhaPedras({ base, pausado, onFeito }: { base: BaseTrilha; pau
         mem.feitoJa = true
         const id = p.id
         setOk(id); vib(18); gota(5)
-        setTimeout(() => { setOk(null); feito.current(id) }, TRILHA_CFG.respiroMs)
+        setTimeout(() => { setOk(null); feito.current([id]) }, TRILHA_CFG.respiroMs)
       }
       const sel = ancoraDe(p, c)
       const alvo = caixaDe(sel)

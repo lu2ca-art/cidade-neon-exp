@@ -1158,7 +1158,8 @@ export default function LinhaPage() {
   // (T07) o tutorial do holo: a tela lá fora e os passos feitos (no save, recarregar não perde)
   const [cenaHolo, setCenaHolo] = useState(false)
   const [cenaTambor, setCenaTambor] = useState(false)
-  const marcarTutorial = useCallback((id: string) => setSave((s) => comHistoria(s, (h) => ((h.tutorial ?? []).includes(id) ? h : { ...h, tutorial: [...(h.tutorial ?? []), id] }))), [])
+  // (trilha de pedras) as pedras feitas entram juntas, no save (recarregar não repete)
+  const marcarTutorial = useCallback((ids: string[]) => setSave((s) => comHistoria(s, (h) => { const novas = ids.filter((id) => !(h.tutorial ?? []).includes(id)); return novas.length ? { ...h, tutorial: [...(h.tutorial ?? []), ...novas] } : h })), [])
   const [rua, setRua] = useState(false)
   useEffect(() => {
     if (palcosAoEntrar.current && tela.t === "corrida" && !cena) { palcosAoEntrar.current = false; setRua(true) }
