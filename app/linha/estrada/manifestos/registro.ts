@@ -12,6 +12,7 @@ import { CopoAmericano } from "./CopoAmericano"
 import { Nectar } from "./Nectar"
 import { Ojala } from "./Ojala"
 import { Swav } from "./Swav"
+import { Sexta } from "./Sexta"
 
 export const MANIFESTOS: Record<PistaId, Manifesto> = {
   // vício: a rua que pede mais um. Telas que pipocam com o acelerador; soltou, esvazia
@@ -28,10 +29,10 @@ export const MANIFESTOS: Record<PistaId, Manifesto> = {
   ojala: { id: "ojala", ideia: "fugaz como o vento: o que passa e não fica", Componente: Ojala },
   // prismas que crescem, a pista vira espelho (reflete os prismas de verdade), vãos onde ela some; acelerar no vão = salto de fé
   swav: { id: "swav", ideia: "reflexos e salto de fé", Componente: Swav },
+  // a multidão dançando no BPM, cheia de longe e oca de perto; holofotes; o drift faz ela pular junto e encher
+  sexta: { id: "sexta", ideia: "a balada: multidão vazia, aceita e dança", Componente: Sexta },
 
   // ── ainda só ideia (o comentário é o ponto de partida) ──
-  // Sexta-Feira: a balada; multidão vazia, bateria esgotada, aceita e dança
-  sexta: { id: "sexta", ideia: "a balada: multidão vazia, aceita e dança", Componente: null },
   // Rollercoaster: a montanha-russa, o parque, o clipe vertical (os altos e baixos)
   rollercoaster: { id: "rollercoaster", ideia: "a montanha-russa: os altos e baixos", Componente: null },
 }
