@@ -25,6 +25,27 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "O piloto automático (o mapa copiloto)",
+    data: "2026-11-05",
+    olhar: "O botão do volante (ao lado da barra do GPS, no lugar do ∞) liga o piloto: com missão/destino, a Kombi vai sozinha pela rota, na velocidade normal, e para no lugar; sem destino, passeia dando voltas na mesma rua (a música não troca). A câmera sobe e vai pro lado pra curtir. Mexeu no volante, acelerou ou freou: o controle volta pra você.",
+    perguntas: [
+      "O piloto chegou certinho no destino?",
+      "A câmera de passeio ficou bonita?",
+    ],
+  },
+  {
+    parte: "bar",
+    nome: "As duas rádios (Xenom e Cidade Neon)",
+    data: "2026-11-05",
+    olhar: "Rádio Xenom (69.9) no subúrbio, túneis e deserto, com som de rádio antiga: toca o que não é do vol. 1 e, entre as músicas, o locutor (em legenda por enquanto) conta o que rola no subúrbio e puxa as missões. Rádio Cidade Neon (222.0) na cidade: só o vol. 1. A estação troca sozinha com a zona. Na cidade, entrar numa rua põe a faixa dela como a próxima.",
+    perguntas: [
+      "As vinhetas do locutor têm a voz certa? (são rascunho)",
+      "A troca sozinha de estação ficou natural?",
+    ],
+    mais: [{ parte: "livre", nome: "a Rádio Cidade Neon" }],
+  },
+  {
     parte: "bar",
     nome: "O subúrbio maior e destruído (ruínas com colisão)",
     data: "2026-11-05",
