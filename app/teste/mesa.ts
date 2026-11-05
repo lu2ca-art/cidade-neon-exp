@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Revisão 2: ruas sem tranco, câmera reta, celular mais leve",
+    data: "2026-11-05",
+    olhar: "As ruas-manifesto não entortam mais o mapa do drone nem a primeira pessoa. Passar de uma rua pra outra é suave (fade). Parado uns segundos na rotatória, o jogo prepara as ruas pra não dar tranco na entrada. No celular médio/leve as ruas pesadas mostram menos coisas. Na rua CHUVA o vidro embaça. Largada da corrida de rua mais firme.",
+    perguntas: [
+      "Entrando nas ruas: ainda deu algum tranco?",
+      "O mapa do drone ficou reto no meio das ruas Copo e Rollercoaster?",
+    ],
+  },
+  {
     parte: "bar",
     nome: "Gente nas ruínas (a vida no subúrbio)",
     data: "2026-11-05",
