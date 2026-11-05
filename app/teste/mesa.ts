@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "A trilha que não para (rádio antiga e as introduções)",
+    data: "2026-11-05",
+    olhar: "Chegando do deserto no subúrbio, a rádio liga sozinha com som de rádio antiga (no subúrbio e túneis; na cidade, limpa). Missões, peças, salas e o fliperama não param a música: só abaixam. Ela para só pra fazer música: batida, Guitar Driver, tambor e instrumentos com a D-Bee, a trilha 8 bits do Notti. Antes de cada missão, quem pede fala 1–2 frases num balão (rascunho: reescreva à vontade).",
+    perguntas: [
+      "O filtro de rádio antiga ficou bom no iPhone?",
+      "Os textos das introduções têm a voz certa? Qual reescrever?",
+      "O violão continua tocando junto com a música (acompanha no tom). Fica assim?",
+    ],
+    mais: [{ parte: "missao.drew", nome: "uma introdução (Drew)" }, { parte: "missao.notti.jogo", nome: "o fliperama do Notti" }],
+  },
+  {
     parte: "livre",
     nome: "Veículos por zona e sem o banner do GPS",
     data: "2026-11-05",
