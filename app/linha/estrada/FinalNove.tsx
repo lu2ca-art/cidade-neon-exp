@@ -23,7 +23,7 @@ import type { MundoDisco } from "./mundoDisco"
 import { PISTAS } from "./pistas"
 import { PASSO } from "./pista"
 import { KombiHerbal } from "./KombiHerbal"
-import { Perto } from "./Perto"
+import { Perto, PERTO_EXTRA } from "./Perto"
 import { CHUVA_MANIFESTO } from "./manifestos/ceu"
 import { CASA, ROT_CASA } from "../disco/historia"
 import { CAM_ROTEIRO, FINAL_CFG, FINAL_VIVO, NOVE, lerFinal, ouvirFinal } from "../disco/final"
@@ -60,6 +60,13 @@ export function FinalNove({ M }: { M: MundoDisco }) {
     return { ...n, x, y, z, tx, tz, nx, nz, cx: V.px[i], cz: V.pz[i] }
   }), [M])
   const chaoCasa = useMemo(() => M.chaoEm(CASA.x, CASA.z), [M])
+  // (revisão 3) os pontos que o "nove" e o "CHUVA" vão mostrar (os nove e a torre
+  // central): entram no <Perto> como câmeras extras, um por vez durante o "sinal", pra
+  // cada corte já achar a cidade montada (e o tranco de montar fica espalhado no sinal)
+  const aquecer = useMemo(() => [
+    ...pontos.filter((p): p is NonNullable<typeof p> => !!p).map((p) => ({ x: p.cx, z: p.cz })),
+    { x: M.central.x, z: M.central.z },
+  ], [pontos, M])
 
   // ── as nove pessoas e os nove fachos (instanciados: 2 desenhos) ──
   const nove = useMemo(() => {
@@ -89,6 +96,11 @@ export function FinalNove({ M }: { M: MundoDisco }) {
   useFrame((_, dt) => {
     const mo = FINAL_VIVO.momento
     CAM_ROTEIRO.ativo = mo !== null
+    // as câmeras extras do <Perto>: crescem no sinal, inteiras no nove e no CHUVA, somem depois
+    const ex = PERTO_EXTRA.pontos
+    const nEx = mo === "sinal" ? Math.min(aquecer.length, 1 + Math.floor(((performance.now() / 1000 - FINAL_VIVO.t0) / (FINAL_CFG.sinal * 0.85)) * aquecer.length))
+      : mo === "nove" || mo === "chuva" ? aquecer.length : 0
+    if (ex.length !== nEx) { ex.length = 0; for (let k = 0; k < nEx; k++) ex.push(aquecer[k]) }
     if (mo === null) {
       if (chuvaEscrita.current) { CHUVA_MANIFESTO.k = 0; chuvaEscrita.current = false }
       return
@@ -144,7 +156,7 @@ export function FinalNove({ M }: { M: MundoDisco }) {
     }
   })
   // saiu do jogo no meio do final: a câmera e a chuva voltam a ser do jogo
-  useEffect(() => () => { CAM_ROTEIRO.ativo = false; if (chuvaEscrita.current) CHUVA_MANIFESTO.k = 0 }, [])
+  useEffect(() => () => { CAM_ROTEIRO.ativo = false; PERTO_EXTRA.pontos.length = 0; if (chuvaEscrita.current) CHUVA_MANIFESTO.k = 0 }, [])
 
   const comNove = vivo.momento === "nove" || vivo.momento === "chuva"
   const comQuintal = vivo.momento === "quintal" || (vivo.feito && !ativo)

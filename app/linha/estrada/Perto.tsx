@@ -29,6 +29,12 @@ import * as THREE from "three"
 
 export type PontoXZ = { x: number; z: number }
 
+// (revisão 3) OUTRAS CÂMERAS: pontos que contam como "a câmera está aqui" além da
+// câmera de verdade (só nos blocos normais; os de `fora` ignoram). Quem usa: o final
+// (FinalNove.tsx) põe os nove pontos aos poucos durante o "sinal", pra os cortes do
+// "nove" não montarem a cidade na hora. Vazio no resto do jogo (custo zero)
+export const PERTO_EXTRA: { pontos: PontoXZ[] } = { pontos: [] }
+
 // os pontos medidos de cada bloco (sobrevivem à remontagem do <Corrida>)
 const MEDIDOS = new Map<string, PontoXZ[]>()
 const CELULA = 120
@@ -97,6 +103,12 @@ export function Perto({ nome, raio, pontos, fora = false, folga = 0.15, aCada = 
     let d2 = Infinity
     for (let i = 0; i < lista.length; i++) {
       const dx = lista[i].x - cx, dz = lista[i].z - cz
+      const q = dx * dx + dz * dz
+      if (q < d2) d2 = q
+    }
+    const ex = PERTO_EXTRA.pontos
+    if (!fora && ex.length) for (let i = 0; i < lista.length; i++) for (let k = 0; k < ex.length; k++) {
+      const dx = lista[i].x - ex[k].x, dz = lista[i].z - ex[k].z
       const q = dx * dx + dz * dz
       if (q < d2) d2 = q
     }
