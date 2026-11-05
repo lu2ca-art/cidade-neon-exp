@@ -27,7 +27,7 @@ import { QUALIDADE } from "./qualidade"
 import { ruinasNoMundo } from "./ruinas"
 import { U } from "./RuinasLuz"
 import { criarFumaca, criarRoupas, geoBicho, materialBicho } from "./VidaMiuda"
-import { QUANTO, abrirCaminho, andar, criarAndantes, criarParados, naCorrida, recuar, ruasDoSuburbio, semente, type Andante, type Parado } from "./vidaNasRuas"
+import { QUANTO, abrirCaminho, andar, criarAndantes, criarParados, naCorrida, querNaRua, recuar, ruasDoSuburbio, semente, trocarTurno, type Andante, type Parado } from "./vidaNasRuas"
 
 type MundoMin = Parameters<typeof ruinasNoMundo>[0]
 
@@ -274,6 +274,7 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
     const correndo = RUA.e.fase === "contagem" || RUA.e.fase === "valendo"
     const evitar = correndo ? (e: number) => R.ar[e].corrida : undefined
     const kv = Math.min(1, dt * 2.5)
+    const noite = U.noite.value
 
     const mt = gente.instanceMatrix.array as Float32Array, va = aVida.array as Float32Array
     let k = 0
@@ -282,7 +283,7 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
       andar(R, w, w.vAgora * dt, rnd, evitar)
       // o passo: um ciclo a cada 1,4 m
       w.fase = (w.fase + (w.vAgora * dt * 6.2832) / 1.4) % 6.2832
-      const alvo = correndo && naCorrida(w.x, w.z) ? 0 : 1
+      const alvo = correndo && naCorrida(w.x, w.z) ? 0 : trocarTurno(w, querNaRua("andante", w.semente, noite), cam.x, cam.z)
       w.vis += (alvo - w.vis) * kv
       if (w.vis < 0.01) continue
       const dx = Math.cos(w.rumo) * w.desvio, dz = -Math.sin(w.rumo) * w.desvio
@@ -291,7 +292,7 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
       k++
     }
     for (const p of parados) {
-      const alvo = correndo && naCorrida(p.x, p.z) ? 0 : 1
+      const alvo = correndo && naCorrida(p.x, p.z) ? 0 : trocarTurno(p, querNaRua(p.quando, p.semente, noite), cam.x, cam.z)
       p.vis += (alvo - p.vis) * kv
       if (p.vis < 0.01) continue
       recuar(p, P.x, P.z, dt)

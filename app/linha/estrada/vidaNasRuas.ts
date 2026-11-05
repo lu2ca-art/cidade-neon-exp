@@ -184,6 +184,7 @@ export type Andante = {
   vis: number // 0–1: aparece/some encolhendo
   desvio: number // o passo de lado pra abrir caminho (m, pra direita do rumo)
   espera: number // quanto tempo está parado esperando o jogador passar (s)
+  turno: number // 1 na rua, 0 em casa (dia e noite: queNoTurno)
 }
 
 const _p = { x: 0, y: 0, z: 0 }
@@ -240,7 +241,7 @@ export function criarAndantes(R: Ruas, n: number, rnd: () => number, bicho = fal
     const w: Andante = {
       x: 0, y: 0, z: 0, rumo: 0, e: 0, q: 0, dir: 1, t: 0, len: 1, x0: 0, z0: 0, y0: 0, x1: 0, z1: 0, y1: 0, no: 0,
       v: bicho ? 0.7 + rnd() * 0.9 : 1.05 + rnd() * 0.5, vAgora: 0, fase: rnd() * 6.28, semente: sem,
-      escala: bicho ? 1 : 0.92 + rnd() * 0.16, cal: bicho ? 5.2 : CALCADA - 0.6 + rnd() * 1.2, vis: 1, desvio: 0, espera: 0,
+      escala: bicho ? 1 : 0.92 + rnd() * 0.16, cal: bicho ? 5.2 : CALCADA - 0.6 + rnd() * 1.2, vis: 1, desvio: 0, espera: 0, turno: 1,
     }
     comecarCalcada(R, w, e, q, rnd() < 0.5 ? E.a : E.b)
     w.t = rnd() * w.len
@@ -286,7 +287,27 @@ export function andar(R: Ruas, w: Andante, d: number, rnd: () => number, evitar?
 
 // ── QUEM PARA: os grupinhos (fogo, bar) e quem dança no palco ──
 // modo 1: conversando (parado, gesticula); 2: dançando; quando: 0 fogo, 1 bar, 2 palco
-export type Parado = { x: number; y: number; z: number; rumo: number; modo: 1 | 2; quando: 0 | 1 | 2; semente: number; escala: number; vis: number; dx: number; dz: number }
+export type Parado = { x: number; y: number; z: number; rumo: number; modo: 1 | 2; quando: 0 | 1 | 2; semente: number; escala: number; vis: number; dx: number; dz: number; turno: number }
+
+// ── DIA E NOITE (n = U.noite das luzes das ruínas: 0 de dia, 1 de noite) ──
+// De dia a rua é cheia: todo mundo que anda, uns poucos na porta do bar e uns
+// dançando no palco. De noite quase dois terços de quem anda vai pra casa, e
+// acendem as rodas no fogo, o bar enche e o palco lota. Cada um tem a sua hora
+// (pela semente), então a troca é aos poucos, entre 17 h e 19 h.
+const hora = (semente: number) => (semente * 7.31 + 0.17) % 1
+export function querNaRua(quem: "andante" | 0 | 1 | 2, semente: number, n: number) {
+  const h = hora(semente)
+  if (quem === "andante") return h > 0.62 * n ? 1 : 0
+  if (quem === 0) return n > 0.25 + 0.5 * h ? 1 : 0 // o fogo
+  if (quem === 1) return h < 0.4 || n > 0.2 + 0.6 * h ? 1 : 0 // o bar
+  return h < 0.25 || n > 0.2 + 0.6 * h ? 1 : 0 // o palco
+}
+// quem está perto da câmera não some nem aparece do nada (só troca de turno
+// longe, a mais de 40 m): ninguém encolhe na cara do jogador
+export function trocarTurno(o: { turno: number; x: number; z: number }, quer: number, cx: number, cz: number) {
+  if (quer !== o.turno && (o.x - cx) ** 2 + (o.z - cz) ** 2 > 1600) o.turno = quer
+  return o.turno
+}
 
 // ── ABRIR CAMINHO (sem física): o jogador a menos de 3 m ──
 // Quem anda e vê o jogador na frente para (até 2,5 s; depois segue, já de lado)
@@ -319,7 +340,7 @@ export function criarParados(M: MundoMin, colisores: number[], luzes: LuzesRuina
   const out: Parado[] = []
   const pode = (x: number, z: number) => M.livre(x, z, 0.6) && !dentroDasRuinas(colisores, x, z, 0.35)
   const pessoa = (x: number, z: number, olhaX: number, olhaZ: number, modo: 1 | 2, quando: 0 | 1 | 2) =>
-    out.push({ x, y: M.chao(x, z), z, rumo: Math.atan2(olhaX - x, olhaZ - z), modo, quando, semente: rnd(), escala: 0.92 + rnd() * 0.16, vis: 1, dx: 0, dz: 0 })
+    out.push({ x, y: M.chao(x, z), z, rumo: Math.atan2(olhaX - x, olhaZ - z), modo, quando, semente: rnd(), escala: 0.92 + rnd() * 0.16, vis: 1, dx: 0, dz: 0, turno: 1 })
 
   // em volta do fogo: os tambores mais perto do bar (onde a vida acontece), um por roda
   const bar = CHAO_LUGARES.bar
