@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "A moto no mundo aberto",
+    data: "2026-11-05",
+    olhar: "A moto sai da Kombi (botão \"moto\") e anda na cidade, no deserto, no subúrbio e nos túneis: mais rápida que o patins, sem voar, pula rampas. \"Guardar a moto\" volta pra Kombi. Ela é o prêmio da missão dos túneis; antes disso aparece com cadeado. Kombi quebrou no deserto: você segue de moto até a oficina. Na cidade livre ela já vem aberta.",
+    perguntas: [
+      "A moto ficou gostosa de pilotar (velocidade, curva)?",
+      "Os botões \"moto\" e \"guardar a moto\" estão no lugar certo?",
+    ],
+    mais: [{ parte: "missao.tuneis.trincheiras", nome: "de moto nos túneis" }],
+  },
+  {
     parte: "bar",
     nome: "O subúrbio e a Kombi por dentro, mais leves (Blender)",
     data: "2026-11-05",
