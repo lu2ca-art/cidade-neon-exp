@@ -38,8 +38,11 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
-import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
-import { somDaMissao, somDoLugar } from "./disco/sons"
+import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
+import { introDe } from "./disco/introMissoes"
+import { IntroMissao } from "./disco/IntroMissao"
+import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
+import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
@@ -82,7 +85,7 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
-import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
@@ -515,12 +518,22 @@ export default function LinhaPage() {
   // tocando, o rádio e o disco seguem mais baixos e sem agudo
   // (música contínua, 03/11) com a faixa da pista tocando, a cena não abafa: a
   // faixa vira o instrumental dela, limpo (ver pistaSom.missao lá embaixo)
-  const emCena = !!cena && !somDoLugar(cena.lugar)
+  // (trilha sonora, 05/11; bíblia 9) a trilha não para e faz parte do cenário: numa
+  // cena (sala, casa, missão) a música segue no lugar, só um pouco mais baixa (sem abafar)
+  const emCena = !!cena
   useEffect(() => {
-    if (!emCena || pistaSom.tocando) return
-    abafar(true)
-    return () => abafar(false)
+    if (!emCena) return
+    abaixarUmPouco(true)
+    return () => abaixarUmPouco(false)
   }, [emCena])
+  // (trilha sonora, 05/11) a exceção: tocar os instrumentos na casa da D-Bee é FAZER
+  // música. A do jogo para (fade) e volta de onde estava quando ele sai
+  const tocandoInstrumentos = cena?.especial === "dbee-instrumentos"
+  useEffect(() => {
+    if (!tocandoInstrumentos) return
+    fazerMusica(true)
+    return () => fazerMusica(false)
+  }, [tocandoInstrumentos])
   const telefone = !!ligacao
   useEffect(() => {
     if (!telefone) return
@@ -1046,6 +1059,9 @@ export default function LinhaPage() {
   }
   const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : quebrada(hist) ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
+  // (trilha sonora, 05/11) a introdução da missão aberta (o balão por cima do mundo)
+  const [introMissao, setIntroMissao] = useState<{ id: MissaoId; quem: string; texto: string } | null>(null)
+  const introVista = useRef(new Set<MissaoId>())
   // (T10) a quadra: o B4TIDA aberto (a arte) e o basquete (o jogo, ou a quadra livre depois da porta)
   const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
   const [basquete, setBasquete] = useState<{ n: number; pontos: number; tempo: number; livre: boolean } | null>(null)
@@ -1191,8 +1207,8 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: "disco-tuneis", step: `grafite:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
-  const chegouNaMissao = (id: MissaoId) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras) return
+  const chegouNaMissao = (id: MissaoId, semIntro = false) => {
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras || (introMissao && !semIntro)) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     visitaAbriu.current = id
     if (!pc) { abrirPortaDe(id); return }
@@ -1201,6 +1217,14 @@ export default function LinhaPage() {
     if (!como || como.t === "historia" || como.t === "evento") return
     // (bloco 1 · D) chegar já é a peça (o caminho de patins e jetpack até o Drew): fica feita e a próxima segue
     if (como.t === "chegar") { pecaFeitaNaMissao(id, pc.qual); return }
+    // (trilha sonora, 05/11; bíblia 9) nenhum jogo surge do nada: antes da peça, quem
+    // pede fala o porquê (disco/introMissoes.ts), no mundo, com a música tocando. Toque pra começar
+    if (!semIntro) {
+      const h = hist13(saveRef.current)
+      const jaViu = introVista.current.has(id) || ordemDe(id).some((q) => pecaFeita(h, id, q))
+      const fala = introDe(id, jaViu)
+      if (fala) { setAoVivo(null); setIntroMissao({ id, ...fala }); return }
+    }
     pecaAberta.current = { missao: id, qual: pc.qual }
     if (como.t === "pingpong") setPingpong(true)
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
@@ -1248,6 +1272,9 @@ export default function LinhaPage() {
       if (normalizarMissao(h.missao) === id && !feita13(h, id) && alvo13(h, id)) chegouRef.current(id)
     }, 900)
   }
+  // (trilha sonora, 05/11) o "bora" da introdução: abre a peça (já sem a introdução)
+  const chegouSemIntro = useRef<(m: MissaoId) => void>(() => {})
+  useEffect(() => { chegouSemIntro.current = (m) => chegouNaMissao(m, true) })
   const pecaFeitaNaMissaoRef = useRef(pecaFeitaNaMissao)
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao })
   // (T63) ?parte=missao.tuneis.trincheiras: entrou no jogo, desce direto (sem dirigir até a boca)
@@ -1356,12 +1383,26 @@ export default function LinhaPage() {
   // (notas 04/11) a rádio ligada manda: nos túneis, nas salas e nas cenas ela
   // segue tocando e o som da missão não entra por cima (a faixa da rua já fica muda por baixo)
   const radioManda = D && fonteSom.get() === "radio" && !!radio?.tocando
+  // (trilha sonora, 05/11; bíblia 9) desligado: a missão não troca a música que está
+  // tocando (TRILHA_PROPRIA_DAS_MISSOES em disco/sons.ts volta a regra antiga)
   useEffect(() => {
-    if (!somAgora || pistaSom.tocando || radioManda) return
+    if (!TRILHA_PROPRIA_DAS_MISSOES || !somAgora || pistaSom.tocando || radioManda) return
     silenciarKombi(true)
     trilha.entrar(somAgora)
     return () => { trilha.sair(); silenciarKombi(false) }
   }, [somAgora, radioManda])
+  // (trilha sonora, 05/11; bíblia 9) chegou do deserto no subúrbio Xenom: a rádio
+  // liga sozinha (com o filtro de rádio antigo, radioAntiga.ts). Uma vez só, gravada
+  // no save; depois respeita se ele desligou
+  useEffect(() => aoChegarNoSuburbio(() => {
+    const s = saveRef.current
+    if (!HIST || historiaDe(s).radioXenom) return
+    setSave((x) => comHistoria(x, (h) => ({ ...h, radioXenom: true })))
+    // auto = true: a estrada (Corrida) põe a programação da frequência pra tocar
+    fonteSom.set("radio", true)
+  }), [HIST])
+  // nas trincheiras (lá embaixo) a rádio também soa antiga; subiu, a estrada diz a zona de novo
+  useEffect(() => { if (trincheiras && !trincheiras.descendo) definirZonaSom("tuneis") }, [trincheiras])
   // (notas 04/11) liga/desliga a rádio fora da estrada (os túneis, as salas): o mesmo do holo
   const alternarRadioLivre = () => {
     if (radioManda) fonteSom.set("off")
@@ -1375,7 +1416,7 @@ export default function LinhaPage() {
   // a faixa da pista vive na página (não na estrada, que desmonta numa sala): sai da página, para
   useEffect(() => () => pistaSom.parar(), [])
   // (só baixa o som da missão se ele vai tocar: sem faixa de pista, no deserto)
-  useEffect(() => { if (missaoCarreira && !pistaSom.tocando) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
+  useEffect(() => { if (TRILHA_PROPRIA_DAS_MISSOES && missaoCarreira && !pistaSom.tocando) trilha.preparar(somDaMissao(missaoCarreira)) }, [missaoCarreira])
   // (T22) a casa da missão pegada começa a baixar enquanto a Kombi ainda está longe
   useEffect(() => {
     if (!missaoCarreira) return
@@ -1701,7 +1742,8 @@ export default function LinhaPage() {
   // (música contínua, 03/11) missão, peça ou cena começou no meio da faixa: o
   // instrumental da MESMA faixa no MESMO ponto (crossfade); terminou, volta a
   // completa se ela ainda não acabou. Nada disso pausa a faixa
-  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora
+  // (trilha sonora, 05/11) as peças, a letra e o basquete também (antes cortavam a música)
+  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!letraAgora || !!basquete
   useEffect(() => {
     if (!momentoMissao) return
     pistaSom.missao(true)
@@ -2385,6 +2427,9 @@ export default function LinhaPage() {
           </div>
         )}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
+        {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
+          onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
+          onDepois={() => setIntroMissao(null)} />}
         {cenaAgora && <Peca key={`${cenaAgora.missao}:${cenaAgora.qual}`} id={cenaAgora.id} qual={cenaAgora.qual} cor={MISSOES13[cenaAgora.missao].cor} quem={MISSOES13[cenaAgora.missao].quem} onFim={(ok, obra) => {
           const c = cenaAgora
           setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined, obras13: obra ? { ...(x.obras13 ?? {}), [`${c.missao}:${c.qual}`]: obra } : x.obras13 })))

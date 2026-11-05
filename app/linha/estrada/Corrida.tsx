@@ -104,6 +104,7 @@ import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Freq
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { radioPega, type MemoriaRadio } from "../disco/sons"
+import { definirZonaSom, zonaDoSom } from "../disco/radioAntiga"
 import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, type Fonte, definirTom, pistaSom, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
@@ -6026,6 +6027,8 @@ function CenaBase({
     if (faixasDisco.length) {
       const infR = (M as MundoDisco).info[j.via]
       fonteSom.pega(radioPega(memRadio.current, faseHistoria ?? null, !!infR && infR.pista >= 0, dt))
+      // (trilha sonora, 05/11) a zona do som: no subúrbio a rádio soa antiga; na cidade, limpa
+      definirZonaSom(zonaDoSom(!!j.voo, j.wx, j.wz))
     }
     // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }

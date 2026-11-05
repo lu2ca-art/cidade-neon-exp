@@ -11,7 +11,7 @@ import { CROSSFADE, VOL_SEM_INST, albumComprado, comecaPelaCompleta, definirFaix
 // (T40b) A MESA DE MIXAGEM (lib/mesa.ts): o AudioContext único do jogo, os 4
 // canais (música, ambiente, efeitos, vozes), o volume geral, o mudo, a
 // prioridade (a voz abaixa a música) e o limitador no fim. Aqui só se usa
-import { CANAIS, VOLUMES, canal, definirVolume, mesaCtx, mudo as mudoMesa, registrarSegurar, volumeEfetivo, vozAbaixa, type Canal, type CanalVolume } from "@/lib/mesa"
+import { CANAIS, VOLUMES, canal, definirVolume, mesaCtx, mudo as mudoMesa, registrarMusicaTocando, registrarSegurar, volumeEfetivo, vozAbaixa, type Canal, type CanalVolume } from "@/lib/mesa"
 export { VOLUMES, definirVolume, CANAIS, type CanalVolume, type Canal }
 
 let ctx: AudioContext | null = null
@@ -57,12 +57,21 @@ let silenciando = 0
 // (T40) a Kombi cala porque o som de uma missão entrou: a música para, mas a
 // trilha da missão (que também sai por aqui) segue
 let silenciandoKombi = 0
+// (trilha sonora, 05/11) o "duck" leve: uma cena, uma peça, a introdução de uma
+// missão. A música segue no lugar (faz parte do cenário), só um pouco mais baixa
+let abaixando = 0
+const VOL_DUCK_LEVE = 0.7
 function aplicarAbafo() {
   const c = audioCtx()
   if (!c || !abafo() || !abafoF || !abafoG) return
-  const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0
+  const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0, leve = abaixando > 0
   abafoF.frequency.setTargetAtTime(on ? 650 : 20000, c.currentTime, on ? 0.2 : 0.5)
-  abafoG.gain.setTargetAtTime(mudo ? 0 : on ? 0.4 : 1, c.currentTime, on || mudo ? 0.2 : 0.5)
+  abafoG.gain.setTargetAtTime(mudo ? 0 : on ? 0.4 : leve ? VOL_DUCK_LEVE : 1, c.currentTime, on || mudo || leve ? 0.2 : 0.5)
+}
+/** abaixa um pouco a música (sem abafar): a cena, a peça, a introdução da missão */
+export function abaixarUmPouco(sim: boolean) {
+  abaixando = Math.max(0, abaixando + (sim ? 1 : -1))
+  aplicarAbafo()
 }
 export function abafar(sim: boolean) {
   abafando = Math.max(0, abafando + (sim ? 1 : -1))
@@ -97,6 +106,39 @@ export function silenciar(sim: boolean) {
 // (T40b) "nunca duas músicas": um app solto (o Guitar Driver, o fliperama) que
 // toca a música dele segura a do jogo pela mesa
 registrarSegurar(silenciar)
+
+// ── A MÚSICA SÓ PARA PRA FAZER MÚSICA (trilha sonora, 05/11; bíblia 9) ──
+// A batida, o Guitar Driver, o tambor e os instrumentos na casa da D-Bee: a
+// música do jogo (a rádio, o toca-discos, a faixa da rua) some em fade e PAUSA
+// (não fica andando muda); saiu, volta de onde estava. Conta quem pediu.
+// Fora disso nada para: missão, peça, sala e cena só abaixam um pouco.
+let fazendo = 0
+let pausaFazer: ReturnType<typeof setTimeout> | null = null
+const pausadosFazer = { radio: false, disco: false }
+export function fazerMusica(sim: boolean) {
+  const antes = fazendo
+  fazendo = Math.max(0, fazendo + (sim ? 1 : -1))
+  if (antes === 0 && fazendo > 0) {
+    silenciar(true) // o fade (setTargetAtTime no grafo)
+    if (pausaFazer) clearTimeout(pausaFazer)
+    pausaFazer = setTimeout(() => {
+      pausaFazer = null
+      if (fazendo === 0) return
+      if (player.tocando) { pausadosFazer.radio = true; player.pausar() }
+      if (disco.tocando) { pausadosFazer.disco = true; disco.el?.pause() }
+      pistaSom.pausarPraMusica()
+    }, 900)
+  } else if (antes > 0 && fazendo === 0) {
+    if (pausaFazer) { clearTimeout(pausaFazer); pausaFazer = null }
+    if (pausadosFazer.radio) { pausadosFazer.radio = false; player.retomar() }
+    if (pausadosFazer.disco) { pausadosFazer.disco = false; disco.el?.play().catch(() => {}) }
+    pistaSom.voltarDaMusica()
+    silenciar(false)
+  }
+}
+export const fazendoMusica = () => fazendo > 0
+// o fliperama (lib/mesa) pergunta antes de tocar o laço dele
+registrarMusicaTocando(() => fazendo === 0 && (player.tocando || disco.tocando || pistaSom.tocando))
 
 // ── Ambiente ────────────────────────────────────────────────
 // Sem ruído de fundo: o LU2CA pediu silêncio fora da música e do motor
@@ -514,6 +556,82 @@ function medir(el: HTMLAudioElement, source: MusicSource) {
   })
 }
 
+// ── A RÁDIO ANTIGA (trilha sonora, 05/11; o dono: "desde quando ele chega do
+// deserto no subúrbio Xenom, começa a rádio, com filtro de som de rádio antigo").
+// No subúrbio a rádio soa como rádio velho: passa-banda (~300–3400 Hz), uma
+// saturação leve e um chiado bem baixinho. Na cidade, limpa. Tudo no grafo do
+// Web Audio (nada por quadro em JS): UM filtro (biquad passa-banda), um
+// waveshaper e dois ganhos que trocam em fade (seco ⇄ molhado). Desligada, o
+// caminho molhado sai do grafo (desempenho). Quem decide onde está: radioAntiga.ts
+const RADIO_ANTIGA = {
+  centro: 1010, // Hz: o meio de 300–3400 (média geométrica)
+  q: 0.45, // largo: ~3 oitavas
+  ganho: 1.5, // o passa-banda come volume: compensa
+  saturacao: 2.2, // a curva tanh (suave; 0 = sem)
+  chiado: 0.014, // o volume do chiado (só com a rádio tocando)
+  fade: 0.35, // constante de tempo da troca (s)
+}
+let ra: { c: AudioContext; src: AudioNode; seco: GainNode; filtro: BiquadFilterNode; molhado: GainNode; chiadoG: GainNode; chiado: AudioBufferSourceNode | null; ligado: boolean; solto: ReturnType<typeof setTimeout> | null } | null = null
+let radioAntigaQuer = false
+let bufChiado: AudioBuffer | null = null // o ruído do chiado: feito uma vez
+function montarRadioAntiga(c: AudioContext, src: AudioNode, dst: AudioNode) {
+  const seco = c.createGain()
+  seco.gain.value = 1
+  src.connect(seco).connect(dst)
+  const filtro = c.createBiquadFilter()
+  filtro.type = "bandpass"
+  filtro.frequency.value = RADIO_ANTIGA.centro
+  filtro.Q.value = RADIO_ANTIGA.q
+  const shaper = c.createWaveShaper()
+  const n = 512, curva = new Float32Array(n), k = RADIO_ANTIGA.saturacao
+  for (let i = 0; i < n; i++) { const x = (i * 2) / (n - 1) - 1; curva[i] = Math.tanh(k * x) / Math.tanh(k) }
+  shaper.curve = curva
+  const molhado = c.createGain()
+  molhado.gain.value = 0
+  filtro.connect(shaper).connect(molhado).connect(dst)
+  const chiadoG = c.createGain()
+  chiadoG.gain.value = 0
+  chiadoG.connect(filtro)
+  ra = { c, src, seco, filtro, molhado, chiadoG, chiado: null, ligado: false, solto: null }
+  aplicarRadioAntiga()
+}
+function aplicarRadioAntiga() {
+  if (!ra) return
+  const r = ra, t = r.c.currentTime, on = radioAntigaQuer
+  if (on && !r.ligado) {
+    r.ligado = true
+    if (r.solto) { clearTimeout(r.solto); r.solto = null }
+    try { r.src.connect(r.filtro) } catch {}
+  }
+  r.seco.gain.setTargetAtTime(on ? 0 : 1, t, RADIO_ANTIGA.fade)
+  r.molhado.gain.setTargetAtTime(on ? RADIO_ANTIGA.ganho : 0, t, RADIO_ANTIGA.fade)
+  // o chiado: só com a rádio no ar (um loop de 2 s de ruído, no relógio do áudio)
+  const chia = on && player.tocando
+  if (chia && !r.chiado) {
+    if (!bufChiado) {
+      const len = Math.floor(r.c.sampleRate * 2), d = (bufChiado = r.c.createBuffer(1, len, r.c.sampleRate)).getChannelData(0)
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+    }
+    const s = r.c.createBufferSource()
+    s.buffer = bufChiado; s.loop = true
+    s.connect(r.chiadoG); s.start()
+    r.chiado = s
+  }
+  r.chiadoG.gain.setTargetAtTime(chia ? RADIO_ANTIGA.chiado : 0, t, 0.2)
+  if (!chia && r.chiado) { const s = r.chiado; r.chiado = null; setTimeout(() => { try { s.stop(); s.disconnect() } catch {} }, 900) }
+  if (!on && r.ligado) {
+    if (r.solto) clearTimeout(r.solto)
+    r.solto = setTimeout(() => { r.solto = null; if (!radioAntigaQuer && r.ligado) { r.ligado = false; try { r.src.disconnect(r.filtro) } catch {} } }, RADIO_ANTIGA.fade * 5000)
+  }
+}
+/** no subúrbio (true) a rádio soa como rádio antigo; na cidade (false), limpa.
+ *  Barato: só mexe no grafo quando muda (pode chamar a cada quadro) */
+export function radioAntiga(sim: boolean) {
+  if (sim === radioAntigaQuer) return
+  radioAntigaQuer = sim
+  aplicarRadioAntiga()
+}
+
 class Player {
   el: HTMLAudioElement | null = null
   detector: DetectorDeTom | null = null
@@ -528,8 +646,8 @@ class Player {
     el.preload = "auto"
     el.crossOrigin = "anonymous"
     el.addEventListener("timeupdate", () => this.emitir())
-    el.addEventListener("play", () => { this.detector?.ligar(); this.emitir() })
-    el.addEventListener("pause", () => { this.detector?.desligar(); this.emitir() })
+    el.addEventListener("play", () => { this.detector?.ligar(); this.emitir(); aplicarRadioAntiga() })
+    el.addEventListener("pause", () => { this.detector?.desligar(); this.emitir(); aplicarRadioAntiga() })
     el.addEventListener("ended", () => { this.aoFim?.(); this.emitir() })
     medir(el, "radio")
     const c = audioCtx()
@@ -542,7 +660,10 @@ class Player {
         this.analyser = c.createAnalyser()
         this.analyser.fftSize = 256
         this.analyser.smoothingTimeConstant = 0.6
-        node.connect(this.gain).connect(abafo() ?? out)
+        node.connect(this.gain)
+        // (trilha sonora, 05/11) a rádio passa pela RÁDIO ANTIGA (no subúrbio, o
+        // filtro de rádio velho; na cidade, limpa) antes do abafo
+        montarRadioAntiga(c, this.gain, abafo() ?? out)
         this.gain.connect(this.analyser)
         const ouvido = c.createAnalyser()
         ouvido.fftSize = 16384
@@ -1075,6 +1196,19 @@ class PistaSom {
     const alvo = this.segurando || this.radio ? 0 : this.noAr ? 0.4 : this.abafada ? 0.6 : 1
     if (forcar || corte !== this.ultCorte) { this.ultCorte = corte; this.filtro.frequency.setTargetAtTime(corte, c.currentTime, 0.08) }
     if (forcar || alvo !== this.ultAlvo) { this.ultAlvo = alvo; this.mestre.gain.setTargetAtTime(alvo, c.currentTime, this.radio || this.segurando ? 0.25 : 0.08) }
+  }
+  // (trilha sonora, 05/11) fazer música (som.ts fazerMusica): a faixa pausa de
+  // verdade (já em silêncio) e volta do mesmo ponto
+  private pausadaPraMusica = false
+  pausarPraMusica() {
+    const e = this.el
+    if (this.faixa && e && !e.paused) { e.pause(); this.pausadaPraMusica = true }
+  }
+  voltarDaMusica() {
+    if (!this.pausadaPraMusica) return
+    this.pausadaPraMusica = false
+    const e = this.el
+    if (this.faixa && e && e.paused) tocarSemErro(e)
   }
   /** um jogo no holo / um show com o som dele: abaixa a zero, a faixa SEGUE andando */
   segurar(sim: boolean) {

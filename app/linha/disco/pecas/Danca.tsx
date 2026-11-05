@@ -18,7 +18,7 @@ export function Danca({ cor, onFim }: PecaProps) {
   const [placar, setPlacar] = useState({ certo: 0, quase: 0, fora: 0 })
   const [fim, setFim] = useState(false)
   const [msg, setMsg] = useState<{ t: string; k: number } | null>(null)
-  const musica = useMusica(pista.inst, !fim)
+  const musica = useMusica(pista.inst, !fim, { faixa: pista.id, bpm: pista.bpm })
   const anel = useRef<HTMLDivElement>(null)
   const pista3 = useRef<HTMLDivElement>(null)
   const julgadas = useRef(new Set<number>())

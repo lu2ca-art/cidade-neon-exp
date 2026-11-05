@@ -43,6 +43,12 @@ export const SOM_BAR: SomMissao = faixa("Copo Americano · instrumental", "/audi
 
 export const somDaMissao = (id: MissaoId): SomMissao => SOM_MISSAO[id]
 
+// (trilha sonora, 05/11; bíblia 9: "a trilha sonora não para") a missão NÃO troca
+// a música que está tocando (a rádio, a faixa da rua, o disco da Kombi): ela segue
+// e faz parte do cenário. false = o som próprio de cada missão (a tabela acima)
+// fica guardado e não entra. true volta a regra antiga (T40)
+export const TRILHA_PROPRIA_DAS_MISSOES = false
+
 // o som do lugar de uma cena: a missão que mora nele (a D-Bee antes da final,
 // que usa a mesma casa); null = lugar sem som próprio (fica a música abafada)
 export function somDoLugar(lugar: LugarId | string): SomMissao | null {

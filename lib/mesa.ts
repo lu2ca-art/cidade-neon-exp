@@ -135,6 +135,12 @@ export const alguemFalando = () => falando > 0
 let aoSegurar: ((sim: boolean) => void) | null = null
 export function registrarSegurar(f: (sim: boolean) => void) { aoSegurar = f }
 export function segurarMusica(sim: boolean) { aoSegurar?.(sim) }
+// (trilha sonora, 05/11) a música do jogo está tocando? (o som.ts do /linha registra).
+// Um jogo com laço próprio (o fliperama) não toca o dele por cima: a trilha do jogo
+// segue e faz parte do cenário. Sem registro (um app solto), false
+let musicaTocando: (() => boolean) | null = null
+export function registrarMusicaTocando(f: () => boolean) { musicaTocando = f }
+export const musicaDoJogoTocando = () => !!musicaTocando?.()
 
 // liga um <audio> num canal (uma vez por elemento). false = sem grafo (fica no el.volume)
 const fontes = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>()

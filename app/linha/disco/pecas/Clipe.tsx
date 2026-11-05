@@ -17,7 +17,7 @@ export function Clipe({ onFim }: PecaProps) {
   const [cam, setCam] = useState(0)
   const [cortes, setCortes] = useState<{ cam: number; noTempo: boolean }[]>([])
   const pronto = cortes.length >= CLIPE.cortes
-  const musica = useMusica(pista.inst, true)
+  const musica = useMusica(pista.inst, true, { faixa: pista.id, bpm: pista.bpm })
   const pulso = useRef<HTMLDivElement>(null)
   // o quadro pulsa na batida (o REC e a borda), pra dar o tempo
   useEffect(() => {

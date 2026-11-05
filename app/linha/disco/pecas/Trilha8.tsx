@@ -8,12 +8,16 @@
 import { useEffect, useRef, useState } from "react"
 import { TRILHA8 } from "./conf"
 import { bip, ruido } from "./sons"
+import { fazerMusica } from "../../som"
 import type { PecaProps } from "./Peca"
 
 // um começo pra não ser a grade vazia (o Notti deixou o pulso marcando)
 const INICIO = (): boolean[][] => TRILHA8.vozes.map((_, v) => Array.from({ length: TRILHA8.passos }, (_, p) => v === 2 && p % 2 === 0))
 
 export function Trilha8({ onFim }: PecaProps) {
+  // (trilha sonora, 05/11; bíblia 9) fazer a trilha 8 bits é FAZER música: a do jogo
+  // para (fade) enquanto ele compõe e volta de onde estava quando fecha
+  useEffect(() => { fazerMusica(true); return () => fazerMusica(false) }, [])
   const [grade, setGrade] = useState(INICIO)
   const [passo, setPasso] = useState(-1)
   const gradeRef = useRef(grade)
