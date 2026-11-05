@@ -358,7 +358,9 @@ function pontoVia(M: Mundo, via: number, u: number) {
   return i
 }
 
-export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase = null }: {
+export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase = null, corridaRua = false }: {
+  // (05/11) a largada da corrida de rua (pontosMapa.ts): só depois de chegar ao subúrbio
+  corridaRua?: boolean
   M: Mundo
   jogo: React.RefObject<PoseJogo>
   marcaRef: React.RefObject<Marca | null>
@@ -434,8 +436,8 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
 
   const grupo = useRef<THREE.Group>(null)
   const st = useRef({ sig: "", ini: 0, total: 0, pois: "", destKey: "", temRota: false })
-  const props = useRef({ alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase })
-  props.current = { alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase }
+  const props = useRef({ alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase, corridaRua })
+  props.current = { alvoChao, lugarAlvo, alvoLivre, apagada, missoes, fase, corridaRua }
 
   useEffect(() => {
     const blips = blipsDo(M).filter((b) => b.tipo !== "flor")
@@ -443,7 +445,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
     // os pontos de interesse (feixes suaves): refeitos só quando muda o que aparece
     const pontosDeInteresse = () => {
       const pr = props.current, ap = pr.apagada
-      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => `${m.id}${m.agora ? "!" : m.feita ? "." : ""}`).join(",") ?? ""}|${pr.fase ?? ""}|${pr.alvoChao ?? ""}|${chaveBrilho()}`
+      const key = `${ap?.map((x) => (x ? 1 : 0)).join("") ?? ""}|${pr.missoes?.map((m) => `${m.id}${m.agora ? "!" : m.feita ? "." : ""}`).join(",") ?? ""}|${pr.fase ?? ""}|${pr.alvoChao ?? ""}|${pr.corridaRua ? "r" : ""}|${chaveBrilho()}`
       if (key === st.current.pois) return
       st.current.pois = key
       const C = DRONE_CFG, I = feixes.inst
@@ -455,7 +457,7 @@ export function HoloDrone({ M, jogo, marcaRef, vagaRef, alvoChao, lugarAlvo, alv
       }
       // (notas 04/11) os mesmos pontos do minimapa (pontosMapa.ts): a missão de agora
       // mais alta, as que dá pra pegar, as feitas baixinhas e apagadas
-      for (const p of pontosDoMapa(M, { apagada: ap, missoes: pr.missoes, fase: pr.fase, alvoChao: pr.alvoChao })) {
+      for (const p of pontosDoMapa(M, { apagada: ap, missoes: pr.missoes, fase: pr.fase, alvoChao: pr.alvoChao, corridaRua: pr.corridaRua })) {
         // (trilha de pedras) o que acabou de abrir: o feixe mais alto, no próprio lugar
         if (p.tipo === "missao") por(p.x, p.y, p.z, p.feita && !brilha(p.id) ? apagar(p.cor) : p.cor, p.agora ? 1.6 : brilha(p.id) ? 2.4 : p.feita ? 0.45 : 1.1)
         else por(p.x, p.tipo === "chao" ? yChao(p.x, p.z, p.y) : p.y, p.z, p.cor, p.tipo === "chao" ? 0.8 : 1)

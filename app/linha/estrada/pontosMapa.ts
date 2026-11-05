@@ -12,6 +12,8 @@
 // - um lugar que é o ponto de uma missão aberta não aparece duas vezes: fica o
 //   ícone da missão
 // - sem os canteiros de flor (pontinhos demais; eles se acham na rua)
+// - (05/11) a largada da corrida de rua do subúrbio só depois que o jogador
+//   chegou lá embaixo (`corridaRua`: a page/Corrida dizem quando)
 
 import { posicao, type Mundo } from "./mundo"
 import { PASSO } from "./pista"
@@ -20,6 +22,7 @@ import { PAGINAS } from "../paginas"
 import { PARQUE } from "./Parque"
 import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
 import { pontoDoAlvo, type LugarMissao } from "./alvoMissao"
+import { PORTOES_RUA } from "../disco/corridaRua"
 
 export type TipoPonto = "lugar" | "posto" | "parque" | "chao" | "missao"
 export interface PontoMapa {
@@ -61,7 +64,7 @@ function noVia(M: Mundo, via: number, u: number) {
 }
 const yChao = (M: Mundo, x: number, z: number) => (M as unknown as { chaoEm?: (x: number, z: number) => number }).chaoEm?.(x, z) ?? 0
 
-export function pontosDoMapa(M: Mundo, o: { apagada?: boolean[] | null; missoes?: IconeMapa[] | null; fase?: string | null; alvoChao?: LugarChao | null }): PontoMapa[] {
+export function pontosDoMapa(M: Mundo, o: { apagada?: boolean[] | null; missoes?: IconeMapa[] | null; fase?: string | null; alvoChao?: LugarChao | null; corridaRua?: boolean }): PontoMapa[] {
   const out: PontoMapa[] = []
   const disco = "disco" in M
   // as missões primeiro: os lugares delas (abertas) não se repetem embaixo
@@ -97,6 +100,11 @@ export function pontosDoMapa(M: Mundo, o: { apagada?: boolean[] | null; missoes?
     if (ocupados.has(`c:${k}`)) continue
     const c = CHAO_LUGARES[k]
     out.push({ id: `chao:${k}`, nome: c.nome, cor: c.cor, tipo: "chao", x: c.x, y: yChao(M, c.x, c.z), z: c.z })
+  }
+  // (05/11) a largada da corrida de rua (disco/corridaRua.ts), na reta do bar
+  if (disco && o.corridaRua) {
+    const s = PORTOES_RUA[0]
+    out.push({ id: "corrida-rua", nome: "CORRIDA", cor: "#2fe8ff", tipo: "chao", x: s.x, y: yChao(M, s.x, s.z), z: s.z })
   }
   return out
 }

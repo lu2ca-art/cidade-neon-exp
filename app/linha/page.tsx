@@ -9,6 +9,7 @@
 // liberando coisa nova aos poucos.
 
 import { registrarRacha } from "./disco/corredores"
+import { placarComCorrida, type ResultadoRua } from "./disco/corridaRua"
 import { useCallback, useEffect, useInsertionEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
@@ -2148,6 +2149,8 @@ export default function LinhaPage() {
   const cOnMissoes = useFixo(() => setPainelMissoes(true))
   const cOnFuga = useFixo((n: number) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) })))
   const cOnRacha = useFixo((r: Parameters<typeof registrarRacha>[1]) => setSave((s) => registrarRacha(s, r)))
+  // (05/11) a corrida de rua do subúrbio: o melhor tempo no save e, na primeira vitória, o neon$
+  const cOnCorridaRua = useFixo((r: ResultadoRua) => setSave((s) => { const { placar, premio } = placarComCorrida(s.ruaSuburbio, r); return { ...ganhar(s, premio), ruaSuburbio: placar } }))
   const cOnPerseguicao = useFixo((...[e, id]: Parameters<NonNullable<ComponentProps<typeof CorridaTipo>["onPerseguicao"]>>) => {
     if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
     else if (id) {
@@ -2287,6 +2290,7 @@ export default function LinhaPage() {
             agua={save.agua ?? 0}
             onFuga={cOnFuga}
             onRacha={cOnRacha}
+            onCorridaRua={cOnCorridaRua}
             perseguicao={perseguicaoAgora}
             esperaPolicia={podeVirPolicia && !cena && !oficinaTela ? CONFIG_PERSEGUICAO.esperaMs : 0}
             semKombi={semKombi}

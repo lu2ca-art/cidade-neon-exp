@@ -7,6 +7,7 @@ import { montarFio, type Perfil } from "./missoes"
 import type { Flor } from "./recursos"
 import type { Modo } from "./ligacoes"
 import type { HistoriaDisco } from "./disco/historia"
+import type { PlacarRua } from "./disco/corridaRua"
 import { migrarEconomia } from "./economia"
 
 export type Item =
@@ -81,6 +82,9 @@ export interface Save {
   economia?: number
   // (T44) os rachas: por corredor (disco/corredores.ts), quantas você ganhou (v) e perdeu (d)
   rachas?: Record<string, { v: number; d: number }>
+  // (05/11) a corrida de rua do subúrbio (disco/corridaRua.ts): o melhor tempo
+  // por veículo (moto, patins), as vitórias e quantas correu
+  ruaSuburbio?: PlacarRua
   // quantas vezes a pessoa saiu de um lugar com a escolha errada (o bar:
   // beber). A missão fica aberta e o mundo estranha até ela fazer a certa
   loops: Record<string, number>
