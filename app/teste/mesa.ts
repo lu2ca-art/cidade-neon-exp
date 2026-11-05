@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "O subúrbio e a Kombi por dentro, mais leves (Blender)",
+    data: "2026-11-05",
+    olhar: "O subúrbio caiu de 205 mil pra 36 mil triângulos (3,5 MB → 1,3 MB): os prédios viraram caixas leves com a fachada original pintada nelas. O mural do dragão e os neons ficaram iguais. O interior da Kombi foi de 90 mil pra 26 mil (1 MB → 0,3 MB), com o mesmo desenho.",
+    perguntas: [
+      "De perto, as fachadas ficaram borradas demais? (dá pra subir a textura)",
+      "O jogo ficou mais leve no subúrbio?",
+    ],
+    mais: [{ parte: "kombi.dentro", nome: "a Kombi por dentro" }],
+  },
+  {
     parte: "livre",
     nome: "As ruas do tamanho da faixa (a cidade maior)",
     data: "2026-11-05",
