@@ -41,6 +41,6 @@ const g = Array.from({ length: H }, () => Array(W).fill(" "))
 for (let i = 0; i < H; i++) for (let k = 0; k < W; k++) if (parede(x0 + k * C + C / 2, z0 + i * C + C / 2) < 0.01) g[i][k] = "#"
 const pos = (x: number, z: number) => [Math.floor((z - z0) / C), Math.floor((x - x0) / C)]
 for (const p of VOLTA_RUA) { const [i, k] = pos(p.x, p.z); if (g[i]?.[k] !== undefined) g[i][k] = "·" }
-PORTOES_RUA.forEach((p, n) => { const [i, k] = pos(p.x, p.z); if (g[i]?.[k] !== undefined) g[i][k] = n === 0 ? "S" : String(n % 10) })
+PORTOES_RUA.forEach((p, n) => { const [i, k] = pos(p.x, p.z); if (g[i]?.[k] !== undefined) g[i][k] = n === 0 ? "S" : n < 10 ? String(n) : "A" })
 for (const [id, l] of Object.entries(CHAO_LUGARES)) { const [i, k] = pos(l.x, l.z); if (g[i]?.[k] !== undefined) g[i][k] = id[0].toUpperCase() }
 console.log(g.map((r) => r.join("").trimEnd()).join("\n"))
