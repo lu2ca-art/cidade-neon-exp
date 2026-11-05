@@ -6,7 +6,8 @@
 // leem dele e escrevem uniforms. Fora de uma rua com manifesto: nada montado,
 // custo ~zero (um índice num array por quadro).
 //
-// Entra em fade (~1,2 s) e sai em fade; voar, passar pela torre da ponta ou
+// Entra em fade (~1,2 s) e sai em fade (~1,6 s, também quando passa direto pra
+// outra rua com manifesto: a antiga some, depois a nova entra); voar, passar pela torre da ponta ou
 // pular a mureta não desmonta na hora (6 s de carência).
 
 import { useMemo, useRef, useState } from "react"
@@ -43,15 +44,17 @@ export function Manifestos({ M, jogo, input, carro }: {
     const dt = Math.min(0.1, dtCru)
     const inf = M.info[j.via]
     const aqui = inf && inf.pista >= 0 && !j.voo && pistas[inf.pista] ? inf.pista : -1
-    // a rua mudou pra outra que tem manifesto: troca na hora
-    if (aqui >= 0 && aqui !== st.kVivo) {
+    // chegou numa rua com manifesto: nada montado, monta já; (revisão 2b) outra rua
+    // montada, a antiga sai em fade (o céu e a chuva dela voltam suave) e a nova
+    // entra depois, em fade
+    if (aqui >= 0 && aqui !== st.kVivo && (st.kVivo < 0 || ctx.dentro <= 0)) {
       st.kVivo = aqui; st.fora = 0; st.tProprio = 0
       ctx.dentro = 0; ctx.idade = 0
       setK(aqui)
     }
     if (st.kVivo < 0) return
     st.fora = aqui === st.kVivo ? 0 : st.fora + dt
-    const ficando = st.fora < CARENCIA
+    const ficando = st.fora < CARENCIA && !(aqui >= 0 && aqui !== st.kVivo)
     ctx.dentro = ficando ? Math.min(1, ctx.dentro + dt / FADE_IN) : Math.max(0, ctx.dentro - dt / FADE_OUT)
     if (!ficando && ctx.dentro <= 0) { st.kVivo = -1; setK(-1); return }
 
