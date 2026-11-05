@@ -573,6 +573,7 @@ const RADIO_ANTIGA = {
 }
 let ra: { c: AudioContext; src: AudioNode; seco: GainNode; filtro: BiquadFilterNode; molhado: GainNode; chiadoG: GainNode; chiado: AudioBufferSourceNode | null; ligado: boolean; solto: ReturnType<typeof setTimeout> | null } | null = null
 let radioAntigaQuer = false
+let bufChiado: AudioBuffer | null = null // o ruído do chiado: feito uma vez
 function montarRadioAntiga(c: AudioContext, src: AudioNode, dst: AudioNode) {
   const seco = c.createGain()
   seco.gain.value = 1
@@ -607,10 +608,12 @@ function aplicarRadioAntiga() {
   // o chiado: só com a rádio no ar (um loop de 2 s de ruído, no relógio do áudio)
   const chia = on && player.tocando
   if (chia && !r.chiado) {
-    const len = Math.floor(r.c.sampleRate * 2), b = r.c.createBuffer(1, len, r.c.sampleRate), d = b.getChannelData(0)
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+    if (!bufChiado) {
+      const len = Math.floor(r.c.sampleRate * 2), d = (bufChiado = r.c.createBuffer(1, len, r.c.sampleRate)).getChannelData(0)
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+    }
     const s = r.c.createBufferSource()
-    s.buffer = b; s.loop = true
+    s.buffer = bufChiado; s.loop = true
     s.connect(r.chiadoG); s.start()
     r.chiado = s
   }
