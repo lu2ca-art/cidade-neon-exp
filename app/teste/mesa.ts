@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Revisão 3: as zonas valem na carreira, D-Bee fala, final sem tranco",
+    data: "2026-11-05",
+    olhar: "As regras de veículo por zona e os rachas agora valem também na carreira (antes só no jogo livre): no deserto só Kombi/moto, no subúrbio a pé/patins/moto. A D-Bee passou a sugerir coisas na carreira também. O vídeo da despedida (quando entrar) cala a música do jogo. Depois do final fica uma Kombi só, no quintal. Na corrida de rua o GPS aponta pro próximo portão.",
+    perguntas: [
+      "Missão do bar/quadra/túneis indo de Kombi: desceu na borda do subúrbio direitinho?",
+      "Os rachas aparecendo na carreira atrapalham as missões?",
+    ],
+  },
+  {
     parte: "final",
     nome: "O final do jogo (as ações, sem os vídeos ainda)",
     data: "2026-11-05",
