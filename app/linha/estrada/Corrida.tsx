@@ -113,7 +113,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
-import { FALA_ZONA, TRANCA_MOTO, motoLiberada, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
+import { FALA_ZONA, TRANCA_MOTO, motoLiberada, naMoto, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
 import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
@@ -773,6 +773,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const [dePatins, setDePatins] = useState(false)
   // (moto, 05/11) fora da Kombi de moto: é o patins com outra física e outro corpo (combRef.moto)
   const [deMoto, setDeMoto] = useState(false)
+  useEffect(() => { naMoto.agora = deMoto }, [deMoto])
   // as flores do asfalto (mapa novo, LU2CA 16/10): só de patins; 10 por vez, sem fim
   const [flores, setFlores] = useState(() => lerFlores())
   const leva = useMemo(() => ("ligacoes" in M ? levaDe(M, flores.geracao) : []), [M, flores.geracao])

@@ -24,13 +24,14 @@ export const ZONA_VEICULOS: Record<Zona, readonly Modo[]> = {
   tuneis: ["moto", "pe", "patins", "bmx", "skate"],
 }
 
-// (T14) as motos chegam depois: até lá, o botão com o cadeado
-export const MOTO_LIBERADA = false
 // (moto, 05/11) A REGRA DA MOTO: ela é o prêmio da missão dos túneis (a porta
 // "motos" abre junto com "corridas", disco/portas.ts). Correu nas trincheiras,
 // a moto é sua e mora guardada na Kombi. No fim do jogo (fase "livre") tudo abre.
 // Antes disso, o botão com o cadeado e esta frase
 export const TRANCA_MOTO = "ganha na missão dos túneis: correr nas trincheiras"
+// de moto agora no mundo aberto? A Corrida marca; as trincheiras leem ao descer
+// (desceu de moto, passeia de moto lá embaixo)
+export const naMoto = { agora: false }
 export function motoLiberada(h: Pick<HistoriaDisco, "fase" | "portas"> | null | undefined): boolean {
   if (!h) return false
   return h.fase === "livre" || (h.portas ?? []).includes("motos")

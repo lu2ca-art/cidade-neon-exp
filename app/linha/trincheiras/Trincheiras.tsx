@@ -50,7 +50,7 @@ import { pilotoMoto } from "./moto"
 import { Ciclista, Motoqueiro, Skatista, type Manobra } from "./Pilotos"
 import "./trincheiras.css"
 import { Cadeado, Trancado } from "../Trancado"
-import { MOTO_LIBERADA } from "../estrada/zonas"
+import { TRANCA_MOTO, naMoto } from "../estrada/zonas"
 
 const NEVOA = "#1a0f24"
 const NEVOA_LONGE = 340 // a névoa fecha aqui
@@ -279,7 +279,8 @@ function lerVeiculo(q: URLSearchParams, motos: boolean): Veiculo | null {
 // pro subúrbio, contando se correu uma volta inteira
 // (vitrine, 02/11) `tranca`: a corrida ainda não abriu (o aviso do que libera);
 // dá pra entrar e passear, e a escolha mostra os veículos com o cadeado
-export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void; tranca?: string | null }
+// `motos`: a moto já liberada (a regra de estrada/zonas.ts, motoLiberada: ganha na missão dos túneis)
+export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void; tranca?: string | null; motos?: boolean }
 
 export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const st = useRef<Estado>(estadoInicial())
@@ -287,7 +288,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const corrida = useRef<Corrida>(corridaInicial("escolha"))
   const [auto, setAuto] = useState(false)
   const [parede, setParede] = useState(false)
-  const [motos, setMotos] = useState(MOTO_LIBERADA) // T14: as motos chegam depois (?motos libera; a regra mora em estrada/zonas.ts)
+  const [motos, setMotos] = useState(!!noJogo?.motos) // T14: a regra mora em estrada/zonas.ts (motoLiberada); ?motos libera pra testar
   const [fixa, setFixa] = useState<number | null>(null)
   const [intro, setIntro] = useState(false)
   const [fase, setFase] = useState<Fase>("escolha")
@@ -338,7 +339,8 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
 
   useEffect(() => {
     const q = new URLSearchParams(location.search)
-    const v = lerVeiculo(q, MOTO_LIBERADA || q.has("motos"))
+    const motosAqui = !!noJogo?.motos || q.has("motos")
+    const v = lerVeiculo(q, motosAqui)
     /* eslint-disable react-hooks/set-state-in-effect -- lê a URL uma vez, no cliente */
     if (q.has("auto")) setAuto(true)
     if (q.has("parede")) setParede(true)
@@ -347,7 +349,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     const d = q.get("dpr"); if (q.has("medir") && d) setFixa(+d)
     setRecordes(lerRecordes())
     // ?livre, ou ?auto sozinho (a medição e o teste do T11): passeio
-    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? "patins", q.has("auto") ? "largada" : "descida")
+    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? (noJogo && motosAqui && naMoto.agora ? "moto" : "patins"), q.has("auto") ? "largada" : "descida") // desceu de moto: segue de moto
     else if (v) largar(v)
     /* eslint-enable react-hooks/set-state-in-effect */
     const w = window as unknown as Record<string, unknown>
@@ -472,8 +474,8 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
               return (
                 <button key={v} type="button" className={`tr-card is-${v}${trancada ? " is-trancada cn-card-trancado" : ""}`} onClick={() => largar(v)} data-veiculo={v} disabled={trancada} aria-disabled={trancada}>
                   <strong>{trancada && <Cadeado />}{INFO[v].nome}</strong>
-                  <span>{v === "moto" && !motos ? "as motos chegam depois" : INFO[v].frase}</span>
-                  <em>{v === "moto" && !motos ? "trancada · em breve" : trancada ? "trancada" : `recorde: ${relogio(recordes[v] ? recordes[v]!.ms / 1000 : null)}`}</em>
+                  <span>{v === "moto" && !motos ? TRANCA_MOTO : INFO[v].frase}</span>
+                  <em>{v === "moto" && !motos ? "trancada" : trancada ? "trancada" : `recorde: ${relogio(recordes[v] ? recordes[v]!.ms / 1000 : null)}`}</em>
                 </button>
               )
             })}
