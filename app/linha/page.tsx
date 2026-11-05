@@ -774,8 +774,8 @@ export default function LinhaPage() {
           if (!repete) visitaAbriu.current = null
           chegouRef.current(m)
         }
-        // (T49, lote D) sem missão lá, a casa da D-Bee com instrumento novo: a volta dos instrumentos
-        else if (!repete && id === "casa-dbee" && instrumentosNovos(hist13(saveRef.current)).length) abrirCasaInstrumentosRef.current()
+        // (notas 04/11) a casa da D-Bee não abre mais por aqui (a vaga numa pista da
+        // cidade): ela é só no deserto, pelo chão ("chao:casa", no onHistoria)
         return
       }
       if (id === "bar" && h.fase === "bar" && Date.now() - barFechou.current > 8000) {
@@ -1049,7 +1049,7 @@ export default function LinhaPage() {
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
-  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar"] : [])].join(",")
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar"] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])
@@ -1058,8 +1058,8 @@ export default function LinhaPage() {
   const alvoDisco: Alvo | null = hist.fase === "bar" ? null
     : hist.fase === "nectar" && hist.nectar === "galao" ? { t: "lugar", missao: "nectar", lugar: "posto", pegar: false }
     : lugar13?.lugar ? { t: "lugar", missao: "sexta", lugar: lugar13.lugar, pegar: false }
-    // (T49, lote D) sem missão pegada e com instrumento novo: a casa da D-Bee chama
-    : hist.fase === "carreira" && !missaoCarreira && instrumentosNovos(h13).length ? { t: "lugar", missao: "sexta", lugar: "casa-dbee", pegar: false }
+    // (notas 04/11) o instrumento novo não vira alvo na cidade: fica guardado e a
+    // D-Bee pede pra tocar quando ele chegar na casa dela (chaoExtra "casa")
     : null
   // o Guitar Driver aberto agora (na rua, ou a peça de tocar ao vivo de uma missão)
   const showAgora = HIST && hist.show && confShow(hist.show) && !cena && tela.t === "corrida" ? hist.show : null
@@ -1770,6 +1770,13 @@ export default function LinhaPage() {
         quadraLivreEm.current = Date.now()
         setBasquete((b) => b ?? { n: 1, pontos: 0, tempo: 60, livre: true })
       }
+    }
+    // (notas 04/11) chegou na casa da D-Bee (no deserto), sem missão lá: com
+    // instrumento novo, ela pede pra tocar. Só aqui; nunca no meio da cidade
+    if (e === "chao:casa" && (h.fase === "carreira" || h.fase === "livre") && !cena && !recompensa && !trincheiras && !chegadaLogin) {
+      const m = missaoDoSave(saveRef.current)
+      const daMissao = m && alvo13(hist13(saveRef.current), m)?.chao === "casa"
+      if (!daMissao && instrumentosNovos(hist13(saveRef.current)).length) abrirCasaInstrumentosRef.current()
     }
     // (vitrine, 02/11) a boca do túnel leva pra dentro SEMPRE: antes só valia na
     // carreira (no começo e na cidade livre a rampa não fazia nada). Fora da

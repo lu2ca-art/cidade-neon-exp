@@ -172,7 +172,7 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   // ── o subúrbio (4) ──
   dbee: {
     id: "dbee", n: 1, onde: "suburbio", quem: "D-Bee", cor: "#3d7bff", faixa: "ojala", faixaSituacao: "proposta",
-    lugar: { lugar: "casa-dbee" }, pedido: "ela tava te esperando", apresenta: "tocar tambor junto com ela",
+    lugar: { chao: "casa" }, pedido: "ela tava te esperando", apresenta: "tocar tambor junto com ela",
     arte: p("o tambor com a D-Bee", "decidido", { como: { t: "historia" }, tarefa: "T06" }),
     jogo: p("o drift e o holo: a travessia até o subúrbio", "decidido", { como: { t: "historia" }, tarefa: "T07" }),
     abre: ["holo", "violao"], recompensa: { guitar: "ojala", batida: "ojala", neon: PAGA.missao.dbee, instrumento: "djembe" }, requer: [], prologo: true,
@@ -278,7 +278,7 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   // ── a 13ª ──
   final: {
     id: "final", n: 13, onde: "cidade", quem: "os nove e a D-Bee", cor: "#ffffff", faixa: null, faixaSituacao: "decidido",
-    lugar: { lugar: "casa-dbee" }, pedido: "os nove nos seus pontos", apresenta: "os nove nos pontos e a D-Bee chegando pra acionar o CHUVA",
+    lugar: { chao: "casa" }, pedido: "os nove nos seus pontos", apresenta: "os nove nos pontos e a D-Bee chegando pra acionar o CHUVA",
     arte: p("a música da D-Bee, o sinal dos nove", "proposta", { tarefa: "T29" }),
     jogo: p("o CHUVA", "decidido", { tarefa: "T29" }),
     abre: ["mundo-depois"], recompensa: { guitar: null, batida: null, neon: 0, instrumento: null }, requer: ["quadra", "tuneis", "drew", "mubarak", "xeriff", "lu2ca", "ella", "notti", "nizzy", "tony"],

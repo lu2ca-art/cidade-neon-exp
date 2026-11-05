@@ -11,6 +11,7 @@ import { MISSOES13, alvo13, kombiNoConserto, passoAgora, type MissaoId } from ".
 // o nome do lugar, curto ("a quadra, no chão do subúrbio", "o palco da Nectar")
 export function nomeDoLugar(id: MissaoId): string {
   const m = MISSOES13[id]
+  if (m.lugar.chao === "casa") return "a casa da D-Bee, no deserto"
   if (m.lugar.chao) return `${CHAO_LUGARES[m.lugar.chao].nome.toLowerCase()}, no chão do subúrbio`
   if (m.lugar.lugar === "casa-drewboy") return "a casa do Drew"
   return m.lugar.lugar ? LUGARES[m.lugar.lugar]?.nome ?? m.quem : m.quem

@@ -378,11 +378,15 @@ export const CHAO_LUGARES = {
   // soChao): só o gatilho de chegada, sem fachada nem ponto no mapa até chegar o
   // vídeo da torre. RASCUNHO de onde fica: na beira oeste do subúrbio
   torre: { x: -960, z: -700, nome: "TORRE", cor: "#ff2436" },
+  // (notas 04/11, o dono: "a casa da D-Bee no meio da cidade") a casa dela é
+  // UMA só, no deserto do subúrbio (CasaDeserto, em CASA). As missões e as cenas
+  // dela valem só aqui, no chão: sem fachada nova (a casa já está desenhada)
+  casa: { x: CASA.x, z: CASA.z, nome: "CASA DA D-BEE", cor: "#ffc857" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 // (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
 // (lote D) a torre também: é só a porta (o gatilho), sem fachada
-export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre"]
+export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre", "casa"]
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)

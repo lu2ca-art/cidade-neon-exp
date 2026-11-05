@@ -353,7 +353,7 @@ function Vaga({ p, cor, materialRef }: { p: PoseLugar; cor: string; materialRef:
 }
 
 export function Lugares({ M, alvo, emCena, revelado = null }: { M: Mundo; alvo: LugarId | null; emCena: LugarId | null; revelado?: LugarId | null }) {
-  const poses = useMemo(() => Object.values(LUGARES).filter((l) => (!l.soDisco || "disco" in M) && !("disco" in M && l.id === "bar") && !l.soChao).map((l) => ({ l, p: poseLugar(M, l) })), [M])
+  const poses = useMemo(() => Object.values(LUGARES).filter((l) => (!l.soDisco || "disco" in M) && !("disco" in M && (l.id === "bar" || l.id === "casa-dbee")) && !l.soChao).map((l) => ({ l, p: poseLugar(M, l) })), [M])
   return (
     <group>
       {poses.map(({ l, p }) => l.segredo

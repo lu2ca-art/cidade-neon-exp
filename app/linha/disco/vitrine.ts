@@ -55,7 +55,9 @@ export function trancaSinuca(h: HistoriaDisco | null): string | null {
 // ── (vitrine, parte 2) as salas da cidade fora da missão: entra, olha, e o que
 // é da missão aparece com o cadeado. A casa da D-Bee tem a visita dela
 // (CENA_CASA_VISITA, pela page.tsx); estas são as outras ──
-export const SALAS_VISITA: LugarId[] = ["balada", "casa-drewboy", "topo", "casa-shows", "casa-dbee"]
+// (notas 04/11) a casa da D-Bee saiu daqui: ela não fica numa pista da cidade,
+// só no deserto (o chão "casa"); lá ela abre sozinha quando tem instrumento novo
+export const SALAS_VISITA: LugarId[] = ["balada", "casa-drewboy", "topo", "casa-shows"]
 export function cenaVisita(id: LugarId, h: HistoriaDisco | null): Cena {
   const L = LUGARES[id]
   const base = cenaDe(id)
