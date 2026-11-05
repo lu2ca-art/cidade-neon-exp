@@ -40,6 +40,7 @@ export const NEVOA_FRAG = /* glsl */ `
       float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
     #endif
     gl_FragColor.rgb *= 1.0 - fogFactor;
+    gl_FragColor.a *= 1.0 - fogFactor;
   #endif`
 
 /** um gerador fixo (a mesma rua sempre igual) */

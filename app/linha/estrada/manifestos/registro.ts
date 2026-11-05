@@ -6,12 +6,13 @@
 import type { PistaId } from "../pistas"
 import type { Manifesto } from "./tipos"
 import { DopaminA } from "./DopaminA"
+import { SabeOntem } from "./SabeOntem"
 
 export const MANIFESTOS: Record<PistaId, Manifesto> = {
   // vício: a rua que pede mais um. Telas que pipocam com o acelerador; soltou, esvazia
   dopamina: { id: "dopamina", ideia: "a rua que pede mais um (vício)", Componente: DopaminA },
   // tempo: o dia inteiro passa na volta; a Kombi deixa "ontens" no ar; frear segura o tempo
-  ontem: { id: "ontem", ideia: "a rua do tempo que não volta", Componente: null },
+  ontem: { id: "ontem", ideia: "a rua do tempo que não volta", Componente: SabeOntem },
 
   // ── ainda só ideia (o comentário é o ponto de partida) ──
   // Nectar: escrever a letra; regar faz a rua florescer e a aurora enfeita a noite (tentativa e erro)

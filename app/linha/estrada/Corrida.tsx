@@ -88,6 +88,7 @@ import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
 import { RotaPista } from "./RotaPista"
 import { Manifestos } from "./manifestos/Manifestos"
+import { horaDoCeu } from "./manifestos/ceu"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -6589,9 +6590,11 @@ function CenaBase({
     }
     // A HORA DO JOGO (relogio.ts): o dia inteiro em 20 min; muda o céu, a névoa e a luz
     horaRef.current = (horaRef.current + dt / SEG_POR_HORA) % 24
-    const ch = ceuNaHora(horaRef.current)
+    // (ruas-manifesto) uma rua pode puxar o céu pra hora dela (manifestos/ceu.ts)
+    const hCeu = horaDoCeu(horaRef.current)
+    const ch = ceuNaHora(hCeu)
     // o sol e a lua andam com a hora; a luz da cena vem de quem estiver no céu
-    astros(horaRef.current, tmp.sol, tmp.lua)
+    astros(hCeu, tmp.sol, tmp.lua)
     ceuMat.uniforms.sol.value.copy(tmp.sol)
     ceuMat.uniforms.lua.value.copy(tmp.lua)
     if (dirRef.current) {
