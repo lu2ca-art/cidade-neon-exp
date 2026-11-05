@@ -2,6 +2,10 @@
 // abre no app de música da pessoa, pra ela salvar ou pôr na playlist. Nunca
 // obrigatório, nunca missão. Sem link aqui, o botão nem aparece.
 //
+// (05/11) Preenchido com os links que já estavam em ../plataformas.tsx: o `smart` é o
+// song.link da faixa no Spotify (abre a página com todos os apps). Swav, Rollercoaster
+// e Ojalá ainda não têm faixa lançada: caem no perfil do LU2CA (LINK_ARTISTA).
+//
 // ── COMO PREENCHER (pro dono) ──
 // Para cada faixa, cole o link entre as aspas. O melhor é o `smart`: o link
 // inteligente da distribuidora (HyperFollow da DistroKid, Feature.fm, ONErpm,
@@ -21,18 +25,18 @@ import { track } from "@/lib/analytics"
 export type LinksFaixa = { smart?: string; spotify?: string; apple?: string; youtube?: string }
 
 /** o perfil do LU2CA (vale pra faixa que ainda não tem link próprio) */
-export const LINK_ARTISTA = ""
+export const LINK_ARTISTA = "https://open.spotify.com/artist/4usu8NiBnHtI02Xvh6bn3l"
 
 export const LINKS_FAIXAS: Record<PistaId, LinksFaixa> = {
-  ontem: { smart: "", spotify: "", apple: "", youtube: "" }, // Sabe Ontem?
-  copo: { smart: "", spotify: "", apple: "", youtube: "" }, // Copo Americano
+  ontem: { smart: "https://song.link/s/4FHMTXwQMyyq3GSqWJ91jD", spotify: "https://open.spotify.com/track/4FHMTXwQMyyq3GSqWJ91jD", apple: "", youtube: "" }, // Sabe Ontem?
+  copo: { smart: "https://song.link/s/4DYevP4zARvbm8OvmHjvoU", spotify: "https://open.spotify.com/track/4DYevP4zARvbm8OvmHjvoU", apple: "", youtube: "" }, // Copo Americano
   swav: { smart: "", spotify: "", apple: "", youtube: "" }, // Swav
-  sexta: { smart: "", spotify: "", apple: "", youtube: "" }, // Sexta-Feira
+  sexta: { smart: "https://song.link/s/3JdymrUE96UQlhUEI7GuMC", spotify: "https://open.spotify.com/track/3JdymrUE96UQlhUEI7GuMC", apple: "", youtube: "" }, // Sexta-Feira
   rollercoaster: { smart: "", spotify: "", apple: "", youtube: "" }, // Rollercoaster
-  dopamina: { smart: "", spotify: "", apple: "", youtube: "" }, // DopaminA
-  chuva: { smart: "", spotify: "", apple: "", youtube: "" }, // CHUVA
+  dopamina: { smart: "https://song.link/s/3VY1XVScepLnITFdvGRlkn", spotify: "https://open.spotify.com/track/3VY1XVScepLnITFdvGRlkn", apple: "", youtube: "" }, // DopaminA
+  chuva: { smart: "https://song.link/s/1JT0MfwIqtr1RxXxtxLChA", spotify: "https://open.spotify.com/track/1JT0MfwIqtr1RxXxtxLChA", apple: "", youtube: "" }, // CHUVA
   ojala: { smart: "", spotify: "", apple: "", youtube: "" }, // Ojalá
-  nectar: { smart: "", spotify: "", apple: "", youtube: "" }, // Nectar
+  nectar: { smart: "https://song.link/s/1xmpDdYDKLx9UhiqMkUiop", spotify: "https://open.spotify.com/track/1xmpDdYDKLx9UhiqMkUiop", apple: "", youtube: "" }, // Nectar
 }
 
 // ?links=teste: todas apontam pra uma busca no Spotify (só nesta página aberta)
