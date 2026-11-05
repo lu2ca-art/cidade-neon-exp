@@ -235,7 +235,7 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
     const roupas = criarRoupas(luzes, Q.roupas)
     const fumaca = criarFumaca(luzes, Q.fumaca, Q.tambores)
     const descartar = [geo, mat, geoB, matB, roupas.geo, roupas.mat, fumaca.geo, fumaca.mat]
-    return { R, rnd, andantes, parados, gente, aVida, soltos, bichos, aVidaB, roupas: roupas.malha, fumaca: fumaca.malha, descartar, batida: { media: 0, ultimo: 0, periodo: 0.5 }, jog: { x: 0, z: 0 } }
+    return { R, rnd, andantes, parados, gente, aVida, soltos, bichos, aVidaB, roupas: roupas.malha, fumaca: fumaca.malha, descartar, batida: { media: 0, ultimo: 0, periodo: 0.5 }, jog: { x: 0, z: 0 }, evitar: (e: number) => R.ar[e].corrida }
   }, [M, luzes])
   useEffect(() => () => { for (const x of vida.descartar) x.dispose() }, [vida])
 
@@ -272,7 +272,7 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
     // quem está nele some encolhendo, e quem anda não entra nas ruas dela)
     const P = ondeEstaJogador(s.camera, M.chao, agora, vida.jog)
     const correndo = RUA.e.fase === "contagem" || RUA.e.fase === "valendo"
-    const evitar = correndo ? (e: number) => R.ar[e].corrida : undefined
+    const evitar = correndo ? vida.evitar : undefined // (revisão 3) a mesma função, sem closure por quadro
     const kv = Math.min(1, dt * 2.5)
     const noite = U.noite.value
 
