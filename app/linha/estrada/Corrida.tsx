@@ -88,7 +88,7 @@ import { Cabine, OLHO } from "./Cabine"
 import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centrarDrone, droneMovido, ligarDrone, mostrarDrone, zoomDrone } from "./Drone"
 import { RotaPista } from "./RotaPista"
 import { Manifestos } from "./manifestos/Manifestos"
-import { horaDoCeu } from "./manifestos/ceu"
+import { CHUVA_MANIFESTO, horaDoCeu } from "./manifestos/ceu"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -6706,8 +6706,8 @@ function CenaBase({
     const clima = climaRef.current
     clima.k += ((clima.chove ? 1 : 0) - clima.k) * Math.min(1, dt / 12)
     if (chuvaRef.current) {
-      chuvaRef.current.visible = V.id !== "deserto" && clima.k > 0.02
-      ;(chuvaRef.current.material as THREE.LineBasicMaterial).opacity = 0.28 * clima.k
+      chuvaRef.current.visible = V.id !== "deserto" && Math.max(clima.k, CHUVA_MANIFESTO.k) > 0.02 // (rua CHUVA) manifestos/ceu.ts
+      ;(chuvaRef.current.material as THREE.LineBasicMaterial).opacity = 0.28 * Math.max(clima.k, CHUVA_MANIFESTO.k)
     }
     const cp = camera.position
     for (let i = 0; i < chuva.n; i++) {
