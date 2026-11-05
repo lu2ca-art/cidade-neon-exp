@@ -121,6 +121,28 @@ Nenhum arquivo de poste, asfalto, pilar, prédio ou quadra (`mundoDisco`, `Poste
   acesas, e continuam assim depois de fechar (até 8 trechos; o mais velho dá lugar).
 - **Ajustes:** `CHUVA_CFG` (passos, força fina e grossa, degraus, raio do guarda-chuva e da rega).
 
+## Copo Americano: o que enche e esvazia
+
+- **Os copos:** o copo americano do bar, facetado embaixo (16 faces, com a
+  aresta de cada uma acesa) e liso na boca, com a faixa que separa as duas
+  partes. Ficam nos canteiros (de 1,3 a 2,6 m) e nos prédios (de 5 a 12 m,
+  entre 6 e 32 m de altura), um a cada ~15 m.
+- **Enchem no ritmo:** o líquido luminoso (âmbar, às vezes rosa ou ciano, com
+  bolhas subindo) sobe ao longo da faixa (de 30% a 75%) e respira no compasso.
+  Cada copo tem a sua sede, então uns enchem mais que outros.
+- **Acelerar muito enche além da conta** (turbo, 20% acima do ritmo da pista
+  ou pé no fundo): os copos transbordam e o líquido escorre em fios pelo vidro
+  por fora. Transbordando, a rua fica **embriagada**: o horizonte balança bem de
+  leve (até 0,8° de inclinação e um pouco de guinada, no tempo da batida).
+  Sóbria de novo devagar (~10 s). Com "reduzir movimento" no aparelho, a câmera não balança.
+- **Desacelerar ou frear esvazia** (até quase o fundo).
+- **O brinde (tocar num copo):** os copos a até 48 m dele se inclinam na direção
+  do tocado, tilintam (tremem fino) e brilham juntos, numa onda que sai do copo tocado.
+- **A câmera:** o jogo põe a câmera no lugar todo quadro (`lookAt`). A rua só
+  gira um pouco depois disso. Se no quadro seguinte ninguém mexeu nela, a rua
+  desfaz o próprio giro antes de girar de novo, e devolve tudo ao sair. Nada fora da pasta foi tocado.
+- **Ajustes:** `COPO_CFG` (passo, proporção, ritmos de encher e esvaziar, o porre, o raio do brinde).
+
 ## Custo estimado
 
 Medição local fica fora deste trabalho (regra: o dono testa na Mesa). A estimativa:
