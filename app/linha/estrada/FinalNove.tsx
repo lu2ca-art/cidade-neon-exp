@@ -40,7 +40,8 @@ const naCasa = (lx: number, lz: number) => ({
 // a Kombi do quintal: atrás da casa, de lado
 const QUINTAL = naCasa(-7, -17)
 const suave = (t: number) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3 - 2 * k) }
-const lerServidor = () => ({ momento: null, feito: false })
+const NADA = { momento: null, feito: false }
+const lerServidor = () => NADA
 
 export function FinalNove({ M }: { M: MundoDisco }) {
   const vivo = useSyncExternalStore(ouvirFinal, lerFinal, lerServidor)
