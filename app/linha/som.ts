@@ -120,7 +120,14 @@ export function silenciarKombi(sim: boolean) {
   pistaSom.segurar(silenciando > 0 || silenciandoKombi > 0)
   aplicarAbafo()
 }
+// (revisão 05/11) UMA MÚSICA POR VEZ: entrou algo com música própria (um jogo do holo,
+// o Guitar Driver, a batida, o tambor, uma peça com a faixa dela ou no ritmo da rua),
+// quem toca por fora do grafo e não dá pra calar (a TV do holo, o YouTube) fecha antes
+const aoMusicaPropriaF = new Set<() => void>()
+export function aoMusicaPropria(f: () => void) { aoMusicaPropriaF.add(f); return () => { aoMusicaPropriaF.delete(f) } }
+export function musicaPropria() { aoMusicaPropriaF.forEach((f) => f()) }
 export function silenciar(sim: boolean) {
+  if (sim) musicaPropria()
   silenciando = Math.max(0, silenciando + (sim ? 1 : -1))
   pistaSom.segurar(silenciando > 0 || silenciandoKombi > 0)
   trilha.segurar(silenciando > 0)

@@ -18,7 +18,7 @@ import { createPortal } from "react-dom"
 import { PISTAS, type PistaId } from "../estrada/pistas"
 import { ESTACOES } from "../data"
 import { FREQUENCIAS } from "../radio"
-import { calarPraTv, player } from "../som"
+import { aoMusicaPropria, calarPraTv, player } from "../som"
 import { lerFaixaRua } from "./musicaContinua"
 import { faixaDoTitulo, nomeDaFaixa } from "./linksFaixas"
 import { proximaComVideo, videoDaFaixa } from "./videosFaixas"
@@ -35,6 +35,9 @@ const lerTv = () => tv
 export const tvAberta = () => tv.faixa !== null
 export function abrirTv(id: PistaId) { mudar({ faixa: id, n: tv.n + 1 }) }
 export function fecharTv() { if (tv.faixa) mudar({ faixa: null, n: tv.n }) }
+// (revisão 05/11) uma música por vez: o Guitar Driver, a batida, o tambor, os
+// instrumentos da D-Bee, uma peça com música (som.ts, silenciar/musicaPropria) fecham a TV
+if (typeof window !== "undefined") aoMusicaPropria(fecharTv)
 
 // ── a faixa que toca agora: a da rádio (se ela está no ar com uma do vol. 1), senão a da rua ──
 function faixaDoSrc(src: string | null): PistaId | null {
