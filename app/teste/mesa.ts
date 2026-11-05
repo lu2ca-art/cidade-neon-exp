@@ -26,6 +26,16 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "livre",
+    nome: "A TVzinha do YouTube no holo",
+    data: "2026-11-05",
+    olhar: "No notch, o botão 📺 TV abre uma TV pequena (arrastável pra qualquer canto) com o vídeo da faixa que está tocando. Você dá o play, o som do jogo some e a música vem do YouTube (conta view de verdade); o jogo continua atrás. Acabou o vídeo, vem o da próxima faixa. Por enquanto só Sabe Ontem?, CHUVA e Copo Americano têm vídeo.",
+    perguntas: [
+      "O play e o próximo vídeo funcionaram no iPhone?",
+      "O canto de baixo à esquerda é bom pra TV, ou prefere outro?",
+    ],
+  },
+  {
+    parte: "livre",
     nome: "O piloto automático (o mapa copiloto)",
     data: "2026-11-05",
     olhar: "O botão do volante (ao lado da barra do GPS, no lugar do ∞) liga o piloto: com missão/destino, a Kombi vai sozinha pela rota, na velocidade normal, e para no lugar; sem destino, passeia dando voltas na mesma rua (a música não troca). A câmera sobe e vai pro lado pra curtir. Mexeu no volante, acelerou ou freou: o controle volta pra você.",
