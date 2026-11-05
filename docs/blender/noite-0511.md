@@ -176,3 +176,63 @@ Workbench, chão liso; no jogo o chão é o relevo das dunas.
 
 - **kombi-herbal:** o modelo (fotogrametria, sem normal) segue sem normal, e o `KombiHerbal.tsx` recalcula como antes. Retratos: `kombi-herbal-antes.png` / `-depois.png`; quase não muda.
 - **van:** só a `/van-preview` usa. Retratos: `van-antes.png` / `van-depois.png`.
+
+## Parte 4: as ruínas acendem de noite (sem luz pontual)
+(Pedida como "Parte 3"; a Parte 3 já era a do kombi-herbal e da van.)
+
+Bíblia, seção 4: o subúrbio é exponencial e é onde rola a vida. As ruínas da Parte 2 ficavam escuras de noite. Agora acendem, sem nenhuma luz pontual nova: tudo é emissivo ou brilho somado na tela.
+
+### O que acende
+| coisa | como | onde | quantos (teto) |
+|---|---|---|---|
+| **janelas** | as janelas desenhadas na fachada assada acendem no próprio shader das ruínas | todo prédio; ~40% das janelas, 1 prédio em 5 fica todo apagado | todas as da textura |
+| **letreiros e tubos de neon** | quadrados num atlas de 12 palavras (BAR, LANCHES, DISCOS, BAILE, BRECHÓ, FLORES, 24H, HOTEL, SALÃO, ABERTO, OFICINA, BEAT) e 4 tubos (reto, duplo, setas, zigue-zague), na paleta neon do bairro | ~1 prédio em 3, no térreo (3,2 m) ou mais alto no prédio inteiro; 1 em 10 com mau contato | 80 |
+| **tambores de fogo** | lata aberta (cilindro de 8 lados) com a boca acesa por dentro, a chama (gota que tremula, de frente pra câmera) e um clarão laranja deitado no chão | ~1 prédio em 7, a 1,8 m da fachada, às vezes dois juntos; fora das caixas de colisão e das pistas | 41 |
+| **varais de luz** | fio caído (8 pedaços) e lâmpadas a cada 1,1 m; três jeitos: todo quente, colorido, ou quente com uma colorida a cada três | ~1 prédio em 3, de uma fachada até a do outro lado da rua (8 a 24 m), a 5–6,5 m | 45 |
+
+**Janelas, em detalhe.** Na textura das ruínas as janelas são retângulos quase pretos na parede clara. O shader acende um texel quando:
+- ele está na parte da fachada do atlas (u < 0,868; à direita é concreto e entulho, com rachaduras escuras que não são janela);
+- ele é escuro, e os vizinhos a 8 texels dos dois lados (na horizontal ou na vertical) são claros. Assim a borda das ilhas e os buracos grandes não acendem;
+- o sorteio da célula do mundo (1,8 × 2,8 m, mais ou menos uma janela) deixa.
+
+As cores são âmbar quente (a maioria), branco quente, laranja, e algumas neon (rosa, ciano); 3% piscam como TV ligada. De longe a textura borra e a janela some; o shader lê no máximo 1 mip abaixo pra ela durar mais.
+
+**Onde vai cada coisa.** O sorteio (`luzesRuinas.ts`, semente fixa, sempre igual) confere com raio na malha de verdade de cada peça, não na caixa:
+- o letreiro só entra se tem fachada no meio e nas duas pontas;
+- o varal só liga duas fachadas de peças diferentes;
+- nada vai no concreto da quebra, nem no vão do "andar", nem no topo partido.
+
+Roda uma vez quando o subúrbio monta (algumas centenas de raios), antes da mescla.
+
+### Dia e noite
+- Um uniform só (`U.noite`, em `RuinasLuz.tsx`) segue o céu: `ceuNaHora(hora).noite`, suavizado. Apaga de dia, acende entre 17 h e 19 h e apaga no amanhecer (5h30–6h30).
+- De dia os letreiros e os brilhos ficam `visible = false`, então não custam draw call. Os tambores e os fios continuam lá, apagados.
+- Pra testar: `__hora(22)` no console põe o jogo às 22 h.
+
+### Onde monta
+Tudo é filho do `RuinasSuburbio`, dentro do `<Perto nome="ruínas">` (raio de 960 m). Longe, nada existe.
+
+### Custo estimado
+Estimativa pelo código: não medi no jogo.
+
+| | triângulos | draw calls |
+|---|---|---|
+| janelas | 0 | 0 (o mesmo material das ruínas, com 5 leituras de textura a mais por pixel) |
+| letreiros | 2 cada: ~80 a 160 | 1 |
+| brilhos (lâmpadas, chamas, clarões) | 2 cada: ~800 típico, ~2.100 no teto | 1 |
+| tambores | 16 cada: ~480, 660 no teto | 1 |
+| fios | linhas, não triângulos (~200 a 360 pedaços) | 1 |
+| **total** | **~1.400 típico, ~2.900 no teto** | **4 de noite, 2 de dia** |
+
+- **Textura:** um atlas de 1024 × 1024 desenhado no canvas na hora (4 MB na placa). O arquivo .glb não muda.
+- **Na CPU:** nada por quadro, só dois números no uniform e dois `visible`. O piscar e o tremular estão no shader.
+- **Cuidado (desenho por cima):** os brilhos são somados na tela (sem escrever profundidade). Perto de um varal, várias lâmpadas se sobrepõem, mas são pequenas (0,55 m).
+
+### O que ficou faltando / pra conferir (parte 4)
+- **Ver no jogo** (Mesa, de noite):
+  - se o limiar das janelas pega só janela;
+  - se algum letreiro flutua onde a parede tem degrau;
+  - o tamanho das lâmpadas.
+- **Tambor sem colisão:** dá pra passar por dentro de moto. Ele fica encostado na fachada, a 1,8 m.
+- **Letreiro de dia:** não tem placa por trás; de dia ele some.
+- **Bloom:** se a cena tiver bloom, os brilhos podem ficar fortes demais. As forças estão no shader (`1.5`, `1.1`, `1.3`) pra afinar.
