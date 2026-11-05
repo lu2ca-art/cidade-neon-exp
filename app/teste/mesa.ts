@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "A corrida de rua nas ruínas do subúrbio",
+    data: "2026-11-05",
+    olhar: "Perto do bar tem um arco neon CORRIDA. De moto ou de patins, chegue perto e toque em \"correr\": 2 voltas de ~1,6 km pelas ruas das ruínas, 11 portões de luz, 3 rivais (de moto: Trovão, Vespa e Lama). A rádio não para. O melhor tempo fica guardado; a primeira vitória dá +40 neon$. O ponto aparece no mapa depois que você chega no subúrbio.",
+    perguntas: [
+      "Os rivais estão fáceis ou difíceis demais?",
+      "O traçado ficou gostoso (curvas, retas)?",
+    ],
+  },
+  {
     parte: "missao.ojala",
     nome: "As 4 últimas ruas-manifesto: Ojalá, Swav, Sexta-Feira e Rollercoaster",
     data: "2026-11-05",
