@@ -61,16 +61,27 @@ let silenciandoKombi = 0
 // missão. A música segue no lugar (faz parte do cenário), só um pouco mais baixa
 let abaixando = 0
 const VOL_DUCK_LEVE = 0.7
+// (tv do holo, 05/11) a TV do holo tocando um vídeo: a música do jogo (a pista,
+// a rádio, o disco: tudo passa pelo abafo) vai a zero em fade e SEGUE andando
+// por baixo (a música contínua não para nem perde o ponto); a TV pausou ou
+// fechou, ela volta. Ver disco/TvHolo.tsx
+let pelaTv = false
 function aplicarAbafo() {
   const c = audioCtx()
   if (!c || !abafo() || !abafoF || !abafoG) return
-  const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0, leve = abaixando > 0
+  const on = abafando > 0, mudo = silenciando > 0 || silenciandoKombi > 0 || pelaTv, leve = abaixando > 0
   abafoF.frequency.setTargetAtTime(on ? 650 : 20000, c.currentTime, on ? 0.2 : 0.5)
   abafoG.gain.setTargetAtTime(mudo ? 0 : on ? 0.4 : leve ? VOL_DUCK_LEVE : 1, c.currentTime, on || mudo || leve ? 0.2 : 0.5)
 }
 /** abaixa um pouco a música (sem abafar): a cena, a peça, a introdução da missão */
 export function abaixarUmPouco(sim: boolean) {
   abaixando = Math.max(0, abaixando + (sim ? 1 : -1))
+  aplicarAbafo()
+}
+/** a TV do holo tocando (true) ou parada/fechada (false): a música do jogo a zero, em fade */
+export function calarPraTv(sim: boolean) {
+  if (sim === pelaTv) return
+  pelaTv = sim
   aplicarAbafo()
 }
 export function abafar(sim: boolean) {

@@ -8,6 +8,7 @@
 
 import { useEffect, type ReactNode } from "react"
 import { silenciar } from "../som"
+import { fecharTv } from "./TvHolo"
 
 export type VisorId = "iris" | "access" | "stream" | "untitled" | "freq"
 type Conf = { titulo: string; cor: string; src: string | null; fora: string; resumo?: string; capa?: string }
@@ -24,6 +25,8 @@ export const VISOR: Record<VisorId, Conf> = {
 export function Visor({ id, onFechar, children }: { id: VisorId; onFechar: () => void; children?: ReactNode }) {
   const c = VISOR[id]
   useEffect(() => { silenciar(true); return () => silenciar(false) }, [])
+  // (tv do holo) um player do YouTube só: o vid.stream abriu, a TV fecha
+  useEffect(() => { if (id === "stream") fecharTv() }, [id])
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar() }
     window.addEventListener("keydown", k)

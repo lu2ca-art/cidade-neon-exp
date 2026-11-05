@@ -1,0 +1,72 @@
+/* A TV DO HOLO (disco/TvHolo.tsx). O vídeo tem SEMPRE pelo menos 200×200 px e
+   nada por cima dele (regra do YouTube). Fica num canto, por cima do jogo */
+.l-tv {
+  position: fixed;
+  z-index: 2147483000;
+  width: min(240px, calc(100vw - 24px));
+  min-width: 200px;
+  display: grid;
+  grid-template-rows: auto auto;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 64, 64, 0.55);
+  background: rgba(8, 10, 22, 0.94);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), 0 0 22px -8px #ff4040;
+  animation: l-tv-entra 0.22s ease-out backwards;
+}
+.l-tv.is-ie { left: calc(12px + env(safe-area-inset-left)); bottom: calc(12px + env(safe-area-inset-bottom)); }
+.l-tv.is-id { right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); }
+.l-tv.is-se { left: calc(12px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); }
+.l-tv.is-sd { right: calc(12px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); }
+.l-tv.is-arrastando { opacity: 0.92; }
+.l-tv header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.l-tv.is-arrastando header { cursor: grabbing; }
+.l-tv header b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 800 10.5px var(--font-geist-mono, ui-monospace), ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: #ff7a7a;
+}
+.l-tv header b i { font-style: normal; }
+.l-tv header button {
+  flex: none;
+  width: 28px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font: 700 18px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.l-tv header button:hover, .l-tv header button:focus-visible { background: rgba(255, 255, 255, 0.1); }
+/* o vídeo: no mínimo 200×200, sem nada por cima */
+.l-tv-video { position: relative; width: 100%; min-width: 200px; height: 200px; min-height: 200px; background: #000; }
+.l-tv-video iframe { display: block; width: 100%; height: 100%; border: 0; }
+.l-tv-erro { margin: 0; padding: 6px 10px 8px; font: 500 11px/1.35 system-ui, sans-serif; color: #ffd0d0; }
+.l-tv-erro a { color: #ff7a7a; }
+@media (min-width: 900px) {
+  .l-tv { width: 384px; }
+  .l-tv-video { height: 216px; }
+}
+@keyframes l-tv-entra { from { opacity: 0; transform: translateY(10px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .l-tv { animation: none; } }
+
+/* o botão no notch (ao lado do ♥ salvar) */
+.l-nexo-tv { position: relative; flex: none; display: inline-flex; align-items: center; gap: 3px; height: 20px; margin: 2px 0; padding: 0 7px; border-radius: 10px; border: 1px solid rgba(255, 64, 64, 0.5); background: transparent; color: #ff7a7a; font: 700 9.5px var(--font-geist-mono, ui-monospace), ui-monospace, monospace; letter-spacing: 0.04em; white-space: nowrap; cursor: pointer; }
+.l-nexo-tv i { font-style: normal; font-size: 10px; }
+.l-nexo-tv.is-on { color: #fff; border-color: #ff4040; background: rgba(255, 64, 64, 0.18); }
