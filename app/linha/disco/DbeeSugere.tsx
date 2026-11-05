@@ -66,7 +66,7 @@ export const textoDbee = (o: OpcaoDbee) => `D-Bee: ${o.texto}`
 
 export function DbeeSugere(props: PropsDbee) {
   const P = useRef(props)
-  P.current = props
+  useEffect(() => { P.current = props })
 
   useEffect(() => {
     const M = props.M
@@ -118,8 +118,6 @@ export function DbeeSugere(props: PropsDbee) {
       // a marca que ela pôs (pra tirar quando ele chega, e só a dela)
       marca: null as Marca | null,
       chaveMarca: "",
-      // a sugestão de agora (pra contar como feita quando ele chega)
-      falou: null as OpcaoDbee | null,
     }
 
     const olhar = () => {
@@ -143,8 +141,11 @@ export function DbeeSugere(props: PropsDbee) {
       // chegou no alvo que ela marcou: feito, e a marca dela sai
       if (st.marca) {
         const eu = ondeEstou(), w = pontoDa(st.marca)
-        if (eu && Math.hypot(eu.x - w.x, eu.z - w.z) < DBEE_CFG.chegouM) {
-          if (st.chaveMarca) viu.push(st.chaveMarca)
+        const d = eu ? Math.hypot(eu.x - w.x, eu.z - w.z) : Infinity
+        // (o mapa tira a marca da pista sozinho a 40 m da rota: sem marca e perto, também chegou)
+        if (d < DBEE_CFG.chegouM || (!p.marcaRef.current && d < DBEE_CFG.chegouM * 3)) {
+          // a rua só conta quando a faixa toca inteira (as ouvidas), não ao chegar nela
+          if (st.chaveMarca && !st.chaveMarca.startsWith("rua:")) viu.push(st.chaveMarca)
           if (p.marcaRef.current === st.marca) p.onMarcar(null)
           st.marca = null; st.chaveMarca = ""
         } else if (p.marcaRef.current !== st.marca) { st.marca = null; st.chaveMarca = "" } // ele trocou a marca
@@ -184,7 +185,6 @@ export function DbeeSugere(props: PropsDbee) {
       st.ultima = agora
       st.livreDesde = agora
       st.depois = 0
-      st.falou = o
       mudarMemoriaDbee((m) => comSugerida(m, o.chave))
       const toque = o.alvo ? () => {
         const m = marcaDe(o.alvo!, o.nome, o.cor)
