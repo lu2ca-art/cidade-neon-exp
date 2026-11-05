@@ -6,7 +6,7 @@ Feito em 05/11/2026, no ramo `feature/game/final`. Regra do dono: **a cena do di
 
 - **Destrava** pela regra que já existia (`disco/portas.ts`, `MISSOES13.final.requer`): as 10 missões da feira feitas (Alohan, túneis, Drew, Mubarak, Xeriff, LU2CA, Ella, Notti, Nizzy, Tony). A D-Bee e a oficina são o começo. Aí o final aparece no mapa como as outras missões.
 - **Começa na casa da D-Bee**, o lugar que o final já tinha (`lugar: { chao: "casa" }`). Chegou lá com o final pegado: a sequência começa (`page.tsx`, `chegouNaMissao` → `abrirFinal`).
-- **Acaba:** as duas peças do final ficam feitas e a porta "o mundo depois" abre ali mesmo (ela continua "em breve": o mundo depois ainda não existe). Depois do final, o quintal da D-Bee fica com a Kombi e o mato para sempre.
+- **Acaba:** as duas peças do final ficam feitas e a porta "o mundo depois" abre ali mesmo (ela continua "em breve": o mundo depois ainda não existe). Depois do final, o quintal da D-Bee fica com o mato para sempre, e a Kombi do jogador termina estacionada no quintal (revisão 3: é ela mesma, não existe cópia; o Corrida.tsx põe ela lá na despedida).
 
 ## A sequência
 
@@ -46,12 +46,12 @@ O filme da despedida (`disco/final.ts`, `FILME_DESPEDIDA`). As ações vêm dos 
 
 - `app/linha/disco/final.ts`: os momentos, os tempos, os nove, as legendas, o filme da despedida, a câmera roteirizada (`CAM_ROTEIRO`) e o estado ao vivo. **Tudo o que é rascunho está aqui, num lugar só.**
 - `app/linha/disco/FinalTela.tsx`: a tela (os tempos de cada momento, a legenda, o filme).
-- `app/linha/estrada/FinalNove.tsx`: o 3D (as nove pessoas, os fachos, a Kombi do quintal e o mato) e a câmera de cada momento.
+- `app/linha/estrada/FinalNove.tsx`: o 3D (as nove pessoas, os fachos e o mato; `QUINTAL_FINAL` é onde a Kombi do jogador estaciona) e a câmera de cada momento.
 - `Corrida.tsx`: a câmera obedece `CAM_ROTEIRO` enquanto o final passa; a chuva aparece também no deserto durante o final.
 - `portas.ts`: as duas peças do final viraram `{ t: "final" }`.
 - `parteTeste.ts`: os 6 links.
 
-**Desempenho:** nenhuma luz nova. Por quadro, só a câmera (6 números) e a força da chuva. As pessoas e os fachos são 2 malhas instanciadas, que só existem nos momentos 2 e 3. O mato é 1 instanciada, e a Kombi do quintal é a mesma Kombi do jogo, montada só com a câmera perto da casa.
+**Desempenho:** nenhuma luz nova. Por quadro, só a câmera (6 números) e a força da chuva. As pessoas e os fachos são 2 malhas instanciadas, que só existem nos momentos 2 e 3. O mato é 1 instanciada (só com a câmera perto da casa). A Kombi do quintal é a do jogador (sem desenho a mais).
 
 ## O que precisa do dono
 

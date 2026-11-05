@@ -17,12 +17,11 @@
 // perto da casa. Por quadro: a câmera (6 números) e, no crescer do mato, as matrizes.
 
 import { useFrame } from "@react-three/fiber"
-import { Suspense, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import * as THREE from "three"
 import type { MundoDisco } from "./mundoDisco"
 import { PISTAS } from "./pistas"
 import { PASSO } from "./pista"
-import { KombiHerbal } from "./KombiHerbal"
 import { Perto, PERTO_EXTRA } from "./Perto"
 import { CHUVA_MANIFESTO } from "./manifestos/ceu"
 import { CASA, ROT_CASA } from "../disco/historia"
@@ -37,8 +36,11 @@ const naCasa = (lx: number, lz: number) => ({
   x: CASA.x + Math.cos(ROT_CASA) * lx + Math.sin(ROT_CASA) * lz,
   z: CASA.z - Math.sin(ROT_CASA) * lx + Math.cos(ROT_CASA) * lz,
 })
-// a Kombi do quintal: atrás da casa, de lado
+// a Kombi do quintal: atrás da casa, de lado. (revisão 3) é a Kombi DO JOGADOR: o
+// Corrida.tsx põe ela aqui na despedida (QUINTAL_FINAL) e ela fica; não existe cópia
 const QUINTAL = naCasa(-7, -17)
+// o rumo do jogo (j.rumo) com a Kombi de lado pra casa (o modelo olha pra -z: rumo = giro + π)
+export const QUINTAL_FINAL = { x: QUINTAL.x, z: QUINTAL.z, rumo: ROT_CASA + Math.PI * 1.5 }
 const suave = (t: number) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3 - 2 * k) }
 const NADA = { momento: null, feito: false }
 const lerServidor = () => NADA
@@ -214,13 +216,5 @@ function Quintal({ M, crescer }: { M: MundoDisco; crescer: boolean }) {
     im.instanceMatrix.needsUpdate = true
     feitoEm.current = t >= 99 ? 99 : t
   })
-  const yK = M.chaoEm(QUINTAL.x, QUINTAL.z)
-  return (
-    <>
-      <primitive object={mato.im} />
-      <group position={[QUINTAL.x, yK, QUINTAL.z]} rotation-y={ROT_CASA + Math.PI / 2}>
-        <Suspense fallback={null}><KombiHerbal /></Suspense>
-      </group>
-    </>
-  )
+  return <primitive object={mato.im} />
 }

@@ -41,7 +41,7 @@ import { TorreCentral } from "./Torre"
 import { PORTAL_CFG, Portoes } from "./Portoes"
 import { Perto, SoQuando, type PontoXZ } from "./Perto"
 import { Monumentos } from "./Monumentos"
-import { FinalNove } from "./FinalNove"
+import { FinalNove, QUINTAL_FINAL } from "./FinalNove"
 import { CAM_ROTEIRO, FINAL_VIVO } from "../disco/final"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
@@ -427,6 +427,8 @@ type Jogo = {
   // (revisão 3) o piloto entregou na pista mais perto de uma marca do CHÃO (o lugar é lá
   // embaixo): ali, com o mesmo destino, ele não religa (até sair do raio ou o destino mudar)
   pilTrava?: { x: number; z: number } | null
+  // (revisão 3) o final já pôs a Kombi no quintal da D-Bee (uma vez por sequência)
+  noQuintal?: boolean
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -6585,6 +6587,14 @@ function CenaBase({
     CAMERA_RUA.livre = !cine && !primeira && !ce && !pq.andando && !apeCam && j.chegadaCut === undefined && eDr < 0.01
     // teste (fora da produção): window.__vista = [x, y, z, olharX, olharY, olharZ]
     // segura a câmera num ponto (vista aérea pra conferir o mapa)
+    // (revisão 3, o dono: "a Kombi do quintal é ela") na despedida, com a câmera na frente
+    // da casa, a Kombi DO JOGADOR vai pro quintal e fica estacionada lá (não existe cópia)
+    const moF = FINAL_VIVO.momento
+    if ((moF === "criador" || moF === "quintal") && !j.noQuintal && "disco" in M && !combRef.current.patins) {
+      j.noQuintal = true
+      j.voo = true; j.wx = QUINTAL_FINAL.x; j.wz = QUINTAL_FINAL.z; j.rumo = QUINTAL_FINAL.rumo; j.propulsou = true; j.encaixar = false
+      j.ar = false; j.y = (M as MundoDisco).chaoEm(QUINTAL_FINAL.x, QUINTAL_FINAL.z) + 0.3; j.v = 0; j.vx = 0; j.vy = 0
+    } else if (moF === null && j.noQuintal) j.noQuintal = false
     // (T29) o final: a câmera roteirizada manda (estrada/FinalNove.tsx escreve o ponto e o olhar)
     if (CAM_ROTEIRO.ativo) {
       camera.position.set(CAM_ROTEIRO.px, CAM_ROTEIRO.py, CAM_ROTEIRO.pz)
