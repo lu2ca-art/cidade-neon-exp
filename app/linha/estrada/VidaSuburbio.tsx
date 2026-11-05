@@ -19,13 +19,14 @@ import { useEffect, useMemo } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
+import { RUA } from "../disco/corridaRua"
 import { CHAO_LUGARES, SUBURBIO } from "../disco/historia"
 import { player } from "../som"
 import type { LuzesRuinas } from "./luzesRuinas"
 import { QUALIDADE } from "./qualidade"
 import { ruinasNoMundo } from "./ruinas"
 import { U } from "./RuinasLuz"
-import { QUANTO, andar, criarAndantes, criarParados, ruasDoSuburbio, semente, type Andante, type Parado } from "./vidaNasRuas"
+import { QUANTO, abrirCaminho, andar, criarAndantes, criarParados, naCorrida, recuar, ruasDoSuburbio, semente, type Andante, type Parado } from "./vidaNasRuas"
 
 type MundoMin = Parameters<typeof ruinasNoMundo>[0]
 
@@ -158,6 +159,23 @@ function materialPessoa() {
   return m
 }
 
+// ONDE ESTÁ O JOGADOR (pra abrir caminho). Sem mexer no Corrida.tsx: quem quiser
+// dar a posição exata escreve aqui (x, z e até quando vale, no relógio do three);
+// sem isso, vale a estimativa pela câmera (ela olha pro jogador: onde o olhar
+// cruza o chão + 1 m, entre 2,5 e 10 m à frente dela)
+export const VIDA_JOGADOR = { x: 0, z: 0, ate: -1 }
+const _dir = new THREE.Vector3()
+function ondeEstaJogador(cam: THREE.Camera, chao: (x: number, z: number) => number, agora: number, out: { x: number; z: number }) {
+  if (VIDA_JOGADOR.ate > agora) { out.x = VIDA_JOGADOR.x; out.z = VIDA_JOGADOR.z; return out }
+  cam.getWorldDirection(_dir)
+  const p = cam.position, hz = Math.hypot(_dir.x, _dir.z) || 1
+  let h = 6
+  if (_dir.y < -0.03) h = ((p.y - chao(p.x, p.z) - 1) / -_dir.y) * hz
+  h = Math.max(2.5, Math.min(10, h))
+  out.x = p.x + (_dir.x / hz) * h; out.z = p.z + (_dir.z / hz) * h
+  return out
+}
+
 // escreve a matriz (giro em y, escala e posição) direto no array da instância
 function escrever(arr: Float32Array, i: number, x: number, y: number, z: number, rumo: number, s: number) {
   const c = Math.cos(rumo) * s, n = Math.sin(rumo) * s, o = i * 16
@@ -190,7 +208,7 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
     gente.geometry.boundingSphere = gente.boundingSphere.clone()
     const yPalco = M.chao(CHAO_LUGARES.palco.x, CHAO_LUGARES.palco.z)
     gente.boundingSphere.center.y = yPalco
-    return { R, rnd, andantes, parados, gente, aVida, geo, mat, batida: { media: 0, ultimo: 0, periodo: 0.5 } }
+    return { R, rnd, andantes, parados, gente, aVida, geo, mat, batida: { media: 0, ultimo: 0, periodo: 0.5 }, jog: { x: 0, z: 0 } }
   }, [M, luzes])
   useEffect(() => () => { vida.geo.dispose(); vida.mat.dispose() }, [vida])
 
@@ -220,20 +238,33 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
       UV.pulso.value += (Math.min(1, g * 1.5) - UV.pulso.value) * Math.min(1, dt * 6)
     }
 
+    // o jogador (pra abrir caminho) e a corrida de rua (durante ela, ninguém fica no traçado:
+    // quem está nele some encolhendo, e quem anda não entra nas ruas dela)
+    const P = ondeEstaJogador(s.camera, M.chao, agora, vida.jog)
+    const correndo = RUA.e.fase === "contagem" || RUA.e.fase === "valendo"
+    const evitar = correndo ? (e: number) => R.ar[e].corrida : undefined
+    const kv = Math.min(1, dt * 2.5)
+
     const mt = gente.instanceMatrix.array as Float32Array, va = aVida.array as Float32Array
     let k = 0
     for (const w of andantes) {
-      w.vAgora = w.v
-      andar(R, w, w.vAgora * dt, rnd)
+      abrirCaminho(w, P.x, P.z, dt)
+      andar(R, w, w.vAgora * dt, rnd, evitar)
       // o passo: um ciclo a cada 1,4 m
       w.fase = (w.fase + (w.vAgora * dt * 6.2832) / 1.4) % 6.2832
+      const alvo = correndo && naCorrida(w.x, w.z) ? 0 : 1
+      w.vis += (alvo - w.vis) * kv
       if (w.vis < 0.01) continue
-      escrever(mt, k, w.x, w.y, w.z, w.rumo, w.escala * w.vis)
+      const dx = Math.cos(w.rumo) * w.desvio, dz = -Math.sin(w.rumo) * w.desvio
+      escrever(mt, k, w.x + dx, w.y, w.z + dz, w.rumo, w.escala * w.vis)
       va[k * 4] = w.fase; va[k * 4 + 1] = Math.min(1, w.vAgora / 1.2); va[k * 4 + 2] = 0; va[k * 4 + 3] = w.semente
       k++
     }
     for (const p of parados) {
+      const alvo = correndo && naCorrida(p.x, p.z) ? 0 : 1
+      p.vis += (alvo - p.vis) * kv
       if (p.vis < 0.01) continue
+      recuar(p, P.x, P.z, dt)
       escrever(mt, k, p.x + p.dx, p.y, p.z + p.dz, p.rumo, p.escala * p.vis)
       va[k * 4] = 0; va[k * 4 + 1] = 0; va[k * 4 + 2] = p.modo + (p.quando === 0 ? 0.25 : p.quando === 1 ? 0.5 : 0.75); va[k * 4 + 3] = p.semente
       k++

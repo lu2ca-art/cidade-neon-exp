@@ -15,6 +15,7 @@
 // QUEM PARA. Grupinhos em volta dos tambores de fogo (luzesRuinas.ts), na porta
 // do bar e dançando na frente do palco (no BPM da rádio: VidaSuburbio.tsx).
 
+import { MEIA_RUA, VOLTA_RUA } from "../disco/corridaRua"
 import { CHAO_LUGARES, SUBURBIO } from "../disco/historia"
 import { naBocaLocal, BOCA } from "./chao"
 import type { LuzesRuinas } from "./luzesRuinas"
@@ -40,6 +41,8 @@ export type Aresta = {
   a: number; b: number; ux: number; uz: number; L: number
   // as duas calçadas (lado -1 e +1): vale? e a altura do chão de 3 em 3 m
   ok: [boolean, boolean]; alt: [Float32Array, Float32Array]
+  // alguma calçada dela fica no traçado da corrida de rua (durante a corrida ninguém entra)
+  corrida: boolean
 }
 export type Ruas = { nos: No[]; ar: Aresta[] }
 
@@ -80,6 +83,32 @@ export function noLugar(x: number, z: number, folga = 0) {
 const livreAPe = (M: MundoMin, colisores: number[], x: number, z: number) =>
   M.livre(x, z, 1.2) && !dentroDasRuinas(colisores, x, z, 0.8) && !noLugar(x, z)
 
+// ── O TRAÇADO DA CORRIDA DE RUA (disco/corridaRua.ts): uma grade de 4 m no
+// subúrbio marcando o que fica a menos de MEIA_RUA + 2,5 m da linha do meio.
+// Feita uma vez (os ~800 pontos da volta carimbam a vizinhança); depois, uma
+// leitura por pessoa por quadro, só durante a corrida ──
+const GR = { x0: SUBURBIO.x - SUBURBIO.r - 20, z0: SUBURBIO.z - SUBURBIO.r - 20, cel: 4, n: Math.ceil((SUBURBIO.r * 2 + 40) / 4) }
+let grade: Uint8Array | null = null
+function gradeCorrida() {
+  if (grade) return grade
+  const g = new Uint8Array(GR.n * GR.n)
+  const raio = MEIA_RUA + 2.5, rc = Math.ceil(raio / GR.cel)
+  for (const p of VOLTA_RUA) {
+    const ci = Math.floor((p.x - GR.x0) / GR.cel), cj = Math.floor((p.z - GR.z0) / GR.cel)
+    for (let i = ci - rc; i <= ci + rc; i++) for (let j = cj - rc; j <= cj + rc; j++) {
+      if (i < 0 || j < 0 || i >= GR.n || j >= GR.n) continue
+      const cx = GR.x0 + (i + 0.5) * GR.cel, cz = GR.z0 + (j + 0.5) * GR.cel
+      if ((cx - p.x) ** 2 + (cz - p.z) ** 2 < (raio + GR.cel * 0.5) ** 2) g[j * GR.n + i] = 1
+    }
+  }
+  return (grade = g)
+}
+export function naCorrida(x: number, z: number) {
+  const g = gradeCorrida()
+  const i = Math.floor((x - GR.x0) / GR.cel), j = Math.floor((z - GR.z0) / GR.cel)
+  return i >= 0 && j >= 0 && i < GR.n && j < GR.n && g[j * GR.n + i] === 1
+}
+
 // ── a grade de ruas (uma vez por mundo) ──
 const cacheRuas = new WeakMap<object, Ruas>()
 export function ruasDoSuburbio(M: MundoMin, colisores: number[]): Ruas {
@@ -115,8 +144,10 @@ export function ruasDoSuburbio(M: MundoMin, colisores: number[]): Ruas {
         }
       }
       if (!ok[0] && !ok[1]) continue
+      let corrida = false
+      for (let t = BORDA; t <= L - BORDA && !corrida; t += AMOSTRA) corrida = naCorrida(A.x + ux * t, A.z + uz * t)
       const e = ar.length
-      ar.push({ a, b, ux, uz, L, ok, alt })
+      ar.push({ a, b, ux, uz, L, ok, alt, corrida })
       A.ar.push(e); B.ar.push(e)
     }
   }
@@ -151,6 +182,8 @@ export type Andante = {
   escala: number
   cal: number // a distância da calçada até o eixo
   vis: number // 0–1: aparece/some encolhendo
+  desvio: number // o passo de lado pra abrir caminho (m, pra direita do rumo)
+  espera: number // quanto tempo está parado esperando o jogador passar (s)
 }
 
 const _p = { x: 0, y: 0, z: 0 }
@@ -207,7 +240,7 @@ export function criarAndantes(R: Ruas, n: number, rnd: () => number, bicho = fal
     const w: Andante = {
       x: 0, y: 0, z: 0, rumo: 0, e: 0, q: 0, dir: 1, t: 0, len: 1, x0: 0, z0: 0, y0: 0, x1: 0, z1: 0, y1: 0, no: 0,
       v: bicho ? 0.7 + rnd() * 0.9 : 1.05 + rnd() * 0.5, vAgora: 0, fase: rnd() * 6.28, semente: sem,
-      escala: bicho ? 1 : 0.92 + rnd() * 0.16, cal: bicho ? 5.2 : CALCADA - 0.6 + rnd() * 1.2, vis: 1,
+      escala: bicho ? 1 : 0.92 + rnd() * 0.16, cal: bicho ? 5.2 : CALCADA - 0.6 + rnd() * 1.2, vis: 1, desvio: 0, espera: 0,
     }
     comecarCalcada(R, w, e, q, rnd() < 0.5 ? E.a : E.b)
     w.t = rnd() * w.len
@@ -254,6 +287,33 @@ export function andar(R: Ruas, w: Andante, d: number, rnd: () => number, evitar?
 // ── QUEM PARA: os grupinhos (fogo, bar) e quem dança no palco ──
 // modo 1: conversando (parado, gesticula); 2: dançando; quando: 0 fogo, 1 bar, 2 palco
 export type Parado = { x: number; y: number; z: number; rumo: number; modo: 1 | 2; quando: 0 | 1 | 2; semente: number; escala: number; vis: number; dx: number; dz: number }
+
+// ── ABRIR CAMINHO (sem física): o jogador a menos de 3 m ──
+// Quem anda e vê o jogador na frente para (até 2,5 s; depois segue, já de lado)
+// e dá um passo de lado, pro lado contrário dele. Quem está parado recua um pouco.
+// Devolve a velocidade de agora (o desenho soma o desvio na pose).
+export const PERTO_JOGADOR = 3
+export function abrirCaminho(w: Andante, px: number, pz: number, dt: number) {
+  const dx = w.x - px, dz = w.z - pz, d2 = dx * dx + dz * dz
+  const fx = Math.sin(w.rumo), fz = Math.cos(w.rumo)
+  let alvoV = w.v, alvoD = 0
+  if (d2 < PERTO_JOGADOR * PERTO_JOGADOR) {
+    const d = Math.sqrt(d2)
+    // a direita do rumo é (fz, -fx); o desvio vai pro lado de lá do jogador
+    const lado = dx * fz - dz * fx >= 0 ? 1 : -1
+    alvoD = (lado * (PERTO_JOGADOR - d) * 1.7) / PERTO_JOGADOR + lado * 0.5
+    if (-(dx * fx + dz * fz) > 0 && w.espera < 2.5) { alvoV = 0; w.espera += dt }
+  } else w.espera = Math.max(0, w.espera - dt)
+  w.desvio += (Math.max(-2, Math.min(2, alvoD)) - w.desvio) * Math.min(1, dt * 3)
+  w.vAgora += (alvoV - w.vAgora) * Math.min(1, dt * 5)
+}
+export function recuar(p: { x: number; z: number; dx: number; dz: number }, px: number, pz: number, dt: number) {
+  const dx = p.x - px, dz = p.z - pz, d = Math.hypot(dx, dz)
+  let ax = 0, az = 0
+  if (d < PERTO_JOGADOR && d > 0.01) { const f = Math.min(1, (PERTO_JOGADOR - d) * 0.6) / d; ax = dx * f; az = dz * f }
+  const k = Math.min(1, dt * 3)
+  p.dx += (ax - p.dx) * k; p.dz += (az - p.dz) * k
+}
 
 export function criarParados(M: MundoMin, colisores: number[], luzes: LuzesRuinas, Q: (typeof QUANTO)["alto"], rnd: () => number): Parado[] {
   const out: Parado[] = []
