@@ -39,6 +39,8 @@ import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
+import { introDe } from "./disco/introMissoes"
+import { IntroMissao } from "./disco/IntroMissao"
 import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
 import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
@@ -83,7 +85,7 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { versoesDasPistas } from "./disco/pistasLiberadas"
-import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { Peca } from "./disco/pecas/Peca"
 import { Recompensa } from "./disco/Recompensa"
 import { RecompensaHolo, TutorialHolo } from "./disco/TutorialHolo"
@@ -1057,6 +1059,9 @@ export default function LinhaPage() {
   }
   const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : quebrada(hist) ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
+  // (trilha sonora, 05/11) a introdução da missão aberta (o balão por cima do mundo)
+  const [introMissao, setIntroMissao] = useState<{ id: MissaoId; quem: string; texto: string } | null>(null)
+  const introVista = useRef(new Set<MissaoId>())
   // (T10) a quadra: o B4TIDA aberto (a arte) e o basquete (o jogo, ou a quadra livre depois da porta)
   const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
   const [basquete, setBasquete] = useState<{ n: number; pontos: number; tempo: number; livre: boolean } | null>(null)
@@ -1202,8 +1207,8 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: "disco-tuneis", step: `grafite:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
-  const chegouNaMissao = (id: MissaoId) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras) return
+  const chegouNaMissao = (id: MissaoId, semIntro = false) => {
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras || (introMissao && !semIntro)) return
     const pc = pecaAgora13(hist13(saveRef.current), id)
     visitaAbriu.current = id
     if (!pc) { abrirPortaDe(id); return }
@@ -1212,6 +1217,14 @@ export default function LinhaPage() {
     if (!como || como.t === "historia" || como.t === "evento") return
     // (bloco 1 · D) chegar já é a peça (o caminho de patins e jetpack até o Drew): fica feita e a próxima segue
     if (como.t === "chegar") { pecaFeitaNaMissao(id, pc.qual); return }
+    // (trilha sonora, 05/11; bíblia 9) nenhum jogo surge do nada: antes da peça, quem
+    // pede fala o porquê (disco/introMissoes.ts), no mundo, com a música tocando. Toque pra começar
+    if (!semIntro) {
+      const h = hist13(saveRef.current)
+      const jaViu = introVista.current.has(id) || ordemDe(id).some((q) => pecaFeita(h, id, q))
+      const fala = introDe(id, jaViu)
+      if (fala) { setAoVivo(null); setIntroMissao({ id, ...fala }); return }
+    }
     pecaAberta.current = { missao: id, qual: pc.qual }
     if (como.t === "pingpong") setPingpong(true)
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
@@ -1259,6 +1272,9 @@ export default function LinhaPage() {
       if (normalizarMissao(h.missao) === id && !feita13(h, id) && alvo13(h, id)) chegouRef.current(id)
     }, 900)
   }
+  // (trilha sonora, 05/11) o "bora" da introdução: abre a peça (já sem a introdução)
+  const chegouSemIntro = useRef<(m: MissaoId) => void>(() => {})
+  useEffect(() => { chegouSemIntro.current = (m) => chegouNaMissao(m, true) })
   const pecaFeitaNaMissaoRef = useRef(pecaFeitaNaMissao)
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao })
   // (T63) ?parte=missao.tuneis.trincheiras: entrou no jogo, desce direto (sem dirigir até a boca)
@@ -2411,6 +2427,9 @@ export default function LinhaPage() {
           </div>
         )}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
+        {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
+          onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
+          onDepois={() => setIntroMissao(null)} />}
         {cenaAgora && <Peca key={`${cenaAgora.missao}:${cenaAgora.qual}`} id={cenaAgora.id} qual={cenaAgora.qual} cor={MISSOES13[cenaAgora.missao].cor} quem={MISSOES13[cenaAgora.missao].quem} onFim={(ok, obra) => {
           const c = cenaAgora
           setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined, obras13: obra ? { ...(x.obras13 ?? {}), [`${c.missao}:${c.qual}`]: obra } : x.obras13 })))
