@@ -6034,6 +6034,9 @@ function CenaBase({
     return { cine, pct }
   }
 
+  // (revisão 2) a hora que o CÉU mostra (a do jogo, ou a da rua "Sabe Ontem?"): as ruínas
+  // acendem por ela, senão de cima da rua o céu era dia e o subúrbio embaixo, noite
+  const horaCeuRef = useRef(horaRef.current)
   useFrame((state, dtRaw) => {
     const rl = relogio.current
     // o tempo do QUADRO (o instante em que ele vai pra tela, no ritmo do
@@ -6604,6 +6607,7 @@ function CenaBase({
     horaRef.current = (horaRef.current + dt / SEG_POR_HORA) % 24
     // (ruas-manifesto) uma rua pode puxar o céu pra hora dela (manifestos/ceu.ts)
     const hCeu = horaDoCeu(horaRef.current)
+    horaCeuRef.current = hCeu
     const ch = ceuNaHora(hCeu)
     // o sol e a lua andam com a hora; a luz da cena vem de quem estiver no céu
     astros(hCeu, tmp.sol, tmp.lua)
@@ -6921,7 +6925,7 @@ function CenaBase({
       {/* no mapa novo: as flores do asfalto (só de patins, uma malha pelo mapa todo); no de sempre, os canteiros (medidos pelo Perto) */}
       {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
       <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>
-      {"disco" in M && <Perto nome="ruínas" raio={SUBURBIO.r + 700} pontos={pertoDe.ruinas}><Seguro nome="ruínas"><Suspense fallback={null}><RuinasSuburbio M={M as MundoDisco} hora={horaRef} /></Suspense></Seguro><Seguro nome="corrida de rua"><CorridaRuaCena chao={(M as MundoDisco).chaoEm} jogo={jogo as unknown as React.RefObject<{ wx?: number; wz?: number; rumo?: number; v: number; vx?: number; voo?: boolean; tempo: number }>} comb={combRef} /></Seguro></Perto>}
+      {"disco" in M && <Perto nome="ruínas" raio={SUBURBIO.r + 700} pontos={pertoDe.ruinas}><Seguro nome="ruínas"><Suspense fallback={null}><RuinasSuburbio M={M as MundoDisco} hora={horaCeuRef} /></Suspense></Seguro><Seguro nome="corrida de rua"><CorridaRuaCena chao={(M as MundoDisco).chaoEm} jogo={jogo as unknown as React.RefObject<{ wx?: number; wz?: number; rumo?: number; v: number; vx?: number; voo?: boolean; tempo: number }>} comb={combRef} /></Seguro></Perto>}
       <Perto nome="subúrbio" raio={centroSub.r + 700} pontos={pertoDe.suburbio}><Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro></Perto>
       <Estatico>
       <primitive object={cidade.postes} />
