@@ -2517,7 +2517,7 @@ export default function LinhaPage() {
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}
-        {HIST && tela.t === "corrida" && <TrilhaPedras base={baseTrilha} pausado={!!cena || !!trincheiras || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor || celularAberto || !!jornal || rua || !!oficinaTela || !!letraAgora} onFeito={marcarTutorial} />}
+        {HIST && tela.t === "corrida" && <TrilhaPedras base={baseTrilha} pausado={!!cena || !!introMissao || !!trincheiras || !!recompensa || faltaRecompensaHolo(hist) || pingpong || !!provaMissao || !!showAgora || !!visor || celularAberto || !!jornal || rua || !!oficinaTela || !!letraAgora} onFeito={marcarTutorial} />}
         {/* (T02, J2: 23) a rua: o Guitar Driver aberto desde o começo, com as músicas que as missões liberaram */}
         {rua && <Palcos h={h13} onFechar={() => setRua(false)} onTocar={(palco, f) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco(palco, f) }))) }} onXenom={(id) => { setRua(false); setSave((s) => comHistoria(s, (x) => ({ ...x, show: showXenom(id) }))) }} />}
         {jornal && <Jornal m={jornal} cor={confShow(`rua:${jornal.missao}`)?.cor ?? "#ffc857"} onFechar={() => setJornal(null)} />}
