@@ -9,7 +9,7 @@ import {
   type Fisica, type Recorde, type Rival, type Veiculo,
 } from "./corrida"
 import { TRILHO_E, TRILHO_Y } from "./geoCorrida"
-import { AVENIDAS, SUBIDA_MAX, TORRES, VOLTA, batenaTorre, ondeEsta, perfil } from "./mapa"
+import { AVENIDAS, SALAO_DESCIDA, SALAO_LARGADA, SUBIDA_MAX, VOLTA, batenaTorre, ondeEsta, perfil } from "./mapa"
 import { AJUSTE_MOTO, passoMoto, tranco } from "./moto"
 
 export const PASSO = 1 / 120
@@ -41,9 +41,12 @@ export type Corrida = {
   resultado: { tempo: number; lugar: number; novo: boolean; rivais: { nome: string; cor: string; fim: number | null }[] } | null
 }
 
-export function estadoInicial(): Estado {
-  // começa na torre 1 (a dos TÚNEIS, a entrada do subúrbio), virado pro rio A
-  const t = TORRES[0].c, a = AVENIDAS[0].pts[20]
+export function estadoInicial(onde: "largada" | "descida" = "largada"): Estado {
+  // a corrida começa na TORRE 1, virado pro rio A; o passeio, na DESCIDA (a porta
+  // de entrada, lá no fundo), virado pra rampa que leva à TORRE 1
+  const desc = onde === "descida", t = desc ? SALAO_DESCIDA.c : SALAO_LARGADA.c
+  const rampa = AVENIDAS.find((a) => a.de === SALAO_DESCIDA.i)!
+  const a = desc ? rampa.pts[20] : AVENIDAS[0].pts[20]
   const yaw = Math.atan2(a.x - t.x, a.z - t.z)
   return {
     x: t.x, z: t.z, y: 0, vx: 0, vz: 0, vy: 0, yaw, ar: false, incl: 0, nx: 0, nz: 1, dist: 0, jatoT: 0, ant: { x: t.x, z: t.z, y: 0, yaw }, onde: ondeEsta(t.x, t.z), iVolta: 0, voos: 0,
@@ -228,11 +231,11 @@ export function passoCorrida(c: Corrida, s: Estado, dt: number, veiculo: Veiculo
         c.parciais.push(c.tempo); c.cp++
         avisar(s, `${g.nome} · ${c.cp}/${CHECKPOINTS.length}`, c.tempo + CONTAGEM, 1.6)
       }
-    } else if (Math.hypot(s.x - TORRES[0].c.x, s.z - TORRES[0].c.z) < RAIO_CHEGADA && c.volta < c.voltas) {
+    } else if (Math.hypot(s.x - SALAO_LARGADA.c.x, s.z - SALAO_LARGADA.c.z) < RAIO_CHEGADA && c.volta < c.voltas) {
       // T14: mais uma volta (a moto)
       c.volta++; c.cp = 0
       avisar(s, `VOLTA ${c.volta}/${c.voltas}`, c.tempo + CONTAGEM, 1.6)
-    } else if (Math.hypot(s.x - TORRES[0].c.x, s.z - TORRES[0].c.z) < RAIO_CHEGADA) {
+    } else if (Math.hypot(s.x - SALAO_LARGADA.c.x, s.z - SALAO_LARGADA.c.z) < RAIO_CHEGADA) {
       c.fase = "chegou"
       const novo = c.recordeAntes == null || c.tempo < c.recordeAntes
       const lugar = 1 + c.rivais.filter((r) => r.fim != null).length
@@ -243,7 +246,7 @@ export function passoCorrida(c: Corrida, s: Estado, dt: number, veiculo: Veiculo
     }
   }
   // o progresso do jogador na volta (pra a posição): antes do 1º portão,
-  // voltar pra trás não conta como estar no fim; depois do 3º, já é o fim
+  // voltar pra trás não conta como estar no fim; depois do último, já é o fim
   let prog = CUM[s.iVolta]
   if (c.cp === 0 && prog > L_VOLTA / 2) prog -= L_VOLTA
   if (c.cp === CHECKPOINTS.length && prog < L_VOLTA / 2) prog += L_VOLTA

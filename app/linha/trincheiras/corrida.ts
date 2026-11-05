@@ -1,6 +1,7 @@
 // A CORRIDA NAS TRINCHEIRAS (T13): a missão dos túneis. O jogador escolhe
-// BMX, patins ou skate e dá a volta no triângulo: larga na TORRE 1, passa
-// pelos 3 rios secos (um portão no meio de cada) e chega de volta na torre.
+// BMX, patins ou skate e dá a volta no pentágono (05/11: ~4,1 km, era ~1,8): larga
+// na TORRE 1, passa pelos 5 rios secos (um portão no meio de cada), atravessa o
+// salão do metrô e o do grafite e chega de volta na torre.
 // Corre contra 3 rivais (IA leve: andam pela linha do meio da volta, com um
 // elástico pra a corrida ficar apertada) e contra o próprio fantasma (a
 // melhor volta, salva no aparelho, uma por veículo).
@@ -8,7 +9,7 @@
 // Só a lógica (sem React nem three): a física de cada veículo, os portões,
 // os rivais, o fantasma e os recordes.
 
-import { AVENIDAS, CURVA, LEITO, NOME_AVENIDA, PRACA, SUBIDA_MAX, TETO, TORRES, VOLTA, perfil, type P2 } from "./mapa"
+import { AVENIDAS_VOLTA, CURVA, LEITO, MEIA, SALAO_LARGADA, SALOES, SUBIDA_MAX, TETO, VOLTA, perfil, type P2 } from "./mapa"
 
 // T14: a moto chega depois (trancada na escolha; ?motos libera)
 export type Veiculo = "bmx" | "patins" | "skate" | "moto"
@@ -61,6 +62,14 @@ export const CUM: number[] = (() => {
 })()
 export const L_VOLTA = CUM[N - 1] + Math.hypot(VOLTA[0].x - VOLTA[N - 1].x, VOLTA[0].z - VOLTA[N - 1].z)
 
+// dentro dos salões não tem parede perto: quem corre pelo meio fica no chão (0 no
+// salão, 1 a 40 m da boca pra dentro do rio)
+const SOLTO: number[] = VOLTA.map((p) => {
+  let d = Infinity
+  for (const s of SALOES) d = Math.min(d, Math.hypot(p.x - s.c.x, p.z - s.c.z) - Math.sqrt(s.r * s.r - MEIA * MEIA))
+  return Math.max(0, Math.min(1, d / 40))
+})
+
 // o ponto da volta a "d" metros, deslocado "lado" metros pro lado; se o
 // lado passa do leito, sobe na parede curva
 export type Pose = { x: number; z: number; y: number; yaw: number; incl: number; nx: number; nz: number }
@@ -72,10 +81,12 @@ export function naVolta(d: number, lado: number, out: Pose): Pose {
   const f = seg > 0 ? (dd - CUM[lo]) / seg : 0
   const tx = (b.x - a.x) / (seg || 1), tz = (b.z - a.z) / (seg || 1)
   const nx = tz, nz = -tx // a direita de quem anda (yaw = atan2(tx, tz))
+  const solto = SOLTO[lo], la = Math.abs(lado), lim = LEITO * 0.9
+  if (solto < 1 && la > lim) lado = Math.sign(lado) * (lim + (la - lim) * solto)
   const e = Math.abs(lado) - LEITO, p = perfil(e), s = Math.sign(lado) || 1
   // T14: passou da curva = andando na parede (as motos rivais): sobe na parede em pé
   const naParede = e > SUBIDA_MAX
-  const l = naParede ? s * (LEITO + CURVA - 0.05) : lado
+  const l = naParede ? s * (MEIA - 0.05) : lado
   out.x = a.x + (b.x - a.x) * f + nx * l
   out.z = a.z + (b.z - a.z) * f + nz * l
   out.y = naParede ? Math.min(TETO - 1.6, p.y + (e - SUBIDA_MAX) * 1.5) : p.y
@@ -85,17 +96,22 @@ export function naVolta(d: number, lado: number, out: Pose): Pose {
   return out
 }
 
-// o ponto da volta mais perto de (x, z), procurando perto do último
+// o ponto da volta mais perto de (x, z), procurando perto do último. Longe da
+// volta (na galeria do atalho, na descida) procura na volta inteira
 export function acompanhar(k0: number, x: number, z: number): number {
   let kb = k0, db = Infinity
   for (let d = -12; d <= 30; d++) { const k = (k0 + d + N) % N, p = VOLTA[k], q = (p.x - x) ** 2 + (p.z - z) ** 2; if (q < db) { db = q; kb = k } }
+  if (db < (MEIA + 8) ** 2) return kb
+  for (let k = 0; k < N; k += 4) { const p = VOLTA[k], q = (p.x - x) ** 2 + (p.z - z) ** 2; if (q < db) { db = q; kb = k } }
+  const kc = kb
+  for (let d = -4; d <= 4; d++) { const k = (kc + d + N) % N, p = VOLTA[k], q = (p.x - x) ** 2 + (p.z - z) ** 2; if (q < db) { db = q; kb = k } }
   return kb
 }
 
 // ── os portões: a largada, um no meio de cada rio e a chegada ──
 export type Portao = { k: number; x: number; z: number; lx: number; lz: number; nome: string; cor: string }
-const BORDA_PRACA = PRACA - CURVA + 2
-const T0 = TORRES[0].c
+const BORDA_PRACA = SALAO_LARGADA.r - CURVA + 2
+const T0 = SALAO_LARGADA.c
 function portaoEm(k: number, nome: string, cor: string): Portao {
   const a = VOLTA[Math.max(0, k - 1)], b = VOLTA[Math.min(N - 1, k + 1)], L = Math.hypot(b.x - a.x, b.z - a.z) || 1
   return { k, x: VOLTA[k].x, z: VOLTA[k].z, lx: (b.z - a.z) / L, lz: -(b.x - a.x) / L, nome, cor }
@@ -105,14 +121,14 @@ export const LARGADA = portaoEm(VOLTA.findIndex(longeDaTorre0), "LARGADA", "#fff
 export const CHEGADA = portaoEm(N - 1 - [...VOLTA].reverse().findIndex(longeDaTorre0), "CHEGADA", "#ffffff")
 export const CHECKPOINTS: Portao[] = (() => {
   let off = 0
-  return AVENIDAS.map((a) => {
+  return AVENIDAS_VOLTA.map((a) => {
     const k = off + Math.floor((a.pts.length - 1) / 2)
     off += a.pts.length - 1
-    return portaoEm(k, NOME_AVENIDA[a.i], ["#ff3fb0", "#2fe8ff", "#ffc857"][a.i])
+    return portaoEm(k, a.nome, a.cor)
   })
 })()
-export const RAIO_PORTAO = 16 // passou a menos disso do meio do portão: valeu
-export const RAIO_CHEGADA = PRACA - CURVA // entrou na praça da torre 1 depois dos 3 rios
+export const RAIO_PORTAO = MEIA + 4 // passou a menos disso do meio do portão: valeu
+export const RAIO_CHEGADA = SALAO_LARGADA.r - CURVA // entrou no salão da torre 1 depois dos 5 rios
 
 // ── os rivais (IA leve) ──
 export type Rival = { nome: string; veiculo: Veiculo; cor: string; base: number; fase: number; d: number; v: number; lado: number; fim: number | null; ant: { d: number; lado: number } }
@@ -131,9 +147,9 @@ const RIVAIS_MOTO: Omit<Rival, "d" | "v" | "lado" | "fim" | "ant">[] = [
   { nome: "SOMBRA", veiculo: "moto", cor: "#8f7bff", base: 31.8, fase: 5.0 },
 ]
 const ladoDe = (r: { fase: number; veiculo: Veiculo }, d: number) => {
-  if (r.veiculo !== "moto") return 8 * Math.sin(d * 0.008 + r.fase) + 2.5 * Math.sin(d * 0.027 + r.fase * 2)
+  if (r.veiculo !== "moto") return 11 * Math.sin(d * 0.006 + r.fase) + 3 * Math.sin(d * 0.021 + r.fase * 2)
   // a moto: serpenteia no leito e, de vez em quando, sobe e anda na parede
-  const base = 6.5 * Math.sin(d * 0.009 + r.fase), parede = 9.5 * Math.max(0, Math.sin(d * 0.0105 + r.fase * 3)) ** 6
+  const base = 9.5 * Math.sin(d * 0.007 + r.fase), parede = 12.5 * Math.max(0, Math.sin(d * 0.008 + r.fase * 3)) ** 6
   return base + (Math.sign(base) || 1) * parede
 }
 export function criarRivais(veiculo: Veiculo = "patins"): Rival[] {

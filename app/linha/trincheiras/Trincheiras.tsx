@@ -1,19 +1,23 @@
 "use client"
 /* eslint-disable react-hooks/immutability -- three.js: o piloto, os rivais e a câmera mudam a cada passo */
 
-// As trincheiras (T11 + T13): os túneis, as raízes da cidade-árvore. 3
-// rios secos em triângulo; nas pontas, as torres que sobem pra rua. As paredes
-// são curvas: dá pra subir nelas e, rápido o bastante, voar da borda e voltar.
+// As trincheiras (T11 + T13): os túneis, as raízes da cidade-árvore. (05/11)
+// Uma rede grande: 5 rios secos em pentágono, a galeria do atalho e a rampa da
+// descida (a porta de entrada); nos encontros, os salões: 3 torres que sobem pra
+// rua, o salão do metrô e o do grafite (docs/tuneis.md). As paredes são curvas:
+// dá pra subir nelas e, rápido o bastante, voar da borda e voltar.
 // T13: a corrida. Escolhe BMX, patins ou skate; larga na TORRE 1, passa pelos
-// 3 rios (um portão em cada) e chega de volta, contra 3 rivais e o próprio
+// 5 rios (um portão em cada) e chega de volta, contra 3 rivais e o próprio
 // fantasma (o recorde, salvo no aparelho).
 // T63: moram DENTRO do jogo. O /linha monta este componente quando o jogador
 // desce a boca do túnel no subúrbio (noJogo: a missão pegada e a subida de
 // volta); /teste/trincheiras segue só fora da produção, pros testes e medições.
 //
 // Desempenho: a física anda em passos fixos de 1/120 s e a tela interpola
-// (o relógio do jogo); o mapa inteiro sai em 6 desenhos, sem luz de ponto; a
-// corrida soma 5 portões, o trilho e 4 corredores (um desenho cada).
+// (o relógio do jogo); o mapa sai em pedaços (trechos de ~200 m e os salões, até
+// 6 desenhos cada, materiais divididos) e só os pedaços perto da câmera aparecem
+// (o resto está na névoa); sem luz de ponto; a corrida soma 7 portões, o trilho
+// e até 4 corredores (um desenho cada).
 // ?medir expõe __gl/__cena/__cam/__estado; ?auto liga o piloto automático;
 // ?livre (ou ?auto sozinho) = passeio sem corrida; ?veiculo=bmx|patins|skate
 // larga direto; ?corrida com ?auto: mostra a escolha e o piloto corre.
@@ -39,9 +43,9 @@ import {
   CONTAGEM, PARADO, PASSO, corridaInicial, estadoInicial, passo, passoCorrida, piloto,
   type Corrida, type Entrada, type Estado, type Fase,
 } from "./fisica"
-import { geoAtlas, geoConcreto, geoNeon, geoPoeira, geoVidro, raizes, texturaAtlas } from "./geo"
+import { montarPedacos, texturaAtlas } from "./geo"
 import { geoCorredor, geoPortao, geoTrilho } from "./geoCorrida"
-import { AVENIDAS, COR_AVENIDA, NOME_AVENIDA, NOME_TORRE, PRACA, TETO, TORRES, ondeEsta, perfil } from "./mapa"
+import { AVENIDAS, COR_TORRE, LIMITES, NOME_AVENIDA, NOME_SALAO, PORTA, SALAO_LARGADA, SALOES, TETO, TORRES, ondeEsta, perfil } from "./mapa"
 import { pilotoMoto } from "./moto"
 import { Ciclista, Motoqueiro, Skatista, type Manobra } from "./Pilotos"
 import "./trincheiras.css"
@@ -49,8 +53,10 @@ import { Cadeado, Trancado } from "../Trancado"
 import { MOTO_LIBERADA } from "../estrada/zonas"
 
 const NEVOA = "#1a0f24"
+const NEVOA_LONGE = 340 // a névoa fecha aqui
+const VER = NEVOA_LONGE + 20 // os pedaços mais longe que isto da câmera não desenham
 
-function nomeDe(o: Estado["onde"]) { return o.tipo === "praca" ? NOME_TORRE[o.i] : NOME_AVENIDA[o.i] }
+function nomeDe(o: Estado["onde"]) { return o.tipo === "praca" ? NOME_SALAO[o.i] : NOME_AVENIDA[o.i] }
 
 const PORTOES = [LARGADA, ...CHECKPOINTS, CHEGADA]
 type Painel = { recordeAntes: number | null; fantasma: boolean; resultado: Corrida["resultado"]; parciais: number[] }
@@ -60,18 +66,27 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
   corrida: React.MutableRefObject<Corrida>; mudouFase: (f: Fase) => void
 }) {
   const { scene, camera, gl } = useThree()
-  const concreto = useMemo(() => geoConcreto(), [])
-  const neon = useMemo(() => geoNeon(), [])
-  const vidro = useMemo(() => geoVidro(), [])
-  const atlas = useMemo(() => geoAtlas(), [])
-  const poeira = useMemo(() => geoPoeira(), [])
+  // o mapa em pedaços (montado uma vez) e os materiais, um de cada pra todos os pedaços
+  const pedacos = useMemo(() => montarPedacos(), [])
   const tex = useMemo(() => texturaAtlas(), [])
-  const rz = useMemo(() => raizes(), [])
+  const mats = useMemo(() => ({
+    concreto: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide }),
+    neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.DoubleSide }),
+    atlas: new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, toneMapped: false }),
+    vidro: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }),
+    poeira: new THREE.PointsMaterial({ color: "#ffcf8a", size: 0.09, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }),
+    raiz: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, emissive: "#0d3a30", emissiveIntensity: 0.6 }),
+  }), [tex])
+  useEffect(() => () => {
+    for (const p of pedacos) for (const g of [p.concreto, p.neon, p.vidro, p.atlas, p.raizes, p.poeira]) g?.dispose()
+    for (const m of Object.values(mats)) m.dispose()
+    tex.dispose()
+  }, [pedacos, mats, tex])
+  const grupos = useRef<(THREE.Group | null)[]>([])
   const portoes = useMemo(() => PORTOES.map(geoPortao), [])
   const trilho = useMemo(() => geoTrilho(), [])
   const corpos = useMemo(() => criarRivais(veiculo).map((r) => geoCorredor(r.veiculo, r.cor)), [veiculo])
   const corpoFantasma = useMemo(() => geoCorredor(veiculo, "#bff6ff"), [veiculo])
-  const raizRef = useRef<THREE.InstancedMesh>(null)
   const corpo = useRef<THREE.Group>(null)
   const rivaisRef = useRef<(THREE.Mesh | null)[]>([])
   const fantasmaRef = useRef<THREE.Mesh>(null)
@@ -92,7 +107,7 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
   }, [veiculo])
 
   useEffect(() => {
-    scene.fog = new THREE.Fog(NEVOA, 25, 260)
+    scene.fog = new THREE.Fog(NEVOA, 40, NEVOA_LONGE)
     scene.background = new THREE.Color(NEVOA)
     const w = window as unknown as Record<string, unknown>
     if (/[?&]medir/.test(location.search)) { w.__cena = scene; w.__gl = gl; w.__cam = camera }
@@ -100,12 +115,6 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
   }, [scene, gl, camera])
   // nova largada (ou troca de veículo): a câmera pula pro piloto, os portões se refazem
   useEffect(() => { cam.current.ok = false; ultCp.current = -1; acc.current = 0 }, [rodada])
-  useEffect(() => {
-    const m = raizRef.current; if (!m) return
-    rz.mats.forEach((x, i) => { m.setMatrixAt(i, x); m.setColorAt(i, rz.cores[i]) })
-    m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true
-    m.computeBoundingSphere()
-  }, [rz])
 
   useFrame((_, dtq) => {
     const s = st.current, c = corrida.current
@@ -184,6 +193,12 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
     if (!cm.ok) { cm.p.copy(tmp.alvo); cm.olhar.copy(tmp.olha); cm.ok = true }
     cm.p.lerp(tmp.alvo, kk); cm.olhar.lerp(tmp.olha, 1 - Math.exp(-dtq * 12))
     camera.position.copy(cm.p); camera.lookAt(cm.olhar)
+    // só os pedaços perto da câmera desenham (o resto já sumiu na névoa)
+    for (let i = 0; i < pedacos.length; i++) {
+      const gr = grupos.current[i]; if (!gr) continue
+      const p = pedacos[i], vis = Math.hypot(cm.p.x - p.x, cm.p.z - p.z) - p.r < VER
+      if (gr.visible !== vis) gr.visible = vis
+    }
     const pc = camera as THREE.PerspectiveCamera, fov = 66 + Math.min(16, vel * 0.4)
     if (Math.abs(pc.fov - fov) > 0.05) { pc.fov += (fov - pc.fov) * kk; pc.updateProjectionMatrix() }
   })
@@ -199,14 +214,16 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
     <>
       <hemisphereLight args={["#8a68b8", "#2a1f3c", 2]} />
       <directionalLight position={[0.3, 1, 0.2]} intensity={0.9} color="#ffb070" />
-      <mesh geometry={concreto} matrixAutoUpdate={false}><meshStandardMaterial vertexColors roughness={0.9} metalness={0.05} side={THREE.DoubleSide} /></mesh>
-      <mesh geometry={neon} matrixAutoUpdate={false}><meshBasicMaterial vertexColors toneMapped={false} side={THREE.DoubleSide} /></mesh>
-      <mesh geometry={atlas} matrixAutoUpdate={false}><meshBasicMaterial map={tex} vertexColors toneMapped={false} /></mesh>
-      <mesh geometry={vidro} matrixAutoUpdate={false} renderOrder={2}><meshBasicMaterial vertexColors transparent blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>
-      <points geometry={poeira} matrixAutoUpdate={false} renderOrder={3}><pointsMaterial color="#ffcf8a" size={0.07} transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} /></points>
-      <instancedMesh ref={raizRef} args={[rz.geo, undefined, rz.mats.length]} matrixAutoUpdate={false}>
-        <meshStandardMaterial roughness={0.95} emissive="#0d3a30" emissiveIntensity={0.6} />
-      </instancedMesh>
+      {pedacos.map((p, i) => (
+        <group key={i} ref={(g) => { grupos.current[i] = g }} matrixAutoUpdate={false}>
+          {p.concreto && <mesh geometry={p.concreto} material={mats.concreto} matrixAutoUpdate={false} />}
+          {p.neon && <mesh geometry={p.neon} material={mats.neon} matrixAutoUpdate={false} />}
+          {p.atlas && <mesh geometry={p.atlas} material={mats.atlas} matrixAutoUpdate={false} />}
+          {p.raizes && <mesh geometry={p.raizes} material={mats.raiz} matrixAutoUpdate={false} />}
+          {p.vidro && <mesh geometry={p.vidro} material={mats.vidro} matrixAutoUpdate={false} renderOrder={2} />}
+          {p.poeira && <points geometry={p.poeira} material={mats.poeira} matrixAutoUpdate={false} renderOrder={3} />}
+        </group>
+      ))}
       {/* o trilho do grind: só pro skate */}
       {veiculo === "skate" && (
         <mesh geometry={trilho} matrixAutoUpdate={false} renderOrder={2}><meshBasicMaterial color="#7dffb0" transparent opacity={0.75} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>
@@ -236,16 +253,18 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
   )
 }
 
-// o mapinha: o triângulo, as torres, os portões, os rivais e você
+// o mapinha: os rios, os salões, os portões, os rivais e você
+const VIEWBOX = (() => { const l = LIMITES, w = l.x1 - l.x0, h = l.z1 - l.z0, m = Math.max(w, h); return `${((l.x0 + l.x1 - m) / 2).toFixed(0)} ${((l.z0 + l.z1 - m) / 2).toFixed(0)} ${m.toFixed(0)} ${m.toFixed(0)}` })()
 function Mapinha({ ponto, rivais, cores }: { ponto: React.RefObject<SVGCircleElement | null>; rivais: React.RefObject<(SVGCircleElement | null)[]>; cores: string[] | null }) {
-  const caminhos = useMemo(() => AVENIDAS.map((a) => a.pts.filter((_, k) => k % 6 === 0).map((p) => `${p.x.toFixed(0)},${p.z.toFixed(0)}`).join(" ")), [])
+  const caminhos = useMemo(() => AVENIDAS.map((a) => a.pts.filter((_, k) => k % 6 === 0 || k === a.pts.length - 1).map((p) => `${p.x.toFixed(0)},${p.z.toFixed(0)}`).join(" ")), [])
   return (
-    <svg className="tr-mapa" viewBox="-420 -420 840 840" aria-hidden>
-      {caminhos.map((c, i) => <polyline key={i} points={c} fill="none" stroke={COR_AVENIDA[i]} strokeWidth={22} strokeLinecap="round" opacity={0.75} />)}
-      {TORRES.map((t) => <circle key={t.i} cx={t.c.x} cy={t.c.z} r={PRACA} fill="#9b8cff" opacity={0.85} />)}
-      {cores && CHECKPOINTS.map((g, i) => <rect key={i} x={g.x - 18} y={g.z - 18} width={36} height={36} fill="none" stroke="#fff" strokeWidth={8} transform={`rotate(45 ${g.x} ${g.z})`} />)}
-      {cores && cores.map((cor, i) => <circle key={i} ref={(el) => { if (rivais.current) rivais.current[i] = el }} r={18} fill={cor} />)}
-      <circle ref={ponto} r={26} fill="#fff" stroke="#14121c" strokeWidth={8} />
+    <svg className="tr-mapa" viewBox={VIEWBOX} aria-hidden>
+      {caminhos.map((c, i) => <polyline key={i} points={c} fill="none" stroke={AVENIDAS[i].cor} strokeWidth={36} strokeLinecap="round" opacity={AVENIDAS[i].volta ? 0.75 : 0.45} />)}
+      {SALOES.map((t) => <circle key={t.i} cx={t.c.x} cy={t.c.z} r={t.r} fill={COR_TORRE} opacity={t.torre ? 0.85 : 0.6} />)}
+      <rect x={PORTA.c.x - 16} y={PORTA.c.z - 16} width={32} height={32} fill="#ffcf8a" />
+      {cores && CHECKPOINTS.map((g, i) => <rect key={i} x={g.x - 24} y={g.z - 24} width={48} height={48} fill="none" stroke="#fff" strokeWidth={10} transform={`rotate(45 ${g.x} ${g.z})`} />)}
+      {cores && cores.map((cor, i) => <circle key={i} ref={(el) => { if (rivais.current) rivais.current[i] = el }} r={24} fill={cor} />)}
+      <circle ref={ponto} r={36} fill="#fff" stroke="#14121c" strokeWidth={10} />
     </svg>
   )
 }
@@ -305,8 +324,9 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     setPainel({ recordeAntes: c.recordeAntes, fantasma: !!c.fantasma, resultado: null, parciais: [] })
     setRecordes(recs); setVeiculo(v); setFase("contagem"); setIntro(false); setRodada((n) => n + 1)
   }
-  const passear = (v: Veiculo) => {
-    st.current = estadoInicial()
+  // o passeio: ao descer, começa na porta (a descida); da tela da corrida, ali mesmo na TORRE 1
+  const passear = (v: Veiculo, onde: "largada" | "descida" = "largada") => {
+    st.current = estadoInicial(onde)
     corrida.current = corridaInicial("livre", v)
     setVeiculo(v); setFase("livre"); setIntro(true); setRodada((n) => n + 1)
   }
@@ -327,7 +347,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     const d = q.get("dpr"); if (q.has("medir") && d) setFixa(+d)
     setRecordes(lerRecordes())
     // ?livre, ou ?auto sozinho (a medição e o teste do T11): passeio
-    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? "patins")
+    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? "patins", q.has("auto") ? "largada" : "descida")
     else if (v) largar(v)
     /* eslint-enable react-hooks/set-state-in-effect */
     const w = window as unknown as Record<string, unknown>
@@ -363,8 +383,9 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
       if (ondeRef.current) ondeRef.current.textContent = nomeDe(s.onde)
       if (ponto.current) { ponto.current.setAttribute("cx", s.x.toFixed(0)); ponto.current.setAttribute("cy", s.z.toFixed(0)) }
       if (torreRef.current) {
-        const perto = c.fase === "livre" ? TORRES.find((t) => Math.hypot(s.x - t.torre.x, s.z - t.torre.z) < 14) : undefined
-        torreRef.current.textContent = perto ? `${NOME_TORRE[perto.i]} · a porta sobe pra rua (em breve)` : ""
+        const perto = c.fase === "livre" ? TORRES.find((t) => Math.hypot(s.x - t.torre.x, s.z - t.torre.z) < 16) : undefined
+        const naPorta = c.fase === "livre" && Math.hypot(s.x - PORTA.c.x, s.z - PORTA.c.z) < 18
+        torreRef.current.textContent = perto ? `${NOME_SALAO[perto.i]} · a porta sobe pra rua (em breve)` : naPorta ? "A PORTA · por aqui se sobe pro subúrbio (a Kombi espera lá fora)" : ""
       }
       if (jatoRef.current) jatoRef.current.style.transform = `scaleX(${Math.max(0, 1 - s.jatoT / 2.5)})`
       // a moto: o nariz (no ar, pra acertar o pouso: verde = alinhado com o chão embaixo)
@@ -378,7 +399,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
       if (c.fase === "livre" || c.fase === "escolha") return
       if (tempoRef.current) tempoRef.current.textContent = relogio(c.resultado ? c.resultado.tempo : c.tempo)
       const vt = c.voltas > 1 ? `volta ${c.volta}/${c.voltas} · ` : ""
-      if (cpRef.current) cpRef.current.textContent = vt + (c.cp < CHECKPOINTS.length ? `portão ${c.cp}/${CHECKPOINTS.length} · próximo: ${CHECKPOINTS[c.cp].nome}` : `3/3 · volte pra TORRE 1${c.volta < c.voltas ? " (mais uma volta)" : ""}`)
+      if (cpRef.current) cpRef.current.textContent = vt + (c.cp < CHECKPOINTS.length ? `portão ${c.cp}/${CHECKPOINTS.length} · próximo: ${CHECKPOINTS[c.cp].nome}` : `${CHECKPOINTS.length}/${CHECKPOINTS.length} · volte pra ${SALAO_LARGADA.nome}${c.volta < c.voltas ? " (mais uma volta)" : ""}`)
       if (lugarRef.current) lugarRef.current.textContent = `${c.lugar}º de ${c.rivais.length + 1}`
       if (contaRef.current) contaRef.current.textContent = c.fase === "contagem" ? String(Math.max(1, Math.ceil(c.conta))) : c.fase === "correndo" && c.tempo < 0.8 ? "VAI!" : ""
       c.rivais.forEach((r, i) => {
@@ -412,7 +433,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
 
   return (
     <div className={`tr-raiz${noJogo ? " is-jogo" : ""}${subindo ? " is-subindo" : ""}`}>
-      <Canvas className="tr-cvs" dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: 600 }}>
+      <Canvas className="tr-cvs" dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
         <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
@@ -427,11 +448,11 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
           {veiculo === "moto" && <span className="tr-nariz" aria-hidden><span ref={narizRef} /></span>}
           {emCorrida && <span ref={lugarRef} className="tr-lugar">1º de {coresRivais.length + 1}</span>}
         </div>
-        <p className="tr-onde"><span ref={ondeRef}>{NOME_TORRE[0]}</span></p>
+        <p className="tr-onde"><span ref={ondeRef}>{NOME_SALAO[0]}</span></p>
         {emCorrida && (
           <div className="tr-relogio">
             <span ref={tempoRef} className="tr-tempo">0:00.00</span>
-            <span ref={cpRef} className="tr-cp">portão 0/3</span>
+            <span ref={cpRef} className="tr-cp">portão 0/{CHECKPOINTS.length}</span>
             <span className="tr-rec">recorde {INFO[veiculo].nome}: {relogio(painel.recordeAntes)}{painel.fantasma ? " · o fantasma corre junto" : ""}</span>
           </div>
         )}
@@ -444,7 +465,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
       {fase === "escolha" && (
         <div className="tr-escolha">
           <h1>A CORRIDA DAS TRINCHEIRAS</h1>
-          <p>uma volta no triângulo: larga na TORRE 1, passa pelos 3 rios secos e volta. Três rivais e o seu fantasma.{motos ? " De moto: duas voltas contra quatro motos." : ""}</p>
+          <p>uma volta grande nos túneis: larga na TORRE 1, passa pelos 5 rios secos, pelo salão do metrô e pelo do grafite, e volta. Três rivais e o seu fantasma.{motos ? " De moto: duas voltas contra quatro motos." : ""}</p>
           <div className="tr-cards">
             {VEICULOS.map((v) => {
               const trancada = (v === "moto" && !motos) || !!noJogo?.tranca
@@ -473,7 +494,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
               <li key={r.nome}><i style={{ background: r.cor }} />{r.nome}<span>{r.fim != null ? relogio(r.fim) : "na pista"}</span></li>
             ))}
           </ol>
-          <p className="tr-fim-parciais">{painel.parciais.map((p, i) => `${NOME_AVENIDA[i]} ${relogio(p)}`).join(" · ")}</p>
+          <p className="tr-fim-parciais">{painel.parciais.map((p, i) => `${CHECKPOINTS[i]?.nome ?? ""} ${relogio(p)}`).join(" · ")}</p>
           <div className="tr-fim-botoes">
             <button type="button" onClick={() => largar(veiculo)}>correr de novo</button>
             <button type="button" onClick={escolher}>trocar de veículo</button>
@@ -485,7 +506,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
       {intro && fase === "livre" && (
         <div className="tr-intro" onPointerDown={() => setIntro(false)}>
           <h1>AS TRINCHEIRAS</h1>
-          <p>as raízes da cidade. três rios secos em triângulo; nas pontas, as torres que sobem pra rua. aqui só de patins, skate ou BMX.</p>
+          <p>as raízes da cidade. cinco rios secos, a galeria do atalho e salões enormes: as três torres que sobem pra rua, o metrô da linha 9 e o salão do grafite. a Kombi ficou lá fora; aqui é a pé, de patins, skate ou BMX.</p>
           <p className="tr-teclas">setas ou WASD · {INFO[veiculo].teclas}</p>
         </div>
       )}

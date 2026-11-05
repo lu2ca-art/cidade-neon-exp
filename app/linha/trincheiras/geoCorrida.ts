@@ -5,7 +5,7 @@
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import type { Portao, Veiculo } from "./corrida"
-import { AVENIDAS, CURVA, LEITO, PRACA, SUBIDA_MAX, TORRES, type P2 } from "./mapa"
+import { AVENIDAS, CURVA, LEITO, SALOES, SUBIDA_MAX, TETO, type P2 } from "./mapa"
 
 // a altura de verdade da parede curva a "e" metros do leito (sem o limite)
 const alturaParede = (e: number) => (e <= 0 ? 0 : CURVA - Math.sqrt(Math.max(0, CURVA * CURVA - e * e)))
@@ -13,7 +13,7 @@ export const TRILHO_E = SUBIDA_MAX - 0.05
 export const TRILHO_Y = alturaParede(TRILHO_E)
 
 // ── o portão: o contorno do túnel (o leito, as curvas e as paredes), em neon ──
-const ALTO = 8.6, LARG = 0.5
+const ALTO = TETO - 3, LARG = 0.7
 function contorno(): [number, number][] {
   const m: [number, number][] = []
   const dentro = 0.35
@@ -53,7 +53,7 @@ export function geoTrilho(): THREE.BufferGeometry {
   const y0 = alturaParede(e0) + 0.03, y1 = alturaParede(e1) + 0.03
   for (const av of AVENIDAS) {
     const pts = av.pts, n = pts.length
-    const fora = (p: P2) => TORRES.every((t) => Math.hypot(p.x - t.c.x, p.z - t.c.z) > PRACA + 2)
+    const fora = (p: P2) => SALOES.every((t) => Math.hypot(p.x - t.c.x, p.z - t.c.z) > t.r + 2)
     let k0 = 0, k1 = n - 1
     while (k0 < k1 && !fora(pts[k0])) k0++
     while (k1 > k0 && !fora(pts[k1])) k1--
