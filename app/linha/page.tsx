@@ -42,7 +42,7 @@ import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
 import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
 import { introDe } from "./disco/introMissoes"
 import { IntroMissao } from "./disco/IntroMissao"
-import { CHEGADA_MISSAO, lerGuia } from "./estrada/alvoMissao"
+import { CHEGADA_MISSAO, INTRO_ADIADA, lerGuia } from "./estrada/alvoMissao"
 import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, somCena, trilha, voz } from "./som"
 import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
@@ -1108,6 +1108,10 @@ export default function LinhaPage() {
   // o celular) ou foi embora do lugar: o balão fecha (antes ficava, e o "bora" abria a
   // peça no meio da cidade ou descia pro túnel de longe). Os links de teste que abrem
   // de longe seguem valendo: conta o quanto ele se afastou desde que o balão abriu
+  // (começo novo, 05/11) trocou de missão (ou largou): o "depois" da outra não vale mais
+  useEffect(() => {
+    if (INTRO_ADIADA.missao && INTRO_ADIADA.missao !== missaoCarreira) { INTRO_ADIADA.missao = ""; INTRO_ADIADA.texto = ""; INTRO_ADIADA.toque = null }
+  }, [missaoCarreira])
   useEffect(() => {
     if (!introMissao) return
     if (missaoCarreira !== introMissao.ativa0) { setIntroMissao(null); return }
@@ -1281,6 +1285,8 @@ export default function LinhaPage() {
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId, semIntro = false) => {
     if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
+    // (começo novo) abriu (o balão ou a peça): o "toca pra começar" do notch sai
+    if (INTRO_ADIADA.missao === id) { INTRO_ADIADA.missao = ""; INTRO_ADIADA.texto = ""; INTRO_ADIADA.toque = null }
     const pc = pecaAgora13(hist13(saveRef.current), id)
     visitaAbriu.current = id
     if (!pc) { abrirPortaDe(id); return }
@@ -2539,7 +2545,14 @@ export default function LinhaPage() {
         {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} />}
         {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
           onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
-          onDepois={() => setIntroMissao(null)} />}
+          onDepois={() => {
+            // (começo novo, 05/11) "depois": no raio do lugar, o notch chama de volta
+            const { id, quem } = introMissao
+            INTRO_ADIADA.missao = id
+            INTRO_ADIADA.texto = `a missão ${/^(Ella|Nizzy|D-Bee)$/.test(quem) ? "da" : "do"} ${quem} tá aqui · toca pra começar`
+            INTRO_ADIADA.toque = () => { INTRO_ADIADA.missao = ""; INTRO_ADIADA.texto = ""; INTRO_ADIADA.toque = null; chegouRef.current(id) }
+            setIntroMissao(null)
+          }} />}
         {cenaAgora && <Peca key={`${cenaAgora.missao}:${cenaAgora.qual}`} id={cenaAgora.id} qual={cenaAgora.qual} cor={MISSOES13[cenaAgora.missao].cor} quem={MISSOES13[cenaAgora.missao].quem} onFim={(ok, obra) => {
           const c = cenaAgora
           setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined, obras13: obra ? { ...(x.obras13 ?? {}), [`${c.missao}:${c.qual}`]: obra } : x.obras13 })))

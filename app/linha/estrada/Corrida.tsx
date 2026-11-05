@@ -52,7 +52,7 @@ import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
 import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desembarque } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
-import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
+import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, INTRO_ADIADA, lerGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { NAV, ladoDaFaixa } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
@@ -1690,6 +1690,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       else if (r === "sim" && celularRef.current) dica = "fecha o celular: a missão começa aqui"
       else if (alvoL.chao === "tuneis" && d < CHEGADA_MISSAO.avisar && !r) dica = "desce a rampa até a porta do túnel"
       if (!dica && ofertaAqui.current) dica = ofertaAqui.current
+      // (começo novo, 05/11) tocou "depois" na introdução: no raio, o notch chama de volta
+      if (!dica && r === "sim" && INTRO_ADIADA.texto) dica = INTRO_ADIADA.texto
       escreverGuia(d, dica)
       // o lugar da cidade: começa (o do chão começa no intervalo do chão, logo acima)
       if (alvoL.lugar && !pausado) {
@@ -2807,7 +2809,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
             data-info={letreiro ? "ilha" : undefined}
             style={{ ["--cor" as string]: t0 ? VOZES[t0.de] ?? "#fff" : "#2fe8ff" }}
             onPointerDown={(modo === "fala" && onIlha) || letreiro ? (e) => e.stopPropagation() : undefined}
-            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => setNotchAberto((x) => !x) : undefined}
+            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => { if (INTRO_ADIADA.toque && INTRO_ADIADA.texto && lerGuia().dica === INTRO_ADIADA.texto) { INTRO_ADIADA.toque(); return } setNotchAberto((x) => !x) } : undefined}
           >
             {modo === "garfo" && C && (
               <div key="garfo" className="l-ilha-conteudo">

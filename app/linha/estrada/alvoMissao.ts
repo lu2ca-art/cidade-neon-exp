@@ -92,6 +92,10 @@ export function escreverPiloto(texto: string) {
   GUIA = { ...GUIA, piloto: texto }
   ouvintes.forEach((f) => f())
 }
+// (começo novo, 05/11) A INTRODUÇÃO ADIADA: ele tocou "depois" no balão de quem pede.
+// Enquanto ele estiver no raio do lugar, o guia diz `texto` no notch e tocar no notch
+// chama `toque` (a página reabre o balão). Saiu do raio, o guia tira (volta dentro, volta)
+export const INTRO_ADIADA: { missao: string; texto: string; toque: (() => void) | null } = { missao: "", texto: "", toque: null }
 // (trilha de pedras) quem olha de fora do React (de tempos em tempos) lê direto
 export const lerGuia = (): Guia => GUIA
 export function useGuia(): Guia {
