@@ -1242,9 +1242,15 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // das melhorias), parando perto, dá pra entrar e comprar desempenho com água
   const [pertoDaOficina, setPertoOficina] = useState(false)
   const oficinaLivre = !!discoM && !!historia && feita13(historia, "oficina") && alvoChao !== "oficina"
+  // (revisão 3) O ROTEIRO: o `intro` que a página passa no disco é "a cidade quieta" e
+  // vale a história TODA (HIST, inclusive a carreira). As regras do mundo (as zonas dos
+  // veículos, os rachas) só param no roteiro de verdade: o prólogo (do buraco de
+  // minhoca até subir pra cidade), e as cenas, que já vêm à parte (cinema, cenaLugar,
+  // abertura, chegada, perseguição, a quebra e o conserto). Na carreira e no livre, valem
+  const roteiro = intro && !(!!discoM && !!historia && (historia.fase === "carreira" || historia.fase === "livre"))
   // (T44) os rachas: os carros do mecânico rodam lá em cima depois que ele te conta deles (a oficina)
   const rachaRef = useRef<EstadoRacha>(novoEstadoRacha())
-  const rachasOk = !!discoM && (!historia || historia.fase === "livre" || historia.fase === "carreira" || feita13(historia, "oficina")) && !cinema && !cenaLugar && !intro && !abertura && !chegada && !noConserto && !quebrou && !perseguicao && !semKombi // (T27, T28) a Kombi quebrada/no conserto: de patins, sem racha
+  const rachasOk = !!discoM && (!historia || historia.fase === "livre" || historia.fase === "carreira" || feita13(historia, "oficina")) && !cinema && !cenaLugar && !roteiro && !abertura && !chegada && !noConserto && !quebrou && !perseguicao && !semKombi // (T27, T28) a Kombi quebrada/no conserto: de patins, sem racha
   const pertoOficina = oficinaLivre && pertoDaOficina
   useEffect(() => {
     if (!oficinaLivre) return
@@ -1770,7 +1776,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const corridaNoMapa = !!discoM && !!historia && (!!historia.radioXenom || !["minhoca", "casa", "dunas", "bar"].includes(historia.fase))
   // sem Kombi agora (quebrada, no conserto, jogada, sem gasolina) ou numa cena: a regra espera
   const regraZona = useRef(false)
-  regraZona.current = !kombiQuebrada && !quebrou && !noConserto && !semKombi && !perseguicao && !seco && !cinema && !cenaLugar && !intro && !abertura && !chegada && !entrando
+  regraZona.current = !kombiQuebrada && !quebrou && !noConserto && !semKombi && !perseguicao && !seco && !cinema && !cenaLugar && !roteiro && !abertura && !chegada && !entrando
   // sobe na Kombi onde está (no chão, sem voltar pra pista); se ela ficou ali
   // perto (na borda do subúrbio), é nela mesmo que ele sobe
   const kombiAqui = () => {
@@ -1791,7 +1797,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // ele segue de moto), e a Kombi quebrada (T27, a caminho da oficina) deixa a moto
   // com ele: no deserto sem Kombi, a moto é o veículo
   const motoZona = useRef({ ok: false, semKombi: false })
-  motoZona.current = { ok: motoOk, semKombi: motoOk && quebrou && !perseguicao && !semKombi && !cinema && !cenaLugar && !intro && !abertura && !chegada && !entrando }
+  motoZona.current = { ok: motoOk, semKombi: motoOk && quebrou && !perseguicao && !semKombi && !cinema && !cenaLugar && !roteiro && !abertura && !chegada && !entrando }
   const trocaZona = useRef({ irDePatins, kombiAqui, irDeMoto })
   trocaZona.current = { irDePatins, kombiAqui, irDeMoto }
   useEffect(() => {
