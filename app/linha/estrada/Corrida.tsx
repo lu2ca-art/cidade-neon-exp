@@ -91,6 +91,8 @@ import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centra
 import { RotaPista } from "./RotaPista"
 import { Manifestos } from "./manifestos/Manifestos"
 import { CHUVA_MANIFESTO, horaDoCeu } from "./manifestos/ceu"
+// a rua CHUVA conta como chuva (vidro, holo) a partir daqui (a garoa do começo é 0,3)
+const CHUVA_RUA_MIN = 0.25
 import { CAMERA_RUA } from "./manifestos/comum"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
@@ -1064,9 +1066,11 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       const MDc = "disco" in M ? (M as MundoDisco) : null
       const deserto = M.vias[j.via]?.id === "deserto" || (!!MDc && !!j.voo && j.wx !== undefined && alemDaCidade(j.wx, j.wz!) > 1300)
       c.chove = !deserto && chovendo(dia, horaRef.current)
+      // (revisão 2b) na rua CHUVA o vidro embaça também (a pancada visível já é Math.max com ela)
+      const molhado = c.chove || (!deserto && CHUVA_MANIFESTO.k > CHUVA_RUA_MIN)
       // parada de verdade: não conta quando a parada já tem outra coisa na tela
       const ocupado = !!cinemaRef.current || !!j.encostando || !!j.noMapa || respiroRef.current.pode
-      const parado = c.chove && Math.abs(j.v) < 0.8 && !ocupado
+      const parado = molhado && Math.abs(j.v) < 0.8 && !ocupado
       if (Math.abs(j.v) > 3) { paradoT = 0; disparou = false }
       paradoT = parado ? paradoT + 0.5 : 0
       if (paradoT >= 5 && !disparou) { disparou = true; setPedidoEmbaca(Date.now()) }
@@ -1254,7 +1258,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     const f = MD?.info[j.via]
     const deserto = MD ? !!j.voo && j.wx !== undefined && !MD.pousar(j.wx, j.wz!, j.y, 0, 0) : M.vias[j.via]?.id === "deserto"
     const regiao = deserto ? "deserto" : f && f.pista >= 0 ? MD!.pistas[f.pista].nome : f && f.torre === 0 ? "a central" : f ? "a torre" : "a cidade"
-    return { chove: !deserto && chovendo(dia, horaRef.current), deserto, regiao, hora: horaRef.current }
+    return { chove: !deserto && (chovendo(dia, horaRef.current) || CHUVA_MANIFESTO.k > CHUVA_RUA_MIN), deserto, regiao, hora: horaRef.current }
   }, [M, dia])
   // o "?" do holo: tocar numa coisa diz o que ela é
   const [ajuda, setAjuda] = useState(false)
