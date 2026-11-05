@@ -410,7 +410,7 @@ type Jogo = {
   piloto?: boolean
   // (piloto, 05/11) o piloto do botão: o último destino visto (segue nele com o
   // GPS escondido, ex.: no drone), o nome que está no notch e a câmera de passeio
-  pilD?: { x: number; z: number; nome: string } | null; pilNome?: string | null; pilCam?: boolean; pilPista?: number
+  pilD?: { x: number; z: number; nome: string; perto?: boolean } | null; pilNome?: string | null; pilCam?: boolean; pilPista?: number
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -4744,7 +4744,15 @@ function CenaBase({
       // o destino: o do GPS; com o GPS escondido (o drone aberto), o último que ele viu
       let destP: { x: number; z: number; nome: string } | null = null
       if (infAuto) {
-        if (NAV.ativo && NAV.destino) { destP = NAV.destino; if (!j.pilD || j.pilD.nome !== destP.nome || j.pilD.x !== destP.x) j.pilD = { x: destP.x, z: destP.z, nome: destP.nome } }
+        if (NAV.ativo && NAV.destino) {
+          destP = NAV.destino
+          if (!j.pilD || j.pilD.nome !== destP.nome || j.pilD.x !== destP.x) {
+            // chegou perto do destino e ele trocou (a missão começou e já mostra o
+            // próximo passo): o piloto para aqui. Longe, trocou no mapa: segue o novo
+            if (j.pilD?.perto) { infAuto = false; inp.infinito = false; destP = null; ev.pilotoBotao?.(false) }
+            j.pilD = destP ? { x: destP.x, z: destP.z, nome: destP.nome } : null
+          }
+        }
         else if (j.pilD && !NAV.vivo) destP = j.pilD
         else if (j.pilD) { infAuto = false; inp.infinito = false; j.pilD = null; ev.pilotoBotao?.(false) } // o destino acabou (a missão começou): devolve o volante
       } else j.pilD = null
@@ -4889,6 +4897,7 @@ function CenaBase({
       if (infAuto && destP) {
         const falta = j.voo && j.wx !== undefined ? Math.hypot(destP.x - j.wx, destP.z - j.wz!) : NAV.ativo && NAV.rota ? NAV.rota.metros : Infinity
         if (falta < 110) j.v = Math.min(j.v, Math.max(0, (falta - 10) * 0.32))
+        if (falta < 70 && j.pilD) j.pilD.perto = true
         if (falta < 26 && Math.abs(j.v) < 1.2) { inp.infinito = false; j.pilD = null; ev.pilotoBotao?.(false) }
       }
       // (T36, J2:2, "quando eu clico pra frente no ar ele já voa pra caramba, passa da
