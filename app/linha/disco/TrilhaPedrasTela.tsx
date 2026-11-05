@@ -18,6 +18,7 @@ import { gota } from "../som"
 import { vib } from "../som-carro"
 import { POSE_TUT } from "./tutorialConf"
 import { ALVO, PEDRAS, TRILHA_CFG, ancoraDe, pedraAgora, pedraDe, pedrasFeitas, pulada, textoDaPedra, type CtxTrilha, type MemPedra, type PedraId } from "./trilhaPedras"
+import { iconeDaPedra } from "./iconesPedras"
 import "./trilhaPedras.css"
 
 // o que vem do save (a page monta)
@@ -138,6 +139,8 @@ export function Balao({ id, texto, alvo, ok = false, children }: { id: string; t
     <>
       {alvo && <div className={`l-trilha-alvo is-${id} ${ok ? "is-ok" : ""}`} aria-hidden="true" style={{ left: alvo.x - m, top: alvo.y - m, width: alvo.w + m * 2, height: alvo.h + m * 2 }} />}
       <div ref={ref} className={`l-trilha-balao ${cima ? "is-cima" : ""} ${alvo ? "" : "is-solto"} ${ok ? "is-ok" : ""}`} style={pos} role="status" aria-live="polite" data-pedra={id}>
+        {/* (5) o ícone animado da pedra: o gesto, mostrado (iconeDaPedra: troca pelos gerados depois) */}
+        {!ok && iconeDaPedra(id)}
         <em>{texto}</em>
         {children}
       </div>

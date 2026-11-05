@@ -13,6 +13,52 @@
 .l-trilha-nav button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: rgba(6, 6, 12, 0.85); color: var(--c); font: 800 15px var(--mono, ui-monospace, monospace); cursor: pointer; }
 .l-trilha-nav button:disabled { opacity: 0.3; cursor: default; }
 .l-trilha-nav small { min-width: 26px; text-align: center; font: 700 9px var(--mono, ui-monospace, monospace); opacity: 0.75; }
+/* (5) os ícones animados das pedras (disco/iconesPedras.tsx): um chip escuro com o
+   desenho na cor do balão. Só transform e opacity (e o tracejado) animam */
+.l-pi { flex: none; width: 26px; height: 26px; padding: 2px; border-radius: 50%; background: #06060c; overflow: visible; }
+.l-pi * { fill: none; stroke: var(--c); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transform-box: fill-box; transform-origin: center; }
+.l-pi .is-cheio { fill: var(--c); stroke: none; }
+.l-pi .l-pi-fino { stroke-width: 1; opacity: 0.6; }
+.l-pi-dedo { animation: l-pi-toca 1.4s ease-in-out infinite; }
+.l-pi-onda { animation: l-pi-onda 1.4s ease-out infinite; }
+.l-pi-gira { animation: l-pi-gira 3s linear infinite; }
+.l-pi-tracos { animation: l-pi-tracos 1s linear infinite; }
+.l-pi .l-pi-anda { transform-box: view-box; transform-origin: 0 0; offset-anchor: 0 0; offset-path: path("M4 24c6 0 6-14 12-14s6 10 12 10"); offset-rotate: auto; animation: l-pi-anda 2s ease-in-out infinite; }
+.l-pi-mira { animation: l-pi-mira 2.2s ease-in-out infinite; }
+.l-pi-drift { transform-origin: 70% 80%; animation: l-pi-drift 1.6s ease-in-out infinite; }
+.l-pi-poeira { animation: l-pi-some 1.6s ease-in-out infinite; }
+.l-pi-q { animation: l-pi-pula 1.5s ease-in-out infinite; }
+.l-pi-sobe { animation: l-pi-sobe 1.8s ease-in-out infinite; }
+.l-pi-fogo { animation: l-pi-pisca 0.25s steps(2) infinite; }
+.l-pi-raio { animation: l-pi-raio 1.2s ease-in-out infinite; }
+.l-pi-barra { transform-origin: left center; animation: l-pi-enche 1.2s ease-in-out infinite; }
+.l-pi-pousa { animation: l-pi-pousa 2s ease-in-out infinite; }
+.l-pi-pino { animation: l-pi-pula 1.2s ease-in-out infinite; }
+.l-pi-fraco { opacity: 0.45; }
+.l-pi-desce { animation: l-pi-desce 1.3s ease-in-out infinite; }
+.l-pi-cadeado { transform-origin: 30% 100%; animation: l-pi-abre 2s ease-in-out infinite; }
+.l-pi-faisca { animation: l-pi-pisca 0.6s steps(2) infinite; }
+.l-pi-onda1 { animation: l-pi-some 1.2s ease-in-out infinite; }
+.l-pi-onda2 { animation: l-pi-some 1.2s ease-in-out 0.3s infinite; }
+.l-pi-bate { animation: l-pi-bate 1s ease-in-out infinite; }
+.l-pi-roda { animation: l-pi-gira 1s linear infinite; }
+@keyframes l-pi-toca { 0%, 100% { transform: translate(2px, 2px); } 45%, 55% { transform: translate(0, -2px) scale(0.95); } }
+@keyframes l-pi-onda { 0%, 40% { transform: scale(0.4); opacity: 0; } 50% { opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes l-pi-gira { to { transform: rotate(360deg); } }
+@keyframes l-pi-tracos { to { stroke-dashoffset: -11; } }
+@keyframes l-pi-anda { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+@keyframes l-pi-mira { 0% { transform: translateX(-9px); } 40%, 70% { transform: none; } 100% { transform: translateX(-9px); } }
+@keyframes l-pi-drift { 0%, 100% { transform: rotate(0) translateX(0); } 50% { transform: rotate(-16deg) translateX(3px); } }
+@keyframes l-pi-some { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
+@keyframes l-pi-pula { 0%, 100% { transform: none; } 30% { transform: translateY(-2.5px); } }
+@keyframes l-pi-sobe { 0% { transform: translateY(5px); } 70% { transform: translateY(-4px); } 100% { transform: translateY(5px); } }
+@keyframes l-pi-pisca { 50% { opacity: 0.2; } }
+@keyframes l-pi-raio { 0%, 60%, 100% { transform: none; opacity: 0.6; } 70% { transform: scale(1.15); opacity: 1; } }
+@keyframes l-pi-enche { from { transform: scaleX(0); } 60%, to { transform: scaleX(1); } }
+@keyframes l-pi-pousa { 0% { transform: translateY(-10px); opacity: 0; } 20% { opacity: 1; } 60%, 85% { transform: translateY(2px); opacity: 1; } 100% { transform: translateY(2px); opacity: 0; } }
+@keyframes l-pi-desce { 0% { transform: translateY(-3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(3px); opacity: 0; } }
+@keyframes l-pi-abre { 0%, 30% { transform: none; } 55%, 85% { transform: translateY(-3px) rotate(-20deg); } 100% { transform: none; } }
+@keyframes l-pi-bate { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.18); } 30% { transform: scale(0.96); } 45% { transform: scale(1.1); } }
 /* o que mais mexe, de leve: o mapa balança; o ícone da missão (no anel) pisca; o notch respira */
 html[data-trilha-mexe="mapa"] .l-mapa-mini { animation: l-trilha-mexe 1.8s ease-in-out infinite; }
 html[data-trilha-mexe="icone"] .l-holo-anel-ic { animation: l-trilha-pisca 1s ease-in-out infinite; }
@@ -24,5 +70,5 @@ html[data-trilha-mexe="notch"] .l-ilha.is-letreiro { animation: l-trilha-respira
 @keyframes l-trilha-pisca { 50% { opacity: 0.35; } }
 @keyframes l-trilha-respira { 50% { transform: translateX(-50%) scale(1.03); } }
 @media (prefers-reduced-motion: reduce) {
-  .l-trilha-alvo, .l-trilha-balao, html[data-trilha-mexe] .l-mapa-mini, html[data-trilha-mexe] .l-holo-anel-ic, html[data-trilha-mexe] .l-ilha.is-letreiro { animation: none; }
+  .l-trilha-alvo, .l-trilha-balao, .l-pi *, html[data-trilha-mexe] .l-mapa-mini, html[data-trilha-mexe] .l-holo-anel-ic, html[data-trilha-mexe] .l-ilha.is-letreiro { animation: none; }
 }
