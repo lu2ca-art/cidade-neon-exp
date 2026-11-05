@@ -39,6 +39,9 @@ const COR_PROXIMO = new THREE.Color("#2fe8ff")
 const COR_DEPOIS = new THREE.Color("#ff3fb0")
 const COR_LINHA = new THREE.Color("#ffffff")
 const APAGADO = new THREE.Color("#000000")
+// (revisão 2) fora do laço do quadro: o array não nasce a cada quadro
+const VEICULOS_RUA: readonly VeiculoRua[] = ["moto", "patins"]
+const SEM_RIVAIS: never[] = []
 
 // ── os desenhos (uma vez) ──
 // um retângulo em pé no plano x-y (de frente pra quem vem em +z)
@@ -242,15 +245,18 @@ export function CorridaRuaCena({ chao, jogo, comb }: { chao: (x: number, z: numb
       })
       if (portoes.instanceColor) portoes.instanceColor.needsUpdate = true
     }
-    const vis = E.fase !== "fora" && E.fase !== "perto" ? E.rivais : []
-    for (const v of ["moto", "patins"] as VeiculoRua[]) corpos.mapa[v].forEach((me, i) => {
-      const r = v === E.veiculo ? vis[i] : undefined
-      me.visible = !!r
-      if (!r) return
-      naVoltaRua(r.d, r.lado, tmp.pose)
-      me.position.set(tmp.pose.x, chao(tmp.pose.x, tmp.pose.z), tmp.pose.z)
-      me.rotation.set(0, tmp.pose.yaw, 0)
-    })
+    const vis = E.fase !== "fora" && E.fase !== "perto" ? E.rivais : SEM_RIVAIS
+    for (const v of VEICULOS_RUA) {
+      const lista = corpos.mapa[v]
+      for (let i = 0; i < lista.length; i++) {
+        const me = lista[i], r = v === E.veiculo ? vis[i] : undefined
+        me.visible = !!r
+        if (!r) continue
+        naVoltaRua(r.d, r.lado, tmp.pose)
+        me.position.set(tmp.pose.x, chao(tmp.pose.x, tmp.pose.z), tmp.pose.z)
+        me.rotation.set(0, tmp.pose.yaw, 0)
+      }
+    }
   })
 
   return (

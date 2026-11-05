@@ -9,12 +9,15 @@ import type { Via } from "../mundo"
 /** meia largura da pista (mundoDisco.ts MEIA_PISTA): a parede fica aqui */
 export const MEIA_PISTA = 8.4
 
-/** o segundo da faixa `id` no toca-discos (null = ela não está soando) */
-export function tempoDaFaixa(id: string): { t: number; dur: number } | null {
+/** o segundo da faixa `id` no toca-discos (null = ela não está soando).
+ *  (revisão 2) lido todo quadro pelo host: devolve sempre o mesmo objeto (leia na hora) */
+const TEMPO_FAIXA = { t: 0, dur: 1 }
+export function tempoDaFaixa(id: string): Readonly<{ t: number; dur: number }> | null {
   const f = pistaSom.faixa, el = pistaSom.el
   if (!f || f.id !== id || !el) return null
-  const dur = el.duration && isFinite(el.duration) && el.duration > 1 ? el.duration : f.dur
-  return { t: el.currentTime || 0, dur }
+  TEMPO_FAIXA.dur = el.duration && isFinite(el.duration) && el.duration > 1 ? el.duration : f.dur
+  TEMPO_FAIXA.t = el.currentTime || 0
+  return TEMPO_FAIXA
 }
 
 /** a amostra da via mais perto do u */

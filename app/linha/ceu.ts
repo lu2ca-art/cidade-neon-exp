@@ -30,16 +30,17 @@ export function astros(h: number, sol: THREE.Vector3, lua: THREE.Vector3) {
   sol.set(Math.cos(a) * 0.9, Math.sin(a) * 0.85, -0.42).normalize()
   lua.set(-Math.cos(a) * 0.8, Math.max(0.12, -Math.sin(a) * 0.75), -0.6).normalize()
 }
-export function ceuNaHora(h: number) {
+// (revisão 2) chamado todo quadro por 2–3 quem (o Corrida, as ruínas, Sabe Ontem?):
+// devolve SEMPRE o mesmo objeto, reescrito (nada alocado). Leia na hora; não guarde
+const SAIDA_CEU = { topo: [0, 0, 0], meio: [0, 0, 0], tinta: 0, noite: 0, luz: 0 }
+export function ceuNaHora(h: number): Readonly<typeof SAIDA_CEU> {
   let k = 0
   while (k < CEU_HORAS.length - 2 && h >= CEU_HORAS[k + 1][0]) k++
   const a = CEU_HORAS[k], b = CEU_HORAS[k + 1]
   const t = Math.min(1, Math.max(0, (h - a[0]) / (b[0] - a[0])))
-  const m = (x: number, y: number) => x + (y - x) * t
-  return {
-    topo: [m(a[1][0], b[1][0]), m(a[1][1], b[1][1]), m(a[1][2], b[1][2])],
-    meio: [m(a[2][0], b[2][0]), m(a[2][1], b[2][1]), m(a[2][2], b[2][2])],
-    tinta: m(a[3], b[3]), noite: m(a[4], b[4]), luz: m(a[5], b[5]),
-  }
+  const o = SAIDA_CEU
+  for (let i = 0; i < 3; i++) { o.topo[i] = a[1][i] + (b[1][i] - a[1][i]) * t; o.meio[i] = a[2][i] + (b[2][i] - a[2][i]) * t }
+  o.tinta = a[3] + (b[3] - a[3]) * t; o.noite = a[4] + (b[4] - a[4]) * t; o.luz = a[5] + (b[5] - a[5]) * t
+  return o
 }
 
