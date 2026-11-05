@@ -24,6 +24,7 @@ export function IntroMissao({ quem, texto, cor, onBora, onDepois }: { quem: stri
   return (
     <div
       role="dialog"
+      className="l-intro-missao"
       aria-label={`${quem} fala`}
       style={{
         position: "fixed", left: 16, right: 16, bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)", zIndex: 60,

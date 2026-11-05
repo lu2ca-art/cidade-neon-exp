@@ -18,6 +18,21 @@
 .l-tv.is-id { right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); }
 .l-tv.is-se { left: calc(12px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); }
 .l-tv.is-sd { right: calc(12px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); }
+/* (revisão 05/11) o padrão: na direita, acima do turbo e do propulsor (bottom 18 px + o pedal) */
+.l-tv.is-md { right: calc(12px + env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom)); }
+/* o balão da introdução da missão (IntroMissao.tsx, embaixo no meio) nunca fica embaixo da TV:
+   celular em pé, a TV dos cantos de baixo sobe pra cima dele; tela larga, o balão vai pro outro lado */
+@media (max-width: 559px) {
+  body:has(.l-intro-missao) .l-tv.is-md, body:has(.l-intro-missao) .l-tv.is-ie, body:has(.l-intro-missao) .l-tv.is-id { bottom: calc(236px + env(safe-area-inset-bottom)); }
+}
+@media (min-width: 560px) {
+  body:has(.l-tv.is-md, .l-tv.is-id, .l-tv.is-ie) .l-intro-missao { margin: 0 !important; }
+  body:has(.l-tv.is-md, .l-tv.is-id) .l-intro-missao { left: 16px !important; right: auto !important; width: min(460px, calc(100vw - 240px - 52px)); }
+  body:has(.l-tv.is-ie) .l-intro-missao { right: 16px !important; left: auto !important; width: min(460px, calc(100vw - 240px - 52px)); }
+}
+@media (min-width: 900px) {
+  body:has(.l-tv.is-md, .l-tv.is-id) .l-intro-missao, body:has(.l-tv.is-ie) .l-intro-missao { width: min(460px, calc(100vw - 384px - 52px)); }
+}
 .l-tv.is-arrastando { opacity: 0.92; }
 .l-tv header {
   display: flex;

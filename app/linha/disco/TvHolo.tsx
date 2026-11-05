@@ -113,13 +113,16 @@ function carregar(p: YTPlayer, id: PistaId, tocar: boolean) {
 }
 
 // ── os cantos (arrasta pelo topo e solta: ela vai pro canto mais perto) ──
-// Padrão embaixo à esquerda (as propagandas do holo, nada essencial): em cima
-// moram a rádio, o notch e o mapa; embaixo à direita, o turbo e o propulsor
-type Canto = "ie" | "id" | "se" | "sd"
+// (revisão 05/11) PADRÃO: "md", na direita, logo acima do turbo/propulsor
+// (bottom 110 px). Em cima moram a rádio, o notch e o mapa; à esquerda a rádio, o
+// "sair da Kombi" e o "dormir"; embaixo à direita o turbo e o propulsor; embaixo,
+// no meio, o balão da introdução da missão. Com o balão aberto, a TV sobe (celular
+// em pé) ou o balão vai pro lado (tela larga): tvHolo.css, ".l-intro-missao"
+type Canto = "ie" | "id" | "se" | "sd" | "md"
 const CHAVE_CANTO = "cn-tv-canto"
 function lerCanto(): Canto {
-  try { const c = localStorage.getItem(CHAVE_CANTO); if (c === "ie" || c === "id" || c === "se" || c === "sd") return c } catch {}
-  return "ie"
+  try { const c = localStorage.getItem(CHAVE_CANTO); if (c === "ie" || c === "id" || c === "se" || c === "sd" || c === "md") return c } catch {}
+  return "md"
 }
 
 export function TvHolo() {
@@ -231,7 +234,8 @@ function Tela({ inicio }: { inicio: PistaId }) {
     setArrasto(null)
     if (!r) return
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2
-    const c: Canto = `${cy < window.innerHeight / 2 ? "s" : "i"}${cx < window.innerWidth / 2 ? "e" : "d"}` as Canto
+    // (revisão 05/11) na direita, no terço do meio: o padrão (acima do turbo)
+    const c: Canto = cx >= window.innerWidth / 2 && cy > window.innerHeight / 3 && cy < (window.innerHeight * 2) / 3 ? "md" : `${cy < window.innerHeight / 2 ? "s" : "i"}${cx < window.innerWidth / 2 ? "e" : "d"}` as Canto
     setCanto(c)
     try { localStorage.setItem(CHAVE_CANTO, c) } catch {}
   }, [])
