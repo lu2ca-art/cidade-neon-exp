@@ -387,8 +387,20 @@ function useDica(ativa: boolean) {
 // (missões claras, 02/11) a linha "Agora: ..." com a distância até o alvo (o guia,
 // estrada/alvoMissao.ts). Perto do lugar sem ter começado, o guia manda a frase
 // do que fazer ali. Só este pedacinho se refaz quando o guia muda
-function AgoraNexo({ texto }: { texto: string }) {
+// (piloto, 05/11) com o piloto do botão levando, a linha diz isso: "piloto · até
+// o palco do Copo" (e a distância); sem destino, "piloto · passeando"
+function AgoraNexo({ texto, dica }: { texto: string | null; dica: string }) {
   const g = useGuia()
+  if (g.piloto) {
+    const mp = g.piloto !== "piloto · passeando" && !g.dica ? textoMetros(g.metros) : ""
+    return (
+      <span className="l-nexo-agora is-piloto">
+        <em>{g.dica ? `Agora: ${g.dica}` : g.piloto}</em>
+        {mp && <small className="l-nexo-conta">{mp}</small>}
+      </span>
+    )
+  }
+  if (texto === null) return <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>
   const m = g.dica ? "" : textoMetros(g.metros)
   return (
     <span className="l-nexo-agora">
@@ -430,9 +442,7 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
           <span className="l-nexo-agora" role="status" aria-live="polite"><em>{NEXO_PERGUNTA}</em></span>
         ) : tut ? (
           <span className="l-nexo-passo" role="status" aria-live="polite"><em>{tut.ok ? "✓ isso" : tut.texto}</em></span>
-        ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : agora ? (
-          <AgoraNexo texto={agora.texto} />
-        ) : <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>}
+        ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : <AgoraNexo texto={agora ? agora.texto : null} dica={dica} />}
         {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
         {!tut && !explicando && <SalvarNexo />}
         <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>

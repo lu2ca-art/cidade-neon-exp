@@ -4751,7 +4751,7 @@ function CenaBase({
       if (infAuto && j.desligada) j.desligada = false
       // o notch: "piloto · até o palco do Copo" (só escreve quando muda)
       const nomeP = infAuto ? destP?.nome ?? "" : null
-      if (nomeP !== j.pilNome) { j.pilNome = nomeP; escreverPiloto(nomeP === null ? "" : nomeP ? `piloto · até ${nomeP}` : "piloto · passeando") }
+      if (nomeP !== j.pilNome) { j.pilNome = nomeP; escreverPiloto(nomeP === null ? "" : nomeP ? `piloto · ${/^(o|a|os|as) /i.test(nomeP) ? "até " : ""}${nomeP}` : "piloto · passeando") }
       j.pilCam = infAuto && !j.voo
       const auto = (auto1p || noCel || pilotoMissao || infAuto) && !cine
       // no automático, chegando na vaga da missão: encosta e freia sozinha (o piloto sem destino não para)
