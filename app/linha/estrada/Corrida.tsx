@@ -664,6 +664,12 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     // em qualquer fase depois da casa. Não vale na chegada, na volta do túnel, no
     // atalho de teste nem na volta de uma sala (essa já tem a retomada dela)
     const parou = "disco" in M && !!historia && !chega && !doTunel && !retomada && !ir && !atalho && !abertura && historia.fase !== "minhoca" && historia.fase !== "casa" ? lerOndeParou() : null
+    if (ret && retomada?.chao) {
+      const MD = M as MundoDisco, c = retomada.chao
+      j.voo = true; j.wx = c.x; j.wz = c.z; j.rumo = c.rumo; j.propulsou = true; j.encaixar = false
+      j.ar = false; j.y = MD.chaoEm(c.x, c.z) + 0.3; j.v = 0
+      nasceuOndeParou(c.x, c.z) // (como o naVaga da pista: a porta de onde ele saiu não reabre parada)
+    }
     if (parou?.t === "pista") {
       const jp = retomarJogo(M, { via: parou.via, u: parou.u, x: parou.x })
       if (jp) return jp
@@ -995,7 +1001,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // ao sair da tela, guarda onde a Kombi estava
   useEffect(() => () => {
     const j = jogo.current
-    RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg }
+    // (revisão 05/11) no chão (a casa da D-Bee no deserto, o bar do subúrbio): volta no
+    // chão, onde estava; antes voltava na última pista lá em cima da cidade
+    const chao = "disco" in M && j.voo && !j.ar && j.wx !== undefined && j.wz !== undefined ? { x: j.wx, z: j.wz, rumo: j.rumo ?? 0 } : undefined
+    RETOMAR = { via: M.vias[j.via].id, u: j.u, x: j.x, naVaga: j.naVaga, naSeg: j.naSeg, chao }
   }, [M])
   // (notas 04/11) e entre uma visita e outra (ondeParou.ts): de 4 em 4 s, ao
   // esconder a aba e ao sair. No ar, na chegada e na abertura não grava
@@ -3305,7 +3314,8 @@ function mundo() {
   const q = qualMapa()
   return (MUNDO = q === "disco" ? montarMundoDisco() : q === "novo" ? montarMundoRede() : montarMundo())
 }
-export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean }
+// (revisão 05/11) chao: estava no chão (o deserto, o subúrbio) quando entrou na sala
+export interface Retomada { via: string; u: number; x: number; naVaga?: string | false; naSeg?: boolean; chao?: { x: number; z: number; rumo: number } }
 let RETOMAR: Retomada | null = null
 
 // as páginas robustas dos lugares: baixadas durante a cutscene de entrada
