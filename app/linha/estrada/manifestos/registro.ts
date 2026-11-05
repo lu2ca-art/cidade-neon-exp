@@ -10,6 +10,7 @@ import { SabeOntem } from "./SabeOntem"
 import { Chuva } from "./Chuva"
 import { CopoAmericano } from "./CopoAmericano"
 import { Nectar } from "./Nectar"
+import { Ojala } from "./Ojala"
 
 export const MANIFESTOS: Record<PistaId, Manifesto> = {
   // vício: a rua que pede mais um. Telas que pipocam com o acelerador; soltou, esvazia
@@ -22,10 +23,10 @@ export const MANIFESTOS: Record<PistaId, Manifesto> = {
   copo: { id: "copo", ideia: "o copo americano: o que enche e esvazia", Componente: CopoAmericano },
   // palavras da letra flutuam como pétalas, se juntam em versos que dão certo ou não; flores no compasso; tocar prende no céu
   nectar: { id: "nectar", ideia: "a letra e as flores: tentativa e erro", Componente: Nectar },
+  // rajadas de fita e confete passam no compasso; desejos aparecem lá na frente e o vento os leva antes de você chegar; tocar segura um por um instante
+  ojala: { id: "ojala", ideia: "fugaz como o vento: o que passa e não fica", Componente: Ojala },
 
   // ── ainda só ideia (o comentário é o ponto de partida) ──
-  // Ojalá: amor de carnaval, fugaz como o vento (o que passa e não fica na rua)
-  ojala: { id: "ojala", ideia: "a experiência da Ojalá: fugaz como o vento", Componente: null },
   // Swav: criatividade, reflexos, salto de fé (a rua de espelhos; confiar no salto)
   swav: { id: "swav", ideia: "a experiência da Swav: reflexos e salto de fé", Componente: null },
   // Sexta-Feira: a balada; multidão vazia, bateria esgotada, aceita e dança

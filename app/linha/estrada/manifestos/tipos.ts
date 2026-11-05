@@ -28,6 +28,8 @@ export interface PoseManifesto {
   turboT: number
   voo?: boolean
   ar?: boolean
+  /** o drift (0 = reto, ±1 = o lado) */
+  drift?: number
 }
 /** os botões (um pedaço do Input de Corrida.tsx) */
 export interface ComandosManifesto { gas: boolean; freio: boolean; turbo: boolean }
@@ -55,6 +57,10 @@ export interface CtxManifesto {
   freio: boolean
   /** turbo ligado agora (botão ou turbo correndo) */
   turbo: boolean
+  /** de lado (drift) agora */
+  drift: boolean
+  /** no ar (pulo, rampa) agora */
+  ar: boolean
   /** onde a Kombi está */
   via: number
   u: number

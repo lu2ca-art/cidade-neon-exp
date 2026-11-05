@@ -34,7 +34,7 @@ export function Manifestos({ M, jogo, input, carro }: {
     return x && MANIFESTOS[x.id]?.Componente ? x : null
   }), [M])
   const [k, setK] = useState(-1)
-  const ctx = useRef<CtxManifesto>({ t: 0, dur: 1, prog: 0, batida: 0, dentro: 0, idade: 0, v: 0, mult: 1, acel: 0, gas: false, freio: false, turbo: false, via: 0, u: 0, relogio: 0 }).current
+  const ctx = useRef<CtxManifesto>({ t: 0, dur: 1, prog: 0, batida: 0, dentro: 0, idade: 0, v: 0, mult: 1, acel: 0, gas: false, freio: false, turbo: false, drift: false, ar: false, via: 0, u: 0, relogio: 0 }).current
   const st = useRef({ fora: 0, vAnt: 0, tProprio: 0, kVivo: -1 }).current
 
   useFrame((state, dtCru) => {
@@ -75,6 +75,8 @@ export function Manifestos({ M, jogo, input, carro }: {
     ctx.gas = !!inp?.gas
     ctx.freio = !!inp?.freio
     ctx.turbo = !!inp?.turbo || j.turboT > 0
+    ctx.drift = !!j.drift
+    ctx.ar = !!j.ar
     ctx.via = j.via
     ctx.u = j.u
   })

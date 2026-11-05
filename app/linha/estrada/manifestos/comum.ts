@@ -48,3 +48,58 @@ export function semente(s: number) {
   let x = (Math.abs(Math.floor(s)) % 2147483646) + 1
   return () => ((x = (x * 16807) % 2147483647) - 1) / 2147483646
 }
+
+/** a amostra da via mais perto de (x, z): procura perto da última (barato); se
+ *  caiu na borda da janela ou não havia última, procura na via inteira */
+export function amostraPerto(v: Via, x: number, z: number, ant: number): number {
+  const busca = (a: number, b: number) => {
+    let m = a, dm = Infinity
+    for (let i = Math.max(0, a); i <= Math.min(v.n - 1, b); i++) {
+      const d = (v.px[i] - x) ** 2 + (v.pz[i] - z) ** 2
+      if (d < dm) { dm = d; m = i }
+    }
+    return m
+  }
+  if (ant >= 0) {
+    const i = busca(ant - 24, ant + 24)
+    if (i > ant - 24 && i < ant + 24) return i
+  }
+  return busca(0, v.n - 1)
+}
+
+/** a altura do asfalto a `lat` metros do eixo (a pista deita na curva) */
+export const yNaPista = (v: Via, i: number, lat: number) => v.py[i] - lat * Math.sin(v.bank[i])
+
+export const reduzMovimento = () => {
+  try { return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches } catch { return false }
+}
+
+// UM EMPURRÃO NA CÂMERA (depois do jogo): rolar o horizonte e abrir o campo de
+// visão. O jogo põe a câmera no lugar e refaz a projeção todo quadro; a rua só
+// mexe depois disso. Se no quadro seguinte ninguém mexeu, a rua desfaz o
+// próprio empurrão antes do novo (nada acumula). O fov não é tocado: a rua
+// escala a matriz de projeção (o jogo segue com o fov dele).
+export interface Empurrao { q: THREE.Quaternion; roll: number; k: number; p5: number }
+export const novoEmpurrao = (): Empurrao => ({ q: new THREE.Quaternion(), roll: 0, k: 1, p5: NaN })
+
+/** roll em rad, fovExtra em graus (0 = nada) */
+export function empurrarCamera(cam: THREE.Camera, e: Empurrao, roll: number, fovExtra: number) {
+  if (cam.quaternion.equals(e.q)) cam.rotateZ(-e.roll)
+  e.roll = roll
+  if (roll !== 0) cam.rotateZ(roll)
+  e.q.copy(cam.quaternion)
+  const pc = cam as THREE.PerspectiveCamera
+  if (!pc.isPerspectiveCamera) return
+  const m = pc.projectionMatrix.elements
+  if (m[5] === e.p5 && e.k !== 1) { m[0] /= e.k; m[5] /= e.k }
+  const meio = (pc.fov * Math.PI) / 360
+  e.k = fovExtra > 0.01 ? Math.tan(meio) / Math.tan(Math.min(1.4, meio + (fovExtra * Math.PI) / 360)) : 1
+  if (e.k !== 1) { m[0] *= e.k; m[5] *= e.k }
+  e.p5 = m[5]
+  pc.projectionMatrixInverse.copy(pc.projectionMatrix).invert()
+}
+
+/** devolve a câmera (ao desmontar) */
+export function soltarCamera(cam: THREE.Camera, e: Empurrao) {
+  empurrarCamera(cam, e, 0, 0)
+}
