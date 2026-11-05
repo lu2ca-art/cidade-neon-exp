@@ -96,3 +96,83 @@ npx @gltf-transform/cli optimize blender/cenas/kombi-interior-bruto.glb public/m
 - **Fachada mais nítida:** se borrar demais de perto, dá pra assar os 13 modelos em 2048 (fica dentro das 4 texturas e do 1,5 MB?). Teria que medir.
 - **Fora desta noite:** `kombi-herbal.glb` e `van.glb` continuam no legado.
 - **Intermediários:** ficam em `blender/cenas/`, que é gitignored.
+
+## Parte 2: as ruínas do subúrbio (cidade destruída, com física)
+Nota do dono (03/11): "adicione mais desse modelo do subúrbio no mapa, mas vamos passar ele no Blender e modelar uma cidade mais destruída com essa que temos, pra poder ter a física certinha ali também com os objetos."
+
+**Onde ficam.** No chão do subúrbio de verdade, o de jogar (`SUBURBIO` em `disco/historia.ts`: centro -740, -680, raio 260 m), onde estão o bar, a oficina, a quadra, a boca dos túneis, a goteira, o palco e a torre. O modelo antigo (`suburbio.glb`, em `centroSub`, a uns 700 m dali, embaixo das pistas) ficou como estava. As caixas procedurais de dentro do subúrbio saíram; o anel de casas baixas de fora ficou.
+
+### O kit: `public/models/suburbio-ruinas.glb`
+| | antes | depois |
+|---|---|---|
+| peças | (não existia) | 42: 13 prédios inteiros, 13 "topo", 13 "andar", 3 montes de entulho |
+| triângulos no arquivo | | 5.102 (inteira 10–50, topo 130–290, andar 100–240, entulho 64) |
+| tamanho | | 284 KB, 1 textura de 1024 |
+
+Script: `blender/scripts/suburbio_ruinas.py` (lê o mesmo `suburbio-aberto.glb` da parte 1).
+- **Os 13 modelos** saem com a mesma técnica da parte 1: mapa de altura de 0,5 m no plano da parede de verdade e a fachada original assada (Cycles, cor difusa).
+- **"topo":** o topo desmorona em diagonal a partir de um canto, em degraus de 2 m. O canto mais baixo some, e o entulho fica em cima do pé dele e escorre pra rua.
+- **"andar":** falta um andar inteiro (de 30 a 45% da altura, 3 m de vão). Os pilares da beirada (a cada 5 m e nos cantos) seguram o resto, e um canto de cima foi arrancado. Tem entulho na base.
+- **Textura:** a parede que sobrou usa a MESMA fachada assada da inteira (o UV vem do plano dela). O que é quebra (topo partido, a laje de baixo do vão, os pilares, a parede de dentro) e o entulho usam concreto e entulho pintados na faixa da direita da textura (u de 0,875 a 1), puxados pra paleta do bairro.
+- **Pivô e escala:** o pivô fica no centro do pé, no chão, e a escala do jogo (1,4) já vem aplicada.
+
+### O traçado (gerado pelo mesmo script em `app/linha/estrada/ruinasDados.ts`)
+- **Quadras e ruas:** quadras de 40 m com 4 lotes de 20 m e ruas de 12 m numa grade (o bar fica num cruzamento). Dá pra andar a pé, de patins e de moto.
+- **O que vai em cada lote** (sorteio fixo): 12% só entulho, 25% prédio inteiro, 33% "topo" e 30% "andar", girado de 90 em 90 graus. Só entra peça que cabe no lote.
+- **Fica livre:** 30 m em volta de cada lugar do chão (44 m da quadra), a rampa da boca do túnel e a chegada a pé.
+- **Resultado:** 213 peças (183 prédios e 30 montes) e 439 caixas de colisão.
+- **Triângulos:** com tudo montado, 24.840 na tela.
+
+### No jogo
+- **`ruinas.ts`**
+  - assenta cada peça no ponto mais baixo do relevo embaixo dela (`M.chao`), 0,4 m enterrada;
+  - tira a que cai em pista ou torre (`M.livre`) ou a menos de 20 m de um lugar do chão;
+  - devolve as caixas de colisão no formato dos prédios (`COL_PASSO` = 9).
+- **`RuinasSuburbio.tsx`**
+  - monta o kit mesclado por célula (6 × 6) e congelado (`Estatico`);
+  - só carrega perto do subúrbio (`<Perto>`, raio 960 m) e só no mapa-disco.
+- **`Corrida.tsx`**
+  - as caixas das ruínas entram em `cidade.colisores`, então o mesmo `bater`/`grudar` vale a pé, de patins e de moto;
+  - o topo do campo de força fica abaixo do chão, então a cerca holográfica não aparece nas ruínas;
+  - as caixas procedurais de dentro do raio do subúrbio saíram.
+- **Física:** uma caixa por prédio (o pé do que ficou em pé, até o maior topo) e uma por monte de entulho. Tudo estático: o jogo não tem física de objeto solto. O "atropelo" é só da Kombi, e a Kombi não entra no subúrbio.
+
+### Os lugares do chão: nenhum dentro de prédio novo
+`python3 blender/scripts/ruinas_conferir.py` lê as fontes (`historia.ts`, `ruinasDados.ts`) e mede a distância até a parede ou entulho mais perto:
+
+| lugar | distância |
+|---|---|
+| bar | 34,7 m |
+| oficina | 33,5 m |
+| palco | 34,6 m |
+| quadra | 45,1 m |
+| túneis | 34,8 m |
+| rampa do túnel | 16,0 m |
+| goteira | 37,9 m |
+| torre | 36,5 m |
+| chegada a pé | 44,3 m |
+| casa da D-Bee | 1,4 km (fora do subúrbio) |
+
+### Retratos
+Workbench, chão liso; no jogo o chão é o relevo das dunas.
+- **`ruinas-kit.png`:** os 13 modelos, com a inteira atrás, o "topo" no meio e o "andar" na frente.
+- **`ruinas-bairro-antes.png` / `-depois.png`:** o subúrbio de cima. "Antes" é só o chão e os lugares (as colunas); as caixas procedurais de antes não entram no retrato.
+- **`ruinas-rua-antes.png` / `-depois.png`:** no meio de uma rua norte-sul, a 1,8 m do chão.
+
+### O que ficou faltando / pra conferir (parte 2)
+- **Ver no jogo** (Mesa):
+  - o relevo: onde a duna inclina muito, a peça pode ficar mais enterrada de um lado;
+  - a escala a pé;
+  - se a rua de 12 m é boa de moto.
+- **Ruas sem asfalto:** as ruas são o chão das dunas mesmo; não tem calçada nem rua desenhada.
+- **Sem objeto solto:** não há latas nem pedaços dinâmicos (o jogo não tem física pra isso). O entulho é estático, com colisão.
+- **Sem luz:** as ruínas não acendem (sem neon nem janela acesa). De noite ficam escuras como o modelo antigo.
+
+## Parte 3: kombi-herbal.glb e van.glb fora do legado (o `legado` ficou vazio)
+| arquivo | triângulos | tamanho | texturas | o que foi feito |
+|---|---|---|---|---|
+| kombi-herbal.glb | 47.174 → 33.013 | 958 → 849 KB | 1 (2048) | meshoptimizer (razão 0,7, erro 0,2%) respeitando a costura de UV (`glb_simplificar.mjs`) |
+| van.glb | 21.382 (igual) | 2.275 → 366 KB | 6 → 4 | `van_orcamento.mjs`: sai o mapa de normal e o de metal/rugosidade das rodas; o resto vai pra 1024 webp + meshopt |
+
+- **kombi-herbal:** o modelo (fotogrametria, sem normal) segue sem normal, e o `KombiHerbal.tsx` recalcula como antes. Retratos: `kombi-herbal-antes.png` / `-depois.png`; quase não muda.
+- **van:** só a `/van-preview` usa. Retratos: `van-antes.png` / `van-depois.png`.

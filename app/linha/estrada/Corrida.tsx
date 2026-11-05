@@ -90,6 +90,8 @@ import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
+import { RuinasSuburbio } from "./RuinasSuburbio"
+import { ruinasNoMundo } from "./ruinas"
 import { KombiHerbal } from "./KombiHerbal"
 import { Capa } from "../capa"
 import { discosDaKombi } from "../discos"
@@ -3682,6 +3684,7 @@ function CenaBase({
       fachadas: PAGINAS.filter((p) => !p.lugar).map((p) => { const c = poseLugar(M, { area: p.area, u: p.u, lado: p.lado } as Lugar, `pagina:${p.id}`).centro; return { x: c.x, z: c.z } }),
       parque: areaDoParque(M),
       suburbio: [{ x: centroSub.x, z: centroSub.z }],
+      ruinas: [{ x: SUBURBIO.x, z: SUBURBIO.z }],
       // (ruas-faixa) o centro e a borda que cresceu: longe de todos = o deserto de verdade
       centro: centrosDaCidade(),
     }
@@ -3927,6 +3930,8 @@ function CenaBase({
         if ("disco" in M) {
           if (ocupado(bx, bz, w)) continue
           if (Object.values(CHAO_LUGARES).some((l) => Math.hypot(l.x - bx, l.z - bz) < 34 + w * 0.6)) continue
+          // (ruínas, 05/11) dentro do subúrbio quem mora são as ruínas (ruinas.ts): sem caixa procedural
+          if (Math.hypot(bx - SUBURBIO.x, bz - SUBURBIO.z) < SUBURBIO.r + 15) continue
           if (Math.hypot(bx - SUBURBIO.x, bz - SUBURBIO.z) < SUBURBIO.r + 60) { h = 5 + r() * 10; w = Math.min(w, 12) }
           { const kk = `${Math.floor(bx / CEL_OC)},${Math.floor(bz / CEL_OC)}`; let l = ocupados.get(kk); if (!l) ocupados.set(kk, (l = [])); l.push(bx, bz, w * 0.6) }
         }
@@ -4102,6 +4107,9 @@ function CenaBase({
 
     // (leveza A) as matrizes/cores acesas de cada poste, pra apagar/acender sem refazer
     const postesAcesos = { via: posteVia, poste: Float32Array.from(postes.instanceMatrix.array), reflexo: Float32Array.from(reflexos.instanceMatrix.array), luz: Float32Array.from(luzCor) }
+    // (ruínas, 05/11) os prédios e o entulho das ruínas do subúrbio também batem
+    // (a pé, de patins, de moto: o mesmo bater/grudar dos prédios; sem a cerca do campo)
+    if ("disco" in M) colisores.push(...ruinasNoMundo(M as MundoDisco).colisores)
     return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesAcesos }
   }), [M, circuitos, tex, distI, centrosLugares])
   useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
@@ -6814,6 +6822,7 @@ function CenaBase({
       {/* no mapa novo: as flores do asfalto (só de patins, uma malha pelo mapa todo); no de sempre, os canteiros (medidos pelo Perto) */}
       {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
       <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>
+      {"disco" in M && <Perto nome="ruínas" raio={SUBURBIO.r + 700} pontos={pertoDe.ruinas}><Seguro nome="ruínas"><Suspense fallback={null}><RuinasSuburbio M={M as MundoDisco} /></Suspense></Seguro></Perto>}
       <Perto nome="subúrbio" raio={centroSub.r + 700} pontos={pertoDe.suburbio}><Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro></Perto>
       <Estatico>
       <primitive object={cidade.postes} />
