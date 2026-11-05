@@ -26,6 +26,7 @@ import type { LuzesRuinas } from "./luzesRuinas"
 import { QUALIDADE } from "./qualidade"
 import { ruinasNoMundo } from "./ruinas"
 import { U } from "./RuinasLuz"
+import { criarFumaca, criarRoupas, geoBicho, materialBicho } from "./VidaMiuda"
 import { QUANTO, abrirCaminho, andar, criarAndantes, criarParados, naCorrida, recuar, ruasDoSuburbio, semente, type Andante, type Parado } from "./vidaNasRuas"
 
 type MundoMin = Parameters<typeof ruinasNoMundo>[0]
@@ -185,6 +186,14 @@ function escrever(arr: Float32Array, i: number, x: number, y: number, z: number,
   arr[o + 12] = x; arr[o + 13] = y; arr[o + 14] = z; arr[o + 15] = 1
 }
 
+// manda pra GPU só as primeiras k instâncias (a matriz e o vec4 da vida)
+function subir(m: THREE.InstancedMesh, a: THREE.InstancedBufferAttribute, k: number) {
+  m.count = k
+  if (!k) return
+  m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.addUpdateRange(0, k * 16); m.instanceMatrix.needsUpdate = true
+  a.clearUpdateRanges(); a.addUpdateRange(0, k * 4); a.needsUpdate = true
+}
+
 export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) {
   const vida = useMemo(() => {
     const Q = QUANTO[QUALIDADE.nivel]
@@ -208,17 +217,38 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
     gente.geometry.boundingSphere = gente.boundingSphere.clone()
     const yPalco = M.chao(CHAO_LUGARES.palco.x, CHAO_LUGARES.palco.z)
     gente.boundingSphere.center.y = yPalco
-    return { R, rnd, andantes, parados, gente, aVida, geo, mat, batida: { media: 0, ultimo: 0, periodo: 0.5 }, jog: { x: 0, z: 0 } }
+
+    // os bichos: o mesmo andar, noutra malha (84 triângulos cada)
+    const soltos = criarAndantes(R, Q.bichos, rnd, true)
+    const geoB = geoBicho()
+    const aVidaB = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, soltos.length) * 4), 4)
+    aVidaB.setUsage(THREE.DynamicDrawUsage)
+    geoB.setAttribute("aVida", aVidaB)
+    const matB = materialBicho()
+    const bichos = new THREE.InstancedMesh(geoB, matB, Math.max(1, soltos.length))
+    bichos.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    bichos.count = 0
+    bichos.name = "vida-bichos"
+    bichos.boundingSphere = gente.boundingSphere.clone()
+    geoB.boundingSphere = gente.boundingSphere.clone()
+
+    const roupas = criarRoupas(luzes, Q.roupas)
+    const fumaca = criarFumaca(luzes, Q.fumaca, Q.tambores)
+    const descartar = [geo, mat, geoB, matB, roupas.geo, roupas.mat, fumaca.geo, fumaca.mat]
+    return { R, rnd, andantes, parados, gente, aVida, soltos, bichos, aVidaB, roupas: roupas.malha, fumaca: fumaca.malha, descartar, batida: { media: 0, ultimo: 0, periodo: 0.5 }, jog: { x: 0, z: 0 } }
   }, [M, luzes])
-  useEffect(() => () => { vida.geo.dispose(); vida.mat.dispose() }, [vida])
+  useEffect(() => () => { for (const x of vida.descartar) x.dispose() }, [vida])
 
   useFrame((s, dt0) => {
     const { R, rnd, andantes, parados, gente, aVida, batida } = vida
     const cam = s.camera.position
     // longe do subúrbio: nem desenha nem anda
     const dSub = Math.hypot(cam.x - SUBURBIO.x, cam.z - SUBURBIO.z)
-    gente.visible = dSub < SUBURBIO.r + 260
-    if (!gente.visible) return
+    const perto = dSub < SUBURBIO.r + 260
+    gente.visible = vida.bichos.visible = vida.roupas.visible = perto
+    // a fumaça só sai com o fogo aceso (de noite)
+    vida.fumaca.visible = perto && U.noite.value > 0.002 && vida.fumaca.count > 0
+    if (!perto) return
     const dt = Math.min(dt0, 0.1)
     const agora = s.clock.elapsedTime
 
@@ -269,12 +299,36 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
       va[k * 4] = 0; va[k * 4 + 1] = 0; va[k * 4 + 2] = p.modo + (p.quando === 0 ? 0.25 : p.quando === 1 ? 0.5 : 0.75); va[k * 4 + 3] = p.semente
       k++
     }
-    gente.count = k
-    gente.instanceMatrix.clearUpdateRanges(); gente.instanceMatrix.addUpdateRange(0, k * 16); gente.instanceMatrix.needsUpdate = true
-    aVida.clearUpdateRanges(); aVida.addUpdateRange(0, k * 4); aVida.needsUpdate = true
+    subir(gente, aVida, k)
+
+    // os bichos: gato pequeno e cachorro maior (pela semente), passo mais curto
+    const { bichos, aVidaB } = vida
+    const mb = bichos.instanceMatrix.array as Float32Array, vb = aVidaB.array as Float32Array
+    k = 0
+    for (const w of vida.soltos) {
+      abrirCaminho(w, P.x, P.z, dt)
+      andar(R, w, w.vAgora * dt, rnd, evitar)
+      const cao = w.semente > 0.55
+      w.fase = (w.fase + (w.vAgora * dt * 6.2832) / (cao ? 0.9 : 0.6)) % 6.2832
+      const alvo = correndo && naCorrida(w.x, w.z) ? 0 : 1
+      w.vis += (alvo - w.vis) * kv
+      if (w.vis < 0.01) continue
+      const dx = Math.cos(w.rumo) * w.desvio, dz = -Math.sin(w.rumo) * w.desvio
+      escrever(mb, k, w.x + dx, w.y, w.z + dz, w.rumo, (cao ? 1.5 + (w.semente - 0.55) * 0.8 : 0.95) * w.vis)
+      vb[k * 4] = w.fase; vb[k * 4 + 1] = Math.min(1, w.vAgora / 1.0); vb[k * 4 + 2] = cao ? 1 : 0; vb[k * 4 + 3] = w.semente
+      k++
+    }
+    subir(bichos, aVidaB, k)
   })
 
-  return <primitive object={vida.gente} />
+  return (
+    <group name="vida-suburbio">
+      <primitive object={vida.gente} />
+      <primitive object={vida.bichos} />
+      <primitive object={vida.roupas} />
+      <primitive object={vida.fumaca} />
+    </group>
+  )
 }
 
 export type { Andante, Parado }

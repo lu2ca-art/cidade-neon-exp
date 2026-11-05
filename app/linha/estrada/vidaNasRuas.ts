@@ -24,11 +24,11 @@ import type { NivelQualidade } from "./qualidade"
 type MundoMin = { livre: (x: number, z: number, folga: number) => boolean; chao: (x: number, z: number) => number }
 
 // ── quanto de cada coisa, por nível de qualidade ("baixo" = leve) ──
-export const QUANTO: Record<NivelQualidade, { andantes: number; fogo: number; bar: number; palco: number; bichos: number; roupas: number; fumaca: number }> = {
-  //            gente andando, tambores com roda, gente no bar e no palco, bichos, varais de roupa, fumaça por tambor
-  alto: { andantes: 70, fogo: 10, bar: 10, palco: 12, bichos: 8, roupas: 22, fumaca: 3 },
-  medio: { andantes: 52, fogo: 8, bar: 8, palco: 9, bichos: 6, roupas: 14, fumaca: 2 },
-  baixo: { andantes: 26, fogo: 4, bar: 6, palco: 6, bichos: 3, roupas: 6, fumaca: 1 },
+export const QUANTO: Record<NivelQualidade, { andantes: number; fogo: number; bar: number; palco: number; bichos: number; roupas: number; fumaca: number; tambores: number }> = {
+  //      gente andando, tambores com roda, gente no bar e no palco, bichos, varais de roupa, fumaça por tambor (e em quantos tambores)
+  alto: { andantes: 70, fogo: 10, bar: 10, palco: 12, bichos: 8, roupas: 22, fumaca: 3, tambores: 41 },
+  medio: { andantes: 52, fogo: 8, bar: 8, palco: 9, bichos: 6, roupas: 14, fumaca: 2, tambores: 24 },
+  baixo: { andantes: 26, fogo: 4, bar: 6, palco: 6, bichos: 3, roupas: 6, fumaca: 1, tambores: 12 },
 }
 
 export const EIXOS = { x0: -948, z0: -732, passo: 52 }
