@@ -277,3 +277,19 @@ export function escolherDbee(c: CtxDbee, sorteio = Math.random()): OpcaoDbee | n
 export const comSugerida = (m: MemoriaDbee, chave: string): MemoriaDbee => ({ ...m, ultima: chave, n: { ...m.n, [chave]: (m.n[chave] ?? 0) + 1 } })
 export const comFeita = (m: MemoriaDbee, chave: string): MemoriaDbee => (m.feitas.includes(chave) ? m : { ...m, feitas: [...m.feitas, chave] })
 export const comOuvida = (m: MemoriaDbee, pista: string): MemoriaDbee => (m.ouvidas.includes(pista) ? m : { ...m, ouvidas: [...m.ouvidas, pista] })
+
+// ── a memória viva (uma loja fora do React): o DbeeSugere muda, a página grava no save ──
+let MEM: MemoriaDbee = MEMORIA_VAZIA
+const ouvintesMem = new Set<(m: MemoriaDbee) => void>()
+export const lerMemoriaDbee = () => MEM
+/** a página põe a memória do save (ao carregar); não avisa ninguém */
+export function definirMemoriaDbee(m: Partial<MemoriaDbee> | null | undefined) {
+  MEM = { ...MEMORIA_VAZIA, ...(m ?? {}) }
+}
+export function mudarMemoriaDbee(f: (m: MemoriaDbee) => MemoriaDbee) {
+  const n = f(MEM)
+  if (n === MEM) return
+  MEM = n
+  ouvintesMem.forEach((o) => o(MEM))
+}
+export const ouvirMemoriaDbee = (o: (m: MemoriaDbee) => void) => { ouvintesMem.add(o); return () => { ouvintesMem.delete(o) } }
