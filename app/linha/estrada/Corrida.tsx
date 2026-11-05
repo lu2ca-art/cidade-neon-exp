@@ -97,6 +97,9 @@ import { Manifestos } from "./manifestos/Manifestos"
 import { CHUVA_MANIFESTO, horaDoCeu } from "./manifestos/ceu"
 // a rua CHUVA conta como chuva (vidro, holo) a partir daqui (a garoa do começo é 0,3)
 const CHUVA_RUA_MIN = 0.25
+// (revisão 3) o piloto na marca do chão: o que o notch diz e o raio em que ele não religa (m de rota)
+const PILOTO_DESCE = "desce aqui: o lugar é lá embaixo"
+const PILOTO_TRAVA_M = 90
 import { CAMERA_RUA } from "./manifestos/comum"
 import { VIDA_JOGADOR } from "./VidaSuburbio"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
@@ -421,6 +424,9 @@ type Jogo = {
   // (piloto, 05/11) o piloto do botão: o último destino visto (segue nele com o
   // GPS escondido, ex.: no drone), o nome que está no notch e a câmera de passeio
   pilD?: { x: number; z: number; nome: string; perto?: boolean } | null; pilNome?: string | null; pilCam?: boolean; pilPista?: number
+  // (revisão 3) o piloto entregou na pista mais perto de uma marca do CHÃO (o lugar é lá
+  // embaixo): ali, com o mesmo destino, ele não religa (até sair do raio ou o destino mudar)
+  pilTrava?: { x: number; z: number } | null
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -4788,6 +4794,13 @@ function CenaBase({
       if (infAuto && (inp.esq || inp.dir || inp.gas || inp.freio || inp.mao || inp.turbo || inp.propulsorBotao || inp.propulsor || inp.ambos)) {
         infAuto = false; inp.infinito = false; ev.pilotoBotao?.(false)
       }
+      // (revisão 3) entregou numa marca do chão: ligar de novo ali mesmo não vira o loop
+      // liga-para-desliga. Fica desligado (e o notch lembra) até sair do raio ou trocar o destino
+      if (j.pilTrava) {
+        const D = NAV.destino
+        if (!D || D.x !== j.pilTrava.x || D.z !== j.pilTrava.z || (NAV.ativo && (!NAV.rota || NAV.rota.metros > PILOTO_TRAVA_M))) j.pilTrava = null
+        else if (infAuto) { infAuto = false; inp.infinito = false; ev.pilotoBotao?.(false); notch(PILOTO_DESCE, "#ffc857") }
+      }
       // o destino: o do GPS; com o GPS escondido (o drone aberto), o último que ele viu
       let destP: { x: number; z: number; nome: string } | null = null
       if (infAuto) {
@@ -4962,7 +4975,12 @@ function CenaBase({
         const falta = j.voo && j.wx !== undefined ? Math.hypot(destP.x - j.wx, destP.z - j.wz!) : NAV.ativo && NAV.rota ? NAV.rota.metros : Infinity
         if (falta < 110) j.v = Math.min(j.v, Math.max(0, (falta - 10) * 0.32))
         if (falta < 70 && j.pilD) j.pilD.perto = true
-        if (falta < 26 && Math.abs(j.v) < 1.2) { inp.infinito = false; j.pilD = null; ev.pilotoBotao?.(false) }
+        if (falta < 26 && Math.abs(j.v) < 1.2) {
+          inp.infinito = false; j.pilD = null; ev.pilotoBotao?.(false)
+          // (revisão 3) a marca era do chão (a D-Bee, wx/wz): a pista acaba aqui, o lugar é lá embaixo
+          const mk = marcaRef.current
+          if (!j.voo && mk && mk.wx === destP.x && mk.wz === destP.z) { j.pilTrava = { x: destP.x, z: destP.z }; notch(PILOTO_DESCE, mk.cor) }
+        }
       }
       // (T36, J2:2, "quando eu clico pra frente no ar ele já voa pra caramba, passa da
       // casa") na parte da casa, perto dela, a Kombi sob o comando do jogador (a
