@@ -56,6 +56,9 @@ export interface HistoriaDisco {
   show?: string
   // (27/10) o drone GPS da D-Bee: ela dá nas dunas (a subida mostrada uma vez só)
   drone?: boolean
+  // (trilha sonora, 05/11) a rádio já ligou sozinha na primeira chegada ao subúrbio
+  // (uma vez só: depois respeita se ele desligou)
+  radioXenom?: boolean
   // (T02, 28/10) as 13 missões (disco/portas.ts): `missao` passa a ser o id da
   // missão (dbee, drew…); as peças feitas ("drew:jogo"), as missões feitas, as
   // portas abertas, as músicas liberadas no Guitar Driver, as referências do

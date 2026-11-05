@@ -514,6 +514,79 @@ function medir(el: HTMLAudioElement, source: MusicSource) {
   })
 }
 
+// ── A RÁDIO ANTIGA (trilha sonora, 05/11; o dono: "desde quando ele chega do
+// deserto no subúrbio Xenom, começa a rádio, com filtro de som de rádio antigo").
+// No subúrbio a rádio soa como rádio velho: passa-banda (~300–3400 Hz), uma
+// saturação leve e um chiado bem baixinho. Na cidade, limpa. Tudo no grafo do
+// Web Audio (nada por quadro em JS): UM filtro (biquad passa-banda), um
+// waveshaper e dois ganhos que trocam em fade (seco ⇄ molhado). Desligada, o
+// caminho molhado sai do grafo (desempenho). Quem decide onde está: radioAntiga.ts
+const RADIO_ANTIGA = {
+  centro: 1010, // Hz: o meio de 300–3400 (média geométrica)
+  q: 0.45, // largo: ~3 oitavas
+  ganho: 1.5, // o passa-banda come volume: compensa
+  saturacao: 2.2, // a curva tanh (suave; 0 = sem)
+  chiado: 0.014, // o volume do chiado (só com a rádio tocando)
+  fade: 0.35, // constante de tempo da troca (s)
+}
+let ra: { c: AudioContext; src: AudioNode; seco: GainNode; filtro: BiquadFilterNode; molhado: GainNode; chiadoG: GainNode; chiado: AudioBufferSourceNode | null; ligado: boolean; solto: ReturnType<typeof setTimeout> | null } | null = null
+let radioAntigaQuer = false
+function montarRadioAntiga(c: AudioContext, src: AudioNode, dst: AudioNode) {
+  const seco = c.createGain()
+  seco.gain.value = 1
+  src.connect(seco).connect(dst)
+  const filtro = c.createBiquadFilter()
+  filtro.type = "bandpass"
+  filtro.frequency.value = RADIO_ANTIGA.centro
+  filtro.Q.value = RADIO_ANTIGA.q
+  const shaper = c.createWaveShaper()
+  const n = 512, curva = new Float32Array(n), k = RADIO_ANTIGA.saturacao
+  for (let i = 0; i < n; i++) { const x = (i * 2) / (n - 1) - 1; curva[i] = Math.tanh(k * x) / Math.tanh(k) }
+  shaper.curve = curva
+  const molhado = c.createGain()
+  molhado.gain.value = 0
+  filtro.connect(shaper).connect(molhado).connect(dst)
+  const chiadoG = c.createGain()
+  chiadoG.gain.value = 0
+  chiadoG.connect(filtro)
+  ra = { c, src, seco, filtro, molhado, chiadoG, chiado: null, ligado: false, solto: null }
+  aplicarRadioAntiga()
+}
+function aplicarRadioAntiga() {
+  if (!ra) return
+  const r = ra, t = r.c.currentTime, on = radioAntigaQuer
+  if (on && !r.ligado) {
+    r.ligado = true
+    if (r.solto) { clearTimeout(r.solto); r.solto = null }
+    try { r.src.connect(r.filtro) } catch {}
+  }
+  r.seco.gain.setTargetAtTime(on ? 0 : 1, t, RADIO_ANTIGA.fade)
+  r.molhado.gain.setTargetAtTime(on ? RADIO_ANTIGA.ganho : 0, t, RADIO_ANTIGA.fade)
+  // o chiado: só com a rádio no ar (um loop de 2 s de ruído, no relógio do áudio)
+  const chia = on && player.tocando
+  if (chia && !r.chiado) {
+    const len = Math.floor(r.c.sampleRate * 2), b = r.c.createBuffer(1, len, r.c.sampleRate), d = b.getChannelData(0)
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+    const s = r.c.createBufferSource()
+    s.buffer = b; s.loop = true
+    s.connect(r.chiadoG); s.start()
+    r.chiado = s
+  }
+  r.chiadoG.gain.setTargetAtTime(chia ? RADIO_ANTIGA.chiado : 0, t, 0.2)
+  if (!chia && r.chiado) { const s = r.chiado; r.chiado = null; setTimeout(() => { try { s.stop(); s.disconnect() } catch {} }, 900) }
+  if (!on && r.ligado) {
+    if (r.solto) clearTimeout(r.solto)
+    r.solto = setTimeout(() => { r.solto = null; if (!radioAntigaQuer && r.ligado) { r.ligado = false; try { r.src.disconnect(r.filtro) } catch {} } }, RADIO_ANTIGA.fade * 5000)
+  }
+}
+/** no subúrbio (true) a rádio soa como rádio antigo; na cidade (false), limpa.
+ *  Barato: só mexe no grafo quando muda (pode chamar a cada quadro) */
+export function radioAntiga(sim: boolean) {
+  if (sim === radioAntigaQuer) return
+  radioAntigaQuer = sim
+  aplicarRadioAntiga()
+}
+
 class Player {
   el: HTMLAudioElement | null = null
   detector: DetectorDeTom | null = null
@@ -528,8 +601,8 @@ class Player {
     el.preload = "auto"
     el.crossOrigin = "anonymous"
     el.addEventListener("timeupdate", () => this.emitir())
-    el.addEventListener("play", () => { this.detector?.ligar(); this.emitir() })
-    el.addEventListener("pause", () => { this.detector?.desligar(); this.emitir() })
+    el.addEventListener("play", () => { this.detector?.ligar(); this.emitir(); aplicarRadioAntiga() })
+    el.addEventListener("pause", () => { this.detector?.desligar(); this.emitir(); aplicarRadioAntiga() })
     el.addEventListener("ended", () => { this.aoFim?.(); this.emitir() })
     medir(el, "radio")
     const c = audioCtx()
@@ -542,7 +615,10 @@ class Player {
         this.analyser = c.createAnalyser()
         this.analyser.fftSize = 256
         this.analyser.smoothingTimeConstant = 0.6
-        node.connect(this.gain).connect(abafo() ?? out)
+        node.connect(this.gain)
+        // (trilha sonora, 05/11) a rádio passa pela RÁDIO ANTIGA (no subúrbio, o
+        // filtro de rádio velho; na cidade, limpa) antes do abafo
+        montarRadioAntiga(c, this.gain, abafo() ?? out)
         this.gain.connect(this.analyser)
         const ouvido = c.createAnalyser()
         ouvido.fftSize = 16384

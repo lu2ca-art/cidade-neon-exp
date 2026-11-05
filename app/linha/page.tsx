@@ -38,6 +38,7 @@ import { LigacaoNaKombi, type Transcricao } from "./ligacao"
 import { LIGACOES, ligacaoDaMissao, sortearModo, type Ligacao } from "./ligacoes"
 import { APPS, AppJanela, AppTopo, Fliperama, Home, LEGADO, N3xo, Objetos, Ouvir, chamados, legadoFeito, type AppId, type Chamado } from "./os"
 import { Bloqueio, Entrada, Final, Mapa, Radio } from "./telas"
+import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
 import { abafar, audioCtx, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, trilha } from "./som"
 import { somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
@@ -1362,6 +1363,18 @@ export default function LinhaPage() {
     trilha.entrar(somAgora)
     return () => { trilha.sair(); silenciarKombi(false) }
   }, [somAgora, radioManda])
+  // (trilha sonora, 05/11; bíblia 9) chegou do deserto no subúrbio Xenom: a rádio
+  // liga sozinha (com o filtro de rádio antigo, radioAntiga.ts). Uma vez só, gravada
+  // no save; depois respeita se ele desligou
+  useEffect(() => aoChegarNoSuburbio(() => {
+    const s = saveRef.current
+    if (!HIST || historiaDe(s).radioXenom) return
+    setSave((x) => comHistoria(x, (h) => ({ ...h, radioXenom: true })))
+    // auto = true: a estrada (Corrida) põe a programação da frequência pra tocar
+    fonteSom.set("radio", true)
+  }), [HIST])
+  // nas trincheiras (lá embaixo) a rádio também soa antiga; subiu, a estrada diz a zona de novo
+  useEffect(() => { if (trincheiras && !trincheiras.descendo) definirZonaSom("tuneis") }, [trincheiras])
   // (notas 04/11) liga/desliga a rádio fora da estrada (os túneis, as salas): o mesmo do holo
   const alternarRadioLivre = () => {
     if (radioManda) fonteSom.set("off")
