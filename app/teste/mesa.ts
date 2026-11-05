@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Revisão da noite: 14 correções onde as partes se cruzavam",
+    data: "2026-11-05",
+    olhar: "Reabrir o jogo não desce mais pro túnel sozinho e volta no mesmo veículo (Kombi, moto ou patins). Sair da casa da D-Bee/bar não te joga lá em cima. Voar na cidade não troca a rádio. O balão de introdução fecha se você for embora. Uma música por vez (a TV fecha quando você vai tocar). O ♥ e a 📺 viraram um botão só: ♪. A TV agora fica à direita, acima do turbo.",
+    perguntas: [
+      "O ♪ (salvar e TV) ficou fácil de achar?",
+      "Reabriu o jogo e voltou certinho onde e como estava?",
+    ],
+  },
+  {
     parte: "missao.chuva",
     nome: "Mais 3 ruas-manifesto: CHUVA, Copo Americano e Nectar",
     data: "2026-11-05",
