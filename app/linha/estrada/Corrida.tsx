@@ -109,6 +109,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
+import { FALA_ZONA, MOTO_LIBERADA, TRANCA_MOTO, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
 import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
@@ -1660,6 +1661,53 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     veiculoAntes.current = veiculo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perseguicao, semKombi, veiculo])
+  // ── (05/11, bíblia §8) OS VEÍCULOS POR ZONA (estrada/zonas.ts, a tabela): na
+  // cidade, tudo; no deserto, só a Kombi (não se desce); no subúrbio, a pé /
+  // patins (a Kombi fica na entrada). Mudou de zona com o veículo proibido: a
+  // Kombi para e ele desce, ou ele sobe na Kombi ali mesmo. 4×/s, só contas de
+  // distância; o React só se refaz quando a zona muda ──
+  const [zona, setZona] = useState<Zona>("cidade")
+  const zonaRef = useRef<Zona>("cidade")
+  const [motoAviso, setMotoAviso] = useState(false)
+  // sem Kombi agora (quebrada, no conserto, jogada, sem gasolina) ou numa cena: a regra espera
+  const regraZona = useRef(false)
+  regraZona.current = !kombiQuebrada && !quebrou && !noConserto && !semKombi && !perseguicao && !seco && !cinema && !cenaLugar && !intro && !abertura && !chegada && !entrando
+  // sobe na Kombi onde está (no chão, sem voltar pra pista); se ela ficou ali
+  // perto (na borda do subúrbio), é nela mesmo que ele sobe
+  const kombiAqui = () => {
+    fadeCam.current?.classList.add("is-on")
+    setTimeout(() => {
+      const c = combRef.current, p = c.parada, j = jogo.current
+      if (p && j.wx !== undefined && Math.hypot(p.pos.x - j.wx, p.pos.z - j.wz!) < 60) {
+        const f = new THREE.Vector3(0, 0, -1).applyQuaternion(p.quat)
+        j.wx = p.pos.x; j.wz = p.pos.z; j.rumo = Math.atan2(f.x, f.z)
+      }
+      j.v = 0; j.vx = 0
+      c.patins = false; c.parada = null
+      setDePatins(false); setPertoKombi(false)
+      setTimeout(() => fadeCam.current?.classList.remove("is-on"), 150)
+    }, 300)
+  }
+  const trocaZona = useRef({ irDePatins, kombiAqui })
+  trocaZona.current = { irDePatins, kombiAqui }
+  useEffect(() => {
+    if (!discoM || pausado) return
+    let espera = 0
+    const iv = setInterval(() => {
+      const j = jogo.current, c = combRef.current
+      const z = zonaDoJogo(j.voo, j.wx, j.wz, zonaRef.current)
+      if (z !== zonaRef.current) { zonaRef.current = z; setZona(z) }
+      const agora = performance.now()
+      if (agora < espera || j.ar || !regraZona.current || aberturaRef.current.ativa || cinemaRef.current) return
+      const modo: Modo = c.patins ? "patins" : veiculo ? "carro" : "kombi"
+      if (permitido(z, modo)) return
+      espera = agora + 1500
+      if (c.patins) { notch(FALA_ZONA.subir, "#ffc857"); trocaZona.current.kombiAqui() }
+      else { notch(FALA_ZONA.descer, "#ffc857"); trocaZona.current.irDePatins() }
+    }, 250)
+    return () => clearInterval(iv)
+  }, [discoM, pausado, veiculo])
+  useEffect(() => { if (!motoAviso) return; const t = setTimeout(() => setMotoAviso(false), 3200); return () => clearTimeout(t) }, [motoAviso])
   const veiculosRef = useRef<EstadoVeiculos>(novoEstadoVeiculos())
   // (T28) o gatilho: conta só o tempo rodando de verdade (de Kombi, andando, sem cena)
   useEffect(() => {
@@ -2675,9 +2723,14 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       )}
       {discoM && ajustes && oculos && <HoloAjustes qual={qualHolo} onQual={(n) => guardarQualidade(n)} onFechar={fecharAjustes} />}
       {/* sair a qualquer hora / voltar pra Kombi */}
-      {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (
+      {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (!discoM || permitido(zona, "patins")) && (
         <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>{veiculo ? "descer" : "sair da kombi"}</button>
       )}
+      {/* (05/11) no deserto e no subúrbio, o lugar do botão é da moto (trancada até T14) */}
+      {discoM && !MOTO_LIBERADA && zona !== "cidade" && !seco && !entrando && !regando && !naBomba && (
+        <button type="button" className="l-sair-kombi is-trancado" aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
+      )}
+      {motoAviso && <p className="l-pagina-fechada"><Cadeado />a moto · {TRANCA_MOTO}</p>}
       {dePatins && florPerto && !regandoFlor && (
         <button type="button" className="l-regar-btn is-flor" onPointerDown={(e) => e.stopPropagation()} onClick={() => regarFlor(florPerto)}>regar a flor</button>
       )}
@@ -2686,7 +2739,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       {dePatins && nectarPasso === "galao" && pertoPostoNectar && !msgPatins && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={pegarGalaoDbee}>pegar o galão</button>
       )}
-      {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (
+      {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (!discoM || permitido(zona, veiculo ? "carro" : "kombi")) && (
         <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : "voltar pra Kombi"}</button>
       )}
       {dePatins && pertoComb && seco && (

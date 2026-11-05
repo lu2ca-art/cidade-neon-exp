@@ -46,6 +46,7 @@ import { pilotoMoto } from "./moto"
 import { Ciclista, Motoqueiro, Skatista, type Manobra } from "./Pilotos"
 import "./trincheiras.css"
 import { Cadeado, Trancado } from "../Trancado"
+import { MOTO_LIBERADA } from "../estrada/zonas"
 
 const NEVOA = "#1a0f24"
 
@@ -267,7 +268,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const corrida = useRef<Corrida>(corridaInicial("escolha"))
   const [auto, setAuto] = useState(false)
   const [parede, setParede] = useState(false)
-  const [motos, setMotos] = useState(false) // T14: as motos chegam depois (?motos libera)
+  const [motos, setMotos] = useState(MOTO_LIBERADA) // T14: as motos chegam depois (?motos libera; a regra mora em estrada/zonas.ts)
   const [fixa, setFixa] = useState<number | null>(null)
   const [intro, setIntro] = useState(false)
   const [fase, setFase] = useState<Fase>("escolha")
@@ -317,7 +318,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
 
   useEffect(() => {
     const q = new URLSearchParams(location.search)
-    const v = lerVeiculo(q, q.has("motos"))
+    const v = lerVeiculo(q, MOTO_LIBERADA || q.has("motos"))
     /* eslint-disable react-hooks/set-state-in-effect -- lê a URL uma vez, no cliente */
     if (q.has("auto")) setAuto(true)
     if (q.has("parede")) setParede(true)

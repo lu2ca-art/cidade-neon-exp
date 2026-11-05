@@ -1932,6 +1932,8 @@ button.l-mapa-mini { position: absolute; z-index: 6; right: 10px; top: calc(66px
 .l-regar-btn.is-retorno { top: calc(250px + env(safe-area-inset-top)); background: #2fe8ff !important; }
 /* sair da Kombi a qualquer hora (16/10) */
 .l-sair-kombi { position: absolute; z-index: 6; left: 12px; top: calc(128px + env(safe-area-inset-top)); padding: 6px 12px; border-radius: 999px; background: rgba(11, 10, 18, 0.7) !important; border: 1px solid rgba(255, 255, 255, 0.25) !important; color: #fff !important; font: 700 11px var(--font-geist-mono), ui-monospace, monospace !important; letter-spacing: 0.04em; cursor: pointer; }
+/* (05/11) a moto no lugar do "sair" (deserto, subúrbio): trancada até T14 */
+.l-sair-kombi.is-trancado { display: inline-flex; align-items: center; gap: 5px; opacity: 0.72; }
 .l-regar-btn.is-voltar { background: #5dffa0 !important; color: #06140c !important; box-shadow: 0 0 20px rgba(93, 255, 160, 0.6); }
 .l-regar-btn.is-flor { background: #5dffa0 !important; color: #06140c !important; box-shadow: 0 0 20px rgba(93, 255, 160, 0.6); }
 .l-pagina-fechada.is-flor { color: #5dffa0; border: 1px solid rgba(93, 255, 160, 0.5); }
