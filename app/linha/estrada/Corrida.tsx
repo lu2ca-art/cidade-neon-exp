@@ -3022,7 +3022,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       {discoM && <CorridaRuaHud placar={save.ruaSuburbio} onFim={(r) => onCorridaRua?.(r)} escondido={drone || !!cinema || !!cenaLugar || perseguicao} />}
       {/* (05/11) a D-Bee sugere o que dá pra fazer agora, no notch (disco/DbeeSugere.tsx; não desenha nada) */}
       {discoM && <DbeeSugere M={M} jogo={jogo} comb={combRef} input={input} horaRef={horaRef} marcaRef={marcaRef} onMarcar={setMarca} racha={rachaRef} historia={historia} missoes={mapaMissoes} apagada={viaApagada} corridaRua={corridaNoMapa} motoOk={motoOk} ruaSuburbio={save.ruaSuburbio}
-        ocupado={pausado || intro || !!fala || !!cinema || !!cenaLugar || abertura || chegada || perseguicao || conversa || celular || drone || noConserto || quebrou || parque === "andando"} />}
+        // (revisão 3) sem o `intro`: no disco ele é "a cidade quieta" e vale a história toda
+        // (HIST, inclusive a carreira), então a D-Bee nunca falava na carreira. A fase
+        // ela mesma confere (só carreira e livre); as falas da história são o `fala`
+        ocupado={pausado || !!fala || !!cinema || !!cenaLugar || abertura || chegada || perseguicao || conversa || celular || drone || noConserto || quebrou || parque === "andando"} />}
       {discoM && semKombi && <VeiculosHud estado={veiculosRef} onPegar={(id) => onPerseguicao?.("escolheu", id)} escondido={drone || !!cinema || !!cenaLugar} />}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
