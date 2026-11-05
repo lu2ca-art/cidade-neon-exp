@@ -689,7 +689,8 @@ class Player {
     return s / (6 * 255)
   }
 
-  tocar(src: string, aoFim?: () => void, vol = 1) {
+  // entrada (s): a música entra em fade (a troca de estação, rádios.ts); 0 = direto
+  tocar(src: string, aoFim?: () => void, vol = 1, entrada = 0) {
     const el = this.garantir()
     this.aoFim = aoFim ?? null
     if (this.src !== src) {
@@ -697,12 +698,18 @@ class Player {
       el.src = src
       this.src = src
     }
-    if (this.gain && ctx) this.gain.gain.setValueAtTime(vol, ctx.currentTime)
+    if (this.gain && ctx) {
+      const g = this.gain.gain, t = ctx.currentTime
+      g.cancelScheduledValues(t)
+      if (entrada > 0) { g.setValueAtTime(0, t); g.setTargetAtTime(vol, t, entrada / 3) }
+      else g.setValueAtTime(vol, t)
+    }
     el.play().catch(() => {})
   }
 
-  volume(v: number) {
-    if (this.gain && ctx) this.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.05)
+  // seg: a constante de tempo do fade (o padrão é quase na hora)
+  volume(v: number, seg = 0.05) {
+    if (this.gain && ctx) this.gain.gain.setTargetAtTime(v, ctx.currentTime, seg)
     else if (this.el) this.el.volume = Math.max(0, Math.min(1, v))
   }
 

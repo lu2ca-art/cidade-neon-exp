@@ -29,6 +29,8 @@ export const ZONAS_RADIO_ANTIGA: ZonaSom[] = ["suburbio", "tuneis"]
 
 let zona: ZonaSom | null = null
 const ouvintes = new Set<() => void>()
+// (rádios, 05/11) quem quer saber de toda troca de zona (a estação muda com ela: disco/radios.ts)
+const ouvintesZona = new Set<(z: ZonaSom, antes: ZonaSom | null) => void>()
 export const zonaSomAgora = () => zona
 
 export function definirZonaSom(z: ZonaSom) {
@@ -37,6 +39,13 @@ export function definirZonaSom(z: ZonaSom) {
   zona = z
   radioAntiga(ZONAS_RADIO_ANTIGA.includes(z))
   if (antes === "deserto" && z === "suburbio") ouvintes.forEach((f) => f())
+  ouvintesZona.forEach((f) => f(z, antes))
+}
+
+/** toda troca de zona (barato: só chama quando muda) */
+export function aoMudarZona(f: (z: ZonaSom, antes: ZonaSom | null) => void) {
+  ouvintesZona.add(f)
+  return () => { ouvintesZona.delete(f) }
 }
 
 /** chegou do deserto no subúrbio (toda vez; quem ouve decide se é a primeira) */
