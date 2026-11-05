@@ -182,8 +182,10 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone, fase = null, alvoChao = null }: {
+export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone, fase = null, alvoChao = null, corridaRua = false }: {
   M: Mundo
+  // (05/11) a largada da corrida de rua no mapa: só depois de chegar ao subúrbio
+  corridaRua?: boolean
   // (notas 04/11) a fase da história e o lugar do chão de agora: o que o mapa mostra (pontosMapa.ts)
   fase?: string | null
   alvoChao?: LugarChao | null
@@ -229,7 +231,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   // (os atos) os lugares de uma pista apagada também ficam apagados
   const blips = useMemo(() => blipsDo(M).filter((b) => !apagada?.[b.via]), [M, apagada])
   // (notas 04/11) O QUE APARECE: os mesmos pontos do drone (pontosMapa.ts)
-  const pontos = useMemo(() => pontosDoMapa(M, { apagada, missoes, fase, alvoChao }), [M, apagada, missoes, fase, alvoChao])
+  const pontos = useMemo(() => pontosDoMapa(M, { apagada, missoes, fase, alvoChao, corridaRua }), [M, apagada, missoes, fase, alvoChao, corridaRua])
   const lugaresVis = useMemo(() => pontos.filter((p) => p.tipo === "lugar" || p.tipo === "posto" || p.tipo === "parque") as (typeof pontos[number] & { via: number; u: number })[], [pontos])
   const chaoVis = useMemo(() => pontos.filter((p) => p.tipo === "chao"), [pontos])
   // o destino: o que você marcou, senão o lugar da missão
