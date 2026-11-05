@@ -3055,3 +3055,4 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-radio-livre.is-on { border-color: #ffc857; color: #ffc857; }
 /* (moto, 05/11) o botão da moto embaixo do "sair da kombi" quando os dois aparecem */
 .l-sair-kombi.is-segundo { transform: translateY(34px); }
+.l-regar-btn.is-moto-btn { top: calc(250px + env(safe-area-inset-top)); background: #ff3fb0 !important; color: #14121c !important; box-shadow: 0 0 20px rgba(255, 63, 176, 0.6); }

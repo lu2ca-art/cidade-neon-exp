@@ -10,7 +10,7 @@
 // já conta com ela; o botão aparece com o cadeado até MOTO_LIBERADA.
 // Leve: só contas de distância, sem three.js.
 
-import { SUBURBIO } from "../disco/historia"
+import { SUBURBIO, type HistoriaDisco } from "../disco/historia"
 
 export type Zona = "cidade" | "deserto" | "suburbio" | "tuneis"
 // "carro": o veículo escolhido no lugar da Kombi (o opala, a picape, o buggy)
@@ -25,7 +25,15 @@ export const ZONA_VEICULOS: Record<Zona, readonly Modo[]> = {
 
 // (T14) as motos chegam depois: até lá, o botão com o cadeado
 export const MOTO_LIBERADA = false
-export const TRANCA_MOTO = "as motos chegam depois"
+// (moto, 05/11) A REGRA DA MOTO: ela é o prêmio da missão dos túneis (a porta
+// "motos" abre junto com "corridas", disco/portas.ts). Correu nas trincheiras,
+// a moto é sua e mora guardada na Kombi. No fim do jogo (fase "livre") tudo abre.
+// Antes disso, o botão com o cadeado e esta frase
+export const TRANCA_MOTO = "ganha na missão dos túneis: correr nas trincheiras"
+export function motoLiberada(h: Pick<HistoriaDisco, "fase" | "portas"> | null | undefined): boolean {
+  if (!h) return false
+  return h.fase === "livre" || (h.portas ?? []).includes("motos")
+}
 
 export const permitido = (z: Zona, m: Modo) => ZONA_VEICULOS[z].includes(m)
 export const motorizado = (m: Modo) => m === "kombi" || m === "carro" || m === "moto"

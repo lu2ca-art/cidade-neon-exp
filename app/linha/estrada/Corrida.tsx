@@ -113,7 +113,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
-import { FALA_ZONA, MOTO_LIBERADA, TRANCA_MOTO, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
+import { FALA_ZONA, MOTO_LIBERADA, TRANCA_MOTO, motoLiberada, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
 import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
@@ -1702,10 +1702,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const [zona, setZona] = useState<Zona>("cidade")
   const zonaRef = useRef<Zona>("cidade")
   const [motoAviso, setMotoAviso] = useState(false)
-  // (moto) ?motos libera pra testar
+  // (moto) a regra (estrada/zonas.ts): ganha nos túneis. ?motos libera pra testar
   const [motosTeste, setMotosTeste] = useState(false)
   useEffect(() => { try { setMotosTeste(new URLSearchParams(location.search).has("motos")) } catch { /* sem url */ } }, [])
-  const motoOk = !!discoM && motosTeste
+  const motoOk = !!discoM && (motosTeste || motoLiberada(historia))
   // sem Kombi agora (quebrada, no conserto, jogada, sem gasolina) ou numa cena: a regra espera
   const regraZona = useRef(false)
   regraZona.current = !kombiQuebrada && !quebrou && !noConserto && !semKombi && !perseguicao && !seco && !cinema && !cenaLugar && !intro && !abertura && !chegada && !entrando
@@ -2767,8 +2767,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       {motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
         <button type="button" className={`l-sair-kombi is-moto${permitido(zona, "patins") ? " is-segundo" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>moto</button>
       )}
-      {discoM && !motoOk && !MOTO_LIBERADA && zona !== "cidade" && !seco && !entrando && !regando && !naBomba && (
-        <button type="button" className="l-sair-kombi is-trancado" aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
+      {discoM && !motoOk && !MOTO_LIBERADA && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
+        <button type="button" className={`l-sair-kombi is-trancado${permitido(zona, "patins") ? " is-segundo" : ""}`} aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
       )}
       {motoAviso && <p className="l-pagina-fechada"><Cadeado />a moto · {TRANCA_MOTO}</p>}
       {dePatins && florPerto && !regandoFlor && (
@@ -2781,6 +2781,13 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       )}
       {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (!discoM || permitido(zona, veiculo ? "carro" : "kombi")) && (
         <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : deMoto ? "guardar a moto · voltar pra Kombi" : "voltar pra Kombi"}</button>
+      )}
+      {/* (moto) de patins perto da Kombi: a moto sai dela; de moto no subúrbio (a Kombi não entra), guarda e segue a pé */}
+      {motoOk && dePatins && !deMoto && pertoKombi && !msgPatins && !kombiQuebrada && !veiculo && (
+        <button type="button" className="l-regar-btn is-voltar is-moto-btn" onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>pegar a moto</button>
+      )}
+      {deMoto && pertoKombi && !msgPatins && !kombiQuebrada && permitido(zona, "patins") && (
+        <button type="button" className="l-regar-btn is-voltar is-moto-btn" onPointerDown={(e) => e.stopPropagation()} onClick={guardarMoto}>guardar a moto</button>
       )}
       {dePatins && pertoComb && seco && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={voltarComGalao}>encher o galão e voltar pra Kombi</button>

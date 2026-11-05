@@ -97,9 +97,9 @@ export const PORTAS: Record<PortaId, { nome: string; existe: boolean; tarefa?: s
   "batida-estudio": { nome: "o BATIDA pra produzir mais", existe: true, tarefa: "T10" },
   // (T63) as trincheiras estão no jogo: descer a rampa da boca do túnel e correr quando quiser
   corridas: { nome: "as corridas nos túneis", existe: true, tarefa: "T63" },
-  // (bloco 1 · A6, conferido 30/10) a moto está nas trincheiras, mas ainda trancada
-  // na escolha ("as motos chegam depois"; só ?motos libera): segue "em breve"
-  motos: { nome: "as motos", existe: false, tarefa: "T14" },
+  // (moto, 05/11) a moto: guardada na Kombi, anda no deserto, no subúrbio, nos
+  // túneis e na cidade (a regra mora em estrada/zonas.ts, motoLiberada)
+  motos: { nome: "a moto: guardada na Kombi", existe: true, tarefa: "T14" },
   ginasio: { nome: "o ginásio: basquete e cama elástica", existe: true, tarefa: "T15" },
   "loja-discos": { nome: "a loja de discos", existe: true, tarefa: "T16" },
   "radio-frequencias": { nome: "a rádio e as frequências", existe: true, tarefa: "T18" },
