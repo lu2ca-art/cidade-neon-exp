@@ -20,8 +20,8 @@
 //     direita tem a cor da próxima saída, a da esquerda a da seguinte, em
 //     degradê (Corrida.tsx, corDoAnel)
 //   - antes (19/10–29/10) era uma espiral de vários andares: saiu
-// Uma volta na pista (saída → ida → balão → volta → entrada) dura meia música
-// na velocidade da pista (2 × BPM km/h): o desenho é aparado ou ampliado.
+// (ruas-faixa, 05/11) uma volta na pista (saída → ida → torre da ponta → volta →
+// entrada) dura a faixa inteira na velocidade da pista (2 × BPM km/h): ESCALA_GRUPO/ALONGA.
 // As bordas são parede (pista de Gran Turismo: quem quiser sair, voa).
 
 import * as THREE from "three"
@@ -487,7 +487,7 @@ const FORCAS = [0.3, 0.45, 0.6, 0.8]
 //   - dentro do grupo, cada linha se alonga: o desenho dela estica de lado,
 //     atravessado na reta entre as duas pontas (as curvas abrem mais), com as
 //     pontas presas (os portões e a chegada nas torres não mudam de jeito)
-// Os números saem de `bun scripts/medir-ruas.ts --ajustar` (a volta em
+// Os números saem de `bun scripts/medir-ruas.ts --ajustar --fixa=0` (a volta em
 // 2 × BPM km/h ≈ a faixa que toca, docs/ruas-faixa.md). Mudou a faixa ou o
 // desenho: roda de novo e cola aqui
 export const ESCALA_GRUPO = [1, 1.584, 1.129] // na ordem de GRUPOS (a torre 1, 2, 3). A torre 1 fica onde estava: o subúrbio, a casa da D-Bee e o deserto moram embaixo e em volta dela
