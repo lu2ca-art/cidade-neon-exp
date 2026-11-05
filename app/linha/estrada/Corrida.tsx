@@ -90,6 +90,7 @@ import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
 import { Suburbio } from "./Suburbio"
 import { RuinasSuburbio } from "./RuinasSuburbio"
+import { ruinasNoMundo } from "./ruinas"
 import { KombiHerbal } from "./KombiHerbal"
 import { Capa } from "../capa"
 import { discosDaKombi } from "../discos"
@@ -4042,6 +4043,9 @@ function CenaBase({
 
     // (leveza A) as matrizes/cores acesas de cada poste, pra apagar/acender sem refazer
     const postesAcesos = { via: posteVia, poste: Float32Array.from(postes.instanceMatrix.array), reflexo: Float32Array.from(reflexos.instanceMatrix.array), luz: Float32Array.from(luzCor) }
+    // (ruínas, 05/11) os prédios e o entulho das ruínas do subúrbio também batem
+    // (a pé, de patins, de moto: o mesmo bater/grudar dos prédios; sem a cerca do campo)
+    if ("disco" in M) colisores.push(...ruinasNoMundo(M as MundoDisco).colisores)
     return { predios, arcos, fitas, pilares, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesAcesos }
   }), [M, circuitos, tex, distI, centrosLugares])
   useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
