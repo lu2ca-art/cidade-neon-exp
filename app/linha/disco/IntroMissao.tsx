@@ -12,12 +12,14 @@ export function IntroMissao({ quem, texto, cor, onBora, onDepois }: { quem: stri
   // a fala por cima: a música abaixa um pouco (não para)
   useEffect(() => { abaixarUmPouco(true); return () => abaixarUmPouco(false) }, [])
   useEffect(() => {
+    // (revisão 05/11) na captura e sem propagar: o Enter/espaço do balão não chega na
+    // estrada (o espaço lá é turbo/propulsor; a estrada ouve na janela, na volta)
     const k = (e: KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onBora() }
-      else if (e.key === "Escape") onDepois()
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onBora() }
+      else if (e.key === "Escape") { e.stopPropagation(); onDepois() }
     }
-    window.addEventListener("keydown", k)
-    return () => window.removeEventListener("keydown", k)
+    window.addEventListener("keydown", k, true)
+    return () => window.removeEventListener("keydown", k, true)
   }, [onBora, onDepois])
   return (
     <div
