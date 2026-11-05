@@ -58,7 +58,12 @@ export function somDoLugar(lugar: LugarId | string): SomMissao | null {
 export const RESTO_SINAL = 3 // segundos
 export interface MemoriaRadio { resto: number }
 export const FASES_SEM_PISTA = ["minhoca", "casa", "dunas"]
+// (notas 04/11, o dono: "a rádio tem que ser algo mais livre, tipo nos túneis e
+// na cidade tocam") ligada, a rádio pega em todo lugar: túneis, trincheiras,
+// subúrbio, deserto, cidade, salas. false volta a regra antiga (só perto das pistas)
+export const RADIO_EM_TODO_LUGAR = true
 export function radioPega(mem: MemoriaRadio, fase: string | null, naPista: boolean, dt: number): boolean {
+  if (RADIO_EM_TODO_LUGAR) return true
   if (fase && FASES_SEM_PISTA.includes(fase)) { mem.resto = 0; return false }
   if (naPista) mem.resto = RESTO_SINAL
   else mem.resto = Math.max(0, mem.resto - dt)

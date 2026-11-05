@@ -1353,12 +1353,25 @@ export default function LinhaPage() {
   // (música contínua, 03/11) com a faixa de uma pista tocando, a missão NÃO troca
   // de música: a mesma faixa passa pro instrumental no mesmo ponto (abaixo). A
   // trilha da missão só entra sem faixa de pista (o deserto: casa, dunas)
+  // (notas 04/11) a rádio ligada manda: nos túneis, nas salas e nas cenas ela
+  // segue tocando e o som da missão não entra por cima (a faixa da rua já fica muda por baixo)
+  const radioManda = D && fonteSom.get() === "radio" && !!radio?.tocando
   useEffect(() => {
-    if (!somAgora || pistaSom.tocando) return
+    if (!somAgora || pistaSom.tocando || radioManda) return
     silenciarKombi(true)
     trilha.entrar(somAgora)
     return () => { trilha.sair(); silenciarKombi(false) }
-  }, [somAgora])
+  }, [somAgora, radioManda])
+  // (notas 04/11) liga/desliga a rádio fora da estrada (os túneis, as salas): o mesmo do holo
+  const alternarRadioLivre = () => {
+    if (radioManda) fonteSom.set("off")
+    else {
+      fonteSom.set("radio")
+      if (fonteSom.get() === "radio") tocarRadio((save.freq as FreqId) || "linha")
+    }
+    // a faixa da rua (que mora na página) fica muda por baixo da rádio, como na estrada
+    pistaSom.estado(false, fonteSom.get() === "radio")
+  }
   // a faixa da pista vive na página (não na estrada, que desmonta numa sala): sai da página, para
   useEffect(() => () => pistaSom.parar(), [])
   // (só baixa o som da missão se ele vai tocar: sem faixa de pista, no deserto)
@@ -2555,6 +2568,8 @@ export default function LinhaPage() {
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
         {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null }} />}
+        {/* (notas 04/11) a rádio livre: fora da estrada (túneis, salas) ela também liga */}
+        {D && emSala && !trincheiras?.descendo && <button type="button" className={`l-radio-livre${radioManda ? " is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarRadioLivre}>{radioManda ? "rádio · desligar" : "rádio · ligar"}</button>}
         {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}
         {trincheiras && !trincheiras.descendo && <GrafiteTrincheiras assinados={hist.grafites ?? []} onAssinou={assinouGrafite} />}
         {viagem && (
