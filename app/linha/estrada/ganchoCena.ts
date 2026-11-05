@@ -34,6 +34,9 @@ export interface Filme {
   video: string | null
   // a imagem parada enquanto o vídeo carrega (opcional)
   poster?: string
+  // (revisão 3) o vídeo sem som (só imagem): a música do jogo segue. Com som (o padrão),
+  // ela some em fade e pausa enquanto ele toca, e volta de onde estava no fim
+  semSom?: boolean
   // segundos de imagem antes da primeira fala e depois da última
   abertura: number
   fecho: number

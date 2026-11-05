@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react"
 import { atalhosLiberados } from "../teste/atalhos"
 import { pedirCena, type Filme } from "./estrada/ganchoCena"
 import { VOZES } from "./roteiros"
+import { fazerMusica } from "./som"
 
 export function CenaFilme({ filme, onFim }: { filme: Filme; onFim: () => void }) {
   const [semVideo, setSemVideo] = useState(!filme.video)
@@ -29,6 +30,15 @@ export function CenaFilme({ filme, onFim }: { filme: Filme; onFim: () => void })
 
   // pede a cena no gancho (o T70 escuta; os testes conferem)
   useEffect(() => { pedirCena({ tipo: "filme", id: filme.id, video: !!filme.video }) }, [filme.id, filme.video])
+
+  // (revisão 3) o vídeo com som: a música do jogo (a rádio, o disco, a faixa da rua) some
+  // em fade e pausa, como no fazer música; acabou (ou o vídeo falhou), volta de onde estava
+  const comSom = !semVideo && !!filme.video && !filme.semSom
+  useEffect(() => {
+    if (!comSom) return
+    fazerMusica(true)
+    return () => fazerMusica(false)
+  }, [comSom])
 
   // o provisório: cada fala no seu tempo
   useEffect(() => {
