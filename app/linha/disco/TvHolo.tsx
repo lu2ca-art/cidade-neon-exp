@@ -101,6 +101,17 @@ function carregarApi(): Promise<YTApi> {
   return apiP
 }
 
+// põe a faixa no MESMO player (um só): tocar = segue (a próxima, como rádio);
+// senão só deixa pronto, esperando o play da pessoa
+function carregar(p: YTPlayer, id: PistaId, tocar: boolean) {
+  const v = videoDaFaixa(id)
+  if (!v) return
+  try {
+    if (v.videoId) { if (tocar) p.loadVideoById(v.videoId); else p.cueVideoById(v.videoId) }
+    else if (v.playlistId) { const o = { list: v.playlistId, listType: "playlist" as const }; if (tocar) p.loadPlaylist(o); else p.cuePlaylist(o) }
+  } catch {}
+}
+
 // ── os cantos (arrasta pelo topo e solta: ela vai pro canto mais perto) ──
 // Padrão embaixo à esquerda (as propagandas do holo, nada essencial): em cima
 // moram a rádio, o notch e o mapa; embaixo à direita, o turbo e o propulsor
@@ -129,9 +140,31 @@ function Tela({ inicio }: { inicio: PistaId }) {
 
   // os estados do YouTube: -1 sem começar, 0 acabou, 1 tocando, 2 pausado, 3 carregando, 5 pronto
   const estado = useRef((e: YTEvento) => {})
+  // (como rádio) o vídeo acabou: a TV passa sozinha pra próxima faixa que tem
+  // vídeo, sempre visível. Deu a volta inteira (chegou de novo na faixa em que
+  // a TV abriu): ela só deixa o vídeo pronto e espera o play da pessoa (nada de
+  // laço automático sem fim). Fechou, parou
+  const volta = useRef<PistaId>(inicio)
+  const trocando = useRef(false)
   estado.current = (e: YTEvento) => {
-    if (e.data === 1) calarPraTv(true)
-    else if (e.data === 2 || e.data === 5 || e.data === -1 || e.data === 0) calarPraTv(false)
+    if (e.data === 1) { trocando.current = false; calarPraTv(true); return }
+    if (e.data === 0) {
+      // playlist do álbum: o YouTube segue sozinho até o último vídeo dela
+      const lista = e.target.getPlaylist?.()
+      if (lista && lista.length > 1 && e.target.getPlaylistIndex() < lista.length - 1) return
+      const prox = proximaComVideo(faixa)
+      if (!prox || prox === faixa) { calarPraTv(false); return }
+      const tocar = prox !== volta.current
+      if (tocar) trocando.current = true
+      else calarPraTv(false)
+      setFaixa(prox)
+      setErro(false)
+      carregar(e.target, prox, tocar)
+      return
+    }
+    // (entre um vídeo e outro a música do jogo não volta)
+    if (trocando.current && (e.data === -1 || e.data === 3 || e.data === 5)) return
+    if (e.data === 2 || e.data === 5 || e.data === -1) calarPraTv(false)
   }
 
   // o player: um só, criado quando a TV abre e destruído quando ela fecha
