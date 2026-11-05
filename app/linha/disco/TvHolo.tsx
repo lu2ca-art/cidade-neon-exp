@@ -22,6 +22,7 @@ import { calarPraTv, player } from "../som"
 import { lerFaixaRua } from "./musicaContinua"
 import { faixaDoTitulo, nomeDaFaixa } from "./linksFaixas"
 import { proximaComVideo, videoDaFaixa } from "./videosFaixas"
+import { track } from "@/lib/analytics"
 import "./tvHolo.css"
 
 // ── a loja da TV (fora do React): aberta com qual faixa, ou fechada ──
@@ -63,6 +64,8 @@ export function BotaoTv({ aviso }: { aviso: (texto: string, cor?: string) => voi
     const id = agora ?? proximaComVideo(null)
     if (!id || !videoDaFaixa(id)) { aviso("📺 essa faixa ainda não tem vídeo", "#ff4040"); return }
     abrirTv(id)
+    // o evento que já existe (o mesmo do ♥ salvar e das plataformas)
+    track("external_link_click", { destination: "youtube", track_id: id, place_id: "tv-holo", utm_source: "cidade-neon", utm_campaign: "tv_holo" })
   }
   return (
     <button type="button" data-info="tv" className={`l-nexo-tv ${aberta ? "is-on" : ""}`} onClick={tocar} aria-pressed={aberta} aria-label={aberta ? "fechar a TV" : "abrir a TV (o vídeo da faixa no YouTube)"}>
