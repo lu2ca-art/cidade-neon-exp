@@ -4,7 +4,8 @@
 // blender/scripts/suburbio_ruinas.py) postas no traçado, assentadas no chão.
 // Uma textura e um material só: as ~200 peças viram poucas malhas (uma por
 // célula, mesclarPorMaterial) e ficam congeladas (Estatico).
-// De noite elas acendem (RuinasLuz.tsx): janelas, sem luz pontual.
+// De noite elas acendem (RuinasLuz.tsx): janelas, letreiros, tambores de fogo
+// e varais de luz, sem luz pontual nenhuma. Tudo aqui dentro do <Perto> do subúrbio.
 
 import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
@@ -15,18 +16,21 @@ import { ceuNaHora } from "../ceu"
 import { Estatico, mesclarPorMaterial } from "./estatico"
 import { ruinasNoMundo } from "./ruinas"
 import { PECAS_RUINAS } from "./ruinasDados"
-import { U, acesoNaNoite, janelasAcesas } from "./RuinasLuz"
+import { sortearLuzes } from "./luzesRuinas"
+import { RuinasLuz, U, acesoNaNoite, janelasAcesas } from "./RuinasLuz"
 
 const URL = "/models/suburbio-ruinas.glb"
 type MundoMin = Parameters<typeof ruinasNoMundo>[0]
 
 export function RuinasSuburbio({ M, hora }: { M: MundoMin; hora?: React.RefObject<number> }) {
   const { nodes } = useGLTF(URL) as unknown as { nodes: Record<string, THREE.Object3D> }
-  const grupo = useMemo(() => {
+  const { grupo, luzes } = useMemo(() => {
     const g = new THREE.Group()
     g.name = "ruinas-suburbio"
     const noite = new Map<THREE.Material, THREE.Material>()
-    for (const p of ruinasNoMundo(M).postas) {
+    const pecas: Parameters<typeof sortearLuzes>[0] = []
+    const { postas, colisores } = ruinasNoMundo(M)
+    for (const p of postas) {
       const n = nodes[PECAS_RUINAS[p.peca].nome] as THREE.Mesh | undefined
       if (!n?.geometry) continue
       const base = n.material as THREE.Material
@@ -42,14 +46,23 @@ export function RuinasSuburbio({ M, hora }: { M: MundoMin; hora?: React.RefObjec
       m.scale.copy(n.scale)
       lugar.add(m)
       g.add(lugar)
+      pecas.push({ posta: p, malha: m })
     }
+    // (antes de mesclar: os raios do sorteio batem em cada peça)
+    g.updateMatrixWorld(true)
+    const luzes = sortearLuzes(pecas, M, colisores)
     mesclarPorMaterial(g, 6)
-    return g
+    return { grupo: g, luzes }
   }, [nodes, M])
   // a noite das ruínas segue o céu (sem hora: noite, como o jogo começa)
   useFrame((s) => {
     U.noite.value = acesoNaNoite(ceuNaHora(hora?.current ?? 21).noite)
     U.tempo.value = s.clock.elapsedTime % 1000
   })
-  return <Estatico><primitive object={grupo} /></Estatico>
+  return (
+    <Estatico>
+      <primitive object={grupo} />
+      <RuinasLuz luzes={luzes} />
+    </Estatico>
+  )
 }
