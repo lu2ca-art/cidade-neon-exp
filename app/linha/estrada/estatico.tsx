@@ -93,3 +93,20 @@ export function mesclarPorMaterial(raiz: THREE.Object3D, celulas = 3): { antes: 
   }
   return { antes: malhas.length, depois }
 }
+
+/**
+ * (revisão 05/11) Descarta as geometrias que mesclarPorMaterial criou numa cópia
+ * (`raiz`), sem tocar nas do modelo original (`de`: a cena ou os nós do glb, em
+ * cache no useGLTF e usadas de novo na próxima montagem). Chamar ao desmontar.
+ * @example useEffect(() => () => descartarMescladas(modelo, scene), [modelo, scene])
+ */
+export function descartarMescladas(raiz: THREE.Object3D, de: THREE.Object3D | Record<string, THREE.Object3D>) {
+  const originais = new Set<THREE.BufferGeometry>()
+  const juntar = (o: THREE.Object3D) => o.traverse((x) => { const g = (x as THREE.Mesh).geometry; if (g) originais.add(g) })
+  if (de instanceof THREE.Object3D) juntar(de)
+  else for (const o of Object.values(de)) juntar(o)
+  raiz.traverse((x) => {
+    const g = (x as THREE.Mesh).geometry
+    if (g && !originais.has(g)) g.dispose()
+  })
+}

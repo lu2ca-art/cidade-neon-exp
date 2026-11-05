@@ -9,11 +9,11 @@
 
 import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import * as THREE from "three"
 
 import { ceuNaHora } from "../ceu"
-import { Estatico, mesclarPorMaterial } from "./estatico"
+import { Estatico, descartarMescladas, mesclarPorMaterial } from "./estatico"
 import { ruinasNoMundo } from "./ruinas"
 import { PECAS_RUINAS } from "./ruinasDados"
 import { sortearLuzes } from "./luzesRuinas"
@@ -24,7 +24,7 @@ type MundoMin = Parameters<typeof ruinasNoMundo>[0]
 
 export function RuinasSuburbio({ M, hora }: { M: MundoMin; hora?: React.RefObject<number> }) {
   const { nodes } = useGLTF(URL) as unknown as { nodes: Record<string, THREE.Object3D> }
-  const { grupo, luzes } = useMemo(() => {
+  const { grupo, luzes, noite } = useMemo(() => {
     const g = new THREE.Group()
     g.name = "ruinas-suburbio"
     const noite = new Map<THREE.Material, THREE.Material>()
@@ -52,8 +52,12 @@ export function RuinasSuburbio({ M, hora }: { M: MundoMin; hora?: React.RefObjec
     g.updateMatrixWorld(true)
     const luzes = sortearLuzes(pecas, M, colisores)
     mesclarPorMaterial(g, 6)
-    return { grupo: g, luzes }
+    return { grupo: g, luzes, noite: [...noite.values()] }
   }, [nodes, M])
+  // (revisão 05/11) o <Perto> desmonta as ruínas longe do subúrbio: as geometrias
+  // mescladas aqui e os materiais de noite (clones) saem da GPU junto. As do glb
+  // (em cache no useGLTF) ficam
+  useEffect(() => () => { descartarMescladas(grupo, nodes); for (const m of noite) m.dispose() }, [grupo, nodes, noite])
   // a noite das ruínas segue o céu (sem hora: noite, como o jogo começa)
   useFrame((s) => {
     U.noite.value = acesoNaNoite(ceuNaHora(hora?.current ?? 21).noite)
