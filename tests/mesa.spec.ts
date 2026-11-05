@@ -11,7 +11,8 @@ test("cada cartão da mesa aponta pra uma parte que existe", () => {
     for (const m of c.mais ?? []) expect(PARTES_TESTE, m.nome).toContain(m.parte)
     expect(c.data).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   }
-  expect(new Set(MESA.map((c) => c.parte)).size).toBe(MESA.length)
+  // a mesma parte pode abrir mais de um cartão (ex.: "livre", "bar"); o que não pode repetir é nome+data
+  expect(new Set(MESA.map((c) => `${c.nome}|${c.data}`)).size).toBe(MESA.length)
 })
 
 test("/teste mostra os cartões da mesa", async ({ page }) => {
