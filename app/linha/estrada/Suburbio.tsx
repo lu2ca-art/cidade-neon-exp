@@ -3,8 +3,10 @@
 // O SUBÚRBIO XENOM, embaixo da cidade neon: dentro do anel da estrada
 // elevada, no chão (o resto da cidade é água). O miolo é o modelo "CITY
 // SUBURBS" de isabm (Sketchfab, CC-BY 4.0), otimizado de 157 MB pra ~3,5 MB
-// (scratchpad/modelos/otimizar.mjs: sem normal/tangente, cópias como
-// instância, simplificado, texturas 1k webp, meshopt). Crédito no jogo.
+// (scratchpad/modelos/otimizar.mjs) e, na noite de 05/11, pra 1,3 MB e 36 mil
+// triângulos (blender/scripts/suburbio_*.py: os 101 prédios são 13 modelos,
+// cada um virou uma caixa leve com a fachada assada; docs/blender/noite-0511.md).
+// Crédito no jogo.
 
 import { useGLTF } from "@react-three/drei"
 import { useMemo } from "react"

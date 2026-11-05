@@ -5,8 +5,6 @@
   "maxLadoTextura": 2048,
   "legado": [
     "kombi-herbal.glb",
-    "suburbio.glb",
-    "van.glb",
-    "kombi-interior.glb"
+    "van.glb"
   ]
 }

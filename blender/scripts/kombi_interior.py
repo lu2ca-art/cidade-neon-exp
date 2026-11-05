@@ -30,6 +30,14 @@ def rotG(rx=0.0, ry=0.0, rz=0.0):
     # euler XYZ do jogo -> matriz do Blender (Xj=Xb, Yj=Zb, Zj=-Yb)
     return Matrix.Rotation(rx, 4, "X") @ Matrix.Rotation(ry, 4, "Z") @ Matrix.Rotation(-rz, 4, "Y")
 
+# ── leveza (noite 05/11: de 90 mil pra ~25 mil triângulos) ──
+# menos gomos nos cilindros/esferas/toros e menos passos no chanfro; o que é
+# fino e repetido (ripas, tábuas, teclas) fica com chanfro de um passo só
+GOMOS = 0.6
+def gomos(n, minimo):
+    return max(minimo, int(round(n * GOMOS)))
+PASSOS = {1: 1, 2: 1, 3: 2, 4: 2, 8: 4}
+
 # ── paleta ──
 ROSA, MAGENTA, AZUL, AGUA = "#ff8fc8", "#d81f86", "#3a7bff", "#6ff0d6"
 BETULA = ["#ecd3ab", "#e4c79c", "#f0dab8"]
@@ -79,7 +87,7 @@ def mat(cor, grupo):
     m["grupo"] = grupo
     return m
 
-def novo(nome, bm, grupo, cor, bevel=0.0, seg=3, sub=0, col=None):
+def novo(nome, bm, grupo, cor, bevel=0.0, seg=3, sub=0, col=None, fiel=False):
     me = bpy.data.meshes.new(nome)
     bm.to_mesh(me)
     bm.free()
@@ -91,7 +99,7 @@ def novo(nome, bm, grupo, cor, bevel=0.0, seg=3, sub=0, col=None):
     if bevel:
         m = o.modifiers.new("bv", "BEVEL")
         m.width = bevel
-        m.segments = seg
+        m.segments = seg if fiel else PASSOS.get(seg, seg)  # fiel: peça estampada, desenho igual
         m.limit_method = "ANGLE"
         m.harden_normals = sub == 0
     if sub:
@@ -121,15 +129,17 @@ def caixa(nome, pl, sl, grupo, cor, rg=(0, 0, 0), **kw):
 def cil(nome, pos, r1, r2, alt, grupo, cor, rot=None, seg=24, **kw):
     # eixo do cilindro = Z do Blender (o Y do jogo), antes de rot
     bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=seg, radius1=r1, radius2=r2, depth=alt, matrix=M(pos, None, rot))
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=gomos(seg, 6), radius1=r1, radius2=r2, depth=alt, matrix=M(pos, None, rot))
     return novo(nome, bm, grupo, cor, **kw)
 
 def esfera(nome, pos, r, grupo, cor, achata=(1, 1, 1), rot=None, seg=16, **kw):
     bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=seg, v_segments=max(6, seg * 2 // 3), radius=r, matrix=M(pos, achata, rot))
+    seg = gomos(seg, 6)
+    bmesh.ops.create_uvsphere(bm, u_segments=seg, v_segments=max(4, seg * 2 // 3), radius=r, matrix=M(pos, achata, rot))
     return novo(nome, bm, grupo, cor, **kw)
 
 def toro(nome, pos, R, r, grupo, cor, rot=None, seg=40, segr=10, arco=2 * math.pi, **kw):
+    seg, segr = gomos(seg, 12), gomos(segr, 4)
     bm = bmesh.new()
     mm = M(pos, None, rot)
     fech = arco >= 2 * math.pi - 1e-6
@@ -206,7 +216,7 @@ for s, lado in ((-1, "esq"), (1, "dir")):
 for s, lado in ((-1, "esq"), (1, "dir")):
     caixa(f"feltro_{lado}", (s * 0.878, 0.86, 0.94), (0.012, 1.14, 1.72), "fosco", FELTRO, bevel=0)
     for k in range(38):
-        caixa(f"ripa_{lado}_{k}", (s * 0.86, 0.86, 0.12 + k * 0.045), (0.02, 1.12, 0.028), "fosco", BETULA[k % 3], bevel=0.006, seg=3)
+        caixa(f"ripa_{lado}_{k}", (s * 0.86, 0.86, 0.12 + k * 0.045), (0.02, 1.12, 0.028), "fosco", BETULA[k % 3], bevel=0.006, seg=1)
 
 # teto de tábuas curvo (cai nas bordas, como o teto da Kombi), com a claraboia
 def altura_teto(x):
@@ -372,7 +382,7 @@ manta()
 
 def almofada(nome, pl, dims, cor, rg=(0, 0, 0), grupo="fosco", listra=False):
     # caixa de quina redonda, depois estufa no meio (a espessura cai nas bordas)
-    o = caixa(nome, pl, dims, grupo, cor, rg=rg, bevel=0.03, seg=3, sub=2)
+    o = caixa(nome, pl, dims, grupo, cor, rg=rg, bevel=0.03, seg=3, sub=2, fiel=listra)
     aplica(o)
     c = o.data.vertices
     cen = Vector()
@@ -437,13 +447,13 @@ for s in (-1, 1):
 
 caixa("midi_corpo", (0.05, 0.815, 1.545), (0.44, 0.03, 0.14), "fosco", "#2a2730", bevel=0.008)
 for k in range(15):
-    caixa(f"midi_branca_{k}", (-0.135 + k * 0.0265, 0.834, 1.522), (0.025, 0.008, 0.075), "fosco", "#f4f1ec", bevel=0.002, seg=1)
+    caixa(f"midi_branca_{k}", (-0.135 + k * 0.0265, 0.834, 1.522), (0.025, 0.008, 0.075), "fosco", "#f4f1ec", bevel=0)
 for k in range(14):
     if k % 7 in (2, 6):
         continue
-    caixa(f"midi_preta_{k}", (-0.122 + k * 0.0265, 0.842, 1.505), (0.014, 0.01, 0.042), "fosco", "#111111", bevel=0.002, seg=1)
+    caixa(f"midi_preta_{k}", (-0.122 + k * 0.0265, 0.842, 1.505), (0.014, 0.01, 0.042), "fosco", "#111111", bevel=0)
 for k in range(6):
-    cil(f"midi_botao_{k}", P(-0.11 + k * 0.03, 0.838, 1.595), 0.009, 0.008, 0.016, "fosco", [ROSA, AGUA, AZUL][k % 3], seg=12, bevel=0.002)
+    cil(f"midi_botao_{k}", P(-0.11 + k * 0.03, 0.838, 1.595), 0.009, 0.008, 0.016, "fosco", [ROSA, AGUA, AZUL][k % 3], seg=12, bevel=0)
 
 # plantinha em cima do gaveteiro
 cil("vasinho", P(-0.66, 0.84, 1.66), 0.045, 0.035, 0.1, "fosco", ROSA, seg=24, bevel=0.006)
@@ -480,14 +490,14 @@ def sinte(nome, yl, inclina):
     for dz in (-0.375, 0.375):
         caixa(f"{nome}_lateral_{dz}", (x, yl + 0.012, z + dz), (0.26, 0.11, 0.03), "fosco", BETULA[1], rg=r, bevel=0.012, seg=4)
     for k in range(29):
-        caixa(f"{nome}_branca_{k}", (x - 0.07, yl + 0.04, z - 0.33 + k * 0.0235), (0.09, 0.012, 0.0215), "fosco", "#f4f1ec", rg=r, bevel=0.002, seg=1)
+        caixa(f"{nome}_branca_{k}", (x - 0.07, yl + 0.04, z - 0.33 + k * 0.0235), (0.09, 0.012, 0.0215), "fosco", "#f4f1ec", rg=r, bevel=0)
     for k in range(28):
         if k % 7 in (2, 6):
             continue
-        caixa(f"{nome}_preta_{k}", (x - 0.05, yl + 0.05, z - 0.318 + k * 0.0235), (0.05, 0.014, 0.012), "fosco", "#111111", rg=r, bevel=0.002, seg=1)
+        caixa(f"{nome}_preta_{k}", (x - 0.05, yl + 0.05, z - 0.318 + k * 0.0235), (0.05, 0.014, 0.012), "fosco", "#111111", rg=r, bevel=0)
     for k in range(10):
         cil(f"{nome}_botao_{k}", P(x + 0.05 + (k % 2) * 0.035, yl + 0.045, z - 0.28 + (k // 2) * 0.12), 0.01, 0.009, 0.018,
-            "fosco", [ROSA, AGUA, AZUL, MAGENTA][k % 4], rot=Matrix.Rotation(-inclina, 4, "Y"), seg=12, bevel=0.002)
+            "fosco", [ROSA, AGUA, AZUL, MAGENTA][k % 4], rot=Matrix.Rotation(-inclina, 4, "Y"), seg=12, bevel=0)
 sinte("sinte_baixo", 0.62, 0.0)
 sinte("sinte_cima", 0.82, 0.35)
 for dz in (-0.28, 0.28):
