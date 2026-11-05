@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { PropsManifesto } from "./tipos"
-import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, semente, viradoPraRua } from "./comum"
+import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, densidadeRua, semente, viradoPraRua } from "./comum"
 
 export const DOPAMINA_CFG = {
   passo: 19, // m entre os pontos de tela ao longo da rua
@@ -170,7 +170,7 @@ export function DopaminA({ M, k, ctx }: PropsManifesto) {
     const r = semente(2_2025 + k)
     const mats: THREE.Matrix4[] = [], dados: number[] = [], centros: THREE.Vector3[] = []
     const q = new THREE.Quaternion(), e = new THREE.Euler(), pos = new THREE.Vector3(), esc = new THREE.Vector3()
-    const passoI = Math.max(1, Math.round(C.passo / 2))
+    const passoI = Math.max(1, Math.round(C.passo / densidadeRua() / 2)) // (revisão 2) no leve, metade das telas
     for (let i = 8; i < v.n - 8; i += passoI + Math.floor(r() * 4)) {
       const lado = r() < 0.5 ? -1 : 1
       const lat = (MEIA_PISTA + 3 + r() * 14) * lado

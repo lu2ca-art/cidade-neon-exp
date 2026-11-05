@@ -24,7 +24,7 @@ import * as THREE from "three"
 import type { PropsManifesto } from "./tipos"
 import { PASSO } from "../pista"
 import {
-  MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, amostraPerto, empurrarCamera, novoEmpurrao, reduzMovimento, semente, soltarCamera, yNaPista,
+  MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, amostraPerto, densidadeRua, empurrarCamera, novoEmpurrao, reduzMovimento, semente, soltarCamera, yNaPista,
 } from "./comum"
 
 export const SWAV_CFG = {
@@ -216,9 +216,10 @@ export function Swav({ M, k, ctx }: PropsManifesto) {
         dados[o + 2] = len
       }
     }
+    const chancePri = C.densidade * (0.4 + 0.6 * densidadeRua()) // (revisão 2) no leve, 70% dos prismas
     for (let c = 2; c < nC - 2; c++) {
       for (const lado of [-1, 1]) {
-        if (r() > C.densidade) continue
+        if (r() > chancePri) continue
         const alt = C.altura[0] + Math.pow(r(), 1.4) * (C.altura[1] - C.altura[0])
         const larg = 3 + r() * 6
         dados[c * 4 + (lado < 0 ? 0 : 2)] = alt

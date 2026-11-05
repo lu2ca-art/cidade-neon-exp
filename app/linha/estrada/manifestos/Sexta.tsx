@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { PropsManifesto } from "./tipos"
-import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, semente } from "./comum"
+import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, densidadeRua, semente } from "./comum"
 
 export const SEXTA_CFG = {
   passo: 18, // m entre as rodas de gente
@@ -167,7 +167,8 @@ export function Sexta({ M, k, ctx, carro }: PropsManifesto) {
     const r = semente(8_8088 + k)
     const gP: number[] = [], gD: number[] = [], lB: number[] = [], lD: number[] = []
     const pos = new THREE.Vector3()
-    const passoI = Math.max(1, Math.round(C.passo / 2))
+    const dens = densidadeRua() // (revisão 2) no leve, metade da multidão e dos holofotes
+    const passoI = Math.max(1, Math.round(C.passo / dens / 2))
     for (let i = 6; i < v.n - 6; i += passoI + Math.floor(r() * 4)) {
       const lado = r() < 0.5 ? -1 : 1
       const terraco = r() < C.terraco
@@ -182,7 +183,7 @@ export function Sexta({ M, k, ctx, carro }: PropsManifesto) {
         gD.push(r(), r() < 0.6 ? jeitoRoda : Math.floor(r() * 3), r(), Math.floor(r() * 4) * 0.5 + r() * 0.15)
       }
     }
-    const passoL = Math.max(1, Math.round(C.passoHolofote / 2))
+    const passoL = Math.max(1, Math.round(C.passoHolofote / dens / 2))
     let lado = 1
     for (let i = 20; i < v.n - 20; i += passoL + Math.floor(r() * 10)) {
       lado = -lado

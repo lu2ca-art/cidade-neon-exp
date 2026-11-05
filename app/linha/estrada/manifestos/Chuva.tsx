@@ -22,7 +22,7 @@ import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import type { PropsManifesto } from "./tipos"
 import { CHUVA_MANIFESTO } from "./ceu"
-import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, semente, viradoPraRua } from "./comum"
+import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, densidadeRua, semente, viradoPraRua } from "./comum"
 
 export const CHUVA_CFG = {
   passoFlor: 7, // m entre os pontos de flor ao longo da rua
@@ -203,7 +203,8 @@ export function Chuva({ M, k, pista, ctx, carro }: PropsManifesto) {
     const aneis: THREE.Matrix4[] = [], dAnel: number[] = []
     const pos = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler(), esc = new THREE.Vector3()
     const nI = Math.max(1, v.n - 16)
-    const passoF = Math.max(1, Math.round(C.passoFlor / 2))
+    const dens = densidadeRua() // (revisão 2) no leve, metade das flores e dos anéis
+    const passoF = Math.max(1, Math.round(C.passoFlor / dens / 2))
     for (let i = 8; i < v.n - 8; i += passoF + Math.floor(r() * 3)) {
       const lado = r() < 0.5 ? -1 : 1
       const x = r()
@@ -220,7 +221,7 @@ export function Chuva({ M, k, pista, ctx, carro }: PropsManifesto) {
       const nasce = Math.min(1, Math.max(0, ((i - 8) / nI) * 0.55 + r() * 0.45))
       dFlor.push(r(), nasce, tipo, r())
     }
-    const passoA = Math.max(1, Math.round(C.passoAnel / 2))
+    const passoA = Math.max(1, Math.round(C.passoAnel / dens / 2))
     q.setFromEuler(e.set(-Math.PI / 2, 0, 0))
     for (let i = 6; i < v.n - 6; i += passoA + Math.floor(r() * 3)) {
       for (let c = 0; c < 2; c++) {

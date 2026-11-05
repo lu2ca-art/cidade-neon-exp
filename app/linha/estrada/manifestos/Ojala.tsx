@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { PropsManifesto } from "./tipos"
-import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, amostraPerto, semente } from "./comum"
+import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, amostraPerto, densidadeRua, semente } from "./comum"
 
 export const OJALA_CFG = {
   fitas: 70,
@@ -190,7 +190,7 @@ export function Ojala({ M, k, ctx, carro }: PropsManifesto) {
   // o vento: sorteado uma vez (posições relativas à caixa que segue a Kombi)
   const vento = useMemo(() => {
     const r = semente(1_1800 + k)
-    const n = C.fitas + C.confete
+    const n = C.fitas + Math.round(C.confete * densidadeRua()) // (revisão 2) no leve, metade do confete
     const aW = new Float32Array(n * 4), aW2 = new Float32Array(n * 4)
     for (let i = 0; i < n; i++) {
       const fita = i < C.fitas

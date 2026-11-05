@@ -25,7 +25,7 @@ import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { LETRAS } from "../../disco/letras"
 import type { PropsManifesto } from "./tipos"
-import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, semente } from "./comum"
+import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, densidadeRua, semente } from "./comum"
 
 export const NECTAR_CFG = {
   passoVerso: 30, // m entre os grupos de palavras
@@ -264,7 +264,7 @@ export function Nectar({ M, k, ctx }: PropsManifesto) {
     }
     // as flores: canteiros e um pouco de fachada; a fase corre a rua (a onda)
     const flores: number[] = [], dFlor: number[] = []
-    const passoF = Math.max(1, Math.round(C.passoFlor / 2))
+    const passoF = Math.max(1, Math.round(C.passoFlor / densidadeRua() / 2)) // (revisão 2) no leve, metade das flores
     for (let i = 6; i < v.n - 6; i += passoF + Math.floor(r() * 3)) {
       const lado = r() < 0.5 ? -1 : 1
       const fach = r() < 0.3
