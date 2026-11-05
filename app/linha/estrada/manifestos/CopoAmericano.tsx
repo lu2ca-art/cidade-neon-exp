@@ -22,7 +22,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { PropsManifesto } from "./tipos"
-import { MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, semente } from "./comum"
+import { CAMERA_RUA, MEIA_PISTA, NEVOA_FRAG, NEVOA_FRAG_PARS, NEVOA_VERT_PARS, aoLado, semente } from "./comum"
 
 export const COPO_CFG = {
   passo: 15, // m entre os pontos de copo
@@ -250,7 +250,7 @@ export function CopoAmericano({ M, k, ctx }: PropsManifesto) {
     // o horizonte embriagado: o jogo põe a câmera no lugar todo quadro (lookAt);
     // se não pôs (a câmera é a mesma do quadro passado), desfaz o nosso antes
     if (camera.quaternion.equals(st.qDepois)) { camera.rotateY(-st.yaw); camera.rotateZ(-st.roll) }
-    const p = st.reduz ? 0 : st.porre * ctx.dentro
+    const p = st.reduz || !CAMERA_RUA.livre ? 0 : st.porre * ctx.dentro
     const b = ctx.batida * Math.PI
     st.roll = p * C.roll * Math.sin(b / 4)
     st.yaw = p * C.roll * 0.4 * Math.sin(b / 6 + 1.3)

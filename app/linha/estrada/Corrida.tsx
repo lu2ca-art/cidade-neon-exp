@@ -91,6 +91,7 @@ import { ACENDE, DRONE, DRONE_CFG, HoloDrone, arrastarDrone, cameraDrone, centra
 import { RotaPista } from "./RotaPista"
 import { Manifestos } from "./manifestos/Manifestos"
 import { CHUVA_MANIFESTO, horaDoCeu } from "./manifestos/ceu"
+import { CAMERA_RUA } from "./manifestos/comum"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -6529,6 +6530,9 @@ function CenaBase({
     }
     // (27/10) o drone GPS: sobe pra ~81° atrás do carro, ao vivo (cenas, montanha-russa e portas mandam na câmera)
     const eDr = ce || pq.andando || apeCam || cine ? DRONE.e : cameraDrone(camera as THREE.PerspectiveCamera, car.position, tmp.f, tmp.camOlhar, dt)
+    // (revisão 2) as ruas-manifesto só empurram a câmera de perseguição: no drone, na
+    // primeira pessoa, nas cenas, nas portas e na montanha-russa do parque, não (comum.ts)
+    CAMERA_RUA.livre = !cine && !primeira && !ce && !pq.andando && !apeCam && j.chegadaCut === undefined && eDr < 0.01
     // teste (fora da produção): window.__vista = [x, y, z, olharX, olharY, olharZ]
     // segura a câmera num ponto (vista aérea pra conferir o mapa)
     if (process.env.NODE_ENV !== "production") {

@@ -79,11 +79,17 @@ export const reduzMovimento = () => {
 // mexe depois disso. Se no quadro seguinte ninguém mexeu, a rua desfaz o
 // próprio empurrão antes do novo (nada acumula). O fov não é tocado: a rua
 // escala a matriz de projeção (o jogo segue com o fov dele).
+/** (revisão 2) a câmera do jogo deixa a rua empurrar? O Corrida escreve todo quadro:
+ *  só na câmera de perseguição (não no drone, na primeira pessoa, nas cenas, nas
+ *  portas, na montanha-russa do parque). Fora dela, o empurrão vai a zero */
+export const CAMERA_RUA = { livre: true }
+
 export interface Empurrao { q: THREE.Quaternion; roll: number; k: number; p5: number }
 export const novoEmpurrao = (): Empurrao => ({ q: new THREE.Quaternion(), roll: 0, k: 1, p5: NaN })
 
 /** roll em rad, fovExtra em graus (0 = nada) */
 export function empurrarCamera(cam: THREE.Camera, e: Empurrao, roll: number, fovExtra: number) {
+  if (!CAMERA_RUA.livre) { roll = 0; fovExtra = 0 }
   if (cam.quaternion.equals(e.q)) cam.rotateZ(-e.roll)
   e.roll = roll
   if (roll !== 0) cam.rotateZ(roll)
