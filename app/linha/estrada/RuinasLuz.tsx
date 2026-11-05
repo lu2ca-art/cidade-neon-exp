@@ -51,8 +51,12 @@ export function janelasAcesas(base: THREE.Material): THREE.Material {
         uniform float uNoite;
         uniform float uTempo;
         varying vec3 vJanW;
-        float hashJ(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-        float lumJ(vec2 uv, float lod) { return dot(textureLod(map, uv, lod).rgb, vec3(0.2126, 0.7152, 0.0722)); }`)
+        float hashJ(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }`)
+      // (depois do uniform "map", que é declarado no map_pars)
+      .replace("#include <map_pars_fragment>", `#include <map_pars_fragment>
+        #ifdef USE_MAP
+        float lumJ(vec2 uv, float lod) { return dot(textureLod(map, uv, lod).rgb, vec3(0.2126, 0.7152, 0.0722)); }
+        #endif`)
       .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
         #ifdef USE_MAP
         if (uNoite > 0.001 && vMapUv.x < 0.868 && vMapUv.x > 0.0) {
@@ -78,7 +82,7 @@ export function janelasAcesas(base: THREE.Material): THREE.Material {
         }
         #endif`)
   }
-  m.customProgramCacheKey = () => "ruinas-janelas-1"
+  m.customProgramCacheKey = () => "ruinas-janelas-2"
   return m
 }
 
