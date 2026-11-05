@@ -25,6 +25,17 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.chuva",
+    nome: "Mais 3 ruas-manifesto: CHUVA, Copo Americano e Nectar",
+    data: "2026-11-05",
+    olhar: "CHUVA: a chuva começa fina e engrossa com a faixa, e flores de luz nascem onde ela cai, no ritmo; segure o propulsor ou o freio pra abrir um guarda-chuva de luz que faz o trecho florescer mais. Copo Americano: copos gigantes enchem de luz no ritmo; acelerou demais, transbordam e a rua balança de leve; tocar num copo faz um brinde. Nectar: as palavras da letra flutuam como pétalas e tentam virar verso (às vezes dá certo, às vezes não); tocar numa palavra a prende no céu.",
+    perguntas: [
+      "Alguma dessas briga com dirigir (toque, leitura da pista)?",
+      "Qual das 5 ruas ficou mais com a sua cara?",
+    ],
+    mais: [{ parte: "missao.copo", nome: "a rua Copo Americano" }, { parte: "missao.nectar", nome: "a rua Nectar" }],
+  },
+  {
     parte: "missao.dopamina",
     nome: "As ruas-manifesto: DopaminA (vício) e Sabe Ontem? (tempo)",
     data: "2026-11-05",
