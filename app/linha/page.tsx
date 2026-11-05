@@ -914,6 +914,14 @@ export default function LinhaPage() {
     setCinema(null)
     if (r.loop) {
       setSave((s) => ({ ...s, loops: { ...(s.loops ?? {}), bar: (s.loops?.bar ?? 0) + 1 }, copos: r.copo === undefined ? s.copos : [...new Set([...(s.copos ?? []), r.copo])] }))
+      // (começo novo, 05/11) a noite volta pro começo: o bar abre de novo (as falas
+      // de "volta"). Antes ele ficava parado na porta, com o "Agora: aqui", e o bar só
+      // reabria saindo uns 80 m e voltando, sem nada dizer isso
+      setTimeout(() => {
+        if (historiaDe(saveRef.current).fase !== "bar") return
+        setCena((c) => c ?? { lugar: "bar", missao: "copo", pegar: false, especial: "disco-bar" })
+        setCinema((x) => x ?? "lugar")
+      }, 2200)
       return
     }
     // saiu no meio, sem escolher: nada muda (o bar continua esperando)
