@@ -25,6 +25,16 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Os lugares da cidade modelados no Blender",
+    data: "2026-11-06",
+    olhar: "Os lugares da cidade modelados no Blender: nas pistas, os 4 palcos das faixas viraram um palco suspenso (treliça, caixas de som penduradas, telão); a estação 6 da Linha 9 é uma plataforma com cobertura de vidro; o terraço da Notti, uma torre de vidro com o terraço no alto; a casa do Drew, loja de streetwear com o AP em cima; a balada e a casa de shows, um monolito preto com túnel de neon e equalizador; a casa da Ella, uma cápsula escondida atrás das ripas. O neon de cada um é a cor da faixa. A foto: docs/blender/lugares-cidade.png.",
+    perguntas: [
+      "Os lugares ficaram com cara da cidade lá de cima (limpo, vidro, neon)?",
+      "Algum tipo precisa de outro desenho (o palco, a estação, a balada)?",
+    ],
+  },
+  {
     parte: "elevador.terror",
     nome: "O elevador de terror (rascunho): a subida pelo poço da torre 2",
     data: "2026-11-06",
