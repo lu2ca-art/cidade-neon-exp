@@ -23,6 +23,7 @@ import type { LugarChao } from "../disco/historia"
 import { NAV } from "./nav"
 import { pontosDoMapa, type IconeMapa } from "./pontosMapa"
 import { brilha } from "../disco/brilho"
+import { lerMemoriaDbee, visitou } from "../disco/sugestoesDbee"
 export type { IconeMapa } from "./pontosMapa"
 
 // (dbee-sugere) wx/wz: a marca de um ponto do chão (fora das pistas). via/u ficam
@@ -438,6 +439,11 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         desenharChao(g, x, y, c.cor, 1.2, performance.now())
         g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(c.nome).width; g.fillRect(x + 12, y - 8, tw + 8, 16)
         g.fillStyle = c.cor; g.fillText(c.nome, x + 16, y)
+        // (06/11) já visitou (save.dbee.visitados): um ✓ discreto depois do nome (como a missão feita)
+        if (c.id.startsWith("chao:") && visitou(lerMemoriaDbee(), c.id.slice(5))) {
+          const vx = x + 24 + tw; g.globalAlpha = 0.6; g.strokeStyle = c.cor; g.lineWidth = 1.5
+          g.beginPath(); g.moveTo(vx - 4, y); g.lineTo(vx - 1, y + 3); g.lineTo(vx + 4.5, y - 3.5); g.stroke(); g.globalAlpha = 1
+        }
       }
       const dn = destNav.current ?? (destino ? { ...noMundo(M, destino), cor: destino.cor } : null)
       if (dn) {

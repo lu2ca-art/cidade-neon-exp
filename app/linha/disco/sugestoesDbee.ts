@@ -45,6 +45,9 @@ export interface MemoriaDbee {
   ultima?: string
   // as ruas cuja faixa completa ele já ouviu inteira (musicaContinua.ts)
   ouvidas: string[]
+  // (06/11) os lugares do chão em que ele já entrou (o id do CHAO_LUGARES:
+  // "palco", "quadra", "bar"…). Opcional: save antigo lê `?? []`
+  visitados?: string[]
 }
 export const MEMORIA_VAZIA: MemoriaDbee = { n: {}, feitas: [], ouvidas: [] }
 
@@ -279,7 +282,7 @@ SUGESTOES_DBEE.push(
       let melhor: OpcaoDbee | null = null, dMelhor = Infinity
       for (const id of IDS_ABERTOS) {
         const chave = `aberto:${id}`
-        if (feita(c, chave)) continue
+        if (feita(c, chave) || visitou(c.mem, id)) continue
         const e = ENTRADAS[id], fala = ABERTOS_DBEE[id]
         const fechado = "porta" in e && !portas.includes(e.porta)
         const d = c.distancia({ t: "chao", chao: id })
@@ -365,6 +368,8 @@ export function escolherDbee(c: CtxDbee, sorteio = Math.random()): OpcaoDbee | n
 // ── a memória: as contas puras (o DbeeSugere guarda) ──
 export const comSugerida = (m: MemoriaDbee, chave: string): MemoriaDbee => ({ ...m, ultima: chave, n: { ...m.n, [chave]: (m.n[chave] ?? 0) + 1 } })
 export const comFeita = (m: MemoriaDbee, chave: string): MemoriaDbee => (m.feitas.includes(chave) ? m : { ...m, feitas: [...m.feitas, chave] })
+export const comVisitado = (m: MemoriaDbee, id: string): MemoriaDbee => ((m.visitados ?? []).includes(id) ? m : { ...m, visitados: [...(m.visitados ?? []), id] })
+export const visitou = (m: MemoriaDbee, id: string) => (m.visitados ?? []).includes(id)
 export const comOuvida = (m: MemoriaDbee, pista: string): MemoriaDbee => (m.ouvidas.includes(pista) ? m : { ...m, ouvidas: [...m.ouvidas, pista] })
 
 // ── a memória viva (uma loja fora do React): o DbeeSugere muda, a página grava no save ──
@@ -381,6 +386,10 @@ export function mudarMemoriaDbee(f: (m: MemoriaDbee) => MemoriaDbee) {
   MEM = n
   ouvintesMem.forEach((o) => o(MEM))
 }
+/** (06/11) entrou num lugar do chão: fica no save (dbee.visitados); a D-Bee para de sugerir e o mapa põe o ✓ */
+export const marcarVisitaDbee = (id: string) => mudarMemoriaDbee((m) => comVisitado(m, id))
+/** (06/11) o jogo viu ele fazer (o violão tocou uma vez…): a sugestão sem `repete` some */
+export const marcarFeitaDbee = (chave: string) => mudarMemoriaDbee((m) => comFeita(m, chave))
 export const ouvirMemoriaDbee = (o: (m: MemoriaDbee) => void) => { ouvintesMem.add(o); return () => { ouvintesMem.delete(o) } }
 // a faixa completa de uma rua tocou inteira: a D-Bee não sugere mais aquela rua
 aoOuvirCompleta((id) => mudarMemoriaDbee((m) => comOuvida(m, id)))

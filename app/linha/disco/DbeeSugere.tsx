@@ -38,6 +38,7 @@ import {
   DBEE_CFG, comFeita, comSugerida, escolherDbee, lerMemoriaDbee, mudarMemoriaDbee,
   type AlvoDbee, type CtxDbee, type OpcaoDbee,
 } from "./sugestoesDbee"
+import { lerFinal } from "./final"
 
 type JogoDbee = { via: number; u: number; voo?: boolean; wx?: number; wz?: number }
 type CombDbee = { aqui?: { x: number; z: number }; patins?: boolean; moto?: boolean }
@@ -122,6 +123,7 @@ export function DbeeSugere(props: PropsDbee) {
       // a marca que ela pôs (pra tirar quando ele chega, e só a dela)
       marca: null as Marca | null,
       chaveMarca: "",
+      zonaDepois: "" as string, // a zona da olhada anterior (o mundo depois)
     }
 
     const olhar = () => {
@@ -142,6 +144,14 @@ export function DbeeSugere(props: PropsDbee) {
       if (tv) viu.push("tv")
       if (piloto) viu.push("piloto")
       if ((p.ruaSuburbio?.corridas ?? 0) > 0) viu.push("corrida-rua")
+      // (06/11) o mundo depois do final: andou na cidade (as plantas nos prédios
+      // altos e as cabines das torres se veem da pista) ou desceu aos túneis (o rio).
+      // Conta na segunda olhada seguida na zona (uns 3 s), não de passagem
+      const fin = lerFinal()
+      if (fin.feito && fin.momento === null && (zona === "cidade" || zona === "tuneis")) {
+        if (st.zonaDepois === zona) viu.push(...(zona === "cidade" ? ["depois:plantas", "depois:cabines"] : ["depois:rio"]))
+        st.zonaDepois = zona
+      } else st.zonaDepois = ""
       // chegou no alvo que ela marcou: feito, e a marca dela sai
       if (st.marca) {
         const eu = ondeEstou(), w = pontoDa(st.marca)

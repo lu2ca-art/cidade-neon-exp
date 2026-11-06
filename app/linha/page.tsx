@@ -116,7 +116,7 @@ import "../ginasio/ginasio.css"
 import { guardarCapsula, guitarLivre } from "./disco/capsula"
 import { luzDasPistas, pistasFeitas } from "./estrada/atos"
 import { PISTAS, type PistaId } from "./estrada/pistas"
-import { definirMemoriaDbee, ouvirMemoriaDbee } from "./disco/sugestoesDbee"
+import { definirMemoriaDbee, marcarFeitaDbee, marcarVisitaDbee, ouvirMemoriaDbee } from "./disco/sugestoesDbee"
 
 // PASSO 1 da otimização: os ambientes 3D vêm em pedaços separados do pacote,
 // baixados só quando a pessoa chega neles (a estrada ao entrar na Kombi, a
@@ -1912,9 +1912,13 @@ export default function LinhaPage() {
     const E = ENTRADAS[id]
     return "porta" in E && E.porta ? pedidoDaPorta(hist13(saveRef.current), E.porta, E.pra ?? "entrar") : null
   }
+  // (06/11) tocou o violão na rua uma vez: a D-Bee não sugere mais (marcarFeitaDbee não muda nada se já tem)
+  const tocouViolao = useCallback(() => marcarFeitaDbee("violao-rua"), [])
   const entrarNoChao = (id: LugarAberto) => {
     setPortaChao(null)
     if (cena || cinema) return
+    // (06/11) entrou (ou foi ver o cadeado): conta como visitado (save.dbee.visitados)
+    marcarVisitaDbee(id)
     const E = ENTRADAS[id] as (typeof ENTRADAS)[LugarAberto]
     const tranca = trancaChao(id)
     if (E.t === "basquete") {
@@ -2018,6 +2022,9 @@ export default function LinhaPage() {
     // (06/11) os lugares do chão que abrem uma experiência (disco/abertos.ts): o
     // botão "entrar", como o bar. Quando é o lugar da missão de agora, a missão manda
     const idA = e.startsWith("chao:") ? e.slice(5) : ""
+    // (06/11) os outros lugares do chão (o bar, a oficina, os túneis, a casa, a torre):
+    // chegar já é entrar. Visitado uma vez, fica (comVisitado não muda nada se já tem)
+    if (idA && !ehAberto(idA) && idA in CHAO_LUGARES && h.fase !== "minhoca") marcarVisitaDbee(idA)
     if (ehAberto(idA) && idA !== alvoChao && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras && !janelaChao && Date.now() - barFechou.current > 8000) {
       setPortaChao(idA)
       clearTimeout(portaChaoT.current)
@@ -2663,7 +2670,7 @@ export default function LinhaPage() {
         {/* (T64, lote D) a fuga do metrô: no lugar do mundo (o canvas dele sai, emSala) */}
         {noMetro && <MetroFuga historia={h13} onPasso={fimMetroPasso} onSair={sairDoMetro} />}
         {/* (T64, lote D) o violão: o botão aparece com o disco, a rádio ou a faixa da rua tocando; sem o violão, com o cadeado e o que libera */}
-        {D && tela.t === "corrida" && <ViolaoMundo temViolao={!!save.violao} tranca={HIST ? (feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : facaMissao("dbee", "tocar")) : null} escondido={emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
+        {D && tela.t === "corrida" && <ViolaoMundo onTocou={tocouViolao} temViolao={!!save.violao} tranca={HIST ? (feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : facaMissao("dbee", "tocar")) : null} escondido={emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}
