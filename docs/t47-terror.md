@@ -19,8 +19,18 @@ Primeira versão pela recomendação, antes do vídeo de referência da Torre do
 ## Como foi feito (desempenho)
 
 - `app/linha/disco/terror.ts`: todos os números (andar, vão, fases, queda, disparada, respiração, névoa, drone) e a linha do tempo pura `quadroTerror(t)` (sem three.js).
-- `app/linha/trincheiras/PocoTerror.tsx`: a cena. Canvas próprio por cima das trincheiras; o canvas dos túneis fica parado (`frameloop "never"`) enquanto isso. Low-poly, só `MeshBasicMaterial` (sem luz nenhuma, nova ou velha: acender/apagar é a cor dos materiais), cada peça repetida é um `InstancedMesh` pra todos os andares (~16 desenhos), névoa curta (24 m). Montado só durante o percurso; geometrias, materiais e instâncias descartados ao sair.
+- `app/linha/trincheiras/PocoTerror.tsx`: a cena. Canvas próprio por cima das trincheiras; o canvas dos túneis fica parado (`frameloop "never"`) enquanto isso. Low-poly (desde 07/11, modelado no Blender; veja abaixo), só `MeshBasicMaterial` (sem luz nenhuma, nova ou velha: acender/apagar é a cor dos materiais), cada peça repetida é um `InstancedMesh` pra todos os andares (~16 desenhos), névoa curta (24 m). Montado só durante o percurso; geometrias, materiais e instâncias descartados ao sair.
 - `Trincheiras.tsx`: o botão do elevador 2 abre o poço; "subir rápido" depois da 1ª vez.
+
+## Modelado no Blender (07/11)
+
+As formas simples viraram peças modeladas no Blender, em `public/models/terror.glb` (134 KB, ~8,5 mil triângulos; meshopt). Foto de um andar: `docs/blender/terror.png`.
+
+- **Peças** (um nó cada, em metros, nos tamanhos de antes): `cabine` (piso com ripas, grade dos lados e do fundo, corrimão, lâmpada na gaiola, luz de emergência, **painel de botões** no canto da frente), `porta` (a **grade pantográfica**: barras e X; o jogo dobra ela pro canto pela escala em x), `cama` (cibercama: banheira com filete, tampa da cápsula aberta, unidade dos pés com cabos, monitor no braço), `capsula` (base com tubos, costelas, anéis verdes, o líquido verde no vidro, uma silhueta escura dentro), `maquina` (gabinete com portas, o respiro com o neon atrás das aletas, aletas dos lados, ventilador e cabos pro teto), `andar` (piso, laje da frente com faixa de perigo e a placa, batentes, 4 pilares com luz vermelha, vigas e calhas no teto, canos no fundo e nos lados, caixas de força) e `poco` (um trecho de 4,2 m: paredes, as 3 vigas, os trilhos-guia, o trilho do contrapeso, cabos, conduíte), que repete.
+- **Robôs e pessoas não** (vêm do Tripo): nas camas o robô segue a forma de caixa de hoje; na cápsula só uma silhueta escura.
+- **Malhas**: `_solido` (cor no vértice × AO assada × uma luz falsa por face, gravada ×4 por causa dos 8 bits; o material usa 0,25), `_luz` (cor fixa), `_neon` (a cor vem do jogo: o filete da cama, o respiro, a emergência) e `_vidro` (transparente).
+- **No jogo** (`PocoTerror.tsx`): `useGLTF` carrega o glb; cada peça × material é uma `InstancedMesh` (~25 desenhos). O acender/apagar segue pela cor dos materiais (sem luzes), com as mesmas regras de antes (perto da lâmpada, andares, respiração, vidro, placa, emergência). Novo: só os andares perto da câmera (3 abaixo e 3 acima) vão pra tela; a névoa come o resto. Enquanto carrega, ou se falhar, ficam as formas de antes (a linha do tempo não reinicia). Ao sair, tudo descartado e o glb sai do cache.
+- **Scripts**: `blender/scripts/terror.py` (modela, assa a AO, exporta) e `terror_foto.py` (a foto). Os comandos estão no topo do `terror.py`.
 
 ## Os limites do elevador (ajustes 06/11)
 
