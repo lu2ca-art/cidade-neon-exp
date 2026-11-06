@@ -19,7 +19,8 @@
 // Curtas (cabem em ~5 s de leitura), gíria leve, sem explicar mecânica.
 
 import type { FaseDisco } from "./historia"
-import type { MissaoId } from "./portas"
+import type { MissaoId, PortaId } from "./portas"
+import type { LugarChao } from "./historia"
 
 export interface VinhetaXenom {
   id: string
@@ -29,6 +30,10 @@ export interface VinhetaXenom {
   missao?: MissaoId
   quando?: "disponivel" | "ativa" | "feita"
   fase?: FaseDisco
+  /** (06/11) fala de um lugar do chão do subúrbio (só pra quem lê; entra com o clima) */
+  lugar?: LugarChao
+  /** (06/11) só depois que essa porta abriu (o lugar trancado não é anunciado como aberto) */
+  porta?: PortaId
 }
 
 /** o nome que aparece no display enquanto o locutor fala */
@@ -79,6 +84,25 @@ export const VINHETAS_XENOM: VinhetaXenom[] = [
   v("fase-oficina", "a kombi do forasteiro tá na oficina. motor? que motor", { fase: "oficina" }),
   v("fase-subir", "a kombi tá pronta. a cidade fica lá em cima. o elevador fica no anel", { fase: "subir" }),
   v("fase-nectar", "lá em cima já tão falando de você. sobe com calma", { fase: "nectar" }),
+
+  // ── (06/11) os lugares do chão do subúrbio e o que rola lá (entram no lugar do
+  // clima, alternando com ele; a rádio não repete as últimas) ──
+  v("lugar-ginasio-1", "o ginásio lá no fundo tá com a luz acesa. tem gente jogando até tarde", { lugar: "ginasio", porta: "ginasio" }),
+  v("lugar-ginasio-2", "o arco do ginásio voltou a piscar. quem passa ali sai suado", { lugar: "ginasio", porta: "ginasio" }),
+  v("lugar-galeria-1", "abriu quadro novo na galeria, perto da oficina. entra, que é de graça", { lugar: "galeria", porta: "galeria" }),
+  v("lugar-galeria-2", "na galeria tem parede que só mostra o que você não quer ver. vai lá ver", { lugar: "galeria", porta: "galeria" }),
+  v("lugar-discos-1", "chegou caixa de vinil na loja de discos. o vinil gigante na porta não deixa errar", { lugar: "discos" }),
+  v("lugar-discos-2", "na loja de discos tem lado b que nem o núcleo sabe que existe", { lugar: "discos" }),
+  v("lugar-batida-1", "o estúdio da batida tá com as caixas ligadas. faz um beat e traz pra gente tocar", { lugar: "batida", porta: "batida-estudio" }),
+  v("lugar-batida-2", "batida nova saindo do estúdio. o grave chega aqui na rádio", { lugar: "batida", porta: "batida-estudio" }),
+  v("lugar-flores-1", "os canteiros lá no oeste tão floridos. alguém anda regando escondido", { lugar: "flores" }),
+  v("lugar-flores-2", "no meio da poeira tem flor nascendo. passa nos canteiros e leva uma muda", { lugar: "flores" }),
+  v("lugar-brecho-1", "o brechó pendurou roupa nova na arara. coisa de antes do núcleo", { lugar: "brecho" }),
+  v("lugar-brecho-2", "quer mudar o visual? o brechó do subúrbio tem jaqueta que já viu de tudo", { lugar: "brecho" }),
+  v("lugar-palco-1", "o palco do subúrbio tá montado hoje. o show da noite começa quando você chegar", { lugar: "palco" }),
+  v("lugar-quadra-1", "a quadra tá aberta. cesta, alambrado e o Alohan no som. joga uma", { lugar: "quadra", porta: "quadra" }),
+  v("lugar-tuneis-1", "lá embaixo nos túneis sobrou tinta. parede limpa é convite", { lugar: "tuneis", missao: "tuneis", quando: "feita" }),
+  v("lugar-metro-1", "o trem da linha 9 continua parado no salão dos túneis. dizem que o guarda ainda tá lá dentro", { lugar: "tuneis", missao: "tuneis", quando: "feita" }),
 
   // ── clima geral do subúrbio ──
   v("clima-1", "69.9, rádio xenom. aqui embaixo o sinal do núcleo chega fraco. aproveita"),
