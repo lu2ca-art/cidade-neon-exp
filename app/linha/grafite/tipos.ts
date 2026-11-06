@@ -51,3 +51,8 @@ export function suave(ctrl: Pt[], seg = 10, fechado = false): Pt[] {
   out.push(fechado ? out[0] : ctrl[n - 1])
   return out
 }
+
+/** (T64) o grafite LIVRE: a tag que o jogador desenha à mão depois da missão dos
+ *  túneis. Caixa 0..200 x 0..100 (o espaço do atlas é 2:1); `pts` = x0,y0,x1,y1…
+ *  inteiros (o save fica pequeno) */
+export interface TagLivre { tracos: { cor: string; pts: number[] }[] }

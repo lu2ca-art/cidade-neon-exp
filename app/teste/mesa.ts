@@ -25,6 +25,32 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "violao",
+    nome: "O violão na rua: aparece com a música da rua e a trilha abaixa",
+    data: "2026-11-06",
+    tarefa: "T64",
+    olhar: "Com qualquer música tocando (a faixa da rua, a rádio ou o disco), o botão do violão aparece à direita. Abriu: as notas e os acordes no tom da faixa, e a música abaixa um pouco enquanto ele está aberto. Sem o violão (antes da D-Bee ou depois do metrô), o botão aparece apagado com cadeado e diz o que libera.",
+    perguntas: ["A música só abaixar está bom, ou deve parar enquanto toca?", "O botão aparece na hora certa na rua?"],
+  },
+  {
+    parte: "grafite.livre",
+    nome: "O grafite livre: a sua tag nas paredes dos túneis",
+    data: "2026-11-06",
+    tarefa: "T64",
+    olhar: "Já lá embaixo, com a missão dos túneis feita. Ande até uma parede com a tag \"LU2CA\" (os rios têm uma a cada poucas paredes) e toque em \"pintar a sua tag\": o dedo é o spray. \"pintar na parede\" troca a LU2CA pela sua tag em todas essas paredes e fica salvo (suba e desça de novo pra ver).",
+    perguntas: ["Uma tag só basta, ou quer várias paredes diferentes?"],
+    mais: [{ parte: "grafite", nome: "o grafite da missão (antes: com cadeado na tag)" }],
+  },
+  {
+    parte: "metro.tuneis",
+    nome: "O metrô de novo: o trem parado no salão dos túneis",
+    data: "2026-11-06",
+    tarefa: "T64",
+    olhar: "A fuga de quando te pegam já aconteceu. Nos túneis, vá até o SALÃO DO METRÔ (o trem branco parado): perto dele, \"entrar no trem\" abre a fuga de novo, sem mudar nada no save. Antes da fuga da história, o botão aparece com cadeado.",
+    perguntas: ["A revanche no trem serve, ou o metrô deveria ser uma missão própria?"],
+    mais: [{ parte: "metro", nome: "a fuga da história (quando te pegam)" }],
+  },
+  {
     parte: "instrumentos",
     nome: "Os 11 instrumentos ancestrais na casa da D-Bee",
     data: "2026-11-06",

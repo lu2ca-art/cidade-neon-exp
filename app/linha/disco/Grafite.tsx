@@ -18,9 +18,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { GRAFITES } from "../grafite/grafites"
 import { Motor, type Estado } from "../grafite/motor"
-import type { Grafite } from "../grafite/tipos"
-import { GRAFITES_NA_PAREDE, assinarGrafiteNaParede, definirGrafitesAssinados, grafitePerto } from "../trincheiras/geo"
+import type { Grafite, TagLivre } from "../grafite/tipos"
+import { GRAFITES_NA_PAREDE, assinarGrafiteNaParede, definirGrafitesAssinados, definirTagLivre, grafitePerto, tagPerto } from "../trincheiras/geo"
+import { Cadeado, Trancado } from "../Trancado"
 import { vib } from "../som-carro"
+import { assinou as somAssinou } from "../grafite/spray"
 import "../grafite/grafite.css"
 
 export { GRAFITES }
@@ -46,11 +48,24 @@ export interface GrafiteProps {
   // algo por cima (a corrida, uma fala): esconde o botão
   escondido?: boolean
   posicao?: () => Pos
+  // (T64, 06/11) o grafite LIVRE: nas paredes da tag (1 em cada 4), depois da missão
+  // dos túneis, desenhar à mão a sua tag; fica no save e em todas essas paredes
+  tag?: TagLivre | null
+  // liberado? (a missão dos túneis feita ou os 3 assinados); senão, o cadeado e `trancaLivre`
+  livre?: boolean
+  trancaLivre?: string
+  onTag?: (t: TagLivre) => void
 }
 
-export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = posPadrao }: GrafiteProps) {
+export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = posPadrao, tag = null, livre = false, trancaLivre, onTag }: GrafiteProps) {
   const [perto, setPerto] = useState<string | null>(null)
   const [aberto, setAberto] = useState<string | null>(null)
+  // (T64) perto de uma parede da tag / o painel da tag aberto / o aviso do cadeado
+  const [pertoTag, setPertoTag] = useState(false)
+  const [tagAberta, setTagAberta] = useState(false)
+  const [aviso, setAviso] = useState(false)
+  useEffect(() => { definirTagLivre(tag) }, [tag])
+  useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(false), 3500); return () => clearTimeout(t) }, [aviso])
 
   // a parede mostra o que já foi assinado (a chave em texto: um [] novo a cada render não refaz nada)
   const chave = assinados.join(",")
@@ -59,18 +74,21 @@ export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = 
   // perto de um grafite ainda sem assinatura? (3x por segundo; parado com o painel aberto)
   const posRef = useRef(posicao)
   useEffect(() => { posRef.current = posicao }, [posicao])
+  const comTag = !!onTag
   useEffect(() => {
-    if (aberto) return
+    if (aberto || tagAberta) return
     const ver = () => {
       const p = posRef.current()
       const l = p ? grafitePerto(p.x, p.z) : null
       const id = l?.grafite && !chave.split(",").includes(l.grafite) ? l.grafite : null
       setPerto((a) => (a === id ? a : id))
+      const t = !id && comTag && !!p && !!tagPerto(p.x, p.z)
+      setPertoTag((a) => (a === t ? a : t))
     }
     ver()
     const i = setInterval(ver, 330)
     return () => clearInterval(i)
-  }, [aberto, chave])
+  }, [aberto, tagAberta, chave, comTag])
 
   const assinou = useCallback((id: string) => {
     assinarGrafiteNaParede(id)
@@ -82,7 +100,21 @@ export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = 
     const g = grafitePorId(aberto)
     return g ? <PainelGrafite g={g} onAssinou={assinou} onFechar={() => setAberto(null)} /> : null
   }
-  if (escondido || !perto) return null
+  if (tagAberta && onTag) return <PainelTag tag={tag} onPronto={(t) => { onTag(t); definirTagLivre(t); vib([20, 30, 40]); setTagAberta(false) }} onFechar={() => setTagAberta(false)} />
+  if (escondido) return null
+  if (!perto && pertoTag) {
+    // (T64) o grafite livre: liberado, abre a parede; trancado, o cadeado e o que libera
+    return (
+      <>
+        <button type="button" className={`gf-botao${livre ? "" : " is-trancado"}`} data-testid="grafite-livre" onClick={() => (livre ? setTagAberta(true) : setAviso((a) => !a))}>
+          <small>{livre ? "parede livre" : <><Cadeado size={9} /> parede livre</>}</small>
+          <b>{livre ? (tag ? "refazer a sua tag" : "pintar a sua tag") : "grafite livre"}</b>
+        </button>
+        {aviso && !livre && trancaLivre && <div className="gf-aviso"><Trancado texto={trancaLivre} /></div>}
+      </>
+    )
+  }
+  if (!perto) return null
   const g = grafitePorId(perto)
   if (!g) return null
   return (
@@ -145,6 +177,101 @@ export function PainelGrafite({ g, onAssinou, onFechar }: { g: Grafite; onAssino
             <br /><button type="button" className="gf-de-novo" onClick={onFechar}>voltar pro túnel</button>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+// (T64, 06/11) O GRAFITE LIVRE: a parede de perto, em branco (ou com a tag de
+// antes), e o dedo é o spray. Nada por quadro: cada movimento do dedo pinta só o
+// pedacinho novo, direto no canvas. Limites pra o save ficar pequeno.
+const CORES_TAG = ["#ff3fb0", "#22e6ff", "#ffd23f", "#7dffb0", "#f2eefa"]
+const MAX_PTS = 1200 // pontos no total (cada um = 2 inteiros no save)
+const MAX_TRACOS = 60
+export function PainelTag({ tag, onPronto, onFechar }: { tag: TagLivre | null; onPronto: (t: TagLivre) => void; onFechar: () => void }) {
+  const cv = useRef<HTMLCanvasElement>(null)
+  const tracos = useRef<TagLivre["tracos"]>(tag ? tag.tracos.map((t) => ({ cor: t.cor, pts: [...t.pts] })) : [])
+  const total = useRef(tracos.current.reduce((a, t) => a + t.pts.length / 2, 0))
+  const atual = useRef<{ cor: string; pts: number[] } | null>(null)
+  const [cor, setCor] = useState(CORES_TAG[0])
+  const [vazio, setVazio] = useState(!tracos.current.length)
+  const [cheio, setCheio] = useState(false)
+
+  const escala = () => { const c = cv.current!; return { c, g: c.getContext("2d")!, k: c.width / 200 } }
+  const pincel = (g: CanvasRenderingContext2D, k: number, c: string) => { g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = 4 * k; g.strokeStyle = c; g.shadowColor = c; g.shadowBlur = 3 * k }
+  const redesenhar = useCallback(() => {
+    const { c, g, k } = escala()
+    g.clearRect(0, 0, c.width, c.height)
+    for (const t of tracos.current) {
+      const p = t.pts
+      pincel(g, k, t.cor)
+      g.beginPath(); g.moveTo(p[0] * k, p[1] * k)
+      for (let j = 2; j < p.length; j += 2) g.lineTo(p[j] * k, p[j + 1] * k)
+      if (p.length === 2) g.lineTo(p[0] * k + 0.1, p[1] * k)
+      g.stroke()
+    }
+  }, [])
+  useEffect(() => {
+    const c = cv.current!
+    const medir = () => { const r = c.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); redesenhar() }
+    const ro = new ResizeObserver(medir)
+    ro.observe(c)
+    medir()
+    return () => ro.disconnect()
+  }, [redesenhar])
+  // as teclas não vazam pro patins
+  useEffect(() => {
+    const parar = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar(); e.stopPropagation() }
+    window.addEventListener("keydown", parar, true)
+    return () => window.removeEventListener("keydown", parar, true)
+  }, [onFechar])
+
+  const ponto = (e: React.PointerEvent<HTMLCanvasElement>): [number, number] => {
+    const r = e.currentTarget.getBoundingClientRect()
+    return [Math.max(0, Math.min(200, Math.round(((e.clientX - r.left) / r.width) * 200))), Math.max(0, Math.min(100, Math.round(((e.clientY - r.top) / r.height) * 100)))]
+  }
+  const baixo = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (total.current >= MAX_PTS || tracos.current.length >= MAX_TRACOS) { setCheio(true); return }
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const [x, y] = ponto(e)
+    const t = { cor, pts: [x, y] }
+    atual.current = t
+    tracos.current.push(t)
+    total.current++
+    const { g, k } = escala()
+    pincel(g, k, cor); g.beginPath(); g.moveTo(x * k, y * k); g.lineTo(x * k + 0.1, y * k); g.stroke()
+    setVazio(false)
+    vib(6)
+  }
+  const mexe = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const t = atual.current
+    if (!t) return
+    if (total.current >= MAX_PTS) { atual.current = null; setCheio(true); return }
+    const [x, y] = ponto(e), n = t.pts.length
+    const px = t.pts[n - 2], py = t.pts[n - 1]
+    if (Math.abs(x - px) + Math.abs(y - py) < 2) return
+    t.pts.push(x, y)
+    total.current++
+    const { g, k } = escala()
+    pincel(g, k, t.cor); g.beginPath(); g.moveTo(px * k, py * k); g.lineTo(x * k, y * k); g.stroke()
+  }
+  const solta = () => { atual.current = null }
+  const apagar = () => { tracos.current = []; total.current = 0; setVazio(true); setCheio(false); redesenhar() }
+
+  return (
+    <div className="gf-raiz is-mundo gf-tag" data-testid="grafite-livre-painel">
+      <div className="gf-topo">
+        <button type="button" className="gf-sair" onClick={onFechar}>← voltar pro túnel</button>
+        <span className="gf-tag-dica">{cheio ? "a parede encheu" : "o dedo é o spray"}</span>
+      </div>
+      <canvas ref={cv} className="gf-tag-parede" aria-label="parede livre: desenhe a sua tag"
+        onPointerDown={baixo} onPointerMove={mexe} onPointerUp={solta} onPointerCancel={solta} />
+      <div className="gf-tag-barra">
+        {CORES_TAG.map((c) => (
+          <button key={c} type="button" className={`gf-tag-cor${c === cor ? " is-on" : ""}`} style={{ background: c }} aria-label={`cor ${c}`} onClick={() => setCor(c)} />
+        ))}
+        <button type="button" className="gf-tag-bt" onClick={apagar}>apagar</button>
+        <button type="button" className="gf-tag-bt is-pronto" disabled={vazio} onClick={() => { somAssinou(); onPronto({ tracos: tracos.current.filter((t) => t.pts.length) }) }}>pintar na parede</button>
       </div>
     </div>
   )

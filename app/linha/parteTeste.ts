@@ -16,6 +16,7 @@ import { prepararMetro } from "./disco/metro"
 import type { HistoriaDisco } from "./disco/historia"
 import { MOMENTOS, ehMomentoFinal } from "./disco/final"
 import { PISTAS } from "./estrada/pistas"
+import { GRAFITES } from "./grafite/grafites"
 
 // (T02) as missões: o id das 13 (missao.drew) ou, como antes, a faixa (missao.sexta → a do Drew)
 const MISSOES = ["sexta", "dopamina", "ojala", "swav", "copo", "ontem", "rollercoaster", "chuva", "nectar"]
@@ -117,6 +118,12 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "metro") return prepararMetro(MEIO as unknown as HistoriaDisco) as unknown as Record<string, unknown>
   if (parte === "violao") return MEIO
   if (parte === "grafite") return { fase: "carreira", holo: true, missao: "tuneis", feitas13: ["dbee", "oficina"] }
+  // (T64, 06/11) o grafite livre: a missão dos túneis feita (os 3 assinados), desce
+  // livre; nas paredes da "LU2CA" (1 em cada 4) o botão "pintar a sua tag"
+  if (parte === "grafite.livre") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], grafites: GRAFITES.slice(0, 3).map((g) => g.id) }
+  // (T64, 06/11) o metrô de novo: a fuga de quando te pegam já feita (violão perdido,
+  // os 3 veículos), desce nos túneis; o trem parado no salão do metrô abre a fuga
+  if (parte === "metro.tuneis") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"], perseguicao: { fase: "escolher" }, metro: { fase: "feita", escapou: true }, perdeuViolao: true, jetpackTomado: true }
   // (T47, lote D) o elevador de terror: o meio da carreira, a sala abre ao entrar
   if (parte === "elevador") return MEIO
   // (T49, lote D) a casa da D-Bee com instrumentos no save (dois ainda não vistos:
@@ -154,7 +161,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "grafite", "elevador", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`)]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`)]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -193,7 +200,7 @@ export function aplicarParteDeTeste(): boolean {
   // (T06) a cena da casa começa no tambor (ela senta no tapete e chama)
   if (parte === "casa.tambor") url.searchParams.set("cena", "tambor")
   // (T63) as trincheiras: entrou no jogo, desce direto pela boca do túnel
-  if (parte === "missao.tuneis.trincheiras" || parte === "grafite") url.searchParams.set("descer", "tuneis")
+  if (parte === "missao.tuneis.trincheiras" || parte === "grafite" || parte === "grafite.livre" || parte === "metro.tuneis") url.searchParams.set("descer", "tuneis")
   // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
   // ponta é a da Nectar, a Sexta-Feira e a Ojalá) e o nascimento dos monumentos aparece de novo
   if (parte.startsWith("torre")) {
