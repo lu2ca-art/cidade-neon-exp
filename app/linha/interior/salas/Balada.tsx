@@ -11,10 +11,12 @@
 // ninguém filma, a roda abre e ele dança de olho fechado.
 // Colisão: quem já passou pelo bar vê ela no camarote e o Mubarak num canto.
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { texTexto } from "../../estrada/geo"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
@@ -88,18 +90,17 @@ export function SalaBalada({ estado, objetos, popularidade = 0 }: SalaProps) {
       <ambientLight intensity={0.2} color="#c8b0ff" />
       <hemisphereLight args={["#ff9fe0", "#100818", 0.3]} />
       <directionalLight position={[3, 5, 8]} intensity={0.4} color="#9fb4ff" />
-      <Sala larg={22} fundo={20} alto={7} parede="#120c1a" chao="#0b0810" teto="#060409" />
-      {/* a pista: um quadrado de luz no chão que pulsa */}
-      <Pista acertos={acertos} />
+      {/* (06/11) a balada modelada no Blender (balada.glb); enquanto baixa, ou se falhar, as caixas de antes */}
+      <ModeloSeguro nome="balada-glb" reserva={<BaladaCaixas acertos={acertos} />}>
+        <BaladaModelada acertos={acertos} />
+      </ModeloSeguro>
       <Feixes />
       {/* o DJ no fundo e o telão-feed */}
-      <Caixa pos={[0, 0.6, -8]} tam={[5, 1.2, 2]} cor="#1a1424" />
       <Neon pos={[0, 1.22, -6.98]} comp={5} cor={ROSA} luz={3} />
       <Npc cor={LILAS} pos={[0, 1.2, -8.3]} vira={0} pose="danca" dancando />
       <Feed />
       <Letreiro />
       {/* o camarote (à esquerda, alto) */}
-      <Caixa pos={[-8, 1.6, -3]} tam={[4, 0.15, 3.5]} cor="#2a1a2a" />
       <Neon pos={[-6, 1.7, -3]} comp={3.4} cor={ROSA} rot={Math.PI / 2} luz={2} />
       {bar && <Npc cor="#ff3f7a" pos={[-8.3, 1.68, -3]} vira={1.2} pele="#3a2430" falando={estado.falando === "ela"} />}
       {bar && <Npc cor="#ff6a35" pos={[8.6, 0, -6.5]} vira={-2.2} falando={estado.falando === "Mubarak"} />}
@@ -108,6 +109,77 @@ export function SalaBalada({ estado, objetos, popularidade = 0 }: SalaProps) {
       <Npc cor={ROSA} pos={[0, 0, 0]} vira={0} pose={dancando || dancou ? "danca" : "em-pe"} dancando={dancando || dancou} falando={(estado.falando === "Drew" || estado.falando === "Drewboy")} />
       <AnelRitmo pos={[0, 0.03, 0]} cor={ROSA} fase={fase} ativo={dancando && acertos < META} />
       <Camera plano={plano} />
+    </>
+  )
+}
+
+// ── (06/11) A BALADA MODELADA NO BLENDER (blender/scripts/balada.py, public/models/balada.glb):
+// o clube da Sexta-Feira. A pista de LED em grade (nó pista, malha _neon: a cor
+// do material pulsa com a batida e acende a cada acerto, sem alocar), a cabine
+// do DJ no palco baixo com as picapes e o mixer, a moldura do telão (o feed é o
+// de sempre), os paredões de som, a treliça com as cabeças dos feixes, o globo,
+// o camarote de vidro com o sofá, a escada e o VIP em neon, o bar lateral com a
+// parede de garrafas, as colunas com anéis de neon e a porta dos fundos
+// entreaberta. Tudo nas posições das caixas (o palco do DJ, o camarote, a
+// pista): a gente, os feixes, o telão e a câmera não mudam. Malhas _solido (AO e
+// luz assadas no vértice), _luz, _neon, _vidro; materiais compartilhados, sem
+// luz nova. ~19,6 mil triângulos, 185 KB.
+const URL_BALADA = "/models/balada.glb"
+let MATS_BALADA: { solido: THREE.MeshStandardMaterial; luz: THREE.MeshBasicMaterial; neon: THREE.MeshBasicMaterial; vidro: THREE.MeshBasicMaterial; led: THREE.MeshBasicMaterial } | null = null
+function matsBalada() {
+  if (!MATS_BALADA) MATS_BALADA = {
+    solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }),
+    luz: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    vidro: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false }),
+    led: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+  }
+  return MATS_BALADA
+}
+const GRUPOS_BALADA = ["solido", "luz", "neon", "vidro"] as const
+function BaladaModelada({ acertos }: { acertos: number }) {
+  const { nodes } = useGLTF(URL_BALADA) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const mats = matsBalada()
+  const partes = useMemo(() => {
+    const out: { k: string; geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }[] = []
+    for (const raiz of ["sala", "pista"]) for (const g of GRUPOS_BALADA) {
+      const o = nodes[`${raiz}_${g}`] as THREE.Mesh | undefined
+      if (!o?.geometry) continue
+      o.updateWorldMatrix(true, false)
+      const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), esc = new THREE.Vector3()
+      o.matrixWorld.decompose(pos, quat, esc)
+      out.push({ k: `${raiz}_${g}`, geo: o.geometry, mat: raiz === "pista" ? mats.led : mats[g], pos, quat, esc })
+    }
+    if (!out.some((p) => p.k === "sala_solido")) throw new Error("balada.glb sem a sala")
+    return out
+  }, [nodes, mats])
+  // o LED pulsa na batida e acende a cada acerto (só a cor do material, nada novo por quadro)
+  const ult = useRef(acertos)
+  const flash = useRef(0)
+  useFrame((s, dt) => {
+    if (acertos !== ult.current) { ult.current = acertos; flash.current = 1 }
+    flash.current = Math.max(0, flash.current - dt * 2.5)
+    mats.led.color.setScalar(0.35 + Math.abs(Math.sin(s.clock.elapsedTime * 5.6)) * 0.3 + flash.current * 0.6)
+  })
+  return (
+    <group name="balada-modelada">
+      {partes.map((p) => (
+        <mesh key={p.k} geometry={p.geo} material={p.mat} position={p.pos} quaternion={p.quat} scale={p.esc} />
+      ))}
+    </group>
+  )
+}
+useGLTF.preload(URL_BALADA)
+
+// as caixas de antes (enquanto o modelo baixa, ou se ele falhar)
+function BaladaCaixas({ acertos }: { acertos: number }) {
+  return (
+    <>
+      <Sala larg={22} fundo={20} alto={7} parede="#120c1a" chao="#0b0810" teto="#060409" />
+      {/* a pista: um quadrado de luz no chão que pulsa */}
+      <Pista acertos={acertos} />
+      <Caixa pos={[0, 0.6, -8]} tam={[5, 1.2, 2]} cor="#1a1424" />
+      <Caixa pos={[-8, 1.6, -3]} tam={[4, 0.15, 3.5]} cor="#2a1a2a" />
     </>
   )
 }

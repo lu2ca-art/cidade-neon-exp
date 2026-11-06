@@ -25,6 +25,24 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "vitrine.balada",
+    nome: "A balada da Sexta-Feira modelada no Blender",
+    data: "2026-11-06",
+    tarefa: "balada",
+    olhar: "A balada agora é um clube de verdade: a pista com o piso de LED em quadrados que pulsa na batida (e acende a cada acerto da dança), a cabine do DJ com as picapes, os paredões de som, a treliça com os feixes, o globo, o camarote de vidro com o VIP em neon, o bar com a parede de garrafas e a porta dos fundos entreaberta. A gente, o DJ, o telão e a câmera ficam onde estavam. A foto: docs/blender/balada.png.",
+    perguntas: ["Tem cara de balada cheia que ninguém dança?", "O piso de LED pulsando ficou bom (ou cansa)?", "Ficou leve no iPhone?"],
+    mais: [{ parte: "vitrine.shows", nome: "a casa de shows" }],
+  },
+  {
+    parte: "vitrine.shows",
+    nome: "A casa de shows modelada no Blender",
+    data: "2026-11-06",
+    tarefa: "shows",
+    olhar: "A casa de shows vazia depois do último show: o palco de madeira com a cortina pesada, a treliça com os refletores, os telões apagados, a grade na frente do palco, a mesa de som abandonada no meio da pista, a plateia em degraus no fundo, o bar e os copos no chão. O Alohan na beira do palco e o poste piscando no meio continuam iguais; no apagão, os neons apagam junto. A foto: docs/blender/shows.png.",
+    perguntas: ["Dá o clima de lugar parado no tempo?", "O apagão no fim ainda assusta?", "Ficou leve no iPhone?"],
+    mais: [{ parte: "vitrine.balada", nome: "a balada" }],
+  },
+  {
     parte: "livre",
     nome: "O posto de rua modelado no Blender",
     data: "2026-11-06",
