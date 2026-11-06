@@ -115,6 +115,8 @@ export interface HistoriaDisco {
   metro?: EstadoMetro
   // (T64, lote D) os grafites assinados nas paredes das trincheiras (disco/Grafite.tsx)
   grafites?: string[]
+  // (T64, 06/11) o grafite livre: a tag desenhada à mão (grafite/tipos.ts), na parede depois da missão
+  tagLivre?: import("../grafite/tipos").TagLivre
 }
 
 // (A8) o que o metrô tira dele: fica no save de uma vez (puras, o C2 e a page.tsx chamam)

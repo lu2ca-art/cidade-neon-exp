@@ -12,7 +12,7 @@ import {
   type Avenida, type Caixa, type P2, type Salao,
 } from "./mapa"
 import { GRAFITES } from "../grafite/grafites"
-import type { Grafite } from "../grafite/tipos"
+import type { Grafite, TagLivre } from "../grafite/tipos"
 
 const BEIRA = 4 // a laje do teto pra fora da parede
 const ALTO_TORRE = 160
@@ -249,10 +249,39 @@ function pintarGrafite(g: CanvasRenderingContext2D, i: number, gr: Grafite, feit
   g.restore()
 }
 
+// (T64, 06/11) o grafite livre: a tag do jogador no lugar da "LU2CA" fixa (o 4º
+// espaço, 1 em cada 4 paredes). Pinta uma vez, ao carregar ou ao terminar a tag
+let tagLivre: TagLivre | null = null
+function pintarTagLivre(g: CanvasRenderingContext2D, i: number, t: TagLivre) {
+  const x0 = (i % 2) * 512, y0 = Math.floor(i / 2) * 256, k = 512 / 200
+  g.save()
+  g.fillStyle = "#000"; g.fillRect(x0, y0, 512, 256)
+  g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = 10
+  for (const tr of t.tracos) {
+    const p = tr.pts
+    if (p.length < 2) continue
+    g.strokeStyle = tr.cor; g.shadowColor = tr.cor; g.shadowBlur = 12
+    g.beginPath(); g.moveTo(x0 + p[0] * k, y0 + p[1] * k)
+    for (let j = 2; j < p.length; j += 2) g.lineTo(x0 + p[j] * k, y0 + p[j + 1] * k)
+    if (p.length === 2) g.lineTo(x0 + p[0] * k + 0.1, y0 + p[1] * k)
+    g.stroke()
+  }
+  g.restore()
+}
 function pintarEspaco(g: CanvasRenderingContext2D, i: number) {
   const gr = GRAFITES_NA_PAREDE[i]
   if (gr) pintarGrafite(g, i, gr, assinados.has(gr.id))
+  else if (tagLivre && tagLivre.tracos.length) pintarTagLivre(g, i, tagLivre)
   else pintarTag(g, i, TAG_FIXA)
+}
+/** a tag livre do save (null = a "LU2CA" fixa): repinta só os espaços sem grafite do T12 */
+export function definirTagLivre(t: TagLivre | null) {
+  if (t === tagLivre) return
+  tagLivre = t
+  if (!atlasAtual) return
+  const g = atlasAtual.c.getContext("2d")!
+  for (let i = GRAFITES_NA_PAREDE.length; i < 4; i++) pintarEspaco(g, i)
+  atlasAtual.t.needsUpdate = true
 }
 
 export function texturaAtlas() {
@@ -339,6 +368,17 @@ export function grafitePerto(x: number, z: number, raio = 14): LugarGrafite | nu
   let melhor: LugarGrafite | null = null, d2m = raio * raio
   for (const l of lugaresGrafite()) {
     if (!l.grafite) continue
+    const d2 = (l.x - x) ** 2 + (l.z - z) ** 2
+    if (d2 < d2m) { d2m = d2; melhor = l }
+  }
+  return melhor
+}
+
+// (T64, 06/11) a parede da tag (sem grafite do T12) mais perto: o grafite livre
+export function tagPerto(x: number, z: number, raio = 14): LugarGrafite | null {
+  let melhor: LugarGrafite | null = null, d2m = raio * raio
+  for (const l of lugaresGrafite()) {
+    if (l.grafite) continue
     const d2 = (l.x - x) ** 2 + (l.z - z) ** 2
     if (d2 < d2m) { d2m = d2; melhor = l }
   }
