@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.tuneis.trincheiras",
+    nome: "Os patins, o skate e a BMX modelados no Blender",
+    data: "2026-11-06",
+    tarefa: "rodas",
+    olhar: "Lá embaixo, nas trincheiras, escolha patins, skate ou BMX: os três agora são de sucata do subúrbio com neon. Os patins são tênis velhos com rodas neon e o jato nas costas é um extintor e um botijão (a chama acende no propulsor); o skate é uma tábua com placa de rua embaixo; a BMX tem a placa \"12\" e um tubo enferrujado. As rodas giram, o guidão vira e as manobras são as mesmas. A foto: docs/blender/rodas.png.",
+    perguntas: ["Os três parecem feitos de sucata, com neon, como a moto?", "As rodas giram e as manobras (barspin, tailwhip, kickflip) ficaram certas?", "Ficou leve no iPhone?"],
+    mais: [{ parte: "carreira.meio", nome: "de patins na rua (o jato no propulsor)" }],
+  },
+  {
     parte: "bar",
     nome: "O bar do prólogo (O COPO) modelado no Blender",
     data: "2026-11-06",

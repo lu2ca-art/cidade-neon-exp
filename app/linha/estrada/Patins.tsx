@@ -6,15 +6,34 @@
 // Heist). O corpo empurra de lado, alternando as pernas, os braços balançam
 // e ele inclina pra dentro da curva.
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
-import { useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
+import { ModeloSeguro } from "./Seguro"
+import { MAT_PECAS, URL_RODAS, geoDoNo } from "./pecas"
 
 const PELE = "#5a3a26"
 
 // (19/10) no ar ele encolhe (joelhos no peito, braços abertos pro equilíbrio)
 // e, no propulsor, o jato de ar das costas acende
-export function Patinador({ vel, steer, ar = () => false, jato = () => false }: { vel: () => number; steer: () => number; ar?: () => boolean; jato?: () => boolean }) {
+type PropsPatins = { vel: () => number; steer: () => number; ar?: () => boolean; jato?: () => boolean }
+// (06/11) os patins e o jato modelados no Blender (blender/scripts/rodas.py →
+// public/models/rodas.glb): "patins" no referencial da perna (o mesmo nas duas) e
+// "jato" no do corpo, desenhados pelo MAT_PECAS. A chama continua a daqui.
+type GeoPatins = { patins: THREE.BufferGeometry; jato: THREE.BufferGeometry }
+function PatinsGlb(p: PropsPatins) {
+  const { nodes } = useGLTF(URL_RODAS) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const geo = useMemo<GeoPatins>(() => ({ patins: geoDoNo(nodes, "patins", "rodas.glb"), jato: geoDoNo(nodes, "jato", "rodas.glb") }), [nodes])
+  useEffect(() => () => { geo.patins.dispose(); geo.jato.dispose() }, [geo])
+  return <PatinadorCorpo {...p} geo={geo} />
+}
+/** o patinador: os patins e o jato do Blender; enquanto carrega (e se falhar), os procedurais */
+export function Patinador(p: PropsPatins) {
+  return <ModeloSeguro nome="patins-glb" reserva={<PatinadorCorpo {...p} />}><PatinsGlb {...p} /></ModeloSeguro>
+}
+
+function PatinadorCorpo({ vel, steer, ar = () => false, jato = () => false, geo }: PropsPatins & { geo?: GeoPatins }) {
   const corpo = useRef<THREE.Group>(null)
   const pernas = useRef<(THREE.Group | null)[]>([])
   const bracos = useRef<(THREE.Group | null)[]>([])
@@ -56,7 +75,7 @@ export function Patinador({ vel, steer, ar = () => false, jato = () => false }: 
       <mesh position={[0, 1.83, 0.05]} rotation-x={-0.2}><cylinderGeometry args={[0.16, 0.16, 0.07, 14]} /><meshStandardMaterial color="#14121c" /></mesh>
       <mesh position={[0, 1.81, 0.2]}><boxGeometry args={[0.22, 0.02, 0.14]} /><meshStandardMaterial color="#14121c" /></mesh>
       {/* o jato de ar das costas (o propulsor do patins) e a chama dele */}
-      <mesh position={[0, 1.36, -0.2]}><boxGeometry args={[0.3, 0.36, 0.14]} /><meshStandardMaterial color="#1b1530" emissive="#2fe8ff" emissiveIntensity={0.25} /></mesh>
+      {geo ? <mesh geometry={geo.jato} material={MAT_PECAS} /> : <mesh position={[0, 1.36, -0.2]}><boxGeometry args={[0.3, 0.36, 0.14]} /><meshStandardMaterial color="#1b1530" emissive="#2fe8ff" emissiveIntensity={0.25} /></mesh>}
       <mesh ref={chama} position={[0, 0.96, -0.22]} rotation-x={Math.PI} visible={false}>
         <coneGeometry args={[0.12, 0.6, 10, 1, true]} />
         <meshBasicMaterial color="#7ff4ff" transparent opacity={0.85} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
@@ -74,11 +93,13 @@ export function Patinador({ vel, steer, ar = () => false, jato = () => false }: 
         <group key={i} ref={(p) => { pernas.current[i] = p }} position={[l * 0.12, 0.94, 0]}>
           <mesh position={[0, -0.4, 0]}><boxGeometry args={[0.15, 0.8, 0.17]} /><meshStandardMaterial color="#1b1530" /></mesh>
           {/* o patins: bota, base e as quatro rodas */}
+          {geo ? <mesh geometry={geo.patins} material={MAT_PECAS} /> : <>
           <mesh position={[0, -0.82, 0.05]}><boxGeometry args={[0.16, 0.16, 0.32]} /><meshStandardMaterial color="#f2eefa" /></mesh>
           <mesh position={[0, -0.92, 0.05]}><boxGeometry args={[0.08, 0.04, 0.34]} /><meshStandardMaterial color="#ffc857" /></mesh>
           {[-0.12, -0.04, 0.04, 0.12].map((z) => (
             <mesh key={z} position={[0, -0.97, 0.05 + z]} rotation-z={Math.PI / 2}><cylinderGeometry args={[0.035, 0.035, 0.05, 10]} /><meshStandardMaterial color="#2fe8ff" emissive="#2fe8ff" emissiveIntensity={0.8} /></mesh>
           ))}
+          </>}
         </group>
       ))}
     </group>

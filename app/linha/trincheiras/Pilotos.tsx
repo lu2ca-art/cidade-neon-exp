@@ -11,6 +11,7 @@
 
 import { useGLTF } from "@react-three/drei"
 import { ModeloSeguro } from "../estrada/Seguro"
+import { MAT_PECAS, geoDoNo, URL_RODAS } from "../estrada/pecas"
 import { useFrame } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, type ReactNode } from "react"
 import * as THREE from "three"
@@ -33,7 +34,21 @@ function Cabeca() {
   )
 }
 
-function Roda({ r }: { r: React.RefObject<THREE.Group | null> }) {
+// (06/11) a BMX e o skate modelados no Blender (blender/scripts/rodas.py →
+// public/models/rodas.glb): os mesmos grupos que animam (as duas rodas, o guidão
+// do barspin, o quadro do tailwhip, a prancha do flip), cada um UMA malha no
+// referencial do pivô do código, desenhada pelo MAT_PECAS. O disco neon das rodas
+// (transparente) continua à parte, com um material só pras duas.
+type GeoBmx = { rodaT: THREE.BufferGeometry; rodaF: THREE.BufferGeometry; guidao: THREE.BufferGeometry; quadro: THREE.BufferGeometry }
+const DISCO_BMX = new THREE.MeshBasicMaterial({ color: NEON, transparent: true, opacity: 0.35, toneMapped: false })
+
+function Roda({ r, geo }: { r: React.RefObject<THREE.Group | null>; geo?: THREE.BufferGeometry }) {
+  if (geo) return (
+    <group ref={r}>
+      <mesh geometry={geo} material={MAT_PECAS} />
+      <mesh rotation-z={Math.PI / 2} material={DISCO_BMX}><cylinderGeometry args={[0.2, 0.2, 0.02, 8]} /></mesh>
+    </group>
+  )
   return (
     <group ref={r}>
       <mesh rotation-y={Math.PI / 2}><torusGeometry args={[0.27, 0.035, 6, 20]} /><meshStandardMaterial color={ESCURO} roughness={0.8} /></mesh>
@@ -44,7 +59,21 @@ function Roda({ r }: { r: React.RefObject<THREE.Group | null> }) {
   )
 }
 
-export function Ciclista({ vel, steer, ar, manobra }: Props) {
+function BmxGlb(p: Props) {
+  const { nodes } = useGLTF(URL_RODAS) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const geo = useMemo<GeoBmx>(() => {
+    const um = (n: string) => geoDoNo(nodes, n, "rodas.glb")
+    return { rodaT: um("bmx_roda_t"), rodaF: um("bmx_roda_f"), guidao: um("bmx_guidao"), quadro: um("bmx_quadro") }
+  }, [nodes])
+  useEffect(() => () => { geo.rodaT.dispose(); geo.rodaF.dispose(); geo.guidao.dispose(); geo.quadro.dispose() }, [geo])
+  return <CiclistaCorpo {...p} geo={geo} />
+}
+/** o piloto de BMX: a bicicleta do Blender; enquanto carrega (e se falhar), a procedural */
+export function Ciclista(p: Props) {
+  return <ModeloSeguro nome="bmx-glb" reserva={<CiclistaCorpo {...p} />}><BmxGlb {...p} /></ModeloSeguro>
+}
+
+function CiclistaCorpo({ vel, steer, ar, manobra, geo }: Props & { geo?: GeoBmx }) {
   const corpo = useRef<THREE.Group>(null)
   const quadro = useRef<THREE.Group>(null)
   const guidao = useRef<THREE.Group>(null)
@@ -77,19 +106,23 @@ export function Ciclista({ vel, steer, ar, manobra }: Props) {
       <group position={[0, 0, 0.45]}>
         <group ref={quadro}>
           <group position={[0, 0, -0.45]}>
-            <group position={[0, 0.3, -0.5]}><Roda r={rodaT} /></group>
+            <group position={[0, 0.3, -0.5]}><Roda r={rodaT} geo={geo?.rodaT} /></group>
+            {geo ? <mesh geometry={geo.quadro} material={MAT_PECAS} /> : <>
             <mesh position={[0, 0.42, -0.02]} rotation-x={-0.12}><boxGeometry args={[0.06, 0.06, 0.95]} /><meshStandardMaterial color={CASACO} metalness={0.4} roughness={0.4} /></mesh>
             <mesh position={[0, 0.36, -0.28]} rotation-x={0.75}><boxGeometry args={[0.05, 0.05, 0.5]} /><meshStandardMaterial color={CASACO} metalness={0.4} roughness={0.4} /></mesh>
             <mesh position={[0, 0.62, -0.3]}><boxGeometry args={[0.1, 0.05, 0.22]} /><meshStandardMaterial color={ESCURO} /></mesh>
             <mesh position={[0, 0.3, -0.05]} rotation-z={Math.PI / 2}><cylinderGeometry args={[0.07, 0.07, 0.06, 10]} /><meshStandardMaterial color="#ffc857" /></mesh>
             {/* os pegs (onde o piloto pisa) */}
             <mesh position={[0, 0.3, -0.05]} rotation-z={Math.PI / 2}><cylinderGeometry args={[0.03, 0.03, 0.42, 6]} /><meshStandardMaterial color="#c9c3d6" metalness={0.6} roughness={0.3} /></mesh>
+            </>}
           </group>
         </group>
         <group ref={guidao}>
-          <group position={[0, 0.3, 0.07]}><Roda r={rodaF} /></group>
+          <group position={[0, 0.3, 0.07]}><Roda r={rodaF} geo={geo?.rodaF} /></group>
+          {geo ? <mesh geometry={geo.guidao} material={MAT_PECAS} /> : <>
           <mesh position={[0, 0.55, 0.04]} rotation-x={0.25}><boxGeometry args={[0.05, 0.52, 0.05]} /><meshStandardMaterial color={CASACO} metalness={0.4} roughness={0.4} /></mesh>
           <mesh position={[0, 0.84, 0]}><boxGeometry args={[0.62, 0.04, 0.04]} /><meshStandardMaterial color={ESCURO} /></mesh>
+          </>}
         </group>
       </group>
       {/* o piloto em pé nos pegs, debruçado no guidão */}
@@ -109,7 +142,18 @@ export function Ciclista({ vel, steer, ar, manobra }: Props) {
   )
 }
 
-export function Skatista({ vel, steer, ar, manobra, grind = () => false, empurra = () => false }: Props) {
+function SkateGlb(p: Props) {
+  const { nodes } = useGLTF(URL_RODAS) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const geo = useMemo(() => geoDoNo(nodes, "skate", "rodas.glb"), [nodes])
+  useEffect(() => () => geo.dispose(), [geo])
+  return <SkatistaCorpo {...p} geo={geo} />
+}
+/** o skatista: a prancha do Blender; enquanto carrega (e se falhar), a procedural */
+export function Skatista(p: Props) {
+  return <ModeloSeguro nome="skate-glb" reserva={<SkatistaCorpo {...p} />}><SkateGlb {...p} /></ModeloSeguro>
+}
+
+function SkatistaCorpo({ vel, steer, ar, manobra, grind = () => false, empurra = () => false, geo }: Props & { geo?: THREE.BufferGeometry }) {
   const corpo = useRef<THREE.Group>(null)
   const prancha = useRef<THREE.Group>(null)
   const peTras = useRef<THREE.Group>(null)
@@ -145,6 +189,7 @@ export function Skatista({ vel, steer, ar, manobra, grind = () => false, empurra
   return (
     <group ref={corpo}>
       <group ref={prancha}>
+        {geo ? <mesh geometry={geo} material={MAT_PECAS} /> : <>
         <mesh position={[0, 0.13, 0]}><boxGeometry args={[0.26, 0.035, 0.86]} /><meshStandardMaterial color={ESCURO} /></mesh>
         <mesh position={[0, 0.11, 0]}><boxGeometry args={[0.2, 0.01, 0.8]} /><meshStandardMaterial color={CASACO} /></mesh>
         {[-0.28, 0.28].map((z) => (
@@ -155,6 +200,7 @@ export function Skatista({ vel, steer, ar, manobra, grind = () => false, empurra
             ))}
           </group>
         ))}
+        </>}
       </group>
       {/* a faísca do grind, no truck de trás */}
       <mesh ref={faisca} position={[0, 0.06, -0.38]} rotation-x={-Math.PI / 2} visible={false}>
@@ -205,23 +251,8 @@ const MAT_MOTO = {
 // (leveza parte 2) as peças paradas de cada grupo animado viram UMA geometria (rodas,
 // garfo, quadro, piloto): ~25 draws → 7. As peças têm cores, roughness, metalness e
 // brilho diferentes; vão por vértice (cor = vertexColors; aRM e aEmi no shader) e um
-// material só desenha todas. Os valores saem do MAT_MOTO (o mesmo visual). O aro
+// material só desenha todas (MAT_PECAS, em estrada/pecas.ts). Os valores saem do MAT_MOTO (o mesmo visual). O aro
 // (transparente) continua à parte, uma por roda.
-const MAT_PECAS = (() => {
-  const m = new THREE.MeshStandardMaterial({ vertexColors: true })
-  m.onBeforeCompile = (sh) => {
-    sh.vertexShader = sh.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec2 aRM;\nattribute vec3 aEmi;\nvarying vec2 vRM;\nvarying vec3 vEmi;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvRM = aRM;\nvEmi = aEmi;")
-    sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", "#include <common>\nvarying vec2 vRM;\nvarying vec3 vEmi;")
-      .replace("vec3 totalEmissiveRadiance = emissive;", "vec3 totalEmissiveRadiance = vEmi;")
-      .replace("#include <roughnessmap_fragment>", "float roughnessFactor = vRM.x;")
-      .replace("#include <metalnessmap_fragment>", "float metalnessFactor = vRM.y;")
-  }
-  m.customProgramCacheKey = () => "moto-pecas"
-  return m
-})()
 type V3 = [number, number, number]
 type Peca = [THREE.BufferGeometry, Exclude<keyof typeof MAT_MOTO, "aro">, V3?, V3?]
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1), _c = new THREE.Color()
@@ -297,30 +328,8 @@ function geoPiloto() {
 // que viram "aRM"/"aEmi" do MAT_PECAS (continua 7 desenhos). O meshopt quantiza a posição
 // e guarda a escala no nó: aplico a matriz do nó numa cópia em float.
 const URL_MOTO = "/models/moto.glb"
-function emFloat(a: THREE.BufferAttribute | THREE.InterleavedBufferAttribute) {
-  const n = a.count, k = a.itemSize, out = new Float32Array(n * k)
-  for (let i = 0; i < n; i++) for (let j = 0; j < k; j++) out[i * k + j] = a.getComponent(i, j)
-  return new THREE.BufferAttribute(out, k)
-}
 function geoDoGlb(nodes: Record<string, THREE.Object3D>): GeoMoto {
-  const um = (nome: string) => {
-    const o = nodes[nome] as THREE.Mesh | undefined
-    const src = o?.isMesh ? o.geometry : null
-    const pos = src?.getAttribute("position"), nor = src?.getAttribute("normal"), cor = src?.getAttribute("color")
-    const rm = src?.getAttribute("_rm"), emi = src?.getAttribute("_emi")
-    if (!o || !src || !pos || !nor || !cor || !rm || !emi || !src.index) throw new Error(`moto.glb: falta ${nome}`)
-    const g = new THREE.BufferGeometry()
-    g.setIndex(src.index.clone())
-    g.setAttribute("position", emFloat(pos))
-    g.setAttribute("normal", emFloat(nor))
-    g.setAttribute("color", emFloat(cor))
-    g.setAttribute("aRM", emFloat(rm))
-    g.setAttribute("aEmi", emFloat(emi))
-    o.updateMatrix()
-    g.applyMatrix4(o.matrix)
-    g.computeBoundingSphere()
-    return g
-  }
+  const um = (nome: string) => geoDoNo(nodes, nome, "moto.glb")
   return { rodaT: um("roda_t"), rodaF: um("roda_f"), garfo: um("garfo"), quadro: um("quadro") }
 }
 function PneuCravo({ r, geo }: { r: React.RefObject<THREE.Group | null>; geo: THREE.BufferGeometry }) {
