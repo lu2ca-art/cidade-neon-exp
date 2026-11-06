@@ -185,7 +185,7 @@ function Planta({ k }: { k: number }) {
     // as folhas caídas levantam conforme rega
     for (const f of murcha.current) if (f) f.rotation.z = -0.9 * (1 - kk.current) - 0.15
   })
-  const verde = new THREE.Color("#6a7a48").lerp(new THREE.Color("#2fa84a"), k)
+  const verde = useMemo(() => new THREE.Color("#6a7a48").lerp(new THREE.Color("#2fa84a"), k), [k])
   return (
     <group ref={g}>
       <mesh position={[0, 0.55, 0]}><cylinderGeometry args={[0.016, 0.03, 1.1, 6]} /><meshStandardMaterial color="#4a7a3a" /></mesh>

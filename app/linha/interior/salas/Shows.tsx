@@ -14,6 +14,7 @@ import * as THREE from "three"
 import { texTexto } from "../../estrada/geo"
 import { ModeloSeguro } from "../../estrada/Seguro"
 import { Caixa, Neon, Npc, Sala } from "../comum"
+import { GRUPOS_SALA, matsSala } from "../modelo"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const OURO = "#ffc857"
@@ -75,23 +76,12 @@ export function SalaShows({ estado }: SalaProps) {
 // compartilhados, sem luz nova; no apagão o neon e o painel do bar escurecem
 // (só quando muda). ~19,3 mil triângulos, 195 KB.
 const URL_SHOWS = "/models/shows.glb"
-let MATS_SHOWS: { solido: THREE.MeshStandardMaterial; luz: THREE.MeshBasicMaterial; neon: THREE.MeshBasicMaterial; vidro: THREE.MeshBasicMaterial } | null = null
-function matsShows() {
-  if (!MATS_SHOWS) MATS_SHOWS = {
-    solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }),
-    luz: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
-    neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
-    vidro: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.82, depthWrite: false }),
-  }
-  return MATS_SHOWS
-}
-const GRUPOS_SHOWS = ["solido", "luz", "neon", "vidro"] as const
 function ShowsModelada({ apagou }: { apagou: boolean }) {
   const { nodes } = useGLTF(URL_SHOWS) as unknown as { nodes: Record<string, THREE.Object3D> }
-  const mats = matsShows()
+  const mats = matsSala(0.82)
   const partes = useMemo(() => {
     const out: { k: string; geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }[] = []
-    for (const g of GRUPOS_SHOWS) {
+    for (const g of GRUPOS_SALA) {
       const o = nodes[`sala_${g}`] as THREE.Mesh | undefined
       if (!o?.geometry) continue
       o.updateWorldMatrix(true, false)
@@ -134,6 +124,7 @@ function Poste({ apagou }: { apagou: boolean }) {
   const luz = useRef<THREE.PointLight>(null)
   const bulbo = useRef<THREE.MeshBasicMaterial>(null)
   const t0 = useRef<number | null>(null)
+  const cores = useMemo(() => ({ on: new THREE.Color("#fff0c8"), off: new THREE.Color("#201a10") }), [])
   useFrame((s) => {
     const t = s.clock.elapsedTime
     let on = Math.sin(t * 7) > -0.85 && Math.sin(t * 1.3) > -0.95
@@ -143,7 +134,7 @@ function Poste({ apagou }: { apagou: boolean }) {
       on = d < 1.8 ? Math.floor(d / 0.3) % 2 === 0 : false
     }
     if (luz.current) luz.current.intensity = on ? 10 : 0
-    if (bulbo.current) bulbo.current.color.set(on ? "#fff0c8" : "#201a10")
+    if (bulbo.current) bulbo.current.color.copy(on ? cores.on : cores.off)
   })
   return (
     <group position={[0, 0, 1]}>

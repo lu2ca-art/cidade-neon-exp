@@ -14,7 +14,7 @@ Escopo: `git diff 06bdb7e..HEAD` (postos, elevador antigo, balada, shows, topo, 
 - **`useGLTF.clear`:** só o terror.glb é limpo; os glbs das salas ficam no cache (~100-190 KB cada) e geometrias do cache não sofrem dispose pelo R3F.
 - **Mesa/VISITAS:** `vitrine.beco/escondido/posto/terraco/balada/shows/drewboy`, `elevador` e `livre` estão em `PARTES_TESTE`; as visitas passam por `visitarSala` → `cenaDe(lugar)` e existem cenas pra todos os lugares (beco, escondido, posto, topo, balada, casa-shows, casa-drewboy). "Há três postos" confere com `postos.ts`.
 
-## Pendências pequenas (não mexidas)
-- `matsBalada`, `matsShows` e `modelo.tsx` repetem a mesma fábrica de materiais (só mudam a opacidade do vidro e o `led`); dá pra unificar depois.
-- `Topo.tsx` (`color.set` por quadro) e `Poste` em `Shows.tsx` são de antes; mesma troca por cores pré-criadas se pesar.
-- `Escondido.tsx` `Planta`: `new THREE.Color` por render (re-renderiza só quando `k` muda).
+## Pendências pequenas (fechadas no mesmo ramo)
+- Fábrica única `matsSala(opVidro)` em `interior/modelo.tsx` (Balada 0,55, Shows 0,82, Topo/Quarto/Beco/Escondido/Posto 0,6); a Balada só soma o material do LED. Visual igual.
+- `Topo.tsx` (`Pisca`) e `Poste` em `Shows.tsx`: cores pré-criadas + `copy` no lugar de `color.set(string)` por quadro.
+- `Escondido.tsx` `Planta`: `verde` em `useMemo([k])`.

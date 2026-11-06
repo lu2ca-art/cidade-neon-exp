@@ -75,7 +75,8 @@ export function SalaTopo({ estado }: SalaProps) {
 
 function Pisca({ pos }: { pos: [number, number, number] }) {
   const m = useRef<THREE.MeshBasicMaterial>(null)
-  useFrame((s) => { if (m.current) m.current.color.set(Math.sin(s.clock.elapsedTime * 3) > 0.6 ? "#ff2a2a" : "#300808") })
+  const cores = useMemo(() => ({ on: new THREE.Color("#ff2a2a"), off: new THREE.Color("#300808") }), [])
+  useFrame((s) => { if (m.current) m.current.color.copy(Math.sin(s.clock.elapsedTime * 3) > 0.6 ? cores.on : cores.off) })
   return (
     <mesh position={pos}>
       <sphereGeometry args={[0.1, 8, 6]} />

@@ -21,6 +21,7 @@ import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
 import { AnelRitmo, Caixa, Multidao, Neon, Npc, Sala, useRitmo, type Pessoa } from "../comum"
+import { GRUPOS_SALA, matsSala } from "../modelo"
 import { Camera, useToqueLivre, type Plano, type SalaProps } from "../motor"
 
 const ROSA = "#ff3fb0"
@@ -125,24 +126,13 @@ export function SalaBalada({ estado, objetos, popularidade = 0 }: SalaProps) {
 // luz assadas no vértice), _luz, _neon, _vidro; materiais compartilhados, sem
 // luz nova. ~19,6 mil triângulos, 185 KB.
 const URL_BALADA = "/models/balada.glb"
-let MATS_BALADA: { solido: THREE.MeshStandardMaterial; luz: THREE.MeshBasicMaterial; neon: THREE.MeshBasicMaterial; vidro: THREE.MeshBasicMaterial; led: THREE.MeshBasicMaterial } | null = null
-function matsBalada() {
-  if (!MATS_BALADA) MATS_BALADA = {
-    solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }),
-    luz: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
-    neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
-    vidro: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false }),
-    led: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
-  }
-  return MATS_BALADA
-}
-const GRUPOS_BALADA = ["solido", "luz", "neon", "vidro"] as const
+const LED_BALADA = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
 function BaladaModelada({ acertos }: { acertos: number }) {
   const { nodes } = useGLTF(URL_BALADA) as unknown as { nodes: Record<string, THREE.Object3D> }
-  const mats = matsBalada()
+  const mats = { ...matsSala(0.55), led: LED_BALADA }
   const partes = useMemo(() => {
     const out: { k: string; geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }[] = []
-    for (const raiz of ["sala", "pista"]) for (const g of GRUPOS_BALADA) {
+    for (const raiz of ["sala", "pista"]) for (const g of GRUPOS_SALA) {
       const o = nodes[`${raiz}_${g}`] as THREE.Mesh | undefined
       if (!o?.geometry) continue
       o.updateWorldMatrix(true, false)
