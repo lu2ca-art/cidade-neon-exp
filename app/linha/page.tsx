@@ -1905,6 +1905,8 @@ export default function LinhaPage() {
   const doMundo = useRef(false)
   const [lojaAba, setLojaAba] = useState<Categoria>("disco")
   const voltarDoApp = () => { setTela(doMundo.current ? { t: "corrida", destino: null } : { t: "home" }); doMundo.current = false; setLojaAba("disco") }
+  // saiu do app por outro caminho (home, outra tela): o "voltar" não leva mais pra estrada
+  useEffect(() => { if (tela.t !== "app") doMundo.current = false }, [tela.t])
   const fecharJanelaChao = useCallback(() => { setJanelaChao(null); barFechou.current = Date.now() }, [])
   const trancaChao = (id: LugarAberto): string | null => {
     const E = ENTRADAS[id]
@@ -2790,7 +2792,7 @@ export default function LinhaPage() {
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
         {portaChao && tela.t === "corrida" && !cena && !janelaChao && (() => {
           const t = trancaChao(portaChao)
-          return <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: CHAO_LUGARES[portaChao].cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrarNoChao(portaChao)}>{t && <Cadeado />}entrar · {ENTRADAS[portaChao].nome}{t ? " · ver" : ""}</button>
+          return <button type="button" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: CHAO_LUGARES[portaChao].cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrarNoChao(portaChao)}>{t && <Cadeado />}entrar · {ENTRADAS[portaChao].nome}{t ? " · ver" : ""}</button>
         })()}
         {janelaChao && <div className="l-janela-mundo"><AppJanela app={janelaChao.app} rota={janelaChao.rota} onFechar={fecharJanelaChao} /></div>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}

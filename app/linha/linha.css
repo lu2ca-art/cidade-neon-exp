@@ -3078,3 +3078,5 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 
 /* (06/11) a página de um lugar do chão do subúrbio, aberta por cima do jogo (disco/abertos.ts) */
 .l-janela-mundo { position: fixed; inset: 0; z-index: 75; }
+/* (revisão 06/11) o "entrar" dos lugares do chão fica abaixo do "voltar pra Kombi"/moto (196/250px), sem se sobrepor */
+.l-regar-btn.is-chao { top: calc(304px + env(safe-area-inset-top)); }
