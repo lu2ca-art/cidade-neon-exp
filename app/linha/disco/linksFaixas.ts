@@ -3,8 +3,8 @@
 // obrigatório, nunca missão. Sem link aqui, o botão nem aparece.
 //
 // (05/11) Preenchido com os links que já estavam em ../plataformas.tsx: o `smart` é o
-// song.link da faixa no Spotify (abre a página com todos os apps). Swav, Rollercoaster
-// e Ojalá ainda não têm faixa lançada: caem no perfil do LU2CA (LINK_ARTISTA).
+// song.link da faixa no Spotify (abre a página com todos os apps). Swav e Rollercoaster
+// ainda não têm faixa lançada: caem no perfil do LU2CA (LINK_ARTISTA). O Ojalá saiu 06/11.
 //
 // ── COMO PREENCHER (pro dono) ──
 // Para cada faixa, cole o link entre as aspas. O melhor é o `smart`: o link
@@ -35,7 +35,7 @@ export const LINKS_FAIXAS: Record<PistaId, LinksFaixa> = {
   rollercoaster: { smart: "", spotify: "", apple: "", youtube: "" }, // Rollercoaster
   dopamina: { smart: "https://song.link/s/3VY1XVScepLnITFdvGRlkn", spotify: "https://open.spotify.com/track/3VY1XVScepLnITFdvGRlkn", apple: "", youtube: "" }, // DopaminA
   chuva: { smart: "https://song.link/s/1JT0MfwIqtr1RxXxtxLChA", spotify: "https://open.spotify.com/track/1JT0MfwIqtr1RxXxtxLChA", apple: "", youtube: "" }, // CHUVA
-  ojala: { smart: "", spotify: "", apple: "", youtube: "" }, // Ojalá
+  ojala: { smart: "https://song.link/s/6xKW52exqgwgTv4scGBjX6", spotify: "https://open.spotify.com/track/6xKW52exqgwgTv4scGBjX6", apple: "", youtube: "" }, // Ojalá (saiu 06/11)
   nectar: { smart: "https://song.link/s/1xmpDdYDKLx9UhiqMkUiop", spotify: "https://open.spotify.com/track/1xmpDdYDKLx9UhiqMkUiop", apple: "", youtube: "" }, // Nectar
 }
 

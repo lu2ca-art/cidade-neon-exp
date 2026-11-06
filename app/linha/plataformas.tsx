@@ -64,7 +64,12 @@ export const LINKS: Partial<Record<EstacaoId, Partial<Record<PlataformaId, strin
     youtube: yt("nectar"),
     // deezer: ainda não aparecia na busca do Deezer em 16/10 (cai no artista)
   },
-  // ojala, swav, rollercoaster: no dia de cada lançamento
+  ojala: {
+    spotify: "https://open.spotify.com/track/6xKW52exqgwgTv4scGBjX6",
+    youtube: yt("Ojalá"),
+    // apple, deezer: o Ojalá saiu hoje (06/11); entram quando aparecerem na busca
+  },
+  // swav, rollercoaster: no dia de cada lançamento
 }
 
 // Pré-save (smartlink da Ditto) das faixas que ainda não saíram. No dia do

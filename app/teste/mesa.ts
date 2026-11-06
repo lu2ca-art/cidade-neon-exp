@@ -25,6 +25,13 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Ojalá saiu: o ♥ salvar abre a faixa de verdade",
+    data: "2026-11-06",
+    olhar: "Na rua do Ojalá, o ♪ → ♥ salvar agora abre o Ojalá no Spotify (pela página do song.link, com todos os apps), não mais o seu perfil. A data de lançamento no jogo foi corrigida pra 06/11.",
+    perguntas: ["Na rua do Ojalá, o ♥ salvar abriu a faixa certa?"],
+  },
+  {
     parte: "dunas",
     nome: "O começo pra quem nunca jogou (sem travas)",
     data: "2026-11-05",
