@@ -19,6 +19,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import { ModeloSeguro } from "../estrada/Seguro"
+import { segurarGlb } from "../estrada/glbUso"
 import { useEffect, useMemo, useRef, type ReactNode } from "react"
 import * as THREE from "three"
 import { DPR } from "@/app/linha/estrada/resolucao"
@@ -377,7 +378,7 @@ export function PocoTerror({ onFim }: { onFim: () => void }) {
   // (revisão 6) rede de segurança: contexto WebGL perdido (iOS) para o relógio do useFrame; ele não fica preso
   useEffect(() => { const t = setTimeout(acabar, (DURACAO_TERROR + 4) * 1000); return () => clearTimeout(t) }, [acabar])
   // (07/11) o glb das peças só existe durante o percurso: ao sair, sai do cache
-  useEffect(() => () => { try { useGLTF.clear(URL_TERROR) } catch {} }, [])
+  useEffect(() => segurarGlb(URL_TERROR), [])
   const olhar = useRef(0)
   const veu = useRef<HTMLDivElement>(null)
   const toque = useRef<{ x: number; y0: number; mexeu: boolean } | null>(null)

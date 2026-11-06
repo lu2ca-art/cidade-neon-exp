@@ -39,6 +39,7 @@ import { sinalizar } from "../bus"
 import { Caixa, Sala } from "../comum"
 import { olhar, type SalaProps } from "../motor"
 import { ModeloSeguro } from "../../estrada/Seguro"
+import { segurarGlb } from "../../estrada/glbUso"
 
 // tudo que dá pra afinar fica aqui
 export const ELEVADOR = {
@@ -338,6 +339,7 @@ function PecasGlb({ Q, tiras }: { Q: Quadro; tiras: React.RefObject<THREE.MeshBa
       neonMaq: mat({ color: VERMELHO, toneMapped: false }),
       neonCab: mat({ color: "#ff2a2a", toneMapped: false }),
     }
+    const cVerm = new THREE.Color(VERMELHO), cCab = new THREE.Color("#ff2a2a") // pré-criadas: Color.set(string) por quadro lê o texto toda vez
     const o = new THREE.Object3D()
     const mt = (x: number, z: number, ry: number, sx = 1, sy = 1, sz = 1, y = 0) => {
       o.position.set(x, y, z); o.rotation.set(0, ry, 0); o.scale.set(sx, sy, sz); o.updateMatrix(); return o.matrix.clone()
@@ -399,12 +401,15 @@ function PecasGlb({ Q, tiras }: { Q: Quadro; tiras: React.RefObject<THREE.MeshBa
         pm.push(k)
       })
     }
-    return { M, malhas, pm }
+    return { M, malhas, pm, cVerm, cCab }
   }, [nodes])
-  useEffect(() => () => {
-    for (const m of d.malhas) m.dispose()
-    for (const m of Object.values(d.M)) m.dispose()
-    try { useGLTF.clear(URL_TERROR) } catch {}
+  useEffect(() => {
+    const soltar = segurarGlb(URL_TERROR)
+    return () => {
+      for (const m of d.malhas) m.dispose()
+      for (const m of Object.values(d.M)) m.dispose()
+      soltar()
+    }
   }, [d])
   const largPorta = 1.6 / 3.6
   useFrame(() => {
@@ -414,8 +419,8 @@ function PecasGlb({ Q, tiras }: { Q: Quadro; tiras: React.RefObject<THREE.MeshBa
     d.M.luz.color.setScalar(Q.apagado ? 0.25 : 1)
     d.M.vidro.color.setScalar((Q.apagado ? 0.3 : 0.7) + Q.vidro * 1.6)
     d.M.neonCama.color.setScalar(Q.apagado ? 0.2 : 0.6 + 0.4 * Q.resp)
-    d.M.neonMaq.color.set(VERMELHO).multiplyScalar(0.25 + 0.75 * Q.resp)
-    d.M.neonCab.color.set("#ff2a2a").multiplyScalar(Q.apagado ? 1 : 0.3)
+    d.M.neonMaq.color.copy(d.cVerm).multiplyScalar(0.25 + 0.75 * Q.resp)
+    d.M.neonCab.color.copy(d.cCab).multiplyScalar(Q.apagado ? 1 : 0.3)
     if (porta.current) porta.current.scale.x = largPorta * (1 - 0.88 * Q.ab)
   })
   return (
