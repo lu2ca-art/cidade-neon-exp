@@ -26,6 +26,15 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "carreira.meio",
+    nome: "A D-Bee e a rádio Xenom apontam o que é novo: os lugares do chão, o instrumento, a tinta, o trem, o violão",
+    data: "2026-11-06",
+    tarefa: "ganchos",
+    olhar: "Ande pelo subúrbio sem missão. A D-Bee (no notch) sugere o lugar do chão mais perto que você ainda não visitou, o instrumento novo pelo nome (\"ganhou o udu: passa lá em casa\"), a tinta sobrando nos túneis, o trem de revanche, o violão com música tocando e, depois do final, as plantas, as cabines e o rio. Toque na frase: o lugar fica marcado no mapa. Ligue a Xenom: entre as músicas o locutor fala dos lugares (ginásio, galeria, discos, batida, flores, brechó, palco, quadra), alternando com o clima. Tudo é rascunho de texto.",
+    perguntas: ["O tom da D-Bee e do locutor está certo? Qual frase reescrever?", "Ela fala dos lugares na medida ou demais?", "Fala do lugar trancado (o cadeado) ou só dos abertos?"],
+    mais: [{ parte: "mundo.depois", nome: "depois do final" }, { parte: "grafite.livre", nome: "com a tinta nos túneis" }, { parte: "metro.tuneis", nome: "com o trem de revanche" }],
+  },
+  {
+    parte: "carreira.meio",
     nome: "O subúrbio cheio: ginásio, galeria, discos, batida, flores e brechó no chão",
     data: "2026-11-06",
     tarefa: "subúrbio",

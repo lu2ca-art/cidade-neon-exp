@@ -229,11 +229,17 @@ function vinhetaXenom(n: number): VinhetaRadio {
   const ganchos = VINHETAS_XENOM.filter((x) => cabe(x) && x.quando !== "feita")
   // o subúrbio primeiro: a missão de lá antes da fofoca da cidade
   ganchos.sort((a, b) => peso(b, m.ativa) - peso(a, m.ativa))
-  const resto = VINHETAS_XENOM.filter((x) => (!x.missao && !x.fase) || (x.quando === "feita" && cabe(x)))
+  // (06/11) os lugares do chão: só os abertos (a porta, se tem, já abriu); entram
+  // no lugar do clima, alternando (um sim, um não), pra não virar propaganda
+  const portas = contexto.h?.portas ?? []
+  const aberto = (x: VinhetaXenom) => !x.porta || portas.includes(x.porta)
+  const lugares = VINHETAS_XENOM.filter((x) => x.lugar && aberto(x) && (!x.missao || cabe(x)))
+  const clima = VINHETAS_XENOM.filter((x) => !x.lugar && ((!x.missao && !x.fase) || (x.quando === "feita" && cabe(x))))
+  const resto = lugares.length && (n >> 1) % 2 === 0 ? lugares : clima
   const pool = ganchos.length && n % 3 !== 0 ? ganchos.slice(0, 4) : resto
   const x = pool.find((y) => !usadas.includes(y.id)) ?? pool[n % pool.length]
   usadas.push(x.id)
-  if (usadas.length > 6) usadas.shift()
+  if (usadas.length > 10) usadas.shift() // (06/11) mais memória: com os lugares, o pool cresceu
   return { de: LOCUTOR_XENOM, texto: x.texto, audio: x.audio, cor: ESTACOES_RADIO.xenom.cor }
 }
 const peso = (x: VinhetaXenom, ativa: MissaoId | null) =>

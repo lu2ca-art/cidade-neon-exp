@@ -18,6 +18,9 @@ import { CHAO_LUGARES, type FaseDisco, type HistoriaDisco, type LugarChao } from
 import { PORTOES_RUA, type PlacarRua } from "./corridaRua"
 import { MISSOES13, feita13, type MissaoId } from "./portas"
 import { aoOuvirCompleta } from "./musicaContinua"
+import { ENTRADAS, IDS_ABERTOS, type LugarAberto } from "./abertos"
+import { INSTRUMENTOS_ANCESTRAIS } from "./instrumentos"
+import { metroFeitoNaHistoria } from "./metro"
 
 // ── os números (o dono afina) ──
 export const DBEE_CFG = {
@@ -233,8 +236,8 @@ export const SUGESTOES_DBEE: SugestaoDbee[] = [
       const tem = c.h.instrumentos ?? [], vistos = c.h.instrumentosVistos ?? []
       const novos = tem.filter((i) => !vistos.includes(i)).length
       return um({
-        chave: "casa",
-        texto: novos ? "tem instrumento novo lá em casa. passa lá pra gente tocar junto?" : tem.length ? "minha casa tá aberta, os instrumentos tão lá. vem tocar quando quiser" : "passa lá em casa um dia. o deserto de noite é outra coisa",
+        chave: novos ? `casa:novo:${tem.length}` : "casa",
+        texto: novos ? (() => { const x = INSTRUMENTOS_ANCESTRAIS[tem.filter((i) => !vistos.includes(i))[0]]; return `ganhou ${x.artigo} ${x.nome}: passa lá em casa pra gente tocar junto` })() : tem.length ? "minha casa tá aberta, os instrumentos tão lá. vem tocar quando quiser" : "passa lá em casa um dia. o deserto de noite é outra coisa",
         alvo: { t: "chao", chao: "casa" }, nome: "a casa da D-Bee", cor: CHAO_LUGARES.casa.cor,
         peso: novos ? 1.8 : c.zona === "deserto" ? 1 : 0.5, repete: true,
       })
@@ -249,6 +252,91 @@ export const SUGESTOES_DBEE: SugestaoDbee[] = [
     }),
   },
 ]
+
+// (06/11, RASCUNHO) o que a D-Bee diz de cada lugar do chão que abre uma
+// experiência (disco/abertos.ts). `fechado`: a porta ainda não abriu (tudo
+// visitável: ela chama pra ver o cadeado e o que libera)
+export const ABERTOS_DBEE: Record<LugarAberto, { texto: string; fechado?: string }> = {
+  ginasio: { texto: "conhece o ginásio lá no fundo do subúrbio? entra e joga uma", fechado: "o ginásio do subúrbio tá fechado, mas passa lá pra ver o que abre ele" },
+  galeria: { texto: "tem uma galeria perto da oficina. entra pra ver os quadros", fechado: "a galeria do subúrbio tá trancada. dá uma olhada na porta, ela diz o que falta" },
+  batida: { texto: "o estúdio da batida tá ali no subúrbio. bora fazer um beat?", fechado: "o estúdio da batida tá esperando. cola lá e vê o que destrava" },
+  palco: { texto: "o palco do subúrbio tem show hoje. sobe lá" },
+  discos: { texto: "a loja de discos é a do vinil gigante. passa lá, garimpa um" },
+  brecho: { texto: "o brechó tem roupa nova na arara. bora trocar o visu?" },
+  flores: { texto: "os canteiros de flores ficam no oeste. passa lá e cuida delas" },
+  quadra: { texto: "a quadra tá liberada. vai lá arremessar umas", fechado: "passa na quadra: o Alohan tá lá e ela ainda não abriu" },
+}
+
+// (06/11) o que entrou hoje e ninguém apontava: os lugares do chão, o grafite
+// livre, o metrô de revanche, o violão na rua e o mundo depois do final
+SUGESTOES_DBEE.push(
+  {
+    id: "aberto",
+    sobre: "o lugar do chão do subúrbio mais perto que ele ainda não visitou (uma opção só)",
+    opcoes: (c) => {
+      if (!depoisDoPrologo(c.fase) || !c.h) return []
+      const portas = c.h.portas ?? []
+      let melhor: OpcaoDbee | null = null, dMelhor = Infinity
+      for (const id of IDS_ABERTOS) {
+        const chave = `aberto:${id}`
+        if (feita(c, chave)) continue
+        const e = ENTRADAS[id], fala = ABERTOS_DBEE[id]
+        const fechado = "porta" in e && !portas.includes(e.porta)
+        const d = c.distancia({ t: "chao", chao: id })
+        const dd = d < 0 ? 1e9 : d
+        if (dd >= dMelhor) continue
+        dMelhor = dd
+        melhor = {
+          chave, texto: fechado && fala.fechado ? fala.fechado : fala.texto,
+          alvo: { t: "chao", chao: id }, nome: e.nome, cor: CHAO_LUGARES[id].cor,
+          peso: (c.zona === "suburbio" ? 1.5 : 0.6) * (fechado ? 0.6 : 1),
+        }
+      }
+      return um(melhor)
+    },
+  },
+  {
+    id: "grafite-livre",
+    sobre: "o grafite livre (a tag à mão) nos túneis, depois da missão dos túneis e enquanto não pintou",
+    opcoes: (c) => um(!!c.h && feita13(c.h, "tuneis") && !c.h.tagLivre && {
+      chave: "grafite-livre",
+      texto: c.zona === "tuneis" ? "achou a parede com LU2CA? toca em pintar e faz a tua tag" : "tem tinta sobrando nos túneis. desce e faz a tua tag na parede",
+      alvo: c.zona === "tuneis" ? null : { t: "chao", chao: "tuneis" }, nome: "os túneis", cor: CHAO_LUGARES.tuneis.cor,
+      peso: c.zona === "tuneis" ? 1.6 : c.zona === "suburbio" ? 1.3 : 0.7,
+    }),
+  },
+  {
+    id: "metro-revanche",
+    sobre: "o metrô de revanche: o trem parado no salão do metrô dos túneis (depois da fuga da história)",
+    opcoes: (c) => um(metroFeitoNaHistoria(c.h) && {
+      chave: "metro-revanche",
+      texto: c.zona === "tuneis" ? "o trem branco tá parado no salão do metrô. entra e foge de novo, agora sabendo o caminho" : "o trem que te levou o violão tá parado lá nos túneis. bora uma revanche?",
+      alvo: c.zona === "tuneis" ? null : { t: "chao", chao: "tuneis" }, nome: "o metrô dos túneis", cor: "#c9d3e6",
+      peso: c.zona === "tuneis" ? 1.4 : 0.8, repete: true,
+    }),
+  },
+  {
+    id: "violao-rua",
+    sobre: "o violão na rua (o botão à direita com música tocando); sem ele depois do metrô",
+    opcoes: (c) => um(depoisDoPrologo(c.fase) && !!c.h && !c.h.perdeuViolao && (c.radioLigada || !!c.naRua) && !c.piloto && {
+      chave: "violao-rua",
+      texto: "tá tocando música? abre o violão ali do lado e toca junto, no tom da faixa",
+      alvo: null, peso: 0.9,
+    }),
+  },
+  {
+    id: "mundo-depois",
+    sobre: "o mundo depois do final: as plantas nos prédios, as cabines nas torres, o rio nos túneis",
+    opcoes: (c) => {
+      if (!c.h || !feita13(c.h, "final")) return []
+      return [
+        { chave: "depois:plantas", texto: "olha os prédios altos: tem planta saindo das janelas. a chuva pegou", alvo: null, peso: c.zona === "cidade" ? 1.2 : 0.5 },
+        { chave: "depois:cabines", texto: "repara nas torres: as cabines sobem e descem de novo. dá pra ver da pista", alvo: null, peso: c.zona === "cidade" ? 1 : 0.4 },
+        { chave: "depois:rio", texto: "desce nos túneis: o rio seco voltou a correr", alvo: c.zona === "tuneis" ? null : { t: "chao", chao: "tuneis" } as AlvoDbee, nome: "o rio dos túneis", cor: "#4fc3ff", peso: c.zona === "tuneis" ? 0.6 : 1 },
+      ]
+    },
+  },
+)
 
 // ── A ESCOLHA: todas as opções que valem agora, sem a última, pesadas pelo
 // que já passou (a que passou menos vem mais), pelo que já fez (feita só volta
