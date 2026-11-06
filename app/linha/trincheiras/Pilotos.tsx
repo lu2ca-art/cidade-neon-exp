@@ -9,8 +9,9 @@
 //  - Skate: de lado na prancha, base aberta, empurra com o pé de trás; no ar,
 //    KICKFLIP/HEELFLIP (a prancha gira); no grind, faísca no truck.
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
-import { useEffect, useMemo, useRef } from "react"
+import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
@@ -244,13 +245,17 @@ function juntar(pecas: Peca[]) {
   for (const g of geos) g.dispose()
   return out
 }
-function geoMoto() {
+type GeoMoto = { rodaT: THREE.BufferGeometry; rodaF: THREE.BufferGeometry; garfo: THREE.BufferGeometry; quadro: THREE.BufferGeometry }
+// a moto procedural (a reserva enquanto o glb carrega, ou se ele falhar)
+function geoMoto(): GeoMoto {
   const Box = THREE.BoxGeometry, Cil = THREE.CylinderGeometry, PI = Math.PI
+  const roda = juntar([
+    [new THREE.TorusGeometry(0.31, 0.085, 6, 16), "pneu", undefined, [0, PI / 2, 0]],
+    [new Cil(0.05, 0.05, 0.14, 8), "cromo", undefined, [0, 0, PI / 2]],
+  ])
   return {
-    roda: juntar([
-      [new THREE.TorusGeometry(0.31, 0.085, 6, 16), "pneu", undefined, [0, PI / 2, 0]],
-      [new Cil(0.05, 0.05, 0.14, 8), "cromo", undefined, [0, 0, PI / 2]],
-    ]),
+    rodaT: roda,
+    rodaF: roda,
     garfo: juntar([
       [new Cil(0.035, 0.035, 0.95, 6), "garfo", [-0.1, 0.42, -0.12], [-0.42, 0, 0]],
       [new Cil(0.035, 0.035, 0.95, 6), "garfo", [0.1, 0.42, -0.12], [-0.42, 0, 0]],
@@ -267,8 +272,13 @@ function geoMoto() {
       [new Box(0.06, 0.06, 0.55), "cromo", [0, 0.58, -0.4], [0.5, 0, 0]],
       [new Cil(0.05, 0.06, 0.5, 8), "escape", [0.17, 0.62, -0.42], [PI / 2 - 0.25, 0, 0]],
     ]),
-    // o piloto em pé nas pedaleiras, braços no guidão; o capacete (em 0, 1.4, 0.32) com a viseira neon
-    piloto: juntar([
+  }
+}
+function geoPiloto() {
+  const Box = THREE.BoxGeometry
+  // o piloto em pé nas pedaleiras, braços no guidão; o capacete (em 0, 1.4, 0.32) com a viseira neon
+  return (
+    juntar([
       [new Box(0.15, 0.72, 0.17), "calca", [-0.2, 0.36, -0.02], [0.25, 0, 0]],
       [new Box(0.15, 0.72, 0.17), "calca", [0.2, 0.36, -0.02], [0.25, 0, 0]],
       [new Box(0.44, 0.6, 0.27), "casacoTorso", [0, 0.98, 0.1], [0.6, 0, 0]],
@@ -277,8 +287,46 @@ function geoMoto() {
       [new THREE.SphereGeometry(0.19, 14, 10), "capacete", [0, 1.4, 0.32]],
       [new Box(0.24, 0.08, 0.08), "viseira", [0, 1.42, 0.47]],
       [new Box(0.26, 0.03, 0.16), "moto", [0, 1.52, 0.49], [-0.3, 0, 0]],
-    ]),
+    ])
+  )
+}
+// (06/11) a moto modelada no Blender (blender/scripts/moto.py → public/models/moto.glb):
+// os mesmos grupos (roda_t, roda_f, garfo, quadro), cada um UMA malha no referencial do
+// pivô do código; cor × AO em COLOR_0, (roughness, metalness) em _RM e o brilho em _EMI,
+// que viram "aRM"/"aEmi" do MAT_PECAS (continua 7 desenhos). O meshopt quantiza a posição
+// e guarda a escala no nó: aplico a matriz do nó numa cópia em float.
+const URL_MOTO = "/models/moto.glb"
+function emFloat(a: THREE.BufferAttribute | THREE.InterleavedBufferAttribute) {
+  const n = a.count, k = a.itemSize, out = new Float32Array(n * k)
+  for (let i = 0; i < n; i++) for (let j = 0; j < k; j++) out[i * k + j] = a.getComponent(i, j)
+  return new THREE.BufferAttribute(out, k)
+}
+function geoDoGlb(nodes: Record<string, THREE.Object3D>): GeoMoto {
+  const um = (nome: string) => {
+    const o = nodes[nome] as THREE.Mesh | undefined
+    const src = o?.isMesh ? o.geometry : null
+    const pos = src?.getAttribute("position"), nor = src?.getAttribute("normal"), cor = src?.getAttribute("color")
+    const rm = src?.getAttribute("_rm"), emi = src?.getAttribute("_emi")
+    if (!o || !src || !pos || !nor || !cor || !rm || !emi || !src.index) throw new Error(`moto.glb: falta ${nome}`)
+    const g = new THREE.BufferGeometry()
+    g.setIndex(src.index.clone())
+    g.setAttribute("position", emFloat(pos))
+    g.setAttribute("normal", emFloat(nor))
+    g.setAttribute("color", emFloat(cor))
+    g.setAttribute("aRM", emFloat(rm))
+    g.setAttribute("aEmi", emFloat(emi))
+    o.updateMatrix()
+    g.applyMatrix4(o.matrix)
+    g.computeBoundingSphere()
+    return g
   }
+  return { rodaT: um("roda_t"), rodaF: um("roda_f"), garfo: um("garfo"), quadro: um("quadro") }
+}
+// se o .glb falhar, fica a moto procedural
+class SeFalhar extends Component<{ reserva: ReactNode; children: ReactNode }, { erro: boolean }> {
+  state = { erro: false }
+  static getDerivedStateFromError() { return { erro: true } }
+  render() { return this.state.erro ? this.props.reserva : this.props.children }
 }
 function PneuCravo({ r, geo }: { r: React.RefObject<THREE.Group | null>; geo: THREE.BufferGeometry }) {
   return (
@@ -288,7 +336,28 @@ function PneuCravo({ r, geo }: { r: React.RefObject<THREE.Group | null>; geo: TH
     </group>
   )
 }
-export function Motoqueiro({ vel, steer, ar, pitch, empurra = () => false }: { vel: () => number; steer: () => number; ar: () => boolean; pitch: () => number; empurra?: () => boolean }) {
+type MotoProps = { vel: () => number; steer: () => number; ar: () => boolean; pitch: () => number; empurra?: () => boolean }
+function MotoProcedural(p: MotoProps) {
+  const geo = useMemo(geoMoto, [])
+  useEffect(() => () => { geo.rodaT.dispose(); geo.garfo.dispose(); geo.quadro.dispose() }, [geo])
+  return <MotoCorpo {...p} geo={geo} />
+}
+function MotoGlb(p: MotoProps) {
+  const { nodes } = useGLTF(URL_MOTO) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const geo = useMemo(() => geoDoGlb(nodes), [nodes])
+  useEffect(() => () => { geo.rodaT.dispose(); geo.rodaF.dispose(); geo.garfo.dispose(); geo.quadro.dispose() }, [geo])
+  return <MotoCorpo {...p} geo={geo} />
+}
+/** a moto do jogador: a do Blender; enquanto carrega (e se falhar), a procedural */
+export function Motoqueiro(p: MotoProps) {
+  const reserva = <MotoProcedural {...p} />
+  return (
+    <SeFalhar reserva={reserva}>
+      <Suspense fallback={reserva}><MotoGlb {...p} /></Suspense>
+    </SeFalhar>
+  )
+}
+function MotoCorpo({ vel, steer, ar, pitch, empurra = () => false, geo }: MotoProps & { geo: GeoMoto }) {
   const corpo = useRef<THREE.Group>(null)
   const pivo = useRef<THREE.Group>(null)
   const nariz = useRef<THREE.Group>(null)
@@ -318,21 +387,21 @@ export function Motoqueiro({ vel, steer, ar, pitch, empurra = () => false }: { v
       piloto.current.position.y = -enc.current * 0.08
     }
   })
-  const geo = useMemo(geoMoto, [])
-  useEffect(() => () => { geo.roda.dispose(); geo.garfo.dispose(); geo.quadro.dispose(); geo.piloto.dispose() }, [geo])
+  const geoP = useMemo(geoPiloto, [])
+  useEffect(() => () => geoP.dispose(), [geoP])
   return (
     <group ref={corpo}>
       <group ref={pivo}>
         <group ref={nariz}>
-          <group position={[0, 0.39, -0.62]}><PneuCravo r={rodaT} geo={geo.roda} /></group>
+          <group position={[0, 0.39, -0.62]}><PneuCravo r={rodaT} geo={geo.rodaT} /></group>
           {/* o garfo e a roda da frente (viram com a direção) */}
           <group ref={garfo} position={[0, 0.39, 0.66]}>
-            <group><PneuCravo r={rodaF} geo={geo.roda} /></group>
+            <group><PneuCravo r={rodaF} geo={geo.rodaF} /></group>
             <mesh geometry={geo.garfo} material={MAT_PECAS} />
           </group>
           <mesh geometry={geo.quadro} material={MAT_PECAS} />
           <group ref={piloto} position={[0, 0.4, -0.05]}>
-            <mesh geometry={geo.piloto} material={MAT_PECAS} />
+            <mesh geometry={geoP} material={MAT_PECAS} />
           </group>
         </group>
       </group>

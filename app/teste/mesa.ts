@@ -80,10 +80,10 @@ export const MESA: Cartao[] = [
   },
   {
     parte: "missao.tuneis.trincheiras",
-    nome: "Moto mais leve (e a cidade com menos gasto por quadro)",
+    nome: "Moto mais leve e modelada no Blender (e a cidade com menos gasto por quadro)",
     data: "2026-11-06",
-    olhar: "A moto agora é desenhada em 7 pedaços em vez de ~25, e o parque, o campo de força e as flores pararam de criar lixo a cada quadro. O visual deve estar IGUAL: olhe o cromo do garfo e do escape, a viseira neon, as rodas girando; no parque, o carrinho e a câmera; a pé, encostar nos prédios.",
-    perguntas: ["A moto está igual (brilho, cromo, viseira)?", "Sentiu o jogo mais liso no iPhone?"],
+    olhar: "A moto agora é modelada no Blender: moto de trilha montada com sucata do subúrbio (tanque rosa com remendo de zinco, laterais de placa de rua, pneus com cravos, aro neon ciano, dois faróis, neon embaixo do motor). Continua desenhada em 7 pedaços (eram ~25), e o piloto é o mesmo. Olhe as rodas girando, o guidão virando nas curvas, a empinada, o cromo e o brilho do neon; no parque, o carrinho e a câmera; a pé, encostar nos prédios.",
+    perguntas: ["A moto nova ficou boa? Mais sucata, mais neon, ou assim?", "As rodas, o guidão e a empinada se mexem certo?", "Sentiu o jogo liso no iPhone?"],
     mais: [{ parte: "livre", nome: "a cidade (parque, campo de força)" }],
   },
   {
