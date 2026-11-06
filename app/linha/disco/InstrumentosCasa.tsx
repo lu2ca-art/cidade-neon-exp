@@ -11,15 +11,20 @@
 //     ele vem ("vem da missão do Alohan"), na legenda da cena
 //
 // O SOM é o de disco/instrumentos.ts (tocarInstrumento, sintetizado: RASCUNHO).
-// O MODELO é daqui: primitivas low-poly (madeira, cabaça, barro, metal),
-// RASCUNHO até virem as peças do Blender.
+// O MODELO (06/11): os 11 modelados no Blender (blender/scripts/instrumentos.py,
+// public/models/instrumentos.glb, 16,4 mil triângulos, 249 KB): um nó por
+// instrumento (o id), uma malha por material (madeira, barro, metal, palha,
+// couro, corda, agua), a sombra de canto assada na cor dos vértices. Cada um
+// escala pra caber na vaga de hoje (MEDIDA). Se o .glb não carregar (ou
+// enquanto carrega), ficam as primitivas low-poly de antes (Modelo).
 //
 // DESEMPENHO (06/11): geometrias e materiais criados uma vez só (no módulo) e
 // compartilhados por todos; nenhuma luz própria (a casa já tem as dela); por
 // quadro, só mexe em quem foi tocado há menos de 0,6 s, sem alocar nada.
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
-import { useEffect, useRef } from "react"
+import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react"
 import * as THREE from "three"
 import { sinalizar } from "../interior/bus"
 import type { V3 } from "../interior/comum"
@@ -141,6 +146,72 @@ function Modelo({ id, a }: { id: InstrumentoId; a: boolean }) {
   }
 }
 
+// ── o modelo do Blender ──
+const URL = "/models/instrumentos.glb"
+// a maior medida de cada um na vaga (m): o tamanho das formas de antes
+const MEDIDA: Record<InstrumentoId, number> = {
+  djembe: 0.26, "tambor-agua": 0.28, udu: 0.27, caxixi: 0.17, sitar: 0.62, didgeridoo: 0.56,
+  berimbau: 0.64, "flauta-bambu": 0.36, ocarina: 0.16, handpan: 0.28, kalimba: 0.22,
+}
+// a pose na vaga (as mesmas inclinações das formas de antes)
+const POSE: Partial<Record<InstrumentoId, [number, number, number]>> = {
+  berimbau: [0.15, 0, 0], sitar: [0, 0, 0.25], didgeridoo: [0, 0, 0.2], kalimba: [-0.35, 0, 0],
+}
+// um material por grupo, compartilhado pelos 11 (a cor vem dos vértices)
+const vmat = (extra: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ vertexColors: true, ...extra })
+const MG: Record<string, THREE.Material> = {
+  madeira: vmat({ roughness: 0.62 }),
+  barro: vmat({ roughness: 0.85 }),
+  metal: vmat({ roughness: 0.32, metalness: 0.8 }),
+  palha: vmat({ roughness: 0.85 }),
+  couro: vmat({ roughness: 0.7 }),
+  corda: vmat({ roughness: 0.9 }),
+  agua: vmat({ roughness: 0.08, metalness: 0.2 }),
+}
+type Parte = { geo: THREE.BufferGeometry; grupo: string; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }
+const caixaTmp = new THREE.Box3()
+
+function ModeloGlb({ id, a }: { id: InstrumentoId; a: boolean }) {
+  const { nodes } = useGLTF(URL) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const no = nodes[id]
+  if (!no) throw new Error(`instrumentos.glb sem o nó ${id}`)
+  // as malhas do nó (com a transformação, que a quantização mexe) e a escala da vaga
+  const { partes, k } = useMemo(() => {
+    no.updateWorldMatrix(true, true)
+    caixaTmp.setFromObject(no)
+    const t = caixaTmp.getSize(new THREE.Vector3())
+    const partes: Parte[] = []
+    for (const c of no.children) {
+      const m = c as THREE.Mesh
+      if (!m.geometry) continue
+      partes.push({ geo: m.geometry, grupo: m.name.slice(id.length + 1), pos: m.position, quat: m.quaternion, esc: m.scale })
+    }
+    return { partes, k: MEDIDA[id] / Math.max(t.x, t.y, t.z, 1e-3) }
+  }, [no, id])
+  return (
+    <group rotation={POSE[id] ?? [0, 0, 0]} scale={k}>
+      {partes.map((p, i) => (
+        <mesh key={i} geometry={p.geo} material={a ? M.apagado : (MG[p.grupo] ?? MG.madeira)} position={p.pos} quaternion={p.quat} scale={p.esc} />
+      ))}
+    </group>
+  )
+}
+
+// se o .glb falhar, cai nas formas de antes
+class SeFalhar extends Component<{ reserva: ReactNode; children: ReactNode }, { erro: boolean }> {
+  state = { erro: false }
+  static getDerivedStateFromError() { return { erro: true } }
+  render() { return this.state.erro ? this.props.reserva : this.props.children }
+}
+function Peca({ id, a }: { id: InstrumentoId; a: boolean }) {
+  const reserva = <Modelo id={id} a={a} />
+  return (
+    <SeFalhar reserva={reserva}>
+      <Suspense fallback={reserva}><ModeloGlb id={id} a={a} /></Suspense>
+    </SeFalhar>
+  )
+}
+
 // o cadeado, na frente do instrumento (virado pra sala, -x)
 function Cadeado() {
   return (
@@ -229,7 +300,7 @@ export function InstrumentosCasa({ ids, gesto = false, novos = [] }: { ids: Inst
         return (
           <group key={id} position={VAGAS[i]}>
             <group ref={(g) => { grupos.current[i] = g }} rotation-y={-Math.PI / 2}>
-              <Modelo id={id} a={!tem} />
+              <Peca id={id} a={!tem} />
             </group>
             {!tem && <Cadeado />}
             {/* a área de tocar: invisível, um pouco maior que o instrumento */}
@@ -240,3 +311,5 @@ export function InstrumentosCasa({ ids, gesto = false, novos = [] }: { ids: Inst
     </group>
   )
 }
+
+useGLTF.preload(URL)

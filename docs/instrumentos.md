@@ -51,7 +51,7 @@ Túneis e a 13ª (final) não dão instrumento.
 
 - **Os sons:** todos sintetizados no Web Audio (menos o djembê, que usa o tambor gravado quando já
   carregou). Pra trocar por sample: mudar o `case` do timbre em `tocarInstrumento`.
-- **Os modelos:** primitivas low-poly; dá pra trocar por peças do Blender sem mexer no resto.
+- **Os modelos:** modelados no Blender (06/11), ver abaixo; as primitivas low-poly ficam de reserva.
 - **A lista e quem dá o quê** (a tabela acima).
 
 ## Decisões tomadas sem perguntar
@@ -60,3 +60,27 @@ Túneis e a 13ª (final) não dão instrumento.
 - A visita livre não sai sozinha; sai no "pronto ›".
 - A luz quente própria do banco foi tirada (regra: sem luzes novas). Se o banco ficar escuro, o
   ajuste é na luz da sala, não uma luz a mais.
+
+## Modelados no Blender (06/11)
+
+![os 11](blender/instrumentos.png)
+
+- **Scripts:** `blender/scripts/instrumentos.py` (modela os 11 com bmesh: torno de perfil, tubos, toros),
+  `instrumentos_bake.py` (AO do Cycles assada na cor dos vértices, uma malha por material, exporta),
+  `instrumentos_foto.py` (a foto acima). Headless, os três no mesmo Blender:
+  `Blender -b --factory-startup --python instrumentos.py --python instrumentos_bake.py --python instrumentos_foto.py -- <bruto.glb> <foto.png> 1200`,
+  depois `npx @gltf-transform/cli optimize bruto.glb public/models/instrumentos.glb --compress meshopt --simplify false --join false --flatten false --instance false --palette false`.
+- **Arquivo:** `public/models/instrumentos.glb`, 16,4 mil triângulos, 249 KB (orçamento: 25 mil / 1 MB).
+  Um nó por instrumento (o id), origem na base, metros, tamanho real; filhos `<id>_<material>`
+  (madeira, barro, metal, palha, couro, corda, agua). Sem decimate (as estampas por face ficam).
+- **Detalhes:** djembê com couro de borda irregular e a corda em V entre os dois aros; tambor de água com a
+  cabaça pirografada boiando; udu com a boca, o furo do lado e as pelotas do ombro; caxixi trançado em xadrez com
+  relevo e alça; sitar com a cabaça e o tampo, 18 trastes em arco (distâncias reais), 7 cordas, cravelhas grandes e
+  as 11 pequenas, a cabaça de cima; didgeridoo torto, pintado em faixas, com o bocal de cera; berimbau com a verga em
+  arco, o arame, o cordão e a cabaça aberta; flauta com o nó, o bocal, seis furos e três amarras; ocarina com bocal,
+  janela e seis furos; handpan com o ding e oito campos de nota; kalimba com 17 lamelas em V, sela, barra e furo.
+  Cordas, trastes e lamelas um pouco mais grossos que o real, pra ler no tamanho do jogo.
+- **No jogo:** `InstrumentosCasa.tsx` carrega com `useGLTF` e escala cada nó pra maior medida da vaga de antes
+  (`MEDIDA`), com as mesmas inclinações (`POSE`). Um material por grupo (cor dos vértices), compartilhado; o
+  trancado usa o material apagado único; cadeado e toque iguais; nada por quadro além do balanço; sem luz nova.
+  Enquanto carrega ou se falhar, as primitivas de antes.

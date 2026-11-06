@@ -150,7 +150,7 @@ export const MESA: Cartao[] = [
     nome: "Os 11 instrumentos ancestrais na casa da D-Bee",
     data: "2026-11-06",
     tarefa: "T49",
-    olhar: "Abre na casa da D-Bee com todos os instrumentos ganhos, cada um no seu lugar no banco e nas prateleiras: toque em cada um (tocar de novo muda a nota). A música do jogo para enquanto você toca e volta no \"pronto\". No outro link, só alguns ganhos: os outros ficam apagados com cadeado e, tocando, a D-Bee diz de que missão vêm. Fechar uma missão agora mostra no notch \"+ o udu · na casa da D-Bee\".",
+    olhar: "Abre na casa da D-Bee com todos os instrumentos ganhos, cada um no seu lugar no banco e nas prateleiras: toque em cada um (tocar de novo muda a nota). A música do jogo para enquanto você toca e volta no \"pronto\". No outro link, só alguns ganhos: os outros ficam apagados com cadeado e, tocando, a D-Bee diz de que missão vêm. Fechar uma missão agora mostra no notch \"+ o udu · na casa da D-Bee\". Modelados no Blender: os 11 agora são peças de verdade (as cordas e a cabaça do berimbau, os furos da flauta, as lamelas da kalimba, o couro e as cordas do djembê).",
     perguntas: [
       "Os sons (sintetizados, rascunho) servem ou você manda samples?",
       "A lista (djembê, tambor de água, udu, caxixi, sitar, didgeridoo, berimbau, flauta de bambu, ocarina, handpan, kalimba) e quem dá cada um ficam assim?",
