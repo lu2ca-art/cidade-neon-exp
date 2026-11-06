@@ -14,7 +14,7 @@ Escopo: a61605f..origin/feature/game/mapa-disco. Só leitura de código + `tsc` 
 - "?": chaves novas (`veiculo`, `moto`, `entrar`, `rua`, `drone-*`) existem em INFO e batem com os botões.
 - Saves antigos: `jogoVelho()` só filtra a intro do grupo; sem mudança de formato de save.
 
-## Pendências (não mexi, decisão do dono)
-- `/galeria` e `/batida` ignoram `?tranca=`: com a porta trancada o botão diz "ver" com cadeado, mas a página abre inteira (só o `/ginasio` mostra o cadeado). Já era assim pela cidade.
-- O botão "entrar" dos lugares não tem `data-info`, então o "?" não o explica.
-- `OutdoorsNucleo` monta as malhas de todas as quadras quando qualquer uma está perto (o frustum corta o desenho; só custa memória).
+## Pendências (feitas, revisão 5b)
+- [x] `/galeria` e `/batida` respeitam `?tranca=` como o `/ginasio`: com a porta trancada abre só a vitrine (`VitrineTrancada` em `Trancado.tsx`: o nome, o que tem lá dentro com cadeado e o que libera, e o "sair"). Sem `?tranca=`, a página abre inteira.
+- [x] O botão "entrar" dos lugares do chão (`is-chao`) tem `data-info="entrar-lugar"`, com o texto no INFO do "?" (Holo.tsx).
+- [x] `OutdoorsNucleo`: um `<Perto>` por quadra (Corrida.tsx, `quadrasPerto` memorizado, nada alocado por quadro); só as quadras perto montam as malhas.

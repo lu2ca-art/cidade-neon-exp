@@ -66,6 +66,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   veiculo: { t: "veículo", d: "um veículo parado aqui perto: toca (ou Enter) e ele é seu. a Kombi fica onde está." },
   moto: { t: "moto", d: "a moto sai da Kombi: entra onde a Kombi não cabe. com cadeado, ainda não liberou." },
   entrar: { t: "voltar pro volante", d: "perto da Kombi (ou do veículo): sobe e segue dirigindo (tecla F)." },
+  "entrar-lugar": { t: "entrar no lugar", d: "a porta aqui do lado: toca e o lugar abre por cima do jogo. com cadeado, dá pra ver, e diz o que libera." },
   rua: { t: "corrida de rua", d: "toca pra correr contra os rivais nesta rua. desistir sai na hora." },
   "drone-centro": { t: "centrar", d: "volta o drone pro meio da cidade." },
   "drone-mover": { t: "mover o mapa", d: "ligado, arrastar move o drone pela cidade em vez de girar." },

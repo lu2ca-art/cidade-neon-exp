@@ -42,3 +42,20 @@ export function travarToques(tranca: string | null | undefined) {
   }
   return { onPointerDownCapture: parar, onPointerMoveCapture: parar, onClickCapture: parar }
 }
+
+// (revisão 5) A VITRINE de uma página inteira trancada (/galeria, /batida): a
+// porta ainda fechada abre só isto, o nome, o que tem lá dentro com cadeado e
+// o que libera (como o menu do /ginasio). Sem ?tranca= a página abre inteira.
+export function VitrineTrancada({ titulo, sub, itens, tranca, cor, onSair }: { titulo: string; sub: string; itens: string[]; tranca: string; cor: string; onSair: () => void }) {
+  return (
+    <div className="cn-vitrine" style={{ ["--c" as string]: cor }}>
+      <section>
+        <header><button type="button" onClick={onSair}>‹ sair</button></header>
+        <h1>{titulo}</h1>
+        <p className="cn-vitrine-sub">{sub}</p>
+        <Trancado texto={tranca} />
+        {itens.map((t) => <div key={t} className="cn-vitrine-card cn-card-trancado" aria-disabled="true"><b><Cadeado />{t}</b></div>)}
+      </section>
+    </div>
+  )
+}

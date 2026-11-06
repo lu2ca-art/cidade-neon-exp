@@ -4190,6 +4190,8 @@ function CenaBase({
   // (ruas-faixa) as quadras de prédios: a esfera de cada uma, pro corte pela névoa
   // (T46) as placas do Núcleo por quadra de 900 m (uma InstancedMesh cada; o <Perto> usa os centros)
   const quadrasPlacas = useMemo(() => quadrasDasPlacas(cidade.placas ?? [], QUADRA_DISCO), [cidade])
+  // (revisão 5) um <Perto> por quadra: só as quadras perto montam as malhas (a lista de 1 é fixa, sem alocar por quadro)
+  const quadrasPerto = useMemo(() => quadrasPlacas.map((q) => ({ pontos: [q], quadras: [q] })), [quadrasPlacas])
   const prediosQ = useMemo(() => cidade.predios.filter((m) => m.boundingSphere).map((m) => ({ o: m as THREE.Object3D, e: m.boundingSphere! })), [cidade])
   // (leveza, cidade grande) escolhe as quadras perto da câmera e copia pros
   // buffers da placa. Os postes, sempre que mudam (barato, e a pista apagada
@@ -7041,7 +7043,7 @@ function CenaBase({
       {!relevoNovo && <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>}
       <Perto nome="lugares" raio={700} pontos={pertoDe.lugares}><Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro></Perto>
       <Perto nome="bombas" raio={600} pontos={pertoDe.bombas}><Seguro nome="bombas"><Bombas M={M} /></Seguro></Perto>
-      {"disco" in M && quadrasPlacas.length > 0 && <Perto nome="outdoors do núcleo" raio={OUTDOORS_CFG.raioPerto} pontos={quadrasPlacas}><Seguro nome="outdoors do núcleo"><OutdoorsNucleo quadras={quadrasPlacas} /></Seguro></Perto>}
+      {"disco" in M && quadrasPlacas.length > 0 && quadrasPerto.map((q, i) => <Perto key={i} nome={`outdoors do núcleo ${i}`} raio={OUTDOORS_CFG.raioPerto} pontos={q.pontos}><Seguro nome="outdoors do núcleo"><OutdoorsNucleo quadras={q.quadras} /></Seguro></Perto>)}
       <Perto nome="fachadas" raio={600} pontos={pertoDe.fachadas}><Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro></Perto>
       {/* no mapa novo: as flores do asfalto (só de patins, uma malha pelo mapa todo); no de sempre, os canteiros (medidos pelo Perto) */}
       {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}

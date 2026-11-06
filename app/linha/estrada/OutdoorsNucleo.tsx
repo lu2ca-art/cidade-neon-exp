@@ -4,7 +4,8 @@
 // outdoorsDados.ts). Uma InstancedMesh por quadra de 900 m (o que está atrás
 // da câmera nem vai pra placa de vídeo), todas com o mesmo material: poucos
 // draw calls, nenhuma luz, e por quadro só o uniform de tempo (sem alocar).
-// Quem monta/desmonta é o <Perto> em Corrida.tsx.
+// Quem monta/desmonta é o <Perto> em Corrida.tsx, um por quadra (revisão 5:
+// só as quadras perto têm malha; antes, uma perto montava todas).
 
 import { useFrame } from "@react-three/fiber"
 import { useEffect, useMemo } from "react"
