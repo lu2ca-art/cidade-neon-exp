@@ -140,3 +140,25 @@ export function definirFinalFeito(sim: boolean) {
 // a CÂMERA ROTEIRIZADA: FinalNove.tsx escreve (ponto e olhar) e a câmera do
 // Corrida.tsx obedece enquanto `ativo`. Só números: nada aloca por quadro
 export const CAM_ROTEIRO = { ativo: false, px: 0, py: 0, pz: 0, ox: 0, oy: 0, oz: 0 }
+
+// ── O MUNDO DEPOIS (06/11): o que muda depois do final, sem tela explicando ──
+// retomar-mundo.md, "Como mostrar sem explicar": "Cabines e elevadores andando
+// nos dois sentidos, o rio correndo pelas trincheiras (...) sob o vidro, plantas
+// nas janelas dos prédios altos." Só monta com FINAL_VIVO.feito (antes: custo zero).
+// O 3D: estrada/MundoDepois.tsx (plantas e cabines) e trincheiras/RioDepois.tsx (o rio).
+export const MUNDO_DEPOIS = {
+  // as plantas nos prédios (2 instanciadas: os tufos nas janelas e as trepadeiras)
+  alturaMin: 30, // m: só os prédios altos
+  tufosPorPredio: 6,
+  maxTufos: 2600,
+  trepadeiraChance: 0.6, // por prédio (até 2)
+  maxTrepadeiras: 1400,
+  // as cabines das torres: poços em volta do núcleo, uma cabine subindo e outra descendo em cada
+  pocos: 6,
+  velCabine: 7, // m/s
+  // o rio nas trincheiras: uma fita de água no leito dos rios (a rampa da descida fica seca)
+  rioMeia: 10, // m de meia largura (o leito tem 13)
+  rioAltura: 0.15, // m acima do chão
+  rioOnda: 18, // m por volta da textura
+  rioVel: 3.2, // m/s
+}

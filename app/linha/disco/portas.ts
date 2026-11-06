@@ -111,7 +111,8 @@ export const PORTAS: Record<PortaId, { nome: string; existe: boolean; tarefa?: s
   fliperama: { nome: "as 7 máquinas do fliperama", existe: true, tarefa: "T23" },
   parque: { nome: "o parque", existe: true, tarefa: "T24" },
   canteiros: { nome: "os canteiros pela cidade", existe: true, tarefa: "T25" },
-  "mundo-depois": { nome: "o mundo depois", existe: false, tarefa: "T29" },
+  // (06/11) existe: plantas nos prédios, o rio nas trincheiras e as cabines nas torres (docs/mundo-depois.md)
+  "mundo-depois": { nome: "o mundo depois", existe: true, tarefa: "T29" },
 }
 
 export interface Missao13 {
