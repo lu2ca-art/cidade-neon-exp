@@ -188,7 +188,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
 
       {/* (T22b) o filminho: o vídeo, ou (hoje) as falas em legenda sobre a cena parada */}
       {!atual && passo?.t === "gesto" && passo.id === "filme" && <CenaFilme key={pos} filme={FILMES[passo.filme]} onFim={() => setPos((p) => p + 1)} />}
-      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} />}
+      {gesto3d && <Dica3d id={gestoAgora!} podeNegar={loops > 0 || esperou} onNegar={() => setPos((p) => p + 1)} onPronto={() => setPos((p) => p + 1)} />}
       {!gesto3d && !saida && !atual && passo?.t === "gesto" && passo.id === "copos" && <Copos onNegar={() => setPos((p) => p + 1)} onBeber={() => setSaida(true)} podeNegar={loops > 0 || esperou} />}
       {saida && !atual && (
         <div className="l-cena-fim" onClick={(e) => e.stopPropagation()}>
@@ -236,9 +236,9 @@ const DICAS_3D: Record<string, string> = {
   planta: "chega perto. toca no que chamar sua atenção",
   quadros: "anda pela galeria. toca nos quadros",
   pintar: "pinta na luz da planta. os potes trocam a cor. pronta, toca no prego",
-  instrumentos: "toca nos instrumentos do banco",
+  instrumentos: "toca nos instrumentos do banco. os apagados dizem de onde vêm",
 }
-function Dica3d({ id, podeNegar, onNegar }: { id: string; podeNegar: boolean; onNegar: () => void }) {
+function Dica3d({ id, podeNegar, onNegar, onPronto }: { id: string; podeNegar: boolean; onNegar: () => void; onPronto?: () => void }) {
   // o bar (06/10, LU2CA): a saída é a palavra ESCOLHA, em amarelo — quem
   // repara toca nela e diz não. (T02, J2: 21) não tem mais "sair do bar": no
   // bar, você aprende a negar pra sair
@@ -254,6 +254,14 @@ function Dica3d({ id, podeNegar, onNegar }: { id: string; podeNegar: boolean; on
           <button type="button" onClick={onNegar}>não</button>
         </span>
       )}
+    </div>
+  )
+  // (T49, 06/11) tocar os instrumentos é fazer música: sem pressa. A cena só
+  // segue sozinha com instrumento novo; na visita livre, sai pelo "pronto"
+  if (id === "instrumentos") return (
+    <div className="l-dica3d" onClick={(e) => e.stopPropagation()}>
+      <small>{DICAS_3D.instrumentos}</small>
+      {onPronto && <button type="button" className="l-copos-sair" onClick={onPronto}>pronto ›</button>}
     </div>
   )
   return (

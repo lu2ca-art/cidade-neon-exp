@@ -77,7 +77,7 @@ export function SalaCasaDbee({ estado, inicio = false, disco = false, instrument
   if (!viuFoto && estado.texto?.includes("uma foto")) setViuFoto(true)
   const naFoto = !!estado.texto && /foto|relicário/.test(estado.texto)
   // (notas 04/11) a cena dos instrumentos (a volta e a visita): ela fica do lado do banco
-  const naCenaInstrumentos = disco && (estado.gesto === "instrumentos" || /no banco|trouxeram|cada um tem um jeito|a casa lembra|toca o que quiser|a casa também/.test(estado.texto ?? ""))
+  const naCenaInstrumentos = disco && (estado.gesto === "instrumentos" || /no banco|trouxeram|cada um tem um jeito|a casa lembra|toca o que quiser|a casa também|ainda não tá aqui/.test(estado.texto ?? ""))
 
   const plano = useMemo(() => {
     // (disco, LU2CA 20/10) a casinha no deserto: a porta, a parede dos
