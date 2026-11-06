@@ -38,14 +38,15 @@ export function Patinador({ vel, steer, ar = () => false, jato = () => false }: 
       corpo.current.rotation.x = -0.18 - forca * 0.2
       corpo.current.position.y = 0.04 * Math.abs(Math.sin(f)) * forca
     }
-    pernas.current.forEach((p, i) => {
-      if (!p) return
+    for (let i = 0; i < pernas.current.length; i++) {
+      const p = pernas.current[i]
+      if (!p) continue
       const lado = i ? 1 : -1, empurra = Math.max(0, Math.sin(f + i * Math.PI))
       // empurra pra fora e pra trás, depois volta pra baixo do corpo
       p.rotation.z = lado * empurra * 0.45 * forca * (1 - e)
       p.rotation.x = empurra * 0.35 * forca * (1 - e) - e * 1.1
-    })
-    bracos.current.forEach((b, i) => { if (b) { b.rotation.x = Math.sin(f + i * Math.PI) * 0.8 * forca * (1 - e); b.rotation.z = (i ? -1 : 1) * e * 1.2 } })
+    }
+    for (let i = 0; i < bracos.current.length; i++) { const b = bracos.current[i]; if (b) { b.rotation.x = Math.sin(f + i * Math.PI) * 0.8 * forca * (1 - e); b.rotation.z = (i ? -1 : 1) * e * 1.2 } }
   })
   return (
     <group ref={corpo} scale={1.15}>

@@ -35,3 +35,16 @@ vida no subúrbio, densidade dos manifestos já estão lá).
 
 Na Mesa: a moto (cores e brilho iguais), o passeio do parque (o carrinho e a câmera),
 o campo de força a pé encostando nos prédios.
+
+## Parte 2 (06/11): a moto e os `forEach`
+
+Só código + `tsc` (regra), sem medir.
+
+| onde | antes | agora | risco |
+|---|---|---|---|
+| `trincheiras/Pilotos.tsx` (`Motoqueiro`, `PneuCravo`: a moto do jogo em `Corrida.tsx` e a das trincheiras) | ~25 draws (uma por peça) | 7 draws: cada grupo animado (cada roda, o garfo, o quadro, o piloto) virou UMA geometria (`mergeGeometries`, uma vez no `useMemo`, as duas rodas dividem a mesma). Cor, roughness, metalness e brilho vão por vértice (`vertexColors` + `aRM`/`aEmi` num `onBeforeCompile`), lidos do `MAT_MOTO`; um material só (`MAT_PECAS`). O aro neon (transparente) segue à parte, 1 por roda. Animações iguais (os refs das rodas, garfo, pivô, nariz e piloto não mudaram) | médio-baixo: depende das linhas do shader do three 0.185 (`roughnessmap_fragment`, `metalnessmap_fragment`, `totalEmissiveRadiance = emissive`); se o three mudar essas linhas, a moto fica fosca/sem brilho na viseira (não quebra). Conferir na Mesa: cromo do escape/garfo, viseira neon |
+| `estrada/Patins.tsx`, `Flores.tsx`, `FloresAsfalto.tsx`, `Monumentos.tsx`, `trincheiras/Trincheiras.tsx` (rivais) | uma closure de `forEach` por quadro | laço `for` (o `return` virou `continue`) | baixo |
+
+Rivais da moto nas trincheiras: já eram um `mesh` só cada (geometria juntada), não mexi.
+Ciclista e Skatista (só nas trincheiras) seguem peça por peça.
+`Trincheiras.tsx`: o `forEach` dos portões (só quando muda) e o do mapa (a cada 50 ms) ficaram.

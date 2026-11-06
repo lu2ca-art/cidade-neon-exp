@@ -157,14 +157,15 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
     }
     if (emCorrida) {
       // os rivais (interpolados igual) e o fantasma
-      c.rivais.forEach((r, i) => {
-        const m = rivaisRef.current[i]; if (!m) return
+      for (let i = 0; i < c.rivais.length; i++) {
+        const r = c.rivais[i]
+        const m = rivaisRef.current[i]; if (!m) continue
         const p = naVolta(r.ant.d + (r.d - r.ant.d) * k, r.ant.lado + (r.lado - r.ant.lado) * k, tmp.pose)
         m.position.set(p.x, p.y, p.z)
         tmp.n.set(-p.nx * p.incl, 1, -p.nz * p.incl).normalize()
         tmp.q.setFromUnitVectors(tmp.up, tmp.n); tmp.qy.setFromAxisAngle(tmp.up, p.yaw)
         m.quaternion.copy(tmp.q).multiply(tmp.qy)
-      })
+      }
       const f = fantasmaRef.current
       if (f) {
         const ok = !!c.fantasma && (c.fase === "correndo" || c.fase === "chegou") && poseFantasma(c.fantasma.rastro, c.tempo, tmp.fp)

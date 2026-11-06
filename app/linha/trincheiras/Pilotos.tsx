@@ -10,8 +10,9 @@
 //    KICKFLIP/HEELFLIP (a prancha gira); no grind, faísca no truck.
 
 import { useFrame } from "@react-three/fiber"
-import { useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
 const PELE = "#5a3a26", CASACO = "#ff3fb0", ESCURO = "#14121c", CALCA = "#1b1530", NEON = "#2fe8ff"
 
@@ -199,12 +200,91 @@ const MAT_MOTO = {
   casacoTorso: std(CASACO, 0.7),
   viseira: new THREE.MeshStandardMaterial({ color: NEON, emissive: NEON, emissiveIntensity: 0.8 }),
 }
-function PneuCravo({ r }: { r: React.RefObject<THREE.Group | null> }) {
+// (leveza parte 2) as peças paradas de cada grupo animado viram UMA geometria (rodas,
+// garfo, quadro, piloto): ~25 draws → 7. As peças têm cores, roughness, metalness e
+// brilho diferentes; vão por vértice (cor = vertexColors; aRM e aEmi no shader) e um
+// material só desenha todas. Os valores saem do MAT_MOTO (o mesmo visual). O aro
+// (transparente) continua à parte, uma por roda.
+const MAT_PECAS = (() => {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true })
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec2 aRM;\nattribute vec3 aEmi;\nvarying vec2 vRM;\nvarying vec3 vEmi;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvRM = aRM;\nvEmi = aEmi;")
+    sh.fragmentShader = sh.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec2 vRM;\nvarying vec3 vEmi;")
+      .replace("vec3 totalEmissiveRadiance = emissive;", "vec3 totalEmissiveRadiance = vEmi;")
+      .replace("#include <roughnessmap_fragment>", "float roughnessFactor = vRM.x;")
+      .replace("#include <metalnessmap_fragment>", "float metalnessFactor = vRM.y;")
+  }
+  m.customProgramCacheKey = () => "moto-pecas"
+  return m
+})()
+type V3 = [number, number, number]
+type Peca = [THREE.BufferGeometry, Exclude<keyof typeof MAT_MOTO, "aro">, V3?, V3?]
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1), _c = new THREE.Color()
+function juntar(pecas: Peca[]) {
+  const geos = pecas.map(([g, k, pos = [0, 0, 0], rot = [0, 0, 0]]) => {
+    const mat = MAT_MOTO[k]
+    g.applyMatrix4(_m.compose(_p.set(...pos), _q.setFromEuler(_e.set(...rot)), _s))
+    const n = g.attributes.position.count
+    const cor = new Float32Array(n * 3), rm = new Float32Array(n * 2), emi = new Float32Array(n * 3)
+    _c.copy(mat.emissive).multiplyScalar(mat.emissiveIntensity)
+    for (let i = 0; i < n; i++) {
+      cor[i * 3] = mat.color.r; cor[i * 3 + 1] = mat.color.g; cor[i * 3 + 2] = mat.color.b
+      rm[i * 2] = mat.roughness; rm[i * 2 + 1] = mat.metalness
+      emi[i * 3] = _c.r; emi[i * 3 + 1] = _c.g; emi[i * 3 + 2] = _c.b
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(cor, 3))
+    g.setAttribute("aRM", new THREE.BufferAttribute(rm, 2))
+    g.setAttribute("aEmi", new THREE.BufferAttribute(emi, 3))
+    return g
+  })
+  const out = mergeGeometries(geos)
+  for (const g of geos) g.dispose()
+  return out
+}
+function geoMoto() {
+  const Box = THREE.BoxGeometry, Cil = THREE.CylinderGeometry, PI = Math.PI
+  return {
+    roda: juntar([
+      [new THREE.TorusGeometry(0.31, 0.085, 6, 16), "pneu", undefined, [0, PI / 2, 0]],
+      [new Cil(0.05, 0.05, 0.14, 8), "cromo", undefined, [0, 0, PI / 2]],
+    ]),
+    garfo: juntar([
+      [new Cil(0.035, 0.035, 0.95, 6), "garfo", [-0.1, 0.42, -0.12], [-0.42, 0, 0]],
+      [new Cil(0.035, 0.035, 0.95, 6), "garfo", [0.1, 0.42, -0.12], [-0.42, 0, 0]],
+      [new Box(0.2, 0.03, 0.42), "moto", [0, 0.34, 0.05], [-0.25, 0, 0]],
+      [new Box(0.72, 0.04, 0.04), "escuro", [0, 0.88, -0.32]],
+      [new Box(0.26, 0.22, 0.03), "plastico", [0, 0.78, -0.2], [-0.35, 0, 0]], // a placa do número
+    ]),
+    // o quadro, o motor, o tanque, o banco, o paralama de trás e o escape
+    quadro: juntar([
+      [new Box(0.2, 0.3, 0.5), "escuroMetal", [0, 0.48, 0], [0.08, 0, 0]],
+      [new Box(0.32, 0.2, 0.42), "motoLiso", [0, 0.82, 0.18], [-0.1, 0, 0]],
+      [new Box(0.22, 0.08, 0.62), "escuro", [0, 0.86, -0.32], [0.08, 0, 0]],
+      [new Box(0.2, 0.03, 0.42), "moto", [0, 0.8, -0.78], [0.35, 0, 0]],
+      [new Box(0.06, 0.06, 0.55), "cromo", [0, 0.58, -0.4], [0.5, 0, 0]],
+      [new Cil(0.05, 0.06, 0.5, 8), "escape", [0.17, 0.62, -0.42], [PI / 2 - 0.25, 0, 0]],
+    ]),
+    // o piloto em pé nas pedaleiras, braços no guidão; o capacete (em 0, 1.4, 0.32) com a viseira neon
+    piloto: juntar([
+      [new Box(0.15, 0.72, 0.17), "calca", [-0.2, 0.36, -0.02], [0.25, 0, 0]],
+      [new Box(0.15, 0.72, 0.17), "calca", [0.2, 0.36, -0.02], [0.25, 0, 0]],
+      [new Box(0.44, 0.6, 0.27), "casacoTorso", [0, 0.98, 0.1], [0.6, 0, 0]],
+      [new Box(0.1, 0.5, 0.1), "casaco", [-0.3, 0.98, 0.36], [1.15, 0, 0]],
+      [new Box(0.1, 0.5, 0.1), "casaco", [0.3, 0.98, 0.36], [1.15, 0, 0]],
+      [new THREE.SphereGeometry(0.19, 14, 10), "capacete", [0, 1.4, 0.32]],
+      [new Box(0.24, 0.08, 0.08), "viseira", [0, 1.42, 0.47]],
+      [new Box(0.26, 0.03, 0.16), "moto", [0, 1.52, 0.49], [-0.3, 0, 0]],
+    ]),
+  }
+}
+function PneuCravo({ r, geo }: { r: React.RefObject<THREE.Group | null>; geo: THREE.BufferGeometry }) {
   return (
     <group ref={r}>
-      <mesh rotation-y={Math.PI / 2} material={MAT_MOTO.pneu}><torusGeometry args={[0.31, 0.085, 6, 16]} /></mesh>
+      <mesh geometry={geo} material={MAT_PECAS} />
       <mesh rotation-z={Math.PI / 2} material={MAT_MOTO.aro}><cylinderGeometry args={[0.2, 0.2, 0.04, 10]} /></mesh>
-      <mesh rotation-z={Math.PI / 2} material={MAT_MOTO.cromo}><cylinderGeometry args={[0.05, 0.05, 0.14, 8]} /></mesh>
     </group>
   )
 }
@@ -238,45 +318,21 @@ export function Motoqueiro({ vel, steer, ar, pitch, empurra = () => false }: { v
       piloto.current.position.y = -enc.current * 0.08
     }
   })
+  const geo = useMemo(geoMoto, [])
+  useEffect(() => () => { geo.roda.dispose(); geo.garfo.dispose(); geo.quadro.dispose(); geo.piloto.dispose() }, [geo])
   return (
     <group ref={corpo}>
       <group ref={pivo}>
         <group ref={nariz}>
-          <group position={[0, 0.39, -0.62]}><PneuCravo r={rodaT} /></group>
+          <group position={[0, 0.39, -0.62]}><PneuCravo r={rodaT} geo={geo.roda} /></group>
           {/* o garfo e a roda da frente (viram com a direção) */}
           <group ref={garfo} position={[0, 0.39, 0.66]}>
-            <group><PneuCravo r={rodaF} /></group>
-            {[-1, 1].map((l) => (
-              <mesh key={l} position={[l * 0.1, 0.42, -0.12]} rotation-x={-0.42} material={MAT_MOTO.garfo}><cylinderGeometry args={[0.035, 0.035, 0.95, 6]} /></mesh>
-            ))}
-            <mesh position={[0, 0.34, 0.05]} rotation-x={-0.25} material={MAT_MOTO.moto}><boxGeometry args={[0.2, 0.03, 0.42]} /></mesh>
-            <mesh position={[0, 0.88, -0.32]} material={MAT_MOTO.escuro}><boxGeometry args={[0.72, 0.04, 0.04]} /></mesh>
-            {/* a placa do número */}
-            <mesh position={[0, 0.78, -0.2]} rotation-x={-0.35} material={MAT_MOTO.plastico}><boxGeometry args={[0.26, 0.22, 0.03]} /></mesh>
+            <group><PneuCravo r={rodaF} geo={geo.roda} /></group>
+            <mesh geometry={geo.garfo} material={MAT_PECAS} />
           </group>
-          {/* o quadro, o motor, o tanque, o banco e o paralama de trás */}
-          <mesh position={[0, 0.48, 0]} rotation-x={0.08} material={MAT_MOTO.escuroMetal}><boxGeometry args={[0.2, 0.3, 0.5]} /></mesh>
-          <mesh position={[0, 0.82, 0.18]} rotation-x={-0.1} material={MAT_MOTO.motoLiso}><boxGeometry args={[0.32, 0.2, 0.42]} /></mesh>
-          <mesh position={[0, 0.86, -0.32]} rotation-x={0.08} material={MAT_MOTO.escuro}><boxGeometry args={[0.22, 0.08, 0.62]} /></mesh>
-          <mesh position={[0, 0.8, -0.78]} rotation-x={0.35} material={MAT_MOTO.moto}><boxGeometry args={[0.2, 0.03, 0.42]} /></mesh>
-          <mesh position={[0, 0.58, -0.4]} rotation-x={0.5} material={MAT_MOTO.cromo}><boxGeometry args={[0.06, 0.06, 0.55]} /></mesh>
-          {/* o escape */}
-          <mesh position={[0.17, 0.62, -0.42]} rotation-x={Math.PI / 2 - 0.25} material={MAT_MOTO.escape}><cylinderGeometry args={[0.05, 0.06, 0.5, 8]} /></mesh>
-          {/* o piloto em pé nas pedaleiras, braços no guidão */}
+          <mesh geometry={geo.quadro} material={MAT_PECAS} />
           <group ref={piloto} position={[0, 0.4, -0.05]}>
-            {[-1, 1].map((l) => (
-              <mesh key={l} position={[l * 0.2, 0.36, -0.02]} rotation-x={0.25} material={MAT_MOTO.calca}><boxGeometry args={[0.15, 0.72, 0.17]} /></mesh>
-            ))}
-            <mesh position={[0, 0.98, 0.1]} rotation-x={0.6} material={MAT_MOTO.casacoTorso}><boxGeometry args={[0.44, 0.6, 0.27]} /></mesh>
-            {[-1, 1].map((l) => (
-              <mesh key={l} position={[l * 0.3, 0.98, 0.36]} rotation-x={1.15} material={MAT_MOTO.casaco}><boxGeometry args={[0.1, 0.5, 0.1]} /></mesh>
-            ))}
-            {/* o capacete com a viseira neon */}
-            <group position={[0, 1.4, 0.32]}>
-              <mesh material={MAT_MOTO.capacete}><sphereGeometry args={[0.19, 14, 10]} /></mesh>
-              <mesh position={[0, 0.02, 0.15]} material={MAT_MOTO.viseira}><boxGeometry args={[0.24, 0.08, 0.08]} /></mesh>
-              <mesh position={[0, 0.12, 0.17]} rotation-x={-0.3} material={MAT_MOTO.moto}><boxGeometry args={[0.26, 0.03, 0.16]} /></mesh>
-            </group>
+            <mesh geometry={geo.piloto} material={MAT_PECAS} />
           </group>
         </group>
       </group>

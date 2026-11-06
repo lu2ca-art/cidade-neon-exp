@@ -103,16 +103,17 @@ export function Monumentos({ M, luz, objetos = [] }: { M: MundoDisco; luz: Recor
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime, agora = performance.now() / 1000
     let ondaK = -1, ondaM: (typeof montados)[number] | null = null
-    montados.forEach((m, k) => {
+    for (let k = 0; k < montados.length; k++) {
+      const m = montados[k]
       const g = grupos.current[k], f = fachos.current[k]
-      if (!g || !f) return
+      if (!g || !f) continue
       const e: Luz = luz?.[m.nome] ?? "apagada"
       const t0 = nasce.current.get(m.nome)
       // esperando a vez de nascer: ainda não aparece
       const esperando = t0 !== undefined && agora < t0
       const vis = e !== "apagada" && !esperando
       g.visible = f.visible = vis
-      if (!vis) return
+      if (!vis) continue
       const p = t0 !== undefined ? (agora - t0) / MONUMENTO_CFG.nascer : 1
       const nascendo = p < 1
       if (!nascendo && t0 !== undefined) nasce.current.delete(m.nome)
@@ -131,7 +132,7 @@ export function Monumentos({ M, luz, objetos = [] }: { M: MundoDisco; luz: Recor
       const fm = f.material as THREE.MeshBasicMaterial
       fm.opacity = (e === "aberta" ? 0.11 + 0.05 * Math.sin(t * 2 + k) : 0.05) + (nascendo ? 0.6 * (1 - suave(p)) : 0)
       if (nascendo && p > ondaK) { ondaK = p; ondaM = m }
-    })
+    }
     // a onda de luz do nascimento (uma só: a do mais recente)
     const o = onda.current
     if (o) {
