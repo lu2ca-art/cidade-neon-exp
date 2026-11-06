@@ -61,11 +61,11 @@ export function MetroTuneis({ liberado, escondido, onAberto }: { liberado: boole
   if (escondido || !perto) return null
   return (
     <>
-      <button type="button" className={`gf-botao${liberado ? "" : " is-trancado"}`} data-testid="metro-tuneis" onClick={() => (liberado ? setAberto(true) : setAviso((a) => !a))}>
+      <button type="button" className={`gf-botao is-metro${liberado ? "" : " is-trancado"}`} data-testid="metro-tuneis" onClick={() => (liberado ? setAberto(true) : setAviso((a) => !a))}>
         <small>{liberado ? "linha 9 · o trem parado" : <><Cadeado size={9} /> linha 9</>}</small>
         <b>{liberado ? "entrar no trem" : "o trem tá fechado"}</b>
       </button>
-      {aviso && !liberado && <div className="gf-aviso"><Trancado texto={FALAS_METRO_TUNEIS.tranca} /></div>}
+      {aviso && !liberado && <div className="gf-aviso is-metro"><Trancado texto={FALAS_METRO_TUNEIS.tranca} /></div>}
     </>
   )
 }

@@ -39,3 +39,6 @@
 .gf-tag-bt { padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(242,238,250,.3); background: transparent; color: #f2eefa; font: 700 13px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
 .gf-tag-bt.is-pronto { background: #ff3fb0; border-color: #ff3fb0; color: #14121c; }
 .gf-tag-bt:disabled { opacity: .4; cursor: default; }
+
+/* (revisão 06/11) o botão do trem divide o salão com as paredes da tag: sobe pra esquerda, sem tampar o do grafite */
+.gf-botao.is-metro, .gf-aviso.is-metro { left: 24%; }
