@@ -2892,10 +2892,10 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       )}
       {/* (05/11) no deserto e no subúrbio, o lugar do botão é da moto (trancada até T14) */}
       {motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
-        <button type="button" className={`l-sair-kombi is-moto${permitido(zona, "patins") ? " is-segundo" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>moto</button>
+        <button type="button" data-info="moto" className={`l-sair-kombi is-moto${permitido(zona, "patins") ? " is-segundo" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>moto</button>
       )}
       {discoM && !motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
-        <button type="button" className={`l-sair-kombi is-trancado${permitido(zona, "patins") ? " is-segundo" : ""}`} aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
+        <button type="button" data-info="moto" className={`l-sair-kombi is-trancado${permitido(zona, "patins") ? " is-segundo" : ""}`} aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
       )}
       {motoAviso && <p className="l-pagina-fechada"><Cadeado />a moto · {TRANCA_MOTO}</p>}
       {dePatins && florPerto && !regandoFlor && (
@@ -2907,11 +2907,11 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={pegarGalaoDbee}>pegar o galão</button>
       )}
       {dePatins && pertoKombi && !msgPatins && !kombiQuebrada && (!discoM || permitido(zona, veiculo ? "carro" : "kombi")) && (
-        <button type="button" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : deMoto ? "guardar a moto · voltar pra Kombi" : "voltar pra Kombi"}</button>
+        <button type="button" data-info="entrar" className="l-regar-btn is-voltar" onPointerDown={(e) => e.stopPropagation()} onClick={entrarNaKombi}>{veiculo ? `${FALAS_PERSEGUICAO.pegar} ${veiculoPorId(veiculo)?.nome ?? ""}` : deMoto ? "guardar a moto · voltar pra Kombi" : "voltar pra Kombi"}</button>
       )}
       {/* (moto) de patins perto da Kombi: a moto sai dela; de moto no subúrbio (a Kombi não entra), guarda e segue a pé */}
       {motoOk && dePatins && !deMoto && pertoKombi && !msgPatins && !kombiQuebrada && !veiculo && (
-        <button type="button" className="l-regar-btn is-voltar is-moto-btn" onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>pegar a moto</button>
+        <button type="button" data-info="moto" className="l-regar-btn is-voltar is-moto-btn" onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>pegar a moto</button>
       )}
       {deMoto && pertoKombi && !msgPatins && !kombiQuebrada && permitido(zona, "patins") && (
         <button type="button" className="l-regar-btn is-voltar is-moto-btn" onPointerDown={(e) => e.stopPropagation()} onClick={guardarMoto}>guardar a moto</button>
@@ -3031,19 +3031,19 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
           )}
           <div className="l-drone-botoes" onPointerDown={(e) => e.stopPropagation()}>
             {(voar || movido) && (
-              <button type="button" aria-label="centrar a cidade" onClick={() => { centrarDrone(); setMovido(false); setVoar(false) }}>
+              <button type="button" data-info="drone-centro" aria-label="centrar a cidade" onClick={() => { centrarDrone(); setMovido(false); setVoar(false) }}>
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="3.2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
               </button>
             )}
-            <button type="button" aria-label="mover o mapa" className={voar ? "is-on" : ""} onClick={() => setVoar((v) => !v)}>
+            <button type="button" data-info="drone-mover" aria-label="mover o mapa" className={voar ? "is-on" : ""} onClick={() => setVoar((v) => !v)}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-8a1.5 1.5 0 0 1 3 0V12M14 11.5V5a1.5 1.5 0 0 1 3 0v7M17 8.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1.5a7 7 0 0 1-5.6-2.8L3.3 15.4a1.6 1.6 0 0 1 2.5-2L8 15.5" /></svg>
             </button>
             {discoM && mapaPainel && (
-              <button type="button" aria-label="as missões" className={dronePainel ? "is-on" : ""} onClick={() => setDronePainel((v) => !v)}>
+              <button type="button" data-info="drone-missoes" aria-label="as missões" className={dronePainel ? "is-on" : ""} onClick={() => setDronePainel((v) => !v)}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 6h14M5 12h14M5 18h9" /></svg>
               </button>
             )}
-            <button type="button" aria-label="voltar pra rua" onClick={() => ligarDrone(false)}>
+            <button type="button" data-info="drone-volta" aria-label="voltar pra rua" onClick={() => ligarDrone(false)}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v13M6 11l6 6 6-6M5 21h14" /></svg>
             </button>
           </div>

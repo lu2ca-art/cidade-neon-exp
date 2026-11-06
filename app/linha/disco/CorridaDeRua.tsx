@@ -319,7 +319,7 @@ export function CorridaRuaHud({ placar, onFim, escondido = false }: { placar?: P
   if (vista.fase === "perto") {
     const melhor = placar?.melhor ? Math.min(...Object.values(placar.melhor).filter((v): v is number => v != null)) : null
     return (
-      <button type="button" className="l-racha-btn is-rua" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { RUA.e.comecar = true }} aria-label="correr: a corrida de rua do subúrbio">
+      <button type="button" data-info="rua" className="l-racha-btn is-rua" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { RUA.e.comecar = true }} aria-label="correr: a corrida de rua do subúrbio">
         <small>corrida de rua · {VOLTAS_RUA} voltas · 3 rivais</small>
         <b>correr</b>
         <em>{melhor != null && isFinite(melhor) ? `seu melhor: ${relogio(melhor)}` : (placar?.vitorias ?? 0) ? "bora de novo" : `ganhe e leve ${CFG.premioNeon} neon$`}</em>

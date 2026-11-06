@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "carreira.meio",
+    nome: "O Nexo só informa: o \"?\" explica qualquer coisa da tela",
+    data: "2026-11-06",
+    tarefa: "T41",
+    olhar: "Toca no \"?\" do notch: ele diz \"toque em qualquer lugar para saber mais\". Toca no mapa, no ♪, no notch, no drone, nos botões de veículo: um texto curto aparece colado na coisa, sem tampar nada.",
+    perguntas: [
+      "A dica da D-Bee no notch agora vem sem o nome dela. Fica assim ou ela sai do notch?",
+      "As vinhetas da rádio podem passar no notch também?",
+    ],
+    mais: [{ parte: "perseguicao.escolher", nome: "os botões de veículo" }],
+  },
+  {
     parte: "violao",
     nome: "O violão na rua: aparece com a música da rua e a trilha abaixa",
     data: "2026-11-06",
