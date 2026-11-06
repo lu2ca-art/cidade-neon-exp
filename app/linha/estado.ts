@@ -244,6 +244,7 @@ export function apagar() {
   travado = true
   try {
     localStorage.removeItem(chaveSave())
+    localStorage.removeItem(`${chaveSave()}-terror`) // (revisão 6) o "já viu" do elevador de terror (disco/terror.ts)
     localStorage.removeItem(`${chaveSave()}-onde`) // (notas 04/11) onde a Kombi parou (estrada/ondeParou.ts)
   } catch {}
 }

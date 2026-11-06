@@ -220,6 +220,8 @@ export function PocoTerror({ onFim }: { onFim: () => void }) {
   const fim = useRef(onFim)
   useEffect(() => { fim.current = onFim }, [onFim])
   const acabar = useMemo(() => () => { if (foi.current) return; foi.current = true; fim.current() }, [])
+  // (revisão 6) rede de segurança: contexto WebGL perdido (iOS) para o relógio do useFrame; ele não fica preso
+  useEffect(() => { const t = setTimeout(acabar, (DURACAO_TERROR + 4) * 1000); return () => clearTimeout(t) }, [acabar])
   const olhar = useRef(0)
   const veu = useRef<HTMLDivElement>(null)
   const toque = useRef<{ x: number; y0: number; mexeu: boolean } | null>(null)

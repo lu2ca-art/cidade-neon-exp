@@ -44,7 +44,8 @@ export function subidaAgora(): { n: number; pista: string; modo: "patins" | "mot
   if (!subida) return null
   return { n: subida.n, pista: ELEVADORES[subida.n - 1].faixas[0], modo: subida.modo, fora: foraEmCima }
 }
-export function limparSubida() { if (subida) { subida = null; foraEmCima = null } }
+// (revisão 6) limpa sempre: o "fora" de uma descida pelo elevador não pode sobrar pra uma subida futura
+export function limparSubida() { subida = null; foraEmCima = null }
 export function pedirDescida(n: number, fora: Desembarque | null) { descida = n; foraEmCima = fora }
 /** (o page, ao montar as trincheiras) desce em qual salão? Consome o pedido */
 export function tomarDescida(): number | null { const d = descida; descida = null; return d }

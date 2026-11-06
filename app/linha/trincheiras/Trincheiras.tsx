@@ -482,13 +482,14 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
 
   return (
     <div className={`tr-raiz${noJogo ? " is-jogo" : ""}${subindo ? " is-subindo" : ""}`}>
-      <Canvas className="tr-cvs" frameloop={noJogo?.pausado || terror ? "never" : "always"} dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
+      {/* (revisão 6) no terror o Canvas dos túneis sai (um WebGL só no iPhone); o terror termina sempre subindo */}
+      {!terror && <Canvas className="tr-cvs" frameloop={noJogo?.pausado ? "never" : "always"} dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
         <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
         {/* (06/11) o mundo depois: a água nos rios (só com o final feito) */}
         <RioDepois />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
-      </Canvas>
+      </Canvas>}
       <div className="tr-hud">
         {volta
           ? linkSubir(correu, "tr-voltar", "↑ subir pro subúrbio")
