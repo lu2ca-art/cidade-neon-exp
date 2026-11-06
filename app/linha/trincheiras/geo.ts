@@ -526,8 +526,11 @@ function salao(s: Salao, L: Camadas) {
 }
 
 // o salão do metrô: a linha 9 parada na plataforma (3 vagões), a faixa amarela e a placa
-function metro(L: Camadas) {
-  const t = TREM, ax = t.ax, az = t.az, nx = -az, nz = ax // n: pra dentro do salão
+// (06/11) o trem em si agora é o carro do metro.glb (TremTuneis.tsx); estas caixas
+// ficam de reserva (enquanto baixa, ou se falhar): geoTremCaixas
+export function geoTremCaixas() {
+  const L = novas()
+  const t = TREM, ax = t.ax, az = t.az, nx = -az, nz = ax
   const corpo = C("#2a2440"), teto = C("#3a3058"), janela = C("#6af2ff").multiplyScalar(0.75), faixa = C("#ff7a3c")
   const vag = (t.meioC * 2 - 2) / 3
   for (const j of [-1, 0, 1]) {
@@ -545,6 +548,11 @@ function metro(L: Camadas) {
     const x = t.c.x + ax * s * (t.meioC + 0.03), z = t.c.z + az * s * (t.meioC + 0.03)
     L.neon.push(semUV(quadro(x, 1.2, z, ax * s, az * s, t.meioL * 1.6, 0.4, QUENTE)))
   }
+  return { concreto: fundir(L.concreto, false, true), neon: fundir(L.neon) }
+}
+
+function metro(L: Camadas) {
+  const t = TREM, ax = t.ax, az = t.az, nx = -az, nz = ax // n: pra dentro do salão
   // os trilhos (saem pelas duas pontas até a parede) e a plataforma do lado de dentro
   for (const l of [-0.75, 0.75]) L.concreto.push(caixaAo(t.c.x + nx * l, t.c.z + nz * l, ax, az, t.meioC * 2 + 40, 0.18, 0.18, 0, C("#77708a")))
   const plat = 9

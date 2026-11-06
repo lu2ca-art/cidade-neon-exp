@@ -12,6 +12,8 @@ import { useMemo, useRef } from "react"
 import * as THREE from "three"
 import type { Mundo } from "./mundo"
 import { pontoI } from "./pista"
+import { CarroModelado } from "./MetroModelo"
+import { ModeloSeguro } from "./Seguro"
 
 export const LADO_METRO = -20 // lateral do trilho (esquerda da pista)
 const ALTO = 13 // acima da pista, no trecho elevado
@@ -222,6 +224,19 @@ export function Metro({ metro }: { metro: Metro }) {
       ))}
       {Array.from({ length: VAGOES }, (_, k) => (
         <group key={k} ref={(g) => { vagoes.current[k] = g }}>
+          {/* (06/11) o carro modelado no Blender (metro.glb); enquanto baixa, ou se falhar, a caixa de antes */}
+          <ModeloSeguro nome="metro-carro" reserva={<CarroCaixa primeiro={k === 0} />}>
+            <CarroModelado farol={k === 0} />
+          </ModeloSeguro>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// o carro de antes (a reserva do modelado)
+function CarroCaixa({ primeiro }: { primeiro: boolean }) {
+  return (
           <group position={[0, 2.1, 0]}>
             <mesh>
               <boxGeometry args={[3, 3.2, VAGAO]} />
@@ -238,15 +253,12 @@ export function Metro({ metro }: { metro: Metro }) {
               <boxGeometry args={[3.04, 0.12, VAGAO]} />
               <meshBasicMaterial color="#2fe8ff" toneMapped={false} />
             </mesh>
-            {k === 0 && (
+            {primeiro && (
               <mesh position={[0, 0.2, VAGAO / 2 + 0.01]}>
                 <planeGeometry args={[2.2, 0.5]} />
                 <meshBasicMaterial color="#ffffff" toneMapped={false} />
               </mesh>
             )}
           </group>
-        </group>
-      ))}
-    </group>
   )
 }

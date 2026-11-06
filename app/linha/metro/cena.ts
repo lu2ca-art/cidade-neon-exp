@@ -11,8 +11,12 @@
 
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js"
 import { ALTURA, BAIAS, BANCO, GANG, MEIA, NV, PASSAGEM, TRECHOS_BANCO, WL, Z_FIM, Z_PORTA, inicioVagao } from "./mundo"
 import type { Fuga } from "./jogo"
+
+const URL_METRO = "/models/metro.glb"
 
 const X = (x: number) => -x
 const cor = new THREE.Color()
@@ -191,53 +195,56 @@ export class Cena {
   }
 
   private montarTrem(f: Fuga) {
+    // (06/11) a casca (chão, teto, paredes, portas, bancos, barras) sai à parte: é ela que
+    // o vagão modelado (metro.glb) substitui quando chega; o resto fica sempre
+    const K: THREE.BufferGeometry[] = []
     const L: THREE.BufferGeometry[] = []
     for (let i = 0; i < NV; i++) {
       const z0 = inicioVagao(i), z1 = z0 + WL
-      L.push(caixa(-MEIA, MEIA, -0.06, 0, z0, z1, C.chao))
+      K.push(caixa(-MEIA, MEIA, -0.06, 0, z0, z1, C.chao))
       for (const [a, b] of BAIAS) {
-        L.push(caixa(-MEIA, MEIA, 0, 0.004, z0 + a, z0 + b, C.chaoBaia))
-        L.push(caixa(-MEIA, -BANCO + 0.05, 0, 0.006, z0 + a, z0 + a + 0.05, C.amarelo), caixa(BANCO - 0.05, MEIA, 0, 0.006, z0 + a, z0 + a + 0.05, C.amarelo))
-        L.push(caixa(-MEIA, -BANCO + 0.05, 0, 0.006, z0 + b - 0.05, z0 + b, C.amarelo), caixa(BANCO - 0.05, MEIA, 0, 0.006, z0 + b - 0.05, z0 + b, C.amarelo))
+        K.push(caixa(-MEIA, MEIA, 0, 0.004, z0 + a, z0 + b, C.chaoBaia))
+        K.push(caixa(-MEIA, -BANCO + 0.05, 0, 0.006, z0 + a, z0 + a + 0.05, C.amarelo), caixa(BANCO - 0.05, MEIA, 0, 0.006, z0 + a, z0 + a + 0.05, C.amarelo))
+        K.push(caixa(-MEIA, -BANCO + 0.05, 0, 0.006, z0 + b - 0.05, z0 + b, C.amarelo), caixa(BANCO - 0.05, MEIA, 0, 0.006, z0 + b - 0.05, z0 + b, C.amarelo))
       }
-      L.push(caixa(-MEIA, MEIA, ALTURA, ALTURA + 0.06, z0, z1, C.teto))
+      K.push(caixa(-MEIA, MEIA, ALTURA, ALTURA + 0.06, z0, z1, C.teto))
       // as paredes dos lados: a de baixo, a faixa azul, as janelas (vãos), a de cima
       for (const s of [1, -1]) {
         const xa = s > 0 ? MEIA : -MEIA - 0.08, xb = xa + 0.08
         for (const [a, b] of [[0, BAIAS[0][0]], [BAIAS[0][1], BAIAS[1][0]], [BAIAS[1][1], WL]]) {
-          L.push(caixa(xa, xb, 0, 0.98, z0 + a, z0 + b, C.parede))
-          L.push(caixa(xa, xb, 0.98, 1.06, z0 + a, z0 + b, C.faixa))
-          L.push(caixa(xa, xb, 1.86, ALTURA, z0 + a, z0 + b, C.parede))
+          K.push(caixa(xa, xb, 0, 0.98, z0 + a, z0 + b, C.parede))
+          K.push(caixa(xa, xb, 0.98, 1.06, z0 + a, z0 + b, C.faixa))
+          K.push(caixa(xa, xb, 1.86, ALTURA, z0 + a, z0 + b, C.parede))
           // os pilares entre as janelas
-          for (let z = a; z <= b + 0.01; z += (b - a) / Math.max(1, Math.round((b - a) / 1.6))) L.push(caixa(xa, xb, 1.06, 1.86, z0 + z - 0.09, z0 + z + 0.09, C.parede))
+          for (let z = a; z <= b + 0.01; z += (b - a) / Math.max(1, Math.round((b - a) / 1.6))) K.push(caixa(xa, xb, 1.06, 1.86, z0 + z - 0.09, z0 + z + 0.09, C.parede))
         }
         // as portas fechadas das baias (a da curva é a que abre)
         BAIAS.forEach(([a, b], k) => {
           if (i === NV - 1 && k === 1 && s > 0) {
-            L.push(caixa(xa, xb, 2.02, ALTURA, z0 + a, z0 + b, C.parede))
-            L.push(caixa(xa, xb, 0, 2.02, z0 + a, z0 + a + 0.02, C.parede), caixa(xa, xb, 0, 2.02, z0 + b - 0.02, z0 + b, C.parede))
+            K.push(caixa(xa, xb, 2.02, ALTURA, z0 + a, z0 + b, C.parede))
+            K.push(caixa(xa, xb, 0, 2.02, z0 + a, z0 + a + 0.02, C.parede), caixa(xa, xb, 0, 2.02, z0 + b - 0.02, z0 + b, C.parede))
             return
           }
-          L.push(caixa(xa, xb, 0, 2.02, z0 + a, z0 + b, C.porta))
-          L.push(caixa(xa - 0.004 * s, xb + 0.004 * s, 1.0, 1.78, z0 + a + 0.12, z0 + (a + b) / 2 - 0.05, C.vidroPorta))
-          L.push(caixa(xa - 0.004 * s, xb + 0.004 * s, 1.0, 1.78, z0 + (a + b) / 2 + 0.05, z0 + b - 0.12, C.vidroPorta))
-          L.push(caixa(xa, xb, 2.02, ALTURA, z0 + a, z0 + b, C.parede))
+          K.push(caixa(xa, xb, 0, 2.02, z0 + a, z0 + b, C.porta))
+          K.push(caixa(xa - 0.004 * s, xb + 0.004 * s, 1.0, 1.78, z0 + a + 0.12, z0 + (a + b) / 2 - 0.05, C.vidroPorta))
+          K.push(caixa(xa - 0.004 * s, xb + 0.004 * s, 1.0, 1.78, z0 + (a + b) / 2 + 0.05, z0 + b - 0.12, C.vidroPorta))
+          K.push(caixa(xa, xb, 2.02, ALTURA, z0 + a, z0 + b, C.parede))
         })
         // os bancos
         for (const [a, b] of TRECHOS_BANCO) {
           const xi = s > 0 ? BANCO : -MEIA, xo = s > 0 ? MEIA : -BANCO
-          L.push(caixa(xi, xo, 0, 0.4, z0 + a, z0 + b, C.bancoBase))
-          L.push(caixa(xi, xo, 0.4, 0.5, z0 + a + 0.02, z0 + b - 0.02, C.banco))
+          K.push(caixa(xi, xo, 0, 0.4, z0 + a, z0 + b, C.bancoBase))
+          K.push(caixa(xi, xo, 0.4, 0.5, z0 + a + 0.02, z0 + b - 0.02, C.banco))
           const xe = s > 0 ? MEIA - 0.1 : -MEIA, xf = s > 0 ? MEIA : -MEIA + 0.1
-          L.push(caixa(xe, xf, 0.5, 0.98, z0 + a + 0.02, z0 + b - 0.02, C.banco))
+          K.push(caixa(xe, xf, 0.5, 0.98, z0 + a + 0.02, z0 + b - 0.02, C.banco))
         }
         // a barra do teto
-        L.push(canoZ(s * 0.8, 1.98, z0 + 0.2, z1 - 0.2, 0.018, C.cano))
+        K.push(canoZ(s * 0.8, 1.98, z0 + 0.2, z1 - 0.2, 0.018, C.cano))
       }
       // as paredes do fundo e da frente, com o vão da passagem
       for (const [za, zb, cheia] of [[z0 - 0.06, z0, i === 0], [z1, z1 + 0.06, i === NV - 1]] as [number, number, boolean][]) {
-        if (cheia) L.push(caixa(-MEIA, MEIA, 0, ALTURA, za, zb, C.parede))
-        else { L.push(caixa(-MEIA, -PASSAGEM, 0, ALTURA, za, zb, C.parede), caixa(PASSAGEM, MEIA, 0, ALTURA, za, zb, C.parede)) }
+        K.push(caixa(-MEIA, -PASSAGEM, 0, ALTURA, za, zb, C.parede), caixa(PASSAGEM, MEIA, 0, ALTURA, za, zb, C.parede))
+        if (cheia) L.push(caixa(-PASSAGEM, PASSAGEM, 0, ALTURA, za, zb, C.parede))
       }
       if (i < NV - 1) {
         // o fole da passagem
@@ -267,9 +274,14 @@ export class Cena {
       for (const y of [2.6, 2.75, 2.9]) L.push(canoZ(s * 2.42, y, z0, z1, 0.025, C.cabo))
     }
     L.push(caixa(-2.6, 2.6, 3.4, 3.6, z0, z1, C.tunel))
-    const m = new THREE.Mesh(juntar(L), new THREE.MeshLambertMaterial({ vertexColors: true }))
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true })
+    const m = new THREE.Mesh(juntar(L), mat)
     m.matrixAutoUpdate = false
     this.cena.add(m)
+    this.casca = new THREE.Mesh(juntar(K), mat)
+    this.casca.matrixAutoUpdate = false
+    this.cena.add(this.casca)
+    this.carregarVagao(mat)
 
     // as luminárias do teto, uma malha por vagão (cada um pisca sozinho)
     const gEm: THREE.BufferGeometry[] = []
@@ -286,6 +298,38 @@ export class Cena {
     this.emergencia = new THREE.MeshBasicMaterial({ color: "#300", fog: false })
     const em = new THREE.Mesh(juntar(gEm), this.emergencia); em.matrixAutoUpdate = false
     this.cena.add(em)
+  }
+
+  // (06/11) o vagão modelado no Blender (blender/scripts/metro.py, nó "fuga"): aço riscado,
+  // bancos de plástico, propagandas apagadas, grade nas janelas, pichação. Uma
+  // InstancedMesh pros 5 vagões, uma pra porta (todos menos o último: lá ela abre na
+  // curva) e uma pro brilho da pichação. Se não baixar, fica a casca de caixas
+  private casca: THREE.Mesh | null = null
+  private morto = false
+  private carregarVagao(mat: THREE.Material) {
+    const ld = new GLTFLoader()
+    ld.setMeshoptDecoder(MeshoptDecoder)
+    ld.load(URL_METRO, (gltf) => {
+      if (this.morto || !this.casca) return
+      gltf.scene.updateMatrixWorld(true)
+      const pega = (n: string) => gltf.scene.getObjectByName(n) as THREE.Mesh | undefined
+      const neon = new THREE.MeshBasicMaterial({ vertexColors: true })
+      const partes: [string, THREE.Material, number][] = [["fuga_solido", mat, NV], ["fuga_neon", neon, NV], ["fugaporta_solido", mat, NV - 1], ["fugaporta_neon", neon, NV - 1]]
+      if (!pega("fuga_solido")?.geometry) return
+      const m4 = new THREE.Matrix4()
+      for (const [nome, mt, n] of partes) {
+        const o = pega(nome)
+        if (!o?.geometry) continue
+        const im = new THREE.InstancedMesh(o.geometry, mt, n)
+        for (let i = 0; i < n; i++) im.setMatrixAt(i, m4.makeTranslation(0, 0, inicioVagao(i)).multiply(o.matrixWorld))
+        im.frustumCulled = false
+        im.matrixAutoUpdate = false
+        this.cena.add(im)
+      }
+      this.cena.remove(this.casca)
+      this.casca.geometry.dispose()
+      this.casca = null
+    }, undefined, (e) => console.warn("[cidade-neon] metro.glb (fuga) não carregou; fica a casca de caixas", e))
   }
 
   // o túnel que passa: as costelas e as lâmpadas, em módulo do espaçamento
@@ -415,6 +459,7 @@ export class Cena {
   }
 
   destruir() {
+    this.morto = true
     this.cena.traverse((o) => {
       const m = o as THREE.Mesh
       if (m.geometry) m.geometry.dispose()

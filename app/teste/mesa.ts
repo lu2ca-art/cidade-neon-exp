@@ -182,7 +182,7 @@ export const MESA: Cartao[] = [
     nome: "O metrô de novo: o trem parado no salão dos túneis",
     data: "2026-11-06",
     tarefa: "T64",
-    olhar: "A fuga de quando te pegam já aconteceu. Nos túneis, vá até o SALÃO DO METRÔ (o trem branco parado): perto dele, \"entrar no trem\" abre a fuga de novo, sem mudar nada no save. Antes da fuga da história, o botão aparece com cadeado.",
+    olhar: "A fuga de quando te pegam já aconteceu. Nos túneis, vá até o SALÃO DO METRÔ (o trem parado): perto dele, \"entrar no trem\" abre a fuga de novo, sem mudar nada no save. Antes da fuga da história, o botão aparece com cadeado. Modelado no Blender (06/11): o trem parado agora é o metrô do Núcleo abandonado e reaproveitado — aço escovado riscado, a faixa azul pintada e as linhas de luz, janelas com grade, portas de correr laranja, pichação neon; e por dentro, na fuga, os bancos de plástico de cores trocadas, a grade nas janelas e as propagandas do Núcleo apagadas. As fotos: docs/blender/metro.png e docs/blender/metro-interior.png.",
     perguntas: ["A revanche no trem serve, ou o metrô deveria ser uma missão própria?"],
     mais: [{ parte: "metro", nome: "a fuga da história (quando te pegam)" }],
   },
@@ -534,7 +534,7 @@ export const MESA: Cartao[] = [
     nome: "O violão, o metrô e o grafite",
     data: "2026-10-31",
     tarefa: "T64",
-    olhar: "Metrô: a Kombi já foi jogada, tomam o jetpack e você foge pelo trem; no fim o violão fica lá e a guitarra aparece na loja. Violão: com o disco ou a rádio tocando, o botão do violão aparece. Grafite: nas trincheiras, chegue perto de uma parede com pontos e ligue os pontos para assinar.",
+    olhar: "Metrô (modelado no Blender, 06/11: o trem do Núcleo abandonado, aço riscado, janelas com grade, pichação; por dentro, bancos de plástico, barras e alças, propagandas apagadas e uma luminária que pisca — o mesmo trem na linha 9 elevada e no vagão da história): a Kombi já foi jogada, tomam o jetpack e você foge pelo trem; no fim o violão fica lá e a guitarra aparece na loja. Violão: com o disco ou a rádio tocando, o botão do violão aparece. Grafite: nas trincheiras, chegue perto de uma parede com pontos e ligue os pontos para assinar.",
     perguntas: [
       "A fuga do metrô logo depois da perseguição está no lugar certo da história?",
     ],

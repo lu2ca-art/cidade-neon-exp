@@ -50,6 +50,7 @@ import { pilotoMoto } from "./moto"
 import { Ciclista, Motoqueiro, Skatista, type Manobra } from "./Pilotos"
 import "./trincheiras.css"
 import { RioDepois } from "./RioDepois"
+import { TremTuneis } from "./TremTuneis"
 import { FINAL_VIVO } from "../disco/final"
 import { Cadeado, Trancado } from "../Trancado"
 import { TRANCA_MOTO, naMoto } from "../estrada/zonas"
@@ -232,6 +233,8 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
           {p.poeira && <points geometry={p.poeira} material={mats.poeira} matrixAutoUpdate={false} renderOrder={3} />}
         </group>
       ))}
+      {/* (06/11) o trem parado no salão do metrô (metro.glb; reserva: as caixas de antes) */}
+      <TremTuneis concreto={mats.concreto} neon={mats.neon} />
       {/* o trilho do grind: só pro skate */}
       {veiculo === "skate" && (
         <mesh geometry={trilho} matrixAutoUpdate={false} renderOrder={2}><meshBasicMaterial color="#7dffb0" transparent opacity={0.75} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} /></mesh>
