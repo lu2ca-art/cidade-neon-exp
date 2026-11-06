@@ -62,6 +62,15 @@ export const INFO: Record<string, { t: string; d: string }> = {
   turbo: { t: "turbo", d: "segura um instante: a Kombi dispara. o drift, as manobras e os voos enchem a barra (no teclado, um toque no espaço). de patins, no ar, é o dash." },
   propulsor: { t: "propulsor", d: "segura: a Kombi voa. de patins, é o jato de ar das costas. a energia volta andando no chão (no teclado, segura o espaço)." },
   sair: { t: "sair da Kombi", d: "desce de patins. a Kombi fica estacionada te esperando (tecla F)." },
+  // (T41, 06/11) os botões de veículo e do drone também se explicam no "?"
+  veiculo: { t: "veículo", d: "um veículo parado aqui perto: toca (ou Enter) e ele é seu. a Kombi fica onde está." },
+  moto: { t: "moto", d: "a moto sai da Kombi: entra onde a Kombi não cabe. com cadeado, ainda não liberou." },
+  entrar: { t: "voltar pro volante", d: "perto da Kombi (ou do veículo): sobe e segue dirigindo (tecla F)." },
+  rua: { t: "corrida de rua", d: "toca pra correr contra os rivais nesta rua. desistir sai na hora." },
+  "drone-centro": { t: "centrar", d: "volta o drone pro meio da cidade." },
+  "drone-mover": { t: "mover o mapa", d: "ligado, arrastar move o drone pela cidade em vez de girar." },
+  "drone-missoes": { t: "as missões", d: "a lista das missões que dá pra pegar agora." },
+  "drone-volta": { t: "voltar pra rua", d: "o drone desce e a direção volta pra você. a linha da rota fica acesa." },
 }
 const infoApp = (id: AppId) => { const a = APPS.find((x) => x.id === id); return a ? { t: a.nome, d: a.desc } : null }
 export const infoDe = (chave: string) => INFO[chave] ?? (chave.startsWith("app:") ? infoApp(chave.slice(4) as AppId) : null) ?? null
@@ -393,7 +402,7 @@ export const DICAS: string[] = [
   "dica · o holograma da rádio abre as frequências que você já achou",
 ]
 const DE_DICA = 18000
-const NEXO_PERGUNTA = "clique em qualquer lugar para saber mais"
+const NEXO_PERGUNTA = "toque em qualquer lugar para saber mais"
 function useDica(ativa: boolean) {
   const [k, setK] = useState(() => Math.floor(Math.random() * DICAS.length))
   useEffect(() => {

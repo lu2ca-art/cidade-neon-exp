@@ -63,7 +63,10 @@ export interface PropsDbee {
 }
 
 // a frase no notch
-export const textoDbee = (o: OpcaoDbee) => `D-Bee: ${o.texto}`
+// (T41, 06/11) o Nexo só informa: a dica entra sem o nome de quem fala (como o
+// ensinar() da Corrida). Pra voltar o "D-Bee: …", é virar DBEE_COM_NOME pra true
+export const DBEE_COM_NOME = false
+export const textoDbee = (o: OpcaoDbee) => (DBEE_COM_NOME ? `D-Bee: ${o.texto}` : o.texto)
 
 export function DbeeSugere(props: PropsDbee) {
   const P = useRef(props)

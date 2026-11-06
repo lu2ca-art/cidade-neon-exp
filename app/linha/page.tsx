@@ -13,7 +13,7 @@ import { placarComCorrida, type ResultadoRua } from "./disco/corridaRua"
 import { useCallback, useEffect, useInsertionEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react"
 import "./linha.css"
 import { ESTACOES, NIVEIS, dataCurta, estacao as getEstacao, lancada, missao, nivelDe, UNTITLED, type EstacaoId, type ProvaId } from "./data"
-import { ROTEIROS, VOZES, type ChatId } from "./roteiros"
+import { ROTEIROS, VOZES, jogoVelho, type ChatId } from "./roteiros"
 import { VAZIO, carregar, gravar, hoje, type Item, type Save } from "./estado"
 import { decidirModoSave } from "./chaveSave"
 import { ARQUIVO, type FreqId } from "./radio"
@@ -2502,7 +2502,7 @@ export default function LinhaPage() {
               // a cor volta aqui: o cinza é só o susto da chegada
               setTimeout(() => setCinza(false), 2500)
               setTela({ t: "corrida", destino: null })
-              if (!save.completos.includes("grupo")) setIntroGrupo(0)
+              if (!save.completos.includes("grupo") && jogoVelho()) setIntroGrupo(0)
             }}
           />
         )}
