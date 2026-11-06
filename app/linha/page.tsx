@@ -71,6 +71,7 @@ import { definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
+import { GRAFITES as GRAFITES_T12 } from "./grafite/grafites"
 import { CENA_BAR_VISITA, cenaVisita, donaDaFaixa, facaMissao, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 // (30/10) a volta do túnel: a Kombi esperou na porta
@@ -128,6 +129,10 @@ const Trincheiras = dynamic(carregarTrincheiras, { ssr: false })
 const SinucaBar = dynamic(() => import("./disco/SinucaBar").then((m) => m.SinucaBar), { ssr: false })
 // (T64, lote D) o grafite das trincheiras (puxa o geo.ts delas: só baixa junto)
 const GrafiteTrincheiras = dynamic(() => import("./disco/Grafite").then((m) => m.GrafiteTrincheiras), { ssr: false })
+// (T64, 06/11) o trem parado no salão do metrô das trincheiras: a fuga de novo (só baixa lá embaixo)
+// os 3 grafites da parede (os mesmos de trincheiras/geo.ts GRAFITES_NA_PAREDE; só os ids, sem puxar o 3D)
+const GRAFITES_IDS = GRAFITES_T12.slice(0, 3).map((g) => g.id)
+const MetroTuneis = dynamic(() => import("./disco/MetroTuneis").then((m) => m.MetroTuneis), { ssr: false })
 
 // (leveza B) o save no localStorage: no máximo uma gravação a cada ~3 s
 const ESPERA_GRAVAR = 3000
@@ -320,6 +325,8 @@ export default function LinhaPage() {
   const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; chegou?: boolean } | null>(null)
   // (T63) lá embaixo, nas trincheiras: "descendo" = o escuro da porta (a estrada ainda na cena); depois, só as trincheiras
   const [trincheiras, setTrincheiras] = useState<{ missao: MissaoId | null; descendo: boolean } | null>(null)
+  // (T64, 06/11) a fuga do metrô aberta lá embaixo (o trem do salão): as trincheiras pausam
+  const [metroTuneis, setMetroTuneis] = useState(false)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
   const [perseguido, setPerseguido] = useState(false)
   // a ilha do topo virou bifurcação: a conversa do painel se recolhe
@@ -1387,7 +1394,10 @@ export default function LinhaPage() {
     if (!HIST || !descerAoEntrar.current || tela.t !== "corrida" || cena) return
     descerAoEntrar.current = false
     const u = new URL(location.href); u.searchParams.delete("descer"); history.replaceState(history.state, "", u.pathname + u.search + u.hash)
-    setTimeout(() => chegouRef.current("tuneis"), 1500)
+    // (T64) com a missão dos túneis feita (ou não pegada), desce livre (grafite.livre, metro.tuneis)
+    const h0 = hist13(saveRef.current)
+    if (feita13(h0, "tuneis") || normalizarMissao(h0.missao) !== "tuneis") setTimeout(() => descerTrincheiras(null), 1500)
+    else setTimeout(() => chegouRef.current("tuneis"), 1500)
   }, [HIST, tela.t, cena])
   // (lote D) os links de teste novos: entrou no jogo, a parte abre direto
   useEffect(() => {
@@ -2733,11 +2743,15 @@ export default function LinhaPage() {
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
-        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist) }} />}
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist) }} />}
         {/* (notas 04/11) a rádio livre: fora da estrada (túneis, salas) ela também liga */}
         {D && emSala && !trincheiras?.descendo && <button type="button" className={`l-radio-livre${radioManda ? " is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarRadioLivre}>{radioManda ? "rádio · desligar" : "rádio · ligar"}</button>}
         {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}
-        {trincheiras && !trincheiras.descendo && <GrafiteTrincheiras assinados={hist.grafites ?? []} onAssinou={assinouGrafite} />}
+        {trincheiras && !trincheiras.descendo && <GrafiteTrincheiras assinados={hist.grafites ?? []} onAssinou={assinouGrafite} escondido={metroTuneis}
+          tag={hist.tagLivre ?? null} livre={HIST && (feita13(hist, "tuneis") || GRAFITES_IDS.every((g) => (hist.grafites ?? []).includes(g)))} trancaLivre={facaMissao("tuneis", "pintar a sua tag")}
+          onTag={(t) => setSave((s) => comHistoria(s, (h) => ({ ...h, tagLivre: t })))} />}
+        {/* (T64, 06/11) o trem do salão do metrô: depois da fuga de quando te pegam, a fuga de novo; antes, o cadeado */}
+        {HIST && trincheiras && !trincheiras.descendo && <MetroTuneis liberado={metroFeito(hist)} onAberto={setMetroTuneis} />}
         {viagem && (
           <Viagem
             chegou={!!viagem.chegou}

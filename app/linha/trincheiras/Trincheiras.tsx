@@ -280,7 +280,9 @@ function lerVeiculo(q: URLSearchParams, motos: boolean): Veiculo | null {
 // (vitrine, 02/11) `tranca`: a corrida ainda não abriu (o aviso do que libera);
 // dá pra entrar e passear, e a escolha mostra os veículos com o cadeado
 // `motos`: a moto já liberada (a regra de estrada/zonas.ts, motoLiberada: ganha na missão dos túneis)
-export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void; tranca?: string | null; motos?: boolean }
+export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void; tranca?: string | null; motos?: boolean
+  // (T64) algo em 3D por cima (a fuga do metrô no trem do salão): o canvas para (frameloop "never")
+  pausado?: boolean }
 
 export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const st = useRef<Estado>(estadoInicial())
@@ -435,7 +437,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
 
   return (
     <div className={`tr-raiz${noJogo ? " is-jogo" : ""}${subindo ? " is-subindo" : ""}`}>
-      <Canvas className="tr-cvs" dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
+      <Canvas className="tr-cvs" frameloop={noJogo?.pausado ? "never" : "always"} dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
         <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
