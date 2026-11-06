@@ -68,13 +68,16 @@ export function fracaoDe(tr: Trilho, p: THREE.Vector3) {
 }
 
 // índice do quadro mais perto da fração u
-export function quadro(tr: Trilho, u: number) {
+export type Quadro = { p: THREE.Vector3; t: THREE.Vector3; up: THREE.Vector3; l: THREE.Vector3 }
+// (leveza 06/11) `out` opcional: quem chama todo quadro passa o seu e não aloca
+// (sem ele, como antes: 4 vetores novos por chamada)
+export function quadro(tr: Trilho, u: number, out?: Quadro): Quadro {
   const f = (((u % 1) + 1) % 1) * tr.n
   const i = Math.floor(f) % tr.n, j = (i + 1) % tr.n, k = f - Math.floor(f)
-  return {
-    p: tr.pontos[i].clone().lerp(tr.pontos[j], k),
-    t: tr.frente[i].clone().lerp(tr.frente[j], k).normalize(),
-    up: tr.cima[i].clone().lerp(tr.cima[j], k).normalize(),
-    l: tr.lado[i].clone().lerp(tr.lado[j], k).normalize(),
-  }
+  const o = out ?? { p: new THREE.Vector3(), t: new THREE.Vector3(), up: new THREE.Vector3(), l: new THREE.Vector3() }
+  o.p.lerpVectors(tr.pontos[i], tr.pontos[j], k)
+  o.t.lerpVectors(tr.frente[i], tr.frente[j], k).normalize()
+  o.up.lerpVectors(tr.cima[i], tr.cima[j], k).normalize()
+  o.l.lerpVectors(tr.lado[i], tr.lado[j], k).normalize()
+  return o
 }

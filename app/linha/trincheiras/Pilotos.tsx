@@ -179,12 +179,32 @@ export function Skatista({ vel, steer, ar, manobra, grind = () => false, empurra
 // nariz (peso pra frente/trás, a empinada) gira em torno da roda de trás no
 // chão e do meio da moto no ar.
 const MOTO = "#ff3fb0", PLASTICO = "#f2eefa"
+// (leveza 06/11) os materiais da moto são do módulo: eram 23 materiais novos por
+// montagem (um por peça), agora 15 compartilhados. O visual é o mesmo (as mesmas props)
+const std = (color: string, roughness = 1, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness })
+const MAT_MOTO = {
+  pneu: std(ESCURO, 0.95),
+  aro: new THREE.MeshBasicMaterial({ color: NEON, transparent: true, opacity: 0.4, toneMapped: false }),
+  cromo: std("#c9c3d6", 0.3, 0.6),
+  garfo: std("#ffc857", 0.35, 0.5),
+  moto: std(MOTO),
+  motoLiso: std(MOTO, 0.5),
+  escuro: std(ESCURO),
+  escuroMetal: std(ESCURO, 0.4, 0.5),
+  plastico: std(PLASTICO),
+  capacete: std(PLASTICO, 0.35),
+  escape: std("#8f8aa0", 0.25, 0.7),
+  calca: std(CALCA),
+  casaco: std(CASACO),
+  casacoTorso: std(CASACO, 0.7),
+  viseira: new THREE.MeshStandardMaterial({ color: NEON, emissive: NEON, emissiveIntensity: 0.8 }),
+}
 function PneuCravo({ r }: { r: React.RefObject<THREE.Group | null> }) {
   return (
     <group ref={r}>
-      <mesh rotation-y={Math.PI / 2}><torusGeometry args={[0.31, 0.085, 6, 16]} /><meshStandardMaterial color={ESCURO} roughness={0.95} /></mesh>
-      <mesh rotation-z={Math.PI / 2}><cylinderGeometry args={[0.2, 0.2, 0.04, 10]} /><meshBasicMaterial color={NEON} transparent opacity={0.4} toneMapped={false} /></mesh>
-      <mesh rotation-z={Math.PI / 2}><cylinderGeometry args={[0.05, 0.05, 0.14, 8]} /><meshStandardMaterial color="#c9c3d6" metalness={0.6} roughness={0.3} /></mesh>
+      <mesh rotation-y={Math.PI / 2} material={MAT_MOTO.pneu}><torusGeometry args={[0.31, 0.085, 6, 16]} /></mesh>
+      <mesh rotation-z={Math.PI / 2} material={MAT_MOTO.aro}><cylinderGeometry args={[0.2, 0.2, 0.04, 10]} /></mesh>
+      <mesh rotation-z={Math.PI / 2} material={MAT_MOTO.cromo}><cylinderGeometry args={[0.05, 0.05, 0.14, 8]} /></mesh>
     </group>
   )
 }
@@ -227,35 +247,35 @@ export function Motoqueiro({ vel, steer, ar, pitch, empurra = () => false }: { v
           <group ref={garfo} position={[0, 0.39, 0.66]}>
             <group><PneuCravo r={rodaF} /></group>
             {[-1, 1].map((l) => (
-              <mesh key={l} position={[l * 0.1, 0.42, -0.12]} rotation-x={-0.42}><cylinderGeometry args={[0.035, 0.035, 0.95, 6]} /><meshStandardMaterial color="#ffc857" metalness={0.5} roughness={0.35} /></mesh>
+              <mesh key={l} position={[l * 0.1, 0.42, -0.12]} rotation-x={-0.42} material={MAT_MOTO.garfo}><cylinderGeometry args={[0.035, 0.035, 0.95, 6]} /></mesh>
             ))}
-            <mesh position={[0, 0.34, 0.05]} rotation-x={-0.25}><boxGeometry args={[0.2, 0.03, 0.42]} /><meshStandardMaterial color={MOTO} /></mesh>
-            <mesh position={[0, 0.88, -0.32]}><boxGeometry args={[0.72, 0.04, 0.04]} /><meshStandardMaterial color={ESCURO} /></mesh>
+            <mesh position={[0, 0.34, 0.05]} rotation-x={-0.25} material={MAT_MOTO.moto}><boxGeometry args={[0.2, 0.03, 0.42]} /></mesh>
+            <mesh position={[0, 0.88, -0.32]} material={MAT_MOTO.escuro}><boxGeometry args={[0.72, 0.04, 0.04]} /></mesh>
             {/* a placa do número */}
-            <mesh position={[0, 0.78, -0.2]} rotation-x={-0.35}><boxGeometry args={[0.26, 0.22, 0.03]} /><meshStandardMaterial color={PLASTICO} /></mesh>
+            <mesh position={[0, 0.78, -0.2]} rotation-x={-0.35} material={MAT_MOTO.plastico}><boxGeometry args={[0.26, 0.22, 0.03]} /></mesh>
           </group>
           {/* o quadro, o motor, o tanque, o banco e o paralama de trás */}
-          <mesh position={[0, 0.48, 0]} rotation-x={0.08}><boxGeometry args={[0.2, 0.3, 0.5]} /><meshStandardMaterial color={ESCURO} metalness={0.5} roughness={0.4} /></mesh>
-          <mesh position={[0, 0.82, 0.18]} rotation-x={-0.1}><boxGeometry args={[0.32, 0.2, 0.42]} /><meshStandardMaterial color={MOTO} roughness={0.5} /></mesh>
-          <mesh position={[0, 0.86, -0.32]} rotation-x={0.08}><boxGeometry args={[0.22, 0.08, 0.62]} /><meshStandardMaterial color={ESCURO} /></mesh>
-          <mesh position={[0, 0.8, -0.78]} rotation-x={0.35}><boxGeometry args={[0.2, 0.03, 0.42]} /><meshStandardMaterial color={MOTO} /></mesh>
-          <mesh position={[0, 0.58, -0.4]} rotation-x={0.5}><boxGeometry args={[0.06, 0.06, 0.55]} /><meshStandardMaterial color="#c9c3d6" metalness={0.6} roughness={0.3} /></mesh>
+          <mesh position={[0, 0.48, 0]} rotation-x={0.08} material={MAT_MOTO.escuroMetal}><boxGeometry args={[0.2, 0.3, 0.5]} /></mesh>
+          <mesh position={[0, 0.82, 0.18]} rotation-x={-0.1} material={MAT_MOTO.motoLiso}><boxGeometry args={[0.32, 0.2, 0.42]} /></mesh>
+          <mesh position={[0, 0.86, -0.32]} rotation-x={0.08} material={MAT_MOTO.escuro}><boxGeometry args={[0.22, 0.08, 0.62]} /></mesh>
+          <mesh position={[0, 0.8, -0.78]} rotation-x={0.35} material={MAT_MOTO.moto}><boxGeometry args={[0.2, 0.03, 0.42]} /></mesh>
+          <mesh position={[0, 0.58, -0.4]} rotation-x={0.5} material={MAT_MOTO.cromo}><boxGeometry args={[0.06, 0.06, 0.55]} /></mesh>
           {/* o escape */}
-          <mesh position={[0.17, 0.62, -0.42]} rotation-x={Math.PI / 2 - 0.25}><cylinderGeometry args={[0.05, 0.06, 0.5, 8]} /><meshStandardMaterial color="#8f8aa0" metalness={0.7} roughness={0.25} /></mesh>
+          <mesh position={[0.17, 0.62, -0.42]} rotation-x={Math.PI / 2 - 0.25} material={MAT_MOTO.escape}><cylinderGeometry args={[0.05, 0.06, 0.5, 8]} /></mesh>
           {/* o piloto em pé nas pedaleiras, braços no guidão */}
           <group ref={piloto} position={[0, 0.4, -0.05]}>
             {[-1, 1].map((l) => (
-              <mesh key={l} position={[l * 0.2, 0.36, -0.02]} rotation-x={0.25}><boxGeometry args={[0.15, 0.72, 0.17]} /><meshStandardMaterial color={CALCA} /></mesh>
+              <mesh key={l} position={[l * 0.2, 0.36, -0.02]} rotation-x={0.25} material={MAT_MOTO.calca}><boxGeometry args={[0.15, 0.72, 0.17]} /></mesh>
             ))}
-            <mesh position={[0, 0.98, 0.1]} rotation-x={0.6}><boxGeometry args={[0.44, 0.6, 0.27]} /><meshStandardMaterial color={CASACO} roughness={0.7} /></mesh>
+            <mesh position={[0, 0.98, 0.1]} rotation-x={0.6} material={MAT_MOTO.casacoTorso}><boxGeometry args={[0.44, 0.6, 0.27]} /></mesh>
             {[-1, 1].map((l) => (
-              <mesh key={l} position={[l * 0.3, 0.98, 0.36]} rotation-x={1.15}><boxGeometry args={[0.1, 0.5, 0.1]} /><meshStandardMaterial color={CASACO} /></mesh>
+              <mesh key={l} position={[l * 0.3, 0.98, 0.36]} rotation-x={1.15} material={MAT_MOTO.casaco}><boxGeometry args={[0.1, 0.5, 0.1]} /></mesh>
             ))}
             {/* o capacete com a viseira neon */}
             <group position={[0, 1.4, 0.32]}>
-              <mesh><sphereGeometry args={[0.19, 14, 10]} /><meshStandardMaterial color={PLASTICO} roughness={0.35} /></mesh>
-              <mesh position={[0, 0.02, 0.15]}><boxGeometry args={[0.24, 0.08, 0.08]} /><meshStandardMaterial color={NEON} emissive={NEON} emissiveIntensity={0.8} /></mesh>
-              <mesh position={[0, 0.12, 0.17]} rotation-x={-0.3}><boxGeometry args={[0.26, 0.03, 0.16]} /><meshStandardMaterial color={MOTO} /></mesh>
+              <mesh material={MAT_MOTO.capacete}><sphereGeometry args={[0.19, 14, 10]} /></mesh>
+              <mesh position={[0, 0.02, 0.15]} material={MAT_MOTO.viseira}><boxGeometry args={[0.24, 0.08, 0.08]} /></mesh>
+              <mesh position={[0, 0.12, 0.17]} rotation-x={-0.3} material={MAT_MOTO.moto}><boxGeometry args={[0.26, 0.03, 0.16]} /></mesh>
             </group>
           </group>
         </group>
