@@ -6,7 +6,7 @@ Feito em 05/11/2026, no ramo `feature/game/final`. Regra do dono: **a cena do di
 
 - **Destrava** pela regra que já existia (`disco/portas.ts`, `MISSOES13.final.requer`): as 10 missões da feira feitas (Alohan, túneis, Drew, Mubarak, Xeriff, LU2CA, Ella, Notti, Nizzy, Tony). A D-Bee e a oficina são o começo. Aí o final aparece no mapa como as outras missões.
 - **Começa na casa da D-Bee**, o lugar que o final já tinha (`lugar: { chao: "casa" }`). Chegou lá com o final pegado: a sequência começa (`page.tsx`, `chegouNaMissao` → `abrirFinal`).
-- **Acaba:** as duas peças do final ficam feitas e a porta "o mundo depois" abre ali mesmo (ela continua "em breve": o mundo depois ainda não existe). Depois do final, o quintal da D-Bee fica com o mato para sempre, e a Kombi do jogador termina estacionada no quintal (revisão 3: é ela mesma, não existe cópia; o Corrida.tsx põe ela lá na despedida).
+- **Acaba:** as duas peças do final ficam feitas e a porta "o mundo depois" abre ali mesmo (desde 06/11 ela existe: `docs/mundo-depois.md`). Depois do final, o quintal da D-Bee fica com o mato para sempre, e a Kombi do jogador termina estacionada no quintal (revisão 3: é ela mesma, não existe cópia; o Corrida.tsx põe ela lá na despedida).
 
 ## A sequência
 
@@ -60,6 +60,6 @@ O filme da despedida (`disco/final.ts`, `FILME_DESPEDIDA`). As ações vêm dos 
 3. **O sinal:** a música da D-Bee como sinal dos nove é proposta. Qual música, e se é ela mesma.
 4. **O ponto do Xeriff:** ele não tem faixa. Hoje fica na estação 6 da Linha 9, onde é a missão dele.
 5. **O som:** hoje a sequência não troca a música. Falta decidir o que toca em cada momento (a música da D-Bee no sinal, a CHUVA no CHUVA?).
-6. **"O mundo depois"** continua "em breve": as cabines nos dois sentidos, o rio nas trincheiras e as plantas nos prédios (`retomar-mundo.md`, "Como mostrar sem explicar") ficam para depois.
+6. **"O mundo depois"** existe desde 06/11 (versão mínima): as plantas nos prédios, as cabines nas torres e o rio nas trincheiras. Ver `docs/mundo-depois.md`.
 7. **Os modelos:** as nove pessoas são cápsulas na cor da missão, e o mato são cones verdes, até os modelos do Tripo chegarem.
 8. **A recompensa real** (T32: a senha do untitled e o ingresso) não está no jogo: a porta do final não dá nada dentro dele.

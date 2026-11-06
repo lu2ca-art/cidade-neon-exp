@@ -49,6 +49,8 @@ import { AVENIDAS, COR_TORRE, LIMITES, NOME_AVENIDA, NOME_SALAO, PORTA, SALAO_LA
 import { pilotoMoto } from "./moto"
 import { Ciclista, Motoqueiro, Skatista, type Manobra } from "./Pilotos"
 import "./trincheiras.css"
+import { RioDepois } from "./RioDepois"
+import { FINAL_VIVO } from "../disco/final"
 import { Cadeado, Trancado } from "../Trancado"
 import { TRANCA_MOTO, naMoto } from "../estrada/zonas"
 
@@ -56,7 +58,8 @@ const NEVOA = "#1a0f24"
 const NEVOA_LONGE = 340 // a névoa fecha aqui
 const VER = NEVOA_LONGE + 20 // os pedaços mais longe que isto da câmera não desenham
 
-function nomeDe(o: Estado["onde"]) { return o.tipo === "praca" ? NOME_SALAO[o.i] : NOME_AVENIDA[o.i] }
+// (06/11) depois do final o rio corre: o "RIO SECO A" vira "RIO A"
+function nomeDe(o: Estado["onde"]) { return o.tipo === "praca" ? NOME_SALAO[o.i] : FINAL_VIVO.feito ? NOME_AVENIDA[o.i].replace("SECO ", "") : NOME_AVENIDA[o.i] }
 
 const PORTOES = [LARGADA, ...CHECKPOINTS, CHEGADA]
 type Painel = { recordeAntes: number | null; fantasma: boolean; resultado: Corrida["resultado"]; parciais: number[] }
@@ -439,6 +442,8 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     <div className={`tr-raiz${noJogo ? " is-jogo" : ""}${subindo ? " is-subindo" : ""}`}>
       <Canvas className="tr-cvs" frameloop={noJogo?.pausado ? "never" : "always"} dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
         <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
+        {/* (06/11) o mundo depois: a água nos rios (só com o final feito) */}
+        <RioDepois />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
       </Canvas>

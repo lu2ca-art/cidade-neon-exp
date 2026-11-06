@@ -42,6 +42,7 @@ import { PORTAL_CFG, Portoes } from "./Portoes"
 import { Perto, SoQuando, type PontoXZ } from "./Perto"
 import { Monumentos } from "./Monumentos"
 import { FinalNove, QUINTAL_FINAL } from "./FinalNove"
+import { MundoDepois } from "./MundoDepois"
 import { CAM_ROTEIRO, FINAL_VIVO } from "../disco/final"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
@@ -6976,6 +6977,8 @@ function CenaBase({
       {"disco" in M && <Perto nome="monumentos" raio={900} pontos={pertoDe.monumentos}><Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} /></Seguro></Perto>}
       {/* (T29) o final: os nove nos pontos, os fachos do CHUVA, o quintal da D-Bee e a câmera roteirizada */}
       {"disco" in M && <Seguro nome="final"><FinalNove M={M as MundoDisco} /></Seguro>}
+      {/* (06/11) o mundo depois do final: plantas nos prédios e cabines nas torres (só com o final feito) */}
+      {"disco" in M && <Seguro nome="mundo depois"><MundoDepois M={M as MundoDisco} colisores={cidade.colisores} /></Seguro>}
       {/* (na fase da casa, o farol guia de longe: aí a casa fica sempre montada) */}
       {"disco" in M && <Perto nome="casa do deserto" raio={faseHistoria === "casa" ? 1e7 : 800} pontos={pertoDe.casa}><CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} /></Perto>}
       {"disco" in M && <Perto nome="lugares do chão" raio={600} pontos={pertoDe.chao}><LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} /></Perto>}

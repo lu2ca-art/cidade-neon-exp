@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "mundo.depois",
+    nome: "O mundo depois do final: plantas nos prédios, cabines nas torres, o rio nos túneis",
+    data: "2026-11-06",
+    tarefa: "T29",
+    olhar: "Abre com o final já feito, chegando na torre central. Sem tela explicando: os prédios altos têm plantas nas janelas e trepadeiras subindo, e em volta das torres as cabines sobem e descem (as claras sobem, as azuis descem). No outro link, desce pras trincheiras: os rios secos viraram rio, com a água correndo no leito (a rampa da descida continua seca). A porta \"o mundo depois\" não diz mais \"em breve\".",
+    perguntas: ["As plantas e as cabines aparecem o bastante, ou quer mais (ou menos)?", "O rio no meio do leito está bom, ou deve ocupar o túnel todo?", "Cabines também nas pistas (bondinhos), ou só nas torres basta?"],
+    mais: [{ parte: "mundo.depois.tuneis", nome: "o rio nas trincheiras" }],
+  },
+  {
     parte: "violao",
     nome: "O violão na rua: aparece com a música da rua e a trilha abaixa",
     data: "2026-11-06",
