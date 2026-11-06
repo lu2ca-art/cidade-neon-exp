@@ -44,12 +44,18 @@ Cartão novo na Mesa (`app/teste/mesa.ts`, parte `dunas`, mais `oficina.catar` e
 - **Visitas no save:** chegar num lugar do chão marca visitado; não abre nada.
 - **"?" e Nexo:** o "?" desliga a trilha e mostra a pedra; a D-Bee sem nome no notch.
 
+## Parte 2: as 3 que ficaram e o cadeado do prólogo (06/11)
+
+| item | o quê | onde |
+|---|---|---|
+| 1 | **Violão destravado com pedra na tela:** o botão some enquanto houver qualquer pedra (a trilha avisa: `pedraNaTela`/`usePedraNaTela`) | `estrada/Holo.tsx`, `disco/TrilhaPedrasTela.tsx`, `page.tsx` (`escondido`) |
+| 2 | **"Entrar" segurado volta sozinho:** chegou com pedra na tela, o lugar fica guardado (`chaoSegurado`); a pedra saiu e ele ainda está lá (`chaoDentro`: o mesmo `dentro` da Corrida, que só sai a ~3x o raio), o botão aparece pelos 8 s de sempre | `disco/achados.ts` (`chaoDentro`), `estrada/Corrida.tsx`, `page.tsx` (`mostrarPortaChao` e o efeito do `pedraTela`) |
+| 3 | **Mensagem parada atrás de "segue a linha":** a menor das duas: a pedra presa no notch há mais de 6 s (`PEDRA_SOLTA_MS`) deixa a mensagem passar; a pedra continua no balão. Vale pra toda pedra do notch (gps, pousa, linha, chegou), não só a "linha" | `estrada/Holo.tsx` (`pedraVelha`) |
+| 4 | **Cadeado no prólogo de volta** (regra do dono: tudo visitável com cadeado): o "🔒 entrar · ver" aparece ao chegar, mas o texto é "abre mais pra frente na história" (`TRANCA_PROLOGO`, rascunho) em vez de citar uma missão que ele ainda não tem. Vale pro botão, pra janela do lugar e pro aviso da quadra | `page.tsx` (`trancaChao`) |
+
 ## Suspeitas que ficam
 
-- O violão **destravado** aparece no bar e na oficina com a Xenom tocando (a D-Bee deu
-  ele); pode dividir a atenção com as pedras "anel"/"?" se elas ainda não passaram.
-- Mensagem presa atrás da pedra "linha" (que pode durar) só sai quando a pedra sai; as da
-  fila com mais de 25 s caem (`NOTCH_VELHA`).
-- O "entrar" segurado por uma pedra não volta sozinho: precisa sair ~ e chegar de novo.
-- No prólogo os lugares trancados ficam sem o cadeado ao chegar (decisão a confirmar na
-  Mesa; a fachada continua lá).
+- Com a pedra do notch há mais de 6 s, as mensagens seguintes também passam (o relógio só
+  zera quando a pedra sai do notch).
+- O "entrar" guardado é só o último lugar; dois lugares seguidos com a pedra na tela
+  devolvem só o segundo.

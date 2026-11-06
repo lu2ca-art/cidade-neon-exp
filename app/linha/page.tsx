@@ -71,7 +71,7 @@ import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebr
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
-import { definirChaoAtivos, ehPeca } from "./disco/achados"
+import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
@@ -99,7 +99,7 @@ import { definirFinalFeito, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
-import { avisarRadio, notch } from "./estrada/Holo"
+import { avisarRadio, notch, usePedraNaTela } from "./estrada/Holo"
 import { definirContextoRadio, ligarRadiosPorZona, radioFreq, registrarTocador } from "./disco/radios"
 import { vib } from "./som-carro"
 import { RecompensaHolo } from "./disco/TutorialHolo"
@@ -138,6 +138,9 @@ const GrafiteTrincheiras = dynamic(() => import("./disco/Grafite").then((m) => m
 // os 3 grafites da parede (os mesmos de trincheiras/geo.ts GRAFITES_NA_PAREDE; só os ids, sem puxar o 3D)
 const GRAFITES_IDS = GRAFITES_T12.slice(0, 3).map((g) => g.id)
 const MetroTuneis = dynamic(() => import("./disco/MetroTuneis").then((m) => m.MetroTuneis), { ssr: false })
+
+// (jogador novo 2) o cadeado dos lugares do chão no prólogo (RASCUNHO: o dono reescreve)
+const TRANCA_PROLOGO = "abre mais pra frente na história"
 
 // (leveza B) o save no localStorage: no máximo uma gravação a cada ~3 s
 const ESPERA_GRAVAR = 3000
@@ -1910,8 +1913,26 @@ export default function LinhaPage() {
   const fecharJanelaChao = useCallback(() => { setJanelaChao(null); barFechou.current = Date.now() }, [])
   const trancaChao = (id: LugarAberto): string | null => {
     const E = ENTRADAS[id]
-    return "porta" in E && E.porta ? pedidoDaPorta(hist13(saveRef.current), E.porta, E.pra ?? "entrar") : null
+    const h0 = hist13(saveRef.current)
+    const t = "porta" in E && E.porta ? pedidoDaPorta(h0, E.porta, E.pra ?? "entrar") : null
+    // (jogador novo 2) no prólogo o cadeado não cita uma missão que ele ainda nem tem
+    return t && h0.fase !== "carreira" && h0.fase !== "livre" ? TRANCA_PROLOGO : t
   }
+  // (jogador novo 2) o "entrar" que uma pedra da trilha segurou: volta quando ela sai, se ele ainda está lá
+  const pedraTela = usePedraNaTela()
+  const chaoSegurado = useRef<LugarAberto | null>(null)
+  const mostrarPortaChao = (id: LugarAberto) => {
+    setPortaChao(id)
+    clearTimeout(portaChaoT.current)
+    portaChaoT.current = setTimeout(() => setPortaChao(null), 8000)
+  }
+  useEffect(() => {
+    const id = chaoSegurado.current
+    if (pedraTela || !id) return
+    chaoSegurado.current = null
+    if (chaoDentro.has(id) && !cena && !cinema && !recompensa && !trincheiras && !janelaChao) mostrarPortaChao(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedraTela])
   // (06/11) tocou o violão na rua uma vez: a D-Bee não sugere mais (marcarFeitaDbee não muda nada se já tem)
   const tocouViolao = useCallback(() => marcarFeitaDbee("violao-rua"), [])
   const entrarNoChao = (id: LugarAberto) => {
@@ -2025,13 +2046,10 @@ export default function LinhaPage() {
     // (06/11) os outros lugares do chão (o bar, a oficina, os túneis, a casa, a torre):
     // chegar já é entrar. Visitado uma vez, fica (comVisitado não muda nada se já tem)
     if (idA && !ehAberto(idA) && idA in CHAO_LUGARES && h.fase !== "minhoca") marcarVisitaDbee(idA)
-    // (jogador novo 2) segura com uma pedra da trilha na tela, e no prólogo nos trancados
-    // (o cadeado pedia uma missão que ainda nem existe pra ele: confundia o próximo passo)
-    const seguraChao = !!TRILHA_NA_TELA.pedra || (h.fase !== "carreira" && h.fase !== "livre" && ehAberto(idA) && !!trancaChao(idA))
-    if (ehAberto(idA) && idA !== alvoChao && !seguraChao && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras && !janelaChao && Date.now() - barFechou.current > 8000) {
-      setPortaChao(idA)
-      clearTimeout(portaChaoT.current)
-      portaChaoT.current = setTimeout(() => setPortaChao(null), 8000)
+    // (jogador novo 2) com uma pedra da trilha na tela, o "entrar" espera ela sair (o efeito do pedraTela)
+    if (ehAberto(idA) && idA !== alvoChao && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras && !janelaChao && Date.now() - barFechou.current > 8000) {
+      if (TRILHA_NA_TELA.pedra) chaoSegurado.current = idA
+      else mostrarPortaChao(idA)
     }
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
     if (e === "subiu" && h.fase === "subir") {
@@ -2674,7 +2692,7 @@ export default function LinhaPage() {
         {noMetro && <MetroFuga historia={h13} onPasso={fimMetroPasso} onSair={sairDoMetro} />}
         {/* (T64, lote D) o violão: o botão aparece com o disco, a rádio ou a faixa da rua tocando; sem o violão, com o cadeado e o que libera */}
         {D && tela.t === "corrida" && <ViolaoMundo onTocou={tocouViolao} temViolao={!!save.violao} // (jogador novo 2) antes da D-Bee dar o violão (as dunas, no meio da trilha) o cadeado não aparece: dizia "faça a missão da D-Bee" no meio dela
-          tranca={HIST && feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : null} escondido={(HIST && faltaRecompensaHolo(hist)) || emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
+          tranca={HIST && feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : null} escondido={(HIST && (faltaRecompensaHolo(hist) || pedraTela)) || emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}

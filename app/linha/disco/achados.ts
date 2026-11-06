@@ -26,6 +26,9 @@ export type PecaChao = (typeof PECAS_CHAO)[number]
 export const ehPeca = (id: string): id is PecaChao => (PECAS_CHAO as readonly string[]).includes(id)
 // o raio pra pegar uma peça (dirigindo, sem parar)
 export const RAIO_PECA = 9
+// (jogador novo 2) os lugares do chão em que ele está agora (a Corrida enche e esvazia;
+// sai a ~3x o raio). A página confere aqui antes de devolver um "entrar" segurado
+export const chaoDentro = new Set<string>()
 
 // chegou? a boca do túnel só lá embaixo, na frente da porta; as peças, passando perto
 export function pertoDoChao(id: LugarChao, x: number, z: number) {

@@ -294,6 +294,13 @@ export function notch(texto: string, cor = "#2fe8ff", opc?: { toque?: () => void
 let PEDRA_NOTCH = false
 const ouvintesPedra = new Set<() => void>()
 export function pedraNoNotch(v: boolean) { if (PEDRA_NOTCH === v) return; PEDRA_NOTCH = v; ouvintesPedra.forEach((f) => f()) }
+// (jogador novo 2) qualquer pedra na tela (o violão e o "entrar" esperam); e a pedra
+// presa no notch há mais de PEDRA_SOLTA_MS deixa a mensagem passar (a "segue a linha" dura)
+let PEDRA_TELA = false
+const ouvintesTela = new Set<() => void>()
+export function pedraNaTela(v: boolean) { if (PEDRA_TELA === v) return; PEDRA_TELA = v; ouvintesTela.forEach((f) => f()) }
+export const usePedraNaTela = () => useSyncExternalStore((f) => { ouvintesTela.add(f); return () => { ouvintesTela.delete(f) } }, () => PEDRA_TELA, () => false)
+export const PEDRA_SOLTA_MS = 6000
 const usePedraNoNotch = () => useSyncExternalStore((f) => { ouvintesPedra.add(f); return () => { ouvintesPedra.delete(f) } }, () => PEDRA_NOTCH, () => false)
 const NOTCH_VELHA = 25000 // ms: mensagem que esperou mais que isso na fila não passa mais
 function useNotch() {
@@ -493,7 +500,14 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
   const [msg, acabou] = useNotch()
   // o passo do tutorial manda; a mensagem que passa espera ele (ou passa entre um e outro)
   const pedra = usePedraNoNotch()
-  const passando = msg && !tut && !explicando && !pedra
+  const [pedraVelha, setPedraVelha] = useState(false)
+  useEffect(() => {
+    setPedraVelha(false)
+    if (!pedra) return
+    const t = setTimeout(() => setPedraVelha(true), PEDRA_SOLTA_MS)
+    return () => clearTimeout(t)
+  }, [pedra])
+  const passando = msg && !tut && !explicando && (!pedra || pedraVelha)
   const livre = !tut && !passando && !agora && !explicando
   const dica = useDica(livre || expandido)
   const cor = explicando ? "#2fe8ff" : tut ? (tut.ok ? "#5dffa0" : tut.cor ?? "#2fe8ff") : passando ? msg.cor : agora?.cor ?? "#2fe8ff"

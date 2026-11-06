@@ -52,7 +52,7 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
-import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
+import { chaoAtivos, chaoDentro, ehPeca, pertoDoChao } from "../disco/achados"
 import { ehAberto } from "../disco/abertos"
 import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desembarque } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
@@ -1599,7 +1599,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // passando, sem parar) e a boca do túnel (lá embaixo, na frente da porta)
   useEffect(() => {
     if (pausado || !("disco" in M)) return
-    const dentro = new Set<string>()
+    const dentro = chaoDentro
+    dentro.clear()
     // (30/10) acabou de subir do túnel: a Kombi está parada na porta. Só desce de
     // novo depois de sair da frente dela
     if (nascerNoTunel()) dentro.add("tuneis")
@@ -1642,7 +1643,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         }
       }
     }, 150)
-    return () => clearInterval(iv)
+    return () => { clearInterval(iv); dentro.clear() }
   }, [alvoChao, pausado, M])
   // (missões claras, 02/11) AS MISSÕES DISPONÍVEIS (não pegas): chegou no lugar
   // de uma, sem outra ativa, ela é pega e começa ali. Com outra ativa, o Nexo
