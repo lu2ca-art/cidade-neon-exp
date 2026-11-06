@@ -73,12 +73,18 @@ export function Campo(props: { colisores: number[]; jogo: React.RefObject<JogoMi
   return SEM_CAMPO ? null : <CampoVisivel {...props} />
 }
 
+const chaveCel = (cx: number, cz: number) => cx * 65536 + cz
+const SEM_CEL: number[] = []
+const porDist = (p: [number, number], q: [number, number]) => p[0] - q[0]
+
 function CampoVisivel({ colisores, jogo, toque }: { colisores: number[]; jogo: React.RefObject<JogoMin>; toque: React.RefObject<ToqueCampo> }) {
   const { gl, camera, scene } = useThree()
   const grade = useMemo(() => {
-    const g = new Map<string, number[]>()
+    // (leveza 06/11) chave numérica (célula de 48 m, |c| < 32768): o laço do quadro
+    // fazia 9 strings novas por quadro a pé/de patins
+    const g = new Map<number, number[]>()
     for (let k = 0; k < colisores.length; k += COL_PASSO) {
-      const key = `${Math.floor(colisores[k] / CEL)},${Math.floor(colisores[k + 1] / CEL)}`
+      const key = chaveCel(Math.floor(colisores[k] / CEL), Math.floor(colisores[k + 1] / CEL))
       let l = g.get(key); if (!l) g.set(key, (l = [])); l.push(k)
     }
     return g
@@ -113,14 +119,14 @@ function CampoVisivel({ colisores, jogo, toque }: { colisores: number[]; jogo: R
     if (j && j.voo && j.wx !== undefined && j.wz !== undefined) {
       const x = j.wx, z = j.wz, cx = Math.floor(x / CEL), cz = Math.floor(z / CEL)
       const ach = tmp.ach; ach.length = 0
-      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const k of grade.get(`${cx + a},${cz + b}`) ?? []) {
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const k of grade.get(chaveCel(cx + a, cz + b)) ?? SEM_CEL) {
         if (j.y > c[k + 8] + 6 || j.y < c[k + 7] - 6) continue
         const dx = x - c[k], dz = z - c[k + 1], tx = c[k + 2], tz = c[k + 3]
         const lx = Math.abs(dx * tz - dz * tx) - c[k + 4], lz = Math.abs(dx * tx + dz * tz) - c[k + 5]
         const d = Math.hypot(Math.max(0, lx), Math.max(0, lz))
         if (d < PERTO) ach.push([d, k])
       }
-      ach.sort((p, q) => p[0] - q[0])
+      ach.sort(porDist)
       for (; n < Math.min(CAMPO_MAX, ach.length); n++) {
         const k = ach[n][1], y0 = c[k + 7], h = Math.max(1, c[k + 8] - y0)
         tmp.q.setFromAxisAngle(tmp.y, Math.atan2(c[k + 2], c[k + 3]))

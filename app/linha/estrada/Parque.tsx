@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 import { posicao, type Mundo } from "./mundo"
 import { PASSO, pontoI } from "./pista"
-import { G, fracaoDe, montarTrilho, quadro, type Trilho } from "../../parque/trilho"
+import { G, fracaoDe, montarTrilho, quadro, type Quadro, type Trilho } from "../../parque/trilho"
 import { criarVento, estalo, sino } from "../../parque/sons"
 import { LuzPonto } from "./luzes"
 
@@ -213,6 +213,12 @@ export function Parque({ M, passeio }: { M: Mundo; passeio: React.RefObject<Pass
   const mat = useMemo(() => new THREE.Matrix4(), [])
   const descida = useMemo(() => ({ ini: corrente.fim, fim: corrente.fim + 0.09 }), [corrente])
 
+  // (leveza 06/11) os quadros do trilho são reusados: eram ~6 objetos novos por quadro
+  // parado perto do parque e ~14 andando
+  const qs = useMemo(() => {
+    const novo = (): Quadro => ({ p: new THREE.Vector3(), t: new THREE.Vector3(), up: new THREE.Vector3(), l: new THREE.Vector3() })
+    return { a: novo(), fr: novo(), tNeg: new THREE.Vector3() }
+  }, [])
   useFrame((_, dtReal) => {
     const s = st.current, pq = passeio.current
     // window.__parqueK = 4 no desenvolvimento: o teste sem tela roda a volta inteira
@@ -224,7 +230,7 @@ export function Parque({ M, passeio }: { M: Mundo; passeio: React.RefObject<Pass
       Object.assign(s, { u: 0, v: 0, E: 0, fase: "estacao", velMax: 0, bracoT: 0, descidaT: 0, tique: 0 })
       som.current = criarVento(); sino()
     }
-    let q = quadro(tr, s.u)
+    let q = quadro(tr, s.u, qs.a)
     if (pq.andando) {
       if (s.fase === "estacao") { s.v = Math.min(3, s.v + dt * 1.5); if (s.u >= corrente.ini) s.fase = "corrente" }
       else if (s.fase === "corrente") {
@@ -246,16 +252,16 @@ export function Parque({ M, passeio }: { M: Mundo; passeio: React.RefObject<Pass
         pq.andando = false
         pq.fim?.({ velMax: s.velMax, bracos: s.descidaT > 0 ? s.bracoT / s.descidaT : 0 })
       }
-      q = quadro(tr, s.u)
+      q = quadro(tr, s.u, qs.a)
       // a câmera de terceira pessoa: atrás e acima do carrinho, o "cima" é o do trilho
       pq.v = s.v
       pq.cam.copy(q.p).addScaledVector(q.t, -7.5).addScaledVector(q.up, 3.2)
-      const fr = quadro(tr, s.u + 8 / tr.comp)
+      const fr = quadro(tr, s.u + 8 / tr.comp, qs.fr)
       pq.olhar.copy(fr.p).addScaledVector(fr.up, 1.2)
       pq.up.copy(q.up)
     }
     if (carro.current) {
-      mat.makeBasis(q.l, q.up, q.t.clone().negate())
+      mat.makeBasis(q.l, q.up, qs.tNeg.copy(q.t).negate())
       carro.current.quaternion.setFromRotationMatrix(mat)
       carro.current.position.copy(q.p)
     }
