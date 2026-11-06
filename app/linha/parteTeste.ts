@@ -172,7 +172,7 @@ const DEPOIS = {
 }
 
 // (vitrine, parte 2) ?parte=vitrine.<sala> → a visita que abre ao entrar
-const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.drewboy": "casa-drewboy", "vitrine.terraco": "topo", "vitrine.shows": "casa-shows", "vitrine.casa": "casa-dbee" }
+const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.drewboy": "casa-drewboy", "vitrine.terraco": "topo", "vitrine.shows": "casa-shows", "vitrine.casa": "casa-dbee", "vitrine.beco": "beco", "vitrine.escondido": "escondido", "vitrine.posto": "posto" }
 
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]

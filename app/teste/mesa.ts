@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "vitrine.beco",
+    nome: "O beco, a casa escondida da Ella e o posto modelados no Blender",
+    data: "2026-11-06",
+    tarefa: "salas",
+    olhar: "O beco agora é modelado: asfalto molhado com poças refletindo os três letreiros e a lâmpada, paredões descascados com tijolo aparecendo, canos, ar-condicionado, escada de incêndio, fios de gato, lambe-lambes, caçamba, sacos, carrinho de mercado e o canto da moradora. Nos outros botões: a casa escondida (o quarto do grow com a tenda prateada e o LED roxo, e pela janela a laje na chuva com a caixa d'água e o viaduto da Linha 9) e o posto (cobertura, bombas 5 e 6 e a loja 24h por dentro: gôndolas, geladeiras, balcão vazio, luz fria). Câmeras, gente, toques, chuva e planta são os de antes. Fotos: docs/blender/beco.png, escondido.png e posto-loja.png.",
+    perguntas: ["O beco tem cara de cidade suja e molhada, com o neon refletindo?", "Dá pra ver a laje e a Linha 9 pela janela da Ella?", "A loja do posto parece uma conveniência 24h de verdade?", "Ficou leve no iPhone nas três salas?"],
+    mais: [{ parte: "vitrine.escondido", nome: "a casa escondida" }, { parte: "vitrine.posto", nome: "o posto" }],
+  },
+  {
     parte: "vitrine.terraco",
     nome: "O terraço do Notti e o quarto do Drew modelados no Blender",
     data: "2026-11-06",

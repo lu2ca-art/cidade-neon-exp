@@ -5,15 +5,18 @@
 // vazia atrás do vidro. A Kombi parada na bomba 5 e o LU2CA sentado no
 // meio-fio do lado da 6. Quando ele decide ir, levanta e entra na Kombi.
 
+import { useGLTF } from "@react-three/drei"
 import { Suspense, useMemo } from "react"
 import { texTexto } from "../../estrada/geo"
 import { KombiHerbal } from "../../estrada/KombiHerbal"
-import { Seguro } from "../../estrada/Seguro"
+import { ModeloSeguro, Seguro } from "../../estrada/Seguro"
 import { Caixa, Npc } from "../comum"
+import { SalaGlb } from "../modelo"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const LILAS = "#b38cff"
 const FRIO = "#dfe9ff"
+const URL_POSTO = "/models/posto-loja.glb"
 
 const PLANOS: Record<string, Plano> = {
   chegada: { pos: [5.5, 2, 7], olha: [1, 1.2, -1], fov: 58 },
@@ -37,26 +40,20 @@ export function SalaPosto({ estado }: SalaProps) {
       <fog attach="fog" args={["#05060a", 12, 40]} />
       <ambientLight intensity={0.2} color={FRIO} />
       <hemisphereLight args={["#c8d8ff", "#08080a", 0.3]} />
-      {/* o chão do posto */}
-      <mesh rotation-x={-Math.PI / 2}>
-        <planeGeometry args={[40, 40]} />
-        <meshStandardMaterial color="#202228" roughness={0.3} metalness={0.3} />
-      </mesh>
-      {/* a cobertura com a luz fria */}
-      <Caixa pos={[0, 5.2, 0]} tam={[12, 0.5, 8]} cor="#e8ecf4" />
-      <Caixa pos={[0, 4.92, 0]} tam={[11, 0.05, 7]} cor={FRIO} brilho={1.1} />
-      <Caixa pos={[0, 5.2, 4.03]} tam={[12, 0.5, 0.05]} cor={LILAS} brilho={0.8} />
+      {/* (06/11) o posto e a loja modelados no Blender (blender/scripts/posto_loja.py,
+          public/models/posto-loja.glb): as placas de concreto com as manchas e as
+          poças, a cobertura com os painéis de luz e a faixa lilás, as colunas, as
+          ilhas zebradas com as bombas 5 e 6 (tela, preço, mangueiras), o meio-fio,
+          o calibrador, o freezer do GELO, e a loja de conveniência 24h: o POSTO 24H
+          em neon, o vidro com os reflexos e a porta automática, e por dentro (a luz
+          fria assada no vértice) o piso branco, as gôndolas com os produtos, a
+          parede de geladeiras, o balcão vazio com o caixa, a estante de cigarro, o
+          café e a estufa. ~6,5 mil triângulos, 60 KB. A Kombi, o LU2CA e as duas
+          luzes da cobertura seguem aqui. Enquanto baixa, ou se falhar, as caixas */}
+      <ModeloSeguro nome="posto-loja-glb" reserva={<PostoCaixas />}>
+        <SalaGlb url={URL_POSTO} />
+      </ModeloSeguro>
       {[-3, 3].map((x) => <pointLight key={x} position={[x, 4.6, 0]} color={FRIO} intensity={10} distance={10} decay={2} />)}
-      {[-4.5, 4.5].map((x) => <Caixa key={x} pos={[x, 2.5, 0]} tam={[0.4, 5, 0.4]} cor="#c8ccd8" />)}
-      {/* as bombas */}
-      {[-2.2, 2.2].map((x, i) => <Bomba key={x} pos={[x, 0, -2.5]} n={i === 0 ? 5 : 6} />)}
-      {/* a loja de conveniência: vidro, prateleiras, ninguém no caixa */}
-      <group position={[-2, 0, -9]}>
-        <Caixa pos={[0, 1.6, 0]} tam={[10, 3.2, 4]} cor="#1a1c24" />
-        <Caixa pos={[0, 1.4, 2.02]} tam={[8, 2.2, 0.03]} cor={FRIO} brilho={0.35} rough={0.05} />
-        {[-3, -1, 1, 3].map((x) => <Caixa key={x} pos={[x, 1.2, 2.06]} tam={[0.08, 1.8, 0.02]} cor="#2a2c34" />)}
-        <Placa />
-      </group>
       {/* a Kombi na bomba 6 */}
       <group position={[-1.2, 0, 0.8]} rotation-y={Math.PI}>
         <Seguro nome="kombi-posto">
@@ -67,8 +64,35 @@ export function SalaPosto({ estado }: SalaProps) {
       {!levantou
         ? <Npc cor={LILAS} pos={[3.3, -0.12, 0.5]} vira={0.3} pose="sentada" falando={estado.falando === "LU2CA"} />
         : <Npc cor={LILAS} pos={[1.6, 0, 1.6]} vira={-1.6} falando={estado.falando === "LU2CA"} />}
-      <Caixa pos={[3.3, 0.07, 0.5]} tam={[1.6, 0.14, 0.5]} cor="#4a4c56" />
       <Camera plano={plano} />
+    </>
+  )
+}
+
+// as caixas de antes: enquanto o modelo baixa, ou se ele falhar
+function PostoCaixas() {
+  return (
+    <>
+      {/* o chão do posto */}
+      <mesh rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[40, 40]} />
+        <meshStandardMaterial color="#202228" roughness={0.3} metalness={0.3} />
+      </mesh>
+      {/* a cobertura com a luz fria */}
+      <Caixa pos={[0, 5.2, 0]} tam={[12, 0.5, 8]} cor="#e8ecf4" />
+      <Caixa pos={[0, 4.92, 0]} tam={[11, 0.05, 7]} cor={FRIO} brilho={1.1} />
+      <Caixa pos={[0, 5.2, 4.03]} tam={[12, 0.5, 0.05]} cor={LILAS} brilho={0.8} />
+      {[-4.5, 4.5].map((x) => <Caixa key={x} pos={[x, 2.5, 0]} tam={[0.4, 5, 0.4]} cor="#c8ccd8" />)}
+      {/* as bombas */}
+      {[-2.2, 2.2].map((x, i) => <Bomba key={x} pos={[x, 0, -2.5]} n={i === 0 ? 5 : 6} />)}
+      {/* a loja de conveniência: vidro, prateleiras, ninguém no caixa */}
+      <group position={[-2, 0, -9]}>
+        <Caixa pos={[0, 1.6, 0]} tam={[10, 3.2, 4]} cor="#1a1c24" />
+        <Caixa pos={[0, 1.4, 2.02]} tam={[8, 2.2, 0.03]} cor={FRIO} brilho={0.35} rough={0.05} />
+        {[-3, -1, 1, 3].map((x) => <Caixa key={x} pos={[x, 1.2, 2.06]} tam={[0.08, 1.8, 0.02]} cor="#2a2c34" />)}
+        <Placa />
+      </group>
+      <Caixa pos={[3.3, 0.07, 0.5]} tam={[1.6, 0.14, 0.5]} cor="#4a4c56" />
     </>
   )
 }
@@ -96,3 +120,5 @@ function Placa() {
     </mesh>
   )
 }
+
+useGLTF.preload(URL_POSTO)
