@@ -623,17 +623,6 @@ export const MESA: Cartao[] = [
     ],
   },
   {
-    parte: "missao.ella.casa",
-    nome: "A Ella: o filme da planta, a galeria e pintar",
-    data: "2026-10-30",
-    tarefa: "T22",
-    olhar: "Primeiro o filme (provisório, em legenda) da Ella contando que o Criador deixou a planta. Depois os 6 quadros dela. Depois pintar no escuro, só com a luz da planta.",
-    perguntas: [
-      "O texto do filme está bom? (ela diz que o Criador previu o mal e que a planta salva o mundo)",
-    ],
-    mais: [{ parte: "missao.ella", nome: "começar na rua" }],
-  },
-  {
     parte: "quebra.oficina",
     nome: "O patins: rodas de gel e linhas finas",
     data: "2026-10-30",
