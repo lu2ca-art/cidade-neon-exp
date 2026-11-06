@@ -90,12 +90,13 @@ export function RodaModelo({ R }: { R: number }) {
     const g = aro.current
     if (!g) return
     g.rotation.z += dt * 0.08
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2 + g.rotation.z
+      m.makeTranslation(R * Math.cos(a), R * Math.sin(a), 0) // uma conta por cabine, vale pra todas as malhas
+      for (const r of refs.current) r?.setMatrixAt(i, m)
+    }
     for (const r of refs.current) {
       if (!r) continue
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * Math.PI * 2 + g.rotation.z
-        r.setMatrixAt(i, m.makeTranslation(R * Math.cos(a), R * Math.sin(a), 0))
-      }
       r.instanceMatrix.needsUpdate = true
       if (!r.boundingSphere) r.computeBoundingSphere()
     }

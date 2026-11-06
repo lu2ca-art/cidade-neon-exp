@@ -313,9 +313,9 @@ export class Cena {
       if (this.morto || !this.casca) return
       gltf.scene.updateMatrixWorld(true)
       const pega = (n: string) => gltf.scene.getObjectByName(n) as THREE.Mesh | undefined
+      if (!pega("fuga_solido")?.geometry) return
       const neon = new THREE.MeshBasicMaterial({ vertexColors: true })
       const partes: [string, THREE.Material, number][] = [["fuga_solido", mat, NV], ["fuga_neon", neon, NV], ["fugaporta_solido", mat, NV - 1], ["fugaporta_neon", neon, NV - 1]]
-      if (!pega("fuga_solido")?.geometry) return
       const m4 = new THREE.Matrix4()
       for (const [nome, mt, n] of partes) {
         const o = pega(nome)

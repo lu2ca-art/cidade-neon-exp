@@ -142,6 +142,7 @@ function Trilhos({ tr }: { tr: Trilho }) {
     box: new THREE.BoxGeometry(), cil: new THREE.CylinderGeometry(0.2, 0.28, 1, 6),
     md: new THREE.MeshStandardMaterial({ color: "#3a3446" }), mp: new THREE.MeshStandardMaterial({ color: "#2a2836", metalness: 0.5 }),
   }), [])
+  useEffect(() => () => { caixas.box.dispose(); caixas.cil.dispose(); caixas.md.dispose(); caixas.mp.dispose() }, [caixas])
   const reserva = <><Instancias geo={caixas.box} mat={caixas.md} mats={dorm} /><Instancias geo={caixas.cil} mat={caixas.mp} mats={pil} /></>
   return (
     <group>

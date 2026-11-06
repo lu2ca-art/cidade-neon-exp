@@ -13,6 +13,7 @@ import { ModeloSeguro } from "../estrada/Seguro"
 import { geoTremCaixas } from "./geo"
 import { TREM } from "./mapa"
 
+// o carro nasce 0,5 m acima da viga (y 0,5..3,68): × 1,53 flutuaria 0,77 m; desce 0,5 (fundo ~0,27, as caixas de antes: 0,25)
 const ESC = (TREM.meioL * 2) / 3
 const VAG = (TREM.meioC * 2 - 2) / 3
 
@@ -34,7 +35,7 @@ export function TremTuneis({ concreto, neon }: { concreto: THREE.Material; neon:
       {[-1, 0, 1].map((j) => {
         const u = j * (VAG + 1)
         return (
-          <group key={j} position={[TREM.c.x + TREM.ax * u, 0, TREM.c.z + TREM.az * u]} rotation-y={rot + (j < 0 ? Math.PI : 0)} scale={ESC}>
+          <group key={j} position={[TREM.c.x + TREM.ax * u, -0.5, TREM.c.z + TREM.az * u]} rotation-y={rot + (j < 0 ? Math.PI : 0)} scale={ESC}>
             <CarroModelado farol={j !== 0} />
           </group>
         )
