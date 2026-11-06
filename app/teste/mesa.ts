@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "O bar do prólogo (O COPO) modelado no Blender",
+    data: "2026-11-06",
+    tarefa: "bar",
+    olhar: "O primeiro bar que o jogador novo vê, agora modelado no Blender: bar de sucata do lixo da cidade, com paredes de chapa em retalhos, o balcão de madeira reaproveitada com tampo de chapa e o neon laranja embaixo, banquetas de tambor, mesas de carretel com a lâmpada pendurada, a prateleira de garrafas, a geladeira velha, o jukebox, a mesa de sinuca no fundo à esquerda, o palquinho de paletes, varais de lâmpadas, cartazes e a caneca de neon. As pessoas, os copos e a câmera estão nos mesmos lugares.",
+    perguntas: ["O bar ficou aconchegante e sujo do jeito certo?", "Dá pra ler o letreiro O COPO e ver a sinuca no fundo?", "Ficou leve no iPhone (abriu rápido, sem travar)?"],
+    mais: [{ parte: "vitrine.bar", nome: "o bar e a sinuca" }],
+  },
+  {
     parte: "elevador.terror",
     nome: "O elevador de terror (rascunho): a subida pelo poço da torre 2",
     data: "2026-11-06",
@@ -173,7 +182,7 @@ export const MESA: Cartao[] = [
       "Mostre pra alguém que nunca jogou: a pessoa chegou na 1ª missão sozinha?",
       "No iPhone, a rádio tocou ao chegar no subúrbio?",
     ],
-    mais: [{ parte: "bar", nome: "o bar do prólogo" }],
+    mais: [{ parte: "bar", nome: "o bar do prólogo (modelado no Blender)" }],
   },
   {
     parte: "livre",
