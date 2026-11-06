@@ -25,6 +25,22 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "O posto de rua modelado no Blender",
+    data: "2026-11-06",
+    tarefa: "postos",
+    olhar: "Passe por uma bomba na beira da pista (há três no mapa): o posto agora é modelado no Blender, com o toldo aceso com neon amarelo e os painéis de luz embaixo, as colunas, a bomba retrô vermelha (combustível com a mangueira de um lado, recarga com o cabo do outro, o globo aceso em cima), a vaga pintada na pista, a lixeira e o totem com o preço. Mesmas posições de antes. A foto: docs/blender/posto.png.",
+    perguntas: ["O posto tem cara de posto retrô-futurista à noite?", "Dá pra ler o preço no totem chegando?", "Ficou leve no iPhone perto das bombas?"],
+  },
+  {
+    parte: "elevador",
+    nome: "O andar do elevador de terror com as peças do Blender",
+    data: "2026-11-06",
+    tarefa: "T47",
+    olhar: "A sala do elevador de terror agora usa as peças do Blender do poço do elevador 2: a cabine de grade com a porta pantográfica que dobra ao abrir, o andar de concreto com pilares e canos, as cibercamas (os robôs deitados nelas), as cápsulas com o líquido verde e as máquinas dormindo nas paredes. O passeio, os sustos, a câmera e a máquina grande do fundo são os mesmos.",
+    perguntas: ["O andar ficou mais assustador que as caixas de antes?", "A porta de grade abrindo e o apagão ficaram certos?", "Ficou leve no iPhone?"],
+  },
+  {
     parte: "missao.nizzy",
     nome: "O parque da Nizzy (Rollercoaster) modelado no Blender",
     data: "2026-11-06",

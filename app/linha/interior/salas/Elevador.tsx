@@ -17,18 +17,28 @@
 // no teclado, W/↑ anda, S/↓ volta, A/D/←/→ viram. Chegar no fundo manda
 // "fim-gesto" (bus.ts): quem abriu a sala decide o que vem depois.
 //
+// (06/11) As peças vêm do Blender: as mesmas do poço do elevador 2
+// (public/models/terror.glb, blender/scripts/terror.py; o PocoTerror.tsx usa):
+// o andar (esticado no comprimento do corredor), a cabine e a porta de grade
+// pantográfica (que dobra ao abrir), as cibercamas, as cápsulas e as máquinas
+// dormindo nas paredes. Sem luz nos materiais (MeshBasic, a AO no vértice); o
+// apagão e o vidro mexem só na cor de 7 materiais. Os robôs (que não estão no
+// glb), o que acorda, o painel e a máquina grande do fundo continuam os daqui.
+// Se o glb falhar (ou enquanto baixa), as caixas de antes.
+//
 // Leve: as camas, os robôs, as cápsulas e as pessoas são instâncias (uma
 // chamada de desenho por tipo); 3 luzes pontuais; nada de `new` nem setState
 // por quadro (os sustos são gatilhos de posição, cada um uma vez).
 
 import { useGLTF } from "@react-three/drei"
 import { useFrame, useThree } from "@react-three/fiber"
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react"
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 import { audioCtx, saidaAmbiente, saidaSom } from "../../som"
 import { sinalizar } from "../bus"
 import { Caixa, Sala } from "../comum"
 import { olhar, type SalaProps } from "../motor"
+import { ModeloSeguro } from "../../estrada/Seguro"
 
 // tudo que dá pra afinar fica aqui
 export const ELEVADOR = {
@@ -69,6 +79,9 @@ for (let i = 0; i < VAGAS; i++) {
 const ACORDA = ROBOS.findIndex((r) => r.s === -1 && r.z === vagaZ(2))
 const ROBOS_DORMEM = ROBOS.filter((_, i) => i !== ACORDA)
 
+// o que o passeio diz pras peças a cada quadro (quem estiver montado lê)
+type Quadro = { ab: number; apagado: boolean; falha: boolean; resp: number; vidro: number; subindo: boolean }
+
 export function SalaElevador({ estado }: SalaProps) {
   void estado
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
@@ -81,15 +94,13 @@ export function SalaElevador({ estado }: SalaProps) {
   const sustos = useRef({ olho: false, apagao: -1, vidro: -1, fim: false })
   const teclas = useRef({ f: false, t: false, e: false, d: false })
 
-  const portaE = useRef<THREE.Mesh>(null)
-  const portaD = useRef<THREE.Mesh>(null)
+  const Q = useMemo<Quadro>(() => ({ ab: 0, apagado: false, falha: false, resp: 0, vidro: 0, subindo: true }), [])
   const lanterna = useRef<THREE.PointLight>(null)
   const luzCabine = useRef<THREE.PointLight>(null)
   const luzFundo = useRef<THREE.PointLight>(null)
   const tiras = useRef<THREE.MeshBasicMaterial>(null)
   const cabeca = useRef<THREE.Group>(null)
   const olhos = useRef<THREE.MeshBasicMaterial>(null)
-  const vidro = useRef<THREE.MeshStandardMaterial>(null)
   const pulso = useRef<THREE.MeshBasicMaterial>(null)
   const painel = usePainel()
 
@@ -121,8 +132,8 @@ export function SalaElevador({ estado }: SalaProps) {
     }
     const aberta = fase.current === "subindo" ? 0 : Math.min(1, (dec - ELEVADOR.subida) / ELEVADOR.abrir)
     const ab = aberta * aberta * (3 - 2 * aberta)
-    if (portaE.current) portaE.current.position.x = -0.4 - ab * 0.78
-    if (portaD.current) portaD.current.position.x = 0.4 + ab * 0.78
+    Q.ab = ab
+    Q.subindo = fase.current === "subindo"
 
     // ── andar ──
     if (fase.current === "andando") {
@@ -170,7 +181,8 @@ export function SalaElevador({ estado }: SalaProps) {
     if (pulso.current) pulso.current.opacity = 0.25 + resp * 0.6
     // o vidro: quem bateu acende a cápsula por um instante
     const desdeVidro = S.vidro < 0 ? 99 : t - S.vidro
-    if (vidro.current) vidro.current.emissiveIntensity = 0.22 + (desdeVidro < 1.2 ? (1.2 - desdeVidro) * 1.4 : 0)
+    Q.vidro = desdeVidro < 1.2 ? (1.2 - desdeVidro) / 1.2 : 0
+    Q.apagado = apagado; Q.falha = falha; Q.resp = resp
 
     // o robô que acordou vira a cabeça pra você
     if (S.olho && cabeca.current) {
@@ -204,46 +216,16 @@ export function SalaElevador({ estado }: SalaProps) {
       <pointLight ref={lanterna} color="#cfe0ff" intensity={2.6} distance={7} decay={2} />
       <pointLight ref={luzFundo} position={[0, 1.6, FUNDO_Z + 1.6]} color={VERMELHO} intensity={2} distance={9} decay={2} />
 
-      {/* o andar */}
-      <group position={[0, 0, (PORTA_Z + FUNDO_Z) / 2]}>
-        <Sala larg={LARG} fundo={PORTA_Z - FUNDO_Z} alto={ALTO} parede="#0e1016" chao="#0a0b10" teto="#07080b" sem={["frente"]} />
-      </group>
-      {/* a parede da porta, com o vão do elevador */}
-      <Caixa pos={[-(LARG / 2 + 0.8) / 2, ALTO / 2, PORTA_Z]} tam={[LARG / 2 - 0.8, ALTO, 0.1]} cor="#0e1016" />
-      <Caixa pos={[(LARG / 2 + 0.8) / 2, ALTO / 2, PORTA_Z]} tam={[LARG / 2 - 0.8, ALTO, 0.1]} cor="#0e1016" />
-      <Caixa pos={[0, (ALTO + 2.3) / 2, PORTA_Z]} tam={[1.6, ALTO - 2.3, 0.1]} cor="#0e1016" />
-
-      {/* a cabine: metal escovado, a luz fria que falha, o painel do andar */}
-      <Caixa pos={[0, 0.01, (PORTA_Z + CABINE_Z) / 2]} tam={[1.6, 0.02, CABINE_Z - PORTA_Z]} cor="#2a2c32" metal={0.6} rough={0.4} />
-      <Caixa pos={[0, 2.3, (PORTA_Z + CABINE_Z) / 2]} tam={[1.6, 0.04, CABINE_Z - PORTA_Z]} cor="#1a1b20" />
-      <Caixa pos={[-0.82, 1.15, (PORTA_Z + CABINE_Z) / 2]} tam={[0.04, 2.3, CABINE_Z - PORTA_Z]} cor="#3a3d44" metal={0.7} rough={0.35} />
-      <Caixa pos={[0.82, 1.15, (PORTA_Z + CABINE_Z) / 2]} tam={[0.04, 2.3, CABINE_Z - PORTA_Z]} cor="#3a3d44" metal={0.7} rough={0.35} />
-      <Caixa pos={[0, 1.15, CABINE_Z]} tam={[1.6, 2.3, 0.04]} cor="#3a3d44" metal={0.7} rough={0.35} />
+      <ModeloSeguro nome="elevador-glb" reserva={<Caixas Q={Q} tiras={tiras} />}>
+        <PecasGlb Q={Q} tiras={tiras} />
+      </ModeloSeguro>
+      <PortaDoAndar />
       <pointLight ref={luzCabine} position={[0, 2.15, (PORTA_Z + CABINE_Z) / 2]} color="#dfe8ff" intensity={2.2} distance={3.5} decay={2} />
-      <mesh position={[0, 2.27, (PORTA_Z + CABINE_Z) / 2]} rotation-x={Math.PI / 2}>
-        <planeGeometry args={[0.6, 0.6]} />
-        <meshBasicMaterial color="#dfe8ff" toneMapped={false} />
-      </mesh>
-      <mesh ref={portaE} position={[-0.4, 1.15, PORTA_Z + 0.08]}>
-        <boxGeometry args={[0.8, 2.3, 0.05]} />
-        <meshStandardMaterial color="#4a4d55" metalness={0.75} roughness={0.3} />
-      </mesh>
-      <mesh ref={portaD} position={[0.4, 1.15, PORTA_Z + 0.08]}>
-        <boxGeometry args={[0.8, 2.3, 0.05]} />
-        <meshStandardMaterial color="#4a4d55" metalness={0.75} roughness={0.3} />
-      </mesh>
       <mesh position={[0, 2.18, PORTA_Z + 0.12]}>
         <planeGeometry args={[0.36, 0.18]} />
         <meshBasicMaterial map={painel.tex} toneMapped={false} />
       </mesh>
-
-      {/* o teto: as faixas de luz de emergência, todas no mesmo material (piscam juntas) */}
-      <Tiras matRef={tiras} />
-
-      {/* as cibercamas, os robôs dormindo, as cápsulas com gente dentro */}
-      <Camas />
       <Robos lista={ROBOS_DORMEM} />
-      <Capsulas vidroRef={vidro} />
 
       {/* o robô que acorda: a cabeça e os olhos fora das instâncias */}
       <group ref={cabeca} position={[robo.x * 1.78, 0.66, robo.z]}>
@@ -270,6 +252,180 @@ export function SalaElevador({ estado }: SalaProps) {
           </mesh>
         ))}
       </group>
+    </>
+  )
+}
+
+// ── as caixas de antes (a reserva enquanto o glb baixa ou se ele falhar) ──
+function Caixas({ Q, tiras }: { Q: Quadro; tiras: React.RefObject<THREE.MeshBasicMaterial | null> }) {
+  const portaE = useRef<THREE.Mesh>(null)
+  const portaD = useRef<THREE.Mesh>(null)
+  const vidro = useRef<THREE.MeshStandardMaterial>(null)
+  useFrame(() => {
+    if (portaE.current) portaE.current.position.x = -0.4 - Q.ab * 0.78
+    if (portaD.current) portaD.current.position.x = 0.4 + Q.ab * 0.78
+    if (vidro.current) vidro.current.emissiveIntensity = 0.22 + Q.vidro * 1.68
+  })
+  return (
+    <>
+      {/* o andar */}
+      <group position={[0, 0, (PORTA_Z + FUNDO_Z) / 2]}>
+        <Sala larg={LARG} fundo={PORTA_Z - FUNDO_Z} alto={ALTO} parede="#0e1016" chao="#0a0b10" teto="#07080b" sem={["frente"]} />
+      </group>
+
+      {/* a cabine: metal escovado, a luz fria que falha, o painel do andar */}
+      <Caixa pos={[0, 0.01, (PORTA_Z + CABINE_Z) / 2]} tam={[1.6, 0.02, CABINE_Z - PORTA_Z]} cor="#2a2c32" metal={0.6} rough={0.4} />
+      <Caixa pos={[0, 2.3, (PORTA_Z + CABINE_Z) / 2]} tam={[1.6, 0.04, CABINE_Z - PORTA_Z]} cor="#1a1b20" />
+      <Caixa pos={[-0.82, 1.15, (PORTA_Z + CABINE_Z) / 2]} tam={[0.04, 2.3, CABINE_Z - PORTA_Z]} cor="#3a3d44" metal={0.7} rough={0.35} />
+      <Caixa pos={[0.82, 1.15, (PORTA_Z + CABINE_Z) / 2]} tam={[0.04, 2.3, CABINE_Z - PORTA_Z]} cor="#3a3d44" metal={0.7} rough={0.35} />
+      <Caixa pos={[0, 1.15, CABINE_Z]} tam={[1.6, 2.3, 0.04]} cor="#3a3d44" metal={0.7} rough={0.35} />
+      <mesh position={[0, 2.27, (PORTA_Z + CABINE_Z) / 2]} rotation-x={Math.PI / 2}>
+        <planeGeometry args={[0.6, 0.6]} />
+        <meshBasicMaterial color="#dfe8ff" toneMapped={false} />
+      </mesh>
+      <mesh ref={portaE} position={[-0.4, 1.15, PORTA_Z + 0.08]}>
+        <boxGeometry args={[0.8, 2.3, 0.05]} />
+        <meshStandardMaterial color="#4a4d55" metalness={0.75} roughness={0.3} />
+      </mesh>
+      <mesh ref={portaD} position={[0.4, 1.15, PORTA_Z + 0.08]}>
+        <boxGeometry args={[0.8, 2.3, 0.05]} />
+        <meshStandardMaterial color="#4a4d55" metalness={0.75} roughness={0.3} />
+      </mesh>
+
+      {/* o teto: as faixas de luz de emergência, todas no mesmo material (piscam juntas) */}
+      <Tiras matRef={tiras} y={ALTO - 0.03} />
+
+      {/* as cibercamas, os robôs dormindo, as cápsulas com gente dentro */}
+      <Camas />
+      <Suspense fallback={null}><Capsulas vidroRef={vidro} /></Suspense>
+
+    </>
+  )
+}
+
+// a parede da porta, com o vão do elevador (nos dois casos)
+function PortaDoAndar() {
+  return (
+    <>
+      <Caixa pos={[-(LARG / 2 + 0.8) / 2, ALTO / 2, PORTA_Z]} tam={[LARG / 2 - 0.8, ALTO, 0.1]} cor="#0e1016" />
+      <Caixa pos={[(LARG / 2 + 0.8) / 2, ALTO / 2, PORTA_Z]} tam={[LARG / 2 - 0.8, ALTO, 0.1]} cor="#0e1016" />
+      <Caixa pos={[0, (ALTO + 2.3) / 2, PORTA_Z]} tam={[1.6, ALTO - 2.3, 0.1]} cor="#0e1016" />
+    </>
+  )
+}
+
+// ── as peças do Blender (terror.glb: as mesmas do poço do elevador 2) ──
+// Cada nó tem <id>_solido (cor no vértice com a AO, gravada ×4), _luz (cor
+// fixa), _neon (sem cor: a cor vem daqui) e _vidro (o líquido da cápsula).
+// No glTF a frente de cada peça (o lado do poço) é -Z; a origem é no chão.
+const URL_TERROR = "/models/terror.glb"
+const GANHO = 0.25 // o sólido sai do Blender ×4; aqui volta
+const ANDAR_Z = 28 / 15 // o andar (15 m de fundo) esticado até o fundo do corredor
+type Grupo = "solido" | "luz" | "neon" | "vidro"
+type Nos = Record<string, THREE.Object3D>
+
+function PecasGlb({ Q, tiras }: { Q: Quadro; tiras: React.RefObject<THREE.MeshBasicMaterial | null> }) {
+  const { nodes } = useGLTF(URL_TERROR) as unknown as { nodes: Nos }
+  const porta = useRef<THREE.Group>(null)
+  const d = useMemo(() => {
+    const mat = (p: THREE.MeshBasicMaterialParameters) => new THREE.MeshBasicMaterial(p)
+    const M = {
+      sala: mat({ color: new THREE.Color(GANHO, GANHO, GANHO), vertexColors: true }),
+      cab: mat({ color: new THREE.Color(GANHO, GANHO, GANHO), vertexColors: true }),
+      luz: mat({ vertexColors: true, toneMapped: false }),
+      vidro: mat({ vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false, toneMapped: false }),
+      neonCama: mat({ color: "#ffffff", toneMapped: false }),
+      neonMaq: mat({ color: VERMELHO, toneMapped: false }),
+      neonCab: mat({ color: "#ff2a2a", toneMapped: false }),
+    }
+    const o = new THREE.Object3D()
+    const mt = (x: number, z: number, ry: number, sx = 1, sy = 1, sz = 1, y = 0) => {
+      o.position.set(x, y, z); o.rotation.set(0, ry, 0); o.scale.set(sx, sy, sz); o.updateMatrix(); return o.matrix.clone()
+    }
+    // onde vai cada peça (a frente, -Z do glTF, pro corredor)
+    const camas = ROBOS.map((r) => mt(r.s * 2.5, r.z, (r.s * Math.PI) / 2, 1, 1, 1, -0.1)) // afundada 10 cm: o robô deita no colchão
+    const caps = CAPSULAS.map((c) => mt(c.s * 2.45, c.z, (c.s * Math.PI) / 2))
+    const maqs = [-4, -10.5, -14.5, -22].flatMap((z) => [mt(-7.4, z, -Math.PI / 2), mt(7.4, z, Math.PI / 2)])
+    maqs.push(mt(-2.5, FUNDO_Z + 0.5, Math.PI), mt(2.5, FUNDO_Z + 0.5, Math.PI))
+    // o andar: a boca na porta do elevador, o fundo no fundo do corredor
+    const andar = [mt(0, PORTA_Z + 2.3 * ANDAR_Z, Math.PI, 1, 1, ANDAR_Z)]
+    // a cabine (3,6 × 3,6 × 2,6) no tamanho da daqui (1,6 × 1,8 × 2,3), a grade pra porta
+    const cabine = [mt(0, (PORTA_Z + CABINE_Z) / 2, Math.PI, 1.6 / 3.6, 2.3 / 2.6, (CABINE_Z - PORTA_Z) / 3.6)]
+    const cores = ROBOS.map((_, i) => new THREE.Color(i % 2 ? CIANO : "#ff3fb0").multiplyScalar(0.55))
+    const lista: { id: string; ms: THREE.Matrix4[]; solido: THREE.MeshBasicMaterial; neon?: THREE.MeshBasicMaterial; cores?: THREE.Color[] }[] = [
+      { id: "andar", ms: andar, solido: M.sala },
+      { id: "cama", ms: camas, solido: M.sala, neon: M.neonCama, cores },
+      { id: "capsula", ms: caps, solido: M.sala },
+      { id: "maquina", ms: maqs, solido: M.sala, neon: M.neonMaq },
+      { id: "cabine", ms: cabine, solido: M.cab, neon: M.neonCab },
+    ]
+    const inv = new THREE.Matrix4(), rel = new THREE.Matrix4(), m4 = new THREE.Matrix4()
+    const malhas: THREE.InstancedMesh[] = []
+    for (const x of lista) {
+      const no = nodes[x.id]
+      if (!no) throw new Error(`terror.glb sem o nó ${x.id}`)
+      no.updateWorldMatrix(true, true)
+      inv.copy(no.matrixWorld).invert()
+      no.traverse((ob) => {
+        const me = ob as THREE.Mesh
+        if (!me.isMesh) return
+        const g = me.name.slice(x.id.length + 1) as Grupo
+        const mt2 = g === "solido" ? x.solido : g === "luz" ? M.luz : g === "vidro" ? M.vidro : g === "neon" ? x.neon : undefined
+        if (!mt2) return
+        rel.multiplyMatrices(inv, me.matrixWorld)
+        const im = new THREE.InstancedMesh(me.geometry, mt2, x.ms.length)
+        x.ms.forEach((mm, i) => {
+          im.setMatrixAt(i, m4.multiplyMatrices(mm, rel))
+          if (g === "neon" && x.cores) im.setColorAt(i, x.cores[i])
+        })
+        im.frustumCulled = false
+        if (g === "vidro") im.renderOrder = 1
+        malhas.push(im)
+      })
+    }
+    // a porta pantográfica: presa no canto esquerdo, dobra pra lá ao abrir
+    const pm: THREE.Mesh[] = []
+    const np = nodes.porta
+    if (np) {
+      np.updateWorldMatrix(true, true)
+      inv.copy(np.matrixWorld).invert()
+      np.traverse((ob) => {
+        const me = ob as THREE.Mesh
+        if (!me.isMesh || !me.name.endsWith("_solido")) return
+        const k = new THREE.Mesh(me.geometry, M.cab)
+        rel.multiplyMatrices(inv, me.matrixWorld)
+        k.matrixAutoUpdate = false
+        k.matrix.copy(rel)
+        pm.push(k)
+      })
+    }
+    return { M, malhas, pm }
+  }, [nodes])
+  useEffect(() => () => {
+    for (const m of d.malhas) m.dispose()
+    for (const m of Object.values(d.M)) m.dispose()
+    try { useGLTF.clear(URL_TERROR) } catch {}
+  }, [d])
+  const largPorta = 1.6 / 3.6
+  useFrame(() => {
+    const k = Q.apagado ? 0.12 : Q.falha ? 0.45 : 0.7
+    d.M.sala.color.setScalar(GANHO * k)
+    d.M.cab.color.setScalar(GANHO * (Q.apagado ? 0.2 : Q.subindo ? 1 : 0.8))
+    d.M.luz.color.setScalar(Q.apagado ? 0.25 : 1)
+    d.M.vidro.color.setScalar((Q.apagado ? 0.3 : 0.7) + Q.vidro * 1.6)
+    d.M.neonCama.color.setScalar(Q.apagado ? 0.2 : 0.6 + 0.4 * Q.resp)
+    d.M.neonMaq.color.set(VERMELHO).multiplyScalar(0.25 + 0.75 * Q.resp)
+    d.M.neonCab.color.set("#ff2a2a").multiplyScalar(Q.apagado ? 1 : 0.3)
+    if (porta.current) porta.current.scale.x = largPorta * (1 - 0.88 * Q.ab)
+  })
+  return (
+    <>
+      {d.malhas.map((m, i) => <primitive key={i} object={m} />)}
+      {/* a porta: a origem no canto (girada, ela vai pro +x) */}
+      <group ref={porta} position={[-0.8, 0, PORTA_Z + 0.08]} rotation-y={Math.PI} scale={[largPorta, 2.3 / 2.6, 1]}>
+        {d.pm.map((m, i) => <primitive key={i} object={m} />)}
+      </group>
+      <Tiras matRef={tiras} y={3.55} />
     </>
   )
 }
@@ -305,13 +461,13 @@ function pos(m: THREE.InstancedMesh | null, i: number, x: number, y: number, z: 
   m.setMatrixAt(i, _o.matrix)
 }
 
-function Tiras({ matRef }: { matRef: React.RefObject<THREE.MeshBasicMaterial | null> }) {
+function Tiras({ matRef, y }: { matRef: React.RefObject<THREE.MeshBasicMaterial | null>; y: number }) {
   const m = useRef<THREE.InstancedMesh>(null)
   const n = 9
   useLayoutEffect(() => {
-    for (let i = 0; i < n; i++) pos(m.current, i, 0, ALTO - 0.03, 0.2 - i * 3)
+    for (let i = 0; i < n; i++) pos(m.current, i, 0, y, 0.2 - i * 3)
     if (m.current) m.current.instanceMatrix.needsUpdate = true
-  }, [])
+  }, [y])
   return (
     <instancedMesh ref={m} args={[undefined, undefined, n]}>
       <boxGeometry args={[0.12, 0.03, 1.4]} />
