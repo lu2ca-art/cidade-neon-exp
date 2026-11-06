@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "vitrine.terraco",
+    nome: "O terraço do Notti e o quarto do Drew modelados no Blender",
+    data: "2026-11-06",
+    tarefa: "salas",
+    olhar: "O terraço agora é modelado no Blender: piso molhado com poças, a faixa DOPAMINA na mureta, a máquina do fliperama acesa em destaque (tela de 8 bits, marquise DOPAMINA), a máquina morta e o pinball, o sofá virado pra cidade, as TVs de tubo com os consoles, o sequenciador da trilha de 8 bits, a antena, as luzes de festa e a fachada descendo. O quarto do Drew (o outro botão) também: cama baixa de paletes, varal de roupa, prateleira de tênis, o tênis na caixa, toca-discos, caixas de som, a janela com grade e a cidade. Câmera, gente e toques são os de antes. Fotos: docs/blender/topo.png e docs/blender/quarto.png.",
+    perguntas: ["O terraço tem cara de lugar do Notti (fliperama, 8 bits, a faixa)?", "A máquina do fliperama aparece bem logo na chegada?", "O quarto tem a cara do Drew (roupa, tênis, som)?", "Ficou leve no iPhone nas duas salas?"],
+    mais: [{ parte: "vitrine.drewboy", nome: "o quarto do Drew" }],
+  },
+  {
     parte: "livre",
     nome: "O posto de rua modelado no Blender",
     data: "2026-11-06",
