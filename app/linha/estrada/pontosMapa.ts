@@ -20,7 +20,7 @@ import { PASSO } from "./pista"
 import { LUGARES } from "../lugares"
 import { PAGINAS } from "../paginas"
 import { PARQUE } from "./Parque"
-import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
+import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
 import { pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { PORTOES_RUA } from "../disco/corridaRua"
 
@@ -48,9 +48,10 @@ export interface IconeMapa { id: string; faixa: string; cor: string; agora: bool
 const CHAO_POR_FASE: Record<string, readonly LugarChao[]> = {
   minhoca: [], casa: [], dunas: [],
   bar: ["bar"],
-  oficina: ["bar", "oficina"],
-  subir: ["bar", "oficina"],
-  nectar: ["bar", "oficina"],
+  // (06/11) depois do bar, os lugares que abrem uma experiência já estão no mapa (tudo visitável)
+  oficina: ["bar", "oficina", ...CHAO_ABERTOS],
+  subir: ["bar", "oficina", ...CHAO_ABERTOS],
+  nectar: ["bar", "oficina", ...CHAO_ABERTOS],
 }
 export function chaoNoMapa(fase: string | null | undefined, alvo: LugarChao | null): LugarChao[] {
   const base = fase && CHAO_POR_FASE[fase] ? CHAO_POR_FASE[fase] : CHAO_FIXOS

@@ -351,7 +351,7 @@ export function AppJanela({ app, onFechar, rota }: { app: AppDef; onFechar: () =
     const t = setInterval(() => {
       try {
         const p = ref.current?.contentWindow?.location.pathname
-        if (p && (p === "/" || p === "/linha" || p === "/drive" || p === "/drive-v2")) onFechar()
+        if (p && (p === "/" || p === "/linha" || p === "/cidade" || p === "/drive" || p === "/drive-v2")) onFechar()
       } catch {}
     }, 400)
     return () => clearInterval(t)

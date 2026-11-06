@@ -48,6 +48,10 @@ import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/son
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
 import { Loja } from "./loja"
+import { ENTRADAS, IDS_ABERTOS, ehAberto, type LugarAberto } from "./disco/abertos"
+import { Cadeado, PARAM_TRANCA } from "./Trancado"
+import type { Categoria } from "./economia-rascunho"
+import type { AppDef } from "./os"
 import { PostoDentro } from "./posto"
 import { ACERVO } from "./discos"
 import { cacheDoShow, comprar, comprarMelhoria, ganhar, gastar } from "./economia"
@@ -62,7 +66,7 @@ import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 import { perderViolao, tomarJetpack } from "./disco/historia"
-import { CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
+import { CHAO_LUGARES, CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
@@ -1137,7 +1141,7 @@ export default function LinhaPage() {
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
-  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar"] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar", ...IDS_ABERTOS] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])
@@ -1893,6 +1897,41 @@ export default function LinhaPage() {
     setCinema(null)
     barFechou.current = Date.now()
   }
+  // (06/11) os lugares do chão que abrem uma experiência: a porta perto e a página aberta
+  const [portaChao, setPortaChao] = useState<LugarAberto | null>(null)
+  const portaChaoT = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [janelaChao, setJanelaChao] = useState<{ app: AppDef; rota: string } | null>(null)
+  // entrou num app do celular pelo mundo (a loja, o jardim): o "voltar" volta pra estrada
+  const doMundo = useRef(false)
+  const [lojaAba, setLojaAba] = useState<Categoria>("disco")
+  const voltarDoApp = () => { setTela(doMundo.current ? { t: "corrida", destino: null } : { t: "home" }); doMundo.current = false; setLojaAba("disco") }
+  const fecharJanelaChao = useCallback(() => { setJanelaChao(null); barFechou.current = Date.now() }, [])
+  const trancaChao = (id: LugarAberto): string | null => {
+    const E = ENTRADAS[id]
+    return "porta" in E && E.porta ? pedidoDaPorta(hist13(saveRef.current), E.porta, E.pra ?? "entrar") : null
+  }
+  const entrarNoChao = (id: LugarAberto) => {
+    setPortaChao(null)
+    if (cena || cinema) return
+    const E = ENTRADAS[id] as (typeof ENTRADAS)[LugarAberto]
+    const tranca = trancaChao(id)
+    if (E.t === "basquete") {
+      if (tranca) { avisar("QUADRA", tranca, CHAO_LUGARES.quadra.cor); return }
+      if (pingpong || batidaMissao) return
+      quadraLivreEm.current = Date.now()
+      setBasquete((b) => b ?? { n: 1, pontos: 0, tempo: 60, livre: true })
+      return
+    }
+    if (E.t === "app") {
+      doMundo.current = true
+      if ("aba" in E && E.aba) setLojaAba(E.aba)
+      abrirApp(E.app)
+      return
+    }
+    setAoVivo(null)
+    const c = CHAO_LUGARES[id]
+    setJanelaChao({ app: { id: E.icone, nome: c.nome, cor: c.cor, rota: E.rota, pagina: 0, desc: E.nome }, rota: `${E.rota}${tranca ? `?${PARAM_TRANCA}=${encodeURIComponent(tranca)}` : ""}` })
+  }
   const fimVisitaBar = () => {
     setCena(null)
     setCinema(null)
@@ -1956,11 +1995,7 @@ export default function LinhaPage() {
       if (m && alvo13(hist13(saveRef.current), m)?.chao === e.slice(5)) chegouNaMissao(m)
       // (T57) desceu a rampa da boca do túnel (sem a missão dos túneis): as trincheiras, pra passear
       else if (e === "chao:tuneis" && !cena && !recompensa && !trincheiras) descerTrincheiras(null)
-      // (T10) a porta da quadra abriu: de volta lá, dá pra jogar basquete quando quiser (a cada 90 s no máximo)
-      else if (e === "chao:quadra" && portaAberta(h, "quadra") && !cena && !recompensa && !pingpong && !batidaMissao && Date.now() - quadraLivreEm.current > 90000 && Date.now() - barFechou.current > 8000) {
-        quadraLivreEm.current = Date.now()
-        setBasquete((b) => b ?? { n: 1, pontos: 0, tempo: 60, livre: true })
-      }
+      // (T10) a quadra livre agora é pelo botão "entrar · a quadra" (abaixo, os lugares abertos)
     }
     // (notas 04/11) chegou na casa da D-Bee (no deserto), sem missão lá: com
     // instrumento novo, ela pede pra tocar. Só aqui; nunca no meio da cidade
@@ -1977,6 +2012,14 @@ export default function LinhaPage() {
     if (e === "chao:bar" && h.fase !== "bar" && !cena && !recompensa && !trincheiras && Date.now() - barFechou.current > 8000) {
       setPortaBar(true)
       setTimeout(() => setPortaBar(false), 8000)
+    }
+    // (06/11) os lugares do chão que abrem uma experiência (disco/abertos.ts): o
+    // botão "entrar", como o bar. Quando é o lugar da missão de agora, a missão manda
+    const idA = e.startsWith("chao:") ? e.slice(5) : ""
+    if (ehAberto(idA) && idA !== alvoChao && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras && !janelaChao && Date.now() - barFechou.current > 8000) {
+      setPortaChao(idA)
+      clearTimeout(portaChaoT.current)
+      portaChaoT.current = setTimeout(() => setPortaChao(null), 8000)
     }
     // (B18) subiu pra cidade (pousou numa pista): a carreira (a Nectar acesa)
     if (e === "subiu" && h.fase === "subir") {
@@ -2304,7 +2347,7 @@ export default function LinhaPage() {
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
-  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar
+  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao
 
   // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
   // celular translúcido por cima da cidade (LU2CA 19/10)
@@ -2703,11 +2746,11 @@ export default function LinhaPage() {
           />
         )}
         {tela.t === "app" && tela.id === "jardim" && (
-          <Jardim save={save} atualizar={atualizar} tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />
+          <Jardim save={save} atualizar={atualizar} tranca={trancaApp} onVoltar={voltarDoApp} />
         )}
         {tela.t === "app" && tela.id === "violao" && <Violao tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />}
         {tela.t === "app" && tela.id === "ouvir" && <Ouvir onVoltar={() => setTela({ t: "home" })} />}
-        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={trancaApp ? () => { avisar("LOJA", trancaApp, "#ffc857"); return false } : comprarNaLoja} tranca={trancaApp} onVoltar={() => setTela({ t: "home" })} />}
+        {tela.t === "app" && tela.id === "loja" && <Loja save={save} comprar={trancaApp ? () => { avisar("LOJA", trancaApp, "#ffc857"); return false } : comprarNaLoja} tranca={trancaApp} aba0={lojaAba} onVoltar={voltarDoApp} />}
         {tela.t === "app" && tela.id === "objetos" && (
           <Objetos save={save} onVoltar={() => setTela({ t: "home" })} onChat={(id) => abrirChat(id, { t: "app", id: "objetos" })} onUsarGalao={() => setSave((s) => (s.galao === "cheio" ? { ...s, galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) } : s))} />
         )}
@@ -2745,6 +2788,11 @@ export default function LinhaPage() {
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
+        {portaChao && tela.t === "corrida" && !cena && !janelaChao && (() => {
+          const t = trancaChao(portaChao)
+          return <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: CHAO_LUGARES[portaChao].cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrarNoChao(portaChao)}>{t && <Cadeado />}entrar · {ENTRADAS[portaChao].nome}{t ? " · ver" : ""}</button>
+        })()}
+        {janelaChao && <div className="l-janela-mundo"><AppJanela app={janelaChao.app} rota={janelaChao.rota} onFechar={fecharJanelaChao} /></div>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
         {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist) }} />}
         {/* (notas 04/11) a rádio livre: fora da estrada (túneis, salas) ela também liga */}

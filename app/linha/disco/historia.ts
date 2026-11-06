@@ -389,11 +389,23 @@ export const CHAO_LUGARES = {
   // UMA só, no deserto do subúrbio (CasaDeserto, em CASA). As missões e as cenas
   // dela valem só aqui, no chão: sem fachada nova (a casa já está desenhada)
   casa: { x: CASA.x, z: CASA.z, nome: "CASA DA D-BEE", cor: "#ffc857" },
+  // (06/11, bíblia §4: "a maior parte das experiências fica no subúrbio") os
+  // lugares que faltavam no chão: cada um abre a experiência que já existe
+  // (disco/abertos.ts). Longe uns dos outros (90 m ou mais), fora da rua da
+  // corrida (40 m ou mais) e das pistas (conferido com M.livre). docs/suburbio-lugares.md
+  ginasio: { x: -760, z: -930, nome: "GINÁSIO", cor: "#ff9000" },
+  galeria: { x: -611, z: -527, nome: "GALERIA", cor: "#3d7bff" },
+  discos: { x: -760, z: -470, nome: "DISCOS", cor: "#ffc857" },
+  batida: { x: -500, z: -745, nome: "BATIDA", cor: "#ff6b6b" },
+  flores: { x: -990, z: -600, nome: "FLORES", cor: "#5dffa0" },
+  brecho: { x: -790, z: -600, nome: "BRECHÓ", cor: "#ff3fb0" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 // (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
 // (lote D) a torre também: é só a porta (o gatilho), sem fachada
 export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre", "casa"]
+// (06/11) os que têm a fachada juntada (LugaresChao: LugaresAbertos), não a Fachada de antes
+export const CHAO_ABERTOS = ["ginasio", "galeria", "discos", "batida", "flores", "brecho"] as const satisfies readonly LugarChao[]
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)

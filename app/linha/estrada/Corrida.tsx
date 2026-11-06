@@ -53,6 +53,7 @@ import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, ehPeca, pertoDoChao } from "../disco/achados"
+import { ehAberto } from "../disco/abertos"
 import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desembarque } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, INTRO_ADIADA, lerGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
@@ -1633,7 +1634,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         if (longe) dentro.delete(id)
         if (!dentro.has(id) && perto) {
           // (vitrine) o bar fora do prólogo não para a Kombi: só aparece o "entrar · o bar"
-          dentro.add(id); if (!ehPeca(id) && (id !== "bar" || alvoChao === "bar")) j.v = 0
+          // (06/11) nem os lugares que abrem uma experiência (disco/abertos.ts): o botão "entrar"
+          dentro.add(id); if (!ehPeca(id) && ((id !== "bar" && !ehAberto(id)) || alvoChao === id)) j.v = 0
           // (30/10, o dono) a Kombi não entra no túnel: fica parada aqui fora, na porta
           if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx ?? a?.x ?? l.x, j.wz ?? a?.z ?? l.z, j.rumo ?? 0, desembarqueDe(M, combRef.current)) }
           onHistoriaRef.current?.(`chao:${id}`)

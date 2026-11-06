@@ -18,7 +18,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { BOCA, QUADRA, geoBoca } from "../estrada/chao"
 import { materialAreia } from "../estrada/areia"
 import { PECAS_CHAO, chaoAtivos, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
-import { CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "./historia"
+import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, SUBURBIO, type LugarChao } from "./historia"
 
 function texLetreiro(txt: string, cor: string) {
   const c = document.createElement("canvas"); c.width = 512; c.height = 128
@@ -330,12 +330,130 @@ function Goteira({ chao }: { chao: (x: number, z: number) => number }) {
   )
 }
 
+
+// ── (06/11) OS LUGARES QUE ABREM UMA EXPERIÊNCIA (disco/abertos.ts): o ginásio,
+// a galeria, os discos, o estúdio do beat, as flores e o brechó. Uma fachada
+// baixa e simples por lugar, com um detalhe que diz o que é (o telhado em arco
+// do ginásio, os quadros da galeria, o vinil gigante, as caixas de som, os
+// canteiros, a arara de roupa). TODOS juntos em 3 desenhos: as paredes (cor no
+// vértice), o neon (cor no vértice, sem luz) e os letreiros (um atlas só).
+// Montados uma vez; nada por quadro. A porta vira pro meio do subúrbio ──
+type Aberto = (typeof CHAO_ABERTOS)[number]
+function detalhe(id: Aberto, cor: string): { solido: Peca3[]; neon: Peca3[] } {
+  const solido: Peca3[] = [], neon: Peca3[] = []
+  if (id === "ginasio") {
+    // o telhado em arco ao longo do prédio
+    solido.push({ g: new THREE.CylinderGeometry(6, 6, 9, 12, 1, false, -Math.PI / 2, Math.PI), cor: "#4a4258", p: [0, 6, 0], r: [-Math.PI / 2, 0, 0] })
+    neon.push({ g: new THREE.TorusGeometry(6.05, 0.08, 4, 16, Math.PI), cor, p: [0, 6, 4.55] })
+  } else if (id === "galeria") {
+    // três quadros na fachada
+    for (const [k, c] of [[-4, "#ff3fb0"], [4, "#5dffa0"]] as const) {
+      solido.push({ g: caixa(2.2, 2.8, 0.12), cor: "#e9e3d5", p: [k, 3, 4.56] })
+      neon.push({ g: caixa(1.8, 2.4, 0.06), cor: c, p: [k, 3, 4.64] })
+    }
+  } else if (id === "discos") {
+    // o vinil gigante em pé no telhado
+    solido.push({ g: cil(3.2, 3.2, 0.3, 24), cor: "#0d0b12", p: [0, 9.4, 0], r: [Math.PI / 2, 0, 0] })
+    neon.push({ g: cil(1, 1, 0.34, 16), cor, p: [0, 9.4, 0], r: [Math.PI / 2, 0, 0] })
+    neon.push({ g: new THREE.TorusGeometry(2.6, 0.05, 4, 24), cor: "#ffffff", p: [0, 9.4, 0.18] })
+  } else if (id === "batida") {
+    // as duas caixas de som do lado da porta
+    for (const k of [-1, 1]) {
+      solido.push({ g: caixa(2, 3.6, 1.6), cor: "#16141c", p: [k * 4.2, 1.8, 5.3] })
+      neon.push({ g: new THREE.TorusGeometry(0.6, 0.08, 4, 14), cor, p: [k * 4.2, 1.2, 6.12] })
+      neon.push({ g: new THREE.TorusGeometry(0.35, 0.06, 4, 12), cor, p: [k * 4.2, 2.7, 6.12] })
+    }
+  } else if (id === "flores") {
+    // os canteiros na frente, floridos
+    for (const k of [-1, 1]) {
+      solido.push({ g: caixa(3.6, 0.8, 1.4), cor: "#5a4a3a", p: [k * 4, 0.4, 6.2] })
+      solido.push({ g: caixa(3.4, 0.5, 1.2), cor: "#2f6a3a", p: [k * 4, 1, 6.2] })
+      for (let i = 0; i < 4; i++) neon.push({ g: caixa(0.36, 0.36, 0.36), cor: ["#ff3fb0", "#ffc857", "#5dffa0", "#ff6a35"][i], p: [k * 4 - 1.2 + i * 0.8, 1.45, 6.2 + (i % 2 ? 0.3 : -0.3)] })
+    }
+  } else {
+    // o brechó: a arara na calçada, com as peças penduradas
+    for (const k of [-1, 1]) solido.push({ g: cil(0.05, 0.05, 2.2, 6), cor: "#8a93a8", p: [k * 3, 1.1, 6.4] })
+    solido.push({ g: cil(0.04, 0.04, 6.2, 6), cor: "#8a93a8", p: [0, 2.15, 6.4], r: [0, 0, Math.PI / 2] })
+    for (let i = 0; i < 6; i++) solido.push({ g: caixa(0.8, 1.2, 0.12), cor: ["#ff3fb0", "#3d7bff", "#ffc857", "#5dffa0", "#e9e3d5", "#ff6a35"][i], p: [-2.4 + i * 0.95, 1.45, 6.4], r: [0, 0.3, 0] })
+  }
+  return { solido, neon }
+}
+function texAtlas(ids: readonly Aberto[]) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128 * ids.length
+  const g = c.getContext("2d")!
+  g.fillStyle = "#07060c"; g.fillRect(0, 0, c.width, c.height)
+  g.font = "800 76px ui-monospace, monospace"; g.textAlign = "center"; g.textBaseline = "middle"
+  ids.forEach((id, i) => { const cor = CHAO_LUGARES[id].cor; g.shadowColor = cor; g.shadowBlur = 24; g.fillStyle = cor; g.fillText(CHAO_LUGARES[id].nome, 256, 128 * i + 68) })
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+function LugaresAbertos({ chao }: { chao: (x: number, z: number) => number }) {
+  const d = useMemo(() => {
+    const solido: Peca3[] = [], neon: Peca3[] = [], letreiros: Peca3[] = []
+    const n = CHAO_ABERTOS.length
+    const no = (q: Peca3, x: number, y: number, z: number, rot: number): Peca3 => {
+      // leva a peça do lugar (local) pro mundo: gira em y e desloca
+      const [px, py, pz] = q.p ?? [0, 0, 0], [rx, ry, rz] = q.r ?? [0, 0, 0]
+      _o.position.set(px, py, pz); _o.rotation.set(rx, ry, rz); _o.updateMatrix()
+      const m = new THREE.Matrix4().makeRotationY(rot).setPosition(x, y, z).multiply(_o.matrix)
+      q.g.applyMatrix4(m)
+      return { g: q.g, cor: q.cor }
+    }
+    CHAO_ABERTOS.forEach((id, i) => {
+      const l = CHAO_LUGARES[id]
+      const larg = id === "ginasio" ? 12 : 11
+      // assenta no ponto mais baixo do pé (as dunas inclinam) e enterra a base
+      let y = Infinity
+      for (const [a, b] of [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) y = Math.min(y, chao(l.x + a * 7, l.z + b * 7))
+      y -= 0.3
+      const rot = Math.atan2(SUBURBIO.x - l.x, SUBURBIO.z - l.z)
+      const alto = id === "ginasio" || id === "discos" ? 6 : 5
+      const extra = detalhe(id, l.cor)
+      const loc: { s: Peca3[]; n: Peca3[] } = {
+        s: [
+          { g: caixa(larg, alto + 2, 9), cor: id === "galeria" ? "#d9dee8" : "#2e2836", p: [0, alto / 2 - 1, 0] },
+          { g: caixa(larg + 0.6, 0.4, 9.6), cor: "#1c1822", p: [0, alto, 0] },
+          ...extra.solido,
+        ],
+        n: [
+          { g: caixa(id === "ginasio" ? 5 : 1.8, id === "ginasio" ? 3.4 : 2.6, 0.05), cor: "#ffcf8a", p: [0, (id === "ginasio" ? 3.4 : 2.6) / 2, 4.53] },
+          { g: caixa(larg, 0.08, 0.06), cor: l.cor, p: [0, 0.3, 4.55] },
+          { g: caixa(larg, 0.08, 0.06), cor: l.cor, p: [0, alto - 0.2, 4.55] },
+          ...extra.neon,
+        ],
+      }
+      for (const q of loc.s) solido.push(no(q, l.x, y, l.z, rot))
+      for (const q of loc.n) neon.push(no(q, l.x, y, l.z, rot))
+      // o letreiro: a fileira i do atlas
+      const pl = new THREE.PlaneGeometry(7, 1.75), uv = pl.attributes.uv
+      for (let k = 0; k < uv.count; k++) uv.setY(k, (n - 1 - i + uv.getY(k)) / n)
+      letreiros.push(no({ g: pl, p: [0, alto - 1.3, 4.58] }, l.x, y, l.z, rot))
+    })
+    return {
+      solido: juntar(solido), neon: juntar(neon), letreiros: juntar(letreiros, true),
+      mats: {
+        solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, emissive: "#16121e", emissiveIntensity: 0.6 }),
+        neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+        letreiro: new THREE.MeshBasicMaterial({ map: texAtlas(CHAO_ABERTOS), toneMapped: false }),
+      },
+    }
+  }, [chao])
+  return (
+    <>
+      <mesh geometry={d.solido} material={d.mats.solido} name="lugares-abertos" />
+      <mesh geometry={d.neon} material={d.mats.neon} />
+      <mesh geometry={d.letreiros} material={d.mats.letreiro} />
+    </>
+  )
+}
+
 export function LugaresChao({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: LugarChao | null }) {
   return (
     <>
-      {CHAO_FIXOS.map((id) => id === "tuneis" ? <BocaTunel key={id} chao={chao} alvo={alvo === id} />
+      {CHAO_FIXOS.filter((id) => !(CHAO_ABERTOS as readonly string[]).includes(id)).map((id) => id === "tuneis" ? <BocaTunel key={id} chao={chao} alvo={alvo === id} />
         : id === "quadra" ? <Quadra key={id} chao={chao} alvo={alvo === id} />
         : <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
+      <LugaresAbertos chao={chao} />
       {alvo === "goteira" && <Goteira chao={chao} />}
       <LixoNoLixao chao={chao} />
     </>

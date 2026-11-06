@@ -26,8 +26,9 @@ const TEXTO: Record<Categoria, string> = {
   roupa: "a roupa do palco e da rua",
 }
 
-export function Loja({ save, comprar, onVoltar, tranca }: { save: Save; comprar: (id: string) => boolean; onVoltar: () => void; tranca?: string | null }) {
-  const [aba, setAba] = useState<Categoria>("disco")
+// (06/11) aba0: entrou pelo mundo (o brechó do subúrbio abre nas roupas)
+export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save: Save; comprar: (id: string) => boolean; onVoltar: () => void; tranca?: string | null; aba0?: Categoria }) {
+  const [aba, setAba] = useState<Categoria>(aba0)
   const [aberto, setAberto] = useState<DiscoLoja | null>(null)
   const [item, setItem] = useState<ItemLoja | null>(null)
   const neon = saldo(save)
