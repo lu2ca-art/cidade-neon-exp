@@ -149,6 +149,7 @@ function Modelo({ id, a }: { id: InstrumentoId; a: boolean }) {
 
 // ── o modelo do Blender ──
 const URL = "/models/instrumentos.glb"
+export const INSTRUMENTOS_GLB = URL // o djembê tocável (interior/salas/Djembe.tsx) usa o mesmo .glb
 // a maior medida de cada um na vaga (m): o tamanho das formas de antes
 const MEDIDA: Record<InstrumentoId, number> = {
   djembe: 0.26, "tambor-agua": 0.28, udu: 0.27, caxixi: 0.17, sitar: 0.62, didgeridoo: 0.56,
@@ -160,7 +161,7 @@ const POSE: Partial<Record<InstrumentoId, [number, number, number]>> = {
 }
 // um material por grupo, compartilhado pelos 11 (a cor vem dos vértices)
 const vmat = (extra: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ vertexColors: true, ...extra })
-const MG: Record<string, THREE.Material> = {
+export const MG: Record<string, THREE.Material> = {
   madeira: vmat({ roughness: 0.62 }),
   barro: vmat({ roughness: 0.85 }),
   metal: vmat({ roughness: 0.32, metalness: 0.8 }),

@@ -1,9 +1,12 @@
 "use client"
 
-// O DJEMBÊ (T06, 30/10): o tambor de verdade na casa da D-Bee. Modelo
-// PROVISÓRIO feito em código (regra 10: o final vem do Tripo 3D e passa pelo
-// Blender), mas já com cara de djembê: a taça de madeira entalhada, o pé, a
-// pele de cabra com o centro mais escuro, os dois aros e as cordas em V.
+// O DJEMBÊ (T06, 30/10): o tambor de verdade na casa da D-Bee.
+// O MODELO (06/11): o djembê modelado no Blender (blender/scripts/instrumentos.py,
+// nó "djembe" de public/models/instrumentos.glb: a taça de madeira, o couro com a
+// borda descendo por cima do aro, as cordas azuis em V), na escala de antes (a
+// pele no ALTO). A pele que responde ao toque continua em código, por cima do
+// couro do modelo (só a borda dele aparece). Se o .glb não carregar (ou enquanto
+// carrega), fica o djembê feito em código de antes (Corpo).
 //
 // O dele é tocável: o toque na pele vira r (0 centro, 1 borda), o ângulo e a
 // força (disco/tamborVivo.ts) e o minijogo (disco/Tambor.tsx) decide o tempo e
@@ -12,14 +15,18 @@
 // hora de cada golpe (o relógio é o do áudio), pra você acompanhar.
 //
 // Desempenho: geometrias, texturas e materiais criados uma vez e divididos
-// pelos dois; as cordas são uma InstancedMesh; por quadro só mexe em posição,
-// escala e opacidade (nada é criado).
+// pelos dois (os do modelo são os mesmos dos instrumentos da casa,
+// disco/InstrumentosCasa.tsx); nenhuma luz própria; por quadro só mexe em
+// posição, escala e opacidade (nada é criado).
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
 import { useEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 import type { V3 } from "../comum"
 import { carregarTambor } from "../../disco/tamborSom"
+import { INSTRUMENTOS_GLB, MG } from "../../disco/InstrumentosCasa"
+import { ModeloSeguro } from "../../estrada/Seguro"
 import { TAMBOR_VIVO, forcaDoToque, type Toque } from "../../disco/tamborVivo"
 
 const R = 0.165 // o raio da pele
@@ -168,6 +175,44 @@ function Corpo({ pele }: { pele: THREE.Material }) {
   )
 }
 
+// o modelo do Blender: o couro dele chega a 0,589 m; fica um tiquinho abaixo
+// da pele em código (ALTO), que cobre o centro e deixa a borda dele à mostra
+const TOPO_GLB = 0.589
+const ESCALA_GLB = (ALTO - 0.003) / TOPO_GLB
+type Parte = { geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }
+function CorpoGlb({ pele }: { pele: THREE.Material }) {
+  const k = useKit()
+  const { nodes } = useGLTF(INSTRUMENTOS_GLB) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const no = nodes.djembe
+  if (!no) throw new Error("instrumentos.glb sem o nó djembe")
+  const partes = useMemo(() => {
+    const ps: Parte[] = []
+    for (const c of no.children) {
+      const m = c as THREE.Mesh
+      if (!m.geometry) continue
+      ps.push({ geo: m.geometry, mat: MG[m.name.slice("djembe_".length)] ?? MG.madeira, pos: m.position, quat: m.quaternion, esc: m.scale })
+    }
+    return ps
+  }, [no])
+  return (
+    <>
+      <group scale={ESCALA_GLB}>
+        {partes.map((p, i) => (
+          <mesh key={i} geometry={p.geo} material={p.mat} position={p.pos} quaternion={p.quat} scale={p.esc} />
+        ))}
+      </group>
+      <mesh geometry={k.pele} material={pele} position={[0, ALTO, 0]} />
+    </>
+  )
+}
+function CorpoModelo({ pele }: { pele: THREE.Material }) {
+  return (
+    <ModeloSeguro nome="djembe" reserva={<Corpo pele={pele} />}>
+      <CorpoGlb pele={pele} />
+    </ModeloSeguro>
+  )
+}
+
 // o djembê dele: tocável. `vira` gira o tambor; o lado de quem toca é o +z dele
 export function DjembeSeu({ pos, vira = 0 }: { pos: V3; vira?: number }) {
   const k = useKit()
@@ -194,7 +239,7 @@ export function DjembeSeu({ pos, vira = 0 }: { pos: V3; vira?: number }) {
   }
   return (
     <group ref={grupo} position={pos} rotation-y={vira}>
-      <Corpo pele={golpe.pele} />
+      <CorpoModelo pele={golpe.pele} />
       <primitive object={golpe.onda} />
       <primitive object={golpe.ponto} />
       {/* onde o toque pega: a pele e uma folga em volta (fora da pele conta como a borda) */}
@@ -254,7 +299,7 @@ export function DjembeDela({ pos, vira = 0, cor = "#3d7bff" }: { pos: V3; vira?:
   })
   return (
     <group position={pos} rotation-y={vira}>
-      <Corpo pele={golpe.pele} />
+      <CorpoModelo pele={golpe.pele} />
       <primitive object={golpe.onda} />
       <primitive object={golpe.ponto} />
       <primitive object={maos[0]} />

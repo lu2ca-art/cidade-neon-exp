@@ -725,11 +725,12 @@ export const MESA: Cartao[] = [
   {
     parte: "casa.tambor",
     nome: "O tambor de verdade com a D-Bee",
-    data: "2026-10-30",
+    data: "2026-11-06",
     tarefa: "T06",
-    olhar: "Dois tambores no tapete. Acompanhe as mãos dela: no centro sai o grave, na borda o tapa, e bater forte soa mais forte.",
+    olhar: "Agora é o djembê modelado no Blender (madeira, couro e cordas azuis), com a pele que responde ao toque por cima. Dois tambores no tapete. Acompanhe as mãos dela: no centro sai o grave, na borda o tapa, e bater forte soa mais forte.",
     perguntas: [
       "O som serve até o seu sample chegar? Dá pra sentir centro e borda, fraco e forte?",
+      "Gosta do djembê modelado no Blender? A borda do couro e as cordas ficaram boas com a pele por cima?",
       "Gosta da D-Bee sentada atrás do tambor e das mãos batendo?",
       "Tem atraso no iPhone?",
       "Quando puder, mande o seu sample (6 arquivos).",
