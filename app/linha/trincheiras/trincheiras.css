@@ -76,3 +76,13 @@
 @keyframes tr-sobe { from { opacity: 0; } to { opacity: 1; } }
 .tr-fim-botoes button[data-subir] { background: #9b8cff; color: #0a0610; border: 0; }
 button.tr-voltar { border: 0; cursor: pointer; }
+/* (elevadores, 06/11) o botão do elevador na torre e a cabine subindo (curta, translúcida) */
+.tr-elevador { position: absolute; left: 50%; top: calc(38% + 34px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 16px; border-radius: 999px; border: 0; background: #ffcf8a; color: #0a0610; font: 800 13px var(--font-geist-mono), ui-monospace, monospace; cursor: pointer; pointer-events: auto; }
+.tr-elevador small { font-size: 10px; font-weight: 700; opacity: 0.75; }
+.tr-elevador.is-trancado { background: rgba(10, 6, 16, 0.75); color: #f2eefa; border: 1px solid rgba(255, 207, 138, 0.5); cursor: default; }
+.tr-cabine { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: linear-gradient(to top, rgba(10, 6, 16, 0.2), rgba(10, 6, 16, 0.85)); animation: tr-cab-escurece var(--dur, 1.2s) ease-in forwards; pointer-events: all; }
+.tr-cabine p { margin: 0; font: 800 13px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.12em; color: #ffcf8a; text-transform: uppercase; }
+.tr-cabine-poco { position: relative; width: 56px; height: 40vh; border-left: 2px solid rgba(255, 207, 138, 0.35); border-right: 2px solid rgba(255, 207, 138, 0.35); }
+.tr-cabine-poco i { position: absolute; left: 4px; right: 4px; bottom: 0; height: 52px; border-radius: 6px; background: #ffcf8a; box-shadow: 0 0 18px rgba(255, 207, 138, 0.7); animation: tr-cab-sobe var(--dur, 1.2s) ease-in-out forwards; }
+@keyframes tr-cab-sobe { from { transform: translateY(0); } to { transform: translateY(calc(-40vh + 52px)); } }
+@keyframes tr-cab-escurece { from { opacity: 0.3; } 30% { opacity: 1; } to { opacity: 1; } }

@@ -61,6 +61,7 @@ import { NAV, ladoDaFaixa } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
 import { foraNaBoca, nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
+import { limparSubida, pedirDescida, rotuloDescer, subidaAgora } from "../disco/elevadores"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
@@ -205,6 +206,8 @@ export interface Stats {
 }
 
 interface Props {
+  // (elevadores, 06/11) na rotatória de uma torre da ponta: "descer · túneis" (tranca = o cadeado)
+  elevador?: { tranca: string | null; onDescer: (n: number) => void } | null
   save: Save
   nivel: number
   destino: EstacaoId | null
@@ -558,7 +561,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao }: Props) {
+export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -676,7 +679,9 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // moto, a Kombi estacionada), o desembarque: a volta começa assim, sem trocar na tela
   const [nasce] = useState(() => { let fora: Desembarque | null = null; const j = (() => {
     // (T61, ?parte=torre) o link de teste começa na alça de uma linha, chegando na rotatória
-    const ir = "disco" in M && !retomada ? irTorreAgora() : null
+    // (elevadores, 06/11) subiu pelo elevador do túnel: chega na torre da ponta N, como o ?parte=torre.ponta
+    const elev = "disco" in M && !retomada ? subidaAgora() : null
+    const ir = "disco" in M && !retomada ? (elev ? { torre: elev.n, pista: elev.pista } : irTorreAgora()) : null
     const ret = retomarJogo(M, retomada ?? (ir ? chegadaNaTorre(M as MundoDisco, ir.torre, ir.pista) : null))
     const j = ret ?? novoJogo(M, destino, save.estacao, abertura)
     // (disco, a história) a Kombi cai do buraco de minhoca no deserto, perto da
@@ -699,6 +704,15 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       nasceuOndeParou(c.x, c.z) // (como o naVaga da pista: a porta de onde ele saiu não reabre parada)
     }
     if (ret && retomada?.fora) fora = retomada.fora
+    // (elevadores) fora da Kombi: ela ficou onde estava (lá em cima, se desceu pelo
+    // elevador; senão na boca do túnel). De patins, ou de moto se estava de moto
+    if (ret && elev) {
+      const base = elev.fora ?? foraNaBoca() ?? (() => {
+        const MD = M as MundoDisco, b = saidaDoTunel(), q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), b.rumo + Math.PI)
+        return { modo: "patins" as const, kombi: { x: b.x, y: MD.chaoEm(b.x, b.z), z: b.z, q: [q.x, q.y, q.z, q.w] as [number, number, number, number], via: "", u: 0, xl: 0 } }
+      })()
+      fora = { ...base, modo: elev.modo }
+    }
     if (parou?.fora) fora = parou.fora
     if (parou?.t === "pista") {
       const jp = retomarJogo(M, { via: parou.via, u: parou.u, x: parou.x })
@@ -731,7 +745,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     return j
   })(); return { j, fora: "disco" in M ? fora : null } })
   const jogo0 = nasce.j
-  useEffect(() => { const t = window.setTimeout(limparIrTorre, 3000); return () => clearTimeout(t) }, [])
+  useEffect(() => { const t = window.setTimeout(() => { limparIrTorre(); limparSubida() }, 3000); return () => clearTimeout(t) }, [])
   // a abertura: onde a casa fica e em que pé a pessoa está
   const casaPose = poses["casa-dbee"]
   const aberturaRef = useRef<Abertura>({ ativa: abertura, via: casaPose.via, u: LUGARES["casa-dbee"].u, porta: new THREE.Vector3(casaPose.porta.x, casaPose.vaga.y, casaPose.porta.z), fase: "dirige", pe: 0, semGas: false, t0: 0, de: null, onPorta: () => {} })
@@ -1183,6 +1197,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   }, [discoM, pistaFoco])
   // (disco) na torre (as espirais): o óculos não precisa do painel de missão
   const naCentral = !!discoM && (naTorre(discoM.info[viaAtual]) || naTorreDaPonta(discoM.info[viaAtual]))
+  const pontaElevador = discoM && naTorreDaPonta(discoM.info[viaAtual]) ? discoM.info[viaAtual].torre : 0
   // a próxima saída da rotatória (no fim do trecho onde a Kombi está)
   const placaEspiral = (() => {
     if (!discoM || discoM.info[viaAtual]?.parte !== "anel") return null
@@ -2757,6 +2772,13 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       )}
       <div ref={sirene} className="l-sirene" />
       {telChave > 0 && <div key={telChave} className="l-corte-teleporte" />}
+      {/* (elevadores) na rotatória da torre da ponta N: o elevador desce pro salão da TORRE N (a via muda, sem conta por quadro) */}
+      {elevador && pontaElevador > 0 && !pausado && (
+        <button type="button" data-info="elevador" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#9b8cff" }} onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => { if (elevador.tranca) return; pedirDescida(pontaElevador, desembarqueDe(M, combRef.current)); elevador.onDescer(pontaElevador) }}>
+          {elevador.tranca && <Cadeado />}{rotuloDescer(pontaElevador)}{elevador.tranca ? ` · ${elevador.tranca}` : ""}
+        </button>
+      )}
       {caido && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: "#3d7bff" }}>
           <small>D-Bee · urgente</small>

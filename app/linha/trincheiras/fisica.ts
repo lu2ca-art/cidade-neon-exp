@@ -9,7 +9,7 @@ import {
   type Fisica, type Recorde, type Rival, type Veiculo,
 } from "./corrida"
 import { TRILHO_E, TRILHO_Y } from "./geoCorrida"
-import { AVENIDAS, SALAO_DESCIDA, SALAO_LARGADA, SUBIDA_MAX, VOLTA, batenaTorre, ondeEsta, perfil } from "./mapa"
+import { AVENIDAS, SALAO_DESCIDA, SALAO_LARGADA, SUBIDA_MAX, TORRES, VOLTA, batenaTorre, ondeEsta, perfil } from "./mapa"
 import { AJUSTE_MOTO, passoMoto, tranco } from "./moto"
 
 export const PASSO = 1 / 120
@@ -41,12 +41,14 @@ export type Corrida = {
   resultado: { tempo: number; lugar: number; novo: boolean; rivais: { nome: string; cor: string; fim: number | null }[] } | null
 }
 
-export function estadoInicial(onde: "largada" | "descida" = "largada"): Estado {
+export function estadoInicial(onde: "largada" | "descida" | number = "largada"): Estado {
   // a corrida começa na TORRE 1, virado pro rio A; o passeio, na DESCIDA (a porta
   // de entrada, lá no fundo), virado pra rampa que leva à TORRE 1
-  const desc = onde === "descida", t = desc ? SALAO_DESCIDA.c : SALAO_LARGADA.c
+  // (elevadores, 06/11) um número (1–3): desceu pelo elevador, na frente da TORRE N, de costas pra ela
+  const el = typeof onde === "number" ? TORRES[onde - 1] : undefined
+  const desc = onde === "descida", t = el ? { x: el.torre.x - el.fora.x * 12, z: el.torre.z - el.fora.z * 12 } : desc ? SALAO_DESCIDA.c : SALAO_LARGADA.c
   const rampa = AVENIDAS.find((a) => a.de === SALAO_DESCIDA.i)!
-  const a = desc ? rampa.pts[20] : AVENIDAS[0].pts[20]
+  const a = el ? el.c : desc ? rampa.pts[20] : AVENIDAS[0].pts[20]
   const yaw = Math.atan2(a.x - t.x, a.z - t.z)
   return {
     x: t.x, z: t.z, y: 0, vx: 0, vz: 0, vy: 0, yaw, ar: false, incl: 0, nx: 0, nz: 1, dist: 0, jatoT: 0, ant: { x: t.x, z: t.z, y: 0, yaw }, onde: ondeEsta(t.x, t.z), iVolta: 0, voos: 0,

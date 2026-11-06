@@ -53,6 +53,7 @@ import { RioDepois } from "./RioDepois"
 import { FINAL_VIVO } from "../disco/final"
 import { Cadeado, Trancado } from "../Trancado"
 import { TRANCA_MOTO, naMoto } from "../estrada/zonas"
+import { SEGUNDOS_CABINE, rotuloSubir } from "../disco/elevadores"
 
 const NEVOA = "#1a0f24"
 const NEVOA_LONGE = 340 // a névoa fecha aqui
@@ -266,6 +267,13 @@ function Mapinha({ ponto, rivais, cores }: { ponto: React.RefObject<SVGCircleEle
       {caminhos.map((c, i) => <polyline key={i} points={c} fill="none" stroke={AVENIDAS[i].cor} strokeWidth={36} strokeLinecap="round" opacity={AVENIDAS[i].volta ? 0.75 : 0.45} />)}
       {SALOES.map((t) => <circle key={t.i} cx={t.c.x} cy={t.c.z} r={t.r} fill={COR_TORRE} opacity={t.torre ? 0.85 : 0.6} />)}
       <rect x={PORTA.c.x - 16} y={PORTA.c.z - 16} width={32} height={32} fill="#ffcf8a" />
+      {/* (elevadores) o ícone do elevador em cada torre: a cabine com ▲▼ */}
+      {TORRES.map((t) => (
+        <g key={`el${t.i}`} transform={`translate(${t.torre.x} ${t.torre.z})`}>
+          <rect x={-30} y={-38} width={60} height={76} rx={8} fill="#14121c" stroke="#ffcf8a" strokeWidth={8} />
+          <path d="M0 -28 L14 -8 L-14 -8 Z M0 28 L14 8 L-14 8 Z" fill="#ffcf8a" />
+        </g>
+      ))}
       {cores && CHECKPOINTS.map((g, i) => <rect key={i} x={g.x - 24} y={g.z - 24} width={48} height={48} fill="none" stroke="#fff" strokeWidth={10} transform={`rotate(45 ${g.x} ${g.z})`} />)}
       {cores && cores.map((cor, i) => <circle key={i} ref={(el) => { if (rivais.current) rivais.current[i] = el }} r={24} fill={cor} />)}
       <circle ref={ponto} r={36} fill="#fff" stroke="#14121c" strokeWidth={10} />
@@ -286,7 +294,11 @@ function lerVeiculo(q: URLSearchParams, motos: boolean): Veiculo | null {
 // `motos`: a moto já liberada (a regra de estrada/zonas.ts, motoLiberada: ganha na missão dos túneis)
 export type NoJogo = { missao: string | null; onSubir: (correu: boolean) => void; tranca?: string | null; motos?: boolean
   // (T64) algo em 3D por cima (a fuga do metrô no trem do salão): o canvas para (frameloop "never")
-  pausado?: boolean }
+  pausado?: boolean
+  // (elevadores, 06/11) as 3 torres dos salões sobem pras torres das pontas (disco/elevadores.ts);
+  // tranca = o cadeado (antes da missão dos túneis); chegaNa = desceu pelo elevador N
+  elevador?: { tranca: string | null; onSubir: (n: number, modo: "patins" | "moto") => void }
+  chegaNa?: number | null }
 
 export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const st = useRef<Estado>(estadoInicial())
@@ -305,6 +317,10 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const [volta, setVolta] = useState(false)
   const [correu, setCorreu] = useState(false)
   const [subindo, setSubindo] = useState(false)
+  // (elevadores) perto de qual torre (1–3, 0 = nenhuma): muda só ao chegar/sair (o painel de 20/s compara)
+  const [elevPerto, setElevPerto] = useState(0)
+  const elevPertoRef = useRef(0)
+  const [cabine, setCabine] = useState<number | null>(null)
   const [painel, setPainel] = useState<Painel>({ recordeAntes: null, fantasma: false, resultado: null, parciais: [] })
   const velRef = useRef<HTMLSpanElement>(null)
   const ondeRef = useRef<HTMLSpanElement>(null)
@@ -332,7 +348,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     setRecordes(recs); setVeiculo(v); setFase("contagem"); setIntro(false); setRodada((n) => n + 1)
   }
   // o passeio: ao descer, começa na porta (a descida); da tela da corrida, ali mesmo na TORRE 1
-  const passear = (v: Veiculo, onde: "largada" | "descida" = "largada") => {
+  const passear = (v: Veiculo, onde: "largada" | "descida" | number = "largada") => {
     st.current = estadoInicial(onde)
     corrida.current = corridaInicial("livre", v)
     setVeiculo(v); setFase("livre"); setIntro(true); setRodada((n) => n + 1)
@@ -355,7 +371,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     const d = q.get("dpr"); if (q.has("medir") && d) setFixa(+d)
     setRecordes(lerRecordes())
     // ?livre, ou ?auto sozinho (a medição e o teste do T11): passeio
-    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? (noJogo && motosAqui && naMoto.agora ? "moto" : "patins"), q.has("auto") ? "largada" : "descida") // desceu de moto: segue de moto
+    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? (noJogo && motosAqui && naMoto.agora ? "moto" : "patins"), q.has("auto") ? "largada" : noJogo?.chegaNa ?? "descida") // desceu de moto: segue de moto
     else if (v) largar(v)
     /* eslint-enable react-hooks/set-state-in-effect */
     const w = window as unknown as Record<string, unknown>
@@ -393,7 +409,10 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
       if (torreRef.current) {
         const perto = c.fase === "livre" ? TORRES.find((t) => Math.hypot(s.x - t.torre.x, s.z - t.torre.z) < 16) : undefined
         const naPorta = c.fase === "livre" && Math.hypot(s.x - PORTA.c.x, s.z - PORTA.c.z) < 18
-        torreRef.current.textContent = perto ? `${NOME_SALAO[perto.i]} · fechada por cima: a saída é A PORTA (o quadradinho laranja no mapinha)` : naPorta ? "A PORTA · por aqui se sobe pro subúrbio (a Kombi espera lá fora)" : ""
+        // (elevadores) as torres viraram elevador: sobem pra torre da ponta (no jogo); fora dele, o texto de antes
+        const n = perto && noJogo?.elevador ? TORRES.indexOf(perto) + 1 : 0
+        if (n !== elevPertoRef.current) { elevPertoRef.current = n; setElevPerto(n) }
+        torreRef.current.textContent = perto ? (n ? `${NOME_SALAO[perto.i]} · o elevador sobe pra torre ${n}, lá na cidade` : `${NOME_SALAO[perto.i]} · fechada por cima: a saída é A PORTA (o quadradinho laranja no mapinha)`) : naPorta ? "A PORTA · por aqui se sobe pro subúrbio (a Kombi espera lá fora)" : ""
       }
       if (jatoRef.current) jatoRef.current.style.transform = `scaleX(${Math.max(0, 1 - s.jatoT / 2.5)})`
       // a moto: o nariz (no ar, pra acertar o pouso: verde = alinhado com o chão embaixo)
@@ -438,6 +457,13 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     ? <button type="button" className={cls} onClick={() => subir(contou)} data-subir>{rotulo}</button>
     : <a href={`/linha?mapa=disco&de=tuneis${contou ? "&corrida=1" : ""}`} className={cls} data-subir>{rotulo}</a>
   const rec = recordes[veiculo]
+  // (elevadores) a cabine sobe (curta, a tela não fica preta) e o jogo monta a cidade lá em cima
+  const subirElevador = (n: number) => {
+    const el = noJogo?.elevador
+    if (!el || el.tranca || cabine || subindo) return
+    setCabine(n)
+    setTimeout(() => el.onSubir(n, veiculo === "moto" ? "moto" : "patins"), SEGUNDOS_CABINE * 1000)
+  }
 
   return (
     <div className={`tr-raiz${noJogo ? " is-jogo" : ""}${subindo ? " is-subindo" : ""}`}>
@@ -518,6 +544,17 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
           <h1>AS TRINCHEIRAS</h1>
           <p>as raízes da cidade. cinco rios secos, a galeria do atalho e salões enormes: as três torres que sobem pra rua, o metrô da linha 9 e o salão do grafite. a Kombi ficou lá fora; aqui é a pé, de patins, skate ou BMX.</p>
           <p className="tr-teclas">setas ou WASD · {INFO[veiculo].teclas}</p>
+        </div>
+      )}
+      {fase === "livre" && elevPerto > 0 && noJogo?.elevador && !cabine && (
+        <button type="button" className={`tr-elevador${noJogo.elevador.tranca ? " is-trancado" : ""}`} onClick={() => subirElevador(elevPerto)} data-elevador={elevPerto} aria-disabled={!!noJogo.elevador.tranca}>
+          {noJogo.elevador.tranca && <Cadeado />}{rotuloSubir(elevPerto)}{noJogo.elevador.tranca ? <small>{noJogo.elevador.tranca}</small> : null}
+        </button>
+      )}
+      {cabine && (
+        <div className="tr-cabine" aria-live="polite" style={{ ["--dur" as string]: `${SEGUNDOS_CABINE}s` }}>
+          <div className="tr-cabine-poco"><i /></div>
+          <p>subindo · torre {cabine}</p>
         </div>
       )}
       {fase === "livre" && <button type="button" className="tr-correr" onClick={escolher}>{noJogo?.tranca && <Cadeado />}correr</button>}

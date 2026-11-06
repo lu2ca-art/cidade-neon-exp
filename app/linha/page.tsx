@@ -97,6 +97,7 @@ import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEven
 import { FinalTela } from "./disco/FinalTela"
 import { definirFinalFeito, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
+import { TRANCA_ELEVADOR, pedirSubida, tomarDescida } from "./disco/elevadores"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
 import { avisarRadio, notch, usePedraNaTela } from "./estrada/Holo"
@@ -332,7 +333,7 @@ export default function LinhaPage() {
   const [teleporte, setTeleporte] = useState<{ chave: number; area: FreqId; lugar?: LugarId; frac?: number } | null>(null)
   const [viagem, setViagem] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; chegou?: boolean } | null>(null)
   // (T63) lá embaixo, nas trincheiras: "descendo" = o escuro da porta (a estrada ainda na cena); depois, só as trincheiras
-  const [trincheiras, setTrincheiras] = useState<{ missao: MissaoId | null; descendo: boolean } | null>(null)
+  const [trincheiras, setTrincheiras] = useState<{ missao: MissaoId | null; descendo: boolean; chegaNa?: number | null } | null>(null)
   // (T64, 06/11) a fuga do metrô aberta lá embaixo (o trem do salão): as trincheiras pausam
   const [metroTuneis, setMetroTuneis] = useState(false)
   // o Núcleo vindo atrás depois de uma cena que mexeu com ele
@@ -1278,7 +1279,8 @@ export default function LinhaPage() {
   const descerTrincheiras = (missao: MissaoId | null) => {
     if (trincheiras) return
     setAoVivo(null)
-    setTrincheiras({ missao, descendo: true })
+    // (elevadores) desceu pelo elevador da torre da ponta N: chega no salão da TORRE N
+    setTrincheiras({ missao, descendo: true, chegaNa: tomarDescida() })
     setTimeout(() => setTrincheiras((t) => (t ? { ...t, descendo: false } : t)), 800)
   }
   // subiu de volta: a Kombi está na porta, onde ficou parada. Correu uma volta
@@ -1290,6 +1292,12 @@ export default function LinhaPage() {
     const pc = pecaAgora13(hist13(saveRef.current), "tuneis")
     if (correu && missao === "tuneis" && missaoDoSave(saveRef.current) === "tuneis" && pc?.peca.como?.t === "trincheiras") setTimeout(() => pecaFeitaNaMissaoRef.current("tuneis", pc.qual), 600)
     else setTimeout(() => setFalaIntro({ id: Date.now(), de: "222 FM", texto: FALA_VOLTA_TUNEL }), 1200)
+  }
+  // (elevadores, 06/11) subiu pelo elevador da TORRE N: a cidade nasce na torre da
+  // ponta N (a Corrida lê o pedido, disco/elevadores.ts). Sem subiuDoTunel: não nasce na boca
+  const subirPeloElevador = (n: number, modo: "patins" | "moto") => {
+    pedirSubida(n, modo)
+    setTrincheiras(null)
   }
   // (T64, lote D) assinou um grafite: fica no save; todos assinados = a arte dos
   // túneis feita (ainda lá embaixo: a corrida, o jogo, segue dali)
@@ -2301,6 +2309,10 @@ export default function LinhaPage() {
   const cOnRacha = useFixo((r: Parameters<typeof registrarRacha>[1]) => setSave((s) => registrarRacha(s, r)))
   // (05/11) a corrida de rua do subúrbio: o melhor tempo no save e, na primeira vitória, o neon$
   const cOnCorridaRua = useFixo((r: ResultadoRua) => setSave((s) => { const { placar, premio } = placarComCorrida(s.ruaSuburbio, r); return { ...ganhar(s, premio), ruaSuburbio: placar } }))
+  // (elevadores) o cadeado: antes da missão dos túneis feita (no fim do jogo tudo abre)
+  const trancaElevador = HIST && !(feita13(hist13(save), "tuneis") || hist.fase === "livre") ? TRANCA_ELEVADOR : null
+  const cOnDescerElevador = useFixo(() => descerTrincheiras(null))
+  const elevadorCidade = useMemo(() => (HIST ? { tranca: trancaElevador, onDescer: cOnDescerElevador } : null), [HIST, trancaElevador, cOnDescerElevador])
   const cOnPerseguicao = useFixo((...[e, id]: Parameters<NonNullable<ComponentProps<typeof CorridaTipo>["onPerseguicao"]>>) => {
     if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
     else if (id) {
@@ -2446,6 +2458,7 @@ export default function LinhaPage() {
             semKombi={semKombi}
             veiculo={veiculoAgora}
             onPerseguicao={cOnPerseguicao}
+            elevador={elevadorCidade}
             onAgua={onAgua}
             checklistHolo={cChecklistHolo}
             mapaMissoes={cMapaMissoes}
@@ -2825,7 +2838,8 @@ export default function LinhaPage() {
         })()}
         {janelaChao && <div className="l-janela-mundo"><AppJanela app={janelaChao.app} rota={janelaChao.rota} onFechar={fecharJanelaChao} /></div>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}
-        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist) }} />}
+        {trincheiras && !trincheiras.descendo && <Trincheiras noJogo={{ missao: trincheiras.missao, onSubir: subirDasTrincheiras, pausado: metroTuneis, tranca: HIST && hist.fase !== "carreira" && hist.fase !== "livre" ? "chegue na cidade pra correr" : null, motos: HIST && motoLiberada(hist), chegaNa: trincheiras.chegaNa ?? null,
+          elevador: HIST ? { tranca: trancaElevador, onSubir: subirPeloElevador } : undefined }} />}
         {/* (notas 04/11) a rádio livre: fora da estrada (túneis, salas) ela também liga */}
         {D && emSala && !trincheiras?.descendo && <button type="button" className={`l-radio-livre${radioManda ? " is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarRadioLivre}>{radioManda ? "rádio · desligar" : "rádio · ligar"}</button>}
         {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}

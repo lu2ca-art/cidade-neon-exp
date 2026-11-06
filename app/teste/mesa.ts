@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "elevador.subir",
+    nome: "Os elevadores do túnel: as 3 torres dos salões sobem pras torres das pontas",
+    data: "2026-11-06",
+    tarefa: "elevadores",
+    olhar: "Abre lá embaixo, no salão da TORRE 1, na frente do elevador (a missão dos túneis já feita). Aparece \"subir · torre 1 (Nectar, Sexta-Feira, Ojalá)\": toque, a cabine sobe rapidinho e você chega de patins na rotatória da torre da ponta da Nectar (de moto, se estava de moto). Lá em cima, na rotatória, \"descer · túneis (torre 1)\" leva de volta ao salão. A TORRE 2 (Rollercoaster, Swav, DopaminA) e a 3 (Copo Americano, CHUVA, Sabe Ontem?) fazem o mesmo. O mapinha dos túneis mostra o ícone do elevador em cada torre. Antes da missão dos túneis, o botão vem com cadeado: \"abre com a missão dos túneis\".",
+    perguntas: ["A subida curta da cabine basta, ou quer ver a cabine subindo no mundo?", "Chegar de patins na rotatória está bom, ou a Kombi devia subir junto?", "As torres 1, 2 e 3 ligadas assim (Nectar · Rollercoaster · Copo Americano) ficam?"],
+    mais: [{ parte: "torre.ponta", nome: "a torre da ponta (descer · túneis)" }, { parte: "missao.tuneis.trincheiras", nome: "com o cadeado (antes da missão)" }],
+  },
+  {
     parte: "dunas",
     nome: "O começo de um jogador novo com o que entrou hoje: nada do novo por cima da trilha",
     data: "2026-11-06",
