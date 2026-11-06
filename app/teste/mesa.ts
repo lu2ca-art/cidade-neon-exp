@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Os outdoors do Núcleo nos prédios da cidade (e o hack com as suas músicas)",
+    data: "2026-11-06",
+    tarefa: "T46",
+    olhar: "Suba pras pistas da cidade: muitos prédios agora têm uma placa na fachada que olha a pista, com produtos do Núcleo (rascunho: SCROLL INFINITO, DOPA-COLA, SONO LITE…). De vez em quando uma placa \"é hackeada\": treme, as cores se separam e aparece o nome da faixa daquela rua com \"LU2CA\". Fique uns segundos parado olhando várias placas.",
+    perguntas: [
+      "Os nomes e slogans dos produtos (rascunho) servem? Quer trocar algum?",
+      "O hack aparece pouco, na medida, ou demais?",
+      "Placas demais nos prédios, ou pode ter ainda mais?",
+    ],
+  },
+  {
     parte: "violao",
     nome: "O violão na rua: aparece com a música da rua e a trilha abaixa",
     data: "2026-11-06",

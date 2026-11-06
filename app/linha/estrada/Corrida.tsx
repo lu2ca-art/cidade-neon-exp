@@ -16,6 +16,8 @@
 import { NOME_TURNO, SEG_POR_HORA, abertoAgora, abreAs, ehDia, horaTexto, turnoDe } from "../relogio"
 import { PAGINAS, marcarDaCidade, trancadaPelaHistoria, type LugarPagina } from "../paginas"
 import { Fachadas } from "./Fachadas"
+import { OutdoorsNucleo } from "./OutdoorsNucleo"
+import { OUTDOORS_CFG, N_PRODUTOS, celulaFaixa, faixaPeloNome, hash2, quadrasDasPlacas, type Placa } from "./outdoorsDados"
 import { Bombas } from "./Bombas"
 import { BOMBAS, pertoDe } from "./postos"
 import { alemDaCidade, centrosDaCidade } from "./raioCidade"
@@ -3924,7 +3926,12 @@ function CenaBase({
     const grupos = new Map<string, { mat: THREE.MeshStandardMaterial; mats: THREE.Matrix4[] }>()
     const QUADRA = "disco" in M ? QUADRA_DISCO : Infinity
     const quadras = new Map<string, { mat: THREE.MeshStandardMaterial; mats: THREE.Matrix4[] }>()
+    // (T46) as placas do Núcleo nas fachadas da cidade lá em cima (outdoorsDados.ts)
+    const placas: Placa[] = []
+    const MDp = "disco" in M ? (M as MundoDisco) : null
     circuitos.forEach((C) => {
+      const pistaI = MDp ? MDp.info[M.vias.indexOf(C)]?.pista ?? -1 : -1
+      const faixaI = MDp && pistaI >= 0 && MDp.pistas[pistaI] ? faixaPeloNome(MDp.pistas[pistaI].nome) : -1
       const t = territorio(C.t)
       const ds = distritoDe(C.t)
       // (mapa novo) o estilo vem do BAIRRO de verdade da rua: o deserto caía
@@ -4001,6 +4008,18 @@ function CenaBase({
         d.scale.set(w, h, fundo)
         // (T43) + o chão e o topo do campo de força: até a altura da pista ao lado (uns metros acima), ou o topo se o prédio for mais baixo
         if (C.tipo === "rua") { const q = Math.hypot(C.tx[k], C.tz[k]) || 1; colisores.push(bx, bz, C.tx[k] / q, C.tz[k] / q, w * 0.5, fundo * 0.5, y0 + h, y0, Math.min(y0 + h, Math.max(C.py[k], y0 + 14) + 4)) }
+        // (T46) a fachada que olha a pista vira outdoor do Núcleo (sorteio por hash,
+        // não pelo r(): a cidade continua igual). A placa fica na altura da pista
+        if (MDp && rua && h >= OUTDOORS_CFG.alturaMin && hash2(bx, bz) < OUTDOORS_CFG.chance) {
+          const q = Math.hypot(C.tx[k], C.tz[k]) || 1, nx = (lado * C.tz[k]) / q, nz = (-lado * C.tx[k]) / q
+          const pw = Math.min(OUTDOORS_CFG.largMax, fundo * OUTDOORS_CFG.fracao), ph = pw * 0.5
+          const topo = y0 + h - ph / 2 - 1.5, piso = y0 + ph / 2 + 3
+          if (topo > piso && y0 + h > C.py[k] - 6) placas.push({
+            x: bx + nx * (w * 0.5 + 0.3), z: bz + nz * (w * 0.5 + 0.3), y: Math.min(topo, Math.max(piso, C.py[k] + 4 + hash2(bx, bz, 1) * 10)),
+            rot: Math.atan2(C.tx[k], C.tz[k]) + (lado * Math.PI) / 2, w: pw, h: ph,
+            produto: Math.floor(hash2(bx, bz, 2) * N_PRODUTOS), faixa: celulaFaixa(faixaI >= 0 ? faixaI : Math.floor(hash2(bx, bz, 3) * PISTAS.length)), semente: hash2(bx, bz, 4) * 97,
+          })
+        }
         d.updateMatrix()
         if (QUADRA < Infinity) {
           const kq = `${chave}|${Math.floor(bx / QUADRA)},${Math.floor(bz / QUADRA)}`
@@ -4162,10 +4181,12 @@ function CenaBase({
     // (ruínas, 05/11) os prédios e o entulho das ruínas do subúrbio também batem
     // (a pé, de patins, de moto: o mesmo bater/grudar dos prédios; sem a cerca do campo)
     if ("disco" in M) colisores.push(...ruinasNoMundo(M as MundoDisco).colisores)
-    return { predios, arcos, fitas, pilares, pilaresQ, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesQ }
+    return { predios, arcos, fitas, pilares, pilaresQ, postes, luzes, luzMat, reflexos, outdoors, aviacao, aviacaoMat, colisores, postesQ, placas }
   }), [M, circuitos, tex, distI, centrosLugares])
   useLayoutEffect(() => { apagarPostes(cidade, viaApagada) }, [cidade, viaApagada])
   // (ruas-faixa) as quadras de prédios: a esfera de cada uma, pro corte pela névoa
+  // (T46) as placas do Núcleo por quadra de 900 m (uma InstancedMesh cada; o <Perto> usa os centros)
+  const quadrasPlacas = useMemo(() => quadrasDasPlacas(cidade.placas ?? [], QUADRA_DISCO), [cidade])
   const prediosQ = useMemo(() => cidade.predios.filter((m) => m.boundingSphere).map((m) => ({ o: m as THREE.Object3D, e: m.boundingSphere! })), [cidade])
   // (leveza, cidade grande) escolhe as quadras perto da câmera e copia pros
   // buffers da placa. Os postes, sempre que mudam (barato, e a pista apagada
@@ -7015,6 +7036,7 @@ function CenaBase({
       {!relevoNovo && <Seguro nome="linha 9"><Metro metro={metro} /></Seguro>}
       <Perto nome="lugares" raio={700} pontos={pertoDe.lugares}><Seguro nome="lugares"><Lugares M={M} alvo={lugarAlvoId} emCena={cenaLugar} revelado={revelado} /></Seguro></Perto>
       <Perto nome="bombas" raio={600} pontos={pertoDe.bombas}><Seguro nome="bombas"><Bombas M={M} /></Seguro></Perto>
+      {"disco" in M && quadrasPlacas.length > 0 && <Perto nome="outdoors do núcleo" raio={OUTDOORS_CFG.raioPerto} pontos={quadrasPlacas}><Seguro nome="outdoors do núcleo"><OutdoorsNucleo quadras={quadrasPlacas} /></Seguro></Perto>}
       <Perto nome="fachadas" raio={600} pontos={pertoDe.fachadas}><Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro></Perto>
       {/* no mapa novo: as flores do asfalto (só de patins, uma malha pelo mapa todo); no de sempre, os canteiros (medidos pelo Perto) */}
       {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
