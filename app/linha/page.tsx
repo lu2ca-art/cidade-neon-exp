@@ -2604,8 +2604,8 @@ export default function LinhaPage() {
         {oficinaTela === "pagar" && <Pagamento agua={save.agua ?? 0} onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={montarMotor} />}
         {/* (T64, lote D) a fuga do metrô: no lugar do mundo (o canvas dele sai, emSala) */}
         {noMetro && <MetroFuga historia={h13} onPasso={fimMetroPasso} onSair={sairDoMetro} />}
-        {/* (T64, lote D) o violão: o botão aparece com o disco ou a rádio tocando (só com o violão no save) */}
-        {D && tela.t === "corrida" && <ViolaoMundo temViolao={!!save.violao} escondido={emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
+        {/* (T64, lote D) o violão: o botão aparece com o disco, a rádio ou a faixa da rua tocando; sem o violão, com o cadeado e o que libera */}
+        {D && tela.t === "corrida" && <ViolaoMundo temViolao={!!save.violao} tranca={HIST ? (feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : facaMissao("dbee", "tocar")) : null} escondido={emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}

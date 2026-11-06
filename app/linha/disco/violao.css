@@ -23,3 +23,9 @@
 .l-vl-acordes button.is-sugere { border-color: rgba(255, 200, 87, 0.85); background: rgba(255, 200, 87, 0.18); }
 .l-vl-acordes button.is-on { background: #ffc857; color: #1a1204; }
 .l-vl-dica { margin: 0; font: 11px var(--font-geist-mono), ui-monospace, monospace; color: rgba(242, 238, 250, 0.6); text-align: center; }
+
+/* (T64) sem o violão: o botão apagado com o cadeado e o aviso do que libera */
+.l-vl-botao.is-trancado { opacity: 0.72; border-color: rgba(242, 238, 250, 0.35); box-shadow: none; }
+.l-vl-botao.is-trancado .l-vl-icone { filter: grayscale(1) brightness(0.7); }
+.l-vl-botao.is-trancado small { display: flex; align-items: center; gap: 3px; }
+.l-vl-aviso { position: fixed; right: 16px; bottom: calc(216px + env(safe-area-inset-bottom)); z-index: 40; max-width: 260px; }

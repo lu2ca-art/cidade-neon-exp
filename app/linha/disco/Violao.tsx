@@ -14,9 +14,21 @@
 //
 // Ligar na page.tsx (lote D):
 //   <Violao temViolao={save.violao} escondido={algoAbertoPorCima} onTocou={...} />
+//
+// (T64, 06/11) três coisas que faltavam:
+// - a FAIXA DA RUA (pistaSom, a música contínua do mapa-disco) também conta como
+//   "tocando": antes o botão só via o disco e a rádio, e na rua da cidade ele
+//   quase nunca aparecia. Ouve definirFaixaRua (musicaContinua.ts), sem quadro;
+// - tocar é "fazer música": com o painel aberto a trilha ABAIXA (abaixarUmPouco,
+//   o mesmo duck leve das cenas). Não para: o violão toca junto, no tom dela
+//   (docs/trilha-sonora.md; parar seria trocar por fazerMusica);
+// - sem o violão no save (antes da D-Bee, ou depois do metrô), o botão aparece
+//   com o CADEADO e diz o que libera (`tranca`), em vez de sumir.
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { audioCtx, disco, player, tomDaMusica, violao, type Tom } from "../som"
+import { abaixarUmPouco, audioCtx, disco, pistaSom, player, tomDaMusica, violao, type Tom } from "../som"
+import { ouvirFaixaRua } from "./musicaContinua"
+import { Cadeado, Trancado } from "../Trancado"
 import { vib } from "../som-carro"
 import { TONS } from "../tons"
 import { AFINACAO, CADENCIAS_MAIOR, CADENCIAS_MENOR, GRAUS_MAIOR, GRAUS_MENOR, NOMES, desenho, hz, nomeAc, type Acorde } from "./violaoTeoria"
@@ -25,10 +37,11 @@ import "./violao.css"
 const PENTA = { maior: [0, 2, 4, 7, 9], menor: [0, 3, 5, 7, 10] }
 const SEM_TOM: Tom = { tonica: 2, modo: "menor" }
 
-// o que está tocando agora (o disco ou a rádio), ouvindo só os eventos
+// o que está tocando agora (o disco, a rádio ou a faixa da rua), ouvindo só os eventos
 function srcTocando(): string | null {
   if (disco.tocando) return disco.src
   if (player.tocando) return player.src || null
+  if (pistaSom.tocando) return pistaSom.src
   return null
 }
 export function useSomTocando(): string | null {
@@ -38,7 +51,10 @@ export function useSomTocando(): string | null {
     ver()
     const a = disco.ouvir(ver)
     const b = player.ouvir(ver)
-    return () => { a(); b() }
+    // a faixa da rua avisa quando troca (o deck pode levar um tique pra dar play: relê logo depois)
+    let t: ReturnType<typeof setTimeout> | undefined
+    const c = ouvirFaixaRua(() => { ver(); clearTimeout(t); t = setTimeout(ver, 400) })
+    return () => { a(); b(); c(); clearTimeout(t) }
   }, [])
   return src
 }
@@ -66,13 +82,30 @@ export interface ViolaoProps {
   temViolao: boolean
   // algo aberto por cima (missão, cena, oficina): esconde o botão
   escondido?: boolean
+  // (T64) sem o violão: o que libera (aparece com o cadeado). null/ausente = some, como antes
+  tranca?: string | null
   // cada toque (nota ou acorde), pra quem quiser contar
   onTocou?: (o: { nota?: string; acorde?: string }) => void
 }
 
-export function Violao({ temViolao, escondido, onTocou }: ViolaoProps) {
+export function Violao({ temViolao, escondido, tranca, onTocou }: ViolaoProps) {
   const src = useSomTocando()
   const [aberto, setAberto] = useState(false)
+  const [aviso, setAviso] = useState(false)
+
+  // (T64) tocando o violão, a trilha abaixa (não para: ele toca junto, no tom dela)
+  const tocando = aberto && temViolao && !escondido
+  useEffect(() => {
+    if (!tocando) return
+    abaixarUmPouco(true)
+    return () => abaixarUmPouco(false)
+  }, [tocando])
+  // o aviso do cadeado some sozinho
+  useEffect(() => {
+    if (!aviso) return
+    const t = setTimeout(() => setAviso(false), 3500)
+    return () => clearTimeout(t)
+  }, [aviso])
   const [tom, setTom] = useState<Tom>(SEM_TOM)
   const [toque, setToque] = useState<string | null>(null)
   const [acorde, setAcorde] = useState<string | null>(null)
@@ -127,7 +160,21 @@ export function Violao({ temViolao, escondido, onTocou }: ViolaoProps) {
   }
 
   // a música parou e o painel está fechado: some o botão
-  if (!temViolao || escondido) return null
+  if (escondido) return null
+  if (!temViolao) {
+    // (T64) trancado: o botão com o cadeado, junto da música; o toque diz o que libera
+    if (!tranca || !src) return null
+    return (
+      <>
+        <button type="button" className="l-vl-botao is-trancado" data-testid="violao-trancado" aria-label={`violão trancado: ${tranca}`}
+          onClick={() => setAviso((a) => !a)}>
+          <i aria-hidden className="l-vl-icone" />
+          <small><Cadeado size={9} /> violão</small>
+        </button>
+        {aviso && <div className="l-vl-aviso"><Trancado texto={tranca} /></div>}
+      </>
+    )
+  }
   if (!src && !aberto) return null
 
   if (!aberto) {
