@@ -87,6 +87,7 @@ import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
+import { linhaRecompensa } from "./disco/instrumentos"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
 import { definirFinalFeito, type MomentoFinal } from "./disco/final"
@@ -1232,10 +1233,12 @@ export default function LinhaPage() {
   // a música da missão fica (o "ouvir até o fim", pequeno, no canto)
   const mostrarLiberou = (r: Recompensa13, novas: string[]) => {
     brilhar([r.missao, ...novas], r.cor)
-    const nomes = [...r.abriu.filter((a) => !a.emBreve).map((a) => a.nome), ...(r.guitar ? [`${r.guitar.nome} no Guitar Driver`] : []), ...(r.instrumento ? [r.instrumento.nome] : [])]
+    const nomes = [...r.abriu.filter((a) => !a.emBreve).map((a) => a.nome), ...(r.guitar ? [`${r.guitar.nome} no Guitar Driver`] : [])]
     vib([20, 40, 20])
     notch(nomes.length ? `abriu · ${nomes[0]}${nomes.length > 1 ? ` +${nomes.length - 1}` : ""}` : `✓ ${r.quem}`, r.cor)
     if (r.neon > 0) setTimeout(() => notch(`+${r.neon} neon$`, r.cor), 400)
+    // (T49, 06/11) a recompensa secundária: uma linha só, "+ o udu" (toca na casa da D-Bee)
+    if (r.instrumento) { const ins = r.instrumento.id; setTimeout(() => notch(`${linhaRecompensa(ins)} · na casa da D-Bee`, r.cor), 800) }
     const m = MISSOES13[r.missao]
     if (m.faixa && m.onde === "cidade") { const f = m.faixa; setTimeout(() => setOuvirFim({ pista: f, id: Date.now() }), 4500) }
   }
