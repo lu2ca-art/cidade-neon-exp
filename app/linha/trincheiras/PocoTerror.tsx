@@ -18,7 +18,8 @@
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
-import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react"
+import { ModeloSeguro } from "../estrada/Seguro"
+import { useEffect, useMemo, useRef, type ReactNode } from "react"
 import * as THREE from "three"
 import { DPR } from "@/app/linha/estrada/resolucao"
 import { abafar, audioCtx, saidaSom } from "@/app/linha/som"
@@ -332,12 +333,6 @@ function MundoGlb({ reg }: { reg: React.MutableRefObject<Mostra | null> }) {
   const { nodes } = useGLTF(URL_TERROR) as unknown as { nodes: Nos }
   return <Mundo glb={nodes} reg={reg} />
 }
-// se o .glb falhar, ficam as formas de antes
-class SeFalhar extends Component<{ reserva: ReactNode; children: ReactNode }, { erro: boolean }> {
-  state = { erro: false }
-  static getDerivedStateFromError() { return { erro: true } }
-  render() { return this.state.erro ? this.props.reserva : this.props.children }
-}
 
 function Cena({ onFim, olhar, veu }: { onFim: () => void; olhar: React.MutableRefObject<number>; veu: React.RefObject<HTMLDivElement | null> }) {
   const { scene, camera } = useThree()
@@ -369,9 +364,7 @@ function Cena({ onFim, olhar, veu }: { onFim: () => void; olhar: React.MutableRe
   // enquanto o glb carrega (e se falhar), as formas de antes; a linha do tempo não reinicia
   const reserva = <Mundo glb={null} reg={mostra} />
   return (
-    <SeFalhar reserva={reserva}>
-      <Suspense fallback={reserva}><MundoGlb reg={mostra} /></Suspense>
-    </SeFalhar>
+    <ModeloSeguro nome="terror-glb" reserva={reserva}><MundoGlb reg={mostra} /></ModeloSeguro>
   )
 }
 

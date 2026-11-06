@@ -13,7 +13,8 @@
 // desenhos (geometrias juntadas, sem luz própria).
 
 import { useGLTF } from "@react-three/drei"
-import { Component, Suspense, useMemo, useSyncExternalStore, type ReactNode } from "react"
+import { ModeloSeguro } from "../estrada/Seguro"
+import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { BOCA, QUADRA, geoBoca } from "../estrada/chao"
@@ -533,6 +534,8 @@ function LugaresGlb({ chao }: { chao: (x: number, z: number) => number }) {
     for (const g of [...solido, ...brilho]) g.dispose()
     return { solido: s, brilho: b, letreiros: juntar(letreiros, true) }
   }, [nodes, chao])
+  // as mescladas são nossas (copiadas em Float32): soltar ao desmontar; o cache do drei fica
+  useEffect(() => () => { d.solido.dispose(); d.brilho.dispose(); d.letreiros.dispose() }, [d])
   const mats = matsAbertos()
   return (
     <>
@@ -542,18 +545,10 @@ function LugaresGlb({ chao }: { chao: (x: number, z: number) => number }) {
     </>
   )
 }
-// se o .glb falhar, cai nas caixas
-class SeFalhar extends Component<{ reserva: ReactNode; children: ReactNode }, { erro: boolean }> {
-  state = { erro: false }
-  static getDerivedStateFromError() { return { erro: true } }
-  render() { return this.state.erro ? this.props.reserva : this.props.children }
-}
 function LugaresAbertos({ chao }: { chao: (x: number, z: number) => number }) {
   const reserva = <LugaresCaixas chao={chao} />
   return (
-    <SeFalhar reserva={reserva}>
-      <Suspense fallback={reserva}><LugaresGlb chao={chao} /></Suspense>
-    </SeFalhar>
+    <ModeloSeguro nome="lugares-chao-glb" reserva={reserva}><LugaresGlb chao={chao} /></ModeloSeguro>
   )
 }
 

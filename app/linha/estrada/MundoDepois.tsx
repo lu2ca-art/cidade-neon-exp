@@ -23,8 +23,9 @@
 // a cada 10 quadros. Se o .glb falhar: as formas de antes (octaedros e faixas).
 
 import { useGLTF } from "@react-three/drei"
+import { ModeloSeguro } from "./Seguro"
 import { useFrame } from "@react-three/fiber"
-import { Component, Suspense, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
+import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
 import * as THREE from "three"
 import type { MundoDisco } from "./mundoDisco"
 import { Perto } from "./Perto"
@@ -50,20 +51,12 @@ export function useMundoDepois() {
 export function MundoDepois({ M, colisores }: { M: MundoDisco; colisores: number[] }) {
   if (!useMundoDepois()) return null
   return (
-    <SeFalhar reserva={<><Plantas colisores={colisores} geos={null} /><Cabines M={M} geos={null} /></>}>
-      <Suspense fallback={null}>
-        <Modelos M={M} colisores={colisores} />
-      </Suspense>
-    </SeFalhar>
+    <ModeloSeguro nome="mundo-depois-glb" reserva={<><Plantas colisores={colisores} geos={null} /><Cabines M={M} geos={null} /></>}>
+      <Modelos M={M} colisores={colisores} />
+    </ModeloSeguro>
   )
 }
 
-// se o .glb falhar: as formas de antes
-class SeFalhar extends Component<{ children: ReactNode; reserva: ReactNode }, { erro: boolean }> {
-  state = { erro: false }
-  static getDerivedStateFromError() { return { erro: true } }
-  render() { return this.state.erro ? this.props.reserva : this.props.children }
-}
 
 // ── as geometrias do glb ──
 type Geos = {

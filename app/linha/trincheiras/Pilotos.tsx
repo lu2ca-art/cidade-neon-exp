@@ -10,8 +10,9 @@
 //    KICKFLIP/HEELFLIP (a prancha gira); no grind, faísca no truck.
 
 import { useGLTF } from "@react-three/drei"
+import { ModeloSeguro } from "../estrada/Seguro"
 import { useFrame } from "@react-three/fiber"
-import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, type ReactNode } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 
@@ -322,12 +323,6 @@ function geoDoGlb(nodes: Record<string, THREE.Object3D>): GeoMoto {
   }
   return { rodaT: um("roda_t"), rodaF: um("roda_f"), garfo: um("garfo"), quadro: um("quadro") }
 }
-// se o .glb falhar, fica a moto procedural
-class SeFalhar extends Component<{ reserva: ReactNode; children: ReactNode }, { erro: boolean }> {
-  state = { erro: false }
-  static getDerivedStateFromError() { return { erro: true } }
-  render() { return this.state.erro ? this.props.reserva : this.props.children }
-}
 function PneuCravo({ r, geo }: { r: React.RefObject<THREE.Group | null>; geo: THREE.BufferGeometry }) {
   return (
     <group ref={r}>
@@ -352,9 +347,7 @@ function MotoGlb(p: MotoProps) {
 export function Motoqueiro(p: MotoProps) {
   const reserva = <MotoProcedural {...p} />
   return (
-    <SeFalhar reserva={reserva}>
-      <Suspense fallback={reserva}><MotoGlb {...p} /></Suspense>
-    </SeFalhar>
+    <ModeloSeguro nome="moto-glb" reserva={reserva}><MotoGlb {...p} /></ModeloSeguro>
   )
 }
 function MotoCorpo({ vel, steer, ar, pitch, empurra = () => false, geo }: MotoProps & { geo: GeoMoto }) {

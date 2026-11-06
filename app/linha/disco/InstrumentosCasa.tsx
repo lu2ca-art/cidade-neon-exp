@@ -23,8 +23,9 @@
 // quadro, só mexe em quem foi tocado há menos de 0,6 s, sem alocar nada.
 
 import { useGLTF } from "@react-three/drei"
+import { ModeloSeguro } from "../estrada/Seguro"
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
-import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, type ReactNode } from "react"
 import * as THREE from "three"
 import { sinalizar } from "../interior/bus"
 import type { V3 } from "../interior/comum"
@@ -197,18 +198,10 @@ function ModeloGlb({ id, a }: { id: InstrumentoId; a: boolean }) {
   )
 }
 
-// se o .glb falhar, cai nas formas de antes
-class SeFalhar extends Component<{ reserva: ReactNode; children: ReactNode }, { erro: boolean }> {
-  state = { erro: false }
-  static getDerivedStateFromError() { return { erro: true } }
-  render() { return this.state.erro ? this.props.reserva : this.props.children }
-}
 function Peca({ id, a }: { id: InstrumentoId; a: boolean }) {
   const reserva = <Modelo id={id} a={a} />
   return (
-    <SeFalhar reserva={reserva}>
-      <Suspense fallback={reserva}><ModeloGlb id={id} a={a} /></Suspense>
-    </SeFalhar>
+    <ModeloSeguro nome={`instrumento-${id}`} reserva={reserva}><ModeloGlb id={id} a={a} /></ModeloSeguro>
   )
 }
 

@@ -18,7 +18,8 @@
 // botão e a porta de neon de antes continuam).
 
 import { useGLTF } from "@react-three/drei"
-import { Component, Suspense, useEffect, useMemo, type ReactNode } from "react"
+import { ModeloSeguro } from "../estrada/Seguro"
+import { useEffect, useMemo, type ReactNode } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { Perto } from "../estrada/Perto"
@@ -114,13 +115,7 @@ function Modelo({ pecas, pose }: { pecas: Peca[]; pose: Pose }) {
   )
 }
 
-// se o .glb falhar: sem modelo (como antes)
-class SeFalhar extends Component<{ children: ReactNode }, { erro: boolean }> {
-  state = { erro: false }
-  static getDerivedStateFromError() { return { erro: true } }
-  render() { return this.state.erro ? null : this.props.children }
-}
-const Seguro = ({ children }: { children: ReactNode }) => <SeFalhar><Suspense fallback={null}>{children}</Suspense></SeFalhar>
+const Seguro = ({ children }: { children: ReactNode }) => <ModeloSeguro nome="elevadores-glb" enquanto={null}>{children}</ModeloSeguro>
 
 const faixas = (pref: "e" | "c", n: number): Peca[] =>
   (ELEVADORES[n - 1]?.faixas ?? []).map((f, k) => ({ no: `${pref}_fx${k + 1}`, cor: COR_PISTA[f] ?? "#ffffff" }))
