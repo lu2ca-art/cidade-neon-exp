@@ -1742,7 +1742,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         setTimeout(() => {
           // (moto) liberada: ela vinha guardada na Kombi, sai antes do guincho
           if (motoOk) { if (!combRef.current.moto) irDeMoto(); ensinar("222 FM", "de moto até a oficina: a luz laranja no mapa", 6000); return }
-          if (!combRef.current.patins) irDePatins(); ensinar("222 FM", `de patins até a oficina: a luz laranja no mapa. ${falaMetroQuebra(historia)}`, 6000)
+          if (!combRef.current.patins) irDePatins(); ensinar("222 FM", ["de patins até a oficina: a luz laranja no mapa", falaMetroQuebra(historia)].filter(Boolean).join(". "), 6000)
         }, 3200)
         return
       }

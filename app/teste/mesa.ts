@@ -26,6 +26,15 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "missao.tuneis.trincheiras",
+    nome: "Sem \"em breve\": as torres das trincheiras e a Kombi quebrada",
+    data: "2026-11-06",
+    tarefa: "bloco 1",
+    olhar: "Lá embaixo, encoste numa das torres: em vez de \"a porta sobe pra rua (em breve)\", ela diz que a saída é A PORTA (o quadradinho laranja no mapinha). No outro link, a Kombi quebra: a fala só manda de patins pra oficina, sem \"o metrô: em breve\". As 13 missões já não têm peça \"em breve\" (lista em docs/sem-em-breve.md).",
+    perguntas: ["As torres deviam subir pra cidade um dia, ou a saída é só A PORTA?", "Os combos das missões (Drew, Xeriff, Notti, Nizzy, Tony, LU2CA, Ella) ficam como estão?"],
+    mais: [{ parte: "quebra", nome: "a Kombi quebrada (window.__cnQuebrar)" }],
+  },
+  {
+    parte: "missao.tuneis.trincheiras",
     nome: "Moto mais leve (e a cidade com menos gasto por quadro)",
     data: "2026-11-06",
     olhar: "A moto agora é desenhada em 7 pedaços em vez de ~25, e o parque, o campo de força e as flores pararam de criar lixo a cada quadro. O visual deve estar IGUAL: olhe o cromo do garfo e do escape, a viseira neon, as rodas girando; no parque, o carrinho e a câmera; a pé, encostar nos prédios.",
