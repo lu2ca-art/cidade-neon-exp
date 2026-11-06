@@ -91,8 +91,8 @@ export const MESA: Cartao[] = [
     nome: "O mundo depois do final: plantas nos prédios, cabines nas torres, o rio nos túneis",
     data: "2026-11-06",
     tarefa: "T29",
-    olhar: "Abre com o final já feito, chegando na torre central. Sem tela explicando: os prédios altos têm plantas nas janelas e trepadeiras subindo, e em volta das torres as cabines sobem e descem (as claras sobem, as azuis descem). No outro link, desce pras trincheiras: os rios secos viraram rio, com a água correndo no leito (a rampa da descida continua seca). A porta \"o mundo depois\" não diz mais \"em breve\".",
-    perguntas: ["As plantas e as cabines aparecem o bastante, ou quer mais (ou menos)?", "O rio no meio do leito está bom, ou deve ocupar o túnel todo?", "Cabines também nas pistas (bondinhos), ou só nas torres basta?"],
+    olhar: "Abre com o final já feito, chegando na torre central. Sem tela explicando: os prédios altos têm plantas nas janelas (jardineiras, moitas de folhas grandes, vasos pendentes, agora modelados no Blender) com florzinhas acesas, e trepadeiras subindo da rua; em volta das torres as cabines de vidro (banco e plantas dentro) sobem e descem (as claras sobem, as azuis descem). Repare se o iPhone continua liso perto dos prédios altos. No outro link, desce pras trincheiras: os rios secos viraram rio, com a água correndo no leito (a rampa da descida continua seca). A porta \"o mundo depois\" não diz mais \"em breve\".",
+    perguntas: ["As plantas e as cabines aparecem o bastante, ou quer mais (ou menos)?", "As plantas modeladas parecem planta de verdade? E as flores acesas, brilho suave ou forte demais?", "O rio no meio do leito está bom, ou deve ocupar o túnel todo?", "Cabines também nas pistas (bondinhos), ou só nas torres basta?"],
     mais: [{ parte: "mundo.depois.tuneis", nome: "o rio nas trincheiras" }],
   },
   {

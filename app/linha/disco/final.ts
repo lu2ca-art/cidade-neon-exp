@@ -153,6 +153,13 @@ export const MUNDO_DEPOIS = {
   maxTufos: 2600,
   trepadeiraChance: 0.6, // por prédio (até 2)
   maxTrepadeiras: 1400,
+  // (06/11, modeladas no Blender: public/models/mundo-depois.glb) a trepadeira é
+  // base + N módulos do meio (6 m cada, esticados até caber) + topo
+  maxModulos: 2400, // módulos do meio no total (~260 tri cada)
+  trepChao: 3.6, // m acima da base do prédio (ele nasce enterrado 4 m): o pé da trepadeira
+  brotoTufo: 0.6, // chance de um cacho de flores acesas em cada tufo
+  brotoModulo: 0.7, // e em cada módulo do meio da trepadeira
+  maxBrotos: 5000,
   // as cabines das torres: poços em volta do núcleo, uma cabine subindo e outra descendo em cada
   pocos: 6,
   velCabine: 7, // m/s
