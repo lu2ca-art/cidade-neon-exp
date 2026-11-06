@@ -19,11 +19,17 @@
 //      nota); pronta, toca no prego e ela vai pra parede, do lado da planta, e
 //      fica tocando até você sair. A obra vai pra galeria de verdade (obras.ts).
 //
-// MODELOS PROVISÓRIOS em código (regra 10: os finais vêm do Tripo 3D). O
-// orçamento: 1 luz pontual (a da planta), as coisas repetidas instanciadas,
+// (06/11) A CASA MODELADA NO BLENDER (blender/scripts/galeria_ella.py,
+// public/models/galeria-ella.glb; a foto em docs/blender/galeria-ella.png): o
+// salão, o telhado, as estantes de telas, as molduras, o mezanino e a escada, o
+// pedestal com a redoma, o cavalete, os baldes, o canto dela, tapetes e plantas.
+// Enquanto baixa, ou se falhar, as caixas de antes (GaleriaCaixas). O que mexe
+// segue aqui: a copa e a luz da planta, a chuva, as gotas, a tela, os potes.
+// O orçamento: 1 luz pontual (a da planta), as coisas repetidas instanciadas,
 // as pinturas desenhadas uma vez só em telinhas de 128 px.
 
 import { canal, mesaCtx } from "@/lib/mesa"
+import { useGLTF } from "@react-three/drei"
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
@@ -34,6 +40,7 @@ import { CENA_GALERIA_ELLA, ELLA_COR, PINTAR, QUADROS, QUADROS_PRECISA, type Qua
 import { sinalizar } from "../bus"
 import { Caixa, Chuva, Npc, Toque, useExplorar, type V3 } from "../comum"
 import { Camera, olhar, type Plano, type SalaProps } from "../motor"
+import { ModeloSeguro } from "../../estrada/Seguro"
 
 const LARG = 9, FUNDO = 16, ALTO = 7
 const PAREDE = "#222a3a"
@@ -95,6 +102,8 @@ export function SalaGaleriaElla({ estado }: SalaProps) {
   const coisasQuadros = useMemo(() => QUADROS.map((q) => ({ id: q.id, pos: [q.lado * (LARG / 2 - 0.12), q.y, q.z] as V3, raio: 0.45, falas: q.falas })), [])
   const quadros = useExplorar(olhandoQuadros, coisasQuadros, QUADROS_PRECISA, sinalizar)
   const ultimoQuadro = QUADROS.find((q) => q.id === quadros.vistas[quadros.vistas.length - 1])
+  // as pinturas: um material por quadro (a textura dele), nas telas do modelo ou das caixas
+  const telas = useTelas(quadros.vistas)
 
   // o som da casa: um contexto só (a chuva, as goteiras, a tela)
   const audio = useAudioCasa()
@@ -151,10 +160,12 @@ export function SalaGaleriaElla({ estado }: SalaProps) {
       <fog attach="fog" args={["#06080e", 9, 28]} />
       <LuzDaSala brilho={brilho} />
       <Camera plano={plano} vel={fase === "filme" ? 0.11 : undefined} />
-      <Salao />
-      <Telhado />
+      {/* (06/11) a casa modelada no Blender; enquanto baixa, ou se falhar, as caixas de antes */}
+      <ModeloSeguro nome="galeria-ella-glb" reserva={<GaleriaCaixas telas={telas} />}>
+        <GaleriaModelada telas={telas} />
+      </ModeloSeguro>
+      <Chuva n={420} larg={3} alto={6} fundo={FUNDO} centro={[0, ALTO + 0.1, 0]} cor="#9fc8ff" />
       <Goteiras audio={audio} />
-      <Encostados />
       <Quadros vistas={quadros.vistas} ativo={olhandoQuadros} onVer={quadros.ver} />
       <Planta audio={audio} perto={fase === "filme" || fase === "planta-fala"} criando={fase === "antes" || fase === "pintar"} brilho={brilho} />
       <Cavalete ativo={pintando} tela={tela} pendurada={pendurada} audio={audio}
@@ -242,6 +253,75 @@ function useAudioCasa(): AudioCasa {
   return useMemo(() => ({ ac: () => (r.current.ac?.state === "running" ? r.current.ac : null), saida: () => r.current.saida }), [])
 }
 
+// ── (06/11) A CASA MODELADA NO BLENDER (blender/scripts/galeria_ella.py,
+// public/models/galeria-ella.glb): um galpão-galeria azul-noite com pilastras e
+// treliças, a faixa de vidro no teto, as estantes de telas até o teto (a maioria
+// de costas), as seis molduras (cada uma de um jeito) com o spot em cima, o
+// mezanino no fundo com a escada caracol e as jardineiras, o pedestal redondo com
+// a redoma e a luz de cultivo pendurada, o armarinho das amostras, o mural
+// pintado atrás da planta, o cavalete com o carrinho de tintas e o pano manchado,
+// os baldes, a cama de palete, o cantinho de almofadas com a luminária de arco,
+// tapetes e plantas. Tudo nas posições das caixas: a câmera, a Ella, a planta, os
+// quadros, o cavalete e a parede da obra não mudam. Um nó (galeria) com as malhas
+// _solido (cor no vértice com a sombra e um pouco da luz assadas), _luz e _neon
+// (brilho pelo material, sem luz nova), _vidro (o teto e a redoma) e uma tela_<id>
+// por quadro (UV 0..1) que recebe a pintura. Materiais compartilhados; nada por
+// quadro. ~33 mil triângulos, 345 KB.
+const URL_GALERIA = "/models/galeria-ella.glb"
+let MATS_GAL: { solido: THREE.MeshStandardMaterial; luz: THREE.MeshBasicMaterial; neon: THREE.MeshBasicMaterial; vidro: THREE.MeshBasicMaterial } | null = null
+function matsGaleria() {
+  if (!MATS_GAL) MATS_GAL = {
+    solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.05 }),
+    luz: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    vidro: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
+  }
+  return MATS_GAL
+}
+const GRUPOS_GAL = ["solido", "luz", "neon", "vidro"] as const
+function GaleriaModelada({ telas }: { telas: THREE.Material[] }) {
+  const { nodes } = useGLTF(URL_GALERIA) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const mats = matsGaleria()
+  const partes = useMemo(() => {
+    const out: { k: string; geo: THREE.BufferGeometry; mat: THREE.Material; pos: THREE.Vector3; quat: THREE.Quaternion; esc: THREE.Vector3 }[] = []
+    const pega = (k: string, mat: THREE.Material) => {
+      const o = nodes[k] as THREE.Mesh | undefined
+      if (!o?.geometry) return
+      o.updateWorldMatrix(true, false)
+      const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), esc = new THREE.Vector3()
+      o.matrixWorld.decompose(pos, quat, esc)
+      out.push({ k, geo: o.geometry, mat, pos, quat, esc })
+    }
+    for (const g of GRUPOS_GAL) pega(`galeria_${g}`, mats[g])
+    QUADROS.forEach((q, i) => pega(`tela_${q.id}`, telas[i]))
+    if (!out.some((p) => p.k === "galeria_solido")) throw new Error("galeria-ella.glb sem a sala")
+    return out
+  }, [nodes, mats, telas])
+  return (
+    <group name="galeria-modelada">
+      {partes.map((p) => <mesh key={p.k} geometry={p.geo} material={p.mat} position={p.pos} quaternion={p.quat} scale={p.esc} />)}
+    </group>
+  )
+}
+useGLTF.preload(URL_GALERIA)
+
+// as caixas de antes (enquanto o modelo baixa, ou se ele falhar)
+function GaleriaCaixas({ telas }: { telas: THREE.Material[] }) {
+  return (
+    <>
+      <Salao />
+      <TelhadoCaixas />
+      <Encostados />
+      <MoldurasCaixas telas={telas} />
+      <PlantaCaixas />
+      <CavaleteCaixas />
+      {BALDES.map((b, i) => (
+        <mesh key={i} position={[b[0], 0.2, b[2]]}><cylinderGeometry args={[0.22, 0.17, 0.4, 16, 1, true]} /><meshStandardMaterial color="#5d6a7e" metalness={0.7} roughness={0.35} side={THREE.DoubleSide} /></mesh>
+      ))}
+    </>
+  )
+}
+
 // ── o salão: chão de cimento queimado, paredes altas, os trilhos de luz ──
 function Salao() {
   return (
@@ -270,8 +350,8 @@ function Salao() {
   )
 }
 
-// ── o telhado de vidro e a chuva lá fora ──
-function Telhado() {
+// ── o telhado de vidro (a chuva lá fora fica na sala: é do modelo e das caixas) ──
+function TelhadoCaixas() {
   return (
     <group>
       {/* o teto escuro dos dois lados, a faixa de vidro no meio */}
@@ -283,7 +363,6 @@ function Telhado() {
       </mesh>
       {/* as vigas */}
       {[-6, -3, 0, 3, 6].map((z) => <Caixa key={z} pos={[0, ALTO - 0.08, z]} tam={[3.2, 0.12, 0.1]} cor="#1c212c" metal={0.5} />)}
-      <Chuva n={420} larg={3} alto={6} fundo={FUNDO} centro={[0, ALTO + 0.1, 0]} cor="#9fc8ff" />
     </group>
   )
 }
@@ -319,7 +398,7 @@ function Goteiras({ audio }: { audio: AudioCasa }) {
     <group>
       {BALDES.map((b, i) => (
         <group key={i} position={b}>
-          <mesh position={[0, 0.2, 0]}><cylinderGeometry args={[0.22, 0.17, 0.4, 16, 1, true]} /><meshStandardMaterial color="#5d6a7e" metalness={0.7} roughness={0.35} side={THREE.DoubleSide} /></mesh>
+          {/* (o balde é do modelo, ou das caixas: aqui só a água, o anel e a gota) */}
           <mesh position={[0, 0.3, 0]} rotation-x={-Math.PI / 2}><circleGeometry args={[0.2, 18]} /><meshStandardMaterial color="#0d2238" roughness={0.05} metalness={0.4} emissive={ELLA_COR} emissiveIntensity={0.12} /></mesh>
           <mesh ref={(m) => { aneis.current[i] = m }} position={[0, 0.305, 0]} rotation-x={-Math.PI / 2}><ringGeometry args={[0.1, 0.12, 20]} /><meshBasicMaterial color="#cfe8ff" transparent opacity={0} toneMapped={false} depthWrite={false} /></mesh>
           <mesh ref={(m) => { gotas.current[i] = m }} visible={false}><sphereGeometry args={[0.018, 6, 4]} /><meshBasicMaterial color="#cfe8ff" toneMapped={false} /></mesh>
@@ -362,25 +441,36 @@ function Encostados() {
   )
 }
 
-// ── os quadros que ela guardou: a pintura (provisória, desenhada em código) e a moldura ──
+// ── os quadros que ela guardou: as pinturas (provisórias, desenhadas em código),
+// um material por quadro; vista, a pintura acende um pouco ──
+function useTelas(vistas: string[]): THREE.MeshBasicMaterial[] {
+  const mats = useMemo(() => QUADROS.map((q) => new THREE.MeshBasicMaterial({ map: pintura(q), color: "#c9cfdb" })), [])
+  useEffect(() => () => mats.forEach((m) => { m.map?.dispose(); m.dispose() }), [mats])
+  useEffect(() => { QUADROS.forEach((q, i) => mats[i].color.set(vistas.includes(q.id) ? "#ffffff" : "#c9cfdb")) }, [mats, vistas])
+  return mats
+}
+
+// o toque de cada quadro (a moldura e a tela são do modelo, ou das caixas)
 function Quadros({ vistas, ativo, onVer }: { vistas: string[]; ativo: boolean; onVer: (id: string) => void }) {
-  const texturas = useMemo(() => QUADROS.map((q) => pintura(q)), [])
-  useEffect(() => () => texturas.forEach((t) => t.dispose()), [texturas])
   return (
     <group>
-      {QUADROS.map((q, i) => {
-        const x = q.lado * (LARG / 2 - 0.06)
-        const ry = -q.lado * Math.PI / 2
-        return (
-          <group key={q.id}>
-            <group position={[x, q.y, q.z]} rotation-y={ry}>
-              <mesh position={[0, 0, -0.02]}><boxGeometry args={[q.larg + 0.12, q.alto + 0.12, 0.05]} /><meshStandardMaterial color="#0c0d12" roughness={0.6} metalness={0.4} /></mesh>
-              <mesh position={[0, 0, 0.01]}><planeGeometry args={[q.larg, q.alto]} /><meshBasicMaterial map={texturas[i]} color={vistas.includes(q.id) ? "#ffffff" : "#c9cfdb"} /></mesh>
-            </group>
-            <Toque pos={[q.lado * (LARG / 2 - 0.15), q.y, q.z]} raio={0.42} cor={ELLA_COR} ativo={ativo && !vistas.includes(q.id)} onToque={() => onVer(q.id)} />
-          </group>
-        )
-      })}
+      {QUADROS.map((q) => (
+        <Toque key={q.id} pos={[q.lado * (LARG / 2 - 0.15), q.y, q.z]} raio={0.42} cor={ELLA_COR} ativo={ativo && !vistas.includes(q.id)} onToque={() => onVer(q.id)} />
+      ))}
+    </group>
+  )
+}
+
+// as molduras de antes, com as telas (nas caixas)
+function MoldurasCaixas({ telas }: { telas: THREE.Material[] }) {
+  return (
+    <group>
+      {QUADROS.map((q, i) => (
+        <group key={q.id} position={[q.lado * (LARG / 2 - 0.06), q.y, q.z]} rotation-y={-q.lado * Math.PI / 2}>
+          <mesh position={[0, 0, -0.02]}><boxGeometry args={[q.larg + 0.12, q.alto + 0.12, 0.05]} /><meshStandardMaterial color="#0c0d12" roughness={0.6} metalness={0.4} /></mesh>
+          <mesh position={[0, 0, 0.01]} material={telas[i]}><planeGeometry args={[q.larg, q.alto]} /></mesh>
+        </group>
+      ))}
     </group>
   )
 }
@@ -518,13 +608,8 @@ function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: bo
   })
   return (
     <group position={PLANTA_POS}>
-      {/* o pedestal e o vaso de barro rachado */}
-      <Caixa pos={[0, 0.2, 0]} tam={[0.9, 0.4, 0.9]} cor="#1b1f2a" metal={0.4} rough={0.5} />
-      <mesh position={[0, 0.58, 0]}><cylinderGeometry args={[0.24, 0.17, 0.36, 18]} /><meshStandardMaterial color="#9a5a3a" roughness={0.95} /></mesh>
-      <mesh position={[0.1, 0.58, 0.205]} rotation-z={0.3}><boxGeometry args={[0.008, 0.3, 0.01]} /><meshBasicMaterial color="#3a1e12" /></mesh>
-      <mesh position={[0, 0.755, 0]} rotation-x={-Math.PI / 2}><circleGeometry args={[0.22, 18]} /><meshStandardMaterial color="#2a1a10" roughness={1} /></mesh>
-      {/* a etiqueta escrita à mão */}
-      <mesh position={[-0.12, 0.6, 0.215]} rotation-y={-0.3}><planeGeometry args={[0.1, 0.05]} /><meshBasicMaterial color="#efe8da" /></mesh>
+      {/* (o pedestal, o vaso, a redoma, a luz de cultivo e o armarinho são do
+          modelo, ou das caixas: aqui só o que mexe) */}
       <group ref={copa} position={[0, 0.75, 0]}>
         <mesh position={[0, 0.6, 0]}><cylinderGeometry args={[0.012, 0.02, 1.2, 6]} /><meshStandardMaterial color="#2f6a3e" roughness={0.8} /></mesh>
         <instancedMesh ref={folhas} args={[undefined, undefined, N_FOLHAS]}>
@@ -532,17 +617,6 @@ function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: bo
           <meshStandardMaterial ref={matFolhas} color="#2fbf6e" emissive={VERDE} emissiveIntensity={0.22} roughness={0.6} />
         </instancedMesh>
       </group>
-      {/* a redoma (vidro barato: transparente, sem refração): um sino de vidro por cima de tudo */}
-      <mesh position={[0, 1.1, 0]}>
-        <cylinderGeometry args={[0.58, 0.58, 1.4, 24, 1, true]} />
-        <meshStandardMaterial color="#bfe3ff" transparent opacity={0.08} roughness={0.05} metalness={0.6} depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 1.8, 0]}>
-        <sphereGeometry args={[0.58, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#bfe3ff" transparent opacity={0.1} roughness={0.05} metalness={0.6} depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
-      {/* a barra da luz de cultivo, roxa (só a peça: quem ilumina é a planta) */}
-      <mesh position={[0, 2.7, 0]}><boxGeometry args={[0.9, 0.04, 0.12]} /><meshBasicMaterial color={ROXO} toneMapped={false} /></mesh>
       {/* A LUZ DA PLANTA: a única luz pontual da sala (só muda de força), o halo
           e a mancha no chão (aditivos, sem luz nova) */}
       <pointLight ref={luz} position={[0, 1.45, 0.25]} color={LUZ_PLANTA} intensity={4} distance={6} decay={2} />
@@ -553,14 +627,36 @@ function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: bo
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={tHalo} color={LUZ_PLANTA} transparent opacity={0.1} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </mesh>
-      {/* as amostras: o armarinho, a prateleira, os potinhos com data */}
-      <Caixa pos={[1.25, 0.5, -0.35]} tam={[0.75, 1.0, 0.3]} cor="#1b1f2a" metal={0.3} />
-      <Caixa pos={[1.25, 1.02, -0.35]} tam={[0.7, 0.04, 0.25]} cor="#2a2f3a" />
-      <Amostras />
       <points ref={esporos}>
         <bufferGeometry><bufferAttribute attach="attributes-position" args={[posEsporos, 3]} /></bufferGeometry>
         <pointsMaterial color="#d9ffe9" size={0.025} transparent opacity={0.7} depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} />
       </points>
+    </group>
+  )
+}
+// as peças paradas da planta (nas caixas): o pedestal, o vaso de barro rachado, a
+// etiqueta, a redoma, a barra da luz de cultivo, o armarinho das amostras
+function PlantaCaixas() {
+  return (
+    <group position={PLANTA_POS}>
+      <Caixa pos={[0, 0.2, 0]} tam={[0.9, 0.4, 0.9]} cor="#1b1f2a" metal={0.4} rough={0.5} />
+      <mesh position={[0, 0.58, 0]}><cylinderGeometry args={[0.24, 0.17, 0.36, 18]} /><meshStandardMaterial color="#9a5a3a" roughness={0.95} /></mesh>
+      <mesh position={[0.1, 0.58, 0.205]} rotation-z={0.3}><boxGeometry args={[0.008, 0.3, 0.01]} /><meshBasicMaterial color="#3a1e12" /></mesh>
+      <mesh position={[0, 0.755, 0]} rotation-x={-Math.PI / 2}><circleGeometry args={[0.22, 18]} /><meshStandardMaterial color="#2a1a10" roughness={1} /></mesh>
+      <mesh position={[-0.12, 0.6, 0.215]} rotation-y={-0.3}><planeGeometry args={[0.1, 0.05]} /><meshBasicMaterial color="#efe8da" /></mesh>
+      {/* a redoma (vidro barato: transparente, sem refração) */}
+      <mesh position={[0, 1.1, 0]}>
+        <cylinderGeometry args={[0.58, 0.58, 1.4, 24, 1, true]} />
+        <meshStandardMaterial color="#bfe3ff" transparent opacity={0.08} roughness={0.05} metalness={0.6} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 1.8, 0]}>
+        <sphereGeometry args={[0.58, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#bfe3ff" transparent opacity={0.1} roughness={0.05} metalness={0.6} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 2.7, 0]}><boxGeometry args={[0.9, 0.04, 0.12]} /><meshBasicMaterial color={ROXO} toneMapped={false} /></mesh>
+      <Caixa pos={[1.25, 0.5, -0.35]} tam={[0.75, 1.0, 0.3]} cor="#1b1f2a" metal={0.3} />
+      <Caixa pos={[1.25, 1.02, -0.35]} tam={[0.7, 0.04, 0.25]} cor="#2a2f3a" />
+      <Amostras />
     </group>
   )
 }
@@ -717,13 +813,8 @@ function Cavalete({ ativo, tela, pendurada, audio, onPendurar, onChegou }: { ati
   const pronta = tracos >= PINTAR.minimo
   return (
     <group>
-      {/* o cavalete (provisório): três pernas, a travessa, a bandeja dos potes */}
+      {/* o cavalete (a madeira é do modelo, ou das caixas): os potes na bandeja e o prego */}
       <group position={CAVALETE.pos} rotation-y={CAVALETE.rot}>
-        <Caixa pos={[-0.38, 1.0, -0.05]} tam={[0.04, 2.1, 0.04]} cor="#6a4a30" />
-        <Caixa pos={[0.38, 1.0, -0.05]} tam={[0.04, 2.1, 0.04]} cor="#6a4a30" />
-        <mesh position={[0, 0.9, -0.38]} rotation-x={-0.35}><boxGeometry args={[0.04, 1.9, 0.04]} /><meshStandardMaterial color="#6a4a30" /></mesh>
-        <Caixa pos={[0, 0.95, 0.02]} tam={[0.95, 0.04, 0.14]} cor="#5a3e28" />
-        <Caixa pos={[0, TELA.y + TELA.alto / 2 + 0.06, -0.02]} tam={[0.9, 0.05, 0.06]} cor="#5a3e28" />
         <Potes cor={cor} ativo={podePintar} onCor={setCor} />
         {/* o prego: acende quando a tela tem tinta bastante */}
         <Toque pos={[0, TELA.y + TELA.alto / 2 + 0.16, 0.02]} raio={0.09} cor="#ffffff" ativo={podePintar && pronta} onToque={onPendurar}>
@@ -744,6 +835,19 @@ function Cavalete({ ativo, tela, pendurada, audio, onPendurar, onChegou }: { ati
           <meshBasicMaterial color={ELLA_COR} toneMapped={false} transparent opacity={0.9} />
         </mesh>
       </group>
+    </group>
+  )
+}
+
+// a madeira do cavalete (nas caixas): três pernas, a travessa, a bandeja dos potes
+function CavaleteCaixas() {
+  return (
+    <group position={CAVALETE.pos} rotation-y={CAVALETE.rot}>
+      <Caixa pos={[-0.38, 1.0, -0.05]} tam={[0.04, 2.1, 0.04]} cor="#6a4a30" />
+      <Caixa pos={[0.38, 1.0, -0.05]} tam={[0.04, 2.1, 0.04]} cor="#6a4a30" />
+      <mesh position={[0, 0.9, -0.38]} rotation-x={-0.35}><boxGeometry args={[0.04, 1.9, 0.04]} /><meshStandardMaterial color="#6a4a30" /></mesh>
+      <Caixa pos={[0, 0.95, 0.02]} tam={[0.95, 0.04, 0.14]} cor="#5a3e28" />
+      <Caixa pos={[0, TELA.y + TELA.alto / 2 + 0.06, -0.02]} tam={[0.9, 0.05, 0.06]} cor="#5a3e28" />
     </group>
   )
 }

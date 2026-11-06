@@ -25,6 +25,19 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.ella.casa",
+    nome: "A casa da Ella modelada no Blender: o filme da planta, a galeria e pintar",
+    data: "2026-11-06",
+    tarefa: "T22",
+    olhar: "A casa-galeria da Ella agora modelada no Blender: um galpão enorme azul-noite com a faixa de vidro no teto, estantes de telas até o teto (a maioria de costas), as 6 molduras de jeitos diferentes com um spot em cima, o mezanino no fundo com a escada caracol e plantas penduradas, a planta do Criador no pedestal sob a redoma com a luz de cultivo roxa, o mural pintado atrás dela, o cavalete com o carrinho de tintas e o pano manchado, a cama de palete, o cantinho de almofadas, tapetes e plantas. A câmera, a Ella, os quadros e o pintar estão nos mesmos lugares. A foto: docs/blender/galeria-ella.png.",
+    perguntas: [
+      "A casa tem a cara dela (galeria enorme, proibida, com as plantas e as almofadas)?",
+      "A planta na redoma com a luz roxa chama atenção o bastante?",
+      "Ficou leve no iPhone (abriu rápido, sem travar)?",
+    ],
+    mais: [{ parte: "missao.ella", nome: "começar na rua" }],
+  },
+  {
     parte: "bar",
     nome: "O bar do prólogo (O COPO) modelado no Blender",
     data: "2026-11-06",
@@ -600,17 +613,7 @@ export const MESA: Cartao[] = [
       { parte: "perseguicao.gatilho", nome: "a polícia vem sozinha (~20 s)" },
     ],
   },
-  {
-    parte: "missao.ella.casa",
-    nome: "A Ella: o filme da planta, a galeria e pintar",
-    data: "2026-10-30",
-    tarefa: "T22",
-    olhar: "Primeiro o filme (provisório, em legenda) da Ella contando que o Criador deixou a planta. Depois os 6 quadros dela. Depois pintar no escuro, só com a luz da planta.",
-    perguntas: [
-      "O texto do filme está bom? (ela diz que o Criador previu o mal e que a planta salva o mundo)",
-    ],
-    mais: [{ parte: "missao.ella", nome: "começar na rua" }],
-  },
+
   {
     parte: "quebra.oficina",
     nome: "O patins: rodas de gel e linhas finas",
