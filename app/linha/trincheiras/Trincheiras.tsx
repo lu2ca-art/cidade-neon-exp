@@ -53,7 +53,9 @@ import { RioDepois } from "./RioDepois"
 import { FINAL_VIVO } from "../disco/final"
 import { Cadeado, Trancado } from "../Trancado"
 import { TRANCA_MOTO, naMoto } from "../estrada/zonas"
-import { SEGUNDOS_CABINE, rotuloSubir } from "../disco/elevadores"
+import { SEGUNDOS_CABINE, lembrarVeiculoTunel, rotuloSubir, veiculoTunel } from "../disco/elevadores"
+import { TERROR, marcarTerrorVisto, terrorVisto } from "../disco/terror"
+import { PocoTerror } from "./PocoTerror"
 
 const NEVOA = "#1a0f24"
 const NEVOA_LONGE = 340 // a névoa fecha aqui
@@ -321,6 +323,10 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
   const [elevPerto, setElevPerto] = useState(0)
   const elevPertoRef = useRef(0)
   const [cabine, setCabine] = useState<number | null>(null)
+  // (T47, RASCUNHO) o elevador de terror: subindo pelo poço do elevador 2 (null = não)
+  const [terror, setTerror] = useState<number | null>(null)
+  const [viuTerror, setViuTerror] = useState(false)
+  useEffect(() => { setViuTerror(terrorVisto()) }, []) // eslint-disable-line react-hooks/set-state-in-effect -- o save, no cliente
   const [painel, setPainel] = useState<Painel>({ recordeAntes: null, fantasma: false, resultado: null, parciais: [] })
   const velRef = useRef<HTMLSpanElement>(null)
   const ondeRef = useRef<HTMLSpanElement>(null)
@@ -371,7 +377,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     const d = q.get("dpr"); if (q.has("medir") && d) setFixa(+d)
     setRecordes(lerRecordes())
     // ?livre, ou ?auto sozinho (a medição e o teste do T11): passeio
-    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? (noJogo && motosAqui && naMoto.agora ? "moto" : "patins"), q.has("auto") ? "largada" : noJogo?.chegaNa ?? "descida") // desceu de moto: segue de moto
+    if (q.has("livre") || (q.has("auto") && !q.has("corrida") && !v) || (noJogo && !noJogo.missao && !v)) passear(v ?? (noJogo?.chegaNa ? veiculoTunel() : null) ?? (noJogo && motosAqui && naMoto.agora ? "moto" : "patins"), q.has("auto") ? "largada" : noJogo?.chegaNa ?? "descida") // desceu de moto: segue de moto
     else if (v) largar(v)
     /* eslint-enable react-hooks/set-state-in-effect */
     const w = window as unknown as Record<string, unknown>
@@ -458,16 +464,25 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
     : <a href={`/linha?mapa=disco&de=tuneis${contou ? "&corrida=1" : ""}`} className={cls} data-subir>{rotulo}</a>
   const rec = recordes[veiculo]
   // (elevadores) a cabine sobe (curta, a tela não fica preta) e o jogo monta a cidade lá em cima
-  const subirElevador = (n: number) => {
+  // (T47) o elevador 2 sobe pelo poço do terror (a 1ª vez sempre; depois, "subir rápido" pula)
+  // BMX/skate: a cidade só desembarca de patins/moto; o elevador lembra o veículo e devolve na descida
+  const subirElevador = (n: number, rapido = false) => {
     const el = noJogo?.elevador
-    if (!el || el.tranca || cabine || subindo) return
+    if (!el || el.tranca || cabine || terror || subindo) return
+    lembrarVeiculoTunel(veiculo)
+    if (n === TERROR.elevador && !rapido) { setTerror(n); return }
     setCabine(n)
     setTimeout(() => el.onSubir(n, veiculo === "moto" ? "moto" : "patins"), SEGUNDOS_CABINE * 1000)
+  }
+  const fimTerror = () => {
+    const el = noJogo?.elevador
+    marcarTerrorVisto(); setViuTerror(true)
+    if (el && terror) el.onSubir(terror, veiculo === "moto" ? "moto" : "patins")
   }
 
   return (
     <div className={`tr-raiz${noJogo ? " is-jogo" : ""}${subindo ? " is-subindo" : ""}`}>
-      <Canvas className="tr-cvs" frameloop={noJogo?.pausado ? "never" : "always"} dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
+      <Canvas className="tr-cvs" frameloop={noJogo?.pausado || terror ? "never" : "always"} dpr={fixa ?? DPR.v ?? 1} gl={{ antialias: false, powerPreference: "high-performance", stencil: false }} camera={{ fov: 66, near: 0.1, far: NEVOA_LONGE + 60 }}>
         <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
         {/* (06/11) o mundo depois: a água nos rios (só com o final feito) */}
         <RioDepois />
@@ -546,11 +561,17 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
           <p className="tr-teclas">setas ou WASD · {INFO[veiculo].teclas}</p>
         </div>
       )}
-      {fase === "livre" && elevPerto > 0 && noJogo?.elevador && !cabine && (
-        <button type="button" className={`tr-elevador${noJogo.elevador.tranca ? " is-trancado" : ""}`} onClick={() => subirElevador(elevPerto)} data-elevador={elevPerto} aria-disabled={!!noJogo.elevador.tranca}>
-          {noJogo.elevador.tranca && <Cadeado />}{rotuloSubir(elevPerto)}{noJogo.elevador.tranca ? <small>{noJogo.elevador.tranca}</small> : null}
-        </button>
+      {fase === "livre" && elevPerto > 0 && noJogo?.elevador && !cabine && !terror && (
+        <div className="tr-elev-linha">
+          <button type="button" className={`tr-elevador${noJogo.elevador.tranca ? " is-trancado" : ""}`} onClick={() => subirElevador(elevPerto)} data-elevador={elevPerto} aria-disabled={!!noJogo.elevador.tranca}>
+            {noJogo.elevador.tranca && <Cadeado />}{rotuloSubir(elevPerto)}{noJogo.elevador.tranca ? <small>{noJogo.elevador.tranca}</small> : null}
+          </button>
+          {elevPerto === TERROR.elevador && viuTerror && !noJogo.elevador.tranca && (
+            <button type="button" className="tr-elevador-rapido" onClick={() => subirElevador(elevPerto, true)} data-elevador-rapido>subir rápido</button>
+          )}
+        </div>
       )}
+      {terror && <PocoTerror onFim={fimTerror} />}
       {cabine && (
         <div className="tr-cabine" aria-live="polite" style={{ ["--dur" as string]: `${SEGUNDOS_CABINE}s` }}>
           <div className="tr-cabine-poco"><i /></div>

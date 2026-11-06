@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "elevador.terror",
+    nome: "O elevador de terror (rascunho): a subida pelo poço da torre 2",
+    data: "2026-11-06",
+    tarefa: "T47",
+    olhar: "Abre no salão da TORRE 2, na frente do elevador. Toque em \"subir · torre 2\": a grade fecha e a cabine sobe devagar pelo poço; em cada andar, robôs dormindo em cibercamas, gente em cápsulas verdes e máquinas com a luz respirando. A música abafa e entra um zumbido grave. Um tranco, a luz apaga, a cabine cai um pouco e para; aí acende o vermelho e ela dispara até o topo e você chega na torre da ponta 2. Arraste pra olhar em volta; toque pra pular. Na 2ª vez aparece \"subir rápido\" do lado. De BMX ou skate você chega de patins, e ao descer de novo pelo elevador a BMX/o skate voltam.",
+    perguntas: ["O susto (o tranco, o escuro, a queda) assusta ou é fraco?", "O tempo (uns 25 s) está bom ou longo?", "Robôs, cápsulas e máquinas: o que mais você quer ver nos andares?", "Primeira vez obrigatória e depois \"subir rápido\": fica assim?"],
+    mais: [{ parte: "elevador.subir", nome: "o elevador comum (torre 1)" }],
+  },
+  {
     parte: "elevador.subir",
     nome: "Os elevadores do túnel: as 3 torres dos salões sobem pras torres das pontas",
     data: "2026-11-06",

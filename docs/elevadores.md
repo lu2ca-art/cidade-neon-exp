@@ -15,4 +15,5 @@ Bíblia §6: "são 3, concêntricos à rotatória que une as pistas". Proposta a
 - Sem luzes novas.
 - **Teste**: `?parte=elevador.subir` (cartão na Mesa).
 - **Código**: `app/linha/disco/elevadores.ts` (dados e o pedido da viagem), `trincheiras/Trincheiras.tsx` (botão, cabine, mapinha), `trincheiras/fisica.ts` (`estadoInicial(n)`), `estrada/Corrida.tsx` (nasce na torre, botão descer), `page.tsx` (liga as duas cenas).
-- **Depois**: o elevador de terror (T47) mora num destes (gancho `ELEVADOR_TERROR`). Se ele desce pelo elevador de Kombi e volta pela boca, a Kombi aparece na boca.
+- **T47 (RASCUNHO)**: o elevador de terror mora no 2 (`ELEVADOR_TERROR = 2`): a subida vira o percurso no poço, ver `docs/t47-terror.md`. BMX/skate chegam de patins, mas voltam na descida pelo elevador.
+- **Depois**: Se ele desce pelo elevador de Kombi e volta pela boca, a Kombi aparece na boca.

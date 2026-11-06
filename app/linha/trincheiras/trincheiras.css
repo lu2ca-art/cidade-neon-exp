@@ -86,3 +86,12 @@ button.tr-voltar { border: 0; cursor: pointer; }
 .tr-cabine-poco i { position: absolute; left: 4px; right: 4px; bottom: 0; height: 52px; border-radius: 6px; background: #ffcf8a; box-shadow: 0 0 18px rgba(255, 207, 138, 0.7); animation: tr-cab-sobe var(--dur, 1.2s) ease-in-out forwards; }
 @keyframes tr-cab-sobe { from { transform: translateY(0); } to { transform: translateY(calc(-40vh + 52px)); } }
 @keyframes tr-cab-escurece { from { opacity: 0.3; } 30% { opacity: 1; } to { opacity: 1; } }
+/* (T47, RASCUNHO) o elevador de terror: o poço em tela cheia; "subir rápido" ao lado do botão */
+.tr-terror { position: absolute; inset: 0; z-index: 6; background: #06040b; touch-action: none; }
+.tr-terror-cvs { position: absolute !important; inset: 0; }
+.tr-terror-veu { position: absolute; inset: 0; background: #000; opacity: 1; pointer-events: none; }
+.tr-terror-dica { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); margin: 0; text-align: center; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.1em; color: rgba(242, 238, 250, 0.55); pointer-events: none; animation: tr-terror-dica 5s ease-in forwards; }
+@keyframes tr-terror-dica { 0%, 70% { opacity: 1; } to { opacity: 0; } }
+.tr-elev-linha { position: absolute; left: 50%; top: calc(38% + 34px); transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; width: max-content; max-width: 92vw; pointer-events: none; }
+.tr-elev-linha .tr-elevador { position: static; transform: none; }
+.tr-elevador-rapido { padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255, 207, 138, 0.6); background: rgba(10, 6, 16, 0.75); color: #ffcf8a; font: 800 12px var(--font-geist-mono), ui-monospace, monospace; cursor: pointer; pointer-events: auto; }

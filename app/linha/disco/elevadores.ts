@@ -10,7 +10,7 @@
 //   descer: na rotatória da torre da ponta N (a via, sem conta por quadro), o
 //          botão "descer · túneis"; desce no salão da TORRE N.
 //   trancado: antes da missão dos túneis feita, os dois botões com o cadeado.
-// (T47, o elevador de terror: não é este. Gancho: ELEVADOR_TERROR, abaixo.)
+// (T47, o elevador de terror: o 2. Gancho: ELEVADOR_TERROR, abaixo; docs/t47-terror.md)
 // Leve: só dados e um estado de módulo, sem three.js.
 
 import type { Desembarque } from "../estrada/ondeParou"
@@ -26,8 +26,9 @@ export const TRANCA_ELEVADOR = "abre com a missão dos túneis"
 export const SEGUNDOS_CABINE = 1.2 // a subida/descida da cabine (sem tela preta longa)
 export const rotuloSubir = (n: number) => `subir · torre ${n} (${ELEVADORES[n - 1]?.faixas.join(", ") ?? ""})`
 export const rotuloDescer = (n: number) => `descer · túneis (torre ${n})`
-// (T47, depois) o elevador de terror vai morar num destes: por enquanto, nenhum
-export const ELEVADOR_TERROR: number | null = null
+// (T47, RASCUNHO) o elevador de terror mora no 2 (DopaminA, Rollercoaster, Swav):
+// a subida vira o percurso no poço (disco/terror.ts, trincheiras/PocoTerror.tsx)
+export const ELEVADOR_TERROR: number | null = 2
 
 // ── a viagem: quem pediu, pra onde. A Corrida e as trincheiras desmontam uma a
 // outra (page.tsx), então o pedido mora aqui até a outra cena nascer ──
@@ -47,3 +48,12 @@ export function limparSubida() { if (subida) { subida = null; foraEmCima = null 
 export function pedirDescida(n: number, fora: Desembarque | null) { descida = n; foraEmCima = fora }
 /** (o page, ao montar as trincheiras) desce em qual salão? Consome o pedido */
 export function tomarDescida(): number | null { const d = descida; descida = null; return d }
+
+// (T47, os limites) BMX e skate não existem na cidade (o desembarque lá em cima é
+// patins/moto): ele chega de patins, e o elevador guarda o veículo dos túneis pra
+// devolver quando ele descer de novo por um elevador
+type VeiculoTunel = "bmx" | "skate" | "patins" | "moto"
+let veiculoDoTunel: VeiculoTunel | null = null
+export function lembrarVeiculoTunel(v: VeiculoTunel) { veiculoDoTunel = v }
+/** (as trincheiras, ao descer pelo elevador) o veículo não motorizado com que ele subiu */
+export function veiculoTunel(): "bmx" | "skate" | "patins" | null { return veiculoDoTunel === "moto" ? null : veiculoDoTunel }
