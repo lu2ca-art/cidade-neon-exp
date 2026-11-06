@@ -25,6 +25,14 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.tuneis.trincheiras",
+    nome: "Moto mais leve (e a cidade com menos gasto por quadro)",
+    data: "2026-11-06",
+    olhar: "A moto agora é desenhada em 7 pedaços em vez de ~25, e o parque, o campo de força e as flores pararam de criar lixo a cada quadro. O visual deve estar IGUAL: olhe o cromo do garfo e do escape, a viseira neon, as rodas girando; no parque, o carrinho e a câmera; a pé, encostar nos prédios.",
+    perguntas: ["A moto está igual (brilho, cromo, viseira)?", "Sentiu o jogo mais liso no iPhone?"],
+    mais: [{ parte: "livre", nome: "a cidade (parque, campo de força)" }],
+  },
+  {
     parte: "mundo.depois",
     nome: "O mundo depois do final: plantas nos prédios, cabines nas torres, o rio nos túneis",
     data: "2026-11-06",
