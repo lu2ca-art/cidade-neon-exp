@@ -12,17 +12,22 @@
 // banco, vasos; o vidro e a faixa de luz na cor de quem sobe/desce). Cor nos
 // vértices (AO assada), sem luz: MeshBasic, materiais compartilhados.
 //
-// Desempenho: antes do final não monta nada. Depois: 11 desenhos no total (7
-// instanciadas das plantas: 3 tufos, 3 módulos, os brotos, montadas uma vez e
-// paradas; 4 das cabines: estrutura, vidro, luz e os trilhos). Sem luz nova. Por
-// quadro: 1 número (o tempo das cabines, que andam no shader). Se o .glb falhar:
-// as formas de antes (octaedros, faixas e caixas).
+// Desempenho: antes do final não monta nada. Depois, as plantas vão por QUADRA
+// (CFG.quadra m de lado): cada quadra é um <Perto> com até 7 instanciadas (3 tufos,
+// 3 módulos, os brotos; a esfera de cada uma é a da quadra, o corte da câmera
+// funciona), montada só com a câmera a CFG.raioPerto do centro dela; longe, nada.
+// Cada quadra guarda no máximo CFG.triQuadra triângulos de planta: com todas as
+// quadras perto montadas (no pior caso 12) fica abaixo de ~150 mil (docs/mundo-depois.md).
+// As cabines: 4 desenhos (estrutura, vidro, luz, trilhos). Sem luz nova. Por
+// quadro: 1 número (o tempo das cabines, que andam no shader) e o teste do <Perto>
+// a cada 10 quadros. Se o .glb falhar: as formas de antes (octaedros e faixas).
 
 import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
 import { Component, Suspense, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
 import * as THREE from "three"
 import type { MundoDisco } from "./mundoDisco"
+import { Perto } from "./Perto"
 import { MUNDO_DEPOIS as CFG, lerFinal, ouvirFinal } from "../disco/final"
 
 const NADA = { momento: null, feito: false }
@@ -32,6 +37,9 @@ const URL = "/models/mundo-depois.glb"
 const GANHO = 0.25 // o sólido sai do Blender ×4 (8 bits nos tons escuros); aqui volta
 // a trepadeira (mundo_depois.py): base 3 m, meio 6 m (repete), topo 2,5 m
 const HB = 3, HM = 6, HT = 2.5
+// triângulos de cada peça (o print do mundo_depois.py; o tufo conta pelo maior):
+// é com eles que cada quadra guarda o teto CFG.triQuadra
+const TRI = { tufo: 256, base: 247, meio: 258, topo: 204, broto: 38 }
 
 // o mundo depois só existe com o final feito e sem o final passando
 export function useMundoDepois() {
@@ -120,6 +128,16 @@ function mats() {
 }
 
 type Lugar = { m: THREE.Matrix4; c: THREE.Color }
+type Quadra = {
+  k: string; x: number; z: number; tri: number
+  tufos: Lugar[][]; base: Lugar[]; meio: Lugar[]; topo: Lugar[]; brotos: Lugar[]; simplesT: Lugar[]; simplesV: Lugar[]
+}
+// as formas de antes (o .glb falhou), uma de cada pra todas as quadras
+let SIMPLES: { t: THREE.BufferGeometry; v: THREE.BufferGeometry } | null = null
+const simples = () => (SIMPLES ??= {
+  t: new THREE.OctahedronGeometry(1, 0).scale(1.6, 0.8, 0.7).translate(0, 0.2, 0.7),
+  v: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0.5),
+})
 
 function instanciar(geo: THREE.BufferGeometry, mat: THREE.Material, lista: Lugar[]) {
   const im = new THREE.InstancedMesh(geo, mat, Math.max(1, lista.length))
@@ -141,14 +159,22 @@ function colocar(colisores: number[]) {
   const r = () => { sem = (sem * 16807) % 2147483647; return sem / 2147483647 }
   const r2 = () => { sem2 = (sem2 * 48271) % 2147483647; return sem2 / 2147483647 }
   const q = new THREE.Quaternion(), pos = new THREE.Vector3(), esc = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0)
-  const tufos: Lugar[][] = [[], [], []], base: Lugar[] = [], meio: Lugar[] = [], topo: Lugar[] = [], brotos: Lugar[] = []
-  const simplesT: Lugar[] = [], simplesV: Lugar[] = []
-  const lugar = (p: THREE.Vector3, e: THREE.Vector3, c: THREE.Color): Lugar => ({ m: new THREE.Matrix4().compose(p, q, e), c })
-  const broto = (p: THREE.Vector3, k: number) => {
-    if (brotos.length >= CFG.maxBrotos) return
-    brotos.push(lugar(p, new THREE.Vector3(k, k, k), new THREE.Color().setHSL(r2(), 0.25, 0.82 + r2() * 0.18)))
+  const quadras = new Map<string, Quadra>()
+  // a quadra do ponto (x, z): a grade de CFG.quadra m; o centro dela é o ponto do <Perto>
+  const quadra = (x: number, z: number) => {
+    const i = Math.floor(x / CFG.quadra), j = Math.floor(z / CFG.quadra), k = `${i},${j}`
+    let Q = quadras.get(k)
+    if (!Q) quadras.set(k, (Q = { k, x: (i + 0.5) * CFG.quadra, z: (j + 0.5) * CFG.quadra, tri: 0, tufos: [[], [], []], base: [], meio: [], topo: [], brotos: [], simplesT: [], simplesV: [] }))
+    return Q
   }
-  let nt = 0, nv = 0, nm = 0
+  const cabe = (Q: Quadra, t: number) => Q.tri + t <= CFG.triQuadra
+  const lugar = (p: THREE.Vector3, e: THREE.Vector3, c: THREE.Color): Lugar => ({ m: new THREE.Matrix4().compose(p, q, e), c })
+  const broto = (Q: Quadra, p: THREE.Vector3, k: number) => {
+    const cor = new THREE.Color().setHSL(r2(), 0.25, 0.82 + r2() * 0.18)
+    if (nb >= CFG.maxBrotos || !cabe(Q, TRI.broto)) return
+    Q.brotos.push(lugar(p, new THREE.Vector3(k, k, k), cor)); Q.tri += TRI.broto; nb++
+  }
+  let nt = 0, nv = 0, nm = 0, nb = 0
   for (let i = 0; i + 8 < colisores.length; i += 9) {
     const bx = colisores[i], bz = colisores[i + 1], tx = colisores[i + 2], tz = colisores[i + 3]
     const hw = colisores[i + 4], hf = colisores[i + 5], topoP = colisores[i + 6], baseP = colisores[i + 7]
@@ -168,12 +194,15 @@ function colocar(colisores: number[]) {
       const kk = 0.9 + r() * 0.6
       esc.set(kk, kk * (0.85 + r() * 0.3), kk)
       const c = new THREE.Color().setHSL(0.2 + r() * 0.14, 0.3, 0.86 + r() * 0.14)
-      tufos[nt % 3].push(lugar(pos, esc, c))
-      simplesT.push(lugar(pos, esc, c))
+      const Q = quadra(pos.x, pos.z)
+      if (!cabe(Q, TRI.tufo)) continue
+      Q.tufos[nt % 3].push(lugar(pos, esc, c))
+      Q.simplesT.push(lugar(pos, esc, c))
+      Q.tri += TRI.tufo
       nt++
       if (r2() < CFG.brotoTufo) {
         const a = (r2() - 0.5) * 1.4 * kk, u = (r2() * 0.6 - 0.1) * kk
-        broto(new THREE.Vector3(pos.x + F.nx * 0.8 * kk + F.ax * a, pos.y + u, pos.z + F.nz * 0.8 * kk + F.az * a), kk * (1.2 + r2() * 0.6))
+        broto(Q, new THREE.Vector3(pos.x + F.nx * 0.8 * kk + F.ax * a, pos.y + u, pos.z + F.nz * 0.8 * kk + F.az * a), kk * (1.2 + r2() * 0.6))
       }
     }
     for (let k = 0; k < 2 && nv < CFG.maxTrepadeiras; k++) {
@@ -184,48 +213,61 @@ function colocar(colisores: number[]) {
       q.setFromAxisAngle(Y, Math.atan2(F.nx, F.nz))
       const s = 0.8 + r() * 0.4, H = h * (0.25 + r() * 0.45)
       const c = new THREE.Color().setHSL(0.22 + r() * 0.1, 0.3, 0.86 + r() * 0.14)
-      simplesV.push(lugar(pos.set(x, y0, z), esc.set(s * 2, H, s * 0.35), c))
-      nv++
-      const n = Math.min(Math.max(1, Math.round((H / s - HB - HT) / HM)), CFG.maxModulos - nm)
+      const Q = quadra(x, z)
+      // os módulos que cabem na quadra (a trepadeira fica mais baixa se faltar)
+      const n = Math.min(Math.max(1, Math.round((H / s - HB - HT) / HM)), CFG.maxModulos - nm,
+        Math.floor((CFG.triQuadra - Q.tri - TRI.base - TRI.topo) / TRI.meio))
       if (n < 1) continue
-      const sy = H / (HB + HM * n + HT)
+      Q.simplesV.push(lugar(pos.set(x, y0, z), esc.set(s * 2, H, s * 0.35), c))
+      nv++
+      const sy = Math.min(H / (HB + HM * n + HT), s * 1.6) // sem esticar demais
       esc.set(s, sy, s)
-      base.push(lugar(pos.set(x, y0, z), esc, c))
+      Q.base.push(lugar(pos.set(x, y0, z), esc, c))
+      Q.tri += TRI.base + TRI.topo + n * TRI.meio
       for (let j = 0; j < n; j++) {
         const yj = y0 + (HB + HM * j) * sy
-        meio.push(lugar(pos.set(x, yj, z), esc, c))
+        Q.meio.push(lugar(pos.set(x, yj, z), esc, c))
         if (r2() < CFG.brotoModulo) {
           const a = (r2() - 0.5) * 1.2 * s
-          broto(new THREE.Vector3(x + F.nx * 0.5 * s + F.ax * a, yj + (0.5 + r2() * 5) * sy, z + F.nz * 0.5 * s + F.az * a), 1.2 + r2() * 0.5)
+          broto(Q, new THREE.Vector3(x + F.nx * 0.5 * s + F.ax * a, yj + (0.5 + r2() * 5) * sy, z + F.nz * 0.5 * s + F.az * a), 1.2 + r2() * 0.5)
         }
       }
       nm += n
-      topo.push(lugar(pos.set(x, y0 + (HB + HM * n) * sy, z), esc, c))
+      Q.topo.push(lugar(pos.set(x, y0 + (HB + HM * n) * sy, z), esc, c))
     }
   }
-  return { tufos, base, meio, topo, brotos, simplesT, simplesV }
+  return [...quadras.values()].filter((Q) => Q.tri > 0)
 }
 
+// as quadras (o sorteio roda uma vez por cidade) e um <Perto> por quadra
 function Plantas({ colisores, geos }: { colisores: number[]; geos: Geos | null }) {
-  const p = useMemo(() => {
-    const L = colocar(colisores), m = mats()
-    if (geos) {
-      const ims = [
-        ...geos.tufos.map((g, i) => instanciar(g, m.planta, L.tufos[i])),
-        instanciar(geos.base, m.planta, L.base), instanciar(geos.meio, m.planta, L.meio), instanciar(geos.topo, m.planta, L.topo),
-        instanciar(geos.broto, m.broto, L.brotos),
-      ]
-      return { ims, proprias: [] as THREE.BufferGeometry[] }
-    }
-    // as formas de antes (o .glb falhou)
-    const geoT = new THREE.OctahedronGeometry(1, 0).scale(1.6, 0.8, 0.7).translate(0, 0.2, 0.7)
-    const geoV = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0.5)
-    return { ims: [instanciar(geoT, m.simples, L.simplesT), instanciar(geoV, m.simples, L.simplesV)], proprias: [geoT, geoV] }
-  }, [colisores, geos])
-  useEffect(() => () => { for (const im of p.ims) im.dispose(); for (const g of p.proprias) g.dispose() }, [p])
+  const quadras = useMemo(() => colocar(colisores), [colisores])
   return (
     <>
-      {p.ims.map((im, i) => <primitive key={i} object={im} />)}
+      {quadras.map((Q) => (
+        <Perto key={Q.k} nome={`plantas ${Q.k}`} raio={CFG.raioPerto} pontos={[{ x: Q.x, z: Q.z }]}>
+          <PlantasQuadra Q={Q} geos={geos} />
+        </Perto>
+      ))}
+    </>
+  )
+}
+
+function PlantasQuadra({ Q, geos }: { Q: Quadra; geos: Geos | null }) {
+  const ims = useMemo(() => {
+    const m = mats()
+    if (geos) return [
+      ...geos.tufos.map((g, i) => instanciar(g, m.planta, Q.tufos[i])),
+      instanciar(geos.base, m.planta, Q.base), instanciar(geos.meio, m.planta, Q.meio), instanciar(geos.topo, m.planta, Q.topo),
+      instanciar(geos.broto, m.broto, Q.brotos),
+    ].filter((im) => im.count > 0)
+    const S = simples()
+    return [instanciar(S.t, m.simples, Q.simplesT), instanciar(S.v, m.simples, Q.simplesV)].filter((im) => im.count > 0)
+  }, [Q, geos])
+  useEffect(() => () => { for (const im of ims) im.dispose() }, [ims])
+  return (
+    <>
+      {ims.map((im, i) => <primitive key={i} object={im} />)}
     </>
   )
 }

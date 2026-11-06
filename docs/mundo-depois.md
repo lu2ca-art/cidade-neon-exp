@@ -49,4 +49,14 @@ Pipeline como os elevadores: cor no vértice × AO assada (Cycles) × luz falsa,
 
 Números novos em `MUNDO_DEPOIS`: `maxModulos` 2400, `trepChao` 3,6, `brotoTufo` 0,6, `brotoModulo` 0,7, `maxBrotos` 5000.
 
-**Custo (pior caso, todos os limites cheios):** tufos 2.600 × ~205 ≈ 530 mil tri; módulos 2.400 × 258 ≈ 620 mil (+ bases e topos ≈ 1.400 × 450 ≈ 630 mil); brotos 5.000 × 38 ≈ 190 mil; cabines ≈ 50 × 600 ≈ 30 mil. A conta real depende de quantos prédios altos há (não medido aqui). Desenhos: 11 (eram 4). As instanciadas cobrem a cidade inteira (uma esfera só): não há corte por distância. Se pesar no iPhone: baixar `maxTufos`/`maxModulos`/`maxBrotos`, ou partir as instanciadas por setor da cidade pra o corte da câmera funcionar.
+**Custo: as plantas por quadra (06/11, desempenho).** A cidade é partida numa grade de quadras de 200 m (`MUNDO_DEPOIS.quadra`). Cada quadra é um `<Perto>` próprio com até 7 instanciadas (3 tufos, base, meio, topo, brotos); a esfera de cada uma é a da quadra, então o corte da câmera também funciona. A quadra monta com a câmera a 300 m do centro dela (`raioPerto`) e desmonta a 345 (a folga de 15% do `<Perto>`). Longe, nada: nem malha, nem desenho.
+
+Cada quadra guarda no máximo 12 mil triângulos de planta (`triQuadra`). A conta usa o maior tufo (256), a base 247, o meio 258, o topo 204 e o broto 38. Quando a quadra enche, o resto não entra; se faltar pouco, a trepadeira fica mais baixa (menos meios).
+
+Pior caso: no máximo 12 centros de quadra cabem dentro de 345 m da câmera (grade de 200 m, contado por força bruta). 12 × 12.000 = **144 mil triângulos de planta**, abaixo de 150 mil. Na prática é menos, porque nem toda quadra tem prédio alto. Desenhos de planta: no máximo 12 × 7 = 84, quase sempre bem menos (uma quadra vazia não monta nada e uma peça sem instância não vira desenho).
+
+Garantido perto: as plantas a até ~160 m da câmera estão sempre montadas (300 − 141, a meia diagonal da quadra). Entre 160 e 345 m depende da quadra. O resto, longe, some.
+
+As cabines não entram na grade: 50 × 554 ≈ 28 mil triângulos, 4 desenhos (andam no shader pela torre toda).
+
+Limites globais que continuam valendo: `maxTufos` 2600, `maxTrepadeiras` 1400, `maxModulos` 2400, `maxBrotos` 5000.

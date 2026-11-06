@@ -156,6 +156,10 @@ export const MUNDO_DEPOIS = {
   // (06/11, modeladas no Blender: public/models/mundo-depois.glb) a trepadeira é
   // base + N módulos do meio (6 m cada, esticados até caber) + topo
   maxModulos: 2400, // módulos do meio no total (~260 tri cada)
+  // (06/11, desempenho) as plantas vão por quadra e só as perto ficam montadas
+  quadra: 200, // m de lado
+  raioPerto: 300, // m do centro da quadra (desmonta a 345, a folga do <Perto>)
+  triQuadra: 12000, // triângulos de planta por quadra, no máximo: 12 quadras perto × 12 mil = 144 mil
   trepChao: 3.6, // m acima da base do prédio (ele nasce enterrado 4 m): o pé da trepadeira
   brotoTufo: 0.6, // chance de um cacho de flores acesas em cada tufo
   brotoModulo: 0.7, // e em cada módulo do meio da trepadeira
