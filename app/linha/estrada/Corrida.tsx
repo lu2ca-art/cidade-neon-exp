@@ -62,6 +62,7 @@ import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
 import { foraNaBoca, nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
 import { limparSubida, pedirDescida, rotuloDescer, subidaAgora } from "../disco/elevadores"
+import { ChegadasElevador } from "../disco/Elevadores3D"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
@@ -7050,6 +7051,8 @@ function CenaBase({
       </Estatico>
       {/* (disco) a central: a torre de onde saem todas as pistas */}
       {"disco" in M && (M as MundoDisco).torres.map((t, i) => <TorreCentral key={i} c={t} janelas={tex.janelas} />)}
+      {/* (06/11) a chegada dos elevadores dos túneis: a casinha no anel de cada torre da ponta (só perto) */}
+      {"disco" in M && <Seguro nome="elevadores"><ChegadasElevador M={M as MundoDisco} /></Seguro>}
       <points geometry={cidade.aviacao} material={cidade.aviacaoMat} />
       <Estatico>
       <primitive object={cidade.arcos} />

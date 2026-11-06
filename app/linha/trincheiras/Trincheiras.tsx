@@ -56,6 +56,7 @@ import { TRANCA_MOTO, naMoto } from "../estrada/zonas"
 import { SEGUNDOS_CABINE, lembrarVeiculoTunel, rotuloSubir, veiculoTunel } from "../disco/elevadores"
 import { TERROR, marcarTerrorVisto, terrorVisto } from "../disco/terror"
 import { PocoTerror } from "./PocoTerror"
+import { EntradasElevador } from "../disco/Elevadores3D"
 
 const NEVOA = "#1a0f24"
 const NEVOA_LONGE = 340 // a névoa fecha aqui
@@ -487,6 +488,8 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
         <Mundo rodada={rodada} st={st} entrada={entrada} auto={auto} parede={parede} veiculo={veiculo} corrida={corrida} mudouFase={mudouFase} />
         {/* (06/11) o mundo depois: a água nos rios (só com o final feito) */}
         <RioDepois />
+        {/* (06/11) a entrada do elevador modelada em cada torre (disco/Elevadores3D.tsx; só perto) */}
+        <EntradasElevador />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
       </Canvas>}
