@@ -123,6 +123,9 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // a cena pede pra tocar os novos) e a tela de recompensa com um instrumento (a
   // porta do Mubarak abre: o sitar)
   if (parte === "casa.instrumentos") return { ...MEIO, instrumentos: ["djembe", "tambor-agua", "udu", "caxixi", "berimbau", "sitar", "kalimba"], instrumentosVistos: ["djembe", "tambor-agua", "udu", "caxixi", "berimbau"] }
+  // (T49, 06/11) a casa da D-Bee com TODOS os instrumentos ganhos (e já vistos:
+  // a visita livre, toca à vontade e sai pelo "pronto")
+  if (parte === "instrumentos") { const todos = IDS13.map((id) => MISSOES13[id].recompensa.instrumento).filter(Boolean); return { ...MEIO, instrumentos: todos, instrumentosVistos: todos } }
   if (parte === "recompensa.instrumento") return { ...MEIO, missao: "mubarak", passos13: ["mubarak:arte", "mubarak:jogo"] }
   // (vitrine, 02/11) o começo (a oficina, antes de subir): desce pela boca do túnel
   // e vê a corrida com o cadeado; e o bar do subúrbio na carreira, com a sinuca aberta
@@ -151,7 +154,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "grafite", "elevador", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`)]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "grafite", "elevador", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`)]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -198,7 +201,7 @@ export function aplicarParteDeTeste(): boolean {
     localStorage.removeItem("cn-monumentos-cena")
   }
   // (lote D) o que abre direto ao entrar no jogo (page.tsx, abrirAoEntrar)
-  const abrir: Record<string, string> = { elevador: "elevador", "casa.instrumentos": "casa", "recompensa.instrumento": "recompensa", "vitrine.tunel": "tunel", "vitrine.bar": "sinuca" }
+  const abrir: Record<string, string> = { elevador: "elevador", instrumentos: "casa", "casa.instrumentos": "casa", "recompensa.instrumento": "recompensa", "vitrine.tunel": "tunel", "vitrine.bar": "sinuca" }
   if (abrir[parte]) url.searchParams.set("abrir", abrir[parte])
   if (VISITAS[parte]) url.searchParams.set("abrir", `visita:${VISITAS[parte]}`)
   // (T29) o final: começa no sinal (final) ou no momento pedido (final.nove, .chuva, .criador, .quintal)

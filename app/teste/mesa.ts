@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "instrumentos",
+    nome: "Os 11 instrumentos ancestrais na casa da D-Bee",
+    data: "2026-11-06",
+    tarefa: "T49",
+    olhar: "Abre na casa da D-Bee com todos os instrumentos ganhos, cada um no seu lugar no banco e nas prateleiras: toque em cada um (tocar de novo muda a nota). A música do jogo para enquanto você toca e volta no \"pronto\". No outro link, só alguns ganhos: os outros ficam apagados com cadeado e, tocando, a D-Bee diz de que missão vêm. Fechar uma missão agora mostra no notch \"+ o udu · na casa da D-Bee\".",
+    perguntas: [
+      "Os sons (sintetizados, rascunho) servem ou você manda samples?",
+      "A lista (djembê, tambor de água, udu, caxixi, sitar, didgeridoo, berimbau, flauta de bambu, ocarina, handpan, kalimba) e quem dá cada um ficam assim?",
+    ],
+    mais: [{ parte: "casa.instrumentos", nome: "só alguns ganhos (os trancados com cadeado)" }, { parte: "recompensa.instrumento", nome: "fechar a missão do Mubarak (+ o sitar)" }],
+  },
+  {
     parte: "livre",
     nome: "Ojalá saiu: o ♥ salvar abre a faixa de verdade",
     data: "2026-11-06",
