@@ -287,6 +287,14 @@ export function notch(texto: string, cor = "#2fe8ff", opc?: { toque?: () => void
   if (FILA_NOTCH.length > 5) FILA_NOTCH.shift()
   ouvintesNotch.forEach((f) => f())
 }
+// (jogador novo 2) a pedra da trilha presa no notch (gps, pousa, linha, chegou): a ordem
+// é trilha > "?" > mensagem > Agora. Ninguém escreve o nexoTutorial desde a trilha, então
+// a mensagem (vinheta, "abriu", o ensinar) cobria a distância que a pedra apontava.
+// A TrilhaPedras avisa aqui; a mensagem espera e retoma de onde parou (msg.pos)
+let PEDRA_NOTCH = false
+const ouvintesPedra = new Set<() => void>()
+export function pedraNoNotch(v: boolean) { if (PEDRA_NOTCH === v) return; PEDRA_NOTCH = v; ouvintesPedra.forEach((f) => f()) }
+const usePedraNoNotch = () => useSyncExternalStore((f) => { ouvintesPedra.add(f); return () => { ouvintesPedra.delete(f) } }, () => PEDRA_NOTCH, () => false)
 const NOTCH_VELHA = 25000 // ms: mensagem que esperou mais que isso na fila não passa mais
 function useNotch() {
   const [msg, setMsg] = useState<MsgNotch | null>(null)
@@ -484,7 +492,8 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
   const tut = useNexoTutorial()
   const [msg, acabou] = useNotch()
   // o passo do tutorial manda; a mensagem que passa espera ele (ou passa entre um e outro)
-  const passando = msg && !tut && !explicando
+  const pedra = usePedraNoNotch()
+  const passando = msg && !tut && !explicando && !pedra
   const livre = !tut && !passando && !agora && !explicando
   const dica = useDica(livre || expandido)
   const cor = explicando ? "#2fe8ff" : tut ? (tut.ok ? "#5dffa0" : tut.cor ?? "#2fe8ff") : passando ? msg.cor : agora?.cor ?? "#2fe8ff"

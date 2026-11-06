@@ -344,10 +344,14 @@ SUGESTOES_DBEE.push(
 // ── A ESCOLHA: todas as opções que valem agora, sem a última, pesadas pelo
 // que já passou (a que passou menos vem mais), pelo que já fez (feita só volta
 // se repete, mais fraca) e pelo que está perto ──
+export const comecoDaCarreira = (c: Pick<CtxDbee, "fase" | "h">) =>
+  c.fase === "carreira" && !!c.h && (c.h.feitas13 ?? []).filter((id) => !MISSOES13[id]?.prologo).length < 2
 export function escolherDbee(c: CtxDbee, sorteio = Math.random()): OpcaoDbee | null {
   const todas: OpcaoDbee[] = []
   for (const s of SUGESTOES_DBEE) for (const o of s.opcoes(c)) {
     if (o.chave === c.mem.ultima) continue
+    // (jogador novo 2) até a 2ª missão da cidade, só as missões (o próximo passo)
+    if (comecoDaCarreira(c) && !o.chave.startsWith("missao:")) continue
     const fez = feita(c, o.chave)
     if (fez && !o.repete) continue
     let p = o.peso / (1 + (c.mem.n[o.chave] ?? 0))

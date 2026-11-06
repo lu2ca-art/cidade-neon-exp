@@ -31,7 +31,7 @@ import { fonteSom } from "../som"
 import { zonaSomAgora } from "./radioAntiga"
 import { tvAberta } from "./TvHolo"
 import { RUA, type PlacarRua } from "./corridaRua"
-import { TRILHA_NA_TELA } from "./trilhaPedras"
+import { TRILHA_CFG, TRILHA_NA_TELA } from "./trilhaPedras"
 import { CHAO_LUGARES, type HistoriaDisco } from "./historia"
 import type { MissaoId } from "./portas"
 import {
@@ -68,6 +68,12 @@ export interface PropsDbee {
 // ensinar() da Corrida). Pra voltar o "D-Bee: …", é virar DBEE_COM_NOME pra true
 export const DBEE_COM_NOME = false
 export const textoDbee = (o: OpcaoDbee) => (DBEE_COM_NOME ? `D-Bee: ${o.texto}` : o.texto)
+
+// (jogador novo 2) a primeira carreira: até a trilha mostrar o que a 1ª missão abriu
+// (a pedra "liberou"), ela fica calada; entre uma pedra e outra ela sugeria o
+// instrumento novo e os lugares trancados por cima do caminho
+const trilhaSegura = (h: HistoriaDisco | null) =>
+  !!h && h.fase === "carreira" && !!h.holo && TRILHA_CFG.ligada && !(h.tutorial ?? []).includes("liberou")
 
 export function DbeeSugere(props: PropsDbee) {
   const P = useRef(props)
@@ -173,7 +179,7 @@ export function DbeeSugere(props: PropsDbee) {
       const racha = !!p.racha.current && p.racha.current.fase !== "solto" && p.racha.current.fase !== "oferta"
       // pegou uma missão: a marca dela sai (o GPS volta pra missão)
       if (missaoAtiva && st.marca) { if (p.marcaRef.current === st.marca) p.onMarcar(null); st.marca = null; st.chaveMarca = "" }
-      const ocupado = p.ocupado || corrida || racha || !!lerNexoTutorial() || !!TRILHA_NA_TELA.pedra || missaoAtiva || (fase !== "carreira" && fase !== "livre")
+      const ocupado = p.ocupado || corrida || racha || !!lerNexoTutorial() || !!TRILHA_NA_TELA.pedra || trilhaSegura(h) || missaoAtiva || (fase !== "carreira" && fase !== "livre")
       if (ocupado) { st.livreDesde = 0; st.ocupadoAntes = true; st.depois = 0; return }
       if (!st.livreDesde) st.livreDesde = agora
       if (st.ocupadoAntes) { st.ocupadoAntes = false; st.depois = agora + DBEE_CFG.depoisDeAlgoMs }

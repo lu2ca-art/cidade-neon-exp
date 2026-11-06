@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "dunas",
+    nome: "O começo de um jogador novo com o que entrou hoje: nada do novo por cima da trilha",
+    data: "2026-11-06",
+    tarefa: "jogador-novo2",
+    olhar: "Das dunas até a 2ª missão. Nas dunas, com o disco tocando, o botão do violão com cadeado não aparece mais (ele dizia \"faça a missão da D-Bee\" no meio dela). Com uma pedra presa no notch (\"ícone no meio: acelera\", \"pousa numa pista acesa\", \"segue a linha até lá\", \"chegou\"), a vinheta da Xenom, o \"abriu\" e as falas esperam a pedra sair e passam depois. Na oficina, passando pela galeria, pelo ginásio ou pelo estúdio, o \"entrar\" trancado não aparece (os abertos, brechó, discos, flores, palco, sim); com uma pedra na tela nenhum \"entrar\" aparece. Na rádio do bar e da oficina o locutor não fala dos lugares do chão. Na carreira, a D-Bee fica calada até a pedra \"abriu coisa nova: olha\" e, até a 2ª missão da cidade, só sugere missões.",
+    perguntas: ["Alguma coisa nova ainda aparece por cima do caminho?", "No prólogo, esconder o \"entrar\" dos trancados está certo, ou prefere ver o cadeado já ali?", "A D-Bee só com missões até a 2ª está bom, ou muito calada?"],
+    mais: [{ parte: "oficina.catar", nome: "catando as peças" }, { parte: "subir", nome: "subindo pra cidade" }],
+  },
+  {
     parte: "carreira.meio",
     nome: "A D-Bee e a rádio Xenom apontam o que é novo: os lugares do chão, o instrumento, a tinta, o trem, o violão",
     data: "2026-11-06",

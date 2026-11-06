@@ -233,7 +233,8 @@ function vinhetaXenom(n: number): VinhetaRadio {
   // no lugar do clima, alternando (um sim, um não), pra não virar propaganda
   const portas = contexto.h?.portas ?? []
   const aberto = (x: VinhetaXenom) => !x.porta || portas.includes(x.porta)
-  const lugares = VINHETAS_XENOM.filter((x) => x.lugar && aberto(x) && (!x.missao || cabe(x)))
+  // (jogador novo 2) só na carreira e no livre: no bar do prólogo os lugares do chão ainda não abrem
+  const lugares = fase !== "carreira" && fase !== "livre" ? [] : VINHETAS_XENOM.filter((x) => x.lugar && aberto(x) && (!x.missao || cabe(x)))
   const clima = VINHETAS_XENOM.filter((x) => !x.lugar && ((!x.missao && !x.fase) || (x.quando === "feita" && cabe(x))))
   const resto = lugares.length && (n >> 1) % 2 === 0 ? lugares : clima
   const pool = ganchos.length && n % 3 !== 0 ? ganchos.slice(0, 4) : resto

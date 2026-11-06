@@ -105,7 +105,7 @@ import { vib } from "./som-carro"
 import { RecompensaHolo } from "./disco/TutorialHolo"
 import { CONFIG_TUTORIAL, faltaRecompensaHolo } from "./disco/tutorialConf"
 import { TrilhaPedras } from "./disco/TrilhaPedrasTela"
-import { trilhaEnsina } from "./disco/trilhaPedras"
+import { TRILHA_NA_TELA, trilhaEnsina } from "./disco/trilhaPedras"
 import { Letra } from "./disco/Letra"
 import { letraDe } from "./disco/letras"
 import { Palcos } from "./disco/MenuPalcos"
@@ -2025,7 +2025,10 @@ export default function LinhaPage() {
     // (06/11) os outros lugares do chão (o bar, a oficina, os túneis, a casa, a torre):
     // chegar já é entrar. Visitado uma vez, fica (comVisitado não muda nada se já tem)
     if (idA && !ehAberto(idA) && idA in CHAO_LUGARES && h.fase !== "minhoca") marcarVisitaDbee(idA)
-    if (ehAberto(idA) && idA !== alvoChao && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras && !janelaChao && Date.now() - barFechou.current > 8000) {
+    // (jogador novo 2) segura com uma pedra da trilha na tela, e no prólogo nos trancados
+    // (o cadeado pedia uma missão que ainda nem existe pra ele: confundia o próximo passo)
+    const seguraChao = !!TRILHA_NA_TELA.pedra || (h.fase !== "carreira" && h.fase !== "livre" && ehAberto(idA) && !!trancaChao(idA))
+    if (ehAberto(idA) && idA !== alvoChao && !seguraChao && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras && !janelaChao && Date.now() - barFechou.current > 8000) {
       setPortaChao(idA)
       clearTimeout(portaChaoT.current)
       portaChaoT.current = setTimeout(() => setPortaChao(null), 8000)
@@ -2670,7 +2673,8 @@ export default function LinhaPage() {
         {/* (T64, lote D) a fuga do metrô: no lugar do mundo (o canvas dele sai, emSala) */}
         {noMetro && <MetroFuga historia={h13} onPasso={fimMetroPasso} onSair={sairDoMetro} />}
         {/* (T64, lote D) o violão: o botão aparece com o disco, a rádio ou a faixa da rua tocando; sem o violão, com o cadeado e o que libera */}
-        {D && tela.t === "corrida" && <ViolaoMundo onTocou={tocouViolao} temViolao={!!save.violao} tranca={HIST ? (feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : facaMissao("dbee", "tocar")) : null} escondido={emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
+        {D && tela.t === "corrida" && <ViolaoMundo onTocou={tocouViolao} temViolao={!!save.violao} // (jogador novo 2) antes da D-Bee dar o violão (as dunas, no meio da trilha) o cadeado não aparece: dizia "faça a missão da D-Bee" no meio dela
+          tranca={HIST && feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : null} escondido={(HIST && faltaRecompensaHolo(hist)) || emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}
@@ -2797,7 +2801,7 @@ export default function LinhaPage() {
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
-        {portaChao && tela.t === "corrida" && !cena && !janelaChao && (() => {
+        {portaChao && tela.t === "corrida" && !cena && !cinema && !janelaChao && !introMissao && !basquete && !oficinaTela && !recompensa && !sinucaBar && !trincheiras && (() => {
           const t = trancaChao(portaChao)
           return <button type="button" data-info="entrar-lugar" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: CHAO_LUGARES[portaChao].cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrarNoChao(portaChao)}>{t && <Cadeado />}entrar · {ENTRADAS[portaChao].nome}{t ? " · ver" : ""}</button>
         })()}
