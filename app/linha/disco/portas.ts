@@ -201,7 +201,7 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     id: "tuneis", n: 4, onde: "suburbio", quem: "os túneis", cor: "#9b8cff", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "tuneis" }, pedido: "embaixo das raízes tem corrida", apresenta: "a corrida de BMX, patins ou skate nas trincheiras",
     // (bloco 1 · A6) o grafite nas paredes das trincheiras (disco/Grafite.tsx, o C3).
-    // Fica "em breve" até CONFIG13.grafiteNoMapa ligar (o lote D, com o C3 pronto)
+    // Joga no mapa com CONFIG13.grafiteNoMapa (ligado no lote D, 31/10)
     arte: p("o grafite: um gesto assina o desenho", "decidido", { como: { t: "grafite" }, tarefa: "T12", existe: "página de teste do T12" }),
     // (T57, T63) a boca do túnel no subúrbio leva às trincheiras (dentro do jogo); voltar com a volta feita conta
     jogo: p("a corrida de BMX, patins ou skate", "decidido", { como: { t: "trincheiras" }, tarefa: "T13", existe: "dentro do jogo, pela boca do túnel (T63)" }),

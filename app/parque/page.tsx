@@ -123,8 +123,8 @@ export default function Parque() {
         <button type="button" className="pq-card is-montanha" onClick={() => { ac(); setUltima(null); setTela("montanha") }}>
           <b>montanha-russa</b><small>{rec.voltas} voltas · recorde: {Math.round(rec.velMax * 3.6)} km/h</small><em>2 neon · braços pra cima na descida: +4</em>
         </button>
-        <button type="button" className="pq-card is-trancado" disabled><b>roda-gigante</b><small>em breve</small></button>
-        <button type="button" className="pq-card is-trancado" disabled><b>fliperama</b><small>em breve</small></button>
+        <button type="button" className="pq-card" onClick={() => { ac(); setTela("passeio"); setNaRoda(true) }}><b>roda-gigante</b><small>dar uma volta lá no alto</small></button>
+        <button type="button" className="pq-card" onClick={() => { ac(); router.push("/fliperama") }}><b>fliperama</b><small>as máquinas</small></button>
       </section>
     </div>
   )

@@ -392,7 +392,7 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
       if (torreRef.current) {
         const perto = c.fase === "livre" ? TORRES.find((t) => Math.hypot(s.x - t.torre.x, s.z - t.torre.z) < 16) : undefined
         const naPorta = c.fase === "livre" && Math.hypot(s.x - PORTA.c.x, s.z - PORTA.c.z) < 18
-        torreRef.current.textContent = perto ? `${NOME_SALAO[perto.i]} · a porta sobe pra rua (em breve)` : naPorta ? "A PORTA · por aqui se sobe pro subúrbio (a Kombi espera lá fora)" : ""
+        torreRef.current.textContent = perto ? `${NOME_SALAO[perto.i]} · fechada por cima: a saída é A PORTA (o quadradinho laranja no mapinha)` : naPorta ? "A PORTA · por aqui se sobe pro subúrbio (a Kombi espera lá fora)" : ""
       }
       if (jatoRef.current) jatoRef.current.style.transform = `scaleX(${Math.max(0, 1 - s.jatoT / 2.5)})`
       // a moto: o nariz (no ar, pra acertar o pouso: verde = alinhado com o chão embaixo)
