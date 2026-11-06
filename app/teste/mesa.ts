@@ -65,7 +65,7 @@ export const MESA: Cartao[] = [
     nome: "O subúrbio cheio: ginásio, galeria, discos, batida, flores e brechó no chão",
     data: "2026-11-06",
     tarefa: "subúrbio",
-    olhar: "Lá embaixo, no subúrbio, olhe o mapa: seis lugares novos (letreiro em neon, cada um com um detalhe: o arco do ginásio, o vinil gigante, as caixas de som, os quadros, os canteiros, a arara de roupa). Chegue perto de um: aparece \"entrar\"; a página abre por cima do jogo e, ao sair, você volta onde estava. O palco e a quadra também ganharam o \"entrar\". O trancado mostra o cadeado e o que libera.",
+    olhar: "Lá embaixo, no subúrbio, olhe o mapa: seis lugares novos (letreiro em neon, cada um com um detalhe: o arco do ginásio, o vinil gigante, as caixas de som, os quadros, os canteiros, a arara de roupa). Chegue perto de um: aparece \"entrar\"; a página abre por cima do jogo e, ao sair, você volta onde estava. O palco e a quadra também ganharam o \"entrar\". O trancado mostra o cadeado e o que libera. Agora os seis são modelados no Blender: galpão em arco com pneus, vitrine rachada com quadros, contêineres com o vinil gigante, ônibus com caixas de som, estufa de garrafa PET e barraca com araras e manequins.",
     perguntas: ["Os lugares estão longe o bastante uns dos outros e fáceis de achar?", "O brechó e as flores abrindo a loja e o jardim do celular servem por enquanto?", "Alguma fachada que não parece o que é?"],
     mais: [{ parte: "oficina", nome: "no começo (alguns trancados)" }],
   },

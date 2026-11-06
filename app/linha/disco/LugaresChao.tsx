@@ -12,7 +12,8 @@
 // reciclagem fica espalhado no lixão, pra pegar passando. Tudo em poucos
 // desenhos (geometrias juntadas, sem luz própria).
 
-import { useMemo, useSyncExternalStore } from "react"
+import { useGLTF } from "@react-three/drei"
+import { Component, Suspense, useMemo, useSyncExternalStore, type ReactNode } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { BOCA, QUADRA, geoBoca } from "../estrada/chao"
@@ -387,26 +388,49 @@ function texAtlas(ids: readonly Aberto[]) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
   return t
 }
-function LugaresAbertos({ chao }: { chao: (x: number, z: number) => number }) {
+// onde cada um pousa: no ponto mais baixo do pé (as dunas inclinam), a porta
+// virada pro meio do subúrbio
+function pouso(id: Aberto, chao: (x: number, z: number) => number) {
+  const l = CHAO_LUGARES[id]
+  let y = Infinity
+  for (const [a, b] of [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) y = Math.min(y, chao(l.x + a * 7, l.z + b * 7))
+  return { x: l.x, y, z: l.z, rot: Math.atan2(SUBURBIO.x - l.x, SUBURBIO.z - l.z) }
+}
+// leva uma peça do lugar (local) pro mundo: gira em y e desloca
+function noMundo(q: Peca3, x: number, y: number, z: number, rot: number): Peca3 {
+  const [px, py, pz] = q.p ?? [0, 0, 0], [rx, ry, rz] = q.r ?? [0, 0, 0]
+  _o.position.set(px, py, pz); _o.rotation.set(rx, ry, rz); _o.updateMatrix()
+  const m = new THREE.Matrix4().makeRotationY(rot).setPosition(x, y, z).multiply(_o.matrix)
+  q.g.applyMatrix4(m)
+  return { g: q.g, cor: q.cor }
+}
+// o letreiro: a fileira i do atlas
+function placaLetreiro(i: number) {
+  const n = CHAO_ABERTOS.length
+  const pl = new THREE.PlaneGeometry(7, 1.75), uv = pl.attributes.uv
+  for (let k = 0; k < uv.count; k++) uv.setY(k, (n - 1 - i + uv.getY(k)) / n)
+  return pl
+}
+// os três materiais, os mesmos pras caixas e pro modelo (criados uma vez só)
+let MATS_ABERTOS: { solido: THREE.Material; neon: THREE.Material; letreiro: THREE.Material } | null = null
+function matsAbertos() {
+  return (MATS_ABERTOS ??= {
+    solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, emissive: "#16121e", emissiveIntensity: 0.6 }),
+    neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+    letreiro: new THREE.MeshBasicMaterial({ map: texAtlas(CHAO_ABERTOS), toneMapped: false }),
+  })
+}
+
+// as caixas de antes (a reserva enquanto o modelo carrega, ou se ele falhar)
+function LugaresCaixas({ chao }: { chao: (x: number, z: number) => number }) {
   const d = useMemo(() => {
     const solido: Peca3[] = [], neon: Peca3[] = [], letreiros: Peca3[] = []
-    const n = CHAO_ABERTOS.length
-    const no = (q: Peca3, x: number, y: number, z: number, rot: number): Peca3 => {
-      // leva a peça do lugar (local) pro mundo: gira em y e desloca
-      const [px, py, pz] = q.p ?? [0, 0, 0], [rx, ry, rz] = q.r ?? [0, 0, 0]
-      _o.position.set(px, py, pz); _o.rotation.set(rx, ry, rz); _o.updateMatrix()
-      const m = new THREE.Matrix4().makeRotationY(rot).setPosition(x, y, z).multiply(_o.matrix)
-      q.g.applyMatrix4(m)
-      return { g: q.g, cor: q.cor }
-    }
     CHAO_ABERTOS.forEach((id, i) => {
       const l = CHAO_LUGARES[id]
       const larg = id === "ginasio" ? 12 : 11
-      // assenta no ponto mais baixo do pé (as dunas inclinam) e enterra a base
-      let y = Infinity
-      for (const [a, b] of [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) y = Math.min(y, chao(l.x + a * 7, l.z + b * 7))
-      y -= 0.3
-      const rot = Math.atan2(SUBURBIO.x - l.x, SUBURBIO.z - l.z)
+      // assenta no ponto mais baixo do pé e enterra a base
+      const { x, y: y0, z, rot } = pouso(id, chao)
+      const y = y0 - 0.3
       const alto = id === "ginasio" || id === "discos" ? 6 : 5
       const extra = detalhe(id, l.cor)
       const loc: { s: Peca3[]; n: Peca3[] } = {
@@ -422,28 +446,114 @@ function LugaresAbertos({ chao }: { chao: (x: number, z: number) => number }) {
           ...extra.neon,
         ],
       }
-      for (const q of loc.s) solido.push(no(q, l.x, y, l.z, rot))
-      for (const q of loc.n) neon.push(no(q, l.x, y, l.z, rot))
-      // o letreiro: a fileira i do atlas
-      const pl = new THREE.PlaneGeometry(7, 1.75), uv = pl.attributes.uv
-      for (let k = 0; k < uv.count; k++) uv.setY(k, (n - 1 - i + uv.getY(k)) / n)
-      letreiros.push(no({ g: pl, p: [0, alto - 1.3, 4.58] }, l.x, y, l.z, rot))
+      for (const q of loc.s) solido.push(noMundo(q, x, y, z, rot))
+      for (const q of loc.n) neon.push(noMundo(q, x, y, z, rot))
+      letreiros.push(noMundo({ g: placaLetreiro(i), p: [0, alto - 1.3, 4.58] }, x, y, z, rot))
     })
-    return {
-      solido: juntar(solido), neon: juntar(neon), letreiros: juntar(letreiros, true),
-      mats: {
-        solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, emissive: "#16121e", emissiveIntensity: 0.6 }),
-        neon: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
-        letreiro: new THREE.MeshBasicMaterial({ map: texAtlas(CHAO_ABERTOS), toneMapped: false }),
-      },
-    }
+    return { solido: juntar(solido), neon: juntar(neon), letreiros: juntar(letreiros, true) }
   }, [chao])
+  const mats = matsAbertos()
   return (
     <>
-      <mesh geometry={d.solido} material={d.mats.solido} name="lugares-abertos" />
-      <mesh geometry={d.neon} material={d.mats.neon} />
-      <mesh geometry={d.letreiros} material={d.mats.letreiro} />
+      <mesh geometry={d.solido} material={mats.solido} name="lugares-abertos" />
+      <mesh geometry={d.neon} material={mats.neon} />
+      <mesh geometry={d.letreiros} material={mats.letreiro} />
     </>
+  )
+}
+
+// ── (06/11) OS SEIS MODELADOS NO BLENDER (blender/scripts/lugares_chao.py,
+// public/models/lugares-chao.glb): o ginásio é um galpão de chapa em arco com a
+// grade, os pneus e o saco de pancada; a galeria, uma vitrine de vidro rachado
+// com quadros e lona; os discos, contêineres com o vinil gigante e caixotes; o
+// estúdio da batida, um ônibus velho com caixas de som empilhadas; as flores,
+// uma estufa de garrafa PET com canteiros; o brechó, uma barraca de feira com
+// araras e manequins. Um nó por lugar (o id), origem no chão no centro da
+// frente; em cada nó três malhas: _solido (cor no vértice com a sombra assada),
+// _luz (o que brilha com cor fixa) e _neon (sem cor: aqui vira a cor do lugar).
+// Tudo é levado pro mundo UMA vez e juntado nos mesmos 3 desenhos das caixas
+// (sólido, brilho, letreiros), com os mesmos materiais; nada por quadro, sem
+// luz nova. A chegada (22 m), o cadeado e o resto continuam os de sempre (a
+// Corrida e o mapa não mudam). Se o .glb não carregar, ficam as caixas.
+const URL_LUGARES = "/models/lugares-chao.glb"
+const FRENTE = 4.5 // a frente da caixa de antes (o prédio ocupa os mesmos 9 m pra trás)
+// onde vai o letreiro (o texto do atlas) em cada modelo: [altura, na frente da origem], m
+const LETREIRO_GLB: Record<Aberto, [number, number]> = {
+  ginasio: [5.15, 0.55], galeria: [4.25, 0.07], discos: [3.95, -0.33],
+  batida: [4.4, -0.4], flores: [3.2, -0.07], brecho: [4.3, 0.2],
+}
+// copia a malha do glb (quantizada pelo meshopt) em Float32 e leva pro mundo
+function emFloat(g: THREE.BufferGeometry, m: THREE.Matrix4, cor?: THREE.Color) {
+  const pos = g.attributes.position, nor = g.attributes.normal, col = g.attributes.color
+  const n = pos.count
+  const P = new Float32Array(n * 3), N = new Float32Array(n * 3), C = new Float32Array(n * 3)
+  for (let i = 0; i < n; i++) {
+    P[i * 3] = pos.getX(i); P[i * 3 + 1] = pos.getY(i); P[i * 3 + 2] = pos.getZ(i)
+    if (nor) { N[i * 3] = nor.getX(i); N[i * 3 + 1] = nor.getY(i); N[i * 3 + 2] = nor.getZ(i) }
+    if (cor) { C[i * 3] = cor.r; C[i * 3 + 1] = cor.g; C[i * 3 + 2] = cor.b }
+    else if (col) { C[i * 3] = col.getX(i); C[i * 3 + 1] = col.getY(i); C[i * 3 + 2] = col.getZ(i) }
+    else C.fill(1, i * 3, i * 3 + 3)
+  }
+  const o = new THREE.BufferGeometry()
+  o.setAttribute("position", new THREE.BufferAttribute(P, 3))
+  o.setAttribute("normal", new THREE.BufferAttribute(N, 3))
+  o.setAttribute("color", new THREE.BufferAttribute(C, 3))
+  o.setIndex(g.index ? Array.from(g.index.array as ArrayLike<number>) : Array.from({ length: n }, (_, i) => i))
+  if (!nor) o.computeVertexNormals()
+  o.applyMatrix4(m)
+  return o
+}
+function LugaresGlb({ chao }: { chao: (x: number, z: number) => number }) {
+  const { nodes } = useGLTF(URL_LUGARES) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const d = useMemo(() => {
+    const solido: THREE.BufferGeometry[] = [], brilho: THREE.BufferGeometry[] = [], letreiros: Peca3[] = []
+    const inv = new THREE.Matrix4(), rel = new THREE.Matrix4()
+    CHAO_ABERTOS.forEach((id, i) => {
+      const no = nodes[id]
+      if (!no) throw new Error(`lugares-chao.glb sem o nó ${id}`)
+      const { x, y: y0, z, rot } = pouso(id, chao)
+      const y = y0 - 0.05
+      const base = new THREE.Matrix4().makeRotationY(rot).setPosition(x, y, z).multiply(new THREE.Matrix4().makeTranslation(0, 0, FRENTE))
+      const cor = new THREE.Color(CHAO_LUGARES[id].cor)
+      no.updateWorldMatrix(true, true)
+      inv.copy(no.matrixWorld).invert()
+      no.traverse((o) => {
+        const m = o as THREE.Mesh
+        if (!m.isMesh) return
+        rel.multiplyMatrices(inv, m.matrixWorld)
+        const mm = base.clone().multiply(rel)
+        if (m.name.endsWith("_solido")) solido.push(emFloat(m.geometry, mm))
+        else brilho.push(emFloat(m.geometry, mm, m.name.endsWith("_neon") ? cor : undefined))
+      })
+      const [ly, lz] = LETREIRO_GLB[id]
+      letreiros.push(noMundo({ g: placaLetreiro(i), p: [0, ly, FRENTE + lz] }, x, y, z, rot))
+    })
+    const s = mergeGeometries(solido, false), b = mergeGeometries(brilho, false)
+    if (!s || !b) throw new Error("lugares-chao.glb: não deu pra juntar")
+    for (const g of [...solido, ...brilho]) g.dispose()
+    return { solido: s, brilho: b, letreiros: juntar(letreiros, true) }
+  }, [nodes, chao])
+  const mats = matsAbertos()
+  return (
+    <>
+      <mesh geometry={d.solido} material={mats.solido} name="lugares-abertos" />
+      <mesh geometry={d.brilho} material={mats.neon} />
+      <mesh geometry={d.letreiros} material={mats.letreiro} />
+    </>
+  )
+}
+// se o .glb falhar, cai nas caixas
+class SeFalhar extends Component<{ reserva: ReactNode; children: ReactNode }, { erro: boolean }> {
+  state = { erro: false }
+  static getDerivedStateFromError() { return { erro: true } }
+  render() { return this.state.erro ? this.props.reserva : this.props.children }
+}
+function LugaresAbertos({ chao }: { chao: (x: number, z: number) => number }) {
+  const reserva = <LugaresCaixas chao={chao} />
+  return (
+    <SeFalhar reserva={reserva}>
+      <Suspense fallback={reserva}><LugaresGlb chao={chao} /></Suspense>
+    </SeFalhar>
   )
 }
 

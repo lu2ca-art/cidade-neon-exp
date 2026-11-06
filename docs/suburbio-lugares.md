@@ -34,6 +34,20 @@ Desempenho: os seis lugares novos são 3 desenhos juntos (paredes com cor no
 vértice, neon sem luz, letreiros num atlas só), montados uma vez dentro do
 `<Perto>` dos lugares do chão (600 m); nada por quadro, sem luz nova.
 
+Modelados no Blender (06/11): as seis fachadas viraram construções de sucata com
+a cara do que são (`blender/scripts/lugares_chao.py`, foto em
+`blender/scripts/lugares_chao_foto.py` → `docs/blender/lugares-chao.png`):
+ginásio = galpão de chapa em arco com grade, pneus e saco de pancada; galeria =
+vitrine de vidro rachado com quadros e lona; discos = contêineres com o vinil
+gigante e caixotes; batida = ônibus velho com caixas de som empilhadas; flores =
+estufa de garrafa PET com canteiros; brechó = barraca de feira com araras e
+manequins. `public/models/lugares-chao.glb`: 22 mil triângulos, 289 KB (meshopt),
+um nó por lugar (origem no chão no centro da frente), três malhas em cada
+(`_solido` com a AO assada no vértice, `_luz` com cor fixa, `_neon` que o jogo
+pinta com a cor do lugar). O LugaresChao leva tudo pro mundo uma vez e junta nos
+mesmos 3 desenhos e materiais de antes; o letreiro (atlas), a chegada e o cadeado
+são os mesmos. Se o .glb falhar (ou enquanto carrega), ficam as caixas.
+
 Em aberto (do dono): a /nectar é a leitura (não são as flores); a loja vende
 discos por gênero (não há ainda "discos de outros artistas e de domínio
 público" de verdade); fliperama segue só na cidade.
