@@ -25,6 +25,19 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.nizzy",
+    nome: "O parque da Nizzy (Rollercoaster) modelado no Blender",
+    data: "2026-11-06",
+    tarefa: "parque",
+    olhar: "O parque da faixa Rollercoaster, de noite, agora modelado no Blender: o carrinho de 2 lugares com a barra de segurança amarela e o neon nas bordas (você e a Nizzy dentro), os pilares de treliça com a sela embaixo do trilho e os dormentes novos, a roda-gigante com o aro de luzes, os raios ciano, os cavaletes de treliça e as 16 cabines que agora ficam em pé enquanto a roda gira, e a estação com o letreiro ROLLERCOASTER, o portão com o arco de lâmpadas, as catracas e a bilheteria. O trilho, a volta, a câmera e a roda girando são os mesmos. A foto: docs/blender/parque.png.",
+    perguntas: [
+      "O parque tem cara de parque à noite (o portão, a roda, o carrinho)?",
+      "O carrinho na volta e as cabines em pé na roda ficaram certos?",
+      "Ficou leve no iPhone perto do parque?",
+    ],
+    mais: [{ parte: "missao.rollercoaster", nome: "a rua Rollercoaster" }],
+  },
+  {
     parte: "missao.ella.casa",
     nome: "A casa da Ella modelada no Blender: o filme da planta, a galeria e pintar",
     data: "2026-11-06",
