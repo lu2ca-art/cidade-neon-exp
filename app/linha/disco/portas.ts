@@ -240,8 +240,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   lu2ca: {
     id: "lu2ca", n: 8, onde: "cidade", quem: "LU2CA", cor: "#e0ff4f", faixa: "nectar", faixaSituacao: "decidido",
     lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar a CHUVA ao vivo no Guitar Driver",
-    // (T19, aprovada 30/10) escrever a letra (disco/letras.ts)
-    arte: p("escrever a letra", "decidido", { como: { t: "letra", faixa: "chuva" }, tarefa: "T19" }),
+    // (08/11) sem o jogo de escrever a letra no ep. 9 até o dono escrever os versos da CHUVA: chegar no palco já conta
+    arte: p("chegar no palco", "decidido", { como: { t: "chegar" }, tarefa: "T19" }),
     jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "chuva" }, tarefa: "T19" }),
     abre: ["shows-live"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.lu2ca, instrumento: "berimbau" }, requer: ["oficina"],
   },

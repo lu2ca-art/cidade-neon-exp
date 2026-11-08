@@ -41,20 +41,6 @@ export const LETRAS: Partial<Record<PistaId, ConfigLetra>> = {
     minimo: 4,
     maxLetras: 48,
   },
-  // (08/11) a letra do ep. 9, o show da CHUVA (RASCUNHO: o LU2CA reescreve)
-  chuva: {
-    titulo: "CHUVA",
-    mote: "perdeu a Kombi. o palco é o que sobrou. escreve o que você vai cantar",
-    versos: [
-      { deixa: "começa", opcoes: ["levaram a estrada e deixaram o céu", "a água volta pra quem soube esperar", "eu corri demais e fiquei sem chão"] },
-      { deixa: "e então", opcoes: ["cada gota é um aviso que eu ouvi tarde", "o metrô me levou o que eu mais tocava", "a cidade acende e eu sigo no escuro"] },
-      { deixa: "vira", opcoes: ["se a chuva vem, eu canto debaixo dela", "quem perde o carro aprende a andar", "a água lava o que o neon não quis ver"] },
-      { deixa: "fecha", opcoes: ["e o deserto também vai florir", "hoje o céu inteiro canta comigo", "a gente cai, mas a chuva é de todos"] },
-    ],
-    livre: true,
-    minimo: 4,
-    maxLetras: 48,
-  },
 }
 
 export const letraDe = (faixa: PistaId | null | undefined): ConfigLetra | null => (faixa ? LETRAS[faixa] ?? null : null)
