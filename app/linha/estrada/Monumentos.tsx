@@ -14,13 +14,19 @@
 //     pisca, uma onda de luz se abre) e pedem uma cena (ganchoCena.ts). A cena
 //     de verdade, com câmera e personagens, é do T70; aqui é só o gancho.
 //     Quem já viu o nascimento não vê de novo (localStorage).
+//   - (08/11, o dono: "esses monumentos nao sao da cidade, sim do holo") tudo
+//     aqui (monumento, halo, facho, onda) só aparece com o holo aberto; fechado,
+//     o céu fica limpo. A cena é pedida do mesmo jeito, e o nascimento espera o
+//     holo abrir pra acontecer na frente de quem olha.
 // As formas são PROVISÓRIAS (regra 10: os modelos de verdade vêm do Tripo 3D):
 // cada ato tem a sua família de formas, uma por música do ato.
 // (desempenho) por monumento visível: um contorno (as três cascas numa malha
-// só), o halo e o facho. Só os abertos e os feitos existem na cena.
+// só), o halo e o facho. Só os abertos e os feitos existem na cena. O holo é lido
+// de um ref no quadro (o mesmo do Corrida): trocar não re-renderiza nada, e fechado
+// o quadro para na primeira linha.
 
 import { useFrame } from "@react-three/fiber"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, type RefObject } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import type { EstacaoId } from "../data"
@@ -65,7 +71,7 @@ const suave = (t: number) => { const k = Math.min(1, Math.max(0, t)); return k *
 // cresce passando um pouco do tamanho e volta (o "pop")
 const pop = (t: number) => { const k = Math.min(1, Math.max(0, t)), c = 1.70158; return 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2 }
 
-export function Monumentos({ M, luz, objetos = [] }: { M: MundoDisco; luz: Record<string, Luz> | null; objetos?: EstacaoId[] }) {
+export function Monumentos({ M, luz, objetos = [], holo }: { M: MundoDisco; luz: Record<string, Luz> | null; objetos?: EstacaoId[]; holo: RefObject<boolean> }) {
   const montados = useMemo(() => M.pistas.map((p) => {
     const o = M.onde?.(`missao:${p.nome}`) ?? { via: p.ida, u: M.vias[p.ida].L * 0.55 }
     const V = M.vias[o.via], i = Math.max(0, Math.min(V.n - 1, Math.round(o.u / 2)))
@@ -80,6 +86,7 @@ export function Monumentos({ M, luz, objetos = [] }: { M: MundoDisco; luz: Recor
   const grupos = useRef<(THREE.Group | null)[]>([])
   const fachos = useRef<(THREE.Mesh | null)[]>([])
   const onda = useRef<THREE.Mesh>(null)
+  const raiz = useRef<THREE.Group>(null)
   // os nascimentos: quando cada um começa (performance.now em s)
   const nasce = useRef(new Map<string, number>())
   // ── quem nasce: as 3 primeiras músicas feitas, na ordem, se ainda não viu ──
@@ -101,6 +108,12 @@ export function Monumentos({ M, luz, objetos = [] }: { M: MundoDisco; luz: Recor
     gravarVistas(vistas)
   }, [feitasOrdem, montados])
   useFrame(({ clock }, dt) => {
+    if (raiz.current) raiz.current.visible = holo.current
+    if (!holo.current) {
+      // holo fechado: o relógio dos nascimentos para (ele nasce quando o holo abrir)
+      for (const [nome, t0] of nasce.current) nasce.current.set(nome, t0 + dt)
+      return
+    }
     const t = clock.elapsedTime, agora = performance.now() / 1000
     let ondaK = -1, ondaM: (typeof montados)[number] | null = null
     for (let k = 0; k < montados.length; k++) {
@@ -148,7 +161,7 @@ export function Monumentos({ M, luz, objetos = [] }: { M: MundoDisco; luz: Recor
     }
   })
   return (
-    <group>
+    <group ref={raiz} visible={false}>
       {montados.map((m, k) => (
         <group key={m.nome}>
           <group ref={(g) => { grupos.current[k] = g }} position={[m.x, m.y, m.z]} visible={false}>

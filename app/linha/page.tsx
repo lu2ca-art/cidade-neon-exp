@@ -586,10 +586,9 @@ export default function LinhaPage() {
     if (ehDoLugar(id, player.src, save.objetos)) return player.tocar(player.src!, () => proxRadio.current(id))
     const p = proxima(id, save.objetos, { nome: save.nome, objetos: save.objetos, carregando: null })
     if (!p) return
-    // o locutor (as vinhetas da Xenom, a Cidade Neon): legenda curta no display da rádio e no notch
+    // o locutor (as vinhetas da Xenom, a Cidade Neon): legenda curta só no display da rádio
     if (D && p.vinheta) {
       avisarRadio(p.vinheta.de, p.vinheta.texto, 5000)
-      notch(p.vinheta.texto, p.vinheta.cor)
       if (p.vinheta.audio) voz.tocar("vinheta-radio", p.vinheta.audio)
     }
     player.tocar(p.faixa.src, () => proxRadio.current(D ? radioFreq.get() : id), 1, entrada ? 1.2 : 0)

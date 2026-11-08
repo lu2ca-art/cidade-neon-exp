@@ -691,7 +691,7 @@ export function tocarOuNoGesto(el: HTMLAudioElement, ainda: () => boolean) {
 }
 
 // (começo novo, 05/11) uma cena, peça ou sala aberta (a página marca): a rádio troca de
-// faixa sem o chiado do dial e sem a vinheta no notch (a vinheta é pulada)
+// faixa sem o chiado do dial e sem a vinheta na rádio (a vinheta é pulada)
 export const somCena = { aberta: false }
 
 class Player {

@@ -2,7 +2,7 @@
 // subúrbio fala do que acontece lá e serve de gancho pras missões de lá").
 //
 // O locutor da Xenom fala entre uma música e outra. Ainda sem voz: a fala passa
-// como legenda curta no display da rádio (holo) e no notch, ~5 s. Quando houver a
+// como legenda curta só no display da rádio (holo), ~5 s. Quando houver a
 // voz gravada, é só pôr o arquivo em `audio` (ex.: "/audio/vinhetas/xenom-mubarak-1.mp3"):
 // o jogo toca a voz por cima (a música abaixa sozinha) e a legenda continua.
 //

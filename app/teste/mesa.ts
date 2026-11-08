@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "torre",
+    nome: "Monumentos só no holo, entradas da rotatória e vinhetas fora do notch",
+    data: "2026-11-08",
+    tarefa: "T61",
+    olhar: "Abre chegando na rotatória, com o holo ligado: os monumentos aparecem no céu, com o facho até a pista. Desligue o holo no ícone dos óculos: o céu fica limpo, sem monumento nem facho. Se desligar antes de um monumento nascer, ele nasce quando você ligar de novo. Nas entradas da rotatória fica só o portal com o nome em cima, sem coluna de luz, e a linha da entrada seguinte vem na 2ª faixa contando da direita. Deixe a rádio tocar: a fala da Xenom e da Cidade Neon passa só no display da rádio, e o notch fica para as outras mensagens.",
+    perguntas: ["Com o holo ligado, o monumento ajuda a achar a missão?", "O monumento deve nascer quando você abre o holo, ou pode nascer sem ninguém ver?", "Nos monumentos das missões já feitas: ficam no holo, ou só o da missão ativa?"],
+    mais: [{ parte: "torre.ponta", nome: "numa torre da ponta (3 saídas)" }],
+  },
+  {
     parte: "vitrine.beco",
     nome: "O beco, a casa escondida da Ella e o posto modelados no Blender",
     data: "2026-11-06",
