@@ -40,11 +40,13 @@ function discoDa(parte: string): Record<string, unknown> | null {
   const D_FEITA = ["dbee:arte", "dbee:jogo"]
   if (parte === "oficina" || parte === "oficina.cena") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA }
   // (T57) catar: o lixo espalhado no lixão (pega passando); .painel = só falta o painel; bancada = com as quatro, a oficina monta
-  if (parte === "oficina.catar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true } }
-  if (parte === "oficina.painel") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true, pecas: ["lavadora", "ventilador", "radio"] } }
-  if (parte === "oficina.bancada") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
-  if (parte === "oficina.goteira") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte"], oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
-  if (parte === "oficina.pagar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte", "oficina:jogo"], oficina: { cena: true, painel: true, tanque: 10 } }
+  // (08/11) ep. 1: conheceu o Mubarak, falta o show da Nectar no palco do bar
+  if (parte === "oficina.show") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, oficina: { cena: true } }
+  if (parte === "oficina.catar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, palcos: { "bar:nectar": 1 }, oficina: { cena: true } }
+  if (parte === "oficina.painel") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, palcos: { "bar:nectar": 1 }, oficina: { cena: true, pecas: ["lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.bancada") return { fase: "oficina", holo: true, aguaDbee: true, passos13: D_FEITA, palcos: { "bar:nectar": 1 }, oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.goteira") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte"], palcos: { "bar:nectar": 1 }, oficina: { cena: true, painel: true, pecas: ["painel", "lavadora", "ventilador", "radio"] } }
+  if (parte === "oficina.pagar") return { fase: "oficina", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte", "oficina:jogo"], palcos: { "bar:nectar": 1 }, oficina: { cena: true, painel: true, tanque: 10 } }
   // depois da porta: a Kombi voa, ainda no subúrbio; parando na oficina, a lojinha das melhorias (com água)
   if (parte === "oficina.loja" || parte === "subir") return { fase: "subir", holo: true, aguaDbee: true, passos13: [...D_FEITA, "oficina:arte", "oficina:jogo"], feitas13: ["dbee", "oficina"], portas: ["holo", "violao", "kombi-melhorias"], mods: ["solar", "turbo", "propulsao"] }
   // (T27) a Kombi que quebra: a carreira sem missão pegada (força a quebra com window.__cnQuebrar) e já quebrada
@@ -54,7 +56,8 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // jogada, os 3 veículos na pista; .gatilho = a fama e as missões no ponto (vem sozinha)
   if (parte === "perseguicao") return { ...MEIO, perseguicao: { fase: "agora" } }
   if (parte === "perseguicao.escolher") return { ...MEIO, perseguicao: { fase: "escolher" } }
-  if (parte === "perseguicao.gatilho") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"] }
+  // (08/11) a perseguição é do ep. 9: o gatilho é ter os 8 episódios de antes feitos
+  if (parte === "perseguicao.gatilho") return { ...MEIO, feitas13: ["dbee", "oficina", "notti", "quadra", "mubarak", "tony", "drew", "tuneis", "ella", "nizzy"] }
   if (parte === "nectar" || parte.startsWith("nectar.")) return { fase: "nectar", holo: true, nectar: parte.split(".")[1] || "quebra" }
   if (parte === "carreira.feira" || parte === "feira") return { fase: "carreira", holo: true }
   if (parte === "carreira.meio") return MEIO
@@ -177,7 +180,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")

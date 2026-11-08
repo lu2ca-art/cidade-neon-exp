@@ -25,6 +25,29 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "carreira.feira",
+    nome: "Os 9 episódios: o jogo segue a sequência das músicas",
+    data: "2026-11-08",
+    tarefa: "episódios",
+    olhar: "Comece pela Feira: só aparecem as missões do episódio de agora (o fliperama do Mubarak), com \"ep. 2 · DopaminA\". A D-Bee sugere a próxima. Os episódios 4 (Nizzy) e 5 (Tony Gordo) abrem juntos: escolha o que quiser. Cada episódio feito abre a música dele no Guitar Driver (com todos os níveis liberados desde o primeiro play). Lugar trancado diz \"abre no ep. N\". O Xeriff fica solto, fora da fila.",
+    perguntas: ["A ordem dos episódios faz sentido pra quem joga?", "Fica claro qual é o próximo episódio?", "O show da Nectar no bar (assistir ou tocar) fecha bem o ep. 1?", "Escolher entre o 4 e o 5 ficou natural?", "As partes que ainda são a versão antiga (a feira do Tony, o passeio do Notti) incomodam?"],
+    mais: [
+      { parte: "oficina.show", nome: "ep. 1 · Nectar: depois de conhecer o Mubarak, o show no bar" },
+      { parte: "missao.notti", nome: "ep. 2 · DopaminA: o fliperama do Mubarak" },
+      { parte: "oficina.catar", nome: "ep. 2 · DopaminA: a oficina do Mubarak" },
+      { parte: "missao.quadra", nome: "ep. 3 · Copo Americano: o beat até o ginásio" },
+      { parte: "missao.mubarak", nome: "ep. 4 · Ojalá: a loja de discos com a Nizzy" },
+      { parte: "missao.tony", nome: "ep. 5 · Swav: a feira do Tony (versão atual)" },
+      { parte: "missao.drew", nome: "ep. 6 · Sexta-Feira: a roupa do Drew" },
+      { parte: "missao.tuneis", nome: "ep. 6 · Sexta-Feira: o grafite e a corrida nos túneis" },
+      { parte: "missao.ella", nome: "ep. 7 · Sabe Ontem?: a casa-galeria da Ella" },
+      { parte: "missao.nizzy", nome: "ep. 8 · Rollercoaster: o passeio do Notti (versão atual)" },
+      { parte: "perseguicao.gatilho", nome: "ep. 9 · CHUVA: a perseguição, a captura e a fuga" },
+      { parte: "missao.lu2ca", nome: "ep. 9 · CHUVA: o show" },
+      { parte: "palcos", nome: "Guitar Driver: os níveis livres" },
+    ],
+  },
+  {
     parte: "grafite.livre",
     nome: "O grafite livre: cada parede com o seu desenho",
     data: "2026-11-08",
