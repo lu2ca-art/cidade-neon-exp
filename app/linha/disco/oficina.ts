@@ -24,11 +24,13 @@ import type { Cena } from "../cenas"
 import { PECAS_CHAO, type PecaChao } from "./achados"
 import type { HistoriaDisco, LugarChao } from "./historia"
 import { feita13, pecaFeita } from "./portas"
+import { MARCOS } from "./episodios"
 
 // ── [gosto] quem é o mecânico: PROVISÓRIO (troca aqui; o resto segue sozinho) ──
 export const MECANICO = {
-  nome: "o mecânico",
-  cor: "#ff9000",
+  // (08/11) o mecânico é o Mubarak (episodios.md): conhecer ele é a cena da oficina (ep. 1)
+  nome: "Mubarak",
+  cor: "#ffc857",
 }
 
 // ── os números (RASCUNHO) ──
@@ -89,10 +91,12 @@ export const FALAS_OFICINA = {
 
 // ── o passo da missão (o que a história pede agora) ──
 // (T57) catar = pegar o lixo espalhado no lixão; reciclar = com as quatro, a oficina monta
-export type PassoOficina = "chegar" | "catar" | "reciclar" | "goteira" | "montar" | "feita"
+export type PassoOficina = "chegar" | "show" | "catar" | "reciclar" | "goteira" | "montar" | "feita"
 export function passoOficina(h: HistoriaDisco): PassoOficina {
   if (feita13(h, "oficina")) return "feita"
   if (!h.oficina?.cena) return "chegar"
+  // (08/11) o show da Nectar no palco do bar fecha o ep. 1, antes da oficina do ep. 2
+  if (!MARCOS["show-nectar"].feito(h)) return "show"
   if (!pecaFeita(h, "oficina", "arte")) return pecasFaltando(h).length ? "catar" : "reciclar"
   if (!pecaFeita(h, "oficina", "jogo")) return "goteira"
   return "montar"
@@ -100,11 +104,12 @@ export function passoOficina(h: HistoriaDisco): PassoOficina {
 // pra onde ir no chão do subúrbio (a coluna de luz, o drone, a chegada): catando, a próxima peça da rota
 export function alvoOficina(h: HistoriaDisco): LugarChao | null {
   const p = passoOficina(h)
-  return p === "feita" ? null : p === "catar" ? pecasFaltando(h)[0] : p === "goteira" ? "goteira" : "oficina"
+  return p === "feita" ? null : p === "show" ? "bar" : p === "catar" ? pecasFaltando(h)[0] : p === "goteira" ? "goteira" : "oficina"
 }
 // o objetivo no topo da tela
 export const OBJETIVO_OFICINA: Record<PassoOficina, string> = {
   chegar: "a oficina · o subúrbio",
+  show: "o palco do bar · a Nectar",
   catar: "o lixo bom · o lixão",
   reciclar: "volta pra oficina · ela monta",
   goteira: "a goteira · embaixo da pista",
@@ -134,6 +139,7 @@ export const CENA_OFICINA: Cena = {
   missao: "nectar",
   passos: [
     { t: "acao", texto: "uma garagem no chão, embaixo das pistas. carcaças penduradas no teto, um rádio velho chiando. a kombi entra tossindo" },
+    { t: "fala", de: M, texto: "mubarak. a oficina é minha, o resto é de ninguém" },
     { t: "fala", de: M, texto: "uma kombi. faz uns duzentos anos que ninguém vê uma dessas" },
     { t: "acao", texto: "você não traz peça nenhuma. só um papel dobrado: o desenho de um motor. a água de um lado, o sol do outro" },
     { t: "fala", de: M, texto: "isso aí é o quê?" },

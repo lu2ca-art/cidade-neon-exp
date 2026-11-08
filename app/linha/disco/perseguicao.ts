@@ -28,6 +28,7 @@
 import type { HistoriaDisco } from "./historia"
 import type { Perfil } from "../estrada/carros"
 import { feita13, normalizarMissao } from "./portas"
+import { episodioAberto } from "./episodios"
 
 export const CONFIG_PERSEGUICAO = {
   // liga/desliga (false = nunca acontece)
@@ -37,6 +38,9 @@ export const CONFIG_PERSEGUICAO = {
   popularidade: 50,
   // …e quantas das 13 missões feitas (o "movimento diferente": o subúrbio subindo)
   feitasMin: 6,
+  // (08/11) a perseguição é do ep. 9 (CHUVA): começa quando ele abre, ou seja, com os
+  // 8 episódios de antes feitos. false = o gatilho de antes (fama e missões feitas)
+  porEpisodio: true,
   // bateu o gatilho: quantos ms rodando de verdade até a polícia aparecer
   esperaMs: 20_000,
   // no máximo quantos segundos de perseguição: depois disso pegam de qualquer jeito
@@ -129,6 +133,7 @@ export function podePerseguir(h: HistoriaDisco | null, popularidade: number): bo
   if (h.quebra?.quebrada) return false
   const m = normalizarMissao(h.missao)
   if (m && !feita13(h, m)) return false
+  if (C.porEpisodio) return episodioAberto(h, "chuva")
   return popularidade >= C.popularidade && (h.feitas13 ?? []).length >= C.feitasMin
 }
 

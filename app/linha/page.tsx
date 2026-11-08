@@ -2010,6 +2010,8 @@ export default function LinhaPage() {
         setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: falta ? `${it.nome}: ${FALAS_OFICINA.pegou} (${LIXO.length - falta}/${LIXO.length})` : FALAS_OFICINA.catou })
         track("mission_step", { mission_id: "disco-oficina", step: `peca-${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
       }
+      // (08/11) ep. 1: depois de conhecer o Mubarak, o show da Nectar no palco do bar (assistir ou tocar)
+      else if (e === "chao:bar" && p === "show") { setAoVivo(null); setSave((s2) => comHistoria(s2, (x) => ({ ...x, show: showDoPalco("bar", "nectar") }))) }
       else if (e === "chao:goteira" && p === "goteira") setOficinaTela("goteira")
     }
     // (T27) o sorteio da Kombi quebrar (o Corrida chama de tempos em tempos, rodando de verdade)
@@ -2042,7 +2044,7 @@ export default function LinhaPage() {
     // carreira desce pra passear; a corrida mostra o cadeado se ainda não abriu
     if (e === "chao:tuneis" && h.fase !== "carreira" && h.fase !== "minhoca" && !cena && !recompensa && !trincheiras) descerTrincheiras(null)
     // (vitrine) o bar do subúrbio depois do prólogo: a porta aberta (o botão "entrar"), a sinuca no fundo
-    if (e === "chao:bar" && h.fase !== "bar" && !cena && !recompensa && !trincheiras && Date.now() - barFechou.current > 8000) {
+    if (e === "chao:bar" && h.fase !== "bar" && !(h.fase === "oficina" && passoOficina(h) === "show") && !cena && !recompensa && !trincheiras && Date.now() - barFechou.current > 8000) {
       setPortaBar(true)
       setTimeout(() => setPortaBar(false), 8000)
     }
