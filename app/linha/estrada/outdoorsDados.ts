@@ -12,6 +12,7 @@
 
 import * as THREE from "three"
 import { PISTAS } from "./pistas"
+import { ANUNCIOS, ANUNCIO_H, ANUNCIO_W } from "./outdoorsArte"
 
 // RASCUNHO: nomes e slogans pro dono revisar (o tom: crítica velada, ironia
 // sobre vício, tempo e consumo). Mudar aqui muda todas as placas.
@@ -58,7 +59,7 @@ export const OUTDOORS_CFG = {
 export type Placa = { x: number; y: number; z: number; rot: number; w: number; h: number; produto: number; faixa: number; semente: number }
 
 // ── o atlas: os 15 produtos e as 9 faixas numa textura só (4 colunas) ──
-const COLS = 4, CW = 512, CH = 256
+const COLS = 4, CW = ANUNCIO_W, CH = ANUNCIO_H
 export const N_PRODUTOS = PRODUTOS.length
 /** a célula da faixa `i` de PISTAS no atlas */
 export const celulaFaixa = (i: number) => N_PRODUTOS + i
@@ -88,18 +89,9 @@ export function atlasOutdoors(): THREE.CanvasTexture {
     const x0 = (i % COLS) * CW, y0 = Math.floor(i / COLS) * CH
     g.save(); g.beginPath(); g.rect(x0, y0, CW, CH); g.clip()
     if (i < N_PRODUTOS) {
-      // o anúncio: fundo escuro com um degradê na cor do produto, nome grande, slogan, a marca
-      const p = PRODUTOS[i]
-      const gr = g.createLinearGradient(x0, y0, x0 + CW, y0 + CH)
-      gr.addColorStop(0, "#07060f"); gr.addColorStop(1, p.cor + "55")
-      g.fillStyle = gr; g.fillRect(x0, y0, CW, CH)
-      g.fillStyle = p.cor; g.fillRect(x0, y0 + CH - 10, CW, 10)
-      g.textAlign = "left"; g.shadowColor = p.cor; g.shadowBlur = 16; g.fillStyle = "#ffffff"
-      caber(g, p.nome, "900", 74, CW - 48); g.fillText(p.nome, x0 + 24, y0 + 92)
-      g.shadowBlur = 0; g.fillStyle = "#e8e4f2"
-      caber(g, p.slogan, "600", 30, CW - 48); g.fillText(p.slogan, x0 + 24, y0 + 158)
-      g.fillStyle = p.cor; g.textAlign = "right"
-      caber(g, "◆ NÚCLEO", "900", 26, 220); g.fillText("◆ NÚCLEO", x0 + CW - 22, y0 + 214)
+      // o anúncio: cada produto tem a peça dele (outdoorsArte.ts)
+      g.translate(x0, y0)
+      ANUNCIOS[i % ANUNCIOS.length](g, PRODUTOS[i])
     } else {
       // a faixa do LU2CA invadindo: preto, o nome em ciano/magenta deslocados, "sinal invadido"
       const f = PISTAS[i - N_PRODUTOS]
