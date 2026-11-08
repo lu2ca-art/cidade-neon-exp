@@ -10,7 +10,8 @@
 import { useEffect, useState } from "react"
 import type { Save } from "../estado"
 import { recomecar } from "../estado"
-import { TORRES, luzDasPistas, pistasFeitas } from "../estrada/atos"
+import { TORRES } from "../estrada/atos"
+import { luzDosEpisodios } from "./episodios"
 import { NOME_NIVEL, QUALIDADE, refazerQualidade } from "../estrada/qualidade"
 import { COR_PISTA, MONUMENTO, historiaDe } from "./historia"
 
@@ -19,7 +20,7 @@ const ORDEM = ["Nectar", "DopaminA", "Copo Americano", "Ojalá", "Swav", "Sexta-
 export function InicioDisco({ save, onEntrar }: { save: Save; onEntrar: () => void }) {
   const h = historiaDe(save)
   const novo = h.fase === "minhoca"
-  const luz = luzDasPistas(pistasFeitas(save.objetos))
+  const luz = luzDosEpisodios(h, save.objetos)
   const [certeza, setCerteza] = useState(false)
   useEffect(() => { if (!certeza) return; const t = setTimeout(() => setCerteza(false), 4000); return () => clearTimeout(t) }, [certeza])
   // (a página só monta no cliente, depois de ler o save)

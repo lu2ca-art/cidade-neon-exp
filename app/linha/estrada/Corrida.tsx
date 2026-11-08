@@ -70,7 +70,7 @@ import { ATROPELO, forcaAtropelo, G_DISCO, VIB_ATROPELO } from "./atropelo"
 import { RobosCaidos } from "../disco/RobosCaidos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
-import { luzDasPistas, pistasFeitas } from "./atos"
+import { luzDosEpisodios } from "../disco/episodios"
 import { feita13, type MissaoId } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import { CorridaRuaCena, CorridaRuaHud } from "../disco/CorridaDeRua"
@@ -1181,7 +1181,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // (leveza A, 30/10) pegar um item muda save.objetos, mas quase nunca a luz das
   // pistas: a chave em texto segura a MESMA referência enquanto o conteúdo não
   // muda, e a cidade (geo, cidade, portões) não é refeita à toa
-  const luzPistasNova = useMemo(() => (discoM ? luzDasPistas(pistasFeitas(save.objetos)) : null), [discoM, save.objetos])
+  const luzPistasNova = useMemo(() => (discoM ? luzDosEpisodios(historia, save.objetos) : null), [discoM, save.objetos, historia])
   const luzPistas = useMesmo(luzPistasNova, luzPistasNova ? JSON.stringify(luzPistasNova) : "")
   const viaApagadaNova = useMemo(() => {
     if (!discoM || !luzPistas) return null

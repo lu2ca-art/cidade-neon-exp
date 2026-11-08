@@ -106,18 +106,20 @@ test("a peça na rua conta eventos e não precisa de lugar", () => {
   expect(alvo13(h, "nizzy")).toEqual({ lugar: "palco-rollercoaster" })
 })
 
-test("a feira: o LU2CA primeiro na cidade, o subúrbio aberto, a final por último", () => {
-  const ini = disponiveis(CARREIRA, luz([]))
-  expect(ini).toEqual(expect.arrayContaining(["quadra", "tuneis", "lu2ca"]))
-  expect(ini).not.toContain("drew") // a pista da Sexta-Feira ainda apagada (as torres)
-  expect(ini).not.toContain("xeriff") // pede o LU2CA antes
+test("a feira segue a sequência dos episódios: ep. 2, depois o 3, o 4 e o 5 juntos", () => {
+  const ini = disponiveis(CARREIRA)
+  expect(ini).toEqual(expect.arrayContaining(["notti", "xeriff"])) // ep. 2 (fliperama) e o Xeriff, que é livre
+  expect(ini).not.toContain("quadra") // ep. 3 ainda não abriu
   expect(ini).not.toContain("final")
-  const h = abrirPorta(CARREIRA, "lu2ca")
-  expect(disponiveis(h, luz(["nectar"]))).toContain("xeriff")
+  let h = abrirPorta(CARREIRA, "notti")
+  expect(disponiveis(h)).toContain("quadra")
+  h = abrirPorta(h, "quadra")
+  expect(disponiveis(h)).toEqual(expect.arrayContaining(["mubarak", "tony"])) // 4 e 5: a pessoa escolhe
+  expect(disponiveis(h)).not.toContain("drew")
   // tudo feito: só sobra a final
   let fim: HistoriaDisco = CARREIRA
   for (const id of IDS13) if (id !== "final") fim = abrirPorta(fim, id)
-  expect(disponiveis(fim, null)).toEqual(["final"])
+  expect(disponiveis(fim)).toEqual(["final"])
 })
 
 test("save antigo: a faixa feita conta e a missão pegada era a faixa", () => {

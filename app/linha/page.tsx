@@ -116,7 +116,6 @@ import { COR_PISTA } from "./disco/historia"
 import { PingPong } from "./disco/PingPong"
 import "../ginasio/ginasio.css"
 import { guardarCapsula, guitarLivre } from "./disco/capsula"
-import { luzDasPistas, pistasFeitas } from "./estrada/atos"
 import { PISTAS, type PistaId } from "./estrada/pistas"
 import { definirMemoriaDbee, marcarFeitaDbee, marcarVisitaDbee, ouvirMemoriaDbee } from "./disco/sugestoesDbee"
 
@@ -185,7 +184,6 @@ function hist13(s: Save) { return sincronizar(historiaDe(s), s.objetos) }
 // (T49, lote D) os instrumentos ganhos que ele ainda não viu na casa da D-Bee
 const instrumentosNovos = (h: HistoriaDisco) => instrumentosGanhos(h).filter((x) => !(h.instrumentosVistos ?? []).includes(x))
 // a luz das pistas (as torres, atos.ts): a missão da cidade só aparece com a pista acesa
-const luzDoSave = (s: Save) => luzDasPistas(pistasFeitas(s.objetos))
 // (21/10, a feira) a missão de agora na carreira: a que ele PEGOU na feira; sem
 // ela, nenhuma: a feira oferece
 function missaoDoSave(s: Save): MissaoId | null {
@@ -199,7 +197,7 @@ function feiraDoSave(s: Save): Oferta13[] {
   const h = hist13(s)
   if (h.fase !== "carreira") return []
   const pega = missaoDoSave(s)
-  return ofertas13(h, disponiveis(h, luzDoSave(s)).filter((id) => id !== pega))
+  return ofertas13(h, disponiveis(h).filter((id) => id !== pega))
 }
 // (T02) o show não fecha mais missão: é o Guitar Driver aberto agora. "rua:<faixa>"
 // = a oportunidade na rua (paga); "missao:<id>" = a peça de tocar ao vivo (a do LU2CA)

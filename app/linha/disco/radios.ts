@@ -20,7 +20,6 @@
 // Desempenho: nada por quadro. A zona só chama quando muda; o resto roda na troca de música.
 
 import { PISTAS, faixaDaPista, type PistaId } from "../estrada/pistas"
-import { luzDasPistas, pistasFeitas } from "../estrada/atos"
 import type { EstacaoId } from "../data"
 import { ARQUIVO, FREQUENCIAS, VINIS, type FreqId } from "../radio"
 import { chiadoCurto, fonteSom, player } from "../som"
@@ -132,7 +131,7 @@ function missoesAgora(): { ativa: MissaoId | null; disp: MissaoId[]; feitas: Mis
   if (!h || (h.fase !== "carreira" && h.fase !== "livre")) return { ativa: null, disp: [], feitas: h?.feitas13 ?? [] }
   const a = normalizarMissao(h.missao)
   const ativa = a && !feita13(h, a) ? a : null
-  const disp = disponiveis(h, luzDasPistas(pistasFeitas(contexto.objetos))).filter((id) => id !== ativa)
+  const disp = disponiveis(h).filter((id) => id !== ativa)
   return { ativa, disp, feitas: h.feitas13 ?? [] }
 }
 

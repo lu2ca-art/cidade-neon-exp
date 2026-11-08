@@ -24,12 +24,12 @@
 
 import type { PistaId } from "../estrada/pistas"
 import { PISTAS } from "../estrada/pistas"
-import type { Luz } from "../estrada/atos"
 import type { LugarId } from "../lugares"
 import type { ProvaId } from "../data"
 import type { HistoriaDisco, LugarChao } from "./historia"
 import { PAGA } from "../economia-rascunho"
 import { INSTRUMENTOS_ANCESTRAIS, type InstrumentoId } from "./instrumentos"
+import { episodioDaMissao, episodioDaMusica, missaoLiberada, musicasLiberadas, quemAbre, rotuloDoEpisodio, EPISODIOS } from "./episodios"
 
 export type MissaoId = "dbee" | "oficina" | "quadra" | "tuneis" | "drew" | "mubarak" | "xeriff" | "lu2ca" | "ella" | "notti" | "nizzy" | "tony" | "final"
 export type Situacao = "decidido" | "proposta" | "em aberto"
@@ -145,9 +145,9 @@ export interface Missao13 {
 
 // ── o que ainda é decisão do dono (troca aqui; o resto segue sozinho) ──
 export const CONFIG13 = {
-  // (em aberto) as músicas que o Guitar Driver já tem no começo. A Nectar é a
-  // do próprio LU2CA; cada missão libera a faixa de quem ajudou
-  musicasDoInicio: ["nectar"] as PistaId[],
+  // (08/11) as músicas que o Guitar Driver já tem no começo: nenhuma. Quem libera
+  // cada música é o EPISÓDIO (disco/episodios.ts): o show do ep. 1 abre a Nectar
+  musicasDoInicio: [] as PistaId[],
   // (T03) o neon$ de cada missão mora em economia-rascunho.ts (PAGA.missao)
   // (decidido 21/10, as torres) a missão da cidade só aparece com a pista
   // dela acesa (estrada/atos.ts): o mapa vai colorindo espalhado
@@ -179,10 +179,10 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     lugar: { chao: "casa" }, pedido: "ela tava te esperando", apresenta: "tocar tambor junto com ela",
     arte: p("o tambor com a D-Bee", "decidido", { como: { t: "historia" }, tarefa: "T06" }),
     jogo: p("o drift e o holo: a travessia até o subúrbio", "decidido", { como: { t: "historia" }, tarefa: "T07" }),
-    abre: ["holo", "violao"], recompensa: { guitar: "ojala", batida: "ojala", neon: PAGA.missao.dbee, instrumento: "djembe" }, requer: [], prologo: true,
+    abre: ["holo", "violao"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.dbee, instrumento: "djembe" }, requer: [], prologo: true,
   },
   oficina: {
-    id: "oficina", n: 2, onde: "suburbio", quem: "o mecânico", cor: "#ff9000", faixa: null, faixaSituacao: "em aberto",
+    id: "oficina", n: 2, onde: "suburbio", quem: "Mubarak", cor: "#ffc857", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "oficina" }, pedido: "a kombi não sobe sem motor novo", apresenta: "montar o motor com o mecânico",
     // (T09) a fase "oficina" da história joga as duas (disco/oficina.ts). (T57) a arte
     // é catar o lixo espalhado no lixão (no mundo) e a oficina monta; o jogo, a goteira
@@ -192,10 +192,10 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   },
   quadra: {
     id: "quadra", n: 3, onde: "suburbio", quem: "Alohan", cor: "#ff6a35", faixa: "ontem", faixaSituacao: "proposta",
-    lugar: { chao: "quadra" }, pedido: "a quadra tá vazia. falta o beat", apresenta: "o Alohan apresenta o BATIDA",
+    lugar: { chao: "ginasio" }, pedido: "o ginásio tá vazio. falta o beat", apresenta: "um beat a caminho do ginásio",
     arte: p("um instrumental no BATIDA pra galera", "decidido", { como: { t: "batida", clima: "ontem" }, tarefa: "T10", existe: "/batida" }),
     jogo: p("a partida de basquete", "decidido", { como: { t: "basquete", pontos: 6, tempo: 45 }, tarefa: "T10", existe: "/ginasio (basquete.tsx)" }),
-    abre: ["quadra", "batida-estudio"], recompensa: { guitar: "ontem", batida: "ontem", neon: PAGA.missao.quadra, instrumento: "udu" }, requer: ["oficina"],
+    abre: ["quadra", "batida-estudio", "ginasio"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.quadra, instrumento: "udu" }, requer: ["oficina"],
   },
   tuneis: {
     id: "tuneis", n: 4, onde: "suburbio", quem: "os túneis", cor: "#9b8cff", faixa: null, faixaSituacao: "em aberto",
@@ -217,14 +217,16 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     // o jogo é o caminho até ele, de patins e jetpack (a Kombi no conserto,
     // CONFIG13.kombiNoConserto); o ping pong foi pro Xeriff (A4)
     jogo: p("de patins e jetpack até a casa dele", "decidido", { como: { t: "chegar" }, tarefa: "T15" }),
-    abre: ["ginasio"], recompensa: { guitar: "sexta", batida: "sexta", neon: PAGA.missao.drew, instrumento: "caxixi" }, requer: ["oficina"], ordem: ["jogo", "arte"],
+    abre: [], recompensa: { guitar: null, batida: null, neon: PAGA.missao.drew, instrumento: "caxixi" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
+  // (08/11) a peça da loja de discos é do ep. 4 (Nizzy): o id fica (os saves guardam
+  // "mubarak:arte"); quem apresenta é a Nizzy. A sinuca saiu daqui: é livre depois do ep. 1
   mubarak: {
-    id: "mubarak", n: 6, onde: "cidade", quem: "Mubarak", cor: "#ffc857", faixa: "copo", faixaSituacao: "decidido",
-    lugar: { lugar: "palco-copo" }, pedido: "ele quer te mostrar um disco antigo", apresenta: "comprar um disco",
-    arte: p("apreciar um disco antigo", "decidido", { como: { t: "cena", id: "disco-antigo" }, tarefa: "T16" }),
-    jogo: p("uma sinuca com ele, no nível do 8 Ball Pool", "decidido", { como: { t: "cena", id: "sinuca" }, tarefa: "T16", existe: "/teste/sinuca (T17)" }),
-    abre: ["loja-discos"], recompensa: { guitar: "copo", batida: "copo", neon: PAGA.missao.mubarak, instrumento: "sitar" }, requer: ["oficina"],
+    id: "mubarak", n: 6, onde: "suburbio", quem: "Nizzy", cor: "#ff2436", faixa: "copo", faixaSituacao: "decidido",
+    lugar: { chao: "discos" }, pedido: "a loja de discos tem um disco antigo pra você", apresenta: "a loja de discos e as guitarras",
+    arte: p("garimpar um disco antigo na loja", "decidido", { como: { t: "cena", id: "disco-antigo" }, tarefa: "T16" }),
+    jogo: p("ir até a loja de discos", "decidido", { como: { t: "chegar" }, tarefa: "T16" }),
+    abre: ["loja-discos"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.mubarak, instrumento: "sitar" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   xeriff: {
     id: "xeriff", n: 7, onde: "cidade", quem: "Xeriff", cor: "#c9d3e6", faixa: null, faixaSituacao: "em aberto",
@@ -237,11 +239,11 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   },
   lu2ca: {
     id: "lu2ca", n: 8, onde: "cidade", quem: "LU2CA", cor: "#e0ff4f", faixa: "nectar", faixaSituacao: "decidido",
-    lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar uma faixa ao vivo no Guitar Driver",
+    lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar a CHUVA ao vivo no Guitar Driver",
     // (T19, aprovada 30/10) escrever a letra (disco/letras.ts)
-    arte: p("escrever a letra", "decidido", { como: { t: "letra", faixa: "nectar" }, tarefa: "T19" }),
-    jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "nectar" }, tarefa: "T19" }),
-    abre: ["shows-live"], recompensa: { guitar: null, batida: "nectar", neon: PAGA.missao.lu2ca, instrumento: "berimbau" }, requer: ["oficina"],
+    arte: p("escrever a letra", "decidido", { como: { t: "letra", faixa: "chuva" }, tarefa: "T19" }),
+    jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "chuva" }, tarefa: "T19" }),
+    abre: ["shows-live"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.lu2ca, instrumento: "berimbau" }, requer: ["oficina"],
   },
   ella: {
     id: "ella", n: 9, onde: "cidade", quem: "Ella", cor: "#4fc3ff", faixa: "chuva", faixaSituacao: "decidido",
@@ -253,23 +255,23 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     // Uma cena só (interior/salas/GaleriaElla.tsx, cenas.ts CENA_GALERIA_ELLA)
     arte: p("pintar um quadro ali mesmo e expor", "decidido", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22", existe: "/galeria/pintar" }),
     jogo: p("o filme da planta do Criador e conhecer os quadros que ela guardou", "decidido", { como: { t: "casa", sala: "galeria-ella" }, tarefa: "T22" }),
-    abre: ["galeria"], recompensa: { guitar: "chuva", batida: "chuva", neon: PAGA.missao.ella, instrumento: "flauta-bambu" }, requer: ["oficina"], ordem: ["jogo", "arte"],
+    abre: ["galeria"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.ella, instrumento: "flauta-bambu" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   notti: {
-    id: "notti", n: 10, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "dopamina", faixaSituacao: "decidido",
+    id: "notti", n: 10, onde: "cidade", quem: "Mubarak", cor: "#ffc857", faixa: "dopamina", faixaSituacao: "decidido",
     lugar: { lugar: "topo" }, pedido: "o fliperama apagou. ninguém joga mais nada", apresenta: "uma máquina do fliperama",
     // (T23, aprovada 30/10) a trilha 8 bits (disco/pecas/conf.ts, TRILHA8)
     arte: p("a trilha de 8 bits da máquina", "decidido", { como: { t: "cena", id: "trilha8" }, tarefa: "T23" }),
     jogo: p("uma máquina do fliperama", "decidido", { como: { t: "cena", id: "maquina" }, tarefa: "T23", existe: "/fliperama" }),
-    abre: ["fliperama"], recompensa: { guitar: "dopamina", batida: "dopamina", neon: PAGA.missao.notti, instrumento: "ocarina" }, requer: ["oficina"],
+    abre: ["fliperama"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.notti, instrumento: "ocarina" }, requer: ["oficina"],
   },
   nizzy: {
-    id: "nizzy", n: 11, onde: "cidade", quem: "Nizzy", cor: "#ff2436", faixa: "rollercoaster", faixaSituacao: "decidido",
+    id: "nizzy", n: 11, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "rollercoaster", faixaSituacao: "decidido",
     lugar: { lugar: "palco-rollercoaster" }, pedido: "a montanha-russa parou no meio", apresenta: "a montanha-russa",
     // (T24, aprovada 30/10) o clipe vertical (disco/pecas/conf.ts, CLIPE)
     arte: p("filmar o clipe vertical da Rollercoaster", "decidido", { como: { t: "cena", id: "clipe" }, tarefa: "T24" }),
     jogo: p("andar na montanha-russa (no parque)", "decidido", { como: { t: "evento", evento: "montanha", n: 1 }, tarefa: "T24" }),
-    abre: ["parque"], recompensa: { guitar: "rollercoaster", batida: "rollercoaster", neon: PAGA.missao.nizzy, instrumento: "handpan" }, requer: ["oficina"],
+    abre: ["parque"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.nizzy, instrumento: "handpan" }, requer: ["oficina"],
   },
   tony: {
     id: "tony", n: 12, onde: "cidade", quem: "Tony Gordo", cor: "#ff3fb0", faixa: "swav", faixaSituacao: "decidido",
@@ -277,7 +279,7 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     // (T25, aprovada 30/10) cozinhar (disco/pecas/conf.ts, COZINHAR)
     arte: p("cozinhar um prato com o que nasceu", "decidido", { como: { t: "cena", id: "cozinhar" }, tarefa: "T25" }),
     jogo: p("regar a horta atrás do restaurante", "decidido", { como: { t: "cena", id: "horta" }, tarefa: "T25" }),
-    abre: ["canteiros"], recompensa: { guitar: "swav", batida: "swav", neon: PAGA.missao.tony, instrumento: "kalimba" }, requer: ["oficina"], ordem: ["jogo", "arte"],
+    abre: ["canteiros"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.tony, instrumento: "kalimba" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   // ── a 13ª ──
   final: {
@@ -338,7 +340,7 @@ export function checklist13(h: HistoriaDisco, id: MissaoId): { nome: string; est
   }
   return [
     ...ordemDe(id).map((qual) => ({ nome: `${qual === "arte" ? "a arte" : "o jogo"} · ${m[qual].nome}`, estado: estado(qual) })),
-    { nome: `a porta · ${m.abre.map((a) => PORTAS[a].nome).join(" e ")}`, estado: estado("porta") },
+    { nome: m.abre.length ? `a porta · ${m.abre.map((a) => PORTAS[a].nome).join(" e ")}` : "a recompensa", estado: estado("porta") },
   ]
 }
 
@@ -431,7 +433,10 @@ export function trancado(h: HistoriaDisco | null, porta: PortaId): string | null
   const dona = IDS13.find((id) => MISSOES13[id].abre.includes(porta))
   if (!dona) return null
   if (normalizarMissao(h.missao) === dona && porta === "parque") return null
-  return `abre na missão ${dona === "nizzy" || dona === "ella" || dona === "dbee" ? "da" : "do"} ${MISSOES13[dona].quem}`
+  // (08/11) a sequência manda: o cadeado diz o episódio que abre (disco/episodios.ts)
+  const ep = episodioDaMissao(dona)
+  if (ep) return quemAbre(ep)
+  return `abre na missão ${dona === "ella" || dona === "dbee" || dona === "mubarak" ? "da" : "do"} ${MISSOES13[dona].quem}`
 }
 // (T15) a Kombi está no conserto agora? (a missão pegada pede patins até a porta abrir)
 export function kombiNoConserto(h: HistoriaDisco | null): boolean {
@@ -447,37 +452,45 @@ export function sincronizar(h: HistoriaDisco, objetos: readonly string[]): Histo
 }
 
 // ── a feira: as missões que dá pra pegar agora ──
-export function disponiveis(h: HistoriaDisco, luz: Record<string, Luz> | null): MissaoId[] {
+// (08/11) quem manda é a SEQUÊNCIA (disco/episodios.ts): a missão de um episódio só
+// aparece quando o episódio está aberto (4 e 5 abrem juntos) e as peças de antes
+// estão feitas; as livres (o Xeriff) aparecem sempre. O que não é de episódio (o
+// final) segue o `requer`. A luz das ruas é a dos episódios (luzDosEpisodios)
+export function disponiveis(h: HistoriaDisco): MissaoId[] {
   return IDS13.filter((id) => {
     const m = MISSOES13[id]
     if (m.prologo || feita13(h, id)) return false
-    if (!m.requer.every((r) => feita13(h, r))) return false
-    if (CONFIG13.soComPistaAcesa && m.onde === "cidade" && m.faixa && luz) {
-      const nome = PISTAS.find((x) => x.id === m.faixa)?.faixa
-      if (nome && luz[nome] !== "aberta") return false
-    }
-    return true
+    const seq = missaoLiberada(h, id)
+    if (seq !== null) return seq
+    return m.requer.every((r) => feita13(h, r))
   })
 }
 export interface Oferta13 { id: MissaoId; quem: string; leva: string; cor: string; faixa: PistaId | null; pedido: string; primeiro: string; feitas: number; total: number }
 export function ofertas13(h: HistoriaDisco, ids: MissaoId[]): Oferta13[] {
-  return ids.map((id) => {
+  // (08/11) na ordem da sequência (as livres, como o Xeriff, no fim)
+  const pos = (id: MissaoId) => { const e = episodioDaMissao(id); return e ? EPISODIOS.indexOf(e) : 99 }
+  return [...ids].sort((a, b) => pos(a) - pos(b)).map((id) => {
     const m = MISSOES13[id]
     const passos = checklist13(h, id)
     const prox = passos.find((x) => x.estado === "agora") ?? passos[passos.length - 1]
-    const leva = m.faixa ? `à ${PISTAS.find((x) => x.id === m.faixa)?.faixa}` : m.onde === "suburbio" ? "ao subúrbio" : "à cidade"
+    const ep = episodioDaMissao(id)
+    const leva = ep ? rotuloDoEpisodio(ep) : m.faixa ? `à ${PISTAS.find((x) => x.id === m.faixa)?.faixa}` : m.onde === "suburbio" ? "ao subúrbio" : "à cidade"
     return { id, quem: m.quem, leva, cor: m.cor, faixa: m.faixa, pedido: m.pedido, primeiro: prox.nome, feitas: passos.filter((x) => x.estado === "feita").length, total: passos.length }
   })
 }
 
 // ── o Guitar Driver na rua: as músicas liberadas ──
 export function musicasDoGuitar(h: HistoriaDisco): PistaId[] {
-  const tem = new Set<string>([...CONFIG13.musicasDoInicio, ...(h.guitar ?? [])])
+  // (08/11) as dos episódios feitos, mais as que o save já tinha (nunca tira o que ganhou)
+  const tem = new Set<string>([...CONFIG13.musicasDoInicio, ...(h.guitar ?? []), ...musicasLiberadas(h)])
   return PISTAS.map((x) => x.id).filter((x) => tem.has(x))
 }
 // quem libera cada música (pra mostrar o cadeado: "abre na missão de X")
 export function quemLibera(faixa: PistaId): MissaoId | null {
-  return IDS13.find((id) => MISSOES13[id].recompensa.guitar === faixa) ?? null
+  // (08/11) a música abre no episódio dela: devolve a primeira missão dele (o cadeado diz "ep. N")
+  const ep = episodioDaMusica(faixa)
+  const p = ep?.pecas.find((x) => x.t === "missao")
+  return p && p.t === "missao" ? p.id : null
 }
 
 // (T49) os instrumentos ancestrais que ele já tem: os do save e os das missões
