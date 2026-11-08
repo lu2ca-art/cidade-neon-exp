@@ -19,7 +19,7 @@ export type PedidoCena =
   | {
     tipo: "monumento" // o nascimento de um monumento
     linha: string // a faixa (o nome da pista)
-    n: number // qual monumento é (1, 2, 3: só os três primeiros pedem cena)
+    n: number // qual monumento é, na ordem em que nasceram (toda missão pede cena, uma vez)
     x: number; y: number; z: number // onde ele nasce (pra câmera do T70 olhar)
   }
   | { tipo: "filme"; id: FilmeId; video: boolean } // video: tocou o arquivo (false: o provisório)

@@ -2417,6 +2417,7 @@ export default function LinhaPage() {
             sorteioMs={HIST && CONFIG_QUEBRA.ligada && !cena && !oficinaTela ? CONFIG_QUEBRA.cadaMs : 0}
             alvoChao={alvoChao}
             pistaFoco={focoFeira}
+            missaoAtiva={HIST ? missaoCarreira : null}
             onHistoria={cOnHistoria}
             // (B10, T03) a oficina: o mecânico é pago em água, só desempenho (o preço vem da economia)
             onComprar={cOnComprar}

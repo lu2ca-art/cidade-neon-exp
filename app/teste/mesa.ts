@@ -42,13 +42,13 @@ export const MESA: Cartao[] = [
     perguntas: ["Ficou exagerado o bastante, bem na cara?", "Dá pra ler o nome do produto passando de carro?", "Alguma propaganda ficou feia ou com o texto estranho? Qual?", "O hack ainda se destaca no meio das propagandas?", "Continua liso no iPhone?"],
   },
   {
-    parte: "torre",
+    parte: "missao.notti",
     nome: "Monumentos só no holo, entradas da rotatória e vinhetas fora do notch",
     data: "2026-11-08",
     tarefa: "T61",
-    olhar: "Abre chegando na rotatória, com o holo ligado: os monumentos aparecem no céu, com o facho até a pista. Desligue o holo no ícone dos óculos: o céu fica limpo, sem monumento nem facho. Se desligar antes de um monumento nascer, ele nasce quando você ligar de novo. Nas entradas da rotatória fica só o portal com o nome em cima, sem coluna de luz, e a linha da entrada seguinte vem na 2ª faixa contando da direita. Deixe a rádio tocar: a fala da Xenom e da Cidade Neon passa só no display da rádio, e o notch fica para as outras mensagens.",
-    perguntas: ["Com o holo ligado, o monumento ajuda a achar a missão?", "O monumento deve nascer quando você abre o holo, ou pode nascer sem ninguém ver?", "Nos monumentos das missões já feitas: ficam no holo, ou só o da missão ativa?"],
-    mais: [{ parte: "torre.ponta", nome: "numa torre da ponta (3 saídas)" }],
+    olhar: "Este link abre com a missão do Notti pegada e o holo ligado. Olhe o céu: de qualquer lugar da cidade tem um monumento só, o da missão ativa, na direção do lugar dela, e ele nasce na sua frente (cresce girando, com uma onda de luz). Ande pra longe e veja que ele continua na tela, com tamanho que dá pra ler, mesmo atrás dos prédios. Desligue o holo nos óculos: o céu fica limpo; ligue de novo e ele volta. Largue a missão no mapa, ou termine ela: o monumento apaga; pegue outra e só o dela aparece, nascendo também. Sem missão pegada, nenhum monumento. Depois, no segundo botão (a rotatória): nas entradas fica só o portal com o nome em cima, sem coluna de luz, e a linha da entrada seguinte vem na 2ª faixa contando da direita. Deixe a rádio tocar: a fala da Xenom e da Cidade Neon passa só no display da rádio, e o notch fica para as outras mensagens.",
+    perguntas: ["De longe, o monumento ajuda a achar a missão?", "Ele fica bom aparecendo por cima dos prédios, ou incomoda quando está na frente de alguma coisa?", "O tamanho de longe ficou bom?", "Nas entradas da rotatória dá pra ler o portal e a faixa da próxima?"],
+    mais: [{ parte: "torre", nome: "a rotatória (entradas)" }, { parte: "torre.ponta", nome: "numa torre da ponta (3 saídas)" }],
   },
   {
     parte: "vitrine.beco",

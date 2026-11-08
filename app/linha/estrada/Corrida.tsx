@@ -70,8 +70,8 @@ import { ATROPELO, forcaAtropelo, G_DISCO, VIB_ATROPELO } from "./atropelo"
 import { RobosCaidos } from "../disco/RobosCaidos"
 import { COL_PASSO, Campo, type ToqueCampo } from "../disco/Campo"
 import { guitarLivre } from "../disco/capsula"
-import { luzDasPistas, pistasFeitas, type Luz } from "./atos"
-import { feita13 } from "../disco/portas"
+import { luzDasPistas, pistasFeitas } from "./atos"
+import { feita13, type MissaoId } from "../disco/portas"
 import { RachasCena, RachasHud, novoEstadoRacha, type EstadoRacha } from "../disco/Rachas"
 import { CorridaRuaCena, CorridaRuaHud } from "../disco/CorridaDeRua"
 import { CORRIDA_RUA_CFG, RUA, naVoltaRua, type PoseRua, type ResultadoRua } from "../disco/corridaRua"
@@ -329,6 +329,8 @@ interface Props {
   onComprar?: (id: string, preco: number) => void
   // (B18) o lugar do chão do subúrbio pra onde a história manda agora
   alvoChao?: LugarChao | null
+  // (08/11) a missão ativa (a que ele pegou): o único monumento do holo
+  missaoAtiva?: MissaoId | null
   // (21/10, o mapa que ensina) a pista em foco no mapa (tocou na oferta da feira)
   pistaFoco?: string | null
   // (T15–T25, 28/10) o que a porta de uma missão ainda não abriu: o porquê, curto
@@ -562,7 +564,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null }: Props) {
+export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null, missaoAtiva = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -2692,7 +2694,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} luzPistas={luzPistas} faseHistoria={fase} alvoChao={alvoChao} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} temMoto={motoOk} corridaRua={corridaNoMapa} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} holoRef={holoLigadoRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} missaoAtiva={missaoAtiva} faseHistoria={fase} alvoChao={alvoChao} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} temMoto={motoOk} corridaRua={corridaNoMapa} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} holoRef={holoLigadoRef} />
           {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
           {discoM && semKombi && <Seguro nome="veiculos"><VeiculosCena M={M} jogo={jogo} estado={veiculosRef} ativo={semKombi} /></Seguro>}
         </Canvas>
@@ -3594,7 +3596,7 @@ function copiarPilares(c: { pilaresQ: { em: EmQuadras; m: Float32Array }; pilare
 
 function CenaBase({
   tags,
-  holoRef, M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, luzPistas, faseHistoria = null, semPaineis = false, alvoChao = null, missoesMapa = null, veiculo = null, temMoto = false, corridaRua = false,
+  holoRef, M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, missaoAtiva, faseHistoria = null, semPaineis = false, alvoChao = null, missoesMapa = null, veiculo = null, temMoto = false, corridaRua = false,
 }: {
   // (08/11) o holo aberto (o ref estável do Corrida): os monumentos leem no quadro
   holoRef: React.RefObject<boolean>
@@ -3621,8 +3623,8 @@ function CenaBase({
   floresAsf: { leva: FlorAsfalto[]; regadas: FlorAsfalto[]; regando: { id: string; desde: number } | null; visivel: boolean }
   // (disco) as vias das pistas apagadas (o ato ainda não chegou nelas)
   viaApagada: boolean[] | null
-  // (disco) a luz de cada pista (os monumentos dos atos acendem com ela)
-  luzPistas: Record<string, Luz> | null
+  // (08/11) a missão ativa: o único monumento (Monumentos.tsx)
+  missaoAtiva: MissaoId | null
   fonteRef: React.MutableRefObject<Fonte>
   onTocaDiscos: () => void
   disco: boolean
@@ -3806,21 +3808,16 @@ function CenaBase({
   // (leveza A, problema 3) onde fica cada bloco da cidade, pro <Perto>
   const pertoDe = useMemo(() => {
     const MD = "disco" in M ? (M as MundoDisco) : null
-    const portoes: PontoXZ[] = [], monumentos: PontoXZ[] = []
+    const portoes: PontoXZ[] = []
     if (MD) {
       MD.vias.forEach((v, vi) => {
         if (MD.info[vi]?.parte !== "saida") return
         const i = Math.min(v.n - 1, Math.round(PORTAL_CFG.u / 2))
         portoes.push({ x: v.px[i], z: v.pz[i] })
       })
-      for (const p of MD.pistas) {
-        const o = MD.onde?.(`missao:${p.nome}`) ?? { via: p.ida, u: MD.vias[p.ida].L * 0.55 }
-        const V = MD.vias[o.via], i = Math.max(0, Math.min(V.n - 1, Math.round(o.u / 2)))
-        monumentos.push({ x: V.px[i], z: V.pz[i] })
-      }
     }
     return {
-      portoes, monumentos,
+      portoes,
       casa: [{ x: CASA.x, z: CASA.z }],
       chao: Object.values(CHAO_LUGARES).map((l) => ({ x: l.x, z: l.z })),
       lugares: centrosLugares.map((c) => ({ x: c.x, z: c.z })),
@@ -7024,7 +7021,8 @@ function CenaBase({
       )}
       {/* (leveza A) cada bloco da cidade só fica montado com a câmera perto (Perto.tsx) */}
       {"disco" in M && <Perto nome="portões" raio={700} pontos={pertoDe.portoes}><Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro></Perto>}
-      {"disco" in M && <Perto nome="monumentos" raio={900} pontos={pertoDe.monumentos}><Seguro nome="monumentos"><Monumentos M={M as MundoDisco} luz={luzPistas} objetos={objetos} holo={holoRef} /></Seguro></Perto>}
+      {/* (08/11) o da missão ativa aparece de qualquer distância: sem <Perto>; sem missão, não monta nada */}
+      {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} missao={missaoAtiva} holo={holoRef} /></Seguro>}
       {/* (T29) o final: os nove nos pontos, os fachos do CHUVA, o quintal da D-Bee e a câmera roteirizada */}
       {"disco" in M && <Seguro nome="final"><FinalNove M={M as MundoDisco} /></Seguro>}
       {/* (06/11) o mundo depois do final: plantas nos prédios e cabines nas torres (só com o final feito) */}

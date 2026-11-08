@@ -6,8 +6,8 @@ import { calcularRotaDisco, espacarNoCirculo, montarMundoDisco } from "../app/li
 // (T61) A rotatória de cima, sem espiral (LU2CA 29/10): em cada torre, um anel
 // só, plano, que liga as linhas dela; o jogador escolhe a saída sem rodar
 // andares. As bordas do anel: a direita na cor da próxima saída, a esquerda na
-// da seguinte (item 4 da ordem combinada). Os monumentos em cima das missões e
-// o gancho da cena (os 3 primeiros nascem).
+// da seguinte (item 4 da ordem combinada). Sem missão pegada, nenhum monumento
+// nem cena (08/11: só o da missão ativa).
 // (a cena 3D: no Mac, metal; no CI ela pula)
 test.use({ launchOptions: { executablePath: process.env.CHROME_PATH || undefined, args: ["--use-angle=metal", "--autoplay-policy=no-user-gesture-required"] } })
 
@@ -95,7 +95,7 @@ test.describe("T61 na cena", () => {
     return erros
   }
 
-  test("?parte=torre: chega na rotatória pela Nectar, dá a volta e sai; os 2 monumentos feitos nascem e pedem cena", async ({ page }) => {
+  test("?parte=torre: chega na rotatória pela Nectar, dá a volta e sai; sem missão ativa, nenhum monumento pede cena", async ({ page }) => {
     test.setTimeout(240_000)
     const erros = await entrar(page, "/linha?mapa=disco&parte=torre&medir")
     const onde = () => page.evaluate(() => { const w = window as unknown as W; const f = w.__M.info[w.__jogo.via]; return { parte: f.parte, torre: f.torre, pista: f.pista >= 0 ? w.__M.pistas[f.pista].nome : "" } })
@@ -109,9 +109,9 @@ test.describe("T61 na cena", () => {
     }
     expect(partes.has("anel")).toBe(true)
     await page.screenshot({ path: "test-results/rotatoria/anel.png" })
-    // os monumentos: Nectar e Sexta-Feira feitas (as 2 primeiras) pedem a cena, nessa ordem
+    // (08/11) o ?parte=torre não tem missão pegada: nenhum monumento nasce
     const cenas = await page.evaluate(() => (window as unknown as W).__cenasPedidas ?? [])
-    expect(cenas.map((c) => [c.linha, c.n])).toEqual([["Nectar", 1], ["Sexta-Feira", 2]])
+    expect(cenas).toEqual([])
     expect(erros).toEqual([])
   })
 })

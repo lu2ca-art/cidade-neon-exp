@@ -221,12 +221,13 @@ export function aplicarParteDeTeste(): boolean {
   // (T47) o elevador de terror: desce no salão da TORRE 2, na frente do elevador, como se fosse a 1ª vez
   if (parte === "elevador.terror") { pedirDescida(2, null); esquecerTerror() }
   // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
-  // ponta é a da Nectar, a Sexta-Feira e a Ojalá) e o nascimento dos monumentos aparece de novo
+  // ponta é a da Nectar, a Sexta-Feira e a Ojalá)
   if (parte === "mundo.depois") irTorre = { torre: 0, pista: "Nectar" }
   if (parte.startsWith("torre")) {
     irTorre = parte === "torre.ponta" ? { torre: 1, pista: "Nectar" } : { torre: 0, pista: "Nectar" }
-    localStorage.removeItem("cn-monumentos-cena")
   }
+  // (08/11) o nascimento do monumento aparece de novo (o da missão aberta pelo link)
+  if (parte.startsWith("missao.")) localStorage.removeItem("cn-monumentos-cena")
   // (lote D) o que abre direto ao entrar no jogo (page.tsx, abrirAoEntrar)
   const abrir: Record<string, string> = { elevador: "elevador", instrumentos: "casa", "casa.instrumentos": "casa", "recompensa.instrumento": "recompensa", "vitrine.tunel": "tunel", "vitrine.bar": "sinuca" }
   if (abrir[parte]) url.searchParams.set("abrir", abrir[parte])
