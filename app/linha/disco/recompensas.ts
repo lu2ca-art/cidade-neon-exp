@@ -21,6 +21,7 @@ import { ganhar } from "../economia"
 import { PISTAS } from "../estrada/pistas"
 import type { EstacaoId } from "../data"
 import { comHistoria, historiaDe } from "./historia"
+import { EPISODIOS, episodioFeito, nomeDaMusica } from "./episodios"
 import { MISSOES13, abrirPorta, feita13, recompensaDe, sincronizar, type MissaoId, type Recompensa13 } from "./portas"
 
 /** a porta abriu: devolve o save com TUDO que a missão dá, e o que mostrar na tela. Duas vezes não paga duas vezes */
@@ -35,6 +36,10 @@ export function aplicarRecompensa(s: Save, id: MissaoId, emCarreira = historiaDe
     { ...comGrana, objetos: faixaNaCidade && !s.objetos.includes(faixaNaCidade) ? [...s.objetos, faixaNaCidade] : s.objetos, violao: m.abre.includes("violao") ? true : s.violao },
     (h) => abrirPorta(sincronizar(h, s.objetos), id),
   )
+  // (08/11) fechou o episódio: a música dele abre no Guitar Driver e no MP3 (a tabela: disco/episodios.ts)
+  const antes = historiaDe(s), depois = historiaDe(save)
+  const ep = EPISODIOS.find((e) => !episodioFeito(antes, e) && episodioFeito(depois, e))
+  if (ep) r.guitar = r.batida = { faixa: ep.musica, nome: nomeDaMusica(ep) }
   return { save, recompensa: r }
 }
 

@@ -29,6 +29,9 @@ export const PALCOS_CONFIG = {
   // os palcos acima do primeiro só abrem depois da missão do LU2CA (a que
   // apresenta os shows: a porta "os 5 shows do LIVE"). false = abrem só com estrelas
   precisaDoLive: true,
+  // (08/11, bíblia §11) a pessoa escolhe o nível (o palco) desde o primeiro play: as
+  // estrelas e a missão do LU2CA não trancam mais. false = a subida de antes
+  nivelLivre: true,
   // a nota mínima (0–1) de cada estrela: [1★, 2★, 3★, 4★, 5★]. Terminar já dá 1
   estrelas: [0, 0.35, 0.55, 0.75, 0.9],
 }
@@ -87,6 +90,7 @@ export const estrelasDoPalco = (h: HistoriaDisco, palco: string) => Object.entri
 export type Trava = { t: "aberto" } | { t: "estrelas"; faltam: number } | { t: "live" }
 export function travaDo(h: HistoriaDisco, p: PalcoCarreira): Trava {
   const i = PALCOS_CARREIRA.indexOf(p)
+  if (PALCOS_CONFIG.nivelLivre) return { t: "aberto" }
   if (i > 0 && PALCOS_CONFIG.precisaDoLive && !portaAberta(h, "shows-live")) return { t: "live" }
   const faltam = p.abreCom - estrelasTotais(h)
   return faltam > 0 ? { t: "estrelas", faltam } : { t: "aberto" }

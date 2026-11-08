@@ -25,6 +25,7 @@ import { compartilharOuBaixar, mp3, renderizar, wav } from "./exportar"
 import { Gaveta } from "./Gaveta"
 import { carregar } from "../../linha/estado"
 import { historiaDe } from "../../linha/disco/historia"
+import { musicasLiberadas } from "../../linha/disco/episodios"
 import { referenciasDoBatida, type ReferenciaBatida } from "../../linha/disco/recompensas"
 import "./estudio.css"
 
@@ -50,7 +51,7 @@ export default function Estudio() {
   const [refTocando, setRefTocando] = useState<string | null>(null)
   const refAudio = useRef<HTMLAudioElement | null>(null)
   useEffect(() => {
-    try { setRefs(referenciasDoBatida(historiaDe(carregar()).batida)) } catch { setRefs([]) }
+    try { setRefs((() => { const h = historiaDe(carregar()); return referenciasDoBatida([...(h.batida ?? []), ...musicasLiberadas(h)]) })()) } catch { setRefs([]) }
     return () => { refAudio.current?.pause() }
   }, [])
   const tocarRef = (r: ReferenciaBatida) => {

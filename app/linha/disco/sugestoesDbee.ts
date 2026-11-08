@@ -17,6 +17,7 @@ import type { ZonaSom } from "./radioAntiga"
 import { CHAO_LUGARES, type FaseDisco, type HistoriaDisco, type LugarChao } from "./historia"
 import { PORTOES_RUA, type PlacarRua } from "./corridaRua"
 import { MISSOES13, feita13, type MissaoId } from "./portas"
+import { MARCOS, episodioDaMissao } from "./episodios"
 import { aoOuvirCompleta } from "./musicaContinua"
 import { ENTRADAS, IDS_ABERTOS, type LugarAberto } from "./abertos"
 import { INSTRUMENTOS_ANCESTRAIS } from "./instrumentos"
@@ -122,16 +123,17 @@ export const RUAS_DBEE: Record<PistaId, { texto: string; noite?: boolean }> = {
 
 // (RASCUNHO) como a D-Bee chama cada missão que dá pra pegar
 export const MISSOES_DBEE: Partial<Record<MissaoId, string>> = {
-  quadra: "o Alohan tá na quadra sem beat nenhum. cola lá e dá uma força?",
+  // (08/11) quem apresenta é o do episódio (disco/episodios.ts); a chave é o id antigo da peça
+  notti: "o Mubarak acendeu o fliperama. diz que é o vício em forma de máquina. passa lá?",
+  quadra: "o Alohan te espera no ginásio, e falta o beat. faz um no caminho?",
+  mubarak: "a Nizzy tá na loja de discos com um disco antigo pra você. passa lá?",
+  tony: "o Tony Gordo tá com a feira armada. leva um tempero?",
   tuneis: "embaixo das raízes tem corrida rolando. desce pelos túneis?",
   drew: "o Drew tá em casa de novo numa sexta. vai lá tirar ele do sofá?",
-  mubarak: "o Mubarak quer te mostrar um disco antigo, lá no Copo. passa lá?",
-  xeriff: "o Xeriff tá caçando uma frequência que ninguém pega. ajuda ele?",
-  lu2ca: "tem um palco esperando alguém subir na Nectar. bora?",
+  xeriff: "o Xeriff tá caçando uma frequência que ninguém pega. ajuda ele? (fora da fila, quando quiser)",
   ella: "a Ella pinta e ninguém vê. vai lá ver os quadros dela?",
-  notti: "o fliperama do Notti apagou. bora acender de novo?",
-  nizzy: "a montanha-russa da Nizzy parou no meio. vai lá?",
-  tony: "o Tony Gordo diz que tudo lá em cima tem gosto de nada. leva um tempero?",
+  nizzy: "o Notti te leva num passeio na Rollercoaster. bora?",
+  lu2ca: "tem um palco esperando o LU2CA tocar a CHUVA. bora?",
   final: "os nove tão nos pontos deles. vem pra casa, que é hora",
 }
 
@@ -148,7 +150,8 @@ export const SUGESTOES_DBEE: SugestaoDbee[] = [
         alvo: m.lugar.chao ? { t: "chao", chao: m.lugar.chao } : m.lugar.lugar ? { t: "lugar", lugar: m.lugar.lugar } : null,
         nome: m.quem,
         cor: m.cor,
-        peso: 2,
+        // (08/11) a missão de episódio (a sequência) pesa mais que a livre; o 4 e o 5 abrem juntos e pesam igual
+        peso: episodioDaMissao(id) ? 3 : 1.4,
         repete: true,
       }
     }),
@@ -173,7 +176,7 @@ export const SUGESTOES_DBEE: SugestaoDbee[] = [
     sobre: "a sinuca do bar O COPO (treino livre; a partida com o Mubarak é da missão)",
     opcoes: (c) => um(depoisDoPrologo(c.fase) && {
       chave: "sinuca",
-      texto: c.h && feita13(c.h, "mubarak") ? "bora uma sinuca no Copo? só pra relaxar a mão" : "o Copo tá aberto e a mesa de sinuca tá lá, livre. vai treinar uma tacada?",
+      texto: c.h && MARCOS["show-nectar"].feito(c.h) ? "bora uma sinuca no Copo? só pra relaxar a mão" : "o Copo tá aberto e a mesa de sinuca tá lá, livre. vai treinar uma tacada?",
       alvo: { t: "chao", chao: "bar" }, nome: "o Copo", cor: CHAO_LUGARES.bar.cor,
       peso: noite(c.hora) ? 1.3 : 0.8, repete: true,
     }),

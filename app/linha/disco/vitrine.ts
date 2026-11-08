@@ -7,6 +7,7 @@
 // transporte dele até as páginas (?tranca=, Trancado.tsx). Leve: sem three.js, sem React.
 // O inventário (lugar → o que bloqueava → como ficou) mora em docs/vitrine.md.
 
+import { MARCOS, episodioDaMissao, rotuloDoEpisodio } from "./episodios"
 import { MISSOES13, trancado, type MissaoId, type PortaId } from "./portas"
 import type { HistoriaDisco } from "./historia"
 import { cenaDe, type Cena } from "../cenas"
@@ -18,11 +19,15 @@ export function daMissao(id: MissaoId): string {
   if (q.startsWith("os ")) return `dos ${q.slice(3)}`
   if (q.startsWith("o ")) return `do ${q.slice(2)}`
   if (q.startsWith("as ")) return `das ${q.slice(3)}`
-  return `${["dbee", "ella", "nizzy"].includes(id) ? "da" : "do"} ${q}`
+  return `${["dbee", "ella", "mubarak"].includes(id) ? "da" : "do"} ${q}`
 }
 
 // o pedido curto: "faça a missão do Notti pra jogar"
-export const facaMissao = (id: MissaoId, pra: string) => `faça a missão ${daMissao(id)} pra ${pra}`
+// (08/11) a missão de um episódio pede o episódio: "faça o ep. 3 · Copo Americano pra jogar"
+export const facaMissao = (id: MissaoId, pra: string) => {
+  const ep = episodioDaMissao(id)
+  return ep ? `faça o ${rotuloDoEpisodio(ep)} pra ${pra}` : `faça a missão ${daMissao(id)} pra ${pra}`
+}
 
 // a porta trancada agora (a mesma regra do portas.ts) dita como pedido; null = aberta
 export function pedidoDaPorta(h: HistoriaDisco | null, porta: PortaId, pra: string): string | null {
@@ -48,8 +53,9 @@ export const CENA_BAR_VISITA: Cena = {
 // a partida de verdade é a do Mubarak (a peça da missão dele): null = já liberada
 export function trancaSinuca(h: HistoriaDisco | null): string | null {
   if (!h || h.fase === "livre") return null
-  if ((h.feitas13 ?? []).includes("mubarak")) return null
-  return `treino livre · ${facaMissao("mubarak", "jogar com ele")}`
+  // (08/11) a sinuca fica livre no fim do ep. 1 (o show da Nectar), sem ser obrigatória
+  if (MARCOS["show-nectar"].feito(h)) return null
+  return `treino livre · faça o ep. 1 · Nectar pra jogar com o Mubarak`
 }
 
 // ── (vitrine, parte 2) as salas da cidade fora da missão: entra, olha, e o que

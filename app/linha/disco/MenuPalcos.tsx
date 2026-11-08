@@ -25,7 +25,7 @@ export function Palcos({ h, onTocar, onFechar, onXenom }: { h: HistoriaDisco; on
   const prox = PALCOS_CARREIRA[nivel] ?? null
   const travaProx = prox ? travaDo(h, prox) : null
   // começa no palco mais alto que está aberto
-  const [sel, setSel] = useState(PALCOS_CARREIRA[nivel - 1].id)
+  const [sel, setSel] = useState(PALCOS_CARREIRA[PALCOS_CONFIG.nivelLivre ? 0 : nivel - 1].id)
   const palco = PALCOS_CARREIRA.find((p) => p.id === sel) ?? PALCOS_CARREIRA[0]
   const menu = useMemo(() => menuDo(h, palco), [h, palco])
   useEffect(() => {
@@ -39,10 +39,10 @@ export function Palcos({ h, onTocar, onFechar, onXenom }: { h: HistoriaDisco; on
       <div className="l-rua-caixa l-palcos-caixa" style={{ ["--cor" as string]: palco.cor }}>
         <header>
           <small>Guitar Driver · os palcos</small>
-          <b className="l-palcos-nivel">nível {nivel} de {NIVEL_MAX}</b>
+          <b className="l-palcos-nivel">{PALCOS_CONFIG.nivelLivre ? `escolha o nível · 1 a ${NIVEL_MAX}` : `nível ${nivel} de ${NIVEL_MAX}`}</b>
           <span className="l-palcos-prox">
             ★ {total}
-            {!prox ? " · você chegou no topo" : travaProx?.t === "live" ? ` · ${nomeProx} abre com a missão do LU2CA` : travaProx?.t === "estrelas" ? ` · faltam ${travaProx.faltam} ★ pra abrir ${nomeProx}` : ""}
+            {PALCOS_CONFIG.nivelLivre ? "" : !prox ? " · você chegou no topo" : travaProx?.t === "live" ? ` · ${nomeProx} abre com a missão do LU2CA` : travaProx?.t === "estrelas" ? ` · faltam ${travaProx.faltam} ★ pra abrir ${nomeProx}` : ""}
           </span>
           <button type="button" onClick={onFechar} aria-label="Fechar">×</button>
         </header>
