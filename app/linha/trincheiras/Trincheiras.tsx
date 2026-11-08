@@ -58,6 +58,8 @@ import { SEGUNDOS_CABINE, lembrarVeiculoTunel, rotuloSubir, veiculoTunel } from 
 import { TERROR, marcarTerrorVisto, terrorVisto } from "../disco/terror"
 import { PocoTerror } from "./PocoTerror"
 import { EntradasElevador } from "../disco/Elevadores3D"
+import { FOV_PAREDE, PAREDE_ABERTA } from "./atlasParedes"
+import { ParedesPintadas } from "./ParedesPintadas"
 
 const NEVOA = "#1a0f24"
 const NEVOA_LONGE = 340 // a névoa fecha aqui
@@ -128,7 +130,9 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
     const s = st.current, c = corrida.current
     // o relógio: passos fixos; a tela interpola entre o passo de antes e o de agora
     acc.current = Math.min(acc.current + Math.min(dtq, 0.1), 0.25)
-    const travado = c.fase === "contagem" || c.fase === "escolha"
+    // (08/11) pintando uma parede livre: o piloto para e a câmera vai até ela
+    const par = PAREDE_ABERTA.l
+    const travado = c.fase === "contagem" || c.fase === "escolha" || !!par
     while (acc.current >= PASSO) {
       const ent = c.fase === "chegou" ? PARADO : auto ? (V.moto ? pilotoMoto(s, parede) : piloto(s)) : entrada.current
       passo(s, ent, PASSO, V, travado, c.fase === "livre" ? s.dist : c.tempo + (CONTAGEM - c.conta))
@@ -142,6 +146,7 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
     const yaw = s.ant.yaw + dy * k
     const g = corpo.current
     if (g) {
+      if (g.visible === !!par) g.visible = !par // o piloto não fica na frente da parede
       g.position.set(x, y, z)
       // de pé em relação à parede: inclina junto com a curva
       tmp.n.set(-s.nx * s.incl, 1, -s.nz * s.incl).normalize()
@@ -198,6 +203,7 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
     if (oc.e > 1.5) { tmp.alvo.x -= oc.nx * (oc.e - 1.5); tmp.alvo.z -= oc.nz * (oc.e - 1.5) }
     tmp.alvo.y = Math.min(TETO - 1, Math.max(tmp.alvo.y, perfil(Math.min(oc.e, 1.5)).y + 1.4))
     tmp.olha.set(x + fx * 5, y + 1.3, z + fz * 5)
+    if (par) { tmp.alvo.set(par.x + par.nx * PAREDE_ABERTA.d, par.y, par.z + par.nz * PAREDE_ABERTA.d); tmp.olha.set(par.x, par.y, par.z) }
     const cm = cam.current, kk = 1 - Math.exp(-dtq * 7)
     if (!cm.ok) { cm.p.copy(tmp.alvo); cm.olhar.copy(tmp.olha); cm.ok = true }
     cm.p.lerp(tmp.alvo, kk); cm.olhar.lerp(tmp.olha, 1 - Math.exp(-dtq * 12))
@@ -208,7 +214,7 @@ function Mundo({ rodada, st, entrada, auto, parede, veiculo, corrida, mudouFase 
       const p = pedacos[i], vis = Math.hypot(cm.p.x - p.x, cm.p.z - p.z) - p.r < VER
       if (gr.visible !== vis) gr.visible = vis
     }
-    const pc = camera as THREE.PerspectiveCamera, fov = 66 + Math.min(16, vel * 0.4)
+    const pc = camera as THREE.PerspectiveCamera, fov = par ? FOV_PAREDE : 66 + Math.min(16, vel * 0.4)
     if (Math.abs(pc.fov - fov) > 0.05) { pc.fov += (fov - pc.fov) * kk; pc.updateProjectionMatrix() }
   })
 
@@ -493,6 +499,8 @@ export function Trincheiras({ noJogo }: { noJogo?: NoJogo } = {}) {
         <RioDepois />
         {/* (06/11) a entrada do elevador modelada em cada torre (disco/Elevadores3D.tsx; só perto) */}
         <EntradasElevador />
+        {/* (08/11) as paredes livres do grafite: uma malha, um atlas, só perto */}
+        <ParedesPintadas />
         <ResolucaoDinamica fixa={fixa} max={QUALIDADE.dprMax} />
         <Cinema maxLente={QUALIDADE.lente} />
       </Canvas>}

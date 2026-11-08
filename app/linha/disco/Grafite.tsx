@@ -19,7 +19,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { GRAFITES } from "../grafite/grafites"
 import { Motor, type Estado } from "../grafite/motor"
 import type { Grafite, TagLivre } from "../grafite/tipos"
-import { GRAFITES_NA_PAREDE, assinarGrafiteNaParede, definirGrafitesAssinados, definirTagLivre, grafitePerto, tagPerto } from "../trincheiras/geo"
+import { GRAFITES_NA_PAREDE, assinarGrafiteNaParede, definirGrafitesAssinados, definirTagLivre, grafitePerto, paredeLivrePerto, paredesLivres, type LugarGrafite } from "../trincheiras/geo"
+import { FOV_PAREDE, PAREDE_ABERTA, definirParedes } from "../trincheiras/atlasParedes"
+import { CORES_PAREDE, LARGURA_SPRAY, LARG_PAREDE, ALT_PAREDE, MAX_PTS, MAX_TRACOS, codificar, decodificar, riscar } from "../grafite/paredes"
 import { Cadeado, Trancado } from "../Trancado"
 import { vib } from "../som-carro"
 import { assinou as somAssinou } from "../grafite/spray"
@@ -32,10 +34,10 @@ export const todosAssinados = (ids: readonly string[]) => GRAFITES_NA_PAREDE.eve
 
 // onde o jogador está nos túneis. Padrão: o __estado que as Trincheiras expõem
 // (x, z); quem tiver uma fonte melhor passa `posicao`
-type Pos = { x: number; z: number } | null
+type Pos = { x: number; z: number; fase?: string } | null
 const posPadrao = (): Pos => {
   try {
-    const f = (window as unknown as { __estado?: () => { x: number; z: number } }).__estado
+    const f = (window as unknown as { __estado?: () => Pos }).__estado
     return f ? f() : null
   } catch { return null }
 }
@@ -48,23 +50,30 @@ export interface GrafiteProps {
   // algo por cima (a corrida, uma fala): esconde o botão
   escondido?: boolean
   posicao?: () => Pos
-  // (T64, 06/11) o grafite LIVRE: nas paredes da tag (1 em cada 4), depois da missão
-  // dos túneis, desenhar à mão a sua tag; fica no save e em todas essas paredes
+  // (08/11) o grafite LIVRE: até 8 paredes (trincheiras/geo.ts, paredesLivres), depois da
+  // missão dos túneis; cada uma guarda o seu desenho (grafite/paredes.ts, o texto do save)
+  paredes?: readonly string[]
+  onParede?: (i: number, desenho: string) => void
+  // a tag única de antes (T64): continua aparecendo nas paredes ainda sem desenho
   tag?: TagLivre | null
   // liberado? (a missão dos túneis feita ou os 3 assinados); senão, o cadeado e `trancaLivre`
   livre?: boolean
   trancaLivre?: string
-  onTag?: (t: TagLivre) => void
 }
 
-export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = posPadrao, tag = null, livre = false, trancaLivre, onTag }: GrafiteProps) {
+export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = posPadrao, paredes, onParede, tag = null, livre = false, trancaLivre }: GrafiteProps) {
   const [perto, setPerto] = useState<string | null>(null)
   const [aberto, setAberto] = useState<string | null>(null)
-  // (T64) perto de uma parede da tag / o painel da tag aberto / o aviso do cadeado
-  const [pertoTag, setPertoTag] = useState(false)
-  const [tagAberta, setTagAberta] = useState(false)
+  // (08/11) a parede livre perto (-1 = nenhuma) / a que está sendo pintada / o aviso do cadeado
+  const [paredePerto, setParedePerto] = useState(-1)
+  const [pintando, setPintando] = useState(-1)
   const [aviso, setAviso] = useState(false)
   useEffect(() => { definirTagLivre(tag) }, [tag])
+  // o atlas das paredes (repinta só o que mudou; a chave em texto segura um [] novo a cada render)
+  const chaveParedes = (paredes ?? []).join("|")
+  useEffect(() => {
+    definirParedes({ desenhos: chaveParedes.split("|"), tag, livre, tranca: trancaLivre ?? "faça a missão dos túneis" })
+  }, [chaveParedes, tag, livre, trancaLivre])
   useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(false), 3500); return () => clearTimeout(t) }, [aviso])
 
   // a parede mostra o que já foi assinado (a chave em texto: um [] novo a cada render não refaz nada)
@@ -74,21 +83,22 @@ export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = 
   // perto de um grafite ainda sem assinatura? (3x por segundo; parado com o painel aberto)
   const posRef = useRef(posicao)
   useEffect(() => { posRef.current = posicao }, [posicao])
-  const comTag = !!onTag
+  const comParedes = !!onParede
   useEffect(() => {
-    if (aberto || tagAberta) return
+    if (aberto || pintando >= 0) return
     const ver = () => {
       const p = posRef.current()
       const l = p ? grafitePerto(p.x, p.z) : null
       const id = l?.grafite && !chave.split(",").includes(l.grafite) ? l.grafite : null
       setPerto((a) => (a === id ? a : id))
-      const t = !id && comTag && !!p && !!tagPerto(p.x, p.z)
-      setPertoTag((a) => (a === t ? a : t))
+      // na corrida não se para pra pintar
+      const t = !id && comParedes && p && (!p.fase || p.fase === "livre") ? paredeLivrePerto(p.x, p.z) : -1
+      setParedePerto((a) => (a === t ? a : t))
     }
     ver()
     const i = setInterval(ver, 330)
     return () => clearInterval(i)
-  }, [aberto, tagAberta, chave, comTag])
+  }, [aberto, pintando, chave, comParedes])
 
   const assinou = useCallback((id: string) => {
     assinarGrafiteNaParede(id)
@@ -100,15 +110,20 @@ export function GrafiteTrincheiras({ assinados, onAssinou, escondido, posicao = 
     const g = grafitePorId(aberto)
     return g ? <PainelGrafite g={g} onAssinou={assinou} onFechar={() => setAberto(null)} /> : null
   }
-  if (tagAberta && onTag) return <PainelTag tag={tag} onPronto={(t) => { onTag(t); definirTagLivre(t); vib([20, 30, 40]); setTagAberta(false) }} onFechar={() => setTagAberta(false)} />
+  const desenhos = chaveParedes ? chaveParedes.split("|") : []
+  if (pintando >= 0 && onParede) {
+    return <PainelParede parede={paredesLivres()[pintando]} inicial={decodificar(desenhos[pintando])}
+      onPronto={(t) => { onParede(pintando, codificar(t)); vib([20, 30, 40]); setPintando(-1) }} onFechar={() => setPintando(-1)} />
+  }
   if (escondido) return null
-  if (!perto && pertoTag) {
-    // (T64) o grafite livre: liberado, abre a parede; trancado, o cadeado e o que libera
+  if (!perto && paredePerto >= 0) {
+    // o grafite livre: liberado, a câmera vai até a parede; trancado, o cadeado e o que libera
+    const pintada = !!desenhos[paredePerto]
     return (
       <>
-        <button type="button" className={`gf-botao${livre ? "" : " is-trancado"}`} data-testid="grafite-livre" onClick={() => (livre ? setTagAberta(true) : setAviso((a) => !a))}>
-          <small>{livre ? "parede livre" : <><Cadeado size={9} /> parede livre</>}</small>
-          <b>{livre ? (tag ? "refazer a sua tag" : "pintar a sua tag") : "grafite livre"}</b>
+        <button type="button" className={`gf-botao${livre ? "" : " is-trancado"}`} data-testid="grafite-livre" onClick={() => (livre ? setPintando(paredePerto) : setAviso((a) => !a))}>
+          <small>{livre ? `parede livre ${paredePerto + 1} de ${paredesLivres().length}` : <><Cadeado size={9} /> parede livre</>}</small>
+          <b>{livre ? (pintada ? "repintar esta parede" : "pintar esta parede") : "grafite livre"}</b>
         </button>
         {aviso && !livre && trancaLivre && <div className="gf-aviso"><Trancado texto={trancaLivre} /></div>}
       </>
@@ -182,43 +197,44 @@ export function PainelGrafite({ g, onAssinou, onFechar }: { g: Grafite; onAssino
   )
 }
 
-// (T64, 06/11) O GRAFITE LIVRE: a parede de perto, em branco (ou com a tag de
-// antes), e o dedo é o spray. Nada por quadro: cada movimento do dedo pinta só o
-// pedacinho novo, direto no canvas. Limites pra o save ficar pequeno.
-const CORES_TAG = ["#ff3fb0", "#22e6ff", "#ffd23f", "#7dffb0", "#f2eefa"]
-const MAX_PTS = 1200 // pontos no total (cada um = 2 inteiros no save)
-const MAX_TRACOS = 60
-export function PainelTag({ tag, onPronto, onFechar }: { tag: TagLivre | null; onPronto: (t: TagLivre) => void; onFechar: () => void }) {
+// (08/11) O GRAFITE LIVRE: a câmera vai até a parede (o jogo continua aparecendo em
+// volta, sem tela preta) e o retângulo daqui fica exatamente em cima dela. O dedo é
+// o spray. Nada por quadro: cada movimento pinta só o pedacinho novo, direto no
+// canvas; o atlas só muda ao terminar. Repintar começa do desenho daquela parede.
+export function PainelParede({ parede, inicial, onPronto, onFechar }: { parede: LugarGrafite; inicial: TagLivre | null; onPronto: (t: TagLivre) => void; onFechar: () => void }) {
+  const raiz = useRef<HTMLDivElement>(null)
   const cv = useRef<HTMLCanvasElement>(null)
-  const tracos = useRef<TagLivre["tracos"]>(tag ? tag.tracos.map((t) => ({ cor: t.cor, pts: [...t.pts] })) : [])
+  const tracos = useRef<TagLivre["tracos"]>(inicial ? inicial.tracos.map((t) => ({ cor: t.cor, pts: [...t.pts] })) : [])
   const total = useRef(tracos.current.reduce((a, t) => a + t.pts.length / 2, 0))
   const atual = useRef<{ cor: string; pts: number[] } | null>(null)
-  const [cor, setCor] = useState(CORES_TAG[0])
+  const [cor, setCor] = useState(CORES_PAREDE[0])
   const [vazio, setVazio] = useState(!tracos.current.length)
   const [cheio, setCheio] = useState(false)
 
-  const escala = () => { const c = cv.current!; return { c, g: c.getContext("2d")!, k: c.width / 200 } }
-  const pincel = (g: CanvasRenderingContext2D, k: number, c: string) => { g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = 4 * k; g.strokeStyle = c; g.shadowColor = c; g.shadowBlur = 3 * k }
+  const escala = () => { const c = cv.current!; return { c, g: c.getContext("2d")!, k: c.width / LARG_PAREDE } }
   const redesenhar = useCallback(() => {
     const { c, g, k } = escala()
     g.clearRect(0, 0, c.width, c.height)
-    for (const t of tracos.current) {
-      const p = t.pts
-      pincel(g, k, t.cor)
-      g.beginPath(); g.moveTo(p[0] * k, p[1] * k)
-      for (let j = 2; j < p.length; j += 2) g.lineTo(p[j] * k, p[j + 1] * k)
-      if (p.length === 2) g.lineTo(p[0] * k + 0.1, p[1] * k)
-      g.stroke()
-    }
+    for (const t of tracos.current) riscar(g, t.pts, t.cor, 0, 0, k, LARGURA_SPRAY * k)
   }, [])
+  // a câmera vai pra frente da parede; a distância faz a parede encher o retângulo do painel
+  useEffect(() => {
+    PAREDE_ABERTA.l = parede
+    document.body.classList.add("gf-pintando")
+    return () => { PAREDE_ABERTA.l = null; document.body.classList.remove("gf-pintando") }
+  }, [parede])
   useEffect(() => {
     const c = cv.current!
-    const medir = () => { const r = c.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); redesenhar() }
+    const medir = () => {
+      const r = c.getBoundingClientRect(), tela = raiz.current!.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1)
+      c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); redesenhar()
+      if (r.width > 0 && tela.height > 0) PAREDE_ABERTA.d = parede.w / (2 * Math.tan((FOV_PAREDE * Math.PI) / 360) * (tela.width / tela.height) * (r.width / tela.width))
+    }
     const ro = new ResizeObserver(medir)
     ro.observe(c)
     medir()
     return () => ro.disconnect()
-  }, [redesenhar])
+  }, [redesenhar, parede])
   // as teclas não vazam pro patins
   useEffect(() => {
     const parar = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar(); e.stopPropagation() }
@@ -228,7 +244,7 @@ export function PainelTag({ tag, onPronto, onFechar }: { tag: TagLivre | null; o
 
   const ponto = (e: React.PointerEvent<HTMLCanvasElement>): [number, number] => {
     const r = e.currentTarget.getBoundingClientRect()
-    return [Math.max(0, Math.min(200, Math.round(((e.clientX - r.left) / r.width) * 200))), Math.max(0, Math.min(100, Math.round(((e.clientY - r.top) / r.height) * 100)))]
+    return [Math.max(0, Math.min(LARG_PAREDE - 1, Math.round(((e.clientX - r.left) / r.width) * LARG_PAREDE))), Math.max(0, Math.min(ALT_PAREDE - 1, Math.round(((e.clientY - r.top) / r.height) * ALT_PAREDE)))]
   }
   const baixo = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (total.current >= MAX_PTS || tracos.current.length >= MAX_TRACOS) { setCheio(true); return }
@@ -239,7 +255,7 @@ export function PainelTag({ tag, onPronto, onFechar }: { tag: TagLivre | null; o
     tracos.current.push(t)
     total.current++
     const { g, k } = escala()
-    pincel(g, k, cor); g.beginPath(); g.moveTo(x * k, y * k); g.lineTo(x * k + 0.1, y * k); g.stroke()
+    riscar(g, t.pts, cor, 0, 0, k, LARGURA_SPRAY * k)
     setVazio(false)
     vib(6)
   }
@@ -253,21 +269,21 @@ export function PainelTag({ tag, onPronto, onFechar }: { tag: TagLivre | null; o
     t.pts.push(x, y)
     total.current++
     const { g, k } = escala()
-    pincel(g, k, t.cor); g.beginPath(); g.moveTo(px * k, py * k); g.lineTo(x * k, y * k); g.stroke()
+    riscar(g, [px, py, x, y], t.cor, 0, 0, k, LARGURA_SPRAY * k)
   }
   const solta = () => { atual.current = null }
   const apagar = () => { tracos.current = []; total.current = 0; setVazio(true); setCheio(false); redesenhar() }
 
   return (
-    <div className="gf-raiz is-mundo gf-tag" data-testid="grafite-livre-painel">
+    <div ref={raiz} className="gf-raiz is-mundo gf-tag" data-testid="grafite-livre-painel">
       <div className="gf-topo">
         <button type="button" className="gf-sair" onClick={onFechar}>← voltar pro túnel</button>
         <span className="gf-tag-dica">{cheio ? "a parede encheu" : "o dedo é o spray"}</span>
       </div>
-      <canvas ref={cv} className="gf-tag-parede" aria-label="parede livre: desenhe a sua tag"
+      <canvas ref={cv} className="gf-tag-parede" aria-label="parede livre: faça o seu desenho"
         onPointerDown={baixo} onPointerMove={mexe} onPointerUp={solta} onPointerCancel={solta} />
       <div className="gf-tag-barra">
-        {CORES_TAG.map((c) => (
+        {CORES_PAREDE.map((c) => (
           <button key={c} type="button" className={`gf-tag-cor${c === cor ? " is-on" : ""}`} style={{ background: c }} aria-label={`cor ${c}`} onClick={() => setCor(c)} />
         ))}
         <button type="button" className="gf-tag-bt" onClick={apagar}>apagar</button>

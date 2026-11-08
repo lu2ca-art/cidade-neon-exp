@@ -76,6 +76,7 @@ import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
 import { GRAFITES as GRAFITES_T12 } from "./grafite/grafites"
+import { comParede } from "./grafite/paredes"
 import { CENA_BAR_VISITA, cenaVisita, donaDaFaixa, facaMissao, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
 import { carregarTrincheiras, limparVoltaDasTrincheiras, nascerNoTunel, subiuDoTunel, voltaDasTrincheiras } from "./disco/tuneis"
 // (30/10) a volta do túnel: a Kombi esperou na porta
@@ -2843,8 +2844,8 @@ export default function LinhaPage() {
         {D && emSala && !trincheiras?.descendo && <button type="button" className={`l-radio-livre${radioManda ? " is-on" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={alternarRadioLivre}>{radioManda ? "rádio · desligar" : "rádio · ligar"}</button>}
         {/* (T64, lote D) os grafites das paredes: perto de um, o botão; assinar todos faz a arte dos túneis */}
         {trincheiras && !trincheiras.descendo && <GrafiteTrincheiras assinados={hist.grafites ?? []} onAssinou={assinouGrafite} escondido={metroTuneis}
-          tag={hist.tagLivre ?? null} livre={HIST && (feita13(hist, "tuneis") || GRAFITES_IDS.every((g) => (hist.grafites ?? []).includes(g)))} trancaLivre={facaMissao("tuneis", "pintar a sua tag")}
-          onTag={(t) => setSave((s) => comHistoria(s, (h) => ({ ...h, tagLivre: t })))} />}
+          tag={hist.tagLivre ?? null} livre={HIST && (feita13(hist, "tuneis") || GRAFITES_IDS.every((g) => (hist.grafites ?? []).includes(g)))} trancaLivre={facaMissao("tuneis", "pintar a parede")}
+          paredes={hist.paredesLivres ?? []} onParede={(i, d) => setSave((s) => comHistoria(s, (h) => ({ ...h, paredesLivres: comParede(h.paredesLivres, i, d) })))} />}
         {/* (T64, 06/11) o trem do salão do metrô: depois da fuga de quando te pegam, a fuga de novo; antes, o cadeado */}
         {HIST && trincheiras && !trincheiras.descendo && <MetroTuneis liberado={metroFeito(hist)} onAberto={setMetroTuneis} />}
         {viagem && (

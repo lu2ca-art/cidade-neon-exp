@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "grafite.livre",
+    nome: "O grafite livre: cada parede com o seu desenho",
+    data: "2026-11-08",
+    tarefa: "T64",
+    olhar: "Já lá embaixo, com a missão dos túneis feita. São 8 paredes pra pintar: algumas nos rios perto da entrada e a maioria no salão do grafite. A parede sem desenho mostra a moldura \"PAREDE LIVRE · pinte aqui\". Toque em \"pintar esta parede\": a câmera vai até ela, o túnel continua em volta, e o dedo é o spray. Cada parede guarda o seu desenho e dá pra repintar (suba e desça de novo pra ver). Quem já tinha a tag antiga continua vendo ela nas paredes que ainda não pintou. Antes da missão, a parede mostra o cadeado e diz o que libera.",
+    perguntas: ["Dá pra achar as paredes sem ajuda?", "A moldura \"pinte aqui\" ficou boa, ou quer outro jeito de marcar?", "Desenhar em cima da parede ficou bom no iPhone (o traço, o tamanho)?", "Ficou leve no iPhone perto das paredes?"],
+    mais: [{ parte: "grafite", nome: "antes da missão: as paredes com cadeado" }],
+  },
+  {
     parte: "livre",
     nome: "Os outdoors do Núcleo gritando: uma propaganda diferente pra cada produto",
     data: "2026-11-08",

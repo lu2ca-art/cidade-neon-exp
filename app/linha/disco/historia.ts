@@ -117,6 +117,9 @@ export interface HistoriaDisco {
   grafites?: string[]
   // (T64, 06/11) o grafite livre: a tag desenhada à mão (grafite/tipos.ts), na parede depois da missão
   tagLivre?: import("../grafite/tipos").TagLivre
+  // (08/11) as 8 paredes livres: o desenho de cada uma em texto (grafite/paredes.ts; "" = sem pintar).
+  // A tagLivre antiga fica como está: aparece nas paredes que ainda não têm desenho
+  paredesLivres?: string[]
 }
 
 // (A8) o que o metrô tira dele: fica no save de uma vez (puras, o C2 e a page.tsx chamam)

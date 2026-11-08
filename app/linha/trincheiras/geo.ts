@@ -13,6 +13,7 @@ import {
 } from "./mapa"
 import { GRAFITES } from "../grafite/grafites"
 import type { Grafite, TagLivre } from "../grafite/tipos"
+import { MAX_PAREDES } from "../grafite/paredes"
 
 const BEIRA = 4 // a laje do teto pra fora da parede
 const ALTO_TORRE = 160
@@ -374,15 +375,34 @@ export function grafitePerto(x: number, z: number, raio = 14): LugarGrafite | nu
   return melhor
 }
 
-// (T64, 06/11) a parede da tag (sem grafite do T12) mais perto: o grafite livre
-export function tagPerto(x: number, z: number, raio = 14): LugarGrafite | null {
-  let melhor: LugarGrafite | null = null, d2m = raio * raio
-  for (const l of lugaresGrafite()) {
-    if (l.grafite) continue
+// (08/11, docs/t64.md) AS PAREDES LIVRES: 8 lugares das paredes da tag, onde cada um
+// recebe o desenho dele (atlasParedes.ts). Uma perto da entrada em três rios (a
+// rampa da descida, o rio A, o rio E) e o resto espalhado no salão do grafite. A
+// ordem é a identidade da parede no save: não mexer sem migrar
+let paredesCache: LugarGrafite[] | null = null
+export function paredesLivres(): LugarGrafite[] {
+  if (paredesCache) return paredesCache
+  const tags = lugaresGrafite().filter((l) => !l.grafite)
+  const out: LugarGrafite[] = []
+  for (const av of [6, 0, 4]) { const t = tags.find((l) => l.av === av); if (t) out.push(t) }
+  const salao = tags.filter((l) => l.av < 0 && l.w >= 10), falta = MAX_PAREDES - out.length
+  for (let j = 0; j < falta && salao.length; j++) { const l = salao[Math.floor((j * salao.length) / falta)]; if (!out.includes(l)) out.push(l) }
+  for (const l of tags) { if (out.length >= MAX_PAREDES) break; if (!out.includes(l)) out.push(l) } // a reserva, se o mapa mudar
+  paredesCache = out.slice(0, MAX_PAREDES)
+  return paredesCache
+}
+// a parede livre mais perto de (x, z), até `raio` metros no chão: o índice dela (-1 = nenhuma)
+export function paredeLivrePerto(x: number, z: number, raio = 14): number {
+  let melhor = -1, d2m = raio * raio
+  paredesLivres().forEach((l, i) => {
     const d2 = (l.x - x) ** 2 + (l.z - z) ** 2
-    if (d2 < d2m) { d2m = d2; melhor = l }
-  }
+    if (d2 < d2m) { d2m = d2; melhor = i }
+  })
   return melhor
+}
+// as 8 paredes numa malha só (um desenho; a textura é a do atlas das paredes livres)
+export function geoParedesLivres() {
+  return fundir(paredesLivres().map((l, i) => quadro(l.x, l.y, l.z, l.nx, l.nz, l.w, l.h, C("#d8d0e8"), uvGrafite(i))), true)!
 }
 
 // ── as raízes da cidade-árvore, penduradas do vidro (fundidas no pedaço) ──
@@ -512,7 +532,7 @@ function salao(s: Salao, L: Camadas) {
   if (s.tipo === "grafite") for (const m of MUROS) muro(m, L)
   if (s.tipo === "descida") porta(PORTA, L)
   // os grafites dos salões
-  for (const g of lugaresGrafite()) if (g.av === -1 - s.i) L.atlas.push(quadro(g.x, g.y, g.z, g.nx, g.nz, g.w, g.h, C("#d8d0e8"), uvGrafite(g.slot)))
+  for (const g of lugaresGrafite()) if (g.av === -1 - s.i && !paredesLivres().includes(g)) L.atlas.push(quadro(g.x, g.y, g.z, g.nx, g.nz, g.w, g.h, C("#d8d0e8"), uvGrafite(g.slot)))
   // as raízes e a poeira
   const nr = Math.round(s.r * 0.9)
   for (let j = 0; j < nr; j++) {
@@ -607,7 +627,7 @@ export function montarPedacos(): Pedaco[] {
   for (const tr of TRECHOS_RIO) {
     const L = novas(), av = AVENIDAS[tr.av]
     trechoRio(av, tr.k0, tr.k1, L)
-    for (const g of lugaresGrafite()) if (g.av === av.i && g.k >= tr.k0 && g.k < tr.k1) L.atlas.push(quadro(g.x, g.y, g.z, g.nx, g.nz, g.w, g.h, C("#d8d0e8"), uvGrafite(g.slot)))
+    for (const g of lugaresGrafite()) if (g.av === av.i && g.k >= tr.k0 && g.k < tr.k1 && !paredesLivres().includes(g)) L.atlas.push(quadro(g.x, g.y, g.z, g.nx, g.nz, g.w, g.h, C("#d8d0e8"), uvGrafite(g.slot)))
     const x = (tr.min.x + tr.max.x) / 2, z = (tr.min.z + tr.max.z) / 2
     out.push(fechar(L, x, z, Math.hypot(tr.max.x - tr.min.x, tr.max.z - tr.min.z) / 2 + MEIA + 4))
   }

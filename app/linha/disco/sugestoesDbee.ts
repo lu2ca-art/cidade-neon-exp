@@ -300,10 +300,10 @@ SUGESTOES_DBEE.push(
   },
   {
     id: "grafite-livre",
-    sobre: "o grafite livre (a tag à mão) nos túneis, depois da missão dos túneis e enquanto não pintou",
-    opcoes: (c) => um(!!c.h && feita13(c.h, "tuneis") && !c.h.tagLivre && {
+    sobre: "o grafite livre (o desenho à mão) nas paredes dos túneis, depois da missão dos túneis e enquanto não pintou nenhuma",
+    opcoes: (c) => um(!!c.h && feita13(c.h, "tuneis") && !c.h.tagLivre && !c.h.paredesLivres?.some(Boolean) && {
       chave: "grafite-livre",
-      texto: c.zona === "tuneis" ? "achou a parede com LU2CA? toca em pintar e faz a tua tag" : "tem tinta sobrando nos túneis. desce e faz a tua tag na parede",
+      texto: c.zona === "tuneis" ? "achou uma parede livre? toca em pintar e faz o teu desenho" : "tem tinta sobrando nos túneis. desce e faz a tua tag na parede",
       alvo: c.zona === "tuneis" ? null : { t: "chao", chao: "tuneis" }, nome: "os túneis", cor: CHAO_LUGARES.tuneis.cor,
       peso: c.zona === "tuneis" ? 1.6 : c.zona === "suburbio" ? 1.3 : 0.7,
     }),
