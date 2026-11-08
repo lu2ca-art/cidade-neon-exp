@@ -16,6 +16,12 @@ de vez em quando piscam os nomes das músicas do LU2CA, como se fossem hackeados
 - O hack mostra a faixa da pista daquela rua (`pistas.ts`, pelo nome); fora das
   pistas, uma faixa sorteada.
 
+## Arte (`app/linha/estrada/outdoorsArte.ts`, 08/11)
+- Uma peça maximalista diferente por produto, na ordem de `PRODUTOS`; mesma célula
+  de 512×256. Toda letra é medida e esticada pra caber na caixa (a fonte muda por aparelho).
+- Sem `shadowBlur`. Fundo grande abaixo de 0,62 de luminância (o corte do bloom),
+  e nenhum fundo preto: o hack é o único preto com ciano/magenta.
+
 ## Desempenho
 - Um atlas único (canvas 2048×1536, gerado uma vez): 15 anúncios + 9 faixas.
 - Uma `InstancedMesh` por quadra de 900 m (corte por frustum), todas com o mesmo

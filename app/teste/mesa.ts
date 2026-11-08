@@ -25,6 +25,14 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "livre",
+    nome: "Os outdoors do Núcleo gritando: uma propaganda diferente pra cada produto",
+    data: "2026-11-08",
+    tarefa: "T46",
+    olhar: "Suba pras pistas da cidade e olhe as placas: agora cada um dos 15 produtos tem a própria propaganda exagerada, com letra enorme, estouros de oferta, setas, faixas e letrinha miúda debochada (a DOPA-COLA com a lata, o SORRISO PADRÃO com a boca gigante, o CARRINHO CHEIO como encarte de mercado, o NOTIFICA com a pilha de avisos). O hack continua igual: de vez em quando uma placa treme e fica preta com o nome da música.",
+    perguntas: ["Ficou exagerado o bastante, bem na cara?", "Dá pra ler o nome do produto passando de carro?", "Alguma propaganda ficou feia ou com o texto estranho? Qual?", "O hack ainda se destaca no meio das propagandas?", "Continua liso no iPhone?"],
+  },
+  {
     parte: "torre",
     nome: "Monumentos só no holo, entradas da rotatória e vinhetas fora do notch",
     data: "2026-11-08",
