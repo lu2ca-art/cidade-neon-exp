@@ -54,7 +54,7 @@ export default function Ginasio() {
           <span>{neon} <small>neon$</small></span>
         </header>
         <h1>GINÁSIO</h1>
-        <p className="gi-sub">de dia · a quadra tá livre</p>
+        <p className="gi-sub">de dia · com o Alohan</p>
         {tranca && <Trancado texto={tranca} />}
         <button type="button" className={`gi-card is-basquete${tranca ? " cn-card-trancado" : ""}`} onClick={() => { if (tranca) return trancou(); ac(); setTela("basquete") }} aria-disabled={!!tranca}>
           <b>{tranca && <Cadeado />}basquete</b><small>60 segundos · recorde: {rec.cestas} pontos</small><em>1 neon a cada 6 pontos</em>
@@ -63,7 +63,7 @@ export default function Ginasio() {
           <b>{tranca && <Cadeado />}pingue-pongue</b><small>até 7 · {rec.vitorias} vitórias</small><em>ganhou: 6 neon</em>
         </button>
         <button type="button" className={`gi-card is-cama${tranca ? " cn-card-trancado" : ""}`} onClick={() => { if (tranca) return trancou(); ac(); setTela("cama") }} aria-disabled={!!tranca}>
-          <b>{tranca && <Cadeado />}cama elástica</b><small>60 segundos · recorde: {rec.cama} pontos</small><em>1 neon a cada 20 pontos</em>
+          <b>{tranca && <Cadeado />}ginástica</b><small>60 segundos · recorde: {rec.cama} pontos</small><em>1 neon a cada 20 pontos</em>
         </button>
         {msg && <p className="gi-msg">{msg}</p>}
       </section>

@@ -277,6 +277,8 @@ interface Props {
   // quem vai de carona na Kombi fora das missões de carona (o tutorial: o
   // Mubarak indo pra casa do Drewboy)
   levando?: EstacaoId | null
+  // (ep. 3) o piloto do botão ligou ou desligou
+  onPilotoLigado?: (on: boolean) => void
   // o tanque (0–1): gasta andando; seco, a Kombi vai na reserva (devagar)
   tanque?: number
   onTanque?: (n: number) => void
@@ -564,7 +566,7 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null, missaoAtiva = null }: Props) {
+export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null, missaoAtiva = null }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -911,6 +913,8 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // volante assume por uns segundos e ele volta. O ∞ do lado do GPS liga e desliga
   const [infinito, setInfinito] = useState(false)
   useEffect(() => { input.current.infinito = infinito; if (infinito) { jogo.current.desligada = false; setDesligada(false) } }, [infinito])
+  // (ep. 3) a página sabe do piloto: ligou com a arte do Alohan por fazer, o beat começa no caminho
+  useEffect(() => { onPilotoLigado?.(infinito) }, [infinito, onPilotoLigado])
   // (piloto, 05/11) só de Kombi: a pé, de patins, de moto ou noutro veículo, desliga (e o botão some)
   const semPiloto = dePatins || semKombi || quebrou || noConserto
   useEffect(() => { if (semPiloto) setInfinito(false) }, [semPiloto])

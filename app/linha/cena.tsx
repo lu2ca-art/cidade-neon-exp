@@ -38,7 +38,7 @@ type Fila = { de?: string; texto: string; tipo: "fala" | "acao" | "nucleo" }[]
 
 // `gestos3d`: os gestos que a sala em 3D faz (interior/): a legenda só dá
 // a dica e espera a sala avisar que acabou
-export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], loops = 0, onTom, onLinha, onFim, onNeon }: { cena: Cena; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; loops?: number; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void; onNeon?: (n: number) => void }) {
+export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], tom: tomAgora = "dormindo", semSom = false, gestos3d = [], loops = 0, gestoShow, onTom, onLinha, onFim, onNeon }: { cena: Cena; gestoShow?: (pronto: () => void) => React.ReactNode; memoria: number; objetos: EstacaoId[]; reliquias?: Reliquia[]; tom?: Tom; semSom?: boolean; gestos3d?: string[]; loops?: number; onTom: (t: Tom) => void; onLinha?: (texto: string) => void; onFim: (r: ResultadoCena) => void; onNeon?: (n: number) => void }) {
   // o tom vale o do começo da cena (responder no meio não reembaralha os passos)
   const [tom] = useState(tomAgora)
   // os passos com `se` só entram se a pessoa já passou por aquela estação;
@@ -211,6 +211,8 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
         </div>
       )}
 
+      {/* (ep. 1) o show da Nectar no palco do bar: quem desenha é a page.tsx (disco/ShowNoBar.tsx) */}
+      {!atual && passo?.t === "gesto" && passo.id === "show-nectar" && gestoShow?.(() => setPos((p) => p + 1))}
       {/* dinheiro na conta: só o +X no canto, e a cena segue sozinha */}
       {neonCanto && <div key={neonCanto.id} className="l-cena-neon">+{neonCanto.n} neon$</div>}
       {mostrando && !soNeon && (

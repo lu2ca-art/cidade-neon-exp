@@ -9,8 +9,8 @@
 //   dunas   → sem estrada até a cidade: o drift e o voo (que rendem turbo),
 //             o disco antigo tocando, os robôs no caminho; chegar = pousar
 //             numa pista
-//   bar     → o PRÓLOGO: a moça do bar oferece o copo (o loop); recusou, ela
-//             manda ele cantar ("ninguém sobe naquele palco há anos"): o show
+//   bar     → o PRÓLOGO: a moça do bar oferece o copo (o loop); recusou, conhece
+//             o Mubarak e vê o show da Nectar ali mesmo (ep. 1, episodios.md)
 //   nectar  → a missão 1: a Kombi quebra, regar de patins, o galão no posto,
 //             a oficina (solar + turbo = toda a água), o show, as flores
 //   carreira→ depois da Nectar: as pistas que acendem (os atos), as 4 peças
@@ -90,6 +90,8 @@ export interface HistoriaDisco {
   // (T57) pecas: as peças da reciclagem que ele já catou no lixão (disco/achados.ts)
   oficina?: { cena?: true; painel?: true; tanque?: number; pecas?: string[] }
   aguaDbee?: true
+  // (ep. 1) conheceu o Mubarak no bar, antes do show (quem chegou na oficina antes, sem isso, segue pelo caminho antigo)
+  mubarakBar?: true
   // (T20) os palcos como Guitar Hero (disco/palcos.ts): a melhor estrela (1–5)
   // de cada música em cada palco ("bar:copo" → 3). A soma abre o palco de cima
   palcos?: Record<string, number>
@@ -237,7 +239,7 @@ export const MONUMENTO = ["o violão", "a camisa", "o caderno"]
 // viagem no tempo pelos livros antigos (por isso não se assusta); cansou da
 // cidade e se mudou pro deserto; guardou tecnologias dos velhos tempos; os dois
 // se conectam nos tambores; ela dá o HOLO. Tudo RASCUNHO ──
-import type { Cena } from "../cenas"
+import type { Cena, PassoCena } from "../cenas"
 import { CONFIG_TUTORIAL } from "./tutorialConf"
 export const CENA_CASA_DISCO: Cena = {
   lugar: "casa-dbee",
@@ -319,8 +321,15 @@ export const CENA_CASA_VISITA: Cena = {
 
 // ── O PRÓLOGO: o bar (LU2CA 19–20/10). A moça do bar (a do copo: um jeito meio
 // robô, muito sensata; é uma das máquinas conscientes, mas não revela) oferece
-// o copo; beber = o loop (a noite volta); recusar e sair do loop: ela manda ele
-// cantar, ninguém sobe naquele palco há anos. Depois, o show. RASCUNHO ──
+// o copo; beber = o loop (a noite volta); recusar e sair do loop: ninguém sobe
+// naquele palco há anos. Depois (ep. 1, 08/11): conhecer o Mubarak e o show da
+// Nectar ali mesmo, ao lado da D-Bee e do Mubarak. RASCUNHO ──
+// (ep. 1) o show do LU2CA, com a Nectar sendo revelada: assistir ou tocar (disco/ShowNoBar.tsx)
+const PASSOS_SHOW_NECTAR: PassoCena[] = [
+  { t: "acao", texto: "o LU2CA sobe no palco. a D-Bee e o Mubarak ficam do seu lado" },
+  { t: "gesto", id: "show-nectar" },
+  { t: "fim" },
+]
 export const CENA_BAR_PROLOGO: Cena = {
   lugar: "bar",
   titulo: "o bar · o prólogo",
@@ -340,10 +349,14 @@ export const CENA_BAR_PROLOGO: Cena = {
     { t: "fala", de: "ela", texto: "então faz outra coisa" },
     { t: "acao", texto: "ela aponta o fundo do bar: um palco pequeno, o pedestal sem ninguém, poeira na caixa de som" },
     { t: "fala", de: "ela", texto: "ninguém sobe naquele palco há anos" },
-    { t: "fala", de: "ela", texto: "vai cantar" },
-    { t: "fim" },
+    // RASCUNHO: a frase vem de episodios.md ("a D-Bee diz que sabe quem pode ajudar"); o Mubarak é a fala que já existia na oficina
+    { t: "fala", de: "D-Bee", texto: "eu sei quem pode ajudar" },
+    { t: "fala", de: "Mubarak", texto: "mubarak. a oficina é minha, o resto é de ninguém" },
+    ...PASSOS_SHOW_NECTAR,
   ],
 }
+// o show sozinho: quem conheceu o Mubarak na oficina (save antigo, ou saiu antes do show) vem aqui
+export const CENA_SHOW_NECTAR: Cena = { lugar: "bar", titulo: "o bar · o show", missao: "copo", passos: PASSOS_SHOW_NECTAR }
 
 // ── A OFICINA: (T09) a cena mora em disco/oficina.ts (CENA_OFICINA), com o
 // mecânico provisório e configurável ──

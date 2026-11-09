@@ -43,7 +43,7 @@ type NotaCorda = { t: number; lane: number; dur: number; ok: boolean; errou: boo
 
 const ajustar = ajustarShow
 
-export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onFim }: PropsShow) {
+export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, onDeNovo }: PropsShow) {
   const [estado, setEstado] = useState<"carregando" | "tocando" | "fim" | "erro">("carregando")
   const [fim, setFim] = useState<ResultadoShow | null>(null)
   const cvs = useRef<HTMLCanvasElement>(null)
@@ -231,6 +231,7 @@ export function ShowCorda({ faixa, lugar, palco: palcoId, cor, popularidade, onF
           <b>{fim.nota > 0.8 ? "o grave segurou a casa" : fim.nota > 0.5 ? "deu bom" : fim.nota > 0.2 ? "foi" : "pelo menos você subiu"}</b>
           <span>{fim.acertos} de {fim.total} notas</span>
           <button type="button" onClick={() => onFim(fim)}>o Suburbandas de amanhã →</button>
+          {onDeNovo && <button type="button" className="l-show-denovo" onClick={onDeNovo}>de novo</button>}
         </div>
       )}
     </div>

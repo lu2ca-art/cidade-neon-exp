@@ -25,6 +25,18 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "O show da Nectar no bar e o beat a caminho do ginásio",
+    data: "2026-11-09",
+    tarefa: "episódios 1 e 3",
+    olhar: "No bar: recuse os copos, conheça o Mubarak ali mesmo e veja o LU2CA subir no palco, com a D-Bee e o Mubarak do seu lado. Escolha assistir (você canta da plateia com o medidor; a música não muda, quem desafina é a plateia, e dá pra jogar sinuca enquanto ouve) ou tocar. No ep. 3: pegue a missão do Alohan, ligue o piloto (o volante do lado do GPS), faça o beat com a Kombi andando e chegue ouvindo ele; lá escolha basquete, ping pong ou ginástica.",
+    perguntas: ["A plateia desafinando dá pra ouvir bem, sem estragar a música?", "O show inteiro da Nectar no bar ficou longo ou no ponto?", "Fazer o beat com a rua aparecendo em cima ficou bom?", "Dá pra sentir que o Alohan foi junto?", "Basquete pede 6 pontos e os outros dois só jogar até o fim: pode ficar assim?"],
+    mais: [
+      { parte: "oficina.show", nome: "ep. 1: só o show, pra quem já conheceu o Mubarak" },
+      { parte: "missao.quadra", nome: "ep. 3: o beat no caminho e o esporte" },
+    ],
+  },
+  {
     parte: "carreira.feira",
     nome: "A música agora começa quando você aceita a missão",
     data: "2026-11-08",

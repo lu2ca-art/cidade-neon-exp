@@ -32,7 +32,8 @@ export function agoraDaMissao(h: HistoriaDisco, id: MissaoId): string {
     case "grafite": return "vai até a boca do túnel, no chão do subúrbio, e desce a rampa: o grafite é nas paredes"
     case "casa": return `vai até ${onde} e entra`
     case "basquete": return `vai até ${onde}: ${como.pontos} pontos em ${como.tempo} s no basquete`
-    case "batida": return `vai até ${onde}: faz um beat no B4TIDA`
+    case "batida": return `liga o piloto e faz o beat no caminho até ${onde}`
+    case "esporte": return `vai até ${onde}: o esporte que preferir (basquete, ping pong ou ginástica)`
     case "show": return `vai até ${onde} e toca ao vivo no Guitar Driver`
     case "letra": return `vai até ${onde} e escreve a letra`
     default: return `vai até ${onde}: ${pc.nome}`

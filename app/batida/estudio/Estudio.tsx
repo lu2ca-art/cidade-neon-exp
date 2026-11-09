@@ -83,6 +83,17 @@ export default function Estudio() {
     window.parent.postMessage({ cn: "batida-missao", tocou: prog.current.tocou, mexeu: prog.current.mexeu, faixas }, window.location.origin)
   }, [])
 
+  // (ep. 3) o jogo pede a música pra tocar no caminho do ginásio (disco/BatidaMissao.tsx)
+  useEffect(() => {
+    if (!emMissao) return
+    const pedir = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.data?.cn !== "batida-missao-pedir" || window.parent === window) return
+      window.parent.postMessage({ cn: "batida-missao-musica", musica: mRef.current }, window.location.origin)
+    }
+    window.addEventListener("message", pedir)
+    return () => window.removeEventListener("message", pedir)
+  }, [emMissao])
+
   const garantirMotor = useCallback(() => {
     if (!motor.current) {
       motor.current = new Motor()

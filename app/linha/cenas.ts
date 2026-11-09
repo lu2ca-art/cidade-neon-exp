@@ -56,6 +56,8 @@ export type PassoCena =
   | { t: "gesto"; id: "quarto" | "casa" | "casa-inicio" }
   // (T49) tocar os instrumentos ganhos na casa da D-Bee (disco/InstrumentosCasa.tsx)
   | { t: "gesto"; id: "instrumentos" }
+  // (ep. 1) o show da Nectar no palco do bar: assistir (a plateia) ou tocar (disco/ShowNoBar.tsx, a page.tsx desenha)
+  | { t: "gesto"; id: "show-nectar" }
   // (T22) a casa da Ella: conhecer os quadros, pintar na tela (interior/salas/GaleriaElla.tsx)
   | { t: "gesto"; id: "quadros" | "pintar" }
   // (T22b) um filminho (estrada/ganchoCena.ts): hoje as falas em legenda sobre a

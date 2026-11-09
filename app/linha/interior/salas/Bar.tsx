@@ -32,6 +32,8 @@ const PLANOS: Record<string, Plano> = {
   copos: { pos: [-0.1, 2.05, -0.55], olha: [-0.1, 1.08, -2.45], fov: 50 },
   coposEstreito: { pos: [-0.1, 2.7, 1.6], olha: [-0.1, 1.08, -2.45], fov: 68 },
   palco: { pos: [1.2, 1.6, 2.2], olha: [4.4, 1.1, -2.6], fov: 52 },
+  // (ep. 1) o show: o palco, com a D-Bee e o Mubarak na frente
+  show: { pos: [1.5, 1.45, 0.75], olha: [4.3, 1.25, -2.9], fov: 52 },
 }
 
 // as cores dos líquidos: cada promessa brilha de um jeito
@@ -57,17 +59,23 @@ export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
   // (celular em pé) a tela estreita cortava os seis copos: a câmera recua
   const estreita = useThree((t) => t.size.width / Math.max(1, t.size.height) < 0.8)
   const n = bebidos.length
+  // (ep. 1) a D-Bee aparece quando fala; no show (a partir de "sobe no palco") ela, o Mubarak e o LU2CA vão pra frente do palco
+  const [comDbee, setComDbee] = useState(false)
+  const [noShow, setNoShow] = useState(false)
+  if (disco && !comDbee && estado.falando === "D-Bee") setComDbee(true)
+  if (disco && !noShow && (estado.gesto === "show-nectar" || /sobe no palco/.test(estado.texto ?? ""))) setNoShow(true)
 
   // a câmera segue a cena: quem fala, o gesto, o que ganhou
   const plano = useMemo(() => {
     if (estado.gesto === "copos" || estado.ganha) return estreita ? PLANOS.coposEstreito : PLANOS.copos
-    if (estado.falando === "Mubarak") return PLANOS.mubarak
+    if (noShow) return PLANOS.show
+    if (estado.falando === "Mubarak" || estado.falando === "D-Bee") return PLANOS.mubarak
     if (estado.falando === "ela") return PLANOS.ela
     // (disco, o prólogo) o palco vazio no fundo do bar
     if (disco && /palco/.test(estado.texto ?? "")) return PLANOS.palco
     if (estado.pos === 0) return PLANOS.entrada
     return PLANOS.balcao
-  }, [estado, disco, estreita])
+  }, [estado, disco, estreita, noShow])
 
   // beber é a escolha errada: um copo só e a cena acaba (cena.tsx leva a
   // pessoa pra fora do bar). A noite volta pro começo, mais bonita e mais vazia
@@ -107,7 +115,11 @@ export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
       </ModeloSeguro>
       <Letreiro />
       {/* a gente */}
-      {!disco && <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />}
+      {!noShow && <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />}
+      {comDbee && !noShow && <Npc cor="#3d7bff" pos={[-0.2, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "D-Bee"} />}
+      {noShow && <Npc cor="#3d7bff" pos={[2.1, 0, -1.35]} vira={2.19} />}
+      {noShow && <Npc cor={LARANJA} pos={[3.05, 0, -0.35]} vira={2.67} />}
+      {noShow && <Npc cor="#e0ff4f" pos={[4.4, 0.4, -3]} vira={-0.66} dancando={estado.gesto === "show-nectar"} />}
       <Npc cor={ELA} pos={[0.6, 0, -3.65]} vira={0} pele="#3a2430" falando={estado.falando === "ela"} />
       {MESAS.map((m, i) => (
         <Npc key={i} cor={m.cor} pos={m.pos} vira={m.vira} pose="sentada" some={i < n} />

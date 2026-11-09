@@ -20,7 +20,7 @@ import { POSE_TUT } from "./tutorialConf"
 export type PedraId =
   | "mapa" | "rota" | "gps" | "drift" | "anel" | "ajuda"
   | "voo" | "turbo" | "pousa"
-  | "escolhe" | "linha" | "chegou" | "liberou" | "radio" | "salvar" | "veiculo"
+  | "escolhe" | "linha" | "chegou" | "liberou" | "radio" | "salvar" | "veiculo" | "piloto"
 
 // o que o jogo sabe agora (a page monta o que vem do save; o resto a trilha lê ao vivo)
 export interface CtxTrilha {
@@ -33,6 +33,8 @@ export interface CtxTrilha {
   feitasCidade: number
   // o passo de agora da missão pegada (muda quando ele avança)
   passo: string
+  // (ep. 3) a arte da missão do Alohan por fazer: o piloto leva, o beat acontece no caminho
+  beatNoCaminho: boolean
   // ao vivo
   drone: boolean
   painel: boolean
@@ -102,6 +104,8 @@ export const ALVO = {
   salvar: '.l-nexo-musica.tem-salvar, [data-info="salvar"]',
   sair: '[data-info="sair"]',
   veiculo: '[data-trilha="veiculo"]',
+  piloto: '[data-info="piloto"]',
+  pilotoOn: '.l-gps-auto.is-on',
   voltarRua: '.l-drone-botoes [aria-label="voltar pra rua"]',
   missoesDrone: '.l-drone-botoes [aria-label="as missões"]',
   pegar: ".l-mapa-missoes li button[data-fecha-mapa]",
@@ -142,6 +146,9 @@ export const PEDRAS: Pedra[] = [
   { id: "escolhe", fases: ["carreira"], quando: (c) => !c.missao && c.ofertas > 0,
     ancora: (c) => (c.painel ? ALVO.pegar : c.drone ? ALVO.missoesDrone : ALVO.anel), texto: "escolhe a missão", mexe: "icone",
     feita: (c) => !!c.missao, passou: veterano },
+  // (ep. 3) o Alohan ensina o piloto: ligou, o beat começa no caminho (page.tsx)
+  { id: "piloto", fases: ["carreira"], quando: (c) => c.beatNoCaminho && !c.drone && c.tem(ALVO.piloto), ancora: ALVO.piloto, texto: "liga o piloto: faz o beat",
+    feita: (c) => c.tem(ALVO.pilotoOn) || !c.beatNoCaminho },
   // pegou: a linha acesa leva até lá (a distância e a seta moram no notch)
   { id: "linha", fases: ["carreira"], quando: (c) => !!c.missao && !c.drone && !c.dica && c.metros > TRILHA_CFG.perto, ancora: ALVO.notch, texto: "segue a linha até lá", mexe: "notch",
     feita: (c, m) => { if (m.metros0 < 0) m.metros0 = c.metros; return c.metros >= 0 && (m.metros0 - c.metros >= TRILHA_CFG.andou || c.metros <= TRILHA_CFG.perto || !!c.dica) }, passou: veterano },

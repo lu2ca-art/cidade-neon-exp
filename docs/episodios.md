@@ -21,15 +21,18 @@ Fonte: `projetos/cidade-neon/episodios.md` e bíblia §10 a §15. A sequência m
 ## Quem é quem (peças existentes reencaixadas)
 | ep. | música | quem | peças |
 |---|---|---|---|
-| 1 | Nectar | D-Bee | dbee (dunas até o bar), loop dos copos, conhecer o Mubarak (cena da oficina), show da Nectar no palco do bar (assistir/tocar). Sinuca livre depois |
+| 1 | Nectar | D-Bee | dbee (dunas até o bar), loop dos copos, conhecer o Mubarak (no bar; save antigo: na oficina), show da Nectar no palco do bar, ao lado da D-Bee e do Mubarak (`ShowNoBar`: assistir cantando da plateia, com sinuca enquanto ouve, ou tocar). Sinuca livre depois |
 | 2 | DopaminA | Mubarak | oficina (lixo, goteira, motor), fliperama (missão `notti`) |
-| 3 | Copo Americano | Alohan | beat até o ginásio + basquete (missão `quadra`) |
+| 3 | Copo Americano | Alohan | ligar o piloto, fazer o beat no caminho (`BatidaMissao` com `caminho`), chegar ouvindo (`beatDoCaminho`), o esporte que preferir (`EscolhaEsporte`: basquete, ping pong ou ginástica). Missão `quadra` |
 | 4 | Ojalá | Nizzy | loja de discos (missão `mubarak`) |
 | 5 | Swav | Tony Gordo | horta e prato (missão `tony`, versão atual) |
 | 6 | Sexta-Feira | Drew | roupa (missão `drew`), grafite e corrida nos túneis (`tuneis`) |
 | 7 | Sabe Ontem? | Ella | casa-galeria, filme, quadros (`ella`) |
 | 8 | Rollercoaster | Notti | passeio na montanha-russa do parque (`nizzy`, versão atual) |
 | 9 | CHUVA | LU2CA | perseguição + captura, fuga pelo metrô, show da CHUVA (`lu2ca`) |
+
+## Os shows (§12)
+Sem instrumento, a pessoa canta da plateia (`ShowAfinador`): o medidor é dela, a faixa original não muda e a plateia simulada (`PLATEIA`) é que desafina e distorce. Quem termina pode repetir.
 
 ## Saves antigos
 Nada é regravado. O episódio é derivado das missões feitas (`feitas13`) e da fase da história; as músicas já ganhas (`guitar`) ficam. Ver o relatório do PR para o mapa antigo → novo.

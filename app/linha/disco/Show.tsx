@@ -74,15 +74,17 @@ interface Jogo {
 export type InstrumentoShow = "voz" | "guitarra" | "baixo" | "teclado" | "bateria"
 export interface PropsShow { faixa: FaixaShow; lugar: string; palco?: string; cor: string; popularidade: number; onFim: (r: ResultadoShow) => void
   // (T19) a letra que ele escreveu (a arte do LU2CA): aparece no cantar
-  letra?: string[] }
+  letra?: string[]
+  // (§12) terminou e quer de novo: volta pra escolha, sem contar este
+  onDeNovo?: () => void }
 // o chart novo (public/gd2): cada instrumento com os 4 níveis (a voz: a melodia) e a janela de 22 s de cada um
 export type ChartGd2 = ChartGd & { janelas?: Partial<Record<InstrumentoShow, number>>; voz?: { melodia: [number, number, number][] } } & Partial<Record<InstrumentoShow, unknown>>
 export const carregarChart = (faixa: FaixaShow) => fetch(`/gd2/${faixa}.json`).then((r) => (r.ok ? (r.json() as Promise<ChartGd2>) : Promise.reject()))
-export const NOME_INST: Record<InstrumentoShow, string> = { voz: "cantar", guitarra: "guitarra", baixo: "baixo", teclado: "teclado", bateria: "bateria" }
+export const NOME_INST: Record<InstrumentoShow, string> = { voz: "só ver", guitarra: "guitarra", baixo: "baixo", teclado: "teclado", bateria: "bateria" }
 
 // a pista do Guitar Driver (guitarra; o teclado e a bateria usam a mesma pista
 // com as notas deles até ganharem o jogo próprio)
-export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, inst = "guitarra" }: PropsShow & { inst?: "guitarra" | "teclado" | "bateria" }) {
+export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onFim, onDeNovo, inst = "guitarra" }: PropsShow & { inst?: "guitarra" | "teclado" | "bateria" }) {
   const [estado, setEstado] = useState<Estado>("carregando")
   const [fim, setFim] = useState<ResultadoShow | null>(null)
   const cvs = useRef<HTMLCanvasElement>(null)
@@ -299,6 +301,7 @@ export function ShowPista({ faixa, lugar, palco: palcoId, cor, popularidade, onF
           {regra === "jurados" && <span className="l-xenom-jurados">os jurados: {[0, 0.5, -0.5].map((d) => notaDosJurados(Math.max(0, Math.min(1, fim.nota + d / 10))).toLocaleString("pt-BR")).join(" · ")}</span>}
           {xenom && <span className={`l-xenom-objetivo${cumpriu(xenom, { nota: fim.nota, maxSeq: fim.maxSeq ?? 0, galera: fim.galera ?? 0 }) ? " is-ok" : ""}`} data-cumpriu={cumpriu(xenom, { nota: fim.nota, maxSeq: fim.maxSeq ?? 0, galera: fim.galera ?? 0 }) ? "1" : "0"}>{cumpriu(xenom, { nota: fim.nota, maxSeq: fim.maxSeq ?? 0, galera: fim.galera ?? 0 }) ? "missão cumprida" : "a missão não foi dessa vez"}: {xenom.objetivo.texto}</span>}
           <button type="button" onClick={() => onFim(fim)}>{xenom ? "voltar pro nosso mundo →" : "o Suburbandas de amanhã →"}</button>
+          {onDeNovo && <button type="button" className="l-show-denovo" onClick={onDeNovo}>de novo</button>}
         </div>
       )}
     </div>
