@@ -2809,6 +2809,26 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-holo-letreiro-faixa.is-toque em.l-notch-msg { text-decoration: underline dotted rgba(255, 255, 255, 0.45); text-underline-offset: 3px; }
 .l-holo-letreiro.is-msg:has(.is-calmo) { height: auto; min-height: 24px; padding-top: 2px; padding-bottom: 2px; }
 
+/* (09/11, o dono) o notch em volta do mapa: "Agora: ..." e o nome da missão, embaixo do anel, sempre na largura
+   dele (celular, computador e deitado seguem o anel sozinhos). O clima e os anéis descem a altura dele */
+.l-viagem.is-disco { --agora-h: 46px; }
+.l-holo-agora { position: absolute; top: calc(100% - 3px); left: 8px; right: 8px; width: auto !important; max-height: var(--agora-h); display: grid; gap: 1px; padding: 3px 8px !important; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cor) 45%, transparent) !important; background: rgba(6, 6, 14, 0.72) !important; overflow: hidden; text-align: left; cursor: pointer; pointer-events: auto; }
+.l-holo-agora small { display: flex; justify-content: space-between; gap: 6px; font: 700 8.5px/1.2 var(--font-geist-mono), ui-monospace, monospace; color: var(--cor); text-transform: uppercase; letter-spacing: 0.04em; }
+.l-holo-agora small span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.l-holo-agora small b { flex: none; font-weight: 700; text-transform: none; }
+.l-holo-agora small i { font-style: normal; }
+.l-holo-agora em { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: 600 10px/1.2 system-ui, sans-serif; font-style: normal; color: #fff; text-shadow: 0 1px 2px #000; }
+.l-holo-anel.is-omni .l-holo-agora { visibility: hidden; }
+.l-viagem:has(.l-holo-agora) .l-holo-clima, .l-viagem:has(.l-holo-agora) .l-aneis { transform: translateY(var(--agora-h)); }
+/* a dica que passa é mais discreta que a mensagem de alguém */
+.l-holo-letreiro:not(.is-msg) .l-holo-letreiro-faixa em.l-notch-msg { color: rgba(255, 255, 255, 0.72); text-shadow: none; }
+@media (max-width: 600px) {
+  .l-viagem.is-disco { --agora-h: 58px; }
+  /* no celular em pé o display da rádio vem até perto do anel: o Agora não encosta nele */
+  .l-holo-agora { left: 22px; right: 2px; }
+  .l-holo-agora em { -webkit-line-clamp: 3; }
+}
+
 /* ── (LU2CA 22/10 (3)) A SALSICHA: o anel não cresce mais. O círculo fica do tamanho da bolinha e a BORDA
    estica pra BAIXO numa cápsula da mesma largura, pontas redondas; a checklist mora dentro, no fundo da cor
    da missão. Abre girando (o anel dá uma volta) e recolhe pra cima girando ao contrário. Só CSS: clip-path

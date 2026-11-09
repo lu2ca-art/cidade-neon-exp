@@ -62,7 +62,9 @@
 /* o que mais mexe, de leve: o mapa balança; o ícone da missão (no anel) pisca; o notch respira */
 html[data-trilha-mexe="mapa"] .l-mapa-mini { animation: l-trilha-mexe 1.8s ease-in-out infinite; }
 html[data-trilha-mexe="icone"] .l-holo-anel-ic { animation: l-trilha-pisca 1s ease-in-out infinite; }
-html[data-trilha-mexe="notch"] .l-ilha.is-letreiro { animation: l-trilha-respira 1.8s ease-in-out infinite; }
+html[data-trilha-mexe="notch"] .l-viagem:not(:has(.l-holo-agora)) .l-ilha.is-letreiro { animation: l-trilha-respira 1.8s ease-in-out infinite; }
+html[data-trilha-mexe="notch"] .l-holo-agora { animation: l-trilha-agora 1.8s ease-in-out infinite; }
+@keyframes l-trilha-agora { 50% { transform: scale(1.03); } }
 @keyframes l-trilha-pulsa { 50% { transform: scale(1.07); opacity: 0.65; } }
 @keyframes l-trilha-entra { from { opacity: 0; transform: translateY(6px) scale(0.9); } }
 @keyframes l-trilha-boia { 50% { transform: translateY(-3px); } }
@@ -70,5 +72,5 @@ html[data-trilha-mexe="notch"] .l-ilha.is-letreiro { animation: l-trilha-respira
 @keyframes l-trilha-pisca { 50% { opacity: 0.35; } }
 @keyframes l-trilha-respira { 50% { transform: translateX(-50%) scale(1.03); } }
 @media (prefers-reduced-motion: reduce) {
-  .l-trilha-alvo, .l-trilha-balao, .l-pi *, html[data-trilha-mexe] .l-mapa-mini, html[data-trilha-mexe] .l-holo-anel-ic, html[data-trilha-mexe] .l-ilha.is-letreiro { animation: none; }
+  .l-trilha-alvo, .l-trilha-balao, .l-pi *, html[data-trilha-mexe] .l-mapa-mini, html[data-trilha-mexe] .l-holo-anel-ic, html[data-trilha-mexe] .l-holo-agora, html[data-trilha-mexe] .l-ilha.is-letreiro { animation: none; }
 }

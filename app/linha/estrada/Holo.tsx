@@ -21,8 +21,8 @@
 // Tudo é clicável. Nada de frase explicando: a explicação vem nas invasões da
 // rádio, e o "?" diz o que cada coisa é (toca no "?", depois na coisa)
 
-import { textoMetros, useGuia } from "./alvoMissao"
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
+import { INTRO_ADIADA, textoMetros, useGuia } from "./alvoMissao"
+import { useMemo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { APPS, DOCK, ESCONDIDOS, Glifo, appDesligado, type AppId } from "../os"
 import { horaTexto } from "../relogio"
@@ -52,7 +52,8 @@ export const INFO: Record<string, { t: string; d: string }> = {
   tv: { t: "📺 TV", d: "a TV do holo: o vídeo da faixa que toca, no YouTube, num cantinho. o jogo continua; a música do jogo abaixa enquanto a TV toca. arrasta pelo topo pra outro canto; × fecha." },
   salvar: { t: "♥ salvar", d: "a faixa que toca na rua, no seu app de música: um toque abre o app (ou a página com todos) pra salvar ou pôr na sua playlist. só se você quiser." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
-  ilha: { t: "N3XO_ · o notch", d: "o Nexo: o objetivo da missão, o passo de agora, as dicas e as mensagens dos amigos passam aqui. toca nele e ele abre com o objetivo inteiro." },
+  ilha: { t: "N3XO_ · o notch", d: "o Nexo: as dicas e as mensagens dos amigos passam aqui, uma atrás da outra. toca nele e ele abre com o objetivo inteiro." },
+  agora: { t: "agora", d: "o nome da missão, o próximo passo e quanto falta até lá. toca: o passo aparece no anel do mapa." },
   mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
   anel: { t: "as missões", d: "a missão de agora gira em volta do mapa: o nome e o ícone dela. toca: a checklist dá a volta; toca de novo: o mapa com as missões." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
@@ -331,7 +332,7 @@ function useNotch() {
   const acabou = () => { livre.current = true; notchPassando = false; setMsg(null); setTimeout(() => proxima.current(), 250) }
   return [msg, acabou] as const
 }
-function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
+function MsgNoNotch({ msg, onFim, mudo }: { msg: MsgNotch; onFim: () => void; mudo?: boolean }) {
   const caixa = useRef<HTMLSpanElement>(null)
   const el = useRef<HTMLElement>(null)
   const fim = useRef(onFim)
@@ -370,7 +371,7 @@ function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
   }, [msg.id, quieto, msg.texto, msg.fica])
   const toque = msg.toque
   return (
-    <span ref={caixa} className={`l-holo-letreiro-faixa is-msg ${quieto ? "is-calmo" : ""} ${toque ? "is-toque" : ""}`} role="status" aria-live="polite"
+    <span ref={caixa} className={`l-holo-letreiro-faixa is-msg ${quieto ? "is-calmo" : ""} ${toque ? "is-toque" : ""}`} role={mudo ? undefined : "status"} aria-live={mudo ? undefined : "polite"}
       onPointerDown={toque ? (e) => e.stopPropagation() : undefined}
       onClick={toque ? (e) => { e.stopPropagation(); toque(); fim.current() } : undefined}>
       <em ref={el} className="l-notch-msg" style={{ ["--c" as string]: msg.cor }}>{msg.texto}</em>
@@ -405,14 +406,13 @@ export type NexoAgora = { texto: string; cor: string; ajuda: { t: string; d: str
 // ── (T41 B2, dono 29/10) O NEXO É A CENTRAL DAS NOTIFICAÇÕES: o objetivo da
 // missão, as dicas do jogo e o tutorial do "?". (09/11, bíblia §14) e também o
 // visor das mensagens dos amigos, com o nome de quem manda (disco/amigos.ts).
-//   - a linha do notch: o passo do tutorial, ou o objetivo da missão, ou (sem
-//     missão) uma dica, trocando devagar
+//   - a linha do notch: só o que passa (a mensagem, ou as dicas uma atrás da outra).
+//     O objetivo da missão ("Agora: ...") mora embaixo do mapa (AgoraMapa, 09/11)
 //   - tocar no notch: ele expande pra baixo com o objetivo inteiro e uma dica
 //   - tocar no "?": o notch diz "clique em qualquer lugar para saber mais"; aí
 //     tocar numa coisa da tela mostra a explicação por cima dela, como
 //     realidade aumentada do holo (HoloAjuda, logo abaixo). O "?" de novo sai
-// Desempenho: nada por quadro. A dica troca num setInterval de 18 s, e só
-// enquanto a linha está livre ──
+// Desempenho: nada por quadro ──
 // (RASCUNHO, o dono reescreve) as dicas do jogo: curtas, uma coisa por vez
 export const DICAS: string[] = [
   "dica · segura o propulsor: a Kombi voa",
@@ -440,24 +440,38 @@ function useDica(ativa: boolean) {
 // do que fazer ali. Só este pedacinho se refaz quando o guia muda
 // (piloto, 05/11) com o piloto do botão levando, a linha diz isso: "piloto · até
 // o palco do Copo" (e a distância); sem destino, "piloto · passeando"
-function AgoraNexo({ texto, dica }: { texto: string | null; dica: string }) {
+// (09/11, o dono) O NOTCH PRINCIPAL É SEMPRE MÓVEL: nada fica parado nele. Sem mensagem,
+// as dicas passam uma atrás da outra, do mesmo jeito (entra, rola, some). Um setState por
+// dica, o movimento é a Web Animation da mensagem (compositor)
+const DICA_PAUSA = 1400 // ms: o intervalo entre uma dica e a próxima
+let dicaN = Math.floor(Math.random() * DICAS.length)
+function DicaNoNotch() {
+  const [n, setN] = useState(0)
+  const [pausa, setPausa] = useState(false)
+  useEffect(() => {
+    if (!pausa) return
+    const t = setTimeout(() => { dicaN++; setN((x) => x + 1); setPausa(false) }, DICA_PAUSA)
+    return () => clearTimeout(t)
+  }, [pausa])
+  const msg = useMemo<MsgNotch>(() => ({ id: -1 - n, texto: DICAS[dicaN % DICAS.length], cor: "#2fe8ff", em: 0 }), [n])
+  return pausa ? <span className="l-holo-letreiro-faixa" aria-hidden="true" /> : <MsgNoNotch key={msg.id} msg={msg} onFim={() => setPausa(true)} mudo />
+}
+// (09/11, o dono) "Agora: ..." mora embaixo do mapa, junto do nome da missão: a parte de
+// baixo do anel. A linha com a distância até o alvo vem do guia (estrada/alvoMissao.ts);
+// só este pedacinho se refaz quando o guia muda (de 300 em 300 ms, e só se o texto muda).
+// Com o piloto levando, diz isso: "piloto · até o palco do Copo"
+function AgoraMapa({ agora, nome, onToque }: { agora: NexoAgora | null; nome: string | null; onToque: () => void }) {
   const g = useGuia()
-  if (g.piloto) {
-    const mp = g.piloto !== "piloto · passeando" && !g.dica ? textoMetros(g.metros) : ""
-    return (
-      <span className="l-nexo-agora is-piloto">
-        <em>{g.dica ? `Agora: ${g.dica}` : g.piloto}</em>
-        {mp && <small className="l-nexo-conta">{mp}</small>}
-      </span>
-    )
-  }
-  if (texto === null) return <span className="l-nexo-agora is-dica"><em key={dica} style={{ opacity: 0.75 }}>{dica}</em></span>
-  const m = g.dica ? "" : textoMetros(g.metros)
+  const texto = g.piloto ? (g.dica ? `Agora: ${g.dica}` : g.piloto) : agora ? (g.dica ? `Agora: ${g.dica}` : agora.texto) : null
+  if (!texto) return null
+  const m = g.dica || (!g.piloto && !agora) || g.piloto === "piloto · passeando" ? "" : textoMetros(g.metros)
+  const vira = !g.piloto && g.vira ? g.vira : 0
   return (
-    <span className="l-nexo-agora">
-      <em>{g.dica ? `Agora: ${g.dica}` : texto}</em>
-      {m && <small className="l-nexo-conta">{g.vira ? <i aria-label={g.vira > 0 ? "vira à direita" : "vira à esquerda"}>{g.vira > 0 ? "↱ " : "↰ "}</i> : null}{m}</small>}
-    </span>
+    <button type="button" className="l-holo-agora" data-info="agora"
+      onClick={() => { if (INTRO_ADIADA.toque && INTRO_ADIADA.texto && g.dica === INTRO_ADIADA.texto) INTRO_ADIADA.toque(); else onToque() }}>
+      {(nome || m) && <small><span>{nome}</span>{m && <b>{vira ? <i aria-label={vira > 0 ? "vira à direita" : "vira à esquerda"}>{vira > 0 ? "↱ " : "↰ "}</i> : null}{m}</b>}</small>}
+      <em>{texto}</em>
+    </button>
   )
 }
 // (revisão 05/11) O ♪ DO NOTCH: o ♥ salvar e o 📺 TV num botão só (o notch não cabia
@@ -515,9 +529,8 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
     return () => clearTimeout(t)
   }, [pedra])
   const passando = msg && !tut && !explicando && (!pedra || pedraVelha)
-  const livre = !tut && !passando && !agora && !explicando
-  const dica = useDica(livre || expandido)
-  const cor = explicando ? "#2fe8ff" : tut ? (tut.ok ? "#5dffa0" : tut.cor ?? "#2fe8ff") : passando ? msg.cor : agora?.cor ?? "#2fe8ff"
+  const dica = useDica(expandido)
+  const cor = explicando ? "#2fe8ff" : tut ? (tut.ok ? "#5dffa0" : tut.cor ?? "#2fe8ff") : passando ? msg.cor : "#2fe8ff"
   // expandido: o objetivo inteiro (o passo do tutorial ou a missão) e uma dica
   const obj = tut?.ajuda ?? agora?.ajuda ?? null
   return (
@@ -528,7 +541,7 @@ export function HoloLetreiro({ hora, agora, expandido, explicando, onExplicar }:
           <span className="l-nexo-agora" role="status" aria-live="polite"><em>{NEXO_PERGUNTA}</em></span>
         ) : tut ? (
           <span className="l-nexo-passo" role="status" aria-live="polite"><em>{tut.ok ? "✓ isso" : tut.texto}</em></span>
-        ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : <AgoraNexo texto={agora ? agora.texto : null} dica={dica} />}
+        ) : passando ? <MsgNoNotch key={msg.id} msg={msg} onFim={acabou} /> : <DicaNoNotch />}
         {tut?.conta && !explicando && <small className="l-nexo-conta">{tut.conta}</small>}
         {!tut && !explicando && <MusicaNexo />}
         <button type="button" data-info="ajuda" className={`l-nexo-q ${explicando ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); onExplicar() }} aria-label={explicando ? "sair do ?" : "o que é isso? (toca e depois toca numa coisa da tela)"} aria-pressed={explicando}>?</button>
@@ -625,7 +638,7 @@ const curto = (t: string, n = CURTO) => {
 const calmo = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
 // o que a bolinha faz num toque: com a missão recolhida, abre a checklist (true); senão, nada (false: abre o mapa)
 export type AnelApi = { toque: () => boolean }
-export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { texto: string; cor: string; n: number } | null; checklist?: ChecklistHolo | null; onMissoes: () => void; api?: React.MutableRefObject<AnelApi | null> }) {
+export function HoloAnel({ missao, checklist, agora = null, onMissoes, api }: { missao: { texto: string; cor: string; n: number } | null; checklist?: ChecklistHolo | null; agora?: NexoAgora | null; onMissoes: () => void; api?: React.MutableRefObject<AnelApi | null> }) {
   const [omni, setOmni] = useState<"abre" | "recolhe" | null>(null)
   const chave = checklist?.chave ?? null
   useEffect(() => {
@@ -713,6 +726,7 @@ export function HoloAnel({ missao, checklist, onMissoes, api }: { missao: { text
           )}
         </svg>
       </button>
+      <AgoraMapa agora={agora} nome={checklist?.nome ?? null} onToque={() => { if (!api?.current?.toque()) onMissoes() }} />
     </div>
   )
 }

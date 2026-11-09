@@ -62,7 +62,7 @@ import { ehAberto } from "../disco/abertos"
 import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desembarque } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
 import { CAM_FEIRA } from "../disco/feira"
-import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, INTRO_ADIADA, lerGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
+import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, INTRO_ADIADA, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { NAV, ladoDaFaixa } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
@@ -3015,7 +3015,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
             data-info={letreiro ? "ilha" : undefined}
             style={{ ["--cor" as string]: t0 ? VOZES[t0.de] ?? "#fff" : "#2fe8ff" }}
             onPointerDown={(modo === "fala" && onIlha) || letreiro ? (e) => e.stopPropagation() : undefined}
-            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => { if (INTRO_ADIADA.toque && INTRO_ADIADA.texto && lerGuia().dica === INTRO_ADIADA.texto) { INTRO_ADIADA.toque(); return } setNotchAberto((x) => !x) } : undefined}
+            onClick={modo === "fala" && onIlha ? onIlha : letreiro ? () => setNotchAberto((x) => !x) : undefined}
           >
             {modo === "garfo" && C && (
               <div key="garfo" className="l-ilha-conteudo">
@@ -3081,7 +3081,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
               <HoloApps onApp={(id) => onApp?.(id)} />
             </>
           )}
-          <HoloAnel missao={missaoHolo} checklist={checklistHolo} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
+          <HoloAnel missao={missaoHolo} checklist={checklistHolo} agora={nexoAgora} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
         </>
       )}
       {discoM && ajuda && <HoloAjuda ativa onSair={sairAjuda} />}

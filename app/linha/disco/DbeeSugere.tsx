@@ -8,6 +8,7 @@
 //   No máximo uma a cada ~45 s, nunca a mesma seguida, nunca durante corrida,
 //   racha, peça, intro, cena, perseguição ou pedra da trilha, nem com outra
 //   mensagem no notch. Só na carreira e no jogo livre (antes disso a história guia).
+//   (09/11, o dono) com missão aceita passam só as mensagens dos amigos, sem marcar o mapa.
 //   (09/11, bíblia §14) os amigos (disco/amigos.ts) mandam na mesma hora, um por vez,
 //   alternando com ela.
 // - Como: no notch, "D-Bee: …" por uns segundos. Tocar na frase marca o alvo no
@@ -184,7 +185,7 @@ export function DbeeSugere(props: PropsDbee) {
       const racha = !!p.racha.current && p.racha.current.fase !== "solto" && p.racha.current.fase !== "oferta"
       // pegou uma missão: a marca dela sai (o GPS volta pra missão)
       if (missaoAtiva && st.marca) { if (p.marcaRef.current === st.marca) p.onMarcar(null); st.marca = null; st.chaveMarca = "" }
-      const ocupado = p.ocupado || corrida || racha || !!lerNexoTutorial() || !!TRILHA_NA_TELA.pedra || trilhaSegura(h) || missaoAtiva || (fase !== "carreira" && fase !== "livre")
+      const ocupado = p.ocupado || corrida || racha || !!lerNexoTutorial() || !!TRILHA_NA_TELA.pedra || trilhaSegura(h) || (fase !== "carreira" && fase !== "livre")
       if (ocupado) { st.livreDesde = 0; st.ocupadoAntes = true; st.depois = 0; return }
       if (!st.livreDesde) st.livreDesde = agora
       if (st.ocupadoAntes) { st.ocupadoAntes = false; st.depois = agora + DBEE_CFG.depoisDeAlgoMs }
@@ -206,7 +207,8 @@ export function DbeeSugere(props: PropsDbee) {
         naRua, ruas, disponiveis, corridaRua: p.corridaRua, ruaSuburbio: p.ruaSuburbio, mem: lerMemoriaDbee(),
         distancia: (a) => { const m = marcaDe(a); if (!m || !eu) return -1; const w = pontoDa(m); return Math.hypot(w.x - eu.x, w.z - eu.z) },
       }
-      const o = st.vezAmigo ? escolherAmigo(ctx) ?? escolherDbee(ctx) : escolherDbee(ctx) ?? escolherAmigo(ctx)
+      // (09/11, o dono) com missão aceita só os amigos: o catálogo dela chama pra outro lugar
+      const o = missaoAtiva ? escolherAmigo(ctx) : st.vezAmigo ? escolherAmigo(ctx) ?? escolherDbee(ctx) : escolherDbee(ctx) ?? escolherAmigo(ctx)
       // nada pra sugerir agora: tenta de novo daqui a pouco (não queima a vez)
       if (!o) { st.livreDesde = agora - DBEE_CFG.paradoMs + 20000; st.depois = 0; return }
       st.ultima = agora
@@ -214,7 +216,8 @@ export function DbeeSugere(props: PropsDbee) {
       st.livreDesde = agora
       st.depois = 0
       mudarMemoriaDbee((m) => comSugerida(m, o.chave))
-      const toque = o.alvo ? () => {
+      // com missão aceita a frase não marca o mapa (o GPS fica na missão)
+      const toque = o.alvo && !missaoAtiva ? () => {
         const m = marcaDe(o.alvo!, o.nome, o.cor)
         if (!m) return
         st.marca = m

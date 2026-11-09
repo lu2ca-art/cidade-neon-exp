@@ -13,7 +13,7 @@ Nenhuma tela abre.
 ## Quando ela fala
 
 - Só na **carreira** e no **jogo livre**. Antes disso, a história guia.
-- **Sem missão pegada**, e:
+- **Com missão aceita** (09/11), só as mensagens dos amigos, sem marcar o mapa; a sugestão dela espera. Sem missão pegada, e:
   - parada ou passeando há **45 s** sem nada acontecer; ou
   - **8 s** depois de acabar alguma coisa (corrida, racha, peça, sala, cena, missão).
 - No máximo **uma a cada ~45 s** (09/11, somando os amigos do notch: `disco/amigos.ts`). A primeira vem uns 45 s depois de a estrada abrir.
