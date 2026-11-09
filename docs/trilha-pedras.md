@@ -55,7 +55,7 @@ A trilha sempre mostra a **primeira** pedra da lista que cumpre quatro coisas:
 
 1. **No minimapa:** as missões novas e o lugar da que acabou ganham um anel pulsando por 30 s. Se estiverem fora do círculo, ficam presas na borda.
 2. **No drone:** os feixes delas ficam mais altos.
-3. **No notch:** passa "abriu · (o primeiro item) +n" e depois "+N neon$".
+3. **No notch:** passa "abriu · (o primeiro item) +n" e depois "+N Água$".
 4. **A música:** o "ouvir até o fim" pequeno, no canto, aparece uns segundos depois. Isso só vale para as missões da cidade que têm faixa.
 
 ## Pra mexer

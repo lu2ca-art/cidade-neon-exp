@@ -117,7 +117,7 @@ forçam). Sozinhos fazem a volta em ~63 s de moto e ~68 s de patins (conta do
 
 - `save.ruaSuburbio`: o melhor tempo por veículo (`melhor.moto`, `melhor.patins`),
   as vitórias e quantas correu. Só entra a corrida que chegou (desistir não conta).
-- **Primeira vitória:** +40 neon$ (uma vez só). Depois, só o tempo.
+- **Primeira vitória:** +40 Água$ (uma vez só). Depois, só o tempo.
 - `placarComCorrida` (`corridaRua.ts`) faz a conta; a `page.tsx` grava.
 
 ## A música
