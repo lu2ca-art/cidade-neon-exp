@@ -108,8 +108,13 @@ export function vagaoDe(z: number) {
   return -1
 }
 
-// (09/11) o violão tocado com a pessoa sentada no trem: o botão fica fora do jogo do
-// metrô (disco/Violao.tsx), então o aviso passa por aqui. Vazio fora do trem (custo zero)
+// (09/11) o violão (ou o instrumento comprado) tocado com a pessoa sentada no trem: o botão
+// fica fora do jogo do metrô (disco/Violao.tsx), então o aviso passa por aqui. Vazio fora do trem (custo zero)
 const OUVINDO_VIOLAO = new Set<() => void>()
-export function ouvirViolaoNoTrem(f: () => void) { OUVINDO_VIOLAO.add(f); return () => { OUVINDO_VIOLAO.delete(f) } }
+const MUDOU_TREM = new Set<() => void>()
+const avisarTrem = () => MUDOU_TREM.forEach((f) => f())
+export function ouvirViolaoNoTrem(f: () => void) { OUVINDO_VIOLAO.add(f); avisarTrem(); return () => { OUVINDO_VIOLAO.delete(f); avisarTrem() } }
+// a pessoa está sentada na viagem? (o botão escuta: só muda ao entrar e ao sair)
+export const sentadoNoTrem = () => OUVINDO_VIOLAO.size > 0
+export function ouvirSentadoNoTrem(f: () => void) { MUDOU_TREM.add(f); return () => { MUDOU_TREM.delete(f) } }
 export function tocouViolaoNoTrem() { OUVINDO_VIOLAO.forEach((f) => f()) }

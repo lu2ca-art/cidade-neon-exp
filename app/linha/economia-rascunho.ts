@@ -61,12 +61,14 @@ export const MELHORIAS: { id: MelhoriaId; nome: string; agua: number; faz: strin
 export const PRECO_DISCO = 100
 
 // `soDepois`: o item só aparece na loja depois que isso aconteceu na história
-// (A8: a guitarra, depois de perder o violão no metrô)
-export interface ItemRascunho { id: string; nome: string; preco: number; desc: string; cor: string; soDepois?: "perdeu-violao" }
+// (A8: a guitarra, depois de perder o violão no metrô; "violao-perdido", 09/11:
+// o violão de volta, que nem no mapa velho nem na fase livre aparece sem ter perdido)
+export interface ItemRascunho { id: string; nome: string; preco: number; desc: string; cor: string; soDepois?: "perdeu-violao" | "violao-perdido" }
 
-// os instrumentos. O violão vem da D-Bee (não se compra). Quando ele perde o
-// violão no metrô, "logo ele junta grana pra comprar uma guitarra" (28/10)
+// os instrumentos. O violão vem da D-Bee. Quando ele perde o violão no metrô,
+// "logo ele junta grana pra comprar uma guitarra" (28/10), ou compra outro violão (09/11)
 export const INSTRUMENTOS: ItemRascunho[] = [
+  { id: "violao", nome: "violão", preco: 200, desc: "um violão novo, no lugar do que ficou no metrô", cor: "#c98a4a", soDepois: "violao-perdido" },
   { id: "guitarra", nome: "guitarra", preco: 250, desc: "a que ele junta grana pra comprar depois de perder o violão", cor: "#ff5b3a", soDepois: "perdeu-violao" },
   { id: "baixo", nome: "baixo", preco: 300, desc: "quatro cordas grossas, o chão do show", cor: "#b38cff" },
   { id: "teclado", nome: "teclado", preco: 350, desc: "um sintetizador de lata, remendado no subúrbio", cor: "#2fe8ff" },
@@ -76,6 +78,7 @@ export const INSTRUMENTOS: ItemRascunho[] = [
 
 // (A8) o item aparece na loja agora? (sem história, o mapa velho: aparece tudo)
 export function naLoja(item: { soDepois?: ItemRascunho["soDepois"] }, h: HistoriaDisco | null | undefined): boolean {
+  if (item.soDepois === "violao-perdido") return !!h?.perdeuViolao
   if (!item.soDepois || !h || h.fase === "livre") return true
   if (item.soDepois === "perdeu-violao") return !!h.perdeuViolao
   return true

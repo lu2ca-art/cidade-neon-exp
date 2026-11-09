@@ -222,7 +222,7 @@ interface Props {
   elevador?: { tranca: string | null; trancaDeserto?: string | null; onDescer: (n: number) => void } | null
   // (09/11, bíblia §13) o metrô da cidade: o cadeado, se o guarda reage ao violão, o fim
   // do passeio (conta pra peça do ep. 8) e a fuga da história (ep. 9), quando é a hora
-  linha9?: { tranca: string | null; reage: boolean; onPasseio: () => void; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null } | null
+  linha9?: { tranca: string | null; reage: boolean; temInstrumento: boolean; onPasseio: () => void; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null } | null
   save: Save
   nivel: number
   destino: EstacaoId | null
@@ -2936,7 +2936,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       ))}
       {viagem9 && (viagem9.fuga
         ? <MetroFugaDentro historia={viagem9.fuga.historia} onPasso={viagem9.fuga.onPasso} onSair={pulou9} hospede={viagem9.h} />
-        : <MetroDentro hospede={viagem9.h} viagem={{ rotulo: viagem9.rotulo, reage: !!linha9?.reage }} seguirSePego onSeguir={pulou9} />)}
+        : <MetroDentro hospede={viagem9.h} viagem={{ rotulo: viagem9.rotulo, reage: !!linha9?.reage, temInstrumento: linha9?.temInstrumento }} seguirSePego onSeguir={pulou9} />)}
       {/* (elevadores) na rotatória da torre da ponta N: o elevador desce pro salão da TORRE N (a via muda, sem conta por quadro) */}
       {elevador && pontaElevador > 0 && !pausado && (
         <button type="button" data-info="elevador" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#9b8cff" }} onPointerDown={(e) => e.stopPropagation()}

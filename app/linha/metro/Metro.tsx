@@ -33,7 +33,8 @@ export interface HospedeMetro {
   sair: () => void
 }
 // a viagem rápida: sentado até o violão tocar (a fuga só começa se o guarda reagir)
-export interface ViagemMetro { rotulo: string; reage: boolean }
+// (temInstrumento false: perdeu o violão e não comprou nada; não leva a caixa nas costas)
+export interface ViagemMetro { rotulo: string; reage: boolean; temInstrumento?: boolean }
 
 export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeguir, seguirSePego, antes, hospede, viagem }: {
   onFim?: (r: FimMetro) => void; expor?: boolean; auto?: number | null; semente?: number; semIntro?: boolean
@@ -61,6 +62,7 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
   const sentadoNaViagem = !!viagem
   const reageRef = useRef(!!viagem?.reage)
   useEffect(() => { reageRef.current = !!viagem?.reage }, [viagem?.reage])
+  const semCaixaRef = useRef(viagem?.temInstrumento === false)
 
   useEffect(() => {
     const cv = tela.current
@@ -69,6 +71,7 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
     if (sentadoNaViagem) { f.sentar(); f.violaoFica = true }
     fugaRef.current = f
     const cena = new Cena(hospede ? null : cv, f)
+    if (semCaixaRef.current) cena.caixaViolao.visible = false
     const som = new SomMetro()
     somRef.current = som
     const medir = () => { if (cv) cena.medir(cv.clientWidth, cv.clientHeight) }

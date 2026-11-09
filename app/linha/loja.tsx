@@ -12,7 +12,8 @@ import { useEffect, useRef, useState } from "react"
 import { Capa } from "./capa"
 import { DISCOS, PRECO_DISCO, duracao, type DiscoLoja } from "./discos"
 import type { Save } from "./estado"
-import { CATEGORIAS, daCategoria, saldo, tem as temItem, type ItemLoja } from "./economia"
+import { CATEGORIAS, ID_VIOLAO, daCategoria, saldo, tem as temItem, type ItemLoja } from "./economia"
+import { historiaDe } from "./disco/historia"
 import type { Categoria } from "./economia-rascunho"
 import { disco as toca, fonteSom, silenciar } from "./som"
 import { ligarElemento } from "@/lib/mesa"
@@ -25,6 +26,9 @@ const TEXTO: Record<Categoria, string> = {
   carro: "pra rodar a cidade quando a kombi não puder. a kombi mesmo só melhora com o mecânico, em água",
   roupa: "a roupa do palco e da rua",
 }
+
+// (09/11) depois do metrô, o violão também se compra. RASCUNHO
+const TEXTO_SEM_VIOLAO = "o violão da D-Bee ficou no metrô. outro violão, e o resto, se compra com a grana dos shows"
 
 // (06/11) aba0: entrou pelo mundo (o brechó do subúrbio abre nas roupas)
 export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save: Save; comprar: (id: string) => boolean; onVoltar: () => void; tranca?: string | null; aba0?: Categoria }) {
@@ -43,7 +47,7 @@ export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save
       </nav>
       <header className="l-loja-cab">
         <div>
-          <p>{TEXTO[aba]}</p>
+          <p>{aba === "instrumento" && historiaDe(save).perdeuViolao ? TEXTO_SEM_VIOLAO : TEXTO[aba]}</p>
           {tranca && <Trancado texto={tranca} />}
         </div>
         <span className="l-loja-saldo" aria-label={`${neon} de Água$`}><i aria-hidden="true">$</i>{neon}<small>Água$</small></span>
@@ -111,7 +115,7 @@ function DetalheItem({ it, tem, neon, onComprar, onFechar }: { it: ItemLoja; tem
       <p className="l-loja-sub">{it.desc}</p>
       <div className="l-loja-acao">
         {tem || comprou ? (
-          <p className="l-loja-ok">é seu. por enquanto fica guardado; usar no jogo vem depois</p>
+          <p className="l-loja-ok">{it.id === ID_VIOLAO ? "é seu. o botão do violão volta junto da música" : it.cat === "instrumento" ? "é seu. sem o violão, dá pra tocar sentado no trem" : "é seu. por enquanto fica guardado; usar no jogo vem depois"}</p>
         ) : falta > 0 ? (
           <p className="l-loja-falta">faltam <b>{falta} Água$</b>. tocar na rua e fazer as missões rende Água$</p>
         ) : (

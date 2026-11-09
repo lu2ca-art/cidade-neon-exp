@@ -74,7 +74,8 @@ import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
 import { definirAchados, ouvirSample } from "./disco/instrumentosMundo"
 import { Violao as ViolaoMundo } from "./disco/Violao"
-import { emMetro, entrarNoMetro, guardaReageAoViolao, podeMetro, trancaLinha9, type PassoMetro } from "./disco/metro"
+import { TRANCA_VIOLAO_PERDIDO, emMetro, entrarNoMetro, guardaReageAoViolao, podeMetro, trancaLinha9, type PassoMetro } from "./disco/metro"
+import { instrumentoDoTrem } from "./disco/instrumentosLoja"
 import { tocouViolaoNoTrem } from "./metro/mundo"
 import { GRAFITES as GRAFITES_T12 } from "./grafite/grafites"
 import { comParede } from "./grafite/paredes"
@@ -2302,7 +2303,7 @@ export default function LinhaPage() {
       const h = hist13(saveRef.current)
       const dona = a.id === "violao" ? "dbee" as const : donaDaFaixa(a.precisa)
       const msg = HIST
-        ? (a.id === "violao" && feita13(h, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : dona ? facaMissao(dona, a.id === "violao" ? "tocar" : "regar") : "abre com uma missão da cidade")
+        ? (a.id === "violao" && feita13(h, "dbee") ? TRANCA_VIOLAO_PERDIDO : dona ? facaMissao(dona, a.id === "violao" ? "tocar" : "regar") : "abre com uma missão da cidade")
         : save.objetos.length || save.pausas[a.precisa] !== undefined ? `abre quando ${e.personagem} te der ${e.objetoNome}` : "abre com uma missão da cidade"
       avisar(a.nome, msg, a.cor)
       if (a.id === "violao" || a.id === "jardim") { setTrancaApp(msg); setTela({ t: "app", id }); return }
@@ -2449,8 +2450,11 @@ export default function LinhaPage() {
   const cFugaSair = useFixo(sairDoMetro)
   const trancaMetro = HIST ? trancaLinha9(h13) : null
   const reageMetro = HIST && guardaReageAoViolao(h13)
+  // (09/11) sem o violão, o gesto de tocar no trem usa o instrumento comprado (e a caixa nas costas só existe se tiver um dos dois)
+  const compradoTrem = instrumentoDoTrem(save)
+  const temInstrumentoTrem = !!save.violao || !!compradoTrem
   const historiaFuga = noMetro ? h13 : null
-  const linha9Cidade = useMemo(() => (HIST ? { tranca: trancaMetro, reage: reageMetro, onPasseio: cOnPasseio9, fuga: historiaFuga ? { historia: historiaFuga, onPasso: cFugaPasso, onSair: cFugaSair } : null } : null), [HIST, trancaMetro, reageMetro, cOnPasseio9, historiaFuga, cFugaPasso, cFugaSair])
+  const linha9Cidade = useMemo(() => (HIST ? { tranca: trancaMetro, reage: reageMetro, temInstrumento: temInstrumentoTrem, onPasseio: cOnPasseio9, fuga: historiaFuga ? { historia: historiaFuga, onPasso: cFugaPasso, onSair: cFugaSair } : null } : null), [HIST, trancaMetro, reageMetro, temInstrumentoTrem, cOnPasseio9, historiaFuga, cFugaPasso, cFugaSair])
   const elevadorCidade = useMemo(() => (HIST ? { tranca: trancaElevador, trancaDeserto, onDescer: cOnDescerElevador } : null), [HIST, trancaElevador, trancaDeserto, cOnDescerElevador])
   const cOnPerseguicao = useFixo((...[e, id]: Parameters<NonNullable<ComponentProps<typeof CorridaTipo>["onPerseguicao"]>>) => {
     if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
@@ -2888,7 +2892,7 @@ export default function LinhaPage() {
         {oficinaTela === "pagar" && <Pagamento agua={save.agua ?? 0} onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={montarMotor} />}
         {/* (T64, lote D) o violão: o botão aparece com o disco, a rádio ou a faixa da rua tocando; sem o violão, com o cadeado e o que libera */}
         {D && tela.t === "corrida" && <ViolaoMundo onTocou={tocouViolao} temViolao={!!save.violao} // (jogador novo 2) antes da D-Bee dar o violão (as dunas, no meio da trilha) o cadeado não aparece: dizia "faça a missão da D-Bee" no meio dela
-          tranca={HIST && feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : null} escondido={(HIST && (faltaRecompensaHolo(hist) || pedraTela)) || noMetro || emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
+          comprado={compradoTrem} tranca={HIST && feita13(h13, "dbee") ? TRANCA_VIOLAO_PERDIDO : null} escondido={(HIST && (faltaRecompensaHolo(hist) || pedraTela)) || noMetro || emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}

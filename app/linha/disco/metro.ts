@@ -91,10 +91,13 @@ export function trancaLinha9(h: HistoriaDisco | null): string | null {
   const ep = episodioPorId(EP_METRO)!
   return episodioFeito(h, ep) || episodioAberto(h, EP_METRO) ? null : quemAbre(ep)
 }
-// tocar violão no trem começa a fuga? Não no passeio tranquilo do ep. 8 (a peça de
-// andar de metrô ainda por fazer). Vale até zerar o jogo; depois fica livre pra tocar
+// tocar no trem (o violão, ou um instrumento comprado) começa a fuga? Não no passeio tranquilo do ep. 8
+// (a peça de andar de metrô ainda por fazer). Vale até zerar o jogo; depois fica livre pra tocar
 export const guardaReageAoViolao = (h: HistoriaDisco | null) =>
   !!h && h.fase !== "livre" && !feita13(h, "final") && (pecaFeita(h, "nizzy", "jogo") || feita13(h, "nizzy"))
+
+// (09/11) o cadeado do violão depois do metrô: a loja vende outro
+export const TRANCA_VIOLAO_PERDIDO = "o violão ficou no metrô · a loja vende outro"
 
 // o atalho de teste (link ?parte=metro): já na fuga, a perseguição no "escolher"
 export function prepararMetro(h: HistoriaDisco): HistoriaComMetro {
