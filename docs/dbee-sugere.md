@@ -16,13 +16,13 @@ Nenhuma tela abre.
 - **Sem missão pegada**, e:
   - parada ou passeando há **45 s** sem nada acontecer; ou
   - **8 s** depois de acabar alguma coisa (corrida, racha, peça, sala, cena, missão).
-- No máximo **uma a cada ~90 s**. A primeira vem uns 45 s depois de a estrada abrir.
+- No máximo **uma a cada ~45 s** (09/11, somando os amigos do notch: `disco/amigos.ts`). A primeira vem uns 45 s depois de a estrada abrir.
 - **Nunca a mesma duas vezes seguidas.**
 - **Nunca durante:** corrida de rua, racha, peça (pausado), intro e falas, cena,
   chegada, perseguição, celular aberto, drone, montanha-russa, a Kombi no conserto
   ou quebrada, nem com uma **pedra da trilha** na tela.
 - A frase passa no notch, rola se for longa e respira parada mais **4,5 s**.
-- Se não tem nada pra sugerir, ela tenta de novo uns 25 s depois (sem gastar os 90 s).
+- Se não tem nada pra sugerir, ela tenta de novo uns 25 s depois (sem gastar a vez).
 
 ## Como ela escolhe
 
@@ -87,12 +87,12 @@ O texto é **RASCUNHO**: o LU2CA reescreve (em `RUAS_DBEE`, `MISSOES_DBEE` e no
 
 Nada por quadro e nada na cena 3D. Um `setInterval` de 3 s lê refs (onde ele
 está, o veículo, a rádio, a TV, o piloto, a corrida). A escolha e as distâncias
-só rodam na hora de falar (no máximo uma vez a cada 90 s). Os pontos dos alvos
+só rodam na hora de falar (no máximo uma vez a cada 45 s). Os pontos dos alvos
 ficam em cache. Na tela, uma mensagem do notch por fala.
 
 ## Pra mexer
 
-- **Números** (90 s, 45 s, 8 s, o tempo no notch, o raio de chegar e de perto): `DBEE_CFG`.
+- **Números** (45 s, 8 s, o tempo no notch, o raio de chegar e de perto): `DBEE_CFG`.
 - **Textos:** `RUAS_DBEE`, `MISSOES_DBEE` e o `texto` de cada entrada de `SUGESTOES_DBEE`.
 - **Uma sugestão nova:** uma entrada a mais em `SUGESTOES_DBEE` (`opcoes(c)` devolve
   zero ou mais opções com `chave`, `texto`, `alvo`, `peso`). Tirar a entrada tira a sugestão.

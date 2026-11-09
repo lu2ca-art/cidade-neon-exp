@@ -25,6 +25,14 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "amigos",
+    nome: "Os amigos mandam mensagem no notch",
+    data: "2026-11-09",
+    tarefa: "notch dos amigos",
+    olhar: "Ande sem missão e espere uns 45 s: as mensagens passam no notch, do mesmo tamanho de sempre, com o nome de quem manda (\"Mubarak: ...\"). Chegam mais vezes do que antes. Aqui já estão na lista D-Bee, Mubarak, LU2CA, Alohan e Drew; cada um entra quando você termina a missão dele. O LU2CA chama pra tocar nos palcos. Mensagem com sublinhado: toque e o lugar vai pro mapa. Os textos são rascunho, estão todos em amigosTextos.ts.",
+    perguntas: ["O ritmo das mensagens ficou bom, ou é muita coisa?", "Dá pra ler o nome de quem manda sem atrapalhar a direção?", "A voz de cada um está certa? (é rascunho pra você reescrever)", "O LU2CA entrar na lista logo depois do show da Nectar, em vez de só no ep. 9, está bom?"],
+  },
+  {
     parte: "carreira.feira",
     nome: "A música agora começa quando você aceita a missão",
     data: "2026-11-08",

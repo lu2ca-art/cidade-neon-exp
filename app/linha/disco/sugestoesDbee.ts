@@ -26,7 +26,7 @@ import { metroFeitoNaHistoria } from "./metro"
 // ── os números (o dono afina) ──
 export const DBEE_CFG = {
   cadaMs: 3000, // a cada quanto o DbeeSugere olha o jogo (nada por quadro)
-  intervaloMs: 90000, // no máximo uma fala a cada isso
+  intervaloMs: 45000, // (09/11, bíblia §14: mais frequentes) no máximo uma mensagem a cada isso, somando os amigos
   paradoMs: 45000, // sem missão e sem nada acontecendo há isso: ela sugere
   depoisDeAlgoMs: 8000, // acabou alguma coisa (corrida, peça, sala): ela sugere depois disso
   primeiraMs: 45000, // a primeira fala, contando de quando a estrada abre
@@ -87,7 +87,8 @@ export interface CtxDbee {
 
 export interface OpcaoDbee {
   chave: string // única ("rua:chuva"); a memória conta por ela
-  texto: string // sem o "D-Bee:" (quem mostra põe)
+  texto: string // sem o nome (quem mostra põe)
+  quem?: string // (09/11) quem manda, se não é a D-Bee sugerindo (disco/amigos.ts); aí `cor` é a dele
   alvo: AlvoDbee | null
   nome?: string // o nome curto do alvo no GPS ("a corrida de rua")
   cor?: string
@@ -146,7 +147,7 @@ export const SUGESTOES_DBEE: SugestaoDbee[] = [
       const m = MISSOES13[id]
       return {
         chave: `missao:${id}`,
-        texto: MISSOES_DBEE[id] ?? `${m.quem}: "${m.pedido}". passa lá?`,
+        texto: MISSOES_DBEE[id] ?? `${m.quem} falou: "${m.pedido}". passa lá?`,
         alvo: m.lugar.chao ? { t: "chao", chao: m.lugar.chao } : m.lugar.lugar ? { t: "lugar", lugar: m.lugar.lugar } : null,
         nome: m.quem,
         cor: m.cor,
