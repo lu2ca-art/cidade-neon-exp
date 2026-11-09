@@ -25,6 +25,14 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "missao.ella.casa",
+    nome: "A planta da Ella: cannabis modelada",
+    data: "2026-11-09",
+    tarefa: "ep. 7, a planta",
+    olhar: "Dentro da casa da Ella, olhe a planta na redoma, no fundo: agora é cannabis, com folhas de 5 e 7 pontas e flores com pelos laranja. Ela continua acendendo no filme e na hora de pintar.",
+    perguntas: ["Dá pra reconhecer a planta na hora?", "O serrilhado das folhas está bom de perto, ou quer mais fino?", "O brilho dela continua bonito na hora de pintar?"],
+  },
+  {
     parte: "loja",
     nome: "Uma moeda só: tudo agora é Água$",
     data: "2026-11-09",

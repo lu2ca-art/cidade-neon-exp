@@ -31,7 +31,7 @@
 import { canal, mesaCtx } from "@/lib/mesa"
 import { useGLTF } from "@react-three/drei"
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import * as THREE from "three"
 import { CORES, INSTRUMENTOS, corDaPaleta, criarEco, freqDaAltura, notasDaColuna, tocar } from "../../../galeria/pintar/som"
 import { guardarObra } from "../../../galeria/obras"
@@ -525,23 +525,30 @@ function pintura(q: QuadroElla): THREE.CanvasTexture {
   return t
 }
 
-// ── a planta do Criador: o vaso de barro rachado, as folhas que viram pra você,
-// a redoma, a luz de cultivo, as amostras na prateleira e os esporos no ar ──
-const N_FOLHAS = 44
-const N_ESPOROS = 90
-const LUZ_PLANTA = "#c8ffdc"
-function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: boolean; criando: boolean; brilho: number }) {
-  const copa = useRef<THREE.Group>(null)
-  const matFolhas = useRef<THREE.MeshStandardMaterial>(null)
-  const luz = useRef<THREE.PointLight>(null)
-  const halo = useRef<THREE.Sprite>(null)
-  const chao = useRef<THREE.Mesh>(null)
-  const brilhoAgora = useRef(brilho)
-  const tHalo = useMemo(() => texturaHalo(), [])
-  useEffect(() => () => tHalo.dispose(), [tHalo])
+// (09/11, ep. 7) a copa é a cannabis modelada (blender/scripts/planta_ella.py, a
+// versão planta_casa: 1912 triângulos, menos que as 44 folhas de antes). Sem luz:
+// a cor do vértice × GANHO_CANNABIS, e o brilho da planta sobe essa cor. Um desenho.
+const URL_PLANTA = "/models/planta-ella.glb"
+const GANHO_CANNABIS = 0.25 // o sólido sai do Blender ×4, como o mundo-depois.glb
+const ESCALA_CANNABIS = 0.82 // 1,5 m no modelo: cabe na redoma
+function materialCannabis() {
+  return new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, color: new THREE.Color(GANHO_CANNABIS, GANHO_CANNABIS, GANHO_CANNABIS) })
+}
+function CopaCannabis({ mat }: { mat: THREE.Material }) {
+  const { nodes } = useGLTF(URL_PLANTA) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const parte = useMemo(() => {
+    const o = nodes.planta_casa_solido as THREE.Mesh | undefined
+    if (!o?.geometry) throw new Error("planta-ella.glb sem planta_casa_solido")
+    o.updateWorldMatrix(true, false)
+    const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), esc = new THREE.Vector3()
+    o.matrixWorld.decompose(pos, quat, esc)
+    return { geo: o.geometry, pos, quat, esc }
+  }, [nodes])
+  return <group scale={ESCALA_CANNABIS}><mesh geometry={parte.geo} material={mat} position={parte.pos} quaternion={parte.quat} scale={parte.esc} /></group>
+}
+// a copa de antes, enquanto o .glb baixa ou se ele falhar
+function CopaCaixas({ matFolhas }: { matFolhas: RefObject<THREE.MeshStandardMaterial | null> }) {
   const folhas = useRef<THREE.InstancedMesh>(null)
-  const esporos = useRef<THREE.Points>(null)
-  const camera = useThree((s) => s.camera)
   // as folhas em espiral, subindo pelo caule
   const lista = useMemo(() => Array.from({ length: N_FOLHAS }, (_, i) => {
     const k = i / N_FOLHAS
@@ -559,6 +566,34 @@ function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: bo
     })
     m.instanceMatrix.needsUpdate = true
   }, [lista])
+  return (
+    <>
+      <mesh position={[0, 0.6, 0]}><cylinderGeometry args={[0.012, 0.02, 1.2, 6]} /><meshStandardMaterial color="#2f6a3e" roughness={0.8} /></mesh>
+      <instancedMesh ref={folhas} args={[undefined, undefined, N_FOLHAS]}>
+        <sphereGeometry args={[1, 8, 4]} />
+        <meshStandardMaterial ref={matFolhas} color="#2fbf6e" emissive={VERDE} emissiveIntensity={0.22} roughness={0.6} />
+      </instancedMesh>
+    </>
+  )
+}
+
+// ── a planta do Criador: o vaso de barro rachado, as folhas que viram pra você,
+// a redoma, a luz de cultivo, as amostras na prateleira e os esporos no ar ──
+const N_FOLHAS = 44
+const N_ESPOROS = 90
+const LUZ_PLANTA = "#c8ffdc"
+function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: boolean; criando: boolean; brilho: number }) {
+  const copa = useRef<THREE.Group>(null)
+  const matFolhas = useRef<THREE.MeshStandardMaterial>(null)
+  const matCannabis = useMemo(() => materialCannabis(), [])
+  const luz = useRef<THREE.PointLight>(null)
+  const halo = useRef<THREE.Sprite>(null)
+  const chao = useRef<THREE.Mesh>(null)
+  const brilhoAgora = useRef(brilho)
+  const tHalo = useMemo(() => texturaHalo(), [])
+  useEffect(() => () => tHalo.dispose(), [tHalo])
+  const esporos = useRef<THREE.Points>(null)
+  const camera = useThree((s) => s.camera)
   const { posEsporos, vel } = useMemo(() => {
     let seed = 23
     const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
@@ -575,6 +610,7 @@ function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: bo
     brilhoAgora.current += (brilho - brilhoAgora.current) * Math.min(1, d * 0.7)
     const b = brilhoAgora.current * (1 + Math.sin(t * 1.3) * 0.05)
     if (matFolhas.current) matFolhas.current.emissiveIntensity = 0.15 + b * 0.85
+    matCannabis.color.setScalar(GANHO_CANNABIS * (0.9 + b * 1.8))
     if (luz.current) luz.current.intensity = 2 + b * 7
     if (halo.current) { halo.current.scale.setScalar(1.2 + b * 1.6); halo.current.material.opacity = 0.12 + b * 0.38 }
     if (chao.current) (chao.current.material as THREE.MeshBasicMaterial).opacity = b * 0.13
@@ -611,11 +647,9 @@ function Planta({ audio, perto, criando, brilho }: { audio: AudioCasa; perto: bo
       {/* (o pedestal, o vaso, a redoma, a luz de cultivo e o armarinho são do
           modelo, ou das caixas: aqui só o que mexe) */}
       <group ref={copa} position={[0, 0.75, 0]}>
-        <mesh position={[0, 0.6, 0]}><cylinderGeometry args={[0.012, 0.02, 1.2, 6]} /><meshStandardMaterial color="#2f6a3e" roughness={0.8} /></mesh>
-        <instancedMesh ref={folhas} args={[undefined, undefined, N_FOLHAS]}>
-          <sphereGeometry args={[1, 8, 4]} />
-          <meshStandardMaterial ref={matFolhas} color="#2fbf6e" emissive={VERDE} emissiveIntensity={0.22} roughness={0.6} />
-        </instancedMesh>
+        <ModeloSeguro nome="planta-ella-glb" reserva={<CopaCaixas matFolhas={matFolhas} />}>
+          <CopaCannabis mat={matCannabis} />
+        </ModeloSeguro>
       </group>
       {/* A LUZ DA PLANTA: a única luz pontual da sala (só muda de força), o halo
           e a mancha no chão (aditivos, sem luz nova) */}
