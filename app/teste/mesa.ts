@@ -42,6 +42,13 @@ export const MESA: Cartao[] = [
       { parte: "metro.comprado", nome: "no trem, sem violão, com a guitarra comprada" },
       { parte: "metro.sem-instrumento", nome: "no trem, sem violão e sem nada comprado: o cadeado" },
     ],
+    parte: "carreira.meio",
+    nome: "O Alohan vai junto ao ginásio, em toda visita",
+    data: "2026-11-09",
+    tarefa: "Alohan no ginásio",
+    olhar: "Marque o ginásio ou a quadra no mapa e olhe de dentro da Kombi: o Alohan está no banco do carona. Na porta o botão diz \"com o Alohan\". Lá dentro ele aparece em pé nos três esportes: do lado da cesta, na ponta da mesa de ping pong e acompanhando a ginástica. Vale também pela quadra de basquete.",
+    perguntas: ["Dá pra ver ele nos três esportes, sem atrapalhar o jogo?", "De dentro da Kombi ele aparece do seu lado?"],
+    mais: [{ parte: "missao.quadra.basquete", nome: "o esporte na missão do Alohan" }],
   },
   {
     parte: "loja",
