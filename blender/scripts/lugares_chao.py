@@ -1,5 +1,5 @@
-# As fachadas dos 6 lugares do chão do subúrbio (06/11): ginásio, galeria,
-# discos, batida (estúdio), flores e brechó. Antes eram caixas com letreiro
+# As fachadas dos lugares do chão do subúrbio (06/11): ginásio, galeria, discos,
+# batida (estúdio), flores, brechó e (09/11) o bar. Antes eram caixas com letreiro
 # (app/linha/disco/LugaresChao.tsx, LugaresAbertos). O subúrbio é ruína de lixo
 # da cidade reaproveitado: cada lugar é uma construção improvisada com a cara do
 # que é (galpão em arco com grade e pneus; vitrine de vidro rachado com quadros e
@@ -24,13 +24,15 @@
 # Orçamento: o arquivo inteiro até 30 mil triângulos, sem decimate (a contagem
 # sai da modelagem; as estampas por face ficam intactas).
 
-import bpy, bmesh, math, sys
+import bpy, bmesh, math, os, sys
 from mathutils import Vector, Matrix, Color
 
 TAU = 2 * math.pi
 args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 SAIDA = args[0] if args else "/tmp/lugares-chao-bruto.glb"
-IDS = ["ginasio", "galeria", "discos", "batida", "flores", "brecho"]
+IDS = ["ginasio", "galeria", "discos", "batida", "flores", "brecho", "bar"]
+if os.environ.get("SO_LUGARES"):
+    IDS = os.environ["SO_LUGARES"].split(",")  # só pra lapidar um lugar (a exportação final é com todos)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
@@ -983,8 +985,228 @@ def brecho():
         B("neon", (s * 1.7, -0.1, 1.45), (0.05, 0.05, 2.9))
 
 
+# ════════════════════════ O BAR (09/11) ════════════════════════
+# O boteco na porta do subúrbio, de frente pra quem chega do deserto: sobrado de
+# bloco sem reboco em cima, cal descascando embaixo, barra verde, azulejo no
+# balcão de rua, porta de aço de enrolar meio aberta. Sem gente (o povo do bar é
+# o do jogo: as rodinhas de vidaNasRuas.ts ficam nos vãos entre as mesas).
+def bar():
+    PISO = 0.14  # a calçada de cimento
+    CAL, CAL2, REB = "#b9ab8a", "#9f9274", "#7c7568"
+    BARRA, BARRA2 = "#3f5a48", "#2e4436"
+    TIJ, TIJ2 = "#8a4a32", "#6b3625"
+    VERM = "#8e3b31"       # cimento queimado vermelho (o balcão)
+    PLA = ["#b5322c", "#d0a032", "#2f5f9a", "#b5322c", "#d0a032"]  # o plástico das mesas
+    VIDRO = ["#3f6a3a", "#7a4a1e", "#3f6a3a", "#c9b98a"]
+
+    # ── a calçada ──
+    Placa("solido", (-6.8, -6.0, PISO), (13.6, 0, 0), (0, 6.0, 0), 8, 4,
+          cf=lambda c, n, i, j: dim(CO2, 0.62 + 0.3 * hh(i, j, 11)) if hh(i, j, 12) > 0.12 else dim(CO2, 0.42), sujo=0)
+    for o, U in (((-6.8, -6.0, PISO - 0.4), (13.6, 0, 0)), ((-6.8, 0, PISO - 0.4), (0, -6.0, 0)), ((6.8, -6.0, PISO - 0.4), (0, 6.0, 0))):
+        Placa("solido", o, U, (0, 0, 0.4), 1, 1, CO2, sujo=0)
+
+    # ── o corpo: a base, o fundo, o andar de cima, o forro da frente ──
+    # (recuado da parede de fora: no mesmo plano, a AO assa a parede de preto)
+    B("solido", (0, 4.5, -1.0), (11.8, 8.8, 2.0), CO2, sujo=0)
+    B("solido", (0, 5.5, 1.75), (11.8, 6.8, 3.5), CO2, sujo=0)
+    B("solido", (0, 4.55, 4.55), (11.8, 8.7, 2.1), CO2, sujo=0)
+    # a platibanda: no meio recua pra não atravessar o letreiro
+    for xc, lx in ((-5.175, 1.85), (5.175, 1.85)):
+        B("solido", (xc, 4.5, 5.72), (lx, 9.2, 0.24), CO, sujo=0)
+    B("solido", (0, 4.65, 5.72), (8.5, 8.9, 0.24), CO, sujo=0)
+
+    # ── a parede da frente: cal descascando, barra verde, o reboco e o bloco aparecendo ──
+    CX, CZ = 0.4, 0.35
+    def buraco(i, j):
+        return (2 <= i < 10 and 3 <= j < 8) or (14 <= i < 22 and j < 9)
+    def parede(c, n, i, j):
+        mancha = math.sin(c.x * 1.3 + 0.7) * math.sin(c.z * 2.1 + 1.9) + 0.6 * math.sin(c.x * 3.7 + c.z * 2.3)
+        h = hh(i, j, 7)
+        if mancha + h * 0.9 > 1.15:
+            return lin(escolhe([TIJ, TIJ2, TIJ], i, j, 3))        # caiu tudo: o tijolo
+        if mancha + h * 0.9 > 0.72:
+            return dim(REB, 0.72 + 0.28 * hh(i, j, 8))            # só o reboco
+        base = (BARRA2 if hh(i, j, 9) < 0.3 else BARRA) if c.z < 1.05 else (CAL2 if hh(i, j, 9) < 0.35 else CAL)
+        return dim(base, 0.8 + 0.2 * hh(i, j, 10))
+    Placa("solido", (-6, 0, 0), (12, 0, 0), (0, 0, 3.5), 30, 10, cf=parede, filtro=lambda i, j: not buraco(i, j), sujo=0.3)
+    # o andar de cima: bloco sem reboco (a obra que nunca acabou)
+    Placa("solido", (-6, 0, 3.5), (12, 0, 0), (0, 0, 2.1), 24, 7, sujo=0.05,
+          cf=lambda c, n, i, j: dim(escolhe([TIJ, TIJ2, "#94573c"], (i + (j % 2)) // 2, j, 5), 0.78 + 0.22 * hh(i, j, 6)) if hh(i, j, 15) > 0.07 else lin(REB))
+    # a laje aparecendo entre os andares
+    B("solido", (0, -0.06, 3.53), (12.1, 0.12, 0.16), CO, sujo=0)
+    # os lados (quem chega de lado vê a cal suja e o bloco)
+    lado = lambda c, n, i, j: lin(TIJ2) if hh(i, j, 21) < 0.3 else dim(CAL2, 0.55 + 0.25 * hh(i, j, 22)) if c.z < 3.5 else lin(escolhe([TIJ, TIJ2], i, j, 23))
+    Placa("solido", (6, 0, 0), (0, 9, 0), (0, 0, 5.6), 8, 5, cf=lado, sujo=0.2)
+    Placa("solido", (-6, 9, 0), (0, -9, 0), (0, 0, 5.6), 8, 5, cf=lado, sujo=0.2)
+
+    # ── dentro: a luz do fundo (o que se vê pelo balcão e por baixo da porta) ──
+    B("solido", (-5.65, 1.0, 1.65), (0.1, 2.0, 3.2), PR, sujo=0)
+    B("solido", (3.25, 1.0, 1.65), (0.1, 2.0, 3.2), PR, sujo=0)
+    B("solido", (-1.2, 1.0, 3.28), (9.0, 2.0, 0.12), "#2a2622", sujo=0)
+    B("luz", (-1.2, 1.0, 0.13), (8.8, 2.0, 0.04), "#3e2614")
+    def fundo(c, n, i, j):
+        t = (j + 0.5) / 6
+        return misto("#3a2212", "#ffcf8a", min(1.0, t ** 2.2 * 1.25) * (0.75 + 0.25 * hh(i, 41)))
+    Placa("luz", (-5.6, 1.95, 0.14), (8.8, 0, 0), (0, 0, 3.0), 5, 6, cf=fundo, sujo=0)
+    # as prateleiras com as garrafas (a sombra contra a luz)
+    for z in (1.55, 2.2):
+        B("solido", (-3.6, 1.82, z), (3.1, 0.22, 0.05), MD2, sujo=0)
+        for k in range(7):
+            x = -4.9 + k * 0.43 + 0.08 * hh(k, z)
+            Cil("solido", (x, 1.82, z + 0.025), 0.045, 0.03, 0.3, 4, escolhe(VIDRO, k, z), sujo=0, tampa=False)
+    # o freezer horizontal e a lâmpada pelada no meio, vistos pela porta
+    B("solido", (1.9, 1.3, 0.55), (1.5, 0.75, 0.82), "#c7cbcf", sujo=0.2)
+    B("solido", (1.9, 1.3, 1.0), (1.56, 0.8, 0.08), "#8d9196", sujo=0)
+    Viga("solido", (0.9, 1.2, 3.22), (0.9, 1.2, 2.62), 0.012, PR, 0)
+    Esfera("luz", (0.9, 1.2, 2.55), 0.08, 6, 4, "#fff0c0")
+
+    # ── o BALCÃO pra rua ──
+    # a moldura, a pedra de cimento vermelho, o azulejo embaixo e o neon na beira
+    for x in (-5.2, -2.0):
+        B("solido", (x, -0.04, 1.93), (0.1, 0.14, 1.78), MD2, sujo=0)
+    B("solido", (-3.6, -0.05, 2.83), (3.3, 0.14, 0.1), MD2, sujo=0)
+    B("solido", (-3.6, -0.3, 1.06), (3.7, 0.72, 0.09), VERM, sujo=0)
+    for x in (-5.0, -3.6, -2.2):
+        B("solido", (x, -0.28, 0.8), (0.1, 0.5, 0.42), PR, sujo=0.1)   # as mãos-francesas
+    Placa("solido", (-5.2, -0.02, PISO), (3.2, 0, 0), (0, 0, 0.91), 12, 4, sujo=0.25,
+          cf=lambda c, n, i, j: lin(TIJ2) if hh(i, j, 31) < 0.16 else (lin("#37597a") if (i + j) % 2 else lin("#c9c2ae")))
+    B("neon", (-3.6, -0.67, 1.06), (3.7, 0.03, 0.03))
+    B("luz", (-3.6, 0.12, 2.74), (3.0, 0.1, 0.05), "#eaf3ff")          # a fluorescente do balcão
+    # em cima do balcão: garrafa aberta, copos e o porta-guardanapo
+    for x, cor in ((-4.55, VIDRO[0]), (-4.4, VIDRO[1]), (-2.65, VIDRO[0])):
+        add(bm_torno([(0.04, 0), (0.04, 0.2), (0.015, 0.27), (0, 0.28)], 5), "solido", cor, T(x, -0.32, 1.105), None, 0)
+    for x, y in ((-3.9, -0.3), (-3.75, -0.42), (-2.3, -0.28)):
+        Cil("solido", (x, y, 1.105), 0.035, 0.042, 0.1, 5, "#d8d2c0", sujo=0, tampa=False)
+    B("solido", (-3.2, -0.3, 1.16), (0.13, 0.09, 0.12), "#9a9ea6", sujo=0)
+    # o toldo listrado por cima do balcão, nos dois pés
+    Lona("solido", (-5.75, -1.75, 2.5), (4.25, 0, 0), (0, 1.75, 0.72), 10, 2, 0.1,
+         cf=lambda c, n, i, j: dim(BARRA, 0.9) if i % 2 else dim("#d0c8a8", 0.82))
+    for x in (-5.6, -1.65):
+        Viga("solido", (x, -1.7, PISO), (x, -1.7, 2.52), 0.05, Z2, 0.1)
+    Viga("solido", (-5.75, -1.72, 2.5), (-1.5, -1.72, 2.5), 0.05, Z2, 0)
+
+    # ── a PORTA DE AÇO de enrolar, meio aberta (a parte de baixo é o que está aberto) ──
+    x0, x1 = -0.4, 2.8
+    for x in (x0 - 0.06, x1 + 0.06):
+        B("solido", (x, -0.06, 1.65), (0.12, 0.12, 3.15), Z2, sujo=0.3)
+    Placa("solido", (x0, -0.05, 1.45), (x1 - x0, 0, 0), (0, 0, 1.7), 8, 15, sujo=0.1,
+          cf=lambda c, n, i, j: (dim(FE, 0.75) if hh(i // 2, j // 3, 51) < 0.09 else dim(FE2, 0.85) if hh(i, j, 52) < 0.07 else (dim(Z2, 0.62) if j % 2 else dim(Z1, 0.85))))
+    B("solido", (1.2, -0.08, 1.42), (x1 - x0 + 0.04, 0.07, 0.1), Z2, sujo=0)        # a barra de baixo
+    for x in (0.2, 2.2):
+        B("solido", (x, -0.11, 1.42), (0.14, 0.03, 0.05), BO, sujo=0)              # as alças
+    B("solido", (1.2, -0.14, 3.37), (x1 - x0 + 0.3, 0.26, 0.42), Z2, sujo=0.1)      # a caixa do rolo
+
+    # ── na parede: o quadro de giz, a caixa de luz e os cartazes ──
+    B("solido", (-1.2, -0.03, 1.8), (1.0, 0.06, 1.2), MD2, sujo=0)
+    Placa("solido", (-1.62, -0.07, 1.33), (0.84, 0, 0), (0, 0, 0.92), 1, 7, sujo=0,
+          cf=lambda c, n, i, j: lin("#6f6d68") if j % 2 else lin("#1d2420"))
+    B("solido", (3.6, -0.06, 2.65), (0.42, 0.12, 0.58), Z2, sujo=0.1)
+    B("solido", (3.6, -0.13, 2.65), (0.2, 0.02, 0.2), "#2a2e36", sujo=0)
+    for x, z, w, h, a, b in ((4.65, 1.8, 0.72, 0.98, "#6f3a30", "#a89a7c"), (5.4, 2.15, 0.56, 0.78, "#34506a", "#8f8468"), (4.8, 2.95, 0.46, 0.36, "#a89a7c", "#3a3532")):
+        Placa("solido", (x - w / 2, -0.03, z - h / 2), (w, 0, 0), (0, 0, h), 1, 3, sujo=0,
+              cf=lambda c, n, i, j, a=a, b=b: lin(a) if j == 1 else lin(b))
+    # o cano de PVC e a janelinha lá de cima, com grade
+    Tubo("solido", [(5.72, -0.09, 5.6), (5.72, -0.09, 1.0), (5.82, -0.2, 0.25), (6.1, -0.45, PISO + 0.05)], 0.05, 5, "#d4cdbc", 0.15)
+    Placa("luz", (-3.3, -0.03, 3.9), (2.0, 0, 0), (0, 0, 1.15), 1, 2, sujo=0,
+          cf=lambda c, n, i, j: lin("#7a5230") if j else lin("#3e2a1c"))
+    B("solido", (-2.3, -0.05, 4.47), (2.1, 0.03, 0.06), Z2, sujo=0)
+    B("solido", (-2.3, -0.05, 3.9), (2.15, 0.08, 0.08), CO, sujo=0)
+    for k in range(6):
+        Viga("solido", (-3.15 + k * 0.34, -0.06, 3.92), (-3.15 + k * 0.34, -0.06, 5.04), 0.022, Z2, 0)
+
+    # ── em cima: a caixa d'água azul, os ferros de espera e o suporte do letreiro ──
+    add(bm_torno([(0.82, 0), (1.02, 0.95), (1.08, 1.0), (0.9, 1.14), (0, 1.2)], 12), "solido", "#2f62a8", T(4.95, 4.2, 5.84), None, 0.1)
+    for x, y in ((-5.6, 1.0), (-5.0, 1.1), (-4.7, 2.2), (-5.5, 3.1), (-4.9, 0.7)):
+        Viga("solido", (x, y, 5.8), (x + 0.03 * hh(x, y, 1), y, 6.7 + 0.4 * hh(x, y, 2)), 0.02, FE, 0)
+    # o letreiro: o texto é o do jogo (no mesmo lugar de antes), aqui a chapa, os pés e a moldura em neon
+    Z_LET = 6.3
+    B("solido", (0, 0.02, Z_LET), (8.32, 0.14, 2.28), "#141218", sujo=0)
+    for zz in (Z_LET - 1.16, Z_LET + 1.16):
+        B("neon", (0, -0.08, zz), (8.42, 0.07, 0.07))
+    for xx in (-4.18, 4.18):
+        B("neon", (xx, -0.08, Z_LET), (0.07, 0.07, 2.39))
+    for xx in (-3.2, 0, 3.2):
+        Viga("solido", (xx, 0.1, 5.6), (xx, 0.1, Z_LET + 0.9), 0.08, Z2, 0.1)
+    LET["bar"] = (Z_LET, 0.1)
+
+    # ── as MESAS e BANQUETAS de plástico (nos vãos das rodinhas do jogo) ──
+    def banqueta(x, y, cor, k=1.0):
+        Lz = PISO
+        add(bm_torno([(0.17, 0), (0.1, 0.38 * k), (0.17, 0.42 * k), (0, 0.45 * k)], 7), "solido", cor, T(x, y, Lz), None, 0.15)
+    def mesa(x, y, cor, a=0.1):
+        with em(T(x, y, PISO) @ R(0, 0, a)):
+            B("solido", (0, 0, 0.74), (0.72, 0.72, 0.04), cor, sujo=0.05)
+            for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                Cil("solido", (sx * 0.29, sy * 0.29, 0), 0.032, 0.026, 0.72, 4, cor, sujo=0.2, tampa=False)
+    def garrafa(x, y, cor=None):
+        add(bm_torno([(0.038, 0), (0.038, 0.19), (0.014, 0.26), (0, 0.27)], 5), "solido", cor or VIDRO[1], T(x, y, PISO + 0.76), None, 0)
+    def copo(x, y):
+        Cil("solido", (x, y, PISO + 0.76), 0.032, 0.04, 0.095, 5, "#d8d2c0", sujo=0, tampa=False)
+    MESAS = (
+        (-1.55, -3.0, PLA[0], [(-0.68, 0.12), (0.62, 0.32), (0.15, 0.68)], (0.1, -0.1, 0.08, 0.14)),
+        (3.65, -3.0, PLA[1], [(-0.66, -0.12), (0.62, 0.18), (-0.05, -0.69)], (-0.14, 0.05, 0.12, -0.04)),
+        (-2.2, -5.45, PLA[2], [(0.68, 0.15), (-0.62, -0.3), (0.0, 0.68), (0.28, -0.68)], (0.02, 0.1, 0.16, -0.08)),
+        (4.55, -5.35, PLA[3], [(-0.68, -0.15), (0.0, -0.7), (0.66, 0.2)], (0.12, 0.08, -0.08, -0.05)),
+    )
+    for n, (x, y, cor, bqs, itens) in enumerate(MESAS):
+        mesa(x, y, cor, 0.08 + 0.17 * n)
+        ix, iy, jx, jy = itens
+        garrafa(x + ix, y + iy, VIDRO[(n + 1) % 2])
+        copo(x + jx, y + jy)
+        if n != 2:
+            copo(x + ix - 0.14, y + iy + 0.07)
+        for k, (dx, dy) in enumerate(bqs):
+            banqueta(x + dx, y + dy, escolhe(PLA, n, k, 3))
+    # as banquetas altas do balcão
+    for x, cor in ((-4.75, PLA[1]), (-3.55, PLA[0]), (-2.45, PLA[1])):
+        banqueta(x, -1.05, cor, 1.6)
+
+    # ── os ENGRADADOS empilhados (a estampa é a treliça do plástico) ──
+    def engradados(x, y, colunas, cor, seed):
+        ca, cp, ch = 0.44, 0.34, 0.3
+        for c, n in enumerate(colunas):
+            cx = x + c * ca
+            B("solido", (cx, y + cp / 2, PISO + n * ch / 2), (ca - 0.03, cp - 0.03, n * ch), "#0c0b0e", sujo=0)
+            Placa("solido", (cx - ca / 2, y, PISO), (ca, 0, 0), (0, 0, n * ch), 3, n * 2, sujo=0.05,
+                  cf=lambda c_, n_, i, j, s=seed + c: dim(escolhe([cor, cor, "#b5322c", "#2f5f9a"], j // 2, s), 0.45 if j % 2 == 0 else 1.0))
+            for k in range(2):
+                Cil("solido", (cx - 0.1 + 0.2 * k, y + cp / 2, PISO + n * ch), 0.04, 0.012, 0.13, 4, "#4e6b3a", sujo=0, tampa=False)
+    engradados(0.1, 1.42, (3, 2), "#6a5a20", 3)
+    engradados(4.6, -0.62, (3, 3, 2), "#d0a032", 1)
+    engradados(0.0 - 3.15, -0.45, (2, 1), "#b5322c", 7)
+
+    # ── a CAIXA DE SOM (na porta, em cima de um engradado virado) ──
+    s = (1.05, 0.72, 1.35)
+    with em(T(3.85, -0.62, PISO) @ R(0, 0, -0.08)):
+        B("solido", (0, 0, 0.1), (0.9, 0.5, 0.2), "#7a4a1e", sujo=0.2)
+        B("solido", (0, 0, 0.2 + s[2] / 2), s, "#18161c", sujo=0.1)
+        B("solido", (0, -s[1] / 2 - 0.004, 0.2 + s[2] / 2), (s[0] - 0.08, 0.01, s[2] - 0.08), "#26242b", sujo=0)
+        for cz, r in ((0.2 + 0.43, 0.34), (0.2 + 1.08, 0.18)):
+            Cil("solido", (0, -s[1] / 2 - 0.005, cz), r, r * 0.35, 0.07, 10, "#2c2a34", r=(math.pi / 2, 0, 0), sujo=0, tampa=False)
+            Tor("neon", (0, -s[1] / 2 - 0.02, cz), r, 0.03, 10, 4, r=(math.pi / 2, 0, 0))
+    Tubo("solido", [(3.5, -0.3, PISO + 0.35), (3.1, -0.2, PISO + 0.1), (2.75, -0.1, PISO + 0.5), (2.72, -0.05, PISO + 2.7)], 0.02, 4, PR, 0)
+
+    # ── a GAMBIARRA: os dois postes tortos, os varais de lâmpada e o emaranhado ──
+    for x, inc in ((-6.45, 0.18), (6.5, -0.15)):
+        Cil("solido", (x, -5.55, PISO - 0.2), 0.09, 0.06, 4.5, 6, MD2, r=(0.1, inc, 0), sujo=0.2, tampa=False)
+    PA, PB = (-5.95, -5.5, 4.15), (5.95, -5.5, 4.1)
+    FA, FB = (-5.95, -0.18, 3.62), (5.95, -0.18, 3.62)
+    lampadas(PA, PB, 9, 0.55)
+    lampadas(FA, PB, 8, 0.4)
+    lampadas(FB, PA, 8, 0.45)
+    lampadas(FA, FB, 7, 0.16)
+    # o gato: os fios da caixa de luz subindo emaranhados até a laje e o poste
+    for k in range(3):
+        a = 3.6 + 0.08 * k
+        pts = [(a, -0.13, 2.95), (a + 0.25, -0.2, 3.4 - 0.1 * k), (a + 0.7 + 0.2 * k, -0.28 + 0.05 * k, 3.72),
+               (5.0 - 0.2 * k, -0.5 - 0.5 * k, 4.0 - 0.1 * k), (5.95, -5.5, 4.1)]
+        Tubo("solido", pts, 0.012, 3, "#1c1a1f", 0)
+
+
 for nome, f in (("ginasio", ginasio), ("galeria", galeria), ("discos", discos),
-                ("batida", batida), ("flores", flores), ("brecho", brecho)):
+                ("batida", batida), ("flores", flores), ("brecho", brecho), ("bar", bar)):
+    if nome not in IDS:
+        continue
     ATUAL[0] = nome
     f()
 
@@ -1049,7 +1271,7 @@ for o in solidos:
     ao = o.data.color_attributes.new("AO", "FLOAT_COLOR", "CORNER")
     o.data.color_attributes.active_color = ao
 mc = bpy.data.meshes.new("chao_bake")
-mc.from_pydata([(-20, -20, 0), (160, -20, 0), (160, 30, 0), (-20, 30, 0)], [], [(0, 1, 2, 3)])
+mc.from_pydata([(-20, -20, 0), (190, -20, 0), (190, 30, 0), (-20, 30, 0)], [], [(0, 1, 2, 3)])
 chao = bpy.data.objects.new("chao_bake", mc)
 sc.collection.objects.link(chao)
 try:

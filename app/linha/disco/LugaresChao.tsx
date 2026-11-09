@@ -555,6 +555,10 @@ function LugaresCaixas({ chao }: { chao: (x: number, z: number) => number }) {
 // (sólido, brilho, letreiros), com os mesmos materiais; nada por quadro, sem
 // luz nova. A chegada (22 m), o cadeado e o resto continuam os de sempre (a
 // Corrida e o mapa não mudam). Se o .glb não carregar, ficam as caixas.
+// (09/11) O BAR também saiu da caixa: o nó "bar" do mesmo arquivo (sobrado de bloco,
+// balcão pra rua, porta de aço meio aberta, mesas de plástico, gambiarra), virado
+// pro deserto (GIRO_BAR). Entra nos mesmos 2 desenhos juntados; o letreiro é o de
+// sempre, um plano próprio (de 4 desenhos da caixa pra 1 a mais aqui).
 const URL_LUGARES = "/models/lugares-chao.glb"
 const FRENTE = 4.5 // a frente da caixa de antes (o prédio ocupa os mesmos 9 m pra trás)
 // onde vai o letreiro (o texto do atlas) em cada modelo: [altura, na frente da origem], m
@@ -583,18 +587,14 @@ function emFloat(g: THREE.BufferGeometry, m: THREE.Matrix4, cor?: THREE.Color) {
   o.applyMatrix4(m)
   return o
 }
-function LugaresGlb({ chao }: { chao: (x: number, z: number) => number }) {
+// o letreiro do bar: a altura do chão e quanto na frente da origem do nó (o mesmo lugar da caixa)
+const LETREIRO_BAR: [number, number] = [6.3, 0.1]
+function LugaresGlb({ chao, alvoBar }: { chao: (x: number, z: number) => number; alvoBar: boolean }) {
   const { nodes } = useGLTF(URL_LUGARES) as unknown as { nodes: Record<string, THREE.Object3D> }
   const d = useMemo(() => {
     const solido: THREE.BufferGeometry[] = [], brilho: THREE.BufferGeometry[] = [], letreiros: Peca3[] = []
     const inv = new THREE.Matrix4(), rel = new THREE.Matrix4()
-    CHAO_ABERTOS.forEach((id, i) => {
-      const no = nodes[id]
-      if (!no) throw new Error(`lugares-chao.glb sem o nó ${id}`)
-      const { x, y: y0, z, rot } = pouso(id, chao)
-      const y = y0 - 0.05
-      const base = new THREE.Matrix4().makeRotationY(rot).setPosition(x, y, z).multiply(new THREE.Matrix4().makeTranslation(0, 0, FRENTE))
-      const cor = new THREE.Color(CHAO_LUGARES[id].cor)
+    const juntaNo = (no: THREE.Object3D, base: THREE.Matrix4, cor: THREE.Color) => {
       no.updateWorldMatrix(true, true)
       inv.copy(no.matrixWorld).invert()
       no.traverse((o) => {
@@ -605,41 +605,57 @@ function LugaresGlb({ chao }: { chao: (x: number, z: number) => number }) {
         if (m.name.endsWith("_solido")) solido.push(emFloat(m.geometry, mm))
         else brilho.push(emFloat(m.geometry, mm, m.name.endsWith("_neon") ? cor : undefined))
       })
+    }
+    CHAO_ABERTOS.forEach((id, i) => {
+      const no = nodes[id]
+      if (!no) throw new Error(`lugares-chao.glb sem o nó ${id}`)
+      const { x, y: y0, z, rot } = pouso(id, chao)
+      const y = y0 - 0.05
+      juntaNo(no, new THREE.Matrix4().makeRotationY(rot).setPosition(x, y, z).multiply(new THREE.Matrix4().makeTranslation(0, 0, FRENTE)), new THREE.Color(CHAO_LUGARES[id].cor))
       const [ly, lz] = LETREIRO_GLB[id]
       letreiros.push(noMundo({ g: placaLetreiro(i), p: [0, ly, FRENTE + lz] }, x, y, z, rot))
     })
+    // (09/11) o bar: a calçada dele acompanha o chão, sem afundar como a caixa de antes
+    const bar = CHAO_LUGARES.bar, yBar = chao(bar.x, bar.z)
+    if (nodes.bar) juntaNo(nodes.bar, new THREE.Matrix4().makeRotationY(GIRO_BAR).setPosition(bar.x, yBar, bar.z).multiply(new THREE.Matrix4().makeTranslation(0, 0, FRENTE)), new THREE.Color(bar.cor))
     const s = mergeGeometries(solido, false), b = mergeGeometries(brilho, false)
     if (!s || !b) throw new Error("lugares-chao.glb: não deu pra juntar")
     for (const g of [...solido, ...brilho]) g.dispose()
-    return { solido: s, brilho: b, letreiros: juntar(letreiros, true) }
+    return { solido: s, brilho: b, letreiros: juntar(letreiros, true), temBar: !!nodes.bar, yBar, texBar: texLetreiro(bar.nome, bar.cor) }
   }, [nodes, chao])
   // as mescladas são nossas (copiadas em Float32): soltar ao desmontar; o cache do drei fica
-  useEffect(() => () => { d.solido.dispose(); d.brilho.dispose(); d.letreiros.dispose() }, [d])
+  useEffect(() => () => { d.solido.dispose(); d.brilho.dispose(); d.letreiros.dispose(); d.texBar.dispose() }, [d])
   const mats = matsAbertos()
   return (
     <>
       <mesh geometry={d.solido} material={mats.solido} name="lugares-abertos" />
       <mesh geometry={d.brilho} material={mats.neon} />
       <mesh geometry={d.letreiros} material={mats.letreiro} />
+      {d.temBar ? (
+        <group position={[CHAO_LUGARES.bar.x, d.yBar, CHAO_LUGARES.bar.z]} rotation={[0, GIRO_BAR, 0]}>
+          <mesh position={[0, LETREIRO_BAR[0], FRENTE + LETREIRO_BAR[1]]}><planeGeometry args={[8, 2]} /><meshBasicMaterial map={d.texBar} toneMapped={false} /></mesh>
+          {alvoBar && <Farol cor={CHAO_LUGARES.bar.cor} />}
+        </group>
+      ) : <Fachada id="bar" chao={chao} alvo={alvoBar} />}
     </>
   )
 }
-function LugaresAbertos({ chao }: { chao: (x: number, z: number) => number }) {
-  const reserva = <LugaresCaixas chao={chao} />
+function LugaresAbertos({ chao, alvoBar }: { chao: (x: number, z: number) => number; alvoBar: boolean }) {
+  const reserva = <><LugaresCaixas chao={chao} /><Fachada id="bar" chao={chao} alvo={alvoBar} /></>
   return (
-    <ModeloSeguro nome="lugares-chao-glb" reserva={reserva}><LugaresGlb chao={chao} /></ModeloSeguro>
+    <ModeloSeguro nome="lugares-chao-glb" reserva={reserva}><LugaresGlb chao={chao} alvoBar={alvoBar} /></ModeloSeguro>
   )
 }
 
 export function LugaresChao({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: LugarChao | null }) {
   return (
     <>
-      {CHAO_FIXOS.filter((id) => !(CHAO_ABERTOS as readonly string[]).includes(id)).map((id) => id === "tuneis" ? <BocaTunel key={id} chao={chao} alvo={alvo === id} />
+      {CHAO_FIXOS.filter((id) => id !== "bar" && !(CHAO_ABERTOS as readonly string[]).includes(id)).map((id) => id === "tuneis" ? <BocaTunel key={id} chao={chao} alvo={alvo === id} />
         : id === "quadra" ? <Quadra key={id} chao={chao} alvo={alvo === id} />
         : id === "feira" ? <FeiraRua key={id} chao={chao} alvo={alvo === id} />
         : id === "palcoDeserto" ? <PalcoDeserto key={id} chao={chao} alvo={alvo === id} />
         : <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
-      <LugaresAbertos chao={chao} />
+      <LugaresAbertos chao={chao} alvoBar={alvo === "bar"} />
       {alvo === "goteira" && <Goteira chao={chao} />}
       <LixoNoLixao chao={chao} />
     </>

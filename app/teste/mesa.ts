@@ -48,6 +48,12 @@ export const MESA: Cartao[] = [
     olhar: "Três links, o mesmo palco do subúrbio em três momentos da história: compare o começo (\"pouca gente\"), o meio e o fim (\"cheio\"). A plateia enche da frente pro fundo e a porta do bar enche junto. Ande pela rua: mais gente, e quem te conhece para, vira e levanta os braços quando você passa. O número da plateia dos shows também cresce (o show do bar tem mais gente em volta). De patins, subir até a cidade agora gasta água como a Kombi; a porta do elevador continua de graça. As falas sobre a revolução chegam no notch ao longo dos episódios (todas são RASCUNHO, em disco/amigosTextos.ts).",
     perguntas: ["Dá pra sentir que tem mais gente a cada etapa, sem ninguém explicar?", "Gente levantando os braços quando você passa funciona, ou prefere outro jeito de te reconhecerem?", "No celular a rua continuou leve?", "As falas sobre a revolução estão no tom? Reescreva o que quiser."],
     mais: [{ parte: "povo.pouco", nome: "pouca gente (começo da história)" }, { parte: "povo.meio", nome: "metade da história" }],
+    parte: "bar",
+    nome: "A fachada do bar: agora é boteco de verdade, na porta do subúrbio",
+    data: "2026-11-09",
+    tarefa: "bar fachada",
+    olhar: "Você chega do deserto, de frente pra porta. O bar deixou de ser uma caixa: sobrado de bloco, parede descascando, balcão pra rua com toldo, porta de aço meio aberta, mesas e banquetas de plástico, engradados, caixa de som e varais de lâmpada. O letreiro é o mesmo, no mesmo lugar.",
+    perguntas: ["Parece boteco de periferia, ou falta alguma coisa?", "A porta de aço meio aberta e a luz lá dentro ficaram boas?", "As mesas na calçada atrapalham o povo que fica na porta?", "De longe, vindo do deserto, dá pra reconhecer o bar?"],
   },
   {
     parte: "final",
