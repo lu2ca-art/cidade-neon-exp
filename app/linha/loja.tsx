@@ -161,7 +161,7 @@ function Detalhe({ d, tem, neon, onComprar, onFechar }: { d: DiscoLoja; tem: boo
       <button type="button" className="l-loja-fechar" onClick={() => { audio.current?.pause(); onFechar() }} aria-label="fechar">×</button>
       <div className="l-loja-capa-grande"><Capa motivo={d.motivo} a={d.a} b={d.b} titulo={d.titulo} size={240} /></div>
       <h2>{d.titulo}</h2>
-      <p className="l-loja-sub">{d.faixas.length} faixas{d.gratis ? " · domínio público" : ""}</p>
+      <p className="l-loja-sub">{d.faixas.length} faixas{d.gratis || d.dominio ? " · domínio público" : ""}</p>
       <div className="l-loja-acao">
         {tem || comprou ? (
           <button type="button" className="l-loja-btn" onClick={tocarAgora}>tocar na kombi ▸</button>
