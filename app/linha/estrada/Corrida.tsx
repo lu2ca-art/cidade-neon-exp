@@ -139,7 +139,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
-import { BORDA_SUBURBIO, FALA_ZONA, PROPULSOR_AGUA, TRANCA_MOTO, motoLiberada, naMoto, permitido, propulsorCobra, zonaDoJogo, type Modo, type Zona } from "./zonas"
+import { BORDA_SUBURBIO, FALA_ZONA, PRECO_SUBIDA_AGUA, TETO_SEM_AGUA, TRANCA_MOTO, motoLiberada, naMoto, permitido, propulsorCobra, zonaDoJogo, type Modo, type Zona } from "./zonas"
 import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
@@ -409,8 +409,8 @@ type Jogo = {
   // (disco, passo 3) o voo: solta da pista e voa livre (wx, wz, rumo); a energia
   // do propulsor (0–1, volta andando na pista); propulsou = este voo usou o propulsor
   voo?: boolean; energia?: number; propulsou?: boolean
-  // (09/11) decolou do chão (lá embaixo o propulsor paga em água) e o que já queimou
-  propChao?: boolean; aguaProp?: number
+  // (09/11) saiu do chão (lá embaixo) e, com o propulsor, está subindo: paga ao pousar na pista
+  propChao?: boolean; pagaSubida?: boolean
   // (22/10, 2.1/2.3) a chegada do buraco de minhoca: a Kombi vem numa
   // velocidade insana, freia sozinha até a casa e para na frente dela
   chegadaCasa?: boolean; chegadaV?: number
@@ -510,9 +510,9 @@ type Evs = {
   portal: (id: EstacaoId) => void
   pegar: (chave: string) => void
   anel: () => void
-  // (09/11) a água do propulsor lá embaixo: gastar, se ainda tem e o aviso de que acabou
+  // (09/11) a água da subida voando: gastar, se dá pra pagar e o aviso de que não dá
   agua?: (d: number) => void
-  temAgua?: () => boolean
+  temAgua?: (n: number) => boolean
   semAgua?: () => void
   caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim" | "jogada") => void
   // (T28) a Kombi caiu lá de cima (acabou a queda)
@@ -2172,7 +2172,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   useEffect(() => {
     evs.current = {
       agua: (d) => setAguaPend((x) => x + d),
-      temAgua: () => aguaRef.current >= 1,
+      temAgua: (n) => aguaRef.current >= n,
       semAgua: () => {
         const t = performance.now()
         if (t < avisoSemAgua.current) return
@@ -5558,12 +5558,15 @@ function CenaBase({
       // mais seco, gasta mais rápido e recarrega mais rápido (é leve)
       const pat = !!combRef.current.patins
       const quer = inp.propulsor && !cine && !j.desligada
-      // (09/11, bíblia §15) decolou do chão: a Kombi paga em água (estrada/zonas.ts)
-      if (!j.ar) j.propChao = !!j.voo
+      // (09/11, o dono) o voo é solar; subir do chão até a pista custa água (estrada/zonas.ts)
+      if (!j.ar) { j.propChao = !!j.voo; j.pagaSubida = false }
       const cobra = !pat && !!j.propChao && propulsorCobra(faseHistoria)
-      const semAgua = cobra && evs.current.temAgua?.() === false
-      if (quer && semAgua) evs.current.semAgua?.()
-      if (quer && j.energia > 0 && !semAgua) {
+      // sem água pra pagar: não passa do teto (vale também no embalo, de botão solto)
+      if (cobra && j.ar && j.voo && j.wx !== undefined && evs.current.temAgua?.(PRECO_SUBIDA_AGUA) === false && j.y - MD.chaoEm(j.wx, j.wz!) >= TETO_SEM_AGUA) {
+        j.vy = Math.min(j.vy, 0)
+        if (quer) evs.current.semAgua?.()
+      }
+      if (quer && j.energia > 0) {
         // (LU2CA 21/10 (2): "os objetos saem do chão com velocidade acelerando,
         // não num tranco") sai do chão na velocidade do próprio chão (subindo a
         // rampa, sobe junto) e o empuxo cresce em ~0,4 s: começa equilibrando o
@@ -5580,10 +5583,7 @@ function CenaBase({
         j.vy = Math.min(teto, j.vy + empuxo * dt)
         j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt * (inp.mods?.includes("tanque") ? 0.65 : 1))
         j.propulsou = true
-        if (cobra) {
-          j.aguaProp = (j.aguaProp ?? 0) + PROPULSOR_AGUA.porSegundo * dt
-          if (j.aguaProp >= 1) { const n = Math.floor(j.aguaProp); j.aguaProp -= n; evs.current.agua?.(-n) }
-        }
+        if (cobra) j.pagaSubida = true
       } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + (pat ? 0.24 : 0.1) * dt) // a energia solar volta na pista
       // (LU2CA 20/10: "quando cai no deserto perde o poder de propulsão e fica
       // preso") no chão do deserto ela segue no modo voo (sem pista embaixo),
@@ -5723,6 +5723,8 @@ function CenaBase({
         // (disco) pousou do voo: numa pista (a via no sentido do rumo), ou no deserto
         if (j.voo && pouso) {
           j.voo = false
+          // (09/11) chegou lá em cima voando do chão: o preço único da subida
+          if (j.pagaSubida) { evs.current.agua?.(-PRECO_SUBIDA_AGUA); ev.popup(`subiu voando · -${PRECO_SUBIDA_AGUA} de água`, "#4fc3ff") }
           const mudou = j.via !== pouso.via
           j.via = pouso.via; j.u = pouso.u; j.x = pouso.x; j.vx = 0
           if (mudou) { trocou = true; V = M.vias[j.via]; ev.via(j.via) }

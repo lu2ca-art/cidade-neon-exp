@@ -29,8 +29,8 @@ export const MESA: Cartao[] = [
     nome: "O bar na porta do subúrbio, e a Kombi só sobe",
     data: "2026-11-09",
     tarefa: "bar e Kombi",
-    olhar: "O bar agora fica logo na chegada do deserto, de frente pra quem vem: dirija até o letreiro laranja e a cena começa ali. No segundo atalho você nasce no pé da torre 1: tem a porta do elevador no deserto, com a placa dos andares e os túneis riscados. O botão sobe a Kombi pra cidade, e lá na rotatória da torre 1 tem o botão de descer de volta. Decole do chão do deserto: o propulsor gasta sua água; sem água, não liga. Na rampa do túnel tem uma viga baixa com a placa: a Kombi não passa.",
-    perguntas: ["O bar ficou no lugar certo, bem na chegada?", "A porta no deserto parece um andar da torre?", "Quanta água o propulsor deve gastar? (agora: umas 9 gotas por tanque)", "A viga e a placa deixam claro que a Kombi não desce?"],
+    olhar: "O bar agora fica logo na chegada do deserto, de frente pra quem vem: dirija até o letreiro laranja e a cena começa ali. No segundo atalho você nasce no pé da torre 1: tem a porta do elevador no deserto, com a placa dos andares e os túneis riscados. O botão sobe a Kombi pra cidade, e lá na rotatória da torre 1 tem o botão de descer de volta. No deserto o propulsor é solar e não gasta nada. Subir voando até uma pista custa 20 de água, cobrados quando você pousa lá em cima; sem água, a Kombi voa baixo, não chega na pista e o Nexo avisa. Na rampa do túnel tem uma viga baixa com a placa: a Kombi não passa.",
+    perguntas: ["O bar ficou no lugar certo, bem na chegada?", "A porta no deserto parece um andar da torre?", "O preço de 20 de água pra subir voando está bom?", "A viga e a placa deixam claro que a Kombi não desce?"],
     mais: [{ parte: "elevador.deserto", nome: "a porta do elevador no deserto" }],
   },
   {

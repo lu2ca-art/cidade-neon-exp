@@ -33,8 +33,8 @@ export const ELEVADOR_TERROR: number | null = 2
 // (09/11, bíblia §13) A PORTA DO DESERTO: o elevador 1 sai do subúrbio pela torre 1,
 // que fica colada nele, e tem um andar no chão do deserto: a mesma porta modelada, no
 // pé da torre, virada pra fora. A Kombi entra e sai ali (cidade ↔ deserto); o andar dos
-// túneis não é pra ela (a placa da porta e o gabarito da rampa mostram). De graça (o
-// propulsor gasta água): por isso abre logo depois da 1ª subida, não na missão dos túneis
+// túneis não é pra ela (a placa da porta e o gabarito da rampa mostram). De graça (subir
+// voando custa água): por isso abre logo depois da 1ª subida, não na missão dos túneis
 export const PORTA_DESERTO = { n: 1, ang: (62 * Math.PI) / 180, raio: 16, pista: "Nectar" } // ang: entre os pilares do anel
 export const TRANCA_DESERTO = "abre depois da 1ª subida voando"
 export const rotuloSubirDeserto = (n: number) => `subir · cidade (torre ${n})`
