@@ -10,6 +10,7 @@
 import { Trancado } from "./Trancado"
 import { useEffect, useRef, useState } from "react"
 import { Capa } from "./capa"
+import { RoupaVintage, temDesenhoVintage } from "./roupasVintage"
 import { DISCOS, PRECO_DISCO, duracao, type DiscoLoja } from "./discos"
 import type { Save } from "./estado"
 import { CATEGORIAS, ID_VIOLAO, daCategoria, saldo, tem as temItem, type ItemLoja } from "./economia"
@@ -74,7 +75,7 @@ export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save
             return (
               <li key={it.id}>
                 <button type="button" onClick={() => setItem(it)} className={tem ? "is-meu" : ""} data-item={it.id}>
-                  <Icone cat={it.cat} cor={it.cor} />
+                  <Icone id={it.id} cat={it.cat} cor={it.cor} />
                   <span className="l-loja-nome">{it.nome}</span>
                   <span className="l-loja-info">{tem ? "é seu ✓" : `${it.preco} Água$`}</span>
                 </button>
@@ -89,8 +90,9 @@ export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save
   )
 }
 
-// o desenho de cada coisa (simples, até a arte chegar)
-function Icone({ cat, cor, size }: { cat: Categoria; cor: string; size?: number }) {
+// o desenho de cada coisa (simples, até a arte chegar); (09/11) as roupas do brechó têm o desenho delas
+function Icone({ id, cat, cor, size }: { id: string; cat: Categoria; cor: string; size?: number }) {
+  if (cat === "roupa" && temDesenhoVintage(id)) return <RoupaVintage id={id} size={size} />
   const p = { width: size ?? "100%", viewBox: "0 0 100 100", "aria-hidden": true as const, className: "l-loja-icone", style: { ["--cor" as string]: cor } }
   return (
     <svg {...p}>
@@ -110,7 +112,7 @@ function DetalheItem({ it, tem, neon, onComprar, onFechar }: { it: ItemLoja; tem
   return (
     <div className="l-loja-detalhe" role="dialog" aria-label={it.nome}>
       <button type="button" className="l-loja-fechar" onClick={onFechar} aria-label="fechar">×</button>
-      <div className="l-loja-capa-grande"><Icone cat={it.cat} cor={it.cor} /></div>
+      <div className="l-loja-capa-grande"><Icone id={it.id} cat={it.cat} cor={it.cor} /></div>
       <h2>{it.nome}</h2>
       <p className="l-loja-sub">{it.desc}</p>
       <div className="l-loja-acao">

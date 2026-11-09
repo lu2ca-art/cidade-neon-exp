@@ -352,6 +352,12 @@ def retalho(pal, cel, seed):
     return lambda c, n, i, j: lin(escolhe(pal, math.floor(c.x / cel), math.floor(c.y / cel), math.floor(c.z / cel), seed))
 
 
+def misto(a, b, t):
+    """Mistura duas cores (hex ou linear), já em linear."""
+    ca, cb = lin(a), lin(b)
+    return (ca[0] + (cb[0] - ca[0]) * t, ca[1] + (cb[1] - ca[1]) * t, ca[2] + (cb[2] - ca[2]) * t, 1.0)
+
+
 def ripas(cor, k=0.55):
     return lambda c, n, i, j: dim(cor, k) if j % 2 else lin(cor)
 
@@ -806,9 +812,119 @@ def brecho():
     B("solido", (0, 7.15, 2.45), (10.4, 0.06, 0.3), Z1, sujo=0)
     # a lona verde do lado esquerdo
     Lona("solido", (-5.2, 0.4, 3.0), (0, 6.4, 0), (0, 0, -2.7), 6, 4, 0.15, "#4b6a4f", sdir=(-1, 0, 0))
-    # as ARARAS com as roupas
-    ROUPA = ["#ff3fb0", "#3d7bff", "#ffc857", "#5dffa0", "#e9e3d5", "#ff6a35", "#6a3aa0", "#2a2a30", "#c84a3a"]
-    def arara(x0, x1, y, seed, h=1.75):
+    # (09/11) as ARARAS com peças de brechó de verdade: cortes de época (camisa de
+    # gola larga, vestido evasê, boca de sino, blazer, colete de franja, poncho),
+    # estampa por face, cores gastas. As da frente têm mais detalhe e algumas ficam
+    # de frente pra rua; as do fundo são mais simples (orçamento: docs/suburbio-lugares.md)
+    CR, TE, MO, AB, TB, PE = "#e2d3b1", "#b4532a", "#c9962e", "#7b7d3a", "#6b4a2b", "#2d6669"
+    VI, RO, JE, JC, MA, LJ, CA = "#6e2233", "#c98a7c", "#3f5a7a", "#7a90a8", "#4e3324", "#c96a2b", "#9a7346"
+    ROUPA = [TE, MO, AB, PE, VI, RO, JE, CA, CR]
+    ACERVO = [("camisa", "flor", (CR, TE, MO)), ("vestido", "flor", (PE, RO, CR)), ("calca", "veludo", (MO, TB, TB)),
+              ("blazer", "xadrez", (TB, CR, MO)), ("camisa", "zigue", (LJ, MA, CR)), ("colete", "liso", (CA, MA, CR)),
+              ("vestido", "bloco", (CR, VI, PE)), ("calca", "lavado", (JE, JC, JC)), ("poncho", "zigue", (VI, MO, CR)),
+              ("camisa", "listra", (RO, CR, VI)), ("blazer", "liso", (AB, TB, MO)), ("vestido", "poa", (VI, CR, CR))]
+
+    def estampa(tipo, pal, sd, nc):
+        b, a, c = pal
+        def f(cc, n, i, j):
+            r = hh(i, j, sd)
+            if tipo == "flor":
+                cor = a if r < 0.2 else c if r < 0.3 else b
+            elif tipo == "listra":
+                cor = a if j % 2 else b
+            elif tipo == "xadrez":
+                cor = misto(b, a, ((i % 2) + (j % 2)) / 2)
+            elif tipo == "poa":
+                cor = a if (i + j) % 2 == 0 and j % 2 == 0 else b
+            elif tipo == "zigue":
+                cor = (b, a, c)[(abs(2 * i - nc + 1) // 2 + j) % 3]  # o chevron em V
+            elif tipo == "bloco":
+                cor = (a, b, c)[min(2, j // 3)]
+            elif tipo == "veludo":
+                cor = dim(b, 0.72) if i % 2 else lin(b)
+            elif tipo == "lavado":
+                cor = misto(b, a, 0.75 if i in (1, 2) and 2 < j < 7 else 0.15)
+            else:
+                cor = b
+            # o gasto: a trama irregular e o ombro queimado de sol
+            k = 0.84 + 0.16 * hh(j, i, sd, 7)
+            return misto(misto(cor, CR, 0.2 if j == 0 else 0.0), "#000000", 1 - k)
+        return f
+
+    def folha(linhas, nc, cf, bojo=0.03, rug=0.012, corte=None, sd=0):
+        """Um pano de dois lados: linhas = [(x esq, x dir, z)] de cima pra baixo."""
+        bm = bmesh.new()
+        ij = bm.faces.layers.int.new("ij")
+        for lado in (-1, 1):
+            g = [[bm.verts.new((xe + (xd - xe) * (i / nc),
+                                lado * bojo * math.sin(math.pi * i / nc) + rug * math.sin(i / nc * 9 + j * 1.3 + sd), z))
+                  for j, (xe, xd, z) in enumerate(linhas)] for i in range(nc + 1)]
+            for i in range(nc):
+                for j in range(len(linhas) - 1):
+                    if corte and corte(i, j):
+                        continue
+                    q = (g[i][j], g[i + 1][j], g[i + 1][j + 1], g[i][j + 1])
+                    bm.faces.new(q if lado > 0 else q[::-1])[ij] = i * 1000 + j
+        soltos = [v for v in bm.verts if not v.link_faces]
+        if soltos:
+            bmesh.ops.delete(bm, geom=soltos, context="VERTS")
+        add(bm, "solido", None, None, cf, 0, afiar=None)
+
+    def corpo(w, comp, nr):
+        return [(-w(j / (nr - 1)), w(j / (nr - 1)), -0.02 - comp * j / (nr - 1)) for j in range(nr)]
+
+    def rampa(a, b, t):
+        return a + (b - a) * max(0.0, min(1.0, t))
+
+    def manga(sinal, ombro, comp, nr, cf):
+        ls = [(ombro - 0.005, ombro + 0.1 - 0.02 * j / (nr - 1), -0.05 - comp * j / (nr - 1)) for j in range(nr)]
+        if sinal < 0:
+            ls = [(-xd, -xe, z) for xe, xd, z in ls]
+        with em(T(0, 0.015, 0)):
+            folha(ls, 2, cf, bojo=0.02, rug=0)
+
+    def peca(modelo, tipo, pal, sd, rico):
+        nr, nc = (9, 6) if rico > 1 else (7, 4) if rico else (5, 2)
+        cf = estampa(tipo, pal, sd, nc)
+        # a gola larga e a lapela em V, pintadas por face; entre elas, o forro escuro
+        def decote(fundo):
+            def f(c, n, i, j):
+                if j < nc // 2 and i in (j, nc - 1 - j):
+                    return lin(pal[2])
+                if j < nc // 2 and j < i < nc - 1 - j:
+                    return lin(fundo)
+                return cf(c, n, i, j)
+            return f
+        gola = decote(CR)
+        if modelo == "camisa":
+            folha(corpo(lambda t: rampa(0.09, 0.24, t / 0.1), 0.72, nr), nc, gola if rico else cf, sd=sd)
+            if rico:
+                for s in (-1, 1):
+                    manga(s, 0.24, 0.52, 4, cf)
+        elif modelo == "blazer":
+            folha(corpo(lambda t: rampa(0.09, 0.26, t / 0.1) - 0.03 * math.sin(math.pi * t), 0.74, nr), nc, decote(MA) if rico else cf, bojo=0.04, sd=sd)
+            if rico:
+                for s in (-1, 1):
+                    manga(s, 0.26, 0.6, 4, cf)
+        elif modelo == "vestido":
+            folha(corpo(lambda t: (rampa(0.08, 0.19, t / 0.08) if t < 0.3 else rampa(0.15, 0.4, (t - 0.3) / 0.7)), 1.05, nr), nc, cf, sd=sd)
+        elif modelo == "calca":
+            for s in (-1, 1):
+                ls = []
+                for j in range(nr):
+                    t = j / (nr - 1)
+                    fora = rampa(0.19, 0.17, t / 0.25) if t < 0.6 else rampa(0.13, 0.33, (t - 0.6) / 0.4)
+                    dentro = 0.0 if t < 0.25 else rampa(0.02, 0.12, (t - 0.6) / 0.4) if t > 0.6 else 0.02
+                    ls.append((s * dentro, s * fora, -0.02 - 1.05 * t) if s > 0 else (s * fora, s * dentro, -0.02 - 1.05 * t))
+                folha(ls, max(2, nc // 2), cf, bojo=0.03, sd=sd + s)
+        elif modelo == "colete":
+            n = nr + 2
+            franja = lambda i, j: j == n - 2 and i % 2 == 1
+            folha(corpo(lambda t: rampa(0.09, 0.23, t / 0.1), 0.68, n), nc, cf, corte=franja, sd=sd)
+        else:  # poncho
+            folha(corpo(lambda t: rampa(0.08, 0.36, t / 0.5), 0.68, nr), nc, cf, bojo=0.02, sd=sd)
+
+    def arara(x0, x1, y, seed, rico, h=1.75):
         for x in (x0, x1):
             Cil("solido", (x, y, 0), 0.03, 0.03, h, 6, "#9aa0ac", sujo=0)
             B("solido", (x, y, 0.03), (0.06, 0.6, 0.05), "#9aa0ac", sujo=0)
@@ -816,17 +932,21 @@ def brecho():
         n = int((x1 - x0 - 0.2) / 0.3)
         for k in range(n):
             x = x0 + 0.2 + k * 0.3
-            cor = escolhe(ROUPA, k, seed)
-            comp = 0.7 + 0.5 * hh(k, seed, 1)
-            yaw = 1.25 + 0.3 * (hh(k, seed, 2) - 0.5)
-            if hh(k, seed, 3) < 0.3:
-                B("solido", (x, y, h - 0.05 - comp / 2), (0.5, 0.05, comp), cor, r=(0, 0, yaw), d=(0.5, 0.05, 0.1), cf=onda(cor, 0.55, eixo_i=False), sujo=0)
-            else:
-                B("solido", (x, y, h - 0.05 - comp / 2), (0.5, 0.05, comp), cor, r=(0, 0, yaw), sujo=0)
-    arara(-4.6, -2.2, -1.1, 1)
-    arara(2.2, 4.6, -1.2, 2)
-    arara(-3.6, 0.4, 4.0, 3)
-    arara(1.4, 4.4, 5.6, 4)
+            mod, tipo, pal = escolhe(ACERVO, k, seed)
+            yaw = 0.95 + 0.4 * (hh(k, seed, 2) - 0.5)
+            with em(T(x, y, h - 0.05) @ R(0, 0, yaw)):
+                peca(mod, tipo, pal, seed * 10 + k, 1 if rico else 0)
+        # as peças do destaque, de frente pra rua, penduradas na frente da barra
+        if rico:
+            for k, x in enumerate((x0 + 0.62, x1 - 0.62)):
+                mod, tipo, pal = ACERVO[(seed * 3 + k * 5) % len(ACERVO)]
+                Viga("solido", (x, y, h), (x, y - 0.3, h - 0.06), 0.02, "#7a7f8a", 0)
+                with em(T(x, y - 0.3, h - 0.08)):
+                    peca(mod, tipo, pal, seed * 31 + k, 2)
+    arara(-4.6, -2.2, -1.1, 1, True)
+    arara(2.2, 4.6, -1.2, 2, True)
+    arara(-3.6, 0.4, 4.0, 3, False)
+    arara(1.4, 4.4, 5.6, 4, False)
     # os MANEQUINS (um sem cabeça)
     perfil = [(0, 0.9), (0.15, 0.92), (0.19, 1.02), (0.15, 1.18), (0.17, 1.36), (0.2, 1.5), (0.17, 1.6), (0.08, 1.66), (0.05, 1.7), (0.05, 1.78), (0, 1.78)]
     def manequim(p, yaw, roupa=None, cabeca=True):
@@ -838,8 +958,8 @@ def brecho():
                     cf=lambda c, n, i, j: lin(roupa) if (roupa and 1 <= i <= 6) else lin("#d8cbb5"))
             if cabeca:
                 Esfera("solido", (0, 0, 1.9), 0.11, 8, 6, "#d8cbb5")
-    manequim((-1.25, -1.5, 0), 0.3, "#3d7bff")
-    manequim((1.3, -1.6, 0), -0.4, "#c8402a", cabeca=False)
+    manequim((-1.25, -1.5, 0), 0.3, PE)
+    manequim((1.3, -1.6, 0), -0.4, VI, cabeca=False)
     manequim((3.2, 2.5, 0.12), 0.2)
     # a mesa de roupa dobrada e o espelho
     B("solido", (-1.8, 2.6, 0.8), (2.2, 1.0, 0.06), MD, sujo=0)
