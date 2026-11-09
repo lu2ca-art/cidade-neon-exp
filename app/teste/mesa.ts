@@ -29,9 +29,9 @@ export const MESA: Cartao[] = [
     nome: "Os nove do final agora são os 9 donos das músicas",
     data: "2026-11-09",
     tarefa: "final",
-    olhar: "No final, a câmera passa por um de cada vez, na ordem das músicas: D-Bee, Mubarak, Alohan, Nizzy, Tony Gordo, Drew, Ella, Notti e LU2CA. Cada um fica na pista da sua música. O Xeriff não aparece mais aqui, mas segue no jogo como missão livre, e o final não pede mais a missão dele. Nos botões de baixo: o sinal agora toca a música CHUVA, e os nove feixes acendem juntos.",
-    perguntas: ["São essas nove pessoas, nessa ordem?", "A D-Bee faz sentido na pista da Nectar, a música dela?", "A CHUVA toca só nos 8 segundos do sinal: é assim, ou ela segue?", "A legenda do sinal ainda diz que a música é da D-Bee: o que ela deve dizer?"],
-    mais: [{ parte: "final.sinal", nome: "o sinal: a música CHUVA" }, { parte: "final.chuva", nome: "os nove feixes e a chuva" }],
+    olhar: "No final, a câmera passa por um de cada vez, na ordem das músicas: D-Bee, Mubarak, Alohan, Nizzy, Tony Gordo, Drew, Ella, Notti e LU2CA. Cada um fica na pista da sua música. O Xeriff não aparece mais aqui, mas segue no jogo como missão livre, e o final não pede mais a missão dele. Nos botões de baixo: a música CHUVA começa no sinal e vai sem parar até o quintal, sem recomeçar nem cortar; e os nove feixes acendem juntos.",
+    perguntas: ["São essas nove pessoas, nessa ordem?", "A D-Bee faz sentido na pista da Nectar, a música dela?", "A CHUVA segue inteira, sem corte, do sinal ao quintal?", "A legenda do sinal ainda diz que a música é da D-Bee: o que ela deve dizer?"],
+    mais: [{ parte: "final.sinal", nome: "do sinal ao quintal, com a CHUVA" }, { parte: "final.chuva", nome: "os nove feixes e a chuva" }],
   },
   {
     parte: "carreira.feira",

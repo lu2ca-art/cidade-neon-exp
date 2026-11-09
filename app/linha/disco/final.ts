@@ -88,6 +88,7 @@ export const FILME_DESPEDIDA: Filme = {
   id: "final-despedida",
   // ── O VÍDEO (T70) ENTRA AQUI: "/cenas/final-despedida.mp4" (public/cenas/) ──
   video: null,
+  semSom: true, // (09/11) o vídeo não cala a música: a CHUVA do sinal segue por baixo
   abertura: 2,
   fecho: 2,
   falas: [

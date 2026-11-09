@@ -14,7 +14,7 @@ O jogo fica atrás o tempo todo, com as faixas de cinema e sem tela preta. Tocar
 
 | # | Momento | Jogo ou vídeo | O que se vê | Tempo | Link |
 |---|---|---|---|---|---|
-| 1 | O sinal | jogo | a câmera gira devagar em volta da casa da D-Bee, com a música CHUVA tocando (decisão do dono, 09/11) | 8 s | `?parte=final` ou `?parte=final.sinal` |
+| 1 | O sinal | jogo | a câmera gira devagar em volta da casa da D-Bee, com a música CHUVA começando (decisão do dono, 09/11) | 8 s | `?parte=final` ou `?parte=final.sinal` |
 | 2 | Os nove | jogo | um corte por pessoa: cada um de pé na beira da pista da sua música; a câmera chega devagar e sobe o olhar para o monumento | 2,6 s × 9 | `?parte=final.nove` |
 | 3 | O CHUVA | jogo | lá do alto, em volta da torre central: os nove fachos acendem juntos e a chuva toma a cidade (a mesma chuva da rua CHUVA, até a força máxima dela) | 15 s | `?parte=final.chuva` |
 | 4 | A despedida do Criador | **vídeo** | o filme (o gancho `final-despedida`). Hoje toca o provisório: as legendas sobre a casa na chuva, com a câmera chegando devagar | ~32 s | `?parte=final.criador` |
@@ -45,7 +45,7 @@ O filme da despedida (`disco/final.ts`, `FILME_DESPEDIDA`). As ações vêm dos 
 ## Onde mora cada coisa
 
 - `app/linha/disco/final.ts`: os momentos, os tempos, os nove, as legendas, o filme da despedida, a câmera roteirizada (`CAM_ROTEIRO`) e o estado ao vivo. **Tudo o que é rascunho está aqui, num lugar só.**
-- `app/linha/disco/FinalTela.tsx`: a tela (os tempos de cada momento, a legenda, o filme) e a música do sinal.
+- `app/linha/disco/FinalTela.tsx`: a tela (os tempos de cada momento, a legenda, o filme) e a CHUVA, presa à tela inteira, do sinal ao fim.
 - `app/linha/estrada/FinalNove.tsx`: o 3D (as nove pessoas, os fachos e o mato; `QUINTAL_FINAL` é onde a Kombi do jogador estaciona) e a câmera de cada momento.
 - `Corrida.tsx`: a câmera obedece `CAM_ROTEIRO` enquanto o final passa; a chuva aparece também no deserto durante o final.
 - `portas.ts`: as duas peças do final viraram `{ t: "final" }`.
@@ -57,9 +57,9 @@ O filme da despedida (`disco/final.ts`, `FILME_DESPEDIDA`). As ações vêm dos 
 
 1. **As falas da despedida** (as duas linhas RASCUNHO) e o ok nas legendas de ação.
 2. **O vídeo da despedida** (Kling, T70), no caminho acima.
-3. **O sinal:** decidido em 09/11: a música do sinal que chama os nove é a CHUVA (a completa, `SOM_SINAL_FINAL` em `disco/sons.ts`), no lugar da música da D-Bee. Ela toca durante o momento "sinal" e, no fim dele, a música de antes volta. Falta o dono dizer o que a legenda do sinal passa a dizer.
+3. **O sinal:** decidido em 09/11: a música do sinal que chama os nove é a CHUVA (a completa, `SOM_SINAL_FINAL` em `disco/sons.ts`), no lugar da música da D-Bee. Ela começa no "sinal" e vai sem parar até o fim do final, passando pela despedida e pelo quintal, sem reiniciar nem cortar entre os momentos. A música de antes só volta quando o final acaba. Falta o dono dizer o que a legenda do sinal passa a dizer.
 4. **Quem chama os nove:** ainda não decidido. A D-Bee agora é uma das nove, mas as falas e o texto da missão (`quem: "os nove e a D-Bee"`, "a D-Bee chegando pra acionar o CHUVA") seguem como antes até o dono decidir.
-5. **O som:** fora do sinal, a sequência não troca a música. Falta decidir o que toca nos outros momentos (a CHUVA segue depois do sinal?).
+5. **O som:** decidido em 09/11: a CHUVA do sinal até o fim (item 3). A sequência dura cerca de 92 s e a faixa tem 3 min 10, então ela não acaba antes. O filme da despedida está com `semSom`: quando o vídeo entrar, ele não cala a CHUVA, e o som próprio dele (se tiver) toca junto.
 6. **"O mundo depois"** existe desde 06/11 (versão mínima): as plantas nos prédios, as cabines nas torres e o rio nas trincheiras. Ver `docs/mundo-depois.md`.
 7. **Os modelos:** as nove pessoas são cápsulas na cor da missão, e o mato são cones verdes, até os modelos do Tripo chegarem.
 8. **A recompensa real** (T32: a senha do untitled e o ingresso) não está no jogo: a porta do final não dá nada dentro dele.

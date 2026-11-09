@@ -36,13 +36,15 @@ export function FinalTela({ inicio = "sinal", onFim }: { inicio?: MomentoFinal; 
   useEffect(() => { definirMomento(momento) }, [momento])
   useEffect(() => () => definirMomento(null), [])
 
-  // (09/11) o sinal toca a CHUVA por cima; acabou o momento, a música de antes volta
+  // (09/11, o dono) a CHUVA começa no sinal e vai sem parar até o fim do final: preso à
+  // tela inteira, não ao momento, pra não reiniciar nem cortar na troca. Só o sinal a
+  // inicia (o link de teste de um momento do meio segue sem ela)
   useEffect(() => {
-    if (momento !== "sinal") return
+    if (inicio !== "sinal") return
     silenciarKombi(true)
     trilha.entrar(SOM_SINAL_FINAL)
     return () => { trilha.sair(); silenciarKombi(false) }
-  }, [momento])
+  }, [inicio])
 
   // o tempo de cada momento de jogo (o "criador" é o filme quem acaba)
   useEffect(() => {
