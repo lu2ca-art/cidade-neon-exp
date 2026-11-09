@@ -114,7 +114,8 @@ const CHUVA_RUA_MIN = 0.25
 const PILOTO_DESCE = "desce aqui: o lugar é lá embaixo"
 const PILOTO_TRAVA_M = 90
 import { CAMERA_RUA } from "./manifestos/comum"
-import { VIDA_JOGADOR } from "./VidaSuburbio"
+import { VIDA_JOGADOR, VIDA_POVO } from "./VidaSuburbio"
+import { povoDoSave } from "../disco/povo"
 import { Gps, ProximoPasso, ViagensRapidas, rapidasDo, type PoseGps, type Rapida } from "./Gps"
 import { Cinema } from "./Cinema"
 import { Seguro } from "./Seguro"
@@ -823,6 +824,8 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   useEffect(() => { combRef.current.onPosto = () => onPosto?.() }, [onPosto])
   // encheu no posto (ou usou o galão): o page manda o novo nível
   useEffect(() => { if (!abertura && Math.abs(tanque - combRef.current.tanque) > 0.04) combRef.current.tanque = 1 }, [tanque, abertura])
+  // (09/11, o povo) quanta gente já veio com a gente: o subúrbio lê daqui (VidaSuburbio.tsx)
+  useEffect(() => { VIDA_POVO.f = historia ? povoDoSave(historia, save.popularidade ?? 0) : 0.3 }, [historia, save.popularidade])
   const hudComb = useRef<SVGLineElement>(null)
   const horaRef = useRef(hora)
   const onHoraRef = useRef(onHora)
@@ -5676,7 +5679,7 @@ function CenaBase({
       const quer = inp.propulsor && !cine && !j.desligada
       // (09/11, o dono) o voo é solar; subir do chão até a pista custa água (estrada/zonas.ts)
       if (!j.ar) { j.propChao = !!j.voo; j.pagaSubida = false }
-      const cobra = !pat && !!j.propChao && propulsorCobra(faseHistoria)
+      const cobra = !!j.propChao && propulsorCobra(faseHistoria)
       // sem água pra pagar: não passa do teto (vale também no embalo, de botão solto)
       if (cobra && j.ar && j.voo && j.wx !== undefined && evs.current.temAgua?.(PRECO_SUBIDA_AGUA) === false && j.y - MD.chaoEm(j.wx, j.wz!) >= TETO_SEM_AGUA) {
         j.vy = Math.min(j.vy, 0)

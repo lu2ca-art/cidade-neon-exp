@@ -92,6 +92,7 @@ import { Freq } from "./disco/Freq"
 import { type FaixaShow, type ResultadoShow } from "./disco/Show"
 import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } from "./disco/xenom"
 import { Show } from "./disco/ShowBanda"
+import { lotacaoDoPovo } from "./disco/povo"
 import { ShowNoBar } from "./disco/ShowNoBar"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
@@ -1108,6 +1109,8 @@ export default function LinhaPage() {
 
   // (T02) a carreira: a missão pegada (das 13), a checklist dela (arte, jogo, a porta) e pra onde ir
   const h13 = useMemo(() => hist13(save), [save])
+  // (09/11, o povo: disco/povo.ts) a lotação dos shows: o mínimo vem da história, a popularidade soma
+  const lotacao = HIST ? lotacaoDoPovo(h13, save.popularidade ?? 0) : save.popularidade ?? 0
   const missaoCarreira = useMemo(() => missaoDoSave(save), [save])
   const m13 = missaoCarreira ? MISSOES13[missaoCarreira] : null
   const passos13 = useMemo(() => (missaoCarreira ? checklist13(h13, missaoCarreira) : []), [h13, missaoCarreira])
@@ -2766,7 +2769,7 @@ export default function LinhaPage() {
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} dur={chegadaLogin ? CHEGADA.minhocaMsVolta : CHEGADA.minhocaMs} />}
         {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
-        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : save.popularidade ?? 0} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
+        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : lotacao} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
         {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}
         {letraAgora && <Letra conf={letraAgora.conf} cor={MISSOES13[letraAgora.missao].cor} quem={MISSOES13[letraAgora.missao].quem} onFim={(linhas: string[]) => {
           const l = letraAgora
@@ -3022,7 +3025,7 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "show-nectar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
+          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={lotacao} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "show-nectar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
         )}
         {cena && (
           <CenaLugar
@@ -3039,7 +3042,7 @@ export default function LinhaPage() {
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
             onFim={cena.especial === "visita" ? fimVisita : cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "show-nectar" ? fimShowNectar : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
-            gestoShow={(pronto) => <ShowNoBar popularidade={save.popularidade ?? 0} onTocar={() => { showNoBar.current = { r: null, tocar: true }; pronto() }} onFim={(r) => { showNoBar.current = { r, tocar: false }; pronto() }} />}
+            gestoShow={(pronto) => <ShowNoBar popularidade={lotacao} onTocar={() => { showNoBar.current = { r: null, tocar: true }; pronto() }} onFim={(r) => { showNoBar.current = { r, tocar: false }; pronto() }} />}
           />
         )}
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}

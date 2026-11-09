@@ -40,5 +40,8 @@ Sem instrumento, a pessoa canta da plateia (`ShowAfinador`): o medidor é dela, 
 ## Saves antigos
 Nada é regravado. O episódio é derivado das missões feitas (`feitas13`) e da fase da história; as músicas já ganhas (`guitar`) ficam. Ver o relatório do PR para o mapa antigo → novo.
 
+## O povo (09/11)
+A lotação dos shows e a vida do subúrbio saem de `app/linha/disco/povo.ts` (`lotacaoDoPovo`): derivada do save, o mínimo pelas peças feitas dos episódios, a popularidade somando por cima. Os tetos por aparelho ficam em `QUANTO` (estrada/vidaNasRuas.ts).
+
 ## O final
 Desde 09/11, `final.requer` são as missões dos 9 episódios (sem o Xeriff) e "os nove" são os donos das músicas, lidos de `EPISODIOS`. Ver `docs/final.md`.

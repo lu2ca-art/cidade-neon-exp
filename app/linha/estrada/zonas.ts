@@ -56,9 +56,9 @@ export function zonaDoJogo(voo: boolean | undefined, wx: number | undefined, wz:
 
 // (09/11, o dono; bíblia §13 e §15) A ÁGUA PAGA A SUBIDA: no deserto o propulsor segue na
 // energia solar, de graça. Só subir voando do chão até a cidade custa, um preço único,
-// cobrado quando a Kombi pousa na pista. Sem água pra pagar, ela voa baixo (TETO_SEM_AGUA,
+// cobrado quando a Kombi (ou os patins) pousa na pista. Sem água pra pagar, voa baixo (TETO_SEM_AGUA,
 // abaixo da pista mais baixa, que passa a 15 m do chão) e o Nexo avisa. A 1ª subida (fase
-// "subir") é grátis: a oficina leva toda a água. O jato dos patins não paga.
+// "subir") é grátis: a oficina leva toda a água. O jato dos patins paga igual (09/11).
 // Quem está sem água sobe de graça pela porta do elevador (disco/elevadores.ts)
 export const PRECO_SUBIDA_AGUA = 20 // Água$ (RASCUNHO do preço)
 export const TETO_SEM_AGUA = 10 // m acima do chão

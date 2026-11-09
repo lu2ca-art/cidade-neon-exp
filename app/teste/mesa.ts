@@ -31,6 +31,13 @@ export const MESA: Cartao[] = [
     tarefa: "notch móvel",
     olhar: "Aqui já tem missão aceita. Embaixo do mapa, em volta do anel, ficam o nome da missão, o \"Agora: ...\" e a distância. O notch lá em cima não fica parado em nada: as dicas passam uma atrás da outra e as mensagens dos amigos entram no meio, mesmo com missão (espere uns 45 s). Olhe no celular em pé, deitado e no computador. Tocar no \"Agora\" mostra o passo no anel.",
     perguntas: ["O Agora embaixo do mapa dá pra ler enquanto dirige?", "O notch passando o tempo todo está bom, ou as dicas ficam demais?", "Nada ficou por cima do clima ou da água no seu celular?"],
+    parte: "povo.cheio",
+    nome: "O povo: cada missão traz mais gente, nos shows e nas ruas",
+    data: "2026-11-09",
+    tarefa: "o povo cresce",
+    olhar: "Três links, o mesmo palco do subúrbio em três momentos da história: compare o começo (\"pouca gente\"), o meio e o fim (\"cheio\"). A plateia enche da frente pro fundo e a porta do bar enche junto. Ande pela rua: mais gente, e quem te conhece para, vira e levanta os braços quando você passa. O número da plateia dos shows também cresce (o show do bar tem mais gente em volta). De patins, subir até a cidade agora gasta água como a Kombi; a porta do elevador continua de graça. As falas sobre a revolução chegam no notch ao longo dos episódios (todas são RASCUNHO, em disco/amigosTextos.ts).",
+    perguntas: ["Dá pra sentir que tem mais gente a cada etapa, sem ninguém explicar?", "Gente levantando os braços quando você passa funciona, ou prefere outro jeito de te reconhecerem?", "No celular a rua continuou leve?", "As falas sobre a revolução estão no tom? Reescreva o que quiser."],
+    mais: [{ parte: "povo.pouco", nome: "pouca gente (começo da história)" }, { parte: "povo.meio", nome: "metade da história" }],
   },
   {
     parte: "final",

@@ -42,6 +42,8 @@ export const INTRO_MISSOES: Partial<Record<MissaoId, IntroMissao>> = {
   drew: {
     quem: "Drew",
     texto: "sexta e eu em casa de novo, me arrumando pro espelho. ele sempre gosta. me ajuda a montar um look que dê vontade de sair",
+    // (09/11, RASCUNHO, o povo: episodios.md)
+    segue: "agora sem medo. quem tem medo fica sozinho. e sozinho ninguém derruba o Núcleo",
   },
   // Copo Americano · o vício, o loop do copo que nunca esvazia
   mubarak: {
@@ -59,12 +61,15 @@ export const INTRO_MISSOES: Partial<Record<MissaoId, IntroMissao>> = {
   lu2ca: {
     quem: "LU2CA",
     texto: "esse palco tá vazio faz tempo. a Nectar é sobre o que te faz florir de novo. antes de subir, escreve o seu",
-    segue: "sobe. a cidade tá ouvindo",
+    // (09/11, RASCUNHO, o povo) o último show: era o que faltava, o povo junto
+    segue: "sobe. o povo todo junto. é assim que a gente derruba o Núcleo",
   },
   // CHUVA · a coragem de mostrar (a confiança em si)
   ella: {
     quem: "Ella",
     texto: "eu pinto, mas ninguém vê. a CHUVA é sobre ter coragem de mostrar. entra. só não repara na bagunça",
+    // (09/11, RASCUNHO, o povo)
+    segue: "quanto mais gente junto, menos os robôs mandam…",
   },
   // DopaminA · o vício na tela, a recompensa rápida
   notti: {

@@ -26,9 +26,12 @@ type MundoMin = { livre: (x: number, z: number, folga: number) => boolean; chao:
 // ── quanto de cada coisa, por nível de qualidade ("baixo" = leve) ──
 export const QUANTO: Record<NivelQualidade, { andantes: number; fogo: number; bar: number; palco: number; bichos: number; roupas: number; fumaca: number; tambores: number }> = {
   //      gente andando, tambores com roda, gente no bar e no palco, bichos, varais de roupa, fumaça por tambor (e em quantos tambores)
-  alto: { andantes: 70, fogo: 10, bar: 10, palco: 12, bichos: 8, roupas: 22, fumaca: 3, tambores: 41 },
-  medio: { andantes: 52, fogo: 8, bar: 8, palco: 9, bichos: 6, roupas: 14, fumaca: 2, tambores: 24 },
-  baixo: { andantes: 26, fogo: 4, bar: 6, palco: 6, bichos: 3, roupas: 6, fumaca: 1, tambores: 12 },
+  // (09/11, o povo) andantes, bar e palco são o TETO, com o povo todo: quanto aparece
+  // vem da história (VIDA_POVO). No celular (médio e leve) a soma é a mesma de antes:
+  // a plateia do palco cresce trocando com quem anda, nunca mais gente no total
+  alto: { andantes: 90, fogo: 10, bar: 14, palco: 40, bichos: 8, roupas: 22, fumaca: 3, tambores: 41 },
+  medio: { andantes: 44, fogo: 8, bar: 7, palco: 18, bichos: 6, roupas: 14, fumaca: 2, tambores: 24 },
+  baixo: { andantes: 22, fogo: 4, bar: 5, palco: 11, bichos: 3, roupas: 6, fumaca: 1, tambores: 12 },
 }
 
 export const EIXOS = { x0: -948, z0: -732, passo: 52 }
@@ -289,7 +292,8 @@ export function andar(R: Ruas, w: Andante, d: number, rnd: () => number, evitar?
 
 // ── QUEM PARA: os grupinhos (fogo, bar) e quem dança no palco ──
 // modo 1: conversando (parado, gesticula); 2: dançando; quando: 0 fogo, 1 bar, 2 palco
-export type Parado = { x: number; y: number; z: number; rumo: number; modo: 1 | 2; quando: 0 | 1 | 2; semente: number; escala: number; vis: number; dx: number; dz: number; turno: number }
+// `ordem` (09/11, o povo): 0–1, quem chega primeiro; só aparece quem tem ordem <= o povo de agora
+export type Parado = { x: number; y: number; z: number; rumo: number; modo: 1 | 2; quando: 0 | 1 | 2; semente: number; escala: number; vis: number; dx: number; dz: number; turno: number; ordem: number }
 
 // ── DIA E NOITE (n = U.noite das luzes das ruínas: 0 de dia, 1 de noite) ──
 // De dia a rua é cheia: todo mundo que anda, uns poucos na porta do bar e uns
@@ -297,12 +301,13 @@ export type Parado = { x: number; y: number; z: number; rumo: number; modo: 1 | 
 // acendem as rodas no fogo, o bar enche e o palco lota. Cada um tem a sua hora
 // (pela semente), então a troca é aos poucos, entre 17 h e 19 h.
 const hora = (semente: number) => (semente * 7.31 + 0.17) % 1
-export function querNaRua(quem: "andante" | 0 | 1 | 2, semente: number, n: number) {
+export function querNaRua(quem: "andante" | 0 | 1 | 2, semente: number, n: number, povo = 0) {
   const h = hora(semente)
   if (quem === "andante") return h > 0.62 * n ? 1 : 0
   if (quem === 0) return n > 0.25 + 0.5 * h ? 1 : 0 // o fogo
-  if (quem === 1) return h < 0.4 || n > 0.2 + 0.6 * h ? 1 : 0 // o bar
-  return h < 0.25 || n > 0.2 + 0.6 * h ? 1 : 0 // o palco
+  // (o povo) quanto mais gente com a gente, mais fica de dia também
+  if (quem === 1) return h < 0.4 + 0.3 * povo || n > 0.2 + 0.6 * h ? 1 : 0 // o bar
+  return h < 0.25 + 0.5 * povo || n > 0.2 + 0.6 * h ? 1 : 0 // o palco
 }
 // quem está perto da câmera não some nem aparece do nada (só troca de turno
 // longe, a mais de 40 m): ninguém encolhe na cara do jogador
@@ -341,8 +346,8 @@ export function recuar(p: { x: number; z: number; dx: number; dz: number }, px: 
 export function criarParados(M: MundoMin, colisores: number[], luzes: LuzesRuinas, Q: (typeof QUANTO)["alto"], rnd: () => number): Parado[] {
   const out: Parado[] = []
   const pode = (x: number, z: number) => M.livre(x, z, 0.6) && !dentroDasRuinas(colisores, x, z, 0.35)
-  const pessoa = (x: number, z: number, olhaX: number, olhaZ: number, modo: 1 | 2, quando: 0 | 1 | 2) =>
-    out.push({ x, y: M.chao(x, z), z, rumo: Math.atan2(olhaX - x, olhaZ - z), modo, quando, semente: rnd(), escala: 0.92 + rnd() * 0.16, vis: 1, dx: 0, dz: 0, turno: 1 })
+  const pessoa = (x: number, z: number, olhaX: number, olhaZ: number, modo: 1 | 2, quando: 0 | 1 | 2, ordem = 0) =>
+    out.push({ x, y: M.chao(x, z), z, rumo: Math.atan2(olhaX - x, olhaZ - z), modo, quando, semente: rnd(), escala: 0.92 + rnd() * 0.16, vis: 1, dx: 0, dz: 0, turno: 1, ordem })
 
   // em volta do fogo: os tambores mais perto do bar (onde a vida acontece), um por roda
   const bar = CHAO_LUGARES.bar
@@ -378,19 +383,21 @@ export function criarParados(M: MundoMin, colisores: number[], luzes: LuzesRuina
       const a = a0 + (k * 6.28) / n
       const x = cx + Math.sin(a) * 0.75, z = cz + Math.cos(a) * 0.75
       if (!pode(x, z)) continue
-      pessoa(x, z, cx, cz, 1, 1)
+      pessoa(x, z, cx, cz, 1, 1, noBar / Q.bar)
       noBar++
     }
   }
 
-  // na frente do palco, dançando (de frente pro tablado)
+  // na frente do palco, dançando (de frente pro tablado). (o povo) a ordem é da frente
+  // pro fundo: os primeiros colam no tablado, os últimos lotam a rua lá atrás
   const pl = CHAO_LUGARES.palco
   const prot = Math.atan2(-pl.x, -pl.z), pfx = Math.sin(prot), pfz = Math.cos(prot), prx = Math.cos(prot), prz = -Math.sin(prot)
   for (let k = 0, tent = 0; k < Q.palco && tent < Q.palco * 4; tent++) {
-    const lx = (rnd() * 2 - 1) * 6.5, lf = 6.5 + rnd() * 8
+    const ordem = k / Q.palco
+    const lx = (rnd() * 2 - 1) * (5.5 + ordem * 6), lf = 6.5 + ordem * 13 + (rnd() - 0.5) * 2
     const x = pl.x + prx * lx + pfx * lf, z = pl.z + prz * lx + pfz * lf
     if (!pode(x, z) || out.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < 0.8)) continue
-    pessoa(x, z, pl.x + prx * lx * 0.5, pl.z + prz * lx * 0.5, 2, 2)
+    pessoa(x, z, pl.x + prx * lx * 0.5, pl.z + prz * lx * 0.5, 2, 2, ordem)
     k++
   }
   return out

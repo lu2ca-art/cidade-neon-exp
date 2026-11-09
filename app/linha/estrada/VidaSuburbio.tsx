@@ -194,6 +194,16 @@ function subir(m: THREE.InstancedMesh, a: THREE.InstancedBufferAttribute, k: num
   a.clearUpdateRanges(); a.addUpdateRange(0, k * 4); a.needsUpdate = true
 }
 
+// (09/11, o povo: disco/povo.ts) quanta gente já veio com a gente (0–1). O Corrida escreve
+// aqui, como o VIDA_JOGADOR: quem anda, quem para na porta do bar e quem dança no palco
+export const VIDA_POVO = { f: 0.3 }
+// mesmo sem história, o bairro não fica deserto: a rua nunca passa disso de vazia
+const RUA_MINIMA = 0.4
+// sempre tem esses poucos no palco e no bar
+const PALCO_MINIMO = 0.12, BAR_MINIMO = 0.25
+// o fator humano: de perto, quem te conhece para, vira e levanta os braços
+const FA_DESDE = 0.3, FA_RAIO = 8
+
 export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) {
   const vida = useMemo(() => {
     const Q = QUANTO[QUALIDADE.nivel]
@@ -280,8 +290,17 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
 
     const mt = gente.instanceMatrix.array as Float32Array, va = aVida.array as Float32Array
     let k = 0
+    // (o povo) quem está nas ruas e nas plateias agora; o resto nem anda
+    const f = VIDA_POVO.f
+    const nAnda = Math.round(andantes.length * (RUA_MINIMA + (1 - RUA_MINIMA) * f))
+    const fa = (f - FA_DESDE) / (1 - FA_DESDE) // que fração de quem anda já te conhece
+    let ia = -1
     for (const w of andantes) {
+      if (++ia >= nAnda) { w.vis = 0; continue }
       abrirCaminho(w, P.x, P.z, dt)
+      // (o fator humano) quem te conhece para pra te ver passar, em vez de seguir andando
+      const conhece = w.semente < fa && (w.x - P.x) ** 2 + (w.z - P.z) ** 2 < FA_RAIO * FA_RAIO
+      if (conhece) w.vAgora = 0
       andar(R, w, w.vAgora * dt, rnd, evitar)
       // o passo: um ciclo a cada 1,4 m
       w.fase = (w.fase + (w.vAgora * dt * 6.2832) / 1.4) % 6.2832
@@ -289,12 +308,15 @@ export function VidaSuburbio({ M, luzes }: { M: MundoMin; luzes: LuzesRuinas }) 
       w.vis += (alvo - w.vis) * kv
       if (w.vis < 0.01) continue
       const dx = Math.cos(w.rumo) * w.desvio, dz = -Math.sin(w.rumo) * w.desvio
-      escrever(mt, k, w.x + dx, w.y, w.z + dz, w.rumo, w.escala * w.vis)
-      va[k * 4] = w.fase; va[k * 4 + 1] = Math.min(1, w.vAgora / 1.2); va[k * 4 + 2] = 0; va[k * 4 + 3] = w.semente
+      // (o fator humano) vira pra você e levanta os braços (o mesmo jeito da dança)
+      escrever(mt, k, w.x + dx, w.y, w.z + dz, conhece ? Math.atan2(P.x - w.x, P.z - w.z) : w.rumo, w.escala * w.vis)
+      va[k * 4] = w.fase; va[k * 4 + 1] = Math.min(1, w.vAgora / 1.2); va[k * 4 + 2] = conhece ? 2 : 0; va[k * 4 + 3] = w.semente
       k++
     }
     for (const p of parados) {
-      const alvo = correndo && naCorrida(p.x, p.z) ? 0 : trocarTurno(p, querNaRua(p.quando, p.semente, noite), cam.x, cam.z)
+      const nPovo = p.quando === 2 ? Math.max(f, PALCO_MINIMO) : p.quando === 1 ? Math.max(f, BAR_MINIMO) : 1
+      if (p.ordem > nPovo) { p.vis = 0; continue }
+      const alvo = correndo && naCorrida(p.x, p.z) ? 0 : trocarTurno(p, querNaRua(p.quando, p.semente, noite, f), cam.x, cam.z)
       p.vis += (alvo - p.vis) * kv
       if (p.vis < 0.01) continue
       recuar(p, P.x, P.z, dt)
