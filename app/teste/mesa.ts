@@ -25,6 +25,14 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "bar",
+    nome: "A fachada do bar: agora é boteco de verdade, na porta do subúrbio",
+    data: "2026-11-09",
+    tarefa: "bar fachada",
+    olhar: "Você chega do deserto, de frente pra porta. O bar deixou de ser uma caixa: sobrado de bloco, parede descascando, balcão pra rua com toldo, porta de aço meio aberta, mesas e banquetas de plástico, engradados, caixa de som e varais de lâmpada. O letreiro é o mesmo, no mesmo lugar.",
+    perguntas: ["Parece boteco de periferia, ou falta alguma coisa?", "A porta de aço meio aberta e a luz lá dentro ficaram boas?", "As mesas na calçada atrapalham o povo que fica na porta?", "De longe, vindo do deserto, dá pra reconhecer o bar?"],
+  },
+  {
     parte: "final",
     nome: "O final novo: o povo, a água e o deserto virando floresta",
     data: "2026-11-09",

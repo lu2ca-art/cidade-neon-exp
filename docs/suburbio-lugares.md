@@ -59,6 +59,18 @@ de frente pra rua; as do fundo são simples. Brechó: de 3.632 pra 5.828 triâng
 no `_solido`; o arquivo inteiro: 24.152 (orçamento: 30 mil). Mesmos 3 desenhos e
 materiais, nada por quadro. Na loja, as roupas são SVG parado (`app/linha/roupasVintage.tsx`).
 
+A fachada do bar (09/11): saiu da caixa. Virou um nó "bar" no mesmo
+`public/models/lugares-chao.glb` (`bar()` em `blender/scripts/lugares_chao.py`,
+foto em `blender/scripts/bar_fachada_foto.py` → `docs/blender/bar-fachada.png`):
+sobrado de bloco sem reboco em cima, cal descascando e barra verde embaixo, balcão
+de rua com azulejo e toldo listrado, porta de aço de enrolar meio aberta, quatro
+mesas de plástico com banquetas (nos vãos das rodinhas de gente de
+`vidaNasRuas.ts`), engradados, caixa de som, varais de lâmpada e o gato dos fios.
+O bar pesa 4.731 triângulos; o arquivo inteiro: 28.883 (orçamento: 30 mil), 395 KB.
+O letreiro segue o de sempre, no mesmo lugar (um plano com a textura do nome). Entra
+nos 2 desenhos juntados dos outros lugares (o bar passa de 4 desenhos pra 1, o do letreiro).
+Se o .glb falhar, volta a caixa do bar junto com as outras.
+
 Em aberto (do dono): a /nectar é a leitura (não são as flores); a loja vende
 discos por gênero (não há ainda "discos de outros artistas e de domínio
 público" de verdade); fliperama segue só na cidade.
