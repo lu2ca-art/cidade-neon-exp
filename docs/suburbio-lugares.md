@@ -52,6 +52,13 @@ pinta com a cor do lugar). O LugaresChao leva tudo pro mundo uma vez e junta nos
 mesmos 3 desenhos e materiais de antes; o letreiro (atlas), a chegada e o cadeado
 são os mesmos. Se o .glb falhar (ou enquanto carrega), ficam as caixas.
 
+Peças do brechó (09/11): as caixas chatas das araras viraram peças de época
+(camisa de gola larga, vestido evasê, boca de sino, blazer, colete de franja,
+poncho), com estampa por face. As araras da frente têm mais detalhe e duas peças
+de frente pra rua; as do fundo são simples. Brechó: de 3.632 pra 5.828 triângulos
+no `_solido`; o arquivo inteiro: 24.152 (orçamento: 30 mil). Mesmos 3 desenhos e
+materiais, nada por quadro. Na loja, as roupas são SVG parado (`app/linha/roupasVintage.tsx`).
+
 Em aberto (do dono): a /nectar é a leitura (não são as flores); a loja vende
 discos por gênero (não há ainda "discos de outros artistas e de domínio
 público" de verdade); fliperama segue só na cidade.
