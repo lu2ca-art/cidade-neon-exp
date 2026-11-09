@@ -186,11 +186,13 @@ useGLTF.preload(GLB.danca)
 export interface Pessoa { x: number; z: number; vira: number; cor: string; y?: number }
 // a multidão usa uma versão leve do corpo (blender/scripts/gente.py: ~1/4 dos
 // triângulos): de longe ninguém vê a diferença, e 48 pessoas pesam como 12
-const GLB_LEVE = "/models/pessoa-leve.glb"
+export const GLB_LEVE = "/models/pessoa-leve.glb"
 useGLTF.preload(GLB_LEVE)
 // `copiam` (13/10, a popularidade): dos que já dançam, quantos repetem o seu
 // passo, pulando junto com cada toque seu (`pulso`: o instante do último, s)
-export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, pulso }: { gente: Pessoa[]; celulares?: number; pele?: string; copiam?: number; pulso?: React.RefObject<number> }) {
+// `fatia` (09/11, o final): com multidão enorme, cada quadro mexe só 1/fatia dela (a outra
+// parte fica como estava: de longe não dá pra ver e a conta por quadro cai junto)
+export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, pulso, fatia = 1 }: { gente: Pessoa[]; celulares?: number; pele?: string; copiam?: number; pulso?: React.RefObject<number>; fatia?: number }) {
   const { scene } = useGLTF(GLB_LEVE)
   const geo = useMemo(() => {
     let g: THREE.BufferGeometry | null = null
@@ -207,9 +209,14 @@ export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, p
     gente.forEach((p, i) => corpos.current!.setColorAt(i, cor.set(p.cor).lerp(new THREE.Color(pele), 0.55)))
     if (corpos.current.instanceColor) corpos.current.instanceColor.needsUpdate = true
   }, [gente, cor, pele])
+  const vez = useRef(-1)
   useFrame((s) => {
     const t = s.clock.elapsedTime
+    // o primeiro quadro põe todo mundo no lugar; depois vai por fatias
+    const v = vez.current < 0 ? -1 : vez.current
+    vez.current = (vez.current < 0 ? 0 : vez.current + 1) % fatia
     gente.forEach((p, i) => {
+      if (v >= 0 && fatia > 1 && i % fatia !== v) return
       const filma = i < celulares
       const solto = !filma // quem abaixou balança
       // quem copia (os últimos da lista, os de fora da roda, vão entrando primeiro)
@@ -236,10 +243,12 @@ export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, p
       <instancedMesh ref={corpos} args={[geo, undefined, n]} frustumCulled={false}>
         <meshStandardMaterial color="#ffffff" roughness={0.8} emissive="#1a1424" emissiveIntensity={0.4} />
       </instancedMesh>
-      <instancedMesh ref={fones} args={[undefined, undefined, n]} frustumCulled={false}>
-        <boxGeometry args={[0.08, 0.15, 0.01]} />
-        <meshBasicMaterial color="#e6f0ff" toneMapped={false} />
-      </instancedMesh>
+      {celulares > 0 && (
+        <instancedMesh ref={fones} args={[undefined, undefined, n]} frustumCulled={false}>
+          <boxGeometry args={[0.08, 0.15, 0.01]} />
+          <meshBasicMaterial color="#e6f0ff" toneMapped={false} />
+        </instancedMesh>
+      )}
     </group>
   )
 }

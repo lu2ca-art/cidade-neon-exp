@@ -21,9 +21,54 @@ import { BOCA, GABARITO_S, QUADRA, geoBoca } from "../estrada/chao"
 import { materialAreia } from "../estrada/areia"
 import { PECAS_CHAO, chaoAtivos, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
 import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, GIRO_BAR, SUBURBIO, type LugarChao } from "./historia"
+import { URL_CIDADE, matsCidade } from "../estrada/Lugares"
 
 // (09/11, ep. 5) a feira: só baixa quando chega perto (o <Perto> já tem Suspense)
 const FeiraRua = lazy(() => import("./FeiraRua").then((m) => ({ default: m.FeiraRua })))
+
+// ── (09/11, o dono) O PALCO DO CENTRO DO DESERTO: o último show e o final. É o mesmo
+// modelo dos palcos das faixas (lugares-cidade.glb, treliça, line arrays e telão), maior,
+// virado pro centro do mapa. 2 desenhos juntados; sem o .glb, o palco de caixas ──
+const ESCALA_PALCO_DESERTO = 2.4
+function PalcoDesertoGlb({ chao }: { chao: (x: number, z: number) => number }) {
+  const { nodes } = useGLTF(URL_CIDADE) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const d = useMemo(() => {
+    const l = CHAO_LUGARES.palcoDeserto, no = nodes.palco
+    if (!no) throw new Error("lugares-cidade.glb sem o palco")
+    const cor = new THREE.Color(l.cor), solido: THREE.BufferGeometry[] = [], brilho: THREE.BufferGeometry[] = []
+    const base = new THREE.Matrix4().compose(new THREE.Vector3(l.x, chao(l.x, l.z), l.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.atan2(-l.x, -l.z), 0)), new THREE.Vector3(ESCALA_PALCO_DESERTO, ESCALA_PALCO_DESERTO, ESCALA_PALCO_DESERTO))
+    no.updateWorldMatrix(true, true)
+    const inv = new THREE.Matrix4().copy(no.matrixWorld).invert()
+    no.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (!m.isMesh) return
+      const g = m.name.slice(m.name.lastIndexOf("_") + 1)
+      const mm = base.clone().multiply(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld))
+      if (g === "solido" || g === "pe") solido.push(emFloat(m.geometry, mm))
+      else if (g === "neon" || g === "pen") brilho.push(emFloat(m.geometry, mm, cor))
+      else brilho.push(emFloat(m.geometry, mm))
+    })
+    const unir = (gs: THREE.BufferGeometry[]) => { const r = mergeGeometries(gs, false); for (const g of gs) g.dispose(); if (!r) throw new Error("palco do deserto: não deu pra juntar"); return r }
+    return { solido: unir(solido), brilho: unir(brilho) }
+  }, [nodes, chao])
+  useEffect(() => () => { d.solido.dispose(); d.brilho.dispose() }, [d])
+  const mats = matsCidade()
+  return (
+    <>
+      <mesh geometry={d.solido} material={mats.solido} name="palco-deserto" />
+      <mesh geometry={d.brilho} material={mats.brilho} />
+    </>
+  )
+}
+function PalcoDeserto({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: boolean }) {
+  const l = CHAO_LUGARES.palcoDeserto
+  return (
+    <>
+      <ModeloSeguro nome="palco-deserto-glb" reserva={<Fachada id="palcoDeserto" chao={chao} alvo={false} />}><PalcoDesertoGlb chao={chao} /></ModeloSeguro>
+      {alvo && <group position={[l.x, chao(l.x, l.z), l.z]}><Farol cor={l.cor} /></group>}
+    </>
+  )
+}
 
 function texLetreiro(txt: string, cor: string) {
   const c = document.createElement("canvas"); c.width = 512; c.height = 128
@@ -49,10 +94,10 @@ function Fachada({ id, chao, alvo }: { id: LugarChao; chao: (x: number, z: numbe
     porta: new THREE.MeshBasicMaterial({ color: "#ffcf8a", toneMapped: false }),
     farol: new THREE.MeshBasicMaterial({ color: l.cor, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
   }), [id, l.nome, l.cor])
-  const larg = id === "palco" ? 14 : 12
+  const larg = id === "palco" || id === "palcoDeserto" ? 14 : 12
   return (
     <group position={[l.x, y - 0.3, l.z]} rotation={[0, rot, 0]}>
-      {id === "palco" ? (
+      {id === "palco" || id === "palcoDeserto" ? (
         <>
           {/* o palco ao ar livre: o tablado, duas torres de luz e o letreiro em cima */}
           <mesh position={[0, 0.6, 0]} material={mats.parede}><boxGeometry args={[larg, 1.2, 8]} /></mesh>
@@ -592,6 +637,7 @@ export function LugaresChao({ chao, alvo }: { chao: (x: number, z: number) => nu
       {CHAO_FIXOS.filter((id) => !(CHAO_ABERTOS as readonly string[]).includes(id)).map((id) => id === "tuneis" ? <BocaTunel key={id} chao={chao} alvo={alvo === id} />
         : id === "quadra" ? <Quadra key={id} chao={chao} alvo={alvo === id} />
         : id === "feira" ? <FeiraRua key={id} chao={chao} alvo={alvo === id} />
+        : id === "palcoDeserto" ? <PalcoDeserto key={id} chao={chao} alvo={alvo === id} />
         : <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
       <LugaresAbertos chao={chao} />
       {alvo === "goteira" && <Goteira chao={chao} />}

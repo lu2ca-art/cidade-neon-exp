@@ -20,7 +20,7 @@ import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
 import { prepararMetro } from "./disco/metro"
 import { VEICULOS } from "./disco/perseguicao"
 import type { HistoriaDisco } from "./disco/historia"
-import { MOMENTOS, ehMomentoFinal } from "./disco/final"
+import { MOMENTOS, ehMomentoFinal, pedirNascerNoPalco } from "./disco/final"
 import { PISTAS } from "./estrada/pistas"
 import { GRAFITES } from "./grafite/grafites"
 
@@ -126,7 +126,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "loja") return MEIO
   // (T44) os rachas: a cidade livre, com um dos carros do mecânico logo à frente
   // (T29) o final: as 12 missões feitas (as portas e as músicas de todas), o final
-  // pegado; a sequência começa direto (?parte=final) ou num momento (final.nove…)
+  // pegado; a sequência começa direto (?parte=final) ou num momento (final.andar…)
   if (parte === "final" || (parte.startsWith("final.") && ehMomentoFinal(parte.slice(6)))) return FINAL
   // (06/11) o mundo depois: as 13 feitas, o final também (plantas, cabines, rio e floresta).
   // "mundo.depois" começa na torre central; ".tuneis" desce direto pras trincheiras;
@@ -246,6 +246,8 @@ export function aplicarParteDeTeste(): boolean {
   if (parte === "missao.tuneis.trincheiras" || parte === "mundo.depois.tuneis" || parte === "grafite" || parte === "grafite.livre" || parte === "metro.tuneis" || parte === "elevador.subir" || parte === "elevador.terror") url.searchParams.set("descer", "tuneis")
   if (parte === "elevador.subir") pedirDescida(1, null)
   if (parte === "elevador.deserto" || parte === "mundo.depois.floresta") pedirNascerNaPorta()
+  // (09/11) o final: a Kombi nasce na frente do palco do deserto (o "andar" começa ali)
+  if (parte === "final" || parte === "final.palco" || parte === "final.andar") pedirNascerNoPalco()
   // (T47) o elevador de terror: desce no salão da TORRE 2, na frente do elevador, como se fosse a 1ª vez
   if (parte === "elevador.terror") { pedirDescida(2, null); esquecerTerror() }
   // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
@@ -261,7 +263,7 @@ export function aplicarParteDeTeste(): boolean {
   const abrir: Record<string, string> = { elevador: "elevador", instrumentos: "casa", "casa.instrumentos": "casa", "recompensa.instrumento": "recompensa", "vitrine.tunel": "tunel", "vitrine.bar": "sinuca" }
   if (abrir[parte]) url.searchParams.set("abrir", abrir[parte])
   if (VISITAS[parte]) url.searchParams.set("abrir", `visita:${VISITAS[parte]}`)
-  // (T29) o final: começa no palco (final) ou no momento pedido (final.povo, .agua, .chuva, .floresta)
+  // (T29) o final: começa no palco (final) ou no momento pedido (final.andar, .nucleo, .agua, .chuva, .floresta)
   if (parte === "final" || parte.startsWith("final.")) url.searchParams.set("abrir", `final:${parte === "final" ? "palco" : parte.slice(6)}`)
   // tira o ?parte da URL: recarregar não troca o save de novo
   url.searchParams.delete("parte")

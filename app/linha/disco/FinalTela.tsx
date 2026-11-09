@@ -3,21 +3,24 @@
 // (T29; refeita em 09/11) A TELA DO FINAL: quem toca a sequência (os momentos e os
 // tempos moram em disco/final.ts; o 3D e a câmera, em estrada/FinalPovo.tsx). Sem
 // tela preta: o jogo fica atrás o tempo todo, com as faixas de cinema (o cinema
-// "lugar" da page.tsx). No "palco", tocar na tela é o gesto (o único do final); do
-// gesto em diante a pessoa só assiste, e a CHUVA toca até o fim.
+// "lugar" da page.tsx). No "palco", tocar na tela é o gesto (o único do final). Dali a
+// pessoa ANDA: dirige livre até as torres, sem nada na tela (chegar lá é o que segue,
+// FinalPovo.tsx); depois só assiste. A CHUVA toca do gesto até o fim.
 //
 // Barato: só timers e um <p>; nada em 3D aqui.
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { atalhosLiberados } from "../../teste/atalhos"
 import { silenciarKombi, trilha } from "../som"
 import { SOM_SINAL_FINAL } from "./sons"
-import { FINAL_CFG, TEXTO_GESTO, definirMomento, duracao, proximo, type MomentoFinal } from "./final"
+import { FINAL_CFG, TEXTO_GESTO, definirMomento, duracao, lerFinal, ouvirFinal, proximo, type MomentoFinal } from "./final"
 
-export function FinalTela({ inicio = "palco", onFim }: { inicio?: MomentoFinal; onFim: () => void }) {
+export function FinalTela({ inicio = "palco", onFim, onMomento }: { inicio?: MomentoFinal; onFim: () => void; onMomento?: (m: MomentoFinal) => void }) {
   const [momento, setMomento] = useState<MomentoFinal>(inicio)
   const fimRef = useRef(onFim)
   useEffect(() => { fimRef.current = onFim })
+  const momentoRef = useRef(onMomento)
+  useEffect(() => { momentoRef.current = onMomento })
   const acabou = useRef(false)
   const seguir = (m: MomentoFinal) => {
     const p = proximo(m)
@@ -28,7 +31,13 @@ export function FinalTela({ inicio = "palco", onFim }: { inicio?: MomentoFinal; 
   }
 
   // o mundo (FinalPovo.tsx) fica sabendo do momento; saiu, a câmera volta pro jogo
-  useEffect(() => { definirMomento(momento) }, [momento])
+  useEffect(() => { definirMomento(momento); momentoRef.current?.(momento) }, [momento])
+  // o "andar": chegou numa torre, segue pro Núcleo (FinalPovo.tsx avisa pela loja)
+  const vivo = useSyncExternalStore(ouvirFinal, lerFinal, lerFinal)
+  useEffect(() => {
+    if (momento === "andar" && vivo.momento === "andar" && vivo.chegou) seguir("andar")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [momento, vivo])
   useEffect(() => () => definirMomento(null), [])
 
   // a Kombi não toca nada no final. A CHUVA fica presa à tela inteira, não ao momento:
@@ -76,6 +85,8 @@ export function FinalTela({ inicio = "palco", onFim }: { inicio?: MomentoFinal; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [momento])
 
+  // o "andar" é o jogo normal: nada de overlay (a pessoa dirige)
+  if (momento === "andar") return null
   if (momento !== "palco") return <div className="l-final" data-final={momento} />
   return (
     <div className="l-final">
