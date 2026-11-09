@@ -287,9 +287,11 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     lugar: { chao: "casa" }, pedido: "os nove nos seus pontos", apresenta: "os nove nos pontos e a D-Bee chegando pra acionar o CHUVA",
     // (T29) a sequência inteira mora em disco/final.ts: o sinal, os nove, o CHUVA,
     // a despedida (o vídeo) e o quintal. Chegou na casa da D-Bee: começa
-    arte: p("a música da D-Bee, o sinal dos nove", "proposta", { como: { t: "final" }, tarefa: "T29" }),
+    arte: p("a CHUVA, o sinal dos nove", "decidido", { como: { t: "final" }, tarefa: "T29" }),
     jogo: p("o CHUVA", "decidido", { como: { t: "final" }, tarefa: "T29" }),
-    abre: ["mundo-depois"], recompensa: { guitar: null, batida: null, neon: 0, instrumento: null }, requer: ["quadra", "tuneis", "drew", "mubarak", "xeriff", "lu2ca", "ella", "notti", "nizzy", "tony"],
+    // (09/11) as missões dos 9 episódios, sem o Xeriff (livre). Só missões: os marcos
+    // (a fuga, o show) o save antigo não tem, e quem joga agora já passa por eles
+    abre: ["mundo-depois"], recompensa: { guitar: null, batida: null, neon: 0, instrumento: null }, requer: ["dbee", "oficina", "notti", "quadra", "mubarak", "tony", "drew", "tuneis", "ella", "nizzy", "lu2ca"],
   },
 }
 export const IDS13 = Object.keys(MISSOES13) as MissaoId[]

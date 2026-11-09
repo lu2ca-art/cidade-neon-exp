@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from "react"
 import { CenaFilme } from "../CenaFilme"
 import { atalhosLiberados } from "../../teste/atalhos"
 import { VOZES } from "../roteiros"
+import { silenciarKombi, trilha } from "../som"
+import { SOM_SINAL_FINAL } from "./sons"
 import { FILME_DESPEDIDA, FINAL_CFG, LEGENDAS, NOVE, definirMomento, duracao, proximo, type MomentoFinal } from "./final"
 
 export function FinalTela({ inicio = "sinal", onFim }: { inicio?: MomentoFinal; onFim: () => void }) {
@@ -33,6 +35,14 @@ export function FinalTela({ inicio = "sinal", onFim }: { inicio?: MomentoFinal; 
   // o mundo (FinalNove.tsx) fica sabendo do momento; saiu, a câmera volta pro jogo
   useEffect(() => { definirMomento(momento) }, [momento])
   useEffect(() => () => definirMomento(null), [])
+
+  // (09/11) o sinal toca a CHUVA por cima; acabou o momento, a música de antes volta
+  useEffect(() => {
+    if (momento !== "sinal") return
+    silenciarKombi(true)
+    trilha.entrar(SOM_SINAL_FINAL)
+    return () => { trilha.sair(); silenciarKombi(false) }
+  }, [momento])
 
   // o tempo de cada momento de jogo (o "criador" é o filme quem acaba)
   useEffect(() => {

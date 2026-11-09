@@ -49,10 +49,10 @@ export function FinalNove({ M }: { M: MundoDisco }) {
   const vivo = useSyncExternalStore(ouvirFinal, lerFinal, lerServidor)
   const ativo = vivo.momento !== null
 
-  // ── onde fica cada um dos nove (a pista da faixa: o lugar da missão dela; o Xeriff: o lugar dele) ──
+  // ── onde fica cada um dos nove (o ponto da pista da música dele) ──
   const pontos = useMemo(() => NOVE.map((n) => {
-    const nome = n.faixa ? PISTAS.find((p) => p.id === n.faixa)?.faixa : null
-    const o = M.onde?.(nome ? `missao:${nome}` : `lugar:${n.lugar}`) ?? null
+    const nome = PISTAS.find((p) => p.id === n.faixa)?.faixa
+    const o = M.onde?.(`missao:${nome}`) ?? null
     if (!o) return null
     const V = M.vias[o.via], i = Math.max(0, Math.min(V.n - 1, Math.round(o.u / PASSO)))
     const tx = V.tx[i], tz = V.tz[i], lado = o.lado ?? 1
