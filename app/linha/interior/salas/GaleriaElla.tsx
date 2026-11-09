@@ -300,6 +300,8 @@ function GaleriaModelada({ telas }: { telas: THREE.Material[] }) {
   return (
     <group name="galeria-modelada">
       {partes.map((p) => <mesh key={p.k} geometry={p.geo} material={p.mat} position={p.pos} quaternion={p.quat} scale={p.esc} />)}
+      {/* os quadros que o modelo não tem (09/11): moldura feita aqui */}
+      <MoldurasCaixas telas={telas} so={(id) => !nodes[`tela_${id}`]} />
     </group>
   )
 }
@@ -441,12 +443,25 @@ function Encostados() {
   )
 }
 
-// ── os quadros que ela guardou: as pinturas (provisórias, desenhadas em código),
-// um material por quadro; vista, a pintura acende um pouco ──
+// ── os quadros que ela guardou (domínio público, ver disco/ella.ts): um material
+// por quadro, a imagem baixa ao entrar na sala; vista, a pintura acende um pouco ──
 function useTelas(vistas: string[]): THREE.MeshBasicMaterial[] {
-  const mats = useMemo(() => QUADROS.map((q) => new THREE.MeshBasicMaterial({ map: pintura(q), color: "#c9cfdb" })), [])
-  useEffect(() => () => mats.forEach((m) => { m.map?.dispose(); m.dispose() }), [mats])
-  useEffect(() => { QUADROS.forEach((q, i) => mats[i].color.set(vistas.includes(q.id) ? "#ffffff" : "#c9cfdb")) }, [mats, vistas])
+  const mats = useMemo(() => QUADROS.map(() => new THREE.MeshBasicMaterial({ color: "#101216" })), [])
+  const [prontas, setProntas] = useState(0)
+  useEffect(() => {
+    let viva = true
+    const loader = new THREE.TextureLoader()
+    QUADROS.forEach((q, i) => loader.load(q.img, (t) => {
+      if (!viva) { t.dispose(); return }
+      t.colorSpace = THREE.SRGBColorSpace
+      t.anisotropy = 2
+      mats[i].map = t
+      mats[i].needsUpdate = true
+      setProntas((n) => n + 1)
+    }))
+    return () => { viva = false; mats.forEach((m) => { m.map?.dispose(); m.map = null; m.dispose() }) }
+  }, [mats])
+  useEffect(() => { QUADROS.forEach((q, i) => mats[i].color.set(!mats[i].map ? "#101216" : vistas.includes(q.id) ? "#ffffff" : "#c9cfdb")) }, [mats, vistas, prontas])
   return mats
 }
 
@@ -462,67 +477,17 @@ function Quadros({ vistas, ativo, onVer }: { vistas: string[]; ativo: boolean; o
 }
 
 // as molduras de antes, com as telas (nas caixas)
-function MoldurasCaixas({ telas }: { telas: THREE.Material[] }) {
+function MoldurasCaixas({ telas, so }: { telas: THREE.Material[]; so?: (id: string) => boolean }) {
   return (
     <group>
-      {QUADROS.map((q, i) => (
+      {QUADROS.map((q, i) => (so && !so(q.id) ? null : (
         <group key={q.id} position={[q.lado * (LARG / 2 - 0.06), q.y, q.z]} rotation-y={-q.lado * Math.PI / 2}>
           <mesh position={[0, 0, -0.02]}><boxGeometry args={[q.larg + 0.12, q.alto + 0.12, 0.05]} /><meshStandardMaterial color="#0c0d12" roughness={0.6} metalness={0.4} /></mesh>
           <mesh position={[0, 0, 0.01]} material={telas[i]}><planeGeometry args={[q.larg, q.alto]} /></mesh>
         </group>
-      ))}
+      )))}
     </group>
   )
-}
-
-// uma pintura provisória (até os quadros de verdade chegarem): pinceladas nas
-// cores do quadro, com um motivo simples pros que pedem (a cidade, a kombi…)
-function pintura(q: QuadroElla): THREE.CanvasTexture {
-  const W = 128, H = Math.round(128 * (q.alto / q.larg))
-  const c = document.createElement("canvas"); c.width = W; c.height = H
-  const g = c.getContext("2d")!
-  let seed = q.id.split("").reduce((a, ch) => a + ch.charCodeAt(0), 7)
-  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
-  g.fillStyle = q.cores[0]; g.fillRect(0, 0, W, H)
-  const resto = q.cores.slice(1)
-  g.lineCap = "round"
-  if (q.id === "branco") {
-    // só a assinatura, embaixo
-    g.strokeStyle = "#2a2622"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(W * 0.62, H * 0.9)
-    for (let i = 0; i < 9; i++) g.lineTo(W * (0.62 + i * 0.03), H * (0.9 + (i % 2 ? -0.025 : 0.01)))
-    g.stroke()
-  } else {
-    for (let i = 0; i < 70; i++) {
-      g.strokeStyle = resto[Math.floor(r() * resto.length)]; g.globalAlpha = 0.25 + r() * 0.5; g.lineWidth = 2 + r() * 9
-      const x = r() * W, y = r() * H
-      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + (r() - 0.5) * 50, y + (r() - 0.5) * 50, x + (r() - 0.5) * 60, y + (r() - 0.5) * 60); g.stroke()
-    }
-    g.globalAlpha = 1
-    if (q.id === "cidade") {
-      // os prédios pendurados do alto, as raízes subindo
-      g.fillStyle = "#05060a"
-      for (let i = 0; i < 9; i++) { const w = 8 + r() * 10, h = 30 + r() * 70; g.fillRect(i * 14 + 2, 0, w, h) }
-      g.strokeStyle = "#5dffa0"; g.lineWidth = 1.5
-      for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(20 + i * 18, H); g.bezierCurveTo(10 + i * 20, H * 0.75, 30 + i * 15, H * 0.7, 18 + i * 18, H * 0.55); g.stroke() }
-    } else if (q.id === "kombi") {
-      g.fillStyle = "#ff6a35"; g.fillRect(W * 0.2, H * 0.35, W * 0.6, H * 0.3)
-      g.fillStyle = "#f2eefa"; g.fillRect(W * 0.2, H * 0.35, W * 0.6, H * 0.12)
-      g.fillStyle = "#14121c"; g.beginPath(); g.arc(W * 0.33, H * 0.68, 7, 0, 7); g.arc(W * 0.67, H * 0.68, 7, 0, 7); g.fill()
-    } else if (q.id === "janela") {
-      g.fillStyle = "#2a3550"; g.fillRect(W * 0.3, H * 0.15, W * 0.4, H * 0.45)
-      g.fillStyle = "#0a0c12"; g.beginPath(); g.ellipse(W * 0.5, H * 0.72, 13, 26, 0, 0, 7); g.fill(); g.beginPath(); g.arc(W * 0.5, H * 0.5, 9, 0, 7); g.fill()
-      g.strokeStyle = "#9fc8ff"; g.lineWidth = 1
-      for (let i = 0; i < 40; i++) { const x = r() * W, y = r() * H; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 2, y + 8); g.stroke() }
-    } else if (q.id === "flor") {
-      g.strokeStyle = "#5dffa0"; g.lineWidth = 3
-      g.beginPath(); g.moveTo(W / 2, H); g.lineTo(W / 2, H * 0.35); g.stroke()
-      for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? "#5dffa0" : "#2fbf78"; g.beginPath(); g.ellipse(W / 2 + (i % 2 ? 14 : -14), H * (0.8 - i * 0.07), 16, 5, i % 2 ? -0.5 : 0.5, 0, 7); g.fill() }
-    }
-  }
-  const t = new THREE.CanvasTexture(c)
-  t.colorSpace = THREE.SRGBColorSpace
-  t.anisotropy = 2
-  return t
 }
 
 // (09/11, ep. 7) a copa é a cannabis modelada (blender/scripts/planta_ella.py, a

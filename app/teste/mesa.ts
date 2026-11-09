@@ -72,6 +72,13 @@ export const MESA: Cartao[] = [
     tarefa: "ep. 7, a planta",
     olhar: "Dentro da casa da Ella, olhe a planta na redoma, no fundo: agora é cannabis, com folhas de 5 e 7 pontas e flores com pelos laranja. Ela continua acendendo no filme e na hora de pintar.",
     perguntas: ["Dá pra reconhecer a planta na hora?", "O serrilhado das folhas está bom de perto, ou quer mais fino?", "O brilho dela continua bonito na hora de pintar?"],
+    parte: "missao.ella.casa",
+    nome: "Quadros e discos de domínio público",
+    data: "2026-11-09",
+    tarefa: "dominio-publico",
+    olhar: "Na casa da Ella, os quadros agora são pinturas de verdade (Van Gogh, Frans Post, Heade e outros). Toque em cada um: aparece o nome, o autor e o ano. Na loja de discos entraram três discos novos: Noturnos, Orquestra e 78 rotações, ouça um trecho.",
+    perguntas: ["Os quadros ficaram bonitos nas molduras e com a imagem nítida?", "A disposição dos 3 quadros novos na parede ficou boa?", "O som dos três discos está bom, ou comprimiu demais?", "Os 5 quadros do museu de Chicago ficaram de fora (o site bloqueou a conferência): quer que eu tente de outro jeito?"],
+    mais: [{ parte: "loja", nome: "a loja de discos" }],
   },
   {
     parte: "loja",
