@@ -16,7 +16,7 @@
 // do bar e dançando na frente do palco (no BPM da rádio: VidaSuburbio.tsx).
 
 import { MEIA_RUA, VOLTA_RUA } from "../disco/corridaRua"
-import { CHAO_LUGARES, SUBURBIO } from "../disco/historia"
+import { CHAO_LUGARES, GIRO_BAR, SUBURBIO } from "../disco/historia"
 import { naBocaLocal, BOCA } from "./chao"
 import type { LuzesRuinas } from "./luzesRuinas"
 import type { NivelQualidade } from "./qualidade"
@@ -365,8 +365,8 @@ export function criarParados(M: MundoMin, colisores: number[], luzes: LuzesRuina
     if (pos) rodas.push({ x: t.x, z: t.z })
   }
 
-  // na porta do bar: rodinhas de 2 a 4 na calçada da frente (a porta vira pro centro da cidade)
-  const rot = Math.atan2(-bar.x, -bar.z), fx = Math.sin(rot), fz = Math.cos(rot), rx = Math.cos(rot), rz = -Math.sin(rot)
+  // na porta do bar: rodinhas de 2 a 4 na calçada da frente (a porta vira pro deserto)
+  const rot = GIRO_BAR, fx = Math.sin(rot), fz = Math.cos(rot), rx = Math.cos(rot), rz = -Math.sin(rot)
   const lugaresBar = [[-4.5, 7.5], [1.5, 9.5], [5.5, 6.8], [-1, 13], [7, 12]]
   let noBar = 0
   for (const [lx, lf] of lugaresBar) {

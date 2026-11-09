@@ -54,8 +54,20 @@ export function zonaDoJogo(voo: boolean | undefined, wx: number | undefined, wz:
   return d < r ? "suburbio" : "deserto"
 }
 
+// (09/11, o dono; bíblia §13 e §15) A ÁGUA PAGA A SUBIDA: no deserto o propulsor segue na
+// energia solar, de graça. Só subir voando do chão até a cidade custa, um preço único,
+// cobrado quando a Kombi pousa na pista. Sem água pra pagar, ela voa baixo (TETO_SEM_AGUA,
+// abaixo da pista mais baixa, que passa a 15 m do chão) e o Nexo avisa. A 1ª subida (fase
+// "subir") é grátis: a oficina leva toda a água. O jato dos patins não paga.
+// Quem está sem água sobe de graça pela porta do elevador (disco/elevadores.ts)
+export const PRECO_SUBIDA_AGUA = 20 // Água$ (RASCUNHO do preço)
+export const TETO_SEM_AGUA = 10 // m acima do chão
+export const propulsorCobra = (fase: string | null | undefined) => fase === "carreira" || fase === "livre"
+
 // a frase do Nexo quando a zona troca o veículo
 export const FALA_ZONA = {
+  semAgua: `subir voando custa ${PRECO_SUBIDA_AGUA} de água. a porta do elevador leva de graça`,
+  gabarito: "a Kombi não desce pros túneis: daqui, só de patins ou de moto",
   descer: "o subúrbio é a pé: a Kombi fica aqui na entrada",
   subir: "o deserto é de Kombi: sobe nela",
   // (moto) com a moto liberada

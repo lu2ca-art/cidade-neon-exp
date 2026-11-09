@@ -195,6 +195,15 @@ export function naBocaLocal(x: number, z: number) {
   const dx = x - BOCA.x, dz = z - BOCA.z
   return { s: dx * BOCA.ax + dz * BOCA.az, v: -dx * BOCA.az + dz * BOCA.ax }
 }
+// (09/11, bíblia §13) O GABARITO: a viga baixa na rampa (LugaresChao). A Kombi não
+// desce pro andar dos túneis: fica antes dele (s negativo = subindo a rampa).
+// Dentro do raio de chegada da missão dos túneis (32 m da porta), pra missão valer
+export const GABARITO_S = -30
+// quanto a Kombi passou do gabarito (m; 0 = não passou)
+export function passouGabarito(x: number, z: number) {
+  const { s, v } = naBocaLocal(x, z)
+  return s > GABARITO_S && s < 30 && Math.abs(v) < BOCA.meia + 1 ? s - GABARITO_S : 0
+}
 // quanto o chão desce num ponto (0 fora da vala)
 export function fundoBoca(x: number, z: number) {
   const { s, v } = naBocaLocal(x, z)

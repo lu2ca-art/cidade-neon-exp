@@ -7,7 +7,7 @@
 
 import { BASE_TESTE, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
 import { ligarTeste } from "./chaveSave"
-import { pedirDescida } from "./disco/elevadores"
+import { pedirDescida, pedirNascerNaPorta } from "./disco/elevadores"
 import { esquecerTerror } from "./disco/terror"
 import { apagarOndeParou, gravarOndeParou } from "./estrada/ondeParou"
 import { INSTRUMENTOS_ANCESTRAIS, type InstrumentoId } from "./disco/instrumentos"
@@ -140,6 +140,8 @@ function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "elevador") return MEIO
   // (elevadores, 06/11) o elevador do túnel: a missão dos túneis feita, desce direto
   // no salão da TORRE 1, na frente do elevador (sobe pra torre da ponta da Nectar)
+  // (09/11) a porta do elevador no deserto: a carreira, na frente dela, com água
+  if (parte === "elevador.deserto") return MEIO
   if (parte === "elevador.subir" || parte === "elevador.terror") return { ...MEIO, feitas13: [...MEIO.feitas13, "tuneis"] }
   // (T49, lote D) a casa da D-Bee com instrumentos no save (dois ainda não vistos:
   // a cena pede pra tocar os novos) e a tela de recompensa com um instrumento (a
@@ -187,7 +189,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "amigos", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis", "instrumentos.kombi", "instrumentos.mundo"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "amigos", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis", "instrumentos.kombi", "instrumentos.mundo", "elevador.deserto"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -214,7 +216,7 @@ export function aplicarParteDeTeste(): boolean {
   apagarOndeParou() // o teste começa onde a parte manda, não onde o último teste parou
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" || parte === "elevador.deserto" ? GRANA : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
@@ -230,6 +232,7 @@ export function aplicarParteDeTeste(): boolean {
   // (T63) as trincheiras: entrou no jogo, desce direto pela boca do túnel
   if (parte === "missao.tuneis.trincheiras" || parte === "mundo.depois.tuneis" || parte === "grafite" || parte === "grafite.livre" || parte === "metro.tuneis" || parte === "elevador.subir" || parte === "elevador.terror") url.searchParams.set("descer", "tuneis")
   if (parte === "elevador.subir") pedirDescida(1, null)
+  if (parte === "elevador.deserto") pedirNascerNaPorta()
   // (T47) o elevador de terror: desce no salão da TORRE 2, na frente do elevador, como se fosse a 1ª vez
   if (parte === "elevador.terror") { pedirDescida(2, null); esquecerTerror() }
   // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da

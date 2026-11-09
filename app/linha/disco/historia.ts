@@ -370,7 +370,9 @@ export const ROBOS_PERSONAGENS = ["a moça do bar", "o robô do ping pong"] as c
 export const SUBURBIO = { x: -740, z: -680, r: 260 }
 // os lugares do chão do subúrbio (longe das pistas e das torres)
 export const CHAO_LUGARES = {
-  bar: { x: -737, z: -675, nome: "O COPO", cor: "#ff6a35" },
+  // (09/11, bíblia §13) o bar fica bem na porta: na beira do subúrbio do lado do
+  // deserto, no caminho de quem vem da casa da D-Bee (GIRO_BAR, abaixo)
+  bar: { x: -925, z: -838, nome: "O COPO", cor: "#ff6a35" },
   oficina: { x: -560, z: -626, nome: "OFICINA", cor: "#ff9000" },
   palco: { x: -891, z: -536, nome: "PALCO", cor: "#e0ff4f" },
   // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
@@ -408,6 +410,10 @@ export const CHAO_LUGARES = {
   brecho: { x: -790, z: -600, nome: "BRECHÓ", cor: "#ff3fb0" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
+// (09/11) a porta do bar vira pro deserto (quem chega vem de lá), e não pro centro da cidade
+export const GIRO_BAR = Math.atan2(CASA.x - CHAO_LUGARES.bar.x, CASA.z - CHAO_LUGARES.bar.z)
+// onde a Kombi reaparece na fase do bar: no deserto, de frente pra porta dele
+export const PONTO_BAR = { x: CHAO_LUGARES.bar.x + Math.sin(GIRO_BAR) * 90, z: CHAO_LUGARES.bar.z + Math.cos(GIRO_BAR) * 90, rumo: GIRO_BAR + Math.PI }
 // (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
 // (lote D) a torre também: é só a porta (o gatilho), sem fachada
 export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre", "casa"]
