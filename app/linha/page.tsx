@@ -54,7 +54,7 @@ import type { Categoria } from "./economia-rascunho"
 import type { AppDef } from "./os"
 import { PostoDentro } from "./posto"
 import { ACERVO } from "./discos"
-import { cacheDoShow, comprar, comprarMelhoria, ganhar, gastar } from "./economia"
+import { cacheDoShow, comprar, comprarMelhoria, ganhar, gastar, podePagar } from "./economia"
 import { PAGA, POSTO } from "./economia-rascunho"
 import { EVENTO_CADERNO } from "./Caderno"
 import type { Onde } from "./parte"
@@ -2584,7 +2584,7 @@ export default function LinhaPage() {
             trancas={cTrancas}
             noConserto={noConserto}
             quebrou={kombiQuebrou}
-            sorteioMs={HIST && CONFIG_QUEBRA.ligada && !cena && !oficinaTela ? CONFIG_QUEBRA.cadaMs : 0}
+            sorteioMs={HIST && CONFIG_QUEBRA.ligada && !cena && !oficinaTela && !finalAgora ? CONFIG_QUEBRA.cadaMs : 0}
             alvoChao={alvoChao}
             pistaFoco={focoFeira}
             missaoAtiva={HIST ? missaoCarreira : null}
@@ -2871,8 +2871,10 @@ export default function LinhaPage() {
           track("mission_step", { mission_id: `disco-${c.missao}`, step: c.id, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
           if (ok) pecaFeitaNaMissao(c.missao, c.qual)
         }} />}
-        {feiraAgora && <FeiraTela livre={!feiraAgora.missao} onFim={(ok, conta) => {
+        {feiraAgora && <FeiraTela livre={!feiraAgora.missao} onFim={(okPedido, conta) => {
           const f = feiraAgora
+          // saldo caiu antes de fechar: não leva os sacos, a peça não conta sem cobrar
+          const ok = okPedido && podePagar(saveRef.current, conta)
           barFechou.current = Date.now()
           if (!f.missao) { setFeiraLivre(false); return }
           const id = f.missao

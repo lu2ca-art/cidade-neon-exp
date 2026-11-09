@@ -2723,7 +2723,8 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   }
   useEffect(() => {
     const tecla = (ev: KeyboardEvent, on: boolean) => {
-      if (pausadoRef.current || cinemaRef.current) return
+      // soltar sempre vale: tecla solta durante pausa/cinema não pode ficar presa (o acelerador seguia sozinho)
+      if (on && (pausadoRef.current || cinemaRef.current)) return
       const k = ev.key.toLowerCase()
       if (k === "arrowleft" || k === "a") {
         if (on && !ev.repeat) input.current.toqueE = true
