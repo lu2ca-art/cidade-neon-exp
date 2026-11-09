@@ -38,4 +38,4 @@ Sem instrumento, a pessoa canta da plateia (`ShowAfinador`): o medidor é dela, 
 Nada é regravado. O episódio é derivado das missões feitas (`feitas13`) e da fase da história; as músicas já ganhas (`guitar`) ficam. Ver o relatório do PR para o mapa antigo → novo.
 
 ## O final
-`final.ts` não mudou: `final.requer` continua as 10 missões antigas (inclui o Xeriff) e "os nove" não foram tocados.
+Desde 09/11, `final.requer` são as missões dos 9 episódios (sem o Xeriff) e "os nove" são os donos das músicas, lidos de `EPISODIOS`. Ver `docs/final.md`.

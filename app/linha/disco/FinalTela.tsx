@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from "react"
 import { CenaFilme } from "../CenaFilme"
 import { atalhosLiberados } from "../../teste/atalhos"
 import { VOZES } from "../roteiros"
+import { silenciarKombi, trilha } from "../som"
+import { SOM_SINAL_FINAL } from "./sons"
 import { FILME_DESPEDIDA, FINAL_CFG, LEGENDAS, NOVE, definirMomento, duracao, proximo, type MomentoFinal } from "./final"
 
 export function FinalTela({ inicio = "sinal", onFim }: { inicio?: MomentoFinal; onFim: () => void }) {
@@ -33,6 +35,16 @@ export function FinalTela({ inicio = "sinal", onFim }: { inicio?: MomentoFinal; 
   // o mundo (FinalNove.tsx) fica sabendo do momento; saiu, a câmera volta pro jogo
   useEffect(() => { definirMomento(momento) }, [momento])
   useEffect(() => () => definirMomento(null), [])
+
+  // (09/11, o dono) a CHUVA começa no sinal e vai sem parar até o fim do final: preso à
+  // tela inteira, não ao momento, pra não reiniciar nem cortar na troca. Só o sinal a
+  // inicia (o link de teste de um momento do meio segue sem ela)
+  useEffect(() => {
+    if (inicio !== "sinal") return
+    silenciarKombi(true)
+    trilha.entrar(SOM_SINAL_FINAL)
+    return () => { trilha.sair(); silenciarKombi(false) }
+  }, [inicio])
 
   // o tempo de cada momento de jogo (o "criador" é o filme quem acaba)
   useEffect(() => {

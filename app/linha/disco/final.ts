@@ -12,13 +12,13 @@
 //     dentro do jogo (câmera roteirizada, sem tela preta).
 //
 // Como destrava (a regra que já existe, portas.ts MISSOES13.final.requer): as
-// 10 missões da feira feitas (a D-Bee e a oficina são o começo). Aí o final
+// missões dos 9 episódios feitas (o Xeriff é livre e não conta). Aí o final
 // aparece no mapa, e o lugar dele é a casa da D-Bee (lugar: { chao: "casa" }).
 // Chegou na casa com o final pegado: a sequência começa (page.tsx, chegouNaMissao).
 //
 // A sequência (cada momento tem um link de teste: ?parte=final.<momento>):
-//   1. sinal   (jogo)  a casa da D-Bee: a música dela é o sinal (PROPOSTA)
-//   2. nove    (jogo)  a câmera passa pelos nove pontos: cada um no ponto da faixa
+//   1. sinal   (jogo)  a casa da D-Bee: a CHUVA toca, é o sinal (o dono, 09/11)
+//   2. nove    (jogo)  a câmera passa pelos nove pontos: cada um na pista da sua música
 //   3. chuva   (jogo)  o CHUVA: a rede acende e a chuva toma a cidade
 //   4. criador (VÍDEO) a despedida do Criador e da D-Bee (o gancho do filme)
 //   5. quintal (jogo)  a Kombi no quintal da D-Bee, o deserto verde
@@ -33,9 +33,8 @@
 // Tudo que é texto aqui é RASCUNHO (o dono reescreve).
 
 import type { Filme } from "../estrada/ganchoCena"
-import type { LugarId } from "../lugares"
 import type { PistaId } from "../estrada/pistas"
-import { MISSOES13, type MissaoId } from "./portas"
+import { EPISODIOS } from "./episodios"
 
 export type MomentoFinal = "sinal" | "nove" | "chuva" | "criador" | "quintal"
 export const MOMENTOS: MomentoFinal[] = ["sinal", "nove", "chuva", "criador", "quintal"]
@@ -56,18 +55,13 @@ export const FINAL_CFG = {
   matoRaio: 260,
 }
 
-// ── os nove (retomar-mundo.md, "Os nove (decidido 27/10)") ──
-// Cada um no ponto da missão dele (retomar-mundo.md: "Cada missão deixa um dos
-// nove personagens num ponto estratégico do mapa"). O ponto, no jogo: o
-// monumento da faixa da pessoa (Monumentos.tsx, em cima do lugar da missão
-// daquela pista). O Xeriff não tem faixa (portas.ts: faixaSituacao "em
-// aberto"): fica no lugar da missão dele (a plataforma). O DONO DECIDE.
-export interface UmDosNove { missao: MissaoId; quem: string; cor: string; faixa: PistaId | null; lugar: LugarId | null }
-const ORDEM_NOVE: MissaoId[] = ["ella", "mubarak", "notti", "drew", "quadra", "lu2ca", "tony", "nizzy", "xeriff"]
-export const NOVE: UmDosNove[] = ORDEM_NOVE.map((id) => {
-  const m = MISSOES13[id]
-  return { missao: id, quem: m.quem, cor: m.cor, faixa: m.faixa, lugar: m.faixa ? null : m.lugar.lugar ?? null }
-})
+// ── os nove (09/11, o dono: "os 9 donos das músicas"; episodios.md) ──
+// A lista é a própria sequência (EPISODIOS), na ordem dela: uma pessoa por música,
+// de pé no ponto da pista da música dela (FinalNove.tsx, `missao:<faixa>`). Lê do
+// episódio e não da missão: os ids e as faixas de MISSOES13 são antigos (a missão
+// "mubarak" é a da Nizzy). O Xeriff saiu do final: segue livre no jogo (LIVRES)
+export interface UmDosNove { quem: string; cor: string; faixa: PistaId }
+export const NOVE: UmDosNove[] = EPISODIOS.map((e) => ({ quem: e.quem, cor: e.cor, faixa: e.musica }))
 
 // ── as legendas dos momentos de jogo (tipo "acao": o que se vê; nunca explica) ──
 // `rascunho`: proposta dos docs ainda sem o ok do dono (aparece marcado)
@@ -94,6 +88,7 @@ export const FILME_DESPEDIDA: Filme = {
   id: "final-despedida",
   // ── O VÍDEO (T70) ENTRA AQUI: "/cenas/final-despedida.mp4" (public/cenas/) ──
   video: null,
+  semSom: true, // (09/11) o vídeo não cala a música: a CHUVA do sinal segue por baixo
   abertura: 2,
   fecho: 2,
   falas: [
