@@ -2927,7 +2927,7 @@ export default function LinhaPage() {
             atualizar={atualizar}
             // (06/10, LU2CA: o dinheiro começa do zero — só missão completa
             // paga aqui; responder, ligar e provas não dão NEON)
-            onXp={(n, motivo) => { if (motivo === "objeto" || motivo === "estação") setSave((s) => ({ ...s, neon: (s.neon ?? 0) + n })) }}
+            onXp={(n, motivo) => { if (motivo === "objeto" || motivo === "estação") setSave((s) => ganhar(s, n)) }}
             onFim={tela.t === "chat" ? (para) => fimChat(tela.id, para, tela.volta) : fimPainel}
             onVoltar={tela.t === "chat" && dentro ? () => setTela(tela.volta) : undefined}
             onPrecisaTela={painelPraTela}
