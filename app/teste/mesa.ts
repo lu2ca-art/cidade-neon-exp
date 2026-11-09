@@ -25,6 +25,14 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "feira.livre",
+    nome: "Revisão: feira só leva se tiver saldo; tecla solta não prende o acelerador",
+    data: "2026-11-09",
+    tarefa: "revisão de bugs",
+    olhar: "Na feira de uma missão, monte os sacos e gaste a Água$ por fora antes de tocar em \"pegar os sacos\": agora a peça não fica feita sem cobrar. Outra: segure a seta pra cima, abra uma cena ou cinema e solte a tecla lá dentro; ao voltar, a Kombi não deve sair acelerando sozinha.",
+    perguntas: ["A feira sem saldo deixou você sair e tentar de novo?", "Depois da cena, a Kombi ficou parada até você acelerar?"],
+  },
+  {
     parte: "amigos.missao",
     nome: "O notch nunca fica parado; o \"Agora\" foi pra baixo do mapa",
     data: "2026-11-09",

@@ -7,7 +7,7 @@ import type { Save } from "../app/linha/estado"
 // 1) as contas (sem navegador): o elástico do rival, a chegada na pista, o prêmio no save;
 // 2) no jogo (?medir expõe __jogo, __M e __rachas): um carro aparece, emparelhou
 //    pisca "tirar um racha", o racha começa (3, 2, 1), a Kombi chega primeiro e
-//    ganha (paga neon$ e prestígio); depois outro corredor, e esse ganha (não paga).
+//    ganha (paga Água$ e prestígio); depois outro corredor, e esse ganha (não paga).
 const PASTA = "test-results/rachas"
 // dirige a cena 3D: no Mac com --use-angle=metal (o CI só roda as contas, pelo tsc)
 test.use({ launchOptions: { executablePath: process.env.CHROME_PATH || undefined, args: ["--use-angle=metal", "--autoplay-policy=no-user-gesture-required"] } })
@@ -128,7 +128,7 @@ test("o racha: o carro aparece, o botão pisca, começa, termina e paga", async 
   await page.waitForFunction(() => (window as unknown as W).__rachas.estado().fase === "fim", null, { timeout: 15_000 })
   const e2 = await estado(page)
   expect(e2.resultado).toMatchObject({ venceu: true, neon: CORREDORES[0].premio, prestigio: CORREDORES[0].prestigio, corredor: CORREDORES[0].id })
-  await expect(page.locator(".l-racha-fim")).toContainText(`+${CORREDORES[0].premio} neon$`)
+  await expect(page.locator(".l-racha-fim")).toContainText(`+${CORREDORES[0].premio} Água$`)
   await page.screenshot({ path: `${PASTA}/3-ganhou.png` })
   await expect.poll(async () => (await neonDoSave(page)).neon, { timeout: 10_000 }).toBe(antes.neon + CORREDORES[0].premio)
   const depois = await neonDoSave(page)
