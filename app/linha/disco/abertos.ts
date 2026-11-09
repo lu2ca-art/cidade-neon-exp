@@ -24,6 +24,9 @@ export const ENTRADAS = {
   batida: { t: "janela", nome: "o estúdio", rota: "/batida", icone: "batida", porta: "batida-estudio", pra: "produzir" },
   // o palco do subúrbio fora das missões: a casa de shows (o show da noite)
   palco: { t: "janela", nome: "o palco", rota: "/casa-de-shows", icone: "radio" },
+  // (09/11) o palco do centro do deserto: o último show e o final são missões (chegou, começa);
+  // antes do show da CHUVA, o cadeado com o que libera; depois, a casa de shows como no subúrbio
+  palcoDeserto: { t: "janela", nome: "o palco", rota: "/casa-de-shows", icone: "radio", porta: "shows-live", pra: "entrar" },
   discos: { t: "app", nome: "os discos", app: "loja", aba: "disco" },
   brecho: { t: "app", nome: "o brechó", app: "loja", aba: "roupa" },
   flores: { t: "app", nome: "as flores", app: "jardim" },

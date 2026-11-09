@@ -26,12 +26,12 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "final",
-    nome: "O final novo: o povo, a água e o deserto virando floresta",
+    nome: "O final no deserto: o último show, os focos nas torres e o Núcleo fritando",
     data: "2026-11-09",
     tarefa: "final",
-    olhar: "Você abre em cima do palco do show da CHUVA, olhando a plateia lotada. Toque na tela uma vez (o único gesto do final): começa a CHUVA, e daí em diante é só assistir. O povo se junta pela rua, a água sai do Núcleo, a câmera segue ela pela Nectar até o deserto, a chuva cai e o deserto vira floresta. Os nove estão no meio da plateia, sem destaque. Não tem mais feixes, cena dos nove, despedida nem Kombi no quintal. Nos botões de baixo: a floresta e as plantas da Ella no subúrbio depois do final.",
-    perguntas: ["A plateia parece lotada o bastante?", "Tocar na tela uma vez é um bom gesto, ou prefere outro?", "O texto do gesto é só \"convocar o povo\" (rascunho): fica?", "A CHUVA segue inteira, sem corte, do toque até o fim?", "A água correndo pela rua convence como \"derrubar o Núcleo\"?", "A floresta está densa o bastante? E o iPhone continua liso nela?", "As plantas da Ella estão bem espalhadas pelo subúrbio?"],
-    mais: [{ parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
+    olhar: "Você abre em cima do palco novo, no centro do deserto, olhando a plateia enorme. Toque na tela uma vez: começa a CHUVA e a Kombi fica livre. Siga o GPS até as torres, com o povo saindo a pé do deserto. Em cada torre das pontas há três multidões, cada uma com um dos nove na frente, na cor dele. Chegando em qualquer torre, só assista: a água seca nas paredes do Núcleo, ele frita de dentro pra fora, a água chega nos canais, a chuva cai e o deserto vira floresta.",
+    perguntas: ["O lugar do palco parece o centro do deserto, ou prefere outro ponto?", "A plateia ficou enorme o bastante? E o iPhone continua liso?", "Dá pra ver o povo se espalhando enquanto dirige?", "Dá pra reconhecer quem lidera cada multidão só pela cor, ou precisa de mais?", "Chegar em qualquer torre já começa a cena: é isso, ou tem que ser no Núcleo?", "A cena do Núcleo fritando convence? Dá pra entender que cortaram o abastecimento?", "A CHUVA segue inteira, sem corte, do toque até o fim?"],
+    mais: [{ parte: "final.andar", nome: "direto no volante, depois do gesto (sem música)" }, { parte: "final.nucleo", nome: "só o Núcleo fritando" }, { parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
   },
   {
     parte: "loja.violao",

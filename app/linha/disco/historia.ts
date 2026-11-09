@@ -388,6 +388,12 @@ export const CHAO_LUGARES = {
   bar: { x: -925, z: -838, nome: "O COPO", cor: "#ff6a35" },
   oficina: { x: -560, z: -626, nome: "OFICINA", cor: "#ff9000" },
   palco: { x: -891, z: -536, nome: "PALCO", cor: "#e0ff4f" },
+  // (09/11, o dono) o último show é no centro do deserto: o trecho mais plano entre a
+  // casa da D-Bee e a borda do mapa, longe das pistas e dos morros (disco/final.ts)
+  palcoDeserto: { x: -2950, z: -1150, nome: "PALCO", cor: "#e0ff4f" },
+  // (09/11) o destino do GPS depois do show, quando a pessoa dirige até as torres: o pé
+  // da torre 1, a mais perto do deserto. Vale chegar em qualquer torre (estrada/FinalPovo.tsx)
+  torresFinal: { x: -620, z: -390, nome: "TORRE", cor: "#ff6a35" },
   // (T02) as missões do subúrbio: a quadra do Alohan e a entrada dos túneis (RASCUNHO de onde ficam)
   // (T57) a quadra é um lugar de verdade (o piso, as cestas, o alambrado) e os
   // túneis, uma boca no chão: o ponto é a porta, no fundo da rampa (estrada/chao.ts, BOCA)
@@ -431,7 +437,7 @@ export const GIRO_BAR = Math.atan2(CASA.x - CHAO_LUGARES.bar.x, CASA.z - CHAO_LU
 export const PONTO_BAR = { x: CHAO_LUGARES.bar.x + Math.sin(GIRO_BAR) * 90, z: CHAO_LUGARES.bar.z + Math.cos(GIRO_BAR) * 90, rumo: GIRO_BAR + Math.PI }
 // (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
 // (lote D) a torre também: é só a porta (o gatilho), sem fachada
-export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre", "casa"]
+export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre", "casa", "torresFinal"]
 // (06/11) os que têm a fachada juntada (LugaresChao: LugaresAbertos), não a Fachada de antes
 export const CHAO_ABERTOS = ["ginasio", "galeria", "discos", "batida", "flores", "brecho"] as const satisfies readonly LugarChao[]
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))

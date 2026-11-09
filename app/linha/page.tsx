@@ -313,7 +313,12 @@ export default function LinhaPage() {
   const [destinoEstrada, setDestinoEstrada] = useState<EstacaoId | null>(null)
   // a chegada: a Kombi anda sozinha (cinema) e a cidade perde a cor até a
   // conversa com a D-Bee acabar
-  const [cinema, setCinema] = useState<Cinema>(null)
+  const [cinemaReal, setCinema] = useState<Cinema>(null)
+  // (09/11) o momento do final na tela. No "andar" a pessoa dirige (a Corrida recebe cinema nulo)
+  // mas a página segue como em cena: nada de ligação, cadeado, túnel ou missão interrompendo
+  const [finalMomento, setFinalMomento] = useState<MomentoFinal | null>(null)
+  const finalAndando = finalMomento === "andar"
+  const cinema: Cinema = cinemaReal ?? (finalAndando ? "lugar" : null)
   const [cinza, setCinza] = useState(false)
   // a chegada: o grupo 222 rola na ilha da Kombi, mensagem por mensagem.
   // null = não está rolando; número = a próxima mensagem
@@ -1146,7 +1151,7 @@ export default function LinhaPage() {
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: undefined })))
     if (m) setLargadas((l) => [...l, m])
   }
-  const alvoChao: LugarChao | null = !HIST ? null : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : quebrada(hist) ? "oficina" : lugar13?.chao ?? null
+  const alvoChao: LugarChao | null = !HIST ? null : finalAndando ? "torresFinal" : hist.fase === "bar" ? "bar" : hist.fase === "oficina" ? alvoOficina(hist) : hist.fase === "nectar" && hist.nectar === "oficina" ? "oficina" : quebrada(hist) ? "oficina" : lugar13?.chao ?? null
   const [pingpong, setPingpong] = useState(false)
   // (T29) o final passando agora: o momento em que ele começou (disco/Final.tsx toca o resto)
   const [finalAgora, setFinalAgora] = useState<MomentoFinal | null>(null)
@@ -1347,7 +1352,7 @@ export default function LinhaPage() {
   // quando o escuro cobre tudo. (30/10, o dono) A Kombi fica parada lá fora,
   // na porta: ele desce sem ela
   const descerTrincheiras = (missao: MissaoId | null) => {
-    if (trincheiras) return
+    if (trincheiras || finalAgora) return
     setAoVivo(null)
     // (elevadores) desceu pelo elevador da torre da ponta N: chega no salão da TORRE N
     setTrincheiras({ missao, descendo: true, chegaNa: tomarDescida() })
@@ -1429,10 +1434,17 @@ export default function LinhaPage() {
     setIntroMissao(null)
     setCinema("lugar")
     setFinalAgora(m)
+    setFinalMomento(m)
     track("mission_step", { mission_id: "disco-final", step: `final:${m}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+  }
+  // (09/11) o momento mudou na tela do final: no "andar" a Kombi fica livre, sem as faixas de cinema
+  const aoMomentoFinal = (m: MomentoFinal) => {
+    setFinalMomento(m)
+    setCinema(m === "andar" ? null : "lugar")
   }
   const fimFinal = () => {
     setFinalAgora(null)
+    setFinalMomento(null)
     setCinema(null)
     setSave((s) => comHistoria(s, (h) => ordemDe("final").reduce<HistoriaDisco>((x, q) => concluir(x, "final", q), h)))
     track("mission_step", { mission_id: "disco-final", step: "final:fim", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
@@ -2164,7 +2176,7 @@ export default function LinhaPage() {
     }
     // (T28) o gatilho da perseguição: a fama e o movimento passaram do ponto e o jogador
     // rodou um tempo de verdade (o Corrida avisa). Uma vez só
-    if (e === "perseguicao" && !cena && !oficinaTela && !recompensa && podePerseguir(h, saveRef.current.popularidade ?? 0)) setSave((s) => comHistoria(s, perseguir))
+    if (e === "perseguicao" && !finalAgora && !cena && !oficinaTela && !recompensa && podePerseguir(h, saveRef.current.popularidade ?? 0)) setSave((s) => comHistoria(s, perseguir))
     // (T27) a Kombi quebrada espera na oficina: chegou lá, o mecânico cobra o conserto (em água)
     if (e === "chao:oficina" && quebrada(h) && !cena && !oficinaTela) { setAoVivo(null); setOficinaTela("conserto") }
     // (T02) o chão do subúrbio (a quadra, os túneis): chegou no lugar da missão pegada
@@ -2177,7 +2189,7 @@ export default function LinhaPage() {
     }
     // (notas 04/11) chegou na casa da D-Bee (no deserto), sem missão lá: com
     // instrumento novo, ela pede pra tocar. Só aqui; nunca no meio da cidade
-    if (e === "chao:casa" && (h.fase === "carreira" || h.fase === "livre") && !cena && !recompensa && !trincheiras && !chegadaLogin) {
+    if (e === "chao:casa" && (h.fase === "carreira" || h.fase === "livre") && !finalAgora && !cena && !recompensa && !trincheiras && !chegadaLogin) {
       const m = missaoDoSave(saveRef.current)
       const daMissao = m && alvo13(hist13(saveRef.current), m)?.chao === "casa"
       if (!daMissao && instrumentosNovos(hist13(saveRef.current)).length) abrirCasaInstrumentosRef.current()
@@ -2639,7 +2651,7 @@ export default function LinhaPage() {
             fala={falaIntro}
             onIlha={cOnIlha}
             onVolta={cOnVolta}
-            cinema={cinema}
+            cinema={cinemaReal}
             cinza={cinza}
             noiteRepete={save.objetos.includes("copo") ? 0 : (save.loops?.bar ?? 0)}
             foraDoAr={apagao}
@@ -2838,7 +2850,7 @@ export default function LinhaPage() {
         })()}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
         {/* (T29) o final: o gesto no palco e a sequência, com o jogo atrás */}
-        {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} />}
+        {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} onMomento={aoMomentoFinal} />}
         {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
           onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}
           onDepois={() => {

@@ -376,7 +376,7 @@ function Vaga({ p, cor, materialRef }: { p: PoseLugar; cor: string; materialRef:
 // quadro, sem luz nova. Vaga, PIN, gente, poste, calçada e letreiro continuam os
 // da Fachada (os gatilhos e as colisões vêm da pose, que não muda). Os sem tipo
 // (o posto) e o beco seguem como eram. Se o .glb não carregar, tudo volta às caixas.
-const URL_CIDADE = "/models/lugares-cidade.glb"
+export const URL_CIDADE = "/models/lugares-cidade.glb"
 type Tipo = "palco" | "estacao" | "terraco" | "casa-drew" | "balada" | "casa-ella"
 type Let = [number, number, number, number] // o letreiro no modelo: x, altura, frente, largura (m)
 const TIPO: Partial<Record<LugarId, Tipo>> = {
@@ -390,7 +390,7 @@ const LET_TIPO: Record<Tipo, Let> = {
 }
 
 let MATS_CIDADE: { solido: THREE.Material; brilho: THREE.Material; vidro: THREE.Material; planta: THREE.Material } | null = null
-function matsCidade() {
+export function matsCidade() {
   if (MATS_CIDADE) return MATS_CIDADE
   const vidro = new THREE.MeshStandardMaterial({ vertexColors: true, color: "#2a3040", roughness: 0.12, metalness: 0.5, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide })
   // a luz de dentro vazando: o vidro emite a própria cor do vértice (o tom × a cor do lugar)

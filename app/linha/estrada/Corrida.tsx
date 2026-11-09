@@ -28,7 +28,7 @@ import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
 import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
-import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import * as THREE from "three"
 import { Cupula, Kombi222 } from "./Kombi222"
 import { Patinador } from "./Patins"
@@ -47,7 +47,7 @@ import { Monumentos } from "./Monumentos"
 import { FinalPovo } from "./FinalPovo"
 import { Floresta } from "./Floresta"
 import { MundoDepois } from "./MundoDepois"
-import { CAM_ROTEIRO, FINAL_VIVO } from "../disco/final"
+import { CAM_ROTEIRO, FINAL_VIVO, lerFinal, nascerNoPalcoDeserto, ouvirFinal } from "../disco/final"
 import { VELO, intensidade } from "./velo"
 import { geoJoia, matJoia } from "./joia"
 import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_CHEGADA, FALAS_DUNAS, FALAS_DUNAS_SUB, SUBURBIO, CHAO_LUGARES, RAIO_CHAO, semVoo, type HistoriaDisco, type LugarChao } from "../disco/historia"
@@ -761,6 +761,14 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       return j
     }
     // (09/11, ?parte=elevador.deserto) começa na frente da porta do deserto, olhando pra ela
+    // (09/11, atalho de teste) ?parte=final: a Kombi na frente do palco do deserto
+    if ("disco" in M && nascerNoPalcoDeserto()) {
+      const MD = M as MundoDisco, L = CHAO_LUGARES.palcoDeserto, dx = -L.x, dz = -L.z, dl = Math.hypot(dx, dz)
+      const x = L.x + (dx / dl) * 34, z = L.z + (dz / dl) * 34
+      j.voo = true; j.wx = x; j.wz = z; j.rumo = Math.atan2(dx, dz); j.propulsou = true; j.encaixar = false
+      j.ar = false; j.y = MD.chaoEm(x, z) + 0.3; j.v = 0
+      return j
+    }
     if ("disco" in M && nascerNaPortaDeserto()) {
       const MD = M as MundoDisco, p = portaDoDeserto(MD)
       j.voo = true; j.wx = p.saidaX; j.wz = p.saidaZ; j.rumo = p.rot + Math.PI; j.propulsou = true; j.encaixar = false
@@ -1372,7 +1380,9 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   const roteiro = intro && !(!!discoM && !!historia && (historia.fase === "carreira" || historia.fase === "livre"))
   // (T44) os rachas: os carros do mecânico rodam lá em cima depois que ele te conta deles (a oficina)
   const rachaRef = useRef<EstadoRacha>(novoEstadoRacha())
-  const rachasOk = !!discoM && (!historia || historia.fase === "livre" || historia.fase === "carreira" || feita13(historia, "oficina")) && !cinema && !cenaLugar && !roteiro && !abertura && !chegada && !noConserto && !quebrou && !perseguicao && !semKombi // (T27, T28) a Kombi quebrada/no conserto: de patins, sem racha
+  // (09/11) no "andar" do final, a pessoa só dirige: sem racha no meio
+  const finalAndando = useSyncExternalStore(ouvirFinal, lerFinal, lerFinal).momento === "andar"
+  const rachasOk = !finalAndando && !!discoM && (!historia || historia.fase === "livre" || historia.fase === "carreira" || feita13(historia, "oficina")) && !cinema && !cenaLugar && !roteiro && !abertura && !chegada && !noConserto && !quebrou && !perseguicao && !semKombi // (T27, T28) a Kombi quebrada/no conserto: de patins, sem racha
   const pertoOficina = oficinaLivre && pertoDaOficina
   useEffect(() => {
     if (!oficinaLivre) return

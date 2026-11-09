@@ -243,7 +243,8 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   },
   lu2ca: {
     id: "lu2ca", n: 8, onde: "cidade", quem: "LU2CA", cor: "#e0ff4f", faixa: "nectar", faixaSituacao: "decidido",
-    lugar: { lugar: "palco-nectar" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar a CHUVA ao vivo no Guitar Driver",
+    // (09/11, o dono) o último show é no centro do deserto, com o povo todo unido
+    lugar: { chao: "palcoDeserto" }, pedido: "tem um palco esperando alguém subir", apresenta: "tocar a CHUVA ao vivo no Guitar Driver",
     // (08/11) sem o jogo de escrever a letra no ep. 9 até o dono escrever os versos da CHUVA: chegar no palco já conta
     arte: p("chegar no palco", "decidido", { como: { t: "chegar" }, tarefa: "T19" }),
     jogo: p("tocar ao vivo no Guitar Driver", "decidido", { como: { t: "show", faixa: "chuva" }, tarefa: "T19" }),
@@ -292,9 +293,9 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   final: {
     // RASCUNHO: os textos do final são só o gesto (disco/final.ts, TEXTO_GESTO)
     id: "final", n: 13, onde: "cidade", quem: "o povo", cor: "#ffffff", faixa: null, faixaSituacao: "decidido",
-    lugar: { lugar: "palco-nectar" }, pedido: "convocar o povo", apresenta: "convocar o povo",
+    lugar: { chao: "palcoDeserto" }, pedido: "convocar o povo", apresenta: "convocar o povo",
     // (09/11, o dono) a sequência mora em disco/final.ts e começa no palco do show da
-    // CHUVA. Quem acaba o show já segue dali; save antigo chega nele pelo mapa
+    // CHUVA, no centro do deserto. Quem acaba o show já segue dali; save antigo chega nele pelo mapa
     arte: p("convocar o povo", "decidido", { como: { t: "final" }, tarefa: "T29" }),
     jogo: p("convocar o povo", "decidido", { como: { t: "final" }, tarefa: "T29" }),
     // (09/11) as missões dos 9 episódios, sem o Xeriff (livre). Só missões: os marcos

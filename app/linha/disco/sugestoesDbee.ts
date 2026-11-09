@@ -262,7 +262,8 @@ export const SUGESTOES_DBEE: SugestaoDbee[] = [
 // (06/11, RASCUNHO) o que a D-Bee diz de cada lugar do chão que abre uma
 // experiência (disco/abertos.ts). `fechado`: a porta ainda não abriu (tudo
 // visitável: ela chama pra ver o cadeado e o que libera)
-export const ABERTOS_DBEE: Record<LugarAberto, { texto: string; fechado?: string }> = {
+// (09/11) sem o palco do deserto: ele é o lugar do último show e não tem fala escrita pelo dono
+export const ABERTOS_DBEE: Record<Exclude<LugarAberto, "palcoDeserto">, { texto: string; fechado?: string }> = {
   ginasio: { texto: "conhece o ginásio lá no fundo do subúrbio? entra e joga uma", fechado: "o ginásio do subúrbio tá fechado, mas passa lá pra ver o que abre ele" },
   galeria: { texto: "tem uma galeria perto da oficina. entra pra ver os quadros", fechado: "a galeria do subúrbio tá trancada. dá uma olhada na porta, ela diz o que falta" },
   batida: { texto: "o estúdio da batida tá ali no subúrbio. bora fazer um beat?", fechado: "o estúdio da batida tá esperando. cola lá e vê o que destrava" },
@@ -285,6 +286,7 @@ SUGESTOES_DBEE.push(
       const portas = c.h.portas ?? []
       let melhor: OpcaoDbee | null = null, dMelhor = Infinity
       for (const id of IDS_ABERTOS) {
+        if (id === "palcoDeserto") continue
         const chave = `aberto:${id}`
         if (feita(c, chave) || visitou(c.mem, id)) continue
         const e = ENTRADAS[id], fala = ABERTOS_DBEE[id]
