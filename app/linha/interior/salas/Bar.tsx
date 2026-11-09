@@ -17,7 +17,7 @@ import { ModeloSeguro } from "../../estrada/Seguro"
 import { gota } from "../../som"
 import { vib } from "../../som-carro"
 import { sinalizar } from "../bus"
-import { Caixa, Neon, Npc, Sala, Toque, type V3 } from "../comum"
+import { Caixa, Multidao, Neon, Npc, Sala, Toque, type Pessoa, type V3 } from "../comum"
 import { Camera, type Plano, type SalaProps } from "../motor"
 
 const LARANJA = "#ff6a35"
@@ -49,7 +49,16 @@ const MESAS: { pos: V3; vira: number; cor: string }[] = [
   { pos: [-4.6, 0.0, -0.4], vira: 0.4, cor: "#7a7a8c" },
 ]
 
-export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
+// (09/11, o povo) a plateia do show no bar, de frente pro palco: quantos couberem na
+// lotação (disco/povo.ts). No 1º show são poucos; quem volta com a história andada vê gente
+const PLATEIA_BAR: [number, number][] = [[3.3, -1.6], [4.7, -1.5], [5.4, -2.2], [2.8, -2.5], [4.8, -0.4], [5.4, -0.9], [2.4, -0.4], [5.5, 0.2], [1.3, -2.2], [3.1, 0.3]]
+const CORES_PLATEIA = ["#ff3fb0", "#2fe8ff", "#ffc857", "#5dffa0", "#b08bff", "#ff6a35"]
+function plateiaDoBar(lotacao: number): Pessoa[] {
+  const n = Math.min(PLATEIA_BAR.length, 2 + Math.round(lotacao * 0.12))
+  return PLATEIA_BAR.slice(0, n).map(([x, z], i) => ({ x, z, vira: Math.atan2(4.4 - x, -3 - z), cor: CORES_PLATEIA[i % CORES_PLATEIA.length] }))
+}
+
+export function SalaBar({ estado, copos = [], disco = false, popularidade = 0 }: SalaProps) {
   // os copos que já foram (de outras noites) ficam vazios no balcão
   const [bebidos, setBebidos] = useState<number[]>(copos)
   const [bebeuAgora, setBebeuAgora] = useState(false)
@@ -64,6 +73,8 @@ export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
   const [noShow, setNoShow] = useState(false)
   if (disco && !comDbee && estado.falando === "D-Bee") setComDbee(true)
   if (disco && !noShow && (estado.gesto === "show-nectar" || /sobe no palco/.test(estado.texto ?? ""))) setNoShow(true)
+
+  const plateia = useMemo(() => (noShow ? plateiaDoBar(popularidade) : null), [noShow, popularidade])
 
   // a câmera segue a cena: quem fala, o gesto, o que ganhou
   const plano = useMemo(() => {
@@ -117,6 +128,7 @@ export function SalaBar({ estado, copos = [], disco = false }: SalaProps) {
       {/* a gente */}
       {!noShow && <Npc cor={LARANJA} pos={[-1.4, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "Mubarak"} />}
       {comDbee && !noShow && <Npc cor="#3d7bff" pos={[-0.2, 0.27, -1.75]} vira={Math.PI} pose="sentada" falando={estado.falando === "D-Bee"} />}
+      {noShow && plateia && <Multidao gente={plateia} />}
       {noShow && <Npc cor="#3d7bff" pos={[2.1, 0, -1.35]} vira={2.19} />}
       {noShow && <Npc cor={LARANJA} pos={[3.05, 0, -0.35]} vira={2.67} />}
       {noShow && <Npc cor="#e0ff4f" pos={[4.4, 0.4, -3]} vira={-0.66} dancando={estado.gesto === "show-nectar"} />}
