@@ -235,6 +235,8 @@ interface Props {
   avisos?: number
   // celular aberto por cima: a estrada congela (e continua dali ao fechar)
   pausado?: boolean
+  // (09/11) o basquete ou a batida fora do caminho abertos por cima: a Kombi não recebe direção (a música e a pausa não mudam)
+  semDirecao?: boolean
   // o Núcleo invadindo: a estrada segue, mas ele limita o motor
   limitado?: boolean
   // carregando contrabando (o item da missão, ou alguém de carona): os carros
@@ -547,6 +549,8 @@ type Evs = {
 // saída na bifurcação)
 // gas: acelerador (no computador é manual; no celular é automático)
 // freio: freia e, parada, dá ré. Drift não tem botão: é a finta (ver Cena)
+// (09/11) o que move a Kombi: fora daqui (F, C, H) segue como sempre
+const TECLAS_DIRECAO = new Set(["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s", "shift", "e", " ", "q", "x"])
 type Input = { semVoo?: boolean; semJato?: boolean; ambos?: boolean; ambosAntes?: boolean; mods?: string[]; esq: boolean; dir: boolean; gas: boolean; freio: boolean; turbo: boolean; toqueE: boolean; toqueD: boolean; mao: boolean; ultimo: number; pulo?: boolean; ultimoToque?: number; ultimoEspaco?: number; propulsor?: boolean; espacoDesde?: number; propulsorBotao?: boolean; semHolo?: boolean; infinito?: boolean }
 // mola amortecida crítica (a SmoothDamp da Unity): chega no alvo em ~`tempo`
 // segundos sem passar dele e sem tranco quando o alvo muda. A velocidade fica em o[k]
@@ -595,7 +599,7 @@ const MetroFugaDentro = dynamic(() => import("../disco/MetroFuga").then((m) => m
 type Viagem9 = { h: ViagemLinha9; dest: number | null; rotulo: string; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null }
 const PERTO_9: number[] = []
 
-export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null, linha9 = null, missaoAtiva = null, onPilotoLigado }: Props) {
+export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, semDirecao = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null, linha9 = null, missaoAtiva = null, onPilotoLigado }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -2723,11 +2727,23 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
     // (LU2CA 21/10) os dois lados ao mesmo tempo = freio (no chão) ou a manobra (no ar: o mortal)
     input.current.ambos = e && d
   }
+  // (09/11) o que estava apertado solta ao abrir a tela
+  const semDirecaoRef = useRef(semDirecao)
+  useEffect(() => {
+    semDirecaoRef.current = semDirecao
+    if (!semDirecao) return
+    const i = input.current
+    i.esq = i.dir = i.gas = i.freio = i.mao = i.turbo = i.ambos = i.toqueE = i.toqueD = i.propulsorBotao = false
+    i.espacoDesde = 0
+    toques.current.clear()
+    longo.current.forEach((_, id) => soltarLongo(id))
+  }, [semDirecao])
   useEffect(() => {
     const tecla = (ev: KeyboardEvent, on: boolean) => {
       // soltar sempre vale: tecla solta durante pausa/cinema não pode ficar presa (o acelerador seguia sozinho)
       if (on && (pausadoRef.current || cinemaRef.current)) return
       const k = ev.key.toLowerCase()
+      if (on && semDirecaoRef.current && TECLAS_DIRECAO.has(k)) return
       if (k === "arrowleft" || k === "a") {
         if (on && !ev.repeat) input.current.toqueE = true
         input.current.esq = on
@@ -2845,7 +2861,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
           gl={{ antialias: false, powerPreference: "high-performance", stencil: false }}
           camera={{ fov: 60, near: 0.1, far: 3200 }}
           onPointerDown={(e) => {
-            if (cinemaRef.current) return
+            if (cinemaRef.current || semDirecaoRef.current) return
             const r = (e.target as HTMLElement).getBoundingClientRect()
             // toque duplo (dois toques em menos de 0,3 s): pula
             const agora = performance.now()

@@ -2575,6 +2575,7 @@ export default function LinhaPage() {
             nivel={nivel}
             destino={tela.t === "corrida" ? tela.destino : destinoEstrada}
             pausado={corridaPausada}
+            semDirecao={!!basquete || (!!batidaMissao && !batidaMissao.caminho)}
             celular={celularAberto}
             retomar={voltaDaSala}
             teleporte={teleporte}
