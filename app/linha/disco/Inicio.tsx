@@ -3,7 +3,7 @@
 // A PÁGINA INICIAL DO DISCO (LU2CA 19/10: "uma página inicial mais
 // gamificada, sem a foto da capa do álbum"). O título, o disco girando com as
 // 9 linhas (acesas as feitas e as abertas, apagadas as que ainda não), os 3
-// atos com os monumentos, as três moedas (água, neon$, popularidade: "rico do
+// atos com os monumentos, as moedas (Água$, popularidade: "rico do
 // quê?") e o entrar. Embaixo: a qualidade do aparelho (medir de novo) e o
 // começar do zero.
 
@@ -43,8 +43,7 @@ export function InicioDisco({ save, onEntrar }: { save: Save; onEntrar: () => vo
         {!novo && (
           <>
             <div className="l-inicio-moedas" aria-label="rico do quê?">
-              <span className="is-agua"><i aria-hidden="true" /><b>{save.agua ?? 0}</b><small>água</small></span>
-              <span className="is-neon"><i aria-hidden="true">$</i><b>{save.neon ?? 0}</b><small>neon$</small></span>
+              <span className="is-agua"><i aria-hidden="true" /><b>{save.agua ?? 0}</b><small>Água$</small></span>
               <span className="is-pop"><i aria-hidden="true" style={{ ["--p" as string]: `${pop}%` }} /><b>{pop}</b><small>popularidade</small></span>
             </div>
             <ol className="l-inicio-atos">

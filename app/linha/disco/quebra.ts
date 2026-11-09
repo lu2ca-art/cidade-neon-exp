@@ -40,7 +40,7 @@ export const FALAS_QUEBRA = {
   vai: "de patins até a oficina. a luz laranja no mapa",
   metro: "ou o metrô da linha 9. o trem branco passa pela estação mais perto",
   mecanico: "pifou, né? essas velhas pifam. deixa comigo",
-  pagar: "o conserto é em água. aqui embaixo ninguém paga com neon",
+  pagar: "o conserto é em água",
   pago: "pronto. ela tá nova. quer dizer, velha, mas anda",
   fiado: "faltou um pouco. fica fiado: vc volta com mais",
   voltou: "a Kombi voltou da oficina",

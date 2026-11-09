@@ -19,7 +19,7 @@ export const BASE_TESTE = {
   ligacoes: ["dbee-0", "dbee-1"], modos: {}, ultimoModo: "texto", nucleo: { invasoes: 9, caido: false }, jardim: [], papel: false,
   dicas: ["disco-1", "disco-2", "radio-1"], violao: true, tons: { dormindo: 0, acordando: 1, acordado: 3 }, reliquias: [],
   completos: ["grupo", "abertura", "copo"], ecosVistos: ["copo"], objetos: ["copo"], pausas: {}, fio: ["sexta"],
-  hora: 22, dia: 3, neon: 30, popularidade: 20,
+  hora: 22, dia: 3, agua: 30, popularidade: 20,
 }
 
 export const ATALHOS: Atalho[] = [

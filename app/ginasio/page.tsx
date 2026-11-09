@@ -35,7 +35,7 @@ export default function Ginasio() {
   const guardar = (r: typeof rec) => { setRec(r); try { localStorage.setItem(CHAVE, JSON.stringify(r)) } catch {} }
   const pagar = async (n: number, texto: string) => {
     if (n > 0) { const r = await mudarNeon(n); setNeon(r.neon) }
-    setMsg(n > 0 ? `${texto} · +${n} neon` : texto)
+    setMsg(n > 0 ? `${texto} · +${n} Água$` : texto)
     setTimeout(() => setMsg(""), 3500)
   }
 
@@ -51,7 +51,7 @@ export default function Ginasio() {
       <section className="gi-menu">
         <header>
           <button type="button" onClick={() => sairDaPagina(router.push)}>‹ sair</button>
-          <span>{neon} <small>neon$</small></span>
+          <span>{neon} <small>Água$</small></span>
         </header>
         <h1>GINÁSIO</h1>
         <p className="gi-sub">de dia · a quadra tá livre</p>
@@ -60,7 +60,7 @@ export default function Ginasio() {
           <b>{tranca && <Cadeado />}basquete</b><small>60 segundos · recorde: {rec.cestas} pontos</small><em>1 neon a cada 6 pontos</em>
         </button>
         <button type="button" className={`gi-card is-pingue${tranca ? " cn-card-trancado" : ""}`} onClick={() => { if (tranca) return trancou(); ac(); setTela("pingpong") }} aria-disabled={!!tranca}>
-          <b>{tranca && <Cadeado />}pingue-pongue</b><small>até 7 · {rec.vitorias} vitórias</small><em>ganhou: 6 neon</em>
+          <b>{tranca && <Cadeado />}pingue-pongue</b><small>até 7 · {rec.vitorias} vitórias</small><em>ganhou: 6 de Água$</em>
         </button>
         <button type="button" className={`gi-card is-cama${tranca ? " cn-card-trancado" : ""}`} onClick={() => { if (tranca) return trancou(); ac(); setTela("cama") }} aria-disabled={!!tranca}>
           <b>{tranca && <Cadeado />}cama elástica</b><small>60 segundos · recorde: {rec.cama} pontos</small><em>1 neon a cada 20 pontos</em>

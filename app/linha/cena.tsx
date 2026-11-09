@@ -212,7 +212,7 @@ export function CenaLugar({ cena: cenaBruta, memoria, objetos, reliquias = [], t
       )}
 
       {/* dinheiro na conta: só o +X no canto, e a cena segue sozinha */}
-      {neonCanto && <div key={neonCanto.id} className="l-cena-neon">+{neonCanto.n} neon$</div>}
+      {neonCanto && <div key={neonCanto.id} className="l-cena-neon">+{neonCanto.n} Água$</div>}
       {mostrando && !soNeon && (
         <Ganho objeto={mostrando.objeto} reliquia={mostrando.reliquia} titulo={mostrando.titulo} texto={mostrando.texto} memoria={mostrando.objeto ? memoria : null} onOk={fecharGanho} />
       )}

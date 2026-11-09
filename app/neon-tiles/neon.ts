@@ -1,4 +1,4 @@
-// A grana do GUITAR DRIVER é o NEON do jogo (uma moeda só).
+// A grana do GUITAR DRIVER é a Água$ do jogo (bíblia §15: uma moeda só).
 //
 // Dentro do celular (/linha abre o app numa janela), quem guarda o saldo é o
 // jogo: o app pede pra somar/gastar por mensagem e o jogo responde com o
@@ -8,10 +8,12 @@
 // (notas 04/11) o save de verdade ou o de teste, conforme a aba (linha/chaveSave.ts)
 import { chaveSave } from "../linha/chaveSave"
 
+// (§15) o saldo é a água; save que o jogo ainda não migrou tem o neon$ à parte
+const saldoDe = (s: { agua?: number; neon?: number } | null) => Math.max(0, Math.round(s?.agua ?? 0)) + Math.max(0, Math.round(s?.neon ?? 0))
+
 function lerLocal(): number {
   try {
-    const s = JSON.parse(localStorage.getItem(chaveSave()) || "{}")
-    return Math.max(0, Math.round(s.neon ?? 0))
+    return saldoDe(JSON.parse(localStorage.getItem(chaveSave()) || "{}"))
   } catch {
     return 0
   }
@@ -21,7 +23,7 @@ function gravarLocal(delta: number): { ok: boolean; neon: number } {
   try {
     const raw = localStorage.getItem(chaveSave())
     const s = raw ? JSON.parse(raw) : null
-    const atual = Math.max(0, Math.round(s?.neon ?? 0))
+    const atual = saldoDe(s)
     if (delta < 0 && atual + delta < 0) return { ok: false, neon: atual }
     // sem save do jogo ainda: guarda numa conta própria até o jogo existir
     if (!s) {
@@ -29,9 +31,11 @@ function gravarLocal(delta: number): { ok: boolean; neon: number } {
       localStorage.setItem("cn-gd-neon", String(n))
       return { ok: true, neon: n }
     }
-    s.neon = atual + delta
+    // (sai o campo neon: a migração do jogo não soma de novo)
+    s.agua = atual + delta
+    delete s.neon
     localStorage.setItem(chaveSave(), JSON.stringify(s))
-    return { ok: true, neon: s.neon }
+    return { ok: true, neon: s.agua }
   } catch {
     return { ok: false, neon: 0 }
   }

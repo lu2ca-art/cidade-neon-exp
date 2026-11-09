@@ -56,7 +56,7 @@ export function OculosHud({ aberto, save, nivel, tarefa, radio, onRadio, onProxi
       <div className="l-oculos-nivel">
         <b>{nv.nome}</b>
         <span className="l-oculos-pips">{NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}</span>
-        <span><em>{save.neon ?? 0}</em> neon · <em>{Math.round(save.popularidade ?? 0)}</em> popularidade</span>
+        <span><em>{save.agua ?? 0}</em> Água$ · <em>{Math.round(save.popularidade ?? 0)}</em> popularidade</span>
         {nivel < NIVEIS.length - 1 && <small>próximo: {prox.como}</small>}
       </div>
       <div className="l-oculos-linha">

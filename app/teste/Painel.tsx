@@ -9,7 +9,7 @@ import "./teste.css"
 const PAGINAS = [
   { href: "/teste/trincheiras", nome: "as trincheiras: a corrida (T11, T13, T14)", desc: "os túneis embaixo do subúrbio: escolha BMX, patins ou skate e corra a volta dos 3 rios secos contra 3 rivais e o seu fantasma. A moto (T14) chega depois: ?motos libera" },
   { href: "/parque", nome: "parque (protótipo)", desc: "a montanha-russa sozinha, em 1ª pessoa" },
-  { href: "/fliperama", nome: "fliperama", desc: "LINHA 9, KOMBI COBRA, INVASORES, PINGUE, QUEBRA-NEON, PRÉDIO, ATRAVESSA · 1 neon a ficha" },
+  { href: "/fliperama", nome: "fliperama", desc: "LINHA 9, KOMBI COBRA, INVASORES, PINGUE, QUEBRA-NEON, PRÉDIO, ATRAVESSA · 1 de Água$ a ficha" },
   { href: "/teste/flores", nome: "flores de perto", desc: "as 7 espécies dos canteiros da Ella" },
   { href: "/ginasio", nome: "ginásio", desc: "basquete, pingue-pongue, cama elástica" },
   { href: "/galeria/pintar", nome: "pintar", desc: "pinta e expõe · a obra vai pra parede da galeria" },
@@ -28,7 +28,7 @@ export function Painel({ children }: { children?: ReactNode }) {
   const ler = () => {
     try {
       setTemReal(emTeste() || localStorage.getItem(CHAVE_REAL) !== null)
-      setNeon(JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null")?.neon ?? null)
+      setNeon(JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null")?.agua ?? null)
     } catch {}
   }
   useEffect(() => {
@@ -62,10 +62,10 @@ export function Painel({ children }: { children?: ReactNode }) {
     try {
       const s = JSON.parse(localStorage.getItem(CHAVE_SAVE) || "null") ?? {}
       ligarTeste()
-      s.neon = (s.neon ?? 0) + 50
+      s.agua = (s.agua ?? 0) + (s.neon ?? 0) + 50; delete s.neon
       localStorage.setItem(CHAVE_SAVE, JSON.stringify(s))
     } catch {}
-    ler(); setMsg("+50 neon")
+    ler(); setMsg("+50 Água$")
   }
 
   if (!liberado) return <main className="ts-raiz"><p>nada aqui.</p></main>
@@ -94,7 +94,7 @@ export function Painel({ children }: { children?: ReactNode }) {
       </div>
       <h2>o save</h2>
       <div className="ts-acoes">
-        <button type="button" onClick={darNeon}>+50 neon{neon !== null ? ` (tem ${neon})` : ""}</button>
+        <button type="button" onClick={darNeon}>+50 Água${neon !== null ? ` (tem ${neon})` : ""}</button>
         <button type="button" disabled={!temReal} onClick={restaurar}>voltar o meu save</button>
       </div>
       {msg && <p className="ts-msg">{msg}</p>}

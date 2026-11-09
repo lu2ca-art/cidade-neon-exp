@@ -99,10 +99,10 @@ export function PostoDentro({ primeira, neon, tanque, galao, precoTanque, precoG
       {etapa === "opcoes" && (
         <div className="l-posto-ops" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="l-posto-op" disabled={tanqueCheio || neon < precoTanque} onClick={onEncherTanque}>
-            <span>{tanqueCheio ? "tanque cheio" : "encher o tanque"}</span><small>{precoTanque} neon$</small>
+            <span>{tanqueCheio ? "tanque cheio" : "encher o tanque"}</span><small>{precoTanque} Água$</small>
           </button>
           <button type="button" className="l-posto-op" disabled={galaoCheio} onClick={encherGalao}>
-            <span>{galaoCheio ? "galão cheio" : "encher o galão"}</span><small>{precoGalao} neon$</small>
+            <span>{galaoCheio ? "galão cheio" : "encher o galão"}</span><small>{precoGalao} Água$</small>
           </button>
           {semSaldo && <p className="l-posto-aviso">saldo insuficiente</p>}
           {podeSair && <button type="button" className="l-posto-sair" onClick={onSair}>sair do posto →</button>}

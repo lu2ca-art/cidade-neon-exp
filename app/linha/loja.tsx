@@ -1,7 +1,7 @@
 "use client"
 
 // A LOJA (refeita em 05/10; T03, 28/10): um app do celular do jogo. Vende o
-// que a grana dos shows e das missões compra (neon$): discos, instrumentos,
+// que a grana dos shows e das missões compra (Água$): discos, instrumentos,
 // carros e roupas. Os discos são um gênero cada, todos pelo mesmo preço; dá pra
 // ouvir um trecho antes, e o comprado vai pro toca-discos da Kombi (o acervo
 // antigo já mora lá). A Kombi não está aqui: ela só ganha melhoria de
@@ -20,7 +20,7 @@ import { AppTopo } from "./os"
 import { track } from "@/lib/analytics"
 
 const TEXTO: Record<Categoria, string> = {
-  disco: `cada disco custa ${PRECO_DISCO} neon$. o que vc compra toca no toca-discos da kombi, do começo ao fim. os discos antigos já estão lá`,
+  disco: `cada disco custa ${PRECO_DISCO} Água$. o que vc compra toca no toca-discos da kombi, do começo ao fim. os discos antigos já estão lá`,
   instrumento: "o violão foi presente da D-Bee. o resto se compra com a grana dos shows",
   carro: "pra rodar a cidade quando a kombi não puder. a kombi mesmo só melhora com o mecânico, em água",
   roupa: "a roupa do palco e da rua",
@@ -46,7 +46,7 @@ export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save
           <p>{TEXTO[aba]}</p>
           {tranca && <Trancado texto={tranca} />}
         </div>
-        <span className="l-loja-saldo" aria-label={`${neon} neon`}><i aria-hidden="true">$</i>{neon}<small>neon$</small></span>
+        <span className="l-loja-saldo" aria-label={`${neon} de Água$`}><i aria-hidden="true">$</i>{neon}<small>Água$</small></span>
       </header>
       {aba === "disco" ? (
         <ul className="l-loja-grade">
@@ -57,7 +57,7 @@ export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save
                 <button type="button" onClick={() => setAberto(d)} className={tem ? "is-meu" : ""}>
                   <Capa motivo={d.motivo} a={d.a} b={d.b} titulo={d.titulo} />
                   <span className="l-loja-nome">{d.titulo}</span>
-                  <span className="l-loja-info">{d.faixas.length} faixas · {tem ? (d.gratis ? "grátis" : "na kombi ✓") : `${PRECO_DISCO} neon$`}</span>
+                  <span className="l-loja-info">{d.faixas.length} faixas · {tem ? (d.gratis ? "grátis" : "na kombi ✓") : `${PRECO_DISCO} Água$`}</span>
                 </button>
               </li>
             )
@@ -72,7 +72,7 @@ export function Loja({ save, comprar, onVoltar, tranca, aba0 = "disco" }: { save
                 <button type="button" onClick={() => setItem(it)} className={tem ? "is-meu" : ""} data-item={it.id}>
                   <Icone cat={it.cat} cor={it.cor} />
                   <span className="l-loja-nome">{it.nome}</span>
-                  <span className="l-loja-info">{tem ? "é seu ✓" : `${it.preco} neon$`}</span>
+                  <span className="l-loja-info">{tem ? "é seu ✓" : `${it.preco} Água$`}</span>
                 </button>
               </li>
             )
@@ -113,9 +113,9 @@ function DetalheItem({ it, tem, neon, onComprar, onFechar }: { it: ItemLoja; tem
         {tem || comprou ? (
           <p className="l-loja-ok">é seu. por enquanto fica guardado; usar no jogo vem depois</p>
         ) : falta > 0 ? (
-          <p className="l-loja-falta">faltam <b>{falta} neon$</b>. tocar na rua e fazer as missões rende neon$</p>
+          <p className="l-loja-falta">faltam <b>{falta} Água$</b>. tocar na rua e fazer as missões rende Água$</p>
         ) : (
-          <button type="button" className="l-loja-btn is-comprar" onClick={() => { if (onComprar()) setComprou(true) }}>comprar · {it.preco} neon$</button>
+          <button type="button" className="l-loja-btn is-comprar" onClick={() => { if (onComprar()) setComprou(true) }}>comprar · {it.preco} Água$</button>
         )}
       </div>
     </div>
@@ -166,9 +166,9 @@ function Detalhe({ d, tem, neon, onComprar, onFechar }: { d: DiscoLoja; tem: boo
         {tem || comprou ? (
           <button type="button" className="l-loja-btn" onClick={tocarAgora}>tocar na kombi ▸</button>
         ) : falta > 0 ? (
-          <p className="l-loja-falta">faltam <b>{falta} neon$</b>. tocar na rua e fazer as missões rende neon$</p>
+          <p className="l-loja-falta">faltam <b>{falta} Água$</b>. tocar na rua e fazer as missões rende Água$</p>
         ) : (
-          <button type="button" className="l-loja-btn is-comprar" onClick={() => { if (onComprar()) setComprou(true) }}>comprar · {PRECO_DISCO} neon$</button>
+          <button type="button" className="l-loja-btn is-comprar" onClick={() => { if (onComprar()) setComprou(true) }}>comprar · {PRECO_DISCO} Água$</button>
         )}
         {comprou && <p className="l-loja-ok">tá na sua kombi. o toca-discos fica no painel</p>}
       </div>

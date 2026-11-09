@@ -98,7 +98,7 @@ export function Palcos({ h, onTocar, onFechar, onXenom }: { h: HistoriaDisco; on
                   {aberto && onXenom ? (
                     <button type="button" data-xenom={x.id} onClick={() => onXenom(x.id)}>
                       <b>{x.faixa} <em>· {x.multiverso}</em></b>
-                      <small>{feito ? <Estrelas n={feito.melhor} /> : null}{feito ? " · " : ""}{feito?.cumprida ? "missão cumprida · cachê ×" + x.paga : `missão: ${x.objetivo.texto} · +${x.bonus} neon$ e prestígio`}</small>
+                      <small>{feito ? <Estrelas n={feito.melhor} /> : null}{feito ? " · " : ""}{feito?.cumprida ? "missão cumprida · cachê ×" + x.paga : `missão: ${x.objetivo.texto} · +${x.bonus} Água$ e prestígio`}</small>
                     </button>
                   ) : (
                     <span><b>{x.faixa} <em>· {x.multiverso}</em></b><small>{travaXenom(x)}</small></span>

@@ -90,11 +90,11 @@ export default function Parque() {
           <header className="pq-topo-passeio" onPointerDown={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => router.push("/?screen=home")}>‹ sair</button>
             <b>o parque</b>
-            <span>{neon} <small>neon$</small></span>
+            <span>{neon} <small>Água$</small></span>
           </header>
           {joy && <div className="pq-joy" style={{ left: joy.x, top: joy.y }}><i style={{ transform: `translate(${joy.dx}px, ${joy.dy}px)` }} /></div>}
           {!joy && !naRoda && <p className="pq-dica-passeio">o dedo na esquerda anda · na direita olha em volta</p>}
-          {ultima && <div className="pq-foto is-passeio"><b>{ultima.v.bracos >= 0.9 ? "a foto da descida: braços pra cima" : "a foto da descida"}</b><small>{Math.round(ultima.v.velMax * 3.6)} km/h · +{ultima.ganho} neon</small></div>}
+          {ultima && <div className="pq-foto is-passeio"><b>{ultima.v.bracos >= 0.9 ? "a foto da descida: braços pra cima" : "a foto da descida"}</b><small>{Math.round(ultima.v.velMax * 3.6)} km/h · +{ultima.ganho} Água$</small></div>}
           {naRoda ? (
             <button type="button" className="pq-acao" onPointerDown={(e) => e.stopPropagation()} onClick={() => setNaRoda(false)}>descer da roda-gigante</button>
           ) : b && b.id !== "carrossel" ? (
@@ -110,18 +110,18 @@ export default function Parque() {
       <section className="pq-menu">
         <header>
           <button type="button" onClick={() => router.push("/?screen=home")}>‹ sair</button>
-          <span>{neon} <small>neon$</small></span>
+          <span>{neon} <small>Água$</small></span>
         </header>
         <h1>PARQUE</h1>
         <p className="pq-sub">de noite · a roda-gigante acesa</p>
         {ultima && (
           <div className="pq-foto">
             <b>{ultima.v.bracos >= 0.9 ? "a foto da descida: braços pra cima" : "a foto da descida"}</b>
-            <small>{Math.round(ultima.v.velMax * 3.6)} km/h · {ultima.v.gMax.toFixed(1)} g · +{ultima.ganho} neon</small>
+            <small>{Math.round(ultima.v.velMax * 3.6)} km/h · {ultima.v.gMax.toFixed(1)} g · +{ultima.ganho} Água$</small>
           </div>
         )}
         <button type="button" className="pq-card is-montanha" onClick={() => { ac(); setUltima(null); setTela("montanha") }}>
-          <b>montanha-russa</b><small>{rec.voltas} voltas · recorde: {Math.round(rec.velMax * 3.6)} km/h</small><em>2 neon · braços pra cima na descida: +4</em>
+          <b>montanha-russa</b><small>{rec.voltas} voltas · recorde: {Math.round(rec.velMax * 3.6)} km/h</small><em>2 de Água$ · braços pra cima na descida: +4</em>
         </button>
         <button type="button" className="pq-card" onClick={() => { ac(); setTela("passeio"); setNaRoda(true) }}><b>roda-gigante</b><small>dar uma volta lá no alto</small></button>
         <button type="button" className="pq-card" onClick={() => { ac(); router.push("/fliperama") }}><b>fliperama</b><small>as máquinas</small></button>

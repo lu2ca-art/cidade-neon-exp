@@ -7,7 +7,7 @@ import { IDS13, recompensaDe } from "../app/linha/disco/portas"
 // (T03) a economia: ganhar (missão e show), gastar (loja e oficina) e o save antigo migrado
 const novo = (x: Partial<Save> = {}): Save => ({ ...VAZIO, economia: VERSAO_ECONOMIA, ...x })
 
-test("ganhar: a missão e o show pagam neon$", () => {
+test("ganhar: a missão e o show pagam Água$", () => {
   // a recompensa de cada missão vem do rascunho da economia
   for (const id of IDS13) expect(recompensaDe(id).neon).toBe(PAGA.missao[id])
   let s = ganhar(novo(), recompensaDe("drew").neon)
@@ -28,7 +28,7 @@ test("ganhar: a missão e o show pagam neon$", () => {
 test("gastar: a loja vende discos, instrumentos, carros e roupas", () => {
   const cats = new Set(CATALOGO.map((i) => i.cat))
   expect([...cats].sort()).toEqual(["carro", "disco", "instrumento", "roupa"])
-  let s = novo({ neon: 300 })
+  let s = novo({ agua: 300 })
   // o disco vai pro toca-discos da Kombi (save.discos)
   const disco = CATALOGO.find((i) => i.cat === "disco")!
   let r = comprar(s, disco.id)
@@ -56,13 +56,12 @@ test("gastar: a loja vende discos, instrumentos, carros e roupas", () => {
 
 test("gastar: o mecânico é pago em água, só desempenho", () => {
   const m = MELHORIAS[0]
-  let s = novo({ agua: m.agua, neon: 9999 })
+  let s = novo({ agua: m.agua + 7 })
   const r = comprarMelhoria(s, m.id)
   expect(r.ok).toBe(true)
   if (!r.ok) return
   s = r.save
-  expect(saldo(s, "agua")).toBe(0)
-  expect(saldo(s)).toBe(9999) // o neon$ não paga a oficina
+  expect(saldo(s)).toBe(7) // (§15) a mesma moeda paga a oficina
   expect(s.disco?.mods).toContain(m.id)
   expect(comprarMelhoria(s, m.id)).toEqual({ ok: false, motivo: "ja-tem" })
   // nada estético: a oficina não vende pintura
@@ -72,14 +71,29 @@ test("gastar: o mecânico é pago em água, só desempenho", () => {
 test("save antigo: migra sem perder nada", () => {
   const antigo = { ...VAZIO, economia: undefined, neon: 12.7, agua: -3, popularidade: 140, discos: ["rock", "rock", "acervo", "pop"] } as unknown as Save
   const s = migrarEconomia(antigo, 40)
-  expect(s.neon).toBe(53) // 13 + os 40 do Guitar Driver guardados fora
-  expect(s.agua).toBe(0)
+  expect(s.agua).toBe(53) // 13 do neon$ + os 40 do Guitar Driver guardados fora (a água quebrada vale 0)
+  expect("neon" in s).toBe(false)
   expect(s.popularidade).toBe(100)
   expect(s.discos).toEqual(["rock", "pop"])
   expect(s.compras).toEqual([])
   expect(s.economia).toBe(VERSAO_ECONOMIA)
   // migrado não migra de novo
   expect(migrarEconomia(s)).toBe(s)
+})
+
+test("save antigo: o neon$ soma na água uma vez só (§15)", () => {
+  const v1 = { ...VAZIO, economia: 1, neon: 300, agua: 45 } as Save
+  const s = migrarEconomia(v1)
+  expect(s.agua).toBe(345)
+  expect("neon" in s).toBe(false)
+  expect(s.economia).toBe(VERSAO_ECONOMIA)
+  // de novo (o carregar roda toda vez), e com o JSON gravado: não soma mais
+  expect(migrarEconomia(s).agua).toBe(345)
+  expect(migrarEconomia(JSON.parse(JSON.stringify(s))).agua).toBe(345)
+  // a conta do Guitar Driver guardada fora entra no mesmo saldo
+  expect(migrarEconomia(s, 30).agua).toBe(375)
+  // aba velha que gravou neon num save já migrado: soma, sem perder
+  expect(migrarEconomia({ ...s, neon: 5 }).agua).toBe(350)
 })
 
 test("save antigo no navegador: o carregar migra e a loja compra", async ({ page }) => {
@@ -96,9 +110,10 @@ test("save antigo no navegador: o carregar migra e a loja compra", async ({ page
   await page.goto("/linha?mapa=disco")
   await page.waitForTimeout(3000)
   const s = await page.evaluate(() => JSON.parse(localStorage.getItem("cn-linha-222") ?? "null"))
-  expect(s.neon).toBe(130)
+  expect(s.agua).toBe(135)
+  expect("neon" in s).toBe(false)
   expect(s.discos).toEqual(["rock"])
-  expect(s.economia).toBe(1)
+  expect(s.economia).toBe(VERSAO_ECONOMIA)
   expect(s.disco.fase).toBe("carreira")
   expect(await page.evaluate(() => localStorage.getItem("cn-gd-neon"))).toBeNull()
   expect(erros).toEqual([])
@@ -119,7 +134,7 @@ test("?parte=loja: a loja abre, troca de aba e compra uma roupa", async ({ page 
   await page.waitForTimeout(500)
   const s = await page.evaluate(() => JSON.parse(localStorage.getItem("cn-linha-222") ?? "null"))
   expect(s.compras).toContain("roupa:bone")
-  expect(s.neon).toBe(420 - ROUPAS.find((r) => r.id === "bone")!.preco)
+  expect(s.agua).toBe(460 - ROUPAS.find((r) => r.id === "bone")!.preco)
   await page.locator(".l-loja-fechar").click()
   await page.locator(".l-loja-abas button", { hasText: "carros" }).click()
   await page.screenshot({ path: "test-results/economia-loja-carros.png" })

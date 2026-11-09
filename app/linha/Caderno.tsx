@@ -41,7 +41,7 @@ function estadoAgora(): Record<string, unknown> {
     parte: parte.id, parteNome: parte.nome, onde,
     url: location.pathname + location.search.replace(/([?&])caderno=[^&]*/, "$1").replace(/[?&]$/, ""),
     historia,
-    xp: save.xp, agua: save.agua, neon: save.neon, popularidade: save.popularidade,
+    xp: save.xp, agua: save.agua, popularidade: save.popularidade,
     tela: `${innerWidth}x${innerHeight}@${devicePixelRatio}`,
     ua: navigator.userAgent.slice(0, 160),
   }

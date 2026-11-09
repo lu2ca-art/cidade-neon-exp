@@ -21,6 +21,7 @@ import { OUTDOORS_CFG, N_PRODUTOS, celulaFaixa, faixaPeloNome, hash2, quadrasDas
 import { Bombas } from "./Bombas"
 import { BOMBAS, pertoDe } from "./postos"
 import { alemDaCidade, centrosDaCidade } from "./raioCidade"
+import { GotasDeserto } from "./GotasDeserto"
 import { useRouter } from "next/navigation"
 import { Embacado } from "./Embacado"
 import { Respirar } from "./Respirar"
@@ -293,7 +294,7 @@ interface Props {
   onRegar?: (id: string) => void
   // uma volta na montanha-russa do parque (Parque.tsx): o NEON que ela paga
   onMontanha?: (neon: number) => void
-  // abastecer numa bomba de rua (bombas.ts): devolve se deu (tinha neon)
+  // abastecer numa bomba de rua (bombas.ts): devolve se deu (tinha Água$)
   onAbastecer?: (o: "tanque" | "galao" | "despejar") => boolean
   // o posto do LU2CA está aberto (pra Kombi seguir quando ele fechar)
   postoAberto?: boolean
@@ -314,7 +315,7 @@ interface Props {
   // (disco) a água: o saldo (save) e o que entra/sai (as gotas, a polícia)
   agua?: number
   onAgua?: (d: number) => void
-  // (20/10) fugiu da polícia: a popularidade sobe (mais gente, mais neon$ nos shows)
+  // (20/10) fugiu da polícia: a popularidade sobe (mais gente, mais Água$ nos shows)
   onFuga?: (pontos: number) => void
   // a cena de um lugar está rolando: a câmera de cinema olha pra ele
   cenaLugar?: LugarId | null
@@ -342,7 +343,7 @@ interface Props {
   // intervalo do sorteio (0 = não sorteia). `noConserto` também fica true
   quebrou?: boolean
   sorteioMs?: number
-  // (T44) acabou um racha com um dos corredores do mecânico: o prêmio (neon$ e prestígio)
+  // (T44) acabou um racha com um dos corredores do mecânico: o prêmio (Água$ e prestígio)
   onRacha?: (r: ResultadoRacha) => void
   // (05/11) acabou a corrida de rua do subúrbio (disco/corridaRua.ts): o tempo e o prêmio
   onCorridaRua?: (r: ResultadoRua) => void
@@ -972,7 +973,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     pq.fim = (r) => {
       jogo.current.encostando = false
       const ganho = 2 + (r.bracos >= 0.9 ? 4 : 0)
-      setFotoParque(`${r.bracos >= 0.9 ? "a foto da descida: braços pra cima" : "a foto da descida"} · ${Math.round(r.velMax * 3.6)} km/h · +${ganho} neon`)
+      setFotoParque(`${r.bracos >= 0.9 ? "a foto da descida: braços pra cima" : "a foto da descida"} · ${Math.round(r.velMax * 3.6)} km/h · +${ganho} Água$`)
       setTimeout(() => setFotoParque(""), 4500)
       onMontanha?.(ganho)
     }
@@ -1410,7 +1411,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     }, 300)
   }
   const voltarComGalao = () => {
-    if (!onAbastecer?.("despejar")) { setMsgPatins("sem neon pro galão (10)"); setTimeout(() => setMsgPatins(""), 2500); return }
+    if (!onAbastecer?.("despejar")) { setMsgPatins("sem Água$ pro galão (10)"); setTimeout(() => setMsgPatins(""), 2500); return }
     fadeCam.current?.classList.add("is-on")
     setMsgPatins("voltando pra Kombi com o galão…")
     setTimeout(() => {
@@ -2960,14 +2961,14 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
         <div className="l-bomba" onPointerDown={(e) => e.stopPropagation()}>
           <b>a bomba</b>
           <div className="l-bomba-tanque"><i style={{ width: `${Math.round(tanque * 100)}%` }} /></div>
-          <small>tanque {Math.round(tanque * 100)}% · {save.neon ?? 0} neon</small>
-          <button type="button" disabled={tanque > 0.97} onClick={() => setMsgBomba(onAbastecer?.("tanque") ? "tanque cheio" : "sem neon pra encher")}>encher o tanque · 25 neon</button>
-          <button type="button" disabled={save.galao !== "vazio"} onClick={() => setMsgBomba(onAbastecer?.("galao") ? "galão cheio" : "sem neon pro galão")}>encher o galão · 10 neon</button>
+          <small>tanque {Math.round(tanque * 100)}% · {save.agua ?? 0} Água$</small>
+          <button type="button" disabled={tanque > 0.97} onClick={() => setMsgBomba(onAbastecer?.("tanque") ? "tanque cheio" : "sem Água$ pra encher")}>encher o tanque · 25 de Água$</button>
+          <button type="button" disabled={save.galao !== "vazio"} onClick={() => setMsgBomba(onAbastecer?.("galao") ? "galão cheio" : "sem Água$ pro galão")}>encher o galão · 10 de Água$</button>
           {msgBomba && <em>{msgBomba}</em>}
           <button type="button" className="is-seguir" onClick={() => { setNaBomba(false); setMsgBomba(""); jogo.current.encostando = false }}>seguir</button>
         </div>
       )}
-      {discoM && perfil && <Perfil agua={aguaVista} neon={save.neon ?? 0} pop={save.popularidade ?? 0} mods={mods} onFechar={() => setPerfil(false)} />}
+      {discoM && perfil && <Perfil agua={aguaVista} pop={save.popularidade ?? 0} mods={mods} onFechar={() => setPerfil(false)} />}
       {discoM && oficinaAberta && (
         <OficinaLoja agua={aguaVista} mods={mods} onComprar={(id, preco) => onComprar?.(id, preco)} onFechar={() => { setOficinaAberta(false); jogo.current.encostando = false }} />
       )}
@@ -7170,6 +7171,7 @@ function CenaBase({
       {"disco" in M && areiaMats && <mesh rotation-x={-Math.PI / 2} position={[0, -15, 0]} material={areiaMats.longe}><planeGeometry args={[60000, 60000]} /></mesh>}
       {lixo && <><primitive object={lixo.carros} /><primitive object={lixo.pneus} /></>}
       <primitive object={orbs.m} />
+      {"disco" in M && <GotasDeserto jogo={jogo} aoPegar={() => evs.current?.anel()} />}
       <primitive object={rastro.pts} />
       {outdoors.length > 0 && <Outdoors M={M} lista={outdoors} />}
       {/* (T62, LU2CA 21/10: "tirar o spray de luz em volta das gotas: só elas já estão perfeitas") no disco, só a joia; o halo fica pros anéis do mapa velho */}

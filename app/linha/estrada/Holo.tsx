@@ -56,7 +56,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
   anel: { t: "as missões", d: "a missão de agora gira em volta do mapa: o nome e o ícone dela. toca: a checklist dá a volta; toca de novo: o mapa com as missões." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
-  agua: { t: "água", d: "a coisa mais valiosa num mundo seco. as gotas da pista viram água: rega as flores, paga a oficina, e a cada 100 gotas, duas viagens rápidas." },
+  agua: { t: "água", d: "a coisa mais valiosa num mundo seco. as gotas da pista viram água: rega as flores, compra tudo, e a cada 100 gotas, duas viagens rápidas." },
   controles: { t: "os controles", d: "no celular: um lado da tela vira pra ele; os dois juntos freiam (parado, dá ré). no ar: um lado gira, os dois juntos dão o mortal. no teclado: ↓ freia, Q é a manobra." },
   piloto: { t: "piloto", d: "o volante do lado do GPS: a Kombi dirige sozinha. com destino (uma missão ou um ponto no mapa), vai pela rota, troca de pista sozinha e para lá. sem destino, passeia pela rua (pra ouvir a música inteira). virou, acelerou ou freou: o volante volta pra você na hora. só de Kombi." },
   turbo: { t: "turbo", d: "segura um instante: a Kombi dispara. o drift, as manobras e os voos enchem a barra (no teclado, um toque no espaço). de patins, no ar, é o dash." },
@@ -411,7 +411,7 @@ export type NexoAgora = { texto: string; cor: string; ajuda: { t: string; d: str
 export const DICAS: string[] = [
   "dica · segura o propulsor: a Kombi voa",
   "dica · no ar, um lado da tela gira; os dois juntos dão o mortal",
-  "dica · as gotas da pista viram água: rega as flores, paga a oficina",
+  "dica · as gotas da pista viram água: rega as flores e compra tudo",
   "dica · o drift, as manobras e os voos enchem o turbo",
   "dica · toca no mapa: cada ícone é uma missão",
   "dica · o óculos desliga o holo e deixa só a estrada (H)",
@@ -942,7 +942,7 @@ const CONTROLES: { t: string; itens: [string, string][] }[] = [
   { t: "o holo", itens: [["óculos", "liga e desliga o holo (tecla H). desligado, fica só a estrada"], ["o olho", "o olhinho em cima do óculos troca a câmera: de fora ou de dentro da Kombi (tecla C)"], ["engrenagem", "os ajustes: volume, gráficos e esta lista"], ["sair da Kombi", "desce de patins; perto dela, volta (tecla F)"], ["widgets", "no celular moram na ilha de baixo: toca pra abrir"]] },
   { t: "rádio", itens: [["holograma", "toca nele: o menu da rádio (ligar, sintonizar as frequências achadas, as mensagens piratas)"], ["⏭", "troca a faixa"]] },
   { t: "missões e mapa", itens: [["o anel", "gira em volta do mapa com a missão de agora. toca nele, ou no mapa: abre o mapa com as missões"], ["no mapa", "cada ícone é uma missão: toca pra ver e pegar. tocar num lugar marca o caminho"], ["aceitou", "o anel abre com a checklist e depois volta a ser borda"]] },
-  { t: "água", itens: [["gotas", "as gotas da pista viram água: rega as flores, paga a oficina; 100 gotas, duas viagens rápidas"]] },
+  { t: "água", itens: [["gotas", "as gotas da pista viram água: rega as flores, compra tudo; 100 gotas, duas viagens rápidas"]] },
 ]
 export function AjudaControles() {
   return (

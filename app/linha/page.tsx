@@ -69,7 +69,7 @@ import { perderViolao, tomarJetpack } from "./disco/historia"
 import { CHAO_LUGARES, CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
-import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
+import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
@@ -262,6 +262,7 @@ export default function LinhaPage() {
   }, [])
   const [save, setSave] = useState<Save>(VAZIO)
   const saveRef = useRef(save)
+  const aguaDaPista = useRef(0) // (§15) o que as gotas somaram desde o último render (sem moedinha)
   useEffect(() => { saveRef.current = save }, [save])
   // (mapa-disco, LU2CA 20/10) a história nova manda no disco (disco/historia.ts):
   // enquanto ela está ativa, a narrativa antiga (ligações, invasões, o tutorial
@@ -465,6 +466,7 @@ export default function LinhaPage() {
   // a água já chega juntada da estrada (1 vez por segundo): sobe na hora, e leva o sinal junto
   const onAgua = useCallback((d: number) => {
     assentarSinal()
+    if (d > 0) aguaDaPista.current += d
     setSave((s) => ({ ...s, agua: Math.max(0, (s.agua ?? 0) + d) }))
   }, [assentarSinal])
   // mudou no save por outro caminho (a chegada, o posto, o galão): a ref segue o save
@@ -511,7 +513,7 @@ export default function LinhaPage() {
   const descerAoEntrar = useRef(false)
   const abrirAoEntrar = useRef<string | null>(null)
   const avisar = useCallback((titulo: string, texto: string, cor = "#2fe8ff") => {
-    // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+neon",
+    // (LU2CA 22/10) no disco, fora os avisos de texto do sistema ("missão aceita", "+Água$",
     // "regado"...): só passa quem fala (um personagem). O resto o "?" explica
     if (D && !VOZES[titulo]) return
     // o mesmo aviso de novo, enquanto ainda tá na fila: não repete
@@ -539,12 +541,13 @@ export default function LinhaPage() {
   }, [appComSom])
 
   // dinheiro caiu na conta: o som da moedinha
+  // ((§15) as gotas da pista já tocam a nota delas: fora da conta da moedinha)
   const neonAntes = useRef<number | null>(null)
   useEffect(() => {
-    const n = save.neon ?? 0
-    if (pronto && neonAntes.current !== null && n > neonAntes.current) moeda()
-    if (pronto) neonAntes.current = n
-  }, [save.neon, pronto])
+    const n = save.agua ?? 0
+    if (pronto && neonAntes.current !== null && n - aguaDaPista.current > neonAntes.current) moeda()
+    if (pronto) { neonAntes.current = n; aguaDaPista.current = 0 }
+  }, [save.agua, pronto])
 
   // a música abafada (LU2CA): dentro de um lugar (a missão) e com o telefone
   // tocando, o rádio e o disco seguem mais baixos e sem agudo
@@ -645,7 +648,7 @@ export default function LinhaPage() {
       }
       if (e.data?.tipo !== "cn-neon") return
       const delta = Math.round(Number(e.data.delta) || 0)
-      const atual = saveRef.current.neon ?? 0
+      const atual = saveRef.current.agua ?? 0
       const ok = delta >= 0 || atual + delta >= 0
       if (ok && delta) setSave((s) => (delta > 0 ? ganhar(s, delta) : gastar(s, -delta) ?? s))
       ;(e.source as Window | null)?.postMessage({ tipo: "cn-neon-saldo", neon: ok ? atual + delta : atual, ok, id: e.data.id }, window.location.origin)
@@ -889,7 +892,7 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: `linha-${a.missao}`, step: `cena:${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: saveRef.current.fio.indexOf(a.missao) })
   }, [cinema, avisar, D, horaViva])
   // (disco) o fim do prólogo: bebeu = a noite volta (o loop); recusou = a oficina
-  // (T02) saiu da oficina: a Kombi solar + turbo, a água foi toda. É a porta da
+  // (T02) saiu da oficina: a Kombi solar + turbo, pagou o motor ((§15) só o preço: a água agora é o saldo todo). É a porta da
   // missão da oficina (as melhorias da Kombi): a recompensa e, sem show, o jogo segue
   // (T09) a missão da oficina: a cena (ele chega só com o plano) abre a bancada (a
   // arte); depois o painel no lixão e a goteira (o jogo); de volta, o pagamento em
@@ -907,7 +910,7 @@ export default function LinhaPage() {
       setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.catar, ensina: true }), 900)
       return
     }
-    setSave((s) => comHistoria({ ...s, agua: 0 }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}), mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
+    setSave((s) => comHistoria({ ...s, agua: pagamentoMotor(s.agua ?? 0).para }, (h) => ({ ...h, ...(h.fase === "nectar" ? { nectar: "flores" as const, floresIni: h.flores ?? 0 } : {}), mods: [...new Set([...(h.mods ?? []), "solar", "turbo", "propulsao"])] })))
     setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: "volta sempre. e rega as flores no caminho: a água volta" }), 2500)
   }, [])
   // a porta da oficina: pago o mecânico, o motor sai montado (solar + turbo + propulsão),
@@ -980,15 +983,15 @@ export default function LinhaPage() {
       // o violão ficou no trem (ep. 2): o app VIOLÃO tranca até o GUITAR DRIVER
       const violao = r.perdeViolao ? false : s.violao
       // acordar alguém rende NEON (a rede te devolve)
-      const neon = (s.neon ?? 0) + (r.objeto ? NEON_POR_PESSOA : 0)
+      const agua = (s.agua ?? 0) + (r.objeto ? NEON_POR_PESSOA : 0)
       // e a cidade te conhece mais (em silêncio)
       const novo = !!r.objeto && !s.objetos.includes(r.objeto)
       const popularidade = Math.min(100, (s.popularidade ?? 0) + (novo ? POPULARIDADE[r.objeto!] ?? 0 : 0))
-      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, neon, popularidade }
+      return { ...s, objetos, sinal, pausas, itens, completos, reliquias, logs, violao, agua, popularidade }
     })
     if (r.objeto) {
       track("mission_completed", { mission_id: `linha-${est}`, duration_ms: 0 })
-      setTimeout(() => avisar(`+${NEON_POR_PESSOA} neon`, "a rede te devolve. gasta na loja de discos", "#ffc857"), 1200)
+      setTimeout(() => avisar(`+${NEON_POR_PESSOA} Água$`, "a rede te devolve. gasta na loja de discos", "#ffc857"), 1200)
       // AS LIBERAÇÕES (13/10, LU2CA): cada pessoa acordada libera a faixa dela
       // na 222 e no Guitar Driver, e o lugar vira palco. Só a PRIMEIRA vez é
       // mostrada (o tutorial do ato 1); depois a pessoa descobre sozinha.
@@ -1035,7 +1038,7 @@ export default function LinhaPage() {
     track("mission_step", { mission_id: "linha-tutorial", step: "drewboy", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
   }, [])
 
-  // (T03) a loja: discos, instrumentos, carros e roupas, em neon$ (economia.ts).
+  // (T03) a loja: discos, instrumentos, carros e roupas, em Água$ (economia.ts).
   // O id é "categoria:nome" ("disco:rock", "roupa:bone")
   const comprarNaLoja = (id: string) => {
     const s = saveRef.current
@@ -1054,7 +1057,7 @@ export default function LinhaPage() {
 
   // subir de nível é um momento — não um número mudando em silêncio
   const nivel = nivelDe(save)
-  // regou um canteiro da Ella: +2 neon, quantos já foram regados alguma vez e,
+  // regou um canteiro da Ella: +2 Água$, quantos já foram regados alguma vez e,
   // com todos, a conquista
   const regouCanteiro = useCallback((id: string) => {
     const s0 = saveRef.current
@@ -1064,7 +1067,7 @@ export default function LinhaPage() {
     setSave((s) => ({ ...ganhar(s, PAGA.regarCanteiro), regadas: { ...s.regadas, [id]: s.dia ?? 1 }, conquistas: conquista ? [...(s.conquistas ?? []), "jardim-da-ella"] : s.conquistas }))
     const c = canteiroPorId(id)
     if (conquista) avisar("conquista · o jardim da Ella", `você regou os ${total} canteiros da cidade`, "#ffc857")
-    else avisar(c ? `${ESPECIES[c.especie].nome} · regado` : "regado", `${feitos} de ${total} canteiros da Ella · +${PAGA.regarCanteiro} neon`, c ? ESPECIES[c.especie].cor : "#2fe8ff")
+    else avisar(c ? `${ESPECIES[c.especie].nome} · regado` : "regado", `${feitos} de ${total} canteiros da Ella · +${PAGA.regarCanteiro} Água$`, c ? ESPECIES[c.especie].cor : "#2fe8ff")
   }, [avisar])
   const regadasHoje = useMemo(() => Object.entries(save.regadas ?? {}).filter(([, d]) => d === (save.dia ?? 1)).map(([id]) => id), [save.regadas, save.dia])
   const listaMissoes = useMemo(() => {
@@ -1242,7 +1245,7 @@ export default function LinhaPage() {
     ;(window as unknown as { __cnOnde?: Onde }).__cnOnde = { tela: tela.t, cena: !!cena, show: showAgora ?? null, jornal: !!jornal, visor: visor ?? null, pingpong, celular: tela.t === "home" || tela.t === "app" || tela.t === "chat" }
   }, [tela.t, cena, showAgora, jornal, visor, pingpong])
   // A PORTA ABRE: a missão fica feita, a recompensa entra no save (a faixa no
-  // Guitar Driver, a referência no BATIDA, o neon$) e aparece grande na tela.
+  // Guitar Driver, a referência no BATIDA, o Água$) e aparece grande na tela.
   // A missão da cidade acende a pista dela pra sempre (o objeto da faixa: as torres)
   const PORTA_CALADA: MissaoId[] = ["dbee", "oficina"]
   // O QUE LIBEROU, NO LUGAR (sem a tela "a porta abriu"): as missões novas e o lugar
@@ -1253,7 +1256,7 @@ export default function LinhaPage() {
     const nomes = [...r.abriu.filter((a) => !a.emBreve).map((a) => a.nome), ...(r.guitar ? [`${r.guitar.nome} no Guitar Driver`] : [])]
     vib([20, 40, 20])
     notch(nomes.length ? `abriu · ${nomes[0]}${nomes.length > 1 ? ` +${nomes.length - 1}` : ""}` : `✓ ${r.quem}`, r.cor)
-    if (r.neon > 0) setTimeout(() => notch(`+${r.neon} neon$`, r.cor), 400)
+    if (r.neon > 0) setTimeout(() => notch(`+${r.neon} Água$`, r.cor), 400)
     // (T49, 06/11) a recompensa secundária: uma linha só, "+ o udu" (toca na casa da D-Bee)
     if (r.instrumento) { const ins = r.instrumento.id; setTimeout(() => notch(`${linhaRecompensa(ins)} · na casa da D-Bee`, r.cor), 800) }
     const m = MISSOES13[r.missao]
@@ -1583,7 +1586,7 @@ export default function LinhaPage() {
     if (xs && rx) {
       const mx = { ...calcularManchete(r, xs.faixa, conf.lugar, popAntes, Date.now()), neon: rx.neon }
       setSave((s) => comHistoria({ ...ganhar(s, mx.neon), popularidade: Math.min(100, (s.popularidade ?? 0) + mx.pop + rx.prestigio) }, (h) => ({ ...registrarXenom(h, xs.id, { nota: r.nota, maxSeq: r.maxSeq ?? 0, galera: r.galera ?? 0 }, base).h, show: undefined, shows: [...(h.shows ?? []), mx] })))
-      if (rx.primeira) setTimeout(() => avisar("222 FM", `missão cumprida ${conf.lugar} · +${rx.neon} neon$ · +${rx.prestigio + mx.pop} de prestígio`, xs.cor), 300)
+      if (rx.primeira) setTimeout(() => avisar("222 FM", `missão cumprida ${conf.lugar} · +${rx.neon} Água$ · +${rx.prestigio + mx.pop} de prestígio`, xs.cor), 300)
       if (rx.album) setTimeout(() => avisar("222 FM", `os 4 multiversos cumpridos: o álbum ${XENOM_CONFIG.album.nome} é seu, no untitled`, xs.cor), 2400)
       setJornal(mx)
       return
@@ -1740,10 +1743,10 @@ export default function LinhaPage() {
     if (!antes) return
     const novo = [...agora].find((i) => !antes.has(i))
     // (sem cleanup: o save muda o tempo todo e não pode cancelar o aviso)
-    // acordar alguém já tem o aviso dos 50 NEON: o do item vem depois
+    // acordar alguém já tem o aviso dos 50 de Água$: o do item vem depois
     if (novo) setTimeout(() => {
-      setSave((s) => ({ ...s, neon: (s.neon ?? 0) + NEON_POR_ITEM }))
-      avisar(`+${NEON_POR_ITEM} neon`, ITENS[novo].texto, "#ffc857")
+      setSave((s) => ({ ...s, agua: (s.agua ?? 0) + NEON_POR_ITEM }))
+      avisar(`+${NEON_POR_ITEM} Água$`, ITENS[novo].texto, "#ffc857")
     }, novo === "mubarak" ? 5600 : 900)
     if (novo && blocoAtual(save) >= BLOCOS.length) {
       setTimeout(() => {
@@ -1785,9 +1788,9 @@ export default function LinhaPage() {
       const sinal = novos.reduce((t, l) => t + l.sinal, 0)
       setTimeout(() => {
         setXpFlutua({ id: Date.now(), n: luz })
-        avisar(novos.map((l) => l.nome).join(" + "), `completo · +${luz} neon`, "#ffc857")
+        avisar(novos.map((l) => l.nome).join(" + "), `completo · +${luz} Água$`, "#ffc857")
       }, 0)
-      return { ...s, legado: [...s.legado, ...novos.map((l) => l.id)], neon: (s.neon ?? 0) + luz, sinal: s.sinal + sinal }
+      return { ...s, legado: [...s.legado, ...novos.map((l) => l.id)], agua: (s.agua ?? 0) + luz, sinal: s.sinal + sinal }
     })
   }, [avisar, assentarSinal])
 
@@ -2301,11 +2304,11 @@ export default function LinhaPage() {
     // de patins (a gasolina acabou): o galão vai direto no tanque; se já tinha um cheio, só despeja
     if (o === "despejar") {
       const tinha = s0.galao === "cheio"
-      if (!tinha && (s0.neon ?? 0) < PRECO_GALAO) return false
-      setSave((s) => ({ ...s, neon: (s.neon ?? 0) - (tinha ? 0 : PRECO_GALAO), galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) }))
+      if (!tinha && (s0.agua ?? 0) < PRECO_GALAO) return false
+      setSave((s) => ({ ...s, agua: (s.agua ?? 0) - (tinha ? 0 : PRECO_GALAO), galao: "vazio", tanque: Math.min(1, (comVivo(s).tanque ?? 0) + GALAO) }))
       return true
     }
-    if (o === "tanque" ? (s0.neon ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.neon ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
+    if (o === "tanque" ? (s0.agua ?? 0) < PRECO_TANQUE || (s0.tanque ?? 1) > 0.97 : (s0.agua ?? 0) < PRECO_GALAO || s0.galao !== "vazio") return false
     if (o === "tanque") encherTanque(); else encherGalao()
     return true
   })
@@ -2313,7 +2316,7 @@ export default function LinhaPage() {
   const cOnMissoes = useFixo(() => setPainelMissoes(true))
   const cOnFuga = useFixo((n: number) => setSave((s) => ({ ...s, popularidade: Math.min(100, (s.popularidade ?? 0) + n) })))
   const cOnRacha = useFixo((r: Parameters<typeof registrarRacha>[1]) => setSave((s) => registrarRacha(s, r)))
-  // (05/11) a corrida de rua do subúrbio: o melhor tempo no save e, na primeira vitória, o neon$
+  // (05/11) a corrida de rua do subúrbio: o melhor tempo no save e, na primeira vitória, o Água$
   const cOnCorridaRua = useFixo((r: ResultadoRua) => setSave((s) => { const { placar, premio } = placarComCorrida(s.ruaSuburbio, r); return { ...ganhar(s, premio), ruaSuburbio: placar } }))
   // (elevadores) o cadeado: antes da missão dos túneis feita (no fim do jogo tudo abre)
   const trancaElevador = HIST && !(feita13(hist13(save), "tuneis") || hist.fase === "livre") ? TRANCA_ELEVADOR : null
@@ -2574,7 +2577,7 @@ export default function LinhaPage() {
             <Interior key="sala:posto" lugar="posto" objetos={save.objetos} />
             <PostoDentro
               primeira={noPosto.primeira}
-              neon={save.neon ?? 0}
+              neon={save.agua ?? 0}
               tanque={save.tanque ?? 1}
               galao={save.galao}
               precoTanque={PRECO_TANQUE}
@@ -2873,7 +2876,7 @@ export default function LinhaPage() {
             <span>{aviso.texto}</span>
           </div>
         )}
-        {xpFlutua && tela.t !== "corrida" && <div key={`xp-${xpFlutua.id}`} className="l-xp-flutua">+{xpFlutua.n} neon</div>}
+        {xpFlutua && tela.t !== "corrida" && <div key={`xp-${xpFlutua.id}`} className="l-xp-flutua">+{xpFlutua.n} Água$</div>}
       </div>
     </div>
   )

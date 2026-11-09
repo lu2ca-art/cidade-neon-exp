@@ -2,11 +2,11 @@
 // Os números e os itens (preços, quais roupas, quais carros) são [gosto] e
 // moram num arquivo só: economia-rascunho.ts.
 //
-//   neon$ (save.neon)   a grana. Ganha: a porta de cada missão e o show na rua
-//                       (o trampo). Gasta: a loja (discos, instrumentos, carros,
-//                       roupas) e o posto.
-//   água (save.agua)    a gota. Ganha: as gotas da pista. Gasta: o mecânico, que
-//                       só faz melhoria de DESEMPENHO na Kombi (nada estético).
+//   Água$ (save.agua)   (bíblia §15, 08/11) a moeda, uma só: a gota. Ganha: as
+//                       gotas da pista (e do deserto, bem mais raras), a porta
+//                       de cada missão e o show na rua (o trampo). Gasta: a
+//                       loja (discos, instrumentos, carros, roupas), o posto e
+//                       o mecânico, que só faz melhoria de DESEMPENHO na Kombi.
 //   popularidade        não se gasta. Sobe com o show e aumenta o cachê.
 //
 // Tudo que mexe em dinheiro passa por aqui (ganhar, gastar, comprar), e o
@@ -17,7 +17,7 @@ import { DISCOS } from "./discos"
 import { comHistoria, historiaDe } from "./disco/historia"
 import { CARROS, INSTRUMENTOS, MELHORIAS, PAGA, PRECO_DISCO, ROUPAS, naLoja, type Categoria, type ItemRascunho, type MelhoriaId } from "./economia-rascunho"
 
-export type Moeda = "neon" | "agua"
+export type Moeda = "agua" // (§15) uma moeda só; o neon$ de save antigo soma na migração
 
 export interface ItemLoja { id: string; cat: Categoria; nome: string; preco: number; desc: string; cor: string; soDepois?: ItemRascunho["soDepois"] }
 
@@ -41,23 +41,23 @@ export const daCategoria = (cat: Categoria, s?: Save) => CATALOGO.filter((i) => 
 
 // ── o saldo ──
 const inteiro = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0)
-export const saldo = (s: Save, m: Moeda = "neon") => inteiro(s[m])
+export const saldo = (s: Save, m: Moeda = "agua") => inteiro(s[m])
 
 // ganha (n > 0). Nunca deixa o saldo quebrado nem negativo
-export function ganhar(s: Save, n: number, m: Moeda = "neon"): Save {
+export function ganhar(s: Save, n: number, m: Moeda = "agua"): Save {
   const d = Math.round(n)
   if (!Number.isFinite(d) || d <= 0) return s
   return { ...s, [m]: saldo(s, m) + d }
 }
-export const podePagar = (s: Save, preco: number, m: Moeda = "neon") => saldo(s, m) >= preco
+export const podePagar = (s: Save, preco: number, m: Moeda = "agua") => saldo(s, m) >= preco
 // gasta: sem saldo, devolve null (e nada muda)
-export function gastar(s: Save, preco: number, m: Moeda = "neon"): Save | null {
+export function gastar(s: Save, preco: number, m: Moeda = "agua"): Save | null {
   const p = Math.max(0, Math.round(preco))
   if (!podePagar(s, p, m)) return null
   return { ...s, [m]: saldo(s, m) - p }
 }
 
-// ── a loja (neon$) ──
+// ── a loja (Água$) ──
 const nomeDe = (id: string) => id.slice(id.indexOf(":") + 1)
 export function tem(s: Save, id: string): boolean {
   if (id.startsWith("disco:")) return (s.discos ?? []).includes(nomeDe(id))
@@ -95,21 +95,31 @@ export function cacheDoShow(nota: number, popularidade: number): number {
 
 // ── o save antigo (chamado no carregar) ──
 // 1: (T03) os saldos viram inteiros ≥ 0; a grana que o Guitar Driver guardou
-// fora do jogo (cn-gd-neon, quando ainda não tinha save) entra no neon$; os
+// fora do jogo (cn-gd-neon, quando ainda não tinha save) entra no saldo; os
 // discos sem repetição e só os que existem; as compras novas começam vazias
-export const VERSAO_ECONOMIA = 1
+// 2: (§15, 08/11) o neon$ soma na água e o campo sai do save: sem o campo, não
+// tem como somar duas vezes
+export const VERSAO_ECONOMIA = 2
 const DISCOS_IDS = new Set(DISCOS.map((d) => d.id))
 
-export function migrarEconomia(s: Save, guardadoFora = 0): Save {
-  if ((s.economia ?? 0) >= VERSAO_ECONOMIA) return guardadoFora > 0 ? ganhar(s, guardadoFora) : s
-  const out: Save = {
+function juntarNeon(s: Save): Save {
+  if (!("neon" in s)) return s
+  const { neon, ...resto } = s
+  return { ...resto, agua: inteiro(s.agua) + inteiro(neon) }
+}
+
+export function migrarEconomia(bruto: Save, guardadoFora = 0): Save {
+  // (fora do teste de versão: um save já na 2 que ainda tenha neon, de uma aba velha, também soma)
+  const s = juntarNeon(bruto)
+  const v = s.economia ?? 0
+  if (v >= VERSAO_ECONOMIA) return guardadoFora > 0 ? ganhar(s, guardadoFora) : s
+  if (v === 1) return { ...s, agua: inteiro(s.agua) + inteiro(guardadoFora), economia: VERSAO_ECONOMIA }
+  return {
     ...s,
-    neon: inteiro(s.neon) + inteiro(guardadoFora),
-    agua: inteiro(s.agua),
+    agua: inteiro(s.agua) + inteiro(guardadoFora),
     popularidade: Math.min(100, inteiro(s.popularidade)),
     discos: [...new Set((s.discos ?? []).filter((d) => DISCOS_IDS.has(d)))],
     compras: [...new Set((s.compras ?? []).filter((c) => typeof c === "string" && c.includes(":")))],
     economia: VERSAO_ECONOMIA,
   }
-  return out
 }

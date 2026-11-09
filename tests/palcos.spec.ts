@@ -51,7 +51,7 @@ async function abrir(page: Page, parte: string) {
 }
 const save = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem("cn-linha-222") ?? "{}"))
 
-test("abre um palco, escolhe a música no menu, canta, ganha nível e neon$", async ({ page }) => {
+test("abre um palco, escolhe a música no menu, canta, ganha nível e Água$", async ({ page }) => {
   test.setTimeout(180_000)
   mkdirSync(PASTA, { recursive: true })
   const erros = await abrir(page, "palcos")
@@ -60,7 +60,7 @@ test("abre um palco, escolhe a música no menu, canta, ganha nível e neon$", as
   await expect(palcos.locator(".l-palcos-nivel")).toHaveText(/nível 1 de 5/)
   await page.screenshot({ path: `${PASTA}/1-palcos.png` })
   const antes = await save(page)
-  const neonAntes = antes.neon ?? 0
+  const neonAntes = antes.agua ?? 0
   // o palco de cima ainda está fechado; o menu da calçada tem a Nectar
   await expect(palcos.locator("li.is-fechado [data-palco=bar]")).toBeVisible()
   await palcos.locator("[data-palco=calcada]").click()
@@ -87,11 +87,11 @@ test("abre um palco, escolhe a música no menu, canta, ganha nível e neon$", as
   await expect(fim).toBeVisible({ timeout: 40_000 })
   await page.screenshot({ path: `${PASTA}/3-fim.png` })
   await fim.locator("button").click()
-  // o jornal e o save: estrelas na calçada, o nível 2 (o bar abriu) e o neon$ entrou
+  // o jornal e o save: estrelas na calçada, o nível 2 (o bar abriu) e o Água$ entrou
   await expect(page.locator(".l-show")).toBeHidden()
   const depois = await save(page)
   expect(depois.disco.palcos["calcada:nectar"]).toBeGreaterThanOrEqual(1)
-  expect(depois.neon).toBeGreaterThan(neonAntes)
+  expect(depois.agua).toBeGreaterThan(neonAntes)
   expect(nivelDe(depois.disco)).toBe(2)
   await page.waitForTimeout(800)
   await page.screenshot({ path: `${PASTA}/4-subiu.png` })

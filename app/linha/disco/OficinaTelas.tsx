@@ -164,7 +164,7 @@ export function Pagamento({ agua, onPago, onFim, preco, titulo = "o serviço", s
     <Caixa titulo={acabou ? falaPago : titulo} sub={sub} rotulo="o pagamento do mecânico">
       <p className="l-oficina-msg">{fala}</p>
       <div className={`l-oficina-agua ${acabou ? "is-fim" : ""}`} aria-live="off">
-        <i aria-hidden="true" /><b data-agua={v}>{v}</b><small>água</small>
+        <i aria-hidden="true" /><b data-agua={v}>{v}</b><small>Água$</small>
       </div>
       <p className="l-oficina-msg">{acabou ? (conta.falta > 0 ? falaFiado : `−${conta.pago} de água`) : `−${conta.pago}`}</p>
       {acabou && <button type="button" className="l-oficina-seguir" autoFocus onClick={onFim}>{botao}</button>}

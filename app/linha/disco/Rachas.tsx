@@ -338,7 +338,7 @@ export function RachasHud({ estado, onFim, escondido = false }: { estado: React.
     <div className={`l-racha-fim${r.venceu ? " is-venceu" : ""}`} style={{ ["--cor" as string]: c.neon }} role="status">
       <small>racha · {c.nome}</small>
       <b>{r.venceu ? "você ganhou!" : `${c.nome} levou essa`}</b>
-      {r.venceu ? <em>+{r.neon} neon$ · +{r.prestigio} prestígio</em> : null}
+      {r.venceu ? <em>+{r.neon} Água$ · +{r.prestigio} prestígio</em> : null}
       <i>“{r.venceu ? c.perdeu : c.ganhou}”</i>
     </div>
   )

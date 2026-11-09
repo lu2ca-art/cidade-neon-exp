@@ -59,7 +59,7 @@ export const APPS: AppDef[] = [
   { id: "sintonia", nome: "SINT0NIA", cor: "#00e5ff", rota: "/sintonizador", pagina: 0, desc: "sintonizador" },
   { id: "freq", nome: "FR3Q_", cor: "#00ff9c", rota: "/spotify/auto-chuva", pagina: 0, desc: "player" },
   { id: "loop", nome: "//LOOP", cor: "#ff2d78", rota: "/tiktok/feed", pagina: 0, desc: "vídeos curtos" },
-  { id: "loja", nome: "LOJA", cor: "#ffc857", pagina: 1, desc: "discos, instrumentos, carros e roupas, pagos em neon$" },
+  { id: "loja", nome: "LOJA", cor: "#ffc857", pagina: 1, desc: "discos, instrumentos, carros e roupas, pagos em Água$" },
   { id: "museu", nome: "MUSEU", cor: "#e9e3d5", rota: "/museu", pagina: 1, desc: "quem inspira" },
   { id: "galeria", nome: "GALERIA", cor: "#3d7bff", rota: "/galeria", pagina: 1, desc: "quadros" },
   { id: "stream", nome: "STR34M", cor: "#ff4040", rota: "/youtube/cidade-neon", pagina: 1, desc: "clipes" },
@@ -169,7 +169,7 @@ export function chamados(save: Save, nivel: number): Chamado[] {
   for (const l of LEGADO) {
     if (feitos.includes(l.id)) continue
     const app = APPS.find((x) => x.id === l.app)!
-    out.push({ id: `leg-${l.id}`, de: l.nome, cor: app.cor, texto: `${app.desc} · +${l.luz} neon`, acao: { app: l.app } })
+    out.push({ id: `leg-${l.id}`, de: l.nome, cor: app.cor, texto: `${app.desc} · +${l.luz} Água$`, acao: { app: l.app } })
   }
   const prox = FREQUENCIAS.find((f) => f.custo > save.sinal)
   if (prox) out.push({ id: "freq", de: "RÁDIO 222", cor: prox.cor, texto: `faltam ${prox.custo - save.sinal} de sinal pra ${prox.freq}. pega na estrada`, acao: { app: "kombi" } })
@@ -249,7 +249,7 @@ export function Home({
                     </span>
                     <span className="l-widget-nivel">{NIVEIS[nivel].nome}</span>
                     <span className="l-widget-barra">{NIVEIS.map((n, i) => <i key={n.nome} className={i <= nivel ? "is-feito" : ""} />)}</span>
-                    <span className="l-widget-nums"><b>{save.neon ?? 0}</b> neon · <b>{Math.round(save.popularidade ?? 0)}</b> popularidade</span>
+                    <span className="l-widget-nums"><b>{save.agua ?? 0}</b> Água$ · <b>{Math.round(save.popularidade ?? 0)}</b> popularidade</span>
                     {nivel < 4 && <small>próximo: {prox.como}</small>}
                   </button>
                   <div className="l-widget l-widget-radio" style={{ ["--cor" as string]: freq.cor }}>
@@ -469,7 +469,7 @@ export function Fliperama({ save, onApp, onVoltar, onJogou, tranca }: { save: Sa
               <button key={id} type="button" className={`l-fliper-card${tranca ? " cn-card-trancado" : ""}`} style={{ ["--cor" as string]: a.cor }} onClick={() => { if (!tranca) onApp(id) }} aria-disabled={!!tranca}>
                 <Glifo id={id} cor={a.cor} size={30} />
                 <b>{a.nome}</b>
-                <small>{l ? (feitos.includes(l.id) ? "✓ completo" : `+${l.luz} neon`) : a.desc}</small>
+                <small>{l ? (feitos.includes(l.id) ? "✓ completo" : `+${l.luz} Água$`) : a.desc}</small>
               </button>
             )
           })}
@@ -523,7 +523,7 @@ export function Objetos({ save, onVoltar, onChat, onUsarGalao }: { save: Save; o
             <div className="l-ficha-alca" />
             <small className="l-rotulo">inventário</small>
             <h2>galão de gasolina</h2>
-            <p className="l-ficha-cidade">{save.galao === "cheio" ? "cheio." : "vazio."} serve pra quando a gasolina acabar. encher no posto custa 10 neon.</p>
+            <p className="l-ficha-cidade">{save.galao === "cheio" ? "cheio." : "vazio."} serve pra quando a gasolina acabar. encher no posto custa 10 de Água$.</p>
             {save.galao === "cheio" && onUsarGalao && (
               <button type="button" className="l-btn" onClick={() => { onUsarGalao(); setVerGalao(false) }}>usar no tanque</button>
             )}

@@ -10,7 +10,7 @@
 // - A porta abre o lugar inteiro (o princípio da porta): o que ela abre está em
 //   `abre`; o que ainda não existe no jogo aparece "em breve" na recompensa.
 // - A recompensa (decidido 27/10): a faixa liberada no Guitar Driver, a
-//   referência no BATIDA e um dinheiro (neon$). (T49, 30/10) E um instrumento
+//   referência no BATIDA e um dinheiro (Água$). (T49, 30/10) E um instrumento
 //   ancestral por missão com pessoa (disco/instrumentos.ts).
 // - O show saiu de dentro da missão (J2: 23, 26): virou oportunidade na rua
 //   (Rua.tsx). O Guitar Driver e o beat ficam abertos desde o início; o Guitar
@@ -148,7 +148,7 @@ export const CONFIG13 = {
   // (08/11) as músicas que o Guitar Driver já tem no começo: nenhuma. Quem libera
   // cada música é o EPISÓDIO (disco/episodios.ts): o show do ep. 1 abre a Nectar
   musicasDoInicio: [] as PistaId[],
-  // (T03) o neon$ de cada missão mora em economia-rascunho.ts (PAGA.missao)
+  // (T03) o Água$ de cada missão mora em economia-rascunho.ts (PAGA.missao)
   // (decidido 21/10, as torres) a missão da cidade só aparece com a pista
   // dela acesa (estrada/atos.ts): o mapa vai colorindo espalhado
   soComPistaAcesa: true,

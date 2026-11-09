@@ -30,7 +30,7 @@ export interface Peca {
   nome: string // como aparece no holo
   // onde acontece: um lugar (lugares.ts), uma página (paginas.ts) ou um app do holo
   onde?: { lugar?: string; pagina?: string; app?: string }
-  // o que vale (RASCUNHO): popularidade, neon$, água
+  // o que vale (RASCUNHO): popularidade, Água$, água
   rende?: { pop?: number; neon?: number; agua?: number }
   // já existe jogável?
   pronto?: boolean

@@ -55,7 +55,7 @@ export interface ShowXenom {
   regra: RegraXenom
   objetivo: ObjetivoXenom
   paga: number // o cachê de cada show: vezes o cachê do T03
-  bonus: number // neon$ na primeira vez que cumpre
+  bonus: number // Água$ na primeira vez que cumpre
   prestigio: number // popularidade na primeira vez que cumpre
 }
 

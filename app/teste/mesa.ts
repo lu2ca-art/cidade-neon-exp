@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "loja",
+    nome: "Uma moeda só: tudo agora é Água$",
+    data: "2026-11-09",
+    tarefa: "agua-moeda",
+    olhar: "Não existe mais neon$: a loja, o posto, o mecânico, as missões e os shows usam a mesma Água$. Quem já jogava teve o neon somado na água. No deserto agora tem pouquíssimas gotas no chão, em grupinhos de 3 (saia pelas dunas e procure).",
+    perguntas: ["Sobrou algum neon$ em alguma tela?", "O saldo de um save antigo veio somado certo?", "As gotas do deserto estão raras na medida?", "As melhorias do mecânico (120, 80 e 100) ficaram num preço bom?", "O propulsor deve gastar água no deserto: quanto por segundo, e o que acontece se a água acabar?"],
+    mais: [{ parte: "dunas", nome: "as gotas do deserto" }],
+  },
+  {
     parte: "carreira.feira",
     nome: "A música agora começa quando você aceita a missão",
     data: "2026-11-08",
@@ -394,7 +403,7 @@ export const MESA: Cartao[] = [
     parte: "bar",
     nome: "A corrida de rua nas ruínas do subúrbio",
     data: "2026-11-05",
-    olhar: "Perto do bar tem um arco neon CORRIDA. De moto ou de patins, chegue perto e toque em \"correr\": 2 voltas de ~1,6 km pelas ruas das ruínas, 11 portões de luz, 3 rivais (de moto: Trovão, Vespa e Lama). A rádio não para. O melhor tempo fica guardado; a primeira vitória dá +40 neon$. O ponto aparece no mapa depois que você chega no subúrbio.",
+    olhar: "Perto do bar tem um arco neon CORRIDA. De moto ou de patins, chegue perto e toque em \"correr\": 2 voltas de ~1,6 km pelas ruas das ruínas, 11 portões de luz, 3 rivais (de moto: Trovão, Vespa e Lama). A rádio não para. O melhor tempo fica guardado; a primeira vitória dá +40 Água$. O ponto aparece no mapa depois que você chega no subúrbio.",
     perguntas: [
       "Os rivais estão fáceis ou difíceis demais?",
       "O traçado ficou gostoso (curvas, retas)?",

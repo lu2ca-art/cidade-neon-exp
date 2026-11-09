@@ -28,7 +28,7 @@ const MISSOES_FEIRA = IDS13.filter((id) => !MISSOES13[id].prologo)
 const MEIO = { fase: "carreira", holo: true, feitas13: ["dbee", "oficina", "lu2ca", "drew", "quadra"], portas: ["holo", "violao", "kombi-melhorias", "shows-live", "ginasio", "quadra", "batida-estudio"], guitar: ["ojala", "sexta", "ontem"], batida: ["ojala", "nectar", "sexta", "ontem"] }
 
 // (T03) o bolso de quem vai às compras: dá pra comprar um disco, uma guitarra e roupa, mas não um carro
-const GRANA = { neon: 420, agua: 40, popularidade: 35, economia: 1 }
+const GRANA = { agua: 460, popularidade: 35, economia: 2 }
 
 function discoDa(parte: string): Record<string, unknown> | null {
   if (parte === "inicio" || parte === "minhoca") return null // save novo: começa no buraco de minhoca

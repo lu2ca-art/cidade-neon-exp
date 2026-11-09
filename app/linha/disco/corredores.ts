@@ -15,7 +15,7 @@
 //     frente na mesma pista (o GPS do T42 aponta pra ela);
 //   - o rival é uma IA leve, de elástico: corre no ritmo da Kombi, alivia
 //     quando abre vantagem e aperta quando fica pra trás;
-//   - ganhou: neon$ e prestígio (a popularidade, o que aumenta o cachê do show).
+//   - ganhou: Água$ e prestígio (a popularidade, o que aumenta o cachê do show).
 //
 // [gosto] QUEM SÃO os corredores (nome, carro, cor, falas) é do dono: tudo em
 // CORREDORES é RASCUNHO. Os números (RACHA_CFG) também.
@@ -31,7 +31,7 @@ export interface Corredor {
   cor: string // a lataria
   neon: string // o neon de baixo (e as faixas)
   nivel: number // o ritmo dele em relação à Kombi (1 = igual; abaixo de 1 dá pra ganhar mantendo o pé)
-  premio: number // neon$ se você ganhar
+  premio: number // Água$ se você ganhar
   prestigio: number // quanto a fama sobe se você ganhar
   desafio: string // a fala no botão, emparelhado
   ganhou: string // a fala quando ele ganha

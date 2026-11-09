@@ -123,7 +123,7 @@ test("no jogo: a missão dos túneis libera o show 10 D3 10, que abre no multive
   // pagou: a grana (o cachê vezes o multiverso) e o prestígio (a popularidade); o show ficou no save
   await page.waitForFunction(() => !JSON.parse(localStorage.getItem("cn-linha-222") ?? "{}").disco?.show, null, { timeout: 10_000 })
   const depois = await save(page)
-  expect(depois.neon ?? 0).toBeGreaterThan(antes.neon ?? 0)
+  expect(depois.agua ?? 0).toBeGreaterThan(antes.agua ?? 0)
   expect(depois.popularidade ?? 0).toBeGreaterThan(antes.popularidade ?? 0)
   expect(depois.disco.xenom.dez.vezes).toBe(1)
   expect(erros).toEqual([])

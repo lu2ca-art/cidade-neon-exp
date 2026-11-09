@@ -1,7 +1,7 @@
 // A RECOMPENSA DA PORTA (T30, 28/10). Um lugar só onde a porta de uma missão
 // paga tudo o que ela dá:
 //
-//   a grana        neon$ pra loja de discos (e o resto da loja): economia.ts `ganhar`,
+//   a grana        Água$ pra loja de discos (e o resto da loja): economia.ts `ganhar`,
 //                  valor em economia-rascunho.ts (PAGA.missao), lido por portas.ts
 //   a faixa        liberada no Guitar Driver (os palcos do T20: palcos.ts `menuDo`
 //                  lê `musicasDoGuitar`, que lê `h.guitar`)

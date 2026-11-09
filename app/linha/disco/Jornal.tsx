@@ -5,7 +5,7 @@
 // eles definem a popularidade do player"). A manchete sai do show (a nota, o
 // tamanho da plateia, tocou ou cantou); o "print" é arte procedural em canvas
 // (sem geração paga de imagem até o LU2CA aprovar uma ferramenta; T48: ver `imagem` na manchete).
-// A notícia mexe na popularidade e no neon$ do próximo show.
+// A notícia mexe na popularidade e no Água$ do próximo show.
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { Manchete } from "./historia"
@@ -24,7 +24,7 @@ export function calcularManchete(r: ResultadoShow, missao: string, lugar: string
   const m = MANCHETES[idx]
   // a popularidade sobe com o show (cantar arrisca mais: rende um pouco mais)
   const pop = Math.round(1 + r.nota * 8 + (r.modo === "cantar" ? 1 : 0))
-  // e o neon$ do show vem da popularidade de antes (quem já é conhecido ganha mais)
+  // e o Água$ do show vem da popularidade de antes (quem já é conhecido ganha mais)
   const neon = Math.round(5 + popAntes * 0.6 * (0.3 + r.nota))
   return { id, missao, titulo: m.titulo(lugar, r.publico), linha: m.linha, pop, neon, modo: r.modo, nota: Math.round(r.nota * 100), publico: r.publico, ...(IMAGEM_DA_MANCHETE[String(idx)] ? { imagem: IMAGEM_DA_MANCHETE[String(idx)] } : {}) }
 }
@@ -139,7 +139,7 @@ export function Jornal({ m, cor: _cor, onFechar }: { m: Manchete; cor: string; o
         <p>{m.linha}</p>
         <footer>
           <span>popularidade <b>+{m.pop}</b></span>
-          <span>neon$ <b>+{m.neon}</b></span>
+          <span>Água$ <b>+{m.neon}</b></span>
         </footer>
         <button type="button" onClick={onFechar}>seguir →</button>
       </article>

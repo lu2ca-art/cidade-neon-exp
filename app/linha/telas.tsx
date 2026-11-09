@@ -161,7 +161,7 @@ function MapaVelho({
           </div>
         </div>
         <div className="l-stats">
-          <span title="neon"><b>{save.neon ?? 0}</b> neon</span>
+          <span title="Água$"><b>{save.agua ?? 0}</b> Água$</span>
           <span title="dias seguidos"><b>{dias}</b> {dias === 1 ? "dia" : "dias"}</span>
         </div>
       </header>

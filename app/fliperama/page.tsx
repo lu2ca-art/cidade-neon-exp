@@ -79,10 +79,10 @@ export default function Fliperama() {
       <section className="fp-menu">
         <header>
           <button type="button" onClick={() => sairDaPagina(router.push)}>‹ sair</button>
-          <span>{neon} <small>neon$</small></span>
+          <span>{neon} <small>Água$</small></span>
         </header>
         <h1>FLIPERAMA</h1>
-        <p className="fp-sub">uma ficha = {FICHA} neon</p>
+        <p className="fp-sub">uma ficha = {FICHA} de Água$</p>
         {tranca && <Trancado texto={tranca} />}
         {MAQUINAS.map((m) => (
           <button key={m.id} type="button" className={`fp-maquina${tranca ? " cn-card-trancado" : ""}`} style={{ ["--cor" as string]: m.cor }} onClick={() => void jogar(m.id)} aria-disabled={!!tranca}>

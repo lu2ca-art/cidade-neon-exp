@@ -6,10 +6,10 @@
 // (a loja, a oficina, o posto, a recompensa das missões, o cachê do show).
 // As regras (quem paga com o quê, a migração do save) moram em economia.ts.
 //
-//   neon$  = a grana. Entra pelas missões (a porta) e pelos shows na rua.
-//            Sai na loja (discos, instrumentos, carros, roupas) e no posto.
-//   água   = a gota. Entra pela pista (as gotas) e pela D-Bee. Paga o
-//            mecânico: as melhorias de DESEMPENHO da Kombi (nada estético).
+//   Água$  = a moeda, uma só (bíblia §15, 08/11). Entra pelas gotas (de monte
+//            na cidade, raras no deserto), pela D-Bee, pelas missões (a porta)
+//            e pelos shows na rua. Sai na loja (discos, instrumentos, carros,
+//            roupas), no posto e no mecânico (só DESEMPENHO da Kombi).
 //   popularidade = não se gasta. Sobe com o show e aumenta o cachê.
 
 import type { MissaoId } from "./disco/portas"
@@ -17,7 +17,7 @@ import type { HistoriaDisco } from "./disco/historia"
 
 export type Categoria = "disco" | "instrumento" | "carro" | "roupa"
 
-// ── o que entra (neon$) ── RASCUNHO
+// ── o que entra (Água$) ── RASCUNHO
 export const PAGA = {
   // a porta de cada missão (a recompensa grande). O subúrbio paga menos (é
   // o começo, e lá a moeda que vale é a água); a cidade paga mais
@@ -36,20 +36,27 @@ export const PAGA = {
   pessoaAcordada: 50, // (o mapa antigo, fora do mapa-disco)
 }
 
-// ── o posto (neon$) ── RASCUNHO
+// ── o posto (Água$) ── RASCUNHO
 export const POSTO = { tanque: 25, galao: 10 }
 
-// ── a oficina: o mecânico é pago em ÁGUA ── RASCUNHO
+// ── as gotas do deserto ── RASCUNHO (bíblia §15: "muito mais escassa do que na cidade")
+// pontos com `porPonto` gotas juntas; `noCaminho` deles ficam perto do caminho
+// da casa da D-Bee ao subúrbio, o resto espalhado (estrada/GotasDeserto.tsx)
+export const AGUA_DESERTO = { pontos: 18, noCaminho: 4, porPonto: 3, espaco: 9 }
+
+// ── a oficina: o mecânico ── RASCUNHO
 // Só desempenho. A Kombi não compra nada estético (decidido 27/10).
+// (§15) com uma moeda só, os preços subiram (eram 30, 20, 25): a melhoria que
+// muda o jogo não pode custar menos que um boné
 export type MelhoriaId = "mangueira" | "tanque" | "turbo2"
 export const MELHORIAS: { id: MelhoriaId; nome: string; agua: number; faz: string }[] = [
   // (LU2CA 19/10) "a mangueira de bombeiro, uma modificação comprada na oficina, acelera muito o crescimento"
-  { id: "mangueira", nome: "mangueira de bombeiro", agua: 30, faz: "rega da Kombi, sem descer: as flores perto da pista bebem sozinhas" },
-  { id: "tanque", nome: "tanque de ar maior", agua: 20, faz: "o propulsor dura mais no ar" },
-  { id: "turbo2", nome: "turbo duplo", agua: 25, faz: "o drift e o voo enchem o turbo mais rápido" },
+  { id: "mangueira", nome: "mangueira de bombeiro", agua: 120, faz: "rega da Kombi, sem descer: as flores perto da pista bebem sozinhas" },
+  { id: "tanque", nome: "tanque de ar maior", agua: 80, faz: "o propulsor dura mais no ar" },
+  { id: "turbo2", nome: "turbo duplo", agua: 100, faz: "o drift e o voo enchem o turbo mais rápido" },
 ]
 
-// ── a loja (neon$) ── RASCUNHO
+// ── a loja (Água$) ── RASCUNHO
 // os discos: todos pelo mesmo preço (quais discos vendem mora em discos.json)
 export const PRECO_DISCO = 100
 

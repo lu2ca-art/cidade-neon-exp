@@ -30,13 +30,13 @@ test("as contas do racha: elástico, chegada, prêmio", () => {
   const ganhou = premioRacha(c, true, 31.234), perdeu = premioRacha(c, false, 40)
   expect(ganhou).toMatchObject({ corredor: c.id, venceu: true, neon: c.premio, prestigio: c.prestigio, tempo: 31.2 })
   expect(perdeu).toMatchObject({ venceu: false, neon: 0, prestigio: 0 })
-  const s0 = { neon: 10, popularidade: 99 } as Save
+  const s0 = { agua: 10, popularidade: 99 } as Save
   const s1 = registrarRacha(s0, ganhou)
-  expect(s1.neon).toBe(10 + c.premio)
+  expect(s1.agua).toBe(10 + c.premio)
   expect(s1.popularidade).toBe(100) // a fama não passa de 100
   expect(s1.rachas?.[c.id]).toEqual({ v: 1, d: 0 })
   const s2 = registrarRacha(s1, perdeu)
-  expect(s2.neon).toBe(s1.neon)
+  expect(s2.agua).toBe(s1.agua)
   expect(s2.rachas?.[c.id]).toEqual({ v: 1, d: 1 })
   // os corredores: nomes únicos e o que a tela usa
   expect(new Set(CORREDORES.map((x) => x.id)).size).toBe(CORREDORES.length)
@@ -85,7 +85,7 @@ const naPista = (page: Page, u = 120) => page.evaluate((u) => {
   return via
 }, u)
 const estado = (page: Page) => page.evaluate(() => (window as unknown as W).__rachas.estado())
-const neonDoSave = (page: Page) => page.evaluate(() => { const s = JSON.parse(localStorage.getItem("cn-linha-222") ?? "{}"); return { neon: s.neon ?? 0, pop: s.popularidade ?? 0, rachas: s.rachas ?? {} } })
+const neonDoSave = (page: Page) => page.evaluate(() => { const s = JSON.parse(localStorage.getItem("cn-linha-222") ?? "{}"); return { neon: s.agua ?? 0, pop: s.popularidade ?? 0, rachas: s.rachas ?? {} } })
 
 test("o racha: o carro aparece, o botão pisca, começa, termina e paga", async ({ page }) => {
   test.setTimeout(300_000)

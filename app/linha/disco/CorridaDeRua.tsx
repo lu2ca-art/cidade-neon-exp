@@ -322,7 +322,7 @@ export function CorridaRuaHud({ placar, onFim, escondido = false }: { placar?: P
       <button type="button" data-info="rua" className="l-racha-btn is-rua" style={{ ["--cor" as string]: cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { RUA.e.comecar = true }} aria-label="correr: a corrida de rua do subúrbio">
         <small>corrida de rua · {VOLTAS_RUA} voltas · 3 rivais</small>
         <b>correr</b>
-        <em>{melhor != null && isFinite(melhor) ? `seu melhor: ${relogio(melhor)}` : (placar?.vitorias ?? 0) ? "bora de novo" : `ganhe e leve ${CFG.premioNeon} neon$`}</em>
+        <em>{melhor != null && isFinite(melhor) ? `seu melhor: ${relogio(melhor)}` : (placar?.vitorias ?? 0) ? "bora de novo" : `ganhe e leve ${CFG.premioNeon} Água$`}</em>
       </button>
     )
   }
@@ -348,7 +348,7 @@ export function CorridaRuaHud({ placar, onFim, escondido = false }: { placar?: P
     <div className={`l-racha-fim is-rua${r.venceu ? " is-venceu" : ""}`} style={{ ["--cor" as string]: cor }} role="status">
       <small>corrida de rua · {r.veiculo === "moto" ? "de moto" : "de patins"}</small>
       <b>{titulo}</b>
-      {r.tempo != null && <em>{relogio(r.tempo)}{recorde ? " · seu melhor!" : ""}{premio ? ` · +${premio} neon$` : ""}</em>}
+      {r.tempo != null && <em>{relogio(r.tempo)}{recorde ? " · seu melhor!" : ""}{premio ? ` · +${premio} Água$` : ""}</em>}
       {r.tempo != null && (
         <ol className="l-rua-ordem">
           {ordem.map((o) => <li key={o.nome} style={{ color: o.cor }}>{o.nome} <span>{o.fim == null ? "—" : relogio(o.fim)}</span></li>)}

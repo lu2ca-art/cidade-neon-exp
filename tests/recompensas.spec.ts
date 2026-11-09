@@ -14,7 +14,7 @@ import { PISTAS_LIBERADAS, pistaDoArquivo, srcDaVersao, versaoDaPista, versoesDa
 // versão subúrbio pelo trajeto da missão.
 const PASTA = "test-results/recompensas"
 // o começo (a D-Bee, a oficina) é feito pela história: a porta delas abre antes da carreira
-const naCarreira = (id?: string) => comHistoria({ ...VAZIO, neon: 10 }, (h) => ({ ...h, fase: id === "dbee" ? "dunas" : id === "oficina" ? "oficina" : "carreira", holo: true }))
+const naCarreira = (id?: string) => comHistoria({ ...VAZIO, agua: 10 }, (h) => ({ ...h, fase: id === "dbee" ? "dunas" : id === "oficina" ? "oficina" : "carreira", holo: true }))
 
 test("a porta paga tudo: a grana, a faixa nos palcos e a referência no B4TIDA", () => {
   // as 9 faixas: cada missão que tem faixa libera a dela nos palcos e no B4TIDA
@@ -22,7 +22,7 @@ test("a porta paga tudo: a grana, a faixa nos palcos e a referência no B4TIDA",
     const faixa = MISSOES13[id].recompensa.guitar!
     const { save, recompensa } = aplicarRecompensa(naCarreira(id), id)
     expect(recompensa?.neon).toBe(MISSOES13[id].recompensa.neon)
-    expect(save.neon).toBe(10 + MISSOES13[id].recompensa.neon)
+    expect(save.agua).toBe(10 + MISSOES13[id].recompensa.neon)
     const h = historiaDe(save)
     // nos palcos (T20): a faixa deixa de ter cadeado em quem a tem no menu
     const palco = PALCOS_CARREIRA.find((p) => p.musicas.includes(faixa))
@@ -38,14 +38,14 @@ test("a recompensa paga uma vez só e a Ella dá a CHUVA", () => {
   const antes = naCarreira()
   expect(menuDo(historiaDe(antes), PALCOS_CARREIRA[0]).find((m) => m.faixa === "chuva")!.livre).toBe(false)
   const a = aplicarRecompensa(antes, "ella")
-  expect(a.save.neon).toBe(10 + PAGA.missao.ella)
+  expect(a.save.agua).toBe(10 + PAGA.missao.ella)
   expect(menuDo(historiaDe(a.save), PALCOS_CARREIRA[0]).find((m) => m.faixa === "chuva")!.livre).toBe(true)
   const b = aplicarRecompensa(a.save, "ella")
   expect(b.recompensa).toBeNull()
   expect(b.save).toBe(a.save)
   // a missão sem faixa (a oficina) só dá a grana e as portas
   const o = aplicarRecompensa(naCarreira("oficina"), "oficina")
-  expect(o.save.neon).toBe(10 + PAGA.missao.oficina)
+  expect(o.save.agua).toBe(10 + PAGA.missao.oficina)
   expect(historiaDe(o.save).guitar ?? []).toEqual([])
 })
 
@@ -100,7 +100,7 @@ test("no jogo: a porta da Ella paga, libera a CHUVA e a referência aparece no B
   await page.goto("/linha?mapa=disco&parte=missao.ella")
   const entrar = page.locator(".l-btn-entrar")
   await expect(entrar).toBeVisible({ timeout: 60_000 })
-  const antes = (await save(page)).neon ?? 0
+  const antes = (await save(page)).agua ?? 0
   await entrar.click()
   // chegou no lugar da Ella: as peças dela ainda são "em breve", a porta abre direto
   await page.waitForFunction(() => {
@@ -112,7 +112,7 @@ test("no jogo: a porta da Ella paga, libera a CHUVA e a referência aparece no B
   await expect(r).toContainText("CHUVA")
   await page.screenshot({ path: `${PASTA}/ella-porta.png` })
   const s = await save(page)
-  expect(s.neon).toBe(antes + PAGA.missao.ella)
+  expect(s.agua).toBe(antes + PAGA.missao.ella)
   expect(s.disco.guitar).toContain("chuva")
   expect(s.disco.batida).toContain("chuva")
   // o B4TIDA lista a referência
