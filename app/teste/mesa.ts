@@ -110,8 +110,8 @@ export const MESA: Cartao[] = [
     nome: "Instrumentos espalhados no deserto e no subúrbio",
     data: "2026-11-09",
     tarefa: "instrumentos no mundo",
-    olhar: "Você nasce perto do didgeridoo, em cima de pedras com uma luz baixa no deserto. Passe por ele: soa, e o notch diz que agora toca na Kombi. Dentro da Kombi, olhe pra esquerda: todos os seus instrumentos, achados e ganhos em missão, ficam na prateleira em cima do sofá, e tocar neles para a música por uns segundos. Na casa da D-Bee, toque um instrumento e depois a caixinha de pads na mesa: o B4TIDA abre com esse som numa faixa.",
-    perguntas: ["O marco no chão chama atenção sem parecer missão?", "A prateleira na Kombi aparece bem, sem entrar na parede?", "Dá pra tocar enquanto dirige, ou atrapalha?", "A música voltar 5 segundos depois do último toque está bom?", "Na casa, ficou claro como samplear?"],
+    olhar: "Você nasce perto do didgeridoo, em cima de pedras com uma luz baixa no deserto. Passe por ele: soa, e o notch diz que agora toca na Kombi. Dentro da Kombi, olhe pra esquerda: todos os seus instrumentos, achados e ganhos em missão, ficam na prateleira em cima do sofá, e tocar neles para a música por uns segundos. O que você acha pelo mundo também aparece na casa da D-Bee: chegando lá, ela pede pra tocar os novos. Toque um instrumento e depois a caixinha de pads na mesa: o B4TIDA abre com esse som numa faixa.",
+    perguntas: ["O marco no chão chama atenção sem parecer missão?", "A prateleira na Kombi aparece bem, sem entrar na parede?", "Dá pra tocar enquanto dirige, ou atrapalha?", "A música voltar 5 segundos depois do último toque está bom?", "O instrumento achado apareceu na casa da D-Bee?", "Na casa, ficou claro como samplear?"],
     mais: [
       { parte: "instrumentos.kombi", nome: "a Kombi já com os 11 achados" },
       { parte: "instrumentos", nome: "a casa da D-Bee com o sampler" },

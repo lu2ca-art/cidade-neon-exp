@@ -65,7 +65,7 @@ const GRUPO: { quem: string; cor: string; pos: V3 }[] = [
   { quem: "Tony Gordo", cor: "#ffe14d", pos: [0.6, 0, 3.4] },
 ]
 
-// (T49) `instrumentos`: os ganhos (portas.ts instrumentosGanhos, ligado pela
+// (T49) `instrumentos`: os ganhos e os achados (portas.ts instrumentosGanhos, ligado pela
 // page.tsx); `novos`: os que chegaram desde a última visita
 export function SalaCasaDbee({ estado, inicio = false, disco = false, instrumentos = [], novos = [] }: SalaProps) {
   const ganhos = instrumentos

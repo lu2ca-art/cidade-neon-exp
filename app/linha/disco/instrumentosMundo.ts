@@ -5,8 +5,8 @@
 //
 // (o dono, 09/11) Na Kombi toca TUDO que ele tem: os achados e os ganhos em missão.
 // A página espelha essa lista aqui (definirTem) e a cena lê sem prop nova; o que ele
-// já tem não fica mais no chão. A casa da D-Bee segue só com os das missões
-// (`h.instrumentos`). RASCUNHO: quais ficam onde (cada um longe do outro; os do
+// já tem não fica mais no chão. A casa da D-Bee mostra os mesmos (portas.ts
+// instrumentosGanhos) e dá pra samplear todos. RASCUNHO: quais ficam onde (cada um longe do outro; os do
 // subúrbio atrás dos lugares do chão, onde as ruínas não entram: ruinas.ts).
 
 import { INSTRUMENTOS_ANCESTRAIS, type InstrumentoId } from "./instrumentos"

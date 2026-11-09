@@ -1191,7 +1191,7 @@ export default function LinhaPage() {
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
   const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar", ...IDS_ABERTOS] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
   // (bíblia §13, 09/11) tudo que ele tem (achados + missões): o espelho que a Corrida e a Kombi leem
-  const temChave = [...new Set([...instrumentosGanhos(h13), ...(h13.instrumentosAchados ?? [])])].join(",")
+  const temChave = instrumentosGanhos(h13).join(",")
   useEffect(() => { definirTem(temChave ? (temChave.split(",") as InstrumentoId[]) : []) }, [temChave])
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
