@@ -108,6 +108,10 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // os monumentos), começando na alça de uma linha que chega na torre central
   // ("torre") ou numa das pontas ("torre.ponta", a de 3 saídas)
   if (parte === "torre" || parte === "torre.ponta") return MEIO
+  // (09/11) o ep. 8 aberto, no anel de uma torre: a estação do metrô, o passeio tranquilo
+  if (parte === "metro.passeio") return { ...MEIO, feitas13: ["dbee", "oficina", "notti", "quadra", "mubarak", "tony", "drew", "tuneis", "ella"], passos13: ["nizzy:arte"] }
+  // (09/11) depois do passeio: tocar violão no trem chama o guarda
+  if (parte === "metro.violao") return { ...MEIO, feitas13: ["dbee", "oficina", "notti", "quadra", "mubarak", "tony", "drew", "tuneis", "ella", "nizzy"] }
   // (T03) a loja aberta, com grana no bolso (o resto do save é o meio da carreira)
   if (parte === "loja") return MEIO
   // (T44) os rachas: a cidade livre, com um dos carros do mecânico logo à frente
@@ -180,7 +184,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.passeio", "metro.violao", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -207,7 +211,7 @@ export function aplicarParteDeTeste(): boolean {
   apagarOndeParou() // o teste começa onde a parte manda, não onde o último teste parou
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte === "violao" || parte === "metro" || parte === "metro.passeio" || parte === "metro.violao" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
@@ -226,6 +230,7 @@ export function aplicarParteDeTeste(): boolean {
   // (T61) a rotatória: começa chegando na torre (a central pela Nectar; a da
   // ponta é a da Nectar, a Sexta-Feira e a Ojalá)
   if (parte === "mundo.depois") irTorre = { torre: 0, pista: "Nectar" }
+  if (parte === "metro.passeio" || parte === "metro.violao") irTorre = { torre: 1, pista: "Nectar" }
   if (parte.startsWith("torre")) {
     irTorre = parte === "torre.ponta" ? { torre: 1, pista: "Nectar" } : { torre: 0, pista: "Nectar" }
   }

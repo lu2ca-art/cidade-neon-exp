@@ -75,9 +75,8 @@ export function montarPlanta(semente: number): Planta {
       caixas.push({ x0: PASSAGEM, x1: MEIA + 1, z0: z0 + WL, z1: z0 + WL + GANG })
       portinhas.push(z0 + WL + GANG / 2)
     }
-    // os postes: na beira do corredor, onde tem banco; e um no meio de cada baia
-    for (const [a, b] of TRECHOS_BANCO) for (let z = a + 0.9; z < b - 0.5; z += 2.2) for (const s of [1, -1]) postes.push({ x: s * 0.8, z: z0 + z, r: 0.04 })
-    BAIAS.forEach(([a, b], k) => { if (!(frente && k === 1)) postes.push({ x: 0, z: z0 + (a + b) / 2, r: 0.045 }) })
+    // (09/11, bíblia §13) sem os ferros de apoio no meio do vagão: na fuga só se desvia de pessoas.
+    // A lista `postes` fica (vazia), pra o desenho e a colisão não mudarem de forma
     // quem está em pé no corredor. No 1º vagão, ninguém entre você e a frente
     // nos primeiros metros (o começo é pra pegar o embalo)
     const n = i === 0 ? 2 : 3 + (r() < 0.5 ? 1 : 0)
@@ -108,3 +107,9 @@ export function vagaoDe(z: number) {
   for (let i = 0; i < NV; i++) { const a = inicioVagao(i); if (z >= a && z <= a + WL) return i }
   return -1
 }
+
+// (09/11) o violão tocado com a pessoa sentada no trem: o botão fica fora do jogo do
+// metrô (disco/Violao.tsx), então o aviso passa por aqui. Vazio fora do trem (custo zero)
+const OUVINDO_VIOLAO = new Set<() => void>()
+export function ouvirViolaoNoTrem(f: () => void) { OUVINDO_VIOLAO.add(f); return () => { OUVINDO_VIOLAO.delete(f) } }
+export function tocouViolaoNoTrem() { OUVINDO_VIOLAO.forEach((f) => f()) }

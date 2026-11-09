@@ -43,7 +43,9 @@ const TRACADO: [number, number, number][] = [
 // só: o "pro lado" é espremido pra 30–93 m da avenida (a forma é a mesma, as
 // curvas mais fechadas). Medido no mapa-disco: nenhuma pista a menos de 17 m
 // por baixo do trilho. false = o traçado antigo, cruzando a avenida.
-export const PARQUE_CONF = { umLado: true }
+// (09/11, bíblia §13) metrô e Rollercoaster são uma coisa só: o parque sai do mapa e o
+// ep. 8 é o metrô (Linha9.tsx). `ligado: true` traz de volta. O espaço dele fica reservado
+export const PARQUE_CONF = { umLado: true, ligado: false }
 const ladoDe = (s: number) => (PARQUE_CONF.umLado ? 30 + (s + 84) * 0.5 : s)
 export const TRACADO_EM = (): [number, number, number][] => TRACADO.map(([a, s, h]) => [a, ladoDe(s), h])
 const I_CORRENTE = [1, 5]   // do fim da estação até o topo

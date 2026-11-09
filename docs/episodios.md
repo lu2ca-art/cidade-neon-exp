@@ -28,7 +28,7 @@ Fonte: `projetos/cidade-neon/episodios.md` e bíblia §10 a §15. A sequência m
 | 5 | Swav | Tony Gordo | horta e prato (missão `tony`, versão atual) |
 | 6 | Sexta-Feira | Drew | roupa (missão `drew`), grafite e corrida nos túneis (`tuneis`) |
 | 7 | Sabe Ontem? | Ella | casa-galeria, filme, quadros (`ella`) |
-| 8 | Rollercoaster | Notti | passeio na montanha-russa do parque (`nizzy`, versão atual) |
+| 8 | Rollercoaster | Notti | passeio tranquilo de metrô (`nizzy`, o evento segue `montanha`) |
 | 9 | CHUVA | LU2CA | perseguição + captura, fuga pelo metrô, show da CHUVA (`lu2ca`) |
 
 ## Saves antigos

@@ -73,8 +73,8 @@ import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
 import { Violao as ViolaoMundo } from "./disco/Violao"
-import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
-import { MetroFuga } from "./disco/MetroFuga"
+import { emMetro, entrarNoMetro, guardaReageAoViolao, podeMetro, trancaLinha9, type PassoMetro } from "./disco/metro"
+import { tocouViolaoNoTrem } from "./metro/mundo"
 import { GRAFITES as GRAFITES_T12 } from "./grafite/grafites"
 import { comParede } from "./grafite/paredes"
 import { CENA_BAR_VISITA, cenaVisita, donaDaFaixa, facaMissao, pedidoDaPorta, trancaSinuca } from "./disco/vitrine"
@@ -775,8 +775,9 @@ export default function LinhaPage() {
   // (T64, lote D) a fuga do metrô tem o 3D dela: o mundo sai de cena (nada de dois canvas juntos)
   // (05/11) a fuga só aparece com ele dentro do jogo (depois do "continuar"); na tela
   // de entrada fica esperando. Só o atalho de teste ?parte=metro abre direto nela
-  const noMetro = HIST && emMetro(hist) && (tela.t !== "entrada" || parteAberta === "metro")
-  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || noElevador || noMetro || (!!trincheiras && !trincheiras.descendo)
+  // (09/11, bíblia §13) a fuga agora é dentro do trem da cidade (a Corrida hospeda): o mundo fica
+  const noMetro = HIST && emMetro(hist) && tela.t === "corrida"
+  const emSala = (!!cena && temSala(cena.lugar)) || !!viagem || !!noPosto || noElevador || (!!trincheiras && !trincheiras.descendo)
   // entrou numa sala: a próxima estrada que montar retoma de onde parou;
   // foi pra outra tela (celular, início): a estrada começa do jeito normal
   const [emSalaAnt, setEmSalaAnt] = useState(emSala)
@@ -1946,7 +1947,7 @@ export default function LinhaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedraTela])
   // (06/11) tocou o violão na rua uma vez: a D-Bee não sugere mais (marcarFeitaDbee não muda nada se já tem)
-  const tocouViolao = useCallback(() => marcarFeitaDbee("violao-rua"), [])
+  const tocouViolao = useCallback(() => { marcarFeitaDbee("violao-rua"); tocouViolaoNoTrem() }, [])
   const entrarNoChao = (id: LugarAberto) => {
     setPortaChao(null)
     if (cena || cinema) return
@@ -2318,6 +2319,13 @@ export default function LinhaPage() {
   // (elevadores) o cadeado: antes da missão dos túneis feita (no fim do jogo tudo abre)
   const trancaElevador = HIST && !(feita13(hist13(save), "tuneis") || hist.fase === "livre") ? TRANCA_ELEVADOR : null
   const cOnDescerElevador = useFixo(() => descerTrincheiras(null))
+  const cOnPasseio9 = useFixo(() => eventoDaRua("montanha"))
+  const cFugaPasso = useFixo(fimMetroPasso)
+  const cFugaSair = useFixo(sairDoMetro)
+  const trancaMetro = HIST ? trancaLinha9(h13) : null
+  const reageMetro = HIST && guardaReageAoViolao(h13)
+  const historiaFuga = noMetro ? h13 : null
+  const linha9Cidade = useMemo(() => (HIST ? { tranca: trancaMetro, reage: reageMetro, onPasseio: cOnPasseio9, fuga: historiaFuga ? { historia: historiaFuga, onPasso: cFugaPasso, onSair: cFugaSair } : null } : null), [HIST, trancaMetro, reageMetro, cOnPasseio9, historiaFuga, cFugaPasso, cFugaSair])
   const elevadorCidade = useMemo(() => (HIST ? { tranca: trancaElevador, onDescer: cOnDescerElevador } : null), [HIST, trancaElevador, cOnDescerElevador])
   const cOnPerseguicao = useFixo((...[e, id]: Parameters<NonNullable<ComponentProps<typeof CorridaTipo>["onPerseguicao"]>>) => {
     if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
@@ -2466,6 +2474,7 @@ export default function LinhaPage() {
             veiculo={veiculoAgora}
             onPerseguicao={cOnPerseguicao}
             elevador={elevadorCidade}
+            linha9={linha9Cidade}
             onAgua={onAgua}
             checklistHolo={cChecklistHolo}
             mapaMissoes={cMapaMissoes}
@@ -2708,11 +2717,9 @@ export default function LinhaPage() {
         }} />}
         {oficinaTela === "conserto" && <Pagamento agua={save.agua ?? 0} preco={CONFIG_QUEBRA.precoAgua} titulo="o conserto" sub={`a Kombi quebrou · ${MECANICO.nome}`} fala={FALAS_QUEBRA.pagar} falaPago={FALAS_QUEBRA.pago} falaFiado={FALAS_QUEBRA.fiado} botao="pegar a Kombi →" onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={() => { setOficinaTela(null); setSave((s) => comHistoria(s, consertar)) }} />}
         {oficinaTela === "pagar" && <Pagamento agua={save.agua ?? 0} onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={montarMotor} />}
-        {/* (T64, lote D) a fuga do metrô: no lugar do mundo (o canvas dele sai, emSala) */}
-        {noMetro && <MetroFuga historia={h13} onPasso={fimMetroPasso} onSair={sairDoMetro} />}
         {/* (T64, lote D) o violão: o botão aparece com o disco, a rádio ou a faixa da rua tocando; sem o violão, com o cadeado e o que libera */}
         {D && tela.t === "corrida" && <ViolaoMundo onTocou={tocouViolao} temViolao={!!save.violao} // (jogador novo 2) antes da D-Bee dar o violão (as dunas, no meio da trilha) o cadeado não aparece: dizia "faça a missão da D-Bee" no meio dela
-          tranca={HIST && feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : null} escondido={(HIST && (faltaRecompensaHolo(hist) || pedraTela)) || emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
+          tranca={HIST && feita13(h13, "dbee") ? "o violão ficou no metrô · a guitarra está na loja" : null} escondido={(HIST && (faltaRecompensaHolo(hist) || pedraTela)) || noMetro || emSala || !!cena || !!cinema || !!oficinaTela || !!trincheiras || !!recompensa || pingpong || !!provaMissao || !!showAgora || !!letraAgora || !!batidaMissao || !!basquete || !!cenaAgora || celularAberto || !!visor || !!jornal} />}
         {/* (T07, J1: 6) lá fora, o holo com destaque (o que é e como funciona); depois, o tutorial passo a passo */}
         {HIST && tela.t === "corrida" && !cena && !minhoca && faltaRecompensaHolo(hist) && <RecompensaHolo onSeguir={() => setSave((s) => comHistoria(s, (h) => ({ ...h, drone: true, tutorial: [...new Set([...(h.tutorial ?? []), "recompensa"])] })))} />}
         {/* (notas 03/11, 16:09) a trilha de pedras: o tutorial vivo, uma pedra por vez, presa na coisa real (disco/trilhaPedras.ts) */}

@@ -39,3 +39,7 @@
 @keyframes mt-clarao { 0% { opacity: 0.85; } 100% { opacity: 0; } }
 /* (T64) no mundo: por cima do jogo */
 .mt-raiz.is-mundo { z-index: 60; }
+/* (09/11) dentro do canvas do mundo: sem fundo; sentado, o toque passa (o violão, o notch) */
+.mt-raiz.is-dentro { background: none; }
+.mt-raiz.is-sentado { pointer-events: none; }
+.mt-viagem { position: absolute; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom)); margin: 0; text-align: center; font: 600 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(238, 242, 251, 0.75); text-shadow: 0 1px 6px #000; }

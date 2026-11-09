@@ -20,6 +20,8 @@
 
 import type { HistoriaDisco } from "./historia"
 import { CONFIG_PERSEGUICAO, esperandoMetro } from "./perseguicao"
+import { episodioAberto, episodioFeito, episodioPorId, quemAbre } from "./episodios"
+import { feita13, pecaFeita } from "./portas"
 import type { FimMetro } from "../metro/Metro"
 
 export const CONFIG_METRO = {
@@ -80,6 +82,19 @@ export function fimDoMetro(h: HistoriaDisco, r: Pick<FimMetro, "escapou" | "temp
   if (!r.escapou && CONFIG_METRO.pegoRecomeca) return { h, eventos: [] }
   return { h: { ...h, metro: { fase: "feita", escapou: r.escapou, tempo: r.tempo } }, eventos: ["perdeuViolao"] }
 }
+
+// ── (09/11, bíblia §13) a viagem na linha 9 ──
+const EP_METRO = "rollercoaster"
+// as estações aparecem desde o começo; abrem no ep. 8 (lugar trancado diz o que libera)
+export function trancaLinha9(h: HistoriaDisco | null): string | null {
+  if (!h || h.fase === "livre") return null
+  const ep = episodioPorId(EP_METRO)!
+  return episodioFeito(h, ep) || episodioAberto(h, EP_METRO) ? null : quemAbre(ep)
+}
+// tocar violão no trem começa a fuga? Não no passeio tranquilo do ep. 8 (a peça de
+// andar de metrô ainda por fazer). Vale até zerar o jogo; depois fica livre pra tocar
+export const guardaReageAoViolao = (h: HistoriaDisco | null) =>
+  !!h && h.fase !== "livre" && !feita13(h, "final") && (pecaFeita(h, "nizzy", "jogo") || feita13(h, "nizzy"))
 
 // o atalho de teste (link ?parte=metro): já na fuga, a perseguição no "escolher"
 export function prepararMetro(h: HistoriaDisco): HistoriaComMetro {

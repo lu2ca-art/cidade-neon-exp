@@ -25,7 +25,7 @@ export function agoraDaMissao(h: HistoriaDisco, id: MissaoId): string {
   if (passo === "porta") return `volta até ${onde}: ${m.quem} te dá a recompensa`
   const pc = m[passo]
   const como = pc.como
-  if (!alvo13(h, id) && como?.t === "evento") return como.evento === "montanha" ? "anda na montanha-russa do parque (o parque está no mapa)" : `rega ${como.n} flores na rua, de patins`
+  if (!alvo13(h, id) && como?.t === "evento") return como.evento === "montanha" ? "entra numa estação do metrô (no anel de uma torre) e faz a viagem até o fim" : `rega ${como.n} flores na rua, de patins`
   switch (como?.t) {
     case "chegar": return `${kombiNoConserto(h) ? "de patins e jetpack " : ""}até ${onde}`
     case "trincheiras": return "vai até a boca do túnel, no chão do subúrbio, e desce a rampa: a corrida é lá embaixo"
