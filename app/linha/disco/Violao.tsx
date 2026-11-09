@@ -24,10 +24,15 @@
 //   (docs/trilha-sonora.md; parar seria trocar por fazerMusica);
 // - sem o violão no save (antes da D-Bee, ou depois do metrô), o botão aparece
 //   com o CADEADO e diz o que libera (`tranca`), em vez de sumir.
+// (09/11, decisão do dono) sentado no trem, sem o violão, o mesmo painel toca o
+// instrumento comprado (`comprado`, instrumentosLoja.ts). No trem o botão não depende
+// de música: sem faixa, fica em Ré menor. Fora do trem, nada mudou.
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { abaixarUmPouco, audioCtx, disco, pistaSom, player, tomDaMusica, violao, type Tom } from "../som"
 import { ouvirFaixaRua } from "./musicaContinua"
+import { ouvirSentadoNoTrem, sentadoNoTrem } from "../metro/mundo"
+import type { Comprado } from "./instrumentosLoja"
 import { Cadeado, Trancado } from "../Trancado"
 import { vib } from "../som-carro"
 import { TONS } from "../tons"
@@ -80,6 +85,8 @@ function aquecer(freqs: number[]) {
 export interface ViolaoProps {
   // o violão está no save (sem ele, nada aparece)
   temViolao: boolean
+  // (09/11) o instrumento comprado que ele toca sentado no trem, sem o violão
+  comprado?: Comprado | null
   // algo aberto por cima (missão, cena, oficina): esconde o botão
   escondido?: boolean
   // (T64) sem o violão: o que libera (aparece com o cadeado). null/ausente = some, como antes
@@ -88,13 +95,23 @@ export interface ViolaoProps {
   onTocou?: (o: { nota?: string; acorde?: string }) => void
 }
 
-export function Violao({ temViolao, escondido, tranca, onTocou }: ViolaoProps) {
+const nuncaNoTrem = () => false
+
+export function Violao({ temViolao, comprado, escondido, tranca, onTocou }: ViolaoProps) {
   const src = useSomTocando()
+  const noTrem = useSyncExternalStore(ouvirSentadoNoTrem, sentadoNoTrem, nuncaNoTrem)
   const [aberto, setAberto] = useState(false)
+  // com o violão, é ele; sem ele, o comprado, só no trem
+  const outro = !temViolao && noTrem ? comprado ?? null : null
+  const podeTocar = temViolao || !!outro
+  const nome = outro?.nome ?? "violão"
+  const voz = outro?.tocar ?? violao
+  // desceu do trem com o painel do comprado aberto: fecha
+  if (aberto && !podeTocar) setAberto(false)
   const [aviso, setAviso] = useState(false)
 
   // (T64) tocando o violão, a trilha abaixa (não para: ele toca junto, no tom dela)
-  const tocando = aberto && temViolao && !escondido
+  const tocando = aberto && podeTocar && !escondido
   useEffect(() => {
     if (!tocando) return
     abaixarUmPouco(true)
@@ -130,14 +147,15 @@ export function Violao({ temViolao, escondido, tranca, onTocou }: ViolaoProps) {
   // a sugestão: a primeira cadência do modo (I–V–vi–IV ou i–iv–V–i), numerada nos acordes
   const cadencia = (modo === "maior" ? CADENCIAS_MAIOR : CADENCIAS_MENOR)[0]
 
+  const aqueceCorda = !outro || !!outro.aquece
   useEffect(() => {
-    if (!aberto) return
+    if (!aberto || !aqueceCorda) return
     const freqs: number[] = []
     for (const oit of [0, 1]) for (const iv of penta) freqs.push(hz(base + iv + 12 * oit))
     for (const { a } of campo) desenho(a).forEach((casa, corda) => { if (casa !== null) freqs.push(hz(AFINACAO[corda] + casa)) })
     const id = setTimeout(() => aquecer(freqs), 30)
     return () => { clearTimeout(id); aquecendo++ }
-  }, [aberto, base, penta, campo])
+  }, [aberto, base, penta, campo, aqueceCorda])
 
   const piscar = useCallback((id: string) => {
     setToque(id)
@@ -146,14 +164,14 @@ export function Violao({ temViolao, escondido, tranca, onTocou }: ViolaoProps) {
 
   const nota = (midi: number, id: string) => {
     audioCtx()
-    violao(hz(midi))
+    voz(hz(midi))
     vib(8)
     piscar(id)
     onTocou?.({ nota: NOMES[midi % 12] })
   }
   const rasgar = (a: Acorde) => {
     audioCtx()
-    desenho(a).forEach((casa, corda) => { if (casa !== null) violao(hz(AFINACAO[corda] + casa), 0.24, corda * 0.03) })
+    desenho(a).forEach((casa, corda) => { if (casa !== null) voz(hz(AFINACAO[corda] + casa), 0.24, corda * 0.03) })
     vib(14)
     setAcorde(nomeAc(a))
     onTocou?.({ acorde: nomeAc(a) })
@@ -161,9 +179,9 @@ export function Violao({ temViolao, escondido, tranca, onTocou }: ViolaoProps) {
 
   // a música parou e o painel está fechado: some o botão
   if (escondido) return null
-  if (!temViolao) {
-    // (T64) trancado: o botão com o cadeado, junto da música; o toque diz o que libera
-    if (!tranca || !src) return null
+  if (!podeTocar) {
+    // (T64) trancado: o botão com o cadeado, junto da música (no trem, sempre); o toque diz o que libera
+    if (!tranca || (!src && !noTrem)) return null
     return (
       <>
         <button type="button" className="l-vl-botao is-trancado" data-testid="violao-trancado" aria-label={`violão trancado: ${tranca}`}
@@ -175,26 +193,26 @@ export function Violao({ temViolao, escondido, tranca, onTocou }: ViolaoProps) {
       </>
     )
   }
-  if (!src && !aberto) return null
+  if (!src && !aberto && !noTrem) return null
 
   if (!aberto) {
     return (
-      <button type="button" className="l-vl-botao" data-testid="violao-botao" aria-label="tocar o violão junto"
+      <button type="button" className="l-vl-botao" data-testid="violao-botao" aria-label={`tocar ${nome} junto`}
         onClick={() => { audioCtx(); setAberto(true) }}>
         <i aria-hidden className="l-vl-icone" />
-        <small>violão</small>
+        <small>{nome}</small>
       </button>
     )
   }
 
   return (
-    <section className="l-vl-painel" data-testid="violao-painel" aria-label="violão">
+    <section className="l-vl-painel" data-testid="violao-painel" aria-label={nome}>
       <header>
         <div>
           <small>tom da faixa</small>
           <b data-testid="violao-tom">{NOMES[tonica]} {modo}</b>
         </div>
-        <button type="button" className="l-vl-fechar" onClick={() => setAberto(false)} aria-label="guardar o violão">×</button>
+        <button type="button" className="l-vl-fechar" onClick={() => setAberto(false)} aria-label={`guardar ${nome}`}>×</button>
       </header>
       <div className="l-vl-notas">
         {[1, 0].map((oit) => (

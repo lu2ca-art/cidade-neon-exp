@@ -32,6 +32,16 @@ export const MESA: Cartao[] = [
     olhar: "Você abre em cima do palco do show da CHUVA, olhando a plateia lotada. Toque na tela uma vez (o único gesto do final): começa a CHUVA, e daí em diante é só assistir. O povo se junta pela rua, a água sai do Núcleo, a câmera segue ela pela Nectar até o deserto, a chuva cai e o deserto vira floresta. Os nove estão no meio da plateia, sem destaque. Não tem mais feixes, cena dos nove, despedida nem Kombi no quintal. Nos botões de baixo: a floresta e as plantas da Ella no subúrbio depois do final.",
     perguntas: ["A plateia parece lotada o bastante?", "Tocar na tela uma vez é um bom gesto, ou prefere outro?", "O texto do gesto é só \"convocar o povo\" (rascunho): fica?", "A CHUVA segue inteira, sem corte, do toque até o fim?", "A água correndo pela rua convence como \"derrubar o Núcleo\"?", "A floresta está densa o bastante? E o iPhone continua liso nela?", "As plantas da Ella estão bem espalhadas pelo subúrbio?"],
     mais: [{ parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
+    parte: "loja.violao",
+    nome: "Perdeu o violão: a loja vende outro, e o comprado toca no trem",
+    data: "2026-11-09",
+    tarefa: "violão na loja",
+    olhar: "Aqui o violão já ficou no metrô. Abra a aba instrumentos: o violão aparece por 200 Água$ (antes de perder, ele nem aparece). Comprando, o botão do violão volta. Nos outros dois links você entra no metrô do anel, senta e toca: com uma guitarra comprada, ela toca e o guarda levanta; sem nada, aparece o cadeado.",
+    perguntas: ["200 Água$ pelo violão está num preço bom? (guitarra custa 250)", "O som da guitarra no trem serve por enquanto? (baixo, teclado, sampler e tambor também têm um som provisório)", "Quem tem mais de um instrumento comprado toca o último que comprou. Tudo bem, ou quer escolher?"],
+    mais: [
+      { parte: "metro.comprado", nome: "no trem, sem violão, com a guitarra comprada" },
+      { parte: "metro.sem-instrumento", nome: "no trem, sem violão e sem nada comprado: o cadeado" },
+    ],
   },
   {
     parte: "loja",
@@ -98,7 +108,7 @@ export const MESA: Cartao[] = [
     data: "2026-11-09",
     tarefa: "metrô",
     olhar: "Você começa no anel de uma torre. Aparece o botão \"entrar no metrô\". Entrando, o personagem senta e a viagem vai em 2x, com a cidade de verdade passando nas janelas, até a próxima torre (ou o centro). No fim você desce no anel e o elevador pros túneis fica ali. Por fora, olhe a viga por cima das ruas, as estações e o trem passando. Tem estação também no meio das ruas. Antes do ep. 8 o botão vem com cadeado. A montanha-russa do parque saiu do mapa: o passeio de metrô é a peça do ep. 8.",
-    perguntas: ["A cidade passando na janela convence?", "A câmera do personagem sentado ficou boa?", "A viga e as estações estão bem por cima das ruas, sem atravessar nada?", "A fuga da história tira o violão: depois do ep. 9 não sobra violão pra tocar no trem. Deixa de tirar?", "O parque pode sumir mesmo?"],
+    perguntas: ["A cidade passando na janela convence?", "A câmera do personagem sentado ficou boa?", "A viga e as estações estão bem por cima das ruas, sem atravessar nada?", "O parque pode sumir mesmo?"],
     mais: [
       { parte: "metro.violao", nome: "depois do passeio: toque o violão sentado e o guarda levanta" },
       { parte: "metro", nome: "ep. 9: a fuga depois da captura da Kombi, já dentro do trem" },

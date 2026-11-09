@@ -59,7 +59,10 @@ export function gastar(s: Save, preco: number, m: Moeda = "agua"): Save | null {
 
 // ── a loja (Água$) ──
 const nomeDe = (id: string) => id.slice(id.indexOf(":") + 1)
+// (09/11) o violão comprado volta a ser O violão: quem manda é o save.violao
+export const ID_VIOLAO = "instrumento:violao"
 export function tem(s: Save, id: string): boolean {
+  if (id === ID_VIOLAO) return !!s.violao
   if (id.startsWith("disco:")) return (s.discos ?? []).includes(nomeDe(id))
   return (s.compras ?? []).includes(id)
 }
@@ -72,7 +75,7 @@ export function comprar(s: Save, id: string): Compra {
   if (!pago) return { ok: false, motivo: "sem-grana" }
   // o disco vai pro toca-discos da Kombi (save.discos, que a Kombi lê); o resto, pras compras
   if (it.cat === "disco") return { ok: true, save: { ...pago, discos: [...(pago.discos ?? []), nomeDe(id)] } }
-  return { ok: true, save: { ...pago, compras: [...(pago.compras ?? []), id] } }
+  return { ok: true, save: { ...pago, compras: [...(pago.compras ?? []), id], ...(id === ID_VIOLAO ? { violao: true } : {}) } }
 }
 
 // ── a oficina (água): só desempenho ──

@@ -25,6 +25,18 @@ test("ganhar: a missão e o show pagam Água$", () => {
   expect(saldo(ganhar(s, 7, "agua"), "agua")).toBe(7)
 })
 
+test("o violão: só vende depois de perder, e comprar devolve o violão", () => {
+  const id = "instrumento:violao"
+  const comHist = (disco: object): Save => novo({ agua: 500, violao: false, disco } as Partial<Save>)
+  // sem ter perdido, não existe na loja (nem na fase livre)
+  expect(comprar(comHist({ fase: "carreira" }), id).ok).toBe(false)
+  expect(comprar(comHist({ fase: "livre" }), id).ok).toBe(false)
+  // perdeu: compra, paga e o save.violao volta
+  const r = comprar(comHist({ fase: "carreira", perdeuViolao: true }), id)
+  expect(r.ok).toBe(true)
+  if (r.ok) { expect(r.save.violao).toBe(true); expect(tem(r.save, id)).toBe(true); expect(comprar(r.save, id).ok).toBe(false) }
+})
+
 test("gastar: a loja vende discos, instrumentos, carros e roupas", () => {
   const cats = new Set(CATALOGO.map((i) => i.cat))
   expect([...cats].sort()).toEqual(["carro", "disco", "instrumento", "roupa"])
