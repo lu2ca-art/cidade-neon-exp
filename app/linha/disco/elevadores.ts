@@ -35,7 +35,7 @@ export const ELEVADOR_TERROR: number | null = 2
 // pé da torre, virada pra fora. A Kombi entra e sai ali (cidade ↔ deserto); o andar dos
 // túneis não é pra ela (a placa da porta e o gabarito da rampa mostram). De graça (subir
 // voando custa água): por isso abre logo depois da 1ª subida, não na missão dos túneis
-export const PORTA_DESERTO = { n: 1, ang: (62 * Math.PI) / 180, raio: 16, pista: "Nectar" } // ang: entre os pilares do anel
+export const PORTA_DESERTO = { n: 1, ang: (62 * Math.PI) / 180, raio: 16, pista: "Nectar", nome: "ELEVADOR", cor: "#ff6a35" } // ang: entre os pilares do anel
 export const TRANCA_DESERTO = "abre depois da 1ª subida voando"
 export const rotuloSubirDeserto = (n: number) => `subir · cidade (torre ${n})`
 export const rotuloDescerDeserto = (n: number) => `descer · deserto (torre ${n})`

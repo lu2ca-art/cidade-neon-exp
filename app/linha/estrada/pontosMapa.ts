@@ -14,6 +14,8 @@
 // - sem os canteiros de flor (pontinhos demais; eles se acham na rua)
 // - (05/11) a largada da corrida de rua do subúrbio só depois que o jogador
 //   chegou lá embaixo (`corridaRua`: a page/Corrida dizem quando)
+// - (09/11) a porta do elevador no deserto: da oficina em diante, com cadeado e o
+//   que libera enquanto trancada (`trancaPorta`: sem ela, não entra no mapa)
 
 import { posicao, type Mundo } from "./mundo"
 import { PASSO } from "./pista"
@@ -23,6 +25,8 @@ import { PARQUE } from "./Parque"
 import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, type LugarChao } from "../disco/historia"
 import { pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { PORTOES_RUA } from "../disco/corridaRua"
+import { PORTA_DESERTO, portaDoDeserto } from "../disco/elevadores"
+import type { MundoDisco } from "./mundoDisco"
 
 export type TipoPonto = "lugar" | "posto" | "parque" | "chao" | "missao"
 export interface PontoMapa {
@@ -40,6 +44,8 @@ export interface PontoMapa {
   agora?: boolean
   feita?: boolean
   icone?: string
+  // (09/11) o chão trancado: o cadeado no lugar do miolo
+  trancado?: boolean
 }
 // o ícone de missão que a page manda (o mesmo de antes; Mapa.tsx reexporta)
 export interface IconeMapa { id: string; faixa: string; cor: string; agora: boolean; feita?: boolean; icone?: string; lugar?: LugarMissao }
@@ -63,9 +69,11 @@ function noVia(M: Mundo, via: number, u: number) {
   const i = v.fechada ? ((Math.round(u / PASSO) % v.n) + v.n) % v.n : Math.max(0, Math.min(v.n - 1, Math.round(u / PASSO)))
   return { x: v.px[i], y: v.py[i], z: v.pz[i] }
 }
+// (09/11) antes da oficina o mapa só tem o bar: a porta do deserto entra junto com os outros lugares
+const FASES_SEM_PORTA: readonly string[] = ["minhoca", "casa", "dunas", "bar"]
 const yChao = (M: Mundo, x: number, z: number) => (M as unknown as { chaoEm?: (x: number, z: number) => number }).chaoEm?.(x, z) ?? 0
 
-export function pontosDoMapa(M: Mundo, o: { apagada?: boolean[] | null; missoes?: IconeMapa[] | null; fase?: string | null; alvoChao?: LugarChao | null; corridaRua?: boolean }): PontoMapa[] {
+export function pontosDoMapa(M: Mundo, o: { apagada?: boolean[] | null; missoes?: IconeMapa[] | null; fase?: string | null; alvoChao?: LugarChao | null; corridaRua?: boolean; trancaPorta?: string | null }): PontoMapa[] {
   const out: PontoMapa[] = []
   const disco = "disco" in M
   // as missões primeiro: os lugares delas (abertas) não se repetem embaixo
@@ -106,6 +114,11 @@ export function pontosDoMapa(M: Mundo, o: { apagada?: boolean[] | null; missoes?
   if (disco && o.corridaRua) {
     const s = PORTOES_RUA[0]
     out.push({ id: "corrida-rua", nome: "CORRIDA", cor: "#2fe8ff", tipo: "chao", x: s.x, y: yChao(M, s.x, s.z), z: s.z })
+  }
+  // (09/11, bíblia §13) a porta do elevador no pé da torre 1 (disco/elevadores.ts); undefined = quem chama não sabe da porta
+  if (disco && o.trancaPorta !== undefined && !FASES_SEM_PORTA.includes(o.fase ?? "")) {
+    const p = portaDoDeserto(M as MundoDisco)
+    out.push({ id: "porta-deserto", nome: o.trancaPorta ? `${PORTA_DESERTO.nome} · ${o.trancaPorta}` : PORTA_DESERTO.nome, cor: PORTA_DESERTO.cor, tipo: "chao", x: p.x, y: p.y, z: p.z, trancado: !!o.trancaPorta })
   }
   return out
 }

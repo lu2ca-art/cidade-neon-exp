@@ -36,12 +36,16 @@ const ROTA_COR = "#ff3fb0"
 // (23/10) os lugares do chão do subúrbio (a oficina, o bar, o palco) ficam fora das
 // pistas: no mapa, um ponto em coordenada de mundo, com halo pulsando pra achar
 // (T09) os achados da oficina (o painel, a goteira) não são lugar: ficam fora do mapa fixo
-function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: string, k: number, agora: number) {
+function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: string, k: number, agora: number, trancado = false) {
   const p = 0.5 + 0.5 * Math.sin(agora / 320)
   g.globalAlpha = 0.18 + 0.22 * p; g.fillStyle = cor; g.beginPath(); g.arc(x, y, (10 + 5 * p) * k, 0, 7); g.fill(); g.globalAlpha = 1
   g.fillStyle = "#0b0a12"; g.beginPath(); g.arc(x, y, 6.5 * k, 0, 7); g.fill()
   g.strokeStyle = cor; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, 6.5 * k, 0, 7); g.stroke()
-  g.fillStyle = cor; g.fillRect(x - 2.6 * k, y - 2.6 * k, 5.2 * k, 5.2 * k)
+  g.fillStyle = cor
+  if (!trancado) { g.fillRect(x - 2.6 * k, y - 2.6 * k, 5.2 * k, 5.2 * k); return }
+  // (09/11) trancado: o cadeado no miolo
+  g.fillRect(x - 3.2 * k, y - 0.6 * k, 6.4 * k, 4.2 * k)
+  g.lineWidth = 1.4 * k; g.beginPath(); g.arc(x, y - 0.8 * k, 2.2 * k, Math.PI, 0); g.stroke()
 }
 // (22/10) as missões no mapa: um ícone por missão
 // (missões claras, 02/11) no LUGAR da missão (estrada/alvoMissao.ts: o mesmo ponto
@@ -185,10 +189,12 @@ function seta(g: CanvasRenderingContext2D, x: number, y: number, ang: number, k 
 
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`)
 
-export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone, fase = null, alvoChao = null, corridaRua = false }: {
+export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, missao, marca, onMarcar, onAberto, viagens = 0, onViajar, onToqueMini, pedido = 0, missoes = null, painel = null, onIcone, onDrone, fase = null, alvoChao = null, corridaRua = false, trancaPorta }: {
   M: Mundo
   // (05/11) a largada da corrida de rua no mapa: só depois de chegar ao subúrbio
   corridaRua?: boolean
+  // (09/11) a porta do deserto (pontosMapa.ts)
+  trancaPorta?: string | null
   // (notas 04/11) a fase da história e o lugar do chão de agora: o que o mapa mostra (pontosMapa.ts)
   fase?: string | null
   alvoChao?: LugarChao | null
@@ -234,7 +240,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
   // (os atos) os lugares de uma pista apagada também ficam apagados
   const blips = useMemo(() => blipsDo(M).filter((b) => !apagada?.[b.via]), [M, apagada])
   // (notas 04/11) O QUE APARECE: os mesmos pontos do drone (pontosMapa.ts)
-  const pontos = useMemo(() => pontosDoMapa(M, { apagada, missoes, fase, alvoChao, corridaRua }), [M, apagada, missoes, fase, alvoChao, corridaRua])
+  const pontos = useMemo(() => pontosDoMapa(M, { apagada, missoes, fase, alvoChao, corridaRua, trancaPorta }), [M, apagada, missoes, fase, alvoChao, corridaRua, trancaPorta])
   const lugaresVis = useMemo(() => pontos.filter((p) => p.tipo === "lugar" || p.tipo === "posto" || p.tipo === "parque") as (typeof pontos[number] & { via: number; u: number })[], [pontos])
   const chaoVis = useMemo(() => pontos.filter((p) => p.tipo === "chao"), [pontos])
   // o destino: o que você marcou, senão o lugar da missão
@@ -345,7 +351,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       for (const c of chaoVis) {
         const [x, y] = tela(c.x, c.z)
         if (Math.hypot(x - R, y - R) > R - 10) continue
-        desenharChao(g, x, y, c.cor, 0.8, agora)
+        desenharChao(g, x, y, c.cor, 0.8, agora, c.trancado)
       }
       for (const ic of icones) {
         let [x, y] = tela(ic.x, ic.z)
@@ -436,7 +442,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       }
       for (const c of chaoVis) {
         const [x, y] = tela(c.x, c.z)
-        desenharChao(g, x, y, c.cor, 1.2, performance.now())
+        desenharChao(g, x, y, c.cor, 1.2, performance.now(), c.trancado)
         g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(c.nome).width; g.fillRect(x + 12, y - 8, tw + 8, 16)
         g.fillStyle = c.cor; g.fillText(c.nome, x + 16, y)
         // (06/11) já visitou (save.dbee.visitados): um ✓ discreto depois do nome (como a missão feita)

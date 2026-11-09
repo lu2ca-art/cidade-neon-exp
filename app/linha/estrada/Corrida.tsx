@@ -1943,6 +1943,8 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   // sem Kombi agora (quebrada, no conserto, jogada, sem gasolina) ou numa cena: a regra espera
   // (09/11, bíblia §13) A PORTA DO DESERTO (disco/elevadores.ts): o estado muda só ao chegar/sair
   const portaDeserto = useMemo(() => (discoM ? portaDoDeserto(discoM) : null), [discoM])
+  // no mapa: undefined = sem a porta; null = aberta; o texto = o cadeado e o que libera (pontosMapa.ts)
+  const trancaPortaMapa = elevador ? (elevador.trancaDeserto ?? null) : undefined
   const [naPortaDeserto, setNaPortaDeserto] = useState(false)
   useEffect(() => {
     if (!portaDeserto || pausado) return
@@ -2860,7 +2862,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
           onPointerLeave={(e) => { soltarLongo(e.pointerId); toques.current.delete(e.pointerId); atualizarToque() }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : alohanNoMapa && /gin[aá]sio|quadra/i.test(marca?.nome ?? "") ? "ontem" : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} missaoAtiva={missaoAtiva} faseHistoria={fase} alvoChao={alvoChao} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} temMoto={motoOk} corridaRua={corridaNoMapa} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} holoRef={holoLigadoRef} />
+          <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : alohanNoMapa && /gin[aá]sio|quadra/i.test(marca?.nome ?? "") ? "ontem" : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} missaoAtiva={missaoAtiva} faseHistoria={fase} alvoChao={alvoChao} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} temMoto={motoOk} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} holoRef={holoLigadoRef} />
           {linhaDisco && <Seguro nome="linha 9"><Linha9Fora linha={linhaDisco} escondeTrem={!!viagem9} /></Seguro>}
           {linhaDisco && viagem9 && <Seguro nome="linha 9 por dentro"><ViagemNaLinha9 linha={linhaDisco} viagem={viagem9.h} onChegou={chegou9} zerarEntrada={() => { input.current.espacoDesde = 0; input.current.propulsorBotao = false }} /></Seguro>}
           {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
@@ -3213,7 +3215,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
         </div>
       )}
       {!andandoAlgo && (
-        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa}
+        <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa} trancaPorta={trancaPortaMapa}
           onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
       )}
       {drone && (
@@ -3786,7 +3788,7 @@ function copiarPilares(c: { pilaresQ: { em: EmQuadras; m: Float32Array }; pilare
 
 function CenaBase({
   tags,
-  holoRef, M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, missaoAtiva, faseHistoria = null, semPaineis = false, alvoChao = null, missoesMapa = null, veiculo = null, temMoto = false, corridaRua = false,
+  holoRef, M, jogo, input, evs, destinoRef, temTurbo, confeteRef, nivel, objetos, nLib, nLibRef, marcos, marcosRef, estacaoAlvo, corRadio, pausado, cinemaRef, limitadoRef, cacadoRef, dentroRef, discoRef, disco, carona, lugarAlvoRef, fonteRef, onTocaDiscos, vagaRef, camLugarRef, lugarAlvoId, cenaLugar, segredoRef, aberturaRef, celularRef, combRef, horaRef, abertos, paginaPerto, camEntrada, climaRef, regadas, passeio, respiroRef, marcaRef, floresAsf, viaApagada, missaoAtiva, faseHistoria = null, semPaineis = false, alvoChao = null, missoesMapa = null, veiculo = null, temMoto = false, corridaRua = false, trancaPorta,
 }: {
   // (08/11) o holo aberto (o ref estável do Corrida): os monumentos leem no quadro
   holoRef: React.RefObject<boolean>
@@ -3797,6 +3799,7 @@ function CenaBase({
   temMoto?: boolean
   // (05/11) a largada da corrida de rua no mapa (só depois de chegar ao subúrbio)
   corridaRua?: boolean
+  trancaPorta?: string | null
   faseHistoria?: string | null
   missoesMapa?: IconeMapa[] | null
   segredoRef: React.MutableRefObject<{ id: LugarId; via: number; u: number; lado: 1 | -1; voltas: number } | null>
@@ -7249,7 +7252,7 @@ function CenaBase({
       {"disco" in M && <Seguro nome="rota na pista"><RotaPista M={M} jogo={jogo as unknown as React.RefObject<{ via: number; u: number; v: number; voo?: boolean; wx?: number; wz?: number; y?: number }>} chaoEm={(M as MundoDisco).chaoEm} /></Seguro>}
       {/* (ruas-manifesto, 05/11) a camada da faixa na rua dela: só monta com a Kombi NAQUELA rua */}
       {"disco" in M && <Seguro nome="manifestos"><Manifestos M={M as MundoDisco} jogo={jogo} input={input} carro={carro} /></Seguro>}
-      <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} fase={faseHistoria} corridaRua={corridaRua} />
+      <HoloDrone M={M} jogo={jogo} marcaRef={marcaRef} vagaRef={vagaRef} alvoChao={alvoChao} lugarAlvo={lugarAlvoId} alvoLivre={faseHistoria === "dunas" ? DUNAS_ALVO : null} apagada={viaApagada} missoes={missoesMapa} fase={faseHistoria} corridaRua={corridaRua} trancaPorta={trancaPorta} />
       {"disco" in M && <Seguro nome="campo de força"><Campo colisores={cidade.colisores} jogo={jogo as unknown as React.RefObject<{ voo?: boolean; wx?: number; wz?: number; y: number; tempo: number }>} toque={campoToque} /></Seguro>}
       {/* (os robôs só vivem no deserto, a mais de 1,3 km do centro: no miolo, desmontados) */}
       {"disco" in M && livreCaidos && <Perto nome="robôs caídos" raio={1000} pontos={pertoDe.centro} fora><Seguro nome="robôs caídos"><RobosCaidos jogo={jogo as unknown as React.RefObject<{ voo?: boolean; ar: boolean; wx?: number; wz?: number; rumo?: number; y: number; v: number; shake: number; flash: number }>} chao={(M as MundoDisco).chaoEm} livre={livreCaidos} onAtropelou={atropelouRobo} /></Seguro></Perto>}
