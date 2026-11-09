@@ -40,11 +40,11 @@ test("um notch só: o Agora fala nele e o ? explica nele", async ({ page }) => {
   // uma missão pegada (a do Drew): o notch tem o próximo passo
   await entrar(page, "missao.drew")
 
-  // só existe um notch, e o próximo passo da missão está nele ("Agora: …")
+  // só existe um notch; o próximo passo da missão mora embaixo do mapa ("Agora: …", 09/11)
   const notch = page.locator(".l-ilha")
   await expect(notch).toHaveCount(1)
   const nexo = notch.locator(".l-holo-letreiro")
-  const agora = nexo.locator(".l-nexo-agora")
+  const agora = page.locator(".l-holo-agora em")
   await expect(agora).toContainText(/^Agora: \S/, { timeout: 15_000 })
   // sem o tutorial antigo no notch nem a tela de recompensa do holo
   await expect(nexo).not.toHaveAttribute("data-passo", /.+/)
@@ -81,7 +81,7 @@ test("um notch só: o Agora fala nele e o ? explica nele", async ({ page }) => {
   // o "?": o notch pergunta; tocar numa coisa do holo explica por cima dela (e não faz a ação)
   await nexo.locator(".l-nexo-q").click()
   await expect(nexo).toHaveClass(/is-explica/)
-  await expect(agora).toContainText(/clique em qualquer lugar/)
+  await expect(nexo.locator(".l-nexo-agora")).toContainText(/toque em qualquer lugar/)
   await expect(aberto).toHaveCount(0)
   await page.locator('[data-info="camera"]').first().click({ force: true })
   const exp = page.locator(".l-explica")
@@ -91,7 +91,7 @@ test("um notch só: o Agora fala nele e o ? explica nele", async ({ page }) => {
   await expect(page.locator(".l-ilha")).toHaveCount(1)
   await page.waitForTimeout(400)
   await page.screenshot({ path: `${PASTA}/2b-tela-explica.png` })
-  // o "?" de novo sai; o notch volta pro "Agora: …"
+  // o "?" de novo sai; o "Agora: …" segue embaixo do mapa
   await nexo.locator(".l-nexo-q").click()
   await expect(exp).toHaveCount(0)
   await expect(nexo).not.toHaveClass(/is-explica/)

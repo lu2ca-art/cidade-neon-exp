@@ -96,6 +96,8 @@ export const ALVO = {
   mapa: '[data-info="mapa"]',
   anel: '[data-info="anel"]',
   notch: ".l-ilha",
+  // (09/11) o "Agora: ..." e a distância: embaixo do mapa
+  agora: ".l-holo-agora",
   ajuda: '[data-info="ajuda"]',
   turbo: '[data-info="turbo"]',
   propulsor: '[data-info="propulsor"]',
@@ -110,6 +112,7 @@ export const ALVO = {
   missoesDrone: '.l-drone-botoes [aria-label="as missões"]',
   pegar: ".l-mapa-missoes li button[data-fecha-mapa]",
 } as const
+const ondeEstaOAgora = (c: CtxTrilha) => (c.tem(ALVO.agora) ? ALVO.agora : ALVO.notch)
 
 // ── A ORDEM DAS PEDRAS (troca a ordem aqui; tirar uma linha tira a pedra) ──
 export const PEDRAS: Pedra[] = [
@@ -120,7 +123,7 @@ export const PEDRAS: Pedra[] = [
   { id: "rota", fases: DEPOIS_DA_CASA, depois: ["mapa"], quando: (c) => c.drone, ancora: ALVO.voltarRua, texto: "viu a linha? volta pra rua",
     feita: (c, m) => { if (c.drone) m.drone = true; return m.drone && !c.drone }, passou: veterano },
   // a rua: o rumo mora no notch (o ícone no meio, acelera)
-  { id: "gps", fases: ["dunas"], depois: ["rota"], quando: (c) => !c.drone, ancora: ALVO.notch, texto: "ícone no meio: acelera", mexe: "notch",
+  { id: "gps", fases: ["dunas"], depois: ["rota"], quando: (c) => !c.drone, ancora: ondeEstaOAgora, texto: "ícone no meio: acelera", mexe: "notch",
     feita: (c, m, dt) => {
       const mira = c.tem(".l-gps-alvo.is-mira")
       m.acc = mira && c.poseViva && c.pose.v > TRILHA_CFG.gpsV ? m.acc + dt : mira ? m.acc : 0
@@ -140,7 +143,7 @@ export const PEDRAS: Pedra[] = [
     feita: (c, m, dt) => { if (c.poseViva && c.pose.ar && c.pose.propulsor) m.acc += dt; return m.acc >= TRILHA_CFG.vooS } },
   // lá em cima: onde descer
   // (passou da subida sem pousar: a fase troca e ela some sozinha, sem ir pro save)
-  { id: "pousa", fases: ["subir"], depois: ["voo"], quando: (c) => !c.drone, ancora: ALVO.notch, texto: "pousa numa pista acesa",
+  { id: "pousa", fases: ["subir"], depois: ["voo"], quando: (c) => !c.drone, ancora: ondeEstaOAgora, texto: "pousa numa pista acesa",
     feita: (c, m) => { if (c.poseViva && c.pose.ar) m.acc = 1; return m.acc === 1 && c.poseViva && !c.pose.ar && c.pose.v > 3 } },
   // a cidade: sem missão, o ícone da missão pisca; o mapa abre e a lista diz qual
   { id: "escolhe", fases: ["carreira"], quando: (c) => !c.missao && c.ofertas > 0,
@@ -149,14 +152,14 @@ export const PEDRAS: Pedra[] = [
   // (ep. 3) o Alohan ensina o piloto: ligou, o beat começa no caminho (page.tsx)
   { id: "piloto", fases: ["carreira"], quando: (c) => c.beatNoCaminho && !c.drone && c.tem(ALVO.piloto), ancora: ALVO.piloto, texto: "liga o piloto: faz o beat",
     feita: (c) => c.tem(ALVO.pilotoOn) || !c.beatNoCaminho },
-  // pegou: a linha acesa leva até lá (a distância e a seta moram no notch)
-  { id: "linha", fases: ["carreira"], quando: (c) => !!c.missao && !c.drone && !c.dica && c.metros > TRILHA_CFG.perto, ancora: ALVO.notch, texto: "segue a linha até lá", mexe: "notch",
+  // pegou: a linha acesa leva até lá (a distância e a seta moram embaixo do mapa)
+  { id: "linha", fases: ["carreira"], quando: (c) => !!c.missao && !c.drone && !c.dica && c.metros > TRILHA_CFG.perto, ancora: ondeEstaOAgora, texto: "segue a linha até lá", mexe: "notch",
     feita: (c, m) => { if (m.metros0 < 0) m.metros0 = c.metros; return c.metros >= 0 && (m.metros0 - c.metros >= TRILHA_CFG.andou || c.metros <= TRILHA_CFG.perto || !!c.dica) }, passou: veterano },
   // perto: desce (de patins, ou só entra; a peça começa ali)
   { id: "chegou", fases: ["carreira"], quando: (c) => !!c.missao && !c.drone && (!!c.dica || (c.metros >= 0 && c.metros <= TRILHA_CFG.perto)),
-    // (começo novo) com a dica do guia no notch (na pista em cima do lugar do chão: "desce:
-    // o lugar é aqui embaixo"; "desce a rampa"), aponta pro notch, não pro "sair da Kombi"
-    ancora: (c) => (!c.dica && c.tem(ALVO.sair) ? ALVO.sair : ALVO.notch), texto: "chegou: desce aqui",
+    // (começo novo) com a dica do guia embaixo do mapa (na pista em cima do lugar do chão: "desce:
+    // o lugar é aqui embaixo"; "desce a rampa"), aponta pra ela, não pro "sair da Kombi"
+    ancora: (c) => (!c.dica && c.tem(ALVO.sair) ? ALVO.sair : ondeEstaOAgora(c)), texto: "chegou: desce aqui",
     feita: (c, m) => clicou(m, "sair") || c.passo !== m.passo0 || !c.missao || c.metros > TRILHA_CFG.longe, passou: veterano },
   // a primeira missão da cidade feita: o que abriu brilha no próprio mapa (sem lista)
   { id: "liberou", fases: ["carreira"], quando: (c) => c.feitasCidade >= 1 && !c.drone, ancora: ALVO.mapa, texto: "abriu coisa nova: olha", mexe: "mapa",
