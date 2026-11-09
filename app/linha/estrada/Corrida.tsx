@@ -61,8 +61,9 @@ import { NAV, ladoDaFaixa } from "./nav"
 import { temJetpack } from "../disco/metro"
 import { falaMetroQuebra } from "../disco/quebra"
 import { foraNaBoca, nascerNoTunel, pararNaBoca, saidaDoTunel } from "../disco/tuneis"
-import { limparSubida, pedirDescida, rotuloDescer, subidaAgora } from "../disco/elevadores"
-import { ChegadasElevador } from "../disco/Elevadores3D"
+import { PORTA_DESERTO, limparSubida, nascerNaPortaDeserto, pedirDescida, portaDoDeserto, rotuloDescer, rotuloDescerDeserto, rotuloSubirDeserto, subidaAgora } from "../disco/elevadores"
+import { ChegadasElevador, PortaDeserto } from "../disco/Elevadores3D"
+import { PONTO_BAR } from "../disco/historia"
 import { CasaDeserto, PORTA_CASA } from "../disco/CasaDeserto"
 import { OficinaLoja, Perfil } from "../disco/Perfil"
 import { ROBOS, Robos } from "../disco/Robos"
@@ -80,7 +81,7 @@ import { DbeeSugere } from "../disco/DbeeSugere"
 import { VeiculoModelo, VeiculosCena, VeiculosHud, novoEstadoVeiculos, type EstadoVeiculos } from "../disco/Veiculos"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, veiculoPorId } from "../disco/perseguicao"
 import type { ResultadoRacha } from "../disco/corredores"
-import { lixoNoChao } from "./chao"
+import { BOCA, lixoNoChao, passouGabarito } from "./chao"
 import { materialAreia } from "./areia"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CompilaSemTravar, LuzesProximas, compilarSemTravar } from "./luzes"
@@ -138,7 +139,7 @@ import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
 import { Cadeado, PARAM_TRANCA } from "../Trancado"
-import { BORDA_SUBURBIO, FALA_ZONA, TRANCA_MOTO, motoLiberada, naMoto, permitido, zonaDoJogo, type Modo, type Zona } from "./zonas"
+import { BORDA_SUBURBIO, FALA_ZONA, PROPULSOR_AGUA, TRANCA_MOTO, motoLiberada, naMoto, permitido, propulsorCobra, zonaDoJogo, type Modo, type Zona } from "./zonas"
 import { SALAS_VISITA, donaDaFaixa, facaMissao } from "../disco/vitrine"
 import { MISSOES, areaDaMissao, areaDoPasso, type Alvo } from "../missoes"
 import { fita, texAsfalto, texBrilho, texJanelas, texTexto, texTurbo } from "./geo"
@@ -208,7 +209,8 @@ export interface Stats {
 
 interface Props {
   // (elevadores, 06/11) na rotatória de uma torre da ponta: "descer · túneis" (tranca = o cadeado)
-  elevador?: { tranca: string | null; onDescer: (n: number) => void } | null
+  // (09/11) trancaDeserto: o cadeado da porta do deserto (a torre 1, cidade ↔ deserto)
+  elevador?: { tranca: string | null; trancaDeserto?: string | null; onDescer: (n: number) => void } | null
   save: Save
   nivel: number
   destino: EstacaoId | null
@@ -407,6 +409,8 @@ type Jogo = {
   // (disco, passo 3) o voo: solta da pista e voa livre (wx, wz, rumo); a energia
   // do propulsor (0–1, volta andando na pista); propulsou = este voo usou o propulsor
   voo?: boolean; energia?: number; propulsou?: boolean
+  // (09/11) decolou do chão (lá embaixo o propulsor paga em água) e o que já queimou
+  propChao?: boolean; aguaProp?: number
   // (22/10, 2.1/2.3) a chegada do buraco de minhoca: a Kombi vem numa
   // velocidade insana, freia sozinha até a casa e para na frente dela
   chegadaCasa?: boolean; chegadaV?: number
@@ -495,6 +499,7 @@ function grudar(j: Jogo, emp: [number, number], dt: number): boolean {
 // ponto de busca de uma missão no mapa (a coluna de luz com a coisa)
 export type Marco = { chave: string; via: number; u: number; cor: string }
 
+let avisoGabarito = 0 // (09/11) o último aviso do gabarito da rampa (uma vez a cada 4 s)
 type Evs = {
   via: (i: number) => void
   vaga: (id: LugarId) => void
@@ -505,6 +510,10 @@ type Evs = {
   portal: (id: EstacaoId) => void
   pegar: (chave: string) => void
   anel: () => void
+  // (09/11) a água do propulsor lá embaixo: gastar, se ainda tem e o aviso de que acabou
+  agua?: (d: number) => void
+  temAgua?: () => boolean
+  semAgua?: () => void
   caca: (e: "comecou" | "pego" | "despistou" | "perdeu" | "fim" | "jogada") => void
   // (T28) a Kombi caiu lá de cima (acabou a queda)
   perseguicao?: (e: "jogada") => void
@@ -604,6 +613,7 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const [aguaPend, setAguaPend] = useState(0)
   const aguaVista = agua + aguaPend
   const aguaRef = useRef(aguaVista)
+  const avisoSemAgua = useRef(0)
   const onAguaRef = useRef(onAgua)
   const onPerseguicaoRef = useRef(onPerseguicao)
   useEffect(() => { onPerseguicaoRef.current = onPerseguicao }, [onPerseguicao])
@@ -729,10 +739,17 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       nasceuOndeParou(parou.x, parou.z)
       return j
     }
+    // (09/11, ?parte=elevador.deserto) começa na frente da porta do deserto, olhando pra ela
+    if ("disco" in M && nascerNaPortaDeserto()) {
+      const MD = M as MundoDisco, p = portaDoDeserto(MD)
+      j.voo = true; j.wx = p.saidaX; j.wz = p.saidaZ; j.rumo = p.rot + Math.PI; j.propulsou = true; j.encaixar = false
+      j.ar = false; j.y = MD.chaoEm(p.saidaX, p.saidaZ) + 0.3; j.v = 0
+      return j
+    }
     if ("disco" in M && historia && (chega || historia.fase === "dunas" || noSub || doTunel)) {
       // (revisão 05/11) subiu do túnel: a pé/de moto como desceu, a Kombi na entrada do subúrbio
       fora = doTunel ? foraNaBoca() : null
-      const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : doTunel ? saidaDoTunel() : noSub ? { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) } : SAIDA_CASA
+      const MD = M as MundoDisco, p = chega ? ENTRA_CHEGADA : doTunel ? saidaDoTunel() : noSub ? (historia.fase === "bar" ? PONTO_BAR : { x: SUBURBIO.x + 40, z: SUBURBIO.z + 60, rumo: Math.atan2(-SUBURBIO.x, -SUBURBIO.z) }) : SAIDA_CASA
       j.voo = true; j.wx = p.x; j.wz = p.z; j.rumo = p.rumo; j.propulsou = true; j.encaixar = false
       const ch = MD.chaoEm(p.x, p.z)
       if (chega) {
@@ -1817,6 +1834,39 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   // disso: já passou do bar, então já esteve lá)
   const corridaNoMapa = !!discoM && !!historia && (!!historia.radioXenom || !["minhoca", "casa", "dunas", "bar"].includes(historia.fase))
   // sem Kombi agora (quebrada, no conserto, jogada, sem gasolina) ou numa cena: a regra espera
+  // (09/11, bíblia §13) A PORTA DO DESERTO (disco/elevadores.ts): o estado muda só ao chegar/sair
+  const portaDeserto = useMemo(() => (discoM ? portaDoDeserto(discoM) : null), [discoM])
+  const [naPortaDeserto, setNaPortaDeserto] = useState(false)
+  useEffect(() => {
+    if (!portaDeserto || pausado) return
+    let estava = false
+    const iv = setInterval(() => {
+      const j = jogo.current
+      const perto = !!j.voo && !j.ar && j.wx !== undefined && Math.hypot(j.wx - portaDeserto.x, j.wz! - portaDeserto.z) < PORTA_DESERTO.raio
+      if (perto !== estava) { estava = perto; setNaPortaDeserto(perto) }
+    }, 250)
+    return () => { clearInterval(iv); setNaPortaDeserto(false) }
+  }, [portaDeserto, pausado])
+  // a cabine: um escurecer curto (cidade e deserto são a mesma cena, nada recarrega)
+  const pelaCabine = (viagem: () => void) => {
+    fadeCam.current?.classList.add("is-on")
+    setTimeout(() => { viagem(); setTimeout(() => fadeCam.current?.classList.remove("is-on"), 150) }, 300)
+  }
+  const subirDoDeserto = () => {
+    if (!discoM || elevador?.trancaDeserto) return
+    const r = chegadaNaTorre(discoM, PORTA_DESERTO.n, PORTA_DESERTO.pista)
+    const vi = r ? discoM.vias.findIndex((v) => v.id === r.via) : -1
+    if (!r || vi < 0) return
+    pelaCabine(() => { const j = jogo.current; j.via = vi; j.u = r.u; j.x = r.x; j.v = 8; j.vy = 0; j.encaixar = true; evs.current?.via(vi) })
+  }
+  const descerProDeserto = () => {
+    if (!discoM || !portaDeserto || elevador?.trancaDeserto) return
+    pelaCabine(() => {
+      const j = jogo.current
+      j.voo = true; j.wx = portaDeserto.saidaX; j.wz = portaDeserto.saidaZ; j.rumo = portaDeserto.rot; j.propulsou = true; j.encaixar = false
+      j.ar = false; j.vy = 0; j.y = discoM.chaoEm(portaDeserto.saidaX, portaDeserto.saidaZ) + 0.3; j.v = 0
+    })
+  }
   const regraZona = useRef(false)
   regraZona.current = !kombiQuebrada && !quebrou && !noConserto && !semKombi && !perseguicao && !seco && !cinema && !cenaLugar && !roteiro && !abertura && !chegada && !entrando
   // sobe na Kombi onde está (no chão, sem voltar pra pista); se ela ficou ali
@@ -2121,6 +2171,14 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
   const evs = useRef<Evs>(null as unknown as Evs)
   useEffect(() => {
     evs.current = {
+      agua: (d) => setAguaPend((x) => x + d),
+      temAgua: () => aguaRef.current >= 1,
+      semAgua: () => {
+        const t = performance.now()
+        if (t < avisoSemAgua.current) return
+        avisoSemAgua.current = t + 4000
+        notch(FALA_ZONA.semAgua, "#4fc3ff")
+      },
       anel: () => {
         setAneis((a) => {
           const total = a.total + 1
@@ -2778,7 +2836,19 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
       {elevador && pontaElevador > 0 && !pausado && (
         <button type="button" data-info="elevador" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#9b8cff" }} onPointerDown={(e) => e.stopPropagation()}
           onClick={() => { if (elevador.tranca) return; pedirDescida(pontaElevador, desembarqueDe(M, combRef.current)); elevador.onDescer(pontaElevador) }}>
-          {elevador.tranca && <Cadeado />}{rotuloDescer(pontaElevador)}{elevador.tranca ? ` · ${elevador.tranca}` : ""}
+          {elevador.tranca && <Cadeado />}{rotuloDescer(pontaElevador)}{elevador.tranca ? ` · ${elevador.tranca}` : !dePatins ? " · a Kombi fica aqui" : ""}
+        </button>
+      )}
+      {/* (09/11, bíblia §13) a torre 1 tem um andar no deserto: a Kombi desce até ele (nos túneis, não) */}
+      {elevador && pontaElevador === PORTA_DESERTO.n && !pausado && (
+        <button type="button" data-info="elevador-deserto" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={descerProDeserto}>
+          {elevador.trancaDeserto && <Cadeado />}{rotuloDescerDeserto(PORTA_DESERTO.n)}{elevador.trancaDeserto ? ` · ${elevador.trancaDeserto}` : ""}
+        </button>
+      )}
+      {/* (09/11) na porta do deserto: sobe pra torre 1, de Kombi */}
+      {elevador && naPortaDeserto && !pausado && (
+        <button type="button" data-info="elevador-subir-deserto" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={subirDoDeserto}>
+          {elevador.trancaDeserto && <Cadeado />}{rotuloSubirDeserto(PORTA_DESERTO.n)}{elevador.trancaDeserto ? ` · ${elevador.trancaDeserto}` : ""}
         </button>
       )}
       {caido && (
@@ -5488,7 +5558,12 @@ function CenaBase({
       // mais seco, gasta mais rápido e recarrega mais rápido (é leve)
       const pat = !!combRef.current.patins
       const quer = inp.propulsor && !cine && !j.desligada
-      if (quer && j.energia > 0) {
+      // (09/11, bíblia §15) decolou do chão: a Kombi paga em água (estrada/zonas.ts)
+      if (!j.ar) j.propChao = !!j.voo
+      const cobra = !pat && !!j.propChao && propulsorCobra(faseHistoria)
+      const semAgua = cobra && evs.current.temAgua?.() === false
+      if (quer && semAgua) evs.current.semAgua?.()
+      if (quer && j.energia > 0 && !semAgua) {
         // (LU2CA 21/10 (2): "os objetos saem do chão com velocidade acelerando,
         // não num tranco") sai do chão na velocidade do próprio chão (subindo a
         // rampa, sobe junto) e o empuxo cresce em ~0,4 s: começa equilibrando o
@@ -5505,6 +5580,10 @@ function CenaBase({
         j.vy = Math.min(teto, j.vy + empuxo * dt)
         j.energia = Math.max(0, j.energia - (pat ? 0.34 : 0.22) * dt * (inp.mods?.includes("tanque") ? 0.65 : 1))
         j.propulsou = true
+        if (cobra) {
+          j.aguaProp = (j.aguaProp ?? 0) + PROPULSOR_AGUA.porSegundo * dt
+          if (j.aguaProp >= 1) { const n = Math.floor(j.aguaProp); j.aguaProp -= n; evs.current.agua?.(-n) }
+        }
       } else if (!j.ar && !j.voo) j.energia = Math.min(1, j.energia + (pat ? 0.24 : 0.1) * dt) // a energia solar volta na pista
       // (LU2CA 20/10: "quando cai no deserto perde o poder de propulsão e fica
       // preso") no chão do deserto ela segue no modo voo (sem pista embaixo),
@@ -5534,6 +5613,15 @@ function CenaBase({
         // a 3,9 km o vento empurra de volta, devagar (nunca chega na borda)
         const rr = Math.hypot(j.wx, j.wz)
         if (rr > 3900) { const k = (rr - 3900) / rr; j.wx -= j.wx * k; j.wz -= j.wz * k; j.v *= 1 - 0.8 * dt }
+        // (09/11, bíblia §13) a Kombi não desce pros túneis: o gabarito da rampa segura ela
+        if (!j.ar && !combRef.current.patins && !combRef.current.moto) {
+          const passou = passouGabarito(j.wx, j.wz)
+          if (passou > 0) {
+            j.wx -= BOCA.ax * (passou + 0.2); j.wz -= BOCA.az * (passou + 0.2); j.v = 0
+            const t = performance.now()
+            if (t > avisoGabarito) { avisoGabarito = t + 4000; notch(FALA_ZONA.gabarito, "#9b8cff") }
+          }
+        }
         // (T43) os prédios: o campo de força em volta, a Kombi gruda e desliza (não quica)
         const emp = bater(j.wx, j.wz, 1.6, j.y)
         if (emp) {
@@ -7050,7 +7138,7 @@ function CenaBase({
       {/* (disco) a central: a torre de onde saem todas as pistas */}
       {"disco" in M && (M as MundoDisco).torres.map((t, i) => <TorreCentral key={i} c={t} janelas={tex.janelas} />)}
       {/* (06/11) a chegada dos elevadores dos túneis: a casinha no anel de cada torre da ponta (só perto) */}
-      {"disco" in M && <Seguro nome="elevadores"><ChegadasElevador M={M as MundoDisco} /></Seguro>}
+      {"disco" in M && <Seguro nome="elevadores"><ChegadasElevador M={M as MundoDisco} /><PortaDeserto M={M as MundoDisco} /></Seguro>}
       <points geometry={cidade.aviacao} material={cidade.aviacaoMat} />
       <Estatico>
       <primitive object={cidade.arcos} />

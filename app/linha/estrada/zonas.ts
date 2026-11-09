@@ -54,8 +54,18 @@ export function zonaDoJogo(voo: boolean | undefined, wx: number | undefined, wz:
   return d < r ? "suburbio" : "deserto"
 }
 
+// (09/11, bíblia §13 e §15) A ÁGUA PAGA O PROPULSOR LÁ EMBAIXO: decolou do chão (deserto
+// ou subúrbio), a Kombi queima gotas enquanto o propulsor empurra; sem água, não liga.
+// Lá em cima (decolou de uma pista) segue de graça. A 1ª subida (fase "subir") também:
+// a oficina leva toda a água e ninguém pode ficar preso. O jato dos patins não paga.
+// Quem ficar sem água no deserto sobe pela porta do elevador (disco/elevadores.ts)
+export const PROPULSOR_AGUA = { porSegundo: 2 } // um tanque cheio (4,5 s) custa umas 9 gotas (RASCUNHO do preço)
+export const propulsorCobra = (fase: string | null | undefined) => fase === "carreira" || fase === "livre"
+
 // a frase do Nexo quando a zona troca o veículo
 export const FALA_ZONA = {
+  semAgua: "sem água: o propulsor não liga. a porta do elevador leva de graça",
+  gabarito: "a Kombi não desce pros túneis: daqui, só de patins ou de moto",
   descer: "o subúrbio é a pé: a Kombi fica aqui na entrada",
   subir: "o deserto é de Kombi: sobe nela",
   // (moto) com a moto liberada

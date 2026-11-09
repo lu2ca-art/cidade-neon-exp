@@ -30,6 +30,27 @@ export const rotuloDescer = (n: number) => `descer · túneis (torre ${n})`
 // a subida vira o percurso no poço (disco/terror.ts, trincheiras/PocoTerror.tsx)
 export const ELEVADOR_TERROR: number | null = 2
 
+// (09/11, bíblia §13) A PORTA DO DESERTO: o elevador 1 sai do subúrbio pela torre 1,
+// que fica colada nele, e tem um andar no chão do deserto: a mesma porta modelada, no
+// pé da torre, virada pra fora. A Kombi entra e sai ali (cidade ↔ deserto); o andar dos
+// túneis não é pra ela (a placa da porta e o gabarito da rampa mostram). De graça (o
+// propulsor gasta água): por isso abre logo depois da 1ª subida, não na missão dos túneis
+export const PORTA_DESERTO = { n: 1, ang: (62 * Math.PI) / 180, raio: 16, pista: "Nectar" } // ang: entre os pilares do anel
+export const TRANCA_DESERTO = "abre depois da 1ª subida voando"
+export const rotuloSubirDeserto = (n: number) => `subir · cidade (torre ${n})`
+export const rotuloDescerDeserto = (n: number) => `descer · deserto (torre ${n})`
+type TorrePe = { x: number; z: number; nucleo: number }
+/** a pose da porta: no pé do prédio (afina ×1,08), e o ponto de sair, 10 m na frente */
+export function portaDoDeserto(M: { torres: TorrePe[]; chaoEm: (x: number, z: number) => number }) {
+  const t = M.torres[PORTA_DESERTO.n], dx = Math.sin(PORTA_DESERTO.ang), dz = Math.cos(PORTA_DESERTO.ang), d = t.nucleo * 1.08 + 0.75
+  const x = t.x + dx * d, z = t.z + dz * d
+  return { n: PORTA_DESERTO.n, x, y: M.chaoEm(x, z), z, rot: PORTA_DESERTO.ang, saidaX: x + dx * 10, saidaZ: z + dz * 10 }
+}
+// (a Mesa, ?parte=elevador.deserto) começa na frente da porta; só no carregamento
+let nasceNaPorta = false
+export function pedirNascerNaPorta() { nasceNaPorta = true }
+export const nascerNaPortaDeserto = () => nasceNaPorta && typeof performance !== "undefined" && performance.now() < 30000
+
 // ── a viagem: quem pediu, pra onde. A Corrida e as trincheiras desmontam uma a
 // outra (page.tsx), então o pedido mora aqui até a outra cena nascer ──
 let subida: { n: number; modo: "patins" | "moto" } | null = null

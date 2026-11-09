@@ -17,10 +17,10 @@ import { ModeloSeguro } from "../estrada/Seguro"
 import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
-import { BOCA, QUADRA, geoBoca } from "../estrada/chao"
+import { BOCA, GABARITO_S, QUADRA, geoBoca } from "../estrada/chao"
 import { materialAreia } from "../estrada/areia"
 import { PECAS_CHAO, chaoAtivos, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
-import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, SUBURBIO, type LugarChao } from "./historia"
+import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, GIRO_BAR, SUBURBIO, type LugarChao } from "./historia"
 
 function texLetreiro(txt: string, cor: string) {
   const c = document.createElement("canvas"); c.width = 512; c.height = 128
@@ -36,8 +36,9 @@ function texLetreiro(txt: string, cor: string) {
 function Fachada({ id, chao, alvo }: { id: LugarChao; chao: (x: number, z: number) => number; alvo: boolean }) {
   const l = CHAO_LUGARES[id]
   const y = useMemo(() => chao(l.x, l.z), [chao, l.x, l.z])
-  // a porta vira pro centro da cidade (por onde a Kombi chega, embaixo das pistas)
-  const rot = Math.atan2(-l.x, -l.z)
+  // a porta vira pro centro da cidade (por onde a Kombi chega, embaixo das pistas);
+  // (09/11) a do bar vira pro deserto, de frente pra quem chega de lá
+  const rot = id === "bar" ? GIRO_BAR : Math.atan2(-l.x, -l.z)
   const mats = useMemo(() => ({
     parede: new THREE.MeshStandardMaterial({ color: id === "oficina" ? "#3a3440" : "#2a2230", roughness: 0.85 }),
     letreiro: new THREE.MeshBasicMaterial({ map: texLetreiro(l.nome, l.cor), toneMapped: false }),
@@ -100,6 +101,22 @@ function Farol({ cor, y = 70 }: { cor: string; y?: number }) {
 // de arrimo, a porta de concreto e, dentro, o escuro com o neon das trincheiras
 // e a luz lá no fim. 5 desenhos ──
 const COR_TUNEL = CHAO_LUGARES.tuneis.cor
+// (09/11, bíblia §13) a placa do gabarito da rampa: a Kombi riscada (texto só da regra)
+function texGabarito() {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 144
+  const g = c.getContext("2d")!
+  g.fillStyle = "#0c0a12"; g.fillRect(0, 0, 512, 144)
+  // a Kombi: o corpo, o teto e as duas janelas
+  g.fillStyle = "#ffc83c"; g.fillRect(34, 56, 120, 44); g.fillRect(48, 34, 92, 26)
+  g.fillStyle = "#0c0a12"; g.fillRect(56, 40, 32, 16); g.fillRect(100, 40, 32, 16)
+  g.beginPath(); g.arc(64, 104, 13, 0, 7); g.arc(124, 104, 13, 0, 7); g.fill()
+  g.strokeStyle = "#ff2436"; g.lineWidth = 11
+  g.beginPath(); g.arc(94, 72, 64, 0, 7); g.moveTo(49, 27); g.lineTo(139, 117); g.stroke()
+  g.font = "800 46px ui-monospace, monospace"; g.textBaseline = "middle"; g.shadowColor = "#ff2436"; g.shadowBlur = 16; g.fillStyle = "#ffffff"
+  g.fillText("NÃO DESCE", 186, 72)
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
 function BocaTunel({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: boolean }) {
   const d = useMemo(() => {
     const yFundo = chao(BOCA.x, BOCA.z)
@@ -130,14 +147,25 @@ function BocaTunel({ chao, alvo }: { chao: (x: number, z: number) => number; alv
         ...[-1, 1].map((k): Peca3 => ({ g: caixa(0.1, A, 0.1), p: [k * (LA - 0.06), A / 2, z] })),
       ]),
     ]
+    // (09/11, bíblia §13) o gabarito: a viga baixa na rampa (só a Kombi não passa; ver GABARITO_S)
+    const gx = BOCA.x + BOCA.ax * GABARITO_S, gz = BOCA.z + BOCA.az * GABARITO_S, yG = chao(gx, gz) - yFundo
+    const ALT = 2.4, W = M + 0.15, SEG = 10, PASSO = (W * 2) / SEG
+    const gabarito = juntar([
+      ...[-1, 1].map((k): Peca3 => ({ g: caixa(0.34, ALT + 1.2, 0.34), cor: "#3a3440", p: [k * W, yG + (ALT + 1.2) / 2 - 0.6, GABARITO_S] })),
+      // a fita de perigo, em quadros amarelo e preto
+      ...Array.from({ length: SEG }, (_, i): Peca3 => ({ g: caixa(PASSO * 0.98, 0.34, 0.3), cor: i % 2 ? "#ffc83c" : "#15131a", p: [-W + PASSO * (i + 0.5), yG + ALT, GABARITO_S] })),
+    ])
     return {
       y: yFundo, rot: Math.atan2(BOCA.ax, BOCA.az), A, LA, fundoT,
       patch: geoBoca(),
+      gabarito, yG, ALT,
       concreto, neon: juntar(neon),
       mats: {
         chao: materialAreia({ vertexColors: true, mascara: true }), // (T39) a mesma areia do chão
         concreto: new THREE.MeshStandardMaterial({ color: "#4a4652", roughness: 0.9, emissive: "#1a1622", emissiveIntensity: 0.6 }),
         neon: new THREE.MeshBasicMaterial({ color: COR_TUNEL, toneMapped: false }),
+        gabarito: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, emissive: "#16121e", emissiveIntensity: 0.6 }),
+        placa: new THREE.MeshBasicMaterial({ map: texGabarito(), toneMapped: false }),
         // dentro: o escuro (só as faces de dentro; a de fora, na porta, some)
         dentro: new THREE.MeshBasicMaterial({ color: "#0d0a16", side: THREE.BackSide }),
         fim: new THREE.MeshBasicMaterial({ color: "#ffb36b", transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
@@ -151,6 +179,9 @@ function BocaTunel({ chao, alvo }: { chao: (x: number, z: number) => number; alv
       <group position={[BOCA.x, d.y, BOCA.z]} rotation={[0, d.rot, 0]}>
         <mesh geometry={d.concreto} material={d.mats.concreto} />
         <mesh geometry={d.neon} material={d.mats.neon} />
+        {/* (09/11) o gabarito: a Kombi fica antes dele; a placa olha pra quem vem descendo */}
+        <mesh geometry={d.gabarito} material={d.mats.gabarito} />
+        <mesh position={[0, d.yG + d.ALT + 0.95, GABARITO_S - 0.2]} rotation={[0, Math.PI, 0]} material={d.mats.placa}><planeGeometry args={[5.6, 1.57]} /></mesh>
         <mesh position={[0, d.A / 2, 0.6 + d.fundoT / 2]} material={d.mats.dentro}><boxGeometry args={[d.LA * 2, d.A, d.fundoT]} /></mesh>
         {/* a luz lá no fim (o sol das trincheiras passando pelo vidro) */}
         <mesh position={[0, d.A / 2, d.fundoT - 0.5]} rotation={[0, Math.PI, 0]} material={d.mats.fim}><planeGeometry args={[d.LA * 1.4, d.A * 0.7]} /></mesh>

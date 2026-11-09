@@ -100,7 +100,8 @@ import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEven
 import { FinalTela } from "./disco/FinalTela"
 import { definirFinalFeito, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
-import { TRANCA_ELEVADOR, pedirSubida, tomarDescida } from "./disco/elevadores"
+import { TRANCA_DESERTO, TRANCA_ELEVADOR, pedirSubida, tomarDescida } from "./disco/elevadores"
+import { semVoo } from "./disco/historia"
 import { Peca } from "./disco/pecas/Peca"
 import { brilhar } from "./disco/brilho"
 import { avisarRadio, notch, usePedraNaTela } from "./estrada/Holo"
@@ -2318,7 +2319,9 @@ export default function LinhaPage() {
   // (elevadores) o cadeado: antes da missão dos túneis feita (no fim do jogo tudo abre)
   const trancaElevador = HIST && !(feita13(hist13(save), "tuneis") || hist.fase === "livre") ? TRANCA_ELEVADOR : null
   const cOnDescerElevador = useFixo(() => descerTrincheiras(null))
-  const elevadorCidade = useMemo(() => (HIST ? { tranca: trancaElevador, onDescer: cOnDescerElevador } : null), [HIST, trancaElevador, cOnDescerElevador])
+  // (09/11) a porta do deserto abre depois da 1ª subida voando (disco/elevadores.ts)
+  const trancaDeserto = HIST && (semVoo(hist) || hist.fase === "subir") ? TRANCA_DESERTO : null
+  const elevadorCidade = useMemo(() => (HIST ? { tranca: trancaElevador, trancaDeserto, onDescer: cOnDescerElevador } : null), [HIST, trancaElevador, trancaDeserto, cOnDescerElevador])
   const cOnPerseguicao = useFixo((...[e, id]: Parameters<NonNullable<ComponentProps<typeof CorridaTipo>["onPerseguicao"]>>) => {
     if (e === "jogada") setSave((s) => comHistoria(s, kombiJogada))
     else if (id) {

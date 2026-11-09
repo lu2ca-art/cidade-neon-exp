@@ -25,7 +25,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { Perto } from "../estrada/Perto"
 import type { MundoDisco } from "../estrada/mundoDisco"
 import { COR_TORRE as COR_TUNEL, TORRES, TORRE_R } from "../trincheiras/mapa"
-import { ELEVADORES } from "./elevadores"
+import { ELEVADORES, portaDoDeserto } from "./elevadores"
 import { COR_PISTA } from "./historia"
 
 const URL = "/models/elevadores.glb"
@@ -136,6 +136,44 @@ export function EntradasElevador() {
         </Perto>
       ))}
     </>
+  )
+}
+
+// ── (09/11, bíblia §13) a porta no deserto: a mesma entrada, no pé da torre 1, com a
+// placa dos andares do lado (o limite da Kombi, no mundo: o andar dos túneis riscado) ──
+function PlacaAndares({ pose }: { pose: Pose }) {
+  const d = useMemo(() => {
+    const c = document.createElement("canvas"); c.width = 384; c.height = 320
+    const g = c.getContext("2d")!
+    g.fillStyle = "#0c0a12"; g.fillRect(0, 0, 384, 320)
+    g.textBaseline = "middle"; g.font = "800 46px ui-monospace, monospace"
+    g.fillStyle = COR_CIDADE; g.fillText("▲ CIDADE", 28, 56)
+    g.fillStyle = "#ffffff"; g.fillText("● DESERTO", 28, 136)
+    g.fillStyle = "#6a6474"; g.fillText("▼ TÚNEIS", 28, 216)
+    g.strokeStyle = "#ff2436"; g.lineWidth = 9; g.beginPath(); g.moveTo(20, 216); g.lineTo(290, 216); g.stroke()
+    g.font = "800 28px ui-monospace, monospace"; g.fillStyle = "#ff6b6b"; g.fillText("a Kombi não desce", 28, 280)
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace
+    return { t, placa: new THREE.MeshBasicMaterial({ map: t, toneMapped: false }), fundo: new THREE.MeshBasicMaterial({ color: "#1c1822" }) }
+  }, [])
+  useEffect(() => () => { d.t.dispose(); d.placa.dispose(); d.fundo.dispose() }, [d])
+  return (
+    <group position={[pose.x, pose.y, pose.z]} rotation={[0, pose.rot, 0]}>
+      {/* o suporte até a parede da torre e a placa na frente dele */}
+      <mesh position={[-3.5, 2.5, -0.6]} material={d.fundo}><boxGeometry args={[2.7, 2.3, 1.2]} /></mesh>
+      <mesh position={[-3.5, 2.5, 0.01]} material={d.placa}><planeGeometry args={[2.5, 2.08]} /></mesh>
+    </group>
+  )
+}
+export function PortaDeserto({ M }: { M: MundoDisco }) {
+  const e = useMemo(() => {
+    const p = portaDoDeserto(M)
+    const pecas: Peca[] = [{ no: "entrada", cor: COR_CIDADE }, { no: `e_num${p.n}`, cor: COR_CIDADE }, ...faixas("e", p.n)]
+    return { pose: { x: p.x, y: p.y, z: p.z, rot: p.rot } as Pose, pecas }
+  }, [M])
+  return (
+    <Perto nome="elevador (deserto)" raio={500} pontos={[{ x: e.pose.x, z: e.pose.z }]}>
+      <Seguro><Modelo pecas={e.pecas} pose={e.pose} /><PlacaAndares pose={e.pose} /></Seguro>
+    </Perto>
   )
 }
 

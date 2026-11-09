@@ -25,6 +25,10 @@ do celular (loja, jardim), que no "voltar" também volta pra estrada. No mapa:
 | Flores | canteiros nas pistas da cidade e o app JARDIM | **novo: FLORES** (canteiros floridos) | -990, -600 | app JARDIM; trancado (ver) até a missão da Ella |
 | Roupas (brechó) | não existia no chão (as roupas só na LOJA) | **novo: BRECHÓ** (arara na calçada) | -790, -600 | LOJA na aba roupas. Ligação com a Bee Shop é decisão do dono |
 
+O bar (09/11, bíblia §13): mudou do meio do subúrbio pra beira do lado do deserto
+(-925, -838), de porta virada pra quem chega (`GIRO_BAR`). Mapa, GPS, holo e missão
+leem de `CHAO_LUGARES`; as ruínas em volta abrem sozinhas.
+
 Distâncias: cada lugar novo fica a 90 m ou mais do vizinho mais perto, a 40 m ou
 mais da rua da corrida, e em chão livre de pista e torre (`M.livre`, conferido
 com o mundo montado). As ruínas abrem espaço sozinhas (ruinas.ts já afasta 20 m
