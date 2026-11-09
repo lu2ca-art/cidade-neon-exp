@@ -32,6 +32,8 @@ export const MESA: Cartao[] = [
     olhar: "Você abre em cima do palco do show da CHUVA, olhando a plateia lotada. Toque na tela uma vez (o único gesto do final): começa a CHUVA, e daí em diante é só assistir. O povo se junta pela rua, a água sai do Núcleo, a câmera segue ela pela Nectar até o deserto, a chuva cai e o deserto vira floresta. Os nove estão no meio da plateia, sem destaque. Não tem mais feixes, cena dos nove, despedida nem Kombi no quintal. Nos botões de baixo: a floresta e as plantas da Ella no subúrbio depois do final.",
     perguntas: ["A plateia parece lotada o bastante?", "Tocar na tela uma vez é um bom gesto, ou prefere outro?", "O texto do gesto é só \"convocar o povo\" (rascunho): fica?", "A CHUVA segue inteira, sem corte, do toque até o fim?", "A água correndo pela rua convence como \"derrubar o Núcleo\"?", "A floresta está densa o bastante? E o iPhone continua liso nela?", "As plantas da Ella estão bem espalhadas pelo subúrbio?"],
     mais: [{ parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
+  },
+  {
     parte: "loja.violao",
     nome: "Perdeu o violão: a loja vende outro, e o comprado toca no trem",
     data: "2026-11-09",
@@ -42,6 +44,8 @@ export const MESA: Cartao[] = [
       { parte: "metro.comprado", nome: "no trem, sem violão, com a guitarra comprada" },
       { parte: "metro.sem-instrumento", nome: "no trem, sem violão e sem nada comprado: o cadeado" },
     ],
+  },
+  {
     parte: "carreira.meio",
     nome: "O Alohan vai junto ao ginásio, em toda visita",
     data: "2026-11-09",
@@ -57,6 +61,8 @@ export const MESA: Cartao[] = [
     tarefa: "brechó vintage",
     olhar: "Na loja, abra a aba roupas e toque em cada peça: o boné de espuma e tela, os óculos de casco, a camisa da 222 com a estampa rachada, o tênis de lona e a jaqueta de couro gasta. Costura, etiqueta e desgaste aparecem melhor na tela grande da peça. Depois vá ao brechó no subúrbio: as araras agora têm camisa de gola larga, vestido evasê, calça boca de sino, blazer xadrez, colete de franja e poncho, com estampas e cores gastas. Os preços e o que cada uma faz não mudaram; a roupa real da Bee Shop entra depois.",
     perguntas: ["Parece peça de brechó de verdade?", "Alguma peça deve ter outra época ou outro corte?", "As cores estão boas ou devem ser mais gastas?", "As estampas das araras estão boas de longe, ou quadriculadas demais de perto?"],
+  },
+  {
     parte: "missao.ella",
     nome: "A casa da Ella por fora",
     data: "2026-11-09",
@@ -72,6 +78,8 @@ export const MESA: Cartao[] = [
     tarefa: "ep. 7, a planta",
     olhar: "Dentro da casa da Ella, olhe a planta na redoma, no fundo: agora é cannabis, com folhas de 5 e 7 pontas e flores com pelos laranja. Ela continua acendendo no filme e na hora de pintar.",
     perguntas: ["Dá pra reconhecer a planta na hora?", "O serrilhado das folhas está bom de perto, ou quer mais fino?", "O brilho dela continua bonito na hora de pintar?"],
+  },
+  {
     parte: "missao.ella.casa",
     nome: "Quadros e discos de domínio público",
     data: "2026-11-09",
