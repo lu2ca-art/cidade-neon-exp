@@ -16,7 +16,7 @@ Fonte: a bíblia, seção 9. O dono: "Quero a música e o jogo coesos, um é o g
 ## O que NÃO para (a trilha segue e faz parte do cenário)
 
 - **Missões, peças, salas, casas e cenas:** a música que está tocando segue, seja a rádio, a faixa da rua ou o disco da Kombi. Ela só abaixa um pouco (`abaixarUmPouco`, 70%) enquanto a cena ou o balão de introdução estão na tela.
-- **Na cidade continua a regra da faixa da rua:** a completa toca uma vez inteira, e a missão passa pro instrumental no mesmo ponto. Agora isso vale também nas peças, na letra e no basquete.
+- **Na cidade (mudou em 08/11, ver docs/musica-continua.md):** na rua toca o instrumental da pista; aceitou a missão, a música completa dela toca inteira, inclusive nas peças, na letra e no basquete.
 - **O som próprio de cada missão (T40) não entra mais:** `TRILHA_PROPRIA_DAS_MISSOES = false` em `disco/sons.ts`. Com `true`, a regra antiga volta.
 - **Fliperama (as máquinas do Notti e o fliperama):** com a música do jogo tocando, a máquina não toca o laço 8 bits por cima e não corta nada. Sem música nenhuma (ou no `/fliperama` solto), o laço toca como antes.
 - **Peças de ritmo (a dança do Drew e o clipe da Nizzy):** se a faixa da rua é a da peça, a peça segue o relógio dela, sem cortar. Fora da pista dela, a peça ainda toca a própria faixa, porque o ritmo depende da música certa (ver "Ficou em aberto").

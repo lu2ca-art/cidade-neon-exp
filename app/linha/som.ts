@@ -1069,12 +1069,13 @@ export const fonteSom = {
   ouvir(o: (f: Fonte, auto?: boolean) => void) { ouvintesFonte.add(o); return () => { ouvintesFonte.delete(o) } },
 }
 
-// ── A PISTA É O TOCA-DISCOS (mapa-disco 18/10; MÚSICA CONTÍNUA 03/11) ────────
-// Entrou numa pista, a faixa dela toca do começo, completa, UMA vez inteira:
-// nada pausa (missão, peça, cena, turbo, celular), no máximo abaixa e volta. A
-// missão troca, em crossfade, pro instrumental da MESMA faixa no MESMO ponto; a
-// completa acabou, fica o instrumental em loop. A regra mora em
-// disco/musicaContinua.ts; aqui é o som (docs/musica-continua.md).
+// ── A PISTA É O TOCA-DISCOS (mapa-disco 18/10; MÚSICA CONTÍNUA 03/11; A MÚSICA
+// DA MISSÃO 08/11) ──────────────────────────────────────────────────────────
+// Na rua toca o instrumental da pista. Aceitou uma missão com faixa, a completa
+// dela toca do começo, UMA vez inteira: nada pausa (troca de pista, peça, cena,
+// turbo, celular), no máximo abaixa e volta. Acabou, fica o instrumental em
+// loop. A regra mora em disco/musicaContinua.ts; aqui é o som
+// (docs/musica-continua.md).
 //
 // Dois <audio> ("decks") reaproveitados pra sempre: um soa, o outro espera com a
 // outra versão já carregando. Os dois só tocam juntos durante o crossfade
@@ -1100,6 +1101,10 @@ class PistaSom {
   // a experiência da completa ainda está valendo (tocando ela, ou o instrumental
   // no lugar dela durante a missão); false = já acabou, fica o instrumental
   private completaViva = false
+  /** (08/11) a completa da missão está soando: a troca de pista e as cenas não mexem nela */
+  daMissao = false
+  // aceitou com a rádio mandando no som: a completa espera a rádio sair
+  private pendente: { f: FaixaContinua; missao: string } | null = null
   private emMissao = 0
   private aplicarAgendado = false
   private segurando = false
@@ -1242,12 +1247,45 @@ class PistaSom {
 
   /** entrou numa pista: a faixa dela do início (a mesma faixa: segue tocando) */
   tocarFaixa(f: FaixaContinua, fade = CROSSFADE) {
-    if (this.faixa && this.faixa.id === f.id && this.tocando) return
+    if (this.daMissao || (this.faixa && this.faixa.id === f.id && this.tocando)) return
     this.faixa = f
     definirFaixaRua(f.id)
-    this.completaViva = comecaPelaCompleta(f.id)
+    definirTom(f.tom)
+    this.completaViva = comecaPelaCompleta(f)
     const papel: Papel = this.completaViva && this.emMissao === 0 ? "completa" : "inst"
     this.tocar(papel, 0, fade, papel === "inst" ? !this.completaViva : albumComprado())
+  }
+  /** (08/11) aceitou a missão: a completa da faixa dela, do início, onde quer que
+   *  ele esteja. A mesma faixa já soando nessa versão segue de onde está */
+  tocarDaMissao(f: FaixaContinua, missao: string) {
+    this.pendente = null
+    if (fonteSom.get() === "radio") { this.pendente = { f, missao }; return }
+    this.iniciarDaMissao(f)
+  }
+  private iniciarDaMissao(f: FaixaContinua) {
+    // a mesma precedência de entrar numa pista: o disco e a rádio parada saem
+    player.pausar()
+    disco.parar()
+    const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
+    const segue = !!cur && this.faixa?.id === f.id && cur.src === f.completa && !cur.el.paused
+    this.faixa = f
+    definirFaixaRua(f.id)
+    definirTom(f.tom)
+    this.completaViva = true
+    this.daMissao = true
+    if (segue) { this.modo = "completa"; cur.el.loop = false; return }
+    this.tocar("completa", 0, CROSSFADE, false)
+  }
+  /** desligou o som (o disco no lugar da rádio segue mandando): a completa que esperava começa agora */
+  soltarPendente() {
+    const p = this.pendente
+    if (!p || fonteSom.get() !== "off") return
+    this.pendente = null
+    this.iniciarDaMissao(p.f)
+  }
+  /** a missão que esperava a rádio saiu (feita ou largada): não começa mais */
+  esquecerPendente(missaoAgora: string | null) {
+    if (this.pendente && this.pendente.missao !== missaoAgora) this.pendente = null
   }
   /** missão/peça/cena começou (true) ou terminou (false). Conta quem pediu e
    *  decide um tique depois: cena → cena não faz vai-e-volta */
@@ -1259,7 +1297,7 @@ class PistaSom {
   }
   private aplicarMissao() {
     const f = this.faixa
-    if (!f || !this.completaViva || this.ativo < 0) return
+    if (!f || !this.completaViva || this.daMissao || this.ativo < 0) return
     const quer: Papel = this.emMissao > 0 ? "inst" : "completa"
     if (quer === this.modo) return
     const el = this.decks[this.ativo].el
@@ -1278,6 +1316,7 @@ class PistaSom {
   private fimDoDeck(d: Deck) {
     const f = this.faixa
     if (!f || this.decks[this.ativo] !== d) return
+    this.daMissao = false
     marcarCompletaOuvida(f.id)
     if (albumComprado()) {
       const papel: Papel = this.emMissao > 0 ? "inst" : "completa"
@@ -1323,6 +1362,8 @@ class PistaSom {
   }
   /** saiu da cidade (o deserto): some em fade e para */
   sair(fadeSeg = 2) {
+    this.daMissao = false
+    this.pendente = null
     if (!this.faixa || this.ativo < 0) return
     const d = this.decks[this.ativo]
     this.faixa = null
@@ -1334,6 +1375,8 @@ class PistaSom {
   /** para já (fora da página) */
   parar() {
     this.faixa = null
+    this.daMissao = false
+    this.pendente = null
     definirFaixaRua(null)
     for (const d of this.decks) { if (d.parada) { clearTimeout(d.parada); d.parada = null } d.el.pause() }
   }
@@ -1352,6 +1395,7 @@ class PistaSom {
   }
 }
 export const pistaSom = new PistaSom()
+fonteSom.ouvir(() => pistaSom.soltarPendente())
 if (typeof window !== "undefined") {
   const destravar = () => {
     pistaSom.destravar()

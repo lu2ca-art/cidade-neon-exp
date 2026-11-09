@@ -1,19 +1,25 @@
-// A MÚSICA CONTÍNUA (notas 03/11, o dono): "cada música é uma experiência que
-// dura o tamanho da faixa". Cada pista é uma faixa do vol. 1:
+// A MÚSICA CONTÍNUA (notas 03/11, o dono: "cada música é uma experiência que
+// dura o tamanho da faixa"; 08/11, bíblia §3: a música é atrelada à missão).
+// Cada pista é uma faixa do vol. 1:
 //
-// 1. entrou numa pista → a faixa dela, do início, versão completa (com voz)
-// 2. a completa toca UMA vez inteira; nada pausa (missão, peça, cena, turbo,
-//    celular): no máximo abaixa o volume e volta
-// 3. missão/peça/cena no meio → crossfade (~1,5 s) pro INSTRUMENTAL da mesma
-//    faixa no MESMO ponto; acabou a missão → volta pra completa no ponto atual
-// 4. a completa terminou → só o instrumental, em loop, até trocar de pista
-// 5. trocar de pista → a faixa nova do início; pista cuja completa já tocou
-//    nesta sessão → só o instrumental
-// 6. a música não depende de velocidade nem distância (turbo não muda nada)
-// 7. faixa sem instrumental → a completa mais baixa no lugar dele
+// 1. andando numa rua → o INSTRUMENTAL da faixa daquela pista, em loop
+// 2. aceitou uma missão com faixa (EPISODIOS) → a COMPLETA da faixa da missão,
+//    do início, mesmo fora da pista dela. Nada a interrompe: nem a troca de
+//    pista, nem as peças e cenas, nem turbo ou celular
+// 3. a completa da missão terminou → o instrumental dela, em loop, até trocar
+//    de pista (aí vale o 1)
+// 4. missão sem faixa (LIVRES, o final) → segue o 1
+// 5. a música não depende de velocidade nem distância (turbo não muda nada)
+// 6. rádio ligada manda no som: a completa da missão espera a rádio sair
+// 7. faixa sem instrumental → a regra antiga: na rua a completa uma vez, depois
+//    ela mesma mais baixa no lugar do instrumental
+// 8. comprou o álbum → a completa sempre, em loop; missão/peça/cena no meio
+//    troca pro instrumental no mesmo ponto
 //
 // Aqui é só regra e memória (sem áudio): quem toca é o PistaSom (som.ts).
 // Ver docs/musica-continua.md.
+
+import type { Tom } from "../som"
 
 /** duração do crossfade completa ⇄ instrumental e de uma faixa pra outra (s) */
 export const CROSSFADE = 1.5
@@ -27,6 +33,7 @@ export function albumComprado(): boolean {
 
 /** o que o toca-discos da pista precisa saber de uma faixa */
 export interface FaixaContinua {
+  tom: Tom
   id: string
   completa: string // a versão com voz (ou o instrumental, se a voz ainda não saiu)
   inst: string // o instrumental (ou a completa, se não existe)
@@ -70,7 +77,8 @@ export function definirFaixaRua(id: string | null) {
 export const ouvirFaixaRua = (f: () => void) => { ouvintesRua.add(f); return () => { ouvintesRua.delete(f) } }
 export const lerFaixaRua = () => faixaRua
 
-/** entrou na pista: começa pela completa ou (já tocou) direto pelo instrumental */
-export function comecaPelaCompleta(id: string): boolean {
-  return albumComprado() || !completaJaTocou(id)
+/** entrou na pista: a rua é instrumental (bíblia §3). A completa só pro álbum e
+ *  pra faixa sem instrumental que ainda não tocou (a regra de antes dela) */
+export function comecaPelaCompleta(f: FaixaContinua): boolean {
+  return albumComprado() || (f.semInst && !completaJaTocou(f.id))
 }

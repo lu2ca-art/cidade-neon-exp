@@ -26,6 +26,14 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "carreira.feira",
+    nome: "A música agora começa quando você aceita a missão",
+    data: "2026-11-08",
+    tarefa: "música da missão",
+    olhar: "Ande numa rua sem missão: toca só o instrumental, sem voz. Aceite uma missão na Feira: começa a música completa, com voz, do começo. Troque de pista e entre nas partes da missão: ela não para nem volta. Quando acabar, fica o instrumental até você trocar de pista. Com a rádio ligada, a rádio manda.",
+    perguntas: ["A música completa entra na hora em que você aceita?", "Ela segue inteira na troca de pista e dentro da missão?", "Depois que ela acaba, o instrumental entra bem?", "Com a batida ou o Guitar Driver ela para e depois volta do mesmo ponto?"],
+  },
+  {
+    parte: "carreira.feira",
     nome: "Os 9 episódios: o jogo segue a sequência das músicas",
     data: "2026-11-08",
     tarefa: "episódios",

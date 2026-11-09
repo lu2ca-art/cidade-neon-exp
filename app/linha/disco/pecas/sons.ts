@@ -60,8 +60,8 @@ function elPeca() {
 
 // (trilha sonora, 05/11; bíblia 9: a trilha não para) peça de ritmo com `sync`
 // (a dança, o clipe): se a faixa que toca na rua É a da peça, ela não corta nada:
-// o relógio da peça vira o da faixa da rua (que já passou pro instrumental no
-// mesmo ponto), alinhado na batida. Só fora da pista dela a peça toca a própria
+// o relógio da peça vira o da faixa da rua (o instrumental ou a completa da
+// missão), alinhado na batida. Só fora da pista dela a peça toca a própria
 // faixa (o ritmo precisa da música certa). Sem `sync` (o disco antigo do Mubarak:
 // escolher o disco É a peça), a peça toca o dela como antes
 export type SyncPeca = { faixa: string; bpm: number }

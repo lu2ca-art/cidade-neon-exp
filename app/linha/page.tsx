@@ -95,6 +95,7 @@ import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { linhaRecompensa } from "./disco/instrumentos"
 import { proximaDaSequencia, rotuloDoEpisodio } from "./disco/episodios"
+import { faixaDaMissao } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
 import { definirFinalFeito, type MomentoFinal } from "./disco/final"
@@ -547,8 +548,7 @@ export default function LinhaPage() {
 
   // a música abafada (LU2CA): dentro de um lugar (a missão) e com o telefone
   // tocando, o rádio e o disco seguem mais baixos e sem agudo
-  // (música contínua, 03/11) com a faixa da pista tocando, a cena não abafa: a
-  // faixa vira o instrumental dela, limpo (ver pistaSom.missao lá embaixo)
+  // (música contínua, 03/11) com a faixa da pista tocando, a cena não abafa
   // (trilha sonora, 05/11; bíblia 9) a trilha não para e faz parte do cenário: numa
   // cena (sala, casa, missão) a música segue no lugar, só um pouco mais baixa (sem abafar)
   const emCena = !!cena
@@ -1103,6 +1103,9 @@ export default function LinhaPage() {
     pegarMissao(id)
   }
   const pegarMissao = (id: MissaoId) => {
+    // (08/11, bíblia §3) aceitou: começa a música completa da missão (sem faixa: segue o instrumental da pista)
+    const faixa = faixaDaMissao(id)
+    if (faixa) pistaSom.tocarDaMissao(faixa, id)
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id })))
     setLargadas((l) => l.filter((x) => x !== id))
     track("mission_step", { mission_id: `disco-${id}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })
@@ -1552,6 +1555,8 @@ export default function LinhaPage() {
     // a faixa da rua (que mora na página) fica muda por baixo da rádio, como na estrada
     pistaSom.estado(false, fonteSom.get() === "radio")
   }
+  // a completa que esperava a rádio não começa se a missão já saiu (feita ou largada)
+  useEffect(() => { pistaSom.esquecerPendente(missaoCarreira) }, [missaoCarreira])
   // a faixa da pista vive na página (não na estrada, que desmonta numa sala): sai da página, para
   useEffect(() => () => pistaSom.parar(), [])
   // (só baixa o som da missão se ele vai tocar: sem faixa de pista, no deserto)
@@ -1881,9 +1886,9 @@ export default function LinhaPage() {
   // (vitrine) o bar do subúrbio: a porta perto (o botão), a visita e a sinuca aberta
   const [portaBar, setPortaBar] = useState(false)
   const [sinucaBar, setSinucaBar] = useState(false)
-  // (música contínua, 03/11) missão, peça ou cena começou no meio da faixa: o
-  // instrumental da MESMA faixa no MESMO ponto (crossfade); terminou, volta a
-  // completa se ela ainda não acabou. Nada disso pausa a faixa
+  // (música contínua, 03/11; 08/11) quem comprou o álbum: missão, peça ou cena no
+  // meio da faixa passa pro instrumental no mesmo ponto; terminou, volta a completa.
+  // A completa da missão (pistaSom.tocarDaMissao) não troca. Nada disso pausa a faixa
   // (trilha sonora, 05/11) as peças, a letra e o basquete também (antes cortavam a música)
   const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!letraAgora || !!basquete
   // (começo novo, 05/11) cena/peça/sala aberta: a rádio troca de faixa sem chiado e sem vinheta

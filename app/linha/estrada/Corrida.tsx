@@ -133,7 +133,7 @@ import type { Save } from "../estado"
 import { radioPega, type MemoriaRadio } from "../disco/sons"
 import { definirZonaSom, zonaDoSom } from "../disco/radioAntiga"
 import { estacaoDaFreq, pedirFaixaDaRua, radioFreq, registrarTocador } from "../disco/radios"
-import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, voz, type Fonte, definirTom, pistaSom, somCena, disco as discoPainel } from "../som"
+import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, voz, type Fonte, pistaSom, somCena, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
 import { ABRE, CK, FAIXA, distritoDe, montarMundo, posicao, rumo, saidaEm, territorio, type Faixa, type Mundo, type Via } from "./mundo"
@@ -6368,12 +6368,10 @@ function CenaBase({
     }
     // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
     if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }
-    // (música contínua, 03/11, o dono: "cada música é uma experiência que dura o
-    // tamanho da faixa") entrou numa pista, a faixa DELA do início, completa, uma
-    // vez inteira; nas torres continua a que estava. Nada aqui pausa nem muda o
-    // ritmo (turbo, pulo, missão): no ar só abafa. A missão troca pro
-    // instrumental no mesmo ponto (page.tsx → pistaSom.missao). Substitui o tema
-    // da missão (21/10) e a prévia/instrumental/subúrbio do trajeto (T31)
+    // (música contínua, 03/11; bíblia §3, 08/11) entrou numa pista, o instrumental
+    // dela; nas torres continua o que estava. Com a completa da missão soando
+    // (page.tsx → pistaSom.tocarDaMissao) a troca de pista não mexe nela. Nada aqui
+    // pausa nem muda o ritmo (turbo, pulo, missão): no ar só abafa
     else if (faixasDisco.length) {
       const inf = (M as MundoDisco).info[j.via]
       const naPista = !!inf && inf.pista >= 0
@@ -6385,11 +6383,12 @@ function CenaBase({
         if (fonteRef.current !== "radio") player.pausar()
         discoPainel.parar()
         pistaSom.tocarFaixa(faixaContinua(fx))
-        definirTom(fx.tom)
         // (rádios, 05/11) com a Rádio Cidade Neon ligada, a faixa da rua é a próxima dela
         pedirFaixaDaRua(fx.id)
       }
-      pistaSom.estado(!!(j.ar || j.voo || combRef.current.patins), fonteRef.current === "radio", pistaEscura.current)
+      // a completa da missão não é a música da pista: fora dela (no chão) ou numa pista apagada ela soa limpa
+      const daMissao = pistaSom.daMissao
+      pistaSom.estado(!!(j.ar || (j.voo && !daMissao) || combRef.current.patins), fonteRef.current === "radio", pistaEscura.current && !daMissao)
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins

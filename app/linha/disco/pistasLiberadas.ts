@@ -15,8 +15,9 @@
 
 import { PISTAS, faixaDaPista, type Pista, type PistaId } from "../estrada/pistas"
 import type { HistoriaDisco } from "./historia"
-import { CONFIG13, IDS13, MISSOES13, feita13, normalizarMissao, pecaFeita } from "./portas"
+import { CONFIG13, IDS13, MISSOES13, feita13, normalizarMissao, pecaFeita, type MissaoId } from "./portas"
 import type { FaixaContinua } from "./musicaContinua"
+import { episodioDaMissao } from "./episodios"
 
 export type VersaoPista = "previa" | "inst" | "suburbio"
 export const ORDEM_VERSAO: VersaoPista[] = ["previa", "inst", "suburbio"]
@@ -77,5 +78,13 @@ export const rotuloDoArquivo = (src: string | null | undefined) => {
  *  se já saiu; senão o instrumental) e o instrumental. Ver disco/musicaContinua.ts */
 export function faixaContinua(p: Pista, agora = Date.now()): FaixaContinua {
   const completa = srcDaVersao(p, "suburbio", agora)
-  return { id: p.id, completa, inst: p.inst || completa, semInst: !p.inst, dur: p.duracao }
+  return { id: p.id, completa, inst: p.inst || completa, semInst: !p.inst, dur: p.duracao, tom: p.tom }
+}
+
+/** (música da missão, 08/11; bíblia §3) a faixa que toca ao aceitar a missão, a
+ *  do episódio dela. null = missão sem faixa (LIVRES, o final): segue o instrumental da pista */
+export function faixaDaMissao(id: MissaoId): FaixaContinua | null {
+  const ep = episodioDaMissao(id)
+  const p = ep && PISTAS.find((x) => x.id === ep.musica)
+  return p ? faixaContinua(p) : null
 }

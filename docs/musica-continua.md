@@ -1,4 +1,28 @@
-# Música contínua na cidade (03/11)
+# Música contínua na cidade (03/11; a regra mudou em 08/11)
+
+> **08/11, bíblia §3 (o dono: "eu quero que a musica toque quando aceitar a
+> missao").** Vale a seção "A música da missão" logo abaixo; o resto do documento
+> é a história de 03/11, e continua valendo no que ela não muda (os dois decks, o
+> mestre, o iPhone).
+
+## A música da missão (08/11)
+
+| Quando | O que toca |
+|---|---|
+| Andando numa rua, sem completa da missão soando | o instrumental da pista, em loop |
+| Aceitou missão com faixa (`EPISODIOS` → `faixaDaMissao`) | a completa da faixa da missão, do início, onde ele estiver |
+| Trocou de pista, entrou em peça/cena/sala | a completa segue inteira, sem crossfade e sem abafar fora da pista |
+| A completa acabou | o instrumental da mesma faixa, em loop, até trocar de pista |
+| Missão sem faixa (LIVRES, o final) | o instrumental da pista |
+| Álbum comprado (`albumComprado`) | como antes: a completa em loop na rua; na missão, a completa dela |
+| Rádio ligada ao aceitar | a rádio manda; a completa espera e começa quando o som desligar (se a missão ainda estiver pegada) |
+
+Só `pegarMissao` (`page.tsx`) começa a música, porque só ela é o aceite: abrir o
+jogo com a missão já pegada (recarregar, os links `missao.*`) fica no
+instrumental. Uma completa começada termina mesmo se a missão acabar ou for
+largada. A mesma faixa aceita de novo, ainda soando, segue de onde está; sem
+voz no jogo a completa É o instrumental (Swav, Rollercoaster, Ojalá).
+A pausa pra fazer música (`fazerMusica`) e as rádios não mudaram.
 
 > "Entro na pista, começa a tocar uma música nova, começo a me envolver; aí entra
 > a missão, que pausa a música. [...] Cada música é uma experiência que dura o
