@@ -32,12 +32,16 @@ export const MESA: Cartao[] = [
     olhar: "Não existe mais neon$: a loja, o posto, o mecânico, as missões e os shows usam a mesma Água$. Quem já jogava teve o neon somado na água. No deserto agora tem pouquíssimas gotas no chão, em grupinhos de 3 (saia pelas dunas e procure).",
     perguntas: ["Sobrou algum neon$ em alguma tela?", "O saldo de um save antigo veio somado certo?", "As gotas do deserto estão raras na medida?", "As melhorias do mecânico (120, 80 e 100) ficaram num preço bom?", "O propulsor deve gastar água no deserto: quanto por segundo, e o que acontece se a água acabar?"],
     mais: [{ parte: "dunas", nome: "as gotas do deserto" }],
+  },
+  {
     parte: "amigos",
     nome: "Os amigos mandam mensagem no notch",
     data: "2026-11-09",
     tarefa: "notch dos amigos",
     olhar: "Ande sem missão e espere uns 45 s: as mensagens passam no notch, do mesmo tamanho de sempre, com o nome de quem manda (\"Mubarak: ...\"). Chegam mais vezes do que antes. Aqui já estão na lista D-Bee, Mubarak, LU2CA, Alohan e Drew; cada um entra quando você termina a missão dele. O LU2CA chama pra tocar nos palcos. Mensagem com sublinhado: toque e o lugar vai pro mapa. Os textos são rascunho, estão todos em amigosTextos.ts.",
     perguntas: ["O ritmo das mensagens ficou bom, ou é muita coisa?", "Dá pra ler o nome de quem manda sem atrapalhar a direção?", "A voz de cada um está certa? (é rascunho pra você reescrever)", "O LU2CA entrar na lista logo depois do show da Nectar, em vez de só no ep. 9, está bom?"],
+  },
+  {
     parte: "instrumentos.mundo",
     nome: "Instrumentos espalhados no deserto e no subúrbio",
     data: "2026-11-09",
@@ -48,6 +52,8 @@ export const MESA: Cartao[] = [
       { parte: "instrumentos.kombi", nome: "a Kombi já com os 11 achados" },
       { parte: "instrumentos", nome: "a casa da D-Bee com o sampler" },
     ],
+  },
+  {
     parte: "bar",
     nome: "O bar na porta do subúrbio, e a Kombi só sobe",
     data: "2026-11-09",
@@ -55,6 +61,8 @@ export const MESA: Cartao[] = [
     olhar: "O bar agora fica logo na chegada do deserto, de frente pra quem vem: dirija até o letreiro laranja e a cena começa ali. No segundo atalho você nasce no pé da torre 1: tem a porta do elevador no deserto, com a placa dos andares e os túneis riscados. O botão sobe a Kombi pra cidade, e lá na rotatória da torre 1 tem o botão de descer de volta. No deserto o propulsor é solar e não gasta nada. Subir voando até uma pista custa 20 de água, cobrados quando você pousa lá em cima; sem água, a Kombi voa baixo, não chega na pista e o Nexo avisa. Na rampa do túnel tem uma viga baixa com a placa: a Kombi não passa.",
     perguntas: ["O bar ficou no lugar certo, bem na chegada?", "A porta no deserto parece um andar da torre?", "O preço de 20 de água pra subir voando está bom?", "A viga e a placa deixam claro que a Kombi não desce?"],
     mais: [{ parte: "elevador.deserto", nome: "a porta do elevador no deserto" }],
+  },
+  {
     parte: "missao.tony.jogo",
     nome: "A feira do Tony Gordo: cortar o preço dos legumes",
     data: "2026-11-09",
@@ -62,6 +70,8 @@ export const MESA: Cartao[] = [
     olhar: "Este link já abre na banca, no meio da rua da feira. Os legumes sobem na sua frente, cada um com a etiqueta de preço. Passe o dedo (ou o mouse) neles: cada corte tira 12% daquele legume, até 72%, e os próximos já vêm com o preço novo. Quando a conta couber no bolso, aparece o botão de pagar em Água$. Pagou: a câmera vai pro fogão do Tony, no fim da feira, e os 4 sacos aparecem ali, sem janela por cima. Escolha 3, segure o fogo e solte no ponto. Depois ande pela feira: as barracas, o pastel, o caldo de cana e a xepa ficam no subúrbio, entre o bar e a oficina.",
     perguntas: ["O som de cada corte ficou gostoso?", "Os legumes e o miolo deles ficaram bonitos?", "Dá pra cortar bem com o dedo no celular?", "A feira parece feira de rua de São Paulo?", "Quer alguma pressão (tempo, perder legume) ou fica sem como está?", "A cozinha no fogão da feira ficou boa de ver e de usar no celular?"],
     mais: [{ parte: "missao.tony.arte", nome: "direto na cozinha do Tony, no fogão da feira" }, { parte: "missao.tony", nome: "chegar na feira com a missão, pelo caminho normal" }],
+  },
+  {
     parte: "bar",
     nome: "O show da Nectar no bar e o beat a caminho do ginásio",
     data: "2026-11-09",
@@ -71,6 +81,9 @@ export const MESA: Cartao[] = [
     mais: [
       { parte: "oficina.show", nome: "ep. 1: só o show, pra quem já conheceu o Mubarak" },
       { parte: "missao.quadra", nome: "ep. 3: o beat no caminho e o esporte" },
+    ],
+  },
+  {
     parte: "metro.passeio",
     nome: "O metrô é um só: por fora na cidade, por dentro só quando você entra",
     data: "2026-11-09",
@@ -81,6 +94,8 @@ export const MESA: Cartao[] = [
       { parte: "metro.violao", nome: "depois do passeio: toque o violão sentado e o guarda levanta" },
       { parte: "metro", nome: "ep. 9: a fuga depois da captura da Kombi, já dentro do trem" },
     ],
+  },
+  {
     parte: "final.nove",
     nome: "Os nove do final agora são os 9 donos das músicas",
     data: "2026-11-09",
