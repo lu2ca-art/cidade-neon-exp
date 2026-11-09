@@ -54,6 +54,9 @@ import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, chaoDentro, ehPeca, pertoDoChao } from "../disco/achados"
+import { IDS_NO_MUNDO, INSTRUMENTOS_MUNDO, NO_MUNDO, PONTOS_NO_MUNDO, achadosAgora } from "../disco/instrumentosMundo"
+import { InstrumentosNoMundo } from "../disco/InstrumentosNoMundo"
+import type { InstrumentoId } from "../disco/instrumentos"
 import { ehAberto } from "../disco/abertos"
 import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desembarque } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
@@ -357,7 +360,7 @@ interface Props {
   veiculo?: string | null
   onPerseguicao?: (e: "jogada" | "escolheu", id?: string) => void
 }
-export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | "perseguicao" | `chao:${LugarChao}`
+export type EventoHistoria = "casa" | "chegou" | "cidade" | "drone" | "quebrou" | "flor" | "galao" | "subiu" | "sorteio-quebra" | "perseguicao" | `chao:${LugarChao}` | `instrumento:${InstrumentoId}`
 
 const SEM_FLORES: string[] = []
 
@@ -1664,6 +1667,25 @@ export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo 
     }, 150)
     return () => { clearInterval(iv); dentro.clear() }
   }, [alvoChao, pausado, M])
+  // (bíblia §13, 09/11) OS INSTRUMENTOS NO CHÃO: passou perto de um que falta, achou
+  // (disco/instrumentosMundo.ts). De 250 em 250 ms, só umas contas de distância;
+  // só avisa de novo depois de sair de perto
+  useEffect(() => {
+    if (pausado || !("disco" in M)) return
+    const perto = new Set<InstrumentoId>()
+    const iv = setInterval(() => {
+      const j = jogo.current
+      if (!j.voo || j.wx === undefined || j.wz === undefined || j.ar) return
+      const achados = achadosAgora()
+      for (const id of IDS_NO_MUNDO) {
+        if (achados.includes(id)) continue
+        const p = INSTRUMENTOS_MUNDO[id], d = Math.hypot(j.wx - p.x, j.wz - p.z)
+        if (d > NO_MUNDO.raioAchar * 3) { perto.delete(id); continue }
+        if (d < NO_MUNDO.raioAchar && !perto.has(id)) { perto.add(id); onHistoriaRef.current?.(`instrumento:${id}`) }
+      }
+    }, 250)
+    return () => clearInterval(iv)
+  }, [pausado, M])
   // (missões claras, 02/11) AS MISSÕES DISPONÍVEIS (não pegas): chegou no lugar
   // de uma, sem outra ativa, ela é pega e começa ali. Com outra ativa, o Nexo
   // avisa (o intervalo do guia, logo abaixo, lê ofertaAqui). De 500 em 500 ms,
@@ -7030,6 +7052,7 @@ function CenaBase({
       {/* (na fase da casa, o farol guia de longe: aí a casa fica sempre montada) */}
       {"disco" in M && <Perto nome="casa do deserto" raio={faseHistoria === "casa" ? 1e7 : 800} pontos={pertoDe.casa}><CasaDeserto chao={(M as MundoDisco).chaoEm} farol={faseHistoria === "casa"} hora={horaRef} /></Perto>}
       {"disco" in M && <Perto nome="lugares do chão" raio={600} pontos={pertoDe.chao}><LugaresChao chao={(M as MundoDisco).chaoEm} alvo={alvoChao} /></Perto>}
+      {"disco" in M && <Perto nome="instrumentos no chão" raio={NO_MUNDO.raioMarcos} pontos={PONTOS_NO_MUNDO}><InstrumentosNoMundo chao={(M as MundoDisco).chaoEm} /></Perto>}
       {/* (missões claras) o feixe-guia: o lugar da missão de agora, visto de longe (1 desenho) */}
       {"disco" in M && <Seguro nome="feixe-guia"><FeixeGuia M={M} lugar={lugarAlvoId} chao={alvoChao} oculto={!!cenaLugar} /></Seguro>}
       {/* (27/10) o drone GPS: o caminho pintado nas ruas e os feixes dos lugares (só na vista do drone) */}

@@ -72,6 +72,7 @@ import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, 
 import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
+import { definirAchados, ouvirSample } from "./disco/instrumentosMundo"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, podeMetro, type PassoMetro } from "./disco/metro"
 import { MetroFuga } from "./disco/MetroFuga"
@@ -93,7 +94,7 @@ import { Show } from "./disco/ShowBanda"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
-import { linhaRecompensa } from "./disco/instrumentos"
+import { INSTRUMENTOS_ANCESTRAIS, ehInstrumento, linhaRecompensa, tocarInstrumento, type InstrumentoId } from "./disco/instrumentos"
 import { proximaDaSequencia, rotuloDoEpisodio } from "./disco/episodios"
 import { faixaDaMissao } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
@@ -129,6 +130,7 @@ const Corrida = dynamic(() => import("./estrada/Corrida").then((m) => m.Corrida)
 // (T10) a quadra: o basquete (3D) e o B4TIDA só carregam quando a peça abre
 const Basquete = dynamic(() => import("../ginasio/basquete").then((m) => m.Basquete), { ssr: false })
 const BatidaMissao = dynamic(() => import("./disco/BatidaMissao").then((m) => m.BatidaMissao), { ssr: false })
+const BatidaCasa = dynamic(() => import("./disco/BatidaCasa").then((m) => m.BatidaCasa), { ssr: false })
 const Interior = dynamic(() => import("./interior/Interior").then((m) => m.Interior), { ssr: false })
 const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: false })
 // (T63) as trincheiras (os túneis do T11, a corrida do T13, as motos do T14), dentro do jogo
@@ -1146,11 +1148,20 @@ export default function LinhaPage() {
   }, [introMissao, missaoCarreira])
   // (T10) a quadra: o B4TIDA aberto (a arte) e o basquete (o jogo, ou a quadra livre depois da porta)
   const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
+  // (bíblia §13, 09/11) o sampler da casa da D-Bee: o B4TIDA aberto com o instrumento sampleado
+  const [batidaSample, setBatidaSample] = useState<InstrumentoId | null>(null)
+  useEffect(() => ouvirSample((id) => {
+    setSave((s) => comHistoria(s, (x) => ({ ...x, instrumentosSampleados: [...new Set([...(x.instrumentosSampleados ?? []), id])] })))
+    setBatidaSample(id)
+  }), [])
   const [basquete, setBasquete] = useState<{ n: number; pontos: number; tempo: number; livre: boolean } | null>(null)
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
   const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar", ...IDS_ABERTOS] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
+  // (bíblia §13, 09/11) o que ele já achou no chão: o espelho que a Corrida e a Kombi leem
+  const achadosChave = (h13.instrumentosAchados ?? []).join(",")
+  useEffect(() => { definirAchados(achadosChave ? (achadosChave.split(",") as InstrumentoId[]) : []) }, [achadosChave])
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])
@@ -1982,6 +1993,16 @@ export default function LinhaPage() {
   }
   const onHistoria = (e: EventoHistoria) => {
     const h = historiaDe(saveRef.current)
+    // (bíblia §13, 09/11) achou um instrumento no chão: entra no save, soa e passa no notch
+    if (e.startsWith("instrumento:")) {
+      const id = e.slice(12) as InstrumentoId
+      if (!ehInstrumento(id) || h.fase === "minhoca" || (h.instrumentosAchados ?? []).includes(id)) return
+      setSave((s) => comHistoria(s, (x) => ({ ...x, instrumentosAchados: [...new Set([...(x.instrumentosAchados ?? []), id])] })))
+      tocarInstrumento(id, 0, 0.8)
+      vib([20, 40, 20])
+      notch(`${linhaRecompensa(id)} · toca na Kombi`, INSTRUMENTOS_ANCESTRAIS[id].cor)
+      return
+    }
     // (T37) a chegada de um login acabou na porta: a D-Bee acenou, o jogo segue dali
     if (e === "chegou") setChegadaLogin(false)
     // (T49, lote D) o login chega na casa da D-Bee: com instrumento novo, entra e toca
@@ -2623,6 +2644,7 @@ export default function LinhaPage() {
           else pecaFeitaNaMissao(l.missao, l.qual)
         }} />}
         {/* (T10) a arte da quadra: o Alohan apresenta o B4TIDA; entregou o instrumental, o basquete segue direto */}
+        {batidaSample && <BatidaCasa id={batidaSample} onFim={() => setBatidaSample(null)} />}
         {batidaMissao && <BatidaMissao cor={MISSOES13[batidaMissao.missao].cor} quem={MISSOES13[batidaMissao.missao].quem} clima={batidaMissao.clima} onFim={() => {
           const b = batidaMissao
           setBatidaMissao(null)

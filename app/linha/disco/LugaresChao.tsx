@@ -70,9 +70,9 @@ function Fachada({ id, chao, alvo }: { id: LugarChao; chao: (x: number, z: numbe
 }
 
 // ── um pedaço juntado: várias caixas/cilindros, cada um com a sua cor, num desenho só ──
-type Peca3 = { g: THREE.BufferGeometry; cor?: string; p?: [number, number, number]; r?: [number, number, number] }
+export type Peca3 = { g: THREE.BufferGeometry; cor?: string; p?: [number, number, number]; r?: [number, number, number] }
 const _o = new THREE.Object3D()
-function juntar(pecas: Peca3[], uv = false) {
+export function juntar(pecas: Peca3[], uv = false) {
   const gs = pecas.map(({ g, cor, p = [0, 0, 0], r = [0, 0, 0] }) => {
     _o.position.set(...p); _o.rotation.set(...r); _o.updateMatrix()
     const n = (g.index ? g.toNonIndexed() : g.clone()).applyMatrix4(_o.matrix)
@@ -87,8 +87,8 @@ function juntar(pecas: Peca3[], uv = false) {
   })
   return mergeGeometries(gs, false)!
 }
-const caixa = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
-const cil = (r0: number, r1: number, h: number, n = 10) => new THREE.CylinderGeometry(r0, r1, h, n)
+export const caixa = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
+export const cil = (r0: number, r1: number, h: number, n = 10) => new THREE.CylinderGeometry(r0, r1, h, n)
 
 // a coluna de luz (o alvo) e o farol do chão
 function Farol({ cor, y = 70 }: { cor: string; y?: number }) {

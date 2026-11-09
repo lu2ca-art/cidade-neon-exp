@@ -38,6 +38,16 @@ export const MESA: Cartao[] = [
     tarefa: "notch dos amigos",
     olhar: "Ande sem missão e espere uns 45 s: as mensagens passam no notch, do mesmo tamanho de sempre, com o nome de quem manda (\"Mubarak: ...\"). Chegam mais vezes do que antes. Aqui já estão na lista D-Bee, Mubarak, LU2CA, Alohan e Drew; cada um entra quando você termina a missão dele. O LU2CA chama pra tocar nos palcos. Mensagem com sublinhado: toque e o lugar vai pro mapa. Os textos são rascunho, estão todos em amigosTextos.ts.",
     perguntas: ["O ritmo das mensagens ficou bom, ou é muita coisa?", "Dá pra ler o nome de quem manda sem atrapalhar a direção?", "A voz de cada um está certa? (é rascunho pra você reescrever)", "O LU2CA entrar na lista logo depois do show da Nectar, em vez de só no ep. 9, está bom?"],
+    parte: "instrumentos.mundo",
+    nome: "Instrumentos espalhados no deserto e no subúrbio",
+    data: "2026-11-09",
+    tarefa: "instrumentos no mundo",
+    olhar: "Você nasce perto do didgeridoo, em cima de pedras com uma luz baixa no deserto. Passe por ele: soa, e o notch diz que agora toca na Kombi. Dentro da Kombi, olhe pra esquerda: os achados ficam na prateleira em cima do sofá, e tocar neles para a música por uns segundos. Na casa da D-Bee, toque um instrumento e depois a caixinha de pads na mesa: o B4TIDA abre com esse som numa faixa.",
+    perguntas: ["O marco no chão chama atenção sem parecer missão?", "A prateleira na Kombi aparece bem, sem entrar na parede?", "Dá pra tocar enquanto dirige, ou atrapalha?", "A música voltar 5 segundos depois do último toque está bom?", "Na casa, ficou claro como samplear?"],
+    mais: [
+      { parte: "instrumentos.kombi", nome: "a Kombi já com os 11 achados" },
+      { parte: "instrumentos", nome: "a casa da D-Bee com o sampler" },
+    ],
   },
   {
     parte: "carreira.feira",

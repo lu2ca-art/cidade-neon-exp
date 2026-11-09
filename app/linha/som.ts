@@ -258,7 +258,7 @@ export function corda(freq: number, vol = 0.35) {
 // esticado nos graves e um corpo de madeira (dois picos de ressonância).
 // Cada nota é calculada uma vez e guardada.
 const notasViolao = new Map<number, AudioBuffer>()
-function bufferViolao(c: AudioContext, freq: number) {
+export function bufferViolao(c: BaseAudioContext, freq: number) {
   const chave = Math.round(freq * 10)
   const pronto = notasViolao.get(chave)
   if (pronto) return pronto

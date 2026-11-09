@@ -7,6 +7,7 @@
 // Ninguém. O gesto é procurar: tocar nas coisas. Depois o grupo vai chegando
 // pela porta, um a um (cada um aparece quando fala).
 
+import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef, useState } from "react"
 import * as THREE from "three"
@@ -14,7 +15,9 @@ import { sinalizar } from "../bus"
 import { Caixa, Npc, Sala, Toque, useExplorar, type Coisa, type V3 } from "../comum"
 import { Camera, type Plano, type SalaProps } from "../motor"
 import { DjembeDela, DjembeSeu } from "./Djembe"
-import { InstrumentosCasa } from "../../disco/InstrumentosCasa"
+import { INSTRUMENTOS_GLB, InstrumentosCasa } from "../../disco/InstrumentosCasa"
+
+useGLTF.preload(INSTRUMENTOS_GLB)
 
 const AZUL = "#3d7bff"
 const QUENTE = "#ffcf8a"
