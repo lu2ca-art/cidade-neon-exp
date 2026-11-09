@@ -72,7 +72,7 @@ import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, 
 import { CENA_OFICINA, CENA_OFICINA_CONHECIDO, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
-import { definirAchados, ouvirSample } from "./disco/instrumentosMundo"
+import { definirTem, ouvirSample } from "./disco/instrumentosMundo"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { emMetro, entrarNoMetro, guardaReageAoViolao, podeMetro, trancaLinha9, type PassoMetro } from "./disco/metro"
 import { tocouViolaoNoTrem } from "./metro/mundo"
@@ -1189,9 +1189,9 @@ export default function LinhaPage() {
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
   const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar", ...IDS_ABERTOS] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
-  // (bíblia §13, 09/11) o que ele já achou no chão: o espelho que a Corrida e a Kombi leem
-  const achadosChave = (h13.instrumentosAchados ?? []).join(",")
-  useEffect(() => { definirAchados(achadosChave ? (achadosChave.split(",") as InstrumentoId[]) : []) }, [achadosChave])
+  // (bíblia §13, 09/11) tudo que ele tem (achados + missões): o espelho que a Corrida e a Kombi leem
+  const temChave = [...new Set([...instrumentosGanhos(h13), ...(h13.instrumentosAchados ?? [])])].join(",")
+  useEffect(() => { definirTem(temChave ? (temChave.split(",") as InstrumentoId[]) : []) }, [temChave])
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])

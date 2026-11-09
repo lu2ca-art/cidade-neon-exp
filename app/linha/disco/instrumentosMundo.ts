@@ -1,11 +1,12 @@
 // OS INSTRUMENTOS ANCESTRAIS NO MUNDO (bíblia §13, 09/11): espalhados pelo deserto
 // e pelo subúrbio; achou, pode tocar dentro da Kombi (estrada/InstrumentosKombi.tsx).
 // Pega passando, como as peças do lixão (a Corrida confere de 250 em 250 ms e avisa
-// `instrumento:<id>`). O que ele achou fica no save (`h.instrumentosAchados`); a
-// página espelha aqui (definirAchados) e a cena lê sem prop nova.
+// `instrumento:<id>`). O que ele achou fica no save (`h.instrumentosAchados`).
 //
-// Os que vêm das missões (`h.instrumentos`) seguem na casa da D-Bee; achar um aqui
-// não mexe na casa. RASCUNHO: quais ficam onde (cada um longe do outro; os do
+// (o dono, 09/11) Na Kombi toca TUDO que ele tem: os achados e os ganhos em missão.
+// A página espelha essa lista aqui (definirTem) e a cena lê sem prop nova; o que ele
+// já tem não fica mais no chão. A casa da D-Bee segue só com os das missões
+// (`h.instrumentos`). RASCUNHO: quais ficam onde (cada um longe do outro; os do
 // subúrbio atrás dos lugares do chão, onde as ruínas não entram: ruinas.ts).
 
 import { INSTRUMENTOS_ANCESTRAIS, type InstrumentoId } from "./instrumentos"
@@ -40,16 +41,16 @@ export const IDS_NO_MUNDO = Object.keys(INSTRUMENTOS_MUNDO) as InstrumentoId[]
 export const PONTOS_NO_MUNDO: PontoXZ[] = IDS_NO_MUNDO.map((id) => INSTRUMENTOS_MUNDO[id])
 export const corDoAchado = (id: InstrumentoId) => INSTRUMENTOS_ANCESTRAIS[id].cor
 
-// o que ele já achou (espelho do save, pra Corrida e pra cena; sem prop nova)
-let ACHADOS: readonly InstrumentoId[] = []
+// o que ele tem: achados + ganhos em missão (espelho do save, pra Corrida e pra cena)
+let TEM: readonly InstrumentoId[] = []
 const ouvintes = new Set<() => void>()
-export function definirAchados(ids: readonly InstrumentoId[]) {
-  if (ids.length === ACHADOS.length && ids.every((x, i) => x === ACHADOS[i])) return
-  ACHADOS = ids
+export function definirTem(ids: readonly InstrumentoId[]) {
+  if (ids.length === TEM.length && ids.every((x, i) => x === TEM[i])) return
+  TEM = ids
   ouvintes.forEach((f) => f())
 }
-export const achadosAgora = () => ACHADOS
-export function ouvirAchados(f: () => void) {
+export const temAgora = () => TEM
+export function ouvirTem(f: () => void) {
   ouvintes.add(f)
   return () => { ouvintes.delete(f) }
 }

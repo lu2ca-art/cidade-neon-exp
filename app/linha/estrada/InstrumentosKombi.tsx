@@ -1,10 +1,10 @@
 "use client"
 /* eslint-disable react-hooks/immutability -- three.js: os instrumentos balançam a cada toque, mexidos por quadro */
 
-// OS INSTRUMENTOS ACHADOS, DENTRO DA KOMBI (bíblia §13, 09/11): uma prateleira na
+// OS INSTRUMENTOS DELE, DENTRO DA KOMBI (bíblia §13, 09/11): uma prateleira na
 // parede de ripas, em cima do sofá (olhando pra esquerda, de dentro). Os pequenos
-// em pé na tábua; os três compridos deitados embaixo. Só aparece o que ele achou
-// (disco/instrumentosMundo.ts). Tocar: o mesmo som da casa da D-Bee (as notas andam
+// em pé na tábua; os três compridos deitados embaixo. Aparece tudo que ele tem:
+// achados e ganhos em missão (disco/instrumentosMundo.ts). Tocar: o mesmo som da casa da D-Bee (as notas andam
 // a cada toque). A trilha para pra fazer música (bíblia §9) e volta sozinha uns
 // segundos depois do último toque, de onde estava.
 //
@@ -17,7 +17,7 @@ import * as THREE from "three"
 import { fazerMusica } from "../som"
 import { Peca } from "../disco/InstrumentosCasa"
 import { tocarInstrumento, type InstrumentoId } from "../disco/instrumentos"
-import { achadosAgora, ouvirAchados } from "../disco/instrumentosMundo"
+import { ouvirTem, temAgora } from "../disco/instrumentosMundo"
 
 type V3 = [number, number, number]
 
@@ -51,7 +51,7 @@ const M = {
 }
 
 export function InstrumentosKombi({ escala, desloca }: { escala: V3; desloca: V3 }) {
-  const ids = useSyncExternalStore(ouvirAchados, achadosAgora, () => achadosAgora())
+  const ids = useSyncExternalStore(ouvirTem, temAgora, temAgora)
   const grupos = useRef(new Map<InstrumentoId, THREE.Group>())
   const bateu = useRef(new Map<InstrumentoId, number>())
   const vezes = useRef(new Map<InstrumentoId, number>())

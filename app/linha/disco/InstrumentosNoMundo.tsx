@@ -11,14 +11,14 @@ import * as THREE from "three"
 import { Perto } from "../estrada/Perto"
 import { Peca } from "./InstrumentosCasa"
 import { caixa, cil, juntar, type Peca3 } from "./LugaresChao"
-import { IDS_NO_MUNDO, INSTRUMENTOS_MUNDO, NO_MUNDO, achadosAgora, corDoAchado, ouvirAchados } from "./instrumentosMundo"
+import { IDS_NO_MUNDO, INSTRUMENTOS_MUNDO, NO_MUNDO, corDoAchado, ouvirTem, temAgora } from "./instrumentosMundo"
 import type { InstrumentoId } from "./instrumentos"
 
 const VAZIO: readonly InstrumentoId[] = []
 
 export function InstrumentosNoMundo({ chao }: { chao: (x: number, z: number) => number }) {
-  const achados = useSyncExternalStore(ouvirAchados, achadosAgora, () => VAZIO)
-  const faltam = useMemo(() => IDS_NO_MUNDO.filter((id) => !achados.includes(id)), [achados])
+  const tem = useSyncExternalStore(ouvirTem, temAgora, () => VAZIO)
+  const faltam = useMemo(() => IDS_NO_MUNDO.filter((id) => !tem.includes(id)), [tem])
   const desenho = useMemo(() => {
     if (!faltam.length) return null
     const pedras: Peca3[] = [], luz: Peca3[] = []
