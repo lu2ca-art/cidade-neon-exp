@@ -395,7 +395,7 @@ export default function LinhaPage() {
     // atalho de teste (/teste): fora da produção, a Kombi aparece num ponto
     if (atalhosLiberados()) setAtalhoTeste(atalhoPorId(new URLSearchParams(location.search).get("atalho"))?.ir ?? null)
     // (T03) ?parte=loja: o jogo abre com a loja no celular (só fora da produção)
-    if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "loja") setTela({ t: "app", id: "loja" })
+    if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "loja") { setTela({ t: "app", id: "loja" }); if (new URLSearchParams(location.search).get("aba") === "roupa") setLojaAba("roupa") }
     // (T20) ?parte=palcos: o menu dos palcos abre assim que ele entra no jogo
     if (atalhosLiberados() && new URLSearchParams(location.search).get("app") === "palcos") palcosAoEntrar.current = true
     // (T07) ?parte=casa.holo: a cena da casa começa na entrega do holo

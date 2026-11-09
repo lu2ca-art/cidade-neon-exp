@@ -94,6 +94,7 @@ export const MESA: Cartao[] = [
     tarefa: "brechó vintage",
     olhar: "Na loja, abra a aba roupas e toque em cada peça: o boné de espuma e tela, os óculos de casco, a camisa da 222 com a estampa rachada, o tênis de lona e a jaqueta de couro gasta. Costura, etiqueta e desgaste aparecem melhor na tela grande da peça. Depois vá ao brechó no subúrbio: as araras agora têm camisa de gola larga, vestido evasê, calça boca de sino, blazer xadrez, colete de franja e poncho, com estampas e cores gastas. Os preços e o que cada uma faz não mudaram; a roupa real da Bee Shop entra depois.",
     perguntas: ["Parece peça de brechó de verdade?", "Alguma peça deve ter outra época ou outro corte?", "As cores estão boas ou devem ser mais gastas?", "As estampas das araras estão boas de longe, ou quadriculadas demais de perto?"],
+    mais: [{ parte: "loja.roupas", nome: "a loja já na aba roupas" }, { parte: "brecho", nome: "de frente pra arara do brechó" }],
   },
   {
     parte: "missao.ella",
