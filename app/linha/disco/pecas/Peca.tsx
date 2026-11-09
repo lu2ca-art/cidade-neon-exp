@@ -21,14 +21,14 @@ import "./pecas.css"
 // `obra`: o que a arte deixou (os cortes do clipe, a trilha, o prato…), vai pro save
 export interface PecaProps { cor: string; quem: string; onFim: (ok: boolean, obra?: string[]) => void }
 
-const PECAS: Record<CenaId, { titulo: string; C: (p: PecaProps) => React.ReactNode; tela?: "cheia" }> = {
+const PECAS: Record<CenaId, { titulo: string; C: (p: PecaProps) => React.ReactNode; tela?: "cheia" | "mundo" }> = {
   danca: { titulo: "dançar na balada", C: Danca },
   moda: { titulo: "o look reciclado", C: Moda },
   vinheta: { titulo: "gravar a vinheta", C: Vinheta },
   trilha8: { titulo: "a trilha de 8 bits", C: Trilha8 },
   maquina: { titulo: "a máquina do Notti", C: Maquina, tela: "cheia" },
   clipe: { titulo: "filmar o clipe", C: Clipe },
-  cozinhar: { titulo: "cozinhar com o que veio da feira", C: Cozinhar },
+  cozinhar: { titulo: "cozinhar com o que veio da feira", C: Cozinhar, tela: "mundo" },
   "disco-antigo": { titulo: "um disco antigo", C: DiscoAntigo },
   sinuca: { titulo: "a sinuca", C: SinucaMissao, tela: "cheia" },
 }
@@ -39,6 +39,14 @@ export function Peca({ id, qual, cor, quem, onFim }: { id: CenaId; qual: "arte" 
   if (p.tela === "cheia") {
     return (
       <div className={`l-peca is-cheia is-${id}`} style={{ ["--cor" as string]: cor }} role="dialog" aria-label={`a missão de ${quem}: ${p.titulo}`} onPointerDown={(e) => e.stopPropagation()}>
+        <C cor={cor} quem={quem} onFim={onFim} />
+      </div>
+    )
+  }
+  // (09/11) acontece no lugar: nada por cima além dos controles (a cozinha do Tony)
+  if (p.tela === "mundo") {
+    return (
+      <div className={`l-peca is-mundo is-${id}`} style={{ ["--cor" as string]: cor }} role="group" aria-label={`a missão de ${quem}: ${p.titulo}`} onPointerDown={(e) => e.stopPropagation()}>
         <C cor={cor} quem={quem} onFim={onFim} />
       </div>
     )

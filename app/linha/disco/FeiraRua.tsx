@@ -13,8 +13,9 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { CHAO_LUGARES } from "./historia"
-import { FEIRA_EM_VOLTA, FEIRA_RUMO, FEIRA_VIVO, ouvirFeira } from "./feira"
+import { COZINHA_VIVA, FEIRA_EM_VOLTA, FEIRA_RUMO, FEIRA_VIVO, LOCAL_COZINHA, naFeira, ouvirFeira } from "./feira"
 import { FeiraBanca } from "./FeiraBanca"
+import { CozinhaTony } from "./CozinhaTony"
 
 type Peca3 = { g: THREE.BufferGeometry; cor: string | number }
 const _o = new THREE.Object3D(), _c = new THREE.Color()
@@ -166,7 +167,9 @@ function placa(lista: THREE.BufferGeometry[], i: number, p: [number, number, num
 export function FeiraRua({ chao, alvo }: { chao: (x: number, z: number) => number; alvo: boolean }) {
   const F = CHAO_LUGARES.feira
   const aberta = useSyncExternalStore(ouvirFeira, () => FEIRA_VIVO.aberta, () => false)
+  const naCozinha = useSyncExternalStore(ouvirFeira, () => COZINHA_VIVA.aberta, () => false)
   const yC = useMemo(() => chao(F.x, F.z), [chao, F.x, F.z])
+  const yCoz = useMemo(() => { const p = naFeira(LOCAL_COZINHA.lx, LOCAL_COZINHA.lz); return chao(p.x, p.z) }, [chao])
   const d = useMemo(() => {
     s = 7
     const local = (lx: number, lz: number) => {
@@ -203,7 +206,7 @@ export function FeiraRua({ chao, alvo }: { chao: (x: number, z: number) => numbe
         { x: 18, larg: 6, lona: 4, tipos: [5, 6] },
       ],
       [
-        { x: -19, larg: 4, lona: 5, tipos: [0] },
+        { x: -19, larg: 4, lona: 5, tipos: [] }, // a barraca do fogão: a cozinha do Tony
         { x: -10, larg: 6, lona: 3, tipos: [1, 2] },
         { x: 0.5, larg: 7, lona: 1, tipos: [5, 3, 2] },
         { x: 10, larg: 6, lona: 2, tipos: [6, 0] },
@@ -229,6 +232,13 @@ export function FeiraRua({ chao, alvo }: { chao: (x: number, z: number) => numbe
     ops.push(peca(caixa(4, 1.8, 2), "#34547d", [14, local(14, -9) + 1.2, -9]))
     ops.push(peca(caixa(1.6, 1.4, 2), "#dcd8c6", [16.6, local(16.6, -9) + 0.9, -9]))
     for (const px of [13, 15.6]) for (const pz of [-1, 1]) ops.push(peca(cil(0.34, 0.34, 0.2, 10), "#1a1a1e", [px, local(px, -9) + 0.34, -9 + pz], [Math.PI / 2, 0, 0]))
+    // a cozinha do Tony: o fogão, as bocas, a panela e a tábua (e ele, PROVISÓRIO: cápsula até o modelo)
+    const yK = local(-19, -5.6)
+    ops.push(peca(caixa(1.3, 0.1, 0.75), "#b9bcc2", [-19, yK + 1.03, -5.6]))
+    for (const px of [-19.32, -18.68]) ops.push(peca(cil(0.14, 0.14, 0.02, 10), "#26262b", [px, yK + 1.09, -5.6]))
+    ops.push(peca(cil(0.2, 0.17, 0.16, 12), "#6f7178", [-18.68, yK + 1.18, -5.6]))
+    ops.push(peca(caixa(0.7, 0.03, 0.42), "#c79a5c", [-20.2, yK + 1.0, -5.55]))
+    ops.push(peca(cil(0.4, 0.46, 0.95, 10), "#ffe14d", [-19, yK + 0.95, -6.8])); ops.push(peca(bola(0.21), "#c99a70", [-19, yK + 1.66, -6.8]))
     // o feirante atrás da banca do meio (PROVISÓRIO: cápsula até o modelo do Tripo)
     const yF = local(0.5, 6.9)
     ops.push(peca(cil(0.24, 0.28, 0.9, 8), "#f0ede4", [0.5, yF + 1.0, 6.9])); ops.push(peca(cil(0.25, 0.25, 0.4, 8), "#2f8fd8", [0.5, yF + 0.6, 6.9]))
@@ -287,6 +297,7 @@ export function FeiraRua({ chao, alvo }: { chao: (x: number, z: number) => numbe
       </group>
       {alvo && <mesh position={[F.x, yC + 70, F.z]} material={mats.alvoF}><cylinderGeometry args={[2.4, 3.6, 140, 10, 1, true]} /></mesh>}
       {aberta && <FeiraBanca y={yC} />}
+      {naCozinha && <CozinhaTony y={yCoz} />}
     </>
   )
 }

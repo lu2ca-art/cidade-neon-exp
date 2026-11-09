@@ -29,9 +29,9 @@ export const MESA: Cartao[] = [
     nome: "A feira do Tony Gordo: cortar o preço dos legumes",
     data: "2026-11-09",
     tarefa: "ep. 5",
-    olhar: "Este link já abre na banca, no meio da rua da feira. Os legumes sobem na sua frente, cada um com a etiqueta de preço. Passe o dedo (ou o mouse) neles: cada corte tira 12% daquele legume, até 72%, e os próximos já vêm com o preço novo. Quando a conta couber no bolso, aparece o botão de pagar em Água$. Depois saia e ande pela feira: as barracas, o pastel, o caldo de cana e a xepa ficam no subúrbio, entre o bar e a oficina.",
-    perguntas: ["O som de cada corte ficou gostoso?", "Os legumes e o miolo deles ficaram bonitos?", "Dá pra cortar bem com o dedo no celular?", "A feira parece feira de rua de São Paulo?", "Quer alguma pressão (tempo, perder legume) ou fica sem como está?", "Depois da feira ainda tem a cozinha do Tony: fica ou sai?"],
-    mais: [{ parte: "missao.tony", nome: "chegar na feira com a missão, pelo caminho normal" }],
+    olhar: "Este link já abre na banca, no meio da rua da feira. Os legumes sobem na sua frente, cada um com a etiqueta de preço. Passe o dedo (ou o mouse) neles: cada corte tira 12% daquele legume, até 72%, e os próximos já vêm com o preço novo. Quando a conta couber no bolso, aparece o botão de pagar em Água$. Pagou: a câmera vai pro fogão do Tony, no fim da feira, e os 4 sacos aparecem ali, sem janela por cima. Escolha 3, segure o fogo e solte no ponto. Depois ande pela feira: as barracas, o pastel, o caldo de cana e a xepa ficam no subúrbio, entre o bar e a oficina.",
+    perguntas: ["O som de cada corte ficou gostoso?", "Os legumes e o miolo deles ficaram bonitos?", "Dá pra cortar bem com o dedo no celular?", "A feira parece feira de rua de São Paulo?", "Quer alguma pressão (tempo, perder legume) ou fica sem como está?", "A cozinha no fogão da feira ficou boa de ver e de usar no celular?"],
+    mais: [{ parte: "missao.tony.arte", nome: "direto na cozinha do Tony, no fogão da feira" }, { parte: "missao.tony", nome: "chegar na feira com a missão, pelo caminho normal" }],
   },
   {
     parte: "carreira.feira",

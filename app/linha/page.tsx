@@ -1180,7 +1180,7 @@ export default function LinhaPage() {
     const como = MISSOES13[mid]?.[qual]?.como
     return como?.t === "cena" ? { missao: mid, qual, id: como.id as CenaId } : null
   })()
-  // (09/11, ep. 5) a barganha na banca da feira: a peça da missão ou, depois dela, de graça
+  // (09/11, ep. 5) a barganha e a cozinha, nas barracas da feira: a peça da missão ou, depois dela, de graça
   const [feiraLivre, setFeiraLivre] = useState(false)
   const feiraAgora = (() => {
     if (!HIST || cena || tela.t !== "corrida") return null
@@ -1190,7 +1190,7 @@ export default function LinhaPage() {
     return MISSOES13[mid]?.[qual]?.como?.t === "feira" ? { missao: mid, qual } : null
   })()
   // o mundo fica ali em volta: sem pausar, a Kombi para e a câmera vai pra banca (CAM_FEIRA)
-  const feiraAberta = !!feiraAgora
+  const feiraAberta = !!feiraAgora || cenaAgora?.id === "cozinhar"
   useEffect(() => {
     if (!feiraAberta) return
     setAoVivo(null)

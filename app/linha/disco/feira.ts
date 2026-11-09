@@ -125,5 +125,17 @@ export function cortarLegume(id: ItemFeiraId): number {
   return FEIRA_VIVO.cortes[id]
 }
 
+// (09/11, decisão do dono) a cozinha do Tony, na barraca do fogão da feira: a peça
+// (pecas/Cozinhar.tsx) escreve aqui e o 3D (CozinhaTony) desenha
+export const LOCAL_COZINHA = { lx: -19, lz: -4.6 }
+export const COZINHA_POS = [-0.66, -0.22, 0.22, 0.66] // onde cada saco fica, em fração da meia tela
+export const COZINHA_Y = -0.28
+export const COZINHA_VIVA = { aberta: false, ingr: [] as number[], fase: "escolher" as "escolher" | "fogo" | "provar", ponto: 0, segura: false }
+export function abrirCozinhaViva() {
+  COZINHA_VIVA.aberta = true; COZINHA_VIVA.ingr = []; COZINHA_VIVA.fase = "escolher"; COZINHA_VIVA.ponto = 0; COZINHA_VIVA.segura = false
+  avisarFeira()
+}
+export function fecharCozinhaViva() { COZINHA_VIVA.aberta = false; avisarFeira() }
+
 // a câmera na banca (a Corrida lê aqui, como o CAM_ROTEIRO do final)
 export const CAM_FEIRA = { ativo: false, px: 0, py: 0, pz: 0, ox: 0, oy: 0, oz: 0 }

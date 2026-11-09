@@ -207,7 +207,7 @@ export function aplicarParteDeTeste(): boolean {
   ligarTeste()
   apagarOndeParou() // o teste começa onde a parte manda, não onde o último teste parou
   // (09/11, ep. 5) a missão do Tony começa na rua da feira, de frente pras barracas
-  if (parte === "missao.tony" || parte === "missao.tony.jogo" || parte === "missao.swav") { const p = naFeira(-16, 0); gravarOndeParou({ t: "chao", x: p.x, z: p.z, rumo: FEIRA_RUMO + Math.PI / 2 }) }
+  if (parte === "missao.tony" || parte === "missao.tony.jogo" || parte === "missao.tony.arte" || parte === "missao.swav") { const p = naFeira(-16, 0); gravarOndeParou({ t: "chao", x: p.x, z: p.z, rumo: FEIRA_RUMO + Math.PI / 2 }) }
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
   else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("missao.tony") ? { agua: 60, economia: 1 } : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
