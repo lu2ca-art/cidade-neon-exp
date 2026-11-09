@@ -32,6 +32,12 @@ export const MESA: Cartao[] = [
     olhar: "Não existe mais neon$: a loja, o posto, o mecânico, as missões e os shows usam a mesma Água$. Quem já jogava teve o neon somado na água. No deserto agora tem pouquíssimas gotas no chão, em grupinhos de 3 (saia pelas dunas e procure).",
     perguntas: ["Sobrou algum neon$ em alguma tela?", "O saldo de um save antigo veio somado certo?", "As gotas do deserto estão raras na medida?", "As melhorias do mecânico (120, 80 e 100) ficaram num preço bom?", "O propulsor deve gastar água no deserto: quanto por segundo, e o que acontece se a água acabar?"],
     mais: [{ parte: "dunas", nome: "as gotas do deserto" }],
+    parte: "amigos",
+    nome: "Os amigos mandam mensagem no notch",
+    data: "2026-11-09",
+    tarefa: "notch dos amigos",
+    olhar: "Ande sem missão e espere uns 45 s: as mensagens passam no notch, do mesmo tamanho de sempre, com o nome de quem manda (\"Mubarak: ...\"). Chegam mais vezes do que antes. Aqui já estão na lista D-Bee, Mubarak, LU2CA, Alohan e Drew; cada um entra quando você termina a missão dele. O LU2CA chama pra tocar nos palcos. Mensagem com sublinhado: toque e o lugar vai pro mapa. Os textos são rascunho, estão todos em amigosTextos.ts.",
+    perguntas: ["O ritmo das mensagens ficou bom, ou é muita coisa?", "Dá pra ler o nome de quem manda sem atrapalhar a direção?", "A voz de cada um está certa? (é rascunho pra você reescrever)", "O LU2CA entrar na lista logo depois do show da Nectar, em vez de só no ep. 9, está bom?"],
   },
   {
     parte: "carreira.feira",

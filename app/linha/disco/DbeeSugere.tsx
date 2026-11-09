@@ -5,9 +5,11 @@
 //
 // - Quando: sem missão pegada e nada acontecendo há um tempo (DBEE_CFG.paradoMs),
 //   ou uns segundos depois de acabar alguma coisa (corrida, racha, peça, sala, missão).
-//   No máximo uma a cada ~90 s, nunca a mesma seguida, nunca durante corrida,
-//   racha, peça, intro, cena, perseguição ou pedra da trilha. Só na carreira e no
-//   jogo livre (antes disso a história guia).
+//   No máximo uma a cada ~45 s, nunca a mesma seguida, nunca durante corrida,
+//   racha, peça, intro, cena, perseguição ou pedra da trilha, nem com outra
+//   mensagem no notch. Só na carreira e no jogo livre (antes disso a história guia).
+//   (09/11, bíblia §14) os amigos (disco/amigos.ts) mandam na mesma hora, um por vez,
+//   alternando com ela.
 // - Como: no notch, "D-Bee: …" por uns segundos. Tocar na frase marca o alvo no
 //   mapa (a mesma marca do mapa: o GPS, a rota, o drone e o piloto seguem ela).
 //   Nenhuma tela abre.
@@ -22,7 +24,7 @@ import type { Mundo } from "../estrada/mundo"
 import type { MundoDisco } from "../estrada/mundoDisco"
 import type { Marca, IconeMapa } from "../estrada/Mapa"
 import { noMundo } from "../estrada/Mapa"
-import { notch, lerNexoTutorial } from "../estrada/Holo"
+import { notch, notchLivre, lerNexoTutorial } from "../estrada/Holo"
 import { pistaPerto } from "../estrada/nav"
 import { pontoDoAlvo } from "../estrada/alvoMissao"
 import { pontosDoMapa } from "../estrada/pontosMapa"
@@ -39,6 +41,7 @@ import {
   type AlvoDbee, type CtxDbee, type OpcaoDbee,
 } from "./sugestoesDbee"
 import { lerFinal } from "./final"
+import { escolherAmigo } from "./amigos"
 
 type JogoDbee = { via: number; u: number; voo?: boolean; wx?: number; wz?: number }
 type CombDbee = { aqui?: { x: number; z: number }; patins?: boolean; moto?: boolean }
@@ -64,10 +67,11 @@ export interface PropsDbee {
 }
 
 // a frase no notch
-// (T41, 06/11) o Nexo só informa: a dica entra sem o nome de quem fala (como o
-// ensinar() da Corrida). Pra voltar o "D-Bee: …", é virar DBEE_COM_NOME pra true
-export const DBEE_COM_NOME = false
-export const textoDbee = (o: OpcaoDbee) => (DBEE_COM_NOME ? `D-Bee: ${o.texto}` : o.texto)
+// (09/11, bíblia §14, no lugar da regra do T41) o notch é o visor das mensagens: o
+// nome de quem manda aparece. false = só o texto
+export const DBEE_COM_NOME = true
+export const textoDbee = (o: OpcaoDbee) => (DBEE_COM_NOME ? `${o.quem ?? "D-Bee"}: ${o.texto}` : o.texto)
+const corDaFala = (o: OpcaoDbee) => (o.quem && o.cor) || DBEE_CFG.cor
 
 // (jogador novo 2) a primeira carreira: até a trilha mostrar o que a 1ª missão abriu
 // (a pedra "liberou"), ela fica calada; entre uma pedra e outra ela sugeria o
@@ -130,6 +134,7 @@ export function DbeeSugere(props: PropsDbee) {
       marca: null as Marca | null,
       chaveMarca: "",
       zonaDepois: "" as string, // a zona da olhada anterior (o mundo depois)
+      vezAmigo: false, // (09/11) alterna: a D-Bee sugere, um amigo manda
     }
 
     const olhar = () => {
@@ -186,6 +191,8 @@ export function DbeeSugere(props: PropsDbee) {
       if (agora - st.ultima < DBEE_CFG.intervaloMs) return
       const quer = (st.depois && agora >= st.depois) || agora - st.livreDesde >= DBEE_CFG.paradoMs
       if (!quer) return
+      // o notch ainda está passando outro aviso (ou a fila tem): tenta na próxima olhada
+      if (!notchLivre()) return
 
       // ── o que dá pra fazer agora ──
       const j = p.jogo.current
@@ -199,10 +206,11 @@ export function DbeeSugere(props: PropsDbee) {
         naRua, ruas, disponiveis, corridaRua: p.corridaRua, ruaSuburbio: p.ruaSuburbio, mem: lerMemoriaDbee(),
         distancia: (a) => { const m = marcaDe(a); if (!m || !eu) return -1; const w = pontoDa(m); return Math.hypot(w.x - eu.x, w.z - eu.z) },
       }
-      const o = escolherDbee(ctx)
-      // nada pra sugerir agora: tenta de novo daqui a pouco (não queima os 90 s)
+      const o = st.vezAmigo ? escolherAmigo(ctx) ?? escolherDbee(ctx) : escolherDbee(ctx) ?? escolherAmigo(ctx)
+      // nada pra sugerir agora: tenta de novo daqui a pouco (não queima a vez)
       if (!o) { st.livreDesde = agora - DBEE_CFG.paradoMs + 20000; st.depois = 0; return }
       st.ultima = agora
+      st.vezAmigo = !st.vezAmigo
       st.livreDesde = agora
       st.depois = 0
       mudarMemoriaDbee((m) => comSugerida(m, o.chave))
@@ -214,7 +222,7 @@ export function DbeeSugere(props: PropsDbee) {
         P.current.onMarcar(m)
         try { navigator.vibrate?.(18) } catch {}
       } : undefined
-      notch(textoDbee(o), DBEE_CFG.cor, { toque, fica: DBEE_CFG.ficaMs })
+      notch(textoDbee(o), corDaFala(o), { toque, fica: DBEE_CFG.ficaMs })
     }
 
     const t = setInterval(olhar, DBEE_CFG.cadaMs)

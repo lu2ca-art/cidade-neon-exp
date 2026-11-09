@@ -52,7 +52,7 @@ export const INFO: Record<string, { t: string; d: string }> = {
   tv: { t: "📺 TV", d: "a TV do holo: o vídeo da faixa que toca, no YouTube, num cantinho. o jogo continua; a música do jogo abaixa enquanto a TV toca. arrasta pelo topo pra outro canto; × fecha." },
   salvar: { t: "♥ salvar", d: "a faixa que toca na rua, no seu app de música: um toque abre o app (ou a página com todos) pra salvar ou pôr na sua playlist. só se você quiser." },
   faixa: { t: "a faixa da pista", d: "cada pista é uma música do Vol.1: com a Kombi rodando nela, o disco gira." },
-  ilha: { t: "N3XO_ · o notch", d: "o Nexo: o objetivo da missão, o passo de agora e as dicas passam aqui. toca nele e ele abre com o objetivo inteiro." },
+  ilha: { t: "N3XO_ · o notch", d: "o Nexo: o objetivo da missão, o passo de agora, as dicas e as mensagens dos amigos passam aqui. toca nele e ele abre com o objetivo inteiro." },
   mapa: { t: "o mapa", d: "toca pra abrir. as missões moram aqui: cada ícone é uma missão, na pista dela. marcar um lugar já é aceitar: a rota acende e, chegando lá, você entra direto." },
   anel: { t: "as missões", d: "a missão de agora gira em volta do mapa: o nome e o ícone dela. toca: a checklist dá a volta; toca de novo: o mapa com as missões." },
   clima: { t: "o clima", d: "o tempo de onde a Kombi está agora: cada lugar da cidade tem o seu. o deserto nunca chove." },
@@ -304,6 +304,10 @@ export const usePedraNaTela = () => useSyncExternalStore((f) => { ouvintesTela.a
 export const PEDRA_SOLTA_MS = 6000
 const usePedraNoNotch = () => useSyncExternalStore((f) => { ouvintesPedra.add(f); return () => { ouvintesPedra.delete(f) } }, () => PEDRA_NOTCH, () => false)
 const NOTCH_VELHA = 25000 // ms: mensagem que esperou mais que isso na fila não passa mais
+// (09/11) quem não é urgente (a D-Bee, os amigos) pergunta antes de mandar: o notch na
+// tela, nada passando, fila vazia e sem pedra presa nele
+let notchMontado = 0, notchPassando = false
+export const notchLivre = () => notchMontado > 0 && !notchPassando && !FILA_NOTCH.length && !PEDRA_NOTCH
 function useNotch() {
   const [msg, setMsg] = useState<MsgNotch | null>(null)
   const livre = useRef(true)
@@ -314,15 +318,17 @@ function useNotch() {
     while (m && Date.now() - m.em > NOTCH_VELHA) m = FILA_NOTCH.shift()
     if (!m) { notchUltima = ""; return }
     livre.current = false
+    notchPassando = true
     setMsg(m)
   }
   useEffect(() => {
     const f = () => proxima.current()
     ouvintesNotch.add(f)
+    notchMontado++
     f()
-    return () => { ouvintesNotch.delete(f) }
+    return () => { ouvintesNotch.delete(f); notchMontado--; notchPassando = false }
   }, [])
-  const acabou = () => { livre.current = true; setMsg(null); setTimeout(() => proxima.current(), 250) }
+  const acabou = () => { livre.current = true; notchPassando = false; setMsg(null); setTimeout(() => proxima.current(), 250) }
   return [msg, acabou] as const
 }
 function MsgNoNotch({ msg, onFim }: { msg: MsgNotch; onFim: () => void }) {
@@ -397,8 +403,8 @@ export function useNexoTutorial() {
 // o que dá pra fazer agora, fora do tutorial (a Corrida monta: a missão, o lugar)
 export type NexoAgora = { texto: string; cor: string; ajuda: { t: string; d: string } }
 // ── (T41 B2, dono 29/10) O NEXO É A CENTRAL DAS NOTIFICAÇÕES: o objetivo da
-// missão, as dicas do jogo e o tutorial do "?". Nada de fala de personagem nem
-// de mensagem: só o que dá pra fazer agora.
+// missão, as dicas do jogo e o tutorial do "?". (09/11, bíblia §14) e também o
+// visor das mensagens dos amigos, com o nome de quem manda (disco/amigos.ts).
 //   - a linha do notch: o passo do tutorial, ou o objetivo da missão, ou (sem
 //     missão) uma dica, trocando devagar
 //   - tocar no notch: ele expande pra baixo com o objetivo inteiro e uma dica
