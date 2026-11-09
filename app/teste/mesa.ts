@@ -62,6 +62,16 @@ export const MESA: Cartao[] = [
     olhar: "Este link já abre na banca, no meio da rua da feira. Os legumes sobem na sua frente, cada um com a etiqueta de preço. Passe o dedo (ou o mouse) neles: cada corte tira 12% daquele legume, até 72%, e os próximos já vêm com o preço novo. Quando a conta couber no bolso, aparece o botão de pagar em Água$. Pagou: a câmera vai pro fogão do Tony, no fim da feira, e os 4 sacos aparecem ali, sem janela por cima. Escolha 3, segure o fogo e solte no ponto. Depois ande pela feira: as barracas, o pastel, o caldo de cana e a xepa ficam no subúrbio, entre o bar e a oficina.",
     perguntas: ["O som de cada corte ficou gostoso?", "Os legumes e o miolo deles ficaram bonitos?", "Dá pra cortar bem com o dedo no celular?", "A feira parece feira de rua de São Paulo?", "Quer alguma pressão (tempo, perder legume) ou fica sem como está?", "A cozinha no fogão da feira ficou boa de ver e de usar no celular?"],
     mais: [{ parte: "missao.tony.arte", nome: "direto na cozinha do Tony, no fogão da feira" }, { parte: "missao.tony", nome: "chegar na feira com a missão, pelo caminho normal" }],
+    parte: "bar",
+    nome: "O show da Nectar no bar e o beat a caminho do ginásio",
+    data: "2026-11-09",
+    tarefa: "episódios 1 e 3",
+    olhar: "No bar: recuse os copos, conheça o Mubarak ali mesmo e veja o LU2CA subir no palco, com a D-Bee e o Mubarak do seu lado. Escolha assistir (você canta da plateia com o medidor; a música não muda, quem desafina é a plateia, e dá pra jogar sinuca enquanto ouve) ou tocar. No ep. 3: pegue a missão do Alohan, ligue o piloto (o volante do lado do GPS), faça o beat com a Kombi andando e chegue ouvindo ele; lá escolha basquete, ping pong ou ginástica.",
+    perguntas: ["A plateia desafinando dá pra ouvir bem, sem estragar a música?", "O show inteiro da Nectar no bar ficou longo ou no ponto?", "Fazer o beat com a rua aparecendo em cima ficou bom?", "Dá pra sentir que o Alohan foi junto?", "Basquete pede 6 pontos e os outros dois só jogar até o fim: pode ficar assim?"],
+    mais: [
+      { parte: "oficina.show", nome: "ep. 1: só o show, pra quem já conheceu o Mubarak" },
+      { parte: "missao.quadra", nome: "ep. 3: o beat no caminho e o esporte" },
+    ],
   },
   {
     parte: "carreira.feira",

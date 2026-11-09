@@ -22,7 +22,7 @@ import { iconeDaPedra } from "./iconesPedras"
 import "./trilhaPedras.css"
 
 // o que vem do save (a page monta)
-export type BaseTrilha = Pick<CtxTrilha, "fase" | "holo" | "feitos" | "missao" | "ofertas" | "feitasCidade" | "passo">
+export type BaseTrilha = Pick<CtxTrilha, "fase" | "holo" | "feitos" | "missao" | "ofertas" | "feitasCidade" | "passo" | "beatNoCaminho">
 type Caixa = { x: number; y: number; w: number; h: number }
 
 const ehToque = () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches

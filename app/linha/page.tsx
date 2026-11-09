@@ -66,10 +66,10 @@ import { abertoAgora, abreAs, ehDia, horaDaHistoria, turnoDe, virouODia } from "
 import { limparDaCidade } from "./paginas"
 import { atalhoPorId, atalhosLiberados, type Ir as IrAtalho } from "../teste/atalhos"
 import { perderViolao, tomarJetpack } from "./disco/historia"
-import { CHAO_LUGARES, CENA_BAR_PROLOGO, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
+import { CHAO_LUGARES, CENA_BAR_PROLOGO, CENA_SHOW_NECTAR, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
-import { CENA_OFICINA, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
+import { CENA_OFICINA, CENA_OFICINA_CONHECIDO, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
 import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
 import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
 import { definirAchados, ouvirSample } from "./disco/instrumentosMundo"
@@ -91,12 +91,15 @@ import { Freq } from "./disco/Freq"
 import { type FaixaShow, type ResultadoShow } from "./disco/Show"
 import { faixaXenom, lerShowXenom, registrarXenom, showXenom, XENOM_CONFIG } from "./disco/xenom"
 import { Show } from "./disco/ShowBanda"
+import { ShowNoBar } from "./disco/ShowNoBar"
 import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { INSTRUMENTOS_ANCESTRAIS, ehInstrumento, linhaRecompensa, tocarInstrumento, type InstrumentoId } from "./disco/instrumentos"
-import { episodioDaMissao, proximaDaSequencia, quemAbre, rotuloDoEpisodio } from "./disco/episodios"
+import { MARCOS, episodioDaMissao, proximaDaSequencia, quemAbre, rotuloDoEpisodio } from "./disco/episodios"
 import { avisoSemAgua, faltaProBolso, nomesDosSacos } from "./disco/feira"
+import { pararBeat } from "./disco/beatDoCaminho"
+import { EscolhaEsporte, type EsporteId } from "./disco/EscolhaEsporte"
 import { faixaDaMissao } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
@@ -131,6 +134,9 @@ import { definirMemoriaDbee, marcarFeitaDbee, marcarVisitaDbee, ouvirMemoriaDbee
 const Corrida = dynamic(() => import("./estrada/Corrida").then((m) => m.Corrida), { ssr: false })
 // (T10) a quadra: o basquete (3D) e o B4TIDA só carregam quando a peça abre
 const Basquete = dynamic(() => import("../ginasio/basquete").then((m) => m.Basquete), { ssr: false })
+// (ep. 3) os outros esportes do ginásio: só carregam se a pessoa escolher
+const PingPongGinasio = dynamic(() => import("../ginasio/pingpong").then((m) => m.PingPong), { ssr: false })
+const Ginastica = dynamic(() => import("../ginasio/cama").then((m) => m.Cama), { ssr: false })
 const BatidaMissao = dynamic(() => import("./disco/BatidaMissao").then((m) => m.BatidaMissao), { ssr: false })
 const BatidaCasa = dynamic(() => import("./disco/BatidaCasa").then((m) => m.BatidaCasa), { ssr: false })
 const Interior = dynamic(() => import("./interior/Interior").then((m) => m.Interior), { ssr: false })
@@ -319,7 +325,7 @@ export default function LinhaPage() {
   const [naEstacao, setNaEstacao] = useState(false)
   // a cena de um lugar rolando (encostou na vaga): a câmera corta pra lá
   // inicio: a casa da D-Bee na abertura (CENA_INICIO)
-  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "disco-oficina" | "ella-galeria" | "dbee-instrumentos" | "visita-bar" | "visita" } | null>(null)
+  const [cena, setCena] = useState<{ lugar: LugarId; missao: EstacaoId; pegar: boolean; inicio?: boolean; especial?: "mubarak-drew" | "disco-casa" | "disco-bar" | "show-nectar" | "disco-oficina" | "ella-galeria" | "dbee-instrumentos" | "visita-bar" | "visita" } | null>(null)
   // a viagem pra fora da cidade (ep. 3): antes da cena de um lugar `fora`
   // dentro de uma sala (ou na viagem pra fora) a estrada sai da tela e libera
   // a memória; ao voltar, a Kombi reaparece onde estava (Corrida: RETOMAR)
@@ -951,9 +957,21 @@ export default function LinhaPage() {
     }
     // saiu no meio, sem escolher: nada muda (o bar continua esperando)
     if (!r.completa) return
-    // (T02) negou os copos: sai do bar direto pro jogo (sem show); a próxima é a oficina
-    setSave((s) => comHistoria({ ...s, loops: { ...(s.loops ?? {}), bar: 0 } }, (h) => ({ ...h, fase: "oficina", show: undefined })))
+    // (ep. 1, 08/11) negou os copos, conheceu o Mubarak e viu o show (ou escolheu tocar): o show fica registrado e a próxima é a oficina
+    setSave((s) => comHistoria({ ...s, loops: { ...(s.loops ?? {}), bar: 0 } }, (h) => ({ ...h, fase: "oficina", mubarakBar: true, show: undefined })))
+    fimShowNoBar.current()
     setTimeout(() => setFalaIntro({ id: Date.now(), de: "D-Bee", texto: "a kombi não sobe assim. tem uma oficina aqui embaixo: a luz laranja" }), 1500)
+  }, [])
+  // (ep. 1) o que o show no bar deixou: assistiu (o resultado) ou escolheu tocar (o show de sempre abre)
+  const showNoBar = useRef<{ r: ResultadoShow | null; tocar: boolean }>({ r: null, tocar: false })
+  const fimShowNoBar = useRef<() => void>(() => {})
+  // (save antigo, ou voltou pro palco) o show sozinho, sem o prólogo
+  const fimShowNectar = useCallback((r: ResultadoCena) => {
+    setCena(null)
+    setCinema(null)
+    barFechou.current = Date.now()
+    if (r.completa) fimShowNoBar.current()
+    else showNoBar.current = { r: null, tocar: false }
   }, [])
   const fimCena = useCallback((r: ResultadoCena) => {
     const c = cena
@@ -1097,10 +1115,12 @@ export default function LinhaPage() {
   const nFeitas = (h13.feitas13 ?? []).length
   useEffect(() => { setLargadas([]) }, [nFeitas])
   const feiraVisivel = feira.filter((o) => !largadas.includes(o.id))
+  // (ep. 3) a arte da missão do Alohan por fazer: o beat acontece no caminho, com o piloto
+  const beatNoCaminho = !!HIST && missaoCarreira === "quadra" && pecaAgora13(h13, "quadra")?.qual === "arte"
   // (trilha de pedras) o que a trilha precisa do save: a fase, o que já viu, a missão
   const passoTrilha = passos13.find((x) => x.estado === "agora")?.nome ?? ""
   const feitasCidade = (h13.feitas13 ?? []).filter((x) => x !== "dbee" && x !== "oficina").length
-  const baseTrilha = useMemo(() => ({ fase: hist.fase, holo: hist.holo, feitos: hist.tutorial ?? [], missao: missaoCarreira, ofertas: feiraVisivel.length, feitasCidade, passo: passoTrilha }), [hist.fase, hist.holo, hist.tutorial, missaoCarreira, feiraVisivel.length, feitasCidade, passoTrilha])
+  const baseTrilha = useMemo(() => ({ fase: hist.fase, holo: hist.holo, feitos: hist.tutorial ?? [], missao: missaoCarreira, ofertas: feiraVisivel.length, feitasCidade, passo: passoTrilha, beatNoCaminho }), [hist.fase, hist.holo, hist.tutorial, missaoCarreira, feiraVisivel.length, feitasCidade, passoTrilha, beatNoCaminho])
   // (missões claras, 02/11) chegou no lugar de uma missão disponível, sem outra
   // pegada: pega e já começa ali (a Corrida só chama sem missão ativa)
   const pegarAqui = (id: string) => {
@@ -1150,13 +1170,19 @@ export default function LinhaPage() {
     return () => clearInterval(iv)
   }, [introMissao, missaoCarreira])
   // (T10) a quadra: o B4TIDA aberto (a arte) e o basquete (o jogo, ou a quadra livre depois da porta)
-  const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string } | null>(null)
+  const [batidaMissao, setBatidaMissao] = useState<{ missao: MissaoId; clima: string; caminho?: boolean } | null>(null)
   // (bíblia §13, 09/11) o sampler da casa da D-Bee: o B4TIDA aberto com o instrumento sampleado
   const [batidaSample, setBatidaSample] = useState<InstrumentoId | null>(null)
   useEffect(() => ouvirSample((id) => {
     setSave((s) => comHistoria(s, (x) => ({ ...x, instrumentosSampleados: [...new Set([...(x.instrumentosSampleados ?? []), id])] })))
     setBatidaSample(id)
   }), [])
+  // (ep. 3) a escolha do esporte no ginásio e o ping pong ou a ginástica abertos (o basquete usa o estado de baixo)
+  const [esporteEscolha, setEsporteEscolha] = useState<{ pontos: number; tempo: number } | null>(null)
+  const [esporteJogo, setEsporteJogo] = useState<Exclude<EsporteId, "basquete"> | null>(null)
+  const [pilotoLigado, setPilotoLigado] = useState(false)
+  const cOnPilotoLigado = useFixo((on: boolean) => setPilotoLigado(on))
+  const falouBeat = useRef(false)
   const [basquete, setBasquete] = useState<{ n: number; pontos: number; tempo: number; livre: boolean } | null>(null)
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
@@ -1349,7 +1375,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId, semIntro = false) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || feiraAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || esporteEscolha || esporteJogo || cenaAgora || feiraAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
     // (começo novo) abriu (o balão ou a peça): o "toca pra começar" do notch sai
     if (INTRO_ADIADA.missao === id) { INTRO_ADIADA.missao = ""; INTRO_ADIADA.texto = ""; INTRO_ADIADA.toque = null }
     const pc = pecaAgora13(hist13(saveRef.current), id)
@@ -1377,6 +1403,7 @@ export default function LinhaPage() {
     else if (como.t === "letra" || como.t === "cena" || como.t === "feira") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
     else if (como.t === "batida") setBatidaMissao({ missao: id, clima: como.clima })
     else if (como.t === "basquete") setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
+    else if (como.t === "esporte") setEsporteEscolha({ pontos: como.pontos, tempo: como.tempo })
     // (T57) desceu a rampa da boca do túnel: a corrida é lá embaixo, nas trincheiras
     else if (como.t === "trincheiras") descerTrincheiras(id)
     // (T64, lote D) o grafite: nas paredes das trincheiras (assinar todos faz a arte)
@@ -1515,12 +1542,13 @@ export default function LinhaPage() {
     if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return
     const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
     const como = MISSOES13[mid]?.[qual]?.como
-    if (como?.t !== "batida" && como?.t !== "basquete" && como?.t !== "casa") return
+    if (como?.t !== "batida" && como?.t !== "basquete" && como?.t !== "esporte" && como?.t !== "casa") return
     setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: undefined })))
     pecaAberta.current = { missao: mid, qual }
     // (T22) ?parte=missao.ella.casa: direto dentro da casa
     if (como.t === "casa") { entrarNaCasa(mid); return }
     if (como.t === "batida") setBatidaMissao({ missao: mid, clima: como.clima })
+    else if (como.t === "esporte") setEsporteEscolha({ pontos: como.pontos, tempo: como.tempo })
     else setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
   }, [HIST, hist.aberta13, cena, tela.t])
   // (T15–T25, T16) só fora da produção, pros testes: chegar no lugar da missão
@@ -1606,8 +1634,11 @@ export default function LinhaPage() {
   }, [missaoCarreira])
   // um evento da rua conta pra peça de agora (a montanha-russa da Nizzy…)
   const eventoDaRua = (e: "montanha" | "flor") => setSave((s) => (historiaDe(s).fase === "carreira" ? comHistoria(s, (h) => contarEvento(h, e)) : s))
-  const fimShow = (r: ResultadoShow) => {
-    const id = hist.show!, conf = confShow(id)!
+  const fimShow = (r: ResultadoShow, idForcado?: string) => {
+    const id = idForcado ?? hist.show!, conf = confShow(id)!
+    // (ep. 1) o primeiro show da Nectar no bar libera a música e a sinuca: diz na hora
+    const abriuNectar = id === showDoPalco("bar", "nectar") && !MARCOS["show-nectar"].feito(hist13(saveRef.current))
+    if (abriuNectar) setTimeout(() => avisar("o bar", "a Nectar abriu no Guitar Driver e no MP3 · a sinuca do bar tá livre", CHAO_LUGARES.bar.cor), 600)
     const popAntes = saveRef.current.popularidade ?? 0
     // (T03) o cachê do show vem da economia (a nota e a fama de antes)
     // (T20) num palco da carreira: o cachê vezes o palco, a melhor estrela e o nível
@@ -1644,6 +1675,14 @@ export default function LinhaPage() {
     // o show na rua: o trampo. Paga, e o jornal do dia seguinte fala dele
     setJornal(m)
   }
+  useEffect(() => {
+    fimShowNoBar.current = () => {
+      const { r, tocar } = showNoBar.current
+      showNoBar.current = { r: null, tocar: false }
+      if (tocar) setSave((s) => comHistoria(s, (x) => ({ ...x, show: showDoPalco("bar", "nectar") })))
+      else if (r) fimShow(r, showDoPalco("bar", "nectar"))
+    }
+  })
   // o que o anel do holo diz (curto: o lugar, não a explicação)
   const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? `${OBJETIVO_OFICINA[passoOficina(hist)]}${passoOficina(hist) === "catar" ? ` · ${pecasCatadas(hist).length}/${LIXO.length}` : ""}` : hist.fase === "subir" ? "a cidade · lá em cima"
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o jardim", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
@@ -1926,7 +1965,7 @@ export default function LinhaPage() {
   // meio da faixa passa pro instrumental no mesmo ponto; terminou, volta a completa.
   // A completa da missão (pistaSom.tocarDaMissao) não troca. Nada disso pausa a faixa
   // (trilha sonora, 05/11) as peças, a letra e o basquete também (antes cortavam a música)
-  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!feiraAgora || !!letraAgora || !!basquete
+  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!feiraAgora || !!letraAgora || !!basquete || !!esporteEscolha || !!esporteJogo
   // (começo novo, 05/11) cena/peça/sala aberta: a rádio troca de faixa sem chiado e sem vinheta
   const somDeCena = momentoMissao || !!cinema || emSala
   useEffect(() => { somCena.aberta = somDeCena }, [somDeCena])
@@ -1936,6 +1975,25 @@ export default function LinhaPage() {
     pistaSom.missao(true)
     return () => pistaSom.missao(false)
   }, [momentoMissao])
+  // (ep. 3) o Alohan vai junto e ensina o piloto: ligou com a arte por fazer, o beat abre no
+  // caminho, com a Kombi andando. Quem não liga (de patins, ou sem querer) faz ao chegar, como antes
+  useEffect(() => {
+    if (!beatNoCaminho || tela.t !== "corrida" || cena || falouBeat.current) return
+    falouBeat.current = true
+    // RASCUNHO: descreve a mecânica (episodios.md, ep. 3)
+    setTimeout(() => setFalaIntro({ id: Date.now(), de: "Alohan", texto: "liga o piloto, ali do lado do GPS. no caminho do ginásio a gente faz um beat" }), 1200)
+  }, [beatNoCaminho, tela.t, cena])
+  useEffect(() => {
+    if (!beatNoCaminho || !pilotoLigado || tela.t !== "corrida" || batidaMissao || basquete || esporteEscolha || cena || cinema || introMissao || recompensa) return
+    const como = pecaAgora13(hist13(saveRef.current), "quadra")?.peca.como
+    if (como?.t !== "batida") return
+    pecaAberta.current = { missao: "quadra", qual: "arte" }
+    setBatidaMissao({ missao: "quadra", clima: como.clima, caminho: true })
+  }, [beatNoCaminho, pilotoLigado, tela.t, batidaMissao, basquete, esporteEscolha, cena, cinema, introMissao, recompensa])
+  // o beat toca até o fim da missão do Alohan
+  const quadraViva = !!HIST && missaoCarreira === "quadra" && !feita13(h13, "quadra")
+  useEffect(() => { if (!quadraViva) pararBeat() }, [quadraViva])
+  useEffect(() => () => pararBeat(), [])
   const entrarNoBar = () => {
     if (cena || cinema) return
     setPortaBar(false)
@@ -2082,7 +2140,7 @@ export default function LinhaPage() {
         track("mission_step", { mission_id: "disco-oficina", step: `peca-${id}`, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
       }
       // (08/11) ep. 1: depois de conhecer o Mubarak, o show da Nectar no palco do bar (assistir ou tocar)
-      else if (e === "chao:bar" && p === "show") { setAoVivo(null); setSave((s2) => comHistoria(s2, (x) => ({ ...x, show: showDoPalco("bar", "nectar") }))) }
+      else if (e === "chao:bar" && p === "show") { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "show-nectar" }) }
       else if (e === "chao:goteira" && p === "goteira") setOficinaTela("goteira")
     }
     // (T27) o sorteio da Kombi quebrar (o Corrida chama de tempos em tempos, rodando de verdade)
@@ -2462,7 +2520,7 @@ export default function LinhaPage() {
   const app = tela.t === "app" ? APPS.find((a) => a.id === tela.id)! : null
   // o celular aberto por cima da estrada: a Kombi segue sozinha, devagar
   const celularAberto = estrada && (tela.t === "home" || tela.t === "app" || tela.t === "chat")
-  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao
+  const corridaPausada = (tela.t !== "corrida" && tela.t !== "chegada" && !celularAberto) || !!visor || !!showAgora || !!jornal || pingpong || caderno || !!recompensa || rua || !!provaMissao || !!letraAgora || !!oficinaTela || !!trincheiras || sinucaBar || !!janelaChao || !!esporteEscolha || !!esporteJogo
 
   // (disco) o óculos de realidade aumentada: a tela larga no desktop e o
   // celular translúcido por cima da cidade (LU2CA 19/10)
@@ -2507,7 +2565,8 @@ export default function LinhaPage() {
             onReligar={cOnReligar}
             onSinal={onSinal}
             alvo={cAlvo}
-            levando={levarDrewboy(save) ? "copo" : null}
+            levando={levarDrewboy(save) || quadraViva ? "copo" : null}
+            onPilotoLigado={cOnPilotoLigado}
             tanque={save.tanque ?? 1}
             onTanque={onTanque}
             onPosto={cOnPosto}
@@ -2548,7 +2607,7 @@ export default function LinhaPage() {
             onVisitar={HIST && hist.fase === "carreira" && !chegadaLogin && !minhoca ? cOnVisitar : undefined}
             segredo={segredo}
             // (B18) as cenas do chão do subúrbio não puxam a câmera pra fachada da pista
-            cenaLugar={cena && cena.especial !== "disco-oficina" && cena.especial !== "visita-bar" && !(cena.especial === "disco-bar" && hist.fase === "bar") ? cena.lugar : null}
+            cenaLugar={cena && cena.especial !== "disco-oficina" && cena.especial !== "visita-bar" && cena.especial !== "show-nectar" && !(cena.especial === "disco-bar" && hist.fase === "bar") ? cena.lugar : null}
             // (disco, a história) a cidade quieta: só quem a história põe pra falar
             intro={HIST || (!D && !save.completos.includes("abertura"))}
             fala={falaIntro}
@@ -2688,12 +2747,21 @@ export default function LinhaPage() {
         }} />}
         {/* (T10) a arte da quadra: o Alohan apresenta o B4TIDA; entregou o instrumental, o basquete segue direto */}
         {batidaSample && <BatidaCasa id={batidaSample} onFim={() => setBatidaSample(null)} />}
-        {batidaMissao && <BatidaMissao cor={MISSOES13[batidaMissao.missao].cor} quem={MISSOES13[batidaMissao.missao].quem} clima={batidaMissao.clima} onFim={() => {
+        {batidaMissao && <BatidaMissao cor={MISSOES13[batidaMissao.missao].cor} quem={MISSOES13[batidaMissao.missao].quem} clima={batidaMissao.clima} caminho={batidaMissao.caminho} onFim={() => {
           const b = batidaMissao
           setBatidaMissao(null)
           barFechou.current = Date.now()
           pecaAberta.current = null
           track("mission_step", { mission_id: `disco-${b.missao}`, step: "batida", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          // (ep. 3) no caminho: a missão segue ao chegar; se a Kombi chegou antes de entregar, segue agora
+          if (b.caminho) {
+            setSave((s) => comHistoria(s, (h) => concluir(h, b.missao, "arte")))
+            setTimeout(() => {
+              const c = alvo13(hist13(saveRef.current), b.missao)?.chao
+              if (c && chaoDentro.has(c)) chegouRef.current(b.missao)
+            }, 900)
+            return
+          }
           pecaFeitaNaMissao(b.missao, "arte")
         }} />}
         {/* (T10) o jogo da quadra: basquete. Fez os pontos, a peça fica feita; senão joga de novo. Depois da porta, a quadra é livre */}
@@ -2718,6 +2786,30 @@ export default function LinhaPage() {
             </div>
           </div>
         )}
+        {/* (ep. 3) chegou no ginásio com o Alohan: o esporte que a pessoa preferir */}
+        {esporteEscolha && <EscolhaEsporte cor={MISSOES13.quadra.cor} onEscolher={(id) => {
+          const e = esporteEscolha
+          setEsporteEscolha(null)
+          if (id === "basquete") setBasquete({ n: 1, pontos: e.pontos, tempo: e.tempo, livre: false })
+          else setEsporteJogo(id)
+        }} />}
+        {esporteJogo && (() => {
+          // jogou até o fim, conta: é um respiro (episodios.md), sem nota pra passar
+          const acabou = () => {
+            setEsporteJogo(null)
+            barFechou.current = Date.now()
+            const p = pecaAberta.current
+            pecaAberta.current = null
+            if (p) pecaFeitaNaMissao(p.missao, p.qual)
+          }
+          return (
+            <div className="l-basquete" style={{ position: "absolute", inset: 0, zIndex: 74 }}>
+              <div className="gi-raiz" style={{ position: "absolute" }}>
+                {esporteJogo === "pingpong" ? <PingPongGinasio onFim={acabou} /> : <Ginastica onFim={acabou} />}
+              </div>
+            </div>
+          )
+        })()}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
         {/* (T29) o final: a legenda de cada momento ou o filme da despedida, com o jogo atrás */}
         {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} />}
@@ -2894,14 +2986,14 @@ export default function LinhaPage() {
           <button type="button" className="l-home-bar" onClick={() => setTela({ t: "home" })} aria-label="início" />
         )}
         {cena && cenaDe(cena.lugar) && (
-          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
+          <Interior key={`sala:${cena.lugar}:${cena.especial ?? ""}`} lugar={cena.lugar} sala={cena.especial === "ella-galeria" ? "galeria-ella" : undefined} objetos={save.objetos} inicio={!!cena.inicio} copos={save.copos} popularidade={save.popularidade ?? 0} disco={cena.especial === "disco-casa" || cena.especial === "disco-bar" || cena.especial === "show-nectar" || cena.especial === "visita-bar" || cena.especial === "dbee-instrumentos"} instrumentos={cena.lugar === "casa-dbee" ? instrumentosGanhos(h13) : undefined} novos={cena.especial === "dbee-instrumentos" ? instrumentosNovos(h13) : undefined} />
         )}
         {cena && (
           <CenaLugar
             key={`${cena.lugar}:${cena.missao}:${cena.inicio ? "inicio" : cena.especial ?? ""}`}
             gestos3d={GESTOS_3D[cena.especial === "ella-galeria" ? "galeria-ella" : cena.lugar] ?? []}
             loops={save.loops?.[cena.lugar] ?? 0}
-            cena={cena.especial === "visita" ? cenaVisita(cena.lugar, h13) : cena.especial === "visita-bar" ? CENA_BAR_VISITA : cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "dbee-instrumentos" ? (casaNovos.current ? CENA_CASA_INSTRUMENTOS : CENA_CASA_VISITA) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "disco-oficina" ? CENA_OFICINA : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
+            cena={cena.especial === "visita" ? cenaVisita(cena.lugar, h13) : cena.especial === "visita-bar" ? CENA_BAR_VISITA : cena.especial === "ella-galeria" ? CENA_GALERIA_ELLA : cena.especial === "disco-casa" ? (cenaHolo ? CENA_CASA_HOLO : cenaTambor ? CENA_CASA_TAMBOR : CENA_CASA_DISCO) : cena.especial === "dbee-instrumentos" ? (casaNovos.current ? CENA_CASA_INSTRUMENTOS : CENA_CASA_VISITA) : cena.especial === "disco-bar" ? CENA_BAR_PROLOGO : cena.especial === "show-nectar" ? CENA_SHOW_NECTAR : cena.especial === "disco-oficina" ? (h13.mubarakBar ? CENA_OFICINA_CONHECIDO : CENA_OFICINA) : cena.inicio ? CENA_INICIO : cena.especial === "mubarak-drew" ? CENA_MUBARAK_DREW : cenaDe(cena.lugar)!}
             memoria={save.objetos.length}
             objetos={save.objetos}
             reliquias={(save.reliquias ?? []) as Reliquia[]}
@@ -2909,14 +3001,15 @@ export default function LinhaPage() {
             semSom={semSom}
             onLinha={(texto) => setSave((s) => ({ ...s, linha: texto }))}
             onTom={(tom) => setSave((s) => ({ ...s, tons: { ...s.tons, [tom]: (s.tons?.[tom] ?? 0) + 1 } }))}
-            onFim={cena.especial === "visita" ? fimVisita : cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
+            onFim={cena.especial === "visita" ? fimVisita : cena.especial === "visita-bar" ? fimVisitaBar : cena.especial === "ella-galeria" ? fimCasaMissao : cena.especial === "disco-casa" ? fimCasaDisco : cena.especial === "dbee-instrumentos" ? fimCasaInstrumentos : cena.especial === "disco-bar" ? fimBarDisco : cena.especial === "show-nectar" ? fimShowNectar : cena.especial === "disco-oficina" ? fimOficina : cena.inicio ? fimInicio : cena.especial === "mubarak-drew" ? fimMubarakDrew : fimCena}
             onNeon={(n) => setSave((s) => ganhar(s, n))}
+            gestoShow={(pronto) => <ShowNoBar popularidade={save.popularidade ?? 0} onTocar={() => { showNoBar.current = { r: null, tocar: true }; pronto() }} onFim={(r) => { showNoBar.current = { r, tocar: false }; pronto() }} />}
           />
         )}
         {/* (T63) a porta do túnel: escurece; lá embaixo, as trincheiras (a estrada sai da cena) */}
         {trincheiras?.descendo && <div className="l-tunel-desce"><p>a Kombi fica aqui fora. você desce sem ela</p></div>}
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
-        {portaChao && tela.t === "corrida" && !cena && !cinema && !janelaChao && !introMissao && !basquete && !oficinaTela && !recompensa && !sinucaBar && !trincheiras && (() => {
+        {portaChao && tela.t === "corrida" && !cena && !cinema && !janelaChao && !introMissao && !basquete && !esporteEscolha && !esporteJogo && !oficinaTela && !recompensa && !sinucaBar && !trincheiras && (() => {
           const t = trancaChao(portaChao)
           return <button type="button" data-info="entrar-lugar" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: CHAO_LUGARES[portaChao].cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrarNoChao(portaChao)}>{t && <Cadeado />}entrar · {ENTRADAS[portaChao].nome}{t ? " · ver" : ""}</button>
         })()}

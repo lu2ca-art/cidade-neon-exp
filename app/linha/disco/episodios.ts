@@ -64,8 +64,8 @@ const DEPOIS_DO_SHOW = ["subir", "nectar", "carreira", "livre"]
 export const MARCOS: Record<MarcoId, { nome: string; feito: (h: HistoriaDisco) => boolean }> = {
   // o loop dos copos: recusou e saiu do bar
   copos: { nome: "o bar · o loop dos copos", feito: (h) => DEPOIS_DO_BAR.includes(h.fase) },
-  // conhecer o Mubarak: a cena da oficina (ele é o mecânico)
-  mubarak: { nome: "conhecer o Mubarak na oficina", feito: (h) => !!h.oficina?.cena || DEPOIS_DO_SHOW.includes(h.fase) },
+  // conhecer o Mubarak: no bar, antes do show (ep. 1); no save antigo, a cena da oficina (ele é o mecânico)
+  mubarak: { nome: "conhecer o Mubarak", feito: (h) => !!h.mubarakBar || !!h.oficina?.cena || DEPOIS_DO_SHOW.includes(h.fase) },
   // o show da Nectar no palco do bar (assistir ou tocar); sinuca livre depois
   "show-nectar": { nome: "o show da Nectar no bar", feito: (h) => DEPOIS_DO_SHOW.includes(h.fase) || (h.palcos?.["bar:nectar"] ?? 0) > 0 },
   // a polícia pegou a Kombi

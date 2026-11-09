@@ -194,7 +194,7 @@ export function ProximoPasso({ checklist }: { checklist: ChecklistHolo }) {
 
 // (J1) as viagens rápidas pros minijogos: na hora, sem gastar as viagens dos anéis
 export const MINIJOGOS = [
-  { chave: "pagina:ginasio", nome: "o ginásio", jogo: "basquete · ping pong", cor: "#ff9000" },
+  { chave: "pagina:ginasio", nome: "o ginásio", jogo: "basquete · ping pong · ginástica", cor: "#ff9000" },
   { chave: "pagina:fliperama", nome: "o fliperama", jogo: "as máquinas", cor: "#ff6a35" },
   { chave: "parque", nome: "a montanha-russa", jogo: "o parque", cor: "#ff5b5b" },
 ] as const

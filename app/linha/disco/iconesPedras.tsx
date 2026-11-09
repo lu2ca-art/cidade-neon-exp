@@ -20,7 +20,7 @@ type Forma = "toque" | "segue" | "mira" | "drift" | "anel" | "q" | "voo" | "turb
 const FORMA: Record<PedraId, Forma> = {
   mapa: "toque", rota: "segue", gps: "mira", drift: "drift", anel: "anel", ajuda: "q",
   voo: "voo", turbo: "turbo", pousa: "pousa",
-  escolhe: "escolhe", linha: "segue", chegou: "desce", liberou: "abre", radio: "radio", salvar: "coracao", veiculo: "veiculo",
+  escolhe: "escolhe", linha: "segue", chegou: "desce", liberou: "abre", radio: "radio", salvar: "coracao", veiculo: "veiculo", piloto: "segue",
 }
 
 // a Kombi pequena (de lado), reaproveitada em vários

@@ -3,13 +3,14 @@
 // O SHOW DA BANDA (LU2CA 21/10 (5): "cada instrumento sendo tocado de um jeito
 // [...] vamos ser mais criativos e ter mais de um modo de fazer um jogo de
 // música"). Antes do show, a pessoa escolhe o instrumento; cada um é um jogo:
-//   cantar   → o afinador (ShowAfinador): segura a agulha no meio, senão a voz desafina
+//   só ver   → (§12, 08/11) da plateia, cantando junto: o medidor é dela (ShowAfinador).
+//              O som original não muda; a plateia simulada é que desafina
 //   guitarra → o Guitar Driver (ShowPista)
 //   baixo    → a corda virtual (ShowCorda): sobe e desce pra pegar as faixas coloridas
 //   teclado, bateria → por enquanto a pista do Guitar Driver com as notas deles
 //                      (a trava-mente do teclado e o jogo da bateria: a desenhar)
-// Sempre 22 s, no palco da missão. As faixas que ainda não saíram não têm o cantar
-// (a voz entra no lançamento).
+// Sempre 22 s, no palco da missão. Quem termina pode repetir (§12). As faixas que
+// ainda não saíram assistem sem o medidor (a voz entra no lançamento).
 //
 // (T19, J2: 33) O PRELÚDIO: "a missão de cantar tem que ter um prelúdio toda
 // vez, um filmezinho, curto, mas antes de aparecer as opções de instrumento".
@@ -20,7 +21,7 @@
 // PRELUDIO.
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { NOME_INST, ShowPista, ajustarShow, carregarChart, musicaDoShow, type InstrumentoShow, type PropsShow } from "./Show"
+import { NOME_INST, ShowPista, ajustarShow, musicaDoShow, type InstrumentoShow, type PropsShow } from "./Show"
 import { xenomDaFaixa } from "./xenom"
 import { desenharTomada, type Tomada } from "../../neon-tiles/cena"
 import { MODELOS, PALCOS, type Palco } from "../../neon-tiles/dados"
@@ -84,7 +85,7 @@ import { ShowCorda } from "./ShowCorda"
 import { ShowAfinador } from "./ShowAfinador"
 
 const COMO: Record<InstrumentoShow, string> = {
-  voz: "equilibra a afinação no meio, senão a voz desafina",
+  voz: "fica na plateia e canta junto: o medidor de afinação é seu, a música não muda",
   guitarra: "o Guitar Driver: as notas descendo",
   baixo: "a corda: segura o dedo na tela (ou ↑ ↓) e chega na faixa no tempo",
   teclado: "as notas do teclado na pista",
@@ -94,24 +95,20 @@ const COMO: Record<InstrumentoShow, string> = {
 export function Show(props: PropsShow) {
   const [preludio, setPreludio] = useState(true)
   const [inst, setInst] = useState<InstrumentoShow | null>(null)
-  const [temVoz, setTemVoz] = useState<boolean | null>(null)
   const pista = musicaDoShow(props.faixa)
   // (T21) o show xenom: o prelúdio conta o multiverso e o jogo é o Guitar Driver com a regra dele
   const xenom = xenomDaFaixa(props.faixa)
-  useEffect(() => {
-    let vivo = true
-    carregarChart(props.faixa).then((c) => { if (vivo) setTemVoz(!!c.voz?.melodia?.length) }).catch(() => { if (vivo) setTemVoz(false) })
-    return () => { vivo = false }
-  }, [props.faixa])
   if (preludio) return <Preludio faixa={pista.faixa} lugar={props.lugar} palco={props.palco} cor={props.cor} sub={xenom ? `${xenom.preludio} · ${pista.faixa}` : undefined} onFim={() => setPreludio(false)} />
   if (xenom) return <ShowPista {...props} inst="guitarra" />
-  if (inst === "voz") return <ShowAfinador {...props} />
-  if (inst === "baixo") return <ShowCorda {...props} />
-  if (inst) return <ShowPista {...props} inst={inst} />
-  const opcoes: InstrumentoShow[] = [...(temVoz ? (["voz"] as const) : []), "guitarra", "baixo", "teclado", "bateria"]
+  // (§12) terminou: pode repetir (volta pra escolha)
+  const deNovo = () => setInst(null)
+  if (inst === "voz") return <ShowAfinador {...props} onDeNovo={deNovo} />
+  if (inst === "baixo") return <ShowCorda {...props} onDeNovo={deNovo} />
+  if (inst) return <ShowPista {...props} inst={inst} onDeNovo={deNovo} />
+  const opcoes: InstrumentoShow[] = ["voz", "guitarra", "baixo", "teclado", "bateria"]
   return (
     <div className="l-show is-gd is-escolha" style={{ ["--cor" as string]: props.cor }} onPointerDown={(e) => e.stopPropagation()}>
-      <header className="l-show-topo"><small>o show · {props.lugar}</small><b>{pista.faixa}</b><span>escolhe o seu instrumento · 22 s</span></header>
+      <header className="l-show-topo"><small>o show · {props.lugar}</small><b>{pista.faixa}</b><span>só ver, da plateia, ou subir no palco · 22 s</span></header>
       <div className="l-show-banda" role="group" aria-label="O seu instrumento">
         {opcoes.map((i) => (
           <button key={i} type="button" onClick={() => setInst(i)}>

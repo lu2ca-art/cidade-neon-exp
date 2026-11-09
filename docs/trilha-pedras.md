@@ -45,6 +45,7 @@ A trilha sempre mostra a **primeira** pedra da lista que cumpre quatro coisas:
 | 14 | `radio` | carreira, depois de 13 | com a rádio na tela | o holograma da rádio | toca: o menu da rádio | tocou na rádio | ondas do rádio |
 | 15 | `salvar` | carreira e néctar, depois de 13 | com o "♥ salvar" na tela (a faixa tem link) | o ♥ salvar | curtiu? ♥ salva a música | tocou no ♥ | coração batendo |
 | 16 | `veiculo` | carreira | sem a Kombi, com um veículo pra pegar (depois da perseguição) | o botão de pegar o veículo | pega um veículo | pegou | rodas girando |
+| 17 | `piloto` | carreira | a arte da missão do Alohan por fazer (ep. 3) | o volante do lado do GPS | liga o piloto: faz o beat | ligou o piloto | a linha |
 
 **A ordem de verdade (05/11, `docs/comeco-novo.md`):** na lista do código o `turbo` (8) vem depois do `liberou` (13): o caminho (pousa, escolhe, linha, chegou, liberou) aparece antes dele. E o `chegou` (12) aponta pro notch quando o guia tem uma dica lá ("desce: o lugar é aqui embaixo").
 

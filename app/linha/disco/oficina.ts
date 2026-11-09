@@ -94,9 +94,10 @@ export const FALAS_OFICINA = {
 export type PassoOficina = "chegar" | "show" | "catar" | "reciclar" | "goteira" | "montar" | "feita"
 export function passoOficina(h: HistoriaDisco): PassoOficina {
   if (feita13(h, "oficina")) return "feita"
+  // (08/11) o show da Nectar no palco do bar fecha o ep. 1, antes da oficina do ep. 2.
+  // Quem conheceu o Mubarak no bar (ep. 1) ou na oficina (save antigo) e ainda não viu o show
+  if (!MARCOS["show-nectar"].feito(h) && (h.mubarakBar || h.oficina?.cena)) return "show"
   if (!h.oficina?.cena) return "chegar"
-  // (08/11) o show da Nectar no palco do bar fecha o ep. 1, antes da oficina do ep. 2
-  if (!MARCOS["show-nectar"].feito(h)) return "show"
   if (!pecaFeita(h, "oficina", "arte")) return pecasFaltando(h).length ? "catar" : "reciclar"
   if (!pecaFeita(h, "oficina", "jogo")) return "goteira"
   return "montar"
@@ -162,3 +163,5 @@ export const CENA_OFICINA: Cena = {
     { t: "fim" },
   ],
 }
+// (ep. 1) quem já conheceu o Mubarak no bar: a mesma cena, sem ele se apresentar de novo
+export const CENA_OFICINA_CONHECIDO: Cena = { ...CENA_OFICINA, passos: CENA_OFICINA.passos.filter((p) => !(p.t === "fala" && p.texto.startsWith("mubarak."))) }
