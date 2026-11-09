@@ -504,10 +504,11 @@ export function quemLibera(faixa: PistaId): MissaoId | null {
 }
 
 // (T49) os instrumentos ancestrais que ele já tem: os do save e os das missões
-// feitas (save de antes do T49, ou a D-Bee e a oficina feitas pela fase)
+// feitas (save de antes do T49, ou a D-Bee e a oficina feitas pela fase) e, (o dono,
+// 09/11) os achados pelo mundo: tudo isso fica na casa da D-Bee, toca na Kombi e sampleia
 export function instrumentosGanhos(h: HistoriaDisco | null | undefined): InstrumentoId[] {
   if (!h) return []
-  const tem = new Set<InstrumentoId>(h.instrumentos ?? [])
+  const tem = new Set<InstrumentoId>([...(h.instrumentos ?? []), ...(h.instrumentosAchados ?? [])])
   for (const id of IDS13) { const x = MISSOES13[id].recompensa.instrumento; if (x && feita13(h, id)) tem.add(x) }
   return [...tem]
 }

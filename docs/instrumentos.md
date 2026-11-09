@@ -104,5 +104,5 @@ dela, onde dá pra tocar e samplear usando a batida."
 - **O som no B4TIDA:** `"anc:<id>"` (`batida/estudio/sons.ts`), desenhado num OfflineAudioContext
   (`disco/instrumentoAmostra.ts`) com a MESMA receita do jogo (`instrumentos.ts` `soarTimbre`); o djembê usa o tambor gravado.
   Na bateria, cada pad é uma nota dele; os afinados também aparecem nos instrumentos melódicos. A lista sai do save.
-- **Save:** só campos novos e opcionais; save antigo lê `?? []`. Os da missão seguem em `h.instrumentos`: a casa mostra só esses, sem instrumentos iniciais (dono, 09/11); o marco de um que ele já tem some do chão; achar não mexe neles.
+- **Save:** só campos novos e opcionais; save antigo lê `?? []`. Os da missão seguem em `h.instrumentos`. A casa mostra os ganhos e os achados (`instrumentosGanhos`), sem instrumentos iniciais, e dá pra samplear todos; achado novo conta como novo na casa (dono, 09/11); o marco de um que ele já tem some do chão; achar não mexe neles.
 - **Teste:** Mesa → `?parte=instrumentos.mundo`, `?parte=instrumentos.kombi`, `?parte=instrumentos`.
