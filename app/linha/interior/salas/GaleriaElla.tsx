@@ -89,9 +89,11 @@ PLANOS.tela = {
 }
 // os quadros: a câmera leva você de um em um, do meio do salão (com o celular
 // em pé, as duas paredes não cabem juntas); tocou, ela chega perto
+// (os quadros perto da parede de entrada: a câmera não sai do salão)
+const zCamera = (z: number) => Math.min(z, FUNDO / 2 - 0.6)
 const planoDoQuadro = (q: QuadroElla, perto: boolean): Plano => perto
-  ? { pos: [q.lado * 1.7, 1.7, q.z + 0.8], olha: [q.lado * (LARG / 2), q.y, q.z], fov: 48 }
-  : { pos: [-q.lado * 0.3, 1.7, q.z + 1.6], olha: [q.lado * (LARG / 2), q.y - 0.1, q.z], fov: 56 }
+  ? { pos: [q.lado * 1.7, 1.7, zCamera(q.z + 0.8)], olha: [q.lado * (LARG / 2), q.y, q.z], fov: 48 }
+  : { pos: [-q.lado * 0.3, 1.7, zCamera(q.z + 1.6)], olha: [q.lado * (LARG / 2), q.y - 0.1, q.z], fov: 56 }
 
 export function SalaGaleriaElla({ estado }: SalaProps) {
   const pos = estado.pos

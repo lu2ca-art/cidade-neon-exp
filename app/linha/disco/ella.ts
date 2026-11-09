@@ -48,22 +48,27 @@ export const FILME_ELLA: Filme = {
 // public/creditos-dominio-publico.txt). `lado`: a parede (-1 esquerda, 1 direita);
 // `z`: onde no salão; `larg`/`alto`: a tela; `img`: o arquivo, já na proporção da
 // tela (a obra inteira, sem cortar, com margem escura se precisar). Os ids são os
-// nomes das telas no modelo (tela_<id>); os três sem tela no modelo ganham moldura
+// nomes das telas no modelo (tela_<id>); os que não têm tela no modelo ganham moldura
 // no código. `cores`: só pro script do Blender (as telas empilhadas nas estantes).
 // O que aparece ao tocar é o crédito da obra.
 export interface QuadroElla { id: string; lado: -1 | 1; z: number; y: number; larg: number; alto: number; cores: string[]; img: string; falas: Coisa["falas"] }
 const placa = (titulo: string, autor: string, ano: string): Coisa["falas"] => [{ texto: `${titulo}. ${autor}, ${ano}`, tipo: "acao" }]
 const IMG = (nome: string) => `/galeria/ella/${nome}.webp`
 export const QUADROS: QuadroElla[] = [
+  { id: "luar", lado: -1, z: 7.35, y: 2.4, larg: 0.84, alto: 0.65, cores: ["#141a24", "#3a4a5e", "#c9c2a0", "#0a0e14"], img: IMG("luar"), falas: placa("Luar, farol de Wood Island", "Winslow Homer", "1894") },
+  { id: "chuva", lado: 1, z: 7.35, y: 2.75, larg: 0.84, alto: 0.47, cores: ["#4a4a42", "#8a8a78", "#2e2a22", "#b0a890"], img: IMG("chuva"), falas: placa("Dia de chuva no acampamento", "Winslow Homer", "1871") },
+  { id: "vasorosa", lado: 1, z: 5.95, y: 2.8, larg: 0.58, alto: 0.79, cores: ["#c98a8a", "#e6c8a0", "#3a5a4a", "#7a3a5a"], img: IMG("vasorosa"), falas: placa("Vaso de flores (fundo rosa)", "Odilon Redon", "c. 1906") },
   { id: "paisagem", lado: -1, z: 5.0, y: 2.6, larg: 1.36, alto: 1.0, cores: ["#3a4a5a", "#7f8f9a", "#2a3a1e", "#c9b28a"], img: IMG("paisagem"), falas: placa("Paisagem no Brasil", "Frans Post", "c. 1665–69") },
   { id: "brasil", lado: 1, z: 4.7, y: 2.7, larg: 1.5, alto: 0.99, cores: ["#46525c", "#8fa0a8", "#2c3a1a", "#b0a070"], img: IMG("brasil"), falas: placa("Paisagem brasileira", "Frans Post", "1650") },
   { id: "maracuja", lado: 1, z: 2.55, y: 2.6, larg: 0.89, alto: 1.4, cores: ["#3a3a2e", "#b03a2a", "#6a7a4a", "#d8d0c0"], img: IMG("maracuja"), falas: placa("Beija-flor e maracujá", "Martin Johnson Heade", "c. 1875–85") },
   { id: "cidade", lado: -1, z: 1.6, y: 2.3, larg: 1.6, alto: 2.1, cores: ["#0b0f1e", "#ff3fb0", "#2fe8ff", "#5dffa0"], img: IMG("cidade"), falas: placa("Natureza-morta com flores sobre mármore", "Rachel Ruysch", "1716") },
   { id: "janela", lado: 1, z: 1.2, y: 2.1, larg: 1.2, alto: 1.6, cores: ["#10141c", "#4fc3ff", "#e6f0ff", "#2a3550"], img: IMG("janela"), falas: placa("Rosas", "Vincent van Gogh", "1890") },
+  { id: "vasoetrusco", lado: 1, z: -0.62, y: 2.3, larg: 0.8, alto: 1.1, cores: ["#3a4a6a", "#d8a040", "#a03a3a", "#e8d8c0"], img: IMG("vasoetrusco"), falas: placa("Vaso etrusco com flores", "Odilon Redon", "1900–1910") },
   { id: "rio", lado: -1, z: -1.4, y: 2.0, larg: 2.2, alto: 1.3, cores: ["#06121a", "#4fc3ff", "#5dffa0", "#ffe0a8"], img: IMG("rio"), falas: placa("Vista de Olinda", "Frans Post", "1662") },
   { id: "kombi", lado: 1, z: -1.8, y: 1.9, larg: 1.1, alto: 0.9, cores: ["#f2eefa", "#ff6a35", "#3a4cff", "#ffc857"], img: IMG("kombi"), falas: placa("Íris", "Vincent van Gogh", "1890") },
   { id: "branco", lado: -1, z: -4.2, y: 2.4, larg: 1.3, alto: 1.7, cores: ["#efe8da"], img: IMG("branco"), falas: placa("Natureza-morta vanitas", "Jacques de Gheyn II", "1603") },
   { id: "flor", lado: 1, z: -4.6, y: 2.6, larg: 1.5, alto: 1.5, cores: ["#14121c", "#b38cff", "#5dffa0", "#ff3fb0"], img: IMG("flor"), falas: placa("Orquídea Cattleya e três beija-flores", "Martin Johnson Heade", "1871") },
+  { id: "furacao", lado: -1, z: -5.4, y: 2.4, larg: 0.75, alto: 0.51, cores: ["#3a5a5a", "#7fa0a0", "#2a3a2a", "#e0e4d8"], img: IMG("furacao"), falas: placa("Furacão, Bahamas", "Winslow Homer", "1898") },
 ]
 // 2. conhecer a galeria: a câmera leva você por todos, um de cada vez
 export const QUADROS_PRECISA = QUADROS.length
