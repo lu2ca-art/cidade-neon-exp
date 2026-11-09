@@ -408,6 +408,8 @@ export const CHAO_LUGARES = {
   batida: { x: -500, z: -745, nome: "BATIDA", cor: "#ff6b6b" },
   flores: { x: -990, z: -600, nome: "FLORES", cor: "#5dffa0" },
   brecho: { x: -790, z: -600, nome: "BRECHÓ", cor: "#ff3fb0" },
+  // (09/11, ep. 5) a feira do Tony Gordo: a rua das barracas, entre o bar e a oficina (disco/FeiraRua.tsx)
+  feira: { x: -650, z: -630, nome: "FEIRA", cor: "#ff3fb0" },
 } as const
 export type LugarChao = keyof typeof CHAO_LUGARES
 // (09/11) a porta do bar vira pro deserto (quem chega vem de lá), e não pro centro da cidade
@@ -421,6 +423,8 @@ export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventil
 export const CHAO_ABERTOS = ["ginasio", "galeria", "discos", "batida", "flores", "brecho"] as const satisfies readonly LugarChao[]
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))
 export const RAIO_CHAO = 22
+// (09/11) as pontas da rua da feira: as ruínas também abrem espaço aqui (ruinas.ts)
+export const CHAO_PONTAS = [{ x: -667.8, z: -639.2 }, { x: -632.2, z: -620.8 }]
 // a missão n (3 a 11, as das faixas): na cidade (o palco da linha) ou no subúrbio (o palco do chão)
 export const ORDEM_LUGAR: Record<number, "cidade" | "suburbio"> = { 3: "cidade", 4: "cidade", 5: "suburbio", 6: "cidade", 7: "cidade", 8: "suburbio", 9: "suburbio", 10: "cidade", 11: "cidade" }
 // a Kombi ainda não voa (nem tem turbo): antes da oficina do subúrbio

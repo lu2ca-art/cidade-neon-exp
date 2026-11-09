@@ -25,7 +25,7 @@ Fonte: `projetos/cidade-neon/episodios.md` e bíblia §10 a §15. A sequência m
 | 2 | DopaminA | Mubarak | oficina (lixo, goteira, motor), fliperama (missão `notti`) |
 | 3 | Copo Americano | Alohan | beat até o ginásio + basquete (missão `quadra`) |
 | 4 | Ojalá | Nizzy | loja de discos (missão `mubarak`) |
-| 5 | Swav | Tony Gordo | horta e prato (missão `tony`, versão atual) |
+| 5 | Swav | Tony Gordo | a feira no subúrbio: a barganha cortando legumes (`disco/feira.ts`) e o prato no fogão da feira, também no mundo (missão `tony`) |
 | 6 | Sexta-Feira | Drew | roupa (missão `drew`), grafite e corrida nos túneis (`tuneis`) |
 | 7 | Sabe Ontem? | Ella | casa-galeria, filme, quadros (`ella`) |
 | 8 | Rollercoaster | Notti | passeio na montanha-russa do parque (`nizzy`, versão atual) |

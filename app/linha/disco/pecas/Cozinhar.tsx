@@ -1,11 +1,13 @@
 "use client"
 
 // T25 · A ARTE DO TONY GORDO (aprovada 30/10): cozinhar um prato com o
-// que nasceu na horta. Escolhe 3 do que nasceu; segura o fogo até o ponto
+// que veio da feira (os 4 sacos), no mundo: a câmera vai pro fogão da
+// feira (CozinhaTony) e os sacos aparecem ali. Escolhe 3; segura o fogo até o ponto
 // (solta na faixa clara); o Tony prova. O prato fica no save. conf.ts (COZINHAR).
 
 import { useEffect, useRef, useState } from "react"
-import { COZINHAR, HORTA } from "./conf"
+import { COZINHAR } from "./conf"
+import { COZINHA_POS, COZINHA_VIVA, COZINHA_Y, abrirCozinhaViva, fecharCozinhaViva, nomesDosSacos } from "../feira"
 import { ruido, bip } from "./sons"
 import type { PecaProps } from "./Peca"
 
@@ -33,6 +35,9 @@ export function Cozinhar({ onFim }: PecaProps) {
     raf = requestAnimationFrame(q)
     return () => cancelAnimationFrame(raf)
   }, [fase, segura])
+  // o 3D lê daqui (nada de React por quadro lá)
+  useEffect(() => { abrirCozinhaViva(); return () => fecharCozinhaViva() }, [])
+  useEffect(() => { COZINHA_VIVA.ingr = esc.map((p) => nomesDosSacos.indexOf(p)); COZINHA_VIVA.fase = fase; COZINHA_VIVA.segura = segura; COZINHA_VIVA.ponto = ponto }, [esc, fase, segura, ponto])
   const trocar = (p: string) => setEsc((x) => (x.includes(p) ? x.filter((y) => y !== p) : x.length < COZINHAR.escolher ? [...x, p] : x))
   const resultado = ponto < COZINHAR.ponto[0] ? "cru" : ponto > COZINHAR.ponto[1] ? "queimado" : "bom"
   const soltar = () => { if (fase === "fogo" && segura) { setSegura(false); if (pontoRef.current > 0.05) setFase("provar") } }
@@ -40,7 +45,7 @@ export function Cozinhar({ onFim }: PecaProps) {
     const kd = (e: KeyboardEvent) => {
       if (fase === "escolher") {
         const k = Number(e.key)
-        if (k >= 1 && k <= HORTA.plantas.length) { e.preventDefault(); e.stopPropagation(); trocar(HORTA.plantas[k - 1]) }
+        if (k >= 1 && k <= nomesDosSacos.length) { e.preventDefault(); e.stopPropagation(); trocar(nomesDosSacos[k - 1]) }
         else if (e.key === "Enter" && esc.length === COZINHAR.escolher) { e.preventDefault(); e.stopPropagation(); setFase("fogo") }
       } else if (fase === "fogo" && e.key === " " && !e.repeat) { e.preventDefault(); e.stopPropagation(); setSegura(true) }
       else if (fase === "provar" && e.key === "Enter") { e.preventDefault(); e.stopPropagation(); onFim(true, [...esc, resultado]) }
@@ -55,9 +60,9 @@ export function Cozinhar({ onFim }: PecaProps) {
     <div className="l-peca-cozinhar">
       {fase === "escolher" && (
         <>
-          <p className="l-peca-dica">na cozinha do restaurante, pela primeira vez sem a ração. escolhe {COZINHAR.escolher} do que nasceu.</p>
-          <div className="l-cozinhar-ingr" role="group" aria-label="o que nasceu">
-            {HORTA.plantas.map((p, i) => <button key={p} type="button" className={esc.includes(p) ? "is-esc" : ""} onClick={() => trocar(p)}><kbd>{i + 1}</kbd>{p}</button>)}
+          <p className="l-peca-dica">na cozinha, pela primeira vez sem a ração. escolhe {COZINHAR.escolher} do que veio da feira.</p>
+          <div className="l-cozinhar-mundo" role="group" aria-label="o que veio da feira">
+            {nomesDosSacos.map((p, i) => <button key={p} type="button" className={esc.includes(p) ? "is-esc" : ""} style={{ left: `${50 + COZINHA_POS[i] * 50}%`, top: `${50 - COZINHA_Y * 50}%` }} onClick={() => trocar(p)}><span>{p}</span></button>)}
           </div>
           <div className="l-peca-fim"><button type="button" className="is-seguir" disabled={esc.length !== COZINHAR.escolher} onClick={() => setFase("fogo")}>pro fogo →</button></div>
         </>

@@ -60,6 +60,7 @@ import type { InstrumentoId } from "../disco/instrumentos"
 import { ehAberto } from "../disco/abertos"
 import { gravarOndeParou, lerOndeParou, nasceuOndeParou, ondeNasceu, type Desembarque } from "./ondeParou"
 import { FeixeGuia } from "./FeixeGuia"
+import { CAM_FEIRA } from "../disco/feira"
 import { CHEGADA_MISSAO, chegouNoAlvo, escreverGuia, escreverPiloto, INTRO_ADIADA, lerGuia, pontoDoAlvo, type LugarMissao } from "./alvoMissao"
 import { NAV, ladoDaFaixa } from "./nav"
 import { temJetpack } from "../disco/metro"
@@ -6784,6 +6785,12 @@ function CenaBase({
       camera.position.set(CAM_ROTEIRO.px, CAM_ROTEIRO.py, CAM_ROTEIRO.pz)
       camera.up.set(0, 1, 0)
       camera.lookAt(CAM_ROTEIRO.ox, CAM_ROTEIRO.oy, CAM_ROTEIRO.oz)
+    }
+    // (09/11, ep. 5) a barganha: a câmera na frente da banca (disco/FeiraBanca.tsx)
+    if (CAM_FEIRA.ativo) {
+      camera.position.set(CAM_FEIRA.px, CAM_FEIRA.py, CAM_FEIRA.pz)
+      camera.up.set(0, 1, 0)
+      camera.lookAt(CAM_FEIRA.ox, CAM_FEIRA.oy, CAM_FEIRA.oz)
     }
     if (process.env.NODE_ENV !== "production") {
       const vw = (window as unknown as { __vista?: number[] }).__vista

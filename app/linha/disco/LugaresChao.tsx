@@ -14,13 +14,16 @@
 
 import { useGLTF } from "@react-three/drei"
 import { ModeloSeguro } from "../estrada/Seguro"
-import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
+import { lazy, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { BOCA, GABARITO_S, QUADRA, geoBoca } from "../estrada/chao"
 import { materialAreia } from "../estrada/areia"
 import { PECAS_CHAO, chaoAtivos, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
 import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, GIRO_BAR, SUBURBIO, type LugarChao } from "./historia"
+
+// (09/11, ep. 5) a feira: só baixa quando chega perto (o <Perto> já tem Suspense)
+const FeiraRua = lazy(() => import("./FeiraRua").then((m) => ({ default: m.FeiraRua })))
 
 function texLetreiro(txt: string, cor: string) {
   const c = document.createElement("canvas"); c.width = 512; c.height = 128
@@ -588,6 +591,7 @@ export function LugaresChao({ chao, alvo }: { chao: (x: number, z: number) => nu
     <>
       {CHAO_FIXOS.filter((id) => !(CHAO_ABERTOS as readonly string[]).includes(id)).map((id) => id === "tuneis" ? <BocaTunel key={id} chao={chao} alvo={alvo === id} />
         : id === "quadra" ? <Quadra key={id} chao={chao} alvo={alvo === id} />
+        : id === "feira" ? <FeiraRua key={id} chao={chao} alvo={alvo === id} />
         : <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
       <LugaresAbertos chao={chao} />
       {alvo === "goteira" && <Goteira chao={chao} />}

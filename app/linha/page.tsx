@@ -95,7 +95,8 @@ import { Jornal, calcularManchete } from "./disco/Jornal"
 import type { HistoriaDisco, Manchete } from "./disco/historia"
 import { aplicarRecompensa } from "./disco/recompensas"
 import { INSTRUMENTOS_ANCESTRAIS, ehInstrumento, linhaRecompensa, tocarInstrumento, type InstrumentoId } from "./disco/instrumentos"
-import { proximaDaSequencia, rotuloDoEpisodio } from "./disco/episodios"
+import { episodioDaMissao, proximaDaSequencia, quemAbre, rotuloDoEpisodio } from "./disco/episodios"
+import { avisoSemAgua, faltaProBolso, nomesDosSacos } from "./disco/feira"
 import { faixaDaMissao } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
@@ -137,6 +138,7 @@ const Viagem = dynamic(() => import("./viagem").then((m) => m.Viagem), { ssr: fa
 // (T63) as trincheiras (os túneis do T11, a corrida do T13, as motos do T14), dentro do jogo
 const Trincheiras = dynamic(carregarTrincheiras, { ssr: false })
 // (vitrine, 02/11) a sinuca do bar do subúrbio, no treino: só baixa quando abre
+const FeiraTela = dynamic(() => import("./disco/FeiraTela").then((m) => m.FeiraTela), { ssr: false })
 const SinucaBar = dynamic(() => import("./disco/SinucaBar").then((m) => m.SinucaBar), { ssr: false })
 // (T64, lote D) o grafite das trincheiras (puxa o geo.ts delas: só baixa junto)
 const GrafiteTrincheiras = dynamic(() => import("./disco/Grafite").then((m) => m.GrafiteTrincheiras), { ssr: false })
@@ -1186,13 +1188,30 @@ export default function LinhaPage() {
     return conf && como?.t === "letra" ? { missao: mid, qual, faixa: como.faixa, conf } : null
   })()
   // (T15–T25, T16) a peça de agora que abre por cima do jogo (disco/pecas/): a
-  // dança, a vinheta, a trilha, a máquina, o clipe, a horta, o prato, o disco, a sinuca
+  // dança, a vinheta, a trilha, a máquina, o clipe, o prato, o disco, a sinuca
   const cenaAgora = (() => {
     if (!HIST || !hist.aberta13 || cena || tela.t !== "corrida") return null
     const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
     const como = MISSOES13[mid]?.[qual]?.como
     return como?.t === "cena" ? { missao: mid, qual, id: como.id as CenaId } : null
   })()
+  // (09/11, ep. 5) a barganha e a cozinha, nas barracas da feira: a peça da missão ou, depois dela, de graça
+  const [feiraLivre, setFeiraLivre] = useState(false)
+  const feiraAgora = (() => {
+    if (!HIST || cena || tela.t !== "corrida") return null
+    if (feiraLivre) return { missao: null, qual: "jogo" as const }
+    if (!hist.aberta13) return null
+    const [mid, qual] = hist.aberta13.split(":") as [MissaoId, "arte" | "jogo"]
+    return MISSOES13[mid]?.[qual]?.como?.t === "feira" ? { missao: mid, qual } : null
+  })()
+  // o mundo fica ali em volta: sem pausar, a Kombi para e a câmera vai pra banca (CAM_FEIRA)
+  const feiraAberta = !!feiraAgora || cenaAgora?.id === "cozinhar"
+  useEffect(() => {
+    if (!feiraAberta) return
+    setAoVivo(null)
+    setCinema("lugar")
+    return () => setCinema(null)
+  }, [feiraAberta])
   // (T15–T25, T16) o que ainda está trancado (a porta de cada missão abre) e a
   // Kombi no conserto (a missão do Drew vai de patins)
   const trancasCorrida = useMemo(() => {
@@ -1330,7 +1349,7 @@ export default function LinhaPage() {
   }
   // chegou no lugar da missão: abre a peça de agora; sem peça (feitas ou "em breve"), a porta
   const chegouNaMissao = (id: MissaoId, semIntro = false) => {
-    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
+    if (recompensa || pingpong || provaMissao || showAgora || letraAgora || batidaMissao || basquete || cenaAgora || feiraAgora || cena || trincheiras || finalAgora || (introMissao && !semIntro)) return
     // (começo novo) abriu (o balão ou a peça): o "toca pra começar" do notch sai
     if (INTRO_ADIADA.missao === id) { INTRO_ADIADA.missao = ""; INTRO_ADIADA.texto = ""; INTRO_ADIADA.toque = null }
     const pc = pecaAgora13(hist13(saveRef.current), id)
@@ -1339,6 +1358,8 @@ export default function LinhaPage() {
     const como = pc.peca.como
     barFechou.current = Date.now()
     if (!como || como.t === "historia" || como.t === "evento") return
+    // (09/11, ep. 5) sem o dinheiro de um saco, a feira espera: o aviso só diz quanto falta
+    if (como.t === "feira" && faltaProBolso(saveRef.current.agua ?? 0) > 0) { avisar("A FEIRA", avisoSemAgua(saveRef.current.agua ?? 0), CHAO_LUGARES.feira.cor); return }
     // (bloco 1 · D) chegar já é a peça (o caminho de patins e jetpack até o Drew): fica feita e a próxima segue
     if (como.t === "chegar") { pecaFeitaNaMissao(id, pc.qual); return }
     // (trilha sonora, 05/11; bíblia 9) nenhum jogo surge do nada: antes da peça, quem
@@ -1353,7 +1374,7 @@ export default function LinhaPage() {
     if (como.t === "pingpong") setPingpong(true)
     else if (como.t === "show") setSave((s) => comHistoria(s, (x) => ({ ...x, show: `missao:${id}` })))
     else if (como.t === "prova") setProvaMissao({ missao: id, qual: pc.qual, id: como.id, cor: MISSOES13[id].cor })
-    else if (como.t === "letra" || como.t === "cena") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
+    else if (como.t === "letra" || como.t === "cena" || como.t === "feira") setSave((s) => comHistoria(s, (x) => ({ ...x, aberta13: `${id}:${pc.qual}` })))
     else if (como.t === "batida") setBatidaMissao({ missao: id, clima: como.clima })
     else if (como.t === "basquete") setBasquete({ n: 1, pontos: como.pontos, tempo: como.tempo, livre: false })
     // (T57) desceu a rampa da boca do túnel: a corrida é lá embaixo, nas trincheiras
@@ -1905,7 +1926,7 @@ export default function LinhaPage() {
   // meio da faixa passa pro instrumental no mesmo ponto; terminou, volta a completa.
   // A completa da missão (pistaSom.tocarDaMissao) não troca. Nada disso pausa a faixa
   // (trilha sonora, 05/11) as peças, a letra e o basquete também (antes cortavam a música)
-  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!letraAgora || !!basquete
+  const momentoMissao = !!cena || pingpong || !!trincheiras || !!provaMissao || !!oficinaTela || sinucaBar || !!showAgora || !!cenaAgora || !!feiraAgora || !!letraAgora || !!basquete
   // (começo novo, 05/11) cena/peça/sala aberta: a rádio troca de faixa sem chiado e sem vinheta
   const somDeCena = momentoMissao || !!cinema || emSala
   useEffect(() => { somCena.aberta = somDeCena }, [somDeCena])
@@ -1938,9 +1959,27 @@ export default function LinhaPage() {
   // saiu do app por outro caminho (home, outra tela): o "voltar" não leva mais pra estrada
   useEffect(() => { if (tela.t !== "app") doMundo.current = false }, [tela.t])
   const fecharJanelaChao = useCallback(() => { setJanelaChao(null); barFechou.current = Date.now() }, [])
+  // (09/11, ep. 5) a feira: visitável sempre; a barganha abre no episódio e com o dinheiro de um saco.
+  // O jogo da feira já feito (ou o save antigo que fez a peça): não pede dinheiro de novo
+  const trancaFeira = (h0: HistoriaDisco, agua: number): string | null => {
+    if (h0.fase === "livre" || feita13(h0, "tony") || pecaFeita(h0, "tony", "jogo")) return null
+    if (h0.fase !== "carreira") return TRANCA_PROLOGO
+    if (normalizarMissao(h0.missao) !== "tony" && !disponiveis(h0).includes("tony")) { const ep = episodioDaMissao("tony"); return ep ? quemAbre(ep) : TRANCA_PROLOGO }
+    return faltaProBolso(agua) > 0 ? avisoSemAgua(agua) : null
+  }
+  const abrirFeira = () => {
+    const h0 = hist13(saveRef.current)
+    const t = trancaFeira(h0, saveRef.current.agua ?? 0)
+    if (t) { avisar("A FEIRA", t, CHAO_LUGARES.feira.cor); return }
+    if (h0.fase === "livre" || feita13(h0, "tony")) { setFeiraLivre(true); return }
+    // missão começa ao chegar: tocou em "entrar", pega a do Tony e abre
+    if (normalizarMissao(h0.missao) !== "tony") pegarMissao("tony")
+    setTimeout(() => chegouRef.current("tony"), 300)
+  }
   const trancaChao = (id: LugarAberto): string | null => {
     const E = ENTRADAS[id]
     const h0 = hist13(saveRef.current)
+    if (E.t === "feira") return trancaFeira(h0, saveRef.current.agua ?? 0)
     const t = "porta" in E && E.porta ? pedidoDaPorta(h0, E.porta, E.pra ?? "entrar") : null
     // (jogador novo 2) no prólogo o cadeado não cita uma missão que ele ainda nem tem
     return t && h0.fase !== "carreira" && h0.fase !== "livre" ? TRANCA_PROLOGO : t
@@ -1969,6 +2008,7 @@ export default function LinhaPage() {
     marcarVisitaDbee(id)
     const E = ENTRADAS[id] as (typeof ENTRADAS)[LugarAberto]
     const tranca = trancaChao(id)
+    if (E.t === "feira") { abrirFeira(); return }
     if (E.t === "basquete") {
       if (tranca) { avisar("QUADRA", tranca, CHAO_LUGARES.quadra.cor); return }
       if (pingpong || batidaMissao) return
@@ -2697,6 +2737,15 @@ export default function LinhaPage() {
           barFechou.current = Date.now()
           track("mission_step", { mission_id: `disco-${c.missao}`, step: c.id, perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
           if (ok) pecaFeitaNaMissao(c.missao, c.qual)
+        }} />}
+        {feiraAgora && <FeiraTela livre={!feiraAgora.missao} onFim={(ok, conta) => {
+          const f = feiraAgora
+          barFechou.current = Date.now()
+          if (!f.missao) { setFeiraLivre(false); return }
+          const id = f.missao
+          setSave((s) => comHistoria(ok ? gastar(s, conta, "agua") ?? s : s, (x) => ({ ...x, aberta13: undefined, obras13: ok ? { ...(x.obras13 ?? {}), [`${id}:${f.qual}`]: nomesDosSacos } : x.obras13 })))
+          track("mission_step", { mission_id: `disco-${id}`, step: ok ? "feira:levou" : "feira:saiu", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+          if (ok) pecaFeitaNaMissao(id, f.qual)
         }} />}
         {pingpong && <PingPong cor={MISSOES13[pecaAberta.current?.missao ?? "xeriff"].cor} onFim={(venceu) => {
           setPingpong(false)

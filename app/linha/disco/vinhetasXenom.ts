@@ -74,8 +74,8 @@ export const VINHETAS_XENOM: VinhetaXenom[] = [
   v("notti-2", "o Notti ainda tá tentando acordar as máquinas. uma ficha só, ele disse", { missao: "notti", quando: "ativa" }),
   v("nizzy-1", "a montanha-russa parou bem no meio. a Nizzy tá lá com a câmera na mão", { missao: "nizzy", quando: "disponivel" }),
   v("nizzy-2", "a Nizzy ainda tá no parque. o sobe e desce não volta sozinho", { missao: "nizzy", quando: "ativa" }),
-  v("tony-1", "o Tony Gordo reclamou que lá em cima tudo tem gosto de nada. tem horta atrás do restaurante", { missao: "tony", quando: "disponivel" }),
-  v("tony-2", "a horta do Tony tá esperando água. sem pressa, que é assim que fica bom", { missao: "tony", quando: "ativa" }),
+  v("tony-1", "o Tony Gordo quer quatro sacos da feira do subúrbio. e dinheiro pra um só", { missao: "tony", quando: "disponivel" }),
+  v("tony-2", "quatro sacos pro Tony. corta o preço na banca, que o feirante deixa", { missao: "tony", quando: "ativa" }),
   v("final-1", "os nove tão nos pontos. a D-Bee tá vindo. vai chover na cidade", { missao: "final", quando: "disponivel" }),
   v("final-2", "é hoje. a D-Bee aciona a chuva. ninguém fica em casa", { missao: "final", quando: "ativa" }),
 

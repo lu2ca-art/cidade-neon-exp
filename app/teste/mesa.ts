@@ -55,6 +55,13 @@ export const MESA: Cartao[] = [
     olhar: "O bar agora fica logo na chegada do deserto, de frente pra quem vem: dirija até o letreiro laranja e a cena começa ali. No segundo atalho você nasce no pé da torre 1: tem a porta do elevador no deserto, com a placa dos andares e os túneis riscados. O botão sobe a Kombi pra cidade, e lá na rotatória da torre 1 tem o botão de descer de volta. No deserto o propulsor é solar e não gasta nada. Subir voando até uma pista custa 20 de água, cobrados quando você pousa lá em cima; sem água, a Kombi voa baixo, não chega na pista e o Nexo avisa. Na rampa do túnel tem uma viga baixa com a placa: a Kombi não passa.",
     perguntas: ["O bar ficou no lugar certo, bem na chegada?", "A porta no deserto parece um andar da torre?", "O preço de 20 de água pra subir voando está bom?", "A viga e a placa deixam claro que a Kombi não desce?"],
     mais: [{ parte: "elevador.deserto", nome: "a porta do elevador no deserto" }],
+    parte: "missao.tony.jogo",
+    nome: "A feira do Tony Gordo: cortar o preço dos legumes",
+    data: "2026-11-09",
+    tarefa: "ep. 5",
+    olhar: "Este link já abre na banca, no meio da rua da feira. Os legumes sobem na sua frente, cada um com a etiqueta de preço. Passe o dedo (ou o mouse) neles: cada corte tira 12% daquele legume, até 72%, e os próximos já vêm com o preço novo. Quando a conta couber no bolso, aparece o botão de pagar em Água$. Pagou: a câmera vai pro fogão do Tony, no fim da feira, e os 4 sacos aparecem ali, sem janela por cima. Escolha 3, segure o fogo e solte no ponto. Depois ande pela feira: as barracas, o pastel, o caldo de cana e a xepa ficam no subúrbio, entre o bar e a oficina.",
+    perguntas: ["O som de cada corte ficou gostoso?", "Os legumes e o miolo deles ficaram bonitos?", "Dá pra cortar bem com o dedo no celular?", "A feira parece feira de rua de São Paulo?", "Quer alguma pressão (tempo, perder legume) ou fica sem como está?", "A cozinha no fogão da feira ficou boa de ver e de usar no celular?"],
+    mais: [{ parte: "missao.tony.arte", nome: "direto na cozinha do Tony, no fogão da feira" }, { parte: "missao.tony", nome: "chegar na feira com a missão, pelo caminho normal" }],
   },
   {
     parte: "carreira.feira",

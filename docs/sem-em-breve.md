@@ -32,7 +32,7 @@ grafite, trincheiras, casa, final). Ou seja: **nenhuma das 13 missões cai em
 | 9 | Ella | ok (casa galeria) | ok (casa galeria) | galeria: existe | Chuva + flauta de bambu |
 | 10 | Notti | ok (cena trilha8) | ok (cena máquina) | fliperama: existe | DopaminA + ocarina |
 | 11 | Nizzy | ok (cena clipe) | ok (evento montanha) | parque: existe | Rollercoaster + handpan |
-| 12 | Tony | ok (cena cozinhar) | ok (cena horta) | canteiros: existe | Swav + kalimba |
+| 12 | Tony | ok (cena cozinhar) | ok (a feira, no mundo) | canteiros: existe | Swav + kalimba |
 | 13 | final | (fora da meta do bloco) | ok (final) | mundo depois: existe (06/11) | — |
 
 ## O que ainda dizia "em breve" e o que virou

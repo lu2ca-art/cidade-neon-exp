@@ -9,7 +9,7 @@
 // as dunas inclinam), sai de onde o mundo não está livre (pista, torre) e vira
 // caixa de colisão no mesmo formato dos prédios (Campo.tsx, COL_PASSO).
 
-import { CHAO_LUGARES } from "../disco/historia"
+import { CHAO_LUGARES, CHAO_PONTAS } from "../disco/historia"
 import { PECAS_RUINAS, TRACO_RUINAS } from "./ruinasDados"
 
 export type PecaPosta = { peca: number; x: number; y: number; z: number; giro: number }
@@ -27,7 +27,7 @@ export function ruinasNoMundo(M: MundoMin): { postas: PecaPosta[]; colisores: nu
   if (ja) return ja
   const postas: PecaPosta[] = []
   const colisores: number[] = []
-  const lugares = Object.values(CHAO_LUGARES)
+  const lugares: { x: number; z: number }[] = [...Object.values(CHAO_LUGARES), ...CHAO_PONTAS]
   for (let k = 0; k < TRACO_RUINAS.length; k += 4) {
     const pi = TRACO_RUINAS[k], x = TRACO_RUINAS[k + 1], z = TRACO_RUINAS[k + 2], giro = (TRACO_RUINAS[k + 3] * Math.PI) / 2
     const P = PECAS_RUINAS[pi]

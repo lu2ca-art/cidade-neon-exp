@@ -53,9 +53,11 @@ export type ComoJoga =
   // (T10) o basquete do ginásio (app/ginasio/basquete.tsx): `pontos` pra passar em `tempo` segundos (senão joga de novo)
   | { t: "basquete"; pontos: number; tempo: number }
   // (T15–T25, T16) uma peça que abre por cima do jogo (disco/pecas/): a dança, a
-  // vinheta, a trilha 8 bits, a máquina, o clipe, a horta, o prato, o disco
+  // vinheta, a trilha 8 bits, a máquina, o clipe, o prato, o disco
   // antigo, a sinuca. Os rascunhos de cada uma moram em disco/pecas/conf.ts
   | { t: "cena"; id: CenaId }
+  // (09/11, ep. 5) a barganha na feira do Tony: no mundo, na banca (disco/FeiraTela.tsx e FeiraBanca.tsx)
+  | { t: "feira" }
   // (bloco 1 · A3) chegar no lugar da missão já é a peça: o caminho de patins e
   // jetpack até o Drew (a Kombi no conserto). A page.tsx conclui ao chegar
   | { t: "chegar" }
@@ -75,7 +77,7 @@ export type ComoJoga =
 // (T22) as casas das missões (interior/registro.ts carrega cada uma)
 export type SalaMissao = "galeria-ella"
 
-export type CenaId = "moda" | "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "horta" | "cozinhar" | "disco-antigo" | "sinuca"
+export type CenaId = "moda" | "danca" | "vinheta" | "trilha8" | "maquina" | "clipe" | "cozinhar" | "disco-antigo" | "sinuca"
 
 export interface Peca {
   nome: string
@@ -138,8 +140,8 @@ export interface Missao13 {
   requer: MissaoId[]
   // feita pela história do começo (a casa e as dunas; a oficina): não vai pra feira
   prologo?: true
-  // (T25) a ordem das peças, quando não é arte → jogo (o Tony: regar a horta
-  // primeiro, depois cozinhar com o que nasceu)
+  // (T25) a ordem das peças, quando não é arte → jogo (o Tony: a feira
+  // primeiro, depois cozinhar com o que levou)
   ordem?: ["jogo", "arte"]
 }
 
@@ -275,10 +277,12 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   },
   tony: {
     id: "tony", n: 12, onde: "cidade", quem: "Tony Gordo", cor: "#ff3fb0", faixa: "swav", faixaSituacao: "decidido",
-    lugar: { lugar: "palco-swav" }, pedido: "tudo aqui em cima tem gosto de nada", apresenta: "regar a horta atrás do restaurante",
+    // (09/11, ep. 5) não tem horta: tem a feira, no chão do subúrbio. `onde` segue "cidade" porque
+    // é a faixa Swav: a luz da pista e os saves antigos contam por aí; quem diz o lugar é `lugar.chao`
+    lugar: { chao: "feira" }, pedido: "quatro sacos na feira, e o dinheiro dá pra um", apresenta: "a feira: cortar o preço de quatro sacos", // RASCUNHO
     // (T25, aprovada 30/10) cozinhar (disco/pecas/conf.ts, COZINHAR)
-    arte: p("cozinhar um prato com o que nasceu", "decidido", { como: { t: "cena", id: "cozinhar" }, tarefa: "T25" }),
-    jogo: p("regar a horta atrás do restaurante", "decidido", { como: { t: "cena", id: "horta" }, tarefa: "T25" }),
+    arte: p("cozinhar um prato com o que veio da feira", "decidido", { como: { t: "cena", id: "cozinhar" }, tarefa: "T25" }),
+    jogo: p("a barganha na feira", "decidido", { como: { t: "feira" } }),
     abre: ["canteiros"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.tony, instrumento: "kalimba" }, requer: ["oficina"], ordem: ["jogo", "arte"],
   },
   // ── a 13ª ──
