@@ -84,8 +84,8 @@ export const MESA: Cartao[] = [
     nome: "Quadros e discos de domínio público",
     data: "2026-11-09",
     tarefa: "dominio-publico",
-    olhar: "Na casa da Ella, os quadros agora são pinturas de verdade (Van Gogh, Frans Post, Heade e outros). Toque em cada um: aparece o nome, o autor e o ano. Na loja de discos entraram três discos novos: Noturnos, Orquestra e 78 rotações, ouça um trecho.",
-    perguntas: ["Os quadros ficaram bonitos nas molduras e com a imagem nítida?", "A disposição dos 3 quadros novos na parede ficou boa?", "O som dos três discos está bom, ou comprimiu demais?", "Os 5 quadros do museu de Chicago ficaram de fora (o site bloqueou a conferência): quer que eu tente de outro jeito?"],
+    olhar: "Na casa da Ella, os quadros agora são pinturas de verdade (14 no total: Van Gogh, Frans Post, Heade, Winslow Homer, Redon e outros). Toque em cada um: aparece o nome, o autor e o ano. Na loja de discos entraram três discos novos: Noturnos, Orquestra e 78 rotações, ouça um trecho.",
+    perguntas: ["Os quadros ficaram bonitos nas molduras e com a imagem nítida?", "A disposição dos 8 quadros novos na parede ficou boa? Ver os 14 antes de seguir ficou longo?", "O som dos três discos está bom, ou comprimiu demais?"],
     mais: [{ parte: "loja", nome: "a loja de discos" }],
   },
   {

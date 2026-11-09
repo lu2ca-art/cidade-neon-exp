@@ -106,3 +106,28 @@ Orquídea Cattleya e três beija-flores (1982.73.1)
   Autor: Martin Johnson Heade (1871)
   Fonte: https://www.nga.gov/artworks/61244-cattleya-orchid-and-three-hummingbirds
   Licença: domínio público (National Gallery of Art Open Access; openaccess=1 nos dados abertos do museu)
+
+Luar, farol de Wood Island
+  Autor: Winslow Homer (1894)
+  Fonte: https://www.metmuseum.org/art/collection/search/11127
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Dia de chuva no acampamento
+  Autor: Winslow Homer (1871)
+  Fonte: https://www.metmuseum.org/art/collection/search/11134
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Furacão, Bahamas
+  Autor: Winslow Homer (1898)
+  Fonte: https://www.metmuseum.org/art/collection/search/11124
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Vaso de flores (fundo rosa)
+  Autor: Odilon Redon (c. 1906)
+  Fonte: https://www.metmuseum.org/art/collection/search/437382
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Vaso etrusco com flores
+  Autor: Odilon Redon (1900-1910)
+  Fonte: https://www.metmuseum.org/art/collection/search/437381
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
