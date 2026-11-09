@@ -19,7 +19,7 @@ import { LETRAS } from "./disco/letras"
 import { SHOWS_XENOM, xenomPorId } from "./disco/xenom"
 import { prepararMetro } from "./disco/metro"
 import { VEICULOS } from "./disco/perseguicao"
-import type { HistoriaDisco } from "./disco/historia"
+import { CHAO_LUGARES, type HistoriaDisco } from "./disco/historia"
 import { MOMENTOS, ehMomentoFinal } from "./disco/final"
 import { PISTAS } from "./estrada/pistas"
 import { GRAFITES } from "./grafite/grafites"
@@ -35,6 +35,10 @@ const MEIO = { fase: "carreira", holo: true, feitas13: ["dbee", "oficina", "lu2c
 const GRANA = { agua: 460, popularidade: 35, economia: 2 }
 
 function discoDa(parte: string): Record<string, unknown> | null {
+  // (09/11, o povo) a mesma rua e o mesmo palco em três momentos da história
+  if (parte === "povo.pouco") return { ...MEIO, feitas13: ["dbee", "oficina"] }
+  if (parte === "povo.meio") return MEIO
+  if (parte === "povo.cheio") { const { missao: _fora, ...sem } = FINAL; void _fora; return sem }
   if (parte === "inicio" || parte === "minhoca") return null // save novo: começa no buraco de minhoca
   if (["casa", "casa.holo", "casa.tambor"].includes(parte)) return { fase: "casa", holo: false }
   // (T07) o tutorial do voo e do turbo: a Kombi já voa, os passos das dunas feitos
@@ -198,7 +202,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "amigos", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis", "mundo.depois.floresta", "instrumentos.kombi", "instrumentos.mundo", "elevador.deserto", "metro.passeio", "metro.violao", "loja.violao", "metro.comprado", "metro.sem-instrumento"]
+export const PARTES_TESTE = ["povo.pouco", "povo.meio", "povo.cheio", "inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "amigos", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis", "mundo.depois.floresta", "instrumentos.kombi", "instrumentos.mundo", "elevador.deserto", "metro.passeio", "metro.violao", "loja.violao", "metro.comprado", "metro.sem-instrumento"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -225,9 +229,11 @@ export function aplicarParteDeTeste(): boolean {
   apagarOndeParou() // o teste começa onde a parte manda, não onde o último teste parou
   // (09/11, ep. 5) a missão do Tony começa na rua da feira, de frente pras barracas
   if (parte === "missao.tony" || parte === "missao.tony.jogo" || parte === "missao.tony.arte" || parte === "missao.swav") { const p = naFeira(-16, 0); gravarOndeParou({ t: "chao", x: p.x, z: p.z, rumo: FEIRA_RUMO + Math.PI / 2 }) }
+  // (09/11, o povo) nasce de frente pro palco do subúrbio, atrás da plateia
+  if (parte.startsWith("povo.")) { const p = CHAO_LUGARES.palco, a = Math.atan2(-p.x, -p.z); gravarOndeParou({ t: "chao", x: p.x + Math.sin(a) * 26, z: p.z + Math.cos(a) * 26, rumo: a + Math.PI }) }
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" || parte === "loja.violao" || parte === "elevador.deserto" ? GRANA : {}), ...(parte.startsWith("missao.tony") ? { agua: 60, economia: 1 } : {}), ...(parte === "violao" || parte === "metro" || parte === "metro.passeio" || parte === "metro.violao" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), ...(parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" ? { violao: false, compras: parte === "metro.comprado" ? ["instrumento:guitarra"] : [] } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" || parte === "loja.violao" || parte === "elevador.deserto" ? GRANA : {}), ...(parte.startsWith("missao.tony") ? { agua: 60, economia: 1 } : {}), ...(parte === "violao" || parte === "metro" || parte === "metro.passeio" || parte === "metro.violao" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("povo.") ? { hora: 22, popularidade: parte === "povo.cheio" ? 90 : parte === "povo.meio" ? 30 : 0 } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), ...(parte === "loja.violao" || parte === "metro.comprado" || parte === "metro.sem-instrumento" ? { violao: false, compras: parte === "metro.comprado" ? ["instrumento:guitarra"] : [] } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja" || parte === "loja.violao") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
