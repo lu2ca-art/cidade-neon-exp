@@ -20,7 +20,7 @@ NOME = {"palco": "PALCO", "estacao": "LINHA 9 · 6", "terraco": "TERRAÇO", "cas
 COR = {"palco": "#e0ff4f", "estacao": "#e6f0ff", "terraco": "#5dffa0", "casa-drew": "#ff3fb0", "balada": "#ffc857", "casa-ella": "#2fe8ff"}
 # onde vai o letreiro: x, altura, frente, largura (os do lugares_cidade.py, "let")
 LET = {"palco": (0, 10.55, 4.33, 7.0), "estacao": (0, 4.75, 4.71, 7.0), "terraco": (0, 7.9, 3.79, 9.0),
-       "casa-drew": (-2.0, 5.0, 3.93, 5.5), "balada": (-2.0, 5.0, 5.03, 6.0), "casa-ella": (0, 4.2, 3.98, 2.6)}
+       "casa-drew": (-2.0, 5.0, 3.93, 5.5), "balada": (-2.0, 5.0, 5.03, 6.0), "casa-ella": (0, 3.32, 1.48, 2.4)}
 PE = 5.0  # o pé até a água, na foto
 
 sc = bpy.context.scene

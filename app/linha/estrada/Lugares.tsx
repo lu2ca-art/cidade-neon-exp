@@ -367,7 +367,7 @@ function Vaga({ p, cor, materialRef }: { p: PoseLugar; cor: string; materialRef:
 // public/models/lugares-cidade.glb): um modelo por TIPO, reaproveitado — o palco
 // suspenso (treliça, line arrays, telão) nos 4 palcos das faixas, a estação da
 // Linha 9, a torre do terraço, a loja/AP do Drew, o monolito da balada (também a
-// casa de shows) e a cápsula escondida da Ella. Origem no meio da planta (16 × 10,
+// casa de shows) e o galpão da Ella com o telhado em V e o jardim (09/11). Origem no meio da planta (16 × 10,
 // a da caixa de antes), na altura da pista, frente pra pista; malhas _solido (cor
 // no vértice com a AO assada), _luz (brilho de cor fixa), _neon (vira a cor do
 // lugar), _vidro (o tom do vidro misturado com a cor do lugar) e _pe/_pen (de 0 a
@@ -386,10 +386,10 @@ const TIPO: Partial<Record<LugarId, Tipo>> = {
 // (os do lugares_cidade.py, impressos como LET; a frente é a partir do meio da planta)
 const LET_TIPO: Record<Tipo, Let> = {
   palco: [0, 10.55, 4.33, 7], estacao: [0, 4.75, 4.71, 7], terraco: [0, 7.9, 3.79, 9],
-  "casa-drew": [-2, 5, 3.93, 5.5], balada: [-2, 5, 5.03, 6], "casa-ella": [0, 4.2, 3.98, 2.6],
+  "casa-drew": [-2, 5, 3.93, 5.5], balada: [-2, 5, 5.03, 6], "casa-ella": [0, 3.32, 1.48, 2.4],
 }
 
-let MATS_CIDADE: { solido: THREE.Material; brilho: THREE.Material; vidro: THREE.Material } | null = null
+let MATS_CIDADE: { solido: THREE.Material; brilho: THREE.Material; vidro: THREE.Material; planta: THREE.Material } | null = null
 function matsCidade() {
   if (MATS_CIDADE) return MATS_CIDADE
   const vidro = new THREE.MeshStandardMaterial({ vertexColors: true, color: "#2a3040", roughness: 0.12, metalness: 0.5, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide })
@@ -402,6 +402,8 @@ function matsCidade() {
     solido: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.2 }),
     brilho: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
     vidro,
+    // (09/11) as folhas do jardim da Ella são finas: dos dois lados
+    planta: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, side: THREE.DoubleSide }),
   }
   return MATS_CIDADE
 }
@@ -434,7 +436,7 @@ type Pose = { l: Lugar; p: PoseLugar }
 function LugaresGlb({ poses, alvo, emCena, revelado }: { poses: Pose[]; alvo: LugarId | null; emCena: LugarId | null; revelado: LugarId | null }) {
   const { nodes } = useGLTF(URL_CIDADE) as unknown as { nodes: Record<string, THREE.Object3D> }
   const d = useMemo(() => {
-    const solido: THREE.BufferGeometry[] = [], brilho: THREE.BufferGeometry[] = [], vidro: THREE.BufferGeometry[] = []
+    const solido: THREE.BufferGeometry[] = [], brilho: THREE.BufferGeometry[] = [], vidro: THREE.BufferGeometry[] = [], planta: THREE.BufferGeometry[] = []
     const inv = new THREE.Matrix4(), rel = new THREE.Matrix4(), estica = new THREE.Matrix4()
     for (const { l, p } of poses) {
       const tipo = l.segredo ? undefined : TIPO[l.id]
@@ -457,6 +459,7 @@ function LugaresGlb({ poses, alvo, emCena, revelado }: { poses: Pose[]; alvo: Lu
         if (g === "solido" || g === "pe") solido.push(emFloat(m.geometry, mm))
         else if (g === "neon" || g === "pen") brilho.push(emFloat(m.geometry, mm, cor))
         else if (g === "vidro") vidro.push(emFloat(m.geometry, mm, cor, 0.45))
+        else if (g === "planta") planta.push(emFloat(m.geometry, mm))
         else brilho.push(emFloat(m.geometry, mm))
       })
     }
@@ -467,16 +470,17 @@ function LugaresGlb({ poses, alvo, emCena, revelado }: { poses: Pose[]; alvo: Lu
       if (!r) throw new Error("lugares-cidade.glb: não deu pra juntar")
       return r
     }
-    return { solido: juntar(solido), brilho: juntar(brilho), vidro: juntar(vidro) }
+    return { solido: juntar(solido), brilho: juntar(brilho), vidro: juntar(vidro), planta: juntar(planta) }
   }, [nodes, poses])
   // as mescladas são nossas (copiadas em Float32): soltar ao desmontar; o cache do drei fica
-  useEffect(() => () => { d.solido?.dispose(); d.brilho?.dispose(); d.vidro?.dispose() }, [d])
+  useEffect(() => () => { d.solido?.dispose(); d.brilho?.dispose(); d.vidro?.dispose(); d.planta?.dispose() }, [d])
   const mats = matsCidade()
   return (
     <group>
       {d.solido && <mesh geometry={d.solido} material={mats.solido} name="lugares-cidade" />}
       {d.brilho && <mesh geometry={d.brilho} material={mats.brilho} />}
       {d.vidro && <mesh geometry={d.vidro} material={mats.vidro} renderOrder={1} />}
+      {d.planta && <mesh geometry={d.planta} material={mats.planta} />}
       <LugaresCorpo poses={poses} alvo={alvo} emCena={emCena} revelado={revelado} comModelo />
     </group>
   )

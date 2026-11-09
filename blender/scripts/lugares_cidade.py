@@ -13,7 +13,8 @@
 #             e o AP em cima com brise de aço e varanda (a casa do Drew)
 #   balada    o monolito preto de lâminas, túnel de entrada de anéis de neon e o
 #             equalizador na fachada (a balada SEXTA e a casa de shows ONTEM)
-#   casa-ella a cápsula escondida atrás da tela de ripas e das plantas
+#   casa-ella (09/11, ep. 7) o galpão que guarda a chuva: telhado em V, cisterna,
+#             parede de quadros, faixa de vidro e o jardim de cannabis
 #
 #   blender -b --factory-startup --python blender/scripts/lugares_cidade.py \
 #     [--python blender/scripts/lugares_cidade_foto.py] -- bruto.glb [foto.png]
@@ -28,14 +29,18 @@
 #   <tipo>_luz     o que brilha com cor fixa (LED, telão, janela, tênis)
 #   <tipo>_neon    o neon, sem cor (o jogo pinta com a cor da faixa do lugar)
 #   <tipo>_vidro   vidro (a cor no vértice é o tom; o jogo mistura a cor do lugar)
+#   <tipo>_planta  folhas finas (cor × AO assada; o jogo desenha dos dois lados)
 #   <tipo>_pe      o pé: de z = 0 a z = -1 (o jogo estica até a água/chão)
 #   <tipo>_pen     o neon do pé (esticado junto)
 # O letreiro (texto) continua o do jogo: cada nó guarda "let" = (x, z altura,
 # frente em m na direção da pista, largura) — e o script imprime.
 # Orçamento: o arquivo inteiro até 30 mil triângulos, sem decimate.
 
-import bpy, bmesh, math, sys
+import bpy, bmesh, math, os, sys
 from mathutils import Vector, Matrix, Color
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import planta_ella_kit as kit
 
 TAU = 2 * math.pi
 args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
@@ -823,46 +828,130 @@ def balada():
     pe(15.6, 8, 1.0)
 
 
+def cannabis(p, nivel, seed, H, giro=0.0):
+    """A planta da Ella (planta_ella_kit.py) no grupo "planta": dos dois lados no jogo."""
+    M = T(*p) @ R(0, 0, giro)
+    b = BUF.setdefault((ATUAL[0], "planta"), {"v": [], "f": [], "c": []})
+
+    def saida(P, C, F):
+        base = len(b["v"])
+        b["v"].extend(M @ q for q in P)
+        for f in F:
+            b["f"].append([base + i for i in f])
+            b["c"].append([(C[i].x, C[i].y, C[i].z, 1.0) for i in f])
+    kit.planta(saida, nivel, seed, H)
+
+
+def quadro(x, z, w, h, moldura, pintura=None, seed=0):
+    """Um quadro na parede da frente: a moldura e a pintura acesa; sem pintura, ele
+    está virado (a tela crua com o sarrafo em cruz, como os de dentro)."""
+    y = -1.42
+    e = 0.11
+    for zz in (z - h / 2 - e / 2, z + h / 2 + e / 2):
+        B("solido", (x, y - 0.03, zz), (w + 2 * e, 0.1, e), moldura, sujo=0)
+    for xx in (x - w / 2 - e / 2, x + w / 2 + e / 2):
+        B("solido", (xx, y - 0.03, z), (e, 0.1, h), moldura, sujo=0)
+    if pintura:
+        B("luz", (x, y, z), (w, 0.02, h), None, d=0.3, cf=retalho(pintura, 0.3, seed))
+    else:
+        B("solido", (x, y, z), (w, 0.02, h), "#b8a888", sujo=0)
+        B("solido", (x, y - 0.03, z), (w, 0.03, 0.07), "#6f4f33", sujo=0)
+        B("solido", (x, y - 0.03, z), (0.07, 0.03, h), "#6f4f33", sujo=0)
+
+
 # ════════════════════════ CASA DA ELLA ════════════════════════
+# O galpão que guarda a chuva: o telhado em V (borboleta) recolhe a água na calha
+# do meio e leva pra cisterna da frente; a parede da frente é coberta de quadros
+# de molduras diferentes, uns acesos, outros virados; a faixa de vidro no alto é
+# a de dentro (galeria_ella.py), com a luz de cultivo; o jardim é de cannabis.
 def casa_ella():
     deck(esp=0.5, cor="#1e2229", cor2="#232830", neon=False)
-    # a tela de ripas na frente (o vão da porta no meio) e os canteiros
-    for k in range(39):
-        x = -7.6 + k * 0.4
-        if abs(x) < 0.65:
-            continue
-        B("solido", (x, -3.8, 2.5), (0.08, 0.12, 5.0), ACO2, sujo=0)
+    PAR, PAR2 = "#222a3a", "#1a2130"
+    YF, YB, HP, HV = -1.4, 4.6, 3.9, 5.0     # frente, fundo, parede, topo do vidro
+    # as paredes: a frente com o vão da porta
     for s in (-1, 1):
-        B("solido", (s * 4.1, -3.8, 5.04), (7.0, 0.16, 0.08), ACO2, sujo=0)
-        B("solido", (s * 4.1, -4.2, 0.3), (7.0, 0.6, 0.6), MET2, sujo=0)
-        for k in range(5):
-            planta((s * (1.6 + k * 1.3), -4.2, 0.4), 0.45 + 0.15 * hh(k, s), k + 7 * s)
-        for k in range(4):
-            Esfera("solido", (s * (2.2 + k * 1.6), -3.95, 4.2 + 0.6 * hh(k, s, 2)), 0.55, 6, 4, VERDE if k % 2 else VERDE2, M=S(1.2, 0.35, 0.9))
-    placa_let(0, 4.2, -3.95, 2.6)
-    # o caminho até a cápsula
-    for k in range(5):
-        B("luz", (0, -3.0 + k * 0.7, 0.012), (0.5, 0.06, 0.02), "#9fe6ff")
-    # a cápsula em pernas: o corpo deitado, as pontas, a escotilha
-    cy, cz = 1.4, 3.8
-    Cil("solido", (-3.2, cy, cz), 1.9, 1.9, 6.4, 16, BR, r=(0, math.pi / 2, 0), sujo=0, tampa=False)
+        B("solido", (s * 3.9, YF + 0.1, HP / 2), (5.4, 0.2, HP), PAR, d=0.9, cf=retalho([PAR, PAR2, "#262f42"], 0.9, 3))
+        B("solido", (s * 6.5, (YF + YB) / 2, HV / 2), (0.2, YB - YF, HV), PAR2, d=1.5, cf=retalho([PAR, PAR2], 1.5, 5))
+    B("solido", (0, YF + 0.1, 3.3), (2.4, 0.2, 1.2), PAR)
+    B("solido", (0, YB - 0.1, HV / 2), (13.2, 0.2, HV), PAR2)
+    # o fundo da faixa de vidro: escuro, com as barras de cultivo acesas
+    B("solido", (0, YF + 0.7, 4.45), (13, 0.1, 1.1), "#141826", sujo=0)
+    for k in range(9):
+        x = -5.6 + k * 1.4
+        B("luz", (x, YF + 0.6, 4.1 + 0.42 * (k % 2)), (1.0, 0.04, 0.09), "#b38cff" if k % 3 else "#5dffa0")
+    # a faixa de vidro, a toda a largura, com os montantes
+    B("vidro", (0, YF + 0.12, (HP + HV) / 2), (13.1, 0.04, HV - HP), VID)
+    for k in range(14):
+        B("solido", (-6.5 + k, YF + 0.08, (HP + HV) / 2), (0.07, 0.1, HV - HP), ACO2, sujo=0)
+    B("solido", (0, YF + 0.08, HV), (13.2, 0.14, 0.1), ACO2, sujo=0)
+    B("neon", (0, YF - 0.02, HP), (13.2, 0.05, 0.05))
+    # as empenas: o triângulo entre o vidro e cada asa do telhado (frente e fundo)
+    ZV, ZB = 5.1, 6.4                        # o vale e a beira do telhado
+    yf, yb = YF + 0.1, YB - 0.1
+    Tri("solido", (0, yf, HV), (6.9, yf, HV), (6.9, yf, ZB), Z2)
+    Tri("solido", (-6.9, yf, HV), (0, yf, HV), (-6.9, yf, ZB), Z2)
+    Tri("solido", (6.9, yb, HV), (0, yb, HV), (6.9, yb, ZB), Z2)
+    Tri("solido", (0, yb, HV), (-6.9, yb, HV), (-6.9, yb, ZB), Z2)
+    # o telhado em V: as duas asas de zinco ondulado, com o forro embaixo
+    Y0, FUNDO_T = -2.3, 7.6
+    Placa("solido", (0, Y0, ZV), (6.9, 0, ZB - ZV), (0, FUNDO_T, 0), 26, 1, None, cf=chapa([Z1, Z2, FE], 2), sujo=0)
+    Placa("solido", (-6.9, Y0, ZB), (6.9, 0, ZV - ZB), (0, FUNDO_T, 0), 26, 1, None, cf=chapa([Z1, Z2, FE], 7), sujo=0)
+    Placa("solido", (0, Y0, ZV - 0.06), (0, FUNDO_T, 0), (6.9, 0, ZB - ZV), 1, 1, "#191b22", sujo=0)
+    Placa("solido", (-6.9, Y0, ZB - 0.06), (0, FUNDO_T, 0), (6.9, 0, ZV - ZB), 1, 1, "#191b22", sujo=0)
     for s in (-1, 1):
-        Esfera("solido", (s * 3.2, cy, cz), 1.9, 16, 8, BR, M=S(0.5, 1, 1))
-    for x in (-2.4, 2.4):
-        for y in (0.4, 2.4):
-            Cil("solido", (x, y, 0), 0.1, 0.08, 2.2, 6, ACO, sujo=0.1)
-    Cil("luz", (0.6, cy - 1.86, cz + 0.3), 0.7, 0.7, 0.04, 16, "#bff4ff", r=(math.pi / 2, 0, 0))
-    Tor("neon", (0.6, cy - 1.95, cz + 0.3), 0.8, 0.05, 20, 4, r=(math.pi / 2, 0, 0))
-    B("neon", (0, cy, cz - 1.95), (6.4, 0.06, 0.04))
-    # a porta do lado e a escadinha
-    B("luz", (-2.2, cy - 1.75, cz - 0.4), (0.9, 0.04, 1.6), "#6ad0e8", r=(0.35, 0, 0))
+        B("solido", (s * 6.9, Y0 + FUNDO_T / 2, ZB - 0.02), (0.14, FUNDO_T, 0.14), ACO2, sujo=0)
+        for y in (YF + 0.05, YF + 2.8):
+            Viga("solido", (s * 6.6, y, 3.6), (s * 6.8, y, ZB - 0.1), 0.1, ACO2, 0)
+    # a calha do vale e o cano que leva a chuva até a cisterna
+    B("solido", (0, Y0 + FUNDO_T / 2, ZV + 0.02), (0.5, FUNDO_T + 0.2, 0.16), FE, sujo=0)
+    Tubo("solido", [(0, Y0 - 0.05, ZV), (0, Y0 - 0.3, ZV - 0.3), (2.2, Y0 - 0.3, ZV - 0.55), (4.6, Y0 - 0.6, ZV - 1.0), (5.5, -3.3, 3.2), (5.5, -3.4, 2.75)], 0.09, 6, FE, 0.05)
+    # a cisterna da frente: tambor de chapa com cintas, a água acesa em cima
+    CX, CY = 5.5, -3.4
+    Cil("solido", (CX, CY, 0), 1.3, 1.3, 2.6, 20, Z2, sujo=0.3, tampa=False)
+    for z in (0.5, 1.3, 2.1):
+        Tor("solido", (CX, CY, z), 1.31, 0.03, 20, 4, FE2)
+    Tor("solido", (CX, CY, 2.6), 1.3, 0.05, 20, 4, ACO2)
+    Cil("luz", (CX, CY, 2.48), 1.25, 1.25, 0.02, 20, "#3fa8d8")
+    # a caixa d'água no telhado: o outro pedaço da silhueta
+    TX, TY = -4.4, 2.6
+    for dx, dy in ((-0.7, -0.7), (0.7, -0.7), (-0.7, 0.7), (0.7, 0.7)):
+        Viga("solido", (TX + dx, TY + dy, 5.8), (TX + dx * 0.8, TY + dy * 0.8, 7.0), 0.1, FE2, 0)
+    Cil("solido", (TX, TY, 7.0), 1.1, 1.1, 1.5, 14, CO2, sujo=0.3, tampa=False)
+    Cil("solido", (TX, TY, 8.5), 1.16, 0.12, 0.55, 14, Z1, sujo=0, tampa=False)
+    # a porta: duas folhas verdes, o batente aceso e a escotilha redonda
+    for s in (-1, 1):
+        B("solido", (s * 0.56, YF, 1.32), (1.08, 0.08, 2.64), "#1d4a42", d=0.5, sujo=0.15)
+        Cil("luz", (s * 0.56, YF - 0.05, 1.75), 0.2, 0.2, 0.02, 12, "#ffcf9a", r=(math.pi / 2, 0, 0))
+        B("luz", (s * 1.2, YF - 0.05, 1.35), (0.05, 0.05, 2.7), "#5dffa0")
+    B("luz", (0, YF - 0.05, 2.72), (2.45, 0.05, 0.05), "#5dffa0")
+    placa_let(0, 3.32, YF - 0.05, 2.4)
+    # a parede de quadros: molduras de estilos diferentes, a maioria acesa
+    TONS = (["#8a5a3a", "#a87a50", "#4a2e24"], ["#1f4a62", "#4a8098", "#142a42"], ["#3a5f3a", "#6f8f58", "#1e3628"], ["#5a3a72", "#8a6a98", "#2a1e42"])
+    LATAO, PRETO2, BRANCO = "#a88a4a", "#17151b", "#d8d0c0"
+    for x, z, w, h, mold, tom in (
+        (-2.5, 1.3, 1.5, 1.9, LATAO, 0), (-4.4, 2.6, 1.3, 1.0, MD, 1), (-4.5, 1.0, 1.0, 1.3, PRETO2, None),
+        (-5.9, 1.9, 0.8, 1.9, BRANCO, 2), (-3.0, 3.25, 1.0, 0.7, BRANCO, None),
+        (2.5, 1.7, 1.3, 1.6, MD, 3), (4.4, 1.0, 1.2, 1.3, LATAO, None), (4.3, 2.9, 1.5, 1.1, PRETO2, 0),
+        (5.9, 2.2, 0.7, 1.2, LATAO, 1), (2.6, 3.4, 0.9, 0.6, PRETO2, 2),
+    ):
+        quadro(x, z, w, h, mold, TONS[tom] if tom is not None else None, int(x * 10))
+    # o caminho até a porta
     for k in range(5):
-        B("solido", (-2.2, cy - 2.3 - (4 - k) * 0.3, 0.2 + k * 0.38), (1.0, 0.3, 0.06), ACO2, sujo=0)
-    # o lampião do jardim
-    Cil("solido", (5.5, -1.6, 0), 0.04, 0.04, 1.1, 6, ACO, sujo=0)
-    Esfera("luz", (5.5, -1.6, 1.2), 0.12, 8, 5, QUENTE)
-    for k in range(4):
-        planta((-6.2 + k * 0.9, 3.4 - hh(k) * 0.8, 0.1), 0.5, k + 20)
+        B("luz", (0, -4.6 + k * 0.7, 0.012), (0.5, 0.06, 0.02), "#9fe6ff")
+    B("solido", (0, -1.55, 0.09), (2.4, 0.5, 0.18), CO2)
+    # os canteiros de chapa e o jardim: duas detalhadas na porta, as leves em volta
+    for x0, w in ((-4.6, 5.6), (2.65, 2.0)):
+        B("solido", (x0, -3.4, 0.25), (w, 1.5, 0.5), Z2, d=0.22, cf=onda(Z2))
+        B("solido", (x0, -3.4, 0.51), (w - 0.14, 1.36, 0.02), "#2a1a10", sujo=0)
+    for s in (-1, 1):
+        cannabis((s * 2.2, -3.4, 0.5), "casa", 11 + s, 1.9, s * 0.7)
+    for k, (x, y, h) in enumerate(((-3.3, -3.0, 1.7), (-4.2, -3.7, 1.4), (-5.2, -3.0, 1.8), (-6.2, -3.7, 1.5), (3.3, -3.0, 1.5),
+                                   (-7.3, -0.6, 1.6), (-7.3, 1.1, 1.3), (-7.3, 2.9, 1.7), (7.3, 0.2, 1.5), (7.3, 2.2, 1.7))):
+        cannabis((x, y, 0.5 if y < -2 else 0.0), "leve", 30 + k, h, k * 1.9)
+    # as lâmpadas de varal, da porta até os postes do jardim
+    for px, s in ((-7.2, -1), (3.9, 1)):
+        Cil("solido", (px, -4.7, 0), 0.04, 0.04, 2.6, 6, ACO2, sujo=0)
+        lampadas((s * 1.5, -1.5, 3.05), (px, -4.7, 2.55), 7, 0.25)
     pe(14, 8, 0.5)
 
 
@@ -872,7 +961,7 @@ for nome, f in (("palco", palco), ("estacao", estacao), ("terraco", terraco),
     f()
 
 # ── vira objetos: um nó por tipo, uma malha por grupo ──
-GRUPOS = ("solido", "luz", "neon", "vidro", "pe", "pen")
+GRUPOS = ("solido", "luz", "neon", "vidro", "pe", "pen", "planta")
 
 
 def material(g):
@@ -929,7 +1018,7 @@ vl = bpy.context.view_layer
 vl.update()
 
 # ── a AO assada na cor dos vértices (Cycles), só no sólido ──
-solidos = [o for o in COL.objects if o.type == "MESH" and o["grupo"] == "solido"]
+solidos = [o for o in COL.objects if o.type == "MESH" and o["grupo"] in ("solido", "planta")]
 for o in solidos:
     ao = o.data.color_attributes.new("AO", "FLOAT_COLOR", "CORNER")
     o.data.color_attributes.active_color = ao
@@ -970,7 +1059,7 @@ for o in COL.objects:
     n = len(base.data)
     bc = [0.0] * (n * 4)
     base.data.foreach_get("color", bc)
-    if g == "solido":
+    if g in ("solido", "planta"):
         ao = me.color_attributes["AO"]
         ac = [0.0] * (n * 4)
         ao.data.foreach_get("color", ac)
