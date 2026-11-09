@@ -103,7 +103,7 @@ import { EscolhaEsporte, type EsporteId } from "./disco/EscolhaEsporte"
 import { faixaDaMissao } from "./disco/pistasLiberadas"
 import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
-import { definirFinalFeito, type MomentoFinal } from "./disco/final"
+import { definirFinalFeito, definirLotado, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
 import { TRANCA_DESERTO, TRANCA_ELEVADOR, pedirSubida, tomarDescida } from "./disco/elevadores"
 import { semVoo } from "./disco/historia"
@@ -1334,6 +1334,12 @@ export default function LinhaPage() {
     // brilha no próprio lugar do mapa e o nome curto passa no notch
     if (!PORTA_CALADA.includes(id)) mostrarLiberou(r, feiraDoSave(s1).map((o) => o.id).filter((x) => !feiraDoSave(s0).some((o) => o.id === x)))
     track("mission_step", { mission_id: `disco-${id}`, step: "porta", perfil: s0.perfil ?? "?", fio_pos: -1 })
+    // (09/11, o dono) o show da CHUVA acabou e os 9 episódios estão feitos: o final
+    // começa ali mesmo, no palco (pega a missão: recarregar a página volta pro palco)
+    if (id === "lu2ca" && disponiveis(hist13(s1)).includes("final")) {
+      setSave((s) => comHistoria(s, (h) => ({ ...h, missao: "final" })))
+      abrirFinal("palco")
+    }
   }
   // (T63) desceu a rampa da boca do túnel: a porta escurece e, lá embaixo, as
   // trincheiras (no mesmo jogo, sem trocar de página). A estrada sai da cena
@@ -1411,11 +1417,11 @@ export default function LinhaPage() {
     else if (como.t === "grafite") descerTrincheiras(id)
     // (T22) a casa da pessoa: entra e só sai depois de passar por tudo
     else if (como.t === "casa") entrarNaCasa(id)
-    // (T29) o final: a sequência na casa da D-Bee (disco/final.ts)
-    else if (como.t === "final") abrirFinal("sinal")
+    // (T29) o final: a sequência começa no palco do show da CHUVA (disco/final.ts)
+    else if (como.t === "final") abrirFinal("palco")
   }
   // (T29) O FINAL: o jogo atrás com as faixas de cinema, a câmera roteirizada
-  // (estrada/FinalNove.tsx) e a tela dos momentos (disco/FinalTela.tsx). Acabou: as
+  // (estrada/FinalPovo.tsx) e a tela dos momentos (disco/FinalTela.tsx). Acabou: as
   // duas peças do final ficam feitas e a porta (o mundo depois) abre, ali mesmo
   const abrirFinal = (m: MomentoFinal) => {
     setAoVivo(null)
@@ -1470,9 +1476,12 @@ export default function LinhaPage() {
   const pecaFeitaNaMissaoRef = useRef(pecaFeitaNaMissao)
   const abrirFinalRef = useRef<(m: MomentoFinal) => void>(() => {})
   useEffect(() => { chegouRef.current = chegouNaMissao; abrirPortaRef.current = abrirPortaDe; pecaFeitaNaMissaoRef.current = pecaFeitaNaMissao; abrirFinalRef.current = abrirFinal })
-  // (T29) o final já visto neste save: o quintal da D-Bee fica com a Kombi e o mato (FinalNove.tsx)
-  const finalFeito = HIST && feita13(hist13(save), "final")
+  // (T29) o final já visto neste save: a floresta e o mundo depois ficam. Vale desde as
+  // peças feitas (antes da porta abrir), pra floresta não piscar quando o final acaba
+  const finalFeito = HIST && (feita13(hist13(save), "final") || ordemDe("final").every((q) => pecaFeita(hist13(save), "final", q)))
   useEffect(() => { definirFinalFeito(!!finalFeito) }, [finalFeito])
+  // (09/11) com a missão do show da CHUVA ou o final pegados, a plateia cheia na frente do palco
+  useEffect(() => { definirLotado(!finalFeito && (missaoCarreira === "lu2ca" || missaoCarreira === "final")) }, [finalFeito, missaoCarreira])
   // (T63) ?parte=missao.tuneis.trincheiras: entrou no jogo, desce direto (sem dirigir até a boca)
   useEffect(() => {
     if (!HIST || !descerAoEntrar.current || tela.t !== "corrida" || cena) return
@@ -2737,7 +2746,7 @@ export default function LinhaPage() {
         {tela.t === "entrada" && (D ? <InicioDisco save={save} onEntrar={entrar} /> : <Entrada save={save} onEntrar={entrar} />)}
         {minhoca && <Minhoca onFim={fimMinhoca} dur={chegadaLogin ? CHEGADA.minhocaMsVolta : CHEGADA.minhocaMs} />}
         {rastroMinhoca && <Minhoca saida onFim={() => {}} />}
-        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={save.popularidade ?? 0} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
+        {showAgora && <Show key={showAgora} faixa={showConf!.faixa} lugar={showConf!.lugar} palco={showConf!.palco} cor={showConf!.cor} popularidade={showAgora === "missao:lu2ca" ? 100 : save.popularidade ?? 0} letra={hist.letras?.[showConf!.faixa]} onFim={fimShow} />}
         {/* (T19) a arte do LU2CA: escrever a letra (rascunho, disco/letras.ts); a estrofe vai pro show */}
         {letraAgora && <Letra conf={letraAgora.conf} cor={MISSOES13[letraAgora.missao].cor} quem={MISSOES13[letraAgora.missao].quem} onFim={(linhas: string[]) => {
           const l = letraAgora
@@ -2820,7 +2829,7 @@ export default function LinhaPage() {
           )
         })()}
         {/* (T15–T25, T16) as peças das missões das pessoas (disco/pecas/): acabou, a próxima (ou a porta) segue sozinha */}
-        {/* (T29) o final: a legenda de cada momento ou o filme da despedida, com o jogo atrás */}
+        {/* (T29) o final: o gesto no palco e a sequência, com o jogo atrás */}
         {finalAgora && <FinalTela inicio={finalAgora} onFim={fimFinal} />}
         {introMissao && <IntroMissao quem={introMissao.quem} texto={introMissao.texto} cor={MISSOES13[introMissao.id].cor}
           onBora={() => { const id = introMissao.id; introVista.current.add(id); setIntroMissao(null); setTimeout(() => chegouSemIntro.current(id), 0) }}

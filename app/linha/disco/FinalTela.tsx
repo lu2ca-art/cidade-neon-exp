@@ -1,61 +1,68 @@
 "use client"
 
-// (T29) A TELA DO FINAL: quem toca a sequência (os momentos e os tempos moram em
-// disco/final.ts; o 3D e a câmera, em estrada/FinalNove.tsx). Sem tela preta: o
-// jogo fica atrás o tempo todo, com as faixas de cinema (o cinema "lugar" da
-// page.tsx) e uma legenda curta por momento. Na despedida (o diálogo) entra o
-// FILME (CenaFilme.tsx): hoje o provisório em legenda; quando o vídeo de IA
-// existir, ele (FILME_DESPEDIDA.video). Tocar na tela passa pro próximo momento.
+// (T29; refeita em 09/11) A TELA DO FINAL: quem toca a sequência (os momentos e os
+// tempos moram em disco/final.ts; o 3D e a câmera, em estrada/FinalPovo.tsx). Sem
+// tela preta: o jogo fica atrás o tempo todo, com as faixas de cinema (o cinema
+// "lugar" da page.tsx). No "palco", tocar na tela é o gesto (o único do final); do
+// gesto em diante a pessoa só assiste, e a CHUVA toca até o fim.
 //
 // Barato: só timers e um <p>; nada em 3D aqui.
 
 import { useEffect, useRef, useState } from "react"
-import { CenaFilme } from "../CenaFilme"
 import { atalhosLiberados } from "../../teste/atalhos"
-import { VOZES } from "../roteiros"
 import { silenciarKombi, trilha } from "../som"
 import { SOM_SINAL_FINAL } from "./sons"
-import { FILME_DESPEDIDA, FINAL_CFG, LEGENDAS, NOVE, definirMomento, duracao, proximo, type MomentoFinal } from "./final"
+import { FINAL_CFG, TEXTO_GESTO, definirMomento, duracao, proximo, type MomentoFinal } from "./final"
 
-export function FinalTela({ inicio = "sinal", onFim }: { inicio?: MomentoFinal; onFim: () => void }) {
+export function FinalTela({ inicio = "palco", onFim }: { inicio?: MomentoFinal; onFim: () => void }) {
   const [momento, setMomento] = useState<MomentoFinal>(inicio)
-  // a legenda de agora dentro do momento (o "nove": uma por pessoa; o "quintal": duas)
-  const [i, setI] = useState(0)
   const fimRef = useRef(onFim)
   useEffect(() => { fimRef.current = onFim })
   const acabou = useRef(false)
   const seguir = (m: MomentoFinal) => {
     const p = proximo(m)
-    if (p) { setMomento(p); setI(0); return }
+    if (p) { setMomento(p); return }
     if (acabou.current) return
     acabou.current = true
     fimRef.current()
   }
 
-  // o mundo (FinalNove.tsx) fica sabendo do momento; saiu, a câmera volta pro jogo
+  // o mundo (FinalPovo.tsx) fica sabendo do momento; saiu, a câmera volta pro jogo
   useEffect(() => { definirMomento(momento) }, [momento])
   useEffect(() => () => definirMomento(null), [])
 
-  // (09/11, o dono) a CHUVA começa no sinal e vai sem parar até o fim do final: preso à
-  // tela inteira, não ao momento, pra não reiniciar nem cortar na troca. Só o sinal a
-  // inicia (o link de teste de um momento do meio segue sem ela)
+  // a Kombi não toca nada no final. A CHUVA fica presa à tela inteira, não ao momento:
+  // não reinicia nem corta nas trocas. Quem a inicia é o gesto (no toque, que destrava o
+  // som no iPhone); link de teste de um momento do meio segue sem ela
+  const tocando = useRef(false)
   useEffect(() => {
-    if (inicio !== "sinal") return
     silenciarKombi(true)
-    trilha.entrar(SOM_SINAL_FINAL)
-    return () => { trilha.sair(); silenciarKombi(false) }
-  }, [inicio])
+    return () => { if (tocando.current) trilha.sair(); silenciarKombi(false) }
+  }, [])
 
-  // o tempo de cada momento de jogo (o "criador" é o filme quem acaba)
+  // o gesto: tocar na tela (ou espaço/enter), depois de um instante no palco
+  const desde = useRef(0)
+  useEffect(() => { desde.current = Date.now() }, [momento])
+  const gesto = () => {
+    if (momento !== "palco" || Date.now() - desde.current < FINAL_CFG.gestoEspera * 1000) return
+    if (!tocando.current) { tocando.current = true; trilha.entrar(SOM_SINAL_FINAL) }
+    seguir("palco")
+  }
+  const gestoRef = useRef(gesto)
+  useEffect(() => { gestoRef.current = gesto })
+  useEffect(() => {
+    if (momento !== "palco") return
+    const k = (e: KeyboardEvent) => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); gestoRef.current() } }
+    window.addEventListener("keydown", k)
+    return () => window.removeEventListener("keydown", k)
+  }, [momento])
+
+  // o tempo de cada momento depois do gesto
   useEffect(() => {
     const seg = duracao(momento)
     if (seg === null) return
     const t = setTimeout(() => seguir(momento), seg * 1000)
-    // as legendas dentro do momento: o "nove" troca a cada pessoa; o resto divide o tempo
-    const n = momento === "nove" ? NOVE.length : momento === "criador" ? 1 : LEGENDAS[momento].length
-    const passo = momento === "nove" ? FINAL_CFG.porPonto : seg / n
-    const ts = Array.from({ length: n - 1 }, (_, k) => setTimeout(() => setI(k + 1), passo * (k + 1) * 1000))
-    return () => { clearTimeout(t); ts.forEach(clearTimeout) }
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [momento])
 
@@ -63,28 +70,17 @@ export function FinalTela({ inicio = "sinal", onFim }: { inicio?: MomentoFinal; 
   useEffect(() => {
     if (!atalhosLiberados()) return
     const w = window as unknown as Record<string, unknown>
-    w.__finalPular = () => seguir(momento)
+    w.__finalPular = () => (momento === "palco" ? gestoRef.current() : seguir(momento))
     w.__finalMomento = momento
     return () => { delete w.__finalPular; delete w.__finalMomento }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [momento])
 
-  if (momento === "criador") return (
-    <div className="l-final">
-      <CenaFilme key="despedida" filme={FILME_DESPEDIDA} onFim={() => seguir("criador")} />
-    </div>
-  )
-  // a legenda: no "nove", o nome de quem está na tela por cima da frase
-  const leg = momento === "nove" ? { ...LEGENDAS.nove[0], de: NOVE[Math.min(i, NOVE.length - 1)].quem } : LEGENDAS[momento][Math.min(i, LEGENDAS[momento].length - 1)]
-  const cor = momento === "nove" ? NOVE[Math.min(i, NOVE.length - 1)].cor : (leg.de && VOZES[leg.de]) || "#e6f0ff"
+  if (momento !== "palco") return <div className="l-final" data-final={momento} />
   return (
     <div className="l-final">
-      <div className="l-filme" data-final={momento} onClick={(e) => { e.stopPropagation(); seguir(momento) }}>
-        <p key={`${momento}:${i}`} className="l-filme-fala is-acao" style={{ ["--cor" as string]: cor }}>
-          {leg.de && <small>{leg.de}</small>}
-          {leg.texto}
-          {leg.rascunho && <small className="l-final-rascunho">RASCUNHO · proposta</small>}
-        </p>
+      <div className="l-filme" data-final={momento} onPointerDown={(e) => { e.stopPropagation(); gesto() }}>
+        <p className="l-filme-fala is-acao" style={{ ["--cor" as string]: "#e6f0ff" }}>{TEXTO_GESTO}</p>
       </div>
     </div>
   )

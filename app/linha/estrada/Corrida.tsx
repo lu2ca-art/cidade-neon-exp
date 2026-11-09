@@ -44,7 +44,8 @@ import { TorreCentral } from "./Torre"
 import { PORTAL_CFG, Portoes } from "./Portoes"
 import { Perto, SoQuando, type PontoXZ } from "./Perto"
 import { Monumentos } from "./Monumentos"
-import { FinalNove, QUINTAL_FINAL } from "./FinalNove"
+import { FinalPovo } from "./FinalPovo"
+import { Floresta } from "./Floresta"
 import { MundoDepois } from "./MundoDepois"
 import { CAM_ROTEIRO, FINAL_VIVO } from "../disco/final"
 import { VELO, intensidade } from "./velo"
@@ -455,8 +456,6 @@ type Jogo = {
   // (revisão 3) o piloto entregou na pista mais perto de uma marca do CHÃO (o lugar é lá
   // embaixo): ali, com o mesmo destino, ele não religa (até sair do raio ou o destino mudar)
   pilTrava?: { x: number; z: number } | null
-  // (revisão 3) o final já pôs a Kombi no quintal da D-Bee (uma vez por sequência)
-  noQuintal?: boolean
   // a direção livre (mapa novo): onde a Kombi está no mundo e pra onde aponta
   wx?: number; wz?: number; rumo?: number; livreOk?: boolean; livreFora?: boolean
   lvVia?: number; lvU?: number // onde a direção livre deixou a Kombi no quadro passado
@@ -6855,15 +6854,7 @@ function CenaBase({
     CAMERA_RUA.livre = !cine && !primeira && !ce && !pq.andando && !apeCam && j.chegadaCut === undefined && eDr < 0.01
     // teste (fora da produção): window.__vista = [x, y, z, olharX, olharY, olharZ]
     // segura a câmera num ponto (vista aérea pra conferir o mapa)
-    // (revisão 3, o dono: "a Kombi do quintal é ela") na despedida, com a câmera na frente
-    // da casa, a Kombi DO JOGADOR vai pro quintal e fica estacionada lá (não existe cópia)
-    const moF = FINAL_VIVO.momento
-    if ((moF === "criador" || moF === "quintal") && !j.noQuintal && "disco" in M && !combRef.current.patins) {
-      j.noQuintal = true
-      j.voo = true; j.wx = QUINTAL_FINAL.x; j.wz = QUINTAL_FINAL.z; j.rumo = QUINTAL_FINAL.rumo; j.propulsou = true; j.encaixar = false
-      j.ar = false; j.y = (M as MundoDisco).chaoEm(QUINTAL_FINAL.x, QUINTAL_FINAL.z) + 0.3; j.v = 0; j.vx = 0; j.vy = 0
-    } else if (moF === null && j.noQuintal) j.noQuintal = false
-    // (T29) o final: a câmera roteirizada manda (estrada/FinalNove.tsx escreve o ponto e o olhar)
+    // (T29) o final: a câmera roteirizada manda (estrada/FinalPovo.tsx escreve o ponto e o olhar)
     if (CAM_ROTEIRO.ativo) {
       camera.position.set(CAM_ROTEIRO.px, CAM_ROTEIRO.py, CAM_ROTEIRO.pz)
       camera.up.set(0, 1, 0)
@@ -7225,8 +7216,10 @@ function CenaBase({
       {"disco" in M && <Perto nome="portões" raio={700} pontos={pertoDe.portoes}><Seguro nome="portões"><Portoes M={M as MundoDisco} apagada={viaApagada} /></Seguro></Perto>}
       {/* (08/11) o da missão ativa aparece de qualquer distância: sem <Perto>; sem missão, não monta nada */}
       {"disco" in M && <Seguro nome="monumentos"><Monumentos M={M as MundoDisco} missao={missaoAtiva} holo={holoRef} /></Seguro>}
-      {/* (T29) o final: os nove nos pontos, os fachos do CHUVA, o quintal da D-Bee e a câmera roteirizada */}
-      {"disco" in M && <Seguro nome="final"><FinalNove M={M as MundoDisco} /></Seguro>}
+      {/* (T29) o final: a plateia, o povo, a água e a câmera roteirizada */}
+      {"disco" in M && <Seguro nome="final"><FinalPovo M={M as MundoDisco} /></Seguro>}
+      {/* (09/11) a floresta no deserto e as plantas da Ella no subúrbio (só com o final passando ou feito) */}
+      {"disco" in M && <Seguro nome="floresta"><Floresta M={M as MundoDisco} /></Seguro>}
       {/* (06/11) o mundo depois do final: plantas nos prédios e cabines nas torres (só com o final feito) */}
       {"disco" in M && <Seguro nome="mundo depois"><MundoDepois M={M as MundoDisco} colisores={cidade.colisores} /></Seguro>}
       {/* (na fase da casa, o farol guia de longe: aí a casa fica sempre montada) */}

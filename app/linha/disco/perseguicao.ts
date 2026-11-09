@@ -112,7 +112,7 @@ export type FasePerseguicao = NonNullable<HistoriaDisco["perseguicao"]>["fase"]
 export const fasePerseguicao = (h: HistoriaDisco | null): FasePerseguicao | null => h?.perseguicao?.fase ?? null
 export const emPerseguicao = (h: HistoriaDisco | null) => fasePerseguicao(h) === "agora"
 export const escolhendoVeiculo = (h: HistoriaDisco | null) => fasePerseguicao(h) === "escolher"
-// a Kombi ainda existe? (depois de jogada, nunca mais: ela volta só no final, no quintal da D-bee)
+// a Kombi ainda existe? (depois de jogada, nunca mais)
 export const temKombi = (h: HistoriaDisco | null) => { const f = fasePerseguicao(h); return f !== "escolher" && f !== "feita" }
 
 // (T64) os 3 veículos só depois do metrô (se o metrô estiver ligado). O estado do

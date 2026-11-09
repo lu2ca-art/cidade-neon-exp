@@ -76,8 +76,6 @@ export const VINHETAS_XENOM: VinhetaXenom[] = [
   v("nizzy-2", "a Nizzy ainda tá no parque. o sobe e desce não volta sozinho", { missao: "nizzy", quando: "ativa" }),
   v("tony-1", "o Tony Gordo quer quatro sacos da feira do subúrbio. e dinheiro pra um só", { missao: "tony", quando: "disponivel" }),
   v("tony-2", "quatro sacos pro Tony. corta o preço na banca, que o feirante deixa", { missao: "tony", quando: "ativa" }),
-  v("final-1", "os nove tão nos pontos. a D-Bee tá vindo. vai chover na cidade", { missao: "final", quando: "disponivel" }),
-  v("final-2", "é hoje. a D-Bee aciona a chuva. ninguém fica em casa", { missao: "final", quando: "ativa" }),
 
   // ── as fases da história (antes da carreira) ──
   v("fase-bar", "tem forasteiro no bar. chegou do deserto numa kombi velha. pede um copo pra ele", { fase: "bar" }),

@@ -41,8 +41,8 @@ export const SOM_MISSAO: Record<MissaoId, SomMissao> = {
 // (o bar é do Mubarak, a missão do Copo: o instrumental do Copo Americano)
 export const SOM_BAR: SomMissao = faixa("Copo Americano · instrumental", "/audio/pistas/copo-inst.mp3", 0.7)
 
-// (09/11, o dono) a música do sinal que chama os nove no final (disco/FinalTela.tsx):
-// a CHUVA completa, do sinal até o fim do final, sem parar
+// (09/11, o dono) a música do final (disco/FinalTela.tsx): a CHUVA completa, do
+// gesto que convoca o povo até o fim, sem parar
 export const SOM_SINAL_FINAL: SomMissao = faixa("CHUVA", "/audio/pistas/chuva.mp3")
 
 export const somDaMissao = (id: MissaoId): SomMissao => SOM_MISSAO[id]

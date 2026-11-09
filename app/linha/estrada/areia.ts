@@ -49,6 +49,12 @@ function texAreia() {
 
 const VENTO = 0.6 // o rumo das cristas (chao.ts)
 
+// (09/11, o final) A AREIA QUE FICA VERDE: o raio (m) da frente verde em volta da
+// casa da D-Bee (0 = areia, como sempre; a floresta: estrada/Floresta.tsx). Uniforme
+// compartilhado: não pede material novo e sem final não muda nada
+export const AREIA_VERDE = { value: 0 }
+export const CENTRO_VERDE = { x: -1980, z: -1740 } // disco/historia.ts, CASA
+
 // o material do chão de areia. mascara: a geometria traz o atributo "areia"
 // (1 areia, 0 lixão); sem ele, é areia em toda parte (o chão até o horizonte)
 export function materialAreia(o: { vertexColors?: boolean; color?: THREE.ColorRepresentation; mascara?: boolean } = {}) {
@@ -59,6 +65,7 @@ export function materialAreia(o: { vertexColors?: boolean; color?: THREE.ColorRe
   m.customProgramCacheKey = () => `areia${o.mascara ? 1 : 0}${leve ? 1 : 0}`
   m.onBeforeCompile = (sh) => {
     sh.uniforms.tAreia = uTex
+    sh.uniforms.uVerde = AREIA_VERDE
     sh.vertexShader = sh.vertexShader
       .replace("#include <common>", `#include <common>
         varying vec3 vAreiaW;
@@ -74,6 +81,7 @@ export function materialAreia(o: { vertexColors?: boolean; color?: THREE.ColorRe
     sh.fragmentShader = sh.fragmentShader
       .replace("#include <common>", `#include <common>
         uniform sampler2D tAreia;
+        uniform float uVerde;
         varying vec3 vAreiaW;
         #ifdef AREIA_MASCARA
           varying float vAreia;
@@ -122,6 +130,13 @@ export function materialAreia(o: { vertexColors?: boolean; color?: THREE.ColorRe
           #endif
           vec3 k = mix(vec3(1.0), tom * grao * (1.0 + areiaLuz), areiaK);
           diffuseColor.rgb *= k;
+          // (o final) a frente verde: só fora da cidade (de 1300 a 2200 m do centro)
+          if (uVerde > 0.0) {
+            float dC = length(p - vec2(${CENTRO_VERDE.x.toFixed(1)}, ${CENTRO_VERDE.z.toFixed(1)}));
+            float fora = smoothstep(1300.0, 2200.0, length(p));
+            float vk = (1.0 - smoothstep(uVerde - 160.0, uVerde, dC)) * fora * areiaK * (0.65 + 0.35 * n1.g);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.1, 0.2, 0.08) * grao, vk);
+          }
         }`)
       // a normal: o relevo das ondulações (vira luz de verdade com o sol e os faróis)
       .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>

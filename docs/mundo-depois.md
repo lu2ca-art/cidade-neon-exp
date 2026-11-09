@@ -14,6 +14,8 @@ Depois que o jogador termina o final (a missão `final` feita no save; `page.tsx
 | Cabines nos dois sentidos | as torres (a central e as das pontas) | 6 poços em volta do núcleo; em cada um, uma cabine de vidro sobe (vidro e faixa de luz claros) e outra desce (azuis). Andam no shader (por quadro: 1 número). 4 desenhos |
 | O rio nas trincheiras | os túneis | uma fita de água no meio do leito de cada rio e um espelho em cada salão; a água corre do salão de cá pro de lá. A rampa da descida e o salão dela ficam secos (a água aparece ao chegar na TORRE 1). O letreiro "RIO SECO A" vira "RIO A". 1 desenho |
 | A porta "o mundo depois" | a recompensa do final | deixa de ser "em breve" (`portas.ts`) |
+| O deserto vira floresta | o deserto, em volta da casa da D-Bee | árvores, moitas e cones, instanciados e parados, por distância. A areia fica verde junto (09/11, abaixo) |
+| As plantas da Ella | todo o subúrbio | uma planta instanciada e barata (09/11, abaixo) |
 
 Sem luz nova. Os números (quantas plantas, a velocidade das cabines, a largura e a velocidade do rio) ficam em `disco/final.ts`, `MUNDO_DEPOIS`.
 
@@ -22,7 +24,8 @@ Sem luz nova. Os números (quantas plantas, a velocidade das cabines, a largura 
 - `app/linha/disco/final.ts`: `MUNDO_DEPOIS` (os números).
 - `app/linha/estrada/MundoDepois.tsx`: plantas e cabines (montado no `Corrida.tsx`, ao lado do `FinalNove`).
 - `app/linha/trincheiras/RioDepois.tsx`: o rio (montado no `Trincheiras.tsx`).
-- Testes: `?parte=mundo.depois` (chega na torre central) e `?parte=mundo.depois.tuneis` (desce pros túneis). Cartão na Mesa.
+- `app/linha/estrada/Floresta.tsx`: a floresta e as plantas da Ella.
+- Testes: `?parte=mundo.depois` (chega na torre central), `?parte=mundo.depois.tuneis` (desce pros túneis) e `?parte=mundo.depois.floresta` (nasce na porta do deserto). Cartão na Mesa.
 
 ## Versão mínima (o que ficou para depois)
 
@@ -60,3 +63,18 @@ Garantido perto: as plantas a até ~160 m da câmera estão sempre montadas (300
 As cabines não entram na grade: 50 × 554 ≈ 28 mil triângulos, 4 desenhos (andam no shader pela torre toda).
 
 Limites globais que continuam valendo: `maxTufos` 2600, `maxTrepadeiras` 1400, `maxModulos` 2400, `maxBrotos` 5000.
+
+## A floresta e as plantas da Ella (09/11)
+
+Decisão do dono: a derrubada do Núcleo faz a água chegar nos canais e o que hoje é deserto vira floresta, e continua floresta quando a pessoa volta a jogar. Vale pra quem já tinha terminado o final antigo (é só o `FINAL_VIVO.feito`, nada novo no save). Antes do final nada é montado.
+
+**A floresta** (`Floresta.tsx`, números em `disco/final.ts`, `FLORESTA`): nasce no deserto, onde as gotas também nascem (`alemDaCidade` acima de 1250 m), fora do subúrbio e da casa. Sem luz nova, sem colisão (como as plantas dos prédios), instanciada, montada uma vez e parada.
+
+| Distância | O que aparece | Tamanho |
+|---|---|---|
+| Perto (célula de 260 m, até 420 m do centro dela) | 4 árvores (a trepadeira do `mundo-depois.glb` em cruz) e 10 moitas (`tufo_b`) por célula | ~7,6 mil triângulos por célula, 2 desenhos |
+| Longe (célula de 780 m, até 1500 m) | 200 cones por célula, que somem nos 260 m em volta da câmera (ali é o perto) | ~1,2 mil triângulos por célula, 1 desenho |
+
+Pior caso: 14 células perto e 22 longe, cerca de **133 mil triângulos e 50 desenhos**. No leve, metade das plantas (`densidadeRua`). Crescer durante o final é 1 número no shader (a frente que sai da casa da D-Bee); depois do final, parado. A areia fica verde com a mesma frente (`areia.ts`, `AREIA_VERDE`): um uniforme a mais no material que já existe, sem desenho novo. Se o `.glb` falhar, ficam só os cones.
+
+**As plantas da Ella** (decisão de 09/11): a planta volta a prosperar quando a água volta, e fica por todo o subúrbio. Uma malha instanciada só (`PlantasElla`), cerca de 500 plantas de ~60 triângulos, montada com a câmera perto do subúrbio e só com o final feito. É a silhueta da planta do `Escondido.tsx` em poucos triângulos. **A forma realista entra por um lugar só:** `PLANTA_ELLA.url`, `.no` e `.grupo` em `disco/final.ts` apontam pro modelo; com `url: null`, fica a forma simples.

@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "final",
+    nome: "O final novo: o povo, a água e o deserto virando floresta",
+    data: "2026-11-09",
+    tarefa: "final",
+    olhar: "Você abre em cima do palco do show da CHUVA, olhando a plateia lotada. Toque na tela uma vez (o único gesto do final): começa a CHUVA, e daí em diante é só assistir. O povo se junta pela rua, a água sai do Núcleo, a câmera segue ela pela Nectar até o deserto, a chuva cai e o deserto vira floresta. Os nove estão no meio da plateia, sem destaque. Não tem mais feixes, cena dos nove, despedida nem Kombi no quintal. Nos botões de baixo: a floresta e as plantas da Ella no subúrbio depois do final.",
+    perguntas: ["A plateia parece lotada o bastante?", "Tocar na tela uma vez é um bom gesto, ou prefere outro?", "O texto do gesto é só \"convocar o povo\" (rascunho): fica?", "A CHUVA segue inteira, sem corte, do toque até o fim?", "A água correndo pela rua convence como \"derrubar o Núcleo\"?", "A floresta está densa o bastante? E o iPhone continua liso nela?", "As plantas da Ella estão bem espalhadas pelo subúrbio?"],
+    mais: [{ parte: "final.agua", nome: "só a água até o deserto" }, { parte: "final.floresta", nome: "só o deserto virando floresta" }, { parte: "mundo.depois.floresta", nome: "voltando a jogar: a floresta e o subúrbio com as plantas" }],
+  },
+  {
     parte: "loja",
     nome: "Uma moeda só: tudo agora é Água$",
     data: "2026-11-09",
@@ -96,13 +105,12 @@ export const MESA: Cartao[] = [
     ],
   },
   {
-    parte: "final.nove",
-    nome: "Os nove do final agora são os 9 donos das músicas",
+    parte: "final",
+    nome: "Os nove do final são os 9 donos das músicas (agora misturados no povo)",
     data: "2026-11-09",
     tarefa: "final",
-    olhar: "No final, a câmera passa por um de cada vez, na ordem das músicas: D-Bee, Mubarak, Alohan, Nizzy, Tony Gordo, Drew, Ella, Notti e LU2CA. Cada um fica na pista da sua música. O Xeriff não aparece mais aqui, mas segue no jogo como missão livre, e o final não pede mais a missão dele. Nos botões de baixo: a música CHUVA começa no sinal e vai sem parar até o quintal, sem recomeçar nem cortar; e os nove feixes acendem juntos.",
-    perguntas: ["São essas nove pessoas, nessa ordem?", "A D-Bee faz sentido na pista da Nectar, a música dela?", "A CHUVA segue inteira, sem corte, do sinal ao quintal?", "A legenda do sinal ainda diz que a música é da D-Bee: o que ela deve dizer?"],
-    mais: [{ parte: "final.sinal", nome: "do sinal ao quintal, com a CHUVA" }, { parte: "final.chuva", nome: "os nove feixes e a chuva" }],
+    olhar: "O Xeriff não aparece mais no final, mas segue no jogo como missão livre, e o final não pede mais a missão dele. Desde o final novo, os nove (D-Bee, Mubarak, Alohan, Nizzy, Tony Gordo, Drew, Ella, Notti e LU2CA) ficam misturados na plateia, sem cena pra eles.",
+    perguntas: ["São essas nove pessoas?"],
   },
   {
     parte: "carreira.feira",
@@ -422,23 +430,11 @@ export const MESA: Cartao[] = [
     parte: "livre",
     nome: "Revisão 3: as zonas valem na carreira, D-Bee fala, final sem tranco",
     data: "2026-11-05",
-    olhar: "As regras de veículo por zona e os rachas agora valem também na carreira (antes só no jogo livre): no deserto só Kombi/moto, no subúrbio a pé/patins/moto. A D-Bee passou a sugerir coisas na carreira também. O vídeo da despedida (quando entrar) cala a música do jogo. Depois do final fica uma Kombi só, no quintal. Na corrida de rua o GPS aponta pro próximo portão.",
+    olhar: "As regras de veículo por zona e os rachas agora valem também na carreira (antes só no jogo livre): no deserto só Kombi/moto, no subúrbio a pé/patins/moto. A D-Bee passou a sugerir coisas na carreira também. Na corrida de rua o GPS aponta pro próximo portão.",
     perguntas: [
       "Missão do bar/quadra/túneis indo de Kombi: desceu na borda do subúrbio direitinho?",
       "Os rachas aparecendo na carreira atrapalham as missões?",
     ],
-  },
-  {
-    parte: "final",
-    nome: "O final do jogo (as ações, sem os vídeos ainda)",
-    data: "2026-11-05",
-    olhar: "Com as missões dos 9 episódios feitas, o final começa na casa da D-Bee: a câmera roda a casa (o sinal); os nove aparecem um por um, cada um sob o monumento da sua faixa; os nove feixes acendem juntos e a chuva toma a cidade; a despedida do Criador é o espaço do vídeo (falas em RASCUNHO); e a Kombi fica no quintal da D-Bee com as plantas voltando no deserto. Os nove são cápsulas coloridas até chegarem os modelos.",
-    perguntas: [
-      "A ordem e o ritmo dos momentos estão certos?",
-      "O que a despedida do Criador diz? (as 2 falas são rascunho)",
-      "Que música toca em cada momento do final?",
-    ],
-    mais: [{ parte: "final.nove", nome: "os nove" }, { parte: "final.chuva", nome: "a chuva" }, { parte: "final.quintal", nome: "o quintal" }],
   },
   {
     parte: "livre",

@@ -31,8 +31,8 @@ export type PontoXZ = { x: number; z: number }
 
 // (revisão 3) OUTRAS CÂMERAS: pontos que contam como "a câmera está aqui" além da
 // câmera de verdade (só nos blocos normais; os de `fora` ignoram). Quem usa: o final
-// (FinalNove.tsx) põe os nove pontos aos poucos durante o "sinal", pra os cortes do
-// "nove" não montarem a cidade na hora. Vazio no resto do jogo (custo zero)
+// (FinalPovo.tsx) põe os pontos do caminho da água aos poucos, pra câmera não montar
+// a cidade na hora. Vazio no resto do jogo (custo zero)
 export const PERTO_EXTRA: { pontos: PontoXZ[] } = { pontos: [] }
 
 // os pontos medidos de cada bloco (sobrevivem à remontagem do <Corrida>)

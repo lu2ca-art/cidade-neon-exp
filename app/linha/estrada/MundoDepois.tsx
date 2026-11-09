@@ -4,7 +4,8 @@
 // cidade muda sem tela explicando (retomar-mundo.md, "Como mostrar sem explicar"):
 //   - plantas nos prédios altos: tufos nas janelas e trepadeiras subindo a parede
 //   - cabines nas torres: em cada poço, uma cabine sobe e outra desce (os dois sentidos)
-// O rio nas trincheiras mora em trincheiras/RioDepois.tsx.
+// O rio nas trincheiras mora em trincheiras/RioDepois.tsx; a floresta do deserto e
+// as plantas do subúrbio, em estrada/Floresta.tsx.
 //
 // Modelos (06/11, blender/scripts/mundo_depois.py → public/models/mundo-depois.glb):
 // 3 tufos (jardineira, moita, vaso pendente), a trepadeira em módulos (base, meio
@@ -34,8 +35,8 @@ import { MUNDO_DEPOIS as CFG, lerFinal, ouvirFinal } from "../disco/final"
 const NADA = { momento: null, feito: false }
 const lerServidor = () => NADA
 const CHAO_TORRE = -12 // Torre.tsx, CHAO
-const URL = "/models/mundo-depois.glb"
-const GANHO = 0.25 // o sólido sai do Blender ×4 (8 bits nos tons escuros); aqui volta
+export const URL_MUNDO_DEPOIS = "/models/mundo-depois.glb"
+export const GANHO = 0.25 // o sólido sai do Blender ×4 (8 bits nos tons escuros); aqui volta
 // a trepadeira (mundo_depois.py): base 3 m, meio 6 m (repete), topo 2,5 m
 const HB = 3, HM = 6, HT = 2.5
 // triângulos de cada peça (o print do mundo_depois.py; o tufo conta pelo maior):
@@ -68,7 +69,7 @@ type Geos = {
 
 // copia a malha (quantizada pelo meshopt; o nó dela guarda a escala) em Float32,
 // já no espaço da peça: posição e cor, sem normal (MeshBasic não usa)
-function geoDe(nodes: Record<string, THREE.Object3D>, id: string, grupo: string) {
+export function geoDe(nodes: Record<string, THREE.Object3D>, id: string, grupo: string) {
   const no = nodes[id]
   if (!no) throw new Error(`mundo-depois.glb sem o nó ${id}`)
   let malha: THREE.Mesh | null = null
@@ -92,7 +93,7 @@ function geoDe(nodes: Record<string, THREE.Object3D>, id: string, grupo: string)
 }
 
 function Modelos({ M, colisores }: { M: MundoDisco; colisores: number[] }) {
-  const { nodes } = useGLTF(URL) as unknown as { nodes: Record<string, THREE.Object3D> }
+  const { nodes } = useGLTF(URL_MUNDO_DEPOIS) as unknown as { nodes: Record<string, THREE.Object3D> }
   const geos = useMemo<Geos>(() => ({
     tufos: ["tufo_a", "tufo_b", "tufo_c"].map((t) => geoDe(nodes, t, "solido")),
     base: geoDe(nodes, "trep_base", "solido"), meio: geoDe(nodes, "trep_meio", "solido"), topo: geoDe(nodes, "trep_topo", "solido"),
@@ -120,7 +121,7 @@ function mats() {
   })
 }
 
-type Lugar = { m: THREE.Matrix4; c: THREE.Color }
+export type Lugar = { m: THREE.Matrix4; c: THREE.Color }
 type Quadra = {
   k: string; x: number; z: number; tri: number
   tufos: Lugar[][]; base: Lugar[]; meio: Lugar[]; topo: Lugar[]; brotos: Lugar[]; simplesT: Lugar[]; simplesV: Lugar[]
@@ -132,7 +133,7 @@ const simples = () => (SIMPLES ??= {
   v: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0.5),
 })
 
-function instanciar(geo: THREE.BufferGeometry, mat: THREE.Material, lista: Lugar[]) {
+export function instanciar(geo: THREE.BufferGeometry, mat: THREE.Material, lista: Lugar[]) {
   const im = new THREE.InstancedMesh(geo, mat, Math.max(1, lista.length))
   lista.forEach((l, i) => { im.setMatrixAt(i, l.m); im.setColorAt(i, l.c) })
   im.count = lista.length

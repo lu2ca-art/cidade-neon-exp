@@ -13,7 +13,7 @@
 // mesmo gancho passa a tocar o vídeo. Quem toca é app/linha/CenaFilme.tsx.
 
 // os filminhos que existem (o roteiro de cada um mora com a missão dele)
-export type FilmeId = "ella-planta" | "final-despedida" // (T29) a despedida do Criador: disco/final.ts
+export type FilmeId = "ella-planta"
 
 export type PedidoCena =
   | {

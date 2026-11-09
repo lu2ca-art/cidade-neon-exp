@@ -135,7 +135,6 @@ export const MISSOES_DBEE: Partial<Record<MissaoId, string>> = {
   ella: "a Ella pinta e ninguém vê. vai lá ver os quadros dela?",
   nizzy: "o Notti te leva num passeio na Rollercoaster. bora?",
   lu2ca: "tem um palco esperando o LU2CA tocar a CHUVA. bora?",
-  final: "os nove tão nos pontos deles. vem pra casa, que é hora",
 }
 
 // ── O CATÁLOGO ──

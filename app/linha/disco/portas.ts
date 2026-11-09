@@ -290,12 +290,13 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   },
   // ── a 13ª ──
   final: {
-    id: "final", n: 13, onde: "cidade", quem: "os nove e a D-Bee", cor: "#ffffff", faixa: null, faixaSituacao: "decidido",
-    lugar: { chao: "casa" }, pedido: "os nove nos seus pontos", apresenta: "os nove nos pontos e a D-Bee chegando pra acionar o CHUVA",
-    // (T29) a sequência inteira mora em disco/final.ts: o sinal, os nove, o CHUVA,
-    // a despedida (o vídeo) e o quintal. Chegou na casa da D-Bee: começa
-    arte: p("a CHUVA, o sinal dos nove", "decidido", { como: { t: "final" }, tarefa: "T29" }),
-    jogo: p("o CHUVA", "decidido", { como: { t: "final" }, tarefa: "T29" }),
+    // RASCUNHO: os textos do final são só o gesto (disco/final.ts, TEXTO_GESTO)
+    id: "final", n: 13, onde: "cidade", quem: "o povo", cor: "#ffffff", faixa: null, faixaSituacao: "decidido",
+    lugar: { lugar: "palco-nectar" }, pedido: "convocar o povo", apresenta: "convocar o povo",
+    // (09/11, o dono) a sequência mora em disco/final.ts e começa no palco do show da
+    // CHUVA. Quem acaba o show já segue dali; save antigo chega nele pelo mapa
+    arte: p("convocar o povo", "decidido", { como: { t: "final" }, tarefa: "T29" }),
+    jogo: p("convocar o povo", "decidido", { como: { t: "final" }, tarefa: "T29" }),
     // (09/11) as missões dos 9 episódios, sem o Xeriff (livre). Só missões: os marcos
     // (a fuga, o show) o save antigo não tem, e quem joga agora já passa por eles
     abre: ["mundo-depois"], recompensa: { guitar: null, batida: null, neon: 0, instrumento: null }, requer: ["dbee", "oficina", "notti", "quadra", "mubarak", "tony", "drew", "tuneis", "ella", "nizzy", "lu2ca"],

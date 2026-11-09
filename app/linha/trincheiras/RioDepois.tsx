@@ -23,6 +23,25 @@ export function RioDepois() {
   return <Rio />
 }
 
+// a textura da água: riscos claros sobre a água (pequena, repete). A água do final
+// (estrada/FinalPovo.tsx) usa a mesma
+export function texturaDeAgua() {
+  const cv = document.createElement("canvas")
+  cv.width = 64; cv.height = 128
+  const ctx = cv.getContext("2d")!
+  ctx.fillStyle = "#1d6f86"; ctx.fillRect(0, 0, 64, 128)
+  let sem = 5
+  const rnd = () => { sem = (sem * 16807) % 2147483647; return sem / 2147483647 }
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = `rgba(190,250,255,${0.15 + rnd() * 0.35})`
+    ctx.fillRect(rnd() * 64, rnd() * 128, 1 + rnd() * 3, 6 + rnd() * 22)
+  }
+  const tex = new THREE.CanvasTexture(cv)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
 const seco = (i: number) => SALOES[i].tipo === "descida"
 
 function Rio() {
@@ -67,20 +86,7 @@ function Rio() {
     }
     const geo = mergeGeometries(partes, false)!
     for (const g of partes) g.dispose()
-    // a textura: riscos claros sobre a água (pequena, repete)
-    const cv = document.createElement("canvas")
-    cv.width = 64; cv.height = 128
-    const ctx = cv.getContext("2d")!
-    ctx.fillStyle = "#1d6f86"; ctx.fillRect(0, 0, 64, 128)
-    let sem = 5
-    const rnd = () => { sem = (sem * 16807) % 2147483647; return sem / 2147483647 }
-    for (let i = 0; i < 40; i++) {
-      ctx.fillStyle = `rgba(190,250,255,${0.15 + rnd() * 0.35})`
-      ctx.fillRect(rnd() * 64, rnd() * 128, 1 + rnd() * 3, 6 + rnd() * 22)
-    }
-    const tex = new THREE.CanvasTexture(cv)
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-    tex.colorSpace = THREE.SRGBColorSpace
+    const tex = texturaDeAgua()
     const mat = new THREE.MeshBasicMaterial({ map: tex, color: "#8fe6ff", transparent: true, opacity: 0.62, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })
     return { geo, mat, tex }
   }, [])

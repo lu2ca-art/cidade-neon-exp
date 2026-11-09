@@ -1,126 +1,89 @@
-// O FINAL (T29, bloco 4): a 13ª missão. A BASE DAS AÇÕES, dentro do jogo.
+// O FINAL (T29; refeito pelo dono em 09/11): a 13ª missão. A revolta popular, dentro do jogo.
 //
-// Fonte (nada aqui é inventado; o que é proposta está marcado):
-//   - lista-mestra.md, T29: "Os nove nos pontos, a D-bee chega e o CHUVA é
-//     acionado. O Criador se despede da D-bee, sem prometer voltar, e parte
-//     para outro espaço-tempo. A D-bee fica como ponte entre robôs e humanos.
-//     A Kombi aparece no quintal da D-bee, com o deserto reflorestado. Nada
-//     explicado em diálogo (regra de ouro 6)."
-//   - retomar-mundo.md: "Os nove pontos e os nove personagens", "O protocolo
-//     CHUVA", "O final" e "A memória da Kombi (28/10)".
-//   - a regra do dono: a cena do DIÁLOGO é vídeo de IA; a base das AÇÕES fica
-//     dentro do jogo (câmera roteirizada, sem tela preta).
+// Fonte: projetos/cidade-neon/episodios.md, "Pra decidir no final" (09/11, palavras
+// do dono): depois do último show a popularidade está no auge e o subúrbio foi atrás;
+// convoca-se o povo pra derrubar o Núcleo; a derrubada é redistribuir a água e fazer
+// ela chegar nos canais; o que hoje é deserto vira floresta. Os nove ficam no meio do
+// povo, sem cena pra eles. Do final antigo fica só a chuva caindo: saíram os feixes,
+// a cena dos nove sob os monumentos, a despedida do Criador e a Kombi no quintal.
 //
-// Como destrava (a regra que já existe, portas.ts MISSOES13.final.requer): as
-// missões dos 9 episódios feitas (o Xeriff é livre e não conta). Aí o final
-// aparece no mapa, e o lugar dele é a casa da D-Bee (lugar: { chao: "casa" }).
-// Chegou na casa com o final pegado: a sequência começa (page.tsx, chegouNaMissao).
+// Como destrava: as missões dos 9 episódios feitas (portas.ts, MISSOES13.final.requer;
+// o Xeriff é livre e não conta). Quem acaba o show da CHUVA (ep. 9) com tudo feito
+// segue direto, ali no palco (page.tsx, abrirPortaDe). Save antigo que já tinha o show
+// feito pega o final no mapa e vai até o palco (lugar: palco-nectar).
 //
 // A sequência (cada momento tem um link de teste: ?parte=final.<momento>):
-//   1. sinal   (jogo)  a casa da D-Bee: a CHUVA toca, é o sinal (o dono, 09/11)
-//   2. nove    (jogo)  a câmera passa pelos nove pontos: cada um na pista da sua música
-//   3. chuva   (jogo)  o CHUVA: a rede acende e a chuva toma a cidade
-//   4. criador (VÍDEO) a despedida do Criador e da D-Bee (o gancho do filme)
-//   5. quintal (jogo)  a Kombi no quintal da D-Bee, o deserto verde
-// Acabou: as duas peças do final ficam feitas e a porta "o mundo depois" abre.
+//   1. palco    o show lotado acabou. O jogador convoca o povo: o ÚNICO gesto do final
+//   2. povo     dali em diante só se assiste: o povo se junta, os nove misturados nele
+//   3. agua     a câmera segue a água do Núcleo pela rua até o deserto
+//   4. chuva    a chuva cai de verdade no deserto
+//   5. floresta o deserto vira floresta
+// A CHUVA toca do gesto até o fim, sem reiniciar (FinalTela.tsx). Acabou: as duas
+// peças do final ficam feitas, a porta "o mundo depois" abre e a floresta fica.
 //
-// Desempenho: nada de luz nova. A câmera roteirizada é só um ponto e um olhar
-// por quadro (CAM_ROTEIRO, lido pela câmera do Corrida.tsx). O 3D do final
-// (estrada/FinalNove.tsx): 2 malhas instanciadas (as nove pessoas e os fachos),
-// o mato do deserto (1 instanciada) e a Kombi do quintal; a chuva é a que o
+// Desempenho: nada de luz nova. A câmera roteirizada é só um ponto e um olhar por
+// quadro (CAM_ROTEIRO, lido pela câmera do Corrida.tsx); o 3D (estrada/FinalPovo.tsx,
+// estrada/Floresta.tsx) só existe com o final passando ou feito; a chuva é a que o
 // jogo já desenha (manifestos/ceu.ts CHUVA_MANIFESTO).
 //
-// Tudo que é texto aqui é RASCUNHO (o dono reescreve).
+// Texto na tela: só o do gesto (TEXTO_GESTO). Nenhuma legenda, nenhuma fala.
 
-import type { Filme } from "../estrada/ganchoCena"
-import type { PistaId } from "../estrada/pistas"
 import { EPISODIOS } from "./episodios"
 
-export type MomentoFinal = "sinal" | "nove" | "chuva" | "criador" | "quintal"
-export const MOMENTOS: MomentoFinal[] = ["sinal", "nove", "chuva", "criador", "quintal"]
+export type MomentoFinal = "palco" | "povo" | "agua" | "chuva" | "floresta"
+export const MOMENTOS: MomentoFinal[] = ["palco", "povo", "agua", "chuva", "floresta"]
 export const ehMomentoFinal = (x: string | null | undefined): x is MomentoFinal => !!x && (MOMENTOS as string[]).includes(x)
 
-// os tempos (s) de cada momento de jogo. O "criador" dura o filme (FILME_DESPEDIDA)
+// RASCUNHO: o único texto do final na tela (o dono troca)
+export const TEXTO_GESTO = "convocar o povo"
+
 export const FINAL_CFG = {
-  sinal: 8,
-  porPonto: 2.6, // cada um dos nove na tela
-  chuva: 15,
-  quintal: 14,
+  // os tempos (s) de cada momento depois do gesto. O "palco" espera o gesto
+  povo: 16,
+  agua: 24,
+  chuva: 12,
+  floresta: 18,
+  gestoEspera: 0.7, // s no palco antes do gesto valer (o toque que fechou o show não dispara)
   // a força da chuva (1 = a pancada do clima; a rua CHUVA vai até 1,8)
   chuvaMax: 1.8,
-  chuvaDespedida: 0.9,
-  chuvaQuintal: 0.25,
-  // o mato que volta no deserto (o reflorestar): quantos e até onde, em volta da casa
-  mato: 520,
-  matoRaio: 260,
+  chuvaFloresta: 0.9,
+  // a plateia e o povo na rua (por qualidade: densidadeRua)
+  plateia: 220,
+  plateiaMeio: 48, // m pra cada lado do palco
+  povoRua: 560,
+  // a câmera e a água começam na rua, um pouco antes do palco (m desde o Núcleo)
+  aguaDe: 1500,
+  aguaMeia: 7, // m de meia largura da água na pista (a pista tem 8,4)
+  aguaPasso: 10, // m entre os pontos da fita
+  aguaOnda: 18, // m por volta da textura
+  aguaVel: 9, // m/s da textura
+  camAtras: 60, // m atrás da frente da água
+  // a frente verde que sai da casa da D-Bee (m/s): as plantas crescem e a areia fica verde
+  florestaVel: 90,
 }
 
 // ── os nove (09/11, o dono: "os 9 donos das músicas"; episodios.md) ──
-// A lista é a própria sequência (EPISODIOS), na ordem dela: uma pessoa por música,
-// de pé no ponto da pista da música dela (FinalNove.tsx, `missao:<faixa>`). Lê do
-// episódio e não da missão: os ids e as faixas de MISSOES13 são antigos (a missão
-// "mubarak" é a da Nizzy). O Xeriff saiu do final: segue livre no jogo (LIVRES)
-export interface UmDosNove { quem: string; cor: string; faixa: PistaId }
-export const NOVE: UmDosNove[] = EPISODIOS.map((e) => ({ quem: e.quem, cor: e.cor, faixa: e.musica }))
+// A lista é a própria sequência (EPISODIOS). No final eles são gente da plateia,
+// iguais aos outros: sem nome na tela, sem luz, sem câmera neles (FinalMultidao.tsx)
+export const NOVE: { quem: string; cor: string }[] = EPISODIOS.map((e) => ({ quem: e.quem, cor: e.cor }))
 
-// ── as legendas dos momentos de jogo (tipo "acao": o que se vê; nunca explica) ──
-// `rascunho`: proposta dos docs ainda sem o ok do dono (aparece marcado)
-export type LegendaFinal = { texto: string; de?: string; rascunho?: true }
-export const LEGENDAS: Record<Exclude<MomentoFinal, "criador">, LegendaFinal[]> = {
-  // retomar-mundo.md: "Proposta: a música dela é o sinal que faz os nove começarem juntos"
-  sinal: [{ texto: "a D-Bee toca. a música dela é o sinal", rascunho: true }],
-  // retomar-mundo.md: "nove pessoas em nove pontos esperando o mesmo sinal"
-  nove: [{ texto: "nove pontos. nove pessoas. o mesmo sinal" }],
-  // retomar-mundo.md: "o protocolo CHUVA devolve a água ao seu curso natural"
-  chuva: [{ texto: "o CHUVA. a água volta pro curso dela" }],
-  // lista-mestra.md T29 e retomar-mundo.md ("A memória da Kombi", "A missão da D-bee")
-  quintal: [
-    { texto: "a kombi no quintal da D-Bee. o deserto, verde" },
-    { texto: "ela fica. a ponte entre robôs e humanos" },
-  ],
-}
-
-// ── 4. A DESPEDIDA: o FILME (o diálogo vira vídeo de IA, T70) ──
-// O provisório toca as legendas sobre a cena parada (CenaFilme.tsx). As ações
-// vêm dos docs (retomar-mundo.md, "O final"); as falas não existem nos docs:
-// ficam "RASCUNHO" até o dono escrever. Regra 6: o final não é explicado em diálogo.
-export const FILME_DESPEDIDA: Filme = {
-  id: "final-despedida",
-  // ── O VÍDEO (T70) ENTRA AQUI: "/cenas/final-despedida.mp4" (public/cenas/) ──
-  video: null,
-  semSom: true, // (09/11) o vídeo não cala a música: a CHUVA do sinal segue por baixo
-  abertura: 2,
-  fecho: 2,
-  falas: [
-    { texto: "dessa vez ele se despede. e sabe do que se trata", seg: 5, tipo: "acao" },
-    { de: "RASCUNHO", texto: "a fala do Criador (o dono escreve). ele não promete que volta", seg: 5 },
-    { de: "RASCUNHO", texto: "a resposta da D-Bee (o dono escreve)", seg: 4 },
-    { texto: "a primeira partida foi um sumiço. a segunda é um adeus", seg: 5, tipo: "acao" },
-    { texto: "ela não vai com ele. fica, cuidando do mundo novo", seg: 5, tipo: "acao" },
-    { texto: "ele parte pra outro espaço-tempo", seg: 4, tipo: "acao" },
-  ],
-}
-
-// quanto dura cada momento de jogo (s); null = quem manda é o filme
+// quanto dura cada momento (s); null = espera o gesto
 export function duracao(m: MomentoFinal): number | null {
-  if (m === "sinal") return FINAL_CFG.sinal
-  if (m === "nove") return FINAL_CFG.porPonto * NOVE.length
-  if (m === "chuva") return FINAL_CFG.chuva
-  if (m === "quintal") return FINAL_CFG.quintal
-  return null
+  return m === "palco" ? null : FINAL_CFG[m]
 }
 export const proximo = (m: MomentoFinal): MomentoFinal | null => MOMENTOS[MOMENTOS.indexOf(m) + 1] ?? null
 
 // ── O FINAL AO VIVO: uma loja fora do React (a tela escreve; o 3D lê por quadro) ──
 // momento: o que está passando (null = nada); t0: quando começou (performance.now, s);
-// feito: o final já foi visto neste save (o quintal fica com a Kombi e o mato)
-export const FINAL_VIVO = { momento: null as MomentoFinal | null, t0: 0, feito: false }
-type Foto = { momento: MomentoFinal | null; feito: boolean }
-let foto: Foto = { momento: null, feito: false }
+// feito: o final já foi visto neste save (a floresta e o mundo depois ficam);
+// lotado: a missão do show da CHUVA ou o final pegados (a plateia cheia na frente do palco)
+export const FINAL_VIVO = { momento: null as MomentoFinal | null, t0: 0, feito: false, lotado: false }
+type Foto = { momento: MomentoFinal | null; feito: boolean; lotado?: boolean }
+let foto: Foto = { momento: null, feito: false, lotado: false }
 const ouvintes = new Set<() => void>()
 export const ouvirFinal = (f: () => void) => { ouvintes.add(f); return () => { ouvintes.delete(f) } }
 export const lerFinal = () => foto
-const avisar = () => { foto = { momento: FINAL_VIVO.momento, feito: FINAL_VIVO.feito }; ouvintes.forEach((f) => f()) }
+const avisar = () => { foto = { momento: FINAL_VIVO.momento, feito: FINAL_VIVO.feito, lotado: FINAL_VIVO.lotado }; ouvintes.forEach((f) => f()) }
 export function definirMomento(m: MomentoFinal | null) {
   FINAL_VIVO.momento = m
   FINAL_VIVO.t0 = typeof performance === "undefined" ? 0 : performance.now() / 1000
@@ -131,8 +94,13 @@ export function definirFinalFeito(sim: boolean) {
   FINAL_VIVO.feito = sim
   avisar()
 }
+export function definirLotado(sim: boolean) {
+  if (FINAL_VIVO.lotado === sim) return
+  FINAL_VIVO.lotado = sim
+  avisar()
+}
 
-// a CÂMERA ROTEIRIZADA: FinalNove.tsx escreve (ponto e olhar) e a câmera do
+// a CÂMERA ROTEIRIZADA: FinalPovo.tsx escreve (ponto e olhar) e a câmera do
 // Corrida.tsx obedece enquanto `ativo`. Só números: nada aloca por quadro
 export const CAM_ROTEIRO = { ativo: false, px: 0, py: 0, pz: 0, ox: 0, oy: 0, oz: 0 }
 
@@ -167,4 +135,39 @@ export const MUNDO_DEPOIS = {
   rioAltura: 0.15, // m acima do chão
   rioOnda: 18, // m por volta da textura
   rioVel: 3.2, // m/s
+}
+
+// ── A FLORESTA (09/11, o dono: "o deserto vira floresta"): estrada/Floresta.tsx ──
+// Malhas instanciadas, montadas uma vez e paradas, por grade e por distância. Só
+// existem com o final passando ou feito. Quantidades por célula, vezes densidadeRua
+export const FLORESTA = {
+  // perto: as peças do mundo-depois.glb (o tronco é a trepadeira; a moita, o tufo_b)
+  celula: 260, // m de lado
+  raioPerto: 420, // m do centro da célula (desmonta a 483, a folga do <Perto>)
+  arvores: 4, // ~1.420 triângulos cada (a trepadeira em cruz)
+  moitas: 10, // ~190 triângulos cada
+  // longe: um cone por planta, em células maiores
+  celulaLonge: 780,
+  raioLonge: 1500,
+  cones: 200, // 6 triângulos cada
+  furoLonge: 260, // m: dentro disto em volta da câmera os cones somem (quem aparece é o perto)
+  // onde nasce
+  extensao: 4400, // m pra cada lado do centro do mapa
+  alemDaCidade: 1250, // m (raioCidade.ts): o começo do deserto, o mesmo das gotas
+  folgaSuburbio: 60,
+  folgaCasa: 34,
+  // pior caso: 14 células perto × 7,6 mil + 22 longe × 1,2 mil = ~133 mil triângulos, ~50 desenhos
+}
+
+// ── A PLANTA DA ELLA (09/11, o dono): o que foi deixado pra trás volta a prosperar
+// quando a água volta, e fica por todo o subúrbio. Hoje é a forma simples, a mesma
+// silhueta da planta do Escondido.tsx em poucos triângulos. A FORMA REALISTA ENTRA
+// AQUI: url do .glb em public/models, o nó dele e o sufixo da malha (como em
+// mundo-depois.glb: <no>_<grupo>). url null = a forma simples ──
+export const PLANTA_ELLA = {
+  url: null as string | null,
+  no: "planta_ella",
+  grupo: "solido",
+  quantas: 500, // vezes densidadeRua
+  escala: [1.1, 1.9] as [number, number],
 }

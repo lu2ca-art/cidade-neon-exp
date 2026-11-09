@@ -182,7 +182,8 @@ useGLTF.preload(GLB.danca)
 // ── a multidão: muita gente num desenho só (instâncias do mesmo corpo) ──
 // `celulares`: quantos ainda filmam (luz branca em cima da cabeça); os que
 // abaixam o celular viram de frente pro meio e passam a balançar
-export interface Pessoa { x: number; z: number; vira: number; cor: string }
+// `y`: a altura do chão dela (fora das salas; nas salas o chão é 0)
+export interface Pessoa { x: number; z: number; vira: number; cor: string; y?: number }
 // a multidão usa uma versão leve do corpo (blender/scripts/gente.py: ~1/4 dos
 // triângulos): de longe ninguém vê a diferença, e 48 pessoas pesam como 12
 const GLB_LEVE = "/models/pessoa-leve.glb"
@@ -216,13 +217,13 @@ export function Multidao({ gente, celulares = 0, pele = "#2a2636", copiam = 0, p
       const desde = copia ? performance.now() / 1000 - (pulso!.current ?? -9) : 9
       const pulo = copia ? Math.max(0, 1 - desde / 0.42) : 0
       const bate = copia ? Math.sin(Math.min(1, desde / 0.42) * Math.PI) * 0.32 + Math.abs(Math.sin(t * 5.6 + i)) * 0.03 : solto ? Math.abs(Math.sin(t * 5.6 + i)) * 0.08 : Math.sin(t * 1.3 + i) * 0.01
-      tmp.position.set(p.x, bate, p.z)
+      tmp.position.set(p.x, (p.y ?? 0) + bate, p.z)
       tmp.rotation.set(0, p.vira + (copia ? pulo * 0.6 : solto ? Math.sin(t * 2.8 + i) * 0.2 : 0), solto ? Math.sin(t * 2.8 + i) * 0.06 : 0)
       tmp.scale.setScalar(1)
       tmp.updateMatrix()
       corpos.current?.setMatrixAt(i, tmp.matrix)
       // o celular: na frente do rosto (filmando) ou guardado (some)
-      tmp.position.set(p.x + Math.sin(p.vira) * 0.3, filma ? 1.95 + Math.sin(t * 2 + i) * 0.02 : -5, p.z + Math.cos(p.vira) * 0.3)
+      tmp.position.set(p.x + Math.sin(p.vira) * 0.3, (p.y ?? 0) + (filma ? 1.95 + Math.sin(t * 2 + i) * 0.02 : -5), p.z + Math.cos(p.vira) * 0.3)
       tmp.rotation.set(0, p.vira, 0)
       tmp.updateMatrix()
       fones.current?.setMatrixAt(i, tmp.matrix)
