@@ -1,0 +1,108 @@
+CIDADE NEON: obras de domínio público usadas no jogo
+Conferido em 09/11/2026. Cada licença foi lida na fonte indicada.
+Pesquisa, não parecer jurídico. Lista completa: projetos/cidade-neon/dominio-publico.md
+
+=== GRAVAÇÕES (loja de discos) ===
+
+Disco "Noturnos"
+
+Noturno nº 1 em si bemol menor, op. 9 nº 1
+  Autor: Frédéric Chopin (1832). Piano: Olga Gurevich
+  Fonte: https://commons.wikimedia.org/wiki/File:Chopin_-_Nocturne_No._1_in_B-flat_minor,_Op._9_No._1_(Olga_Gurevich).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+Noturno nº 5 em fá sustenido maior, op. 15 nº 2
+  Autor: Frédéric Chopin (1833). Piano: Luke Faulkner
+  Fonte: https://commons.wikimedia.org/wiki/File:Chopin_-_Nocturne_No._5_in_F-sharp_major,_Op._15_No._2_(Luke_Faulkner).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+Noturno nº 8 em ré bemol maior, op. 27 nº 2
+  Autor: Frédéric Chopin (1836). Piano: Frank Lévy
+  Fonte: https://commons.wikimedia.org/wiki/File:Chopin_-_Nocturne_No._8_in_D-flat_major,_Op._27_No._2_(Frank_Levy).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+Quarteto de cordas nº 2 em ré maior: III. Notturno
+  Autor: Alexander Borodin (1881). Musopen String Quartet
+  Fonte: https://commons.wikimedia.org/wiki/File:Borodin_-_String_Quartet_No._2_in_D_major_-_III._Notturno._Andante_(Musopen_String_Quartet).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+Disco "Orquestra"
+
+Peer Gynt, suíte nº 1: I. A manhã
+  Autor: Edvard Grieg (1888). Musopen Symphony
+  Fonte: https://commons.wikimedia.org/wiki/File:Grieg_-_Peer_Gynt_Suite_No._1,_Op._46_-_I._Morning_Mood_(Musopen_Symphony).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+O Moldava (Má Vlast)
+  Autor: Bedřich Smetana (1874). Musopen Symphony
+  Fonte: https://commons.wikimedia.org/wiki/File:Smetana_-_Má_Vlast_-_Vltava_(Musopen_Symphony).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+Abertura As Hébridas, op. 26
+  Autor: Felix Mendelssohn (1830-33). Musopen Symphony
+  Fonte: https://commons.wikimedia.org/wiki/File:Mendelssohn_-_Hebrides_Overture,_Op._26_(Musopen_Symphony).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+Sinfonia nº 3 "Escocesa": III. Adagio
+  Autor: Felix Mendelssohn (1842). Musopen Symphony
+  Fonte: https://commons.wikimedia.org/wiki/File:Mendelssohn_-_Symphony_No._3_in_A_minor,_Op._56_'Scottish'_-_III._Adagio_(Musopen_Symphony).flac
+  Licença: gravação em domínio público, liberada pelo Musopen (PD-author); composição em domínio público (PD-old-auto-expired)
+
+Disco "78 rotações"
+
+Pobre madrecita
+  Autor: música de Ángel Greco, letra de Juan A. Caruso. Canta Carlos Gardel (1924, Disco Nacional Odeon 2137)
+  Fonte: https://commons.wikimedia.org/wiki/File:Carlos_Gardel_-_Pobre_madrecita_(1924).flac
+  Licença: gravação em domínio público nos EUA e na Argentina (PD-US-record-expired, PD-AR-Music); música e letra em domínio público (PD-old-auto-expired)
+
+H.M.S. Pinafore: Fair moon, to thee I sing
+  Autor: Arthur Sullivan e W. S. Gilbert. Elenco Odeon (1907)
+  Fonte: https://commons.wikimedia.org/wiki/File:Sullivan_-_H.M.S._Pinafore_(1907,_Odeon)_-_11_-_Fair_moon,_to_thee_I_sing.mp3
+  Licença: gravação em domínio público (PD-UK-audio, PD-US-record-expired); música e letra em domínio público (PD-old-auto-expired)
+
+=== QUADROS (galeria da casa da Ella) ===
+
+Paisagem no Brasil (SK-A-1585)
+  Autor: Frans Post (c. 1665-69)
+  Fonte: https://www.rijksmuseum.nl/en/collection/object/Landscape-in-Brazil--c621ebbe6b54ff3e50b498386f87481b
+  Licença: domínio público (Public Domain Mark 1.0, na página do Rijksmuseum)
+
+Vista de Olinda (SK-A-742)
+  Autor: Frans Post (1662)
+  Fonte: https://www.rijksmuseum.nl/en/collection/object/View-of-Olinda-Brazil--10e90773f58752273e0118fe83c3dc16
+  Licença: domínio público (Public Domain Mark 1.0, na página do Rijksmuseum)
+
+Natureza-morta com flores sobre mármore (SK-A-2338)
+  Autor: Rachel Ruysch (1716)
+  Fonte: https://www.rijksmuseum.nl/en/collection/SK-A-2338
+  Licença: domínio público (Public Domain Mark 1.0, na página do Rijksmuseum)
+
+Paisagem brasileira
+  Autor: Frans Post (1650)
+  Fonte: https://www.metmuseum.org/art/collection/search/437323
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Beija-flor e maracujá
+  Autor: Martin Johnson Heade (c. 1875-85)
+  Fonte: https://www.metmuseum.org/art/collection/search/11052
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Íris
+  Autor: Vincent van Gogh (1890)
+  Fonte: https://www.metmuseum.org/art/collection/search/436528
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Rosas
+  Autor: Vincent van Gogh (1890)
+  Fonte: https://www.metmuseum.org/art/collection/search/436534
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Natureza-morta vanitas
+  Autor: Jacques de Gheyn II (1603)
+  Fonte: https://www.metmuseum.org/art/collection/search/436485
+  Licença: domínio público (Met Open Access; isPublicDomain=true na API de coleção do museu)
+
+Orquídea Cattleya e três beija-flores (1982.73.1)
+  Autor: Martin Johnson Heade (1871)
+  Fonte: https://www.nga.gov/artworks/61244-cattleya-orchid-and-three-hummingbirds
+  Licença: domínio público (National Gallery of Art Open Access; openaccess=1 nos dados abertos do museu)
