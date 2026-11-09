@@ -26,6 +26,14 @@ export interface Cartao {
 export const MESA: Cartao[] = [
   {
     parte: "loja",
+    nome: "O brechó: peças com cara de vintage de verdade",
+    data: "2026-11-09",
+    tarefa: "brechó vintage",
+    olhar: "Na loja, abra a aba roupas e toque em cada peça: o boné de espuma e tela, os óculos de casco, a camisa da 222 com a estampa rachada, o tênis de lona e a jaqueta de couro gasta. Costura, etiqueta e desgaste aparecem melhor na tela grande da peça. Os preços e o que cada uma faz não mudaram; a roupa real da Bee Shop entra depois.",
+    perguntas: ["Parece peça de brechó de verdade?", "Alguma peça deve ter outra época ou outro corte?", "As cores estão boas ou devem ser mais gastas?"],
+  },
+  {
+    parte: "loja",
     nome: "Uma moeda só: tudo agora é Água$",
     data: "2026-11-09",
     tarefa: "agua-moeda",
