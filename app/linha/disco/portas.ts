@@ -271,10 +271,11 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   },
   nizzy: {
     id: "nizzy", n: 11, onde: "cidade", quem: "Notti", cor: "#5dffa0", faixa: "rollercoaster", faixaSituacao: "decidido",
-    lugar: { lugar: "palco-rollercoaster" }, pedido: "a montanha-russa parou no meio", apresenta: "a montanha-russa",
+    // (09/11, bíblia §13) metrô e Rollercoaster são uma coisa só; o pedido é RASCUNHO. O evento segue "montanha" (saves antigos)
+    lugar: { lugar: "palco-rollercoaster" }, pedido: "um passeio tranquilo de metrô", apresenta: "o metrô",
     // (T24, aprovada 30/10) o clipe vertical (disco/pecas/conf.ts, CLIPE)
     arte: p("filmar o clipe vertical da Rollercoaster", "decidido", { como: { t: "cena", id: "clipe" }, tarefa: "T24" }),
-    jogo: p("andar na montanha-russa (no parque)", "decidido", { como: { t: "evento", evento: "montanha", n: 1 }, tarefa: "T24" }),
+    jogo: p("andar de metrô: um passeio tranquilo", "decidido", { como: { t: "evento", evento: "montanha", n: 1 }, tarefa: "T24" }),
     abre: ["parque"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.nizzy, instrumento: "handpan" }, requer: ["oficina"],
   },
   tony: {

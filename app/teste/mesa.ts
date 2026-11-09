@@ -71,6 +71,15 @@ export const MESA: Cartao[] = [
     mais: [
       { parte: "oficina.show", nome: "ep. 1: só o show, pra quem já conheceu o Mubarak" },
       { parte: "missao.quadra", nome: "ep. 3: o beat no caminho e o esporte" },
+    parte: "metro.passeio",
+    nome: "O metrô é um só: por fora na cidade, por dentro só quando você entra",
+    data: "2026-11-09",
+    tarefa: "metrô",
+    olhar: "Você começa no anel de uma torre. Aparece o botão \"entrar no metrô\". Entrando, o personagem senta e a viagem vai em 2x, com a cidade de verdade passando nas janelas, até a próxima torre (ou o centro). No fim você desce no anel e o elevador pros túneis fica ali. Por fora, olhe a viga por cima das ruas, as estações e o trem passando. Tem estação também no meio das ruas. Antes do ep. 8 o botão vem com cadeado. A montanha-russa do parque saiu do mapa: o passeio de metrô é a peça do ep. 8.",
+    perguntas: ["A cidade passando na janela convence?", "A câmera do personagem sentado ficou boa?", "A viga e as estações estão bem por cima das ruas, sem atravessar nada?", "A fuga da história tira o violão: depois do ep. 9 não sobra violão pra tocar no trem. Deixa de tirar?", "O parque pode sumir mesmo?"],
+    mais: [
+      { parte: "metro.violao", nome: "depois do passeio: toque o violão sentado e o guarda levanta" },
+      { parte: "metro", nome: "ep. 9: a fuga depois da captura da Kombi, já dentro do trem" },
     ],
   },
   {

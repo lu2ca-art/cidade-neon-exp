@@ -13,12 +13,26 @@ import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js"
-import { ALTURA, BAIAS, BANCO, GANG, MEIA, NV, PASSAGEM, TRECHOS_BANCO, WL, Z_FIM, Z_PORTA, inicioVagao } from "./mundo"
-import type { Fuga } from "./jogo"
+import { ALTURA, BAIAS, BANCO, GANG, MEIA, NV, PASSAGEM, RAIO, TRECHOS_BANCO, WL, Z_FIM, Z_PORTA, inicioVagao } from "./mundo"
+import { AJUSTE, type Fuga } from "./jogo"
 
 const URL_METRO = "/models/metro.glb"
+const CAMPOS_MAX = 8
 
 const X = (x: number) => -x
+
+// (09/11, bíblia §13) HOSPEDADA: o trem desenhado DENTRO do canvas do mundo, com a cidade
+// de verdade nas janelas (estrada/Linha9.tsx). Sem renderer próprio, sem túnel e, o
+// principal, sem luz nova: acrescentar luz na cena do mundo recompilaria todos os
+// materiais dela. Por isso o interior é sem luz (a cor do vértice já vem sombreada)
+let HOSPEDADA = false
+let SALA: THREE.MeshBasicMaterial[] = []
+function matLuz(o: THREE.MeshLambertMaterialParameters = {}) {
+  if (!HOSPEDADA) return new THREE.MeshLambertMaterial(o)
+  const m = new THREE.MeshBasicMaterial({ color: o.color, vertexColors: o.vertexColors, toneMapped: false })
+  SALA.push(m)
+  return m as unknown as THREE.MeshLambertMaterial
+}
 const cor = new THREE.Color()
 
 // uma caixa com cor nos vértices (as medidas no espaço do jogo)
@@ -29,9 +43,13 @@ function caixa(x0: number, x1: number, y0: number, y1: number, z0: number, z1: n
 }
 function pintar(g: THREE.BufferGeometry, c: string | THREE.Color) {
   cor.set(c)
-  const n = g.attributes.position.count
+  const n = g.attributes.position.count, nor = g.attributes.normal
   const a = new Float32Array(n * 3)
-  for (let i = 0; i < n; i++) { a[i * 3] = cor.r; a[i * 3 + 1] = cor.g; a[i * 3 + 2] = cor.b }
+  for (let i = 0; i < n; i++) {
+    // sem luz (hospedada): o sombreado fica no vértice, pela face
+    const k = !HOSPEDADA || !nor ? 1 : nor.getY(i) > 0.5 ? 1 : nor.getY(i) < -0.5 ? 0.55 : Math.abs(nor.getX(i)) > 0.5 ? 0.82 : 0.7
+    a[i * 3] = cor.r * k; a[i * 3 + 1] = cor.g * k; a[i * 3 + 2] = cor.b * k
+  }
   g.setAttribute("color", new THREE.BufferAttribute(a, 3))
   return g
 }
@@ -66,7 +84,7 @@ const PELES = ["#f0c8a0", "#c89068", "#8a5a3a", "#5c3a24", "#e0b088"]
 // um boneco simples (tronco, cabeça, braços e pernas que balançam)
 function boneco(roupa: string, calca: string, pele: string, extra?: (g: THREE.Group, mat: (c: string) => THREE.Material) => void) {
   const cache = new Map<string, THREE.Material>()
-  const mat = (c: string) => { let m = cache.get(c); if (!m) { m = new THREE.MeshLambertMaterial({ color: c }); cache.set(c, m) } return m }
+  const mat = (c: string) => { let m = cache.get(c); if (!m) { m = matLuz({ color: c, vertexColors: HOSPEDADA }); cache.set(c, m) } return m }
   const g = new THREE.Group()
   const tronco = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.56, 0.24), mat(roupa)); tronco.position.y = 1.18
   const cabeca = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 1), mat(pele)); cabeca.position.y = 1.62
@@ -75,6 +93,7 @@ function boneco(roupa: string, calca: string, pele: string, extra?: (g: THREE.Gr
   const pe = perna(-1), pd = perna(1), be = braco(-1), bd = braco(1)
   g.add(tronco, cabeca, pe, pd, be, bd)
   extra?.(g, mat)
+  if (HOSPEDADA) g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && !m.geometry.attributes.color) pintar(m.geometry, "#fff") })
   return { g, tronco, cabeca, pe, pd, be, bd, mats: [...cache.values()] as THREE.MeshLambertMaterial[], opaco: 1 }
 }
 type Boneco = ReturnType<typeof boneco>
@@ -89,6 +108,14 @@ function andar(b: Boneco, passo: number, vel: number) {
   b.tronco.position.y = 1.18 + pulo; b.cabeca.position.y = 1.62 + pulo
 }
 
+// (09/11) sentado no banco: o quadril na altura do assento, as pernas pra frente
+function sentar(b: Boneco) {
+  b.pe.rotation.x = b.pd.rotation.x = -1.15
+  b.be.rotation.x = b.bd.rotation.x = -0.45
+  b.tronco.rotation.x = 0
+  b.tronco.position.y = 1.18; b.cabeca.position.y = 1.62
+}
+
 // as duas folhas da portinha (0 fechada, 1 aberta)
 function for2(a: THREE.Mesh, b: THREE.Mesh, aberta: number) {
   const x = PASSAGEM / 2 + aberta * (PASSAGEM - 0.04)
@@ -96,7 +123,14 @@ function for2(a: THREE.Mesh, b: THREE.Mesh, aberta: number) {
 }
 
 export class Cena {
-  r: THREE.WebGLRenderer
+  r!: THREE.WebGLRenderer
+  // (09/11) hospedada: onde a câmera do mundo deve ficar (lido pelo estrada/Linha9.tsx)
+  hospedada: boolean
+  posMundo = new THREE.Vector3()
+  quatMundo = new THREE.Quaternion()
+  private escMundo = new THREE.Vector3()
+  private salaLuz = -1
+  private campos: THREE.InstancedMesh
   cena = new THREE.Scene()
   // near de 0,5 m: o poste e o banco colados na câmera somem (o truque da terceira pessoa)
   cam = new THREE.PerspectiveCamera(68, 1, 0.5, 40)
@@ -119,29 +153,34 @@ export class Cena {
   private m4 = new THREE.Matrix4(); private q = new THREE.Quaternion(); private e = new THREE.Euler(); private v3 = new THREE.Vector3(); private s3 = new THREE.Vector3(1, 1, 1)
   private piscaVagao = 2 // o vagão da luz ruim
 
-  constructor(canvas: HTMLCanvasElement, f: Fuga) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    this.r = new THREE.WebGLRenderer({ canvas, antialias: dpr < 1.5, powerPreference: "high-performance", stencil: false })
-    this.r.setPixelRatio(dpr)
+  constructor(canvas: HTMLCanvasElement | null, f: Fuga) {
+    this.hospedada = HOSPEDADA = !canvas
+    SALA = []
+    if (canvas) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      this.r = new THREE.WebGLRenderer({ canvas, antialias: dpr < 1.5, powerPreference: "high-performance", stencil: false })
+      this.r.setPixelRatio(dpr)
+    }
     this.cena.background = new THREE.Color("#04050a")
     this.cena.fog = new THREE.Fog("#04050a", 7, 36)
     this.ceu = new THREE.HemisphereLight("#eef2ff", "#3a3440", 2.4)
-    this.cena.add(this.ceu)
+    if (!this.hospedada) this.cena.add(this.ceu)
     this.lanterna = new THREE.SpotLight("#e9f4ff", 0, 16, 0.38, 0.55, 1.1)
-    this.cena.add(this.lanterna, this.alvoLanterna)
+    if (!this.hospedada) this.cena.add(this.lanterna, this.alvoLanterna)
+    this.cena.matrixAutoUpdate = !this.hospedada
     this.lanterna.target = this.alvoLanterna
 
     this.montarTrem(f)
-    this.montarTunel()
+    if (!this.hospedada) this.montarTunel()
 
     // as portinhas da passagem
     // (duas folhas que correm pra dentro das paredes)
     const gPort = new THREE.BoxGeometry(PASSAGEM, ALTURA, 0.05); gPort.translate(0, ALTURA / 2, 0)
-    const mPort = new THREE.MeshLambertMaterial({ color: C.porta })
+    const mPort = matLuz({ color: C.porta })
     for (const z of f.planta.portinhas) for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(gPort, mPort); m.position.z = z; m.matrixAutoUpdate = false; m.updateMatrix(); this.portinhas.push(m); this.cena.add(m) }
     // a porta da curva: duas folhas que correm, e a luz lá fora
     const gFolha = new THREE.BoxGeometry(0.06, 2.0, 0.7); gFolha.translate(0, 1.0, 0)
-    const mFolha = new THREE.MeshLambertMaterial({ color: C.porta })
+    const mFolha = matLuz({ color: C.porta })
     this.saidaE = new THREE.Mesh(gFolha, mFolha); this.saidaD = new THREE.Mesh(gFolha, mFolha)
     this.saidaE.position.set(X(MEIA + 0.04), 0, Z_PORTA - 0.35); this.saidaD.position.set(X(MEIA + 0.04), 0, Z_PORTA + 0.35)
     // lá fora, na curva: a luz quente da cidade entrando pela porta
@@ -152,19 +191,26 @@ export class Cena {
     // quem está em pé (instanciado: o corpo tinge pela roupa, a cabeça pela pele)
     const n = Math.max(1, f.gente.length)
     const corpo = juntar([caixa(-0.2, 0.2, 0.92, 1.5, -0.11, 0.11, "#fff"), caixa(-0.17, 0.17, 0, 0.92, -0.08, 0.08, "#8a8a92")])
-    this.gente = new THREE.InstancedMesh(corpo, new THREE.MeshLambertMaterial({ vertexColors: true }), n)
+    this.gente = new THREE.InstancedMesh(corpo, matLuz({ vertexColors: true }), n)
     const cab = new THREE.IcosahedronGeometry(0.12, 1); cab.translate(0, 1.63, 0)
-    this.cabecas = new THREE.InstancedMesh(cab, new THREE.MeshLambertMaterial(), n)
+    this.cabecas = new THREE.InstancedMesh(cab, matLuz(), n)
     f.planta.em_pe.forEach((p, i) => {
       this.gente.setColorAt(i, cor.set(ROUPAS[Math.floor(p.roupa * ROUPAS.length)]))
       this.cabecas.setColorAt(i, cor.set(PELES[Math.floor(p.tom * PELES.length)]))
     })
     this.gente.count = this.cabecas.count = f.gente.length
     this.cena.add(this.gente, this.cabecas)
+    // (09/11) o campo em volta de quem está perto de você: 1 malha, só as paredes, sem luz
+    const gCampo = new THREE.CylinderGeometry(RAIO + AJUSTE.campoPessoa, RAIO + AJUSTE.campoPessoa, 1.8, 14, 1, true); gCampo.translate(0, 0.9, 0)
+    this.campos = new THREE.InstancedMesh(gCampo, new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, fog: false }), CAMPOS_MAX)
+    this.campos.setColorAt(0, cor.set("#000"))
+    this.campos.count = 0
+    this.campos.frustumCulled = false
+    this.cena.add(this.campos)
 
     // você: moletom ciano, o violão no case nas costas
     this.voce = boneco("#1fb8d6", "#1b1d2a", "#c89068")
-    this.caixaViolao = new THREE.Mesh(juntar([caixa(-0.17, 0.17, 0, 0.62, -0.06, 0.06, "#2a1c14"), caixa(-0.09, 0.09, 0.62, 1.0, -0.05, 0.05, "#2a1c14"), caixa(-0.18, 0.18, 0.1, 0.13, -0.065, 0.065, "#c7a24a")]), new THREE.MeshLambertMaterial({ vertexColors: true }))
+    this.caixaViolao = new THREE.Mesh(juntar([caixa(-0.17, 0.17, 0, 0.62, -0.06, 0.06, "#2a1c14"), caixa(-0.09, 0.09, 0.62, 1.0, -0.05, 0.05, "#2a1c14"), caixa(-0.18, 0.18, 0.1, 0.13, -0.065, 0.065, "#c7a24a")]), matLuz({ vertexColors: true }))
     this.caixaViolao.position.set(0, 0.78, -0.16); this.caixaViolao.rotation.z = 0.35
     this.voce.g.add(this.caixaViolao)
     // o guarda do Núcleo: o branco, o boné, o crachá que brilha, a lanterna
@@ -266,15 +312,17 @@ export class Cena {
       if (s.jeito === 1) L.push(caixa(xi - 0.3 * s.lado - 0.08, xi - 0.3 * s.lado + 0.08, 0.58, 0.68, s.z - 0.07, s.z + 0.07, "#111")) // a câmera no colo
       if (s.jeito === 2) L.push(caixa(cx - 0.12, cx + 0.12, cy + 0.08, cy + 0.15, s.z - 0.12, s.z + 0.12, "#e33")) // o fone
     }
-    // o túnel lá fora (o que não muda: as paredes, os cabos)
-    const z0 = -12, z1 = Z_FIM + 16
-    for (const s of [1, -1]) {
-      const x = s * 2.5
-      L.push(caixa(Math.min(x, x + 0.2 * s), Math.max(x, x + 0.2 * s), -1.2, 3.6, z0, z1, C.tunel))
-      for (const y of [2.6, 2.75, 2.9]) L.push(canoZ(s * 2.42, y, z0, z1, 0.025, C.cabo))
+    // o túnel lá fora (o que não muda: as paredes, os cabos). Hospedada, lá fora é a cidade
+    if (!this.hospedada) {
+      const z0 = -12, z1 = Z_FIM + 16
+      for (const s of [1, -1]) {
+        const x = s * 2.5
+        L.push(caixa(Math.min(x, x + 0.2 * s), Math.max(x, x + 0.2 * s), -1.2, 3.6, z0, z1, C.tunel))
+        for (const y of [2.6, 2.75, 2.9]) L.push(canoZ(s * 2.42, y, z0, z1, 0.025, C.cabo))
+      }
+      L.push(caixa(-2.6, 2.6, 3.4, 3.6, z0, z1, C.tunel))
     }
-    L.push(caixa(-2.6, 2.6, 3.4, 3.6, z0, z1, C.tunel))
-    const mat = new THREE.MeshLambertMaterial({ vertexColors: true })
+    const mat = matLuz({ vertexColors: true })
     const m = new THREE.Mesh(juntar(L), mat)
     m.matrixAutoUpdate = false
     this.cena.add(m)
@@ -337,7 +385,7 @@ export class Cena {
   private montarTunel() {
     const n = Math.ceil((Z_FIM + 30) / Cena.ESP) + 2
     const gC = new THREE.BoxGeometry(0.35, 4.6, 0.3); gC.translate(0, 1.2, 0)
-    const costelas = new THREE.InstancedMesh(gC, new THREE.MeshLambertMaterial({ color: "#14161d" }), n * 2)
+    const costelas = new THREE.InstancedMesh(gC, matLuz({ color: "#14161d" }), n * 2)
     const gL = new THREE.BoxGeometry(0.08, 0.1, 0.5)
     const luzes = new THREE.InstancedMesh(gL, new THREE.MeshBasicMaterial({ color: "#ffb24a" }), n * 2)
     let k = 0
@@ -353,6 +401,7 @@ export class Cena {
   }
 
   medir(w: number, h: number) {
+    if (this.hospedada) return
     this.r.setSize(w, h, false)
     this.cam.aspect = w / Math.max(1, h)
     this.cam.updateProjectionMatrix()
@@ -369,6 +418,8 @@ export class Cena {
     const tunelPulso = Math.max(0, 1 - Math.abs(((f.odometro + 2.6) % Cena.ESP) / Cena.ESP - 0.5) * 6)
     const luz = f.luz
     this.ceu.intensity = 0.12 + luz * 2.3 + (1 - luz) * tunelPulso * 0.9
+    // hospedada: sem luz, o apagão escurece a cor dos materiais (só quando muda)
+    if (this.hospedada && luz !== this.salaLuz) { this.salaLuz = luz; const b = 0.22 + luz * 0.78; for (let i = 0; i < SALA.length; i++) SALA[i].color.setScalar(b) }
     for (let i = 0; i < NV; i++) {
       let l = luz
       if (i === this.piscaVagao && luz > 0.5 && Math.sin(f.odometro * 0.37) > 0.93) l = 0.25
@@ -381,7 +432,7 @@ export class Cena {
     f.portinhas.forEach((p, i) => for2(this.portinhas[i * 2], this.portinhas[i * 2 + 1], p.aberta))
     this.saidaE.position.z = Z_PORTA - 0.35 - f.saida * 0.66
     this.saidaD.position.z = Z_PORTA + 0.35 + f.saida * 0.66
-    this.fora.visible = f.saida > 0
+    this.fora.visible = f.saida > 0 && !this.hospedada
 
     // quem está em pé
     f.gente.forEach((p, i) => {
@@ -391,11 +442,24 @@ export class Cena {
       this.gente.setMatrixAt(i, this.m4); this.cabecas.setMatrixAt(i, this.m4)
     })
     this.gente.instanceMatrix.needsUpdate = true; this.cabecas.instanceMatrix.needsUpdate = true
+    // o campo acende em quem está perto de você (só na fuga; for simples, nada alocado)
+    let nCampo = 0
+    if (f.fase === "fuga" || f.fase === "porta") for (let i = 0; i < f.gente.length && nCampo < CAMPOS_MAX; i++) {
+      const p = f.gente[i], d = Math.hypot(p.x - vx, p.z - vz)
+      if (d > 3.2) continue
+      this.campos.setMatrixAt(nCampo, this.m4.makeTranslation(X(p.x), 0, p.z))
+      const k = (1 - d / 3.2) * 0.5
+      this.campos.setColorAt(nCampo, cor.setRGB(0.25 * k, 0.8 * k, k))
+      nCampo++
+    }
+    this.campos.count = nCampo
+    if (nCampo) { this.campos.instanceMatrix.needsUpdate = true; this.campos.instanceColor!.needsUpdate = true }
 
     // você e ele
     this.voce.g.position.set(X(vx), 0, vz)
     this.voce.g.rotation.y = Math.atan2(X(v.vx), Math.max(0.5, v.vz)) * 0.6
-    andar(this.voce, v.passo, f.fase === "pego" ? 0 : Math.hypot(v.vx, v.vz))
+    if (f.sentado) { this.voce.g.position.y = -0.42; this.voce.g.rotation.y = Math.PI / 2; sentar(this.voce) }
+    else andar(this.voce, v.passo, f.fase === "pego" ? 0 : Math.hypot(v.vx, v.vz))
     this.guarda.g.position.set(X(gx), 0, gz)
     const gvel = Math.hypot(g.vx, g.vz)
     this.guarda.g.rotation.y = Math.atan2(X(vx - gx), vz - gz)
@@ -420,7 +484,11 @@ export class Cena {
     // a câmera: atrás e acima de você; treme quando ele chega perto; quando te pega, vira pra ele
     const k = 1 - Math.exp(-dt * 7)
     const d = f.distancia
-    if (f.fase === "intro") {
+    if (f.sentado) {
+      // (09/11) a viagem: do outro lado do corredor, ele sentado e a cidade passando na janela atrás
+      this.camPos.lerp(this.v3.set(X(-0.72), 1.42, vz - 1.5), k)
+      this.camOlha.lerp(this.v3.set(X(1.6), 1.22, vz + 0.45), k)
+    } else if (f.fase === "intro") {
       // o começo: de frente pra você, olhando o fundo do vagão (ele está lá, sentado, olhando)
       this.camPos.lerp(this.v3.set(X(vx - 0.35), 1.72, vz + 2.6), k)
       this.camOlha.lerp(this.v3.set(X(gx), 1.2, gz), k)
@@ -453,6 +521,12 @@ export class Cena {
       this.guarda.opaco = op
       for (const m of this.guarda.mats) { const t = op < 0.99; if (m.transparent !== t) { m.transparent = t; m.depthWrite = !t; m.needsUpdate = true } m.opacity = op }
     }
+    if (this.hospedada) {
+      // quem desenha é o canvas do mundo: aqui só sai onde a câmera dele deve ficar
+      this.cam.updateMatrix()
+      this.m4.multiplyMatrices(this.cena.matrix, this.cam.matrix).decompose(this.posMundo, this.quatMundo, this.escMundo)
+      return
+    }
     this.r.render(this.cena, this.cam)
     this.calls = this.r.info.render.calls; this.tris = this.r.info.render.triangles
     void tela
@@ -466,6 +540,7 @@ export class Cena {
       const mt = m.material as THREE.Material | THREE.Material[] | undefined
       if (Array.isArray(mt)) mt.forEach((x) => x.dispose()); else mt?.dispose()
     })
-    this.r.dispose()
+    this.cena.parent?.remove(this.cena)
+    if (!this.hospedada) this.r.dispose()
   }
 }

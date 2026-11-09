@@ -13,7 +13,7 @@ import { Fuga, PASSO, type Evento, type Fase } from "./jogo"
 import { Cena } from "./cena"
 import { SomMetro } from "./som"
 import { pilotar } from "./piloto"
-import { inicioVagao, sorteio, vagaoDe, Z_PORTA } from "./mundo"
+import { inicioVagao, ouvirViolaoNoTrem, sorteio, vagaoDe, Z_PORTA } from "./mundo"
 import "./metro.css"
 
 const RADIO = [
@@ -26,12 +26,23 @@ const RADIO = [
 
 export interface FimMetro { escapou: boolean; violao: "costas" | "perdido"; tempo: number; esbarroes: number }
 
-export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeguir, seguirSePego, antes }: {
+// (09/11) dentro do canvas do mundo, com a cidade nas janelas (estrada/Linha9.tsx): sem
+// canvas nem relógio próprios; quem hospeda chama o `quadro` e leva a cena junto
+export interface HospedeMetro {
+  entrar: (cena: Cena, quadro: (t: number) => void, fuga: Fuga) => void
+  sair: () => void
+}
+// a viagem rápida: sentado até o violão tocar (a fuga só começa se o guarda reagir)
+export interface ViagemMetro { rotulo: string; reage: boolean }
+
+export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeguir, seguirSePego, antes, hospede, viagem }: {
   onFim?: (r: FimMetro) => void; expor?: boolean; auto?: number | null; semente?: number; semIntro?: boolean
   // (T64) no mundo: o fim mostra "seguir" (fugiu; ou pego, se seguirSePego) em vez de "de novo"
   onSeguir?: () => void; seguirSePego?: boolean
   // uma linha a mais no cartão do começo (o que aconteceu antes de entrar)
   antes?: string
+  hospede?: HospedeMetro
+  viagem?: ViagemMetro
 }) {
   const tela = useRef<HTMLCanvasElement>(null)
   const raiz = useRef<HTMLDivElement>(null)
@@ -47,19 +58,23 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
   const [vagao, setVagao] = useState(1)
   const fimRef = useRef(onFim)
   useEffect(() => { fimRef.current = onFim }, [onFim])
+  const sentadoNaViagem = !!viagem
+  const reageRef = useRef(!!viagem?.reage)
+  useEffect(() => { reageRef.current = !!viagem?.reage }, [viagem?.reage])
 
   useEffect(() => {
     const cv = tela.current
-    if (!cv) return
+    if (!cv && !hospede) return
     const f = new Fuga(semente)
+    if (sentadoNaViagem) { f.sentar(); f.violaoFica = true }
     fugaRef.current = f
-    const cena = new Cena(cv, f)
+    const cena = new Cena(hospede ? null : cv, f)
     const som = new SomMetro()
     somRef.current = som
-    const medir = () => cena.medir(cv.clientWidth, cv.clientHeight)
+    const medir = () => { if (cv) cena.medir(cv.clientWidth, cv.clientHeight) }
     medir()
     const ro = new ResizeObserver(medir)
-    ro.observe(cv)
+    if (cv && !hospede) ro.observe(cv)
     const quadros: number[] = [], trabalho: number[] = [], draws: number[] = []
     let raf = 0, ultimo = performance.now(), acc = 0, nAviso = 0, emenda = Math.floor(f.odometro / 18), ultVagao = 1, piloto = 0
     const rr = sorteio(semente + 99)
@@ -71,7 +86,7 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
         case "esbarrou": som.esbarrou(); raiz.current?.classList.remove("mt-tranco"); void raiz.current?.offsetWidth; raiz.current?.classList.add("mt-tranco"); break
         case "empurrou": som.empurrou(); break
         case "guarda-esbarrou": som.empurrou(); break
-        case "violao": som.violao(); avisar("ele arrancou o violão das suas costas. solta e corre!", "alerta"); break
+        case "violao": som.violao(); avisar(f.violaoFica ? "ele te agarrou. solta e corre!" : "ele arrancou o violão das suas costas. solta e corre!", "alerta"); break
         case "pego": som.pego(); break
         case "porta": break
         case "pulou": som.pulou(); break
@@ -85,7 +100,7 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
       }
     }
     const quadro = (t: number) => {
-      raf = requestAnimationFrame(quadro)
+      if (!hospede) raf = requestAnimationFrame(quadro)
       const dtMs = t - ultimo
       ultimo = t
       const dt = Math.min(0.1, Math.max(0, dtMs / 1000))
@@ -120,8 +135,12 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
       if (vg >= 0 && vg + 1 !== ultVagao) { ultVagao = vg + 1; setVagao(ultVagao) }
       if (quadros.length < 30000) { quadros.push(dtMs); trabalho.push(performance.now() - t0); draws.push(cena.calls) }
     }
-    raf = requestAnimationFrame(quadro)
+    if (hospede) hospede.entrar(cena, quadro, f)
+    else raf = requestAnimationFrame(quadro)
     if (semIntro || auto != null) { f.comecar() }
+    // (09/11, bíblia §13) sentado: tocar o violão levanta o guarda
+    if (sentadoNaViagem) som.ligar()
+    const paraDeOuvir = sentadoNaViagem ? ouvirViolaoNoTrem(() => { if (reageRef.current && f.sentado) { som.ligar(); f.comecar() } }) : null
 
     if (expor) (window as unknown as { __metro: unknown }).__metro = {
       fuga: f,
@@ -130,8 +149,8 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
       zerar: () => { quadros.length = 0; trabalho.length = 0; draws.length = 0 },
       pilotar: (erro = 0) => pilotar(f, erro, rr),
     }
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); som.desligar(); cena.destruir(); fugaRef.current = null }
-  }, [semente, expor, auto, semIntro])
+    return () => { paraDeOuvir?.(); hospede?.sair(); cancelAnimationFrame(raf); ro.disconnect(); som.desligar(); cena.destruir(); fugaRef.current = null }
+  }, [semente, expor, auto, semIntro, hospede, sentadoNaViagem])
 
   // ── a entrada: teclado (← → desvia, espaço empurra, ↓ segura) e toque
   //    (arrasta pro lado pra desviar; um toque rápido empurra) ──
@@ -146,6 +165,7 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
     const desce = (e: KeyboardEvent) => {
       const f = fugaRef.current; if (!f) return
       somRef.current?.ligar()
+      if (f.sentado) return // sentado, o teclado é do resto do jogo
       if (f.fase === "intro" && (e.code === "Space" || e.code === "Enter" || e.code === "ArrowUp")) { f.comecar(); e.preventDefault(); return }
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") { if (!e.repeat) f.pedeEmpurrar = true; e.preventDefault() }
       if (e.code.startsWith("Arrow")) e.preventDefault()
@@ -186,10 +206,12 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
   const deNovo = () => { setFim(null); setFase("intro"); setAviso(null); setVagao(1); setSemente((s) => s + 1) }
 
   return (
-    <div ref={raiz} className={`mt-raiz mt-${fase} ${onSeguir ? "is-mundo" : ""}`}>
-      <canvas ref={tela} className="mt-tela" aria-label="dentro do metrô" onPointerDown={pDown} onPointerMove={pMove} onPointerUp={pUp} onPointerCancel={pUp} />
+    <div ref={raiz} className={`mt-raiz mt-${fase} ${onSeguir ? "is-mundo" : ""} ${hospede ? "is-dentro" : ""} ${viagem && fase === "intro" ? "is-sentado" : ""}`}
+      {...(hospede ? { onPointerDown: pDown, onPointerMove: pMove, onPointerUp: pUp, onPointerCancel: pUp } : {})}>
+      {!hospede && <canvas ref={tela} className="mt-tela" aria-label="dentro do metrô" onPointerDown={pDown} onPointerMove={pMove} onPointerUp={pUp} onPointerCancel={pUp} />}
       <div ref={medoEl} className="mt-medo" />
-      <header className="mt-hud">
+      {viagem && fase === "intro" && <p className="mt-viagem">{viagem.rotulo}</p>}
+      <header className="mt-hud" style={viagem && fase === "intro" ? { display: "none" } : undefined}>
         <div className="mt-trilho">
           <div className="mt-trilho-in">
             <i ref={pEle} className="mt-ele" />
@@ -200,9 +222,9 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
         <small className="mt-vagao">vagão {vagao} de 5</small>
       </header>
       {aviso && <div key={aviso.n} className={`mt-aviso ${aviso.tipo ? `is-${aviso.tipo}` : ""}`}>{aviso.txt}</div>}
-      {fase === "fuga" && <p className="mt-dica">arrasta pro lado pra desviar · toca pra empurrar <span>← → desvia · espaço empurra</span></p>}
+      {fase === "fuga" && <p className="mt-dica">arrasta pro lado pra desviar das pessoas <span>← → desvia das pessoas</span></p>}
 
-      {fase === "intro" && (
+      {fase === "intro" && !viagem && (
         <div className="mt-cartao" onClick={comecar}>
           <small>linha 9 · vagão 1 · 23:47</small>
           {antes && <p>{antes}</p>}
@@ -210,7 +232,7 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
           <p>no fundo do vagão, um policial. ele te olha como quem já sabe.</p>
           <p>o violão pesa nas suas costas.</p>
           <button type="button" onClick={(e) => { e.stopPropagation(); comecar() }}>corre</button>
-          <small className="mt-ctl">celular: arrasta pro lado pra desviar, toca pra empurrar quem está na frente<br />computador: ← → desvia · espaço empurra</small>
+          <small className="mt-ctl">celular: arrasta pro lado pra desviar das pessoas<br />computador: ← → desvia</small>
         </div>
       )}
       {fim && (
@@ -219,12 +241,12 @@ export function Metro({ onFim, expor, auto, semente: sem0 = 222, semIntro, onSeg
           {fim.escapou ? (
             <>
               <p>a porta abriu na curva. você pulou.</p>
-              <p>{fim.violao === "perdido" ? "o violão ficou na mão dele." : "o violão ficou preso na porta."} lá dentro, alguém começa a tocar ele.</p>
+              {!viagem && <p>{fim.violao === "perdido" ? "o violão ficou na mão dele." : "o violão ficou preso na porta."} lá dentro, alguém começa a tocar ele.</p>}
             </>
           ) : (
             <>
               <p>a mão dele no seu ombro. o trem nem para.</p>
-              <p>levaram o violão.</p>
+              {!viagem && <p>levaram o violão.</p>}
             </>
           )}
           <small>{fim.tempo}s · {fim.esbarroes} {fim.esbarroes === 1 ? "esbarrão" : "esbarrões"}</small>

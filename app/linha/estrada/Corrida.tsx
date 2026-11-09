@@ -129,7 +129,11 @@ import { Lugares, poseLugar, type PoseLugar } from "./Lugares"
 import { ESPECIES, Flores, canteiroPerto, canteiroPorId } from "./Flores"
 import type { Ir as IrAtalho } from "../../teste/atalhos"
 import { Mapa, type IconeMapa, type Marca } from "./Mapa"
-import { Parque, areaDoParque, novoPasseio, pertoDoParque, type PasseioParque } from "./Parque"
+import { PARQUE_CONF, Parque, areaDoParque, novoPasseio, pertoDoParque, type PasseioParque } from "./Parque"
+import { CAM_LINHA9, Linha9Fora, ViagemLinha9, ViagemNaLinha9, tremEm } from "./Linha9"
+import { CONFIG_LINHA9, destinoDe, estacoesPerto, linha9De, nomeDaParada, novoPonto, paradaMaisPerto, pontoLinha9, trilhoEntre } from "./trilho9"
+import type { MetroFugaProps } from "../disco/MetroFuga"
+import dynamic from "next/dynamic"
 import { Prova } from "../provas"
 import { ESTACOES, dataCurta, estacao as getEstacao, lancada, missao, type EstacaoId } from "../data"
 import { VOZES } from "../roteiros"
@@ -216,6 +220,9 @@ interface Props {
   // (elevadores, 06/11) na rotatória de uma torre da ponta: "descer · túneis" (tranca = o cadeado)
   // (09/11) trancaDeserto: o cadeado da porta do deserto (a torre 1, cidade ↔ deserto)
   elevador?: { tranca: string | null; trancaDeserto?: string | null; onDescer: (n: number) => void } | null
+  // (09/11, bíblia §13) o metrô da cidade: o cadeado, se o guarda reage ao violão, o fim
+  // do passeio (conta pra peça do ep. 8) e a fuga da história (ep. 9), quando é a hora
+  linha9?: { tranca: string | null; reage: boolean; onPasseio: () => void; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null } | null
   save: Save
   nivel: number
   destino: EstacaoId | null
@@ -580,7 +587,13 @@ const aberta = (f: Faixa, nLib: number) => { void f; void nLib; return true }
 type Garfo = { via: number; u: number; esq?: Faixa; dir?: Faixa }
 type ItemGuia = { k: string; d: number; cor: string; rot: string; tipo: "estacao" | "alvo" | "garfo" | "chegada" | "item" }
 
-export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null, missaoAtiva = null }: Props) {
+// (09/11) o interior do metrô: só baixa quando alguém entra numa estação
+const MetroDentro = dynamic(() => import("../metro/Metro").then((m) => m.Metro), { ssr: false })
+const MetroFugaDentro = dynamic(() => import("../disco/MetroFuga").then((m) => m.MetroFuga), { ssr: false })
+type Viagem9 = { h: ViagemLinha9; dest: number | null; rotulo: string; fuga: Pick<MetroFugaProps, "historia" | "onPasso" | "onSair"> | null }
+const PERTO_9: number[] = []
+
+export function Corrida({ onVisitar, save, nivel, destino: destinoInicial, alvo = null, onPegar, avisos = 0, pausado = false, limitado = false, cacado = false, onApreendido, dicas = [], onDica, conversa = false, onBifurca, caido = false, onReligar, onSinal, onDescer, onSair, onVolta, cinema = null, cinza = false, intro = false, fala = null, onIlha, onVaga, cenaLugar = null, segredo = null, foraDoAr = false, noiteRepete = 0, retomar = false, teleporte = null, abertura = false, onAbertura, onArea, celular = false, levando = null, tanque = 1, onTanque, onPosto, hora = 18, onHora, dia = 1, saltoHora = null, regadas = SEM_FLORES, onRegar, onMontanha, onAbastecer, postoAberto = false, atalho = null, onApp, onMissoes, missaoHolo = null, checklistHolo = null, mapaMissoes = null, mapaPainel = null, onMapaIcone, onPegarAqui, agua = 0, onAgua, onFuga, historia = null, onHistoria, chegada = false, onComprar, alvoChao = null, pistaFoco = null, trancas, noConserto = false, quebrou = false, sorteioMs = 0, onRacha, onCorridaRua, perseguicao = false, esperaPolicia = 0, semKombi = false, veiculo = null, onPerseguicao, elevador = null, linha9 = null, missaoAtiva = null, onPilotoLigado }: Props) {
   const M = useMemo(() => mundo(), [])
   // voltando de uma sala: a Kombi reaparece onde estava (RETOMAR, guardado ao desmontar)
   const [retomada] = useState(() => (retomar ? RETOMAR : null))
@@ -991,6 +1004,53 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
   const [parque, setParque] = useState<"perto" | "andando" | null>(null)
   const [fotoParque, setFotoParque] = useState("")
   const hudMontanha = useRef<HTMLElement>(null)
+  // (09/11) o metrô: as estações aqui perto (3x por segundo) e a viagem em andamento
+  const [estacoes9, setEstacoes9] = useState<number[]>([])
+  const [viagem9, setViagem9] = useState<Viagem9 | null>(null)
+  const andandoAlgo = parque === "andando" || !!viagem9
+  const linhaDisco = "disco" in M ? linha9De(M as MundoDisco) : null
+  const comecarViagem9 = (de: number, sentado: boolean, fuga: Viagem9["fuga"]) => {
+    if (!linhaDisco) return
+    const dest = sentado ? destinoDe(linhaDisco, de) : null, p = linhaDisco.paradas
+    const falta = dest === null ? null : trilhoEntre(linhaDisco, p[de].s, p[dest].s) || linhaDisco.L
+    jogo.current.encostando = true
+    setViagem9({ h: new ViagemLinha9(p[de].s, falta), dest, fuga, rotulo: dest === null ? "" : `sentado · viagem 2x · até ${nomeDaParada(p[dest])}` })
+  }
+  const descer9 = (via: number, u: number, s: number) => {
+    const j = jogo.current
+    if (linhaDisco) tremEm(linhaDisco, s)
+    CAM_LINHA9.ativa = false
+    j.v = 0; j.vx = 0; j.x = 0; j.encostando = false; j.voo = false; j.ar = false; j.via = via; j.u = u; j.encaixar = true
+    evs.current?.via(via)
+    setViagem9(null)
+  }
+  // a viagem acabou na estação
+  const chegou9 = () => {
+    const vg = viagem9
+    if (!vg || vg.dest === null || !linhaDisco) return
+    const p = linhaDisco.paradas[vg.dest]
+    descer9(p.via, p.u, p.s)
+    linha9?.onPasseio()
+  }
+  // desceu no meio do caminho (a fuga): a rua embaixo de onde o trem estava
+  const pulou9 = () => {
+    const vg = viagem9
+    if (!vg || !linhaDisco) return
+    const q = pontoLinha9(linhaDisco, vg.h.s, novoPonto())
+    const po = (M as MundoDisco).pousar(q.x, q.z, q.y, q.tx, q.tz, 30)
+    const est = linhaDisco.paradas[paradaMaisPerto(linhaDisco, q.x, q.z)]
+    descer9(po ? po.via : est.via, po ? po.u : est.u, vg.h.s)
+    vg.fuga?.onSair()
+  }
+  // (ep. 9) a Kombi foi capturada: a fuga começa no trem, na estação mais perto
+  const fuga9 = linha9?.fuga ?? null
+  useEffect(() => {
+    if (!fuga9 || viagem9 || !linhaDisco) return
+    const j = jogo.current, V = M.vias[j.via], k = Math.max(0, Math.min(V.n - 1, Math.round(j.u / 2)))
+    comecarViagem9(paradaMaisPerto(linhaDisco, j.voo ? j.wx! : V.px[k], j.voo ? j.wz! : V.pz[k]), false, fuga9)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!fuga9])
+  useEffect(() => () => { CAM_LINHA9.ativa = false }, [])
   const andarMontanha = () => {
     const pq = passeio.current
     jogo.current.encostando = true
@@ -1011,7 +1071,12 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
       const c = ehDia(horaRef.current) && !("ligacoes" in M) ? canteiroPerto(M, j.via, j.u) : null
       setCanteiro(c && !regadas.includes(c.id) ? c.id : null)
       const pq = passeio.current
-      setParque(pq.andando ? "andando" : abertoAgora("noite", horaRef.current) && pertoDoParque(M, j.via, j.u) ? "perto" : null)
+      setParque(pq.andando ? "andando" : PARQUE_CONF.ligado && abertoAgora("noite", horaRef.current) && pertoDoParque(M, j.via, j.u) ? "perto" : null)
+      if ("disco" in M) {
+        const V9 = M.vias[j.via], i9 = Math.max(0, Math.min(V9.n - 1, Math.round(j.u / 2)))
+        estacoesPerto(M as MundoDisco, linha9De(M as MundoDisco), j.voo ? j.wx! : V9.px[i9], j.voo ? j.wz! : V9.pz[i9], j.voo ? -1 : j.via, PERTO_9)
+        setEstacoes9((a) => (a.length === PERTO_9.length && a.every((x, i) => x === PERTO_9[i]) ? a : [...PERTO_9]))
+      }
       // os lugares que são páginas: aberto agora? a Kombi está chegando?
       const ab: Record<string, boolean> = {}
       let pp: string | null = null
@@ -2752,7 +2817,7 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
   }, [portal])
 
   return (
-    <div className={`l-viagem ${voaNao ? "is-sem-voo" : ""} ${discoM && holoCelular ? "is-holo-celular" : ""} ${discoM && !holoOk ? "is-sem-holo" : ""} ${entrando ? "is-entrando" : ""} ${parque === "andando" ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema || corte ? "is-cinema" : ""} ${corte ? "is-corte" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""} ${discoM ? `is-disco ${oculos ? "is-holo" : "is-holo-off"}` : ""}`}>
+    <div className={`l-viagem ${voaNao ? "is-sem-voo" : ""} ${discoM && holoCelular ? "is-holo-celular" : ""} ${discoM && !holoOk ? "is-sem-holo" : ""} ${entrando ? "is-entrando" : ""} ${andandoAlgo ? "is-montanha" : ""} ${celular ? "is-celular" : ""} ${pausado ? "is-pausada" : ""} ${caido ? "is-caida" : ""} ${cinema || corte ? "is-cinema" : ""} ${corte ? "is-corte" : ""} ${cinza ? "is-cinza" : ""} ${noiteRepete ? "is-repete" : ""} ${foraDoAr ? "is-apagao" : ""} ${discoM ? `is-disco ${oculos ? "is-holo" : "is-holo-off"}` : ""}`}>
       {/* (T37) a cena de lado da chegada: as faixas de cinema */}
       {corte && <div className="l-corte" aria-hidden="true"><i /><i /></div>}
       {fonte && (
@@ -2781,6 +2846,8 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
           onContextMenu={(e) => e.preventDefault()}
         >
           <Cena tags={tagsArea} M={M} jogo={jogo} input={input} evs={evs} destinoRef={destinoRef} temTurbo={temTurbo} confeteRef={confeteRef} nivel={nivel} objetos={save.objetos} nLib={nLib} nLibRef={nLibRef} marcos={marcos} marcosRef={marcosRef} estacaoAlvo={alvo?.missao ?? null} corRadio={corRadio} pausado={pausado} cinemaRef={cinemaRef} limitadoRef={limitadoRef} cacadoRef={cacadoRef} dentroRef={dentroRef} discoRef={discoRef} disco={discoAgora.tocando} fonteRef={fonteRef} onTocaDiscos={abrirEstante} carona={levando ? levando : (alvo?.t === "entrega" && alvo.missao === "sexta") || (alvo?.t === "lugar" && !alvo.pegar && MISSOES[alvo.missao]?.carona) ? alvo.missao : null} lugarAlvoRef={lugarAlvoRef} vagaRef={vagaRef} camLugarRef={camLugarRef} lugarAlvoId={lugarDaMissao} cenaLugar={cenaLugar} segredoRef={segredoRef} aberturaRef={aberturaRef} celularRef={celularRef} combRef={combRef} horaRef={horaRef} abertos={abertos} paginaPerto={paginaPerto} camEntrada={camEntrada} climaRef={climaRef} regadas={regadas} passeio={passeio} respiroRef={respiroRef} marcaRef={marcaRef} floresAsf={floresAsf} viaApagada={viaApagada} missaoAtiva={missaoAtiva} faseHistoria={fase} alvoChao={alvoChao} missoesMapa={discoM ? mapaMissoes : null} veiculo={veiculo} temMoto={motoOk} corridaRua={corridaNoMapa} semPaineis={!!historia && historia.fase !== "livre" && !(historia.mods ?? []).includes("solar")} holoRef={holoLigadoRef} />
+          {linhaDisco && <Seguro nome="linha 9"><Linha9Fora linha={linhaDisco} escondeTrem={!!viagem9} /></Seguro>}
+          {linhaDisco && viagem9 && <Seguro nome="linha 9 por dentro"><ViagemNaLinha9 linha={linhaDisco} viagem={viagem9.h} onChegou={chegou9} zerarEntrada={() => { input.current.espacoDesde = 0; input.current.propulsorBotao = false }} /></Seguro>}
           {discoM && <Seguro nome="rachas"><RachasCena M={discoM} jogo={jogo} estado={rachaRef} ativo={rachasOk} /></Seguro>}
           {discoM && semKombi && <Seguro nome="veiculos"><VeiculosCena M={M} jogo={jogo} estado={veiculosRef} ativo={semKombi} /></Seguro>}
         </Canvas>
@@ -2860,6 +2927,16 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
       )}
       <div ref={sirene} className="l-sirene" />
       {telChave > 0 && <div key={telChave} className="l-corte-teleporte" />}
+      {/* (09/11) a estação do metrô: entrar começa a viagem; trancada, o cadeado e o que libera */}
+      {linha9 && linhaDisco && !viagem9 && !pausado && !entrando && estacoes9.map((i) => (
+        <button key={i} type="button" data-info="estacao" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#cfe6ff" }} onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => { if (!linha9.tranca) comecarViagem9(i, true, null) }}>
+          {linha9.tranca ? <><Cadeado />o metrô · {linha9.tranca}</> : `entrar no metrô · até ${nomeDaParada(linhaDisco.paradas[destinoDe(linhaDisco, i)])}`}
+        </button>
+      ))}
+      {viagem9 && (viagem9.fuga
+        ? <MetroFugaDentro historia={viagem9.fuga.historia} onPasso={viagem9.fuga.onPasso} onSair={pulou9} hospede={viagem9.h} />
+        : <MetroDentro hospede={viagem9.h} viagem={{ rotulo: viagem9.rotulo, reage: !!linha9?.reage }} seguirSePego onSeguir={pulou9} />)}
       {/* (elevadores) na rotatória da torre da ponta N: o elevador desce pro salão da TORRE N (a via muda, sem conta por quadro) */}
       {elevador && pontaElevador > 0 && !pausado && (
         <button type="button" data-info="elevador" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#9b8cff" }} onPointerDown={(e) => e.stopPropagation()}
@@ -2975,7 +3052,7 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
           de NEON fica só no celular */}
       {/* o relógio da cidade (13/10): a hora e o dia */}
       {/* sem gasolina: os patins (a Kombi fica) */}
-      {seco && !dePatins && !pertoComb && !entrando && !regando && parque !== "andando" && (
+      {seco && !dePatins && !pertoComb && !entrando && !regando && !andandoAlgo && (
         <button type="button" className="l-regar-btn is-patins" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>a gasolina acabou · de patins até o posto</button>
       )}
       {/* (disco) a placa da espiral: chegando numa saída, "◀ Linha X" e "▲ subir" */}
@@ -3015,14 +3092,14 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
       )}
       {discoM && ajustes && oculos && <HoloAjustes qual={qualHolo} onQual={(n) => guardarQualidade(n)} onFechar={fecharAjustes} />}
       {/* sair a qualquer hora / voltar pra Kombi */}
-      {!dePatins && !seco && !entrando && !regando && parque !== "andando" && !naBomba && (!discoM || permitido(zona, "patins")) && (
+      {!dePatins && !seco && !entrando && !regando && !andandoAlgo && !naBomba && (!discoM || permitido(zona, "patins")) && (
         <button type="button" data-info="sair" className="l-sair-kombi" onPointerDown={(e) => e.stopPropagation()} onClick={irDePatins}>{veiculo ? "descer" : "sair da kombi"}</button>
       )}
       {/* (05/11) no deserto e no subúrbio, o lugar do botão é da moto (trancada até T14) */}
-      {motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
+      {motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && !andandoAlgo && (
         <button type="button" data-info="moto" className={`l-sair-kombi is-moto${permitido(zona, "patins") ? " is-segundo" : ""}`} onPointerDown={(e) => e.stopPropagation()} onClick={irDeMoto}>moto</button>
       )}
-      {discoM && !motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && parque !== "andando" && (
+      {discoM && !motoOk && !dePatins && !veiculo && !seco && !entrando && !regando && !naBomba && !andandoAlgo && (
         <button type="button" data-info="moto" className={`l-sair-kombi is-trancado${permitido(zona, "patins") ? " is-segundo" : ""}`} aria-label={`moto · trancada: ${TRANCA_MOTO}`} onPointerDown={(e) => e.stopPropagation()} onClick={() => setMotoAviso(true)}><Cadeado /> moto</button>
       )}
       {motoAviso && <p className="l-pagina-fechada"><Cadeado />a moto · {TRANCA_MOTO}</p>}
@@ -3049,7 +3126,7 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
       )}
       {dePatins && !pertoComb && !pertoKombi && !msgPatins && !discoM && <p className="l-pagina-fechada">{seco ? "de patins · o posto ou uma bomba no mapa" : "de patins · a Kombi ficou estacionada"}</p>}
       {msgPatins && <p className="l-pagina-fechada">{msgPatins}</p>}
-      {pertoComb && !dePatins && !naBomba && !entrando && !regando && parque !== "andando" && !postoAberto && !esperandoPosto && (
+      {pertoComb && !dePatins && !naBomba && !entrando && !regando && !andandoAlgo && !postoAberto && !esperandoPosto && (
         <button type="button" className="l-regar-btn is-bomba" onPointerDown={(e) => e.stopPropagation()} onClick={() => abastecer(pertoComb)}>
           {pertoComb === "posto" ? "abastecer · o posto" : "abastecer · a bomba"}
         </button>
@@ -3072,12 +3149,12 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
       {discoM && pertoOficina && !oficinaAberta && !pausado && (
         <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: CHAO_LUGARES.oficina.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setOficinaAberta(true) }}>entrar · a oficina</button>
       )}
-      {salaPerto && !paginaPerto && !entrando && !regando && parque !== "andando" && onVisitar && (
+      {salaPerto && !paginaPerto && !entrando && !regando && !andandoAlgo && onVisitar && (
         <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ffc857" }} onPointerDown={(e) => e.stopPropagation()} onClick={() => { onVisitar(salaPerto); setSalaPerto(null) }}>entrar · {LUGARES[salaPerto].nome}</button>
       )}
       {(() => {
         const lp = PAGINAS.find((x) => x.id === paginaPerto)
-        if (!lp || entrando || regando || parque === "andando") return null
+        if (!lp || entrando || regando || andandoAlgo) return null
         // (vitrine, 02/11) trancado não fecha a porta: entra e vê as máquinas, com
         // o cadeado e o que libera (o aviso vai junto pra página: ?tranca=)
         const dona = lp.exige && trancadaPelaHistoria(lp, save.objetos) ? donaDaFaixa(lp.exige) : null
@@ -3109,8 +3186,8 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
         </>
       )}
       {fotoParque && <p className="l-montanha-foto">{fotoParque}</p>}
-      {canteiro && !regando && parque !== "andando" && trancas?.canteiros && <p className="l-pagina-fechada"><Cadeado />os canteiros · {trancas.canteiros}</p>}
-      {canteiro && !regando && parque !== "andando" && !trancas?.canteiros && (
+      {canteiro && !regando && !andandoAlgo && trancas?.canteiros && <p className="l-pagina-fechada"><Cadeado />os canteiros · {trancas.canteiros}</p>}
+      {canteiro && !regando && !andandoAlgo && !trancas?.canteiros && (
         <button type="button" className="l-regar-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => { jogo.current.encostando = true; setRegando(canteiro) }}>regar as flores</button>
       )}
       {regando && (
@@ -3120,7 +3197,7 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
           </div>
         </div>
       )}
-      {parque !== "andando" && (
+      {!andandoAlgo && (
         <Mapa M={M} apagada={viaApagada} aberta={viaAberta} foco={viaFoco} pose={jogo} missao={lugarDaMissao} marca={marca} onMarcar={setMarca} onAberto={(a) => { jogo.current.noMapa = a }} viagens={aneis.viagens} onViajar={viajar} onToqueMini={() => !!(discoM && oculos && anelApi.current?.toque())} pedido={pedeMapa} missoes={discoM ? mapaMissoes : null} painel={discoM ? mapaPainel : null} onIcone={onMapaIcone} fase={historia?.fase ?? null} alvoChao={alvoChao} corridaRua={corridaNoMapa}
           onDrone={droneOk ? (via) => { if (via === "mini" && DRONE.alvo) ligarDrone(false); else { ligarDrone(true); setDronePainel(via === "pedido" && !!(discoM && mapaPainel)) } return true } : undefined} />
       )}
@@ -3180,7 +3257,7 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
       {/* (T42) o GPS: a barra com o ícone pra mirar, em toda missão; do lado, o volante (o piloto, docs/piloto.md) */}
       {discoM && oculos && (
         <Gps M={M} pose={jogo as unknown as React.RefObject<PoseGps>} refs={{ marca: marcaRef, vaga: vagaRef, chao: alvoChao, livre: historia?.fase === "dunas" ? DUNAS_ALVO : null, racha: rachaRef }} icone={checklistHolo?.chave ?? null}
-          escondido={drone || !!cinema || !!cenaLugar || parque === "andando"} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} semPiloto={semPiloto} apagada={viaApagada} />
+          escondido={drone || !!cinema || !!cenaLugar || andandoAlgo} infinito={infinito} onInfinito={() => setInfinito((v) => !v)} semPiloto={semPiloto} apagada={viaApagada} />
       )}
       {/* (T44) os rachas: o botão "tirar um racha" pisca quando você emparelha com um dos carros do mecânico */}
       {discoM && <RachasHud estado={rachaRef} onFim={(r) => onRacha?.(r)} escondido={drone || !!cinema || !!cenaLugar || noConserto || quebrou || perseguicao || semKombi} />}
@@ -3191,7 +3268,7 @@ export function Corrida({ onPilotoLigado, onVisitar, save, nivel, destino: desti
         // (revisão 3) sem o `intro`: no disco ele é "a cidade quieta" e vale a história toda
         // (HIST, inclusive a carreira), então a D-Bee nunca falava na carreira. A fase
         // ela mesma confere (só carreira e livre); as falas da história são o `fala`
-        ocupado={pausado || !!fala || !!cinema || !!cenaLugar || abertura || chegada || perseguicao || conversa || celular || drone || noConserto || quebrou || parque === "andando"} />}
+        ocupado={pausado || !!fala || !!cinema || !!cenaLugar || abertura || chegada || perseguicao || conversa || celular || drone || noConserto || quebrou || andandoAlgo} />}
       {discoM && semKombi && <VeiculosHud estado={veiculosRef} onPegar={(id) => onPerseguicao?.("escolheu", id)} escondido={drone || !!cinema || !!cenaLugar} />}
       <div className="l-combo" aria-hidden />
       {/* (disco) o hyperlapse: duas camadas de linhas de velocidade correndo pra fora */}
@@ -6753,6 +6830,8 @@ function CenaBase({
       camera.lookAt(mr.olhar)
       tmp.camOlhar.copy(mr.olhar); tmp.camUp.copy(mr.up)
     } else camMontanha.current = null
+    // (09/11) dentro do metrô: a névoa e os cortes por distância seguem o trem, não a Kombi
+    if (CAM_LINHA9.ativa) camera.position.copy(CAM_LINHA9.pos)
     // entrando num lugar que é página: a câmera corta pro outro lado da rua
     const ce = camEntrada.current
     // a câmera calma sabe se foi ela quem enquadrou (pra voltar deslizando)
@@ -7196,7 +7275,7 @@ function CenaBase({
       <Perto nome="fachadas" raio={600} pontos={pertoDe.fachadas}><Seguro nome="fachadas"><Fachadas M={M} abertos={abertos} perto={paginaPerto} /></Seguro></Perto>
       {/* no mapa novo: as flores do asfalto (só de patins, uma malha pelo mapa todo); no de sempre, os canteiros (medidos pelo Perto) */}
       {"ligacoes" in M ? <Seguro nome="flores"><FloresAsfalto M={M} {...floresAsf} /></Seguro> : <Perto nome="flores" raio={500}><Seguro nome="flores"><Flores M={M} regadas={regadas} /></Seguro></Perto>}
-      <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>
+      {PARQUE_CONF.ligado && <Perto nome="parque" raio={700} pontos={pertoDe.parque}><Seguro nome="parque"><Parque M={M} passeio={passeio} /></Seguro></Perto>}
       {"disco" in M && <Perto nome="ruínas" raio={SUBURBIO.r + 700} pontos={pertoDe.ruinas}><Seguro nome="ruínas"><Suspense fallback={null}><RuinasSuburbio M={M as MundoDisco} hora={horaCeuRef} /></Suspense></Seguro><Seguro nome="corrida de rua"><CorridaRuaCena chao={(M as MundoDisco).chaoEm} jogo={jogo as unknown as React.RefObject<{ wx?: number; wz?: number; rumo?: number; v: number; vx?: number; voo?: boolean; tempo: number }>} comb={combRef} /></Seguro></Perto>}
       <Perto nome="subúrbio" raio={centroSub.r + 700} pontos={pertoDe.suburbio}><Seguro nome="subúrbio"><Suspense fallback={null}><Suburbio cx={centroSub.x} cz={centroSub.z} raioChao={centroSub.r} /></Suspense></Seguro></Perto>
       <Estatico>

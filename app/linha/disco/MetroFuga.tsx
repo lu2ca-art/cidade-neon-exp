@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useRef } from "react"
 import type { HistoriaDisco } from "./historia"
 import { CONFIG_METRO, FALAS_METRO, fimDoMetro, type PassoMetro } from "./metro"
-import { Metro, type FimMetro } from "../metro/Metro"
+import { Metro, type FimMetro, type HospedeMetro } from "../metro/Metro"
 
 export interface MetroFugaProps {
   historia: HistoriaDisco
@@ -25,9 +25,11 @@ export interface MetroFugaProps {
   onPasso: (p: PassoMetro) => void
   // o "seguir" do fim: volta pro mundo
   onSair: () => void
+  // (09/11) dentro do trem da cidade (estrada/Linha9.tsx): sem canvas próprio
+  hospede?: HospedeMetro
 }
 
-export function MetroFuga({ historia, onPasso, onSair }: MetroFugaProps) {
+export function MetroFuga({ historia, onPasso, onSair, hospede }: MetroFugaProps) {
   const hRef = useRef(historia)
   const passoRef = useRef(onPasso)
   useEffect(() => { hRef.current = historia; passoRef.current = onPasso }, [historia, onPasso])
@@ -36,6 +38,6 @@ export function MetroFuga({ historia, onPasso, onSair }: MetroFugaProps) {
     if (p.h !== hRef.current || p.eventos.length) passoRef.current(p)
   }, [])
   return (
-    <Metro semente={CONFIG_METRO.semente} onFim={fim} onSeguir={onSair} seguirSePego={!CONFIG_METRO.pegoRecomeca} antes={FALAS_METRO.entrada} />
+    <Metro semente={CONFIG_METRO.semente} onFim={fim} onSeguir={onSair} seguirSePego={!CONFIG_METRO.pegoRecomeca} antes={FALAS_METRO.entrada} hospede={hospede} />
   )
 }

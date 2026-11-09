@@ -28,9 +28,15 @@ export const AJUSTE = {
   vGuardaMax: 6.6, // …até aqui
   reacao: 0.9, // o tempo dele levantar
   alcance: 0.74, // a distância em que ele te agarra
+  // (09/11, bíblia §13) as pessoas têm a física dos prédios (Corrida.tsx, grudar): um
+  // campo em volta, quem encosta gruda e desliza pelo lado mais perto, sem tropeçar
+  campoPessoa: 0.36, // m além do corpo
+  giroCampo: 14, // o mesmo 14/s do grudar
+  perdaCampo: 0.18, // de frente, perde até isto da velocidade (1 vez a cada 0,35 s)
+  empurrar: false, // só se desvia de pessoas: sem empurrão
 }
 
-export interface Corpo { x: number; z: number; px: number; pz: number; vx: number; vz: number; passo: number }
+export interface Corpo { x: number; z: number; px: number; pz: number; vx: number; vz: number; passo: number; quique?: number }
 export interface Gente { x: number; z: number; x0: number; empurrado: number; dir: number; fase: number }
 
 export class Fuga {
@@ -58,6 +64,11 @@ export class Fuga {
   apagao = { proximo: 4.5, ate: 0 }
   odometro = 0 // quanto o trem já andou (o túnel passando)
   vTrem = 21
+  // (09/11) a viagem rápida: sentado no banco até o violão tocar (fase "intro")
+  sentado = false
+  // (09/11) a fuga do violão na viagem: o guarda agarra, mas o violão fica com você
+  violaoFica = false
+  agarrou = false
   // o que aconteceu neste passo (a cena e o som consomem)
   eventos: Evento[] = []
   // entrada
@@ -78,8 +89,17 @@ export class Fuga {
     this.apagao.proximo = 4.5 + this.r() * 2.5
   }
 
+  // (09/11) senta no banco da direita, na altura em que ele nasce (quem estava ali sai)
+  sentar() {
+    this.sentado = true
+    const v = this.voce
+    v.x = v.px = 1.05
+    this.planta.sentados = this.planta.sentados.filter((s) => s.lado < 0 || Math.abs(s.z - v.z) > 0.7)
+  }
+
   comecar() {
     if (this.fase !== "intro") return
+    if (this.sentado) { this.sentado = false; this.voce.x = this.voce.px = 0.55 } // levanta pro corredor
     this.fase = "fuga"
     this.eventos.push("apito")
   }
@@ -150,9 +170,10 @@ export class Fuga {
 
     // ele te alcançou
     if (this.fase === "fuga" && g.parado <= 0 && this.distancia < AJUSTE.alcance) {
-      if (this.violao === "costas") {
+      if (!this.agarrou) {
         // a 1ª vez: ele agarra o violão. Você solta e ganha um embalo
-        this.violao = "perdido"
+        this.agarrou = true
+        if (!this.violaoFica) this.violao = "perdido"
         g.parado = 1.15
         this.embalo = AJUSTE.tEmbalo
         this.tropeco = 0
@@ -168,7 +189,7 @@ export class Fuga {
   }
 
   private empurrar() {
-    if (this.esperaEmpurra > 0) return
+    if (!AJUSTE.empurrar || this.esperaEmpurra > 0) return
     const v = this.voce
     let alvo: Gente | null = null, melhor = 1.7
     for (const p of this.gente) {
@@ -251,25 +272,36 @@ export class Fuga {
         if (dz < 0 && ehVoce) c.vz *= 0.6
       }
     }
+    // (09/11) a gente é como os prédios: não sai do lugar; quem encosta no campo desliza
     for (const p of this.gente) {
-      const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz), m = r + 0.27
+      const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz), m = r + AJUSTE.campoPessoa
       if (d < m && d > 1e-6) {
-        c.x = p.x + (dx / d) * m; c.z = p.z + (dz / d) * m
-        if (ehVoce) {
-          if (this.tropeco <= 0 && this.embalo <= 0 && c.vz > 2.5 && dz < 0) {
-            this.tropeco = AJUSTE.tTropeco
-            this.colisoes++
-            p.dir = p.x >= c.x ? 1 : -1; p.empurrado = Math.max(p.empurrado, 0.6)
-            this.eventos.push("esbarrou")
-          }
-        } else if (p.empurrado < 0.3) {
-          // o guarda passa por cima: a pessoa vai pro lado, ele perde o passo
-          p.dir = p.x >= c.x ? 1 : -1; p.empurrado = 1
-          this.guarda.lento = 0.3
-          this.eventos.push("guarda-esbarrou")
-        }
+        const nx = dx / d, nz = dz / d
+        c.x = p.x + nx * m; c.z = p.z + nz * m
+        this.grudar(c, nx, nz, p.x, ehVoce)
       }
     }
+  }
+
+  // a mesma conta do grudar da Kombi (Corrida.tsx): vira pro rumo mais perto ao longo do
+  // campo; de frente, vai pro lado que tem mais corredor
+  private grudar(c: Corpo, nx: number, nz: number, px: number, ehVoce: boolean) {
+    const vel = Math.hypot(c.vx, c.vz)
+    if (vel < 1e-3) return
+    const dx = c.vx / vel, dz = c.vz / vel, dn = dx * nx + dz * nz
+    if (dn > -0.02) return
+    let tx = -nz, tz = nx, s = dx * tx + dz * tz
+    if (Math.abs(s) < 0.2) s = (px >= 0 ? -1 : 1) * tx || 1
+    if (s < 0) { tx = -tx; tz = -tz }
+    const k = Math.min(1, PASSO * AJUSTE.giroCampo)
+    c.vx += (tx * vel - c.vx) * k
+    c.vz += (tz * vel - c.vz) * k
+    if (this.t - (c.quique ?? -9) > 0.35) {
+      c.vz *= 1 - AJUSTE.perdaCampo * dn * dn
+      if (ehVoce) { this.colisoes++; this.eventos.push("esbarrou") }
+      else { this.guarda.lento = 0.3; this.eventos.push("guarda-esbarrou") }
+    }
+    c.quique = this.t
   }
 
   // quem está em pé balança com o trem; quem foi empurrado vai pra beira e fica
