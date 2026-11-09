@@ -11,6 +11,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { AlohanJunto } from "./alohan"
 import { quica, torcida } from "./sons"
 
 const G = 20
@@ -115,6 +116,7 @@ function Cena({ c, fundo, aoPousar }: { c: React.RefObject<Corpo>; fundo: React.
   const camera = useThree((s) => s.camera)
   const olhar = useMemo(() => new THREE.Vector3(), [])
   const balanco = useRef(new Float32Array(64)) // a lona que ainda balança depois do pulo
+  const alohan = useRef<THREE.Group>(null) // (§11) acompanha de cama em cama, atrás da fileira
   useFrame((_, dtReal) => {
     const s = c.current, dt = Math.min(dtReal, 1 / 30)
     if (s.fim) return
@@ -177,12 +179,14 @@ function Cena({ c, fundo, aoPousar }: { c: React.RefObject<Corpo>; fundo: React.
     const cx = s.x + 0.6, cy = 1.6 + s.y * 0.72
     camera.position.lerp(olhar.set(cx, cy, 12 + Math.max(0, s.y - 4) * 0.6), Math.min(1, dt * 4))
     camera.lookAt(s.x + 0.4, cy - 0.5, 0)
+    if (alohan.current) alohan.current.position.x += ((s.cama - 0.5) * PASSO - alohan.current.position.x) * Math.min(1, dt * 2)
   })
   return (
     <>
       <Galpao />
       {Array.from({ length: 40 }, (_, i) => <Lona key={i} i={i} fundo={fundo} />)}
       <Pessoa c={c} />
+      <group ref={alohan} position={[-PASSO / 2, 0, -2.4]}><AlohanJunto pos={[0, 0, 0]} /></group>
     </>
   )
 }

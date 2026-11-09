@@ -2009,6 +2009,9 @@ export default function LinhaPage() {
   }
   // (06/11) os lugares do chão que abrem uma experiência: a porta perto e a página aberta
   const [portaChao, setPortaChao] = useState<LugarAberto | null>(null)
+  // (§11) o ginásio aberto: indo pra lá (marca no mapa, Corrida) ou na porta, o Alohan está no banco do carona
+  const ginasioAberto = !!HIST && !trancado(h13, "ginasio")
+  const alohanNaPorta = ginasioAberto && (portaChao === "ginasio" || portaChao === "quadra")
   const portaChaoT = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [janelaChao, setJanelaChao] = useState<{ app: AppDef; rota: string } | null>(null)
   // entrou num app do celular pelo mundo (a loja, o jardim): o "voltar" volta pra estrada
@@ -2573,7 +2576,8 @@ export default function LinhaPage() {
             onReligar={cOnReligar}
             onSinal={onSinal}
             alvo={cAlvo}
-            levando={levarDrewboy(save) || quadraViva ? "copo" : null}
+            levando={levarDrewboy(save) ? "copo" : quadraViva || alohanNaPorta ? "ontem" : null}
+            alohanNoMapa={ginasioAberto}
             onPilotoLigado={cOnPilotoLigado}
             tanque={save.tanque ?? 1}
             onTanque={onTanque}
@@ -3018,7 +3022,7 @@ export default function LinhaPage() {
         {portaBar && tela.t === "corrida" && !cena && !sinucaBar && <button type="button" className="l-regar-btn is-pagina" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={entrarNoBar}>entrar · o bar</button>}
         {portaChao && tela.t === "corrida" && !cena && !cinema && !janelaChao && !introMissao && !basquete && !esporteEscolha && !esporteJogo && !oficinaTela && !recompensa && !sinucaBar && !trincheiras && (() => {
           const t = trancaChao(portaChao)
-          return <button type="button" data-info="entrar-lugar" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: CHAO_LUGARES[portaChao].cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrarNoChao(portaChao)}>{t && <Cadeado />}entrar · {ENTRADAS[portaChao].nome}{t ? " · ver" : ""}</button>
+          return <button type="button" data-info="entrar-lugar" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: CHAO_LUGARES[portaChao].cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => entrarNoChao(portaChao)}>{t && <Cadeado />}entrar · {!t && (portaChao === "ginasio" || portaChao === "quadra") ? "com o Alohan · " : ""}{ENTRADAS[portaChao].nome}{t ? " · ver" : ""}</button>
         })()}
         {janelaChao && <div className="l-janela-mundo"><AppJanela app={janelaChao.app} rota={janelaChao.rota} onFechar={fecharJanelaChao} /></div>}
         {sinucaBar && <SinucaBar tranca={trancaSinuca(h13)} onSair={() => { setSinucaBar(false); barFechou.current = Date.now() }} />}

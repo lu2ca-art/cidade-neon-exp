@@ -31,6 +31,9 @@ Fonte: `projetos/cidade-neon/episodios.md` e bíblia §10 a §15. A sequência m
 | 8 | Rollercoaster | Notti | passeio tranquilo de metrô (`nizzy`, o evento segue `montanha`) |
 | 9 | CHUVA | LU2CA | perseguição + captura, fuga pelo metrô, show da CHUVA (`lu2ca`) |
 
+## O Alohan no ginásio (§11)
+Em toda visita ele vai junto: banco do carona indo pra lá (marca no mapa, porta ou missão) e em pé dentro dos três esportes (`app/ginasio/alohan.tsx`, nos jogos: vale por qualquer porta, inclusive a quadra).
+
 ## Os shows (§12)
 Sem instrumento, a pessoa canta da plateia (`ShowAfinador`): o medidor é dela, a faixa original não muda e a plateia simulada (`PLATEIA`) é que desafina e distorce. Quem termina pode repetir.
 

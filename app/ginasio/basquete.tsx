@@ -11,6 +11,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
+import { AlohanJunto } from "./alohan"
 import { aro, quica, rede, torcida } from "./sons"
 
 const TEMPO = 60
@@ -154,6 +155,8 @@ function Cena({ lugar, voo, bracos, balanco, bonus, fogo }: { lugar: THREE.Vecto
       <Quadra bonus={bonus} />
       <Rede balanco={balanco} />
       <Jogador pos={lugar} bracos={bracos} />
+      {/* (§11) o Alohan do lado da cesta, olhando o arremesso */}
+      <AlohanJunto pos={[1.25, 0, -5.4]} vira={-0.28} />
       <mesh ref={bola}><sphereGeometry args={[0.12, 20, 16]} /><meshStandardMaterial color="#e8661a" emissive={fogo ? "#ff5a00" : "#000000"} emissiveIntensity={fogo ? 0.8 : 0} roughness={0.7} /></mesh>
       <mesh ref={chama}><sphereGeometry args={[0.2, 12, 10]} /><meshBasicMaterial color="#ffb000" transparent opacity={0.35} depthWrite={false} /></mesh>
     </>
