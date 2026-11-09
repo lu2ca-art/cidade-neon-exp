@@ -9,7 +9,8 @@ import { BASE_TESTE, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
 import { ligarTeste } from "./chaveSave"
 import { pedirDescida } from "./disco/elevadores"
 import { esquecerTerror } from "./disco/terror"
-import { apagarOndeParou } from "./estrada/ondeParou"
+import { apagarOndeParou, gravarOndeParou } from "./estrada/ondeParou"
+import { FEIRA_RUMO, naFeira } from "./disco/feira"
 
 import { CONFIG13, IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
 import { LETRAS } from "./disco/letras"
@@ -89,7 +90,7 @@ function discoDa(parte: string): Record<string, unknown> | null {
       const antes = sub === "porta" ? ordem : ordem.slice(0, ordem.indexOf(sub))
       const passos13 = antes.map((q) => `${m}:${q}`)
       const como = sub === "porta" ? null : MISSOES13[m][sub].como
-      return { ...base, passos13, ...(como && (como.t === "cena" || como.t === "letra") ? { aberta13: `${m}:${sub}` } : {}) }
+      return { ...base, passos13, ...(como && (como.t === "cena" || como.t === "letra" || como.t === "feira") ? { aberta13: `${m}:${sub}` } : {}) }
     }
     if (sub) return undefined as unknown as null
     return base
@@ -205,9 +206,11 @@ export function aplicarParteDeTeste(): boolean {
   // o save de verdade do dono não é tocado. A aba fica no modo teste (?teste=1)
   ligarTeste()
   apagarOndeParou() // o teste começa onde a parte manda, não onde o último teste parou
+  // (09/11, ep. 5) a missão do Tony começa na rua da feira, de frente pras barracas
+  if (parte === "missao.tony" || parte === "missao.tony.jogo" || parte === "missao.swav") { const p = naFeira(-16, 0); gravarOndeParou({ t: "chao", x: p.x, z: p.z, rumo: FEIRA_RUMO + Math.PI / 2 }) }
   if (disco === null) localStorage.removeItem(CHAVE_SAVE)
   // (T02) na carreira, as faixas feitas (o que acende as pistas) batem com as missões feitas
-  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
+  else localStorage.setItem(CHAVE_SAVE, JSON.stringify({ ...BASE_TESTE, ...(disco.fase === "carreira" ? { objetos: parte === "carreira.meio" || parte === "loja" || parte.startsWith("torre") || parte.startsWith("palcos") || parte.startsWith("xenom") ? ["nectar", "sexta"] : [] } : {}), ...(parte === "loja" ? GRANA : {}), ...(parte.startsWith("missao.tony") ? { agua: 60, economia: 1 } : {}), ...(parte === "violao" || parte === "metro" ? { violao: true, objetos: ["nectar", "sexta"] } : {}), ...(parte.startsWith("perseguicao") ? { popularidade: 60 } : {}), ...(parte === "final" || parte.startsWith("final.") || parte.startsWith("mundo.depois") ? { objetos: PISTAS.map((x) => x.id) } : {}), ...(parte.startsWith("oficina") || parte.startsWith("quebra") ? { agua: parte === "oficina.loja" ? 80 : 60, economia: 1 } : {}), disco }))
   // (T03) a loja já abre no celular
   if (parte === "loja") url.searchParams.set("app", "loja")
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")

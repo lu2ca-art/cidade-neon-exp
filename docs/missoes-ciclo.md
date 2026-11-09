@@ -30,7 +30,7 @@ Onde começa: a chave do lugar (a posição vem de `M.onde`, a tabela do mundoDi
 | Ella | `lugar:escondido` (CHUVA 85%) | a casa: o filme, os quadros, pintar | ícone a 55% da CHUVA, a casa a 85%: longe um do outro | ícone na casa; vale em qualquer via |
 | Notti | `lugar:topo` (DopaminA 90%) | trilha 8 bits → a máquina | ícone a 55% da DopaminA, o terraço a 90% | ícone no terraço; vale em qualquer via |
 | Nizzy | `lugar:palco-rollercoaster` (Rollercoaster 60%), e a montanha-russa no parque | o clipe → andar na montanha-russa → a porta no palco | ícone fora do palco; na montanha-russa ninguém dizia que era no parque | ícone no palco; na vez da montanha-russa o Nexo diz "anda na montanha-russa do parque"; depois "volta até o palco" |
-| Tony Gordo | `lugar:palco-swav` (Swav 50%) | a horta → cozinhar | ícone a 55% da Swav, o palco a 50% | ícone no palco; vale em qualquer via |
+| Tony Gordo | `lugar:palco-swav` (Swav 50%) | a feira → cozinhar | ícone a 55% da Swav, o palco a 50% | ícone no palco; vale em qualquer via |
 | O final | `lugar:casa-dbee` | (em breve: T29) | — | sem mudança |
 
 ## O que mudou em cada parte

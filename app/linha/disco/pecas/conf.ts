@@ -115,17 +115,7 @@ export const CLIPE = {
   ],
 }
 
-// ── T25 · Tony Gordo · o jogo (decidido): regar a horta atrás do restaurante ──
-export const HORTA = {
-  // os canteiros da horta (o que nasce em cada um)
-  plantas: ["tomate", "manjericão", "pimenta", "alface", "milho", "abóbora"],
-  // quanto de água cada muda precisa (segundos regando)
-  regaS: 1.1,
-  // regar demais encharca (a muda some um pouco e volta)
-  demaisS: 2.4,
-}
-
-// ── T25 · Tony Gordo · a arte (decidido 30/10): cozinhar um prato com o que nasceu ──
+// ── T25 · Tony Gordo · a arte (decidido 30/10): cozinhar um prato com o que veio da feira ──
 export const COZINHAR = {
   escolher: 3, // quantos ingredientes vão no prato
   // o fogo: segura até a barra chegar no ponto (0–1); o ponto certo é esta faixa

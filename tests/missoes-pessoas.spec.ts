@@ -103,21 +103,9 @@ test("T24 · Nizzy: o clipe → a montanha-russa → o parque", async ({ page })
   expect(erros).toEqual([])
 })
 
-test("T25 · Tony Gordo: regar a horta → cozinhar → os canteiros", async ({ page }) => {
-  const erros = await abrir(page, "missao.tony.jogo")
-  const h = page.locator(".l-peca.is-horta")
-  await expect(h).toBeVisible({ timeout: 30_000 })
-  const mudas = h.locator(".l-horta-muda")
-  // segura em cima de cada muda até ela nascer (a água que já caiu fica)
-  for (let volta = 0; volta < 3; volta++) for (let i = 0; i < 6; i++) {
-    if (await mudas.nth(i).evaluate((e) => e.classList.contains("is-nasceu"))) continue
-    const b = (await mudas.nth(i).boundingBox())!
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
-    await page.mouse.down(); await page.waitForTimeout(1500); await page.mouse.up()
-  }
-  await expect(h.locator(".l-horta-muda.is-nasceu")).toHaveCount(6)
-  await page.screenshot({ path: `${PASTA}/tony-1-horta.png` })
-  await h.locator(".is-seguir").click()
+// (09/11, ep. 5) a barganha é no 3D da feira (corte com o dedo): aqui, do prato em diante
+test("T25 · Tony Gordo: cozinhar o que veio da feira → os canteiros", async ({ page }) => {
+  const erros = await abrir(page, "missao.tony.arte")
   const cz = page.locator(".l-peca.is-cozinhar")
   await expect(cz).toBeVisible({ timeout: 15_000 })
   for (const k of ["1", "2", "3"]) await page.keyboard.press(k)

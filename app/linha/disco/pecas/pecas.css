@@ -83,21 +83,7 @@
 .l-clipe-fita li { padding: 3px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); font: 700 10px var(--mono, ui-monospace); }
 .l-clipe-fita li.is-tempo { background: var(--cor); color: #06060c; }
 
-/* T25 · a horta e a cozinha */
-.l-horta-chao { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px; border-radius: 14px; background: linear-gradient(#3a2618, #24160d); touch-action: none; }
-.l-horta-muda { position: relative; height: 92px; border-radius: 10px; border: 2px solid transparent; background: radial-gradient(ellipse at 50% 85%, color-mix(in srgb, #1f6b3a calc(var(--a) * 100%), #4b3020) 0 40%, transparent 41%); cursor: pointer; overflow: hidden; user-select: none; }
-.l-horta-muda.is-sel { border-color: rgba(255, 255, 255, 0.35); }
-.l-horta-muda.is-regando { border-color: #2fe8ff; }
-.l-horta-planta { position: absolute; left: 50%; bottom: 18px; width: 6px; height: calc(10px + var(--a) * 34px); margin-left: -3px; border-radius: 3px; background: #4fd36b; transition: height 0.1s; }
-.l-horta-planta::before, .l-horta-planta::after { content: ""; position: absolute; top: 0; width: 16px; height: 9px; border-radius: 50%; background: #5dffa0; }
-.l-horta-planta::before { right: 3px; transform: rotate(-25deg); }
-.l-horta-planta::after { left: 3px; transform: rotate(25deg); }
-.l-horta-muda.is-nasceu .l-horta-planta { height: 48px; background: #3fbf5f; box-shadow: 0 -6px 0 6px hsl(var(--h) 80% 55%); }
-.l-horta-agua { position: absolute; left: 6px; right: 6px; bottom: 4px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); }
-.l-horta-agua::after { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--a)); background: #2fe8ff; border-radius: 2px; }
-.l-horta-muda.is-regando::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(100deg, transparent 0 9px, rgba(47, 232, 255, 0.45) 9px 10px); background-size: 100% 30px; animation: l-chuva 0.35s linear infinite; pointer-events: none; }
-@keyframes l-chuva { to { background-position: 0 30px; } }
-.l-horta-muda small { position: absolute; top: 5px; left: 0; right: 0; font: 700 9px var(--mono, ui-monospace); text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
+/* T25 · a cozinha */
 .l-cozinhar-ingr { display: flex; flex-wrap: wrap; gap: 6px; }
 .l-cozinhar-ingr button { padding: 9px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #fff; font: 13px system-ui, sans-serif; cursor: pointer; }
 .l-cozinhar-ingr button.is-esc { border-color: var(--cor); background: color-mix(in srgb, var(--cor) 28%, transparent); }

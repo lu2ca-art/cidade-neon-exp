@@ -1,0 +1,13 @@
+/* a barganha na feira: nada de fundo, o mundo aparece inteiro */
+.fa-raiz { position: absolute; inset: 0; z-index: 74; touch-action: none; user-select: none; -webkit-user-select: none; }
+.fa-pincel { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.fa-topo { position: absolute; left: 0; right: 0; top: max(10px, env(safe-area-inset-top)); display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 0 12px; pointer-events: none; }
+.fa-sair { pointer-events: auto; padding: 8px 12px; border: 2px solid #1a1208; border-radius: 4px; background: #f1e5c8; color: #1a1208; font: 800 13px ui-sans-serif, sans-serif; cursor: pointer; }
+.fa-bolso { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; padding: 7px 10px; border: 2px solid #1a1208; border-radius: 4px; background: #f8d94c; color: #1a1208; font: 700 12px ui-sans-serif, sans-serif; transform: rotate(-1deg); }
+.fa-bolso b { font: 900 21px Impact, ui-sans-serif, sans-serif; color: #d11d1d; }
+.fa-bolso b.is-coube { color: #177a2c; }
+.fa-pregao { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: max-content; max-width: 86%; margin: 0; padding: 6px 12px; border-radius: 4px; background: rgba(241, 229, 200, 0.92); color: #1a1208; font: 700 13px ui-sans-serif, sans-serif; text-align: center; pointer-events: none; animation: fa-entra 0.3s ease-out; }
+.fa-fim { position: absolute; left: 0; right: 0; bottom: max(26px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.fa-fim p { margin: 0; padding: 5px 12px; background: #f1e5c8; color: #1a1208; font: 900 20px Impact, ui-sans-serif, sans-serif; }
+.fa-fim button { pointer-events: auto; padding: 14px 20px; border: 3px solid #1a1208; border-radius: 4px; background: #d11d1d; color: #fff; font: 900 20px Impact, ui-sans-serif, sans-serif; cursor: pointer; animation: fa-entra 0.25s ease-out; }
+@keyframes fa-entra { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }

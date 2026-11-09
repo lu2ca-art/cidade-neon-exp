@@ -49,9 +49,9 @@ const CHAO_POR_FASE: Record<string, readonly LugarChao[]> = {
   minhoca: [], casa: [], dunas: [],
   bar: ["bar"],
   // (06/11) depois do bar, os lugares que abrem uma experiência já estão no mapa (tudo visitável)
-  oficina: ["bar", "oficina", ...CHAO_ABERTOS],
-  subir: ["bar", "oficina", ...CHAO_ABERTOS],
-  nectar: ["bar", "oficina", ...CHAO_ABERTOS],
+  oficina: ["bar", "oficina", "feira", ...CHAO_ABERTOS],
+  subir: ["bar", "oficina", "feira", ...CHAO_ABERTOS],
+  nectar: ["bar", "oficina", "feira", ...CHAO_ABERTOS],
 }
 export function chaoNoMapa(fase: string | null | undefined, alvo: LugarChao | null): LugarChao[] {
   const base = fase && CHAO_POR_FASE[fase] ? CHAO_POR_FASE[fase] : CHAO_FIXOS

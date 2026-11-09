@@ -271,6 +271,7 @@ export const ABERTOS_DBEE: Record<LugarAberto, { texto: string; fechado?: string
   brecho: { texto: "o brechó tem roupa nova na arara. bora trocar o visu?" },
   flores: { texto: "os canteiros de flores ficam no oeste. passa lá e cuida delas" },
   quadra: { texto: "a quadra tá liberada. vai lá arremessar umas", fechado: "passa na quadra: o Alohan tá lá e ela ainda não abriu" },
+  feira: { texto: "tem feira no subúrbio, bem colorida. passa lá?" }, // RASCUNHO
 }
 
 // (06/11) o que entrou hoje e ninguém apontava: os lugares do chão, o grafite

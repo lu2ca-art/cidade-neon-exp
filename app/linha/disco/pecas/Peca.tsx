@@ -13,7 +13,6 @@ import { Vinheta } from "./Vinheta"
 import { Trilha8 } from "./Trilha8"
 import { Maquina } from "./Maquina"
 import { Clipe } from "./Clipe"
-import { Horta } from "./Horta"
 import { Cozinhar } from "./Cozinhar"
 import { DiscoAntigo } from "./DiscoAntigo"
 import { SinucaMissao } from "./SinucaMissao"
@@ -29,8 +28,7 @@ const PECAS: Record<CenaId, { titulo: string; C: (p: PecaProps) => React.ReactNo
   trilha8: { titulo: "a trilha de 8 bits", C: Trilha8 },
   maquina: { titulo: "a máquina do Notti", C: Maquina, tela: "cheia" },
   clipe: { titulo: "filmar o clipe", C: Clipe },
-  horta: { titulo: "regar a horta", C: Horta },
-  cozinhar: { titulo: "cozinhar com o que nasceu", C: Cozinhar },
+  cozinhar: { titulo: "cozinhar com o que veio da feira", C: Cozinhar },
   "disco-antigo": { titulo: "um disco antigo", C: DiscoAntigo },
   sinuca: { titulo: "a sinuca", C: SinucaMissao, tela: "cheia" },
 }

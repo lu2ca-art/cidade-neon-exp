@@ -80,8 +80,8 @@ export const INTRO_MISSOES: Partial<Record<MissaoId, IntroMissao>> = {
   // Swav · o tempo das coisas: plantar, esperar, provar
   tony: {
     quem: "Tony Gordo",
-    texto: "aqui em cima tudo tem gosto de nada. a Swav é sobre o tempo das coisas: plantar, esperar, provar. rega comigo?",
-    segue: "nasceu. agora cozinha devagar. sem pressa é que fica bom",
+    texto: "quatro sacos: cogumelo, pimentão colorido, abobrinha e cenoura. o dinheiro dá pra um. chora o preço com o feirante",
+    segue: "tá tudo no saco. agora cozinha devagar. sem pressa é que fica bom",
   },
 }
 

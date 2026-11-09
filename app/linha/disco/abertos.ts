@@ -15,6 +15,8 @@ export type Entrada =
   | { t: "janela"; nome: string; rota: string; icone: AppId; porta?: PortaId; pra?: string }
   | { t: "app"; nome: string; app: "loja" | "jardim"; aba?: Categoria }
   | { t: "basquete"; nome: string; porta: PortaId; pra: string }
+  // (09/11, ep. 5) a barganha é ali mesmo, na banca: sem janela (page.tsx, abrirFeira)
+  | { t: "feira"; nome: string }
 
 export const ENTRADAS = {
   ginasio: { t: "janela", nome: "o ginásio", rota: "/ginasio", icone: "fliperama", porta: "ginasio", pra: "jogar" },
@@ -27,6 +29,7 @@ export const ENTRADAS = {
   flores: { t: "app", nome: "as flores", app: "jardim" },
   // a quadra (já existia): o basquete livre depois da missão do Alohan; antes, o cadeado
   quadra: { t: "basquete", nome: "a quadra", porta: "quadra", pra: "jogar basquete" },
+  feira: { t: "feira", nome: "a feira" },
 } as const satisfies Partial<Record<LugarChao, Entrada>>
 
 export type LugarAberto = keyof typeof ENTRADAS
