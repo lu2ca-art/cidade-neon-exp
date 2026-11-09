@@ -55,7 +55,7 @@ import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
 import { chaoAtivos, chaoDentro, ehPeca, pertoDoChao } from "../disco/achados"
-import { IDS_NO_MUNDO, INSTRUMENTOS_MUNDO, NO_MUNDO, PONTOS_NO_MUNDO, achadosAgora } from "../disco/instrumentosMundo"
+import { IDS_NO_MUNDO, INSTRUMENTOS_MUNDO, NO_MUNDO, PONTOS_NO_MUNDO, temAgora } from "../disco/instrumentosMundo"
 import { InstrumentosNoMundo } from "../disco/InstrumentosNoMundo"
 import type { InstrumentoId } from "../disco/instrumentos"
 import { ehAberto } from "../disco/abertos"
@@ -1764,9 +1764,9 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
     const iv = setInterval(() => {
       const j = jogo.current
       if (!j.voo || j.wx === undefined || j.wz === undefined || j.ar) return
-      const achados = achadosAgora()
+      const tem = temAgora()
       for (const id of IDS_NO_MUNDO) {
-        if (achados.includes(id)) continue
+        if (tem.includes(id)) continue
         const p = INSTRUMENTOS_MUNDO[id], d = Math.hypot(j.wx - p.x, j.wz - p.z)
         if (d > NO_MUNDO.raioAchar * 3) { perto.delete(id); continue }
         if (d < NO_MUNDO.raioAchar && !perto.has(id)) { perto.add(id); onHistoriaRef.current?.(`instrumento:${id}`) }

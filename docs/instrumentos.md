@@ -97,12 +97,12 @@ dela, onde dá pra tocar e samplear usando a batida."
 - **Os marcos:** `InstrumentosNoMundo.tsx`. Pedras + anel + luz baixa na cor dele, um desenho só por material;
   o modelo real (o mesmo `instrumentos.glb`) só monta a menos de 140 m. Nada por quadro.
 - **Na Kombi:** `app/linha/estrada/InstrumentosKombi.tsx`, prateleira na parede de ripas em cima do sofá
-  (olhar pra esquerda de dentro). Só os achados. Tocar para a trilha (bíblia §9) e ela volta 5 s depois do último toque.
+  (olhar pra esquerda de dentro). Tudo que ele tem: achados e ganhos em missão (decisão do dono, 09/11). Tocar para a trilha (bíblia §9) e ela volta 5 s depois do último toque.
 - **Na casa:** a caixa de pads na mesa (`InstrumentosCasa.tsx`, `Sampler`). Toca um instrumento, toca a caixa:
   entra em `h.instrumentosSampleados` e o B4TIDA abre por cima (`BatidaCasa.tsx`, `/batida?sample=<id>`) com uma faixa desse som
   na música "samples da D-Bee" (a música do jogador não é tocada). Só vale no gesto de tocar os instrumentos.
 - **O som no B4TIDA:** `"anc:<id>"` (`batida/estudio/sons.ts`), desenhado num OfflineAudioContext
   (`disco/instrumentoAmostra.ts`) com a MESMA receita do jogo (`instrumentos.ts` `soarTimbre`); o djembê usa o tambor gravado.
   Na bateria, cada pad é uma nota dele; os afinados também aparecem nos instrumentos melódicos. A lista sai do save.
-- **Save:** só campos novos e opcionais; save antigo lê `?? []`. Os da missão seguem em `h.instrumentos` (casa); achar não mexe neles.
+- **Save:** só campos novos e opcionais; save antigo lê `?? []`. Os da missão seguem em `h.instrumentos`: a casa mostra só esses, sem instrumentos iniciais (dono, 09/11); o marco de um que ele já tem some do chão; achar não mexe neles.
 - **Teste:** Mesa → `?parte=instrumentos.mundo`, `?parte=instrumentos.kombi`, `?parte=instrumentos`.
