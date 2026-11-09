@@ -25,7 +25,7 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
-    parte: "feira.livre",
+    parte: "missao.tony.jogo",
     nome: "Revisão: feira só leva se tiver saldo; tecla solta não prende o acelerador",
     data: "2026-11-09",
     tarefa: "revisão de bugs",
@@ -48,6 +48,8 @@ export const MESA: Cartao[] = [
     olhar: "Três links, o mesmo palco do subúrbio em três momentos da história: compare o começo (\"pouca gente\"), o meio e o fim (\"cheio\"). A plateia enche da frente pro fundo e a porta do bar enche junto. Ande pela rua: mais gente, e quem te conhece para, vira e levanta os braços quando você passa. O número da plateia dos shows também cresce (o show do bar tem mais gente em volta). De patins, subir até a cidade agora gasta água como a Kombi; a porta do elevador continua de graça. As falas sobre a revolução chegam no notch ao longo dos episódios (todas são RASCUNHO, em disco/amigosTextos.ts).",
     perguntas: ["Dá pra sentir que tem mais gente a cada etapa, sem ninguém explicar?", "Gente levantando os braços quando você passa funciona, ou prefere outro jeito de te reconhecerem?", "No celular a rua continuou leve?", "As falas sobre a revolução estão no tom? Reescreva o que quiser."],
     mais: [{ parte: "povo.pouco", nome: "pouca gente (começo da história)" }, { parte: "povo.meio", nome: "metade da história" }],
+  },
+  {
     parte: "bar",
     nome: "A fachada do bar: agora é boteco de verdade, na porta do subúrbio",
     data: "2026-11-09",
