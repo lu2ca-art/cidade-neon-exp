@@ -15,6 +15,7 @@ import { KOMBI_LAYOUT } from "@/lib/kombi-layout"
 import { EstudioKombi } from "./EstudioKombi"
 import { InteriorKombi, lata } from "./InteriorKombi"
 import { InteriorModelado } from "./InteriorModelado"
+import { InstrumentosKombi } from "./InstrumentosKombi"
 import { estacao as getEstacao, type EstacaoId, type ObjetoId } from "../data"
 
 // o interior da drive-v2 encaixado na Kombi da estrada (cúpula panorâmica):
@@ -137,6 +138,7 @@ export function Cabine({ balanco, disco, objetos, carona, onTocaDiscos, volante,
   return (
     <>
     <Suspense fallback={null}><InteriorModelado tinta={lata(tinta)} onPronto={pronto} /></Suspense>
+    <InstrumentosKombi escala={ESCALA} desloca={DESLOCA} />
     <group scale={ESCALA} position={DESLOCA}>
       <KombiHippie isPlaying={disco} hideExterior semTeto semPainel semParedes onItemClick={(item) => { if (item === "toca") onTocaDiscos?.() }} />
       <EstudioKombi escala={ESCALA} tinta={lata(tinta)} estatico={!modelado} />

@@ -23,6 +23,7 @@
 // quadro, só mexe em quem foi tocado há menos de 0,6 s, sem alocar nada.
 
 import { useGLTF } from "@react-three/drei"
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { ModeloSeguro } from "../estrada/Seguro"
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
 import { useEffect, useMemo, useRef, type ReactNode } from "react"
@@ -33,6 +34,7 @@ import { bip } from "./pecas/sons"
 import { daMissao } from "./vitrine"
 
 import { INSTRUMENTOS_ANCESTRAIS, ehInstrumento, tocarInstrumento, type InstrumentoId } from "./instrumentos"
+import { pedirSample } from "./instrumentosMundo"
 export type { InstrumentoId }
 
 // tudo que dá pra afinar fica aqui
@@ -199,10 +201,37 @@ function ModeloGlb({ id, a }: { id: InstrumentoId; a: boolean }) {
   )
 }
 
-function Peca({ id, a }: { id: InstrumentoId; a: boolean }) {
+export function Peca({ id, a }: { id: InstrumentoId; a: boolean }) {
   const reserva = <Modelo id={id} a={a} />
   return (
     <ModeloSeguro nome={`instrumento-${id}`} reserva={reserva}><ModeloGlb id={id} a={a} /></ModeloSeguro>
+  )
+}
+
+// O SAMPLER DA D-BEE (bíblia §13, 09/11): uma caixa de pads na mesa. Tocou um
+// instrumento e tocou aqui, o som dele vira uma faixa no B4TIDA (a página abre,
+// disco/BatidaCasa.tsx). Forma simples: caixa e pads (uma malha só). Sem luz nova
+const SAMPLER = { pos: [1.25, 0.825, 0.03] as V3, janela: 20 } // s: quanto tempo o último toque "vale"
+const SAMPLER_G = {
+  corpo: new THREE.BoxGeometry(0.26, 0.05, 0.2),
+  pads: (() => {
+    const gs: THREE.BufferGeometry[] = []
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) gs.push(new THREE.BoxGeometry(0.045, 0.012, 0.045).translate(-0.09 + i * 0.06, 0.03, -0.03 + j * 0.06))
+    return mergeGeometries(gs, false)!
+  })(),
+  area: new THREE.BoxGeometry(0.34, 0.2, 0.28),
+}
+const SAMPLER_M = {
+  corpo: new THREE.MeshStandardMaterial({ color: "#23202b", roughness: 0.6 }),
+  pads: new THREE.MeshStandardMaterial({ color: "#3a1f3f", roughness: 0.5, emissive: "#ff3fb0", emissiveIntensity: 0.55 }),
+}
+function Sampler({ onToque }: { onToque: (e: ThreeEvent<MouseEvent>) => void }) {
+  return (
+    <group position={SAMPLER.pos}>
+      <mesh geometry={SAMPLER_G.corpo} material={SAMPLER_M.corpo} />
+      <mesh geometry={SAMPLER_G.pads} material={SAMPLER_M.pads} />
+      <mesh position={[0, 0.06, 0]} visible={false} onClick={onToque} geometry={SAMPLER_G.area} material={M.area} />
+    </group>
   )
 }
 
@@ -236,6 +265,8 @@ export function InstrumentosCasa({ ids, gesto = false, novos = [] }: { ids: Inst
   const vezes = useRef<Partial<Record<InstrumentoId, number>>>({})
   const avisou = useRef<{ id: InstrumentoId | null; em: number }>({ id: null, em: -99 })
   const fimMandado = useRef(false)
+  // o último que tocou (o sampler pega ele)
+  const ultimo = useRef<{ id: InstrumentoId | null; em: number }>({ id: null, em: -99 })
   useEffect(() => { if (gesto) fimMandado.current = false }, [gesto])
   const ganhos = new Set(ids.filter(ehInstrumento))
   const ganhosRef = useRef(ganhos)
@@ -258,11 +289,23 @@ export function InstrumentosCasa({ ids, gesto = false, novos = [] }: { ids: Inst
     const n = vezes.current[id] ?? 0
     vezes.current[id] = n + 1
     tocarInstrumento(id, n)
+    ultimo.current = { id, em: agora }
     const novosAqui = novos.filter((x) => ganhos.has(x))
     if (gesto && !fimMandado.current && novosAqui.length && novosAqui.every((x) => (vezes.current[x] ?? 0) > 0)) {
       fimMandado.current = true
       sinalizar({ t: "fim-gesto" })
     }
+  }
+
+  // o sampler: pega o último que tocou (só na hora de tocar os instrumentos)
+  const samplear = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    if (!gesto) return
+    const { id, em } = ultimo.current
+    if (id && performance.now() / 1000 - em < SAMPLER.janela) { bip(660, 0.09, "sine", 0.15); pedirSample(id); return }
+    bip(220, 0.08, "sine", 0.1)
+    // RASCUNHO: descreve a mecânica, não é fala de história
+    sinalizar({ t: "fala", tipo: "acao", texto: "o sampler: toca um instrumento e depois toca aqui" })
   }
 
   // o balanço de quem foi tocado (só mexe em quem bateu há menos de 0,6 s)
@@ -289,6 +332,7 @@ export function InstrumentosCasa({ ids, gesto = false, novos = [] }: { ids: Inst
       {C.alturas.slice(1, FILEIRAS).map((y) => (
         <mesh key={y} position={[C.x + 0.06, y - 0.02, C.z0 + C.passo * 2]} geometry={G.prateleira} material={M.prateleira} />
       ))}
+      <Sampler onToque={samplear} />
       {C.ordem.map((id, i) => {
         const tem = ganhos.has(id)
         return (
@@ -306,4 +350,5 @@ export function InstrumentosCasa({ ids, gesto = false, novos = [] }: { ids: Inst
   )
 }
 
-useGLTF.preload(URL)
+// o preload do .glb mora em CasaDbee.tsx: este módulo também entra na Corrida
+// (o chão e a Kombi), e lá o modelo só baixa quando um deles monta

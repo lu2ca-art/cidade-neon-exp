@@ -64,55 +64,70 @@ export function instrumentoDaMissao(id: MissaoId): Instrumento | null {
   return Object.values(INSTRUMENTOS_ANCESTRAIS).find((x) => x.missao === id) ?? null
 }
 
+// as peças de som que um timbre usa (o jogo toca ao vivo; o sample da batida
+// desenha as mesmas num OfflineAudioContext: disco/instrumentoAmostra.ts)
+export interface Sintese {
+  bip: (f: number, dur?: number, tipo?: OscillatorType, vol?: number, quando?: number, fFim?: number) => void
+  ruido: (dur?: number, vol?: number, quando?: number, corte?: number) => void
+  corda: (f: number, vol?: number) => void
+  violao: (f: number, vol?: number) => void
+}
+const AO_VIVO: Sintese = { bip, ruido, corda, violao }
+
+/** a receita de cada timbre (uma só: a mesma ao vivo e no sample) */
+export function soarTimbre(s: Sintese, t: Timbre, f: number, vol: number) {
+  switch (t) {
+    case "tambor":
+      // sem o tambor gravado: o grave cai de tom; o tapa é ruído
+      if (f < 0.3) s.bip(110, 0.35, "sine", 0.5 * vol, 0, 50)
+      else if (f < 0.8) s.bip(220, 0.18, "sine", 0.35 * vol, 0, 160)
+      else s.ruido(0.07, 0.3 * vol, 0, 5000)
+      return
+    case "agua":
+      // a cabaça na água: um "glub" que sobe de tom
+      s.bip(f * 0.7, 0.22, "sine", 0.32 * vol, 0, f * 1.4)
+      s.ruido(0.04, 0.05 * vol, 0, 900)
+      return
+    case "pote":
+      s.bip(f * 1.6, 0.3, "sine", 0.38 * vol, 0, f)
+      return
+    case "chocalho":
+      s.ruido(0.06, 0.16 * vol, 0, f > 1 ? 9000 : 6500)
+      s.ruido(0.05, 0.1 * vol, 0.03, 7000)
+      return
+    case "corda":
+      s.violao(f, 0.3 * vol)
+      s.corda(f * 2, 0.08 * vol)
+      return
+    case "sopro-grave":
+      s.bip(f, 1.4, "sawtooth", 0.1 * vol)
+      s.bip(f * 2, 1.4, "sine", 0.06 * vol)
+      return
+    case "arco":
+      s.corda(f, 0.32 * vol)
+      s.ruido(0.03, 0.08 * vol, 0, 3000)
+      return
+    case "sopro":
+      s.bip(f, 0.45, "sine", 0.14 * vol)
+      s.ruido(0.25, 0.015 * vol, 0, 2500)
+      return
+    case "metal":
+      s.bip(f, 1.6, "sine", 0.2 * vol)
+      s.bip(f * 2.01, 1.1, "sine", 0.07 * vol)
+      s.bip(f * 3, 0.6, "triangle", 0.03 * vol)
+      return
+    case "lamela":
+      s.bip(f, 0.9, "sine", 0.18 * vol)
+      s.bip(f * 5.4, 0.08, "sine", 0.04 * vol)
+      return
+  }
+}
+
 /** toca uma nota do instrumento (i = o índice em `notas`, dá a volta) */
 export function tocarInstrumento(id: InstrumentoId, i = 0, vol = 1) {
   const x = INSTRUMENTOS_ANCESTRAIS[id]
   const f = x.notas[((i % x.notas.length) + x.notas.length) % x.notas.length]
-  switch (x.timbre) {
-    case "tambor":
-      // o tambor gravado da D-Bee (o mesmo da cena da casa), se já carregou;
-      // senão, um sintetizado (o grave cai de tom; o tapa é ruído)
-      if (tamborPronto() && baterAmostra(0, f, 0.8, 0, 0.8 * vol)) return
-      if (f < 0.3) bip(110, 0.35, "sine", 0.5 * vol, 0, 50)
-      else if (f < 0.8) bip(220, 0.18, "sine", 0.35 * vol, 0, 160)
-      else ruido(0.07, 0.3 * vol, 0, 5000)
-      return
-    case "agua":
-      // a cabaça na água: um "glub" que sobe de tom
-      bip(f * 0.7, 0.22, "sine", 0.32 * vol, 0, f * 1.4)
-      ruido(0.04, 0.05 * vol, 0, 900)
-      return
-    case "pote":
-      bip(f * 1.6, 0.3, "sine", 0.38 * vol, 0, f)
-      return
-    case "chocalho":
-      ruido(0.06, 0.16 * vol, 0, f > 1 ? 9000 : 6500)
-      ruido(0.05, 0.1 * vol, 0.03, 7000)
-      return
-    case "corda":
-      violao(f, 0.3 * vol)
-      corda(f * 2, 0.08 * vol)
-      return
-    case "sopro-grave":
-      bip(f, 1.4, "sawtooth", 0.1 * vol)
-      bip(f * 2, 1.4, "sine", 0.06 * vol)
-      return
-    case "arco":
-      corda(f, 0.32 * vol)
-      ruido(0.03, 0.08 * vol, 0, 3000)
-      return
-    case "sopro":
-      bip(f, 0.45, "sine", 0.14 * vol)
-      ruido(0.25, 0.015 * vol, 0, 2500)
-      return
-    case "metal":
-      bip(f, 1.6, "sine", 0.2 * vol)
-      bip(f * 2.01, 1.1, "sine", 0.07 * vol)
-      bip(f * 3, 0.6, "triangle", 0.03 * vol)
-      return
-    case "lamela":
-      bip(f, 0.9, "sine", 0.18 * vol)
-      bip(f * 5.4, 0.08, "sine", 0.04 * vol)
-      return
-  }
+  // o tambor gravado da D-Bee (o mesmo da cena da casa), se já carregou
+  if (x.timbre === "tambor" && tamborPronto() && baterAmostra(0, f, 0.8, 0, 0.8 * vol)) return
+  soarTimbre(AO_VIVO, x.timbre, f, vol)
 }

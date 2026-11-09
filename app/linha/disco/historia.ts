@@ -75,6 +75,10 @@ export interface HistoriaDisco {
   // (lote D) os que ele já viu na casa da D-Bee: o resto é "novo" (a cena pede
   // pra tocar cada novo; sem novo, a visita é livre)
   instrumentosVistos?: InstrumentoId[]
+  // (bíblia §13, 09/11) os achados no deserto e no subúrbio (disco/instrumentosMundo.ts):
+  // tocam dentro da Kombi; e os sampleados na casa da D-Bee (entram no B4TIDA)
+  instrumentosAchados?: InstrumentoId[]
+  instrumentosSampleados?: InstrumentoId[]
   // (T19) a peça de escrever aberta agora ("lu2ca:arte"; fica no save: recarregar
   // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
   aberta13?: string

@@ -9,7 +9,9 @@ import { BASE_TESTE, CHAVE_SAVE, atalhosLiberados } from "../teste/atalhos"
 import { ligarTeste } from "./chaveSave"
 import { pedirDescida } from "./disco/elevadores"
 import { esquecerTerror } from "./disco/terror"
-import { apagarOndeParou } from "./estrada/ondeParou"
+import { apagarOndeParou, gravarOndeParou } from "./estrada/ondeParou"
+import { INSTRUMENTOS_ANCESTRAIS, type InstrumentoId } from "./disco/instrumentos"
+import { INSTRUMENTOS_MUNDO } from "./disco/instrumentosMundo"
 
 import { CONFIG13, IDS13, MISSOES13, normalizarMissao, ordemDe } from "./disco/portas"
 import { LETRAS } from "./disco/letras"
@@ -140,6 +142,9 @@ function discoDa(parte: string): Record<string, unknown> | null {
   // (T49, lote D) a casa da D-Bee com instrumentos no save (dois ainda não vistos:
   // a cena pede pra tocar os novos) e a tela de recompensa com um instrumento (a
   // porta do Mubarak abre: o sitar)
+  // (bíblia §13, 09/11) achados: todos na Kombi (a câmera de dentro); e o começo do lado de um, sem nenhum achado ainda
+  if (parte === "instrumentos.kombi") return { fase: "livre", holo: true, instrumentosAchados: Object.keys(INSTRUMENTOS_ANCESTRAIS) as InstrumentoId[] }
+  if (parte === "instrumentos.mundo") return { fase: "livre", holo: true, instrumentosAchados: [] }
   if (parte === "casa.instrumentos") return { ...MEIO, instrumentos: ["djembe", "tambor-agua", "udu", "caxixi", "berimbau", "sitar", "kalimba"], instrumentosVistos: ["djembe", "tambor-agua", "udu", "caxixi", "berimbau"] }
   // (T49, 06/11) a casa da D-Bee com TODOS os instrumentos ganhos (e já vistos:
   // a visita livre, toca à vontade e sai pelo "pronto")
@@ -180,7 +185,7 @@ const VISITAS: Record<string, string> = { "vitrine.balada": "balada", "vitrine.d
 // (T15–T25, T16) as peças novas, uma de cada, abertas direto
 const PECAS_NOVAS = ["missao.drew.arte", "missao.drew.jogo", "missao.xeriff.arte", "missao.notti.arte", "missao.notti.jogo", "missao.nizzy.arte", "missao.tony.jogo", "missao.tony.arte", "missao.mubarak.arte", "missao.mubarak.jogo"]
 export const OFICINA_PARTES = ["oficina.catar", "oficina.painel", "oficina.bancada", "oficina.goteira", "oficina.pagar", "oficina.loja"]
-export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis"]
+export const PARTES_TESTE = ["inicio", "minhoca", "casa", "casa.tambor", "casa.holo", "dunas", "subir.voo", "bar", "oficina", "oficina.show", ...OFICINA_PARTES, "subir", "quebra", "quebra.oficina", "perseguicao", "perseguicao.escolher", "perseguicao.gatilho", "nectar", "carreira.feira", "carreira.meio", "chegada", "loja", "palcos", "palcos.topo", "xenom", ...SHOWS_XENOM.map((x) => `xenom.${x.id}`), "xenom.album", ...MISSOES_FEIRA.map((m) => `missao.${m}`), "missao.lu2ca.letra", "missao.lu2ca.show", "missao.quadra.batida", "missao.quadra.basquete", "missao.ella.casa", "missao.tuneis.trincheiras", ...PECAS_NOVAS, ...MISSOES.map((m) => `missao.${m}`), "livre", "rachas", "torre", "torre.ponta", "kombi.dentro", "violao", "metro", "metro.tuneis", "grafite", "grafite.livre", "elevador", "elevador.subir", "elevador.terror", "instrumentos", "instrumentos.kombi", "instrumentos.mundo", "casa.instrumentos", "recompensa.instrumento", "vitrine.tunel", "vitrine.bar", ...Object.keys(VISITAS), "final", ...MOMENTOS.map((m) => `final.${m}`), "mundo.depois", "mundo.depois.tuneis"]
 
 // (T37) a parte aberta nesta carga da página: um link de parte leva direto ao
 // momento dele, sem a chegada do login na casinha (menos a própria "chegada")
@@ -213,7 +218,9 @@ export function aplicarParteDeTeste(): boolean {
   if (parte.startsWith("palcos") || parte === "xenom" || parte === "xenom.album") url.searchParams.set("app", "palcos")
   if (parte === "rachas") url.searchParams.set("racha", "perto")
   // (T59) a câmera de dentro (a mesma chave do botão "1ª pessoa")
-  if (parte === "kombi.dentro") localStorage.setItem("cn-linha-cam", "dentro")
+  if (parte === "kombi.dentro" || parte === "instrumentos.kombi") localStorage.setItem("cn-linha-cam", "dentro")
+  // (bíblia §13) nasce a 30 m do didgeridoo, de frente pra ele
+  if (parte === "instrumentos.mundo") { const p = INSTRUMENTOS_MUNDO.didgeridoo; gravarOndeParou({ t: "chao", x: p.x + 30, z: p.z, rumo: -Math.PI / 2 }) }
   // (T07) a cena da casa começa na entrega do holo (pula a chegada e o tambor)
   if (parte === "casa.holo") url.searchParams.set("cena", "holo")
   // (T06) a cena da casa começa no tambor (ela senta no tapete e chama)

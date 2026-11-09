@@ -84,3 +84,25 @@ Túneis e a 13ª (final) não dão instrumento.
   (`MEDIDA`), com as mesmas inclinações (`POSE`). Um material por grupo (cor dos vértices), compartilhado; o
   trancado usa o material apagado único; cadeado e toque iguais; nada por quadro além do balanço; sem luz nova.
   Enquanto carrega ou se falhar, as primitivas de antes.
+
+## No mundo, na Kombi e na batida (09/11, bíblia §13)
+
+"Espalhados pelo deserto e subúrbio; achou, pode tocar dentro da Kombi. A D-Bee tem alguns na casa
+dela, onde dá pra tocar e samplear usando a batida."
+
+- **Onde ficam:** `app/linha/disco/instrumentosMundo.ts` (`INSTRUMENTOS_MUNDO`: um ponto por instrumento,
+  6 no deserto, 5 no subúrbio; `NO_MUNDO`: raios e escala). Sem ponto no mapa: é pra achar. RASCUNHO de posição.
+- **Achar:** a Corrida confere de 250 em 250 ms; a 12 m de um que falta, avisa `instrumento:<id>` (`page.tsx`
+  `onHistoria`): entra em `h.instrumentosAchados`, soa e passa no notch "+ o udu · toca na Kombi". Sem parar a Kombi.
+- **Os marcos:** `InstrumentosNoMundo.tsx`. Pedras + anel + luz baixa na cor dele, um desenho só por material;
+  o modelo real (o mesmo `instrumentos.glb`) só monta a menos de 140 m. Nada por quadro.
+- **Na Kombi:** `app/linha/estrada/InstrumentosKombi.tsx`, prateleira na parede de ripas em cima do sofá
+  (olhar pra esquerda de dentro). Só os achados. Tocar para a trilha (bíblia §9) e ela volta 5 s depois do último toque.
+- **Na casa:** a caixa de pads na mesa (`InstrumentosCasa.tsx`, `Sampler`). Toca um instrumento, toca a caixa:
+  entra em `h.instrumentosSampleados` e o B4TIDA abre por cima (`BatidaCasa.tsx`, `/batida?sample=<id>`) com uma faixa desse som
+  na música "samples da D-Bee" (a música do jogador não é tocada). Só vale no gesto de tocar os instrumentos.
+- **O som no B4TIDA:** `"anc:<id>"` (`batida/estudio/sons.ts`), desenhado num OfflineAudioContext
+  (`disco/instrumentoAmostra.ts`) com a MESMA receita do jogo (`instrumentos.ts` `soarTimbre`); o djembê usa o tambor gravado.
+  Na bateria, cada pad é uma nota dele; os afinados também aparecem nos instrumentos melódicos. A lista sai do save.
+- **Save:** só campos novos e opcionais; save antigo lê `?? []`. Os da missão seguem em `h.instrumentos` (casa); achar não mexe neles.
+- **Teste:** Mesa → `?parte=instrumentos.mundo`, `?parte=instrumentos.kombi`, `?parte=instrumentos`.

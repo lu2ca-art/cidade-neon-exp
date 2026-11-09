@@ -18,7 +18,7 @@ import {
   type Inst, type Musica, type Secao,
 } from "./tipos"
 import { Motor } from "./motor"
-import { nomeDoSom, precarregar } from "./sons"
+import { definirSampleados, instDoAncestral, nomeDoSom, precarregar } from "./sons"
 import { apagarMusica, converterV1, lerVoz, listarMusicas, salvarMusica, salvarVoz } from "./armazem"
 import { OPCOES_CLIMA, musicaNoClima } from "./climas"
 import { compartilharOuBaixar, mp3, renderizar, wav } from "./exportar"
@@ -27,7 +27,11 @@ import { carregar } from "../../linha/estado"
 import { historiaDe } from "../../linha/disco/historia"
 import { musicasLiberadas } from "../../linha/disco/episodios"
 import { referenciasDoBatida, type ReferenciaBatida } from "../../linha/disco/recompensas"
+import { ehInstrumento } from "../../linha/disco/instrumentos"
 import "./estudio.css"
+
+// a música que junta o que ele sampleou na casa da D-Bee (nunca a música dele)
+const MUSICA_SAMPLES = "samples da D-Bee"
 
 type Popup = null | "menu" | "referencias" | "musicas" | "comecar" | "bpm" | "tom" | "exportar" | "enviar" | "ajuda" | { secao: string } | { arranjo: number }
 
@@ -121,6 +125,24 @@ export default function Estudio() {
     let vivo = true
     ;(async () => {
       const q = new URLSearchParams(window.location.search)
+      // (bíblia §13, 09/11) o que ele sampleou na casa da D-Bee vira som no catálogo; aberto
+      // de lá (?sample=udu), o som entra numa faixa da música "samples da D-Bee" (a dele fica intacta)
+      const sample = q.get("sample")
+      try { const h = historiaDe(carregar()); definirSampleados([...new Set([...(h.instrumentosSampleados ?? []), ...(sample && ehInstrumento(sample) ? [sample] : [])])]) } catch {}
+      if (sample && ehInstrumento(sample)) {
+        const som = `anc:${sample}`
+        const l0 = await listarMusicas()
+        let alvo = l0.find((x) => x.nome === MUSICA_SAMPLES) ?? { ...musicaVazia(), nome: MUSICA_SAMPLES }
+        let f = alvo.faixas.find((x) => x.som === som)
+        if (!f && alvo.faixas.length >= MAX_FAIXAS) alvo = { ...musicaVazia(), nome: MUSICA_SAMPLES }
+        if (!f) { f = novaFaixa(instDoAncestral(sample), som); alvo = { ...alvo, faixas: [...alvo.faixas, f] } }
+        await salvarMusica(alvo)
+        if (!vivo) return
+        setLista(await listarMusicas())
+        await abrirMusica(alvo)
+        setSel(f.id)
+        return
+      }
       if (q.get("missao")) {
         daMissao.current = { clima: q.get("clima") || "ontem" }
         setEmMissao(true)
