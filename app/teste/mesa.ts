@@ -31,6 +31,8 @@ export const MESA: Cartao[] = [
     tarefa: "notch móvel",
     olhar: "Aqui já tem missão aceita. Embaixo do mapa, em volta do anel, ficam o nome da missão, o \"Agora: ...\" e a distância. O notch lá em cima não fica parado em nada: as dicas passam uma atrás da outra e as mensagens dos amigos entram no meio, mesmo com missão (espere uns 45 s). Olhe no celular em pé, deitado e no computador. Tocar no \"Agora\" mostra o passo no anel.",
     perguntas: ["O Agora embaixo do mapa dá pra ler enquanto dirige?", "O notch passando o tempo todo está bom, ou as dicas ficam demais?", "Nada ficou por cima do clima ou da água no seu celular?"],
+  },
+  {
     parte: "povo.cheio",
     nome: "O povo: cada missão traz mais gente, nos shows e nas ruas",
     data: "2026-11-09",
