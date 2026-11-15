@@ -24,7 +24,8 @@ test("T09: os passos da missão, na ordem, e pra onde cada um manda", () => {
   let h: HistoriaDisco = { fase: "oficina", holo: true, passos13: ["dbee:arte", "dbee:jogo"] }
   expect(passoOficina(h)).toBe("chegar")
   expect(alvoOficina(h)).toBe("oficina")
-  h = { ...h, oficina: { cena: true } }
+  // (08/11) o show da Nectar no bar vem antes do lixo: aqui já foi visto
+  h = { ...h, palcos: { "bar:nectar": 1 }, oficina: { cena: true } }
   // (T57) catar: o lixo está espalhado no lixão; o alvo é a próxima peça da rota
   expect(passoOficina(h)).toBe("catar")
   expect(alvoOficina(h)).toBe("painel")

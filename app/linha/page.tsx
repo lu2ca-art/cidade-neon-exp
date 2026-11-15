@@ -1409,7 +1409,9 @@ export default function LinhaPage() {
     // pede fala o porquê (disco/introMissoes.ts), no mundo, com a música tocando. Toque pra começar
     if (!semIntro) {
       const h = hist13(saveRef.current)
-      const jaViu = introVista.current.has(id) || ordemDe(id).some((q) => pecaFeita(h, id, q))
+      // (14/11) "chegar" feita não conta como já ter ouvido a pessoa: a fala de entrada
+      // (o Xeriff: quem ele é) vem logo depois de chegar, não é pulada
+      const jaViu = introVista.current.has(id) || ordemDe(id).some((q) => pecaFeita(h, id, q) && MISSOES13[id][q]?.como?.t !== "chegar")
       const fala = introDe(id, jaViu)
       if (fala) { setAoVivo(null); setIntroMissao({ id, ...fala, m0: lerGuia().metros, ativa0: missaoDoSave(saveRef.current) }); return }
     }

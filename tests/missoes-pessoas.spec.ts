@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test"
+import { saveDoJogo } from "./saveDoJogo"
 import { mkdirSync } from "node:fs"
 
 // (T15, T18, T23, T24, T25, T16 — 28/10) as missões das pessoas, cada uma até a
@@ -17,7 +18,8 @@ async function abrir(page: Page, parte: string) {
   await entrar.click()
   return erros
 }
-const save = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem("cn-linha-222") ?? "{}"))
+// (04/11) o ?parte= grava no save de teste: lê o save que a aba está usando
+const save = saveDoJogo
 const gancho = (page: Page, f: "chegou" | "fimPeca", arg?: string) =>
   page.waitForFunction(([f, arg]) => {
     const m = (window as unknown as { __cnMissao?: Record<string, (a?: string) => unknown> }).__cnMissao
@@ -53,10 +55,14 @@ test("T15 · Drew: dançar → (de patins) o ping pong → o ginásio", async ({
 
 test("T18 · Xeriff: sem ping pong (14/11) → sintonizar → a rádio e as frequências", async ({ page }) => {
   const erros = await abrir(page, "missao.xeriff.arte")
-  // encontrar ele já conta: vai direto pra sintonia, nunca pro ping pong
-  await expect(page.locator(".l-prova-missao")).toBeVisible({ timeout: 30_000 })
+  // chegar nele já conta (a arte); logo depois, a fala de entrada dele (quem ele é) e a sintonia. Nunca o ping pong
+  await gancho(page, "chegou")
+  const intro = page.locator(".l-intro-missao")
+  await expect(intro).toContainText("polícia", { timeout: 15_000 })
+  await intro.getByRole("button", { name: "bora ▸" }).dispatchEvent("click")
+  await expect(page.locator(".l-prova-missao")).toBeVisible({ timeout: 15_000 })
   await expect(page.locator(".l-pingpong")).toHaveCount(0)
-  expect((await save(page)).disco.passos13).toContain("xeriff:arte")
+  await expect.poll(async () => (await save(page)).disco.passos13 ?? [], { timeout: 15_000 }).toContain("xeriff:arte")
   await gancho(page, "fimPeca")
   await porta(page, "xeriff", "radio-frequencias")
   expect(erros).toEqual([])
