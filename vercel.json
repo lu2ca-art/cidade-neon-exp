@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "feature/game/*": false,
-      "feature/game/mapa-disco": true
+      "feature/game/mapa-disco": true,
+      "feature/game/integra-0911": true
     }
   }
 }
