@@ -28,6 +28,8 @@ E4. **Os apps na web em proporção áurea** · ui · (o dono, 14/11: "aterroriz
 - **As perguntas antigas do plano da noite de 20/10** (o bar na pista da Nectar, a música do show do prólogo, vol.2/CIDADE NEON no untitled, "mais flores, mais água", as 4 peças) · level
 - **O widget dinâmico (o notch) no celular abre o menu; na web não tem esse botão: a web deveria ter também, ou o celular não deveria abrir?** · ui (14/11)
 - **Os 5 kits da oficina: o nome e as tecnologias de cada um** · gameplay (14/11)
+- **As prévias de 44 s das 9 faixas do vol. 1** (hoje só existem cortes de 22 s em public/audio/previews; a cidade toca o instrumental e depois a prévia) · áudio (14/11)
+- **Swav: a data de lançamento (13/11) passou, mas não tem a versão cantada nem os links** · áudio (14/11)
 
 ## Feito (com prova)
 - **5. O holo** (584106b) · ui · no computador, os ícones no alto e o N3XO logo abaixo; pegou a missão: a checklist aparece onde estava a feira e, 5 s depois (ou num toque), vira um ponto de luz que voa pro número do anel; tocar no anel abre a checklist junto ao mapa (prints 390x844 e 1280x800 em RELATORIOS/prints/2026-10-22; fumaça do mapa-disco passando).
