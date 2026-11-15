@@ -13,6 +13,11 @@ V1. **As vozes: o piloto** · narrativa + áudio · o plano está em ~/repos/LU2
 6. **Sons e acabamento** · áudio + arte-3d · rodinhas de gel no patins (no ar, o vento neon); gotas sem o spray de luz; a fala nova da D-Bee.
 7. **A Kombi por dentro** · arte-3d · toca-discos, MPC, rádio, painel antigo, objetos atrás, chão de grama, teto de madeira.
 
+E1. **Missão recusada volta, valendo menos** · gameplay + economia · (o dono, 14/11) recusou: ela volta depois das outras ofertas, perdendo 1% da água a cada recusa, até no máximo −10%, e aí estabiliza. Nunca some.
+E2. **A oficina: 5 kits de melhorias** · gameplay + economia · (o dono, 14/11) as missões pagam água; a água paga subir pra cidade e o mecânico. O Mubarak oferece 5 kits, cada um com um conjunto de tecnologias novas pra fazer as missões. Precisa do dono: o que tem em cada kit.
+E3. **O lado do subúrbio que quer queimar a cidade** · narrativa · (o dono, 14/11) gente do subúrbio que tenta te convencer a NÃO liberar a água, e sim botar fogo na cidade, tomar o subúrbio e manter tudo como é (o lifestyle do subúrbio). Uma escolha moral contra o caminho do Criador.
+E4. **Os apps na web em proporção áurea** · ui · (o dono, 14/11: "aterrorizante de ruim") os tamanhos e espaços seguem Fibonacci / razão áurea e se ajustam ao tamanho e formato de qualquer tela.
+
 ## Aguardando o dono (decisões de gosto/negócio)
 - **A missão do beat: logo depois da Nectar ou na linha do Alohan (Sabe Ontem?)?** · narrativa
 - **As vozes: as 10 decisões do plano** (quem grava a voz de verdade, o piloto, o N3XO fala?, o Núcleo fala?, idades, dizer que é IA, etc.) · narrativa
@@ -21,6 +26,8 @@ V1. **As vozes: o piloto** · narrativa + áudio · o plano está em ~/repos/LU2
 - **O holo: as perguntas de gosto** (o widget da missão reabre a cada passo cumprido? o número do anel vira o nº da missão na carreira? no celular o N3XO fica onde está?) · ui
 - **O mapa-mini cobre o miolo do anel de missões (só a borda é tocável): de propósito?** · ui
 - **As perguntas antigas do plano da noite de 20/10** (o bar na pista da Nectar, a música do show do prólogo, vol.2/CIDADE NEON no untitled, "mais flores, mais água", as 4 peças) · level
+- **O widget dinâmico (o notch) no celular abre o menu; na web não tem esse botão: a web deveria ter também, ou o celular não deveria abrir?** · ui (14/11)
+- **Os 5 kits da oficina: o nome e as tecnologias de cada um** · gameplay (14/11)
 
 ## Feito (com prova)
 - **5. O holo** (584106b) · ui · no computador, os ícones no alto e o N3XO logo abaixo; pegou a missão: a checklist aparece onde estava a feira e, 5 s depois (ou num toque), vira um ponto de luz que voa pro número do anel; tocar no anel abre a checklist junto ao mapa (prints 390x844 e 1280x800 em RELATORIOS/prints/2026-10-22; fumaça do mapa-disco passando).
