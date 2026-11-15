@@ -116,11 +116,10 @@ const ondeEstaOAgora = (c: CtxTrilha) => (c.tem(ALVO.agora) ? ALVO.agora : ALVO.
 
 // ── A ORDEM DAS PEDRAS (troca a ordem aqui; tirar uma linha tira a pedra) ──
 export const PEDRAS: Pedra[] = [
-  // saiu da casa da D-Bee com o holo: o mapa mexe e pede o toque
-  { id: "mapa", fases: DEPOIS_DA_CASA, quando: (c) => !c.drone, ancora: ALVO.mapa, texto: "toca no mapa", mexe: "mapa",
-    feita: (c) => c.drone, passou: veterano },
+  // (14/11, o dono) saiu a pedra "toca no mapa": o aviso fixo embaixo do mapa era
+  // horrível. Quem quer saber, toca no "?" (Holo.tsx, AJUDA.mapa)
   // o drone no alto: a linha acesa é o caminho; volta pra rua
-  { id: "rota", fases: DEPOIS_DA_CASA, depois: ["mapa"], quando: (c) => c.drone, ancora: ALVO.voltarRua, texto: "viu a linha? volta pra rua",
+  { id: "rota", fases: DEPOIS_DA_CASA, quando: (c) => c.drone, ancora: ALVO.voltarRua, texto: "viu a linha? volta pra rua",
     feita: (c, m) => { if (c.drone) m.drone = true; return m.drone && !c.drone }, passou: veterano },
   // a rua: o rumo mora no notch (o ícone no meio, acelera)
   { id: "gps", fases: ["dunas"], depois: ["rota"], quando: (c) => !c.drone, ancora: ondeEstaOAgora, texto: "ícone no meio: acelera", mexe: "notch",
@@ -130,7 +129,7 @@ export const PEDRAS: Pedra[] = [
       return m.acc >= TRILHA_CFG.gpsS
     } },
   // a areia solta
-  { id: "drift", fases: ["dunas"], depois: ["mapa"], quando: (c) => !c.drone, ancora: null, texto: "vira forte e solta: drift", toque: "toca fora, vira dentro: drift",
+  { id: "drift", fases: ["dunas"], quando: (c) => !c.drone, ancora: null, texto: "vira forte e solta: drift", toque: "toca fora, vira dentro: drift",
     feita: (c, m, dt) => { if (c.poseViva && c.pose.drift) m.acc += dt; return m.acc >= TRILHA_CFG.driftS } },
   // o anel em volta do mapa: a missão de agora, o próximo passo
   { id: "anel", fases: DEPOIS_DA_CASA, depois: ["rota"], quando: (c) => !c.drone && c.tem(ALVO.anel), ancora: ALVO.anel, texto: "o anel: o próximo passo", mexe: "icone",
