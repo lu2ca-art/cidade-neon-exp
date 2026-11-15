@@ -836,7 +836,7 @@ export const MESA: Cartao[] = [
     perguntas: [
       "A moda do Drew e o ping pong do Xeriff ficam assim?",
     ],
-    mais: [{ parte: "missao.drew.arte", nome: "a moda do Drew direto" }, { parte: "missao.xeriff.arte", nome: "o ping pong do Xeriff" }, { parte: "missao.ella", nome: "a missão da Ella" }],
+    mais: [{ parte: "missao.drew.arte", nome: "a moda do Drew direto" }, { parte: "missao.xeriff.arte", nome: "encontrar o Xeriff" }, { parte: "missao.ella", nome: "a missão da Ella" }],
   },
   {
     parte: "casa.instrumentos",

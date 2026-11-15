@@ -45,3 +45,10 @@ A lotação dos shows e a vida do subúrbio saem de `app/linha/disco/povo.ts` (`
 
 ## O final
 Desde 09/11, `final.requer` são as missões dos 9 episódios (sem o Xeriff) e "os nove" são os donos das músicas, lidos de `EPISODIOS`. Ver `docs/final.md`.
+
+
+## O Xeriff (14/11, o dono)
+
+- É **da polícia dos robôs**. Ficou lá dentro porque é filho de um tirano louco que **morreu com as próprias armas que criou**.
+- O ping pong saiu da missão dele ("não faz nenhum sentido"). A missão agora é: encontrar ele na plataforma → sintonizar a frequência da polícia.
+- A fala de entrada (`introMissoes.ts`) é rascunho em cima disso; o dono reescreve.

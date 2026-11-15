@@ -54,7 +54,8 @@ export const INTRO_MISSOES: Partial<Record<MissaoId, IntroMissao>> = {
   // (sem faixa) a frequência da polícia · a confiança
   xeriff: {
     quem: "Xeriff",
-    texto: "na plataforma ninguém confia em ninguém. nem em mim. bate uma bola comigo que eu vejo se dá pra confiar em você",
+    // (14/11) RASCUNHO: ele é da polícia dos robôs, filho do tirano que morreu com as próprias armas (docs/episodios.md)
+    texto: "eu sou da polícia deles. fiquei aqui dentro porque o meu pai fez essas armas. e foram elas que pegaram ele",
     segue: "agora pega a frequência deles. quem escuta tudo, sabe tudo",
   },
   // Nectar · o que faz a gente voltar a florir (as flores, o propósito)

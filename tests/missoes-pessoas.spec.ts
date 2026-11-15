@@ -51,18 +51,12 @@ test("T15 · Drew: dançar → (de patins) o ping pong → o ginásio", async ({
   expect(erros).toEqual([])
 })
 
-test("T18 · Xeriff: a vinheta → sintonizar → a rádio e as frequências", async ({ page }) => {
+test("T18 · Xeriff: sem ping pong (14/11) → sintonizar → a rádio e as frequências", async ({ page }) => {
   const erros = await abrir(page, "missao.xeriff.arte")
-  const v = page.locator(".l-peca.is-vinheta")
-  await expect(v).toBeVisible({ timeout: 30_000 })
-  for (const k of ["1", "2", "3", "1"]) await page.keyboard.press(k)
-  await expect(v.locator(".l-vinheta-trilhas li.is-feita")).toHaveCount(4)
-  await page.keyboard.press("Enter")
-  await expect(v.locator(".l-vinheta-fita.is-rec")).toBeVisible()
-  await page.screenshot({ path: `${PASTA}/xeriff-1-vinheta.png` })
-  await v.locator("button", { hasText: "levar pro Xeriff" }).click({ timeout: 20_000 })
-  expect((await save(page)).disco.obras13["xeriff:arte"]).toHaveLength(4)
-  await expect(page.locator(".l-prova-missao")).toBeVisible({ timeout: 15_000 })
+  // encontrar ele já conta: vai direto pra sintonia, nunca pro ping pong
+  await expect(page.locator(".l-prova-missao")).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator(".l-pingpong")).toHaveCount(0)
+  expect((await save(page)).disco.passos13).toContain("xeriff:arte")
   await gancho(page, "fimPeca")
   await porta(page, "xeriff", "radio-frequencias")
   expect(erros).toEqual([])
