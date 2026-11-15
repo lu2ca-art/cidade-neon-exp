@@ -43,7 +43,7 @@ import { aoChegarNoSuburbio, definirZonaSom } from "./disco/radioAntiga"
 import { introDe } from "./disco/introMissoes"
 import { IntroMissao } from "./disco/IntroMissao"
 import { CHEGADA_MISSAO, INTRO_ADIADA, lerGuia } from "./estrada/alvoMissao"
-import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, somCena, trilha, voz } from "./som"
+import { abafar, abaixarUmPouco, audioCtx, fazerMusica, disco, fonteSom, gota, ligarChuva, moeda, mudo, pistaSom, player, silenciarKombi, somCena, trilha, voz } from "./som"
 import { TRILHA_PROPRIA_DAS_MISSOES, somDaMissao, somDoLugar } from "./disco/sons"
 import { track } from "@/lib/analytics"
 import { Plataformas, PreSave } from "./plataformas"
@@ -70,7 +70,7 @@ import { CHAO_LUGARES, CENA_BAR_PROLOGO, CENA_SHOW_NECTAR, CENA_CASA_DISCO, CENA
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
 import { CENA_OFICINA, CENA_OFICINA_CONHECIDO, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, aguasColetadas, aguasFaltando, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
-import { Montagem, Pagamento, somDeAgua } from "./disco/OficinaTelas"
+import { Montagem, Pagamento } from "./disco/OficinaTelas"
 import { respingar } from "./estrada/Gotas"
 import { AGUAS_CHAO, chaoDentro, definirChaoAtivos, ehAgua, ehPeca } from "./disco/achados"
 import { definirNaKombi, definirTem, ouvirSample } from "./disco/instrumentosMundo"
@@ -2192,7 +2192,8 @@ export default function LinhaPage() {
           const y = { ...x, oficina: { ...(x.oficina ?? {}), aguas, tanque: Math.round((aguas.length / AGUAS_CHAO.length) * OFICINA_CFG.tanqueCheio) } }
           return falta ? y : concluir(y, "oficina", "jogo")
         }))
-        somDeAgua(); respingar()
+        // o mesmo som das gotas da pista (a mesma joia), e o respingo na tela
+        gota(3); respingar()
         setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: falta ? `${FALAS_OFICINA.coletou} (${AGUAS_CHAO.length - falta}/${AGUAS_CHAO.length})` : FALAS_OFICINA.voltar })
         track("mission_step", { mission_id: "disco-oficina", step: falta ? `agua-${id}` : "agua", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
       }

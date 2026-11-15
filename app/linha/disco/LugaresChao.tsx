@@ -15,11 +15,13 @@
 import { useGLTF } from "@react-three/drei"
 import { ModeloSeguro } from "../estrada/Seguro"
 import { lazy, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react"
+import { useFrame } from "@react-three/fiber"
+import { geoJoia, matJoia } from "../estrada/joia"
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { BOCA, GABARITO_S, QUADRA, geoBoca } from "../estrada/chao"
 import { materialAreia } from "../estrada/areia"
-import { PECAS_CHAO, chaoAtivos, ehAgua, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
+import { AGUAS_CHAO, PECAS_CHAO, chaoAtivos, ehAgua, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
 import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, GIRO_BAR, SUBURBIO, type LugarChao } from "./historia"
 import { URL_CIDADE, matsCidade } from "../estrada/Lugares"
 
@@ -389,37 +391,53 @@ function LixoNoLixao({ chao }: { chao: (x: number, z: number) => number }) {
   )
 }
 
-// (14/11) A ÁGUA DO DESERTO (saiu a goteira): uma poça rasa e escura na areia,
-// a lâmina d'água brilhando por cima e umas pedras em volta. Só as que faltam
-// (chaoAtivos, como o lixo); some quando ele passa por cima. A coluna de luz
-// mostra de longe (o deserto é grande). 3 desenhos por poça
+// (14/11) A ÁGUA DO DESERTO (saiu a goteira; o dono: "exatamente o mesmo da pista
+// lá em cima, as gotas iridescentes"): em cada ponto, um fio de gotas-joia (a mesma
+// joia, estrada/joia.ts) flutuando e girando, e a coluna de luz pra achar de longe.
+// Só as que faltam (chaoAtivos); passou por cima, pegou (page.tsx). Uma malha só
+const GOTAS_POR_AGUA = 7
 function AguasNoDeserto({ chao }: { chao: (x: number, z: number) => number }) {
   const ativos = useSyncExternalStore(assinar, chaoAtivos, () => VAZIO)
   const aguas = useMemo(() => ativos.filter(ehAgua), [ativos])
-  const mats = useMemo(() => ({
-    molhado: new THREE.MeshStandardMaterial({ color: "#3a2a1e", roughness: 0.35, metalness: 0.1 }),
-    lamina: new THREE.MeshBasicMaterial({ color: "#4fc3ff", transparent: true, opacity: 0.75, toneMapped: false }),
-    pedra: new THREE.MeshStandardMaterial({ color: "#8a7560", roughness: 0.95, flatShading: true }),
-  }), [])
-  if (!aguas.length) return null
+  const malha = useMemo(() => {
+    const m = new THREE.InstancedMesh(geoJoia(), matJoia(), AGUAS_CHAO.length * GOTAS_POR_AGUA)
+    m.frustumCulled = false
+    m.count = 0
+    return m
+  }, [])
+  useEffect(() => () => { malha.geometry.dispose(); (malha.material as THREE.Material).dispose(); malha.dispose() }, [malha])
+  const pontos = useMemo(() => aguas.flatMap((id) => {
+    const l = CHAO_LUGARES[id], giro = id.length * 1.7 + l.x * 0.01
+    return Array.from({ length: GOTAS_POR_AGUA }, (_, k) => {
+      const d = (k - (GOTAS_POR_AGUA - 1) / 2) * 2.4, x = l.x + Math.cos(giro) * d, z = l.z + Math.sin(giro) * d
+      return { x, y: chao(x, z) + 1.4, z }
+    })
+  }), [aguas, chao])
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    for (let i = 0; i < pontos.length; i++) {
+      const o = pontos[i]
+      TMP_AGUA.position.set(o.x, o.y + Math.sin(t * 3 + i) * 0.12 - 0.45, o.z)
+      TMP_AGUA.rotation.set(0, t * 1.3 + i, 0)
+      TMP_AGUA.updateMatrix()
+      malha.setMatrixAt(i, TMP_AGUA.matrix)
+    }
+    malha.count = pontos.length
+    malha.visible = pontos.length > 0
+    ;(malha.material as THREE.ShaderMaterial).uniforms.tempo.value = t
+    malha.instanceMatrix.needsUpdate = true
+  })
   return (
     <>
+      <primitive object={malha} />
       {aguas.map((id) => {
-        const l = CHAO_LUGARES[id], y = chao(l.x, l.z)
-        return (
-          <group key={id} position={[l.x, y, l.z]} name={`agua-${id}`}>
-            <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} material={mats.molhado}><circleGeometry args={[5.2, 20]} /></mesh>
-            <mesh position={[0.3, 0.1, -0.2]} rotation={[-Math.PI / 2, 0, 0.4]} scale={[1, 0.7, 1]} material={mats.lamina}><circleGeometry args={[3.2, 20]} /></mesh>
-            {[[4.6, 0.8], [-3.9, 2.6], [1.2, -4.8], [-2.4, -3.7]].map(([px, pz], i) => (
-              <mesh key={i} position={[px, 0.35, pz]} rotation={[i, i * 0.7, 0]} material={mats.pedra}><dodecahedronGeometry args={[0.55 + (i % 2) * 0.3, 0]} /></mesh>
-            ))}
-            <Farol cor={l.cor} />
-          </group>
-        )
+        const l = CHAO_LUGARES[id]
+        return <group key={id} position={[l.x, chao(l.x, l.z), l.z]} name={`agua-${id}`}><Farol cor={l.cor} /></group>
       })}
     </>
   )
 }
+const TMP_AGUA = new THREE.Object3D()
 
 
 // ── (06/11) OS LUGARES QUE ABREM UMA EXPERIÊNCIA (disco/abertos.ts): o ginásio,
