@@ -16,11 +16,11 @@ type Historia = { fase?: string; nectar?: string; missao?: string; show?: string
 
 // (T09) os passos da missão da oficina (os mesmos ids dos links ?parte=oficina.*)
 // (T57) catar = pegar o lixo espalhado no lixão; bancada = com as quatro peças, a oficina monta
-const PASSOS_OFICINA: Record<string, string> = { catar: "catar o lixo no lixão", bancada: "a oficina monta (a reciclagem)", goteira: "a goteira", pagar: "pagar o mecânico" }
+const PASSOS_OFICINA: Record<string, string> = { catar: "catar o lixo no lixão", bancada: "a oficina monta (a reciclagem)", agua: "a água do deserto", pagar: "pagar o mecânico" }
 function passoDaOficina(h: Historia) {
   const p = h.passos13 ?? []
   const pecas = new Set([...(h.oficina?.pecas ?? []), ...(h.oficina?.painel ? ["painel"] : [])])
-  return p.includes("oficina:jogo") ? "pagar" : p.includes("oficina:arte") ? "goteira" : pecas.size >= 4 ? "bancada" : h.oficina?.cena ? "catar" : null
+  return p.includes("oficina:jogo") ? "pagar" : p.includes("oficina:arte") ? "agua" : pecas.size >= 4 ? "bancada" : h.oficina?.cena ? "catar" : null
 }
 
 const FASES: Record<string, string> = {

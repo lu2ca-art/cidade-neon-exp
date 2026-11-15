@@ -90,9 +90,10 @@ export interface HistoriaDisco {
   // CONFIG13.soNoTeste em portas.ts)
   teste13?: string[]
   // (T09) a missão da oficina (disco/oficina.ts): a cena vista, o painel achado
-  // e o tanque do motor (as gotas da goteira); a água que a D-Bee deu (uma vez)
+  // e o tanque do motor; a água que a D-Bee deu (uma vez)
   // (T57) pecas: as peças da reciclagem que ele já catou no lixão (disco/achados.ts)
-  oficina?: { cena?: true; painel?: true; tanque?: number; pecas?: string[] }
+  // (14/11) aguas: os pontos de água do deserto que ele já coletou (saiu a goteira)
+  oficina?: { cena?: true; painel?: true; tanque?: number; pecas?: string[]; aguas?: string[] }
   aguaDbee?: true
   // (ep. 1) conheceu o Mubarak no bar, antes do show (quem chegou na oficina antes, sem isso, segue pelo caminho antigo)
   mubarakBar?: true
@@ -400,7 +401,7 @@ export const CHAO_LUGARES = {
   quadra: { x: -860, z: -790, nome: "QUADRA", cor: "#ff6a35" },
   tuneis: { x: -610, z: -830, nome: "TÚNEIS", cor: "#9b8cff" },
   // (T09) os achados da missão da oficina: o painel solar velho no lixão (a mancha
-  // de lixo a leste do subúrbio) e a goteira embaixo de uma pista. Só aparecem
+  // de lixo a leste do subúrbio) e a água no deserto. Só aparecem
   // (e só vão pro mapa) quando é a vez deles. RASCUNHO de onde ficam
   // (T57) a reciclagem no deserto: o painel e mais três peças espalhadas no lixão
   // (pega passando, de Kombi ou de patins; disco/achados.ts)
@@ -408,7 +409,12 @@ export const CHAO_LUGARES = {
   lavadora: { x: -208, z: -754, nome: "MÁQUINA DE LAVAR", cor: "#c9d3e6" },
   ventilador: { x: -278, z: -523, nome: "VENTILADOR", cor: "#4fc3ff" },
   radio: { x: -410, z: -366, nome: "RÁDIO", cor: "#ff6a35" },
-  goteira: { x: -620, z: -730, nome: "GOTEIRA", cor: "#4fc3ff" },
+  // (14/11, o dono: "a água bem escassa, mas presente em poucos lugares no deserto")
+  // saiu a goteira: a água do motor se coleta no mundo, em três pontos do deserto
+  // entre o subúrbio e a casa da D-Bee (pega passando, como o lixo). RASCUNHO de onde ficam
+  agua1: { x: -1150, z: -1050, nome: "ÁGUA", cor: "#4fc3ff" },
+  agua2: { x: -1450, z: -930, nome: "ÁGUA", cor: "#4fc3ff" },
+  agua3: { x: -1000, z: -1420, nome: "ÁGUA", cor: "#4fc3ff" },
   // (T47, lote D) a porta da torre do elevador de terror (lugares.ts "elevador",
   // soChao): só o gatilho de chegada, sem fachada nem ponto no mapa até chegar o
   // vídeo da torre. RASCUNHO de onde fica: na beira oeste do subúrbio
@@ -437,7 +443,7 @@ export const GIRO_BAR = Math.atan2(CASA.x - CHAO_LUGARES.bar.x, CASA.z - CHAO_LU
 export const PONTO_BAR = { x: CHAO_LUGARES.bar.x + Math.sin(GIRO_BAR) * 90, z: CHAO_LUGARES.bar.z + Math.cos(GIRO_BAR) * 90, rumo: GIRO_BAR + Math.PI }
 // (T09) os que não são lugar (não têm fachada nem ponto fixo no mapa)
 // (lote D) a torre também: é só a porta (o gatilho), sem fachada
-export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "goteira", "torre", "casa", "torresFinal"]
+export const CHAO_ACHADOS: readonly LugarChao[] = ["painel", "lavadora", "ventilador", "radio", "agua1", "agua2", "agua3", "torre", "casa", "torresFinal"]
 // (06/11) os que têm a fachada juntada (LugaresChao: LugaresAbertos), não a Fachada de antes
 export const CHAO_ABERTOS = ["ginasio", "galeria", "discos", "batida", "flores", "brecho"] as const satisfies readonly LugarChao[]
 export const CHAO_FIXOS = (Object.keys(CHAO_LUGARES) as LugarChao[]).filter((id) => !CHAO_ACHADOS.includes(id))

@@ -19,7 +19,7 @@ import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { BOCA, GABARITO_S, QUADRA, geoBoca } from "../estrada/chao"
 import { materialAreia } from "../estrada/areia"
-import { PECAS_CHAO, chaoAtivos, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
+import { PECAS_CHAO, chaoAtivos, ehAgua, ehPeca, ouvirChaoAtivos, type PecaChao } from "./achados"
 import { CHAO_ABERTOS, CHAO_FIXOS, CHAO_LUGARES, GIRO_BAR, SUBURBIO, type LugarChao } from "./historia"
 import { URL_CIDADE, matsCidade } from "../estrada/Lugares"
 
@@ -389,25 +389,35 @@ function LixoNoLixao({ chao }: { chao: (x: number, z: number) => number }) {
   )
 }
 
-// (T09) a goteira: um cano que pinga de debaixo da pista num tambor. Só existe
-// na cena quando é a vez dela (4 objetos simples, sem luz própria)
-function Goteira({ chao }: { chao: (x: number, z: number) => number }) {
-  const l = CHAO_LUGARES.goteira
-  const y = useMemo(() => chao(l.x, l.z), [chao, l.x, l.z])
+// (14/11) A ÁGUA DO DESERTO (saiu a goteira): uma poça rasa e escura na areia,
+// a lâmina d'água brilhando por cima e umas pedras em volta. Só as que faltam
+// (chaoAtivos, como o lixo); some quando ele passa por cima. A coluna de luz
+// mostra de longe (o deserto é grande). 3 desenhos por poça
+function AguasNoDeserto({ chao }: { chao: (x: number, z: number) => number }) {
+  const ativos = useSyncExternalStore(assinar, chaoAtivos, () => VAZIO)
+  const aguas = useMemo(() => ativos.filter(ehAgua), [ativos])
   const mats = useMemo(() => ({
-    sujo: new THREE.MeshStandardMaterial({ color: "#5a4a3a", roughness: 0.95 }),
-    metal: new THREE.MeshStandardMaterial({ color: "#8a93b8", roughness: 0.5, metalness: 0.6 }),
-    agua: new THREE.MeshBasicMaterial({ color: "#4fc3ff", toneMapped: false }),
+    molhado: new THREE.MeshStandardMaterial({ color: "#3a2a1e", roughness: 0.35, metalness: 0.1 }),
+    lamina: new THREE.MeshBasicMaterial({ color: "#4fc3ff", transparent: true, opacity: 0.75, toneMapped: false }),
+    pedra: new THREE.MeshStandardMaterial({ color: "#8a7560", roughness: 0.95, flatShading: true }),
   }), [])
+  if (!aguas.length) return null
   return (
-    <group position={[l.x, y, l.z]}>
-      {/* o cano desce de debaixo da pista, entorta e pinga num tambor */}
-      <mesh position={[0, 9, 0]} material={mats.metal}><cylinderGeometry args={[0.35, 0.35, 14, 8]} /></mesh>
-      <mesh position={[0.6, 2.1, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.metal}><cylinderGeometry args={[0.3, 0.3, 1.4, 8]} /></mesh>
-      <mesh position={[1.3, 0.6, 0]} material={mats.sujo}><cylinderGeometry args={[0.7, 0.6, 1.2, 10]} /></mesh>
-      <mesh position={[1.3, 1.6, 0]} material={mats.agua}><sphereGeometry args={[0.12, 6, 4]} /></mesh>
-      <Farol cor={l.cor} />
-    </group>
+    <>
+      {aguas.map((id) => {
+        const l = CHAO_LUGARES[id], y = chao(l.x, l.z)
+        return (
+          <group key={id} position={[l.x, y, l.z]} name={`agua-${id}`}>
+            <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} material={mats.molhado}><circleGeometry args={[5.2, 20]} /></mesh>
+            <mesh position={[0.3, 0.1, -0.2]} rotation={[-Math.PI / 2, 0, 0.4]} scale={[1, 0.7, 1]} material={mats.lamina}><circleGeometry args={[3.2, 20]} /></mesh>
+            {[[4.6, 0.8], [-3.9, 2.6], [1.2, -4.8], [-2.4, -3.7]].map(([px, pz], i) => (
+              <mesh key={i} position={[px, 0.35, pz]} rotation={[i, i * 0.7, 0]} material={mats.pedra}><dodecahedronGeometry args={[0.55 + (i % 2) * 0.3, 0]} /></mesh>
+            ))}
+            <Farol cor={l.cor} />
+          </group>
+        )
+      })}
+    </>
   )
 }
 
@@ -656,7 +666,7 @@ export function LugaresChao({ chao, alvo }: { chao: (x: number, z: number) => nu
         : id === "palcoDeserto" ? <PalcoDeserto key={id} chao={chao} alvo={alvo === id} />
         : <Fachada key={id} id={id} chao={chao} alvo={alvo === id} />)}
       <LugaresAbertos chao={chao} alvoBar={alvo === "bar"} />
-      {alvo === "goteira" && <Goteira chao={chao} />}
+      <AguasNoDeserto chao={chao} />
       <LixoNoLixao chao={chao} />
     </>
   )

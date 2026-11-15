@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test"
 import type { HistoriaDisco } from "../app/linha/disco/historia"
 import { CHAO_FIXOS, CHAO_LUGARES } from "../app/linha/disco/historia"
-import { LIXO, MECANICO, OFICINA_CFG, PLANO, alvoOficina, pagamentoMotor, passoOficina, pecasFaltando, sonsDoContador } from "../app/linha/disco/oficina"
-import { PECAS_CHAO } from "../app/linha/disco/achados"
+import { LIXO, MECANICO, OFICINA_CFG, PLANO, aguasFaltando, alvoOficina, pagamentoMotor, passoOficina, pecasFaltando, sonsDoContador } from "../app/linha/disco/oficina"
+import { AGUAS_CHAO, PECAS_CHAO } from "../app/linha/disco/achados"
+import { alemDaCidade } from "../app/linha/estrada/raioCidade"
 import { abrirPorta, checklist13, concluir, feita13, portaAberta } from "../app/linha/disco/portas"
 import { PAGINAS } from "../app/linha/paginas"
 import { LUGARES } from "../app/linha/lugares"
@@ -10,7 +11,7 @@ import { saveDoJogo } from "./saveDoJogo"
 
 // (T04, T09) a oficina só no subúrbio e a missão dela: a cena (só o plano) → a
 // reciclagem (a arte; T57: catar o lixo espalhado no lixão, no mundo, e a
-// oficina monta) → a goteira (o jogo) → o mecânico pago em água → a porta (as
+// oficina monta) → a água do deserto (o jogo, 14/11) → o mecânico pago em água → a porta (as
 // melhorias da Kombi)
 
 test("T04: a oficina não está mais na cidade nem vende pintura", () => {
@@ -36,8 +37,12 @@ test("T09: os passos da missão, na ordem, e pra onde cada um manda", () => {
   expect(passoOficina(h)).toBe("reciclar")
   expect(alvoOficina(h)).toBe("oficina")
   h = concluir(h, "oficina", "arte")
-  expect(passoOficina(h)).toBe("goteira")
-  expect(alvoOficina(h)).toBe("goteira")
+  // (14/11) a água do deserto: o alvo é o próximo ponto que falta
+  expect(passoOficina(h)).toBe("agua")
+  expect(alvoOficina(h)).toBe("agua1")
+  h = { ...h, oficina: { ...h.oficina, aguas: ["agua1"] } }
+  expect(aguasFaltando(h)).toEqual(["agua2", "agua3"])
+  expect(alvoOficina(h)).toBe("agua2")
   h = concluir(h, "oficina", "jogo")
   expect(passoOficina(h)).toBe("montar")
   expect(alvoOficina(h)).toBe("oficina")
@@ -47,7 +52,7 @@ test("T09: os passos da missão, na ordem, e pra onde cada um manda", () => {
   expect(passoOficina(h)).toBe("feita")
   expect(alvoOficina(h)).toBeNull()
   // os achados ficam fora dos lugares fixos (o mapa, os feixes do drone)
-  for (const id of [...PECAS_CHAO, "goteira"] as const) expect(CHAO_FIXOS).not.toContain(id)
+  for (const id of [...PECAS_CHAO, ...AGUAS_CHAO] as const) expect(CHAO_FIXOS).not.toContain(id)
   // save de antes do T57 (o painel já achado no T09, sem pecas): o painel conta
   expect(pecasFaltando({ fase: "oficina", holo: true, oficina: { cena: true, painel: true } })).not.toContain("painel")
 })
@@ -69,7 +74,10 @@ test("T09: o mecânico é pago em água, e o contador pinga a cada 10", () => {
   expect(PLANO).toHaveLength(4)
   for (const l of LIXO) expect(CHAO_LUGARES[l.id]).toBeTruthy()
   expect(MECANICO.nome.length).toBeGreaterThan(0)
-  expect(CHAO_LUGARES.painel && CHAO_LUGARES.goteira).toBeTruthy()
+  expect(CHAO_LUGARES.painel).toBeTruthy()
+  // a água é escassa: poucos pontos, e todos no deserto (além da borda da cidade)
+  expect(AGUAS_CHAO.length).toBeLessThanOrEqual(3)
+  for (const id of AGUAS_CHAO) expect(alemDaCidade(CHAO_LUGARES[id].x, CHAO_LUGARES[id].z)).toBeGreaterThan(1250)
 })
 
 // ── no navegador: a missão inteira pelos links ?parte=oficina.* ──
@@ -127,23 +135,25 @@ test("?parte=oficina.catar: pegar as peças no lixão completa a reciclagem", as
   expect(erros).toEqual([])
 })
 
-test("?parte=oficina.goteira: o jogo", async ({ page }) => {
-  const erros = await abrir(page, "oficina.goteira")
-  // a goteira: o balde vai pra coluna da gota até o tanque encher
-  await chegar(page, "goteira")
-  const got = page.getByRole("dialog", { name: "a goteira" })
-  await expect(got).toBeVisible()
-  const fim = Date.now() + 60_000
-  while (Date.now() < fim) {
-    if (await got.getByRole("button", { name: "levar a água →" }).isVisible().catch(() => false)) break
-    const col = await got.locator(".l-oficina-coluna").evaluateAll((els) => els.findIndex((e) => e.querySelector(".l-oficina-gota")))
-    if (col >= 0) await got.locator(".l-oficina-coluna").nth(col).click()
-    await page.waitForTimeout(150)
+test("?parte=oficina.agua: coletar a água no deserto (sem tela de jogo)", async ({ page }) => {
+  test.setTimeout(180_000)
+  const erros = await abrir(page, "oficina.agua&medir")
+  await page.waitForFunction(() => !!(window as unknown as { __jogo?: unknown }).__jogo)
+  // as três poças estão na cena
+  await expect.poll(() => page.evaluate((ids) => {
+    const c = (window as unknown as { __cena: { getObjectByName: (n: string) => unknown } }).__cena
+    return ids.filter((id) => !!c.getObjectByName(`agua-${id}`)).length
+  }, [...AGUAS_CHAO]), { timeout: 30_000 }).toBe(AGUAS_CHAO.length)
+  for (const [i, id] of AGUAS_CHAO.entries()) {
+    const p = CHAO_LUGARES[id]
+    await kombiEm(page, p.x + 3, p.z + 2)
+    await expect.poll(async () => ((await saveDe(page)).disco.oficina?.aguas ?? []).length, { timeout: 20_000 }).toBe(i + 1)
   }
-  await got.getByRole("button", { name: "levar a água →" }).click()
+  // a goteira não existe mais
+  await expect(page.getByRole("dialog", { name: "a goteira" })).toHaveCount(0)
   await expect.poll(async () => (await saveDe(page)).disco.passos13 ?? [], { timeout: 15_000 }).toContain("oficina:jogo")
   const s = await saveDe(page)
-  expect(s.disco.oficina.tanque).toBe(OFICINA_CFG.gotasDaGoteira)
+  expect(s.disco.oficina.tanque).toBe(OFICINA_CFG.tanqueCheio)
   expect(erros).toEqual([])
 })
 

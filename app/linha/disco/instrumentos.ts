@@ -42,7 +42,7 @@ export interface Instrumento {
 // a missão → o instrumento (um por missão com pessoa). RASCUNHO
 export const INSTRUMENTOS_ANCESTRAIS: Record<InstrumentoId, Instrumento> = {
   djembe: { id: "djembe", artigo: "o", nome: "djembê", origem: "o tambor de mão da África do Oeste", missao: "dbee", timbre: "tambor", notas: [0.08, 0.66, 0.96], cor: "#3d7bff" },
-  "tambor-agua": { id: "tambor-agua", artigo: "o", nome: "tambor de água", origem: "uma cabaça batida na água, como as goteiras da oficina", missao: "oficina", timbre: "agua", notas: [196, 247, 294, 392], cor: "#ff9000" },
+  "tambor-agua": { id: "tambor-agua", artigo: "o", nome: "tambor de água", origem: "uma cabaça batida na água, como a água rara do deserto", missao: "oficina", timbre: "agua", notas: [196, 247, 294, 392], cor: "#ff9000" },
   udu: { id: "udu", artigo: "o", nome: "udu", origem: "o pote de barro da Nigéria: o som grave sai pelo furo", missao: "quadra", timbre: "pote", notas: [98, 131, 147, 196], cor: "#ff6a35" },
   caxixi: { id: "caxixi", artigo: "o", nome: "caxixi", origem: "o chocalho de palha trançada, com sementes dentro", missao: "drew", timbre: "chocalho", notas: [1, 2], cor: "#6d7bff" },
   sitar: { id: "sitar", artigo: "o", nome: "sitar", origem: "a corda longa da Índia, com as cordas que vibram sozinhas", missao: "mubarak", timbre: "corda", notas: [147, 165, 196, 220, 247, 294], cor: "#ffc857" },

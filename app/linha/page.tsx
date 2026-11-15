@@ -69,9 +69,10 @@ import { perderViolao, tomarJetpack } from "./disco/historia"
 import { CHAO_LUGARES, CENA_BAR_PROLOGO, CENA_SHOW_NECTAR, CENA_CASA_DISCO, CENA_CASA_HOLO, CENA_CASA_INSTRUMENTOS, CENA_CASA_TAMBOR, CENA_CASA_VISITA, CHEGADA, casaNoLogin, comHistoria, historiaAtiva, historiaDe, horaDaChegada, type LugarChao } from "./disco/historia"
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
-import { CENA_OFICINA, CENA_OFICINA_CONHECIDO, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
-import { Goteira, Montagem, Pagamento } from "./disco/OficinaTelas"
-import { chaoDentro, definirChaoAtivos, ehPeca } from "./disco/achados"
+import { CENA_OFICINA, CENA_OFICINA_CONHECIDO, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, aguasColetadas, aguasFaltando, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
+import { Montagem, Pagamento, somDeAgua } from "./disco/OficinaTelas"
+import { respingar } from "./estrada/Gotas"
+import { AGUAS_CHAO, chaoDentro, definirChaoAtivos, ehAgua, ehPeca } from "./disco/achados"
 import { definirTem, ouvirSample } from "./disco/instrumentosMundo"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { TRANCA_VIOLAO_PERDIDO, emMetro, entrarNoMetro, guardaReageAoViolao, podeMetro, trancaLinha9, type PassoMetro } from "./disco/metro"
@@ -914,10 +915,10 @@ export default function LinhaPage() {
   // (T02) saiu da oficina: a Kombi solar + turbo, pagou o motor ((§15) só o preço: a água agora é o saldo todo). É a porta da
   // missão da oficina (as melhorias da Kombi): a recompensa e, sem show, o jogo segue
   // (T09) a missão da oficina: a cena (ele chega só com o plano) abre a bancada (a
-  // arte); depois o painel no lixão e a goteira (o jogo); de volta, o pagamento em
+  // arte); depois o painel no lixão e a água do deserto (o jogo); de volta, o pagamento em
   // água e a porta (as melhorias da Kombi). Na Nectar antiga (o mapa de antes), a
   // cena segue fechando o passo dela como sempre
-  const [oficinaTela, setOficinaTela] = useState<"bancada" | "goteira" | "pagar" | "conserto" | null>(null)
+  const [oficinaTela, setOficinaTela] = useState<"bancada" | "pagar" | "conserto" | null>(null)
   const fimOficina = useCallback((r: ResultadoCena) => {
     setCena(null)
     setCinema(null)
@@ -1197,7 +1198,7 @@ export default function LinhaPage() {
   const quadraLivreEm = useRef(0)
   // (T57) o que mais vale no chão agora, além do alvo: as peças que faltam no
   // lixão (catando: pega passando, qualquer uma) e a boca do túnel (depois da subida)
-  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar", ...IDS_ABERTOS] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
+  const chaoExtra = !HIST ? "" : [...(hist.fase === "oficina" && passoOficina(hist) === "catar" ? pecasFaltando(hist) : []), ...(hist.fase === "oficina" && passoOficina(hist) === "agua" ? aguasFaltando(hist) : []), ...(hist.fase === "carreira" || hist.fase === "livre" ? ["tuneis", "torre"] : hist.fase !== "minhoca" ? ["tuneis", "torre"] : []), ...(["oficina", "subir", "nectar", "carreira", "livre"].includes(hist.fase) ? ["bar", ...IDS_ABERTOS] : []), ...((hist.fase === "carreira" || hist.fase === "livre") && instrumentosNovos(h13).length ? ["casa"] : [])].join(",")
   // (bíblia §13, 09/11) tudo que ele tem (achados + missões): o espelho que a Corrida e a Kombi leem
   const temChave = instrumentosGanhos(h13).join(",")
   useEffect(() => { definirTem(temChave ? (temChave.split(",") as InstrumentoId[]) : []) }, [temChave])
@@ -1710,7 +1711,7 @@ export default function LinhaPage() {
     }
   })
   // o que o anel do holo diz (curto: o lugar, não a explicação)
-  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? `${OBJETIVO_OFICINA[passoOficina(hist)]}${passoOficina(hist) === "catar" ? ` · ${pecasCatadas(hist).length}/${LIXO.length}` : ""}` : hist.fase === "subir" ? "a cidade · lá em cima"
+  const objetivoDisco = hist.fase === "dunas" ? "o subúrbio" : hist.fase === "bar" ? "o bar · o subúrbio" : hist.fase === "oficina" ? `${OBJETIVO_OFICINA[passoOficina(hist)]}${passoOficina(hist) === "catar" ? ` · ${pecasCatadas(hist).length}/${LIXO.length}` : passoOficina(hist) === "agua" ? ` · ${aguasColetadas(hist).length}/${AGUAS_CHAO.length}` : ""}` : hist.fase === "subir" ? "a cidade · lá em cima"
     : hist.fase === "nectar" ? ({ quebra: "a pista da nectar", regar: `as flores · ${Math.max(0, 3 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, galao: "o posto", oficina: "a oficina", show: "o jardim", flores: `o jardim · ${Math.max(0, 5 - ((hist.flores ?? 0) - (hist.floresIni ?? 0)))}`, feita: null } as Record<string, string | null>)[hist.nectar ?? "quebra"]
     : m13 ? (passos13.find((x) => x.estado === "agora")?.nome.split(" · ")[1] ?? m13.quem)
     : feira.length ? (() => { const q = proximaDaSequencia(h13); return q ? `${rotuloDoEpisodio(q.ep)} · ${q.ep.quem}` : `pega uma missão no mapa · ${feira.length}` })() : null
@@ -2170,7 +2171,20 @@ export default function LinhaPage() {
       }
       // (08/11) ep. 1: depois de conhecer o Mubarak, o show da Nectar no palco do bar (assistir ou tocar)
       else if (e === "chao:bar" && p === "show") { setAoVivo(null); setCinema("lugar"); setCena({ lugar: "bar", missao: "copo", pegar: false, especial: "show-nectar" }) }
-      else if (e === "chao:goteira" && p === "goteira") setOficinaTela("goteira")
+      // (14/11) a água do deserto: passou por um ponto que falta, coletou (sem parar).
+      // Com as três, o tanque está cheio: o jogo da missão fecha e o Mubarak chama de volta
+      else if (p === "agua" && ehAgua(e.slice(5)) && aguasFaltando(h).includes(e.slice(5) as never)) {
+        const id = e.slice(5)
+        const falta = aguasFaltando(h).length - 1
+        const aguas = [...new Set([...(h.oficina?.aguas ?? []), id])]
+        setSave((s) => comHistoria(s, (x) => {
+          const y = { ...x, oficina: { ...(x.oficina ?? {}), aguas, tanque: Math.round((aguas.length / AGUAS_CHAO.length) * OFICINA_CFG.tanqueCheio) } }
+          return falta ? y : concluir(y, "oficina", "jogo")
+        }))
+        somDeAgua(); respingar()
+        setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: falta ? `${FALAS_OFICINA.coletou} (${AGUAS_CHAO.length - falta}/${AGUAS_CHAO.length})` : FALAS_OFICINA.voltar })
+        track("mission_step", { mission_id: "disco-oficina", step: falta ? `agua-${id}` : "agua", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
+      }
     }
     // (T27) o sorteio da Kombi quebrar (o Corrida chama de tempos em tempos, rodando de verdade)
     if (e === "sorteio-quebra" && !cena && !oficinaTela && !recompensa) {
@@ -2906,18 +2920,12 @@ export default function LinhaPage() {
             }} />
           </div>
         )}
-        {/* (T09) a missão da oficina: a bancada (a arte), o painel e a goteira (o jogo), o pagamento (a porta) */}
+        {/* (T09) a missão da oficina: a bancada (a arte), a água do deserto (o jogo, no mundo), o pagamento (a porta) */}
         {oficinaTela === "bancada" && <Montagem onFim={() => {
           setOficinaTela(null)
           setSave((s) => comHistoria(s, (h) => concluir(h, "oficina", "arte")))
-          setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.goteira }), 900)
+          setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.agua }), 900)
           track("mission_step", { mission_id: "disco-oficina", step: "montagem", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
-        }} />}
-        {oficinaTela === "goteira" && <Goteira onFim={(gotas) => {
-          setOficinaTela(null)
-          setSave((s) => comHistoria(s, (h) => concluir({ ...h, oficina: { ...(h.oficina ?? {}), tanque: gotas } }, "oficina", "jogo")))
-          setTimeout(() => setFalaIntro({ id: Date.now(), de: MECANICO.nome, texto: FALAS_OFICINA.voltar }), 900)
-          track("mission_step", { mission_id: "disco-oficina", step: "goteira", perfil: saveRef.current.perfil ?? "?", fio_pos: -1 })
         }} />}
         {oficinaTela === "conserto" && <Pagamento agua={save.agua ?? 0} preco={CONFIG_QUEBRA.precoAgua} titulo="o conserto" sub={`a Kombi quebrou · ${MECANICO.nome}`} fala={FALAS_QUEBRA.pagar} falaPago={FALAS_QUEBRA.pago} falaFiado={FALAS_QUEBRA.fiado} botao="pegar a Kombi →" onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={() => { setOficinaTela(null); setSave((s) => comHistoria(s, consertar)) }} />}
         {oficinaTela === "pagar" && <Pagamento agua={save.agua ?? 0} onPago={(n) => setSave((s) => gastar(s, n, "agua") ?? s)} onFim={montarMotor} />}

@@ -72,7 +72,7 @@ export function dentroDasRuinas(colisores: number[], x: number, z: number, folga
 }
 
 // perto de um lugar do chão (a fachada, o tablado, a quadra, a rampa)?
-const RAIO_LUGAR: Partial<Record<keyof typeof CHAO_LUGARES, number>> = { bar: 10, oficina: 11, palco: 10, quadra: 22, torre: 9, goteira: 4 }
+const RAIO_LUGAR: Partial<Record<keyof typeof CHAO_LUGARES, number>> = { bar: 10, oficina: 11, palco: 10, quadra: 22, torre: 9 }
 export function noLugar(x: number, z: number, folga = 0) {
   for (const [id, r] of Object.entries(RAIO_LUGAR)) {
     const l = CHAO_LUGARES[id as keyof typeof CHAO_LUGARES]

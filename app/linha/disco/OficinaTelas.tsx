@@ -4,7 +4,7 @@
 // embaixo fica pausado enquanto uma delas está aberta).
 //   Montagem  → a arte, o fim: o lixo que ele catou no lixão (T57: no mundo,
 //               de Kombi ou de patins) vira as peças do plano
-//   Goteira   → o jogo: o balde embaixo da goteira enche o tanque do motor
+//   (14/11) o jogo saiu daqui: a água do motor se coleta no deserto, no mundo (page.tsx)
 //   Pagamento → a porta: o mecânico é pago em água; o contador desce e, a cada
 //               10, faz um som de água (J2: 18, 19)
 // Os textos e os números moram em oficina.ts (RASCUNHO; o mecânico é provisório).
@@ -71,68 +71,6 @@ export function Montagem({ onFim }: { onFim: () => void }) {
       </div>
       <p className="l-oficina-msg" aria-live="polite">{pronto ? "as quatro na bancada. o motor tá montado: falta a água" : `desmontando ${LIXO[n].nome}…`}</p>
       {pronto && <button type="button" className="l-oficina-seguir" autoFocus onClick={onFim}>seguir →</button>}
-    </Caixa>
-  )
-}
-
-// ── o jogo: a goteira. O balde (3 posições) pega as gotas que caem do cano ──
-const COLUNAS = 3
-export function Goteira({ onFim, onGota }: { onFim: (gotas: number) => void; onGota?: (n: number) => void }) {
-  const meta = OFICINA_CFG.gotasDaGoteira
-  const [balde, setBalde] = useState(1)
-  const [pegou, setPegou] = useState(0)
-  const [queda, setQueda] = useState<{ id: number; col: number; t0: number } | null>(null)
-  const baldeRef = useRef(1), pegouRef = useRef(0), gotaEl = useRef<HTMLElement>(null)
-  useEffect(() => { baldeRef.current = balde }, [balde])
-  const cheio = pegou >= meta
-  // uma gota por vez: cai em ~1,1 s; no fim, pegou se o balde está na coluna dela
-  useEffect(() => {
-    if (cheio) return
-    let raf = 0, alive = true
-    const nova = () => {
-      // a goteira não é cruel: a próxima cai perto de onde a última caiu
-      setQueda((q) => ({ id: (q?.id ?? 0) + 1, col: Math.floor(Math.random() * COLUNAS), t0: performance.now() + 250 }))
-    }
-    if (!queda) nova()
-    const DUR = 1100
-    const tick = () => {
-      if (!alive) return
-      if (queda && gotaEl.current) {
-        const k = Math.max(0, (performance.now() - queda.t0) / DUR)
-        gotaEl.current.style.transform = `translate3d(0, ${Math.min(1, k) * 78}%, 0)`
-        if (k >= 1) {
-          if (queda.col === baldeRef.current) { pegouRef.current += 1; setPegou(pegouRef.current); onGota?.(pegouRef.current); gota(pegouRef.current) }
-          nova()
-          return
-        }
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => { alive = false; cancelAnimationFrame(raf) }
-  }, [queda, cheio, onGota])
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" || e.key === "a") setBalde((b) => Math.max(0, b - 1))
-      if (e.key === "ArrowRight" || e.key === "d") setBalde((b) => Math.min(COLUNAS - 1, b + 1))
-      if ((e.key === "Enter" || e.key === " ") && pegouRef.current >= meta) onFim(pegouRef.current)
-    }
-    window.addEventListener("keydown", k)
-    return () => window.removeEventListener("keydown", k)
-  }, [meta, onFim])
-  return (
-    <Caixa titulo={cheio ? "o tanque do motor tá cheio" : "a goteira"} sub="o jogo · embaixo da pista" rotulo="a goteira">
-      <div className="l-oficina-goteira" data-pegou={pegou}>
-        <i className="l-oficina-cano" aria-hidden="true" />
-        {Array.from({ length: COLUNAS }, (_, c) => (
-          <button key={c} type="button" className="l-oficina-coluna" aria-label={`o balde na ${c + 1}ª`} onClick={() => setBalde(c)}>
-            {queda && queda.col === c && !cheio && <i key={queda.id} ref={gotaEl} className="l-oficina-gota" />}
-            {balde === c && <i className="l-oficina-balde" style={{ ["--n" as string]: `${pegou / meta}` }} />}
-          </button>
-        ))}
-      </div>
-      <p className="l-oficina-msg" aria-live="polite">{cheio ? "cada gota conta. o motor bebe pouco" : `toca embaixo da gota (ou ← →) · o tanque: ${pegou}/${meta}`}</p>
-      {cheio && <button type="button" className="l-oficina-seguir" autoFocus onClick={() => onFim(pegou)}>levar a água →</button>}
     </Caixa>
   )
 }

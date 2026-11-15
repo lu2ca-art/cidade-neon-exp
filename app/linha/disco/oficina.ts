@@ -3,14 +3,15 @@
 //
 //   o Criador chega só com o PLANO (água + painel solar = a energia pra subir)
 //   a ARTE  = a reciclagem: pegar lixo e transformar em tecnologia (a bancada)
-//   o JOGO  = achar um painel solar velho no lixão e depois uma goteira pra
-//             coletar a água do motor
+//   o JOGO  = achar um painel solar velho no lixão e depois coletar a água do
+//             motor (14/11: saiu a goteira; a água é escassa e mora em poucos
+//             pontos do deserto, pega passando, como o lixo)
 //
 // (T57, o dono 28/10: "as coisas acontecem no mundo, de verdade") a reciclagem
 // saiu da bancada de menu: o lixo (o ventilador, a máquina de lavar, o rádio
 // velho e o painel solar) fica ESPALHADO no lixão, e ele pega cada um no mundo,
 // de Kombi ou de patins (a coluna de luz e o GPS mostram onde). Com as quatro, a
-// oficina monta (a arte). O jogo fica a goteira; o resto do T09 segue igual
+// oficina monta (a arte). O jogo fica a água do deserto; o resto do T09 segue igual
 //   a PORTA = as melhorias de desempenho da Kombi (o mecânico, pago em água)
 //
 // Das jogadas (J2: 18, 19): o mecânico é pago em água, a que a D-Bee deu (ela
@@ -21,7 +22,7 @@
 // As funções são puras (recebem a história do save): a page.tsx só chama.
 
 import type { Cena } from "../cenas"
-import { PECAS_CHAO, type PecaChao } from "./achados"
+import { AGUAS_CHAO, PECAS_CHAO, type AguaChao, type PecaChao } from "./achados"
 import type { HistoriaDisco, LugarChao } from "./historia"
 import { feita13, pecaFeita } from "./portas"
 import { MARCOS } from "./episodios"
@@ -40,8 +41,8 @@ export const OFICINA_CFG = {
   // o serviço do mecânico (montar o motor), em água. Se faltar, ele monta com o
   // que tiver (nada trava)
   precoMotor: 60,
-  // quantas gotas a goteira enche no tanque do motor
-  gotasDaGoteira: 10,
+  // o tanque do motor cheio (as três águas do deserto juntas)
+  tanqueCheio: 10,
   // o contador do pagamento: um passo a cada tantos ms; o som de água a cada 10
   passoMs: 45,
   somACada: 10,
@@ -62,6 +63,9 @@ export const lixoDe = (id: string) => LIXO.find((l) => l.id === id)
 // as que ele já catou (só as que existem) e as que faltam, na ordem da rota
 export const pecasCatadas = (h: HistoriaDisco) => PECAS_CHAO.filter((id) => (h.oficina?.pecas ?? []).includes(id) || (id === "painel" && !!h.oficina?.painel))
 export const pecasFaltando = (h: HistoriaDisco) => LIXO.map((l) => l.id).filter((id) => !pecasCatadas(h).includes(id))
+// (14/11) a água do deserto: as que ele já coletou e as que faltam (na ordem da rota)
+export const aguasColetadas = (h: HistoriaDisco): AguaChao[] => AGUAS_CHAO.filter((id) => (h.oficina?.aguas ?? []).includes(id))
+export const aguasFaltando = (h: HistoriaDisco): AguaChao[] => AGUAS_CHAO.filter((id) => !aguasColetadas(h).includes(id))
 
 // ── as falas (RASCUNHO) ──
 export const FALAS_OFICINA = {
@@ -75,8 +79,9 @@ export const FALAS_OFICINA = {
   // a oficina monta: o lixo vira as peças do motor (a arte)
   monta: "segura aí. o ventilador tem bobina, a máquina tem bomba, o rádio tem fio. e o sol, a gente pega do painel",
   // montou: agora a água
-  goteira: "o motor tá aí. agora a água dele: tem uma goteira embaixo da pista, aqui pertinho. enche o tanque",
-  // a goteira encheu: de volta pra oficina
+  agua: "o motor tá aí. agora a água dele. aqui embaixo não tem. no deserto tem, pouca, em três lugares. a luz mostra onde",
+  // coletou uma (a conta entra no fim) e a última: de volta pra oficina
+  coletou: "água. cada gota conta",
   voltar: "tanque cheio. traz pra cá que eu monto",
   // na hora de pagar
   pagar: "aqui embaixo ninguém paga com neon. é água. a que a D-Bee te deu paga o serviço",
@@ -91,7 +96,7 @@ export const FALAS_OFICINA = {
 
 // ── o passo da missão (o que a história pede agora) ──
 // (T57) catar = pegar o lixo espalhado no lixão; reciclar = com as quatro, a oficina monta
-export type PassoOficina = "chegar" | "show" | "catar" | "reciclar" | "goteira" | "montar" | "feita"
+export type PassoOficina = "chegar" | "show" | "catar" | "reciclar" | "agua" | "montar" | "feita"
 export function passoOficina(h: HistoriaDisco): PassoOficina {
   if (feita13(h, "oficina")) return "feita"
   // (08/11) o show da Nectar no palco do bar fecha o ep. 1, antes da oficina do ep. 2.
@@ -99,13 +104,13 @@ export function passoOficina(h: HistoriaDisco): PassoOficina {
   if (!MARCOS["show-nectar"].feito(h) && (h.mubarakBar || h.oficina?.cena)) return "show"
   if (!h.oficina?.cena) return "chegar"
   if (!pecaFeita(h, "oficina", "arte")) return pecasFaltando(h).length ? "catar" : "reciclar"
-  if (!pecaFeita(h, "oficina", "jogo")) return "goteira"
+  if (!pecaFeita(h, "oficina", "jogo")) return "agua"
   return "montar"
 }
 // pra onde ir no chão do subúrbio (a coluna de luz, o drone, a chegada): catando, a próxima peça da rota
 export function alvoOficina(h: HistoriaDisco): LugarChao | null {
   const p = passoOficina(h)
-  return p === "feita" ? null : p === "show" ? "bar" : p === "catar" ? pecasFaltando(h)[0] : p === "goteira" ? "goteira" : "oficina"
+  return p === "feita" ? null : p === "show" ? "bar" : p === "catar" ? pecasFaltando(h)[0] : p === "agua" ? (aguasFaltando(h)[0] ?? "oficina") : "oficina"
 }
 // o objetivo no topo da tela
 export const OBJETIVO_OFICINA: Record<PassoOficina, string> = {
@@ -113,7 +118,7 @@ export const OBJETIVO_OFICINA: Record<PassoOficina, string> = {
   show: "o palco do bar · a Nectar",
   catar: "o lixo bom · o lixão",
   reciclar: "volta pra oficina · ela monta",
-  goteira: "a goteira · embaixo da pista",
+  agua: "a água · o deserto",
   montar: "volta pra oficina",
   feita: "a cidade · lá em cima",
 }

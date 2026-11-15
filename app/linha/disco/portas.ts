@@ -189,9 +189,9 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
     id: "oficina", n: 2, onde: "suburbio", quem: "Mubarak", cor: "#ffc857", faixa: null, faixaSituacao: "em aberto",
     lugar: { chao: "oficina" }, pedido: "a kombi não sobe sem motor novo", apresenta: "montar o motor com o mecânico",
     // (T09) a fase "oficina" da história joga as duas (disco/oficina.ts). (T57) a arte
-    // é catar o lixo espalhado no lixão (no mundo) e a oficina monta; o jogo, a goteira
+    // é catar o lixo espalhado no lixão (no mundo) e a oficina monta; o jogo, a água do deserto
     arte: p("a reciclagem: catar o lixo no lixão e virar tecnologia", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
-    jogo: p("a goteira: a água do motor", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
+    jogo: p("a água do motor: o deserto", "decidido", { como: { t: "historia" }, tarefa: "T09" }),
     abre: ["kombi-melhorias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.oficina, instrumento: "tambor-agua" }, requer: ["dbee"], prologo: true,
   },
   quadra: {
@@ -235,9 +235,10 @@ export const MISSOES13: Record<MissaoId, Missao13> = {
   xeriff: {
     id: "xeriff", n: 7, onde: "cidade", quem: "Xeriff", cor: "#c9d3e6", faixa: null, faixaSituacao: "em aberto",
     lugar: { lugar: "plataforma" }, pedido: "a polícia fala numa frequência que ninguém pega", apresenta: "sintonizar a frequência da polícia",
-    // (T18, bloco 1 · A4, 30/10) a arte é a dos esportes: o ping pong com o robô
-    // (disco/PingPong.tsx), que saiu do Drew. A vinheta fica fora do mapa
-    arte: p("a arte dos esportes: o ping pong com o robô", "decidido", { como: { t: "pingpong" }, tarefa: "T18" }),
+    // (14/11, o dono) o ping pong saiu do Xeriff ("não faz nenhum sentido"): a
+    // missão é encontrar ele na plataforma e pegar a frequência. Quem ele é:
+    // docs/episodios.md (o Xeriff)
+    arte: p("encontrar o Xeriff na plataforma", "decidido", { como: { t: "chegar" }, tarefa: "T18" }),
     jogo: p("sintonizar a frequência da polícia", "decidido", { como: { t: "prova", id: "sintonia" }, tarefa: "T18" }),
     abre: ["radio-frequencias"], recompensa: { guitar: null, batida: null, neon: PAGA.missao.xeriff, instrumento: "didgeridoo" }, requer: ["lu2ca"],
   },

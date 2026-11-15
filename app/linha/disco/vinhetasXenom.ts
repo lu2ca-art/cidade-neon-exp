@@ -46,7 +46,7 @@ export const VINHETAS_XENOM: VinhetaXenom[] = [
   // a oficina (o mecânico)
   v("oficina-1", "o mecânico tá catando sucata no lixão de novo. diz que dá motor. eu acredito", { missao: "oficina", quando: "disponivel" }),
   v("oficina-2", "tem uma kombi parada na oficina sem motor. alguém leva umas peças pro velho?", { missao: "oficina", quando: "ativa" }),
-  v("oficina-3", "a goteira da oficina virou combustível. só no xenom mesmo", { missao: "oficina", quando: "feita" }),
+  v("oficina-3", "a água do deserto virou combustível. só no xenom mesmo", { missao: "oficina", quando: "feita" }),
   // a quadra (Alohan)
   v("quadra-1", "a quadra tá vazia faz tempo. o Alohan diz que falta o beat. quem faz?", { missao: "quadra", quando: "disponivel" }),
   v("quadra-2", "o Alohan tá na quadra montando um som. diz que se tiver beat, a galera volta", { missao: "quadra", quando: "disponivel" }),

@@ -24,8 +24,16 @@ export function ouvirChaoAtivos(f: () => void) {
 export const PECAS_CHAO = ["painel", "lavadora", "ventilador", "radio"] as const satisfies readonly LugarChao[]
 export type PecaChao = (typeof PECAS_CHAO)[number]
 export const ehPeca = (id: string): id is PecaChao => (PECAS_CHAO as readonly string[]).includes(id)
+// (14/11) a água do motor: poucos pontos no deserto, pega passando também
+export const AGUAS_CHAO = ["agua1", "agua2", "agua3"] as const satisfies readonly LugarChao[]
+export type AguaChao = (typeof AGUAS_CHAO)[number]
+export const ehAgua = (id: string): id is AguaChao => (AGUAS_CHAO as readonly string[]).includes(id)
+// o que se pega passando, sem parar a Kombi: as peças e a água
+export const ehPassando = (id: string) => ehPeca(id) || ehAgua(id)
 // o raio pra pegar uma peça (dirigindo, sem parar)
 export const RAIO_PECA = 9
+// a água é uma poça no chão: um pouco mais larga
+export const RAIO_AGUA = 11
 // (jogador novo 2) os lugares do chão em que ele está agora (a Corrida enche e esvazia;
 // sai a ~3x o raio). A página confere aqui antes de devolver um "entrar" segurado
 export const chaoDentro = new Set<string>()
@@ -34,5 +42,5 @@ export const chaoDentro = new Set<string>()
 export function pertoDoChao(id: LugarChao, x: number, z: number) {
   if (id === "tuneis") return naBoca(x, z)
   const l = CHAO_LUGARES[id]
-  return Math.hypot(x - l.x, z - l.z) < (ehPeca(id) ? RAIO_PECA : RAIO_CHAO)
+  return Math.hypot(x - l.x, z - l.z) < (ehPeca(id) ? RAIO_PECA : ehAgua(id) ? RAIO_AGUA : RAIO_CHAO)
 }

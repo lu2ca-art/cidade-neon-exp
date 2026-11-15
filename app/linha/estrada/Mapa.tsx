@@ -35,7 +35,7 @@ interface PoseKombi { via: number; u: number; x: number; v: number; wx?: number;
 const ROTA_COR = "#ff3fb0"
 // (23/10) os lugares do chão do subúrbio (a oficina, o bar, o palco) ficam fora das
 // pistas: no mapa, um ponto em coordenada de mundo, com halo pulsando pra achar
-// (T09) os achados da oficina (o painel, a goteira) não são lugar: ficam fora do mapa fixo
+// (T09) os achados da oficina (o lixo, a água do deserto) não são lugar: ficam fora do mapa fixo
 function desenharChao(g: CanvasRenderingContext2D, x: number, y: number, cor: string, k: number, agora: number, trancado = false) {
   const p = 0.5 + 0.5 * Math.sin(agora / 320)
   g.globalAlpha = 0.18 + 0.22 * p; g.fillStyle = cor; g.beginPath(); g.arc(x, y, (10 + 5 * p) * k, 0, 7); g.fill(); g.globalAlpha = 1

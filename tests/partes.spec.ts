@@ -12,7 +12,7 @@ const PARTES: [string, string | null][] = [
   // (T03) a loja aberta, com grana
   ["loja", "carreira"],
   // (T09) a missão da oficina, passo a passo, e a lojinha das melhorias depois dela
-  ["oficina.bancada", "oficina"], ["oficina.painel", "oficina"], ["oficina.goteira", "oficina"], ["oficina.pagar", "oficina"], ["oficina.loja", "subir"],
+  ["oficina.bancada", "oficina"], ["oficina.painel", "oficina"], ["oficina.agua", "oficina"], ["oficina.pagar", "oficina"], ["oficina.loja", "subir"],
   // (T20) os palcos: o menu aberto (o começo e o topo)
   ["palcos", "carreira"], ["palcos.topo", "carreira"],
   // (T37) a chegada de um login (save existente): o túnel e a casinha

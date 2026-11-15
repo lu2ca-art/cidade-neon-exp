@@ -21,7 +21,7 @@ export const INSTRUMENTOS_MUNDO: Record<InstrumentoId, PontoXZ> = {
   berimbau: { x: -1590, z: -370 },
   handpan: { x: -300, z: -905 }, // no lixão, a leste do subúrbio
   // no subúrbio
-  "tambor-agua": { x: -603, z: -737 }, // perto da goteira
+  "tambor-agua": { x: -603, z: -737 }, // embaixo da pista, perto da oficina
   udu: { x: -882, z: -810 }, // atrás da quadra
   kalimba: { x: -762, z: -452 }, // atrás dos discos
   "flauta-bambu": { x: -1007, z: -595 }, // atrás das flores
