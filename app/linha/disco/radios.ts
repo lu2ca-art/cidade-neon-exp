@@ -49,9 +49,10 @@ export function faixasDaEstacao(e: EstacaoRadio, agora = Date.now()): FaixaRadio
       return { titulo: src === p.inst ? `${p.faixa} · inst` : p.faixa, src, pista: p.id }
     }).filter((f) => !!f.src)
   }
-  // Xenom: tudo que já existe no jogo e não é do vol. 1
+  // Xenom: o lado C do subúrbio e os vinis de domínio público. (14/11, o dono) o
+  // vol. 2 (ARQUIVO) saiu: ainda não pode tocar
   const sub = FREQUENCIAS.find((f) => f.id === "suburbio")?.faixas ?? []
-  return [...sub, ...ARQUIVO, ...VINIS]
+  return [...sub, ...VINIS]
 }
 
 // ── a frequência agora (uma pro jogo inteiro: estrada, túneis, salas) ──

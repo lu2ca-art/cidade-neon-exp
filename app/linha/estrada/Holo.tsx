@@ -212,12 +212,14 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
   }, [])
   return (
     <div className={`l-holo-som ${radio.ligada ? "is-on" : ""} ${menu ? "is-menu" : ""}`} style={{ ["--cor" as string]: radio.cor }} onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="l-holo-radio-holo" data-info="radio" onClick={alternarMenu} aria-label="o menu da rádio" aria-expanded={menu}>
+      {/* (14/11, o dono) a bola é o liga/desliga: desligada, a rádio encolhe e fica só ela */}
+      <button type="button" className="l-holo-radio-holo" data-info="radio" onClick={() => { setMenu(false); onLigar() }} aria-label={radio.ligada ? "desligar a rádio" : "ligar a rádio"} aria-pressed={radio.ligada}>
         <canvas ref={tela} />
         {novas > 0 && !menu && <em className="l-holo-radio-novas">{novas}</em>}
       </button>
       <div className="l-holo-som-info">
-        <div className={`l-holo-radio-linha ${aviso ? "is-aviso" : ""}`} data-info="radio">
+        {/* o nome da rádio abre o menu (as frequências, os avisos, as piratas) */}
+        <div className={`l-holo-radio-linha ${aviso ? "is-aviso" : ""}`} data-info="radio" role="button" tabIndex={0} aria-label="o menu da rádio" aria-expanded={menu} onClick={alternarMenu} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternarMenu() } }} style={{ cursor: "pointer" }}>
           <b>{aviso ? aviso.de : radio.nome ? `${radio.nome.toLowerCase()} · ${radio.freq}` : `${radio.freq} fm`}</b>
           {aviso ? (
             <span key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></span>

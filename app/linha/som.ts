@@ -1086,6 +1086,10 @@ interface Deck { el: HTMLAudioElement; gain: GainNode | null; src: string | null
 // um <audio> que nunca tocou dentro de um toque)
 const SILENCIO = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=="
 const tocarSemErro = (el: HTMLAudioElement) => { try { const r = el.play(); if (r && typeof r.catch === "function") r.catch(() => {}) } catch {} }
+// (14/11, o dono) a trilha do lugar, com a rádio e o disco desligados: sutil e
+// filtrada, como o som de fora chegando dentro da Kombi-estúdio. RASCUNHO: afinar aqui
+export const TRILHA_LUGAR = { corte: 1900, vol: 0.55 }
+
 class PistaSom {
   private decks: Deck[] = []
   private ativo = -1
@@ -1245,9 +1249,43 @@ class PistaSom {
     if (ocioso.src !== src) { ocioso.el.preload = "auto"; ocioso.el.src = src; ocioso.src = src }
   }
 
+  // (14/11, o dono) na cidade cada música toca uma vez por sessão (o instrumental e
+  // a prévia); depois que acabou, a pista dela fica no silêncio
+  private cidadeAcabou = new Set<string>()
+  // (14/11) o deserto: os instrumentais do vol. 1 em fila
+  private filaDeserto: FaixaContinua[] = []
+  private iDeserto = -1
+  /** no deserto: um instrumental do vol. 1 atrás do outro (já tocando o deserto: segue) */
+  tocarDeserto(lista: FaixaContinua[], fade = CROSSFADE) {
+    if (this.daMissao || !lista.length) return
+    if (this.faixa?.forma === "deserto" && this.tocando) return
+    this.filaDeserto = lista
+    this.iDeserto = this.iDeserto < 0 ? Math.floor(Math.random() * lista.length) : (this.iDeserto + 1) % lista.length
+    this.tocarDaFila(fade)
+  }
+  private tocarDaFila(fade: number) {
+    const f = { ...this.filaDeserto[this.iDeserto], forma: "deserto" as const }
+    this.faixa = f
+    definirFaixaRua(f.id)
+    definirTom(f.tom)
+    this.completaViva = false
+    this.tocar("inst", 0, fade, false)
+  }
+
   /** entrou numa pista: a faixa dela do início (a mesma faixa: segue tocando) */
   tocarFaixa(f: FaixaContinua, fade = CROSSFADE) {
     if (this.daMissao || (this.faixa && this.faixa.id === f.id && this.tocando)) return
+    // (14/11) a cidade: o instrumental uma vez, depois a prévia; a que já acabou fica calada
+    if (f.forma === "cidade") {
+      if (this.faixa?.id === f.id && this.faixa.forma === "cidade") return
+      this.faixa = f
+      definirFaixaRua(f.id)
+      definirTom(f.tom)
+      this.completaViva = false
+      if (this.cidadeAcabou.has(f.id)) { this.calar(fade); return }
+      this.tocar("inst", 0, fade, false)
+      return
+    }
     this.faixa = f
     definirFaixaRua(f.id)
     definirTom(f.tom)
@@ -1313,9 +1351,25 @@ class PistaSom {
     this.tocar(quer, t, CROSSFADE, quer === "inst" ? false : albumComprado())
   }
   // um deck chegou ao fim (só acontece sem loop: a completa, ou o instrumental no lugar dela)
+  // (14/11) a trilha do lugar acabou de vez (a cidade depois da prévia): o deck que soa sai em fade
+  private calar(fade: number) {
+    const cur = this.ativo >= 0 ? this.decks[this.ativo] : null
+    if (!cur || cur.el.paused) return
+    this.rampa(cur, 0, fade)
+    if (cur.parada) clearTimeout(cur.parada)
+    cur.parada = setTimeout(() => { cur.parada = null; cur.el.pause() }, fade * 1000 + 80)
+  }
   private fimDoDeck(d: Deck) {
     const f = this.faixa
     if (!f || this.decks[this.ativo] !== d) return
+    // (14/11) o deserto: o próximo instrumental da fila
+    if (f.forma === "deserto" && !this.daMissao) { this.iDeserto = (this.iDeserto + 1) % Math.max(1, this.filaDeserto.length); return this.tocarDaFila(CROSSFADE) }
+    // (14/11) a cidade: acabou o instrumental, a prévia (uma vez); acabou a prévia, silêncio
+    if (f.forma === "cidade" && !this.daMissao) {
+      if (this.modo === "inst" && f.previa) { this.faixa = { ...f, completa: f.previa }; return this.tocar("completa", 0, 1.2, false) }
+      this.cidadeAcabou.add(f.id)
+      return
+    }
     this.daMissao = false
     marcarCompletaOuvida(f.id)
     if (albumComprado()) {
@@ -1336,8 +1390,10 @@ class PistaSom {
   private aplicarMestre(forcar: boolean) {
     const c = audioCtx()
     if (!c || !this.filtro || !this.mestre) return
-    const corte = this.noAr ? 700 : this.abafada ? 900 : 20000
-    const alvo = this.segurando || this.radio ? 0 : this.noAr ? 0.4 : this.abafada ? 0.6 : 1
+    // (14/11, o dono) a trilha do lugar é sutil: a Kombi é um estúdio, o som chega
+    // filtrado lá dentro (TRILHA_LUGAR). A rádio ou o disco ligados calam ela
+    const corte = this.noAr ? 700 : this.abafada ? 900 : TRILHA_LUGAR.corte
+    const alvo = this.segurando || this.radio ? 0 : this.noAr ? 0.4 * TRILHA_LUGAR.vol : this.abafada ? 0.6 * TRILHA_LUGAR.vol : TRILHA_LUGAR.vol
     if (forcar || corte !== this.ultCorte) { this.ultCorte = corte; this.filtro.frequency.setTargetAtTime(corte, c.currentTime, 0.08) }
     if (forcar || alvo !== this.ultAlvo) { this.ultAlvo = alvo; this.mestre.gain.setTargetAtTime(alvo, c.currentTime, this.radio || this.segurando ? 0.25 : 0.08) }
   }

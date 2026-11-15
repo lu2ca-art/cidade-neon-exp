@@ -1144,7 +1144,8 @@ export default function LinhaPage() {
   const pegarMissao = (id: MissaoId) => {
     // (08/11, bíblia §3) aceitou: começa a música completa da missão (sem faixa: segue o instrumental da pista)
     const faixa = faixaDaMissao(id)
-    if (faixa) pistaSom.tocarDaMissao(faixa, id)
+    // (14/11, o dono) durante a missão toca o instrumental da faixa dela (não a cantada)
+    if (faixa) pistaSom.tocarDaMissao({ ...faixa, completa: faixa.inst }, id)
     setSave((s) => comHistoria(s, (h) => ({ ...h, missao: id })))
     setLargadas((l) => l.filter((x) => x !== id))
     track("mission_step", { mission_id: `disco-${id}`, step: "pegou", perfil: save.perfil ?? "?", fio_pos: -1 })

@@ -144,8 +144,8 @@ import { VINIS, FREQUENCIAS, freqsLiberadas, proximaFreq, type FreqId, type Freq
 import { TODAS_FAIXAS, ehDoLugar, proxima } from "../programa"
 import type { Save } from "../estado"
 import { radioPega, type MemoriaRadio } from "../disco/sons"
-import { definirZonaSom, zonaDoSom } from "../disco/radioAntiga"
-import { estacaoDaFreq, pedirFaixaDaRua, radioFreq, registrarTocador } from "../disco/radios"
+import { definirZonaSom, zonaDoSom, zonaSomAgora } from "../disco/radioAntiga"
+import { ESTACOES_RADIO, estacaoDaFreq, pedirFaixaDaRua, radioFreq, registrarTocador } from "../disco/radios"
 import { chiadoCamera, chiadoCurto, disco, estatica, fonteSom, gota, nomeDoTom, player, tomDaMusica, vento, voz, type Fonte, pistaSom, somCena, disco as discoPainel } from "../som"
 import { MARCHAS, montarMotor, montarPatins, tremor, vib } from "../som-carro"
 import { MEIA, PASSO, amostra, du, mundo as noMundo, novaAmostra, pontoI, suave, type Pista } from "./pista"
@@ -2841,7 +2841,15 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   const radioHolo = { ligada: aparelho === "radio", freq: fq.freq, faixa: caido ? "sem sinal" : faixa || "fora do ar", cor: fq.cor, id: freq, sinal: save.sinal, nome: "disco" in M ? fq.nome : undefined }
   // (T40) a rádio só pega perto das pistas: fora delas fica o disco e a Kombi avisa
   const semSinalAviso = () => { if (!fonteSom.radioPega()) falar("222 FM", "sem sinal aqui: a rádio só pega perto das pistas. fica o disco", 4200) }
-  const ligarRadioHolo = () => { if (aparelho === "radio") fonteSom.set("off"); else { fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(freqRef.current), 0) } }
+  // (14/11, o dono) a bola do holo liga e desliga a rádio. Ligando, uma das rádios
+  // ao acaso (o disco e a trilha do lugar param: uma fonte de som por vez)
+  const ligarRadioHolo = () => {
+    if (aparelho === "radio") { fonteSom.set("off"); return }
+    const ests = Object.values(ESTACOES_RADIO)
+    const r = "disco" in M ? ests[Math.floor(Math.random() * ests.length)].freq : freqRef.current
+    if (r !== freqRef.current) { setFreq(r); freqRef.current = r }
+    fonteSom.set("radio"); semSinalAviso(); setTimeout(() => tocarProxima(r), 0)
+  }
   // (LU2CA 20/10) a SINT0NIA virou o menu da rádio: sintonizar liga a rádio na frequência
   const sintonizarHolo = (id: FreqId) => {
     // (T18) as outras frequências abrem na missão do Xeriff: até lá, só a 222
@@ -3987,6 +3995,8 @@ function CenaBase({
   const atropelouRobo = useCallback(() => { motor?.baque(); vib(VIB_ATROPELO) }, [motor])
   const reduz = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, [])
   // (disco) a faixa de cada pista (a pista é o toca-discos) e qual está tocando
+  // (14/11) o deserto toca os instrumentais do vol. 1 (as 9), em fila
+  const desertoLista = useMemo(() => PISTAS.map((p) => faixaContinua(p)), [])
   const faixasDisco = useMemo<(PistaFaixa | null)[]>(() => ("disco" in M ? (M as MundoDisco).pistas.map((p) => PISTAS.find((x) => x.faixa === p.nome) ?? null) : []), [M])
   const pistaTocando = useRef(-1)
   const memRadio = useRef<MemoriaRadio>({ resto: 0 })
@@ -6631,8 +6641,15 @@ function CenaBase({
       // (vida no subúrbio) a posição de verdade pra gente abrir caminho (VidaSuburbio.tsx); só perto dele
       if (j.voo && j.wx !== undefined && Math.hypot(j.wx - SUBURBIO.x, j.wz! - SUBURBIO.z) < SUBURBIO.r + 300) { VIDA_JOGADOR.x = j.wx; VIDA_JOGADOR.z = j.wz!; VIDA_JOGADOR.ate = state.clock.elapsedTime + 0.5 }
     }
-    // (música contínua, 03/11) no deserto não tem pista: a faixa some em fade
-    if (faixasDisco.length && semPista) { if (pistaSom.src) pistaSom.sair(2); pistaTocando.current = -1 }
+    // (14/11, o dono) no deserto: os instrumentais do vol. 1, um atrás do outro
+    // (antes a faixa saía e ficava o disco antigo). Fora da pista, no chão do deserto, também
+    const infD = faixasDisco.length ? (M as MundoDisco).info[j.via] : null
+    const trilhaDeserto = semPista || (zonaSomAgora() === "deserto" && !(infD && infD.pista >= 0))
+    if (faixasDisco.length && trilhaDeserto) {
+      pistaTocando.current = -1
+      pistaSom.tocarDeserto(desertoLista)
+      pistaSom.estado(!!(j.ar || combRef.current.patins), fonteRef.current !== "off", false)
+    }
     // (música contínua, 03/11; bíblia §3, 08/11) entrou numa pista, o instrumental
     // dela; nas torres continua o que estava. Com a completa da missão soando
     // (page.tsx → pistaSom.tocarDaMissao) a troca de pista não mexe nela. Nada aqui
@@ -6645,15 +6662,15 @@ function CenaBase({
       const fx = k >= 0 ? faixasDisco[k] : null
       if (fx && (k !== pistaTocando.current || !pistaSom.faixa)) {
         pistaTocando.current = k
-        if (fonteRef.current !== "radio") player.pausar()
-        discoPainel.parar()
-        pistaSom.tocarFaixa(faixaContinua(fx))
+        // (14/11, o dono) uma fonte por vez: a trilha do lugar não derruba o disco nem a
+        // rádio (eles é que calam ela, no estado abaixo). Na cidade: o instrumental, a prévia, e acaba
+        pistaSom.tocarFaixa({ ...faixaContinua(fx), forma: "cidade", previa: `/audio/previews/${fx.id}.mp3` })
         // (rádios, 05/11) com a Rádio Cidade Neon ligada, a faixa da rua é a próxima dela
         pedirFaixaDaRua(fx.id)
       }
       // a completa da missão não é a música da pista: fora dela (no chão) ou numa pista apagada ela soa limpa
       const daMissao = pistaSom.daMissao
-      pistaSom.estado(!!(j.ar || (j.voo && !daMissao) || combRef.current.patins), fonteRef.current === "radio", pistaEscura.current && !daMissao)
+      pistaSom.estado(!!(j.ar || (j.voo && !daMissao) || combRef.current.patins), fonteRef.current !== "off", pistaEscura.current && !daMissao)
     }
     // ── câmera: amortecida, abre com a velocidade, inclina com a curva ──
     const dePatins = !!combRef.current.patins

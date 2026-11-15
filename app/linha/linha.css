@@ -3168,3 +3168,8 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-kombeat-pads button { aspect-ratio: 1.618; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent); background: color-mix(in srgb, var(--cor) 14%, transparent); color: rgba(255, 255, 255, 0.55); font: 700 12px var(--font-geist-mono), monospace; cursor: pointer; touch-action: manipulation; }
 .l-kombeat-pads button.is-bate { animation: l-kombeat-bate 0.22s ease-out; }
 @keyframes l-kombeat-bate { from { background: var(--cor); color: #0b0a12; } }
+
+/* (14/11, o dono) a rádio desligada encolhe: fica só a bola (o liga/desliga) */
+.l-holo-som:not(.is-on):not(.is-menu) { width: auto; grid-template-columns: auto; padding-right: 4px; background: none; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.l-holo-som:not(.is-on):not(.is-menu) .l-holo-som-info { display: none; }
+.l-holo-som .l-holo-radio-holo { transition: transform 0.2s, opacity 0.3s; }

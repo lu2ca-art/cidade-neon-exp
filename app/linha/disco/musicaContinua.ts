@@ -39,6 +39,11 @@ export interface FaixaContinua {
   inst: string // o instrumental (ou a completa, se não existe)
   semInst: boolean // não tem instrumental próprio: no lugar dele, a completa mais baixa
   dur: number // duração da completa (s), pra saber se ela "já acabou" no fim da missão
+  // (14/11, o dono) o jeito de tocar a trilha do lugar:
+  //   "cidade"  = o instrumental uma vez, a prévia uma vez (`previa`), e acaba
+  //   "deserto" = os instrumentais do vol. 1 um atrás do outro (som.ts tocarDeserto)
+  forma?: "cidade" | "deserto"
+  previa?: string
 }
 
 // as faixas cuja completa já tocou inteira nesta sessão (a página aberta)

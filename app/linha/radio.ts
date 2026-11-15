@@ -82,7 +82,8 @@ export function faixasDe(f: Frequencia, objetos: EstacaoId[], _estacao: EstacaoI
   // (desde 02/10: vinil é só no TOCA-DISCOS, escolha da pessoa; o rádio
   // toca o que as missões liberam — sem missão, a 222 tá fora do ar)
   if (f.id === "linha") return vol1
-  if (f.id === "full") return [...vol1, ...ARQUIVO.slice(0, n)]
+  // (14/11, o dono) o vol. 2 ainda não pode tocar: a full fica só com o vol. 1
+  if (f.id === "full") return vol1
   if (f.id === "suburbio") return f.faixas.slice(0, n)
   return f.faixas.filter((x) => ganhou(x.titulo, objetos) && saiu(x.titulo, agora))
 }

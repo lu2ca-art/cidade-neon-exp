@@ -48,11 +48,19 @@ function modoTeste(): boolean {
   return teste
 }
 
+/** (14/11, o dono) a faixa já saiu (tem link próprio): só as lançadas ganham o botão das plataformas */
+export function faixaLancada(id: string | null | undefined): boolean {
+  const l = id ? LINKS_FAIXAS[id as PistaId] : undefined
+  return !!l && !!(l.smart || l.spotify || l.apple || l.youtube)
+}
+
 type Destino = "spotify" | "apple" | "youtube" | "other"
 function melhor(id: string): { url: string; destino: Destino } | null {
   const p = PISTAS.find((x) => x.id === id)
   if (!p) return null
   if (modoTeste()) return { url: `https://open.spotify.com/search/${encodeURIComponent(`LU2CA ${p.faixa}`)}`, destino: "spotify" }
+  // (14/11) sem link próprio = ainda não saiu: sem botão (antes caía no perfil do artista)
+  if (!faixaLancada(p.id)) return null
   const l = LINKS_FAIXAS[p.id]
   if (l.smart) return { url: l.smart, destino: "other" }
   if (l.spotify) return { url: l.spotify, destino: "spotify" }
