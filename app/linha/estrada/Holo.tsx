@@ -221,9 +221,7 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
           <b>{aviso ? aviso.de : radio.nome ? `${radio.nome.toLowerCase()} · ${radio.freq}` : `${radio.freq} fm`}</b>
           {aviso ? (
             <span key={aviso.id} className="l-holo-radio-aviso"><em style={{ ["--dur" as string]: `${Math.max(5, aviso.texto.length * 0.16)}s` }}>{aviso.texto}</em></span>
-          ) : <span>{radio.ligada ? radio.faixa : "desligada"}</span>}
-          {radio.ligada && !aviso && <SalvarRadio titulo={radio.faixa} />}
-          {radio.ligada && <button type="button" onClick={onProxima} aria-label="próxima faixa">⏭</button>}
+          ) : !radio.ligada ? <span>desligada</span> : null}
         </div>
         <div className="l-holo-faixa" data-info="faixa">
           <i className={som ? "is-gira" : ""} />
@@ -231,6 +229,13 @@ export function HoloSom({ radio, onLigar, onProxima, onSintonizar }: { radio: Ra
           {som && <small>{mmss(som.t)}</small>}
         </div>
         {som && <div className="l-holo-barra"><div style={{ transform: `scaleX(${Math.min(1, som.t / Math.max(1, som.dur))})` }} /></div>}
+        {/* (14/11, o dono) o ♥ e o ⏭ embaixo do nome e da música: tudo cabe no widget */}
+        {radio.ligada && (
+          <div className="l-holo-radio-ctrl">
+            {!aviso && <SalvarRadio titulo={radio.faixa} />}
+            <button type="button" onClick={onProxima} aria-label="próxima faixa">⏭</button>
+          </div>
+        )}
       </div>
       {menu && (
         <div className="l-holo-radio-menu" role="dialog" aria-label="o menu da rádio">

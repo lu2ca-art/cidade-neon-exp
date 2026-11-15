@@ -3138,3 +3138,10 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-elev-btn:hover span, .l-elev-btn:focus-visible span { color: inherit; }
 .l-elev-btn.is-trancado { opacity: 0.55; cursor: not-allowed; }
 .l-elev-btn.is-trancado:hover { background: rgba(11, 10, 18, 0.72); color: var(--cor); }
+
+/* (14/11, o dono) a rádio cabe no widget: o nome encolhe com "…" e o ♥ ⏭ descem pra uma fileira própria */
+.l-holo-radio-linha b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.l-holo-radio-ctrl { display: flex; gap: 6px; justify-content: flex-end; }
+.l-holo-radio-ctrl button { flex: none; padding: 1px 8px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent) !important; background: color-mix(in srgb, var(--cor) 12%, transparent) !important; color: #fff !important; font-size: 11px !important; line-height: 18px; cursor: pointer; }
+.l-holo-radio-ctrl button.l-radio-salvar { color: #ff7fbf !important; border-color: color-mix(in srgb, #ff4fa3 55%, transparent) !important; background: transparent !important; }
+@media (pointer: coarse) { .l-holo-radio-ctrl button { min-width: 36px; min-height: 30px; } }
