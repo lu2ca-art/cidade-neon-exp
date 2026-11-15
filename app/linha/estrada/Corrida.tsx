@@ -23,7 +23,7 @@ import { BOMBAS, pertoDe } from "./postos"
 import { alemDaCidade, centrosDaCidade } from "./raioCidade"
 import { GotasDeserto } from "./GotasDeserto"
 import { useRouter } from "next/navigation"
-import { Embacado } from "./Embacado"
+import { Gotas } from "./Gotas"
 import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
 import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber"
@@ -54,7 +54,7 @@ import { CASA, RAIO_CASA, SAIDA_CASA, CHEGADA, PARADA_CASA, ENTRA_CHEGADA, CAM_C
 import { lerPoseTutorial } from "../disco/tutorialConf"
 import { trilhaEnsina } from "../disco/trilhaPedras"
 import { LugaresChao } from "../disco/LugaresChao"
-import { chaoAtivos, chaoDentro, ehPeca, pertoDoChao } from "../disco/achados"
+import { chaoAtivos, chaoDentro, ehPassando, pertoDoChao } from "../disco/achados"
 import { IDS_NO_MUNDO, INSTRUMENTOS_MUNDO, NO_MUNDO, PONTOS_NO_MUNDO, temAgora } from "../disco/instrumentosMundo"
 import { InstrumentosNoMundo } from "../disco/InstrumentosNoMundo"
 import type { InstrumentoId } from "../disco/instrumentos"
@@ -1192,30 +1192,20 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
     const t = setInterval(() => setRespirando((x) => (x === respiroRef.current.pode ? x : respiroRef.current.pode)), 300)
     return () => clearInterval(t)
   }, [])
-  // o clima (clima.ts): a chuva vem em pancadas. O vidro embaça só com a
-  // Kombi PARADA na chuva (LU2CA, 14/10: "momentos bem específicos", tipo a
-  // gasolina acabar no meio da chuva): uns 5 s parada e começam os dois
-  // estágios; andando, desembaça sozinho. Uma vez por parada.
+  // o clima (clima.ts): a chuva vem em pancadas. (14/11, o dono) saiu o vidro
+  // embaçado: chovendo, umas poucas gotas aparecem NA TELA, em primeiro plano
+  // (Gotas.tsx), e secam quando a chuva para
   const climaRef = useRef({ chove: false, k: 0 })
-  const embacaRef = useRef(false)
-  const [pedidoEmbaca, setPedidoEmbaca] = useState<number | null>(null)
+  const molhadoRef = useRef(false)
   useEffect(() => {
-    let paradoT = 0, disparou = false
     const t = setInterval(() => {
       const j = jogo.current as Jogo & { encostando?: boolean; noMapa?: boolean }, c = climaRef.current
       // (disco) voando/andando nas dunas sem pista embaixo também é deserto (nunca chove)
       const MDc = "disco" in M ? (M as MundoDisco) : null
       const deserto = M.vias[j.via]?.id === "deserto" || (!!MDc && !!j.voo && j.wx !== undefined && alemDaCidade(j.wx, j.wz!) > 1300)
       c.chove = !deserto && chovendo(dia, horaRef.current)
-      // (revisão 2b) na rua CHUVA o vidro embaça também (a pancada visível já é Math.max com ela)
-      const molhado = c.chove || (!deserto && CHUVA_MANIFESTO.k > CHUVA_RUA_MIN)
-      // parada de verdade: não conta quando a parada já tem outra coisa na tela
-      const ocupado = !!cinemaRef.current || !!j.encostando || !!j.noMapa || respiroRef.current.pode
-      const parado = molhado && Math.abs(j.v) < 0.8 && !ocupado
-      if (Math.abs(j.v) > 3) { paradoT = 0; disparou = false }
-      paradoT = parado ? paradoT + 0.5 : 0
-      if (paradoT >= 5 && !disparou) { disparou = true; setPedidoEmbaca(Date.now()) }
-      embacaRef.current = parado
+      // (revisão 2b) na rua CHUVA também molha (a pancada visível já é Math.max com ela)
+      molhadoRef.current = c.chove || (!deserto && CHUVA_MANIFESTO.k > CHUVA_RUA_MIN)
     }, 500)
     return () => clearInterval(t)
   }, [M, dia])
@@ -1734,7 +1724,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
     // (revisão 05/11) voltou pro jogo em cima de um lugar do chão (ondeParou.ts): idem
     const nasceuEm = ondeNasceu()
     // (começo novo, 05/11) menos o lugar do passo de AGORA (o bar do prólogo, a oficina, a
-    // goteira, a quadra da missão): quem fechou a aba no meio da cena dele reabre ali, e a
+    // água, a quadra da missão): quem fechou a aba no meio da cena dele reabre ali, e a
     // cena tem que voltar (senão fica parado em cima do alvo, "aqui", e nada acontece).
     // O túnel segue protegido (descer de novo sozinho é o que a proteção evita)
     if (nasceuEm) for (const id of Object.keys(CHAO_LUGARES) as LugarChao[]) if ((id !== alvoChao || id === "tuneis") && (pertoDoChao(id, nasceuEm.x, nasceuEm.z) || Math.hypot(nasceuEm.x - CHAO_LUGARES[id].x, nasceuEm.z - CHAO_LUGARES[id].z) < CHEGADA_MISSAO.chao)) dentro.add(id)
@@ -1742,7 +1732,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
     // ou voando baixo, num raio maior (estrada/alvoMissao.ts, o mesmo ponto do
     // mapa); o túnel da missão vale já na rampa. Os outros (as peças, a boca do
     // túnel pra passear, a torre) seguem como eram: no chão, de pé no lugar
-    const alvoPt = alvoChao && !ehPeca(alvoChao) ? pontoDoAlvo(M, { chao: alvoChao }) : null
+    const alvoPt = alvoChao && !ehPassando(alvoChao) ? pontoDoAlvo(M, { chao: alvoChao }) : null
     const iv = setInterval(() => {
       const j = jogo.current, a = combRef.current.aqui
       const noChao = !!j.voo && j.wx !== undefined
@@ -1763,7 +1753,7 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
         if (!dentro.has(id) && perto) {
           // (vitrine) o bar fora do prólogo não para a Kombi: só aparece o "entrar · o bar"
           // (06/11) nem os lugares que abrem uma experiência (disco/abertos.ts): o botão "entrar"
-          dentro.add(id); if (!ehPeca(id) && ((id !== "bar" && !ehAberto(id)) || alvoChao === id)) j.v = 0
+          dentro.add(id); if (!ehPassando(id) && ((id !== "bar" && !ehAberto(id)) || alvoChao === id)) j.v = 0
           // (30/10, o dono) a Kombi não entra no túnel: fica parada aqui fora, na porta
           if (id === "tuneis") { j.vx = 0; pararNaBoca(j.wx ?? a?.x ?? l.x, j.wz ?? a?.z ?? l.z, j.rumo ?? 0, desembarqueDe(M, combRef.current)) }
           onHistoriaRef.current?.(`chao:${id}`)
@@ -2640,7 +2630,6 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       j.naVaga = false; j.vagaAvisou = undefined; j.encaixar = true
       evs.current?.via(vi)
       if (atalho.procurado) { j.batidas = 3; j.procurado = true; evs.current.estrelas(3) }
-      if (atalho.embacar) setTimeout(() => setPedidoEmbaca(Date.now()), 2500)
     }, 900)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2887,8 +2876,8 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       )}
 
       {respirando && <Respirar jaSabe={dicas.includes("respirar")} onAprendeu={() => onDica?.("respirar")} onFeito={() => { respiroRef.current.feito = true }} />}
-      {/* o vidro embaça de noite na chuva (Embacado.tsx) */}
-      {!abertura && !dePatins && <Embacado pedido={pedidoEmbaca} podeRef={embacaRef} jaSabe={dicas.includes("embacado")} onAprendeu={() => onDica?.("embacado")} />}
+      {/* (14/11) as gotas na tela, em primeiro plano, quando chove (Gotas.tsx) */}
+      {!abertura && <Gotas molhadoRef={molhadoRef} />}
       {abertura && abFase.fase === "ape" && <small className="l-abertura-dica">segura a tela ou ↑ pra andar até a porta</small>}
       <div ref={flashEl} className="l-flash" />
       <div ref={fadeCam} className="l-fade-cam" />
@@ -2970,24 +2959,34 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
       {viagem9 && (viagem9.fuga
         ? <MetroFugaDentro historia={viagem9.fuga.historia} onPasso={viagem9.fuga.onPasso} onSair={pulou9} hospede={viagem9.h} />
         : <MetroDentro hospede={viagem9.h} viagem={{ rotulo: viagem9.rotulo, reage: !!linha9?.reage, temInstrumento: linha9?.temInstrumento }} seguirSePego onSeguir={pulou9} />)}
-      {/* (elevadores) na rotatória da torre da ponta N: o elevador desce pro salão da TORRE N (a via muda, sem conta por quadro) */}
-      {elevador && pontaElevador > 0 && !pausado && (
-        <button type="button" data-info="elevador" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#9b8cff" }} onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => { if (elevador.tranca) return; pedirDescida(pontaElevador, desembarqueDe(M, combRef.current)); elevador.onDescer(pontaElevador) }}>
-          {elevador.tranca && <Cadeado />}{rotuloDescer(pontaElevador)}{elevador.tranca ? ` · ${elevador.tranca}` : !dePatins ? " · a Kombi fica aqui" : ""}
-        </button>
-      )}
-      {/* (09/11, bíblia §13) a torre 1 tem um andar no deserto: a Kombi desce até ele (nos túneis, não) */}
-      {elevador && pontaElevador === PORTA_DESERTO.n && !pausado && (
-        <button type="button" data-info="elevador-deserto" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={descerProDeserto}>
-          {elevador.trancaDeserto && <Cadeado />}{rotuloDescerDeserto(PORTA_DESERTO.n)}{elevador.trancaDeserto ? ` · ${elevador.trancaDeserto}` : ""}
-        </button>
-      )}
-      {/* (09/11) na porta do deserto: sobe pra torre 1, de Kombi */}
-      {elevador && naPortaDeserto && !pausado && (
-        <button type="button" data-info="elevador-subir-deserto" className="l-regar-btn is-pagina is-chao" style={{ ["--cor" as string]: "#ff6a35" }} onPointerDown={(e) => e.stopPropagation()} onClick={subirDoDeserto}>
-          {elevador.trancaDeserto && <Cadeado />}{rotuloSubirDeserto(PORTA_DESERTO.n)}{elevador.trancaDeserto ? ` · ${elevador.trancaDeserto}` : ""}
-        </button>
+      {/* (elevadores; 14/11, o dono: as placas "estão horrorosas") um botão simples
+          por saída, com ícone, empilhados numa coluna só: nunca um em cima do outro.
+          Trancado: o cadeado, e o motivo no title/aria-label */}
+      {elevador && !pausado && (pontaElevador > 0 || naPortaDeserto) && (
+        <div className="l-elev-botoes">
+          {pontaElevador > 0 && (
+            <button type="button" data-info="elevador" className={`l-elev-btn ${elevador.tranca ? "is-trancado" : ""}`} style={{ ["--cor" as string]: "#9b8cff" }}
+              title={elevador.tranca ?? (!dePatins ? "a Kombi fica aqui" : undefined)} aria-label={`${rotuloDescer(pontaElevador)}${elevador.tranca ? ` · ${elevador.tranca}` : ""}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => { if (elevador.tranca) return; pedirDescida(pontaElevador, desembarqueDe(M, combRef.current)); elevador.onDescer(pontaElevador) }}>
+              {elevador.tranca ? <Cadeado size={14} /> : <SetaElev desce />}<span>túneis</span>
+            </button>
+          )}
+          {pontaElevador === PORTA_DESERTO.n && (
+            <button type="button" data-info="elevador-deserto" className={`l-elev-btn ${elevador.trancaDeserto ? "is-trancado" : ""}`} style={{ ["--cor" as string]: "#ff6a35" }}
+              title={elevador.trancaDeserto ?? undefined} aria-label={`${rotuloDescerDeserto(PORTA_DESERTO.n)}${elevador.trancaDeserto ? ` · ${elevador.trancaDeserto}` : ""}`}
+              onPointerDown={(e) => e.stopPropagation()} onClick={descerProDeserto}>
+              {elevador.trancaDeserto ? <Cadeado size={14} /> : <SetaElev desce />}<span>deserto</span>
+            </button>
+          )}
+          {naPortaDeserto && (
+            <button type="button" data-info="elevador-subir-deserto" className={`l-elev-btn ${elevador.trancaDeserto ? "is-trancado" : ""}`} style={{ ["--cor" as string]: "#ff6a35" }}
+              title={elevador.trancaDeserto ?? undefined} aria-label={`${rotuloSubirDeserto(PORTA_DESERTO.n)}${elevador.trancaDeserto ? ` · ${elevador.trancaDeserto}` : ""}`}
+              onPointerDown={(e) => e.stopPropagation()} onClick={subirDoDeserto}>
+              {elevador.trancaDeserto ? <Cadeado size={14} /> : <SetaElev />}<span>cidade</span>
+            </button>
+          )}
+        </div>
       )}
       {caido && (
         <div className="l-hud-missao" style={{ ["--cor" as string]: "#3d7bff" }}>
@@ -7525,5 +7524,14 @@ function ItemGirando({ cor }: { cor: string }) {
       <octahedronGeometry args={[1.3, 0]} />
       <meshBasicMaterial color={cor} toneMapped={false} />
     </mesh>
+  )
+}
+
+// (14/11) o ícone dos botões do elevador: uma seta, pra baixo ou pra cima
+function SetaElev({ desce = false }: { desce?: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style={desce ? undefined : { transform: "rotate(180deg)" }}>
+      <path d="M8 2v10M3.5 8 8 12.5 12.5 8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }

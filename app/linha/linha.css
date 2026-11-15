@@ -1845,9 +1845,6 @@ button.l-dormir { position: absolute; left: 12px; top: calc(104px + env(safe-are
 .l-regar-btn { position: absolute; z-index: 7; right: 12px; top: calc(196px + env(safe-area-inset-top)); padding: 10px 16px; border: 0 !important; border-radius: 999px; background: #2fe8ff !important; color: #06141a !important; font: 800 13px var(--font-geist-sans), system-ui, sans-serif; box-shadow: 0 0 20px rgba(47, 232, 255, 0.6); cursor: pointer; animation: l-regar-pulsa 1.6s ease-in-out infinite; }
 @keyframes l-regar-pulsa { 50% { box-shadow: 0 0 6px rgba(47, 232, 255, 0.3); } }
 /* o vidro embaçado (13/10) */
-.l-embacado { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; filter: blur(2px); }
-.l-embacado-vidro { position: absolute; left: 0; right: 0; top: 16%; height: 40%; touch-action: none; cursor: grab; }
-.l-embacado-dica { position: absolute; left: 50%; top: 36%; transform: translateX(-50%); z-index: 5; padding: 8px 14px; border-radius: 999px; background: rgba(8, 7, 16, 0.75); color: #e6f2ff; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.06em; white-space: nowrap; pointer-events: none; animation: l-pulsa-dica 1.6s ease-in-out infinite; }
 @keyframes l-pulsa-dica { 50% { opacity: 0.55; } }
 
 /* respirar com o Núcleo na cola (13/10) */
@@ -3115,3 +3112,29 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-janela-mundo { position: fixed; inset: 0; z-index: 75; }
 /* (revisão 06/11) o "entrar" dos lugares do chão fica abaixo do "voltar pra Kombi"/moto (196/250px), sem se sobrepor */
 .l-regar-btn.is-chao { top: calc(304px + env(safe-area-inset-top)); }
+
+/* (14/11) as gotas na tela (estrada/Gotas.tsx): em primeiro plano, por cima de tudo,
+   sem clique; parecem água na tela de verdade (lente: desfoca e clareia o que está atrás) */
+.l-gotas { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; overflow: hidden; }
+.l-gota { position: absolute; border-radius: 50%; pointer-events: none;
+  backdrop-filter: blur(1.4px) brightness(1.12) saturate(1.25); -webkit-backdrop-filter: blur(1.4px) brightness(1.12) saturate(1.25);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255,255,255,0.55) 0 7%, rgba(255,255,255,0) 20%),
+    radial-gradient(circle at 50% 55%, rgba(255,255,255,0) 58%, rgba(255,255,255,0.10) 74%, rgba(0,0,0,0.22) 94%);
+  box-shadow: inset 0 -1px 2px rgba(255,255,255,0.22), inset 0 2px 3px rgba(0,0,0,0.22), 0 1px 1.5px rgba(0,0,0,0.18);
+  transition: transform 2.6s cubic-bezier(0.5, 0, 0.9, 0.6), opacity 8s ease, backdrop-filter 8s ease, box-shadow 8s ease;
+  animation: l-gota-nasce 0.5s ease-out both; }
+.l-gota.is-seca { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; opacity: 0.55; border-radius: 46% 54% 58% 42%;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 55%, rgba(225,232,240,0.09) 70%, rgba(255,255,255,0.03) 82%, rgba(255,255,255,0) 90%); }
+@keyframes l-gota-nasce { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .l-gota { transition: opacity 8s ease; animation: none; } }
+
+/* (14/11) os botões do elevador (Corrida.tsx): simples, ícone + uma palavra, numa
+   coluna à direita; um embaixo do outro, nunca sobrepostos */
+.l-elev-botoes { position: absolute; z-index: 7; right: 12px; top: calc(304px + env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.l-elev-btn { pointer-events: auto; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px 0 11px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--cor) 70%, transparent); background: rgba(11, 10, 18, 0.72); color: var(--cor); font: 700 13px var(--font-geist-sans), system-ui, sans-serif; letter-spacing: 0.01em; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+.l-elev-btn:hover, .l-elev-btn:focus-visible { background: var(--cor); color: #0b0a12; outline: none; }
+.l-elev-btn span { color: #fff; }
+.l-elev-btn:hover span, .l-elev-btn:focus-visible span { color: inherit; }
+.l-elev-btn.is-trancado { opacity: 0.55; cursor: not-allowed; }
+.l-elev-btn.is-trancado:hover { background: rgba(11, 10, 18, 0.72); color: var(--cor); }

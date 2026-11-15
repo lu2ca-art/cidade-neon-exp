@@ -6,7 +6,7 @@
 import type { FreqId } from "../linha/radio"
 
 // parado: a Kombi aparece parada e segura uns segundos (dá tempo de ver o botão)
-export interface Ir { area: FreqId; u: number; parado?: boolean; procurado?: boolean; embacar?: boolean }
+export interface Ir { area: FreqId; u: number; parado?: boolean; procurado?: boolean }
 export interface Atalho { id: string; nome: string; desc: string; save: Record<string, unknown>; ir: Ir }
 
 // (notas 04/11) os testes gravam no save de teste, separado do de verdade (linha/chaveSave.ts)
@@ -30,7 +30,6 @@ export const ATALHOS: Atalho[] = [
   { id: "shows-vazio", nome: "a casa de shows (vazia)", desc: "o mesmo show com a 222 desconhecida: popularidade 2", save: { hora: 22, popularidade: 2 }, ir: { area: "live", u: 1190, parado: true } },
   { id: "fliperama", nome: "entrar no fliperama", desc: "de noite, perto da arena, chegando no fliperama", save: { hora: 22 }, ir: { area: "live", u: 1440, parado: true } },
   { id: "flores", nome: "as flores da Ella", desc: "de manhã, no subúrbio, chegando no 1º canteiro · toca em “regar as flores”", save: { hora: 10 }, ir: { area: "suburbio", u: 270, parado: true } },
-  { id: "embacado", nome: "o vidro embaçado", desc: "parada na chuva, de noite · em uns segundos o vidro embaça forte: passa o dedo; depois embaça leve: passa de novo", save: { hora: 19, dia: 3, dicas: ["disco-1", "disco-2", "radio-1"] }, ir: { area: "linha", u: 300, parado: true } },
   { id: "respirar", nome: "respirar na caçada", desc: "a polícia atrás de você · despista, segura o freio até parar e respira com o círculo", save: { hora: 23 }, ir: { area: "linha", u: 500, procurado: true } },
   { id: "entardecer", nome: "o relógio e o dormir", desc: "17h30, o sol caindo · espera a noite chegar, testa “cochilar” e “dormir na Kombi”", save: { hora: 17.5 }, ir: { area: "linha", u: 300 } },
   { id: "bar", nome: "a 1ª liberação (o bar)", desc: "antes do 1º objeto, a caminho do bar · bebe, sai, e no fim vê a faixa entrar na 222", save: { completos: ["grupo", "abertura"], objetos: [], ecosVistos: [], pausas: { copo: 8 }, fio: ["copo"], hora: 21, dia: 1, popularidade: 0 }, ir: { area: "linha", u: 1390 } },
