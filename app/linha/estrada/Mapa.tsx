@@ -432,10 +432,14 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       // (LU2CA 21/10) com uma pista marcada, o resto do mapa apaga 50%: o foco na acesa
       if (rt) { g.fillStyle = "rgba(7, 6, 14, 0.5)"; g.fillRect(0, 0, W, H); desenharRota(g, rt.segs, tela, 4); acenderRota(g, rt.segs, tela, 4, performance.now()) }
       g.font = "700 11px ui-monospace, monospace"; g.textBaseline = "middle"
+      // (14/11) dentro da missão: os lugares e as outras missões apagados (indisponíveis)
+      const travado = icones.some((ic) => ic.agora)
+      const apagar = (on: boolean) => { if (travado) g.globalAlpha = on ? 0.28 : 1 }
+      apagar(true)
       for (const b of lugaresVis) {
         const [x, y] = tela(b.x, b.z)
         // (22/10) os pontos de interesse em destaque: um halo na cor do lugar
-        g.globalAlpha = 0.22; g.fillStyle = b.cor; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill(); g.globalAlpha = 1
+        g.globalAlpha = travado ? 0.08 : 0.22; g.fillStyle = b.cor; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill(); g.globalAlpha = travado ? 0.28 : 1
         desenharBlip(g, x, y, b as { cor: string; tipo: Blip["tipo"] }, 1.1)
         g.fillStyle = "rgba(7,6,14,0.75)"; const tw = g.measureText(b.nome).width; g.fillRect(x + 10, y - 8, tw + 8, 16)
         g.fillStyle = "#e9e6f2"; g.fillText(b.nome, x + 14, y)
@@ -448,7 +452,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         // (06/11) já visitou (save.dbee.visitados): um ✓ discreto depois do nome (como a missão feita)
         if (c.id.startsWith("chao:") && visitou(lerMemoriaDbee(), c.id.slice(5))) {
           const vx = x + 24 + tw; g.globalAlpha = 0.6; g.strokeStyle = c.cor; g.lineWidth = 1.5
-          g.beginPath(); g.moveTo(vx - 4, y); g.lineTo(vx - 1, y + 3); g.lineTo(vx + 4.5, y - 3.5); g.stroke(); g.globalAlpha = 1
+          g.beginPath(); g.moveTo(vx - 4, y); g.lineTo(vx - 1, y + 3); g.lineTo(vx + 4.5, y - 3.5); g.stroke(); g.globalAlpha = travado ? 0.28 : 1
         }
       }
       const dn = destNav.current ?? (destino ? { ...noMundo(M, destino), cor: destino.cor } : null)
@@ -461,6 +465,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
       for (const ic of icones) if (ic.feita) { const [x, y] = tela(ic.x, ic.z); desenharIcone(g, x, y, ic, 1.2, performance.now()) }
       for (const ic of icones) {
         if (ic.feita) continue
+        apagar(!ic.agora)
         const [x, y] = tela(ic.x, ic.z)
         desenharIcone(g, x, y, ic, 1.2, performance.now())
         g.font = ic.agora ? "800 13px ui-monospace, monospace" : "800 11px ui-monospace, monospace"
@@ -468,6 +473,7 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
         g.fillStyle = "rgba(7,6,14,0.85)"; g.fillRect(x - tw / 2 - 5, y + dy - 8, tw + 10, ic.agora ? 18 : 16)
         g.fillStyle = ic.agora ? "#ffffff" : ic.cor; g.textAlign = "center"; g.fillText(ic.faixa, x, y + dy + (ic.agora ? 1 : 0)); g.textAlign = "start"
       }
+      g.globalAlpha = 1
       const pk = pose.current
       // (T58) fora da pista, a posição e o rumo de verdade
       if (pk) { const fora = (pk.livreOk || pk.voo) && pk.wx !== undefined; const w = fora ? { x: pk.wx!, z: pk.wz!, tx: Math.sin(pk.rumo ?? 0), tz: Math.cos(pk.rumo ?? 0) } : noMundo(M, pk); const [x, y] = tela(w.x, w.z)
@@ -487,7 +493,10 @@ export function Mapa({ M, apagada = null, aberta = null, foco = null, pose, miss
     const r = c.getBoundingClientRect(), vv = vista.current
     const x = vv.cx + (sx - r.left - r.width / 2) / vv.esc, z = vv.cz + (sy - r.top - r.height / 2) / vv.esc
     // (22/10) um ícone de missão perto do dedo: a missão em foco (a pista brilha, o cartão acende)
-    for (const ic of icones) { if (!ic.feita && Math.hypot(ic.x - x, ic.z - z) < 26 / vv.esc) { onIcone?.(ic.id); return } }
+    // (14/11, o dono) dentro da missão, todo o resto do mapa fica indisponível: só a de agora responde
+    const travado = icones.some((ic) => ic.agora)
+    for (const ic of icones) { if (!ic.feita && (!travado || ic.agora) && Math.hypot(ic.x - x, ic.z - z) < 26 / vv.esc) { onIcone?.(ic.id); return } }
+    if (travado) return
     // um lugar perto do dedo ganha; senão, a rua mais perto
     let melhor: Blip | null = null, dm = 28 / vv.esc
     for (const b of lugaresVis) { const d = Math.hypot(b.x - x, b.z - z); if (d < dm) { dm = d; melhor = { id: b.id, nome: b.nome, cor: b.cor, via: b.via, u: b.u, tipo: b.tipo as Blip["tipo"] } } }
