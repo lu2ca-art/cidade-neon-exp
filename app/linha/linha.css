@@ -3145,3 +3145,6 @@ button.l-aneis.is-agua { cursor: pointer; font: inherit; color: inherit; }
 .l-holo-radio-ctrl button { flex: none; padding: 1px 8px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--cor) 50%, transparent) !important; background: color-mix(in srgb, var(--cor) 12%, transparent) !important; color: #fff !important; font-size: 11px !important; line-height: 18px; cursor: pointer; }
 .l-holo-radio-ctrl button.l-radio-salvar { color: #ff7fbf !important; border-color: color-mix(in srgb, #ff4fa3 55%, transparent) !important; background: transparent !important; }
 @media (pointer: coarse) { .l-holo-radio-ctrl button { min-width: 36px; min-height: 30px; } }
+
+/* (14/11, o dono) com o mapa aberto, o botão do violão some: tocar é coisa de dentro da Kombi, no piloto */
+.cn-mapa-aberto .l-vl-botao, .cn-mapa-aberto .l-vl-aviso { display: none !important; }
