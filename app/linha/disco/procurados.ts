@@ -13,6 +13,8 @@ export interface Procurado {
   crime: string
   // o selo em cima do nome (o padrão é "PROCURADO")
   selo?: string
+  // a linha inteira no lugar de "condenado por …" (quem não é condenado: o Xeriff)
+  frase?: string
 }
 
 export const PROCURADOS: Partial<Record<MissaoId, Procurado>> = {
@@ -22,7 +24,7 @@ export const PROCURADOS: Partial<Record<MissaoId, Procurado>> = {
   tuneis: { crime: "correr por diversão, sem destino", selo: "PROCURADOS" },
   drew: { crime: "dançar na rua numa sexta à noite" },
   mubarak: { crime: "guardar discos de antes, que ainda tocam" },
-  xeriff: { crime: "ouve tudo o que a polícia fala", selo: "INFORMANTE" },
+  xeriff: { crime: "", selo: "INFORMANTE", frase: "da polícia dos robôs. ouve tudo o que eles falam" },
   lu2ca: { crime: "cantar em público sem permissão" },
   ella: { crime: "pintar um quadro e mostrar pra alguém" },
   notti: { crime: "consertar máquina velha pra todo mundo poder jogar" },
@@ -32,3 +34,5 @@ export const PROCURADOS: Partial<Record<MissaoId, Procurado>> = {
 }
 
 export const procuradoDe = (id: MissaoId): Procurado => PROCURADOS[id] ?? { crime: "ser gente" }
+/** a linha do cartaz: "condenado por …" (ou a frase própria) */
+export const linhaDoCartaz = (id: MissaoId) => { const p = procuradoDe(id); return p.frase ?? `condenado por ${p.crime}` }
