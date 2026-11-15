@@ -70,6 +70,7 @@ import { CHAO_LUGARES, CENA_BAR_PROLOGO, CENA_SHOW_NECTAR, CENA_CASA_DISCO, CENA
 import { CONFIG_QUEBRA, FALAS_QUEBRA, consertar, quebrada, quebrar, sortearQuebra } from "./disco/quebra"
 import { CONFIG_PERSEGUICAO, FALAS_PERSEGUICAO, emPerseguicao, escolherVeiculo, kombiJogada, metroFeito, veiculosLiberados, perseguir, podePerseguir, veiculoDe, veiculoPorId } from "./disco/perseguicao"
 import { CENA_OFICINA, CENA_OFICINA_CONHECIDO, FALAS_OFICINA, LIXO, MECANICO, OBJETIVO_OFICINA, OFICINA_CFG, aguasColetadas, aguasFaltando, alvoOficina, lixoDe, pagamentoMotor, passoOficina, pecasCatadas, pecasFaltando } from "./disco/oficina"
+import { procuradoDe } from "./disco/procurados"
 import { Montagem, Pagamento } from "./disco/OficinaTelas"
 import { respingar } from "./estrada/Gotas"
 import { AGUAS_CHAO, chaoDentro, definirChaoAtivos, ehAgua, ehPeca } from "./disco/achados"
@@ -3119,12 +3120,16 @@ function FeiraOfertas({ ofertas, onPegar, onLargar, onFoco, foco }: { ofertas: O
       {ofertas.map((o) => {
         const emFoco = !!foco && foco === o.faixa
         return (
-          <li key={o.id} ref={emFoco ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined} className={emFoco ? "is-foco" : ""} style={{ ["--cor" as string]: o.cor }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o) }}>
-            <span className="l-feira-quem">{o.quem}<small>leva {o.leva}{o.feitas ? ` · ${o.feitas}/${o.total}` : ""}</small></span>
-            <p>{o.pedido}</p>
-            <em>{o.primeiro}</em>
+          // (14/11, o dono) cada oferta é um cartaz de PROCURADO do Núcleo: a recompensa
+          // em água em cima da cabeça, o nome, e o "crime" (sempre uma coisa humana). disco/procurados.ts
+          <li key={o.id} ref={emFoco ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined} className={`l-procurado ${emFoco ? "is-foco" : ""}`} style={{ ["--cor" as string]: o.cor }} onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; onFoco?.(o) }}>
+            <span className="l-procurado-selo">{procuradoDe(o.id).selo ?? "PROCURADO"} · pelo Núcleo</span>
+            {PAGA.missao[o.id] > 0 && <span className="l-procurado-recompensa" aria-label={`recompensa: ${PAGA.missao[o.id]} de água`}><i aria-hidden="true" />{PAGA.missao[o.id]} <small>Água$</small></span>}
+            <b className="l-procurado-nome">{o.quem}</b>
+            <p className="l-procurado-crime">condenado por {procuradoDe(o.id).crime}</p>
+            <p className="l-procurado-pede">“{o.pedido}”<small> · leva {o.leva}{o.feitas ? ` · ${o.feitas}/${o.total}` : ""}</small></p>
             <div className="l-feira-bts">
-              <button type="button" data-fecha-mapa onClick={() => onPegar(o.id)}>pegar</button>
+              <button type="button" data-fecha-mapa onClick={() => onPegar(o.id)}>ir atrás</button>
               {onLargar && <button type="button" className="is-largar" onClick={() => onLargar(o.id)}>largar</button>}
             </div>
           </li>
