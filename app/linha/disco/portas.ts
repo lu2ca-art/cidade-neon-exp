@@ -508,6 +508,16 @@ export function quemLibera(faixa: PistaId): MissaoId | null {
 // (T49) os instrumentos ancestrais que ele já tem: os do save e os das missões
 // feitas (save de antes do T49, ou a D-Bee e a oficina feitas pela fase) e, (o dono,
 // 09/11) os achados pelo mundo: tudo isso fica na casa da D-Bee, toca na Kombi e sampleia
+// (14/11, KOMBEAT STUDIO) na Kombi cabem 4: a ordem de quando pegou (kombiOrdem) com
+// os novos no fim; na Kombi ficam os 4 últimos. Pegar o 5º derruba o primeiro
+export const KOMBI_CABE = 4
+export function ordemKombi(h: HistoriaDisco | null | undefined): InstrumentoId[] {
+  const g = instrumentosGanhos(h)
+  const o = (h?.kombiOrdem ?? []).filter((x) => g.includes(x))
+  for (const x of g) if (!o.includes(x)) o.push(x)
+  return o
+}
+export const naKombi = (h: HistoriaDisco | null | undefined) => ordemKombi(h).slice(-KOMBI_CABE)
 export function instrumentosGanhos(h: HistoriaDisco | null | undefined): InstrumentoId[] {
   if (!h) return []
   const tem = new Set<InstrumentoId>([...(h.instrumentos ?? []), ...(h.instrumentosAchados ?? [])])

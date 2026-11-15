@@ -79,6 +79,9 @@ export interface HistoriaDisco {
   // tocam dentro da Kombi; e os sampleados na casa da D-Bee (entram no B4TIDA)
   instrumentosAchados?: InstrumentoId[]
   instrumentosSampleados?: InstrumentoId[]
+  // (14/11, KOMBEAT STUDIO) a ordem em que ele pegou cada instrumento: na Kombi cabem
+  // só os 4 últimos (pegar o 5º derruba o primeiro). A casa da D-Bee guarda todos
+  kombiOrdem?: InstrumentoId[]
   // (T19) a peça de escrever aberta agora ("lu2ca:arte"; fica no save: recarregar
   // não perde) e as letras escritas por faixa (aparecem no show, no cantar)
   aberta13?: string

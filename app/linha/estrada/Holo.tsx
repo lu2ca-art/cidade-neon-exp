@@ -43,8 +43,8 @@ export const INFO: Record<string, { t: string; d: string }> = {
   desligar: { t: "o holo", d: "o óculos liga e desliga o holo. desligado, some tudo: fica só a estrada (tecla H)." },
   camera: { t: "o olho (a câmera)", d: "o olhinho em cima do óculos: toca nele e a câmera troca, de fora da Kombi ou de dentro, no banco do motorista (tecla C). aberto e azul: de dentro." },
   radio: { t: "rádio 222", d: "a rádio pirata da cidade. toca no holograma: abre o menu da rádio (ligar, sintonizar as frequências que você já achou, e as mensagens das rádios piratas). ⏭ troca a faixa." },
-  destaque: { t: "B4TIDA · GUITAR DRIVER", d: "os dois que importam. o B4TIDA toca o padrão aqui mesmo: toca nele e abre o criador de beats. o GUITAR DRIVER abre no fim da sua carreira." },
-  "app:batida": { t: "B4TIDA", d: "a MPC: toca nos quadrados pra abrir o criador de beats e montar a sua música por camadas." },
+  destaque: { t: "KOMBEAT STUDIO · GUITAR DRIVER", d: "os dois que importam. o KOMBEAT STUDIO leva pra trás da Kombi, no piloto: um disco, um beat ou um instrumento. o GUITAR DRIVER abre no fim da sua carreira." },
+  "app:batida": { t: "KOMBEAT STUDIO", d: "a Kombi vira estúdio: a câmera vai pra dentro, o piloto liga sozinho e lá atrás você escolhe um disco, faz um beat ou toca um dos instrumentos da Kombi (cabem 4; os timbres deles viram sample no beat)." },
   "app:guitar": { t: "GUITAR DRIVER", d: "o jogo das faixas ao vivo. por enquanto trancado: abre quando a sua carreira chegar lá." },
   "app:stream": { t: "vid.stream", d: "os clipes. abre aqui mesmo, no holo: a música da cidade para enquanto ele tá aberto." },
   propaganda: { t: "o que o holo faz", d: "o próprio aparelho mostrando o que tem dentro: ACC3SS, _IRIS.EXE, FR3Q_, vid.stream e OUVIR, um de cada vez. toca pra abrir o da vez, aqui mesmo, no holo." },
@@ -424,7 +424,8 @@ export const DICAS: string[] = [
   "dica · no ar, um lado da tela gira; os dois juntos dão o mortal",
   "dica · as gotas da pista viram água: rega as flores e compra tudo",
   "dica · o drift, as manobras e os voos enchem o turbo",
-  "dica · toca no mapa: cada ícone é uma missão",
+  // (14/11, o dono) saiu "toca no mapa": quem quer saber do mapa toca no ?
+  "dica · o widget KOMBEAT STUDIO leva pra trás da Kombi: disco, beat ou instrumento, no piloto",
   "dica · o óculos desliga o holo e deixa só a estrada (H)",
   "dica · o olho em cima do óculos troca a câmera (C)",
   "dica · o holograma da rádio abre as frequências que você já achou",
@@ -854,10 +855,11 @@ export function HoloDestaque({ onApp, guitarLivre = false }: { onApp: (id: AppId
   const a = APPS.find((x) => x.id === DESTAQUE[k])!
   const tranca = a.id === "guitar" && !guitarLivre
   return (
-    <button type="button" key={`${a.id}:${nega}`} className={`l-holo-destaque is-${a.id} ${tranca ? "is-tranca" : ""} ${nega ? "is-nega" : ""}`} data-info={`app:${a.id}`} style={{ ["--cor" as string]: a.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => (tranca ? setNega((n) => n + 1) : onApp(a.id))} aria-label={tranca ? `${a.nome} (trancado)` : a.nome}>
+    <button type="button" key={`${a.id}:${nega}`} className={`l-holo-destaque is-${a.id} ${tranca ? "is-tranca" : ""} ${nega ? "is-nega" : ""}`} data-info={`app:${a.id}`} style={{ ["--cor" as string]: a.cor }} onPointerDown={(e) => e.stopPropagation()} onClick={() => (tranca ? setNega((n) => n + 1) : onApp(a.id))} aria-label={tranca ? `${a.nome} (trancado)` : a.id === "batida" ? "KOMBEAT STUDIO" : a.nome}>
       <span className="l-holo-destaque-tela">{a.id === "batida" ? <MiniMpc /> : <MiniTrilha />}</span>
       <span className="l-holo-destaque-rodape">
-        <b>{a.nome}</b>
+        {/* (14/11, o dono) a batida no holo é o KOMBEAT STUDIO: leva pra dentro da Kombi */}
+        <b>{a.id === "batida" ? "KOMBEAT STUDIO" : a.nome}</b>
         {tranca && <svg className="l-holo-destaque-cadeado" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2" /></svg>}
         <span className="l-holo-apps-pips">{DESTAQUE.map((v, i) => <i key={v} className={i === k ? "is-on" : ""} />)}</span>
       </span>
@@ -1072,7 +1074,7 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
         <div className="l-ilha-holo is-aberta" onPointerDown={(e) => e.stopPropagation()} role="dialog" aria-label="os widgets do holo">
           <HoloSom radio={radio} onLigar={onLigar} onProxima={onProxima} onSintonizar={onSintonizar} />
           <div className="l-ilha-holo-grade">
-            <button type="button" className="is-grande" style={{ ["--cor" as string]: "#ff6b6b" }} onClick={() => abrir("batida")}><span className="l-ilha-holo-mini"><MiniMpc /></span><b>B4TIDA</b></button>
+            <button type="button" className="is-grande" style={{ ["--cor" as string]: "#ff6b6b" }} onClick={() => abrir("batida")}><span className="l-ilha-holo-mini"><MiniMpc /></span><b>KOMBEAT STUDIO</b></button>
             <button type="button" className={`is-grande ${guitarLivre ? "" : "is-tranca"}`} style={{ ["--cor" as string]: "#ff9000" }} onClick={() => abrir("guitar")}><span className="l-ilha-holo-mini"><MiniTrilha /></span><b>GUITAR DRIVER{guitarLivre ? "" : " 🔒"}</b></button>
             {VEZ.map((id) => { const a = APPS.find((x) => x.id === id)!; return <button key={id} type="button" style={{ ["--cor" as string]: a.cor }} onClick={() => abrir(id)}><Glifo id={a.id} cor={a.cor} size={18} /><b>{id === "stream" ? "vid.stream" : a.nome}</b></button> })}
             {iconesHolo().map((a) => <button key={a.id} type="button" style={{ ["--cor" as string]: a.cor }} onClick={() => abrir(a.id)}><Glifo id={a.id} cor={a.cor} size={18} /><b>{a.nome}</b></button>)}
@@ -1090,7 +1092,7 @@ export function HoloIlha({ radio, onLigar, onProxima, onSintonizar, ler, onApp, 
             {vez === "clima" && <span className="l-ilha-holo-radio"><b>{temp}°</b><small>{c.regiao}</small></span>}
           </span>
           <span className="l-ilha-holo-rodape">
-            <b>{vez === "radio" ? (radio.nome?.toLowerCase() ?? "rádio 222") : vez === "destaque" ? (destaque === "batida" ? "B4TIDA" : "GUITAR DRIVER") : vez === "propaganda" ? (prop.id === "stream" ? "vid.stream" : prop.nome) : "clima"}</b>
+            <b>{vez === "radio" ? (radio.nome?.toLowerCase() ?? "rádio 222") : vez === "destaque" ? (destaque === "batida" ? "KOMBEAT STUDIO" : "GUITAR DRIVER") : vez === "propaganda" ? (prop.id === "stream" ? "vid.stream" : prop.nome) : "clima"}</b>
             <span className="l-holo-apps-pips">{CARTOES.map((x, i) => <i key={x} className={i === k ? "is-on" : ""} />)}</span>
           </span>
         </button>

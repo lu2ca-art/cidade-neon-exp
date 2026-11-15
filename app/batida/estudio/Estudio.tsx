@@ -139,7 +139,9 @@ export default function Estudio() {
       // (bíblia §13, 09/11) o que ele sampleou na casa da D-Bee vira som no catálogo; aberto
       // de lá (?sample=udu), o som entra numa faixa da música "samples da D-Bee" (a dele fica intacta)
       const sample = q.get("sample")
-      try { const h = historiaDe(carregar()); definirSampleados([...new Set([...(h.instrumentosSampleados ?? []), ...(sample && ehInstrumento(sample) ? [sample] : [])])]) } catch {}
+      // (14/11, KOMBEAT STUDIO) aberto da Kombi (?kombi=udu,djembe): os instrumentos que estão na Kombi viram som também
+      const kombi = (q.get("kombi") ?? "").split(",").filter(ehInstrumento)
+      try { const h = historiaDe(carregar()); definirSampleados([...new Set([...(h.instrumentosSampleados ?? []), ...kombi, ...(sample && ehInstrumento(sample) ? [sample] : [])])]) } catch {}
       if (sample && ehInstrumento(sample)) {
         const som = `anc:${sample}`
         const l0 = await listarMusicas()

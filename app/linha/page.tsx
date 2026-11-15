@@ -73,7 +73,7 @@ import { CENA_OFICINA, CENA_OFICINA_CONHECIDO, FALAS_OFICINA, LIXO, MECANICO, OB
 import { Montagem, Pagamento, somDeAgua } from "./disco/OficinaTelas"
 import { respingar } from "./estrada/Gotas"
 import { AGUAS_CHAO, chaoDentro, definirChaoAtivos, ehAgua, ehPeca } from "./disco/achados"
-import { definirTem, ouvirSample } from "./disco/instrumentosMundo"
+import { definirNaKombi, definirTem, ouvirSample } from "./disco/instrumentosMundo"
 import { Violao as ViolaoMundo } from "./disco/Violao"
 import { TRANCA_VIOLAO_PERDIDO, emMetro, entrarNoMetro, guardaReageAoViolao, podeMetro, trancaLinha9, type PassoMetro } from "./disco/metro"
 import { instrumentoDoTrem } from "./disco/instrumentosLoja"
@@ -104,7 +104,7 @@ import { avisoSemAgua, faltaProBolso, nomesDosSacos } from "./disco/feira"
 import { pararBeat } from "./disco/beatDoCaminho"
 import { EscolhaEsporte, type EsporteId } from "./disco/EscolhaEsporte"
 import { faixaDaMissao } from "./disco/pistasLiberadas"
-import { IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
+import { naKombi, ordemKombi, IDS13, ehMissao13, MISSOES13, alvo13, checklist13, concluir, contarEvento, disponiveis, emTeste, feita13, instrumentosGanhos, ordemDe, kombiNoConserto, portaAberta, normalizarMissao, ofertas13, pecaAgora13, pecaFeita, sincronizar, trancado, type CenaId, type MissaoId, type Oferta13, type PortaId, type Recompensa13 } from "./disco/portas"
 import { FinalTela } from "./disco/FinalTela"
 import { definirFinalFeito, definirLotado, type MomentoFinal } from "./disco/final"
 import { motoLiberada } from "./estrada/zonas"
@@ -1202,6 +1202,14 @@ export default function LinhaPage() {
   // (bíblia §13, 09/11) tudo que ele tem (achados + missões): o espelho que a Corrida e a Kombi leem
   const temChave = instrumentosGanhos(h13).join(",")
   useEffect(() => { definirTem(temChave ? (temChave.split(",") as InstrumentoId[]) : []) }, [temChave])
+  // (14/11, KOMBEAT STUDIO) na Kombi cabem 4: guarda a ordem em que pegou (o 5º derruba o 1º)
+  const ordemK = ordemKombi(h13).join(",")
+  useEffect(() => {
+    if (!HIST || ordemK === (hist13(saveRef.current).kombiOrdem ?? []).join(",")) return
+    setSave((s) => comHistoria(s, (x) => ({ ...x, kombiOrdem: ordemKombi(x) })))
+  }, [HIST, ordemK])
+  const kombiChave = naKombi(h13).join(",")
+  useEffect(() => { definirNaKombi(kombiChave ? (kombiChave.split(",") as InstrumentoId[]) : []) }, [kombiChave])
   useEffect(() => {
     definirChaoAtivos(chaoExtra ? (chaoExtra.split(",") as LugarChao[]) : [])
     return () => definirChaoAtivos([])

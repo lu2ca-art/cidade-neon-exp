@@ -17,7 +17,7 @@ import * as THREE from "three"
 import { fazerMusica } from "../som"
 import { Peca } from "../disco/InstrumentosCasa"
 import { tocarInstrumento, type InstrumentoId } from "../disco/instrumentos"
-import { ouvirTem, temAgora } from "../disco/instrumentosMundo"
+import { naKombiAgora, ouvirNaKombi } from "../disco/instrumentosMundo"
 
 type V3 = [number, number, number]
 
@@ -51,7 +51,8 @@ const M = {
 }
 
 export function InstrumentosKombi({ escala, desloca }: { escala: V3; desloca: V3 }) {
-  const ids = useSyncExternalStore(ouvirTem, temAgora, temAgora)
+  // (14/11) só os 4 que cabem na Kombi (portas.ts naKombi)
+  const ids = useSyncExternalStore(ouvirNaKombi, naKombiAgora, naKombiAgora)
   const grupos = useRef(new Map<InstrumentoId, THREE.Group>())
   const bateu = useRef(new Map<InstrumentoId, number>())
   const vezes = useRef(new Map<InstrumentoId, number>())

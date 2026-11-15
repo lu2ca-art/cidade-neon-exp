@@ -50,6 +50,19 @@ export function definirTem(ids: readonly InstrumentoId[]) {
   ouvintes.forEach((f) => f())
 }
 export const temAgora = () => TEM
+// (14/11, KOMBEAT STUDIO) os 4 que estão na Kombi agora (portas.ts naKombi): a prateleira e o estúdio leem daqui
+let NA_KOMBI: readonly InstrumentoId[] = []
+const ouvintesKombi = new Set<() => void>()
+export function definirNaKombi(ids: readonly InstrumentoId[]) {
+  if (ids.length === NA_KOMBI.length && ids.every((x, i) => x === NA_KOMBI[i])) return
+  NA_KOMBI = ids
+  ouvintesKombi.forEach((f) => f())
+}
+export const naKombiAgora = () => NA_KOMBI
+export function ouvirNaKombi(f: () => void) {
+  ouvintesKombi.add(f)
+  return () => { ouvintesKombi.delete(f) }
+}
 export function ouvirTem(f: () => void) {
   ouvintes.add(f)
   return () => { ouvintes.delete(f) }

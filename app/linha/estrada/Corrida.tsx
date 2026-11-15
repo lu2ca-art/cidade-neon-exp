@@ -24,6 +24,7 @@ import { alemDaCidade, centrosDaCidade } from "./raioCidade"
 import { GotasDeserto } from "./GotasDeserto"
 import { useRouter } from "next/navigation"
 import { Gotas } from "./Gotas"
+import { KombeatStudio, OLHAR_ESTUDIO, type ModoEstudio } from "./KombeatStudio"
 import { Respirar } from "./Respirar"
 import { chovendo } from "../clima"
 import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber"
@@ -2064,6 +2065,38 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
   useEffect(() => disco.ouvir(setDiscoAgora), [])
   useEffect(() => { discoRef.current = discoAgora.tocando }, [discoAgora.tocando])
   const [estante, setEstante] = useState(false)
+  // (14/11, o dono) KOMBEAT STUDIO: o widget da batida leva pra dentro da Kombi, de
+  // frente pro fundo, com o piloto ligado; lá atrás, disco, beat ou instrumento
+  const [estudio, setEstudio] = useState<ModoEstudio | null>(null)
+  useEffect(() => { OLHAR_ESTUDIO.ativo = !!estudio }, [estudio])
+  // (KOMBEAT) entra: primeira pessoa, o olhar vira pro fundo e o piloto liga sozinho.
+  // Sem Kombi (de patins, a pé, quebrada) não tem estúdio: abre o B4TIDA de sempre
+  const abrirEstudio = () => {
+    if (dePatins || semKombi || quebrou || noConserto) { onApp?.("batida"); return }
+    if (!dentroRef.current) trocarCamera()
+    setInfinito(true)
+    OLHAR_ESTUDIO.pedido = { yaw: Math.PI * 0.92, pitch: -0.22 }
+    setEstudio("menu")
+  }
+  const fecharEstudio = () => {
+    setEstudio(null)
+    OLHAR_ESTUDIO.pedido = { yaw: 0, pitch: 0 }
+  }
+  // saiu da primeira pessoa (o C, o olho): o estúdio fecha junto. Só na saída de
+  // verdade (dentro → fora); entrando, a câmera ainda está trocando
+  const dentroAntes = useRef(dentro)
+  useEffect(() => {
+    const saiu = dentroAntes.current && !dentro
+    dentroAntes.current = dentro
+    if (saiu && estudio) fecharEstudio()
+  })
+  // o violão solto some com o estúdio aberto (tocar fica lá atrás, no menu)
+  useEffect(() => {
+    document.documentElement.classList.toggle("cn-estudio", !!estudio)
+    return () => document.documentElement.classList.remove("cn-estudio")
+  }, [estudio])
+  // o widget e os ícones do holo: a batida agora é o estúdio
+  const appHolo = (id: AppId) => { if (id === "batida") abrirEstudio(); else onApp?.(id) }
   // o que tá tocando no toca-discos: "faixa · disco"
   const discoInfo = (() => {
     for (const d of discosDaKombi(save.discos ?? [])) {
@@ -3104,14 +3137,14 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
         <>
           {holoCelular ? (
             // (LU2CA 21/10) no celular, os widgets numa ilha só (canto de baixo à esquerda)
-            <HoloIlha radio={radioHolo} onLigar={ligarRadioHolo} onProxima={() => proxFaixa.current(freqRef.current)} onSintonizar={sintonizarHolo} ler={lerClima} onApp={(id) => onApp?.(id)} guitarLivre={guitarLivre(save)} />
+            <HoloIlha radio={radioHolo} onLigar={ligarRadioHolo} onProxima={() => proxFaixa.current(freqRef.current)} onSintonizar={sintonizarHolo} ler={lerClima} onApp={appHolo} guitarLivre={guitarLivre(save)} />
           ) : (
             <>
               <HoloSom radio={radioHolo} onLigar={ligarRadioHolo} onProxima={() => proxFaixa.current(freqRef.current)} onSintonizar={sintonizarHolo} />
-              <HoloDestaque onApp={(id) => onApp?.(id)} guitarLivre={guitarLivre(save)} />
+              <HoloDestaque onApp={appHolo} guitarLivre={guitarLivre(save)} />
               <HoloClima ler={lerClima} />
-              <HoloIcones onApp={(id) => onApp?.(id)} />
-              <HoloApps onApp={(id) => onApp?.(id)} />
+              <HoloIcones onApp={appHolo} />
+              <HoloApps onApp={appHolo} />
             </>
           )}
           <HoloAnel missao={missaoHolo} checklist={checklistHolo} agora={nexoAgora} onMissoes={() => setPedeMapa((n) => n + 1)} api={anelApi} />
@@ -3482,6 +3515,8 @@ export function Corrida({ alohanNoMapa = false, onVisitar, save, nivel, destino:
         </div>
       )}
 
+      {/* (14/11) KOMBEAT STUDIO: o menu lá atrás (disco, beat, instrumento); a estante de discos é a de sempre */}
+      {estudio && dentro && !estante && <KombeatStudio modo={estudio} onModo={setEstudio} onDiscos={() => setEstante(true)} onSair={fecharEstudio} />}
       {estante && (
         <div className="l-estante" onPointerDown={(e) => e.stopPropagation()}>
           <header>
@@ -6787,7 +6822,9 @@ function CenaBase({
     // de dentro: olha pela estrada à frente, virando um pouco pro lado da curva
     if (primeira) {
       const o = olhar.current
-      if (!o.arrastando && o.soltou && performance.now() - o.soltou > 7000) { o.alvoYaw = 0; o.alvoPitch = 0 }
+      if (!o.arrastando && o.soltou && performance.now() - o.soltou > 7000 && !OLHAR_ESTUDIO.ativo) { o.alvoYaw = 0; o.alvoPitch = 0 }
+      // (KOMBEAT) o estúdio pede o olhar pro fundo da Kombi (e de volta pra frente ao sair)
+      if (OLHAR_ESTUDIO.pedido) { o.alvoYaw = OLHAR_ESTUDIO.pedido.yaw; o.alvoPitch = OLHAR_ESTUDIO.pedido.pitch; o.soltou = 0; OLHAR_ESTUDIO.pedido = null }
       const r = o.arrastando ? 14 : o.alvoYaw === 0 && o.alvoPitch === 0 ? 1.5 : 14
       o.yaw += (o.alvoYaw - o.yaw) * Math.min(1, dt * r)
       o.pitch += (o.alvoPitch - o.pitch) * Math.min(1, dt * r)
