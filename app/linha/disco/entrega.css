@@ -1,0 +1,26 @@
+/* A ENTREGA E AS INCUBADORAS (16/11): o hack (DOM) e o corredor (Canvas próprio). Sem backdrop-filter */
+.en-cena { position: fixed; inset: 0; z-index: 60; touch-action: none; }
+.en-hack { position: absolute; inset: 0; overflow: hidden; pointer-events: auto; }
+.en-hack-pops { position: absolute; inset: 0; animation: en-tremer 0.18s steps(2) infinite; animation-play-state: paused; }
+.en-hack-pop { position: absolute; width: min(46vw, 300px); height: auto; border: 2px solid #111; box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.55); animation: en-pop 0.16s ease-out both; image-rendering: auto; }
+.en-hack-grana { position: absolute; left: 50%; top: 14%; transform: translateX(-50%); margin: 0; z-index: 2; padding: 8px 16px; border-radius: 999px; background: rgba(8, 12, 20, 0.85); color: #7af0ff; font: 800 16px var(--font-geist-mono), ui-monospace, monospace; animation: en-grana 2.4s ease-out forwards; pointer-events: none; }
+.en-hack-veu { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(6, 4, 11, 0) 25%, rgba(6, 4, 11, 0.85) 80%); transition: opacity 1.2s ease-in; }
+/* a turva: só a camada das propagandas borra (poucos elementos), o véu escurece as bordas */
+.en-hack.is-turva .en-hack-pops, .en-hack.is-escuro .en-hack-pops { filter: blur(5px) saturate(1.6); animation-play-state: running; transition: filter 1.6s ease-in; }
+.en-hack.is-turva .en-hack-veu { opacity: 1; }
+.en-hack.is-escuro .en-hack-veu { opacity: 1; background: #06040b; transition: opacity 0.9s ease-in, background 0.9s ease-in; }
+@keyframes en-pop { from { opacity: 0; scale: 0.4; } to { opacity: 1; scale: 1; } }
+@keyframes en-tremer { 0% { translate: -6px 3px; } 50% { translate: 7px -4px; } 100% { translate: -3px -2px; } }
+@keyframes en-grana { 0%, 60% { opacity: 1; } to { opacity: 0; } }
+
+.en-corredor { position: absolute; inset: 0; background: #06040b; }
+.en-corredor-cvs { position: absolute !important; inset: 0; }
+.en-corredor-veu { position: absolute; inset: 0; background: #000; opacity: 1; pointer-events: none; animation: en-sai-veu 2.2s ease-out forwards; }
+.en-corredor.is-fim .en-corredor-veu { animation: en-entra-veu 3.4s ease-in forwards; }
+@keyframes en-sai-veu { from { opacity: 1; } to { opacity: 0; } }
+@keyframes en-entra-veu { 0%, 55% { opacity: 0; } to { opacity: 1; } }
+.en-chamado { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%); display: flex; gap: 8px; align-items: baseline; max-width: 92vw; padding: 8px 14px; border-radius: 999px; background: rgba(8, 6, 14, 0.82); border: 1px solid rgba(61, 123, 255, 0.6); color: #e8e4f2; font: 600 13px var(--font-geist-mono), ui-monospace, monospace; pointer-events: none; animation: en-pop 0.3s ease-out both; }
+.en-chamado b { color: #3d7bff; }
+.en-dica { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); margin: 0; text-align: center; font: 700 11px var(--font-geist-mono), ui-monospace, monospace; letter-spacing: 0.1em; color: rgba(242, 238, 250, 0.6); pointer-events: none; }
+.en-aviso { position: absolute; left: 0; right: 0; top: 42%; margin: 0; text-align: center; font: 900 22px var(--font-geist-mono), ui-monospace, monospace; text-shadow: 0 2px 0 #000; pointer-events: none; animation: en-aviso 1.8s ease-out forwards; }
+@keyframes en-aviso { 0% { opacity: 0; scale: 0.8; } 15% { opacity: 1; scale: 1; } 70% { opacity: 1; } to { opacity: 0; } }

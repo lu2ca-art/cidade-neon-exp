@@ -25,6 +25,15 @@ export interface Cartao {
 
 export const MESA: Cartao[] = [
   {
+    parte: "entrega.hack",
+    nome: "Entregar um amigo: o hack das propagandas e o corredor das incubadoras",
+    data: "2026-11-16",
+    tarefa: "entrega e incubadoras",
+    olhar: "Aqui a Ella é entregue logo que o jogo abre: você ganha a Água$ e as propagandas do Núcleo invadem a tela cada vez mais rápido, até a visão turvar e escurecer. Você acorda no corredor das incubadoras, no escuro, com o mesmo som grave do elevador de terror; a luz volta aos trancos e chega o chamado da D-Bee. Toque em cada incubadora pra quebrar (arraste pro lado pra olhar). A Ella está na última: achou, ela volta pra história. O botão de entregar no cartão do mapa entra quando a frente do mapa juntar.",
+    perguntas: ["O hack desnorteia o bastante, ou quer mais tempo, mais rápido, outras propagandas?", "O corredor dá medo? Quantas incubadoras quer (hoje 12)?", "Quanto de Água$ quer pagar por entregar cada um? (rascunho: 200 a 400)", "Entregar de novo, depois de recuperar, paga de novo? (hoje não paga)", "A fala da D-Bee (\"quebra todas as incubadoras. Ella tá numa delas\") fica assim ou você reescreve?", "O LU2CA também pode ser entregue?"],
+    mais: [{ parte: "entrega.incubadoras", nome: "direto no corredor das incubadoras (sem o hack)" }],
+  },
+  {
     parte: "missao.tony.jogo",
     nome: "Revisão: feira só leva se tiver saldo; tecla solta não prende o acelerador",
     data: "2026-11-09",

@@ -103,6 +103,8 @@ export const proximaPecaDe = (h: HistoriaDisco, ep: Episodio): PecaEp | null => 
 /** a missão pode aparecer na feira agora? (episódio aberto e as peças de antes feitas; as livres sempre).
  *  null = a missão não é de nenhum episódio (o final): quem decide é o `requer` dela */
 export function missaoLiberada(h: HistoriaDisco, id: MissaoId): boolean | null {
+  // (16/11) entregue e ainda nas incubadoras: some da sequência até a pessoa achar (disco/entrega.ts)
+  if ((h.entregues ?? []).includes(id)) return false
   if (LIVRES.includes(id)) return true
   const ep = episodioDaMissao(id)
   if (!ep) return null
