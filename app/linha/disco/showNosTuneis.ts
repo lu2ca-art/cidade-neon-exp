@@ -17,10 +17,10 @@ import { musicasDoGuitar } from "./portas"
 
 export const SHOW_TUNEIS_CFG = {
   // ═══ QUANDO ABRE (fácil de mudar) ═══
-  // o show dos túneis abre com este episódio feito: o do Notti (Rollercoaster), o
-  // que leva ao metrô e é o último antes de CHUVA (o final). Perto da torneira,
-  // antes do final. Trocar o id troca o ponto do jogo (null = aberto desde o começo)
-  abreDepoisDe: "rollercoaster" as PistaId | null,
+  // o show dos túneis abre com este episódio feito: (16/11, o dono) o do Mubarak
+  // (DopaminA, ep. 2), cedo no jogo. Trocar o id troca o ponto do jogo (null =
+  // aberto desde o começo)
+  abreDepoisDe: "dopamina" as PistaId | null,
   // o palco: o ângulo no salão a partir do lado de fora (onde está o trem), em graus,
   // e a distância do centro. -70°: no arco livre entre o trem e a boca do RIO SECO A
   angulo: -70,
