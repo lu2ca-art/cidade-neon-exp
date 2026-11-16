@@ -24,6 +24,7 @@ import { ICONE_MISSAO } from "../estrada/Holo"
 import { AVENIDAS, SALOES, SALAO_DESCIDA } from "../trincheiras/mapa"
 import { cartaoDe, cartoesDe, iconesDosCartoes, iniciais, type Cartao, type IconeCartao } from "./cartoes"
 import { EPISODIOS } from "./episodios"
+import { pedirEntrega } from "./entrega"
 import type { PistaId } from "../estrada/pistas"
 import type { MissaoId } from "./portas"
 import "./mapaCartoes.css"
@@ -108,7 +109,7 @@ export function MapaCartoes({ M, historia, pose, apagada, aba: abaInicial, onIr,
       {aba !== "feira" && (
         <p className="l-mc-legenda" aria-hidden="true"><i className="is-aberto" />dá pra fazer agora <i className="is-feito" />feito <i className="is-trancado" />trancado · toca num ícone</p>
       )}
-      {cartao && <CartaoMissao c={cartao} onIr={(id) => { onIr(id); onFechar() }} onFechar={() => setAberto(null)} />}
+      {cartao && <CartaoMissao c={cartao} onIr={(id) => { onIr(id); onFechar() }} onEntregar={(id) => { onFechar(); pedirEntrega(id) }} onFechar={() => setAberto(null)} />}
     </div>
   )
 }
@@ -284,7 +285,7 @@ function Feira({ cartoes, onAbrir }: { cartoes: Cartao[]; onAbrir: (ep: PistaId)
             <span className="l-mc-mini-txt">
               <small>ep. {c.n} · {c.musica}</small>
               <b>{c.quem}</b>
-              <em>{c.texto.recompensa} Água$</em>
+              {c.entrega && <em>{c.entrega.agua.toLocaleString("pt-BR")} Água$</em>}
             </span>
             <span className="l-mc-mini-est">{c.estado === "feito" ? "✓ feito" : c.estado === "aberto" ? "agora" : "trancado"}</span>
           </button>
@@ -313,9 +314,14 @@ function Retrato({ c }: { c: Cartao }) {
 }
 
 // ── O CARTÃO ──
-function CartaoMissao({ c, onIr, onFechar }: { c: Cartao; onIr: (id: MissaoId) => void; onFechar: () => void }) {
+function CartaoMissao({ c, onIr, onEntregar, onFechar }: { c: Cartao; onIr: (id: MissaoId) => void; onEntregar: (id: MissaoId) => void; onFechar: () => void }) {
   const bt = useRef<HTMLButtonElement>(null)
   useEffect(() => { bt.current?.focus() }, [c.ep.id])
+  // entregar não tem volta: o primeiro toque pergunta, o segundo entrega
+  const [certeza, setCerteza] = useState(false)
+  useEffect(() => { setCerteza(false) }, [c.ep.id])
+  const liberar = c.estado === "aberto" ? c.proxima : null
+  const entrega = c.entrega?.pode ? c.entrega : null
   return (
     <div className="l-mc-fundo" onClick={(e) => { if (e.target === e.currentTarget) onFechar() }}>
       <article className={`l-cartao is-${c.estado}`} style={{ ["--cor" as string]: c.cor }} aria-label={`cartão de ${c.quem}`}>
@@ -327,7 +333,7 @@ function CartaoMissao({ c, onIr, onFechar }: { c: Cartao; onIr: (id: MissaoId) =
           <Retrato c={c} />
           <div>
             <h3>{c.quem}</h3>
-            <p className="l-cartao-recompensa"><small>recompensa</small><b>{c.texto.recompensa}</b> Água$</p>
+            {c.entrega && <p className="l-cartao-recompensa"><small>recompensa</small><b>{c.entrega.agua.toLocaleString("pt-BR")}</b> Água$</p>}
             <p className="l-cartao-crime"><small>o crime</small>{c.texto.crime}</p>
           </div>
         </div>
@@ -337,13 +343,17 @@ function CartaoMissao({ c, onIr, onFechar }: { c: Cartao; onIr: (id: MissaoId) =
           <h4>o que libera</h4>
           <ul>{c.libera.map((x, i) => <li key={i} className={x.feito ? "is-feito" : ""}><i aria-hidden="true">{x.feito ? "✓" : "◆"}</i>{x.texto}</li>)}</ul>
         </section>
-        {/* (16/11) O LUGAR DA ESCOLHA: liberar a experiência ou entregar o personagem (outra
-            frente liga os dois botões aqui; até lá fica vazio, sem botão falso) */}
-        <div className="l-cartao-escolha" data-reservado="liberar-entregar" />
+        {/* (16/11) A ESCOLHA: liberar a experiência (o caminho de aceitar a missão: marca no
+            mapa e chegar lá começa) ou entregar o personagem (disco/entrega.ts: a recompensa
+            de ENTREGA_CFG, depois o hack e as incubadoras). Entregar só aparece com podeEntregar */}
+        <div className="l-cartao-escolha">
+          {liberar && <button type="button" className="l-cartao-ir" onClick={() => onIr(liberar)}>liberar</button>}
+          {entrega && !certeza && <button type="button" className="l-cartao-entregar" onClick={() => setCerteza(true)}>entregar · {entrega.agua.toLocaleString("pt-BR")} Água$</button>}
+          {entrega && certeza && <button type="button" className="l-cartao-entregar is-certeza" onClick={() => onEntregar(entrega.missao)}>entregar {c.quem}? sim</button>}
+        </div>
         <footer className="l-cartao-pe">
           {c.estado === "feito" && <span className="l-cartao-est">✓ feito</span>}
           {c.estado === "trancado" && <span className="l-cartao-est is-tranca"><i aria-hidden="true" className="l-cartao-cadeado" />{c.cadeado}</span>}
-          {c.estado === "aberto" && c.proxima && <button type="button" className="l-cartao-ir" onClick={() => onIr(c.proxima!)}>marcar no mapa</button>}
         </footer>
       </article>
     </div>

@@ -3,6 +3,23 @@
 Fonte: `projetos/cidade-neon/episodios.md`, "A entrega e as incubadoras" (palavras do dono).
 Só o caminho da entrega. O final (todos capturados, a sala de controle do Núcleo) ainda é decisão do dono.
 
+## Quem não pode ser entregue (16/11, decisão do dono)
+O **LU2CA** e a **D-Bee** nunca podem ser entregues: o LU2CA está sempre fazendo o show e a
+D-Bee é a guia da missão do jogo. Os outros podem. Fica em `NUNCA_ENTREGAR` (`disco/entrega.ts`);
+`podeEntregar` devolve false pros dois e o cartão não mostra o botão "entregar".
+
+## A recompensa e a entrega única (16/11, decisões do dono)
+- **Bem mais alta, pra tentar de verdade:** entre 1.000 e 2.000 Água$ conforme o personagem
+  (RASCUNHO, `ENTREGA_CFG.agua`). É o MESMO número que o cartão mostra (`cartoes.ts`, `entrega`
+  do cartão): não existe mais um valor separado em `CARTOES`.
+- **Depois do resgate, não dá pra entregar de novo:** o botão some pra aquele personagem.
+  `podeEntregar` olha `entreguesPagos` (toda entrega já feita fica ali, inclusive no save de antes).
+
+## O cartão (ligado em 16/11)
+No lugar `l-cartao-escolha` do `MapaCartoes.tsx`: **liberar** (o caminho de aceitar a missão:
+marca no mapa e chegar lá começa) e **entregar · N Água$**, que pede um segundo toque
+("entregar X? sim"), fecha o mapa e chama `pedirEntrega(missao)`.
+
 ## Arquivos
 - `app/linha/disco/entrega.ts`: as regras puras e os números (`ENTREGA_CFG`, RASCUNHO): quem dá pra entregar, a grana, o save, a quebra das incubadoras e o pedido (o cartão chama).
 - `app/linha/disco/entregaTextos.ts`: as falas (RASCUNHO; a da D-Bee sai das palavras do dono).

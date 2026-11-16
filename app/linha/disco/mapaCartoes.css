@@ -107,6 +107,9 @@
 .l-cartao-lista li.is-feito { color: #7a6d8c; text-decoration: line-through; }
 .l-cartao-lista li.is-feito i { background: #5dffa0; }
 .l-cartao-escolha:empty { display: none; }
+.l-cartao-escolha { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.l-cartao-entregar { padding: 11px 18px; border-radius: 999px; border: 2px solid #1b1624; background: transparent; color: #1b1624; font: 900 14px var(--font-geist-sans), system-ui, sans-serif; cursor: pointer; }
+.l-cartao-entregar.is-certeza { background: #ff2436; border-color: #ff2436; color: #fff; }
 .l-cartao-pe { display: flex; justify-content: flex-end; align-items: center; margin-top: 12px; min-height: 8px; }
 .l-cartao-est { font: 800 13px var(--font-geist-mono), ui-monospace, monospace; color: #1b1624; }
 .l-cartao-est.is-tranca { display: inline-flex; align-items: center; gap: 8px; color: #5a4f6b; }

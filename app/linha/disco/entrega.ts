@@ -24,9 +24,13 @@ import { MISSOES13, type MissaoId } from "./portas"
 
 // ═══ RASCUNHO: os números (o dono mexe aqui) ═══
 export const ENTREGA_CFG = {
-  // a recompensa por entregar, em Água$ (RASCUNHO; a missão da cidade paga 120–150, ver PAGA.missao)
-  agua: { quadra: 200, drew: 300, mubarak: 300, xeriff: 300, lu2ca: 400, ella: 300, notti: 300, nizzy: 300, tony: 400 } as Partial<Record<MissaoId, number>>,
-  // entregar de novo (depois de recuperar) não paga outra vez
+  // a recompensa por entregar, em Água$ (RASCUNHO). (16/11, o dono) bem mais alta, entre
+  // 1.000 e 2.000 conforme o personagem, pra tentar de verdade (a missão paga 120–150,
+  // PAGA.missao). O cartão mostra este mesmo número (cartoes.ts, entregaDoEp).
+  // Sem o LU2CA e a D-Bee: ver NUNCA_ENTREGAR. As chaves são as MISSÕES (portas.ts):
+  // "notti" é a do Mubarak (ep. 2), "mubarak" a da Nizzy (ep. 4), "nizzy" a do Notti (ep. 8)
+  agua: { quadra: 1000, notti: 2000, mubarak: 1400, tony: 1200, drew: 1600, ella: 1800, nizzy: 1300, xeriff: 1000 } as Partial<Record<MissaoId, number>>,
+  // (16/11, o dono) depois do resgate o botão some: entregou uma vez, nunca mais (podeEntregar)
   pagaUmaVez: true,
   // o hack (s): as propagandas aparecendo, a visão turvando, o escuro antes do corredor
   hack: { invade: 6.5, turva: 2.2, escuro: 1.4, primeiraMs: 900, ultimaMs: 90, maxNaTela: 26 },
@@ -35,9 +39,14 @@ export const ENTREGA_CFG = {
   corredor: { incubadoras: 12, espaco: 2.4, largura: 5.2, escuro: 3.2, nevoa: 16 },
 }
 
-/** quem dá pra entregar: as missões com uma pessoa no cartão (sem o prólogo, os túneis e o final) */
-export const ENTREGAVEIS = (Object.keys(ENTREGA_CFG.agua) as MissaoId[]).filter((id) => !MISSOES13[id].prologo)
-export const podeEntregar = (h: HistoriaDisco, id: MissaoId) => ENTREGAVEIS.includes(id) && !entregue(h, id)
+/** (16/11, o dono) nunca dão pra entregar: o LU2CA está sempre fazendo o show e a D-Bee
+ *  é a guia da missão do jogo. Os outros podem */
+export const NUNCA_ENTREGAR: readonly MissaoId[] = ["lu2ca", "dbee"]
+/** quem dá pra entregar: as missões com uma pessoa no cartão (sem o prólogo, os túneis, o final, o LU2CA e a D-Bee) */
+export const ENTREGAVEIS = (Object.keys(ENTREGA_CFG.agua) as MissaoId[]).filter((id) => !MISSOES13[id].prologo && !NUNCA_ENTREGAR.includes(id))
+/** dá pra entregar agora? Não: quem não é entregável, quem está nas incubadoras e (16/11, o
+ *  dono) quem já foi entregue uma vez e resgatado (entreguesPagos guarda toda entrega feita) */
+export const podeEntregar = (h: HistoriaDisco, id: MissaoId) => ENTREGAVEIS.includes(id) && !entregue(h, id) && !(h.entreguesPagos ?? []).includes(id)
 export const nomeDe = (id: MissaoId) => MISSOES13[id].quem
 export const corDe = (id: MissaoId) => MISSOES13[id].cor
 
